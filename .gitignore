@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+
+# O catálogo Scryfall é reconstruível e grande de mais para o Git.
+data/catalog.db
+data/catalog.db-*
+data/*.db-wal
+data/*.db-shm
+cache/
+priceguide.json
