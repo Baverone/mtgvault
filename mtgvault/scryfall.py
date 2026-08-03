@@ -4,8 +4,9 @@ A Scryfall é a espinha dorsal: dá-nos o ID de cada impressão, o nome oracle,
 as legalidades e — crucialmente — o `cardmarket_id`, que é a ponte para os
 preços do Cardmarket.
 
-Usamos o ficheiro "default_cards" (todas as impressões, todas as línguas
-inglesas por omissão). É grande (~500 MB); lemos em streaming com ijson.
+Usamos o ficheiro "default_cards" (todas as impressões). A Scryfall serve-o
+agora como JSONL comprimido (.jsonl.gz, ~77 MB); lemos linha a linha, em
+streaming, descomprimindo com gzip (ver download_bulk/load_bulk).
 """
 from __future__ import annotations
 
@@ -34,13 +35,23 @@ def _polite_get(url: str, **kw) -> requests.Response:
 
 
 def download_bulk(kind: str = "default_cards", dest: Path | None = None) -> Path:
-    """Descarrega o ficheiro bulk mais recente. Devolve o caminho local."""
+    """Descarrega o ficheiro bulk mais recente. Devolve o caminho local.
+
+    A Scryfall migrou o bulk data (2025) para JSONL comprimido: cada entrada traz
+    agora `jsonl_download_uri` (um .jsonl.gz em data.scryfall.io) e a antiga
+    `download_uri` (array JSON descomprimido) desapareceu. Aceita as duas por
+    segurança, preferindo o JSONL.
+    """
     index = _polite_get(BULK_INDEX).json()
     entry = next(d for d in index["data"] if d["type"] == kind)
-    dest = dest or Path.home() / "mtgvault" / "cache" / f"{kind}.json"
+    url = entry.get("jsonl_download_uri") or entry.get("download_uri")
+    if not url:
+        raise RuntimeError(f"bulk-data sem URL de download para {kind!r}")
+    suffix = ".jsonl.gz" if url.endswith(".gz") else ".json"
+    dest = dest or Path.home() / "mtgvault" / "cache" / f"{kind}{suffix}"
     dest.parent.mkdir(parents=True, exist_ok=True)
 
-    with _polite_get(entry["download_uri"], stream=True) as r, dest.open("wb") as fh:
+    with _polite_get(url, stream=True) as r, dest.open("wb") as fh:
         for chunk in r.iter_content(chunk_size=1 << 20):
             fh.write(chunk)
     return dest
@@ -84,12 +95,26 @@ INSERT = """INSERT OR REPLACE INTO catalog.cards (
 
 
 def load_bulk(con: sqlite3.Connection, path: Path, batch: int = 5000) -> int:
-    """Carrega o ficheiro bulk para a tabela `cards`."""
-    import ijson  # importado aqui para não pesar no arranque
+    """Carrega o ficheiro bulk para a tabela `cards`.
 
+    O bulk da Scryfall passou a JSONL comprimido (um objeto por linha, .jsonl.gz).
+    Lê-se linha a linha (streaming, sem carregar tudo em memória) e descomprime-se
+    com gzip. Tolera também o formato antigo (array JSON), saltando os
+    delimitadores `[`/`]` e a vírgula final de cada linha.
+    """
+    import gzip
+
+    opener = gzip.open if str(path).endswith(".gz") else open
     n, buf = 0, []
-    with path.open("rb") as fh:
-        for card in ijson.items(fh, "item"):
+    with opener(path, "rt", encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip().rstrip(",")
+            if not line or line in ("[", "]"):
+                continue
+            try:
+                card = json.loads(line)
+            except json.JSONDecodeError:
+                continue
             row = _row(card)
             if row is None:
                 continue

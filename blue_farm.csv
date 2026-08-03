@@ -1,97 +1,97 @@
 name,set_code,collector_number,quantity,finish,language,condition,purpose,sub_collection,photo_path,acquired_price,notes
-"Kraum, Ludevic's Opus",fca,56,1,nonfoil,en,NM,player,Blue Farm,,,"comandante — reskin FF 'Barnabas Tharmr'"
-"Tymna the Weaver",fca,18,1,nonfoil,en,NM,player,Blue Farm,,,"comandante — reskin FF 'Cecil Harvey'"
-"Birgi, God of Storytelling",khm,311,1,nonfoil,en,NM,player,Blue Farm,,,"showcase Kaldheim"
-"Dragon's Rage Channeler",sld,2648,1,nonfoil,en,NM,player,Blue Farm,,,"Secret Lair"
-"Esper Sentinel",mh2,12,1,nonfoil,en,NM,player,Blue Farm,,,
-"Grand Abolisher",big,47,1,nonfoil,en,NM,player,Blue Farm,,,"The Big Score"
-"Hexing Squelcher",ecl,317,1,nonfoil,en,NM,player,Blue Farm,,,"set 'ecl' por confirmar"
-"Rograkh, Son of Rohgahh",,,1,nonfoil,en,NM,player,Blue Farm,,,"reskin FF 'Joshua Rosfield' (promo)"
-"Ranger-Captain of Eos",fca,2,1,nonfoil,en,NM,player,Blue Farm,,,"reskin FF 'Knights of San d'Oria'"
-"Ragavan, Nimble Pilferer",,,1,nonfoil,en,NM,player,Blue Farm,,,"reskin FF 'Zidane Tribal'"
-"Lotho, Corrupt Shirriff",,,1,nonfoil,en,NM,player,Blue Farm,,,"Tales of Middle-earth"
-"Simian Spirit Guide",sld,1544,1,nonfoil,en,NM,player,Blue Farm,,,"Secret Lair"
-"Mockingbird",blb,310,1,nonfoil,en,NM,player,Blue Farm,,,
-"Valley Floodcaller",blb,308,1,nonfoil,en,NM,player,Blue Farm,,,
-"Tataru Taru",fic,30,1,nonfoil,en,NM,player,Blue Farm,,,"Final Fantasy Commander"
-"Voice of Victory",tdm,331,1,nonfoil,en,NM,player,Blue Farm,,,
-"Thassa's Oracle",sld,1280,1,nonfoil,en,NM,player,Blue Farm,,,"Secret Lair"
-"Diabolic Intent",fca,34,1,nonfoil,en,NM,player,Blue Farm,,,"reskin FF 'Shantotto's Coercion'"
-"Gamble",tle,512,1,nonfoil,en,NM,player,Blue Farm,,,
-"Demonic Tutor",cmm,696,1,nonfoil,en,NM,player,Blue Farm,,,"Commander Masters"
-"Last Chance",,,1,nonfoil,en,NM,player,Blue Farm,,,"edição por confirmar"
-"Imperial Seal",,,1,nonfoil,en,NM,player,Blue Farm,,,"edição por confirmar"
-"Mnemonic Betrayal",grn,84,1,nonfoil,en,NM,player,Blue Farm,,,
-"Jeska's Will",sld,1744,1,nonfoil,en,NM,player,Blue Farm,,,"reskin 'Storm's Will'"
-"Wheel of Fortune",,,1,nonfoil,en,NM,player,Blue Farm,,,"moldura antiga"
-"Sevinne's Reclamation",mh2,,1,nonfoil,en,NM,player,Blue Farm,,,"nº por confirmar"
-"Rite of Flame",sld,2209,1,nonfoil,en,NM,player,Blue Farm,,,"reskin 'The Blades of Chaos Bond'"
-"Borne Upon a Wind",sld,231,1,nonfoil,en,NM,player,Blue Farm,,,"Secret Lair assinada"
-"Ad Nauseam",,,1,nonfoil,en,NM,player,Blue Farm,,,"moldura antiga"
-"Brain Freeze",sld,410,1,nonfoil,en,NM,player,Blue Farm,,,"Secret Lair"
-"An Offer You Can't Refuse",fdn,311,1,nonfoil,en,NM,player,Blue Farm,,,"Foundations"
-"Culling the Weak",sld,,1,nonfoil,en,NM,player,Blue Farm,,,"Secret Lair, nº por confirmar"
-"Cabal Ritual",sld,2199,1,nonfoil,en,NM,player,Blue Farm,,,"reskin 'Cordyceps Excision'"
-"Dark Ritual",fca,58,1,nonfoil,en,NM,player,Blue Farm,,,"reskin FF 'Darkness of Eternity'"
-"Chain of Vapor",,,1,nonfoil,en,NM,player,Blue Farm,,,"moldura antiga"
-"Enlightened Tutor",tle,305,1,nonfoil,en,NM,player,Blue Farm,,,
-"Deflecting Swat",tle,311,1,nonfoil,en,NM,player,Blue Farm,,,
-"Fierce Guardianship",cmm,694,1,nonfoil,en,NM,player,Blue Farm,,,"Commander Masters"
-"Demonic Consultation",,,1,nonfoil,en,NM,player,Blue Farm,,,"moldura antiga, assinada"
-"Final Fortune",sld,,1,nonfoil,en,NM,player,Blue Farm,,,"Secret Lair, nº por confirmar"
-"Flusterstorm",,,1,nonfoil,en,NM,player,Blue Farm,,,"edição por confirmar"
-"Flare of Duplication",mh3,133,1,nonfoil,en,NM,player,Blue Farm,,,"Modern Horizons 3"
-"Into the Flood Maw",blb,52,1,nonfoil,en,NM,player,Blue Farm,,,
-"Force of Negation",2x2,346,1,nonfoil,en,NM,player,Blue Farm,,,"Double Masters 2022"
-"Intuition",,,1,nonfoil,en,NM,player,Blue Farm,,,"edição por confirmar"
-"Force of Will",2xm,340,1,nonfoil,en,NM,player,Blue Farm,,,"Double Masters, assinada"
-"Pact of Negation",,,1,nonfoil,en,NM,player,Blue Farm,,,"Tales of Middle-earth"
-"Mental Misstep",sld,1179,1,nonfoil,en,NM,player,Blue Farm,,,"Secret Lair"
-"Silence",sld,1445,1,nonfoil,en,NM,player,Blue Farm,,,"Secret Lair"
-"Mystical Tutor",tle,308,1,nonfoil,en,NM,player,Blue Farm,,,
-"Snapback",tsr,87,1,nonfoil,en,NM,player,Blue Farm,,,"Time Spiral Remastered"
-"Rain of Filth",sld,1547,1,nonfoil,en,NM,player,Blue Farm,,,"Secret Lair"
-"Swan Song",sld,1591,1,nonfoil,en,NM,player,Blue Farm,,,"Secret Lair"
-"Red Elemental Blast",,,1,nonfoil,en,NM,player,Blue Farm,,,"moldura antiga"
-"Tainted Pact",sta,13,1,nonfoil,en,NM,player,Blue Farm,,,"Mystical Archive"
-"Vampiric Tutor",dmr,435,1,nonfoil,en,NM,player,Blue Farm,,,"Dominaria Remastered"
-"Chrome Mox",spg,92,1,nonfoil,en,NM,player,Blue Farm,,,"Special Guests"
-"Arcane Signet",cmm,653,1,nonfoil,en,NM,player,Blue Farm,,,"Commander Masters"
-"Fellwar Stone",,,1,nonfoil,en,NM,player,Blue Farm,,,"moldura antiga"
-"Lotus Petal",,,1,nonfoil,en,NM,player,Blue Farm,,,"edição por confirmar"
-"Mana Vault",2x2,394,1,nonfoil,en,NM,player,Blue Farm,,,"borderless 2X2"
-"Mox Amber",dom,224,1,nonfoil,en,NM,player,Blue Farm,,,"showcase Dominaria"
-"Mox Opal",2xm,362,1,nonfoil,en,NM,player,Blue Farm,,,"borderless Double Masters 2022"
-"Sol Ring",,,1,nonfoil,en,NM,player,Blue Farm,,,"moldura retro"
-"Wishclaw Talisman",eld,110,1,nonfoil,en,NM,player,Blue Farm,,,
-"Mystic Remora",tle,16,1,nonfoil,en,NM,player,Blue Farm,,,
-"Necropotence",wot,74,1,nonfoil,en,NM,player,Blue Farm,,,"Enchanting Tales"
-"Smothering Tithe",2x2,342,1,nonfoil,en,NM,player,Blue Farm,,,
-"Rhystic Study",fca,31,1,nonfoil,en,NM,player,Blue Farm,,,"reskin FF 'Stay with Me'"
-"Underworld Breach",spg,9,1,nonfoil,en,NM,player,Blue Farm,,,"Special Guests"
-"Ancient Tomb",ltc,357,1,nonfoil,en,NM,player,Blue Farm,,,"reskin 'Balin's Tomb'"
-"Arid Mesa",spg,109,1,nonfoil,en,NM,player,Blue Farm,,,"TDM Special Guest"
-"Badlands",,,1,nonfoil,en,NM,player,Blue Farm,,,"dual antiga, assinada"
-"City of Brass",,,1,nonfoil,en,NM,player,Blue Farm,,,"reskin FF 'Bhujerba, Floating City'"
-"Bloodstained Mire",mh3,352,1,nonfoil,en,NM,player,Blue Farm,,,
-"Cavern of Souls",2x2,402,1,nonfoil,en,NM,player,Blue Farm,,,
-"Command Tower",sld,1697,1,nonfoil,en,NM,player,Blue Farm,,,"Secret Lair"
-"Exotic Orchard",sld,1231,1,nonfoil,en,NM,player,Blue Farm,,,"Secret Lair"
-"Flooded Strand",mh3,353,1,nonfoil,en,NM,player,Blue Farm,,,
-"Gemstone Caverns",ltc,364,1,nonfoil,en,NM,player,Blue Farm,,,"reskin 'Glittering Caves of Aglarond'"
-"Mana Confluence",eos,25,1,nonfoil,en,NM,player,Blue Farm,,,"set por confirmar"
-"Marsh Flats",spg,110,1,nonfoil,en,NM,player,Blue Farm,,,"TDM Special Guest"
-"Misty Rainforest",spg,111,1,nonfoil,en,NM,player,Blue Farm,,,"TDM Special Guest"
-"Otawara, Soaring City",neo,414,1,nonfoil,en,NM,player,Blue Farm,,,"borderless"
-"Plateau",,,1,nonfoil,en,NM,player,Blue Farm,,,"dual antiga"
-"Polluted Delta",mh3,356,1,nonfoil,en,NM,player,Blue Farm,,,
-"Scalding Tarn",spg,112,1,nonfoil,en,NM,player,Blue Farm,,,"TDM Special Guest"
-"Scrubland",,,1,nonfoil,en,NM,player,Blue Farm,,,"dual antiga"
-"Spire of Industry",aer,184,1,nonfoil,en,NM,player,Blue Farm,,,"Aether Revolt"
-"Tarnished Citadel",,,1,nonfoil,pt,NM,player,Blue Farm,,,"Odyssey PT 'Cidadela Opaca'"
-"Tundra",,,1,nonfoil,en,NM,player,Blue Farm,,,"dual antiga"
-"Underground Sea",,,1,nonfoil,en,NM,player,Blue Farm,,,"dual antiga, assinada"
-"Verdant Catacombs",spg,115,1,nonfoil,en,NM,player,Blue Farm,,,"TDM Special Guest"
-"Volcanic Island",,,1,nonfoil,en,NM,player,Blue Farm,,,"dual antiga"
-"Windswept Heath",mh3,360,1,nonfoil,en,NM,player,Blue Farm,,,
-"Mox Diamond",sth,,1,nonfoil,en,NM,player,Blue Farm,,,"moldura antiga (Stronghold), nº por confirmar"
+"Kraum, Ludevic's Opus",fca,56,1,nonfoil,en,NM,player,Blue Farm,,,comandante — reskin FF 'Barnabas Tharmr'
+Tymna the Weaver,fca,18,1,nonfoil,en,NM,player,Blue Farm,,,comandante — reskin FF 'Cecil Harvey'
+"Birgi, God of Storytelling",khm,311,1,nonfoil,en,NM,player,Blue Farm,,,showcase Kaldheim
+Dragon's Rage Channeler,,,1,nonfoil,en,NM,player,Blue Farm,,,Secret Lair; set/nº limpos p/ resolver por nome
+Esper Sentinel,mh2,12,1,nonfoil,en,NM,player,Blue Farm,,,
+Grand Abolisher,,,1,nonfoil,en,NM,player,Blue Farm,,,The Big Score; set/nº limpos p/ resolver por nome
+Hexing Squelcher,ecl,317,1,nonfoil,en,NM,player,Blue Farm,,,set 'ecl' por confirmar
+"Rograkh, Son of Rohgahh",,,1,nonfoil,en,NM,player,Blue Farm,,,reskin FF 'Joshua Rosfield' (promo)
+Ranger-Captain of Eos,fca,2,1,nonfoil,en,NM,player,Blue Farm,,,reskin FF 'Knights of San d'Oria'
+"Ragavan, Nimble Pilferer",,,1,nonfoil,en,NM,player,Blue Farm,,,reskin FF 'Zidane Tribal'
+"Lotho, Corrupt Shirriff",,,1,nonfoil,en,NM,player,Blue Farm,,,Tales of Middle-earth
+Simian Spirit Guide,,,1,nonfoil,en,NM,player,Blue Farm,,,Secret Lair; set/nº limpos p/ resolver por nome
+Mockingbird,,,1,nonfoil,en,NM,player,Blue Farm,,,set/nº limpos p/ resolver por nome
+Valley Floodcaller,blb,308,1,nonfoil,en,NM,player,Blue Farm,,,
+Tataru Taru,fic,30,1,nonfoil,en,NM,player,Blue Farm,,,Final Fantasy Commander
+Voice of Victory,tdm,331,1,nonfoil,en,NM,player,Blue Farm,,,
+Thassa's Oracle,sld,1280,1,nonfoil,en,NM,player,Blue Farm,,,Secret Lair
+Diabolic Intent,fca,34,1,nonfoil,en,NM,player,Blue Farm,,,reskin FF 'Shantotto's Coercion'
+Gamble,,,1,nonfoil,en,NM,player,Blue Farm,,,set/nº limpos p/ resolver por nome
+Demonic Tutor,cmm,696,1,nonfoil,en,NM,player,Blue Farm,,,Commander Masters
+Last Chance,,,1,nonfoil,en,NM,player,Blue Farm,,,edição por confirmar
+Imperial Seal,,,1,nonfoil,en,NM,player,Blue Farm,,,edição por confirmar
+Mnemonic Betrayal,,,1,nonfoil,en,NM,player,Blue Farm,,,set/nº limpos p/ resolver por nome
+Jeska's Will,sld,1744,1,nonfoil,en,NM,player,Blue Farm,,,reskin 'Storm's Will'
+Wheel of Fortune,,,1,nonfoil,en,NM,player,Blue Farm,,,moldura antiga
+Sevinne's Reclamation,,,1,nonfoil,en,NM,player,Blue Farm,,,nº por confirmar; set/nº limpos p/ resolver por nome
+Rite of Flame,sld,2209,1,nonfoil,en,NM,player,Blue Farm,,,reskin 'The Blades of Chaos Bond'
+Borne Upon a Wind,,,1,nonfoil,en,NM,player,Blue Farm,,,Secret Lair assinada; set/nº limpos p/ resolver por nome
+Ad Nauseam,,,1,nonfoil,en,NM,player,Blue Farm,,,moldura antiga
+Brain Freeze,sld,410,1,nonfoil,en,NM,player,Blue Farm,,,Secret Lair
+An Offer You Can't Refuse,fdn,311,1,nonfoil,en,NM,player,Blue Farm,,,Foundations
+Culling the Weak,sld,,1,nonfoil,en,NM,player,Blue Farm,,,"Secret Lair, nº por confirmar"
+Cabal Ritual,sld,2199,1,nonfoil,en,NM,player,Blue Farm,,,reskin 'Cordyceps Excision'
+Dark Ritual,,,1,nonfoil,en,NM,player,Blue Farm,,,reskin FF 'Darkness of Eternity'; set/nº limpos p/ resolver por nome
+Chain of Vapor,,,1,nonfoil,en,NM,player,Blue Farm,,,moldura antiga
+Enlightened Tutor,tle,305,1,nonfoil,en,NM,player,Blue Farm,,,
+Deflecting Swat,tle,311,1,nonfoil,en,NM,player,Blue Farm,,,
+Fierce Guardianship,cmm,694,1,nonfoil,en,NM,player,Blue Farm,,,Commander Masters
+Demonic Consultation,,,1,nonfoil,en,NM,player,Blue Farm,,,"moldura antiga, assinada"
+Final Fortune,sld,,1,nonfoil,en,NM,player,Blue Farm,,,"Secret Lair, nº por confirmar"
+Flusterstorm,,,1,nonfoil,en,NM,player,Blue Farm,,,edição por confirmar
+Flare of Duplication,,,1,nonfoil,en,NM,player,Blue Farm,,,Modern Horizons 3; set/nº limpos p/ resolver por nome
+Into the Flood Maw,blb,52,1,nonfoil,en,NM,player,Blue Farm,,,
+Force of Negation,2x2,346,1,nonfoil,en,NM,player,Blue Farm,,,Double Masters 2022
+Intuition,,,1,nonfoil,en,NM,player,Blue Farm,,,edição por confirmar
+Force of Will,2xm,340,1,nonfoil,en,NM,player,Blue Farm,,,"Double Masters, assinada"
+Pact of Negation,,,1,nonfoil,en,NM,player,Blue Farm,,,Tales of Middle-earth
+Mental Misstep,sld,1179,1,nonfoil,en,NM,player,Blue Farm,,,Secret Lair
+Silence,sld,1445,1,nonfoil,en,NM,player,Blue Farm,,,Secret Lair
+Mystical Tutor,tle,308,1,nonfoil,en,NM,player,Blue Farm,,,
+Snapback,tsr,87,1,nonfoil,en,NM,player,Blue Farm,,,Time Spiral Remastered
+Rain of Filth,sld,1547,1,nonfoil,en,NM,player,Blue Farm,,,Secret Lair
+Swan Song,sld,1591,1,nonfoil,en,NM,player,Blue Farm,,,Secret Lair
+Red Elemental Blast,,,1,nonfoil,en,NM,player,Blue Farm,,,moldura antiga
+Tainted Pact,,,1,nonfoil,en,NM,player,Blue Farm,,,Mystical Archive; set/nº limpos p/ resolver por nome
+Vampiric Tutor,,,1,nonfoil,en,NM,player,Blue Farm,,,Dominaria Remastered; set/nº limpos p/ resolver por nome
+Chrome Mox,spg,92,1,nonfoil,en,NM,player,Blue Farm,,,Special Guests
+Arcane Signet,cmm,653,1,nonfoil,en,NM,player,Blue Farm,,,Commander Masters
+Fellwar Stone,,,1,nonfoil,en,NM,player,Blue Farm,,,moldura antiga
+Lotus Petal,,,1,nonfoil,en,NM,player,Blue Farm,,,edição por confirmar
+Mana Vault,2x2,394,1,nonfoil,en,NM,player,Blue Farm,,,borderless 2X2
+Mox Amber,dom,224,1,nonfoil,en,NM,player,Blue Farm,,,showcase Dominaria
+Mox Opal,2xm,362,1,nonfoil,en,NM,player,Blue Farm,,,borderless Double Masters 2022
+Sol Ring,,,1,nonfoil,en,NM,player,Blue Farm,,,moldura retro
+Wishclaw Talisman,eld,110,1,nonfoil,en,NM,player,Blue Farm,,,
+Mystic Remora,tle,16,1,nonfoil,en,NM,player,Blue Farm,,,
+Necropotence,wot,74,1,nonfoil,en,NM,player,Blue Farm,,,Enchanting Tales
+Smothering Tithe,2x2,342,1,nonfoil,en,NM,player,Blue Farm,,,
+Rhystic Study,fca,31,1,nonfoil,en,NM,player,Blue Farm,,,reskin FF 'Stay with Me'
+Underworld Breach,spg,9,1,nonfoil,en,NM,player,Blue Farm,,,Special Guests
+Ancient Tomb,ltc,357,1,nonfoil,en,NM,player,Blue Farm,,,reskin 'Balin's Tomb'
+Arid Mesa,spg,109,1,nonfoil,en,NM,player,Blue Farm,,,TDM Special Guest
+Badlands,,,1,nonfoil,en,NM,player,Blue Farm,,,"dual antiga, assinada"
+City of Brass,,,1,nonfoil,en,NM,player,Blue Farm,,,"reskin FF 'Bhujerba, Floating City'"
+Bloodstained Mire,mh3,352,1,nonfoil,en,NM,player,Blue Farm,,,
+Cavern of Souls,2x2,402,1,nonfoil,en,NM,player,Blue Farm,,,
+Command Tower,sld,1697,1,nonfoil,en,NM,player,Blue Farm,,,Secret Lair
+Exotic Orchard,sld,1231,1,nonfoil,en,NM,player,Blue Farm,,,Secret Lair
+Flooded Strand,mh3,353,1,nonfoil,en,NM,player,Blue Farm,,,
+Gemstone Caverns,ltc,364,1,nonfoil,en,NM,player,Blue Farm,,,reskin 'Glittering Caves of Aglarond'
+Mana Confluence,eos,25,1,nonfoil,en,NM,player,Blue Farm,,,set por confirmar
+Marsh Flats,spg,110,1,nonfoil,en,NM,player,Blue Farm,,,TDM Special Guest
+Misty Rainforest,spg,111,1,nonfoil,en,NM,player,Blue Farm,,,TDM Special Guest
+"Otawara, Soaring City",neo,414,1,nonfoil,en,NM,player,Blue Farm,,,borderless
+Plateau,,,1,nonfoil,en,NM,player,Blue Farm,,,dual antiga
+Polluted Delta,mh3,356,1,nonfoil,en,NM,player,Blue Farm,,,
+Scalding Tarn,spg,112,1,nonfoil,en,NM,player,Blue Farm,,,TDM Special Guest
+Scrubland,,,1,nonfoil,en,NM,player,Blue Farm,,,dual antiga
+Spire of Industry,aer,184,1,nonfoil,en,NM,player,Blue Farm,,,Aether Revolt
+Tarnished Citadel,,,1,nonfoil,pt,NM,player,Blue Farm,,,Odyssey PT 'Cidadela Opaca'
+Tundra,,,1,nonfoil,en,NM,player,Blue Farm,,,dual antiga
+Underground Sea,,,1,nonfoil,en,NM,player,Blue Farm,,,"dual antiga, assinada"
+Verdant Catacombs,,,1,nonfoil,en,NM,player,Blue Farm,,,TDM Special Guest; set/nº limpos p/ resolver por nome
+Volcanic Island,,,1,nonfoil,en,NM,player,Blue Farm,,,dual antiga
+Windswept Heath,mh3,360,1,nonfoil,en,NM,player,Blue Farm,,,
+Mox Diamond,sth,,1,nonfoil,en,NM,player,Blue Farm,,,"moldura antiga (Stronghold), nº por confirmar"
