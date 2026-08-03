@@ -8,5 +8,9 @@
     { "name": "Jeskai Ascendancy",           "all": ["Jeskai Ascendancy"] },
     { "name": "Urza/Tezzeret Artefactos",    "any": ["Urza, Lord High Artificer", "Tezzeret, Cruel Captain"] },
     { "name": "Song of Creation",            "all": ["Song of Creation"] }
+  ],
+  "pioneer": [
+    { "name": "Greasefang Abzan",             "all": ["Greasefang, Okiba Boss", "Esika's Chariot"] },
+    { "name": "Greasefang Orzhov (Monument)", "all": ["Greasefang, Okiba Boss", "Monument to Endurance"] }
   ]
 }
