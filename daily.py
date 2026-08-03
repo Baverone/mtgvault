@@ -21,7 +21,7 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 # um UA autorizado, define MOXFIELD_USER_AGENT no ambiente e este default cede.
 os.environ.setdefault("MOXFIELD_USER_AGENT", "mtgvault/0.1 (coleccao pessoal)")
 
-from mtgvault import analysis, db, mtgtop8, prices, sources, watchlist  # noqa: E402
+from mtgvault import analysis, db, mtgtop8, prices, sources, tagging, watchlist  # noqa: E402
 
 MTGO_DAYS = 3
 # O mtgo cobre a maioria; o mtgtop8 acrescenta o papel e é a única fonte de cEDH.
@@ -110,6 +110,10 @@ def main():
 
         for fmt in ANALYSE_FORMATS:
             _step(con, f"analyse:{fmt}", lambda fmt=fmt: _analyse(con, fmt))
+
+        # Arquétipos por regra (etiqueta dupla) — reaplicados DEPOIS do analyse
+        # para o clustering automático nunca desfazer os nomes à mão.
+        _step(con, "tag-arquetipos", lambda: f"{tagging.tag_all(con)} etiquetas")
 
         _step(con, "prune", lambda: f"{analysis.prune_decklists(con, 180)} apagadas")
 

@@ -1,0 +1,12 @@
+{
+  "_comentario": "Arquétipos por REGRA (carta definidora), com etiqueta dupla — um deck pode ter vários nomes. Edita à mão para afinar a tua maneira. 'all' = tem de ter todas; 'any' = basta uma. Os nomes das cartas têm de bater certo com o catálogo (nome oracle).",
+  "modern": [
+    { "name": "Affinity UR (Kappa)",        "all": ["Kappa Cannoneer"] },
+    { "name": "Hardened Scales",             "all": ["Hardened Scales"] },
+    { "name": "Oswald Toolbox",              "all": ["Oswald Fiddlebender"] },
+    { "name": "Grinding Station",            "all": ["Grinding Station"] },
+    { "name": "Jeskai Ascendancy",           "all": ["Jeskai Ascendancy"] },
+    { "name": "Urza/Tezzeret Artefactos",    "any": ["Urza, Lord High Artificer", "Tezzeret, Cruel Captain"] },
+    { "name": "Song of Creation",            "all": ["Song of Creation"] }
+  ]
+}
