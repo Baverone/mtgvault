@@ -90,6 +90,55 @@ def load_cardmarket_file(con: sqlite3.Connection, path: str | Path,
 def _flush(con, batch) -> int:
     return write_prices(con, batch)
 
+
+# ---------------------------------------------------------------------------
+# Preços via Scryfall (grátis, sem credenciais)
+# ---------------------------------------------------------------------------
+def load_scryfall_prices(con: sqlite3.Connection, bulk_path, day: str | None = None,
+                         only_interest: bool = True) -> int:
+    """Carrega preços a partir do bulk da Scryfall (o mesmo ficheiro do sync-cards).
+
+    O campo `prices.eur`/`prices.eur_foil` de cada impressão É o preço do
+    Cardmarket (a Scryfall vai lá buscá-lo), por isso guarda-se com source
+    'cardmarket' — assim o `value`, o `movers` e as cobranças funcionam sem
+    mudar nada. É um único valor por impressão (não tem low/trend/avg30
+    separados), por isso trend=low=eur. Gratuito e sem cookie/token — a
+    alternativa ao price guide oficial quando não há sessão.
+    """
+    import gzip
+
+    day = day or date.today().isoformat()
+    interest = cards_of_interest(con) if only_interest else None
+    opener = gzip.open if str(bulk_path).endswith(".gz") else open
+    batch, n = [], 0
+    with opener(bulk_path, "rt", encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip().rstrip(",")
+            if not line or line in ("[", "]"):
+                continue
+            try:
+                c = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            sid = c.get("id")
+            if interest is not None and sid not in interest:
+                continue
+            pr = c.get("prices") or {}
+            for finish, key in (("nonfoil", "eur"), ("foil", "eur_foil")):
+                v = pr.get(key)
+                if v in (None, ""):
+                    continue
+                try:
+                    eur = float(v)
+                except (TypeError, ValueError):
+                    continue
+                batch.append((sid, "cardmarket", day, finish, eur, eur, None, None, "EUR"))
+            if len(batch) >= 5000:
+                n += write_prices(con, batch)
+    n += write_prices(con, batch)
+    return n
+
+
 # ---------------------------------------------------------------------------
 # Escrita de preços: só guardamos MUDANÇAS
 # ---------------------------------------------------------------------------
