@@ -1,19 +1,19 @@
-card_name,unit_price,notes
-City of Brass,137.30,"FF 'Bhujerba, Floating City' (foil, Store Championships sch/41)"
-"Kraum, Ludevic's Opus",,"FF 'Barnabas Tharmr' (comandante)"
-Tymna the Weaver,,"FF 'Cecil Harvey' (comandante)"
-"Rograkh, Son of Rohgahh",,"FF 'Joshua Rosfield' (promo)"
-Ranger-Captain of Eos,,"FF 'Knights of San d'Oria'"
-"Ragavan, Nimble Pilferer",,"FF 'Zidane Tribal'"
-Diabolic Intent,,"FF 'Shantotto's Coercion'"
-Jeska's Will,,"reskin 'Storm's Will'"
-Rite of Flame,,"reskin 'The Blades of Chaos Bond'"
-Cabal Ritual,,"reskin 'Cordyceps Excision'"
-Dark Ritual,,"FF 'Darkness of Eternity'"
-Rhystic Study,,"FF 'Stay with Me'"
-Ancient Tomb,,"reskin 'Balin's Tomb'"
-Gemstone Caverns,,"reskin 'Glittering Caves of Aglarond'"
-Borne Upon a Wind,7.39,"Secret Lair sld/2228 (nonfoil; foil=25.70 — diz se for foil)"
-Culling the Weak,21.89,"Secret Lair sld/1818 (nonfoil; foil=18.77)"
-Intuition,304.99,"Tempest tmp/70"
-Tataru Taru,,"FF — sem preço na Scryfall"
+card_name,unit_price,notes,sub_collection
+City of Brass,137.30,"FF 'Bhujerba, Floating City' (foil, Store Championships sch/41)",Cloud
+"Kraum, Ludevic's Opus",,"FF 'Barnabas Tharmr' (comandante)",Blue Farm
+Tymna the Weaver,,"FF 'Cecil Harvey' (comandante)",Blue Farm
+"Rograkh, Son of Rohgahh",,"FF 'Joshua Rosfield' (promo)",Blue Farm
+Ranger-Captain of Eos,,"FF 'Knights of San d'Oria'",
+"Ragavan, Nimble Pilferer",,"FF 'Zidane Tribal'",
+Diabolic Intent,,"FF 'Shantotto's Coercion'",Blue Farm
+Jeska's Will,,"reskin 'Storm's Will'",Blue Farm
+Rite of Flame,,"reskin 'The Blades of Chaos Bond'",Blue Farm
+Cabal Ritual,,"reskin 'Cordyceps Excision'",
+Dark Ritual,,"FF 'Darkness of Eternity'",
+Rhystic Study,,"FF 'Stay with Me'",Blue Farm
+Ancient Tomb,,"reskin 'Balin's Tomb'",
+Gemstone Caverns,,"reskin 'Glittering Caves of Aglarond'",
+Borne Upon a Wind,7.39,"Secret Lair sld/2228 (nonfoil; foil=25.70 — diz se for foil)",Blue Farm
+Culling the Weak,21.89,"Secret Lair sld/1818 (nonfoil; foil=18.77)",Blue Farm
+Intuition,304.99,"Tempest tmp/70",Blue Farm
+Tataru Taru,,"FF — sem preço na Scryfall",Blue Farm
