@@ -72,6 +72,23 @@ def main() -> None:
                             "WHERE sub_collection = ? AND card_name = ?", (preco, sub, alvo))
                 n += 1
 
+    # 3. fallback: preço mais barato por nome (card_price) para o que ficou sem
+    #    preço — cobre cartas antigas que o price_latest (por impressão) não tem.
+    price_by_name: dict[str, float] = {}
+    try:
+        for r in con.execute("SELECT card_name, eur FROM card_price"):
+            if r["eur"] is not None:
+                price_by_name[r["card_name"].lower()] = r["eur"]
+    except sqlite3.OperationalError:
+        price_by_name = {}
+    for r in con.execute("SELECT sub_collection, card_name FROM collection_owned "
+                         "WHERE unit_price IS NULL").fetchall():
+        eur = price_by_name.get(r["card_name"].lower()) or price_by_name.get(_front(r["card_name"]))
+        if eur is not None:
+            con.execute("UPDATE collection_owned SET unit_price = ? "
+                        "WHERE sub_collection = ? AND card_name = ?",
+                        (eur, r["sub_collection"], r["card_name"]))
+
     con.commit()
     con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
 
