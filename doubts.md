@@ -15,3 +15,14 @@ Cartas verdes que NÃO batem com nenhum dos 5 decks premodern conhecidos:
 ## UW Replenish vs consenso
 - O teu UW Replenish real tem **Exalted Angel ×2** (não está no consenso) e talvez **4 Seal** — a tua lista difere do consenso. No fim podemos trocar o alvo para a TUA lista exata.
 - Ainda não vi: Opalescence ×4, Decree of Silence ×3, Island, Plains, mais Swords — podem estar em fotos mais à frente.
+
+## Preços de cartas antigas / Reserved List — PASSO DE CORREÇÃO FINAL
+Os preços de cartas antigas não estão fiáveis (a Scryfall/price_latest só cobre bem versões caras, e cartas fora dos alvos ficam sem preço):
+- **Gaea's Cradle ×3** aparece a €0 (real ~€150 cada = ~€450). Não está em nenhum alvo → sem card_price.
+- **Survival of the Fittest ×4** a €103/un (provavelmente alto).
+- **Argothian Enchantress** a €38/un (real ~€12).
+- **Intuition (Tempest) ×3** a €305/un no UW Replenish.
+No FIM: passar todas as cartas OWNED (não só as dos alvos) por um preço fiável (Cardmarket/Scryfall por impressão real), com atenção às Reserved List. A % de completude não é afetada, só o valor.
+
+## Secção verde = qual deck?
+Tem Argothian Enchantress + Survival of the Fittest ×4 + Gaea's Cradle ×3 + Wall of Blossoms + Elfos + Deranged Hermit + Masticore. Parece a **Enchantress real do André, versão mono-verde Survival** (≠ consenso GW que construí). Confirmar e, se sim, renomear "Verde (por classificar)" → "Enchantress" e trocar o alvo para a lista real dele.
