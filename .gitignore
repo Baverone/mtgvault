@@ -9,3 +9,6 @@ data/*.db-wal
 data/*.db-shm
 cache/
 priceguide.json
+
+# Fotos da coleção — grandes e não pertencem ao Git (o inventário fica em owned.csv/vault.db)
+fotos/

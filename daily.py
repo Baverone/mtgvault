@@ -23,6 +23,8 @@ os.environ.setdefault("MOXFIELD_USER_AGENT", "mtgvault/0.1 (coleccao pessoal)")
 
 from mtgvault import analysis, db, mtgtop8, prices, sources, tagging, watchlist  # noqa: E402
 
+import core_decks  # noqa: E402  (gera coredecks.html + tracking de alteracoes)
+
 MTGO_DAYS = 3
 # O mtgo cobre a maioria; o mtgtop8 acrescenta o papel e é a única fonte de cEDH.
 MTGTOP8_FORMATS = ["duel-commander", "premodern", "cedh"]
@@ -114,6 +116,11 @@ def main():
         # Arquétipos por regra (etiqueta dupla) — reaplicados DEPOIS do analyse
         # para o clustering automático nunca desfazer os nomes à mão.
         _step(con, "tag-arquetipos", lambda: f"{tagging.tag_all(con)} etiquetas")
+
+        # Core decks: recalcula o consenso dos decks que sigo e regista se o
+        # padrão mudou (core_snapshots). Corre DEPOIS de preços + tags.
+        _step(con, "core-decks",
+              lambda: str(core_decks.build(con, ROOT / "coredecks.html")))
 
         _step(con, "prune", lambda: f"{analysis.prune_decklists(con, 180)} apagadas")
 
