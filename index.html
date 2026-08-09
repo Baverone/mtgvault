@@ -7,22 +7,23 @@
 <style>
   :root{
     --bg:#f6f7f9; --card:#fff; --ink:#12151a; --muted:#5b6672; --line:#e4e7ec;
-    --accent:#2f6df6; --chg-add:#0f8a4d; --chg-rem:#c0392b; --pill:#eef1f5;
+    --accent:#2f6df6; --chg-add:#0f8a4d; --chg-rem:#c0392b; --pill:#eef1f5; --gold:#b8860b;
   }
   @media (prefers-color-scheme: dark){
     :root{ --bg:#0e1116; --card:#171b22; --ink:#e8ecf1; --muted:#93a0ad; --line:#262c36;
-           --accent:#5b8cff; --chg-add:#4ac585; --chg-rem:#ff6b6b; --pill:#222833; }
+           --accent:#5b8cff; --chg-add:#4ac585; --chg-rem:#ff6b6b; --pill:#222833; --gold:#e0b64b; }
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
        font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
   .wrap{max-width:1100px;margin:0 auto;padding:24px 18px 60px}
+  @media (max-width:600px){ .wrap{padding:16px 12px 48px} h2{margin-top:24px !important} }
   header h1{margin:0 0 2px;font-size:22px;letter-spacing:.2px}
   header .sub{color:var(--muted);font-size:13px}
   h2{font-size:15px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
-     margin:34px 0 4px;border-bottom:1px solid var(--line);padding-bottom:6px}
+     margin:34px 0 2px;border-bottom:1px solid var(--line);padding-bottom:6px}
   .pool-note{color:var(--muted);font-size:12px;margin:6px 0 12px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:14px}
   .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
   .card .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
   .card .name{font-weight:650;font-size:16px}
@@ -31,9 +32,7 @@
   .pill.fmt{background:var(--accent);color:#fff}
   .pill.prio{background:transparent;border:1px solid var(--line)}
   .when{color:var(--muted);font-size:12px;margin-left:auto}
-  .chk{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);
-       cursor:pointer;margin-left:auto}
-  .chk input{accent-color:var(--accent);cursor:pointer}
+  .srclink{font-size:12px;margin-left:auto;white-space:nowrap}
   .status{margin:8px 0 10px;font-size:13px}
   .status.same{color:var(--muted)}
   .status.changed{color:var(--chg-add);font-weight:650}
@@ -48,20 +47,21 @@
   .meter i{display:block;height:100%;background:var(--accent)}
   .loading,.err{padding:40px 0;text-align:center;color:var(--muted)}
   .err{color:var(--chg-rem)}
-  .val{margin-top:8px;font-size:13px} .val b{font-size:15px}
+  .val{margin-top:8px;font-size:13px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
   .cov{color:var(--muted);font-weight:400;font-size:12px;white-space:nowrap}
   .shop{margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
   .shop-h{font-weight:650;font-size:13px;display:flex;justify-content:space-between;
           align-items:baseline;gap:8px;margin-bottom:6px}
-  .shoplist{max-height:280px;overflow:auto}
-  .falta{display:flex;justify-content:space-between;gap:10px;
-         font:12.5px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--chg-rem)}
-  .falta .price{color:var(--muted);white-space:nowrap}
-  .falta.done{color:var(--chg-add);display:block}
-  .falta .mult{color:var(--accent);font-weight:700}
-  .tot{font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
-  .summary{border-color:var(--accent);grid-column:1/-1}
-  .summary .name::before{content:"🧮 "}
+  .shoplist{max-height:300px;overflow:auto}
+  .row{display:flex;justify-content:space-between;gap:10px;
+       font:12.5px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace}
+  .row .price{color:var(--muted);white-space:nowrap}
+  .row.buy{color:var(--chg-rem)} .row.sell{color:var(--chg-add)}
+  .done{color:var(--chg-add);font-size:12.5px}
+  .tot{font-weight:700;font-variant-numeric:tabular-nums}
+  .tot.buy{color:var(--chg-rem)} .tot.sell{color:var(--chg-add)}
+  .pool{border-color:var(--accent);grid-column:1/-1}
+  .pool .name::before{content:"📦 "}
   footer{margin-top:40px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
   a{color:var(--accent)}
 </style>
@@ -74,17 +74,18 @@
   </header>
   <div id="app"><div class="loading">A carregar a base de dados…</div></div>
   <footer>
-    Gerado a partir de <code>data/vault.db</code> (atualizado pelo job diário) ·
-    Preços = mais barato por nome (Cardmarket via Scryfall) ·
-    <a href="https://github.com/Baverone/mtgvault">repositório</a>
+    <code>data/vault.db</code> (job diário) · Coleções partilhadas: 1 cópia por carta serve os decks da mesma coleção ·
+    Preços Cardmarket via Scryfall · <a href="https://github.com/Baverone/mtgvault">repositório</a>
   </footer>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/sql-wasm.js"></script>
 <script>
 const esc = s => (s==null?"":String(s)).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
-const frontFace = n => String(n).split(" // ")[0].trim().toLowerCase();
+const front = n => String(n).split(" // ")[0].trim().toLowerCase();
 const eur = x => (x||0).toLocaleString("pt-PT",{style:"currency",currency:"EUR"});
+const BASICS = new Set(["island","plains","swamp","mountain","forest","wastes",
+  "snow-covered island","snow-covered plains","snow-covered swamp","snow-covered mountain","snow-covered forest"]);
 
 function rowsOf(res){ if(!res.length) return []; const {columns,values}=res[0];
   return values.map(v=>Object.fromEntries(columns.map((c,i)=>[c,v[i]]))); }
@@ -92,7 +93,7 @@ function tryRows(db,sql){ try{ return rowsOf(db.exec(sql)); }catch(e){ return []
 
 function cardsToMap(json){ const m={}; for(const [b,n,q] of JSON.parse(json)) m[b+""+n]=[b,n,q]; return m; }
 function diffHtml(newer, older){
-  if(!older) return '<div class="diff">primeira captura — sem versão anterior para comparar</div>';
+  if(!older) return '<div class="diff">primeira captura — sem versão anterior</div>';
   const A=cardsToMap(newer), B=cardsToMap(older), keys=new Set([...Object.keys(A),...Object.keys(B)]);
   const lines=[];
   for(const k of [...keys].sort()){
@@ -109,24 +110,26 @@ function listHtml(json){
   if(side.length) h+='<div class="b">Side ('+side.reduce((s,c)=>s+c[2],0)+')</div>'+fmt(side);
   return h;
 }
-const PRIO_GLYPH=["","①","②","③","④","⑤","⑥","⑦","⑧","⑨"];
+const PRIO=["","①","②","③","④","⑤","⑥","⑦","⑧","⑨"];
 
 function render(db){
   const app=document.getElementById("app"); app.innerHTML="";
 
-  // ---------- Decks vigiados ----------
-  const watched = tryRows(db,"SELECT id,label,format,last_checked FROM watched WHERE active=1 ORDER BY id");
+  // ---------- Decks vigiados (com link da lista) ----------
+  const watched = tryRows(db,"SELECT id,kind,key,label,format,last_checked FROM watched WHERE active=1 ORDER BY id");
   if(watched.length){
     const sec=document.createElement("section");
     sec.innerHTML="<h2>Decks vigiados</h2>";
     const grid=document.createElement("div"); grid.className="grid";
     for(const w of watched){
-      const snaps=tryRows(db,"SELECT taken_at,cards FROM watched_snapshots WHERE watched_id="+w.id+" ORDER BY taken_at DESC, id DESC LIMIT 2");
+      const snaps=tryRows(db,"SELECT taken_at,cards,source_url FROM watched_snapshots WHERE watched_id="+w.id+" ORDER BY taken_at DESC, id DESC LIMIT 2");
       const latest=snaps[0], prev=snaps[1], changed = latest && prev && latest.cards!==prev.cards;
+      const link = w.kind==='moxfield' ? `https://moxfield.com/decks/${esc(w.key)}` : ((latest&&latest.source_url)||"");
       const c=document.createElement("div"); c.className="card";
       let h=`<div class="top"><span class="name">${esc(w.label)}</span>`+
             `<span class="pill fmt">${esc(w.format)}</span>`+
-            `<span class="when">verificado ${esc(w.last_checked||"—")}</span></div>`;
+            (link?`<a class="srclink" href="${link}" target="_blank" rel="noopener">↗ lista</a>`:"")+`</div>`+
+            `<div class="pool-note" style="margin:0 0 6px">verificado ${esc(w.last_checked||"—")}</div>`;
       if(!latest){ h+='<div class="status same">ainda sem lista capturada</div>'; }
       else {
         h+= changed ? `<div class="status changed">▲ MUDOU (${esc(prev.taken_at)} → ${esc(latest.taken_at)})</div>`+diffHtml(latest.cards,prev.cards)
@@ -138,128 +141,99 @@ function render(db){
     sec.appendChild(grid); app.appendChild(sec);
   }
 
-  // ---------- dados dos decks (alvo, posse, preço, meta) ----------
-  const targets={}, ownedBy={}, ownedVal={}, ownedNoPrice={}, price={}, meta={};
+  // ---------- dados ----------
+  const targets={}, ownedFull={}, price={}, meta={};
   for(const r of tryRows(db,"SELECT sub_collection,card_name,quantity FROM deck_target"))
     (targets[r.sub_collection]=targets[r.sub_collection]||[]).push([r.card_name,r.quantity]);
   for(const r of tryRows(db,"SELECT sub_collection,card_name,quantity,unit_price FROM collection_owned")){
-    ownedBy[r.sub_collection]=ownedBy[r.sub_collection]||{};
-    ownedBy[r.sub_collection][frontFace(r.card_name)]=(ownedBy[r.sub_collection][frontFace(r.card_name)]||0)+r.quantity;
-    ownedVal[r.sub_collection]=(ownedVal[r.sub_collection]||0)+(r.unit_price||0)*r.quantity;
-    if(r.unit_price==null) ownedNoPrice[r.sub_collection]=(ownedNoPrice[r.sub_collection]||0)+1;
+    const o=(ownedFull[r.sub_collection]=ownedFull[r.sub_collection]||{}), f=front(r.card_name);
+    o[f]={name:r.card_name, qty:(o[f]?o[f].qty:0)+r.quantity, price:r.unit_price};
   }
-  for(const r of tryRows(db,"SELECT card_name,eur FROM card_price")) price[r.card_name]=r.eur;
-  for(const r of tryRows(db,"SELECT sub_collection,format,pool,priority,active FROM deck_meta"))
-    meta[r.sub_collection]={format:r.format,pool:r.pool,priority:r.priority,active:r.active};
-  const priceOf = n => (price[n]!=null?price[n]:0);
-  const isActive = s => { const v=localStorage.getItem("act:"+s);
-    return v==null ? ((meta[s]&&meta[s].active)!=0) : v==="1"; };
-
-  function aggOf(sub){ const a={}; for(const [n,q] of (targets[sub]||[])) a[n]=(a[n]||0)+q; return a; }
-
-  // cartão de um deck individual
-  function deckCard(sub){
-    const owned=ownedBy[sub]||{}, m=meta[sub]||{};
-    let total=0, have=0, cost=0; const faltas=[];
-    for(const [name,q] of (targets[sub]||[])){
-      total+=q; const hv=Math.min(q, owned[frontFace(name)]||0); have+=hv;
-      const need=q-hv; if(need>0){ const c=need*priceOf(name); cost+=c; faltas.push([name,need,c]); }
-    }
-    const pct=total?Math.round(100*have/total):0;
-    const val=ownedVal[sub]||0, np=ownedNoPrice[sub]||0;
-    const c=document.createElement("div"); c.className="card";
-    const prio=(m.pool==="Premodern"&&m.priority)?`<span class="pill prio">${PRIO_GLYPH[m.priority]||m.priority}</span>`:"";
-    const chk=(m.pool==="MSL")
-      ? `<label class="chk"><input type="checkbox" class="act" data-sub="${esc(sub)}" ${isActive(sub)?"checked":""}> ativo</label>`
-      : "";
-    let h=`<div class="top">${prio}<span class="name">${esc(sub)}</span>`+
-          (m.format?`<span class="pill fmt">${esc(m.format)}</span>`:"")+ chk +`</div>`;
-    h+=`<div class="meter"><i style="width:${pct}%"></i></div>`+
-       `<div class="val" style="display:flex;justify-content:space-between">`+
-       `<span>${have}/${total} do alvo · <b>${pct}%</b></span>`+
-       `<span>💶 ${eur(val)}${np?` <span class="cov">(${np} s/preço)</span>`:""}</span></div>`;
-    h+=`<div class="shop"><div class="shop-h"><span>🛒 Faltas (${faltas.length})</span><span class="tot">${eur(cost)}</span></div>`;
-    h+= faltas.length
-        ? `<div class="shoplist">`+faltas.sort((a,b)=>a[0].localeCompare(b[0]))
-            .map(f=>`<div class="falta"><span>${f[1]}x ${esc(f[0])}</span><span class="price">${eur(f[2])}</span></div>`).join("")+`</div>`
-        : `<div class="falta done">✓ completo — nada a comprar</div>`;
-    h+=`</div>`;
-    c.innerHTML=h; return c;
+  for(const r of tryRows(db,"SELECT card_name,eur FROM card_price")){
+    price[r.card_name.toLowerCase()]=r.eur; const f=front(r.card_name); if(!(f in price)) price[f]=r.eur;
   }
+  for(const r of tryRows(db,"SELECT sub_collection,format,pool,priority FROM deck_meta"))
+    meta[r.sub_collection]={format:r.format,pool:r.pool,priority:r.priority};
+  const priceOf = n => { const k=String(n).toLowerCase(); return price[k]!=null?price[k]:(price[front(n)]||0); };
+  const ownValue = sub => { let v=0; const o=ownedFull[sub]||{}; for(const f in o) v+=(o[f].price||0)*o[f].qty; return v; };
 
-  // resumo combinado: SOMA das cartas dos decks ATIVOS (partilhadas => múltiplos ✦).
-  // posse é partilhada na pool (abatida uma vez). Desmarcar um deck tira-o por inteiro.
-  function poolCombined(subs){
-    const sum={}, maxOne={}, owned={}, active=subs.filter(isActive);
-    for(const s of active){ const agg=aggOf(s);
-      for(const n in agg){ sum[n]=(sum[n]||0)+agg[n]; maxOne[n]=Math.max(maxOne[n]||0,agg[n]); } }
-    for(const s of subs){ const o=ownedBy[s]||{}; for(const f in o) owned[f]=(owned[f]||0)+o[f]; }
-    const rows=[]; let total=0;
-    for(const n of Object.keys(sum)){
-      const have=owned[frontFace(n)]||0, falta=Math.max(0,sum[n]-have);
-      if(falta>0){ const c=falta*priceOf(n); total+=c; rows.push([n,falta,c, sum[n]>maxOne[n]]); }
-    }
-    rows.sort((a,b)=>a[0].localeCompare(b[0]));
-    return {rows,total,active,subs};
+  // estatística de uma COLEÇÃO partilhada: precisa de MAX por carta; posse somada
+  function poolStats(subs){
+    const need={}, needName={}, own={}, ownName={}, ownPrice={};
+    for(const s of subs) for(const [name,q] of (targets[s]||[])){
+      const f=front(name); if(q>(need[f]||0)) need[f]=q; if(!needName[f]) needName[f]=name; }
+    for(const s of subs){ const o=ownedFull[s]||{}; for(const f in o){
+      own[f]=(own[f]||0)+o[f].qty; ownName[f]=o[f].name; if(o[f].price!=null) ownPrice[f]=o[f].price; } }
+    const buy=[], sell=[]; let buyCost=0, sellVal=0, needTot=0, haveTot=0;
+    for(const f in need){ needTot+=need[f]; const h=own[f]||0; haveTot+=Math.min(need[f],h);
+      if(h<need[f]){ const q=need[f]-h, c=q*priceOf(needName[f]); buyCost+=c; buy.push([needName[f],q,c]); } }
+    for(const f in own){ const n=need[f]||0; if(own[f]>n && !BASICS.has(f)){
+      const q=own[f]-n, p=(ownPrice[f]!=null?ownPrice[f]:priceOf(ownName[f])), v=q*p; sellVal+=v; sell.push([ownName[f],q,v]); } }
+    buy.sort((a,b)=>b[2]-a[2]); sell.sort((a,b)=>b[2]-a[2]);
+    return {subs,own,needTot,haveTot,buy,buyCost,sell,sellVal};
   }
-  function summaryHtml(pc,label){
-    const body = pc.rows.length
-      ? `<div class="shoplist">`+pc.rows.map(r=>`<div class="falta"><span>${r[3]?'<span class="mult">':''}${r[1]}x ${esc(r[0])}${r[3]?' ✦</span>':''}</span><span class="price">${eur(r[2])}</span></div>`).join("")+`</div>`
-      : `<div class="falta done">✓ tens tudo para montar em simultâneo</div>`;
-    return `<div class="shop-h"><span>🛒 ${label}</span><span class="tot">${eur(pc.total)}</span></div>`+
-           `<div class="pool-note" style="margin:0 0 6px">✦ = precisa de múltiplos (partilhada por vários ativos)</div>`+ body;
-  }
+  function rowsHtml(rows,cls){ return `<div class="shoplist">`+rows.map(r=>
+    `<div class="row ${cls}"><span>${r[1]}x ${esc(r[0])}</span><span class="price">${eur(r[2])}</span></div>`).join("")+`</div>`; }
 
-  // ---------- secções por pool ----------
-  const POOLS=[
-    ["MSL","Standard · Modern · Legacy","Pool partilhada — marca ☑️ os decks que queres montados ao mesmo tempo. As cartas partilhadas por esses precisam de múltiplos."],
-    ["Premodern","Premodern","Todos operacionais em simultâneo (ordem = prioridade de compra)."],
-    ["Pauper","Pauper","Todos operacionais em simultâneo."],
-    ["Commander","Commander / cEDH","Todos operacionais em simultâneo."],
-    ["Duel Commander","Duel Commander","Todos operacionais em simultâneo."],
+  // ---------- coleções ----------
+  const COLLECTIONS=[
+    ["MSL","Standard · Modern · Legacy"],["Premodern","Premodern"],
+    ["Commander","Commander / cEDH"],["Duel Commander","Duel Commander"],["Pauper","Pauper"],
   ];
-  const seen=new Set();
-  for(const [key,title,note] of POOLS){
+  let totalOwn=0, totalSell=0;
+  for(const [key,title] of COLLECTIONS){
     let subs=Object.keys(targets).filter(s=>(meta[s]||{}).pool===key);
-    subs.sort((a,b)=>(((meta[a]||{}).priority||99)-((meta[b]||{}).priority||99))||a.localeCompare(b));
     if(!subs.length) continue;
-    subs.forEach(s=>seen.add(s));
+    subs.sort((a,b)=>(((meta[a]||{}).priority||99)-((meta[b]||{}).priority||99))||a.localeCompare(b));
+    const ps=poolStats(subs), pct=ps.needTot?Math.round(100*ps.haveTot/ps.needTot):0;
+    const colVal=subs.reduce((s,x)=>s+ownValue(x),0); totalOwn+=colVal; totalSell+=ps.sellVal;
+
     const sec=document.createElement("section");
-    sec.innerHTML=`<h2>${esc(title)}</h2><div class="pool-note">${esc(note)}</div>`;
+    sec.innerHTML=`<h2>${esc(title)}</h2>`;
     const grid=document.createElement("div"); grid.className="grid";
-    const scard=document.createElement("div"); scard.className="card summary";
-    const pc=poolCombined(subs);
-    scard.innerHTML=`<div class="top"><span class="name">Comprar para montar em simultâneo</span>`+
-      (key==="MSL"?`<span class="when" id="msl-count">${pc.active.length}/${subs.length} ativos</span>`:`<span class="when">${subs.length} decks</span>`)+`</div>`+
-      `<div class="shop" id="body-${key.replace(/\s+/g,"_")}">${summaryHtml(pc,key==="MSL"?"Para os ativos ☑️":"Para todos")}</div>`;
-    grid.appendChild(scard);
-    for(const s of subs) grid.appendChild(deckCard(s));
+
+    // cartão da COLEÇÃO (pool)
+    const pc=document.createElement("div"); pc.className="card pool";
+    let ph=`<div class="top"><span class="name">Coleção partilhada</span>`+
+      `<span class="when">${subs.length} deck(s) · ${pct}% · 💶 ${eur(colVal)}</span></div>`+
+      `<div class="pool-note" style="margin:0 0 6px">1 cópia por carta serve todos os decks desta coleção (trocas entre eles).</div>`+
+      `<div class="meter"><i style="width:${pct}%"></i></div>`;
+    ph+=`<div class="shop"><div class="shop-h"><span>🛒 Comprar p/ completar (${ps.buy.length})</span><span class="tot buy">${eur(ps.buyCost)}</span></div>`+
+        (ps.buy.length?rowsHtml(ps.buy,"buy"):`<div class="done">✓ tens a coleção completa</div>`)+`</div>`;
+    ph+=`<div class="shop"><div class="shop-h"><span>💰 Excedente p/ vender (${ps.sell.length})</span><span class="tot sell">${eur(ps.sellVal)}</span></div>`+
+        (ps.sell.length?rowsHtml(ps.sell,"sell"):`<div class="done">sem excedente (sem cópias a mais)</div>`)+`</div>`;
+    pc.innerHTML=ph; grid.appendChild(pc);
+
+    // cartões dos decks (cobertura vs pool partilhado)
+    for(const sub of subs){
+      const m=meta[sub]||{}; let total=0, have=0;
+      for(const [name,q] of (targets[sub]||[])){ total+=q; have+=Math.min(q, ps.own[front(name)]||0); }
+      const dp=total?Math.round(100*have/total):0;
+      const prio=(m.pool==="Premodern"&&m.priority)?`<span class="pill prio">${PRIO[m.priority]||m.priority}</span>`:"";
+      const c=document.createElement("div"); c.className="card";
+      c.innerHTML=`<div class="top">${prio}<span class="name">${esc(sub)}</span>`+
+        (m.format?`<span class="pill fmt">${esc(m.format)}</span>`:"")+`</div>`+
+        `<div class="meter"><i style="width:${dp}%"></i></div>`+
+        `<div class="val"><span>${have}/${total} montável do pool · <b>${dp}%</b></span>`+
+        `<span>💶 ${eur(ownValue(sub))}</span></div>`;
+      grid.appendChild(c);
+    }
     sec.appendChild(grid); app.appendChild(sec);
   }
-  const orphans=Object.keys(targets).filter(s=>!seen.has(s)).sort();
+
+  const orphans=Object.keys(targets).filter(s=>!(meta[s]&&COLLECTIONS.some(c=>c[0]===meta[s].pool))).sort();
   if(orphans.length){
-    const sec=document.createElement("section"); sec.innerHTML="<h2>Outros decks</h2>";
+    const sec=document.createElement("section"); sec.innerHTML="<h2>Sem coleção</h2>";
     const grid=document.createElement("div"); grid.className="grid";
-    for(const s of orphans) grid.appendChild(deckCard(s));
+    for(const s of orphans){ const c=document.createElement("div"); c.className="card";
+      c.innerHTML=`<div class="top"><span class="name">${esc(s)}</span></div>`; grid.appendChild(c); }
     sec.appendChild(grid); app.appendChild(sec);
   }
 
-  // recalcular resumo MSL ao mexer nas checkboxes
-  function refreshMSL(){
-    const subs=Object.keys(targets).filter(s=>(meta[s]||{}).pool==="MSL");
-    const pc=poolCombined(subs);
-    const body=document.getElementById("body-MSL"); if(body) body.innerHTML=summaryHtml(pc,"Para os ativos ☑️");
-    const cnt=document.getElementById("msl-count"); if(cnt) cnt.textContent=`${pc.active.length}/${subs.length} ativos`;
-  }
-  app.querySelectorAll("input.act").forEach(cb=>cb.addEventListener("change",()=>{
-    localStorage.setItem("act:"+cb.dataset.sub, cb.checked?"1":"0"); refreshMSL();
-  }));
-
-  // ---------- rodapé ----------
   const st=tryRows(db,"SELECT (SELECT COUNT(*) FROM decklists) dl,(SELECT MAX(event_date) FROM decklists) hi")[0]||{};
-  const nd=Object.keys(targets).length;
-  document.getElementById("sub").textContent =
-    `${nd} decks com alvo · ${watched.length} vigiados · ${st.dl||0} decklists recolhidas · dados até ${st.hi||"—"}`;
+  document.getElementById("sub").innerHTML =
+    `💶 coleção ~<b>${eur(totalOwn)}</b> · 💰 excedente p/ vender ~<b>${eur(totalSell)}</b> · `+
+    `${watched.length} vigiados · ${st.dl||0} decklists · dados até ${st.hi||"—"}`;
 }
 
 (async () => {
