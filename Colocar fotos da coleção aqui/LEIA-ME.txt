@@ -15,6 +15,9 @@ GRUPOS:
   Coleção Pessoal/                         -> só tuas; NUNCA vão para venda nem
                                               para decks (no sistema: collector)
 
+PARA VENDER:
+  Vender/                                  -> cartas destinadas a venda
+
 Podes fazer subpastas por lote dentro de qualquer uma (ex.: "lote1").
 
 Depois diz-me: "processa as fotos novas".
