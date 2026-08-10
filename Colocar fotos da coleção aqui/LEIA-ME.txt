@@ -1,21 +1,33 @@
-COMO ADICIONAR FOTOS DA COLEÇÃO
-================================
+COMO ORGANIZAR AS FOTOS DA COLEÇÃO
+==================================
 
-1) Larga aqui as fotos das cartas.
-   - Uma carta por foto, OU grelhas onde os nomes se leem bem.
-   - Podes organizar por lotes em subpastas (ex.: "lote1", "lote2").
+Arrasta cada foto para a pasta certa:
 
-2) Diz-me no Claude Code: "processa as fotos novas".
-   - Eu leio TODAS as fotos desta pasta (sem o limite de 5 do chat),
-     identifico as cartas, atualizo o inventário e faço commit.
+1 - Decks/
+      Cartas que estão num deck teu específico.
+      Uma subpasta por deck (ex.: "Premodern - Stiflenought", "cEDH - Blue Farm").
 
-3) Quando acabar, movo as fotos para a pasta:
-   "Fotos processadas da coleção"
-   (para saberes o que já está feito e não repetir).
+2 - Coleção (guardar, reutilizável)/
+      Cartas que guardas e podem servir para decks OU venda
+      (staples, terrenos, extras). No sistema: purpose=player.
 
-Como pôr as fotos aqui a partir do telemóvel (sem estar ao pé do PC):
-   - OneDrive / Google Drive / Google Fotos: sincroniza esta pasta e
-     as fotos do telemóvel aparecem cá.
-   - Ou cabo USB / "Ligação ao Telemóvel" (Phone Link).
+3 - Coleção PESSOAL (só minha, nunca vender nem decks)/
+      As tuas cartas pessoais / de colecionador.
+      NUNCA entram em decks nem na lista de venda.
+      No sistema: purpose=collector (avaliadas mas fora de tudo o resto).
 
-Nota: estas pastas de fotos NÃO vão para o Git (ficam só no PC).
+4 - Vender/
+      Cartas destinadas a venda.
+
+5 - Por identificar/
+      Se não sabes onde meter, mete aqui que eu ajudo a classificar.
+
+Podes fazer subpastas por lote dentro de qualquer uma (ex.: "lote1").
+
+DEPOIS, diz-me: "processa as fotos novas".
+Eu leio todas, identifico as cartas, atualizo o inventário (cada carta com o
+seu destino: deck / coleção / pessoal / vender) e movo as fotos para a pasta
+"Fotos processadas da coleção".
+
+Nota: as IMAGENS não vão para o Git (ficam só no PC); as PASTAS sim, para
+teres a mesma estrutura em qualquer PC.
