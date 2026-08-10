@@ -77,5 +77,32 @@ def run():
     print("\nTUDO OK")
 
 
+def run_scryfall_bulk():
+    """O carregador grátis: preços tirados do bulk da Scryfall (campo prices.eur).
+
+    É a fonte que a cloud usa sem credenciais — o daily.py liga-a antes do price
+    guide oficial. Aqui confirma-se, sem rede, que só grava o que interessa.
+    """
+    tmp = Path(tempfile.mkdtemp())
+    with db.session(tmp / "p.db", tmp / "cat.db") as con:
+        seed_catalog(con, NAMES)
+        collection.add_copy(con, "Black Lotus", set_code="tst", quantity=1)  # id-1
+        bulk = tmp / "default_cards.jsonl"
+        bulk.write_text(
+            '{"id":"id-1","prices":{"eur":"100.00","eur_foil":"250.00"}}\n'
+            '{"id":"id-4","prices":{"eur":"5.00","eur_foil":null}}\n',
+            encoding="utf-8")
+        n = prices.load_scryfall_prices(con, bulk)
+        assert n == 2, n  # Black Lotus nonfoil+foil; Ragavan (id-4) fora do interesse
+        got = {(r["scryfall_id"], r["finish"]): r["trend"] for r in
+               con.execute("SELECT scryfall_id, finish, trend FROM price_latest")}
+        assert got[("id-1", "nonfoil")] == 100.0, got
+        assert got[("id-1", "foil")] == 250.0, got
+        assert ("id-4", "nonfoil") not in got, "Ragavan não devia ter preço"
+        print("Bulk da Scryfall: preços grátis só para as cartas de interesse")
+    print("\nTUDO OK (scryfall bulk)")
+
+
 if __name__ == "__main__":
     run()
+    run_scryfall_bulk()

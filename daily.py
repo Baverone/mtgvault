@@ -7,6 +7,11 @@ preferível ficar sem uma peça do que perder o resto da recolha.
 Corre à mão com `python daily.py`, ou agenda-o (Agendador de Tarefas do Windows
 ou GitHub Actions). As bases de dados assumem-se em ./data ao lado deste ficheiro;
 o GitHub Actions sobrepõe com MTGVAULT_DB / MTGVAULT_CATALOG.
+
+O catálogo reconstrói-se sozinho se estiver vazio — é o caso na cloud, onde o
+catalog.db não é versionado por ser grande de mais — a partir do mesmo bulk da
+Scryfall que também alimenta os preços grátis. Assim a cloud deixa de precisar
+de um PC ligado para refrescar preços.
 """
 from __future__ import annotations
 
@@ -21,7 +26,8 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 # um UA autorizado, define MOXFIELD_USER_AGENT no ambiente e este default cede.
 os.environ.setdefault("MOXFIELD_USER_AGENT", "mtgvault/0.1 (coleccao pessoal)")
 
-from mtgvault import analysis, db, mtgtop8, prices, sources, tagging, watchlist  # noqa: E402
+from mtgvault import (analysis, db, mtgtop8, prices, scryfall, sources,  # noqa: E402
+                      tagging, watchlist)
 
 import core_decks  # noqa: E402  (gera coredecks.html + tracking de alteracoes)
 
@@ -41,6 +47,35 @@ def _step(con, nome, fn):
     except Exception as e:  # noqa: BLE001
         db.log_job(con, nome, "erro", repr(e))
         print(f"[ERRO] {nome}: {e}")
+
+
+# O bulk da Scryfall (~77 MB) alimenta DOIS passos — reconstruir o catálogo e os
+# preços grátis. Descarrega-se uma só vez por execução e reutiliza-se.
+_BULK: dict = {}
+
+
+def _bulk():
+    if "path" not in _BULK:
+        _BULK["path"] = scryfall.download_bulk()
+    return _BULK["path"]
+
+
+def _catalog(con):
+    """Garante o catálogo. Na cloud o catalog.db não vem no clone (grande de mais
+    para o Git), por isso reconstrói-se a cada execução. No PC local, se já
+    estiver cheio, salta — o `sync-cards` semanal é que o atualiza."""
+    if db.catalog_size(con) >= 1000:
+        return "já existe — saltado"
+    return f"{scryfall.load_bulk(con, _bulk()):,} impressões"
+
+
+def _scryfall_prices(con):
+    """Preço-base grátis, tirado do próprio bulk da Scryfall: o campo `prices.eur`
+    de cada impressão É o valor do Cardmarket (a Scryfall vai lá buscá-lo). Sem
+    cookie nem token — é a fonte que a cloud consegue sempre. Corre ANTES do price
+    guide oficial, para que os dados mais ricos (low/trend/avg30) se sobreponham
+    quando há cookie."""
+    return f"{prices.load_scryfall_prices(con, _bulk())} preços"
 
 
 def _cardmarket(con):
@@ -97,13 +132,20 @@ def _analyse(con, fmt):
 
 def main():
     with db.session() as con:
+        # O catálogo primeiro: os preços e a resolução de nomes dependem dele, e
+        # na cloud ele não vem no clone.
+        _step(con, "catalogo", lambda: _catalog(con))
+
         _step(con, "harvest-mtgo",
               lambda: f"{sources.harvest_mtgo(con, MTGO_DAYS)} novas")
         for fmt in MTGTOP8_FORMATS:
             _step(con, f"harvest-mtgtop8:{fmt}",
                   lambda fmt=fmt: f"{mtgtop8.harvest(con, fmt, max_events=8)} novas")
 
-        # Preços — cada fonte é opcional e salta em silêncio se não estiver configurada.
+        # Preços — cada fonte é opcional e salta em silêncio se não estiver
+        # configurada. O bulk da Scryfall é a base grátis; Cardmarket e CardTrader
+        # enriquecem quando há credenciais.
+        _step(con, "precos-scryfall", lambda: _scryfall_prices(con))
         _step(con, "precos-cardmarket", lambda: _cardmarket(con))
         _step(con, "precos-cardtrader", lambda: _cardtrader(con))
 

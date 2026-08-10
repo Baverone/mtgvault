@@ -40,7 +40,7 @@ mtgvault/
   mtgtop8.py      duel-commander, premodern, cedh, e papel
   moxfield.py     decks do Moxfield
   watchlist.py    vigiar jogadores e decks, snapshots e diffs
-  prices.py       Cardmarket (ficheiro) + CardTrader (API)
+  prices.py       Scryfall bulk (grátis) + Cardmarket (ficheiro) + CardTrader (API)
   cli.py          interface de linha de comandos
 daily.py          o job diário
 .github/workflows/daily.yml

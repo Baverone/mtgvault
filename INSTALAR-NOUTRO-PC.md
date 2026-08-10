@@ -6,12 +6,11 @@ fotos da coleção a qualquer hora**.
 
 ## O que muda (e o que NÃO muda)
 
-- A **recolha diária do metagame já corre na cloud** (GitHub Actions, 06:00 UTC).
-  Isso **não depende de nenhum PC** e continua igual — o PC sempre-ligado não é
-  preciso para isso.
-- O PC sempre-ligado serve para: **(1)** remote-control sempre acessível do
-  telemóvel; **(2)** processar as fotos da coleção quando quiseres; **(3)**
-  (opcional) refrescar preços, que a cloud não consegue por não ter o catálogo.
+- A **recolha diária do metagame já corre na cloud** (GitHub Actions, 06:00 UTC),
+  e **os preços também**: o job reconstrói o catálogo e tira os preços do *bulk*
+  gratuito da Scryfall, sem cookie nem token. Isso **não depende de nenhum PC**.
+- O PC sempre-ligado serve apenas para: **(1)** remote-control sempre acessível
+  do telemóvel; **(2)** processar as fotos da coleção quando quiseres.
 
 ## Pré-requisitos no PC novo
 
@@ -56,10 +55,12 @@ O `vault.db` é binário e é commitado pelo bot diário. Para não haver confli
   antigo, faz `git pull` antes e não deixes edições por commitar (dois sítios a
   editar o `vault.db` ao mesmo tempo = conflito binário chato).
 
-## Opcional: preços frescos automáticos neste PC
+## Opcional: preços mais ricos neste PC
 
-Como este PC tem o catálogo, pode refrescar preços (a cloud não). Podes agendar
-`python daily.py` no Agendador de Tarefas do Windows. **Atenção:** se agendares
-aqui **E** mantiveres o GitHub Action, ambos commitam o `vault.db` e podem colidir.
-Escolhe **um**: ou deixas a cloud a mandar (mais simples), ou passas tudo para
-este PC e desligas o Action. Pede-me ajuda antes de mudar isto.
+A cloud já refresca preços de graça (*bulk* da Scryfall). Se um dia quiseres os
+dados mais detalhados do Cardmarket (low/trend/avg30), esses precisam do cookie
+de sessão — e aí podes agendar `python daily.py` neste PC com `CARDMARKET_COOKIE`
+definido. **Atenção:** se agendares aqui **E** mantiveres o GitHub Action, ambos
+commitam o `vault.db` e podem colidir. Escolhe **um**: ou deixas a cloud a mandar
+(mais simples), ou passas tudo para este PC e desligas o Action. Pede-me ajuda
+antes de mudar isto.
