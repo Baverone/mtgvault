@@ -31,6 +31,7 @@ from mtgvault import (analysis, db, mtgtop8, prices, scryfall, sources,  # noqa:
 
 import core_decks  # noqa: E402  (gera coredecks.html + tracking de alteracoes)
 import collection_gallery  # noqa: E402  (gera colecao.html — galeria com imagens)
+import meta_coverage  # noqa: E402  (gera cobertura.html — top decks + % que tenho + o que falta)
 
 MTGO_DAYS = 3
 # O mtgo cobre a maioria; o mtgtop8 acrescenta o papel e é a única fonte de cEDH.
@@ -166,6 +167,10 @@ def main():
               lambda: str(core_decks.build(con, ROOT / "coredecks.html")))
         _step(con, "galeria-colecao",
               lambda: str(collection_gallery.build(con, ROOT / "colecao.html")))
+        # Cobertura do metagame: top decks por formato, % que já tenho e o que falta.
+        # Depois da análise (arquétipos/roles) e dos preços — depende dos dois.
+        _step(con, "cobertura-metagame",
+              lambda: str(meta_coverage.build(con, ROOT / "cobertura.html")[0]))
 
         _step(con, "prune", lambda: f"{analysis.prune_decklists(con, 180)} apagadas")
 
