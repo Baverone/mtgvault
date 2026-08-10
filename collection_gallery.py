@@ -107,6 +107,10 @@ _TMPL = """<!doctype html>
  .tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:14px 0 4px}
  #q{flex:1;min-width:180px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font-size:14px}
  .count{color:var(--muted);font-size:12.5px;white-space:nowrap}
+ .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 2px}
+ .tab{border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:999px;padding:6px 13px;font-size:13px;font-weight:600;cursor:pointer}
+ .tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+ .tab b{opacity:.65}
  h2{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:26px 0 6px;border-bottom:1px solid var(--line);padding-bottom:6px;display:flex;justify-content:space-between;gap:10px;align-items:baseline}
  h2 b{color:var(--ink)} h2 .gv{color:var(--gold);font-variant-numeric:tabular-nums;font-size:13px;text-transform:none;letter-spacing:0}
  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
@@ -126,6 +130,7 @@ _TMPL = """<!doctype html>
 <div class="sub">%TOTQ% exemplares · valor ~<b style="color:var(--gold)">%TOTV%</b> · imagens e preços via Scryfall/Cardmarket · dados até %TODAY% ·
 <a href="index.html">← resumo</a> · <a href="coredecks.html">core decks →</a></div></header>
 <div class="tools"><input id="q" type="search" placeholder="Procurar carta ou edição…" autocomplete="off"><span class="count" id="count"></span></div>
+<div id="tabs" class="tabs"></div>
 <div id="app"></div>
 <footer>Cada imagem é a impressão exata da carta (edição + número). Clica para abrir em grande. A galeria regenera-se sozinha no job diário.</footer>
 </div>
@@ -142,9 +147,19 @@ function cardHtml(c){
   '<div class="ed">'+esc(c.set)+(c.cn?' · '+esc(c.cn):'')+(c.collector?' <span class="col">· colec.</span>':'')+'</div>'+
   (c.eur!=null?'<div class="pr">'+eur(c.eur)+'</div>':'')+'</div></div>';
 }
+let ACTIVE="*";
+function buildTabs(){
+ const t=document.getElementById("tabs"), total=DATA.reduce((s,g)=>s+g.qty,0);
+ let h='<button class="tab" data-sub="*">Todas <b>('+total+')</b></button>';
+ for(const g of DATA) h+='<button class="tab" data-sub="'+esc(g.sub)+'">'+esc(g.sub)+' <b>('+g.qty+')</b></button>';
+ t.innerHTML=h;
+ t.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{ACTIVE=b.dataset.sub;render(document.getElementById("q").value);}));
+}
 function render(filter){
  const f=(filter||"").trim().toLowerCase(); const app=document.getElementById("app"); let html="", shown=0;
+ document.querySelectorAll("#tabs .tab").forEach(b=>b.classList.toggle("active",b.dataset.sub===ACTIVE));
  for(const g of DATA){
+  if(ACTIVE!=="*" && g.sub!==ACTIVE) continue;
   const cards=f?g.cards.filter(c=>(c.name+' '+c.set).toLowerCase().includes(f)):g.cards;
   if(!cards.length) continue; shown+=cards.reduce((s,c)=>s+c.qty,0);
   html+='<h2><span>'+esc(g.sub)+' <b>('+g.qty+')</b></span><span class="gv">'+eur(g.value)+'</span></h2>'+
@@ -154,6 +169,7 @@ function render(filter){
  document.getElementById("count").textContent=f?(shown+" a mostrar"):"";
 }
 document.getElementById("q").addEventListener("input",e=>render(e.target.value));
+buildTabs();
 render("");
 </script></body></html>
 """
