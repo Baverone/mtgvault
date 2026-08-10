@@ -3,31 +3,23 @@ COMO ORGANIZAR AS FOTOS DA COLEÇÃO
 
 Arrasta cada foto para a pasta certa:
 
-1 - Decks/
-      Cartas que estão num deck teu específico.
-      Uma subpasta por deck (ex.: "Premodern - Stiflenought", "cEDH - Blue Farm").
+DECKS ESPECÍFICOS (cartas que estão nesse deck):
+  Blue Farm/
+  Cloud Duel Commander/
+  Cloud cEDH/
+  Pauper Affinity/
 
-2 - Coleção (guardar, reutilizável)/
-      Cartas que guardas e podem servir para decks OU venda
-      (staples, terrenos, extras). No sistema: purpose=player.
-
-3 - Coleção PESSOAL (só minha, nunca vender nem decks)/
-      As tuas cartas pessoais / de colecionador.
-      NUNCA entram em decks nem na lista de venda.
-      No sistema: purpose=collector (avaliadas mas fora de tudo o resto).
-
-4 - Vender/
-      Cartas destinadas a venda.
-
-5 - Por identificar/
-      Se não sabes onde meter, mete aqui que eu ajudo a classificar.
+GRUPOS:
+  Premodern (geral)/                       -> qualquer carta dos decks de Premodern
+  SPML (Standard Pioneer Modern Legacy)/   -> cartas destes formatos
+  Coleção Pessoal/                         -> só tuas; NUNCA vão para venda nem
+                                              para decks (no sistema: collector)
 
 Podes fazer subpastas por lote dentro de qualquer uma (ex.: "lote1").
 
-DEPOIS, diz-me: "processa as fotos novas".
-Eu leio todas, identifico as cartas, atualizo o inventário (cada carta com o
-seu destino: deck / coleção / pessoal / vender) e movo as fotos para a pasta
-"Fotos processadas da coleção".
+Depois diz-me: "processa as fotos novas".
+Eu leio todas, identifico as cartas, atualizo o inventário e movo as fotos
+para "Fotos processadas da coleção".
 
 Nota: as IMAGENS não vão para o Git (ficam só no PC); as PASTAS sim, para
 teres a mesma estrutura em qualquer PC.
