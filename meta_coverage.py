@@ -135,11 +135,46 @@ def _n_lists(con, aid):
                        (aid,)).fetchone()["c"]
 
 
-def _display_name(con, aid, override=None):
-    if override:
-        return override
-    parts = [p.strip() for p in _label(con, aid).split("/") if p.strip()]
-    return " / ".join(parts[:2]) if parts else f"#{aid}"
+def _format_df(con, fmt):
+    """Quantos arquétipos do formato jogam cada carta no núcleo (mainboard).
+    Serve para medir distintividade: carta rara entre decks = carta que dá nome."""
+    return {r["card_name"]: r["df"] for r in con.execute(
+        """SELECT cr.card_name, COUNT(DISTINCT cr.archetype_id) df
+             FROM card_roles cr JOIN archetypes a ON a.id = cr.archetype_id
+            WHERE a.format = ? AND cr.board = 'main' AND cr.core_copies >= 1
+              AND cr.window_end = (SELECT MAX(w.window_end) FROM card_roles w
+                                    WHERE w.archetype_id = cr.archetype_id)
+            GROUP BY cr.card_name""", (fmt,))}
+
+
+def _type_boost(con, name, cache):
+    """Os decks costumam ter o nome do payoff (criatura/planeswalker lendário),
+    não do removal. Dá peso a esses tipos na escolha do nome."""
+    t = cache.get(name)
+    if t is None:
+        row = con.execute("SELECT type_line FROM cards WHERE name = ? LIMIT 1", (name,)).fetchone()
+        t = (row["type_line"] or "") if row else ""
+        cache[name] = t
+    if "Planeswalker" in t:
+        return 2.2
+    if "Creature" in t:
+        return 1.6 if "Legendary" in t else 1.3
+    return 1.0
+
+
+def _distinctive_name(con, aid, df, tcache):
+    """Nome do deck = as cartas do núcleo mais distintivas (raras noutros decks),
+    com preferência pelo payoff. Melhor que a label crua do clustering."""
+    best = []
+    for r in _core_rows(con, aid, "main"):
+        n = r["card_name"]
+        if n in BASICS or r["inclusion_rate"] < 0.5:
+            continue
+        score = r["inclusion_rate"] / df.get(n, 1) * _type_boost(con, n, tcache)
+        best.append((score, r["inclusion_rate"], n))
+    best.sort(reverse=True)
+    top = [n for _, _, n in best[:2]]
+    return " / ".join(top) if top else f"#{aid}"
 
 
 def _core_rows(con, aid, board="main"):
@@ -150,24 +185,32 @@ def _core_rows(con, aid, board="main"):
             ORDER BY inclusion_rate DESC, core_copies DESC""", (aid, board, aid)).fetchall()
 
 
-def deck_coverage(con, aid, owned, override=None):
+def deck_coverage(con, aid, owned, name):
+    """% do núcleo (mainboard + sideboard de consenso) que já tenho, e o que
+    falta. Ignora básicas. Uma cópia só conta uma vez (main tem prioridade
+    sobre side), para não sobrecontar quando a carta está nos dois quadros."""
     total = have = 0
     missing = []
-    for r in _core_rows(con, aid, "main"):
-        name = r["card_name"]
-        if name in BASICS:
-            continue
-        need = r["core_copies"]
-        got = min(owned.get(name, 0), need)
-        total += need
-        have += got
-        if got < need:
-            v = _visual(con, name, owned.get(name, 0))
-            missing.append({"name": name, "need": need, "have": got, "missing": need - got,
-                            "unit": v["unit"], "cost": round((v["unit"] or 0) * (need - got), 2),
-                            "img": v["img"], "set_name": v["set_name"], "mine": v["mine"]})
+    used = {}
+    for board in ("main", "side"):
+        for r in _core_rows(con, aid, board):
+            nm = r["card_name"]
+            if nm in BASICS:
+                continue
+            need = r["core_copies"]
+            avail = owned.get(nm, 0) - used.get(nm, 0)
+            got = max(0, min(need, avail))
+            used[nm] = used.get(nm, 0) + got
+            total += need
+            have += got
+            if got < need:
+                v = _visual(con, nm, owned.get(nm, 0))
+                missing.append({"name": nm, "board": board, "need": need, "have": got,
+                                "missing": need - got, "unit": v["unit"],
+                                "cost": round((v["unit"] or 0) * (need - got), 2),
+                                "img": v["img"], "set_name": v["set_name"], "mine": v["mine"]})
     pct = round(100 * have / total) if total else 0
-    return {"id": aid, "name": _display_name(con, aid, override), "label": _label(con, aid),
+    return {"id": aid, "name": name, "label": _label(con, aid),
             "n_lists": _n_lists(con, aid), "core_total": total, "have": have, "pct": pct,
             "missing": sorted(missing, key=lambda m: -(m["cost"] or 0))}
 
@@ -175,8 +218,10 @@ def deck_coverage(con, aid, owned, override=None):
 def build_report(con):
     owned = owned_playable(con)
     gid = _greasefang_id(con)
+    tcache = {}
     sections, all_decks = [], []
     for fmt, title, n, extras in FORMATS:
+        df = _format_df(con, fmt)
         ids = _rank(con, fmt, n)
         for ex in extras:
             aid = gid if ex == "__greasefang__" else ex
@@ -184,8 +229,9 @@ def build_report(con):
                 ids.append(aid)
         decks = []
         for aid in ids:
-            override = NICE["__greasefang__"] if (gid and aid == gid) else None
-            decks.append(deck_coverage(con, aid, owned, override))
+            nm = (NICE["__greasefang__"] if (gid and aid == gid)
+                  else _distinctive_name(con, aid, df, tcache))
+            decks.append(deck_coverage(con, aid, owned, nm))
         decks.sort(key=lambda d: -d["n_lists"])
         sections.append({"fmt": fmt, "title": title, "decks": decks})
         all_decks += decks
@@ -240,8 +286,9 @@ def _edition(mine, have, set_name):
 def _card_item(m):
     """Uma carta em falta de um deck, com miniatura e a edição a comprar."""
     price = _eur(m["cost"]) if m.get("unit") is not None else "<i>preço?</i>"
+    sb = ' <span class="sb">SB</span>' if m.get("board") == "side" else ""
     return (f'<li>{_img_tag(m.get("img"))}<div class="ci"><div class="cn"><b>{m["missing"]}×</b> '
-            f'{html.escape(m["name"])}</div>{_edition(m.get("mine"), m.get("have"), m.get("set_name"))}'
+            f'{html.escape(m["name"])}{sb}</div>{_edition(m.get("mine"), m.get("have"), m.get("set_name"))}'
             f'</div><span class="pz">{price}</span></li>')
 
 
@@ -310,6 +357,7 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .ci{min-width:0;flex:1} .cn{white-space:normal} .cn b{color:var(--ink)}
  .ed{display:block;font-size:11px;color:var(--muted)} .ed.mine{color:var(--add)}
  .nd{display:inline-block;font-size:11px;color:var(--accent);background:#12203f;padding:0 6px;border-radius:999px}
+ .sb{font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 4px;vertical-align:middle}
  .pz{margin-left:auto;color:var(--gold);font-variant-numeric:tabular-nums;white-space:nowrap;align-self:flex-start;padding-top:2px}
  .general{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:8px}
  .general h2{margin-top:0;border:0} .dim{color:var(--muted);font-size:12px}
@@ -320,7 +368,7 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
 <div class="general"><h2>🛒 Staples que te faltam <span class="dim">(servem vários dos decks abaixo · total %GENCOST%)</span></h2>
 <ul class="gl">%GEN%</ul>%GENMORE%</div>
 %SECS%
-<footer>% completo = cartas do núcleo (mainboard, sem terras básicas) que já tens, sobre o total do núcleo do arquétipo — o que as decklists reais levam quase sempre. Cada carta em falta mostra a imagem da edição a comprar: a que já tens (verde) se tiveres algumas, senão a impressão jogável mais barata. Preços: tendência Cardmarket (sem gold-border/digitais). "Específicas" de um deck = as que mais nenhum deck mostrado precisa; as partilhadas estão nos staples do topo.</footer>
+<footer>% completo = cartas do núcleo (mainboard + sideboard de consenso, sem terras básicas) que já tens, sobre o total do núcleo do arquétipo — o que as decklists reais levam quase sempre; cartas <span class="sb">SB</span> são de sideboard. Cada carta em falta mostra a imagem da edição a comprar: a que já tens (verde) se tiveres algumas, senão a impressão jogável mais barata. Preços: tendência Cardmarket (sem gold-border/digitais). O nome do deck vem das cartas mais distintivas do arquétipo (a label crua do clustering fica por baixo). "Específicas" de um deck = as que mais nenhum deck mostrado precisa; as partilhadas estão nos staples do topo.</footer>
 </div></body></html>"""
 
 
