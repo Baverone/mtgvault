@@ -118,7 +118,10 @@ def run():
             [(did, n, q, "main") for n, q in parsed["main"]])
         con.commit()
 
-        seed_prices(con, names, (today - timedelta(days=7)).isoformat(), 1.0)
+        # O "antes" fica com margem (9 dias) para caber sempre na janela de
+        # movers (days=7), que usa date('now') em UTC: se a data local já virou
+        # mas a UTC ainda não, um "antes" a 7 dias exatos cairia fora por 1 dia.
+        seed_prices(con, names, (today - timedelta(days=9)).isoformat(), 1.0)
         seed_prices(con, names, today.isoformat(), 1.25)
 
         st = wantlist.deck_status(con, did)
