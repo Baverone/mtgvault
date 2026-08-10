@@ -30,6 +30,7 @@ from mtgvault import (analysis, db, mtgtop8, prices, scryfall, sources,  # noqa:
                       tagging, watchlist)
 
 import core_decks  # noqa: E402  (gera coredecks.html + tracking de alteracoes)
+import collection_gallery  # noqa: E402  (gera colecao.html — galeria com imagens)
 
 MTGO_DAYS = 3
 # O mtgo cobre a maioria; o mtgtop8 acrescenta o papel e é a única fonte de cEDH.
@@ -163,6 +164,8 @@ def main():
         # padrão mudou (core_snapshots). Corre DEPOIS de preços + tags.
         _step(con, "core-decks",
               lambda: str(core_decks.build(con, ROOT / "coredecks.html")))
+        _step(con, "galeria-colecao",
+              lambda: str(collection_gallery.build(con, ROOT / "colecao.html")))
 
         _step(con, "prune", lambda: f"{analysis.prune_decklists(con, 180)} apagadas")
 
