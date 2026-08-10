@@ -1,0 +1,21 @@
+COMO ADICIONAR FOTOS DA COLEÇÃO
+================================
+
+1) Larga aqui as fotos das cartas.
+   - Uma carta por foto, OU grelhas onde os nomes se leem bem.
+   - Podes organizar por lotes em subpastas (ex.: "lote1", "lote2").
+
+2) Diz-me no Claude Code: "processa as fotos novas".
+   - Eu leio TODAS as fotos desta pasta (sem o limite de 5 do chat),
+     identifico as cartas, atualizo o inventário e faço commit.
+
+3) Quando acabar, movo as fotos para a pasta:
+   "Fotos processadas da coleção"
+   (para saberes o que já está feito e não repetir).
+
+Como pôr as fotos aqui a partir do telemóvel (sem estar ao pé do PC):
+   - OneDrive / Google Drive / Google Fotos: sincroniza esta pasta e
+     as fotos do telemóvel aparecem cá.
+   - Ou cabo USB / "Ligação ao Telemóvel" (Phone Link).
+
+Nota: estas pastas de fotos NÃO vão para o Git (ficam só no PC).

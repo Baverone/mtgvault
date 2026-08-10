@@ -12,5 +12,9 @@ priceguide.json
 
 # Fotos da coleção — grandes e não pertencem ao Git (o inventário fica em owned.csv/vault.db)
 fotos/
-Colocar fotos da coleção aqui/
-Fotos processadas da coleção/
+# As PASTAS de fotos viajam com o repo (têm .gitkeep/LEIA-ME), mas as IMAGENS lá dentro nunca entram:
+Colocar fotos da coleção aqui/*
+!Colocar fotos da coleção aqui/.gitkeep
+!Colocar fotos da coleção aqui/LEIA-ME.txt
+Fotos processadas da coleção/*
+!Fotos processadas da coleção/.gitkeep
