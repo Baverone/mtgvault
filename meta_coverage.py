@@ -25,6 +25,7 @@ from __future__ import annotations
 import html
 import json
 import os
+import urllib.parse
 from collections import defaultdict
 from pathlib import Path
 
@@ -52,6 +53,52 @@ NICE = {"__greasefang__": "Greasefang"}
 
 # quantos staples partilhados mostrar no topo (o resto vê-se em cada deck)
 GENERAL_MAX = 24
+
+# Mapa de arquétipos conhecidos: carta-assinatura distintiva -> nome do deck.
+# Aplica-se quando o núcleo (mainboard) contém a assinatura; ordem = prioridade
+# (primeira que bate ganha). São nomes reais de arquétipos, não invenção — só se
+# usam cartas que essencialmente só aquele deck joga, para não rotular mal.
+KNOWN = [
+    ("Greasefang, Okiba Boss", "Greasefang"),
+    ("Goryo's Vengeance", "Goryo's Reanimator"),
+    ("Doomsday", "Doomsday"),
+    ("Sneak Attack", "Sneak & Show"),
+    ("Show and Tell", "Sneak & Show"),
+    ("Nadu, Winged Wisdom", "Nadu"),
+    ("Murktide Regent", "Murktide"),
+    ("Death's Shadow", "Death's Shadow"),
+    ("Muxus, Goblin Grandee", "Goblins"),
+    ("Goblin Warchief", "Goblins"),
+    ("Goblin Piledriver", "Goblins"),
+    ("Goblin Lackey", "Goblins"),
+    ("Allosaurus Shepherd", "Elves"),
+    ("Heritage Druid", "Elves"),
+    ("Elvish Archdruid", "Elves"),
+    ("Cephalid Illusionist", "Cephalid Breakfast"),
+    ("Living End", "Living End"),
+    ("Crashing Footfalls", "Crashing Footfalls"),
+    ("Amulet of Vigor", "Amulet Titan"),
+    ("Scapeshift", "Scapeshift"),
+    ("Urza's Tower", "Tron"),
+    ("Painter's Servant", "Painter"),
+    ("Yawgmoth, Thran Physician", "Yawgmoth"),
+    ("Underworld Breach", "Breach"),
+    ("Aluren", "Aluren"),
+    ("Thespian's Stage", "Dark Depths"),
+    ("Dark Depths", "Dark Depths"),
+    # premodern
+    ("Replenish", "Replenish"),
+    ("Sterling Grove", "Enchantress"),
+    ("Argothian Enchantress", "Enchantress"),
+    ("Oath of Druids", "Oath"),
+    ("Survival of the Fittest", "Survival"),
+    ("Standstill", "Landstill"),
+    ("Illusions of Grandeur", "Donate"),
+    ("Phyrexian Dreadnought", "Stiflenought"),
+    ("Ill-Gotten Gains", "Ill-Gotten Gains"),
+    ("Reanimate", "Reanimator"),
+    ("Griselbrand", "Reanimator"),
+]
 
 # impressões que NÃO se jogam em torneio — fora dos preços e das sugestões de compra
 _NOT_PLAYABLE = (
@@ -218,12 +265,44 @@ def _distinctive_name(con, aid, df, tcache):
     return " / ".join(top) if top else f"#{aid}"
 
 
+def _known_name(con, aid):
+    """Nome de arquétipo conhecido, se o núcleo tiver uma carta-assinatura."""
+    core = {r["card_name"] for r in _core_rows(con, aid, "main")}
+    for sig, nm in KNOWN:
+        if sig in core:
+            return nm
+    return None
+
+
+def _name_for(con, aid, df, tcache):
+    return _known_name(con, aid) or _distinctive_name(con, aid, df, tcache)
+
+
 def _core_rows(con, aid, board="main"):
     return con.execute(
         """SELECT card_name, core_copies, inclusion_rate FROM card_roles
              WHERE archetype_id = ? AND board = ? AND core_copies >= 1
                AND window_end = (SELECT MAX(window_end) FROM card_roles WHERE archetype_id = ?)
             ORDER BY inclusion_rate DESC, core_copies DESC""", (aid, board, aid)).fetchall()
+
+
+def _sideboard(con, aid, owned, limit=15):
+    """Sideboard de consenso: as cartas de SB que o metagame mais joga neste
+    arquétipo (por inclusão). Marca as que já tens. É o 'o que deves ter no SB' —
+    não é um guia de matchups (esses vêm de fora, ver o link 'procurar guia')."""
+    out = []
+    for r in con.execute(
+        """SELECT card_name, avg_copies, core_copies, inclusion_rate FROM card_roles
+             WHERE archetype_id = ? AND board = 'side'
+               AND window_end = (SELECT MAX(window_end) FROM card_roles WHERE archetype_id = ?)
+             ORDER BY inclusion_rate DESC, avg_copies DESC LIMIT ?""", (aid, aid, limit)):
+        if r["card_name"] in BASICS:
+            continue
+        out.append({"name": r["card_name"],
+                    "qty": max(1, round(r["avg_copies"] or r["core_copies"] or 1)),
+                    "incl": round(100 * (r["inclusion_rate"] or 0)),
+                    "have": owned.get(r["card_name"], 0)})
+    return out
 
 
 def deck_coverage(con, aid, owned, name):
@@ -253,7 +332,8 @@ def deck_coverage(con, aid, owned, name):
     pct = round(100 * have / total) if total else 0
     return {"id": aid, "name": name, "label": _label(con, aid),
             "n_lists": _n_lists(con, aid), "core_total": total, "have": have, "pct": pct,
-            "missing": sorted(missing, key=lambda m: -(m["cost"] or 0))}
+            "missing": sorted(missing, key=lambda m: -(m["cost"] or 0)),
+            "sideboard": _sideboard(con, aid, owned)}
 
 
 def build_report(con):
@@ -270,8 +350,7 @@ def build_report(con):
                 ids.append(aid)
         decks = []
         for aid in ids:
-            nm = (NICE["__greasefang__"] if (gid and aid == gid)
-                  else _distinctive_name(con, aid, df, tcache))
+            nm = _name_for(con, aid, df, tcache)
             decks.append(deck_coverage(con, aid, owned, nm))
         decks.sort(key=lambda d: -d["n_lists"])
         sections.append({"fmt": fmt, "title": title, "decks": decks})
@@ -369,12 +448,26 @@ def build_html(rep, today):
                         + "".join(_card_item(m) for m in spec) + '</ul></details>')
             else:
                 body = '<div class="ok">sem cartas específicas em falta ✓</div>'
+            guide = ("https://www.google.com/search?q="
+                     + urllib.parse.quote(f'MTG {d["name"]} {s["fmt"]} sideboard guide'))
+            glink = f'<a href="{guide}" target="_blank" rel="noopener">🔎 procurar guia de sideboard ↗</a>'
+            sb = d.get("sideboard") or []
+            if sb:
+                sbli = ""
+                for x in sb:
+                    mark = ' <span class="own2">✓ tens</span>' if x["have"] else ""
+                    sbli += (f'<li><span class="si">{x["incl"]}%</span> <b>{x["qty"]}×</b> '
+                             f'{html.escape(x["name"])}{mark}</li>')
+                sbblock = (f'<details class="sbd"><summary>🛡️ Sideboard típico ({len(sb)})</summary>'
+                           f'<div class="sbg">{glink}</div><ul class="sl">{sbli}</ul></details>')
+            else:
+                sbblock = f'<div class="sbg">{glink}</div>'
             cards += (
                 f'<div class="deck"><div class="dh"><div class="dn">{html.escape(d["name"])}'
                 f'<span class="lab">{html.escape(d["label"])[:60]}</span></div>'
                 f'<div class="pop">{d["n_lists"]} listas</div></div>{_bar(d["pct"])}'
                 f'<div class="cnt">{d["have"]}/{d["core_total"]} do núcleo · '
-                f'faltam {sum(m["missing"] for m in d["missing"])}</div>{body}</div>')
+                f'faltam {sum(m["missing"] for m in d["missing"])}</div>{body}{sbblock}</div>')
         secs += f'<section><h2>{s["title"]}</h2><div class="grid">{cards}</div></section>'
 
     shown = rep["general"][:GENERAL_MAX]
@@ -420,6 +513,8 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .pz{margin-left:auto;color:var(--gold);font-variant-numeric:tabular-nums;white-space:nowrap;align-self:flex-start;padding-top:2px}
  .own{color:var(--add);font-size:11px} .ed-slot{margin-top:2px;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
  select.pick{max-width:100%;background:#0c0f14;color:var(--ink);border:1px solid var(--line);border-radius:6px;font-size:11px;padding:2px 4px;cursor:pointer}
+ .sbd{margin-top:8px} .sbd>summary{color:var(--muted);cursor:pointer;font-size:12px} .sbg{margin:6px 0} .sbg a{color:var(--accent);font-size:12px;text-decoration:none}
+ ul.sl{list-style:none;margin:6px 0 0;padding:0;font-size:12px} ul.sl li{padding:2px 0} .si{display:inline-block;width:36px;color:var(--muted);font-variant-numeric:tabular-nums} .own2{color:var(--add);font-size:11px}
  .general{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:8px}
  .general h2{margin-top:0;border:0} .dim{color:var(--muted);font-size:12px}
  footer{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
