@@ -23,6 +23,7 @@ Uso:  python meta_coverage.py   ->  escreve cobertura.html na raiz do repositór
 from __future__ import annotations
 
 import html
+import json
 import os
 from collections import defaultdict
 from pathlib import Path
@@ -105,6 +106,46 @@ def _visual(con, name, owned_qty):
         return {"img": _thumb(r["image_uri"]), "set_code": r["set_code"],
                 "set_name": r["set_name"], "unit": None, "mine": False}
     return {"img": "", "set_code": "", "set_name": "", "unit": None, "mine": False}
+
+
+def _owned_sid(con, name):
+    """A impressão que o André mais possui desta carta (para ser a opção por omissão)."""
+    r = con.execute(
+        "SELECT c.scryfall_id sid FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id "
+        "WHERE c.name = ? AND cp.purpose = 'player' GROUP BY c.scryfall_id "
+        "ORDER BY SUM(cp.quantity) DESC LIMIT 1", (name,)).fetchone()
+    return r["sid"] if r else None
+
+
+def _playable_printings(con, name, limit=14):
+    """Impressões jogáveis (en, sem gold-border/digitais) ordenadas por preço.
+    Cada uma: {s: scryfall_id, n: nome do set, p: preço}. A imagem constrói-se
+    no cliente a partir do id (poupa embeber URLs longos)."""
+    rows = con.execute(
+        f"""SELECT c.scryfall_id sid, c.set_name,
+                   (SELECT p.trend FROM price_latest p WHERE p.scryfall_id = c.scryfall_id
+                     AND p.source = 'cardmarket' AND p.finish = 'nonfoil') price
+              FROM cards c WHERE c.name = ? AND c.lang = 'en' {_NOT_PLAYABLE}""", (name,)).fetchall()
+    out = [{"s": r["sid"], "n": r["set_name"], "p": r["price"]} for r in rows]
+    out.sort(key=lambda p: (p["p"] is None, p["p"] or 0))
+    return out[:limit]
+
+
+def _prints_for(con, name, owned):
+    """Opções de edição a mostrar no seletor: as jogáveis + a que já tens (mesmo
+    que não seja das mais baratas), marcada com m=1."""
+    lst = _playable_printings(con, name)
+    osid = _owned_sid(con, name) if owned.get(name, 0) else None
+    if osid and not any(p["s"] == osid for p in lst):
+        r = con.execute(
+            "SELECT c.scryfall_id sid, c.set_name, (SELECT p.trend FROM price_latest p "
+            "WHERE p.scryfall_id = c.scryfall_id AND p.source = 'cardmarket' AND p.finish = 'nonfoil') price "
+            "FROM cards c WHERE c.scryfall_id = ?", (osid,)).fetchone()
+        if r:
+            lst.insert(0, {"s": r["sid"], "n": r["set_name"], "p": r["price"]})
+    for p in lst:
+        p["m"] = 1 if (osid and p["s"] == osid) else 0
+    return lst
 
 
 def _greasefang_id(con):
@@ -248,13 +289,17 @@ def build_report(con):
             general.append({"name": name, "need": max(m["missing"] for m in occ),
                             "unit": base["unit"], "img": base["img"],
                             "set_name": base["set_name"], "mine": base["mine"],
-                            "n_decks": len(occ),
+                            "have": owned.get(name, 0), "n_decks": len(occ),
                             "cost": round((base["unit"] or 0) * max(m["missing"] for m in occ), 2)})
     general.sort(key=lambda g: (-g["n_decks"], -(g["cost"] or 0)))
     for d in all_decks:
         d["specific"] = [m for m in d["missing"] if m["name"] not in shared]
         d["spec_cost"] = round(sum(m["cost"] or 0 for m in d["specific"]), 2)
-    return {"sections": sections, "general": general,
+
+    # opções de edição por carta (para o seletor de compra no cliente)
+    names = {m["name"] for d in all_decks for m in d["missing"]}
+    prints = {nm: _prints_for(con, nm, owned) for nm in names}
+    return {"sections": sections, "general": general, "prints": prints,
             "owned_total": sum(owned.values()),
             "general_cost": round(sum(g["cost"] or 0 for g in general), 2)}
 
@@ -271,8 +316,8 @@ def _bar(pct):
 
 
 def _img_tag(uri):
-    return (f'<img loading="lazy" src="{html.escape(uri)}" alt="" width="42" height="59">'
-            if uri else '<div class="noimg"></div>')
+    return (f'<img class="th" loading="lazy" src="{html.escape(uri)}" alt="" width="42" height="59">'
+            if uri else '<div class="noimg th"></div>')
 
 
 def _edition(mine, have, set_name):
@@ -283,22 +328,31 @@ def _edition(mine, have, set_name):
     return f'<span class="ed">+ barata: {html.escape(set_name)}</span>'
 
 
+def _li(name, qty, have, thumb_img, price_html, cn_inner, unit, mine, set_name):
+    """Uma linha de carta em falta. `.ed-slot` leva a edição por omissão (fallback
+    sem JS); o cliente substitui-a por um seletor de edição."""
+    ecard = html.escape(name, quote=True)
+    unit_attr = "" if unit is None else f' data-unit="{unit}"'
+    return (f'<li data-card="{ecard}" data-qty="{qty}" data-have="{have}"{unit_attr}>'
+            f'{thumb_img}<div class="ci"><div class="cn">{cn_inner}</div>'
+            f'<div class="ed-slot">{_edition(mine, have, set_name)}</div></div>'
+            f'<span class="pz">{price_html}</span></li>')
+
+
 def _card_item(m):
-    """Uma carta em falta de um deck, com miniatura e a edição a comprar."""
     price = _eur(m["cost"]) if m.get("unit") is not None else "<i>preço?</i>"
     sb = ' <span class="sb">SB</span>' if m.get("board") == "side" else ""
-    return (f'<li>{_img_tag(m.get("img"))}<div class="ci"><div class="cn"><b>{m["missing"]}×</b> '
-            f'{html.escape(m["name"])}{sb}</div>{_edition(m.get("mine"), m.get("have"), m.get("set_name"))}'
-            f'</div><span class="pz">{price}</span></li>')
+    cn = f'<b>{m["missing"]}×</b> {html.escape(m["name"])}{sb}'
+    return _li(m["name"], m["missing"], m.get("have", 0), _img_tag(m.get("img")), price, cn,
+               m.get("unit"), m.get("mine"), m.get("set_name"))
 
 
 def _gen_item(g):
-    """Uma carta na lista geral de staples partilhados."""
     price = _eur(g["cost"]) if g.get("unit") is not None else "<i>?</i>"
-    return (f'<li>{_img_tag(g.get("img"))}<div class="ci"><div class="cn"><b>{g["need"]}×</b> '
-            f'{html.escape(g["name"])} <span class="nd">{g["n_decks"]} decks</span></div>'
-            f'{_edition(g.get("mine"), "algumas", g.get("set_name"))}</div>'
-            f'<span class="pz">{price}</span></li>')
+    cn = (f'<b>{g["need"]}×</b> {html.escape(g["name"])} '
+          f'<span class="nd">{g["n_decks"]} decks</span>')
+    return _li(g["name"], g["need"], g.get("have", 0), _img_tag(g.get("img")), price, cn,
+               g.get("unit"), g.get("mine"), g.get("set_name"))
 
 
 def build_html(rep, today):
@@ -308,8 +362,10 @@ def build_html(rep, today):
         for d in s["decks"]:
             spec = d["specific"]
             if spec:
+                aid = d["id"]
                 body = (f'<details><summary>{sum(m["missing"] for m in spec)} cartas específicas '
-                        f'· {_eur(d["spec_cost"])}</summary><ul class="ml">'
+                        f'· <b id="spec-{aid}">{_eur(d["spec_cost"])}</b></summary>'
+                        f'<ul class="ml" data-sum="spec-{aid}">'
                         + "".join(_card_item(m) for m in spec) + '</ul></details>')
             else:
                 body = '<div class="ok">sem cartas específicas em falta ✓</div>'
@@ -323,6 +379,7 @@ def build_html(rep, today):
 
     shown = rep["general"][:GENERAL_MAX]
     gen = "".join(_gen_item(g) for g in shown)
+    shown_cost = round(sum(g["cost"] or 0 for g in shown), 2)
     extra = len(rep["general"]) - len(shown)
     more = (f'<div class="dim" style="padding-top:8px">+ {extra} staples partilhados menores '
             f'(preço baixo) — vê cada deck para os detalhes</div>' if extra > 0 else "")
@@ -330,7 +387,9 @@ def build_html(rep, today):
     return (_TMPL.replace("%SECS%", secs).replace("%GEN%", gen or "<li class='dim'>—</li>")
             .replace("%GENMORE%", more).replace("%TODAY%", today)
             .replace("%OWNED%", str(rep["owned_total"]))
-            .replace("%GENCOST%", _eur(rep["general_cost"])))
+            .replace("%GENSHOWN%", _eur(shown_cost))
+            .replace("%GENCOST%", _eur(rep["general_cost"]))
+            .replace("%PRINTS%", json.dumps(rep["prints"], ensure_ascii=False)))
 
 
 _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
@@ -359,17 +418,58 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .nd{display:inline-block;font-size:11px;color:var(--accent);background:#12203f;padding:0 6px;border-radius:999px}
  .sb{font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 4px;vertical-align:middle}
  .pz{margin-left:auto;color:var(--gold);font-variant-numeric:tabular-nums;white-space:nowrap;align-self:flex-start;padding-top:2px}
+ .own{color:var(--add);font-size:11px} .ed-slot{margin-top:2px;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+ select.pick{max-width:100%;background:#0c0f14;color:var(--ink);border:1px solid var(--line);border-radius:6px;font-size:11px;padding:2px 4px;cursor:pointer}
  .general{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:8px}
  .general h2{margin-top:0;border:0} .dim{color:var(--muted);font-size:12px}
  footer{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
 <header><h1>Cobertura do metagame</h1>
 <div class="sub">Os melhores decks de cada formato e quanto já tens · %OWNED% cartas na coleção · dados de %TODAY% · <a href="index.html">← início</a> · <a href="colecao.html">galeria da coleção</a></div></header>
-<div class="general"><h2>🛒 Staples que te faltam <span class="dim">(servem vários dos decks abaixo · total %GENCOST%)</span></h2>
-<ul class="gl">%GEN%</ul>%GENMORE%</div>
+<div class="general"><h2>🛒 Staples que te faltam <span class="dim">(servem vários dos decks abaixo · mostrados <b id="gen-shown">%GENSHOWN%</b> de %GENCOST%)</span></h2>
+<ul class="gl" data-sum="gen-shown">%GEN%</ul>%GENMORE%</div>
 %SECS%
-<footer>% completo = cartas do núcleo (mainboard + sideboard de consenso, sem terras básicas) que já tens, sobre o total do núcleo do arquétipo — o que as decklists reais levam quase sempre; cartas <span class="sb">SB</span> são de sideboard. Cada carta em falta mostra a imagem da edição a comprar: a que já tens (verde) se tiveres algumas, senão a impressão jogável mais barata. Preços: tendência Cardmarket (sem gold-border/digitais). O nome do deck vem das cartas mais distintivas do arquétipo (a label crua do clustering fica por baixo). "Específicas" de um deck = as que mais nenhum deck mostrado precisa; as partilhadas estão nos staples do topo.</footer>
-</div></body></html>"""
+<footer>% completo = cartas do núcleo (mainboard + sideboard de consenso, sem terras básicas) que já tens, sobre o total do núcleo do arquétipo — o que as decklists reais levam quase sempre; cartas <span class="sb">SB</span> são de sideboard. Cada carta em falta mostra a imagem da edição a comprar: a que já tens (verde) se tiveres algumas, senão a impressão jogável mais barata. Preços: tendência Cardmarket (sem gold-border/digitais). O nome do deck vem das cartas mais distintivas do arquétipo (a label crua do clustering fica por baixo). "Específicas" de um deck = as que mais nenhum deck mostrado precisa; as partilhadas estão nos staples do topo. Podes escolher a edição de cada carta no seletor — a escolha fica guardada neste dispositivo.</footer>
+</div>
+<script>
+var PRINT=%PRINTS%;
+function cimg(s){return 'https://cards.scryfall.io/small/front/'+s[0]+'/'+s[1]+'/'+s+'.jpg';}
+function ceur(v){return (v==null)?'preço?':(v.toFixed(2).replace('.',',')+' €');}
+function ckey(n){return 'ed:'+n;}
+function capply(li){
+  var n=li.dataset.card,sel=li.querySelector('select.pick');if(!sel)return;
+  var p=(PRINT[n]||[])[sel.value];if(!p)return;
+  var q=+li.dataset.qty,im=li.querySelector('.th');
+  if(im&&im.tagName==='IMG')im.src=cimg(p.s);
+  li.dataset.unit=(p.p==null?'':p.p);
+  var pz=li.querySelector('.pz');if(pz)pz.textContent=(p.p==null?'preço?':ceur(p.p*q));
+}
+function crecompute(){
+  document.querySelectorAll('[data-sum]').forEach(function(box){
+    var t=0;box.querySelectorAll('li[data-card]').forEach(function(li){
+      var u=parseFloat(li.dataset.unit);if(!isNaN(u))t+=u*(+li.dataset.qty);});
+    var out=document.getElementById(box.dataset.sum);if(out)out.textContent=ceur(t);});
+}
+document.querySelectorAll('li[data-card]').forEach(function(li){
+  var n=li.dataset.card,prints=PRINT[n]||[];if(!prints.length)return;
+  var sel=document.createElement('select');sel.className='pick';
+  prints.forEach(function(p,i){var o=document.createElement('option');o.value=i;
+    o.textContent=p.n+(p.p==null?' — s/preço':' — '+ceur(p.p))+(p.m?' ✓ tens':'');sel.appendChild(o);});
+  var idx=-1,saved=localStorage.getItem(ckey(n));
+  if(saved){for(var i=0;i<prints.length;i++){if(prints[i].s===saved){idx=i;break;}}}
+  if(idx<0){for(var j=0;j<prints.length;j++){if(prints[j].m){idx=j;break;}}}
+  if(idx<0)idx=0;
+  sel.value=idx;
+  var slot=li.querySelector('.ed-slot');
+  if(slot){slot.innerHTML='';var hv=+li.dataset.have;
+    if(hv>0){var b=document.createElement('span');b.className='own';b.textContent='tens '+hv+' ·';slot.appendChild(b);}
+    slot.appendChild(sel);}
+  capply(li);
+  sel.addEventListener('change',function(){localStorage.setItem(ckey(n),prints[sel.value].s);capply(li);crecompute();});
+});
+crecompute();
+</script>
+</body></html>"""
 
 
 def build(con, out_path=None):
