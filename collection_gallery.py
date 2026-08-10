@@ -70,6 +70,61 @@ def _cards(con):
     return rows
 
 
+# ---------------------------------------------------------------------------
+# Histórico do valor da coleção (um ponto por dia, gravado pelo job diário)
+# ---------------------------------------------------------------------------
+def _ensure_value(con):
+    con.execute("CREATE TABLE IF NOT EXISTS value_history ("
+                "date TEXT PRIMARY KEY, total_eur REAL NOT NULL, cards INTEGER)")
+    con.commit()
+
+
+def _record_value(con, total_eur, cards, day):
+    con.execute("INSERT OR REPLACE INTO value_history (date, total_eur, cards) VALUES (?,?,?)",
+                (day, total_eur, cards))
+    con.commit()
+
+
+def _value_history(con):
+    return [(r["date"], r["total_eur"]) for r in
+            con.execute("SELECT date, total_eur FROM value_history ORDER BY date")]
+
+
+def _evo_block(history):
+    """Bloco HTML: indicador de valorização + gráfico SVG (desenhado no servidor)."""
+    if len(history) < 2:
+        return ('<div class="evo"><div class="evo-top"><span class="evo-h">Evolução do valor</span></div>'
+                '<div class="evo-note">O histórico começa agora — o gráfico preenche-se a cada dia '
+                'que o job diário grava o valor.</div></div>')
+    dates = [d for d, _ in history]
+    vals = [v for _, v in history]
+    first, last = vals[0], vals[-1]
+    pct = (last - first) / first * 100 if first else 0.0
+    cls = "up" if last >= first else "down"
+    arrow = "▲" if last >= first else "▼"
+    W, H, pad = 640, 96, 8
+    lo, hi = min(vals), max(vals)
+    span = (hi - lo) or 1.0
+    n = len(vals)
+
+    def px(i):
+        return pad + (i * (W - 2 * pad) / (n - 1) if n > 1 else 0)
+
+    def py(v):
+        return H - pad - (v - lo) / span * (H - 2 * pad)
+
+    pts = " ".join(f"{px(i):.1f},{py(v):.1f}" for i, v in enumerate(vals))
+    area = f"{px(0):.1f},{H - pad} " + pts + f" {px(n - 1):.1f},{H - pad}"
+    dots = "".join(f'<circle cx="{px(i):.1f}" cy="{py(v):.1f}" r="2.6" class="dot {cls}"/>'
+                   for i, v in enumerate(vals))
+    svg = (f'<svg viewBox="0 0 {W} {H}" class="spark">'
+           f'<polygon points="{area}" class="fill {cls}"/>'
+           f'<polyline points="{pts}" class="line {cls}"/>{dots}</svg>')
+    return (f'<div class="evo"><div class="evo-top"><span class="evo-h">Evolução do valor</span>'
+            f'<span class="evo-ind {cls}">{arrow} {pct:+.1f}% <em>desde {dates[0]}</em></span></div>'
+            f'<div class="evo-axis"><span>{dates[0]}</span><span>{dates[-1]}</span></div>{svg}</div>')
+
+
 def build(con, out_path):
     rows = _cards(con)
     # Agrupa por sub-coleção; ordena os grupos por valor descendente.
@@ -89,7 +144,10 @@ def build(con, out_path):
     total_qty = sum(c["qty"] for c in rows)
     total_val = round(sum((c["eur"] or 0) * c["qty"] for c in rows), 2)
     today = _dt.date.today().isoformat()
-    _write_html(out_path, ordered, total_qty, total_val, today)
+    _ensure_value(con)
+    _record_value(con, total_val, total_qty, today)
+    history = _value_history(con)
+    _write_html(out_path, ordered, total_qty, total_val, today, history)
     return f"{total_qty} exemplares em {len(ordered)} coleções ({out_path.name})"
 
 
@@ -113,6 +171,17 @@ _TMPL = """<!doctype html>
  .tab b{opacity:.65}
  .tab .tv{color:var(--gold);font-weight:600}
  .tab.active .tv{color:#fff}
+ .evo{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:14px 0 2px}
+ .evo-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+ .evo-h{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+ .evo-ind{font-weight:700;font-size:15px} .evo-ind em{font-style:normal;font-weight:400;color:var(--muted);font-size:12px}
+ .evo-ind.up{color:var(--add)} .evo-ind.down{color:var(--rem)}
+ .evo-axis{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin:6px 0 0}
+ .spark{width:100%;height:auto;display:block}
+ .spark .line{fill:none;stroke-width:2;vector-effect:non-scaling-stroke} .spark .line.up{stroke:var(--add)} .spark .line.down{stroke:var(--rem)}
+ .spark .fill.up{fill:var(--add);opacity:.13} .spark .fill.down{fill:var(--rem);opacity:.13}
+ .spark .dot{stroke:var(--card);stroke-width:1} .spark .dot.up{fill:var(--add)} .spark .dot.down{fill:var(--rem)}
+ .evo-note{color:var(--muted);font-size:12.5px;margin-top:6px}
  h2{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:26px 0 6px;border-bottom:1px solid var(--line);padding-bottom:6px;display:flex;justify-content:space-between;gap:10px;align-items:baseline}
  h2 b{color:var(--ink)} h2 .gv{color:var(--gold);font-variant-numeric:tabular-nums;font-size:13px;text-transform:none;letter-spacing:0}
  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
@@ -131,6 +200,7 @@ _TMPL = """<!doctype html>
 <header><h1>A minha coleção</h1>
 <div class="sub">%TOTQ% exemplares · valor ~<b style="color:var(--gold)">%TOTV%</b> · imagens e preços via Scryfall/Cardmarket · dados até %TODAY% ·
 <a href="index.html">← resumo</a> · <a href="coredecks.html">core decks →</a></div></header>
+%EVO%
 <div class="tools"><input id="q" type="search" placeholder="Procurar carta ou edição…" autocomplete="off"><span class="count" id="count"></span></div>
 <div id="tabs" class="tabs"></div>
 <div id="app"></div>
@@ -177,13 +247,14 @@ render("");
 """
 
 
-def _write_html(out_path, groups, total_qty, total_val, today):
+def _write_html(out_path, groups, total_qty, total_val, today, history):
     eur = f"{total_val:,.2f} €".replace(",", " ")
     html = (_TMPL
             .replace("%DATA%", json.dumps(groups, ensure_ascii=False))
             .replace("%TOTQ%", str(total_qty))
             .replace("%TOTV%", eur)
-            .replace("%TODAY%", today))
+            .replace("%TODAY%", today)
+            .replace("%EVO%", _evo_block(history)))
     Path(out_path).write_text(html, encoding="utf-8")
 
 

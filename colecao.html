@@ -18,6 +18,17 @@
  .tab b{opacity:.65}
  .tab .tv{color:var(--gold);font-weight:600}
  .tab.active .tv{color:#fff}
+ .evo{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:14px 0 2px}
+ .evo-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+ .evo-h{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+ .evo-ind{font-weight:700;font-size:15px} .evo-ind em{font-style:normal;font-weight:400;color:var(--muted);font-size:12px}
+ .evo-ind.up{color:var(--add)} .evo-ind.down{color:var(--rem)}
+ .evo-axis{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin:6px 0 0}
+ .spark{width:100%;height:auto;display:block}
+ .spark .line{fill:none;stroke-width:2;vector-effect:non-scaling-stroke} .spark .line.up{stroke:var(--add)} .spark .line.down{stroke:var(--rem)}
+ .spark .fill.up{fill:var(--add);opacity:.13} .spark .fill.down{fill:var(--rem);opacity:.13}
+ .spark .dot{stroke:var(--card);stroke-width:1} .spark .dot.up{fill:var(--add)} .spark .dot.down{fill:var(--rem)}
+ .evo-note{color:var(--muted);font-size:12.5px;margin-top:6px}
  h2{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:26px 0 6px;border-bottom:1px solid var(--line);padding-bottom:6px;display:flex;justify-content:space-between;gap:10px;align-items:baseline}
  h2 b{color:var(--ink)} h2 .gv{color:var(--gold);font-variant-numeric:tabular-nums;font-size:13px;text-transform:none;letter-spacing:0}
  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
@@ -36,6 +47,7 @@
 <header><h1>A minha coleção</h1>
 <div class="sub">607 exemplares · valor ~<b style="color:var(--gold)">48 281.70 €</b> · imagens e preços via Scryfall/Cardmarket · dados até 2026-08-10 ·
 <a href="index.html">← resumo</a> · <a href="coredecks.html">core decks →</a></div></header>
+<div class="evo"><div class="evo-top"><span class="evo-h">Evolução do valor</span><span class="evo-ind up">▲ +14.1% <em>desde 2026-08-03</em></span></div><div class="evo-axis"><span>2026-08-03</span><span>2026-08-10</span></div><svg viewBox="0 0 640 96" class="spark"><polygon points="8.0,88 8.0,88.0 632.0,8.0 632.0,88" class="fill up"/><polyline points="8.0,88.0 632.0,8.0" class="line up"/><circle cx="8.0" cy="88.0" r="2.6" class="dot up"/><circle cx="632.0" cy="8.0" r="2.6" class="dot up"/></svg></div>
 <div class="tools"><input id="q" type="search" placeholder="Procurar carta ou edição…" autocomplete="off"><span class="count" id="count"></span></div>
 <div id="tabs" class="tabs"></div>
 <div id="app"></div>
