@@ -378,7 +378,9 @@ def build_report(con):
     # opções de edição por carta (para o seletor de compra no cliente)
     names = {m["name"] for d in all_decks for m in d["missing"]}
     prints = {nm: _prints_for(con, nm, owned) for nm in names}
-    return {"sections": sections, "general": general, "prints": prints,
+    # wantlist completa de cada deck (com staples partilhados) para exportar
+    want = {d["id"]: [[m["name"], m["missing"]] for m in d["missing"]] for d in all_decks}
+    return {"sections": sections, "general": general, "prints": prints, "want": want,
             "owned_total": sum(owned.values()),
             "general_cost": round(sum(g["cost"] or 0 for g in general), 2)}
 
@@ -462,12 +464,14 @@ def build_html(rep, today):
                            f'<div class="sbg">{glink}</div><ul class="sl">{sbli}</ul></details>')
             else:
                 sbblock = f'<div class="sbg">{glink}</div>'
+            copybtn = (f'<button class="cp" data-deck="{d["id"]}">📋 copiar wantlist</button>'
+                       if d["missing"] else "")
             cards += (
                 f'<div class="deck"><div class="dh"><div class="dn">{html.escape(d["name"])}'
                 f'<span class="lab">{html.escape(d["label"])[:60]}</span></div>'
                 f'<div class="pop">{d["n_lists"]} listas</div></div>{_bar(d["pct"])}'
                 f'<div class="cnt">{d["have"]}/{d["core_total"]} do núcleo · '
-                f'faltam {sum(m["missing"] for m in d["missing"])}</div>{body}{sbblock}</div>')
+                f'faltam {sum(m["missing"] for m in d["missing"])}</div>{body}{copybtn}{sbblock}</div>')
         secs += f'<section><h2>{s["title"]}</h2><div class="grid">{cards}</div></section>'
 
     shown = rep["general"][:GENERAL_MAX]
@@ -482,7 +486,8 @@ def build_html(rep, today):
             .replace("%OWNED%", str(rep["owned_total"]))
             .replace("%GENSHOWN%", _eur(shown_cost))
             .replace("%GENCOST%", _eur(rep["general_cost"]))
-            .replace("%PRINTS%", json.dumps(rep["prints"], ensure_ascii=False)))
+            .replace("%PRINTS%", json.dumps(rep["prints"], ensure_ascii=False))
+            .replace("%WANT%", json.dumps(rep["want"], ensure_ascii=False)))
 
 
 _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
@@ -515,6 +520,7 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  select.pick{max-width:100%;background:#0c0f14;color:var(--ink);border:1px solid var(--line);border-radius:6px;font-size:11px;padding:2px 4px;cursor:pointer}
  .sbd{margin-top:8px} .sbd>summary{color:var(--muted);cursor:pointer;font-size:12px} .sbg{margin:6px 0} .sbg a{color:var(--accent);font-size:12px;text-decoration:none}
  ul.sl{list-style:none;margin:6px 0 0;padding:0;font-size:12px} ul.sl li{padding:2px 0} .si{display:inline-block;width:36px;color:var(--muted);font-variant-numeric:tabular-nums} .own2{color:var(--add);font-size:11px}
+ button.cp{background:#12203f;color:var(--accent);border:1px solid var(--line);border-radius:8px;font-size:12px;padding:5px 10px;cursor:pointer;margin-top:8px} button.cp:hover{border-color:var(--accent)}
  .general{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:8px}
  .general h2{margin-top:0;border:0} .dim{color:var(--muted);font-size:12px}
  footer{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
@@ -522,12 +528,14 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
 <header><h1>Cobertura do metagame</h1>
 <div class="sub">Os melhores decks de cada formato e quanto já tens · %OWNED% cartas na coleção · dados de %TODAY% · <a href="index.html">← início</a> · <a href="colecao.html">galeria da coleção</a></div></header>
 <div class="general"><h2>🛒 Staples que te faltam <span class="dim">(servem vários dos decks abaixo · mostrados <b id="gen-shown">%GENSHOWN%</b> de %GENCOST%)</span></h2>
+<div><button id="copyall" class="cp">📋 Copiar wantlist completa (Cardmarket)</button></div>
 <ul class="gl" data-sum="gen-shown">%GEN%</ul>%GENMORE%</div>
 %SECS%
 <footer>% completo = cartas do núcleo (mainboard + sideboard de consenso, sem terras básicas) que já tens, sobre o total do núcleo do arquétipo — o que as decklists reais levam quase sempre; cartas <span class="sb">SB</span> são de sideboard. Cada carta em falta mostra a imagem da edição a comprar: a que já tens (verde) se tiveres algumas, senão a impressão jogável mais barata. Preços: tendência Cardmarket (sem gold-border/digitais). O nome do deck vem das cartas mais distintivas do arquétipo (a label crua do clustering fica por baixo). "Específicas" de um deck = as que mais nenhum deck mostrado precisa; as partilhadas estão nos staples do topo. Podes escolher a edição de cada carta no seletor — a escolha fica guardada neste dispositivo.</footer>
 </div>
 <script>
 var PRINT=%PRINTS%;
+var WANT=%WANT%;
 function cimg(s){return 'https://cards.scryfall.io/small/front/'+s[0]+'/'+s[1]+'/'+s+'.jpg';}
 function ceur(v){return (v==null)?'preço?':(v.toFixed(2).replace('.',',')+' €');}
 function ckey(n){return 'ed:'+n;}
@@ -563,6 +571,18 @@ document.querySelectorAll('li[data-card]').forEach(function(li){
   sel.addEventListener('change',function(){localStorage.setItem(ckey(n),prints[sel.value].s);capply(li);crecompute();});
 });
 crecompute();
+// --- exportar wantlist (formato Cardmarket: "<qtd> <nome>") ---
+function wlLines(pairs){var m={};pairs.forEach(function(p){var n=p[0],q=p[1];if(!(n in m)||q>m[n])m[n]=q;});
+  return Object.keys(m).sort().map(function(n){return m[n]+' '+n;}).join('\\n');}
+function copyWL(text,btn){var o=btn.textContent;
+  function done(){btn.textContent='✓ copiado';setTimeout(function(){btn.textContent=o;},1500);}
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(done,function(){window.prompt('Copia (Ctrl+C):',text);});}
+  else{window.prompt('Copia (Ctrl+C):',text);}}
+var _all=[];Object.keys(WANT).forEach(function(k){WANT[k].forEach(function(p){_all.push(p);});});
+var _ca=document.getElementById('copyall');
+if(_ca)_ca.addEventListener('click',function(){copyWL(wlLines(_all),_ca);});
+document.querySelectorAll('button.cp[data-deck]').forEach(function(b){
+  b.addEventListener('click',function(){copyWL(wlLines(WANT[b.dataset.deck]||[]),b);});});
 </script>
 </body></html>"""
 
