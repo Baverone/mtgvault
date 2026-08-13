@@ -89,10 +89,16 @@ regra do André já implementada, que alimenta a página `colecao_cor.html`:
   ficam FORA da coleção. (Palavras dele: "só premodern e SPML são coleções, o
   resto é tudo decks".)
 - Dentro desses dois baldes, cada carta é **Deck** (cópias que um deck pede),
-  **Coleção** (jogável, backup até 4) ou **Vender**. Os decks: os 3 de Modern
-  (tabela `decks`) e os 6 arquétipos de Premodern do André — destes não há
-  lista exata, tira-se o CONSENSO das listas recolhidas (`PREMODERN_DECKS`,
-  assinatura → inclusão ≥40%).
+  **Coleção** (jogável, backup até 4) ou **Vender**.
+- **SPML é DINÂMICO, Premodern é ESTÁVEL** (`colecao_config.json`):
+  - **SPML** → `spml_formato_ativo` (standard/pioneer/modern/legacy): o André
+    diz que formato joga AGORA; só os decks desse formato (tabela `decks`)
+    reservam cartas. Trocar de formato muda o que é deck vs coleção.
+  - **Premodern** → `premodern_decks_completos`: só os decks marcados COMPLETOS
+    saem da coleção (as cartas passam a estar só no deck, como o Commander —
+    Premodern roda pouco/nada). Enquanto um deck não está completo, as cartas
+    ficam na coleção (ainda a montar). A lista de cada deck completo vem do
+    consenso das listas do arquétipo (`PREMODERN_DECKS`, assinatura → ≥40%).
 - **Vender** = cópias acima de 4 (construído), OU cartas não legais em NENHUM
   formato real (`legalities` da Scryfall — rede de segurança para nunca sugerir
   vender uma carta jogável por falta de dados nas minhas listas). **Básicas
