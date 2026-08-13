@@ -158,35 +158,46 @@ function render(db){
   const priceOf = n => { const k=String(n).toLowerCase(); return price[k]!=null?price[k]:(price[front(n)]||0); };
   const ownValue = sub => { let v=0; const o=ownedFull[sub]||{}; for(const f in o) v+=(o[f].price||0)*o[f].qty; return v; };
 
-  // estatística de uma COLEÇÃO partilhada: precisa de MAX por carta; posse somada
-  function poolStats(subs){
+  // estatística de uma COLEÇÃO partilhada:
+  //   NEED = MAX por carta dos decks-alvo do pool (needSubs);
+  //   OWN  = posse somada das sub-coleções FÍSICAS do pool (ownSubs, ex.: "SPML");
+  //   cap  = quantas GUARDAR por carta (construído=4 playset) — o resto é venda.
+  function poolStats(needSubs, ownSubs, cap){
     const need={}, needName={}, own={}, ownName={}, ownPrice={};
-    for(const s of subs) for(const [name,q] of (targets[s]||[])){
+    for(const s of needSubs) for(const [name,q] of (targets[s]||[])){
       const f=front(name); if(q>(need[f]||0)) need[f]=q; if(!needName[f]) needName[f]=name; }
-    for(const s of subs){ const o=ownedFull[s]||{}; for(const f in o){
+    for(const s of ownSubs){ const o=ownedFull[s]||{}; for(const f in o){
       own[f]=(own[f]||0)+o[f].qty; ownName[f]=o[f].name; if(o[f].price!=null) ownPrice[f]=o[f].price; } }
     const buy=[], sell=[]; let buyCost=0, sellVal=0, needTot=0, haveTot=0;
     for(const f in need){ needTot+=need[f]; const h=own[f]||0; haveTot+=Math.min(need[f],h);
       if(h<need[f]){ const q=need[f]-h, c=q*priceOf(needName[f]); buyCost+=c; buy.push([needName[f],q,c]); } }
-    for(const f in own){ const n=need[f]||0; if(own[f]>n && !BASICS.has(f)){
-      const q=own[f]-n, p=(ownPrice[f]!=null?ownPrice[f]:priceOf(ownName[f])), v=q*p; sellVal+=v; sell.push([ownName[f],q,v]); } }
+    // vender: só cartas que ESTÃO nos decks e acima do limite de guardar (regra dos
+    // extras dos decks). Cartas fora dos decks não se sugerem para venda aqui.
+    for(const f in own){ if(!(f in need)) continue; const keep = (cap!=null?cap:need[f]);
+      if(own[f]>keep && !BASICS.has(f)){
+        const q=own[f]-keep, p=(ownPrice[f]!=null?ownPrice[f]:priceOf(ownName[f])), v=q*p; sellVal+=v; sell.push([ownName[f],q,v]); } }
     buy.sort((a,b)=>b[2]-a[2]); sell.sort((a,b)=>b[2]-a[2]);
-    return {subs,own,needTot,haveTot,buy,buyCost,sell,sellVal};
+    return {subs:needSubs,own,needTot,haveTot,buy,buyCost,sell,sellVal};
   }
   function rowsHtml(rows,cls){ return `<div class="shoplist">`+rows.map(r=>
     `<div class="row ${cls}"><span>${r[1]}x ${esc(r[0])}</span><span class="price">${eur(r[2])}</span></div>`).join("")+`</div>`; }
 
   // ---------- coleções ----------
   const COLLECTIONS=[
-    ["MSL","Standard · Modern · Legacy"],["Premodern","Premodern"],
+    ["MSL","Standard · Pioneer · Modern · Legacy"],["Premodern","Premodern"],
     ["Commander","Commander / cEDH"],["Duel Commander","Duel Commander"],["Pauper","Pauper"],
   ];
+  // limite de "guardar" por carta: construído = 4 (playset); Commander fica pelo que
+  // os decks pedem (1 por deck — a afinar). Acima do limite = excedente para vender.
+  const CAPS={MSL:4, Premodern:4, Pauper:4};
   let totalOwn=0, totalSell=0;
   for(const [key,title] of COLLECTIONS){
     let subs=Object.keys(targets).filter(s=>(meta[s]||{}).pool===key);
     if(!subs.length) continue;
     subs.sort((a,b)=>(((meta[a]||{}).priority||99)-((meta[b]||{}).priority||99))||a.localeCompare(b));
-    const ps=poolStats(subs), pct=ps.needTot?Math.round(100*ps.haveTot/ps.needTot):0;
+    // posse vem das sub-coleções FÍSICAS do pool (ex.: "SPML"), não dos decks-alvo
+    const ownSubs=Object.keys(ownedFull).filter(s=>(meta[s]||{}).pool===key);
+    const ps=poolStats(subs, ownSubs, CAPS[key]), pct=ps.needTot?Math.round(100*ps.haveTot/ps.needTot):0;
     const colVal=subs.reduce((s,x)=>s+ownValue(x),0); totalOwn+=colVal; totalSell+=ps.sellVal;
 
     const sec=document.createElement("section");

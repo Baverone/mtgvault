@@ -34,6 +34,7 @@ import collection_gallery  # noqa: E402  (gera colecao.html — galeria com imag
 import meta_coverage  # noqa: E402  (gera cobertura.html — top decks + % que tenho + o que falta)
 import alertas  # noqa: E402  (gera alertas.html — o que vender/comprar por movimento de preço)
 import my_decks  # noqa: E402  (mantém atualizadas as listas dos decks que o André segue)
+import refresh_collection  # noqa: E402  (reconstroi collection_owned p/ o index.html)
 
 MTGO_DAYS = 3
 # O mtgo cobre a maioria; o mtgtop8 acrescenta o papel e é a única fonte de cEDH.
@@ -172,6 +173,9 @@ def main():
         # padrão mudou (core_snapshots). Corre DEPOIS de preços + tags.
         _step(con, "core-decks",
               lambda: str(core_decks.build(con, ROOT / "coredecks.html")))
+        # Posse do site (collection_owned p/ o index.html) — depois do core-decks,
+        # que atualiza o card_price de que a posse se serve.
+        _step(con, "posse-site", lambda: refresh_collection.refresh(con))
         _step(con, "galeria-colecao",
               lambda: str(collection_gallery.build(con, ROOT / "colecao.html")))
         # Cobertura do metagame: top decks por formato, % que já tenho e o que falta.

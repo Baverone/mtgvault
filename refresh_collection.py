@@ -34,10 +34,9 @@ def _front(n: str) -> str:
     return n.split(" // ")[0].strip().lower()
 
 
-def main() -> None:
-    con = sqlite3.connect(DB)
-    con.row_factory = sqlite3.Row
-    con.execute("ATTACH DATABASE ? AS catalog", (str(CAT),))
+def refresh(con) -> str:
+    """Reconstrói `collection_owned` a partir dos `copies` (+ card_price + overrides).
+    Recebe uma conexão já com o catálogo ATTACHed (para correr dentro do job diário)."""
     con.execute("""CREATE TABLE IF NOT EXISTS collection_owned(
         sub_collection TEXT NOT NULL, card_name TEXT NOT NULL,
         quantity INTEGER NOT NULL DEFAULT 1, unit_price REAL,
@@ -99,18 +98,26 @@ def main() -> None:
                 n += 1
 
     con.commit()
-    con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-
     subs = [r["sub_collection"] for r in con.execute(
         "SELECT DISTINCT sub_collection FROM collection_owned ORDER BY sub_collection")]
-    print(f"{n} overrides aplicados. Sub-coleções:")
-    for sub in subs:
+    return f"{n} overrides, {len(subs)} sub-coleções"
+
+
+def main() -> None:
+    con = sqlite3.connect(DB)
+    con.row_factory = sqlite3.Row
+    con.execute("ATTACH DATABASE ? AS catalog", (str(CAT),))
+    print(refresh(con) + " — detalhe:")
+    for sub in [r["sub_collection"] for r in con.execute(
+            "SELECT DISTINCT sub_collection FROM collection_owned ORDER BY sub_collection")]:
         tot = con.execute("SELECT SUM(COALESCE(unit_price,0)*quantity) FROM collection_owned "
                           "WHERE sub_collection = ?", (sub,)).fetchone()[0] or 0
         sem = [r["card_name"] for r in con.execute(
             "SELECT card_name FROM collection_owned WHERE sub_collection = ? "
             "AND unit_price IS NULL ORDER BY card_name", (sub,))]
         print(f"  {sub}: valor {tot:.2f} EUR" + (f" | sem preço: {', '.join(sem)}" if sem else ""))
+    con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    con.close()
 
 
 if __name__ == "__main__":
