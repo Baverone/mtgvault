@@ -81,8 +81,27 @@ que está num deck são "cartas extra dos decks" (backup — guardar) até um LI
 Cartas que não estão em deck nenhum: excedente de venda normal.
 `collection.deck_extras` é a versão SIMPLES (owned − o que a decklist pede) —
 ainda **não** aplica os limites por coleção nem o "acima do limite = vender".
-Falta afinar (o André vai detalhar). Qualquer sugestão de "vender" tem de
-respeitar isto quando estiver afinada.
+
+**Classificação Deck / Coleção / Vender (`classify.py`, 2026-08-13).** É a
+regra do André já implementada, que alimenta a página `colecao_cor.html`:
+- **Só os baldes `SPML` e `Premodern (geral)` são coleção.** Todo o resto
+  (`Blue Farm`, `Cloud`, `Cloud cEDH`, `Pauper Affinity`) são decks montados →
+  ficam FORA da coleção. (Palavras dele: "só premodern e SPML são coleções, o
+  resto é tudo decks".)
+- Dentro desses dois baldes, cada carta é **Deck** (cópias que um deck pede),
+  **Coleção** (jogável, backup até 4) ou **Vender**. Os decks: os 3 de Modern
+  (tabela `decks`) e os 6 arquétipos de Premodern do André — destes não há
+  lista exata, tira-se o CONSENSO das listas recolhidas (`PREMODERN_DECKS`,
+  assinatura → inclusão ≥40%).
+- **Vender** = cópias acima de 4 (construído), OU cartas não legais em NENHUM
+  formato real (`legalities` da Scryfall — rede de segurança para nunca sugerir
+  vender uma carta jogável por falta de dados nas minhas listas). **Básicas
+  nunca se vendem.** Apresentado como *sugestão a confirmar*.
+- **Falta afinar (decisão futura do André):** cartas jogáveis num formato mas
+  que ele **não vai usar** acabam por ir para Vender — por agora ficam em
+  Coleção. Também: regras por deck (foil-only, PT, Premodern old-border) e o
+  *loadout* de decks montáveis em simultâneo. Qualquer sugestão de "vender"
+  tem de respeitar isto.
 
 **Core vs tech.** `core_copies` = maior k tal que P(cópias >= k) >= 0.90,
 medido sobre *todas* as listas do arquétipo, não só as que jogam a carta.
