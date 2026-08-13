@@ -33,6 +33,7 @@ import core_decks  # noqa: E402  (gera coredecks.html + tracking de alteracoes)
 import collection_gallery  # noqa: E402  (gera colecao.html — galeria com imagens)
 import meta_coverage  # noqa: E402  (gera cobertura.html — top decks + % que tenho + o que falta)
 import alertas  # noqa: E402  (gera alertas.html — o que vender/comprar por movimento de preço)
+import my_decks  # noqa: E402  (mantém atualizadas as listas dos decks que o André segue)
 
 MTGO_DAYS = 3
 # O mtgo cobre a maioria; o mtgtop8 acrescenta o papel e é a única fonte de cEDH.
@@ -161,6 +162,11 @@ def main():
         # Arquétipos por regra (etiqueta dupla) — reaplicados DEPOIS do analyse
         # para o clustering automático nunca desfazer os nomes à mão.
         _step(con, "tag-arquetipos", lambda: f"{tagging.tag_all(con)} etiquetas")
+
+        # Mantém as listas dos decks seguidos (os principais de Modern do André)
+        # coladas à versão mais recente do metagame, para a % e a wantlist estarem
+        # sempre atualizadas.
+        _step(con, "meus-decks", lambda: my_decks.refresh(con))
 
         # Core decks: recalcula o consenso dos decks que sigo e regista se o
         # padrão mudou (core_snapshots). Corre DEPOIS de preços + tags.
