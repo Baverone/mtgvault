@@ -91,14 +91,19 @@ regra do André já implementada, que alimenta a página `colecao_cor.html`:
 - Dentro desses dois baldes, cada carta é **Deck** (cópias que um deck pede),
   **Coleção** (jogável, backup até 4) ou **Vender**.
 - **SPML é DINÂMICO, Premodern é ESTÁVEL** (`colecao_config.json`):
-  - **SPML** → `spml_formato_ativo` (standard/pioneer/modern/legacy): o André
-    diz que formato joga AGORA; só os decks desse formato (tabela `decks`)
-    reservam cartas. Trocar de formato muda o que é deck vs coleção.
-  - **Premodern** → `premodern_decks_completos`: só os decks marcados COMPLETOS
-    saem da coleção (as cartas passam a estar só no deck, como o Commander —
-    Premodern roda pouco/nada). Enquanto um deck não está completo, as cartas
-    ficam na coleção (ainda a montar). A lista de cada deck completo vem do
-    consenso das listas do arquétipo (`PREMODERN_DECKS`, assinatura → ≥40%).
+  - **SPML** → `spml_formatos` {formato: estado}. O André joga vários formatos
+    ao mesmo tempo. Estados: `a jogar`/`a treinar` = ATIVO (os decks desse
+    formato, na tabela `decks`, reservam cartas → Deck); `a preparar` = só
+    wantlist, não reserva; `ignorar` = fora. `ACTIVE_STATUSES` define quais
+    reservam. Formato ativo sem decks na tabela `decks` não reserva nada ainda.
+  - **Premodern** → completude DETETADA automaticamente por `premodern_status()`:
+    um deck está completo quando o André tem 100% do consenso do arquétipo
+    (`PREMODERN_DECKS`, assinatura → ≥40%). Completo → cartas trancam-se no deck
+    (saem da coleção, como o Commander — Premodern roda pouco/nada) e ficam lá
+    até desmontar. `premodern_decks_completos` no config é a tranca STICKY: se a
+    lista mudar depois de completo, as cartas NÃO voltam à coleção — só se dá a
+    wantlist do delta. `premodern_status()` devolve %/em-falta por deck (é, na
+    prática, a wantlist de cada deck de Premodern).
 - **Vender** = cópias acima de 4 (construído), OU cartas não legais em NENHUM
   formato real (`legalities` da Scryfall — rede de segurança para nunca sugerir
   vender uma carta jogável por falta de dados nas minhas listas). **Básicas
