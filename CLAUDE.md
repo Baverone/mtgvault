@@ -70,12 +70,19 @@ wantlists ou cobertura.
 `owned_playable(con, for_deck_id)` exclui as reservadas a *outros* decks. Se
 acrescentares uma consulta nova de disponibilidade, tem de respeitar isto.
 
-**Extras dos decks NÃO são para venda.** As cópias a mais de uma carta que está
-num deck são "cartas extra dos decks" (backup — guardar), nunca excedente para
-venda. Ex.: o deck usa 2, ele tem 4 → 2 são extra dos decks. Só cartas que não
-estão em deck nenhum é que podem ser excedente de venda. `collection.deck_extras`
-calcula isto (owned − o que o deck usa). Qualquer sugestão de "vender" tem de
-excluir estas — e as que estão em uso nos decks.
+**Extras dos decks vs venda (REGRA A AFINAR).** As cópias a mais de uma carta
+que está num deck são "cartas extra dos decks" (backup — guardar) até um LIMITE;
+**acima do limite, o excedente é para vender**. O limite depende da coleção/pasta
+(cada pasta é uma coleção com a sua regra):
+- **Construído** (SPML, Premodern, Pauper Affinity): **4 por carta** (playset).
+  Mais de 4 → o que passa de 4 é para vender.
+- **Commander** (Blue Farm, Cloud, Cloud cEDH): **1 por deck** que a usa
+  (singleton). O que passa disso é para vender.
+Cartas que não estão em deck nenhum: excedente de venda normal.
+`collection.deck_extras` é a versão SIMPLES (owned − o que a decklist pede) —
+ainda **não** aplica os limites por coleção nem o "acima do limite = vender".
+Falta afinar (o André vai detalhar). Qualquer sugestão de "vender" tem de
+respeitar isto quando estiver afinada.
 
 **Core vs tech.** `core_copies` = maior k tal que P(cópias >= k) >= 0.90,
 medido sobre *todas* as listas do arquétipo, não só as que jogam a carta.

@@ -218,12 +218,12 @@ def deck_card_needs(con: sqlite3.Connection) -> dict[str, int]:
 
 
 def deck_extras(con: sqlite3.Connection) -> list[dict]:
-    """Regra do André: as cópias a MAIS das cartas que estão em decks são
-    "cartas extra dos decks" (backup — guardar), NUNCA excedente para venda. Só
-    cartas que não estão em deck nenhum é que podem ser excedente de venda.
+    """Cópias a MAIS das cartas que estão em decks (owned − o que a decklist pede).
 
-    Devolve, por carta que está em decks e de que ele tem mais do que o deck usa,
-    quantas cópias são extra dos decks. Só conta exemplares 'player' (owned_playable).
+    Versão SIMPLES da regra "extras dos decks" — ver CLAUDE.md. A regra refinada
+    (A AFINAR) mete um LIMITE por coleção/formato: construído = 4 por carta,
+    Commander = 1 por deck; acima do limite o excedente é para VENDER. Esta função
+    ainda não aplica esses limites — é só o bloco de base. Só conta 'player'.
     """
     needs = deck_card_needs(con)
     owned = owned_playable(con)
