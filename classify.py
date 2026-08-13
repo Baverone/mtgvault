@@ -9,11 +9,15 @@ Regras (ditadas pelo André, 2026-08-13):
   - SÓ os baldes "SPML" e "Premodern (geral)" são coleção. Todo o resto
     (Blue Farm, Cloud, Cloud cEDH, Pauper Affinity) são decks montados → Deck
     inteiro, fora da Coleção.
-  - No SPML, as cartas dos 3 decks de Modern seguidos (tabela `decks`) contam
-    como Deck; o resto do SPML é coleção de Standard/Pioneer/Modern/Legacy.
-  - No Premodern, os decks são os 6 arquétipos do André. Não temos as listas
-    exatas, por isso tira-se o CONSENSO das listas do arquétipo já recolhidas
-    (assinatura → listas → cartas em >=40% delas). É aproximado, como ele pediu.
+  - SPML é DINÂMICO (colecao_config.json → spml_formato_ativo): o André diz que
+    formato está a jogar agora; só os decks desse formato (tabela `decks`)
+    reservam cartas → Deck. O resto do SPML é coleção.
+  - Premodern é ESTÁVEL (roda pouco/nada as listas): só os decks marcados como
+    COMPLETOS (colecao_config.json → premodern_decks_completos) saem da coleção;
+    as suas cartas ficam só no deck. Enquanto um deck de Premodern não está
+    completo, as cartas dele ficam na coleção (ainda a montar). A lista de cada
+    deck completo vem do CONSENSO das listas do arquétipo já recolhidas
+    (assinatura → cartas em >=40% delas). É aproximado, como ele pediu.
   - Uma carta de deck: as cópias que o deck precisa são Deck; as que sobram até
     4 são backup (Coleção); acima de 4, Vender.
   - Uma carta que não é de deck mas se joga no formato: Coleção até 4, resto Vender.
@@ -60,24 +64,38 @@ BASICS = {"Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes",
           "Snow-Covered Mountain", "Snow-Covered Forest"}
 
 
-def _modern_need(con):
-    """Quantas cópias cada carta precisa nos 3 decks de Modern seguidos.
-    MAX entre decks (partilham o core Mox Opal e monta-se um de cada vez)."""
+def _config():
+    """Lê colecao_config.json (formato ativo de SPML + decks completos de
+    Premodern). Sem ficheiro, cai nos valores por omissão."""
+    try:
+        cfg = json.loads((ROOT / "colecao_config.json").read_text(encoding="utf-8"))
+    except Exception:
+        cfg = {}
+    return (cfg.get("spml_formato_ativo", "modern"),
+            cfg.get("premodern_decks_completos", []))
+
+
+def _format_need(con, fmt):
+    """Quantas cópias cada carta precisa nos decks de um formato (tabela `decks`).
+    MAX entre decks (partilham o core e monta-se um de cada vez)."""
     need = defaultdict(int)
     for r in con.execute(
         """SELECT dc.card_name nm, dc.deck_id did, SUM(dc.quantity) q
              FROM deck_cards dc JOIN decks d ON d.id = dc.deck_id
-            WHERE d.format = 'modern'
-            GROUP BY dc.deck_id, dc.card_name"""):
+            WHERE d.format = ?
+            GROUP BY dc.deck_id, dc.card_name""", (fmt,)):
         need[r["nm"]] = max(need[r["nm"]], min(r["q"], CONSTRUCTED_LIMIT))
     return need
 
 
-def _premodern_need(con):
-    """Consenso das listas de cada arquétipo de Premodern do André.
-    Devolve need[carta] = maior qty típica entre os arquétipos dele."""
+def _premodern_need(con, completos):
+    """Consenso das listas de cada deck de Premodern JÁ COMPLETO do André.
+    Só os decks em `completos` saem da coleção. Devolve need[carta] = maior qty
+    típica entre esses decks (vazio se nenhum estiver completo)."""
     need = defaultdict(int)
     for deck, sigs in PREMODERN_DECKS.items():
+        if deck not in completos:
+            continue
         marks = ",".join("?" for _ in sigs)
         ids = [r[0] for r in con.execute(
             f"""SELECT DISTINCT dl.id FROM decklists dl
@@ -130,7 +148,9 @@ def build(con):
     """Devolve {'colecao':[...], 'vender':[...], 'deck_total':int, 'counts':{...},
     'premodern_need':N, 'modern_need':N}. Cada linha de coleção/venda tem
     sid,nm,cmc,tl,ci,fin,lang,q (+ reason nas de venda)."""
-    need = {"msl": _modern_need(con), "premodern": _premodern_need(con)}
+    active_fmt, completos = _config()
+    need = {"msl": _format_need(con, active_fmt),
+            "premodern": _premodern_need(con, completos)}
     played = {"msl": _played_names(con, MSL_FORMATS),
               "premodern": _played_names(con, ("premodern",))}
 
@@ -203,16 +223,18 @@ def build(con):
               "colecao": sum(r["q"] for r in colecao),
               "vender": sum(r["q"] for r in vender)}
     return {"colecao": colecao, "vender": vender, "deck_total": deck_total,
-            "counts": counts,
-            "modern_need": len(need["msl"]), "premodern_need": len(need["premodern"])}
+            "counts": counts, "spml_formato_ativo": active_fmt,
+            "premodern_completos": completos,
+            "spml_need": len(need["msl"]), "premodern_need": len(need["premodern"])}
 
 
 def main():
     from mtgvault import db
     with db.session() as con:
         rep = build(con)
-    print("Necessidades de deck: Modern", rep["modern_need"], "cartas;",
-          "Premodern (consenso)", rep["premodern_need"], "cartas")
+    print(f"SPML ativo: {rep['spml_formato_ativo']} ({rep['spml_need']} cartas de deck); "
+          f"Premodern completos: {rep['premodern_completos'] or 'nenhum'} "
+          f"({rep['premodern_need']} cartas de deck)")
     print("Contagem:", rep["counts"])
     print("\nExemplos a Vender:")
     for r in sorted(rep["vender"], key=lambda x: x["reason"])[:15]:

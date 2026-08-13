@@ -137,11 +137,16 @@ def build(con, out_path=None):
                 vsec += "</div>"
 
     c = rep["counts"]
+    fmt = (rep["spml_formato_ativo"] or "modern").capitalize()
+    comp = ", ".join(rep["premodern_completos"]) or "nenhum ainda"
+    cfg_line = (f'🔷 SPML — a jogar agora: <b>{html.escape(fmt)}</b> &nbsp;·&nbsp; '
+                f'🕰️ Premodern completos: <b>{html.escape(comp)}</b>'
+                f'<span class="muted"> — diz-me para trocar de formato ou marcar um deck completo</span>')
     today = con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or ""
     out.write_text(_TMPL.replace("%SECS%", secs).replace("%VENDER%", vsec)
                    .replace("%NAV%", topnav).replace("%COL%", str(c["colecao"]))
                    .replace("%DECK%", str(c["deck"])).replace("%SELL%", str(c["vender"]))
-                   .replace("%TODAY%", today), encoding="utf-8")
+                   .replace("%CFG%", cfg_line).replace("%TODAY%", today), encoding="utf-8")
     return out
 
 
@@ -169,11 +174,14 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .tally b{display:inline-block;padding:3px 9px;border-radius:20px;font-size:12px;font-weight:600}
  .t-col{background:#16283f;color:#9cc2ff} .t-deck{background:#123020;color:#6ee0a0} .t-sell{background:#3a1516;color:#f0a0a0}
  .hint{color:var(--muted);font-size:12px;margin:4px 0 8px}
+ .cfg{font-size:12.5px;margin:2px 0 4px;padding:5px 9px;border-radius:7px;background:#141b26;border:1px solid var(--line)}
+ .cfg .muted{color:var(--muted)}
  footer{margin-top:24px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
 <header><h1>🎨 Coleção — por cor e custo de mana</h1>
 <div class="sub">um binder por cor · dentro, SPML e Premodern separados, por custo de mana · dados de %TODAY% · <a href="index.html">← início</a> · <a href="cobertura.html">cobertura</a> · <a href="colecao.html">galeria (por deck)</a></div>
-<div class="tally"><b class="t-col">🔵 %COL% em coleção</b><b class="t-deck">🟢 %DECK% em decks (fora)</b><b class="t-sell">🔴 %SELL% a vender</b></div></header>
+<div class="tally"><b class="t-col">🔵 %COL% em coleção</b><b class="t-deck">🟢 %DECK% em decks (fora)</b><b class="t-sell">🔴 %SELL% a vender</b></div>
+<div class="cfg">%CFG%</div></header>
 <div class="nav">%NAV% · <a href="#Vender">🔴 Vender</a></div>
 %SECS%
 %VENDER%

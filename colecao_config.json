@@ -1,0 +1,7 @@
+{
+  "_ajuda": "Controla a classificação Deck/Coleção/Vender de classify.py. Muda aqui e o job diário reflete no site.",
+  "spml_formato_ativo": "modern",
+  "_spml_formato_ativo": "SPML é dinâmico: o formato que estás a jogar AGORA. Só os decks desse formato reservam cartas (saem da coleção). Valores: standard | pioneer | modern | legacy.",
+  "premodern_decks_completos": [],
+  "_premodern_decks_completos": "Premodern é estável: só os decks COMPLETOS saem da coleção (as cartas ficam só no deck). Lista os nomes já montados. Opções: Stiflenought, UW Replenish, Enchantress, Oath of Druids, Elves, Ill-Gotten Gains."
+}
