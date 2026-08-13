@@ -198,7 +198,7 @@ function render(db){
     // posse vem das sub-coleções FÍSICAS do pool (ex.: "SPML"), não dos decks-alvo
     const ownSubs=Object.keys(ownedFull).filter(s=>(meta[s]||{}).pool===key);
     const ps=poolStats(subs, ownSubs, CAPS[key]), pct=ps.needTot?Math.round(100*ps.haveTot/ps.needTot):0;
-    const colVal=subs.reduce((s,x)=>s+ownValue(x),0); totalOwn+=colVal; totalSell+=ps.sellVal;
+    const colVal=ownSubs.reduce((s,x)=>s+ownValue(x),0); totalOwn+=colVal; totalSell+=ps.sellVal;
 
     const sec=document.createElement("section");
     sec.innerHTML=`<h2>${esc(title)}</h2>`;
