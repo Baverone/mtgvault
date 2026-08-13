@@ -56,58 +56,84 @@ def _card(x, badge_cls="q"):
             f'<span class="{badge_cls}">{x["q"]}</span>{fo}{pt}</div>')
 
 
-def build(con, out_path=None):
-    out = Path(out_path) if out_path else (ROOT / "colecao_cor.html")
-    rep = classify.build(con)
+# As duas coleções, na ordem em que aparecem. (slug para os âncoras, rótulo, e
+# o nome do balde `sub_collection` que classify.py devolve em cada linha.)
+POOLS = [
+    ("spml", "🔷 SPML — Standard · Pioneer · Modern · Legacy", "SPML"),
+    ("pm", "🕰️ Premodern", "Premodern (geral)"),
+]
 
-    # Coleção: agrupada por cor -> custo de mana.
+
+def _render_collection(slug, label, rows):
+    """Uma coleção inteira: cabeçalho + sub-nav de cores + grelhas por cor→CMC."""
     groups = defaultdict(lambda: defaultdict(list))
-    for r in rep["colecao"]:
+    for r in rows:
         b = _bucket(r["tl"], r["ci"])
         cmc = 0 if b == "Terras" else int(r["cmc"] or 0)
         groups[b][cmc].append(r)
-
-    nav = " · ".join(f'<a href="#{b}">{b}</a>' for b in ORDER if groups.get(b))
-    secs = ""
+    total = sum(r["q"] for r in rows)
+    out = (f'<h2 id="pool-{slug}" class="pool">{label} <span class="n">{total}</span></h2>')
+    colnav = " · ".join(f'<a href="#{slug}-{b}">{b}</a>' for b in ORDER if groups.get(b))
+    out += f'<div class="colnav">{colnav}</div>'
     for b in ORDER:
         cm = groups.get(b)
         if not cm:
             continue
         tot = sum(x["q"] for lst in cm.values() for x in lst)
-        secs += f'<h2 id="{html.escape(b)}">{html.escape(b)} <span class="n">{tot}</span></h2>'
+        out += f'<h3 id="{slug}-{html.escape(b)}">{html.escape(b)} <span class="n">{tot}</span></h3>'
         for cmc in sorted(cm):
             cards = sorted(cm[cmc], key=lambda x: (x["nm"] or "").lower())
             sub = "Terras" if b == "Terras" else f"CMC {cmc}"
-            secs += f'<h3>{sub} <span class="n">{sum(x["q"] for x in cards)}</span></h3><div class="grid">'
-            secs += "".join(_card(x) for x in cards)
-            secs += "</div>"
+            out += f'<h4>{sub} <span class="n">{sum(x["q"] for x in cards)}</span></h4><div class="grid">'
+            out += "".join(_card(x) for x in cards)
+            out += "</div>"
+    return out
 
-    # Vender: agregado por nome+motivo (as cópias acima de 4, etc.).
-    vend = defaultdict(lambda: {"q": 0, "row": None})
-    for r in rep["vender"]:
-        k = (r["nm"], r["reason"])
-        vend[k]["q"] += r["q"]
-        vend[k]["row"] = r
+
+def build(con, out_path=None):
+    out = Path(out_path) if out_path else (ROOT / "colecao_cor.html")
+    rep = classify.build(con)
+
+    # Coleção: separada por pool (SPML / Premodern), cada uma por cor→CMC.
+    by_pool = defaultdict(list)
+    for r in rep["colecao"]:
+        by_pool[r["sub"]].append(r)
+    secs = "".join(_render_collection(slug, label, by_pool.get(sub, []))
+                   for slug, label, sub in POOLS)
+    topnav = " · ".join(f'<a href="#pool-{slug}">{label.split(" — ")[0]}</a>'
+                        for slug, label, _ in POOLS)
+
+    # Vender: separado pelo mesmo pool, depois por motivo, agregado por nome.
     vsec = ""
-    if vend:
-        by_reason = defaultdict(list)
-        for (nm, reason), v in vend.items():
-            by_reason[reason].append((nm, v))
-        vsec += (f'<h2 id="Vender">🔴 Vender <span class="n">{rep["counts"]["vender"]}</span></h2>'
+    if rep["vender"]:
+        vsec += (f'<h2 id="Vender" class="pool">🔴 Vender <span class="n">{rep["counts"]["vender"]}</span></h2>'
                  '<p class="hint">Sugestões — <b>confirma antes de vender</b>. Alguns duplicados '
                  '(terras duais, fetchlands) podes querer manter para montar vários decks ao mesmo tempo.</p>')
-        for reason in sorted(by_reason):
-            items = sorted(by_reason[reason], key=lambda t: -t[1]["q"])
-            vsec += f'<h3>{html.escape(reason)} <span class="n">{sum(v["q"] for _, v in items)}</span></h3><div class="grid">'
-            for nm, v in items:
-                row = dict(v["row"]); row["q"] = v["q"]
-                vsec += _card(row, badge_cls="q sell")
-            vsec += "</div>"
+        for slug, label, sub in POOLS:
+            rows = [r for r in rep["vender"] if r["sub"] == sub]
+            if not rows:
+                continue
+            agg = defaultdict(lambda: {"q": 0, "row": None})
+            for r in rows:
+                k = (r["nm"], r["reason"])
+                agg[k]["q"] += r["q"]
+                agg[k]["row"] = r
+            vsec += f'<h3>{label.split(" — ")[0]} <span class="n">{sum(r["q"] for r in rows)}</span></h3>'
+            by_reason = defaultdict(list)
+            for (nm, reason), v in agg.items():
+                by_reason[reason].append(v)
+            for reason in sorted(by_reason):
+                items = sorted(by_reason[reason], key=lambda v: -v["q"])
+                vsec += f'<h4>{html.escape(reason)}</h4><div class="grid">'
+                for v in items:
+                    row = dict(v["row"]); row["q"] = v["q"]
+                    vsec += _card(row, badge_cls="q sell")
+                vsec += "</div>"
 
     c = rep["counts"]
     today = con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or ""
     out.write_text(_TMPL.replace("%SECS%", secs).replace("%VENDER%", vsec)
-                   .replace("%NAV%", nav).replace("%COL%", str(c["colecao"]))
+                   .replace("%NAV%", topnav).replace("%COL%", str(c["colecao"]))
                    .replace("%DECK%", str(c["deck"])).replace("%SELL%", str(c["vender"]))
                    .replace("%TODAY%", today), encoding="utf-8")
     return out
@@ -122,8 +148,10 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  h1{margin:0 0 2px;font-size:21px} .sub{color:var(--muted);font-size:13px;margin-bottom:6px} .sub a{color:var(--accent)}
  .nav{position:sticky;top:0;background:var(--bg);padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;z-index:5}
  .nav a{color:var(--accent);margin-right:10px;text-decoration:none}
- h2{font-size:17px;margin:20px 0 4px;border-bottom:2px solid var(--line);padding-bottom:4px}
- h3{color:var(--muted);font-size:12px;margin:12px 0 4px;text-transform:uppercase;letter-spacing:.04em}
+ h2.pool{font-size:20px;margin:30px 0 2px;padding:6px 10px;border-radius:8px;background:#141b26;border:1px solid var(--line);border-left:4px solid var(--accent)}
+ .colnav{font-size:12px;margin:0 0 6px;padding-left:2px} .colnav a{color:var(--accent);margin-right:8px;text-decoration:none}
+ h3{font-size:16px;margin:16px 0 4px;border-bottom:2px solid var(--line);padding-bottom:3px}
+ h4{color:var(--muted);font-size:12px;margin:10px 0 4px;text-transform:uppercase;letter-spacing:.04em}
  .n{color:var(--muted);font-size:12px;font-weight:400}
  .grid{display:flex;flex-wrap:wrap;gap:6px}
  .c{position:relative;width:74px} .c img{width:74px;border-radius:5px;display:block;background:#0c0f14}

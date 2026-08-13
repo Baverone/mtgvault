@@ -191,7 +191,7 @@ def build(con):
                 avail -= take
                 if state == "deck":
                     continue
-                row = {k: g[k] for k in ("sid", "nm", "cmc", "tl", "ci", "fin", "lang")}
+                row = {k: g[k] for k in ("sid", "nm", "cmc", "tl", "ci", "fin", "lang", "sub")}
                 row["q"] = take
                 if state == "colecao":
                     colecao.append(row)
