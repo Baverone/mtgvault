@@ -207,6 +207,35 @@ def reservations(con: sqlite3.Connection) -> list[dict]:
             GROUP BY d.id, c.name ORDER BY d.name, c.name""")]
 
 
+def deck_card_needs(con: sqlite3.Connection) -> dict[str, int]:
+    """Quantas cópias de cada carta os decks pedem — o máximo que UM único deck
+    usa (main+side). É o que precisa de ficar guardado para os decks."""
+    needs: dict[str, int] = {}
+    for r in con.execute("SELECT deck_id, card_name, SUM(quantity) q FROM deck_cards "
+                         "GROUP BY deck_id, card_name"):
+        needs[r["card_name"]] = max(needs.get(r["card_name"], 0), r["q"])
+    return needs
+
+
+def deck_extras(con: sqlite3.Connection) -> list[dict]:
+    """Regra do André: as cópias a MAIS das cartas que estão em decks são
+    "cartas extra dos decks" (backup — guardar), NUNCA excedente para venda. Só
+    cartas que não estão em deck nenhum é que podem ser excedente de venda.
+
+    Devolve, por carta que está em decks e de que ele tem mais do que o deck usa,
+    quantas cópias são extra dos decks. Só conta exemplares 'player' (owned_playable).
+    """
+    needs = deck_card_needs(con)
+    owned = owned_playable(con)
+    out = []
+    for name, need in needs.items():
+        have = owned.get(name, 0)
+        if have > need:
+            out.append({"card_name": name, "owned": have, "deck_need": need,
+                        "extra": have - need})
+    return sorted(out, key=lambda x: -x["extra"])
+
+
 def collection_value(con: sqlite3.Connection, source: str = "cardmarket") -> list[dict]:
     """Valor atual de cada lote, com o preço mais recente disponível."""
     rows = con.execute(

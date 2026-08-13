@@ -70,6 +70,13 @@ wantlists ou cobertura.
 `owned_playable(con, for_deck_id)` exclui as reservadas a *outros* decks. Se
 acrescentares uma consulta nova de disponibilidade, tem de respeitar isto.
 
+**Extras dos decks NÃO são para venda.** As cópias a mais de uma carta que está
+num deck são "cartas extra dos decks" (backup — guardar), nunca excedente para
+venda. Ex.: o deck usa 2, ele tem 4 → 2 são extra dos decks. Só cartas que não
+estão em deck nenhum é que podem ser excedente de venda. `collection.deck_extras`
+calcula isto (owned − o que o deck usa). Qualquer sugestão de "vender" tem de
+excluir estas — e as que estão em uso nos decks.
+
 **Core vs tech.** `core_copies` = maior k tal que P(cópias >= k) >= 0.90,
 medido sobre *todas* as listas do arquétipo, não só as que jogam a carta.
 Exemplo canónico (está em `test_analysis.py`): 80% joga 3 cópias, 20% joga 4
