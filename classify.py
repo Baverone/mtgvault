@@ -9,15 +9,17 @@ Regras (ditadas pelo André, 2026-08-13):
   - SÓ os baldes "SPML" e "Premodern (geral)" são coleção. Todo o resto
     (Blue Farm, Cloud, Cloud cEDH, Pauper Affinity) são decks montados → Deck
     inteiro, fora da Coleção.
-  - SPML é DINÂMICO (colecao_config.json → spml_formato_ativo): o André diz que
-    formato está a jogar agora; só os decks desse formato (tabela `decks`)
-    reservam cartas → Deck. O resto do SPML é coleção.
-  - Premodern é ESTÁVEL (roda pouco/nada as listas): só os decks marcados como
-    COMPLETOS (colecao_config.json → premodern_decks_completos) saem da coleção;
-    as suas cartas ficam só no deck. Enquanto um deck de Premodern não está
-    completo, as cartas dele ficam na coleção (ainda a montar). A lista de cada
-    deck completo vem do CONSENSO das listas do arquétipo já recolhidas
-    (assinatura → cartas em >=40% delas). É aproximado, como ele pediu.
+  - SPML é DINÂMICO (colecao_config.json → spml_formatos): o André joga vários
+    formatos ao mesmo tempo, cada um com um estado. Os que estão 'a jogar' ou
+    'a treinar' são ATIVOS e os seus decks (tabela `decks`) reservam cartas →
+    Deck. 'a preparar' = só wantlist, não reserva. 'ignorar' = fora.
+  - Premodern é ESTÁVEL (roda pouco/nada as listas). A completude é DETETADA:
+    um deck está completo quando o André tem 100% da lista do arquétipo
+    (CONSENSO das listas recolhidas, assinatura → cartas em >=40% delas). Quando
+    completo, as cartas trancam-se no deck (saem da coleção) e ficam lá até ele
+    desmontar; se a lista mudar depois, as cartas NÃO voltam à coleção — só se
+    dá a wantlist do que falta para recompletar. `premodern_decks_completos` no
+    config é a tranca sticky (para o caso de a lista mudar). É aproximado.
   - Uma carta de deck: as cópias que o deck precisa são Deck; as que sobram até
     4 são backup (Coleção); acima de 4, Vender.
   - Uma carta que não é de deck mas se joga no formato: Coleção até 4, resto Vender.
@@ -42,6 +44,8 @@ COLLECTION_SUBS = {"SPML": "msl", "Premodern (geral)": "premodern"}
 CONSTRUCTED_LIMIT = 4          # playset: acima disto, vender
 PREMODERN_INCLUSION = 0.40     # carta em >=40% das listas do arquétipo = é do deck
 MSL_FORMATS = ("standard", "pioneer", "modern", "legacy")
+# Estados de formato que RESERVAM cartas (saem da coleção para o deck ativo).
+ACTIVE_STATUSES = ("a jogar", "a treinar")
 # Formatos "reais": se uma carta não é legal em NENHUM destes, não joga em nada.
 # (Uma carta jogável mas que o André não vai usar fica na Coleção por agora —
 #  vender essas é uma afinação para mais tarde, decisão dele.)
@@ -65,49 +69,49 @@ BASICS = {"Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes",
 
 
 def _config():
-    """Lê colecao_config.json (formato ativo de SPML + decks completos de
-    Premodern). Sem ficheiro, cai nos valores por omissão."""
+    """Lê colecao_config.json. Devolve (spml_formatos, premodern_completos):
+    spml_formatos = {formato: estado}; completos = tranca sticky de Premodern."""
     try:
         cfg = json.loads((ROOT / "colecao_config.json").read_text(encoding="utf-8"))
     except Exception:
         cfg = {}
-    return (cfg.get("spml_formato_ativo", "modern"),
+    return (cfg.get("spml_formatos", {"modern": "a jogar"}),
             cfg.get("premodern_decks_completos", []))
 
 
-def _format_need(con, fmt):
-    """Quantas cópias cada carta precisa nos decks de um formato (tabela `decks`).
-    MAX entre decks (partilham o core e monta-se um de cada vez)."""
+def _format_need(con, formatos):
+    """Quantas cópias cada carta precisa nos decks dos formatos ATIVOS (tabela
+    `decks`). MAX entre decks (partilham core e monta-se um de cada vez)."""
     need = defaultdict(int)
+    if not formatos:
+        return need
+    marks = ",".join("?" for _ in formatos)
     for r in con.execute(
-        """SELECT dc.card_name nm, dc.deck_id did, SUM(dc.quantity) q
+        f"""SELECT dc.card_name nm, dc.deck_id did, SUM(dc.quantity) q
              FROM deck_cards dc JOIN decks d ON d.id = dc.deck_id
-            WHERE d.format = ?
-            GROUP BY dc.deck_id, dc.card_name""", (fmt,)):
+            WHERE d.format IN ({marks})
+            GROUP BY dc.deck_id, dc.card_name""", tuple(formatos)):
         need[r["nm"]] = max(need[r["nm"]], min(r["q"], CONSTRUCTED_LIMIT))
     return need
 
 
-def _premodern_need(con, completos):
-    """Consenso das listas de cada deck de Premodern JÁ COMPLETO do André.
-    Só os decks em `completos` saem da coleção. Devolve need[carta] = maior qty
-    típica entre esses decks (vazio se nenhum estiver completo)."""
-    need = defaultdict(int)
+def _premodern_deck_lists(con):
+    """Consenso (carta -> qty típica) de cada deck de Premodern do André, a
+    partir das listas do arquétipo já recolhidas. É a lista-alvo de cada deck."""
+    lists = {}
     for deck, sigs in PREMODERN_DECKS.items():
-        if deck not in completos:
-            continue
         marks = ",".join("?" for _ in sigs)
         ids = [r[0] for r in con.execute(
             f"""SELECT DISTINCT dl.id FROM decklists dl
                   JOIN decklist_cards dc ON dc.decklist_id = dl.id
                  WHERE dl.format = 'premodern' AND dc.card_name IN ({marks})""", sigs)]
         if not ids:
+            lists[deck] = {}
             continue
         marks_id = ",".join("?" for _ in ids)
         n = len(ids)
-        # Por carta: em quantas listas entra e com que quantidades (para a moda).
-        seen = defaultdict(set)   # carta -> {decklist_id}
-        qtys = defaultdict(list)  # carta -> [qty por lista]
+        seen = defaultdict(set)
+        qtys = defaultdict(list)
         for r in con.execute(
             f"""SELECT card_name nm, decklist_id lid, SUM(quantity) q
                   FROM decklist_cards
@@ -116,13 +120,46 @@ def _premodern_need(con, completos):
                  GROUP BY decklist_id, card_name""", ids):
             seen[r["nm"]].add(r["lid"])
             qtys[r["nm"]].append(r["q"])
+        cons = {}
         for nm, lids in seen.items():
             if nm in BASICS:
                 continue
             if len(lids) / n >= PREMODERN_INCLUSION:
-                mode_q = Counter(qtys[nm]).most_common(1)[0][0]
-                need[nm] = max(need[nm], min(mode_q, CONSTRUCTED_LIMIT))
-    return need
+                cons[nm] = min(Counter(qtys[nm]).most_common(1)[0][0], CONSTRUCTED_LIMIT)
+        lists[deck] = cons
+    return lists
+
+
+def _owned_premodern(con):
+    """Cartas que o André tem no balde Premodern (geral), por nome."""
+    owned = defaultdict(int)
+    for r in con.execute(
+        """SELECT c.name nm, SUM(cp.quantity) q FROM copies cp
+             JOIN cards c ON c.scryfall_id = cp.scryfall_id
+             JOIN sub_collections s ON s.id = cp.sub_collection_id
+            WHERE cp.purpose = 'player' AND s.name = 'Premodern (geral)'
+            GROUP BY c.name"""):
+        owned[r["nm"]] += r["q"]
+    return owned
+
+
+def premodern_status(con, sticky=()):  # noqa: C901
+    """Estado de cada deck de Premodern: completo?, %, cartas em falta.
+    Um deck está trancado (completo) se tem 100% da lista OU está na tranca
+    sticky do config. Devolve {deck: {complete, locked, pct, have, need_tot,
+    missing:[(carta, precisa, tens)], cons:{...}}}."""
+    lists = _premodern_deck_lists(con)
+    owned = _owned_premodern(con)
+    out = {}
+    for deck, cons in lists.items():
+        need_tot = sum(cons.values())
+        have = sum(min(owned.get(nm, 0), q) for nm, q in cons.items())
+        missing = [(nm, q, owned.get(nm, 0)) for nm, q in cons.items() if owned.get(nm, 0) < q]
+        complete = bool(cons) and not missing
+        out[deck] = {"complete": complete, "locked": complete or deck in sticky,
+                     "pct": round(100 * have / need_tot) if need_tot else 0,
+                     "have": have, "need_tot": need_tot, "missing": missing, "cons": cons}
+    return out
 
 
 def _played_names(con, formats):
@@ -148,9 +185,17 @@ def build(con):
     """Devolve {'colecao':[...], 'vender':[...], 'deck_total':int, 'counts':{...},
     'premodern_need':N, 'modern_need':N}. Cada linha de coleção/venda tem
     sid,nm,cmc,tl,ci,fin,lang,q (+ reason nas de venda)."""
-    active_fmt, completos = _config()
-    need = {"msl": _format_need(con, active_fmt),
-            "premodern": _premodern_need(con, completos)}
+    spml_formatos, completos = _config()
+    active_fmts = [f for f, s in spml_formatos.items() if s in ACTIVE_STATUSES]
+    # Premodern: só os decks trancados (completos ou sticky) reservam cartas.
+    pm_status = premodern_status(con, sticky=completos)
+    pm_need = defaultdict(int)
+    for deck, st in pm_status.items():
+        if not st["locked"]:
+            continue
+        for nm, q in st["cons"].items():
+            pm_need[nm] = max(pm_need[nm], q)
+    need = {"msl": _format_need(con, active_fmts), "premodern": pm_need}
     played = {"msl": _played_names(con, MSL_FORMATS),
               "premodern": _played_names(con, ("premodern",))}
 
@@ -223,8 +268,8 @@ def build(con):
               "colecao": sum(r["q"] for r in colecao),
               "vender": sum(r["q"] for r in vender)}
     return {"colecao": colecao, "vender": vender, "deck_total": deck_total,
-            "counts": counts, "spml_formato_ativo": active_fmt,
-            "premodern_completos": completos,
+            "counts": counts, "spml_formatos": spml_formatos,
+            "spml_ativos": active_fmts, "premodern_status": pm_status,
             "spml_need": len(need["msl"]), "premodern_need": len(need["premodern"])}
 
 
@@ -232,13 +277,14 @@ def main():
     from mtgvault import db
     with db.session() as con:
         rep = build(con)
-    print(f"SPML ativo: {rep['spml_formato_ativo']} ({rep['spml_need']} cartas de deck); "
-          f"Premodern completos: {rep['premodern_completos'] or 'nenhum'} "
-          f"({rep['premodern_need']} cartas de deck)")
+    print(f"SPML ativos (reservam): {rep['spml_ativos']} ({rep['spml_need']} cartas de deck)")
+    print(f"Formatos SPML: {rep['spml_formatos']}")
     print("Contagem:", rep["counts"])
-    print("\nExemplos a Vender:")
-    for r in sorted(rep["vender"], key=lambda x: x["reason"])[:15]:
-        print(f"  {r['q']}x {r['nm']:<28} [{r['reason']}]")
+    print("\nPremodern — completude por deck:")
+    for deck, st in sorted(rep["premodern_status"].items(), key=lambda kv: -kv[1]["pct"]):
+        flag = "COMPLETO 🔒" if st["complete"] else ("trancado (sticky)" if st["locked"] else "a montar")
+        print(f"  {deck:<18} {st['pct']:>3}%  ({st['have']}/{st['need_tot']})  {flag}"
+              f"  faltam {len(st['missing'])} cartas")
 
 
 if __name__ == "__main__":

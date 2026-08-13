@@ -137,11 +137,17 @@ def build(con, out_path=None):
                 vsec += "</div>"
 
     c = rep["counts"]
-    fmt = (rep["spml_formato_ativo"] or "modern").capitalize()
-    comp = ", ".join(rep["premodern_completos"]) or "nenhum ainda"
-    cfg_line = (f'🔷 SPML — a jogar agora: <b>{html.escape(fmt)}</b> &nbsp;·&nbsp; '
-                f'🕰️ Premodern completos: <b>{html.escape(comp)}</b>'
-                f'<span class="muted"> — diz-me para trocar de formato ou marcar um deck completo</span>')
+    ESTADO = {"a jogar": "#4ac585", "a treinar": "#e0b64b",
+              "a preparar": "#5b8cff", "ignorar": "#93a0ad"}
+    fmts = " ".join(
+        f'<b style="color:{ESTADO.get(s, "#93a0ad")}">{html.escape(f.capitalize())}</b>'
+        f'<span class="muted"> {html.escape(s)}</span>'
+        for f, s in rep["spml_formatos"].items())
+    pm = rep["premodern_status"]
+    completos = [d for d, st in pm.items() if st["locked"]]
+    pm_str = ", ".join(completos) if completos else f"0 completos · {len(pm)} a montar"
+    cfg_line = (f'🔷 SPML: {fmts} &nbsp;·&nbsp; 🕰️ Premodern: <b>{html.escape(pm_str)}</b>'
+                f'<span class="muted"> — diz-me se mudas de formato ou quando montas um deck</span>')
     today = con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or ""
     out.write_text(_TMPL.replace("%SECS%", secs).replace("%VENDER%", vsec)
                    .replace("%NAV%", topnav).replace("%COL%", str(c["colecao"]))
