@@ -31,6 +31,7 @@ from mtgvault import (analysis, db, mtgtop8, prices, scryfall, sources,  # noqa:
 
 import core_decks  # noqa: E402  (gera coredecks.html + tracking de alteracoes)
 import collection_gallery  # noqa: E402  (gera colecao.html — galeria com imagens)
+import colecao_cor  # noqa: E402  (gera colecao_cor.html — coleção por cor + custo de mana)
 import meta_coverage  # noqa: E402  (gera cobertura.html — top decks + % que tenho + o que falta)
 import alertas  # noqa: E402  (gera alertas.html — o que vender/comprar por movimento de preço)
 import my_decks  # noqa: E402  (mantém atualizadas as listas dos decks que o André segue)
@@ -178,6 +179,8 @@ def main():
         _step(con, "posse-site", lambda: refresh_collection.refresh(con))
         _step(con, "galeria-colecao",
               lambda: str(collection_gallery.build(con, ROOT / "colecao.html")))
+        _step(con, "colecao-cor",
+              lambda: str(colecao_cor.build(con, ROOT / "colecao_cor.html")))
         # Cobertura do metagame: top decks por formato, % que já tenho e o que falta.
         # Depois da análise (arquétipos/roles) e dos preços — depende dos dois.
         _step(con, "cobertura-metagame",
