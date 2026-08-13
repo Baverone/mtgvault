@@ -56,37 +56,29 @@ def _card(x, badge_cls="q"):
             f'<span class="{badge_cls}">{x["q"]}</span>{fo}{pt}</div>')
 
 
-# As duas coleções, na ordem em que aparecem. (slug para os âncoras, rótulo, e
-# o nome do balde `sub_collection` que classify.py devolve em cada linha.)
-POOLS = [
-    ("spml", "🔷 SPML — Standard · Pioneer · Modern · Legacy", "SPML"),
-    ("pm", "🕰️ Premodern", "Premodern (geral)"),
-]
+# Um "binder" por cor. Ícone e slug (para âncoras) de cada cor.
+ICON = {"Branco": "⬜", "Azul": "🟦", "Preto": "⬛", "Vermelho": "🟥", "Verde": "🟩",
+        "Multicor": "🟪", "Incolor / Artefacto": "⚙️", "Terras": "🏔️"}
+SLUG = {"Branco": "branco", "Azul": "azul", "Preto": "preto", "Vermelho": "vermelho",
+        "Verde": "verde", "Multicor": "multicor", "Incolor / Artefacto": "incolor",
+        "Terras": "terras"}
+# As duas coleções (balde sub_collection -> rótulo curto), pela ordem em que
+# aparecem DENTRO de cada cor.
+POOLS = [("SPML", "🔷 SPML"), ("Premodern (geral)", "🕰️ Premodern")]
 
 
-def _render_collection(slug, label, rows):
-    """Uma coleção inteira: cabeçalho + sub-nav de cores + grelhas por cor→CMC."""
-    groups = defaultdict(lambda: defaultdict(list))
+def _cmc_grids(rows, is_land):
+    """Grelhas por custo de mana (ou uma só, para Terras)."""
+    bycmc = defaultdict(list)
     for r in rows:
-        b = _bucket(r["tl"], r["ci"])
-        cmc = 0 if b == "Terras" else int(r["cmc"] or 0)
-        groups[b][cmc].append(r)
-    total = sum(r["q"] for r in rows)
-    out = (f'<h2 id="pool-{slug}" class="pool">{label} <span class="n">{total}</span></h2>')
-    colnav = " · ".join(f'<a href="#{slug}-{b}">{b}</a>' for b in ORDER if groups.get(b))
-    out += f'<div class="colnav">{colnav}</div>'
-    for b in ORDER:
-        cm = groups.get(b)
-        if not cm:
-            continue
-        tot = sum(x["q"] for lst in cm.values() for x in lst)
-        out += f'<h3 id="{slug}-{html.escape(b)}">{html.escape(b)} <span class="n">{tot}</span></h3>'
-        for cmc in sorted(cm):
-            cards = sorted(cm[cmc], key=lambda x: (x["nm"] or "").lower())
-            sub = "Terras" if b == "Terras" else f"CMC {cmc}"
-            out += f'<h4>{sub} <span class="n">{sum(x["q"] for x in cards)}</span></h4><div class="grid">'
-            out += "".join(_card(x) for x in cards)
-            out += "</div>"
+        bycmc[0 if is_land else int(r["cmc"] or 0)].append(r)
+    out = ""
+    for cmc in sorted(bycmc):
+        cards = sorted(bycmc[cmc], key=lambda x: (x["nm"] or "").lower())
+        lbl = "Terras" if is_land else f"CMC {cmc}"
+        out += f'<h4>{lbl} <span class="n">{sum(x["q"] for x in cards)}</span></h4><div class="grid">'
+        out += "".join(_card(x) for x in cards)
+        out += "</div>"
     return out
 
 
@@ -94,22 +86,36 @@ def build(con, out_path=None):
     out = Path(out_path) if out_path else (ROOT / "colecao_cor.html")
     rep = classify.build(con)
 
-    # Coleção: separada por pool (SPML / Premodern), cada uma por cor→CMC.
-    by_pool = defaultdict(list)
+    # Coleção: um binder por COR; dentro, SPML e Premodern separados, por CMC.
+    colrows = defaultdict(lambda: defaultdict(list))   # cor -> balde -> linhas
     for r in rep["colecao"]:
-        by_pool[r["sub"]].append(r)
-    secs = "".join(_render_collection(slug, label, by_pool.get(sub, []))
-                   for slug, label, sub in POOLS)
-    topnav = " · ".join(f'<a href="#pool-{slug}">{label.split(" — ")[0]}</a>'
-                        for slug, label, _ in POOLS)
+        colrows[_bucket(r["tl"], r["ci"])][r["sub"]].append(r)
 
-    # Vender: separado pelo mesmo pool, depois por motivo, agregado por nome.
+    secs, navs = "", []
+    for b in ORDER:
+        pools = colrows.get(b)
+        if not pools:
+            continue
+        total = sum(x["q"] for rs in pools.values() for x in rs)
+        slug = SLUG[b]
+        navs.append(f'<a href="#bind-{slug}">{ICON[b]} {b}</a>')
+        secs += (f'<h2 id="bind-{slug}" class="pool">{ICON[b]} {html.escape(b)} '
+                 f'<span class="n">{total}</span></h2>')
+        for sub, short in POOLS:
+            rs = pools.get(sub)
+            if not rs:
+                continue
+            secs += f'<h3>{short} <span class="n">{sum(x["q"] for x in rs)}</span></h3>'
+            secs += _cmc_grids(rs, b == "Terras")
+    topnav = " · ".join(navs)
+
+    # Vender: por pool, depois por motivo, agregado por nome.
     vsec = ""
     if rep["vender"]:
         vsec += (f'<h2 id="Vender" class="pool">🔴 Vender <span class="n">{rep["counts"]["vender"]}</span></h2>'
                  '<p class="hint">Sugestões — <b>confirma antes de vender</b>. Alguns duplicados '
                  '(terras duais, fetchlands) podes querer manter para montar vários decks ao mesmo tempo.</p>')
-        for slug, label, sub in POOLS:
+        for sub, short in POOLS:
             rows = [r for r in rep["vender"] if r["sub"] == sub]
             if not rows:
                 continue
@@ -118,7 +124,7 @@ def build(con, out_path=None):
                 k = (r["nm"], r["reason"])
                 agg[k]["q"] += r["q"]
                 agg[k]["row"] = r
-            vsec += f'<h3>{label.split(" — ")[0]} <span class="n">{sum(r["q"] for r in rows)}</span></h3>'
+            vsec += f'<h3>{short} <span class="n">{sum(r["q"] for r in rows)}</span></h3>'
             by_reason = defaultdict(list)
             for (nm, reason), v in agg.items():
                 by_reason[reason].append(v)
@@ -166,12 +172,12 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  footer{margin-top:24px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
 <header><h1>🎨 Coleção — por cor e custo de mana</h1>
-<div class="sub">a ordem por que arrumar · dados de %TODAY% · <a href="index.html">← início</a> · <a href="cobertura.html">cobertura</a> · <a href="colecao.html">galeria (por deck)</a></div>
+<div class="sub">um binder por cor · dentro, SPML e Premodern separados, por custo de mana · dados de %TODAY% · <a href="index.html">← início</a> · <a href="cobertura.html">cobertura</a> · <a href="colecao.html">galeria (por deck)</a></div>
 <div class="tally"><b class="t-col">🔵 %COL% em coleção</b><b class="t-deck">🟢 %DECK% em decks (fora)</b><b class="t-sell">🔴 %SELL% a vender</b></div></header>
 <div class="nav">%NAV% · <a href="#Vender">🔴 Vender</a></div>
 %SECS%
 %VENDER%
-<footer>Só a <b>coleção solta</b> aparece por cor (o que arrumas fisicamente). As cartas dos decks montados (Blue Farm, Cloud, Cloud cEDH, Pauper, e as dos decks de Modern/Premodern) ficam de fora — estão nos decks. As de venda são as cópias acima de 4. O número em cada carta é quantas tens; ★ = foil, PT = português. Se tiveres mais na mão do que o número — ou uma carta que não aparece — ainda não está catalogada: fotografa. Atualiza sozinho todos os dias.</footer>
+<footer><b>Um binder por cor</b>; dentro de cada cor, a coleção de <b>SPML</b> e a de <b>Premodern</b> separadas, cada uma por custo de mana (as Terras por nome). Só aparece a coleção solta — as cartas dos decks montados ficam de fora. As de venda são as cópias acima de 4. O número em cada carta é quantas tens; ★ = foil, PT = português. Se tiveres mais na mão do que o número — ou uma carta que não aparece — ainda não está catalogada: fotografa. Atualiza sozinho todos os dias.</footer>
 </div></body></html>"""
 
 
