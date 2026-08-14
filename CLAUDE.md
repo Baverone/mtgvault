@@ -42,9 +42,26 @@ mtgvault/
   watchlist.py    vigiar jogadores e decks, snapshots e diffs
   prices.py       Scryfall bulk (grátis) + Cardmarket (ficheiro) + CardTrader (API)
   cli.py          interface de linha de comandos
-daily.py          o job diário
+daily.py          o job diário (encadeia tudo o que está abaixo)
 .github/workflows/daily.yml
 ```
+
+**Geradores do site (scripts na raiz, corridos pelo `daily.py`, HTML no GitHub Pages):**
+```
+meta_coverage.py    cobertura.html — top-10 ponderado por torneio + staples + emergentes
+buildability.py     buildability.html — decks-alvo + resto do metagame, % e o que falta, + loadout
+classify.py         classificação Deck/Coleção/Vender (alimenta colecao_cor.html)
+colecao_cor.py      colecao_cor.html — coleção por cor→CMC (binders), SPML/Premodern separados
+collection_gallery.py  colecao.html — galeria por sub-coleção
+core_decks.py       coredecks.html — consenso dos decks seguidos
+alertas.py          alertas.html — vender/comprar por movimento de preço
+my_decks.py         segue decks-alvo (por assinatura e por jogador de MTGO) -> tabela decks
+commander_decks.py  decks de comandante por consenso (ex.: Cloud DC) -> tabela decks
+refresh_collection.py  collection_owned p/ o index.html
+colecao_config.json    config: spml_formatos, premodern_decks_completos, regras_colecao
+```
+Cada `.html` gerado tem de estar no `git add -f` do workflow (`daily.yml`) e, se
+for página nova, com link no `index.html`.
 
 ### Duas bases de dados
 
