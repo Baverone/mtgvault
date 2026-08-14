@@ -114,6 +114,20 @@ regra do André já implementada, que alimenta a página `colecao_cor.html`:
   *loadout* de decks montáveis em simultâneo. Qualquer sugestão de "vender"
   tem de respeitar isto.
 
+**Alinhamento deck ↔ lista vigiada ↔ balde (2026-08-14).** Cada deck real do
+André = um balde (`sub_collections`) + uma lista vigiada (`watched`), ligados na
+tabela `deck_collection`. Já ligados: Blue Farm [Primer]→`Blue Farm`, Cloud
+[cEDH]→`Cloud cEDH` (distinto do Cloud de Duel Commander, balde `Cloud`), Luffy —
+Pauper→`Pauper Affinity`. Por ligar: Luffy — Premodern (Stiflenought), Harry1232
+— Legacy. `deck_collection` ainda não é lido por código — é o mapa do modelo.
+
+**Regras por coleção (`colecao_config.json` → `regras_colecao`).**
+`reter_extras_meses`: N (Pauper Affinity = 3). As cartas EXTRA (além do que a
+lista do deck pede) guardam-se até N meses da última utilização; passado esse
+tempo sem uso, vão para Vender. **Por decidir:** o que conta como "última
+utilização" (última vez na lista vigiada vs jogo real do André) — ainda não
+implementado em `classify.py`.
+
 **Core vs tech.** `core_copies` = maior k tal que P(cópias >= k) >= 0.90,
 medido sobre *todas* as listas do arquétipo, não só as que jogam a carta.
 Exemplo canónico (está em `test_analysis.py`): 80% joga 3 cópias, 20% joga 4
