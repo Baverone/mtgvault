@@ -20,6 +20,14 @@ FOLLOWED = [
     ("Cori-Steel Cutter", "modern", ["Mox Opal", "Cori-Steel Cutter"]),
 ]
 
+# Decks seguidos por JOGADOR de MTGO (a lista mais recente dele nesse formato),
+# em vez de por assinatura. O André escolheu estes jogadores como referência:
+# (nome do deck, formato, jogador)
+FOLLOWED_PLAYERS = [
+    ("Legacy (Harry1232)", "legacy", "Harry1232"),
+    ("Stiflenought (Luffy)", "premodern", "LuffyDoChapeuDePalha"),
+]
+
 MIN_MAIN = 55  # ignora listas truncadas/incompletas
 
 
@@ -38,28 +46,50 @@ def _latest(con: sqlite3.Connection, fmt: str, cards: list[str]):
         [fmt] + cards + [len(cards), MIN_MAIN]).fetchone()
 
 
+def _latest_player(con: sqlite3.Connection, fmt: str, player: str):
+    """Decklist mais recente de um jogador específico nesse formato."""
+    return con.execute(
+        """SELECT dl.id, dl.source, dl.player, dl.event_date FROM decklists dl
+             WHERE dl.format = ? AND dl.player = ?
+               AND (SELECT COALESCE(SUM(dc.quantity), 0) FROM decklist_cards dc
+                      WHERE dc.decklist_id = dl.id AND dc.board = 'main') >= ?
+             ORDER BY dl.event_date DESC, dl.id DESC LIMIT 1""",
+        (fmt, player, MIN_MAIN)).fetchone()
+
+
+def _store(con: sqlite3.Connection, name: str, fmt: str, dl, out: list):
+    """Grava/atualiza a decklist `dl` como deck `name`, só se a origem mudou."""
+    con.execute("INSERT OR IGNORE INTO decks (name, format) VALUES (?, ?)", (name, fmt))
+    did = con.execute("SELECT id FROM decks WHERE name = ? AND format = ?",
+                      (name, fmt)).fetchone()["id"]
+    note = f"auto: {dl['source']} {dl['player'] or '?'} {dl['event_date']} (#{dl['id']})"
+    cur = con.execute("SELECT notes FROM decks WHERE id = ?", (did,)).fetchone()["notes"]
+    if cur == note:
+        out.append(f"{name}: já atual ({dl['event_date']})")
+        return
+    con.execute("DELETE FROM deck_cards WHERE deck_id = ?", (did,))
+    for r in con.execute("SELECT card_name, quantity, board FROM decklist_cards "
+                         "WHERE decklist_id = ?", (dl["id"],)):
+        con.execute("INSERT INTO deck_cards (deck_id, card_name, quantity, board) "
+                    "VALUES (?, ?, ?, ?)", (did, r["card_name"], r["quantity"], r["board"]))
+    con.execute("UPDATE decks SET notes = ? WHERE id = ?", (note, did))
+    out.append(f"{name}: atualizado -> {dl['event_date']} {dl['player'] or '?'}")
+
+
 def refresh(con: sqlite3.Connection) -> str:
     out = []
     for name, fmt, cards in FOLLOWED:
         dl = _latest(con, fmt, cards)
-        if not dl:
+        if dl:
+            _store(con, name, fmt, dl, out)
+        else:
             out.append(f"{name}: sem lista")
-            continue
-        con.execute("INSERT OR IGNORE INTO decks (name, format) VALUES (?, ?)", (name, fmt))
-        did = con.execute("SELECT id FROM decks WHERE name = ? AND format = ?",
-                          (name, fmt)).fetchone()["id"]
-        note = f"auto: {dl['source']} {dl['player'] or '?'} {dl['event_date']} (#{dl['id']})"
-        cur = con.execute("SELECT notes FROM decks WHERE id = ?", (did,)).fetchone()["notes"]
-        if cur == note:
-            out.append(f"{name}: já atual ({dl['event_date']})")
-            continue
-        con.execute("DELETE FROM deck_cards WHERE deck_id = ?", (did,))
-        for r in con.execute("SELECT card_name, quantity, board FROM decklist_cards "
-                             "WHERE decklist_id = ?", (dl["id"],)):
-            con.execute("INSERT INTO deck_cards (deck_id, card_name, quantity, board) "
-                        "VALUES (?, ?, ?, ?)", (did, r["card_name"], r["quantity"], r["board"]))
-        con.execute("UPDATE decks SET notes = ? WHERE id = ?", (note, did))
-        out.append(f"{name}: atualizado -> {dl['event_date']} {dl['player'] or '?'}")
+    for name, fmt, player in FOLLOWED_PLAYERS:
+        dl = _latest_player(con, fmt, player)
+        if dl:
+            _store(con, name, fmt, dl, out)
+        else:
+            out.append(f"{name}: sem lista de {player}")
     con.commit()
     return "; ".join(out)
 
