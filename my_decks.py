@@ -18,6 +18,10 @@ FOLLOWED = [
     ("Izzet Affinity (Kappa Cannoneer)", "modern", ["Mox Opal", "Kappa Cannoneer"]),
     ("Grinding Station", "modern", ["Mox Opal", "Grinding Station"]),
     ("Cori-Steel Cutter", "modern", ["Mox Opal", "Cori-Steel Cutter"]),
+    # Standard. Jeskai Lessons = "Lesson" + a revelação branca que o separa do
+    # Izzet Lessons. (4c Control ainda não sai limpo do harvest — segue-se por
+    # lista de referência quando o André der uma, ou quando houver mais dados.)
+    ("Jeskai Lessons", "standard", ["Firebending Lesson", "Jeskai Revelation"]),
 ]
 
 # Decks seguidos por JOGADOR de MTGO (a lista mais recente dele nesse formato),
