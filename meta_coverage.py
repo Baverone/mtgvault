@@ -234,6 +234,48 @@ def _rank(con, fmt, n):
             GROUP BY a.id ORDER BY score DESC, COUNT(d.id) DESC LIMIT ?""", (fmt, n))]
 
 
+# Torneios "de peso" para a deteção de emergentes (importância alta).
+HIGH_TIERS = ("Champs", "Championship", "Showcase", "Qualifier", "RCQ")
+
+
+def emerging_decks(con):
+    """Decks que aparecem em torneios de PESO mas ficam FORA do top-10 do formato
+    — possíveis decks novos a surgir. Por formato, os de maior peso (mín. 2
+    aparições para cortar ruído de um resultado isolado)."""
+    tcache = {}
+    out = []
+    marks = ",".join("?" for _ in HIGH_TIERS)
+    for fmt, _title, n, _extras in FORMATS:
+        df = _format_df(con, fmt)
+        ranked = _rank(con, fmt, n)
+        top = {aid for aid, _ in ranked}
+        # nomes já no top-10 (o clustering às vezes parte um deck em 2 ids com o
+        # mesmo nome — não é "emergente" se já lá está por outro cluster).
+        top_names = {_name_for(con, aid, df, tcache) for aid, _ in ranked}
+        seen_names = set()
+        found = []
+        for r in con.execute(
+            f"""SELECT a.id, SUM({_TIER_WEIGHT}) score, COUNT(DISTINCT d.id) nlists,
+                       MAX(d.event_name) ev
+                  FROM archetypes a JOIN decklists d ON d.archetype_id = a.id
+                 WHERE a.format = ? AND d.event_date >= date('now', '-{RECENT_DAYS} days')
+                   AND d.event_tier IN ({marks})
+                 GROUP BY a.id HAVING nlists >= 2
+                 ORDER BY score DESC""", (fmt, *HIGH_TIERS)):
+            if r["id"] in top:
+                continue
+            name = _name_for(con, r["id"], df, tcache)
+            if name in seen_names or name in top_names:
+                continue
+            seen_names.add(name)
+            found.append({"fmt": fmt, "name": name, "score": round(r["score"], 1),
+                          "nlists": r["nlists"], "ev": r["ev"]})
+            if len(found) >= 3:
+                break
+        out += found
+    return out
+
+
 def _label(con, aid):
     r = con.execute("SELECT label FROM archetypes WHERE id = ?", (aid,)).fetchone()
     return r["label"] if r else f"#{aid}"
@@ -407,7 +449,7 @@ def build_report(con):
     # wantlist completa de cada deck (com staples partilhados) para exportar
     want = {d["id"]: [[m["name"], m["missing"]] for m in d["missing"]] for d in all_decks}
     return {"sections": sections, "general": general, "prints": prints, "want": want,
-            "owned_total": sum(owned.values()),
+            "owned_total": sum(owned.values()), "emerging": emerging_decks(con),
             "general_cost": round(sum(g["cost"] or 0 for g in general), 2)}
 
 
@@ -508,7 +550,21 @@ def build_html(rep, today):
     more = (f'<div class="dim" style="padding-top:8px">+ {extra} staples partilhados menores '
             f'(preço baixo) — vê cada deck para os detalhes</div>' if extra > 0 else "")
 
-    return (_TMPL.replace("%SECS%", secs).replace("%GEN%", gen or "<li class='dim'>—</li>")
+    ft = {f[0]: f[1] for f in FORMATS}
+    em = rep.get("emerging") or []
+    emerging_html = ""
+    if em:
+        rows = "".join(
+            f'<li><span class="ef">{html.escape(ft.get(e["fmt"], e["fmt"]))}</span> '
+            f'<b>{html.escape(e["name"])}</b> <span class="dim">⚖️ {e["score"]} · '
+            f'{e["nlists"]} listas de peso · {html.escape(e["ev"] or "")}</span></li>'
+            for e in em)
+        emerging_html = ('<section class="emerging"><h2>🌱 Decks a emergir '
+                         '<span class="dim">(fora do top-10, mas em torneios de peso — talvez algo novo)</span>'
+                         f'</h2><ul class="eml">{rows}</ul></section>')
+
+    return (_TMPL.replace("%SECS%", secs).replace("%EMERGING%", emerging_html)
+            .replace("%GEN%", gen or "<li class='dim'>—</li>")
             .replace("%GENMORE%", more).replace("%TODAY%", today)
             .replace("%OWNED%", str(rep["owned_total"]))
             .replace("%GENSHOWN%", _eur(shown_cost))
@@ -550,10 +606,15 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  button.cp{background:#12203f;color:var(--accent);border:1px solid var(--line);border-radius:8px;font-size:12px;padding:5px 10px;cursor:pointer;margin-top:8px} button.cp:hover{border-color:var(--accent)}
  .general{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:8px}
  .general h2{margin-top:0;border:0} .dim{color:var(--muted);font-size:12px}
+ .emerging{background:#141b12;border:1px solid #2c3a1f;border-radius:12px;padding:12px 16px;margin-top:8px}
+ .emerging h2{margin:0 0 6px;border:0;font-size:15px} .eml{list-style:none;margin:0;padding:0}
+ .eml li{padding:4px 0;border-top:1px solid #2c3a1f} .eml li:first-child{border-top:0}
+ .ef{display:inline-block;min-width:74px;color:var(--add);font-size:11px;text-transform:uppercase}
  footer{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
 <header><h1>Cobertura do metagame</h1>
 <div class="sub">Os melhores decks de cada formato e quanto já tens · %OWNED% cartas na coleção · dados de %TODAY% · <a href="index.html">← início</a> · <a href="colecao.html">galeria da coleção</a></div></header>
+%EMERGING%
 <div class="general"><h2>🛒 Staples que te faltam <span class="dim">(servem vários dos decks abaixo · mostrados <b id="gen-shown">%GENSHOWN%</b> de %GENCOST%)</span></h2>
 <div><button id="copyall" class="cp">📋 Copiar wantlist completa (Cardmarket)</button></div>
 <ul class="gl" data-sum="gen-shown">%GEN%</ul>%GENMORE%</div>
