@@ -36,12 +36,23 @@ from mtgvault import db  # noqa: E402
 from mtgvault.collection import owned_playable  # noqa: E402
 
 FORMATS = [
-    ("standard", "Standard", 5, []),
-    ("pioneer", "Pioneer", 5, ["__greasefang__"]),
+    ("standard", "Standard", 10, []),
+    ("pioneer", "Pioneer", 10, ["__greasefang__"]),
     ("modern", "Modern", 10, []),
-    ("legacy", "Legacy", 5, []),
+    ("legacy", "Legacy", 10, []),
     ("premodern", "Premodern", 10, []),
 ]
+
+# Ponderação por importância do torneio MTGO (pesos confirmados pelo André,
+# 2026-08-14), numa janela recente. `placement` está vazio nos dados, por isso
+# não entra ainda. Reutilizado no ranking e na deteção de decks emergentes.
+RECENT_DAYS = 60
+_TIER_WEIGHT = """CASE
+        WHEN d.event_tier IN ('Champs','Championship') THEN 5
+        WHEN d.event_tier IN ('Showcase','Qualifier','RCQ') THEN 3
+        WHEN d.event_tier = 'Challenge' THEN 2
+        WHEN d.event_tier = 'Last Chance' THEN 1.5
+        ELSE 1 END"""
 
 BASICS = {
     "Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes",
@@ -207,10 +218,13 @@ def _greasefang_id(con):
 
 
 def _rank(con, fmt, n):
-    return [r["id"] for r in con.execute(
-        """SELECT a.id, COUNT(d.id) n FROM archetypes a
+    """Top-n arquétipos do formato, PONDERADOS pela importância do torneio numa
+    janela recente. Devolve [(id, score)] por ordem decrescente de peso."""
+    return [(r["id"], round(r["score"], 1)) for r in con.execute(
+        f"""SELECT a.id, SUM({_TIER_WEIGHT}) score FROM archetypes a
              JOIN decklists d ON d.archetype_id = a.id
-            WHERE a.format = ? GROUP BY a.id ORDER BY n DESC LIMIT ?""", (fmt, n))]
+            WHERE a.format = ? AND d.event_date >= date('now', '-{RECENT_DAYS} days')
+            GROUP BY a.id ORDER BY score DESC, COUNT(d.id) DESC LIMIT ?""", (fmt, n))]
 
 
 def _label(con, aid):
@@ -343,16 +357,21 @@ def build_report(con):
     sections, all_decks = [], []
     for fmt, title, n, extras in FORMATS:
         df = _format_df(con, fmt)
-        ids = _rank(con, fmt, n)
+        ranked = _rank(con, fmt, n)
+        score = {aid: s for aid, s in ranked}
+        ids = [aid for aid, _ in ranked]
         for ex in extras:
             aid = gid if ex == "__greasefang__" else ex
             if aid and aid not in ids:
                 ids.append(aid)
+                score.setdefault(aid, 0)
         decks = []
         for aid in ids:
             nm = _name_for(con, aid, df, tcache)
-            decks.append(deck_coverage(con, aid, owned, nm))
-        decks.sort(key=lambda d: -d["n_lists"])
+            d = deck_coverage(con, aid, owned, nm)
+            d["score"] = score.get(aid, 0)
+            decks.append(d)
+        decks.sort(key=lambda d: -d["score"])
         sections.append({"fmt": fmt, "title": title, "decks": decks})
         all_decks += decks
 
@@ -469,7 +488,8 @@ def build_html(rep, today):
             cards += (
                 f'<div class="deck"><div class="dh"><div class="dn">{html.escape(d["name"])}'
                 f'<span class="lab">{html.escape(d["label"])[:60]}</span></div>'
-                f'<div class="pop">{d["n_lists"]} listas</div></div>{_bar(d["pct"])}'
+                f'<div class="pop" title="peso por importância de torneio (últimos '
+                f'{RECENT_DAYS} dias)">⚖️ {d.get("score", 0)} · {d["n_lists"]} listas</div></div>{_bar(d["pct"])}'
                 f'<div class="cnt">{d["have"]}/{d["core_total"]} do núcleo · '
                 f'faltam {sum(m["missing"] for m in d["missing"])}</div>{body}{copybtn}{sbblock}</div>')
         secs += f'<section><h2>{s["title"]}</h2><div class="grid">{cards}</div></section>'
