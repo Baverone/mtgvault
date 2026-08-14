@@ -42,6 +42,7 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 # Baldes que são coleção (o resto é deck montado). Mapeia para o "pool" de decks.
 COLLECTION_SUBS = {"SPML": "msl", "Premodern (geral)": "premodern"}
 CONSTRUCTED_LIMIT = 4          # playset: acima disto, vender
+SELL_STALE_DAYS = 180          # 6 meses sem ser jogada em torneio → vender
 PREMODERN_INCLUSION = 0.40     # carta em >=40% das listas do arquétipo = é do deck
 MSL_FORMATS = ("standard", "pioneer", "modern", "legacy")
 # Estados de formato que RESERVAM cartas (saem da coleção para o deck ativo).
@@ -170,6 +171,15 @@ def _played_names(con, formats):
              WHERE dl.format IN ({q})""", tuple(formats))}
 
 
+def _last_played(con):
+    """Última vez que cada carta foi vista numa decklist de torneio (qualquer
+    formato). Base da regra "não jogada há 6 meses → vender"."""
+    return {r["nm"]: r["d"] for r in con.execute(
+        """SELECT dc.card_name nm, MAX(dl.event_date) d
+             FROM decklist_cards dc JOIN decklists dl ON dl.id = dc.decklist_id
+            GROUP BY dc.card_name""")}
+
+
 def _legal_anywhere(legalities_json):
     """True se a carta é legal (ou restrita) em algum formato real — pela Scryfall.
     É a rede de segurança contra sugerir vender cartas jogáveis por falta de dados
@@ -198,6 +208,8 @@ def build(con):
     need = {"msl": _format_need(con, active_fmts), "premodern": pm_need}
     played = {"msl": _played_names(con, MSL_FORMATS),
               "premodern": _played_names(con, ("premodern",))}
+    last_played = _last_played(con)
+    cutoff = con.execute("SELECT date('now', ?)", (f"-{SELL_STALE_DAYS} days",)).fetchone()[0]
 
     # Cartas físicas dos baldes de coleção, agrupadas por carta (para as regras de
     # quantidade) e guardando cada grupo físico (sid/finish/lang) para a distribuição.
@@ -227,6 +239,11 @@ def build(con):
         # "Joga em algum lado" = precisa num deck, OU é legal nalgum formato real,
         # OU aparece nalguma lista que sigo. Só se falhar tudo é que é para vender.
         is_played = (is_basic or need_q > 0 or d["legal"] or nm in played[pool])
+        # Regra dos 6 meses: uma carta que não é de deck e cuja última aparição
+        # em torneio é anterior ao corte (6 meses) saiu do meta → vender. (Só
+        # morde quando houver >=6 meses de histórico; a recolha começou em 2026-06.)
+        lp = last_played.get(nm)
+        stale = (not is_basic and need_q == 0 and lp is not None and lp < cutoff)
 
         deck_q = min(Q, need_q)
         if is_basic:
@@ -234,6 +251,11 @@ def build(con):
             colecao_q = Q - deck_q
             vender_q = 0
             reason = ""
+        elif stale:
+            # Fora do meta há 6+ meses → tudo para vender.
+            colecao_q = 0
+            vender_q = Q - deck_q
+            reason = "fora do meta há 6+ meses"
         elif is_played:
             colecao_q = min(Q - deck_q, max(0, CONSTRUCTED_LIMIT - deck_q))
             vender_q = Q - deck_q - colecao_q
