@@ -70,14 +70,33 @@ BASICS = {"Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes",
 
 
 def _config():
-    """Lê colecao_config.json. Devolve (spml_formatos, premodern_completos):
-    spml_formatos = {formato: estado}; completos = tranca sticky de Premodern."""
+    """Lê colecao_config.json. Devolve (spml_formatos, premodern_completos,
+    decks_montados): spml_formatos = {formato: estado}; completos = tranca
+    sticky de Premodern; montados = decks assemblados que reservam as cartas."""
     try:
         cfg = json.loads((ROOT / "colecao_config.json").read_text(encoding="utf-8"))
     except Exception:
         cfg = {}
     return (cfg.get("spml_formatos", {"modern": "a jogar"}),
-            cfg.get("premodern_decks_completos", []))
+            cfg.get("premodern_decks_completos", []),
+            cfg.get("decks_montados", []))
+
+
+def _montado_need(con, montado):
+    """Cartas reservadas pelos decks MONTADOS, por pool. Um deck montado tira as
+    suas cartas da coleção, esteja o formato ativo ou não."""
+    need = {"msl": defaultdict(int), "premodern": defaultdict(int)}
+    if not montado:
+        return need
+    marks = ",".join("?" for _ in montado)
+    for r in con.execute(
+        f"""SELECT d.format fmt, dc.card_name nm, SUM(dc.quantity) q
+              FROM deck_cards dc JOIN decks d ON d.id = dc.deck_id
+             WHERE d.name IN ({marks}) AND dc.board IN ('main', '')
+             GROUP BY d.id, dc.card_name""", tuple(montado)):
+        pool = "premodern" if r["fmt"] == "premodern" else "msl"
+        need[pool][r["nm"]] = max(need[pool][r["nm"]], min(r["q"], CONSTRUCTED_LIMIT))
+    return need
 
 
 def _format_need(con, formatos):
@@ -195,7 +214,7 @@ def build(con):
     """Devolve {'colecao':[...], 'vender':[...], 'deck_total':int, 'counts':{...},
     'premodern_need':N, 'modern_need':N}. Cada linha de coleção/venda tem
     sid,nm,cmc,tl,ci,fin,lang,q (+ reason nas de venda)."""
-    spml_formatos, completos = _config()
+    spml_formatos, completos, montados = _config()
     active_fmts = [f for f, s in spml_formatos.items() if s in ACTIVE_STATUSES]
     # Premodern: só os decks trancados (completos ou sticky) reservam cartas.
     pm_status = premodern_status(con, sticky=completos)
@@ -206,6 +225,11 @@ def build(con):
         for nm, q in st["cons"].items():
             pm_need[nm] = max(pm_need[nm], q)
     need = {"msl": _format_need(con, active_fmts), "premodern": pm_need}
+    # Decks MONTADOS reservam as suas cartas (saem da coleção) em qualquer formato.
+    mneed = _montado_need(con, montados)
+    for pool in ("msl", "premodern"):
+        for nm, q in mneed[pool].items():
+            need[pool][nm] = max(need[pool].get(nm, 0), q)
     played = {"msl": _played_names(con, MSL_FORMATS),
               "premodern": _played_names(con, ("premodern",))}
     last_played = _last_played(con)
@@ -292,6 +316,7 @@ def build(con):
     return {"colecao": colecao, "vender": vender, "deck_total": deck_total,
             "counts": counts, "spml_formatos": spml_formatos,
             "spml_ativos": active_fmts, "premodern_status": pm_status,
+            "decks_montados": montados,
             "spml_need": len(need["msl"]), "premodern_need": len(need["premodern"])}
 
 

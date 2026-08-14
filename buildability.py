@@ -108,6 +108,11 @@ def _deck_html(d):
 def build(con, out_path=None):
     out = Path(out_path) if out_path else (ROOT / "buildability.html")
     owned = owned_playable(con)
+    try:
+        montado_cfg = json.loads(
+            (ROOT / "colecao_config.json").read_text(encoding="utf-8")).get("decks_montados", [])
+    except Exception:
+        montado_cfg = []
     deck_full = {}          # nome -> [[carta, qty], ...]  (para o loadout no cliente)
     relevant = set()
     targets = defaultdict(list)
@@ -167,7 +172,8 @@ def build(con, out_path=None):
         _TMPL.replace("%SECS%", secs).replace("%NTG%", str(n_tg)).replace("%NMT%", str(n_mt))
              .replace("%TODAY%", today)
              .replace("%DECKS%", json.dumps(deck_full, ensure_ascii=False))
-             .replace("%OWNED%", json.dumps(owned_sub, ensure_ascii=False)),
+             .replace("%OWNED%", json.dumps(owned_sub, ensure_ascii=False))
+             .replace("%MONTADO%", json.dumps(montado_cfg, ensure_ascii=False)),
         encoding="utf-8")
     return out
 
@@ -207,9 +213,10 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
 <footer>Por formato: primeiro os teus alvos, depois o resto do metagame (top-10 ponderado). Cada deck com a % que já tens e as cartas em falta (imagem da edição, ✓ed = edição que já tens, preço). O loadout é um planeador (checkmarks e cálculo no teu navegador). Terras básicas não contam. Atualiza sozinho todos os dias.</footer>
 </div>
 <script>
-const DECKS=%DECKS%, OWNED=%OWNED%, KEY='mtg_montado_v1';
+const DECKS=%DECKS%, OWNED=%OWNED%, CONFIG_MONTADO=%MONTADO%, KEY='mtg_montado_v1';
 let _mem=null;
-function getM(){if(_mem)return new Set(_mem);try{return new Set(JSON.parse(localStorage.getItem(KEY)||'[]'));}catch(e){return new Set();}}
+// 1ª visita: arranca com os montados "oficiais" da config; depois manda o navegador.
+function getM(){if(_mem)return new Set(_mem);try{const v=localStorage.getItem(KEY);if(v!==null)return new Set(JSON.parse(v));}catch(e){}return new Set(CONFIG_MONTADO);}
 function setM(s){_mem=[...s];try{localStorage.setItem(KEY,JSON.stringify([...s]));}catch(e){}}
 function srcDeck(c,M){for(const dn of M){if((DECKS[dn]||[]).some(x=>x[0]===c))return dn;}return null;}
 function recompute(){

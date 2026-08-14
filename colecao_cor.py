@@ -146,7 +146,10 @@ def build(con, out_path=None):
     pm = rep["premodern_status"]
     completos = [d for d, st in pm.items() if st["locked"]]
     pm_str = ", ".join(completos) if completos else f"0 completos · {len(pm)} a montar"
-    cfg_line = (f'🔷 SPML: {fmts} &nbsp;·&nbsp; 🕰️ Premodern: <b>{html.escape(pm_str)}</b>'
+    mont = rep.get("decks_montados") or []
+    mont_str = (f' &nbsp;·&nbsp; 🔒 montados: <b>{", ".join(html.escape(m) for m in mont)}</b>'
+                if mont else "")
+    cfg_line = (f'🔷 SPML: {fmts} &nbsp;·&nbsp; 🕰️ Premodern: <b>{html.escape(pm_str)}</b>{mont_str}'
                 f'<span class="muted"> — diz-me se mudas de formato ou quando montas um deck</span>')
     today = con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or ""
     out.write_text(_TMPL.replace("%SECS%", secs).replace("%VENDER%", vsec)

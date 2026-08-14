@@ -12,6 +12,9 @@
   "premodern_decks_completos": [],
   "_premodern_decks_completos": "Premodern é estável. A completude é DETETADA automaticamente (tens 100% da lista do arquétipo). Quando um deck fica completo, as cartas trancam-se no deck. Esta lista é a tranca STICKY: um deck aqui fica trancado mesmo que a lista mude (aí só dou a wantlist do que falta p/ recompletar); tira-se daqui só quando desmontas o deck. Opções: Stiflenought, UW Replenish, Enchantress, Oath of Druids, Elves, Ill-Gotten Gains.",
 
+  "decks_montados": [],
+  "_decks_montados": "Decks fisicamente MONTADOS (nomes da tabela decks). As cartas de um deck montado saem da coleção (ficam reservadas a ele), esteja o formato ativo ou não — é o loadout a contar em todo o sistema. Na página buildability podes planear com os checkmarks (fica no navegador); quando decidires, diz-me os nomes e eu ponho aqui para contar de vez. Vazio = nada reservado por esta via.",
+
   "regras_colecao": {
     "Blue Farm": { "reter_extras_meses": 6 },
     "Cloud cEDH": { "reter_extras_meses": 6 },
