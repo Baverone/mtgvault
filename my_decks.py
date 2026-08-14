@@ -30,6 +30,7 @@ FOLLOWED = [
 FOLLOWED_PLAYERS = [
     ("Legacy (Harry1232)", "legacy", "Harry1232"),
     ("Stiflenought (Luffy)", "premodern", "LuffyDoChapeuDePalha"),
+    ("Pioneer (Luffy)", "pioneer", "LuffyDoChapeuDePalha"),
 ]
 
 MIN_MAIN = 55  # ignora listas truncadas/incompletas

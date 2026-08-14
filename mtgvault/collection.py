@@ -112,6 +112,11 @@ def owned_playable(con: sqlite3.Connection,
 
     `for_deck_id` diz para que deck estamos a contar: as reservas desse deck
     contam, as dos outros não. Sem argumento, só conta o que está livre.
+
+    Nomes de dupla-face (DFC/MDFC) são normalizados para a FRENTE (o que vem
+    antes de " // "), porque é assim que as decklists as escrevem — senão a
+    cobertura subcontava (ex.: "Aang, Swift Savior // ..." vs "Aang, Swift
+    Savior"). Para nomes normais é um no-op.
     """
     rows = con.execute(
         """SELECT c.name AS name, SUM(cp.quantity) AS qty
@@ -121,7 +126,13 @@ def owned_playable(con: sqlite3.Connection,
             GROUP BY c.name""",
         (for_deck_id,),
     ).fetchall()
-    return {r["name"]: r["qty"] for r in rows}
+    out: dict[str, int] = {}
+    for r in rows:
+        nm = r["name"]
+        if nm and " // " in nm:
+            nm = nm.split(" // ", 1)[0]
+        out[nm] = out.get(nm, 0) + (r["qty"] or 0)
+    return out
 
 
 def reserve_for_deck(con: sqlite3.Connection, deck_id: int) -> dict:
