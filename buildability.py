@@ -1,18 +1,18 @@
 """Gera buildability.html — "O que consigo montar" + loadout interativo.
 
-Para cada deck-alvo do André (tabela `decks`), mostra a % que já tem da lista e
-as cartas que faltam (imagem da edição a comprar + preço). Ordenado por quão
-perto está de estar montado.
+Por formato, mostra primeiro os DECKS-ALVO do André (tabela `decks`) e a seguir
+o RESTO do metagame desse formato (top-10 por arquétipo, ponderado — vem de
+`meta_coverage`). Cada deck: a % que já tem da lista e as cartas em falta
+(imagem da edição a comprar + preço). Ordenado por quão perto está.
 
 LOADOUT (ideia do André, 2026-08-14): cada deck tem um checkmark "montado". Ao
 marcar, as cartas ficam reservadas a esse deck (no cliente). Para cada deck NÃO
 montado, calcula o que terias de **mover** dos montados (cartas comuns) e o que
-ainda terias de **comprar** para o montar. Assim mantém vários decks montados e
-só passa as cartas comuns. Tudo client-side (localStorage) — fica na cloud, sem
-servidor; é um planeador (o físico é ele). Se não gostar, é só não usar.
+ainda terias de **comprar**. Assim mantém vários decks montados e só passa as
+cartas comuns. Client-side (localStorage) — fica na cloud, sem servidor.
 
-Cruza a lista (`deck_cards`) com a coleção (`owned_playable`, que normaliza os
-nomes de dupla-face). NÃO inventa nada. Corre no job diário.
+Cruza a lista (`deck_cards`/consenso) com a coleção (`owned_playable`, que
+normaliza os nomes de dupla-face). NÃO inventa nada. Corre no job diário.
 """
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-import meta_coverage as mc  # noqa: E402  (reutiliza _visual: imagem+preço da edição)
+import meta_coverage as mc  # noqa: E402  (ranking do metagame + _visual/_core_rows)
 from mtgvault.collection import owned_playable  # noqa: E402
 
 BASICS = mc.BASICS
@@ -34,10 +34,11 @@ FMT_LABEL = {"standard": "Standard", "pioneer": "Pioneer", "modern": "Modern",
              "duel-commander": "Duel Commander", "cedh": "cEDH", "pauper": "Pauper"}
 FMT_ORDER = ["standard", "pioneer", "modern", "legacy", "premodern",
              "duel-commander", "cedh", "pauper"]
+META_FMTS = ["standard", "pioneer", "modern", "legacy", "premodern"]
 
 
 def deck_status(con, deck_id, owned):
-    """Lista completa (main, sem básicas) e o que falta face à coleção."""
+    """Deck-alvo (tabela decks): lista completa (main, sem básicas) + o que falta."""
     full = []
     need = have = 0
     missing = []
@@ -56,61 +57,115 @@ def deck_status(con, deck_id, owned):
         if got < q:
             v = mc._visual(con, nm, o)
             missing.append({"name": nm, "need": q - got, "unit": v["unit"],
-                            "img": v["img"], "set_name": v["set_name"], "mine": v["mine"]})
+                            "img": v["img"], "mine": v["mine"]})
+    return _pack(full, need, have, missing)
+
+
+def _meta_deck(con, aid, name, owned):
+    """Deck do metagame (arquétipo): consenso de core como lista, + o que falta."""
+    cov = mc.deck_coverage(con, aid, owned, name)
+    full = [[r["card_name"], r["core_copies"]] for r in mc._core_rows(con, aid, "main")
+            if r["card_name"] not in BASICS]
+    missing = [{"name": m["name"], "need": m["missing"], "unit": m["unit"],
+                "img": m["img"], "mine": m["mine"]} for m in cov["missing"]]
+    st = _pack(full, cov["core_total"], cov["have"], missing)
+    st["pct"] = cov["pct"]   # usa a % do deck_coverage (inclui sideboard de consenso)
+    return st
+
+
+def _pack(full, need, have, missing):
     pct = round(100 * have / need) if need else 0
+    missing = sorted(missing, key=lambda m: -((m["unit"] or 0) * m["need"]))
     cost = round(sum((m["unit"] or 0) * m["need"] for m in missing), 2)
-    missing.sort(key=lambda m: -((m["unit"] or 0) * m["need"]))
     return {"full": full, "need": need, "have": have, "pct": pct, "missing": missing, "cost": cost}
+
+
+def _deck_html(d):
+    col = "var(--add)" if d["pct"] >= 90 else "var(--gold)" if d["pct"] >= 60 else "var(--warn)"
+    miss_txt = (f'faltam {len(d["missing"])} cartas · {d["cost"]:.2f}€'
+                if d["missing"] else "COMPLETO ✅")
+    grid = ""
+    for m in d["missing"]:
+        mine = ' title="tens esta edição"' if m["mine"] else ""
+        price = f'{m["unit"]:.2f}€' if m["unit"] else "?"
+        grid += (f'<div class="c"{mine}><img loading="lazy" src="{m["img"]}" alt="">'
+                 f'<span class="q">{m["need"]}x</span><span class="pz">{price}</span>'
+                 f'{"<span class=ed>✓ed</span>" if m["mine"] else ""}</div>')
+    nm = html.escape(d["name"])
+    cls = "deck" if d["is_target"] else "deck meta"
+    tag = "" if d["is_target"] else '<span class="mtag">metagame</span>'
+    return (
+        f'<div class="{cls}" data-deck="{nm}"><div class="dh">'
+        f'<label class="mont-l"><input type="checkbox" class="mont"> montado</label>'
+        f'<b>{nm}</b>{tag}<span class="hv">{d["have"]}/{d["need"]}</span></div>'
+        f'<div class="bar"><span style="width:{d["pct"]}%;background:{col}"></span>'
+        f'<em>{d["pct"]}%</em></div>'
+        f'<div class="mt">{miss_txt}</div><div class="loadout"></div>'
+        + (f'<div class="grid">{grid}</div>' if grid else "")
+        + "</div>")
 
 
 def build(con, out_path=None):
     out = Path(out_path) if out_path else (ROOT / "buildability.html")
     owned = owned_playable(con)
-    by_fmt = defaultdict(list)
     deck_full = {}          # nome -> [[carta, qty], ...]  (para o loadout no cliente)
     relevant = set()
+    targets = defaultdict(list)
+    target_names = defaultdict(set)
     for d in con.execute("SELECT id, name, format FROM decks"):
         st = deck_status(con, d["id"], owned)
         if st["need"] == 0:
             continue
         deck_full[d["name"]] = st["full"]
         relevant.update(c for c, _ in st["full"])
-        by_fmt[d["format"]].append({"name": d["name"], **st})
+        targets[d["format"]].append({"name": d["name"], "is_target": True, **st})
+        target_names[d["format"]].add(d["name"].lower())
+
+    tcache = {}
+    meta = defaultdict(list)
+    for fmt in META_FMTS:
+        dfq = mc._format_df(con, fmt)
+        for aid, _score in mc._rank(con, fmt, 10):
+            name = mc._name_for(con, aid, dfq, tcache)
+            low = name.lower()
+            # não repetir um deck que já é alvo (ex.: Stiflenought (Luffy) vs Stiflenought)
+            if any(low in tn or tn.split(" (")[0].strip() in low for tn in target_names[fmt]):
+                continue
+            if name in deck_full:   # nomes iguais entre arquétipos — evita colisão
+                continue
+            st = _meta_deck(con, aid, name, owned)
+            if st["need"] == 0:
+                continue
+            deck_full[name] = st["full"]
+            relevant.update(c for c, _ in st["full"])
+            meta[fmt].append({"name": name, "is_target": False, **st})
+
     owned_sub = {c: owned.get(c, 0) for c in relevant}
 
     secs = ""
-    for fmt in FMT_ORDER + [f for f in by_fmt if f not in FMT_ORDER]:
-        decks = by_fmt.get(fmt)
-        if not decks:
+    seen = set()
+    for fmt in FMT_ORDER + [f for f in list(targets) + list(meta) if f not in FMT_ORDER]:
+        if fmt in seen:
             continue
-        decks.sort(key=lambda x: -x["pct"])
+        seen.add(fmt)
+        tg = sorted(targets.get(fmt, []), key=lambda x: -x["pct"])
+        mt = sorted(meta.get(fmt, []), key=lambda x: -x["pct"])
+        if not tg and not mt:
+            continue
         secs += f'<h2>{html.escape(FMT_LABEL.get(fmt, fmt))}</h2>'
-        for d in decks:
-            col = "var(--add)" if d["pct"] >= 90 else "var(--gold)" if d["pct"] >= 60 else "var(--warn)"
-            miss_txt = (f'faltam {len(d["missing"])} cartas · {d["cost"]:.2f}€'
-                        if d["missing"] else "COMPLETO ✅")
-            grid = ""
-            for m in d["missing"]:
-                mine = ' title="tens esta edição"' if m["mine"] else ""
-                price = f'{m["unit"]:.2f}€' if m["unit"] else "?"
-                grid += (f'<div class="c"{mine}><img loading="lazy" src="{m["img"]}" alt="">'
-                         f'<span class="q">{m["need"]}x</span><span class="pz">{price}</span>'
-                         f'{"<span class=ed>✓ed</span>" if m["mine"] else ""}</div>')
-            nm = html.escape(d["name"])
-            secs += (
-                f'<div class="deck" data-deck="{nm}"><div class="dh">'
-                f'<label class="mont-l"><input type="checkbox" class="mont"> montado</label>'
-                f'<b>{nm}</b><span class="hv">{d["have"]}/{d["need"]}</span></div>'
-                f'<div class="bar"><span style="width:{d["pct"]}%;background:{col}"></span>'
-                f'<em>{d["pct"]}%</em></div>'
-                f'<div class="mt">{miss_txt}</div><div class="loadout"></div>'
-                + (f'<div class="grid">{grid}</div>' if grid else "")
-                + "</div>")
+        if tg:
+            secs += '<div class="rest">🎯 os teus alvos</div>'
+            secs += "".join(_deck_html(d) for d in tg)
+        if mt:
+            secs += '<div class="rest">📊 resto do metagame</div>'
+            secs += "".join(_deck_html(d) for d in mt)
 
-    total = sum(len(v) for v in by_fmt.values())
+    n_tg = sum(len(v) for v in targets.values())
+    n_mt = sum(len(v) for v in meta.values())
     today = con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or ""
     out.write_text(
-        _TMPL.replace("%SECS%", secs).replace("%N%", str(total)).replace("%TODAY%", today)
+        _TMPL.replace("%SECS%", secs).replace("%NTG%", str(n_tg)).replace("%NMT%", str(n_mt))
+             .replace("%TODAY%", today)
              .replace("%DECKS%", json.dumps(deck_full, ensure_ascii=False))
              .replace("%OWNED%", json.dumps(owned_sub, ensure_ascii=False)),
         encoding="utf-8")
@@ -125,9 +180,11 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .wrap{max-width:1100px;margin:0 auto;padding:20px 14px 60px}
  h1{margin:0 0 2px;font-size:21px} .sub{color:var(--muted);font-size:13px;margin-bottom:6px} .sub a{color:var(--accent)}
  .tip{background:#141b26;border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--muted);margin-bottom:10px}
- h2{font-size:15px;margin:22px 0 8px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--line);padding-bottom:4px}
+ h2{font-size:15px;margin:22px 0 4px;color:var(--ink);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--line);padding-bottom:4px}
+ .rest{color:var(--muted);font-size:12px;margin:10px 0 6px;font-weight:600}
  .deck{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px}
- .deck.on{border-color:var(--add);box-shadow:inset 0 0 0 1px var(--add)}
+ .deck.meta{background:#12151b;opacity:.92} .deck.on{border-color:var(--add);box-shadow:inset 0 0 0 1px var(--add)}
+ .mtag{font-size:9px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:0 4px;text-transform:uppercase}
  .dh{display:flex;align-items:center;gap:8px} .dh b{font-size:15px} .hv{color:var(--muted);font-size:12px;margin-left:auto}
  .mont-l{font-size:11px;color:var(--muted);cursor:pointer;user-select:none;display:flex;align-items:center;gap:3px}
  .deck.on .mont-l{color:var(--add)}
@@ -144,14 +201,14 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  footer{margin-top:24px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
 <header><h1>🔨 O que consigo montar</h1>
-<div class="sub">%N% decks-alvo · dados de %TODAY% · <a href="index.html">← início</a> · <a href="cobertura.html">metagame</a> · <a href="colecao_cor.html">coleção</a></div>
+<div class="sub">%NTG% decks-alvo + %NMT% do metagame · dados de %TODAY% · <a href="index.html">← início</a> · <a href="cobertura.html">metagame</a> · <a href="colecao_cor.html">coleção</a></div>
 <div class="tip">✅ Marca "montado" nos decks que tens montados. Para cada outro deck, digo-te o que <b style="color:var(--gold)">🔀 mover</b> desses montados (cartas comuns) e o que <b style="color:var(--warn)">🛒 comprar</b>. Fica guardado só neste dispositivo.</div></header>
 %SECS%
-<footer>Cada deck-alvo com a % que já tens e as cartas em falta (imagem da edição a comprar, ✓ed = edição que já tens, preço). O loadout é um planeador: os checkmarks e o cálculo do que mover ficam no teu navegador. Terras básicas não contam. Atualiza sozinho todos os dias.</footer>
+<footer>Por formato: primeiro os teus alvos, depois o resto do metagame (top-10 ponderado). Cada deck com a % que já tens e as cartas em falta (imagem da edição, ✓ed = edição que já tens, preço). O loadout é um planeador (checkmarks e cálculo no teu navegador). Terras básicas não contam. Atualiza sozinho todos os dias.</footer>
 </div>
 <script>
 const DECKS=%DECKS%, OWNED=%OWNED%, KEY='mtg_montado_v1';
-let _mem=null;  // fallback em memória se o localStorage estiver indisponível
+let _mem=null;
 function getM(){if(_mem)return new Set(_mem);try{return new Set(JSON.parse(localStorage.getItem(KEY)||'[]'));}catch(e){return new Set();}}
 function setM(s){_mem=[...s];try{localStorage.setItem(KEY,JSON.stringify([...s]));}catch(e){}}
 function srcDeck(c,M){for(const dn of M){if((DECKS[dn]||[]).some(x=>x[0]===c))return dn;}return null;}
