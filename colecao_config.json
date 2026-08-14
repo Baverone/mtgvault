@@ -13,7 +13,10 @@
   "_premodern_decks_completos": "Premodern é estável. A completude é DETETADA automaticamente (tens 100% da lista do arquétipo). Quando um deck fica completo, as cartas trancam-se no deck. Esta lista é a tranca STICKY: um deck aqui fica trancado mesmo que a lista mude (aí só dou a wantlist do que falta p/ recompletar); tira-se daqui só quando desmontas o deck. Opções: Stiflenought, UW Replenish, Enchantress, Oath of Druids, Elves, Ill-Gotten Gains.",
 
   "regras_colecao": {
-    "Pauper Affinity": { "reter_extras_meses": 3 }
+    "Blue Farm": { "reter_extras_meses": 6 },
+    "Cloud cEDH": { "reter_extras_meses": 6 },
+    "Cloud": { "reter_extras_meses": 6 },
+    "Pauper Affinity": { "reter_extras_meses": 6 }
   },
-  "_regras_colecao": "Regras por balde/coleção. 'reter_extras_meses': as cartas EXTRA (além do que a lista do deck pede) guardam-se até N meses da última utilização; passado esse tempo sem uso, vão para Vender. (Pauper: 1 deck só, Affinity, lista = jogador MTGO LuffyDoChapeuDePalha.) Falta decidir o que conta como 'última utilização' — ver classify.py quando implementado."
+  "_regras_colecao": "Decks de Commander/cEDH/Duel Commander/Pauper = coleção própria + lista vigiada. 'reter_extras_meses' = N: as cartas EXTRA (as do balde que a lista do deck já não usa) guardam-se até N meses da última utilização; passado isso sem uso → Vender. Formalizado em 6 meses (2026-08-14). Premodern NÃO usa isto (tranca por completude). Falta decidir a fonte de 'última utilização' (última vez na lista vigiada) e implementar em classify.py — inerte até haver histórico suficiente."
 }

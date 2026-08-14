@@ -35,6 +35,7 @@ import colecao_cor  # noqa: E402  (gera colecao_cor.html — coleção por cor +
 import meta_coverage  # noqa: E402  (gera cobertura.html — top decks + % que tenho + o que falta)
 import alertas  # noqa: E402  (gera alertas.html — o que vender/comprar por movimento de preço)
 import my_decks  # noqa: E402  (mantém atualizadas as listas dos decks que o André segue)
+import commander_decks  # noqa: E402  (decks de comandante seguidos por consenso, ex.: Cloud DC)
 import refresh_collection  # noqa: E402  (reconstroi collection_owned p/ o index.html)
 
 MTGO_DAYS = 3
@@ -169,6 +170,9 @@ def main():
         # coladas à versão mais recente do metagame, para a % e a wantlist estarem
         # sempre atualizadas.
         _step(con, "meus-decks", lambda: my_decks.refresh(con))
+        # Decks de comandante seguidos por consenso (ex.: Cloud, Midgar Mercenary
+        # em Duel Commander). Reconstrói a lista de referência do metagame.
+        _step(con, "decks-comandante", lambda: commander_decks.refresh(con))
 
         # Core decks: recalcula o consenso dos decks que sigo e regista se o
         # padrão mudou (core_snapshots). Corre DEPOIS de preços + tags.

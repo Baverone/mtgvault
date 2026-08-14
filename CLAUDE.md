@@ -122,11 +122,21 @@ Pauper→`Pauper Affinity`. Por ligar: Luffy — Premodern (Stiflenought), Harry
 — Legacy. `deck_collection` ainda não é lido por código — é o mapa do modelo.
 
 **Regras por coleção (`colecao_config.json` → `regras_colecao`).**
-`reter_extras_meses`: N (Pauper Affinity = 3). As cartas EXTRA (além do que a
-lista do deck pede) guardam-se até N meses da última utilização; passado esse
-tempo sem uso, vão para Vender. **Por decidir:** o que conta como "última
-utilização" (última vez na lista vigiada vs jogo real do André) — ainda não
-implementado em `classify.py`.
+`reter_extras_meses` = **6** (formalizado 2026-08-14) para os decks de
+Commander/cEDH/Duel Commander/Pauper — `Blue Farm`, `Cloud cEDH`, `Cloud`,
+`Pauper Affinity`. Estes são "coleção própria + lista vigiada": as cartas EXTRA
+(as do balde que a lista do deck já não usa) guardam-se até 6 meses da última
+utilização; passado isso sem uso → Vender. Premodern NÃO usa isto (tranca por
+completude). **Por decidir/implementar:** fonte de "última utilização" (última
+vez na lista vigiada) — ainda não em `classify.py`; inerte até haver histórico.
+
+**Decks de comandante por consenso (`commander_decks.py`).** Alguns decks de
+comandante não copiam UMA decklist (como `my_decks.py` faz no Modern) — são
+seguidos por CONSENSO: as cartas que aparecem em ≥ limiar (0.40) das listas do
+comandante no formato, singleton. Grava em `decks`/`deck_cards` no job diário
+(passo `decks-comandante`). Primeiro: `Cloud (Duel Commander)` = Cloud, Midgar
+Mercenary, mono-branco (~58 cartas de 68 listas). O André escolheu "consenso
+automático" para o seguir.
 
 **Core vs tech.** `core_copies` = maior k tal que P(cópias >= k) >= 0.90,
 medido sobre *todas* as listas do arquétipo, não só as que jogam a carta.
