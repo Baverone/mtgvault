@@ -109,6 +109,13 @@ KNOWN = [
     ("Ill-Gotten Gains", "Ill-Gotten Gains"),
     ("Reanimate", "Reanimator"),
     ("Griselbrand", "Reanimator"),
+    # standard — nomes reais aprendidos do mtggoldfish (evento 2026-08-01), só as
+    # cartas que essencialmente definem cada deck (a "sopa Izzet" e os controlos
+    # não se separam de forma fiável no clustering, por isso ficam de fora).
+    ("Earthbender Ascension", "Landfall (Verde)"),
+    ("Brightglass Gearhulk", "Selesnya Gearhulk"),
+    ("Bringer of the Last Gift", "Reanimator"),
+    ("Amalia Benavides Aguirre", "Amalia Combo"),
 ]
 
 # impressões que NÃO se jogam em torneio — fora dos preços e das sugestões de compra
