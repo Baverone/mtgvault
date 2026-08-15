@@ -186,8 +186,8 @@ def _deck_card(d):
                else '<div class="noimg"></div>')
         qb = f'<span class="cq">{c["qty"]}</span>' if c["qty"] > 1 else ""
         grid += f'<div class="{cls}" title="{html.escape(c["nm"])}">{img}{qb}</div>'
-    detail = (f'<details class="cardsd"><summary>🃏 lista completa ({have_n}/{tot})</summary>'
-              f'<div class="cards">{grid}</div></details>')
+    detail = (f'<div class="cardshdr">🃏 lista completa <span class="dim">({have_n}/{tot})</span></div>'
+              f'<div class="cards">{grid}</div>')
     return (
         f'<div class="deck"><div class="dtop"><b>{html.escape(d["name"])}</b>'
         f'<span class="pct" style="color:{col}">{pct}%</span></div>'
@@ -279,7 +279,8 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .evrow{display:flex;flex-wrap:wrap;gap:4px 5px;align-items:center;font-size:11px;padding:2px 0}
  .evd{color:var(--muted);min-width:70px;font-variant-numeric:tabular-nums}
  .ec{padding:0 4px;border-radius:5px} .ec.have{color:var(--add);background:#0f2418} .ec.miss{color:#ff8f8f;background:#2a1414}
- .cardsd{margin-top:8px} .cards{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
+ .cardshdr{margin-top:9px;font-size:12px;color:var(--accent)} .cardshdr .dim{color:var(--muted)}
+ .cards{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
  .cd{position:relative;width:58px;border-radius:5px} .cd img,.cd .noimg{width:58px;height:81px;border-radius:4px;display:block;background:#0c0f14}
  .cd.have{box-shadow:0 0 0 2px var(--add)} .cd.miss{box-shadow:0 0 0 2px var(--warn)} .cd.miss img{filter:grayscale(.7) brightness(.6)}
  .cd .cq{position:absolute;top:1px;left:1px;background:#000c;color:#fff;font-size:9px;font-weight:700;padding:0 3px;border-radius:5px}
