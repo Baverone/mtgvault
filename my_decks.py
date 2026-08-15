@@ -21,7 +21,10 @@ FOLLOWED = [
     # Standard. Jeskai Lessons = "Lesson" + a revelação branca que o separa do
     # Izzet Lessons. (4c Control ainda não sai limpo do harvest — segue-se por
     # lista de referência quando o André der uma, ou quando houver mais dados.)
-    ("Jeskai Lessons", "standard", ["Firebending Lesson", "Jeskai Revelation"]),
+    # Jeskai Lessons = WUR (Lessons+Revelation, SEM preto); 4c Control = WUBR
+    # (mesmo shell + Blood Crypt). O "!" exclui, para não se confundirem.
+    ("Jeskai Lessons", "standard", ["Firebending Lesson", "Jeskai Revelation", "!Blood Crypt"]),
+    ("4c Control", "standard", ["Jeskai Revelation", "Blood Crypt"]),
     # Pioneer: o André segue o arquétipo Greasefang (não um jogador).
     ("Greasefang", "pioneer", ["Greasefang, Okiba Boss"]),
 ]
@@ -39,18 +42,27 @@ MIN_MAIN = 55  # ignora listas truncadas/incompletas
 
 
 def _latest(con: sqlite3.Connection, fmt: str, cards: list[str]):
-    """Decklist mais recente do formato que contém TODAS as cartas-assinatura e
-    tem um mainboard completo."""
-    ph = ",".join("?" * len(cards))
-    return con.execute(
-        f"""SELECT dl.id, dl.source, dl.player, dl.event_date FROM decklists dl
+    """Decklist mais recente do formato que contém TODAS as cartas-assinatura
+    (e NENHUMA das prefixadas com "!") e tem um mainboard completo. As exclusões
+    servem para separar variantes que partilham o núcleo (ex.: Jeskai Lessons vs
+    4c Control, que só difere por ter Blood Crypt/preto)."""
+    inc = [c for c in cards if not c.startswith("!")]
+    exc = [c[1:] for c in cards if c.startswith("!")]
+    ph = ",".join("?" * len(inc))
+    q = (f"""SELECT dl.id, dl.source, dl.player, dl.event_date FROM decklists dl
               WHERE dl.format = ?
                 AND (SELECT COUNT(DISTINCT dc.card_name) FROM decklist_cards dc
                        WHERE dc.decklist_id = dl.id AND dc.card_name IN ({ph})) = ?
                 AND (SELECT COALESCE(SUM(dc2.quantity), 0) FROM decklist_cards dc2
-                       WHERE dc2.decklist_id = dl.id AND dc2.board = 'main') >= ?
-              ORDER BY dl.event_date DESC, dl.id DESC LIMIT 1""",
-        [fmt] + cards + [len(cards), MIN_MAIN]).fetchone()
+                       WHERE dc2.decklist_id = dl.id AND dc2.board = 'main') >= ?""")
+    params = [fmt] + inc + [len(inc), MIN_MAIN]
+    if exc:
+        eph = ",".join("?" * len(exc))
+        q += (f" AND NOT EXISTS (SELECT 1 FROM decklist_cards de "
+              f"WHERE de.decklist_id = dl.id AND de.card_name IN ({eph}))")
+        params += exc
+    q += " ORDER BY dl.event_date DESC, dl.id DESC LIMIT 1"
+    return con.execute(q, params).fetchone()
 
 
 def _latest_player(con: sqlite3.Connection, fmt: str, player: str):
