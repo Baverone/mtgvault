@@ -166,6 +166,7 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
  .wrap{max-width:1100px;margin:0 auto;padding:20px 14px 60px}
  h1{margin:0 0 2px;font-size:21px} .sub{color:var(--muted);font-size:13px;margin-bottom:6px} .sub a{color:var(--accent)}
+ .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0} .tabs a{flex:1;min-width:110px;text-align:center;padding:11px 8px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:600;font-size:14px;transition:.15s} .tabs a:hover{border-color:var(--accent);transform:translateY(-1px)} .tabs a.cur{background:linear-gradient(180deg,#26406f,#1b2c4d);border-color:var(--accent)}
  .nav{position:sticky;top:0;background:var(--bg);padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;z-index:5}
  .nav a{color:var(--accent);margin-right:10px;text-decoration:none}
  h2.pool{font-size:20px;margin:30px 0 2px;padding:6px 10px;border-radius:8px;background:#141b26;border:1px solid var(--line);border-left:4px solid var(--accent)}
@@ -188,7 +189,8 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  footer{margin-top:24px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
 <header><h1>🎨 Coleção — por cor e custo de mana</h1>
-<div class="sub">um binder por cor · dentro, SPML e Premodern separados, por custo de mana · dados de %TODAY% · <a href="index.html">← início</a> · <a href="cobertura.html">cobertura</a> · <a href="colecao.html">galeria (por deck)</a></div>
+<div class="sub">um binder por cor · dentro, SPML e Premodern separados, por custo de mana · dados de %TODAY%</div>
+<nav class="tabs"><a href="index.html">🏠 Início</a><a href="meusdecks.html">🎴 Os meus decks</a><a href="cobertura.html">🌐 Metagame</a><a href="buildability.html">🔨 Montar</a><a class="cur" href="colecao_cor.html">🎨 Coleção</a></nav>
 <div class="tally"><b class="t-col">🔵 %COL% em coleção</b><b class="t-deck">🟢 %DECK% em decks (fora)</b><b class="t-sell">🔴 %SELL% a vender</b></div>
 <div class="cfg">%CFG%</div></header>
 <div class="nav">%NAV% · <a href="#Vender">🔴 Vender</a></div>

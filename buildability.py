@@ -186,6 +186,7 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .wrap{max-width:1100px;margin:0 auto;padding:20px 14px 60px}
  h1{margin:0 0 2px;font-size:21px} .sub{color:var(--muted);font-size:13px;margin-bottom:6px} .sub a{color:var(--accent)}
  .tip{background:#141b26;border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--muted);margin-bottom:10px}
+ .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0} .tabs a{flex:1;min-width:110px;text-align:center;padding:11px 8px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:600;font-size:14px;transition:.15s} .tabs a:hover{border-color:var(--accent);transform:translateY(-1px)} .tabs a.cur{background:linear-gradient(180deg,#26406f,#1b2c4d);border-color:var(--accent)}
  h2{font-size:15px;margin:22px 0 4px;color:var(--ink);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--line);padding-bottom:4px}
  .rest{color:var(--muted);font-size:12px;margin:10px 0 6px;font-weight:600}
  .deck{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px}
@@ -207,7 +208,8 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  footer{margin-top:24px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
 <header><h1>🔨 O que consigo montar</h1>
-<div class="sub">%NTG% decks-alvo + %NMT% do metagame · dados de %TODAY% · <a href="index.html">← início</a> · <a href="cobertura.html">metagame</a> · <a href="colecao_cor.html">coleção</a></div>
+<div class="sub">%NTG% decks-alvo + %NMT% do metagame · dados de %TODAY%</div>
+<nav class="tabs"><a href="index.html">🏠 Início</a><a href="meusdecks.html">🎴 Os meus decks</a><a href="cobertura.html">🌐 Metagame</a><a class="cur" href="buildability.html">🔨 Montar</a><a href="colecao_cor.html">🎨 Coleção</a></nav>
 <div class="tip">✅ Marca "montado" nos decks que tens montados. Para cada outro deck, digo-te o que <b style="color:var(--gold)">🔀 mover</b> desses montados (cartas comuns) e o que <b style="color:var(--warn)">🛒 comprar</b>. Fica guardado só neste dispositivo.</div></header>
 %SECS%
 <footer>Por formato: primeiro os teus alvos, depois o resto do metagame (top-10 ponderado). Cada deck com a % que já tens e as cartas em falta (imagem da edição, ✓ed = edição que já tens, preço). O loadout é um planeador (checkmarks e cálculo no teu navegador). Terras básicas não contam. Atualiza sozinho todos os dias.</footer>

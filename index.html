@@ -23,6 +23,13 @@
   h2{font-size:15px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
      margin:34px 0 2px;border-bottom:1px solid var(--line);padding-bottom:6px}
   .pool-note{color:var(--muted);font-size:12px;margin:6px 0 12px}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 4px}
+  .tabs a{flex:1;min-width:120px;text-align:center;padding:12px 10px;border-radius:12px;
+          background:var(--card);border:1px solid var(--line);color:var(--ink);
+          text-decoration:none;font-weight:600;font-size:14px;transition:.15s}
+  .tabs a:hover{border-color:var(--accent);transform:translateY(-1px)}
+  .tabs a.cur{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .subnav{font-size:13px;margin:8px 0 2px;color:var(--muted)} .subnav a{color:var(--accent);margin-right:14px;text-decoration:none}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:14px}
   .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
   .card .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
@@ -71,7 +78,14 @@
   <header>
     <h1>Coleção MTG e Decks</h1>
     <div class="sub" id="sub">a carregar dados…</div>
-    <div style="margin-top:8px;font-size:14px"><a href="meusdecks.html">🎴 Os meus decks →</a> &nbsp;·&nbsp; <a href="buildability.html">🔨 O que consigo montar →</a> &nbsp;·&nbsp; <a href="cobertura.html">🎯 Cobertura — top decks e % que tens →</a> &nbsp;·&nbsp; <a href="alertas.html">🔔 Alertas de preço (comprar/vender) →</a> &nbsp;·&nbsp; <a href="colecao_cor.html">🎨 Coleção — por cor (arrumar) →</a> &nbsp;·&nbsp; <a href="colecao.html">🖼️ A minha coleção (imagens) →</a> &nbsp;·&nbsp; <a href="coredecks.html">⭐ Core Decks — os que sigo →</a></div>
+    <nav class="tabs">
+      <a class="cur" href="index.html">🏠 Início</a>
+      <a href="meusdecks.html">🎴 Os meus decks</a>
+      <a href="cobertura.html">🌐 Metagame</a>
+      <a href="buildability.html">🔨 Montar</a>
+      <a href="colecao_cor.html">🎨 Coleção</a>
+    </nav>
+    <div class="subnav"><a href="alertas.html">🔔 Alertas de preço</a><a href="colecao.html">🖼️ Galeria</a><a href="coredecks.html">⭐ Core Decks</a></div>
   </header>
   <div id="app"><div class="loading">A carregar a base de dados…</div></div>
   <footer>

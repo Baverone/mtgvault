@@ -22,6 +22,8 @@ FOLLOWED = [
     # Izzet Lessons. (4c Control ainda não sai limpo do harvest — segue-se por
     # lista de referência quando o André der uma, ou quando houver mais dados.)
     ("Jeskai Lessons", "standard", ["Firebending Lesson", "Jeskai Revelation"]),
+    # Pioneer: o André segue o arquétipo Greasefang (não um jogador).
+    ("Greasefang", "pioneer", ["Greasefang, Okiba Boss"]),
 ]
 
 # Decks seguidos por JOGADOR de MTGO (a lista mais recente dele nesse formato),
@@ -30,7 +32,7 @@ FOLLOWED = [
 FOLLOWED_PLAYERS = [
     ("Legacy (Harry1232)", "legacy", "Harry1232"),
     ("Stiflenought (Luffy)", "premodern", "LuffyDoChapeuDePalha"),
-    ("Pioneer (Luffy)", "pioneer", "LuffyDoChapeuDePalha"),
+    ("Stiflenought (Spock)", "premodern", "SpockVidaLoka"),
 ]
 
 MIN_MAIN = 55  # ignora listas truncadas/incompletas

@@ -607,13 +607,15 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .general{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:8px}
  .general h2{margin-top:0;border:0} .dim{color:var(--muted);font-size:12px}
  .emerging{background:#141b12;border:1px solid #2c3a1f;border-radius:12px;padding:12px 16px;margin-top:8px}
+ .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0} .tabs a{flex:1;min-width:110px;text-align:center;padding:11px 8px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:600;font-size:14px;transition:.15s} .tabs a:hover{border-color:var(--accent);transform:translateY(-1px)} .tabs a.cur{background:linear-gradient(180deg,#26406f,#1b2c4d);border-color:var(--accent)}
  .emerging h2{margin:0 0 6px;border:0;font-size:15px} .eml{list-style:none;margin:0;padding:0}
  .eml li{padding:4px 0;border-top:1px solid #2c3a1f} .eml li:first-child{border-top:0}
  .ef{display:inline-block;min-width:74px;color:var(--add);font-size:11px;text-transform:uppercase}
  footer{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
-<header><h1>Cobertura do metagame</h1>
-<div class="sub">Os melhores decks de cada formato e quanto já tens · %OWNED% cartas na coleção · dados de %TODAY% · <a href="index.html">← início</a> · <a href="colecao.html">galeria da coleção</a></div></header>
+<header><h1>🌐 Metagame</h1>
+<div class="sub">Os melhores decks de cada formato e quanto já tens · %OWNED% cartas na coleção · dados de %TODAY%</div>
+<nav class="tabs"><a href="index.html">🏠 Início</a><a href="meusdecks.html">🎴 Os meus decks</a><a class="cur" href="cobertura.html">🌐 Metagame</a><a href="buildability.html">🔨 Montar</a><a href="colecao_cor.html">🎨 Coleção</a></nav></header>
 %EMERGING%
 <div class="general"><h2>🛒 Staples que te faltam <span class="dim">(servem vários dos decks abaixo · mostrados <b id="gen-shown">%GENSHOWN%</b> de %GENCOST%)</span></h2>
 <div><button id="copyall" class="cp">📋 Copiar wantlist completa (Cardmarket)</button></div>
