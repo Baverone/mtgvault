@@ -3,275 +3,53 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Coleção MTG e Decks</title>
+<title>Coleção do Prime</title>
 <style>
-  :root{
-    --bg:#f6f7f9; --card:#fff; --ink:#12151a; --muted:#5b6672; --line:#e4e7ec;
-    --accent:#2f6df6; --chg-add:#0f8a4d; --chg-rem:#c0392b; --pill:#eef1f5; --gold:#b8860b;
-  }
-  @media (prefers-color-scheme: dark){
-    :root{ --bg:#0e1116; --card:#171b22; --ink:#e8ecf1; --muted:#93a0ad; --line:#262c36;
-           --accent:#5b8cff; --chg-add:#4ac585; --chg-rem:#ff6b6b; --pill:#222833; --gold:#e0b64b; }
-  }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);
-       font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-  .wrap{max-width:1100px;margin:0 auto;padding:24px 18px 60px}
-  @media (max-width:600px){ .wrap{padding:16px 12px 48px} h2{margin-top:24px !important} }
-  header h1{margin:0 0 2px;font-size:22px;letter-spacing:.2px}
-  header .sub{color:var(--muted);font-size:13px}
-  h2{font-size:15px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
-     margin:34px 0 2px;border-bottom:1px solid var(--line);padding-bottom:6px}
-  .pool-note{color:var(--muted);font-size:12px;margin:6px 0 12px}
-  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 4px}
-  .tabs a{flex:1;min-width:120px;text-align:center;padding:12px 10px;border-radius:12px;
-          background:var(--card);border:1px solid var(--line);color:var(--ink);
-          text-decoration:none;font-weight:600;font-size:14px;transition:.15s}
-  .tabs a:hover{border-color:var(--accent);transform:translateY(-1px)}
-  .tabs a.cur{background:var(--accent);color:#fff;border-color:var(--accent)}
-  .subnav{font-size:13px;margin:8px 0 2px;color:var(--muted)} .subnav a{color:var(--accent);margin-right:14px;text-decoration:none}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:14px}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
-  .card .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
-  .card .name{font-weight:650;font-size:16px}
-  .pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--pill);
-        color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
-  .pill.fmt{background:var(--accent);color:#fff}
-  .pill.prio{background:transparent;border:1px solid var(--line)}
-  .when{color:var(--muted);font-size:12px;margin-left:auto}
-  .srclink{font-size:12px;margin-left:auto;white-space:nowrap}
-  .status{margin:8px 0 10px;font-size:13px}
-  .status.same{color:var(--muted)}
-  .status.changed{color:var(--chg-add);font-weight:650}
-  .diff{margin:6px 0 4px;font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
-  .diff .add{color:var(--chg-add)} .diff .rem{color:var(--chg-rem)}
-  details{margin-top:8px} summary{cursor:pointer;color:var(--accent);font-size:13px}
-  .list{margin-top:8px;max-height:280px;overflow:auto;border:1px solid var(--line);
-        border-radius:8px;padding:8px 10px;font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace}
-  .list .b{color:var(--muted);text-transform:uppercase;font-size:10.5px;letter-spacing:.06em;
-           margin:6px 0 2px} .list .b:first-child{margin-top:0}
-  .meter{height:6px;background:var(--pill);border-radius:999px;overflow:hidden;margin:8px 0 2px}
-  .meter i{display:block;height:100%;background:var(--accent)}
-  .loading,.err{padding:40px 0;text-align:center;color:var(--muted)}
-  .err{color:var(--chg-rem)}
-  .val{margin-top:8px;font-size:13px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
-  .cov{color:var(--muted);font-weight:400;font-size:12px;white-space:nowrap}
-  .shop{margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
-  .shop-h{font-weight:650;font-size:13px;display:flex;justify-content:space-between;
-          align-items:baseline;gap:8px;margin-bottom:6px}
-  .shoplist{max-height:300px;overflow:auto}
-  .row{display:flex;justify-content:space-between;gap:10px;
-       font:12.5px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace}
-  .row .price{color:var(--muted);white-space:nowrap}
-  .row.buy{color:var(--chg-rem)} .row.sell{color:var(--chg-add)}
-  .done{color:var(--chg-add);font-size:12.5px}
-  .tot{font-weight:700;font-variant-numeric:tabular-nums}
-  .tot.buy{color:var(--chg-rem)} .tot.sell{color:var(--chg-add)}
-  .pool{border-color:var(--accent);grid-column:1/-1}
-  .pool .name::before{content:"📦 "}
-  footer{margin-top:40px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
-  a{color:var(--accent)}
+ :root{--bg:#0d1017;--card:#161b24;--ink:#eef2f7;--muted:#8b97a6;--line:#242c38;--accent:#5b8cff;--gold:#e0b64b}
+ *{box-sizing:border-box}
+ body{margin:0;min-height:100vh;background:radial-gradient(1200px 600px at 50% -10%,#1b2740,#0d1017);
+      color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      display:flex;align-items:center;justify-content:center;padding:24px}
+ .hub{width:100%;max-width:760px;text-align:center}
+ .avatar{width:132px;height:132px;border-radius:50%;margin:0 auto 18px;overflow:hidden;
+         border:3px solid var(--accent);box-shadow:0 8px 40px #0008;background:#11161f;
+         display:flex;align-items:center;justify-content:center}
+ .avatar img{width:100%;height:100%;object-fit:cover;display:block}
+ .avatar .ph{font-size:56px;opacity:.85}
+ h1{margin:0 0 4px;font-size:30px;font-weight:800;letter-spacing:-.02em}
+ .sub{color:var(--muted);font-size:14px;margin-bottom:26px}
+ .tabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+ .tabs a{padding:20px 12px;border-radius:16px;background:var(--card);border:1px solid var(--line);
+         color:var(--ink);text-decoration:none;font-weight:700;font-size:16px;transition:.15s}
+ .tabs a:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 8px 24px #0006}
+ .tabs a .ic{display:block;font-size:26px;margin-bottom:6px}
+ .subnav{margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+ .subnav a{font-size:13px;padding:8px 14px;border-radius:20px;background:#141a24;border:1px solid var(--line);
+           color:var(--muted);text-decoration:none} .subnav a:hover{color:var(--ink);border-color:var(--accent)}
+ footer{margin-top:24px;color:#5a6472;font-size:12px}
+ footer a{color:var(--muted)}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <h1>Coleção MTG e Decks</h1>
-    <div class="sub" id="sub">a carregar dados…</div>
-    <nav class="tabs">
-      <a class="cur" href="index.html">🏠 Início</a>
-      <a href="meusdecks.html">🎴 Os meus decks</a>
-      <a href="cobertura.html">🌐 Metagame</a>
-      <a href="buildability.html">🔨 Montar</a>
-      <a href="colecao_cor.html">🎨 Coleção</a>
-    </nav>
-    <div class="subnav"><a href="alertas.html">🔔 Alertas de preço</a><a href="colecao.html">🖼️ Galeria</a><a href="coredecks.html">⭐ Core Decks</a></div>
-  </header>
-  <div id="app"><div class="loading">A carregar a base de dados…</div></div>
-  <footer>
-    <code>data/vault.db</code> (job diário) · Coleções partilhadas: 1 cópia por carta serve os decks da mesma coleção ·
-    Preços Cardmarket via Scryfall · <a href="https://github.com/Baverone/mtgvault">repositório</a>
-  </footer>
+<div class="hub">
+  <div class="avatar">
+    <!-- Quando o André mandar a foto, guardo-a como prime.jpg e troco este placeholder por <img src="prime.jpg" alt="Prime"> -->
+    <span class="ph">👑</span>
+  </div>
+  <h1>Bem-vindos à coleção do Prime</h1>
+  <div class="sub">Magic: the Gathering — decks, metagame e coleção</div>
+  <nav class="tabs">
+    <a href="meusdecks.html"><span class="ic">🎴</span>Os meus decks</a>
+    <a href="cobertura.html"><span class="ic">🌐</span>Metagame</a>
+    <a href="buildability.html"><span class="ic">🔨</span>Montar</a>
+    <a href="colecao_cor.html"><span class="ic">🎨</span>Coleção</a>
+  </nav>
+  <div class="subnav">
+    <a href="alertas.html">🔔 Alertas de preço</a>
+    <a href="colecao.html">🖼️ Galeria</a>
+    <a href="coredecks.html">⭐ Core Decks</a>
+  </div>
+  <footer><a href="https://github.com/Baverone/mtgvault">repositório</a> · atualiza sozinho todos os dias</footer>
 </div>
-
-<script src="https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/sql-wasm.js"></script>
-<script>
-const esc = s => (s==null?"":String(s)).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
-const front = n => String(n).split(" // ")[0].trim().toLowerCase();
-const eur = x => (x||0).toLocaleString("pt-PT",{style:"currency",currency:"EUR"});
-const BASICS = new Set(["island","plains","swamp","mountain","forest","wastes",
-  "snow-covered island","snow-covered plains","snow-covered swamp","snow-covered mountain","snow-covered forest"]);
-
-function rowsOf(res){ if(!res.length) return []; const {columns,values}=res[0];
-  return values.map(v=>Object.fromEntries(columns.map((c,i)=>[c,v[i]]))); }
-function tryRows(db,sql){ try{ return rowsOf(db.exec(sql)); }catch(e){ return []; } }
-
-function cardsToMap(json){ const m={}; for(const [b,n,q] of JSON.parse(json)) m[b+""+n]=[b,n,q]; return m; }
-function diffHtml(newer, older){
-  if(!older) return '<div class="diff">primeira captura — sem versão anterior</div>';
-  const A=cardsToMap(newer), B=cardsToMap(older), keys=new Set([...Object.keys(A),...Object.keys(B)]);
-  const lines=[];
-  for(const k of [...keys].sort()){
-    const a=A[k], b=B[k], qa=a?a[2]:0, qb=b?b[2]:0;
-    if(qa!==qb){ const [board,name]=(a||b); const d=qa-qb;
-      lines.push(`<div class="${d>0?'add':'rem'}">${board==='side'?'SB ':'   '}${d>0?'+':''}${d}  ${esc(name)} <span style="opacity:.6">(${qb}→${qa})</span></div>`); }
-  }
-  return lines.length ? '<div class="diff">'+lines.join("")+'</div>' : '<div class="diff">sem alterações nas cartas</div>';
-}
-function listHtml(json){
-  const cards=JSON.parse(json), main=cards.filter(c=>c[0]!=='side'), side=cards.filter(c=>c[0]==='side');
-  const fmt = arr => arr.sort((x,y)=>x[1].localeCompare(y[1])).map(c=>`${c[2]}x ${esc(c[1])}`).join("<br>");
-  let h='<div class="b">Main ('+main.reduce((s,c)=>s+c[2],0)+')</div>'+fmt(main);
-  if(side.length) h+='<div class="b">Side ('+side.reduce((s,c)=>s+c[2],0)+')</div>'+fmt(side);
-  return h;
-}
-const PRIO=["","①","②","③","④","⑤","⑥","⑦","⑧","⑨"];
-
-function render(db){
-  const app=document.getElementById("app"); app.innerHTML="";
-
-  // ---------- Decks vigiados (com link da lista) ----------
-  const watched = tryRows(db,"SELECT id,kind,key,label,format,last_checked FROM watched WHERE active=1 ORDER BY id");
-  if(watched.length){
-    const sec=document.createElement("section");
-    sec.innerHTML="<h2>Decks vigiados</h2>";
-    const grid=document.createElement("div"); grid.className="grid";
-    for(const w of watched){
-      const snaps=tryRows(db,"SELECT taken_at,cards,source_url FROM watched_snapshots WHERE watched_id="+w.id+" ORDER BY taken_at DESC, id DESC LIMIT 2");
-      const latest=snaps[0], prev=snaps[1], changed = latest && prev && latest.cards!==prev.cards;
-      const link = w.kind==='moxfield' ? `https://moxfield.com/decks/${esc(w.key)}` : ((latest&&latest.source_url)||"");
-      const c=document.createElement("div"); c.className="card";
-      let h=`<div class="top"><span class="name">${esc(w.label)}</span>`+
-            `<span class="pill fmt">${esc(w.format)}</span>`+
-            (link?`<a class="srclink" href="${link}" target="_blank" rel="noopener">↗ lista</a>`:"")+`</div>`+
-            `<div class="pool-note" style="margin:0 0 6px">verificado ${esc(w.last_checked||"—")}</div>`;
-      if(!latest){ h+='<div class="status same">ainda sem lista capturada</div>'; }
-      else {
-        h+= changed ? `<div class="status changed">▲ MUDOU (${esc(prev.taken_at)} → ${esc(latest.taken_at)})</div>`+diffHtml(latest.cards,prev.cards)
-                    : `<div class="status same">igual — sem alterações recentes</div>`;
-        h+=`<details><summary>ver lista completa</summary><div class="list">${listHtml(latest.cards)}</div></details>`;
-      }
-      c.innerHTML=h; grid.appendChild(c);
-    }
-    sec.appendChild(grid); app.appendChild(sec);
-  }
-
-  // ---------- dados ----------
-  const targets={}, ownedFull={}, price={}, meta={};
-  for(const r of tryRows(db,"SELECT sub_collection,card_name,quantity FROM deck_target"))
-    (targets[r.sub_collection]=targets[r.sub_collection]||[]).push([r.card_name,r.quantity]);
-  for(const r of tryRows(db,"SELECT sub_collection,card_name,quantity,unit_price FROM collection_owned")){
-    const o=(ownedFull[r.sub_collection]=ownedFull[r.sub_collection]||{}), f=front(r.card_name);
-    o[f]={name:r.card_name, qty:(o[f]?o[f].qty:0)+r.quantity, price:r.unit_price};
-  }
-  for(const r of tryRows(db,"SELECT card_name,eur FROM card_price")){
-    price[r.card_name.toLowerCase()]=r.eur; const f=front(r.card_name); if(!(f in price)) price[f]=r.eur;
-  }
-  for(const r of tryRows(db,"SELECT sub_collection,format,pool,priority FROM deck_meta"))
-    meta[r.sub_collection]={format:r.format,pool:r.pool,priority:r.priority};
-  const priceOf = n => { const k=String(n).toLowerCase(); return price[k]!=null?price[k]:(price[front(n)]||0); };
-  const ownValue = sub => { let v=0; const o=ownedFull[sub]||{}; for(const f in o) v+=(o[f].price||0)*o[f].qty; return v; };
-
-  // estatística de uma COLEÇÃO partilhada:
-  //   NEED = MAX por carta dos decks-alvo do pool (needSubs);
-  //   OWN  = posse somada das sub-coleções FÍSICAS do pool (ownSubs, ex.: "SPML");
-  //   cap  = quantas GUARDAR por carta (construído=4 playset) — o resto é venda.
-  function poolStats(needSubs, ownSubs, cap){
-    const need={}, needName={}, own={}, ownName={}, ownPrice={};
-    for(const s of needSubs) for(const [name,q] of (targets[s]||[])){
-      const f=front(name); if(q>(need[f]||0)) need[f]=q; if(!needName[f]) needName[f]=name; }
-    for(const s of ownSubs){ const o=ownedFull[s]||{}; for(const f in o){
-      own[f]=(own[f]||0)+o[f].qty; ownName[f]=o[f].name; if(o[f].price!=null) ownPrice[f]=o[f].price; } }
-    const buy=[], sell=[]; let buyCost=0, sellVal=0, needTot=0, haveTot=0;
-    for(const f in need){ needTot+=need[f]; const h=own[f]||0; haveTot+=Math.min(need[f],h);
-      if(h<need[f]){ const q=need[f]-h, c=q*priceOf(needName[f]); buyCost+=c; buy.push([needName[f],q,c]); } }
-    // vender: só cartas que ESTÃO nos decks e acima do limite de guardar (regra dos
-    // extras dos decks). Cartas fora dos decks não se sugerem para venda aqui.
-    for(const f in own){ if(!(f in need)) continue; const keep = (cap!=null?cap:need[f]);
-      if(own[f]>keep && !BASICS.has(f)){
-        const q=own[f]-keep, p=(ownPrice[f]!=null?ownPrice[f]:priceOf(ownName[f])), v=q*p; sellVal+=v; sell.push([ownName[f],q,v]); } }
-    buy.sort((a,b)=>b[2]-a[2]); sell.sort((a,b)=>b[2]-a[2]);
-    return {subs:needSubs,own,needTot,haveTot,buy,buyCost,sell,sellVal};
-  }
-  function rowsHtml(rows,cls){ return `<div class="shoplist">`+rows.map(r=>
-    `<div class="row ${cls}"><span>${r[1]}x ${esc(r[0])}</span><span class="price">${eur(r[2])}</span></div>`).join("")+`</div>`; }
-
-  // ---------- coleções ----------
-  const COLLECTIONS=[
-    ["MSL","Standard · Pioneer · Modern · Legacy"],["Premodern","Premodern"],
-    ["Commander","Commander / cEDH"],["Duel Commander","Duel Commander"],["Pauper","Pauper"],
-  ];
-  // limite de "guardar" por carta: construído = 4 (playset); Commander fica pelo que
-  // os decks pedem (1 por deck — a afinar). Acima do limite = excedente para vender.
-  const CAPS={MSL:4, Premodern:4, Pauper:4};
-  let totalOwn=0, totalSell=0;
-  for(const [key,title] of COLLECTIONS){
-    let subs=Object.keys(targets).filter(s=>(meta[s]||{}).pool===key);
-    if(!subs.length) continue;
-    subs.sort((a,b)=>(((meta[a]||{}).priority||99)-((meta[b]||{}).priority||99))||a.localeCompare(b));
-    // posse vem das sub-coleções FÍSICAS do pool (ex.: "SPML"), não dos decks-alvo
-    const ownSubs=Object.keys(ownedFull).filter(s=>(meta[s]||{}).pool===key);
-    const ps=poolStats(subs, ownSubs, CAPS[key]), pct=ps.needTot?Math.round(100*ps.haveTot/ps.needTot):0;
-    const colVal=ownSubs.reduce((s,x)=>s+ownValue(x),0); totalOwn+=colVal; totalSell+=ps.sellVal;
-
-    const sec=document.createElement("section");
-    sec.innerHTML=`<h2>${esc(title)}</h2>`;
-    const grid=document.createElement("div"); grid.className="grid";
-
-    // cartão da COLEÇÃO (pool)
-    const pc=document.createElement("div"); pc.className="card pool";
-    let ph=`<div class="top"><span class="name">Coleção partilhada</span>`+
-      `<span class="when">${subs.length} deck(s) · ${pct}% · 💶 ${eur(colVal)}</span></div>`+
-      `<div class="pool-note" style="margin:0 0 6px">1 cópia por carta serve todos os decks desta coleção (trocas entre eles).</div>`+
-      `<div class="meter"><i style="width:${pct}%"></i></div>`;
-    ph+=`<div class="shop"><div class="shop-h"><span>🛒 Comprar p/ completar (${ps.buy.length})</span><span class="tot buy">${eur(ps.buyCost)}</span></div>`+
-        (ps.buy.length?rowsHtml(ps.buy,"buy"):`<div class="done">✓ tens a coleção completa</div>`)+`</div>`;
-    ph+=`<div class="shop"><div class="shop-h"><span>💰 Excedente p/ vender (${ps.sell.length})</span><span class="tot sell">${eur(ps.sellVal)}</span></div>`+
-        (ps.sell.length?rowsHtml(ps.sell,"sell"):`<div class="done">sem excedente (sem cópias a mais)</div>`)+`</div>`;
-    pc.innerHTML=ph; grid.appendChild(pc);
-
-    // cartões dos decks (cobertura vs pool partilhado)
-    for(const sub of subs){
-      const m=meta[sub]||{}; let total=0, have=0;
-      for(const [name,q] of (targets[sub]||[])){ total+=q; have+=Math.min(q, ps.own[front(name)]||0); }
-      const dp=total?Math.round(100*have/total):0;
-      const prio=(m.pool==="Premodern"&&m.priority)?`<span class="pill prio">${PRIO[m.priority]||m.priority}</span>`:"";
-      const c=document.createElement("div"); c.className="card";
-      c.innerHTML=`<div class="top">${prio}<span class="name">${esc(sub)}</span>`+
-        (m.format?`<span class="pill fmt">${esc(m.format)}</span>`:"")+`</div>`+
-        `<div class="meter"><i style="width:${dp}%"></i></div>`+
-        `<div class="val"><span>${have}/${total} montável do pool · <b>${dp}%</b></span>`+
-        `<span>💶 ${eur(ownValue(sub))}</span></div>`;
-      grid.appendChild(c);
-    }
-    sec.appendChild(grid); app.appendChild(sec);
-  }
-
-  const orphans=Object.keys(targets).filter(s=>!(meta[s]&&COLLECTIONS.some(c=>c[0]===meta[s].pool))).sort();
-  if(orphans.length){
-    const sec=document.createElement("section"); sec.innerHTML="<h2>Sem coleção</h2>";
-    const grid=document.createElement("div"); grid.className="grid";
-    for(const s of orphans){ const c=document.createElement("div"); c.className="card";
-      c.innerHTML=`<div class="top"><span class="name">${esc(s)}</span></div>`; grid.appendChild(c); }
-    sec.appendChild(grid); app.appendChild(sec);
-  }
-
-  const st=tryRows(db,"SELECT (SELECT COUNT(*) FROM decklists) dl,(SELECT MAX(event_date) FROM decklists) hi")[0]||{};
-  document.getElementById("sub").innerHTML =
-    `💶 coleção ~<b>${eur(totalOwn)}</b> · 💰 excedente p/ vender ~<b>${eur(totalSell)}</b> · `+
-    `${watched.length} vigiados · ${st.dl||0} decklists · dados até ${st.hi||"—"}`;
-}
-
-(async () => {
-  try{
-    const SQL = await initSqlJs({ locateFile: f => `https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/${f}` });
-    const buf = await fetch("data/vault.db", {cache:"no-cache"}).then(r=>{ if(!r.ok) throw new Error("HTTP "+r.status); return r.arrayBuffer(); });
-    render(new SQL.Database(new Uint8Array(buf)));
-  }catch(e){
-    document.getElementById("app").innerHTML='<div class="err">Não foi possível carregar os dados: '+esc(e.message)+'</div>';
-    document.getElementById("sub").textContent="erro ao carregar";
-  }
-})();
-</script>
 </body>
 </html>

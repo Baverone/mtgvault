@@ -95,12 +95,11 @@ def _deck_html(d):
     cls = "deck" if d["is_target"] else "deck meta"
     tag = "" if d["is_target"] else '<span class="mtag">metagame</span>'
     return (
-        f'<div class="{cls}" data-deck="{nm}"><div class="dh">'
-        f'<label class="mont-l"><input type="checkbox" class="mont"> montado</label>'
+        f'<div class="deck"><div class="dh">'
         f'<b>{nm}</b>{tag}<span class="hv">{d["have"]}/{d["need"]}</span></div>'
         f'<div class="bar"><span style="width:{d["pct"]}%;background:{col}"></span>'
         f'<em>{d["pct"]}%</em></div>'
-        f'<div class="mt">{miss_txt}</div><div class="loadout"></div>'
+        f'<div class="mt">{miss_txt}</div>'
         + (f'<div class="grid">{grid}</div>' if grid else "")
         + "</div>")
 
@@ -170,10 +169,7 @@ def build(con, out_path=None):
     today = con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or ""
     out.write_text(
         _TMPL.replace("%SECS%", secs).replace("%NTG%", str(n_tg)).replace("%NMT%", str(n_mt))
-             .replace("%TODAY%", today)
-             .replace("%DECKS%", json.dumps(deck_full, ensure_ascii=False))
-             .replace("%OWNED%", json.dumps(owned_sub, ensure_ascii=False))
-             .replace("%MONTADO%", json.dumps(montado_cfg, ensure_ascii=False)),
+             .replace("%TODAY%", today),
         encoding="utf-8")
     return out
 
@@ -209,51 +205,10 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
 </style></head><body><div class="wrap">
 <header><h1>🔨 O que consigo montar</h1>
 <div class="sub">%NTG% decks-alvo + %NMT% do metagame · dados de %TODAY%</div>
-<nav class="tabs"><a href="index.html">🏠 Início</a><a href="meusdecks.html">🎴 Os meus decks</a><a href="cobertura.html">🌐 Metagame</a><a class="cur" href="buildability.html">🔨 Montar</a><a href="colecao_cor.html">🎨 Coleção</a></nav>
-<div class="tip">✅ Marca "montado" nos decks que tens montados. Para cada outro deck, digo-te o que <b style="color:var(--gold)">🔀 mover</b> desses montados (cartas comuns) e o que <b style="color:var(--warn)">🛒 comprar</b>. Fica guardado só neste dispositivo.</div></header>
+<nav class="tabs"><a href="index.html">🏠 Início</a><a href="meusdecks.html">🎴 Os meus decks</a><a href="cobertura.html">🌐 Metagame</a><a class="cur" href="buildability.html">🔨 Montar</a><a href="colecao_cor.html">🎨 Coleção</a></nav></header>
 %SECS%
-<footer>Por formato: primeiro os teus alvos, depois o resto do metagame (top-10 ponderado). Cada deck com a % que já tens e as cartas em falta (imagem da edição, ✓ed = edição que já tens, preço). O loadout é um planeador (checkmarks e cálculo no teu navegador). Terras básicas não contam. Atualiza sozinho todos os dias.</footer>
-</div>
-<script>
-const DECKS=%DECKS%, OWNED=%OWNED%, CONFIG_MONTADO=%MONTADO%, KEY='mtg_montado_v1';
-let _mem=null;
-// 1ª visita: arranca com os montados "oficiais" da config; depois manda o navegador.
-function getM(){if(_mem)return new Set(_mem);try{const v=localStorage.getItem(KEY);if(v!==null)return new Set(JSON.parse(v));}catch(e){}return new Set(CONFIG_MONTADO);}
-function setM(s){_mem=[...s];try{localStorage.setItem(KEY,JSON.stringify([...s]));}catch(e){}}
-function srcDeck(c,M){for(const dn of M){if((DECKS[dn]||[]).some(x=>x[0]===c))return dn;}return null;}
-function recompute(){
-  const M=getM(), reserved={};
-  M.forEach(dn=>(DECKS[dn]||[]).forEach(p=>{reserved[p[0]]=(reserved[p[0]]||0)+p[1];}));
-  document.querySelectorAll('.deck').forEach(el=>{
-    const dn=el.dataset.deck, cb=el.querySelector('.mont');
-    if(cb)cb.checked=M.has(dn);
-    el.classList.toggle('on',M.has(dn));
-    const out=el.querySelector('.loadout'); if(!out)return;
-    if(M.has(dn)){out.innerHTML='<span class="ok">✅ montado · cartas reservadas a este deck</span>';return;}
-    const moves=[],buys=[];
-    (DECKS[dn]||[]).forEach(p=>{
-      const c=p[0],q=p[1],own=OWNED[c]||0,used=Math.min(reserved[c]||0,own),free=own-used;
-      let short=q-Math.min(q,free);
-      if(short>0){const canMove=Math.min(short,used);
-        if(canMove>0){const s=srcDeck(c,M);moves.push(canMove+'x '+c+(s?' ('+s+')':''));}
-        const buy=short-canMove; if(buy>0)buys.push(buy+'x '+c);}
-    });
-    let h='';
-    if(moves.length)h+='<div class="mv"><b>🔀 mover:</b> '+moves.join(' · ')+'</div>';
-    if(buys.length)h+='<div class="by"><b>🛒 comprar:</b> '+buys.join(' · ')+'</div>';
-    if(!h)h='<span class="ok">✅ dá para montar já, sem mexer nos outros</span>';
-    out.innerHTML=h;
-  });
-}
-document.addEventListener('change',e=>{
-  if(e.target.classList.contains('mont')){
-    const dn=e.target.closest('.deck').dataset.deck, M=getM();
-    e.target.checked?M.add(dn):M.delete(dn); setM(M); recompute();
-  }
-});
-recompute();
-</script>
-</body></html>"""
+<footer>Por formato: primeiro os teus alvos, depois o resto do metagame (top-10 ponderado). Cada deck com a % que já tens e as cartas em falta (imagem da edição, ✓ed = edição que já tens, preço). Terras básicas não contam. Atualiza sozinho todos os dias.</footer>
+</div></body></html>"""
 
 
 def main():
