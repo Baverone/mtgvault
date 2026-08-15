@@ -190,7 +190,7 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
 </style></head><body><div class="wrap">
 <header><h1>🎨 Coleção — por cor e custo de mana</h1>
 <div class="sub">um binder por cor · dentro, SPML e Premodern separados, por custo de mana · dados de %TODAY%</div>
-<nav class="tabs"><a href="index.html">🏠 Início</a><a href="meusdecks.html">🎴 Os meus decks</a><a href="cobertura.html">🌐 Metagame</a><a href="buildability.html">🔨 Montar</a><a class="cur" href="colecao_cor.html">🎨 Coleção</a></nav>
+<nav class="tabs"><a href="index.html">🏠 Início</a><a href="meusdecks.html">🎴 Os meus decks</a><a href="metagame.html">🌐 Metagame</a><a href="buildability.html">🔨 Montar</a><a class="cur" href="colecao_cor.html">🎨 Coleção</a></nav>
 <div class="tally"><b class="t-col">🔵 %COL% em coleção</b><b class="t-deck">🟢 %DECK% em decks (fora)</b><b class="t-sell">🔴 %SELL% a vender</b></div>
 <div class="cfg">%CFG%</div></header>
 <div class="nav">%NAV% · <a href="#Vender">🔴 Vender</a></div>

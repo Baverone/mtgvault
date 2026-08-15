@@ -205,7 +205,7 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
 </style></head><body><div class="wrap">
 <header><h1>🔨 O que consigo montar</h1>
 <div class="sub">%NTG% decks-alvo + %NMT% do metagame · dados de %TODAY%</div>
-<nav class="tabs"><a href="index.html">🏠 Início</a><a href="meusdecks.html">🎴 Os meus decks</a><a href="cobertura.html">🌐 Metagame</a><a class="cur" href="buildability.html">🔨 Montar</a><a href="colecao_cor.html">🎨 Coleção</a></nav></header>
+<nav class="tabs"><a href="index.html">🏠 Início</a><a href="meusdecks.html">🎴 Os meus decks</a><a href="metagame.html">🌐 Metagame</a><a class="cur" href="buildability.html">🔨 Montar</a><a href="colecao_cor.html">🎨 Coleção</a></nav></header>
 %SECS%
 <footer>Por formato: primeiro os teus alvos, depois o resto do metagame (top-10 ponderado). Cada deck com a % que já tens e as cartas em falta (imagem da edição, ✓ed = edição que já tens, preço). Terras básicas não contam. Atualiza sozinho todos os dias.</footer>
 </div></body></html>"""

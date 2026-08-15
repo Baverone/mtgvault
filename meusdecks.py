@@ -36,7 +36,7 @@ DECK_CORE = {
 
 TABS = ('<nav class="tabs"><a href="index.html">🏠 Início</a>'
         '<a class="cur" href="meusdecks.html">🎴 Os meus decks</a>'
-        '<a href="cobertura.html">🌐 Metagame</a>'
+        '<a href="metagame.html">🌐 Metagame</a>'
         '<a href="buildability.html">🔨 Montar</a>'
         '<a href="colecao_cor.html">🎨 Coleção</a></nav>')
 

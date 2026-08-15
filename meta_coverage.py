@@ -268,8 +268,10 @@ def emerging_decks(con):
             if name in seen_names or name in top_names:
                 continue
             seen_names.add(name)
-            found.append({"fmt": fmt, "name": name, "score": round(r["score"], 1),
-                          "nlists": r["nlists"], "ev": r["ev"]})
+            url = con.execute("SELECT url FROM decklists WHERE archetype_id = ? "
+                              "ORDER BY event_date DESC, id DESC LIMIT 1", (r["id"],)).fetchone()
+            found.append({"fmt": fmt, "aid": r["id"], "name": name, "score": round(r["score"], 1),
+                          "nlists": r["nlists"], "ev": r["ev"], "url": url["url"] if url else None})
             if len(found) >= 3:
                 break
         out += found
