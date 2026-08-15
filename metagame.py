@@ -9,8 +9,8 @@ Compras). Listas colapsáveis (a arte só carrega ao abrir). NÃO inventa nada.
 from __future__ import annotations
 
 import html
+import json
 import os
-from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -100,6 +100,7 @@ def build(con, out_path=None):
                    f'<ul class="eml">{rows}</ul></section>')
 
     subnav, secs = "", ""
+    sel = {}   # nome -> {fmt, cards:[[nome, qty, sid]]}  (para selecionar p/ a Lista de Compras)
     for fmt, _title, _n, _extras in mc.FORMATS:
         decks = data.get(fmt)
         if not decks:
@@ -108,13 +109,17 @@ def build(con, out_path=None):
         subnav += f'<a href="#f-{fmt}">{html.escape(lbl)}</a>'
         cards = ""
         for nm, lst in decks:
+            sel[nm] = {"fmt": fmt, "cards": [[c, q, imgmap.get(c.split(" // ")[0])]
+                                             for c, q in lst["main"] if c not in mc.BASICS]}
             src = f'{lst["player"] or "?"} · {lst["date"]}'
             lk = (f' · <a href="{html.escape(lst["url"])}" target="_blank" rel="noopener">🔗</a>'
                   if lst.get("url") else "")
             sb = (f'<div class="sbh">Sideboard</div><div class="cards">{_grid(lst["side"], imgmap)}</div>'
                   if lst["side"] else "")
             cards += (
-                f'<details class="deck"><summary><b>{html.escape(nm)}</b>'
+                f'<details class="deck"><summary>'
+                f'<button class="add" data-deck="{html.escape(nm)}" title="adicionar à Lista de Compras">➕</button>'
+                f'<b>{html.escape(nm)}</b>'
                 f'<span class="src">{html.escape(src)}{lk}</span></summary>'
                 f'<div class="cards">{_grid(lst["main"], imgmap)}</div>{sb}</details>')
         secs += (f'<section id="f-{fmt}"><h2>{html.escape(lbl)} '
@@ -123,7 +128,8 @@ def build(con, out_path=None):
     today = con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or ""
     out.write_text(_TMPL.replace("%TABS%", TABS).replace("%SUBNAV%", subnav)
                    .replace("%EMERGING%", em_html).replace("%SECS%", secs)
-                   .replace("%TODAY%", today), encoding="utf-8")
+                   .replace("%SEL%", json.dumps(sel, ensure_ascii=False)).replace("%TODAY%", today),
+                   encoding="utf-8")
     return out
 
 
@@ -144,6 +150,8 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .deck>summary{cursor:pointer;display:flex;justify-content:space-between;align-items:baseline;gap:10px;list-style:none}
  .deck>summary::-webkit-details-marker{display:none} .deck>summary b{font-size:15px} .deck>summary::before{content:"▸";color:var(--muted);margin-right:6px} .deck[open]>summary::before{content:"▾"}
  .src{color:var(--muted);font-size:11px;margin-left:auto} .src a{color:var(--accent);text-decoration:none}
+ .add{background:#1b2c4d;border:1px solid var(--accent);color:var(--accent);border-radius:8px;font-size:12px;font-weight:700;padding:1px 8px;cursor:pointer;margin-right:8px;flex:none} .add.on{background:var(--add);border-color:var(--add);color:#06210f}
+ .selbar{position:sticky;bottom:10px;margin-top:14px;background:#12305a;border:1px solid var(--accent);border-radius:12px;padding:9px 14px;font-size:13px;display:none;align-items:center;gap:10px} .selbar a{color:#cfe0ff;font-weight:700}
  .sbh{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em;margin:8px 0 4px}
  .cards{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
  .cd{position:relative;width:60px} .cd img,.cd .noimg{width:60px;height:84px;border-radius:4px;display:block;background:#0c0f14}
@@ -155,8 +163,31 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
 %TABS%<div class="subnav">%SUBNAV%</div></header>
 %EMERGING%
 %SECS%
-<footer>Só para visualizar o metagame: abre um deck para ver a lista completa mais recente com arte. Sem % (isso é nos Meus decks) e sem staples que faltam (isso é na Lista de Compras). Os decks a emergir têm link para a lista. Atualiza diariamente.</footer>
-</div></body></html>"""
+<div class="selbar" id="selbar"></div>
+<footer>Só para visualizar o metagame: abre um deck para ver a lista completa. Carrega ➕ para o <b>adicionar à Lista de Compras</b> (fica no teu navegador; ➕ adiciona, ✓ tira). Os decks a emergir têm link. Atualiza diariamente.</footer>
+</div>
+<script>
+const SEL=%SEL%, KEY='mtg_sel';
+let _mem=null;
+function get(){if(_mem)return _mem;try{return JSON.parse(localStorage.getItem(KEY)||'{}');}catch(e){return {};}}
+function set(o){_mem=o;try{localStorage.setItem(KEY,JSON.stringify(o));}catch(e){}}
+function refresh(){
+  const cur=get();
+  document.querySelectorAll('.add').forEach(b=>{const dn=b.dataset.deck;const on=dn in cur;b.classList.toggle('on',on);b.textContent=on?'✓':'➕';});
+  const n=Object.keys(cur).length, bar=document.getElementById('selbar');
+  if(n){bar.style.display='flex';bar.innerHTML=n+' deck'+(n>1?'s':'')+' selecionado'+(n>1?'s':'')+' &nbsp; <a href="buildability.html">→ ver na Lista de Compras</a> &nbsp; <a href="#" id="clr">limpar</a>';}
+  else bar.style.display='none';
+}
+document.addEventListener('click',e=>{
+  if(e.target.classList.contains('add')){e.preventDefault();e.stopPropagation();
+    const dn=e.target.dataset.deck,cur=get();
+    if(dn in cur)delete cur[dn]; else if(SEL[dn])cur[dn]=SEL[dn];
+    set(cur);refresh();}
+  if(e.target.id==='clr'){e.preventDefault();set({});refresh();}
+});
+refresh();
+</script>
+</body></html>"""
 
 
 def main():

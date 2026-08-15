@@ -11,6 +11,7 @@ Reutiliza meta_coverage._visual (imagem+preço). NÃO inventa nada.
 from __future__ import annotations
 
 import html
+import json
 import os
 from collections import defaultdict
 from pathlib import Path
@@ -108,7 +109,8 @@ def build(con, out_path=None):
                               'cartas em falta — ou já os tens, ou estão longe de completos.</div>')
     today = con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or ""
     out.write_text(_TMPL.replace("%SECS%", sec or empty).replace("%N%", str(len(decks)))
-                   .replace("%TOTAL%", f"{total:.2f}").replace("%TODAY%", today), encoding="utf-8")
+                   .replace("%TOTAL%", f"{total:.2f}").replace("%TODAY%", today)
+                   .replace("%OWNED%", json.dumps(owned, ensure_ascii=False)), encoding="utf-8")
     return out
 
 
@@ -127,14 +129,38 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .c .q{position:absolute;top:2px;left:2px;background:#000b;color:#fff;font-weight:700;font-size:10px;padding:0 4px;border-radius:6px}
  .c .pz{position:absolute;bottom:2px;left:2px;right:2px;text-align:center;background:#000a;color:var(--gold);font-size:9px;border-radius:4px}
  .c .ed{position:absolute;top:2px;right:2px;background:#12351f;color:var(--add);font-size:8px;padding:0 3px;border-radius:4px}
+ #selmeta .sd{background:#12203a;border:1px solid #2a4066;border-radius:12px;padding:10px 14px;margin-bottom:8px}
+ #selmeta h3{margin:0 0 6px;font-size:14px;display:flex;align-items:center;gap:8px} #selmeta .rm{margin-left:auto;background:none;border:1px solid var(--line);color:var(--muted);border-radius:8px;cursor:pointer;font-size:11px;padding:1px 7px} #selmeta .rm:hover{color:var(--warn);border-color:var(--warn)}
+ #selmeta .cd{position:relative;width:60px} #selmeta .cd img,#selmeta .cd .noimg{width:60px;height:84px;border-radius:4px;display:block;background:#0c0f14} #selmeta .cd .cq{position:absolute;top:1px;left:1px;background:#000c;color:#fff;font-size:9px;font-weight:700;padding:0 3px;border-radius:5px}
  footer{margin-top:24px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
 <header><h1>🛒 Lista de Compras</h1>
 <div class="lead">Os teus decks a mais de 50% · %N% decks · total ~%TOTAL%€ · dados de %TODAY%</div>
 <nav class="tabs"><a href="index.html">🏠 Início</a><a href="meusdecks.html">🎴 Os meus decks</a><a href="metagame.html">🌐 Metagame</a><a class="cur" href="buildability.html">🔨 Montar</a><a href="colecao_cor.html">🎨 Coleção</a></nav></header>
+<div id="selmeta"></div>
 %SECS%
-<footer>Só os teus decks que estão a mais de 50% de completos (vale a pena acabar). As <b>staples</b> faltam em vários decks — compras uma vez, servem todos. Cada carta mostra a edição a comprar (✓ed = já tens uma edição) e o preço (tendência Cardmarket). Atualiza diariamente.</footer>
-</div></body></html>"""
+<footer>Os teus decks a mais de 50% de completos (vale a pena acabar). As <b>staples</b> faltam em vários — compras uma vez, servem todos. Em cima aparecem os decks do <b>Metagame</b> que selecionaste (➕ lá). Cada carta mostra a edição a comprar (✓ed = já tens) e o preço. Atualiza diariamente.</footer>
+</div>
+<script>
+const OWNED=%OWNED%;
+function art(sid){return sid?'https://cards.scryfall.io/small/front/'+sid[0]+'/'+sid[1]+'/'+sid+'.jpg':'';}
+function get(){try{return JSON.parse(localStorage.getItem('mtg_sel')||'{}');}catch(e){return {};}}
+function render(){
+  const cur=get(), box=document.getElementById('selmeta'); let h='';
+  for(const nm in cur){
+    const d=cur[nm], miss=(d.cards||[]).filter(c=>(OWNED[c[0]]||0)<c[1]);
+    let g='';
+    miss.forEach(c=>{const need=c[1]-(OWNED[c[0]]||0);const im=c[2]?'<img loading=lazy src="'+art(c[2])+'">':'<div class=noimg></div>';g+='<div class="cd" title="'+nm+'">'+im+'<span class="cq">'+need+'x</span></div>';});
+    h+='<div class="sd"><h3>🌐 '+nm+' <span class="dim">('+miss.length+' a comprar)</span>'
+      +'<button class="rm" data-rm="'+nm.replace(/"/g,'&quot;')+'">✕ tirar</button></h3>'
+      +'<div class="grid">'+(g||'<span class="dim">já tens tudo desta</span>')+'</div></div>';
+  }
+  box.innerHTML=h;
+}
+document.addEventListener('click',e=>{if(e.target.dataset.rm){const cur=get();delete cur[e.target.dataset.rm];try{localStorage.setItem('mtg_sel',JSON.stringify(cur));}catch(x){}render();}});
+render();
+</script>
+</body></html>"""
 
 
 def main():
