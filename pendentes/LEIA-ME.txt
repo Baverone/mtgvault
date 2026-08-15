@@ -1,0 +1,16 @@
+PASTA DE FOTOS POR CATALOGAR
+============================
+
+Larga aqui as fotos das cartas novas (do telemóvel: app do GitHub -> este
+repositório -> pasta pendentes -> "Add file / Upload files"; ou no PC).
+
+Depois, um Claude (esta sessão no PC, OU o claude.ai/code aberto no telemóvel
+apontado a Baverone/mtgvault) olha para estas fotos, reconhece as cartas e
+corre:
+
+    py processar_fotos.py <csv>
+
+Isso cataloga tudo no vault.db, LIMPA estas fotos (já não são precisas aqui),
+e faz push. O site atualiza-se sozinho.
+
+Regras de reconhecimento: ver PROCESSAR_FOTOS.md.
