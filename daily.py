@@ -37,6 +37,7 @@ import alertas  # noqa: E402  (gera alertas.html — o que vender/comprar por mo
 import buildability  # noqa: E402  (gera buildability.html — o que consigo montar dos decks-alvo)
 import meusdecks  # noqa: E402  (gera meusdecks.html — os meus decks: estado, % e evolução)
 import metagame  # noqa: E402  (gera metagame.html — só ver o metagame: listas com arte)
+import prioridade  # noqa: E402  (gera prioridade.html — alocação exclusiva por prioridade)
 import my_decks  # noqa: E402  (mantém atualizadas as listas dos decks que o André segue)
 import commander_decks  # noqa: E402  (decks de comandante seguidos por consenso, ex.: Cloud DC)
 import refresh_collection  # noqa: E402  (reconstroi collection_owned p/ o index.html)
@@ -203,6 +204,8 @@ def main():
               lambda: str(meusdecks.build(con, ROOT / "meusdecks.html")))
         _step(con, "metagame-pagina",
               lambda: str(metagame.build(con, ROOT / "metagame.html")))
+        _step(con, "prioridade-pagina",
+              lambda: str(prioridade.build(con, ROOT / "prioridade.html")))
 
         _step(con, "prune", lambda: f"{analysis.prune_decklists(con, 180)} apagadas")
 
