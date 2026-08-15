@@ -35,6 +35,7 @@ import colecao_cor  # noqa: E402  (gera colecao_cor.html — coleção por cor +
 import meta_coverage  # noqa: E402  (gera cobertura.html — top decks + % que tenho + o que falta)
 import alertas  # noqa: E402  (gera alertas.html — o que vender/comprar por movimento de preço)
 import buildability  # noqa: E402  (gera buildability.html — o que consigo montar dos decks-alvo)
+import meusdecks  # noqa: E402  (gera meusdecks.html — os meus decks: estado, % e evolução)
 import my_decks  # noqa: E402  (mantém atualizadas as listas dos decks que o André segue)
 import commander_decks  # noqa: E402  (decks de comandante seguidos por consenso, ex.: Cloud DC)
 import refresh_collection  # noqa: E402  (reconstroi collection_owned p/ o index.html)
@@ -197,6 +198,8 @@ def main():
         # (meus-decks, decks-comandante) e dos preços (imagem/edição a comprar).
         _step(con, "buildability",
               lambda: str(buildability.build(con, ROOT / "buildability.html")))
+        _step(con, "meus-decks-pagina",
+              lambda: str(meusdecks.build(con, ROOT / "meusdecks.html")))
 
         _step(con, "prune", lambda: f"{analysis.prune_decklists(con, 180)} apagadas")
 
