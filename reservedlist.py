@@ -12,6 +12,7 @@ from __future__ import annotations
 import html
 import os
 from collections import defaultdict
+from datetime import date, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -82,16 +83,41 @@ def build(con, out_path=None):
         k = "en" if (r["lang"] or "en") == "en" else "pt"
         owned[r["sid"]][k] += r["q"]
 
-    # Valor de hoje (Cardmarket, nonfoil) por impressão.
-    price = {r["scryfall_id"]: (r["trend"] if r["trend"] is not None else r["low"])
-             for r in con.execute("SELECT scryfall_id, trend, low FROM price_latest "
-                                  "WHERE source='cardmarket' AND finish='nonfoil'")}
+    # PREÇO MÍNIMO DE HOJE — o menor entre todas as fontes (Cardmarket `low`,
+    # CardTrader oferta mais barata; a Scryfall grátis entra como trend enquanto
+    # não houver credenciais). Uma linha por impressão = o mínimo do mercado.
+    price = {}
+    for r in con.execute(
+        "SELECT scryfall_id sid, MIN(COALESCE(low, trend)) m FROM price_latest "
+        "WHERE finish='nonfoil' AND COALESCE(low, trend) IS NOT NULL GROUP BY scryfall_id"):
+        price[r["sid"]] = r["m"]
 
-    # Evolução: série de preços por impressão (do mais antigo ao mais recente).
+    # PREÇO DE HÁ ~1 MÊS. Preferência: o valor EXATO de há 30 dias, reconstruído
+    # da nossa própria história (o price_history guarda mudanças, por isso o
+    # último ponto até à data-alvo É o preço nesse dia). Enquanto não houver
+    # história com 30 dias, cai para o avg30 do Cardmarket (média de 30 dias).
+    cutoff = (date.today() - timedelta(days=30)).isoformat()
+    month = {}
+    for r in con.execute(
+        """SELECT ph.scryfall_id sid, COALESCE(ph.low, ph.trend) v FROM price_history ph
+             JOIN (SELECT scryfall_id, MAX(date) d FROM price_history
+                    WHERE finish='nonfoil' AND date <= ? GROUP BY scryfall_id) x
+               ON x.scryfall_id = ph.scryfall_id AND x.d = ph.date
+            WHERE ph.finish='nonfoil'""", (cutoff,)):
+        if r["v"] is not None:
+            month[r["sid"]] = r["v"]
+    for r in con.execute("SELECT scryfall_id sid, avg30 FROM price_latest "
+                         "WHERE source='cardmarket' AND finish='nonfoil' AND avg30 IS NOT NULL"):
+        month.setdefault(r["sid"], r["avg30"])
+
+    # Evolução: série de preços por impressão (do mais antigo ao mais recente),
+    # o menor entre fontes em cada dia.
     hist = defaultdict(list)
-    for r in con.execute("SELECT scryfall_id sid, trend, low FROM price_history "
-                         "WHERE source='cardmarket' AND finish='nonfoil' ORDER BY date"):
-        hist[r["sid"]].append(r["trend"] if r["trend"] is not None else r["low"])
+    for r in con.execute(
+        "SELECT scryfall_id sid, date, MIN(COALESCE(low, trend)) v FROM price_history "
+        "WHERE finish='nonfoil' GROUP BY scryfall_id, date ORDER BY date"):
+        if r["v"] is not None:
+            hist[r["sid"]].append(r["v"])
 
     total_rl = con.execute("SELECT COUNT(DISTINCT name) c FROM catalog.cards "
                            "WHERE reserved=1").fetchone()["c"]
@@ -120,17 +146,28 @@ def build(con, out_path=None):
                 have_names.add(c["name"])
                 have_value += (price.get(sid) or 0) * (en + pt)
             val = price.get(sid)
+            m = month.get(sid)
             own = (f'<span class="en">{en} EN</span>' if en else "") + \
                   (f'<span class="pt">{pt} PT</span>' if pt else "")
             if not has:
                 own = '<span class="no">não tens</span>'
+            mon = ""
+            if m:
+                if val is not None:
+                    chg = (val - m) / m * 100 if m else 0
+                    col = "var(--add)" if chg > 1 else "var(--warn)" if chg < -1 else "var(--muted)"
+                    sign = "+" if chg >= 0 else ""
+                    mon = (f'<div class="mon">há 1 mês {_eur(m)} · '
+                           f'<b style="color:{col}">{sign}{chg:.0f}%</b></div>')
+                else:
+                    mon = f'<div class="mon">há 1 mês {_eur(m)}</div>'
             cells += (
                 f'<div class="c {"have" if has else "miss"}" title="{html.escape(c["name"])}">'
                 f'<img loading="lazy" src="{_art(sid)}" alt="">'
                 f'<div class="nm">{html.escape(c["name"])}</div>'
                 f'<div class="own">{own}</div>'
-                f'<div class="val">{_eur(val)}</div>'
-                f'<div class="ev">{_spark(hist.get(sid, []))}</div></div>')
+                f'<div class="val">{_eur(val)} <small>hoje</small></div>'
+                f'<div class="ev">{_spark(hist.get(sid, []))}</div>{mon}</div>')
         secs += (f'<section><h2>{html.escape(sname)} '
                  f'<span class="dim">{year} · tens {n_have}/{len(rows)}</span></h2>'
                  f'<div class="grid">{cells}</div></section>')
@@ -154,13 +191,14 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .filter{display:flex;gap:8px;align-items:center;margin:6px 0 4px} .filter button{background:var(--card);border:1px solid var(--line);color:var(--ink);border-radius:20px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer} .filter button.on{background:linear-gradient(180deg,#26406f,#1b2c4d);border-color:var(--accent)}
  h2{font-size:15px;margin:20px 0 8px;border-bottom:1px solid var(--line);padding-bottom:5px} .dim{color:var(--muted);font-size:12px;font-weight:400}
  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
- .c{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px;display:grid;grid-template-columns:38px 1fr;grid-template-areas:"img nm" "img own" "val ev";gap:2px 8px;align-items:center}
+ .c{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px;display:grid;grid-template-columns:38px 1fr;grid-template-areas:"img nm" "img own" "val ev" "mon mon";gap:2px 8px;align-items:center}
  .c img{grid-area:img;width:38px;height:53px;border-radius:4px;display:block;background:#0c0f14}
  .c .nm{grid-area:nm;font-weight:600;font-size:12.5px;line-height:1.15;align-self:end}
  .c .own{grid-area:own;font-size:11px;align-self:start} .c .own span{margin-right:5px;font-weight:700}
  .c .own .en{color:var(--add)} .c .own .pt{color:var(--pt)} .c .own .no{color:#4a5666;font-weight:400}
- .c .val{grid-area:val;font-weight:800;font-size:13px;color:var(--gold)}
+ .c .val{grid-area:val;font-weight:800;font-size:14px;color:var(--gold)} .c .val small{color:var(--muted);font-weight:600;font-size:9px}
  .c .ev{grid-area:ev;display:flex;align-items:center;gap:4px;justify-content:flex-end} .c .ev .sk{opacity:.9} .c .ev .chg{font-size:10px;font-weight:700}
+ .c .mon{grid-area:mon;font-size:10.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:3px;margin-top:2px} .c .mon b{font-weight:700}
  /* SEM COR quando não tenho nenhuma cópia */
  .c.miss{opacity:.62} .c.miss img{filter:grayscale(1) brightness(.7)} .c.miss .val{color:var(--muted)}
  body.only .c.miss{display:none}
@@ -171,7 +209,7 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
 %TABS%
 <div class="filter"><button id="tgl" onclick="toggle()">Mostrar só as que tenho</button></div></header>
 %SECS%
-<footer>A Reserved List da Wizards (cartas que nunca serão reimpressas), pela flag oficial da Scryfall — separada por edição, da mais recente para a mais antiga, só edições reais (core/expansion; sem 30th Anniversary, World Championship, Collectors' Edition, promos ou oversized). Por carta: cópias em Inglês (verde) e Português (azul), valor de mercado (Cardmarket) e evolução de preço. Sem cor = não tens nenhuma. Atualiza diariamente — a evolução ganha pontos com os dias.</footer>
+<footer>A Reserved List da Wizards (cartas que nunca serão reimpressas), pela flag oficial da Scryfall — separada por edição, da mais recente para a mais antiga, só edições reais (core/expansion; sem 30th Anniversary, World Championship, Collectors' Edition, promos ou oversized). Por carta: cópias em Inglês (verde) e Português (azul), o <b>preço mínimo de hoje</b> (o menor entre Cardmarket e CardTrader) e o de <b>há ~1 mês</b> (média de 30 dias do Cardmarket, ou o valor exato quando a nossa própria história tiver 30 dias), com a variação. Sem cor = não tens nenhuma. Atualiza diariamente.</footer>
 </div>
 <script>
 function toggle(){document.body.classList.toggle('only');
