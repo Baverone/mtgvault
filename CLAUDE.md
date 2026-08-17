@@ -60,6 +60,7 @@ metagame.py         metagame.html — só ver o metagame: listas com arte + ➕ 
 metafaltas.py       metafaltas.html — decks do metagame a >=50% (para completar), com bans
 prioridade.py       prioridade.html — Premodern alocação exclusiva; SPML partilha sempre
 reservedlist.py     reservedlist.html — Reserved List (Scryfall) x coleção, por edição
+colvalor.py         colvalor.html — valor de toda a coleção por balde (usa reservedlist.price_maps)
 my_decks.py         segue decks-alvo (por assinatura e por jogador de MTGO) -> tabela decks
 commander_decks.py  decks de comandante por consenso (ex.: Cloud DC) -> tabela decks
 refresh_collection.py  collection_owned p/ o index.html
