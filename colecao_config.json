@@ -15,6 +15,11 @@
   "decks_montados": [],
   "_decks_montados": "Decks fisicamente MONTADOS (nomes da tabela decks). As cartas de um deck montado saem da coleção (ficam reservadas a ele), esteja o formato ativo ou não — é o loadout a contar em todo o sistema. Na página buildability podes planear com os checkmarks (fica no navegador); quando decidires, diz-me os nomes e eu ponho aqui para contar de vez. Vazio = nada reservado por esta via.",
 
+  "banimentos_manuais": {
+    "legacy": ["The Fantasticar"]
+  },
+  "_banimentos_manuais": "Bans que a Scryfall ainda não meteu no bulk (são recentes). Formato -> nomes REAIS das cartas banidas. Os decks do metagame que contêm estas cartas deixam de aparecer em 'Decks meta para completar'. A Scryfall (legalities='banned') já é apanhada sozinha; isto é só para a janela até ela atualizar — quando ela registar o ban, podes tirar daqui. Formatos: standard | pioneer | modern | legacy | premodern.",
+
   "regras_colecao": {
     "Blue Farm": { "reter_extras_meses": 6 },
     "Cloud cEDH": { "reter_extras_meses": 6 },

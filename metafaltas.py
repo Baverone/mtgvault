@@ -8,6 +8,7 @@ que faltam (imagem da edição + preço). Reutiliza meta_coverage. NÃO inventa 
 from __future__ import annotations
 
 import html
+import json
 import os
 from pathlib import Path
 
@@ -16,6 +17,45 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 import meta_coverage as mc  # noqa: E402
 from mtgvault.collection import owned_playable  # noqa: E402
+
+
+def _config():
+    try:
+        return json.loads((ROOT / "colecao_config.json").read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def _scryfall_banned(con, fmt):
+    """Cartas com legalities='banned' no formato, segundo a Scryfall. É a rede de
+    segurança automática — mas o bulk deles atrasa-se face aos anúncios, por isso
+    há também a lista manual em colecao_config.json."""
+    try:
+        return {r["card_name"] if "card_name" in r.keys() else r["name"]
+                for r in con.execute(
+                    "SELECT DISTINCT name FROM cards WHERE json_extract(legalities, ?)='banned'",
+                    (f"$.{fmt}",))}
+    except Exception:  # noqa: BLE001  (json_extract pode não existir; a lista manual chega)
+        return set()
+
+
+def _banned_set(con, fmt, cfg):
+    b = set(cfg.get("banimentos_manuais", {}).get(fmt, []))
+    return b | _scryfall_banned(con, fmt)
+
+
+def _depends_on_banned(con, aid, banned):
+    """True se o deck joga uma carta banida COMO NÚCLEO (`core_copies >= 1`, main
+    ou side) — ou seja, uma carta que a % de completude conta. Aí o arquétipo,
+    como é hoje, é ilegal → não o mostrar. Um 1-of marginal (core=0) não conta: o
+    deck sobrevive sem ela e o `deck_coverage` nem sequer a inclui. Quando saírem
+    listas pós-ban, o `card_roles` atualiza-se e o deck reaparece sozinho."""
+    if not banned:
+        return False
+    for board in ("main", "side"):
+        if any(r["card_name"] in banned for r in mc._core_rows(con, aid, board)):
+            return True
+    return False
 
 FORMATS = [("pioneer", "Pioneer"), ("modern", "Modern"),
            ("legacy", "Legacy"), ("premodern", "Premodern")]
@@ -41,11 +81,13 @@ def _cardli(m):
 def build(con, out_path=None):
     out = Path(out_path) if out_path else (ROOT / "metafaltas.html")
     owned = owned_playable(con)
+    cfg = _config()
     tcache = {}
     secs = ""
     n_total = 0
     for fmt, lbl in FORMATS:
         df = mc._format_df(con, fmt)
+        banned = _banned_set(con, fmt, cfg)
         found = []
         seen = set()
         for aid, _score in mc._rank(con, fmt, SCAN):
@@ -53,6 +95,11 @@ def build(con, out_path=None):
             if name in seen:
                 continue
             seen.add(name)
+            # Decks cujo NÚCLEO depende de uma carta banida no formato estão
+            # mortos como são hoje — não os mostres como "para completar". Apanha
+            # bans recentes (lista manual) e os que a Scryfall já regista.
+            if _depends_on_banned(con, aid, banned):
+                continue
             cov = mc.deck_coverage(con, aid, owned, name)
             if cov["pct"] >= MIN_PCT:
                 found.append(cov)
