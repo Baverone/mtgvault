@@ -70,6 +70,17 @@ def _migrate(con: sqlite3.Connection) -> None:
         con.execute("ALTER TABLE decklists ADD COLUMN content_hash TEXT")
         con.commit()
 
+    # Catálogo (BD anexada): a flag reserved da Reserved List. Em catálogos já
+    # criados a coluna não existe — acrescenta-se aqui a 0 (o preenchimento vem
+    # do bulk, via scryfall.load_bulk/backfill_reserved).
+    cols = {r["name"] for r in con.execute("PRAGMA catalog.table_info(cards)")}
+    if cols and "reserved" not in cols:
+        con.execute("ALTER TABLE catalog.cards ADD COLUMN reserved INTEGER DEFAULT 0")
+        con.commit()
+    if cols and "set_type" not in cols:
+        con.execute("ALTER TABLE catalog.cards ADD COLUMN set_type TEXT")
+        con.commit()
+
 
 def catalog_size(con: sqlite3.Connection) -> int:
     return con.execute("SELECT COUNT(*) c FROM catalog.cards").fetchone()["c"]

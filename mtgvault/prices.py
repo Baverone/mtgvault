@@ -149,9 +149,13 @@ def cards_of_interest(con: sqlite3.Connection) -> set[str]:
     milhares de impressões vezes 365 dias. Só interessam:
       1. o que já tenho na coleção
       2. todas as impressões das cartas que preciso (decks, vigiados, cores)
+      3. a Reserved List inteira (impressões em papel) — a página reservedlist
+         mostra o valor e a evolução de cada edição, tenha-a eu ou não
     """
     ids = {r["scryfall_id"] for r in
            con.execute("SELECT DISTINCT scryfall_id FROM copies")}
+    ids |= {r["scryfall_id"] for r in con.execute(
+        "SELECT scryfall_id FROM cards WHERE reserved = 1 AND digital = 0")}
 
     names: set[str] = {r["card_name"] for r in
                        con.execute("SELECT DISTINCT card_name FROM deck_cards")}

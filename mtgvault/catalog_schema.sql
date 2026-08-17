@@ -22,7 +22,9 @@ CREATE TABLE IF NOT EXISTS catalog.cards (
     image_uri        TEXT,
     legalities       TEXT,                   -- JSON
     digital          INTEGER DEFAULT 0,
-    reprint          INTEGER DEFAULT 0
+    reprint          INTEGER DEFAULT 0,
+    reserved         INTEGER DEFAULT 0,      -- Reserved List da Wizards (Scryfall)
+    set_type         TEXT                    -- core|expansion|promo|memorabilia|... (Scryfall)
 );
 CREATE INDEX IF NOT EXISTS catalog.ix_cards_name   ON cards(name);
 CREATE INDEX IF NOT EXISTS catalog.ix_cards_oracle ON cards(oracle_id);

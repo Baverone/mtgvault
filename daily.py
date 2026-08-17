@@ -39,6 +39,7 @@ import meusdecks  # noqa: E402  (gera meusdecks.html — os meus decks: estado, 
 import metagame  # noqa: E402  (gera metagame.html — só ver o metagame: listas com arte)
 import prioridade  # noqa: E402  (gera prioridade.html — alocação exclusiva por prioridade)
 import metafaltas  # noqa: E402  (gera metafaltas.html — decks meta a >=70% para completar)
+import reservedlist  # noqa: E402  (gera reservedlist.html — Reserved List x coleção)
 import my_decks  # noqa: E402  (mantém atualizadas as listas dos decks que o André segue)
 import commander_decks  # noqa: E402  (decks de comandante seguidos por consenso, ex.: Cloud DC)
 import refresh_collection  # noqa: E402  (reconstroi collection_owned p/ o index.html)
@@ -77,6 +78,10 @@ def _catalog(con):
     para o Git), por isso reconstrói-se a cada execução. No PC local, se já
     estiver cheio, salta — o `sync-cards` semanal é que o atualiza."""
     if db.catalog_size(con) >= 1000:
+        # Já existe. Mas um catálogo antigo em cache pode não ter a metadata nova
+        # (reserved/set_type) — nesse caso repovoa uma vez a partir do bulk.
+        if not scryfall.has_card_meta(con):
+            return f"metadata em falta — repovoado ({scryfall.load_bulk(con, _bulk()):,})"
         return "já existe — saltado"
     return f"{scryfall.load_bulk(con, _bulk()):,} impressões"
 
@@ -215,6 +220,8 @@ def main():
               lambda: str(prioridade.build(con, ROOT / "prioridade.html")))
         _step(con, "metafaltas-pagina",
               lambda: str(metafaltas.build(con, ROOT / "metafaltas.html")))
+        _step(con, "reserved-list-pagina",
+              lambda: str(reservedlist.build(con, ROOT / "reservedlist.html")))
 
         _step(con, "prune", lambda: f"{analysis.prune_decklists(con, 180)} apagadas")
 

@@ -84,14 +84,17 @@ def _row(c: dict) -> tuple | None:
         json.dumps(c.get("legalities") or {}),
         int(bool(c.get("digital"))),
         int(bool(c.get("reprint"))),
+        int(bool(c.get("reserved"))),
+        c.get("set_type"),
     )
 
 
 INSERT = """INSERT OR REPLACE INTO catalog.cards (
     scryfall_id, oracle_id, name, set_code, set_name, collector_number, lang,
     rarity, type_line, mana_cost, cmc, color_identity, finishes, released_at,
-    cardmarket_id, tcgplayer_id, image_uri, legalities, digital, reprint
-) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
+    cardmarket_id, tcgplayer_id, image_uri, legalities, digital, reprint, reserved,
+    set_type
+) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
 
 
 def load_bulk(con: sqlite3.Connection, path: Path, batch: int = 5000) -> int:
@@ -129,6 +132,12 @@ def load_bulk(con: sqlite3.Connection, path: Path, batch: int = 5000) -> int:
         con.commit()
         n += len(buf)
     return n
+
+
+def has_card_meta(con: sqlite3.Connection) -> bool:
+    """Se o catálogo já traz a metadata nova (reserved/set_type). Um catálogo
+    antigo em cache (ex.: na cloud) tem as colunas a 0/NULL — daí o reload."""
+    return con.execute("SELECT COUNT(*) c FROM catalog.cards WHERE reserved = 1").fetchone()["c"] > 0
 
 
 def sync(con: sqlite3.Connection) -> int:
