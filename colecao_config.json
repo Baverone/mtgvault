@@ -18,6 +18,10 @@
   "banimentos_manuais": {
     "legacy": ["The Fantasticar"]
   },
+
+  "reserved_vender_ignorar_formatos": ["vintage"],
+  "_reserved_vender_ignorar_formatos": "Na aba Reserved List, uma carta que o André TEM só é marcada 'VENDER' se não jogar em NENHUM formato que conte. Estes formatos NÃO contam (são ignorados). Começa só com 'vintage'. Para afinar, acrescenta aqui os formatos que não te interessam (ex.: 'duel-commander', 'cedh'): as cartas que só jogarem nesses passam a aparecer para vender. Valores: standard | pioneer | modern | legacy | vintage | pauper | duel-commander | premodern | cedh.",
+
   "_banimentos_manuais": "Bans que a Scryfall ainda não meteu no bulk (são recentes). Formato -> nomes REAIS das cartas banidas. Os decks do metagame que contêm estas cartas deixam de aparecer em 'Decks meta para completar'. A Scryfall (legalities='banned') já é apanhada sozinha; isto é só para a janela até ela atualizar — quando ela registar o ban, podes tirar daqui. Formatos: standard | pioneer | modern | legacy | premodern.",
 
   "regras_colecao": {

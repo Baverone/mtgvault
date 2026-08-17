@@ -10,6 +10,7 @@ de que não tenho nenhuma cópia aparecem SEM COR.
 from __future__ import annotations
 
 import html
+import json
 import os
 from collections import defaultdict
 from datetime import date, timedelta
@@ -25,11 +26,27 @@ from mtgvault import db as _db  # noqa: E402
 # oversized), promo, from_the_vault e afins ficam de fora.
 SET_TYPES = ("core", "expansion")
 
+# Rótulos curtos dos formatos, p/ mostrar onde cada carta joga.
+FMT_LABEL = {"legacy": "Legacy", "cedh": "cEDH", "premodern": "Premodern",
+             "duel-commander": "Duel Cmdr", "vintage": "Vintage", "modern": "Modern",
+             "pioneer": "Pioneer", "standard": "Standard", "pauper": "Pauper"}
+
+
+def _ignore_formats():
+    """Formatos que NÃO contam para 'joga em algum lado' (o André vai afinando).
+    Uma carta da RL que só jogue em formatos ignorados fica marcada p/ vender.
+    Default: só Vintage fora. Configurável em colecao_config.json."""
+    try:
+        cfg = json.loads((ROOT / "colecao_config.json").read_text(encoding="utf-8"))
+        return set(cfg.get("reserved_vender_ignorar_formatos", ["vintage"]))
+    except Exception:  # noqa: BLE001
+        return {"vintage"}
+
 TABS = ('<nav class="tabs"><a href="index.html">🏠 Início</a>'
         '<a href="meusdecks.html">🎴 Os meus decks</a>'
         '<a href="metagame.html">🌐 Metagame</a>'
         '<a href="buildability.html">🔨 Montar</a>'
-        '<a href="colecao_cor.html">🎨 Coleção</a></nav>')
+        '<a href="colecao_cor.html">📚 Binders</a><a class="cur" href="reservedlist.html">🏆 Reserved List</a></nav>')
 
 
 def _art(sid):
@@ -123,9 +140,22 @@ def build(con, out_path=None):
     # Preços (mínimo entre fontes, nonfoil): hoje, há ~1 mês e a série do gráfico.
     price, month, hist = price_maps(con)
 
+    # Formatos onde cada carta joga (nº de listas), das decklists de torneio que
+    # seguimos. "Não joga em lado nenhum" = não joga em NENHUM formato que conta
+    # (os ignorados, ex.: Vintage, não contam). Essas — as que o André tem — vão
+    # marcadas para vender (RL sem jogo nenhum é dinheiro parado).
+    ignore = _ignore_formats()
+    card_formats = defaultdict(dict)
+    for r in con.execute(
+        """SELECT dc.card_name nm, dl.format f, COUNT(*) n
+             FROM decklist_cards dc JOIN decklists dl ON dl.id = dc.decklist_id
+            GROUP BY dc.card_name, dl.format"""):
+        card_formats[r["nm"]][r["f"]] = r["n"]
+
     total_rl = con.execute("SELECT COUNT(DISTINCT name) c FROM catalog.cards "
                            "WHERE reserved=1").fetchone()["c"]
     have_names, have_value = set(), 0.0
+    sell = []  # [(nome, qty, valor_total)] — RL que tem e não joga em lado nenhum
 
     # Agrupar por edição, mantendo a ordem (mais recente -> mais antiga).
     order, groups = [], defaultdict(list)
@@ -149,12 +179,24 @@ def build(con, out_path=None):
                 n_have += 1
                 have_names.add(c["name"])
                 have_value += (price.get(sid) or 0) * (en + pt)
+            fmts = card_formats.get(c["name"], {})
+            counted = sorted((f for f in fmts if f not in ignore), key=lambda f: -fmts[f])
+            to_sell = has and not counted
+            if to_sell:
+                sell.append((c["name"], en + pt, (price.get(sid) or 0) * (en + pt)))
             val = price.get(sid)
             m = month.get(sid)
             own = (f'<span class="en">{en} EN</span>' if en else "") + \
                   (f'<span class="pt">{pt} PT</span>' if pt else "")
             if not has:
                 own = '<span class="no">não tens</span>'
+            # Onde joga (só para as que tens): ajuda a afinar os formatos.
+            plays = ""
+            if has and counted:
+                plays = ('<div class="plays">joga: '
+                         + " · ".join(FMT_LABEL.get(f, f) for f in counted[:4]) + "</div>")
+            elif to_sell:
+                plays = '<div class="plays vd">não joga em formato nenhum</div>'
             mon = ""
             if m:
                 if val is not None:
@@ -165,11 +207,13 @@ def build(con, out_path=None):
                            f'<b style="color:{col}">{sign}{chg:.0f}%</b></div>')
                 else:
                     mon = f'<div class="mon">há 1 mês {_eur(m)}</div>'
+            badge = ' <span class="sellbadge">VENDER</span>' if to_sell else ""
             cells += (
-                f'<div class="c {"have" if has else "miss"}" title="{html.escape(c["name"])}">'
+                f'<div class="c {"sell" if to_sell else ("have" if has else "miss")}" '
+                f'title="{html.escape(c["name"])}">'
                 f'<img loading="lazy" src="{_art(sid)}" alt="">'
-                f'<div class="nm">{html.escape(c["name"])}</div>'
-                f'<div class="own">{own}</div>'
+                f'<div class="nm">{html.escape(c["name"])}{badge}</div>'
+                f'<div class="own">{own}</div>{plays}'
                 f'<div class="val">{_eur(val)} <small>hoje</small></div>'
                 f'<div class="ev">{_spark(hist.get(sid, []))}</div>{mon}</div>')
         secs += (f'<section><h2>{html.escape(sname)} '
@@ -179,8 +223,19 @@ def build(con, out_path=None):
     today = con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or ""
     head = (f'Tens <b>{len(have_names)}</b> de {total_rl} cartas da Reserved List · '
             f'valor da tua RL: <b>{_eur(have_value)}</b> · {len(cards)} impressões · dados de {today}')
+    ign = ", ".join(sorted(FMT_LABEL.get(f, f) for f in ignore)) or "nenhum"
+    if sell:
+        tot = sum(v for _n, _q, v in sell)
+        items = " · ".join(f"{html.escape(n)} ({q}×, {_eur(v)})"
+                           for n, q, v in sorted(sell, key=lambda s: -s[2]))
+        sellbox = (f'<div class="sellbox">💸 <b>A vender</b> — {len(sell)} carta(s) da RL que tens '
+                   f'e não jogam em formato nenhum (~{_eur(tot)}): {items}<br>'
+                   f'<span class="fine">formatos ignorados: {ign}</span></div>')
+    else:
+        sellbox = (f'<div class="sellnote">✓ Todas as tuas cartas da Reserved List jogam nalgum '
+                   f'formato — nada a vender. <span class="fine">(a ignorar: {ign})</span></div>')
     out.write_text(_TMPL.replace("%TABS%", TABS).replace("%SECS%", secs)
-                   .replace("%HEAD%", head), encoding="utf-8")
+                   .replace("%HEAD%", head).replace("%SELL%", sellbox), encoding="utf-8")
     return out
 
 
@@ -191,14 +246,17 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  *{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#10141d,#0d1017);color:var(--ink);font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
  .wrap{max-width:1100px;margin:0 auto;padding:22px 14px 60px}
  h1{margin:0;font-size:24px;font-weight:800} .lead{color:var(--muted);font-size:13px;margin:2px 0 12px} .lead b{color:var(--ink)}
- .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0} .tabs a{flex:1;min-width:110px;text-align:center;padding:11px 8px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:600;font-size:14px} .tabs a:hover{border-color:var(--accent)}
+ .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0} .tabs a{flex:1;min-width:110px;text-align:center;padding:11px 8px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:600;font-size:14px} .tabs a:hover{border-color:var(--accent)} .tabs a.cur{background:linear-gradient(180deg,#26406f,#1b2c4d);border-color:var(--accent)}
  .filter{display:flex;gap:8px;align-items:center;margin:6px 0 4px} .filter button{background:var(--card);border:1px solid var(--line);color:var(--ink);border-radius:20px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer} .filter button.on{background:linear-gradient(180deg,#26406f,#1b2c4d);border-color:var(--accent)}
  h2{font-size:15px;margin:20px 0 8px;border-bottom:1px solid var(--line);padding-bottom:5px} .dim{color:var(--muted);font-size:12px;font-weight:400}
  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
- .c{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px;display:grid;grid-template-columns:38px 1fr;grid-template-areas:"img nm" "img own" "val ev" "mon mon";gap:2px 8px;align-items:center}
+ .c{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px;display:grid;grid-template-columns:38px 1fr;grid-template-areas:"img nm" "img own" "play play" "val ev" "mon mon";gap:2px 8px;align-items:center}
  .c img{grid-area:img;width:38px;height:53px;border-radius:4px;display:block;background:#0c0f14}
  .c .nm{grid-area:nm;font-weight:600;font-size:12.5px;line-height:1.15;align-self:end}
  .c .own{grid-area:own;font-size:11px;align-self:start} .c .own span{margin-right:5px;font-weight:700}
+ .c .plays{grid-area:play;font-size:9.5px;color:#6f7b8a;line-height:1.2}
+ .c.sell{border-color:#7a3030} .c.sell .plays.vd{color:var(--warn);font-weight:700}
+ .sellbadge{background:#5a1f1f;color:#ff9b8a;font-size:8px;font-weight:800;padding:1px 4px;border-radius:5px;vertical-align:middle}
  .c .own .en{color:var(--add)} .c .own .pt{color:var(--pt)} .c .own .no{color:#4a5666;font-weight:400}
  .c .val{grid-area:val;font-weight:800;font-size:14px;color:var(--gold)} .c .val small{color:var(--muted);font-weight:600;font-size:9px}
  .c .ev{grid-area:ev;display:flex;align-items:center;gap:4px;justify-content:flex-end} .c .ev .sk{opacity:.9} .c .ev .chg{font-size:10px;font-weight:700}
@@ -206,14 +264,19 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  /* SEM COR quando não tenho nenhuma cópia */
  .c.miss{opacity:.62} .c.miss img{filter:grayscale(1) brightness(.7)} .c.miss .val{color:var(--muted)}
  body.only .c.miss{display:none}
+ .sellbox{background:#2a1618;border:1px solid #7a3030;border-radius:10px;padding:10px 12px;margin:10px 0;font-size:12.5px;color:#f0d0c8}
+ .sellbox b{color:#ff9b8a}
+ .sellnote{background:#111820;border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin:10px 0;font-size:12.5px;color:var(--muted)}
+ .fine{color:#6f7b8a;font-size:11px}
  footer{margin-top:24px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
 <header><h1>🏆 Reserved List</h1>
 <div class="lead">%HEAD%</div>
 %TABS%
 <div class="filter"><button id="tgl" onclick="toggle()">Mostrar só as que tenho</button></div></header>
+%SELL%
 %SECS%
-<footer>A Reserved List da Wizards (cartas que nunca serão reimpressas), pela flag oficial da Scryfall — separada por edição, da mais recente para a mais antiga, só edições reais (core/expansion; sem 30th Anniversary, World Championship, Collectors' Edition, promos ou oversized). Por carta: cópias em Inglês (verde) e Português (azul), o <b>preço mínimo de hoje</b> (o <i>low</i> do Cardmarket) e o de <b>há ~1 mês</b> (média de 30 dias do Cardmarket, ou o valor exato quando a nossa própria história tiver 30 dias), com a variação. Sem cor = não tens nenhuma. Atualiza diariamente.</footer>
+<footer>A Reserved List da Wizards (cartas que nunca serão reimpressas), pela flag oficial da Scryfall — separada por edição, da mais recente para a mais antiga, só edições reais (core/expansion; sem 30th Anniversary, World Championship, Collectors' Edition, promos ou oversized). Por carta: cópias em Inglês (verde) e Português (azul), o <b>preço mínimo de hoje</b> (o <i>low</i> do Cardmarket) e o de <b>há ~1 mês</b> (média de 30 dias do Cardmarket, ou o valor exato quando a nossa própria história tiver 30 dias), com a variação. Nas que tens, mostra <b>em que formatos joga</b> (das listas de torneio que seguimos). Uma carta tua que <b>não jogue em formato nenhum</b> que conte fica marcada <b>VENDER</b> — os formatos que não contam afinam-se em colecao_config.json (por agora, só o Vintage fora). Sem cor = não tens nenhuma. Atualiza diariamente.</footer>
 </div>
 <script>
 function toggle(){document.body.classList.toggle('only');

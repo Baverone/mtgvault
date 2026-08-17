@@ -617,7 +617,7 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
 </style></head><body><div class="wrap">
 <header><h1>🌐 Metagame</h1>
 <div class="sub">Os melhores decks de cada formato e quanto já tens · %OWNED% cartas na coleção · dados de %TODAY%</div>
-<nav class="tabs"><a href="index.html">🏠 Início</a><a href="meusdecks.html">🎴 Os meus decks</a><a class="cur" href="cobertura.html">🌐 Metagame</a><a href="buildability.html">🔨 Montar</a><a href="colecao_cor.html">🎨 Coleção</a></nav></header>
+<nav class="tabs"><a href="index.html">🏠 Início</a><a href="meusdecks.html">🎴 Os meus decks</a><a class="cur" href="cobertura.html">🌐 Metagame</a><a href="buildability.html">🔨 Montar</a><a href="colecao_cor.html">📚 Binders</a><a href="reservedlist.html">🏆 Reserved List</a></nav></header>
 %EMERGING%
 <div class="general"><h2>🛒 Staples que te faltam <span class="dim">(servem vários dos decks abaixo · mostrados <b id="gen-shown">%GENSHOWN%</b> de %GENCOST%)</span></h2>
 <div><button id="copyall" class="cp">📋 Copiar wantlist completa (Cardmarket)</button></div>

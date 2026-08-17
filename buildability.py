@@ -136,7 +136,7 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
 </style></head><body><div class="wrap">
 <header><h1>🛒 Lista de Compras</h1>
 <div class="lead">Os teus decks a mais de 50% · %N% decks · total ~%TOTAL%€ · dados de %TODAY%</div>
-<nav class="tabs"><a href="index.html">🏠 Início</a><a href="meusdecks.html">🎴 Os meus decks</a><a href="metagame.html">🌐 Metagame</a><a class="cur" href="buildability.html">🔨 Montar</a><a href="colecao_cor.html">🎨 Coleção</a></nav></header>
+<nav class="tabs"><a href="index.html">🏠 Início</a><a href="meusdecks.html">🎴 Os meus decks</a><a href="metagame.html">🌐 Metagame</a><a class="cur" href="buildability.html">🔨 Montar</a><a href="colecao_cor.html">📚 Binders</a><a href="reservedlist.html">🏆 Reserved List</a></nav></header>
 <div id="selmeta"></div>
 %SECS%
 <footer>Os teus decks a mais de 50% de completos (vale a pena acabar). As <b>staples</b> faltam em vários — compras uma vez, servem todos. Em cima aparecem os decks do <b>Metagame</b> que selecionaste (➕ lá). Cada carta mostra a edição a comprar (✓ed = já tens) e o preço. Atualiza diariamente.</footer>

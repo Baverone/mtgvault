@@ -33,14 +33,12 @@ import core_decks  # noqa: E402  (gera coredecks.html + tracking de alteracoes)
 import collection_gallery  # noqa: E402  (gera colecao.html — galeria com imagens)
 import colecao_cor  # noqa: E402  (gera colecao_cor.html — coleção por cor + custo de mana)
 import meta_coverage  # noqa: E402  (gera cobertura.html — top decks + % que tenho + o que falta)
-import alertas  # noqa: E402  (gera alertas.html — o que vender/comprar por movimento de preço)
 import buildability  # noqa: E402  (gera buildability.html — o que consigo montar dos decks-alvo)
 import meusdecks  # noqa: E402  (gera meusdecks.html — os meus decks: estado, % e evolução)
 import metagame  # noqa: E402  (gera metagame.html — só ver o metagame: listas com arte)
 import prioridade  # noqa: E402  (gera prioridade.html — alocação exclusiva por prioridade)
 import metafaltas  # noqa: E402  (gera metafaltas.html — decks meta a >=70% para completar)
 import reservedlist  # noqa: E402  (gera reservedlist.html — Reserved List x coleção)
-import colvalor  # noqa: E402  (gera colvalor.html — valor de toda a coleção, carta a carta)
 import my_decks  # noqa: E402  (mantém atualizadas as listas dos decks que o André segue)
 import commander_decks  # noqa: E402  (decks de comandante seguidos por consenso, ex.: Cloud DC)
 import refresh_collection  # noqa: E402  (reconstroi collection_owned p/ o index.html)
@@ -206,9 +204,6 @@ def main():
         # Depois da análise (arquétipos/roles) e dos preços — depende dos dois.
         _step(con, "cobertura-metagame",
               lambda: str(meta_coverage.build(con, ROOT / "cobertura.html")[0]))
-        # Alertas de preço (vender/comprar) — depende de preços e da cobertura.
-        _step(con, "alertas-precos",
-              lambda: str(alertas.build(con, ROOT / "alertas.html")[0]))
         # Buildability: % de cada deck-alvo e o que falta. Depois dos decks
         # (meus-decks, decks-comandante) e dos preços (imagem/edição a comprar).
         _step(con, "buildability",
@@ -223,8 +218,6 @@ def main():
               lambda: str(metafaltas.build(con, ROOT / "metafaltas.html")))
         _step(con, "reserved-list-pagina",
               lambda: str(reservedlist.build(con, ROOT / "reservedlist.html")))
-        _step(con, "valor-colecao-pagina",
-              lambda: str(colvalor.build(con, ROOT / "colvalor.html")))
 
         _step(con, "prune", lambda: f"{analysis.prune_decklists(con, 180)} apagadas")
 
