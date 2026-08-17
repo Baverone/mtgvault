@@ -40,6 +40,7 @@ import metagame  # noqa: E402  (gera metagame.html — só ver o metagame: lista
 import prioridade  # noqa: E402  (gera prioridade.html — alocação exclusiva por prioridade)
 import metafaltas  # noqa: E402  (gera metafaltas.html — decks meta a >=70% para completar)
 import reservedlist  # noqa: E402  (gera reservedlist.html — Reserved List x coleção)
+import colvalor  # noqa: E402  (gera colvalor.html — valor de toda a coleção, carta a carta)
 import my_decks  # noqa: E402  (mantém atualizadas as listas dos decks que o André segue)
 import commander_decks  # noqa: E402  (decks de comandante seguidos por consenso, ex.: Cloud DC)
 import refresh_collection  # noqa: E402  (reconstroi collection_owned p/ o index.html)
@@ -222,6 +223,8 @@ def main():
               lambda: str(metafaltas.build(con, ROOT / "metafaltas.html")))
         _step(con, "reserved-list-pagina",
               lambda: str(reservedlist.build(con, ROOT / "reservedlist.html")))
+        _step(con, "valor-colecao-pagina",
+              lambda: str(colvalor.build(con, ROOT / "colvalor.html")))
 
         _step(con, "prune", lambda: f"{analysis.prune_decklists(con, 180)} apagadas")
 

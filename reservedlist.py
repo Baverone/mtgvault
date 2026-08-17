@@ -65,6 +65,43 @@ def _spark(points):
             f'<span class="chg" style="color:{col}">{sign}{chg:.0f}%</span>')
 
 
+def price_maps(con):
+    """Por scryfall_id (nonfoil): (preço de hoje, preço de há ~1 mês, série
+    histórica) — sempre o MÍNIMO entre fontes. Partilhado pela Reserved List e
+    pelo Valor da coleção.
+
+    Hoje = o mais barato à venda (Cardmarket `low`; a Scryfall grátis entra como
+    trend enquanto não há cookie). Há ~1 mês = o valor exato reconstruído da
+    nossa história (o último ponto até há 30 dias É o preço nesse dia) ou, na
+    falta dela, o avg30 do Cardmarket.
+    """
+    price = {r["sid"]: r["m"] for r in con.execute(
+        "SELECT scryfall_id sid, MIN(COALESCE(low, trend)) m FROM price_latest "
+        "WHERE finish='nonfoil' AND COALESCE(low, trend) IS NOT NULL GROUP BY scryfall_id")}
+
+    cutoff = (date.today() - timedelta(days=30)).isoformat()
+    month = {}
+    for r in con.execute(
+        """SELECT ph.scryfall_id sid, COALESCE(ph.low, ph.trend) v FROM price_history ph
+             JOIN (SELECT scryfall_id, MAX(date) d FROM price_history
+                    WHERE finish='nonfoil' AND date <= ? GROUP BY scryfall_id) x
+               ON x.scryfall_id = ph.scryfall_id AND x.d = ph.date
+            WHERE ph.finish='nonfoil'""", (cutoff,)):
+        if r["v"] is not None:
+            month[r["sid"]] = r["v"]
+    for r in con.execute("SELECT scryfall_id sid, avg30 FROM price_latest "
+                         "WHERE source='cardmarket' AND finish='nonfoil' AND avg30 IS NOT NULL"):
+        month.setdefault(r["sid"], r["avg30"])
+
+    hist = defaultdict(list)
+    for r in con.execute(
+        "SELECT scryfall_id sid, date, MIN(COALESCE(low, trend)) v FROM price_history "
+        "WHERE finish='nonfoil' GROUP BY scryfall_id, date ORDER BY date"):
+        if r["v"] is not None:
+            hist[r["sid"]].append(r["v"])
+    return price, month, hist
+
+
 def build(con, out_path=None):
     out = Path(out_path) if out_path else (ROOT / "reservedlist.html")
     marks = ",".join("?" * len(SET_TYPES))
@@ -83,42 +120,8 @@ def build(con, out_path=None):
         k = "en" if (r["lang"] or "en") == "en" else "pt"
         owned[r["sid"]][k] += r["q"]
 
-    # PREÇO MÍNIMO DE HOJE — o `low` do Cardmarket (o mais barato à venda). Até
-    # haver o cookie do Cardmarket, entra o valor grátis da Scryfall (trend) como
-    # aproximação; com o cookie, o price guide sobrepõe-se com o low real. O MIN
-    # entre fontes deixa a porta aberta a acrescentar outra no futuro.
-    price = {}
-    for r in con.execute(
-        "SELECT scryfall_id sid, MIN(COALESCE(low, trend)) m FROM price_latest "
-        "WHERE finish='nonfoil' AND COALESCE(low, trend) IS NOT NULL GROUP BY scryfall_id"):
-        price[r["sid"]] = r["m"]
-
-    # PREÇO DE HÁ ~1 MÊS. Preferência: o valor EXATO de há 30 dias, reconstruído
-    # da nossa própria história (o price_history guarda mudanças, por isso o
-    # último ponto até à data-alvo É o preço nesse dia). Enquanto não houver
-    # história com 30 dias, cai para o avg30 do Cardmarket (média de 30 dias).
-    cutoff = (date.today() - timedelta(days=30)).isoformat()
-    month = {}
-    for r in con.execute(
-        """SELECT ph.scryfall_id sid, COALESCE(ph.low, ph.trend) v FROM price_history ph
-             JOIN (SELECT scryfall_id, MAX(date) d FROM price_history
-                    WHERE finish='nonfoil' AND date <= ? GROUP BY scryfall_id) x
-               ON x.scryfall_id = ph.scryfall_id AND x.d = ph.date
-            WHERE ph.finish='nonfoil'""", (cutoff,)):
-        if r["v"] is not None:
-            month[r["sid"]] = r["v"]
-    for r in con.execute("SELECT scryfall_id sid, avg30 FROM price_latest "
-                         "WHERE source='cardmarket' AND finish='nonfoil' AND avg30 IS NOT NULL"):
-        month.setdefault(r["sid"], r["avg30"])
-
-    # Evolução: série de preços por impressão (do mais antigo ao mais recente),
-    # o menor entre fontes em cada dia.
-    hist = defaultdict(list)
-    for r in con.execute(
-        "SELECT scryfall_id sid, date, MIN(COALESCE(low, trend)) v FROM price_history "
-        "WHERE finish='nonfoil' GROUP BY scryfall_id, date ORDER BY date"):
-        if r["v"] is not None:
-            hist[r["sid"]].append(r["v"])
+    # Preços (mínimo entre fontes, nonfoil): hoje, há ~1 mês e a série do gráfico.
+    price, month, hist = price_maps(con)
 
     total_rl = con.execute("SELECT COUNT(DISTINCT name) c FROM catalog.cards "
                            "WHERE reserved=1").fetchone()["c"]
