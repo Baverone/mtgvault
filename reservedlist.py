@@ -83,9 +83,10 @@ def build(con, out_path=None):
         k = "en" if (r["lang"] or "en") == "en" else "pt"
         owned[r["sid"]][k] += r["q"]
 
-    # PREÇO MÍNIMO DE HOJE — o menor entre todas as fontes (Cardmarket `low`,
-    # CardTrader oferta mais barata; a Scryfall grátis entra como trend enquanto
-    # não houver credenciais). Uma linha por impressão = o mínimo do mercado.
+    # PREÇO MÍNIMO DE HOJE — o `low` do Cardmarket (o mais barato à venda). Até
+    # haver o cookie do Cardmarket, entra o valor grátis da Scryfall (trend) como
+    # aproximação; com o cookie, o price guide sobrepõe-se com o low real. O MIN
+    # entre fontes deixa a porta aberta a acrescentar outra no futuro.
     price = {}
     for r in con.execute(
         "SELECT scryfall_id sid, MIN(COALESCE(low, trend)) m FROM price_latest "
@@ -209,7 +210,7 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
 %TABS%
 <div class="filter"><button id="tgl" onclick="toggle()">Mostrar só as que tenho</button></div></header>
 %SECS%
-<footer>A Reserved List da Wizards (cartas que nunca serão reimpressas), pela flag oficial da Scryfall — separada por edição, da mais recente para a mais antiga, só edições reais (core/expansion; sem 30th Anniversary, World Championship, Collectors' Edition, promos ou oversized). Por carta: cópias em Inglês (verde) e Português (azul), o <b>preço mínimo de hoje</b> (o menor entre Cardmarket e CardTrader) e o de <b>há ~1 mês</b> (média de 30 dias do Cardmarket, ou o valor exato quando a nossa própria história tiver 30 dias), com a variação. Sem cor = não tens nenhuma. Atualiza diariamente.</footer>
+<footer>A Reserved List da Wizards (cartas que nunca serão reimpressas), pela flag oficial da Scryfall — separada por edição, da mais recente para a mais antiga, só edições reais (core/expansion; sem 30th Anniversary, World Championship, Collectors' Edition, promos ou oversized). Por carta: cópias em Inglês (verde) e Português (azul), o <b>preço mínimo de hoje</b> (o <i>low</i> do Cardmarket) e o de <b>há ~1 mês</b> (média de 30 dias do Cardmarket, ou o valor exato quando a nossa própria história tiver 30 dias), com a variação. Sem cor = não tens nenhuma. Atualiza diariamente.</footer>
 </div>
 <script>
 function toggle(){document.body.classList.toggle('only');
