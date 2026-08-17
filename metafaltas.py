@@ -17,8 +17,9 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 import meta_coverage as mc  # noqa: E402
 from mtgvault.collection import owned_playable  # noqa: E402
 
-FORMATS = [("modern", "Modern"), ("legacy", "Legacy"), ("premodern", "Premodern")]
-MIN_PCT = 70   # só decks a pelo menos 70% de completos
+FORMATS = [("pioneer", "Pioneer"), ("modern", "Modern"),
+           ("legacy", "Legacy"), ("premodern", "Premodern")]
+MIN_PCT = 50   # só decks a pelo menos 50% de completos
 TOP = 5        # top-5 por formato
 SCAN = 30      # quantos arquétipos do topo analisar para encontrar os 5
 
@@ -76,8 +77,11 @@ def build(con, out_path=None):
                  f'<span class="dim">{len(found)} decks ≥{MIN_PCT}%</span></h2>{cards}</section>')
 
     today = con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or ""
+    labels = [lbl for _f, lbl in FORMATS]
+    fmts = ", ".join(labels[:-1]) + " e " + labels[-1] if len(labels) > 1 else labels[0]
     out.write_text(_TMPL.replace("%TABS%", TABS).replace("%SECS%", secs)
-                   .replace("%N%", str(n_total)).replace("%TODAY%", today), encoding="utf-8")
+                   .replace("%N%", str(n_total)).replace("%TODAY%", today)
+                   .replace("%MIN%", str(MIN_PCT)).replace("%FMTS%", fmts), encoding="utf-8")
     return out
 
 
@@ -101,10 +105,10 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  footer{margin-top:24px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
 <header><h1>🎯 Decks meta para completar</h1>
-<div class="lead">Decks do metagame em que já estás a ≥70% — quase a montar · %N% decks · dados de %TODAY%</div>
+<div class="lead">Decks do metagame em que já estás a ≥%MIN%% — quase a montar · %N% decks · dados de %TODAY%</div>
 %TABS%</header>
 %SECS%
-<footer>Só os decks do metagame (não os teus alvos) em que já tens ≥70% do núcleo — os que estás mais perto de conseguir montar. Top-5 de Modern, Legacy e Premodern, com a imagem da edição a comprar (✓ed = já tens uma) e o preço. Atualiza diariamente.</footer>
+<footer>Só os decks do metagame (não os teus alvos) em que já tens ≥%MIN%% do núcleo — os que estás mais perto de conseguir montar. Top-5 de %FMTS%, com a imagem da edição a comprar (✓ed = já tens uma) e o preço. Atualiza diariamente.</footer>
 </div></body></html>"""
 
 
