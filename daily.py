@@ -166,6 +166,12 @@ def main():
         for fmt in ANALYSE_FORMATS:
             _step(con, f"analyse:{fmt}", lambda fmt=fmt: _analyse(con, fmt))
 
+        # O card_roles acumula uma janela nova por dia, mas só a mais recente é
+        # usada. Podar as antigas mantém o vault.db leve (senão passa dos 100 MB
+        # do GitHub). Sem VACUUM diário — o SQLite reutiliza as páginas livres.
+        _step(con, "podar-card-roles",
+              lambda: f"{con.execute('DELETE FROM card_roles WHERE window_end < (SELECT MAX(window_end) FROM card_roles)').rowcount} linhas antigas")
+
         # Arquétipos por regra (etiqueta dupla) — reaplicados DEPOIS do analyse
         # para o clustering automático nunca desfazer os nomes à mão.
         _step(con, "tag-arquetipos", lambda: f"{tagging.tag_all(con)} etiquetas")
