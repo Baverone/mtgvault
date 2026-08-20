@@ -267,6 +267,19 @@ def build(con, out_path=None):
     for d in _watched_decks(con, osid, imgmap, owned_names):
         by_fmt[d["format"]].append(d)
 
+    # Lista ATUAL de cada deck (nome + imagem), main+side, um por nome. O cliente
+    # compara-a com a lista de quando o André marcou "atualizado" e mostra o diff
+    # LÍQUIDO (entram / saem). Por ser diferença de conjuntos, trata sozinha as
+    # re-entradas: sai e volta = sem mudança; entra e sai = sem mudança.
+    deckcur = {}
+    for decks in by_fmt.values():
+        for d in decks:
+            seen = {}
+            for c in d["main"] + d["side"]:
+                f = c["nm"].split(" // ")[0]
+                seen.setdefault(f, c["sid"])
+            deckcur[d["name"]] = [[f, s] for f, s in seen.items()]
+
     secs, subnav, n_total = "", "", 0
     for fmt in FMT_ORDER + [f for f in by_fmt if f not in FMT_ORDER]:
         decks = by_fmt.get(fmt)
@@ -281,18 +294,10 @@ def build(con, out_path=None):
         secs += (f'<section id="f-{fmt}"><h2>{html.escape(lbl)} '
                  f'<span class="n">{len(decks)}</span></h2><div class="grid">{cards}</div></section>')
 
-    # Histórico de alterações por deck, para o cliente mostrar o que falta aplicar
-    # (o checkmark "atualizado" guarda no navegador até onde o André já sincronizou).
-    deckev = {}
-    for decks in by_fmt.values():
-        for d in decks:
-            deckev[d["name"]] = [{"d": e["date"], "a": e["ins"], "r": e["outs"]}
-                                 for e in d.get("evol", [])]
-
     today = con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or ""
     out.write_text(_TMPL.replace("%TABS%", TABS).replace("%SUBNAV%", subnav)
                    .replace("%SECS%", secs).replace("%N%", str(n_total))
-                   .replace("%DECKEV%", json.dumps(deckev, ensure_ascii=False))
+                   .replace("%DECKCUR%", json.dumps(deckcur, ensure_ascii=False))
                    .replace("%TODAY%", today), encoding="utf-8")
     return out
 
@@ -320,6 +325,14 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .uprow{display:flex;flex-wrap:wrap;gap:4px 5px;align-items:center;padding:2px 0}
  .upd-d{color:var(--muted);min-width:66px;font-variant-numeric:tabular-nums}
  .uok{color:var(--add);font-size:11.5px;margin:5px 0}
+ .chgbox{background:#0f141c;border:1px solid #37445a;border-radius:10px;padding:8px 10px;margin:6px 0}
+ .chglbl{color:var(--gold);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;font-weight:700}
+ .chgi{display:flex;gap:9px;align-items:flex-start}
+ .chgrp{flex:1;min-width:0} .chgrp>b{display:block;font-size:11px;margin-bottom:4px} .chgrp>b.in{color:var(--add)} .chgrp>b.out{color:var(--warn)}
+ .chc-row{display:flex;flex-wrap:wrap;gap:3px}
+ .chc{width:42px;height:59px;border-radius:4px;object-fit:cover;display:block}
+ .chc.in{box-shadow:0 0 0 2px var(--add)} .chc.out{box-shadow:0 0 0 2px var(--warn);filter:grayscale(.3) brightness(.82)}
+ .chc.noi{background:#0c0f14} .chbar{width:1px;align-self:stretch;background:var(--line)}
  .bar{position:relative;height:8px;background:#0b0e14;border-radius:999px;overflow:hidden;margin:4px 0}
  .bar span{position:absolute;left:0;top:0;bottom:0;border-radius:999px}
  .meta{display:flex;flex-wrap:wrap;gap:4px 10px;color:var(--muted);font-size:11px;margin:5px 0} .mi.lk{color:var(--accent);text-decoration:none}
@@ -343,36 +356,44 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
 %TABS%
 <div class="subnav">%SUBNAV%</div></header>
 %SECS%
-<footer><b>Main deck</b> e <b>sideboard</b> à parte, contados por <b>cópias</b> (ex.: 68/75, não por cartas diferentes): <b style="color:var(--add)">verde = tens as que precisas</b>, <b style="color:var(--gold)">âmbar = tens algumas</b> (mostra 2/4), <b style="color:var(--warn)">vermelho = não tens</b>. Na evolução, cada carta que entrou (▲) ou saiu (▼) está verde se a tens, vermelha se não. Datas: 🔄 última verificação · ✏️ última alteração. O botão <b>atualizado</b> guarda (no teu navegador) que puseste o deck físico igual à lista; até marcares, mostra as <b>alterações por aplicar</b> (▲ meter · ▼ tirar). Atualiza diariamente.</footer>
+<footer><b>Main deck</b> e <b>sideboard</b> à parte, contados por <b>cópias</b> (ex.: 68/75, não por cartas diferentes): <b style="color:var(--add)">verde = tens as que precisas</b>, <b style="color:var(--gold)">âmbar = tens algumas</b> (mostra 2/4), <b style="color:var(--warn)">vermelho = não tens</b>. Na evolução, cada carta que entrou (▲) ou saiu (▼) está verde se a tens, vermelha se não. Datas: 🔄 última verificação · ✏️ última alteração. A caixa <b>⇄ trocas por fazer</b> mostra, em imagem, as cartas a <b style="color:var(--add)">meter (▲)</b> e a <b style="color:var(--warn)">tirar (▼)</b> para o teu deck físico ficar igual à lista — é o <b>diff líquido</b> desde a última vez que marcaste <b>atualizado</b> (se uma carta sai e volta, ou entra e sai, não conta). Marcas atualizado quando sincronizares; volta a acumular quando a lista mudar. Atualiza diariamente.</footer>
 </div>
 <script>
-const DECKEV=%DECKEV%;
+const DECKCUR=%DECKCUR%;
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');}
+function art(sid){return sid?('https://cards.scryfall.io/small/front/'+sid[0]+'/'+sid[1]+'/'+sid+'.jpg'):'';}
 function ackKey(n){return 'md_ack_'+n;}
-function getAck(n){try{return localStorage.getItem(ackKey(n))||'';}catch(e){return '';}}
-function renderUpd(el){
-  const n=el.dataset.deck, evs=DECKEV[n]||[], ack=getAck(n);
+function cimg(name,sid,cls){return sid?('<img class="chc '+cls+'" loading="lazy" src="'+art(sid)+'" title="'+esc(name)+'">'):('<span class="chc '+cls+' noi" title="'+esc(name)+'"></span>');}
+function renderChg(el){
+  const n=el.dataset.deck, cur=DECKCUR[n]||[];
   const box=el.querySelector('.upd'), btn=el.querySelector('.updbtn');
-  const pend=evs.filter(e=>e.d>ack);
-  if(!evs.length){if(btn)btn.style.display='none';if(box)box.innerHTML='';return;}
-  if(!pend.length){
-    if(box)box.innerHTML='<div class="uok">✓ deck atualizado'+(ack?' (até '+ack+')':'')+'</div>';
+  if(!cur.length){if(btn)btn.style.display='none';if(box)box.innerHTML='';return;}
+  const curNames=new Set(cur.map(p=>p[0]));
+  // Baseline: a lista de quando marcou "atualizado". 1ª vez = assume sincronizado.
+  let ack=null; try{ack=JSON.parse(localStorage.getItem(ackKey(n)));}catch(e){}
+  if(!Array.isArray(ack)){try{localStorage.setItem(ackKey(n),JSON.stringify(cur));}catch(e){} ack=cur;}
+  const ackNames=new Set(ack.map(p=>p[0]));
+  const entra=cur.filter(p=>!ackNames.has(p[0]));   // na lista atual, não na marcada
+  const saem=ack.filter(p=>!curNames.has(p[0]));    // na marcada, já não na atual
+  if(!entra.length&&!saem.length){
+    if(box)box.innerHTML='<div class="uok">✓ sem trocas por fazer</div>';
     if(btn){btn.textContent='✓ atualizado';btn.classList.add('done');}
-  }else{
-    let h='<div class="upend"><b>⚠️ '+pend.length+' alteração(ões) por aplicar no teu deck</b>';
-    pend.forEach(function(e){h+='<div class="uprow"><span class="upd-d">'+e.d+'</span>'
-      +(e.a||[]).map(function(c){return '<span class="ec have">▲ '+esc(c)+'</span>';}).join('')
-      +(e.r||[]).map(function(c){return '<span class="ec miss">▼ '+esc(c)+'</span>';}).join('')+'</div>';});
-    h+='</div>';if(box)box.innerHTML=h;
-    if(btn){btn.textContent='marcar atualizado';btn.classList.remove('done');}
+    return;
   }
+  let h='<div class="chgbox"><div class="chglbl">⇄ trocas por fazer (até marcares atualizado)</div><div class="chgi">'
+    +'<span class="chgrp"><b class="in">▲ metes '+entra.length+'</b><span class="chc-row">'+entra.map(p=>cimg(p[0],p[1],'in')).join('')+'</span></span>'
+    +'<span class="chbar"></span>'
+    +'<span class="chgrp"><b class="out">▼ tiras '+saem.length+'</b><span class="chc-row">'+saem.map(p=>cimg(p[0],p[1],'out')).join('')+'</span></span>'
+    +'</div></div>';
+  if(box)box.innerHTML=h;
+  if(btn){btn.textContent='marcar atualizado';btn.classList.remove('done');}
 }
 function markUpd(btn){
-  const el=btn.closest('.deck'), n=el.dataset.deck, evs=DECKEV[n]||[];
-  try{localStorage.setItem(ackKey(n), evs.length?evs[0].d:'9999');}catch(e){}
-  renderUpd(el);
+  const el=btn.closest('.deck'),n=el.dataset.deck;
+  try{localStorage.setItem(ackKey(n),JSON.stringify(DECKCUR[n]||[]));}catch(e){}
+  renderChg(el);
 }
-document.querySelectorAll('.deck[data-deck]').forEach(renderUpd);
+document.querySelectorAll('.deck[data-deck]').forEach(renderChg);
 </script>
 </body></html>"""
 
