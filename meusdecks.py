@@ -112,13 +112,28 @@ def _target_link(con, notes):
     return (r["url"] if r else None), (r["event_date"] if r else None)
 
 
-def _cards(items, osid, imgmap, owned_names):
-    """items = [(nome, qty)] -> [{nm, qty, have, sid}] (básicas contam como tidas)."""
+def _owned_qty(con):
+    """nome (frente) -> nº de cópias que o André tem (jogáveis, coleção toda)."""
+    out = defaultdict(int)
+    for r in con.execute("""SELECT c.name nm, SUM(cp.quantity) q FROM copies cp
+                              JOIN cards c ON c.scryfall_id = cp.scryfall_id
+                             WHERE cp.purpose = 'player' GROUP BY c.name"""):
+        out[r["nm"].split(" // ")[0]] += r["q"]
+    return out
+
+
+def _cards(items, osid, imgmap, owned_qty):
+    """items = [(nome, qty)] -> [{nm, qty, hq, state, sid}], contando CÓPIAS.
+    hq = quantas dessas cópias o André tem (básicas = sempre suficientes). state:
+    have (tem as que precisa) / part (tem algumas) / miss (não tem nenhuma)."""
     out = []
     for nm, q in items:
-        have = nm in bd.BASICS or nm in owned_names
-        out.append({"nm": nm, "qty": q, "have": have, "sid": osid.get(nm) or imgmap.get(nm)})
-    return sorted(out, key=lambda c: (c["have"], c["nm"]))
+        oq = q if nm in bd.BASICS else owned_qty.get(nm, 0)
+        hq = min(q, oq)
+        state = "have" if hq >= q else ("part" if hq > 0 else "miss")
+        out.append({"nm": nm, "qty": q, "hq": hq, "state": state,
+                    "sid": osid.get(nm) or imgmap.get(nm)})
+    return sorted(out, key=lambda c: ({"have": 0, "part": 1, "miss": 2}[c["state"]], c["nm"]))
 
 
 def _watched_decks(con, osid, imgmap, owned_names):
@@ -132,36 +147,38 @@ def _watched_decks(con, osid, imgmap, owned_names):
                            "ORDER BY taken_at DESC LIMIT 1", (r["wid"],)).fetchone()
         if not snap:
             continue
-        want = defaultdict(int)
+        main_i, side_i = defaultdict(int), defaultdict(int)
         for b, nm, q in json.loads(snap["cards"]):
-            want[nm.split(" // ")[0]] += q
-        owned = set()
-        for o in con.execute("""SELECT c.name nm FROM copies cp
+            (side_i if b == "side" else main_i)[nm.split(" // ")[0]] += q
+        oq = defaultdict(int)
+        for o in con.execute("""SELECT c.name nm, SUM(cp.quantity) q FROM copies cp
                                   JOIN cards c ON c.scryfall_id = cp.scryfall_id
                                   JOIN sub_collections s ON s.id = cp.sub_collection_id
-                                 WHERE s.name = ?""", (r["balde"],)):
-            owned.add(o["nm"].split(" // ")[0])
-        cards = _cards(list(want.items()), osid, imgmap, owned)
+                                 WHERE s.name = ? GROUP BY c.name""", (r["balde"],)):
+            oq[o["nm"].split(" // ")[0]] += o["q"]
         evol = _evolution_watched(con, r["wid"])
         out.append({"name": r["label"], "format": r["format"], "source": "👁️ vigiado",
-                    "cards": cards, "evol": evol, "owned_names": owned,
+                    "main": _cards(list(main_i.items()), osid, imgmap, oq),
+                    "side": _cards(list(side_i.items()), osid, imgmap, oq),
+                    "evol": evol, "owned_names": set(oq),
                     "verif": r["last_checked"] or snap["taken_at"],
                     "alter": evol[0]["date"] if evol else None, "link": wurl})
     return out
 
 
 def _deck_card(d):
-    have_n = sum(1 for c in d["cards"] if c["have"])
-    tot = len(d["cards"])
-    pct = round(100 * have_n / tot) if tot else 0
+    def cnt(cards):
+        return sum(c["hq"] for c in cards), sum(c["qty"] for c in cards)
+    mh, mt = cnt(d["main"])
+    sh, st = cnt(d["side"])
+    have, tot = mh + sh, mt + st          # POR CÓPIAS (ex.: 68/75), não distintas
+    pct = round(100 * have / tot) if tot else 0
     col = "var(--add)" if pct >= 90 else "var(--gold)" if pct >= 60 else "var(--warn)"
     on = d.get("owned_names", set())
-    # datas + link
     meta = f'<span class="mi">🔄 verificado {d["verif"] or "—"}</span>'
     meta += f'<span class="mi">✏️ alterado {d["alter"] or "—"}</span>'
     if d.get("link"):
         meta += f'<a class="mi lk" href="{html.escape(d["link"])}" target="_blank" rel="noopener">🔗 lista ↗</a>'
-    # evolução — cada carta a verde (tenho) / vermelho (falta), com ▲/▼ = entrou/saiu
     ev = d["evol"]
     if ev:
         def line(e):
@@ -177,20 +194,25 @@ def _deck_card(d):
         evol = head + more
     else:
         evol = '<div class="evx">📈 evolução — histórico a acumular</div>'
-    # lista completa: verde = tenho, vermelho = falta
-    grid = ""
-    for c in d["cards"]:
-        cls = "cd have" if c["have"] else "cd miss"
-        img = (f'<img loading="lazy" src="{_art(c["sid"])}" alt="">' if c["sid"]
-               else '<div class="noimg"></div>')
-        qb = f'<span class="cq">{c["qty"]}</span>' if c["qty"] > 1 else ""
-        grid += f'<div class="{cls}" title="{html.escape(c["nm"])}">{img}{qb}</div>'
-    detail = (f'<div class="cardshdr">🃏 lista completa <span class="dim">({have_n}/{tot})</span></div>'
-              f'<div class="cards">{grid}</div>')
+
+    def grid(cards):
+        g = ""
+        for c in cards:
+            img = (f'<img loading="lazy" src="{_art(c["sid"])}" alt="">' if c["sid"]
+                   else '<div class="noimg"></div>')
+            qb = (f'<span class="cq">{c["hq"]}/{c["qty"]}</span>' if c["qty"] > 1
+                  else ('' if c["state"] == "have" else '<span class="cq">0/1</span>'))
+            g += f'<div class="cd {c["state"]}" title="{html.escape(c["nm"])}">{img}{qb}</div>'
+        return g
+    detail = (f'<div class="cardshdr">🃏 main deck <span class="dim">({mh}/{mt})</span></div>'
+              f'<div class="cards">{grid(d["main"])}</div>')
+    if d["side"]:
+        detail += (f'<div class="cardshdr sb">🎒 sideboard <span class="dim">({sh}/{st})</span></div>'
+                   f'<div class="cards">{grid(d["side"])}</div>')
     return (
         f'<div class="deck" data-deck="{html.escape(d["name"])}"><div class="dtop">'
         f'<b>{html.escape(d["name"])}</b>'
-        f'<span class="pct" style="color:{col}">{pct}%</span></div>'
+        f'<span class="pct" style="color:{col}">{have}/{tot} · {pct}%</span></div>'
         f'<div class="badges"><span class="bdg src">{d["source"]}</span>'
         f'<button class="updbtn" onclick="markUpd(this)">atualizado</button></div>'
         f'<div class="bar"><span style="width:{pct}%;background:{col}"></span></div>'
@@ -202,6 +224,7 @@ def _deck_card(d):
 def build(con, out_path=None):
     out = Path(out_path) if out_path else (ROOT / "meusdecks.html")
     owned_names = set(owned_playable(con))
+    owned_qty = _owned_qty(con)
     osid = _owned_sid(con)
 
     rows = list(con.execute("SELECT id, name, format, notes FROM decks"))
@@ -217,10 +240,13 @@ def build(con, out_path=None):
 
     by_fmt = defaultdict(list)
     for d in rows:
-        items = [(r["nm"], r["q"]) for r in con.execute(
-            "SELECT card_name nm, SUM(quantity) q FROM deck_cards WHERE deck_id=? GROUP BY card_name",
-            (d["id"],))]
-        if not items:
+        main_items = [(r["nm"], r["q"]) for r in con.execute(
+            "SELECT card_name nm, SUM(quantity) q FROM deck_cards WHERE deck_id=? "
+            "AND board IN ('main','') GROUP BY card_name", (d["id"],))]
+        side_items = [(r["nm"], r["q"]) for r in con.execute(
+            "SELECT card_name nm, SUM(quantity) q FROM deck_cards WHERE deck_id=? "
+            "AND board='side' GROUP BY card_name", (d["id"],))]
+        if not main_items and not side_items:
             continue
         link, ldate = _target_link(con, d["notes"])
         # Decks vigiados: só os que têm LINK e/ou JOGADOR vigiado. Exclui os de
@@ -233,7 +259,8 @@ def build(con, out_path=None):
             (DECK_CORE.get(d["name"], ""),))] if DECK_CORE.get(d["name"]) else []
         by_fmt[d["format"]].append({
             "name": d["name"], "format": d["format"], "source": _source(d["notes"]),
-            "cards": _cards(items, osid, imgmap, owned_names), "evol": evol,
+            "main": _cards(main_items, osid, imgmap, owned_qty),
+            "side": _cards(side_items, osid, imgmap, owned_qty), "evol": evol,
             "owned_names": owned_names,
             "verif": (core_dates[0] if core_dates and core_dates[0] else ldate),
             "alter": evol[0]["date"] if evol else None, "link": link})
@@ -245,7 +272,8 @@ def build(con, out_path=None):
         decks = by_fmt.get(fmt)
         if not decks:
             continue
-        decks.sort(key=lambda x: -sum(1 for c in x["cards"] if c["have"]) / max(1, len(x["cards"])))
+        decks.sort(key=lambda x: -(sum(c["hq"] for c in x["main"] + x["side"])
+                                    / max(1, sum(c["qty"] for c in x["main"] + x["side"]))))
         n_total += len(decks)
         lbl = FMT_LABEL.get(fmt, fmt)
         subnav += f'<a href="#f-{fmt}">{html.escape(lbl)}</a>'
@@ -302,10 +330,11 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .evrow{display:flex;flex-wrap:wrap;gap:4px 5px;align-items:center;font-size:11px;padding:2px 0}
  .evd{color:var(--muted);min-width:70px;font-variant-numeric:tabular-nums}
  .ec{padding:0 4px;border-radius:5px} .ec.have{color:var(--add);background:#0f2418} .ec.miss{color:#ff8f8f;background:#2a1414}
- .cardshdr{margin-top:9px;font-size:12px;color:var(--accent)} .cardshdr .dim{color:var(--muted)}
+ .cardshdr{margin-top:9px;font-size:12px;color:var(--accent)} .cardshdr .dim{color:var(--muted)} .cardshdr.sb{color:var(--gold)}
  .cards{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
  .cd{position:relative;width:58px;border-radius:5px} .cd img,.cd .noimg{width:58px;height:81px;border-radius:4px;display:block;background:#0c0f14}
- .cd.have{box-shadow:0 0 0 2px var(--add)} .cd.miss{box-shadow:0 0 0 2px var(--warn)} .cd.miss img{filter:grayscale(.7) brightness(.6)}
+ .cd.have{box-shadow:0 0 0 2px var(--add)} .cd.part{box-shadow:0 0 0 2px var(--gold)} .cd.part img{filter:brightness(.82)}
+ .cd.miss{box-shadow:0 0 0 2px var(--warn)} .cd.miss img{filter:grayscale(.7) brightness(.6)}
  .cd .cq{position:absolute;top:1px;left:1px;background:#000c;color:#fff;font-size:9px;font-weight:700;padding:0 3px;border-radius:5px}
  footer{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
@@ -314,7 +343,7 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
 %TABS%
 <div class="subnav">%SUBNAV%</div></header>
 %SECS%
-<footer>A lista completa mostra as 75 cartas: <b style="color:var(--add)">verde = tenho</b>, <b style="color:var(--warn)">vermelho = falta</b>. Na evolução, cada carta que entrou (▲) ou saiu (▼) está verde se a tens, vermelha se não. Datas: 🔄 última verificação · ✏️ última alteração da lista. O botão <b>atualizado</b> guarda (no teu navegador) que já puseste o teu deck físico igual à lista; até marcares, mostra as <b>alterações por aplicar</b> (▲ meter · ▼ tirar). Atualiza diariamente.</footer>
+<footer><b>Main deck</b> e <b>sideboard</b> à parte, contados por <b>cópias</b> (ex.: 68/75, não por cartas diferentes): <b style="color:var(--add)">verde = tens as que precisas</b>, <b style="color:var(--gold)">âmbar = tens algumas</b> (mostra 2/4), <b style="color:var(--warn)">vermelho = não tens</b>. Na evolução, cada carta que entrou (▲) ou saiu (▼) está verde se a tens, vermelha se não. Datas: 🔄 última verificação · ✏️ última alteração. O botão <b>atualizado</b> guarda (no teu navegador) que puseste o deck físico igual à lista; até marcares, mostra as <b>alterações por aplicar</b> (▲ meter · ▼ tirar). Atualiza diariamente.</footer>
 </div>
 <script>
 const DECKEV=%DECKEV%;
