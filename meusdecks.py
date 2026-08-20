@@ -65,7 +65,7 @@ def _img_map(con, names):
     return out
 
 
-def _timeline(snaps, limit=4):
+def _timeline(snaps, limit=40):
     events = []
     for i in range(len(snaps) - 1):
         new, old = snaps[i][1], snaps[i + 1][1]
@@ -171,7 +171,7 @@ def _deck_card(d):
             body = "".join(chip(c, "▲") for c in e["ins"]) + "".join(chip(c, "▼") for c in e["outs"])
             return f'<div class="evrow"><span class="evd">{e["date"]}</span>{body}</div>'
         head = f'<div class="evnow"><span class="evt">📈 última alteração</span>{line(ev[0])}</div>'
-        rest = "".join(line(e) for e in ev[1:])
+        rest = "".join(line(e) for e in ev[1:4])
         more = (f'<details class="evol"><summary>+ {len(ev) - 1} anteriores</summary>{rest}</details>'
                 if rest else "")
         evol = head + more
@@ -188,11 +188,15 @@ def _deck_card(d):
     detail = (f'<div class="cardshdr">🃏 lista completa <span class="dim">({have_n}/{tot})</span></div>'
               f'<div class="cards">{grid}</div>')
     return (
-        f'<div class="deck"><div class="dtop"><b>{html.escape(d["name"])}</b>'
+        f'<div class="deck" data-deck="{html.escape(d["name"])}"><div class="dtop">'
+        f'<b>{html.escape(d["name"])}</b>'
         f'<span class="pct" style="color:{col}">{pct}%</span></div>'
-        f'<div class="badges"><span class="bdg src">{d["source"]}</span></div>'
+        f'<div class="badges"><span class="bdg src">{d["source"]}</span>'
+        f'<button class="updbtn" onclick="markUpd(this)">atualizado</button></div>'
         f'<div class="bar"><span style="width:{pct}%;background:{col}"></span></div>'
-        f'<div class="meta">{meta}</div>{evol}{detail}</div>')
+        f'<div class="meta">{meta}</div>'
+        f'<div class="upd"></div>'
+        f'{evol}{detail}</div>')
 
 
 def build(con, out_path=None):
@@ -249,9 +253,18 @@ def build(con, out_path=None):
         secs += (f'<section id="f-{fmt}"><h2>{html.escape(lbl)} '
                  f'<span class="n">{len(decks)}</span></h2><div class="grid">{cards}</div></section>')
 
+    # Histórico de alterações por deck, para o cliente mostrar o que falta aplicar
+    # (o checkmark "atualizado" guarda no navegador até onde o André já sincronizou).
+    deckev = {}
+    for decks in by_fmt.values():
+        for d in decks:
+            deckev[d["name"]] = [{"d": e["date"], "a": e["ins"], "r": e["outs"]}
+                                 for e in d.get("evol", [])]
+
     today = con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or ""
     out.write_text(_TMPL.replace("%TABS%", TABS).replace("%SUBNAV%", subnav)
                    .replace("%SECS%", secs).replace("%N%", str(n_total))
+                   .replace("%DECKEV%", json.dumps(deckev, ensure_ascii=False))
                    .replace("%TODAY%", today), encoding="utf-8")
     return out
 
@@ -271,7 +284,14 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .deck{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
  .deck:hover{border-color:#37445a}
  .dtop{display:flex;justify-content:space-between;align-items:baseline;gap:8px} .dtop b{font-size:15px} .pct{font-weight:800;font-size:16px}
- .badges{margin:7px 0} .bdg{font-size:11px;padding:2px 7px;border-radius:20px;background:#1e2531;color:var(--muted)}
+ .badges{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:7px 0} .bdg{font-size:11px;padding:2px 7px;border-radius:20px;background:#1e2531;color:var(--muted)}
+ .updbtn{margin-left:auto;font-size:11px;font-weight:700;padding:3px 11px;border-radius:20px;border:1px solid var(--line);background:#1a2230;color:var(--muted);cursor:pointer}
+ .updbtn:hover{border-color:var(--accent);color:var(--ink)} .updbtn.done{background:#123020;border-color:#2f6a45;color:var(--add)}
+ .upd:empty{display:none}
+ .upend{background:#241a10;border:1px solid #6a4f2f;border-radius:10px;padding:7px 9px;margin:6px 0;font-size:11.5px;color:#f0dcc0} .upend b{color:var(--gold)}
+ .uprow{display:flex;flex-wrap:wrap;gap:4px 5px;align-items:center;padding:2px 0}
+ .upd-d{color:var(--muted);min-width:66px;font-variant-numeric:tabular-nums}
+ .uok{color:var(--add);font-size:11.5px;margin:5px 0}
  .bar{position:relative;height:8px;background:#0b0e14;border-radius:999px;overflow:hidden;margin:4px 0}
  .bar span{position:absolute;left:0;top:0;bottom:0;border-radius:999px}
  .meta{display:flex;flex-wrap:wrap;gap:4px 10px;color:var(--muted);font-size:11px;margin:5px 0} .mi.lk{color:var(--accent);text-decoration:none}
@@ -294,8 +314,38 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
 %TABS%
 <div class="subnav">%SUBNAV%</div></header>
 %SECS%
-<footer>A lista completa mostra as 75 cartas: <b style="color:var(--add)">verde = tenho</b>, <b style="color:var(--warn)">vermelho = falta</b>. Na evolução, cada carta que entrou (▲) ou saiu (▼) está verde se a tens, vermelha se não. Datas: 🔄 última verificação · ✏️ última alteração da lista. Atualiza diariamente.</footer>
-</div></body></html>"""
+<footer>A lista completa mostra as 75 cartas: <b style="color:var(--add)">verde = tenho</b>, <b style="color:var(--warn)">vermelho = falta</b>. Na evolução, cada carta que entrou (▲) ou saiu (▼) está verde se a tens, vermelha se não. Datas: 🔄 última verificação · ✏️ última alteração da lista. O botão <b>atualizado</b> guarda (no teu navegador) que já puseste o teu deck físico igual à lista; até marcares, mostra as <b>alterações por aplicar</b> (▲ meter · ▼ tirar). Atualiza diariamente.</footer>
+</div>
+<script>
+const DECKEV=%DECKEV%;
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');}
+function ackKey(n){return 'md_ack_'+n;}
+function getAck(n){try{return localStorage.getItem(ackKey(n))||'';}catch(e){return '';}}
+function renderUpd(el){
+  const n=el.dataset.deck, evs=DECKEV[n]||[], ack=getAck(n);
+  const box=el.querySelector('.upd'), btn=el.querySelector('.updbtn');
+  const pend=evs.filter(e=>e.d>ack);
+  if(!evs.length){if(btn)btn.style.display='none';if(box)box.innerHTML='';return;}
+  if(!pend.length){
+    if(box)box.innerHTML='<div class="uok">✓ deck atualizado'+(ack?' (até '+ack+')':'')+'</div>';
+    if(btn){btn.textContent='✓ atualizado';btn.classList.add('done');}
+  }else{
+    let h='<div class="upend"><b>⚠️ '+pend.length+' alteração(ões) por aplicar no teu deck</b>';
+    pend.forEach(function(e){h+='<div class="uprow"><span class="upd-d">'+e.d+'</span>'
+      +(e.a||[]).map(function(c){return '<span class="ec have">▲ '+esc(c)+'</span>';}).join('')
+      +(e.r||[]).map(function(c){return '<span class="ec miss">▼ '+esc(c)+'</span>';}).join('')+'</div>';});
+    h+='</div>';if(box)box.innerHTML=h;
+    if(btn){btn.textContent='marcar atualizado';btn.classList.remove('done');}
+  }
+}
+function markUpd(btn){
+  const el=btn.closest('.deck'), n=el.dataset.deck, evs=DECKEV[n]||[];
+  try{localStorage.setItem(ackKey(n), evs.length?evs[0].d:'9999');}catch(e){}
+  renderUpd(el);
+}
+document.querySelectorAll('.deck[data-deck]').forEach(renderUpd);
+</script>
+</body></html>"""
 
 
 def main():
