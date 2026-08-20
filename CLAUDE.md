@@ -61,7 +61,7 @@ metafaltas.py       metafaltas.html — decks do metagame a >=50% (para completa
 prioridade.py       prioridade.html — Premodern alocação exclusiva; SPML partilha sempre
 reservedlist.py     reservedlist.html — Reserved List (Scryfall) x coleção, por edição, preço/evolução, e 'VENDER' as que não jogam em formato nenhum
 my_decks.py         segue decks-alvo (por assinatura e por jogador de MTGO) -> tabela decks
-commander_decks.py  decks de comandante por consenso (ex.: Cloud DC) -> tabela decks
+commander_decks.py  decks de comandante por consenso EM CAMADAS: núcleo>=50% (=deck, deck_cards) / flex 25-50% / tech 15-25%; FILTRA pela cor do comandante. `tiers()` reusado pelo colecao_cor
 refresh_collection.py  collection_owned p/ o index.html
 colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao
 ```
@@ -154,11 +154,16 @@ vez na lista vigiada) — ainda não em `classify.py`; inerte até haver histór
 
 **Decks de comandante por consenso (`commander_decks.py`).** Alguns decks de
 comandante não copiam UMA decklist (como `my_decks.py` faz no Modern) — são
-seguidos por CONSENSO: as cartas que aparecem em ≥ limiar (0.40) das listas do
-comandante no formato, singleton. Grava em `decks`/`deck_cards` no job diário
-(passo `decks-comandante`). Primeiro: `Cloud (Duel Commander)` = Cloud, Midgar
-Mercenary, mono-branco (~58 cartas de 68 listas). O André escolheu "consenso
-automático" para o seguir.
+seguidos por CONSENSO, em **TRÊS CAMADAS** por inclusão nas listas do comandante
+(singleton): **núcleo ≥50%** (= o deck, gravado em `decks`/`deck_cards`), **flex
+25–50%** e **tech 15–25%** (só opções, calculadas em `tiers()`, não gravadas).
+**Filtra pela identidade de cor do comandante** (regra do André, 2026-08-20: as
+listas misturam versões com partner que trazem cartas off-color; só entram as que
+cabem na cor). `tiers(con, fmt, commander)` devolve {core, flex, tech, n, ci} e é
+reusado por `colecao_cor` (secção "Decks vigiados": Cloud em camadas, verde=tem/
+cinza=falta, com % das listas). Cloud (Duel Commander) = Cloud, Midgar Mercenary,
+mono-branco: núcleo 44 · flex 43 · tech 30 (de 102 listas) → 117 cartas legais,
+dá para as 100. Job diário: passo `decks-comandante`.
 
 **Core vs tech.** `core_copies` = maior k tal que P(cópias >= k) >= 0.90,
 medido sobre *todas* as listas do arquétipo, não só as que jogam a carta.

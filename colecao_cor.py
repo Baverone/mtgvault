@@ -23,7 +23,9 @@ ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 import classify  # noqa: E402
+import commander_decks  # noqa: E402  (decks de consenso em camadas núcleo/flex/tech)
 from mtgvault import db  # noqa: E402
+from mtgvault.collection import owned_playable  # noqa: E402
 
 COLOR = {"W": "Branco", "U": "Azul", "B": "Preto", "R": "Vermelho", "G": "Verde"}
 ORDER = ["Branco", "Azul", "Preto", "Vermelho", "Verde", "Multicor",
@@ -96,11 +98,14 @@ def _cmc_grids(rows, is_land):
     return out
 
 
-# Decks vigiados (só decks, não coleção): balde físico + o rótulo a mostrar.
+# Decks vigiados de LISTA FIXA (balde físico + rótulo). O Cloud (Duel Commander)
+# não entra aqui — é de CONSENSO, mostrado em camadas (núcleo/flex/tech) mais abaixo.
 WATCHED_BALDES = [("Blue Farm", "🩸 Blue Farm [cEDH]"),
                   ("Cloud cEDH", "☁️ Cloud [cEDH]"),
-                  ("Cloud", "☁️ Cloud [Duel Commander]"),
                   ("Pauper Affinity", "🔧 Pauper Affinity")]
+# Comandantes seguidos por consenso (balde -> (nome do deck, formato, comandante)).
+CONSENSUS_BALDES = {"Cloud": ("Cloud (Duel Commander)", "duel-commander", "Cloud, Midgar Mercenary")}
+CI_ICON = {"W": "⬜", "U": "🟦", "B": "⬛", "R": "🟥", "G": "🟩"}
 
 
 def _watched_deck_pools(con):
@@ -161,6 +166,55 @@ def _watched_deck_pools(con):
     return out
 
 
+def _consensus_tiers_html(con):
+    """Decks de consenso (ex.: Cloud) em camadas: núcleo (≥50%, o deck), flex
+    (25–50%) e tech (15–25%). Só cartas dentro da cor do comandante. Cada carta a
+    cores se o André a tem, a cinzento se falta, com a % de listas que a jogam."""
+    owned = set(owned_playable(con))
+    out = ""
+    for balde, (name, fmt, commander) in CONSENSUS_BALDES.items():
+        t, n = commander_decks.tiers(con, fmt, commander)
+        if not t:
+            continue
+        names = [nm.split(" // ")[0] for k in ("core", "flex", "tech") for nm, _ in t[k]]
+        osid, cat = {}, {}
+        for r in con.execute("SELECT c.name nm, cp.scryfall_id sid FROM copies cp "
+                             "JOIN cards c ON c.scryfall_id = cp.scryfall_id "
+                             "WHERE cp.purpose='player'"):
+            osid.setdefault(r["nm"].split(" // ")[0], r["sid"])
+        for i in range(0, len(names), 300):
+            ch = names[i:i + 300]
+            ph = ",".join("?" for _ in ch)
+            for r in con.execute(f"SELECT name nm, scryfall_id sid FROM cards "
+                                 f"WHERE name IN ({ph}) AND digital=0 GROUP BY name", ch):
+                cat.setdefault(r["nm"], r["sid"])
+
+        def tcard(nm, pct):
+            front = nm.split(" // ")[0]
+            have = front in owned
+            sid = osid.get(front) or cat.get(front)
+            img = (f'<img loading="lazy" src="{_img(sid)}" alt="">' if sid
+                   else '<div class="noimg"></div>')
+            return (f'<div class="c {"" if have else "miss"}" '
+                    f'title="{html.escape(nm)} · {pct}% das listas">{img}'
+                    f'<span class="q pctb">{pct}%</span></div>')
+
+        def own(lst):
+            return sum(1 for nm, _ in lst if nm.split(" // ")[0] in owned)
+        ico = CI_ICON.get(t["ci"], "🌈") if len(t["ci"]) == 1 else ("⚙️" if not t["ci"] else "🌈")
+        out += (f'<h3>☁️ {html.escape(name)} {ico} <span class="n">núcleo {len(t["core"])} '
+                f'(tens {own(t["core"])}) · flex {len(t["flex"])} (tens {own(t["flex"])}) · '
+                f'tech {len(t["tech"])} (tens {own(t["tech"])}) · de {n} listas</span></h3>')
+        out += ('<h4>núcleo (≥50%) — o deck</h4><div class="grid">'
+                + "".join(tcard(nm, p) for nm, p in t["core"]) + '</div>')
+        out += '<div class="tiersep">↓ opções para as vagas (verde = tens · cinza = falta) ↓</div>'
+        out += ('<h4>flex (25–50%)</h4><div class="grid">'
+                + "".join(tcard(nm, p) for nm, p in t["flex"]) + '</div>')
+        out += ('<h4>tech (15–25%)</h4><div class="grid">'
+                + "".join(tcard(nm, p) for nm, p in t["tech"]) + '</div>')
+    return out
+
+
 def build(con, out_path=None):
     out = Path(out_path) if out_path else (ROOT / "colecao_cor.html")
     rep = classify.build(con)
@@ -192,24 +246,30 @@ def build(con, out_path=None):
             secs += _cmc_grids(rs, b == "Terras")
     topnav = " · ".join(navs)
 
-    # Decks vigiados (só decks): o deck por inteiro + as cartas extra (fora da lista).
+    # Decks vigiados (só decks). Lista fixa (Blue Farm/Cloud cEDH/Pauper): o deck
+    # por inteiro + extras. Consenso (Cloud DC): camadas núcleo/flex/tech.
+    wsec_body = ""
+    for p in _watched_deck_pools(con):
+        wsec_body += (f'<h3>{html.escape(p["title"])} <span class="n">'
+                      f'{p["n_have"]} na lista · {len(p["extra"])} extra</span></h3>')
+        dcards = sorted(p["deck"], key=lambda x: (int(x["cmc"] or 0), (x["nm"] or "").lower()))
+        wsec_body += '<div class="grid">' + "".join(_card(x) for x in dcards) + '</div>'
+        if p["extra"]:
+            ex = sorted(p["extra"], key=lambda x: (int(x["cmc"] or 0), (x["nm"] or "").lower()))
+            wsec_body += ('<h4>extra — fora da lista, retidas</h4><div class="grid">'
+                          + "".join(_card(x) for x in ex) + '</div>')
+    wsec_body += _consensus_tiers_html(con)
+
     wsec = ""
-    pools = _watched_deck_pools(con)
-    if pools:
+    if wsec_body:
         topnav += ' · <a href="#vigiados">🃏 Decks vigiados</a>'
-        wsec += ('<h2 id="vigiados" class="pool">🃏 Decks vigiados '
-                 '<span class="n">só decks — não coleção</span></h2>'
-                 '<p class="hint">O deck por inteiro; as cartas que saíram da lista aparecem como '
-                 '<b>extra</b> (retidas até 6 meses da última utilização — depois, vender).</p>')
-        for p in pools:
-            wsec += (f'<h3>{html.escape(p["title"])} <span class="n">'
-                     f'{p["n_have"]} na lista · {len(p["extra"])} extra</span></h3>')
-            dcards = sorted(p["deck"], key=lambda x: (int(x["cmc"] or 0), (x["nm"] or "").lower()))
-            wsec += '<div class="grid">' + "".join(_card(x) for x in dcards) + '</div>'
-            if p["extra"]:
-                ex = sorted(p["extra"], key=lambda x: (int(x["cmc"] or 0), (x["nm"] or "").lower()))
-                wsec += ('<h4>extra — fora da lista, retidas</h4><div class="grid">'
-                         + "".join(_card(x) for x in ex) + '</div>')
+        wsec = ('<h2 id="vigiados" class="pool">🃏 Decks vigiados '
+                '<span class="n">só decks — não coleção</span></h2>'
+                '<p class="hint">Lista fixa (Blue Farm, Cloud cEDH, Pauper): o deck por inteiro '
+                '+ as <b>extra</b> (saíram da lista, retidas até 6 meses). Consenso (Cloud): em '
+                'camadas — <b>núcleo</b> (≥50% das listas) é o deck; <b>flex</b> (25–50%) e '
+                '<b>tech</b> (15–25%) são opções para as vagas. Só cartas dentro da cor do '
+                'comandante.</p>' + wsec_body)
 
     # Vender: por pool, depois por motivo, agregado por nome.
     vsec = ""
@@ -286,6 +346,10 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .c .use{position:absolute;bottom:0;left:0;right:0;background:#000e;color:#c7d0da;font-size:8px;line-height:1.3;padding:1px 3px;border-radius:0 0 5px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
  .c.extra img{filter:brightness(.82) sepia(.35) saturate(1.3) hue-rotate(-15deg)}
  .c .ex{position:absolute;bottom:0;left:0;right:0;background:#5a4a1f;color:#f4e0a0;font-size:8.5px;font-weight:700;line-height:1.35;padding:1px 3px;border-radius:0 0 5px 5px;text-align:center}
+ .c.miss{opacity:.72} .c.miss img{filter:grayscale(1) brightness(.5)}
+ .c .noimg{width:74px;height:103px;border-radius:5px;background:#0c0f14}
+ .c .q.pctb{background:#1c2c4a;color:#9cc2ff}
+ .tiersep{margin:12px 0 6px;padding:5px 10px;border-radius:7px;background:#141b26;border:1px dashed var(--line);color:var(--muted);font-size:12px;text-align:center;font-weight:600}
  .mk{position:absolute;bottom:3px;right:3px;font-size:10px;font-weight:700}
  .mk.foil{color:var(--gold);text-shadow:0 0 3px #000} .mk.pt{background:#12351f;color:var(--add);border-radius:4px;padding:0 3px;font-size:9px}
  .tally{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 2px}
