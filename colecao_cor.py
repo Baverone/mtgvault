@@ -51,17 +51,23 @@ def _img(sid):
 def _card(x, badge_cls="q"):
     fo = '<span class="mk foil">★</span>' if x["fin"] == "foil" else ""
     pt = '<span class="mk pt">PT</span>' if x["lang"] == "pt" else ""
-    used = "used_by" in x   # linha de deck -> a escuro + onde está a ser usada
-    cls, use = "c", ""
-    if used:
+    cls, tag = "c", ""
+    tip = html.escape(x["nm"] or "")
+    if "used_by" in x:            # cópia de um deck SPML/Premodern -> a escuro + onde
         where = ", ".join(x["used_by"]) if x["used_by"] else "num deck"
         cls = "c used"
-        use = f'<span class="use" title="em uso: {html.escape(where)}">{html.escape(where)}</span>'
-    tip = html.escape(x["nm"] or "") + (f' — em uso: {html.escape(", ".join(x["used_by"]))}'
-                                        if used and x["used_by"] else "")
+        tag = f'<span class="use" title="em uso: {html.escape(where)}">{html.escape(where)}</span>'
+        if x["used_by"]:
+            tip += f' — em uso: {html.escape(", ".join(x["used_by"]))}'
+    elif x.get("extra"):          # deck vigiado: carta que saiu da lista, retida
+        last = x.get("last")
+        cls = "c extra"
+        tag = (f'<span class="ex" title="fora da lista, retida'
+               f'{(" · última utilização " + last) if last else ""}">extra</span>')
+        tip += " — extra (saiu da lista, retida até 6 meses)"
     return (f'<div class="{cls}" title="{tip}">'
             f'<img loading="lazy" src="{_img(x["sid"])}" alt="">'
-            f'<span class="{badge_cls}">{x["q"]}</span>{fo}{pt}{use}</div>')
+            f'<span class="{badge_cls}">{x["q"]}</span>{fo}{pt}{tag}</div>')
 
 
 # Um "binder" por cor. Ícone e slug (para âncoras) de cada cor.
@@ -87,6 +93,71 @@ def _cmc_grids(rows, is_land):
         out += f'<h4>{lbl} <span class="n">{sum(x["q"] for x in cards)}</span></h4><div class="grid">'
         out += "".join(_card(x) for x in cards)
         out += "</div>"
+    return out
+
+
+# Decks vigiados (só decks, não coleção): balde físico + o rótulo a mostrar.
+WATCHED_BALDES = [("Blue Farm", "🩸 Blue Farm [cEDH]"),
+                  ("Cloud cEDH", "☁️ Cloud [cEDH]"),
+                  ("Cloud", "☁️ Cloud [Duel Commander]"),
+                  ("Pauper Affinity", "🔧 Pauper Affinity")]
+
+
+def _watched_deck_pools(con):
+    """Por cada deck vigiado: o deck por INTEIRO (o que tem e está na lista atual)
+    + as cartas EXTRA (as que já tem mas saíram da lista) — retidas até 6 meses da
+    última vez que estiveram na lista; passado isso, sugere-se vender.
+
+    A lista atual e o histórico de "última utilização" vêm da lista vigiada
+    (watched_snapshots); para o Cloud (Duel Commander), do consenso (deck_cards).
+    """
+    cutoff = con.execute("SELECT date('now','-6 months') d").fetchone()["d"]
+    wmap = {r["sub_collection"]: r["watched_id"]
+            for r in con.execute("SELECT sub_collection, watched_id FROM deck_collection")}
+    today = con.execute("SELECT date('now') d").fetchone()["d"]
+
+    def _list_and_last(balde):
+        cur, last = set(), {}
+        wid = wmap.get(balde)
+        if wid:
+            for r in con.execute("SELECT taken_at, cards FROM watched_snapshots "
+                                 "WHERE watched_id = ? ORDER BY taken_at", (wid,)):
+                names = {c[1].split(" // ")[0] for c in json.loads(r["cards"])}
+                for nm in names:
+                    last[nm] = (r["taken_at"] or "")[:10]
+                cur = names
+        else:   # Cloud (Duel Commander): consenso, sem histórico
+            cur = {r["nm"].split(" // ")[0] for r in con.execute(
+                "SELECT card_name nm FROM deck_cards dc JOIN decks d ON d.id = dc.deck_id "
+                "WHERE d.name = 'Cloud (Duel Commander)'")}
+            for nm in cur:
+                last[nm] = today
+        return cur, last
+
+    out = []
+    for balde, title in WATCHED_BALDES:
+        cur, last = _list_and_last(balde)
+        deck_rows, extra_rows = [], []
+        for r in con.execute(
+            """SELECT c.scryfall_id sid, c.name nm, c.cmc cmc, c.type_line tl,
+                      c.color_identity ci, cp.finish fin, cp.language lang, SUM(cp.quantity) q
+                 FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id
+                 JOIN sub_collections s ON s.id = cp.sub_collection_id
+                WHERE cp.purpose = 'player' AND s.name = ?
+                GROUP BY c.scryfall_id, cp.finish, cp.language""", (balde,)):
+            row = dict(r)
+            front = r["nm"].split(" // ")[0]
+            if front in cur:
+                deck_rows.append(row)
+            else:
+                lp = last.get(front)
+                row["extra"] = True
+                row["last"] = lp
+                row["expired"] = bool(lp and lp < cutoff)
+                extra_rows.append(row)
+        if deck_rows or extra_rows:
+            out.append({"title": title, "deck": deck_rows, "extra": extra_rows,
+                        "n_list": len(cur), "n_have": len(deck_rows)})
     return out
 
 
@@ -120,6 +191,25 @@ def build(con, out_path=None):
             secs += f'<h3>{short} <span class="n">{sum(x["q"] for x in rs)}</span></h3>'
             secs += _cmc_grids(rs, b == "Terras")
     topnav = " · ".join(navs)
+
+    # Decks vigiados (só decks): o deck por inteiro + as cartas extra (fora da lista).
+    wsec = ""
+    pools = _watched_deck_pools(con)
+    if pools:
+        topnav += ' · <a href="#vigiados">🃏 Decks vigiados</a>'
+        wsec += ('<h2 id="vigiados" class="pool">🃏 Decks vigiados '
+                 '<span class="n">só decks — não coleção</span></h2>'
+                 '<p class="hint">O deck por inteiro; as cartas que saíram da lista aparecem como '
+                 '<b>extra</b> (retidas até 6 meses da última utilização — depois, vender).</p>')
+        for p in pools:
+            wsec += (f'<h3>{html.escape(p["title"])} <span class="n">'
+                     f'{p["n_have"]} na lista · {len(p["extra"])} extra</span></h3>')
+            dcards = sorted(p["deck"], key=lambda x: (int(x["cmc"] or 0), (x["nm"] or "").lower()))
+            wsec += '<div class="grid">' + "".join(_card(x) for x in dcards) + '</div>'
+            if p["extra"]:
+                ex = sorted(p["extra"], key=lambda x: (int(x["cmc"] or 0), (x["nm"] or "").lower()))
+                wsec += ('<h4>extra — fora da lista, retidas</h4><div class="grid">'
+                         + "".join(_card(x) for x in ex) + '</div>')
 
     # Vender: por pool, depois por motivo, agregado por nome.
     vsec = ""
@@ -164,7 +254,8 @@ def build(con, out_path=None):
     cfg_line = (f'🔷 SPML: {fmts} &nbsp;·&nbsp; 🕰️ Premodern: <b>{html.escape(pm_str)}</b>{mont_str}'
                 f'<span class="muted"> — diz-me se mudas de formato ou quando montas um deck</span>')
     today = con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or ""
-    out.write_text(_TMPL.replace("%SECS%", secs).replace("%VENDER%", vsec)
+    out.write_text(_TMPL.replace("%SECS%", secs).replace("%VIGIADOS%", wsec)
+                   .replace("%VENDER%", vsec)
                    .replace("%NAV%", topnav).replace("%COL%", str(c["colecao"]))
                    .replace("%DECK%", str(c["deck"])).replace("%SELL%", str(c["vender"]))
                    .replace("%CFG%", cfg_line).replace("%TODAY%", today), encoding="utf-8")
@@ -193,6 +284,8 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .c.used img{filter:grayscale(1) brightness(.42)}
  .c.used .q{background:#000d;color:#9aa6b2}
  .c .use{position:absolute;bottom:0;left:0;right:0;background:#000e;color:#c7d0da;font-size:8px;line-height:1.3;padding:1px 3px;border-radius:0 0 5px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
+ .c.extra img{filter:brightness(.82) sepia(.35) saturate(1.3) hue-rotate(-15deg)}
+ .c .ex{position:absolute;bottom:0;left:0;right:0;background:#5a4a1f;color:#f4e0a0;font-size:8.5px;font-weight:700;line-height:1.35;padding:1px 3px;border-radius:0 0 5px 5px;text-align:center}
  .mk{position:absolute;bottom:3px;right:3px;font-size:10px;font-weight:700}
  .mk.foil{color:var(--gold);text-shadow:0 0 3px #000} .mk.pt{background:#12351f;color:var(--add);border-radius:4px;padding:0 3px;font-size:9px}
  .tally{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 2px}
@@ -210,6 +303,7 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
 <div class="cfg">%CFG%</div></header>
 <div class="nav">%NAV% · <a href="#Vender">🔴 Vender</a></div>
 %SECS%
+%VIGIADOS%
 %VENDER%
 <footer><b>Um binder por cor</b>; dentro de cada cor, <b>SPML</b> e <b>Premodern</b> separados, cada um por custo de mana (as Terras por nome). Aparece a <b>coleção inteira</b>: as cartas disponíveis a cores e as que estão a ser usadas num deck <b>a escuro</b>, com a indicação de <b>onde</b> (o nome do deck por baixo). As de venda vão à parte, no fim (cópias acima de 4). O número em cada carta é quantas tens; ★ = foil, PT = português. Se tiveres mais na mão do que o número — ou uma carta que não aparece — ainda não está catalogada: fotografa. Atualiza sozinho todos os dias.</footer>
 </div></body></html>"""
