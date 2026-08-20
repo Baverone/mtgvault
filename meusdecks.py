@@ -35,9 +35,8 @@ DECK_CORE = {
 }
 
 TABS = ('<nav class="tabs"><a href="index.html">🏠 Início</a>'
-        '<a class="cur" href="meusdecks.html">🎴 Os meus decks</a>'
+        '<a class="cur" href="meusdecks.html">🎴 Decks vigiados</a>'
         '<a href="metagame.html">🌐 Metagame</a>'
-        '<a href="buildability.html">🔨 Montar</a>'
         '<a href="colecao_cor.html">📚 Binders</a><a href="reservedlist.html">🏆 Reserved List</a></nav>')
 
 
@@ -219,8 +218,12 @@ def build(con, out_path=None):
             (d["id"],))]
         if not items:
             continue
-        evol = _evolution_core(con, DECK_CORE.get(d["name"]))
         link, ldate = _target_link(con, d["notes"])
+        # Decks vigiados: só os que têm LINK e/ou JOGADOR vigiado. Exclui os de
+        # puro consenso (ex.: Cloud Duel Commander), que não têm nenhum dos dois.
+        if not link and "auto:" not in (d["notes"] or ""):
+            continue
+        evol = _evolution_core(con, DECK_CORE.get(d["name"]))
         core_dates = [r["taken_at"] for r in con.execute(
             "SELECT MAX(taken_at) taken_at FROM core_snapshots WHERE core_key=?",
             (DECK_CORE.get(d["name"], ""),))] if DECK_CORE.get(d["name"]) else []
@@ -255,7 +258,7 @@ def build(con, out_path=None):
 
 _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Os meus decks</title><style>
+<title>Decks vigiados</title><style>
  :root{--bg:#0d1017;--card:#161b24;--ink:#eef2f7;--muted:#8b97a6;--line:#242c38;--accent:#5b8cff;--gold:#e0b64b;--add:#4ac585;--warn:#e0704b}
  *{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#10141d,#0d1017);color:var(--ink);font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
  .wrap{max-width:1100px;margin:0 auto;padding:22px 14px 60px}
@@ -286,8 +289,8 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .cd .cq{position:absolute;top:1px;left:1px;background:#000c;color:#fff;font-size:9px;font-weight:700;padding:0 3px;border-radius:5px}
  footer{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
-<header><h1>🎴 Os meus decks</h1>
-<div class="lead">%N% decks · % de completo, datas, evolução e a lista completa · dados de %TODAY%</div>
+<header><h1>🎴 Decks vigiados</h1>
+<div class="lead">%N% decks com link e/ou jogador vigiado · % de completo, datas, evolução e a lista completa · dados de %TODAY%</div>
 %TABS%
 <div class="subnav">%SUBNAV%</div></header>
 %SECS%

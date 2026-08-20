@@ -115,6 +115,32 @@ def _format_need(con, formatos):
     return need
 
 
+def _used_by(con, active_fmts, pm_status, montados):
+    """Carta -> conjunto de decks que a usam (para os Binders mostrarem, na carta
+    a escuro, ONDE está a ser usada): decks SPML dos formatos ativos, decks de
+    Premodern trancados, e decks montados (em qualquer formato)."""
+    ub = defaultdict(set)
+    if active_fmts:
+        marks = ",".join("?" for _ in active_fmts)
+        for r in con.execute(
+            f"""SELECT dc.card_name nm, d.name dn FROM deck_cards dc
+                  JOIN decks d ON d.id = dc.deck_id
+                 WHERE d.format IN ({marks})""", tuple(active_fmts)):
+            ub[r["nm"]].add(r["dn"])
+    for deck, st in pm_status.items():
+        if st["locked"]:
+            for nm in st["cons"]:
+                ub[nm].add(deck)
+    if montados:
+        marks = ",".join("?" for _ in montados)
+        for r in con.execute(
+            f"""SELECT dc.card_name nm, d.name dn FROM deck_cards dc
+                  JOIN decks d ON d.id = dc.deck_id
+                 WHERE d.name IN ({marks}) AND dc.board IN ('main', '')""", tuple(montados)):
+            ub[r["nm"]].add(r["dn"])
+    return ub
+
+
 def _premodern_deck_lists(con):
     """Consenso (carta -> qty típica) de cada deck de Premodern do André, a
     partir das listas do arquétipo já recolhidas. É a lista-alvo de cada deck."""
@@ -230,6 +256,7 @@ def build(con):
     for pool in ("msl", "premodern"):
         for nm, q in mneed[pool].items():
             need[pool][nm] = max(need[pool].get(nm, 0), q)
+    used_by = _used_by(con, active_fmts, pm_status, montados)
     played = {"msl": _played_names(con, MSL_FORMATS),
               "premodern": _played_names(con, ("premodern",))}
     last_played = _last_played(con)
@@ -252,7 +279,7 @@ def build(con):
         d["legal"] = _legal_anywhere(r["leg"])
         d["groups"].append(dict(r))
 
-    colecao, vender = [], []
+    colecao, vender, deck_rows = [], [], []
     deck_total = 0
     for nm, d in by_name.items():
         pool = d["pool"]
@@ -300,11 +327,12 @@ def build(con):
                 take = min(avail, buckets[state])
                 buckets[state] -= take
                 avail -= take
-                if state == "deck":
-                    continue
                 row = {k: g[k] for k in ("sid", "nm", "cmc", "tl", "ci", "fin", "lang", "sub")}
                 row["q"] = take
-                if state == "colecao":
+                if state == "deck":
+                    row["used_by"] = sorted(used_by.get(nm, []))
+                    deck_rows.append(row)
+                elif state == "colecao":
                     colecao.append(row)
                 else:
                     row["reason"] = reason
@@ -313,7 +341,8 @@ def build(con):
     counts = {"deck": deck_total,
               "colecao": sum(r["q"] for r in colecao),
               "vender": sum(r["q"] for r in vender)}
-    return {"colecao": colecao, "vender": vender, "deck_total": deck_total,
+    return {"colecao": colecao, "vender": vender, "deck": deck_rows,
+            "deck_total": deck_total,
             "counts": counts, "spml_formatos": spml_formatos,
             "spml_ativos": active_fmts, "premodern_status": pm_status,
             "decks_montados": montados,

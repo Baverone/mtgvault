@@ -64,9 +64,8 @@ TOP = 5        # top-5 por formato
 SCAN = 30      # quantos arquétipos do topo analisar para encontrar os 5
 
 TABS = ('<nav class="tabs"><a href="index.html">🏠 Início</a>'
-        '<a href="meusdecks.html">🎴 Os meus decks</a>'
+        '<a href="meusdecks.html">🎴 Decks vigiados</a>'
         '<a href="metagame.html">🌐 Metagame</a>'
-        '<a href="buildability.html">🔨 Montar</a>'
         '<a href="colecao_cor.html">📚 Binders</a><a href="reservedlist.html">🏆 Reserved List</a></nav>')
 
 

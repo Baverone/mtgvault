@@ -33,7 +33,6 @@ import core_decks  # noqa: E402  (gera coredecks.html + tracking de alteracoes)
 import collection_gallery  # noqa: E402  (gera colecao.html — galeria com imagens)
 import colecao_cor  # noqa: E402  (gera colecao_cor.html — coleção por cor + custo de mana)
 import meta_coverage  # noqa: E402  (gera cobertura.html — top decks + % que tenho + o que falta)
-import buildability  # noqa: E402  (gera buildability.html — o que consigo montar dos decks-alvo)
 import meusdecks  # noqa: E402  (gera meusdecks.html — os meus decks: estado, % e evolução)
 import metagame  # noqa: E402  (gera metagame.html — só ver o metagame: listas com arte)
 import prioridade  # noqa: E402  (gera prioridade.html — alocação exclusiva por prioridade)
@@ -204,10 +203,6 @@ def main():
         # Depois da análise (arquétipos/roles) e dos preços — depende dos dois.
         _step(con, "cobertura-metagame",
               lambda: str(meta_coverage.build(con, ROOT / "cobertura.html")[0]))
-        # Buildability: % de cada deck-alvo e o que falta. Depois dos decks
-        # (meus-decks, decks-comandante) e dos preços (imagem/edição a comprar).
-        _step(con, "buildability",
-              lambda: str(buildability.build(con, ROOT / "buildability.html")))
         _step(con, "meus-decks-pagina",
               lambda: str(meusdecks.build(con, ROOT / "meusdecks.html")))
         _step(con, "metagame-pagina",

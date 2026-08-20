@@ -49,13 +49,13 @@ daily.py          o job diário (encadeia tudo o que está abaixo)
 **Geradores do site (scripts na raiz, corridos pelo `daily.py`, HTML no GitHub Pages):**
 ```
 meta_coverage.py    cobertura.html — top-10 ponderado por torneio + staples + emergentes
-buildability.py     buildability.html — decks-alvo + resto do metagame, % e o que falta, + loadout
+buildability.py     (DORMENTE) o "Montar" foi tirado do menu p/ o André refazer; já NÃO corre no daily nem vai ao git-add. Continua importado por meusdecks.py (FMT_LABEL/FMT_ORDER/BASICS)
 classify.py         classificação Deck/Coleção/Vender (alimenta colecao_cor.html)
-colecao_cor.py      colecao_cor.html — coleção por cor→CMC (binders), SPML/Premodern separados
+colecao_cor.py      colecao_cor.html — "Binders": coleção INTEIRA por cor→CMC; as cartas em uso num deck a escuro + rótulo de onde (classify devolve rep["deck"] com used_by)
 collection_gallery.py  colecao.html — galeria por sub-coleção
 core_decks.py       coredecks.html — consenso dos decks seguidos
 alertas.py          alertas.html — vender/comprar por movimento de preço
-meusdecks.py        meusdecks.html — os meus decks: lista 75 verde/vermelho, % e evolução
+meusdecks.py        meusdecks.html — "Decks vigiados": só decks com link e/ou jogador vigiado (exclui consenso, ex.: Cloud DC); lista 75 verde/vermelho, % e evolução
 metagame.py         metagame.html — só ver o metagame: listas com arte + ➕ selecionar
 metafaltas.py       metafaltas.html — decks do metagame a >=50% (para completar), com bans
 prioridade.py       prioridade.html — Premodern alocação exclusiva; SPML partilha sempre

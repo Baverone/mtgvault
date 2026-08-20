@@ -51,9 +51,17 @@ def _img(sid):
 def _card(x, badge_cls="q"):
     fo = '<span class="mk foil">★</span>' if x["fin"] == "foil" else ""
     pt = '<span class="mk pt">PT</span>' if x["lang"] == "pt" else ""
-    return (f'<div class="c" title="{html.escape(x["nm"] or "")}">'
+    used = "used_by" in x   # linha de deck -> a escuro + onde está a ser usada
+    cls, use = "c", ""
+    if used:
+        where = ", ".join(x["used_by"]) if x["used_by"] else "num deck"
+        cls = "c used"
+        use = f'<span class="use" title="em uso: {html.escape(where)}">{html.escape(where)}</span>'
+    tip = html.escape(x["nm"] or "") + (f' — em uso: {html.escape(", ".join(x["used_by"]))}'
+                                        if used and x["used_by"] else "")
+    return (f'<div class="{cls}" title="{tip}">'
             f'<img loading="lazy" src="{_img(x["sid"])}" alt="">'
-            f'<span class="{badge_cls}">{x["q"]}</span>{fo}{pt}</div>')
+            f'<span class="{badge_cls}">{x["q"]}</span>{fo}{pt}{use}</div>')
 
 
 # Um "binder" por cor. Ícone e slug (para âncoras) de cada cor.
@@ -86,9 +94,13 @@ def build(con, out_path=None):
     out = Path(out_path) if out_path else (ROOT / "colecao_cor.html")
     rep = classify.build(con)
 
-    # Coleção: um binder por COR; dentro, SPML e Premodern separados, por CMC.
+    # Binder por COR; dentro, SPML e Premodern separados, por CMC. Mostra a
+    # coleção INTEIRA: as cartas disponíveis + as que estão em uso num deck
+    # (essas a escuro, com a indicação de onde). As de venda vão à parte, no fim.
     colrows = defaultdict(lambda: defaultdict(list))   # cor -> balde -> linhas
     for r in rep["colecao"]:
+        colrows[_bucket(r["tl"], r["ci"])][r["sub"]].append(r)
+    for r in rep.get("deck", []):
         colrows[_bucket(r["tl"], r["ci"])][r["sub"]].append(r)
 
     secs, navs = "", []
@@ -178,6 +190,9 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .c{position:relative;width:74px} .c img{width:74px;border-radius:5px;display:block;background:#0c0f14}
  .c .q{position:absolute;top:2px;left:2px;background:#000b;color:#fff;font-weight:700;font-size:11px;padding:0 5px;border-radius:7px}
  .c .q.sell{background:#7a1d1d}
+ .c.used img{filter:grayscale(1) brightness(.42)}
+ .c.used .q{background:#000d;color:#9aa6b2}
+ .c .use{position:absolute;bottom:0;left:0;right:0;background:#000e;color:#c7d0da;font-size:8px;line-height:1.3;padding:1px 3px;border-radius:0 0 5px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
  .mk{position:absolute;bottom:3px;right:3px;font-size:10px;font-weight:700}
  .mk.foil{color:var(--gold);text-shadow:0 0 3px #000} .mk.pt{background:#12351f;color:var(--add);border-radius:4px;padding:0 3px;font-size:9px}
  .tally{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 2px}
@@ -189,14 +204,14 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  footer{margin-top:24px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
 <header><h1>📚 Binders — por cor e custo de mana</h1>
-<div class="sub">um binder por cor · dentro, SPML e Premodern separados, por custo de mana · dados de %TODAY%</div>
-<nav class="tabs"><a href="index.html">🏠 Início</a><a href="meusdecks.html">🎴 Os meus decks</a><a href="metagame.html">🌐 Metagame</a><a href="buildability.html">🔨 Montar</a><a class="cur" href="colecao_cor.html">📚 Binders</a><a href="reservedlist.html">🏆 Reserved List</a></nav>
-<div class="tally"><b class="t-col">🔵 %COL% em coleção</b><b class="t-deck">🟢 %DECK% em decks (fora)</b><b class="t-sell">🔴 %SELL% a vender</b></div>
+<div class="sub">um binder por cor · a coleção INTEIRA (as que estão num deck aparecem a escuro, com onde) · dados de %TODAY%</div>
+<nav class="tabs"><a href="index.html">🏠 Início</a><a href="meusdecks.html">🎴 Decks vigiados</a><a href="metagame.html">🌐 Metagame</a><a class="cur" href="colecao_cor.html">📚 Binders</a><a href="reservedlist.html">🏆 Reserved List</a></nav>
+<div class="tally"><b class="t-col">🔵 %COL% disponíveis</b><b class="t-deck">🟢 %DECK% em uso (a escuro)</b><b class="t-sell">🔴 %SELL% a vender</b></div>
 <div class="cfg">%CFG%</div></header>
 <div class="nav">%NAV% · <a href="#Vender">🔴 Vender</a></div>
 %SECS%
 %VENDER%
-<footer><b>Um binder por cor</b>; dentro de cada cor, a coleção de <b>SPML</b> e a de <b>Premodern</b> separadas, cada uma por custo de mana (as Terras por nome). Só aparece a coleção solta — as cartas dos decks montados ficam de fora. As de venda são as cópias acima de 4. O número em cada carta é quantas tens; ★ = foil, PT = português. Se tiveres mais na mão do que o número — ou uma carta que não aparece — ainda não está catalogada: fotografa. Atualiza sozinho todos os dias.</footer>
+<footer><b>Um binder por cor</b>; dentro de cada cor, <b>SPML</b> e <b>Premodern</b> separados, cada um por custo de mana (as Terras por nome). Aparece a <b>coleção inteira</b>: as cartas disponíveis a cores e as que estão a ser usadas num deck <b>a escuro</b>, com a indicação de <b>onde</b> (o nome do deck por baixo). As de venda vão à parte, no fim (cópias acima de 4). O número em cada carta é quantas tens; ★ = foil, PT = português. Se tiveres mais na mão do que o número — ou uma carta que não aparece — ainda não está catalogada: fotografa. Atualiza sozinho todos os dias.</footer>
 </div></body></html>"""
 
 
