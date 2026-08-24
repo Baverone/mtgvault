@@ -145,6 +145,16 @@ def _analyse(con, fmt):
     return f"{k} arquétipos, {n} cartas"
 
 
+def _prune_prices(con, keep_days: int = 30):
+    """Apaga histórico de preços antigo. Só interessa o recente — a Reserved List
+    compara 'hoje vs há ~1 mês'. Sem isto o price_history cresce sem fim e é o que
+    mais faz o vault.db aproximar-se do limite de 100 MB do GitHub."""
+    n = con.execute("DELETE FROM price_history WHERE date < date('now', ?)",
+                    (f"-{keep_days} days",)).rowcount
+    con.commit()
+    return f"{n} preços >{keep_days}d apagados"
+
+
 def main():
     with db.session() as con:
         # O catálogo primeiro: os preços e a resolução de nomes dependem dele, e
@@ -214,7 +224,8 @@ def main():
         _step(con, "reserved-list-pagina",
               lambda: str(reservedlist.build(con, ROOT / "reservedlist.html")))
 
-        _step(con, "prune", lambda: f"{analysis.prune_decklists(con, 180)} apagadas")
+        _step(con, "podar-precos", lambda: _prune_prices(con, 30))
+        _step(con, "prune", lambda: f"{analysis.prune_decklists(con, 90)} apagadas")
 
 
 if __name__ == "__main__":

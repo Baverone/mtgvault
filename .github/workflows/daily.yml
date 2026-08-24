@@ -38,16 +38,48 @@ jobs:
 
       - run: pip install -r requirements.txt
 
+      # A BD vive num Release ('data'), não no Git — assim o repositório não
+      # incha nem bate no limite de 100 MB. Puxa-se aqui a versão mais recente.
+      # Na 1ª vez ainda não há Release: usa-se o vault.db do checkout como
+      # semente. Se não houver nem Release nem ficheiro, aborta (não cria BD
+      # vazia por engano).
+      - name: Obter BD do Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p data
+          if gh release download data --pattern vault.db --dir data --clobber 2>/dev/null; then
+            echo "vault.db obtido do Release 'data'."
+          elif [ -f data/vault.db ]; then
+            echo "Sem Release ainda — uso o vault.db do repositório (semente da 1ª vez)."
+          else
+            echo "::error::Sem Release 'data' e sem vault.db — aborto para não criar BD vazia."
+            exit 1
+          fi
+
       - name: Trabalho diário
         run: python daily.py
 
-      - name: Guardar alterações
+      # Republica a BD atualizada no Release (cria-o na 1ª vez). O URL do asset
+      # é estável: .../releases/download/data/vault.db
+      - name: Publicar BD no Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view data >/dev/null 2>&1 || gh release create data \
+            --title "Base de dados (vault.db)" \
+            --notes "vault.db atualizado pelo job diário. Não editar à mão — usa scripts/db_pull.sh e scripts/db_push.sh."
+          gh release upload data data/vault.db --clobber
+          echo "vault.db publicado no Release 'data'."
+
+      # Só o HTML vai para o Git (leve). O vault.db já foi para o Release.
+      - name: Guardar HTML
         run: |
           git config user.name  "mtgvault bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f data/vault.db coredecks.html colecao.html cobertura.html colecao_cor.html meusdecks.html metagame.html prioridade.html metafaltas.html reservedlist.html
+          git add coredecks.html colecao.html cobertura.html colecao_cor.html meusdecks.html metagame.html prioridade.html metafaltas.html reservedlist.html
           if git diff --cached --quiet; then
-            echo "Sem alterações."
+            echo "Sem alterações no HTML."
           else
             git commit -m "dados $(date -u +%F)"
             git push
