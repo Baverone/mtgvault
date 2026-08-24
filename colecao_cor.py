@@ -53,21 +53,20 @@ def _img(sid):
 def _card(x, badge_cls="q"):
     fo = '<span class="mk foil">★</span>' if x["fin"] == "foil" else ""
     pt = '<span class="mk pt">PT</span>' if x["lang"] == "pt" else ""
-    cls, tag = "c", ""
+    cls, tag, data = "c", "", ""
     tip = html.escape(x["nm"] or "")
-    if "used_by" in x:            # cópia de um deck SPML/Premodern -> a escuro + onde
-        where = ", ".join(x["used_by"]) if x["used_by"] else "num deck"
-        cls = "c used"
-        tag = f'<span class="use" title="em uso: {html.escape(where)}">{html.escape(where)}</span>'
-        if x["used_by"]:
-            tip += f' — em uso: {html.escape(", ".join(x["used_by"]))}'
+    if x.get("used_by"):          # vai para um deck — só MARCADA (o botão escurece)
+        where = ", ".join(x["used_by"])
+        data = f' data-used="{html.escape(where)}"'
+        tag = f'<span class="use">{html.escape(where)}</span>'
+        tip += f' — vai para: {html.escape(where)}'
     elif x.get("extra"):          # deck vigiado: carta que saiu da lista, retida
         last = x.get("last")
         cls = "c extra"
         tag = (f'<span class="ex" title="fora da lista, retida'
                f'{(" · última utilização " + last) if last else ""}">extra</span>')
         tip += " — extra (saiu da lista, retida até 6 meses)"
-    return (f'<div class="{cls}" title="{tip}">'
+    return (f'<div class="{cls}"{data} title="{tip}">'
             f'<img loading="lazy" src="{_img(x["sid"])}" alt="">'
             f'<span class="{badge_cls}">{x["q"]}</span>{fo}{pt}{tag}</div>')
 
@@ -217,16 +216,31 @@ def _consensus_tiers_html(con):
 
 def build(con, out_path=None):
     out = Path(out_path) if out_path else (ROOT / "colecao_cor.html")
-    rep = classify.build(con)
+    # Fase "encher os binders": mostra TUDO o que o André tem nos baldes de
+    # coleção (SPML + Premodern), por cor→CMC, SEM remover nada para decks nem
+    # venda. As que iriam para um deck ficam só MARCADAS (data-used) — o botão
+    # "sombrear as que vão para decks" liga isso quando ele passar a essa fase.
+    spml_formatos, completos, montados = classify._config()
+    active_fmts = [f for f, s in spml_formatos.items() if s in classify.ACTIVE_STATUSES]
+    pm_status = classify.premodern_status(con, sticky=completos)
+    used_by = classify._used_by(con, active_fmts, pm_status, montados)
 
-    # Binder por COR; dentro, SPML e Premodern separados, por CMC. Mostra a
-    # coleção INTEIRA: as cartas disponíveis + as que estão em uso num deck
-    # (essas a escuro, com a indicação de onde). As de venda vão à parte, no fim.
     colrows = defaultdict(lambda: defaultdict(list))   # cor -> balde -> linhas
-    for r in rep["colecao"]:
-        colrows[_bucket(r["tl"], r["ci"])][r["sub"]].append(r)
-    for r in rep.get("deck", []):
-        colrows[_bucket(r["tl"], r["ci"])][r["sub"]].append(r)
+    n_deckbound = 0
+    for r in con.execute(
+        """SELECT c.scryfall_id sid, c.name nm, c.cmc cmc, c.type_line tl,
+                  c.color_identity ci, cp.finish fin, cp.language lang, s.name sub,
+                  SUM(cp.quantity) q
+             FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id
+             JOIN sub_collections s ON s.id = cp.sub_collection_id
+            WHERE cp.purpose = 'player' AND s.name IN ('SPML', 'Premodern (geral)')
+            GROUP BY c.scryfall_id, cp.finish, cp.language, s.name"""):
+        row = dict(r)
+        ub = used_by.get(r["nm"])
+        if ub:
+            row["used_by"] = sorted(ub)
+            n_deckbound += r["q"]
+        colrows[_bucket(r["tl"], r["ci"])][r["sub"]].append(row)
 
     secs, navs = "", []
     for b in ORDER:
@@ -271,53 +285,23 @@ def build(con, out_path=None):
                 '<b>tech</b> (15–25%) são opções para as vagas. Só cartas dentro da cor do '
                 'comandante.</p>' + wsec_body)
 
-    # Vender: por pool, depois por motivo, agregado por nome.
-    vsec = ""
-    if rep["vender"]:
-        vsec += (f'<h2 id="Vender" class="pool">🔴 Vender <span class="n">{rep["counts"]["vender"]}</span></h2>'
-                 '<p class="hint">Sugestões — <b>confirma antes de vender</b>. Alguns duplicados '
-                 '(terras duais, fetchlands) podes querer manter para montar vários decks ao mesmo tempo.</p>')
-        for sub, short in POOLS:
-            rows = [r for r in rep["vender"] if r["sub"] == sub]
-            if not rows:
-                continue
-            agg = defaultdict(lambda: {"q": 0, "row": None})
-            for r in rows:
-                k = (r["nm"], r["reason"])
-                agg[k]["q"] += r["q"]
-                agg[k]["row"] = r
-            vsec += f'<h3>{short} <span class="n">{sum(r["q"] for r in rows)}</span></h3>'
-            by_reason = defaultdict(list)
-            for (nm, reason), v in agg.items():
-                by_reason[reason].append(v)
-            for reason in sorted(by_reason):
-                items = sorted(by_reason[reason], key=lambda v: -v["q"])
-                vsec += f'<h4>{html.escape(reason)}</h4><div class="grid">'
-                for v in items:
-                    row = dict(v["row"]); row["q"] = v["q"]
-                    vsec += _card(row, badge_cls="q sell")
-                vsec += "</div>"
-
-    c = rep["counts"]
+    total_col = sum(x["q"] for pools in colrows.values() for rs in pools.values() for x in rs)
     ESTADO = {"a jogar": "#4ac585", "a treinar": "#e0b64b",
               "a preparar": "#5b8cff", "ignorar": "#93a0ad"}
     fmts = " ".join(
         f'<b style="color:{ESTADO.get(s, "#93a0ad")}">{html.escape(f.capitalize())}</b>'
         f'<span class="muted"> {html.escape(s)}</span>'
-        for f, s in rep["spml_formatos"].items())
-    pm = rep["premodern_status"]
-    completos = [d for d, st in pm.items() if st["locked"]]
-    pm_str = ", ".join(completos) if completos else f"0 completos · {len(pm)} a montar"
-    mont = rep.get("decks_montados") or []
-    mont_str = (f' &nbsp;·&nbsp; 🔒 montados: <b>{", ".join(html.escape(m) for m in mont)}</b>'
-                if mont else "")
+        for f, s in spml_formatos.items())
+    pm_completos = [d for d, st in pm_status.items() if st["locked"]]
+    pm_str = ", ".join(pm_completos) if pm_completos else f"0 completos · {len(pm_status)} a montar"
+    mont_str = (f' &nbsp;·&nbsp; 🔒 montados: <b>{", ".join(html.escape(m) for m in montados)}</b>'
+                if montados else "")
     cfg_line = (f'🔷 SPML: {fmts} &nbsp;·&nbsp; 🕰️ Premodern: <b>{html.escape(pm_str)}</b>{mont_str}'
                 f'<span class="muted"> — diz-me se mudas de formato ou quando montas um deck</span>')
     today = con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or ""
     out.write_text(_TMPL.replace("%SECS%", secs).replace("%VIGIADOS%", wsec)
-                   .replace("%VENDER%", vsec)
-                   .replace("%NAV%", topnav).replace("%COL%", str(c["colecao"]))
-                   .replace("%DECK%", str(c["deck"])).replace("%SELL%", str(c["vender"]))
+                   .replace("%NAV%", topnav).replace("%TOTAL%", str(total_col))
+                   .replace("%DECKN%", str(n_deckbound))
                    .replace("%CFG%", cfg_line).replace("%TODAY%", today), encoding="utf-8")
     return out
 
@@ -341,9 +325,10 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .c{position:relative;width:74px} .c img{width:74px;border-radius:5px;display:block;background:#0c0f14}
  .c .q{position:absolute;top:2px;left:2px;background:#000b;color:#fff;font-weight:700;font-size:11px;padding:0 5px;border-radius:7px}
  .c .q.sell{background:#7a1d1d}
- .c.used img{filter:grayscale(1) brightness(.42)}
- .c.used .q{background:#000d;color:#9aa6b2}
- .c .use{position:absolute;bottom:0;left:0;right:0;background:#000e;color:#c7d0da;font-size:8px;line-height:1.3;padding:1px 3px;border-radius:0 0 5px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
+ .c .use{display:none;position:absolute;bottom:0;left:0;right:0;background:#000e;color:#c7d0da;font-size:8px;line-height:1.3;padding:1px 3px;border-radius:0 0 5px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
+ body.deckmode .c[data-used] img{filter:grayscale(1) brightness(.42)}
+ body.deckmode .c[data-used] .q{background:#000d;color:#9aa6b2}
+ body.deckmode .c[data-used] .use{display:block}
  .c.extra img{filter:brightness(.82) sepia(.35) saturate(1.3) hue-rotate(-15deg)}
  .c .ex{position:absolute;bottom:0;left:0;right:0;background:#5a4a1f;color:#f4e0a0;font-size:8.5px;font-weight:700;line-height:1.35;padding:1px 3px;border-radius:0 0 5px 5px;text-align:center}
  .c.miss{opacity:.72} .c.miss img{filter:grayscale(1) brightness(.5)}
@@ -352,25 +337,34 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .tiersep{margin:12px 0 6px;padding:5px 10px;border-radius:7px;background:#141b26;border:1px dashed var(--line);color:var(--muted);font-size:12px;text-align:center;font-weight:600}
  .mk{position:absolute;bottom:3px;right:3px;font-size:10px;font-weight:700}
  .mk.foil{color:var(--gold);text-shadow:0 0 3px #000} .mk.pt{background:#12351f;color:var(--add);border-radius:4px;padding:0 3px;font-size:9px}
- .tally{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 2px}
+ .tally{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 2px}
  .tally b{display:inline-block;padding:3px 9px;border-radius:20px;font-size:12px;font-weight:600}
  .t-col{background:#16283f;color:#9cc2ff} .t-deck{background:#123020;color:#6ee0a0} .t-sell{background:#3a1516;color:#f0a0a0}
+ .tgl{margin-left:auto;font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px;border:1px solid var(--line);background:var(--card);color:var(--muted);cursor:pointer}
+ .tgl.on{background:linear-gradient(180deg,#26406f,#1b2c4d);border-color:var(--accent);color:var(--ink)}
  .hint{color:var(--muted);font-size:12px;margin:4px 0 8px}
  .cfg{font-size:12.5px;margin:2px 0 4px;padding:5px 9px;border-radius:7px;background:#141b26;border:1px solid var(--line)}
  .cfg .muted{color:var(--muted)}
  footer{margin-top:24px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
-<header><h1>📚 Binders — por cor e custo de mana</h1>
-<div class="sub">um binder por cor · a coleção INTEIRA (as que estão num deck aparecem a escuro, com onde) · dados de %TODAY%</div>
+<header><h1>📚 Binders — organizar e fotografar</h1>
+<div class="sub">TUDO o que tens nos baldes de coleção, por cor→custo de mana · nada removido para decks · enche os binders e fotografa o que não aparecer · dados de %TODAY%</div>
 <nav class="tabs"><a href="index.html">🏠 Início</a><a href="meusdecks.html">🎴 Decks vigiados</a><a href="metagame.html">🌐 Metagame</a><a class="cur" href="colecao_cor.html">📚 Binders</a><a href="reservedlist.html">🏆 Reserved List</a></nav>
-<div class="tally"><b class="t-col">🔵 %COL% disponíveis</b><b class="t-deck">🟢 %DECK% em uso (a escuro)</b><b class="t-sell">🔴 %SELL% a vender</b></div>
+<div class="tally"><b class="t-col">🔵 %TOTAL% cartas nos binders</b><b class="t-deck">🟢 %DECKN% que vão p/ decks</b><button class="tgl" id="dm" onclick="toggleDM()">🎯 marcar as que vão p/ decks</button></div>
 <div class="cfg">%CFG%</div></header>
-<div class="nav">%NAV% · <a href="#Vender">🔴 Vender</a></div>
+<div class="nav">%NAV%</div>
 %SECS%
 %VIGIADOS%
-%VENDER%
-<footer><b>Um binder por cor</b>; dentro de cada cor, <b>SPML</b> e <b>Premodern</b> separados, cada um por custo de mana (as Terras por nome). Aparece a <b>coleção inteira</b>: as cartas disponíveis a cores e as que estão a ser usadas num deck <b>a escuro</b>, com a indicação de <b>onde</b> (o nome do deck por baixo). As de venda vão à parte, no fim (cópias acima de 4). O número em cada carta é quantas tens; ★ = foil, PT = português. Se tiveres mais na mão do que o número — ou uma carta que não aparece — ainda não está catalogada: fotografa. Atualiza sozinho todos os dias.</footer>
-</div></body></html>"""
+<footer><b>Um binder por cor</b>; dentro de cada cor, <b>SPML</b> e <b>Premodern</b> separados, cada um por custo de mana (as Terras por nome). Mostra <b>TUDO</b> o que tens nesses baldes — nada é removido para decks (enche primeiro os binders; os decks vêm depois). Os decks montados (Blue Farm, Cloud, etc.) ficam <b>à parte</b>, na secção 🃏 Decks vigiados. O número em cada carta é quantas tens; ★ = foil, PT = português. <b>Se tiveres uma carta na mão que não aparece — ou mais do que o número — ainda não está catalogada: fotografa.</b> O botão <b>🎯 marcar as que vão p/ decks</b> sombreia (mais tarde, quando montares) as que já estão reservadas a um deck. Atualiza sozinho todos os dias.</footer>
+</div>
+<script>
+function toggleDM(){var on=document.body.classList.toggle('deckmode');
+  var b=document.getElementById('dm');b.classList.toggle('on',on);
+  b.textContent=on?'🎯 a sombrear as de decks':'🎯 marcar as que vão p/ decks';
+  try{localStorage.setItem('cc_deckmode',on?'1':'');}catch(e){}}
+try{if(localStorage.getItem('cc_deckmode'))toggleDM();}catch(e){}
+</script>
+</body></html>"""
 
 
 def main():
