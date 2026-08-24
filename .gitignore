@@ -7,6 +7,8 @@ data/catalog.db
 data/catalog.db-*
 data/*.db-wal
 data/*.db-shm
+# O vault.db vive num Release (tag 'data'), não no Git — ver scripts/README.md.
+data/vault.db
 cache/
 priceguide.json
 
