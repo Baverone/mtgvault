@@ -25,3 +25,10 @@ Fotos processadas da coleção/**/*.png
 Fotos processadas da coleção/**/*.heic
 Fotos processadas da coleção/**/*.webp
 Fotos processadas da coleção/**/*.gif
+# Fotos em pendentes/ nunca vão para o repo (só o LEIA-ME viaja):
+pendentes/**/*.jpg
+pendentes/**/*.jpeg
+pendentes/**/*.png
+pendentes/**/*.heic
+pendentes/**/*.webp
+pendentes/**/*.gif
