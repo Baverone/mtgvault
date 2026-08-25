@@ -34,6 +34,16 @@ DECK_CORE = {
     "Greasefang": "pioneer:greasefang:orzhov",
 }
 
+
+def _decks_vigiados():
+    """Nomes de decks (da tabela `decks`) a mostrar na página 'Decks vigiados',
+    lidos do colecao_config.json. Vazio/em falta = critério antigo (link/auto)."""
+    try:
+        cfg = json.loads((ROOT / "colecao_config.json").read_text(encoding="utf-8"))
+        return set(cfg.get("decks_vigiados") or [])
+    except Exception:
+        return set()
+
 TABS = ('<nav class="tabs"><a href="index.html">🏠 Início</a>'
         '<a class="cur" href="meusdecks.html">🎴 Decks vigiados</a>'
         '<a href="metagame.html">🌐 Metagame</a>'
@@ -228,6 +238,7 @@ def build(con, out_path=None):
     osid = _owned_sid(con)
 
     rows = list(con.execute("SELECT id, name, format, notes FROM decks"))
+    vigiados = _decks_vigiados()
     allnames = set()
     for d in rows:
         for r in con.execute("SELECT card_name nm FROM deck_cards WHERE deck_id=?", (d["id"],)):
@@ -249,9 +260,13 @@ def build(con, out_path=None):
         if not main_items and not side_items:
             continue
         link, ldate = _target_link(con, d["notes"])
-        # Decks vigiados: só os que têm LINK e/ou JOGADOR vigiado. Exclui os de
-        # puro consenso (ex.: Cloud Duel Commander), que não têm nenhum dos dois.
-        if not link and "auto:" not in (d["notes"] or ""):
+        # Decks vigiados: só os que o André escolheu (decks_vigiados no config) —
+        # exclui os decks de referência do metagame (Modern/Standard/Pioneer, Spock)
+        # e INCLUI o consenso Cloud Duel Commander. Config vazio = critério antigo.
+        if vigiados:
+            if d["name"] not in vigiados:
+                continue
+        elif not link and "auto:" not in (d["notes"] or ""):
             continue
         evol = _evolution_core(con, DECK_CORE.get(d["name"]))
         core_dates = [r["taken_at"] for r in con.execute(

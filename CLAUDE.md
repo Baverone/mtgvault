@@ -57,7 +57,6 @@ core_decks.py       coredecks.html — consenso dos decks seguidos
 alertas.py          alertas.html — vender/comprar por movimento de preço
 meusdecks.py        meusdecks.html — "Decks vigiados": só decks com link e/ou jogador vigiado (exclui consenso, ex.: Cloud DC); lista 75 verde/vermelho, % e evolução; checkmark "atualizado" por deck (localStorage) + alterações por aplicar desde a última sincronização
 metagame.py         metagame.html — só ver o metagame: listas com arte + ➕ selecionar
-metafaltas.py       metafaltas.html — decks do metagame a >=50% (para completar), com bans
 prioridade.py       prioridade.html — Premodern alocação exclusiva; SPML partilha sempre
 reservedlist.py     reservedlist.html — Reserved List (Scryfall) x coleção, por edição, preço/evolução, e 'VENDER' as que não jogam em formato nenhum
 my_decks.py         segue decks-alvo (por assinatura e por jogador de MTGO) -> tabela decks

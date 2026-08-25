@@ -21,9 +21,11 @@ ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 # (nome do deck, formato, comandante)
-CONSENSUS = [
-    ("Cloud (Duel Commander)", "duel-commander", "Cloud, Midgar Mercenary"),
-]
+# O Cloud (Duel Commander) deixou de ser gerado por consenso: o André escolheu a
+# lista do McWinSauce (1º no MTGO DC Challenge 2026-08-24) como referência, gravada
+# à mão em decks/deck_cards. O consenso continua calculado por `tiers()` (secção de
+# camadas em colecao_cor), mas `refresh()` já NÃO sobrescreve o deck_cards do Cloud.
+CONSENSUS = []
 MIN_LISTS = 10           # não construir um "consenso" de meia dúzia de listas
 CORE, FLEX, TECH = 0.50, 0.25, 0.15   # limiares das três camadas
 
