@@ -158,19 +158,29 @@ def build(con, out_path=None):
     if top_staples:
         subnav += '<a href="#f-staples">🛒 Staples que faltam</a>'
         cells = ""
+        total = 0.0
         for c in top_staples:
             s = staples[c]
+            v = mc._visual(con, c, 0)          # impressão jogável mais barata (não tenho)
+            unit = v.get("unit")
+            if unit:
+                total += unit * s["qty"]
+            pzt = "" if not unit else ("&lt;1€" if unit < 1 else f"{unit:.0f}€")
+            pz = f'<span class="pz2">{pzt}</span>' if pzt else ''
             sid = imgmap.get(c.split(" // ")[0])
             img = (f'<img loading="lazy" src="{_art(sid)}" alt="">' if sid
                    else '<div class="noimg"></div>')
             fl = " ".join(FMT_ABBR.get(f, f[:3].upper()) for f in sorted(s["fmts"]))
+            unit_txt = f'{unit:.2f}€' if unit else 'preço?'
             cells += (f'<div class="cd miss stap" '
-                      f'title="{html.escape(c)} — {s["decks"]} decks ({fl})">'
-                      f'{img}<span class="cq gold">{s["decks"]}×</span></div>')
+                      f'title="{html.escape(c)} — {s["decks"]} decks ({fl}) · {s["qty"]}× · {unit_txt}">'
+                      f'{img}<span class="cq gold">{s["decks"]}×</span>{pz}</div>')
+        tot = f'<span class="dim">≈ {total:,.0f}€ para as comprar todas</span>'.replace(",", " ")
         secs += (f'<section id="f-staples"><h2>🛒 Staples que te faltam '
-                 f'<span class="n">{len(top_staples)}</span></h2>'
+                 f'<span class="n">{len(top_staples)}</span> {tot}</h2>'
                  f'<div class="lead2">Cartas em falta que aparecem em ≥2 decks do top-10 — '
-                 f'ordenadas pelo nº de decks (as que mais rendem por compra). O nº no canto = quantos decks a querem.</div>'
+                 f'ordenadas pelo nº de decks (as que mais rendem por compra). Canto sup. = nº de decks; '
+                 f'canto inf. = preço da impressão jogável mais barata.</div>'
                  f'<div class="cards">{cells}</div></section>')
 
     today = con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or ""
@@ -212,6 +222,7 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .wl ul{list-style:none;margin:0;padding:0;columns:2;column-gap:18px;font-size:12px} .wl li{color:var(--ink);padding:1px 0;break-inside:avoid}
  .cq.gold{background:var(--gold);color:#1a1200;font-size:11px;padding:0 4px} .stap img{filter:grayscale(1) brightness(.72)!important}
  .lead2{color:var(--muted);font-size:12px;margin:2px 0 10px}
+ .cd .pz2{position:absolute;bottom:1px;left:1px;right:1px;background:#000d;color:var(--add);font-size:9px;font-weight:700;text-align:center;padding:0 2px;border-radius:0 0 4px 4px}
  footer{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
 <header><h1>🌐 Metagame</h1>
