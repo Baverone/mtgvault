@@ -54,18 +54,22 @@ def _latest_list(con, aid):
     return {"player": r["player"], "date": r["event_date"], "url": r["url"], "main": main, "side": side}
 
 
-def _grid(cards, imgmap):
+def _grid(cards, imgmap, owned):
+    """Cartas do deck: a cor as que o André TEM (ou básicas), cinza as que faltam."""
     g = ""
     for nm, q in cards:
-        sid = imgmap.get(nm.split(" // ")[0])
+        front = nm.split(" // ")[0]
+        cls = "have" if (front in owned or front in mc.BASICS or nm in mc.BASICS) else "miss"
+        sid = imgmap.get(front)
         img = (f'<img loading="lazy" src="{_art(sid)}" alt="">' if sid else '<div class="noimg"></div>')
         qb = f'<span class="cq">{q}</span>' if q > 1 else ""
-        g += f'<div class="cd" title="{html.escape(nm)}">{img}{qb}</div>'
+        g += f'<div class="cd {cls}" title="{html.escape(nm)}">{img}{qb}</div>'
     return g
 
 
 def build(con, out_path=None):
     out = Path(out_path) if out_path else (ROOT / "metagame.html")
+    owned = set(mc.owned_playable(con))   # cartas que o André tem (para colorir)
     tcache = {}
     data = {}  # fmt -> [(name, list)]
     names = set()
@@ -110,17 +114,24 @@ def build(con, out_path=None):
         for nm, lst in decks:
             sel[nm] = {"fmt": fmt, "cards": [[c, q, imgmap.get(c.split(" // ")[0])]
                                              for c, q in lst["main"] if c not in mc.BASICS]}
+            # % que o André TEM do deck: cartas distintas não-básicas do main
+            nb = [c for c, _q in lst["main"] if c not in mc.BASICS]
+            tot = len(nb)
+            have = sum(1 for c in nb if c.split(" // ")[0] in owned)
+            pct = round(100 * have / tot) if tot else 0
+            cc = "add" if pct >= 90 else "gold" if pct >= 60 else "warn"
+            cov = f'<span class="cov {cc}">{have}/{tot} · {pct}%</span>'
             src = f'{lst["player"] or "?"} · {lst["date"]}'
             lk = (f' · <a href="{html.escape(lst["url"])}" target="_blank" rel="noopener">🔗</a>'
                   if lst.get("url") else "")
-            sb = (f'<div class="sbh">Sideboard</div><div class="cards">{_grid(lst["side"], imgmap)}</div>'
+            sb = (f'<div class="sbh">Sideboard</div><div class="cards">{_grid(lst["side"], imgmap, owned)}</div>'
                   if lst["side"] else "")
             cards += (
                 f'<details class="deck"><summary>'
                 f'<button class="add" data-deck="{html.escape(nm)}" title="adicionar à Lista de Compras">➕</button>'
-                f'<b>{html.escape(nm)}</b>'
+                f'<b>{html.escape(nm)}</b>{cov}'
                 f'<span class="src">{html.escape(src)}{lk}</span></summary>'
-                f'<div class="cards">{_grid(lst["main"], imgmap)}</div>{sb}</details>')
+                f'<div class="cards">{_grid(lst["main"], imgmap, owned)}</div>{sb}</details>')
         secs += (f'<section id="f-{fmt}"><h2>{html.escape(lbl)} '
                  f'<span class="n">{len(decks)}</span></h2>{cards}</section>')
 
@@ -155,10 +166,13 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .cards{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
  .cd{position:relative;width:60px} .cd img,.cd .noimg{width:60px;height:84px;border-radius:4px;display:block;background:#0c0f14}
  .cd .cq{position:absolute;top:1px;left:1px;background:#000c;color:#fff;font-size:9px;font-weight:700;padding:0 3px;border-radius:5px}
+ .cd.miss img{filter:grayscale(1) brightness(.5)} .cd.have img{box-shadow:0 0 0 1.5px var(--add)}
+ .cov{font-size:12px;font-weight:700;padding:1px 9px;border-radius:20px;margin-left:8px;flex:none;white-space:nowrap}
+ .cov.add{background:#123a22;color:var(--add)} .cov.gold{background:#3a3312;color:var(--gold)} .cov.warn{background:#3a1c12;color:#e2795b}
  footer{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
 <header><h1>🌐 Metagame</h1>
-<div class="lead">Top-10 de cada formato (ponderado por torneio) · a lista mais recente de cada, só para ver · dados de %TODAY%</div>
+<div class="lead">Top-10 de cada formato (ponderado por torneio) · a lista mais recente de cada, com a <b style="color:var(--add)">% que já tens</b> — cartas <b style="color:var(--add)">a cor</b> = tens, <b style="color:#8b97a6">a cinza</b> = faltam · dados de %TODAY%</div>
 %TABS%<div class="subnav">%SUBNAV%</div></header>
 %EMERGING%
 %SECS%
