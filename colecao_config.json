@@ -15,6 +15,9 @@
   "decks_montados": [],
   "_decks_montados": "Decks fisicamente MONTADOS (nomes da tabela decks). As cartas de um deck montado saem da coleção (ficam reservadas a ele), esteja o formato ativo ou não — é o loadout a contar em todo o sistema. Na página buildability podes planear com os checkmarks (fica no navegador); quando decidires, diz-me os nomes e eu ponho aqui para contar de vez. Vazio = nada reservado por esta via.",
 
+  "decks_faziveis_min_pct": 50,
+  "_decks_faziveis_min_pct": "Página 'Decks fazíveis': mostra os decks do top-10 (Challenges/Showcases) que o André tem a pelo menos esta % (cartas distintas não-básicas do main). Começa em 50; se der decks a mais/a menos, muda aqui (ex.: 60, 70) para afinar a realidade.",
+
   "decks_vigiados": ["Cloud (Duel Commander)", "Stiflenought (Luffy)"],
   "_decks_vigiados": "Decks da tabela `decks` que aparecem na página 'Decks vigiados' (além dos watched com balde: Blue Farm, Pauper, Cloud cEDH). Só estes nomes passam o filtro. O resto da tabela `decks` (Modern/Standard/Pioneer de referência do metagame, Spock, etc.) fica FORA da página, mas continua a servir a classificação/preços/cobertura. André quer aqui: Pauper (Luffy), Premodern (Luffy=Stiflenought), Blue Farm, Cloud cEDH e Cloud Duel Commander.",
 

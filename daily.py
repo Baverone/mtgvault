@@ -35,6 +35,7 @@ import colecao_cor  # noqa: E402  (gera colecao_cor.html — coleção por cor +
 import meta_coverage  # noqa: E402  (gera cobertura.html — top decks + % que tenho + o que falta)
 import meusdecks  # noqa: E402  (gera meusdecks.html — os meus decks: estado, % e evolução)
 import metagame  # noqa: E402  (gera metagame.html — só ver o metagame: listas com arte)
+import decks_faziveis  # noqa: E402  (gera decksfaziveis.html — decks do top-10 que já dá para montar)
 import reservedlist  # noqa: E402  (gera reservedlist.html — Reserved List x coleção)
 import my_decks  # noqa: E402  (mantém atualizadas as listas dos decks que o André segue)
 import commander_decks  # noqa: E402  (decks de comandante seguidos por consenso, ex.: Cloud DC)
@@ -215,6 +216,8 @@ def main():
               lambda: str(meusdecks.build(con, ROOT / "meusdecks.html")))
         _step(con, "metagame-pagina",
               lambda: str(metagame.build(con, ROOT / "metagame.html")))
+        _step(con, "decks-faziveis-pagina",
+              lambda: str(decks_faziveis.build(con, ROOT / "decksfaziveis.html")))
         _step(con, "reserved-list-pagina",
               lambda: str(reservedlist.build(con, ROOT / "reservedlist.html")))
 
