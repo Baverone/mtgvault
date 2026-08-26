@@ -48,16 +48,17 @@ daily.py          o job diário (encadeia tudo o que está abaixo)
 
 **Geradores do site (scripts na raiz, corridos pelo `daily.py`, HTML no GitHub Pages):**
 ```
-meta_coverage.py    cobertura.html — top-10 ponderado por torneio + staples + emergentes
+meta_coverage.py    cobertura.html — top-10 ponderado + staples + emergentes. NB (2026-08-26): agora só Challenges/Showcases (Showcase peso 3), janela 30 dias; expõe COLLECTION_BALDES={"SPML","Premodern (geral)"} e owned_available(con) (=coleção MENOS cartas comprometidas com decks vigiados) — a base de "tenho" do metagame/decksfaziveis/cobertura
+decks_faziveis.py   decksfaziveis.html — "Decks fazíveis": por formato, decks do top-10 já a ≥ min% (colecao_config.json→decks_faziveis_min_pct, default 50). Cor=tenho/cinza=falta + wantlist. Reusa metagame._grid e meta_coverage._rank/owned_available
 buildability.py     (DORMENTE) o "Montar" foi tirado do menu p/ o André refazer; já NÃO corre no daily nem vai ao git-add. Continua importado por meusdecks.py (FMT_LABEL/FMT_ORDER/BASICS)
 classify.py         classificação Deck/Coleção/Vender (alimenta colecao_cor.html)
 colecao_cor.py      colecao_cor.html — "Binders": coleção INTEIRA por cor→CMC; cartas em uso a escuro + rótulo (classify rep["deck"]/used_by); + secção "Decks vigiados" (Blue Farm/Cloud cEDH/Cloud/Pauper): o deck por inteiro + cartas "extra" que saíram da lista (retidas até 6 meses da última utilização — `_watched_deck_pools`)
 collection_gallery.py  colecao.html — galeria por sub-coleção
-core_decks.py       coredecks.html — consenso dos decks seguidos
-alertas.py          alertas.html — vender/comprar por movimento de preço
-meusdecks.py        meusdecks.html — "Decks vigiados": só decks com link e/ou jogador vigiado (exclui consenso, ex.: Cloud DC); lista 75 verde/vermelho, % e evolução; checkmark "atualizado" por deck (localStorage) + alterações por aplicar desde a última sincronização
-metagame.py         metagame.html — só ver o metagame: listas com arte + ➕ selecionar
-prioridade.py       prioridade.html — Premodern alocação exclusiva; SPML partilha sempre
+core_decks.py       (coredecks.html APAGADO 2026-08-26, a redefinir; NÃO vai ao git-add) — mas core_decks.py continua a correr no daily p/ calcular card_price/posse
+alertas.py          alertas.html — vender/comprar por movimento de preço (fora do menu atual)
+meusdecks.py        meusdecks.html — "Decks vigiados": agora SÓ os 5 fixos de colecao_config.json→decks_vigiados (Pauper-Luffy, Premodern-Luffy/Stiflenought, Blue Farm, Cloud cEDH, Cloud Duel Commander — este ÚLTIMO agora INCLUÍDO). Lista 75 verde/vermelho, % e evolução; checkmark "atualizado" (localStorage)
+metagame.py         metagame.html — "Metagame" (página principal): top-10 por formato (só Challenges/Showcases, 30 dias), cartas a cor=tenho / cinza=falta, wantlist por deck, e "Staples que faltam" por formato ordenadas por preço. Usa meta_coverage.owned_available
+(prioridade.py + metafaltas.py APAGADOS 2026-08-26, a redefinir)
 reservedlist.py     reservedlist.html — Reserved List (Scryfall) x coleção, por edição, preço/evolução, e 'VENDER' as que não jogam em formato nenhum
 my_decks.py         segue decks-alvo (por assinatura e por jogador de MTGO) -> tabela decks
 commander_decks.py  decks de comandante por consenso EM CAMADAS: núcleo>=50% (=deck, deck_cards) / flex 25-50% / tech 15-25%; FILTRA pela cor do comandante. `tiers()` reusado pelo colecao_cor
