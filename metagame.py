@@ -104,6 +104,7 @@ def build(con, out_path=None):
 
     subnav, secs = "", ""
     sel = {}   # nome -> {fmt, cards:[[nome, qty, sid]]}  (para selecionar p/ a Lista de Compras)
+    staples = {}   # carta em falta -> {decks: nº de wantlists, fmts:set, qty:max} (staples a comprar)
     for fmt, _title, _n, _extras in mc.FORMATS:
         decks = data.get(fmt)
         if not decks:
@@ -124,6 +125,11 @@ def build(con, out_path=None):
             # wantlist: as cartas não-básicas do main que o André NÃO tem
             miss = [(c, q) for c, q in lst["main"]
                     if c not in mc.BASICS and c.split(" // ")[0] not in owned]
+            for c, q in miss:   # acumula para as "staples que faltam"
+                s = staples.setdefault(c, {"decks": 0, "fmts": set(), "qty": 1})
+                s["decks"] += 1
+                s["fmts"].add(fmt)
+                s["qty"] = max(s["qty"], q)
             wl = ""
             if miss:
                 items = "".join(f'<li>{q}× {html.escape(c)}</li>'
@@ -143,6 +149,29 @@ def build(con, out_path=None):
                 f'<div class="cards">{_grid(lst["main"], imgmap, owned)}</div>{sb}{wl}</details>')
         secs += (f'<section id="f-{fmt}"><h2>{html.escape(lbl)} '
                  f'<span class="n">{len(decks)}</span></h2>{cards}</section>')
+
+    # Staples que faltam: cartas em falta que aparecem em >=2 wantlists do top-10.
+    FMT_ABBR = {"standard": "STD", "pioneer": "PIO", "modern": "MOD",
+                "legacy": "LEG", "premodern": "PRE"}
+    top_staples = sorted((c for c, s in staples.items() if s["decks"] >= 2),
+                         key=lambda c: (-staples[c]["decks"], c))
+    if top_staples:
+        subnav += '<a href="#f-staples">🛒 Staples que faltam</a>'
+        cells = ""
+        for c in top_staples:
+            s = staples[c]
+            sid = imgmap.get(c.split(" // ")[0])
+            img = (f'<img loading="lazy" src="{_art(sid)}" alt="">' if sid
+                   else '<div class="noimg"></div>')
+            fl = " ".join(FMT_ABBR.get(f, f[:3].upper()) for f in sorted(s["fmts"]))
+            cells += (f'<div class="cd miss stap" '
+                      f'title="{html.escape(c)} — {s["decks"]} decks ({fl})">'
+                      f'{img}<span class="cq gold">{s["decks"]}×</span></div>')
+        secs += (f'<section id="f-staples"><h2>🛒 Staples que te faltam '
+                 f'<span class="n">{len(top_staples)}</span></h2>'
+                 f'<div class="lead2">Cartas em falta que aparecem em ≥2 decks do top-10 — '
+                 f'ordenadas pelo nº de decks (as que mais rendem por compra). O nº no canto = quantos decks a querem.</div>'
+                 f'<div class="cards">{cells}</div></section>')
 
     today = con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or ""
     out.write_text(_TMPL.replace("%TABS%", TABS).replace("%SUBNAV%", subnav)
@@ -181,6 +210,8 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .wl{margin-top:10px;background:#160f0d;border:1px solid #3a2418;border-radius:8px;padding:8px 12px}
  .wl .wlh{color:#e2795b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
  .wl ul{list-style:none;margin:0;padding:0;columns:2;column-gap:18px;font-size:12px} .wl li{color:var(--ink);padding:1px 0;break-inside:avoid}
+ .cq.gold{background:var(--gold);color:#1a1200;font-size:11px;padding:0 4px} .stap img{filter:grayscale(1) brightness(.72)!important}
+ .lead2{color:var(--muted);font-size:12px;margin:2px 0 10px}
  footer{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
 <header><h1>🌐 Metagame</h1>
