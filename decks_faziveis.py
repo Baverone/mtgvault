@@ -72,7 +72,7 @@ def _min_pct():
 
 def build(con, out_path=None):
     out = Path(out_path) if out_path else (ROOT / "decksfaziveis.html")
-    owned = set(owned_playable(con))
+    owned = set(owned_playable(con, baldes=mc.COLLECTION_BALDES))   # só a coleção; decks vigiados não contam
     minpct = _min_pct()
     tcache = {}
     names = set()

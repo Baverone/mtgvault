@@ -43,6 +43,11 @@ FORMATS = [
     ("premodern", "Premodern", 10, []),
 ]
 
+# A COLEÇÃO disponível para montar decks do metagame = só estes baldes. Os baldes
+# dos decks vigiados (Blue Farm, Cloud, Cloud cEDH, Pauper Affinity) estão agregados
+# a esses decks e NÃO contam como disponíveis (regra do André, 2026-08-26).
+COLLECTION_BALDES = {"SPML", "Premodern (geral)"}
+
 # Ponderação por importância do torneio MTGO (pesos confirmados pelo André,
 # 2026-08-14), numa janela recente. `placement` está vazio nos dados, por isso
 # não entra ainda. Reutilizado no ranking e na deteção de decks emergentes.
@@ -405,7 +410,7 @@ def deck_coverage(con, aid, owned, name):
 
 
 def build_report(con):
-    owned = owned_playable(con)
+    owned = owned_playable(con, baldes=COLLECTION_BALDES)   # só a coleção; decks vigiados não contam
     gid = _greasefang_id(con)
     tcache = {}
     sections, all_decks = [], []

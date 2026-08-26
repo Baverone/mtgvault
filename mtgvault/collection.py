@@ -103,7 +103,8 @@ def import_csv(con: sqlite3.Connection, path: str | Path) -> tuple[int, list[str
 # Consultas
 # ---------------------------------------------------------------------------
 def owned_playable(con: sqlite3.Connection,
-                   for_deck_id: int | None = None) -> dict[str, int]:
+                   for_deck_id: int | None = None,
+                   baldes: set[str] | None = None) -> dict[str, int]:
     """Quantidade disponível para jogar, por nome de carta.
 
     Fica de fora:
@@ -113,18 +114,30 @@ def owned_playable(con: sqlite3.Connection,
     `for_deck_id` diz para que deck estamos a contar: as reservas desse deck
     contam, as dos outros não. Sem argumento, só conta o que está livre.
 
+    `baldes`: se dado, conta só as cartas nesses sub_collections. Usa-se para
+    contar apenas a COLEÇÃO ({'SPML','Premodern (geral)'}) — as cartas dos decks
+    vigiados (baldes Blue Farm/Cloud/Cloud cEDH/Pauper Affinity) ficam agregadas a
+    esses decks e NÃO contam como disponíveis para o metagame/decks-fazíveis.
+
     Nomes de dupla-face (DFC/MDFC) são normalizados para a FRENTE (o que vem
     antes de " // "), porque é assim que as decklists as escrevem — senão a
     cobertura subcontava (ex.: "Aang, Swift Savior // ..." vs "Aang, Swift
     Savior"). Para nomes normais é um no-op.
     """
+    join = "JOIN cards c ON c.scryfall_id = cp.scryfall_id"
+    where = ("cp.purpose = 'player' "
+             "AND (cp.reserved_deck_id IS NULL OR cp.reserved_deck_id = ?)")
+    params: list = [for_deck_id]
+    if baldes:
+        join += " JOIN sub_collections s ON s.id = cp.sub_collection_id"
+        where += " AND s.name IN (" + ",".join("?" * len(baldes)) + ")"
+        params += list(baldes)
     rows = con.execute(
-        """SELECT c.name AS name, SUM(cp.quantity) AS qty
-             FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id
-            WHERE cp.purpose = 'player'
-              AND (cp.reserved_deck_id IS NULL OR cp.reserved_deck_id = ?)
-            GROUP BY c.name""",
-        (for_deck_id,),
+        f"""SELECT c.name AS name, SUM(cp.quantity) AS qty
+              FROM copies cp {join}
+             WHERE {where}
+             GROUP BY c.name""",
+        params,
     ).fetchall()
     out: dict[str, int] = {}
     for r in rows:
