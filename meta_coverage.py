@@ -47,12 +47,13 @@ FORMATS = [
 # 2026-08-14), numa janela recente. `placement` está vazio nos dados, por isso
 # não entra ainda. Reutilizado no ranking e na deteção de decks emergentes.
 RECENT_DAYS = 60
+# Regra do André (2026-08-26): o metagame conta SÓ Challenges e Showcases, e os
+# Showcases pesam mais. Os restantes tiers ficam com peso 0 (e são filtrados no
+# _rank/emerging, por isso nem entram).
 _TIER_WEIGHT = """CASE
-        WHEN d.event_tier IN ('Champs','Championship') THEN 5
-        WHEN d.event_tier IN ('Showcase','Qualifier','RCQ') THEN 3
-        WHEN d.event_tier = 'Challenge' THEN 2
-        WHEN d.event_tier = 'Last Chance' THEN 1.5
-        ELSE 1 END"""
+        WHEN d.event_tier = 'Showcase' THEN 3
+        WHEN d.event_tier = 'Challenge' THEN 1
+        ELSE 0 END"""
 
 BASICS = {
     "Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes",
@@ -231,11 +232,13 @@ def _rank(con, fmt, n):
         f"""SELECT a.id, SUM({_TIER_WEIGHT}) score FROM archetypes a
              JOIN decklists d ON d.archetype_id = a.id
             WHERE a.format = ? AND d.event_date >= date('now', '-{RECENT_DAYS} days')
+              AND d.event_tier IN ('Challenge','Showcase')
             GROUP BY a.id ORDER BY score DESC, COUNT(d.id) DESC LIMIT ?""", (fmt, n))]
 
 
-# Torneios "de peso" para a deteção de emergentes (importância alta).
-HIGH_TIERS = ("Champs", "Championship", "Showcase", "Qualifier", "RCQ")
+# Só Challenges e Showcases contam (regra do André, 2026-08-26). Emergente =
+# aparece em Challenges/Showcases mas fica fora do top-10.
+HIGH_TIERS = ("Challenge", "Showcase")
 
 
 def emerging_decks(con):

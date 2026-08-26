@@ -121,6 +121,15 @@ def build(con, out_path=None):
             pct = round(100 * have / tot) if tot else 0
             cc = "add" if pct >= 90 else "gold" if pct >= 60 else "warn"
             cov = f'<span class="cov {cc}">{have}/{tot} · {pct}%</span>'
+            # wantlist: as cartas não-básicas do main que o André NÃO tem
+            miss = [(c, q) for c, q in lst["main"]
+                    if c not in mc.BASICS and c.split(" // ")[0] not in owned]
+            wl = ""
+            if miss:
+                items = "".join(f'<li>{q}× {html.escape(c)}</li>'
+                                for c, q in sorted(miss, key=lambda x: (-x[1], x[0])))
+                wl = (f'<div class="wl"><div class="wlh">🛒 faltam {len(miss)} cartas:</div>'
+                      f'<ul>{items}</ul></div>')
             src = f'{lst["player"] or "?"} · {lst["date"]}'
             lk = (f' · <a href="{html.escape(lst["url"])}" target="_blank" rel="noopener">🔗</a>'
                   if lst.get("url") else "")
@@ -131,7 +140,7 @@ def build(con, out_path=None):
                 f'<button class="add" data-deck="{html.escape(nm)}" title="adicionar à Lista de Compras">➕</button>'
                 f'<b>{html.escape(nm)}</b>{cov}'
                 f'<span class="src">{html.escape(src)}{lk}</span></summary>'
-                f'<div class="cards">{_grid(lst["main"], imgmap, owned)}</div>{sb}</details>')
+                f'<div class="cards">{_grid(lst["main"], imgmap, owned)}</div>{sb}{wl}</details>')
         secs += (f'<section id="f-{fmt}"><h2>{html.escape(lbl)} '
                  f'<span class="n">{len(decks)}</span></h2>{cards}</section>')
 
@@ -169,6 +178,9 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .cd.miss img{filter:grayscale(1) brightness(.5)} .cd.have img{box-shadow:0 0 0 1.5px var(--add)}
  .cov{font-size:12px;font-weight:700;padding:1px 9px;border-radius:20px;margin-left:8px;flex:none;white-space:nowrap}
  .cov.add{background:#123a22;color:var(--add)} .cov.gold{background:#3a3312;color:var(--gold)} .cov.warn{background:#3a1c12;color:#e2795b}
+ .wl{margin-top:10px;background:#160f0d;border:1px solid #3a2418;border-radius:8px;padding:8px 12px}
+ .wl .wlh{color:#e2795b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+ .wl ul{list-style:none;margin:0;padding:0;columns:2;column-gap:18px;font-size:12px} .wl li{color:var(--ink);padding:1px 0;break-inside:avoid}
  footer{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
 <header><h1>🌐 Metagame</h1>
