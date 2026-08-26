@@ -48,6 +48,41 @@ FORMATS = [
 # a esses decks e NÃO contam como disponíveis (regra do André, 2026-08-26).
 COLLECTION_BALDES = {"SPML", "Premodern (geral)"}
 
+
+def _committed_to_watched(con):
+    """Cartas (nome->qty) comprometidas com decks vigiados que VIVEM na coleção.
+    Os decks vigiados de Commander/Pauper têm balde próprio (já fora de
+    COLLECTION_BALDES); só o(s) de Premodern (Stiflenought-Luffy) têm as cartas no
+    balde Premodern (geral) — essas subtraem-se aqui para deixarem de estar
+    disponíveis (regra do André: todas as cartas dos decks vigiados pertencem ao
+    deck e saem da coleção)."""
+    import json
+    try:
+        vig = json.loads((ROOT / "colecao_config.json").read_text(encoding="utf-8")).get("decks_vigiados") or []
+    except Exception:
+        vig = []
+    if not vig:
+        return {}
+    ph = ",".join("?" * len(vig))
+    comm = {}
+    for r in con.execute(
+            f"""SELECT dc.card_name nm, SUM(dc.quantity) q FROM deck_cards dc
+                 JOIN decks d ON d.id = dc.deck_id
+                WHERE d.format = 'premodern' AND d.name IN ({ph})
+                GROUP BY dc.card_name""", vig):
+        comm[r["nm"].split(" // ")[0]] = (comm.get(r["nm"].split(" // ")[0], 0) + (r["q"] or 0))
+    return comm
+
+
+def owned_available(con):
+    """Cartas DISPONÍVEIS na coleção (SPML + Premodern) para montar decks do
+    metagame, como {nome: qty_livre} — já sem as comprometidas com os decks
+    vigiados. metagame/decks-fazíveis fazem set(...) para os nomes; a cobertura usa
+    as quantidades."""
+    col = owned_playable(con, baldes=COLLECTION_BALDES)
+    comm = _committed_to_watched(con)
+    return {nm: q - comm.get(nm, 0) for nm, q in col.items() if q > comm.get(nm, 0)}
+
 # Ponderação por importância do torneio MTGO (pesos confirmados pelo André,
 # 2026-08-14), numa janela recente. `placement` está vazio nos dados, por isso
 # não entra ainda. Reutilizado no ranking e na deteção de decks emergentes.
@@ -410,7 +445,7 @@ def deck_coverage(con, aid, owned, name):
 
 
 def build_report(con):
-    owned = owned_playable(con, baldes=COLLECTION_BALDES)   # só a coleção; decks vigiados não contam
+    owned = owned_available(con)   # só a coleção, SEM as cartas comprometidas com decks vigiados
     gid = _greasefang_id(con)
     tcache = {}
     sections, all_decks = [], []

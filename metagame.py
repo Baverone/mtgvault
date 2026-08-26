@@ -70,7 +70,7 @@ def _grid(cards, imgmap, owned):
 
 def build(con, out_path=None):
     out = Path(out_path) if out_path else (ROOT / "metagame.html")
-    owned = set(mc.owned_playable(con, baldes=mc.COLLECTION_BALDES))   # só a coleção (SPML+Premodern); decks vigiados não contam
+    owned = set(mc.owned_available(con))   # só a coleção, SEM as cartas comprometidas com decks vigiados
     tcache = {}
     data = {}  # fmt -> [(name, list)]
     names = set()
