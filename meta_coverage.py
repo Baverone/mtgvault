@@ -46,7 +46,7 @@ FORMATS = [
 # Ponderação por importância do torneio MTGO (pesos confirmados pelo André,
 # 2026-08-14), numa janela recente. `placement` está vazio nos dados, por isso
 # não entra ainda. Reutilizado no ranking e na deteção de decks emergentes.
-RECENT_DAYS = 60
+RECENT_DAYS = 30
 # Regra do André (2026-08-26): o metagame conta SÓ Challenges e Showcases, e os
 # Showcases pesam mais. Os restantes tiers ficam com peso 0 (e são filtrados no
 # _rank/emerging, por isso nem entram).

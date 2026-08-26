@@ -219,7 +219,7 @@ def main():
               lambda: str(reservedlist.build(con, ROOT / "reservedlist.html")))
 
         _step(con, "podar-precos", lambda: _prune_prices(con, 30))
-        _step(con, "prune", lambda: f"{analysis.prune_decklists(con, 90)} apagadas")
+        _step(con, "prune", lambda: f"{analysis.prune_decklists(con, 30)} apagadas")
 
 
 if __name__ == "__main__":
