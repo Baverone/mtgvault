@@ -14,7 +14,7 @@ import html
 import json
 import os
 import re
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -133,6 +133,47 @@ def _owned_qty(con):
     return out
 
 
+CLOUD_DC = "Cloud (Duel Commander)"
+# Eventos casuais (excluídos do consenso de Cloud DC): só Challenges + torneios.
+_CASUAL = ("League", "Liga", "FNM", "semanal", "Mercredi", "Duelo", "Tuesday")
+CONS_MIN = 30   # limiar (%) das staples que faltam
+
+
+def _cloud_consensus(con, his_names):
+    """Análise de consenso do Cloud (Duel Commander): sobre as listas de Cloud de
+    eventos NÃO-casuais (Challenges + torneios), devolve
+      pct = {carta: % de listas que a jogam}  (só não-básicas)
+      missing = [{nm,pct,sid}] das cartas de consenso >= CONS_MIN que NÃO estão na
+                lista do McWinSauce, ordenadas por consenso desc (staples que faltam).
+    Mantém a lista do McWinSauce; isto é só o overlay. NÃO inventa nada."""
+    excl = " AND ".join(f"dl.event_name NOT LIKE '%{k}%'" for k in _CASUAL)
+    pool = [r["id"] for r in con.execute(
+        f"""SELECT dl.id FROM decklists dl WHERE dl.format='duel-commander' AND {excl}
+             AND EXISTS (SELECT 1 FROM decklist_cards y WHERE y.decklist_id=dl.id
+                          AND y.card_name LIKE 'Cloud,%')""")]
+    n = len(pool)
+    if not n:
+        return None
+    ph = ",".join("?" * n)
+    pct = {}
+    for r in con.execute(f"SELECT card_name nm, COUNT(DISTINCT decklist_id) c "
+                         f"FROM decklist_cards WHERE decklist_id IN ({ph}) GROUP BY card_name", pool):
+        f = r["nm"].split(" // ")[0]
+        if f not in bd.BASICS:
+            pct[f] = max(pct.get(f, 0), round(100 * r["c"] / n))
+    miss = sorted(((p, nm) for nm, p in pct.items() if nm not in his_names and p >= CONS_MIN),
+                  reverse=True)
+    names = [nm for _, nm in miss]
+    sids = {}
+    if names:
+        ph2 = ",".join("?" * len(names))
+        for r in con.execute(f"SELECT name nm, scryfall_id sid FROM cards "
+                             f"WHERE name IN ({ph2}) AND digital=0 GROUP BY name", names):
+            sids.setdefault(r["nm"].split(" // ")[0], r["sid"])
+    return {"pct": pct, "n": n,
+            "missing": [{"nm": nm, "pct": p, "sid": sids.get(nm)} for p, nm in miss]}
+
+
 def _cards(items, osid, imgmap, owned_qty):
     """items = [(nome, qty)] -> [{nm, qty, hq, state, sid}], contando CÓPIAS.
     hq = quantas dessas cópias o André tem (básicas = sempre suficientes). state:
@@ -186,8 +227,9 @@ def _deck_card(d):
     pct = round(100 * have / tot) if tot else 0
     col = "var(--add)" if pct >= 90 else "var(--gold)" if pct >= 60 else "var(--warn)"
     on = d.get("owned_names", set())
-    meta = f'<span class="mi">🔄 verificado {d["verif"] or "—"}</span>'
-    meta += f'<span class="mi">✏️ alterado {d["alter"] or "—"}</span>'
+    cons = d.get("consensus")
+    meta = f'<span class="mi">✅ Confirmado dia {d["verif"] or "—"}</span>'
+    meta += f'<span class="mi">✏️ Última alteração foi {d["alter"] or "—"}</span>'
     if d.get("link"):
         meta += f'<a class="mi lk" href="{html.escape(d["link"])}" target="_blank" rel="noopener">🔗 lista ↗</a>'
     ev = d["evol"]
@@ -206,6 +248,15 @@ def _deck_card(d):
     else:
         evol = '<div class="evx">📈 evolução — histórico a acumular</div>'
 
+    def _cs(nm):
+        if not cons:
+            return ""
+        p = cons["pct"].get(nm.split(" // ")[0])
+        if p is None:
+            return ""
+        t = "hi" if p >= 70 else "mid" if p >= CONS_MIN else "lo"
+        return f'<span class="cs {t}" title="{p}% das listas de Cloud">{p}%</span>'
+
     def grid(cards):
         g = ""
         for c in cards:
@@ -213,13 +264,25 @@ def _deck_card(d):
                    else '<div class="noimg"></div>')
             qb = (f'<span class="cq">{c["hq"]}/{c["qty"]}</span>' if c["qty"] > 1
                   else ('' if c["state"] == "have" else '<span class="cq">0/1</span>'))
-            g += f'<div class="cd {c["state"]}" title="{html.escape(c["nm"])}">{img}{qb}</div>'
+            g += f'<div class="cd {c["state"]}" title="{html.escape(c["nm"])}">{img}{qb}{_cs(c["nm"])}</div>'
         return g
-    detail = (f'<div class="cardshdr">🃏 main deck <span class="dim">({mh}/{mt})</span></div>'
+    chdr = ' <span class="dim">· % = consenso nas listas de Cloud</span>' if cons else ""
+    detail = (f'<div class="cardshdr">🃏 main deck <span class="dim">({mh}/{mt})</span>{chdr}</div>'
               f'<div class="cards">{grid(d["main"])}</div>')
     if d["side"]:
         detail += (f'<div class="cardshdr sb">🎒 sideboard <span class="dim">({sh}/{st})</span></div>'
                    f'<div class="cards">{grid(d["side"])}</div>')
+    if cons and cons["missing"]:
+        chips = ""
+        for m in cons["missing"]:
+            st = "have" if (m["nm"] in on or m["nm"] in bd.BASICS) else "miss"
+            im = (f'<img loading="lazy" src="{_art(m["sid"])}" alt="">' if m["sid"]
+                  else '<div class="noimg"></div>')
+            chips += (f'<div class="cd {st}" title="{html.escape(m["nm"])} — {m["pct"]}% das listas">'
+                      f'{im}<span class="cs hi">{m["pct"]}%</span></div>')
+        detail += (f'<div class="cardshdr cs-h">📊 staples que faltam '
+                   f'<span class="dim">(consenso ≥{CONS_MIN}%, {len(cons["missing"])} · '
+                   f'verde = já tens)</span></div><div class="cards">{chips}</div>')
     return (
         f'<div class="deck" data-deck="{html.escape(d["name"])}"><div class="dtop">'
         f'<b>{html.escape(d["name"])}</b>'
@@ -237,6 +300,7 @@ def build(con, out_path=None):
     owned_names = set(owned_playable(con))
     owned_qty = _owned_qty(con)
     osid = _owned_sid(con)
+    today = con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or ""
 
     rows = list(con.execute("SELECT id, name, format, notes FROM decks"))
     vigiados = _decks_vigiados()
@@ -273,13 +337,17 @@ def build(con, out_path=None):
         core_dates = [r["taken_at"] for r in con.execute(
             "SELECT MAX(taken_at) taken_at FROM core_snapshots WHERE core_key=?",
             (DECK_CORE.get(d["name"], ""),))] if DECK_CORE.get(d["name"]) else []
-        by_fmt[d["format"]].append({
+        deck = {
             "name": d["name"], "format": d["format"], "source": _source(d["notes"]),
             "main": _cards(main_items, osid, imgmap, owned_qty),
             "side": _cards(side_items, osid, imgmap, owned_qty), "evol": evol,
             "owned_names": owned_names,
             "verif": (core_dates[0] if core_dates and core_dates[0] else ldate),
-            "alter": evol[0]["date"] if evol else None, "link": link})
+            "alter": evol[0]["date"] if evol else None, "link": link}
+        if d["name"] == CLOUD_DC:
+            deck["consensus"] = _cloud_consensus(con, {nm for nm, _ in main_items})
+            deck["verif"] = today   # o job recomputa/confirma o consenso do Cloud DC todos os dias
+        by_fmt[d["format"]].append(deck)
     for d in _watched_decks(con, osid, imgmap, owned_names):
         by_fmt[d["format"]].append(d)
 
@@ -310,7 +378,6 @@ def build(con, out_path=None):
         secs += (f'<section id="f-{fmt}"><h2>{html.escape(lbl)} '
                  f'<span class="n">{len(decks)}</span></h2><div class="grid">{cards}</div></section>')
 
-    today = con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or ""
     out.write_text(_TMPL.replace("%TABS%", TABS).replace("%SUBNAV%", subnav)
                    .replace("%SECS%", secs).replace("%N%", str(n_total))
                    .replace("%DECKCUR%", json.dumps(deckcur, ensure_ascii=False))
@@ -365,6 +432,9 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .cd.have{box-shadow:0 0 0 2px var(--add)} .cd.part{box-shadow:0 0 0 2px var(--gold)} .cd.part img{filter:brightness(.82)}
  .cd.miss{box-shadow:0 0 0 2px var(--warn)} .cd.miss img{filter:grayscale(.7) brightness(.6)}
  .cd .cq{position:absolute;top:1px;left:1px;background:#000c;color:#fff;font-size:9px;font-weight:700;padding:0 3px;border-radius:5px}
+ .cd .cs{position:absolute;bottom:1px;right:1px;font-size:9px;font-weight:800;padding:0 3px;border-radius:5px;color:#fff}
+ .cd .cs.hi{background:rgba(26,122,69,.94)} .cd .cs.mid{background:rgba(150,115,30,.94)} .cd .cs.lo{background:rgba(150,54,54,.94)}
+ .cardshdr.cs-h{color:var(--gold);margin-top:11px}
  footer{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
 <header><h1>🎴 Decks permanentes</h1>
@@ -372,7 +442,7 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
 %TABS%
 <div class="subnav">%SUBNAV%</div></header>
 %SECS%
-<footer><b>Main deck</b> e <b>sideboard</b> à parte, contados por <b>cópias</b> (ex.: 68/75, não por cartas diferentes): <b style="color:var(--add)">verde = tens as que precisas</b>, <b style="color:var(--gold)">âmbar = tens algumas</b> (mostra 2/4), <b style="color:var(--warn)">vermelho = não tens</b>. Na evolução, cada carta que entrou (▲) ou saiu (▼) está verde se a tens, vermelha se não. Datas: 🔄 última verificação · ✏️ última alteração. A caixa <b>⇄ trocas por fazer</b> mostra, em imagem, as cartas a <b style="color:var(--add)">meter (▲)</b> e a <b style="color:var(--warn)">tirar (▼)</b> para o teu deck físico ficar igual à lista — é o <b>diff líquido</b> desde a última vez que marcaste <b>atualizado</b> (se uma carta sai e volta, ou entra e sai, não conta). Marcas atualizado quando sincronizares; volta a acumular quando a lista mudar. Atualiza diariamente.</footer>
+<footer><b>Main deck</b> e <b>sideboard</b> à parte, contados por <b>cópias</b> (ex.: 68/75, não por cartas diferentes): <b style="color:var(--add)">verde = tens as que precisas</b>, <b style="color:var(--gold)">âmbar = tens algumas</b> (mostra 2/4), <b style="color:var(--warn)">vermelho = não tens</b>. Na evolução, cada carta que entrou (▲) ou saiu (▼) está verde se a tens, vermelha se não. Datas: ✅ <b>Confirmado dia</b> = última vez que o job verificou a lista · ✏️ <b>Última alteração foi</b> = última vez que a lista mudou. No <b>Cloud (Duel Commander)</b>, o <b>%</b> em cada carta é o consenso nas listas de torneio de Cloud, e <b>📊 staples que faltam</b> são as cartas de consenso alto (≥30%) que o McWinSauce não joga (verde = já as tens). A caixa <b>⇄ trocas por fazer</b> mostra, em imagem, as cartas a <b style="color:var(--add)">meter (▲)</b> e a <b style="color:var(--warn)">tirar (▼)</b> para o teu deck físico ficar igual à lista — é o <b>diff líquido</b> desde a última vez que marcaste <b>atualizado</b> (se uma carta sai e volta, ou entra e sai, não conta). Marcas atualizado quando sincronizares; volta a acumular quando a lista mudar. Atualiza diariamente.</footer>
 </div>
 <script>
 const DECKCUR=%DECKCUR%;
