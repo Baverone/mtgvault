@@ -43,7 +43,7 @@ def _ignore_formats():
         return {"vintage"}
 
 TABS = ('<nav class="tabs"><a href="index.html">🏠 Início</a>'
-        '<a href="meusdecks.html">🎴 Decks vigiados</a>'
+        '<a href="meusdecks.html">🎴 Decks permanentes</a>'
         '<a href="metagame.html">🌐 Metagame</a>'
         '<a href="decksfaziveis.html">🛠️ Decks fazíveis</a>'
         '<a href="colecao_cor.html">📚 Binders</a><a class="cur" href="reservedlist.html">🏆 Reserved List</a><a href="caixarl.html">📦 Caixa RL</a></nav>')

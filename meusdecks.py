@@ -36,7 +36,7 @@ DECK_CORE = {
 
 
 def _decks_vigiados():
-    """Nomes de decks (da tabela `decks`) a mostrar na página 'Decks vigiados',
+    """Nomes de decks (da tabela `decks`) a mostrar na página 'Decks permanentes',
     lidos do colecao_config.json. Vazio/em falta = critério antigo (link/auto)."""
     try:
         cfg = json.loads((ROOT / "colecao_config.json").read_text(encoding="utf-8"))
@@ -45,7 +45,7 @@ def _decks_vigiados():
         return set()
 
 TABS = ('<nav class="tabs"><a href="index.html">🏠 Início</a>'
-        '<a class="cur" href="meusdecks.html">🎴 Decks vigiados</a>'
+        '<a class="cur" href="meusdecks.html">🎴 Decks permanentes</a>'
         '<a href="metagame.html">🌐 Metagame</a>'
         '<a href="decksfaziveis.html">🛠️ Decks fazíveis</a>'
         '<a href="colecao_cor.html">📚 Binders</a><a href="reservedlist.html">🏆 Reserved List</a><a href="caixarl.html">📦 Caixa RL</a></nav>')
@@ -261,7 +261,7 @@ def build(con, out_path=None):
         if not main_items and not side_items:
             continue
         link, ldate = _target_link(con, d["notes"])
-        # Decks vigiados: só os que o André escolheu (decks_vigiados no config) —
+        # Decks permanentes: só os que o André escolheu (decks_vigiados no config) —
         # exclui os decks de referência do metagame (Modern/Standard/Pioneer, Spock)
         # e INCLUI o consenso Cloud Duel Commander. Config vazio = critério antigo.
         if vigiados:
@@ -320,7 +320,7 @@ def build(con, out_path=None):
 
 _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Decks vigiados</title><style>
+<title>Decks permanentes</title><style>
  :root{--bg:#0d1017;--card:#161b24;--ink:#eef2f7;--muted:#8b97a6;--line:#242c38;--accent:#5b8cff;--gold:#e0b64b;--add:#4ac585;--warn:#e0704b}
  *{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#10141d,#0d1017);color:var(--ink);font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
  .wrap{max-width:1100px;margin:0 auto;padding:22px 14px 60px}
@@ -367,7 +367,7 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .cd .cq{position:absolute;top:1px;left:1px;background:#000c;color:#fff;font-size:9px;font-weight:700;padding:0 3px;border-radius:5px}
  footer{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
-<header><h1>🎴 Decks vigiados</h1>
+<header><h1>🎴 Decks permanentes</h1>
 <div class="lead">%N% decks com link e/ou jogador vigiado · % de completo, datas, evolução e a lista completa · dados de %TODAY%</div>
 %TABS%
 <div class="subnav">%SUBNAV%</div></header>

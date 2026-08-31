@@ -19,7 +19,7 @@ import metagame as mg  # noqa: E402
 from mtgvault.collection import owned_playable  # noqa: E402
 
 NAV = ('<nav class="tabs"><a href="index.html">🏠 Início</a>'
-       '<a href="meusdecks.html">🎴 Decks vigiados</a>'
+       '<a href="meusdecks.html">🎴 Decks permanentes</a>'
        '<a href="metagame.html">🌐 Metagame</a>'
        '<a class="cur" href="decksfaziveis.html">🛠️ Decks fazíveis</a>'
        '<a href="colecao_cor.html">📚 Binders</a>'

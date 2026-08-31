@@ -97,7 +97,7 @@ def _cmc_grids(rows, is_land):
     return out
 
 
-# Decks vigiados de LISTA FIXA (balde físico + rótulo). O Cloud (Duel Commander)
+# Decks permanentes de LISTA FIXA (balde físico + rótulo). O Cloud (Duel Commander)
 # não entra aqui — é de CONSENSO, mostrado em camadas (núcleo/flex/tech) mais abaixo.
 WATCHED_BALDES = [("Blue Farm", "🩸 Blue Farm [cEDH]"),
                   ("Cloud cEDH", "☁️ Cloud [cEDH]"),
@@ -260,7 +260,7 @@ def build(con, out_path=None):
             secs += _cmc_grids(rs, b == "Terras")
     topnav = " · ".join(navs)
 
-    # Decks vigiados (só decks). Lista fixa (Blue Farm/Cloud cEDH/Pauper): o deck
+    # Decks permanentes (só decks). Lista fixa (Blue Farm/Cloud cEDH/Pauper): o deck
     # por inteiro + extras. Consenso (Cloud DC): camadas núcleo/flex/tech.
     wsec_body = ""
     for p in _watched_deck_pools(con):
@@ -276,8 +276,8 @@ def build(con, out_path=None):
 
     wsec = ""
     if wsec_body:
-        topnav += ' · <a href="#vigiados">🃏 Decks vigiados</a>'
-        wsec = ('<h2 id="vigiados" class="pool">🃏 Decks vigiados '
+        topnav += ' · <a href="#vigiados">🃏 Decks permanentes</a>'
+        wsec = ('<h2 id="vigiados" class="pool">🃏 Decks permanentes '
                 '<span class="n">só decks — não coleção</span></h2>'
                 '<p class="hint">Lista fixa (Blue Farm, Cloud cEDH, Pauper): o deck por inteiro '
                 '+ as <b>extra</b> (saíram da lista, retidas até 6 meses). Consenso (Cloud): em '
@@ -349,13 +349,13 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
 </style></head><body><div class="wrap">
 <header><h1>📚 Binders — organizar e fotografar</h1>
 <div class="sub">TUDO o que tens nos baldes de coleção, por cor→custo de mana · nada removido para decks · enche os binders e fotografa o que não aparecer · dados de %TODAY%</div>
-<nav class="tabs"><a href="index.html">🏠 Início</a><a href="meusdecks.html">🎴 Decks vigiados</a><a href="metagame.html">🌐 Metagame</a><a href="decksfaziveis.html">🛠️ Decks fazíveis</a><a class="cur" href="colecao_cor.html">📚 Binders</a><a href="reservedlist.html">🏆 Reserved List</a><a href="caixarl.html">📦 Caixa RL</a></nav>
+<nav class="tabs"><a href="index.html">🏠 Início</a><a href="meusdecks.html">🎴 Decks permanentes</a><a href="metagame.html">🌐 Metagame</a><a href="decksfaziveis.html">🛠️ Decks fazíveis</a><a class="cur" href="colecao_cor.html">📚 Binders</a><a href="reservedlist.html">🏆 Reserved List</a><a href="caixarl.html">📦 Caixa RL</a></nav>
 <div class="tally"><b class="t-col">🔵 %TOTAL% cartas nos binders</b><b class="t-deck">🟢 %DECKN% que vão p/ decks</b><button class="tgl" id="dm" onclick="toggleDM()">🎯 marcar as que vão p/ decks</button></div>
 <div class="cfg">%CFG%</div></header>
 <div class="nav">%NAV%</div>
 %SECS%
 %VIGIADOS%
-<footer><b>Um binder por cor</b>; dentro de cada cor, <b>SPML</b> e <b>Premodern</b> separados, cada um por custo de mana (as Terras por nome). Mostra <b>TUDO</b> o que tens nesses baldes — nada é removido para decks (enche primeiro os binders; os decks vêm depois). Os decks montados (Blue Farm, Cloud, etc.) ficam <b>à parte</b>, na secção 🃏 Decks vigiados. O número em cada carta é quantas tens; ★ = foil, PT = português. <b>Se tiveres uma carta na mão que não aparece — ou mais do que o número — ainda não está catalogada: fotografa.</b> O botão <b>🎯 marcar as que vão p/ decks</b> sombreia (mais tarde, quando montares) as que já estão reservadas a um deck. Atualiza sozinho todos os dias.</footer>
+<footer><b>Um binder por cor</b>; dentro de cada cor, <b>SPML</b> e <b>Premodern</b> separados, cada um por custo de mana (as Terras por nome). Mostra <b>TUDO</b> o que tens nesses baldes — nada é removido para decks (enche primeiro os binders; os decks vêm depois). Os decks montados (Blue Farm, Cloud, etc.) ficam <b>à parte</b>, na secção 🃏 Decks permanentes. O número em cada carta é quantas tens; ★ = foil, PT = português. <b>Se tiveres uma carta na mão que não aparece — ou mais do que o número — ainda não está catalogada: fotografa.</b> O botão <b>🎯 marcar as que vão p/ decks</b> sombreia (mais tarde, quando montares) as que já estão reservadas a um deck. Atualiza sozinho todos os dias.</footer>
 </div>
 <script>
 function toggleDM(){var on=document.body.classList.toggle('deckmode');

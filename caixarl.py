@@ -32,7 +32,7 @@ DUALS = {"Tundra", "Underground Sea", "Badlands", "Taiga", "Savannah",
          "Scrubland", "Volcanic Island", "Bayou", "Plateau", "Tropical Island"}
 
 NAV = ('<nav class="tabs"><a href="index.html">🏠 Início</a>'
-       '<a href="meusdecks.html">🎴 Decks vigiados</a>'
+       '<a href="meusdecks.html">🎴 Decks permanentes</a>'
        '<a href="metagame.html">🌐 Metagame</a>'
        '<a href="decksfaziveis.html">🛠️ Decks fazíveis</a>'
        '<a href="colecao_cor.html">📚 Binders</a>'
