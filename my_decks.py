@@ -33,7 +33,7 @@ FOLLOWED = [
 # em vez de por assinatura. O André escolheu estes jogadores como referência:
 # (nome do deck, formato, jogador)
 FOLLOWED_PLAYERS = [
-    ("Legacy (Harry1232)", "legacy", "Harry1232"),
+    # Legacy esquecido por agora (André, 2026-08-31) — Harry1232 fora do harvest.
     ("Stiflenought (Luffy)", "premodern", "LuffyDoChapeuDePalha"),
     ("Stiflenought (Spock)", "premodern", "SpockVidaLoka"),
 ]

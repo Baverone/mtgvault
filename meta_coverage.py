@@ -39,7 +39,7 @@ FORMATS = [
     ("standard", "Standard", 10, []),
     ("pioneer", "Pioneer", 10, ["__greasefang__"]),
     ("modern", "Modern", 10, []),
-    ("legacy", "Legacy", 10, []),
+    # Legacy esquecido por agora (André, 2026-08-31): fora do metagame/decks-fazíveis.
     ("premodern", "Premodern", 10, []),
 ]
 
