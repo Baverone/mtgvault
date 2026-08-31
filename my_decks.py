@@ -29,6 +29,14 @@ FOLLOWED = [
     ("Greasefang", "pioneer", ["Greasefang, Okiba Boss"]),
 ]
 
+# Decks seguidos por JOGADOR + COMANDANTE: a lista mais recente desse jogador no
+# formato que CONTÉM aquele comandante. Ex.: Cloud DC = a lista de Cloud mais
+# recente do McWinSauce ("mantém a do McWinSauce, com o mesmo comandante, vai
+# atualizando" — André, 2026-08-31).
+FOLLOWED_PLAYER_DECK = [
+    ("Cloud (Duel Commander)", "duel-commander", "McWinSauce", ["Cloud, Midgar Mercenary"]),
+]
+
 # Decks seguidos por JOGADOR de MTGO (a lista mais recente dele nesse formato),
 # em vez de por assinatura. O André escolheu estes jogadores como referência:
 # (nome do deck, formato, jogador)
@@ -76,6 +84,19 @@ def _latest_player(con: sqlite3.Connection, fmt: str, player: str):
         (fmt, player, MIN_MAIN)).fetchone()
 
 
+def _latest_player_deck(con: sqlite3.Connection, fmt: str, player: str, cards: list[str]):
+    """Lista mais recente de `player` nesse formato que CONTÉM todas as `cards`
+    (ex.: o comandante) — para seguir um deck específico de um jogador."""
+    ph = ",".join("?" * len(cards))
+    return con.execute(
+        f"""SELECT dl.id, dl.source, dl.player, dl.event_date FROM decklists dl
+              WHERE dl.format = ? AND dl.player = ?
+                AND (SELECT COUNT(DISTINCT dc.card_name) FROM decklist_cards dc
+                       WHERE dc.decklist_id = dl.id AND dc.card_name IN ({ph})) = ?
+              ORDER BY dl.event_date DESC, dl.id DESC LIMIT 1""",
+        [fmt, player] + cards + [len(cards)]).fetchone()
+
+
 def _store(con: sqlite3.Connection, name: str, fmt: str, dl, out: list):
     """Grava/atualiza a decklist `dl` como deck `name`, só se a origem mudou."""
     con.execute("INSERT OR IGNORE INTO decks (name, format) VALUES (?, ?)", (name, fmt))
@@ -109,6 +130,12 @@ def refresh(con: sqlite3.Connection) -> str:
             _store(con, name, fmt, dl, out)
         else:
             out.append(f"{name}: sem lista de {player}")
+    for name, fmt, player, cards in FOLLOWED_PLAYER_DECK:
+        dl = _latest_player_deck(con, fmt, player, cards)
+        if dl:
+            _store(con, name, fmt, dl, out)
+        else:
+            out.append(f"{name}: sem lista de {player} com {cards}")
     con.commit()
     return "; ".join(out)
 

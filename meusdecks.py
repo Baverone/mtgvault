@@ -170,8 +170,19 @@ def _cloud_consensus(con, his_names):
         for r in con.execute(f"SELECT name nm, scryfall_id sid FROM cards "
                              f"WHERE name IN ({ph2}) AND digital=0 GROUP BY name", names):
             sids.setdefault(r["nm"].split(" // ")[0], r["sid"])
-    return {"pct": pct, "n": n,
-            "missing": [{"nm": nm, "pct": p, "sid": sids.get(nm)} for p, nm in miss]}
+    miss_list = [{"nm": nm, "pct": p, "sid": sids.get(nm)} for p, nm in miss]
+    # Trocas 1-a-1: as não-básicas de MENOR consenso dele <-> as staples de MAIOR
+    # consenso que faltam, enquanto a que entra tem consenso maior que a que sai.
+    his_nb = sorted((pct.get(nm, 0), nm) for nm in his_names if nm not in bd.BASICS)
+    swaps = []
+    for i in range(min(len(his_nb), len(miss_list))):
+        op, on = his_nb[i]
+        m = miss_list[i]
+        if m["pct"] > op:
+            swaps.append({"out": on, "outp": op, "in": m["nm"], "inp": m["pct"], "insid": m["sid"]})
+        else:
+            break
+    return {"pct": pct, "n": n, "missing": miss_list, "swaps": swaps}
 
 
 def _cards(items, osid, imgmap, owned_qty):
@@ -266,25 +277,42 @@ def _deck_card(d):
                   else ('' if c["state"] == "have" else '<span class="cq">0/1</span>'))
             g += f'<div class="cd {c["state"]}" title="{html.escape(c["nm"])}">{img}{qb}{_cs(c["nm"])}</div>'
         return g
-    chdr = ' <span class="dim">· % = consenso nas listas de Cloud</span>' if cons else ""
-    detail = (f'<div class="cardshdr">🃏 main deck <span class="dim">({mh}/{mt})</span>{chdr}</div>'
-              f'<div class="cards">{grid(d["main"])}</div>')
-    if d["side"]:
-        detail += (f'<div class="cardshdr sb">🎒 sideboard <span class="dim">({sh}/{st})</span></div>'
-                   f'<div class="cards">{grid(d["side"])}</div>')
-    if cons and cons["missing"]:
-        chips = ""
-        for m in cons["missing"]:
-            st = "have" if (m["nm"] in on or m["nm"] in bd.BASICS) else "miss"
-            im = (f'<img loading="lazy" src="{_art(m["sid"])}" alt="">' if m["sid"]
-                  else '<div class="noimg"></div>')
-            chips += (f'<div class="cd {st}" title="{html.escape(m["nm"])} — {m["pct"]}% das listas">'
-                      f'{im}<span class="cs hi">{m["pct"]}%</span></div>')
-        detail += (f'<div class="cardshdr cs-h">📊 staples que faltam '
-                   f'<span class="dim">(consenso ≥{CONS_MIN}%, {len(cons["missing"])} · '
-                   f'verde = já tens)</span></div><div class="cards">{chips}</div>')
+    if cons:
+        # Cloud DC: duas colunas — a lista dele | a alterada por consenso (trocas 1-a-1
+        # das mais fracas dele pelas staples de maior consenso) + resumo das trocas.
+        swaps = cons["swaps"]
+        outn = {s["out"] for s in swaps}
+        ins = [{"nm": s["in"], "sid": s["insid"],
+                "state": "have" if (s["in"] in on or s["in"] in bd.BASICS) else "miss"} for s in swaps]
+
+        def gc(c, mark=""):
+            img = (f'<img loading="lazy" src="{_art(c["sid"])}" alt="">' if c.get("sid")
+                   else '<div class="noimg"></div>')
+            return f'<div class="cd {c["state"]}{mark}" title="{html.escape(c["nm"])}">{img}{_cs(c["nm"])}</div>'
+        left = "".join(gc(c, " cut" if c["nm"] in outn else "") for c in d["main"])
+        right = ("".join(gc(c) for c in d["main"] if c["nm"] not in outn)
+                 + "".join(gc(c, " addc") for c in ins))
+        srows = "".join(
+            f'<div class="swap"><span class="so">🔴 {html.escape(s["out"])}<em>{s["outp"]}%</em></span>'
+            f'<span class="sar">→</span>'
+            f'<span class="si">🟢 {html.escape(s["in"])}<em>{s["inp"]}%</em></span></div>' for s in swaps)
+        detail = (f'<div class="twocol"><div class="tc">'
+                  f'<div class="cardshdr">🃏 Lista McWinSauce <span class="dim">({len(d["main"])})</span></div>'
+                  f'<div class="cards">{left}</div></div><div class="tc">'
+                  f'<div class="cardshdr cs-h">🧩 Alterada por consenso</div>'
+                  f'<div class="cards">{right}</div></div></div>')
+        detail += (f'<div class="cardshdr cs-h">⇄ {len(swaps)} trocas que o consenso sugere '
+                   f'<span class="dim">(popularidade, não sinergia)</span></div>'
+                   f'<div class="swaps">{srows}</div>') if swaps else \
+                  '<div class="evx">O consenso não sugere trocas — a lista já é standard.</div>'
+    else:
+        detail = (f'<div class="cardshdr">🃏 main deck <span class="dim">({mh}/{mt})</span></div>'
+                  f'<div class="cards">{grid(d["main"])}</div>')
+        if d["side"]:
+            detail += (f'<div class="cardshdr sb">🎒 sideboard <span class="dim">({sh}/{st})</span></div>'
+                       f'<div class="cards">{grid(d["side"])}</div>')
     return (
-        f'<div class="deck" data-deck="{html.escape(d["name"])}"><div class="dtop">'
+        f'<div class="deck{" wide" if cons else ""}" data-deck="{html.escape(d["name"])}"><div class="dtop">'
         f'<b>{html.escape(d["name"])}</b>'
         f'<span class="pct" style="color:{col}">{have}/{tot} · {pct}%</span></div>'
         f'<div class="badges"><span class="bdg src">{d["source"]}</span>'
@@ -346,7 +374,8 @@ def build(con, out_path=None):
             "alter": evol[0]["date"] if evol else None, "link": link}
         if d["name"] == CLOUD_DC:
             deck["consensus"] = _cloud_consensus(con, {nm for nm, _ in main_items})
-            deck["verif"] = today   # o job recomputa/confirma o consenso do Cloud DC todos os dias
+            deck["verif"] = today            # o job confirma o Cloud DC todos os dias
+            deck["alter"] = ldate or deck["alter"]   # data da lista do McWinSauce seguida
         by_fmt[d["format"]].append(deck)
     for d in _watched_decks(con, osid, imgmap, owned_names):
         by_fmt[d["format"]].append(d)
@@ -435,6 +464,16 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .cd .cs{position:absolute;bottom:1px;right:1px;font-size:9px;font-weight:800;padding:0 3px;border-radius:5px;color:#fff}
  .cd .cs.hi{background:rgba(26,122,69,.94)} .cd .cs.mid{background:rgba(150,115,30,.94)} .cd .cs.lo{background:rgba(150,54,54,.94)}
  .cardshdr.cs-h{color:var(--gold);margin-top:11px}
+ .deck.wide{grid-column:1/-1}
+ .twocol{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:2px} @media(max-width:640px){.twocol{grid-template-columns:1fr}}
+ .tc{min-width:0}
+ .cd.cut img{filter:grayscale(.6) brightness(.5)} .cd.cut{box-shadow:0 0 0 2px var(--warn)}
+ .cd.cut::after{content:"↓";position:absolute;top:1px;right:1px;background:var(--warn);color:#160a06;font-size:10px;font-weight:800;width:14px;height:14px;line-height:14px;text-align:center;border-radius:4px}
+ .cd.addc{box-shadow:0 0 0 2px var(--add)}
+ .cd.addc::after{content:"+";position:absolute;top:1px;right:1px;background:var(--add);color:#08130c;font-size:11px;font-weight:800;width:14px;height:14px;line-height:14px;text-align:center;border-radius:4px}
+ .swaps{display:flex;flex-direction:column;gap:3px;margin-top:6px}
+ .swap{display:flex;align-items:center;gap:8px;font-size:12px;background:#0f141c;border:1px solid var(--line);border-radius:8px;padding:4px 9px}
+ .swap .so{color:#ffb0a0;flex:1;min-width:0} .swap .si{color:#9fe6bf;flex:1;min-width:0;text-align:right} .swap em{color:var(--muted);font-style:normal;font-size:10px;margin-left:5px} .swap .sar{color:var(--muted)}
  footer{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
 <header><h1>🎴 Decks permanentes</h1>
