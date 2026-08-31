@@ -451,6 +451,25 @@ def build(con, out_path=None):
         secs += (f'<section id="f-{fmt}"><h2>{html.escape(lbl)} '
                  f'<span class="n">{len(decks)}</span></h2><div class="grid">{cards}</div></section>')
 
+    # Faltas: lista consolidada das cartas em falta em TODOS os decks permanentes
+    # (main + sideboard), somando as cópias que faltam. Básicas não contam.
+    faltas = defaultdict(int)
+    for decks in by_fmt.values():
+        for d in decks:
+            for c in d["main"] + d["side"]:
+                miss = c["qty"] - c["hq"]
+                if miss > 0 and c["nm"] not in bd.BASICS:
+                    faltas[c["nm"].split(" // ")[0]] += miss
+    if faltas:
+        order = sorted(faltas.items())
+        items = "".join(f'<li><b>{q}×</b> {html.escape(nm)}</li>' for nm, q in order)
+        cmk = "\n".join(f"{q} {nm}" for nm, q in order)
+        secs += (f'<section id="faltas" class="faltas"><h2>🛒 Faltas '
+                 f'<span class="n">{len(faltas)} cartas · {sum(faltas.values())} cópias</span>'
+                 f'<button class="cpbtn" onclick="cpFaltas(this)">copiar</button></h2>'
+                 f'<ul class="fl">{items}</ul>'
+                 f'<textarea id="cmk" readonly>{html.escape(cmk)}</textarea></section>')
+
     out.write_text(_TMPL.replace("%TABS%", TABS).replace("%SUBNAV%", subnav)
                    .replace("%SECS%", secs).replace("%N%", str(n_total))
                    .replace("%DECKCUR%", json.dumps(deckcur, ensure_ascii=False))
@@ -520,6 +539,11 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .swaps{display:flex;flex-direction:column;gap:3px;margin-top:6px}
  .swap{display:flex;align-items:center;gap:8px;font-size:12px;background:#0f141c;border:1px solid var(--line);border-radius:8px;padding:4px 9px}
  .swap .so{color:#ffb0a0;flex:1;min-width:0} .swap .si{color:#9fe6bf;flex:1;min-width:0;text-align:right} .swap em{color:var(--muted);font-style:normal;font-size:10px;margin-left:5px} .swap .sar{color:var(--muted)}
+ .faltas h2{display:flex;align-items:center;gap:10px}
+ .faltas ul.fl{list-style:none;margin:8px 0 0;padding:0;column-width:210px;column-gap:20px;font-size:13px}
+ .faltas ul.fl li{padding:1.5px 0;break-inside:avoid} .faltas ul.fl b{color:var(--gold);font-variant-numeric:tabular-nums;margin-right:2px}
+ .cpbtn{margin-left:auto;font-size:11px;font-weight:700;padding:3px 11px;border-radius:20px;border:1px solid var(--line);background:#1a2230;color:var(--muted);cursor:pointer} .cpbtn:hover{border-color:var(--accent);color:var(--ink)} .cpbtn.done{background:#123020;border-color:#2f6a45;color:var(--add)}
+ #cmk{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
  footer{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
 <header><h1>🎴 Decks permanentes</h1>
@@ -563,6 +587,13 @@ function markUpd(btn){
   const el=btn.closest('.deck'),n=el.dataset.deck;
   try{localStorage.setItem(ackKey(n),JSON.stringify(DECKCUR[n]||[]));}catch(e){}
   renderChg(el);
+}
+function cpFaltas(btn){
+  const t=document.getElementById('cmk'); if(!t)return;
+  const done=()=>{btn.textContent='✓ copiado';btn.classList.add('done');};
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t.value).then(done).catch(()=>{t.select();document.execCommand('copy');done();});
+  }else{t.select();try{document.execCommand('copy');done();}catch(e){}}
 }
 document.querySelectorAll('.deck[data-deck]').forEach(renderChg);
 </script>
