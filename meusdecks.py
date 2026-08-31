@@ -138,6 +138,53 @@ CLOUD_DC = "Cloud (Duel Commander)"
 _CASUAL = ("League", "Liga", "FNM", "semanal", "Mercredi", "Duelo", "Tuesday")
 CONS_MIN = 30   # limiar (%) das staples que faltam
 
+# Ordem de organização dos decks por tipo de carta (pedido do André, 2026-08-31).
+TYPE_ORDER = ["Creature", "Planeswalker", "Sorcery", "Instant", "Artifact", "Enchantment", "Land"]
+
+
+def _bucket(type_line):
+    """Tipo principal de uma carta, pela ordem do André (Creature 1º, Land último).
+    Cartas de múltiplos tipos caem no 1º tipo que casa (ex.: Artifact Creature →
+    Creature)."""
+    tl = (type_line or "").split(" // ")[0]
+    return next((t for t in TYPE_ORDER if t in tl), "Other")
+
+
+def _type_map(con, names):
+    """nome (frente) -> tipo principal (bucket)."""
+    tm = {}
+    names = list(names)
+    for i in range(0, len(names), 300):
+        chunk = names[i:i + 300]
+        ph = ",".join("?" for _ in chunk)
+        for r in con.execute(f"SELECT name nm, type_line tl FROM cards "
+                             f"WHERE name IN ({ph}) AND digital=0 GROUP BY name", chunk):
+            tm[r["nm"].split(" // ")[0]] = _bucket(r["tl"])
+    # DFCs: o catálogo guarda "frente // verso"; casa pela frente as que faltaram.
+    for n in [x for x in names if x not in tm]:
+        r = con.execute("SELECT type_line tl FROM catalog.cards "
+                        "WHERE (name = ? OR name LIKE ?) AND digital=0 LIMIT 1",
+                        (n, n + " // %")).fetchone()
+        if r:
+            tm[n] = _bucket(r["tl"])
+    return tm
+
+
+def _group_by_type(cards, tm, render):
+    """Agrupa os cartões por tipo (ordem do André) com um cabeçalho por grupo. Cada
+    carta pode trazer o seu tipo em `_type` (ex.: staples que faltam); senão usa tm."""
+    buckets = defaultdict(list)
+    for c in cards:
+        buckets[c.get("_type") or tm.get(c["nm"].split(" // ")[0], "Other")].append(c)
+    out = ""
+    for t in TYPE_ORDER + ["Other"]:
+        b = buckets.get(t)
+        if not b:
+            continue
+        out += (f'<div class="typehdr">{html.escape(t)} <span class="dim">{sum(c.get("qty", 1) for c in b)}</span></div>'
+                f'<div class="cards">{"".join(render(c) for c in b)}</div>')
+    return out
+
 
 def _cloud_consensus(con, his_names):
     """Análise de consenso do Cloud (Duel Commander): sobre as listas de Cloud de
@@ -164,13 +211,15 @@ def _cloud_consensus(con, his_names):
     miss = sorted(((p, nm) for nm, p in pct.items() if nm not in his_names and p >= CONS_MIN),
                   reverse=True)
     names = [nm for _, nm in miss]
-    sids = {}
+    sids, types = {}, {}
     if names:
         ph2 = ",".join("?" * len(names))
-        for r in con.execute(f"SELECT name nm, scryfall_id sid FROM cards "
+        for r in con.execute(f"SELECT name nm, scryfall_id sid, type_line tl FROM cards "
                              f"WHERE name IN ({ph2}) AND digital=0 GROUP BY name", names):
-            sids.setdefault(r["nm"].split(" // ")[0], r["sid"])
-    miss_list = [{"nm": nm, "pct": p, "sid": sids.get(nm)} for p, nm in miss]
+            f = r["nm"].split(" // ")[0]
+            sids.setdefault(f, r["sid"])
+            types.setdefault(f, _bucket(r["tl"]))
+    miss_list = [{"nm": nm, "pct": p, "sid": sids.get(nm), "type": types.get(nm)} for p, nm in miss]
     # Trocas 1-a-1: as não-básicas de MENOR consenso dele <-> as staples de MAIOR
     # consenso que faltam, enquanto a que entra tem consenso maior que a que sai.
     his_nb = sorted((pct.get(nm, 0), nm) for nm in his_names if nm not in bd.BASICS)
@@ -179,7 +228,8 @@ def _cloud_consensus(con, his_names):
         op, on = his_nb[i]
         m = miss_list[i]
         if m["pct"] > op:
-            swaps.append({"out": on, "outp": op, "in": m["nm"], "inp": m["pct"], "insid": m["sid"]})
+            swaps.append({"out": on, "outp": op, "in": m["nm"], "inp": m["pct"],
+                          "insid": m["sid"], "intype": m["type"]})
         else:
             break
     return {"pct": pct, "n": n, "missing": miss_list, "swaps": swaps}
@@ -229,7 +279,7 @@ def _watched_decks(con, osid, imgmap, owned_names):
     return out
 
 
-def _deck_card(d):
+def _deck_card(d, tm):
     def cnt(cards):
         return sum(c["hq"] for c in cards), sum(c["qty"] for c in cards)
     mh, mt = cnt(d["main"])
@@ -268,49 +318,42 @@ def _deck_card(d):
         t = "hi" if p >= 70 else "mid" if p >= CONS_MIN else "lo"
         return f'<span class="cs {t}" title="{p}% das listas de Cloud">{p}%</span>'
 
-    def grid(cards):
-        g = ""
-        for c in cards:
-            img = (f'<img loading="lazy" src="{_art(c["sid"])}" alt="">' if c["sid"]
-                   else '<div class="noimg"></div>')
-            qb = (f'<span class="cq">{c["hq"]}/{c["qty"]}</span>' if c["qty"] > 1
-                  else ('' if c["state"] == "have" else '<span class="cq">0/1</span>'))
-            g += f'<div class="cd {c["state"]}" title="{html.escape(c["nm"])}">{img}{qb}{_cs(c["nm"])}</div>'
-        return g
+    def rc(c, mark=""):
+        img = (f'<img loading="lazy" src="{_art(c["sid"])}" alt="">' if c.get("sid")
+               else '<div class="noimg"></div>')
+        qb = (f'<span class="cq">{c["hq"]}/{c["qty"]}</span>' if c.get("qty", 1) > 1
+              else ('' if c["state"] == "have" else '<span class="cq">0/1</span>'))
+        return f'<div class="cd {c["state"]}{mark}" title="{html.escape(c["nm"])}">{img}{qb}{_cs(c["nm"])}</div>'
+
     if cons:
-        # Cloud DC: duas colunas — a lista dele | a alterada por consenso (trocas 1-a-1
-        # das mais fracas dele pelas staples de maior consenso) + resumo das trocas.
+        # Cloud DC: duas colunas — a lista dele | a alterada por consenso (trocas
+        # 1-a-1 das mais fracas dele pelas staples de maior consenso). Cada coluna
+        # organizada por tipo.
         swaps = cons["swaps"]
         outn = {s["out"] for s in swaps}
-        ins = [{"nm": s["in"], "sid": s["insid"],
+        ins = [{"nm": s["in"], "sid": s["insid"], "_type": s.get("intype"),
                 "state": "have" if (s["in"] in on or s["in"] in bd.BASICS) else "miss"} for s in swaps]
-
-        def gc(c, mark=""):
-            img = (f'<img loading="lazy" src="{_art(c["sid"])}" alt="">' if c.get("sid")
-                   else '<div class="noimg"></div>')
-            return f'<div class="cd {c["state"]}{mark}" title="{html.escape(c["nm"])}">{img}{_cs(c["nm"])}</div>'
-        left = "".join(gc(c, " cut" if c["nm"] in outn else "") for c in d["main"])
-        right = ("".join(gc(c) for c in d["main"] if c["nm"] not in outn)
-                 + "".join(gc(c, " addc") for c in ins))
+        left = _group_by_type(d["main"], tm, lambda c: rc(c, " cut" if c["nm"] in outn else ""))
+        right_cards = [c for c in d["main"] if c["nm"] not in outn] + [{**c, "_add": 1} for c in ins]
+        right = _group_by_type(right_cards, tm, lambda c: rc(c, " addc" if c.get("_add") else ""))
         srows = "".join(
             f'<div class="swap"><span class="so">🔴 {html.escape(s["out"])}<em>{s["outp"]}%</em></span>'
             f'<span class="sar">→</span>'
             f'<span class="si">🟢 {html.escape(s["in"])}<em>{s["inp"]}%</em></span></div>' for s in swaps)
         detail = (f'<div class="twocol"><div class="tc">'
                   f'<div class="cardshdr">🃏 Lista McWinSauce <span class="dim">({len(d["main"])})</span></div>'
-                  f'<div class="cards">{left}</div></div><div class="tc">'
-                  f'<div class="cardshdr cs-h">🧩 Alterada por consenso</div>'
-                  f'<div class="cards">{right}</div></div></div>')
+                  f'{left}</div><div class="tc">'
+                  f'<div class="cardshdr cs-h">🧩 Alterada por consenso</div>{right}</div></div>')
         detail += (f'<div class="cardshdr cs-h">⇄ {len(swaps)} trocas que o consenso sugere '
                    f'<span class="dim">(popularidade, não sinergia)</span></div>'
                    f'<div class="swaps">{srows}</div>') if swaps else \
                   '<div class="evx">O consenso não sugere trocas — a lista já é standard.</div>'
     else:
         detail = (f'<div class="cardshdr">🃏 main deck <span class="dim">({mh}/{mt})</span></div>'
-                  f'<div class="cards">{grid(d["main"])}</div>')
+                  f'{_group_by_type(d["main"], tm, rc)}')
         if d["side"]:
             detail += (f'<div class="cardshdr sb">🎒 sideboard <span class="dim">({sh}/{st})</span></div>'
-                       f'<div class="cards">{grid(d["side"])}</div>')
+                       f'{_group_by_type(d["side"], tm, rc)}')
     return (
         f'<div class="deck{" wide" if cons else ""}" data-deck="{html.escape(d["name"])}"><div class="dtop">'
         f'<b>{html.escape(d["name"])}</b>'
@@ -341,6 +384,7 @@ def build(con, out_path=None):
         for b, nm, q in json.loads(r["cards"]):
             allnames.add(nm.split(" // ")[0])
     imgmap = _img_map(con, allnames)
+    tm = _type_map(con, allnames)
 
     by_fmt = defaultdict(list)
     for d in rows:
@@ -403,7 +447,7 @@ def build(con, out_path=None):
         n_total += len(decks)
         lbl = FMT_LABEL.get(fmt, fmt)
         subnav += f'<a href="#f-{fmt}">{html.escape(lbl)}</a>'
-        cards = "".join(_deck_card(d) for d in decks)
+        cards = "".join(_deck_card(d, tm) for d in decks)
         secs += (f'<section id="f-{fmt}"><h2>{html.escape(lbl)} '
                  f'<span class="n">{len(decks)}</span></h2><div class="grid">{cards}</div></section>')
 
@@ -456,6 +500,8 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .evd{color:var(--muted);min-width:70px;font-variant-numeric:tabular-nums}
  .ec{padding:0 4px;border-radius:5px} .ec.have{color:var(--add);background:#0f2418} .ec.miss{color:#ff8f8f;background:#2a1414}
  .cardshdr{margin-top:9px;font-size:12px;color:var(--accent)} .cardshdr .dim{color:var(--muted)} .cardshdr.sb{color:var(--gold)}
+ .typehdr{margin:8px 0 1px;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em} .typehdr .dim{color:#4a5666}
+ .typehdr+.cards{margin-top:3px}
  .cards{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
  .cd{position:relative;width:58px;border-radius:5px} .cd img,.cd .noimg{width:58px;height:81px;border-radius:4px;display:block;background:#0c0f14}
  .cd.have{box-shadow:0 0 0 2px var(--add)} .cd.part{box-shadow:0 0 0 2px var(--gold)} .cd.part img{filter:brightness(.82)}
