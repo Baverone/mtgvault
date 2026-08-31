@@ -46,7 +46,7 @@ TABS = ('<nav class="tabs"><a href="index.html">🏠 Início</a>'
         '<a href="meusdecks.html">🎴 Decks vigiados</a>'
         '<a href="metagame.html">🌐 Metagame</a>'
         '<a href="decksfaziveis.html">🛠️ Decks fazíveis</a>'
-        '<a href="colecao_cor.html">📚 Binders</a><a class="cur" href="reservedlist.html">🏆 Reserved List</a></nav>')
+        '<a href="colecao_cor.html">📚 Binders</a><a class="cur" href="reservedlist.html">🏆 Reserved List</a><a href="caixarl.html">📦 Caixa RL</a></nav>')
 
 
 def _art(sid):

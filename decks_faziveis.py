@@ -23,7 +23,7 @@ NAV = ('<nav class="tabs"><a href="index.html">🏠 Início</a>'
        '<a href="metagame.html">🌐 Metagame</a>'
        '<a class="cur" href="decksfaziveis.html">🛠️ Decks fazíveis</a>'
        '<a href="colecao_cor.html">📚 Binders</a>'
-       '<a href="reservedlist.html">🏆 Reserved List</a></nav>')
+       '<a href="reservedlist.html">🏆 Reserved List</a><a href="caixarl.html">📦 Caixa RL</a></nav>')
 
 _CSS = """
  :root{--bg:#0d1017;--card:#161b24;--ink:#eef2f7;--muted:#8b97a6;--line:#242c38;--accent:#5b8cff;--gold:#e0b64b;--add:#4ac585}

@@ -37,6 +37,7 @@ import meusdecks  # noqa: E402  (gera meusdecks.html — os meus decks: estado, 
 import metagame  # noqa: E402  (gera metagame.html — só ver o metagame: listas com arte)
 import decks_faziveis  # noqa: E402  (gera decksfaziveis.html — decks do top-10 que já dá para montar)
 import reservedlist  # noqa: E402  (gera reservedlist.html — Reserved List x coleção)
+import caixarl  # noqa: E402  (gera caixarl.html — Caixa Reserved List: RL fora da coleção jogável)
 import my_decks  # noqa: E402  (mantém atualizadas as listas dos decks que o André segue)
 import commander_decks  # noqa: E402  (decks de comandante seguidos por consenso, ex.: Cloud DC)
 import refresh_collection  # noqa: E402  (reconstroi collection_owned p/ o index.html)
@@ -220,6 +221,8 @@ def main():
               lambda: str(decks_faziveis.build(con, ROOT / "decksfaziveis.html")))
         _step(con, "reserved-list-pagina",
               lambda: str(reservedlist.build(con, ROOT / "reservedlist.html")))
+        _step(con, "caixa-reserved-list",
+              lambda: str(caixarl.build(con, ROOT / "caixarl.html")))
 
         _step(con, "podar-precos", lambda: _prune_prices(con, 30))
         _step(con, "prune", lambda: f"{analysis.prune_decklists(con, 30)} apagadas")
