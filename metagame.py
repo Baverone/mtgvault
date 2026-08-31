@@ -21,7 +21,7 @@ import meta_coverage as mc  # noqa: E402
 FMT_TITLE = {f[0]: f[1] for f in mc.FORMATS}
 
 TABS = ('<nav class="tabs"><a href="index.html">🏠 Início</a>'
-        '<a href="meusdecks.html">🎴 Decks permanentes</a>'
+        '<a href="meusdecks.html">🎴 Decks permanentes</a><a href="showcase.html">🎯 Showcase Challenger</a>'
         ''
         ''
         '<a href="colecao_cor.html">📚 Coleção</a><a href="caixarl.html">📦 Caixa RL</a></nav>')
