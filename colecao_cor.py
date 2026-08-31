@@ -347,9 +347,9 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .cfg .muted{color:var(--muted)}
  footer{margin-top:24px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
-<header><h1>📚 Binders — organizar e fotografar</h1>
+<header><h1>📚 Coleção — organizar e fotografar</h1>
 <div class="sub">TUDO o que tens nos baldes de coleção, por cor→custo de mana · nada removido para decks · enche os binders e fotografa o que não aparecer · dados de %TODAY%</div>
-<nav class="tabs"><a href="index.html">🏠 Início</a><a href="meusdecks.html">🎴 Decks permanentes</a><a href="metagame.html">🌐 Metagame</a><a href="decksfaziveis.html">🛠️ Decks fazíveis</a><a class="cur" href="colecao_cor.html">📚 Binders</a><a href="reservedlist.html">🏆 Reserved List</a><a href="caixarl.html">📦 Caixa RL</a></nav>
+<nav class="tabs"><a href="index.html">🏠 Início</a><a href="meusdecks.html">🎴 Decks permanentes</a><a class="cur" href="colecao_cor.html">📚 Coleção</a><a href="caixarl.html">📦 Caixa RL</a></nav>
 <div class="tally"><b class="t-col">🔵 %TOTAL% cartas nos binders</b><b class="t-deck">🟢 %DECKN% que vão p/ decks</b><button class="tgl" id="dm" onclick="toggleDM()">🎯 marcar as que vão p/ decks</button></div>
 <div class="cfg">%CFG%</div></header>
 <div class="nav">%NAV%</div>
