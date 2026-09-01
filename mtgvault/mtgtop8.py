@@ -168,6 +168,16 @@ def parse_dec(text: str, commander_format: bool = False) -> list[tuple[str, str,
 # ---------------------------------------------------------------------------
 # Recolha
 # ---------------------------------------------------------------------------
+def _bracket(pos: int) -> str:
+    """Classificação padrão do mtgtop8 pela POSIÇÃO na página (as listas vêm por
+    ordem de classificação): 1, 2, 3-4, 5-8, 9-16, 17-32, 33-64."""
+    for lim, lbl in ((1, "1"), (2, "2"), (4, "3-4"), (8, "5-8"),
+                     (16, "9-16"), (32, "17-32"), (64, "33-64")):
+        if pos <= lim:
+            return lbl
+    return str(pos)
+
+
 def fetch_deck(deck_id: int, commander_format: bool) -> list[tuple[str, str, int]]:
     return parse_dec(_get("/dec", d=deck_id), commander_format)
 
@@ -194,7 +204,7 @@ def harvest(con: sqlite3.Connection, fmt: str, max_events: int = 8,
             continue
         meta = parse_event_meta(pagina)
         jogadores = parse_deck_entries(pagina)
-        for did in parse_deck_ids(pagina)[:max_decks_per_event]:
+        for pos, did in enumerate(parse_deck_ids(pagina)[:max_decks_per_event], 1):
             if con.execute("SELECT 1 FROM decklists WHERE source = 'mtgtop8' "
                            "AND source_key = ?", (str(did),)).fetchone():
                 continue
@@ -203,12 +213,13 @@ def harvest(con: sqlite3.Connection, fmt: str, max_events: int = 8,
             except requests.RequestException:
                 continue
             # store_decklist descarta se esta lista já cá estiver vinda do
-            # mtgo.com — o mtgtop8 re-hospeda muitos eventos de MTGO.
+            # mtgo.com — o mtgtop8 re-hospeda muitos eventos de MTGO. O placement
+            # vem da posição (a página lista por classificação).
             if sources.store_decklist(
                 con, source="mtgtop8", source_key=str(did), fmt=fmt,
                 cards=cartas, event_name=meta["event_name"] or "",
                 event_date=meta["event_date"] or date.today().isoformat(),
-                player=jogadores.get(did, ""),
+                player=jogadores.get(did, ""), placement=_bracket(pos),
                 url=f"{BASE}/event?e={eid}&d={did}&f={code}",
             ):
                 novas += 1

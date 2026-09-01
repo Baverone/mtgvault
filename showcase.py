@@ -1,20 +1,23 @@
 """Gera showcase.html — "Decks Showcase Challenger".
 
-Abas por formato (Standard/Pioneer/Modern/Legacy). Por formato, pega no ÚLTIMO
-Showcase Challenge, agrupa as listas em ARQUÉTIPOS (Jaccard das cartas não-básicas
-do main >= THRESH), e mostra cada arquétipo, POR ORDEM DE CLASSIFICAÇÃO:
-  - a LISTA PADRÃO (a melhor classificada = 1ª publicada; o MTGO não dá placement),
-    com main e SIDEBOARD, organizada por tipo, cartas a cor = o André tem;
-  - uma secção OPÇÕES: as cartas DIFERENTES das outras listas do mesmo arquétipo
-    (não repete a lista se for igual — só acrescenta o que muda), com o nº de
-    listas em que cada uma aparece.
-NÃO inventa nada: usa só as decklists reais do harvest.
+Abas por formato (Standard/Pioneer/Modern/Legacy). Por formato, junta os eventos
+COMPETITIVOS recentes (janela de WINDOW dias): os Showcase Challenge online (MTGO)
+E os torneios PRESENCIAIS do mtgtop8 (ex.: Magic Spotlight, ANZMTG Super Series),
+excluindo ligas/FNM. Agrupa todas as listas em ARQUÉTIPOS (Jaccard das cartas
+não-básicas do main >= THRESH) e mostra cada arquétipo, POR CLASSIFICAÇÃO:
+  - a LISTA PADRÃO (a melhor classificada — os presenciais têm placement real; o
+    MTGO não, fica atrás), com main e SIDEBOARD, por tipo, cartas a cor = tens;
+  - uma secção OPÇÕES: as cartas DIFERENTES das outras listas do arquétipo (não
+    repete a lista se igual — só o que muda), com o nº de listas em que aparecem.
+NÃO inventa nada: usa só as decklists reais do harvest (mtgo + mtgtop8).
 """
 from __future__ import annotations
 
 import html
 import os
+import re
 from collections import Counter
+from datetime import date, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -26,29 +29,35 @@ from mtgvault.collection import owned_playable  # noqa: E402
 FORMATS = [("standard", "Standard"), ("pioneer", "Pioneer"),
            ("modern", "Modern"), ("legacy", "Legacy")]
 THRESH = 0.5     # Jaccard mínimo p/ duas listas serem o mesmo arquétipo
+WINDOW = 21      # dias: janela de eventos competitivos recentes
+# Eventos casuais do mtgtop8 a NÃO incluir (ligas, FNM, etc.).
+_CASUAL = ("League", "FNM", "Trial", "Prelim", "Practice", "Friday", "weekly",
+           "semanal", "Duelo", "Mercredi")
 BASICS = {"Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes",
           "Snow-Covered Plains", "Snow-Covered Island", "Snow-Covered Swamp",
           "Snow-Covered Mountain", "Snow-Covered Forest"}
 
-# Carta-assinatura -> nome do arquétipo (do que reconheci nos 4 eventos). Sem
-# match, o nome é gerado pelas 2 cartas mais distintivas (data-driven).
+# Carta-assinatura -> nome do arquétipo. Sem match, o nome vem das 2 cartas mais
+# distintivas (data-driven).
 KNOWN = {
     "Living End": "Living End", "Sneak Attack": "Sneak & Show", "Doomsday": "Doomsday",
-    "Kappa Cannoneer": "Affinity", "Scion of Draco": "Domain Zoo",
-    "Goblin Charbelcher": "Belcher", "Guide of Souls": "Boros Energy",
-    "Hollow One": "Hollow One", "Aether Vial": "Death & Taxes",
+    "Kappa Cannoneer": "Affinity", "Cranial Plating": "Affinity",
+    "Scion of Draco": "Domain Zoo", "Goblin Charbelcher": "Belcher",
+    "Guide of Souls": "Boros Energy", "Hollow One": "Hollow One", "Aether Vial": "Death & Taxes",
     "Arclight Phoenix": "Izzet Phoenix", "Nykthos, Shrine to Nyx": "Mono-G Devotion",
     "Indomitable Creativity": "Izzet Creativity", "Show and Tell": "Show and Tell",
-    "Griselbrand": "Reanimator", "Atraxa, Grand Unifier": "Reanimator (Atraxa)",
-    "Slickshot Show-Off": "Izzet Prowess", "Devoted Druid": "Devoted Druid Combo",
+    "Griselbrand": "Reanimator", "Atraxa, Grand Unifier": "Reanimator",
+    "Slickshot Show-Off": "Izzet Prowess", "Devoted Druid": "Devoted Combo",
     "Aluren": "Aluren", "Craterhoof Behemoth": "Elves/Devotion",
-    "Devourer of Destiny": "Eldrazi Ramp", "Cranial Plating": "Affinity",
+    "Basking Broodscale": "Broodscale Bloodchief", "Devourer of Destiny": "Eldrazi Ramp",
     "Chalice of the Void": "Chalice Prison", "Mystic Forge": "Mystic Forge",
     "Up the Beanstalk": "Beanstalk Control", "Jeskai Revelation": "Jeskai Control",
     "Inti, Seneschal of the Sun": "Rakdos Aggro", "Kaito, Bane of Nightmares": "Dimir Tempo",
     "Amalia Benavides Aguirre": "Amalia Combo", "Adeline, Resplendent Cathar": "Mono-W Aggro",
     "Screaming Nemesis": "Mono-R Aggro", "Vivi Ornitier": "Vivi/Loki",
-    "Collected Company": "CoCo", "Cleansing Wildfire": "Wildfire Control",
+    "Collected Company": "CoCo", "Cleansing Wildfire": "Ponza / Wildfire",
+    "Amulet of Vigor": "Amulet Titan", "Psychic Frog": "Dimir Frog",
+    "Cori-Steel Cutter": "Izzet Prowess", "Grinding Station": "Grinding Station",
 }
 
 NAV = ('<nav class="tabs"><a href="index.html">🏠 Início</a>'
@@ -58,32 +67,53 @@ NAV = ('<nav class="tabs"><a href="index.html">🏠 Início</a>'
        '<a href="caixarl.html">📦 Caixa RL</a></nav>')
 
 
+def _prank(placement):
+    """Placement -> nº (o presencial dá '1','3-4',...; o MTGO dá '' e fica atrás)."""
+    if placement:
+        m = re.match(r"\d+", placement)
+        if m:
+            return int(m.group())
+    return 999
+
+
+def _shortev(name):
+    n = re.sub(r"^\w+ event - ", "", name or "").strip()
+    return (n[:52] + "…") if len(n) > 53 else n
+
+
 def _lists(con, fmt):
-    """(event_name, event_date, [ {rank, player, main, side, set} ]) do último
-    Showcase Challenge do formato, por ordem de publicação (líder = 1º)."""
-    ev = con.execute("SELECT event_name, event_date FROM decklists WHERE format=? "
-                     "AND event_name LIKE '%Showcase Challenge%' "
-                     "ORDER BY event_date DESC LIMIT 1", (fmt,)).fetchone()
-    if not ev:
-        return None, None, []
-    out = []
-    for rank, r in enumerate(con.execute("SELECT id, player FROM decklists WHERE format=? "
-                                         "AND event_name=? AND event_date=? ORDER BY id",
-                                         (fmt, ev["event_name"], ev["event_date"])), 1):
+    """(eventos {nome:(data,src)}, [ {id,player,placement,rank,event,date,src,main,
+    side,set} ]) dos eventos competitivos recentes do formato: Showcase Challenge
+    (MTGO) + presenciais do mtgtop8, na janela de WINDOW dias."""
+    excl = " AND ".join(f"event_name NOT LIKE '%{k}%'" for k in _CASUAL)
+    where_evt = (f"(event_name LIKE '%Showcase Challenge%' "
+                 f"OR (source='mtgtop8' AND {excl}))")
+    anchor = con.execute(f"SELECT MAX(event_date) d FROM decklists WHERE format=? "
+                         f"AND {where_evt}", (fmt,)).fetchone()["d"]
+    if not anchor:
+        return {}, []
+    cutoff = (date.fromisoformat(anchor) - timedelta(days=WINDOW)).isoformat()
+    out, events = [], {}
+    for r in con.execute(f"""SELECT id, player, placement, event_name en, event_date ed, source src
+            FROM decklists WHERE format=? AND event_date >= ? AND {where_evt}
+            ORDER BY event_date DESC, id""", (fmt, cutoff)):
         main, side = {}, {}
         for c in con.execute("SELECT card_name nm, board b, quantity q FROM decklist_cards "
                              "WHERE decklist_id=?", (r["id"],)):
             f = c["nm"].split(" // ")[0]
             d = side if c["b"] == "side" else main
             d[f] = d.get(f, 0) + c["q"]
-        out.append({"rank": rank, "player": r["player"], "main": main, "side": side,
+        out.append({"id": r["id"], "player": r["player"], "placement": r["placement"],
+                    "rank": _prank(r["placement"]), "event": r["en"], "date": r["ed"],
+                    "src": r["src"], "main": main, "side": side,
                     "set": frozenset(k for k in main if k not in BASICS)})
-    return ev["event_name"], ev["event_date"], out
+        events[r["en"]] = (r["ed"], r["src"])
+    return events, out
 
 
 def _cluster(lists):
-    """Agrupa por líder: cada lista junta-se ao arquétipo mais parecido se Jaccard
-    >= THRESH; senão inicia um novo (e fica líder). Devolve (clusters, df)."""
+    """Agrupa por líder: processadas por classificação (a melhor primeiro fica
+    líder); cada lista junta-se ao arquétipo mais parecido se Jaccard >= THRESH."""
     df = Counter()
     for L in lists:
         for c in L["set"]:
@@ -93,7 +123,7 @@ def _cluster(lists):
         return len(a & b) / len(a | b) if (a | b) else 0
 
     clusters = []
-    for L in lists:
+    for L in sorted(lists, key=lambda x: (x["rank"], x["id"])):
         best, bs = None, 0.0
         for c in clusters:
             s = sim(L["set"], c["leader"]["set"])
@@ -116,8 +146,8 @@ def _name(cluster, df):
 
 
 def _mkcards(cards, owned_qty, sidmap, freq=None, nlists=0):
-    """{carta:qty} -> [{nm,qty,hq,state,sid,_type?,_freq?}] (como o meusdecks). Se
-    `freq` for dado (opções), cada carta leva o nº de listas em que aparece."""
+    """{carta:qty} -> [{nm,qty,hq,state,sid,_freq?}]. `freq` (opções) leva o nº de
+    listas em que cada carta aparece."""
     out = []
     for nm, q in cards.items():
         oq = q if nm in BASICS else owned_qty.get(nm, 0)
@@ -158,8 +188,6 @@ def _archetype_html(a, name, tm, owned, owned_qty, sidmap):
         body += (f'<div class="cardshdr sb">🎒 Sideboard</div>'
                  f'{md._group_by_type(lead_side, tm, rc)}')
 
-    # Opções: cartas que OUTRAS listas do arquétipo jogam e o líder NÃO — o número
-    # é em quantas listas aparece. Se as listas forem iguais, não há opções.
     if n > 1:
         freq = Counter()
         for m in members[1:]:
@@ -174,11 +202,19 @@ def _archetype_html(a, name, tm, owned, owned_qty, sidmap):
                      f'{md._group_by_type(opt, tm, rc)}')
     body += md._faltas_html(md._faltas(lead_main + lead_side), cls="dk")
 
+    # Selo do líder: placement (presencial) ou "online"; ícone da fonte.
+    if leader["placement"]:
+        seal = f'🏆 #{html.escape(leader["placement"])}'
+    else:
+        seal = "🌐 online"
+    evset = {m["event"] for m in members}
     return (f'<div class="deck">'
             f'<div class="dtop"><b>{html.escape(name)}</b>'
             f'<span class="pct" style="color:{col}">{have}/{len(nb)} · {cov}%</span></div>'
-            f'<div class="badges"><span class="bdg src">🎯 pub#{leader["rank"]}</span>'
-            f'<span class="bdg">{n} lista{"s" if n > 1 else ""}</span></div>'
+            f'<div class="badges"><span class="bdg seal">{seal}</span>'
+            f'<span class="bdg">{n} lista{"s" if n > 1 else ""}</span>'
+            f'<span class="bdg">{len(evset)} evento{"s" if len(evset) > 1 else ""}</span>'
+            f'<span class="bdg dim">{html.escape(_shortev(leader["event"]))}</span></div>'
             f'<div class="bar"><span style="width:{cov}%;background:{col}"></span></div>'
             f'{body}</div>')
 
@@ -190,12 +226,12 @@ def build(con, out_path=None):
 
     fmt_data, allnames = {}, set()
     for fmt, _lbl in FORMATS:
-        ename, edate, lists = _lists(con, fmt)
+        events, lists = _lists(con, fmt)
         if not lists:
             continue
         clusters, df = _cluster(lists)
-        clusters.sort(key=lambda c: c["leader"]["rank"])   # por ordem de classificação
-        fmt_data[fmt] = {"ename": ename, "edate": edate, "clusters": clusters, "df": df}
+        clusters.sort(key=lambda c: (c["leader"]["rank"], c["leader"]["id"]))
+        fmt_data[fmt] = {"events": events, "clusters": clusters, "df": df, "nlists": len(lists)}
         for L in lists:
             allnames |= set(L["main"]) | set(L["side"])
     sidmap = md._img_map(con, allnames)
@@ -210,13 +246,19 @@ def build(con, out_path=None):
         tabs += f'<button class="ftab{act}" data-f="{fmt}">{html.escape(lbl)} <span class="n">{len(d["clusters"])}</span></button>'
         cards = "".join(_archetype_html(a, _name(a, d["df"]), tm, owned, owned_qty, sidmap)
                         for a in d["clusters"])
+        evlist = ", ".join(f'{html.escape(_shortev(e))} <span class="sc">{"🏆" if s == "mtgtop8" else "🌐"}</span>'
+                           for e, (dt, s) in sorted(d["events"].items(), key=lambda x: _datekey(x[1][0]), reverse=True))
         panels += (f'<section class="fpanel{act}" data-f="{fmt}">'
-                   f'<div class="evh">{html.escape(d["ename"])} · {d["edate"]}</div>'
+                   f'<div class="evh">{d["nlists"]} listas · {len(d["events"])} eventos (últimos {WINDOW} dias): {evlist}</div>'
                    f'<div class="grid">{cards}</div></section>')
 
     out.write_text(_TMPL.replace("%NAV%", NAV).replace("%TABS%", tabs).replace("%PANELS%", panels),
                    encoding="utf-8")
     return out
+
+
+def _datekey(d):
+    return tuple(int(x) for x in d.split("-")) if d else (0, 0, 0)
 
 
 _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
@@ -229,11 +271,11 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0} .tabs a{flex:1;min-width:100px;text-align:center;padding:11px 8px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:600;font-size:14px;transition:.15s} .tabs a:hover{border-color:var(--accent);transform:translateY(-1px)} .tabs a.cur{background:linear-gradient(180deg,#26406f,#1b2c4d);border-color:var(--accent)}
  .ftabs{display:flex;gap:7px;flex-wrap:wrap;margin:14px 0 4px} .ftab{padding:8px 15px;border-radius:20px;background:#141a24;border:1px solid var(--line);color:var(--muted);font-weight:700;font-size:13px;cursor:pointer} .ftab .n{color:#4a5666;font-weight:600} .ftab:hover{color:var(--ink)} .ftab.act{background:linear-gradient(180deg,#26406f,#1b2c4d);border-color:var(--accent);color:var(--ink)} .ftab.act .n{color:var(--accent)}
  .fpanel{display:none} .fpanel.act{display:block}
- .evh{color:var(--muted);font-size:12px;margin:8px 0 12px;text-transform:uppercase;letter-spacing:.05em}
+ .evh{color:var(--muted);font-size:12px;margin:8px 0 12px;line-height:1.6} .evh .sc{font-size:10px}
  .grid{display:grid;grid-template-columns:1fr;gap:12px}
  .deck{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
  .dtop{display:flex;justify-content:space-between;align-items:baseline;gap:8px} .dtop b{font-size:16px} .pct{font-weight:800;font-size:16px}
- .badges{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:7px 0} .bdg{font-size:11px;padding:2px 8px;border-radius:20px;background:#1e2531;color:var(--muted)}
+ .badges{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:7px 0} .bdg{font-size:11px;padding:2px 8px;border-radius:20px;background:#1e2531;color:var(--muted)} .bdg.seal{background:#2a2410;color:var(--gold);font-weight:700} .bdg.dim{color:#5a6472}
  .bar{position:relative;height:8px;background:#0b0e14;border-radius:999px;overflow:hidden;margin:5px 0 2px} .bar span{position:absolute;left:0;top:0;bottom:0;border-radius:999px}
  .cardshdr{margin-top:11px;font-size:12px;color:var(--accent)} .cardshdr .dim{color:var(--muted)} .cardshdr.sb{color:var(--gold)} .cardshdr.op-h{color:#7fa8ff}
  .typehdr{margin:8px 0 1px;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em} .typehdr .dim{color:#4a5666} .typehdr+.cards{margin-top:3px}
@@ -251,11 +293,11 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  footer{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
 <header><h1>🎯 Decks Showcase Challenger</h1>
-<div class="lead">O último Showcase Challenge de cada formato, agrupado por arquétipo. Por classificação: a <b>lista padrão</b> (a melhor) com main e sideboard, e por baixo as <b style="color:#7fa8ff">🔀 opções</b> — as cartas das outras listas do arquétipo que mudam (o nº = em quantas aparecem). Cartas <b style="color:var(--add)">a cor = tens</b>.</div>
+<div class="lead">Os eventos competitivos recentes de cada formato — <b>🌐 Showcase Challenge</b> (online) + <b>🏆 torneios presenciais</b> (mtgtop8) — agrupados por arquétipo. Por classificação: a <b>lista padrão</b> (a melhor) com main e sideboard, e por baixo as <b style="color:#7fa8ff">🔀 opções</b> das outras listas. Cartas <b style="color:var(--add)">a cor = tens</b>.</div>
 %NAV%
 <div class="ftabs">%TABS%</div></header>
 %PANELS%
-<footer>Agrupamento por Jaccard ≥ 0.5 das cartas não-básicas do main. O MTGO não dá classificação nestas listas — uso a ordem de publicação (pub# ≈ 1º→último). Atualiza diariamente.</footer>
+<footer>Agrupamento por Jaccard ≥ 0.5 das cartas não-básicas do main. Presencial 🏆 tem classificação real (fica líder); o MTGO 🌐 não dá placement (fica atrás). Janela de 21 dias. Atualiza diariamente.</footer>
 </div>
 <script>
 function cpFaltas(btn){const c=btn.closest('.faltas'),t=c&&c.querySelector('textarea.cmk');if(!t)return;const d=()=>{btn.textContent='✓ copiado';btn.classList.add('done');};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t.value).then(d).catch(()=>{t.select();document.execCommand('copy');d();});}else{t.select();try{document.execCommand('copy');d();}catch(e){}}}

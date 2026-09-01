@@ -46,6 +46,11 @@ import refresh_collection  # noqa: E402  (reconstroi collection_owned p/ o index
 MTGO_DAYS = 3
 # O mtgo cobre a maioria; o mtgtop8 acrescenta o papel e é a única fonte de cEDH.
 MTGTOP8_FORMATS = ["duel-commander", "premodern", "cedh"]
+# Torneios PRESENCIAIS (mtgtop8) para os formatos que o MTGO já cobre — para a
+# página Showcase Challenger juntar o papel ao online (ex.: Magic Spotlight, ANZMTG
+# Super Series). Os re-hosts de MTGO são deduplicados; ficam os presenciais, com
+# placement pela posição.
+MTGTOP8_PAPER = ["standard", "pioneer", "modern", "legacy"]
 ANALYSE_FORMATS = ["standard", "pioneer", "modern", "legacy", "vintage", "pauper",
                    "duel-commander", "premodern", "cedh"]
 
@@ -167,6 +172,9 @@ def main():
         for fmt in MTGTOP8_FORMATS:
             _step(con, f"harvest-mtgtop8:{fmt}",
                   lambda fmt=fmt: f"{mtgtop8.harvest(con, fmt, max_events=8)} novas")
+        for fmt in MTGTOP8_PAPER:
+            _step(con, f"harvest-papel:{fmt}",
+                  lambda fmt=fmt: f"{mtgtop8.harvest(con, fmt, max_events=6)} novas")
 
         # Preços — cada fonte é opcional e salta em silêncio se não estiver
         # configurada. O bulk da Scryfall é a base grátis; Cardmarket e CardTrader
