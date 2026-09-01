@@ -30,6 +30,8 @@ FORMATS = [("standard", "Standard"), ("pioneer", "Pioneer"),
            ("modern", "Modern"), ("legacy", "Legacy")]
 THRESH = 0.5     # Jaccard mínimo p/ duas listas serem o mesmo arquétipo
 WINDOW = 21      # dias: janela de eventos competitivos recentes
+MIN_ARCH_WT = 3  # peso mínimo p/ um arquétipo aparecer (tira o fringe das ligas)
+TOP_ARCH = 30    # nº máximo de arquétipos por formato
 
 
 def _min_players():
@@ -92,34 +94,64 @@ def _shortev(name):
     return (n[:52] + "…") if len(n) > 53 else n
 
 
+def _weight(src, event_name, players):
+    """Peso do evento p/ o metagame (quanto conta cada lista). AJUSTÁVEL — presencial
+    grande > Showcase > Challenge > Preliminary > League. É a 'importância' de cada
+    fonte: uma liga (5-0 casual) não vale o mesmo que um Challenge ou um presencial."""
+    en = (event_name or "").lower()
+    if src == "mtgtop8":                       # presencial (peso pela dimensão)
+        p = players or 0
+        return 5.0 if p >= 128 else 4.0 if p >= 64 else 3.0
+    if "showcase" in en:                        # MTGO Showcase Challenge
+        return 3.0
+    if "challenge" in en:                       # MTGO Challenge 64/32
+        return 2.0
+    if "prelim" in en:                          # MTGO Preliminary
+        return 1.0
+    if "league" in en:                          # MTGO League (5-0, mais ruído)
+        return 0.5
+    return 1.0
+
+
 def _lists(con, fmt):
     """(eventos {nome:(data,src)}, [ {id,player,placement,rank,event,date,src,main,
     side,set} ]) dos eventos competitivos recentes do formato: Showcase Challenge
     (MTGO) + presenciais do mtgtop8, na janela de WINDOW dias."""
     excl = " AND ".join(f"event_name NOT LIKE '%{k}%'" for k in _CASUAL)
-    # Online: Showcase Challenge (MTGO). Presencial: mtgtop8 com peso (>=MIN_PLAYERS
-    # jogadores), sem ligas/FNM.
-    where_evt = (f"(event_name LIKE '%Showcase Challenge%' "
+    # Online: TODO o MTGO (Showcase/Challenge/Prelim/League) — cada um pesa diferente
+    # (_weight). Presencial: mtgtop8 com >=MIN_PLAYERS jogadores, sem FNM.
+    where_evt = (f"(source='mtgo' "
                  f"OR (source='mtgtop8' AND event_players >= {_min_players()} AND {excl}))")
     anchor = con.execute(f"SELECT MAX(event_date) d FROM decklists WHERE format=? "
                          f"AND {where_evt}", (fmt,)).fetchone()["d"]
     if not anchor:
         return {}, []
     cutoff = (date.fromisoformat(anchor) - timedelta(days=WINDOW)).isoformat()
-    out, events = [], {}
-    for r in con.execute(f"""SELECT id, player, placement, event_name en, event_date ed,
+    rows = list(con.execute(f"""SELECT id, player, placement, event_name en, event_date ed,
                 source src, event_players ep FROM decklists
             WHERE format=? AND event_date >= ? AND {where_evt}
-            ORDER BY event_date DESC, id""", (fmt, cutoff)):
-        main, side = {}, {}
-        for c in con.execute("SELECT card_name nm, board b, quantity q FROM decklist_cards "
-                             "WHERE decklist_id=?", (r["id"],)):
+            ORDER BY event_date DESC, id""", (fmt, cutoff)))
+    if not rows:
+        return {}, []
+    # Cartões de TODAS as listas em poucas queries (chunks) — o pool é grande.
+    from collections import defaultdict as _dd
+    mains, sides = _dd(dict), _dd(dict)
+    ids = [r["id"] for r in rows]
+    for i in range(0, len(ids), 900):
+        chunk = ids[i:i + 900]
+        ph = ",".join("?" * len(chunk))
+        for c in con.execute(f"SELECT decklist_id did, card_name nm, board b, quantity q "
+                             f"FROM decklist_cards WHERE decklist_id IN ({ph})", chunk):
             f = c["nm"].split(" // ")[0]
-            d = side if c["b"] == "side" else main
+            d = sides[c["did"]] if c["b"] == "side" else mains[c["did"]]
             d[f] = d.get(f, 0) + c["q"]
+    out, events = [], {}
+    for r in rows:
+        main, side = mains.get(r["id"], {}), sides.get(r["id"], {})
         out.append({"id": r["id"], "player": r["player"], "placement": r["placement"],
                     "rank": _prank(r["placement"]), "event": r["en"], "date": r["ed"],
-                    "src": r["src"], "main": main, "side": side,
+                    "src": r["src"], "weight": _weight(r["src"], r["en"], r["ep"]),
+                    "main": main, "side": side,
                     "set": frozenset(k for k in main if k not in BASICS)})
         events[r["en"]] = (r["ed"], r["src"], r["ep"])
     return events, out
@@ -170,6 +202,8 @@ def decks_with_card(con, card, fmt="modern"):
     clusters, df = _cluster(lists)
     res = []
     for c in clusters:
+        if sum(m.get("weight", 1.0) for m in c["members"]) < MIN_ARCH_WT:
+            continue
         withc = [m for m in c["members"] if card in m["main"]]
         if not withc:
             continue
@@ -199,6 +233,7 @@ def _mkcards(cards, owned_qty, sidmap, freq=None, nlists=0):
 def _archetype_html(a, name, tm, owned, owned_qty, sidmap):
     members = a["members"]
     n = len(members)
+    wt = sum(m.get("weight", 1.0) for m in members)   # prevalência PESADA (importância)
     leader = members[0]
     lead_main = _mkcards(leader["main"], owned_qty, sidmap)
     lead_side = _mkcards(leader["side"], owned_qty, sidmap)
@@ -230,11 +265,14 @@ def _archetype_html(a, name, tm, owned, owned_qty, sidmap):
             for c in m["main"]:
                 if c not in leader["main"] and c not in BASICS:
                     freq[c] += 1
-        if freq:
-            opt = _mkcards({c: 1 for c in freq}, owned_qty, sidmap, freq=freq, nlists=n)
+        minf = max(2, round(0.05 * n))   # só opções em >=5% das listas (ou >=2)
+        keep = dict(sorted(((c, f) for c, f in freq.items() if f >= minf),
+                           key=lambda x: -x[1])[:40])
+        if keep:
+            opt = _mkcards({c: 1 for c in keep}, owned_qty, sidmap, freq=keep, nlists=n)
             opt.sort(key=lambda c: -c["_freq"][0])
             body += (f'<div class="cardshdr op-h">🔀 Opções '
-                     f'<span class="dim">(cartas das outras {n - 1} listas — o nº = em quantas)</span></div>'
+                     f'<span class="dim">(cartas de outras listas do arquétipo — o nº = em quantas, das {n})</span></div>'
                      f'{md._group_by_type(opt, tm, rc)}')
     body += md._faltas_html(md._faltas(lead_main + lead_side), cls="dk")
 
@@ -248,6 +286,7 @@ def _archetype_html(a, name, tm, owned, owned_qty, sidmap):
             f'<div class="dtop"><b>{html.escape(name)}</b>'
             f'<span class="pct" style="color:{col}">{have}/{len(nb)} · {cov}%</span></div>'
             f'<div class="badges"><span class="bdg seal">{seal}</span>'
+            f'<span class="bdg wt" title="prevalência pesada (Showcase/presencial contam mais que ligas)">⚖️ {wt:.0f}</span>'
             f'<span class="bdg">{n} lista{"s" if n > 1 else ""}</span>'
             f'<span class="bdg">{len(evset)} evento{"s" if len(evset) > 1 else ""}</span>'
             f'<span class="bdg dim">{html.escape(_shortev(leader["event"]))}</span></div>'
@@ -266,7 +305,11 @@ def build(con, out_path=None):
         if not lists:
             continue
         clusters, df = _cluster(lists)
-        clusters.sort(key=lambda c: (c["leader"]["rank"], c["leader"]["id"]))
+        clusters = [c for c in clusters
+                    if sum(m.get("weight", 1.0) for m in c["members"]) >= MIN_ARCH_WT]
+        clusters.sort(key=lambda c: (-sum(m.get("weight", 1.0) for m in c["members"]),
+                                     c["leader"]["rank"]))
+        clusters = clusters[:TOP_ARCH]
         fmt_data[fmt] = {"events": events, "clusters": clusters, "df": df, "nlists": len(lists)}
         for L in lists:
             allnames |= set(L["main"]) | set(L["side"])
@@ -313,7 +356,7 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .grid{display:grid;grid-template-columns:1fr;gap:12px}
  .deck{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
  .dtop{display:flex;justify-content:space-between;align-items:baseline;gap:8px} .dtop b{font-size:16px} .pct{font-weight:800;font-size:16px}
- .badges{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:7px 0} .bdg{font-size:11px;padding:2px 8px;border-radius:20px;background:#1e2531;color:var(--muted)} .bdg.seal{background:#2a2410;color:var(--gold);font-weight:700} .bdg.dim{color:#5a6472}
+ .badges{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:7px 0} .bdg{font-size:11px;padding:2px 8px;border-radius:20px;background:#1e2531;color:var(--muted)} .bdg.seal{background:#2a2410;color:var(--gold);font-weight:700} .bdg.wt{background:#101c2e;color:#7fa8ff;font-weight:700} .bdg.dim{color:#5a6472}
  .bar{position:relative;height:8px;background:#0b0e14;border-radius:999px;overflow:hidden;margin:5px 0 2px} .bar span{position:absolute;left:0;top:0;bottom:0;border-radius:999px}
  .cardshdr{margin-top:11px;font-size:12px;color:var(--accent)} .cardshdr .dim{color:var(--muted)} .cardshdr.sb{color:var(--gold)} .cardshdr.op-h{color:#7fa8ff}
  .typehdr{margin:8px 0 1px;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em} .typehdr .dim{color:#4a5666} .typehdr+.cards{margin-top:3px}

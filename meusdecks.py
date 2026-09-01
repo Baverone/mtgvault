@@ -576,7 +576,7 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .cardshdr.cs-h{color:var(--gold);margin-top:11px}
  .cd .cs.opt{background:rgba(91,140,255,.95)}
  .cardshdr.op-h{color:#7fa8ff}
- .bdg.seal{background:#2a2410;color:var(--gold);font-weight:700}
+ .bdg.seal{background:#2a2410;color:var(--gold);font-weight:700} .bdg.wt{background:#101c2e;color:#7fa8ff;font-weight:700}
  .moxgrid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:8px}
  .deck.wide{grid-column:1/-1}
  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:2px} @media(max-width:640px){.twocol{grid-template-columns:1fr}}
