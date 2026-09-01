@@ -2,10 +2,13 @@
 
 Abas por formato (Standard/Pioneer/Modern/Legacy). Por formato, pega no ÚLTIMO
 Showcase Challenge, agrupa as listas em ARQUÉTIPOS (Jaccard das cartas não-básicas
-do main >= THRESH), e mostra cada arquétipo como os decks permanentes: a LISTA
-PADRÃO (melhor classificada = 1ª publicada, o MTGO não dá placement) e, AO LADO, o
-CONSENSO do arquétipo (como no Cloud DC) — organizado por tipo, cartas a cor = tens,
-com a lista de faltas. NÃO inventa nada: usa só as decklists reais do harvest.
+do main >= THRESH), e mostra cada arquétipo, POR ORDEM DE CLASSIFICAÇÃO:
+  - a LISTA PADRÃO (a melhor classificada = 1ª publicada; o MTGO não dá placement),
+    com main e SIDEBOARD, organizada por tipo, cartas a cor = o André tem;
+  - uma secção OPÇÕES: as cartas DIFERENTES das outras listas do mesmo arquétipo
+    (não repete a lista se for igual — só acrescenta o que muda), com o nº de
+    listas em que cada uma aparece.
+NÃO inventa nada: usa só as decklists reais do harvest.
 """
 from __future__ import annotations
 
@@ -17,13 +20,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-import meusdecks as md  # noqa: E402  (_bucket/_type_map/_group_by_type/_art/_img_map/_faltas/_faltas_html)
+import meusdecks as md  # noqa: E402  (_type_map/_group_by_type/_bucket/_art/_img_map/_faltas/_faltas_html)
 from mtgvault.collection import owned_playable  # noqa: E402
 
 FORMATS = [("standard", "Standard"), ("pioneer", "Pioneer"),
            ("modern", "Modern"), ("legacy", "Legacy")]
 THRESH = 0.5     # Jaccard mínimo p/ duas listas serem o mesmo arquétipo
-CONS_CORE = 50   # % de listas do arquétipo p/ uma carta ser "consenso"
 BASICS = {"Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes",
           "Snow-Covered Plains", "Snow-Covered Island", "Snow-Covered Swamp",
           "Snow-Covered Mountain", "Snow-Covered Forest"}
@@ -57,7 +59,7 @@ NAV = ('<nav class="tabs"><a href="index.html">🏠 Início</a>'
 
 
 def _lists(con, fmt):
-    """(event_name, event_date, [ {player, main:{carta:qty}, set} ]) do último
+    """(event_name, event_date, [ {rank, player, main, side, set} ]) do último
     Showcase Challenge do formato, por ordem de publicação (líder = 1º)."""
     ev = con.execute("SELECT event_name, event_date FROM decklists WHERE format=? "
                      "AND event_name LIKE '%Showcase Challenge%' "
@@ -65,13 +67,16 @@ def _lists(con, fmt):
     if not ev:
         return None, None, []
     out = []
-    for r in con.execute("SELECT id, player FROM decklists WHERE format=? AND event_name=? "
-                         "AND event_date=? ORDER BY id", (fmt, ev["event_name"], ev["event_date"])):
-        main = {}
-        for c in con.execute("SELECT card_name nm, SUM(quantity) q FROM decklist_cards "
-                             "WHERE decklist_id=? AND board IN ('main','') GROUP BY card_name", (r["id"],)):
-            main[c["nm"].split(" // ")[0]] = (main.get(c["nm"].split(" // ")[0], 0) + c["q"])
-        out.append({"player": r["player"], "main": main,
+    for rank, r in enumerate(con.execute("SELECT id, player FROM decklists WHERE format=? "
+                                         "AND event_name=? AND event_date=? ORDER BY id",
+                                         (fmt, ev["event_name"], ev["event_date"])), 1):
+        main, side = {}, {}
+        for c in con.execute("SELECT card_name nm, board b, quantity q FROM decklist_cards "
+                             "WHERE decklist_id=?", (r["id"],)):
+            f = c["nm"].split(" // ")[0]
+            d = side if c["b"] == "side" else main
+            d[f] = d.get(f, 0) + c["q"]
+        out.append({"rank": rank, "player": r["player"], "main": main, "side": side,
                     "set": frozenset(k for k in main if k not in BASICS)})
     return ev["event_name"], ev["event_date"], out
 
@@ -110,102 +115,70 @@ def _name(cluster, df):
     return " · ".join(dist) if dist else "?"
 
 
-def _consensus(cluster):
-    """{carta não-básica: % de listas do arquétipo que a jogam} + nº de listas."""
-    members = cluster["members"]
-    n = len(members)
-    cnt = Counter()
-    for m in members:
-        for c in m["set"]:
-            cnt[c] += 1
-    return {c: round(100 * k / n) for c, k in cnt.items()}, n
-
-
-def _mkcards(main, owned_qty, sidmap):
-    """{carta:qty} -> [{nm,qty,hq,state,sid}] (como o meusdecks)."""
+def _mkcards(cards, owned_qty, sidmap, freq=None, nlists=0):
+    """{carta:qty} -> [{nm,qty,hq,state,sid,_type?,_freq?}] (como o meusdecks). Se
+    `freq` for dado (opções), cada carta leva o nº de listas em que aparece."""
     out = []
-    for nm, q in main.items():
+    for nm, q in cards.items():
         oq = q if nm in BASICS else owned_qty.get(nm, 0)
         hq = min(q, oq)
-        out.append({"nm": nm, "qty": q, "hq": hq, "sid": sidmap.get(nm),
-                    "state": "have" if hq >= q else ("part" if hq > 0 else "miss")})
+        c = {"nm": nm, "qty": q, "hq": hq, "sid": sidmap.get(nm),
+             "state": "have" if hq >= q else ("part" if hq > 0 else "miss")}
+        if freq is not None:
+            c["_freq"] = (freq.get(nm, 0), nlists)
+        out.append(c)
     return out
-
-
-def _swaps(leader, pct, sidmap, tm, owned):
-    """Trocas 1-a-1: cartas não-básicas do líder com MENOR consenso <-> as de MAIOR
-    consenso (>=CONS_CORE) que o líder NÃO joga (como no Cloud DC)."""
-    lead_ranked = sorted((pct.get(c, 0), c) for c in leader["main"] if c not in BASICS)
-    miss = sorted(((p, c) for c, p in pct.items() if c not in leader["main"] and p >= CONS_CORE),
-                  reverse=True)
-    swaps = []
-    for i in range(min(len(lead_ranked), len(miss))):
-        op, on = lead_ranked[i]
-        ip, inm = miss[i]
-        if ip > op:
-            swaps.append({"out": on, "outp": op, "in": inm, "inp": ip,
-                          "insid": sidmap.get(inm), "intype": tm.get(inm, "Other"),
-                          "instate": "have" if inm in owned else "miss"})
-        else:
-            break
-    return swaps
 
 
 def _archetype_html(a, name, tm, owned, owned_qty, sidmap):
     members = a["members"]
     n = len(members)
     leader = members[0]
-    pct, _ = _consensus(a)
-    lead_cards = _mkcards(leader["main"], owned_qty, sidmap)
-    nb = [c for c in lead_cards if c["nm"] not in BASICS]
+    lead_main = _mkcards(leader["main"], owned_qty, sidmap)
+    lead_side = _mkcards(leader["side"], owned_qty, sidmap)
+    nb = [c for c in lead_main if c["nm"] not in BASICS]
     have = sum(1 for c in nb if c["state"] != "miss")
     cov = round(100 * have / len(nb)) if nb else 0
     col = "var(--add)" if cov >= 90 else "var(--gold)" if cov >= 60 else "var(--warn)"
 
-    def csb(nm):
-        p = pct.get(nm)
-        if p is None:
-            return ""
-        t = "hi" if p >= 70 else "mid" if p >= CONS_CORE else "lo"
-        return f'<span class="cs {t}" title="{p}% das listas do arquétipo">{p}%</span>'
-
-    def rc(c, mark=""):
+    def rc(c):
         img = (f'<img loading="lazy" src="{md._art(c["sid"])}" alt="">' if c.get("sid")
                else '<div class="noimg"></div>')
         qb = (f'<span class="cq">{c["hq"]}/{c["qty"]}</span>' if c.get("qty", 1) > 1
               else ('' if c["state"] == "have" else '<span class="cq">0/1</span>'))
-        return f'<div class="cd {c["state"]}{mark}" title="{html.escape(c["nm"])}">{img}{qb}{csb(c["nm"])}</div>'
+        fb = ""
+        if c.get("_freq"):
+            k, tot = c["_freq"]
+            fb = f'<span class="cs opt" title="em {k} de {tot} listas do arquétipo">{k}</span>'
+        return f'<div class="cd {c["state"]}" title="{html.escape(c["nm"])}">{img}{qb}{fb}</div>'
 
-    if n == 1:
-        body = (f'<div class="cardshdr">🃏 lista <span class="dim">(única deste arquétipo)</span></div>'
-                f'{md._group_by_type(lead_cards, tm, rc)}')
-    else:
-        swaps = _swaps(leader, pct, sidmap, tm, owned)
-        outn = {s["out"] for s in swaps}
-        ins = [{"nm": s["in"], "sid": s["insid"], "_type": s["intype"], "state": s["instate"],
-                "qty": 1, "hq": 1 if s["instate"] == "have" else 0} for s in swaps]
-        left = md._group_by_type(lead_cards, tm, lambda c: rc(c, " cut" if c["nm"] in outn else ""))
-        right_cards = [c for c in lead_cards if c["nm"] not in outn] + [{**c, "_add": 1} for c in ins]
-        right = md._group_by_type(right_cards, tm, lambda c: rc(c, " addc" if c.get("_add") else ""))
-        body = (f'<div class="twocol"><div class="tc">'
-                f'<div class="cardshdr">🃏 Lista padrão <span class="dim">({leader["player"]})</span></div>{left}</div>'
-                f'<div class="tc"><div class="cardshdr cs-h">🧩 Consenso do arquétipo '
-                f'<span class="dim">({n} listas)</span></div>{right}</div></div>')
-        if swaps:
-            srows = "".join(
-                f'<div class="swap"><span class="so">🔴 {html.escape(s["out"])}<em>{s["outp"]}%</em></span>'
-                f'<span class="sar">→</span>'
-                f'<span class="si">🟢 {html.escape(s["in"])}<em>{s["inp"]}%</em></span></div>' for s in swaps)
-            body += (f'<div class="cardshdr cs-h">⇄ {len(swaps)} trocas p/ o consenso</div>'
-                     f'<div class="swaps">{srows}</div>')
-    body += md._faltas_html(md._faltas(lead_cards), cls="dk")
+    body = (f'<div class="cardshdr">🃏 Lista padrão <span class="dim">({html.escape(leader["player"] or "?")})</span></div>'
+            f'{md._group_by_type(lead_main, tm, rc)}')
+    if lead_side:
+        body += (f'<div class="cardshdr sb">🎒 Sideboard</div>'
+                 f'{md._group_by_type(lead_side, tm, rc)}')
 
-    players = ", ".join(m["player"] for m in members[:6]) + (" …" if n > 6 else "")
-    return (f'<div class="deck wide">'
+    # Opções: cartas que OUTRAS listas do arquétipo jogam e o líder NÃO — o número
+    # é em quantas listas aparece. Se as listas forem iguais, não há opções.
+    if n > 1:
+        freq = Counter()
+        for m in members[1:]:
+            for c in m["main"]:
+                if c not in leader["main"] and c not in BASICS:
+                    freq[c] += 1
+        if freq:
+            opt = _mkcards({c: 1 for c in freq}, owned_qty, sidmap, freq=freq, nlists=n)
+            opt.sort(key=lambda c: -c["_freq"][0])
+            body += (f'<div class="cardshdr op-h">🔀 Opções '
+                     f'<span class="dim">(cartas das outras {n - 1} listas — o nº = em quantas)</span></div>'
+                     f'{md._group_by_type(opt, tm, rc)}')
+    body += md._faltas_html(md._faltas(lead_main + lead_side), cls="dk")
+
+    return (f'<div class="deck">'
             f'<div class="dtop"><b>{html.escape(name)}</b>'
             f'<span class="pct" style="color:{col}">{have}/{len(nb)} · {cov}%</span></div>'
-            f'<div class="badges"><span class="bdg src">🎯 {n} lista{"s" if n > 1 else ""}</span>'
-            f'<span class="bdg">{html.escape(players)}</span></div>'
+            f'<div class="badges"><span class="bdg src">🎯 pub#{leader["rank"]}</span>'
+            f'<span class="bdg">{n} lista{"s" if n > 1 else ""}</span></div>'
             f'<div class="bar"><span style="width:{cov}%;background:{col}"></span></div>'
             f'{body}</div>')
 
@@ -221,18 +194,15 @@ def build(con, out_path=None):
         if not lists:
             continue
         clusters, df = _cluster(lists)
-        clusters.sort(key=lambda c: -len(c["members"]))   # mais populares primeiro
+        clusters.sort(key=lambda c: c["leader"]["rank"])   # por ordem de classificação
         fmt_data[fmt] = {"ename": ename, "edate": edate, "clusters": clusters, "df": df}
         for L in lists:
-            allnames |= set(L["main"])
-        for c in clusters:      # cartas de consenso (podem não estar no líder)
-            for m in c["members"]:
-                allnames |= set(m["main"])
+            allnames |= set(L["main"]) | set(L["side"])
     sidmap = md._img_map(con, allnames)
     tm = md._type_map(con, allnames)
 
     tabs, panels = "", ""
-    for i, (fmt, lbl) in enumerate(FORMATS):
+    for fmt, lbl in FORMATS:
         d = fmt_data.get(fmt)
         if not d:
             continue
@@ -254,7 +224,7 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
 <title>Showcase Challenger</title><style>
  :root{--bg:#0d1017;--card:#161b24;--ink:#eef2f7;--muted:#8b97a6;--line:#242c38;--accent:#5b8cff;--gold:#e0b64b;--add:#4ac585;--warn:#e0704b}
  *{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#10141d,#0d1017);color:var(--ink);font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
- .wrap{max-width:1200px;margin:0 auto;padding:22px 14px 60px}
+ .wrap{max-width:1100px;margin:0 auto;padding:22px 14px 60px}
  h1{margin:0;font-size:24px;font-weight:800;letter-spacing:-.02em} .lead{color:var(--muted);font-size:13px;margin:2px 0 12px}
  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0} .tabs a{flex:1;min-width:100px;text-align:center;padding:11px 8px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:600;font-size:14px;transition:.15s} .tabs a:hover{border-color:var(--accent);transform:translateY(-1px)} .tabs a.cur{background:linear-gradient(180deg,#26406f,#1b2c4d);border-color:var(--accent)}
  .ftabs{display:flex;gap:7px;flex-wrap:wrap;margin:14px 0 4px} .ftab{padding:8px 15px;border-radius:20px;background:#141a24;border:1px solid var(--line);color:var(--muted);font-weight:700;font-size:13px;cursor:pointer} .ftab .n{color:#4a5666;font-weight:600} .ftab:hover{color:var(--ink)} .ftab.act{background:linear-gradient(180deg,#26406f,#1b2c4d);border-color:var(--accent);color:var(--ink)} .ftab.act .n{color:var(--accent)}
@@ -265,19 +235,15 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .dtop{display:flex;justify-content:space-between;align-items:baseline;gap:8px} .dtop b{font-size:16px} .pct{font-weight:800;font-size:16px}
  .badges{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:7px 0} .bdg{font-size:11px;padding:2px 8px;border-radius:20px;background:#1e2531;color:var(--muted)}
  .bar{position:relative;height:8px;background:#0b0e14;border-radius:999px;overflow:hidden;margin:5px 0 2px} .bar span{position:absolute;left:0;top:0;bottom:0;border-radius:999px}
- .twocol{display:grid;grid-template-columns:1fr 1fr;gap:16px} @media(max-width:640px){.twocol{grid-template-columns:1fr}} .tc{min-width:0}
- .cardshdr{margin-top:9px;font-size:12px;color:var(--accent)} .cardshdr .dim{color:var(--muted)} .cardshdr.cs-h{color:var(--gold);margin-top:11px}
+ .cardshdr{margin-top:11px;font-size:12px;color:var(--accent)} .cardshdr .dim{color:var(--muted)} .cardshdr.sb{color:var(--gold)} .cardshdr.op-h{color:#7fa8ff}
  .typehdr{margin:8px 0 1px;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em} .typehdr .dim{color:#4a5666} .typehdr+.cards{margin-top:3px}
  .cards{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
  .cd{position:relative;width:52px} .cd img,.cd .noimg{width:52px;height:73px;border-radius:4px;display:block;background:#0c0f14}
  .cd.have{box-shadow:0 0 0 2px var(--add)} .cd.part{box-shadow:0 0 0 2px var(--gold)} .cd.part img{filter:brightness(.82)}
  .cd.miss{box-shadow:0 0 0 2px var(--warn)} .cd.miss img{filter:grayscale(.7) brightness(.6)}
- .cd.cut img{filter:grayscale(.6) brightness(.5)} .cd.cut{box-shadow:0 0 0 2px var(--warn)} .cd.cut::after{content:"↓";position:absolute;top:1px;right:1px;background:var(--warn);color:#160a06;font-size:10px;font-weight:800;width:14px;height:14px;line-height:14px;text-align:center;border-radius:4px}
- .cd.addc{box-shadow:0 0 0 2px var(--add)} .cd.addc::after{content:"+";position:absolute;top:1px;right:1px;background:var(--add);color:#08130c;font-size:11px;font-weight:800;width:14px;height:14px;line-height:14px;text-align:center;border-radius:4px}
  .cd .cq{position:absolute;top:1px;left:1px;background:#000c;color:#fff;font-size:9px;font-weight:700;padding:0 3px;border-radius:5px}
  .cd .cs{position:absolute;bottom:1px;right:1px;font-size:9px;font-weight:800;padding:0 3px;border-radius:5px;color:#fff}
- .cd .cs.hi{background:rgba(26,122,69,.94)} .cd .cs.mid{background:rgba(150,115,30,.94)} .cd .cs.lo{background:rgba(150,54,54,.94)}
- .swaps{display:flex;flex-direction:column;gap:3px;margin-top:6px} .swap{display:flex;align-items:center;gap:8px;font-size:12px;background:#0f141c;border:1px solid var(--line);border-radius:8px;padding:4px 9px} .swap .so{color:#ffb0a0;flex:1;min-width:0} .swap .si{color:#9fe6bf;flex:1;min-width:0;text-align:right} .swap em{color:var(--muted);font-style:normal;font-size:10px;margin-left:5px} .swap .sar{color:var(--muted)}
+ .cd .cs.opt{background:rgba(91,140,255,.95)}
  .faltas.dk{margin-top:2px} .flh{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;font-weight:700;color:#e2795b} .flh .dim{color:var(--muted);font-weight:400}
  .faltas ul.fl{list-style:none;margin:6px 0 0;padding:0;column-width:200px;column-gap:18px;font-size:12px} .faltas ul.fl li{padding:1.5px 0;break-inside:avoid} .faltas ul.fl b{color:var(--gold);font-variant-numeric:tabular-nums;margin-right:2px}
  .cpbtn{font-size:11px;font-weight:700;padding:3px 11px;border-radius:20px;border:1px solid var(--line);background:#1a2230;color:var(--muted);cursor:pointer} .cpbtn:hover{border-color:var(--accent);color:var(--ink)} .cpbtn.done{background:#123020;border-color:#2f6a45;color:var(--add)} .flh .cpbtn{margin-left:auto}
@@ -285,11 +251,11 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  footer{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
 <header><h1>🎯 Decks Showcase Challenger</h1>
-<div class="lead">O último Showcase Challenge de cada formato, agrupado por arquétipo (semelhança de cartas). Cada arquétipo: a <b>lista padrão</b> (melhor classificada) e, ao lado, o <b style="color:var(--gold)">consenso</b> — como no Cloud DC. Cartas <b style="color:var(--add)">a cor = tens</b>. Consenso = popularidade no arquétipo, não sinergia.</div>
+<div class="lead">O último Showcase Challenge de cada formato, agrupado por arquétipo. Por classificação: a <b>lista padrão</b> (a melhor) com main e sideboard, e por baixo as <b style="color:#7fa8ff">🔀 opções</b> — as cartas das outras listas do arquétipo que mudam (o nº = em quantas aparecem). Cartas <b style="color:var(--add)">a cor = tens</b>.</div>
 %NAV%
 <div class="ftabs">%TABS%</div></header>
 %PANELS%
-<footer>Agrupamento por Jaccard ≥ 0.5 das cartas não-básicas do main. O MTGO não dá classificação nestas listas — uso a ordem de publicação (≈ 1º→último). Atualiza diariamente.</footer>
+<footer>Agrupamento por Jaccard ≥ 0.5 das cartas não-básicas do main. O MTGO não dá classificação nestas listas — uso a ordem de publicação (pub# ≈ 1º→último). Atualiza diariamente.</footer>
 </div>
 <script>
 function cpFaltas(btn){const c=btn.closest('.faltas'),t=c&&c.querySelector('textarea.cmk');if(!t)return;const d=()=>{btn.textContent='✓ copiado';btn.classList.add('done');};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t.value).then(d).catch(()=>{t.select();document.execCommand('copy');d();});}else{t.select();try{document.execCommand('copy');d();}catch(e){}}}
