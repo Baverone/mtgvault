@@ -73,6 +73,14 @@ def _img_map(con, names):
         for r in con.execute(f"""SELECT name nm, scryfall_id sid FROM cards
                                   WHERE name IN ({ph}) AND digital = 0 GROUP BY name""", chunk):
             out.setdefault(r["nm"].split(" // ")[0], r["sid"])
+    # DFCs: o catálogo guarda "frente // verso"; casa pela FRENTE as que faltaram
+    # (ex.: Boggart Trawler), senão ficavam sem imagem (carta preta).
+    for n in [x for x in names if x not in out]:
+        r = con.execute("SELECT scryfall_id sid FROM catalog.cards "
+                        "WHERE (name = ? OR name LIKE ?) AND digital = 0 LIMIT 1",
+                        (n, n + " // %")).fetchone()
+        if r:
+            out[n] = r["sid"]
     return out
 
 
