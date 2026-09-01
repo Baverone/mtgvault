@@ -417,6 +417,14 @@ def build(con, out_path=None):
                              JOIN deck_collection dc ON dc.watched_id = ws.watched_id"""):
         for b, nm, q in json.loads(r["cards"]):
             allnames.add(nm.split(" // ")[0])
+    # Decks Mox Opal — do pool competitivo do Showcase (Showcase Challenge +
+    # presenciais); atualiza-se sozinho à medida que chegam eventos novos.
+    import showcase  # deferido: o showcase importa meusdecks, evita ciclo no topo
+    mox = showcase.decks_with_card(con, "Mox Opal", "modern")
+    for _mn, _mc in mox:
+        for m in _mc["members"]:
+            allnames |= set(m["main"]) | set(m["side"])
+
     imgmap = _img_map(con, allnames)
     tm = _type_map(con, allnames)
 
@@ -484,6 +492,17 @@ def build(con, out_path=None):
         cards = "".join(_deck_card(d, tm) for d in decks)
         secs += (f'<section id="f-{fmt}"><h2>{html.escape(lbl)} '
                  f'<span class="n">{len(decks)}</span></h2><div class="grid">{cards}</div></section>')
+
+    # Secção Decks Mox Opal (metagame, atualiza sozinho) — renderizada pelo showcase.
+    if mox:
+        moxcards = "".join(showcase._archetype_html(mc, name, tm, owned_names, owned_qty, imgmap)
+                           for name, mc in mox)
+        subnav = '<a href="#mox">🔷 Mox Opal</a>' + subnav
+        secs = (f'<section id="mox"><h2>🔷 Decks Mox Opal <span class="n">{len(mox)}</span></h2>'
+                f'<p style="color:var(--muted);font-size:12px;margin:2px 0 10px">Arquétipos do metagame '
+                f'(Showcase Challenge + presenciais) que jogam Mox Opal — melhor build primeiro, atualiza '
+                f'sozinho. Cartas <b style="color:var(--add)">a cor = tens</b>.</p>'
+                f'<div class="moxgrid">{moxcards}</div></section>') + secs
 
     # Faltas consolidadas: soma as faltas de TODOS os decks permanentes.
     faltas = defaultdict(int)
@@ -555,6 +574,10 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .cd .cs{position:absolute;bottom:1px;right:1px;font-size:9px;font-weight:800;padding:0 3px;border-radius:5px;color:#fff}
  .cd .cs.hi{background:rgba(26,122,69,.94)} .cd .cs.mid{background:rgba(150,115,30,.94)} .cd .cs.lo{background:rgba(150,54,54,.94)}
  .cardshdr.cs-h{color:var(--gold);margin-top:11px}
+ .cd .cs.opt{background:rgba(91,140,255,.95)}
+ .cardshdr.op-h{color:#7fa8ff}
+ .bdg.seal{background:#2a2410;color:var(--gold);font-weight:700}
+ .moxgrid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:8px}
  .deck.wide{grid-column:1/-1}
  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:2px} @media(max-width:640px){.twocol{grid-template-columns:1fr}}
  .tc{min-width:0}

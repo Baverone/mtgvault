@@ -159,6 +159,28 @@ def _name(cluster, df):
     return " · ".join(dist) if dist else "?"
 
 
+def decks_with_card(con, card, fmt="modern"):
+    """[(nome, cluster)] dos arquétipos do pool competitivo (fmt) que jogam `card`,
+    ordenados pela MELHOR classificação de um membro que a joga (esse membro fica
+    líder do cluster, para o render mostrar a build dele + as outras como opções).
+    Atualiza-se sozinho (usa o mesmo pool do Showcase). Reutilizável p/ outras cartas."""
+    events, lists = _lists(con, fmt)
+    if not lists:
+        return []
+    clusters, df = _cluster(lists)
+    res = []
+    for c in clusters:
+        withc = [m for m in c["members"] if card in m["main"]]
+        if not withc:
+            continue
+        best = min(withc, key=lambda m: (m["rank"], m["id"]))
+        others = [m for m in c["members"] if m["id"] != best["id"]]
+        mc = {"leader": best, "members": [best] + others}
+        res.append(((best["rank"], best["id"]), _name(c, df), mc))
+    res.sort(key=lambda x: x[0])
+    return [(name, mc) for _k, name, mc in res]
+
+
 def _mkcards(cards, owned_qty, sidmap, freq=None, nlists=0):
     """{carta:qty} -> [{nm,qty,hq,state,sid,_freq?}]. `freq` (opções) leva o nº de
     listas em que cada carta aparece."""
