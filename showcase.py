@@ -30,6 +30,7 @@ FORMATS = [("standard", "Standard"), ("pioneer", "Pioneer"),
            ("modern", "Modern"), ("legacy", "Legacy")]
 THRESH = 0.5     # Jaccard mínimo p/ duas listas serem o mesmo arquétipo
 WINDOW = 21      # dias: janela de eventos competitivos recentes
+MIN_PLAYERS = 32  # peso mínimo p/ um presencial contar (nº de jogadores, do mtgtop8)
 # Eventos casuais do mtgtop8 a NÃO incluir (ligas, FNM, etc.).
 _CASUAL = ("League", "FNM", "Trial", "Prelim", "Practice", "Friday", "weekly",
            "semanal", "Duelo", "Mercredi")
@@ -86,16 +87,19 @@ def _lists(con, fmt):
     side,set} ]) dos eventos competitivos recentes do formato: Showcase Challenge
     (MTGO) + presenciais do mtgtop8, na janela de WINDOW dias."""
     excl = " AND ".join(f"event_name NOT LIKE '%{k}%'" for k in _CASUAL)
+    # Online: Showcase Challenge (MTGO). Presencial: mtgtop8 com peso (>=MIN_PLAYERS
+    # jogadores), sem ligas/FNM.
     where_evt = (f"(event_name LIKE '%Showcase Challenge%' "
-                 f"OR (source='mtgtop8' AND {excl}))")
+                 f"OR (source='mtgtop8' AND event_players >= {MIN_PLAYERS} AND {excl}))")
     anchor = con.execute(f"SELECT MAX(event_date) d FROM decklists WHERE format=? "
                          f"AND {where_evt}", (fmt,)).fetchone()["d"]
     if not anchor:
         return {}, []
     cutoff = (date.fromisoformat(anchor) - timedelta(days=WINDOW)).isoformat()
     out, events = [], {}
-    for r in con.execute(f"""SELECT id, player, placement, event_name en, event_date ed, source src
-            FROM decklists WHERE format=? AND event_date >= ? AND {where_evt}
+    for r in con.execute(f"""SELECT id, player, placement, event_name en, event_date ed,
+                source src, event_players ep FROM decklists
+            WHERE format=? AND event_date >= ? AND {where_evt}
             ORDER BY event_date DESC, id""", (fmt, cutoff)):
         main, side = {}, {}
         for c in con.execute("SELECT card_name nm, board b, quantity q FROM decklist_cards "
@@ -107,7 +111,7 @@ def _lists(con, fmt):
                     "rank": _prank(r["placement"]), "event": r["en"], "date": r["ed"],
                     "src": r["src"], "main": main, "side": side,
                     "set": frozenset(k for k in main if k not in BASICS)})
-        events[r["en"]] = (r["ed"], r["src"])
+        events[r["en"]] = (r["ed"], r["src"], r["ep"])
     return events, out
 
 
@@ -246,8 +250,10 @@ def build(con, out_path=None):
         tabs += f'<button class="ftab{act}" data-f="{fmt}">{html.escape(lbl)} <span class="n">{len(d["clusters"])}</span></button>'
         cards = "".join(_archetype_html(a, _name(a, d["df"]), tm, owned, owned_qty, sidmap)
                         for a in d["clusters"])
-        evlist = ", ".join(f'{html.escape(_shortev(e))} <span class="sc">{"🏆" if s == "mtgtop8" else "🌐"}</span>'
-                           for e, (dt, s) in sorted(d["events"].items(), key=lambda x: _datekey(x[1][0]), reverse=True))
+        evlist = ", ".join(
+            f'{html.escape(_shortev(e))} <span class="sc">{"🏆" if s == "mtgtop8" else "🌐"}'
+            f'{(" " + str(pl) + "j") if pl else ""}</span>'
+            for e, (dt, s, pl) in sorted(d["events"].items(), key=lambda x: _datekey(x[1][0]), reverse=True))
         panels += (f'<section class="fpanel{act}" data-f="{fmt}">'
                    f'<div class="evh">{d["nlists"]} listas · {len(d["events"])} eventos (últimos {WINDOW} dias): {evlist}</div>'
                    f'<div class="grid">{cards}</div></section>')

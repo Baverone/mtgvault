@@ -240,7 +240,7 @@ def store_decklist(con: sqlite3.Connection, *, source: str, source_key: str,
                    fmt: str, cards: list[tuple[str, str, int]],
                    event_name: str = "", event_date: str = "",
                    player: str = "", placement: str = "",
-                   url: str = "") -> int | None:
+                   url: str = "", event_players: int | None = None) -> int | None:
     """Grava uma decklist, a não ser que já lá esteja por outra via.
 
     Duas listas são a mesma se tiverem o mesmo conteúdo, o mesmo formato, o
@@ -279,10 +279,10 @@ def store_decklist(con: sqlite3.Connection, *, source: str, source_key: str,
     cur = con.execute(
         """INSERT OR IGNORE INTO decklists
            (source, source_key, format, event_name, event_date, player,
-            placement, url, content_hash)
-           VALUES (?,?,?,?,?,?,?,?,?)""",
+            placement, url, content_hash, event_players)
+           VALUES (?,?,?,?,?,?,?,?,?,?)""",
         (source, source_key, fmt, event_name, event_date, player, placement,
-         url, h),
+         url, h, event_players),
     )
     if not cur.rowcount:
         return None

@@ -69,6 +69,9 @@ def _migrate(con: sqlite3.Connection) -> None:
     if "content_hash" not in cols:
         con.execute("ALTER TABLE decklists ADD COLUMN content_hash TEXT")
         con.commit()
+    if "event_players" not in cols:   # nº de jogadores do evento (peso), do mtgtop8
+        con.execute("ALTER TABLE decklists ADD COLUMN event_players INTEGER")
+        con.commit()
 
     # Catálogo (BD anexada): a flag reserved da Reserved List. Em catálogos já
     # criados a coluna não existe — acrescenta-se aqui a 0 (o preenchimento vem

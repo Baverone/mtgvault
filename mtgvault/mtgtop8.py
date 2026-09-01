@@ -130,7 +130,11 @@ def parse_event_meta(html: str) -> dict:
     if m:
         d, mth, y = (int(x) for x in m.groups())
         dia = date(2000 + y, mth, d).isoformat()
-    return {"event_name": nome, "event_date": dia}
+    players = None
+    m = re.search(r"(\d+)\s*players", html, re.I)   # peso do evento (mtgtop8 mostra-o)
+    if m:
+        players = int(m.group(1))
+    return {"event_name": nome, "event_date": dia, "players": players}
 
 
 DEC_LINE = re.compile(r"^(SB:\s*)?(\d+)\s+(.+?)\s*$")
@@ -220,6 +224,7 @@ def harvest(con: sqlite3.Connection, fmt: str, max_events: int = 8,
                 cards=cartas, event_name=meta["event_name"] or "",
                 event_date=meta["event_date"] or date.today().isoformat(),
                 player=jogadores.get(did, ""), placement=_bracket(pos),
+                event_players=meta.get("players"),
                 url=f"{BASE}/event?e={eid}&d={did}&f={code}",
             ):
                 novas += 1

@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS decklists (
     archetype_id INTEGER REFERENCES archetypes(id),
     url          TEXT,
     content_hash TEXT,
+    event_players INTEGER,                 -- nº de jogadores (peso do evento)
     fetched_at   TEXT DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (source, source_key)
 );
