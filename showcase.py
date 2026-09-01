@@ -30,7 +30,17 @@ FORMATS = [("standard", "Standard"), ("pioneer", "Pioneer"),
            ("modern", "Modern"), ("legacy", "Legacy")]
 THRESH = 0.5     # Jaccard mínimo p/ duas listas serem o mesmo arquétipo
 WINDOW = 21      # dias: janela de eventos competitivos recentes
-MIN_PLAYERS = 32  # peso mínimo p/ um presencial contar (nº de jogadores, do mtgtop8)
+
+
+def _min_players():
+    """Peso mínimo (nº de jogadores) p/ um presencial contar. Ajustável em
+    colecao_config.json (`showcase_min_players`, default 24)."""
+    try:
+        import json
+        cfg = json.loads((ROOT / "colecao_config.json").read_text(encoding="utf-8"))
+        return int(cfg.get("showcase_min_players") or 24)
+    except Exception:
+        return 24
 # Eventos casuais do mtgtop8 a NÃO incluir (ligas, FNM, etc.).
 _CASUAL = ("League", "FNM", "Trial", "Prelim", "Practice", "Friday", "weekly",
            "semanal", "Duelo", "Mercredi")
@@ -90,7 +100,7 @@ def _lists(con, fmt):
     # Online: Showcase Challenge (MTGO). Presencial: mtgtop8 com peso (>=MIN_PLAYERS
     # jogadores), sem ligas/FNM.
     where_evt = (f"(event_name LIKE '%Showcase Challenge%' "
-                 f"OR (source='mtgtop8' AND event_players >= {MIN_PLAYERS} AND {excl}))")
+                 f"OR (source='mtgtop8' AND event_players >= {_min_players()} AND {excl}))")
     anchor = con.execute(f"SELECT MAX(event_date) d FROM decklists WHERE format=? "
                          f"AND {where_evt}", (fmt,)).fetchone()["d"]
     if not anchor:

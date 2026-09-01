@@ -188,7 +188,7 @@ análise de core.
 | mtgo.com | fonte primária, gratuita |
 | mtgtop8 | acessível, tem export `.dec`; 1 pedido/s, limites baixos por respeito |
 | Scryfall | bulk data, gratuito |
-| **mtgdecks.net** | **bloqueia com deteção de bots.** Não insistas |
+| **mtgdecks.net** | PÁGINAS abrem com `requests` + User-Agent de browser (a deteção reage ao UA, não ao IP) — `mtgvault/mtgdecks.py` tira daí o ÍNDICE de torneios (jogadores/peso/data/nome). MAS as CARTAS das listas são anti-scraped (JS/base64, export a 403): para as cartas usa-se o mtgtop8 (.dec) |
 | **mtggoldfish** | acessível, mas é agregador — duplicaria dados. Termos proíbem reprodução |
 | Moxfield | precisa de User-Agent autorizado pelo suporte; sem isso, 403 |
 | Cardmarket | não se raspa; usa o price guide oficial. O cookie de sessão expira |
