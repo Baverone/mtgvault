@@ -214,6 +214,40 @@ def _consensus_tiers_html(con):
     return out
 
 
+def _value(con):
+    """Valor de TUDO o que o André tem (todas as cópias 'player') em DOIS cenários:
+      'min'   = preço mais BAIXO à venda (Cardmarket `low`)
+      'trend' = preço de TENDÊNCIA (Cardmarket `trend`)
+    Cada um repartido em [coleção, decks, caixa]. Foil cai para nonfoil (e vice-versa)
+    se faltar o preço nesse acabamento; e um cenário cai no outro se faltar."""
+    lo, tr = {}, {}
+    for r in con.execute("SELECT scryfall_id sid, finish, MIN(low) lo, MIN(trend) tr "
+                         "FROM price_latest GROUP BY scryfall_id, finish"):
+        if r["lo"] is not None:
+            lo[(r["sid"], r["finish"])] = r["lo"]
+        if r["tr"] is not None:
+            tr[(r["sid"], r["finish"])] = r["tr"]
+
+    def price(sid, fin, a, b):
+        o = "foil" if fin == "nonfoil" else "nonfoil"
+        return a.get((sid, fin)) or a.get((sid, o)) or b.get((sid, fin)) or b.get((sid, o)) or 0
+
+    grp = {"min": [0.0, 0.0, 0.0], "trend": [0.0, 0.0, 0.0]}   # [coleção, decks, caixa]
+    for r in con.execute("""SELECT cp.scryfall_id sid, cp.finish fin, cp.quantity q,
+                COALESCE(s.name,'') bal FROM copies cp
+                LEFT JOIN sub_collections s ON s.id = cp.sub_collection_id
+               WHERE cp.purpose = 'player'"""):
+        i = (0 if r["bal"] in ("SPML", "Premodern (geral)")
+             else 2 if r["bal"] == "Caixa Reserved List" else 1)
+        grp["min"][i] += price(r["sid"], r["fin"], lo, tr) * r["q"]
+        grp["trend"][i] += price(r["sid"], r["fin"], tr, lo) * r["q"]
+    return grp
+
+
+def _eur(x):
+    return f"{x:,.0f} €".replace(",", " ")
+
+
 def build(con, out_path=None):
     out = Path(out_path) if out_path else (ROOT / "colecao_cor.html")
     # Fase "encher os binders": mostra TUDO o que o André tem nos baldes de
@@ -299,7 +333,22 @@ def build(con, out_path=None):
     cfg_line = (f'🔷 SPML: {fmts} &nbsp;·&nbsp; 🕰️ Premodern: <b>{html.escape(pm_str)}</b>{mont_str}'
                 f'<span class="muted"> — diz-me se mudas de formato ou quando montas um deck</span>')
     today = con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or ""
+
+    val = _value(con)
+    total = sum(val["trend"])   # == sum(val["min"]) enquanto a fonte der um só preço
+
+    def _vrow(lbl, i):
+        return f'<tr><td>{lbl}</td><td>{_eur(val["trend"][i])}</td></tr>'
+    valor_html = (
+        f'<div class="valor"><div class="vtot">💰 <b class="vtr">{_eur(total)}</b> '
+        f'<span class="vall">— valor total de tudo (coleção + decks + caixa), a preço Cardmarket</span></div>'
+        f'<table class="vtab"><tr><th></th><th>valor</th></tr>'
+        f'{_vrow("📚 Coleção", 0)}{_vrow("🃏 Decks", 1)}{_vrow("📦 Caixa RL", 2)}</table>'
+        f'<div class="vnote">Preço Cardmarket por impressão. A fonte atual dá <b>um só valor</b> por carta '
+        f'— o «mínimo» (low) e o «trend» coincidem, por isso mostro um só. (Separá-los precisa de afinar o harvest de preços.)</div></div>')
+
     out.write_text(_TMPL.replace("%SECS%", secs).replace("%VIGIADOS%", wsec)
+                   .replace("%VALOR%", valor_html)
                    .replace("%NAV%", topnav).replace("%TOTAL%", str(total_col))
                    .replace("%DECKN%", str(n_deckbound))
                    .replace("%CFG%", cfg_line).replace("%TODAY%", today), encoding="utf-8")
@@ -346,12 +395,17 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .cfg{font-size:12.5px;margin:2px 0 4px;padding:5px 9px;border-radius:7px;background:#141b26;border:1px solid var(--line)}
  .cfg .muted{color:var(--muted)}
  footer{margin-top:24px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
+ .valor{margin-top:10px;background:#0f1620;border:1px solid #242c38;border-radius:12px;padding:11px 14px}
+ .valor .vtot{font-size:15px} .valor .vmin{color:#4ac585;font-weight:800;font-size:19px} .valor .vtr{color:#e0b64b;font-weight:800;font-size:19px} .valor .vlbl{color:#8b97a6;font-size:11px} .valor .vall{color:#8b97a6;font-size:12px;margin-left:4px}
+ .vtab{border-collapse:collapse;margin:8px 0 3px;font-size:13px} .vtab th{color:#8b97a6;font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;padding:2px 16px 3px 0;text-align:right} .vtab th:first-child{text-align:left} .vtab td{padding:2px 16px 2px 0;text-align:right;font-variant-numeric:tabular-nums} .vtab td:first-child{text-align:left} .vtab td:nth-child(2){color:#4ac585} .vtab td:nth-child(3){color:#e0b64b}
+ .vnote{color:#5a6472;font-size:11px;margin-top:3px}
 </style></head><body><div class="wrap">
 <header><h1>📚 Coleção — organizar e fotografar</h1>
 <div class="sub">TUDO o que tens nos baldes de coleção, por cor→custo de mana · nada removido para decks · enche os binders e fotografa o que não aparecer · dados de %TODAY%</div>
 <nav class="tabs"><a href="index.html">🏠 Início</a><a href="meusdecks.html">🎴 Decks permanentes</a><a href="showcase.html">🎯 Showcase Challenger</a><a class="cur" href="colecao_cor.html">📚 Coleção</a><a href="caixarl.html">📦 Caixa RL</a></nav>
 <div class="tally"><b class="t-col">🔵 %TOTAL% cartas nos binders</b><b class="t-deck">🟢 %DECKN% que vão p/ decks</b><button class="tgl" id="dm" onclick="toggleDM()">🎯 marcar as que vão p/ decks</button></div>
-<div class="cfg">%CFG%</div></header>
+<div class="cfg">%CFG%</div>
+%VALOR%</header>
 <div class="nav">%NAV%</div>
 %SECS%
 %VIGIADOS%
