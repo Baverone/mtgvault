@@ -116,6 +116,8 @@ def _source(notes):
     notes = notes or ""
     if "consenso" in notes:
         return "🧩 consenso"
+    if "manual" in notes:
+        return "🎴 o meu deck"
     if "auto:" in notes:
         p = notes.split()
         return f"🎯 segue {p[2] if len(p) > 2 else '?'}"
@@ -417,13 +419,8 @@ def build(con, out_path=None):
                              JOIN deck_collection dc ON dc.watched_id = ws.watched_id"""):
         for b, nm, q in json.loads(r["cards"]):
             allnames.add(nm.split(" // ")[0])
-    # Decks Mox Opal — do pool competitivo do Showcase (Showcase Challenge +
-    # presenciais); atualiza-se sozinho à medida que chegam eventos novos.
-    import showcase  # deferido: o showcase importa meusdecks, evita ciclo no topo
-    mox = showcase.decks_with_card(con, "Mox Opal", "modern")
-    for _mn, _mc in mox:
-        for m in _mc["members"]:
-            allnames |= set(m["main"]) | set(m["side"])
+    # (Secção "Decks Mox Opal" removida a pedido do André, 2026-09-06: o deck
+    # principal de Modern passou a ser o UW Oswald, em decks_vigiados.)
 
     imgmap = _img_map(con, allnames)
     tm = _type_map(con, allnames)
@@ -462,6 +459,8 @@ def build(con, out_path=None):
             deck["consensus"] = _cloud_consensus(con, {nm for nm, _ in main_items})
             deck["verif"] = today            # o job confirma o Cloud DC todos os dias
             deck["alter"] = ldate or deck["alter"]   # data da lista do McWinSauce seguida
+        if "manual" in (d["notes"] or ""):   # deck meu, registado à mão (sem fonte auto)
+            deck["verif"] = deck["verif"] or today
         by_fmt[d["format"]].append(deck)
     for d in _watched_decks(con, osid, imgmap, owned_names):
         by_fmt[d["format"]].append(d)
@@ -492,17 +491,6 @@ def build(con, out_path=None):
         cards = "".join(_deck_card(d, tm) for d in decks)
         secs += (f'<section id="f-{fmt}"><h2>{html.escape(lbl)} '
                  f'<span class="n">{len(decks)}</span></h2><div class="grid">{cards}</div></section>')
-
-    # Secção Decks Mox Opal (metagame, atualiza sozinho) — renderizada pelo showcase.
-    if mox:
-        moxcards = "".join(showcase._archetype_html(mc, name, tm, owned_names, owned_qty, imgmap)
-                           for name, mc in mox)
-        subnav = '<a href="#mox">🔷 Mox Opal</a>' + subnav
-        secs = (f'<section id="mox"><h2>🔷 Decks Mox Opal <span class="n">{len(mox)}</span></h2>'
-                f'<p style="color:var(--muted);font-size:12px;margin:2px 0 10px">Arquétipos do metagame '
-                f'(Showcase Challenge + presenciais) que jogam Mox Opal — melhor build primeiro, atualiza '
-                f'sozinho. Cartas <b style="color:var(--add)">a cor = tens</b>.</p>'
-                f'<div class="moxgrid">{moxcards}</div></section>') + secs
 
     # Faltas consolidadas: soma as faltas de TODOS os decks permanentes.
     faltas = defaultdict(int)
