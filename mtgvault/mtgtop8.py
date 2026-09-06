@@ -126,10 +126,17 @@ def parse_event_meta(html: str) -> dict:
     if m:
         nome = m.group(1).split("@")[0].strip() or None
     dia = None
-    m = RE_DATE.search(html)
-    if m:
+    for m in RE_DATE.finditer(html):
         d, mth, y = (int(x) for x in m.groups())
-        dia = date(2000 + y, mth, d).isoformat()
+        try:
+            dia = date(2000 + y, mth, d).isoformat()
+        except ValueError:
+            # dd/mm/yy é o formato do mtgtop8, mas o regex apanha qualquer
+            # nn/nn/nn da página. Um número que não é data rebentava aqui, e
+            # como o harvest só protege os pedidos HTTP, a exceção subia e
+            # matava a recolha do FORMATO inteiro por causa de um evento.
+            continue
+        break
     players = None
     m = re.search(r"(\d+)\s*players", html, re.I)   # peso do evento (mtgtop8 mostra-o)
     if m:
