@@ -176,6 +176,13 @@ def main():
             _step(con, f"harvest-papel:{fmt}",
                   lambda fmt=fmt: f"{mtgtop8.harvest(con, fmt, max_events=6)} novas")
 
+        # Classifica os eventos por importância (Showcase/Challenge/League/...).
+        # Tem de correr DEPOIS da recolha: é esta coluna que o metagame usa para
+        # contar só Challenges e Showcases. Enquanto ninguém a escrevia, o
+        # top-10 vinha vazio e o passo da cobertura dizia na mesma "ok".
+        _step(con, "tier-eventos",
+              lambda: f"{sources.backfill_event_tiers(con)} listas classificadas")
+
         # Preços — cada fonte é opcional e salta em silêncio se não estiver
         # configurada. O bulk da Scryfall é a base grátis; Cardmarket e CardTrader
         # enriquecem quando há credenciais.

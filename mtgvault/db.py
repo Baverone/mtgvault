@@ -72,6 +72,13 @@ def _migrate(con: sqlite3.Connection) -> None:
     if "event_players" not in cols:   # nº de jogadores do evento (peso), do mtgtop8
         con.execute("ALTER TABLE decklists ADD COLUMN event_players INTEGER")
         con.commit()
+    # A coluna foi acrescentada à mão ao vault.db em 2026-08-03 e nunca entrou
+    # aqui nem no schema.sql. Resultado: numa base nova as páginas do metagame
+    # rebentavam, e nas antigas as listas novas ficavam com event_tier a NULL —
+    # o top-10 vinha vazio e o passo diário na mesma dizia "ok".
+    if "event_tier" not in cols:
+        con.execute("ALTER TABLE decklists ADD COLUMN event_tier TEXT")
+        con.commit()
 
     # Catálogo (BD anexada): a flag reserved da Reserved List. Em catálogos já
     # criados a coluna não existe — acrescenta-se aqui a 0 (o preenchimento vem

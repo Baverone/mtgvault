@@ -71,6 +71,11 @@ CREATE TABLE IF NOT EXISTS decklists (
     url          TEXT,
     content_hash TEXT,
     event_players INTEGER,                 -- nº de jogadores (peso do evento)
+    -- Importância do evento: Showcase | Challenge | Qualifier | Preliminary |
+    -- League | Presencial | outro. É por esta coluna que o metagame conta só
+    -- Challenges/Showcases (meta_coverage) e que o consenso exclui as Leagues
+    -- (buildable). Preenchida em sources.store_decklist / backfill_event_tiers.
+    event_tier   TEXT,
     fetched_at   TEXT DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (source, source_key)
 );
