@@ -1,11 +1,6 @@
 name: Recolha diária
 
 on:
-  schedule:
-    # 06:00 UTC. O cron do GitHub é best-effort: em horas de pico atrasa,
-    # e ocasionalmente salta execuções. Por isso o harvest recolhe 3 dias
-    # para trás e o preço só grava mudanças — um dia perdido recupera-se.
-    - cron: "0 6 * * *"
   workflow_dispatch:
 
 permissions:
