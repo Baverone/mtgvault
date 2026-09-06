@@ -318,4 +318,9 @@ def movers(con: sqlite3.Connection, days: int = 7, source: str = "cardmarket",
         {"src": source, "days": days},
     ).fetchall()
     rows = [dict(r) for r in rows]
-    return {"up": rows[:limit], "down": list(reversed(rows[-limit:]))}
+    # As duas listas partem-se pelo SINAL da variação, não pelas pontas da
+    # ordenação: com menos de `limit` cartas as duas pontas sobrepõem-se e as
+    # que tinham SUBIDO apareciam também em "A DESCER" (com o pct positivo).
+    subiram = [r for r in rows if (r["delta"] or 0) >= 0]
+    desceram = [r for r in rows if (r["delta"] or 0) < 0]
+    return {"up": subiram[:limit], "down": list(reversed(desceram))[:limit]}
