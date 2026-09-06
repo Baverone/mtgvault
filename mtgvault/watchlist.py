@@ -39,6 +39,20 @@ def _save_snapshot(con, wid: int, cards, url: str = "") -> bool:
     h = list_hash(cards)
     prev = con.execute("SELECT last_hash FROM watched WHERE id = ?", (wid,)).fetchone()
     changed = prev["last_hash"] != h
+    if changed:
+        # Uma lista que VOLTA a uma versão já guardada colide com o UNIQUE
+        # (watched_id, list_hash), e o INSERT OR IGNORE deixava a linha antiga
+        # com a data ANTIGA. Como toda a gente lê a lista atual com
+        # `ORDER BY taken_at DESC, id DESC` (latest_cards, diff, meusdecks,
+        # core_decks, colecao_cor), o site passava a mostrar a versão que já
+        # tinha sido abandonada como se fosse a atual, e o diff vinha ao
+        # contrário. Apaga-se a linha repetida para ela voltar a entrar com a
+        # data (e o id) de hoje. Se nada mudou, não se mexe — evita reescrever
+        # o vault.db todos os dias sem motivo.
+        con.execute(
+            "DELETE FROM watched_snapshots WHERE watched_id = ? AND list_hash = ?",
+            (wid, h),
+        )
     con.execute(
         """INSERT OR IGNORE INTO watched_snapshots
            (watched_id, taken_at, list_hash, source_url, cards)

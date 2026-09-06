@@ -229,6 +229,47 @@ def store_manual(con: sqlite3.Connection, text: str, fmt: str, event: str,
 SOURCE_PRIORITY = {"manual": 4, "mtgo": 3, "mtgtop8": 2, "mtggoldfish": 1}
 
 
+# Importância do evento, gravada em `decklists.event_tier`. O metagame conta só
+# Challenges e Showcases (meta_coverage) e o consenso exclui as Leagues
+# (buildable.NON_PREMIER) — ambos leem esta coluna. Fica aqui, na camada mais
+# baixa, para o mtgo e o mtgtop8 a escreverem da mesma maneira.
+# Ordem: "Showcase Qualifier" é Showcase, não Qualifier.
+def event_tier(source: str, event_name: str = "") -> str:
+    en = (event_name or "").lower()
+    if source == "mtgtop8":      # torneio de papel — o peso vem de event_players
+        return "Presencial"
+    if "showcase" in en:
+        return "Showcase"
+    if "challenge" in en:
+        return "Challenge"
+    if "qualifier" in en:
+        return "Qualifier"
+    if "prelim" in en:
+        return "Preliminary"
+    if "league" in en:
+        return "League"
+    return "outro"
+
+
+def backfill_event_tiers(con: sqlite3.Connection) -> int:
+    """Classifica as listas que ainda têm `event_tier` por preencher.
+
+    Existe porque a coluna andou anos a ser lida sem nunca ser escrita: as
+    páginas do metagame apareciam vazias sem que nada acusasse erro.
+    """
+    rows = con.execute(
+        "SELECT id, source, event_name FROM decklists "
+        "WHERE event_tier IS NULL OR event_tier = ''"
+    ).fetchall()
+    if rows:
+        con.executemany(
+            "UPDATE decklists SET event_tier = ? WHERE id = ?",
+            [(event_tier(r["source"], r["event_name"]), r["id"]) for r in rows],
+        )
+        con.commit()
+    return len(rows)
+
+
 def content_hash(fmt: str, cards: list[tuple[str, str, int]]) -> str:
     """Impressão digital do conteúdo da lista, independente da fonte."""
     payload = fmt.lower() + "|" + "|".join(
@@ -279,10 +320,10 @@ def store_decklist(con: sqlite3.Connection, *, source: str, source_key: str,
     cur = con.execute(
         """INSERT OR IGNORE INTO decklists
            (source, source_key, format, event_name, event_date, player,
-            placement, url, content_hash, event_players)
-           VALUES (?,?,?,?,?,?,?,?,?,?)""",
+            placement, url, content_hash, event_players, event_tier)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
         (source, source_key, fmt, event_name, event_date, player, placement,
-         url, h, event_players),
+         url, h, event_players, event_tier(source, event_name)),
     )
     if not cur.rowcount:
         return None

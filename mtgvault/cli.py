@@ -191,7 +191,12 @@ def main(argv=None):
             cur = con.execute(
                 "INSERT OR IGNORE INTO decks (name, format) VALUES (?,?)",
                 (args.name, args.format.lower()))
-            did = cur.lastrowid or con.execute(
+            # Quando o INSERT é IGNORADO (deck já existe), o lastrowid NÃO fica a
+            # zero: o SQLite devolve o rowid do último insert bem sucedido da
+            # LIGAÇÃO, que pode ser de outra tabela ou de outro deck. Confiar
+            # nele metia as cartas no deck errado. O rowcount é que diz se houve
+            # mesmo inserção.
+            did = cur.lastrowid if cur.rowcount else con.execute(
                 "SELECT id FROM decks WHERE name = ? AND format = ?",
                 (args.name, args.format.lower())).fetchone()["id"]
             rows = []
