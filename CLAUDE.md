@@ -60,13 +60,15 @@ meusdecks.py        meusdecks.html — "Decks vigiados": agora SÓ os 5 fixos de
 metagame.py         metagame.html — "Metagame" (página principal): top-10 por formato (só Challenges/Showcases, 30 dias), cartas a cor=tenho / cinza=falta, wantlist por deck, e "Staples que faltam" por formato ordenadas por preço. Usa meta_coverage.owned_available
 (prioridade.py + metafaltas.py APAGADOS 2026-08-26, a redefinir)
 reservedlist.py     reservedlist.html — Reserved List (Scryfall) x coleção, por edição, preço/evolução, e 'VENDER' as que não jogam em formato nenhum
+caixarl.py          caixarl.html — "Caixa Reserved List": a RL que está fora da coleção jogável
+showcase.py         showcase.html — "Decks Showcase Challenger": eventos competitivos recentes (MTGO + presenciais do mtgtop8) agrupados por arquétipo. Calcula o peso do evento em Python (`_weight`), NÃO pela coluna `event_tier` — é por isso que continuou a dar listas enquanto o metagame vinha vazio
 my_decks.py         segue decks-alvo (por assinatura e por jogador de MTGO) -> tabela decks
 commander_decks.py  decks de comandante por consenso EM CAMADAS: núcleo>=50% (=deck, deck_cards) / flex 25-50% / tech 15-25%; FILTRA pela cor do comandante. `tiers()` reusado pelo colecao_cor
 refresh_collection.py  collection_owned p/ o index.html
 colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao
 ```
-Cada `.html` gerado tem de estar no `git add -f` do workflow (`daily.yml`) e, se
-for página nova, com link no `index.html`.
+Cada `.html` gerado tem de estar na lista do `git add` do workflow (`daily.yml`,
+passo "Guardar HTML") e, se for página nova, com link no `index.html`.
 
 ### Duas bases de dados
 
@@ -81,6 +83,13 @@ isso `SELECT ... FROM cards` funciona na mesma.
 
 **Migrações:** `CREATE TABLE IF NOT EXISTS` não acrescenta colunas a tabelas já
 criadas. Toda a coluna nova tem de entrar também em `db._migrate()`.
+
+Já custou caro uma vez: `decklists.event_tier` foi acrescentada só ao `vault.db`
+(commit 56ffa3f, 2026-08-03), nunca ao `schema.sql` nem ao `_migrate()`, e nada
+a preenchia. As listas novas ficavam a NULL, o top-10 do metagame vinha vazio —
+e o `daily.py` dizia `[ok]` na mesma, porque o passo corria sem erro. **Uma
+coluna que ninguém escreve não dá erro: dá páginas vazias.** Se acrescentares
+uma coluna à mão, mete-a nos três sítios e escreve-a algures.
 
 ## Regras de domínio que não podem partir
 
@@ -141,7 +150,11 @@ André = um balde (`sub_collections`) + uma lista vigiada (`watched`), ligados n
 tabela `deck_collection`. Já ligados: Blue Farm [Primer]→`Blue Farm`, Cloud
 [cEDH]→`Cloud cEDH` (distinto do Cloud de Duel Commander, balde `Cloud`), Luffy —
 Pauper→`Pauper Affinity`. Por ligar: Luffy — Premodern (Stiflenought), Harry1232
-— Legacy. `deck_collection` ainda não é lido por código — é o mapa do modelo.
+— Legacy. `deck_collection` JÁ é lido: `colecao_cor._watched_deck_pools` e
+`meusdecks` (secção dos vigiados + a lista de nomes) juntam-se por ela. Atenção:
+tal como `deck_meta` (lida pelo `webapp.py`), a tabela não está no `schema.sql`
+nem no `db._migrate()` — só existe no `vault.db`, por isso numa base nova estas
+páginas rebentam. Ver o relatório de revisão de 2026-09-06.
 
 **Regras por coleção (`colecao_config.json` → `regras_colecao`).**
 `reter_extras_meses` = **6** (formalizado 2026-08-14) para os decks de
@@ -227,5 +240,7 @@ rede. Se algo vier vazio, é aqui:
 - Não guardes imagens na base de dados. As fotos ficam no disco;
   `copies.photo_path` guarda o caminho.
 - Não gravar preços de todas as cartas do mercado — só as de interesse
-  (`prices.cards_of_interest`), e só quando o valor muda. O `vault.db` vai
-  para o Git e cada commit guarda uma cópia inteira do ficheiro.
+  (`prices.cards_of_interest`), e só quando o valor muda. O `vault.db` já NÃO
+  vai para o Git (está no `.gitignore` desde 2026-08; vive no Release `data`,
+  ver `scripts/`), mas continua a ter de ficar leve: é descarregado e
+  republicado inteiro a cada execução.

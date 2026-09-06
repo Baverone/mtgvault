@@ -27,11 +27,16 @@ Chega correr uma vez por semana. Tudo o resto depende dele: é ele que traz o
 
 | Ficheiro | Conteúdo | Vai para o Git? |
 |---|---|---|
-| `vault.db` | coleção, decks, decklists, preços, watchlist | sim |
+| `vault.db` | coleção, decks, decklists, preços, watchlist | não (Release `data`) |
 | `catalog.db` | catálogo Scryfall (~500 mil impressões) | não |
 
 O catálogo passa dos 100 MB por ficheiro que o GitHub aceita, e é reconstruível
 a qualquer momento — por isso fica de fora e vive na cache do Actions.
+
+O `vault.db` esteve no Git até 2026-08, mas cada commit guardava uma cópia
+inteira do ficheiro e o histórico crescia depressa de mais. Passou a viver num
+Release (tag `data`): o job descarrega-o no início e republica-o no fim, e só o
+HTML gerado é que vai para o repositório. Ver `scripts/`.
 Caminhos: `MTGVAULT_DB`, `MTGVAULT_CATALOG`, ou `--db` / `--catalog`.
 
 ---
@@ -151,9 +156,14 @@ O teu exemplo: carta em 100% das listas, 80% com 3 cópias e 20% com 4.
 Classificação final: `core` se core_copies >= 1; `flex` se aparece em >= 40% das
 listas mas sem cópias garantidas; `tech` para o resto.
 
-O core é sempre relativo à janela de tempo. Como cada execução grava a janela em
-`card_roles`, ao fim de umas semanas consegues ver o núcleo a mexer — uma carta
-que era tech a virar core é um sinal precoce de que o metagame mudou.
+O core é sempre relativo à janela de tempo. Cada execução grava a janela em
+`card_roles`, o que em teoria deixa ver o núcleo a mexer ao longo das semanas —
+uma carta que era tech a virar core é um sinal precoce de que o metagame mudou.
+
+**Na prática isso não acontece hoje:** o passo `podar-card-roles` do `daily.py`
+apaga todas as janelas menos a mais recente, para o `vault.db` não crescer. O
+`analysis.trend()` devolve por isso sempre uma linha só. Se quiseres a evolução
+de volta, é preciso guardar uma janela por semana (ou por mês) em vez de zero.
 
 `gap 3` diz-te o que te falta para montar o núcleo desse arquétipo.
 Com `--flex` inclui também as cópias flexíveis.
@@ -393,8 +403,12 @@ Variáveis opcionais: `CARDTRADER_TOKEN`, `CARDTRADER_SETS` (ex. `mh3,otj,blb`),
 
 ## Correr online (GitHub Actions)
 
-O `.github/workflows/daily.yml` corre tudo às 06:00 UTC sem precisares do PC
-ligado. <cite>No plano Free, repositórios privados têm 2.000 minutos Linux por mês</cite>;
+O `.github/workflows/daily.yml` faz o mesmo trabalho num runner do GitHub.
+**Desde 2026-09 o job diário corre no PC** (Agendador de Tarefas) e o workflow
+ficou só com `workflow_dispatch` — ou seja, já não há agendamento automático na
+cloud: corre-se à mão em Actions → Recolha diária → Run workflow. Se quiseres o
+agendamento de volta, acrescenta um `schedule:` ao `on:`.
+<cite>No plano Free, repositórios privados têm 2.000 minutos Linux por mês</cite>;
 um job de ~5 minutos por dia gasta cerca de 150.
 
 **Repositório privado.** A tua coleção e o que ela vale não têm de ser públicos.
@@ -435,17 +449,21 @@ expirar, o passo falha, aparece no resumo, e tu geras um cookie novo. Falha em
 silêncio de propósito: é melhor ficar um dia sem preços do que perder a recolha
 de decklists.
 
-**3. O repositório cresce.** Cada commit diário guarda uma cópia inteira do
-`vault.db` — o Git não faz deltas úteis em ficheiros binários. Sem cuidado, um
-`vault.db` de 5 MB dá quase 2 GB de histórico ao fim de um ano.
+**3. O `vault.db` cresce.** Já não vai para o Git (vive no Release `data`), mas
+é descarregado e republicado inteiro a cada execução, por isso continua a
+interessar que seja pequeno.
 
-Duas defesas já implementadas:
+Defesas já implementadas:
 
 - **Preços só das cartas que interessam** (coleção, decks, vigiados, cores dos
   arquétipos), em vez do mercado inteiro.
-- **`prune` diário**: apaga decklists com mais de 180 dias, mantendo a tabela
-  `card_roles`. Perdes a lista do jogador X em março; mantens a evolução do
-  metagame em março, que é o que realmente querias.
+- **`prune` diário**: o `daily.py` apaga decklists com mais de **30** dias
+  (`analysis.prune_decklists(con, 30)`) — o valor por omissão do comando
+  `prune` continua a ser 180, mas quem manda no dia-a-dia é o `daily.py`.
+- **`podar-precos`**: histórico de preços com mais de 30 dias.
+- **`podar-card-roles`**: fica só a janela mais recente. Atenção — é isto que
+  torna o `analysis.trend()` inútil na prática (ver abaixo): não há histórico de
+  janelas para comparar.
 
 ```bat
 python -m mtgvault.cli prune --days 365      :: se quiseres guardar mais
@@ -465,6 +483,21 @@ python test_analysis.py      :: matemática do core/tech (inclui o exemplo 80/20
 python test_integration.py   :: coleção + metagame falsos, sistema todo
 python test_prices.py        :: recolha seletiva e gravação só de mudanças
 python test_watchlist.py     :: vigiados, diffs, listas padrão, cobertura
+python test_dedupe.py        :: a mesma lista de duas fontes não conta duas vezes
+python test_sources.py       :: parsing das páginas do mtgo.com
+python test_event_tier.py    :: a coluna de que o metagame depende
+python test_watch_revert.py  :: voltar a uma lista anterior não baralha o "atual"
+python test_reserve.py       :: reservas por deck (e o colecionador fora delas)
+python test_movers.py        :: subidas e descidas não se misturam
+python test_cli_deck.py      :: deck-add repetido escreve no deck certo
+python test_mtgtop8_meta.py  :: uma data estragada não mata a recolha
+```
+
+Ou a bateria toda de uma vez:
+
+```bat
+cd tests
+for %f in (test_*.py) do python "%f"
 ```
 
 Nenhum deles toca na rede.
