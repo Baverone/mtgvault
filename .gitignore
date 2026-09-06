@@ -34,3 +34,7 @@ pendentes/**/*.png
 pendentes/**/*.heic
 pendentes/**/*.webp
 pendentes/**/*.gif
+
+# backups diarios da BD feitos pelo ai-pc (mtgvault-daily / mtg-fotos)
+data/backups/
+data/vault.db.download
