@@ -203,12 +203,19 @@ def reserve_for_deck(con: sqlite3.Connection, deck_id: int) -> dict:
                 falta = 0
     con.commit()
 
-    em_falta = {n: q - reservado.get(n, 0) for n, q in need.items()
-                if q - (con.execute(
-                    """SELECT COALESCE(SUM(cp.quantity),0) q FROM copies cp
-                         JOIN cards c ON c.scryfall_id = cp.scryfall_id
-                        WHERE c.name = ? AND cp.reserved_deck_id = ?""",
-                    (n, deck_id)).fetchone()["q"]) > 0}
+    # O que falta é sempre "o que o deck pede menos o que ESTÁ reservado a ele",
+    # não "menos o que reservei agora": numa segunda passagem (o deck já tinha
+    # cartas dedicadas de uma reserva anterior) só se reserva o delta, e contar
+    # apenas esse delta inflacionava o que faltava.
+    em_falta = {}
+    for n, q in need.items():
+        ja = con.execute(
+            """SELECT COALESCE(SUM(cp.quantity),0) q FROM copies cp
+                 JOIN cards c ON c.scryfall_id = cp.scryfall_id
+                WHERE c.name = ? AND cp.reserved_deck_id = ?""",
+            (n, deck_id)).fetchone()["q"]
+        if q > ja:
+            em_falta[n] = q - ja
     return {"reserved": reservado, "still_missing": em_falta}
 
 
