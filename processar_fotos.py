@@ -6,17 +6,25 @@ FLUXO para catalogar de qualquer lado (telemóvel incluído, sem PC):
     repositório Baverone/mtgvault — OLHA para as fotos de `pendentes/`, reconhece
     as cartas (regras em PROCESSAR_FOTOS.md) e escreve um CSV.
  3. Corre:  py processar_fotos.py <csv>
-    Este script: garante o catálogo (reconstrói da Scryfall se preciso), baixa o
-    set_code para minúsculas, importa para o vault.db, remove as fotos já
-    catalogadas de `pendentes/`, e faz commit + push. O site atualiza-se sozinho.
+    Este script: garante o catálogo, PUXA a BD mais recente do Release (para não
+    perder o harvest/preços do job diário), importa para o vault.db, PUBLICA a BD
+    de volta no Release (db_push), e arruma SÓ as fotos deste CSV para
+    `pendentes/fotos processadas/`. O site atualiza-se no próximo job diário
+    (regenera as páginas com a BD nova).
 
 O RECONHECIMENTO é sempre um Claude a olhar para as fotos — o script só faz a
-parte mecânica (importar + arrumar + push).
+parte mecânica (importar + publicar a BD + arrumar as fotos).
+
+NOTA (2026-09-06): a `vault.db` vive num GitHub Release (tag `data`), NUNCA no
+Git. Por isso este script usa `scripts/db_pull.sh` + `scripts/db_push.sh` e
+**não** faz `git add` da BD. Puxar antes de importar é obrigatório: o job diário
+junta harvest/preços na cloud, e um push sem pull apagaria esse trabalho.
 """
 from __future__ import annotations
 
 import csv as _csv
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -28,6 +36,7 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 from mtgvault import collection, db, scryfall  # noqa: E402
 
 PEND = ROOT / "pendentes"
+PROCESSED = PEND / "fotos processadas"
 IMG_EXT = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"}
 
 
@@ -41,12 +50,13 @@ def _ensure_catalog(con):
 
 
 def _normalize(src):
-    """Baixa o set_code para minúsculas (o catálogo é minúsculo). O
-    collector_number fica como está (ex.: The List 'plst #UGL-84')."""
+    """Baixa o set_code para minúsculas (o catálogo é minúsculo); o
+    collector_number fica como está (ex.: The List 'plst #UGL-84'). Devolve
+    (caminho_do_csv_normalizado, rows)."""
     with open(src, newline="", encoding="utf-8-sig") as fh:
         rows = list(_csv.DictReader(fh))
     if not rows:
-        return src, 0
+        return src, []
     for r in rows:
         if r.get("set_code"):
             r["set_code"] = r["set_code"].strip().lower()
@@ -56,40 +66,56 @@ def _normalize(src):
     w.writeheader()
     w.writerows(rows)
     tmp.close()
-    return tmp.name, len(rows)
+    return tmp.name, rows
 
 
-def _git(*args, check=True):
-    return subprocess.run(["git", *args], cwd=ROOT, check=check)
+def _sh(script_name):
+    """Corre um script de scripts/ (db_pull.sh / db_push.sh) com o bash do Git."""
+    return subprocess.run(["bash", str(ROOT / "scripts" / script_name)], cwd=ROOT)
 
 
 def main(csv_path):
+    rows_photos = []
+    # 1. Puxar a BD mais recente do Release ANTES de importar (não perder o
+    #    harvest/preços que o job diário já juntou). Sem isto, o db_push a seguir
+    #    (last-write-wins) apagaria esse trabalho.
+    print("A puxar a BD mais recente do Release...")
+    if _sh("db_pull.sh").returncode != 0:
+        sys.exit("db_pull falhou — abortado (não mexo na BD sem a versão atual).")
+
+    # 2. Importar as cartas do CSV para o vault.db.
     with db.session() as con:
         print(_ensure_catalog(con))
-        norm, n = _normalize(csv_path)
+        norm, rows = _normalize(csv_path)
+        rows_photos = [r.get("photo_path", "").strip() for r in rows
+                       if r.get("photo_path", "").strip()]
         ok, errs = collection.import_csv(con, norm)
         con.commit()
-    print(f"{ok}/{n} linhas importadas.")
+    total = len(rows)
+    print(f"{ok}/{total} linhas importadas.")
     for e in errs[:20]:
         print("  [erro]", e)
+    if not ok:
+        sys.exit("nada importado — não publico a BD.")
 
-    # limpar as fotos já catalogadas de pendentes/ (mantém o repositório leve)
-    fotos = [p for p in PEND.glob("*") if p.suffix.lower() in IMG_EXT] if PEND.exists() else []
-    for p in fotos:
-        rel = str(p.relative_to(ROOT))
-        if _git("rm", "-q", rel, check=False).returncode != 0:
-            p.unlink(missing_ok=True)
+    # 3. Publicar a BD no Release (NUNCA git add da BD — vive no Release).
+    print("A publicar a BD no Release...")
+    if _sh("db_push.sh").returncode != 0:
+        sys.exit("db_push falhou — as cartas estão na BD local mas não foram "
+                 "publicadas. Corre scripts/db_push.sh à mão quando puderes.")
 
-    # commit + push (o job diário/site atualizam sozinhos)
-    _git("config", "user.name", "mtgvault fotos", check=False)
-    _git("config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com", check=False)
-    _git("add", "-f", "data/vault.db")
-    if _git("diff", "--cached", "--quiet", check=False).returncode != 0:
-        _git("commit", "-m", f"fotos: +{ok} cartas ({len(fotos)} fotos processadas)")
-        _git("push")
-        print(f"commit + push feitos ({len(fotos)} fotos limpas de pendentes/).")
-    else:
-        print("sem alterações para gravar.")
+    # 4. Arrumar SÓ as fotos deste CSV para 'fotos processadas' (as outras fotos
+    #    de pendentes/ podem ainda estar por catalogar — não lhes tocar).
+    PROCESSED.mkdir(parents=True, exist_ok=True)
+    moved = 0
+    for name in dict.fromkeys(rows_photos):        # únicas, ordem preservada
+        src = PEND / name
+        if src.suffix.lower() in IMG_EXT and src.exists():
+            shutil.move(str(src), str(PROCESSED / name))
+            moved += 1
+    print(f"Feito: {ok} cartas importadas, BD publicada no Release, "
+          f"{moved} fotos arrumadas para 'fotos processadas'.")
+    print("O site atualiza no próximo job diário (regenera as páginas com a BD nova).")
 
 
 if __name__ == "__main__":
