@@ -738,6 +738,44 @@ def caso_ja_arrumei_persiste_e_o_plano_esvazia():
     print("guardar a arrumacao esvazia o plano e nao duplica linhas")
 
 
+def caso_arrumar_nao_transforma_ir_buscar_em_compra():
+    """A regra que quase se perdeu: uma cópia sleevada NOUTRA caixa continua a
+    ser *"em &lt;caixa&gt;"*, não uma compra.
+
+    Depois de confirmar a arrumação, a alocação tem de dar exactamente o mesmo —
+    senão o "já arrumei tudo" fazia o custo de fechar subir 1 200 € só por ele
+    ter arrumado as cartas. E a cópia que está dentro de uma caixa não pode ser
+    tirada de lá por um slot que corra ANTES: a ordem da alocação, sozinha, não
+    chega para isso.
+    """
+    con = base()
+    deck(con, "Prem", "premodern", [("Swords to Plowshares", 2)])
+    deck(con, "Ench", "premodern", [("Swords to Plowshares", 2)])
+    add(con, "Swords to Plowshares", 2, lang="pt", sub="Colecção")
+    slots = [slot("Prem", "premodern", "Prem", prioridade=1, baldes=["Colecção"]),
+             slot("Ench", "premodern", "Ench", prioridade=2, baldes=["Colecção"])]
+    antes = por_nome(loadout.report(con, slots))
+    assert antes["Prem"]["tenho"] == 2 and antes["Ench"]["tenho"] == 0
+    assert antes["Ench"]["comprar"] == 0, antes["Ench"]["comprar"]
+    assert antes["Ench"]["missing"][0]["noutra"] == {"Prem": 2}
+
+    loadout.guardar_arrumacao(con, loadout.report(con, slots))
+    depois = por_nome(loadout.report(con, slots))
+    assert depois["Prem"]["tenho"] == 2, depois["Prem"]["tenho"]
+    assert depois["Ench"]["comprar"] == 0, depois["Ench"]["comprar"]
+    assert depois["Ench"]["missing"][0]["noutra"] == {"Prem": 2}, \
+        depois["Ench"]["missing"][0]["noutra"]
+    # E não é um substituto: é ir buscar.
+    assert not depois["Ench"]["subs"], depois["Ench"]["subs"]
+
+    # A caixa que corre PRIMEIRO não pode roubar o que está dentro da segunda.
+    trocado = [dict(slots[0], prioridade=5), dict(slots[1], prioridade=1)]
+    virado = por_nome(loadout.report(con, trocado))
+    assert virado["Prem"]["tenho"] == 2, virado["Prem"]["tenho"]
+    assert virado["Ench"]["tenho"] == 0 and virado["Ench"]["comprar"] == 0
+    print("confirmar a arrumacao nao transforma 'ir buscar' em compra")
+
+
 def caso_carta_na_caixa_escapa_as_regras_de_material():
     """A irmã da excepção do balde, no modelo novo: uma cópia JÁ ARRUMADA na
     caixa deste deck escapa às regras de material — senão uma regra nova
@@ -799,6 +837,7 @@ def run():
                caso_candidato_promovido_a_permanente_recebe,
                caso_arrumacao_diz_de_onde_tirar_e_para_onde_vai,
                caso_ja_arrumei_persiste_e_o_plano_esvazia,
+               caso_arrumar_nao_transforma_ir_buscar_em_compra,
                caso_carta_na_caixa_escapa_as_regras_de_material,
                caso_lote_partido_entre_caixa_e_gaveta):
         fn()

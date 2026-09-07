@@ -586,6 +586,22 @@ def _deck_ids(con, slots) -> dict[str, int | None]:
     return out
 
 
+def _noutra_caixa(lot: dict, s: dict) -> bool:
+    """A cópia está DENTRO da caixa de outro deck, já montada.
+
+    Não se aloca (de um deck montado não se tira nada para montar outro), mas
+    também **não é falta**: é ir buscá-la, e é isso que a torna diferente do
+    `_fora_de_vista`. É a versão nova da regra que os baldes dos decks faziam —
+    a caixa deixou de ser um balde e passou a ser a arrumação confirmada.
+
+    A ordem da alocação não chega para isto. O argumento que valia até aqui ("o
+    que falta a S foi levado por um slot que corre ANTES") deixa de valer quando
+    uma cópia já está numa caixa que corre DEPOIS: sem esta regra, um slot de
+    Premodern — que corre primeiro — tirava-a de dentro de um deck montado.
+    """
+    return bool(lot.get("caixa")) and lot["caixa"] != s.get("slot")
+
+
 def _fora_de_vista(lot: dict, s: dict) -> bool:
     """Cópias que este slot nem VÊ — nem para alocar, nem como substituto.
 
@@ -606,11 +622,6 @@ def _fora_de_vista(lot: dict, s: dict) -> bool:
     if not s.get("estrita"):
         return False
     if s.get("lingua") and lot["lang"] != s["lingua"]:
-        return True
-    # Já está DENTRO da caixa de outro deck montado. É a mesma ideia dos
-    # `baldes` (de uma caixa montada não se tira nada para montar outra), mas no
-    # modelo de colecção única a caixa já não é um balde — é a alocação.
-    if lot.get("caixa") and lot["caixa"] != s.get("slot"):
         return True
     baldes = s.get("baldes")
     return bool(baldes) and lot["sub"] not in set(baldes) | {s.get("balde")}
@@ -714,6 +725,9 @@ def _estado_carta(pool: dict, s: dict, nm: str, need: int, baldes: set[str],
             continue
         if _fora_de_vista(lot, s) or _porque_nao(lot, s, baldes, caixas):
             continue
+        if _noutra_caixa(lot, s):
+            onde[lot["caixa_nome"]] += lot["q"]     # está sleevada noutra caixa
+            continue
         livre += lot["livre"]
         for caixa, q in lot["alocado"].items():
             if caixa != s.get("nome"):
@@ -811,6 +825,8 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                     continue
                 if lot["rdid"] is not None and lot["rdid"] != did:
                     continue              # dedicada a outro deck (regra de domínio)
+                if _noutra_caixa(lot, s):
+                    continue              # está sleevada dentro de outra caixa
                 if _fora_de_vista(lot, s) or _porque_nao(lot, s, baldes, caixas):
                     continue
                 take = min(lot["livre"], falta)
@@ -843,7 +859,12 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                         continue
                     if _fora_de_vista(lot, s) or _porque_nao(lot, s, baldes, caixas):
                         continue
-                    for outro, q in lot["alocado"].items():
+                    # Uma cópia já SLEEVADA noutra caixa é dessa caixa por
+                    # inteiro, tenha essa caixa corrido antes ou depois desta —
+                    # é a razão de o `alocado` não chegar aqui.
+                    donos = ([(lot["caixa_nome"], lot["q"])] if _noutra_caixa(lot, s)
+                             else list(lot["alocado"].items()))
+                    for outro, q in donos:
                         if outro == s["nome"] or resta <= 0:
                             continue
                         disponivel = q - reclamado[(lot["key"], outro)]
@@ -860,8 +881,10 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                 for lot in cands:
                     if lot["livre"] <= 0 or (lot["rdid"] is not None and lot["rdid"] != did):
                         continue
-                    if _fora_de_vista(lot, s):
-                        continue      # a Caixa RL não existe para o Premodern
+                    if _fora_de_vista(lot, s) or _noutra_caixa(lot, s):
+                        continue      # a Caixa RL não existe para o Premodern; e
+                                      # o que está noutra caixa é "ir buscar",
+                                      # não "tenho a carta errada"
                     razao = _porque_nao(lot, s, baldes, caixas)
                     if razao:
                         alt[razao] += lot["livre"]
@@ -1011,6 +1034,15 @@ def sell_list(con, res: dict) -> dict:
     cmd_need: dict[tuple[str, str], int] = defaultdict(int)
     # `grupo -> meses de retenção`, pela mesma dupla chave.
     reter_grupo: dict[str, int] = {}
+    # As caixas que contam como um GRUPO à parte no playset — as de deck, as
+    # mesmas que os baldes `caixas_de_deck` sempre foram. Uma caixa de Premodern
+    # ou de Modern NÃO entra aqui: essas cartas são colecção arrumada num deck e
+    # partilham o limite de 4 com tudo o resto. Sem esta distinção, confirmar a
+    # arrumação dava a cada caixa um playset próprio e a lista de venda encolhia
+    # de 91 cópias para 54 sem ninguém pedir — é a mesma armadilha do "4 por
+    # balde" que o playset da colecção inteira veio corrigir.
+    grupos_proprios = {s["slot"] for s in res["slots"]
+                       if s.get("balde") and s["balde"] in caixas}
     for s in res["slots"]:
         if s.get("balde") and s["balde"] in retidos_baldes:
             reter_grupo[s["slot"]] = retidos_baldes[s["balde"]]
@@ -1034,8 +1066,9 @@ def sell_list(con, res: dict) -> dict:
         # deck, e a lista de venda encolhia sem ninguém pedir.
         grupos: dict[str, list[dict]] = defaultdict(list)
         for lot in ls:
-            grupos[lot.get("caixa")
-                   or (lot["sub"] if lot["sub"] in caixas else "")].append(lot)
+            caixa = lot.get("caixa")
+            grupos[caixa if caixa in grupos_proprios
+                   else (lot["sub"] if lot["sub"] in caixas else "")].append(lot)
         for grupo, lotes in grupos.items():
             if sum(l["livre"] for l in lotes) <= 0:
                 continue
