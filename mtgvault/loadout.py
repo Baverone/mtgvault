@@ -110,6 +110,45 @@ por vários slots, e aí a regra manda.
 O Pauper não tem regra de baldes: já via o `SPML` e é de lá que vêm os quatro
 Utrom Monitor. O que mudou para ele foi passar a gastar as foil primeiro.
 
+CAIXAS DEDICADAS (André, 2026-09-07 às 19:00, à letra)
+------------------------------------------------------
+  *"Cada deck montado deixa de partilhar cartas com outros decks nos formatos:
+  pauper, CDEH e premodern."*
+  *"O que eu quero é conseguir organizar os decks dentro das caixas e apenas
+  mexer para actualizar, logo vou precisar de múltiplos para os decks de
+  premodern."*
+
+`regras_por_formato[].dedicado` (com override por caixa, como todas as outras
+chaves de material). Uma caixa DEDICADA:
+
+  * **não vai buscar** — nunca mostra `noutra` a apontar para outra caixa de
+    deck: o que não conseguiu alocar da `Colecção`/`Caixa RL (PT)` é COMPRA;
+  * **não empresta** — as cópias que ela alocou nunca aparecem como `noutra` de
+    mais ninguém: quem as queria compra as suas;
+  * **compra sozinha** — implica o `compras_dedicadas`, por isso fica fora da
+    partilha de compras (`partilhar_compras`). É o *"vou precisar de múltiplos"*.
+
+O que NÃO muda: a alocação em si. As cópias que ele tem continuam a ser
+repartidas pela ordem de sempre (grupo > permanente > vigiado > prioridade), e a
+`Caixa RL (PT)` continua a alimentar o Premodern. Uma cópia da colecção que uma
+caixa dedicada leve não se compra outra vez — isso é a colecção a ser repartida,
+não uma partilha entre caixas.
+
+Ficam com a partilha (o `noutra` e as compras partilhadas da v4) só o **Duel
+Commander** e o **SPML** (Standard, Pioneer, Modern, Legacy).
+
+CAIXA CONGELADA: montada é para ficar montada
+---------------------------------------------
+*"Apenas mexer para actualizar."* Uma caixa dedicada e `montado: true` está
+CONGELADA (`congelada`): as cópias que estão lá dentro (`copy_allocation`) ficam
+presas, ninguém as realoca e a venda não lhes toca — mesmo que a lista de hoje já
+não as peça. Se a lista vigiada mudar (o Luffy actualiza o Pauper), a caixa
+continua montada com a lista antiga e a diferença aparece à parte, como um
+**delta de actualização** (`res["actualizacoes"][slot]` = o que sai e o que
+entra). Só se aplica quando ele carregar em *"actualizei"* no modo edição
+(`actualizar_caixa`); o *"já arrumei tudo"* geral deixa as caixas congeladas
+exactamente como estão.
+
 Sem rede e sem efeitos colaterais: lê o `vault.db` e devolve números.
 """
 from __future__ import annotations
@@ -174,25 +213,29 @@ BASICS = {"Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes",
 #                   VISTA (falta a comprar) em vez de substituto. É a diferença
 #                   entre "decide se abres excepção" e "já decidi que não abro":
 #                   *"O Premodern só usa em PT, mesmo eu tendo a carta em inglês."*
+#   `dedicado`    — a caixa NÃO EMPRESTA nem VAI BUSCAR cópias a outras caixas de
+#                   deck (ver `dedicadas` e `congelada`). André, 2026-09-07,
+#                   19:00: *"cada deck montado deixa de partilhar cartas com
+#                   outros decks nos formatos: pauper, CDEH e premodern"*.
 REGRAS_FORMATO = [
-    {"grupo": "premodern", "formatos": ["premodern"],
+    {"grupo": "premodern", "formatos": ["premodern"], "dedicado": True,
      "lingua": "pt", "edicoes": "premodern", "estrita": True,
      # A `Colecção` é o balde único de depois da migração; os outros dois são os
      # de antes dela. A lista tem os três para o mesmo código estar certo nas
      # duas bases — o que decide o que a caixa NÃO vê é agora, sobretudo, estar
      # dentro de outra deckbox (`_fora_de_vista`).
      "baldes": [BALDE_COLECCAO, "Premodern (geral)", "SPML", BALDE_RL]},
-    {"grupo": "cedh", "formatos": ["cedh"],
+    {"grupo": "cedh", "formatos": ["cedh"], "dedicado": True,
      "lingua": "en", "acabamento": "nonfoil"},
     {"grupo": "duel-commander", "formatos": ["duel-commander"],
      "acabamento": "foil"},
-    {"grupo": "pauper", "formatos": ["pauper"],
+    {"grupo": "pauper", "formatos": ["pauper"], "dedicado": True,
      "acabamento": "prefere_foil"},
     {"grupo": "spml", "formatos": ["standard", "pioneer", "modern", "legacy"],
      "lingua": "en", "acabamento": "foil"},
 ]
 # As chaves de uma regra que se copiam para o slot (as outras são só arrumação).
-CHAVES_REGRA = ("lingua", "acabamento", "edicoes", "baldes", "estrita")
+CHAVES_REGRA = ("lingua", "acabamento", "edicoes", "baldes", "estrita", "dedicado")
 
 
 def _front(name: str) -> str:
@@ -302,6 +345,26 @@ def regra_do_formato(fmt: str | None,
     return len(regras), {}
 
 
+def dedicadas(slots) -> set[str]:
+    """Os NOMES das caixas dedicadas — as que não emprestam nem vão buscar.
+
+    Por nome e não por slot porque é o nome que viaja no `noutra` ({caixa:
+    quantas}) e no `lot["caixa_nome"]`, que é o que as páginas mostram.
+    """
+    return {s["nome"] for s in slots if s.get("dedicado") and s.get("nome")}
+
+
+def congelada(s: dict) -> bool:
+    """A caixa está montada e é dedicada: não se lhe mexe sem ser para actualizar.
+
+    André, 2026-09-07: *"o que eu quero é conseguir organizar os decks dentro das
+    caixas e apenas mexer para actualizar"*. As cópias que estão lá dentro ficam
+    presas mesmo que a lista de hoje já não as peça — a caixa continua montada
+    com a lista antiga, e a diferença sai como delta de actualização.
+    """
+    return bool(s.get("dedicado") and s.get("montado"))
+
+
 def e_foil(finish: str | None) -> bool:
     """A cópia é foil? É `finish in FOIL_FINISHES` e mais nada — existe como
     função porque as páginas escreviam este teste à mão com `"foil" in finish`,
@@ -371,6 +434,12 @@ def rotulo_material(s: dict) -> list[tuple[str, str, str]]:
         out.append(("✨", "foil quando há, senão nonfoil", "fo"))
     if s.get("edicoes") == "premodern":
         out.append(("🕰", "só edições até ao Scourge", ""))
+    if s.get("dedicado"):
+        # Uma regra que a página não diz é a página a mentir em silêncio — e esta
+        # muda o preço de fechar a caixa, por isso tem de estar à vista.
+        out.append(("🔒", "caixa dedicada: não empresta nem vai buscar"
+                    + (" · montada, só mexe para actualizar" if s.get("montado")
+                       else ""), "ded"))
     fontes = fontes_material(s)
     if fontes:
         out.append(("🗂️", fontes, ""))
@@ -562,6 +631,12 @@ def resolve_slots(con, cfg_slots: list[dict] | None = None) -> list[dict]:
         # que as catorze caixas do loadout eram antes de a distinção existir, e
         # um default a `False` esvaziava a alocação de quem não a escrevesse.
         s["permanente"] = bool(s.get("permanente", True))
+        # `dedicado` chega aqui pela regra do grupo (ver `CHAVES_REGRA`) ou
+        # escrito no próprio slot. Normaliza-se para as páginas não terem de
+        # distinguir `False` de "a chave não existe".
+        s["dedicado"] = bool(s.get("dedicado"))
+        s["montado"] = bool(s.get("montado"))
+        s["congelada"] = congelada(s)
         cards, nota = _slot_cards(con, s)
         so_de: dict[str, set[str]] = defaultdict(set)
         variantes = list(s.get("variantes") or [])
@@ -814,9 +889,21 @@ def _linha_cheia(linha: dict) -> dict:
     return linha
 
 
+def _empresta(s: dict, outra: str, ded: set[str] | frozenset) -> bool:
+    """A caixa `outra` pode emprestar a cópia ao slot `s`? (o "ir buscar")
+
+    Duas metades da mesma regra de 2026-09-07 (*"cada deck montado deixa de
+    partilhar cartas com outros decks"*): uma caixa dedicada **não vai buscar**
+    (é `s`) e **não empresta** (é `outra`). Quando não empresta, a carta volta a
+    ser o que era antes do `noutra`: uma FALTA a comprar.
+    """
+    return not (s.get("dedicado") or outra in ded)
+
+
 def _estado_carta(pool: dict, s: dict, nm: str, need: int, baldes: set[str],
                   did: int | None = None,
-                  caixas: set[str] | frozenset = frozenset()) -> dict:
+                  caixas: set[str] | frozenset = frozenset(),
+                  ded: set[str] | frozenset = frozenset()) -> dict:
     """Quantas cópias que SERVEM este slot estão livres, e quantas estão noutra caixa.
 
     É a versão que NÃO consome: serve quem faz a pergunta "e se fosse este
@@ -835,11 +922,12 @@ def _estado_carta(pool: dict, s: dict, nm: str, need: int, baldes: set[str],
         if _fora_de_vista(lot, s) or _porque_nao(lot, s, baldes, caixas):
             continue
         if _noutra_caixa(lot, s):
-            onde[lot["caixa_nome"]] += lot["q"]     # está sleevada noutra caixa
+            if _empresta(s, lot["caixa_nome"], ded):
+                onde[lot["caixa_nome"]] += lot["q"]  # está sleevada noutra caixa
             continue
         livre += lot["livre"]
         for caixa, q in lot["alocado"].items():
-            if caixa != s.get("nome"):
+            if caixa != s.get("nome") and _empresta(s, caixa, ded):
                 onde[caixa] += q
     got = min(need, livre)
     resta = need - got
@@ -961,9 +1049,13 @@ def partilhar_compras(slots: list[dict]) -> list[dict]:
     grupos: dict[tuple, list[dict]] = defaultdict(list)
     for s in slots:
         chave = pools.get(s["slot"])
-        # Uma caixa dedicada é o seu próprio grupo: nunca chega aos dois membros
-        # que a partilha exige, e por isso sai daqui intacta.
-        dedicada = (s["slot"],) if s.get("compras_dedicadas") else ()
+        # Uma caixa de compras dedicadas é o seu próprio grupo: nunca chega aos
+        # dois membros que a partilha exige, e por isso sai daqui intacta. Uma
+        # caixa `dedicado` implica-o — *"vou precisar de múltiplos para os decks
+        # de premodern"* (André, 2026-09-07, 19:00): se não empresta nem vai
+        # buscar, também não pode contar com uma compra de outra caixa.
+        dedicada = ((s["slot"],)
+                    if s.get("compras_dedicadas") or s.get("dedicado") else ())
         por_carta: dict[str, list[dict]] = defaultdict(list)
         for m in s.get("missing") or []:
             if m["comprar"] > 0:
@@ -1053,6 +1145,8 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
     # As caixas que SÃO um deck montado: só nessas é que a cópia lá dentro
     # escapa às regras de material (ver `_porque_nao`).
     caixas = caixas_de_deck(slots)
+    # As caixas que não emprestam nem vão buscar (Pauper, cEDH, Premodern).
+    ded = dedicadas(slots)
     pedido: dict[str, int] = defaultdict(int)
     # carta -> [(slot, quanto pediu, quanto levou)], para o detalhe do conflito
     disputa: dict[str, list[dict]] = defaultdict(list)
@@ -1133,6 +1227,13 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                     for outro, q in donos:
                         if outro == s["nome"] or resta <= 0:
                             continue
+                        # CAIXAS DEDICADAS (2026-09-07, 19:00): uma caixa
+                        # dedicada não vai buscar nem empresta. Sem esta linha o
+                        # Enchantress continuava a dizer "vai buscar os 3
+                        # Brushland ao UW Replenish" — e ele quer os decks
+                        # montados ao mesmo tempo, não emprestados.
+                        if not _empresta(s, outro, ded):
+                            continue
                         disponivel = q - reclamado[(lot["key"], outro)]
                         if disponivel <= 0:
                             continue
@@ -1181,9 +1282,33 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                     subs.append(linha)
             else:
                 have.append(_linha_cheia(linha))
+        # CAIXA CONGELADA (André, 2026-09-07: *"apenas mexer para actualizar"*).
+        # As cópias que estão fisicamente nesta caixa e que a lista de HOJE já
+        # não pede ficam PRESAS: não voltam à gaveta, não são realocadas e não
+        # entram na venda. É o que faz a caixa continuar montada com a lista
+        # antiga quando o Luffy troca duas cartas — a diferença sai depois como
+        # delta de actualização (`plano_arrumacao`), e só se aplica no botão
+        # "actualizei". Sem isto, uma corrida do dia seguinte desmontava no papel
+        # um deck que está sleevado na estante.
+        presos = []
+        if s["congelada"]:
+            for lotes in pool.values():
+                for lot in lotes:
+                    if lot.get("caixa") != s["slot"] or lot["livre"] <= 0:
+                        continue
+                    presos.append({"nm": lot["nm"], "q": lot["livre"],
+                                   "de": s["nome"], "para": lot["balde"],
+                                   "slot": s["slot"], "copy_id": lot["id"],
+                                   "sid": lot["sid"], "finish": lot["finish"],
+                                   "lang": lot["lang"],
+                                   "set_code": lot["set_code"],
+                                   "sentido": "sai"})
+                    lot["livre"] = 0
+        s["presos"] = sorted(presos, key=lambda m: m["nm"])
         for nm, q in pediu_slot.items():
             disputa[nm].append({"slot": s["nome"], "prioridade": s["prioridade"],
-                                "pediu": q, "levou": levou_slot.get(nm, 0)})
+                                "pediu": q, "levou": levou_slot.get(nm, 0),
+                                "dedicado": s["dedicado"]})
         s["have"] = sorted(have, key=lambda r: (r["board"] != "main", r["nm"]))
         s["missing"] = missing
         s["subs"] = subs
@@ -1436,27 +1561,44 @@ def plano_arrumacao(res: dict) -> dict:
       * **sai**  — a cópia está numa caixa mas a alocação de hoje já não a usa
         lá; volta ao balde de onde veio.
 
-    Não escreve nada: quem confirma é `guardar_arrumacao`.
+    E há um terceiro grupo, desde as CAIXAS CONGELADAS de 2026-09-07 (19:00): uma
+    caixa dedicada e montada não se arruma, **actualiza-se**. Os movimentos dela
+    saem do plano geral e vão para `actualizacoes[slot]` — *"tirar X, meter Y"* —
+    que só se aplicam quando ele carrega em "actualizei" nessa caixa. É a ordem
+    dele: *"apenas mexer para actualizar"*.
+
+    Não escreve nada: quem confirma é `guardar_arrumacao` / `actualizar_caixa`.
     """
     # Antes da migração para a colecção única, a caixa de um deck AINDA é um
     # balde (`Pauper Affinity`, `Cloud`, ...). Uma cópia que já vive lá já está
     # dentro da caixa, mesmo que o balde e a caixa tenham nomes diferentes —
     # sem isto o plano mandava-o "arrumar" 54 cartas que já estão sleevadas.
     caixas = caixas_de_deck(res["slots"])
+    actualizacoes: dict[str, dict] = {}
     entra: list[dict] = []
     for s in res["slots"]:
         ja_la = s.get("balde") if s.get("balde") in caixas else None
+        meter: list[dict] = []
         for m in s["have"]:
             for g in m["lotes"]:
                 if g["local"] == s["nome"]:
                     continue              # já lá está
                 if g["caixa"] is None and ja_la and g["sub"] == ja_la:
                     continue              # está no balde que É esta caixa
-                entra.append({"nm": m["nm"], "q": g["q"], "de": g["local"],
-                              "para": s["nome"], "slot": s["slot"],
-                              "copy_id": g["id"], "sid": g["sid"],
-                              "finish": g["finish"], "lang": g["lang"],
-                              "set_code": g["set_code"], "sentido": "entra"})
+                mov = {"nm": m["nm"], "q": g["q"], "de": g["local"],
+                       "para": s["nome"], "slot": s["slot"],
+                       "copy_id": g["id"], "sid": g["sid"],
+                       "finish": g["finish"], "lang": g["lang"],
+                       "set_code": g["set_code"], "sentido": "entra"}
+                (meter if s.get("congelada") else entra).append(mov)
+        if s.get("congelada"):
+            tirar = list(s.get("presos") or [])
+            if meter or tirar:
+                actualizacoes[s["slot"]] = {
+                    "slot": s["slot"], "caixa": s["nome"],
+                    "entra": sorted(meter, key=lambda m: m["nm"]),
+                    "sai": tirar,
+                    "copias": sum(m["q"] for m in meter + tirar)}
     sai: list[dict] = []
     for lotes in res["pool"].values():
         for lot in lotes:
@@ -1477,15 +1619,28 @@ def plano_arrumacao(res: dict) -> dict:
         por_destino[m["para"]].append(m)
     ordena = lambda d: dict(sorted(          # noqa: E731 — só arrumação
         d.items(), key=lambda kv: (-sum(x["q"] for x in kv[1]), kv[0])))
+    acts = dict(sorted(actualizacoes.items(),
+                       key=lambda kv: (-kv[1]["copias"], kv[1]["caixa"])))
     return {"movimentos": movs, "por_origem": ordena(por_origem),
             "por_destino": ordena(por_destino),
-            "copias": sum(m["q"] for m in movs), "linhas": len(movs)}
+            "copias": sum(m["q"] for m in movs), "linhas": len(movs),
+            "actualizacoes": acts,
+            "copias_actualizar": sum(a["copias"] for a in acts.values())}
 
 
 def csv_arrumacao(plano: dict) -> str:
-    """O plano em CSV (`moves-<data>.csv`), para ele levar para a mesa."""
+    """O plano em CSV (`moves-<data>.csv`), para ele levar para a mesa.
+
+    Leva também as actualizações das caixas congeladas, com um `sentido` próprio
+    (`actualizar-sai` / `actualizar-entra`): são movimentos de outra natureza —
+    desmontam e remontam um deck que está na estante — e misturá-los com a
+    arrumação normal dava uma lista que ele não podia seguir de cima a baixo.
+    """
     linhas = ["sentido,quantidade,carta,de,para,edicao,acabamento,lingua,copy_id"]
-    for m in plano["movimentos"]:
+    extra = [dict(m, sentido=f'actualizar-{m["sentido"]}')
+             for a in plano.get("actualizacoes", {}).values()
+             for m in a["sai"] + a["entra"]]
+    for m in plano["movimentos"] + extra:
         nm = m["nm"].replace('"', "'")
         linhas.append(f'{m["sentido"]},{m["q"]},"{nm}","{m["de"]}","{m["para"]}",'
                       f'{(m["set_code"] or "").upper()},{m["finish"]},{m["lang"]},'
@@ -1493,7 +1648,17 @@ def csv_arrumacao(plano: dict) -> str:
     return "\n".join(linhas) + "\n"
 
 
-def guardar_arrumacao(con, res: dict) -> int:
+def _linhas_da_caixa(s: dict) -> dict[int, int]:
+    """`copy_id -> quantas`, a alocação de HOJE de uma caixa. É o que se grava."""
+    linhas: dict[int, int] = defaultdict(int)
+    for m in s["have"]:
+        for g in m["lotes"]:
+            linhas[g["id"]] += g["q"]
+    return {cid: q for cid, q in linhas.items() if q > 0}
+
+
+def guardar_arrumacao(con, res: dict, actualizar: set[str] | frozenset = frozenset()
+                      ) -> int:
     """Grava a alocação de hoje como a arrumação REAL ("já arrumei tudo").
 
     A partir daqui, `local()` diz *"está na caixa X"* em vez do balde, e o
@@ -1501,22 +1666,51 @@ def guardar_arrumacao(con, res: dict) -> int:
     inteira: a alocação é global, e uma linha órfã de uma caixa que já não
     existe mentia para sempre.
 
+    **As caixas CONGELADAS ficam como estão** (a não ser que venham em
+    `actualizar`). É a ordem do André de 2026-09-07 às 19:00 — *"apenas mexer
+    para actualizar"*: o botão geral arruma a colecção, não desmonta um deck que
+    está sleevado. Para aplicar o delta de uma caixa congelada há o botão
+    "actualizei" dela (`actualizar_caixa`).
+
     Não mexe nas `sub_collections` de propósito — no modelo de colecção única a
     gaveta de onde a carta veio continua a ser a mesma, e é dela que a aba
     *Arrumar* precisa para dizer para onde a devolver.
     """
-    tot: dict[tuple[int, str], int] = defaultdict(int)
-    for s in res["slots"]:
-        for m in s["have"]:
-            for g in m["lotes"]:
-                tot[(g["id"], s["slot"])] += g["q"]
+    congeladas = {s["slot"] for s in res["slots"]
+                  if s.get("congelada") and s["slot"] not in actualizar}
+    manter = [(r["copy_id"], r["slot"], r["quantity"]) for r in con.execute(
+        "SELECT copy_id, slot, quantity FROM copy_allocation")
+        if r["slot"] in congeladas and (r["quantity"] or 0) > 0]
+    novas = [(cid, s["slot"], q) for s in res["slots"]
+             if s["slot"] not in congeladas
+             for cid, q in sorted(_linhas_da_caixa(s).items())]
     con.execute("DELETE FROM copy_allocation")
     con.executemany(
         "INSERT INTO copy_allocation (copy_id, slot, quantity, placed_at) "
-        "VALUES (?,?,?,datetime('now'))",
-        [(cid, slot, q) for (cid, slot), q in sorted(tot.items()) if q > 0])
+        "VALUES (?,?,?,datetime('now'))", sorted(manter + novas))
     con.commit()
-    return sum(tot.values())
+    return sum(q for _c, _s, q in manter + novas)
+
+
+def actualizar_caixa(con, res: dict, slot_id: str) -> int:
+    """"Actualizei": aplica o delta de UMA caixa congelada e mais nada.
+
+    O gesto que o André descreveu — *"apenas mexer para actualizar"* — é abrir a
+    caixa, tirar o que saiu da lista, meter o que entrou, e voltar a fechá-la.
+    Isto é o registo desse gesto: a caixa passa a conter a alocação de hoje, as
+    outras não se tocam.
+    """
+    alvo = next((s for s in res["slots"] if s["slot"] == slot_id), None)
+    if alvo is None:
+        return 0
+    linhas = _linhas_da_caixa(alvo)
+    con.execute("DELETE FROM copy_allocation WHERE slot = ?", (slot_id,))
+    con.executemany(
+        "INSERT INTO copy_allocation (copy_id, slot, quantity, placed_at) "
+        "VALUES (?,?,?,datetime('now'))",
+        [(cid, slot_id, q) for cid, q in sorted(linhas.items())])
+    con.commit()
+    return sum(linhas.values())
 
 
 def report(con, cfg_slots: list[dict] | None = None) -> dict:
@@ -1530,6 +1724,9 @@ def report(con, cfg_slots: list[dict] | None = None) -> dict:
     # caixa a caixa (o que a v3 fazia) e comprar o máximo de uma delas.
     res["poupado_total"] = sum(p["poupado"] for p in res["partilhas"])
     res["arrumacao"] = plano_arrumacao(res)
+    # As caixas congeladas que têm delta por aplicar ("tirar X, meter Y"). À
+    # cabeça do relatório porque é o único movimento que o botão geral NÃO faz.
+    res["actualizacoes"] = res["arrumacao"]["actualizacoes"]
     return res
 
 
@@ -1562,6 +1759,9 @@ def foil_report(con: sqlite3.Connection, fmt: str, top: int = 5,
     pool = res["pool"] if res else lots(con)
     baldes = ({s["balde"] for s in res["slots"] if s.get("balde")} if res
               else {s.get("balde") for s in config_slots() if s.get("balde")})
+    # As caixas dedicadas não emprestam: um arquétipo candidato a esta caixa não
+    # pode contar com uma cópia que está sleevada dentro do Pauper ou do cEDH.
+    ded = dedicadas(res["slots"]) if res else frozenset()
     # Slot de mentira: só o que decide se uma cópia serve. As regras de material
     # saem das `regras_por_formato`, as mesmas das caixas a sério — escritas à
     # mão aqui, este ranking dizia-lhe que tem cartas que não pode pôr no deck.
@@ -1606,7 +1806,7 @@ def foil_report(con: sqlite3.Connection, fmt: str, top: int = 5,
                 linhas.append(_linha_cheia({"board": b, "nm": nm, "need": q,
                                             "got": q, "basica": True, "lotes": []}))
                 continue
-            e = _estado_carta(pool, ps, nm, q, baldes)
+            e = _estado_carta(pool, ps, nm, q, baldes, ded=ded)
             unit, pfin = card_price(con, nm, fin)
             linha = _linha_cheia({
                 "board": b, "nm": nm, "need": q, "got": e["got"], "basica": False,

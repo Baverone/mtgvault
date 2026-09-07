@@ -251,6 +251,41 @@ compre, depois indico (meto foto) e vais ajustando."*
   sozinha na corrida seguinte do `daily.py`** (passo `deckboxes`). Não há estado
   guardado: o "onde está a carta" é sempre recalculado da coleção do dia.
 
+**CAIXAS DEDICADAS: o "ir buscar" e a partilha ficam só para o DC e o SPML
+(André, 2026-09-07 às 19:00, à letra).** *"Cada deck montado deixa de partilhar
+cartas com outros decks nos formatos: pauper, CDEH e premodern"* e *"o que eu
+quero é conseguir organizar os decks dentro das caixas e apenas mexer para
+actualizar, logo vou precisar de múltiplos para os decks de premodern."* Isto
+recorta as duas regras acima: continuam a valer, mas só onde ele as quer.
+- `colecao_config.json → regras_por_formato[].dedicado` (hoje `premodern`, `cedh`
+  e `pauper`), com override por caixa (`loadout[].dedicado`). Uma caixa dedicada
+  **não vai buscar** (nunca diz *"em &lt;caixa&gt;"*: o que não alocou é compra),
+  **não empresta** (as cópias que levou não são o `noutra` de mais ninguém) e
+  **compra sozinha** (implica `compras_dedicadas`). Quem responde é
+  `loadout.dedicadas`/`_empresta`.
+- **O que NÃO muda:** a alocação. As cópias que ele tem continuam repartidas pela
+  ordem de sempre e a `Caixa RL (PT)` continua a alimentar o Premodern — uma
+  cópia da colecção que uma caixa leve não se compra outra vez. Isso é a colecção
+  a ser repartida, não uma partilha entre caixas.
+- **Efeito medido na base de 2026-09-07:** fechar tudo passou de **7 276,75 €**
+  para **9 195,01 €** (213 → **287** a comprar, 78 → **4** a ir buscar). O
+  Enchantress passou a comprar os 3 Brushland, o IGG os seus Tormod's Crypt e o
+  Cloud cEDH o seu Lion's Eye Diamond. A venda **não mexeu**.
+
+**CAIXA CONGELADA: montada é para ficar montada (2026-09-07, 19:00).** Uma caixa
+dedicada **e** `montado: true` está congelada (`loadout.congelada`): as cópias
+que estão lá dentro (`copy_allocation`) ficam **presas** — não voltam à gaveta,
+não são realocadas e não entram na venda — mesmo que a lista de hoje já não as
+peça. Se o Luffy actualizar o Pauper, a caixa continua montada com a lista antiga.
+- A diferença sai como **delta de actualização**: `res["actualizacoes"][slot]`
+  = *"tirar X, meter Y"*. Na página é a secção **🔄 Actualizar decks montados**
+  (dentro da aba *Arrumar*); no CLI vem à cabeça do `arrumar`.
+- **O "já arrumei tudo" NÃO lhe toca** (`guardar_arrumacao` preserva as linhas
+  das caixas congeladas). Quem aplica o delta é o botão *"actualizei"* daquela
+  caixa (`loadout.actualizar_caixa`, `act: "actualizar"` no `webapp.py`).
+- Se a caixa ainda não tem linhas na `copy_allocation`, congelá-la não prende
+  nada — a regra opera sobre a arrumação confirmada, não sobre uma intenção.
+
 **COMPRAS PARTILHADAS: compra-se o MÁXIMO, não a soma (2026-09-07).** É a segunda
 metade da regra de cima — *"não ter que comprar múltiplos para todos"*. O `noutra`
 tratava as cópias que ele TEM; a lista de compras continuava a **somar as faltas

@@ -539,6 +539,30 @@ def _loadout_detalhe(rep, procura):
             print(f"    {m['comprar']} {m['nm']}" + (f" [{marca}]" if marca else ""))
 
 
+def _actualizacoes(plano):
+    """As caixas CONGELADAS que têm delta por aplicar ("tirar X, meter Y").
+
+    Vem antes da arrumação normal de propósito: é um gesto diferente e mais raro
+    — abrir um deck que está sleevado, trocar duas cartas e voltar a fechá-lo —
+    e o `--confirmar` NÃO lhe toca. É a ordem do André: *"apenas mexer para
+    actualizar"* (2026-09-07, 19:00).
+    """
+    acts = plano.get("actualizacoes") or {}
+    if not acts:
+        return
+    print(f"ACTUALIZAR DECKS MONTADOS — {plano['copias_actualizar']} cópias\n"
+          "  (caixas dedicadas e montadas: a lista mudou, o deck não. "
+          "Aplica-se no botão 'actualizei' do modo edição.)\n")
+    for a in acts.values():
+        print(f"  {a['caixa']}")
+        for m in a["sai"]:
+            print(f"    tirar  {m['q']}× {m['nm']:<34} -> {m['para']}")
+        for m in a["entra"]:
+            print(f"    meter  {m['q']}× {m['nm']:<34} <- {m['de']}")
+        print()
+    print()
+
+
 def _arrumar(con, csv_out=False, confirmar=False):
     """A folha de arrumação: de que gaveta sai cada carta e para que caixa vai.
 
@@ -551,8 +575,11 @@ def _arrumar(con, csv_out=False, confirmar=False):
     if csv_out:
         print(loadout.csv_arrumacao(plano), end="")
         return
+    _actualizacoes(plano)
     if not plano["movimentos"]:
-        print("Nada a arrumar: a estante já está igual à alocação.")
+        print("Nada a arrumar: a estante já está igual à alocação"
+              + (" (à parte das actualizações acima)." if plano.get("actualizacoes")
+                 else "."))
         return
     print(f"ARRUMAR — {plano['copias']} cópias em {plano['linhas']} linhas\n")
     print("DE CADA GAVETA (o que se tira)")

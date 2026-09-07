@@ -274,6 +274,16 @@ class Handler(BaseHTTPRequestHandler):
                 n = marcar_na_caixa(con, slot_id, novo)
                 msg = (f"{nome}: {n} cópias registadas na caixa" if novo
                        else f"{nome}: caixa esvaziada ({n} linhas)")
+            elif act == "actualizar":
+                # "Actualizei": aplica o delta de UMA caixa congelada. Não passa
+                # pelo config — o que muda é físico (que cartas estão na caixa),
+                # e isso vive na `copy_allocation`.
+                migracao.backup(con)
+                rep = loadout.report(con)
+                nome = next((s["nome"] for s in rep["slots"]
+                             if s["slot"] == slot_id), slot_id)
+                n = loadout.actualizar_caixa(con, rep, slot_id)
+                msg = f"{nome} actualizado: {n} cópias na caixa"
             else:
                 return {"erro": f"acção {act!r} desconhecida"}
             sources._CFG_CACHE.clear()     # relê já, sem esperar pelo mtime

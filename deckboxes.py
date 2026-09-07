@@ -112,6 +112,11 @@ def _caixa_payload(s, imgs, cfs):
         "slot": s["slot"], "nome": s["nome"], "formato": s["formato"],
         "grupo": s.get("grupo"), "prioridade": s["prioridade"],
         "permanente": s["permanente"], "montado": bool(s.get("montado")),
+        # Caixa DEDICADA (2026-09-07, 19:00): não empresta nem vai buscar. A
+        # página tem de o dizer — é o que explica porque é que uma carta que ele
+        # TEM aparece na lista de compras desta caixa.
+        "dedicado": bool(s.get("dedicado")),
+        "congelada": bool(s.get("congelada")),
         "por_confirmar": bool(s.get("por_confirmar")), "vazio": s["vazio"],
         "nota": s["nota"], "fonte": s.get("fonte"), "ref": s.get("ref"),
         "pct": s["pct"], "tenho": s["tenho"], "precisa": s["precisa"],
@@ -252,6 +257,12 @@ def payload(con, rep, editable=False):
                   "retidos": venda_bloco("retidos", "copias_retidas", "total_retido")},
         "arrumar": {"por_origem": arr["por_origem"], "por_destino": arr["por_destino"],
                     "copias": arr["copias"], "linhas": arr["linhas"],
+                    # As caixas CONGELADAS não se arrumam, actualizam-se: o
+                    # "já arrumei tudo" geral não lhes toca e cada uma tem o seu
+                    # botão "actualizei" (André, 2026-09-07: *"apenas mexer para
+                    # actualizar"*).
+                    "actualizacoes": list(arr["actualizacoes"].values()),
+                    "copias_actualizar": arr["copias_actualizar"],
                     "csv": loadout.csv_arrumacao(arr)},
     }
 
@@ -340,6 +351,7 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
    color:var(--muted);white-space:normal;max-width:100%;overflow-wrap:anywhere}
  .bdg.ok{background:#123020;color:var(--add)} .bdg.wt{background:#241a10;color:var(--gold)}
  .bdg.pt{background:#101c2e;color:#7fa8ff} .bdg.fo{background:#2a2410;color:var(--gold)}
+ .bdg.ded{background:#2c1b2e;color:#e0a8ea}
  .bdg.perm{background:#1b2c4d;color:#9dbcff;font-weight:700}
  .bdg.cand{background:#241a10;color:var(--gold);font-weight:700}
  .nums{display:flex;flex-wrap:wrap;gap:6px 10px;margin:8px 0}
@@ -550,8 +562,10 @@ function renderResumo() {
 
 function renderTabs() {
   const nav = $('#decktabs');
-  const fixas = [['todas', '▦ Todas', ''], ['arrumar', '📥 Arrumar',
-                  D.arrumar.copias + ' cópias'],
+  const arr = D.arrumar.copias + ' cópias'
+    + (D.arrumar.copias_actualizar ? ` · ${D.arrumar.copias_actualizar} a actualizar`
+                                   : '');
+  const fixas = [['todas', '▦ Todas', ''], ['arrumar', '📥 Arrumar', arr],
                  ['partilhadas', '🔁 Partilhadas', D.partilhadas.length + ' cartas'],
                  ['comprar', '🛒 Comprar', D.resumo.comprar + ' cópias'],
                  ['vender', '💰 Vender', eur(D.resumo.venda)]];
@@ -742,10 +756,39 @@ function vistaTodas() {
       + 'marca-o como permanente (no modo edição, <code>python webapp.py</code>).');
 }
 
+/* As caixas CONGELADAS (dedicadas e montadas) não se arrumam — actualizam-se.
+   O "já arrumei tudo" geral não lhes toca de propósito: abrir um deck que está
+   sleevado é outro gesto, e é ele que decide quando o faz. */
+function actualizarHTML() {
+  const acts = D.arrumar.actualizacoes || [];
+  if (!acts.length) return '';
+  const lado = (movs, verbo, seta) => movs.map(m =>
+    `<div class="mv"><span class="q">${m.q}×</span>`
+    + `<span class="nm">${esc(m.nm)}</span>`
+    + `<span class="to">${verbo} ${seta} ${esc(verbo === 'tirar' ? m.para : m.de)}`
+    + `</span></div>`).join('');
+  return `<h2>🔄 Actualizar decks montados <span class="n">${acts.length}</span></h2>`
+    + `<p class="lead">Caixas <b>dedicadas e montadas</b>: a lista mudou, o deck `
+    + `não. Ficam como estão até seres tu a abri-las — o <b>já arrumei tudo</b> `
+    + `não lhes toca. Quando as actualizares, `
+    + (D.editable ? 'carrega em <b>actualizei</b> nessa caixa.'
+                  : 'diz-me (ou usa o modo edição, <code>python webapp.py</code>).')
+    + `</p>`
+    + acts.map(a => `<div class="arr"><div class="arrh"><b>${esc(a.caixa)}</b>`
+        + `<span>${a.copias} cópias · tirar ${a.sai.length} · meter `
+        + `${a.entra.length}</span></div>`
+        + lado(a.sai, 'tirar', '→') + lado(a.entra, 'meter', '←')
+        + (D.editable ? `<div class="acts"><button class="btn pri" `
+            + `data-act="actualizar" data-slot="${esc(a.slot)}">🔄 Actualizei o `
+            + `${esc(a.caixa)}</button></div>` : '')
+        + `</div>`).join('');
+}
+
 function vistaArrumar() {
   const a = D.arrumar;
   if (!a.linhas) {
-    return `<h2>📥 Arrumar</h2><p class="empty">Nada a arrumar: a estante já está `
+    return actualizarHTML()
+      + `<h2>📥 Arrumar</h2><p class="empty">Nada a arrumar: a estante já está `
       + `igual à alocação. Quando comprares cartas novas (fotos em `
       + `<code>pendentes/</code>) ou mudares uma caixa, isto volta a encher-se.</p>`;
   }
@@ -768,7 +811,8 @@ function vistaArrumar() {
     }
     return h;
   };
-  return `<h2>📥 Arrumar — ${a.copias} cópias</h2>`
+  return actualizarHTML()
+    + `<h2>📥 Arrumar — ${a.copias} cópias</h2>`
     + `<p class="lead">A diferença entre <b>onde as cartas estão</b> e <b>onde a `
     + `alocação diz que deviam estar</b>. Vai marcando à medida que moves; os `
     + `visto ficam guardados neste aparelho. No fim, <b>já arrumei tudo</b>`
