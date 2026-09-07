@@ -6,9 +6,11 @@ O que aqui se tranca são as regras que custam dinheiro se partirem em silêncio
   2. a tranca do PT ("as cartas de Premodern são PT e NÃO entram noutros
      formatos"), com a excepção necessária: uma PT da era que já vive na caixa
      de outro deck é desse deck;
-  2b. e o outro lado dela: uma caixa de Premodern NÃO OLHA para a Caixa Reserved
-     List ("na Caixa RL só estão cartas RL em inglês") — nem aloca de lá, nem as
-     conta como substituto; para essas caixas a carta é falta. As mesmas cópias
+  2b. e o outro lado dela: uma caixa de Premodern só vê cópias PT ("o Premodern
+     só usa em PT, mesmo eu tendo a carta em inglês") e só nos baldes de
+     colecção — nem aloca uma EN, nem a conta como substituto; para essas caixas
+     a carta é falta a comprar em PT. Da Caixa Reserved List vê a metade PT e
+     não vê a metade EN ("na Caixa RL, as PT e as ENG estão separadas"); as EN
      continuam a servir o Legacy;
   3. a regra do foil ("Standard/Pioneer/Modern/Legacy são todas foil menos as
      Reserved List") — uma nonfoil não fecha o slot, aparece como substituto;
@@ -16,7 +18,12 @@ O que aqui se tranca são as regras que custam dinheiro se partirem em silêncio
   5. o backup: 4 por carta na COLEÇÃO INTEIRA (não 4 por balde) e 1 por deck de
      Commander; básicas nunca se vendem;
   6. um substituto NUNCA vai para a venda — foi o erro que a primeira versão
-     fez: mandava vender as 4 Opalescence EN que faltam à Enchantress.
+     fez: mandava vender as cartas que faltam a uma caixa e só falham no
+     acabamento (as EN do Premodern deixaram de ser substituto, ver 2b);
+  7. ONDE ESTÁ A CARTA (André, 2026-09-07): uma carta que a alocação deu a outra
+     caixa NÃO é falta nem compra — diz-se em que caixa está e quantas, e não
+     soma ao custo de fechar. Era isto que mandava comprar quatro Swords to
+     Plowshares para cada uma das seis caixas de Premodern.
 
 Não toca na rede.
 """
@@ -91,12 +98,13 @@ def add(con, nm, q=1, finish="nonfoil", lang="en", sub=None, purpose="player",
     con.commit()
 
 
-def deck(con, nome, fmt, cartas):
+def deck(con, nome, fmt, cartas, side=()):
     con.execute("INSERT INTO decks (name, format) VALUES (?,?)", (nome, fmt))
     did = con.execute("SELECT id FROM decks WHERE name = ?", (nome,)).fetchone()["id"]
-    for nm, q in cartas:
-        con.execute("INSERT INTO deck_cards (deck_id, card_name, quantity, board) "
-                    "VALUES (?,?,?,'main')", (did, nm, q))
+    for board, linhas in (("main", cartas), ("side", side)):
+        for nm, q in linhas:
+            con.execute("INSERT INTO deck_cards (deck_id, card_name, quantity, board) "
+                        "VALUES (?,?,?,?)", (did, nm, q, board))
     con.commit()
     return did
 
@@ -136,6 +144,96 @@ def caso_uma_copia_uma_caixa():
     print("a prioridade do config decide quem ganha o conflito")
 
 
+def preco(con, nm, finish, trend):
+    sid = con.execute("SELECT scryfall_id FROM catalog.cards WHERE name = ?",
+                      (nm,)).fetchone()["scryfall_id"]
+    con.execute("""INSERT INTO price_latest (scryfall_id, source, finish, date, trend)
+                   VALUES (?, 'cardmarket', ?, '2026-09-07', ?)""", (sid, finish, trend))
+    con.commit()
+
+
+def caso_noutra_caixa_nao_e_compra():
+    """André, 2026-09-07: *"indicas onde está a carta, para, se eu quiser ir jogar,
+    saber onde ir buscar e não ter que comprar múltiplos para todos."*
+
+    Quatro Swords to Plowshares pedidas por três caixas: uma fica com elas, as
+    outras duas dizem "em <caixa>" e **não somam ao custo**. Antes desta regra o
+    vault pedia 8 Swords compradas para tapar um buraco que não existe.
+    """
+    con = base()
+    preco(con, "Swords to Plowshares", "nonfoil", 1.5)
+    for nome in ("A", "B", "C"):
+        deck(con, nome, "legacy", [("Swords to Plowshares", 4)])
+    add(con, "Swords to Plowshares", 4, sub="SPML")
+    rep = loadout.report(con, [slot("A", "legacy", "A", prioridade=1, balde="SPML"),
+                               slot("B", "legacy", "B", prioridade=2, balde="SPML"),
+                               slot("C", "legacy", "C", prioridade=3, balde="SPML")])
+    s = por_nome(rep)
+
+    assert s["A"]["pct"] == 100 and s["A"]["comprar"] == 0 and s["A"]["noutra"] == 0
+    for nome in ("B", "C"):
+        m = [x for x in s[nome]["missing"] if x["nm"] == "Swords to Plowshares"][0]
+        assert m["missing"] == 4, m
+        assert m["noutra"] == {"A": 4}, m["noutra"]
+        assert m["comprar"] == 0 and m["cost"] == 0, m
+        assert s[nome]["comprar"] == 0 and s[nome]["noutra"] == 4, s[nome]
+        assert s[nome]["custo"] == 0, s[nome]["custo"]
+        assert [x["nm"] for x in s[nome]["noutra_caixa"]] == ["Swords to Plowshares"]
+    assert rep["custo_total"] == 0, rep["custo_total"]
+    assert rep["comprar_total"] == 0 and rep["noutra_total"] == 8
+    print("carta que está noutra caixa diz onde está e não entra na compra")
+
+    # E continua a ser uma carta partilhada: quem a TEM é o A, quem a vai BUSCAR
+    # são o B e o C. É a mesma leitura da antiga secção de conflitos.
+    c = [x for x in rep["conflitos"] if x["nm"] == "Swords to Plowshares"][0]
+    assert c["ficam_com"] == ["A"] and c["ficam_sem"] == ["B", "C"], c
+    print("as partilhadas dizem quem a tem e quem a vai buscar")
+
+
+def caso_noutra_caixa_e_compra_misturadas():
+    """O caso meio: a caixa precisa de 4, só existem 2 e foram para outra. Duas
+    vão-se buscar, DUAS compram-se — e o custo é só o das duas."""
+    con = base()
+    preco(con, "Swords to Plowshares", "nonfoil", 10.0)
+    deck(con, "A", "legacy", [("Swords to Plowshares", 4)])
+    deck(con, "B", "legacy", [("Swords to Plowshares", 4)])
+    add(con, "Swords to Plowshares", 2, sub="SPML")
+    rep = loadout.report(con, [slot("A", "legacy", "A", prioridade=1, balde="SPML"),
+                               slot("B", "legacy", "B", prioridade=2, balde="SPML")])
+    b = por_nome(rep)["B"]
+    m = b["missing"][0]
+    assert m["missing"] == 4 and m["noutra"] == {"A": 2} and m["comprar"] == 2, m
+    assert m["cost"] == 20.0 and b["custo"] == 20.0, (m, b["custo"])
+    assert b["comprar"] == 2 and b["noutra"] == 2, b
+    print("metade noutra caixa, metade a comprar: o custo é só o da metade")
+
+    # O A, que também não fecha (precisa de 4 e só levou 2), não tem para onde ir
+    # buscar: as cópias são dele. Para ele é compra a sério.
+    a = por_nome(rep)["A"]
+    assert a["noutra"] == 0 and a["comprar"] == 2 and a["custo"] == 20.0, a
+    print("a caixa que já tem as cópias não se vai buscar a si própria")
+
+
+def caso_noutra_caixa_nao_conta_a_mesma_copia_duas_vezes():
+    """A mesma carta no main E no side são DUAS linhas de falta. Se cada uma
+    olhar para a caixa do lado por si, prometem a mesma cópia física duas vezes —
+    e o "ir buscar" fica maior do que o que lá está. É a mesma armadilha do
+    `livre`, um nível acima."""
+    con = base()
+    preco(con, "Swords to Plowshares", "nonfoil", 2.0)
+    deck(con, "A", "legacy", [("Swords to Plowshares", 4)])
+    deck(con, "B", "legacy", [("Swords to Plowshares", 3)],
+         side=[("Swords to Plowshares", 2)])
+    add(con, "Swords to Plowshares", 4, sub="SPML")
+    rep = loadout.report(con, [slot("A", "legacy", "A", prioridade=1, balde="SPML"),
+                               slot("B", "legacy", "B", prioridade=2, balde="SPML")])
+    b = por_nome(rep)["B"]
+    # O A tem 4; o B pede 5. Vai buscar 4 (não 5) e compra 1.
+    assert b["noutra"] == 4 and b["comprar"] == 1, b
+    assert b["custo"] == 2.0, b["custo"]
+    print("main + side não reclamam a mesma cópia física duas vezes")
+
+
 def caso_falta_partilhada_nao_e_conflito():
     """Duas caixas querem uma carta que ele NÃO tem: é falta, não disputa.
     Chamar-lhe conflito enchia a página de ruído e escondia os reais."""
@@ -148,11 +246,13 @@ def caso_falta_partilhada_nao_e_conflito():
 
 
 def caso_premodern_so_pt():
-    """Slot de Premodern só fecha com PT; a EN fica como SUBSTITUTO ('serve mas
-    não é PT'), que é diferente de não ter a carta.
+    """André, 2026-09-07: *"O Premodern só usa em PT, mesmo eu tendo a carta em
+    inglês."* Uma EN não fecha o slot, e também NÃO é substituto: para uma caixa
+    de Premodern a carta é falta, e compra-se em PT.
 
-    As EN estão no SPML de propósito: as da Caixa RL nem chegam a ser vistas
-    (ver `caso_premodern_nao_ve_a_caixa_rl`), e este caso é o da língua.
+    (Até esta ordem as EN apareciam como substituto — "serve mas não é PT". Ele
+    já decidiu que não abre a excepção, e um substituto que nunca se usa só faz
+    a página parecer mais cheia do que a caixa está.)
     """
     con = base()
     deck(con, "Replenish", "premodern", [("Opalescence", 4)])
@@ -162,18 +262,19 @@ def caso_premodern_so_pt():
                                     lingua="pt", balde="Premodern (geral)")])
     s = por_nome(rep)["Replenish"]
     assert s["tenho"] == 2, s["tenho"]
-    assert len(s["subs"]) == 1 and s["subs"][0]["alt"] == {"não é PT": 4}, s["subs"]
-    print("slot de Premodern: só PT fecha; as EN aparecem como substituto")
+    assert not s["subs"], s["subs"]
+    falta = [m for m in s["missing"] if m["nm"] == "Opalescence"][0]
+    assert falta["alt"] == {} and falta["comprar"] == 2, falta
+    print("slot de Premodern: a EN não fecha nem é substituto — compra-se em PT")
 
 
-def caso_premodern_nao_ve_a_caixa_rl():
-    """André, 2026-09-07: 'O Premodern não é para olhar para a minha Caixa RL,
-    pois o Premodern só vai usar as cartas em Português; na Caixa RL só estão
-    cartas RL em inglês.'
+def caso_premodern_e_a_caixa_rl_partida_em_pt_e_en():
+    """André, 2026-09-07 (a corrigir a ordem da manhã): *"Na Caixa RL, as PT e as
+    ENG estão separadas."*
 
-    É mais forte que a regra da língua: as 4 Opalescence EN da Caixa RL não são
-    substituto da Enchantress — para essa caixa a carta é FALTA, compra-se em PT.
-    As mesmas cópias continuam a servir o Legacy (RL pode ser nonfoil).
+    A Caixa RL é UM balde no config e DUAS caixas na estante. A caixa de
+    Premodern vê a metade PT e não vê a metade EN — e a localização di-lo, para
+    ele saber a que caixa ir: `Caixa RL (PT)` / `Caixa RL (EN)`.
     """
     con = base()
     deck(con, "Ench", "premodern", [("Opalescence", 4)])
@@ -183,25 +284,52 @@ def caso_premodern_nao_ve_a_caixa_rl():
     rep = loadout.report(con, [pm])
     s = por_nome(rep)["Ench"]
     assert s["tenho"] == 1, s["tenho"]                     # só a PT
-    assert not s["subs"], s["subs"]                        # a Caixa RL nem aparece
+    assert not s["subs"], s["subs"]                        # as EN nem aparecem
     falta = [m for m in s["missing"] if m["nm"] == "Opalescence"][0]
     assert falta["missing"] == 3 and falta["alt"] == {}, falta
-    print("caixa de Premodern não vê a Caixa RL: é falta, não substituto")
+    # E não é "está noutra caixa" nenhuma: a cópia que a caixa não vê não pode
+    # aparecer como "vai lá buscar" — para o Premodern é compra em PT.
+    assert falta["noutra"] == {} and falta["comprar"] == 3, falta
+    print("Opalescence EN na Caixa RL não conta para a Enchantress")
+
+    # A mesma carta, na mesma Caixa RL, mas em PT: essa conta e fecha o slot.
+    add(con, "Opalescence", 3, lang="pt", sub="Caixa Reserved List")
+    rep2 = loadout.report(con, [pm])
+    s2 = por_nome(rep2)["Ench"]
+    assert s2["pct"] == 100 and not s2["missing"], (s2["pct"], s2["missing"])
+    assert s2["origens"] == {"Caixa RL (PT)": 3, "Premodern (geral)": 1}, s2["origens"]
+    print("Opalescence PT na Caixa RL conta — e a localização diz 'Caixa RL (PT)'")
 
     # E sem a marca de substituto, o excedente do playset vai para a venda a
     # confirmar (são Reserved List), como o André quer.
     assert not [r for r in rep["guardar"] if r["nm"] == "Opalescence"], rep["guardar"]
     vrl = [r for r in rep["venda_rl"] if r["nm"] == "Opalescence"]
     assert sum(r["q"] for r in vrl) == 1, vrl        # 5 cópias, playset 4 -> 1
+    assert vrl[0]["local"] == "Caixa RL (EN)", vrl[0]["local"]
 
-    # As mesmas cópias continuam disponíveis para o Legacy.
+    # As mesmas cópias EN continuam disponíveis para o Legacy.
     deck(con, "Leg", "legacy", [("Opalescence", 4)])
     rep = loadout.report(con, [pm, slot("Leg", "legacy", "Leg", prioridade=2,
                                         acabamento="foil", balde="SPML")])
     s = por_nome(rep)["Leg"]
     assert s["tenho"] == 4, s["tenho"]
-    assert [l["sub"] for l in s["have"][0]["lotes"]] == ["Caixa Reserved List"], s["have"]
-    print("as cópias da Caixa RL continuam a servir o Legacy")
+    assert s["origens"] == {"Caixa RL (EN)": 4}, s["origens"]
+    print("as cópias EN da Caixa RL continuam a servir o Legacy")
+
+
+def caso_premodern_nao_tira_de_caixa_de_outro_deck():
+    """Uma PT que vive DENTRO da caixa de outro deck montado (Blue Farm) não é
+    material para montar um deck de Premodern: está num deck. A caixa de
+    Premodern vê o seu balde, o SPML e a Caixa RL (PT) — mais nada."""
+    con = base()
+    deck(con, "Ench", "premodern", [("Lotus Petal", 1)])
+    add(con, "Lotus Petal", 1, lang="pt", sub="Blue Farm")
+    rep = loadout.report(con, [slot("Ench", "premodern", "Ench", lingua="pt",
+                                    balde="Premodern (geral)")])
+    s = por_nome(rep)["Ench"]
+    assert s["tenho"] == 0 and s["missing"][0]["comprar"] == 1, s
+    assert not s["subs"], s["subs"]
+    print("a caixa de Premodern não tira cartas de dentro de outro deck")
 
 
 def caso_pt_da_era_trancada_ao_premodern():
@@ -293,26 +421,26 @@ def caso_backup_e_venda():
 
 
 def caso_substituto_nao_se_vende():
-    """O erro caro: a Enchantress precisa de Opalescence, ele tem 4 EN noutro
-    balde, a regra do PT põe-nas fora do deck — e o playset de 4 mandava
-    vendê-las. São exactamente as cartas que lhe faltam.
+    """O erro caro: o playset de 4 mandava vender exactamente as cartas que
+    faltam a uma caixa do loadout e que só não fecham o slot pelo acabamento.
 
-    (O caso original eram as 4 EN da Caixa RL; desde 2026-09-07 essas já nem são
-    vistas pelo Premodern e vão mesmo para a venda a confirmar — a saída
-    `guardar` continua a valer para os outros baldes e para o acabamento.)
+    (O caso original era o do Premodern com as EN. Desde 2026-09-07 as EN nem são
+    vistas por essas caixas e vão mesmo para a venda a confirmar — a saída
+    `guardar` fica para o acabamento, que é onde ele não fechou a porta.)
     """
     con = base()
-    deck(con, "Ench", "premodern", [("Opalescence", 4)])
-    add(con, "Opalescence", 3, lang="pt", sub="Premodern (geral)")
-    add(con, "Opalescence", 4, lang="en", sub="SPML")
-    rep = loadout.report(con, [slot("Ench", "premodern", "Ench", lingua="pt",
-                                    balde="Premodern (geral)")])
-    # 7 cópias, playset 4 -> 3 de excesso. Saem das EN, que são as livres — mas
-    # são as que faltam ao deck, por isso guardam-se em vez de irem à venda.
-    assert not [r for r in rep["venda"] + rep["venda_rl"] if r["nm"] == "Opalescence"]
-    g = [r for r in rep["guardar"] if r["nm"] == "Opalescence"]
-    assert sum(r["q"] for r in g) == 3, g
-    assert g[0]["lang"] == "en" and "Ench" in g[0]["reason"], g
+    deck(con, "M", "modern", [("Kappa Cannoneer", 4)])
+    add(con, "Kappa Cannoneer", 1, finish="foil", sub="SPML")
+    add(con, "Kappa Cannoneer", 4, finish="nonfoil", sub="SPML")
+    rep = loadout.report(con, [slot("M", "modern", "M", acabamento="foil",
+                                    balde="SPML")])
+    # 5 cópias, playset 4 -> 1 de excesso. Sai das nonfoil, que são as livres —
+    # mas são as que faltam ao deck, por isso guarda-se em vez de ir à venda.
+    assert not [r for r in rep["venda"] + rep["venda_rl"]
+                if r["nm"] == "Kappa Cannoneer"], rep["venda"]
+    g = [r for r in rep["guardar"] if r["nm"] == "Kappa Cannoneer"]
+    assert sum(r["q"] for r in g) == 1, g
+    assert g[0]["finish"] == "nonfoil" and "M" in g[0]["reason"], g
     print("substitutos não se vendem — guardam-se e dizem que deck servem")
 
 
@@ -359,8 +487,13 @@ def caso_preco_foil():
 
 
 def run():
-    for fn in (caso_uma_copia_uma_caixa, caso_falta_partilhada_nao_e_conflito,
-               caso_premodern_so_pt, caso_premodern_nao_ve_a_caixa_rl,
+    for fn in (caso_uma_copia_uma_caixa, caso_noutra_caixa_nao_e_compra,
+               caso_noutra_caixa_e_compra_misturadas,
+               caso_noutra_caixa_nao_conta_a_mesma_copia_duas_vezes,
+               caso_falta_partilhada_nao_e_conflito,
+               caso_premodern_so_pt,
+               caso_premodern_e_a_caixa_rl_partida_em_pt_e_en,
+               caso_premodern_nao_tira_de_caixa_de_outro_deck,
                caso_pt_da_era_trancada_ao_premodern,
                caso_excepcao_do_balde, caso_foil, caso_colecionador_e_reservas_fora,
                caso_backup_e_venda, caso_substituto_nao_se_vende, caso_variantes,

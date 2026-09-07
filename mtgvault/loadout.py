@@ -11,13 +11,29 @@ prioridade (quem ganha um conflito) e as restrições de material.
 
 O que este módulo faz é ALOCAR exemplares físicos aos slots. Não é uma soma de
 coberturas independentes: uma cópia física só entra numa caixa de cada vez, por
-isso a alocação é global e por ordem de prioridade. Daí saírem três coisas que
+isso a alocação é global e por ordem de prioridade. Daí saírem quatro coisas que
 uma cobertura por deck nunca dá:
 
-  * **conflito** — duas caixas querem a mesma carta e não há cópias para as duas;
+  * **noutra caixa** — a carta existe e serve, mas está alocada a outra caixa.
+    Não é falta: é ir buscá-la;
+  * **cartas partilhadas** — duas caixas querem a mesma carta e não há cópias
+    para as duas (era o que se chamava "conflito");
   * **substituto** — a cópia existe mas não serve àquela caixa (é EN num deck de
     Premodern, é nonfoil num deck que ele quer todo em foil);
   * **venda** — o que sobra depois de alocar tudo e de guardar o backup.
+
+ONDE ESTÁ A CARTA (André, 2026-09-07)
+-------------------------------------
+*"Vamos fazer como no riftvault: indicas onde está a carta, para, se eu quiser ir
+jogar, saber onde ir buscar e não ter que comprar múltiplos para todos. Caso eu
+compre, depois indico (meto foto) e vais ajustando."*
+
+Por isso uma carta que a alocação deu a OUTRA caixa não conta como falta: fica em
+`noutra` ({caixa: quantas}) e **não entra na wantlist nem no custo de fechar**.
+Só é compra o que não existe em lado nenhum, ou o que existe mas não serve na
+língua/acabamento exigidos. Cada caixa passa a ter dois números: `comprar` (o que
+falta comprar) e `noutra` (o que é ir buscar a outra caixa). O que se compra
+entra pelas fotos (`pendentes/`) e a alocação recalcula-se no `daily.py`.
 
 DUAS REGRAS DE MATERIAL, ditadas pelo André no mesmo dia
 --------------------------------------------------------
@@ -36,14 +52,25 @@ no BALDE de outro slot do loadout já são desse deck (o Blue Farm tem um Lotus
 Petal e um Tarnished Citadel PT de 1997/2001 dentro da caixa dele). Trancá-las
 ao Premodern desmontaria um deck que está montado — por isso o balde manda.
 
-E o outro lado da mesma regra (André, 2026-09-07): *"O Premodern não é para
-olhar para a minha Caixa RL, pois o Premodern só vai usar as cartas em
-Português; na Caixa RL só estão cartas RL em inglês."* Um slot de Premodern nem
-VÊ o balde `Caixa Reserved List`: as cópias de lá não fecham o slot, não contam
-como substituto e não descontam no custo. Para uma caixa de Premodern, uma carta
-que só existe em EN é FALTA — compra-se em PT. Isto é mais forte do que a regra
-da língua, e é de propósito: um substituto diz "tens a carta, decide se abres
-excepção", e aqui ele já decidiu que não abre.
+E o outro lado da mesma regra, em duas versões — a segunda corrigiu a primeira
+no mesmo dia. Começou por ser *"O Premodern não é para olhar para a minha Caixa
+RL, pois o Premodern só vai usar as cartas em Português; na Caixa RL só estão
+cartas RL em inglês"*, e passou a *"na Caixa RL, as PT e as ENG estão
+separadas"*. Ou seja: a Caixa Reserved List são, fisicamente, DUAS caixas, e a
+premissa "só estão lá cartas em inglês" já não vale. O que fica:
+
+  * uma caixa de Premodern VÊ os baldes `Premodern (geral)`, `SPML` e
+    `Caixa Reserved List` (mais o seu próprio) — o resto da colecção está dentro
+    da caixa de outro deck montado, e de lá não se tira;
+  * e, em qualquer deles, só vê as cópias **PT**. *"O Premodern só usa em PT,
+    mesmo eu tendo a carta em inglês."* Uma EN não fecha o slot, não aparece como
+    substituto e não é protegida pela saída `guardar`: para uma caixa de
+    Premodern a carta é FALTA, compra-se em PT.
+
+É mais forte do que a regra da língua do `_porque_nao`, e é de propósito: um
+substituto diz "tens a carta, decide se abres excepção", e aqui ele já decidiu
+que não abre. `local()` mostra por isso `Caixa RL (PT)` / `Caixa RL (EN)` — a
+mesma prateleira do config, as duas caixas que ele tem à frente.
 
 Sem rede e sem efeitos colaterais: lê o `vault.db` e devolve números.
 """
@@ -59,9 +86,13 @@ from . import sources, stock
 # impressão é "da era" — a alternativa (a legalidade `premodern` da Scryfall) é
 # por carta e não por impressão, e o que o André descreveu foram as EDIÇÕES.
 PREMODERN_END = "2003-05-26"
-# O balde da Reserved List. Os slots de Premodern não olham para aqui (regra do
-# André, 2026-09-07) — ver o cabeçalho do módulo e `_fora_de_vista`.
+# O balde da Reserved List. É UM no config e DOIS na estante: "na Caixa RL, as PT
+# e as ENG estão separadas" (André, 2026-09-07) — as PT servem o Premodern, as EN
+# nunca. Ver `local` e `_fora_de_vista`.
 BALDE_RL = "Caixa Reserved List"
+# Os baldes que uma caixa de Premodern vê (mais o dela). Tudo o resto é a caixa
+# de um deck montado — de lá não se tiram cartas para montar outro.
+BALDES_PREMODERN = {"Premodern (geral)", "SPML", BALDE_RL}
 CONSTRUCTED_LIMIT = 4                      # playset: acima disto é excedente
 FOIL_FINISHES = ("foil", "etched")
 COMMANDER_FORMATS = {"duel-commander", "cedh", "commander", "edh"}
@@ -78,6 +109,18 @@ BASICS = {"Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes",
 def _front(name: str) -> str:
     """Nome da frente de uma carta de dupla face — é assim que as listas a escrevem."""
     return (name or "").split(" // ")[0]
+
+
+def local(lot: dict) -> str:
+    """Onde a cópia está fisicamente, para ele saber onde ir buscá-la.
+
+    Na estante a Caixa Reserved List são duas — *"na Caixa RL, as PT e as ENG
+    estão separadas"* (André, 2026-09-07) — e a diferença importa: as PT servem o
+    Premodern, as EN não. O balde na base de dados continua a ser um só.
+    """
+    if lot["sub"] == BALDE_RL:
+        return f"Caixa RL ({'PT' if lot['lang'] == 'pt' else 'EN'})"
+    return lot["sub"]
 
 
 # ---------------------------------------------------------------------------
@@ -271,10 +314,12 @@ def lots(con) -> dict[str, list[dict]]:
         d = dict(r)
         d["nm"] = _front(d["nm"])
         d["sub"] = d["sub"] or "(sem balde)"
+        d["local"] = local(d)
         d["era_pm"] = bool(d["rel"]) and d["rel"] <= PREMODERN_END
         d["rl"] = bool(d["rl"])
         d["livre"] = d["q"]
         d["substituto"] = {}          # slot -> porque é que não fecha o slot
+        d["alocado"] = {}             # slot -> quantas cópias deste lote levou
         out[d["nm"]].append(d)
     return out
 
@@ -292,13 +337,24 @@ def _deck_ids(con, slots) -> dict[str, int | None]:
 def _fora_de_vista(lot: dict, s: dict) -> bool:
     """Cópias que este slot nem VÊ — nem para alocar, nem como substituto.
 
-    André (2026-09-07): *"O Premodern não é para olhar para a minha Caixa RL,
-    pois o Premodern só vai usar as cartas em Português; na Caixa RL só estão
-    cartas RL em inglês."* É diferente do `_porque_nao`: ali a cópia existe e não
-    serve (fica como substituto, "decide se abres excepção"); aqui ele já
-    decidiu — para uma caixa de Premodern a carta é FALTA, compra-se em PT.
+    É diferente do `_porque_nao`: ali a cópia existe e não serve, e fica como
+    substituto ("decide se abres excepção"); aqui ele já decidiu que não abre, e
+    a carta é FALTA a comprar.
+
+    Só o Premodern tem destas, por duas ordens do André de 2026-09-07:
+      * *"O Premodern só usa em PT, mesmo eu tendo a carta em inglês"* — uma EN
+        nunca fecha um slot de Premodern nem lhe serve de substituto;
+      * *"na Caixa RL, as PT e as ENG estão separadas"* — a Caixa RL não está
+        fora, está lá metade: as PT de lá servem, as EN não (é o mesmo teste da
+        língua, e por isso não precisa de caso próprio). O que fica de fora são
+        os baldes que são a CAIXA de outro deck montado (Blue Farm, Cloud, ...):
+        essas cartas estão dentro de um deck, não se tiram de lá para montar
+        outro.
     """
-    return s.get("formato") == "premodern" and lot["sub"] == BALDE_RL
+    if s.get("formato") != "premodern":
+        return False
+    return (lot["lang"] != "pt"
+            or lot["sub"] not in BALDES_PREMODERN | {s.get("balde")})
 
 
 def _porque_nao(lot: dict, s: dict, baldes_de_deck: set[str]) -> str | None:
@@ -352,6 +408,12 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
         precisa = 0
         pediu_slot: dict[str, int] = defaultdict(int)
         levou_slot: dict[str, int] = defaultdict(int)
+        # (lote, outra caixa) -> quantas cópias já foram prometidas a uma linha
+        # ANTERIOR deste slot. Sem isto, uma carta que está no main E no side
+        # reclamava a mesma cópia física duas vezes: 4 Seal of Cleansing na caixa
+        # do lado davam 3 "ir buscar" ao main mais 1 ao side de um deck que só
+        # tem 4 para dar. É a mesma armadilha do `livre`, um nível acima.
+        reclamado: dict[tuple[int, str], int] = defaultdict(int)
         for board, nm, need in s["cards"]:
             pedido[nm] += need
             pediu_slot[nm] += need
@@ -377,7 +439,9 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                 take = min(lot["livre"], falta)
                 lot["livre"] -= take
                 falta -= take
+                lot["alocado"][s["nome"]] = lot["alocado"].get(s["nome"], 0) + take
                 gastos.append({"id": lot["id"], "q": take, "sub": lot["sub"],
+                               "local": lot["local"],
                                "finish": lot["finish"], "lang": lot["lang"],
                                "set_code": lot["set_code"], "sid": lot["sid"]})
             got = need - falta
@@ -386,9 +450,34 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
             linha = {"board": board, "nm": nm, "need": need, "got": got,
                      "basica": False, "lotes": gastos}
             if falta:
+                # ONDE ESTÁ A CARTA (André, 2026-09-07): antes de dizer "falta",
+                # ver se a cópia que servia esta caixa foi para OUTRA. Se foi, não
+                # se compra — vai-se buscar. Só conta a cópia que SERVE mesmo este
+                # slot: uma que a caixa nem vê (Caixa RL no Premodern) ou que não
+                # serve na língua/acabamento continua a ser compra.
+                noutra: dict[str, int] = defaultdict(int)
+                resta = falta
+                for lot in cands:
+                    if resta <= 0:
+                        break
+                    if lot["rdid"] is not None and lot["rdid"] != did:
+                        continue
+                    if _fora_de_vista(lot, s) or _porque_nao(lot, s, baldes):
+                        continue
+                    for outro, q in lot["alocado"].items():
+                        if outro == s["nome"] or resta <= 0:
+                            continue
+                        disponivel = q - reclamado[(lot["id"], outro)]
+                        if disponivel <= 0:
+                            continue
+                        pega = min(disponivel, resta)
+                        reclamado[(lot["id"], outro)] += pega
+                        noutra[outro] += pega
+                        resta -= pega
                 # Existe mas não serve: é a diferença entre "não tenho" e "tenho
                 # a carta errada". São coisas diferentes na hora de comprar.
                 alt = defaultdict(int)
+                alt_onde: dict[str, int] = defaultdict(int)   # onde estão essas
                 for lot in cands:
                     if lot["livre"] <= 0 or (lot["rdid"] is not None and lot["rdid"] != did):
                         continue
@@ -397,20 +486,25 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                     razao = _porque_nao(lot, s, baldes)
                     if razao:
                         alt[razao] += lot["livre"]
+                        alt_onde[lot["local"]] += lot["livre"]
                         # Marca o exemplar como SUBSTITUTO: serve este slot, só não
                         # na língua/acabamento que ele pediu. Sem esta marca a
                         # venda mandava-o embora. O caso que obrigou a inventá-la
-                        # foram as 4 Opalescence EN da Caixa RL — que desde
-                        # 2026-09-07 já nem chegam aqui (o Premodern não olha para
-                        # a Caixa RL, ver `_fora_de_vista`, e por decisão dele
-                        # essas vão mesmo para a venda a confirmar). A marca
-                        # continua a valer para as nonfoil dos slots de foil e
-                        # para as EN que vivem nos baldes de colecção.
+                        # foram as 4 Opalescence EN — que desde 2026-09-07 já nem
+                        # chegam aqui: nenhuma EN é substituto de um slot de
+                        # Premodern (ver `_fora_de_vista`), e por decisão dele
+                        # essas vão mesmo para a venda a confirmar. A marca
+                        # continua a valer para as nonfoil dos slots de foil.
                         lot["substituto"][s["nome"]] = razao
                 unit, pfin = card_price(con, nm, "foil" if foil else "nonfoil")
-                linha.update(missing=falta, unit=unit, price_finish=pfin,
-                             cost=round((unit or 0) * falta, 2),
-                             alt={k: v for k, v in alt.items()})
+                noutra_q = sum(noutra.values())
+                comprar = falta - noutra_q
+                linha.update(missing=falta, comprar=comprar,
+                             noutra=dict(noutra), noutra_q=noutra_q,
+                             unit=unit, price_finish=pfin,
+                             cost=round((unit or 0) * comprar, 2),
+                             alt={k: v for k, v in alt.items()},
+                             alt_onde={k: v for k, v in alt_onde.items()})
                 missing.append(linha)
                 if alt:
                     subs.append(linha)
@@ -422,16 +516,32 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
         s["have"] = sorted(have, key=lambda r: (r["board"] != "main", r["nm"]))
         s["missing"] = sorted(missing, key=lambda r: -(r["cost"] or 0))
         s["subs"] = subs
+        # As que estão noutra caixa: é "ir buscar", não "comprar". Ficam à parte
+        # para a página e o CLI poderem dizer as duas coisas sem as somar.
+        s["noutra_caixa"] = sorted((m for m in missing if m["noutra_q"]),
+                                   key=lambda m: (-m["noutra_q"], m["nm"]))
         s["precisa"] = precisa
         s["tenho"] = usadas
         s["pct"] = round(100 * usadas / precisa) if precisa else 0
         s["custo"] = round(sum(m["cost"] or 0 for m in missing), 2)
         s["faltam"] = sum(m["missing"] for m in missing)
+        s["comprar"] = sum(m["comprar"] for m in missing)
+        s["noutra"] = sum(m["noutra_q"] for m in missing)
+        # De onde saem as cartas desta caixa. É a outra metade do "onde está a
+        # carta": as que faltam dizem em que caixa estão, e estas dizem de que
+        # prateleira as tirar para montar. Daqui vem o `Caixa RL (PT)`/`(EN)`.
+        origens: dict[str, int] = defaultdict(int)
+        for m in have:
+            for g in m["lotes"]:
+                origens[g["local"]] += g["q"]
+        s["origens"] = dict(sorted(origens.items(), key=lambda kv: (-kv[1], kv[0])))
 
-    # CONFLITO = duas ou mais caixas querem a mesma carta e não há cópias para
-    # todas. Uma caixa sozinha a que falta uma carta NÃO é conflito — é uma falta,
-    # e resolve-se a comprar. Aqui a compra não é a única saída: pode ser mais
-    # barato tirar o deck de menor prioridade do loadout.
+    # CARTAS PARTILHADAS ENTRE CAIXAS (chamava-se "conflito" até 2026-09-07; a
+    # chave `conflitos` fica, para não partir quem já a lê): duas ou mais caixas
+    # querem a mesma carta e não há cópias para todas. A leitura mudou com a regra
+    # do André — `ficam_com` é QUEM A TEM e `ficam_sem` é quem a VAI BUSCAR ali,
+    # não quem tem de a comprar. Uma caixa sozinha a que falta uma carta continua
+    # a não entrar aqui: é falta, e resolve-se a comprar.
     conflitos = []
     for nm, quem in disputa.items():
         if len(quem) < 2 or nm in BASICS:
@@ -497,10 +607,10 @@ def sell_list(con, res: dict) -> dict:
                     para ser confirmada uma a uma;
       `guardar`   — SUBSTITUTOS: cópias que servem um deck do loadout e só não
                     fecham o slot por causa da língua ou do acabamento (as
-                    nonfoil dos slots de foil, as EN nos baldes de colecção). A
-                    Caixa RL já não entra aqui pelo lado do Premodern: desde
-                    2026-09-07 essas caixas não olham para ela, e o que lá
-                    sobrar do playset vai para `venda_rl` a confirmar;
+                    nonfoil dos slots de foil). Nenhuma EN entra aqui pelo lado
+                    do Premodern: desde 2026-09-07 essas caixas só vêem PT, e o
+                    que sobrar do playset em EN vai para `venda`/`venda_rl` a
+                    confirmar;
       `retidos`   — baldes com `reter_extras_meses`. A regra dos 6 meses precisa
                     de uma data de última utilização que ainda não existe (ver
                     CLAUDE.md), por isso estes extras GUARDAM-SE e dizem-no, em
@@ -556,7 +666,8 @@ def sell_list(con, res: dict) -> dict:
                     continue
                 resto -= take
                 unit, pfin = card_price(con, nm, lot["finish"])
-                linha = {"nm": nm, "sub": lot["sub"], "q": take,
+                linha = {"nm": nm, "sub": lot["sub"], "local": lot["local"],
+                         "q": take,
                          "finish": lot["finish"], "lang": lot["lang"],
                          "set_code": lot["set_code"], "set_name": lot["set_name"],
                          "sid": lot["sid"], "rl": lot["rl"], "unit": unit,
@@ -604,6 +715,8 @@ def report(con, cfg_slots: list[dict] | None = None) -> dict:
     res = allocate(con, cfg_slots)
     res.update(sell_list(con, res))
     res["custo_total"] = round(sum(s["custo"] for s in res["slots"]), 2)
+    res["comprar_total"] = sum(s["comprar"] for s in res["slots"])
+    res["noutra_total"] = sum(s["noutra"] for s in res["slots"])
     return res
 
 

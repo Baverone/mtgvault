@@ -5,9 +5,16 @@ preparar para montar os decks (em deckboxes) para estarem sempre prontos para ir
 jogar, e começar a vender o que está em excesso."*
 
 Uma caixa por deck do `colecao_config.json -> loadout`, com a barra de completude,
-as cartas em falta por preço, a wantlist para copiar para o Cardmarket, e os
-CONFLITOS em destaque — as cartas que duas caixas querem e não chegam para as
+as cartas em falta por preço, a wantlist para copiar para o Cardmarket, e as
+CARTAS PARTILHADAS em destaque — as que duas caixas querem e não chegam para as
 duas. No fim, "Para vender".
+
+E, desde 07/09/2026, a pergunta "onde está a carta". O André: *"Vamos fazer como
+no riftvault: indicas onde está a carta, para, se eu quiser ir jogar, saber onde
+ir buscar e não ter que comprar múltiplos para todos."* Uma carta que a alocação
+deu a outra caixa aparece a **âmbar** com *"em &lt;caixa&gt;"*, e **não entra na
+lista de compras nem no custo de fechar**. Cada caixa mostra dois números:
+*faltam comprar* e *ir buscar a outra caixa*.
 
 A diferença para a página `meusdecks.html` (que mostra deck a deck, cada um a
 contar a colecção inteira) é que aqui a colecção é REPARTIDA: uma cópia física
@@ -74,14 +81,19 @@ def _bar(pct):
 
 
 def _wantlist(missing, marca):
-    """Bloco de faltas com botão copiar, no formato que o Cardmarket aceita."""
-    if not missing:
+    """Bloco de COMPRAS com botão copiar, no formato que o Cardmarket aceita.
+
+    Só entra o que é mesmo compra: uma carta que existe noutra caixa vai-se
+    buscar, não se compra (regra do André de 07/09/2026). Por isso a quantidade é
+    `comprar`, não `missing`, e as linhas que ficam a zero saem daqui.
+    """
+    ordem = sorted((m for m in missing if m["comprar"] > 0), key=lambda m: m["nm"])
+    if not ordem:
         return ""
-    ordem = sorted(missing, key=lambda m: m["nm"])
     itens = "".join(
-        f'<li><b>{m["missing"]}×</b> {html.escape(m["nm"])}'
+        f'<li><b>{m["comprar"]}×</b> {html.escape(m["nm"])}'
         f'<span class="pz">{_eur(m["cost"])}</span></li>' for m in ordem)
-    txt = "\n".join(f'{m["missing"]} {m["nm"]}' for m in ordem)
+    txt = "\n".join(f'{m["comprar"]} {m["nm"]}' for m in ordem)
     extra = f' <span class="mrk">{marca}</span>' if marca else ""
     return (f'<div class="faltas"><div class="flh">🛒 Comprar{extra}'
             f'<span class="dim">{len(ordem)} cartas</span>'
@@ -129,23 +141,54 @@ def _slot_html(s, imgs, conflitos_por_carta):
                     for m in s["have"])
     faltas = ""
     for m in s["missing"]:
-        est = "sub" if m["alt"] else "miss"
-        razao = ("; ".join(f'{v}× {k}' for k, v in m["alt"].items())
-                 if m["alt"] else "não tens nenhuma")
+        # Âmbar (o terceiro estado) para as duas maneiras de "tens, mas não aqui":
+        # está noutra caixa, ou está e não serve. Vermelho fica só para o que não
+        # existe em lado nenhum — é o que é mesmo compra.
+        est = "sub" if (m["noutra_q"] or m["alt"]) else "miss"
+        onde = "; ".join(f'{q}× em {c}' for c, q in sorted(m["noutra"].items()))
+        razao = "; ".join(x for x in (
+            onde, "; ".join(f'{v}× {k}' for k, v in m["alt"].items())) if x)
+        if m["comprar"]:
+            razao = "; ".join(x for x in (f'comprar {m["comprar"]}', razao) if x)
         conflito = " cf" if m["nm"] in conflitos_por_carta else ""
         faltas += _card(m["nm"], imgs.get(m["nm"]), est + conflito,
                         f'{m["got"]}/{m["need"]}',
-                        f'{m["nm"]} — falta {m["missing"]} · {razao}')
+                        f'{m["nm"]} — falta {m["missing"]} · '
+                        f'{razao or "não tens nenhuma"}')
+
+    onde = ""
+    if s["noutra_caixa"]:
+        linhas = "".join(
+            f'<li>{html.escape(m["nm"])} — '
+            + "; ".join(f'<b>{q}×</b> em {html.escape(c)}'
+                        for c, q in sorted(m["noutra"].items()))
+            + (f' <span class="dim">(comprar mais {m["comprar"]})</span>'
+               if m["comprar"] else "")
+            + "</li>" for m in s["noutra_caixa"])
+        onde = (f'<div class="subs onde"><b>📦 ir buscar a outra caixa — '
+                f'{s["noutra"]} cópias</b><ul>{linhas}</ul></div>')
 
     subs = ""
     if s["subs"]:
         linhas = "".join(
             f'<li>{html.escape(m["nm"])} — falta {m["missing"]}: '
             + "; ".join(f'tens <b>{v}</b> que {html.escape(k)}'
-                        for k, v in m["alt"].items()) + "</li>"
+                        for k, v in m["alt"].items())
+            # Onde estão: é a mesma pergunta das que estão noutra caixa. A Caixa
+            # RL aparece separada em PT e EN, que é como elas estão na estante.
+            + (' <span class="dim">(em '
+               + html.escape(", ".join(f"{k}: {v}" for k, v in m["alt_onde"].items()))
+               + ')</span>' if m["alt_onde"] else "") + "</li>"
             for m in s["subs"])
         subs = (f'<div class="subs"><b>↻ tens a carta, não serve a caixa</b>'
                 f'<ul>{linhas}</ul></div>')
+
+    # De onde se tiram as cartas para montar esta caixa.
+    origens = ""
+    if s["origens"]:
+        origens = ('<div class="orig">🗂️ tirar de: '
+                   + " · ".join(f'{html.escape(k)} <b>{v}</b>'
+                                for k, v in s["origens"].items()) + '</div>')
 
     marca = ("FOIL" if s.get("acabamento") == "foil"
              else "PT" if s.get("lingua") == "pt" else "")
@@ -156,11 +199,13 @@ def _slot_html(s, imgs, conflitos_por_carta):
         f'{_bar(s["pct"])}'
         f'<div class="badges">{"".join(badges)}</div>'
         f'<div class="meta"><span>{s["tenho"]}/{s["precisa"]} cópias</span>'
-        f'<span>faltam <b>{s["faltam"]}</b></span>'
+        f'<span>faltam comprar <b>{s["comprar"]}</b></span>'
+        f'<span class="ob">ir buscar a outra caixa <b>{s["noutra"]}</b></span>'
         f'<span>fechar por <b>{_eur(s["custo"])}</b></span></div>'
         f'<div class="nota">{html.escape(s["nota"])}</div>'
+        f'{origens}'
         f'<div class="cards">{tidos}{faltas}</div>'
-        f'{subs}{_wantlist(s["missing"], marca)}</div>')
+        f'{onde}{subs}{_wantlist(s["missing"], marca)}</div>')
 
 
 def _conflitos_html(conflitos, imgs):
@@ -168,20 +213,35 @@ def _conflitos_html(conflitos, imgs):
         return ""
     linhas = ""
     for c in conflitos:
+        # Quem levou "tem" a carta; quem não levou "vai buscar" — é a leitura que
+        # o André pediu a 07/09/2026, e é por isso que já não se chama conflito.
         det = "".join(
             f'<span class="cs {"ok" if q["levou"] >= q["pediu"] else "no"}">'
             f'{html.escape(q["slot"])} {q["levou"]}/{q["pediu"]}</span>'
             for q in c["por_slot"])
+        tem = ", ".join(c["ficam_com"]) or "ninguém"
+        # Uma caixa pode estar nas duas listas (levou 3 das 4 que pedia). Essa não
+        # "vai buscar" — não há lá nada para ela; falta-lhe mesmo e compra-se.
+        # E se ninguém ficou com ela (as cópias existem mas nenhuma caixa as pode
+        # usar — PT trancadas ao Premodern, p.ex.), não há nada a ir buscar.
+        vai = ", ".join(x for x in c["ficam_sem"]
+                        if c["ficam_com"] and x not in c["ficam_com"])
         linhas += (f'<div class="cfrow">{_card(c["nm"], imgs.get(c["nm"]), "cf")}'
                    f'<div class="cfb"><b>{html.escape(c["nm"])}</b>'
-                   f'<span class="dim">tens {c["tenho"]} para {c["pedido"]} pedidas</span>'
-                   f'<div class="csl">{det}</div></div></div>')
-    return (f'<section id="conflitos"><h2>⚔️ Conflitos <span class="n">'
-            f'{len(conflitos)}</span></h2>'
+                   f'<span class="dim">tens {c["tenho"]} para {c["pedido"]} pedidas'
+                   f' · está em <b>{html.escape(tem)}</b>'
+                   + (f' · vai buscar: {html.escape(vai)}' if vai else "")
+                   + f'</span><div class="csl">{det}</div></div></div>')
+    return (f'<section id="conflitos"><h2>🔁 Cartas partilhadas entre caixas '
+            f'<span class="n">{len(conflitos)}</span></h2>'
             f'<p class="lead">Cartas que duas ou mais caixas querem e não chegam '
-            f'para todas. Quem fica com elas é a caixa de <b>prioridade</b> mais '
-            f'alta (colecao_config.json → loadout). Para resolver: comprar mais '
-            f'cópias, ou tirar do loadout o deck de prioridade mais baixa.</p>'
+            f'para todas. <b>Não são compras.</b> A cópia física fica na caixa de '
+            f'<b>prioridade</b> mais alta (colecao_config.json → loadout) e as '
+            f'outras vão lá buscá-la quando forem jogar — é por isso que aparecem '
+            f'a âmbar com <b>“em &lt;caixa&gt;”</b> e não somam ao custo. Se '
+            f'quiseres os decks todos prontos ao mesmo tempo sem trocas, aí sim: '
+            f'compram-se cópias dedicadas, ou tira-se do loadout o deck de '
+            f'prioridade mais baixa.</p>'
             f'<div class="cfgrid">{linhas}</div></section>')
 
 
@@ -192,7 +252,7 @@ def _venda_tabela(linhas, imgs, cls=""):
         fin = "✨" if r["finish"] in loadout.FOIL_FINISHES else ""
         tr += (f'<tr><td class="q">{r["q"]}×</td>'
                f'<td>{html.escape(r["nm"])}{rl}</td>'
-               f'<td class="dim">{html.escape(r["sub"])}</td>'
+               f'<td class="dim">{html.escape(r["local"])}</td>'
                f'<td class="dim">{html.escape((r["set_code"] or "").upper())} '
                f'{fin} {r["lang"].upper()}</td>'
                f'<td class="pz">{_eur(r["unit"])}</td>'
@@ -279,28 +339,35 @@ def build(con, out_path=None):
         secs += (f'<section id="{sid}"><h2>{titulo} <span class="n">{len(grupo)}'
                  f'</span></h2><p class="lead">{lead}</p>'
                  f'<div class="grid">{cards}</div></section>')
-    subnav += '<a href="#conflitos">⚔️ Conflitos</a><a href="#vender">💰 Para vender</a>'
+    subnav += ('<a href="#conflitos">🔁 Partilhadas</a>'
+               '<a href="#vender">💰 Para vender</a>')
     secs += _conflitos_html(rep["conflitos"], imgs) + _venda_html(rep, imgs)
 
-    # Wantlist geral: a soma do que falta a todas as caixas. É a lista de compras
-    # do loadout inteiro — as cópias somam-se (dois decks que precisam da mesma
-    # carta precisam de duas cópias físicas, não de uma partilhada).
+    # Wantlist geral: a soma do que é mesmo COMPRA em todas as caixas. Uma carta
+    # que já está noutra caixa não entra aqui — vai-se buscar (regra do André,
+    # 07/09/2026: "não ter que comprar múltiplos para todos").
     geral: dict[str, dict] = {}
     for s in rep["slots"]:
         for m in s["missing"]:
-            g = geral.setdefault(m["nm"], {"nm": m["nm"], "missing": 0, "cost": 0.0})
-            g["missing"] += m["missing"]
+            if not m["comprar"]:
+                continue
+            g = geral.setdefault(m["nm"], {"nm": m["nm"], "comprar": 0, "cost": 0.0})
+            g["comprar"] += m["comprar"]
             g["cost"] = round(g["cost"] + (m["cost"] or 0), 2)
     if geral:
         secs += ('<section id="compras"><h2>🛒 Comprar — todas as caixas</h2>'
-                 '<p class="lead">Soma de tudo o que falta. Duas caixas que pedem a '
-                 'mesma carta pedem <b>duas cópias</b>: cada uma leva a sua.</p>'
+                 '<p class="lead">Só o que <b>não existe</b> na coleção, ou existe '
+                 'mas não serve na língua/acabamento que a caixa exige. As cartas '
+                 'que estão noutra caixa <b>não estão aqui</b>: vão-se buscar. '
+                 f'São <b>{rep["noutra_total"]}</b> cópias a ir buscar contra '
+                 f'<b>{rep["comprar_total"]}</b> a comprar.</p>'
                  + _wantlist(sorted(geral.values(), key=lambda g: -g["cost"]), "") +
                  '</section>')
 
     resumo = (f'{len(montados)} montados · {len(montar)} a montar · '
-              f'{len(abertos)} por confirmar · fechar tudo por '
-              f'{_eur(rep["custo_total"])} · vender {_eur(rep["total"])}')
+              f'{len(abertos)} por confirmar · comprar {rep["comprar_total"]} '
+              f'cópias por {_eur(rep["custo_total"])} · ir buscar a outra caixa '
+              f'{rep["noutra_total"]} · vender {_eur(rep["total"])}')
     out.write_text(_TMPL.replace("%TABS%", TABS).replace("%SUBNAV%", subnav)
                    .replace("%SECS%", secs).replace("%RESUMO%", resumo)
                    .replace("%TODAY%", today), encoding="utf-8")
@@ -341,6 +408,10 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .subs{margin-top:9px;background:#0f141c;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:11.5px;color:var(--muted)}
  .subs b{color:var(--gold);display:block;margin-bottom:4px;font-size:11px}
  .subs ul{margin:0;padding-left:16px} .subs li{padding:1px 0} .subs li b{display:inline;color:var(--ink)}
+ .subs.onde{background:#0e1620;border-color:#25415e} .subs.onde>b{color:#7fa8ff}
+ .subs.onde li b{color:#7fa8ff} .subs.onde .dim{color:#5a6472}
+ .meta .ob{color:#7fa8ff} .meta .ob b{color:#7fa8ff}
+ .orig{color:var(--muted);font-size:11px;margin:2px 0 0} .orig b{color:var(--ink);font-variant-numeric:tabular-nums}
  .faltas{margin-top:10px}
  .flh{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#e2795b} .flh .dim{color:var(--muted);font-weight:400} .flh .cpbtn{margin-left:auto}
  .mrk{font-size:10px;font-weight:800;padding:1px 6px;border-radius:5px;background:#2a2410;color:var(--gold)}
@@ -377,11 +448,15 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
 <footer>Uma cópia física entra numa caixa e <b>só numa</b> — por isso os números aqui são
 mais baixos que os da página <b>Decks permanentes</b>, onde cada deck conta a coleção
 inteira. <b style="color:var(--add)">Verde</b> = tens · <b style="color:var(--gold)">âmbar</b>
-= tens a carta mas não serve esta caixa (língua ou acabamento) · <b style="color:var(--warn)">vermelho</b>
-= falta · <b>⚔</b> = disputada por outra caixa. Regras de material: os decks de
+= tens a carta mas não está nesta caixa: ou está <b>noutra caixa</b> (diz qual e quantas —
+vais lá buscá-la, não se compra) ou não serve esta (língua ou acabamento) ·
+<b style="color:var(--warn)">vermelho</b> = não tens nenhuma, é compra ·
+<b>⚔</b> = partilhada com outra caixa. Regras de material: os decks de
 <b>Premodern</b> só levam cartas <b>PT</b> das edições da era, e essas não entram em mais
-nenhum formato — e <b>não olham para a Caixa Reserved List</b> (regra de 07/09/2026): o que
-lá está não conta, nem sequer como âmbar; <b>Standard/Pioneer/Modern/Legacy</b> só levam
+nenhum formato — e <b>só vêem cartas PT</b> (regra de 07/09/2026): uma cópia em inglês não
+conta, nem sequer como âmbar, é compra em PT. Da <b>Caixa RL</b> vêem só a metade
+<b>PT</b> — na estante são duas caixas, e por isso a localização diz sempre
+<b>Caixa RL (PT)</b> ou <b>Caixa RL (EN)</b>; <b>Standard/Pioneer/Modern/Legacy</b> só levam
 <b>foil</b>, menos as da Reserved List. Quem manda no loadout é o <code>colecao_config.json → loadout</code>.
 A lista para vender é uma <b>sugestão a confirmar</b>. Atualiza diariamente.</footer>
 </div>

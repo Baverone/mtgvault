@@ -132,7 +132,9 @@ def main(argv=None):
     rep.add_argument("format")
     rep.add_argument("--min-lists", type=int, default=5)
 
-    lo = sub.add_parser("loadout", help="os decks montados em deckbox: estado e conflitos")
+    lo = sub.add_parser("loadout",
+                        help="os decks montados em deckbox: estado, o que comprar "
+                             "e o que ir buscar a outra caixa")
     lo.add_argument("deck", nargs="?", help="nome (ou parte) de um slot, para o detalhe")
 
     vd = sub.add_parser("vender", help="o que sobra depois de montar o loadout")
@@ -421,19 +423,29 @@ def _loadout_resumo(rep):
                   else "montado" if s.get("montado") else "a montar")
         linhas.append({"slot": s["nome"], "formato": s["formato"], "%": s["pct"],
                        "tenho": f"{s['tenho']}/{s['precisa']}",
-                       "faltam": s["faltam"],
+                       "comprar": s["comprar"], "ir buscar": s["noutra"],
                        "custo": f"{s['custo']:.2f}€", "estado": estado})
-    _p(linhas, ["slot", "formato", "%", "tenho", "faltam", "custo", "estado"])
-    print(f"\n  custo de fechar tudo: {rep['custo_total']:.2f}€")
-    print(f"  conflitos: {len(rep['conflitos'])} cartas disputadas por 2+ caixas")
+    _p(linhas, ["slot", "formato", "%", "tenho", "comprar", "ir buscar", "custo",
+                "estado"])
+    print(f"\n  comprar: {rep['comprar_total']} cópias / {rep['custo_total']:.2f}€")
+    print(f"  ir buscar a outra caixa: {rep['noutra_total']} cópias (não são compra)")
+    print(f"  partilhadas: {len(rep['conflitos'])} cartas que 2+ caixas querem")
     print(f"  venda: {rep['copias']} cópias / {rep['total']:.2f}€"
           f"  ·  Reserved List à parte: {rep['copias_rl']} / {rep['total_rl']:.2f}€")
     if rep["conflitos"]:
-        print("\nCARTAS DISPUTADAS (as 10 piores)")
+        print("\nCARTAS PARTILHADAS ENTRE CAIXAS (as 10 mais pedidas)")
         for c in rep["conflitos"][:10]:
             det = " · ".join(f"{q['slot']} {q['levou']}/{q['pediu']}"
                              for q in c["por_slot"])
             print(f"  {c['nm']:<28} tenho {c['tenho']} para {c['pedido']}   {det}")
+            # Quem está nas duas listas levou parte do que pedia: não tem para
+            # onde ir buscar, falta-lhe mesmo. Não entra no "vai buscar".
+            # E se ninguém ficou com ela (as cópias existem mas nenhuma caixa as
+            # pode usar), não há nada a ir buscar: é compra para todas.
+            vai = [x for x in c["ficam_sem"]
+                   if c["ficam_com"] and x not in c["ficam_com"]]
+            print(f"  {'':<28} está em: {', '.join(c['ficam_com']) or 'ninguém'}"
+                  + (f"   vai buscar: {', '.join(vai)}" if vai else ""))
 
 
 def _loadout_detalhe(rep, procura):
@@ -452,28 +464,52 @@ def _loadout_detalhe(rep, procura):
             print(f"  só cartas em {s['lingua'].upper()}")
         if s.get("acabamento") == "foil":
             print("  só foil/etched (as da Reserved List podem ser nonfoil)")
+        # Onde estão as cartas que ele já tem: é a metade da pergunta "onde está
+        # a carta" que não é falta nenhuma — é o que se tira da estante para
+        # montar. A Caixa RL aparece partida em PT e EN, como está lá.
+        if s["origens"]:
+            print("  tirar de: " + " · ".join(f"{k} {v}" for k, v in s["origens"].items()))
         if not s["missing"]:
             print("  COMPLETO.")
             continue
-        print(f"\n  FALTAM {s['faltam']} cópias · {s['custo']:.2f}€")
+        print(f"\n  FALTAM {s['faltam']} cópias: {s['comprar']} a comprar "
+              f"({s['custo']:.2f}€) + {s['noutra']} a ir buscar a outra caixa")
         for m in s["missing"]:
             u = f"{m['unit']:.2f}€" if m["unit"] else "?"
             # Quando o slot é de foil e o preço veio do nonfoil, diz-se: a
             # estimativa está por baixo, e é melhor sabê-lo antes de comprar.
             if s.get("acabamento") == "foil" and m["price_finish"] == "nonfoil":
                 u += "*"
-            extra = ("   [" + "; ".join(f"{v}× {k}" for k, v in m["alt"].items()) + "]"
-                     if m["alt"] else "")
+            partes = [f"comprar {m['comprar']}"
+                      if 0 < m["comprar"] < m["missing"] else "",
+                      "; ".join(f"em {c}: {q}" for c, q in sorted(m["noutra"].items())),
+                      "; ".join(f"{v}× {k}" for k, v in m["alt"].items()),
+                      "; ".join(f"em {k}: {v}" for k, v in m["alt_onde"].items())]
+            extra = "   [" + " | ".join(p for p in partes if p) + "]" \
+                if any(partes) else ""
             print(f"    {m['missing']}× {m['nm']:<34} {u:>10} {m['board']}{extra}")
         if any(m["price_finish"] == "nonfoil" for m in s["missing"]) \
                 and s.get("acabamento") == "foil":
             print("    (* sem preço foil na base — o valor é o do nonfoil, "
                   "por baixo do real)")
-        print("\n  wantlist (formato Cardmarket):")
-        for m in sorted(s["missing"], key=lambda x: x["nm"]):
+        # Onde ir buscar (André, 2026-09-07): estas NÃO se compram — a cópia
+        # existe, está noutra caixa do loadout, e vai-se lá buscar para jogar.
+        if s["noutra_caixa"]:
+            print(f"\n  IR BUSCAR A OUTRA CAIXA ({s['noutra']} cópias — não são compra):")
+            for m in s["noutra_caixa"]:
+                onde = ", ".join(f"{q}× em {c}" for c, q in sorted(m["noutra"].items()))
+                mais = f"   (comprar mais {m['comprar']})" if m["comprar"] else ""
+                print(f"    {m['nm']:<34} {onde}{mais}")
+        compras = sorted((m for m in s["missing"] if m["comprar"]),
+                         key=lambda x: x["nm"])
+        if not compras:
+            print("\n  nada a comprar: o que falta está todo noutras caixas.")
+            continue
+        print("\n  wantlist (formato Cardmarket) — só o que é mesmo compra:")
+        for m in compras:
             marca = " [FOIL]" if s.get("acabamento") == "foil" else (
                 " [PT]" if s.get("lingua") == "pt" else "")
-            print(f"    {m['missing']} {m['nm']}{marca}")
+            print(f"    {m['comprar']} {m['nm']}{marca}")
 
 
 def _vender(rep, csv_out=False, tudo=False):
@@ -487,14 +523,14 @@ def _vender(rep, csv_out=False, tudo=False):
               "preco_unitario,total,reserved_list,motivo")
         for titulo, linhas in blocos:
             for r in linhas:
-                print(f'{titulo},{r["q"]},"{r["nm"]}","{r["sub"]}",{r["set_code"]},'
+                print(f'{titulo},{r["q"]},"{r["nm"]}","{r["local"]}",{r["set_code"]},'
                       f'{r["finish"]},{r["lang"]},{r["unit"] or ""},{r["total"]},'
                       f'{1 if r["rl"] else 0},"{r["reason"]}"')
         return
     for titulo, linhas in blocos:
         print(f"\n{titulo}  —  {sum(r['q'] for r in linhas)} cópias, "
               f"{sum(r['total'] or 0 for r in linhas):.2f}€")
-        _p([{"q": r["q"], "carta": r["nm"], "balde": r["sub"], "ed": r["set_code"],
+        _p([{"q": r["q"], "carta": r["nm"], "balde": r["local"], "ed": r["set_code"],
              "fin": r["finish"], "ln": r["lang"],
              "unit": f"{r['unit']:.2f}" if r["unit"] else "?",
              "total": f"{r['total']:.2f}", "motivo": r["reason"]} for r in linhas],

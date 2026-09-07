@@ -59,7 +59,7 @@ collection_gallery.py  colecao.html — galeria por sub-coleção
 core_decks.py       (coredecks.html APAGADO 2026-08-26, a redefinir; NÃO vai ao git-add) — mas core_decks.py continua a correr no daily p/ calcular card_price/posse
 alertas.py          alertas.html — vender/comprar por movimento de preço (fora do menu atual)
 meusdecks.py        meusdecks.html — "Decks vigiados": agora SÓ os 5 fixos de colecao_config.json→decks_vigiados (Pauper-Luffy, Premodern-Luffy/Stiflenought, Blue Farm, Cloud cEDH, Cloud Duel Commander — este ÚLTIMO agora INCLUÍDO) MAIS os alvos de consenso de Premodern (`premodern_arquetipos_alvo`, sufixo " (consenso)"). Lista 75 verde/vermelho, % e evolução; checkmark "atualizado" (localStorage)
-deckboxes.py        deckboxes.html — "Deckboxes": o LOADOUT (colecao_config.json→loadout), os decks montados ao mesmo tempo com a coleção REPARTIDA entre eles (uma cópia física serve uma caixa só). Por caixa: barra de completude, cartas em falta por preço, substitutos (tenho mas não serve), wantlist Cardmarket. Mais conflitos e "Para vender". Motor em mtgvault/loadout.py
+deckboxes.py        deckboxes.html — "Deckboxes": o LOADOUT (colecao_config.json→loadout), os decks montados ao mesmo tempo com a coleção REPARTIDA entre eles (uma cópia física serve uma caixa só). Por caixa: barra de completude, dois números ("faltam comprar" e "ir buscar a outra caixa"), cartas em falta por preço, substitutos (tenho mas não serve), "tirar de:" (de que balde saem as cartas que já tem — `slot["origens"]`, com a Caixa RL partida em PT/EN), wantlist Cardmarket (SÓ o que é mesmo compra). Mais "cartas partilhadas entre caixas" (ex-"conflitos", mesma chave `conflitos`) e "Para vender". Motor em mtgvault/loadout.py
 metagame.py         metagame.html — "Metagame" (página principal): top-10 por formato (só Challenges/Showcases, 30 dias), cartas a cor=tenho / cinza=falta, wantlist por deck, e "Staples que faltam" por formato ordenadas por preço. Usa meta_coverage.owned_available
 (prioridade.py + metafaltas.py APAGADOS 2026-08-26, a redefinir)
 reservedlist.py     reservedlist.html — Reserved List (Scryfall) x coleção, por edição, preço/evolução, e 'VENDER' as que não jogam em formato nenhum
@@ -131,34 +131,77 @@ prioridade, regras de material). Gera `deckboxes.html` e os comandos
 
 A diferença para tudo o resto do vault: aqui a coleção é **repartida**. Uma
 cópia física entra numa caixa e **só numa**, a alocação é global e por ordem de
-`prioridade`, e é daí que saem três coisas que uma cobertura por deck não dá —
-**conflito** (2+ caixas querem a carta, não chegam para todas), **substituto**
-(tem a carta mas não serve àquela caixa) e **venda**. Por isso as percentagens
-desta página são MAIS BAIXAS que as do `meusdecks.html`, onde cada deck conta a
-coleção inteira: não é discordância, é a pergunta a ser outra.
+`prioridade`, e é daí que saem quatro coisas que uma cobertura por deck não dá —
+**noutra caixa** (a carta existe e serve, mas está alocada a outra caixa),
+**cartas partilhadas** (2+ caixas querem a carta, não chegam para todas — era o
+"conflito"), **substituto** (tem a carta mas não serve àquela caixa) e
+**venda**. Por isso as percentagens desta página são MAIS BAIXAS que as do
+`meusdecks.html`, onde cada deck conta a coleção inteira: não é discordância, é a
+pergunta a ser outra.
+
+**Onde está a carta: 'noutra caixa' não é falta (André, 2026-09-07, à letra).**
+*"Vamos fazer como no riftvault: indicas onde está a carta, para, se eu quiser ir
+jogar, saber onde ir buscar e não ter que comprar múltiplos para todos. Caso eu
+compre, depois indico (meto foto) e vais ajustando."*
+- Quando uma caixa pede uma carta e a(s) cópia(s) que a SERVEM foram alocadas a
+  outra caixa, a linha traz `noutra` = `{caixa: quantas}` e `noutra_q`, em vez de
+  ser tratada como falta. Na página é o **terceiro estado** (moldura âmbar, o
+  mesmo dos substitutos) com o texto *"em &lt;caixa&gt;"*, mais o bloco
+  *"📦 ir buscar a outra caixa"*; no CLI é a secção `IR BUSCAR A OUTRA CAIXA`.
+- **A wantlist e o custo de fechar EXCLUEM essas cartas.** A quantidade de compra
+  é `comprar` (= `missing - noutra_q`), nunca `missing`, e `cost` é sobre
+  `comprar`. Só é compra o que não existe em lado nenhum, ou o que existe mas não
+  serve na língua/acabamento exigidos (esse continua a ser substituto e continua
+  a comprar-se). Cada caixa mostra dois números: `comprar` e `noutra`; o relatório
+  inteiro traz `comprar_total`/`noutra_total`. **Se acrescentares uma vista nova
+  que some faltas, soma `comprar` — somar `missing` volta a pedir 8 Swords to
+  Plowshares para tapar um buraco que não existe.**
+- **Uma cópia que a caixa não VÊ nunca é "noutra caixa".** A regra 1b (Premodern
+  x Caixa RL) e o `_porque_nao` continuam a ganhar: para essas, a carta é compra.
+- **A ordem de `prioridade` é o que torna isto correcto.** Um lote que serve o
+  slot S e ainda está livre quando S corre é sempre gasto por S; logo, tudo o que
+  falta a S e servia S foi levado por um slot de prioridade MAIOR. Não é preciso
+  uma segunda passagem — mas se mudares a ordem da alocação, isto deixa de valer.
+- **A venda não muda:** uma carta pedida por qualquer caixa já estava alocada, e
+  o que está alocado nunca entra na venda. E as `retidos`/`guardar` continuam iguais.
+- **Como se ajusta depois de comprar:** o André mete as fotos das cartas novas em
+  `pendentes/` (repo `mtg-fotos-novas` / app do GitHub — ver `PROCESSAR_FOTOS.md`
+  e `processar_fotos.py`), daí sai o CSV para a coleção, e a **alocação recalcula
+  sozinha na corrida seguinte do `daily.py`** (passo `deckboxes`). Não há estado
+  guardado: o "onde está a carta" é sempre recalculado da coleção do dia.
 
 **Duas regras de material (André, 2026-09-07, à letra).**
 1. *"Para Premodern as cartas são das edições que tínhamos visto e em Português;
    essas cartas NÃO entram para outros formatos!!"* → um slot com `"lingua":"pt"`
-   só fecha com cópias PT (uma EN é substituto, "serve mas não é PT"), e uma
-   cópia PT de impressão até ao **Scourge (2003-05-26)** fica trancada ao
-   Premodern. **Excepção que os dados obrigam a ter:** cópias que vivem no
-   `balde` de outro slot do loadout já são desse deck — o Blue Farm tem um Lotus
-   Petal (tmp) e um Tarnished Citadel (ody) PT dentro da caixa, e trancá-los ao
-   Premodern desmontava um deck que está montado.
+   só fecha com cópias PT, e uma cópia PT de impressão até ao **Scourge
+   (2003-05-26)** fica trancada ao Premodern. **Excepção que os dados obrigam a
+   ter:** cópias que vivem no `balde` de outro slot do loadout já são desse deck
+   — o Blue Farm tem um Lotus Petal (tmp) e um Tarnished Citadel (ody) PT dentro
+   da caixa, e trancá-los ao Premodern desmontava um deck que está montado.
    **1b. O outro lado da mesma regra (André, 2026-09-07, à letra):** *"O
-   Premodern não é para olhar para a minha Caixa RL, pois o Premodern só vai
-   usar as cartas em Português; na Caixa RL só estão cartas RL em inglês."* →
-   `loadout._fora_de_vista`: um slot de `formato: "premodern"` **não vê** o balde
-   `Caixa Reserved List` — não aloca de lá, não o conta como **substituto** e não
-   lhe desconta no custo. Para uma caixa de Premodern, uma carta que só existe em
-   EN é **falta** (compra-se em PT), não "tenho mas não serve". É mais forte que
-   a regra da língua e é de propósito: um substituto diz *"decide se abres
-   excepção"*, e nisto ele já decidiu que não abre. Consequência a assumir: as 4
-   Opalescence EN, os 2 Mox Diamond EN e as 4 Intuition EN da Caixa RL deixaram
-   de estar protegidas pela saída `guardar` e passam a aparecer em `venda_rl`
-   (a confirmar uma a uma). As cópias da Caixa RL continuam disponíveis para as
-   outras caixas — o Legacy aceita Reserved List nonfoil.
+   Premodern só usa em PT, mesmo eu tendo a carta em inglês"* e *"na Caixa RL, as
+   PT e as ENG estão separadas"* (esta segunda corrigiu, no mesmo dia, um *"o
+   Premodern não é para olhar para a minha Caixa RL, na Caixa RL só estão cartas
+   RL em inglês"* — a premissa é que era falsa; o commit 7acc52f, que excluía a
+   Caixa RL inteira, foi ajustado). → `loadout._fora_de_vista`: um slot de
+   `formato: "premodern"` só VÊ cópias `language='pt'`, e só nos baldes
+   `Premodern (geral)`, `SPML` e `Caixa Reserved List` (mais o seu próprio) — o
+   resto da colecção está dentro da caixa de outro deck montado. Não aloca uma
+   EN, não a conta como **substituto** e não lhe desconta no custo: para uma
+   caixa de Premodern, uma carta que só existe em EN é **falta** (compra-se em
+   PT), não "tenho mas não serve". É mais forte que a regra da língua do
+   `_porque_nao` e é de propósito: um substituto diz *"decide se abres
+   excepção"*, e nisto ele já decidiu que não abre.
+   **A Caixa RL é uma no config e duas na estante**, e a diferença decide tudo:
+   as PT de lá servem o Premodern (na base de 2026-09-07 dão 30 cartas às cinco
+   caixas: Stiflenought 5, UW Replenish 9, Enchantress 4, Elves 10, IGG 2), as EN
+   não. Por isso `loadout.local(lot)` mostra **`Caixa RL (PT)`** ou **`Caixa RL
+   (EN)`** em todo o lado onde antes aparecia o balde — página, `loadout <deck>`
+   ("tirar de:"), `vender`, CSV. Consequência a assumir: nenhuma EN é protegida
+   pela saída `guardar` do lado do Premodern (as 4 Opalescence EN, os 2 Mox
+   Diamond EN, as 4 Intuition EN) — passam por `venda`/`venda_rl`, a confirmar
+   uma a uma. As EN continuam disponíveis para as outras caixas: o Legacy aceita
+   Reserved List nonfoil.
 2. *"Standard, Pioneer, Modern e Legacy: as cartas são todas Foil (menos as
    Reserved List)"* → `"acabamento":"foil"` nesses slots: só `foil`/`etched`, e
    as cartas com `catalog.cards.reserved` podem ser nonfoil. Uma nonfoil de uma
@@ -174,11 +217,12 @@ volta a imprimir, confirma-se uma a uma), `retidos` (baldes com
 SUBSTITUTOS. Este último não é um requinte — foi um erro real da primeira
 versão: o playset de 4 dava as cópias a mais como excedente e a lista mandava
 vender exactamente as cartas que faltam a um deck do loadout. **Uma cópia que
-serve um deck do loadout e só falha na língua ou no acabamento nunca vai para a
-venda.** O caso que a motivou eram as 4 Opalescence EN da Caixa RL; desde a
-regra 1b acima essas já nem são vistas pelo Premodern e vão mesmo para
-`venda_rl` — a saída `guardar` continua a valer para as nonfoil dos slots de
-foil e para as EN que vivem nos baldes de colecção.
+serve um deck do loadout e só falha no acabamento nunca vai para a venda.** O
+caso que a motivou eram as 4 Opalescence EN da Caixa RL; desde a regra 1b acima
+nenhuma EN é vista pelas caixas de Premodern e essas vão mesmo para `venda_rl` —
+a saída `guardar` ficou só para as **nonfoil dos slots de foil**, que é onde ele
+não fechou a porta (na base de 2026-09-07 dá 0 cópias: as nonfoil que servem
+esses slots ainda cabem todas no playset).
 
 **Classificação Deck / Coleção / Vender (`classify.py`, 2026-08-13).** É a
 regra do André já implementada, que alimenta a página `colecao_cor.html`:
