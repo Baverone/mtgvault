@@ -18,8 +18,18 @@
   "decks_faziveis_min_pct": 50,
   "_decks_faziveis_min_pct": "Página 'Decks fazíveis': mostra os decks do top-10 (Challenges/Showcases) que o André tem a pelo menos esta % (cartas distintas não-básicas do main). Começa em 50; se der decks a mais/a menos, muda aqui (ex.: 60, 70) para afinar a realidade.",
 
-  "showcase_min_players": 24,
-  "_showcase_min_players": "Página 'Showcase Challenger': um torneio PRESENCIAL (mtgtop8) só entra se tiver pelo menos este nº de jogadores (peso). 24 inclui RCQs e torneios médios; sobe para 64 p/ só os grandes, ou desce p/ 16.",
+  "metagame_fontes": {
+    "_default": {
+      "tiers": ["Challenge", "Showcase", "Presencial"],
+      "min_jogadores_presencial": 64,
+      "ligas": false
+    },
+    "duel-commander": {
+      "min_jogadores_presencial": 0,
+      "ligas": true
+    }
+  },
+  "_metagame_fontes": "QUE LISTAS CONTAM para o metagame (decisão do André, 2026-09-07: 'no mtgvault não quero listas de league; quero challenge, showcase, e presenciais com 64 ou mais jogadores — menos Duel Commander, que pode ter menos jogadores e pode ser ligas'). Vale para TUDO: metagame, cobertura, decks fazíveis, showcase, o cálculo do core e os decks seguidos. 'tiers' = valores de decklists.event_tier que entram (Challenge | Showcase | Presencial | Qualifier | Preliminary | League | outro). 'min_jogadores_presencial' = nº mínimo de jogadores de um torneio PRESENCIAL; 0 = sem mínimo. Um presencial SEM contagem de jogadores nunca conta (não se assume o mínimo). 'ligas' = true acrescenta League aos tiers. '_default' aplica-se a todos os formatos; uma chave com nome de formato só a esse. As listas 'manual' (metidas por ti) contam sempre. Para dar uma exceção ao Premodern (que com esta regra fica sem listas — não tem presenciais de 64+ e as ligas do MTGO saem), acrescenta aqui: \"premodern\": { \"min_jogadores_presencial\": 0, \"ligas\": true }. O mesmo serve para o cEDH, que só tem presenciais pequenos.",
 
   "decks_vigiados": ["UW Oswald", "Cloud (Duel Commander)", "Stiflenought (Luffy)"],
   "_decks_vigiados": "Decks da tabela `decks` que aparecem na página 'Decks vigiados' (além dos watched com balde: Blue Farm, Pauper, Cloud cEDH). Só estes nomes passam o filtro. O resto da tabela `decks` (Modern/Standard/Pioneer de referência do metagame, Spock, etc.) fica FORA da página, mas continua a servir a classificação/preços/cobertura. André quer aqui: Pauper (Luffy), Premodern (Luffy=Stiflenought), Blue Farm, Cloud cEDH e Cloud Duel Commander.",
