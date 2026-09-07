@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 from mtgvault import db as _db  # noqa: E402
+from mtgvault import paginas  # noqa: E402
 
 # Só edições a sério: as impressões da Reserved List que interessam colecionar.
 # memorabilia (30th Anniversary, World Championship Decks, Collectors' Edition,
@@ -42,11 +43,7 @@ def _ignore_formats():
     except Exception:  # noqa: BLE001
         return {"vintage"}
 
-TABS = ('<nav class="tabs"><a href="index.html">🏠 Início</a>'
-        '<a href="meusdecks.html">🎴 Decks permanentes</a><a href="showcase.html">🎯 Showcase Challenger</a>'
-        ''
-        ''
-        '<a href="colecao_cor.html">📚 Coleção</a><a href="caixarl.html">📦 Caixa RL</a></nav>')
+TABS = paginas.nav("reservedlist.html", extra=True)
 
 
 def _art(sid):
@@ -234,15 +231,16 @@ def build(con, out_path=None):
     else:
         sellbox = (f'<div class="sellnote">✓ Todas as tuas cartas da Reserved List jogam nalgum '
                    f'formato — nada a vender. <span class="fine">(a ignorar: {ign})</span></div>')
-    out.write_text(_TMPL.replace("%TABS%", TABS).replace("%SECS%", secs)
+    out.write_text(_TMPL.replace("%META%", paginas.META)
+                   .replace("%TEMA%", paginas.TEMA)
+                   .replace("%TABS%", TABS).replace("%SECS%", secs)
                    .replace("%HEAD%", head).replace("%SELL%", sellbox), encoding="utf-8")
     return out
 
 
-_TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+_TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
 <title>Reserved List</title><style>
- :root{--bg:#0d1017;--card:#161b24;--ink:#eef2f7;--muted:#8b97a6;--line:#242c38;--accent:#5b8cff;--gold:#e0b64b;--add:#4ac585;--warn:#e0704b;--pt:#5b8cff}
+%TEMA%
  *{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#10141d,#0d1017);color:var(--ink);font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
  .wrap{max-width:1100px;margin:0 auto;padding:22px 14px 60px}
  h1{margin:0;font-size:24px;font-weight:800} .lead{color:var(--muted);font-size:13px;margin:2px 0 12px} .lead b{color:var(--ink)}

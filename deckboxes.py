@@ -44,15 +44,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import loadout  # noqa: E402
+from mtgvault import loadout, paginas  # noqa: E402
 
-TABS = ('<nav class="tabs"><a href="index.html">🏠 Início</a>'
-        '<a href="meusdecks.html">🎴 Decks permanentes</a>'
-        '<a class="cur" href="deckboxes.html">🧰 Deckboxes</a>'
-        '<a href="metagame.html">🌐 Metagame</a>'
-        '<a href="showcase.html">🎯 Showcase Challenger</a>'
-        '<a href="colecao_cor.html">📚 Coleção</a>'
-        '<a href="caixarl.html">📦 Caixa RL</a></nav>')
+TABS = paginas.nav("deckboxes.html")
 
 
 def _art(sid):
@@ -196,32 +190,31 @@ def build(con, out_path=None, editable=False, rep=None):
     out = Path(out_path) if out_path else (ROOT / "deckboxes.html")
     rep = rep if rep is not None else loadout.report(con)
     dados = payload(con, rep, editable=editable)
-    corpo = (_TMPL.replace("%TABS%", TABS)
-             .replace("%DADOS%", json.dumps(dados, ensure_ascii=False)
-                      .replace("</", "<\\/")))
-    out.write_text(corpo, encoding="utf-8")
+    out.write_text(_html(dados), encoding="utf-8")
     return out
 
 
-def html_page(con, editable=False, rep=None):
-    """A página como texto — é o que o `webapp.py` serve sem escrever no disco."""
-    dados = payload(con, rep if rep is not None else loadout.report(con),
-                    editable=editable)
-    return (_TMPL.replace("%TABS%", TABS)
+def _html(dados):
+    return (_TMPL.replace("%META%", paginas.META)
+            .replace("%TEMA%", paginas.TEMA)
+            .replace("%TABS%", TABS)
+            # O `</` escapado é o que impede um nome de carta com `</script>` de
+            # fechar a etiqueta a meio do payload.
             .replace("%DADOS%", json.dumps(dados, ensure_ascii=False)
                      .replace("</", "<\\/")))
 
 
-_TMPL = r"""<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0d1017">
+def html_page(con, editable=False, rep=None):
+    """A página como texto — é o que o `webapp.py` serve sem escrever no disco."""
+    return _html(payload(con, rep if rep is not None else loadout.report(con),
+                         editable=editable))
+
+
+_TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
 <title>Deckboxes</title><style>
- :root{--bg:#0d1017;--card:#161b24;--card2:#12171f;--ink:#eef2f7;--ink2:#c3cdd9;
-       --muted:#8b97a6;--dim:#5a6472;--line:#242c38;--line2:#37445a;
-       --accent:#5b8cff;--gold:#e0b64b;--add:#4ac585;--warn:#e0704b;
-       --r:12px;--r2:16px}
+%TEMA%
+ :root{--r:12px;--r2:16px}
  *{box-sizing:border-box}
- html{-webkit-text-size-adjust:100%}
  body{margin:0;background:var(--bg);color:var(--ink);
       font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
       padding-bottom:env(safe-area-inset-bottom)}

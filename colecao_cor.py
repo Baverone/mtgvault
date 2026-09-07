@@ -24,7 +24,7 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 import classify  # noqa: E402
 import commander_decks  # noqa: E402  (decks de consenso em camadas núcleo/flex/tech)
-from mtgvault import db, loadout  # noqa: E402
+from mtgvault import db, loadout, paginas  # noqa: E402
 from mtgvault.collection import owned_playable  # noqa: E402
 
 COLOR = {"W": "Branco", "U": "Azul", "B": "Preto", "R": "Vermelho", "G": "Verde"}
@@ -469,7 +469,10 @@ def build(con, out_path=None):
         f'<div class="vnote">Preço Cardmarket por impressão. A fonte atual dá <b>um só valor</b> por carta '
         f'— o «mínimo» (low) e o «trend» coincidem, por isso mostro um só. (Separá-los precisa de afinar o harvest de preços.)</div></div>')
 
-    out.write_text(_TMPL.replace("%SECS%", secs).replace("%VIGIADOS%", wsec)
+    out.write_text(_TMPL.replace("%META%", paginas.META)
+                   .replace("%TEMA%", paginas.TEMA)
+                   .replace("%TABS%", paginas.nav("colecao_cor.html"))
+                   .replace("%SECS%", secs).replace("%VIGIADOS%", wsec)
                    .replace("%VALOR%", valor_html)
                    .replace("%NAV%", topnav).replace("%TOTAL%", str(total_col))
                    .replace("%DECKN%", str(n_deckbound))
@@ -477,10 +480,9 @@ def build(con, out_path=None):
     return out
 
 
-_TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+_TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
 <title>Coleção por cor</title><style>
- :root{--bg:#0e1116;--card:#171b22;--ink:#e8ecf1;--muted:#93a0ad;--line:#262c36;--accent:#5b8cff;--gold:#e0b64b;--add:#4ac585}
+%TEMA%
  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
  .wrap{max-width:1100px;margin:0 auto;padding:20px 14px 60px}
  h1{margin:0 0 2px;font-size:21px} .sub{color:var(--muted);font-size:13px;margin-bottom:6px} .sub a{color:var(--accent)}
@@ -526,7 +528,7 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
 </style></head><body><div class="wrap">
 <header><h1>📚 Coleção — organizar e fotografar</h1>
 <div class="sub">TUDO o que tens nos baldes de coleção, por cor→custo de mana · nada removido para decks · enche os binders e fotografa o que não aparecer · dados de %TODAY%</div>
-<nav class="tabs"><a href="index.html">🏠 Início</a><a href="meusdecks.html">🎴 Decks permanentes</a><a href="deckboxes.html">🧰 Deckboxes</a><a href="metagame.html">🌐 Metagame</a><a href="showcase.html">🎯 Showcase Challenger</a><a class="cur" href="colecao_cor.html">📚 Coleção</a><a href="caixarl.html">📦 Caixa RL</a></nav>
+%TABS%
 <div class="tally"><b class="t-col">🔵 %TOTAL% cartas nos binders</b><b class="t-deck">🟢 %DECKN% que vão p/ decks</b><button class="tgl" id="dm" onclick="toggleDM()">🎯 marcar as que vão p/ decks</button></div>
 <div class="cfg">%CFG%</div>
 %VALOR%</header>
