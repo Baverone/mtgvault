@@ -419,7 +419,7 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
  ul.fl li{display:flex;gap:7px;padding:2px 0} ul.fl b{color:var(--gold);
    font-variant-numeric:tabular-nums;flex:0 0 auto}
  ul.fl .wn{flex:1 1 auto;min-width:0}
- ul.fl .wn small{display:block;color:var(--dim);font-size:11px;line-height:1.35}
+ ul.fl .wn{min-width:0} ul.fl .wn small{display:block;color:var(--dim);font-size:11px;line-height:1.35;overflow-wrap:anywhere}
  ul.fl .pz{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums;
    flex:0 0 auto}
  .cara{font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;
@@ -1112,6 +1112,7 @@ function ligar() {
   }
   for (const l of document.querySelectorAll('.mv')) {
     const cb = l.querySelector('input');
+    if (!cb) continue;  /* .mv da seccao Actualizar nao tem checkbox */
     cb.onchange = () => {
       if (cb.checked) P.feitos[l.dataset.id] = 1; else delete P.feitos[l.dataset.id];
       l.classList.toggle('feito', cb.checked);
