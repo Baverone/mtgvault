@@ -172,7 +172,11 @@ BASICS = {"Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes",
 REGRAS_FORMATO = [
     {"grupo": "premodern", "formatos": ["premodern"],
      "lingua": "pt", "edicoes": "premodern", "estrita": True,
-     "baldes": ["Premodern (geral)", "SPML", BALDE_RL]},
+     # A `Colecção` é o balde único de depois da migração; os outros dois são os
+     # de antes dela. A lista tem os três para o mesmo código estar certo nas
+     # duas bases — o que decide o que a caixa NÃO vê é agora, sobretudo, estar
+     # dentro de outra deckbox (`_fora_de_vista`).
+     "baldes": [BALDE_COLECCAO, "Premodern (geral)", "SPML", BALDE_RL]},
     {"grupo": "cedh", "formatos": ["cedh"],
      "lingua": "en", "acabamento": "nonfoil"},
     {"grupo": "duel-commander", "formatos": ["duel-commander"],

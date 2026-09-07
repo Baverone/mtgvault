@@ -142,6 +142,19 @@ def main(argv=None):
     vd.add_argument("--tudo", action="store_true",
                     help="incluir Reserved List, substitutos e retidos")
 
+    ar = sub.add_parser("arrumar",
+                        help="o que mover de cada gaveta para cada deckbox")
+    ar.add_argument("--csv", action="store_true", help="saída em CSV (moves)")
+    ar.add_argument("--confirmar", action="store_true",
+                    help='"já arrumei tudo": grava a alocação como a arrumação real')
+
+    mig = sub.add_parser("migrar-coleccao-unica",
+                         help="funde os baldes na `Colecção` (a RL fica de fora)")
+    mig.add_argument("--dry-run", action="store_true",
+                     help="só diz o que faria; não escreve nada")
+    mig.add_argument("--sem-backup", action="store_true",
+                     help="não fazer a cópia de segurança (não recomendado)")
+
     args = ap.parse_args(argv)
 
     with db.session(args.db, args.catalog) as con:
@@ -414,6 +427,12 @@ def main(argv=None):
         elif args.cmd == "vender":
             _vender(loadout.report(con), csv_out=args.csv, tudo=args.tudo)
 
+        elif args.cmd == "arrumar":
+            _arrumar(con, csv_out=args.csv, confirmar=args.confirmar)
+
+        elif args.cmd == "migrar-coleccao-unica":
+            _migrar(con, dry_run=args.dry_run, com_backup=not args.sem_backup)
+
 
 def _loadout_resumo(rep):
     print("DECKS EM DECKBOX\n")
@@ -507,6 +526,69 @@ def _loadout_detalhe(rep, procura):
         for m in compras:
             marca = loadout.marca_wantlist(s)
             print(f"    {m['comprar']} {m['nm']}" + (f" [{marca}]" if marca else ""))
+
+
+def _arrumar(con, csv_out=False, confirmar=False):
+    """A folha de arrumação: de que gaveta sai cada carta e para que caixa vai.
+
+    O André (2026-09-07): *"quero que me ajudem a ser mais organizado com as
+    cartas."* Com `--confirmar` grava a alocação de hoje como a arrumação real —
+    é o mesmo botão *"já arrumei tudo"* da página.
+    """
+    rep = loadout.report(con)
+    plano = rep["arrumacao"]
+    if csv_out:
+        print(loadout.csv_arrumacao(plano), end="")
+        return
+    if not plano["movimentos"]:
+        print("Nada a arrumar: a estante já está igual à alocação.")
+        return
+    print(f"ARRUMAR — {plano['copias']} cópias em {plano['linhas']} linhas\n")
+    print("DE CADA GAVETA (o que se tira)")
+    for origem, movs in plano["por_origem"].items():
+        print(f"\n  {origem}  ({sum(m['q'] for m in movs)} cópias)")
+        for m in sorted(movs, key=lambda x: (x["para"], x["nm"])):
+            print(f"    {m['q']}× {m['nm']:<34} -> {m['para']}")
+    print("\n\nPARA CADA CAIXA (o que entra)")
+    for destino, movs in plano["por_destino"].items():
+        print(f"\n  {destino}  ({sum(m['q'] for m in movs)} cópias)")
+        for m in sorted(movs, key=lambda x: (x["de"], x["nm"])):
+            print(f"    {m['q']}× {m['nm']:<34} <- {m['de']}")
+    if confirmar:
+        n = loadout.guardar_arrumacao(con, rep)
+        print(f"\n  ARRUMADO: {n} cópias registadas nas caixas. "
+              "A partir de agora o vault diz que estão lá.")
+    else:
+        print("\n  (isto é só a folha — corre com --confirmar quando tiveres "
+              "arrumado a sério)")
+
+
+def _migrar(con, dry_run=False, com_backup=True):
+    """Funde os baldes de colecção e de deck na `Colecção` (a RL fica de fora)."""
+    from . import migracao
+    antes = migracao.estado(con)
+    rep = migracao.migrar(con, dry_run=dry_run, com_backup=com_backup)
+    print("ANTES:")
+    for b, q in antes.items():
+        print(f"  {b:<26} {q:>5}")
+    if not rep["total"]:
+        print("\nNada a migrar — já está tudo na `Colecção`.")
+        return
+    print(f"\n{'FARIA' if dry_run else 'MOVEU'}: {rep['total']} cópias para "
+          f"`{loadout.BALDE_COLECCAO}`")
+    for b, q in rep["movidas"].items():
+        print(f"  {b:<26} {q:>5}")
+    if rep["arrumadas"]:
+        print("\nDecks que ficam registados como MONTADOS (as cartas já estavam "
+              "na caixa deles):")
+        for slot, q in rep["arrumadas"].items():
+            print(f"  {slot:<26} {q:>5}")
+    if rep["backup"]:
+        print(f"\nbackup: {rep['backup']}")
+    if not dry_run:
+        print("\nDEPOIS:")
+        for b, q in migracao.estado(con).items():
+            print(f"  {b:<26} {q:>5}")
 
 
 def _vender(rep, csv_out=False, tudo=False):
