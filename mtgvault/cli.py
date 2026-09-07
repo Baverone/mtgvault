@@ -538,6 +538,17 @@ def _loadout_detalhe(rep, procura):
             print(f"    {m['comprar']} {m['nm']}" + (f" [{marca}]" if marca else ""))
 
 
+def _carta(m):
+    """`Plains [10E]` — a carta com a edição, num movimento de arrumação.
+
+    Sem a edição, duas linhas do mesmo nome (dois lotes de impressões
+    diferentes) apareciam como *"tirar 5× Plains"* e *"tirar 7× Plains"*, uma a
+    seguir à outra, sem nada que as distinguisse. Não são a mesma pilha.
+    """
+    sc = (m.get("set_code") or "").upper()
+    return f"{m['nm']} [{sc}]" if sc else m["nm"]
+
+
 def _actualizacoes(plano):
     """As caixas CONGELADAS que têm delta por aplicar ("tirar X, meter Y").
 
@@ -555,9 +566,9 @@ def _actualizacoes(plano):
     for a in acts.values():
         print(f"  {a['caixa']}")
         for m in a["sai"]:
-            print(f"    tirar  {m['q']}× {m['nm']:<34} -> {m['para']}")
+            print(f"    tirar  {m['q']}× {_carta(m):<40} -> {m['para']}")
         for m in a["entra"]:
-            print(f"    meter  {m['q']}× {m['nm']:<34} <- {m['de']}")
+            print(f"    meter  {m['q']}× {_carta(m):<40} <- {m['de']}")
         print()
     print()
 
@@ -585,12 +596,12 @@ def _arrumar(con, csv_out=False, confirmar=False):
     for origem, movs in plano["por_origem"].items():
         print(f"\n  {origem}  ({sum(m['q'] for m in movs)} cópias)")
         for m in sorted(movs, key=lambda x: (x["para"], x["nm"])):
-            print(f"    {m['q']}× {m['nm']:<34} -> {m['para']}")
+            print(f"    {m['q']}× {_carta(m):<40} -> {m['para']}")
     print("\n\nPARA CADA CAIXA (o que entra)")
     for destino, movs in plano["por_destino"].items():
         print(f"\n  {destino}  ({sum(m['q'] for m in movs)} cópias)")
         for m in sorted(movs, key=lambda x: (x["de"], x["nm"])):
-            print(f"    {m['q']}× {m['nm']:<34} <- {m['de']}")
+            print(f"    {m['q']}× {_carta(m):<40} <- {m['de']}")
     if confirmar:
         n = loadout.guardar_arrumacao(con, rep)
         print(f"\n  ARRUMADO: {n} cópias registadas nas caixas. "

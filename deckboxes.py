@@ -841,6 +841,12 @@ function vistaTodas() {
       + 'marca-o como permanente (no modo edição, <code>python webapp.py</code>).');
 }
 
+/* A edição, num movimento de arrumação. Sem ela, dois lotes do mesmo nome
+   (impressões diferentes) apareciam como duas linhas iguais uma a seguir à
+   outra — e não são a mesma pilha. */
+const edicao = m => m.set_code
+  ? ` <span class="dim">[${esc(m.set_code.toUpperCase())}]</span>` : '';
+
 /* As caixas CONGELADAS (dedicadas e montadas) não se arrumam — actualizam-se.
    O "já arrumei tudo" geral não lhes toca de propósito: abrir um deck que está
    sleevado é outro gesto, e é ele que decide quando o faz. */
@@ -849,7 +855,7 @@ function actualizarHTML() {
   if (!acts.length) return '';
   const lado = (movs, verbo, seta) => movs.map(m =>
     `<div class="mv"><span class="q">${m.q}×</span>`
-    + `<span class="nm">${esc(m.nm)}</span>`
+    + `<span class="nm">${esc(m.nm)}${edicao(m)}</span>`
     + `<span class="to">${verbo} ${seta} ${esc(verbo === 'tirar' ? m.para : m.de)}`
     + `</span></div>`).join('');
   return `<h2>🔄 Actualizar decks montados <span class="n">${acts.length}</span></h2>`
@@ -882,7 +888,8 @@ function vistaArrumar() {
     const feito = !!P.feitos[id];
     return `<label class="mv${feito ? ' feito' : ''}" data-id="${esc(id)}">`
       + `<input type="checkbox"${feito ? ' checked' : ''}>`
-      + `<span class="q">${m.q}×</span><span class="nm">${esc(m.nm)}</span>`
+      + `<span class="q">${m.q}×</span>`
+      + `<span class="nm">${esc(m.nm)}${edicao(m)}</span>`
       + `<span class="to">${lado === 'origem' ? '→ ' + esc(m.para) : '← ' + esc(m.de)}`
       + `</span></label>`;
   };
