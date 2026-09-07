@@ -32,7 +32,9 @@ DUALS = {"Tundra", "Underground Sea", "Badlands", "Taiga", "Savannah",
          "Scrubland", "Volcanic Island", "Bayou", "Plateau", "Tropical Island"}
 
 NAV = ('<nav class="tabs"><a href="index.html">🏠 Início</a>'
-       '<a href="meusdecks.html">🎴 Decks permanentes</a><a href="showcase.html">🎯 Showcase Challenger</a>'
+       '<a href="meusdecks.html">🎴 Decks permanentes</a>'
+       '<a href="deckboxes.html">🧰 Deckboxes</a>'
+       '<a href="showcase.html">🎯 Showcase Challenger</a>'
        ''
        ''
        '<a href="colecao_cor.html">📚 Coleção</a>'

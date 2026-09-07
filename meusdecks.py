@@ -51,7 +51,9 @@ def _alvos_premodern():
     return {t + pd.SUFIXO for t in pd.alvos()}
 
 TABS = ('<nav class="tabs"><a href="index.html">🏠 Início</a>'
-        '<a class="cur" href="meusdecks.html">🎴 Decks permanentes</a><a href="showcase.html">🎯 Showcase Challenger</a>'
+        '<a class="cur" href="meusdecks.html">🎴 Decks permanentes</a>'
+        '<a href="deckboxes.html">🧰 Deckboxes</a>'
+        '<a href="showcase.html">🎯 Showcase Challenger</a>'
         ''
         ''
         '<a href="colecao_cor.html">📚 Coleção</a><a href="caixarl.html">📦 Caixa RL</a></nav>')

@@ -34,6 +34,7 @@ import collection_gallery  # noqa: E402  (gera colecao.html — galeria com imag
 import colecao_cor  # noqa: E402  (gera colecao_cor.html — coleção por cor + custo de mana)
 import meta_coverage  # noqa: E402  (gera cobertura.html — top decks + % que tenho + o que falta)
 import meusdecks  # noqa: E402  (gera meusdecks.html — os meus decks: estado, % e evolução)
+import deckboxes  # noqa: E402  (gera deckboxes.html — o loadout: decks montados em simultâneo + venda)
 import metagame  # noqa: E402  (gera metagame.html — só ver o metagame: listas com arte)
 import decks_faziveis  # noqa: E402  (gera decksfaziveis.html — decks do top-10 que já dá para montar)
 import reservedlist  # noqa: E402  (gera reservedlist.html — Reserved List x coleção)
@@ -275,6 +276,12 @@ def main():
               lambda: str(meta_coverage.build(con, ROOT / "cobertura.html")[0]))
         _step(con, "meus-decks-pagina",
               lambda: str(meusdecks.build(con, ROOT / "meusdecks.html")))
+        # Deckboxes: o loadout (os decks montados ao mesmo tempo) com a coleção
+        # REPARTIDA entre eles, mais a lista de venda. Depois do `meus-decks` e
+        # dos `decks-premodern`: lê as mesmas listas (decks/watched/consenso) e
+        # precisa delas já atualizadas.
+        _step(con, "deckboxes",
+              lambda: str(deckboxes.build(con, ROOT / "deckboxes.html")))
         _step(con, "metagame-pagina",
               lambda: str(metagame.build(con, ROOT / "metagame.html")))
         _step(con, "decks-faziveis-pagina",

@@ -34,6 +34,8 @@ mtgvault/
   scryfall.py     catálogo via bulk data
   collection.py   exemplares, sub-coleções, reservas, valor, movimentos
   wantlist.py     o que falta, para decks e para arquétipos
+  loadout.py      os decks montados ao mesmo tempo: aloca a coleção às caixas
+                  (uma cópia serve uma só), conflitos, substitutos e venda
   analysis.py     clustering de arquétipos + core/flex/tech + prune
   stock.py        listas padrão e cobertura
   sources.py      mtgo.com + parser de texto + store_decklist (deduplicação)
@@ -57,6 +59,7 @@ collection_gallery.py  colecao.html — galeria por sub-coleção
 core_decks.py       (coredecks.html APAGADO 2026-08-26, a redefinir; NÃO vai ao git-add) — mas core_decks.py continua a correr no daily p/ calcular card_price/posse
 alertas.py          alertas.html — vender/comprar por movimento de preço (fora do menu atual)
 meusdecks.py        meusdecks.html — "Decks vigiados": agora SÓ os 5 fixos de colecao_config.json→decks_vigiados (Pauper-Luffy, Premodern-Luffy/Stiflenought, Blue Farm, Cloud cEDH, Cloud Duel Commander — este ÚLTIMO agora INCLUÍDO) MAIS os alvos de consenso de Premodern (`premodern_arquetipos_alvo`, sufixo " (consenso)"). Lista 75 verde/vermelho, % e evolução; checkmark "atualizado" (localStorage)
+deckboxes.py        deckboxes.html — "Deckboxes": o LOADOUT (colecao_config.json→loadout), os decks montados ao mesmo tempo com a coleção REPARTIDA entre eles (uma cópia física serve uma caixa só). Por caixa: barra de completude, cartas em falta por preço, substitutos (tenho mas não serve), wantlist Cardmarket. Mais conflitos e "Para vender". Motor em mtgvault/loadout.py
 metagame.py         metagame.html — "Metagame" (página principal): top-10 por formato (só Challenges/Showcases, 30 dias), cartas a cor=tenho / cinza=falta, wantlist por deck, e "Staples que faltam" por formato ordenadas por preço. Usa meta_coverage.owned_available
 (prioridade.py + metafaltas.py APAGADOS 2026-08-26, a redefinir)
 reservedlist.py     reservedlist.html — Reserved List (Scryfall) x coleção, por edição, preço/evolução, e 'VENDER' as que não jogam em formato nenhum
@@ -113,6 +116,53 @@ que está num deck são "cartas extra dos decks" (backup — guardar) até um LI
 Cartas que não estão em deck nenhum: excedente de venda normal.
 `collection.deck_extras` é a versão SIMPLES (owned − o que a decklist pede) —
 ainda **não** aplica os limites por coleção nem o "acima do limite = vender".
+Quem JÁ aplica os limites é `mtgvault/loadout.py` (ver abaixo), e com uma
+correção que importa: o playset de 4 conta a **coleção inteira**, não 4 por
+balde — 4 Intuition no `Premodern (geral)` mais 4 na `Caixa Reserved List` são
+8 cópias da mesma carta, e contar 4 por balde deixava passar o dobro.
+
+**Loadout: os decks montados em simultâneo (`mtgvault/loadout.py`, 2026-09-07).**
+Palavras do André: *"Vamos começar a reorganizar os decks e a colecção, para
+preparar para montar os decks (em deckboxes) para estarem sempre prontos para ir
+jogar, e começar a vender o que está em excesso."* A lista de caixas está em
+`colecao_config.json → loadout` (slot, formato, fonte da lista, balde,
+prioridade, regras de material). Gera `deckboxes.html` e os comandos
+`loadout` / `loadout <deck>` / `vender`.
+
+A diferença para tudo o resto do vault: aqui a coleção é **repartida**. Uma
+cópia física entra numa caixa e **só numa**, a alocação é global e por ordem de
+`prioridade`, e é daí que saem três coisas que uma cobertura por deck não dá —
+**conflito** (2+ caixas querem a carta, não chegam para todas), **substituto**
+(tem a carta mas não serve àquela caixa) e **venda**. Por isso as percentagens
+desta página são MAIS BAIXAS que as do `meusdecks.html`, onde cada deck conta a
+coleção inteira: não é discordância, é a pergunta a ser outra.
+
+**Duas regras de material (André, 2026-09-07, à letra).**
+1. *"Para Premodern as cartas são das edições que tínhamos visto e em Português;
+   essas cartas NÃO entram para outros formatos!!"* → um slot com `"lingua":"pt"`
+   só fecha com cópias PT (uma EN é substituto, "serve mas não é PT"), e uma
+   cópia PT de impressão até ao **Scourge (2003-05-26)** fica trancada ao
+   Premodern. **Excepção que os dados obrigam a ter:** cópias que vivem no
+   `balde` de outro slot do loadout já são desse deck — o Blue Farm tem um Lotus
+   Petal (tmp) e um Tarnished Citadel (ody) PT dentro da caixa, e trancá-los ao
+   Premodern desmontava um deck que está montado.
+2. *"Standard, Pioneer, Modern e Legacy: as cartas são todas Foil (menos as
+   Reserved List)"* → `"acabamento":"foil"` nesses slots: só `foil`/`etched`, e
+   as cartas com `catalog.cards.reserved` podem ser nonfoil. Uma nonfoil de uma
+   carta não-RL **não fecha o slot**; a wantlist pede foil. O custo desses decks
+   usa o **preço foil** (`loadout.card_price`) — o `wantlist.cheapest_price` só
+   olha para nonfoil e dava um custo sistematicamente por baixo.
+
+**A venda tem quatro saídas, não uma.** Misturá-las dava um total que não se
+podia usar: `venda` (excedente normal), `venda_rl` (Reserved List — não se
+volta a imprimir, confirma-se uma a uma), `retidos` (baldes com
+`reter_extras_meses`; a regra dos 6 meses continua inerte por falta de data de
+"última utilização", por isso guardam-se e dizem-no) e **`guardar`**: os
+SUBSTITUTOS. Este último não é um requinte — foi um erro real da primeira
+versão. Ele tem 4 Opalescence EN na Caixa RL; a regra do PT põe-nas fora dos
+decks de Premodern, o playset de 4 dava-as como excedente, e a lista mandava
+vender exactamente as cartas que faltam à Enchantress. **Uma cópia que serve um
+deck do loadout e só falha na língua ou no acabamento nunca vai para a venda.**
 
 **Classificação Deck / Coleção / Vender (`classify.py`, 2026-08-13).** É a
 regra do André já implementada, que alimenta a página `colecao_cor.html`:
