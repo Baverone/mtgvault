@@ -53,6 +53,7 @@ import re
 import socket
 import subprocess
 import sys
+import threading
 from datetime import date
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -67,6 +68,8 @@ import deckboxes  # noqa: E402
 import metagame  # noqa: E402
 
 PORT = 8771          # o 8770 é do riftvault — ver o cabeçalho
+# Serializa TODAS as escritas (config + base de dados). Ver `do_POST`.
+ESCRITA = threading.Lock()
 
 
 def config_path() -> Path:
@@ -107,6 +110,12 @@ def escrever_config(cfg: dict, path: Path | None = None) -> None:
     Um `json.dump(indent=2)` cru rebentava as catorze linhas do `loadout` em
     duzentas, e o ficheiro é para ser lido por uma pessoa — é lá que estão as
     explicações em português de cada regra.
+
+    Escreve-se **atomicamente** (ficheiro temporário ao lado + `os.replace`):
+    o `write_text` normal trunca o ficheiro antes de escrever, e um erro a meio
+    — ou dois pedidos ao mesmo tempo, que o `ThreadingHTTPServer` permite — dava
+    um `colecao_config.json` truncado. Perder esse ficheiro é perder o loadout,
+    as regras de material e as listas escolhidas de uma vez.
     """
     partes = []
     for k, v in cfg.items():
@@ -118,8 +127,10 @@ def escrever_config(cfg: dict, path: Path | None = None) -> None:
             corpo = json.dumps(v, ensure_ascii=False, indent=2)
             corpo = corpo.replace("\n", "\n  ")
         partes.append(f"  {chave}: {corpo}")
-    (path or config_path()).write_text("{\n" + ",\n".join(partes) + "\n}\n",
-                                       encoding="utf-8")
+    destino = path or config_path()
+    tmp = destino.with_name(destino.name + ".tmp")
+    tmp.write_text("{\n" + ",\n".join(partes) + "\n}\n", encoding="utf-8")
+    os.replace(tmp, destino)
 
 
 def _peers(con, cfg, slot_id):
@@ -288,13 +299,18 @@ def marcar_na_caixa(con, slot_id: str, dentro: bool) -> int:
 
 
 def regenerar(con) -> None:
-    """Reescreve o `deckboxes.html` estático, para o site publicado acompanhar.
+    """Reescreve as páginas estáticas, para o site publicado acompanhar.
 
     Sem isto, o modo edição e o GitHub Pages diziam coisas diferentes até à
     corrida seguinte do `daily.py` — e a diferença aparecia no telemóvel dele,
     fora de casa, sem explicação nenhuma.
+
+    São as DUAS: qualquer botão desta página muda a alocação, e a alocação é o
+    que o `metagame.html` mostra (a posse do top-N e o crachá "escolhido em").
+    Refazer só uma deixava a outra a dizer o contrário. Custam ~0,3 s cada.
     """
     deckboxes.build(con, ROOT / "deckboxes.html")
+    metagame.build(con, ROOT / "metagame.html")
 
 
 # ---------------------------------------------------------------------------
@@ -342,23 +358,37 @@ class Handler(BaseHTTPRequestHandler):
             dados = json.loads(corpo or "{}")
         except json.JSONDecodeError:
             dados = {}
-        try:
-            if caminho == "/api/arrumar":
-                with db.session() as con:
-                    migracao.backup(con)
-                    n = loadout.guardar_arrumacao(con, loadout.report(con))
-                    regenerar(con)
-                self._json({"ok": True, "copias": n})
+        # UMA escrita de cada vez. O `ThreadingHTTPServer` atende os pedidos em
+        # paralelo, e cada botão é um ler-mexer-gravar do `colecao_config.json`:
+        # dois cliques ao mesmo tempo (ou um duplo-toque no telemóvel) faziam o
+        # segundo gravar por cima do primeiro, e a alteração desaparecia sem
+        # erro nenhum. O mesmo vale para a `copy_allocation`, que se apaga e
+        # reescreve inteira.
+        with ESCRITA:
+            try:
+                if caminho == "/api/arrumar":
+                    with db.session() as con:
+                        migracao.backup(con)
+                        n = loadout.guardar_arrumacao(con, loadout.report(con))
+                        regenerar(con)
+                    self._json({"ok": True, "copias": n})
+                    return
+                if caminho == "/api/caixa":
+                    self._json(self._caixa(dados))
+                    return
+                if caminho == "/api/escolher":
+                    self._json(self._escolher(dados))
+                    return
+            except KeyError as e:
+                # O caso normal: um `slot` que já não existe no config (a página
+                # aberta no telemóvel é de antes de ele o mudar). `repr` dava
+                # `KeyError('legacy')`, que não diz nada a quem está a olhar.
+                self._json({"erro": f"a caixa {e.args[0]!r} já não existe no "
+                                    f"colecao_config.json — recarrega a página"}, 409)
                 return
-            if caminho == "/api/caixa":
-                self._json(self._caixa(dados))
+            except Exception as e:                      # noqa: BLE001
+                self._json({"erro": f"{type(e).__name__}: {e}"}, 500)
                 return
-            if caminho == "/api/escolher":
-                self._json(self._escolher(dados))
-                return
-        except Exception as e:                          # noqa: BLE001
-            self._json({"erro": repr(e)}, 500)
-            return
         self._json({"erro": "endpoint desconhecido"}, 404)
 
     def _caixa(self, dados):
@@ -409,11 +439,7 @@ class Handler(BaseHTTPRequestHandler):
                 return {"erro": f"acção {act!r} desconhecida"}
             escrever_config(cfg)
             sources._CFG_CACHE.clear()
-            # As DUAS páginas se refazem: a escolha muda a caixa (deckboxes) e o
-            # crachá "escolhido em" (metagame). Refazer só uma deixava a outra a
-            # dizer o contrário até à corrida seguinte do daily.
             regenerar(con)
-            metagame.build(con, ROOT / "metagame.html")
         return {"ok": True, "msg": msg}
 
     def log_message(self, *a):

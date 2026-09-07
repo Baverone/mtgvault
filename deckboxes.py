@@ -35,7 +35,6 @@ Reutiliza `mtgvault.loadout` para as contas. Não inventa nada.
 """
 from __future__ import annotations
 
-import html
 import json
 import os
 from datetime import date
@@ -53,27 +52,9 @@ def _art(sid):
     return f"https://cards.scryfall.io/small/front/{sid[0]}/{sid[1]}/{sid}.jpg" if sid else ""
 
 
-def _img_map(con, names):
-    """nome -> scryfall_id de uma impressão com arte. Preferem-se as impressões
-    que ele TEM (é a carta que vai estar na caixa)."""
-    out = {}
-    for r in con.execute("""SELECT c.name nm, cp.scryfall_id sid FROM copies cp
-                              JOIN cards c ON c.scryfall_id = cp.scryfall_id
-                             WHERE cp.purpose = 'player'"""):
-        out.setdefault(r["nm"].split(" // ")[0], r["sid"])
-    falta = [n for n in names if n not in out]
-    for i in range(0, len(falta), 300):
-        ch = falta[i:i + 300]
-        ph = ",".join("?" for _ in ch)
-        for r in con.execute(f"""SELECT name nm, scryfall_id sid FROM cards
-                                  WHERE name IN ({ph}) AND digital = 0 GROUP BY name""", ch):
-            out.setdefault(r["nm"].split(" // ")[0], r["sid"])
-    for n in [x for x in falta if x not in out]:      # DFCs: casa pela frente
-        r = con.execute("SELECT scryfall_id sid FROM catalog.cards "
-                        "WHERE name LIKE ? AND digital = 0 LIMIT 1", (n + " // %",)).fetchone()
-        if r:
-            out[n] = r["sid"]
-    return out
+# `nome -> scryfall_id`: vive no `paginas` desde a revisão de 2026-09-07 (19:00).
+# Estava copiado à letra aqui e no `metagame.py`.
+_img_map = paginas.img_map
 
 
 # ---------------------------------------------------------------------------
@@ -154,6 +135,9 @@ def _caixa_payload(s, imgs, cfs):
         "pct": s["pct"], "tenho": s["tenho"], "precisa": s["precisa"],
         "comprar": s["comprar"], "noutra": s["noutra"], "faltam": s["faltam"],
         "custo": s["custo"], "origens": s["origens"],
+        # Quantas cópias a comprar não têm preço na base: o "fechar por" é um
+        # MÍNIMO, e a página tem de o dizer em vez de o dar como a conta toda.
+        "sem_preco": s["sem_preco"],
         # (ícone, texto, classe) — a classe vem do loadout, não de um teste de
         # substring na página (ver `loadout.rotulo_material`).
         "regras": [[i, t, c] for i, t, c in loadout.rotulo_material(s)],
@@ -277,6 +261,7 @@ def payload(con, rep, editable=False):
                    # Cópias que a partilha poupou (o que a soma caixa a caixa
                    # pedia a mais). Mostrado na aba Comprar.
                    "poupado": rep.get("poupado_total", 0),
+                   "sem_preco": rep.get("sem_preco_total", 0),
                    "custo": rep["custo_total"], "venda": rep["total"],
                    "venda_rl": rep["total_rl"], "arrumar": arr["copias"]},
         "compras": sorted(geral.values(), key=lambda g: -g["cost"]),
@@ -542,8 +527,8 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
 <div class="lead" id="resumo"></div>
 %TABS%
 </header>
-<nav class="decktabs" id="decktabs" aria-label="Caixas"></nav>
-<main id="vista"></main>
+<nav class="decktabs" id="decktabs" role="tablist" aria-label="Caixas e vistas"></nav>
+<main id="vista" role="tabpanel" tabindex="-1" aria-live="polite"></main>
 <footer>
 Uma cópia física entra numa caixa e <b>só numa</b> — por isso os números aqui são mais
 baixos que os da página <b>Decks permanentes</b>, onde cada deck conta a coleção inteira.
@@ -614,19 +599,37 @@ function renderTabs() {
                  ['comprar', '🛒 Comprar', D.resumo.comprar + ' cópias'],
                  ['vender', '💰 Vender', eur(D.resumo.venda)]];
   let h = '';
+  /* `role=tab` + `aria-selected` para o leitor de ecrã dizer qual está aberta,
+     e `tabindex=-1` nas outras: numa fila de 19 abas, o Tab passava por todas
+     antes de chegar ao conteúdo. Andar entre elas é com as setas (ver abaixo),
+     que é o que o padrão de tablist manda. */
+  const tab = (id, dentro, extra) =>
+    `<button class="dt${aba === id ? ' on' : ''}${extra || ''}" role="tab"`
+    + ` aria-selected="${aba === id}" tabindex="${aba === id ? 0 : -1}"`
+    + ` data-aba="${esc(id)}">${dentro}</button>`;
   for (const [id, lbl, sub] of fixas) {
-    h += `<button class="dt${aba === id ? ' on' : ''}" data-aba="${id}">${lbl}`
-       + (sub ? `<small>${esc(sub)}</small>` : '') + `</button>`;
+    h += tab(id, lbl + (sub ? `<small>${esc(sub)}</small>` : ''));
   }
   for (const c of D.caixas) {
     const p = c.vazio ? '—' : c.pct + '%';
-    h += `<button class="dt${aba === c.slot ? ' on' : ''}`
-       + `${c.permanente ? '' : ' cand'}" data-aba="${c.slot}">`
-       + `<span><i class="pin ${c.vazio ? 'low' : pin(c.pct)}"></i>${esc(c.nome)}</span>`
-       + `<small>${p}${c.vazio ? '' : ` · ${c.tenho}/${c.precisa}`}</small></button>`;
+    h += tab(c.slot,
+      `<span><i class="pin ${c.vazio ? 'low' : pin(c.pct)}"></i>${esc(c.nome)}</span>`
+      + `<small>${p}${c.vazio ? '' : ` · ${c.tenho}/${c.precisa}`}</small>`,
+      c.permanente ? '' : ' cand');
   }
   nav.innerHTML = h;
-  for (const b of nav.querySelectorAll('.dt')) b.onclick = () => ir(b.dataset.aba);
+  const botoes = [...nav.querySelectorAll('.dt')];
+  botoes.forEach((b, i) => {
+    b.onclick = () => ir(b.dataset.aba);
+    b.onkeydown = (e) => {
+      const d = { ArrowRight: 1, ArrowLeft: -1, Home: -i, End: botoes.length - 1 - i };
+      if (!(e.key in d)) return;
+      e.preventDefault();
+      ir(botoes[(i + d[e.key] + botoes.length) % botoes.length].dataset.aba);
+      const novo = nav.querySelector('.dt.on');
+      if (novo) novo.focus();
+    };
+  });
   const on = nav.querySelector('.dt.on');
   if (on) on.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
@@ -701,7 +704,8 @@ function wantlistHTML(itens, marca, id, detalhe) {
   return `<div class="blk" id="${id || ''}"><div class="flh">🛒 Comprar`
     + (marca ? ` <span class="mrk">${esc(marca)}</span>` : '')
     + `<span class="dim">${itens.length} cartas</span>`
-    + `<button class="cpbtn" onclick="copiar(this)">copiar</button></div>`
+    + `<button class="cpbtn" onclick="copiar(this)" aria-label="Copiar as `
+    + `${itens.length} cartas desta lista de compras">copiar</button></div>`
     + `<ul class="fl">${li}</ul>`
     + `<textarea class="cmk" readonly>${esc(txt)}</textarea></div>`;
 }
@@ -758,7 +762,9 @@ function caixaHTML(c, compacta) {
     + `<div class="num">na caixa<b>${c.tenho}/${c.precisa}</b></div>`
     + `<div class="num buy">comprar<b>${c.comprar}</b></div>`
     + `<div class="num get">ir buscar<b>${c.noutra}</b></div>`
-    + `<div class="num eur">fechar por<b>${eur(c.custo)}</b></div></div>`
+    + `<div class="num eur">fechar por<b>${eur(c.custo)}</b>`
+    + (c.sem_preco ? `<span class="dim"> no mínimo — ${c.sem_preco} sem preço`
+                     + ` na base</span>` : '') + `</div></div>`
     + `<div class="nota">${esc(c.nota)}</div>`;
   const orig = Object.entries(c.origens);
   if (orig.length) {
@@ -1002,15 +1008,19 @@ function vistaComprar() {
          + `<span class="dim"> ${resto.length} cartas</span></div></div>`
        + (caras.length ? `<p class="lead">As <b>💶 caras</b> decidem-se uma a uma: `
          + `só elas valem ${eur(soma(caras))} dos ${eur(soma(itens))} da lista.</p>` : '')
+       + (D.resumo.sem_preco ? `<p class="lead">⚠️ <b>${D.resumo.sem_preco}</b> `
+         + `cópias desta lista não têm preço na base (contam como 0 €). `
+         + `O total é um <b>mínimo</b>, não a conta fechada.</p>` : '')
        + wantlistHTML(itens, '', 'v-compras', true));
 }
 
 function vistaVender() {
-  const bloco = (id, titulo, lead, b, aberto) => !b.linhas.length ? '' :
+  const bloco = (id, titulo, lead, b, aberto, rotulo) => !b.linhas.length ? '' :
     `<details class="vblk" id="${id}"${aberto ? ' open' : ''}>`
     + `<summary><span>${titulo}</span><span class="vtot">${b.copias} cópias · `
     + `${eur(b.total)}</span></summary><p class="lead">${lead}</p>`
-    + `<div class="flh"><button class="cpbtn" onclick="copiar(this)">copiar lista`
+    + `<div class="flh"><button class="cpbtn" onclick="copiar(this)" `
+    + `aria-label="Copiar a lista: ${esc(rotulo)}">copiar lista`
     + `</button></div><textarea class="cmk" readonly>`
     + esc(b.linhas.slice().sort((x, y) => x.nm.localeCompare(y.nm))
         .map(r => `${r.q} ${r.nm}`).join('\n')) + `</textarea>`
@@ -1036,19 +1046,21 @@ function vistaVender() {
     + `por balde) e <b>1 por deck</b> nas caixas de Commander. <b>Básicas nunca.</b></p>`
     + bloco('v-normal', 'Excedente normal', 'Cópias a mais de cartas que não são '
         + 'Reserved List. É por aqui que se começa: o risco é baixo e o dinheiro é '
-        + 'real.', V.normal, true)
+        + 'real.', V.normal, true, 'excedente normal')
     + bloco('v-rl', '⚠️ Reserved List — confirmar uma a uma', 'Cartas que nunca mais '
         + 'são impressas. A regra dá-as como excedente, mas a decisão não se desfaz — '
         + 'e os preços de cartas antigas na base não são de confiança (ver '
-        + '<code>doubts.md</code>). Confere cada uma antes de listar.', V.rl)
+        + '<code>doubts.md</code>). Confere cada uma antes de listar.', V.rl, false,
+        'Reserved List')
     + bloco('v-guardar', '🔒 Guardar — servem um deck do loadout', 'Passariam o limite '
         + 'de 4, mas são substitutos de cartas que faltam a uma caixa: servem o deck e '
         + 'só não fecham o slot por causa da língua ou do acabamento. Vendê-las era '
-        + 'comprá-las outra vez.', V.guardar)
+        + 'comprá-las outra vez.', V.guardar, false, 'guardar')
     + bloco('v-retidos', '⏳ Retidos — extras de decks montados', 'Baldes com '
         + '<code>reter_extras_meses</code>: guardam-se até 6 meses depois da última '
         + 'utilização. Ainda não há registo de "última utilização", por isso ficam '
-        + 'todos — não se vende nada por uma regra que ainda não corre.', V.retidos)
+        + 'todos — não se vende nada por uma regra que ainda não corre.', V.retidos,
+        false, 'retidos')
     + (V.normal.linhas.length || V.rl.linhas.length ? '' :
        `<p class="empty">Não há nada a mais para vender.</p>`);
 }
@@ -1069,10 +1081,13 @@ function render() {
 }
 
 function filtroHTML() {
-  return `<div class="seg">`
-    + `<button class="${filtro === 'tudo' ? 'on' : ''}" data-f="tudo">Todas as cartas</button>`
-    + `<button class="${filtro === 'faltam' ? 'on' : ''}" data-f="faltam">Só o que falta</button>`
-    + `</div>`;
+  /* `aria-pressed`: são dois botões que ficam carregados, não links. Sem isto o
+     leitor de ecrã lia "Todas as cartas, botão" nos dois, sem dizer qual está
+     activo — e a diferença é só a cor de fundo. */
+  const b = (f, t) => `<button class="${filtro === f ? 'on' : ''}" data-f="${f}"`
+    + ` aria-pressed="${filtro === f}">${t}</button>`;
+  return `<div class="seg" role="group" aria-label="Filtrar as cartas">`
+    + b('tudo', 'Todas as cartas') + b('faltam', 'Só o que falta') + `</div>`;
 }
 
 function ligar() {

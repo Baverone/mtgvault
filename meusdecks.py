@@ -32,7 +32,7 @@ import html
 import json
 import os
 import re
-from collections import Counter, defaultdict
+from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -85,23 +85,9 @@ def _owned_sid(con):
 
 
 def _img_map(con, names):
-    out = {}
-    names = list(names)
-    for i in range(0, len(names), 300):
-        chunk = names[i:i + 300]
-        ph = ",".join("?" for _ in chunk)
-        for r in con.execute(f"""SELECT name nm, scryfall_id sid FROM cards
-                                  WHERE name IN ({ph}) AND digital = 0 GROUP BY name""", chunk):
-            out.setdefault(r["nm"].split(" // ")[0], r["sid"])
-    # DFCs: o catálogo guarda "frente // verso"; casa pela FRENTE as que faltaram
-    # (ex.: Boggart Trawler), senão ficavam sem imagem (carta preta).
-    for n in [x for x in names if x not in out]:
-        r = con.execute("SELECT scryfall_id sid FROM catalog.cards "
-                        "WHERE (name = ? OR name LIKE ?) AND digital = 0 LIMIT 1",
-                        (n, n + " // %")).fetchone()
-        if r:
-            out[n] = r["sid"]
-    return out
+    """A do `paginas`, sem preferir as impressões que ele tem: aqui a lista é a
+    do deck seguido, não a da coleção."""
+    return paginas.img_map(con, list(names), da_coleccao=False)
 
 
 def _timeline(snaps, limit=40):

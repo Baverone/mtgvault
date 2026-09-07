@@ -84,28 +84,7 @@ def _art(sid):
     return f"https://cards.scryfall.io/small/front/{sid[0]}/{sid[1]}/{sid}.jpg" if sid else ""
 
 
-def _img_map(con, names):
-    """nome -> scryfall_id. Prefere-se a impressão que ele TEM: é a carta que vai
-    mesmo estar na caixa."""
-    out = {}
-    for r in con.execute("""SELECT c.name nm, cp.scryfall_id sid FROM copies cp
-                              JOIN cards c ON c.scryfall_id = cp.scryfall_id
-                             WHERE cp.purpose = 'player'"""):
-        out.setdefault(r["nm"].split(" // ")[0], r["sid"])
-    falta = [n for n in names if n not in out]
-    for i in range(0, len(falta), 300):
-        ch = falta[i:i + 300]
-        ph = ",".join("?" for _ in ch)
-        for r in con.execute(f"""SELECT name nm, scryfall_id sid FROM cards
-                                  WHERE name IN ({ph}) AND digital = 0 GROUP BY name""", ch):
-            out.setdefault(r["nm"].split(" // ")[0], r["sid"])
-    for n in [x for x in falta if x not in out]:      # DFCs: casa pela frente
-        r = con.execute("SELECT scryfall_id sid FROM catalog.cards "
-                        "WHERE name LIKE ? AND digital = 0 LIMIT 1",
-                        (n + " // %",)).fetchone()
-        if r:
-            out[n] = r["sid"]
-    return out
+_img_map = paginas.img_map      # era uma cópia à letra da do `deckboxes.py`
 
 
 def _eur(v):

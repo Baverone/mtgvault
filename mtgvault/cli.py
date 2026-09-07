@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 
 from . import (analysis, collection, db, loadout, mtgtop8, prices, scryfall,

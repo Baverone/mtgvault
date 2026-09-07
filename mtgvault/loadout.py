@@ -354,15 +354,34 @@ def dedicadas(slots) -> set[str]:
     return {s["nome"] for s in slots if s.get("dedicado") and s.get("nome")}
 
 
-def congelada(s: dict) -> bool:
+def congelada(s: dict, arrumadas: set[str] | frozenset | None = None) -> bool:
     """A caixa está montada e é dedicada: não se lhe mexe sem ser para actualizar.
 
     André, 2026-09-07: *"o que eu quero é conseguir organizar os decks dentro das
     caixas e apenas mexer para actualizar"*. As cópias que estão lá dentro ficam
     presas mesmo que a lista de hoje já não as peça — a caixa continua montada
     com a lista antiga, e a diferença sai como delta de actualização.
+
+    `arrumadas` = as caixas que TÊM linhas na `copy_allocation`. Uma caixa que se
+    diz montada mas de que o vault não sabe o conteúdo não está congelada — não
+    há nada para prender, e apresentar a lista inteira como um delta de
+    *"actualização"* era mentir sobre o que ele tem de fazer (é montá-la, não
+    actualizá-la). É o caso do Stiflenought na base de 2026-09-07: `montado:
+    true` no config e zero linhas na tabela, porque a migração só semeou as
+    caixas que eram um balde.
     """
-    return bool(s.get("dedicado") and s.get("montado"))
+    if not (s.get("dedicado") and s.get("montado")):
+        return False
+    return arrumadas is None or s.get("slot") in arrumadas
+
+
+def caixas_arrumadas(con) -> set[str]:
+    """As caixas que têm conteúdo confirmado na `copy_allocation`."""
+    try:
+        return {r["slot"] for r in con.execute(
+            "SELECT DISTINCT slot FROM copy_allocation WHERE quantity > 0")}
+    except sqlite3.OperationalError:
+        return set()                  # base antiga, ainda sem a tabela
 
 
 def e_foil(finish: str | None) -> bool:
@@ -438,8 +457,11 @@ def rotulo_material(s: dict) -> list[tuple[str, str, str]]:
         # Uma regra que a página não diz é a página a mentir em silêncio — e esta
         # muda o preço de fechar a caixa, por isso tem de estar à vista.
         out.append(("🔒", "caixa dedicada: não empresta nem vai buscar"
-                    + (" · montada, só mexe para actualizar" if s.get("montado")
-                       else ""), "ded"))
+                    + (" · montada, só mexe para actualizar"
+                       if s.get("congelada") else ""), "ded"))
+    if s.get("montado_por_confirmar"):
+        out.append(("❔", "dizes que está montada, mas ainda não me disseste o que "
+                    "lá está — carrega em «Sleevado e na caixa»", "wt"))
     fontes = fontes_material(s)
     if fontes:
         out.append(("🗂️", fontes, ""))
@@ -646,6 +668,7 @@ def resolve_slots(con, cfg_slots: list[dict] | None = None) -> list[dict]:
     """
     out = []
     regras = regras_por_formato()
+    arrumadas = caixas_arrumadas(con)
     vigiados = set(sources.config().get("decks_vigiados") or [])
     for s in (cfg_slots if cfg_slots is not None else config_slots()):
         s = dict(s)
@@ -667,7 +690,13 @@ def resolve_slots(con, cfg_slots: list[dict] | None = None) -> list[dict]:
         # distinguir `False` de "a chave não existe".
         s["dedicado"] = bool(s.get("dedicado"))
         s["montado"] = bool(s.get("montado"))
-        s["congelada"] = congelada(s)
+        s["congelada"] = congelada(s, arrumadas)
+        # Diz-se montada e o vault não sabe o que lá está dentro. Não é um erro —
+        # é o estado normal de quem ainda não carregou em "Sleevado e na caixa" —
+        # mas a página tem de o dizer, senão o "delta de actualização" mostra a
+        # lista inteira como se ele tivesse de a trocar.
+        s["montado_por_confirmar"] = (s["montado"] and s["dedicado"]
+                                      and not s["congelada"])
         cards, nota = _slot_cards(con, s)
         so_de: dict[str, set[str]] = defaultdict(set)
         variantes = list(s.get("variantes") or [])
@@ -773,7 +802,12 @@ def lots(con, cfg_slots: list[dict] | None = None) -> dict[str, list[dict]]:
         d["sub"] = d["sub"] or "(sem balde)"
         d["era_pm"] = bool(d["rel"]) and d["rel"] <= PREMODERN_END
         d["rl"] = bool(d["rl"])
-        dentro = {k: v for k, v in (conf.get(d["id"]) or {}).items() if v > 0}
+        # Uma linha de `copy_allocation` para uma caixa que já não está no
+        # loadout é órfã: ignora-se. Tratá-la como uma caixa a sério tirava as
+        # cópias de circulação para sempre e mostrava o `slot` cru ("legacy") no
+        # lugar do nome da caixa — sem erro nenhum e sem maneira de desfazer.
+        dentro = {k: v for k, v in (conf.get(d["id"]) or {}).items()
+                  if v > 0 and k in nomes}
         solto = d["q"] - sum(dentro.values())
         partes = sorted(dentro.items())
         if solto > 0 or not partes:
@@ -1159,6 +1193,13 @@ def _totais_do_slot(s: dict) -> None:
     s["faltam"] = sum(m["missing"] for m in missing)
     s["comprar"] = sum(m["comprar"] for m in missing)
     s["noutra"] = sum(m["noutra_q"] for m in missing)
+    # Cópias a comprar SEM preço na base. O `cost` delas é 0 e some no total —
+    # o "fechar por X €" fica sistematicamente abaixo do real e ninguém dá por
+    # isso. É a mesma família do `event_tier`: um valor em falta que não dá erro,
+    # dá um número errado. Contar aqui deixa a página dizer que o custo é um
+    # mínimo, em vez de o apresentar como se fosse a conta toda.
+    s["sem_preco"] = sum(m["comprar"] for m in missing
+                         if m["comprar"] > 0 and m["unit"] is None)
     # As que estão noutra caixa: é "ir buscar", não "comprar". Ficam à parte
     # para a página e o CLI poderem dizer as duas coisas sem as somar.
     s["noutra_caixa"] = sorted((m for m in missing if m["noutra_q"]),
@@ -1757,6 +1798,7 @@ def report(con, cfg_slots: list[dict] | None = None) -> dict:
     res["custo_total"] = round(sum(s["custo"] for s in res["slots"]), 2)
     res["comprar_total"] = sum(s["comprar"] for s in res["slots"])
     res["noutra_total"] = sum(s["noutra"] for s in res["slots"])
+    res["sem_preco_total"] = sum(s["sem_preco"] for s in res["slots"])
     # Quantas cópias a partilha poupou — é a diferença entre somar as faltas
     # caixa a caixa (o que a v3 fazia) e comprar o máximo de uma delas.
     res["poupado_total"] = sum(p["poupado"] for p in res["partilhas"])

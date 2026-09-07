@@ -167,10 +167,86 @@ def caso_sleevado_e_na_caixa():
     print("sleevado e na caixa grava (e tira) so aquela caixa")
 
 
+def caso_gravar_o_config_e_atomico():
+    """O `write_text` normal TRUNCA o ficheiro antes de escrever: um erro a meio
+    — ou dois pedidos ao mesmo tempo, que o `ThreadingHTTPServer` permite —
+    deixava o `colecao_config.json` cortado, e com ele o loadout, as regras de
+    material e as listas escolhidas. Escreve-se ao lado e troca-se de nome.
+
+    Prova-se pelo caminho oposto: se a escrita falhar, o ficheiro antigo tem de
+    continuar inteiro e não pode ficar lixo ao lado."""
+    destino = _TMP / "atomico.json"
+    webapp.escrever_config({"a": 1}, destino)
+    original = destino.read_text(encoding="utf-8")
+
+    class Explode(dict):
+        def items(self):
+            raise RuntimeError("a serializacao rebentou a meio")
+
+    try:
+        webapp.escrever_config(Explode(), destino)
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("devia ter rebentado")
+    assert destino.read_text(encoding="utf-8") == original, "o config foi truncado"
+    assert not destino.with_name(destino.name + ".tmp").exists(), "ficou um .tmp"
+    print("gravar o config e atomico: uma falha nao trunca o ficheiro")
+
+
+def caso_escritas_em_paralelo_nao_se_atropelam():
+    """Dois cliques ao mesmo tempo (ou um duplo-toque no telemóvel) eram dois
+    ler-mexer-gravar em paralelo, e o segundo gravava por cima do primeiro. O
+    `ESCRITA` serializa-os; aqui prova-se que o lock existe e que é reentrante
+    do ponto de vista de quem o usa (um pedido de cada vez, nunca dois)."""
+    import threading
+
+    repor()
+    destino = _TMP / "paralelo.json"
+    webapp.escrever_config({"n": 0}, destino)
+    dentro, maximo = [0], [0]
+
+    def clique():
+        with webapp.ESCRITA:
+            dentro[0] += 1
+            maximo[0] = max(maximo[0], dentro[0])
+            cfg = json.loads(destino.read_text(encoding="utf-8"))
+            cfg["n"] += 1
+            webapp.escrever_config(cfg, destino)
+            dentro[0] -= 1
+
+    fios = [threading.Thread(target=clique) for _ in range(20)]
+    for f in fios:
+        f.start()
+    for f in fios:
+        f.join()
+    assert maximo[0] == 1, ("duas escritas ao mesmo tempo", maximo[0])
+    assert json.loads(destino.read_text(encoding="utf-8"))["n"] == 20, "perdeu-se um clique"
+    print("vinte cliques em paralelo: nenhum se perde e nunca ha dois a escrever")
+
+
+def caso_ler_config_segue_o_ficheiro_que_o_motor_le():
+    """O `CONFIG` estava congelado no import: se o `MTGVAULT_CONFIG` mudasse, o
+    webapp escrevia num ficheiro e o `sources.config()` lia de outro — um botão
+    que "não faz nada" sem erro nenhum."""
+    antigo = os.environ["MTGVAULT_CONFIG"]
+    outro = _TMP / "outro.json"
+    outro.write_text(json.dumps({"loadout": []}), encoding="utf-8")
+    os.environ["MTGVAULT_CONFIG"] = str(outro)
+    try:
+        assert webapp.config_path() == outro, webapp.config_path()
+        assert webapp.ler_config() == {"loadout": []}
+    finally:
+        os.environ["MTGVAULT_CONFIG"] = antigo
+    print("o webapp le e escreve o mesmo ficheiro que o motor le")
+
+
 def run():
     for fn in (caso_tornar_permanente_muda_a_alocacao, caso_subir_renumera_o_grupo,
                caso_descer_e_os_limites, caso_gravar_o_config_a_serio_nao_o_estraga,
-               caso_sleevado_e_na_caixa):
+               caso_sleevado_e_na_caixa, caso_gravar_o_config_e_atomico,
+               caso_escritas_em_paralelo_nao_se_atropelam,
+               caso_ler_config_segue_o_ficheiro_que_o_motor_le):
         fn()
     repor()
     print("\nTUDO OK")

@@ -1171,6 +1171,55 @@ def caso_delta_de_actualizacao_so_se_aplica_no_botao():
     print("o delta espera pelo botao 'actualizei' — o 'ja arrumei' nao lhe toca")
 
 
+def caso_montado_sem_arrumacao_nao_e_congelado():
+    """Uma caixa que se diz montada mas de que o vault não sabe o conteúdo não
+    está congelada — não há nada para prender, e dar a lista inteira como um
+    delta de *"actualização"* mentia sobre o que ele tem de fazer (é montá-la).
+    É o caso do Stiflenought: `montado: true` e zero linhas na `copy_allocation`.
+    """
+    con = base()
+    deck(con, "PA", "pauper", [("Thoughtcast", 1)])
+    add(con, "Thoughtcast", 1, sub="Colecção")
+    cfg = [slot("PA", "pauper", "PA", balde="Colecção", montado=True)]
+    s = por_nome(loadout.report(con, cfg))["PA"]
+    assert s["congelada"] is False and s["montado_por_confirmar"] is True, s
+    assert not loadout.report(con, cfg)["actualizacoes"], "nada a actualizar"
+    # E a página tem de o dizer, senão a caixa mente em silêncio.
+    assert any("Sleevado" in t for _i, t, _c in loadout.rotulo_material(s))
+    print("montada sem arrumacao confirmada: nao congela, e a pagina di-lo")
+
+
+def caso_alocacao_orfa_nao_prende_copias():
+    """Uma linha de `copy_allocation` para uma caixa que já não está no loadout é
+    órfã. Tratá-la como uma caixa a sério tirava a cópia de circulação para
+    sempre — e mostrava o `slot` cru no lugar do nome, sem erro nenhum."""
+    con = base()
+    deck(con, "A", "legacy", [("Sol Ring", 1)])
+    add(con, "Sol Ring", 1, finish="foil", sub="Colecção")
+    cid = con.execute("SELECT id FROM copies").fetchone()["id"]
+    con.execute("INSERT INTO copy_allocation (copy_id, slot, quantity) "
+                "VALUES (?, 'caixa-que-ja-nao-existe', 1)", (cid,))
+    con.commit()
+    s = por_nome(loadout.report(con, [slot("A", "legacy", "A",
+                                           balde="Colecção")]))["A"]
+    assert s["tenho"] == 1 and s["pct"] == 100, s
+    print("alocacao orfa ignora-se: a copia nao fica presa a uma caixa apagada")
+
+
+def caso_compras_sem_preco_contam_se():
+    """Uma carta sem preço na base entra na lista de compras a 0 € e some no
+    total. O custo de fechar tem de dizer que é um MÍNIMO, não a conta toda."""
+    con = base()
+    deck(con, "A", "legacy", [("Sol Ring", 1), ("Kappa Cannoneer", 2)])
+    preco(con, "Sol Ring", "foil", 3.0)          # a Kappa Cannoneer não tem
+    rep = loadout.report(con, [slot("A", "legacy", "A")])
+    s = por_nome(rep)["A"]
+    assert s["comprar"] == 3 and s["custo"] == 3.0, s
+    assert s["sem_preco"] == 2, s["sem_preco"]
+    assert rep["sem_preco_total"] == 2, rep["sem_preco_total"]
+    print("as copias a comprar sem preco contam-se: o custo e um minimo")
+
+
 def run():
     for fn in (caso_uma_copia_uma_caixa, caso_noutra_caixa_nao_e_compra,
                caso_noutra_caixa_e_compra_misturadas,
@@ -1208,7 +1257,10 @@ def run():
                caso_duel_commander_e_spml_continuam_a_partilhar,
                caso_excepcao_por_caixa_ganha_a_do_grupo,
                caso_caixa_congelada_nao_perde_copias,
-               caso_delta_de_actualizacao_so_se_aplica_no_botao):
+               caso_delta_de_actualizacao_so_se_aplica_no_botao,
+               caso_montado_sem_arrumacao_nao_e_congelado,
+               caso_alocacao_orfa_nao_prende_copias,
+               caso_compras_sem_preco_contam_se):
         fn()
     print("\nTUDO OK")
 
