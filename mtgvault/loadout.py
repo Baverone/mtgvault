@@ -36,6 +36,15 @@ no BALDE de outro slot do loadout já são desse deck (o Blue Farm tem um Lotus
 Petal e um Tarnished Citadel PT de 1997/2001 dentro da caixa dele). Trancá-las
 ao Premodern desmontaria um deck que está montado — por isso o balde manda.
 
+E o outro lado da mesma regra (André, 2026-09-07): *"O Premodern não é para
+olhar para a minha Caixa RL, pois o Premodern só vai usar as cartas em
+Português; na Caixa RL só estão cartas RL em inglês."* Um slot de Premodern nem
+VÊ o balde `Caixa Reserved List`: as cópias de lá não fecham o slot, não contam
+como substituto e não descontam no custo. Para uma caixa de Premodern, uma carta
+que só existe em EN é FALTA — compra-se em PT. Isto é mais forte do que a regra
+da língua, e é de propósito: um substituto diz "tens a carta, decide se abres
+excepção", e aqui ele já decidiu que não abre.
+
 Sem rede e sem efeitos colaterais: lê o `vault.db` e devolve números.
 """
 from __future__ import annotations
@@ -50,6 +59,9 @@ from . import sources, stock
 # impressão é "da era" — a alternativa (a legalidade `premodern` da Scryfall) é
 # por carta e não por impressão, e o que o André descreveu foram as EDIÇÕES.
 PREMODERN_END = "2003-05-26"
+# O balde da Reserved List. Os slots de Premodern não olham para aqui (regra do
+# André, 2026-09-07) — ver o cabeçalho do módulo e `_fora_de_vista`.
+BALDE_RL = "Caixa Reserved List"
 CONSTRUCTED_LIMIT = 4                      # playset: acima disto é excedente
 FOIL_FINISHES = ("foil", "etched")
 COMMANDER_FORMATS = {"duel-commander", "cedh", "commander", "edh"}
@@ -277,6 +289,18 @@ def _deck_ids(con, slots) -> dict[str, int | None]:
     return out
 
 
+def _fora_de_vista(lot: dict, s: dict) -> bool:
+    """Cópias que este slot nem VÊ — nem para alocar, nem como substituto.
+
+    André (2026-09-07): *"O Premodern não é para olhar para a minha Caixa RL,
+    pois o Premodern só vai usar as cartas em Português; na Caixa RL só estão
+    cartas RL em inglês."* É diferente do `_porque_nao`: ali a cópia existe e não
+    serve (fica como substituto, "decide se abres excepção"); aqui ele já
+    decidiu — para uma caixa de Premodern a carta é FALTA, compra-se em PT.
+    """
+    return s.get("formato") == "premodern" and lot["sub"] == BALDE_RL
+
+
 def _porque_nao(lot: dict, s: dict, baldes_de_deck: set[str]) -> str | None:
     """Porque é que este exemplar NÃO serve este slot (None = serve)."""
     if s.get("lingua") and lot["lang"] != s["lingua"]:
@@ -348,7 +372,7 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                     continue
                 if lot["rdid"] is not None and lot["rdid"] != did:
                     continue              # dedicada a outro deck (regra de domínio)
-                if _porque_nao(lot, s, baldes):
+                if _fora_de_vista(lot, s) or _porque_nao(lot, s, baldes):
                     continue
                 take = min(lot["livre"], falta)
                 lot["livre"] -= take
@@ -368,15 +392,20 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                 for lot in cands:
                     if lot["livre"] <= 0 or (lot["rdid"] is not None and lot["rdid"] != did):
                         continue
+                    if _fora_de_vista(lot, s):
+                        continue      # a Caixa RL não existe para o Premodern
                     razao = _porque_nao(lot, s, baldes)
                     if razao:
                         alt[razao] += lot["livre"]
                         # Marca o exemplar como SUBSTITUTO: serve este slot, só não
                         # na língua/acabamento que ele pediu. Sem esta marca a
-                        # venda mandava-o embora — e o caso real é a Opalescence:
-                        # 4 cópias EN na Caixa RL, que a regra do PT põe fora dos
-                        # decks de Premodern e o playset de 4 punha à venda. São
-                        # exactamente as cartas que faltam à Enchantress.
+                        # venda mandava-o embora. O caso que obrigou a inventá-la
+                        # foram as 4 Opalescence EN da Caixa RL — que desde
+                        # 2026-09-07 já nem chegam aqui (o Premodern não olha para
+                        # a Caixa RL, ver `_fora_de_vista`, e por decisão dele
+                        # essas vão mesmo para a venda a confirmar). A marca
+                        # continua a valer para as nonfoil dos slots de foil e
+                        # para as EN que vivem nos baldes de colecção.
                         lot["substituto"][s["nome"]] = razao
                 unit, pfin = card_price(con, nm, "foil" if foil else "nonfoil")
                 linha.update(missing=falta, unit=unit, price_finish=pfin,
@@ -467,9 +496,11 @@ def sell_list(con, res: dict) -> dict:
                     fatia do valor e a decisão menos reversível — vai à parte
                     para ser confirmada uma a uma;
       `guardar`   — SUBSTITUTOS: cópias que servem um deck do loadout e só não
-                    fecham o slot por causa da língua ou do acabamento. Sem esta
-                    saída a lista mandava vender as 4 Opalescence EN da Caixa RL,
-                    que são precisamente as que faltam à Enchantress;
+                    fecham o slot por causa da língua ou do acabamento (as
+                    nonfoil dos slots de foil, as EN nos baldes de colecção). A
+                    Caixa RL já não entra aqui pelo lado do Premodern: desde
+                    2026-09-07 essas caixas não olham para ela, e o que lá
+                    sobrar do playset vai para `venda_rl` a confirmar;
       `retidos`   — baldes com `reter_extras_meses`. A regra dos 6 meses precisa
                     de uma data de última utilização que ainda não existe (ver
                     CLAUDE.md), por isso estes extras GUARDAM-SE e dizem-no, em

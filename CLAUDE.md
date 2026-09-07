@@ -146,6 +146,19 @@ coleção inteira: não é discordância, é a pergunta a ser outra.
    `balde` de outro slot do loadout já são desse deck — o Blue Farm tem um Lotus
    Petal (tmp) e um Tarnished Citadel (ody) PT dentro da caixa, e trancá-los ao
    Premodern desmontava um deck que está montado.
+   **1b. O outro lado da mesma regra (André, 2026-09-07, à letra):** *"O
+   Premodern não é para olhar para a minha Caixa RL, pois o Premodern só vai
+   usar as cartas em Português; na Caixa RL só estão cartas RL em inglês."* →
+   `loadout._fora_de_vista`: um slot de `formato: "premodern"` **não vê** o balde
+   `Caixa Reserved List` — não aloca de lá, não o conta como **substituto** e não
+   lhe desconta no custo. Para uma caixa de Premodern, uma carta que só existe em
+   EN é **falta** (compra-se em PT), não "tenho mas não serve". É mais forte que
+   a regra da língua e é de propósito: um substituto diz *"decide se abres
+   excepção"*, e nisto ele já decidiu que não abre. Consequência a assumir: as 4
+   Opalescence EN, os 2 Mox Diamond EN e as 4 Intuition EN da Caixa RL deixaram
+   de estar protegidas pela saída `guardar` e passam a aparecer em `venda_rl`
+   (a confirmar uma a uma). As cópias da Caixa RL continuam disponíveis para as
+   outras caixas — o Legacy aceita Reserved List nonfoil.
 2. *"Standard, Pioneer, Modern e Legacy: as cartas são todas Foil (menos as
    Reserved List)"* → `"acabamento":"foil"` nesses slots: só `foil`/`etched`, e
    as cartas com `catalog.cards.reserved` podem ser nonfoil. Uma nonfoil de uma
@@ -159,10 +172,13 @@ volta a imprimir, confirma-se uma a uma), `retidos` (baldes com
 `reter_extras_meses`; a regra dos 6 meses continua inerte por falta de data de
 "última utilização", por isso guardam-se e dizem-no) e **`guardar`**: os
 SUBSTITUTOS. Este último não é um requinte — foi um erro real da primeira
-versão. Ele tem 4 Opalescence EN na Caixa RL; a regra do PT põe-nas fora dos
-decks de Premodern, o playset de 4 dava-as como excedente, e a lista mandava
-vender exactamente as cartas que faltam à Enchantress. **Uma cópia que serve um
-deck do loadout e só falha na língua ou no acabamento nunca vai para a venda.**
+versão: o playset de 4 dava as cópias a mais como excedente e a lista mandava
+vender exactamente as cartas que faltam a um deck do loadout. **Uma cópia que
+serve um deck do loadout e só falha na língua ou no acabamento nunca vai para a
+venda.** O caso que a motivou eram as 4 Opalescence EN da Caixa RL; desde a
+regra 1b acima essas já nem são vistas pelo Premodern e vão mesmo para
+`venda_rl` — a saída `guardar` continua a valer para as nonfoil dos slots de
+foil e para as EN que vivem nos baldes de colecção.
 
 **Classificação Deck / Coleção / Vender (`classify.py`, 2026-08-13).** É a
 regra do André já implementada, que alimenta a página `colecao_cor.html`:

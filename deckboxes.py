@@ -108,6 +108,8 @@ def _slot_html(s, imgs, conflitos_por_carta):
         badges.append('<span class="bdg">🔧 a montar</span>')
     if s.get("lingua"):
         badges.append(f'<span class="bdg pt">🇵🇹 só {s["lingua"].upper()}</span>')
+    if s.get("formato") == "premodern":
+        badges.append('<span class="bdg pt">🚫 sem Caixa RL</span>')
     if s.get("acabamento") == "foil":
         badges.append('<span class="bdg fo">✨ só foil</span>')
     if s.get("variantes"):
@@ -378,8 +380,9 @@ inteira. <b style="color:var(--add)">Verde</b> = tens · <b style="color:var(--g
 = tens a carta mas não serve esta caixa (língua ou acabamento) · <b style="color:var(--warn)">vermelho</b>
 = falta · <b>⚔</b> = disputada por outra caixa. Regras de material: os decks de
 <b>Premodern</b> só levam cartas <b>PT</b> das edições da era, e essas não entram em mais
-nenhum formato; <b>Standard/Pioneer/Modern/Legacy</b> só levam <b>foil</b>, menos as da
-Reserved List. Quem manda no loadout é o <code>colecao_config.json → loadout</code>.
+nenhum formato — e <b>não olham para a Caixa Reserved List</b> (regra de 07/09/2026): o que
+lá está não conta, nem sequer como âmbar; <b>Standard/Pioneer/Modern/Legacy</b> só levam
+<b>foil</b>, menos as da Reserved List. Quem manda no loadout é o <code>colecao_config.json → loadout</code>.
 A lista para vender é uma <b>sugestão a confirmar</b>. Atualiza diariamente.</footer>
 </div>
 <script>

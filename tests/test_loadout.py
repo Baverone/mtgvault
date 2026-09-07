@@ -6,6 +6,10 @@ O que aqui se tranca são as regras que custam dinheiro se partirem em silêncio
   2. a tranca do PT ("as cartas de Premodern são PT e NÃO entram noutros
      formatos"), com a excepção necessária: uma PT da era que já vive na caixa
      de outro deck é desse deck;
+  2b. e o outro lado dela: uma caixa de Premodern NÃO OLHA para a Caixa Reserved
+     List ("na Caixa RL só estão cartas RL em inglês") — nem aloca de lá, nem as
+     conta como substituto; para essas caixas a carta é falta. As mesmas cópias
+     continuam a servir o Legacy;
   3. a regra do foil ("Standard/Pioneer/Modern/Legacy são todas foil menos as
      Reserved List") — uma nonfoil não fecha o slot, aparece como substituto;
   4. a coleção de colecionador nunca entra, e as reservas por deck respeitam-se;
@@ -145,17 +149,59 @@ def caso_falta_partilhada_nao_e_conflito():
 
 def caso_premodern_so_pt():
     """Slot de Premodern só fecha com PT; a EN fica como SUBSTITUTO ('serve mas
-    não é PT'), que é diferente de não ter a carta."""
+    não é PT'), que é diferente de não ter a carta.
+
+    As EN estão no SPML de propósito: as da Caixa RL nem chegam a ser vistas
+    (ver `caso_premodern_nao_ve_a_caixa_rl`), e este caso é o da língua.
+    """
     con = base()
     deck(con, "Replenish", "premodern", [("Opalescence", 4)])
     add(con, "Opalescence", 2, lang="pt", sub="Premodern (geral)")
-    add(con, "Opalescence", 4, lang="en", sub="Caixa Reserved List")
+    add(con, "Opalescence", 4, lang="en", sub="SPML")
     rep = loadout.report(con, [slot("Replenish", "premodern", "Replenish",
                                     lingua="pt", balde="Premodern (geral)")])
     s = por_nome(rep)["Replenish"]
     assert s["tenho"] == 2, s["tenho"]
     assert len(s["subs"]) == 1 and s["subs"][0]["alt"] == {"não é PT": 4}, s["subs"]
     print("slot de Premodern: só PT fecha; as EN aparecem como substituto")
+
+
+def caso_premodern_nao_ve_a_caixa_rl():
+    """André, 2026-09-07: 'O Premodern não é para olhar para a minha Caixa RL,
+    pois o Premodern só vai usar as cartas em Português; na Caixa RL só estão
+    cartas RL em inglês.'
+
+    É mais forte que a regra da língua: as 4 Opalescence EN da Caixa RL não são
+    substituto da Enchantress — para essa caixa a carta é FALTA, compra-se em PT.
+    As mesmas cópias continuam a servir o Legacy (RL pode ser nonfoil).
+    """
+    con = base()
+    deck(con, "Ench", "premodern", [("Opalescence", 4)])
+    add(con, "Opalescence", 1, lang="pt", sub="Premodern (geral)")
+    add(con, "Opalescence", 4, lang="en", sub="Caixa Reserved List")
+    pm = slot("Ench", "premodern", "Ench", lingua="pt", balde="Premodern (geral)")
+    rep = loadout.report(con, [pm])
+    s = por_nome(rep)["Ench"]
+    assert s["tenho"] == 1, s["tenho"]                     # só a PT
+    assert not s["subs"], s["subs"]                        # a Caixa RL nem aparece
+    falta = [m for m in s["missing"] if m["nm"] == "Opalescence"][0]
+    assert falta["missing"] == 3 and falta["alt"] == {}, falta
+    print("caixa de Premodern não vê a Caixa RL: é falta, não substituto")
+
+    # E sem a marca de substituto, o excedente do playset vai para a venda a
+    # confirmar (são Reserved List), como o André quer.
+    assert not [r for r in rep["guardar"] if r["nm"] == "Opalescence"], rep["guardar"]
+    vrl = [r for r in rep["venda_rl"] if r["nm"] == "Opalescence"]
+    assert sum(r["q"] for r in vrl) == 1, vrl        # 5 cópias, playset 4 -> 1
+
+    # As mesmas cópias continuam disponíveis para o Legacy.
+    deck(con, "Leg", "legacy", [("Opalescence", 4)])
+    rep = loadout.report(con, [pm, slot("Leg", "legacy", "Leg", prioridade=2,
+                                        acabamento="foil", balde="SPML")])
+    s = por_nome(rep)["Leg"]
+    assert s["tenho"] == 4, s["tenho"]
+    assert [l["sub"] for l in s["have"][0]["lotes"]] == ["Caixa Reserved List"], s["have"]
+    print("as cópias da Caixa RL continuam a servir o Legacy")
 
 
 def caso_pt_da_era_trancada_ao_premodern():
@@ -247,13 +293,18 @@ def caso_backup_e_venda():
 
 
 def caso_substituto_nao_se_vende():
-    """O erro caro: a Enchantress precisa de Opalescence, ele tem 4 EN na Caixa
-    RL, a regra do PT põe-nas fora do deck — e o playset de 4 mandava vendê-las.
-    São exactamente as cartas que lhe faltam."""
+    """O erro caro: a Enchantress precisa de Opalescence, ele tem 4 EN noutro
+    balde, a regra do PT põe-nas fora do deck — e o playset de 4 mandava
+    vendê-las. São exactamente as cartas que lhe faltam.
+
+    (O caso original eram as 4 EN da Caixa RL; desde 2026-09-07 essas já nem são
+    vistas pelo Premodern e vão mesmo para a venda a confirmar — a saída
+    `guardar` continua a valer para os outros baldes e para o acabamento.)
+    """
     con = base()
     deck(con, "Ench", "premodern", [("Opalescence", 4)])
     add(con, "Opalescence", 3, lang="pt", sub="Premodern (geral)")
-    add(con, "Opalescence", 4, lang="en", sub="Caixa Reserved List")
+    add(con, "Opalescence", 4, lang="en", sub="SPML")
     rep = loadout.report(con, [slot("Ench", "premodern", "Ench", lingua="pt",
                                     balde="Premodern (geral)")])
     # 7 cópias, playset 4 -> 3 de excesso. Saem das EN, que são as livres — mas
@@ -309,7 +360,8 @@ def caso_preco_foil():
 
 def run():
     for fn in (caso_uma_copia_uma_caixa, caso_falta_partilhada_nao_e_conflito,
-               caso_premodern_so_pt, caso_pt_da_era_trancada_ao_premodern,
+               caso_premodern_so_pt, caso_premodern_nao_ve_a_caixa_rl,
+               caso_pt_da_era_trancada_ao_premodern,
                caso_excepcao_do_balde, caso_foil, caso_colecionador_e_reservas_fora,
                caso_backup_e_venda, caso_substituto_nao_se_vende, caso_variantes,
                caso_slot_vazio, caso_preco_foil):
