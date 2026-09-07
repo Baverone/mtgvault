@@ -5,8 +5,8 @@ import argparse
 import json
 import sys
 
-from . import (analysis, collection, db, mtgtop8, prices, scryfall, sources, stock,
-               wantlist, watchlist)
+from . import (analysis, collection, db, loadout, mtgtop8, prices, scryfall,
+               sources, stock, wantlist, watchlist)
 
 
 def _p(rows, cols):
@@ -131,6 +131,14 @@ def main(argv=None):
     rep = sub.add_parser("report", help="%% que tenho de cada arquétipo do formato")
     rep.add_argument("format")
     rep.add_argument("--min-lists", type=int, default=5)
+
+    lo = sub.add_parser("loadout", help="os decks montados em deckbox: estado e conflitos")
+    lo.add_argument("deck", nargs="?", help="nome (ou parte) de um slot, para o detalhe")
+
+    vd = sub.add_parser("vender", help="o que sobra depois de montar o loadout")
+    vd.add_argument("--csv", action="store_true", help="saída em CSV")
+    vd.add_argument("--tudo", action="store_true",
+                    help="incluir Reserved List, substitutos e retidos")
 
     args = ap.parse_args(argv)
 
@@ -393,6 +401,109 @@ def main(argv=None):
             rows = stock.format_report(con, args.format, args.min_lists)
             _p(rows, ["archetype_id", "label", "n_lists", "pct", "have",
                       "missing", "cost"])
+
+        elif args.cmd == "loadout":
+            rep = loadout.report(con)
+            if args.deck:
+                _loadout_detalhe(rep, args.deck)
+            else:
+                _loadout_resumo(rep)
+
+        elif args.cmd == "vender":
+            _vender(loadout.report(con), csv_out=args.csv, tudo=args.tudo)
+
+
+def _loadout_resumo(rep):
+    print("DECKS EM DECKBOX\n")
+    linhas = []
+    for s in rep["slots"]:
+        estado = ("por confirmar" if s.get("por_confirmar") or s["vazio"]
+                  else "montado" if s.get("montado") else "a montar")
+        linhas.append({"slot": s["nome"], "formato": s["formato"], "%": s["pct"],
+                       "tenho": f"{s['tenho']}/{s['precisa']}",
+                       "faltam": s["faltam"],
+                       "custo": f"{s['custo']:.2f}€", "estado": estado})
+    _p(linhas, ["slot", "formato", "%", "tenho", "faltam", "custo", "estado"])
+    print(f"\n  custo de fechar tudo: {rep['custo_total']:.2f}€")
+    print(f"  conflitos: {len(rep['conflitos'])} cartas disputadas por 2+ caixas")
+    print(f"  venda: {rep['copias']} cópias / {rep['total']:.2f}€"
+          f"  ·  Reserved List à parte: {rep['copias_rl']} / {rep['total_rl']:.2f}€")
+    if rep["conflitos"]:
+        print("\nCARTAS DISPUTADAS (as 10 piores)")
+        for c in rep["conflitos"][:10]:
+            det = " · ".join(f"{q['slot']} {q['levou']}/{q['pediu']}"
+                             for q in c["por_slot"])
+            print(f"  {c['nm']:<28} tenho {c['tenho']} para {c['pedido']}   {det}")
+
+
+def _loadout_detalhe(rep, procura):
+    alvo = procura.lower()
+    achados = [s for s in rep["slots"]
+               if alvo in s["nome"].lower() or alvo in str(s["slot"]).lower()]
+    if not achados:
+        print(f"Nenhum slot do loadout com {procura!r}. Slots: "
+              + ", ".join(s["nome"] for s in rep["slots"]))
+        return
+    for s in achados:
+        print(f"\n=== {s['nome']} ({s['formato']}) — {s['pct']}% "
+              f"[{s['tenho']}/{s['precisa']}] ===")
+        print(f"  fonte: {s.get('fonte')} {s.get('ref') or ''} — {s['nota']}")
+        if s.get("lingua"):
+            print(f"  só cartas em {s['lingua'].upper()}")
+        if s.get("acabamento") == "foil":
+            print("  só foil/etched (as da Reserved List podem ser nonfoil)")
+        if not s["missing"]:
+            print("  COMPLETO.")
+            continue
+        print(f"\n  FALTAM {s['faltam']} cópias · {s['custo']:.2f}€")
+        for m in s["missing"]:
+            u = f"{m['unit']:.2f}€" if m["unit"] else "?"
+            # Quando o slot é de foil e o preço veio do nonfoil, diz-se: a
+            # estimativa está por baixo, e é melhor sabê-lo antes de comprar.
+            if s.get("acabamento") == "foil" and m["price_finish"] == "nonfoil":
+                u += "*"
+            extra = ("   [" + "; ".join(f"{v}× {k}" for k, v in m["alt"].items()) + "]"
+                     if m["alt"] else "")
+            print(f"    {m['missing']}× {m['nm']:<34} {u:>10} {m['board']}{extra}")
+        if any(m["price_finish"] == "nonfoil" for m in s["missing"]) \
+                and s.get("acabamento") == "foil":
+            print("    (* sem preço foil na base — o valor é o do nonfoil, "
+                  "por baixo do real)")
+        print("\n  wantlist (formato Cardmarket):")
+        for m in sorted(s["missing"], key=lambda x: x["nm"]):
+            marca = " [FOIL]" if s.get("acabamento") == "foil" else (
+                " [PT]" if s.get("lingua") == "pt" else "")
+            print(f"    {m['missing']} {m['nm']}{marca}")
+
+
+def _vender(rep, csv_out=False, tudo=False):
+    blocos = [("VENDER", rep["venda"])]
+    if tudo:
+        blocos += [("VENDER — RESERVED LIST (confirmar uma a uma)", rep["venda_rl"]),
+                   ("GUARDAR — servem um deck do loadout", rep["guardar"]),
+                   ("RETIDOS — extras de deck (reter_extras_meses)", rep["retidos"])]
+    if csv_out:
+        print("bloco,quantidade,carta,balde,edicao,acabamento,lingua,"
+              "preco_unitario,total,reserved_list,motivo")
+        for titulo, linhas in blocos:
+            for r in linhas:
+                print(f'{titulo},{r["q"]},"{r["nm"]}","{r["sub"]}",{r["set_code"]},'
+                      f'{r["finish"]},{r["lang"]},{r["unit"] or ""},{r["total"]},'
+                      f'{1 if r["rl"] else 0},"{r["reason"]}"')
+        return
+    for titulo, linhas in blocos:
+        print(f"\n{titulo}  —  {sum(r['q'] for r in linhas)} cópias, "
+              f"{sum(r['total'] or 0 for r in linhas):.2f}€")
+        _p([{"q": r["q"], "carta": r["nm"], "balde": r["sub"], "ed": r["set_code"],
+             "fin": r["finish"], "ln": r["lang"],
+             "unit": f"{r['unit']:.2f}" if r["unit"] else "?",
+             "total": f"{r['total']:.2f}", "motivo": r["reason"]} for r in linhas],
+            ["q", "carta", "balde", "ed", "fin", "ln", "unit", "total", "motivo"])
+    if not tudo:
+        print(f"\n  (à parte: Reserved List {rep['copias_rl']} cópias / "
+              f"{rep['total_rl']:.2f}€, substitutos a guardar {rep['copias_guardar']} / "
+              f"{rep['total_guardar']:.2f}€ — vê com --tudo)")
+    print("\n  SUGESTÃO A CONFIRMAR: nada sai da coleção sem tu dizeres.")
 
 
 if __name__ == "__main__":
