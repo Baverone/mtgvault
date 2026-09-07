@@ -382,6 +382,87 @@ def _ordem(lot: dict, s: dict) -> tuple:
             lot["set_code"] or "", lot["id"])
 
 
+def _linha_cheia(linha: dict) -> dict:
+    """Uma linha TIDA com as mesmas chaves de uma em falta.
+
+    As páginas que mostram uma caixa carta a carta (`deckboxes`, `meusdecks`,
+    `metagame`) percorrem `have` e `missing` juntos; sem isto tinham de saber de
+    cor quais as chaves que só existem de um dos lados, e a primeira que se
+    esquecesse rebentava com KeyError em produção e não nos testes.
+    """
+    linha.setdefault("missing", 0)
+    linha.setdefault("comprar", 0)
+    linha.setdefault("noutra", {})
+    linha.setdefault("noutra_q", 0)
+    linha.setdefault("unit", None)
+    linha.setdefault("price_finish", None)
+    linha.setdefault("cost", 0.0)
+    linha.setdefault("alt", {})
+    linha.setdefault("alt_onde", {})
+    return linha
+
+
+def _estado_carta(pool: dict, s: dict, nm: str, need: int, baldes: set[str],
+                  did: int | None = None) -> dict:
+    """Quantas cópias que SERVEM este slot estão livres, e quantas estão noutra caixa.
+
+    É a versão que NÃO consome: serve quem faz a pergunta "e se fosse este
+    deck?" — o ranking de arquétipos do `foil_report`, onde as opções são
+    alternativas entre si e não caixas montadas ao mesmo tempo. A alocação a
+    sério continua a ser o `allocate`, que gasta cada cópia uma só vez.
+
+    Devolve {got, noutra, noutra_q, comprar} com a mesma leitura de sempre: o que
+    está noutra caixa vai-se buscar e **não se compra** (André, 2026-09-07).
+    """
+    livre = 0
+    onde: dict[str, int] = defaultdict(int)
+    for lot in pool.get(nm, []):
+        if lot["rdid"] is not None and lot["rdid"] != did:
+            continue
+        if _fora_de_vista(lot, s) or _porque_nao(lot, s, baldes):
+            continue
+        livre += lot["livre"]
+        for caixa, q in lot["alocado"].items():
+            if caixa != s.get("nome"):
+                onde[caixa] += q
+    got = min(need, livre)
+    resta = need - got
+    noutra: dict[str, int] = {}
+    for caixa, q in sorted(onde.items(), key=lambda kv: (-kv[1], kv[0])):
+        if resta <= 0:
+            break
+        noutra[caixa] = min(q, resta)
+        resta -= noutra[caixa]
+    nq = sum(noutra.values())
+    return {"got": got, "noutra": noutra, "noutra_q": nq,
+            "comprar": need - got - nq}
+
+
+def slots_por_lista(res: dict) -> dict[str, dict]:
+    """Os slots do loadout indexados pela LISTA de onde saíram (`ref`).
+
+    É a ponte entre o loadout e as páginas que mostram decks um a um. O
+    `meusdecks` conhece cada deck pelo nome na tabela `decks` ou pela etiqueta do
+    `watched` — e esse nome é exactamente o `ref` do slot. Sem esta ponte, cada
+    página contava a posse à sua maneira: o `meusdecks` só via o balde ligado ao
+    deck (`deck_collection`) e, por isso, quatro Utrom Monitor que estão no SPML
+    não apareciam no Pauper, que é a caixa que as leva (André, 2026-09-07).
+
+    O nome da caixa e o id do slot também entram, para quem os tiver à mão.
+    """
+    out: dict[str, dict] = {}
+    for s in res["slots"]:
+        for k in (s.get("ref"), s.get("nome"), s.get("slot")):
+            if k:
+                out.setdefault(k, s)
+    return out
+
+
+def linhas_por_carta(s: dict) -> dict[tuple[str, str], dict]:
+    """(board, carta) -> a linha da alocação desta caixa, tida ou em falta."""
+    return {(m["board"], m["nm"]): m for m in s["have"] + s["missing"]}
+
+
 # ---------------------------------------------------------------------------
 # Alocação
 # ---------------------------------------------------------------------------
@@ -421,8 +502,8 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
             precisa += need
             if basica:                     # básicas: assume-se que as tem sempre
                 usadas += need
-                have.append({"board": board, "nm": nm, "need": need, "got": need,
-                             "basica": True, "lotes": []})
+                have.append(_linha_cheia({"board": board, "nm": nm, "need": need,
+                                          "got": need, "basica": True, "lotes": []}))
                 continue
             falta = need
             gastos = []
@@ -509,7 +590,7 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                 if alt:
                     subs.append(linha)
             else:
-                have.append(linha)
+                have.append(_linha_cheia(linha))
         for nm, q in pediu_slot.items():
             disputa[nm].append({"slot": s["nome"], "prioridade": s["prioridade"],
                                 "pediu": q, "levou": levou_slot.get(nm, 0)})
@@ -724,30 +805,45 @@ def report(con, cfg_slots: list[dict] | None = None) -> dict:
 # Ranking de arquétipos por material (para escolher os slots por confirmar)
 # ---------------------------------------------------------------------------
 def foil_report(con: sqlite3.Connection, fmt: str, top: int = 5,
-                min_lists: int = 8) -> list[dict]:
-    """Arquétipos de um formato ordenados pela % que o André JÁ TEM em foil.
+                min_lists: int = 8, res: dict | None = None) -> list[dict]:
+    """Arquétipos de um formato ordenados por quanto o André JÁ TEM para os montar.
 
-    Serve os slots por confirmar (Standard, Pioneer, Legacy): *"faz uma pesquisa
-    de decks e diz-me quais os decks que eu mais tenho cartas para não ser tão
-    difícil montar"*. A lista de cada arquétipo é a lista padrão de sempre
-    (`stock.coverage_of_archetype` usa o mesmo `stock_list`), mas a posse conta só
-    exemplares que servem a regra do foil — senão o ranking dizia que ele tem
-    cartas que não pode pôr no deck.
+    Responde à pergunta dele de 2026-09-07: *"para os decks 'metagame', em vez de
+    me dares todas as listas, dás-me só o top-3 decks que estou mais perto de
+    concluir"*. A lista de cada arquétipo é a lista padrão de sempre
+    (`stock.stock_list` — o mesmo consenso do resto do vault), mas a posse passa
+    pelas regras de material do loadout: nesses formatos as cartas são todas foil
+    menos as da Reserved List, e uma PT da era Premodern está trancada ao
+    Premodern. Sem isso o ranking dizia que ele tem cartas que não pode pôr no
+    deck.
+
+    Com `res` (o resultado de um `allocate`), a posse é lida DEPOIS das caixas
+    montadas: `got` são as cópias que ficaram livres e `noutra` as que já estão
+    numa caixa — que se vão buscar, não se compram. O custo é sobre `comprar`, a
+    mesma regra do resto do loadout. Sem `res`, tudo está livre (é o que faz
+    sentido para quem só quer o ranking).
+
+    As básicas contam como tidas mas ficam FORA da percentagem: com elas dentro,
+    um deck com 20 terras começava em 33% e os arquétipos deixavam de se
+    distinguir uns dos outros, que é exactamente o que ele quer ver aqui.
     """
-    pool = lots(con)
+    pool = res["pool"] if res else lots(con)
+    baldes = ({s["balde"] for s in res["slots"] if s.get("balde")} if res
+              else {s.get("balde") for s in config_slots() if s.get("balde")})
+    # Slot de mentira: só o que decide se uma cópia serve — o formato (tranca do
+    # PT da era) e o acabamento foil. É o mesmo `_porque_nao` das caixas a sério.
+    ps = {"formato": fmt, "acabamento": "foil", "nome": None}
 
-    def tenho(nm: str) -> tuple[int, int]:
-        """(cópias que servem em foil, cópias em qualquer acabamento)."""
-        ls = pool.get(nm, [])
-        return (sum(l["q"] for l in ls
-                    if l["finish"] in FOIL_FINISHES or l["rl"]),
-                sum(l["q"] for l in ls))
-
+    # Só listas que CONTAM (`sources.counting_sql`) — é a regra que vive num sítio
+    # só desde 2026-09-07. Sem ela o `n_lists` vinha inflacionado pelas listas
+    # antigas que ainda têm etiqueta de arquétipo mas que o metagame já não vê, e
+    # o `min_lists` deixava entrar arquétipos que são ruído de duas ligas.
+    conta, cp = sources.counting_sql(fmt, "d")
     rows = con.execute(
-        """SELECT a.id, a.label, COUNT(d.id) n FROM archetypes a
-             JOIN decklists d ON d.archetype_id = a.id
-            WHERE a.format = ? GROUP BY a.id HAVING n >= ?
-            ORDER BY n DESC LIMIT 40""", (fmt, min_lists)).fetchall()
+        f"""SELECT a.id, a.label, COUNT(d.id) n FROM archetypes a
+              JOIN decklists d ON d.archetype_id = a.id
+             WHERE a.format = ? AND {conta} GROUP BY a.id HAVING n >= ?
+             ORDER BY n DESC LIMIT 40""", (fmt, *cp, min_lists)).fetchall()
     out = []
     vistos: dict[tuple, dict] = {}
     for r in rows:
@@ -767,29 +863,40 @@ def foil_report(con: sqlite3.Connection, fmt: str, top: int = 5,
             vistos[chave]["n_lists"] += r["n"]
             vistos[chave]["ids"].append(r["id"])
             continue
-        need = have_f = have_a = 0
+        need = got = nq = comprar = 0
         custo = 0.0
-        faltam = []
-        for _b, nm, q in cards:
+        linhas = []
+        for b, nm, q in cards:
             if nm in BASICS:
+                linhas.append(_linha_cheia({"board": b, "nm": nm, "need": q,
+                                            "got": q, "basica": True, "lotes": []}))
                 continue
-            f, a = tenho(nm)
+            e = _estado_carta(pool, ps, nm, q, baldes)
+            unit, pfin = card_price(con, nm, "foil")
+            linha = _linha_cheia({
+                "board": b, "nm": nm, "need": q, "got": e["got"], "basica": False,
+                "lotes": [], "missing": q - e["got"], "comprar": e["comprar"],
+                "noutra": e["noutra"], "noutra_q": e["noutra_q"],
+                "unit": unit, "price_finish": pfin,
+                "cost": round((unit or 0) * e["comprar"], 2)})
             need += q
-            have_f += min(q, f)
-            have_a += min(q, a)
-            if f < q:
-                unit, pfin = card_price(con, nm, "foil")
-                custo += (unit or 0) * (q - f)
-                faltam.append({"nm": nm, "falta": q - f, "tenho_nonfoil": min(q, a) - min(q, f),
-                               "unit": unit, "price_finish": pfin,
-                               "cost": round((unit or 0) * (q - f), 2)})
+            got += e["got"]
+            nq += e["noutra_q"]
+            comprar += e["comprar"]
+            custo += linha["cost"]
+            linhas.append(linha)
         if not need:
             continue
         linha = {"archetype_id": r["id"], "ids": [r["id"]], "label": r["label"],
-                 "n_lists": r["n"], "need": need, "have_foil": have_f,
-                 "have_any": have_a, "pct_foil": round(100 * have_f / need),
-                 "pct_any": round(100 * have_a / need), "custo": round(custo, 2),
-                 "faltam": sorted(faltam, key=lambda x: -(x["cost"] or 0))}
+                 "n_lists": r["n"], "need": need, "got": got, "noutra_q": nq,
+                 "comprar": comprar, "custo": round(custo, 2),
+                 # "perto de concluir" = o que ele TEM, esteja livre ou noutra
+                 # caixa: a que está noutra caixa vai-se buscar, não se compra.
+                 "tenho": got + nq, "pct": round(100 * (got + nq) / need),
+                 "pct_livre": round(100 * got / need),
+                 "linhas": linhas,
+                 "faltam": sorted((m for m in linhas if m["comprar"]),
+                                  key=lambda x: -(x["cost"] or 0))}
         vistos[chave] = linha
         out.append(linha)
-    return sorted(out, key=lambda x: (-x["pct_foil"], x["custo"]))[:top]
+    return sorted(out, key=lambda x: (-x["pct"], x["custo"], x["label"]))[:top]

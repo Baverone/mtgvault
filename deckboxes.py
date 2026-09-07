@@ -39,6 +39,7 @@ from mtgvault import loadout  # noqa: E402
 TABS = ('<nav class="tabs"><a href="index.html">🏠 Início</a>'
         '<a href="meusdecks.html">🎴 Decks permanentes</a>'
         '<a class="cur" href="deckboxes.html">🧰 Deckboxes</a>'
+        '<a href="metagame.html">🌐 Metagame</a>'
         '<a href="showcase.html">🎯 Showcase Challenger</a>'
         '<a href="colecao_cor.html">📚 Coleção</a>'
         '<a href="caixarl.html">📦 Caixa RL</a></nav>')

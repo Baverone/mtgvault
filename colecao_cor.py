@@ -24,7 +24,7 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 import classify  # noqa: E402
 import commander_decks  # noqa: E402  (decks de consenso em camadas núcleo/flex/tech)
-from mtgvault import db  # noqa: E402
+from mtgvault import db, loadout  # noqa: E402
 from mtgvault.collection import owned_playable  # noqa: E402
 
 COLOR = {"W": "Branco", "U": "Azul", "B": "Preto", "R": "Vermelho", "G": "Verde"}
@@ -60,6 +60,11 @@ def _card(x, badge_cls="q"):
         data = f' data-used="{html.escape(where)}"'
         tag = f'<span class="use">{html.escape(where)}</span>'
         tip += f' — vai para: {html.escape(where)}'
+    elif x.get("de"):             # o loadout dá-a a esta caixa, mas está noutro balde
+        cls = "c fora"
+        tag = (f'<span class="fora" title="está em {html.escape(x["de"])} — '
+               f'é de lá que a tiras para montar">de {html.escape(x["de"])}</span>')
+        tip += f' — está em {html.escape(x["de"])}'
     elif x.get("extra"):          # deck vigiado: carta que saiu da lista, retida
         last = x.get("last")
         cls = "c extra"
@@ -107,6 +112,58 @@ CONSENSUS_BALDES = {"Cloud": ("Cloud (Duel Commander)", "duel-commander", "Cloud
 CI_ICON = {"W": "⬜", "U": "🟦", "B": "⬛", "R": "🟥", "G": "🟩"}
 
 
+def _alocacao(con):
+    """A alocação do loadout, uma vez por página. Se falhar, as secções ficam
+    como estavam — mais vale isso do que a página inteira ir abaixo."""
+    try:
+        return loadout.allocate(con)
+    except Exception:                       # noqa: BLE001
+        return None
+
+
+def _de_outro_balde(con, res, balde, cur):
+    """Cartas que o LOADOUT deu a esta caixa mas que vivem noutro balde.
+
+    O balde é onde a carta está arrumada hoje; a caixa é o deck que a vai levar.
+    Nem sempre coincidem — os quatro Utrom Monitor do Pauper estão no `SPML`
+    (André, 2026-09-07: *"estavam lá 4 Utrom Monitor, mas no deck Pauper não
+    aparecem como se eu tivesse a carta"*). Sem isto a secção mostrava um deck
+    mais incompleto do que ele está, e não dizia onde ir buscar o resto.
+
+    Devolve linhas com a mesma forma das outras (`_card`), marcadas com `de` = o
+    balde de onde saem.
+    """
+    if res is None:
+        return []
+    slot = next((s for s in res["slots"] if s.get("balde") == balde), None)
+    if slot is None:
+        return []
+    fora = {}                               # (sid, finish, lang, balde) -> qty
+    for m in slot["have"]:
+        if m["nm"] not in cur:
+            continue
+        for g in m["lotes"]:
+            if g["sub"] == balde:
+                continue                    # já está na caixa: não é "ir buscar"
+            k = (g["sid"], g["finish"], g["lang"], g["local"])
+            fora[k] = fora.get(k, 0) + g["q"]
+    if not fora:
+        return []
+    ph = ",".join("?" * len({k[0] for k in fora}))
+    meta = {r["sid"]: dict(r) for r in con.execute(
+        f"""SELECT scryfall_id sid, name nm, cmc, type_line tl, color_identity ci
+              FROM cards WHERE scryfall_id IN ({ph})""",
+        sorted({k[0] for k in fora}))}
+    out = []
+    for (sid, fin, lang, local), q in fora.items():
+        m = meta.get(sid)
+        if not m:
+            continue
+        out.append({"sid": sid, "nm": m["nm"], "cmc": m["cmc"], "tl": m["tl"],
+                    "ci": m["ci"], "fin": fin, "lang": lang, "q": q, "de": local})
+    return out
+
+
 def _watched_deck_pools(con):
     """Por cada deck vigiado: o deck por INTEIRO (o que tem e está na lista atual)
     + as cartas EXTRA (as que já tem mas saíram da lista) — retidas até 6 meses da
@@ -114,8 +171,13 @@ def _watched_deck_pools(con):
 
     A lista atual e o histórico de "última utilização" vêm da lista vigiada
     (watched_snapshots); para o Cloud (Duel Commander), do consenso (deck_cards).
+
+    O que está NA CAIXA sai do balde do deck; o que o loadout lhe deu de OUTRO
+    balde vem do `_de_outro_balde` e aparece marcado com "de <balde>" — é a mesma
+    regra "indicas onde está a carta" que vale no resto do site.
     """
     cutoff = con.execute("SELECT date('now','-6 months') d").fetchone()["d"]
+    res = _alocacao(con)
     wmap = {r["sub_collection"]: r["watched_id"]
             for r in con.execute("SELECT sub_collection, watched_id FROM deck_collection")}
     today = con.execute("SELECT date('now') d").fetchone()["d"]
@@ -159,9 +221,12 @@ def _watched_deck_pools(con):
                 row["last"] = lp
                 row["expired"] = bool(lp and lp < cutoff)
                 extra_rows.append(row)
+        outros = _de_outro_balde(con, res, balde, cur)
+        deck_rows += outros
         if deck_rows or extra_rows:
             out.append({"title": title, "deck": deck_rows, "extra": extra_rows,
-                        "n_list": len(cur), "n_have": len(deck_rows)})
+                        "n_list": len(cur), "n_have": len(deck_rows),
+                        "n_fora": sum(x["q"] for x in outros)})
     return out
 
 
@@ -298,8 +363,9 @@ def build(con, out_path=None):
     # por inteiro + extras. Consenso (Cloud DC): camadas núcleo/flex/tech.
     wsec_body = ""
     for p in _watched_deck_pools(con):
+        fora = (f' · {p["n_fora"]} de outro balde' if p.get("n_fora") else "")
         wsec_body += (f'<h3>{html.escape(p["title"])} <span class="n">'
-                      f'{p["n_have"]} na lista · {len(p["extra"])} extra</span></h3>')
+                      f'{p["n_have"]} na lista{fora} · {len(p["extra"])} extra</span></h3>')
         dcards = sorted(p["deck"], key=lambda x: (int(x["cmc"] or 0), (x["nm"] or "").lower()))
         wsec_body += '<div class="grid">' + "".join(_card(x) for x in dcards) + '</div>'
         if p["extra"]:
@@ -314,7 +380,10 @@ def build(con, out_path=None):
         wsec = ('<h2 id="vigiados" class="pool">🃏 Decks permanentes '
                 '<span class="n">só decks — não coleção</span></h2>'
                 '<p class="hint">Lista fixa (Blue Farm, Cloud cEDH, Pauper): o deck por inteiro '
-                '+ as <b>extra</b> (saíram da lista, retidas até 6 meses). Consenso (Cloud): em '
+                '+ as <b>extra</b> (saíram da lista, retidas até 6 meses). As cartas com '
+                '<b style="color:#bcd4ff">de &lt;balde&gt;</b> estão arrumadas noutro sítio mas o '
+                '<b>loadout</b> dá-as a esta caixa — é de lá que as tiras para montar (foi o caso '
+                'dos 4 Utrom Monitor do Pauper, que vivem no SPML). Consenso (Cloud): em '
                 'camadas — <b>núcleo</b> (≥50% das listas) é o deck; <b>flex</b> (25–50%) e '
                 '<b>tech</b> (15–25%) são opções para as vagas. Só cartas dentro da cor do '
                 'comandante.</p>' + wsec_body)
@@ -380,6 +449,8 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  body.deckmode .c[data-used] .use{display:block}
  .c.extra img{filter:brightness(.82) sepia(.35) saturate(1.3) hue-rotate(-15deg)}
  .c .ex{position:absolute;bottom:0;left:0;right:0;background:#5a4a1f;color:#f4e0a0;font-size:8.5px;font-weight:700;line-height:1.35;padding:1px 3px;border-radius:0 0 5px 5px;text-align:center}
+ .c.fora img{box-shadow:0 0 0 2px #7fa8ff}
+ .c .fora{position:absolute;bottom:0;left:0;right:0;background:#1b2c4d;color:#bcd4ff;font-size:8.5px;font-weight:700;line-height:1.35;padding:1px 3px;border-radius:0 0 5px 5px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
  .c.miss{opacity:.72} .c.miss img{filter:grayscale(1) brightness(.5)}
  .c .noimg{width:74px;height:103px;border-radius:5px;background:#0c0f14}
  .c .q.pctb{background:#1c2c4a;color:#9cc2ff}
@@ -402,7 +473,7 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
 </style></head><body><div class="wrap">
 <header><h1>📚 Coleção — organizar e fotografar</h1>
 <div class="sub">TUDO o que tens nos baldes de coleção, por cor→custo de mana · nada removido para decks · enche os binders e fotografa o que não aparecer · dados de %TODAY%</div>
-<nav class="tabs"><a href="index.html">🏠 Início</a><a href="meusdecks.html">🎴 Decks permanentes</a><a href="deckboxes.html">🧰 Deckboxes</a><a href="showcase.html">🎯 Showcase Challenger</a><a class="cur" href="colecao_cor.html">📚 Coleção</a><a href="caixarl.html">📦 Caixa RL</a></nav>
+<nav class="tabs"><a href="index.html">🏠 Início</a><a href="meusdecks.html">🎴 Decks permanentes</a><a href="deckboxes.html">🧰 Deckboxes</a><a href="metagame.html">🌐 Metagame</a><a href="showcase.html">🎯 Showcase Challenger</a><a class="cur" href="colecao_cor.html">📚 Coleção</a><a href="caixarl.html">📦 Caixa RL</a></nav>
 <div class="tally"><b class="t-col">🔵 %TOTAL% cartas nos binders</b><b class="t-deck">🟢 %DECKN% que vão p/ decks</b><button class="tgl" id="dm" onclick="toggleDM()">🎯 marcar as que vão p/ decks</button></div>
 <div class="cfg">%CFG%</div>
 %VALOR%</header>

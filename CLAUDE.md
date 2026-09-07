@@ -50,17 +50,17 @@ daily.py          o job diário (encadeia tudo o que está abaixo)
 
 **Geradores do site (scripts na raiz, corridos pelo `daily.py`, HTML no GitHub Pages):**
 ```
-meta_coverage.py    cobertura.html — top-10 ponderado + staples + emergentes. NB (2026-09-07): quem decide que listas contam é `sources.lista_conta`/`counting_sql` (ver "Que listas contam"), e o peso vem de `sources.tier_weight_sql`; janela 30 dias; expõe COLLECTION_BALDES={"SPML","Premodern (geral)"}, owned_available(con) (=coleção MENOS cartas comprometidas com decks vigiados) e counting_lists(con,fmt,aid) — a base de "tenho" do metagame/decksfaziveis/cobertura. NB (2026-09-07): `FORMATS` deixou de ser fixo — filtra `_FORMATS` por `colecao_config.json`→`formatos_metagame` (hoje standard/pioneer/modern; o Premodern saiu). `metagame.py` e `decks_faziveis.py` leem ESTA lista
-decks_faziveis.py   decksfaziveis.html — "Decks fazíveis": por formato, decks do top-10 já a ≥ min% (colecao_config.json→decks_faziveis_min_pct, default 50). Cor=tenho/cinza=falta + wantlist. Reusa metagame._grid e meta_coverage._rank/owned_available
+meta_coverage.py    cobertura.html — top-10 ponderado + staples + emergentes. NB (2026-09-07): quem decide que listas contam é `sources.lista_conta`/`counting_sql` (ver "Que listas contam"), e o peso vem de `sources.tier_weight_sql`; janela 30 dias; expõe COLLECTION_BALDES={"SPML","Premodern (geral)"}, owned_available(con) (=coleção MENOS cartas comprometidas com decks vigiados) e counting_lists(con,fmt,aid). NB (2026-09-07): `FORMATS` deixou de ser fixo — filtra `_FORMATS` por `colecao_config.json`→`formatos_metagame` (hoje standard/pioneer/modern; o Premodern saiu). Só a COBERTURA lê essa lista: o `metagame.py` deixou de a ler (ver abaixo)
+decks_faziveis.py   RETIRADO 2026-09-07 — fundido no `metagame.py`, que faz a mesma pergunta com as regras de material e o "onde está a carta". O módulo ficou como lápide (levanta RuntimeError), o `decksfaziveis.html` reencaminha para o metagame, saiu do `daily.py` e do `git add` do workflow. Podem ser apagados os dois
 buildability.py     (DORMENTE) o "Montar" foi tirado do menu p/ o André refazer; já NÃO corre no daily nem vai ao git-add. Continua importado por meusdecks.py (FMT_LABEL/FMT_ORDER/BASICS)
 classify.py         classificação Deck/Coleção/Vender (alimenta colecao_cor.html)
-colecao_cor.py      colecao_cor.html — "Binders": coleção INTEIRA por cor→CMC; cartas em uso a escuro + rótulo (classify rep["deck"]/used_by); + secção "Decks vigiados" (Blue Farm/Cloud cEDH/Cloud/Pauper): o deck por inteiro + cartas "extra" que saíram da lista (retidas até 6 meses da última utilização — `_watched_deck_pools`)
+colecao_cor.py      colecao_cor.html — "Binders": coleção INTEIRA por cor→CMC; cartas em uso a escuro + rótulo (classify rep["deck"]/used_by); + secção "Decks vigiados" (Blue Farm/Cloud cEDH/Cloud/Pauper): o deck por inteiro + cartas "extra" que saíram da lista (retidas até 6 meses da última utilização — `_watched_deck_pools`). NB (2026-09-07): `_de_outro_balde` acrescenta as cartas que o LOADOUT dá a essa caixa mas que estão arrumadas noutro balde, marcadas "de &lt;balde&gt;" (era aqui que os Utrom Monitor do SPML desapareciam do Pauper)
 collection_gallery.py  colecao.html — galeria por sub-coleção
 core_decks.py       (coredecks.html APAGADO 2026-08-26, a redefinir; NÃO vai ao git-add) — mas core_decks.py continua a correr no daily p/ calcular card_price/posse
 alertas.py          alertas.html — vender/comprar por movimento de preço (fora do menu atual)
-meusdecks.py        meusdecks.html — "Decks vigiados": agora SÓ os 5 fixos de colecao_config.json→decks_vigiados (Pauper-Luffy, Premodern-Luffy/Stiflenought, Blue Farm, Cloud cEDH, Cloud Duel Commander — este ÚLTIMO agora INCLUÍDO) MAIS os alvos de consenso de Premodern (`premodern_arquetipos_alvo`, sufixo " (consenso)"). Lista 75 verde/vermelho, % e evolução; checkmark "atualizado" (localStorage)
+meusdecks.py        meusdecks.html — "Decks vigiados": agora SÓ os 5 fixos de colecao_config.json→decks_vigiados (Pauper-Luffy, Premodern-Luffy/Stiflenought, Blue Farm, Cloud cEDH, Cloud Duel Commander — este ÚLTIMO agora INCLUÍDO) MAIS os alvos de consenso de Premodern (`premodern_arquetipos_alvo`, sufixo " (consenso)"). Lista 75 verde/vermelho, % e evolução; checkmark "atualizado" (localStorage). NB (2026-09-07): a POSSE vem da alocação do loadout (`loadout.slots_por_lista`/`linhas_por_carta`), não de uma contagem própria — ver "Posse: quem conta o quê"
 deckboxes.py        deckboxes.html — "Deckboxes": o LOADOUT (colecao_config.json→loadout), os decks montados ao mesmo tempo com a coleção REPARTIDA entre eles (uma cópia física serve uma caixa só). Por caixa: barra de completude, dois números ("faltam comprar" e "ir buscar a outra caixa"), cartas em falta por preço, substitutos (tenho mas não serve), "tirar de:" (de que balde saem as cartas que já tem — `slot["origens"]`, com a Caixa RL partida em PT/EN), wantlist Cardmarket (SÓ o que é mesmo compra). Mais "cartas partilhadas entre caixas" (ex-"conflitos", mesma chave `conflitos`) e "Para vender". Motor em mtgvault/loadout.py
-metagame.py         metagame.html — "Metagame" (página principal): top-10 por formato (só Challenges/Showcases, 30 dias), cartas a cor=tenho / cinza=falta, wantlist por deck, e "Staples que faltam" por formato ordenadas por preço. Usa meta_coverage.owned_available
+metagame.py         metagame.html — "Metagame": desde 2026-09-07 já NÃO é o top-10 de cada formato; é o **top-N que ele está mais perto de concluir** (`colecao_config.json`→`metagame_top_n`, default 3). `SECOES` decide o modo por formato: `top` (Standard/Pioneer/Legacy — as caixas do loadout por escolher, via `loadout.foil_report`), `caixas` (Modern — o deck já escolhido, do próprio loadout) e `alvos` (Premodern — só o `premodern_arquetipos_alvo`). Posse pela alocação do loadout, três estados, wantlist Cardmarket. NÃO lê `formatos_metagame` (o Legacy tinha de entrar e não está lá)
 (prioridade.py + metafaltas.py APAGADOS 2026-08-26, a redefinir)
 reservedlist.py     reservedlist.html — Reserved List (Scryfall) x coleção, por edição, preço/evolução, e 'VENDER' as que não jogam em formato nenhum
 caixarl.py          caixarl.html — "Caixa Reserved List": a RL que está fora da coleção jogável
@@ -135,9 +135,29 @@ cópia física entra numa caixa e **só numa**, a alocação é global e por ord
 **noutra caixa** (a carta existe e serve, mas está alocada a outra caixa),
 **cartas partilhadas** (2+ caixas querem a carta, não chegam para todas — era o
 "conflito"), **substituto** (tem a carta mas não serve àquela caixa) e
-**venda**. Por isso as percentagens desta página são MAIS BAIXAS que as do
-`meusdecks.html`, onde cada deck conta a coleção inteira: não é discordância, é a
-pergunta a ser outra.
+**venda**.
+
+**Posse: quem conta o quê (2026-09-07 — mudou).** Até esta data cada página
+contava a posse à sua maneira e discordavam em silêncio, que é o mesmo padrão do
+`event_tier` e do filtro de listas. O erro que obrigou a mudar, à letra: *"Meti 4
+fotos, estavam lá 4 Utrom Monitor, mas no deck Pauper não aparecem como se eu
+tivesse a carta."* O `meusdecks._watched_decks` contava só as cópias do balde
+ligado ao deck (`deck_collection` → `Pauper Affinity`) e as quatro Utrom Monitor
+estão no `SPML`: existiam, serviam a caixa, e a página dizia que faltavam.
+**Agora a alocação do loadout é a única fonte de "tenho / está noutra caixa /
+falta" em todo o site.** A ponte são `loadout.slots_por_lista(res)` (indexa os
+slots pelo `ref`, que é exactamente o nome do deck na tabela `decks` ou a
+etiqueta do `watched`) e `loadout.linhas_por_carta(slot)`. Já a usam:
+`meusdecks` (decks e vigiados), `colecao_cor` (secção "Decks vigiados", com as
+cartas que vêm de outro balde marcadas *"de &lt;balde&gt;"*) e `metagame`.
+Consequências a saber:
+- as percentagens do `meusdecks.html` e do `deckboxes.html` **passaram a bater
+  certo** — antes o `meusdecks` dava mais alto porque cada deck contava a coleção
+  inteira. Já não é "a pergunta a ser outra": é a mesma pergunta;
+- um deck que **não** seja caixa do loadout mantém a contagem antiga (a coleção
+  inteira) — não se inventa uma alocação que não existe;
+- **toda a vista nova que some faltas soma `comprar`**, nunca `missing` (é a
+  regra de cima, e o `meusdecks._faltas` já a segue).
 
 **Onde está a carta: 'noutra caixa' não é falta (André, 2026-09-07, à letra).**
 *"Vamos fazer como no riftvault: indicas onde está a carta, para, se eu quiser ir
@@ -419,6 +439,16 @@ Preciso de consenso para lista de alguns decks de Premodern: Replenish,
 Enchantress."*
 
 Há três níveis, e cada um tem a sua chave no `colecao_config.json`:
+
+**Atualização de 2026-09-07 (o metagame passou a ser "o que monto a seguir").**
+Palavras dele: *"Para os decks 'metagame', em vez de me dares todas as listas,
+dás-me só o top-3 decks que estou mais perto de concluir para os formatos
+Standard, Pioneer, Legacy."* A coluna "tem página de metagame" abaixo continua a
+valer para o **`cobertura.html`** (o top-10 ponderado). O **`metagame.html`**
+deixou de a ler: as suas secções são `metagame.SECOES` — top-N em Standard,
+Pioneer e **Legacy** (que não está em `formatos_metagame` e tinha de entrar), a
+caixa escolhida em Modern, e os alvos de consenso em Premodern. O quanto é
+`colecao_config.json → metagame_top_n` (3).
 
 | | recolhe listas? | conta p/ metagame (`metagame_fontes`) | agrupa em arquétipos (`ANALYSE_FORMATS`) | tem página de metagame (`formatos_metagame`) |
 |---|---|---|---|---|
