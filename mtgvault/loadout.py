@@ -123,6 +123,12 @@ PREMODERN_END = "2003-05-26"
 # e as ENG estão separadas" (André, 2026-09-07) — as PT servem o Premodern, as EN
 # nunca. Ver `local` e `_fora_de_vista`.
 BALDE_RL = "Caixa Reserved List"
+# O balde único da colecção (André, 2026-09-07: *"põe a colecção toda em uma
+# coisa só, com excepção da RL"*). Os outros nomes são os baldes de colecção de
+# ANTES da migração — ficam aqui porque o mesmo código tem de estar certo nas
+# duas bases: a do André antes de correr a migração e depois dela.
+BALDE_COLECCAO = "Colecção"
+BALDES_COLECCAO = (BALDE_COLECCAO, "SPML", "Premodern (geral)", "Jogar", BALDE_RL)
 CONSTRUCTED_LIMIT = 4                      # playset: acima disto é excedente
 FOIL_FINISHES = ("foil", "etched")
 COMMANDER_FORMATS = {"duel-commander", "cedh", "commander", "edh"}
@@ -185,8 +191,8 @@ def _front(name: str) -> str:
     return (name or "").split(" // ")[0]
 
 
-def local(lot: dict) -> str:
-    """Onde a cópia está fisicamente, para ele saber onde ir buscá-la.
+def balde_local(lot: dict) -> str:
+    """O BALDE onde a cópia está arrumada (a gaveta), ignorando deckboxes.
 
     Na estante a Caixa Reserved List são duas — *"na Caixa RL, as PT e as ENG
     estão separadas"* (André, 2026-09-07) — e a diferença importa: as PT servem o
@@ -195,6 +201,17 @@ def local(lot: dict) -> str:
     if lot["sub"] == BALDE_RL:
         return f"Caixa RL ({'PT' if lot['lang'] == 'pt' else 'EN'})"
     return lot["sub"]
+
+
+def local(lot: dict) -> str:
+    """Onde a cópia está fisicamente, para ele saber onde ir buscá-la.
+
+    Desde o modelo de colecção única (André, 2026-09-07: *"põe a colecção toda em
+    uma coisa só, com excepção da RL"*) há dois sítios possíveis: dentro de uma
+    **deckbox** (a alocação já confirmada, tabela `copy_allocation`) ou no
+    **balde** onde está arrumada. A deckbox ganha — é onde a carta está mesmo.
+    """
+    return lot.get("caixa_nome") or balde_local(lot)
 
 
 # ---------------------------------------------------------------------------
@@ -236,6 +253,18 @@ def config_slots() -> list[dict]:
     """`colecao_config.json -> loadout`, sem as chaves de ajuda `_xxx`."""
     v = sources.config().get("loadout") or []
     return [{k: x[k] for k in x if not str(k).startswith("_")} for x in v]
+
+
+def baldes_coleccao() -> tuple[str, ...]:
+    """Os baldes que são COLECÇÃO (gavetas), e não a caixa de um deck montado.
+
+    `colecao_config.json -> baldes_coleccao` manda. Desde o modelo de colecção
+    única são dois — `Colecção` e `Caixa Reserved List` — mas os nomes antigos
+    continuam na lista para o mesmo código estar certo antes e depois da
+    migração (`mtgvault.migracao`).
+    """
+    v = sources.config().get("baldes_coleccao")
+    return tuple(v) if isinstance(v, list) and v else BALDES_COLECCAO
 
 
 def regras_por_formato() -> list[dict]:
@@ -419,6 +448,11 @@ def resolve_slots(con, cfg_slots: list[dict] | None = None) -> list[dict]:
         s["grupo_ordem"] = ordem_grupo
         s["vigiado"] = (s.get("fonte") == "vigiado"
                         or bool(s.get("ref")) and s["ref"] in vigiados)
+        # *"Os decks que eu pedi para serem permanentes são a minha prioridade
+        # máxima!"* (André, 2026-09-07). Sem a chave, o slot é permanente: era o
+        # que as catorze caixas do loadout eram antes de a distinção existir, e
+        # um default a `False` esvaziava a alocação de quem não a escrevesse.
+        s["permanente"] = bool(s.get("permanente", True))
         cards, nota = _slot_cards(con, s)
         so_de: dict[str, set[str]] = defaultdict(set)
         variantes = list(s.get("variantes") or [])
@@ -439,8 +473,14 @@ def resolve_slots(con, cfg_slots: list[dict] | None = None) -> list[dict]:
         s.setdefault("prioridade", 99)
         s.setdefault("nome", s.get("ref") or s.get("slot"))
         out.append(s)
-    out.sort(key=lambda x: (x["grupo_ordem"], not x["vigiado"],
-                            x["prioridade"], x["nome"]))
+    # PERMANENTES PRIMEIRO, e só depois os candidatos. É a ordem que ele pediu:
+    # *"os decks que eu pedi para serem permanentes são a minha prioridade
+    # máxima"* e *"os decks que eu estiver quase a concluir, tenho que ter uma
+    # opção que os marque como permanentes para começarem a receber alocação"*.
+    # Um candidato fica com o que sobrar e mostra "em <caixa>" para o resto —
+    # não deixa de ver as cartas, só não as tira a quem está montado.
+    out.sort(key=lambda x: (not x["permanente"], x["grupo_ordem"],
+                            not x["vigiado"], x["prioridade"], x["nome"]))
     for i, s in enumerate(out, 1):
         s["prioridade_config"] = s["prioridade"]
         s["prioridade"] = i
@@ -458,13 +498,49 @@ def _legal_em(leg_json, formatos) -> bool:
     return any(leg.get(f) in ("legal", "restricted") for f in formatos)
 
 
-def lots(con) -> dict[str, list[dict]]:
+def alocacao_confirmada(con) -> dict[int, dict[str, int]]:
+    """`copy_id -> {slot: quantas cópias desse lote já estão nessa deckbox}`.
+
+    É a arrumação CONFIRMADA — o que o André já sleevou e meteu na caixa (botão
+    *"já arrumei"*). O loadout continua a recalcular todos os dias onde cada
+    carta DEVE estar; esta tabela diz onde ela ESTÁ, e a diferença entre as duas
+    é a lista de arrumação (`plano_arrumacao`).
+    """
+    out: dict[int, dict[str, int]] = defaultdict(dict)
+    try:
+        rows = con.execute("SELECT copy_id, slot, quantity FROM copy_allocation")
+    except sqlite3.OperationalError:
+        return {}                     # base antiga, ainda sem a tabela
+    for r in rows:
+        if (r["quantity"] or 0) > 0:
+            out[r["copy_id"]][r["slot"]] = r["quantity"]
+    return dict(out)
+
+
+def nomes_das_caixas(cfg_slots: list[dict] | None = None) -> dict[str, str]:
+    """`slot -> nome da caixa`, para dizer onde a carta está em vez do id."""
+    return {s["slot"]: (s.get("nome") or s["slot"])
+            for s in (cfg_slots if cfg_slots is not None else config_slots())
+            if s.get("slot")}
+
+
+def lots(con, cfg_slots: list[dict] | None = None) -> dict[str, list[dict]]:
     """Exemplares 'player' por nome de carta. A coleção de colecionador nunca
-    entra (regra de domínio: é avaliada, não é jogada)."""
+    entra (regra de domínio: é avaliada, não é jogada).
+
+    Um lote de 4 pode estar meio dentro de uma deckbox e meio na gaveta — por
+    isso um lote da `copies` sai daqui PARTIDO em sub-lotes, um por sítio onde
+    está (`caixa`), mais o que sobrou solto. Sem isso, a excepção *"o que está
+    dentro da caixa do próprio deck escapa às regras de material"* teria de
+    valer para o lote inteiro, e um lote parcialmente arrumado passava a valer
+    por inteiro. Cada sub-lote tem `key` própria (o `id` repete-se).
+    """
+    conf = alocacao_confirmada(con)
+    nomes = nomes_das_caixas(cfg_slots)
     out: dict[str, list[dict]] = defaultdict(list)
     for r in con.execute(
         """SELECT cp.id, cp.quantity q, cp.finish, cp.language lang,
-                  cp.reserved_deck_id rdid, s.name sub,
+                  cp.reserved_deck_id rdid, s.name sub, cp.balde_origem borigem,
                   c.name nm, c.scryfall_id sid, c.set_code, c.set_name,
                   c.released_at rel, COALESCE(c.reserved, 0) rl, c.legalities leg
              FROM copies cp
@@ -474,13 +550,25 @@ def lots(con) -> dict[str, list[dict]]:
         d = dict(r)
         d["nm"] = _front(d["nm"])
         d["sub"] = d["sub"] or "(sem balde)"
-        d["local"] = local(d)
         d["era_pm"] = bool(d["rel"]) and d["rel"] <= PREMODERN_END
         d["rl"] = bool(d["rl"])
-        d["livre"] = d["q"]
-        d["substituto"] = {}          # slot -> porque é que não fecha o slot
-        d["alocado"] = {}             # slot -> quantas cópias deste lote levou
-        out[d["nm"]].append(d)
+        dentro = {k: v for k, v in (conf.get(d["id"]) or {}).items() if v > 0}
+        solto = d["q"] - sum(dentro.values())
+        partes = sorted(dentro.items())
+        if solto > 0 or not partes:
+            partes.append((None, max(solto, 0)))
+        for caixa, q in partes:
+            e = dict(d)
+            e["caixa"] = caixa                # slot da deckbox, ou None
+            e["caixa_nome"] = nomes.get(caixa) or caixa
+            e["q"] = q
+            e["livre"] = q
+            e["key"] = (d["id"], caixa or "")
+            e["balde"] = balde_local(e)       # a gaveta, mesmo estando na caixa
+            e["local"] = local(e)
+            e["substituto"] = {}      # slot -> porque é que não fecha o slot
+            e["alocado"] = {}         # slot -> quantas cópias deste lote levou
+            out[e["nm"]].append(e)
     return out
 
 
@@ -515,6 +603,11 @@ def _fora_de_vista(lot: dict, s: dict) -> bool:
         return False
     if s.get("lingua") and lot["lang"] != s["lingua"]:
         return True
+    # Já está DENTRO da caixa de outro deck montado. É a mesma ideia dos
+    # `baldes` (de uma caixa montada não se tira nada para montar outra), mas no
+    # modelo de colecção única a caixa já não é um balde — é a alocação.
+    if lot.get("caixa") and lot["caixa"] != s.get("slot"):
+        return True
     baldes = s.get("baldes")
     return bool(baldes) and lot["sub"] not in set(baldes) | {s.get("balde")}
 
@@ -529,6 +622,13 @@ def _porque_nao(lot: dict, s: dict, baldes_de_deck: set[str],
     # dois decks que estão montados na estante. Só vale para os baldes que SÃO a
     # caixa de um deck: o `SPML` e o `Premodern (geral)` são colecção partilhada
     # por vários slots, e aí a regra manda.
+    #
+    # No modelo de colecção única a caixa deixou de ser um balde: o que diz que a
+    # cópia está dentro DESTA caixa é a arrumação confirmada (`copy_allocation`).
+    # Esta linha é a mesma excepção, na versão nova — e é a que impede que uma
+    # regra de material nova desmonte no papel um deck que está na estante.
+    if lot.get("caixa") and lot["caixa"] == s.get("slot"):
+        return None
     if s.get("balde") and lot["sub"] == s["balde"] and s["balde"] in caixas:
         return None
     # Tranca do Premodern: PT + impressão da era. Excepção: se a cópia vive no
@@ -556,12 +656,18 @@ def _ordem(lot: dict, s: dict) -> tuple:
 
     Excepto onde ele pediu o contrário: no Pauper é *"tudo foil se houver
     disponível, senão pode ser non-foil"* (`acabamento: "prefere_foil"`), e aí a
-    foil vai primeiro."""
+    foil vai primeiro.
+
+    O primeiro critério passou a ser a cópia que JÁ ESTÁ nesta caixa (arrumação
+    confirmada). Sem ele, a corrida do dia seguinte podia trocar de caixa duas
+    cópias equivalentes e mandá-lo desmontar dois decks para não mudar nada.
+    """
     foil = lot["finish"] in FOIL_FINISHES
-    return (lot["sub"] != s.get("balde"),
+    return (lot.get("caixa") != s.get("slot"),
+            lot["sub"] != s.get("balde"),
             not foil if s.get("acabamento") == "prefere_foil" else foil,
             not lot["rl"],
-            lot["set_code"] or "", lot["id"])
+            lot["set_code"] or "", lot["key"])
 
 
 def _linha_cheia(linha: dict) -> dict:
@@ -657,7 +763,7 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
     o custo de fechar. Uma cópia física entra numa caixa e só numa.
     """
     slots = resolve_slots(con, cfg_slots)
-    pool = lots(con)
+    pool = lots(con, slots)
     dids = _deck_ids(con, slots)
     baldes = {s["balde"] for s in slots if s.get("balde")}
     # As caixas que SÃO um deck montado: só nessas é que a cópia lá dentro
@@ -680,7 +786,7 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
         # reclamava a mesma cópia física duas vezes: 4 Seal of Cleansing na caixa
         # do lado davam 3 "ir buscar" ao main mais 1 ao side de um deck que só
         # tem 4 para dar. É a mesma armadilha do `livre`, um nível acima.
-        reclamado: dict[tuple[int, str], int] = defaultdict(int)
+        reclamado: dict[tuple[tuple, str], int] = defaultdict(int)
         for board, nm, need in s["cards"]:
             pedido[nm] += need
             pediu_slot[nm] += need
@@ -708,7 +814,9 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                 falta -= take
                 lot["alocado"][s["nome"]] = lot["alocado"].get(s["nome"], 0) + take
                 gastos.append({"id": lot["id"], "q": take, "sub": lot["sub"],
-                               "local": lot["local"],
+                               "local": lot["local"], "balde": lot["balde"],
+                               "caixa": lot["caixa"],
+                               "borigem": lot["borigem"],
                                "finish": lot["finish"], "lang": lot["lang"],
                                "set_code": lot["set_code"], "sid": lot["sid"]})
             got = need - falta
@@ -734,11 +842,11 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                     for outro, q in lot["alocado"].items():
                         if outro == s["nome"] or resta <= 0:
                             continue
-                        disponivel = q - reclamado[(lot["id"], outro)]
+                        disponivel = q - reclamado[(lot["key"], outro)]
                         if disponivel <= 0:
                             continue
                         pega = min(disponivel, resta)
-                        reclamado[(lot["id"], outro)] += pega
+                        reclamado[(lot["key"], outro)] += pega
                         noutra[outro] += pega
                         resta -= pega
                 # Existe mas não serve: é a diferença entre "não tenho" e "tenho
@@ -840,13 +948,20 @@ def caixas_de_deck(slots) -> set[str]:
     Pauper Affinity) — mais o balde de qualquer slot de Commander do loadout, que
     é uma caixa de deck por definição mesmo que ainda não tenha regra escrita.
 
-    Tudo o resto (SPML, Premodern (geral), Caixa Reserved List) é COLECÇÃO e
-    partilha um único limite de playset. Contar 4 por balde deixava passar o
-    dobro: 4 Intuition no Premodern mais 4 na Caixa RL são 8 da mesma carta.
+    Tudo o resto (a `Colecção` e a `Caixa Reserved List` — antes da migração, o
+    SPML e o Premodern (geral)) é COLECÇÃO e partilha um único limite de playset.
+    Contar 4 por balde deixava passar o dobro: 4 Intuition no Premodern mais 4 na
+    Caixa RL são 8 da mesma carta.
+
+    Um balde de COLECÇÃO nunca é caixa de deck, mesmo que um slot de Commander o
+    aponte como o seu — depois da migração todas as caixas apontam para a
+    `Colecção`, e sem esta linha a colecção inteira passava a "estar dentro de um
+    deck" e escapava às regras de material.
     """
-    caixas = set(_retencao())
+    caixas = set(_retencao()) - set(baldes_coleccao())
     for s in slots:
-        if s.get("balde") and s.get("formato") in COMMANDER_FORMATS:
+        if (s.get("balde") and s.get("formato") in COMMANDER_FORMATS
+                and s["balde"] not in baldes_coleccao()):
             caixas.add(s["balde"])
     return caixas
 
@@ -886,13 +1001,22 @@ def sell_list(con, res: dict) -> dict:
     pool = res["pool"]
     retidos_baldes = _retencao()
     caixas = caixas_de_deck(res["slots"])
-    # Quantas cópias cada caixa de Commander pede de cada carta.
+    # Quantas cópias cada caixa de Commander pede de cada carta. A chave é o
+    # GRUPO (ver abaixo): o `slot` da caixa no modelo novo, e o balde no antigo —
+    # os dois, para a mesma regra valer antes e depois da migração.
     cmd_need: dict[tuple[str, str], int] = defaultdict(int)
+    # `grupo -> meses de retenção`, pela mesma dupla chave.
+    reter_grupo: dict[str, int] = {}
     for s in res["slots"]:
-        if s["formato"] not in COMMANDER_FORMATS or not s.get("balde"):
+        if s.get("balde") and s["balde"] in retidos_baldes:
+            reter_grupo[s["slot"]] = retidos_baldes[s["balde"]]
+        if s["formato"] not in COMMANDER_FORMATS:
             continue
-        for _b, nm, q in s["cards"]:
-            cmd_need[(s["balde"], nm)] = max(cmd_need[(s["balde"], nm)], q)
+        for chave in (s.get("slot"), s.get("balde")):
+            if not chave:
+                continue
+            for _b, nm, q in s["cards"]:
+                cmd_need[(chave, nm)] = max(cmd_need[(chave, nm)], q)
 
     venda, venda_rl, retidos, guardar = [], [], [], []
     for nm, ls in pool.items():
@@ -900,9 +1024,14 @@ def sell_list(con, res: dict) -> dict:
             continue
         legal = _legal_em(ls[0]["leg"], REAL_FORMATS)
         # Grupos: cada caixa de deck é o seu grupo; toda a colecção é UM grupo.
+        # No modelo de colecção única a caixa já não é um balde — é a arrumação
+        # confirmada (`lot["caixa"]`). Sem esta linha, as cópias a mais de um
+        # deck de Commander passavam a caber no playset de 4 em vez de 1 por
+        # deck, e a lista de venda encolhia sem ninguém pedir.
         grupos: dict[str, list[dict]] = defaultdict(list)
         for lot in ls:
-            grupos[lot["sub"] if lot["sub"] in caixas else ""].append(lot)
+            grupos[lot.get("caixa")
+                   or (lot["sub"] if lot["sub"] in caixas else "")].append(lot)
         for grupo, lotes in grupos.items():
             if sum(l["livre"] for l in lotes) <= 0:
                 continue
@@ -925,7 +1054,7 @@ def sell_list(con, res: dict) -> dict:
             # formato onde ele exige a língua.
             for lot in sorted(lotes, key=lambda l: (bool(l["substituto"]), l["rl"],
                                                     l["finish"] in FOIL_FINISHES,
-                                                    l["lang"] == "pt", l["id"])):
+                                                    l["lang"] == "pt", l["key"])):
                 if resto <= 0:
                     break
                 take = min(lot["livre"], resto)
@@ -940,7 +1069,8 @@ def sell_list(con, res: dict) -> dict:
                          "sid": lot["sid"], "rl": lot["rl"], "unit": unit,
                          "price_finish": pfin,
                          "total": round((unit or 0) * take, 2), "reason": razao,
-                         "reter": retidos_baldes.get(lot["sub"]),
+                         "reter": (reter_grupo.get(grupo)
+                                   or retidos_baldes.get(lot["sub"])),
                          "substituto": dict(lot["substituto"])}
                 if linha["substituto"]:
                     quem = ", ".join(sorted(linha["substituto"]))
@@ -957,7 +1087,8 @@ def sell_list(con, res: dict) -> dict:
         # diferentes.
         junto: dict[tuple, dict] = {}
         for r in rows:
-            k = (r["nm"], r["sub"], r["finish"], r["lang"], r["set_code"], r["reason"])
+            k = (r["nm"], r["local"], r["finish"], r["lang"], r["set_code"],
+                 r["reason"])
             if k in junto:
                 junto[k]["q"] += r["q"]
                 junto[k]["total"] = round((junto[k]["unit"] or 0) * junto[k]["q"], 2)
@@ -977,13 +1108,118 @@ def sell_list(con, res: dict) -> dict:
             "total_guardar": gd["total"], "copias_guardar": gd["copias"]}
 
 
+# ---------------------------------------------------------------------------
+# Arrumação física: pôr a estante igual à alocação
+# ---------------------------------------------------------------------------
+def plano_arrumacao(res: dict) -> dict:
+    """As cartas a MOVER para a estante ficar igual à alocação de hoje.
+
+    O André (2026-09-07): *"quero que me ajudem a ser mais organizado com as
+    cartas."* O vault sabe onde cada carta DEVE estar (a alocação) e onde ESTÁ (a
+    `copy_allocation`, mais o balde de quem ainda não entrou em caixa nenhuma). A
+    diferença entre as duas é isto: uma lista de movimentos, agrupada de duas
+    maneiras porque são dois gestos diferentes —
+
+      * por **origem** (a gaveta que se abre: `Colecção`, `Caixa RL (PT)`,
+        `Caixa RL (EN)`, ou outra deckbox): o que sai de lá e para onde vai;
+      * por **destino** (a caixa que se monta): o que entra nela e de onde vem.
+
+    Há dois sentidos de movimento, e os dois contam:
+      * **entra** — a alocação deu a cópia a uma caixa e ela ainda não lá está;
+      * **sai**  — a cópia está numa caixa mas a alocação de hoje já não a usa
+        lá; volta ao balde de onde veio.
+
+    Não escreve nada: quem confirma é `guardar_arrumacao`.
+    """
+    # Antes da migração para a colecção única, a caixa de um deck AINDA é um
+    # balde (`Pauper Affinity`, `Cloud`, ...). Uma cópia que já vive lá já está
+    # dentro da caixa, mesmo que o balde e a caixa tenham nomes diferentes —
+    # sem isto o plano mandava-o "arrumar" 54 cartas que já estão sleevadas.
+    caixas = caixas_de_deck(res["slots"])
+    entra: list[dict] = []
+    for s in res["slots"]:
+        ja_la = s.get("balde") if s.get("balde") in caixas else None
+        for m in s["have"]:
+            for g in m["lotes"]:
+                if g["local"] == s["nome"]:
+                    continue              # já lá está
+                if g["caixa"] is None and ja_la and g["sub"] == ja_la:
+                    continue              # está no balde que É esta caixa
+                entra.append({"nm": m["nm"], "q": g["q"], "de": g["local"],
+                              "para": s["nome"], "slot": s["slot"],
+                              "copy_id": g["id"], "sid": g["sid"],
+                              "finish": g["finish"], "lang": g["lang"],
+                              "set_code": g["set_code"], "sentido": "entra"})
+    sai: list[dict] = []
+    for lotes in res["pool"].values():
+        for lot in lotes:
+            if not lot.get("caixa") or lot["livre"] <= 0:
+                continue
+            # Está na caixa e a alocação de hoje não a usa lá: volta à gaveta.
+            sai.append({"nm": lot["nm"], "q": lot["livre"],
+                        "de": lot["caixa_nome"], "para": lot["balde"],
+                        "slot": lot["caixa"], "copy_id": lot["id"],
+                        "sid": lot["sid"], "finish": lot["finish"],
+                        "lang": lot["lang"], "set_code": lot["set_code"],
+                        "sentido": "sai"})
+    movs = sorted(entra + sai, key=lambda m: (m["de"], m["para"], m["nm"]))
+    por_origem: dict[str, list[dict]] = defaultdict(list)
+    por_destino: dict[str, list[dict]] = defaultdict(list)
+    for m in movs:
+        por_origem[m["de"]].append(m)
+        por_destino[m["para"]].append(m)
+    ordena = lambda d: dict(sorted(          # noqa: E731 — só arrumação
+        d.items(), key=lambda kv: (-sum(x["q"] for x in kv[1]), kv[0])))
+    return {"movimentos": movs, "por_origem": ordena(por_origem),
+            "por_destino": ordena(por_destino),
+            "copias": sum(m["q"] for m in movs), "linhas": len(movs)}
+
+
+def csv_arrumacao(plano: dict) -> str:
+    """O plano em CSV (`moves-<data>.csv`), para ele levar para a mesa."""
+    linhas = ["sentido,quantidade,carta,de,para,edicao,acabamento,lingua,copy_id"]
+    for m in plano["movimentos"]:
+        nm = m["nm"].replace('"', "'")
+        linhas.append(f'{m["sentido"]},{m["q"]},"{nm}","{m["de"]}","{m["para"]}",'
+                      f'{(m["set_code"] or "").upper()},{m["finish"]},{m["lang"]},'
+                      f'{m["copy_id"]}')
+    return "\n".join(linhas) + "\n"
+
+
+def guardar_arrumacao(con, res: dict) -> int:
+    """Grava a alocação de hoje como a arrumação REAL ("já arrumei tudo").
+
+    A partir daqui, `local()` diz *"está na caixa X"* em vez do balde, e o
+    `plano_arrumacao` fica vazio até a alocação mudar. Substitui a tabela
+    inteira: a alocação é global, e uma linha órfã de uma caixa que já não
+    existe mentia para sempre.
+
+    Não mexe nas `sub_collections` de propósito — no modelo de colecção única a
+    gaveta de onde a carta veio continua a ser a mesma, e é dela que a aba
+    *Arrumar* precisa para dizer para onde a devolver.
+    """
+    tot: dict[tuple[int, str], int] = defaultdict(int)
+    for s in res["slots"]:
+        for m in s["have"]:
+            for g in m["lotes"]:
+                tot[(g["id"], s["slot"])] += g["q"]
+    con.execute("DELETE FROM copy_allocation")
+    con.executemany(
+        "INSERT INTO copy_allocation (copy_id, slot, quantity, placed_at) "
+        "VALUES (?,?,?,datetime('now'))",
+        [(cid, slot, q) for (cid, slot), q in sorted(tot.items()) if q > 0])
+    con.commit()
+    return sum(tot.values())
+
+
 def report(con, cfg_slots: list[dict] | None = None) -> dict:
-    """Alocação + venda, de uma vez. É o que as páginas e o CLI consomem."""
+    """Alocação + venda + arrumação, de uma vez. É o que as páginas e o CLI consomem."""
     res = allocate(con, cfg_slots)
     res.update(sell_list(con, res))
     res["custo_total"] = round(sum(s["custo"] for s in res["slots"]), 2)
     res["comprar_total"] = sum(s["comprar"] for s in res["slots"])
     res["noutra_total"] = sum(s["noutra"] for s in res["slots"])
+    res["arrumacao"] = plano_arrumacao(res)
     return res
 
 

@@ -1,6 +1,8 @@
 __pycache__/
 *.pyc
 .venv/
+# Medições e ficheiros de trabalho das revisões (nunca vão para o repo).
+_scratch/
 
 # O catálogo Scryfall é reconstruível e grande de mais para o Git.
 data/catalog.db

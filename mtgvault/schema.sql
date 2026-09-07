@@ -30,10 +30,34 @@ CREATE TABLE IF NOT EXISTS copies (
     acquired_at       TEXT,
     acquired_price    REAL,
     notes             TEXT,
+    -- MODELO DE COLECÇÃO ÚNICA (André, 2026-09-07): a colecção passou a ser um
+    -- balde só (`Colecção`) mais a `Caixa Reserved List`. Esta coluna guarda o
+    -- balde de ONDE a cópia veio, para a aba "Arrumar" saber dizer de que
+    -- gaveta a tirar hoje. Sem ela, a migração apagava a única pista física que
+    -- existe. Ver `mtgvault.migracao`.
+    balde_origem      TEXT,
     created_at        TEXT DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS ix_copies_card    ON copies(scryfall_id);
 CREATE INDEX IF NOT EXISTS ix_copies_purpose ON copies(purpose);
+
+-- ONDE A CÓPIA ESTÁ FISICAMENTE, quando está dentro de uma deckbox.
+--
+-- Desde 2026-09-07 as deckboxes deixaram de ser `sub_collections`: a colecção é
+-- um balde só e a caixa de um deck é a ALOCAÇÃO do loadout. Esta tabela é a
+-- alocação CONFIRMADA — o que o André já sleevou e arrumou. O loadout continua
+-- a recalcular todos os dias onde cada carta DEVE estar; a diferença entre as
+-- duas é exactamente a lista de arrumação (`loadout.plano_arrumacao`).
+--
+-- Uma linha por (lote, caixa): um lote de 4 pode ter 3 numa caixa e 1 solto.
+CREATE TABLE IF NOT EXISTS copy_allocation (
+    copy_id    INTEGER NOT NULL REFERENCES copies(id) ON DELETE CASCADE,
+    slot       TEXT NOT NULL,          -- `slot` do colecao_config.json -> loadout
+    quantity   INTEGER NOT NULL,
+    placed_at  TEXT DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (copy_id, slot)
+);
+CREATE INDEX IF NOT EXISTS ix_alloc_slot ON copy_allocation(slot);
 
 -- ---------------------------------------------------------------
 -- OS MEUS DECKS

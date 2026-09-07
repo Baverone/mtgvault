@@ -64,6 +64,12 @@ def _migrate(con: sqlite3.Connection) -> None:
     if "reserved_deck_id" not in cols:
         con.execute("ALTER TABLE copies ADD COLUMN reserved_deck_id INTEGER")
         con.commit()
+    # Modelo de colecção única (2026-09-07): o balde de onde a cópia veio, para a
+    # aba "Arrumar" saber de que gaveta a tirar. Uma coluna nova tem de entrar
+    # nos três sítios (schema.sql, aqui, e alguém que a escreva) — ver CLAUDE.md.
+    if "balde_origem" not in cols:
+        con.execute("ALTER TABLE copies ADD COLUMN balde_origem TEXT")
+        con.commit()
 
     cols = {r["name"] for r in con.execute("PRAGMA table_info(decklists)")}
     if "content_hash" not in cols:

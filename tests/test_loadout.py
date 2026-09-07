@@ -30,6 +30,14 @@ O que aqui se tranca são as regras que custam dinheiro se partirem em silêncio
      Pauper foil quando há, e o Pauper a ir buscar ao SPML o que precisa).
      Uma cópia que está DENTRO da caixa do próprio deck escapa a estas regras —
      senão a regra nova desmontava no papel um deck que está montado.
+  9. os DECKS PERMANENTES (André, 2026-09-07: *"os decks que eu pedi para serem
+     permanentes são a minha prioridade máxima!"*): um permanente aloca antes de
+     qualquer candidato, mesmo que o candidato seja de um grupo de formato que
+     vem primeiro; e marcar um candidato como permanente po-lo a receber cartas;
+ 10. a ARRUMAÇÃO FÍSICA: o plano de movimentos é a diferença entre onde a carta
+     está e onde deve estar, o "já arrumei" persiste a alocação (e é idempotente),
+     e uma cópia já arrumada numa caixa escapa às regras de material — a versão
+     nova da excepção do balde, agora que a caixa já não é um balde.
 
 Não toca na rede.
 """
@@ -650,6 +658,125 @@ def caso_preco_foil():
     print("o custo de um deck de foil usa o preço do foil")
 
 
+# ---------------------------------------------------------------------------
+# Decks permanentes e arrumação física (André, 2026-09-07)
+# ---------------------------------------------------------------------------
+def caso_permanente_escolhe_antes_do_candidato():
+    """*"Os decks que eu pedi para serem permanentes são a minha prioridade
+    máxima!"* — um permanente de SPML fica com a carta à frente de um candidato
+    de Premodern, mesmo o Premodern sendo o primeiro grupo da ordem."""
+    con = base()
+    deck(con, "Cand", "premodern", [("Kappa Cannoneer", 1)])
+    deck(con, "Perm", "legacy", [("Kappa Cannoneer", 1)])
+    add(con, "Kappa Cannoneer", 1, finish="foil")
+    # O candidato é de Premodern (grupo 1) e o permanente de Legacy (grupo 5):
+    # sem a regra dos permanentes, o Premodern escolhia primeiro.
+    cand = slot("Cand", "premodern", "Cand", lingua=None, estrita=False,
+                edicoes=None, baldes=None, permanente=False)
+    perm = slot("Perm", "legacy", "Perm", permanente=True)
+    rep = loadout.report(con, [cand, perm])
+    s = por_nome(rep)
+    assert [x["nome"] for x in rep["slots"]] == ["Perm", "Cand"], \
+        [x["nome"] for x in rep["slots"]]
+    assert s["Perm"]["tenho"] == 1
+    assert s["Cand"]["tenho"] == 0
+    # E o candidato não pede a carta para comprar: sabe onde ela está.
+    assert s["Cand"]["missing"][0]["noutra"] == {"Perm": 1}
+    assert s["Cand"]["comprar"] == 0
+    print("um deck permanente aloca antes de um candidato de grupo melhor")
+
+
+def caso_candidato_promovido_a_permanente_recebe():
+    """*"Os decks que eu estiver quase a concluir, tenho que ter uma opção que os
+    marque como permanentes para começarem a receber alocação de cartas."*"""
+    con = base()
+    deck(con, "Cand", "legacy", [("Sol Ring", 1)])
+    deck(con, "Perm", "legacy", [("Sol Ring", 1)])
+    add(con, "Sol Ring", 1, finish="foil")
+    cand = slot("Cand", "legacy", "Cand", prioridade=1, permanente=False)
+    perm = slot("Perm", "legacy", "Perm", prioridade=2, permanente=True)
+    antes = por_nome(loadout.report(con, [cand, perm]))
+    assert antes["Perm"]["tenho"] == 1 and antes["Cand"]["tenho"] == 0
+    # Promove-se o candidato (é o que o botão do modo edição escreve no config):
+    # volta ao seu grupo e, com prioridade 1, passa a receber.
+    depois = por_nome(loadout.report(con, [dict(cand, permanente=True), perm]))
+    assert depois["Cand"]["tenho"] == 1, depois["Cand"]["tenho"]
+    assert depois["Perm"]["tenho"] == 0
+    print("marcar um candidato como permanente po-lo a receber cartas")
+
+
+def caso_arrumacao_diz_de_onde_tirar_e_para_onde_vai():
+    """A aba Arrumar: a diferença entre onde a carta ESTÁ e onde DEVE estar."""
+    con = base()
+    deck(con, "A", "legacy", [("Sol Ring", 2)])
+    add(con, "Sol Ring", 2, finish="foil", sub="Colecção")
+    rep = loadout.report(con, [slot("A", "legacy", "A", balde="Colecção")])
+    a = rep["arrumacao"]
+    assert a["copias"] == 2, a
+    assert list(a["por_origem"]) == ["Colecção"]
+    assert list(a["por_destino"]) == ["A"]
+    assert "sentido,quantidade,carta,de,para" in loadout.csv_arrumacao(a)
+    assert '"Sol Ring","Colecção","A"' in loadout.csv_arrumacao(a)
+    print("a arrumacao diz de que gaveta sai e para que caixa vai")
+
+
+def caso_ja_arrumei_persiste_e_o_plano_esvazia():
+    """Depois do "já arrumei", a carta ESTÁ na caixa: o plano fica vazio, o
+    `local` passa a dizer a caixa, e a alocação do dia seguinte não a mexe."""
+    con = base()
+    deck(con, "A", "legacy", [("Sol Ring", 2)])
+    add(con, "Sol Ring", 2, finish="foil", sub="Colecção")
+    slots = [slot("A", "legacy", "A", balde="Colecção")]
+    rep = loadout.report(con, slots)
+    assert loadout.guardar_arrumacao(con, rep) == 2
+    rep2 = loadout.report(con, slots)
+    assert rep2["arrumacao"]["copias"] == 0, rep2["arrumacao"]
+    assert por_nome(rep2)["A"]["origens"] == {"A": 2}, por_nome(rep2)["origens"]
+    # Idempotente: guardar duas vezes não duplica linhas.
+    loadout.guardar_arrumacao(con, rep2)
+    assert con.execute("SELECT COUNT(*) c FROM copy_allocation").fetchone()["c"] == 1
+    print("guardar a arrumacao esvazia o plano e nao duplica linhas")
+
+
+def caso_carta_na_caixa_escapa_as_regras_de_material():
+    """A irmã da excepção do balde, no modelo novo: uma cópia JÁ ARRUMADA na
+    caixa deste deck escapa às regras de material — senão uma regra nova
+    desmontava no papel um deck que está na estante."""
+    con = base()
+    deck(con, "EDH", "cedh", [("Lotus Petal", 1)])
+    add(con, "Lotus Petal", 1, finish="foil", lang="pt", sub="Colecção")
+    s = slot("EDH", "cedh", "EDH", balde="Colecção")
+    # Antes de arrumar: é PT da era Premodern e foil — o cEDH é "só EN nonfoil".
+    assert por_nome(loadout.report(con, [s]))["EDH"]["tenho"] == 0
+    cid = con.execute("SELECT id FROM copies").fetchone()["id"]
+    con.execute("INSERT INTO copy_allocation (copy_id, slot, quantity) VALUES (?,?,1)",
+                (cid, "edh"))
+    con.commit()
+    rep = por_nome(loadout.report(con, [s]))["EDH"]
+    assert rep["tenho"] == 1, rep["tenho"]
+    print("uma copia ja arrumada na caixa escapa as regras de material")
+
+
+def caso_lote_partido_entre_caixa_e_gaveta():
+    """Um lote de 4 com 3 já na caixa e 1 solta: a excepção vale só para as 3."""
+    con = base()
+    deck(con, "EDH", "cedh", [("Lotus Petal", 4)])
+    deck(con, "Leg", "legacy", [("Lotus Petal", 1)])
+    add(con, "Lotus Petal", 4, finish="foil", lang="pt", sub="Colecção")
+    cid = con.execute("SELECT id FROM copies").fetchone()["id"]
+    con.execute("INSERT INTO copy_allocation (copy_id, slot, quantity) VALUES (?,?,3)",
+                (cid, "edh"))
+    con.commit()
+    rep = por_nome(loadout.report(con, [slot("EDH", "cedh", "EDH", balde="Colecção"),
+                                        slot("Leg", "legacy", "Leg", prioridade=2,
+                                             balde="Colecção")]))
+    # As 3 arrumadas fecham slot no cEDH; a 4ª continua PT da era e foil, por isso
+    # não serve nem o cEDH (nonfoil) nem o Legacy (trancada ao Premodern).
+    assert rep["EDH"]["tenho"] == 3, rep["EDH"]["tenho"]
+    assert rep["Leg"]["tenho"] == 0
+    print("um lote meio arrumado vale como meio arrumado, nao por inteiro")
+
+
 def run():
     for fn in (caso_uma_copia_uma_caixa, caso_noutra_caixa_nao_e_compra,
                caso_noutra_caixa_e_compra_misturadas,
@@ -667,7 +794,13 @@ def run():
                caso_pauper_agrega_do_spml,
                caso_foil, caso_colecionador_e_reservas_fora,
                caso_backup_e_venda, caso_substituto_nao_se_vende, caso_variantes,
-               caso_slot_vazio, caso_preco_foil):
+               caso_slot_vazio, caso_preco_foil,
+               caso_permanente_escolhe_antes_do_candidato,
+               caso_candidato_promovido_a_permanente_recebe,
+               caso_arrumacao_diz_de_onde_tirar_e_para_onde_vai,
+               caso_ja_arrumei_persiste_e_o_plano_esvazia,
+               caso_carta_na_caixa_escapa_as_regras_de_material,
+               caso_lote_partido_entre_caixa_e_gaveta):
         fn()
     print("\nTUDO OK")
 
