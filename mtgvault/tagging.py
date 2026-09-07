@@ -8,8 +8,8 @@ um deck pertencer a MAIS DO QUE UM (etiqueta dupla), que é o mais honesto para 
 híbridos (ex.: um deck que é ao mesmo tempo "Oswald Toolbox" e "Jeskai Ascendancy").
 
 As regras vivem em `archetype_rules.json` (na raiz do projeto), editáveis à mão
-sem tocar em código. Cada regra: `all` (tem de ter todas as cartas) e/ou `any`
-(basta uma). Sobrevive ao `analyse` diário: chama-se `tag_all()` no daily.py
+sem tocar em código. Cada regra: `all` (tem de ter todas as cartas), `any`
+(basta uma) e `none` (não pode ter nenhuma). Sobrevive ao `analyse` diário: chama-se `tag_all()` no daily.py
 DEPOIS do rebuild, e as etiquetas são reescritas a partir das regras — o
 clustering automático nunca as desfaz.
 """
@@ -40,6 +40,12 @@ def _matches(cards: set[str], rule: dict) -> bool:
     if rule.get("all") and not all(c in cards for c in rule["all"]):
         return False
     if rule.get("any") and not any(c in cards for c in rule["any"]):
+        return False
+    # `none` = nenhuma destas cartas. Existe porque há arquétipos que só se
+    # distinguem por EXCLUSÃO: em Premodern, a Enchantress joga 96% de Replenish,
+    # por isso "tem Replenish" apanhava as duas — o UW Replenish é "tem Replenish
+    # e NÃO tem Argothian Enchantress". É o mesmo truque do "!" em my_decks.
+    if rule.get("none") and any(c in cards for c in rule["none"]):
         return False
     return bool(rule.get("all") or rule.get("any"))
 

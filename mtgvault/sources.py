@@ -9,6 +9,9 @@ COBERTURA POR FORMATO
     apanhar também os torneios de papel (que no Duel Commander são a maioria),
     ver o módulo `mtgtop8`.
 
+    O Pauper continua a ser lido, mas só se GUARDA a lista dos jogadores
+    vigiados — ver `so_jogadores_vigiados`.
+
 FRAGILIDADE
     Isto é scraping. O mtgo.com serve as listas num blob JSON embebido na
     página. Se a Wizards mudar a estrutura, `parse_mtgo_page` é o único sítio
@@ -311,7 +314,13 @@ DEFAULT_METAGAME_RULES = {
 # na mesma sem ficheiro de configuração (tests, base nova). O config manda.
 DEFAULT_METAGAME_BY_FORMAT = {
     "duel-commander": {"min_jogadores_presencial": 0, "ligas": True},
+    # Pauper não tem metagame (André, 2026-09-07): ele só segue a lista do Luffy.
+    "pauper": {"tiers": [], "ligas": False},
 }
+
+# Formatos em que SÓ se guardam as listas dos jogadores vigiados (`watched` com
+# kind='mtgo_player'). Ver `_jogador_vigiado`.
+DEFAULT_SO_JOGADORES_VIGIADOS = ["pauper"]
 
 _CFG_CACHE: dict = {}
 
@@ -331,6 +340,13 @@ def _config() -> dict:
             data = {}
         _CFG_CACHE.update(path=str(p), stamp=stamp, data=data)
     return _CFG_CACHE.get("data") or {}
+
+
+def config() -> dict:
+    """O colecao_config.json inteiro (em cache, recarregado quando o ficheiro muda).
+    As páginas que precisam de uma chave qualquer do config leem-no por aqui, em
+    vez de cada uma abrir o ficheiro à sua maneira."""
+    return _config()
 
 
 def _sem_comentarios(d) -> dict:
@@ -430,6 +446,42 @@ def tier_weight_sql(alias: str = "d") -> str:
             f"{resto} ELSE 0 END")
 
 
+# ---------------------------------------------------------------------------
+# Formatos sem metagame, seguidos só por jogador  (André, 2026-09-07)
+# ---------------------------------------------------------------------------
+# "Pauper também não precisa [de metagame], pois só sigo a lista Pauper do
+# jogador específico (Luffy)."
+#
+# Tirar o Pauper do harvest resolvia o metagame mas MATAVA a vigilância: o
+# `watchlist.check_mtgo_player` não vai à rede — lê a lista mais recente do
+# jogador das decklists que o harvest já trouxe. Sem harvest de Pauper, a lista
+# do Luffy congelava no último snapshot e nunca mais mexia, sem dar erro nenhum.
+#
+# Por isso o filtro é aqui, à entrada: as páginas do evento continuam a ser
+# lidas (é de lá que vem a lista do Luffy), mas só se GUARDA a de quem está
+# vigiado. Fica o que serve para alguma coisa e o vault.db não engorda com
+# ~600 listas por formato que nenhuma página conta.
+def so_jogadores_vigiados() -> set[str]:
+    """Formatos onde só se guardam as listas dos jogadores vigiados."""
+    v = config().get("so_jogadores_vigiados")
+    if v is None:
+        v = DEFAULT_SO_JOGADORES_VIGIADOS
+    return {str(f).strip().lower() for f in v}
+
+
+def _jogador_vigiado(con: sqlite3.Connection, fmt: str, player: str) -> bool:
+    jogador = (player or "").strip().lower()
+    if not jogador:
+        return False
+    try:
+        return con.execute(
+            """SELECT 1 FROM watched WHERE active = 1 AND kind = 'mtgo_player'
+                AND lower(format) = ? AND lower(key) = ? LIMIT 1""",
+            (fmt, jogador)).fetchone() is not None
+    except sqlite3.OperationalError:
+        return True     # base sem tabela `watched`: não se filtra nada
+
+
 def content_hash(fmt: str, cards: list[tuple[str, str, int]]) -> str:
     """Impressão digital do conteúdo da lista, independente da fonte."""
     payload = fmt.lower() + "|" + "|".join(
@@ -464,6 +516,11 @@ def store_decklist(con: sqlite3.Connection, *, source: str, source_key: str,
     # com listas que nenhuma página conta. O Duel Commander é a exceção — lá as
     # ligas contam (colecao_config.json -> metagame_fontes["duel-commander"]).
     if tier == "League" and "League" not in metagame_rules(fmt)["tiers"]:
+        return None
+    # Formato sem metagame, seguido só por jogador (Pauper): guarda-se a lista de
+    # quem está vigiado e mais nada. As `manual` passam sempre.
+    if (source != "manual" and fmt in so_jogadores_vigiados()
+            and not _jogador_vigiado(con, fmt, player)):
         return None
     h = content_hash(fmt, cards)
     event_date = event_date or date.today().isoformat()

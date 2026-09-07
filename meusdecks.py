@@ -39,11 +39,16 @@ DECK_CORE = {
 def _decks_vigiados():
     """Nomes de decks (da tabela `decks`) a mostrar na página 'Decks permanentes',
     lidos do colecao_config.json. Vazio/em falta = critério antigo (link/auto)."""
-    try:
-        cfg = json.loads((ROOT / "colecao_config.json").read_text(encoding="utf-8"))
-        return set(cfg.get("decks_vigiados") or [])
-    except Exception:
-        return set()
+    return set(sources.config().get("decks_vigiados") or [])
+
+
+def _alvos_premodern():
+    """Os alvos de consenso de Premodern (UW Replenish, Enchantress), como o
+    `premodern_decks` os grava na tabela `decks`. Aparecem nesta página ao lado do
+    Stiflenought, mas são decks POR MONTAR — não reservam cartas nem entram no
+    `decks_vigiados` (esse desconta as cartas à coleção disponível)."""
+    import premodern_decks as pd
+    return {t + pd.SUFIXO for t in pd.alvos()}
 
 TABS = ('<nav class="tabs"><a href="index.html">🏠 Início</a>'
         '<a class="cur" href="meusdecks.html">🎴 Decks permanentes</a><a href="showcase.html">🎯 Showcase Challenger</a>'
@@ -411,6 +416,7 @@ def build(con, out_path=None):
 
     rows = list(con.execute("SELECT id, name, format, notes FROM decks"))
     vigiados = _decks_vigiados()
+    alvos = _alvos_premodern()
     allnames = set()
     for d in rows:
         for r in con.execute("SELECT card_name nm FROM deck_cards WHERE deck_id=?", (d["id"],)):
@@ -439,8 +445,11 @@ def build(con, out_path=None):
         # Decks permanentes: só os que o André escolheu (decks_vigiados no config) —
         # exclui os decks de referência do metagame (Modern/Standard/Pioneer, Spock)
         # e INCLUI o consenso Cloud Duel Commander. Config vazio = critério antigo.
+        # Os alvos de Premodern (UW Replenish/Enchantress de consenso) entram por
+        # `alvos`: é aqui que se vê a % que ele já tem e o que falta comprar, já que
+        # o Premodern deixou de ter página de metagame.
         if vigiados:
-            if d["name"] not in vigiados:
+            if d["name"] not in vigiados and d["name"] not in alvos:
                 continue
         elif not link and "auto:" not in (d["notes"] or ""):
             continue

@@ -30,6 +30,43 @@ def deck_size(fmt: str) -> tuple[int, int]:
     return 60, 15
 
 
+def _slots(roles: dict[str, dict]) -> list[dict]:
+    """Cada cópia possível com a sua probabilidade, já ordenada.
+
+    `roles` = {carta: {inclusion_rate, core_copies, dist}} — exatamente o que o
+    `analysis.card_roles` devolve e o que a tabela `card_roles` guarda. Ter uma
+    só implementação evita que a lista padrão calculada da base de dados e a
+    calculada de decklists em memória divirjam sem ninguém dar por isso.
+    """
+    slots = []
+    for name, info in roles.items():
+        dist = {int(k): v for k, v in (info["dist"] or {}).items()}
+        incl = info["inclusion_rate"]
+        for k in range(1, max(dist) + 1 if dist else 1):
+            # P(cópias >= k) sobre todas as listas do arquétipo
+            p = incl * sum(v for q, v in dist.items() if q >= k)
+            slots.append({"card_name": name, "copy": k, "p": p,
+                          "core": k <= info["core_copies"]})
+    slots.sort(key=lambda s: (-s["p"], s["card_name"], s["copy"]))
+    return slots
+
+
+def _fill(slots: list[dict], target: int) -> tuple[list[dict], int]:
+    """Ocupa `target` lugares pelos slots mais prováveis. (cartas, total)."""
+    counted: dict[str, int] = {}
+    total = 0
+    for slot in slots:
+        if total >= target:
+            break
+        if slot["p"] < 0.20:          # abaixo disto já não é a lista padrão
+            break
+        counted[slot["card_name"]] = counted.get(slot["card_name"], 0) + 1
+        total += 1
+    return ([{"card_name": n, "quantity": q}
+             for n, q in sorted(counted.items(), key=lambda x: (-x[1], x[0]))],
+            total)
+
+
 def _candidates(con, archetype_id: int, board: str):
     """Cada cópia possível com a sua probabilidade, já ordenada."""
     rows = con.execute(
@@ -40,18 +77,36 @@ def _candidates(con, archetype_id: int, board: str):
                                  WHERE archetype_id = ?)""",
         (archetype_id, board, archetype_id),
     ).fetchall()
+    return _slots({r["card_name"]: {"inclusion_rate": r["inclusion_rate"],
+                                    "core_copies": r["core_copies"],
+                                    "dist": json.loads(r["dist"])} for r in rows})
 
-    slots = []
-    for r in rows:
-        dist = {int(k): v for k, v in json.loads(r["dist"]).items()}
-        incl = r["inclusion_rate"]
-        for k in range(1, max(dist) + 1 if dist else 1):
-            # P(cópias >= k) sobre todas as listas do arquétipo
-            p = incl * sum(v for q, v in dist.items() if q >= k)
-            slots.append({"card_name": r["card_name"], "copy": k, "p": p,
-                          "core": k <= r["core_copies"]})
-    slots.sort(key=lambda s: (-s["p"], s["card_name"], s["copy"]))
-    return slots
+
+def stock_from_lists(fmt: str, main_lists: list[dict[str, int]],
+                     side_lists: list[dict[str, int]] | None = None) -> dict:
+    """A mesma lista padrão, mas a partir de decklists em memória.
+
+    Serve os arquétipos que NÃO passam pelo clustering (`archetypes`/`card_roles`)
+    — por exemplo os alvos de Premodern, que são agrupados por regra
+    (`tagging`/`archetype_rules.json`) e não por semelhança. Devolve
+    {main, side, main_count, side_count, main_target, side_target, n, roles}.
+    """
+    from .analysis import card_roles          # importado aqui: analysis usa sources
+
+    main_target, side_target = deck_size(fmt)
+    out = {"n": len(main_lists), "roles": {}}
+    for board, lists, target in (("main", main_lists, main_target),
+                                 ("side", side_lists or [], side_target)):
+        if target == 0 or not lists:
+            out[board] = []
+            out[f"{board}_count"] = 0
+            out[f"{board}_target"] = target
+            continue
+        roles = card_roles(lists)
+        out["roles"][board] = roles
+        out[board], out[f"{board}_count"] = _fill(_slots(roles), target)
+        out[f"{board}_target"] = target
+    return out
 
 
 def stock_list(con: sqlite3.Connection, archetype_id: int) -> dict:
@@ -68,20 +123,7 @@ def stock_list(con: sqlite3.Connection, archetype_id: int) -> dict:
     for board, target in (("main", main_target), ("side", side_target)):
         if target == 0:
             continue
-        counted: dict[str, int] = {}
-        total = 0
-        for slot in _candidates(con, archetype_id, board):
-            if total >= target:
-                break
-            if slot["p"] < 0.20:          # abaixo disto já não é a lista padrão
-                break
-            counted[slot["card_name"]] = counted.get(slot["card_name"], 0) + 1
-            total += 1
-        out[board] = [
-            {"card_name": n, "quantity": q}
-            for n, q in sorted(counted.items(), key=lambda x: (-x[1], x[0]))
-        ]
-        out[f"{board}_count"] = total
+        out[board], out[f"{board}_count"] = _fill(_candidates(con, archetype_id, board), target)
         out[f"{board}_target"] = target
     return out
 
