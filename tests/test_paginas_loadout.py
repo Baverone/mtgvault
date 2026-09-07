@@ -24,6 +24,9 @@ Não toca na rede.
 """
 import json
 import os
+import re
+import shutil
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -51,6 +54,7 @@ os.environ.setdefault("MTGVAULT_HOME", str(_TMP))
 
 from mtgvault import db, loadout  # noqa: E402
 
+import deckboxes  # noqa: E402
 import meusdecks  # noqa: E402
 import metagame  # noqa: E402
 
@@ -295,11 +299,73 @@ def caso_pagina_metagame_fecha():
     print("metagame.html escreve-se: top-N, caixa escolhida e formatos vazios")
 
 
+# ---------------------------------------------------------------------------
+# Deckboxes: o payload e o JavaScript que o desenha
+# ---------------------------------------------------------------------------
+def _pagina_deckboxes():
+    con = base()
+    vigiado(con, "Luffy — Pauper", "pauper", "Pauper Affinity",
+            [("main", "Utrom Monitor", 4), ("main", "Frogmite", 4)])
+    deck(con, "UW Oswald", "modern", [("Frogmite", 4), ("Thoughtcast", 4)])
+    add(con, "Utrom Monitor", 4, sub="SPML")
+    add(con, "Frogmite", 4, finish="foil", sub="SPML")
+    out = Path(tempfile.mkdtemp()) / "deckboxes.html"
+    deckboxes.build(con, out)
+    return out
+
+
+def caso_payload_do_deckboxes():
+    """A página nova é JSON + JavaScript: se o payload não fechar, a página
+    aparece em branco sem um único erro no gerador."""
+    txt = _pagina_deckboxes().read_text(encoding="utf-8")
+    bruto = re.search(r'<script id="dados" type="application/json">(.*?)</script>',
+                      txt, re.S).group(1)
+    d = json.loads(bruto.replace("<\\/", "</"))
+    assert d["editable"] is False, "o site publicado NÃO pode vir editável"
+    caixas = {c["slot"]: c for c in d["caixas"]}
+    assert set(caixas) == {"pauper", "modern"}, list(caixas)
+    assert caixas["pauper"]["permanente"] is True
+    # O caso Utrom Monitor, agora pelo lado da página nova.
+    um = next(c for c in caixas["pauper"]["cartas"] if c["nm"] == "Utrom Monitor")
+    assert um["est"] == "have" and um["lotes"][0]["local"] == "SPML", um
+    # E o Frogmite que o Pauper levou aparece ao Modern como "noutra caixa".
+    fg = next(c for c in caixas["modern"]["cartas"] if c["nm"] == "Frogmite")
+    assert fg["est"] == "sub" and fg["noutra"] == {"Pauper (Luffy)": 4}, fg
+    assert fg["comprar"] == 0
+    assert not any(w["nm"] == "Frogmite" for w in caixas["modern"]["wantlist"])
+    print("o payload do deckboxes fecha, e o publicado nao traz botoes")
+
+
+def caso_javascript_do_deckboxes_desenha_todas_as_abas():
+    """Corre o JavaScript da página num DOM de mentira e manda desenhar TODAS as
+    abas, nos dois filtros. Um erro de render numa aba que não é a inicial só
+    aparecia ao clicar — e a página ficava em branco, sem o gerador dar erro
+    nenhum. É o mesmo padrão do `event_tier`, mas do lado do browser.
+
+    O harness também confirma que a página publicada **não desenha** nenhum
+    botão de escrita (os endpoints não existem no GitHub Pages).
+
+    Salta em silêncio se não houver `node`: a bateria tem de correr num PC sem
+    ele (é a regra dos testes sem rede e sem dependências)."""
+    if not shutil.which("node"):
+        print("javascript do deckboxes: sem `node`, saltado")
+        return
+    pagina = _pagina_deckboxes()
+    harness = Path(__file__).with_name("render_deckboxes.js")
+    p = subprocess.run(["node", str(harness), str(pagina)], capture_output=True,
+                       text=True, encoding="utf-8", errors="replace", timeout=120)
+    assert p.returncode == 0, (p.stdout or "") + (p.stderr or "")[-2000:]
+    assert "renders sem erro" in p.stdout, p.stdout
+    print("javascript do deckboxes: " + p.stdout.strip())
+
+
 def run():
     for fn in (caso_utrom_monitor, caso_noutra_caixa_e_o_terceiro_estado,
                caso_deck_fora_do_loadout_conta_a_colecao_toda,
                caso_pagina_meusdecks_fecha, caso_top_n_do_config,
-               caso_foil_report_ve_as_outras_caixas, caso_pagina_metagame_fecha):
+               caso_foil_report_ve_as_outras_caixas, caso_pagina_metagame_fecha,
+               caso_payload_do_deckboxes,
+               caso_javascript_do_deckboxes_desenha_todas_as_abas):
         fn()
     print("\nTUDO OK")
 

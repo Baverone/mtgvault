@@ -588,8 +588,10 @@ function caixaHTML(c, compacta) {
   return h + `</div>`;
 }
 
-/* Os botões só existem no modo edição — no site publicado nem chegam ao HTML,
-   que é a única maneira de não prometer o que a página não pode cumprir. */
+/* Os botões só se DESENHAM no modo edição. No site publicado os endpoints de
+   escrita não existem, e um botão que não faz nada é pior do que não haver
+   botão nenhum. O `render_deckboxes.js` (na bateria) confirma que a página
+   publicada não desenha nenhum. */
 function acoesHTML(c) {
   const i = D.caixas.findIndex(x => x.slot === c.slot);
   return `<div class="acts">`
