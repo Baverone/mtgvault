@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import sqlite3
 
+from mtgvault import sources
+
 # (nome do deck, formato, cartas-assinatura que a lista TEM de conter)
 FOLLOWED = [
     ("Izzet Affinity (Kappa Cannoneer)", "modern", ["Mox Opal", "Kappa Cannoneer"]),
@@ -49,6 +51,13 @@ FOLLOWED_PLAYERS = [
 MIN_MAIN = 55  # ignora listas truncadas/incompletas
 
 
+def _conta(fmt):
+    """Só se segue uma lista que CONTE para o metagame (regra do André,
+    2026-09-07): não faz sentido copiar para `deck_cards` um 5-0 de liga que o
+    top-10 e a cobertura não reconhecem. Devolve (SQL, params) para o WHERE."""
+    return sources.counting_sql(fmt, "dl")
+
+
 def _latest(con: sqlite3.Connection, fmt: str, cards: list[str]):
     """Decklist mais recente do formato que contém TODAS as cartas-assinatura
     (e NENHUMA das prefixadas com "!") e tem um mainboard completo. As exclusões
@@ -57,13 +66,14 @@ def _latest(con: sqlite3.Connection, fmt: str, cards: list[str]):
     inc = [c for c in cards if not c.startswith("!")]
     exc = [c[1:] for c in cards if c.startswith("!")]
     ph = ",".join("?" * len(inc))
+    conta, cp = _conta(fmt)
     q = (f"""SELECT dl.id, dl.source, dl.player, dl.event_date FROM decklists dl
-              WHERE dl.format = ?
+              WHERE dl.format = ? AND {conta}
                 AND (SELECT COUNT(DISTINCT dc.card_name) FROM decklist_cards dc
                        WHERE dc.decklist_id = dl.id AND dc.card_name IN ({ph})) = ?
                 AND (SELECT COALESCE(SUM(dc2.quantity), 0) FROM decklist_cards dc2
                        WHERE dc2.decklist_id = dl.id AND dc2.board = 'main') >= ?""")
-    params = [fmt] + inc + [len(inc), MIN_MAIN]
+    params = [fmt] + cp + inc + [len(inc), MIN_MAIN]
     if exc:
         eph = ",".join("?" * len(exc))
         q += (f" AND NOT EXISTS (SELECT 1 FROM decklist_cards de "
@@ -75,26 +85,28 @@ def _latest(con: sqlite3.Connection, fmt: str, cards: list[str]):
 
 def _latest_player(con: sqlite3.Connection, fmt: str, player: str):
     """Decklist mais recente de um jogador específico nesse formato."""
+    conta, cp = _conta(fmt)
     return con.execute(
-        """SELECT dl.id, dl.source, dl.player, dl.event_date FROM decklists dl
-             WHERE dl.format = ? AND dl.player = ?
+        f"""SELECT dl.id, dl.source, dl.player, dl.event_date FROM decklists dl
+             WHERE dl.format = ? AND dl.player = ? AND {conta}
                AND (SELECT COALESCE(SUM(dc.quantity), 0) FROM decklist_cards dc
                       WHERE dc.decklist_id = dl.id AND dc.board = 'main') >= ?
              ORDER BY dl.event_date DESC, dl.id DESC LIMIT 1""",
-        (fmt, player, MIN_MAIN)).fetchone()
+        [fmt, player] + cp + [MIN_MAIN]).fetchone()
 
 
 def _latest_player_deck(con: sqlite3.Connection, fmt: str, player: str, cards: list[str]):
     """Lista mais recente de `player` nesse formato que CONTÉM todas as `cards`
     (ex.: o comandante) — para seguir um deck específico de um jogador."""
     ph = ",".join("?" * len(cards))
+    conta, cp = _conta(fmt)
     return con.execute(
         f"""SELECT dl.id, dl.source, dl.player, dl.event_date FROM decklists dl
-              WHERE dl.format = ? AND dl.player = ?
+              WHERE dl.format = ? AND dl.player = ? AND {conta}
                 AND (SELECT COUNT(DISTINCT dc.card_name) FROM decklist_cards dc
                        WHERE dc.decklist_id = dl.id AND dc.card_name IN ({ph})) = ?
               ORDER BY dl.event_date DESC, dl.id DESC LIMIT 1""",
-        [fmt, player] + cards + [len(cards)]).fetchone()
+        [fmt, player] + cp + cards + [len(cards)]).fetchone()
 
 
 def _store(con: sqlite3.Connection, name: str, fmt: str, dl, out: list):

@@ -24,28 +24,17 @@ ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 import meusdecks as md  # noqa: E402  (_type_map/_group_by_type/_bucket/_art/_img_map/_faltas/_faltas_html)
+from mtgvault import sources  # noqa: E402
 from mtgvault.collection import owned_playable  # noqa: E402
 
 FORMATS = [("standard", "Standard"), ("pioneer", "Pioneer"),
            ("modern", "Modern"), ("legacy", "Legacy")]
 THRESH = 0.5     # Jaccard mínimo p/ duas listas serem o mesmo arquétipo
 WINDOW = 21      # dias: janela de eventos competitivos recentes
-MIN_ARCH_WT = 3  # peso mínimo p/ um arquétipo aparecer (tira o fringe das ligas)
+MIN_ARCH_WT = 3  # peso mínimo p/ um arquétipo aparecer (tira o resultado isolado)
 TOP_ARCH = 30    # nº máximo de arquétipos por formato
 
 
-def _min_players():
-    """Peso mínimo (nº de jogadores) p/ um presencial contar. Ajustável em
-    colecao_config.json (`showcase_min_players`, default 24)."""
-    try:
-        import json
-        cfg = json.loads((ROOT / "colecao_config.json").read_text(encoding="utf-8"))
-        return int(cfg.get("showcase_min_players") or 24)
-    except Exception:
-        return 24
-# Eventos casuais do mtgtop8 a NÃO incluir (ligas, FNM, etc.).
-_CASUAL = ("League", "FNM", "Trial", "Prelim", "Practice", "Friday", "weekly",
-           "semanal", "Duelo", "Mercredi")
 BASICS = {"Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes",
           "Snow-Covered Plains", "Snow-Covered Island", "Snow-Covered Swamp",
           "Snow-Covered Mountain", "Snow-Covered Forest"}
@@ -94,43 +83,27 @@ def _shortev(name):
     return (n[:52] + "…") if len(n) > 53 else n
 
 
-def _weight(src, event_name, players):
-    """Peso do evento p/ o metagame (quanto conta cada lista). AJUSTÁVEL — presencial
-    grande > Showcase > Challenge > Preliminary > League. É a 'importância' de cada
-    fonte: uma liga (5-0 casual) não vale o mesmo que um Challenge ou um presencial."""
-    en = (event_name or "").lower()
-    if src == "mtgtop8":                       # presencial (peso pela dimensão)
-        p = players or 0
-        return 5.0 if p >= 128 else 4.0 if p >= 64 else 3.0
-    if "showcase" in en:                        # MTGO Showcase Challenge
-        return 3.0
-    if "challenge" in en:                       # MTGO Challenge 64/32
-        return 2.0
-    if "prelim" in en:                          # MTGO Preliminary
-        return 1.0
-    if "league" in en:                          # MTGO League (5-0, mais ruído)
-        return 0.5
-    return 1.0
-
-
 def _lists(con, fmt):
-    """(eventos {nome:(data,src)}, [ {id,player,placement,rank,event,date,src,main,
-    side,set} ]) dos eventos competitivos recentes do formato: Showcase Challenge
-    (MTGO) + presenciais do mtgtop8, na janela de WINDOW dias."""
-    excl = " AND ".join(f"event_name NOT LIKE '%{k}%'" for k in _CASUAL)
-    # Online: TODO o MTGO (Showcase/Challenge/Prelim/League) — cada um pesa diferente
-    # (_weight). Presencial: mtgtop8 com >=MIN_PLAYERS jogadores, sem FNM.
-    where_evt = (f"(source='mtgo' "
-                 f"OR (source='mtgtop8' AND event_players >= {_min_players()} AND {excl}))")
-    anchor = con.execute(f"SELECT MAX(event_date) d FROM decklists WHERE format=? "
-                         f"AND {where_evt}", (fmt,)).fetchone()["d"]
+    """(eventos {nome:(data,src,jogadores)}, [ {id,player,placement,rank,event,date,
+    src,main,side,set} ]) dos eventos que CONTAM para o formato (sources.lista_conta:
+    Challenges/Showcases do MTGO + presenciais de 64+ jogadores), na janela de
+    WINDOW dias.
+
+    Antes esta página tinha filtro próprio (fonte + `showcase_min_players` + uma
+    lista de nomes casuais) e um `_weight` próprio — ficava a discordar do
+    metagame: dava listas de liga enquanto o top-10 vinha vazio. Passou a usar a
+    mesma regra que todas as outras (2026-09-07)."""
+    conta, params = sources.counting_sql(fmt, "d")
+    anchor = con.execute(f"SELECT MAX(d.event_date) x FROM decklists d WHERE d.format=? "
+                         f"AND {conta}", (fmt, *params)).fetchone()["x"]
     if not anchor:
         return {}, []
     cutoff = (date.fromisoformat(anchor) - timedelta(days=WINDOW)).isoformat()
-    rows = list(con.execute(f"""SELECT id, player, placement, event_name en, event_date ed,
-                source src, event_players ep FROM decklists
-            WHERE format=? AND event_date >= ? AND {where_evt}
-            ORDER BY event_date DESC, id""", (fmt, cutoff)))
+    rows = list(con.execute(f"""SELECT d.id, d.player, d.placement, d.event_name en,
+                d.event_date ed, d.source src, d.event_players ep, d.event_tier tier
+            FROM decklists d
+            WHERE d.format=? AND d.event_date >= ? AND {conta}
+            ORDER BY d.event_date DESC, d.id""", (fmt, cutoff, *params)))
     if not rows:
         return {}, []
     # Cartões de TODAS as listas em poucas queries (chunks) — o pool é grande.
@@ -150,7 +123,7 @@ def _lists(con, fmt):
         main, side = mains.get(r["id"], {}), sides.get(r["id"], {})
         out.append({"id": r["id"], "player": r["player"], "placement": r["placement"],
                     "rank": _prank(r["placement"]), "event": r["en"], "date": r["ed"],
-                    "src": r["src"], "weight": _weight(r["src"], r["en"], r["ep"]),
+                    "src": r["src"], "weight": sources.tier_weight(r["tier"], r["ep"]),
                     "main": main, "side": side,
                     "set": frozenset(k for k in main if k not in BASICS)})
         events[r["en"]] = (r["ed"], r["src"], r["ep"])

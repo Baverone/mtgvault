@@ -2,9 +2,9 @@
 
 Para cada formato (por defeito Pioneer, Modern, Legacy) percorre os arquétipos
 do metagame (clusters em `archetypes`), constrói a **lista-padrão** de cada um
-**só com eventos premier** (Challenge/Qualifier/Showcase/… — exclui as Leagues,
-que diluem o sinal; ver coluna `decklists.event_tier`) e cruza com o que tenho
-em posse (`collection_owned`). Mostra os que consigo montar em **>= limiar%**
+**só com as listas que contam** (`sources.lista_conta`: Challenges, Showcases e
+presenciais de 64+ jogadores; ligas fora, menos no Duel Commander) e cruza com o
+que tenho em posse (`collection_owned`). Mostra os que consigo montar em **>= limiar%**
 (por defeito 75% do maindeck), ordenados, com as cartas em falta e o custo.
 
 Só precisa da posse — corre isto depois de fotografares/inventariares a coleção.
@@ -24,9 +24,9 @@ ROOT = Path(__file__).resolve().parent
 HOME = Path(os.environ.get("MTGVAULT_HOME", ROOT / "data"))
 DB = HOME / "vault.db"
 
-# tiers que NÃO contam para o consenso (ver event_tier); tudo o resto é premier
-NON_PREMIER = ("League", "Curated", "outro")
-MIN_LISTS = 5          # arquétipos com menos listas premier do que isto são ignorados
+from mtgvault import sources  # noqa: E402
+
+MIN_LISTS = 5          # arquétipos com menos listas que contem do que isto são ignorados
 DEFAULT_THRESHOLD = 0.75
 
 
@@ -63,23 +63,22 @@ def run(formats: list[str], threshold: float) -> None:
         print("    Fotografa/inventaria a coleção primeiro — depois este relatório acende.\n")
 
     price = {r["card_name"]: r["eur"] for r in con.execute("SELECT card_name, eur FROM card_price")}
-    ph = ",".join("?" * len(NON_PREMIER))
 
     for fmt in formats:
+        conta, cp = sources.counting_sql(fmt, "d")
         clusters = con.execute(
             f"""SELECT d.archetype_id aid, a.label, COUNT(*) n
                   FROM decklists d JOIN archetypes a ON a.id = d.archetype_id
-                 WHERE d.format = ? AND d.archetype_id IS NOT NULL
-                   AND d.event_tier NOT IN ({ph})
+                 WHERE d.format = ? AND d.archetype_id IS NOT NULL AND {conta}
                  GROUP BY d.archetype_id HAVING n >= ?
                  ORDER BY n DESC""",
-            (fmt, *NON_PREMIER, MIN_LISTS)).fetchall()
+            (fmt, *cp, MIN_LISTS)).fetchall()
 
         results = []
         for c in clusters:
             ids = [r["id"] for r in con.execute(
-                f"""SELECT id FROM decklists WHERE format=? AND archetype_id=?
-                       AND event_tier NOT IN ({ph})""", (fmt, c["aid"], *NON_PREMIER))]
+                f"""SELECT d.id FROM decklists d WHERE d.format=? AND d.archetype_id=?
+                       AND {conta}""", (fmt, c["aid"], *cp))]
             cons = consensus_main(con, ids)
             total = sum(cons.values())
             if not total:
@@ -101,7 +100,7 @@ def run(formats: list[str], threshold: float) -> None:
         if not results:
             print("   (nenhum arquétipo acima do limiar — ou coleção ainda por inventariar)")
         for pct, label, n, total, miss, cost in results:
-            print(f"\n  {pct:5.0%}  {label}   [{n} listas premier]")
+            print(f"\n  {pct:5.0%}  {label}   [{n} listas que contam]")
             faltam = sum(m[1] for m in miss)
             print(f"         faltam {faltam} cartas p/ 100% do main ({total}) · custo {cost:,.2f} EUR")
             for name, q, c in sorted(miss, key=lambda m: -m[2])[:12]:

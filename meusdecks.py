@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 import buildability as bd  # noqa: E402
+from mtgvault import sources  # noqa: E402
 from mtgvault.collection import owned_playable  # noqa: E402
 
 FMT_LABEL = bd.FMT_LABEL
@@ -144,8 +145,6 @@ def _owned_qty(con):
 
 
 CLOUD_DC = "Cloud (Duel Commander)"
-# Eventos casuais (excluídos do consenso de Cloud DC): só Challenges + torneios.
-_CASUAL = ("League", "Liga", "FNM", "semanal", "Mercredi", "Duelo", "Tuesday")
 CONS_MIN = 30   # limiar (%) das staples que faltam
 
 # Ordem de organização dos decks por tipo de carta (pedido do André, 2026-08-31).
@@ -197,17 +196,18 @@ def _group_by_type(cards, tm, render):
 
 
 def _cloud_consensus(con, his_names):
-    """Análise de consenso do Cloud (Duel Commander): sobre as listas de Cloud de
-    eventos NÃO-casuais (Challenges + torneios), devolve
+    """Análise de consenso do Cloud (Duel Commander): sobre as listas de Cloud
+    que CONTAM (sources.lista_conta — no Duel Commander as ligas contam, é a
+    exceção do André de 2026-09-07), devolve
       pct = {carta: % de listas que a jogam}  (só não-básicas)
       missing = [{nm,pct,sid}] das cartas de consenso >= CONS_MIN que NÃO estão na
                 lista do McWinSauce, ordenadas por consenso desc (staples que faltam).
     Mantém a lista do McWinSauce; isto é só o overlay. NÃO inventa nada."""
-    excl = " AND ".join(f"dl.event_name NOT LIKE '%{k}%'" for k in _CASUAL)
+    conta, cp = sources.counting_sql("duel-commander", "dl")
     pool = [r["id"] for r in con.execute(
-        f"""SELECT dl.id FROM decklists dl WHERE dl.format='duel-commander' AND {excl}
+        f"""SELECT dl.id FROM decklists dl WHERE dl.format='duel-commander' AND {conta}
              AND EXISTS (SELECT 1 FROM decklist_cards y WHERE y.decklist_id=dl.id
-                          AND y.card_name LIKE 'Cloud,%')""")]
+                          AND y.card_name LIKE 'Cloud,%')""", cp)]
     n = len(pool)
     if not n:
         return None

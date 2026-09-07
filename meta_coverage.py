@@ -32,7 +32,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import db  # noqa: E402
+from mtgvault import db, sources  # noqa: E402
 from mtgvault.collection import owned_playable  # noqa: E402
 
 FORMATS = [
@@ -83,17 +83,15 @@ def owned_available(con):
     comm = _committed_to_watched(con)
     return {nm: q - comm.get(nm, 0) for nm, q in col.items() if q > comm.get(nm, 0)}
 
-# Ponderação por importância do torneio MTGO (pesos confirmados pelo André,
-# 2026-08-14), numa janela recente. `placement` está vazio nos dados, por isso
-# não entra ainda. Reutilizado no ranking e na deteção de decks emergentes.
+# Ponderação por importância do torneio, numa janela recente. `placement` está
+# vazio nos dados, por isso não entra ainda. Reutilizado no ranking e na deteção
+# de decks emergentes.
 RECENT_DAYS = 30
-# Regra do André (2026-08-26): o metagame conta SÓ Challenges e Showcases, e os
-# Showcases pesam mais. Os restantes tiers ficam com peso 0 (e são filtrados no
-# _rank/emerging, por isso nem entram).
-_TIER_WEIGHT = """CASE
-        WHEN d.event_tier = 'Showcase' THEN 3
-        WHEN d.event_tier = 'Challenge' THEN 1
-        ELSE 0 END"""
+# QUE listas contam e QUANTO pesa cada uma vive agora em `mtgvault.sources`
+# (regra do André, 2026-09-07: Challenges, Showcases e presenciais de 64+
+# jogadores; ligas fora, menos no Duel Commander). Está lá em baixo para todas
+# as páginas responderem o mesmo — ver colecao_config.json -> metagame_fontes.
+_TIER_WEIGHT = sources.tier_weight_sql("d")
 
 BASICS = {
     "Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes",
@@ -268,17 +266,32 @@ def _greasefang_id(con):
 def _rank(con, fmt, n):
     """Top-n arquétipos do formato, PONDERADOS pela importância do torneio numa
     janela recente. Devolve [(id, score)] por ordem decrescente de peso."""
+    conta, params = sources.counting_sql(fmt, "d")
     return [(r["id"], round(r["score"], 1)) for r in con.execute(
         f"""SELECT a.id, SUM({_TIER_WEIGHT}) score FROM archetypes a
              JOIN decklists d ON d.archetype_id = a.id
             WHERE a.format = ? AND d.event_date >= date('now', '-{RECENT_DAYS} days')
-              AND d.event_tier IN ('Challenge','Showcase')
-            GROUP BY a.id ORDER BY score DESC, COUNT(d.id) DESC LIMIT ?""", (fmt, n))]
+              AND {conta}
+            GROUP BY a.id ORDER BY score DESC, COUNT(d.id) DESC LIMIT ?""",
+        (fmt, *params, n))]
 
 
-# Só Challenges e Showcases contam (regra do André, 2026-08-26). Emergente =
-# aparece em Challenges/Showcases mas fica fora do top-10.
-HIGH_TIERS = ("Challenge", "Showcase")
+def counting_lists(con, fmt, aid=None, order="event_date DESC, id DESC", limit=None):
+    """Listas do formato que CONTAM para o metagame (opcionalmente de um
+    arquétipo). Serve a quem precisa da lista em si e não só do ranking —
+    metagame.py e decks_faziveis.py mostram a mais recente de cada deck, e essa
+    tem de sair do mesmo universo do top-10, senão a página mostrava uma lista
+    de liga por baixo de um ranking que não a conta."""
+    conta, params = sources.counting_sql(fmt, "d")
+    where = f"d.format = ? AND {conta}"
+    args = [fmt, *params]
+    if aid is not None:
+        where += " AND d.archetype_id = ?"
+        args.append(aid)
+    sql = f"SELECT d.* FROM decklists d WHERE {where} ORDER BY {order}"
+    if limit:
+        sql += f" LIMIT {int(limit)}"
+    return con.execute(sql, args).fetchall()
 
 
 def emerging_decks(con):
@@ -287,8 +300,8 @@ def emerging_decks(con):
     aparições para cortar ruído de um resultado isolado)."""
     tcache = {}
     out = []
-    marks = ",".join("?" for _ in HIGH_TIERS)
     for fmt, _title, n, _extras in FORMATS:
+        conta, cparams = sources.counting_sql(fmt, "d")
         df = _format_df(con, fmt)
         ranked = _rank(con, fmt, n)
         top = {aid for aid, _ in ranked}
@@ -302,19 +315,19 @@ def emerging_decks(con):
                        MAX(d.event_name) ev
                   FROM archetypes a JOIN decklists d ON d.archetype_id = a.id
                  WHERE a.format = ? AND d.event_date >= date('now', '-{RECENT_DAYS} days')
-                   AND d.event_tier IN ({marks})
+                   AND {conta}
                  GROUP BY a.id HAVING nlists >= 2
-                 ORDER BY score DESC""", (fmt, *HIGH_TIERS)):
+                 ORDER BY score DESC""", (fmt, *cparams)):
             if r["id"] in top:
                 continue
             name = _name_for(con, r["id"], df, tcache)
             if name in seen_names or name in top_names:
                 continue
             seen_names.add(name)
-            url = con.execute("SELECT url FROM decklists WHERE archetype_id = ? "
-                              "ORDER BY event_date DESC, id DESC LIMIT 1", (r["id"],)).fetchone()
+            recentes = counting_lists(con, fmt, r["id"], limit=1)
             found.append({"fmt": fmt, "aid": r["id"], "name": name, "score": round(r["score"], 1),
-                          "nlists": r["nlists"], "ev": r["ev"], "url": url["url"] if url else None})
+                          "nlists": r["nlists"], "ev": r["ev"],
+                          "url": recentes[0]["url"] if recentes else None})
             if len(found) >= 3:
                 break
         out += found
@@ -327,8 +340,17 @@ def _label(con, aid):
 
 
 def _n_lists(con, aid):
-    return con.execute("SELECT COUNT(*) c FROM decklists WHERE archetype_id = ?",
-                       (aid,)).fetchone()["c"]
+    """Quantas listas QUE CONTAM tem o arquétipo. Não basta contar por
+    archetype_id: o `rebuild_archetypes` só reetiqueta as listas que conta, e as
+    antigas (ligas, presenciais pequenos) ficam com a etiqueta de outrora — dava
+    um "n listas" inflacionado por listas que o ranking já não vê."""
+    r = con.execute("SELECT format FROM archetypes WHERE id = ?", (aid,)).fetchone()
+    if not r:
+        return 0
+    conta, params = sources.counting_sql(r["format"], "d")
+    return con.execute(
+        f"SELECT COUNT(*) c FROM decklists d WHERE d.archetype_id = ? AND {conta}",
+        (aid, *params)).fetchone()["c"]
 
 
 def _format_df(con, fmt):

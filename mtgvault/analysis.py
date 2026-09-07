@@ -29,6 +29,8 @@ import sqlite3
 from collections import Counter, defaultdict
 from datetime import date, timedelta
 
+from . import sources
+
 BASIC_LANDS = {
     "Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes",
     "Snow-Covered Plains", "Snow-Covered Island", "Snow-Covered Swamp",
@@ -175,12 +177,17 @@ def card_roles(
 # 3. Orquestração sobre a base de dados
 # ---------------------------------------------------------------------------
 def _fetch_lists(con, fmt: str, since: str, until: str, board: str):
+    # Só as listas que CONTAM (sources.lista_conta / counting_sql): o núcleo é
+    # medido sobre torneios a sério, não sobre 5-0 de liga. Regra do André,
+    # 2026-09-07 — ver colecao_config.json -> metagame_fontes.
+    conta, params = sources.counting_sql(fmt, "d")
     rows = con.execute(
-        """SELECT d.id, d.archetype_id, c.card_name, c.quantity
+        f"""SELECT d.id, d.archetype_id, c.card_name, c.quantity
              FROM decklists d
              JOIN decklist_cards c ON c.decklist_id = d.id
-            WHERE d.format = ? AND d.event_date BETWEEN ? AND ? AND c.board = ?""",
-        (fmt, since, until, board),
+            WHERE d.format = ? AND d.event_date BETWEEN ? AND ? AND c.board = ?
+              AND {conta}""",
+        (fmt, since, until, board, *params),
     ).fetchall()
     by_deck: dict[int, dict[str, int]] = defaultdict(dict)
     arch: dict[int, int | None] = {}
@@ -274,6 +281,43 @@ def trend(con: sqlite3.Connection, archetype_id: int, card_name: str) -> list[di
         (archetype_id, card_name),
     ).fetchall()
     return [dict(r) for r in rows]
+
+
+def prune_leagues(con: sqlite3.Connection) -> int:
+    """Apaga as listas de LIGA dos formatos onde as ligas não contam.
+
+    Decisão do André (2026-09-07): "no mtgvault não quero listas de league" — só
+    o Duel Commander é exceção. A recolha já não as guarda (`store_decklist`);
+    isto limpa as que ficaram para trás, que eram cerca de um terço do vault.db
+    sem alimentarem uma única página.
+
+    Só mexe no tier `League`: os presenciais pequenos e os Preliminary ficam na
+    base (não contam para o metagame, mas são histórico barato e o André ainda
+    pode querer dar-lhes uma exceção no config). `card_roles` não é tocado — a
+    análise já calculada mantém-se, como no `prune_decklists`.
+    """
+    formatos = [r["format"] for r in con.execute(
+        "SELECT DISTINCT format FROM decklists WHERE event_tier = 'League'")]
+    fora = [f for f in formatos
+            if "League" not in sources.metagame_rules(f)["tiers"]]
+    if not fora:
+        return 0
+    marcas = ",".join("?" for _ in fora)
+    onde = f"source <> 'manual' AND event_tier = 'League' AND format IN ({marcas})"
+    n = con.execute(f"SELECT COUNT(*) c FROM decklists WHERE {onde}",
+                    fora).fetchone()["c"]
+    if n:
+        con.execute(f"DELETE FROM decklist_cards WHERE decklist_id IN "
+                    f"(SELECT id FROM decklists WHERE {onde})", fora)
+        # `decklist_tags` só existe depois do `tagging` correr uma vez (não está
+        # no schema.sql) — daí o IF EXISTS à mão.
+        if con.execute("SELECT 1 FROM sqlite_master WHERE type='table' "
+                       "AND name='decklist_tags'").fetchone():
+            con.execute(f"DELETE FROM decklist_tags WHERE decklist_id IN "
+                        f"(SELECT id FROM decklists WHERE {onde})", fora)
+        con.execute(f"DELETE FROM decklists WHERE {onde}", fora)
+        con.commit()
+    return n
 
 
 def prune_decklists(con: sqlite3.Connection, keep_days: int = 180) -> int:
