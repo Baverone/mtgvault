@@ -72,6 +72,39 @@ substituto diz "tens a carta, decide se abres excepção", e aqui ele já decidi
 que não abre. `local()` mostra por isso `Caixa RL (PT)` / `Caixa RL (EN)` — a
 mesma prateleira do config, as duas caixas que ele tem à frente.
 
+AS REGRAS PASSARAM A SER POR GRUPO DE FORMATO (André, 2026-09-07, mais tarde)
+----------------------------------------------------------------------------
+As duas regras acima eram as duas primeiras de cinco. Ele completou-as no mesmo
+dia, e com elas veio a ordem da alocação:
+
+  *"Premodern apenas as edições da era Premodern e em Português; cEDH apenas
+  inglês non-foil; Duel Commander apenas foil; SPML (Standard/Pioneer/Modern/
+  Legacy) tudo foil e inglês (RL pode ser non-foil); Pauper tudo foil se houver
+  disponível, senão pode ser non-foil."*
+  *"Ordem de prioridade na alocação: Premodern > cEDH > Duel Commander > Pauper
+  > SPML."*
+  *"Os decks vigiados têm prioridade para ficarem com as cartas, desde que
+  respeitem as regras."*
+  *"Para Pauper, utilizas as cartas que forem necessárias do SPML e agregas ao
+  Pauper."*
+
+Está tudo em `REGRAS_FORMATO` (ou `colecao_config.json -> regras_por_formato`),
+uma lista cuja ORDEM é a ordem da alocação. O `prioridade` de cada slot deixou de
+ser o número que manda: manda o grupo, depois "é deck vigiado?", e só então o
+`prioridade` do config, como desempate DENTRO do grupo. O `resolve_slots`
+reescreve `prioridade` com a posição global que daí sai (o config fica em
+`prioridade_config`), para quem lê o campo continuar a ler a ordem verdadeira.
+
+Uma consequência que os dados obrigam a ter, gémea da excepção do balde acima:
+uma cópia que está DENTRO da caixa deste deck escapa às regras de material.
+Sem isso, o "cEDH só inglês non-foil" desmontava no papel o Blue Farm e o Cloud
+cEDH, que estão montados na estante. Só vale para os baldes que SÃO a caixa de um
+deck (`caixas_de_deck`): o `SPML` e o `Premodern (geral)` são colecção partilhada
+por vários slots, e aí a regra manda.
+
+O Pauper não tem regra de baldes: já via o `SPML` e é de lá que vêm os quatro
+Utrom Monitor. O que mudou para ele foi passar a gastar as foil primeiro.
+
 Sem rede e sem efeitos colaterais: lê o `vault.db` e devolve números.
 """
 from __future__ import annotations
@@ -90,9 +123,6 @@ PREMODERN_END = "2003-05-26"
 # e as ENG estão separadas" (André, 2026-09-07) — as PT servem o Premodern, as EN
 # nunca. Ver `local` e `_fora_de_vista`.
 BALDE_RL = "Caixa Reserved List"
-# Os baldes que uma caixa de Premodern vê (mais o dela). Tudo o resto é a caixa
-# de um deck montado — de lá não se tiram cartas para montar outro.
-BALDES_PREMODERN = {"Premodern (geral)", "SPML", BALDE_RL}
 CONSTRUCTED_LIMIT = 4                      # playset: acima disto é excedente
 FOIL_FINISHES = ("foil", "etched")
 COMMANDER_FORMATS = {"duel-commander", "cedh", "commander", "edh"}
@@ -104,6 +134,50 @@ REAL_FORMATS = ("standard", "pioneer", "modern", "legacy", "premodern",
 BASICS = {"Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes",
           "Snow-Covered Plains", "Snow-Covered Island", "Snow-Covered Swamp",
           "Snow-Covered Mountain", "Snow-Covered Forest", "Snow-Covered Wastes"}
+
+# REGRAS POR GRUPO DE FORMATO (André, 2026-09-07, à letra)
+# ------------------------------------------------------------------
+# *"Língua/acabamento por formato: Premodern apenas as edições da era Premodern e
+# em Português; cEDH apenas inglês non-foil; Duel Commander apenas foil; SPML
+# (Standard/Pioneer/Modern/Legacy) tudo foil e inglês (RL pode ser non-foil);
+# Pauper tudo foil se houver disponível, senão pode ser non-foil."*
+# *"Ordem de prioridade na alocação: Premodern > cEDH > Duel Commander > Pauper
+# > SPML."*
+#
+# A ORDEM desta lista É a ordem da alocação — quem vem primeiro escolhe primeiro.
+# Antes isto vivia em números soltos no `prioridade` de cada slot do config e em
+# casos especiais no código (o `formato == "premodern"` espalhado por três
+# funções); um grupo mal numerado à mão mudava a alocação inteira sem ninguém dar
+# por isso. O `colecao_config.json -> regras_por_formato` substitui esta lista
+# toda, se lá estiver.
+#
+# Chaves de cada regra:
+#   `formatos`    — os `formato` dos slots que caem neste grupo;
+#   `lingua`      — a cópia tem de ser desta língua;
+#   `acabamento`  — "foil" (só foil/etched, menos Reserved List), "nonfoil" (só
+#                   nonfoil) ou "prefere_foil" (aceita as duas, gasta a foil
+#                   primeiro — é o Pauper: *"tudo foil se houver disponível"*);
+#   `edicoes`     — "premodern": só impressões até ao Scourge;
+#   `baldes`      — os únicos baldes que estas caixas VÊEM (mais o seu);
+#   `estrita`     — a `lingua` e os `baldes` deste grupo põem a cópia FORA DE
+#                   VISTA (falta a comprar) em vez de substituto. É a diferença
+#                   entre "decide se abres excepção" e "já decidi que não abro":
+#                   *"O Premodern só usa em PT, mesmo eu tendo a carta em inglês."*
+REGRAS_FORMATO = [
+    {"grupo": "premodern", "formatos": ["premodern"],
+     "lingua": "pt", "edicoes": "premodern", "estrita": True,
+     "baldes": ["Premodern (geral)", "SPML", BALDE_RL]},
+    {"grupo": "cedh", "formatos": ["cedh"],
+     "lingua": "en", "acabamento": "nonfoil"},
+    {"grupo": "duel-commander", "formatos": ["duel-commander"],
+     "acabamento": "foil"},
+    {"grupo": "pauper", "formatos": ["pauper"],
+     "acabamento": "prefere_foil"},
+    {"grupo": "spml", "formatos": ["standard", "pioneer", "modern", "legacy"],
+     "lingua": "en", "acabamento": "foil"},
+]
+# As chaves de uma regra que se copiam para o slot (as outras são só arrumação).
+CHAVES_REGRA = ("lingua", "acabamento", "edicoes", "baldes", "estrita")
 
 
 def _front(name: str) -> str:
@@ -162,6 +236,67 @@ def config_slots() -> list[dict]:
     """`colecao_config.json -> loadout`, sem as chaves de ajuda `_xxx`."""
     v = sources.config().get("loadout") or []
     return [{k: x[k] for k in x if not str(k).startswith("_")} for x in v]
+
+
+def regras_por_formato() -> list[dict]:
+    """As regras de material por grupo de formato, pela ORDEM da alocação.
+
+    `colecao_config.json -> regras_por_formato` manda; sem ela vale a
+    `REGRAS_FORMATO` deste módulo, que é a ordem que o André ditou.
+    """
+    v = sources.config().get("regras_por_formato")
+    if not isinstance(v, list) or not v:
+        return REGRAS_FORMATO
+    return [{k: x[k] for k in x if not str(k).startswith("_")} for x in v]
+
+
+def regra_do_formato(fmt: str | None,
+                     regras: list[dict] | None = None) -> tuple[int, dict]:
+    """(posição do grupo na ordem de alocação, regra) do formato de um slot.
+
+    Um formato que não esteja em grupo nenhum fica no fim e sem regra de
+    material — não se inventa uma restrição que ele não ditou.
+    """
+    regras = regras if regras is not None else regras_por_formato()
+    for i, r in enumerate(regras):
+        if fmt in (r.get("formatos") or []):
+            return i, r
+    return len(regras), {}
+
+
+def rotulo_material(s: dict) -> list[tuple[str, str]]:
+    """As regras de material desta caixa como (ícone, texto), para a página e o CLI.
+
+    Vive aqui e não em cada página porque já aconteceu o contrário: o
+    `deckboxes` dizia *"sem Caixa RL"* a todas as caixas de Premodern depois de a
+    regra ter mudado para *"vê a metade PT da Caixa RL"*. Uma regra nova que
+    ninguém mostre é uma página a mentir em silêncio.
+    """
+    out = []
+    if s.get("lingua"):
+        out.append(("🇵🇹" if s["lingua"] == "pt" else "🔤",
+                    f'só {s["lingua"].upper()}'))
+    ac = s.get("acabamento")
+    if ac == "foil":
+        out.append(("✨", "só foil (a Reserved List pode ser nonfoil)"))
+    elif ac == "nonfoil":
+        out.append(("◻", "só nonfoil"))
+    elif ac == "prefere_foil":
+        out.append(("✨", "foil quando há, senão nonfoil"))
+    if s.get("edicoes") == "premodern":
+        out.append(("🕰", "só edições até ao Scourge"))
+    if s.get("baldes"):
+        curtos = [b.replace(BALDE_RL, "Caixa RL") for b in s["baldes"]]
+        out.append(("🗂️", "só de " + " · ".join(curtos)))
+    return out
+
+
+def marca_wantlist(s: dict) -> str:
+    """A etiqueta que a wantlist do Cardmarket leva ("FOIL" / "PT" / ""),
+    para ele não comprar material que a caixa depois recusa."""
+    if s.get("acabamento") in ("foil", "prefere_foil"):
+        return "FOIL"
+    return s["lingua"].upper() if s.get("lingua") == "pt" else ""
 
 
 def _retencao() -> dict[str, int]:
@@ -260,10 +395,30 @@ def resolve_slots(con, cfg_slots: list[dict] | None = None) -> list[dict]:
     A caixa leva a UNIÃO das cartas, cada uma na quantidade máxima que alguma
     variante pede, e as que não são comuns a todas ficam marcadas — é o que se
     quer ver ao montar: o que sai e entra para trocar de variante.
+
+    A ORDEM da alocação sai daqui (André, 2026-09-07): primeiro o grupo de
+    formato (*"Premodern > cEDH > Duel Commander > Pauper > SPML"*), depois os
+    decks vigiados (*"os decks vigiados têm prioridade para ficarem com as
+    cartas, desde que respeitem as regras"*) e só então o `prioridade` que o
+    config dá a cada slot. O `prioridade` de cada slot passa a ser a posição
+    GLOBAL resultante (1, 2, 3, …) — é o número que a página e o CLI mostram — e
+    o do config fica em `prioridade_config`. As regras de material do grupo
+    também se colam aqui ao slot; o que o config escrever no slot ganha, para
+    uma excepção continuar a ser uma linha de config e não uma linha de código.
     """
     out = []
+    regras = regras_por_formato()
+    vigiados = set(sources.config().get("decks_vigiados") or [])
     for s in (cfg_slots if cfg_slots is not None else config_slots()):
         s = dict(s)
+        ordem_grupo, regra = regra_do_formato(s.get("formato"), regras)
+        for k in CHAVES_REGRA:
+            if k in regra and k not in s:
+                s[k] = regra[k]
+        s["grupo"] = regra.get("grupo") or s.get("formato")
+        s["grupo_ordem"] = ordem_grupo
+        s["vigiado"] = (s.get("fonte") == "vigiado"
+                        or bool(s.get("ref")) and s["ref"] in vigiados)
         cards, nota = _slot_cards(con, s)
         so_de: dict[str, set[str]] = defaultdict(set)
         variantes = list(s.get("variantes") or [])
@@ -284,7 +439,12 @@ def resolve_slots(con, cfg_slots: list[dict] | None = None) -> list[dict]:
         s.setdefault("prioridade", 99)
         s.setdefault("nome", s.get("ref") or s.get("slot"))
         out.append(s)
-    return sorted(out, key=lambda x: (x["prioridade"], x["nome"]))
+    out.sort(key=lambda x: (x["grupo_ordem"], not x["vigiado"],
+                            x["prioridade"], x["nome"]))
+    for i, s in enumerate(out, 1):
+        s["prioridade_config"] = s["prioridade"]
+        s["prioridade"] = i
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -339,9 +499,9 @@ def _fora_de_vista(lot: dict, s: dict) -> bool:
 
     É diferente do `_porque_nao`: ali a cópia existe e não serve, e fica como
     substituto ("decide se abres excepção"); aqui ele já decidiu que não abre, e
-    a carta é FALTA a comprar.
-
-    Só o Premodern tem destas, por duas ordens do André de 2026-09-07:
+    a carta é FALTA a comprar. Vale só para os grupos marcados `estrita` nas
+    `regras_por_formato` — hoje só o Premodern, por duas ordens do André de
+    2026-09-07:
       * *"O Premodern só usa em PT, mesmo eu tendo a carta em inglês"* — uma EN
         nunca fecha um slot de Premodern nem lhe serve de substituto;
       * *"na Caixa RL, as PT e as ENG estão separadas"* — a Caixa RL não está
@@ -351,33 +511,55 @@ def _fora_de_vista(lot: dict, s: dict) -> bool:
         essas cartas estão dentro de um deck, não se tiram de lá para montar
         outro.
     """
-    if s.get("formato") != "premodern":
+    if not s.get("estrita"):
         return False
-    return (lot["lang"] != "pt"
-            or lot["sub"] not in BALDES_PREMODERN | {s.get("balde")})
-
-
-def _porque_nao(lot: dict, s: dict, baldes_de_deck: set[str]) -> str | None:
-    """Porque é que este exemplar NÃO serve este slot (None = serve)."""
     if s.get("lingua") and lot["lang"] != s["lingua"]:
-        return f"não é {s['lingua'].upper()}"
-    if s.get("acabamento") == "foil" and lot["finish"] not in FOIL_FINISHES \
-            and not lot["rl"]:
-        return "não é foil"
+        return True
+    baldes = s.get("baldes")
+    return bool(baldes) and lot["sub"] not in set(baldes) | {s.get("balde")}
+
+
+def _porque_nao(lot: dict, s: dict, baldes_de_deck: set[str],
+                caixas: set[str] | frozenset = frozenset()) -> str | None:
+    """Porque é que este exemplar NÃO serve este slot (None = serve)."""
+    # Uma cópia que está DENTRO da caixa deste deck já é deste deck: o deck está
+    # fisicamente montado. É a mesma excepção que a tranca do PT sempre teve (o
+    # Lotus Petal PT dentro do Blue Farm), alargada às regras de material novas
+    # de 2026-09-07 — sem ela, o "cEDH só inglês non-foil" desmontava no papel
+    # dois decks que estão montados na estante. Só vale para os baldes que SÃO a
+    # caixa de um deck: o `SPML` e o `Premodern (geral)` são colecção partilhada
+    # por vários slots, e aí a regra manda.
+    if s.get("balde") and lot["sub"] == s["balde"] and s["balde"] in caixas:
+        return None
     # Tranca do Premodern: PT + impressão da era. Excepção: se a cópia vive no
     # balde de OUTRO slot do loadout, é desse deck (está fisicamente na caixa
-    # dele) e não se lhe mexe.
+    # dele) e não se lhe mexe. Vem antes da língua de propósito: é a razão mais
+    # informativa das duas ("está trancada ao Premodern" > "não é EN").
     if (lot["lang"] == "pt" and lot["era_pm"] and s["formato"] != "premodern"
             and lot["sub"] not in baldes_de_deck):
         return "PT da era Premodern (trancada ao Premodern)"
+    if s.get("lingua") and lot["lang"] != s["lingua"]:
+        return f"não é {s['lingua'].upper()}"
+    ac = s.get("acabamento")
+    if ac == "foil" and lot["finish"] not in FOIL_FINISHES and not lot["rl"]:
+        return "não é foil"
+    if ac == "nonfoil" and lot["finish"] in FOIL_FINISHES:
+        return "não é nonfoil"
+    if s.get("edicoes") == "premodern" and not lot["era_pm"]:
+        return "edição posterior ao Scourge"
     return None
 
 
 def _ordem(lot: dict, s: dict) -> tuple:
     """Que exemplar gastar primeiro: o da própria caixa, depois o menos versátil
-    (uma nonfoil não serve os decks de foil — gasta-se essa antes da foil)."""
+    (uma nonfoil não serve os decks de foil — gasta-se essa antes da foil).
+
+    Excepto onde ele pediu o contrário: no Pauper é *"tudo foil se houver
+    disponível, senão pode ser non-foil"* (`acabamento: "prefere_foil"`), e aí a
+    foil vai primeiro."""
+    foil = lot["finish"] in FOIL_FINISHES
     return (lot["sub"] != s.get("balde"),
-            lot["finish"] in FOIL_FINISHES,
+            not foil if s.get("acabamento") == "prefere_foil" else foil,
             not lot["rl"],
             lot["set_code"] or "", lot["id"])
 
@@ -403,7 +585,8 @@ def _linha_cheia(linha: dict) -> dict:
 
 
 def _estado_carta(pool: dict, s: dict, nm: str, need: int, baldes: set[str],
-                  did: int | None = None) -> dict:
+                  did: int | None = None,
+                  caixas: set[str] | frozenset = frozenset()) -> dict:
     """Quantas cópias que SERVEM este slot estão livres, e quantas estão noutra caixa.
 
     É a versão que NÃO consome: serve quem faz a pergunta "e se fosse este
@@ -419,7 +602,7 @@ def _estado_carta(pool: dict, s: dict, nm: str, need: int, baldes: set[str],
     for lot in pool.get(nm, []):
         if lot["rdid"] is not None and lot["rdid"] != did:
             continue
-        if _fora_de_vista(lot, s) or _porque_nao(lot, s, baldes):
+        if _fora_de_vista(lot, s) or _porque_nao(lot, s, baldes, caixas):
             continue
         livre += lot["livre"]
         for caixa, q in lot["alocado"].items():
@@ -477,6 +660,9 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
     pool = lots(con)
     dids = _deck_ids(con, slots)
     baldes = {s["balde"] for s in slots if s.get("balde")}
+    # As caixas que SÃO um deck montado: só nessas é que a cópia lá dentro
+    # escapa às regras de material (ver `_porque_nao`).
+    caixas = caixas_de_deck(slots)
     pedido: dict[str, int] = defaultdict(int)
     # carta -> [(slot, quanto pediu, quanto levou)], para o detalhe do conflito
     disputa: dict[str, list[dict]] = defaultdict(list)
@@ -515,7 +701,7 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                     continue
                 if lot["rdid"] is not None and lot["rdid"] != did:
                     continue              # dedicada a outro deck (regra de domínio)
-                if _fora_de_vista(lot, s) or _porque_nao(lot, s, baldes):
+                if _fora_de_vista(lot, s) or _porque_nao(lot, s, baldes, caixas):
                     continue
                 take = min(lot["livre"], falta)
                 lot["livre"] -= take
@@ -543,7 +729,7 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                         break
                     if lot["rdid"] is not None and lot["rdid"] != did:
                         continue
-                    if _fora_de_vista(lot, s) or _porque_nao(lot, s, baldes):
+                    if _fora_de_vista(lot, s) or _porque_nao(lot, s, baldes, caixas):
                         continue
                     for outro, q in lot["alocado"].items():
                         if outro == s["nome"] or resta <= 0:
@@ -564,7 +750,7 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                         continue
                     if _fora_de_vista(lot, s):
                         continue      # a Caixa RL não existe para o Premodern
-                    razao = _porque_nao(lot, s, baldes)
+                    razao = _porque_nao(lot, s, baldes, caixas)
                     if razao:
                         alt[razao] += lot["livre"]
                         alt_onde[lot["local"]] += lot["livre"]
@@ -830,9 +1016,12 @@ def foil_report(con: sqlite3.Connection, fmt: str, top: int = 5,
     pool = res["pool"] if res else lots(con)
     baldes = ({s["balde"] for s in res["slots"] if s.get("balde")} if res
               else {s.get("balde") for s in config_slots() if s.get("balde")})
-    # Slot de mentira: só o que decide se uma cópia serve — o formato (tranca do
-    # PT da era) e o acabamento foil. É o mesmo `_porque_nao` das caixas a sério.
-    ps = {"formato": fmt, "acabamento": "foil", "nome": None}
+    # Slot de mentira: só o que decide se uma cópia serve. As regras de material
+    # saem das `regras_por_formato`, as mesmas das caixas a sério — escritas à
+    # mão aqui, este ranking dizia-lhe que tem cartas que não pode pôr no deck.
+    ps = {k: v for k, v in regra_do_formato(fmt)[1].items() if k in CHAVES_REGRA}
+    ps.update({"formato": fmt, "nome": None})
+    fin = "foil" if ps.get("acabamento") in ("foil", "prefere_foil") else "nonfoil"
 
     # Só listas que CONTAM (`sources.counting_sql`) — é a regra que vive num sítio
     # só desde 2026-09-07. Sem ela o `n_lists` vinha inflacionado pelas listas
@@ -872,7 +1061,7 @@ def foil_report(con: sqlite3.Connection, fmt: str, top: int = 5,
                                             "got": q, "basica": True, "lotes": []}))
                 continue
             e = _estado_carta(pool, ps, nm, q, baldes)
-            unit, pfin = card_price(con, nm, "foil")
+            unit, pfin = card_price(con, nm, fin)
             linha = _linha_cheia({
                 "board": b, "nm": nm, "need": q, "got": e["got"], "basica": False,
                 "lotes": [], "missing": q - e["got"], "comprar": e["comprar"],

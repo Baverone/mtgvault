@@ -23,7 +23,13 @@ O que aqui se tranca são as regras que custam dinheiro se partirem em silêncio
   7. ONDE ESTÁ A CARTA (André, 2026-09-07): uma carta que a alocação deu a outra
      caixa NÃO é falta nem compra — diz-se em que caixa está e quantas, e não
      soma ao custo de fechar. Era isto que mandava comprar quatro Swords to
-     Plowshares para cada uma das seis caixas de Premodern.
+     Plowshares para cada uma das seis caixas de Premodern;
+  8. as REGRAS POR GRUPO DE FORMATO e a ordem que ele ditou a seguir
+     ("Premodern > cEDH > Duel Commander > Pauper > SPML", os decks vigiados
+     primeiro dentro do grupo, cEDH só inglês non-foil, Duel Commander só foil,
+     Pauper foil quando há, e o Pauper a ir buscar ao SPML o que precisa).
+     Uma cópia que está DENTRO da caixa do próprio deck escapa a estas regras —
+     senão a regra nova desmontava no papel um deck que está montado.
 
 Não toca na rede.
 """
@@ -37,7 +43,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 # O loadout lê o config para as `regras_colecao`; um config próprio impede que o
 # teste passe a depender de o André não mexer no dele.
-CFG = {"regras_colecao": {"Blue Farm": {"reter_extras_meses": 6}}}
+CFG = {"regras_colecao": {"Blue Farm": {"reter_extras_meses": 6},
+                          "Cloud": {"reter_extras_meses": 6},
+                          "Cloud cEDH": {"reter_extras_meses": 6},
+                          "Pauper Affinity": {"reter_extras_meses": 6}},
+       "decks_vigiados": ["Oswald"]}
 _TMP = Path(tempfile.mkdtemp())
 (_TMP / "cfg.json").write_text(json.dumps(CFG), encoding="utf-8")
 os.environ["MTGVAULT_CONFIG"] = str(_TMP / "cfg.json")
@@ -161,10 +171,12 @@ def caso_noutra_caixa_nao_e_compra():
     vault pedia 8 Swords compradas para tapar um buraco que não existe.
     """
     con = base()
-    preco(con, "Swords to Plowshares", "nonfoil", 1.5)
+    preco(con, "Swords to Plowshares", "foil", 1.5)
     for nome in ("A", "B", "C"):
         deck(con, nome, "legacy", [("Swords to Plowshares", 4)])
-    add(con, "Swords to Plowshares", 4, sub="SPML")
+    # Foil porque o grupo SPML é "tudo foil e inglês" (a regra dele de
+    # 2026-09-07); o que este caso tranca é o "noutra caixa", não o acabamento.
+    add(con, "Swords to Plowshares", 4, finish="foil", sub="SPML")
     rep = loadout.report(con, [slot("A", "legacy", "A", prioridade=1, balde="SPML"),
                                slot("B", "legacy", "B", prioridade=2, balde="SPML"),
                                slot("C", "legacy", "C", prioridade=3, balde="SPML")])
@@ -194,10 +206,10 @@ def caso_noutra_caixa_e_compra_misturadas():
     """O caso meio: a caixa precisa de 4, só existem 2 e foram para outra. Duas
     vão-se buscar, DUAS compram-se — e o custo é só o das duas."""
     con = base()
-    preco(con, "Swords to Plowshares", "nonfoil", 10.0)
+    preco(con, "Swords to Plowshares", "foil", 10.0)
     deck(con, "A", "legacy", [("Swords to Plowshares", 4)])
     deck(con, "B", "legacy", [("Swords to Plowshares", 4)])
-    add(con, "Swords to Plowshares", 2, sub="SPML")
+    add(con, "Swords to Plowshares", 2, finish="foil", sub="SPML")
     rep = loadout.report(con, [slot("A", "legacy", "A", prioridade=1, balde="SPML"),
                                slot("B", "legacy", "B", prioridade=2, balde="SPML")])
     b = por_nome(rep)["B"]
@@ -220,11 +232,11 @@ def caso_noutra_caixa_nao_conta_a_mesma_copia_duas_vezes():
     e o "ir buscar" fica maior do que o que lá está. É a mesma armadilha do
     `livre`, um nível acima."""
     con = base()
-    preco(con, "Swords to Plowshares", "nonfoil", 2.0)
+    preco(con, "Swords to Plowshares", "foil", 2.0)
     deck(con, "A", "legacy", [("Swords to Plowshares", 4)])
     deck(con, "B", "legacy", [("Swords to Plowshares", 3)],
          side=[("Swords to Plowshares", 2)])
-    add(con, "Swords to Plowshares", 4, sub="SPML")
+    add(con, "Swords to Plowshares", 4, finish="foil", sub="SPML")
     rep = loadout.report(con, [slot("A", "legacy", "A", prioridade=1, balde="SPML"),
                                slot("B", "legacy", "B", prioridade=2, balde="SPML")])
     b = por_nome(rep)["B"]
@@ -344,23 +356,175 @@ def caso_pt_da_era_trancada_ao_premodern():
     assert "PT da era Premodern" in "".join(s["missing"][0]["alt"]), s["missing"][0]["alt"]
     print("PT da era Premodern não vai para outro formato")
 
-    # Mas uma PT MODERNA (impressão posterior ao Scourge) não está trancada.
+    # Mas uma PT MODERNA (impressão posterior ao Scourge) não está trancada — vai
+    # para uma caixa que não exija inglês (o Duel Commander só exige foil).
     add(con, "Sol Ring", 1, lang="pt", finish="foil", sub="SPML")
-    deck(con, "L2", "legacy", [("Sol Ring", 1)])
-    rep = loadout.report(con, [slot("L2", "legacy", "L2", balde="SPML")])
+    deck(con, "L2", "duel-commander", [("Sol Ring", 1)])
+    rep = loadout.report(con, [slot("L2", "duel-commander", "L2")])
     assert por_nome(rep)["L2"]["pct"] == 100
     print("PT de impressão moderna não está trancada")
 
 
 def caso_excepcao_do_balde():
-    """A tranca do PT não desmonta um deck já montado: uma PT da era que vive na
-    CAIXA de outro slot é desse deck (o Blue Farm tem lá Lotus Petal PT)."""
+    """Uma regra de material nova não desmonta um deck que está montado: a cópia
+    que vive DENTRO da caixa do próprio deck é desse deck.
+
+    O caso original era a tranca do PT (o Blue Farm tem lá um Lotus Petal PT da
+    era). Desde as regras por formato (2026-09-07) vale para todas: o cEDH passou
+    a ser "apenas inglês non-foil", e sem esta excepção a mesma cópia PT — que
+    está fisicamente dentro da caixa — deixava de contar."""
     con = base()
-    deck(con, "Blue Farm", "cedh", [("Lotus Petal", 1)])
+    deck(con, "Blue Farm", "cedh", [("Lotus Petal", 1), ("Sol Ring", 1)])
     add(con, "Lotus Petal", 1, lang="pt", sub="Blue Farm")
+    add(con, "Sol Ring", 1, finish="foil", sub="Blue Farm")   # foil num slot nonfoil
     rep = loadout.report(con, [slot("Blue Farm", "cedh", "Blue Farm", balde="Blue Farm")])
-    assert por_nome(rep)["Blue Farm"]["pct"] == 100
-    print("PT da era no balde do próprio deck continua a servir esse deck")
+    assert por_nome(rep)["Blue Farm"]["pct"] == 100, por_nome(rep)["Blue Farm"]
+    print("o que está dentro da caixa do próprio deck escapa às regras de material")
+
+    # Fora da caixa dele, a regra manda: a mesma foil no SPML já não serve.
+    con = base()
+    deck(con, "Blue Farm", "cedh", [("Sol Ring", 1)])
+    add(con, "Sol Ring", 1, finish="foil", sub="SPML")
+    rep = loadout.report(con, [slot("Blue Farm", "cedh", "Blue Farm", balde="Blue Farm")])
+    s = por_nome(rep)["Blue Farm"]
+    assert s["tenho"] == 0 and s["missing"][0]["alt"] == {"não é nonfoil": 1}, s
+    print("mas fora da caixa a regra do cEDH manda: foil não serve")
+
+
+def caso_ordem_dos_grupos_de_formato():
+    """André, 2026-09-07: *"Ordem de prioridade na alocação: Premodern > cEDH >
+    Duel Commander > Pauper > SPML."*
+
+    A ordem já não são os números soltos do config: são os grupos de formato, e
+    o `prioridade` de cada slot é só o desempate DENTRO do grupo. Aqui os números
+    do config estão de propósito ao contrário da ordem certa."""
+    con = base()
+    for nome, fmt in (("PM", "premodern"), ("CE", "cedh"), ("DC", "duel-commander"),
+                      ("PA", "pauper"), ("SP", "legacy")):
+        deck(con, nome, fmt, [("Sol Ring", 1)])
+    slots = [slot("SP", "legacy", "SP", prioridade=1),
+             slot("PA", "pauper", "PA", prioridade=2),
+             slot("DC", "duel-commander", "DC", prioridade=3),
+             slot("CE", "cedh", "CE", prioridade=4),
+             slot("PM", "premodern", "PM", prioridade=5)]
+    ordem = [s["nome"] for s in loadout.resolve_slots(con, slots)]
+    assert ordem == ["PM", "CE", "DC", "PA", "SP"], ordem
+    print("a ordem é a dos grupos de formato, não a dos números do config")
+
+    # E é a ordem que decide quem fica com a cópia: uma Sol Ring foil PT moderna
+    # serve o Duel Commander e o Pauper; fica com o DC, que vem antes.
+    add(con, "Sol Ring", 1, finish="foil", lang="pt", sub="SPML")
+    rep = loadout.report(con, [slot("PA", "pauper", "PA", prioridade=1),
+                               slot("DC", "duel-commander", "DC", prioridade=9)])
+    s = por_nome(rep)
+    assert s["DC"]["pct"] == 100 and s["PA"]["pct"] == 0, s
+    print("o Duel Commander escolhe antes do Pauper, mesmo com prioridade pior")
+
+
+def caso_vigiado_escolhe_primeiro_dentro_do_grupo():
+    """André, 2026-09-07: *"Os decks vigiados têm prioridade para ficarem com as
+    cartas, desde que respeitem as regras."* Dentro do mesmo grupo, o vigiado vem
+    à frente — e "desde que respeitem as regras" é literal: se a cópia não servir
+    o vigiado, ele não a leva à mesma."""
+    con = base()
+    deck(con, "Oswald", "modern", [("Kappa Cannoneer", 1)])
+    deck(con, "Outro", "modern", [("Kappa Cannoneer", 1)])
+    add(con, "Kappa Cannoneer", 1, finish="foil", sub="SPML")
+    # "Oswald" está em `decks_vigiados` (config deste teste); "Outro" não.
+    outro = slot("Outro", "modern", "Outro", prioridade=1, balde="SPML")
+    oswald = slot("Oswald", "modern", "Oswald", prioridade=9, balde="SPML")
+    rep = loadout.report(con, [outro, oswald])
+    assert por_nome(rep)["Oswald"]["pct"] == 100 and por_nome(rep)["Outro"]["pct"] == 0
+    print("o deck vigiado escolhe antes, mesmo com o pior `prioridade` do config")
+
+    # Entre dois não-vigiados volta a mandar o `prioridade` do config.
+    deck(con, "Terceiro", "modern", [("Kappa Cannoneer", 1)])
+    rep = loadout.report(con, [dict(outro, prioridade=2),
+                               slot("Terceiro", "modern", "Terceiro",
+                                    prioridade=1, balde="SPML")])
+    assert por_nome(rep)["Terceiro"]["pct"] == 100, por_nome(rep)
+    print("entre não-vigiados, o desempate continua a ser o `prioridade`")
+
+
+def caso_cedh_so_ingles_nonfoil():
+    """*"cEDH apenas inglês non-foil."* Uma foil ou uma PT existem, mas não
+    fecham o slot: ficam como SUBSTITUTO (tens a carta, não serve a caixa) — ele
+    não fechou a porta a estas como fechou às EN do Premodern."""
+    con = base()
+    deck(con, "CE", "cedh", [("Sol Ring", 2)])
+    add(con, "Sol Ring", 1, finish="foil", sub="SPML")
+    add(con, "Sol Ring", 1, finish="nonfoil", lang="pt", sub="SPML")
+    rep = loadout.report(con, [slot("CE", "cedh", "CE", balde="Cloud cEDH")])
+    s = por_nome(rep)["CE"]
+    assert s["tenho"] == 0, s["tenho"]
+    assert s["missing"][0]["alt"] == {"não é nonfoil": 1, "não é EN": 1}, \
+        s["missing"][0]["alt"]
+    print("cEDH: nem foil nem PT fecham o slot, ficam como substitutos")
+
+
+def caso_duel_commander_so_foil():
+    """*"Duel Commander: apenas foil."* Uma nonfoil não fecha o slot."""
+    con = base()
+    deck(con, "DC", "duel-commander", [("Sol Ring", 2)])
+    add(con, "Sol Ring", 1, finish="foil", sub="SPML")
+    add(con, "Sol Ring", 1, finish="nonfoil", sub="SPML")
+    rep = loadout.report(con, [slot("DC", "duel-commander", "DC", balde="Cloud")])
+    s = por_nome(rep)["DC"]
+    assert s["tenho"] == 1 and s["missing"][0]["alt"] == {"não é foil": 1}, s
+    print("Duel Commander: só foil fecha o slot")
+
+
+def caso_pauper_prefere_foil_mas_aceita_nonfoil():
+    """*"Pauper: tudo foil se houver disponível, senão pode ser non-foil."*
+
+    As duas metades importam: a nonfoil FECHA o slot (não é substituto), mas
+    quando há foil é a foil que vai para a caixa."""
+    con = base()
+    deck(con, "PA", "pauper", [("Thoughtcast", 1)])
+    add(con, "Thoughtcast", 1, finish="nonfoil", sub="SPML")
+    rep = loadout.report(con, [slot("PA", "pauper", "PA", balde="Pauper Affinity")])
+    assert por_nome(rep)["PA"]["pct"] == 100, "sem foil, a nonfoil serve"
+
+    add(con, "Thoughtcast", 1, finish="foil", sub="SPML")
+    rep = loadout.report(con, [slot("PA", "pauper", "PA", balde="Pauper Affinity")])
+    s = por_nome(rep)["PA"]
+    assert s["have"][0]["lotes"][0]["finish"] == "foil", s["have"][0]["lotes"]
+    print("Pauper: leva a foil quando há, e a nonfoil quando não há")
+
+
+def caso_pauper_agrega_do_spml():
+    """*"Para Pauper, utilizas as cartas que forem necessárias do SPML e agregas
+    ao Pauper."* É o caso dos 4 Utrom Monitor: estão no SPML, o deck de Pauper
+    precisa deles, e é a caixa do Pauper que fica com eles — mesmo com o SPML a
+    querê-los para o Modern, que escolhe depois."""
+    con = base()
+    deck(con, "PA", "pauper", [("Thoughtcast", 4)])
+    deck(con, "MO", "modern", [("Thoughtcast", 4)])
+    add(con, "Thoughtcast", 4, finish="foil", sub="SPML")
+    rep = loadout.report(con, [slot("MO", "modern", "MO", prioridade=1, balde="SPML"),
+                               slot("PA", "pauper", "PA", prioridade=9,
+                                    balde="Pauper Affinity")])
+    s = por_nome(rep)
+    assert s["PA"]["pct"] == 100, s["PA"]
+    assert s["PA"]["origens"] == {"SPML": 4}, s["PA"]["origens"]
+    assert s["MO"]["noutra"] == 4 and s["MO"]["comprar"] == 0, s["MO"]
+    print("Pauper agrega do SPML o que precisa, e o Modern vai lá buscá-las")
+
+
+def caso_premodern_so_edicoes_da_era():
+    """*"Premodern: apenas as edições da era Premodern."* Uma PT de uma impressão
+    posterior ao Scourge é substituto, não slot fechado — a diferença para as EN
+    é de propósito: ali ele fechou a porta, aqui só diz que a edição é outra."""
+    con = base()
+    deck(con, "PM", "premodern", [("Thoughtcast", 1)])     # mrd, 2003-10-02
+    add(con, "Thoughtcast", 1, lang="pt", sub="Premodern (geral)")
+    rep = loadout.report(con, [slot("PM", "premodern", "PM",
+                                    balde="Premodern (geral)")])
+    s = por_nome(rep)["PM"]
+    assert s["tenho"] == 0, s["tenho"]
+    assert s["missing"][0]["alt"] == {"edição posterior ao Scourge": 1}, \
+        s["missing"][0]["alt"]
+    print("Premodern: uma impressão posterior ao Scourge não fecha o slot")
 
 
 def caso_foil():
@@ -495,7 +659,13 @@ def run():
                caso_premodern_e_a_caixa_rl_partida_em_pt_e_en,
                caso_premodern_nao_tira_de_caixa_de_outro_deck,
                caso_pt_da_era_trancada_ao_premodern,
-               caso_excepcao_do_balde, caso_foil, caso_colecionador_e_reservas_fora,
+               caso_premodern_so_edicoes_da_era,
+               caso_excepcao_do_balde, caso_ordem_dos_grupos_de_formato,
+               caso_vigiado_escolhe_primeiro_dentro_do_grupo,
+               caso_cedh_so_ingles_nonfoil, caso_duel_commander_so_foil,
+               caso_pauper_prefere_foil_mas_aceita_nonfoil,
+               caso_pauper_agrega_do_spml,
+               caso_foil, caso_colecionador_e_reservas_fora,
                caso_backup_e_venda, caso_substituto_nao_se_vende, caso_variantes,
                caso_slot_vazio, caso_preco_foil):
         fn()

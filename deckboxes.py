@@ -119,12 +119,13 @@ def _slot_html(s, imgs, conflitos_por_carta):
         badges.append('<span class="bdg wt">❓ por confirmar</span>')
     else:
         badges.append('<span class="bdg">🔧 a montar</span>')
-    if s.get("lingua"):
-        badges.append(f'<span class="bdg pt">🇵🇹 só {s["lingua"].upper()}</span>')
-    if s.get("formato") == "premodern":
-        badges.append('<span class="bdg pt">🚫 sem Caixa RL</span>')
-    if s.get("acabamento") == "foil":
-        badges.append('<span class="bdg fo">✨ só foil</span>')
+    # As regras de material vêm do grupo de formato (`loadout.regras_por_formato`)
+    # e mostram-se todas: uma regra que a página não diz é a página a mentir em
+    # silêncio — foi o que aconteceu ao antigo "sem Caixa RL", que ficou escrito
+    # aqui depois de a regra já ver a metade PT da Caixa RL.
+    for ico, txt in loadout.rotulo_material(s):
+        cls = "fo" if "foil" in txt else "pt"
+        badges.append(f'<span class="bdg {cls}">{ico} {html.escape(txt)}</span>')
     if s.get("variantes"):
         badges.append(f'<span class="bdg">⇄ {len(s["variantes"])} variantes</span>')
 
@@ -191,8 +192,7 @@ def _slot_html(s, imgs, conflitos_por_carta):
                    + " · ".join(f'{html.escape(k)} <b>{v}</b>'
                                 for k, v in s["origens"].items()) + '</div>')
 
-    marca = ("FOIL" if s.get("acabamento") == "foil"
-             else "PT" if s.get("lingua") == "pt" else "")
+    marca = loadout.marca_wantlist(s)
     return (
         f'<div class="deck">'
         f'<div class="dtop"><b>{html.escape(s["nome"])}</b>'

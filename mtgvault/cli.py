@@ -460,10 +460,8 @@ def _loadout_detalhe(rep, procura):
         print(f"\n=== {s['nome']} ({s['formato']}) — {s['pct']}% "
               f"[{s['tenho']}/{s['precisa']}] ===")
         print(f"  fonte: {s.get('fonte')} {s.get('ref') or ''} — {s['nota']}")
-        if s.get("lingua"):
-            print(f"  só cartas em {s['lingua'].upper()}")
-        if s.get("acabamento") == "foil":
-            print("  só foil/etched (as da Reserved List podem ser nonfoil)")
+        for _ico, txt in loadout.rotulo_material(s):
+            print(f"  {txt}")
         # Onde estão as cartas que ele já tem: é a metade da pergunta "onde está
         # a carta" que não é falta nenhuma — é o que se tira da estante para
         # montar. A Caixa RL aparece partida em PT e EN, como está lá.
@@ -507,9 +505,8 @@ def _loadout_detalhe(rep, procura):
             continue
         print("\n  wantlist (formato Cardmarket) — só o que é mesmo compra:")
         for m in compras:
-            marca = " [FOIL]" if s.get("acabamento") == "foil" else (
-                " [PT]" if s.get("lingua") == "pt" else "")
-            print(f"    {m['comprar']} {m['nm']}{marca}")
+            marca = loadout.marca_wantlist(s)
+            print(f"    {m['comprar']} {m['nm']}" + (f" [{marca}]" if marca else ""))
 
 
 def _vender(rep, csv_out=False, tudo=False):

@@ -69,7 +69,7 @@ my_decks.py         segue decks-alvo (por assinatura e por jogador de MTGO) -> t
 commander_decks.py  decks de comandante por consenso EM CAMADAS: núcleo>=50% (=deck, deck_cards) / flex 25-50% / tech 15-25%; FILTRA pela cor do comandante. `tiers()` reusado pelo colecao_cor
 premodern_decks.py  consenso dos arquétipos-alvo de Premodern (`colecao_config.json`→`premodern_arquetipos_alvo`: UW Replenish, Enchantress) -> decks/deck_cards com o sufixo " (consenso)". Agrupa pelas etiquetas do `tagging` (o clustering não os separa) e usa `stock.stock_from_lists`. Mostrado no `meusdecks`
 refresh_collection.py  collection_owned p/ o index.html
-colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados
+colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados
 ```
 Cada `.html` gerado tem de estar na lista do `git add` do workflow (`daily.yml`,
 passo "Guardar HTML") e, se for página nova, com link no `index.html`.
@@ -178,10 +178,12 @@ compre, depois indico (meto foto) e vais ajustando."*
   Plowshares para tapar um buraco que não existe.**
 - **Uma cópia que a caixa não VÊ nunca é "noutra caixa".** A regra 1b (Premodern
   x Caixa RL) e o `_porque_nao` continuam a ganhar: para essas, a carta é compra.
-- **A ordem de `prioridade` é o que torna isto correcto.** Um lote que serve o
+- **A ordem da alocação é o que torna isto correcto.** Um lote que serve o
   slot S e ainda está livre quando S corre é sempre gasto por S; logo, tudo o que
-  falta a S e servia S foi levado por um slot de prioridade MAIOR. Não é preciso
+  falta a S e servia S foi levado por um slot que corre ANTES. Não é preciso
   uma segunda passagem — mas se mudares a ordem da alocação, isto deixa de valer.
+  (Desde 2026-09-07 essa ordem é a de `regras_por_formato`, não a dos números do
+  config — ver "As regras de material são por GRUPO DE FORMATO" abaixo.)
 - **A venda não muda:** uma carta pedida por qualquer caixa já estava alocada, e
   o que está alocado nunca entra na venda. E as `retidos`/`guardar` continuam iguais.
 - **Como se ajusta depois de comprar:** o André mete as fotos das cartas novas em
@@ -190,7 +192,55 @@ compre, depois indico (meto foto) e vais ajustando."*
   sozinha na corrida seguinte do `daily.py`** (passo `deckboxes`). Não há estado
   guardado: o "onde está a carta" é sempre recalculado da coleção do dia.
 
-**Duas regras de material (André, 2026-09-07, à letra).**
+**As regras de material são por GRUPO DE FORMATO, e a ordem sai delas (André,
+2026-09-07, à letra).** As duas regras abaixo foram as duas primeiras de cinco;
+no mesmo dia ele completou-as e deu a ordem da alocação:
+
+> *"Para Pauper, utilizas as cartas que forem necessárias do SPML e agregas ao
+> Pauper."* · *"Os decks vigiados têm prioridade para ficarem com as cartas,
+> desde que respeitem as regras."* · *"Língua/acabamento por formato: **Premodern**
+> apenas as edições da era Premodern e em Português; **cEDH** apenas inglês
+> non-foil; **Duel Commander** apenas foil; **SPML** tudo foil e inglês (RL pode
+> ser non-foil); **Pauper** tudo foil se houver disponível, senão pode ser
+> non-foil."* · *"**Ordem de prioridade na alocação: Premodern > cEDH > Duel
+> Commander > Pauper > SPML.**"*
+
+Vive tudo em `colecao_config.json → regras_por_formato` (com o mesmo default em
+`loadout.REGRAS_FORMATO`), uma LISTA cuja **ordem é a ordem da alocação**.
+Chaves: `formatos`, `lingua`, `acabamento` (`foil` | `nonfoil` |
+`prefere_foil` = aceita as duas e gasta a foil primeiro), `edicoes`
+(`"premodern"` = só até ao Scourge), `baldes` (os únicos que a caixa vê) e
+`estrita` (a `lingua`/`baldes` põem a cópia **fora de vista** em vez de
+substituto). O que estiver escrito no próprio slot do `loadout` ganha à regra do
+grupo — uma excepção é uma linha de config, não uma linha de código.
+
+- **O `prioridade` do slot deixou de mandar.** `resolve_slots` ordena por
+  (grupo, deck vigiado primeiro, `prioridade`) e **reescreve `prioridade` com a
+  posição global** que daí sai; o número do config fica em `prioridade_config`.
+  Quem lê `s["prioridade"]` (página, CLI, `conflitos`) lê a ordem verdadeira.
+  "Deck vigiado" = `fonte: "vigiado"` ou `ref` em `decks_vigiados`.
+- **Uma cópia que está DENTRO da caixa do próprio deck escapa a todas as regras
+  de material.** É a irmã da excepção do balde da regra 1: o cEDH passou a ser
+  "só inglês non-foil" e o Blue Farm/Cloud cEDH têm PT e foil lá dentro — sem
+  esta excepção o vault desmontava no papel dois decks que estão montados na
+  estante. **Só vale para os baldes que SÃO a caixa de um deck**
+  (`loadout.caixas_de_deck`): o `SPML` e o `Premodern (geral)` são colecção
+  partilhada por vários slots, e aí a regra manda.
+- **O Pauper não tem regra de `baldes`, de propósito** — é o *"utilizas as
+  cartas que forem necessárias do SPML"*. O que mudou para ele foi passar a
+  gastar as foil primeiro.
+- **Toda a página que mostre uma caixa mostra as regras dela** via
+  `loadout.rotulo_material(s)` (e a etiqueta da wantlist via
+  `loadout.marca_wantlist(s)`). Escrito à mão em cada página, ficou lá um *"sem
+  Caixa RL"* depois de a regra já ver a metade PT da Caixa RL — uma regra que a
+  página não diz é a página a mentir em silêncio.
+- **Efeito medido na base de 2026-09-07:** fechar tudo passou de **7 700,35 €**
+  para **7 891,50 €** (230 a comprar, 61 a ir buscar). Só duas caixas mexeram —
+  Cloud cEDH 76 %→72 % (perdeu 4 foil para o Duel Commander, que agora escolhe
+  antes do Pauper) e Cloud (Duel Commander) 79 %→81 % / 104 €→294 € (ganhou-as,
+  mas as nonfoil deixaram de fechar slot). A venda **não mexeu** (91 cópias /
+  702,95 € + 39 RL / 5 736,16 €, `guardar` a 0).
+
 1. *"Para Premodern as cartas são das edições que tínhamos visto e em Português;
    essas cartas NÃO entram para outros formatos!!"* → um slot com `"lingua":"pt"`
    só fecha com cópias PT, e uma cópia PT de impressão até ao **Scourge
