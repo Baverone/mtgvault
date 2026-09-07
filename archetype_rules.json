@@ -1,5 +1,13 @@
 {
-  "_comentario": "Arquétipos por REGRA (carta definidora), com etiqueta dupla — um deck pode ter vários nomes. Edita à mão para afinar a tua maneira. 'all' = tem de ter todas; 'any' = basta uma. Os nomes das cartas têm de bater certo com o catálogo (nome oracle).",
+  "_comentario": "Arquétipos por REGRA (carta definidora), com etiqueta dupla — um deck pode ter vários nomes. Edita à mão para afinar a tua maneira. 'all' = tem de ter todas; 'any' = basta uma; 'none' = não pode ter nenhuma. Os nomes das cartas têm de bater certo com o catálogo (nome oracle).",
+  "_premodern": "Os nomes 'UW Replenish' e 'Enchantress' são os alvos de colecao_config.json -> premodern_arquetipos_alvo: é por eles que o premodern_decks.py monta a lista de consenso. NÃO lhes mudes o nome sem mudar lá também. O 'none' é indispensável: 96% das listas de Enchantress jogam Replenish, por isso sem ele os dois arquétipos eram o mesmo.",
+  "premodern": [
+    { "name": "UW Replenish",                     "all": ["Replenish", "Opalescence"], "none": ["Argothian Enchantress", "Enchantress's Presence"] },
+    { "name": "Enchantress",                      "any": ["Argothian Enchantress", "Enchantress's Presence"] },
+    { "name": "Enchantress (GW Sanctum)",         "any": ["Argothian Enchantress", "Enchantress's Presence"], "all": ["Serra's Sanctum"] },
+    { "name": "Enchantress (mono-verde Survival)", "any": ["Argothian Enchantress", "Enchantress's Presence"], "all": ["Survival of the Fittest"] },
+    { "name": "Stiflenought",                     "all": ["Phyrexian Dreadnought"] }
+  ],
   "modern": [
     { "name": "Affinity UR (Kappa)",        "all": ["Kappa Cannoneer"] },
     { "name": "Hardened Scales",             "all": ["Hardened Scales"] },

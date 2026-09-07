@@ -48,7 +48,7 @@ daily.py          o job diário (encadeia tudo o que está abaixo)
 
 **Geradores do site (scripts na raiz, corridos pelo `daily.py`, HTML no GitHub Pages):**
 ```
-meta_coverage.py    cobertura.html — top-10 ponderado + staples + emergentes. NB (2026-09-07): quem decide que listas contam é `sources.lista_conta`/`counting_sql` (ver "Que listas contam"), e o peso vem de `sources.tier_weight_sql`; janela 30 dias; expõe COLLECTION_BALDES={"SPML","Premodern (geral)"}, owned_available(con) (=coleção MENOS cartas comprometidas com decks vigiados) e counting_lists(con,fmt,aid) — a base de "tenho" do metagame/decksfaziveis/cobertura
+meta_coverage.py    cobertura.html — top-10 ponderado + staples + emergentes. NB (2026-09-07): quem decide que listas contam é `sources.lista_conta`/`counting_sql` (ver "Que listas contam"), e o peso vem de `sources.tier_weight_sql`; janela 30 dias; expõe COLLECTION_BALDES={"SPML","Premodern (geral)"}, owned_available(con) (=coleção MENOS cartas comprometidas com decks vigiados) e counting_lists(con,fmt,aid) — a base de "tenho" do metagame/decksfaziveis/cobertura. NB (2026-09-07): `FORMATS` deixou de ser fixo — filtra `_FORMATS` por `colecao_config.json`→`formatos_metagame` (hoje standard/pioneer/modern; o Premodern saiu). `metagame.py` e `decks_faziveis.py` leem ESTA lista
 decks_faziveis.py   decksfaziveis.html — "Decks fazíveis": por formato, decks do top-10 já a ≥ min% (colecao_config.json→decks_faziveis_min_pct, default 50). Cor=tenho/cinza=falta + wantlist. Reusa metagame._grid e meta_coverage._rank/owned_available
 buildability.py     (DORMENTE) o "Montar" foi tirado do menu p/ o André refazer; já NÃO corre no daily nem vai ao git-add. Continua importado por meusdecks.py (FMT_LABEL/FMT_ORDER/BASICS)
 classify.py         classificação Deck/Coleção/Vender (alimenta colecao_cor.html)
@@ -56,7 +56,7 @@ colecao_cor.py      colecao_cor.html — "Binders": coleção INTEIRA por cor→
 collection_gallery.py  colecao.html — galeria por sub-coleção
 core_decks.py       (coredecks.html APAGADO 2026-08-26, a redefinir; NÃO vai ao git-add) — mas core_decks.py continua a correr no daily p/ calcular card_price/posse
 alertas.py          alertas.html — vender/comprar por movimento de preço (fora do menu atual)
-meusdecks.py        meusdecks.html — "Decks vigiados": agora SÓ os 5 fixos de colecao_config.json→decks_vigiados (Pauper-Luffy, Premodern-Luffy/Stiflenought, Blue Farm, Cloud cEDH, Cloud Duel Commander — este ÚLTIMO agora INCLUÍDO). Lista 75 verde/vermelho, % e evolução; checkmark "atualizado" (localStorage)
+meusdecks.py        meusdecks.html — "Decks vigiados": agora SÓ os 5 fixos de colecao_config.json→decks_vigiados (Pauper-Luffy, Premodern-Luffy/Stiflenought, Blue Farm, Cloud cEDH, Cloud Duel Commander — este ÚLTIMO agora INCLUÍDO) MAIS os alvos de consenso de Premodern (`premodern_arquetipos_alvo`, sufixo " (consenso)"). Lista 75 verde/vermelho, % e evolução; checkmark "atualizado" (localStorage)
 metagame.py         metagame.html — "Metagame" (página principal): top-10 por formato (só Challenges/Showcases, 30 dias), cartas a cor=tenho / cinza=falta, wantlist por deck, e "Staples que faltam" por formato ordenadas por preço. Usa meta_coverage.owned_available
 (prioridade.py + metafaltas.py APAGADOS 2026-08-26, a redefinir)
 reservedlist.py     reservedlist.html — Reserved List (Scryfall) x coleção, por edição, preço/evolução, e 'VENDER' as que não jogam em formato nenhum
@@ -64,8 +64,9 @@ caixarl.py          caixarl.html — "Caixa Reserved List": a RL que está fora 
 showcase.py         showcase.html — "Decks Showcase Challenger": eventos competitivos recentes (MTGO + presenciais do mtgtop8) agrupados por arquétipo. Tinha filtro e pesos PRÓPRIOS (fonte + showcase_min_players + lista de nomes casuais) — era por isso que continuava a dar listas enquanto o metagame vinha vazio. Desde 2026-09-07 usa `sources.counting_sql`/`tier_weight` como toda a gente; a chave `showcase_min_players` do config deixou de existir
 my_decks.py         segue decks-alvo (por assinatura e por jogador de MTGO) -> tabela decks
 commander_decks.py  decks de comandante por consenso EM CAMADAS: núcleo>=50% (=deck, deck_cards) / flex 25-50% / tech 15-25%; FILTRA pela cor do comandante. `tiers()` reusado pelo colecao_cor
+premodern_decks.py  consenso dos arquétipos-alvo de Premodern (`colecao_config.json`→`premodern_arquetipos_alvo`: UW Replenish, Enchantress) -> decks/deck_cards com o sufixo " (consenso)". Agrupa pelas etiquetas do `tagging` (o clustering não os separa) e usa `stock.stock_from_lists`. Mostrado no `meusdecks`
 refresh_collection.py  collection_owned p/ o index.html
-colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, metagame_fontes
+colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados
 ```
 Cada `.html` gerado tem de estar na lista do `git add` do workflow (`daily.yml`,
 passo "Guardar HTML") e, se for página nova, com link no `index.html`.
@@ -297,3 +298,70 @@ rede. Se algo vier vazio, é aqui:
 
 
 **cEDH e Duel Commander Trials (Andre, 2026-09-07).** O cEDH nao tem metagame: os dois decks de cEDH dele seguem listas por link directo (watched), por isso `metagame_fontes.cedh.tiers = []` e o cEDH saiu de `MTGTOP8_FORMATS`/`ANALYSE_FORMATS` no `daily.py`. No Duel Commander contam tambem os `Duel Commander Trial` (tier `outro`), alem das ligas e dos presenciais sem minimo.
+
+## Âmbito do metagame por formato (André, 2026-09-07)
+
+Nem todos os formatos precisam de metagame. Palavras dele: *"Duel Commander: só
+quero listas do comandante que tinha pedido (Cloud). Pauper também não precisa,
+pois só sigo a lista Pauper do jogador específico (Luffy). Premodern: o deck de
+Stiflenought não preciso de listas, sigo a lista do jogador específico (Luffy).
+Preciso de consenso para lista de alguns decks de Premodern: Replenish,
+Enchantress."*
+
+Há três níveis, e cada um tem a sua chave no `colecao_config.json`:
+
+| | recolhe listas? | conta p/ metagame (`metagame_fontes`) | agrupa em arquétipos (`ANALYSE_FORMATS`) | tem página de metagame (`formatos_metagame`) |
+|---|---|---|---|---|
+| Standard/Pioneer/Modern | sim | sim | sim | **sim** |
+| Legacy, Vintage | sim | sim | sim | não (Legacy fora desde 2026-08-31) |
+| **Premodern** | sim | sim (441 Challenges) | sim | **não** — só o consenso dos alvos |
+| **Duel Commander** | sim (para o Cloud) | sim | **não** | não |
+| **Pauper** | só o Luffy | **não** (`tiers: []`) | **não** | não |
+| cEDH | não (saiu do harvest) | não | não | não |
+
+- **Pauper — `so_jogadores_vigiados` (a armadilha).** Tirar o Pauper do harvest
+  parecia óbvio e **matava a vigilância do Luffy em silêncio**:
+  `watchlist.check_mtgo_player` não vai à rede, lê a lista mais recente do
+  jogador *das decklists que o harvest já guardou*. Sem harvest, a lista dele
+  congelava no último snapshot e o `daily.py` continuava a dizer `[ok]` — o
+  mesmo padrão do `event_tier`. Por isso o filtro está em
+  `sources.store_decklist`: as páginas do evento continuam a ser lidas (é de lá
+  que sai a lista do Luffy) mas **só se guarda a de quem está em `watched` com
+  `kind='mtgo_player'` naquele formato**. As `manual` passam sempre. Para pôr
+  outro formato neste regime basta acrescentá-lo a `so_jogadores_vigiados`.
+- **Duel Commander.** Sai só de `ANALYSE_FORMATS` (o clustering e o
+  `card_roles` do formato inteiro não serviam ninguém). O harvest FICA — o
+  `commander_decks.tiers()` precisa das listas do comandante, e lê as
+  `decklist_cards` directamente, nunca precisou dos `archetypes`. Confirmado
+  antes/depois: Cloud = 167 listas, núcleo 44 · flex 43 · tech 30 na altura em
+  que ficou escrito acima; na base de 2026-09-07, 167 listas, núcleo 40 · flex
+  40 · tech 39, **igual antes e depois da mudança**.
+- **Premodern — `formatos_metagame` + `premodern_arquetipos_alvo`.** Continua a
+  recolher-se e a analisar-se (as listas são precisas para o consenso), mas saiu
+  das páginas de metagame/cobertura/decks-fazíveis: `meta_coverage.FORMATS`
+  passou a ser filtrado pelo config, e o `metagame.py`/`decks_faziveis.py` leem
+  essa mesma lista (não têm cópia própria). Em vez do top-10, o
+  `premodern_decks.py` calcula a lista de consenso dos arquétipos que ele pediu
+  e grava-a em `decks`/`deck_cards` com o sufixo `" (consenso)"`; aparece no
+  `meusdecks.html` com % e wantlist.
+  - **O sufixo não é cosmética:** os alvos são decks POR MONTAR e **não podem**
+    entrar em `decks_vigiados` — essa lista é a dos decks montados, e o
+    `meta_coverage.owned_available` desconta-lhe as cartas à coleção
+    disponível. Um alvo lá dentro fazia a coleção parecer mais pobre do que é.
+  - **O clustering não separa estes dois arquétipos**: 96% das listas de
+    Enchantress jogam Replenish. Por isso o agrupamento é por REGRA
+    (`archetype_rules.json` → `premodern`), com o operador novo `none` (não pode
+    ter nenhuma destas cartas) — é o equivalente do `"!"` do `my_decks`. Se
+    mudares o nome de uma regra, muda também em `premodern_arquetipos_alvo`
+    (o `test_ambito.py` tranca isso).
+  - **O Stiflenought não é um alvo de propósito**: segue a lista do Luffy
+    (`my_decks.FOLLOWED_PLAYERS` + `decks_vigiados`).
+- **`stock.stock_from_lists`** é o mesmo cálculo da lista padrão do `stock_list`
+  (partilham o `_slots`/`_fill`), mas a partir de decklists em memória — os
+  alvos de Premodern não passam pelo clustering e por isso não têm linhas em
+  `card_roles`.
+
+**Nota sobre a amostra (2026-09-07).** O `daily.py` corre
+`prune_decklists(con, 30)`: o `vault.db` só tem ~30 dias de listas. Não há
+janela de 90 dias para comparar, nem tendência de mais de um mês — o histórico
+longo vive no `card_roles`, por janela.

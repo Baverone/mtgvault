@@ -41,6 +41,7 @@ import caixarl  # noqa: E402  (gera caixarl.html — Caixa Reserved List: RL for
 import showcase  # noqa: E402  (gera showcase.html — Decks Showcase Challenger, arquétipos por formato)
 import my_decks  # noqa: E402  (mantém atualizadas as listas dos decks que o André segue)
 import commander_decks  # noqa: E402  (decks de comandante seguidos por consenso, ex.: Cloud DC)
+import premodern_decks  # noqa: E402  (consenso dos arquétipos-alvo de Premodern: UW Replenish, Enchantress)
 import refresh_collection  # noqa: E402  (reconstroi collection_owned p/ o index.html)
 
 MTGO_DAYS = 3
@@ -51,8 +52,14 @@ MTGTOP8_FORMATS = ["duel-commander", "premodern"]  # cEDH saiu (Andre, 2026-09-0
 # Super Series). Os re-hosts de MTGO são deduplicados; ficam os presenciais, com
 # placement pela posição.
 MTGTOP8_PAPER = ["standard", "pioneer", "modern", "legacy"]
-ANALYSE_FORMATS = ["standard", "pioneer", "modern", "legacy", "vintage", "pauper",
-                   "duel-commander", "premodern"]
+# Clustering + core/flex. Fora (André, 2026-09-07): o PAUPER, que já não tem
+# metagame nenhum (só a lista do Luffy, ver sources.so_jogadores_vigiados), e o
+# DUEL COMMANDER, onde só interessa o consenso do Cloud — esse sai de
+# `commander_decks.tiers`, que lê as decklists directamente e nunca precisou dos
+# `archetypes`/`card_roles` do formato. O PREMODERN FICA: já não tem página de
+# metagame, mas o consenso do UW Replenish e da Enchantress precisa das listas.
+ANALYSE_FORMATS = ["standard", "pioneer", "modern", "legacy", "vintage",
+                   "premodern"]
 
 
 def _step(con, nome, fn):
@@ -245,6 +252,11 @@ def main():
         # Decks de comandante seguidos por consenso (ex.: Cloud, Midgar Mercenary
         # em Duel Commander). Reconstrói a lista de referência do metagame.
         _step(con, "decks-comandante", lambda: commander_decks.refresh(con))
+        # Consenso dos arquétipos-alvo de Premodern (UW Replenish, Enchantress).
+        # DEPOIS do `tag-arquetipos`: é das etiquetas dele que saem as listas de
+        # cada arquétipo (o clustering não os separa — a Enchantress joga 96% de
+        # Replenish e vinham colados).
+        _step(con, "decks-premodern", lambda: premodern_decks.refresh(con))
 
         # Core decks: recalcula o consenso dos decks que sigo e regista se o
         # padrão mudou (core_snapshots). Corre DEPOIS de preços + tags.

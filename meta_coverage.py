@@ -35,13 +35,24 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 from mtgvault import db, sources  # noqa: E402
 from mtgvault.collection import owned_playable  # noqa: E402
 
-FORMATS = [
+_FORMATS = [
     ("standard", "Standard", 10, []),
     ("pioneer", "Pioneer", 10, ["__greasefang__"]),
     ("modern", "Modern", 10, []),
     # Legacy esquecido por agora (André, 2026-08-31): fora do metagame/decks-fazíveis.
     ("premodern", "Premodern", 10, []),
 ]
+
+# Quais destes entram nas páginas de metagame vem do colecao_config.json —
+# `formatos_metagame`. O Premodern saiu em 2026-09-07 (o André não quer top-10 de
+# Premodern, só o consenso de UW Replenish e Enchantress, ver premodern_decks.py).
+# É só a VISTA: as listas de Premodern continuam a ser recolhidas e analisadas.
+# metagame.py e decks_faziveis.py leem esta lista, por isso mudar o config chega
+# para acertar as três páginas. (O showcase.py tem lista própria — nunca teve
+# Premodern nem Pauper.)
+_ATIVOS = sources.config().get("formatos_metagame")
+FORMATS = ([f for f in _FORMATS if f[0] in {str(x).lower() for x in _ATIVOS}]
+           if _ATIVOS is not None else _FORMATS)
 
 # A COLEÇÃO disponível para montar decks do metagame = só estes baldes. Os baldes
 # dos decks vigiados (Blue Farm, Cloud, Cloud cEDH, Pauper Affinity) estão agregados
@@ -55,12 +66,13 @@ def _committed_to_watched(con):
     COLLECTION_BALDES); só o(s) de Premodern (Stiflenought-Luffy) têm as cartas no
     balde Premodern (geral) — essas subtraem-se aqui para deixarem de estar
     disponíveis (regra do André: todas as cartas dos decks vigiados pertencem ao
-    deck e saem da coleção)."""
-    import json
-    try:
-        vig = json.loads((ROOT / "colecao_config.json").read_text(encoding="utf-8")).get("decks_vigiados") or []
-    except Exception:
-        vig = []
+    deck e saem da coleção).
+
+    Só `decks_vigiados` (decks MONTADOS). Os alvos de consenso de Premodern
+    (premodern_arquetipos_alvo) são o contrário disto — decks por montar — e por
+    isso NÃO podem sair daqui, senão a coleção descontava cartas que ele tem
+    livres."""
+    vig = sources.config().get("decks_vigiados") or []
     if not vig:
         return {}
     ph = ",".join("?" * len(vig))

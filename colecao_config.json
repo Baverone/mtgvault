@@ -38,8 +38,28 @@
       "tiers": [],
       "ligas": false,
       "_nota": "Andre 2026-09-07: nao quer metagame de cEDH — os 2 decks dele seguem links directos (watched). Nada conta e o harvest de cEDH foi retirado do daily."
+    },
+    "pauper": {
+      "tiers": [],
+      "ligas": false,
+      "_nota": "Andre 2026-09-07: 'Pauper tambem nao precisa, pois so sigo a lista Pauper do jogador especifico (Luffy)'. Nada conta; so se guardam as listas dele (ver so_jogadores_vigiados)."
     }
   },
+  "formatos_metagame": [
+    "standard",
+    "pioneer",
+    "modern"
+  ],
+  "_formatos_metagame": "Que formatos aparecem nas páginas de METAGAME (metagame.html, cobertura.html, decksfaziveis.html): top-10, staples, decks fazíveis. Só entram formatos que o meta_coverage.FORMATS conhece (standard | pioneer | modern | premodern). Decisão do André, 2026-09-07: o Premodern SAIU — ele não quer um top-10 de Premodern, só o consenso dos arquétipos que pediu (ver premodern_arquetipos_alvo). Duel Commander, cEDH e Pauper já não estavam aqui (seguem-se por lista/comandante). Tirar daqui NÃO pára a recolha: as listas continuam a entrar, só não geram página de metagame.",
+  "premodern_arquetipos_alvo": [
+    "UW Replenish",
+    "Enchantress"
+  ],
+  "_premodern_arquetipos_alvo": "Os únicos arquétipos de Premodern para os quais o vault calcula uma lista de CONSENSO (premodern_decks.py -> decks/deck_cards, mostrada em 'Decks permanentes'). Palavras do André (2026-09-07): 'Preciso de consenso para lista de alguns decks de Premodern: Replenish, Enchantress'. O Stiflenought não está aqui de propósito — esse segue a lista do Luffy (decks_vigiados). Os nomes têm de bater certo com os de archetype_rules.json -> premodern.",
+  "so_jogadores_vigiados": [
+    "pauper"
+  ],
+  "_so_jogadores_vigiados": "Formatos SEM metagame que se seguem só por jogador. Nestes, a recolha continua a LER as páginas dos eventos (é de lá que sai a lista vigiada) mas só GUARDA as listas dos jogadores em `watched` (kind='mtgo_player') desse formato. Sem isto, tirar o Pauper do harvest matava em silêncio a vigilância do Luffy — o watchlist não vai à rede, lê o que o harvest trouxe. As listas 'manual' passam sempre.",
   "_metagame_fontes": "QUE LISTAS CONTAM para o metagame (decisão do André, 2026-09-07: 'no mtgvault não quero listas de league; quero challenge, showcase, e presenciais com 64 ou mais jogadores — menos Duel Commander, que pode ter menos jogadores e pode ser ligas'). Vale para TUDO: metagame, cobertura, decks fazíveis, showcase, o cálculo do core e os decks seguidos. 'tiers' = valores de decklists.event_tier que entram (Challenge | Showcase | Presencial | Qualifier | Preliminary | League | outro). 'min_jogadores_presencial' = nº mínimo de jogadores de um torneio PRESENCIAL; 0 = sem mínimo. Um presencial SEM contagem de jogadores nunca conta (não se assume o mínimo). 'ligas' = true acrescenta League aos tiers. '_default' aplica-se a todos os formatos; uma chave com nome de formato só a esse. As listas 'manual' (metidas por ti) contam sempre. Para dar uma exceção ao Premodern (que com esta regra fica sem listas — não tem presenciais de 64+ e as ligas do MTGO saem), acrescenta aqui: \"premodern\": { \"min_jogadores_presencial\": 0, \"ligas\": true }. O mesmo serve para o cEDH, que só tem presenciais pequenos.",
   "decks_vigiados": [
     "UW Oswald",
