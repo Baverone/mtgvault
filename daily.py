@@ -45,14 +45,14 @@ import refresh_collection  # noqa: E402  (reconstroi collection_owned p/ o index
 
 MTGO_DAYS = 3
 # O mtgo cobre a maioria; o mtgtop8 acrescenta o papel e é a única fonte de cEDH.
-MTGTOP8_FORMATS = ["duel-commander", "premodern", "cedh"]
+MTGTOP8_FORMATS = ["duel-commander", "premodern"]  # cEDH saiu (Andre, 2026-09-07): os decks dele seguem links directos
 # Torneios PRESENCIAIS (mtgtop8) para os formatos que o MTGO já cobre — para a
 # página Showcase Challenger juntar o papel ao online (ex.: Magic Spotlight, ANZMTG
 # Super Series). Os re-hosts de MTGO são deduplicados; ficam os presenciais, com
 # placement pela posição.
 MTGTOP8_PAPER = ["standard", "pioneer", "modern", "legacy"]
 ANALYSE_FORMATS = ["standard", "pioneer", "modern", "legacy", "vintage", "pauper",
-                   "duel-commander", "premodern", "cedh"]
+                   "duel-commander", "premodern"]
 
 
 def _step(con, nome, fn):

@@ -294,3 +294,6 @@ rede. Se algo vier vazio, é aqui:
   vai para o Git (está no `.gitignore` desde 2026-08; vive no Release `data`,
   ver `scripts/`), mas continua a ter de ficar leve: é descarregado e
   republicado inteiro a cada execução.
+
+
+**cEDH e Duel Commander Trials (Andre, 2026-09-07).** O cEDH nao tem metagame: os dois decks de cEDH dele seguem listas por link directo (watched), por isso `metagame_fontes.cedh.tiers = []` e o cEDH saiu de `MTGTOP8_FORMATS`/`ANALYSE_FORMATS` no `daily.py`. No Duel Commander contam tambem os `Duel Commander Trial` (tier `outro`), alem das ligas e dos presenciais sem minimo.
