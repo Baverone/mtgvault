@@ -240,9 +240,11 @@ def _decks_de_slots(slots, fmt, so_refs=None):
         badges = []
         if s.get("montado"):
             badges.append(("ok", "✅ montado"))
-        # As regras de material do grupo de formato, todas (ver `deckboxes`).
-        for ico, txt in loadout.rotulo_material(s):
-            badges.append(("fo" if "foil" in txt else "pt", f"{ico} {txt}"))
+        # As regras de material do grupo de formato, todas (ver `deckboxes`). A
+        # classe vem do `rotulo_material`: decidi-la aqui com `"foil" in txt`
+        # pintava de dourado a caixa que é *"só nonfoil"*.
+        for ico, txt, cls in loadout.rotulo_material(s):
+            badges.append((cls, f"{ico} {txt}"))
         if s.get("so_de_variante"):
             badges.append(("", f'⇄ {len(s["so_de_variante"])} cartas só de variante'))
         out.append({"nome": s["nome"], "sub": s["nota"], "badges": badges,

@@ -61,7 +61,7 @@ collection_gallery.py  colecao.html — galeria por sub-coleção
 core_decks.py       (coredecks.html APAGADO 2026-08-26, a redefinir; NÃO vai ao git-add) — mas core_decks.py continua a correr no daily p/ calcular card_price/posse
 alertas.py          alertas.html — vender/comprar por movimento de preço (fora do menu atual)
 meusdecks.py        meusdecks.html — "Decks vigiados": agora SÓ os 5 fixos de colecao_config.json→decks_vigiados (Pauper-Luffy, Premodern-Luffy/Stiflenought, Blue Farm, Cloud cEDH, Cloud Duel Commander — este ÚLTIMO agora INCLUÍDO) MAIS os alvos de consenso de Premodern (`premodern_arquetipos_alvo`, sufixo " (consenso)"). Lista 75 verde/vermelho, % e evolução; checkmark "atualizado" (localStorage). NB (2026-09-07): a POSSE vem da alocação do loadout (`loadout.slots_por_lista`/`linhas_por_carta`), não de uma contagem própria — ver "Posse: quem conta o quê"
-deckboxes.py        deckboxes.html — "Deckboxes": o LOADOUT (colecao_config.json→loadout), os decks montados ao mesmo tempo com a coleção REPARTIDA entre eles (uma cópia física serve uma caixa só). NB (2026-09-07): a página foi reescrita com **uma ABA POR DECK** (o pedido dele: *"faz como no riftvault — no botão, cada deck tem uma aba própria"*), mais as abas **Todas**, **Arrumar**, **Partilhadas**, **Comprar** e **Vender**. Os dados vão em JSON dentro do HTML (`<script id="dados">`) e o render é JavaScript — o MESMO ficheiro serve o site publicado (`editable:false`) e o modo edição do `webapp.py` (`editable:true`, com botões). Por caixa: barra, dois números ("faltam comprar" e "ir buscar a outra caixa"), grelha de cartas com três estados, "tirar de:" (`slot["origens"]`), substitutos, wantlist Cardmarket (SÓ o que é mesmo compra). Motor em mtgvault/loadout.py
+deckboxes.py        deckboxes.html — "Deckboxes": o LOADOUT (colecao_config.json→loadout), os decks montados ao mesmo tempo com a coleção REPARTIDA entre eles (uma cópia física serve uma caixa só). NB (2026-09-07): a página foi reescrita com **uma ABA POR DECK** (o pedido dele: *"faz como no riftvault — no botão, cada deck tem uma aba própria"*), mais as abas **Todas**, **Arrumar**, **Partilhadas**, **Comprar** e **Vender**. Os dados vão em JSON dentro do HTML (`<script id="dados">`) e o render é JavaScript — o MESMO ficheiro serve o site publicado (`editable:false`) e o modo edição do `webapp.py` (`editable:true`, com botões). Por caixa: barra, dois números ("faltam comprar" e "ir buscar a outra caixa"), grelha de cartas com três estados, "tirar de:" (`slot["origens"]`), substitutos, wantlist Cardmarket (SÓ o que é mesmo compra). Na aba **Comprar**, cada linha diz para que caixa é a compra (`para`) e em que material (`loadout.requisito_material`), há selector por caixa (o "copiar" copia só o filtro activo) e as cartas ≥100 €/cópia levam chip «cara» e total à parte — Mishra's Workshop sozinha vale mais do que o resto da lista. Motor em mtgvault/loadout.py
 webapp.py           MODO EDIÇÃO local, **porto 8771** (o 8770 é do `riftvault serve` — não trocar). Serve o `deckboxes.html` com os botões *Tornar permanente / Deixar de ser permanente*, *Subir / Descer*, *Sleevado e na caixa* e *Já arrumei tudo*. As PREFERÊNCIAS vão para o `colecao_config.json` (que já manda no loadout e vai no Git); o que é FÍSICO vai para a `copy_allocation`. Mostra o URL da rede local + QR ao arrancar. Mantido de pé pela tarefa `ai-pc/tasks/mtgvault-serve` (verifica de 5 em 5 min, relança destacado)
 metagame.py         metagame.html — "Metagame": desde 2026-09-07 já NÃO é o top-10 de cada formato; é o **top-N que ele está mais perto de concluir** (`colecao_config.json`→`metagame_top_n`, default 3). `SECOES` decide o modo por formato: `top` (Standard/Pioneer/Legacy — as caixas do loadout por escolher, via `loadout.foil_report`), `caixas` (Modern — o deck já escolhido, do próprio loadout) e `alvos` (Premodern — só o `premodern_arquetipos_alvo`). Posse pela alocação do loadout, três estados, wantlist Cardmarket. NÃO lê `formatos_metagame` (o Legacy tinha de entrar e não está lá)
 (prioridade.py + metafaltas.py APAGADOS 2026-08-26, a redefinir)
@@ -289,10 +289,28 @@ grupo — uma excepção é uma linha de config, não uma linha de código.
   cartas que forem necessárias do SPML"*. O que mudou para ele foi passar a
   gastar as foil primeiro.
 - **Toda a página que mostre uma caixa mostra as regras dela** via
-  `loadout.rotulo_material(s)` (e a etiqueta da wantlist via
-  `loadout.marca_wantlist(s)`). Escrito à mão em cada página, ficou lá um *"sem
+  `loadout.rotulo_material(s)` → `(ícone, texto, classe)`, mais
+  `loadout.requisito_material(s)` (a versão curta — `"PT · ≤SCG"`, `"EN · foil"`
+  — que a aba *Comprar* põe em cada linha da wantlist) e
+  `loadout.marca_wantlist(s)`. Escrito à mão em cada página, ficou lá um *"sem
   Caixa RL"* depois de a regra já ver a metade PT da Caixa RL — uma regra que a
-  página não diz é a página a mentir em silêncio.
+  página não diz é a página a mentir em silêncio. A **classe** também vem daqui:
+  cada página decidia-a com `"foil" in texto` e pintava de dourado o chip *"só
+  nonfoil"* do cEDH.
+- **`"nonfoil"` CONTÉM `"foil"` (2026-09-07).** Um teste de substring ou
+  `/foil/` sobre o acabamento dá toda a cópia nonfoil como foil: a tabela de
+  venda do `deckboxes.html` marcava com ✨ **41 das 62 linhas** (Lotus Petal,
+  Mirri's Guile…) e mandava listá-las como foil. Quem responde é
+  `loadout.e_foil(finish)` (= `finish in FOIL_FINISHES`), do lado do Python; a
+  página recebe um booleano no payload e nunca reconstitui o teste em
+  JavaScript. Tem teste nos dois lados (`test_loadout.caso_nonfoil_nunca_e_foil`
+  e `test_paginas_loadout.caso_aba_vender_nao_marca_nonfoil`, que lê o HTML que
+  a aba desenhou).
+- **O chip das fontes diz duas gavetas, não quatro** (`loadout.fontes_material`).
+  Era `"só de Colecção · Premodern (geral) · SPML · Caixa RL"` — quatro nomes que
+  no modelo de colecção única são **um só** (os nomes antigos estão na regra para
+  o código estar certo antes e depois da migração). Agora é *"fontes: Colecção +
+  Caixa RL (PT)"*, e omite-se quando não restringe nada.
 - **Efeito medido na base de 2026-09-07:** fechar tudo passou de **7 700,35 €**
   para **7 891,50 €** (230 a comprar, 61 a ir buscar). Só duas caixas mexeram —
   Cloud cEDH 76 %→72 % (perdeu 4 foil para o Duel Commander, que agora escolhe

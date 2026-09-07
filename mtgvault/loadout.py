@@ -297,31 +297,103 @@ def regra_do_formato(fmt: str | None,
     return len(regras), {}
 
 
-def rotulo_material(s: dict) -> list[tuple[str, str]]:
-    """As regras de material desta caixa como (ícone, texto), para a página e o CLI.
+def e_foil(finish: str | None) -> bool:
+    """A cópia é foil? É `finish in FOIL_FINISHES` e mais nada — existe como
+    função porque as páginas escreviam este teste à mão com `"foil" in finish`,
+    e `"nonfoil"` CONTÉM `"foil"`: a tabela de venda punha ✨ em cópias nonfoil.
+    Um teste de substring nunca serve para isto."""
+    return finish in FOIL_FINISHES
+
+
+def fontes_material(s: dict) -> str | None:
+    """As gavetas que esta caixa VÊ, em nome de gente ("Colecção + Caixa RL (PT)").
+
+    Antes era `"só de " + " · ".join(s["baldes"])`, o que dava *"só de Colecção ·
+    Premodern (geral) · SPML · Caixa RL"* — quatro nomes que no modelo de
+    colecção única são **duas gavetas**: os três primeiros são a mesma
+    (`baldes_coleccao`), e a lista tem-nos todos só para o código estar certo
+    antes e depois da migração. Além de transbordar o cartão, dizia ao André que
+    há três sítios onde só há um.
+
+    `None` quando é o padrão (só a Colecção): uma regra que não restringe nada
+    não é uma regra para mostrar.
+    """
+    baldes = s.get("baldes")
+    if not baldes:
+        return None
+    coleccao = set(baldes_coleccao()) - {BALDE_RL}
+    fora, out = set(), []
+    for b in list(baldes) + ([s["balde"]] if s.get("balde") else []):
+        if b in coleccao:
+            nome = BALDE_COLECCAO
+        elif b == BALDE_RL:
+            # A Caixa RL é uma no config e duas na estante; um slot que exija PT
+            # só vê a metade PT (ver `_fora_de_vista`), e é isso que se mostra.
+            nome = f"Caixa RL ({s['lingua'].upper()})" if s.get("lingua") else "Caixa RL"
+        else:
+            nome = b
+        if nome not in fora:
+            fora.add(nome)
+            out.append(nome)
+    if out == [BALDE_COLECCAO]:
+        return None
+    return "fontes: " + " + ".join(out)
+
+
+def rotulo_material(s: dict) -> list[tuple[str, str, str]]:
+    """As regras de material desta caixa como (ícone, texto, classe), para a
+    página e o CLI.
 
     Vive aqui e não em cada página porque já aconteceu o contrário: o
     `deckboxes` dizia *"sem Caixa RL"* a todas as caixas de Premodern depois de a
     regra ter mudado para *"vê a metade PT da Caixa RL"*. Uma regra nova que
     ninguém mostre é uma página a mentir em silêncio.
+
+    A CLASSE vem daqui pela mesma razão. Cada página decidia-a com
+    `"foil" in texto`, e `"só nonfoil"` contém `"foil"`: a caixa do cEDH — a
+    única *"só nonfoil"* — vinha pintada de dourado como se fosse de foil.
     """
     out = []
     if s.get("lingua"):
         out.append(("🇵🇹" if s["lingua"] == "pt" else "🔤",
-                    f'só {s["lingua"].upper()}'))
+                    f'só {s["lingua"].upper()}', "pt"))
     ac = s.get("acabamento")
     if ac == "foil":
-        out.append(("✨", "só foil (a Reserved List pode ser nonfoil)"))
+        out.append(("✨", "só foil (a Reserved List pode ser nonfoil)", "fo"))
     elif ac == "nonfoil":
-        out.append(("◻", "só nonfoil"))
+        out.append(("◻", "só nonfoil", ""))
     elif ac == "prefere_foil":
-        out.append(("✨", "foil quando há, senão nonfoil"))
+        out.append(("✨", "foil quando há, senão nonfoil", "fo"))
     if s.get("edicoes") == "premodern":
-        out.append(("🕰", "só edições até ao Scourge"))
-    if s.get("baldes"):
-        curtos = [b.replace(BALDE_RL, "Caixa RL") for b in s["baldes"]]
-        out.append(("🗂️", "só de " + " · ".join(curtos)))
+        out.append(("🕰", "só edições até ao Scourge", ""))
+    fontes = fontes_material(s)
+    if fontes:
+        out.append(("🗂️", fontes, ""))
     return out
+
+
+def requisito_material(s: dict) -> str:
+    """As regras desta caixa em três palavras, para uma linha de wantlist:
+    `"PT · ≤SCG"`, `"EN · nonfoil"`, `"EN · foil"`. Vazio = sem exigência.
+
+    O `rotulo_material` é para o cartão da caixa (uma frase por regra); isto é
+    para a aba **Comprar**, onde cada linha tem de dizer em que língua e
+    acabamento é que aquela compra serve — comprar a versão errada é comprar
+    duas vezes.
+    """
+    partes = []
+    if s.get("lingua"):
+        partes.append(s["lingua"].upper())
+    ac = s.get("acabamento")
+    if ac == "foil":
+        partes.append("foil")
+    elif ac == "nonfoil":
+        partes.append("nonfoil")
+    elif ac == "prefere_foil":
+        partes.append("foil (ou nonfoil)")
+    if s.get("edicoes") == "premodern":
+        partes.append("≤SCG")
+    return " · ".join(partes)
 
 
 def marca_wantlist(s: dict) -> str:

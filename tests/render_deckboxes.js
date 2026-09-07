@@ -1,6 +1,10 @@
 // Corre o JavaScript do `deckboxes.html` num DOM de mentira e manda desenhar
 // TODAS as abas, nos dois filtros.
 //
+// Com um segundo argumento, escreve nesse ficheiro o HTML que cada aba DESENHOU
+// (`{aba: html}`), para o teste de Python poder ler o que o browser mostraria —
+// é assim que se tranca que a tabela de venda não põe ✨ numa cópia `nonfoil`.
+//
 // Porque é que isto existe: a página nova é JSON + JavaScript, e um erro de
 // render numa aba que não é a inicial só aparece ao CLICAR nela — a página fica
 // em branco e o gerador não deu erro nenhum. É o mesmo padrão do `event_tier`,
@@ -73,6 +77,18 @@ for (const filtro of ['tudo', 'faltam']) {
     n++;
   }
 }
+// O HTML de cada aba, para quem chamou poder verificá-lo. O `render()` põe a
+// vista no fim, por isso a última coisa desenhada é sempre a aba pedida.
+if (process.argv[3]) {
+  const dump = {};
+  vm.runInContext('filtro = "tudo";', ctx);
+  for (const a of abas) {
+    vm.runInContext(`aba = ${JSON.stringify(a)}; renderTabs(); render();`, ctx);
+    dump[a] = desenhado[desenhado.length - 1] || '';
+  }
+  fs.writeFileSync(process.argv[3], JSON.stringify(dump), 'utf8');
+}
+
 // O site publicado não pode DESENHAR um botão de escrita: os endpoints não
 // existem lá, e um botão que não faz nada é pior do que não haver botão.
 const editavel = vm.runInContext('D.editable', ctx);

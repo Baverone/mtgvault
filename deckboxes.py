@@ -117,7 +117,10 @@ def _caixa_payload(s, imgs, cfs):
         "pct": s["pct"], "tenho": s["tenho"], "precisa": s["precisa"],
         "comprar": s["comprar"], "noutra": s["noutra"], "faltam": s["faltam"],
         "custo": s["custo"], "origens": s["origens"],
-        "regras": [[i, t] for i, t in loadout.rotulo_material(s)],
+        # (ícone, texto, classe) — a classe vem do loadout, não de um teste de
+        # substring na página (ver `loadout.rotulo_material`).
+        "regras": [[i, t, c] for i, t, c in loadout.rotulo_material(s)],
+        "req": loadout.requisito_material(s),
         "marca": loadout.marca_wantlist(s),
         "variantes": list(s.get("variantes") or []),
         "cartas": cartas,
@@ -141,18 +144,41 @@ def payload(con, rep, editable=False):
     imgs = _img_map(con, sorted(nomes))
     cfs = {c["nm"] for c in rep["conflitos"]}
 
+    # A LISTA DE COMPRAS, com a atribuição a caixas. Só `{nm, q, cost}` não
+    # chegava: uma compra sem dizer PARA QUE CAIXA e EM QUE LÍNGUA/ACABAMENTO é
+    # meio caminho para comprar a versão errada — 4 Swords to Plowshares EN não
+    # servem a caixa de Premodern, que as quer PT e até ao Scourge.
     geral: dict[str, dict] = {}
     for s in rep["slots"]:
+        req = loadout.requisito_material(s)
         for m in s["missing"]:
             if not m["comprar"]:
                 continue
-            g = geral.setdefault(m["nm"], {"nm": m["nm"], "q": 0, "cost": 0.0})
+            g = geral.setdefault(m["nm"], {"nm": m["nm"], "q": 0, "cost": 0.0,
+                                           "unit": None, "para": [], "req": ""})
             g["q"] += m["comprar"]
             g["cost"] = round(g["cost"] + (m["cost"] or 0), 2)
+            # O preço por cópia é o mais alto das caixas que a pedem — é o que
+            # decide se a carta entra no bolo das "caras", e por baixo era pior.
+            if m["unit"] and (g["unit"] is None or m["unit"] > g["unit"]):
+                g["unit"] = m["unit"]
+            g["para"].append({"caixa": s["nome"], "slot": s["slot"],
+                              "q": m["comprar"], "cost": m["cost"],
+                              "unit": m["unit"], "req": req})
+    for g in geral.values():
+        # Duas caixas podem querer a mesma carta em material diferente; nesse
+        # caso são duas compras e a linha di-lo, em vez de escolher uma.
+        reqs = [r for r in dict.fromkeys(p["req"] for p in g["para"]) if r]
+        g["req"] = " / ".join(reqs)
+        g["para"].sort(key=lambda p: (-p["q"], p["caixa"]))
 
     def venda_bloco(chave, copias, total):
         return {"linhas": [{"nm": r["nm"], "q": r["q"], "local": r["local"],
                             "set": (r["set_code"] or "").upper(), "fin": r["finish"],
+                            # Quem decide se é foil é o Python (`FOIL_FINISHES`).
+                            # A página fazia `/foil|etched/.test(fin)` e punha ✨
+                            # em cópias `nonfoil`, que contém "foil".
+                            "foil": loadout.e_foil(r["finish"]),
                             "lang": r["lang"], "unit": r["unit"],
                             "total": r["total"], "rl": bool(r["rl"]),
                             "reason": r["reason"], "sid": imgs.get(r["nm"])}
@@ -160,6 +186,11 @@ def payload(con, rep, editable=False):
                 "copias": rep[copias], "total": rep[total]}
 
     arr = rep["arrumacao"]
+    # As regras de cada caixa, por NOME: é assim que o `conflitos` identifica
+    # quem disputa a carta. A aba Partilhadas precisa delas para dizer que uma
+    # partilha respeita as regras de quem vai buscar — o Enchantress vai buscar
+    # a Swords to Plowshares PT ao UW Replenish, nunca a foil do Cloud.
+    reqs = {s["nome"]: loadout.requisito_material(s) for s in rep["slots"]}
     return {
         "gerado": con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or "",
         "hoje": date.today().isoformat(),
@@ -173,7 +204,9 @@ def payload(con, rep, editable=False):
                    "venda_rl": rep["total_rl"], "arrumar": arr["copias"]},
         "compras": sorted(geral.values(), key=lambda g: -g["cost"]),
         "partilhadas": [{"nm": c["nm"], "pedido": c["pedido"], "tenho": c["tenho"],
-                         "sid": imgs.get(c["nm"]), "por_slot": c["por_slot"],
+                         "sid": imgs.get(c["nm"]),
+                         "por_slot": [dict(q, req=reqs.get(q["slot"], ""))
+                                      for q in c["por_slot"]],
                          "ficam_com": c["ficam_com"], "ficam_sem": c["ficam_sem"]}
                         for c in rep["conflitos"]],
         "venda": {"normal": venda_bloco("venda", "copias", "total"),
@@ -262,9 +295,12 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
    overflow:hidden;margin:9px 0}
  .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:999px;
    transition:width .3s}
- .badges{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:8px 0}
+ .badges{display:flex;align-items:flex-start;gap:6px;flex-wrap:wrap;margin:8px 0}
+ /* `white-space:normal` de propósito: com `nowrap`, a etiqueta das fontes
+    ("fontes: Colecção + Caixa RL (PT)") transbordava o cartão no desktop em vez
+    de partir a linha. Um chip nunca pode ser mais largo do que a caixa. */
  .bdg{font-size:11px;padding:3px 9px;border-radius:20px;background:#1e2531;
-   color:var(--muted);white-space:nowrap}
+   color:var(--muted);white-space:normal;max-width:100%;overflow-wrap:anywhere}
  .bdg.ok{background:#123020;color:var(--add)} .bdg.wt{background:#241a10;color:var(--gold)}
  .bdg.pt{background:#101c2e;color:#7fa8ff} .bdg.fo{background:#2a2410;color:var(--gold)}
  .bdg.perm{background:#1b2c4d;color:#9dbcff;font-weight:700}
@@ -312,9 +348,17 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
    background:#2a2410;color:var(--gold)}
  ul.fl{list-style:none;margin:7px 0 0;padding:0;font-size:12.5px}
  ul.fl li{display:flex;gap:7px;padding:2px 0} ul.fl b{color:var(--gold);
-   font-variant-numeric:tabular-nums}
- ul.fl .pz{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums}
- #v-compras ul.fl{column-width:230px;column-gap:22px} #v-compras ul.fl li{break-inside:avoid}
+   font-variant-numeric:tabular-nums;flex:0 0 auto}
+ ul.fl .wn{flex:1 1 auto;min-width:0}
+ ul.fl .wn small{display:block;color:var(--dim);font-size:11px;line-height:1.35}
+ ul.fl .pz{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums;
+   flex:0 0 auto}
+ .cara{font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;
+   background:#3a1f1f;color:#ff9f8f;margin-left:5px;white-space:nowrap}
+ #v-compras ul.fl{column-width:280px;column-gap:22px} #v-compras ul.fl li{break-inside:avoid}
+ .selc{font:inherit;font-size:12.5px;font-weight:600;padding:7px 12px;
+   border-radius:20px;border:1px solid var(--line);background:var(--card);
+   color:var(--ink);cursor:pointer;max-width:100%}
  .btn,.cpbtn{font:inherit;font-size:12px;font-weight:700;padding:7px 13px;
    border-radius:20px;border:1px solid var(--line);background:#1a2230;
    color:var(--ink2);cursor:pointer;transition:.12s}
@@ -341,6 +385,8 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
  .csl{display:flex;flex-wrap:wrap;gap:3px;margin-top:2px}
  .cs{font-size:10.5px;padding:2px 7px;border-radius:5px;font-variant-numeric:tabular-nums}
  .cs.ok{background:#0f2418;color:var(--add)} .cs.no{background:#2a1414;color:#ff8f8f}
+ .cfb .creq{font-size:11px;color:var(--dim);line-height:1.4;margin-top:1px}
+ .cfb .creq b{color:var(--muted);font-weight:700}
  /* venda */
  details.vblk{background:var(--card);border:1px solid var(--line);
    border-radius:var(--r);padding:11px 13px;margin-bottom:10px}
@@ -428,6 +474,10 @@ const art = sid => sid
   ? `https://cards.scryfall.io/small/front/${sid[0]}/${sid[1]}/${sid}.jpg` : '';
 const cor = p => p >= 90 ? 'var(--add)' : p >= 60 ? 'var(--gold)' : 'var(--warn)';
 const pin = p => p >= 90 ? 'ok' : p >= 60 ? 'mid' : 'low';
+/* Acima disto (por cópia) a compra é uma decisão à parte, não uma ida ao
+   Cardmarket: a Mishra's Workshop sozinha vale mais do que o resto da lista
+   toda junta. A aba Comprar separa os dois totais em vez de os somar. */
+const CARA = 100;
 
 /* Estado no browser: a aba aberta, o filtro e o que já foi arrumado. É a mesma
    ideia do checkmark "atualizado" do meusdecks — o que é do André fica no
@@ -513,19 +563,34 @@ function badges(c) {
   if (c.montado) h += '<span class="bdg ok">✅ montado</span>';
   else if (c.por_confirmar || c.vazio) h += '<span class="bdg wt">❓ por confirmar</span>';
   else h += '<span class="bdg">🔧 a montar</span>';
-  for (const [ico, txt] of c.regras) {
-    const cls = /foil/.test(txt) ? 'fo' : 'pt';
-    h += `<span class="bdg ${cls}">${ico} ${esc(txt)}</span>`;
+  /* A classe vem no payload (`loadout.rotulo_material`). Decidi-la aqui com
+     /foil/ pintava de dourado o chip "só nonfoil" do cEDH — "nonfoil" contém
+     "foil", e um teste de substring nunca serve para isto. */
+  for (const [ico, txt, cls] of c.regras) {
+    h += `<span class="bdg ${cls || ''}">${ico} ${esc(txt)}</span>`;
   }
   if (c.variantes.length) h += `<span class="bdg">⇄ ${c.variantes.length} variantes</span>`;
   h += `<span class="bdg">#${c.prioridade} na alocação</span>`;
   return h;
 }
 
-function wantlistHTML(itens, marca, id) {
+/* `detalhe` acrescenta, por baixo do nome, o requisito de material e as caixas
+   que pedem a carta — é o que a aba Comprar precisa e o cartão de uma caixa
+   não (ali a caixa e o material já estão no cabeçalho). A mesma função para as
+   duas: o botão "copiar" copia sempre exactamente a lista que está à vista. */
+function wantlistHTML(itens, marca, id, detalhe) {
   if (!itens.length) return '';
-  const li = itens.map(m => `<li><b>${m.q}×</b> ${esc(m.nm)}`
-    + `<span class="pz">${eur(m.cost)}</span></li>`).join('');
+  const li = itens.map(m => {
+    const cara = detalhe && (m.unit || 0) >= CARA;
+    const sub = !detalhe ? '' : [m.req || '',
+      (m.para || []).length
+        ? 'para: ' + m.para.map(p => `${p.caixa} ${p.q}×`).join(' · ') : '']
+      .filter(Boolean).join(' — ');
+    return `<li><b>${m.q}×</b><span class="wn">${esc(m.nm)}`
+      + (cara ? `<span class="cara">💶 cara</span>` : '')
+      + (sub ? `<small>${esc(sub)}</small>` : '')
+      + `</span><span class="pz">${eur(m.cost)}</span></li>`;
+  }).join('');
   const txt = itens.map(m => `${m.q} ${m.nm}`).join('\n');
   return `<div class="blk" id="${id || ''}"><div class="flh">🛒 Comprar`
     + (marca ? ` <span class="mrk">${esc(marca)}</span>` : '')
@@ -671,8 +736,13 @@ function vistaPartilhadas() {
       + `disputar cartas com outra.</p>`;
   }
   const rows = D.partilhadas.map(c => {
-    const det = c.por_slot.map(q => `<span class="cs ${q.levou >= q.pediu ? 'ok' : 'no'}">`
+    const det = c.por_slot.map(q => `<span class="cs ${q.levou >= q.pediu ? 'ok' : 'no'}"`
+      + `${q.req ? ` title="${esc(q.slot)}: só cópias ${esc(q.req)}"` : ''}>`
       + `${esc(q.slot)} ${q.levou}/${q.pediu}</span>`).join('');
+    /* Uma caixa só vai buscar o que cumpre as REGRAS dela — dizê-lo aqui evita
+       a leitura errada de que qualquer cópia serve qualquer caixa. */
+    const regras = c.por_slot.filter(q => q.req).map(q =>
+      `${esc(q.slot)}: só cópias <b>${esc(q.req)}</b>`).join(' · ');
     const tem = c.ficam_com.join(', ') || 'ninguém';
     const vai = c.ficam_sem.filter(x => c.ficam_com.length && !c.ficam_com.includes(x))
       .join(', ');
@@ -681,11 +751,15 @@ function vistaPartilhadas() {
       + `</div><div class="cfb"><b>${esc(c.nm)}</b>`
       + `<span class="dim">tens ${c.tenho} para ${c.pedido} pedidas · está em `
       + `<b>${esc(tem)}</b>${vai ? ' · vai buscar: ' + esc(vai) : ''}</span>`
-      + `<div class="csl">${det}</div></div></div>`;
+      + `<div class="csl">${det}</div>`
+      + (regras ? `<span class="dim creq">${regras}</span>` : '')
+      + `</div></div>`;
   }).join('');
   return `<h2>🔁 Cartas partilhadas entre caixas <span class="n">`
     + `${D.partilhadas.length}</span></h2>`
-    + `<p class="lead">Cartas que duas ou mais caixas querem e não chegam para todas. `
+    + `<p class="lead"><b>Só se partilham cópias que cumprem as regras da caixa que `
+    + `vai buscar.</b> `
+    + `Cartas que duas ou mais caixas querem e não chegam para todas. `
     + `<b>Não são compras.</b> A cópia fica na caixa que aloca primeiro (permanentes, `
     + `depois o grupo de formato) e as outras vão lá buscá-la quando forem jogar — é `
     + `por isso que aparecem a âmbar com <b>“em &lt;caixa&gt;”</b> e não somam ao `
@@ -693,14 +767,55 @@ function vistaPartilhadas() {
     + `compram-se cópias dedicadas.</p><div class="cfgrid">${rows}</div>`;
 }
 
+/* A linha de compra vista pelos olhos de UMA caixa: a quantidade, o custo e o
+   material passam a ser os dela. Sem isto o filtro mostrava a linha inteira e o
+   "copiar" dava-lhe a lista das outras caixas por cima. */
+function soDaCaixa(m, slot) {
+  const p = (m.para || []).find(x => x.slot === slot);
+  if (!p) return null;
+  return Object.assign({}, m, { q: p.q, cost: p.cost, unit: p.unit,
+                                req: p.req, para: [p] });
+}
+
 function vistaComprar() {
-  return `<h2>🛒 Comprar — todas as caixas</h2>`
+  const sel = P.compra || 'todas';
+  const itens = (sel === 'todas' ? D.compras.slice()
+                 : D.compras.map(m => soDaCaixa(m, sel)).filter(Boolean))
+    .sort((a, b) => (b.cost || 0) - (a.cost || 0));
+  const caras = itens.filter(m => (m.unit || 0) >= CARA);
+  const resto = itens.filter(m => (m.unit || 0) < CARA);
+  const soma = l => l.reduce((s, m) => s + (m.cost || 0), 0);
+  const nome = sel === 'todas' ? 'todas as caixas'
+    : ((D.caixas.find(c => c.slot === sel) || {}).nome || sel);
+  /* O selector reaproveita as caixas que já são abas — só as que têm mesmo
+     alguma coisa a comprar entram na lista. */
+  const comCompras = D.caixas.filter(c => D.compras.some(
+    m => (m.para || []).some(p => p.slot === c.slot)));
+  const opt = (v, t, n) => `<option value="${esc(v)}"${sel === v ? ' selected' : ''}>`
+    + `${esc(t)}${n == null ? '' : ` — ${n} cartas`}</option>`;
+  const selector = `<div class="seg"><select class="selc" id="compra-caixa">`
+    + opt('todas', 'todas as caixas', D.compras.length)
+    + comCompras.map(c => opt(c.slot, c.nome,
+        D.compras.filter(m => (m.para || []).some(p => p.slot === c.slot)).length)).join('')
+    + `</select></div>`;
+  return `<h2>🛒 Comprar — ${esc(nome)}</h2>`
     + `<p class="lead">Só o que <b>não existe</b> na coleção, ou existe mas não serve `
     + `na língua/acabamento que a caixa exige. As cartas que estão noutra caixa `
     + `<b>não estão aqui</b>: vão-se buscar. São <b>${D.resumo.noutra}</b> cópias a ir `
-    + `buscar contra <b>${D.resumo.comprar}</b> a comprar.</p>`
-    + (D.compras.length ? wantlistHTML(D.compras, '', 'v-compras')
-       : `<p class="empty">Não falta comprar nada. Está tudo em casa.</p>`);
+    + `buscar contra <b>${D.resumo.comprar}</b> a comprar. Debaixo de cada nome está `
+    + `<b>para que caixa</b> é a compra e <b>em que material</b> — comprar a versão `
+    + `errada é comprar duas vezes.</p>`
+    + selector
+    + (!itens.length ? `<p class="empty">Não falta comprar nada aqui. Está tudo em casa.</p>`
+       : `<div class="nums">`
+         + `<div class="num buy">cópias<b>${itens.reduce((s, m) => s + m.q, 0)}</b></div>`
+         + `<div class="num eur">💶 caras (≥ ${CARA} €/cópia)<b>${eur(soma(caras))}</b>`
+         + `<span class="dim"> ${caras.length} cartas</span></div>`
+         + `<div class="num eur">resto<b>${eur(soma(resto))}</b>`
+         + `<span class="dim"> ${resto.length} cartas</span></div></div>`
+       + (caras.length ? `<p class="lead">As <b>💶 caras</b> decidem-se uma a uma: `
+         + `só elas valem ${eur(soma(caras))} dos ${eur(soma(itens))} da lista.</p>` : '')
+       + wantlistHTML(itens, '', 'v-compras', true));
 }
 
 function vistaVender() {
@@ -717,7 +832,11 @@ function vistaVender() {
     + `<tbody>` + b.linhas.map(r => `<tr><td class="q">${r.q}×</td>`
       + `<td>${esc(r.nm)}${r.rl ? ' <span class="rl">RL</span>' : ''}</td>`
       + `<td class="dim">${esc(r.local)}</td>`
-      + `<td class="dim">${esc(r.set)} ${/foil|etched/.test(r.fin) ? '✨' : ''} `
+      // `r.foil` vem do Python (`loadout.e_foil`). Este teste era
+      // `/foil|etched/.test(r.fin)` e marcava com ✨ as cópias `nonfoil` — a
+      // palavra "nonfoil" contém "foil". Aparecia em Lotus Petal e Mirri's
+      // Guile, que são nonfoil, e mandava-o listá-las como foil.
+      + `<td class="dim">${esc(r.set)} ${r.foil ? '✨' : ''} `
       + `${esc((r.lang || '').toUpperCase())}</td>`
       + `<td class="pz">${eur(r.unit)}</td><td class="pz tot">${eur(r.total)}</td>`
       + `<td class="dim rz">${esc(r.reason)}</td></tr>`).join('')
@@ -787,6 +906,8 @@ function ligar() {
       save();
     };
   }
+  const cc = $('#compra-caixa');
+  if (cc) cc.onchange = () => { P.compra = cc.value; save(); render(); };
   const fim = $('#arr-fim'), csv = $('#arr-csv'), lim = $('#arr-limpar');
   if (csv) csv.onclick = baixarCSV;
   if (lim) lim.onclick = () => { P.feitos = {}; save(); render(); toast('Vistos limpos.'); };

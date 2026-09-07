@@ -815,6 +815,62 @@ def caso_lote_partido_entre_caixa_e_gaveta():
     print("um lote meio arrumado vale como meio arrumado, nao por inteiro")
 
 
+def caso_nonfoil_nunca_e_foil():
+    """`"nonfoil"` CONTÉM `"foil"`. Quem testar o acabamento por substring dá
+    uma cópia nonfoil como foil — foi assim que a tabela de venda pôs ✨ em
+    Lotus Petal e Mirri's Guile, que são as duas nonfoil.
+
+    A resposta vive num sítio só (`loadout.e_foil`), e é a mesma que a alocação
+    usa (`FOIL_FINISHES`) — para a página não poder discordar do motor."""
+    assert loadout.e_foil("foil") and loadout.e_foil("etched")
+    assert not loadout.e_foil("nonfoil"), "'nonfoil' contém 'foil' — não é foil"
+    assert not loadout.e_foil(None) and not loadout.e_foil("")
+    # E a lista de venda de uma cópia nonfoil sai marcada como não-foil.
+    con = base()
+    add(con, "Sol Ring", 5, finish="nonfoil", sub="Colecção")
+    rep = loadout.report(con, [])
+    linha = next(r for r in rep["venda"] if r["nm"] == "Sol Ring")
+    assert linha["finish"] == "nonfoil" and not loadout.e_foil(linha["finish"]), linha
+    print("uma copia nonfoil nunca e tratada como foil")
+
+
+def caso_rotulo_material_diz_a_classe_e_as_fontes():
+    """Duas coisas que as páginas decidiam à sua maneira e erravam:
+
+      * a CLASSE do chip — cada página fazia `"foil" in texto`, e o chip
+        *"só nonfoil"* do cEDH vinha pintado de dourado como se fosse de foil;
+      * as FONTES — `"só de Colecção · Premodern (geral) · SPML · Caixa RL"`
+        transbordava o cartão e nomeava quatro sítios onde há dois (os três
+        primeiros são a mesma gaveta desde a colecção única)."""
+    pm = {"formato": "premodern", "lingua": "pt", "edicoes": "premodern",
+          "balde": "Premodern (geral)", "estrita": True,
+          "baldes": ["Colecção", "Premodern (geral)", "SPML", "Caixa Reserved List"]}
+    cls = {t: c for _i, t, c in loadout.rotulo_material(pm)}
+    assert cls["só PT"] == "pt", cls
+    assert loadout.fontes_material(pm) == "fontes: Colecção + Caixa RL (PT)", \
+        loadout.fontes_material(pm)
+    assert "fontes: Colecção + Caixa RL (PT)" in cls, cls
+
+    cedh = {"formato": "cedh", "lingua": "en", "acabamento": "nonfoil"}
+    cls = {t: c for _i, t, c in loadout.rotulo_material(cedh)}
+    assert cls["só nonfoil"] == "", ("o chip 'só nonfoil' não é um chip de foil", cls)
+    spml = {"formato": "modern", "lingua": "en", "acabamento": "foil"}
+    cls = {t: c for _i, t, c in loadout.rotulo_material(spml)}
+    assert cls["só foil (a Reserved List pode ser nonfoil)"] == "fo", cls
+    # Sem restrição de baldes (ou só a Colecção) não há chip de fontes nenhum:
+    # uma regra que não restringe nada não é uma regra para mostrar.
+    assert loadout.fontes_material(spml) is None
+    assert loadout.fontes_material({"baldes": ["Colecção"]}) is None
+
+    # O requisito curto, para cada linha da wantlist da aba Comprar.
+    assert loadout.requisito_material(pm) == "PT · ≤SCG"
+    assert loadout.requisito_material(cedh) == "EN · nonfoil"
+    assert loadout.requisito_material(spml) == "EN · foil"
+    assert loadout.requisito_material({"acabamento": "prefere_foil"}) == "foil (ou nonfoil)"
+    assert loadout.requisito_material({}) == ""
+    print("o rotulo de material traz a classe certa e as fontes em nome de gente")
+
+
 def run():
     for fn in (caso_uma_copia_uma_caixa, caso_noutra_caixa_nao_e_compra,
                caso_noutra_caixa_e_compra_misturadas,
@@ -839,7 +895,9 @@ def run():
                caso_ja_arrumei_persiste_e_o_plano_esvazia,
                caso_arrumar_nao_transforma_ir_buscar_em_compra,
                caso_carta_na_caixa_escapa_as_regras_de_material,
-               caso_lote_partido_entre_caixa_e_gaveta):
+               caso_lote_partido_entre_caixa_e_gaveta,
+               caso_nonfoil_nunca_e_foil,
+               caso_rotulo_material_diz_a_classe_e_as_fontes):
         fn()
     print("\nTUDO OK")
 

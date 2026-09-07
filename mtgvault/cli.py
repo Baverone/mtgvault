@@ -479,7 +479,7 @@ def _loadout_detalhe(rep, procura):
         print(f"\n=== {s['nome']} ({s['formato']}) — {s['pct']}% "
               f"[{s['tenho']}/{s['precisa']}] ===")
         print(f"  fonte: {s.get('fonte')} {s.get('ref') or ''} — {s['nota']}")
-        for _ico, txt in loadout.rotulo_material(s):
+        for _ico, txt, _cls in loadout.rotulo_material(s):
             print(f"  {txt}")
         # Onde estão as cartas que ele já tem: é a metade da pergunta "onde está
         # a carta" que não é falta nenhuma — é o que se tira da estante para

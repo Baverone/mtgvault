@@ -63,6 +63,9 @@ CATALOGO = [
     ("Frogmite", "mrd", "2003-10-02"),
     ("Thoughtcast", "mrd", "2003-10-02"),
     ("Island", "4bb", "1995-04-01"),
+    # Não está em deck nenhum: serve só para a tabela de venda ter uma linha
+    # FOIL a par de uma nonfoil (ver `caso_aba_vender_nao_marca_nonfoil`).
+    ("Chromatic Star", "shm", "2008-05-02"),
 ]
 
 _ABERTAS = []      # segura os context managers: sem isto o GC fecha a ligação
@@ -309,9 +312,27 @@ def _pagina_deckboxes():
     deck(con, "UW Oswald", "modern", [("Frogmite", 4), ("Thoughtcast", 4)])
     add(con, "Utrom Monitor", 4, sub="SPML")
     add(con, "Frogmite", 4, finish="foil", sub="SPML")
+    # Excedente para a aba Vender ter as duas metades do caso: 2 Utrom Monitor
+    # NONFOIL a mais (o playset são 4) e 1 Chromatic Star FOIL a mais.
+    add(con, "Utrom Monitor", 2, sub="SPML")
+    add(con, "Chromatic Star", 5, finish="foil", sub="SPML")
     out = Path(tempfile.mkdtemp()) / "deckboxes.html"
     deckboxes.build(con, out)
     return out
+
+
+def _abas_desenhadas(pagina):
+    """`{aba: HTML}` — o que o browser mostraria, corrido pelo harness de node.
+    `None` quando não há `node` (a bateria tem de correr num PC sem ele)."""
+    if not shutil.which("node"):
+        return None
+    dump = Path(tempfile.mkdtemp()) / "abas.json"
+    harness = Path(__file__).with_name("render_deckboxes.js")
+    p = subprocess.run(["node", str(harness), str(pagina), str(dump)],
+                       capture_output=True, text=True, encoding="utf-8",
+                       errors="replace", timeout=120)
+    assert p.returncode == 0, (p.stdout or "") + (p.stderr or "")[-2000:]
+    return json.loads(dump.read_text(encoding="utf-8"))
 
 
 def caso_payload_do_deckboxes():
@@ -359,13 +380,64 @@ def caso_javascript_do_deckboxes_desenha_todas_as_abas():
     print("javascript do deckboxes: " + p.stdout.strip())
 
 
+def caso_aba_vender_nao_marca_nonfoil():
+    """A tabela de venda punha ✨ em cópias `nonfoil`: o teste era
+    `/foil|etched/.test(r.fin)` e a palavra *"nonfoil"* contém *"foil"*.
+    Aparecia em Lotus Petal e Mirri's Guile, que são as duas nonfoil, e mandava
+    listá-las como foil — um erro que só se apanha a olhar para a página.
+
+    Lê o HTML que a aba DESENHOU: a linha da cópia nonfoil não pode ter ✨, e a
+    da foil tem de a ter (senão o teste passava com a marca desligada)."""
+    abas = _abas_desenhadas(_pagina_deckboxes())
+    if abas is None:
+        print("aba Vender: sem `node`, saltado")
+        return
+    html = abas["vender"]
+    linhas = {re.sub("<[^>]+>", " ", tr): tr
+              for tr in re.findall(r"<tr>.*?</tr>", html, re.S)}
+    nf = [tr for txt, tr in linhas.items() if "Utrom Monitor" in txt]
+    fo = [tr for txt, tr in linhas.items() if "Chromatic Star" in txt]
+    assert nf and fo, ("faltam as duas linhas na tabela de venda", list(linhas))
+    assert "✨" not in nf[0], ("uma cópia nonfoil não leva ✨", nf[0])
+    assert "✨" in fo[0], ("uma cópia foil leva ✨", fo[0])
+    print("aba Vender: ✨ so nas foil, nunca nas nonfoil")
+
+
+def caso_aba_comprar_diz_para_que_caixa_e_em_que_material():
+    """*"Para que caixa é esta compra, e em que língua/acabamento?"* — sem isso
+    a lista mandava comprar 4 Thoughtcast sem dizer que a caixa de Modern as
+    quer em EN foil, e comprar a versão errada é comprar duas vezes."""
+    pagina = _pagina_deckboxes()
+    d = json.loads(re.search(r'<script id="dados" type="application/json">(.*?)</script>',
+                             pagina.read_text(encoding="utf-8"), re.S)
+                   .group(1).replace("<\\/", "</"))
+    tc = next(m for m in d["compras"] if m["nm"] == "Thoughtcast")
+    assert tc["req"] == "EN · foil", tc
+    assert tc["para"] == [{"caixa": "Modern — UW Oswald", "slot": "modern",
+                           "q": 4, "cost": tc["cost"], "unit": tc["unit"],
+                           "req": "EN · foil"}], tc["para"]
+
+    abas = _abas_desenhadas(pagina)
+    if abas is None:
+        print("aba Comprar: sem `node`, saltado")
+        return
+    html = abas["comprar"]
+    assert "para: Modern — UW Oswald 4×" in html, html[:800]
+    assert "EN · foil" in html, "o material de cada compra tem de estar à vista"
+    assert 'id="compra-caixa"' in html, "falta o selector de caixa"
+    # E o filtro por caixa só mostra (e só copia) as compras dessa caixa.
+    print("aba Comprar: para que caixa, em que material, e com selector")
+
+
 def run():
     for fn in (caso_utrom_monitor, caso_noutra_caixa_e_o_terceiro_estado,
                caso_deck_fora_do_loadout_conta_a_colecao_toda,
                caso_pagina_meusdecks_fecha, caso_top_n_do_config,
                caso_foil_report_ve_as_outras_caixas, caso_pagina_metagame_fecha,
                caso_payload_do_deckboxes,
-               caso_javascript_do_deckboxes_desenha_todas_as_abas):
+               caso_javascript_do_deckboxes_desenha_todas_as_abas,
+               caso_aba_vender_nao_marca_nonfoil,
+               caso_aba_comprar_diz_para_que_caixa_e_em_que_material):
         fn()
     print("\nTUDO OK")
 
