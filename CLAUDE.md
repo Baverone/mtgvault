@@ -48,7 +48,7 @@ daily.py          o job diário (encadeia tudo o que está abaixo)
 
 **Geradores do site (scripts na raiz, corridos pelo `daily.py`, HTML no GitHub Pages):**
 ```
-meta_coverage.py    cobertura.html — top-10 ponderado + staples + emergentes. NB (2026-08-26): agora só Challenges/Showcases (Showcase peso 3), janela 30 dias; expõe COLLECTION_BALDES={"SPML","Premodern (geral)"} e owned_available(con) (=coleção MENOS cartas comprometidas com decks vigiados) — a base de "tenho" do metagame/decksfaziveis/cobertura
+meta_coverage.py    cobertura.html — top-10 ponderado + staples + emergentes. NB (2026-09-07): quem decide que listas contam é `sources.lista_conta`/`counting_sql` (ver "Que listas contam"), e o peso vem de `sources.tier_weight_sql`; janela 30 dias; expõe COLLECTION_BALDES={"SPML","Premodern (geral)"}, owned_available(con) (=coleção MENOS cartas comprometidas com decks vigiados) e counting_lists(con,fmt,aid) — a base de "tenho" do metagame/decksfaziveis/cobertura
 decks_faziveis.py   decksfaziveis.html — "Decks fazíveis": por formato, decks do top-10 já a ≥ min% (colecao_config.json→decks_faziveis_min_pct, default 50). Cor=tenho/cinza=falta + wantlist. Reusa metagame._grid e meta_coverage._rank/owned_available
 buildability.py     (DORMENTE) o "Montar" foi tirado do menu p/ o André refazer; já NÃO corre no daily nem vai ao git-add. Continua importado por meusdecks.py (FMT_LABEL/FMT_ORDER/BASICS)
 classify.py         classificação Deck/Coleção/Vender (alimenta colecao_cor.html)
@@ -61,11 +61,11 @@ metagame.py         metagame.html — "Metagame" (página principal): top-10 por
 (prioridade.py + metafaltas.py APAGADOS 2026-08-26, a redefinir)
 reservedlist.py     reservedlist.html — Reserved List (Scryfall) x coleção, por edição, preço/evolução, e 'VENDER' as que não jogam em formato nenhum
 caixarl.py          caixarl.html — "Caixa Reserved List": a RL que está fora da coleção jogável
-showcase.py         showcase.html — "Decks Showcase Challenger": eventos competitivos recentes (MTGO + presenciais do mtgtop8) agrupados por arquétipo. Calcula o peso do evento em Python (`_weight`), NÃO pela coluna `event_tier` — é por isso que continuou a dar listas enquanto o metagame vinha vazio
+showcase.py         showcase.html — "Decks Showcase Challenger": eventos competitivos recentes (MTGO + presenciais do mtgtop8) agrupados por arquétipo. Tinha filtro e pesos PRÓPRIOS (fonte + showcase_min_players + lista de nomes casuais) — era por isso que continuava a dar listas enquanto o metagame vinha vazio. Desde 2026-09-07 usa `sources.counting_sql`/`tier_weight` como toda a gente; a chave `showcase_min_players` do config deixou de existir
 my_decks.py         segue decks-alvo (por assinatura e por jogador de MTGO) -> tabela decks
 commander_decks.py  decks de comandante por consenso EM CAMADAS: núcleo>=50% (=deck, deck_cards) / flex 25-50% / tech 15-25%; FILTRA pela cor do comandante. `tiers()` reusado pelo colecao_cor
 refresh_collection.py  collection_owned p/ o index.html
-colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao
+colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, metagame_fontes
 ```
 Cada `.html` gerado tem de estar na lista do `git add` do workflow (`daily.yml`,
 passo "Guardar HTML") e, se for página nova, com link no `index.html`.
@@ -193,6 +193,56 @@ passa por `sources.store_decklist`.
 **Comandantes.** No `.dec` do mtgtop8, o comandante vem na linha `SB:`. Nos
 formatos de comandante é reencaminhado para o mainboard, senão ficava fora da
 análise de core.
+
+**Que listas contam para o metagame (2026-09-07).** Palavras do André: *"no
+mtgvault não quero listas de league; quero challenge, showcase, e presenciais
+com 64 ou mais jogadores — menos Duel Commander, que pode ter menos jogadores e
+pode ser ligas."*
+
+- A regra está **num sítio só**: `sources.lista_conta(row, fmt)` (Python) e
+  `sources.counting_sql(fmt, alias)` (pedaço de SQL para o WHERE), configuradas
+  em `colecao_config.json → metagame_fontes` (`tiers`,
+  `min_jogadores_presencial`, `ligas`, com `_default` + exceções por formato).
+  O peso de cada lista no ranking é `sources.tier_weight`/`tier_weight_sql`.
+  **Toda a consulta nova que leia `decklists` para análise tem de passar por
+  ali** — antes cada página filtrava à sua maneira (o showcase pela fonte, o
+  metagame pelo tier, o buildable por uma lista NON_PREMIER) e discordavam em
+  silêncio. Já usam: `meta_coverage._rank`/`emerging_decks`/`_n_lists`/
+  `counting_lists`, `metagame._latest_list`, `decks_faziveis`, `showcase._lists`,
+  `analysis._fetch_lists` (logo `rebuild_archetypes`/`rebuild_roles`),
+  `my_decks`, `meusdecks._cloud_consensus`, `commander_decks._inclusion`,
+  `buildable`.
+- **`classify.py` e `core_decks.py` NÃO usam a regra, de propósito.** O
+  `_played_names`/`_last_played` do classify é a rede de segurança contra
+  sugerir vender uma carta jogável, e a tranca de completude do Premodern
+  precisa de todas as listas do arquétipo — filtrar aí faria a página sugerir
+  vendas a mais, que é o erro caro.
+- **Um presencial sem `event_players` NÃO conta** — não se assume o mínimo. Daí
+  o passo diário `jogadores-eventos` (`mtgtop8.backfill_event_players`, ≤40
+  eventos por corrida, 1 pedido/s), que grava `0` quando a página do mtgtop8 não
+  mostra contagem, para não voltar a pedir a mesma página todos os dias.
+- **Listas `manual` contam sempre** (foste tu que as meteste; é a porta de
+  entrada dos formatos que os scrapers não cobrem).
+- **`event_tier` deixou de ser decidido pela fonte.** O mtgtop8 re-hospeda o
+  MTGO ("Premodern event - MTGO League", "Modern event - MTGO Challenge 32") e
+  esses 521 registos estavam todos em `Presencial`. Agora o nome manda **quando
+  diz MTGO**; sem essa marca continua `Presencial`, porque um "BIG MAGIC Open —
+  Champions Cup Premium Qualifier" de 131 jogadores é papel a sério e quem o
+  julga é o nº de jogadores, não a palavra "Qualifier". O `backfill_event_tiers`
+  passou a ser idempotente sobre TUDO (não só sobre os NULL), para uma mudança
+  de regra acertar o passado sozinha.
+- **Ligas nem se guardam** (`store_decklist` recusa-as, e o `harvest` salta o
+  evento antes de pedir os `.dec`), e o passo diário `podar-ligas`
+  (`analysis.prune_leagues`) apaga as que ficaram do passado — ~3.500 listas,
+  cerca de um terço do `vault.db`, que não alimentavam página nenhuma. Faz **um**
+  backup antes da primeira poda (`data/backups/vault-antes-filtro-<data>.db`) e
+  nunca mais. Só mexe no tier `League`: presenciais pequenos e Preliminary ficam
+  na base (não contam, mas são histórico barato e ainda podes dar-lhes exceção).
+- **Consequência medida:** o Premodern **não** fica sem listas (441 contam — as
+  Premodern Challenges do MTGO, incluindo as re-hospedadas). Quem fica sem
+  metagame é o **cEDH**: só 16 das 564 listas contam, porque é todo presencial e
+  quase nenhum evento traz contagem de jogadores. Uma linha no config resolve:
+  `"cedh": { "min_jogadores_presencial": 0 }`.
 
 ## Restrições externas (já testadas, não voltes a tentar)
 
