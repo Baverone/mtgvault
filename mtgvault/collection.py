@@ -104,7 +104,8 @@ def import_csv(con: sqlite3.Connection, path: str | Path) -> tuple[int, list[str
 # ---------------------------------------------------------------------------
 def owned_playable(con: sqlite3.Connection,
                    for_deck_id: int | None = None,
-                   baldes: set[str] | None = None) -> dict[str, int]:
+                   baldes: set[str] | None = None,
+                   fora_das_caixas: bool = False) -> dict[str, int]:
     """Quantidade disponível para jogar, por nome de carta.
 
     Fica de fora:
@@ -115,9 +116,15 @@ def owned_playable(con: sqlite3.Connection,
     contam, as dos outros não. Sem argumento, só conta o que está livre.
 
     `baldes`: se dado, conta só as cartas nesses sub_collections. Usa-se para
-    contar apenas a COLEÇÃO ({'SPML','Premodern (geral)'}) — as cartas dos decks
-    vigiados (baldes Blue Farm/Cloud/Cloud cEDH/Pauper Affinity) ficam agregadas a
-    esses decks e NÃO contam como disponíveis para o metagame/decks-fazíveis.
+    contar apenas a COLEÇÃO — desde o modelo de colecção única (2026-09-07) isso
+    é o balde `Colecção`; antes dele eram o `SPML` e o `Premodern (geral)`.
+
+    `fora_das_caixas`: desconta as cópias que já estão DENTRO de uma deckbox
+    (`copy_allocation`). É o gémeo do `baldes` no modelo novo — antes bastava
+    não olhar para os baldes dos decks, porque cada deck tinha o seu; agora as
+    cartas de um deck montado vivem no mesmo balde de todas as outras e o que as
+    distingue é a arrumação. Sem isto, a colecção parecia ter as cartas que estão
+    sleevadas em cima da mesa.
 
     Nomes de dupla-face (DFC/MDFC) são normalizados para a FRENTE (o que vem
     antes de " // "), porque é assim que as decklists as escrevem — senão a
@@ -132,8 +139,12 @@ def owned_playable(con: sqlite3.Connection,
         join += " JOIN sub_collections s ON s.id = cp.sub_collection_id"
         where += " AND s.name IN (" + ",".join("?" * len(baldes)) + ")"
         params += list(baldes)
+    qtd = "SUM(cp.quantity)"
+    if fora_das_caixas:
+        qtd = ("SUM(cp.quantity - COALESCE((SELECT SUM(a.quantity) "
+               "FROM copy_allocation a WHERE a.copy_id = cp.id), 0))")
     rows = con.execute(
-        f"""SELECT c.name AS name, SUM(cp.quantity) AS qty
+        f"""SELECT c.name AS name, {qtd} AS qty
               FROM copies cp {join}
              WHERE {where}
              GROUP BY c.name""",
@@ -144,8 +155,8 @@ def owned_playable(con: sqlite3.Connection,
         nm = r["name"]
         if nm and " // " in nm:
             nm = nm.split(" // ", 1)[0]
-        out[nm] = out.get(nm, 0) + (r["qty"] or 0)
-    return out
+        out[nm] = out.get(nm, 0) + max(r["qty"] or 0, 0)
+    return {k: v for k, v in out.items() if v > 0}
 
 
 def reserve_for_deck(con: sqlite3.Connection, deck_id: int) -> dict:

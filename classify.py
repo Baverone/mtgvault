@@ -5,10 +5,14 @@
   🔴 Vender  — cópias acima do limite (4 construído) OU cartas que não jogam
                em lado nenhum (não aparecem em nenhuma lista que sigo).
 
-Regras (ditadas pelo André, 2026-08-13):
-  - SÓ os baldes "SPML" e "Premodern (geral)" são coleção. Todo o resto
-    (Blue Farm, Cloud, Cloud cEDH, Pauper Affinity) são decks montados → Deck
-    inteiro, fora da Coleção.
+Regras (ditadas pelo André, 2026-08-13; a primeira reescrita em 2026-09-07):
+  - COLEÇÃO é o que está nos baldes de colecção — desde o modelo de colecção
+    única (*"põe a colecção toda em uma coisa só, com excepção da RL"*) isso é o
+    balde `Colecção`; antes dele eram o `SPML` e o `Premodern (geral)`. O que
+    está DENTRO de uma deckbox (`copy_allocation`) é Deck e fica fora da Coleção
+    — antes eram os baldes `Blue Farm`, `Cloud`, `Cloud cEDH` e `Pauper Affinity`
+    a fazer esse papel, e é por isso que a regra mudou de forma sem mudar de
+    sentido. A Caixa Reserved List continua fora dos dois (tem página própria).
   - SPML é DINÂMICO (colecao_config.json → spml_formatos): o André joga vários
     formatos ao mesmo tempo, cada um com um estado. Os que estão 'a jogar' ou
     'a treinar' são ATIVOS e os seus decks (tabela `decks`) reservam cartas →
@@ -40,7 +44,12 @@ ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 # Baldes que são coleção (o resto é deck montado). Mapeia para o "pool" de decks.
-COLLECTION_SUBS = {"SPML": "msl", "Premodern (geral)": "premodern"}
+# O `Colecção` é o balde único do modelo novo e não diz por si qual é o pool — a
+# regra do pool para as cópias que lá estão é a de `_pool_da_copia` abaixo.
+COLLECTION_SUBS = {"SPML": "msl", "Premodern (geral)": "premodern", "Jogar": "msl"}
+BALDE_UNICO = "Colecção"
+# Última edição legal em Premodern (Scourge) — a mesma constante do loadout.
+PREMODERN_END = "2003-05-26"
 CONSTRUCTED_LIMIT = 4          # playset: acima disto, vender
 SELL_STALE_DAYS = 180          # 6 meses sem ser jogada em torneio → vender
 PREMODERN_INCLUSION = 0.40     # carta em >=40% das listas do arquétipo = é do deck
@@ -176,16 +185,65 @@ def _premodern_deck_lists(con):
     return lists
 
 
+def _pool_da_copia(sub, lang, released_at):
+    """A que "pool" pertence uma cópia: `premodern` ou `msl` (Standard/Pioneer/
+    Modern/Legacy).
+
+    Enquanto houve um balde por pool, era o balde a decidir. Com a colecção
+    toda num balde só (2026-09-07) tem de ser a CARTA a decidir, e a regra já
+    existia noutro sítio: *"para Premodern as cartas são das edições que
+    tínhamos visto e em Português; essas cartas NÃO entram para outros
+    formatos"*. Ou seja, PT + impressão até ao Scourge = Premodern; o resto é
+    SPML. É a mesma tranca do `loadout._porque_nao`, e é de propósito: duas
+    respostas diferentes à mesma pergunta era o erro que se está a evitar.
+    """
+    if sub in COLLECTION_SUBS:
+        return COLLECTION_SUBS[sub]
+    return ("premodern" if lang == "pt" and (released_at or "9") <= PREMODERN_END
+            else "msl")
+
+
+def _colecao_baldes():
+    """Os baldes de colecção, do config. A Caixa Reserved List fica de fora — tem
+    página própria (`caixarl.html`) e nunca foi coleção jogável aqui."""
+    from mtgvault import loadout
+    return [b for b in loadout.baldes_coleccao() if b != loadout.BALDE_RL]
+
+
+def _na_caixa(con):
+    """`copy_id -> quantas cópias desse lote estão dentro de uma deckbox`.
+
+    No modelo de colecção única é isto que tira uma carta da Coleção: já não é o
+    balde (todas partilham o mesmo), é estar sleevada dentro de um deck.
+    """
+    try:
+        rows = con.execute("SELECT copy_id, SUM(quantity) q FROM copy_allocation "
+                           "GROUP BY copy_id").fetchall()
+    except Exception:                                   # noqa: BLE001
+        return {}                                       # base antiga, sem a tabela
+    return {r["copy_id"]: r["q"] or 0 for r in rows}
+
+
 def _owned_premodern(con):
-    """Cartas que o André tem no balde Premodern (geral), por nome."""
+    """Cartas de Premodern que o André tem na COLEÇÃO, por nome.
+
+    Antes era "o que está no balde Premodern (geral)"; com um balde só, é o que
+    é material de Premodern (`_pool_da_copia`) e não está dentro de uma caixa.
+    """
+    baldes = _colecao_baldes()
+    ph = ",".join("?" * len(baldes))
+    na_caixa = _na_caixa(con)
     owned = defaultdict(int)
     for r in con.execute(
-        """SELECT c.name nm, SUM(cp.quantity) q FROM copies cp
-             JOIN cards c ON c.scryfall_id = cp.scryfall_id
-             JOIN sub_collections s ON s.id = cp.sub_collection_id
-            WHERE cp.purpose = 'player' AND s.name = 'Premodern (geral)'
-            GROUP BY c.name"""):
-        owned[r["nm"]] += r["q"]
+        f"""SELECT cp.id, c.name nm, cp.quantity q, cp.language lang,
+                   c.released_at rel, s.name sub
+              FROM copies cp
+              JOIN cards c ON c.scryfall_id = cp.scryfall_id
+              JOIN sub_collections s ON s.id = cp.sub_collection_id
+             WHERE cp.purpose = 'player' AND s.name IN ({ph})""", baldes):
+        livre = r["q"] - na_caixa.get(r["id"], 0)
+        if livre > 0 and _pool_da_copia(r["sub"], r["lang"], r["rel"]) == "premodern":
+            owned[r["nm"]] += livre
     return owned
 
 
@@ -264,20 +322,40 @@ def build(con):
 
     # Cartas físicas dos baldes de coleção, agrupadas por carta (para as regras de
     # quantidade) e guardando cada grupo físico (sid/finish/lang) para a distribuição.
+    baldes = _colecao_baldes()
+    ph = ",".join("?" * len(baldes))
+    na_caixa = _na_caixa(con)
     by_name = defaultdict(lambda: {"pool": None, "groups": [], "legal": True})
     for r in con.execute(
-        """SELECT c.scryfall_id sid, c.name nm, c.cmc cmc, c.type_line tl,
-                  c.color_identity ci, c.legalities leg, cp.finish fin, cp.language lang,
-                  s.name sub, SUM(cp.quantity) q
-             FROM copies cp
-             JOIN cards c ON c.scryfall_id = cp.scryfall_id
-             JOIN sub_collections s ON s.id = cp.sub_collection_id
-            WHERE cp.purpose = 'player' AND s.name IN ('SPML','Premodern (geral)')
-            GROUP BY c.scryfall_id, cp.finish, cp.language, s.name"""):
+        f"""SELECT cp.id, c.scryfall_id sid, c.name nm, c.cmc cmc, c.type_line tl,
+                   c.color_identity ci, c.legalities leg, c.released_at rel,
+                   cp.finish fin, cp.language lang, s.name sub, cp.quantity q
+              FROM copies cp
+              JOIN cards c ON c.scryfall_id = cp.scryfall_id
+              JOIN sub_collections s ON s.id = cp.sub_collection_id
+             WHERE cp.purpose = 'player' AND s.name IN ({ph})""", baldes):
+        # O que está dentro de uma deckbox já é Deck: sai da Coleção aqui, tal
+        # como saíam as cartas dos baldes `Blue Farm`/`Cloud`/... antes de a
+        # colecção passar a ser um balde só.
+        livre = r["q"] - na_caixa.get(r["id"], 0)
+        if livre <= 0:
+            continue
         d = by_name[r["nm"]]
-        d["pool"] = COLLECTION_SUBS[r["sub"]]
+        pool = _pool_da_copia(r["sub"], r["lang"], r["rel"])
+        # Uma carta pode ter cópias dos dois pools (uma PT antiga e uma EN nova).
+        # O Premodern ganha: é o pool com a regra mais apertada, e classificar uma
+        # PT da era como SPML era o caminho para a sugerir para venda.
+        d["pool"] = "premodern" if "premodern" in (pool, d["pool"]) else pool
         d["legal"] = _legal_anywhere(r["leg"])
-        d["groups"].append(dict(r))
+        chave = (r["sid"], r["fin"], r["lang"], r["sub"])
+        anterior = next((g for g in d["groups"]
+                         if (g["sid"], g["fin"], g["lang"], g["sub"]) == chave), None)
+        if anterior:
+            anterior["q"] += livre
+        else:
+            g = dict(r)
+            g["q"] = livre
+            d["groups"].append(g)
 
     colecao, vender, deck_rows = [], [], []
     deck_total = 0

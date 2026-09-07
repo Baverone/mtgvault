@@ -82,9 +82,19 @@ ICON = {"Branco": "⬜", "Azul": "🟦", "Preto": "⬛", "Vermelho": "🟥", "Ve
 SLUG = {"Branco": "branco", "Azul": "azul", "Preto": "preto", "Vermelho": "vermelho",
         "Verde": "verde", "Multicor": "multicor", "Incolor / Artefacto": "incolor",
         "Terras": "terras"}
-# As duas coleções (balde sub_collection -> rótulo curto), pela ordem em que
-# aparecem DENTRO de cada cor.
-POOLS = [("SPML", "🔷 SPML"), ("Premodern (geral)", "🕰️ Premodern")]
+# Os baldes de coleção (sub_collection -> rótulo curto), pela ordem em que
+# aparecem DENTRO de cada cor. Desde o modelo de colecção única (André,
+# 2026-09-07: *"põe a colecção toda em uma coisa só, com excepção da RL"*) é um
+# só; os nomes antigos ficam para o mesmo código estar certo antes e depois da
+# migração, e só aparecem os que têm cartas.
+ROTULOS = {"Colecção": "📚 Coleção", "SPML": "🔷 SPML",
+           "Premodern (geral)": "🕰️ Premodern", "Jogar": "🎴 Jogar"}
+
+
+def _pools():
+    """(balde, rótulo) dos baldes de colecção — a Caixa RL fica de fora."""
+    return [(b, ROTULOS.get(b, b)) for b in loadout.baldes_coleccao()
+            if b != loadout.BALDE_RL]
 
 
 def _cmc_grids(rows, is_land):
@@ -135,7 +145,7 @@ def _de_outro_balde(con, res, balde, cur):
     """
     if res is None:
         return []
-    slot = next((s for s in res["slots"] if s.get("balde") == balde), None)
+    slot = _slot_do_balde(res, balde)
     if slot is None:
         return []
     fora = {}                               # (sid, finish, lang, balde) -> qty
@@ -143,8 +153,10 @@ def _de_outro_balde(con, res, balde, cur):
         if m["nm"] not in cur:
             continue
         for g in m["lotes"]:
-            if g["sub"] == balde:
-                continue                    # já está na caixa: não é "ir buscar"
+            # Já está na caixa (pelo balde antigo ou pela arrumação nova): não é
+            # "ir buscar", e contá-la aqui era mostrá-la duas vezes.
+            if g["sub"] == balde or g["local"] == slot["nome"]:
+                continue
             k = (g["sid"], g["finish"], g["lang"], g["local"])
             fora[k] = fora.get(k, 0) + g["q"]
     if not fora:
@@ -162,6 +174,36 @@ def _de_outro_balde(con, res, balde, cur):
         out.append({"sid": sid, "nm": m["nm"], "cmc": m["cmc"], "tl": m["tl"],
                     "ci": m["ci"], "fin": fin, "lang": lang, "q": q, "de": local})
     return out
+
+
+def _slot_do_balde(res, balde):
+    return next((s for s in (res or {}).get("slots", []) if s.get("balde") == balde),
+                None)
+
+
+def _copias_na_caixa(con, res, balde):
+    """As cópias que estão fisicamente DENTRO desta caixa.
+
+    Duas maneiras de lá estar, e as duas contam para o mesmo código funcionar
+    antes e depois do modelo de colecção única:
+      * vivem no balde do deck (`Blue Farm`, `Cloud cEDH`, ...) — o modelo antigo;
+      * estão registadas na `copy_allocation` daquele slot — o modelo novo, em
+        que a colecção é um balde só e a caixa é a arrumação.
+    """
+    slot = _slot_do_balde(res, balde)
+    sid = slot["slot"] if slot else None
+    return con.execute(
+        """SELECT c.scryfall_id sid, c.name nm, c.cmc cmc, c.type_line tl,
+                  c.color_identity ci, cp.finish fin, cp.language lang,
+                  SUM(CASE WHEN a.quantity IS NOT NULL THEN a.quantity
+                           ELSE cp.quantity END) q
+             FROM copies cp
+             JOIN cards c ON c.scryfall_id = cp.scryfall_id
+             LEFT JOIN sub_collections s ON s.id = cp.sub_collection_id
+             LEFT JOIN copy_allocation a ON a.copy_id = cp.id AND a.slot = ?
+            WHERE cp.purpose = 'player' AND (s.name = ? OR a.quantity IS NOT NULL)
+            GROUP BY c.scryfall_id, cp.finish, cp.language
+            HAVING q > 0""", (sid, balde)).fetchall()
 
 
 def _watched_deck_pools(con):
@@ -204,13 +246,7 @@ def _watched_deck_pools(con):
     for balde, title in WATCHED_BALDES:
         cur, last = _list_and_last(balde)
         deck_rows, extra_rows = [], []
-        for r in con.execute(
-            """SELECT c.scryfall_id sid, c.name nm, c.cmc cmc, c.type_line tl,
-                      c.color_identity ci, cp.finish fin, cp.language lang, SUM(cp.quantity) q
-                 FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id
-                 JOIN sub_collections s ON s.id = cp.sub_collection_id
-                WHERE cp.purpose = 'player' AND s.name = ?
-                GROUP BY c.scryfall_id, cp.finish, cp.language""", (balde,)):
+        for r in _copias_na_caixa(con, res, balde):
             row = dict(r)
             front = r["nm"].split(" // ")[0]
             if front in cur:
@@ -297,15 +333,25 @@ def _value(con):
         o = "foil" if fin == "nonfoil" else "nonfoil"
         return a.get((sid, fin)) or a.get((sid, o)) or b.get((sid, fin)) or b.get((sid, o)) or 0
 
+    coleccao = {b for b, _ in _pools()}
     grp = {"min": [0.0, 0.0, 0.0], "trend": [0.0, 0.0, 0.0]}   # [coleção, decks, caixa]
+    # Uma cópia pode estar meio na caixa e meio na gaveta, e o valor tem de se
+    # repartir na mesma proporção — senão um lote de 4 com 3 no deck contava
+    # 4 como coleção.
     for r in con.execute("""SELECT cp.scryfall_id sid, cp.finish fin, cp.quantity q,
-                COALESCE(s.name,'') bal FROM copies cp
+                COALESCE(s.name,'') bal,
+                COALESCE((SELECT SUM(a.quantity) FROM copy_allocation a
+                           WHERE a.copy_id = cp.id), 0) na_caixa
+                FROM copies cp
                 LEFT JOIN sub_collections s ON s.id = cp.sub_collection_id
                WHERE cp.purpose = 'player'"""):
-        i = (0 if r["bal"] in ("SPML", "Premodern (geral)")
-             else 2 if r["bal"] == "Caixa Reserved List" else 1)
-        grp["min"][i] += price(r["sid"], r["fin"], lo, tr) * r["q"]
-        grp["trend"][i] += price(r["sid"], r["fin"], tr, lo) * r["q"]
+        base = 0 if r["bal"] in coleccao else 2 if r["bal"] == loadout.BALDE_RL else 1
+        dentro = min(r["na_caixa"] or 0, r["q"])
+        for i, q in ((1, dentro), (base, r["q"] - dentro)):
+            if q <= 0:
+                continue
+            grp["min"][i] += price(r["sid"], r["fin"], lo, tr) * q
+            grp["trend"][i] += price(r["sid"], r["fin"], tr, lo) * q
     return grp
 
 
@@ -324,16 +370,23 @@ def build(con, out_path=None):
     pm_status = classify.premodern_status(con, sticky=completos)
     used_by = classify._used_by(con, active_fmts, pm_status, montados)
 
+    baldes = [b for b, _ in _pools()]
+    ph = ",".join("?" * len(baldes))
     colrows = defaultdict(lambda: defaultdict(list))   # cor -> balde -> linhas
     n_deckbound = 0
     for r in con.execute(
-        """SELECT c.scryfall_id sid, c.name nm, c.cmc cmc, c.type_line tl,
-                  c.color_identity ci, cp.finish fin, cp.language lang, s.name sub,
-                  SUM(cp.quantity) q
-             FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id
-             JOIN sub_collections s ON s.id = cp.sub_collection_id
-            WHERE cp.purpose = 'player' AND s.name IN ('SPML', 'Premodern (geral)')
-            GROUP BY c.scryfall_id, cp.finish, cp.language, s.name"""):
+        f"""SELECT c.scryfall_id sid, c.name nm, c.cmc cmc, c.type_line tl,
+                   c.color_identity ci, cp.finish fin, cp.language lang, s.name sub,
+                   SUM(cp.quantity - COALESCE((SELECT SUM(a.quantity)
+                        FROM copy_allocation a WHERE a.copy_id = cp.id), 0)) q
+              FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id
+              JOIN sub_collections s ON s.id = cp.sub_collection_id
+             WHERE cp.purpose = 'player' AND s.name IN ({ph})
+             GROUP BY c.scryfall_id, cp.finish, cp.language, s.name
+             HAVING q > 0""", baldes):
+        # As cópias que já estão DENTRO de uma deckbox saem daqui: aparecem na
+        # secção "Decks permanentes", que é onde elas estão. É o que os baldes
+        # `Blue Farm`/`Cloud`/... faziam antes de a colecção passar a ser um só.
         row = dict(r)
         ub = used_by.get(r["nm"])
         if ub:
@@ -351,7 +404,7 @@ def build(con, out_path=None):
         navs.append(f'<a href="#bind-{slug}">{ICON[b]} {b}</a>')
         secs += (f'<h2 id="bind-{slug}" class="pool">{ICON[b]} {html.escape(b)} '
                  f'<span class="n">{total}</span></h2>')
-        for sub, short in POOLS:
+        for sub, short in _pools():
             rs = pools.get(sub)
             if not rs:
                 continue

@@ -183,6 +183,24 @@ def caso_arrumacao_diz_de_que_gaveta_sai():
     print("depois da migracao a arrumacao tira tudo da mesma gaveta")
 
 
+def caso_o_que_esta_na_caixa_sai_da_coleccao():
+    """A regra reescrita: "coleção" deixou de ser um balde e passou a ser "não
+    está dentro de nenhuma caixa". Sem isto, depois da migração as cartas dos
+    decks montados apareciam como disponíveis para montar outra coisa — a
+    colecção parecia ter as cartas que estão sleevadas em cima da mesa."""
+    from mtgvault.collection import owned_playable
+    con = povoada()
+    migracao.migrar(con, com_backup=False, cfg_slots=SLOTS)
+    baldes = {"Colecção"}
+    tudo = owned_playable(con, baldes=baldes)
+    livre = owned_playable(con, baldes=baldes, fora_das_caixas=True)
+    assert tudo.get("Tarnished Citadel") == 1, tudo
+    assert "Tarnished Citadel" not in livre, livre
+    # E o resto da colecção não se mexe.
+    assert livre.get("Sol Ring") == 4 and livre.get("Lotus Petal") == 2, livre
+    print("o que esta dentro de uma caixa sai da coleccao disponivel")
+
+
 def caso_dry_run_nao_escreve():
     con = povoada()
     antes = por_balde(con)
@@ -196,7 +214,8 @@ def run():
     for fn in (caso_funde_gavetas_e_deixa_a_rl_em_paz, caso_colecionador_intocado,
                caso_idempotente_e_guarda_o_balde_de_origem,
                caso_deck_montado_continua_montado,
-               caso_arrumacao_diz_de_que_gaveta_sai, caso_dry_run_nao_escreve):
+               caso_arrumacao_diz_de_que_gaveta_sai,
+               caso_o_que_esta_na_caixa_sai_da_coleccao, caso_dry_run_nao_escreve):
         fn()
     print("\nTUDO OK")
 

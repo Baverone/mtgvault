@@ -32,7 +32,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import db, sources  # noqa: E402
+from mtgvault import db, loadout, sources  # noqa: E402
 from mtgvault.collection import owned_playable  # noqa: E402
 
 _FORMATS = [
@@ -54,10 +54,16 @@ _ATIVOS = sources.config().get("formatos_metagame")
 FORMATS = ([f for f in _FORMATS if f[0] in {str(x).lower() for x in _ATIVOS}]
            if _ATIVOS is not None else _FORMATS)
 
-# A COLEÇÃO disponível para montar decks do metagame = só estes baldes. Os baldes
-# dos decks vigiados (Blue Farm, Cloud, Cloud cEDH, Pauper Affinity) estão agregados
-# a esses decks e NÃO contam como disponíveis (regra do André, 2026-08-26).
-COLLECTION_BALDES = {"SPML", "Premodern (geral)"}
+# A COLEÇÃO disponível para montar decks do metagame = só estes baldes. As cartas
+# dos decks vigiados estão agregadas a esses decks e NÃO contam como disponíveis
+# (regra do André, 2026-08-26).
+#
+# Desde o modelo de colecção única (2026-09-07) isto é o balde `Colecção`; os
+# nomes antigos continuam na lista para o mesmo código estar certo antes e depois
+# da migração. A Caixa Reserved List fica de fora, como sempre esteve. E o que
+# distingue uma carta de deck de uma carta de colecção deixou de ser o balde:
+# é a ARRUMAÇÃO (ver `owned_available`).
+COLLECTION_BALDES = set(loadout.baldes_coleccao()) - {loadout.BALDE_RL}
 
 
 def _committed_to_watched(con):
@@ -87,11 +93,17 @@ def _committed_to_watched(con):
 
 
 def owned_available(con):
-    """Cartas DISPONÍVEIS na coleção (SPML + Premodern) para montar decks do
-    metagame, como {nome: qty_livre} — já sem as comprometidas com os decks
-    vigiados. metagame/decks-fazíveis fazem set(...) para os nomes; a cobertura usa
-    as quantidades."""
-    col = owned_playable(con, baldes=COLLECTION_BALDES)
+    """Cartas DISPONÍVEIS na coleção para montar decks do metagame, como
+    {nome: qty_livre} — já sem as que estão dentro de uma deckbox e sem as
+    comprometidas com os decks vigiados. O metagame faz set(...) para os nomes;
+    a cobertura usa as quantidades.
+
+    `fora_das_caixas=True` é o que substitui, no modelo de colecção única, o
+    truque de não olhar para os baldes dos decks: agora as cartas de um deck
+    montado vivem no mesmo balde de todas as outras, e o que as tira da colecção
+    é estarem registadas dentro de uma caixa.
+    """
+    col = owned_playable(con, baldes=COLLECTION_BALDES, fora_das_caixas=True)
     comm = _committed_to_watched(con)
     return {nm: q - comm.get(nm, 0) for nm, q in col.items() if q > comm.get(nm, 0)}
 
