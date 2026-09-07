@@ -251,6 +251,51 @@ compre, depois indico (meto foto) e vais ajustando."*
   sozinha na corrida seguinte do `daily.py`** (passo `deckboxes`). Não há estado
   guardado: o "onde está a carta" é sempre recalculado da coleção do dia.
 
+**COMPRAS PARTILHADAS: compra-se o MÁXIMO, não a soma (2026-09-07).** É a segunda
+metade da regra de cima — *"não ter que comprar múltiplos para todos"*. O `noutra`
+tratava as cópias que ele TEM; a lista de compras continuava a **somar as faltas
+caixa a caixa**, o que contradiz a partilha. Na base de 2026-09-07 isso pedia 5
+Swords to Plowshares PT quando 2 chegam, 9 Brushland quando 3 chegam e o Lion's
+Eye Diamond duas vezes (535 € a mais numa carta só): **18 cópias e 608,75 €** a
+mais no total (7 891,50 € → **7 282,75 €**; 230 → **212** a comprar, 61 → **79** a
+ir buscar).
+- Quem faz a conta é `loadout.partilhar_compras(slots)`, DEPOIS da alocação toda
+  (precisa das faltas de todas as caixas). Agrupa por **(carta, pool de
+  material)** e faz `comprar = max_caixa(o que a caixa compra)` — que é o mesmo
+  que `max(0, max_caixa(precisa) − o que já existe no pool)`, porque cada caixa
+  já desconta o que vê. Como mexe nas linhas depois de escritas, os totais de
+  cada caixa recalculam-se em `_totais_do_slot` (não os inlines no ciclo).
+- **As faltas DENTRO da mesma caixa (main + side) continuam a somar** — essas
+  estão na mesa ao mesmo tempo. É entre caixas que não somam.
+- **O pool** (`loadout.pool_compra`) é `(edições, acabamento, língua)`: uma cópia
+  só se partilha se servir as duas caixas. Os pools que **se tocam** fundem-se:
+  o Duel Commander é *"apenas foil"* sem exigir língua e o SPML é *"tudo foil e
+  inglês"* — uma **EN foil** serve os dois, e o material da compra passa a ser o
+  do pool (o mais exigente), senão a partilha mandava comprar uma foil PT que a
+  caixa de Modern depois recusa. A fusão só se faz quando há **uma** língua
+  exigida naquele acabamento; com duas não se escolhe por ele.
+- As cópias compradas ficam da caixa de **maior prioridade** que as pediu e as
+  outras passam a `noutra` — com a parte que ainda não está em casa em
+  **`noutra_futura`**, que a página e o CLI dizem (*"3 depois de Enchantress
+  comprar"*). Sem isso mandava-o à caixa do lado buscar uma carta que ninguém
+  comprou ainda, que é o mesmo tipo de mentira que o "noutra caixa" veio corrigir.
+- **`pct`/`tenho`/`missing` não mexem**: a caixa continua a ter a falta até a
+  compra chegar. O que muda é de quem é a compra.
+- **`colecao_config.json → loadout[].compras_dedicadas`** (default `false`): a
+  caixa que ele queira fechar sem depender de trocas fica fora da partilha —
+  compra as suas e ninguém conta com elas. Só manda nas COMPRAS; as cópias que
+  ele já tem continuam repartidas pela alocação normal.
+- Na página é a aba **Comprar**: `q` é o número real a comprar, o chip
+  **«🔁 partilhada por N caixas»** (que conta as caixas da PARTILHA, não todas as
+  que pedem a carta — o LED compra-se 2 em PT para o Premodern e 1 em EN nonfoil
+  para as duas caixas de cEDH) e, em `para`, as caixas *servidas* vêm com
+  `serve: true`. **Uma caixa servida não tem a carta na wantlist dela** — pô-la lá
+  era comprá-la duas vezes, que é o defeito que isto veio corrigir.
+- **O texto que o botão «copiar» copia leva o material em cada linha**
+  (`2 Swords to Plowshares [PT]`, `1 Lion's Eye Diamond [EN nonfoil]`), de
+  `loadout.marca_compra` — e vem da LINHA, não da caixa, porque numa compra
+  partilhada é o do pool. O mesmo no `loadout <deck>` do CLI.
+
 **As regras de material são por GRUPO DE FORMATO, e a ordem sai delas (André,
 2026-09-07, à letra).** As duas regras abaixo foram as duas primeiras de cinco;
 no mesmo dia ele completou-as e deu a ordem da alocação:

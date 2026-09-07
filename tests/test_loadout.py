@@ -211,8 +211,14 @@ def caso_noutra_caixa_nao_e_compra():
 
 
 def caso_noutra_caixa_e_compra_misturadas():
-    """O caso meio: a caixa precisa de 4, só existem 2 e foram para outra. Duas
-    vão-se buscar, DUAS compram-se — e o custo é só o das duas."""
+    """O caso meio: duas caixas pedem 4, só existem 2 e foram para a primeira.
+
+    Faltam 2 cópias no mundo, não 4: compram-se DUAS (a caixa de maior
+    prioridade fica com elas) e a outra caixa vai buscar as quatro — é a regra
+    dele, *"não ter que comprar múltiplos para todos"*, aplicada às compras e não
+    só às cópias que já tem. Até 2026-09-07 cada caixa comprava as suas 2 e a
+    lista pedia 4.
+    """
     con = base()
     preco(con, "Swords to Plowshares", "foil", 10.0)
     deck(con, "A", "legacy", [("Swords to Plowshares", 4)])
@@ -222,16 +228,140 @@ def caso_noutra_caixa_e_compra_misturadas():
                                slot("B", "legacy", "B", prioridade=2, balde="SPML")])
     b = por_nome(rep)["B"]
     m = b["missing"][0]
-    assert m["missing"] == 4 and m["noutra"] == {"A": 2} and m["comprar"] == 2, m
-    assert m["cost"] == 20.0 and b["custo"] == 20.0, (m, b["custo"])
-    assert b["comprar"] == 2 and b["noutra"] == 2, b
-    print("metade noutra caixa, metade a comprar: o custo é só o da metade")
+    assert m["missing"] == 4 and m["comprar"] == 0 and m["cost"] == 0, m
+    # 2 que estão mesmo na caixa do A + 2 que o A vai comprar. As segundas dizem
+    # que ainda não estão em casa, para a página não mentir.
+    assert m["noutra"] == {"A": 4} and m["noutra_futura"] == {"A": 2}, m
+    assert b["comprar"] == 0 and b["noutra"] == 4 and b["custo"] == 0, b
+    print("duas caixas, faltam 2 no mundo: compram-se 2 e a outra vai buscá-las")
 
     # O A, que também não fecha (precisa de 4 e só levou 2), não tem para onde ir
-    # buscar: as cópias são dele. Para ele é compra a sério.
+    # buscar: as cópias são dele. É ele que compra as duas que faltam.
     a = por_nome(rep)["A"]
     assert a["noutra"] == 0 and a["comprar"] == 2 and a["custo"] == 20.0, a
+    assert rep["comprar_total"] == 2 and rep["custo_total"] == 20.0, rep["custo_total"]
+    assert rep["poupado_total"] == 2, rep["partilhas"]
     print("a caixa que já tem as cópias não se vai buscar a si própria")
+
+    # E a partilha diz-se por inteiro: quanto se compra, quanto se poupou e quem
+    # é servido — é o que a aba Comprar mostra como «partilhada por N caixas».
+    p = [x for x in rep["partilhas"] if x["nm"] == "Swords to Plowshares"][0]
+    assert p["comprar"] == 2 and p["soma"] == 4 and p["poupado"] == 2, p
+    assert p["marca"] == "EN foil" and p["req"] == "EN · foil", p
+    assert [(c["caixa"], c["compra"]) for c in p["caixas"]] == [("A", 2), ("B", 0)], p
+    print("a partilha diz quanto se compra, quanto se poupa e quem é servido")
+
+
+def caso_compra_partilhada_e_o_maximo_nao_a_soma():
+    """Três caixas do mesmo material pedem 4 cartas que ele não tem nenhuma.
+
+    Comprar 12 contradizia a regra do André (*"não ter que comprar múltiplos para
+    todos"*): 4 chegam, e cada caixa joga com elas de cada vez, indo buscá-las à
+    caixa que ficou com a compra. Era o buraco que sobrava da v3 — o `noutra`
+    tratava as cópias que ele TEM e as compras continuavam a somar-se.
+    """
+    con = base()
+    preco(con, "Swords to Plowshares", "foil", 10.0)
+    for nome in ("A", "B", "C"):
+        deck(con, nome, "legacy", [("Swords to Plowshares", 4)])
+    rep = loadout.report(con, [slot("A", "legacy", "A", prioridade=1),
+                               slot("B", "legacy", "B", prioridade=2),
+                               slot("C", "legacy", "C", prioridade=3)])
+    s = por_nome(rep)
+    assert s["A"]["comprar"] == 4 and s["A"]["custo"] == 40.0, s["A"]
+    for nome in ("B", "C"):
+        assert s[nome]["comprar"] == 0 and s[nome]["custo"] == 0, s[nome]
+        assert s[nome]["noutra"] == 4, s[nome]
+        m = s[nome]["missing"][0]
+        assert m["noutra"] == {"A": 4} and m["noutra_futura"] == {"A": 4}, m
+    assert rep["comprar_total"] == 4 and rep["custo_total"] == 40.0, rep["custo_total"]
+    assert rep["poupado_total"] == 8, rep["poupado_total"]
+    # A posse NÃO mexe: a caixa continua a ter a falta até a compra chegar.
+    assert all(s[n]["pct"] == 0 and s[n]["faltam"] == 4 for n in "ABC"), s
+    print("três caixas, uma compra: compra-se o máximo de uma, não a soma das três")
+
+
+def caso_main_e_side_da_mesma_caixa_continuam_a_somar():
+    """Dentro da MESMA caixa o main e o side estão na mesa ao mesmo tempo: essas
+    faltas somam. É entre caixas que não somam — e confundir as duas coisas era
+    fazer o vault mandar montar um deck com 3 cópias onde a lista pede 5."""
+    con = base()
+    preco(con, "Swords to Plowshares", "foil", 10.0)
+    deck(con, "A", "legacy", [("Swords to Plowshares", 3)],
+         side=[("Swords to Plowshares", 2)])
+    deck(con, "B", "legacy", [("Swords to Plowshares", 4)])
+    rep = loadout.report(con, [slot("A", "legacy", "A", prioridade=1),
+                               slot("B", "legacy", "B", prioridade=2)])
+    s = por_nome(rep)
+    assert s["A"]["comprar"] == 5 and s["A"]["custo"] == 50.0, s["A"]
+    assert sorted(m["comprar"] for m in s["A"]["missing"]) == [2, 3], s["A"]["missing"]
+    assert s["B"]["comprar"] == 0 and s["B"]["noutra"] == 4, s["B"]
+    assert rep["comprar_total"] == 5, rep["comprar_total"]
+    print("main + side da mesma caixa somam; entre caixas é o máximo")
+
+
+def caso_pools_de_material_diferentes_nao_se_partilham():
+    """Uma Swords PT da era não serve o Legacy (que a quer foil e EN) e uma EN
+    foil não serve o Premodern. São duas compras, e a partilha não pode fundi-las
+    — é o mesmo erro, ao contrário: comprar uma e julgar que serve as duas."""
+    con = base()
+    preco(con, "Swords to Plowshares", "foil", 10.0)
+    preco(con, "Swords to Plowshares", "nonfoil", 4.0)
+    deck(con, "P", "premodern", [("Swords to Plowshares", 4)])
+    deck(con, "L", "legacy", [("Swords to Plowshares", 4)])
+    rep = loadout.report(con, [slot("P", "premodern", "P", balde="Premodern (geral)"),
+                               slot("L", "legacy", "L", balde="SPML")])
+    s = por_nome(rep)
+    assert s["P"]["comprar"] == 4 and s["L"]["comprar"] == 4, (s["P"], s["L"])
+    assert rep["comprar_total"] == 8 and not rep["partilhas"], rep["partilhas"]
+    # E cada linha diz o material que aquela compra tem de ter.
+    assert s["P"]["missing"][0]["marca_compra"] == "PT", s["P"]["missing"][0]
+    assert s["L"]["missing"][0]["marca_compra"] == "EN foil", s["L"]["missing"][0]
+    print("PT do Premodern e EN foil do Legacy são pools diferentes: duas compras")
+
+
+def caso_pool_foil_en_junta_o_duel_commander_e_o_spml():
+    """Os pools que SE TOCAM: o Duel Commander é *"apenas foil"* (sem exigir
+    língua) e o SPML é *"tudo foil e inglês"*. Uma cópia **EN foil** serve os
+    dois, por isso é uma compra só — e o material da compra é o mais exigente dos
+    dois, senão comprava-se uma foil PT que o Modern depois recusa."""
+    con = base()
+    preco(con, "Sol Ring", "foil", 12.0)
+    deck(con, "Cloud", "duel-commander", [("Sol Ring", 1)])
+    deck(con, "Oswald", "modern", [("Sol Ring", 1)])
+    rep = loadout.report(con, [slot("Cloud", "duel-commander", "Cloud"),
+                               slot("Oswald", "modern", "Oswald")])
+    s = por_nome(rep)
+    # O Duel Commander aloca antes do SPML: é ele que compra.
+    assert s["Cloud"]["comprar"] == 1 and s["Oswald"]["comprar"] == 0, (s, )
+    assert s["Oswald"]["noutra"] == 1, s["Oswald"]
+    assert rep["comprar_total"] == 1 and rep["custo_total"] == 12.0, rep["custo_total"]
+    p = rep["partilhas"][0]
+    assert p["marca"] == "EN foil" and p["req"] == "EN · foil", p
+    print("foil sem língua + EN foil são um pool só, e compra-se a EN foil")
+
+
+def caso_compras_dedicadas_nao_partilham():
+    """`colecao_config.json -> loadout[].compras_dedicadas`: a caixa que ele quer
+    fechar sem depender de trocas compra as suas cópias e não entra na partilha.
+    As outras continuam a partilhar entre si."""
+    con = base()
+    preco(con, "Swords to Plowshares", "foil", 10.0)
+    for nome in ("A", "B", "C"):
+        deck(con, nome, "legacy", [("Swords to Plowshares", 4)])
+    rep = loadout.report(con, [
+        slot("A", "legacy", "A", prioridade=1),
+        slot("B", "legacy", "B", prioridade=2, compras_dedicadas=True),
+        slot("C", "legacy", "C", prioridade=3)])
+    s = por_nome(rep)
+    assert s["A"]["comprar"] == 4 and s["B"]["comprar"] == 4, (s["A"], s["B"])
+    assert s["C"]["comprar"] == 0 and s["C"]["noutra"] == 4, s["C"]
+    assert rep["comprar_total"] == 8, rep["comprar_total"]
+    # E o B não aparece como quem serve o C: as cópias dele são dele.
+    p = [x for x in rep["partilhas"] if x["nm"] == "Swords to Plowshares"][0]
+    assert [c["caixa"] for c in p["caixas"]] == ["A", "C"], p
+    assert s["C"]["missing"][0]["noutra"] == {"A": 4}, s["C"]["missing"][0]
+    print("uma caixa com compras dedicadas compra as suas e fica fora da partilha")
 
 
 def caso_noutra_caixa_nao_conta_a_mesma_copia_duas_vezes():
@@ -874,6 +1004,11 @@ def caso_rotulo_material_diz_a_classe_e_as_fontes():
 def run():
     for fn in (caso_uma_copia_uma_caixa, caso_noutra_caixa_nao_e_compra,
                caso_noutra_caixa_e_compra_misturadas,
+               caso_compra_partilhada_e_o_maximo_nao_a_soma,
+               caso_main_e_side_da_mesma_caixa_continuam_a_somar,
+               caso_pools_de_material_diferentes_nao_se_partilham,
+               caso_pool_foil_en_junta_o_duel_commander_e_o_spml,
+               caso_compras_dedicadas_nao_partilham,
                caso_noutra_caixa_nao_conta_a_mesma_copia_duas_vezes,
                caso_falta_partilhada_nao_e_conflito,
                caso_premodern_so_pt,

@@ -413,9 +413,10 @@ def caso_aba_comprar_diz_para_que_caixa_e_em_que_material():
                    .group(1).replace("<\\/", "</"))
     tc = next(m for m in d["compras"] if m["nm"] == "Thoughtcast")
     assert tc["req"] == "EN · foil", tc
+    assert tc["mat"] == "EN foil", tc
     assert tc["para"] == [{"caixa": "Modern — UW Oswald", "slot": "modern",
                            "q": 4, "cost": tc["cost"], "unit": tc["unit"],
-                           "req": "EN · foil"}], tc["para"]
+                           "req": "EN · foil", "mat": "EN foil"}], tc["para"]
 
     abas = _abas_desenhadas(pagina)
     if abas is None:
@@ -428,6 +429,56 @@ def caso_aba_comprar_diz_para_que_caixa_e_em_que_material():
     # E o filtro por caixa só mostra (e só copia) as compras dessa caixa.
     print("aba Comprar: para que caixa, em que material, e com selector")
 
+    # A lista COPIADA leva o material em cada linha: sem isso o texto que ele
+    # cola no Cardmarket não distingue a PT do Premodern da EN foil do Modern.
+    if abas:
+        assert "4 Thoughtcast [EN foil]" in abas["comprar"], "falta o material na linha"
+        print("a lista copiada leva o material em cada linha")
+
+
+def _pagina_partilhada():
+    """Duas caixas do MESMO material a pedir a mesma carta que ele não tem."""
+    con = base()
+    deck(con, "UW Oswald", "modern", [("Thoughtcast", 4)])
+    deck(con, "UR Murktide", "modern", [("Thoughtcast", 4)])
+    slots = [{"slot": "modern", "nome": "Modern — UW Oswald", "formato": "modern",
+              "fonte": "deck", "ref": "UW Oswald", "balde": "SPML", "prioridade": 1},
+             {"slot": "modern2", "nome": "Modern — UR Murktide", "formato": "modern",
+              "fonte": "deck", "ref": "UR Murktide", "balde": "SPML", "prioridade": 2}]
+    out = Path(tempfile.mkdtemp()) / "deckboxes.html"
+    deckboxes.build(con, out, rep=loadout.report(con, slots))
+    return out
+
+
+def caso_aba_comprar_nao_soma_a_mesma_compra_por_caixa():
+    """A regra do André — *"não ter que comprar múltiplos para todos"* — aplicada
+    às COMPRAS e não só às cópias que ele tem. Duas caixas de Modern pedem 4
+    Thoughtcast cada: a lista pede 4, não 8, e diz que a compra é partilhada."""
+    pagina = _pagina_partilhada()
+    d = json.loads(re.search(r'<script id="dados" type="application/json">(.*?)</script>',
+                             pagina.read_text(encoding="utf-8"), re.S)
+                   .group(1).replace("<\\/", "</"))
+    tc = next(m for m in d["compras"] if m["nm"] == "Thoughtcast")
+    assert tc["q"] == 4, ("comprar o máximo de uma caixa, não a soma", tc)
+    assert tc["partilhada"] == 2, tc
+    assert [(p["caixa"], p["q"], bool(p.get("serve"))) for p in tc["para"]] == [
+        ("Modern — UW Oswald", 4, False), ("Modern — UR Murktide", 4, True)], tc["para"]
+    assert d["resumo"]["comprar"] == 4 and d["resumo"]["poupado"] == 4, d["resumo"]
+    # A posse de cada caixa NÃO mexe: a falta continua lá até a compra chegar.
+    assert all(c["pct"] == 0 and c["faltam"] == 4 for c in d["caixas"]), d["caixas"]
+
+    abas = _abas_desenhadas(pagina)
+    if abas is None:
+        print("aba Comprar partilhada: sem `node`, saltado")
+        return
+    assert "partilhada por 2 caixas" in abas["comprar"], abas["comprar"][:900]
+    assert "serve também: Modern — UR Murktide" in abas["comprar"]
+    assert "4 Thoughtcast [EN foil]" in abas["comprar"]
+    # E a caixa servida não tem a carta na wantlist dela — comprá-la ali era
+    # comprá-la duas vezes, que é o defeito que a partilha veio corrigir.
+    assert "depois de Modern — UW Oswald comprar" in abas["modern2"], abas["modern2"][:900]
+    print("aba Comprar: uma compra partilhada por duas caixas, não duas compras")
+
 
 def run():
     for fn in (caso_utrom_monitor, caso_noutra_caixa_e_o_terceiro_estado,
@@ -437,7 +488,8 @@ def run():
                caso_payload_do_deckboxes,
                caso_javascript_do_deckboxes_desenha_todas_as_abas,
                caso_aba_vender_nao_marca_nonfoil,
-               caso_aba_comprar_diz_para_que_caixa_e_em_que_material):
+               caso_aba_comprar_diz_para_que_caixa_e_em_que_material,
+               caso_aba_comprar_nao_soma_a_mesma_compra_por_caixa):
         fn()
     print("\nTUDO OK")
 

@@ -514,7 +514,15 @@ def _loadout_detalhe(rep, procura):
         if s["noutra_caixa"]:
             print(f"\n  IR BUSCAR A OUTRA CAIXA ({s['noutra']} cópias — não são compra):")
             for m in s["noutra_caixa"]:
-                onde = ", ".join(f"{q}× em {c}" for c, q in sorted(m["noutra"].items()))
+                # A parte que ainda não está em casa: é uma compra PARTILHADA
+                # que outra caixa faz. Mandá-lo à caixa do lado buscar uma carta
+                # que ninguém comprou ainda era o mesmo tipo de mentira que o
+                # "noutra caixa" veio corrigir.
+                fut = m.get("noutra_futura") or {}
+                onde = ", ".join(
+                    f"{q}× em {c}" + (f" ({fut[c]} depois de {c} comprar)"
+                                      if fut.get(c) else "")
+                    for c, q in sorted(m["noutra"].items()))
                 mais = f"   (comprar mais {m['comprar']})" if m["comprar"] else ""
                 print(f"    {m['nm']:<34} {onde}{mais}")
         compras = sorted((m for m in s["missing"] if m["comprar"]),
@@ -524,7 +532,10 @@ def _loadout_detalhe(rep, procura):
             continue
         print("\n  wantlist (formato Cardmarket) — só o que é mesmo compra:")
         for m in compras:
-            marca = loadout.marca_wantlist(s)
+            # O material vai na LINHA, e vem da linha: numa compra partilhada
+            # entre caixas é o do pool, que pode ser mais exigente do que o
+            # desta caixa (ver `loadout.partilhar_compras`).
+            marca = m.get("marca_compra") or loadout.marca_wantlist(s)
             print(f"    {m['comprar']} {m['nm']}" + (f" [{marca}]" if marca else ""))
 
 

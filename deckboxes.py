@@ -124,10 +124,18 @@ def _caixa_payload(s, imgs, cfs):
         "marca": loadout.marca_wantlist(s),
         "variantes": list(s.get("variantes") or []),
         "cartas": cartas,
-        "wantlist": sorted(({"nm": m["nm"], "q": m["comprar"], "cost": m["cost"]}
+        # `mat` é o material que vai DENTRO da linha copiada (`2 Swords [PT]`).
+        # Vem da linha e não da caixa porque uma compra partilhada obedece ao
+        # material do POOL, que pode ser mais exigente do que o desta caixa.
+        "wantlist": sorted(({"nm": m["nm"], "q": m["comprar"], "cost": m["cost"],
+                             "mat": m.get("marca_compra") or ""}
                             for m in s["missing"] if m["comprar"] > 0),
                            key=lambda x: x["nm"]),
-        "buscar": [{"nm": m["nm"], "noutra": m["noutra"], "comprar": m["comprar"]}
+        # `futura`: a parte do "ir buscar" que ainda não está em casa — é uma
+        # cópia que outra caixa vai comprar e partilhar. Dizê-lo é a diferença
+        # entre uma indicação e uma mentira.
+        "buscar": [{"nm": m["nm"], "noutra": m["noutra"], "comprar": m["comprar"],
+                    "futura": m.get("noutra_futura") or {}}
                    for m in s["noutra_caixa"]],
         "subs": [{"nm": m["nm"], "missing": m["missing"], "alt": m["alt"],
                   "onde": m["alt_onde"]} for m in s["subs"]],
@@ -148,14 +156,29 @@ def payload(con, rep, editable=False):
     # chegava: uma compra sem dizer PARA QUE CAIXA e EM QUE LÍNGUA/ACABAMENTO é
     # meio caminho para comprar a versão errada — 4 Swords to Plowshares EN não
     # servem a caixa de Premodern, que as quer PT e até ao Scourge.
+    # E, desde 2026-09-07, com a PARTILHA: `q` é o que se compra mesmo (o máximo
+    # de uma caixa, não a soma) e o `para` mostra também as caixas que a compra
+    # serve sem pagar — `serve: true`. Ver `loadout.partilhar_compras`.
+    servidas: dict[str, list[dict]] = {}
+    # Quantas caixas partilham a compra desta carta. NÃO é `len(para)`: a mesma
+    # carta pode ser comprada em dois materiais e só um deles ser partilhado — o
+    # Lion's Eye Diamond compra-se 2 em PT (Premodern, sozinho) e 1 em EN nonfoil
+    # para as duas caixas de cEDH. Aí o chip diz 2 caixas, não 3.
+    n_partilha: dict[str, int] = {}
+    for p in rep.get("partilhas") or []:
+        servidas[p["nm"]] = [
+            {"caixa": c["caixa"], "slot": c["slot"], "q": c["pediu"], "cost": 0.0,
+             "unit": None, "req": p["req"], "mat": p["marca"], "serve": True}
+            for c in p["caixas"] if not c["compra"]]
+        n_partilha[p["nm"]] = max(n_partilha.get(p["nm"], 0), len(p["caixas"]))
     geral: dict[str, dict] = {}
     for s in rep["slots"]:
-        req = loadout.requisito_material(s)
         for m in s["missing"]:
             if not m["comprar"]:
                 continue
             g = geral.setdefault(m["nm"], {"nm": m["nm"], "q": 0, "cost": 0.0,
-                                           "unit": None, "para": [], "req": ""})
+                                           "unit": None, "para": [], "req": "",
+                                           "mat": "", "partilhada": 0})
             g["q"] += m["comprar"]
             g["cost"] = round(g["cost"] + (m["cost"] or 0), 2)
             # O preço por cópia é o mais alto das caixas que a pedem — é o que
@@ -164,13 +187,24 @@ def payload(con, rep, editable=False):
                 g["unit"] = m["unit"]
             g["para"].append({"caixa": s["nome"], "slot": s["slot"],
                               "q": m["comprar"], "cost": m["cost"],
-                              "unit": m["unit"], "req": req})
+                              "unit": m["unit"],
+                              # O material vem da LINHA: numa compra partilhada
+                              # é o do pool (o mais exigente das caixas), não o
+                              # desta caixa. Comprar uma foil PT porque o Duel
+                              # Commander não exige língua deixava o Modern sem
+                              # a carta na mesma.
+                              "req": m.get("req_compra") or "",
+                              "mat": m.get("marca_compra") or ""})
+    for nm, extra in servidas.items():
+        if nm in geral:
+            geral[nm]["para"].extend(extra)
     for g in geral.values():
         # Duas caixas podem querer a mesma carta em material diferente; nesse
         # caso são duas compras e a linha di-lo, em vez de escolher uma.
-        reqs = [r for r in dict.fromkeys(p["req"] for p in g["para"]) if r]
-        g["req"] = " / ".join(reqs)
-        g["para"].sort(key=lambda p: (-p["q"], p["caixa"]))
+        g["req"] = " / ".join(r for r in dict.fromkeys(p["req"] for p in g["para"]) if r)
+        g["mat"] = " / ".join(r for r in dict.fromkeys(p["mat"] for p in g["para"]) if r)
+        g["partilhada"] = n_partilha.get(g["nm"], 0)
+        g["para"].sort(key=lambda p: (bool(p.get("serve")), -p["q"], p["caixa"]))
 
     def venda_bloco(chave, copias, total):
         return {"linhas": [{"nm": r["nm"], "q": r["q"], "local": r["local"],
@@ -200,6 +234,9 @@ def payload(con, rep, editable=False):
                    "permanentes": sum(1 for s in rep["slots"] if s["permanente"]),
                    "candidatos": sum(1 for s in rep["slots"] if not s["permanente"]),
                    "comprar": rep["comprar_total"], "noutra": rep["noutra_total"],
+                   # Cópias que a partilha poupou (o que a soma caixa a caixa
+                   # pedia a mais). Mostrado na aba Comprar.
+                   "poupado": rep.get("poupado_total", 0),
                    "custo": rep["custo_total"], "venda": rep["total"],
                    "venda_rl": rep["total_rl"], "arrumar": arr["copias"]},
         "compras": sorted(geral.values(), key=lambda g: -g["cost"]),
@@ -355,6 +392,8 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
    flex:0 0 auto}
  .cara{font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;
    background:#3a1f1f;color:#ff9f8f;margin-left:5px;white-space:nowrap}
+ .part{font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;
+   background:#101c2e;color:#7fa8ff;margin-left:5px;white-space:nowrap}
  #v-compras ul.fl{column-width:280px;column-gap:22px} #v-compras ul.fl li{break-inside:avoid}
  .selc{font:inherit;font-size:12.5px;font-weight:600;padding:7px 12px;
    border-radius:20px;border:1px solid var(--line);background:var(--card);
@@ -582,16 +621,25 @@ function wantlistHTML(itens, marca, id, detalhe) {
   if (!itens.length) return '';
   const li = itens.map(m => {
     const cara = detalhe && (m.unit || 0) >= CARA;
+    const compra = (m.para || []).filter(p => !p.serve);
+    const serve = (m.para || []).filter(p => p.serve);
     const sub = !detalhe ? '' : [m.req || '',
-      (m.para || []).length
-        ? 'para: ' + m.para.map(p => `${p.caixa} ${p.q}×`).join(' · ') : '']
+      compra.length ? 'para: ' + compra.map(p => `${p.caixa} ${p.q}×`).join(' · ') : '',
+      serve.length ? 'serve também: ' + serve.map(p => p.caixa).join(', ') : '']
       .filter(Boolean).join(' — ');
     return `<li><b>${m.q}×</b><span class="wn">${esc(m.nm)}`
       + (cara ? `<span class="cara">💶 cara</span>` : '')
+      + (m.partilhada ? `<span class="part">🔁 partilhada por `
+        + `${m.partilhada} caixas</span>` : '')
       + (sub ? `<small>${esc(sub)}</small>` : '')
       + `</span><span class="pz">${eur(m.cost)}</span></li>`;
   }).join('');
-  const txt = itens.map(m => `${m.q} ${m.nm}`).join('\n');
+  /* O material vai DENTRO da linha copiada (`2 Swords to Plowshares [PT]`).
+     Sem ele, a lista que ele leva para o Cardmarket não distingue a PT da era
+     Premodern da EN non-foil do cEDH — e comprar a errada é comprar duas vezes.
+     Desde que as compras se partilham, a linha já nem pertence a uma caixa só. */
+  const txt = itens.map(m => `${m.q} ${m.nm}` + (m.mat ? ` [${m.mat}]` : ''))
+    .join('\n');
   return `<div class="blk" id="${id || ''}"><div class="flh">🛒 Comprar`
     + (marca ? ` <span class="mrk">${esc(marca)}</span>` : '')
     + `<span class="dim">${itens.length} cartas</span>`
@@ -633,8 +681,13 @@ function caixaHTML(c, compacta) {
     h += `<p class="empty">Nada em falta nesta caixa — está completa.</p>`;
   }
   if (c.buscar.length) {
+    /* `futura` = a cópia ainda não está em casa; é uma compra de OUTRA caixa
+       que esta partilha. Dizê-lo evita a página mandá-lo à caixa do lado
+       buscar uma carta que ninguém comprou ainda. */
     const li = c.buscar.map(m => `<li>${esc(m.nm)} — `
-      + Object.entries(m.noutra).map(([k, v]) => `<b>${v}×</b> em ${esc(k)}`).join('; ')
+      + Object.entries(m.noutra).map(([k, v]) => `<b>${v}×</b> em ${esc(k)}`
+          + ((m.futura || {})[k] ? ` <span class="dim">(${m.futura[k]} depois de `
+             + `${esc(k)} comprar)</span>` : '')).join('; ')
       + (m.comprar ? ` <span class="dim">(comprar mais ${m.comprar})</span>` : '')
       + `</li>`).join('');
     h += `<div class="blk onde"><b>📦 ir buscar a outra caixa — ${c.noutra} cópias</b>`
@@ -770,11 +823,15 @@ function vistaPartilhadas() {
 /* A linha de compra vista pelos olhos de UMA caixa: a quantidade, o custo e o
    material passam a ser os dela. Sem isto o filtro mostrava a linha inteira e o
    "copiar" dava-lhe a lista das outras caixas por cima. */
+/* Uma caixa SERVIDA por uma compra partilhada não aparece na lista dela: a
+   compra é de outra caixa, e pô-la aqui era comprá-la duas vezes — que é
+   exactamente o defeito que a partilha veio corrigir. */
 function soDaCaixa(m, slot) {
-  const p = (m.para || []).find(x => x.slot === slot);
+  const p = (m.para || []).find(x => x.slot === slot && !x.serve);
   if (!p) return null;
   return Object.assign({}, m, { q: p.q, cost: p.cost, unit: p.unit,
-                                req: p.req, para: [p] });
+                                req: p.req, mat: p.mat, para: [p],
+                                partilhada: 0 });
 }
 
 function vistaComprar() {
@@ -788,15 +845,16 @@ function vistaComprar() {
   const nome = sel === 'todas' ? 'todas as caixas'
     : ((D.caixas.find(c => c.slot === sel) || {}).nome || sel);
   /* O selector reaproveita as caixas que já são abas — só as que têm mesmo
-     alguma coisa a comprar entram na lista. */
-  const comCompras = D.caixas.filter(c => D.compras.some(
-    m => (m.para || []).some(p => p.slot === c.slot)));
+     alguma coisa a comprar entram na lista (uma caixa SERVIDA por outra não
+     compra nada). */
+  const compraDe = (m, slot) => (m.para || []).some(p => p.slot === slot && !p.serve);
+  const comCompras = D.caixas.filter(c => D.compras.some(m => compraDe(m, c.slot)));
   const opt = (v, t, n) => `<option value="${esc(v)}"${sel === v ? ' selected' : ''}>`
     + `${esc(t)}${n == null ? '' : ` — ${n} cartas`}</option>`;
   const selector = `<div class="seg"><select class="selc" id="compra-caixa">`
     + opt('todas', 'todas as caixas', D.compras.length)
     + comCompras.map(c => opt(c.slot, c.nome,
-        D.compras.filter(m => (m.para || []).some(p => p.slot === c.slot)).length)).join('')
+        D.compras.filter(m => compraDe(m, c.slot)).length)).join('')
     + `</select></div>`;
   return `<h2>🛒 Comprar — ${esc(nome)}</h2>`
     + `<p class="lead">Só o que <b>não existe</b> na coleção, ou existe mas não serve `
@@ -805,6 +863,12 @@ function vistaComprar() {
     + `buscar contra <b>${D.resumo.comprar}</b> a comprar. Debaixo de cada nome está `
     + `<b>para que caixa</b> é a compra e <b>em que material</b> — comprar a versão `
     + `errada é comprar duas vezes.</p>`
+    + (D.resumo.poupado ? `<p class="lead">🔁 <b>Uma cópia serve as caixas todas.</b> `
+        + `Quando duas caixas querem a mesma carta no mesmo material, compra-se `
+        + `<b>uma vez</b> e as outras vão lá buscá-la — como já fazes com as que tens. `
+        + `São <b>${D.resumo.poupado}</b> cópias que a lista deixou de pedir. Se `
+        + `quiseres uma caixa fechada sem trocas, marca-a com `
+        + `<code>compras_dedicadas</code> no <code>colecao_config.json</code>.</p>` : '')
     + selector
     + (!itens.length ? `<p class="empty">Não falta comprar nada aqui. Está tudo em casa.</p>`
        : `<div class="nums">`

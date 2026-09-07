@@ -35,6 +35,11 @@ língua/acabamento exigidos. Cada caixa passa a ter dois números: `comprar` (o 
 falta comprar) e `noutra` (o que é ir buscar a outra caixa). O que se compra
 entra pelas fotos (`pendentes/`) e a alocação recalcula-se no `daily.py`.
 
+E a segunda metade da mesma regra: as cartas que ele AINDA VAI COMPRAR partilham-
+se exactamente da mesma maneira. Somar as faltas caixa a caixa pedia 5 Swords to
+Plowshares PT quando 2 chegam e o Lion's Eye Diamond duas vezes. Quem faz essa
+conta é o `partilhar_compras`, depois da alocação toda.
+
 DUAS REGRAS DE MATERIAL, ditadas pelo André no mesmo dia
 --------------------------------------------------------
 1. *"Para Premodern as cartas são das edições que tínhamos visto e em Português;
@@ -404,6 +409,34 @@ def marca_wantlist(s: dict) -> str:
     return s["lingua"].upper() if s.get("lingua") == "pt" else ""
 
 
+def marca_compra(s: dict) -> str:
+    """O material de UMA LINHA da wantlist copiada: `PT`, `EN nonfoil`, `EN foil`.
+
+    O `marca_wantlist` é uma etiqueta para a lista toda (uma caixa, um material)
+    e o `requisito_material` é a frase para a página. Isto é o que vai **dentro
+    do texto que ele copia** para o Cardmarket, linha a linha:
+
+        2 Swords to Plowshares [PT]
+        1 Lion's Eye Diamond [EN nonfoil]
+
+    Desde que as compras se partilham entre caixas (ver `partilhar_compras`) uma
+    linha da aba *Comprar* já não pertence a uma caixa só, e a lista copiada
+    perdia a única pista do material. Sem a edição (`≤SCG`), que é uma condição
+    a verificar na oferta e não um filtro que se escreva na wantlist.
+    """
+    partes = []
+    if s.get("lingua"):
+        partes.append(s["lingua"].upper())
+    ac = s.get("acabamento")
+    if ac == "foil":
+        partes.append("foil")
+    elif ac == "nonfoil":
+        partes.append("nonfoil")
+    elif ac == "prefere_foil":
+        partes.append("foil ou nonfoil")
+    return " ".join(partes)
+
+
 def _retencao() -> dict[str, int]:
     """Baldes com `reter_extras_meses` (regras_colecao). Enquanto não houver fonte
     de "última utilização" (ver CLAUDE.md), estes extras RETÊM-SE — nunca entram
@@ -769,6 +802,10 @@ def _linha_cheia(linha: dict) -> dict:
     linha.setdefault("comprar", 0)
     linha.setdefault("noutra", {})
     linha.setdefault("noutra_q", 0)
+    # A parte do `noutra` que ainda não está em casa: vem de uma compra
+    # PARTILHADA com outra caixa (ver `partilhar_compras`). A página tem de o
+    # dizer — "em Blue Farm" numa carta que ninguém comprou ainda era mentira.
+    linha.setdefault("noutra_futura", {})
     linha.setdefault("unit", None)
     linha.setdefault("price_finish", None)
     linha.setdefault("cost", 0.0)
@@ -840,6 +877,163 @@ def slots_por_lista(res: dict) -> dict[str, dict]:
 def linhas_por_carta(s: dict) -> dict[tuple[str, str], dict]:
     """(board, carta) -> a linha da alocação desta caixa, tida ou em falta."""
     return {(m["board"], m["nm"]): m for m in s["have"] + s["missing"]}
+
+
+# ---------------------------------------------------------------------------
+# Compras partilhadas: comprar o MÁXIMO, não a soma
+# ---------------------------------------------------------------------------
+# André, 2026-09-07: *"indicas onde está a carta, para (...) não ter que comprar
+# múltiplos para todos."* O `noutra` já dizia isso das cópias que ELE TEM. Faltava
+# o outro lado: as que ainda vai comprar servem as caixas todas exactamente da
+# mesma maneira — uma cópia de cada vez, indo buscá-la à caixa onde está.
+#
+# Somar as faltas caixa a caixa contradiz a regra dele. Na base de 2026-09-07,
+# quatro caixas de Premodern pediam 5 Swords to Plowshares PT ao todo quando 2
+# chegam (ficam 5 no total e cada caixa fecha, uma de cada vez); Brushland pedia
+# 9 e chegam 3; e o Lion's Eye Diamond do cEDH aparecia duas vezes, uma por caixa
+# — 535 € a mais numa carta só.
+#
+# A conta é `max`, não `soma`: `comprar = max(0, max_caixa(precisa) - o que já
+# tem)`, que é o mesmo que `max_caixa(comprar_da_caixa)` porque cada caixa já
+# desconta o que vê. O resto das caixas passa a "ir buscar" — que é o que vai
+# mesmo acontecer assim que a carta chegar a casa.
+def pool_compra(s: dict) -> tuple[str, str, str]:
+    """A chave do POOL DE MATERIAL de uma caixa: o que ela aceita comprar.
+
+    Duas caixas só partilham uma compra se a MESMA cópia servir as duas. Uma
+    Swords to Plowshares PT da era não serve o Cloud (que só usa foil), e uma EN
+    non-foil do cEDH não serve o Modern (que a quer foil).
+    """
+    return (s.get("edicoes") or "", s.get("acabamento") or "", s.get("lingua") or "")
+
+
+def pools_de_compra(slots) -> dict[str, tuple[str, str, str]]:
+    """`slot -> chave do pool`, já com os pools que SE TOCAM fundidos.
+
+    O Duel Commander é *"apenas foil"* e não exige língua; o SPML é *"tudo foil e
+    inglês"*. Uma cópia **EN foil** serve os dois, por isso são um pool só — e o
+    material do pool é o mais exigente (EN foil), senão a partilha mandava-o
+    comprar uma foil PT que a caixa de Modern depois recusa.
+
+    A fusão só se faz quando não há dúvida: um grupo sem língua junta-se ao grupo
+    com o mesmo acabamento/edições **se houver exactamente uma** língua exigida
+    nesse acabamento. Com duas (uma caixa de foil PT e outra de foil EN) não se
+    escolhe por ele — cada uma compra a sua.
+    """
+    base = {s["slot"]: pool_compra(s) for s in slots if s.get("slot")}
+    linguas: dict[tuple[str, str], set[str]] = defaultdict(set)
+    for ed, ac, ln in base.values():
+        if ln:
+            linguas[(ed, ac)].add(ln)
+    out = {}
+    for slot, (ed, ac, ln) in base.items():
+        if not ln and len(linguas.get((ed, ac), ())) == 1:
+            ln = next(iter(linguas[(ed, ac)]))
+        out[slot] = (ed, ac, ln)
+    return out
+
+
+def _slot_do_pool(chave: tuple[str, str, str]) -> dict:
+    """Um slot de mentira com as regras do pool, para reusar os rótulos."""
+    ed, ac, ln = chave
+    return {"edicoes": ed or None, "acabamento": ac or None, "lingua": ln or None}
+
+
+def partilhar_compras(slots: list[dict]) -> list[dict]:
+    """Funde as compras da mesma carta e do mesmo material feitas por caixas
+    diferentes. Muda as linhas de `missing` no sítio; devolve o que fundiu.
+
+    Regras (André, 2026-09-07):
+      * compra-se o **máximo** que uma caixa precisa, não a soma das caixas;
+      * as cópias compradas ficam atribuídas à caixa de **maior prioridade** que
+        as pediu, e as outras passam a **ir buscar** (`noutra`) — a mesma leitura
+        de sempre, com a diferença de a cópia ainda não estar em casa. Fica em
+        `noutra_futura` para a página o poder dizer;
+      * as faltas **dentro da mesma caixa** (main + side) continuam a somar: são
+        cópias que estão na mesa ao mesmo tempo;
+      * uma caixa com `compras_dedicadas: true` no `colecao_config.json` fica de
+        fora — compra as suas e não conta com trocas.
+
+    O que NÃO muda: `got`/`tenho`/`pct`/`missing`. A caixa continua a ter a falta
+    até a compra chegar; o que muda é de quem é a compra.
+    """
+    pools = pools_de_compra(slots)
+    grupos: dict[tuple, list[dict]] = defaultdict(list)
+    for s in slots:
+        chave = pools.get(s["slot"])
+        # Uma caixa dedicada é o seu próprio grupo: nunca chega aos dois membros
+        # que a partilha exige, e por isso sai daqui intacta.
+        dedicada = (s["slot"],) if s.get("compras_dedicadas") else ()
+        por_carta: dict[str, list[dict]] = defaultdict(list)
+        for m in s.get("missing") or []:
+            if m["comprar"] > 0:
+                por_carta[m["nm"]].append(m)
+        for nm, linhas in por_carta.items():
+            grupos[(nm, chave) + dedicada].append(
+                {"s": s, "linhas": linhas, "q": sum(m["comprar"] for m in linhas)})
+
+    partilhas = []
+    for (nm, chave, *_), quem in sorted(grupos.items(), key=lambda kv: kv[0][:2]):
+        if len(quem) < 2:
+            continue
+        quem.sort(key=lambda x: x["s"]["prioridade"])
+        alvo = max(x["q"] for x in quem)
+        restante = alvo
+        for x in quem:                    # a compra é de quem aloca primeiro
+            x["dar"] = min(x["q"], restante)
+            restante -= x["dar"]
+        doadores = [(x["s"]["nome"], x["dar"]) for x in quem if x["dar"]]
+        req, mat = requisito_material(_slot_do_pool(chave)), marca_compra(_slot_do_pool(chave))
+        for x in quem:
+            # Cada caixa vai buscar a quem COMPROU, e nunca a si própria: as
+            # cópias que ela paga já contam para o que tem.
+            disp = [[n, q] for n, q in doadores if n != x["s"]["nome"]]
+            resta = x["dar"]
+            for m in sorted(x["linhas"], key=lambda m: (m["board"] != "main", m["nm"])):
+                fica = min(m["comprar"], resta)
+                resta -= fica
+                move = m["comprar"] - fica
+                m["comprar"] = fica
+                m["cost"] = round((m["unit"] or 0) * fica, 2)
+                m["req_compra"], m["marca_compra"] = req, mat
+                for par in disp:
+                    if move <= 0:
+                        break
+                    pega = min(par[1], move)
+                    if pega <= 0:
+                        continue
+                    par[1] -= pega
+                    move -= pega
+                    m["noutra"][par[0]] = m["noutra"].get(par[0], 0) + pega
+                    m["noutra_futura"][par[0]] = m["noutra_futura"].get(par[0], 0) + pega
+                m["noutra_q"] = sum(m["noutra"].values())
+        partilhas.append({
+            "nm": nm, "req": req, "marca": mat, "comprar": alvo,
+            "soma": sum(x["q"] for x in quem), "poupado": sum(x["q"] for x in quem) - alvo,
+            "caixas": [{"slot": x["s"]["slot"], "caixa": x["s"]["nome"],
+                        "prioridade": x["s"]["prioridade"], "pediu": x["q"],
+                        "compra": x["dar"]} for x in quem]})
+    partilhas.sort(key=lambda p: (-p["poupado"], p["nm"]))
+    return partilhas
+
+
+def _totais_do_slot(s: dict) -> None:
+    """Os números de uma caixa que dependem das linhas em falta.
+
+    Vive à parte porque a partilha de compras (`partilhar_compras`) mexe nas
+    linhas DEPOIS de a alocação as ter escrito — e um total calculado antes disso
+    ficava a dizer que se compram cópias que já ninguém compra.
+    """
+    missing = s["missing"]
+    s["missing"] = sorted(missing, key=lambda r: -(r["cost"] or 0))
+    s["custo"] = round(sum(m["cost"] or 0 for m in missing), 2)
+    s["faltam"] = sum(m["missing"] for m in missing)
+    s["comprar"] = sum(m["comprar"] for m in missing)
+    s["noutra"] = sum(m["noutra_q"] for m in missing)
+    # As que estão noutra caixa: é "ir buscar", não "comprar". Ficam à parte
+    # para a página e o CLI poderem dizer as duas coisas sem as somar.
+    s["noutra_caixa"] = sorted((m for m in missing if m["noutra_q"]),
+                               key=lambda m: (-m["noutra_q"], m["nm"]))
 
 
 # ---------------------------------------------------------------------------
@@ -975,6 +1169,9 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                 comprar = falta - noutra_q
                 linha.update(missing=falta, comprar=comprar,
                              noutra=dict(noutra), noutra_q=noutra_q,
+                             noutra_futura={},
+                             req_compra=requisito_material(s),
+                             marca_compra=marca_compra(s),
                              unit=unit, price_finish=pfin,
                              cost=round((unit or 0) * comprar, 2),
                              alt={k: v for k, v in alt.items()},
@@ -988,19 +1185,12 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
             disputa[nm].append({"slot": s["nome"], "prioridade": s["prioridade"],
                                 "pediu": q, "levou": levou_slot.get(nm, 0)})
         s["have"] = sorted(have, key=lambda r: (r["board"] != "main", r["nm"]))
-        s["missing"] = sorted(missing, key=lambda r: -(r["cost"] or 0))
+        s["missing"] = missing
         s["subs"] = subs
-        # As que estão noutra caixa: é "ir buscar", não "comprar". Ficam à parte
-        # para a página e o CLI poderem dizer as duas coisas sem as somar.
-        s["noutra_caixa"] = sorted((m for m in missing if m["noutra_q"]),
-                                   key=lambda m: (-m["noutra_q"], m["nm"]))
         s["precisa"] = precisa
         s["tenho"] = usadas
         s["pct"] = round(100 * usadas / precisa) if precisa else 0
-        s["custo"] = round(sum(m["cost"] or 0 for m in missing), 2)
-        s["faltam"] = sum(m["missing"] for m in missing)
-        s["comprar"] = sum(m["comprar"] for m in missing)
-        s["noutra"] = sum(m["noutra_q"] for m in missing)
+        _totais_do_slot(s)
         # De onde saem as cartas desta caixa. É a outra metade do "onde está a
         # carta": as que faltam dizem em que caixa estão, e estas dizem de que
         # prateleira as tirar para montar. Daqui vem o `Caixa RL (PT)`/`(EN)`.
@@ -1009,6 +1199,14 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
             for g in m["lotes"]:
                 origens[g["local"]] += g["q"]
         s["origens"] = dict(sorted(origens.items(), key=lambda kv: (-kv[1], kv[0])))
+
+    # COMPRAS PARTILHADAS: duas caixas que querem a mesma carta no mesmo material
+    # não pedem duas compras — pedem uma, e a segunda vai lá buscá-la. Corre
+    # DEPOIS da alocação toda, porque precisa das faltas de todas as caixas, e
+    # obriga a refazer os totais de cada uma.
+    partilhas = partilhar_compras(slots)
+    for s in slots:
+        _totais_do_slot(s)
 
     # CARTAS PARTILHADAS ENTRE CAIXAS (chamava-se "conflito" até 2026-09-07; a
     # chave `conflitos` fica, para não partir quem já a lê): duas ou mais caixas
@@ -1033,7 +1231,7 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
         })
     conflitos.sort(key=lambda c: (-(c["pedido"] - c["tenho"]), c["nm"]))
     return {"slots": slots, "conflitos": conflitos, "pedido": dict(pedido),
-            "pool": pool}
+            "partilhas": partilhas, "pool": pool}
 
 
 # ---------------------------------------------------------------------------
@@ -1328,6 +1526,9 @@ def report(con, cfg_slots: list[dict] | None = None) -> dict:
     res["custo_total"] = round(sum(s["custo"] for s in res["slots"]), 2)
     res["comprar_total"] = sum(s["comprar"] for s in res["slots"])
     res["noutra_total"] = sum(s["noutra"] for s in res["slots"])
+    # Quantas cópias a partilha poupou — é a diferença entre somar as faltas
+    # caixa a caixa (o que a v3 fazia) e comprar o máximo de uma delas.
+    res["poupado_total"] = sum(p["poupado"] for p in res["partilhas"])
     res["arrumacao"] = plano_arrumacao(res)
     return res
 
