@@ -161,6 +161,30 @@ def _prune_prices(con, keep_days: int = 30):
     return f"{n} preços >{keep_days}d apagados"
 
 
+def _podar_ligas(con):
+    """Apaga as listas de liga dos formatos onde as ligas não contam.
+
+    Decisão do André (2026-09-07): "no mtgvault não quero listas de league",
+    menos no Duel Commander. A recolha já não as guarda; isto limpa o passado —
+    eram cerca de um terço do vault.db sem alimentarem uma única página.
+
+    Faz UM backup antes da primeira poda (data/backups/vault-antes-filtro-*.db)
+    e nunca mais: é uma rede de segurança para a passagem, não um backup diário
+    (que só faria o disco crescer com cópias de 100 MB).
+    """
+    backups = ROOT / "data" / "backups"
+    guardado = ""
+    if not list(backups.glob("vault-antes-filtro-*.db")):
+        from datetime import date as _date
+        backups.mkdir(parents=True, exist_ok=True)
+        alvo = backups / f"vault-antes-filtro-{_date.today().isoformat()}.db"
+        # VACUUM INTO em vez de copiar o ficheiro: dá uma cópia consistente do
+        # `main` com a ligação aberta (e sem levar o catálogo anexado atrás).
+        con.execute("VACUUM main INTO ?", (str(alvo),))
+        guardado = f" (backup em {alvo.name})"
+    return f"{analysis.prune_leagues(con)} listas de liga apagadas{guardado}"
+
+
 def main():
     with db.session() as con:
         # O catálogo primeiro: os preços e a resolução de nomes dependem dele, e
@@ -177,11 +201,19 @@ def main():
                   lambda fmt=fmt: f"{mtgtop8.harvest(con, fmt, max_events=6)} novas")
 
         # Classifica os eventos por importância (Showcase/Challenge/League/...).
-        # Tem de correr DEPOIS da recolha: é esta coluna que o metagame usa para
-        # contar só Challenges e Showcases. Enquanto ninguém a escrevia, o
-        # top-10 vinha vazio e o passo da cobertura dizia na mesma "ok".
+        # Tem de correr DEPOIS da recolha: é esta coluna que decide que listas
+        # contam. Enquanto ninguém a escrevia, o top-10 vinha vazio e o passo da
+        # cobertura dizia na mesma "ok". É idempotente sobre TODAS as listas, não
+        # só as que estão a NULL — quando a regra de classificação muda (2026-09-07,
+        # re-hosts do MTGO a saírem de Presencial), as antigas acertam-se sozinhas.
         _step(con, "tier-eventos",
-              lambda: f"{sources.backfill_event_tiers(con)} listas classificadas")
+              lambda: f"{sources.backfill_event_tiers(con)} listas reclassificadas")
+
+        # Nº de jogadores dos presenciais do mtgtop8. Sem ele um presencial não
+        # conta (a regra pede 64+), e dois terços das listas estavam a NULL.
+        # Poucos eventos por corrida e a 1 pedido/s — o mtgtop8 é pequeno.
+        _step(con, "jogadores-eventos",
+              lambda: mtgtop8.backfill_event_players(con, max_events=40))
 
         # Preços — cada fonte é opcional e salta em silêncio se não estiver
         # configurada. O bulk da Scryfall é a base grátis; Cardmarket e CardTrader
@@ -243,6 +275,8 @@ def main():
               lambda: str(showcase.build(con, ROOT / "showcase.html")))
 
         _step(con, "podar-precos", lambda: _prune_prices(con, 30))
+        # Ligas fora (2026-09-07). ANTES do `prune`, que é quem faz o VACUUM.
+        _step(con, "podar-ligas", lambda: _podar_ligas(con))
         _step(con, "prune", lambda: f"{analysis.prune_decklists(con, 30)} apagadas")
 
 
