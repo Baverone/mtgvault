@@ -20,6 +20,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
+from mtgvault import sources  # noqa: E402
+
 # (nome do deck, formato, comandante)
 # O Cloud (Duel Commander) deixou de ser gerado por consenso: o André escolheu a
 # lista do McWinSauce (1º no MTGO DC Challenge 2026-08-24) como referência, gravada
@@ -31,11 +33,17 @@ CORE, FLEX, TECH = 0.50, 0.25, 0.15   # limiares das três camadas
 
 
 def _inclusion(con, fmt, commander):
-    """(Counter carta->nº de listas, nº de listas do comandante)."""
+    """(Counter carta->nº de listas, nº de listas do comandante).
+
+    Só as listas que CONTAM (sources.lista_conta). No Duel Commander as ligas
+    contam — é a exceção do André (2026-09-07), porque o formato tem poucos
+    torneios grandes."""
+    conta, cp = sources.counting_sql(fmt, "dl")
     ids = [r[0] for r in con.execute(
-        """SELECT DISTINCT dl.id FROM decklists dl
+        f"""SELECT DISTINCT dl.id FROM decklists dl
              JOIN decklist_cards dc ON dc.decklist_id = dl.id
-            WHERE dl.format = ? AND dc.card_name = ?""", (fmt, commander))]
+            WHERE dl.format = ? AND dc.card_name = ? AND {conta}""",
+        (fmt, commander, *cp))]
     if len(ids) < MIN_LISTS:
         return None, len(ids)
     marks = ",".join("?" for _ in ids)

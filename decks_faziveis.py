@@ -81,7 +81,7 @@ def build(con, out_path=None):
         df = mc._format_df(con, fmt)
         feas = []
         for aid, _s in mc._rank(con, fmt, n):
-            lst = mg._latest_list(con, aid)
+            lst = mg._latest_list(con, aid, fmt)
             if not lst:
                 continue
             nb = [c for c, _q in lst["main"] if c not in mc.BASICS]

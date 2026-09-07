@@ -43,11 +43,19 @@ def _img_map(con, names):
     return out
 
 
-def _latest_list(con, aid):
-    r = con.execute("SELECT id, player, event_date, url FROM decklists WHERE archetype_id = ? "
-                    "ORDER BY event_date DESC, id DESC LIMIT 1", (aid,)).fetchone()
-    if not r:
+def _latest_list(con, aid, fmt=None):
+    """A lista mais recente do arquétipo, DE ENTRE AS QUE CONTAM (ver
+    sources.lista_conta). Sem este filtro a página mostrava por baixo do top-10
+    uma lista de liga que o próprio ranking não conta."""
+    if fmt is None:
+        f = con.execute("SELECT format FROM archetypes WHERE id = ?", (aid,)).fetchone()
+        if not f:
+            return None
+        fmt = f["format"]
+    rows = mc.counting_lists(con, fmt, aid, limit=1)
+    if not rows:
         return None
+    r = rows[0]
     main, side = [], []
     for c in con.execute("SELECT card_name nm, quantity q, board b FROM decklist_cards "
                          "WHERE decklist_id = ? ORDER BY quantity DESC, card_name", (r["id"],)):
@@ -78,7 +86,7 @@ def build(con, out_path=None):
         df = mc._format_df(con, fmt)
         decks = []
         for aid, _score in mc._rank(con, fmt, n):
-            lst = _latest_list(con, aid)
+            lst = _latest_list(con, aid, fmt)
             if not lst:
                 continue
             nm = mc._name_for(con, aid, df, tcache)

@@ -1,6 +1,5 @@
 {
   "_ajuda": "Controla a classificação Deck/Coleção/Vender de classify.py. Muda aqui e o job diário reflete no site.",
-
   "spml_formatos": {
     "standard": "a jogar",
     "modern": "a treinar",
@@ -8,36 +7,69 @@
     "legacy": "ignorar"
   },
   "_spml_formatos": "SPML é dinâmico. Estado por formato: 'a jogar'/'a treinar' = ATIVO (os decks desse formato reservam cartas, saem da coleção). 'a preparar' = só quero a wantlist, não reserva cartas ainda. 'ignorar' = fora. Valores de formato: standard | pioneer | modern | legacy.",
-
   "premodern_decks_completos": [],
   "_premodern_decks_completos": "Premodern é estável. A completude é DETETADA automaticamente (tens 100% da lista do arquétipo). Quando um deck fica completo, as cartas trancam-se no deck. Esta lista é a tranca STICKY: um deck aqui fica trancado mesmo que a lista mude (aí só dou a wantlist do que falta p/ recompletar); tira-se daqui só quando desmontas o deck. Opções: Stiflenought, UW Replenish, Enchantress, Oath of Druids, Elves, Ill-Gotten Gains.",
-
   "decks_montados": [],
   "_decks_montados": "Decks fisicamente MONTADOS (nomes da tabela decks). As cartas de um deck montado saem da coleção (ficam reservadas a ele), esteja o formato ativo ou não — é o loadout a contar em todo o sistema. Na página buildability podes planear com os checkmarks (fica no navegador); quando decidires, diz-me os nomes e eu ponho aqui para contar de vez. Vazio = nada reservado por esta via.",
-
   "decks_faziveis_min_pct": 50,
   "_decks_faziveis_min_pct": "Página 'Decks fazíveis': mostra os decks do top-10 (Challenges/Showcases) que o André tem a pelo menos esta % (cartas distintas não-básicas do main). Começa em 50; se der decks a mais/a menos, muda aqui (ex.: 60, 70) para afinar a realidade.",
-
-  "showcase_min_players": 24,
-  "_showcase_min_players": "Página 'Showcase Challenger': um torneio PRESENCIAL (mtgtop8) só entra se tiver pelo menos este nº de jogadores (peso). 24 inclui RCQs e torneios médios; sobe para 64 p/ só os grandes, ou desce p/ 16.",
-
-  "decks_vigiados": ["UW Oswald", "Cloud (Duel Commander)", "Stiflenought (Luffy)"],
-  "_decks_vigiados": "Decks da tabela `decks` que aparecem na página 'Decks vigiados' (além dos watched com balde: Blue Farm, Pauper, Cloud cEDH). Só estes nomes passam o filtro. O resto da tabela `decks` (Modern/Standard/Pioneer de referência do metagame, Spock, etc.) fica FORA da página, mas continua a servir a classificação/preços/cobertura. André quer aqui: Pauper (Luffy), Premodern (Luffy=Stiflenought), Blue Farm, Cloud cEDH e Cloud Duel Commander.",
-
-  "banimentos_manuais": {
-    "legacy": ["The Fantasticar"]
+  "metagame_fontes": {
+    "_default": {
+      "tiers": [
+        "Challenge",
+        "Showcase",
+        "Presencial"
+      ],
+      "min_jogadores_presencial": 64,
+      "ligas": false
+    },
+    "duel-commander": {
+      "tiers": [
+        "Challenge",
+        "Showcase",
+        "Presencial",
+        "outro"
+      ],
+      "min_jogadores_presencial": 0,
+      "ligas": true,
+      "_nota": "Andre 2026-09-07: Duel Commander conta ligas, presenciais de qualquer dimensao e os 'Duel Commander Trial' (tier outro)."
+    },
+    "cedh": {
+      "tiers": [],
+      "ligas": false,
+      "_nota": "Andre 2026-09-07: nao quer metagame de cEDH — os 2 decks dele seguem links directos (watched). Nada conta e o harvest de cEDH foi retirado do daily."
+    }
   },
-
-  "reserved_vender_ignorar_formatos": ["vintage"],
+  "_metagame_fontes": "QUE LISTAS CONTAM para o metagame (decisão do André, 2026-09-07: 'no mtgvault não quero listas de league; quero challenge, showcase, e presenciais com 64 ou mais jogadores — menos Duel Commander, que pode ter menos jogadores e pode ser ligas'). Vale para TUDO: metagame, cobertura, decks fazíveis, showcase, o cálculo do core e os decks seguidos. 'tiers' = valores de decklists.event_tier que entram (Challenge | Showcase | Presencial | Qualifier | Preliminary | League | outro). 'min_jogadores_presencial' = nº mínimo de jogadores de um torneio PRESENCIAL; 0 = sem mínimo. Um presencial SEM contagem de jogadores nunca conta (não se assume o mínimo). 'ligas' = true acrescenta League aos tiers. '_default' aplica-se a todos os formatos; uma chave com nome de formato só a esse. As listas 'manual' (metidas por ti) contam sempre. Para dar uma exceção ao Premodern (que com esta regra fica sem listas — não tem presenciais de 64+ e as ligas do MTGO saem), acrescenta aqui: \"premodern\": { \"min_jogadores_presencial\": 0, \"ligas\": true }. O mesmo serve para o cEDH, que só tem presenciais pequenos.",
+  "decks_vigiados": [
+    "UW Oswald",
+    "Cloud (Duel Commander)",
+    "Stiflenought (Luffy)"
+  ],
+  "_decks_vigiados": "Decks da tabela `decks` que aparecem na página 'Decks vigiados' (além dos watched com balde: Blue Farm, Pauper, Cloud cEDH). Só estes nomes passam o filtro. O resto da tabela `decks` (Modern/Standard/Pioneer de referência do metagame, Spock, etc.) fica FORA da página, mas continua a servir a classificação/preços/cobertura. André quer aqui: Pauper (Luffy), Premodern (Luffy=Stiflenought), Blue Farm, Cloud cEDH e Cloud Duel Commander.",
+  "banimentos_manuais": {
+    "legacy": [
+      "The Fantasticar"
+    ]
+  },
+  "reserved_vender_ignorar_formatos": [
+    "vintage"
+  ],
   "_reserved_vender_ignorar_formatos": "Na aba Reserved List, uma carta que o André TEM só é marcada 'VENDER' se não jogar em NENHUM formato que conte. Estes formatos NÃO contam (são ignorados). Começa só com 'vintage'. Para afinar, acrescenta aqui os formatos que não te interessam (ex.: 'duel-commander', 'cedh'): as cartas que só jogarem nesses passam a aparecer para vender. Valores: standard | pioneer | modern | legacy | vintage | pauper | duel-commander | premodern | cedh.",
-
   "_banimentos_manuais": "Bans que a Scryfall ainda não meteu no bulk (são recentes). Formato -> nomes REAIS das cartas banidas. Os decks do metagame que contêm estas cartas deixam de aparecer em 'Decks meta para completar'. A Scryfall (legalities='banned') já é apanhada sozinha; isto é só para a janela até ela atualizar — quando ela registar o ban, podes tirar daqui. Formatos: standard | pioneer | modern | legacy | premodern.",
-
   "regras_colecao": {
-    "Blue Farm": { "reter_extras_meses": 6 },
-    "Cloud cEDH": { "reter_extras_meses": 6 },
-    "Cloud": { "reter_extras_meses": 6 },
-    "Pauper Affinity": { "reter_extras_meses": 6 }
+    "Blue Farm": {
+      "reter_extras_meses": 6
+    },
+    "Cloud cEDH": {
+      "reter_extras_meses": 6
+    },
+    "Cloud": {
+      "reter_extras_meses": 6
+    },
+    "Pauper Affinity": {
+      "reter_extras_meses": 6
+    }
   },
   "_regras_colecao": "Decks de Commander/cEDH/Duel Commander/Pauper = coleção própria + lista vigiada. 'reter_extras_meses' = N: as cartas EXTRA (as do balde que a lista do deck já não usa) guardam-se até N meses da última utilização; passado isso sem uso → Vender. Formalizado em 6 meses (2026-08-14). Premodern NÃO usa isto (tranca por completude). Falta decidir a fonte de 'última utilização' (última vez na lista vigiada) e implementar em classify.py — inerte até haver histórico suficiente."
 }

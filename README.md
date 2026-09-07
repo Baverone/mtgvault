@@ -168,6 +168,31 @@ de volta, é preciso guardar uma janela por semana (ou por mês) em vez de zero.
 `gap 3` diz-te o que te falta para montar o núcleo desse arquétipo.
 Com `--flex` inclui também as cópias flexíveis.
 
+### Que listas contam (2026-09-07)
+
+Nem tudo o que se recolhe entra na análise. A regra, palavras do André, é
+*"challenge, showcase, e presenciais com 64 ou mais jogadores — menos Duel
+Commander, que pode ter menos jogadores e pode ser ligas"*:
+
+| | conta? |
+|---|---|
+| MTGO Challenge / Showcase | sim |
+| Torneio presencial (mtgtop8) com >= 64 jogadores | sim |
+| Torneio presencial sem contagem de jogadores | **não** (não se assume o mínimo) |
+| MTGO League | **não** — nem se guarda na base |
+| Duel Commander | tudo, ligas incluídas (formato com poucos torneios grandes) |
+| Listas metidas por ti (`manual`) | sempre |
+
+Ajusta-se por formato em `colecao_config.json → metagame_fontes`. A decisão está
+num sítio só (`sources.lista_conta` / `counting_sql`) e é ela que manda no
+top-10, na cobertura, nos decks fazíveis, no Showcase Challenger, no cálculo do
+núcleo e nos decks seguidos — se filtrares decklists numa consulta nova, usa-a.
+
+O `daily.py` ganhou dois passos: `jogadores-eventos` (vai buscar ao mtgtop8 o nº
+de jogadores dos presenciais que ficaram sem ele, poucos por dia) e
+`podar-ligas` (apaga as ligas do passado, com um backup único antes da primeira
+poda em `data/backups/`).
+
 ### Deteção de arquétipos
 
 Clustering por semelhança de Jaccard sobre o mainboard (sem terrenos básicos),
@@ -486,6 +511,7 @@ python test_watchlist.py     :: vigiados, diffs, listas padrão, cobertura
 python test_dedupe.py        :: a mesma lista de duas fontes não conta duas vezes
 python test_sources.py       :: parsing das páginas do mtgo.com
 python test_event_tier.py    :: a coluna de que o metagame depende
+python test_metagame_filtro.py :: que listas contam (ligas fora, presenciais 64+)
 python test_watch_revert.py  :: voltar a uma lista anterior não baralha o "atual"
 python test_reserve.py       :: reservas por deck (e o colecionador fora delas)
 python test_movers.py        :: subidas e descidas não se misturam

@@ -138,7 +138,10 @@ def parse_event_meta(html: str) -> dict:
             continue
         break
     players = None
-    m = re.search(r"(\d+)\s*players", html, re.I)   # peso do evento (mtgtop8 mostra-o)
+    # Peso do evento. O mtgtop8 é de origem francesa e algumas páginas dizem
+    # "joueurs" em vez de "players"; sem contagem fica None (e uma lista
+    # presencial sem contagem NÃO conta para o metagame — não se assume nada).
+    m = re.search(r"(\d+)\s*(?:players|joueurs)", html, re.I)
     if m:
         players = int(m.group(1))
     return {"event_name": nome, "event_date": dia, "players": players}
@@ -214,6 +217,12 @@ def harvest(con: sqlite3.Connection, fmt: str, max_events: int = 8,
         except requests.RequestException:
             continue
         meta = parse_event_meta(pagina)
+        # Liga que não conta naquele formato (regra 2026-09-07): salta o evento
+        # inteiro ANTES de pedir os .dec — são até 16 pedidos poupados por evento.
+        # O mtgtop8 re-hospeda as ligas do MTGO ("Premodern event - MTGO League").
+        if (sources.event_tier("mtgtop8", meta["event_name"] or "") == "League"
+                and "League" not in sources.metagame_rules(fmt)["tiers"]):
+            continue
         jogadores = parse_deck_entries(pagina)
         for pos, did in enumerate(parse_deck_ids(pagina)[:max_decks_per_event], 1):
             if con.execute("SELECT 1 FROM decklists WHERE source = 'mtgtop8' "
@@ -237,6 +246,51 @@ def harvest(con: sqlite3.Connection, fmt: str, max_events: int = 8,
                 novas += 1
         con.commit()
     return novas
+
+
+# O url guardado em cada lista é ".../event?e=<evento>&d=<deck>&f=<código>".
+RE_URL_EVENT = re.compile(r"[?&]e=(\d+).*?[?&]f=([A-Za-z]+)")
+
+
+def backfill_event_players(con: sqlite3.Connection, max_events: int = 40) -> str:
+    """Preenche `event_players` nos presenciais do mtgtop8 que ficaram sem ele.
+
+    Faz falta porque uma lista presencial SEM contagem não conta para o metagame
+    (regra do André, 2026-09-07: presenciais só a partir de 64 jogadores) — e
+    dois terços das listas do mtgtop8 estavam a NULL, muitas delas de antes de a
+    coluna existir. Vai à página do evento, que é onde o nº aparece.
+
+    Poucos eventos por corrida (`max_events`) e com o 1 pedido/s que o `_get` já
+    respeita, para não martelar um site pequeno. Quando a página não mostra
+    contagem nenhuma grava-se **0**: não conta na mesma (0 < 64) e a corrida do
+    dia seguinte não volta a pedir a mesma página para nada.
+    """
+    porevento: dict[tuple[int, str], list[int]] = {}
+    for r in con.execute(
+        """SELECT id, url, event_date FROM decklists
+            WHERE source = 'mtgtop8' AND event_players IS NULL AND url IS NOT NULL
+            ORDER BY event_date DESC, id DESC"""):
+        m = RE_URL_EVENT.search(r["url"])
+        if m:
+            porevento.setdefault((int(m.group(1)), m.group(2)), []).append(r["id"])
+    if not porevento:
+        return "nada por preencher"
+
+    feitos = achados = 0
+    for (eid, code), ids in list(porevento.items())[:max_events]:
+        try:
+            players = parse_event_meta(_get("/event", e=eid, f=code))["players"]
+        except requests.RequestException:
+            continue
+        feitos += 1
+        if players:
+            achados += 1
+        marcas = ",".join("?" * len(ids))
+        con.execute(f"UPDATE decklists SET event_players = ? WHERE id IN ({marcas})",
+                    [players or 0, *ids])
+        con.commit()
+    return (f"{feitos} eventos vistos ({achados} com contagem), "
+            f"{len(porevento) - feitos} por fazer")
 
 
 def archetype_decks(archetype_id: int, fmt: str = "duel-commander") -> list[int]:
