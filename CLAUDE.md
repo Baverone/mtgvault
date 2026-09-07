@@ -29,9 +29,11 @@ descobrir o núcleo de cada arquétipo, e acompanha preços.
 ```
 mtgvault/
   db.py           ligação, ATTACH do catálogo, migrações
-  schema.sql      vault.db (coleção, decks, decklists, preços, watchlist)
+  schema.sql      vault.db (coleção, decks, decklists, preços, watchlist, copy_allocation)
   catalog_schema.sql   catalog.db (só a tabela cards)
   scryfall.py     catálogo via bulk data
+  paginas.py      o MENU e o TEMA de todas as páginas (uma lista só)
+  migracao.py     modelo de colecção única: funde os baldes na `Colecção`
   collection.py   exemplares, sub-coleções, reservas, valor, movimentos
   wantlist.py     o que falta, para decks e para arquétipos
   loadout.py      os decks montados ao mesmo tempo: aloca a coleção às caixas
@@ -59,7 +61,8 @@ collection_gallery.py  colecao.html — galeria por sub-coleção
 core_decks.py       (coredecks.html APAGADO 2026-08-26, a redefinir; NÃO vai ao git-add) — mas core_decks.py continua a correr no daily p/ calcular card_price/posse
 alertas.py          alertas.html — vender/comprar por movimento de preço (fora do menu atual)
 meusdecks.py        meusdecks.html — "Decks vigiados": agora SÓ os 5 fixos de colecao_config.json→decks_vigiados (Pauper-Luffy, Premodern-Luffy/Stiflenought, Blue Farm, Cloud cEDH, Cloud Duel Commander — este ÚLTIMO agora INCLUÍDO) MAIS os alvos de consenso de Premodern (`premodern_arquetipos_alvo`, sufixo " (consenso)"). Lista 75 verde/vermelho, % e evolução; checkmark "atualizado" (localStorage). NB (2026-09-07): a POSSE vem da alocação do loadout (`loadout.slots_por_lista`/`linhas_por_carta`), não de uma contagem própria — ver "Posse: quem conta o quê"
-deckboxes.py        deckboxes.html — "Deckboxes": o LOADOUT (colecao_config.json→loadout), os decks montados ao mesmo tempo com a coleção REPARTIDA entre eles (uma cópia física serve uma caixa só). Por caixa: barra de completude, dois números ("faltam comprar" e "ir buscar a outra caixa"), cartas em falta por preço, substitutos (tenho mas não serve), "tirar de:" (de que balde saem as cartas que já tem — `slot["origens"]`, com a Caixa RL partida em PT/EN), wantlist Cardmarket (SÓ o que é mesmo compra). Mais "cartas partilhadas entre caixas" (ex-"conflitos", mesma chave `conflitos`) e "Para vender". Motor em mtgvault/loadout.py
+deckboxes.py        deckboxes.html — "Deckboxes": o LOADOUT (colecao_config.json→loadout), os decks montados ao mesmo tempo com a coleção REPARTIDA entre eles (uma cópia física serve uma caixa só). NB (2026-09-07): a página foi reescrita com **uma ABA POR DECK** (o pedido dele: *"faz como no riftvault — no botão, cada deck tem uma aba própria"*), mais as abas **Todas**, **Arrumar**, **Partilhadas**, **Comprar** e **Vender**. Os dados vão em JSON dentro do HTML (`<script id="dados">`) e o render é JavaScript — o MESMO ficheiro serve o site publicado (`editable:false`) e o modo edição do `webapp.py` (`editable:true`, com botões). Por caixa: barra, dois números ("faltam comprar" e "ir buscar a outra caixa"), grelha de cartas com três estados, "tirar de:" (`slot["origens"]`), substitutos, wantlist Cardmarket (SÓ o que é mesmo compra). Motor em mtgvault/loadout.py
+webapp.py           MODO EDIÇÃO local, **porto 8771** (o 8770 é do `riftvault serve` — não trocar). Serve o `deckboxes.html` com os botões *Tornar permanente / Deixar de ser permanente*, *Subir / Descer*, *Sleevado e na caixa* e *Já arrumei tudo*. As PREFERÊNCIAS vão para o `colecao_config.json` (que já manda no loadout e vai no Git); o que é FÍSICO vai para a `copy_allocation`. Mostra o URL da rede local + QR ao arrancar. Mantido de pé pela tarefa `ai-pc/tasks/mtgvault-serve` (verifica de 5 em 5 min, relança destacado)
 metagame.py         metagame.html — "Metagame": desde 2026-09-07 já NÃO é o top-10 de cada formato; é o **top-N que ele está mais perto de concluir** (`colecao_config.json`→`metagame_top_n`, default 3). `SECOES` decide o modo por formato: `top` (Standard/Pioneer/Legacy — as caixas do loadout por escolher, via `loadout.foil_report`), `caixas` (Modern — o deck já escolhido, do próprio loadout) e `alvos` (Premodern — só o `premodern_arquetipos_alvo`). Posse pela alocação do loadout, três estados, wantlist Cardmarket. NÃO lê `formatos_metagame` (o Legacy tinha de entrar e não está lá)
 (prioridade.py + metafaltas.py APAGADOS 2026-08-26, a redefinir)
 reservedlist.py     reservedlist.html — Reserved List (Scryfall) x coleção, por edição, preço/evolução, e 'VENDER' as que não jogam em formato nenhum
@@ -72,7 +75,17 @@ refresh_collection.py  collection_owned p/ o index.html
 colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados
 ```
 Cada `.html` gerado tem de estar na lista do `git add` do workflow (`daily.yml`,
-passo "Guardar HTML") e, se for página nova, com link no `index.html`.
+passo "Guardar HTML") **e na lista `HTML` da tarefa `ai-pc/tasks/mtgvault-daily`**
+(o job que corre no PC) — o `deckboxes.html` esteve semanas só na primeira e
+nunca era publicado pelo PC. E, se for página nova, com link no `index.html`.
+
+**O menu e a paleta vivem num sítio só: `mtgvault/paginas.py`** (2026-09-07).
+Antes cada gerador escrevia o seu `<nav class="tabs">` à mão, e o `cobertura.html`
+ficou meses com um menu de Agosto — sem Deckboxes nem Metagame. Uma página órfã
+não dá erro: só deixa de se lá chegar. Acrescentar uma aba é acrescentar uma
+linha ao `paginas.MENU`; os templates trazem `%META%`, `%TEMA%` e `%TABS%`, e o
+`build()` de cada página substitui-os. O `test_paginas.py` tranca as duas coisas
+(o menu completo e o `git add` do workflow).
 
 ### Duas bases de dados
 
@@ -87,6 +100,11 @@ isso `SELECT ... FROM cards` funciona na mesma.
 
 **Migrações:** `CREATE TABLE IF NOT EXISTS` não acrescenta colunas a tabelas já
 criadas. Toda a coluna nova tem de entrar também em `db._migrate()`.
+
+Colunas/tabelas novas de 2026-09-07 (todas nos três sítios): `copies.balde_origem`
+(o balde de ONDE a cópia veio, escrito pela `migracao`) e a tabela
+`copy_allocation` (que cartas estão dentro de que deckbox — escrita pelo
+`loadout.guardar_arrumacao` e pelo botão "Sleevado e na caixa").
 
 Já custou caro uma vez: `decklists.event_tier` foi acrescentada só ao `vault.db`
 (commit 56ffa3f, 2026-08-03), nunca ao `schema.sql` nem ao `_migrate()`, e nada
@@ -136,6 +154,47 @@ cópia física entra numa caixa e **só numa**, a alocação é global e por ord
 **cartas partilhadas** (2+ caixas querem a carta, não chegam para todas — era o
 "conflito"), **substituto** (tem a carta mas não serve àquela caixa) e
 **venda**.
+
+**Decks PERMANENTES e candidatos (André, 2026-09-07, à letra).** *"Os decks que
+eu pedi para serem permanentes são a minha prioridade máxima!"* e *"os decks que
+eu estiver quase a concluir, tenho que ter uma opção que os marque como
+permanentes para começarem a receber alocação de cartas."*
+- `colecao_config.json → loadout[].permanente` (`true`/`false`). **Sem a chave, o
+  slot é permanente** — era o que as catorze caixas eram antes de a distinção
+  existir, e um default a `false` esvaziava a alocação de quem não a escrevesse.
+- `permanente` é a **primeira chave da ordem de alocação**, à frente do grupo de
+  formato: um permanente de SPML escolhe antes de um candidato de Premodern.
+  Dentro de cada metade a ordem é a de sempre (grupo > deck vigiado > prioridade).
+- Um **candidato** não deixa de ver as cartas: fica com o que sobrar e, para o
+  resto, diz *"em &lt;caixa&gt;"* em vez de mandar comprar.
+- Hoje só os três slots `por_confirmar` (Standard, Pioneer, Legacy) são
+  candidatos — uma caixa sem deck escolhido não pode ser permanente.
+- Marca-se e desmarca-se no **modo edição** (`python webapp.py`, porto 8771).
+
+**ARRUMAÇÃO FÍSICA: onde a carta ESTÁ vs. onde DEVE estar (2026-09-07).**
+*"Quero que me ajudem a ser mais organizado com as cartas."* O loadout continua a
+recalcular todos os dias onde cada carta deve estar; a `copy_allocation` diz onde
+ela está. **A diferença entre as duas é a lista de arrumação**
+(`loadout.plano_arrumacao`), com dois sentidos que contam os dois: **entra** (a
+alocação deu-a a uma caixa e ela ainda não lá está) e **sai** (está na caixa e a
+alocação já não a usa lá; volta à gaveta). Agrupa-se por **origem** (a gaveta que
+se abre) e por **destino** (a caixa que se monta) — são dois gestos diferentes.
+- Na página é a aba **Arrumar**, com checkboxes no browser e um CSV
+  `moves-<data>.csv`; no CLI é `python -m mtgvault.cli arrumar [--csv]
+  [--confirmar]`.
+- **"Já arrumei tudo" grava** (`loadout.guardar_arrumacao`, com backup no modo
+  edição). É idempotente e substitui a tabela inteira: uma linha órfã de uma
+  caixa que já não existe mentia para sempre.
+- **Um lote sai do `lots()` PARTIDO por sítio** (`caixa` + `key`): um lote de 4
+  com 3 na caixa e 1 na gaveta vale por metade, não por inteiro. Se mexeres no
+  `lots()`, é aqui que a armadilha está.
+- **Uma cópia já arrumada na caixa deste deck escapa às regras de material** — é
+  a versão nova da excepção do balde, e é o que impede que uma regra nova
+  desmonte no papel um deck que está na estante. A antiga (pelo balde) fica, para
+  o mesmo código estar certo antes e depois da migração.
+- **`_ordem` gasta primeiro a cópia que já está nesta caixa.** Sem isso a corrida
+  do dia seguinte trocava duas cópias equivalentes de caixa e mandava-o desmontar
+  dois decks para não mudar nada.
 
 **Posse: quem conta o quê (2026-09-07 — mudou).** Até esta data cada página
 contava a posse à sua maneira e discordavam em silêncio, que é o mesmo padrão do
@@ -294,13 +353,58 @@ a saída `guardar` ficou só para as **nonfoil dos slots de foil**, que é onde 
 não fechou a porta (na base de 2026-09-07 dá 0 cópias: as nonfoil que servem
 esses slots ainda cabem todas no playset).
 
-**Classificação Deck / Coleção / Vender (`classify.py`, 2026-08-13).** É a
-regra do André já implementada, que alimenta a página `colecao_cor.html`:
-- **Só os baldes `SPML` e `Premodern (geral)` são coleção.** Todo o resto
-  (`Blue Farm`, `Cloud`, `Cloud cEDH`, `Pauper Affinity`) são decks montados →
-  ficam FORA da coleção. (Palavras dele: "só premodern e SPML são coleções, o
-  resto é tudo decks".)
-- Dentro desses dois baldes, cada carta é **Deck** (cópias que um deck pede),
+**MODELO DE COLECÇÃO ÚNICA (André, 2026-09-07, à letra).** *"Põe a colecção toda
+em uma coisa só, com excepção da RL, e assim vais buscar as cartas ao mesmo
+sítio, mas aplicando as regras."* Substitui a regra de 2026-08-13 (*"só premodern
+e SPML são coleções, o resto é tudo decks"*), que era a mesma ideia com o
+vocabulário errado.
+
+Até aqui um `sub_collection` era ao mesmo tempo duas coisas: uma **gaveta**
+(`SPML`, `Premodern (geral)`) e uma **deckbox** (`Blue Farm`, `Cloud cEDH`).
+Misturá-las fez o vault mentir mais do que uma vez — a mais cara foi *"meti 4
+fotos, estavam lá 4 Utrom Monitor, mas no deck Pauper não aparecem"*: estavam no
+`SPML` e a página do Pauper só olhava para o balde do Pauper.
+
+Depois da migração há **duas gavetas e nada mais**:
+- `Colecção` — tudo o que não está numa deckbox;
+- `Caixa Reserved List` — a excepção que ele pediu (e que na estante são duas,
+  as PT e as EN separadas: ver `loadout.balde_local`).
+
+E **a deckbox deixa de ser um balde**: onde uma cópia está é a ALOCAÇÃO do
+loadout, gravada em **`copy_allocation`** quando ele carrega no *"já arrumei"*.
+A gaveta de onde veio fica em `copies.balde_origem`, para a aba *Arrumar* poder
+dizer de que prateleira a tirar hoje.
+- **"Colecção" = está num balde de colecção E não está dentro de nenhuma caixa.**
+  Quem decide os baldes é `colecao_config.json → baldes_coleccao`
+  (`loadout.baldes_coleccao()`), que tem os nomes novos E os antigos de propósito
+  — o mesmo código tem de estar certo na base de antes e na de depois da
+  migração. Já lêem daí: `meta_coverage.COLLECTION_BALDES`, `classify`,
+  `colecao_cor`, `loadout.caixas_de_deck`.
+- **"Deck" = alocado a uma caixa.** `collection.owned_playable(...,
+  fora_das_caixas=True)` desconta a `copy_allocation` — é o gémeo, no modelo
+  novo, de "não olhar para os baldes dos decks". O `owned_available` usa-o.
+- **Um balde de colecção nunca é caixa de deck**, mesmo que um slot de Commander
+  o aponte como o seu (`caixas_de_deck`). Sem essa linha, depois da migração a
+  colecção inteira passava a "estar dentro de um deck" e escapava às regras de
+  material.
+- **A migração**: `python -m mtgvault.cli migrar-coleccao-unica` (tem `--dry-run`
+  e faz backup sozinha; é idempotente e o `balde_origem` só se escreve quando
+  está a NULL). **Ainda NÃO correu na base do André** — corre-se quando isto
+  entrar no main. Medida na cópia da BD, é **neutra nos números**: 7 891,50 € para
+  fechar, 230 a comprar, 61 a ir buscar, venda 91c/702,95 €, classify
+  {deck 152, coleção 938, vender 97} — iguais antes e depois.
+- **A migração TEM de semear a `copy_allocation`** com as cartas que viviam nos
+  baldes dos decks. Sem isso desmontava no papel quatro decks que estão na
+  estante (as regras de material voltavam a aplicar-se a cartas já sleevadas) e o
+  vault mandava comprar cartas que estão em casa. Tem teste.
+- O `classify.py` deixou de decidir o "pool" pelo balde: decide-o pela CARTA
+  (PT + impressão até ao Scourge = Premodern, o resto SPML), que é a mesma tranca
+  do `loadout._porque_nao`. Duas respostas diferentes à mesma pergunta era
+  exactamente o erro a evitar.
+**Classificação Deck / Coleção / Vender (`classify.py`, 2026-08-13; adaptada ao
+modelo acima em 2026-09-07).** É a regra do André já implementada, que alimenta a
+página `colecao_cor.html`:
+- Dentro da colecção, cada carta é **Deck** (cópias que um deck pede),
   **Coleção** (jogável, backup até 4) ou **Vender**.
 - **SPML é DINÂMICO, Premodern é ESTÁVEL** (`colecao_config.json`):
   - **SPML** → `spml_formatos` {formato: estado}. O André joga vários formatos
@@ -456,9 +560,11 @@ rede. Se algo vier vazio, é aqui:
 ## Por fazer
 
 - Validar as cinco superfícies acima contra os sites reais e corrigir.
-- Interface web local (FastAPI + uma página) para ver coleção, fotos e
-  gráficos de preço no browser. É o passo que também justifica migrar do
-  GitHub Actions para um VPS.
+- **Correr a migração `migrar-coleccao-unica` na base a sério.** Está feita,
+  testada e medida (é neutra nos números), mas ainda só correu em cópias.
+- ~~Interface web local~~ — feita em 2026-09-07: `webapp.py`, porto **8771**,
+  biblioteca-padrão (sem FastAPI, para não trazer uma dependência para uma coisa
+  que são 200 linhas de `http.server`). Falta-lhe: ver fotos e gráficos de preço.
 - Nomes de arquétipos: o clustering gera rótulos a partir das cartas mais
   distintivas (`Skewer the Critics / Sacred Foundry / ...`). Funciona mas é
   feio. Permitir renomear à mão sem que o `rebuild_archetypes` desfaça.
