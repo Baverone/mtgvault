@@ -32,7 +32,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import db, sources  # noqa: E402
+from mtgvault import db, loadout, paginas, sources  # noqa: E402
 from mtgvault.collection import owned_playable  # noqa: E402
 
 _FORMATS = [
@@ -54,10 +54,16 @@ _ATIVOS = sources.config().get("formatos_metagame")
 FORMATS = ([f for f in _FORMATS if f[0] in {str(x).lower() for x in _ATIVOS}]
            if _ATIVOS is not None else _FORMATS)
 
-# A COLEÇÃO disponível para montar decks do metagame = só estes baldes. Os baldes
-# dos decks vigiados (Blue Farm, Cloud, Cloud cEDH, Pauper Affinity) estão agregados
-# a esses decks e NÃO contam como disponíveis (regra do André, 2026-08-26).
-COLLECTION_BALDES = {"SPML", "Premodern (geral)"}
+# A COLEÇÃO disponível para montar decks do metagame = só estes baldes. As cartas
+# dos decks vigiados estão agregadas a esses decks e NÃO contam como disponíveis
+# (regra do André, 2026-08-26).
+#
+# Desde o modelo de colecção única (2026-09-07) isto é o balde `Colecção`; os
+# nomes antigos continuam na lista para o mesmo código estar certo antes e depois
+# da migração. A Caixa Reserved List fica de fora, como sempre esteve. E o que
+# distingue uma carta de deck de uma carta de colecção deixou de ser o balde:
+# é a ARRUMAÇÃO (ver `owned_available`).
+COLLECTION_BALDES = set(loadout.baldes_coleccao()) - {loadout.BALDE_RL}
 
 
 def _committed_to_watched(con):
@@ -87,11 +93,17 @@ def _committed_to_watched(con):
 
 
 def owned_available(con):
-    """Cartas DISPONÍVEIS na coleção (SPML + Premodern) para montar decks do
-    metagame, como {nome: qty_livre} — já sem as comprometidas com os decks
-    vigiados. metagame/decks-fazíveis fazem set(...) para os nomes; a cobertura usa
-    as quantidades."""
-    col = owned_playable(con, baldes=COLLECTION_BALDES)
+    """Cartas DISPONÍVEIS na coleção para montar decks do metagame, como
+    {nome: qty_livre} — já sem as que estão dentro de uma deckbox e sem as
+    comprometidas com os decks vigiados. O metagame faz set(...) para os nomes;
+    a cobertura usa as quantidades.
+
+    `fora_das_caixas=True` é o que substitui, no modelo de colecção única, o
+    truque de não olhar para os baldes dos decks: agora as cartas de um deck
+    montado vivem no mesmo balde de todas as outras, e o que as tira da colecção
+    é estarem registadas dentro de uma caixa.
+    """
+    col = owned_playable(con, baldes=COLLECTION_BALDES, fora_das_caixas=True)
     comm = _committed_to_watched(con)
     return {nm: q - comm.get(nm, 0) for nm, q in col.items() if q > comm.get(nm, 0)}
 
@@ -642,7 +654,10 @@ def build_html(rep, today):
                          '<span class="dim">(fora do top-10, mas em torneios de peso — talvez algo novo)</span>'
                          f'</h2><ul class="eml">{rows}</ul></section>')
 
-    return (_TMPL.replace("%SECS%", secs).replace("%EMERGING%", emerging_html)
+    return (_TMPL.replace("%META%", paginas.META)
+            .replace("%TEMA%", paginas.TEMA)
+            .replace("%TABS%", paginas.nav("cobertura.html", extra=True))
+            .replace("%SECS%", secs).replace("%EMERGING%", emerging_html)
             .replace("%GEN%", gen or "<li class='dim'>—</li>")
             .replace("%GENMORE%", more).replace("%TODAY%", today)
             .replace("%OWNED%", str(rep["owned_total"]))
@@ -652,10 +667,9 @@ def build_html(rep, today):
             .replace("%WANT%", json.dumps(rep["want"], ensure_ascii=False)))
 
 
-_TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+_TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
 <title>mtgvault — cobertura do metagame</title><style>
- :root{--bg:#0e1116;--card:#171b22;--ink:#e8ecf1;--muted:#93a0ad;--line:#262c36;--accent:#5b8cff;--gold:#e0b64b;--add:#4ac585;--warn:#e8794b}
+%TEMA%
  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
  .wrap{max-width:1120px;margin:0 auto;padding:24px 16px 70px}
  h1{margin:0 0 2px;font-size:22px} .sub{color:var(--muted);font-size:13px;margin-bottom:8px} .sub a{color:var(--accent)}
@@ -692,9 +706,9 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .ef{display:inline-block;min-width:74px;color:var(--add);font-size:11px;text-transform:uppercase}
  footer{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
-<header><h1>🌐 Metagame</h1>
-<div class="sub">Os melhores decks de cada formato e quanto já tens · %OWNED% cartas na coleção · dados de %TODAY%</div>
-<nav class="tabs"><a href="index.html">🏠 Início</a><a href="meusdecks.html">🎴 Decks permanentes</a><a href="showcase.html">🎯 Showcase Challenger</a><a href="colecao_cor.html">📚 Coleção</a><a href="caixarl.html">📦 Caixa RL</a></nav></header>
+<header><h1>📊 Cobertura do metagame</h1>
+<div class="sub">Os decks com mais peso em cada formato e quanto já tens · %OWNED% cartas na coleção · dados de %TODAY% · para o <b>top-N que estás mais perto de concluir</b>, vê a página <a href="metagame.html">Metagame</a></div>
+%TABS%</header>
 %EMERGING%
 <div class="general"><h2>🛒 Staples que te faltam <span class="dim">(servem vários dos decks abaixo · mostrados <b id="gen-shown">%GENSHOWN%</b> de %GENCOST%)</span></h2>
 <div><button id="copyall" class="cp">📋 Copiar wantlist completa (Cardmarket)</button></div>

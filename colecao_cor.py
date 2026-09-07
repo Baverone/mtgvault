@@ -24,7 +24,7 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 import classify  # noqa: E402
 import commander_decks  # noqa: E402  (decks de consenso em camadas núcleo/flex/tech)
-from mtgvault import db  # noqa: E402
+from mtgvault import db, loadout, paginas  # noqa: E402
 from mtgvault.collection import owned_playable  # noqa: E402
 
 COLOR = {"W": "Branco", "U": "Azul", "B": "Preto", "R": "Vermelho", "G": "Verde"}
@@ -60,6 +60,11 @@ def _card(x, badge_cls="q"):
         data = f' data-used="{html.escape(where)}"'
         tag = f'<span class="use">{html.escape(where)}</span>'
         tip += f' — vai para: {html.escape(where)}'
+    elif x.get("de"):             # o loadout dá-a a esta caixa, mas está noutro balde
+        cls = "c fora"
+        tag = (f'<span class="fora" title="está em {html.escape(x["de"])} — '
+               f'é de lá que a tiras para montar">de {html.escape(x["de"])}</span>')
+        tip += f' — está em {html.escape(x["de"])}'
     elif x.get("extra"):          # deck vigiado: carta que saiu da lista, retida
         last = x.get("last")
         cls = "c extra"
@@ -77,9 +82,19 @@ ICON = {"Branco": "⬜", "Azul": "🟦", "Preto": "⬛", "Vermelho": "🟥", "Ve
 SLUG = {"Branco": "branco", "Azul": "azul", "Preto": "preto", "Vermelho": "vermelho",
         "Verde": "verde", "Multicor": "multicor", "Incolor / Artefacto": "incolor",
         "Terras": "terras"}
-# As duas coleções (balde sub_collection -> rótulo curto), pela ordem em que
-# aparecem DENTRO de cada cor.
-POOLS = [("SPML", "🔷 SPML"), ("Premodern (geral)", "🕰️ Premodern")]
+# Os baldes de coleção (sub_collection -> rótulo curto), pela ordem em que
+# aparecem DENTRO de cada cor. Desde o modelo de colecção única (André,
+# 2026-09-07: *"põe a colecção toda em uma coisa só, com excepção da RL"*) é um
+# só; os nomes antigos ficam para o mesmo código estar certo antes e depois da
+# migração, e só aparecem os que têm cartas.
+ROTULOS = {"Colecção": "📚 Coleção", "SPML": "🔷 SPML",
+           "Premodern (geral)": "🕰️ Premodern", "Jogar": "🎴 Jogar"}
+
+
+def _pools():
+    """(balde, rótulo) dos baldes de colecção — a Caixa RL fica de fora."""
+    return [(b, ROTULOS.get(b, b)) for b in loadout.baldes_coleccao()
+            if b != loadout.BALDE_RL]
 
 
 def _cmc_grids(rows, is_land):
@@ -107,6 +122,90 @@ CONSENSUS_BALDES = {"Cloud": ("Cloud (Duel Commander)", "duel-commander", "Cloud
 CI_ICON = {"W": "⬜", "U": "🟦", "B": "⬛", "R": "🟥", "G": "🟩"}
 
 
+def _alocacao(con):
+    """A alocação do loadout, uma vez por página. Se falhar, as secções ficam
+    como estavam — mais vale isso do que a página inteira ir abaixo."""
+    try:
+        return loadout.allocate(con)
+    except Exception:                       # noqa: BLE001
+        return None
+
+
+def _de_outro_balde(con, res, balde, cur):
+    """Cartas que o LOADOUT deu a esta caixa mas que vivem noutro balde.
+
+    O balde é onde a carta está arrumada hoje; a caixa é o deck que a vai levar.
+    Nem sempre coincidem — os quatro Utrom Monitor do Pauper estão no `SPML`
+    (André, 2026-09-07: *"estavam lá 4 Utrom Monitor, mas no deck Pauper não
+    aparecem como se eu tivesse a carta"*). Sem isto a secção mostrava um deck
+    mais incompleto do que ele está, e não dizia onde ir buscar o resto.
+
+    Devolve linhas com a mesma forma das outras (`_card`), marcadas com `de` = o
+    balde de onde saem.
+    """
+    if res is None:
+        return []
+    slot = _slot_do_balde(res, balde)
+    if slot is None:
+        return []
+    fora = {}                               # (sid, finish, lang, balde) -> qty
+    for m in slot["have"]:
+        if m["nm"] not in cur:
+            continue
+        for g in m["lotes"]:
+            # Já está na caixa (pelo balde antigo ou pela arrumação nova): não é
+            # "ir buscar", e contá-la aqui era mostrá-la duas vezes.
+            if g["sub"] == balde or g["local"] == slot["nome"]:
+                continue
+            k = (g["sid"], g["finish"], g["lang"], g["local"])
+            fora[k] = fora.get(k, 0) + g["q"]
+    if not fora:
+        return []
+    ph = ",".join("?" * len({k[0] for k in fora}))
+    meta = {r["sid"]: dict(r) for r in con.execute(
+        f"""SELECT scryfall_id sid, name nm, cmc, type_line tl, color_identity ci
+              FROM cards WHERE scryfall_id IN ({ph})""",
+        sorted({k[0] for k in fora}))}
+    out = []
+    for (sid, fin, lang, local), q in fora.items():
+        m = meta.get(sid)
+        if not m:
+            continue
+        out.append({"sid": sid, "nm": m["nm"], "cmc": m["cmc"], "tl": m["tl"],
+                    "ci": m["ci"], "fin": fin, "lang": lang, "q": q, "de": local})
+    return out
+
+
+def _slot_do_balde(res, balde):
+    return next((s for s in (res or {}).get("slots", []) if s.get("balde") == balde),
+                None)
+
+
+def _copias_na_caixa(con, res, balde):
+    """As cópias que estão fisicamente DENTRO desta caixa.
+
+    Duas maneiras de lá estar, e as duas contam para o mesmo código funcionar
+    antes e depois do modelo de colecção única:
+      * vivem no balde do deck (`Blue Farm`, `Cloud cEDH`, ...) — o modelo antigo;
+      * estão registadas na `copy_allocation` daquele slot — o modelo novo, em
+        que a colecção é um balde só e a caixa é a arrumação.
+    """
+    slot = _slot_do_balde(res, balde)
+    sid = slot["slot"] if slot else None
+    return con.execute(
+        """SELECT c.scryfall_id sid, c.name nm, c.cmc cmc, c.type_line tl,
+                  c.color_identity ci, cp.finish fin, cp.language lang,
+                  SUM(CASE WHEN a.quantity IS NOT NULL THEN a.quantity
+                           ELSE cp.quantity END) q
+             FROM copies cp
+             JOIN cards c ON c.scryfall_id = cp.scryfall_id
+             LEFT JOIN sub_collections s ON s.id = cp.sub_collection_id
+             LEFT JOIN copy_allocation a ON a.copy_id = cp.id AND a.slot = ?
+            WHERE cp.purpose = 'player' AND (s.name = ? OR a.quantity IS NOT NULL)
+            GROUP BY c.scryfall_id, cp.finish, cp.language
+            HAVING q > 0""", (sid, balde)).fetchall()
+
+
 def _watched_deck_pools(con):
     """Por cada deck vigiado: o deck por INTEIRO (o que tem e está na lista atual)
     + as cartas EXTRA (as que já tem mas saíram da lista) — retidas até 6 meses da
@@ -114,8 +213,13 @@ def _watched_deck_pools(con):
 
     A lista atual e o histórico de "última utilização" vêm da lista vigiada
     (watched_snapshots); para o Cloud (Duel Commander), do consenso (deck_cards).
+
+    O que está NA CAIXA sai do balde do deck; o que o loadout lhe deu de OUTRO
+    balde vem do `_de_outro_balde` e aparece marcado com "de <balde>" — é a mesma
+    regra "indicas onde está a carta" que vale no resto do site.
     """
     cutoff = con.execute("SELECT date('now','-6 months') d").fetchone()["d"]
+    res = _alocacao(con)
     wmap = {r["sub_collection"]: r["watched_id"]
             for r in con.execute("SELECT sub_collection, watched_id FROM deck_collection")}
     today = con.execute("SELECT date('now') d").fetchone()["d"]
@@ -142,13 +246,7 @@ def _watched_deck_pools(con):
     for balde, title in WATCHED_BALDES:
         cur, last = _list_and_last(balde)
         deck_rows, extra_rows = [], []
-        for r in con.execute(
-            """SELECT c.scryfall_id sid, c.name nm, c.cmc cmc, c.type_line tl,
-                      c.color_identity ci, cp.finish fin, cp.language lang, SUM(cp.quantity) q
-                 FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id
-                 JOIN sub_collections s ON s.id = cp.sub_collection_id
-                WHERE cp.purpose = 'player' AND s.name = ?
-                GROUP BY c.scryfall_id, cp.finish, cp.language""", (balde,)):
+        for r in _copias_na_caixa(con, res, balde):
             row = dict(r)
             front = r["nm"].split(" // ")[0]
             if front in cur:
@@ -159,9 +257,12 @@ def _watched_deck_pools(con):
                 row["last"] = lp
                 row["expired"] = bool(lp and lp < cutoff)
                 extra_rows.append(row)
+        outros = _de_outro_balde(con, res, balde, cur)
+        deck_rows += outros
         if deck_rows or extra_rows:
             out.append({"title": title, "deck": deck_rows, "extra": extra_rows,
-                        "n_list": len(cur), "n_have": len(deck_rows)})
+                        "n_list": len(cur), "n_have": len(deck_rows),
+                        "n_fora": sum(x["q"] for x in outros)})
     return out
 
 
@@ -232,15 +333,25 @@ def _value(con):
         o = "foil" if fin == "nonfoil" else "nonfoil"
         return a.get((sid, fin)) or a.get((sid, o)) or b.get((sid, fin)) or b.get((sid, o)) or 0
 
+    coleccao = {b for b, _ in _pools()}
     grp = {"min": [0.0, 0.0, 0.0], "trend": [0.0, 0.0, 0.0]}   # [coleção, decks, caixa]
+    # Uma cópia pode estar meio na caixa e meio na gaveta, e o valor tem de se
+    # repartir na mesma proporção — senão um lote de 4 com 3 no deck contava
+    # 4 como coleção.
     for r in con.execute("""SELECT cp.scryfall_id sid, cp.finish fin, cp.quantity q,
-                COALESCE(s.name,'') bal FROM copies cp
+                COALESCE(s.name,'') bal,
+                COALESCE((SELECT SUM(a.quantity) FROM copy_allocation a
+                           WHERE a.copy_id = cp.id), 0) na_caixa
+                FROM copies cp
                 LEFT JOIN sub_collections s ON s.id = cp.sub_collection_id
                WHERE cp.purpose = 'player'"""):
-        i = (0 if r["bal"] in ("SPML", "Premodern (geral)")
-             else 2 if r["bal"] == "Caixa Reserved List" else 1)
-        grp["min"][i] += price(r["sid"], r["fin"], lo, tr) * r["q"]
-        grp["trend"][i] += price(r["sid"], r["fin"], tr, lo) * r["q"]
+        base = 0 if r["bal"] in coleccao else 2 if r["bal"] == loadout.BALDE_RL else 1
+        dentro = min(r["na_caixa"] or 0, r["q"])
+        for i, q in ((1, dentro), (base, r["q"] - dentro)):
+            if q <= 0:
+                continue
+            grp["min"][i] += price(r["sid"], r["fin"], lo, tr) * q
+            grp["trend"][i] += price(r["sid"], r["fin"], tr, lo) * q
     return grp
 
 
@@ -259,16 +370,23 @@ def build(con, out_path=None):
     pm_status = classify.premodern_status(con, sticky=completos)
     used_by = classify._used_by(con, active_fmts, pm_status, montados)
 
+    baldes = [b for b, _ in _pools()]
+    ph = ",".join("?" * len(baldes))
     colrows = defaultdict(lambda: defaultdict(list))   # cor -> balde -> linhas
     n_deckbound = 0
     for r in con.execute(
-        """SELECT c.scryfall_id sid, c.name nm, c.cmc cmc, c.type_line tl,
-                  c.color_identity ci, cp.finish fin, cp.language lang, s.name sub,
-                  SUM(cp.quantity) q
-             FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id
-             JOIN sub_collections s ON s.id = cp.sub_collection_id
-            WHERE cp.purpose = 'player' AND s.name IN ('SPML', 'Premodern (geral)')
-            GROUP BY c.scryfall_id, cp.finish, cp.language, s.name"""):
+        f"""SELECT c.scryfall_id sid, c.name nm, c.cmc cmc, c.type_line tl,
+                   c.color_identity ci, cp.finish fin, cp.language lang, s.name sub,
+                   SUM(cp.quantity - COALESCE((SELECT SUM(a.quantity)
+                        FROM copy_allocation a WHERE a.copy_id = cp.id), 0)) q
+              FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id
+              JOIN sub_collections s ON s.id = cp.sub_collection_id
+             WHERE cp.purpose = 'player' AND s.name IN ({ph})
+             GROUP BY c.scryfall_id, cp.finish, cp.language, s.name
+             HAVING q > 0""", baldes):
+        # As cópias que já estão DENTRO de uma deckbox saem daqui: aparecem na
+        # secção "Decks permanentes", que é onde elas estão. É o que os baldes
+        # `Blue Farm`/`Cloud`/... faziam antes de a colecção passar a ser um só.
         row = dict(r)
         ub = used_by.get(r["nm"])
         if ub:
@@ -286,7 +404,7 @@ def build(con, out_path=None):
         navs.append(f'<a href="#bind-{slug}">{ICON[b]} {b}</a>')
         secs += (f'<h2 id="bind-{slug}" class="pool">{ICON[b]} {html.escape(b)} '
                  f'<span class="n">{total}</span></h2>')
-        for sub, short in POOLS:
+        for sub, short in _pools():
             rs = pools.get(sub)
             if not rs:
                 continue
@@ -298,8 +416,9 @@ def build(con, out_path=None):
     # por inteiro + extras. Consenso (Cloud DC): camadas núcleo/flex/tech.
     wsec_body = ""
     for p in _watched_deck_pools(con):
+        fora = (f' · {p["n_fora"]} de outro balde' if p.get("n_fora") else "")
         wsec_body += (f'<h3>{html.escape(p["title"])} <span class="n">'
-                      f'{p["n_have"]} na lista · {len(p["extra"])} extra</span></h3>')
+                      f'{p["n_have"]} na lista{fora} · {len(p["extra"])} extra</span></h3>')
         dcards = sorted(p["deck"], key=lambda x: (int(x["cmc"] or 0), (x["nm"] or "").lower()))
         wsec_body += '<div class="grid">' + "".join(_card(x) for x in dcards) + '</div>'
         if p["extra"]:
@@ -314,7 +433,10 @@ def build(con, out_path=None):
         wsec = ('<h2 id="vigiados" class="pool">🃏 Decks permanentes '
                 '<span class="n">só decks — não coleção</span></h2>'
                 '<p class="hint">Lista fixa (Blue Farm, Cloud cEDH, Pauper): o deck por inteiro '
-                '+ as <b>extra</b> (saíram da lista, retidas até 6 meses). Consenso (Cloud): em '
+                '+ as <b>extra</b> (saíram da lista, retidas até 6 meses). As cartas com '
+                '<b style="color:#bcd4ff">de &lt;balde&gt;</b> estão arrumadas noutro sítio mas o '
+                '<b>loadout</b> dá-as a esta caixa — é de lá que as tiras para montar (foi o caso '
+                'dos 4 Utrom Monitor do Pauper, que vivem no SPML). Consenso (Cloud): em '
                 'camadas — <b>núcleo</b> (≥50% das listas) é o deck; <b>flex</b> (25–50%) e '
                 '<b>tech</b> (15–25%) são opções para as vagas. Só cartas dentro da cor do '
                 'comandante.</p>' + wsec_body)
@@ -347,7 +469,10 @@ def build(con, out_path=None):
         f'<div class="vnote">Preço Cardmarket por impressão. A fonte atual dá <b>um só valor</b> por carta '
         f'— o «mínimo» (low) e o «trend» coincidem, por isso mostro um só. (Separá-los precisa de afinar o harvest de preços.)</div></div>')
 
-    out.write_text(_TMPL.replace("%SECS%", secs).replace("%VIGIADOS%", wsec)
+    out.write_text(_TMPL.replace("%META%", paginas.META)
+                   .replace("%TEMA%", paginas.TEMA)
+                   .replace("%TABS%", paginas.nav("colecao_cor.html"))
+                   .replace("%SECS%", secs).replace("%VIGIADOS%", wsec)
                    .replace("%VALOR%", valor_html)
                    .replace("%NAV%", topnav).replace("%TOTAL%", str(total_col))
                    .replace("%DECKN%", str(n_deckbound))
@@ -355,10 +480,9 @@ def build(con, out_path=None):
     return out
 
 
-_TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+_TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
 <title>Coleção por cor</title><style>
- :root{--bg:#0e1116;--card:#171b22;--ink:#e8ecf1;--muted:#93a0ad;--line:#262c36;--accent:#5b8cff;--gold:#e0b64b;--add:#4ac585}
+%TEMA%
  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
  .wrap{max-width:1100px;margin:0 auto;padding:20px 14px 60px}
  h1{margin:0 0 2px;font-size:21px} .sub{color:var(--muted);font-size:13px;margin-bottom:6px} .sub a{color:var(--accent)}
@@ -380,6 +504,8 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  body.deckmode .c[data-used] .use{display:block}
  .c.extra img{filter:brightness(.82) sepia(.35) saturate(1.3) hue-rotate(-15deg)}
  .c .ex{position:absolute;bottom:0;left:0;right:0;background:#5a4a1f;color:#f4e0a0;font-size:8.5px;font-weight:700;line-height:1.35;padding:1px 3px;border-radius:0 0 5px 5px;text-align:center}
+ .c.fora img{box-shadow:0 0 0 2px #7fa8ff}
+ .c .fora{position:absolute;bottom:0;left:0;right:0;background:#1b2c4d;color:#bcd4ff;font-size:8.5px;font-weight:700;line-height:1.35;padding:1px 3px;border-radius:0 0 5px 5px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
  .c.miss{opacity:.72} .c.miss img{filter:grayscale(1) brightness(.5)}
  .c .noimg{width:74px;height:103px;border-radius:5px;background:#0c0f14}
  .c .q.pctb{background:#1c2c4a;color:#9cc2ff}
@@ -402,7 +528,7 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
 </style></head><body><div class="wrap">
 <header><h1>📚 Coleção — organizar e fotografar</h1>
 <div class="sub">TUDO o que tens nos baldes de coleção, por cor→custo de mana · nada removido para decks · enche os binders e fotografa o que não aparecer · dados de %TODAY%</div>
-<nav class="tabs"><a href="index.html">🏠 Início</a><a href="meusdecks.html">🎴 Decks permanentes</a><a href="showcase.html">🎯 Showcase Challenger</a><a class="cur" href="colecao_cor.html">📚 Coleção</a><a href="caixarl.html">📦 Caixa RL</a></nav>
+%TABS%
 <div class="tally"><b class="t-col">🔵 %TOTAL% cartas nos binders</b><b class="t-deck">🟢 %DECKN% que vão p/ decks</b><button class="tgl" id="dm" onclick="toggleDM()">🎯 marcar as que vão p/ decks</button></div>
 <div class="cfg">%CFG%</div>
 %VALOR%</header>

@@ -7,6 +7,24 @@ Por deck: quem segue/vigia, % de completo, datas (última verificação / últim
 alteração), link à fonte, a EVOLUÇÃO da lista (▲ entrou / ▼ saiu, com datas, e
 cada carta a VERDE se a tenho / VERMELHO se não), e a lista COMPLETA (main+side,
 com básicas) em arte — verde = tenho, vermelho = falta. NÃO inventa nada.
+
+ONDE ESTÁ A CARTA (André, 2026-09-07)
+-------------------------------------
+A posse de cada deck vem da ALOCAÇÃO do loadout (`mtgvault/loadout.py`), não de
+uma contagem própria. O que motivou a mudança foi um erro real: *"Meti 4 fotos,
+estavam lá 4 Utrom Monitor, mas no deck Pauper não aparecem como se eu tivesse a
+carta."* A secção dos vigiados contava só as cópias do balde ligado ao deck
+(`deck_collection` → `Pauper Affinity`) e os quatro Utrom Monitor estão no
+`SPML` — existiam, serviam, e a página dizia que faltavam.
+
+Com a alocação: **tenho** = o que o loadout deu a esta caixa (venha do balde que
+vier), **em &lt;caixa&gt;** (âmbar) = a cópia existe mas está noutra caixa
+montada — vai-se lá buscar, **não se compra** — e **falta** é só o resto. As
+faltas desta página somam `comprar`, nunca `missing`: somar `missing` volta a
+pedir quatro cópias de uma carta que já está na caixa do lado.
+
+Um deck que não seja uma caixa do loadout mantém a contagem antiga (a coleção
+inteira) — é o que se pode dizer sem inventar.
 """
 from __future__ import annotations
 
@@ -21,7 +39,7 @@ ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 import buildability as bd  # noqa: E402
-from mtgvault import sources  # noqa: E402
+from mtgvault import loadout, paginas, sources  # noqa: E402
 from mtgvault.collection import owned_playable  # noqa: E402
 
 FMT_LABEL = bd.FMT_LABEL
@@ -50,11 +68,7 @@ def _alvos_premodern():
     import premodern_decks as pd
     return {t + pd.SUFIXO for t in pd.alvos()}
 
-TABS = ('<nav class="tabs"><a href="index.html">🏠 Início</a>'
-        '<a class="cur" href="meusdecks.html">🎴 Decks permanentes</a><a href="showcase.html">🎯 Showcase Challenger</a>'
-        ''
-        ''
-        '<a href="colecao_cor.html">📚 Coleção</a><a href="caixarl.html">📦 Caixa RL</a></nav>')
+TABS = paginas.nav("meusdecks.html")
 
 
 def _art(sid):
@@ -251,10 +265,14 @@ def _cloud_consensus(con, his_names):
 
 
 def _faltas(cards):
-    """{nome (frente): cópias em falta} de uma lista de cartões (qty - hq), sem básicas."""
+    """{nome (frente): cópias a COMPRAR} de uma lista de cartões, sem básicas.
+
+    `comprar`, não `qty - hq`: uma carta que está noutra caixa do loadout já é
+    dele e vai-se buscar (André, 2026-09-07). Nos decks fora do loadout `comprar`
+    é o antigo `qty - hq` — não há caixas por onde a repartir."""
     out = defaultdict(int)
     for c in cards:
-        m = c["qty"] - c["hq"]
+        m = c.get("comprar", c["qty"] - c["hq"])
         if m > 0 and c["nm"] not in bd.BASICS:
             out[c["nm"].split(" // ")[0]] += m
     return out
@@ -275,21 +293,50 @@ def _faltas_html(faltas, cls="", label="🛒 Faltas"):
             f'<textarea class="cmk" readonly>{html.escape(cmk)}</textarea></div>')
 
 
-def _cards(items, osid, imgmap, owned_qty):
-    """items = [(nome, qty)] -> [{nm, qty, hq, state, sid}], contando CÓPIAS.
-    hq = quantas dessas cópias o André tem (básicas = sempre suficientes). state:
-    have (tem as que precisa) / part (tem algumas) / miss (não tem nenhuma)."""
+_ORDEM_ESTADO = {"have": 0, "noutra": 1, "part": 2, "miss": 3}
+
+
+def _cards(items, osid, imgmap, owned_qty, linhas=None, board="main"):
+    """items = [(nome, qty)] -> [{nm, qty, hq, oq, onde, comprar, state, sid}].
+
+    Conta CÓPIAS. `hq` = quantas o André tem PARA ESTE DECK, `oq` = quantas
+    existem mas estão noutra caixa do loadout (ir buscar), `comprar` = o que
+    resta. Estados: have (tem as que precisa) / noutra (tem-nas, algumas estão
+    noutra caixa) / part (tem algumas) / miss (não tem nenhuma).
+
+    Com `linhas` (a alocação do loadout desta caixa, `loadout.linhas_por_carta`)
+    os três números saem de lá — é o que corrige o caso dos Utrom Monitor, que
+    estão no SPML e servem a caixa do Pauper. Sem `linhas`, a contagem antiga:
+    a coleção inteira, e nada está "noutra caixa".
+    """
     out = []
     for nm, q in items:
-        oq = q if nm in bd.BASICS else owned_qty.get(nm, 0)
-        hq = min(q, oq)
-        state = "have" if hq >= q else ("part" if hq > 0 else "miss")
-        out.append({"nm": nm, "qty": q, "hq": hq, "state": state,
-                    "sid": osid.get(nm) or imgmap.get(nm)})
-    return sorted(out, key=lambda c: ({"have": 0, "part": 1, "miss": 2}[c["state"]], c["nm"]))
+        front = nm.split(" // ")[0]
+        ln = (linhas or {}).get((board, front))
+        if ln is not None:
+            # Um slot com variantes pede o máximo das listas; o que interessa a
+            # ESTE deck nunca passa do que ele pede.
+            hq = min(q, ln["got"])
+            oq = min(q - hq, ln["noutra_q"])
+            onde = ln["noutra"]
+        else:
+            hq = min(q, q if nm in bd.BASICS else owned_qty.get(nm, 0))
+            oq, onde = 0, {}
+        if hq >= q:
+            state = "have"
+        elif hq + oq >= q:
+            state = "noutra"
+        elif hq + oq > 0:
+            state = "part"
+        else:
+            state = "miss"
+        out.append({"nm": nm, "qty": q, "hq": hq, "oq": oq, "onde": onde,
+                    "comprar": q - hq - oq, "state": state,
+                    "sid": osid.get(front) or imgmap.get(front)})
+    return sorted(out, key=lambda c: (_ORDEM_ESTADO[c["state"]], c["nm"]))
 
 
-def _watched_decks(con, osid, imgmap, owned_names):
+def _watched_decks(con, osid, imgmap, owned_names, por_lista=None):
     out = []
     for r in con.execute("""SELECT w.id wid, w.label, w.format, w.notes, w.last_checked, dc.sub_collection balde
                               FROM watched w JOIN deck_collection dc ON dc.watched_id = w.id
@@ -303,6 +350,11 @@ def _watched_decks(con, osid, imgmap, owned_names):
         main_i, side_i = defaultdict(int), defaultdict(int)
         for b, nm, q in json.loads(snap["cards"]):
             (side_i if b == "side" else main_i)[nm.split(" // ")[0]] += q
+        # A posse vem da alocação do loadout (é aqui que estava o bug dos Utrom
+        # Monitor). Só se o deck NÃO for uma caixa do loadout é que se cai para a
+        # contagem antiga: as cópias que vivem no balde ligado ao deck.
+        slot = (por_lista or {}).get(r["label"])
+        linhas = loadout.linhas_por_carta(slot) if slot else None
         oq = defaultdict(int)
         for o in con.execute("""SELECT c.name nm, SUM(cp.quantity) q FROM copies cp
                                   JOIN cards c ON c.scryfall_id = cp.scryfall_id
@@ -310,10 +362,16 @@ def _watched_decks(con, osid, imgmap, owned_names):
                                  WHERE s.name = ? GROUP BY c.name""", (r["balde"],)):
             oq[o["nm"].split(" // ")[0]] += o["q"]
         evol = _evolution_watched(con, r["wid"])
+        main = _cards(list(main_i.items()), osid, imgmap, oq, linhas, "main")
+        side = _cards(list(side_i.items()), osid, imgmap, oq, linhas, "side")
         out.append({"name": r["label"], "format": r["format"], "source": "👁️ vigiado",
-                    "main": _cards(list(main_i.items()), osid, imgmap, oq),
-                    "side": _cards(list(side_i.items()), osid, imgmap, oq),
-                    "evol": evol, "owned_names": set(oq),
+                    "main": main, "side": side,
+                    # A evolução (▲/▼) diz "esta carta tenho-a?" — com o loadout é
+                    # o que ele tem para este deck, e não só o que está no balde.
+                    "evol": evol, "loadout": bool(slot),
+                    "owned_names": ({c["nm"] for c in main + side
+                                     if c["state"] in ("have", "noutra")} | set(oq)
+                                    if slot else set(oq)),
                     "verif": r["last_checked"] or snap["taken_at"],
                     "alter": evol[0]["date"] if evol else None, "link": wurl})
     return out
@@ -321,16 +379,24 @@ def _watched_decks(con, osid, imgmap, owned_names):
 
 def _deck_card(d, tm):
     def cnt(cards):
-        return sum(c["hq"] for c in cards), sum(c["qty"] for c in cards)
+        return (sum(c["hq"] for c in cards), sum(c["qty"] for c in cards))
     mh, mt = cnt(d["main"])
     sh, st = cnt(d["side"])
     have, tot = mh + sh, mt + st          # POR CÓPIAS (ex.: 68/75), não distintas
+    # "Ir buscar a outra caixa" conta à parte de "tenho" e à parte de "falta" —
+    # é o terceiro estado do loadout, e somá-lo a qualquer um dos outros dá um
+    # número que não se pode usar (ou compra-se a dobrar, ou parece já montado).
+    noutra = sum(c["oq"] for c in d["main"] + d["side"])
+    comprar = sum(c["comprar"] for c in d["main"] + d["side"])
     pct = round(100 * have / tot) if tot else 0
     col = "var(--add)" if pct >= 90 else "var(--gold)" if pct >= 60 else "var(--warn)"
     on = d.get("owned_names", set())
     cons = d.get("consensus")
     meta = f'<span class="mi">✅ Confirmado dia {d["verif"] or "—"}</span>'
     meta += f'<span class="mi">✏️ Última alteração foi {d["alter"] or "—"}</span>'
+    if d.get("loadout"):
+        meta += (f'<span class="mi ob">📦 ir buscar a outra caixa <b>{noutra}</b></span>'
+                 f'<span class="mi">🛒 comprar <b>{comprar}</b></span>')
     if d.get("link"):
         meta += f'<a class="mi lk" href="{html.escape(d["link"])}" target="_blank" rel="noopener">🔗 lista ↗</a>'
     ev = d["evol"]
@@ -363,7 +429,15 @@ def _deck_card(d, tm):
                else '<div class="noimg"></div>')
         qb = (f'<span class="cq">{c["hq"]}/{c["qty"]}</span>' if c.get("qty", 1) > 1
               else ('' if c["state"] == "have" else '<span class="cq">0/1</span>'))
-        return f'<div class="cd {c["state"]}{mark}" title="{html.escape(c["nm"])}">{img}{qb}{_cs(c["nm"])}</div>'
+        # Onde está a carta: o âmbar não diz só "não a tenho aqui", diz em que
+        # caixa está, que é a pergunta a que ele quer resposta antes de ir jogar.
+        tip = html.escape(c["nm"])
+        if c.get("onde"):
+            tip += " — " + html.escape("; ".join(f"{q}× em {k}"
+                                                 for k, q in sorted(c["onde"].items())))
+        if c.get("comprar"):
+            tip += f' — comprar {c["comprar"]}'
+        return f'<div class="cd {c["state"]}{mark}" title="{tip}">{img}{qb}{_cs(c["nm"])}</div>'
 
     if cons:
         # Cloud DC: duas colunas — a lista dele | a alterada por consenso (trocas
@@ -414,6 +488,11 @@ def build(con, out_path=None):
     osid = _owned_sid(con)
     today = con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or ""
 
+    # A alocação do loadout: é dela que sai o "tenho / está noutra caixa / falta"
+    # de cada deck que TAMBÉM é uma caixa (`ref` do slot == nome do deck ou
+    # etiqueta do vigiado). Corre uma vez para a página toda.
+    por_lista = loadout.slots_por_lista(loadout.allocate(con))
+
     rows = list(con.execute("SELECT id, name, format, notes FROM decks"))
     vigiados = _decks_vigiados()
     alvos = _alvos_premodern()
@@ -457,10 +536,13 @@ def build(con, out_path=None):
         core_dates = [r["taken_at"] for r in con.execute(
             "SELECT MAX(taken_at) taken_at FROM core_snapshots WHERE core_key=?",
             (DECK_CORE.get(d["name"], ""),))] if DECK_CORE.get(d["name"]) else []
+        slot = por_lista.get(d["name"])
+        linhas = loadout.linhas_por_carta(slot) if slot else None
         deck = {
             "name": d["name"], "format": d["format"], "source": _source(d["notes"]),
-            "main": _cards(main_items, osid, imgmap, owned_qty),
-            "side": _cards(side_items, osid, imgmap, owned_qty), "evol": evol,
+            "main": _cards(main_items, osid, imgmap, owned_qty, linhas, "main"),
+            "side": _cards(side_items, osid, imgmap, owned_qty, linhas, "side"),
+            "evol": evol, "loadout": bool(slot),
             "owned_names": owned_names,
             "verif": (core_dates[0] if core_dates and core_dates[0] else ldate),
             "alter": evol[0]["date"] if evol else None, "link": link}
@@ -471,7 +553,7 @@ def build(con, out_path=None):
         if "manual" in (d["notes"] or ""):   # deck meu, registado à mão (sem fonte auto)
             deck["verif"] = deck["verif"] or today
         by_fmt[d["format"]].append(deck)
-    for d in _watched_decks(con, osid, imgmap, owned_names):
+    for d in _watched_decks(con, osid, imgmap, owned_names, por_lista):
         by_fmt[d["format"]].append(d)
 
     # Lista ATUAL de cada deck (nome + imagem), main+side, um por nome. O cliente
@@ -512,17 +594,18 @@ def build(con, out_path=None):
                  + _faltas_html(faltas, cls="cons", label="🛒 Faltas — todos os decks")
                  + '</section>')
 
-    out.write_text(_TMPL.replace("%TABS%", TABS).replace("%SUBNAV%", subnav)
+    out.write_text(_TMPL.replace("%META%", paginas.META)
+                   .replace("%TEMA%", paginas.TEMA)
+                   .replace("%TABS%", TABS).replace("%SUBNAV%", subnav)
                    .replace("%SECS%", secs).replace("%N%", str(n_total))
                    .replace("%DECKCUR%", json.dumps(deckcur, ensure_ascii=False))
                    .replace("%TODAY%", today), encoding="utf-8")
     return out
 
 
-_TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+_TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
 <title>Decks permanentes</title><style>
- :root{--bg:#0d1017;--card:#161b24;--ink:#eef2f7;--muted:#8b97a6;--line:#242c38;--accent:#5b8cff;--gold:#e0b64b;--add:#4ac585;--warn:#e0704b}
+%TEMA%
  *{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#10141d,#0d1017);color:var(--ink);font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
  .wrap{max-width:1100px;margin:0 auto;padding:22px 14px 60px}
  h1{margin:0;font-size:24px;font-weight:800;letter-spacing:-.02em}
@@ -567,6 +650,9 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
  .cd{position:relative;width:58px;border-radius:5px} .cd img,.cd .noimg{width:58px;height:81px;border-radius:4px;display:block;background:#0c0f14}
  .cd.have{box-shadow:0 0 0 2px var(--add)} .cd.part{box-shadow:0 0 0 2px var(--gold)} .cd.part img{filter:brightness(.82)}
  .cd.miss{box-shadow:0 0 0 2px var(--warn)} .cd.miss img{filter:grayscale(.7) brightness(.6)}
+ .cd.noutra{box-shadow:0 0 0 2px #7fa8ff} .cd.noutra img{filter:grayscale(.35) brightness(.74)}
+ .cd.noutra::after{content:"📦";position:absolute;top:1px;right:1px;font-size:10px;line-height:12px;background:#0e1620;border-radius:4px;padding:0 1px}
+ .mi.ob{color:#7fa8ff} .mi.ob b{color:#7fa8ff}
  .cd .cq{position:absolute;top:1px;left:1px;background:#000c;color:#fff;font-size:9px;font-weight:700;padding:0 3px;border-radius:5px}
  .cd .cs{position:absolute;bottom:1px;right:1px;font-size:9px;font-weight:800;padding:0 3px;border-radius:5px;color:#fff}
  .cd .cs.hi{background:rgba(26,122,69,.94)} .cd .cs.mid{background:rgba(150,115,30,.94)} .cd .cs.lo{background:rgba(150,54,54,.94)}
@@ -599,7 +685,7 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
 %TABS%
 <div class="subnav">%SUBNAV%</div></header>
 %SECS%
-<footer><b>Main deck</b> e <b>sideboard</b> à parte, contados por <b>cópias</b> (ex.: 68/75, não por cartas diferentes): <b style="color:var(--add)">verde = tens as que precisas</b>, <b style="color:var(--gold)">âmbar = tens algumas</b> (mostra 2/4), <b style="color:var(--warn)">vermelho = não tens</b>. Na evolução, cada carta que entrou (▲) ou saiu (▼) está verde se a tens, vermelha se não. Datas: ✅ <b>Confirmado dia</b> = última vez que o job verificou a lista · ✏️ <b>Última alteração foi</b> = última vez que a lista mudou. No <b>Cloud (Duel Commander)</b>, o <b>%</b> em cada carta é o consenso nas listas de torneio de Cloud, e <b>📊 staples que faltam</b> são as cartas de consenso alto (≥30%) que o McWinSauce não joga (verde = já as tens). A caixa <b>⇄ trocas por fazer</b> mostra, em imagem, as cartas a <b style="color:var(--add)">meter (▲)</b> e a <b style="color:var(--warn)">tirar (▼)</b> para o teu deck físico ficar igual à lista — é o <b>diff líquido</b> desde a última vez que marcaste <b>atualizado</b> (se uma carta sai e volta, ou entra e sai, não conta). Marcas atualizado quando sincronizares; volta a acumular quando a lista mudar. Atualiza diariamente.</footer>
+<footer><b>Main deck</b> e <b>sideboard</b> à parte, contados por <b>cópias</b> (ex.: 68/75, não por cartas diferentes): <b style="color:var(--add)">verde = tens as que precisas</b>, <b style="color:#7fa8ff">azul 📦 = tens a carta mas está noutra caixa</b> (passa o rato para ver qual — vais lá buscá-la, <b>não se compra</b>), <b style="color:var(--gold)">âmbar = tens algumas</b> (mostra 2/4), <b style="color:var(--warn)">vermelho = não tens</b>. Nos decks que são uma <b>caixa do loadout</b> (deckboxes.html), o que conta é o que a alocação deu a essa caixa — venha do balde que vier, incluindo o SPML — e as <b>faltas</b> só pedem o que é mesmo compra. Na evolução, cada carta que entrou (▲) ou saiu (▼) está verde se a tens, vermelha se não. Datas: ✅ <b>Confirmado dia</b> = última vez que o job verificou a lista · ✏️ <b>Última alteração foi</b> = última vez que a lista mudou. No <b>Cloud (Duel Commander)</b>, o <b>%</b> em cada carta é o consenso nas listas de torneio de Cloud, e <b>📊 staples que faltam</b> são as cartas de consenso alto (≥30%) que o McWinSauce não joga (verde = já as tens). A caixa <b>⇄ trocas por fazer</b> mostra, em imagem, as cartas a <b style="color:var(--add)">meter (▲)</b> e a <b style="color:var(--warn)">tirar (▼)</b> para o teu deck físico ficar igual à lista — é o <b>diff líquido</b> desde a última vez que marcaste <b>atualizado</b> (se uma carta sai e volta, ou entra e sai, não conta). Marcas atualizado quando sincronizares; volta a acumular quando a lista mudar. Atualiza diariamente.</footer>
 </div>
 <script>
 const DECKCUR=%DECKCUR%;

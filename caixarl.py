@@ -19,6 +19,8 @@ from __future__ import annotations
 import html
 from pathlib import Path
 
+from mtgvault import paginas
+
 ROOT = Path(__file__).resolve().parent
 
 # O balde da Caixa (é para onde as cópias foram movidas).
@@ -31,17 +33,11 @@ CEDH_DC = {"Blue Farm", "Cloud cEDH", "Cloud"}
 DUALS = {"Tundra", "Underground Sea", "Badlands", "Taiga", "Savannah",
          "Scrubland", "Volcanic Island", "Bayou", "Plateau", "Tropical Island"}
 
-NAV = ('<nav class="tabs"><a href="index.html">🏠 Início</a>'
-       '<a href="meusdecks.html">🎴 Decks permanentes</a><a href="showcase.html">🎯 Showcase Challenger</a>'
-       ''
-       ''
-       '<a href="colecao_cor.html">📚 Coleção</a>'
-       ''
-       '<a class="cur" href="caixarl.html">📦 Caixa RL</a></nav>')
+NAV = paginas.nav("caixarl.html")
 
-_CSS = """
- :root{--bg:#0d1017;--card:#161b24;--ink:#eef2f7;--muted:#8b97a6;--line:#242c38;--accent:#5b8cff;--gold:#e0b64b;--add:#4ac585;--warn:#e2795b}
- *{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#10141d,#0d1017);color:var(--ink);font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+_CSS = f"""
+{paginas.TEMA}
+ *{{box-sizing:border-box}}""" + """ body{margin:0;background:linear-gradient(180deg,#10141d,#0d1017);color:var(--ink);font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
  .wrap{max-width:1000px;margin:0 auto;padding:22px 14px 60px}
  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0} .tabs a{flex:1;min-width:100px;text-align:center;padding:11px 8px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:600;font-size:14px;transition:.15s} .tabs a:hover{border-color:var(--accent);transform:translateY(-1px)} .tabs a.cur{background:linear-gradient(180deg,#26406f,#1b2c4d);border-color:var(--accent)}
  h1{margin:0;font-size:24px;font-weight:800;letter-spacing:-.02em}
@@ -66,8 +62,7 @@ _CSS = """
  .ref{opacity:.72}
 """
 
-_TMPL = ("""<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+_TMPL = ("""<!doctype html><html lang="pt-PT"><head>""" + paginas.META + """
 <title>Caixa Reserved List</title><style>""" + _CSS + """</style></head><body><div class="wrap">
 <header><h1>📦 Caixa Reserved List</h1>
 <div class="lead">RL guardada fora da coleção jogável. Inglesas → só cEDH/Duel-Commander; Portuguesas → só Premodern. O que não está em uso fica aqui, separado por idioma e ordenado por preço unitário. · dados %TODAY%</div>

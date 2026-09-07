@@ -141,16 +141,24 @@ def caso_alvos_de_premodern_do_config():
 
 
 def caso_formatos_do_metagame_saem_do_config():
+    """O `cobertura.html` (a vista do metagame inteiro) continua a ler os formatos
+    do config. O `metagame.html` deixou de os ler em 2026-09-07: passou a
+    responder "que deck monto a seguir" e a sua lista de secções vem do que o
+    André ditou — top-N em Standard/Pioneer/Legacy, a caixa escolhida em Modern,
+    os alvos de consenso em Premodern. São perguntas diferentes; partilhar a
+    lista fazia uma delas mentir."""
     import meta_coverage
     fmts = [f[0] for f in meta_coverage.FORMATS]
     assert fmts == ["standard", "pioneer", "modern"]
-    assert "premodern" not in fmts, "o Premodern saiu das páginas de metagame"
-    # metagame.py e decks_faziveis.py leem a MESMA lista — não têm cópia própria.
-    import decks_faziveis
+    assert "premodern" not in fmts, "o Premodern saiu da cobertura"
+
     import metagame
-    assert metagame.mc.FORMATS is meta_coverage.FORMATS
-    assert decks_faziveis.mc.FORMATS is meta_coverage.FORMATS
-    print("metagame/cobertura/decks-fazíveis: formatos vêm do colecao_config.json")
+    secoes = {f: modo for f, _t, modo in metagame.SECOES}
+    assert [f for f, m in secoes.items() if m == "top"] == \
+        ["standard", "pioneer", "legacy"], secoes
+    assert secoes["modern"] == "caixas" and secoes["premodern"] == "alvos", secoes
+    assert metagame.top_n() == 3, "top-3 por omissão (ordem do André)"
+    print("cobertura: formatos do config · metagame: top-3 + caixa escolhida")
 
 
 def caso_lista_padrao_de_listas_em_memoria():

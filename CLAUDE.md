@@ -29,11 +29,15 @@ descobrir o núcleo de cada arquétipo, e acompanha preços.
 ```
 mtgvault/
   db.py           ligação, ATTACH do catálogo, migrações
-  schema.sql      vault.db (coleção, decks, decklists, preços, watchlist)
+  schema.sql      vault.db (coleção, decks, decklists, preços, watchlist, copy_allocation)
   catalog_schema.sql   catalog.db (só a tabela cards)
   scryfall.py     catálogo via bulk data
+  paginas.py      o MENU e o TEMA de todas as páginas (uma lista só)
+  migracao.py     modelo de colecção única: funde os baldes na `Colecção`
   collection.py   exemplares, sub-coleções, reservas, valor, movimentos
   wantlist.py     o que falta, para decks e para arquétipos
+  loadout.py      os decks montados ao mesmo tempo: aloca a coleção às caixas
+                  (uma cópia serve uma só), conflitos, substitutos e venda
   analysis.py     clustering de arquétipos + core/flex/tech + prune
   stock.py        listas padrão e cobertura
   sources.py      mtgo.com + parser de texto + store_decklist (deduplicação)
@@ -48,16 +52,18 @@ daily.py          o job diário (encadeia tudo o que está abaixo)
 
 **Geradores do site (scripts na raiz, corridos pelo `daily.py`, HTML no GitHub Pages):**
 ```
-meta_coverage.py    cobertura.html — top-10 ponderado + staples + emergentes. NB (2026-09-07): quem decide que listas contam é `sources.lista_conta`/`counting_sql` (ver "Que listas contam"), e o peso vem de `sources.tier_weight_sql`; janela 30 dias; expõe COLLECTION_BALDES={"SPML","Premodern (geral)"}, owned_available(con) (=coleção MENOS cartas comprometidas com decks vigiados) e counting_lists(con,fmt,aid) — a base de "tenho" do metagame/decksfaziveis/cobertura. NB (2026-09-07): `FORMATS` deixou de ser fixo — filtra `_FORMATS` por `colecao_config.json`→`formatos_metagame` (hoje standard/pioneer/modern; o Premodern saiu). `metagame.py` e `decks_faziveis.py` leem ESTA lista
-decks_faziveis.py   decksfaziveis.html — "Decks fazíveis": por formato, decks do top-10 já a ≥ min% (colecao_config.json→decks_faziveis_min_pct, default 50). Cor=tenho/cinza=falta + wantlist. Reusa metagame._grid e meta_coverage._rank/owned_available
+meta_coverage.py    cobertura.html — top-10 ponderado + staples + emergentes. NB (2026-09-07): quem decide que listas contam é `sources.lista_conta`/`counting_sql` (ver "Que listas contam"), e o peso vem de `sources.tier_weight_sql`; janela 30 dias; expõe COLLECTION_BALDES={"SPML","Premodern (geral)"}, owned_available(con) (=coleção MENOS cartas comprometidas com decks vigiados) e counting_lists(con,fmt,aid). NB (2026-09-07): `FORMATS` deixou de ser fixo — filtra `_FORMATS` por `colecao_config.json`→`formatos_metagame` (hoje standard/pioneer/modern; o Premodern saiu). Só a COBERTURA lê essa lista: o `metagame.py` deixou de a ler (ver abaixo)
+decks_faziveis.py   RETIRADO 2026-09-07 — fundido no `metagame.py`, que faz a mesma pergunta com as regras de material e o "onde está a carta". O módulo ficou como lápide (levanta RuntimeError), o `decksfaziveis.html` reencaminha para o metagame, saiu do `daily.py` e do `git add` do workflow. Podem ser apagados os dois
 buildability.py     (DORMENTE) o "Montar" foi tirado do menu p/ o André refazer; já NÃO corre no daily nem vai ao git-add. Continua importado por meusdecks.py (FMT_LABEL/FMT_ORDER/BASICS)
 classify.py         classificação Deck/Coleção/Vender (alimenta colecao_cor.html)
-colecao_cor.py      colecao_cor.html — "Binders": coleção INTEIRA por cor→CMC; cartas em uso a escuro + rótulo (classify rep["deck"]/used_by); + secção "Decks vigiados" (Blue Farm/Cloud cEDH/Cloud/Pauper): o deck por inteiro + cartas "extra" que saíram da lista (retidas até 6 meses da última utilização — `_watched_deck_pools`)
+colecao_cor.py      colecao_cor.html — "Binders": coleção INTEIRA por cor→CMC; cartas em uso a escuro + rótulo (classify rep["deck"]/used_by); + secção "Decks vigiados" (Blue Farm/Cloud cEDH/Cloud/Pauper): o deck por inteiro + cartas "extra" que saíram da lista (retidas até 6 meses da última utilização — `_watched_deck_pools`). NB (2026-09-07): `_de_outro_balde` acrescenta as cartas que o LOADOUT dá a essa caixa mas que estão arrumadas noutro balde, marcadas "de &lt;balde&gt;" (era aqui que os Utrom Monitor do SPML desapareciam do Pauper)
 collection_gallery.py  colecao.html — galeria por sub-coleção
 core_decks.py       (coredecks.html APAGADO 2026-08-26, a redefinir; NÃO vai ao git-add) — mas core_decks.py continua a correr no daily p/ calcular card_price/posse
 alertas.py          alertas.html — vender/comprar por movimento de preço (fora do menu atual)
-meusdecks.py        meusdecks.html — "Decks vigiados": agora SÓ os 5 fixos de colecao_config.json→decks_vigiados (Pauper-Luffy, Premodern-Luffy/Stiflenought, Blue Farm, Cloud cEDH, Cloud Duel Commander — este ÚLTIMO agora INCLUÍDO) MAIS os alvos de consenso de Premodern (`premodern_arquetipos_alvo`, sufixo " (consenso)"). Lista 75 verde/vermelho, % e evolução; checkmark "atualizado" (localStorage)
-metagame.py         metagame.html — "Metagame" (página principal): top-10 por formato (só Challenges/Showcases, 30 dias), cartas a cor=tenho / cinza=falta, wantlist por deck, e "Staples que faltam" por formato ordenadas por preço. Usa meta_coverage.owned_available
+meusdecks.py        meusdecks.html — "Decks vigiados": agora SÓ os 5 fixos de colecao_config.json→decks_vigiados (Pauper-Luffy, Premodern-Luffy/Stiflenought, Blue Farm, Cloud cEDH, Cloud Duel Commander — este ÚLTIMO agora INCLUÍDO) MAIS os alvos de consenso de Premodern (`premodern_arquetipos_alvo`, sufixo " (consenso)"). Lista 75 verde/vermelho, % e evolução; checkmark "atualizado" (localStorage). NB (2026-09-07): a POSSE vem da alocação do loadout (`loadout.slots_por_lista`/`linhas_por_carta`), não de uma contagem própria — ver "Posse: quem conta o quê"
+deckboxes.py        deckboxes.html — "Deckboxes": o LOADOUT (colecao_config.json→loadout), os decks montados ao mesmo tempo com a coleção REPARTIDA entre eles (uma cópia física serve uma caixa só). NB (2026-09-07): a página foi reescrita com **uma ABA POR DECK** (o pedido dele: *"faz como no riftvault — no botão, cada deck tem uma aba própria"*), mais as abas **Todas**, **Arrumar**, **Partilhadas**, **Comprar** e **Vender**. Os dados vão em JSON dentro do HTML (`<script id="dados">`) e o render é JavaScript — o MESMO ficheiro serve o site publicado (`editable:false`) e o modo edição do `webapp.py` (`editable:true`, com botões). Por caixa: barra, dois números ("faltam comprar" e "ir buscar a outra caixa"), grelha de cartas com três estados, "tirar de:" (`slot["origens"]`), substitutos, wantlist Cardmarket (SÓ o que é mesmo compra). Na aba **Comprar**, cada linha diz para que caixa é a compra (`para`) e em que material (`loadout.requisito_material`), há selector por caixa (o "copiar" copia só o filtro activo) e as cartas ≥100 €/cópia levam chip «cara» e total à parte — Mishra's Workshop sozinha vale mais do que o resto da lista. Motor em mtgvault/loadout.py
+webapp.py           MODO EDIÇÃO local, **porto 8771** (o 8770 é do `riftvault serve` — não trocar). Serve o `deckboxes.html` com os botões *Tornar permanente / Deixar de ser permanente*, *Subir / Descer*, *Sleevado e na caixa* e *Já arrumei tudo*. As PREFERÊNCIAS vão para o `colecao_config.json` (que já manda no loadout e vai no Git); o que é FÍSICO vai para a `copy_allocation`. Mostra o URL da rede local + QR ao arrancar. Mantido de pé pela tarefa `ai-pc/tasks/mtgvault-serve` (verifica de 5 em 5 min, relança destacado)
+metagame.py         metagame.html — "Metagame": desde 2026-09-07 já NÃO é o top-10 de cada formato; é o **top-N que ele está mais perto de concluir** (`colecao_config.json`→`metagame_top_n`, default 3). `SECOES` decide o modo por formato: `top` (Standard/Pioneer/Legacy — as caixas do loadout por escolher, via `loadout.foil_report`), `caixas` (Modern — o deck já escolhido, do próprio loadout) e `alvos` (Premodern — só o `premodern_arquetipos_alvo`). Posse pela alocação do loadout, três estados, wantlist Cardmarket. NÃO lê `formatos_metagame` (o Legacy tinha de entrar e não está lá)
 (prioridade.py + metafaltas.py APAGADOS 2026-08-26, a redefinir)
 reservedlist.py     reservedlist.html — Reserved List (Scryfall) x coleção, por edição, preço/evolução, e 'VENDER' as que não jogam em formato nenhum
 caixarl.py          caixarl.html — "Caixa Reserved List": a RL que está fora da coleção jogável
@@ -66,10 +72,20 @@ my_decks.py         segue decks-alvo (por assinatura e por jogador de MTGO) -> t
 commander_decks.py  decks de comandante por consenso EM CAMADAS: núcleo>=50% (=deck, deck_cards) / flex 25-50% / tech 15-25%; FILTRA pela cor do comandante. `tiers()` reusado pelo colecao_cor
 premodern_decks.py  consenso dos arquétipos-alvo de Premodern (`colecao_config.json`→`premodern_arquetipos_alvo`: UW Replenish, Enchantress) -> decks/deck_cards com o sufixo " (consenso)". Agrupa pelas etiquetas do `tagging` (o clustering não os separa) e usa `stock.stock_from_lists`. Mostrado no `meusdecks`
 refresh_collection.py  collection_owned p/ o index.html
-colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados
+colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados
 ```
 Cada `.html` gerado tem de estar na lista do `git add` do workflow (`daily.yml`,
-passo "Guardar HTML") e, se for página nova, com link no `index.html`.
+passo "Guardar HTML") **e na lista `HTML` da tarefa `ai-pc/tasks/mtgvault-daily`**
+(o job que corre no PC) — o `deckboxes.html` esteve semanas só na primeira e
+nunca era publicado pelo PC. E, se for página nova, com link no `index.html`.
+
+**O menu e a paleta vivem num sítio só: `mtgvault/paginas.py`** (2026-09-07).
+Antes cada gerador escrevia o seu `<nav class="tabs">` à mão, e o `cobertura.html`
+ficou meses com um menu de Agosto — sem Deckboxes nem Metagame. Uma página órfã
+não dá erro: só deixa de se lá chegar. Acrescentar uma aba é acrescentar uma
+linha ao `paginas.MENU`; os templates trazem `%META%`, `%TEMA%` e `%TABS%`, e o
+`build()` de cada página substitui-os. O `test_paginas.py` tranca as duas coisas
+(o menu completo e o `git add` do workflow).
 
 ### Duas bases de dados
 
@@ -84,6 +100,11 @@ isso `SELECT ... FROM cards` funciona na mesma.
 
 **Migrações:** `CREATE TABLE IF NOT EXISTS` não acrescenta colunas a tabelas já
 criadas. Toda a coluna nova tem de entrar também em `db._migrate()`.
+
+Colunas/tabelas novas de 2026-09-07 (todas nos três sítios): `copies.balde_origem`
+(o balde de ONDE a cópia veio, escrito pela `migracao`) e a tabela
+`copy_allocation` (que cartas estão dentro de que deckbox — escrita pelo
+`loadout.guardar_arrumacao` e pelo botão "Sleevado e na caixa").
 
 Já custou caro uma vez: `decklists.event_tier` foi acrescentada só ao `vault.db`
 (commit 56ffa3f, 2026-08-03), nunca ao `schema.sql` nem ao `_migrate()`, e nada
@@ -113,14 +134,340 @@ que está num deck são "cartas extra dos decks" (backup — guardar) até um LI
 Cartas que não estão em deck nenhum: excedente de venda normal.
 `collection.deck_extras` é a versão SIMPLES (owned − o que a decklist pede) —
 ainda **não** aplica os limites por coleção nem o "acima do limite = vender".
+Quem JÁ aplica os limites é `mtgvault/loadout.py` (ver abaixo), e com uma
+correção que importa: o playset de 4 conta a **coleção inteira**, não 4 por
+balde — 4 Intuition no `Premodern (geral)` mais 4 na `Caixa Reserved List` são
+8 cópias da mesma carta, e contar 4 por balde deixava passar o dobro.
 
-**Classificação Deck / Coleção / Vender (`classify.py`, 2026-08-13).** É a
-regra do André já implementada, que alimenta a página `colecao_cor.html`:
-- **Só os baldes `SPML` e `Premodern (geral)` são coleção.** Todo o resto
-  (`Blue Farm`, `Cloud`, `Cloud cEDH`, `Pauper Affinity`) são decks montados →
-  ficam FORA da coleção. (Palavras dele: "só premodern e SPML são coleções, o
-  resto é tudo decks".)
-- Dentro desses dois baldes, cada carta é **Deck** (cópias que um deck pede),
+**Loadout: os decks montados em simultâneo (`mtgvault/loadout.py`, 2026-09-07).**
+Palavras do André: *"Vamos começar a reorganizar os decks e a colecção, para
+preparar para montar os decks (em deckboxes) para estarem sempre prontos para ir
+jogar, e começar a vender o que está em excesso."* A lista de caixas está em
+`colecao_config.json → loadout` (slot, formato, fonte da lista, balde,
+prioridade, regras de material). Gera `deckboxes.html` e os comandos
+`loadout` / `loadout <deck>` / `vender`.
+
+A diferença para tudo o resto do vault: aqui a coleção é **repartida**. Uma
+cópia física entra numa caixa e **só numa**, a alocação é global e por ordem de
+`prioridade`, e é daí que saem quatro coisas que uma cobertura por deck não dá —
+**noutra caixa** (a carta existe e serve, mas está alocada a outra caixa),
+**cartas partilhadas** (2+ caixas querem a carta, não chegam para todas — era o
+"conflito"), **substituto** (tem a carta mas não serve àquela caixa) e
+**venda**.
+
+**Decks PERMANENTES e candidatos (André, 2026-09-07, à letra).** *"Os decks que
+eu pedi para serem permanentes são a minha prioridade máxima!"* e *"os decks que
+eu estiver quase a concluir, tenho que ter uma opção que os marque como
+permanentes para começarem a receber alocação de cartas."*
+- `colecao_config.json → loadout[].permanente` (`true`/`false`). **Sem a chave, o
+  slot é permanente** — era o que as catorze caixas eram antes de a distinção
+  existir, e um default a `false` esvaziava a alocação de quem não a escrevesse.
+- `permanente` é a **primeira chave da ordem de alocação**, à frente do grupo de
+  formato: um permanente de SPML escolhe antes de um candidato de Premodern.
+  Dentro de cada metade a ordem é a de sempre (grupo > deck vigiado > prioridade).
+- Um **candidato** não deixa de ver as cartas: fica com o que sobrar e, para o
+  resto, diz *"em &lt;caixa&gt;"* em vez de mandar comprar.
+- Hoje só os três slots `por_confirmar` (Standard, Pioneer, Legacy) são
+  candidatos — uma caixa sem deck escolhido não pode ser permanente.
+- Marca-se e desmarca-se no **modo edição** (`python webapp.py`, porto 8771).
+
+**ARRUMAÇÃO FÍSICA: onde a carta ESTÁ vs. onde DEVE estar (2026-09-07).**
+*"Quero que me ajudem a ser mais organizado com as cartas."* O loadout continua a
+recalcular todos os dias onde cada carta deve estar; a `copy_allocation` diz onde
+ela está. **A diferença entre as duas é a lista de arrumação**
+(`loadout.plano_arrumacao`), com dois sentidos que contam os dois: **entra** (a
+alocação deu-a a uma caixa e ela ainda não lá está) e **sai** (está na caixa e a
+alocação já não a usa lá; volta à gaveta). Agrupa-se por **origem** (a gaveta que
+se abre) e por **destino** (a caixa que se monta) — são dois gestos diferentes.
+- Na página é a aba **Arrumar**, com checkboxes no browser e um CSV
+  `moves-<data>.csv`; no CLI é `python -m mtgvault.cli arrumar [--csv]
+  [--confirmar]`.
+- **"Já arrumei tudo" grava** (`loadout.guardar_arrumacao`, com backup no modo
+  edição). É idempotente e substitui a tabela inteira: uma linha órfã de uma
+  caixa que já não existe mentia para sempre.
+- **Um lote sai do `lots()` PARTIDO por sítio** (`caixa` + `key`): um lote de 4
+  com 3 na caixa e 1 na gaveta vale por metade, não por inteiro. Se mexeres no
+  `lots()`, é aqui que a armadilha está.
+- **Uma cópia já arrumada na caixa deste deck escapa às regras de material** — é
+  a versão nova da excepção do balde, e é o que impede que uma regra nova
+  desmonte no papel um deck que está na estante. A antiga (pelo balde) fica, para
+  o mesmo código estar certo antes e depois da migração.
+- **`_ordem` gasta primeiro a cópia que já está nesta caixa.** Sem isso a corrida
+  do dia seguinte trocava duas cópias equivalentes de caixa e mandava-o desmontar
+  dois decks para não mudar nada.
+
+**Posse: quem conta o quê (2026-09-07 — mudou).** Até esta data cada página
+contava a posse à sua maneira e discordavam em silêncio, que é o mesmo padrão do
+`event_tier` e do filtro de listas. O erro que obrigou a mudar, à letra: *"Meti 4
+fotos, estavam lá 4 Utrom Monitor, mas no deck Pauper não aparecem como se eu
+tivesse a carta."* O `meusdecks._watched_decks` contava só as cópias do balde
+ligado ao deck (`deck_collection` → `Pauper Affinity`) e as quatro Utrom Monitor
+estão no `SPML`: existiam, serviam a caixa, e a página dizia que faltavam.
+**Agora a alocação do loadout é a única fonte de "tenho / está noutra caixa /
+falta" em todo o site.** A ponte são `loadout.slots_por_lista(res)` (indexa os
+slots pelo `ref`, que é exactamente o nome do deck na tabela `decks` ou a
+etiqueta do `watched`) e `loadout.linhas_por_carta(slot)`. Já a usam:
+`meusdecks` (decks e vigiados), `colecao_cor` (secção "Decks vigiados", com as
+cartas que vêm de outro balde marcadas *"de &lt;balde&gt;"*) e `metagame`.
+Consequências a saber:
+- as percentagens do `meusdecks.html` e do `deckboxes.html` **passaram a bater
+  certo** — antes o `meusdecks` dava mais alto porque cada deck contava a coleção
+  inteira. Já não é "a pergunta a ser outra": é a mesma pergunta;
+- um deck que **não** seja caixa do loadout mantém a contagem antiga (a coleção
+  inteira) — não se inventa uma alocação que não existe;
+- **toda a vista nova que some faltas soma `comprar`**, nunca `missing` (é a
+  regra de cima, e o `meusdecks._faltas` já a segue).
+
+**Onde está a carta: 'noutra caixa' não é falta (André, 2026-09-07, à letra).**
+*"Vamos fazer como no riftvault: indicas onde está a carta, para, se eu quiser ir
+jogar, saber onde ir buscar e não ter que comprar múltiplos para todos. Caso eu
+compre, depois indico (meto foto) e vais ajustando."*
+- Quando uma caixa pede uma carta e a(s) cópia(s) que a SERVEM foram alocadas a
+  outra caixa, a linha traz `noutra` = `{caixa: quantas}` e `noutra_q`, em vez de
+  ser tratada como falta. Na página é o **terceiro estado** (moldura âmbar, o
+  mesmo dos substitutos) com o texto *"em &lt;caixa&gt;"*, mais o bloco
+  *"📦 ir buscar a outra caixa"*; no CLI é a secção `IR BUSCAR A OUTRA CAIXA`.
+- **A wantlist e o custo de fechar EXCLUEM essas cartas.** A quantidade de compra
+  é `comprar` (= `missing - noutra_q`), nunca `missing`, e `cost` é sobre
+  `comprar`. Só é compra o que não existe em lado nenhum, ou o que existe mas não
+  serve na língua/acabamento exigidos (esse continua a ser substituto e continua
+  a comprar-se). Cada caixa mostra dois números: `comprar` e `noutra`; o relatório
+  inteiro traz `comprar_total`/`noutra_total`. **Se acrescentares uma vista nova
+  que some faltas, soma `comprar` — somar `missing` volta a pedir 8 Swords to
+  Plowshares para tapar um buraco que não existe.**
+- **Uma cópia que a caixa não VÊ nunca é "noutra caixa".** A regra 1b (Premodern
+  x Caixa RL) e o `_porque_nao` continuam a ganhar: para essas, a carta é compra.
+- **A ordem da alocação é o que torna isto correcto.** Um lote que serve o
+  slot S e ainda está livre quando S corre é sempre gasto por S; logo, tudo o que
+  falta a S e servia S foi levado por um slot que corre ANTES. Não é preciso
+  uma segunda passagem — mas se mudares a ordem da alocação, isto deixa de valer.
+  (Desde 2026-09-07 essa ordem é a de `regras_por_formato`, não a dos números do
+  config — ver "As regras de material são por GRUPO DE FORMATO" abaixo.)
+- **A venda não muda:** uma carta pedida por qualquer caixa já estava alocada, e
+  o que está alocado nunca entra na venda. E as `retidos`/`guardar` continuam iguais.
+- **Como se ajusta depois de comprar:** o André mete as fotos das cartas novas em
+  `pendentes/` (repo `mtg-fotos-novas` / app do GitHub — ver `PROCESSAR_FOTOS.md`
+  e `processar_fotos.py`), daí sai o CSV para a coleção, e a **alocação recalcula
+  sozinha na corrida seguinte do `daily.py`** (passo `deckboxes`). Não há estado
+  guardado: o "onde está a carta" é sempre recalculado da coleção do dia.
+
+**COMPRAS PARTILHADAS: compra-se o MÁXIMO, não a soma (2026-09-07).** É a segunda
+metade da regra de cima — *"não ter que comprar múltiplos para todos"*. O `noutra`
+tratava as cópias que ele TEM; a lista de compras continuava a **somar as faltas
+caixa a caixa**, o que contradiz a partilha. Na base de 2026-09-07 isso pedia 5
+Swords to Plowshares PT quando 2 chegam, 9 Brushland quando 3 chegam e o Lion's
+Eye Diamond duas vezes (535 € a mais numa carta só): **18 cópias e 608,75 €** a
+mais no total (7 891,50 € → **7 282,75 €**; 230 → **212** a comprar, 61 → **79** a
+ir buscar).
+- Quem faz a conta é `loadout.partilhar_compras(slots)`, DEPOIS da alocação toda
+  (precisa das faltas de todas as caixas). Agrupa por **(carta, pool de
+  material)** e faz `comprar = max_caixa(o que a caixa compra)` — que é o mesmo
+  que `max(0, max_caixa(precisa) − o que já existe no pool)`, porque cada caixa
+  já desconta o que vê. Como mexe nas linhas depois de escritas, os totais de
+  cada caixa recalculam-se em `_totais_do_slot` (não os inlines no ciclo).
+- **As faltas DENTRO da mesma caixa (main + side) continuam a somar** — essas
+  estão na mesa ao mesmo tempo. É entre caixas que não somam.
+- **O pool** (`loadout.pool_compra`) é `(edições, acabamento, língua)`: uma cópia
+  só se partilha se servir as duas caixas. Os pools que **se tocam** fundem-se:
+  o Duel Commander é *"apenas foil"* sem exigir língua e o SPML é *"tudo foil e
+  inglês"* — uma **EN foil** serve os dois, e o material da compra passa a ser o
+  do pool (o mais exigente), senão a partilha mandava comprar uma foil PT que a
+  caixa de Modern depois recusa. A fusão só se faz quando há **uma** língua
+  exigida naquele acabamento; com duas não se escolhe por ele.
+- As cópias compradas ficam da caixa de **maior prioridade** que as pediu e as
+  outras passam a `noutra` — com a parte que ainda não está em casa em
+  **`noutra_futura`**, que a página e o CLI dizem (*"3 depois de Enchantress
+  comprar"*). Sem isso mandava-o à caixa do lado buscar uma carta que ninguém
+  comprou ainda, que é o mesmo tipo de mentira que o "noutra caixa" veio corrigir.
+- **`pct`/`tenho`/`missing` não mexem**: a caixa continua a ter a falta até a
+  compra chegar. O que muda é de quem é a compra.
+- **`colecao_config.json → loadout[].compras_dedicadas`** (default `false`): a
+  caixa que ele queira fechar sem depender de trocas fica fora da partilha —
+  compra as suas e ninguém conta com elas. Só manda nas COMPRAS; as cópias que
+  ele já tem continuam repartidas pela alocação normal.
+- Na página é a aba **Comprar**: `q` é o número real a comprar, o chip
+  **«🔁 partilhada por N caixas»** (que conta as caixas da PARTILHA, não todas as
+  que pedem a carta — o LED compra-se 2 em PT para o Premodern e 1 em EN nonfoil
+  para as duas caixas de cEDH) e, em `para`, as caixas *servidas* vêm com
+  `serve: true`. **Uma caixa servida não tem a carta na wantlist dela** — pô-la lá
+  era comprá-la duas vezes, que é o defeito que isto veio corrigir.
+- **O texto que o botão «copiar» copia leva o material em cada linha**
+  (`2 Swords to Plowshares [PT]`, `1 Lion's Eye Diamond [EN nonfoil]`), de
+  `loadout.marca_compra` — e vem da LINHA, não da caixa, porque numa compra
+  partilhada é o do pool. O mesmo no `loadout <deck>` do CLI.
+
+**As regras de material são por GRUPO DE FORMATO, e a ordem sai delas (André,
+2026-09-07, à letra).** As duas regras abaixo foram as duas primeiras de cinco;
+no mesmo dia ele completou-as e deu a ordem da alocação:
+
+> *"Para Pauper, utilizas as cartas que forem necessárias do SPML e agregas ao
+> Pauper."* · *"Os decks vigiados têm prioridade para ficarem com as cartas,
+> desde que respeitem as regras."* · *"Língua/acabamento por formato: **Premodern**
+> apenas as edições da era Premodern e em Português; **cEDH** apenas inglês
+> non-foil; **Duel Commander** apenas foil; **SPML** tudo foil e inglês (RL pode
+> ser non-foil); **Pauper** tudo foil se houver disponível, senão pode ser
+> non-foil."* · *"**Ordem de prioridade na alocação: Premodern > cEDH > Duel
+> Commander > Pauper > SPML.**"*
+
+Vive tudo em `colecao_config.json → regras_por_formato` (com o mesmo default em
+`loadout.REGRAS_FORMATO`), uma LISTA cuja **ordem é a ordem da alocação**.
+Chaves: `formatos`, `lingua`, `acabamento` (`foil` | `nonfoil` |
+`prefere_foil` = aceita as duas e gasta a foil primeiro), `edicoes`
+(`"premodern"` = só até ao Scourge), `baldes` (os únicos que a caixa vê) e
+`estrita` (a `lingua`/`baldes` põem a cópia **fora de vista** em vez de
+substituto). O que estiver escrito no próprio slot do `loadout` ganha à regra do
+grupo — uma excepção é uma linha de config, não uma linha de código.
+
+- **O `prioridade` do slot deixou de mandar.** `resolve_slots` ordena por
+  (grupo, deck vigiado primeiro, `prioridade`) e **reescreve `prioridade` com a
+  posição global** que daí sai; o número do config fica em `prioridade_config`.
+  Quem lê `s["prioridade"]` (página, CLI, `conflitos`) lê a ordem verdadeira.
+  "Deck vigiado" = `fonte: "vigiado"` ou `ref` em `decks_vigiados`.
+- **Uma cópia que está DENTRO da caixa do próprio deck escapa a todas as regras
+  de material.** É a irmã da excepção do balde da regra 1: o cEDH passou a ser
+  "só inglês non-foil" e o Blue Farm/Cloud cEDH têm PT e foil lá dentro — sem
+  esta excepção o vault desmontava no papel dois decks que estão montados na
+  estante. **Só vale para os baldes que SÃO a caixa de um deck**
+  (`loadout.caixas_de_deck`): o `SPML` e o `Premodern (geral)` são colecção
+  partilhada por vários slots, e aí a regra manda.
+- **O Pauper não tem regra de `baldes`, de propósito** — é o *"utilizas as
+  cartas que forem necessárias do SPML"*. O que mudou para ele foi passar a
+  gastar as foil primeiro.
+- **Toda a página que mostre uma caixa mostra as regras dela** via
+  `loadout.rotulo_material(s)` → `(ícone, texto, classe)`, mais
+  `loadout.requisito_material(s)` (a versão curta — `"PT · ≤SCG"`, `"EN · foil"`
+  — que a aba *Comprar* põe em cada linha da wantlist) e
+  `loadout.marca_wantlist(s)`. Escrito à mão em cada página, ficou lá um *"sem
+  Caixa RL"* depois de a regra já ver a metade PT da Caixa RL — uma regra que a
+  página não diz é a página a mentir em silêncio. A **classe** também vem daqui:
+  cada página decidia-a com `"foil" in texto` e pintava de dourado o chip *"só
+  nonfoil"* do cEDH.
+- **`"nonfoil"` CONTÉM `"foil"` (2026-09-07).** Um teste de substring ou
+  `/foil/` sobre o acabamento dá toda a cópia nonfoil como foil: a tabela de
+  venda do `deckboxes.html` marcava com ✨ **41 das 62 linhas** (Lotus Petal,
+  Mirri's Guile…) e mandava listá-las como foil. Quem responde é
+  `loadout.e_foil(finish)` (= `finish in FOIL_FINISHES`), do lado do Python; a
+  página recebe um booleano no payload e nunca reconstitui o teste em
+  JavaScript. Tem teste nos dois lados (`test_loadout.caso_nonfoil_nunca_e_foil`
+  e `test_paginas_loadout.caso_aba_vender_nao_marca_nonfoil`, que lê o HTML que
+  a aba desenhou).
+- **O chip das fontes diz duas gavetas, não quatro** (`loadout.fontes_material`).
+  Era `"só de Colecção · Premodern (geral) · SPML · Caixa RL"` — quatro nomes que
+  no modelo de colecção única são **um só** (os nomes antigos estão na regra para
+  o código estar certo antes e depois da migração). Agora é *"fontes: Colecção +
+  Caixa RL (PT)"*, e omite-se quando não restringe nada.
+- **Efeito medido na base de 2026-09-07:** fechar tudo passou de **7 700,35 €**
+  para **7 891,50 €** (230 a comprar, 61 a ir buscar). Só duas caixas mexeram —
+  Cloud cEDH 76 %→72 % (perdeu 4 foil para o Duel Commander, que agora escolhe
+  antes do Pauper) e Cloud (Duel Commander) 79 %→81 % / 104 €→294 € (ganhou-as,
+  mas as nonfoil deixaram de fechar slot). A venda **não mexeu** (91 cópias /
+  702,95 € + 39 RL / 5 736,16 €, `guardar` a 0).
+
+1. *"Para Premodern as cartas são das edições que tínhamos visto e em Português;
+   essas cartas NÃO entram para outros formatos!!"* → um slot com `"lingua":"pt"`
+   só fecha com cópias PT, e uma cópia PT de impressão até ao **Scourge
+   (2003-05-26)** fica trancada ao Premodern. **Excepção que os dados obrigam a
+   ter:** cópias que vivem no `balde` de outro slot do loadout já são desse deck
+   — o Blue Farm tem um Lotus Petal (tmp) e um Tarnished Citadel (ody) PT dentro
+   da caixa, e trancá-los ao Premodern desmontava um deck que está montado.
+   **1b. O outro lado da mesma regra (André, 2026-09-07, à letra):** *"O
+   Premodern só usa em PT, mesmo eu tendo a carta em inglês"* e *"na Caixa RL, as
+   PT e as ENG estão separadas"* (esta segunda corrigiu, no mesmo dia, um *"o
+   Premodern não é para olhar para a minha Caixa RL, na Caixa RL só estão cartas
+   RL em inglês"* — a premissa é que era falsa; o commit 7acc52f, que excluía a
+   Caixa RL inteira, foi ajustado). → `loadout._fora_de_vista`: um slot de
+   `formato: "premodern"` só VÊ cópias `language='pt'`, e só nos baldes
+   `Premodern (geral)`, `SPML` e `Caixa Reserved List` (mais o seu próprio) — o
+   resto da colecção está dentro da caixa de outro deck montado. Não aloca uma
+   EN, não a conta como **substituto** e não lhe desconta no custo: para uma
+   caixa de Premodern, uma carta que só existe em EN é **falta** (compra-se em
+   PT), não "tenho mas não serve". É mais forte que a regra da língua do
+   `_porque_nao` e é de propósito: um substituto diz *"decide se abres
+   excepção"*, e nisto ele já decidiu que não abre.
+   **A Caixa RL é uma no config e duas na estante**, e a diferença decide tudo:
+   as PT de lá servem o Premodern (na base de 2026-09-07 dão 30 cartas às cinco
+   caixas: Stiflenought 5, UW Replenish 9, Enchantress 4, Elves 10, IGG 2), as EN
+   não. Por isso `loadout.local(lot)` mostra **`Caixa RL (PT)`** ou **`Caixa RL
+   (EN)`** em todo o lado onde antes aparecia o balde — página, `loadout <deck>`
+   ("tirar de:"), `vender`, CSV. Consequência a assumir: nenhuma EN é protegida
+   pela saída `guardar` do lado do Premodern (as 4 Opalescence EN, os 2 Mox
+   Diamond EN, as 4 Intuition EN) — passam por `venda`/`venda_rl`, a confirmar
+   uma a uma. As EN continuam disponíveis para as outras caixas: o Legacy aceita
+   Reserved List nonfoil.
+2. *"Standard, Pioneer, Modern e Legacy: as cartas são todas Foil (menos as
+   Reserved List)"* → `"acabamento":"foil"` nesses slots: só `foil`/`etched`, e
+   as cartas com `catalog.cards.reserved` podem ser nonfoil. Uma nonfoil de uma
+   carta não-RL **não fecha o slot**; a wantlist pede foil. O custo desses decks
+   usa o **preço foil** (`loadout.card_price`) — o `wantlist.cheapest_price` só
+   olha para nonfoil e dava um custo sistematicamente por baixo.
+
+**A venda tem quatro saídas, não uma.** Misturá-las dava um total que não se
+podia usar: `venda` (excedente normal), `venda_rl` (Reserved List — não se
+volta a imprimir, confirma-se uma a uma), `retidos` (baldes com
+`reter_extras_meses`; a regra dos 6 meses continua inerte por falta de data de
+"última utilização", por isso guardam-se e dizem-no) e **`guardar`**: os
+SUBSTITUTOS. Este último não é um requinte — foi um erro real da primeira
+versão: o playset de 4 dava as cópias a mais como excedente e a lista mandava
+vender exactamente as cartas que faltam a um deck do loadout. **Uma cópia que
+serve um deck do loadout e só falha no acabamento nunca vai para a venda.** O
+caso que a motivou eram as 4 Opalescence EN da Caixa RL; desde a regra 1b acima
+nenhuma EN é vista pelas caixas de Premodern e essas vão mesmo para `venda_rl` —
+a saída `guardar` ficou só para as **nonfoil dos slots de foil**, que é onde ele
+não fechou a porta (na base de 2026-09-07 dá 0 cópias: as nonfoil que servem
+esses slots ainda cabem todas no playset).
+
+**MODELO DE COLECÇÃO ÚNICA (André, 2026-09-07, à letra).** *"Põe a colecção toda
+em uma coisa só, com excepção da RL, e assim vais buscar as cartas ao mesmo
+sítio, mas aplicando as regras."* Substitui a regra de 2026-08-13 (*"só premodern
+e SPML são coleções, o resto é tudo decks"*), que era a mesma ideia com o
+vocabulário errado.
+
+Até aqui um `sub_collection` era ao mesmo tempo duas coisas: uma **gaveta**
+(`SPML`, `Premodern (geral)`) e uma **deckbox** (`Blue Farm`, `Cloud cEDH`).
+Misturá-las fez o vault mentir mais do que uma vez — a mais cara foi *"meti 4
+fotos, estavam lá 4 Utrom Monitor, mas no deck Pauper não aparecem"*: estavam no
+`SPML` e a página do Pauper só olhava para o balde do Pauper.
+
+Depois da migração há **duas gavetas e nada mais**:
+- `Colecção` — tudo o que não está numa deckbox;
+- `Caixa Reserved List` — a excepção que ele pediu (e que na estante são duas,
+  as PT e as EN separadas: ver `loadout.balde_local`).
+
+E **a deckbox deixa de ser um balde**: onde uma cópia está é a ALOCAÇÃO do
+loadout, gravada em **`copy_allocation`** quando ele carrega no *"já arrumei"*.
+A gaveta de onde veio fica em `copies.balde_origem`, para a aba *Arrumar* poder
+dizer de que prateleira a tirar hoje.
+- **"Colecção" = está num balde de colecção E não está dentro de nenhuma caixa.**
+  Quem decide os baldes é `colecao_config.json → baldes_coleccao`
+  (`loadout.baldes_coleccao()`), que tem os nomes novos E os antigos de propósito
+  — o mesmo código tem de estar certo na base de antes e na de depois da
+  migração. Já lêem daí: `meta_coverage.COLLECTION_BALDES`, `classify`,
+  `colecao_cor`, `loadout.caixas_de_deck`.
+- **"Deck" = alocado a uma caixa.** `collection.owned_playable(...,
+  fora_das_caixas=True)` desconta a `copy_allocation` — é o gémeo, no modelo
+  novo, de "não olhar para os baldes dos decks". O `owned_available` usa-o.
+- **Um balde de colecção nunca é caixa de deck**, mesmo que um slot de Commander
+  o aponte como o seu (`caixas_de_deck`). Sem essa linha, depois da migração a
+  colecção inteira passava a "estar dentro de um deck" e escapava às regras de
+  material.
+- **A migração**: `python -m mtgvault.cli migrar-coleccao-unica` (tem `--dry-run`
+  e faz backup sozinha; é idempotente e o `balde_origem` só se escreve quando
+  está a NULL). **Ainda NÃO correu na base do André** — corre-se quando isto
+  entrar no main. Medida na cópia da BD, é **neutra nos números**: 7 891,50 € para
+  fechar, 230 a comprar, 61 a ir buscar, venda 91c/702,95 €, classify
+  {deck 152, coleção 938, vender 97} — iguais antes e depois.
+- **A migração TEM de semear a `copy_allocation`** com as cartas que viviam nos
+  baldes dos decks. Sem isso desmontava no papel quatro decks que estão na
+  estante (as regras de material voltavam a aplicar-se a cartas já sleevadas) e o
+  vault mandava comprar cartas que estão em casa. Tem teste.
+- O `classify.py` deixou de decidir o "pool" pelo balde: decide-o pela CARTA
+  (PT + impressão até ao Scourge = Premodern, o resto SPML), que é a mesma tranca
+  do `loadout._porque_nao`. Duas respostas diferentes à mesma pergunta era
+  exactamente o erro a evitar.
+**Classificação Deck / Coleção / Vender (`classify.py`, 2026-08-13; adaptada ao
+modelo acima em 2026-09-07).** É a regra do André já implementada, que alimenta a
+página `colecao_cor.html`:
+- Dentro da colecção, cada carta é **Deck** (cópias que um deck pede),
   **Coleção** (jogável, backup até 4) ou **Vender**.
 - **SPML é DINÂMICO, Premodern é ESTÁVEL** (`colecao_config.json`):
   - **SPML** → `spml_formatos` {formato: estado}. O André joga vários formatos
@@ -276,9 +623,11 @@ rede. Se algo vier vazio, é aqui:
 ## Por fazer
 
 - Validar as cinco superfícies acima contra os sites reais e corrigir.
-- Interface web local (FastAPI + uma página) para ver coleção, fotos e
-  gráficos de preço no browser. É o passo que também justifica migrar do
-  GitHub Actions para um VPS.
+- **Correr a migração `migrar-coleccao-unica` na base a sério.** Está feita,
+  testada e medida (é neutra nos números), mas ainda só correu em cópias.
+- ~~Interface web local~~ — feita em 2026-09-07: `webapp.py`, porto **8771**,
+  biblioteca-padrão (sem FastAPI, para não trazer uma dependência para uma coisa
+  que são 200 linhas de `http.server`). Falta-lhe: ver fotos e gráficos de preço.
 - Nomes de arquétipos: o clustering gera rótulos a partir das cartas mais
   distintivas (`Skewer the Critics / Sacred Foundry / ...`). Funciona mas é
   feio. Permitir renomear à mão sem que o `rebuild_archetypes` desfaça.
@@ -309,6 +658,16 @@ Preciso de consenso para lista de alguns decks de Premodern: Replenish,
 Enchantress."*
 
 Há três níveis, e cada um tem a sua chave no `colecao_config.json`:
+
+**Atualização de 2026-09-07 (o metagame passou a ser "o que monto a seguir").**
+Palavras dele: *"Para os decks 'metagame', em vez de me dares todas as listas,
+dás-me só o top-3 decks que estou mais perto de concluir para os formatos
+Standard, Pioneer, Legacy."* A coluna "tem página de metagame" abaixo continua a
+valer para o **`cobertura.html`** (o top-10 ponderado). O **`metagame.html`**
+deixou de a ler: as suas secções são `metagame.SECOES` — top-N em Standard,
+Pioneer e **Legacy** (que não está em `formatos_metagame` e tinha de entrar), a
+caixa escolhida em Modern, e os alvos de consenso em Premodern. O quanto é
+`colecao_config.json → metagame_top_n` (3).
 
 | | recolhe listas? | conta p/ metagame (`metagame_fontes`) | agrupa em arquétipos (`ANALYSE_FORMATS`) | tem página de metagame (`formatos_metagame`) |
 |---|---|---|---|---|

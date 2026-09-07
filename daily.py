@@ -34,8 +34,11 @@ import collection_gallery  # noqa: E402  (gera colecao.html — galeria com imag
 import colecao_cor  # noqa: E402  (gera colecao_cor.html — coleção por cor + custo de mana)
 import meta_coverage  # noqa: E402  (gera cobertura.html — top decks + % que tenho + o que falta)
 import meusdecks  # noqa: E402  (gera meusdecks.html — os meus decks: estado, % e evolução)
-import metagame  # noqa: E402  (gera metagame.html — só ver o metagame: listas com arte)
-import decks_faziveis  # noqa: E402  (gera decksfaziveis.html — decks do top-10 que já dá para montar)
+import deckboxes  # noqa: E402  (gera deckboxes.html — o loadout: decks montados em simultâneo + venda)
+import metagame  # noqa: E402  (gera metagame.html — o top-N que está mais perto de concluir)
+# (decks_faziveis RETIRADO 2026-09-07: fundido no metagame.py, que responde à
+#  mesma pergunta com as regras de material e o "onde está a carta". Ver a
+#  lápide em decks_faziveis.py.)
 import reservedlist  # noqa: E402  (gera reservedlist.html — Reserved List x coleção)
 import caixarl  # noqa: E402  (gera caixarl.html — Caixa Reserved List: RL fora da coleção jogável)
 import showcase  # noqa: E402  (gera showcase.html — Decks Showcase Challenger, arquétipos por formato)
@@ -275,10 +278,17 @@ def main():
               lambda: str(meta_coverage.build(con, ROOT / "cobertura.html")[0]))
         _step(con, "meus-decks-pagina",
               lambda: str(meusdecks.build(con, ROOT / "meusdecks.html")))
+        # Deckboxes: o loadout (os decks montados ao mesmo tempo) com a coleção
+        # REPARTIDA entre eles, mais a lista de venda. Depois do `meus-decks` e
+        # dos `decks-premodern`: lê as mesmas listas (decks/watched/consenso) e
+        # precisa delas já atualizadas.
+        _step(con, "deckboxes",
+              lambda: str(deckboxes.build(con, ROOT / "deckboxes.html")))
+        # Metagame: o top-N que ele está mais perto de concluir por formato.
+        # DEPOIS do `deckboxes` na intenção, não na dependência — lê a mesma
+        # alocação do loadout, e é dela que sai o "está noutra caixa".
         _step(con, "metagame-pagina",
               lambda: str(metagame.build(con, ROOT / "metagame.html")))
-        _step(con, "decks-faziveis-pagina",
-              lambda: str(decks_faziveis.build(con, ROOT / "decksfaziveis.html")))
         _step(con, "reserved-list-pagina",
               lambda: str(reservedlist.build(con, ROOT / "reservedlist.html")))
         _step(con, "caixa-reserved-list",
