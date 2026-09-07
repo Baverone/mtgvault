@@ -576,6 +576,35 @@ def _cards_from_consensus(con, fmt: str, assinatura: list[str]
     return cards, f"consenso de {len(ids)} listas"
 
 
+def listas_escolhidas() -> dict[str, dict]:
+    """`colecao_config.json -> listas_escolhidas`: as listas que ele ESCOLHEU.
+
+    André, 2026-09-07 (19:00): *"vou montar este"* — o botão do top-3 do
+    `metagame.html`. A lista fica **congelada com a data**, e não recalculada
+    todos os dias: se o consenso do arquétipo mudar amanhã, a caixa que ele
+    mandou montar não muda debaixo dos pés (nem a lista de compras).
+
+    Vive numa chave própria e não dentro do slot para o `loadout` continuar a ser
+    catorze linhas legíveis — uma lista de 75 cartas numa delas não se lê.
+    """
+    v = sources.config().get("listas_escolhidas")
+    return v if isinstance(v, dict) else {}
+
+
+def _cards_from_escolhido(ref: str) -> tuple[list[tuple[str, str, int]], str]:
+    rec = listas_escolhidas().get(ref)
+    if not rec or not rec.get("cards"):
+        return [], f"escolha {ref!r} sem lista guardada em `listas_escolhidas`"
+    cards = [(("side" if b == "side" else "main"), _front(n), int(q))
+             for b, n, q in rec["cards"]]
+    quando = rec.get("escolhido_em") or "?"
+    fonte = rec.get("subtitulo") or rec.get("label") or ""
+    nota = f"escolhido por ti em {quando}"
+    if rec.get("n_listas"):
+        nota += f" · consenso de {rec['n_listas']} listas"
+    return cards, (f"{nota} · {fonte}" if fonte else nota)
+
+
 def stock_min_lists() -> int:
     return 5      # o mesmo mínimo do analysis.rebuild_roles / premodern_decks
 
@@ -587,6 +616,8 @@ def _slot_cards(con, s: dict) -> tuple[list[tuple[str, str, int]], str]:
         return [], "slot por confirmar — sem lista escolhida"
     if fonte == "deck":
         return _cards_from_deck(con, ref)
+    if fonte == "escolhido":
+        return _cards_from_escolhido(ref)
     if fonte == "vigiado":
         return _cards_from_watched(con, ref)
     if fonte == "consenso":
@@ -654,6 +685,12 @@ def resolve_slots(con, cfg_slots: list[dict] | None = None) -> list[dict]:
         s["nota"] = nota
         s["so_de_variante"] = {n: sorted(v) for n, v in so_de.items()}
         s["vazio"] = not cards
+        # A escolha dele ("vou montar este") e o dia em que a fez — a página
+        # mostra-a, e é ela que distingue um deck escolhido de uma alternativa.
+        esc = (listas_escolhidas().get(s.get("ref") or "")
+               if s.get("fonte") == "escolhido" else None)
+        s["escolhido_em"] = (esc or {}).get("escolhido_em")
+        s["archetype_id"] = (esc or {}).get("archetype_id")
         s.setdefault("prioridade", 99)
         s.setdefault("nome", s.get("ref") or s.get("slot"))
         out.append(s)

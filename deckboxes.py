@@ -90,6 +90,38 @@ def _estado_carta(m):
     return "miss"
 
 
+def _candidatos(con, rep):
+    """`slot -> top-N de arquétipos que ele está mais perto de concluir`.
+
+    André, 2026-09-07 (19:00): *"quero ver os top-3 mais perto de concluir e
+    marcar qual vou montar"* — e não só na página do Metagame: também na aba da
+    caixa, que é onde ele está quando decide. *"A caixa Pioneer já é Greasefang
+    mas mostra também os 3 candidatos."*
+
+    O cálculo é o do `metagame.candidatos` e mais nenhum: duas respostas
+    diferentes à mesma pergunta é o padrão que este vault já pagou caro.
+    """
+    import metagame
+
+    out = {}
+    for fmt in metagame.formatos_top():
+        s = metagame.slot_do_formato(rep["slots"], fmt)
+        if s is None:
+            continue
+        out[s["slot"]] = [
+            {"nome": c["nome"], "subtitulo": c["subtitulo"],
+             "archetype_id": c["archetype_id"], "n_lists": c["n_lists"],
+             "pct": round(100 * (sum(m["got"] for m in c["linhas"] if not m["basica"])
+                                 + sum(m["noutra_q"] for m in c["linhas"]))
+                          / max(1, sum(m["need"] for m in c["linhas"]
+                                       if not m["basica"]))),
+             "comprar": sum(m["comprar"] for m in c["linhas"]),
+             "custo": round(sum(m["cost"] or 0 for m in c["linhas"]), 2),
+             "escolhido": c["escolhido"], "escolhido_em": c["escolhido_em"]}
+            for c in metagame.candidatos(con, fmt, rep)]
+    return out
+
+
 def _caixa_payload(s, imgs, cfs):
     cartas = []
     for m in s["have"] + s["missing"]:
@@ -235,6 +267,9 @@ def payload(con, rep, editable=False):
         "hoje": date.today().isoformat(),
         "editable": bool(editable),
         "caixas": [_caixa_payload(s, imgs, cfs) for s in rep["slots"]],
+        # O top-N por caixa por escolher (Standard/Pioneer/Legacy) — o "vou
+        # montar este" também mora aqui, não só no metagame.html.
+        "candidatos": _candidatos(con, rep),
         "resumo": {"montados": sum(1 for s in rep["slots"] if s.get("montado")),
                    "permanentes": sum(1 for s in rep["slots"] if s["permanente"]),
                    "candidatos": sum(1 for s in rep["slots"] if not s["permanente"]),
@@ -406,6 +441,15 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
    background:#3a1f1f;color:#ff9f8f;margin-left:5px;white-space:nowrap}
  .part{font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;
    background:#101c2e;color:#7fa8ff;margin-left:5px;white-space:nowrap}
+ .chosen{font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;
+   background:#123020;color:var(--add);margin-left:5px;white-space:nowrap}
+ .cand-blk .flh{color:#7fa8ff}
+ .cand-blk ul.fl li{align-items:flex-start;padding:5px 0;
+   border-bottom:1px solid #1a212c}
+ .cand-blk ul.fl li:last-child{border-bottom:0}
+ .cand-blk ul.fl b{color:var(--ink);min-width:38px}
+ .cand-blk .pz{display:flex;align-items:center;gap:8px}
+ .cand-blk .nota{margin-top:8px}
  #v-compras ul.fl{column-width:280px;column-gap:22px} #v-compras ul.fl li{break-inside:avoid}
  .selc{font:inherit;font-size:12.5px;font-weight:600;padding:7px 12px;
    border-radius:20px;border:1px solid var(--line);background:var(--card);
@@ -662,14 +706,48 @@ function wantlistHTML(itens, marca, id, detalhe) {
     + `<textarea class="cmk" readonly>${esc(txt)}</textarea></div>`;
 }
 
+/* O top-N que ele está mais perto de concluir, para as caixas por escolher
+   (Standard, Pioneer, Legacy). "Vou montar este" fixa a lista de consenso desse
+   arquétipo nesta caixa, congelada com a data — no site publicado é só a lista
+   com o crachá de quem já foi escolhido. */
+function candidatosHTML(c) {
+  const lista = (D.candidatos || {})[c.slot] || [];
+  if (!lista.length) return '';
+  const escolhido = lista.some(x => x.escolhido);
+  const li = lista.map(x => `<li><b>${x.pct}%</b><span class="wn">${esc(x.nome)}`
+    + (x.escolhido ? `<span class="chosen">✔ escolhido em `
+        + `${esc(x.escolhido_em || '?')}</span>`
+       : escolhido ? `<span class="part">alternativa</span>` : '')
+    + `<small>${esc(x.subtitulo)} · ${x.n_lists} listas · comprar ${x.comprar}`
+    + `</small></span><span class="pz">${eur(x.custo)}`
+    + (D.editable ? (x.escolhido
+        ? `<button class="btn" data-act="desmarcar" data-slot="${esc(c.slot)}" `
+          + `aria-label="Deixar de montar ${esc(x.nome)}">✕ já não</button>`
+        : `<button class="btn pri" data-act="escolher" data-slot="${esc(c.slot)}" `
+          + `data-aid="${x.archetype_id}" `
+          + `aria-label="Vou montar ${esc(x.nome)} nesta caixa">✔ vou montar este`
+          + `</button>`) : '')
+    + `</span></li>`).join('');
+  return `<div class="blk cand-blk"><div class="flh">🎯 O que estás mais perto de `
+    + `concluir<span class="dim">${lista.length} arquétipos</span></div>`
+    + `<ul class="fl">${li}</ul>`
+    + `<p class="nota">A lista de cada um está na página `
+    + `<a href="metagame.html#f-${esc(c.formato)}">Metagame</a>. `
+    + (D.editable ? 'Escolher fixa a lista de consenso <b>com a data</b>: não muda '
+        + 'debaixo dos pés se o metagame mudar amanhã.'
+       : 'Para escolheres, corre <code>python webapp.py</code> no PC (porto 8771).')
+    + `</p></div>`;
+}
+
 function caixaHTML(c, compacta) {
   if (c.vazio) {
     return `<div class="box"><div class="btop"><b>${esc(c.nome)}</b>`
       + `<span class="pct dim">—</span></div><div class="badges">${badges(c)}</div>`
       + `<div class="nota">${esc(c.nota)}</div>`
       + `<div class="vaziomsg">Caixa por atribuir — não escolhi por ti. `
-      + `Vê o top-3 que estás mais perto de concluir na página `
-      + `<a href="metagame.html">Metagame</a> e diz-me o deck.</div>`
+      + `Escolhe aqui em baixo, ou vê a lista de cada um na página `
+      + `<a href="metagame.html">Metagame</a>.</div>`
+      + (compacta ? '' : candidatosHTML(c))
       + (D.editable ? acoesHTML(c) : '') + `</div>`;
   }
   let h = `<div class="box"><div class="btop"><b>${esc(c.nome)}</b>`
@@ -716,6 +794,7 @@ function caixaHTML(c, compacta) {
     h += `<div class="blk"><b>↻ tens a carta, não serve a caixa</b><ul>${li}</ul></div>`;
   }
   h += wantlistHTML(c.wantlist, c.marca);
+  h += candidatosHTML(c);
   if (D.editable) h += acoesHTML(c);
   return h + `</div>`;
 }
@@ -1003,8 +1082,11 @@ function ligar() {
   for (const b of document.querySelectorAll('.mini[data-slot]')) {
     b.onclick = () => ir(b.dataset.slot);
   }
-  for (const b of document.querySelectorAll('.acts [data-act]')) {
-    b.onclick = () => accao(b.dataset.act, b.dataset.slot, b);
+  /* Todos os botões de escrita, estejam num `.acts` ou dentro da lista de
+     candidatos — um selector demasiado apertado deixava o "vou montar este"
+     desenhado e morto, que é o pior dos dois mundos. */
+  for (const b of document.querySelectorAll('[data-act]')) {
+    b.onclick = () => accao(b.dataset.act, b.dataset.slot, b, b.dataset.aid);
   }
   for (const l of document.querySelectorAll('.mv')) {
     const cb = l.querySelector('input');
@@ -1064,15 +1146,21 @@ async function jaArrumei() {
   } catch (e) { toast('Não deu: ' + e.message); }
 }
 
-async function accao(act, slot, btn) {
+/* Escolher um deck para uma caixa é outro endpoint (`api/escolher`): mexe na
+   `listas_escolhidas` e refaz as DUAS páginas, não só esta. */
+const ESCOLHA = { escolher: 1, desmarcar: 1 };
+
+async function accao(act, slot, btn, aid) {
   btn.disabled = true;
   try {
-    const r = await fetch('api/caixa', {
+    const r = await fetch(ESCOLHA[act] ? 'api/escolher' : 'api/caixa', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ act, slot }),
+      body: JSON.stringify({ act, slot, aid: aid ? Number(aid) : null }),
     });
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    toast('Feito — a alocação foi refeita.');
+    const j = await r.json();
+    if (j.erro) throw new Error(j.erro);
+    toast(j.msg || 'Feito — a alocação foi refeita.');
     location.reload();
   } catch (e) { btn.disabled = false; toast('Não deu: ' + e.message); }
 }

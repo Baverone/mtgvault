@@ -52,11 +52,15 @@ _TMP = Path(tempfile.mkdtemp())
 os.environ["MTGVAULT_CONFIG"] = str(_TMP / "cfg.json")
 os.environ.setdefault("MTGVAULT_HOME", str(_TMP))
 
-from mtgvault import db, loadout  # noqa: E402
+from datetime import date  # noqa: E402
+
+from mtgvault import db, loadout, sources  # noqa: E402
 
 import deckboxes  # noqa: E402
-import meusdecks  # noqa: E402
+import meta_coverage as mc  # noqa: E402
 import metagame  # noqa: E402
+import meusdecks  # noqa: E402
+import webapp  # noqa: E402
 
 CATALOGO = [
     ("Utrom Monitor", "tmnt", "2025-09-26"),
@@ -329,6 +333,113 @@ def caso_pagina_metagame_fecha():
     print("metagame.html escreve-se: top-N, caixa escolhida e formatos vazios")
 
 
+import contextlib  # noqa: E402
+
+
+@contextlib.contextmanager
+def config(**extra):
+    """Corre com um `colecao_config.json` alterado, e repõe o do teste no fim."""
+    from mtgvault import sources
+    antigo = os.environ["MTGVAULT_CONFIG"]
+    novo = Path(tempfile.mkdtemp()) / "cfg.json"
+    novo.write_text(json.dumps({**CFG, **extra}, ensure_ascii=False),
+                    encoding="utf-8")
+    os.environ["MTGVAULT_CONFIG"] = str(novo)
+    sources._CFG_CACHE.clear()
+    try:
+        yield novo
+    finally:
+        os.environ["MTGVAULT_CONFIG"] = antigo
+        sources._CFG_CACHE.clear()
+
+
+def _base_legacy():
+    """Um arquétipo de Legacy com lista de consenso e uma caixa por escolher."""
+    con = base()
+    con.execute("INSERT INTO archetypes (format, label) VALUES "
+                "('legacy','Frogmite / Thoughtcast')")
+    aid = con.execute("SELECT id FROM archetypes").fetchone()["id"]
+    for nm, inc in (("Frogmite", 1.0), ("Thoughtcast", 0.9)):
+        con.execute("""INSERT INTO card_roles (archetype_id, window_end, window_days,
+                       card_name, board, n_lists, n_with_card, inclusion_rate,
+                       avg_copies, core_copies, flex_copies, dist, role)
+                       VALUES (?, '2026-09-07', 30, ?, 'main', 10, 10, ?,
+                               4, 4, 0, ?, 'core')""",
+                    (aid, nm, inc, json.dumps({"4": 1.0})))
+    for i in range(10):
+        con.execute("""INSERT INTO decklists (source, source_key, format, event_date,
+                       event_tier, archetype_id)
+                       VALUES ('mtgo', ?, 'legacy', '2026-09-01', 'Challenge', ?)""",
+                    (f"k{i}", aid))
+    con.commit()
+    return con, aid
+
+
+def caso_nome_de_arquetipo_e_legivel():
+    """*"Os nomes dos arquétipos por pares de cartas são fracos"* (André,
+    2026-09-07, 19:00). Sem nome próprio, o nome passa a ser **cores +
+    carta-chave** e o par fica como subtítulo — nunca um nome com `/`."""
+    con, aid = _base_legacy()
+    df, tc = mc._format_df(con, "legacy"), {}
+    nome = mc._name_for(con, aid, df, tc)
+    # As cartas do fixture são todas azuis (`color_identity` = 'U').
+    assert nome == "Mono-Azul Frogmite", nome
+    assert "/" not in nome, nome
+    assert mc._distinctive_name(con, aid, df, tc) == "Frogmite / Thoughtcast"
+    # E um arquétipo com carta-assinatura mantém o nome próprio, sem cores.
+    assert mc._known_name(con, aid) is None
+    print("nome de arquetipo: cores + carta-chave, e o par como subtitulo")
+
+
+def caso_vou_montar_este_escolhe_e_desmarca():
+    """*"Cada deck do top-3 tem um botão «vou montar este»"* (André, 2026-09-07,
+    19:00): escreve a lista de consenso CONGELADA COM A DATA no config, marca a
+    caixa como permanente, e o "já não vou montar este" devolve o que lá estava.
+    """
+    con, aid = _base_legacy()
+    caixa = {"slot": "legacy", "nome": "Legacy", "formato": "legacy",
+             "fonte": "deck", "ref": None, "balde": "SPML", "prioridade": 3,
+             "por_confirmar": True, "permanente": False}
+    with config(loadout=CFG["loadout"] + [caixa]) as caminho:
+        cfg = webapp.ler_config()
+        msg = webapp.escolher_lista(con, cfg, "legacy", aid)
+        assert "Mono-Azul Frogmite" in msg, msg
+        webapp.escrever_config(cfg, caminho)
+        sources._CFG_CACHE.clear()
+
+        s = next(x for x in loadout.resolve_slots(con) if x["slot"] == "legacy")
+        assert s["fonte"] == "escolhido" and s["ref"] == "legacy", s
+        assert s["permanente"] is True and not s["vazio"], s
+        assert s["escolhido_em"] == date.today().isoformat(), s
+        assert s["nome"] == "Legacy — Mono-Azul Frogmite", s["nome"]
+        assert ("Frogmite", 4) in [(n, q) for _b, n, q in s["cards"]], s["cards"]
+
+        # A lista fica congelada: mudar o consenso não lhe toca.
+        con.execute("UPDATE card_roles SET core_copies = 1 WHERE card_name='Frogmite'")
+        con.commit()
+        s = next(x for x in loadout.resolve_slots(con) if x["slot"] == "legacy")
+        assert ("Frogmite", 4) in [(n, q) for _b, n, q in s["cards"]], \
+            "a lista escolhida nao pode mudar debaixo dos pes"
+
+        # O botão só existe no modo edição, e o publicado diz a data.
+        ed, pub = (metagame.html_page(con, editable=True),
+                   metagame.html_page(con))
+        assert 'data-act="escolher"' in ed or 'data-act="desmarcar"' in ed, "sem botao"
+        assert "data-act=" not in pub, "o site publicado nao pode ter botoes"
+        assert "escolhido em" in pub, "o publicado tem de dizer quando escolheste"
+
+        cfg = webapp.ler_config()
+        webapp.desmarcar_lista(cfg, "legacy")
+        webapp.escrever_config(cfg, caminho)
+        sources._CFG_CACHE.clear()
+        volta = json.loads(caminho.read_text(encoding="utf-8"))
+        assert "listas_escolhidas" not in volta, volta.get("listas_escolhidas")
+        s = next(x for x in loadout.resolve_slots(con) if x["slot"] == "legacy")
+        assert s["fonte"] == "deck" and s["ref"] is None and s["vazio"], s
+        assert s["permanente"] is False and s.get("por_confirmar") is True, s
+    print("'vou montar este' congela a lista com a data, e desmarcar devolve tudo")
+
+
 # ---------------------------------------------------------------------------
 # Deckboxes: o payload e o JavaScript que o desenha
 # ---------------------------------------------------------------------------
@@ -571,6 +682,8 @@ def run():
                caso_foil_report_ve_as_outras_caixas, caso_pagina_metagame_fecha,
                caso_payload_do_deckboxes,
                caso_javascript_do_deckboxes_desenha_todas_as_abas,
+               caso_nome_de_arquetipo_e_legivel,
+               caso_vou_montar_este_escolhe_e_desmarca,
                caso_aba_arrumar_separa_a_actualizacao_do_deck_montado,
                caso_aba_vender_nao_marca_nonfoil,
                caso_aba_comprar_diz_para_que_caixa_e_em_que_material,

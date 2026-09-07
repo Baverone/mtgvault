@@ -251,6 +251,33 @@ compre, depois indico (meto foto) e vais ajustando."*
   sozinha na corrida seguinte do `daily.py`** (passo `deckboxes`). Não há estado
   guardado: o "onde está a carta" é sempre recalculado da coleção do dia.
 
+**«VOU MONTAR ESTE»: escolher o deck de uma caixa a partir do top-N (André,
+2026-09-07, 19:00).** Ele vê os três que está mais perto de concluir e marca
+qual vai montar. O botão está no `metagame.html` **e** na aba da caixa do
+`deckboxes.html` (é onde ele está quando decide), só em **modo edição**
+(`python webapp.py`, porto 8771 — que passou a servir as duas páginas geradas,
+ver `PAGINAS_EDITAVEIS`).
+- Escolher escreve `colecao_config.json → listas_escolhidas[<slot>]` — nome,
+  subtítulo, arquétipo, nº de listas, **`escolhido_em`** e a lista de cartas — e
+  põe o slot em `fonte: "escolhido"`, `ref: "<slot>"`, `permanente: true`. A
+  lista fica **congelada com a data**: se o consenso mudar amanhã, a caixa (e a
+  lista de compras dela) não muda debaixo dos pés.
+- **Há desmarcar.** O que lá estava fica em `loadout[].\_antes` (a chave começa
+  por `_`, por isso o motor não a vê — `config_slots`), e o *"já não vou montar
+  este"* repõe-o. É o que garante que, no Pioneer, **sem ele carregar fica o
+  Greasefang**.
+- A lista vive numa chave própria e não dentro do slot para o `loadout`
+  continuar a ser catorze linhas legíveis.
+- **Nomes de arquétipo.** Os pares de cartas (*"Doc Aurlock / Appa"*) eram
+  fracos. A fonte não nos dá o nome do arquétipo (o mtgtop8 exporta `.dec` de
+  cartas, não rótulos, e não se inventa um que não veio de lado nenhum), por
+  isso `meta_coverage._name_for` passou a devolver o **nome próprio** (a lista
+  `KNOWN`) ou, na falta dele, **cores + carta-chave**: *"Bant Doc Aurlock"*,
+  *"Jeskai Thor"*. O par continua à vista como **subtítulo**
+  (`_distinctive_name`). Cores = as do núcleo, cada uma com pelo menos duas
+  cartas (`MIN_CARTAS_POR_COR`) — um splash de uma carta punha um Izzet a
+  chamar-se Jeskai.
+
 **CAIXAS DEDICADAS: o "ir buscar" e a partilha ficam só para o DC e o SPML
 (André, 2026-09-07 às 19:00, à letra).** *"Cada deck montado deixa de partilhar
 cartas com outros decks nos formatos: pauper, CDEH e premodern"* e *"o que eu
