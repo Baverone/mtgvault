@@ -211,7 +211,10 @@ def _archetype_html(a, name, tm, owned, owned_qty, sidmap):
     col = "var(--add)" if cov >= 90 else "var(--gold)" if cov >= 60 else "var(--warn)"
 
     def rc(c):
-        img = (f'<img loading="lazy" src="{paginas.art(c["sid"])}" alt="">' if c.get("sid")
+        # O NOME no `alt`: nesta grelha o nome só existe no `title`, e uma rede
+        # fraca deixava 4 000 quadrados vazios. Ver `metagame._card`.
+        img = (f'<img loading="lazy" src="{paginas.art(c["sid"])}" '
+               f'alt="{html.escape(c["nm"])}">' if c.get("sid")
                else '<div class="noimg"></div>')
         qb = (f'<span class="cq">{c["hq"]}/{c["qty"]}</span>' if c.get("qty", 1) > 1
               else ('' if c["state"] == "have" else '<span class="cq">0/1</span>'))
@@ -332,6 +335,8 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
  .typehdr{margin:8px 0 1px;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em} .typehdr .dim{color:#4a5666} .typehdr+.cards{margin-top:3px}
  .cards{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
  .cd{position:relative;width:52px} .cd img,.cd .noimg{width:52px;height:73px;border-radius:4px;display:block;background:#0c0f14}
+ /* Como se lê o `alt` (o nome da carta) quando a imagem não carrega. */
+ .cd img{overflow:hidden;font-size:8.5px;line-height:1.15;color:var(--dim);padding:2px}
  .cd.have{box-shadow:0 0 0 2px var(--add)} .cd.part{box-shadow:0 0 0 2px var(--gold)} .cd.part img{filter:brightness(.82)}
  .cd.miss{box-shadow:0 0 0 2px var(--warn)} .cd.miss img{filter:grayscale(.7) brightness(.6)}
  .cd .cq{position:absolute;top:1px;left:1px;background:#000c;color:#fff;font-size:9px;font-weight:700;padding:0 3px;border-radius:5px}

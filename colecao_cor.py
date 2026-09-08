@@ -71,8 +71,12 @@ def _card(x, badge_cls="q"):
         tag = (f'<span class="ex" title="fora da lista, retida'
                f'{(" · última utilização " + last) if last else ""}">extra</span>')
         tip += " — extra (saiu da lista, retida até 6 meses)"
+    # O NOME no `alt`: a imagem é o conteúdo. Sem ele, uma rede fraca deixava o
+    # binder inteiro em quadrados vazios — e é esta a página com que ele enche
+    # os binders. Ver a mesma nota no `metagame._card`.
     return (f'<div class="{cls}"{data} title="{tip}">'
-            f'<img loading="lazy" src="{_img(x["sid"])}" alt="">'
+            f'<img loading="lazy" src="{_img(x["sid"])}" '
+            f'alt="{html.escape(x["nm"] or "")}">'
             f'<span class="{badge_cls}">{x["q"]}</span>{fo}{pt}{tag}</div>')
 
 
@@ -296,7 +300,8 @@ def _consensus_tiers_html(con):
             front = nm.split(" // ")[0]
             have = front in owned
             sid = osid.get(front) or cat.get(front)
-            img = (f'<img loading="lazy" src="{_img(sid)}" alt="">' if sid
+            img = (f'<img loading="lazy" src="{_img(sid)}" '
+                   f'alt="{html.escape(front)}">' if sid
                    else '<div class="noimg"></div>')
             return (f'<div class="c {"" if have else "miss"}" '
                     f'title="{html.escape(nm)} · {pct}% das listas">{img}'
@@ -499,6 +504,10 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
  .n{color:var(--muted);font-size:12px;font-weight:400}
  .grid{display:flex;flex-wrap:wrap;gap:6px}
  .c{position:relative;width:74px} .c img{width:74px;border-radius:5px;display:block;background:#0c0f14}
+ /* Como se lê o `alt` (o nome da carta) quando a imagem não carrega — é esta a
+    página com que ele enche os binders, e uma parede de quadrados vazios não
+    serve para nada. */
+ .c img{min-height:103px;overflow:hidden;font-size:9px;line-height:1.15;color:var(--muted);padding:2px}
  .c .q{position:absolute;top:2px;left:2px;background:#000b;color:#fff;font-weight:700;font-size:11px;padding:0 5px;border-radius:7px}
  .c .q.sell{background:#7a1d1d}
  .c .use{display:none;position:absolute;bottom:0;left:0;right:0;background:#000e;color:#c7d0da;font-size:8px;line-height:1.3;padding:1px 3px;border-radius:0 0 5px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}

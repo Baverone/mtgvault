@@ -1123,6 +1123,13 @@ const eur = v => v
   : '—';
 const art = sid => sid
   ? `https://cards.scryfall.io/small/front/${sid[0]}/${sid[1]}/${sid}.jpg` : '';
+/* «1 cópias» aparecia em três blocos ao mesmo tempo — o "ir buscar a outra
+   caixa", o "na gaveta" e o "mais N estão noutra caixa" — e nenhum deles é raro:
+   uma caixa costuma ter UMA carta noutro sítio. Um número e um plural fixo é
+   uma frase que ele lê todos os dias em português macarrónico. */
+const pl = n => (n === 1 ? '' : 's');
+const cop = n => `${n} cópia${pl(n)}`;
+const car = n => `${n} carta${pl(n)}`;
 const cor = p => p >= 90 ? 'var(--add)' : p >= 60 ? 'var(--gold)' : 'var(--warn)';
 const pin = p => p >= 90 ? 'ok' : p >= 60 ? 'mid' : 'low';
 /* Acima disto (por cópia) a compra é uma decisão à parte, não uma ida ao
@@ -1172,7 +1179,7 @@ function renderResumo() {
     `<b style="color:var(--add)">${r.montados}</b> montados · `
     + `<b>${r.por_montar}</b> para montar · `
     + `${D.caixas.length} caixas (<b>${r.permanentes}</b> permanentes · `
-    + `${r.candidatos} candidatas) · comprar <b>${r.comprar}</b> cópias por `
+    + `${r.candidatos} candidatas) · comprar <b>${r.comprar}</b> cópia${pl(r.comprar)} por `
     + `<b>${eur(r.custo)}</b> · ir buscar a outra caixa <b>${r.nmont}</b> `
     + `(mais <b>${r.nres}</b> na gaveta destinadas a outra caixa`
     + (r.nfut ? ` e <b>${r.nfut}</b> por comprar` : '') + `) · `
@@ -1427,7 +1434,7 @@ function montarHTML(c) {
   h += `<div class="passo"><div class="ph"><span class="pn">1</span>`
     + `<b>${c.confirmar ? 'Confirmar que está montada com estas cartas'
                         : 'Tirar da colecção'}</b>`
-    + `<span class="dim">${total} cópias${gav ? ' · ' + gav : ''}</span></div>`
+    + `<span class="dim">${cop(total)}${gav ? ' · ' + gav : ''}</span></div>`
     + (c.confirmar ? `<p class="nota">São as cópias que a alocação dá a esta `
         + `caixa. Se é isto que está lá dentro, um clique regista — e o vault `
         + `pára de te mandar procurá-las.</p>` : '');
@@ -1441,7 +1448,7 @@ function montarHTML(c) {
      isto dizia "não falta tirar nada" com 20 cartas listadas por baixo. */
   if (!M.tirar.length && !basTirar && !(M.de_outra || []).length) {
     h += `<p class="ok2">✓ Não falta tirar nada: tudo o que a alocação dá a esta `
-      + `caixa já está lá dentro${M.ja ? ` (${M.ja} cópias)` : ''}.</p>`;
+      + `caixa já está lá dentro${M.ja ? ` (${cop(M.ja)})` : ''}.</p>`;
     h += jaNaCaixaHTML(M);
     h += basicasHTML(M);
   } else {
@@ -1495,7 +1502,7 @@ function montarHTML(c) {
   h += `</div>`;
   /* passo 2 -------------------------------------------------------------- */
   h += `<div class="passo"><div class="ph"><span class="pn">2</span>`
-    + `<b>Comprar o que falta</b><span class="dim">${c.comprar} cópias · `
+    + `<b>Comprar o que falta</b><span class="dim">${cop(c.comprar)} · `
     + `${eur(c.custo)}${c.req ? ' · ' + esc(c.req) : ''}`
     + (M.basicas_comprar ? ` · + ${M.basicas_comprar} básicas (${eur(M.basicas_custo)})`
                          : '') + `</span></div>`
@@ -1509,7 +1516,7 @@ function montarHTML(c) {
          + `colecção e nesta caixa, e a linha passa para o passo 1. Se a edição `
          + `for palpite, a próxima foto dessa carta acerta-a — não cria outra.</p>`
        : '')
-    + (c.noutra ? `<p class="nota">📦 Mais <b>${c.noutra}</b> cópias estão noutra `
+    + (c.noutra ? `<p class="nota">📦 Mais <b>${c.noutra}</b> cópia${pl(c.noutra)} está${pl(c.noutra)} noutra `
         + `caixa: essas vão-se buscar, não se compram.</p>` : '')
     + (c.bloqueado ? `<p class="nota">🔒 E <b>${c.bloqueado}</b> que o limite de `
         + `playset (${c.playset} por carta em ${esc(c.grupo || 'todo o grupo')}) `
@@ -1562,7 +1569,7 @@ function barraHTML(c) {
   return `<div class="bi" data-estado="${grau}"><div class="bt">`
     + `<b>${e.completo ? '✅' : '🧱'} ${c.confirmar ? 'Confirmar' : 'Montar'} `
     + `${esc(c.nome)}</b>`
-    + `<small>${e.n} de ${e.total} cópias marcadas`
+    + `<small>${e.n} de ${cop(e.total)} marcadas`
     + (e.completo ? ' · tudo marcado' : '')
     + (fora ? ` · +${fora} de outra caixa` : '') + `</small>`
     + `<div class="pg"><i style="width:${pct}%"></i></div></div>`
@@ -1643,7 +1650,7 @@ async function registar(c, btn) {
     const vistos = limparFeitos(c.slot);
     avisoRegisto(c, e.completo
       ? `✅ ${c.nome} registada como montada`
-      : (j.msg || `${c.nome}: ${e.n} cópias registadas`), vistos);
+      : (j.msg || `${c.nome}: ${cop(e.n)} registadas`), vistos);
   } catch (err) {
     if (btn) btn.disabled = false;
     toast('Não deu: ' + err.message);
@@ -1705,7 +1712,7 @@ function deOutraHTML(M) {
   const bs = M.blocos_de_outra || [];
   if (!bs.length) return '';
   let h = `<div class="dout"><div class="flh">⚠️ Destinadas a outra caixa`
-    + `<span class="dim">${M.copias_de_outra} cópias · por marcar</span></div>`
+    + `<span class="dim">${cop(M.copias_de_outra)} · por marcar</span></div>`
     + `<p class="nota">Estas cópias estão na gaveta, como todas as outras — a `
     + `alocação prometeu-as a outra caixa por prioridade, mas essa caixa ainda `
     + `não está montada. <b>Podes tirá-las já.</b> O que marcares fica `
@@ -1741,7 +1748,7 @@ function jaNaCaixaHTML(M) {
   const ms = M.por_confirmar || [];
   if (!ms.length) return '';
   let h = `<div class="jnc"><div class="flh">✓ Já na caixa (disseste que tinhas)`
-    + `<span class="dim">${M.copias_por_confirmar} cópias · edição por `
+    + `<span class="dim">${cop(M.copias_por_confirmar)} · edição por `
     + `confirmar</span></div><div class="mvs">`;
   for (const m of ms) {
     h += `<div class="mv feito"><span class="q">${m.q}×</span>`
@@ -1764,7 +1771,7 @@ function jaNaCaixaHTML(M) {
 function basicasHTML(M) {
   if (!M.basicas || !M.basicas.length) return '';
   let h = `<div class="bas"><div class="flh">🌱 Terrenos básicos`
-    + `<span class="dim">${M.basicas_copias} cópias</span></div><ul class="bl">`;
+    + `<span class="dim">${cop(M.basicas_copias)}</span></div><ul class="bl">`;
   for (const b of M.basicas) {
     const det = [];
     for (const m of b.tirar) {
@@ -1931,12 +1938,12 @@ function wantlistHTML(itens, marca, id, detalhe, basicas, edicao, slot) {
   const comMat = texto(m => `${m.q} ${m.nm}` + (m.mat ? ` [${m.mat}]` : ''));
   return `<div class="blk" id="${id || ''}"><div class="flh">🛒 Comprar`
     + (marca ? ` <span class="mrk">${esc(marca)}</span>` : '')
-    + `<span class="dim">${itens.length} cartas</span>`
+    + `<span class="dim">${car(itens.length)}</span>`
     + `<button class="cpbtn" onclick="copiar(this,'cm')" aria-label="Copiar as `
-    + `${itens.length} cartas no formato do Cardmarket">copiar p/ Cardmarket`
+    + `${car(itens.length)} no formato do Cardmarket">copiar p/ Cardmarket`
     + `</button>`
     + `<button class="cpbtn" onclick="copiar(this,'mat')" aria-label="Copiar as `
-    + `${itens.length} cartas com o material de cada uma">copiar com material`
+    + `${car(itens.length)} com o material de cada uma">copiar com material`
     + `</button></div>`
     + `<ul class="fl">${li}</ul>`
     + `<textarea class="cmk" data-cmk="cm" readonly>${esc(so)}</textarea>`
@@ -2040,7 +2047,7 @@ function caixaHTML(c, compacta) {
   }
   /* A lista em texto, para levar para outro sítio. */
   h += `<div class="blk"><div class="flh">🃏 A lista`
-    + `<span class="dim">${c.precisa} cópias</span>`
+    + `<span class="dim">${cop(c.precisa)}</span>`
     + `<button class="cpbtn" onclick="copiar(this,'lista')" `
     + `aria-label="Copiar a lista completa desta caixa">copiar a lista</button>`
     + `</div><textarea class="cmk" data-cmk="lista" readonly>${esc(c.lista)}`
@@ -2065,7 +2072,7 @@ function caixaHTML(c, compacta) {
     const li = rows.map(m => `<li>${esc(m.nm)} — ${esc(m.onde.join('; '))}`
       + (m.comprar ? ` <span class="dim">(comprar mais ${m.comprar})</span>` : '')
       + `</li>`).join('');
-    h += `<div class="blk onde"><b>${tit} — ${n} cópias</b>`
+    h += `<div class="blk onde"><b>${tit} — ${cop(n)}</b>`
       + `<p class="nota">${esc(ajuda)}</p><ul>${li}</ul></div>`;
   }
   /* O TECTO DE PLAYSET (André, 2026-09-08: "no Premodern, afinal só vou ter até
@@ -2077,8 +2084,8 @@ function caixaHTML(c, compacta) {
       + (m.board === 'side' ? ' <span class="dim">(sideboard)</span>' : '')
       + ` — <b>falta ${m.q}</b> que não se compra</li>`).join('');
     h += `<div class="blk lim"><b>🔒 limite de playset — ${c.bloqueado} `
-      + `${c.bloqueado === 1 ? 'cópia' : 'cópias'}</b>`
-      + `<p class="nota">Pediste no máximo <b>${c.playset} cópias</b> de cada `
+      + `cópia${pl(c.bloqueado)}</b>`
+      + `<p class="nota">Pediste no máximo <b>${cop(c.playset)}</b> de cada `
       + `carta para ${esc(c.grupo || 'este grupo')}, somando todas as caixas e o `
       + `que já tens. Estas passam disso: a caixa fica sem elas de propósito.</p>`
       + `<ul>${li}</ul></div>`;
@@ -2289,7 +2296,7 @@ function actualizarHTML() {
                   : 'diz-me (ou usa o modo edição, <code>python webapp.py</code>).')
     + `</p>`
     + acts.map(a => `<div class="arr"><div class="arrh"><b>${esc(a.caixa)}</b>`
-        + `<span>${a.copias} cópias · tirar ${a.sai.length} · meter `
+        + `<span>${cop(a.copias)} · tirar ${a.sai.length} · meter `
         + `${a.entra.length}</span></div>`
         + lado(a.sai, 'tirar', '→') + lado(a.entra, 'meter', '←')
         + (D.editable ? `<div class="acts"><button class="btn pri" `
@@ -2326,11 +2333,11 @@ function vistaArrumar() {
     for (const [nome, bs] of Object.entries(mapa)) {
       const n = bs.reduce((s, b) => s + b.movs.length, 0);
       h += `<div class="arr"><div class="arrh"><b>${esc(nome)}</b>`
-        + `<span>${bs.reduce((s, b) => s + b.q, 0)} cópias · ${n} linhas`
+        + `<span>${cop(bs.reduce((s, b) => s + b.q, 0))} · ${n} linhas`
         + `</span></div>`;
       for (const b of bs) {
         if (bs.length > 1) {
-          h += `<div class="bhdr">${esc(b.titulo)}<span>${b.q} cópias</span></div>`;
+          h += `<div class="bhdr">${esc(b.titulo)}<span>${cop(b.q)}</span></div>`;
         }
         h += b.movs.map(m => linha(m, lado)).join('');
       }
@@ -2339,7 +2346,7 @@ function vistaArrumar() {
     return h;
   };
   return actualizarHTML()
-    + `<h2>📥 Arrumar — ${a.copias} cópias</h2>`
+    + `<h2>📥 Arrumar — ${cop(a.copias)}</h2>`
     + `<p class="lead">A diferença entre <b>onde as cartas estão</b> e <b>onde a `
     + `alocação diz que deviam estar</b>. Vai marcando à medida que moves; os `
     + `visto ficam guardados neste aparelho. No fim, <b>já arrumei tudo</b>`
@@ -2421,7 +2428,7 @@ function vistaComprar() {
   const compraDe = (m, slot) => (m.para || []).some(p => p.slot === slot && !p.serve);
   const comCompras = D.caixas.filter(c => D.compras.some(m => compraDe(m, c.slot)));
   const opt = (v, t, n) => `<option value="${esc(v)}"${sel === v ? ' selected' : ''}>`
-    + `${esc(t)}${n == null ? '' : ` — ${n} cartas`}</option>`;
+    + `${esc(t)}${n == null ? '' : ` — ${car(n)}`}</option>`;
   const selector = `<div class="seg"><select class="selc" id="compra-caixa">`
     + opt('todas', 'todas as caixas', D.compras.length)
     + comCompras.map(c => opt(c.slot, c.nome,
@@ -2430,14 +2437,14 @@ function vistaComprar() {
   return `<h2>🛒 Comprar — ${esc(nome)}</h2>`
     + `<p class="lead">Só o que <b>não existe</b> na coleção, ou existe mas não serve `
     + `na língua/acabamento que a caixa exige. As cartas que estão noutra caixa `
-    + `<b>não estão aqui</b>: vão-se buscar. São <b>${D.resumo.noutra}</b> cópias a ir `
+    + `<b>não estão aqui</b>: vão-se buscar. São <b>${D.resumo.noutra}</b> cópia${pl(D.resumo.noutra)} a ir `
     + `buscar contra <b>${D.resumo.comprar}</b> a comprar. Debaixo de cada nome está `
     + `<b>para que caixa</b> é a compra e <b>em que material</b> — comprar a versão `
     + `errada é comprar duas vezes.</p>`
     + (D.resumo.poupado ? `<p class="lead">🔁 <b>Uma cópia serve as caixas todas.</b> `
         + `Quando duas caixas querem a mesma carta no mesmo material, compra-se `
         + `<b>uma vez</b> e as outras vão lá buscá-la — como já fazes com as que tens. `
-        + `São <b>${D.resumo.poupado}</b> cópias que a lista deixou de pedir. Se `
+        + `São <b>${D.resumo.poupado}</b> cópia${pl(D.resumo.poupado)} que a lista deixou de pedir. Se `
         + `quiseres uma caixa fechada sem trocas, marca-a com `
         + `<code>compras_dedicadas</code> no <code>colecao_config.json</code>.</p>` : '')
     + selector
@@ -2445,9 +2452,9 @@ function vistaComprar() {
        : `<div class="nums">`
          + `<div class="num buy">cópias<b>${itens.reduce((s, m) => s + m.q, 0)}</b></div>`
          + `<div class="num eur">💶 caras (≥ ${CARA} €/cópia)<b>${eur(soma(caras))}</b>`
-         + `<span class="dim"> ${caras.length} cartas</span></div>`
+         + `<span class="dim"> ${car(caras.length)}</span></div>`
          + `<div class="num eur">resto<b>${eur(soma(resto))}</b>`
-         + `<span class="dim"> ${resto.length} cartas</span></div></div>`
+         + `<span class="dim"> ${car(resto.length)}</span></div></div>`
        + (caras.length ? `<p class="lead">As <b>💶 caras</b> decidem-se uma a uma: `
          + `só elas valem ${eur(soma(caras))} dos ${eur(soma(itens))} da lista.</p>` : '')
        + (D.resumo.sem_preco ? `<p class="lead">⚠️ <b>${D.resumo.sem_preco}</b> `
@@ -2472,7 +2479,7 @@ function basicasComprarHTML(sel) {
     + `</small></span><span class="pz">${eur(b.cost)}</span></li>`).join('');
   const txt = bs.map(b => `${b.q} ${b.nm}` + (b.req ? ` [${b.req}]` : '')).join('\n');
   return `<div class="blk"><div class="flh">🌱 Terrenos básicos`
-    + `<span class="dim">${bs.reduce((s, b) => s + b.q, 0)} cópias · `
+    + `<span class="dim">${cop(bs.reduce((s, b) => s + b.q, 0))} · `
     + `${eur(bs.reduce((s, b) => s + (b.cost || 0), 0))}</span>`
     + `<button class="cpbtn" onclick="copiar(this,'cm')" aria-label="Copiar as `
     + `básicas a comprar">copiar p/ Cardmarket</button></div>`
@@ -2584,7 +2591,7 @@ function vistaVender() {
     + `${r.foil ? ' foil' : ' nonfoil'} ${(r.lang || '').toUpperCase()}]`).join('\n');
   const bloco = (id, titulo, lead, b, aberto, rotulo, semBotao) => !b.linhas.length ? '' :
     `<details class="vblk" id="${id}"${aberto ? ' open' : ''}>`
-    + `<summary><span>${titulo}</span><span class="vtot">${b.copias} cópias · `
+    + `<summary><span>${titulo}</span><span class="vtot">${cop(b.copias)} · `
     + `${eur(b.total)}</span></summary><p class="lead">${lead}</p>`
     + `<div class="flh"><button class="cpbtn" onclick="copiar(this,'cm')" `
     + `aria-label="Copiar a lista: ${esc(rotulo)}">copiar lista Cardmarket`
@@ -2643,7 +2650,7 @@ function vistaVender() {
        caixa a aloca não serve mais nada. Dizê-lo aqui em cima porque muda o
        tamanho da lista — e porque a saída dela é uma decisão dele, não um
        excedente. */
-    + (pmVenda.copias ? `<p class="lead">🕰 <b>${pmVenda.copias} cópias `
+    + (pmVenda.copias ? `<p class="lead">🕰 <b>${cop(pmVenda.copias)} `
         + `(${eur(pmVenda.total)}) entram por não estarem em nenhum deck de `
         + `Premodern.</b> São PT de edições até ao Scourge: essas ficam trancadas `
         + `ao Premodern (<i>"não entram para outros formatos"</i>), por isso uma `
@@ -2653,7 +2660,7 @@ function vistaVender() {
     /* O total que a regra dos 5% segurou. Em cima, e não só dentro dos blocos,
        porque muda o tamanho da lista da RL — que é onde está quase todo o
        dinheiro — e ele tem de o ver antes de decidir seja o que for. */
-    + (R.copias ? `<p class="lead">🔒 <b>${R.copias} cópias Reserved List `
+    + (R.copias ? `<p class="lead">🔒 <b>${cop(R.copias)} Reserved List `
         + `(${eur(R.total)}) NÃO entram na venda</b> pela tua regra: só se vende `
         + `RL que não tenha subido <b>${R.pct}%</b> em <b>${R.dias} dias</b>. `
         /* A JANELA CRESCE SOZINHA (2026-09-08). Dizê-lo aqui, e não só no
@@ -2838,9 +2845,9 @@ function vistaPlano() {
     + `nada sai da coleção sem tu dizeres.</p>`
     + `<div class="nums">`
     + `<div class="num eur">excedente normal<b>${eur(V.normal.total)}</b>`
-    + `<span class="dim"> ${V.normal.copias} cópias</span></div>`
+    + `<span class="dim"> ${cop(V.normal.copias)}</span></div>`
     + `<div class="num eur">Reserved List<b>${eur(V.rl.total)}</b>`
-    + `<span class="dim"> ${V.rl.copias} cópias · uma a uma</span></div>`
+    + `<span class="dim"> ${cop(V.rl.copias)} · uma a uma</span></div>`
     + `<div class="num">guardar (servem uma caixa)<b>${V.guardar.copias}</b></div>`
     + `</div>`
     + `<div class="seg"><button class="btn pri" data-aba="vender">`
@@ -2944,13 +2951,13 @@ async function jaArrumei() {
     toast('Guardado o CSV — dá-mo e eu aplico. (Para aplicar aqui: python webapp.py)');
     return;
   }
-  if (!confirm(`Gravar a arrumação de ${D.arrumar.copias} cópias? `
+  if (!confirm(`Gravar a arrumação de ${cop(D.arrumar.copias)}? `
       + `Faz backup da base antes.`)) return;
   try {
     const r = await gravar('api/arrumar');
     const j = await r.json();
     if (j.erro) throw new Error(j.erro);
-    toast(`Arrumado: ${j.copias} cópias registadas.`);
+    toast(`Arrumado: ${cop(j.copias)} registadas.`);
     P.feitos = {}; save();
     location.reload();
   } catch (e) { toast('Não deu: ' + e.message); }

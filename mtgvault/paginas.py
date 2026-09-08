@@ -228,6 +228,15 @@ def faltas_html(faltas, cls="", label="🛒 Faltas") -> str:
             f'<textarea class="cmk" readonly>{html.escape(cmk)}</textarea></div>')
 
 
+def plural(n: int, singular: str, plural_: str | None = None) -> str:
+    """`1 cópia` / `2 cópias`. O `deckboxes.py` tem o gémeo em JavaScript (`cop`).
+
+    O bloco *"ir buscar a outra caixa"* dizia **«1 cópias»** — e não é um caso
+    raro: uma caixa costuma ter exactamente uma carta noutro sítio.
+    """
+    return f"{n} {singular if n == 1 else (plural_ or singular + 's')}"
+
+
 def eur(v, casas: int = 2, espaco: bool = True) -> str:
     """Um valor em euros escrito em português: `1 009,27 €`.
 
