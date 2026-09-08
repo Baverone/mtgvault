@@ -2,10 +2,17 @@
 from __future__ import annotations
 
 import csv
+import datetime as dt
+import shutil
 import sqlite3
 from pathlib import Path
 
 from . import scryfall
+
+ROOT = Path(__file__).resolve().parents[1]
+PENDENTES = ROOT / "pendentes"
+FOTOS_PROCESSADAS = PENDENTES / "fotos processadas"
+IMG_EXT = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"}
 
 
 def ensure_sub_collection(con, name: str, purpose: str = "player") -> int:
@@ -34,15 +41,29 @@ def add_copy(
     photo_path: str | None = None,
     acquired_price: float | None = None,
     notes: str | None = None,
+    adivinhar: bool = False,
 ) -> int:
-    """Adiciona exemplares. Devolve o id da linha criada."""
-    card = scryfall.find_printing(con, name, set_code, collector_number)
+    """Adiciona exemplares. Devolve o id da linha criada.
+
+    Sem `set_code` levanta `scryfall.EdicaoEmFalta` e **não** insere nada: uma
+    edição em branco parava aqui e saía como Alpha. `adivinhar=True` aceita o
+    palpite (a impressão mais recente e mais barata) e deixa-o dito na `notes`
+    da cópia, para uma auditoria futura o poder encontrar.
+    """
+    card = scryfall.find_printing(con, name, set_code, collector_number,
+                                  adivinhar=adivinhar)
     if card is None:
         oracle = scryfall.resolve_name(con, name)
         if oracle:
-            card = scryfall.find_printing(con, oracle, set_code, collector_number)
+            card = scryfall.find_printing(con, oracle, set_code,
+                                          collector_number, adivinhar=adivinhar)
     if card is None:
         raise LookupError(f"Carta não encontrada no catálogo: {name!r} ({set_code})")
+
+    if not set_code:                       # só se chega aqui com adivinhar=True
+        marca = (f"edicao adivinhada em {dt.date.today().isoformat()}: "
+                 f"{card['set_code']} #{card['collector_number']}")
+        notes = f"{notes} | {marca}" if notes else marca
 
     sub_id = (
         ensure_sub_collection(con, sub_collection, purpose) if sub_collection else None
@@ -67,8 +88,25 @@ CSV_FIELDS = [
 ]
 
 
-def import_csv(con: sqlite3.Connection, path: str | Path) -> tuple[int, list[str]]:
-    """Importa um CSV. Devolve (n_importadas, erros)."""
+# Uma linha do CSV de resultado: o que aconteceu a cada linha do CSV de
+# entrada. É o que permite dizer "esta linha parou, e porquê" em vez de a
+# contar como importada — e é por ele que se liga a foto à cópia criada.
+RESULT_FIELDS = ["linha", "name", "set_code", "collector_number", "quantity",
+                 "sub_collection", "photo_path", "resultado", "motivo", "copy_id"]
+
+
+def import_csv(con: sqlite3.Connection, path: str | Path, *,
+               adivinhar: bool = False,
+               resultados: list[dict] | None = None) -> tuple[int, list[str]]:
+    """Importa um CSV. Devolve (n_importadas, erros).
+
+    `resultados`, se dado, é preenchido com uma linha por linha do CSV
+    (`RESULT_FIELDS`) — inclui o `copy_id` de cada cópia criada, que é a ponte
+    foto ↔ cópia do `arrumar_fotos`.
+
+    Uma linha sem `set_code` **para** com `motivo: edicao em falta`; as outras
+    continuam. `adivinhar=True` aceita o palpite (ver `add_copy`).
+    """
     ok, errors = 0, []
     with open(path, newline="", encoding="utf-8-sig") as fh:
         for i, row in enumerate(csv.DictReader(fh), start=2):
@@ -76,8 +114,15 @@ def import_csv(con: sqlite3.Connection, path: str | Path) -> tuple[int, list[str
                    for k, v in row.items() if k in CSV_FIELDS}
             if not row.get("name"):
                 continue
+            res = {"linha": i, "name": row.get("name"),
+                   "set_code": row.get("set_code") or "",
+                   "collector_number": row.get("collector_number") or "",
+                   "quantity": row.get("quantity") or "1",
+                   "sub_collection": row.get("sub_collection") or "",
+                   "photo_path": row.get("photo_path") or "",
+                   "resultado": "", "motivo": "", "copy_id": ""}
             try:
-                add_copy(
+                res["copy_id"] = add_copy(
                     con,
                     row.pop("name"),
                     set_code=row.get("set_code") or None,
@@ -92,11 +137,102 @@ def import_csv(con: sqlite3.Connection, path: str | Path) -> tuple[int, list[str
                     acquired_price=float(row["acquired_price"])
                     if row.get("acquired_price") else None,
                     notes=row.get("notes") or None,
+                    adivinhar=adivinhar,
                 )
+                res["resultado"] = "importada"
                 ok += 1
             except Exception as e:                       # noqa: BLE001
-                errors.append(f"linha {i}: {e}")
+                res["resultado"] = "erro"
+                res["motivo"] = str(e)
+                errors.append(f"linha {i}: {res['name']} — motivo: {e}")
+            if resultados is not None:
+                resultados.append(res)
     return ok, errors
+
+
+def gravar_resultado(resultados: list[dict], path: str | Path) -> Path:
+    """Escreve o CSV de resultado da importação."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, fieldnames=RESULT_FIELDS)
+        w.writeheader()
+        w.writerows(resultados)
+    return path
+
+
+# ---------------------------------------------------------------------------
+# As fotos depois de importadas
+# ---------------------------------------------------------------------------
+# As fotos das cópias 1-156 (10 042 €) já não existem, e por isso essas cópias
+# não são auditáveis: o fluxo antigo movia a foto para uma pasta única e nada
+# guardava a que cópia ela deu origem. Agora a foto vai para uma pasta por mês
+# — a pasta única já ia em milhares de ficheiros — e a ligação fica em DOIS
+# sítios: `copies.photo_path` (o caminho novo, dentro da cópia) e o
+# `aplicado.csv` ao lado das fotos. Nunca se apaga nada.
+APLICADO = FOTOS_PROCESSADAS / "aplicado.csv"
+APLICADO_FIELDS = ["at", "foto", "copy_id", "name", "set_code",
+                   "collector_number", "quantity", "sub_collection"]
+
+
+def arrumar_fotos(con: sqlite3.Connection, resultados: list[dict], *,
+                  pendentes: str | Path | None = None) -> dict:
+    """Arruma as fotos deste lote e regista a ligação foto ↔ cópia.
+
+    Move `pendentes/<foto>` para `pendentes/fotos processadas/<AAAA-MM>/<foto>`,
+    com o nome original, e actualiza a `copies.photo_path` das cópias criadas
+    para o caminho novo (relativo à `pendentes/`).
+
+    Uma foto cujas linhas **não** entraram todas fica onde está: a linha ainda
+    está por catalogar, e arrumá-la escondia trabalho por fazer.
+    """
+    pend = Path(pendentes) if pendentes else PENDENTES
+    destino_rel = f"fotos processadas/{dt.date.today():%Y-%m}"
+    destino = pend / destino_rel
+
+    por_foto: dict[str, list[dict]] = {}
+    for r in resultados:
+        nome = Path((r.get("photo_path") or "").strip()).name
+        if nome:
+            por_foto.setdefault(nome, []).append(r)
+
+    movidas, ficaram, ligacoes = [], [], []
+    for nome, linhas in por_foto.items():
+        if any(r["resultado"] != "importada" for r in linhas):
+            ficaram.append(nome)
+            continue
+        origem = pend / nome
+        novo_rel = f"{destino_rel}/{nome}"
+        if origem.suffix.lower() in IMG_EXT and origem.exists():
+            destino.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(origem), str(destino / nome))
+            movidas.append(novo_rel)
+        elif not (destino / nome).exists():
+            continue                       # foto que nunca chegou ao disco
+        for r in linhas:
+            if r["copy_id"]:
+                con.execute("UPDATE copies SET photo_path = ? WHERE id = ?",
+                            (novo_rel, r["copy_id"]))
+            ligacoes.append(dict(r, foto=novo_rel))
+    con.commit()
+
+    if ligacoes:
+        agora = dt.datetime.now().replace(microsecond=0).isoformat(sep=" ")
+        alvo = pend / "fotos processadas" / "aplicado.csv"
+        alvo.parent.mkdir(parents=True, exist_ok=True)
+        novo = not alvo.exists()
+        with alvo.open("a", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=APLICADO_FIELDS)
+            if novo:
+                w.writeheader()
+            for r in ligacoes:
+                w.writerow({"at": agora, "foto": r["foto"], "copy_id": r["copy_id"],
+                            "name": r["name"], "set_code": r["set_code"],
+                            "collector_number": r["collector_number"],
+                            "quantity": r["quantity"],
+                            "sub_collection": r.get("sub_collection", "")})
+    return {"movidas": len(movidas), "destino": destino_rel,
+            "ligadas": len(ligacoes), "ficaram": sorted(ficaram)}
 
 
 # ---------------------------------------------------------------------------

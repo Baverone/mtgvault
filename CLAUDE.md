@@ -891,6 +891,60 @@ pode ser ligas."*
   quase nenhum evento traz contagem de jogadores. Uma linha no config resolve:
   `"cedh": { "min_jogadores_presencial": 0 }`.
 
+## A ENTRADA DE CARTAS: sem edição não se inventa, e a foto fica (2026-09-08)
+
+Duas decisões que vêm da auditoria `work/revisao/mtgvault-edicoes-suspeitas.md`
+(5 Plains do Cloud cEDH gravadas como Alpha, 309,50 € de valor fantasma) e do
+relatório `work/revisao/mtgvault-lookup-fotos.md`.
+
+**1. `find_printing` sem `set_code` levanta `scryfall.EdicaoEmFalta`.** Antes
+terminava em `ORDER BY released_at ASC LIMIT 1` e devolvia a impressão **mais
+antiga** — para as básicas, sempre Alpha. Uma linha de CSV com a edição em
+branco não dava erro: dava a edição errada, em silêncio. É o padrão do
+`event_tier`, outra vez: um passo que corre sem erro e produz um valor falso.
+- `EdicaoEmFalta` é subclasse de `LookupError` **de propósito** — quem já o
+  apanhava não muda de comportamento, mudou só a mensagem
+  (`"edicao em falta: <nome>"`).
+- **A excepção explícita é `adivinhar=True`** (CLI `--adivinhar`): devolve a
+  impressão **mais recente e, dentro dessa data, a mais barata** — o contrário
+  do que fazia. Quem não sabe a edição de um Plains tem o Plains barato de um
+  set recente, não o de Alpha. O palpite fica DITO na cópia:
+  `add_copy` escreve `edicao adivinhada em <data>: <set> #<nº>` na
+  `copies.notes`. É por essa nota que uma auditoria futura as encontra — a
+  assinatura "a edição é a mais antiga da carta" dá falsos positivos (metade das
+  cartas caras só tem uma impressão; ver a coluna *impressões* no `duvidas.md`).
+- **`collection.import_csv` devolve uma linha por linha** (`resultados=[...]`,
+  `RESULT_FIELDS`) com `resultado`, `motivo` e o `copy_id` criado. A linha sem
+  edição **para** com `motivo: edicao em falta`; as outras continuam — não se
+  perde o lote por causa de uma linha. O `processar_fotos.py` grava esse CSV ao
+  lado do de entrada; o `mtgvault.cli import` aceita `--resultado`.
+- O `PROCESSAR_FOTOS.md` (o guia que o Claude que cataloga as fotos lê) passou a
+  dizer que `set_code` é **obrigatório**. Mais vale uma carta por catalogar do
+  que uma carta catalogada errada.
+
+**2. As fotos nunca se apagam, e ficam ligadas à cópia.** As 33 fotos das cópias
+1-156 (10 042 €) já não existem: o fluxo antigo movia-as e nada guardava a que
+cópia deram origem, por isso quando apareceu a primeira suspeita não houve nada
+para reler. Quem arruma é `collection.arrumar_fotos`, partilhada pelos dois
+importadores (`processar_fotos.py` e a tarefa `mtg-fotos-novas` do ai-pc, via
+`import --arrumar-fotos`).
+- Destino: **`pendentes/fotos processadas/<AAAA-MM>/`**, com o nome original. A
+  pasta é por mês porque a única ia em milhares de ficheiros.
+- A ligação fica em **dois** sítios: `copies.photo_path` (o caminho novo) e o
+  `pendentes/fotos processadas/aplicado.csv` (data, foto, `copy_id`, carta,
+  edição, quantidade, balde). Não confundir com o `aplicado.csv` do
+  `ai-pc/work/mtg-fotos`, que é o registo da *revisão* de fotos.
+- **Uma foto cujas linhas não entraram todas FICA em `pendentes/`.** A linha
+  ainda está por catalogar; arrumá-la escondia trabalho por fazer.
+- No `processar_fotos.py` as fotos arrumam-se **antes** do `db_push`: a
+  evidência do que foi importado não pode depender de uma publicação que falha.
+- **Quem lê essa pasta tem de a ler em profundidade.** O `backup-offsite` do
+  ai-pc lia-a com `iterdir()`: a partir do dia da primeira pasta por mês teria
+  dito `"0 novas"` e guardado nada, verde, para sempre. Passou a `rglob`, com o
+  índice por caminho relativo (para as fotos antigas, na raiz, o relativo é o
+  nome — o índice de ontem continua a valer). O `common.all_photos()` da revisão
+  de fotos tinha o mesmo defeito e a mesma correcção.
+
 ## Restrições externas (já testadas, não voltes a tentar)
 
 | Fonte | Estado |

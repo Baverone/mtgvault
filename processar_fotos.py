@@ -9,11 +9,23 @@ FLUXO para catalogar de qualquer lado (telemóvel incluído, sem PC):
     Este script: garante o catálogo, PUXA a BD mais recente do Release (para não
     perder o harvest/preços do job diário), importa para o vault.db, PUBLICA a BD
     de volta no Release (db_push), e arruma SÓ as fotos deste CSV para
-    `pendentes/fotos processadas/`. O site atualiza-se no próximo job diário
-    (regenera as páginas com a BD nova).
+    `pendentes/fotos processadas/<AAAA-MM>/`. O site atualiza-se no próximo job
+    diário (regenera as páginas com a BD nova).
 
 O RECONHECIMENTO é sempre um Claude a olhar para as fotos — o script só faz a
 parte mecânica (importar + publicar a BD + arrumar as fotos).
+
+AS FOTOS NUNCA SE APAGAM (2026-09-08). Movem-se sempre, com o nome original,
+para uma pasta por mês, e cada uma fica ligada à cópia que criou — na
+`copies.photo_path` e no `aplicado.csv` ao lado das fotos. Sem essa ligação,
+156 cópias (10 042 €) deixaram de ser auditáveis quando apareceu a primeira
+suspeita de edição errada. Uma foto cujas linhas não entraram todas FICA em
+`pendentes/`: ainda há trabalho nela.
+
+UMA LINHA SEM EDIÇÃO PARA (2026-09-08). `set_code` em branco já não devolve a
+impressão mais antiga em silêncio — que para as básicas era sempre Alpha. A
+linha sai no CSV de resultado (ao lado do CSV de entrada) com
+`motivo: edicao em falta`, e a foto fica em `pendentes/` para ser recatalogada.
 
 NOTA (2026-09-06): a `vault.db` vive num GitHub Release (tag `data`), NUNCA no
 Git. Por isso este script usa `scripts/db_pull.sh` + `scripts/db_push.sh` e
@@ -24,7 +36,6 @@ from __future__ import annotations
 
 import csv as _csv
 import os
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -36,8 +47,6 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 from mtgvault import collection, db, scryfall  # noqa: E402
 
 PEND = ROOT / "pendentes"
-PROCESSED = PEND / "fotos processadas"
-IMG_EXT = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"}
 
 
 def _ensure_catalog(con):
@@ -75,7 +84,6 @@ def _sh(script_name):
 
 
 def main(csv_path):
-    rows_photos = []
     # 1. Puxar a BD mais recente do Release ANTES de importar (não perder o
     #    harvest/preços que o job diário já juntou). Sem isto, o db_push a seguir
     #    (last-write-wins) apagaria esse trabalho.
@@ -83,18 +91,22 @@ def main(csv_path):
     if _sh("db_pull.sh").returncode != 0:
         sys.exit("db_pull falhou — abortado (não mexo na BD sem a versão atual).")
 
-    # 2. Importar as cartas do CSV para o vault.db.
+    # 2. Importar as cartas do CSV para o vault.db, e arrumar as fotos JÁ — as
+    #    fotos e a ligação foto↔cópia não podem depender de o db_push correr
+    #    bem: a alternativa é perder a única evidência do que foi importado.
+    resultados = []
     with db.session() as con:
         print(_ensure_catalog(con))
         norm, rows = _normalize(csv_path)
-        rows_photos = [r.get("photo_path", "").strip() for r in rows
-                       if r.get("photo_path", "").strip()]
-        ok, errs = collection.import_csv(con, norm)
+        ok, errs = collection.import_csv(con, norm, resultados=resultados)
         con.commit()
+        fotos = collection.arrumar_fotos(con, resultados, pendentes=PEND)
     total = len(rows)
     print(f"{ok}/{total} linhas importadas.")
     for e in errs[:20]:
         print("  [erro]", e)
+    saida = Path(csv_path).with_name(Path(csv_path).stem + "-resultado.csv")
+    print("resultado linha a linha:", collection.gravar_resultado(resultados, saida))
     if not ok:
         sys.exit("nada importado — não publico a BD.")
 
@@ -104,17 +116,13 @@ def main(csv_path):
         sys.exit("db_push falhou — as cartas estão na BD local mas não foram "
                  "publicadas. Corre scripts/db_push.sh à mão quando puderes.")
 
-    # 4. Arrumar SÓ as fotos deste CSV para 'fotos processadas' (as outras fotos
-    #    de pendentes/ podem ainda estar por catalogar — não lhes tocar).
-    PROCESSED.mkdir(parents=True, exist_ok=True)
-    moved = 0
-    for name in dict.fromkeys(rows_photos):        # únicas, ordem preservada
-        src = PEND / name
-        if src.suffix.lower() in IMG_EXT and src.exists():
-            shutil.move(str(src), str(PROCESSED / name))
-            moved += 1
     print(f"Feito: {ok} cartas importadas, BD publicada no Release, "
-          f"{moved} fotos arrumadas para 'fotos processadas'.")
+          f"{fotos['movidas']} fotos arrumadas para "
+          f"'pendentes/{fotos['destino']}' ({fotos['ligadas']} ligações "
+          f"foto↔cópia registadas).")
+    if fotos["ficaram"]:
+        print("Ficam em pendentes/ (têm linhas por resolver): "
+              + ", ".join(fotos["ficaram"]))
     print("O site atualiza no próximo job diário (regenera as páginas com a BD nova).")
 
 
