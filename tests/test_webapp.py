@@ -220,11 +220,19 @@ def caso_sugestao_de_premodern_abre_uma_caixa():
                for c in lido["caixas"])
     print("a sugestão abre uma caixa nova, com o nome do arquétipo, e sem duplicar")
 
-    # E o «não quero este» escreve-se no config, com a data.
-    msg = pm.recusar(cfg, "Mono-Azul Stasis", "2026-09-08")
-    assert cfg["premodern"]["sugestoes_recusadas"] == {"Mono-Azul Stasis": "2026-09-08"}
+    # E o «não quero este» escreve-se no config, com a data — pelo `id` estável
+    # do arquétipo, com o nome ao lado. A chave era o nome, e o nome do
+    # clustering muda entre corridas: a recusa deixava de bater e a sugestão
+    # voltava sozinha (ver `test_arquetipos.py`).
+    msg = pm.recusar(cfg, "Mono-Azul Stasis", "2026-09-08", ident="f0f1f2f3f4")
+    assert cfg["premodern"]["sugestoes_recusadas"] == {
+        "f0f1f2f3f4": {"nome": "Mono-Azul Stasis", "em": "2026-09-08"}}
     assert "venda" in msg, msg
-    print("o «não quero este» fica escrito e datado, e o toast diz o que faz")
+    # E o «volta a considerar» desfaz pelo mesmo `id`, mesmo que o nome já tenha
+    # mudado de rótulo entretanto — que é o caso para que isto existe.
+    pm.aceitar(cfg, "Mono-Azul Polluted Delta", "f0f1f2f3f4")
+    assert not cfg["premodern"].get("sugestoes_recusadas")
+    print("o «não quero este» fica escrito pelo id, datado, e desfaz-se pelo id")
 
 
 def caso_gravar_o_config_e_atomico():
