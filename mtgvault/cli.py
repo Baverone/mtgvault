@@ -148,6 +148,14 @@ def main(argv=None):
     ar.add_argument("--confirmar", action="store_true",
                     help='"já arrumei tudo": grava a alocação como a arrumação real')
 
+    pm = sub.add_parser("premodern",
+                        help="Premodern: o que montar a seguir com o que sobra")
+    pm.add_argument("accao", nargs="?", default="sugestoes",
+                    choices=["sugestoes"],
+                    help="sugestoes = o ranking, a cobertura e o que vai a vender")
+    pm.add_argument("--tudo", action="store_true",
+                    help="mostrar todos os arquétipos, não só o top-10 e o top-5 combo")
+
     mc = sub.add_parser("migrar-caixas",
                         help="colecao_config.json: `loadout` -> `caixas` (v6)")
     mc.add_argument("--dry-run", action="store_true",
@@ -435,6 +443,9 @@ def main(argv=None):
         elif args.cmd == "arrumar":
             _arrumar(con, csv_out=args.csv, confirmar=args.confirmar)
 
+        elif args.cmd == "premodern":
+            _premodern(loadout.report(con), tudo=args.tudo)
+
         elif args.cmd == "migrar-coleccao-unica":
             _migrar(con, dry_run=args.dry_run, com_backup=not args.sem_backup)
 
@@ -679,11 +690,61 @@ def _migrar(con, dry_run=False, com_backup=True):
             print(f"  {b:<26} {q:>5}")
 
 
+def _premodern(rep, tudo=False):
+    """`premodern sugestoes`: o ranking, a cobertura e o que daí vai à venda.
+
+    A mesma conta da página (`res["premodern"]`), para o CLI e o site não darem
+    números diferentes à mesma pergunta.
+    """
+    pm = rep.get("premodern") or {}
+    if not pm.get("activo"):
+        print("Não há nenhuma caixa de Premodern no `colecao_config.json → caixas`: "
+              "sem um deck de Premodern, 'não usada por nenhum deck' não quer dizer "
+              "nada e não se sugere nem se vende nada por esta regra.")
+        return
+    linhas = pm["todos"] if tudo else pm["elegiveis"]
+    print("PREMODERN — o que montar a seguir com o que SOBRA\n")
+    print(f"  cobertura medida nas cópias PT (≤SCG) que NENHUMA caixa levou; "
+          f"sugere-se a partir de {pm['limiar']}%\n")
+    _p([{"listas": c["n_lists"],
+         "sobra": f'{c["pct"]}%', "total": f'{c["pct_total"]}%',
+         "onde": "top-10" if c["top"] else "combo",
+         "combo": c["grau"] or "—", "estado": c["estado"],
+         "comprar": c["comprar"], "custo": f'{c["custo"]:.2f}€',
+         "arquétipo": c["nome"]} for c in linhas],
+       ["listas", "sobra", "total", "onde", "combo", "estado", "comprar", "custo",
+        "arquétipo"])
+    sugs = pm["sugestoes"]
+    if sugs:
+        print(f"\nSUGESTÕES ({len(sugs)}) — no modo edição, «vou montar este» abre "
+              f"a caixa; «não quero este» liberta as cartas para a venda")
+        for c in sugs:
+            print(f'  {c["nome"]:<32} {c["pct"]:>3}% do que sobra · '
+                  f'comprar {c["comprar"]} ({c["custo"]:.2f}€)')
+    else:
+        print("\n  Nenhum candidato chega ao limiar com o que sobra. As caixas de "
+              "Premodern ficam com as cópias primeiro; o que sobra vai à venda.")
+    if pm["recusadas"]:
+        print("\nRECUSADAS (as cartas delas estão livres para venda)")
+        for nome, quando in sorted(pm["recusadas"].items()):
+            print(f"  {nome:<32} em {quando}")
+    n = sum(r["q"] for k in ("venda", "venda_rl") for r in rep[k]
+            if r["reason"] == loadout.RAZAO_PREMODERN)
+    v = sum(r["total"] or 0 for k in ("venda", "venda_rl") for r in rep[k]
+            if r["reason"] == loadout.RAZAO_PREMODERN)
+    print(f'\n  VENDER por "{loadout.RAZAO_PREMODERN}": {n} cópias / {v:.2f}€'
+          f'  (vê a lista com `vender --tudo`)')
+    if rep["copias_reservadas"]:
+        print(f'  reservadas por sugestões abertas: {rep["copias_reservadas"]} '
+              f'cópias / {rep["total_reservado"]:.2f}€ — não se vendem')
+
+
 def _vender(rep, csv_out=False, tudo=False):
     blocos = [("VENDER", rep["venda"])]
     if tudo:
         blocos += [("VENDER — RESERVED LIST (confirmar uma a uma)", rep["venda_rl"]),
                    ("GUARDAR — servem um deck do loadout", rep["guardar"]),
+                   ("RESERVADAS — sugestões de Premodern por decidir", rep["reservadas"]),
                    ("RETIDOS — extras de deck (reter_extras_meses)", rep["retidos"])]
     if csv_out:
         print("bloco,quantidade,carta,balde,edicao,acabamento,lingua,"

@@ -16,9 +16,14 @@ isso**. O que mudou de fundo:
     que ainda estão sem `ref` — a pergunta "que deck meto nesta caixa?".
   * **Modern** — não há nada a escolher: o deck está escolhido (UW Oswald) e
     mostra-se a caixa do loadout, com as variantes marcadas.
-  * **Premodern** — só o UW Replenish e a Enchantress, os alvos de consenso do
-    `premodern_arquetipos_alvo` (âmbito de 2026-09-07). O Stiflenought não está
-    aqui de propósito: segue a lista do Luffy e é uma caixa como as outras.
+  * **Premodern** — o **top-10 de representação** e o **top-5 de combo** do
+    formato (André, 2026-09-08), cada um com a cobertura medida sobre o que
+    SOBRA: as cópias PT que nenhuma caixa levou. É a pergunta *"que mais posso
+    montar com o que está na gaveta?"*, e a resposta a partir de
+    `premodern.sugerir_a_partir_de_pct` (50 %) traz os botões *"vou montar
+    este"* e *"não quero este"*. As caixas que ele já tem aparecem marcadas —
+    o UW Replenish e a Enchantress (os alvos de consenso de 2026-09-07) entre
+    elas, e o Stiflenought, que segue a lista do Luffy.
 
 E a posse é a do LOADOUT, com os três estados de sempre — **tenho** (verde),
 **está noutra caixa** (azul, vai-se buscar, não se compra) e **falta** (vermelho,
@@ -49,13 +54,17 @@ from mtgvault import loadout, paginas, sources  # noqa: E402
 #   'top'    — os N arquétipos que ele está mais perto de concluir (os slots do
 #              loadout que estão por confirmar: Standard, Pioneer, Legacy);
 #   'caixas' — o deck já escolhido, tal como está no loadout (Modern);
-#   'alvos'  — só os arquétipos de `premodern_arquetipos_alvo` (Premodern).
+#   'premodern' — o top-10 de representação + o top-5 de combo, com a cobertura
+#              medida sobre o que SOBRA e o botão de sugerir/recusar (André,
+#              2026-09-08). Era 'alvos' — só o UW Replenish e a Enchantress — e
+#              essa vista não respondia à pergunta nova: *"o que é que eu monto
+#              com o que não está em caixa nenhuma?"*.
 SECOES = [
     ("standard", "Standard", "top"),
     ("pioneer", "Pioneer", "top"),
     ("legacy", "Legacy", "top"),
     ("modern", "Modern", "caixas"),
-    ("premodern", "Premodern", "alvos"),
+    ("premodern", "Premodern", "premodern"),
 ]
 
 # Mínimo de listas para um arquétipo entrar no ranking. Abaixo disto a lista de
@@ -72,12 +81,6 @@ def top_n() -> int:
         return max(1, int(sources.config().get("metagame_top_n") or 3))
     except (TypeError, ValueError):
         return 3
-
-
-def _alvos_premodern() -> set[str]:
-    """Os alvos de consenso, como o `premodern_decks` os grava na tabela `decks`."""
-    import premodern_decks as pd
-    return {t + pd.SUFIXO for t in pd.alvos()}
 
 
 def _art(sid):
@@ -184,13 +187,46 @@ def _wantlist(linhas, marca=""):
             f'<textarea class="cmk" readonly>{html.escape(txt)}</textarea></div>')
 
 
+def _premodern_acts_html(d, editable):
+    """Os botões de uma linha do ranking de Premodern — só no MODO EDIÇÃO.
+
+    São dois e são diferentes: *"vou montar este"* cria uma caixa nova (o
+    arquétipo passa a ser um deck dele, com a lista congelada e datada) e
+    *"não quero este"* recusa a sugestão — e essa recusa **liberta as cartas
+    dela para a venda** no mesmo dia. Por isso a segunda diz o que faz: um botão
+    que manda vender cartas não pode chamar-se só "não".
+    """
+    if not editable:
+        return ""
+    nome = html.escape(d["nome"])
+    if d["estado"] == "caixa":
+        return ""
+    if d["estado"] == "recusada":
+        return (f'<div class="acts"><button class="btn" data-act="pm-aceitar" '
+                f'data-nome="{nome}" aria-label="Voltar a considerar {nome}">'
+                f'↩ Voltar a considerar</button></div>')
+    montar = (f'<button class="btn pri" data-act="pm-montar" data-nome="{nome}" '
+              f'data-aid="{d["archetype_id"]}" '
+              f'aria-label="Vou montar {nome} numa caixa nova">'
+              f'✔ Vou montar este</button>')
+    recusar = (f'<button class="btn" data-act="pm-recusar" data-nome="{nome}" '
+               f'aria-label="Não quero {nome} — as cartas dele vão para a venda">'
+               f'✕ Não quero este</button>')
+    return f'<div class="acts">{montar}{recusar}</div>'
+
+
 def _escolher_html(d, editable):
     """O botão *"vou montar este"* — só no MODO EDIÇÃO (`python webapp.py`).
 
     No site publicado os endpoints de escrita não existem, e um botão que não faz
     nada é pior do que não haver botão nenhum (é a mesma regra do `deckboxes`).
     Lá, o que se vê é o crachá *"✔ escolhido em <data>"*.
+
+    No ranking de Premodern os botões são outros (criam uma caixa, ou recusam a
+    sugestão): despacha-se para lá, para o `_deck_html` continuar a ser um só.
     """
+    if d.get("pm"):
+        return _premodern_acts_html(d, editable)
     if not editable or not d.get("slot"):
         return ""
     if d.get("escolhido"):
@@ -212,10 +248,17 @@ def _deck_html(d, imgs, editable=False):
     # noutra caixa, porque essa também é dele e vai-se lá buscar. É a mesma que
     # ordena o top-N; mostrar aqui a outra (só o livre) fazia a lista aparecer
     # desordenada sem explicação. A repartição fica na linha de baixo.
+    #
+    # No PREMODERN é ao contrário, e de propósito: ali o número que decide se a
+    # lista é uma sugestão é o do que SOBRA (André, 2026-09-08 — a cobertura
+    # mede-se com as cópias que nenhuma caixa levou). Pôr aqui os 63 % do total
+    # ao lado de um limiar que corre sobre 6 % era a página a contradizer-se.
+    cov = (f'{r["got"]}/{r["need"]} · {r["pct"]}% livre' if d.get("pm")
+           else f'{r["tenho"]}/{r["need"]} · {r["pct_tenho"]}%')
     return (
         f'<details class="deck"{" open" if d.get("aberto") else ""}><summary>'
         f'<b>{html.escape(d["nome"])}</b>'
-        f'<span class="cov">{r["tenho"]}/{r["need"]} · {r["pct_tenho"]}%</span>'
+        f'<span class="cov">{cov}</span>'
         f'<span class="src">{html.escape(d["sub"])}</span></summary>'
         f'{_bar(r["pct"], r["pct_tenho"])}'
         f'<div class="badges">{badges}</div>'
@@ -251,6 +294,49 @@ def _decks_de_slots(slots, fmt, so_refs=None):
         out.append({"nome": s["nome"], "sub": s["nota"], "badges": badges,
                     "linhas": s["have"] + s["missing"],
                     "marca": loadout.marca_wantlist(s)})
+    return out
+
+
+ESTADO_PM = {
+    "caixa": ("ok", "🧰 já é uma caixa tua"),
+    "sugerida": ("ok", "💡 sugerido — montar?"),
+    "recusada": ("", "✕ recusado"),
+    "abaixo": ("", "abaixo do limiar"),
+}
+
+
+def _decks_premodern(res):
+    """O ranking de Premodern: top-10 de representação + top-5 de combo.
+
+    André, 2026-09-08: *"se o deck for top-10 de representação ou top-5 decks
+    combo do formato, sugere a lista para montar o deck caso eu tenha pelo menos
+    50 % das cartas"*. A conta vive no `mtgvault.premodern` e chega aqui feita —
+    esta página desenha, não decide.
+
+    Substituiu a secção que mostrava só os dois alvos de consenso (o UW Replenish
+    e a Enchantress). Esses continuam cá: são duas das caixas, e aparecem com o
+    crachá *"já é uma caixa tua"*.
+    """
+    pm = res.get("premodern") or {}
+    out = []
+    for c in pm.get("elegiveis") or []:
+        cls, txt = ESTADO_PM.get(c["estado"], ("", c["estado"]))
+        badges = [(cls, txt)]
+        if c["estado"] == "caixa" and c.get("caixa_nome"):
+            badges = [(cls, f'🧰 {c["caixa_nome"]}')]
+        if c["estado"] == "recusada":
+            badges = [(cls, f'✕ recusado em {c["recusada_em"]}')]
+        if c["combo"]:
+            badges.append(("fo", f'🧩 {c["grau"]}'))
+        badges.append(("", "🔟 top de representação" if c["top"]
+                       else "🎯 top de combo"))
+        badges.append(("pt", "🇵🇹 só PT · ≤SCG"))
+        out.append({
+            "nome": c["nome"], "sub": f'{c["n_lists"]} listas que contam · '
+                                      f'{c["subtitulo"]}',
+            "badges": badges, "linhas": c["linhas"], "marca": "PT",
+            "pm": True, "estado": c["estado"],
+            "archetype_id": c["archetype_id"], "pct_total": c["pct_total"]})
     return out
 
 
@@ -329,8 +415,11 @@ def html_page(con, editable=False, token="", ligacao=None) -> str:
     2026-09-07, 19:00). O ficheiro publicado é o mesmo, sem os botões.
     """
     n = top_n()
-    res = loadout.allocate(con)
-    alvos = _alvos_premodern()
+    # `report` e não `allocate`: a secção do Premodern precisa do ranking de
+    # sugestões, que vive no relatório (`res["premodern"]`) para a página e as
+    # Deckboxes dizerem o mesmo número. Calculá-lo aqui à parte era a segunda
+    # opinião do costume.
+    res = loadout.report(con)
 
     data, names = [], set()
     for fmt, titulo, modo in SECOES:
@@ -354,9 +443,22 @@ def html_page(con, editable=False, token="", ligacao=None) -> str:
             decks = _decks_de_slots(res["slots"], fmt)
             lead = 'O deck já escolhido para a caixa deste formato, e as suas variantes.'
         else:
-            decks = _decks_de_slots(res["slots"], fmt, so_refs=alvos)
-            lead = ('Os alvos de consenso que pediste. O Stiflenought não está aqui: '
-                    'segue a lista do Luffy, e é uma caixa das <b>Deckboxes</b>.')
+            decks = _decks_premodern(res)
+            pm = res.get("premodern") or {}
+            n_sug = len(pm.get("sugestoes") or [])
+            lead = (f'Os <b>{len(pm.get("top") or [])}</b> arquétipos mais '
+                    f'representados e os <b>{len(pm.get("combo") or [])}</b> '
+                    f'melhores <b>combo</b> do formato. A percentagem é a do que '
+                    f'<b>sobra</b> — as cópias PT que nenhuma caixa levou —, '
+                    f'porque é com essas que montarias mais um deck. Com '
+                    f'<b>{pm.get("limiar", 50)}%</b> ou mais, vira sugestão. '
+                    + (f'Há <b>{n_sug}</b> por decidir.' if n_sug
+                       else 'Hoje não há nenhuma acima do limiar: as seis caixas '
+                            'de Premodern ficam com quase tudo, e o que sobra vai '
+                            'para a venda (aba <b>Vender</b> das Deckboxes).')
+                    + (' Carrega em <b>✔ vou montar este</b> para lhe abrires uma '
+                       'caixa, ou em <b>✕ não quero este</b> para libertares as '
+                       'cartas dele.' if editable else ''))
         for d in decks:
             for m in d["linhas"]:
                 names.add(m["nm"])
@@ -450,7 +552,10 @@ básicas: com elas, todos os decks começavam acima dos 30% e nenhum se distingu
 A <b>lista de consenso</b> é a lista padrão do arquétipo — cada lugar ocupado pela
 cópia com maior probabilidade de lá estar, calculada das decklists reais que contam.
 <b>Standard, Pioneer e Legacy</b> são as caixas por escolher: aqui está o top-%N% para
-decidires. <b>Modern</b> mostra o deck já escolhido; <b>Premodern</b>, os alvos de consenso.
+decidires. <b>Modern</b> mostra o deck já escolhido. No <b>Premodern</b> a pergunta é outra —
+o top-10 do formato e os melhores combo, com a percentagem do que <b>sobra</b> depois de as
+seis caixas estarem servidas: é com essas cartas que se monta mais um deck, e é o que não
+for reservado por uma sugestão que vai para a venda.
 Regra de material: nesses formatos as cartas são todas <b>foil</b> menos as da Reserved List
 (o preço de fecho é o do foil), e no Premodern são todas <b>PT</b>.
 Quem manda é o <code>colecao_config.json</code> (<code>metagame_top_n</code>, <code>caixas</code>).
@@ -479,6 +584,7 @@ function cp(btn){
           headers:{'Content-Type':'application/json',
                    'X-Mtgvault-Token':"%TOKEN%"},
           body:JSON.stringify({act:b.dataset.act,slot:b.dataset.slot,
+                               nome:b.dataset.nome||null,
                                aid:b.dataset.aid?Number(b.dataset.aid):null})});
         if(!r.ok) throw new Error('HTTP '+r.status);
         const j=await r.json();

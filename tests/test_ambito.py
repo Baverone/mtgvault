@@ -145,8 +145,13 @@ def caso_formatos_do_metagame_saem_do_config():
     do config. O `metagame.html` deixou de os ler em 2026-09-07: passou a
     responder "que deck monto a seguir" e a sua lista de secções vem do que o
     André ditou — top-N em Standard/Pioneer/Legacy, a caixa escolhida em Modern,
-    os alvos de consenso em Premodern. São perguntas diferentes; partilhar a
-    lista fazia uma delas mentir."""
+    e (desde 2026-09-08) o ranking de sugestões em Premodern. São perguntas
+    diferentes; partilhar a lista fazia uma delas mentir.
+
+    A secção do Premodern era `alvos` (o consenso do UW Replenish e da
+    Enchantress) e passou a `premodern`: o top-10 do formato mais o top-5 de
+    combo, com a cobertura do que sobra. Os dois alvos continuam lá — são duas
+    das caixas dele, e aparecem marcadas como tal."""
     import meta_coverage
     fmts = [f[0] for f in meta_coverage.FORMATS]
     assert fmts == ["standard", "pioneer", "modern"]
@@ -156,7 +161,7 @@ def caso_formatos_do_metagame_saem_do_config():
     secoes = {f: modo for f, _t, modo in metagame.SECOES}
     assert [f for f, m in secoes.items() if m == "top"] == \
         ["standard", "pioneer", "legacy"], secoes
-    assert secoes["modern"] == "caixas" and secoes["premodern"] == "alvos", secoes
+    assert secoes["modern"] == "caixas" and secoes["premodern"] == "premodern", secoes
     assert metagame.top_n() == 3, "top-3 por omissão (ordem do André)"
     print("cobertura: formatos do config · metagame: top-3 + caixa escolhida")
 

@@ -1765,6 +1765,70 @@ def caixas_de_deck(slots) -> set[str]:
     return caixas
 
 
+# A cópia que cumpre a regra do Premodern e nenhuma caixa usa. É uma constante
+# porque a página, o CLI e o teste têm de a reconhecer — e porque é o que a
+# separa do "excedente (mais de 4)": duas decisões diferentes sobre a mesma
+# cópia, e misturá-las dava outra vez um total que não se pode usar.
+RAZAO_PREMODERN = "Premodern: não usada por nenhum deck"
+
+
+def regra_premodern() -> dict:
+    """Um slot de mentira com as regras de material do Premodern.
+
+    Serve para perguntar *"esta cópia cabe no Premodern?"* fora de uma caixa
+    concreta — o que a venda precisa de saber. Sai das `regras_por_formato`, as
+    mesmas das caixas a sério: escrita à mão aqui, a venda decidia por um
+    critério e a alocação por outro.
+    """
+    ps = {k: v for k, v in regra_do_formato("premodern")[1].items()
+          if k in CHAVES_REGRA}
+    ps.update({"formato": "premodern", "nome": None})
+    return ps
+
+
+def cabe_no_premodern(lot: dict, ps: dict | None = None) -> bool:
+    """A cópia cumpre a regra do Premodern e está numa gaveta que ele vê.
+
+    *"Para Premodern as cartas são das edições que tínhamos visto e em
+    Português"* — PT e impressão até ao Scourge. Mais duas condições que a regra
+    de 2026-09-07 já tinha e que aqui são o que impede um disparate: uma cópia
+    que está DENTRO de uma caixa não está por usar, e uma cópia num balde que as
+    caixas de Premodern não vêem está dentro de outro deck.
+    """
+    ps = ps if ps is not None else regra_premodern()
+    if lot.get("caixa"):
+        return False
+    if lot["lang"] != (ps.get("lingua") or "pt") or not lot["era_pm"]:
+        return False
+    return not _fora_de_vista(lot, ps)
+
+
+def _quem_reserva(sugs: list[dict], nm: str) -> str:
+    """As sugestões que seguram esta carta (o gémeo de `premodern.quem_reserva`,
+    do lado de cá para não haver import circular)."""
+    return ", ".join(sorted(
+        c["nome"] for c in sugs
+        if any(m["nm"] == nm and not m.get("basica") for m in c["linhas"])))
+
+
+def _serve_outra_caixa(lot: dict, nm: str, slots: list[dict],
+                       baldes: set[str], caixas: set[str] | frozenset):
+    """A caixa de outro formato que esta cópia serve tal como está, ou None.
+
+    André, 2026-09-08: *"se a carta servir outro formato dele num material que
+    esse formato aceite, não a mandes vender"*. É o mesmo par de perguntas da
+    alocação (`_fora_de_vista` + `_porque_nao`), e não uma segunda leitura das
+    regras — a venda tem de dizer o mesmo que a alocação sobre a mesma cópia.
+    """
+    for s in slots:
+        if not _precisa_de(s, nm):
+            continue
+        if _fora_de_vista(lot, s) or _porque_nao(lot, s, baldes, caixas):
+            continue
+        return s
+    return None
+
+
 def sell_list(con, res: dict) -> dict:
     """O que sobra depois de alocar e de guardar o backup permitido.
 
@@ -1795,11 +1859,25 @@ def sell_list(con, res: dict) -> dict:
       `retidos`   — baldes com `reter_extras_meses`. A regra dos 6 meses precisa
                     de uma data de última utilização que ainda não existe (ver
                     CLAUDE.md), por isso estes extras GUARDAM-SE e dizem-no, em
-                    vez de entrarem na venda como se a regra já corresse.
+                    vez de entrarem na venda como se a regra já corresse;
+      `reservadas` — cópias que uma SUGESTÃO de Premodern usaria (2026-09-08).
+                    Não são excedente nenhum: são cartas de um deck que ele ainda
+                    não disse se quer. Ficam à parte das outras três porque a
+                    saída delas depende de uma decisão que ainda não foi tomada —
+                    o botão *"não quero este"* liberta-as para a venda no mesmo
+                    dia.
+
+    E uma quinta razão dentro da `venda`/`venda_rl`, também de 2026-09-08:
+    **`Premodern: não usada por nenhum deck`**. Uma cópia PT de uma impressão da
+    era está trancada ao Premodern; se nenhuma caixa a aloca e nenhuma sugestão a
+    reserva, não serve nada e ele quer vendê-la. Fica com motivo próprio, e não
+    misturada no "excedente (mais de 4)", porque são decisões diferentes: aquela
+    é *"tens cópias a mais"*, esta é *"não tens onde a jogar"*.
     """
     pool = res["pool"]
     retidos_baldes = _retencao()
     caixas = caixas_de_deck(res["slots"])
+    baldes_de_slot = {s["balde"] for s in res["slots"] if s.get("balde")}
     # Quantas cópias cada caixa de Commander pede de cada carta. A chave é o
     # GRUPO (ver abaixo): o `slot` da caixa no modelo novo, e o balde no antigo —
     # os dois, para a mesma regra valer antes e depois da migração.
@@ -1826,7 +1904,34 @@ def sell_list(con, res: dict) -> dict:
             for _b, nm, q in s["cards"]:
                 cmd_need[(chave, nm)] = max(cmd_need[(chave, nm)], q)
 
-    venda, venda_rl, retidos, guardar = [], [], [], []
+    venda, venda_rl, retidos, guardar, reservadas = [], [], [], [], []
+    # Quantas cópias de cada sub-lote já foram propostas para venda. O `livre`
+    # não se decrementa aqui (a alocação já acabou e o `plano_arrumacao` ainda o
+    # lê), por isso a segunda passagem — a do Premodern não usado — precisa de
+    # saber o que a primeira já levou. Sem isto a mesma cópia saía nas duas
+    # listas, com dois motivos, e o total contava-a duas vezes.
+    vendido: dict[tuple, int] = defaultdict(int)
+
+    # `nm` vai por parâmetro e não pelo fecho: há DUAS passagens sobre o `pool`
+    # (o excedente e o Premodern não usado), e uma função que fosse buscar o `nm`
+    # ao ciclo era uma linha de venda com o nome da carta anterior no dia em que
+    # alguém mudasse a ordem das passagens.
+    def linha_de(nm, lot, take, razao, grupo=""):
+        unit, pfin = card_price(con, nm, lot["finish"])
+        return {"nm": nm, "sub": lot["sub"], "local": lot["local"], "q": take,
+                # Que exemplares são, para o botão "vendida" do modo edição os
+                # poder tirar da base. Sem isto a linha era só texto e a única
+                # maneira de registar uma venda era editar a `copies` à mão.
+                "copias": [[lot["id"], take]],
+                "finish": lot["finish"], "lang": lot["lang"],
+                "set_code": lot["set_code"], "set_name": lot["set_name"],
+                "sid": lot["sid"], "rl": lot["rl"], "unit": unit,
+                "price_finish": pfin,
+                "total": round((unit or 0) * take, 2), "reason": razao,
+                "reter": (reter_grupo.get(grupo)
+                          or retidos_baldes.get(lot["sub"])),
+                "substituto": dict(lot["substituto"])}
+
     for nm, ls in pool.items():
         if nm in BASICS:
             continue
@@ -1870,22 +1975,8 @@ def sell_list(con, res: dict) -> dict:
                 if take <= 0:
                     continue
                 resto -= take
-                unit, pfin = card_price(con, nm, lot["finish"])
-                linha = {"nm": nm, "sub": lot["sub"], "local": lot["local"],
-                         "q": take,
-                         # Que exemplares são, para o botão "vendida" do modo
-                         # edição os poder tirar da base. Sem isto a linha era
-                         # só texto e a única maneira de registar uma venda era
-                         # editar a `copies` à mão.
-                         "copias": [[lot["id"], take]],
-                         "finish": lot["finish"], "lang": lot["lang"],
-                         "set_code": lot["set_code"], "set_name": lot["set_name"],
-                         "sid": lot["sid"], "rl": lot["rl"], "unit": unit,
-                         "price_finish": pfin,
-                         "total": round((unit or 0) * take, 2), "reason": razao,
-                         "reter": (reter_grupo.get(grupo)
-                                   or retidos_baldes.get(lot["sub"])),
-                         "substituto": dict(lot["substituto"])}
+                vendido[lot["key"]] += take
+                linha = linha_de(nm, lot, take, razao, grupo)
                 if linha["substituto"]:
                     quem = ", ".join(sorted(linha["substituto"]))
                     linha["reason"] = f"serve {quem} ({'; '.join(sorted(set(linha['substituto'].values())))})"
@@ -1894,6 +1985,56 @@ def sell_list(con, res: dict) -> dict:
                     retidos.append(linha)
                 else:
                     (venda_rl if lot["rl"] else venda).append(linha)
+
+    # PREMODERN NÃO USADO (André, 2026-09-08): *"o que não estiver a ser usado em
+    # Premodern e se encaixe na regra do Premodern deve ser sugerido para venda"*.
+    # Corre à parte da regra do excedente porque é outra pergunta: aquela olha
+    # para quantas cópias a mais ele tem, esta olha para uma cópia sozinha que
+    # não serve nada. Uma PT da era está TRANCADA ao Premodern (*"essas cartas
+    # NÃO entram para outros formatos!!"*) — se nenhuma caixa de Premodern a
+    # aloca e nenhuma sugestão a reserva, é peso morto.
+    pm = res.get("premodern") or {}
+    if pm.get("activo"):
+        reserva = dict(pm.get("reservas") or {})
+        sugs = pm.get("sugestoes") or []
+        ps = regra_premodern()
+        outras = [s for s in res["slots"] if s.get("formato") != "premodern"]
+        for nm, ls in pool.items():
+            if nm in BASICS:
+                continue
+            for lot in sorted(ls, key=lambda l: l["key"]):
+                sobra = lot["livre"] - vendido[lot["key"]]
+                if sobra <= 0 or not cabe_no_premodern(lot, ps):
+                    continue
+                # RESERVADA POR UMA SUGESTÃO: enquanto ele não disser que não
+                # quer o deck, as cartas dele não se vendem — e a linha diz para
+                # qual, senão "não vendas isto" é uma ordem sem motivo.
+                guarda = min(sobra, reserva.get(nm, 0))
+                if guarda:
+                    reserva[nm] -= guarda
+                    sobra -= guarda
+                    vendido[lot["key"]] += guarda
+                    quem = _quem_reserva(sugs, nm)
+                    reservadas.append(linha_de(
+                        nm, lot, guarda, f"reservada para {quem}" if quem
+                        else "reservada para uma sugestão de Premodern"))
+                if sobra <= 0:
+                    continue
+                vendido[lot["key"]] += sobra
+                # E o outro lado: se a cópia servir uma caixa de OUTRO formato no
+                # material que esse formato aceita, não se vende — diz-se de quem
+                # é. Hoje não tira nenhuma da lista (uma PT da era não passa no
+                # "só EN" do SPML nem do cEDH), e é de propósito que o teste é
+                # feito na mesma: a regra é "não vendas o que serve", não "não
+                # vendas o que serve hoje".
+                serve = _serve_outra_caixa(lot, nm, outras, baldes_de_slot, caixas)
+                if serve is not None:
+                    guardar.append(linha_de(
+                        nm, lot, sobra,
+                        f'serve o {serve.get("formato")} ({serve["nome"]})'))
+                else:
+                    (venda_rl if lot["rl"] else venda).append(
+                        linha_de(nm, lot, sobra, RAZAO_PREMODERN))
 
     def _fecha(rows):
         # Junta lotes iguais: dois lotes da mesma impressão são a mesma linha na
@@ -1915,8 +2056,11 @@ def sell_list(con, res: dict) -> dict:
 
     v, vrl, ret, gd = (_fecha(venda), _fecha(venda_rl), _fecha(retidos),
                        _fecha(guardar))
+    rsv = _fecha(reservadas)
     return {"venda": v["linhas"], "venda_rl": vrl["linhas"],
             "retidos": ret["linhas"], "guardar": gd["linhas"],
+            "reservadas": rsv["linhas"], "copias_reservadas": rsv["copias"],
+            "total_reservado": rsv["total"],
             "total": v["total"], "copias": v["copias"],
             "total_rl": vrl["total"], "copias_rl": vrl["copias"],
             "total_retido": ret["total"], "copias_retidas": ret["copias"],
@@ -2282,6 +2426,14 @@ def actualizar_caixa(con, res: dict, slot_id: str) -> int:
 def report(con, cfg_slots: list[dict] | None = None) -> dict:
     """Alocação + venda + arrumação, de uma vez. É o que as páginas e o CLI consomem."""
     res = allocate(con, cfg_slots)
+    # PREMODERN (André, 2026-09-08): o que montar a seguir com o que SOBRA, e o
+    # que daí resulta para a venda. Tem de correr entre as duas — depois do
+    # `allocate`, porque a cobertura de uma sugestão mede-se sobre as cópias que
+    # nenhuma caixa levou, e antes do `sell_list`, porque as cartas de uma
+    # sugestão aberta não se vendem. O import é aqui dentro porque o
+    # `mtgvault.premodern` importa este módulo: no topo era circular.
+    from . import premodern as _pm                       # noqa: PLC0415
+    res["premodern"] = _pm.contexto(con, res)
     res.update(sell_list(con, res))
     res["custo_total"] = round(sum(s["custo"] for s in res["slots"]), 2)
     res["comprar_total"] = sum(s["comprar"] for s in res["slots"])
