@@ -136,6 +136,27 @@ def caso_descer_e_os_limites():
     print("os limites do grupo dizem-se, em vez de fingir que mexeram")
 
 
+def caso_subir_descer_bloqueado_na_ordem_automatica():
+    """André, 2026-09-08: no Premodern *"a prioridade vem por ordem de % completo"*.
+
+    Aí o `prioridade` do config já não decide nada, e o botão tem de o dizer.
+    Escrever o número na mesma era o pior dos dois mundos: o ficheiro mudava, a
+    ordem ficava igual, e o servidor respondia *"X subiu"* a uma caixa que não
+    saiu do sítio.
+    """
+    repor()
+    con = base()
+    cfg = webapp.ler_config()
+    for s in cfg["caixas"]:               # as três passam a ser de Premodern
+        s["formato"] = "premodern"
+    antes = json.dumps(cfg["caixas"], sort_keys=True)
+    msg = webapp.mover(con, cfg, "b", -1)
+    assert "ordem automática" in msg and "percentagem" in msg, msg
+    assert "prioridade_por" in msg, msg      # diz-lhe COMO se muda
+    assert json.dumps(cfg["caixas"], sort_keys=True) == antes, cfg["caixas"]
+    print("subir/descer nao mexe num grupo de ordem automatica, e diz porque")
+
+
 def caso_gravar_o_config_a_serio_nao_o_estraga():
     """O ficheiro real do André passa por uma ida e volta e sai igual."""
     original = json.loads((RAIZ / "colecao_config.json").read_text(encoding="utf-8"))
@@ -243,7 +264,9 @@ def caso_ler_config_segue_o_ficheiro_que_o_motor_le():
 
 def run():
     for fn in (caso_tornar_permanente_muda_a_alocacao, caso_subir_renumera_o_grupo,
-               caso_descer_e_os_limites, caso_gravar_o_config_a_serio_nao_o_estraga,
+               caso_descer_e_os_limites,
+               caso_subir_descer_bloqueado_na_ordem_automatica,
+               caso_gravar_o_config_a_serio_nao_o_estraga,
                caso_sleevado_e_na_caixa, caso_gravar_o_config_e_atomico,
                caso_escritas_em_paralelo_nao_se_atropelam,
                caso_ler_config_segue_o_ficheiro_que_o_motor_le):

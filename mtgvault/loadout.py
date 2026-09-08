@@ -139,8 +139,41 @@ repartidas pela ordem de sempre (grupo > permanente > vigiado > prioridade), e a
 caixa dedicada leve não se compra outra vez — isso é a colecção a ser repartida,
 não uma partilha entre caixas.
 
-Ficam com a partilha (o `noutra` e as compras partilhadas da v4) só o **Duel
-Commander** e o **SPML** (Standard, Pioneer, Modern, Legacy).
+Ficaram com a partilha (o `noutra` e as compras partilhadas da v4) o **Duel
+Commander**, o **SPML** (Standard, Pioneer, Modern, Legacy) e — desde 2026-09-08
+— outra vez o **Premodern**. Dedicados continuam só o **cEDH** e o **Pauper**.
+
+O PREMODERN VOLTOU A PARTILHAR (André, 2026-09-08, à letra)
+-----------------------------------------------------------
+  *"No Premodern, afinal só vou ter até playset de cada carta. E ordenamos os
+  decks por prioridade; os que vêm depois na prioridade indicam onde estão as
+  cartas em falta. Para já a prioridade vem por ordem de % completo."*
+
+Recorta a ordem de 2026-09-07 às 19:00 (*"vou precisar de múltiplos para os decks
+de premodern"*) só para o Premodern — o cEDH e o Pauper continuam dedicados. São
+três coisas, e a primeira só faz sentido com as outras duas:
+
+  * **`dedicado: false`** — as seis caixas de Premodern voltam a emprestar e a ir
+    buscar. A que aloca primeiro fica com as cópias PT; as seguintes dizem *"em
+    &lt;caixa&gt;"* em vez de mandarem comprar, e as compras entre elas voltam a
+    ser o MÁXIMO de uma caixa e não a soma (`partilhar_compras`);
+  * **`playset_maximo: 4`** — e, por cima da partilha, um TECTO: por muitas
+    caixas que peçam a carta, o Premodern nunca chega a ter mais do que quatro
+    cópias dela. `comprar = max(0, min(4, o que a caixa que mais precisa pede) −
+    as que ele já vê)`. As básicas ficam de fora (nunca entram na compra) e o que
+    o tecto corta sai como `playset_bloqueado` — a página di-lo (*"limite de
+    playset: falta 1 que não se compra"*) em vez de o esconder numa subtracção;
+  * **`prioridade_por: "pct"`** — a ordem dentro do grupo deixa de ser o número
+    do config e passa a ser a percentagem que cada caixa já tem, contada na
+    COLECÇÃO INTEIRA e ANTES de alocar (`pct_na_coleccao`). Com a percentagem de
+    depois da alocação a ordem oscilava: alocar mudava o pct, o pct mudava a
+    ordem, e a ordem mudava a alocação.
+
+Sem o tecto, `dedicado: false` sozinho já não somava as compras entre caixas —
+mas continuava a poder comprar 4 quando 2 já estão em casa e nenhuma caixa as
+alcança. E sem a partilha, o tecto sozinho não tinha sentido nenhum: seis caixas
+dedicadas com playset de 4 são 24 cópias, que é exactamente o que ele acabou de
+recusar.
 
 CAIXA CONGELADA: montada é para ficar montada
 ---------------------------------------------
@@ -153,6 +186,13 @@ continua montada com a lista antiga e a diferença aparece à parte, como um
 entra). Só se aplica quando ele carregar em *"actualizei"* no modo edição
 (`actualizar_caixa`); o *"já arrumei tudo"* geral deixa as caixas congeladas
 exactamente como estão.
+
+Congelar exige ser dedicada, e por isso desde 2026-09-08 **nenhuma caixa de
+Premodern congela** — é a contrapartida de voltarem a partilhar: uma caixa que
+empresta não pode ao mesmo tempo prender as cópias que tem lá dentro. O que as
+protege continua a valer: uma cópia que já está numa caixa não é realocada a
+outra (`_noutra_caixa`), o `_ordem` gasta primeiro a que já lá está, e uma cópia
+alocada nunca entra na venda.
 
 MONTAR, E VENDER O QUE SOBRA (v6, 2026-09-08)
 ---------------------------------------------
@@ -240,9 +280,19 @@ BASICS = {"Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes",
 #   `dedicado`    — a caixa NÃO EMPRESTA nem VAI BUSCAR cópias a outras caixas de
 #                   deck (ver `dedicadas` e `congelada`). André, 2026-09-07,
 #                   19:00: *"cada deck montado deixa de partilhar cartas com
-#                   outros decks nos formatos: pauper, CDEH e premodern"*.
+#                   outros decks nos formatos: pauper, CDEH e premodern"*. O
+#                   Premodern SAIU desta lista a 2026-09-08 (ver abaixo);
+#   `playset_maximo` — o tecto de cópias que o grupo INTEIRO pode ter de cada
+#                   carta (André, 2026-09-08: *"no Premodern, afinal só vou ter
+#                   até playset de cada carta"*). Ver `partilhar_compras`;
+#   `prioridade_por` — `"pct"` faz a ordem DENTRO do grupo ser automática, pela
+#                   percentagem que cada caixa já tem (*"para já a prioridade vem
+#                   por ordem de % completo"*). Ver `resolve_slots`.
 REGRAS_FORMATO = [
-    {"grupo": "premodern", "formatos": ["premodern"], "dedicado": True,
+    {"grupo": "premodern", "formatos": ["premodern"],
+     # 2026-09-08: o Premodern deixou de ser dedicado e voltou a partilhar. Ver
+     # "O PREMODERN VOLTOU A PARTILHAR" no cabeçalho deste módulo.
+     "dedicado": False, "playset_maximo": 4, "prioridade_por": "pct",
      "lingua": "pt", "edicoes": "premodern", "estrita": True,
      # A `Colecção` é o balde único de depois da migração; os outros dois são os
      # de antes dela. A lista tem os três para o mesmo código estar certo nas
@@ -259,7 +309,8 @@ REGRAS_FORMATO = [
      "lingua": "en", "acabamento": "foil"},
 ]
 # As chaves de uma regra que se copiam para o slot (as outras são só arrumação).
-CHAVES_REGRA = ("lingua", "acabamento", "edicoes", "baldes", "estrita", "dedicado")
+CHAVES_REGRA = ("lingua", "acabamento", "edicoes", "baldes", "estrita", "dedicado",
+                "playset_maximo", "prioridade_por")
 
 
 def _front(name: str) -> str:
@@ -677,6 +728,73 @@ def _slot_cards(con, s: dict) -> tuple[list[tuple[str, str, int]], str]:
     return [], f"fonte {fonte!r} desconhecida"
 
 
+def pct_na_coleccao(pool: dict, s: dict, baldes: set[str],
+                    caixas: set[str] | frozenset = frozenset(),
+                    ded: set[str] | frozenset = frozenset(),
+                    did: int | None = None) -> int:
+    """A percentagem desta caixa contando a COLECÇÃO INTEIRA, ANTES de alocar.
+
+    É a percentagem que ordena o grupo quando ele pede `prioridade_por: "pct"`
+    (André, 2026-09-08: *"para já a prioridade vem por ordem de % completo"*).
+
+    Tem de ser medida antes da alocação, e é essa a única razão de não se usar o
+    `s["pct"]` que a página mostra: com o pct de DEPOIS, alocar mudava a
+    percentagem, a percentagem mudava a ordem e a ordem mudava a alocação — a
+    caixa que ficasse em primeiro roubava a percentagem à seguinte e trocavam de
+    lugar a cada corrida. Aqui ninguém consumiu nada ainda (`_estado_carta` não
+    consome), por isso as seis caixas de Premodern são medidas todas contra a
+    mesma colecção.
+
+    As básicas contam como tidas, tal como no `allocate` — senão a ordem passava
+    a ser sobre quantas terras cada deck joga.
+    """
+    precisa = tem = 0
+    for _b, nm, need in s["cards"]:
+        precisa += need
+        if nm in BASICS:
+            tem += need
+            continue
+        e = _estado_carta(pool, s, nm, need, baldes, did, caixas, ded)
+        # "o que ele tem" = livres + as que estão noutra caixa e essa caixa
+        # empresta: as segundas vão-se buscar, não se compram.
+        tem += e["got"] + e["noutra_q"]
+    return round(100 * tem / precisa) if precisa else 0
+
+
+def _pcts_da_coleccao(con, slots: list[dict]) -> None:
+    """Escreve `pct_coleccao` nas caixas cujo grupo ordena por % completo."""
+    pool = lots(con, slots)
+    baldes = {s["balde"] for s in slots if s.get("balde")}
+    caixas = caixas_de_deck(slots)
+    ded = dedicadas(slots)
+    dids = _deck_ids(con, slots)
+    for s in slots:
+        if s.get("prioridade_por") == "pct":
+            s["pct_coleccao"] = pct_na_coleccao(pool, s, baldes, caixas, ded,
+                                                dids.get(s["slot"]))
+
+
+def _dentro_do_grupo(s: dict) -> tuple:
+    """O desempate DENTRO do grupo de formato, já ordenado.
+
+    Duas ordens possíveis, e a forma do tuplo é a mesma nas duas de propósito:
+    slots do mesmo grupo comparam-se entre si, e um grupo meio-manual meio-
+    automático (uma caixa que escreva `prioridade_por` só para si) dava um
+    `TypeError` a comparar tuplos de formas diferentes.
+
+      * `prioridade_por: "pct"` — a caixa mais perto de fechar escolhe primeiro,
+        empate pelo nome (André, 2026-09-08);
+      * por omissão — deck vigiado primeiro (*"os decks vigiados têm prioridade
+        para ficarem com as cartas"*) e depois o `prioridade` do config.
+    """
+    auto = s.get("prioridade_por") == "pct"
+    return (0 if auto else 1,
+            -s.get("pct_coleccao", 0) if auto else 0,
+            False if auto else (not s["vigiado"]),
+            0 if auto else s["prioridade"],
+            s["nome"])
+
+
 def resolve_slots(con, cfg_slots: list[dict] | None = None) -> list[dict]:
     """Os slots do loadout com a lista de cada um já resolvida.
 
@@ -725,8 +843,14 @@ def resolve_slots(con, cfg_slots: list[dict] | None = None) -> list[dict]:
         # é o estado normal de quem ainda não carregou em "Sleevado e na caixa" —
         # mas a página tem de o dizer, senão o "delta de actualização" mostra a
         # lista inteira como se ele tivesse de a trocar.
-        s["montado_por_confirmar"] = (s["montado"] and s["dedicado"]
-                                      and not s["congelada"])
+        #
+        # A pergunta é só essa — "diz-se montada e não sei o que lá está" — e por
+        # isso o teste deixou de passar pelo `dedicado` (2026-09-08). Passava por
+        # ali só porque `congelada` exige ser dedicada; quando o Premodern deixou
+        # de o ser, o Stiflenought — montado e com a `copy_allocation` vazia —
+        # perdia o painel *confirmar* e voltava a ser mandado montar de novo.
+        s["montado_por_confirmar"] = (s["montado"]
+                                      and s.get("slot") not in arrumadas)
         cards, nota = _slot_cards(con, s)
         so_de: dict[str, set[str]] = defaultdict(set)
         variantes = list(s.get("variantes") or [])
@@ -759,11 +883,24 @@ def resolve_slots(con, cfg_slots: list[dict] | None = None) -> list[dict]:
     # opção que os marque como permanentes para começarem a receber alocação"*.
     # Um candidato fica com o que sobrar e mostra "em <caixa>" para o resto —
     # não deixa de ver as cartas, só não as tira a quem está montado.
+    #
+    # E, dentro do grupo, a ordem pode ser AUTOMÁTICA: um grupo com
+    # `prioridade_por: "pct"` ordena-se pela percentagem que cada caixa já tem
+    # (ver `_dentro_do_grupo`). A percentagem mede-se antes de alocar seja o que
+    # for, por isso calcula-se aqui, antes do `sort`, e só quando alguém a pede —
+    # é uma leitura da colecção inteira que nenhum outro grupo precisa de pagar.
+    if any(s.get("prioridade_por") == "pct" for s in out):
+        _pcts_da_coleccao(con, out)
     out.sort(key=lambda x: (not x["permanente"], x["grupo_ordem"],
-                            not x["vigiado"], x["prioridade"], x["nome"]))
+                            _dentro_do_grupo(x)))
+    posicao: dict[str, int] = defaultdict(int)
     for i, s in enumerate(out, 1):
         s["prioridade_config"] = s["prioridade"]
         s["prioridade"] = i
+        # A posição DENTRO do grupo, para a página poder dizer «#2 por %
+        # completo» — o `prioridade` é global e não explica de onde veio.
+        posicao[s["grupo"]] += 1
+        s["posicao_grupo"] = posicao[s["grupo"]]
     return out
 
 
@@ -982,6 +1119,11 @@ def _linha_cheia(linha: dict) -> dict:
     # PARTILHADA com outra caixa (ver `partilhar_compras`). A página tem de o
     # dizer — "em Blue Farm" numa carta que ninguém comprou ainda era mentira.
     linha.setdefault("noutra_futura", {})
+    # O que o TECTO DE PLAYSET impede de comprar (André, 2026-09-08: *"no
+    # Premodern, afinal só vou ter até playset de cada carta"*). Fica numa chave
+    # própria e não desaparece dentro do `comprar` porque não é o mesmo que "já
+    # tenho": é uma falta que ele decidiu não tapar. Ver `partilhar_compras`.
+    linha.setdefault("playset_bloqueado", 0)
     linha.setdefault("unit", None)
     linha.setdefault("price_finish", None)
     linha.setdefault("cost", 0.0)
@@ -1128,6 +1270,40 @@ def _slot_do_pool(chave: tuple[str, str, str]) -> dict:
     return {"edicoes": ed or None, "acabamento": ac or None, "lingua": ln or None}
 
 
+def playset_maximo(s: dict) -> int | None:
+    """O tecto de cópias que o GRUPO desta caixa pode ter de cada carta.
+
+    André, 2026-09-08: *"No Premodern, afinal só vou ter até playset de cada
+    carta."* Vive no `regras_por_formato` do grupo (`playset_maximo: 4`) e pode
+    abrir excepção numa caixa, como todas as outras regras de material.
+    `None`/0 = sem tecto, que é o que os outros grupos são.
+    """
+    v = s.get("playset_maximo")
+    return int(v) if v else None
+
+
+def _precisa_de(s: dict, nm: str) -> int:
+    """Quantas cópias desta carta a lista da caixa pede (main + side)."""
+    return sum(q for _b, n, q in s.get("cards") or [] if n == nm)
+
+
+def _ja_visto(s: dict, nm: str) -> int:
+    """As cópias desta carta que a caixa já TEM ou vai buscar a outra caixa.
+
+    É a resposta que a ALOCAÇÃO já deu (`got` + `noutra_q`), e não uma segunda
+    contagem sobre a colecção: refazer aqui as regras de visibilidade
+    (`_fora_de_vista`, `_porque_nao`, `_empresta`) era montar uma segunda opinião
+    sobre a mesma pergunta — o defeito que este vault já pagou caro no
+    `event_tier` e no filtro de listas.
+
+    Está limitada pela necessidade da caixa (`got + noutra_q <= need`), e é por
+    isso que o tecto usa o MÁXIMO entre as caixas do grupo: se a maior
+    necessidade já está tapada, não há compra nenhuma para limitar.
+    """
+    return sum(m["got"] + m["noutra_q"] for m in s["have"] + s["missing"]
+               if m["nm"] == nm)
+
+
 def partilhar_compras(slots: list[dict]) -> list[dict]:
     """Funde as compras da mesma carta e do mesmo material feitas por caixas
     diferentes. Muda as linhas de `missing` no sítio; devolve o que fundiu.
@@ -1143,40 +1319,96 @@ def partilhar_compras(slots: list[dict]) -> list[dict]:
       * uma caixa com `compras_dedicadas: true` no `colecao_config.json` fica de
         fora — compra as suas e não conta com trocas.
 
+    E, desde 2026-09-08, o TECTO DE PLAYSET (André: *"no Premodern, afinal só vou
+    ter até playset de cada carta"*). O `max` já impede que seis caixas comprem
+    seis vezes a mesma carta, mas não impede que se comprem 4 quando 2 já estão
+    em casa e a caixa que as pede não lhes chega — e é aí que o tecto entra:
+
+        comprar = max(0, min(tecto, o que a caixa que MAIS precisa pede)
+                         − as cópias que o grupo JÁ VÊ)
+
+    O que o tecto corta não desaparece dentro de uma subtracção: fica em
+    `playset_bloqueado` na linha, e a página di-lo (*"limite de playset: falta 1
+    que não se compra"*). Uma falta que ele decidiu não tapar não é a mesma coisa
+    que uma falta tapada, e apresentá-las com o mesmo número era mentir-lhe sobre
+    o que tem na mesa.
+
+    As **básicas** ficam de fora do tecto — nunca chegam aqui, porque o
+    `allocate` dá-as sempre por tidas. E o tecto conta-se sobre o GRUPO DE
+    PARTILHA, não sobre o pool de material: *"o Premodern nunca chega a ter mais
+    do que 4"* só é verdade porque as caixas trocam a carta entre si. Uma caixa
+    `dedicado`/`compras_dedicadas` disse o contrário — que tem as suas cópias — e
+    por isso é o seu próprio grupo, com o seu próprio tecto.
+
     O que NÃO muda: `got`/`tenho`/`pct`/`missing`. A caixa continua a ter a falta
     até a compra chegar; o que muda é de quem é a compra.
     """
     pools = pools_de_compra(slots)
     grupos: dict[tuple, list[dict]] = defaultdict(list)
+    # As caixas de cada grupo de partilha (não só as que compram) e o tecto dele.
+    # O tecto conta-se sobre o GRUPO INTEIRO: uma caixa que já tem a carta toda
+    # não aparece no `grupos` e é exactamente ela que enche o tecto.
+    membros: dict[tuple, list[dict]] = defaultdict(list)
+    tectos: dict[tuple, int] = {}
+    de_quem: dict[str, tuple] = {}          # slot -> chave do grupo de partilha
     for s in slots:
-        chave = pools.get(s["slot"])
         # Uma caixa de compras dedicadas é o seu próprio grupo: nunca chega aos
         # dois membros que a partilha exige, e por isso sai daqui intacta. Uma
         # caixa `dedicado` implica-o — *"vou precisar de múltiplos para os decks
         # de premodern"* (André, 2026-09-07, 19:00): se não empresta nem vai
         # buscar, também não pode contar com uma compra de outra caixa.
-        dedicada = ((s["slot"],)
-                    if s.get("compras_dedicadas") or s.get("dedicado") else ())
+        #
+        # E é também por isso que o TECTO é por grupo de partilha e não por pool:
+        # "o Premodern nunca chega a ter mais do que 4" só é verdade porque as
+        # caixas trocam a carta entre si. Uma caixa que se declara dedicada disse
+        # o contrário — tem as suas cópias — e o tecto dela é só dela.
+        de_quem[s["slot"]] = g = (pools.get(s["slot"]),) + (
+            (s["slot"],) if s.get("compras_dedicadas") or s.get("dedicado") else ())
+        membros[g].append(s)
+        tecto = playset_maximo(s)
+        if tecto:
+            tectos[g] = min(tectos.get(g, tecto), tecto)
+    for s in slots:
         por_carta: dict[str, list[dict]] = defaultdict(list)
         for m in s.get("missing") or []:
             if m["comprar"] > 0:
                 por_carta[m["nm"]].append(m)
         for nm, linhas in por_carta.items():
-            grupos[(nm, chave) + dedicada].append(
+            grupos[(nm,) + de_quem[s["slot"]]].append(
                 {"s": s, "linhas": linhas, "q": sum(m["comprar"] for m in linhas)})
 
     partilhas = []
-    for (nm, chave, *_), quem in sorted(grupos.items(), key=lambda kv: kv[0][:2]):
-        if len(quem) < 2:
+    for (nm, chave, *resto), quem in sorted(grupos.items(), key=lambda kv: kv[0][:2]):
+        grupo_compra = (chave, *resto)
+        tecto = tectos.get(grupo_compra)
+        # Sem tecto, uma caixa sozinha não tem com quem partilhar e sai intacta.
+        # Com tecto, tem de passar por aqui na mesma: o limite é do grupo, e uma
+        # caixa sozinha a pedir 4 quando o grupo já tem 3 compra uma.
+        if len(quem) < 2 and tecto is None:
             continue
         quem.sort(key=lambda x: x["s"]["prioridade"])
         alvo = max(x["q"] for x in quem)
+        # O que a PARTILHA poupa e o que o TECTO corta são duas coisas e contam-se
+        # à parte: a primeira é uma compra que não é precisa, a segunda é uma
+        # falta que fica por tapar. Somá-las dava um "poupado" que não se pode
+        # usar — era o mesmo defeito de misturar as quatro saídas da venda.
+        poupado = sum(x["q"] for x in quem) - alvo
+        if tecto is not None:
+            grupo = membros.get(grupo_compra) or [x["s"] for x in quem]
+            alvo = min(alvo, max(0, min(tecto, max(_precisa_de(s, nm) for s in grupo))
+                                 - max(_ja_visto(s, nm) for s in grupo)))
         restante = alvo
         for x in quem:                    # a compra é de quem aloca primeiro
             x["dar"] = min(x["q"], restante)
             restante -= x["dar"]
         doadores = [(x["s"]["nome"], x["dar"]) for x in quem if x["dar"]]
-        req, mat = requisito_material(_slot_do_pool(chave)), marca_compra(_slot_do_pool(chave))
+        # O material da compra é o do POOL só quando há partilha a sério: numa
+        # caixa sozinha (que só chega aqui pelo tecto) o material continua a ser
+        # o dela, e reescrevê-lo com o do pool mudava a linha copiada sem motivo.
+        partilha = len(quem) > 1
+        req, mat = ((requisito_material(_slot_do_pool(chave)),
+                     marca_compra(_slot_do_pool(chave))) if partilha
+                    else (None, None))
         for x in quem:
             # Cada caixa vai buscar a quem COMPROU, e nunca a si própria: as
             # cópias que ela paga já contam para o que tem.
@@ -1188,7 +1420,8 @@ def partilhar_compras(slots: list[dict]) -> list[dict]:
                 move = m["comprar"] - fica
                 m["comprar"] = fica
                 m["cost"] = round((m["unit"] or 0) * fica, 2)
-                m["req_compra"], m["marca_compra"] = req, mat
+                if partilha:
+                    m["req_compra"], m["marca_compra"] = req, mat
                 for par in disp:
                     if move <= 0:
                         break
@@ -1200,9 +1433,16 @@ def partilhar_compras(slots: list[dict]) -> list[dict]:
                     m["noutra"][par[0]] = m["noutra"].get(par[0], 0) + pega
                     m["noutra_futura"][par[0]] = m["noutra_futura"].get(par[0], 0) + pega
                 m["noutra_q"] = sum(m["noutra"].values())
+                # O que sobra depois de distribuir é o que o TECTO cortou: já não
+                # se compra e não está em caixa nenhuma para ir buscar. Sem esta
+                # linha desaparecia numa subtracção e a caixa dizia-se completa.
+                m["playset_bloqueado"] = m.get("playset_bloqueado", 0) + move
+        if not partilha:
+            continue                      # entrou só pelo tecto: não é partilha
         partilhas.append({
             "nm": nm, "req": req, "marca": mat, "comprar": alvo,
-            "soma": sum(x["q"] for x in quem), "poupado": sum(x["q"] for x in quem) - alvo,
+            "soma": sum(x["q"] for x in quem), "poupado": poupado,
+            "tecto": tecto,
             "caixas": [{"slot": x["s"]["slot"], "caixa": x["s"]["nome"],
                         "prioridade": x["s"]["prioridade"], "pediu": x["q"],
                         "compra": x["dar"]} for x in quem]})
@@ -1223,6 +1463,12 @@ def _totais_do_slot(s: dict) -> None:
     s["faltam"] = sum(m["missing"] for m in missing)
     s["comprar"] = sum(m["comprar"] for m in missing)
     s["noutra"] = sum(m["noutra_q"] for m in missing)
+    # Cópias que o TECTO DE PLAYSET não deixa comprar (André, 2026-09-08). Ficam
+    # num número próprio: não são compra e não são "ir buscar" — são a falta que
+    # ele decidiu não tapar, e a caixa tem de a dizer para não parecer completa.
+    s["playset_bloqueado"] = sum(m.get("playset_bloqueado", 0) for m in missing)
+    s["playset_faltas"] = sorted((m for m in missing if m.get("playset_bloqueado")),
+                                 key=lambda m: (-m["playset_bloqueado"], m["nm"]))
     # Cópias a comprar SEM preço na base. O `cost` delas é 0 e some no total —
     # o "fechar por X €" fica sistematicamente abaixo do real e ninguém dá por
     # isso. É a mesma família do `event_tier`: um valor em falta que não dá erro,
@@ -1378,7 +1624,7 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                 comprar = falta - noutra_q
                 linha.update(missing=falta, comprar=comprar,
                              noutra=dict(noutra), noutra_q=noutra_q,
-                             noutra_futura={},
+                             noutra_futura={}, playset_bloqueado=0,
                              req_compra=requisito_material(s),
                              marca_compra=marca_compra(s),
                              unit=unit, price_finish=pfin,
@@ -1464,7 +1710,30 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
         })
     conflitos.sort(key=lambda c: (-(c["pedido"] - c["tenho"]), c["nm"]))
     return {"slots": slots, "conflitos": conflitos, "pedido": dict(pedido),
-            "partilhas": partilhas, "pool": pool}
+            "partilhas": partilhas, "limites": limites_de_playset(slots),
+            "pool": pool}
+
+
+def limites_de_playset(slots: list[dict]) -> list[dict]:
+    """As cartas que o tecto de playset impede de comprar, e para que caixas.
+
+    Lê-se das LINHAS e não de um segundo cálculo dentro do `partilhar_compras`:
+    o que a página mostra carta a carta e o que ela mostra em resumo têm de vir
+    do mesmo sítio, senão a soma do resumo e a soma das linhas discordam sem
+    ninguém dar por isso.
+    """
+    out: dict[str, dict] = {}
+    for s in slots:
+        for m in s["missing"]:
+            if not m.get("playset_bloqueado"):
+                continue
+            g = out.setdefault(m["nm"], {
+                "nm": m["nm"], "bloqueado": 0, "tecto": playset_maximo(s),
+                "req": requisito_material(s), "caixas": []})
+            g["bloqueado"] += m["playset_bloqueado"]
+            g["caixas"].append({"slot": s["slot"], "caixa": s["nome"],
+                                "q": m["playset_bloqueado"], "board": m["board"]})
+    return sorted(out.values(), key=lambda g: (-g["bloqueado"], g["nm"]))
 
 
 # ---------------------------------------------------------------------------
@@ -2021,6 +2290,10 @@ def report(con, cfg_slots: list[dict] | None = None) -> dict:
     # Quantas cópias a partilha poupou — é a diferença entre somar as faltas
     # caixa a caixa (o que a v3 fazia) e comprar o máximo de uma delas.
     res["poupado_total"] = sum(p["poupado"] for p in res["partilhas"])
+    # E quantas o TECTO DE PLAYSET não deixa comprar (André, 2026-09-08). À parte
+    # do `poupado`: uma é uma compra que não é precisa, a outra é uma falta que
+    # fica por tapar de propósito.
+    res["bloqueado_total"] = sum(s["playset_bloqueado"] for s in res["slots"])
     res["arrumacao"] = plano_arrumacao(res)
     # A ORDEM de montagem (v6): é a pergunta dele de 2026-09-08 — *"por onde
     # começo?"*. Vive no relatório e não na página para o CLI dar a mesma.
