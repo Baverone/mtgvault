@@ -49,6 +49,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -172,17 +173,39 @@ class Registo:
             # Sem ficheiro (ou com ele estragado) começa-se do zero: um registo
             # vazio dá nomes novos, não dá erro. Perder a estabilidade de um dia
             # é muito menos mau do que um `daily` que pára.
+            #
+            # Mas guarda-se o que lá estava. Com a escrita atómica isto só
+            # acontece por corrupção a sério, e a corrida seguinte grava por
+            # cima: sem esta cópia, a única prova do que aconteceu desaparecia.
+            try:
+                if p.exists() and p.stat().st_size:
+                    p.replace(p.with_name(
+                        f"{p.stem}-mau-{date.today().isoformat()}{p.suffix}"))
+            except OSError:
+                pass
             return cls({}, p)
 
     def gravar(self, caminho: Path | None = None) -> Path | None:
-        """Grava só se houve mudança. Devolve o caminho, ou `None` se não gravou."""
+        """Grava só se houve mudança. Devolve o caminho, ou `None` se não gravou.
+
+        **Atomicamente** (temporário ao lado + `os.replace`), como o
+        `configio.escrever` — e pela razão que já se viu acontecer: o `daily` e o
+        `webapp.py` (que fica de pé o dia todo, servido pela tarefa
+        `mtgvault-serve`) escrevem os dois este ficheiro. Com um `write_text`
+        cru, o ficheiro fica truncado entre o `open` e o `write`, e quem o
+        apanhasse assim lia um JSON inválido — o `carregar` respondia com um
+        registo VAZIO e a gravação seguinte apagava os nomes todos. Foi o que se
+        viu na primeira corrida a sério: 24 arquétipos passaram a 7.
+        """
         p = Path(caminho) if caminho else (self.caminho or ficheiro())
         if not self.mudou:
             return None
         try:
             p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_text(json.dumps(self.dados(), ensure_ascii=False, indent=1,
-                                    sort_keys=True) + "\n", encoding="utf-8")
+            tmp = p.with_name(p.name + ".tmp")
+            tmp.write_text(json.dumps(self.dados(), ensure_ascii=False, indent=1,
+                                      sort_keys=True) + "\n", encoding="utf-8")
+            os.replace(tmp, p)
         except OSError:
             # O registo é uma conveniência, não um dado da colecção: uma pasta
             # sem permissões não pode parar a corrida diária.
