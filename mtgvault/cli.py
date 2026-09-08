@@ -698,6 +698,17 @@ def _carta(m):
     return f"{m['nm']} [{sc}]" if sc else m["nm"]
 
 
+def _parcial(m):
+    """*"(2 de 4 — as outras 2 em Comprar)"*, quando a linha vem a menos.
+
+    O texto sai do `loadout.nota_parcial`, o mesmo que a página mostra: são as
+    cópias que ele TEM de uma carta de que está curto, e sem esta nota a folha
+    de arrumação dizia *"2× Swords to Plowshares"* de um deck que joga 4.
+    """
+    nota = m.get("nota") or ""
+    return f"   ({nota})" if m.get("parcial") and nota else ""
+
+
 def _blocos(movs, chave, linha):
     """Imprime os movimentos separados em **Main** e **Sideboard**.
 
@@ -762,12 +773,14 @@ def _arrumar(con, csv_out=False, confirmar=False):
     for origem, movs in plano["por_origem"].items():
         print(f"\n  {origem}  ({sum(m['q'] for m in movs)} cópias)")
         _blocos(movs, lambda x: (x["para"], x["nm"]),
-                lambda m: f"    {m['q']}× {_carta(m):<40} -> {m['para']}")
+                lambda m: f"    {m['q']}× {_carta(m):<40} -> {m['para']}"
+                          + _parcial(m))
     print("\n\nPARA CADA CAIXA (o que entra)")
     for destino, movs in plano["por_destino"].items():
         print(f"\n  {destino}  ({sum(m['q'] for m in movs)} cópias)")
         _blocos(movs, lambda x: (x["de"], x["nm"]),
-                lambda m: f"    {m['q']}× {_carta(m):<40} <- {m['de']}")
+                lambda m: f"    {m['q']}× {_carta(m):<40} <- {m['de']}"
+                          + _parcial(m))
     if confirmar:
         n = loadout.guardar_arrumacao(con, rep)
         print(f"\n  ARRUMADO: {n} cópias registadas nas caixas. "

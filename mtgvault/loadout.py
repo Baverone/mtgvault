@@ -2238,7 +2238,7 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
         # carta": as que faltam dizem em que caixa estão, e estas dizem de que
         # prateleira as tirar para montar. Daqui vem o `Caixa RL (PT)`/`(EN)`.
         origens: dict[str, int] = defaultdict(int)
-        for m in have:
+        for m in linhas_alocadas(s):
             for g in m["lotes"]:
                 origens[g["local"]] += g["q"]
         s["origens"] = dict(sorted(origens.items(), key=lambda kv: (-kv[1], kv[0])))
@@ -3144,6 +3144,51 @@ def registar_venda(con, linha: dict, quantidade: int | None = None,
 # ---------------------------------------------------------------------------
 # Arrumação física: pôr a estante igual à alocação
 # ---------------------------------------------------------------------------
+def linhas_alocadas(s: dict) -> list[dict]:
+    """As linhas desta caixa que têm cópias alocadas: as TIDAS e as INCOMPLETAS.
+
+    Uma linha que pede 4 e a que a alocação só deu 2 vive em `missing` — mas as
+    duas cópias existem, são desta caixa, e estão na gaveta. Até 2026-09-08 tudo
+    o que percorria a alocação de uma caixa percorria só o `have`, e por isso
+    essas duas **não apareciam em lado nenhum**: nem no painel *Montar*, nem na
+    aba *Arrumar*, nem no CSV, nem na `copy_allocation` do *"já arrumei tudo"*.
+    Na prática ele montava a caixa e ficava com as duas na prateleira, enquanto a
+    aba *Comprar* pedia as outras duas — o padrão do `event_tier`: nenhum passo
+    dá erro e a folha que ele leva para a estante está a menos duas cartas.
+
+    O buraco estava documentado no `work/revisao/mtgvault-faltas-check.md` (a
+    nota *"arrumar 345 → 347"*) e é o que isto fecha. Uma linha em falta **sem
+    nenhuma cópia** continua a não entrar: não há nada para tirar, é compra.
+
+    Vive numa função só pela mesma razão que o `movimentos_de_entrada`: eram
+    cinco sítios a escrever `for m in s["have"]`, e o primeiro que se esquecesse
+    voltava a pôr a base e o painel a discordar em silêncio.
+    """
+    return list(s["have"]) + [m for m in (s.get("missing") or []) if m.get("lotes")]
+
+
+def nota_parcial(m: dict) -> str:
+    """*"2 de 4 — as outras 2 em Comprar"*: porque é que a linha vem a menos.
+
+    Escreve-se no Python e não na página, pela mesma razão que o `e_foil`: quem
+    sabe partir a falta em *comprar* e *ir buscar* é a alocação, e a página a
+    recompor isto em JavaScript era a segunda oportunidade de discordarem.
+    Devolve `""` quando a linha está completa — não há nada a explicar.
+    """
+    need, got = m.get("need") or 0, m.get("got") or 0
+    if got >= need:
+        return ""
+    partes = []
+    if m.get("comprar"):
+        partes.append(f"{m['comprar']} em Comprar")
+    if m.get("noutra_q"):
+        partes.append(f"{m['noutra_q']} noutra caixa")
+    resto = need - got - sum(m.get(k) or 0 for k in ("comprar", "noutra_q"))
+    if resto > 0:
+        partes.append(f"{resto} por tapar")
+    return f"{got} de {need}" + (" — " + ", ".join(partes) if partes else "")
+
+
 def movimentos_de_entrada(s: dict, caixas: set[str] | frozenset) -> list[dict]:
     """As cópias que a alocação deu a esta caixa e que ainda não estão lá dentro.
 
@@ -3158,10 +3203,14 @@ def movimentos_de_entrada(s: dict, caixas: set[str] | frozenset) -> list[dict]:
     `Cloud`, ...): uma cópia que já vive lá já está dentro da caixa, mesmo que o
     balde e a caixa tenham nomes diferentes. Sem isso o plano mandava-o
     "arrumar" 54 cartas que já estão sleevadas.
+
+    Percorre `linhas_alocadas` e não só o `have`: as cópias que ele JÁ TEM de uma
+    carta de que está curto tiram-se da gaveta como todas as outras, e a linha
+    di-lo (`parcial`/`nota`, *"2 de 4 — as outras 2 em Comprar"*).
     """
     ja_la = s.get("balde") if s.get("balde") in caixas else None
     out = []
-    for m in s["have"]:
+    for m in linhas_alocadas(s):
         for g in m["lotes"]:
             if g["local"] == s["nome"]:
                 continue                  # já lá está
@@ -3176,6 +3225,13 @@ def movimentos_de_entrada(s: dict, caixas: set[str] | frozenset) -> list[dict]:
                         # estar no main E no side, e são duas pilhas diferentes
                         # dentro da caixa.
                         "board": m["board"],
+                        # LINHA INCOMPLETA (2026-09-08): a caixa pede 4 e a
+                        # alocação só deu 2. As 2 tiram-se na mesma — e a linha
+                        # tem de dizer que vem a menos, senão ele conta 2 na
+                        # grelha, 4 na lista e não sabe qual das duas mente.
+                        "need": m.get("need"), "got": m.get("got"),
+                        "parcial": (m.get("got") or 0) < (m.get("need") or 0),
+                        "nota": nota_parcial(m),
                         "copy_id": g["id"], "sid": g["sid"],
                         "basica": bool(m.get("basica")),
                         "finish": g["finish"], "lang": g["lang"],
@@ -3299,7 +3355,11 @@ def plano_montar(res: dict, slot_id: str) -> dict:
     de_outra = sorted(movimentos_reservados(s),
                       key=lambda m: (m["board"] != "main", m["nm"]))
     devolver = list(s.get("presos") or [])
-    dentro = sum(g["q"] for m in s["have"] for g in m["lotes"] if not m.get("basica"))
+    # Todas as cópias que são desta caixa (tidas e as das linhas incompletas):
+    # o `ja` é isto menos o que ainda há para tirar. Contar só o `have` aqui,
+    # com o `tirar` a incluir as parciais, dava um `ja` negativo.
+    dentro = sum(g["q"] for m in linhas_alocadas(s) for g in m["lotes"]
+                 if not m.get("basica"))
     por_gaveta: dict[str, int] = defaultdict(int)
     for m in tirar:
         por_gaveta[m["de"]] += m["q"]
@@ -3433,7 +3493,7 @@ def copias_por_confirmar(s: dict) -> list[dict]:
     `notes` de uma cópia à procura de uma marca.
     """
     out = []
-    for m in s["have"]:
+    for m in linhas_alocadas(s):
         for g in m["lotes"]:
             if g.get("caixa") != s.get("slot") or not g.get("por_confirmar"):
                 continue
@@ -3577,7 +3637,7 @@ def linhas_parciais(s: dict, caixas_deck: set[str] | frozenset,
                     marcadas: set[int] | frozenset) -> dict[int, int]:
     """A alocação de uma caixa, **cortada** ao que ele disse que já lá está.
 
-    É o `_linhas_da_caixa` menos os movimentos de entrada que ficaram por marcar:
+    É o `linhas_da_caixa` menos os movimentos de entrada que ficaram por marcar:
     o que já estava dentro da caixa continua dentro, e do que falta tirar só
     entram as cópias marcadas. Sai da MESMA lista que desenhou as checkboxes
     (`movimentos_de_entrada`) — recontar a alocação aqui era a segunda
@@ -3588,7 +3648,7 @@ def linhas_parciais(s: dict, caixas_deck: set[str] | frozenset,
     `copy_id`: marcar a cópia que está na gaveta não pode apagar as três que já
     estão sleevadas.
     """
-    linhas = dict(_linhas_da_caixa(s))
+    linhas = dict(linhas_da_caixa(s))
     for m in movimentos_de_entrada(s, caixas_deck):
         if m["copy_id"] in marcadas:
             continue
@@ -3834,10 +3894,16 @@ def csv_arrumacao(plano: dict) -> str:
     return "\n".join(linhas) + "\n"
 
 
-def _linhas_da_caixa(s: dict) -> dict[int, int]:
-    """`copy_id -> quantas`, a alocação de HOJE de uma caixa. É o que se grava."""
+def linhas_da_caixa(s: dict) -> dict[int, int]:
+    """`copy_id -> quantas`, a alocação de HOJE de uma caixa. É o que se grava.
+
+    Percorre `linhas_alocadas` (e não só o `have`) pela mesma razão que o
+    `movimentos_de_entrada`: as cópias de uma linha incompleta são desta caixa.
+    Sem isso o *"já arrumei tudo"* mandava-o tirá-las da gaveta e depois não as
+    registava — e no dia seguinte o painel mandava-o tirá-las outra vez.
+    """
     linhas: dict[int, int] = defaultdict(int)
-    for m in s["have"]:
+    for m in linhas_alocadas(s):
         for g in m["lotes"]:
             linhas[g["id"]] += g["q"]
     return {cid: q for cid, q in linhas.items() if q > 0}
@@ -3869,7 +3935,7 @@ def guardar_arrumacao(con, res: dict, actualizar: set[str] | frozenset = frozens
         if r["slot"] in congeladas and (r["quantity"] or 0) > 0]
     novas = [(cid, s["slot"], q) for s in res["slots"]
              if s["slot"] not in congeladas
-             for cid, q in sorted(_linhas_da_caixa(s).items())]
+             for cid, q in sorted(linhas_da_caixa(s).items())]
     con.execute("DELETE FROM copy_allocation")
     con.executemany(
         "INSERT INTO copy_allocation (copy_id, slot, quantity, placed_at) "
@@ -3889,7 +3955,7 @@ def actualizar_caixa(con, res: dict, slot_id: str) -> int:
     alvo = next((s for s in res["slots"] if s["slot"] == slot_id), None)
     if alvo is None:
         return 0
-    linhas = _linhas_da_caixa(alvo)
+    linhas = linhas_da_caixa(alvo)
     con.execute("DELETE FROM copy_allocation WHERE slot = ?", (slot_id,))
     con.executemany(
         "INSERT INTO copy_allocation (copy_id, slot, quantity, placed_at) "
