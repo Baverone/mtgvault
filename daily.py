@@ -26,8 +26,8 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 # um UA autorizado, define MOXFIELD_USER_AGENT no ambiente e este default cede.
 os.environ.setdefault("MOXFIELD_USER_AGENT", "mtgvault/0.1 (coleccao pessoal)")
 
-from mtgvault import (analysis, db, mtgtop8, prices, scryfall, sources,  # noqa: E402
-                      tagging, watchlist)
+from mtgvault import (analysis, db, loadout, mtgtop8, prices,  # noqa: E402
+                      scryfall, sources, tagging, watchlist)
 
 import core_decks  # noqa: E402  (gera coredecks.html + tracking de alteracoes)
 import collection_gallery  # noqa: E402  (gera colecao.html — galeria com imagens)
@@ -162,13 +162,37 @@ def _analyse(con, fmt):
 
 
 def _prune_prices(con, keep_days: int = 30):
-    """Apaga histórico de preços antigo. Só interessa o recente — a Reserved List
-    compara 'hoje vs há ~1 mês'. Sem isto o price_history cresce sem fim e é o que
-    mais faz o vault.db aproximar-se do limite de 100 MB do GitHub."""
-    n = con.execute("DELETE FROM price_history WHERE date < date('now', ?)",
-                    (f"-{keep_days} days",)).rowcount
+    """Apaga histórico de preços antigo. Só interessa o recente — sem isto o
+    price_history cresce sem fim e é o que mais faz o vault.db aproximar-se do
+    limite de 100 MB do GitHub.
+
+    EXCEPÇÃO: a **Reserved List** guarda-se o tempo que a regra da venda precisa
+    (`colecao_config.json → venda.rl_janela_dias` + tolerância + uma semana de
+    folga). André, 2026-09-08: *"cartas de RL só vão para venda se não tiverem
+    subido 5 % de valor nos últimos 3 meses"* — e uma poda a 30 dias fazia com
+    que **nunca** houvesse um preço de há três meses para comparar. A regra
+    respondia *"não sei"* a tudo, para sempre, a lista de RL ficava vazia e
+    nenhum passo dava erro: é o padrão do `event_tier`, e desta vez sobre a
+    decisão que vale mais dinheiro.
+
+    Custa pouco, e foi medido antes de se mexer: a RL são **2,5 %** das linhas
+    (6 758 em 28 dias, ~240 por dia). Guardar 100 dias delas são ~24 000 linhas,
+    contra as ~984 000 que seria guardar tudo.
+    """
+    fundo = max(keep_days,
+                loadout.rl_janela_dias() + loadout.rl_tolerancia_dias() + 7)
+    n = con.execute(
+        """DELETE FROM price_history
+            WHERE date < date('now', ?)
+              AND (date < date('now', ?)
+                   OR NOT EXISTS (SELECT 1 FROM cards c
+                                   WHERE c.scryfall_id = price_history.scryfall_id
+                                     AND c.reserved = 1))""",
+        (f"-{keep_days} days", f"-{fundo} days")).rowcount
     con.commit()
-    return f"{n} preços >{keep_days}d apagados"
+    return (f"{n} preços >{keep_days}d apagados "
+            f"(Reserved List guarda-se {fundo}d, p/ a regra dos "
+            f"{loadout.rl_subida_minima():.0f}%)")
 
 
 def _podar_ligas(con):
