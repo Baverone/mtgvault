@@ -74,6 +74,7 @@ import socket
 import subprocess
 import sys
 import threading
+import time as _time
 from datetime import date
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -94,6 +95,16 @@ BIND = os.environ.get("MTGVAULT_BIND") or "127.0.0.1"
 # Serializa TODAS as escritas (config + base de dados). Ver `do_POST`.
 ESCRITA = threading.Lock()
 CABECALHO_TOKEN = "X-Mtgvault-Token"
+# O *anular* do registo automático (André, 2026-09-08). A fotografia da
+# `copy_allocation` de ANTES de cada registo, por caixa — é ela que o botão
+# repõe. Fica em memória de propósito: um anular é o desfazer de um gesto que
+# acabou de acontecer, não um histórico. Se o servidor for reiniciado no meio,
+# perde-se — e aí o que há é o *Desmontar*, que é o gesto grande, com backup.
+_ULTIMO_REGISTO: dict[str, dict] = {}
+# Quanto tempo o servidor ainda aceita o *anular*. É maior do que os segundos em
+# que o botão está à vista (`loadout.montar_anular_segundos`): um clique ao
+# segundo 5,9 num telemóvel na rede de casa não pode falhar por causa da latência.
+ANULAR_JANELA = 120.0
 
 
 def config_path() -> Path:
@@ -525,6 +536,63 @@ def marcar_na_caixa(con, slot_id: str, dentro: bool,
     return sum(linhas.values())
 
 
+def registar_parcial(con, cfg, slot_id: str, marcadas, de_outra=()) -> dict:
+    """Regista as cópias MARCADAS de uma caixa, e ajusta-lhe o estado.
+
+    André, 2026-09-08, à letra: *"Não é mais fácil confirmares que eu seleccionei
+    todas as cartas do deck, e assim eu confirmo que montei o deck?"* A barra de
+    montagem chama isto a cada registo — completo ou a meio.
+
+    Duas metades, uma em cada sítio: o que é FÍSICO (que cópias estão dentro da
+    caixa) vai para a `copy_allocation`, pelo `loadout.registar_marcadas`; o
+    ESTADO vai para o config. Quem decide se a caixa está completa é a base
+    (`falta == 0`) e nunca a contagem que o browser mandou — o `feitos` está
+    guardado no aparelho e pode ser de uma alocação de ontem.
+
+    A caixa **sobe**, nunca desce: uma `candidata` a meio de ser montada passa a
+    `permanente` (está a ficar com as cartas, e é isso que `permanente` quer
+    dizer), uma `permanente` completa passa a `montada`, e uma que já se diz
+    montada continua montada — registar-lhe um delta não é desmontá-la.
+    """
+    rep = loadout.report(con)
+    s = caixas.caixa_do_cfg(cfg, slot_id)
+    antes = caixas.estado_de(s)
+    r = loadout.registar_marcadas(con, rep, slot_id, marcadas, de_outra)
+    if r["completa"]:
+        novo = caixas.MONTADA
+    elif antes == caixas.CANDIDATA:
+        novo = caixas.PERMANENTE
+    else:
+        novo = antes
+    s["estado"] = novo
+    _ULTIMO_REGISTO[slot_id] = {"quando": _time.time(), "estado": antes,
+                                "linhas": r["antes"], "nome": r["caixa"]}
+    return {**r, "estado": novo, "estado_antes": antes,
+            "nome": s.get("nome") or r["caixa"] or slot_id}
+
+
+def anular_registo(con, cfg, slot_id: str) -> str:
+    """*"Anular"*: desfaz o último registo desta caixa, tal como estava.
+
+    Repõe a `copy_allocation` da fotografia e devolve o `estado` ao que era. Não
+    faz backup nem escreve no `desmontar.log`, e é de propósito: isto não apaga
+    nada — é o inverso exacto de uma escrita que aconteceu há segundos, e o que
+    ele carregou foi *"enganei-me"*, não *"desmonta a caixa"*.
+    """
+    reg = _ULTIMO_REGISTO.get(slot_id)
+    if reg is None:
+        return ""
+    if _time.time() - reg["quando"] > ANULAR_JANELA:
+        _ULTIMO_REGISTO.pop(slot_id, None)
+        return ""
+    n = loadout.restaurar_alocacao(con, slot_id, reg["linhas"])
+    caixas.caixa_do_cfg(cfg, slot_id)["estado"] = reg["estado"]
+    _ULTIMO_REGISTO.pop(slot_id, None)
+    nome = reg["nome"] or slot_id
+    return (f"{nome}: registo anulado — a caixa voltou a {reg['estado']}"
+            + (f" com {n} cópias" if n else " e vazia"))
+
+
 def regenerar(con) -> None:
     """Reescreve as páginas estáticas, para o site publicado acompanhar.
 
@@ -708,6 +776,25 @@ class Handler(BaseHTTPRequestHandler):
                 nome = caixas.caixa_do_cfg(cfg, slot_id).get("nome") or slot_id
                 n = marcar_na_caixa(con, slot_id, True, de_outra)
                 msg = f"{nome}: {n} cópias confirmadas dentro da caixa"
+            elif act == "registar":
+                # A BARRA DE MONTAGEM (André, 2026-09-08): regista só o que ele
+                # marcou. É o mesmo gesto do "sleevado e na caixa" a meio — uma
+                # caixa monta-se aos poucos, e até aqui só havia tudo-ou-nada.
+                marcadas = [int(c) for c in (dados.get("copias") or [])]
+                r = registar_parcial(con, cfg, slot_id, marcadas, de_outra)
+                escrever_config(cfg)
+                msg = (f'{r["nome"]}: {r["copias"]} cópias na caixa'
+                       + (" — montada ✅" if r["completa"]
+                          else f' · faltam {r["falta"]} por tirar')
+                       + (f' ({r["de_outra"]} eram de outra caixa — ela passa a '
+                          f'vir buscá-las aqui)' if r["de_outra"] else ""))
+            elif act == "anular":
+                # O desfazer do registo automático, enquanto o aviso está à vista.
+                msg = anular_registo(con, cfg, slot_id)
+                if not msg:
+                    return {"erro": "já não há registo para anular nesta caixa — "
+                                    "para a esvaziar há o «Desmontar»"}
+                escrever_config(cfg)
             elif act == "actualizar":
                 # "Actualizei": aplica o delta de UMA caixa congelada. Não passa
                 # pelo config — o que muda é físico (que cartas estão na caixa),

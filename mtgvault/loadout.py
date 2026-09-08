@@ -278,6 +278,12 @@ BASICS = {"Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes",
 #     registado, e uma linha de compra a mais é mais barata do que um deck que
 #     não se monta.
 BASICAS_EDICAO = "Unhinged"
+# Quantos segundos o *anular* de um registo automático fica à vista. André,
+# 2026-09-08: *"Não é mais fácil confirmares que eu seleccionei todas as cartas
+# do deck, e assim eu confirmo que montei o deck?"* — marcar a última carta
+# regista a caixa sozinha, e um registo automático sem volta atrás seria pior do
+# que o botão escondido no fim de 58 linhas que isto veio substituir.
+ANULAR_SEGUNDOS = 6
 BASICAS_COMPRAM_SE_FALTAREM = ("Snow-Covered Plains", "Snow-Covered Island",
                                "Snow-Covered Swamp", "Snow-Covered Mountain",
                                "Snow-Covered Forest", "Snow-Covered Wastes")
@@ -583,6 +589,41 @@ def basicas_compram_se_especial() -> bool:
 def basicas_edicao() -> str:
     """O nome da pilha de básicas dele, para a página o poder dizer."""
     return str(regras_basicas().get("edicao") or BASICAS_EDICAO)
+
+
+def regras_montar() -> dict:
+    """`colecao_config.json -> montar`. Sem ela valem os valores deste módulo."""
+    v = sources.config().get("montar")
+    return v if isinstance(v, dict) else {}
+
+
+def montar_auto_registar() -> bool:
+    """Marcar a ÚLTIMA cópia do painel *Montar* regista a caixa como montada?
+
+    André, 2026-09-08, à letra: *"Não é mais fácil confirmares que eu seleccionei
+    todas as cartas do deck, e assim eu confirmo que montei o deck?"* Ele estava
+    à frente da estante a marcar cartas e não encontrou o *"sim, está montada
+    assim"* — ficava no fim de 58 linhas. Quem acabou de marcar a última carta já
+    disse tudo o que havia para dizer; pedir-lhe um segundo gesto era pedir-lhe
+    que confirmasse uma confirmação.
+
+    Por omissão **sim**. Com `false`, a barra fica verde e mostra o botão grande
+    — o mesmo registo, à mão.
+    """
+    return bool(regras_montar().get("auto_registar", True))
+
+
+def montar_anular_segundos() -> int:
+    """Quantos segundos o *anular* fica à vista depois de um registo automático.
+
+    A zero, o registo automático deixa de ter volta atrás na página (continua a
+    haver o *Desmontar*, que é o gesto grande, com backup e registo).
+    """
+    try:
+        v = int(regras_montar().get("anular_segundos", ANULAR_SEGUNDOS))
+    except (TypeError, ValueError):
+        return ANULAR_SEGUNDOS
+    return max(0, v)
 
 
 def requisito_basicas(s: dict) -> str:
@@ -3235,12 +3276,133 @@ def plano_montar(res: dict, slot_id: str) -> dict:
             "devolver": sorted(devolver, key=lambda m: m["nm"]),
             "copias": sum(m["q"] for m in tirar),
             "ja": dentro - sum(m["q"] for m in tirar),
+            # O "N de M" da BARRA de montagem: quantas cópias há para marcar
+            # (main + sideboard + as básicas que estão REGISTADAS na base) e
+            # quantas já estão lá dentro. As básicas a granel não entram — não
+            # têm cópia registada, não têm nada para marcar, e contá-las fazia
+            # uma caixa nunca chegar ao fim por causa de 17 Island que ele tem
+            # numa pilha em casa. O bloco «destinadas a outra caixa» também não:
+            # tirá-las é uma decisão à parte, e esperá-las era pedir-lhe que
+            # desmontasse o plano de outra caixa para esta poder ficar completa.
+            "marcar_q": (sum(m["q"] for m in tirar)
+                         + sum(b["tirar_q"] for b in basicas)),
+            "dentro": (dentro - sum(m["q"] for m in tirar)
+                       + sum(b["ja"] for b in basicas)),
             # Quanto pede cada bloco da lista (main 60/100, side 15): é o "de M"
             # do cabeçalho de cada bloco. O "N" sai dos movimentos, que já trazem
             # o `board` — a caixa fica separada por dentro, como ele pediu.
             "totais": totais_por_board(s),
             "por_gaveta": dict(sorted(por_gaveta.items(),
                                       key=lambda kv: (-kv[1], kv[0])))}
+
+
+def linhas_parciais(s: dict, caixas_deck: set[str] | frozenset,
+                    marcadas: set[int] | frozenset) -> dict[int, int]:
+    """A alocação de uma caixa, **cortada** ao que ele disse que já lá está.
+
+    É o `_linhas_da_caixa` menos os movimentos de entrada que ficaram por marcar:
+    o que já estava dentro da caixa continua dentro, e do que falta tirar só
+    entram as cópias marcadas. Sai da MESMA lista que desenhou as checkboxes
+    (`movimentos_de_entrada`) — recontar a alocação aqui era a segunda
+    oportunidade de a barra e a base discordarem.
+
+    Um lote sai do `lots()` PARTIDO por sítio (um lote de 4 com 3 na caixa e 1 na
+    gaveta são duas linhas), e por isso a subtracção é por quantidade e não por
+    `copy_id`: marcar a cópia que está na gaveta não pode apagar as três que já
+    estão sleevadas.
+    """
+    linhas = dict(_linhas_da_caixa(s))
+    for m in movimentos_de_entrada(s, caixas_deck):
+        if m["copy_id"] in marcadas:
+            continue
+        resta = linhas.get(m["copy_id"], 0) - m["q"]
+        if resta > 0:
+            linhas[m["copy_id"]] = resta
+        else:
+            linhas.pop(m["copy_id"], None)
+    return linhas
+
+
+def alocacao_da_caixa(con, slot_id: str) -> list[tuple]:
+    """O que a `copy_allocation` diz HOJE desta caixa, para se poder repor.
+
+    É a fotografia que o *anular* devolve: `(copy_id, quantidade, placed_at)`.
+    Guardar também a data importa — repor com a data de agora fazia a caixa dizer
+    *"montada em hoje"* por causa de um clique que foi desfeito.
+    """
+    try:
+        return [(r["copy_id"], r["quantity"], r["placed_at"]) for r in con.execute(
+            "SELECT copy_id, quantity, placed_at FROM copy_allocation "
+            "WHERE slot = ? ORDER BY copy_id", (slot_id,))]
+    except sqlite3.OperationalError:
+        return []                          # base antiga, ainda sem a tabela
+
+
+def restaurar_alocacao(con, slot_id: str, linhas) -> int:
+    """Repõe a `copy_allocation` de uma caixa exactamente como estava.
+
+    O *anular* do registo automático. Não faz backup de propósito: ao contrário
+    do `desmontar_caixa`, isto não apaga nada — repõe uma fotografia tirada
+    segundos antes, e é o inverso exacto da escrita que a produziu.
+    """
+    con.execute("DELETE FROM copy_allocation WHERE slot = ?", (slot_id,))
+    con.executemany(
+        "INSERT INTO copy_allocation (copy_id, slot, quantity, placed_at) "
+        "VALUES (?,?,?,?)",
+        [(cid, slot_id, q, quando) for cid, q, quando in linhas])
+    con.commit()
+    return sum(q for _c, q, _t in linhas)
+
+
+def registar_marcadas(con, res: dict, slot_id: str,
+                      marcadas=(), de_outra=()) -> dict:
+    """Regista na `copy_allocation` **só as cópias que ele marcou**.
+
+    André, 2026-09-08: *"Não é mais fácil confirmares que eu seleccionei todas as
+    cartas do deck?"* Uma caixa monta-se aos poucos — ele tira dez cartas, o
+    telefone toca, volta amanhã. Até aqui só havia o *"sleevado e na caixa"*, que
+    é tudo-ou-nada: ou dizia que a caixa está montada (e ficava a mentir sobre as
+    outras 40 cartas) ou não dizia nada e no dia seguinte tinha de procurar as
+    dez outra vez.
+
+    O que se grava é **o que já lá estava mais o que ele marcou**, e mais nada. A
+    fotografia do antes vai no `antes`, para o *anular* poder repor.
+
+    `de_outra` são os `copy_id` do bloco «destinadas a outra caixa» — cópias que
+    a alocação prometeu a outra caixa e que ele decidiu meter nesta. Só entram as
+    que o painel oferecia: um `copy_id` que esta caixa não pediu era registar uma
+    carta que não está lá dentro. **Não contam para o «completa»** — esperá-las
+    era impedir a caixa de fechar por causa de cartas que são de outra.
+    """
+    s = next((x for x in res["slots"] if x["slot"] == slot_id), None)
+    if s is None:
+        return {"copias": 0, "linhas": 0, "falta": 0, "completa": False,
+                "antes": [], "caixa": slot_id, "de_outra": 0}
+    caixas_deck = caixas_de_deck(res["slots"])
+    marcadas = {int(c) for c in marcadas}
+    linhas = linhas_parciais(s, caixas_deck, marcadas)
+    escolhidas = {int(c) for c in de_outra}
+    extra = 0
+    if escolhidas:
+        for mv in (plano_montar(res, slot_id).get("de_outra") or []):
+            if mv["copy_id"] in escolhidas:
+                linhas[mv["copy_id"]] = linhas.get(mv["copy_id"], 0) + mv["q"]
+                extra += mv["q"]
+    # O que continua por tirar: é isto — e não a contagem do browser — que decide
+    # se a caixa passa a `montada`. Um `feitos` guardado no aparelho pode ser de
+    # uma alocação de ontem; a base é a de agora.
+    falta = sum(m["q"] for m in movimentos_de_entrada(s, caixas_deck)
+                if m["copy_id"] not in marcadas)
+    antes = alocacao_da_caixa(con, slot_id)
+    con.execute("DELETE FROM copy_allocation WHERE slot = ?", (slot_id,))
+    con.executemany(
+        "INSERT INTO copy_allocation (copy_id, slot, quantity, placed_at) "
+        "VALUES (?,?,?,datetime('now'))",
+        [(cid, slot_id, q) for cid, q in sorted(linhas.items())])
+    con.commit()
+    return {"copias": sum(linhas.values()), "linhas": len(linhas),
+            "falta": falta, "completa": falta == 0, "antes": antes,
+            "caixa": s["nome"], "de_outra": extra}
 
 
 def plano_basicas(s: dict, movs: list[dict] | None = None) -> list[dict]:

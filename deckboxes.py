@@ -172,6 +172,11 @@ def _montar_payload(rep, s, cores):
             "blocos_de_outra": [{"board": b["board"], "titulo": b["titulo"],
                                  "movs": b["movs"], "q": b["q"], "de": 0}
                                 for b in loadout.blocos_de_board(de_outra)],
+            # O "N de M" da barra de montagem e o "N de M na caixa" do cabeçalho.
+            # Vêm do Python porque é o Python que decide o que se marca — a
+            # página conta as checkboxes que desenhou, e as duas contas têm de
+            # dar o mesmo número (tem teste).
+            "marcar_q": plano["marcar_q"], "dentro": plano["dentro"],
             "basicas": basicas, "basicas_copias": plano["basicas_copias"],
             "basicas_comprar": plano["basicas_comprar"],
             "basicas_custo": plano["basicas_custo"],
@@ -505,6 +510,12 @@ def payload(con, rep, editable=False, token="", ligacao=None):
         # o ficheiro publicado no GitHub Pages não pode levar nem um nem outro.
         "token": token if editable else "",
         "ligacao": ligacao if editable else None,
+        # A BARRA DE MONTAGEM (André, 2026-09-08): marcar a última cópia regista
+        # a caixa sozinha, com um *anular* de alguns segundos ao lado. Os dois
+        # números vêm do config (`colecao_config.json -> montar`) — a página não
+        # decide sozinha que vai escrever na base.
+        "auto_registar": loadout.montar_auto_registar(),
+        "anular_segundos": loadout.montar_anular_segundos(),
         "caixas": [_caixa_payload(s, imgs, cfs, rep, col, tipos, cores)
                    for s in rep["slots"]],
         # A ORDEM por que montar as caixas (aba Plano) — permanentes por
@@ -931,6 +942,40 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;z-index:9;
    background:#1b2c4d;border:1px solid var(--accent);color:#fff;font-size:13px;
    padding:10px 16px;border-radius:22px;box-shadow:0 8px 26px #0009}
+ /* o aviso do registo automático fica com o «anular» dentro dele, e por isso
+    tem de subir acima da barra fixa — senão nascia por baixo dela */
+ .toast.aviso{display:flex;align-items:center;gap:12px;bottom:96px;z-index:11;
+   background:#123020;border-color:#2f6a45}
+ .toast.aviso .btn{margin:0}
+ /* BARRA DE MONTAGEM (André, 2026-09-08): o «N de M» e o botão de registar
+    sempre à mão, fixos no fundo do ecrã. O botão de hoje vive no fim do passo 1
+    — 58 linhas abaixo — e à frente da estante, no telemóvel, ele não o achou. */
+ .barra{position:fixed;left:0;right:0;bottom:0;z-index:10;
+   background:#0e141ef2;border-top:1px solid var(--line2);
+   box-shadow:0 -8px 26px #0008;
+   padding:9px 14px calc(9px + env(safe-area-inset-bottom,0px))}
+ .barra[hidden]{display:none}
+ body.combarra .wrap{padding-bottom:118px}
+ .barra .bi{max-width:1180px;margin:0 auto;display:flex;gap:12px;
+   align-items:center;flex-wrap:wrap}
+ .barra .bt{flex:1 1 230px;min-width:0}
+ .barra .bt b{font-size:13.5px;display:block;overflow:hidden;
+   text-overflow:ellipsis;white-space:nowrap}
+ .barra .bt small{color:var(--muted);font-size:11.5px;
+   font-variant-numeric:tabular-nums}
+ .barra .pg{height:7px;border-radius:6px;background:#1a212c;overflow:hidden;
+   margin-top:5px}
+ .barra .pg i{display:block;height:100%;background:var(--accent);
+   transition:width .18s}
+ .barra .ba{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+ .barra.cheia{border-top-color:var(--add);background:#0d1a12f2}
+ .barra.cheia .pg i{background:var(--add)}
+ .barra.cheia .btn.pri{background:#1d7a48;border-color:#2f9c5e}
+ @media(max-width:640px){
+   .barra .bt{flex:1 1 100%} .barra .ba{width:100%}
+   .barra .ba .btn.pri{flex:1 1 auto;text-align:center}
+   body.combarra .wrap{padding-bottom:150px}
+ }
  footer{margin-top:28px;color:var(--muted);font-size:12.5px;
    border-top:1px solid var(--line);padding-top:14px}
  @media(max-width:640px){
@@ -968,6 +1013,7 @@ botões, corre <code>python webapp.py</code> no PC (porto 8771) — e aí a aba
 A lista para vender é uma <b>sugestão a confirmar</b>. Atualiza diariamente.
 </footer>
 </div>
+<div class="barra" id="barra" hidden aria-live="polite"></div>
 <script id="dados" type="application/json">%DADOS%</script>
 <script>
 const D = JSON.parse(document.getElementById('dados').textContent);
@@ -1133,6 +1179,13 @@ function badges(c) {
   let h = `<span class="bdg ${cls}">${esc(txt)}</span>`;
   if (c.vazio) h += '<span class="bdg wt">❓ deck por escolher</span>';
   else if (!c.montado) h += '<span class="bdg">🔧 a montar</span>';
+  /* «N de M na caixa» (André, 2026-09-08). Uma caixa registada A MEIO não é uma
+     caixa montada nem uma caixa por montar, e dizer só "🔧 a montar" apagava o
+     trabalho já feito — que é exactamente o que o registo parcial veio guardar. */
+  if (!c.montado && c.montar && c.montar.dentro) {
+    h += `<span class="bdg cand">📦 ${c.montar.dentro} de `
+      + `${c.montar.dentro + c.montar.marcar_q} na caixa</span>`;
+  }
   /* A classe vem no payload (`loadout.rotulo_material`). Decidi-la aqui com
      /foil/ pintava de dourado o chip "só nonfoil" do cEDH — "nonfoil" contém
      "foil", e um teste de substring nunca serve para isto. */
@@ -1162,6 +1215,69 @@ function badges(c) {
    O fluxo que ele pediu a 2026-09-08, por esta ordem: (1) tirar da Colecção,
    (2) comprar o que falta, (3) quando as compras chegarem, fotografar. Os três
    passos ficam juntos na aba da caixa, porque é um gesto só — montar o deck. */
+/* O ID de um "visto", num sítio só. A grelha desenha-o, a BARRA conta por ele e
+   o registo manda os `copy_id` que ele traz. Escrito à mão em três sítios (como
+   estava), bastava mudar uma barra vertical num deles para a barra passar a
+   dizer "0 de 58" sem um único erro — o padrão do `event_tier`, do lado do
+   browser. Os três prefixos: `mt` a grelha, `bs` as básicas, `mo` as destinadas
+   a outra caixa. As básicas não levam bloco (uma básica é uma pilha só). */
+function vistoId(tipo, slot, m, nm) {
+  const base = `${tipo}|${slot}|${m.copy_id}|${nm == null ? m.nm : nm}`;
+  return tipo === 'bs' ? base : `${base}|${m.board}`;
+}
+
+/* Tudo o que há para MARCAR no passo 1 de uma caixa: main, sideboard e as
+   básicas que estão REGISTADAS na base. É a lista por que a barra conta e por
+   que o registo escolhe as cópias — a MESMA que desenhou as checkboxes.
+
+   Fora dela, de propósito: as básicas a granel (não têm cópia registada, não
+   têm nada para marcar — e contá-las fazia a caixa nunca fechar por causa de 17
+   Island que ele tem numa pilha em casa) e o bloco «destinadas a outra caixa»
+   (são de outra caixa; esperá-las era impedir esta de ficar completa). */
+function montarItens(c) {
+  const M = c.montar;
+  if (!M) return [];
+  const out = [];
+  for (const b of (M.blocos || [])) {
+    for (const m of b.movs) {
+      out.push({ id: vistoId('mt', c.slot, m), q: m.q, copy: m.copy_id });
+    }
+  }
+  for (const b of (M.basicas || [])) {
+    for (const m of b.tirar) {
+      out.push({ id: vistoId('bs', c.slot, m, b.nm), q: m.q, copy: m.copy_id });
+    }
+  }
+  return out;
+}
+
+/* Quanto já está marcado nesta caixa, e que cópias são. `completo` é por ITEM e
+   não por quantidade: duas linhas do mesmo `copy_id` (a mesma carta no main e
+   no side) são duas idas à gaveta e contam as duas. */
+function montarEstado(c) {
+  const itens = montarItens(c);
+  const marcados = itens.filter(i => P.feitos[i.id]);
+  return { itens, total: itens.reduce((s, i) => s + i.q, 0),
+           n: marcados.reduce((s, i) => s + i.q, 0),
+           copias: [...new Set(marcados.map(i => i.copy))],
+           completo: itens.length > 0 && marcados.length === itens.length };
+}
+
+/* As cópias marcadas no bloco «destinadas a outra caixa». Lê o MESMO `P.feitos`
+   que as outras — antes isto era uma consulta ao DOM, e uma consulta ao DOM não
+   funciona a partir da barra (ela vive fora da vista). */
+function deOutraMarcadas(c) {
+  const M = c && c.montar;
+  if (!M) return [];
+  const out = [];
+  for (const b of (M.blocos_de_outra || [])) {
+    for (const m of b.movs) {
+      if (P.feitos[vistoId('mo', c.slot, m)]) out.push(m.copy_id);
+    }
+  }
+  return out;
+}
+
 function montarHTML(c) {
   const M = c.montar;
   if (!M) return '';
@@ -1211,7 +1327,7 @@ function montarHTML(c) {
           cor = m.cor;
           h += `<div class="corhdr">${esc(m.cor_nome)}</div>`;
         }
-        const id = `mt|${c.slot}|${m.copy_id}|${m.nm}|${m.board}`;
+        const id = vistoId('mt', c.slot, m);
         const feito = !!P.feitos[id];
         h += `<label class="mv${feito ? ' feito' : ''}" data-id="${esc(id)}">`
           + `<input type="checkbox"${feito ? ' checked' : ''}>`
@@ -1267,6 +1383,163 @@ function montarHTML(c) {
   return h + `</div>`;
 }
 
+/* ------------------------------------------------------- BARRA DE MONTAGEM
+   André, 2026-09-08, à letra: *"Não é mais fácil confirmares que eu seleccionei
+   todas as cartas do deck, e assim eu confirmo que montei o deck?"* Ele estava à
+   frente da estante, no telemóvel, a marcar cartas — e não encontrou o «Sim,
+   está montada assim», que fica no fim de 58 linhas.
+
+   A barra é fixa no fundo do ecrã enquanto a aba de uma caixa está aberta: o
+   «N de M», a barra de progresso e o botão de registar SEMPRE à mão. Só no modo
+   edição: no site publicado o endpoint não existe, e uma barra que conta cópias
+   e não regista nada seria pior do que barra nenhuma. */
+
+/* Que acção regista. O gesto de hoje continua a ser o mesmo — «sleevado e na
+   caixa» / «sim, está montada assim» — e não se inventa um segundo caminho para
+   ele. O `registar` novo é o que faltava: o registo A MEIO.
+   Uma caixa que JÁ se diz montada nunca usa o `montado`: esse ALTERNA, e
+   alterná-lo aqui desmontava-a — que é o contrário do que o botão diz. */
+function actoDeRegisto(c, completo) {
+  if (!completo) return 'registar';
+  if (c.confirmar) return 'confirmar';
+  return c.montado ? 'registar' : 'montado';
+}
+
+function barraHTML(c) {
+  const e = montarEstado(c);
+  const pct = e.total ? Math.round(e.n * 100 / e.total) : 0;
+  const fora = deOutraMarcadas(c).length;
+  const rot = e.completo
+    ? (c.confirmar ? '✅ Sim, está montada assim' : '✅ Registar como montada')
+    : `Registar as ${e.n} marcadas`;
+  /* Com zero marcadas não há registo nenhum a fazer: o botão fica desactivado
+     em vez de desaparecer, para a barra não mudar de forma a cada clique.
+     O `data-estado` diz em palavras o que a cor diz em verde: a barra tem de
+     ser legível por quem não vê a cor — e é por ele que o teste a lê. */
+  const grau = e.completo ? 'cheia' : (e.n ? 'meio' : 'vazio');
+  return `<div class="bi" data-estado="${grau}"><div class="bt">`
+    + `<b>${e.completo ? '✅' : '🧱'} ${c.confirmar ? 'Confirmar' : 'Montar'} `
+    + `${esc(c.nome)}</b>`
+    + `<small>${e.n} de ${e.total} cópias marcadas`
+    + (e.completo ? ' · tudo marcado' : '')
+    + (fora ? ` · +${fora} de outra caixa` : '') + `</small>`
+    + `<div class="pg"><i style="width:${pct}%"></i></div></div>`
+    + `<div class="ba">`
+    + `<button class="btn sm" id="b-tudo">marcar tudo</button>`
+    + `<button class="btn sm" id="b-limpar">limpar</button>`
+    + `<button class="btn pri" id="b-reg" data-slot="${esc(c.slot)}"`
+    + `${e.n ? '' : ' disabled'}>${rot}</button></div></div>`;
+}
+
+function renderBarra() {
+  const b = $('#barra');
+  if (!b) return;
+  const c = D.caixas.find(x => x.slot === aba);
+  const mostra = !!(D.editable && c && c.montar && montarItens(c).length);
+  b.hidden = !mostra;
+  document.body.classList.toggle('combarra', mostra);
+  b.className = 'barra' + (mostra && montarEstado(c).completo ? ' cheia' : '');
+  b.innerHTML = mostra ? barraHTML(c) : '';
+  if (mostra) ligarBarra(c);
+}
+
+function ligarBarra(c) {
+  const t = $('#b-tudo'), l = $('#b-limpar'), r = $('#b-reg');
+  /* «Marcar tudo» NÃO dispara o registo automático, mesmo com tudo marcado: é
+     um atalho para depois desmarcar duas ou três, não uma afirmação de que a
+     caixa está montada. O botão fica verde ao lado, a um toque. */
+  if (t) t.onclick = () => {
+    for (const i of montarItens(c)) P.feitos[i.id] = 1;
+    save(); render();
+  };
+  if (l) l.onclick = () => { limparFeitos(c.slot); render(); };
+  if (r) r.onclick = () => registar(c, r);
+}
+
+/* Os vistos desta caixa saem do aparelho quando o registo entra na base: a
+   partir daí quem diz o que está lá dentro é a `copy_allocation`, e deixar as
+   checkboxes marcadas era ter duas respostas para a mesma pergunta. Devolve o
+   que tirou, para o «anular» o poder repor — desfazer o registo e ficar com a
+   grelha por marcar era pedir-lhe que voltasse a marcar 58 cartas. */
+function limparFeitos(slot) {
+  const pref = ['mt|', 'bs|', 'mo|'].map(t => t + slot + '|');
+  const tirados = {};
+  for (const k of Object.keys(P.feitos)) {
+    if (pref.some(p => k.startsWith(p))) {
+      tirados[k] = P.feitos[k];
+      delete P.feitos[k];
+    }
+  }
+  save();
+  return tirados;
+}
+
+/* MARCAR A ÚLTIMA = MONTADA. Só quando ele ACABA de marcar uma cópia — abrir a
+   aba com tudo já marcado de ontem não regista nada, senão a página escrevia na
+   base por ela ser aberta, que é o contrário de um gesto. */
+function autoRegistar() {
+  if (!D.editable || !D.auto_registar) return;
+  const c = D.caixas.find(x => x.slot === aba);
+  if (!c || !c.montar) return;
+  if (!montarEstado(c).completo) return;
+  registar(c, $('#b-reg'));
+}
+
+async function registar(c, btn) {
+  const e = montarEstado(c);
+  if (!e.n) return;
+  if (btn) btn.disabled = true;
+  const act = actoDeRegisto(c, e.completo);
+  try {
+    const r = await gravar('api/caixa', { act, slot: c.slot, copias: e.copias,
+                                          de_outra: deOutraMarcadas(c) });
+    if (!r.ok && r.status !== 403 && r.status !== 409) {
+      throw new Error('HTTP ' + r.status);
+    }
+    const j = await r.json();
+    if (j.erro) throw new Error(j.erro);
+    const vistos = limparFeitos(c.slot);
+    avisoRegisto(c, e.completo
+      ? `✅ ${c.nome} registada como montada`
+      : (j.msg || `${c.nome}: ${e.n} cópias registadas`), vistos);
+  } catch (err) {
+    if (btn) btn.disabled = false;
+    toast('Não deu: ' + err.message);
+  }
+}
+
+/* O aviso com o ANULAR. Um `toast()` normal desaparece sozinho e não tem onde
+   carregar; este fica os segundos que o config disser (`montar.anular_segundos`)
+   e leva o botão que desfaz. Só DEPOIS é que a página recarrega — recarregar já
+   era deitar fora a única oportunidade de voltar atrás. */
+function avisoRegisto(c, texto, vistos) {
+  const seg = Number(D.anular_segundos || 0);
+  if (!seg) { toast(texto); location.reload(); return; }
+  const d = document.createElement('div');
+  d.className = 'toast aviso';
+  d.innerHTML = `<span>${esc(texto)}</span>`
+    + `<button class="btn sm" id="b-anular">anular</button>`;
+  document.body.appendChild(d);
+  let fechado = false;
+  const b = d.querySelector('#b-anular') || $('#b-anular');
+  if (b) b.onclick = () => { fechado = true; d.remove(); anularRegisto(c, vistos); };
+  setTimeout(() => { if (!fechado) { d.remove(); location.reload(); } }, seg * 1000);
+}
+
+async function anularRegisto(c, vistos) {
+  try {
+    const r = await gravar('api/caixa', { act: 'anular', slot: c.slot });
+    const j = await r.json();
+    if (j.erro) throw new Error(j.erro);
+    /* Os vistos voltam com a alocação: o que ele desfez foi o registo, não o
+       trabalho de ter marcado as cartas uma a uma. */
+    Object.assign(P.feitos, vistos || {});
+    save();
+    toast(j.msg || 'Registo anulado.');
+  } catch (e) { toast('Não deu anular: ' + e.message); }
+  location.reload();
+}
+
 /* --------------------------------------- DESTINADAS A OUTRA CAIXA (montar
    fora de ordem). André, 2026-09-08: *"De todas as cartas, só o Stiflenought
    está em deckbox; o resto ainda nada está em deckbox."* Se ele abrir a
@@ -1292,7 +1565,7 @@ function deOutraHTML(M) {
     }
     h += `<div class="mvs">`;
     for (const m of b.movs) {
-      const id = `mo|${M.slot}|${m.copy_id}|${m.nm}|${m.board}`;
+      const id = vistoId('mo', M.slot, m);
       const feito = !!P.feitos[id];
       h += `<label class="mv${feito ? ' feito' : ''}" data-id="${esc(id)}" `
         + `data-copy="${m.copy_id}" data-q="${m.q}">`
@@ -1321,7 +1594,7 @@ function basicasHTML(M) {
   for (const b of M.basicas) {
     const det = [];
     for (const m of b.tirar) {
-      const id = `bs|${M.slot}|${m.copy_id}|${b.nm}`;
+      const id = vistoId('bs', M.slot, m, b.nm);
       const feito = !!P.feitos[id];
       det.push(`<label class="mv${feito ? ' feito' : ''}" data-id="${esc(id)}">`
         + `<input type="checkbox"${feito ? ' checked' : ''}>`
@@ -2130,6 +2403,7 @@ function render() {
   }
   else { v.innerHTML = vistaTodas(); }
   ligar();
+  renderBarra();
   window.scrollTo({ top: 0 });
 }
 
@@ -2242,6 +2516,8 @@ function ligar() {
       if (cb.checked) P.feitos[l.dataset.id] = 1; else delete P.feitos[l.dataset.id];
       l.classList.toggle('feito', cb.checked);
       save();
+      renderBarra();
+      if (cb.checked) autoRegistar();
     };
   }
   const cc = $('#compra-caixa');
@@ -2329,11 +2605,9 @@ async function accao(act, slot, btn, aid, nome, id) {
     /* MONTAR FORA DE ORDEM: as cópias que ele MARCOU no bloco «destinadas a
        outra caixa» vão no pedido. Só essas — o resto do painel é a alocação
        desta caixa, que o servidor já sabe de cor; estas são uma decisão dele
-       que o vault não tem como adivinhar. */
-    const deOutra = [...document.querySelectorAll(
-      `.dout .mv[data-id^="mo|${(slot || '').replace(/"/g, '')}|"]`)]
-      .filter(l => l.querySelector('input') && l.querySelector('input').checked)
-      .map(l => Number(l.dataset.copy));
+       que o vault não tem como adivinhar. Sai do `P.feitos` e já não do DOM: a
+       barra vive fora da vista e não alcançava as checkboxes por selector. */
+    const deOutra = deOutraMarcadas(D.caixas.find(x => x.slot === slot));
     const r = await gravar(ESCOLHA[act] ? 'api/escolher' : 'api/caixa',
                            { act, slot, nome: nome || null, id: id || null,
                              de_outra: deOutra,

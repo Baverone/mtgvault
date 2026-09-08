@@ -209,6 +209,62 @@ cada uma a explicar que a outra também estava certa. É o padrão do `event_tie
 3. **Quando as compras chegarem** — fotos em `pendentes/`, a caixa recalcula-se
    na corrida seguinte. Não há nada para marcar à mão.
 
+**A BARRA DE MONTAGEM: MARCAR AS CARTAS TODAS É DIZER QUE O DECK ESTÁ MONTADO
+(André, 2026-09-08, à letra).** *"Não é mais fácil confirmares que eu seleccionei
+todas as cartas do deck, e assim eu confirmo que montei o deck?"* Ele estava à
+frente da estante, com o telemóvel, a marcar cartas — e não encontrou o «Sim,
+está montada assim»: fica no **fim de 58 linhas**. Um botão que só existe depois
+de um ecrã inteiro de scroll é, na prática, um botão que não existe.
+- **A barra é FIXA no fundo do ecrã** enquanto a aba de uma caixa está aberta, e
+  **só no modo edição** (no site publicado o endpoint não existe, e uma barra que
+  conta cópias e não regista nada é pior do que barra nenhuma — a mesma razão dos
+  botões). Traz *«Montar <caixa>: N de M cópias marcadas»*, a barra de progresso,
+  o botão de registar e os atalhos **marcar tudo** / **limpar**. Motor em
+  `deckboxes.barraHTML`/`renderBarra`; config em `colecao_config.json → montar`.
+- **Marcar a ÚLTIMA cópia regista a caixa sozinha** (`montar.auto_registar`,
+  omissão `true`), com um aviso de `montar.anular_segundos` (6) e o **anular** ao
+  lado. Só quando ele ACABA de marcar: abrir a aba com tudo já marcado de ontem
+  não escreve nada, e o *marcar tudo* também não — é um atalho para depois
+  desmarcar duas ou três, não uma afirmação sobre a estante.
+- **O «anular» repõe a `copy_allocation` e o estado exactamente como estavam**
+  (`webapp.anular_registo` + `loadout.restaurar_alocacao`, sobre uma fotografia
+  em memória, uma por caixa). **Sem backup, de propósito**: não apaga nada, é o
+  inverso de uma escrita de há segundos. Quem apaga o que ele confirmou à mão é
+  o **Desmontar**, e é por isso que esse tem backup e uma linha no
+  `data/desmontar.log`. Os *vistos* das checkboxes voltam com ele — desfazer o
+  registo e deixá-lo com a grelha limpa era pedir-lhe que marcasse 58 cartas
+  outra vez.
+- **REGISTO PARCIAL** (`loadout.registar_marcadas`, act `registar`): com algumas
+  marcadas o botão diz *«Registar as N marcadas»* e grava **só essas** — as
+  outras continuam em *"tirar da colecção"* — e a caixa **sobe a `permanente`,
+  nunca a `montada`**, com o crachá *«N de M na caixa»*. Uma caixa monta-se aos
+  poucos; até aqui só havia tudo-ou-nada, e ele ou dizia que estava montada (a
+  mentir sobre as outras 40 cartas) ou no dia seguinte procurava as dez outra vez.
+- **Quem decide que está completa é a BASE, não o browser.** `falta` sai de
+  `movimentos_de_entrada` menos o que ele marcou; os `feitos` vivem no aparelho e
+  podem ser de uma alocação de ontem. E o **`registo` sobe, nunca desce**: uma
+  caixa que já se diz montada não usa o `montado` (esse **alterna** — alterná-lo
+  aqui desmontava-a), usa o `registar`.
+- **O que é de OUTRA caixa não conta para o M.** As cópias do bloco «destinadas a
+  outra caixa» continuam a marcar-se e a registar-se, mas esperá-las era impedir
+  esta caixa de fechar por causa de cartas que são de outra. Pela mesma razão as
+  básicas **a granel** ficam fora: não têm cópia registada, não têm nada para
+  marcar. O M é `plano_montar["marcar_q"]` = main + sideboard + básicas da base.
+- **O id de um "visto" está num sítio só** (`deckboxes.vistoId`; era escrito à
+  mão em três). A grelha desenha-o, a barra conta por ele e o registo manda os
+  `copy_id` que ele traz — bastava mudar uma barra vertical num dos três para a
+  barra dizer *"0 de 58"* com 58 cartas por baixo, sem um único erro. É o padrão
+  do `event_tier` do lado do browser, e tem teste dos dois lados
+  (`test_montar_barra.py`, que semeia os ids no `localStorage` do harness de node
+  e lê o «N de M» que a barra desenhou).
+- **Medido na base de 2026-09-08:** a alocação **não mexe** — 8 426,34 € para
+  fechar, 232 a comprar, 70 a ir buscar, 438 a arrumar, venda 239c/1 586,67 € +
+  41 RL/3 442,20 €, iguais antes e depois. O que a barra passa a dizer, por
+  caixa: Blue Farm 93, Cloud (DC) 75, Cloud cEDH 60, UW Replenish 59, Modern —
+  UW Oswald 49, Oath of Druids 36, Elves/Survival 22, Enchantress 17,
+  Ill-Gotten Gains 17, Pioneer — Greasefang 10. O Stiflenought e o Pauper não
+  têm barra: já não há nada por marcar neles.
+
 **OS TERRENOS BÁSICOS TÊM BLOCO PRÓPRIO (André, 2026-09-08, à letra).** *"Faltou
 marcares, para completar o deck, os terrenos básicos necessários!"* e, na mesma
 tarde, *"todas as minhas lands básicas são de Unhinged, em inglês, foil ou não

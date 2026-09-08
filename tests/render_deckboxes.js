@@ -43,9 +43,25 @@ function el() {
   return e;
 }
 const guardados = {};
+// Um elemento POR SELECTOR, e sempre o mesmo: assim o `#vista` guarda o que a
+// aba desenhou e o `#barra` o que a barra de montagem desenhou, e o dump lê-os
+// pelo nome. Antes cada `querySelector` devolvia um elemento novo e o dump
+// tinha de adivinhar "o último HTML desenhado" — o que passava a estar errado
+// no dia em que alguém desenhasse outra coisa depois da vista.
+const cache = {};
+const um = (sel) => (cache[sel] = cache[sel] || el());
+
+// Os "vistos" das checkboxes, para se poder desenhar a barra de montagem com
+// cartas já marcadas (é o que o `test_montar_barra.py` verifica).
+const seed = process.argv[4]
+  ? JSON.parse(fs.readFileSync(process.argv[4], 'utf8')) : null;
+if (seed) {
+  const chave = (html.match(/const KEY = '([^']+)'/) || [])[1] || 'deckboxes.v2';
+  guardados[chave] = JSON.stringify({ feitos: seed });
+}
 const ctx = {
   console, JSON, Math, Object, Array, String, Number, Boolean, Date, RegExp, Error,
-  setTimeout: (f) => { if (f) f(); },
+  setTimeout: (f) => { if (f) f(); }, clearTimeout: () => {},
   localStorage: {
     getItem: (k) => (k in guardados ? guardados[k] : null),
     setItem: (k, v) => { guardados[k] = v; },
@@ -55,8 +71,8 @@ const ctx = {
   URL: { createObjectURL: () => 'blob:', revokeObjectURL() {} },
   Blob: function () {}, confirm: () => false,
   document: {
-    getElementById: (id) => (id === 'dados' ? { textContent: dados } : el()),
-    querySelector: () => el(),
+    getElementById: (id) => (id === 'dados' ? { textContent: dados } : um('#' + id)),
+    querySelector: (sel) => um(sel),
     querySelectorAll: () => [],
     createElement: () => el(),
     body: el(),
@@ -81,14 +97,16 @@ for (const filtro of ['tudo', 'faltam']) {
     n++;
   }
 }
-// O HTML de cada aba, para quem chamou poder verificá-lo. O `render()` põe a
-// vista no fim, por isso a última coisa desenhada é sempre a aba pedida.
+// O HTML de cada aba, para quem chamou poder verificá-lo. Sai do `#vista`, que
+// é onde o `render()` o escreve; a BARRA de montagem sai à parte, em
+// `barra:<aba>`, porque vive fora da vista (fixa no fundo do ecrã).
 if (process.argv[3]) {
   const dump = {};
   vm.runInContext('filtro = "tudo";', ctx);
   for (const a of abas) {
     vm.runInContext(`aba = ${JSON.stringify(a)}; renderTabs(); render();`, ctx);
-    dump[a] = desenhado[desenhado.length - 1] || '';
+    dump[a] = um('#vista').innerHTML || '';
+    dump['barra:' + a] = um('#barra').innerHTML || '';
   }
   fs.writeFileSync(process.argv[3], JSON.stringify(dump), 'utf8');
 }
