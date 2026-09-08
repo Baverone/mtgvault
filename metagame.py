@@ -105,9 +105,16 @@ def _resumo(linhas):
     need = sum(m["need"] for m in nb)
     got = sum(m["got"] for m in nb)
     noutra = sum(m["noutra_q"] for m in nb)
+    # As três parcelas do "noutra caixa" (André, 2026-09-08): dentro de uma
+    # caixa montada, na gaveta destinada a outra, ou ainda por comprar. Só a
+    # primeira é uma ida a outra caixa.
+    parcelas = {q: sum(sum((m.get(f"noutra_{q}") or {}).values()) for m in nb)
+                for q in ("montada", "reservada", "futura")}
     comprar = sum(m["comprar"] for m in nb)
     custo = round(sum(m["cost"] or 0 for m in nb), 2)
     return {"need": need, "got": got, "noutra": noutra, "comprar": comprar,
+            "nmont": parcelas["montada"], "nres": parcelas["reservada"],
+            "nfut": parcelas["futura"],
             "custo": custo, "tenho": got + noutra,
             "pct": round(100 * got / need) if need else 0,
             "pct_tenho": round(100 * (got + noutra) / need) if need else 0}
@@ -142,7 +149,11 @@ def _grid(linhas, imgs):
         if m["got"] >= m["need"]:
             est, tip = "have", f'{m["nm"]} — tens {m["got"]}/{m["need"]}'
         elif m["noutra_q"]:
-            onde = "; ".join(f'{q}× em {c}' for c, q in sorted(m["noutra"].items()))
+            # ONDE A CARTA ESTÁ (André, 2026-09-08): a frase vem do Python, e
+            # distingue *"em UW Replenish"* (está lá dentro) de *"na Colecção —
+            # destinada ao UW Replenish"* (a caixa ainda não está montada).
+            # Composta aqui a partir do `noutra`, dizia sempre a primeira.
+            onde = "; ".join(loadout.onde_esta(m))
             est, tip = "noutra", f'{m["nm"]} — {onde}'
             if m["comprar"]:
                 tip += f' · comprar {m["comprar"]}'
@@ -155,20 +166,34 @@ def _grid(linhas, imgs):
 
 
 def _onde_html(linhas):
-    """'Ir buscar a outra caixa' — a resposta à pergunta 'onde está a carta'."""
-    rows = sorted((m for m in linhas if m["noutra_q"]),
-                  key=lambda m: (-m["noutra_q"], m["nm"]))
-    if not rows:
-        return ""
-    itens = "".join(
-        f'<li>{html.escape(m["nm"])} — '
-        + "; ".join(f'<b>{q}×</b> em {html.escape(c)}'
-                    for c, q in sorted(m["noutra"].items()))
-        + (f' <span class="dim">(comprar mais {m["comprar"]})</span>'
-           if m["comprar"] else "") + "</li>" for m in rows)
-    n = sum(m["noutra_q"] for m in rows)
-    return (f'<div class="onde"><b>📦 ir buscar a outra caixa — {n} cópias</b>'
-            f'<ul>{itens}</ul></div>')
+    """'Onde está a carta' — em TRÊS blocos, porque são três sítios.
+
+    André, 2026-09-08, à letra: *"De todas as cartas, só o Stiflenought está em
+    deckbox; o resto ainda nada está em deckbox — e ainda estás a assumir que há
+    cartas que já estão nas deckboxes dos decks."* Um bloco só, intitulado *"ir
+    buscar a outra caixa"*, mandava-o abrir caixas que não existem na estante: a
+    cópia está na `Colecção`, só está PROMETIDA a outra caixa. Quem parte e quem
+    escreve a frase é o `loadout` — a página não recompõe isto a partir do
+    `noutra`, que é a caixa destino e não o sítio.
+    """
+    out = ""
+    for qual, titulo in (
+            ("montada", "📦 ir buscar a outra caixa"),
+            ("reservada", "🗂️ na gaveta, destinadas a outra caixa"),
+            ("futura", "🛒 outra caixa vai comprá-las")):
+        rows = sorted((m for m in linhas if m.get(f"noutra_{qual}")),
+                      key=lambda m: (-sum(m[f"noutra_{qual}"].values()), m["nm"]))
+        if not rows:
+            continue
+        n = sum(sum(m[f"noutra_{qual}"].values()) for m in rows)
+        itens = "".join(
+            f'<li>{html.escape(m["nm"])} — '
+            + html.escape("; ".join(loadout.onde_esta(m, qual)))
+            + (f' <span class="dim">(comprar mais {m["comprar"]})</span>'
+               if m["comprar"] else "") + "</li>" for m in rows)
+        out += (f'<div class="onde"><b>{titulo} — {n} cópias</b>'
+                f'<ul>{itens}</ul></div>')
+    return out
 
 
 def _wantlist(linhas, marca=""):
@@ -274,8 +299,13 @@ def _deck_html(d, imgs, editable=False):
         + (f'<span class="ob">como principal <b>{d["tenho_principal"]}/'
            f'{r["need"]}</b></span>' if d.get("pm") else "")
         + f'<span>tenho livre <b>{r["got"]}</b></span>'
-        f'<span class="ob">ir buscar a outra caixa <b>{r["noutra"]}</b></span>'
-        f'<span>comprar <b>{r["comprar"]}</b></span>'
+        # DOIS números, não um (André, 2026-09-08): "ir buscar a outra caixa" só
+        # vale para o que está mesmo dentro de outra caixa; o resto está na
+        # gaveta de sempre, apenas prometido a uma caixa por montar.
+        f'<span class="ob">ir buscar a outra caixa <b>{r["nmont"]}</b></span>'
+        + (f'<span class="ob">na gaveta, p/ outra caixa <b>'
+           f'{r["nres"] + r["nfut"]}</b></span>' if r["nres"] + r["nfut"] else "")
+        + f'<span>comprar <b>{r["comprar"]}</b></span>'
         f'<span>fechar por <b>{_eur(r["custo"])}</b></span></div>'
         f'<div class="cards">{_grid(d["linhas"], imgs)}</div>'
         f'{_onde_html(d["linhas"])}{_wantlist(d["linhas"], d.get("marca", ""))}'
@@ -563,8 +593,11 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
 %TABS%<div class="subnav">%SUBNAV%</div></header>
 %SECS%
 <footer><b style="color:var(--add)">Verde</b> = tens a carta livre para esta caixa ·
-<b style="color:var(--ob)">azul 📦</b> = tens a carta mas está <b>noutra caixa</b> do loadout
-(diz qual e quantas — vais lá buscá-la, <b>não se compra</b>) ·
+<b style="color:var(--ob)">azul 📦</b> = tens a carta mas está noutra caixa do loadout —
+e há <b>duas maneiras</b> disso: <b>em &lt;caixa&gt;</b> (está mesmo sleevada lá dentro,
+vais lá buscá-la) ou <b>na Colecção, destinada a &lt;caixa&gt;</b> (está na gaveta de
+sempre, só prometida por prioridade a uma caixa que ainda não está montada). Nenhuma
+das duas <b>se compra</b> ·
 <b style="color:var(--warn)">vermelho</b> = não tens, é compra. A <b>percentagem</b> do topo é a do
 que <b>tens</b> — verde mais azul, porque a que está noutra caixa também é tua — e é ela que
 ordena o top-%N%; a barra mostra a repartição (a faixa clara é o verde). Ignora as terras

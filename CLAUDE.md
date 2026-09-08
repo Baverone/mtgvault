@@ -444,6 +444,54 @@ compre, depois indico (meto foto) e vais ajustando."*
   sozinha na corrida seguinte do `daily.py`** (passo `deckboxes`). Não há estado
   guardado: o "onde está a carta" é sempre recalculado da coleção do dia.
 
+**ONDE A CARTA ESTÁ ≠ A QUEM ESTÁ DESTINADA (André, 2026-09-08, 14:30, à letra).**
+*"De todas as cartas, só o Stiflenought está em deckbox; o resto ainda nada está
+em deckbox — e ainda estás a assumir que há cartas que já estão nas deckboxes dos
+decks."* Recorta a regra de cima, que ficou meio certa: o `noutra` responde
+*"de que caixa é esta cópia"*, que é uma pergunta de ALOCAÇÃO, e a página lia-o
+como *"onde é que ela está"*. Com a `copy_allocation` **vazia** — que era o
+estado da base nesse dia — as **70** cópias do *"ir buscar a outra caixa"*
+estavam todas na `Colecção`, na prateleira. É o padrão do `event_tier`: um número
+certo a responder a outra pergunta, sem um único erro.
+- **A prova de que a carta está numa caixa é a `copy_allocation`, e só ela.** O
+  `noutra` de cada linha parte-se em três, e as três somam-no sempre:
+  `noutra_montada` (há linha na `copy_allocation` daquela caixa para aquela
+  cópia — *"em UW Replenish"*), `noutra_reservada` (a alocação prometeu-a por
+  prioridade e ela continua na gaveta — *"na Colecção — destinada a UW Replenish
+  (prioridade)"*, com `noutra_onde` a dizer que gaveta) e `noutra_futura` (a que
+  já lá estava: ninguém a tem ainda, é uma compra partilhada de outra caixa).
+- **A frase escreve-se num sítio só: `loadout.onde_esta(linha, so=None)`.** Cada
+  página compunha o seu *"em X"* a partir do `noutra`, e por isso todas mentiam
+  ao mesmo tempo. O `deckboxes` recebe a frase pronta no payload e o
+  `metagame`/CLI chamam-na — a página não volta a recompor isto em JavaScript,
+  pela mesma razão que não decide o que é foil (ver `e_foil`).
+- **Um bloco passou a três**, na página e no CLI (`buscar_montada` /
+  `buscar_reservada` / `buscar_futura`, e os totais `noutra_montada` /
+  `noutra_reservada` / `noutra_futura` por caixa e `*_total` no relatório). Só o
+  primeiro é uma ida a outra caixa; o segundo tira-se da mesma gaveta que tudo o
+  resto. Um bloco só mandava-o abrir caixas que não existem na estante.
+- **MONTAR FORA DE ORDEM.** Se ele abre a Enchantress antes do UW Replenish, as
+  cartas que o Replenish há-de levar estão ali ao lado. O painel *Montar* mostra-
+  as num bloco próprio — **⚠️ destinadas a outra caixa**, `loadout.
+  movimentos_reservados` → `plano_montar()["de_outra"]` — e **por marcar**: tirá-
+  las é uma decisão dele (a outra caixa passa a vir buscá-las aqui), não uma
+  consequência de abrir a aba. Só o que ele marca é que vai no *"sleevado e na
+  caixa"* (`webapp.marcar_na_caixa(..., de_outra=[copy_id])`, que só aceita
+  `copy_id` que o painel oferecia). A partir daí **a `copy_allocation` manda
+  sobre a prioridade**: a corrida seguinte vê a cópia dentro desta caixa
+  (`_noutra_caixa`) e a outra passa a dizer *"em Enchantress"* — que aí é verdade.
+- **A arrumação nunca teve este defeito e não pode ganhá-lo:** o `de` de um
+  movimento é `lot["local"]`, que já é físico. O `de_outra` fica FORA do
+  `plano_arrumacao` e do `copias` do painel — são duas listas para dois gestos
+  diferentes, e somá-las contava a mesma cópia duas vezes.
+- **Efeito medido na base de 2026-09-08 (`copy_allocation` vazia):** a alocação
+  **não mexe** — 8 426,34 € para fechar, 232 a comprar, 70 destinadas a outra
+  caixa, 570 a arrumar, venda 243c/1 621,76 € + 41 RL/3 442,20 €, iguais antes e
+  depois. O que muda é a leitura: das 70, **0 estão numa caixa**, 56 estão na
+  gaveta destinadas a uma caixa por montar e 14 ainda ninguém as comprou. As 56
+  aparecem agora no painel *Montar* da caixa que as quer (Enchantress 20,
+  IGG 16, Elves 12, Oath 4, Modern 3, UW Replenish 1).
+
 **«VOU MONTAR ESTE»: escolher o deck de uma caixa a partir do top-N (André,
 2026-09-07, 19:00).** Ele vê os três que está mais perto de concluir e marca
 qual vai montar. O botão está no `metagame.html` **e** na aba da caixa do

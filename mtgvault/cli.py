@@ -508,7 +508,14 @@ def _loadout_resumo(rep):
                   f"  comprar {m['comprar']:>3} ({m['custo']:.2f}€)"
                   f"  {m['estado']}")
     print(f"\n  comprar: {rep['comprar_total']} cópias / {rep['custo_total']:.2f}€")
-    print(f"  ir buscar a outra caixa: {rep['noutra_total']} cópias (não são compra)")
+    # ONDE A CARTA ESTÁ (André, 2026-09-08): "ir buscar a outra caixa" só é
+    # verdade quando a caixa está montada. Enquanto não está, a cópia está na
+    # gaveta como todas as outras — e mandá-lo a uma caixa vazia era a mentira
+    # que ele apanhou. As três parcelas dizem-se, nunca só a soma.
+    print(f"  destinadas a outra caixa: {rep['noutra_total']} cópias "
+          f"(não são compra) — {rep['noutra_montada_total']} dentro de uma caixa "
+          f"montada, {rep['noutra_reservada_total']} ainda na gaveta, "
+          f"{rep['noutra_futura_total']} por comprar")
     if rep.get("bloqueado_total"):
         n, c = rep["bloqueado_total"], len(rep["limites"])
         print(f"  limite de playset: {n} {'cópia' if n == 1 else 'cópias'} que "
@@ -609,7 +616,9 @@ def _loadout_detalhe(rep, procura):
             print("  COMPLETO.")
             continue
         print(f"\n  FALTAM {s['faltam']} cópias: {s['comprar']} a comprar "
-              f"({s['custo']:.2f}€) + {s['noutra']} a ir buscar a outra caixa")
+              f"({s['custo']:.2f}€) + {s['noutra']} destinadas a outra caixa "
+              f"({s['noutra_montada']} dentro dela, {s['noutra_reservada']} "
+              f"ainda na gaveta, {s['noutra_futura']} por comprar)")
         for m in s["missing"]:
             u = f"{m['unit']:.2f}€" if m["unit"] else "?"
             # Quando o slot é de foil e o preço veio do nonfoil, diz-se: a
@@ -618,7 +627,7 @@ def _loadout_detalhe(rep, procura):
                 u += "*"
             partes = [f"comprar {m['comprar']}"
                       if 0 < m["comprar"] < m["missing"] else "",
-                      "; ".join(f"em {c}: {q}" for c, q in sorted(m["noutra"].items())),
+                      "; ".join(loadout.onde_esta(m)),
                       "; ".join(f"{v}× {k}" for k, v in m["alt"].items()),
                       "; ".join(f"em {k}: {v}" for k, v in m["alt_onde"].items())]
             extra = "   [" + " | ".join(p for p in partes if p) + "]" \
@@ -629,20 +638,28 @@ def _loadout_detalhe(rep, procura):
             print("    (* sem preço foil na base — o valor é o do nonfoil, "
                   "por baixo do real)")
         # Onde ir buscar (André, 2026-09-07): estas NÃO se compram — a cópia
-        # existe, está noutra caixa do loadout, e vai-se lá buscar para jogar.
-        if s["noutra_caixa"]:
-            print(f"\n  IR BUSCAR A OUTRA CAIXA ({s['noutra']} cópias — não são compra):")
-            for m in s["noutra_caixa"]:
-                # A parte que ainda não está em casa: é uma compra PARTILHADA
-                # que outra caixa faz. Mandá-lo à caixa do lado buscar uma carta
-                # que ninguém comprou ainda era o mesmo tipo de mentira que o
-                # "noutra caixa" veio corrigir.
-                fut = m.get("noutra_futura") or {}
-                onde = ", ".join(
-                    f"{q}× em {c}" + (f" ({fut[c]} depois de {c} comprar)"
-                                      if fut.get(c) else "")
-                    for c, q in sorted(m["noutra"].items()))
+        # existe e vai-se lá buscar para jogar. Desde 2026-09-08 são TRÊS
+        # secções, porque são três sítios diferentes: uma caixa montada, a
+        # gaveta de sempre, e uma compra que outra caixa ainda vai fazer. Juntá-
+        # las mandava-o abrir caixas que ainda não existem na estante.
+        for qual, titulo in (
+                ("montada", "IR BUSCAR A OUTRA CAIXA (está lá dentro)"),
+                ("reservada", "NA GAVETA, DESTINADAS A OUTRA CAIXA"),
+                ("futura", "OUTRA CAIXA VAI COMPRAR")):
+            linhas = s.get(f"buscar_{qual}")
+            if not linhas:
+                continue
+            print(f"\n  {titulo} ({s['noutra_' + qual]} cópias — não são compra):")
+            if qual == "reservada":
+                # A outra caixa ainda não está montada: estas cartas estão na
+                # gaveta, ao alcance da mão. Se ele monta ESTA primeiro, tira-as
+                # já — e a caixa que as tinha destinadas passa a vir aqui buscá-
+                # las. É o bloco «destinadas a outra caixa» do painel Montar.
+                print("    (ainda não estão em caixa nenhuma: podes tirá-las já "
+                      "no painel Montar desta caixa)")
+            for m in linhas:
                 mais = f"   (comprar mais {m['comprar']})" if m["comprar"] else ""
+                onde = "; ".join(loadout.onde_esta(m, qual))
                 print(f"    {m['nm']:<34} {onde}{mais}")
         # E o que o TECTO DE PLAYSET não deixa comprar (André, 2026-09-08: *"no
         # Premodern, afinal só vou ter até playset de cada carta"*). Sem isto a
