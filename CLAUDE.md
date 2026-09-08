@@ -464,7 +464,12 @@ CLI `python -m mtgvault.cli premodern`.
   `work/revisao/premodern-combo.md` (441 listas reais).
 - **A regra serve também de nome**: o `meta_coverage.KNOWN` chamava *"Replenish"*
   à Enchantress (que joga 96 % de Replenish) **e** ao UW Replenish, porque bate na
-  primeira carta que encontra. O `none` separa-os.
+  primeira carta que encontra. O `none` separa-os. **E é o que dá nomes ESTÁVEIS**:
+  quem não bate em regra nenhuma fica com o rótulo do clustering, que muda de
+  corrida para corrida (o *"Dimir Psychatog"* passou a *"Dimir Polluted Delta"* na
+  corrida seguinte). Como é pelo nome que uma sugestão se reconhece como sendo já
+  uma caixa (`premodern._caixa_de`), os arquétipos que são caixas TÊM de estar
+  no `combo_arquetipos` — mesmo os que não são combo.
 - **Uma sugestão aberta RESERVA as cartas dela** (`res["reservadas"]`, com o
   motivo *"reservada para X"*): não entram na venda. Reserva-se o **máximo** entre
   as sugestões e não a soma — são alternativas entre si, e o Premodern tem tecto
