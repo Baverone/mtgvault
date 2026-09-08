@@ -940,6 +940,14 @@ def resolve_slots(con, cfg_slots: list[dict] | None = None) -> list[dict]:
                if s.get("fonte") == "escolhido" else None)
         s["escolhido_em"] = (esc or {}).get("escolhido_em")
         s["archetype_id"] = (esc or {}).get("archetype_id")
+        # A identidade ESTÁVEL do arquétipo que ele escolheu (`mtgvault.
+        # arquetipos`). O `archetype_id` ao lado é o do clustering e muda quando
+        # o `rebuild_archetypes` corre — é por isso que não pode ser sozinho a
+        # dizer "esta caixa já é este arquétipo".
+        # Sem escolha guardada, vale o que estiver escrito na própria caixa — é
+        # como uma caixa feita à mão se pode prender a um arquétipo sem passar
+        # pelo botão.
+        s["arquetipo"] = (esc or {}).get("id") or s.get("arquetipo")
         s.setdefault("prioridade", 99)
         s.setdefault("nome", s.get("ref") or s.get("slot"))
         out.append(s)
@@ -2262,16 +2270,20 @@ def sell_list(con, res: dict) -> dict:
 def ficheiro_vendas() -> Path:
     """`data/vendas.csv` — o registo do que saiu da colecção.
 
-    Vive ao lado da base (`MTGVAULT_HOME`) e não dentro dela: a `vault.db` é
-    descarregada e republicada inteira a cada corrida, e um registo de vendas
-    que se pode perder numa publicação não é um registo. É um CSV para ele o
-    poder abrir no Excel e conferir contra o extracto do Cardmarket.
+    Vive ao lado da base e não dentro dela: a `vault.db` é descarregada e
+    republicada inteira a cada corrida, e um registo de vendas que se pode
+    perder numa publicação não é um registo. É um CSV para ele o poder abrir no
+    Excel e conferir contra o extracto do Cardmarket.
+
+    Quem sabe qual é essa pasta é o `db.pasta_dados()`: pelo `db.ROOT`, neste PC
+    (que tem `MTGVAULT_DB` e não tem `MTGVAULT_HOME`) o CSV ia parar a
+    `~/mtgvault`, longe do `data/` que o `.gitignore` já nomeia.
     """
-    # Importa-se aqui e não no topo porque o `db` fixa o `MTGVAULT_HOME` no
-    # momento do import, e este módulo é importado por páginas que definem essa
-    # variável logo antes. Lê-se quando se usa, não quando se carrega.
+    # Importa-se aqui e não no topo porque o `db` fixa os caminhos no momento do
+    # import, e este módulo é importado por páginas que definem essas variáveis
+    # logo antes. Lê-se quando se usa, não quando se carrega.
     from . import db                      # noqa: PLC0415
-    return Path(db.ROOT) / "vendas.csv"
+    return db.pasta_dados() / "vendas.csv"
 
 
 CABECALHO_VENDAS = ("data,carta,edicao,lingua,acabamento,quantidade,"
