@@ -258,12 +258,14 @@ de um ecrã inteiro de scroll é, na prática, um botão que não existe.
   (`test_montar_barra.py`, que semeia os ids no `localStorage` do harness de node
   e lê o «N de M» que a barra desenhou).
 - **Medido na base de 2026-09-08:** a alocação **não mexe** — 8 426,34 € para
-  fechar, 232 a comprar, 70 a ir buscar, 438 a arrumar, venda 239c/1 586,67 € +
-  41 RL/3 442,20 €, iguais antes e depois. O que a barra passa a dizer, por
-  caixa: Blue Farm 93, Cloud (DC) 75, Cloud cEDH 60, UW Replenish 59, Modern —
-  UW Oswald 49, Oath of Druids 36, Elves/Survival 22, Enchantress 17,
-  Ill-Gotten Gains 17, Pioneer — Greasefang 10. O Stiflenought e o Pauper não
-  têm barra: já não há nada por marcar neles.
+  fechar, 232 a comprar, 70 a ir buscar, 345 a arrumar, venda 230c/1 315,68 € +
+  40 RL/3 221,01 €, iguais antes e depois. O que a barra passa a dizer, por
+  caixa: Cloud (DC) **75**, Cloud cEDH **60**, UW Replenish **59**, Modern — UW
+  Oswald **49**, Oath of Druids **36**, Elves/Survival **22**, Enchantress
+  **17**, Ill-Gotten Gains **17**, Pioneer — Greasefang **10**. Sem barra: o
+  Stiflenought, o Blue Farm e o Pauper (já não há nada por marcar neles — os
+  dois últimos foram registados por ele na mesma tarde, no modo edição) e o
+  Standard e o Legacy (ainda sem deck escolhido).
 
 **OS TERRENOS BÁSICOS TÊM BLOCO PRÓPRIO (André, 2026-09-08, à letra).** *"Faltou
 marcares, para completar o deck, os terrenos básicos necessários!"* e, na mesma

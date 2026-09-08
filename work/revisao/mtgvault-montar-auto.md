@@ -100,20 +100,24 @@ A alocação **não mexe**:
 | fechar tudo | 8 426,34 € | **8 426,34 €** |
 | comprar | 232 | **232** |
 | ir buscar a outra caixa | 70 | **70** |
-| arrumar | 438 | **438** |
-| venda | 239 c / 1 586,67 € | **239 c / 1 586,67 €** |
-| venda RL | 41 c / 3 442,20 € | **41 c / 3 442,20 €** |
+| arrumar | 345 | **345** |
+| venda | 230 c / 1 315,68 € | **230 c / 1 315,68 €** |
+| venda RL | 40 c / 3 221,01 € | **40 c / 3 221,01 €** |
 
 O que a barra passa a dizer, por caixa (verificado no HTML que ela desenhou,
-`_preview_montar.py` sobre a base a sério): Blue Farm **93**, Cloud (DC) **75**,
-Cloud cEDH **60**, UW Replenish **59**, Modern — UW Oswald **49**, Oath of Druids
-**36**, Elves / Survival **22**, Enchantress **17**, Ill-Gotten Gains **17**,
-Pioneer — Greasefang **10**. O **Stiflenought** e o **Pauper** não têm barra: já
-não há nada por marcar neles. O Standard e o Legacy também não — ainda não têm
-deck escolhido.
+`_preview_montar.py` sobre a base a sério): Cloud (DC) **75**, Cloud cEDH **60**,
+UW Replenish **59**, Modern — UW Oswald **49**, Oath of Druids **36**,
+Elves / Survival **22**, Enchantress **17**, Ill-Gotten Gains **17**,
+Pioneer — Greasefang **10**.
 
-Com tudo marcado no Blue Farm, a barra diz *«93 de 93 cópias marcadas · tudo
-marcado»*, `data-estado="cheia"` e o botão **✅ Registar como montada**.
+Sem barra: o **Stiflenought**, o **Blue Farm** e o **Pauper**, porque já não há
+nada por marcar neles (os dois últimos foram registados por ele nesta mesma
+tarde, no modo edição, enquanto isto se escrevia), e o **Standard** e o
+**Legacy**, que ainda não têm deck escolhido.
+
+Com tudo marcado no Cloud (Duel Commander), a barra diz *«75 de 75 cópias
+marcadas · tudo marcado»*, `data-estado="cheia"` e o botão
+**✅ Registar como montada**.
 
 ## Testes
 
