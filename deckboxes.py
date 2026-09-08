@@ -118,6 +118,13 @@ def _montar_payload(rep, s, cores):
     arrumadas na `Colecção` (ver `colecao_cor.html`: cor → CMC). Ordená-la por
     nome, como a arrumação geral faz, obrigava-o a percorrer o binder de trás
     para a frente por cada carta.
+
+    E partida em **dois blocos**, main e sideboard (André, 2026-09-08: *"preciso
+    também de saber o que é sideboard nos decks, para ficar separado dentro da
+    mesma caixa"*). Quem parte é o `loadout.blocos_de_board`, o mesmo que o CLI
+    usa: dois sítios a decidir o que é sideboard eram duas oportunidades de
+    discordarem. A carta que joga nos dois vem em duas linhas — são duas cópias
+    físicas, em duas pilhas.
     """
     plano = loadout.plano_montar(rep, s["slot"])
     if not plano:
@@ -128,18 +135,20 @@ def _montar_payload(rep, s, cores):
         cor = (cores or {}).get(m["nm"], "C")
         return {"nm": m["nm"], "q": m["q"], "de": m["de"], "cor": cor,
                 "cor_nome": paginas.COR_NOME.get(cor, cor),
+                "board": m.get("board") or "",
                 "set": (m["set_code"] or "").upper(),
                 "fin": m["finish"], "foil": loadout.e_foil(m["finish"]),
                 "lang": (m["lang"] or "").upper(), "copy_id": m["copy_id"]}
 
-    tirar = sorted((linha(m) for m in plano["tirar"]),
-                   key=lambda x: (ordem.get(x["cor"], 9), x["nm"], x["set"]))
-    devolver = sorted((linha(m) for m in plano["devolver"]),
-                      key=lambda x: (ordem.get(x["cor"], 9), x["nm"], x["set"]))
+    por_cor = lambda x: (ordem.get(x["cor"], 9), x["nm"], x["set"])  # noqa: E731
+    tirar = sorted((linha(m) for m in plano["tirar"]), key=por_cor)
+    devolver = sorted((linha(m) for m in plano["devolver"]), key=por_cor)
     # TERRENOS BÁSICOS (André, 2026-09-08): *"faltou marcares, para completar o
-    # deck, os terrenos básicos necessários!"* Vêm num bloco à parte, depois das
-    # cores: a pilha de básicas não está arrumada no binder por cor, e metade
-    # delas nem sequer está registada na base — não têm `copy_id` para marcar.
+    # deck, os terrenos básicos necessários!"* Vêm num bloco à parte, DEPOIS do
+    # main e do sideboard: a pilha de básicas não está arrumada no binder por
+    # cor, e metade delas nem sequer está registada na base — não têm `copy_id`
+    # para marcar. Não se partem por board pela mesma razão: uma básica é uma
+    # pilha, e "12 Island no main + 2 no side" é a mesma ida à gaveta.
     basicas = [{"nm": b["nm"], "need": b["need"], "granel": b["granel"],
                 "comprar": b["comprar"], "req": b["req"], "cost": b["cost"],
                 "unit": b["unit"], "ja": b["ja"], "da_base": b["da_base"],
@@ -148,10 +157,23 @@ def _montar_payload(rep, s, cores):
     return {"slot": plano["slot"],
             "tirar": tirar, "devolver": devolver, "copias": plano["copias"],
             "ja": plano["ja"], "por_gaveta": plano["por_gaveta"],
+            "totais": plano["totais"],
+            "blocos": [{"board": b["board"], "titulo": b["titulo"],
+                        "movs": b["movs"], "q": b["q"], "de": b["de"]}
+                       for b in loadout.blocos_de_board(tirar, plano["totais"])],
             "basicas": basicas, "basicas_copias": plano["basicas_copias"],
             "basicas_comprar": plano["basicas_comprar"],
             "basicas_custo": plano["basicas_custo"],
             "edicao": plano["basicas_edicao"]}
+
+
+def _por_blocos(mapa):
+    """`{gaveta/caixa: [blocos main/side]}` — a aba *Arrumar* pelos dois lados.
+
+    A ordem dentro de cada bloco é a que o `plano_arrumacao` já deu (por caixa e
+    por nome); o que isto faz é só separar as duas pilhas.
+    """
+    return {nome: loadout.blocos_de_board(movs) for nome, movs in mapa.items()}
 
 
 def _basicas_geral(rep):
@@ -254,6 +276,11 @@ def _caixa_payload(s, imgs, cfs, rep=None, col=None, tipos=None, cores=None):
         # *confirmas que está montada com estas cartas?* — em vez de mandar
         # montar de novo um deck que está na estante.
         "confirmar": bool(s.get("montado_por_confirmar")),
+        # Tem conteúdo confirmado na `copy_allocation`: é o que decide se há
+        # alguma coisa para DESMONTAR. Não é o mesmo que `montado` — as quatro
+        # caixas de 2026-09-08 tinham alocação herdada da migração sem estarem
+        # montadas em lado nenhum, e era a essas que ele precisava do botão.
+        "arrumada": bool(s.get("arrumada")),
         "por_confirmar": bool(s.get("por_confirmar")), "vazio": s["vazio"],
         "nota": s["nota"], "fonte": s.get("fonte"), "ref": s.get("ref"),
         "pct": s["pct"], "tenho": s["tenho"], "precisa": s["precisa"],
@@ -272,10 +299,14 @@ def _caixa_payload(s, imgs, cfs, rep=None, col=None, tipos=None, cores=None):
         # `mat` é o material que vai DENTRO da linha copiada (`2 Swords [PT]`).
         # Vem da linha e não da caixa porque uma compra partilhada obedece ao
         # material do POOL, que pode ser mais exigente do que o desta caixa.
+        # A wantlist da caixa também vem separada por bloco: a carta que falta no
+        # main e no side são duas linhas, e o texto copiado leva `// Sideboard`
+        # entre elas (o Cardmarket ignora a linha de comentário sem erro).
         "wantlist": sorted(({"nm": m["nm"], "q": m["comprar"], "cost": m["cost"],
+                             "board": m["board"],
                              "mat": m.get("marca_compra") or ""}
                             for m in s["missing"] if m["comprar"] > 0),
-                           key=lambda x: x["nm"]),
+                           key=lambda x: (x["board"] != "main", x["nm"])),
         # `futura`: a parte do "ir buscar" que ainda não está em casa — é uma
         # cópia que outra caixa vai comprar e partilhar. Dizê-lo é a diferença
         # entre uma indicação e uma mentira.
@@ -518,7 +549,12 @@ def payload(con, rep, editable=False, token="", ligacao=None):
         # Python e não escrito à mão no JavaScript: um texto igual em dois sítios
         # é um texto que fica diferente na primeira vez que alguém lhe mexe.
         "pm_razao": loadout.RAZAO_PREMODERN,
-        "arrumar": {"por_origem": arr["por_origem"], "por_destino": arr["por_destino"],
+        # Cada gaveta e cada caixa partidas em MAIN e SIDEBOARD, do lado do
+        # Python (`loadout.blocos_de_board`) — a página não volta a decidir o que
+        # é sideboard, como não decide o que é foil. O CSV e os totais continuam
+        # a sair da lista corrida: o que muda é só a apresentação.
+        "arrumar": {"por_origem": _por_blocos(arr["por_origem"]),
+                    "por_destino": _por_blocos(arr["por_destino"]),
                     "copias": arr["copias"], "linhas": arr["linhas"],
                     # As caixas CONGELADAS não se arrumam, actualizam-se: o
                     # "já arrumei tudo" geral não lhes toca e cada uma tem o seu
@@ -800,6 +836,14 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
  .mvs{max-height:60vh;overflow:auto;margin:2px 0 8px}
  .corhdr{margin:9px 0 2px;font-size:10.5px;font-weight:700;color:var(--muted);
    text-transform:uppercase;letter-spacing:.06em}
+ /* cabeçalho de BLOCO (main / sideboard): mais forte do que o da cor, que vive
+    lá dentro — a caixa tem duas pilhas e a lista tem de as separar à vista */
+ .bhdr{display:flex;justify-content:space-between;align-items:baseline;gap:8px;
+   margin:10px 0 2px;padding-bottom:3px;border-bottom:1px solid var(--line);
+   font-size:12px;font-weight:800;color:var(--ink2)}
+ .bhdr span{color:var(--muted);font-size:11px;font-weight:600;
+   font-variant-numeric:tabular-nums}
+ .sb{color:var(--muted);font-size:10.5px;font-weight:700;margin-left:5px}
  .mv .nm small{display:block;color:var(--dim);font-size:10.5px;line-height:1.3}
  /* TERRENOS BÁSICOS: bloco próprio depois das cores (André, 2026-09-08) */
  .bas{margin:10px 0 8px;background:#101a14;border:1px solid #23402c;
@@ -1085,27 +1129,40 @@ function montarHTML(c) {
     + (c.confirmar ? `<p class="nota">São as cópias que a alocação dá a esta `
         + `caixa. Se é isto que está lá dentro, um clique regista — e o vault `
         + `pára de te mandar procurá-las.</p>` : '');
-  if (!M.tirar.length) {
+  /* As básicas contam para "há alguma coisa a tirar?": uma caixa em que só
+     faltem as 23 Snow-Covered Plains não pode dizer "não falta tirar nada" e
+     mostrar 23 terras por baixo. */
+  const basTirar = (M.basicas || []).some(b => b.tirar.length);
+  if (!M.tirar.length && !basTirar) {
     h += `<p class="ok2">✓ Não falta tirar nada: tudo o que a alocação dá a esta `
       + `caixa já está lá dentro${M.ja ? ` (${M.ja} cópias)` : ''}.</p>`;
+    h += basicasHTML(M);
   } else {
-    let cor = null;
-    h += `<div class="mvs">`;
-    for (const m of M.tirar) {
-      if (m.cor !== cor) {
-        cor = m.cor;
-        h += `<div class="corhdr">${esc(m.cor_nome)}</div>`;
+    /* DOIS BLOCOS: main e sideboard (André, 2026-09-08 — "para ficar separado
+       dentro da mesma caixa"). Quem os parte é o Python (`blocos_de_board`), e
+       dentro de cada um a ordem é a do binder: cor e depois nome. A carta que
+       joga nos dois vem nos dois — são duas pilhas, não uma linha repetida. */
+    for (const b of (M.blocos || [])) {
+      let cor = null;
+      h += `<div class="bhdr">${esc(b.titulo)}`
+        + `<span>${b.q}${b.de ? ' de ' + b.de : ''}</span></div><div class="mvs">`;
+      for (const m of b.movs) {
+        if (m.cor !== cor) {
+          cor = m.cor;
+          h += `<div class="corhdr">${esc(m.cor_nome)}</div>`;
+        }
+        const id = `mt|${c.slot}|${m.copy_id}|${m.nm}|${m.board}`;
+        const feito = !!P.feitos[id];
+        h += `<label class="mv${feito ? ' feito' : ''}" data-id="${esc(id)}">`
+          + `<input type="checkbox"${feito ? ' checked' : ''}>`
+          + `<span class="q">${m.q}×</span>`
+          + `<span class="nm">${esc(m.nm)}`
+          + `<small>${esc(m.set)}${m.foil ? ' ✨' : ''} ${esc(m.lang)}</small></span>`
+          + `<span class="to">de ${esc(m.de)}</span></label>`;
       }
-      const id = `mt|${c.slot}|${m.copy_id}|${m.nm}`;
-      const feito = !!P.feitos[id];
-      h += `<label class="mv${feito ? ' feito' : ''}" data-id="${esc(id)}">`
-        + `<input type="checkbox"${feito ? ' checked' : ''}>`
-        + `<span class="q">${m.q}×</span>`
-        + `<span class="nm">${esc(m.nm)}`
-        + `<small>${esc(m.set)}${m.foil ? ' ✨' : ''} ${esc(m.lang)}</small></span>`
-        + `<span class="to">de ${esc(m.de)}</span></label>`;
+      h += `</div>`;
     }
-    h += `</div>`;
+    h += basicasHTML(M);
     /* O botão só se DESENHA no modo edição: no site publicado o endpoint não
        existe, e um botão que não faz nada é pior do que não haver botão. */
     h += D.editable
@@ -1118,7 +1175,6 @@ function montarHTML(c) {
         + `<b>Plano</b> no telemóvel) — é o que faz o vault parar de te mandar `
         + `procurar estas cartas.</p>`;
   }
-  h += basicasHTML(M);
   if (M.devolver.length) {
     h += `<p class="nota">🔄 E <b>${M.devolver.reduce((s, m) => s + m.q, 0)}</b> `
       + `cópias que estão na caixa e a lista de hoje já não pede — vê a aba `
@@ -1212,6 +1268,7 @@ function wantlistHTML(itens, marca, id, detalhe, basicas, edicao) {
       serve.length ? 'serve também: ' + serve.map(p => p.caixa).join(', ') : '']
       .filter(Boolean).join(' — ');
     return `<li><b>${m.q}×</b><span class="wn">${esc(m.nm)}`
+      + (m.board === 'side' ? `<span class="sb">SB</span>` : '')
       + (cara ? `<span class="cara">💶 cara</span>` : '')
       + (m.partilhada ? `<span class="part">🔁 partilhada por `
         + `${m.partilhada} caixas</span>` : '')
@@ -1233,16 +1290,30 @@ function wantlistHTML(itens, marca, id, detalhe, basicas, edicao) {
       for (const mt of mats) {
         const q = (m.para || []).filter(p => !p.serve && (p.mat || '') === mt)
           .reduce((s, p) => s + p.q, 0);
-        if (q) porVersao.push({ q, nm: m.nm, mat: mt });
+        if (q) porVersao.push({ q, nm: m.nm, mat: mt, board: m.board });
       }
     } else {
-      porVersao.push({ q: m.q, nm: m.nm, mat: m.mat || mats[0] || '' });
+      porVersao.push({ q: m.q, nm: m.nm, mat: m.mat || mats[0] || '',
+                      board: m.board });
     }
   }
+  /* O SIDEBOARD separa-se também no texto copiado, com `// Sideboard` — que o
+     Cardmarket ignora sem dar erro. Sem separador, a lista colada era 75 linhas
+     seguidas e ele voltava a ter de descobrir onde acabava o main. Só aparece
+     quando a lista TEM sideboard: um cabeçalho para um bloco vazio é ruído.
+     (A aba Comprar junta as compras de várias caixas: aí a linha não tem bloco
+     — `board` vem indefinido — e o texto sai como sempre saiu.)
+     As BÁSICAS vêm a seguir ao sideboard, num `// Basicas` (2026-09-08). */
   const bt = basicasTexto(basicas, edicao);
-  const so = porVersao.map(m => `${m.q} ${m.nm}`).join('\n') + bt;
-  const comMat = porVersao.map(m => `${m.q} ${m.nm}`
-    + (m.mat ? ` [${m.mat}]` : '')).join('\n') + bt;
+  const texto = (fn) => {
+    const main = porVersao.filter(m => m.board !== 'side');
+    const side = porVersao.filter(m => m.board === 'side');
+    const linhas = main.map(fn);
+    if (side.length) linhas.push('// Sideboard', ...side.map(fn));
+    return linhas.join('\n') + bt;
+  };
+  const so = texto(m => `${m.q} ${m.nm}`);
+  const comMat = texto(m => `${m.q} ${m.nm}` + (m.mat ? ` [${m.mat}]` : ''));
   return `<div class="blk" id="${id || ''}"><div class="flh">🛒 Comprar`
     + (marca ? ` <span class="mrk">${esc(marca)}</span>` : '')
     + `<span class="dim">${itens.length} cartas</span>`
@@ -1406,10 +1477,17 @@ function acoesHTML(c) {
   /* O «sleevado e na caixa» NÃO está aqui: vive no fim do passo 1 do painel
      Montar, que é onde ele está quando acaba de a montar. Aqui fica o que muda
      o ESTADO da caixa e a ordem da alocação. */
+  /* DESMONTAR (André, 2026-09-08): o inverso do «sleevado e na caixa» — as
+     cartas voltam à gaveta, a `copy_allocation` desta caixa esvazia-se (com
+     backup e registo no `data/desmontar.log`) e a caixa volta a `permanente`.
+     Aparece também numa caixa que NÃO se diz montada mas tem cartas registadas
+     lá dentro: era o caso das quatro que herdaram alocação da migração, e é
+     precisamente esse o botão que faltava — sem ele isto fazia-se em SQL. */
+  const desmontavel = c.montado || c.arrumada;
   return `<div class="acts">`
-    + (c.montado
-       ? `<button class="btn warn" data-act="montado" data-slot="${esc(c.slot)}">`
-         + `Tirar da caixa</button>`
+    + (desmontavel
+       ? `<button class="btn warn" data-act="desmontar" data-slot="${esc(c.slot)}">`
+         + `🧹 Desmontar</button>`
        : `<button class="btn ${c.permanente ? '' : 'pri'}" data-act="permanente" `
          + `data-slot="${esc(c.slot)}">`
          + (c.permanente ? 'Deixar de ser permanente' : '★ Tornar permanente')
@@ -1446,6 +1524,11 @@ function vistaTodas() {
 const edicao = m => m.set_code
   ? ` <span class="dim">[${esc(m.set_code.toUpperCase())}]</span>` : '';
 
+/* Em que BLOCO da caixa entra a cópia (André, 2026-09-08: "para ficar separado
+   dentro da mesma caixa"). Vem do movimento, que o traz da linha da alocação: a
+   mesma carta pode entrar no main E no side, e são duas pilhas. */
+const bloco = m => m.board === 'side' ? ` <span class="sb">SB</span>` : '';
+
 /* As caixas CONGELADAS (dedicadas e montadas) não se arrumam — actualizam-se.
    O "já arrumei tudo" geral não lhes toca de propósito: abrir um deck que está
    sleevado é outro gesto, e é ele que decide quando o faz. */
@@ -1454,7 +1537,7 @@ function actualizarHTML() {
   if (!acts.length) return '';
   const lado = (movs, verbo, seta) => movs.map(m =>
     `<div class="mv"><span class="q">${m.q}×</span>`
-    + `<span class="nm">${esc(m.nm)}${edicao(m)}</span>`
+    + `<span class="nm">${esc(m.nm)}${edicao(m)}${bloco(m)}</span>`
     + `<span class="to">${verbo} ${seta} ${esc(verbo === 'tirar' ? m.para : m.de)}`
     + `</span></div>`).join('');
   return `<h2>🔄 Actualizar decks montados <span class="n">${acts.length}</span></h2>`
@@ -1488,17 +1571,29 @@ function vistaArrumar() {
     return `<label class="mv${feito ? ' feito' : ''}" data-id="${esc(id)}">`
       + `<input type="checkbox"${feito ? ' checked' : ''}>`
       + `<span class="q">${m.q}×</span>`
-      + `<span class="nm">${esc(m.nm)}${edicao(m)}</span>`
+      + `<span class="nm">${esc(m.nm)}${edicao(m)}${bloco(m)}</span>`
       + `<span class="to">${lado === 'origem' ? '→ ' + esc(m.para) : '← ' + esc(m.de)}`
       + `</span></label>`;
   };
+  /* Cada gaveta e cada caixa vêm partidas em MAIN e SIDEBOARD — é a lista com
+     que ele está à frente da estante, e a caixa fica separada por dentro. Quem
+     parte é o Python (`loadout.blocos_de_board`), o mesmo que o painel Montar e
+     o CLI usam. O que SAI de uma caixa não tem bloco (vem do lote, não da
+     lista): fica no bloco do fim, com o nome que o Python lhe dá. */
   const secao = (mapa, lado, titulo, lead) => {
     let h = `<h2>${titulo}</h2><p class="lead">${lead}</p>`;
-    for (const [nome, movs] of Object.entries(mapa)) {
+    for (const [nome, bs] of Object.entries(mapa)) {
+      const n = bs.reduce((s, b) => s + b.movs.length, 0);
       h += `<div class="arr"><div class="arrh"><b>${esc(nome)}</b>`
-        + `<span>${movs.reduce((s, m) => s + m.q, 0)} cópias · ${movs.length} linhas`
-        + `</span></div>`
-        + movs.map(m => linha(m, lado)).join('') + `</div>`;
+        + `<span>${bs.reduce((s, b) => s + b.q, 0)} cópias · ${n} linhas`
+        + `</span></div>`;
+      for (const b of bs) {
+        if (bs.length > 1) {
+          h += `<div class="bhdr">${esc(b.titulo)}<span>${b.q} cópias</span></div>`;
+        }
+        h += b.movs.map(m => linha(m, lado)).join('');
+      }
+      h += `</div>`;
     }
     return h;
   };
@@ -2103,6 +2198,12 @@ function gravar(url, corpo) {
 }
 
 async function accao(act, slot, btn, aid, nome, id) {
+  /* DESMONTAR apaga o que ele CONFIRMOU à mão. Pergunta-se, como na venda: a
+     base é copiada antes, mas um toque enganado no telemóvel manda-o procurar
+     as cartas todas outra vez. */
+  if (act === 'desmontar' && !confirm(
+      'Desmontar esta caixa? As cartas voltam à colecção e o vault deixa de '
+      + 'saber o que está lá dentro (a base é copiada antes).')) return;
   btn.disabled = true;
   try {
     const r = await gravar(ESCOLHA[act] ? 'api/escolher' : 'api/caixa',

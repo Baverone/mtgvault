@@ -681,6 +681,23 @@ def _carta(m):
     return f"{m['nm']} [{sc}]" if sc else m["nm"]
 
 
+def _blocos(movs, chave, linha):
+    """Imprime os movimentos separados em **Main** e **Sideboard**.
+
+    André, 2026-09-08: *"preciso também de saber o que é sideboard nos decks,
+    para ficar separado dentro da mesma caixa."* É a mesma separação da página, e
+    do mesmo sítio (`loadout.blocos_de_board`) — o CLI e o browser a decidirem
+    cada um o que é sideboard eram duas oportunidades de discordarem. Com um
+    bloco só (uma lista sem sideboard) não se escreve cabeçalho nenhum.
+    """
+    bs = loadout.blocos_de_board(movs)
+    for b in bs:
+        if len(bs) > 1:
+            print(f"    [{b['titulo']} — {b['q']} cópias]")
+        for m in sorted(b["movs"], key=chave):
+            print(linha(m))
+
+
 def _actualizacoes(plano):
     """As caixas CONGELADAS que têm delta por aplicar ("tirar X, meter Y").
 
@@ -727,13 +744,13 @@ def _arrumar(con, csv_out=False, confirmar=False):
     print("DE CADA GAVETA (o que se tira)")
     for origem, movs in plano["por_origem"].items():
         print(f"\n  {origem}  ({sum(m['q'] for m in movs)} cópias)")
-        for m in sorted(movs, key=lambda x: (x["para"], x["nm"])):
-            print(f"    {m['q']}× {_carta(m):<40} -> {m['para']}")
+        _blocos(movs, lambda x: (x["para"], x["nm"]),
+                lambda m: f"    {m['q']}× {_carta(m):<40} -> {m['para']}")
     print("\n\nPARA CADA CAIXA (o que entra)")
     for destino, movs in plano["por_destino"].items():
         print(f"\n  {destino}  ({sum(m['q'] for m in movs)} cópias)")
-        for m in sorted(movs, key=lambda x: (x["de"], x["nm"])):
-            print(f"    {m['q']}× {_carta(m):<40} <- {m['de']}")
+        _blocos(movs, lambda x: (x["de"], x["nm"]),
+                lambda m: f"    {m['q']}× {_carta(m):<40} <- {m['de']}")
     if confirmar:
         n = loadout.guardar_arrumacao(con, rep)
         print(f"\n  ARRUMADO: {n} cópias registadas nas caixas. "
