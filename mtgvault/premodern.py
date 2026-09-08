@@ -13,28 +13,40 @@ Três perguntas, por esta ordem — e a ordem é o que faz a resposta ser honest
   1. **o que é que o formato joga?** Os arquétipos mais representados nas listas
      que CONTAM (`sources.counting_sql`, a mesma regra do resto do vault) e, à
      parte, os que são **combo**;
-  2. **do que sobra, quanto é que ele já tem?** A cobertura de cada candidato
-     mede-se sobre as cópias que a alocação NÃO deu a nenhuma caixa — nem às seis
-     de Premodern nem a uma que ele já tenha escolhido. Medi-la sobre a colecção
-     inteira dava percentagens altas e falsas: as cartas estão dentro de decks
-     montados, e uma sugestão que conta com elas está a mandá-lo desmontar um
-     deck para montar outro;
+  2. **e se este deck escolhesse primeiro, quanto é que ele já tem?** A cobertura
+     de cada candidato mede-se como se ele fosse a caixa nº 1 do grupo de
+     Premodern — as cópias livres MAIS as que estão nas outras caixas do grupo,
+     que lhas emprestam. Não conta as que estão dentro de caixas de outros
+     formatos: essas são dedicadas, não emprestam, e montar com elas era
+     desmontar um deck para montar outro;
   3. **e o resto?** Uma cópia PT da era Premodern que nenhuma caixa usa não serve
      mais nada — a regra 1 do André tranca-a ao Premodern (*"essas cartas NÃO
      entram para outros formatos!!"*). Se também não está reservada para uma
      sugestão, é peso morto e vai para a venda, com um motivo próprio.
 
-O QUE É "COBERTURA COM O QUE SOBRA"
------------------------------------
-`loadout.foil_report(..., res=...)` já responde a isto para os outros formatos: o
-`pct_livre` é a percentagem de cartas não-básicas que ele tem **livres** depois
-da alocação toda. Aqui é a mesma função e o mesmo número — não se escreve um
-segundo cálculo de posse, que é o defeito que este vault já pagou caro no
-`event_tier` e no filtro de listas.
+DUAS COBERTURAS, E QUAL DELAS DECIDE (André, 2026-09-08)
+-------------------------------------------------------
+*"Como as cartas em Premodern são partilhadas, tens que ver se a % desses decks
+aumentaria se eles fossem o principal; mantém a 50 % visto com esta regra de
+agora."*
 
-Consequência a assumir, e é grande: com seis caixas de Premodern a alocar
-primeiro, sobra pouco. Uma sugestão a 40 % não é uma sugestão má — é a verdade
-sobre o que resta na gaveta depois de os decks dele estarem servidos.
+A primeira versão media a cobertura só sobre o que SOBRA — as cópias que a
+alocação não deu a nenhuma caixa (`loadout.foil_report`, `pct_livre`). Era a
+leitura certa enquanto as caixas de Premodern eram dedicadas; deixou de o ser no
+dia em que elas voltaram a partilhar (`regras_por_formato.premodern.dedicado =
+false`). Com seis caixas a alocar primeiro, NENHUM candidato chegava aos 50 % —
+o melhor ficava em 41 % —, e o que a percentagem media já não era "quanto deste
+deck eu tenho" mas "quanto sobrou depois dos outros".
+
+Por isso o limiar corre agora sobre `pct_principal`: as cópias livres MAIS as
+que estão nas outras caixas do grupo, que lhas emprestariam se este deck fosse a
+caixa nº 1. As duas percentagens continuam à vista nas páginas e no CLI —
+*"81 % como principal · 36 % com o que sobra"* — porque a diferença entre elas é
+a resposta a *"quantas cartas viriam emprestadas?"*, e essa é a pergunta seguinte.
+
+Nem uma nem outra é um segundo cálculo de posse: as duas saem das mesmas linhas
+do `foil_report` (`got`, `onde`), que é a alocação a sério. Escrever aqui uma
+contagem própria era o defeito que este vault já pagou caro no `event_tier`.
 
 O QUE CONTA COMO COMBO
 ----------------------
@@ -236,6 +248,49 @@ def caixas_do_formato(res: dict) -> list[dict]:
     return [s for s in res["slots"] if s.get("formato") == FMT]
 
 
+def caixas_que_partilham(res: dict) -> set[str]:
+    """Os NOMES das caixas de Premodern que emprestam cartas a uma caixa nova.
+
+    Desde 2026-09-08 o grupo `premodern` é `dedicado: false` — as caixas trocam
+    cartas entre si e há um tecto de playset por cima. Uma caixa que ele marque
+    como dedicada fica de fora: não empresta, e por isso as cópias dela não
+    contam para a cobertura de mais ninguém.
+    """
+    return {s["nome"] for s in caixas_do_formato(res)
+            if s.get("nome") and not s.get("dedicado")}
+
+
+def pct_principal(linhas: list[dict], grupo: set[str]) -> tuple[int, int]:
+    """(cobertura, cópias) COMO SE este deck fosse a caixa nº 1 do grupo.
+
+    André, 2026-09-08, à letra: *"como as cartas em Premodern são partilhadas,
+    tens que ver se a % desses decks aumentaria se eles fossem o principal;
+    mantém a 50 % visto com esta regra de agora."*
+
+    A cobertura do que SOBRA (`pct`) responde a *"o que é que eu monto sem tocar
+    em nada?"* — e com seis caixas de Premodern a alocar primeiro a resposta é
+    quase sempre "pouco": nenhum candidato chegava aos 50 %. Mas as caixas de
+    Premodern **partilham** (`dedicado: false`), e por isso a pergunta certa é
+    outra: *"e se este deck escolhesse primeiro?"*. Aí conta tudo o que a regra
+    do Premodern VÊ — as cópias livres mais as que estão nas outras caixas do
+    grupo, que lhe seriam emprestadas —, com o tecto do que a lista pede.
+
+    O que NÃO conta: as cópias dentro de caixas dedicadas de outros formatos (o
+    cEDH, o Pauper), que já não entram no `onde` porque não emprestam. Montar com
+    elas era desmontar um deck de outro formato para montar este, e nenhuma
+    partilha as devolve.
+    """
+    need = tenho = 0
+    for m in linhas:
+        if m.get("basica"):
+            continue
+        need += m["need"]
+        do_grupo = sum(q for caixa, q in (m.get("onde") or {}).items()
+                       if caixa in grupo)
+        tenho += min(m["need"], m["got"] + do_grupo)
+    return (round(100 * tenho / need) if need else 0), tenho
+
+
 def _caixa_de(cand: dict, caixas: list[dict]) -> dict | None:
     """A caixa que já É este arquétipo, se existir.
 
@@ -266,15 +321,20 @@ def candidatos(con: sqlite3.Connection, res: dict) -> list[dict]:
       `nome`/`subtitulo`  o nome da regra de combo, ou o do clustering;
       `combo`/`grau`      se é combo e de que tipo;
       `n_lists`           listas que CONTAM (`sources.counting_sql`);
-      `pct`               a cobertura com o que sobra (sem básicas) — é esta que
-                          decide a sugestão;
-      `pct_total`         a cobertura contando também as cópias que estão dentro
-                          de outra caixa. Não decide nada: está aqui para ele ver
-                          *porque* é que a primeira é baixa;
+      `pct_principal`     a cobertura COMO SE ele fosse a caixa nº 1 do grupo de
+                          Premodern (as caixas partilham) — é esta que decide a
+                          sugestão desde 2026-09-08;
+      `pct`               a cobertura só com o que SOBRA depois de as caixas
+                          estarem servidas. Já não decide nada, mas continua à
+                          vista: a diferença entre as duas é quantas cartas
+                          viriam emprestadas das outras caixas;
+      `pct_total`         a cobertura contando qualquer caixa que empreste, do
+                          formato que for. Serve de contexto;
       `estado`            caixa | sugerida | recusada | abaixo.
     """
     regras = combo_regras()
     caixas = caixas_do_formato(res)
+    grupo = caixas_que_partilham(res)
     fora = recusadas()
     corte = limiar()
     cache: dict = {}
@@ -305,6 +365,7 @@ def candidatos(con: sqlite3.Connection, res: dict) -> list[dict]:
             "pct": r["pct_livre"], "pct_total": r["pct"],
             "comprar": r["comprar"], "custo": r["custo"],
         }
+        c["pct_principal"], c["tenho_principal"] = pct_principal(r["linhas"], grupo)
         if nome:
             por_combo[nome] = c
         out.append(c)
@@ -313,9 +374,14 @@ def candidatos(con: sqlite3.Connection, res: dict) -> list[dict]:
         c["slot"] = (caixa or {}).get("slot")
         c["caixa_nome"] = (caixa or {}).get("nome")
         c["recusada_em"] = fora.get(c["nome"])
+        # O limiar corre sobre a cobertura COMO PRINCIPAL (André, 2026-09-08:
+        # *"tens que ver se a % desses decks aumentaria se eles fossem o
+        # principal; mantém a 50 % visto com esta regra de agora"*). Com o `pct`
+        # do que sobra, seis caixas de Premodern a alocar primeiro deixavam o
+        # melhor candidato a 41 % e nunca havia sugestão nenhuma.
         c["estado"] = ("caixa" if caixa else
                        "recusada" if c["recusada_em"] else
-                       "sugerida" if c["pct"] >= corte else "abaixo")
+                       "sugerida" if c["pct_principal"] >= corte else "abaixo")
     out.sort(key=lambda c: (-c["n_lists"], c["nome"]))
     return out
 

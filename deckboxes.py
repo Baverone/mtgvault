@@ -260,10 +260,12 @@ def _premodern_payload(rep, imgs):
     caixas, porque é aqui que ele decide: a alternativa era mandá-lo à página do
     Metagame para voltar com a resposta.
 
-    A percentagem é a do que SOBRA (`pct`), e não a do que ele tem ao todo
-    (`pct_total`): a segunda conta cartas que estão dentro de outras caixas, e
-    montar com elas é desmontar um deck para montar outro. As duas vão no
-    payload, porque a diferença entre elas é a explicação da primeira.
+    A percentagem que DECIDE é a de *"como se fosse o principal"*
+    (`pct_principal`, André 2026-09-08): as caixas de Premodern partilham cartas
+    entre si, por isso um deck que escolhesse primeiro ficaria com as cópias que
+    hoje estão nas outras. A do que SOBRA (`pct`) vai a seguir, porque a
+    diferença entre as duas é quantas cartas viriam emprestadas — que é a
+    pergunta seguinte, e a razão de a primeira ser tão maior.
     """
     pm = rep.get("premodern") or {}
     if not pm.get("activo"):
@@ -273,6 +275,8 @@ def _premodern_payload(rep, imgs):
         return {"nome": c["nome"], "subtitulo": c["subtitulo"],
                 "archetype_id": c["archetype_id"], "n_lists": c["n_lists"],
                 "pct": c["pct"], "pct_total": c["pct_total"],
+                "pct_principal": c["pct_principal"],
+                "tenho_principal": c["tenho_principal"],
                 "combo": c["combo"], "grau": c["grau"],
                 "top": c["top"], "top_combo": c["top_combo"],
                 "estado": c["estado"], "caixa": c.get("caixa_nome"),
@@ -375,7 +379,12 @@ def payload(con, rep, editable=False, token="", ligacao=None):
                             "foil": loadout.e_foil(r["finish"]),
                             "lang": r["lang"], "unit": r["unit"],
                             "total": r["total"], "rl": bool(r["rl"]),
-                            "reason": r["reason"], "sid": imgs.get(r["nm"])}
+                            "reason": r["reason"], "sid": imgs.get(r["nm"]),
+                            # Só nos blocos da RL retida: o motivo por que a
+                            # cópia ia à venda antes de a regra dos 5 % a
+                            # segurar. Sem ele a linha diz "subiu 7 %" e perde-se
+                            # a pergunta a que isso responde.
+                            "porque": r.get("porque_venderia", "")}
                            for r in rep[chave]],
                 "copias": rep[copias], "total": rep[total]}
 
@@ -427,7 +436,22 @@ def payload(con, rep, editable=False, token="", ligacao=None):
                   # a decisão que as liberta é o «não quero este».
                   "reservadas": venda_bloco("reservadas", "copias_reservadas",
                                             "total_reservado"),
+                  # RESERVED LIST QUE VALORIZOU e RL que o vault ainda não sabe
+                  # medir (André, 2026-09-08: *"cartas de RL só vão para venda se
+                  # não tiverem subido 5 % de valor nos últimos 3 meses"*). Dois
+                  # blocos e não um: "subiu" é uma decisão tomada, "não sei" é
+                  # uma decisão por tomar.
+                  "rl_segurar": venda_bloco("rl_segurar", "copias_rl_segurar",
+                                            "total_rl_segurar"),
+                  "rl_sem_historico": venda_bloco("rl_sem_historico",
+                                                  "copias_rl_sem_historico",
+                                                  "total_rl_sem_historico"),
                   "retidos": venda_bloco("retidos", "copias_retidas", "total_retido")},
+        # Quanto é que a regra dos 5 % segurou ao todo, e com que parâmetros.
+        "rl_regra": {"copias": rep["copias_rl_retidas"],
+                     "total": rep["total_rl_retido"],
+                     "pct": loadout.rl_subida_minima(),
+                     "dias": loadout.rl_janela_dias()},
         # PREMODERN (André, 2026-09-08): o que montar a seguir com o que sobra.
         # A conta é a do `mtgvault.premodern`, a mesma que o metagame.html mostra.
         "premodern": _premodern_payload(rep, imgs),
@@ -1506,14 +1530,19 @@ function sugestaoHTML(c) {
         + `✔ Vou montar este</button>`
         + `<button class="btn" data-act="pm-recusar" data-nome="${esc(c.nome)}">`
         + `✕ Não quero este</button></div>`;
+  /* A percentagem grande é a de COMO PRINCIPAL — é a que decide o limiar desde
+     2026-09-08, porque as caixas de Premodern partilham cartas. A do que sobra
+     vem logo a seguir: a diferença entre as duas é quantas cartas viriam
+     emprestadas das outras caixas, e sem ela os 81% pareciam cartas em casa. */
+  const p = c.pct_principal;
   return `<div class="box"><div class="btop"><b>${esc(c.nome)}</b>`
-    + `<span class="pct" style="color:${cor(c.pct)}">${c.pct}%</span></div>`
-    + `<div class="bar"><i style="width:${Math.max(c.pct, 2)}%;`
-    + `background:${cor(c.pct)}"></i></div>`
+    + `<span class="pct" style="color:${cor(p)}">${p}%</span></div>`
+    + `<div class="bar"><i style="width:${Math.max(p, 2)}%;`
+    + `background:${cor(p)}"></i></div>`
     + `<div class="badges">${chips}</div>`
     + `<div class="nums">`
-    + `<div class="num">do que sobra<b>${c.got}/${c.need}</b></div>`
-    + `<div class="num get">contando as outras caixas<b>${c.pct_total}%</b></div>`
+    + `<div class="num get">como principal<b>${c.tenho_principal}/${c.need}</b></div>`
+    + `<div class="num">com o que sobra<b>${c.pct}%</b> (${c.got}/${c.need})</div>`
     + `<div class="num buy">comprar<b>${c.comprar}</b></div>`
     + `<div class="num eur">fechar por<b>${eur(c.custo)}</b></div></div>`
     + `<div class="nota">${esc(c.subtitulo)}</div>`
@@ -1524,14 +1553,16 @@ function vistaSugestoes() {
   const P2 = D.premodern;
   const ordem = { sugerida: 0, abaixo: 1, recusada: 2, caixa: 3 };
   const lista = P2.candidatos.slice().sort((a, b) =>
-    (ordem[a.estado] - ordem[b.estado]) || (b.pct - a.pct));
+    (ordem[a.estado] - ordem[b.estado]) || (b.pct_principal - a.pct_principal));
   const sug = lista.filter(c => c.estado === 'sugerida');
   let h = `<h2>💡 Sugestões de Premodern</h2>`
     + `<p class="lead">O <b>top-10</b> do formato e os <b>melhores combo</b>, `
-    + `pelas listas que contam. A percentagem grande é a do que <b>sobra</b> — as `
-    + `cópias PT (≤SCG) que <b>nenhuma caixa</b> levou —, porque é com essas que `
-    + `montarias mais um deck; a segunda conta também as que estão dentro de `
-    + `outras caixas, e serve só para perceberes a diferença. A partir de `
+    + `pelas listas que contam. A percentagem grande é a de <b>como principal</b>: `
+    + `as caixas de Premodern <b>partilham</b> cartas, por isso conta-se o que `
+    + `este deck teria se fosse ele a escolher primeiro — as cópias PT (≤SCG) `
+    + `livres <b>mais</b> as que estão nas outras caixas de Premodern. A segunda `
+    + `é a do que <b>sobra</b> sem tocar em nada, e a diferença entre as duas é `
+    + `quantas cartas irias buscar às outras caixas. A partir de `
     + `<b>${P2.limiar}%</b> vira sugestão.</p>`;
   h += sug.length
     ? `<p class="lead">Enquanto forem sugestões, as cartas delas <b>não vão para `
@@ -1540,10 +1571,11 @@ function vistaSugestoes() {
           + `alocação; <b>✕ não quero este</b> liberta as cartas para a venda.`
          : `Para decidires, corre <code>python webapp.py</code> no PC (porto 8771).`)
       + `</p>`
-    : `<p class="lead">Nenhum candidato chega aos ${P2.limiar}% com o que sobra: `
-      + `as caixas de Premodern ficam com as cópias primeiro, e o que sobra vai `
-      + `para a venda com o motivo <i>"não usada por nenhum deck"</i>. Se quiseres `
-      + `ver mais opções, baixa o <code>sugerir_a_partir_de_pct</code> no `
+    : `<p class="lead">Nenhum candidato chega aos ${P2.limiar}% nem sequer como `
+      + `principal: mesmo com as cartas emprestadas pelas outras caixas de `
+      + `Premodern faltava-lhes mais de metade. O que sobra vai para a venda com `
+      + `o motivo <i>"não usada por nenhum deck"</i>. Se quiseres ver mais `
+      + `opções, baixa o <code>sugerir_a_partir_de_pct</code> no `
       + `<code>colecao_config.json</code>.</p>`;
   return h + `<div class="grid">` + lista.map(sugestaoHTML).join('') + `</div>`;
 }
@@ -1581,7 +1613,11 @@ function vistaVender() {
       + `<td class="dim">${esc(r.set)} ${r.foil ? '✨' : ''} `
       + `${esc((r.lang || '').toUpperCase())}</td>`
       + `<td class="pz">${eur(r.unit)}</td><td class="pz tot">${eur(r.total)}</td>`
-      + `<td class="dim rz">${esc(r.reason)}</td>`
+      /* Nos blocos da RL retida a linha leva DOIS motivos: porque é que a regra
+         a segurou e porque é que ela ia à venda. Sem o segundo, "subiu 7%" é
+         uma resposta sem pergunta. */
+      + `<td class="dim rz">${esc(r.reason)}`
+      + (r.porque ? ` <i>(ia por: ${esc(r.porque)})</i>` : '') + `</td>`
       /* «vendida»: tira as cópias da base e escreve-as no `data/vendas.csv`.
          Sem isto a lista repetia todos os dias as cartas que ele já vendeu — e
          a única maneira de a calar era editar a base à mão. */
@@ -1591,7 +1627,7 @@ function vistaVender() {
            + `vendida</button></td>` : '')
       + `</tr>`).join('')
     + `</tbody></table></details>`;
-  const V = D.venda;
+  const V = D.venda, R = D.rl_regra;
   /* Quanto da lista entra pelo motivo novo. Conta-se das LINHAS e não de um
      total à parte: o que a tabela mostra e o que o parágrafo diz têm de vir do
      mesmo sítio. */
@@ -1616,6 +1652,14 @@ function vistaVender() {
         + `cópia que nenhuma caixa usa não serve mais nada. Se houver um deck que `
         + `queiras montar com elas, marca-o na aba <b>Sugestões</b> primeiro — as `
         + `cartas dele saem desta lista.</p>` : '')
+    /* O total que a regra dos 5% segurou. Em cima, e não só dentro dos blocos,
+       porque muda o tamanho da lista da RL — que é onde está quase todo o
+       dinheiro — e ele tem de o ver antes de decidir seja o que for. */
+    + (R.copias ? `<p class="lead">🔒 <b>${R.copias} cópias Reserved List `
+        + `(${eur(R.total)}) NÃO entram na venda</b> pela tua regra: só se vende `
+        + `RL que não tenha subido <b>${R.pct}%</b> nos últimos <b>${R.dias} `
+        + `dias</b>. Estão nos dois blocos de baixo — as que valorizaram e as que `
+        + `o vault ainda não consegue medir.</p>` : '')
     + bloco('v-normal', 'Excedente normal', 'Cópias a mais de cartas que não são '
         + 'Reserved List. É por aqui que se começa: o risco é baixo e o dinheiro é '
         + 'real.', V.normal, true, 'excedente normal')
@@ -1624,6 +1668,22 @@ function vistaVender() {
         + 'e os preços de cartas antigas na base não são de confiança (ver '
         + '<code>doubts.md</code>). Confere cada uma antes de listar.', V.rl, false,
         'Reserved List')
+    /* RESERVED LIST QUE VALORIZOU (André, 2026-09-08). Vem logo a seguir à lista
+       da RL porque é a metade dela que NÃO se vende hoje — e o total em € é o que
+       ele quer ver: é dinheiro que fica na estante de propósito. */
+    + bloco('v-rl-segurar', '🔒 RL a segurar — valorizou', 'Reserved List que '
+        + `subiu <b>${R.pct}%</b> ou mais nos últimos <b>${R.dias} dias</b>: não `
+        + 'entra na venda. A regra é tua (<i>"cartas de RL só vão para venda se '
+        + 'não tiverem subido 5% de valor nos últimos 3 meses"</i>) e afina-se em '
+        + '<code>venda.rl_subida_minima_pct</code> / '
+        + '<code>venda.rl_janela_dias</code>.', V.rl_segurar, false,
+        'RL a segurar', true)
+    + bloco('v-rl-semhist', '❔ RL sem histórico suficiente', 'O vault ainda não '
+        + `tem cotação de há ${R.dias} dias para estas — o \`price_history\` só `
+        + 'guarda mudanças e começou em Agosto de 2026. Sem saber se subiram, '
+        + '<b>não vão para a venda</b>. Podes forçar baixando o '
+        + '<code>venda.rl_janela_dias</code>, ou esperar que a janela encha.',
+        V.rl_sem_historico, false, 'RL sem histórico', true)
     + bloco('v-guardar', '🔒 Guardar — servem um deck do loadout', 'Passariam o limite '
         + 'de 4, mas são substitutos de cartas que faltam a uma caixa: servem o deck e '
         + 'só não fecham o slot por causa da língua ou do acabamento. Vendê-las era '

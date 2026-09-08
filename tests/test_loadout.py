@@ -452,10 +452,22 @@ def caso_premodern_e_a_caixa_rl_partida_em_pt_e_en():
 
     # E sem a marca de substituto, o excedente do playset vai para a venda a
     # confirmar (são Reserved List), como o André quer.
+    #
+    # Desde 2026-09-08 a lista da RL passa por mais um crivo: *"cartas de RL só
+    # vão para venda se não tiverem subido 5 % de valor nos últimos 3 meses"*.
+    # Esta base de teste não tem preço nenhum, por isso a cópia sai por
+    # `rl_sem_historico` — que é o comportamento certo (não se vende uma RL sem
+    # saber se subiu) e é o que a base a sério faz hoje, com o `price_history` a
+    # começar em Agosto de 2026. O que este caso tranca é o outro lado: a cópia
+    # que sai é a EN da Caixa RL, e sai UMA (5 cópias, playset 4).
     assert not [r for r in rep["guardar"] if r["nm"] == "Opalescence"], rep["guardar"]
-    vrl = [r for r in rep["venda_rl"] if r["nm"] == "Opalescence"]
+    vrl = [r for r in rep["venda_rl"] + rep["rl_sem_historico"]
+           if r["nm"] == "Opalescence"]
     assert sum(r["q"] for r in vrl) == 1, vrl        # 5 cópias, playset 4 -> 1
     assert vrl[0]["local"] == "Caixa RL (EN)", vrl[0]["local"]
+    assert not rep["venda_rl"], "sem histórico de preços, nenhuma RL se vende"
+    assert loadout.RAZAO_RL_SEM_HISTORICO in vrl[0]["reason"], vrl[0]["reason"]
+    assert vrl[0]["porque_venderia"] == "excedente (mais de 4)", vrl[0]
 
     # As mesmas cópias EN continuam disponíveis para o Legacy.
     deck(con, "Leg", "legacy", [("Opalescence", 4)])
@@ -1319,10 +1331,15 @@ def caso_excedente_de_playset_do_premodern_vai_para_venda():
     assert s["pct"] == 100 and s["comprar"] == 0, s
     # A Caixa RL (PT) alimentou o Premodern: 2 da Colecção + 2 de lá.
     assert s["origens"] == {"Colecção": 2, "Caixa RL (PT)": 2}, s["origens"]
-    # É Reserved List, por isso a saída é a `venda_rl` (confirma-se uma a uma).
-    linhas = [r for r in rep["venda_rl"] if r["nm"] == "Replenish"]
+    # É Reserved List, por isso a saída é do lado da RL — e desde 2026-09-08 a
+    # RL passa ainda pela regra dos 5 % (`avaliar_rl`). Sem preços nenhuns nesta
+    # base, cai em `rl_sem_historico`: não se vende uma RL sem saber se subiu.
+    # O motivo por que ela ia à venda fica em `porque_venderia`, e é esse que
+    # este caso tranca.
+    linhas = [r for r in rep["venda_rl"] + rep["rl_sem_historico"]
+              if r["nm"] == "Replenish"]
     assert sum(r["q"] for r in linhas) == 1, linhas
-    assert linhas[0]["reason"] == "excedente (mais de 4)", linhas[0]["reason"]
+    assert linhas[0]["porque_venderia"] == "excedente (mais de 4)", linhas[0]
     assert not [r for r in rep["venda"] if r["nm"] == "Replenish"], rep["venda"]
     print("o que passa das 4 PT (Colecção + Caixa RL) e excedente de venda")
 

@@ -249,20 +249,25 @@ def _deck_html(d, imgs, editable=False):
     # ordena o top-N; mostrar aqui a outra (só o livre) fazia a lista aparecer
     # desordenada sem explicação. A repartição fica na linha de baixo.
     #
-    # No PREMODERN é ao contrário, e de propósito: ali o número que decide se a
-    # lista é uma sugestão é o do que SOBRA (André, 2026-09-08 — a cobertura
-    # mede-se com as cópias que nenhuma caixa levou). Pôr aqui os 63 % do total
-    # ao lado de um limiar que corre sobre 6 % era a página a contradizer-se.
-    cov = (f'{r["got"]}/{r["need"]} · {r["pct"]}% livre' if d.get("pm")
-           else f'{r["tenho"]}/{r["need"]} · {r["pct_tenho"]}%')
+    # No PREMODERN o número que decide se a lista é uma sugestão é o de COMO
+    # PRINCIPAL (André, 2026-09-08: *"tens que ver se a % desses decks aumentaria
+    # se eles fossem o principal"*) — as caixas de Premodern partilham cartas. É
+    # esse que vem à frente, com o do que sobra ao lado: mostrar um limiar de
+    # 50 % ao lado de um número que não é o que ele mede era a página a
+    # contradizer-se, e foi o que aconteceu quando o daqui era só o livre.
+    cov = (f'{d["pct_principal"]}% como principal · {r["pct"]}% com o que sobra'
+           if d.get("pm") else f'{r["tenho"]}/{r["need"]} · {r["pct_tenho"]}%')
     return (
         f'<details class="deck"{" open" if d.get("aberto") else ""}><summary>'
         f'<b>{html.escape(d["nome"])}</b>'
         f'<span class="cov">{cov}</span>'
         f'<span class="src">{html.escape(d["sub"])}</span></summary>'
-        f'{_bar(r["pct"], r["pct_tenho"])}'
+        f'{_bar(r["pct"], d["pct_principal"] if d.get("pm") else r["pct_tenho"])}'
         f'<div class="badges">{badges}</div>'
-        f'<div class="meta"><span>tenho livre <b>{r["got"]}</b></span>'
+        f'<div class="meta">'
+        + (f'<span class="ob">como principal <b>{d["tenho_principal"]}/'
+           f'{r["need"]}</b></span>' if d.get("pm") else "")
+        + f'<span>tenho livre <b>{r["got"]}</b></span>'
         f'<span class="ob">ir buscar a outra caixa <b>{r["noutra"]}</b></span>'
         f'<span>comprar <b>{r["comprar"]}</b></span>'
         f'<span>fechar por <b>{_eur(r["custo"])}</b></span></div>'
@@ -336,7 +341,12 @@ def _decks_premodern(res):
                                       f'{c["subtitulo"]}',
             "badges": badges, "linhas": c["linhas"], "marca": "PT",
             "pm": True, "estado": c["estado"],
-            "archetype_id": c["archetype_id"], "pct_total": c["pct_total"]})
+            "archetype_id": c["archetype_id"], "pct_total": c["pct_total"],
+            # As duas percentagens que a página mostra lado a lado: a de COMO
+            # PRINCIPAL (a que decide o limiar) e a do que sobra (a que explica
+            # quantas cartas viriam emprestadas das outras caixas de Premodern).
+            "pct_principal": c["pct_principal"],
+            "tenho_principal": c["tenho_principal"]})
     return out
 
 
@@ -448,14 +458,17 @@ def html_page(con, editable=False, token="", ligacao=None) -> str:
             n_sug = len(pm.get("sugestoes") or [])
             lead = (f'Os <b>{len(pm.get("top") or [])}</b> arquétipos mais '
                     f'representados e os <b>{len(pm.get("combo") or [])}</b> '
-                    f'melhores <b>combo</b> do formato. A percentagem é a do que '
-                    f'<b>sobra</b> — as cópias PT que nenhuma caixa levou —, '
-                    f'porque é com essas que montarias mais um deck. Com '
+                    f'melhores <b>combo</b> do formato. A percentagem que decide '
+                    f'é a de <b>como principal</b>: as caixas de Premodern '
+                    f'<b>partilham</b> cartas, por isso conta-se o que este deck '
+                    f'teria se fosse ele a escolher primeiro. Ao lado vai a do '
+                    f'que <b>sobra</b> sem tocar em nada — a diferença entre as '
+                    f'duas é quantas cartas irias buscar às outras caixas. Com '
                     f'<b>{pm.get("limiar", 50)}%</b> ou mais, vira sugestão. '
                     + (f'Há <b>{n_sug}</b> por decidir.' if n_sug
-                       else 'Hoje não há nenhuma acima do limiar: as seis caixas '
-                            'de Premodern ficam com quase tudo, e o que sobra vai '
-                            'para a venda (aba <b>Vender</b> das Deckboxes).')
+                       else 'Hoje não há nenhuma acima do limiar, nem sequer como '
+                            'principal: o que sobra vai para a venda (aba '
+                            '<b>Vender</b> das Deckboxes).')
                     + (' Carrega em <b>✔ vou montar este</b> para lhe abrires uma '
                        'caixa, ou em <b>✕ não quero este</b> para libertares as '
                        'cartas dele.' if editable else ''))

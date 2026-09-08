@@ -260,5 +260,11 @@
       "reter_extras_meses": 6
     }
   },
+  "venda": {
+    "rl_subida_minima_pct": 5,
+    "rl_janela_dias": 90,
+    "rl_tolerancia_dias": 10
+  },
+  "_venda": "RESERVED LIST: só vende o que NÃO valorizou (André, 2026-09-08, à letra): 'cartas de RL só vão para venda se não tiverem subido 5 % de valor nos últimos 3 meses'. Uma linha da lista de venda que seja Reserved List (qualquer motivo: excedente, 'não usada por nenhum deck', ...) só passa se hoje valer MENOS de 'preço de há rl_janela_dias' x (1 + rl_subida_minima_pct/100). Subiu → bloco '🔒 RL a segurar'. E, se o vault não tiver cotação que cubra a janela, a cópia TAMBÉM não vai para a venda: fica em 'RL sem histórico suficiente (desde <data>)', porque não se pode dizer que uma carta não subiu quando não se sabe. O `price_history` só guarda MUDANÇAS (prices.write_prices), por isso o preço de há 90 dias é a última cotação ATÉ esse dia; a 'rl_tolerancia_dias' cobre o caso em que o histórico começa a meio da janela (usa-se então a cotação mais antiga que lá esteja). ATENÇÃO (2026-09-08): o histórico do vault começa em 2026-08-10, por isso HOJE nenhuma RL passa o teste e a lista de RL fica vazia — a regra só começa a decidir a partir de 2026-11-08 (90 dias depois). Para decidir já com o histórico que existe, baixa 'rl_janela_dias'.",
   "_regras_colecao": "Decks de Commander/cEDH/Duel Commander/Pauper = coleção própria + lista vigiada. 'reter_extras_meses' = N: as cartas EXTRA (as do balde que a lista do deck já não usa) guardam-se até N meses da última utilização; passado isso sem uso → Vender. Formalizado em 6 meses (2026-08-14). Premodern NÃO usa isto (tranca por completude). Falta decidir a fonte de 'última utilização' (última vez na lista vigiada) e implementar em classify.py — inerte até haver histórico suficiente."
 }

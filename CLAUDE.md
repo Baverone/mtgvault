@@ -44,8 +44,8 @@ mtgvault/
   wantlist.py     o que falta, para decks e para arquétipos
   loadout.py      os decks montados ao mesmo tempo: aloca a coleção às caixas
                   (uma cópia serve uma só), conflitos, substitutos e venda
-  premodern.py    o que montar A SEGUIR com o que SOBRA (top-10 + top-5 combo,
-                  cobertura sobre as cópias livres) e o que daí vai à venda
+  premodern.py    o que montar A SEGUIR (top-10 + top-5 combo, cobertura COMO SE
+                  fosse a caixa nº1 do grupo — v8, 2026-09-08) e o que vai à venda
   analysis.py     clustering de arquétipos + core/flex/tech + prune
   stock.py        listas padrão e cobertura
   sources.py      mtgo.com + parser de texto + store_decklist (deduplicação)
@@ -71,7 +71,7 @@ alertas.py          alertas.html — vender/comprar por movimento de preço (for
 meusdecks.py        FUNDIDO NO deckboxes.py (2026-09-08, v6) — a "Decks permanentes" fazia a MESMA pergunta ("quanto tenho deste deck?") e respondia outro número, porque contava a colecção inteira por deck em vez da alocação. Saiu do MENU e do `index.html`; o módulo continua a correr no daily mas só escreve um REENCAMINHAMENTO (`deckboxes.redireccionamento`), porque o link vive no telemóvel dele e no site publicado. O que ela tinha e a Deckboxes não tinha passou para a aba da caixa: lista por TIPO, imagens grandes, "copiar a lista" e "quantas tenho na colecção inteira" (informação secundária). Os ajudantes que outras páginas usavam (`_type_map`, `_group_by_type`, `_faltas`, `_faltas_html`, `_art`) estão agora em `mtgvault/paginas.py` — o `showcase.py` lê-os de lá
 deckboxes.py        deckboxes.html — "Deckboxes": o LOADOUT (colecao_config.json→loadout), os decks montados ao mesmo tempo com a coleção REPARTIDA entre eles (uma cópia física serve uma caixa só). NB (2026-09-07): a página foi reescrita com **uma ABA POR DECK** (o pedido dele: *"faz como no riftvault — no botão, cada deck tem uma aba própria"*), mais as abas **Todas**, **Arrumar**, **Partilhadas**, **Comprar**, **Vender** e — desde 2026-09-08 — **Sugestões** (as caixas candidatas de Premodern; só existe se houver caixas desse formato). Os dados vão em JSON dentro do HTML (`<script id="dados">`) e o render é JavaScript — o MESMO ficheiro serve o site publicado (`editable:false`) e o modo edição do `webapp.py` (`editable:true`, com botões). Por caixa: barra, dois números ("faltam comprar" e "ir buscar a outra caixa"), grelha de cartas com três estados, "tirar de:" (`slot["origens"]`), substitutos, wantlist Cardmarket (SÓ o que é mesmo compra). Na aba **Comprar**, cada linha diz para que caixa é a compra (`para`) e em que material (`loadout.requisito_material`), há selector por caixa (o "copiar" copia só o filtro activo) e as cartas ≥100 €/cópia levam chip «cara» e total à parte — Mishra's Workshop sozinha vale mais do que o resto da lista. Motor em mtgvault/loadout.py
 webapp.py           MODO EDIÇÃO local, **porto 8771** (o 8770 é do `riftvault serve` — não trocar). Serve o `deckboxes.html`/`metagame.html` com os botões: painel *Montar* (*Sleevado e na caixa*), *Já arrumei tudo*, *Actualizei*, *Vendida*, *Tornar permanente*, *Subir/Descer* e *Vou montar este*. As PREFERÊNCIAS vão para o `colecao_config.json` (as `caixas` vão no Git); o que é FÍSICO vai para a `copy_allocation` e, na venda, sai da `copies` + `data/vendas.csv`. NB (2026-09-08): **ouve em `MTGVAULT_BIND`, por omissão `127.0.0.1`** (a tarefa `mtgvault-serve` põe `0.0.0.0` para o telemóvel), e as ESCRITAS exigem o token de `data/webapp.token` — ver "O telemóvel e o token". Mantido de pé pela tarefa `ai-pc/tasks/mtgvault-serve` (verifica de 5 em 5 min, relança destacado)
-metagame.py         metagame.html — "Metagame": desde 2026-09-07 já NÃO é o top-10 de cada formato; é o **top-N que ele está mais perto de concluir** (`colecao_config.json`→`metagame_top_n`, default 3). `SECOES` decide o modo por formato: `top` (Standard/Pioneer/Legacy — as caixas do loadout por escolher, via `loadout.foil_report`), `caixas` (Modern — o deck já escolhido, do próprio loadout) e `premodern` (o ranking de sugestões — top-10 de representação + top-5 combo, cobertura sobre o que SOBRA e os botões «vou montar este» / «não quero este»; era `alvos`, só o `premodern_arquetipos_alvo`, até 2026-09-08). Posse pela alocação do loadout, três estados, wantlist Cardmarket. NÃO lê `formatos_metagame` (o Legacy tinha de entrar e não está lá)
+metagame.py         metagame.html — "Metagame": desde 2026-09-07 já NÃO é o top-10 de cada formato; é o **top-N que ele está mais perto de concluir** (`colecao_config.json`→`metagame_top_n`, default 3). `SECOES` decide o modo por formato: `top` (Standard/Pioneer/Legacy — as caixas do loadout por escolher, via `loadout.foil_report`), `caixas` (Modern — o deck já escolhido, do próprio loadout) e `premodern` (o ranking de sugestões — top-10 de representação + top-5 combo, cobertura **como principal** + a do que sobra ao lado, e os botões «vou montar este» / «não quero este»; era `alvos`, só o `premodern_arquetipos_alvo`, até 2026-09-08). Posse pela alocação do loadout, três estados, wantlist Cardmarket. NÃO lê `formatos_metagame` (o Legacy tinha de entrar e não está lá)
 (prioridade.py + metafaltas.py APAGADOS 2026-08-26, a redefinir)
 reservedlist.py     reservedlist.html — Reserved List (Scryfall) x coleção, por edição, preço/evolução, e 'VENDER' as que não jogam em formato nenhum
 caixarl.py          caixarl.html — "Caixa Reserved List": a RL que está fora da coleção jogável
@@ -431,8 +431,9 @@ seis caixas dedicadas com playset de 4 são 24 cópias, que é o que ele recusou
   nova ordem é Stiflenought 100% · UW Replenish 95% · Oath of Druids 73% ·
   Enchantress 67% · Ill-Gotten Gains 65% · Elves / Survival 61%.
 
-**PREMODERN: O QUE MONTAR A SEGUIR COM O QUE SOBRA, E VENDER O RESTO (André,
-2026-09-08, à letra).** *"O que não estiver a ser usado em Premodern e se encaixe
+**PREMODERN: O QUE MONTAR A SEGUIR, E VENDER O RESTO (André,
+2026-09-08, à letra; a cobertura passou de *"o que sobra"* a *"como se fosse o
+principal"* no mesmo dia — ver o segundo ponto).** *"O que não estiver a ser usado em Premodern e se encaixe
 na regra do Premodern deve ser sugerido para venda. Antes disso, procura
 decklists do formato; se o deck for top-10 de representação ou top-5 decks combo
 do formato, sugere a lista para montar o deck caso eu tenha pelo menos 50 % das
@@ -444,16 +445,30 @@ CLI `python -m mtgvault.cli premodern`.
   correm dentro do `loadout.report`: alocar → calcular as sugestões → vender.
   Ao contrário, a lista de venda mandava vender exactamente o deck que a página
   do lado estava a sugerir montar.
-- **A cobertura mede-se sobre o que SOBRA** — as cópias PT (≤ Scourge) que
-  NENHUMA caixa levou (`foil_report(..., res=...)` → `pct_livre`). Medi-la sobre
-  a colecção inteira dava percentagens altas e falsas: as cartas estão dentro de
-  decks montados, e uma sugestão que conta com elas está a mandar desmontar um
-  deck para montar outro. As páginas mostram os dois números (`pct` e
-  `pct_total`), porque a diferença entre eles é a explicação do primeiro.
-  **Consequência medida (2026-09-08): NENHUM candidato chega aos 50 %** — as seis
-  caixas de Premodern ficam com quase tudo. O melhor é o Mono-Preto The Rack com
-  41 %. É a resposta certa, não uma falha: baixa-se o
-  `sugerir_a_partir_de_pct` para ver mais opções.
+- **A cobertura mede-se COMO SE O CANDIDATO FOSSE O PRINCIPAL (André, 2026-09-08,
+  segunda ordem do dia, à letra):** *"Como as cartas em Premodern são
+  partilhadas, tens que ver se a % desses decks aumentaria se eles fossem o
+  principal; mantém a 50 % visto com esta regra de agora."* A primeira versão
+  media só o que SOBRA (`foil_report(..., res=...)` → `pct_livre`) — certo
+  enquanto as caixas de Premodern eram dedicadas, errado no dia em que voltaram a
+  partilhar (`regras_por_formato.premodern.dedicado = false`). Com seis caixas a
+  alocar primeiro **nenhum candidato chegava aos 50 %** (o melhor era o
+  Mono-Preto The Rack com 41 %), e o que a percentagem media já não era *"quanto
+  deste deck eu tenho"* mas *"quanto sobrou depois dos outros"*.
+  Agora quem decide o limiar é `premodern.pct_principal`: as cópias PT (≤ Scourge)
+  **livres** mais as que estão nas **outras caixas do grupo de Premodern**, que
+  lhas emprestariam. As de caixas dedicadas de outros formatos (cEDH, Pauper) não
+  contam — não emprestam, e montar com elas era desmontar um deck de outro
+  formato. As páginas e o CLI mostram **as duas** (*"80 % como principal · 36 %
+  com o que sobra"*), porque a diferença entre elas é quantas cartas vinham
+  emprestadas. **Consequência medida na base de 2026-09-08: duas sugestões** —
+  Dimir Psychatog (80 % / 36 %) e Landstill (68 % / 27 %); a alocação **não
+  mexe** (7 905,72 €, 221 a comprar, 71 a ir buscar, 302 a arrumar) e as duas
+  reservam 30 cópias / 70,95 € que saem da lista de venda.
+  Nem uma percentagem nem a outra é uma contagem própria de posse: as duas saem
+  das mesmas linhas do `foil_report` (`got` e a chave nova `onde`, que é o
+  `noutra` **antes** de ser cortado pelo que falta — filtrá-lo depois do corte
+  dava a soma a menos).
 - **O top-10 e o top-5 combo são DUAS listas, não uma soma** (*"ou"*), e cada
   candidato diz por qual entrou. O combo decide-se — e o deck NOMEIA-se — por
   REGRA sobre a lista de consenso (`premodern.combo_arquetipos`, as mesmas
@@ -696,10 +711,12 @@ grupo — uma excepção é uma linha de config, não uma linha de código.
    usa o **preço foil** (`loadout.card_price`) — o `wantlist.cheapest_price` só
    olha para nonfoil e dava um custo sistematicamente por baixo.
 
-**A venda tem cinco saídas, não uma** (eram quatro até 2026-09-08). Misturá-las
+**A venda tem sete saídas, não uma** (eram quatro até 2026-09-08). Misturá-las
 dava um total que não se
 podia usar: `venda` (excedente normal), `venda_rl` (Reserved List — não se
-volta a imprimir, confirma-se uma a uma), `retidos` (baldes com
+volta a imprimir, confirma-se uma a uma, e desde 2026-09-08 só entra aqui a que
+passa a regra dos 5 % abaixo), **`rl_segurar`** e **`rl_sem_historico`** (a RL
+que a regra travou: *"subiu"* e *"não sei"*, ver a seguir), `retidos` (baldes com
 `reter_extras_meses`; a regra dos 6 meses continua inerte por falta de data de
 "última utilização", por isso guardam-se e dizem-no), **`reservadas`** (cópias
 que uma SUGESTÃO de Premodern usaria — ver a secção do Premodern abaixo: não são
@@ -714,6 +731,49 @@ nenhuma EN é vista pelas caixas de Premodern e essas vão mesmo para `venda_rl`
 a saída `guardar` ficou só para as **nonfoil dos slots de foil**, que é onde ele
 não fechou a porta (na base de 2026-09-07 dá 0 cópias: as nonfoil que servem
 esses slots ainda cabem todas no playset).
+
+**RESERVED LIST: SÓ SE VENDE O QUE NÃO VALORIZOU (André, 2026-09-08, à letra).**
+*"Cartas de RL só vão para venda se não tiverem subido 5 % de valor nos últimos
+3 meses."* Motor em `loadout.avaliar_rl` + `loadout.card_price_em`, config em
+`colecao_config.json → venda` (`rl_subida_minima_pct: 5`, `rl_janela_dias: 90`,
+`rl_tolerancia_dias: 10`). Corre no fim do `sell_list`, sobre a lista de venda já
+formada: a regra é sobre a **cópia**, não sobre o motivo por que ela lá foi parar
+(excedente ou *"não usada por nenhum deck"*), e espalhá-la pelos dois ciclos era
+escrever a mesma decisão em dois sítios.
+- **Três respostas, não duas.** `hoje < antes × 1,05` → vende-se; `hoje ≥ antes ×
+  1,05` → **`rl_segurar`**, com o motivo *"RL em valorização: +X % em 3 meses"*;
+  **sem cotação que cubra a janela** → **`rl_sem_historico`**, com *"(desde
+  &lt;data&gt;)"*. A terceira é a que importa: uma RL é a decisão menos
+  reversível de todas, e dar *"não subiu"* como resposta a *"não sei"* era o
+  padrão do `event_tier` outra vez, mas sobre dinheiro que não volta. As duas
+  saídas ficam separadas porque *"subiu"* é uma decisão tomada e *"não sei"* é
+  uma decisão por tomar — só a segunda é que ele pode querer forçar.
+- **O preço de há 90 dias é a ÚLTIMA cotação ATÉ esse dia**, e não uma linha
+  datada nesse dia: o `price_history` só guarda MUDANÇAS
+  (`prices.write_prices` — *"não há linha nova quer dizer que o preço
+  manteve-se"*). Procurar só dentro de uma janela estreita dava *"não sei"* a
+  toda a carta estável, que é precisamente a que não subiu — a regra ficava a
+  segurar exactamente o que existe para deixar vender. A `rl_tolerancia_dias`
+  (±10) cobre o caso em que o histórico **começa a meio** da janela: aí usa-se a
+  cotação mais antiga que lá esteja.
+- **As duas pontas da conta são a MESMA conta** (`card_price_em` espelha o
+  `card_price`: MIN(trend) sobre as impressões do mesmo nome, na mesma família de
+  acabamento, na mesma fonte). Com uma conta diferente em cada ponta, a
+  percentagem media a diferença entre as duas contas e não a do mercado.
+- **Consequência a assumir hoje, e é grande: o `price_history` do vault começa em
+  2026-08-10** — 29 dias. Com a janela a 90, **nenhuma RL passa o teste**: as 101
+  cópias / **8 106,54 €** de Reserved List saem todas por `rl_sem_historico` e a
+  lista de RL fica **vazia** até 2026-11-08 (90 dias depois do primeiro preço). É
+  a resposta certa, não uma falha — mas é uma lista inteira que desaparece, e
+  está dita na página, no CLI e no `_venda` do config. Para decidir já com o
+  histórico que existe, baixa-se o `rl_janela_dias`. Medido com `25`: **21 cópias
+  / 3 420,63 € seguram-se** (Mox Diamond +6,2 % = 1 670,94 €, Gilded Drake +7,7 %,
+  Serra's Sanctum +10,2 %) e 80 / 4 685,91 € continuam a vender-se.
+- A linha retida guarda o motivo por que ia à venda em **`porque_venderia`**, e a
+  página e o CLI dizem-no (*"ia por: excedente (mais de 4)"*): *"subiu 7 %"* é
+  uma resposta, e sem a pergunta ao lado não se percebe o que a regra impediu.
+- **A regra é só para a Reserved List** (`lot["rl"]`, de `catalog.cards.reserved`)
+  e **não tem botão «vendida»** — o que a liberta é o config, não um clique.
 
 **MODELO DE COLECÇÃO ÚNICA (André, 2026-09-07, à letra).** *"Põe a colecção toda
 em uma coisa só, com excepção da RL, e assim vais buscar as cartas ao mesmo
