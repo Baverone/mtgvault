@@ -281,6 +281,10 @@ def _caixa_payload(s, imgs, cfs, rep=None, col=None, tipos=None, cores=None):
         # caixas de 2026-09-08 tinham alocação herdada da migração sem estarem
         # montadas em lado nenhum, e era a essas que ele precisava do botão.
         "arrumada": bool(s.get("arrumada")),
+        # O dia em que ela ficou com este conteúdo — o *"montada em <data>"* da
+        # vista «Decks montados». Vazio quando o vault não sabe o que lá está
+        # (o Stiflenought): a vista diz isso, em vez de inventar um dia.
+        "arrumada_em": s.get("arrumada_em") or "",
         "por_confirmar": bool(s.get("por_confirmar")), "vazio": s["vazio"],
         "nota": s["nota"], "fonte": s.get("fonte"), "ref": s.get("ref"),
         "pct": s["pct"], "tenho": s["tenho"], "precisa": s["precisa"],
@@ -486,7 +490,13 @@ def payload(con, rep, editable=False, token="", ligacao=None):
         # O top-N por caixa por escolher (Standard/Pioneer/Legacy) — o "vou
         # montar este" também mora aqui, não só no metagame.html.
         "candidatos": _candidatos(con, rep),
+        # «N montados · M para montar»: os dois botões que ele pediu a
+        # 2026-09-08 são estas duas contas, e o cabeçalho dá-as antes de ele
+        # carregar em nada. A soma é sempre o total de caixas — uma caixa está
+        # montada ou está por montar, não há terceiro sítio onde se esconder.
         "resumo": {"montados": sum(1 for s in rep["slots"] if s.get("montado")),
+                   "por_montar": sum(1 for s in rep["slots"]
+                                     if not s.get("montado")),
                    "permanentes": sum(1 for s in rep["slots"] if s["permanente"]),
                    "candidatos": sum(1 for s in rep["slots"] if not s["permanente"]),
                    "comprar": rep["comprar_total"], "noutra": rep["noutra_total"],
@@ -654,7 +664,15 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
  .dt .pin{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:5px;
    vertical-align:middle}
  .pin.ok{background:var(--add)} .pin.mid{background:var(--gold)} .pin.low{background:var(--warn)}
+ /* o ponto de uma caixa MONTADA: verde por estar montada, com anel para não se
+    confundir com o verde de "90 % ou mais" da caixa que ainda falta montar */
+ .pin.done{background:var(--add);box-shadow:0 0 0 2px #123020}
  .dt.cand{border-style:dashed;opacity:.9}
+ .dt.mont{border-left:3px solid var(--add)}
+ /* separador entre os dois grupos de abas: não é botão nem entra no Tab */
+ .dtsep{flex:0 0 auto;align-self:center;padding:0 6px;font-size:10.5px;
+   font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+   color:var(--dim);white-space:nowrap}
  /* cabeçalho de uma caixa */
  .box{background:var(--card);border:1px solid var(--line);border-radius:var(--r2);
    padding:15px}
@@ -763,6 +781,19 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
    padding:13px;cursor:pointer;transition:.12s;text-align:left;font:inherit;color:inherit}
  .mini:hover{border-color:var(--line2);transform:translateY(-1px)}
  .mini.cand{border-style:dashed}
+ /* vistas "Decks montados" / "Decks para montar": o cartão é o mesmo da vista
+    Todas, e o que muda é a barra por baixo. O `.mini` continua a ser um botão
+    inteiro (a navegação), e os botões de acção ficam FORA dele — um botão
+    dentro de outro não é HTML válido nem sobrevive ao clique. */
+ .mcard{display:flex;flex-direction:column}
+ .mcard .mini{flex:1;border-bottom-left-radius:0;border-bottom-right-radius:0;
+   border-bottom:0}
+ .macts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;
+   background:var(--card);border:1px solid var(--line);border-top:1px dashed var(--line);
+   border-radius:0 0 var(--r2) var(--r2);padding:9px 13px}
+ .macts .quando{font-size:11.5px;color:var(--muted)}
+ .macts .quando b{color:var(--ink2)}
+ .macts .quando.aviso{color:var(--gold)}
  /* partilhadas */
  .cfgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:10px}
  .cfrow{display:flex;gap:10px;background:var(--card);border:1px solid var(--line);
@@ -971,8 +1002,14 @@ function toast(txt) {
 /* ---------------------------------------------------------------- cabeçalho */
 function renderResumo() {
   const r = D.resumo;
+  /* Os dois números à cabeça (André, 2026-09-08: *"quero decks montados num
+     botão específico, e um botão a dizer decks para montar"*). São a mesma
+     conta das duas abas — e vêm do Python (`resumo.montados`/`por_montar`),
+     para o cabeçalho e as vistas nunca poderem discordar. */
   $('#resumo').innerHTML =
-    `${D.caixas.length} caixas (<b>${r.permanentes}</b> permanentes · `
+    `<b style="color:var(--add)">${r.montados}</b> montados · `
+    + `<b>${r.por_montar}</b> para montar · `
+    + `${D.caixas.length} caixas (<b>${r.permanentes}</b> permanentes · `
     + `${r.candidatos} candidatas) · comprar <b>${r.comprar}</b> cópias por `
     + `<b>${eur(r.custo)}</b> · ir buscar a outra caixa <b>${r.noutra}</b> · `
     + `arrumar <b>${r.arrumar}</b> · vender <b>${eur(r.venda)}</b>`
@@ -986,10 +1023,17 @@ function renderTabs() {
     + (D.arrumar.copias_actualizar ? ` · ${D.arrumar.copias_actualizar} a actualizar`
                                    : '');
   /* O PLANO à cabeça: é a pergunta dele de 2026-09-08 — "por onde começo?" —
-     e a resposta é uma ordem, não uma lista de caixas por ordem alfabética. */
-  const porMontar = D.montagem.filter(m => !m.montado).length;
-  const fixas = [['plano', '🗺️ Plano', porMontar + ' por montar'],
-                 ['todas', '▦ Todas', ''], ['arrumar', '📥 Arrumar', arr],
+     e a resposta é uma ordem, não uma lista de caixas por ordem alfabética.
+     O subtítulo NÃO leva contagem: o `D.montagem` só tem as caixas com lista, e
+     "N por montar" aqui e "M por montar" no botão do lado eram as mesmas
+     palavras com dois números — o defeito que os dois botões vêm corrigir. */
+  const fixas = [['plano', '🗺️ Plano', 'por onde começar'],
+                 ['todas', '▦ Todas', ''],
+                 ['montados', '✅ Decks montados',
+                  D.resumo.montados + (D.resumo.montados === 1 ? ' deck' : ' decks')],
+                 ['pormontar', '🔧 Decks para montar',
+                  D.resumo.por_montar + (D.resumo.por_montar === 1 ? ' deck' : ' decks')],
+                 ['arrumar', '📥 Arrumar', arr],
                  ['partilhadas', '🔁 Partilhadas', D.partilhadas.length + ' cartas'],
                  ['comprar', '🛒 Comprar', D.resumo.comprar + ' cópias'],
                  ['vender', '💰 Vender', eur(D.resumo.venda)]];
@@ -1011,13 +1055,27 @@ function renderTabs() {
   for (const [id, lbl, sub] of fixas) {
     h += tab(id, lbl + (sub ? `<small>${esc(sub)}</small>` : ''));
   }
-  for (const c of D.caixas) {
+  /* As abas de cada deck ficam AGRUPADAS: montadas primeiro (ponto verde),
+     depois as que faltam montar (André, 2026-09-08: *"para poder separar as
+     coisas"*). Antes vinham pela ordem da alocação, e a caixa que está na
+     estante aparecia no meio das que ainda não existem. O ponto de uma caixa
+     montada é verde por ESTAR montada, não pela percentagem — a percentagem
+     continua no subtítulo, que é onde ela ainda quer dizer alguma coisa. */
+  const sep = t => `<span class="dtsep" aria-hidden="true">${esc(t)}</span>`;
+  const abaDeCaixa = c => {
     const p = c.vazio ? '—' : c.pct + '%';
-    h += tab(c.slot,
-      `<span><i class="pin ${c.vazio ? 'low' : pin(c.pct)}"></i>${esc(c.nome)}</span>`
+    return tab(c.slot,
+      `<span><i class="pin ${c.montado ? 'done' : c.vazio ? 'low' : pin(c.pct)}">`
+      + `</i>${esc(c.nome)}</span>`
       + `<small>${p}${c.vazio ? '' : ` · ${c.tenho}/${c.precisa}`}</small>`,
-      c.permanente ? '' : ' cand');
-  }
+      (c.permanente ? '' : ' cand') + (c.montado ? ' mont' : ''));
+  };
+  const montadas = D.caixas.filter(c => c.montado);
+  const faltam = D.caixas.filter(c => !c.montado);
+  if (montadas.length && faltam.length) h += sep('✅ montados');
+  for (const c of montadas) h += abaDeCaixa(c);
+  if (montadas.length && faltam.length) h += sep('🔧 para montar');
+  for (const c of faltam) h += abaDeCaixa(c);
   nav.innerHTML = h;
   const botoes = [...nav.querySelectorAll('.dt')];
   botoes.forEach((b, i) => {
@@ -1499,6 +1557,110 @@ function acoesHTML(c) {
     + (auto ? `<span class="dim">ordem automática: #${c.posicao_grupo} por % `
         + `completo</span>` : '')
     + `</div>`;
+}
+
+/* ------------------------------------ montados / para montar (André, 2026-09-08)
+   *"Quero decks montados num botão específico, e um botão a dizer «decks para
+   montar», para poder separar as coisas."* São duas perguntas diferentes e ele
+   está à frente da estante quando faz cada uma: num caso já tem a caixa na mão
+   (o que lá está, e desmontá-la); no outro ainda a vai montar (o que tirar, o
+   que comprar). A vista *Todas* junta-as por prioridade, que é a resposta a
+   outra pergunta.
+
+   O cartão é o MESMO da vista Todas (`caixaHTML(c, true)`) — a caixa não pode
+   dizer 61 % num sítio e outra coisa no do lado. O que muda é o que vem por
+   baixo dele. E os botões ficam FORA do `<button class="mini">` de propósito:
+   um botão dentro de outro não é HTML válido, e o clique de dentro disparava
+   também a navegação de fora. */
+function cartaoCaixa(c, extra) {
+  return `<div class="mcard">`
+    + `<button class="mini${c.permanente ? '' : ' cand'}" `
+    + `data-slot="${esc(c.slot)}">${caixaHTML(c, true)}</button>`
+    + (extra || '') + `</div>`;
+}
+
+function vistaMontados() {
+  const montadas = D.caixas.filter(c => c.montado);
+  let h = `<h2>✅ Decks montados <span class="n">${montadas.length}</span></h2>`;
+  if (!montadas.length) {
+    return h + `<p class="empty">Ainda não há nenhum deck montado. Vê a aba `
+      + `<b>🔧 Decks para montar</b> — ou o <b>🗺️ Plano</b>, que diz por onde `
+      + `começar.</p>`;
+  }
+  h += `<p class="lead">Estes estão sleevados e na caixa, prontos para ir jogar. `
+    + `Clica num para ver a lista carta a carta. As <b>congeladas</b> só mexem `
+    + `para actualizar — o que trocar está na aba <b>Arrumar</b>.</p>`
+    + `<div class="grid">`;
+  for (const c of montadas) {
+    /* A DATA é a da `copy_allocation` (`loadout.datas_de_arrumacao`). Uma caixa
+       que ele diz montada e de que o vault não sabe o conteúdo não tem data —
+       e dizer "montada em hoje" era assinar por ele uma confirmação que ele
+       nunca fez. Diz-se o que se sabe: que falta confirmar o que lá está. */
+    const quando = c.arrumada_em
+      ? `<span class="quando">📅 montada em <b>${esc(c.arrumada_em)}</b></span>`
+      : `<span class="quando aviso">❓ montada, mas ainda não me disseste o que `
+        + `lá está — abre a caixa e confirma</span>`;
+    h += cartaoCaixa(c, `<div class="macts">${quando}`
+      + (D.editable
+         ? `<button class="btn warn" data-act="desmontar" `
+           + `data-slot="${esc(c.slot)}">🧹 Desmontar</button>`
+         : '')
+      + `</div>`);
+  }
+  return h + `</div>`;
+}
+
+function vistaPorMontar() {
+  /* A ORDEM é a do Plano (`loadout.ordem_de_montagem`): permanentes por ordem
+     de alocação, depois as candidatas pela percentagem que já têm. Reordená-la
+     aqui dava duas respostas a "por onde começo?". As caixas SEM deck escolhido
+     não estão no `montagem` (não há nada para montar até ele escolher): vêm no
+     fim, no grupo delas. */
+  const ordem = {}, plano = {};
+  D.montagem.forEach((m, i) => { ordem[m.slot] = i; plano[m.slot] = m; });
+  const falta = D.caixas.filter(c => !c.montado);
+  const naOrdem = l => l.slice().sort((a, b) =>
+    (ordem[a.slot] === undefined ? 1e6 : ordem[a.slot])
+    - (ordem[b.slot] === undefined ? 1e6 : ordem[b.slot]));
+  const perm = naOrdem(falta.filter(c => c.permanente && !c.vazio));
+  const cand = naOrdem(falta.filter(c => !c.permanente && !c.vazio));
+  const vazias = falta.filter(c => c.vazio);
+  let h = `<h2>🔧 Decks para montar <span class="n">${falta.length}</span></h2>`;
+  if (!falta.length) {
+    return h + `<p class="empty">Está tudo montado. 🎉</p>`;
+  }
+  h += `<p class="lead">Por esta ordem: primeiro os <b>permanentes</b> (são eles `
+    + `que ficaram com as cartas), depois as <b>candidatas</b>, que só recebem o `
+    + `que sobra. <b>Montar</b> abre o passo a passo da caixa: o que tirar da `
+    + `colecção, e só depois o que comprar.</p>`;
+  const bloco = (titulo, lista, lead) => {
+    if (!lista.length) return '';
+    let b = `<h3>${titulo} <span class="n">${lista.length}</span></h3>`
+      + (lead ? `<p class="lead">${lead}</p>` : '') + `<div class="grid">`;
+    for (const c of lista) {
+      b += cartaoCaixa(c, `<div class="macts">`
+        + (c.vazio ? `<span class="quando">Escolhe primeiro o deck — abre a `
+                     + `caixa, ou vê a página <b>Metagame</b>.</span>`
+                   : `<button class="btn pri" data-montar="${esc(c.slot)}">`
+                     + `🧱 Montar</button>`
+                     /* «tirar» é o do PLANO (`ordem_de_montagem`), o mesmo
+                        número do painel Montar da caixa — o `tenho` do cartão
+                        é outra coisa (o que a alocação lhe deu, esteja já lá
+                        dentro ou não). */
+                     + `<span class="quando">tirar `
+                     + `<b>${(plano[c.slot] || {}).tirar || 0}</b> · comprar `
+                     + `<b>${c.comprar}</b> · ${eur(c.custo)}</span>`)
+        + `</div>`);
+    }
+    return b + `</div>`;
+  };
+  return h
+    + bloco('★ Permanentes', perm, '')
+    + bloco('Candidatas', cand,
+        'Recebem o que sobrar dos permanentes. Para uma começar a escolher '
+        + 'cartas primeiro, torna-a permanente na aba dela.')
+    + bloco('Por escolher', vazias,
+        'Caixas sem deck escolhido: não há o que montar até dizeres qual é.');
 }
 
 /* ------------------------------------------------------------- vistas */
@@ -2001,6 +2163,8 @@ function render() {
   if (caixa) {
     v.innerHTML = filtroHTML() + caixaHTML(caixa, false);
   } else if (aba === 'plano') { v.innerHTML = ligacaoHTML() + vistaPlano(); }
+  else if (aba === 'montados') { v.innerHTML = vistaMontados(); }
+  else if (aba === 'pormontar') { v.innerHTML = vistaPorMontar(); }
   else if (aba === 'arrumar') { v.innerHTML = vistaArrumar(); }
   else if (aba === 'partilhadas') { v.innerHTML = vistaPartilhadas(); }
   else if (aba === 'comprar') { v.innerHTML = vistaComprar(); }
@@ -2107,6 +2271,18 @@ function ligar() {
   }
   for (const b of document.querySelectorAll('[data-aba]:not(.dt)')) {
     b.onclick = () => ir(b.dataset.aba);
+  }
+  /* «Montar» abre a aba da caixa E desce até ao painel — o `ir()` põe a página
+     no topo, e o painel Montar vive no fim da aba. Sem isto o botão parecia não
+     fazer nada: mudava de aba e deixava-o a olhar para a barra da percentagem,
+     com o passo 1 três ecrãs abaixo. Não escreve nada: é navegação, e por isso
+     existe também na página publicada. */
+  for (const b of document.querySelectorAll('[data-montar]')) {
+    b.onclick = () => {
+      ir(b.dataset.montar);
+      const p = document.querySelector('.montar');
+      if (p && p.scrollIntoView) p.scrollIntoView({ block: 'start' });
+    };
   }
   /* Todos os botões de escrita, estejam num `.acts` ou dentro da lista de
      candidatos — um selector demasiado apertado deixava o "vou montar este"
@@ -2234,8 +2410,8 @@ async function vendida(btn) {
 }
 
 if (!D.caixas.some(c => c.slot === aba)
-    && !['plano', 'todas', 'arrumar', 'partilhadas', 'comprar', 'vender']
-        .includes(aba)) {
+    && !['plano', 'todas', 'montados', 'pormontar', 'arrumar', 'partilhadas',
+         'comprar', 'vender', 'sugestoes'].includes(aba)) {
   aba = 'plano';
 }
 renderResumo(); renderTabs(); render();

@@ -68,7 +68,8 @@ for (const s of scripts) vm.runInContext(s, ctx, { filename: 'deckboxes.js' });
 
 // O `const D` do script é uma ligação lexica, não uma propriedade do global.
 const slots = vm.runInContext('D.caixas.map(c => c.slot)', ctx);
-const abas = ['plano', 'todas', 'arrumar', 'partilhadas', 'comprar', 'vender',
+const abas = ['plano', 'todas', 'montados', 'pormontar',
+              'arrumar', 'partilhadas', 'comprar', 'vender',
               // A aba das sugestões de Premodern só existe quando há caixas
               // desse formato (ver `renderTabs`); pedi-la sem elas cai na vista
               // Todas, que também tem de desenhar sem erro.
@@ -89,6 +90,11 @@ if (process.argv[3]) {
   for (const a of abas) {
     vm.runInContext(`aba = ${JSON.stringify(a)}; renderTabs(); render();`, ctx);
     dump[a] = desenhado[desenhado.length - 1] || '';
+    // A penultima coisa desenhada e a FILA DE ABAS (o `renderTabs` corre antes
+    // do `render`). Vai num nome que nao pode colidir com um `slot`, para se
+    // poder verificar a ordem e os grupos da fila — que sao o que o Andre ve
+    // primeiro e nao apareciam em lado nenhum do que se desenhou.
+    dump['__fila'] = desenhado[desenhado.length - 2] || '';
   }
   fs.writeFileSync(process.argv[3], JSON.stringify(dump), 'utf8');
 }

@@ -653,6 +653,27 @@ def caixas_arrumadas(con) -> set[str]:
         return set()                  # base antiga, ainda sem a tabela
 
 
+def datas_de_arrumacao(con) -> dict[str, str]:
+    """`{slot: dia}` — quando cada caixa foi REGISTADA com o que tem lá dentro.
+
+    É o `MAX(placed_at)`, e não o mínimo, porque quem grava
+    (`guardar_arrumacao`, `actualizar_caixa`) substitui as linhas da caixa
+    inteira de uma vez: a data que se pode afirmar é a da última vez que ele
+    disse o que lá está, não a de uma cópia em particular.
+
+    Uma caixa que se DIZ montada e ainda não tem linhas não aparece aqui — e a
+    página tem de dizer isso em vez de inventar um dia. É o caso do
+    Stiflenought (`montado_por_confirmar`): dar-lhe a data de hoje era assinar
+    por ele uma confirmação que ele nunca fez.
+    """
+    try:
+        return {r["slot"]: (r["d"] or "")[:10] for r in con.execute(
+            "SELECT slot, MAX(placed_at) d FROM copy_allocation "
+            "WHERE quantity > 0 GROUP BY slot") if r["d"]}
+    except sqlite3.OperationalError:
+        return {}                     # base antiga, ainda sem a tabela
+
+
 def e_foil(finish: str | None) -> bool:
     """A cópia é foil? É `finish in FOIL_FINISHES` e mais nada — existe como
     função porque as páginas escreviam este teste à mão com `"foil" in finish`,
@@ -1005,6 +1026,7 @@ def resolve_slots(con, cfg_slots: list[dict] | None = None) -> list[dict]:
     out = []
     regras = regras_por_formato()
     arrumadas = caixas_arrumadas(con)
+    datas = datas_de_arrumacao(con)
     vigiados = set(sources.config().get("decks_vigiados") or [])
     for s in (cfg_slots if cfg_slots is not None else config_slots()):
         # Aceita as duas formas — a caixa da v6 e a linha do `loadout` da v5 —
@@ -1044,6 +1066,9 @@ def resolve_slots(con, cfg_slots: list[dict] | None = None) -> list[dict]:
         # caixas de 2026-09-08 tinham alocação herdada da migração e não estavam
         # montadas em lado nenhum.
         s["arrumada"] = s.get("slot") in arrumadas
+        # O DIA em que ela ficou com este conteúdo (vazio quando o vault ainda
+        # não sabe o que lá está). A vista «Decks montados» mostra-o.
+        s["arrumada_em"] = datas.get(s.get("slot"), "")
         cards, nota = _slot_cards(con, s)
         so_de: dict[str, set[str]] = defaultdict(set)
         variantes = list(s.get("variantes") or [])
