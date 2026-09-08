@@ -14,8 +14,13 @@ sem o André estar ao PC.
    ```bash
    py processar_fotos.py pendentes/recat.csv
    ```
-   O script garante o catálogo, importa para `data/vault.db`, **limpa as fotos**
-   de `pendentes/` e faz **commit + push**. O site atualiza-se sozinho.
+   O script garante o catálogo, importa para `data/vault.db`, **arruma as
+   fotos** para `pendentes/fotos processadas/<AAAA-MM>/` (nunca as apaga) e
+   publica a BD. O site atualiza-se sozinho.
+
+   Ao lado do teu CSV fica um `<nome>-resultado.csv` com o que aconteceu a cada
+   linha. **As linhas que pararam vêm lá com o motivo** — a foto delas fica em
+   `pendentes/` à espera de ser recatalogada.
 
 O reconhecimento (passo 2) és sempre **tu a olhar para as fotos** — o script só
 faz a parte mecânica.
@@ -32,8 +37,14 @@ name,set_code,collector_number,quantity,finish,language,condition,purpose,sub_co
   Universes Beyond com nome de personagem), usa o nome real da carta de Magic.
   Cartas de dupla-face: o nome completo `Frente // Verso`.
 - **set_code** — código do set (ex.: `mh3`, `fin`). Podes pôr como aparece — o
-  script baixa para minúsculas. Se não tiveres a certeza, deixa vazio e mete a
-  edição provável em `notes` ("a confirmar").
+  script baixa para minúsculas. **Obrigatório: uma linha sem `set_code` NÃO
+  entra** — para com `motivo: edicao em falta` e a foto fica em `pendentes/`.
+  Até 2026-09-08 uma edição em branco não dava erro: dava a impressão *mais
+  antiga* da carta, que para as básicas é sempre Alpha (foi assim que 5 Plains
+  do Cloud cEDH ficaram `lea #287`, 309,50 € de valor fantasma). Se não
+  conseguires ler a edição, confirma-a no catálogo (`catalogo.py "<nome>"`) ou
+  deixa a linha de fora e escreve a dúvida em `notes` — mais vale uma carta por
+  catalogar do que uma carta catalogada errada.
 - **collector_number** — número da carta (canto inferior). Deixa como está (ex.:
   The List = `UGL-84`). Vazio se não der para ler.
 - **quantity** — quantas cópias iguais (mesma edição/finish/língua) nessa foto.
@@ -46,8 +57,10 @@ name,set_code,collector_number,quantity,finish,language,condition,purpose,sub_co
   `SPML` (Standard/Pioneer/Modern/Legacy), `Premodern (geral)`, `Blue Farm`,
   `Cloud`, `Cloud cEDH`, `Pauper Affinity`. Se a foto não disser, pergunta ao
   André ou põe o mais provável e regista em `notes`.
-- **photo_path** — o nome do ficheiro da foto (só como registo; a imagem é
-  removida depois). Opcional.
+- **photo_path** — o nome do ficheiro da foto. **Põe-no sempre**: é o que liga
+  a cópia à foto que lhe deu origem (a foto é arrumada, nunca apagada, e o
+  caminho novo fica na cópia). Sem ele, uma suspeita de edição errada não tem
+  como ser relida.
 - **acquired_price** — opcional (€).
 - **notes** — dúvidas ("edição a confirmar"), etc.
 

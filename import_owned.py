@@ -12,6 +12,7 @@ Fluxo por lote: acrescento/edito linhas no owned.csv → `python import_owned.py
 from __future__ import annotations
 
 import csv
+import datetime as dt
 import os
 import sqlite3
 from collections import defaultdict
@@ -22,9 +23,23 @@ HOME = Path(os.environ.get("MTGVAULT_HOME", ROOT / "data"))
 DB, CAT = HOME / "vault.db", HOME / "catalog.db"
 CSV_PATH = ROOT / "owned.csv"
 
+# O `owned.csv` só traz nome e quantidade: a edição destas cópias é um palpite,
+# e tem de ficar dito na cópia. É a mesma marca que o `collection.add_copy`
+# escreve com `--adivinhar` — assim uma só consulta encontra as duas.
+NOTA_ADIVINHADA = "edicao adivinhada em %s: owned.csv (sem coluna de edição)"
+
 
 def resolve(con: sqlite3.Connection, name: str) -> str | None:
-    """scryfall_id da impressão nonfoil mais barata (com preço); senão qualquer EN."""
+    """scryfall_id da impressão nonfoil mais barata (com preço); senão a mais recente EN.
+
+    O `owned.csv` não tem coluna de edição — aqui a edição é SEMPRE um palpite,
+    e é por isso que as cópias saem com a nota "edicao adivinhada" (ver
+    `NOTA_ADIVINHADA` e a regra no CLAUDE.md).
+
+    A alternativa (`ORDER BY released_at`, a mais ANTIGA) era o mesmo buraco do
+    `find_printing` sem `set_code`: para um nome sem preço no catálogo dava a
+    primeira impressão da carta — para as básicas, Alpha.
+    """
     like = name + " // %"
     r = con.execute(
         """SELECT c.scryfall_id FROM catalog.cards c
@@ -36,7 +51,7 @@ def resolve(con: sqlite3.Connection, name: str) -> str | None:
     r = con.execute(
         """SELECT scryfall_id FROM catalog.cards
             WHERE (name = ? OR name LIKE ?) AND lang = 'en'
-            ORDER BY released_at LIMIT 1""", (name, like)).fetchone()
+            ORDER BY released_at DESC LIMIT 1""", (name, like)).fetchone()
     return r[0] if r else None
 
 
@@ -53,6 +68,7 @@ def main() -> None:
         if sub and name and qty:
             decks[sub][name] = decks[sub].get(name, 0) + int(qty)
 
+    nota = NOTA_ADIVINHADA % dt.date.today().isoformat()
     miss = []
     for sub, cards in decks.items():
         con.execute("INSERT OR IGNORE INTO sub_collections(name, purpose) VALUES (?, 'player')", (sub,))
@@ -62,8 +78,9 @@ def main() -> None:
             sfid = resolve(con, name)
             if sfid:
                 con.execute(
-                    "INSERT INTO copies(scryfall_id, quantity, finish, language, purpose, sub_collection_id) "
-                    "VALUES (?,?,?,?,?,?)", (sfid, q, "nonfoil", "pt", "player", sid))
+                    "INSERT INTO copies(scryfall_id, quantity, finish, language, purpose, "
+                    "sub_collection_id, notes) VALUES (?,?,?,?,?,?,?)",
+                    (sfid, q, "nonfoil", "pt", "player", sid, nota))
             else:
                 miss.append((sub, name))
     con.commit()

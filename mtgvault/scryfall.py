@@ -148,18 +148,92 @@ def sync(con: sqlite3.Connection) -> int:
 # ---------------------------------------------------------------------------
 # Lookup
 # ---------------------------------------------------------------------------
+MOTIVO_EDICAO = "edicao em falta"
+
+
+class EdicaoEmFalta(LookupError):
+    """Pediu-se uma impressão sem dizer qual é a edição.
+
+    Antes de 2026-09-08 isto não dava erro: `find_printing` sem `set_code`
+    terminava em `ORDER BY released_at ASC LIMIT 1` e devolvia a impressão
+    **mais antiga** — para as básicas, sempre Alpha. Uma linha de CSV com a
+    edição em branco não falhava: gravava a edição errada em silêncio, e foi
+    assim que 5 Plains do Cloud cEDH ficaram `lea #287` (309,50 € de valor
+    fantasma; ver `work/revisao/mtgvault-edicoes-suspeitas.md`). É o padrão do
+    `event_tier`: um passo que corre sem erro e produz um valor falso.
+
+    É `LookupError` para os importadores que já apanhavam `LookupError` não
+    mudarem de comportamento — mudou só a mensagem, que agora diz o motivo.
+    """
+
+    def __init__(self, name: str):
+        super().__init__(f"{MOTIVO_EDICAO}: {name}")
+        self.card_name = name
+
+
+def _preco(con: sqlite3.Connection, scryfall_id: str) -> float:
+    """Preço de referência de uma impressão; infinito quando não há preço.
+
+    Sem preço não se pode dizer que é "a mais barata", e um desempate que
+    invente um número escolheria sempre a mesma impressão sem razão nenhuma.
+    """
+    try:
+        r = con.execute(
+            "SELECT MIN(trend) t FROM price_latest WHERE scryfall_id = ? "
+            "AND trend IS NOT NULL", (scryfall_id,)).fetchone()
+    except sqlite3.OperationalError:      # catálogo sozinho, sem a vault.db
+        return float("inf")
+    return r["t"] if r and r["t"] is not None else float("inf")
+
+
+def _adivinhar(con: sqlite3.Connection, name: str,
+               collector_number: str | None) -> sqlite3.Row | None:
+    """A impressão mais RECENTE e, dentro dessa data, a mais BARATA.
+
+    O contrário do que a função fazia antes, e de propósito: quem não sabe a
+    edição de um Plains tem quase de certeza o Plains barato de um set recente,
+    não o de Alpha. Continua a ser um palpite — quem o pede fica com a nota
+    "edicao adivinhada" na cópia.
+    """
+    q = "SELECT * FROM cards WHERE lower(name) = lower(?) AND digital = 0"
+    args: list = [name]
+    if collector_number:
+        q += " AND collector_number = ?"
+        args.append(collector_number)
+    rows = con.execute(q + " ORDER BY released_at DESC", args).fetchall()
+    if not rows:
+        return None
+    recentes = [r for r in rows if r["released_at"] == rows[0]["released_at"]]
+    # o collector_number desempata o que o preço não desempata: sem ele, duas
+    # artes sem preço davam uma escolha que mudava com a ordem da tabela.
+    return min(recentes,
+               key=lambda r: (_preco(con, r["scryfall_id"]),
+                              r["collector_number"] or ""))
+
+
 def find_printing(
     con: sqlite3.Connection,
     name: str,
     set_code: str | None = None,
     collector_number: str | None = None,
+    *,
+    adivinhar: bool = False,
 ) -> sqlite3.Row | None:
-    """Encontra uma impressão específica. Sem set, devolve a mais barata/antiga."""
-    q = "SELECT * FROM cards WHERE lower(name) = lower(?) AND digital = 0"
-    args: list = [name]
-    if set_code:
-        q += " AND lower(set_code) = lower(?)"
-        args.append(set_code)
+    """Encontra uma impressão específica.
+
+    **Sem `set_code` levanta `EdicaoEmFalta`** — não se inventa uma edição (ver
+    a classe). Quem quiser mesmo um palpite pede `adivinhar=True` e recebe a
+    impressão mais recente e mais barata; nesse caso `collection.add_copy`
+    escreve "edicao adivinhada" na `notes` da cópia.
+    """
+    if not set_code:
+        if not adivinhar:
+            raise EdicaoEmFalta(name)
+        return _adivinhar(con, name, collector_number)
+
+    q = ("SELECT * FROM cards WHERE lower(name) = lower(?) AND digital = 0 "
+         "AND lower(set_code) = lower(?)")
+    args: list = [name, set_code]
     if collector_number:
         q += " AND collector_number = ?"
         args.append(collector_number)

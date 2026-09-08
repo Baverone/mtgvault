@@ -50,6 +50,13 @@ def main(argv=None):
 
     imp = sub.add_parser("import", help="importar coleção de um CSV")
     imp.add_argument("path")
+    imp.add_argument("--resultado", help="CSV com o que aconteceu a cada linha")
+    imp.add_argument("--arrumar-fotos", action="store_true",
+                     help="mover as fotos deste lote para 'fotos processadas/<AAAA-MM>' "
+                          "e ligar cada foto à cópia que criou")
+    imp.add_argument("--adivinhar", action="store_true",
+                     help="aceitar a impressão mais recente/barata quando a linha "
+                          "não traz edição (fica dito na notes da cópia)")
 
     d = sub.add_parser("deck-add", help="criar deck a partir de ficheiro de texto")
     d.add_argument("name")
@@ -214,12 +221,24 @@ def main(argv=None):
             print(f"Adicionado (id {rid}).")
 
         elif args.cmd == "import":
-            ok, errs = collection.import_csv(con, args.path)
+            resultados: list[dict] = []
+            ok, errs = collection.import_csv(
+                con, args.path, adivinhar=args.adivinhar, resultados=resultados)
             print(f"{ok} linhas importadas.")
             for e in errs[:20]:
                 print("  !", e)
             if len(errs) > 20:
                 print(f"  ... e mais {len(errs) - 20} erros")
+            if args.arrumar_fotos:
+                f = collection.arrumar_fotos(con, resultados)
+                print(f"{f['movidas']} fotos para 'pendentes/{f['destino']}', "
+                      f"{f['ligadas']} ligações foto↔cópia registadas.")
+                if f["ficaram"]:
+                    print("  fotos que ficam em pendentes/ (têm linhas por "
+                          "resolver): " + ", ".join(f["ficaram"][:10]))
+            if args.resultado:
+                print("resultado:", collection.gravar_resultado(resultados,
+                                                                args.resultado))
 
         elif args.cmd == "deck-add":
             text = open(args.path, encoding="utf-8").read()
