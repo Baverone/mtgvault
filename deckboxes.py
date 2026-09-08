@@ -251,11 +251,51 @@ def _caixa_payload(s, imgs, cfs, rep=None, col=None, tipos=None, cores=None):
     }
 
 
+def _premodern_payload(rep, imgs):
+    """As CAIXAS CANDIDATAS de Premodern: o que ele pode montar com o que sobra.
+
+    André, 2026-09-08: *"se o deck for top-10 de representação ou top-5 decks
+    combo do formato, sugere a lista para montar o deck caso eu tenha pelo menos
+    50 % das cartas."* A aba **Sugestões** é isto — e vive aqui, ao lado das
+    caixas, porque é aqui que ele decide: a alternativa era mandá-lo à página do
+    Metagame para voltar com a resposta.
+
+    A percentagem é a do que SOBRA (`pct`), e não a do que ele tem ao todo
+    (`pct_total`): a segunda conta cartas que estão dentro de outras caixas, e
+    montar com elas é desmontar um deck para montar outro. As duas vão no
+    payload, porque a diferença entre elas é a explicação da primeira.
+    """
+    pm = rep.get("premodern") or {}
+    if not pm.get("activo"):
+        return {"activo": False, "candidatos": [], "sugestoes": 0, "limiar": 0}
+
+    def linha(c):
+        return {"nome": c["nome"], "subtitulo": c["subtitulo"],
+                "archetype_id": c["archetype_id"], "n_lists": c["n_lists"],
+                "pct": c["pct"], "pct_total": c["pct_total"],
+                "combo": c["combo"], "grau": c["grau"],
+                "top": c["top"], "top_combo": c["top_combo"],
+                "estado": c["estado"], "caixa": c.get("caixa_nome"),
+                "recusada_em": c.get("recusada_em"),
+                "comprar": c["comprar"], "custo": c["custo"],
+                "need": c["need"], "got": c["got"],
+                "cartas": [{"nm": m["nm"], "sid": imgs.get(m["nm"]),
+                            "need": m["need"], "got": m["got"],
+                            "est": ("have" if m["got"] >= m["need"]
+                                    else "sub" if m["noutra_q"] else "miss"),
+                            "noutra": m["noutra"]}
+                           for m in c["linhas"] if not m.get("basica")]}
+
+    return {"activo": True, "limiar": pm["limiar"],
+            "candidatos": [linha(c) for c in pm["elegiveis"]],
+            "sugestoes": len(pm["sugestoes"])}
+
+
 def payload(con, rep, editable=False, token="", ligacao=None):
     nomes = {c["nm"] for c in rep["conflitos"]}
     for s in rep["slots"]:
         nomes |= {n for _b, n, _q in s["cards"]}
-    for k in ("venda", "venda_rl", "guardar", "retidos"):
+    for k in ("venda", "venda_rl", "guardar", "retidos", "reservadas"):
         nomes |= {r["nm"] for r in rep[k]}
     nomes |= {m["nm"] for m in rep["arrumacao"]["movimentos"]}
     imgs = _img_map(con, sorted(nomes))
@@ -381,7 +421,20 @@ def payload(con, rep, editable=False, token="", ligacao=None):
         "venda": {"normal": venda_bloco("venda", "copias", "total"),
                   "rl": venda_bloco("venda_rl", "copias_rl", "total_rl"),
                   "guardar": venda_bloco("guardar", "copias_guardar", "total_guardar"),
+                  # RESERVADAS por uma sugestão de Premodern por decidir: não são
+                  # excedente, são cartas de um deck que ele ainda não disse se
+                  # quer. Ficam num bloco próprio — e sem botão «vendida», porque
+                  # a decisão que as liberta é o «não quero este».
+                  "reservadas": venda_bloco("reservadas", "copias_reservadas",
+                                            "total_reservado"),
                   "retidos": venda_bloco("retidos", "copias_retidas", "total_retido")},
+        # PREMODERN (André, 2026-09-08): o que montar a seguir com o que sobra.
+        # A conta é a do `mtgvault.premodern`, a mesma que o metagame.html mostra.
+        "premodern": _premodern_payload(rep, imgs),
+        # O motivo da venda nova, para a página reconhecer as linhas dele. Vem do
+        # Python e não escrito à mão no JavaScript: um texto igual em dois sítios
+        # é um texto que fica diferente na primeira vez que alguém lhe mexe.
+        "pm_razao": loadout.RAZAO_PREMODERN,
         "arrumar": {"por_origem": arr["por_origem"], "por_destino": arr["por_destino"],
                     "copias": arr["copias"], "linhas": arr["linhas"],
                     # As caixas CONGELADAS não se arrumam, actualizam-se: o
@@ -744,6 +797,10 @@ const pin = p => p >= 90 ? 'ok' : p >= 60 ? 'mid' : 'low';
    Cardmarket: a Mishra's Workshop sozinha vale mais do que o resto da lista
    toda junta. A aba Comprar separa os dois totais em vez de os somar. */
 const CARA = 100;
+/* O motivo da venda nova ("Premodern: não usada por nenhum deck"), vindo do
+   Python (`loadout.RAZAO_PREMODERN`). Escrito à mão aqui, bastava mudar uma
+   vírgula do lado de lá para o parágrafo desaparecer sem erro nenhum. */
+const PM_RAZAO = D.pm_razao || '';
 
 /* Estado no browser: a aba aberta, o filtro e o que já foi arrumado. É a mesma
    ideia do checkmark "atualizado" do meusdecks — o que é do André fica no
@@ -797,6 +854,12 @@ function renderTabs() {
                  ['partilhadas', '🔁 Partilhadas', D.partilhadas.length + ' cartas'],
                  ['comprar', '🛒 Comprar', D.resumo.comprar + ' cópias'],
                  ['vender', '💰 Vender', eur(D.resumo.venda)]];
+  /* SUGESTÕES: só existe quando há Premodern configurado. Uma aba vazia numa
+     fila de vinte é ruído — e sem caixas de Premodern não há pergunta nenhuma. */
+  if (D.premodern && D.premodern.activo) {
+    fixas.push(['sugestoes', '💡 Sugestões',
+                D.premodern.sugestoes + ' por decidir']);
+  }
   let h = '';
   /* `role=tab` + `aria-selected` para o leitor de ecrã dizer qual está aberta,
      e `tabindex=-1` nas outras: numa fila de 19 abas, o Tab passava por todas
@@ -1407,6 +1470,84 @@ function vistaComprar() {
        + wantlistHTML(itens, '', 'v-compras', true));
 }
 
+/* ------------------------------------------------------------- sugestões
+   "Se o deck for top-10 de representação ou top-5 decks combo do formato,
+   sugere a lista para montar o deck caso eu tenha pelo menos 50% das cartas"
+   (André, 2026-09-08). A percentagem é a do que SOBRA depois de as caixas
+   estarem servidas — é com essas cartas que se monta mais um deck. */
+const PM_ESTADO = {
+  caixa: ['ok', '🧰 já é uma caixa tua'],
+  sugerida: ['ok', '💡 sugerido — montar?'],
+  recusada: ['', '✕ recusado'],
+  abaixo: ['', 'abaixo do limiar'],
+};
+
+function sugestaoHTML(c) {
+  const [cls, txt] = PM_ESTADO[c.estado] || ['', c.estado];
+  const rot = c.estado === 'caixa' && c.caixa ? '🧰 ' + esc(c.caixa)
+    : c.estado === 'recusada' ? '✕ recusado em ' + esc(c.recusada_em || '?') : txt;
+  const chips = [`<span class="bdg ${cls}">${rot}</span>`,
+    c.combo ? `<span class="bdg fo">🧩 ${esc(c.grau)}</span>` : '',
+    `<span class="bdg">${c.top ? '🔟 top de representação' : '🎯 top de combo'}`
+      + `</span>`,
+    `<span class="bdg">${c.n_lists} listas que contam</span>`].join('');
+  const grelha = c.cartas.map(m => `<div class="cd ${m.est}" title="${esc(m.nm)} — `
+    + `tens ${m.got}/${m.need}">`
+    + (m.sid ? `<img loading="lazy" src="${art(m.sid)}" alt="${esc(m.nm)}">` : '')
+    + `<span class="cq">${m.got}/${m.need}</span></div>`).join('');
+  /* Os botões só no modo edição, como em todo o resto da página: no site
+     publicado o endpoint não existe e um botão morto é pior que botão nenhum. */
+  const acts = !D.editable || c.estado === 'caixa' ? '' :
+    c.estado === 'recusada'
+      ? `<div class="acts"><button class="btn" data-act="pm-aceitar" `
+        + `data-nome="${esc(c.nome)}">↩ Voltar a considerar</button></div>`
+      : `<div class="acts"><button class="btn pri" data-act="pm-montar" `
+        + `data-nome="${esc(c.nome)}" data-aid="${c.archetype_id}">`
+        + `✔ Vou montar este</button>`
+        + `<button class="btn" data-act="pm-recusar" data-nome="${esc(c.nome)}">`
+        + `✕ Não quero este</button></div>`;
+  return `<div class="box"><div class="btop"><b>${esc(c.nome)}</b>`
+    + `<span class="pct" style="color:${cor(c.pct)}">${c.pct}%</span></div>`
+    + `<div class="bar"><i style="width:${Math.max(c.pct, 2)}%;`
+    + `background:${cor(c.pct)}"></i></div>`
+    + `<div class="badges">${chips}</div>`
+    + `<div class="nums">`
+    + `<div class="num">do que sobra<b>${c.got}/${c.need}</b></div>`
+    + `<div class="num get">contando as outras caixas<b>${c.pct_total}%</b></div>`
+    + `<div class="num buy">comprar<b>${c.comprar}</b></div>`
+    + `<div class="num eur">fechar por<b>${eur(c.custo)}</b></div></div>`
+    + `<div class="nota">${esc(c.subtitulo)}</div>`
+    + `<div class="cards">${grelha}</div>${acts}</div>`;
+}
+
+function vistaSugestoes() {
+  const P2 = D.premodern;
+  const ordem = { sugerida: 0, abaixo: 1, recusada: 2, caixa: 3 };
+  const lista = P2.candidatos.slice().sort((a, b) =>
+    (ordem[a.estado] - ordem[b.estado]) || (b.pct - a.pct));
+  const sug = lista.filter(c => c.estado === 'sugerida');
+  let h = `<h2>💡 Sugestões de Premodern</h2>`
+    + `<p class="lead">O <b>top-10</b> do formato e os <b>melhores combo</b>, `
+    + `pelas listas que contam. A percentagem grande é a do que <b>sobra</b> — as `
+    + `cópias PT (≤SCG) que <b>nenhuma caixa</b> levou —, porque é com essas que `
+    + `montarias mais um deck; a segunda conta também as que estão dentro de `
+    + `outras caixas, e serve só para perceberes a diferença. A partir de `
+    + `<b>${P2.limiar}%</b> vira sugestão.</p>`;
+  h += sug.length
+    ? `<p class="lead">Enquanto forem sugestões, as cartas delas <b>não vão para `
+      + `a venda</b> — ficam no bloco <b>reservadas</b> da aba Vender. `
+      + (D.editable ? `<b>✔ vou montar este</b> abre-lhe uma caixa e mete-a na `
+          + `alocação; <b>✕ não quero este</b> liberta as cartas para a venda.`
+         : `Para decidires, corre <code>python webapp.py</code> no PC (porto 8771).`)
+      + `</p>`
+    : `<p class="lead">Nenhum candidato chega aos ${P2.limiar}% com o que sobra: `
+      + `as caixas de Premodern ficam com as cópias primeiro, e o que sobra vai `
+      + `para a venda com o motivo <i>"não usada por nenhum deck"</i>. Se quiseres `
+      + `ver mais opções, baixa o <code>sugerir_a_partir_de_pct</code> no `
+      + `<code>colecao_config.json</code>.</p>`;
+  return h + `<div class="grid">` + lista.map(sugestaoHTML).join('') + `</div>`;
+}
+
 function vistaVender() {
   const ordena = l => l.slice().sort((x, y) => x.nm.localeCompare(y.nm));
   /* Duas listas para copiar, porque servem duas coisas: a do Cardmarket é só
@@ -1415,7 +1556,7 @@ function vistaVender() {
   const so = l => ordena(l).map(r => `${r.q} ${r.nm}`).join('\n');
   const detalhe = l => ordena(l).map(r => `${r.q} ${r.nm} [${r.set}`
     + `${r.foil ? ' foil' : ' nonfoil'} ${(r.lang || '').toUpperCase()}]`).join('\n');
-  const bloco = (id, titulo, lead, b, aberto, rotulo) => !b.linhas.length ? '' :
+  const bloco = (id, titulo, lead, b, aberto, rotulo, semBotao) => !b.linhas.length ? '' :
     `<details class="vblk" id="${id}"${aberto ? ' open' : ''}>`
     + `<summary><span>${titulo}</span><span class="vtot">${b.copias} cópias · `
     + `${eur(b.total)}</span></summary><p class="lead">${lead}</p>`
@@ -1429,7 +1570,7 @@ function vistaVender() {
     + `</textarea>`
     + `<table class="vt"><thead><tr><th></th><th>carta</th><th>onde está</th>`
     + `<th>edição</th><th>un.</th><th>total</th><th class="rz">porquê</th>`
-    + (D.editable ? `<th></th>` : '') + `</tr></thead>`
+    + (D.editable && !semBotao ? `<th></th>` : '') + `</tr></thead>`
     + `<tbody>` + b.linhas.map(r => `<tr><td class="q">${r.q}×</td>`
       + `<td>${esc(r.nm)}${r.rl ? ' <span class="rl">RL</span>' : ''}</td>`
       + `<td class="dim">${esc(r.local)}</td>`
@@ -1444,17 +1585,37 @@ function vistaVender() {
       /* «vendida»: tira as cópias da base e escreve-as no `data/vendas.csv`.
          Sem isto a lista repetia todos os dias as cartas que ele já vendeu — e
          a única maneira de a calar era editar a base à mão. */
-      + (D.editable ? `<td><button class="btn sm" data-vend="${esc(r.chave)}" `
-          + `data-q="${r.q}" aria-label="Marcar ${r.q} ${esc(r.nm)} como vendida">`
-          + `vendida</button></td>` : '')
+      + (D.editable && !semBotao
+         ? `<td><button class="btn sm" data-vend="${esc(r.chave)}" `
+           + `data-q="${r.q}" aria-label="Marcar ${r.q} ${esc(r.nm)} como vendida">`
+           + `vendida</button></td>` : '')
       + `</tr>`).join('')
     + `</tbody></table></details>`;
   const V = D.venda;
+  /* Quanto da lista entra pelo motivo novo. Conta-se das LINHAS e não de um
+     total à parte: o que a tabela mostra e o que o parágrafo diz têm de vir do
+     mesmo sítio. */
+  const pmVenda = [...V.normal.linhas, ...V.rl.linhas]
+    .filter(r => r.reason === PM_RAZAO)
+    .reduce((a, r) => ({ copias: a.copias + r.q, total: a.total + (r.total || 0) }),
+            { copias: 0, total: 0 });
   return `<h2>💰 Para vender</h2>`
     + `<p class="lead"><b>Sugestão a confirmar.</b> Nada sai da coleção sem tu dizeres. `
     + `É o que sobra depois de encher todas as caixas e de guardar o backup: `
     + `<b>4 por carta</b> na coleção (playset, a somar a Coleção e a Caixa RL — não 4 `
     + `por balde) e <b>1 por deck</b> nas caixas de Commander. <b>Básicas nunca.</b></p>`
+    /* PREMODERN NÃO USADO (André, 2026-09-08). É um motivo à parte dentro das
+       mesmas listas: uma PT da era está trancada ao Premodern, e se nenhuma
+       caixa a aloca não serve mais nada. Dizê-lo aqui em cima porque muda o
+       tamanho da lista — e porque a saída dela é uma decisão dele, não um
+       excedente. */
+    + (pmVenda.copias ? `<p class="lead">🕰 <b>${pmVenda.copias} cópias `
+        + `(${eur(pmVenda.total)}) entram por não estarem em nenhum deck de `
+        + `Premodern.</b> São PT de edições até ao Scourge: essas ficam trancadas `
+        + `ao Premodern (<i>"não entram para outros formatos"</i>), por isso uma `
+        + `cópia que nenhuma caixa usa não serve mais nada. Se houver um deck que `
+        + `queiras montar com elas, marca-o na aba <b>Sugestões</b> primeiro — as `
+        + `cartas dele saem desta lista.</p>` : '')
     + bloco('v-normal', 'Excedente normal', 'Cópias a mais de cartas que não são '
         + 'Reserved List. É por aqui que se começa: o risco é baixo e o dinheiro é '
         + 'real.', V.normal, true, 'excedente normal')
@@ -1467,6 +1628,12 @@ function vistaVender() {
         + 'de 4, mas são substitutos de cartas que faltam a uma caixa: servem o deck e '
         + 'só não fecham o slot por causa da língua ou do acabamento. Vendê-las era '
         + 'comprá-las outra vez.', V.guardar, false, 'guardar')
+    + bloco('v-reservadas', '💡 Reservadas — sugestões de Premodern por decidir',
+        'Cartas que uma <b>sugestão</b> usaria (aba <b>Sugestões</b>). Não são '
+        + 'excedente: são o deck que ainda não disseste se queres. Enquanto a '
+        + 'sugestão estiver aberta não se vendem — carrega em <b>não quero este</b> '
+        + 'na sugestão e elas passam para a lista de cima no mesmo dia.',
+        V.reservadas, false, 'reservadas', true)
     + bloco('v-retidos', '⏳ Retidos — extras de decks montados', 'Baldes com '
         + '<code>reter_extras_meses</code>: guardam-se até 6 meses depois da última '
         + 'utilização. Ainda não há registo de "última utilização", por isso ficam '
@@ -1506,6 +1673,9 @@ function render() {
   else if (aba === 'partilhadas') { v.innerHTML = vistaPartilhadas(); }
   else if (aba === 'comprar') { v.innerHTML = vistaComprar(); }
   else if (aba === 'vender') { v.innerHTML = vistaVender(); }
+  else if (aba === 'sugestoes') {
+    v.innerHTML = D.premodern && D.premodern.activo ? vistaSugestoes() : vistaTodas();
+  }
   else { v.innerHTML = vistaTodas(); }
   ligar();
   window.scrollTo({ top: 0 });
@@ -1610,7 +1780,8 @@ function ligar() {
      candidatos — um selector demasiado apertado deixava o "vou montar este"
      desenhado e morto, que é o pior dos dois mundos. */
   for (const b of document.querySelectorAll('[data-act]')) {
-    b.onclick = () => accao(b.dataset.act, b.dataset.slot, b, b.dataset.aid);
+    b.onclick = () => accao(b.dataset.act, b.dataset.slot, b, b.dataset.aid,
+                            b.dataset.nome);
   }
   for (const l of document.querySelectorAll('.mv')) {
     const cb = l.querySelector('input');
@@ -1679,7 +1850,8 @@ async function jaArrumei() {
 
 /* Escolher um deck para uma caixa é outro endpoint (`api/escolher`): mexe na
    `listas_escolhidas` e refaz as DUAS páginas, não só esta. */
-const ESCOLHA = { escolher: 1, desmarcar: 1 };
+const ESCOLHA = { escolher: 1, desmarcar: 1,
+                  'pm-montar': 1, 'pm-recusar': 1, 'pm-aceitar': 1 };
 
 /* O token vai em cabeçalho em TODAS as escritas: sem ele o servidor responde
    403 e a página fica só de leitura. É o que permite ter o porto aberto na rede
@@ -1693,11 +1865,12 @@ function gravar(url, corpo) {
   });
 }
 
-async function accao(act, slot, btn, aid) {
+async function accao(act, slot, btn, aid, nome) {
   btn.disabled = true;
   try {
     const r = await gravar(ESCOLHA[act] ? 'api/escolher' : 'api/caixa',
-                           { act, slot, aid: aid ? Number(aid) : null });
+                           { act, slot, nome: nome || null,
+                             aid: aid ? Number(aid) : null });
     if (!r.ok && r.status !== 403 && r.status !== 409) {
       throw new Error('HTTP ' + r.status);
     }

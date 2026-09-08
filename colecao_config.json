@@ -49,6 +49,137 @@
   "_premodern_playset": "O PREMODERN VOLTOU A PARTILHAR (André, 2026-09-08, à letra): 'No Premodern, afinal só vou ter até playset de cada carta. E ordenamos os decks por prioridade; os que vêm depois na prioridade indicam onde estão as cartas em falta. Para já a prioridade vem por ordem de % completo.' Recorta a ordem de 2026-09-07 às 19:00 ('vou precisar de múltiplos para os decks de premodern') SÓ para o Premodern — o cEDH e o Pauper continuam 'dedicado': true. São três chaves no grupo 'premodern' do 'regras_por_formato', e as três andam juntas: (1) 'dedicado': false — as seis caixas voltam a emprestar e a ir buscar ('em <caixa>' em vez de comprar), e as compras entre elas voltam a ser o MÁXIMO de uma caixa e não a soma; (2) 'playset_maximo': 4 — por cima da partilha, um tecto: por muitas caixas que peçam a carta, o Premodern nunca chega a ter mais do que 4 cópias dela (comprar = max(0, min(4, o que a caixa que mais precisa pede) − as que ele já vê)). As básicas ficam de fora. O que o tecto corta aparece na página como 'limite de playset: falta N que não se compra' em vez de desaparecer numa subtracção; (3) 'prioridade_por': 'pct' — a ordem DENTRO do grupo deixa de ser o número de 'prioridade' e passa a ser a percentagem que cada caixa já tem, contada na COLECÇÃO INTEIRA e ANTES de alocar (com a percentagem de depois, alocar mudava o pct, o pct mudava a ordem e a ordem mudava a alocação); empate pelo nome. Nas caixas com prioridade automática os botões 'subir/descer' do modo edição ficam desactivados e dizem porquê. Consequência a saber: 'congelada' exige ser dedicada, por isso nenhuma caixa de Premodern congela — o que as protege é a cópia já alocada a uma caixa não ser realocada a outra, e nunca entrar na venda.",
   "_regras_por_formato": "AS REGRAS DE MATERIAL E A ORDEM DA ALOCAÇÃO, por grupo de formato (André, 2026-09-07, à letra: 'Premodern apenas as edições da era Premodern e em Português; cEDH apenas inglês non-foil; Duel Commander apenas foil; SPML tudo foil e inglês (RL pode ser non-foil); Pauper tudo foil se houver disponível, senão pode ser non-foil' e 'Ordem de prioridade na alocação: Premodern > cEDH > Duel Commander > Pauper > SPML'). A ORDEM DESTA LISTA É A ORDEM DA ALOCAÇÃO: quem está em cima escolhe as cartas primeiro. Dentro de cada grupo vêm primeiro os decks vigiados ('os decks vigiados têm prioridade para ficarem com as cartas, desde que respeitem as regras' — os de 'decks_vigiados' e os de fonte 'vigiado') e só depois o 'prioridade' de cada slot. Chaves: 'formatos' = os formatos dos slots deste grupo; 'lingua' = a cópia tem de ser desta língua; 'acabamento' = 'foil' (só foil/etched, menos Reserved List) | 'nonfoil' (só nonfoil) | 'prefere_foil' (aceita as duas, gasta a foil primeiro); 'edicoes' = 'premodern' (só impressões até ao Scourge, 2003-05-26); 'baldes' = os únicos baldes que estas caixas VÊEM (mais o seu); 'estrita' = true faz a 'lingua' e os 'baldes' porem a cópia FORA DE VISTA (falta a comprar em vez de 'tenho mas não serve') — é 'o Premodern só usa em PT, mesmo eu tendo a carta em inglês'; 'dedicado' = true faz a caixa NÃO EMPRESTAR nem IR BUSCAR cópias a outras caixas de deck (ver _dedicado). Uma cópia que está DENTRO da caixa do próprio deck (os baldes de 'regras_colecao' e os dos slots de Commander) escapa a estas regras: o deck está montado e uma regra nova não o desmonta. O Pauper não tem 'baldes' de propósito — 'para Pauper, utilizas as cartas que forem necessárias do SPML e agregas ao Pauper'. Para uma excepção a UM slot, escreve a chave nesse slot do 'loadout' e ela ganha à do grupo.",
   "_loadout_material": "REGRAS DE MATERIAL (André, 2026-09-07, à letra). (1) 'Para Premodern as cartas são das edições que tínhamos visto e em Português; essas cartas NÃO entram para outros formatos!!' → 'lingua':'pt' nos slots de Premodern: só cópias PT fecham o slot (uma EN aparece como substituto, 'serve mas não é PT'), e uma cópia PT de uma impressão até ao Scourge (2003-05-26) fica TRANCADA ao Premodern — não é alocada a mais nenhum formato. Excepção necessária: cópias que vivem no balde de outro slot do loadout já são desse deck (o Blue Farm tem Lotus Petal e Tarnished Citadel PT dentro da caixa) e não se lhes mexe. (1b) 'O Premodern não é para olhar para a minha Caixa RL, pois o Premodern só vai usar as cartas em Português; na Caixa RL só estão cartas RL em inglês.' → um slot de formato 'premodern' NÃO VÊ o balde 'Caixa Reserved List': não aloca de lá, não conta essas cópias como substituto e não lhes desconta no custo. Para uma caixa de Premodern, uma carta que só existe em EN é FALTA (compra-se em PT). As cópias da Caixa RL continuam a servir as outras caixas (o Legacy aceita Reserved List nonfoil) e continuam a entrar na venda a confirmar. (2) 'Standard, Pioneer, Modern e Legacy: as cartas são todas Foil (menos as Reserved List)' → 'acabamento':'foil' nesses slots: só contam foil/etched, e as cartas da Reserved List podem ser nonfoil. Uma nonfoil de uma carta não-RL não fecha o slot e a wantlist pede foil.",
+  "premodern": {
+    "top_representados": 10,
+    "top_combo": 5,
+    "sugerir_a_partir_de_pct": 50,
+    "min_listas": 5,
+    "sugestoes_recusadas": {},
+    "combo_arquetipos": [
+      {
+        "nome": "Full English Breakfast",
+        "grau": "puro",
+        "all": [
+          "Volrath's Shapeshifter"
+        ]
+      },
+      {
+        "nome": "UW Replenish",
+        "grau": "puro",
+        "all": [
+          "Replenish",
+          "Opalescence"
+        ],
+        "none": [
+          "Argothian Enchantress",
+          "Enchantress's Presence"
+        ]
+      },
+      {
+        "nome": "Enchantress",
+        "grau": "prisao",
+        "any": [
+          "Argothian Enchantress",
+          "Enchantress's Presence"
+        ]
+      },
+      {
+        "nome": "Stiflenought",
+        "grau": "puro",
+        "all": [
+          "Phyrexian Dreadnought"
+        ]
+      },
+      {
+        "nome": "Ill-Gotten Gains",
+        "grau": "puro",
+        "all": [
+          "Ill-Gotten Gains"
+        ]
+      },
+      {
+        "nome": "Oath of Druids",
+        "grau": "puro",
+        "all": [
+          "Oath of Druids"
+        ]
+      },
+      {
+        "nome": "Stasis",
+        "grau": "prisao",
+        "all": [
+          "Stasis"
+        ]
+      },
+      {
+        "nome": "Dream Halls",
+        "grau": "puro",
+        "all": [
+          "Dream Halls"
+        ]
+      },
+      {
+        "nome": "Aluren",
+        "grau": "puro",
+        "all": [
+          "Aluren"
+        ]
+      },
+      {
+        "nome": "Doomsday",
+        "grau": "puro",
+        "all": [
+          "Doomsday"
+        ]
+      },
+      {
+        "nome": "Academy Rector",
+        "grau": "puro",
+        "all": [
+          "Academy Rector"
+        ]
+      },
+      {
+        "nome": "Life / Test of Endurance",
+        "grau": "puro",
+        "any": [
+          "Test of Endurance"
+        ]
+      },
+      {
+        "nome": "Tinker / Academy",
+        "grau": "puro",
+        "any": [
+          "Tinker",
+          "Tolarian Academy"
+        ]
+      },
+      {
+        "nome": "Reanimator",
+        "grau": "puro",
+        "any": [
+          "Exhume",
+          "Reanimate"
+        ]
+      },
+      {
+        "nome": "Terrageddon",
+        "grau": "hibrido",
+        "all": [
+          "Terravore",
+          "Armageddon"
+        ]
+      },
+      {
+        "nome": "Elves / Survival",
+        "grau": "hibrido",
+        "all": [
+          "Survival of the Fittest"
+        ]
+      }
+    ]
+  },
+  "_premodern": "PREMODERN: O QUE MONTAR A SEGUIR COM O QUE SOBRA, E VENDER O RESTO (André, 2026-09-08, à letra): 'O que não estiver a ser usado em Premodern e se encaixe na regra do Premodern deve ser sugerido para venda. Antes disso, procura decklists do formato; se o deck for top-10 de representação ou top-5 decks combo do formato, sugere a lista para montar o deck caso eu tenha pelo menos 50 % das cartas (sem contar com as básicas para a %); se não, envia para vender.' Chaves: 'top_representados' (quantos arquétipos entram pelo nº de listas que CONTAM — a regra de sempre, sources.counting_sql), 'top_combo' (quantos entram por serem combo, mesmo que não cheguem ao top-10), 'sugerir_a_partir_de_pct' (a partir de que cobertura um candidato passa a SUGESTÃO com botão «vou montar este»), 'min_listas' (abaixo disto o consenso é ruído), 'sugestoes_recusadas' (o «não quero este»: nome do arquétipo -> data; as cartas dele libertam-se para a venda no mesmo dia) e 'combo_arquetipos'. A COBERTURA mede-se sobre as cópias que a alocação NÃO deu a nenhuma caixa (nem às de Premodern nem a uma já escolhida): medi-la sobre a colecção inteira dava percentagens altas e falsas, porque as cartas estão dentro de decks montados — uma sugestão que conta com elas está a mandar desmontar um deck para montar outro. Consequência a saber: com seis caixas de Premodern a alocar primeiro sobra pouco, e é normal um candidato interessante aparecer nos 30-40%. As páginas mostram os dois números (o que sobra e o total). 'combo_arquetipos' classifica e NOMEIA por REGRA sobre a lista de consenso, com as mesmas três chaves do archetype_rules.json ('all' = tem todas, 'any' = basta uma, 'none' = não pode ter nenhuma) e o mesmo motor (tagging). A ORDEM é a prioridade — a primeira que bate ganha —, e não é decoração: o Full English Breakfast joga Survival of the Fittest e, escrito depois do Elves/Survival, chamava-se Elves/Survival. 'grau' = puro (a interacção mata no turno em que resolve) | prisao (tranca o jogo e mata depois) | hibrido (tem também um plano que ganha sozinho); o critério e a lista saíram do relatório work/revisao/premodern-combo.md, sobre 441 listas reais. A regra serve também de nome: o meta_coverage.KNOWN chamava 'Replenish' à Enchantress (que joga 96% de Replenish) e ao UW Replenish, e é o 'none' que os separa.",
   "metagame_top_n": 3,
   "_metagame_top_n": "Quantos decks por formato mostra o metagame.html. André, 2026-09-07, à letra: 'Para os decks metagame, em vez de me dares todas as listas, dás-me só o top-3 decks que estou mais perto de concluir para os formatos Standard, Pioneer, Legacy'. Vale só para as secções de TOP (Standard/Pioneer/Legacy — as caixas do loadout que ainda estão por escolher); o Modern mostra o deck já escolhido e o Premodern os alvos de premodern_arquetipos_alvo. A % que ordena é a das cartas que ele TEM (livres + as que estão noutra caixa, que se vão buscar), com a regra de material do loadout (foil menos Reserved List) e sem contar terras básicas. Sobe para 5 se quiseres mais opções por onde escolher. (Substituiu o decks_faziveis_min_pct: a página 'Decks fazíveis' foi retirada em 2026-09-07 — fazia a mesma pergunta e respondia pior.)",
   "metagame_fontes": {

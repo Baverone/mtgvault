@@ -228,19 +228,20 @@ CHAVES_DA_ESCOLHA = ("fonte", "ref", "nome", "estado")
 _slot_do_cfg = caixas.caixa_do_cfg
 
 
-def escolher_lista(con, cfg, slot_id: str, aid: int) -> str:
-    """*"Vou montar este"*: fixa na caixa a lista de consenso de um arquétipo.
+def guardar_escolha(con, cfg, slot_id: str, aid: int,
+                    nome: str | None = None) -> str:
+    """Congela em `listas_escolhidas[slot]` a lista de consenso de um arquétipo.
 
-    André, 2026-09-07 (19:00): ele vê o top-3 que está mais perto de concluir e
-    marca qual vai montar. A lista fica **congelada com a data** em
-    `colecao_config.json → listas_escolhidas` — se o consenso do arquétipo mudar
+    A lista fica **congelada com a data**: se o consenso do arquétipo mudar
     amanhã, a caixa que ele mandou montar não muda debaixo dos pés, nem a lista
-    de compras dela. E a caixa passa a **permanente**: é o que a põe a receber
-    cartas na alocação.
+    de compras dela. Devolve o nome legível, ou `""` quando o arquétipo não tem
+    lista nenhuma para fixar.
 
-    O que estava lá antes (o Greasefang do Pioneer, por exemplo) fica guardado em
-    `_antes` — a chave começa por `_`, por isso o motor não a vê
-    (`loadout.config_slots`) e o *"já não vou montar este"* pode desfazer.
+    `nome` permite ao chamador impor o nome que ELE já mostrou na página. É o
+    caso do ranking de Premodern, onde o nome sai da regra de combo: o
+    `_name_for` chama *"Replenish"* tanto à Enchantress como ao UW Replenish, e
+    guardar aqui um nome diferente do que está no botão fazia a caixa deixar de
+    se reconhecer como sendo aquela sugestão.
     """
     import meta_coverage as mc
 
@@ -250,14 +251,12 @@ def escolher_lista(con, cfg, slot_id: str, aid: int) -> str:
     cards = [[b, c["card_name"], c["quantity"]]
              for b in ("main", "side") for c in sl.get(b, [])]
     if not cards:
-        return "esse arquétipo não tem lista de consenso"
+        return ""
     fmt = con.execute("SELECT format FROM archetypes WHERE id = ?",
                       (aid,)).fetchone()["format"]
     df, tcache = mc._format_df(con, fmt), {}
-    nome = mc._name_for(con, aid, df, tcache)
-    s = _slot_do_cfg(cfg, slot_id)
     cfg.setdefault("listas_escolhidas", {})[slot_id] = {
-        "nome": nome,
+        "nome": nome or mc._name_for(con, aid, df, tcache),
         "subtitulo": mc._distinctive_name(con, aid, df, tcache),
         "formato": fmt,
         "archetype_id": aid,
@@ -265,6 +264,24 @@ def escolher_lista(con, cfg, slot_id: str, aid: int) -> str:
         "escolhido_em": date.today().isoformat(),
         "cards": cards,
     }
+    return cfg["listas_escolhidas"][slot_id]["nome"]
+
+
+def escolher_lista(con, cfg, slot_id: str, aid: int) -> str:
+    """*"Vou montar este"*: fixa na caixa a lista de consenso de um arquétipo.
+
+    André, 2026-09-07 (19:00): ele vê o top-3 que está mais perto de concluir e
+    marca qual vai montar. E a caixa passa a **permanente**: é o que a põe a
+    receber cartas na alocação.
+
+    O que estava lá antes (o Greasefang do Pioneer, por exemplo) fica guardado em
+    `_antes` — a chave começa por `_`, por isso o motor não a vê
+    (`loadout.config_slots`) e o *"já não vou montar este"* pode desfazer.
+    """
+    nome = guardar_escolha(con, cfg, slot_id, aid)
+    if not nome:
+        return "esse arquétipo não tem lista de consenso"
+    s = _slot_do_cfg(cfg, slot_id)
     # Só as chaves que EXISTIAM, para o desmarcar saber distinguir "estava a
     # `null`" de "não estava lá" — o `ref` do slot por confirmar é literalmente
     # `null`, e apagá-lo em vez de o repor deixava a caixa sem a chave.
@@ -278,6 +295,71 @@ def escolher_lista(con, cfg, slot_id: str, aid: int) -> str:
     if caixas.estado_de(s) == caixas.CANDIDATA:
         s["estado"] = caixas.PERMANENTE
     return f"{nome} escolhido para a caixa {s['nome']}"
+
+
+def caixa_para_sugestao(cfg, nome: str, fmt: str = "premodern") -> dict:
+    """A caixa NOVA de uma sugestão de Premodern — cria-a se ainda não existir.
+
+    A diferença para o *"vou montar este"* do top-N: ali a caixa já existe e está
+    vazia (o Standard, o Legacy), e o que ele escolhe é o que lá vai dentro. Aqui
+    a caixa é que não existe — o que ele está a dizer é *"quero mais um deck de
+    Premodern"*. Criá-la é a única maneira de o deck entrar na alocação, que é o
+    que faz a sugestão deixar de ser papel.
+
+    O `balde` copia-se de uma caixa do mesmo formato: é a gaveta de onde as
+    cartas de Premodern saem, e inventar aqui um nome novo era criar um balde que
+    não existe na estante. A `prioridade` é a última do config e não decide nada
+    (o grupo do Premodern ordena-se por % completo) — mas escreve-se, para o dia
+    em que ele tirar o `prioridade_por`.
+    """
+    from mtgvault import premodern as pm                 # noqa: PLC0415
+
+    slot_id = pm.slug(nome)
+    caixas_do_cfg = cfg.setdefault("caixas", [])
+    for c in caixas_do_cfg:
+        if c.get("slot") == slot_id:
+            return c
+    irmas = [c for c in caixas_do_cfg if c.get("formato") == fmt]
+    nova = {"slot": slot_id, "nome": nome, "formato": fmt, "fonte": "deck",
+            "ref": None,
+            "balde": (irmas[0].get("balde") if irmas else "Colecção"),
+            "estado": caixas.CANDIDATA,
+            "prioridade": 1 + max([c.get("prioridade") or 0
+                                   for c in caixas_do_cfg] or [0]),
+            "notas": f"caixa aberta a partir de uma sugestão de {fmt}"}
+    caixas_do_cfg.append(nova)
+    return nova
+
+
+def montar_sugestao(con, cfg, nome: str, aid: int) -> str:
+    """*"Vou montar este"* numa sugestão do ranking de Premodern.
+
+    O `nome` da caixa é o do arquétipo e mais nada — ao contrário do
+    `escolher_lista`, que junta o nome da caixa ao do deck ("Legacy — Doomsday")
+    porque ali a caixa já existia e tem identidade própria. Aqui a caixa NASCE do
+    arquétipo, e é por esse nome que ela se reconhece como sendo aquela sugestão
+    na corrida seguinte (`premodern._caixa_de`).
+    """
+    from mtgvault import premodern as pm                 # noqa: PLC0415
+
+    s = caixa_para_sugestao(cfg, nome)
+    legivel = guardar_escolha(con, cfg, s["slot"], aid, nome=nome)
+    if not legivel:
+        cfg["caixas"].remove(s)          # não se deixa uma caixa vazia por trás
+        return "esse arquétipo não tem lista de consenso"
+    s["fonte"] = "escolhido"
+    s["ref"] = s["slot"]
+    # Escolher um deck é pô-lo a receber cartas — mas uma caixa já MONTADA não
+    # volta a candidata por se lhe escolher outra lista (é o «actualizar» que
+    # existe para isso). A mesma regra do `escolher_lista`.
+    if caixas.estado_de(s) == caixas.CANDIDATA:
+        s["estado"] = caixas.PERMANENTE
+    # Escolher também apaga a recusa: se ele já tinha dito que não e mudou de
+    # ideias, deixar a recusa escrita punha o crachá "recusado" numa caixa que
+    # ele acabou de mandar montar.
+    pm.aceitar(cfg, nome)
+    return (f'{nome}: caixa aberta ({s["slot"]}) com a lista de consenso '
+            f'congelada em {date.today().isoformat()}')
 
 
 def desmarcar_lista(cfg, slot_id: str) -> str:
@@ -560,8 +642,17 @@ class Handler(BaseHTTPRequestHandler):
                                    f'colecção e no vendas.csv'}
 
     def _escolher(self, dados):
-        """"Vou montar este" / "já não vou montar este", do `metagame.html`."""
+        """"Vou montar este" / "já não vou montar este", do `metagame.html`.
+
+        E, desde 2026-09-08, as três acções do ranking de Premodern: abrir uma
+        caixa nova a partir de uma sugestão (`pm-montar`), recusá-la
+        (`pm-recusar` — as cartas dela libertam-se para a venda) e voltar atrás
+        (`pm-aceitar`).
+        """
+        from mtgvault import premodern as pm             # noqa: PLC0415
+
         act, slot_id, aid = dados.get("act"), dados.get("slot"), dados.get("aid")
+        nome = (dados.get("nome") or "").strip()
         cfg = ler_config()
         with db.session() as con:
             if act == "escolher":
@@ -570,6 +661,17 @@ class Handler(BaseHTTPRequestHandler):
                 msg = escolher_lista(con, cfg, slot_id, int(aid))
             elif act == "desmarcar":
                 msg = desmarcar_lista(cfg, slot_id)
+            elif act in ("pm-montar", "pm-recusar", "pm-aceitar"):
+                if not nome:
+                    return {"erro": "sem arquétipo"}
+                if act == "pm-montar":
+                    if not aid:
+                        return {"erro": "sem arquétipo"}
+                    msg = montar_sugestao(con, cfg, nome, int(aid))
+                elif act == "pm-recusar":
+                    msg = pm.recusar(cfg, nome)
+                else:
+                    msg = pm.aceitar(cfg, nome)
             else:
                 return {"erro": f"acção {act!r} desconhecida"}
             escrever_config(cfg)

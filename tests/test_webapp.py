@@ -188,6 +188,45 @@ def caso_sleevado_e_na_caixa():
     print("sleevado e na caixa grava (e tira) so aquela caixa")
 
 
+def caso_sugestao_de_premodern_abre_uma_caixa():
+    """*"Vou montar este"* numa sugestão de Premodern CRIA a caixa.
+
+    A diferença para o botão do top-N é essa: ali a caixa já existe e está vazia;
+    aqui o que ele está a dizer é *"quero mais um deck de Premodern"*, e sem
+    caixa o deck não entra na alocação — a sugestão ficava a ser papel.
+
+    O nome da caixa é o do arquétipo e mais nada: é por ele que ela se reconhece
+    como sendo aquela sugestão na corrida seguinte (`premodern._caixa_de`), e o
+    *"Legacy — Doomsday"* do outro botão fazia a sugestão voltar a aparecer ao
+    lado da caixa que ela própria criou.
+    """
+    repor()
+    from mtgvault import premodern as pm
+    cfg = webapp.ler_config()
+    antes = len(cfg["caixas"])
+    nova = webapp.caixa_para_sugestao(cfg, "Mono-Azul Stasis")
+    assert len(cfg["caixas"]) == antes + 1
+    assert nova["slot"] == pm.slug("Mono-Azul Stasis") == "premodern-mono-azul-stasis"
+    assert nova["formato"] == "premodern" and nova["nome"] == "Mono-Azul Stasis"
+    assert nova["balde"] == "Colecção", "sem irmãs de Premodern, a gaveta comum"
+    # Idempotente: dois cliques (ou um duplo-toque no telemóvel) não dão duas caixas.
+    assert webapp.caixa_para_sugestao(cfg, "Mono-Azul Stasis") is nova
+    assert len(cfg["caixas"]) == antes + 1
+    # E o nome sobrevive à ida e volta ao ficheiro, que é o que a corrida
+    # seguinte lê para reconhecer a caixa.
+    webapp.escrever_config(cfg, _TMP / "sug.json")
+    lido = webapp.ler_config(_TMP / "sug.json")
+    assert any(c["slot"] == nova["slot"] and c["nome"] == "Mono-Azul Stasis"
+               for c in lido["caixas"])
+    print("a sugestão abre uma caixa nova, com o nome do arquétipo, e sem duplicar")
+
+    # E o «não quero este» escreve-se no config, com a data.
+    msg = pm.recusar(cfg, "Mono-Azul Stasis", "2026-09-08")
+    assert cfg["premodern"]["sugestoes_recusadas"] == {"Mono-Azul Stasis": "2026-09-08"}
+    assert "venda" in msg, msg
+    print("o «não quero este» fica escrito e datado, e o toast diz o que faz")
+
+
 def caso_gravar_o_config_e_atomico():
     """O `write_text` normal TRUNCA o ficheiro antes de escrever: um erro a meio
     — ou dois pedidos ao mesmo tempo, que o `ThreadingHTTPServer` permite —
@@ -267,7 +306,9 @@ def run():
                caso_descer_e_os_limites,
                caso_subir_descer_bloqueado_na_ordem_automatica,
                caso_gravar_o_config_a_serio_nao_o_estraga,
-               caso_sleevado_e_na_caixa, caso_gravar_o_config_e_atomico,
+               caso_sleevado_e_na_caixa,
+               caso_sugestao_de_premodern_abre_uma_caixa,
+               caso_gravar_o_config_e_atomico,
                caso_escritas_em_paralelo_nao_se_atropelam,
                caso_ler_config_segue_o_ficheiro_que_o_motor_le):
         fn()

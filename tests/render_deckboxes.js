@@ -69,7 +69,10 @@ for (const s of scripts) vm.runInContext(s, ctx, { filename: 'deckboxes.js' });
 // O `const D` do script é uma ligação lexica, não uma propriedade do global.
 const slots = vm.runInContext('D.caixas.map(c => c.slot)', ctx);
 const abas = ['plano', 'todas', 'arrumar', 'partilhadas', 'comprar', 'vender',
-              ...slots];
+              // A aba das sugestões de Premodern só existe quando há caixas
+              // desse formato (ver `renderTabs`); pedi-la sem elas cai na vista
+              // Todas, que também tem de desenhar sem erro.
+              'sugestoes', ...slots];
 let n = 0;
 for (const filtro of ['tudo', 'faltam']) {
   vm.runInContext(`filtro = ${JSON.stringify(filtro)};`, ctx);
