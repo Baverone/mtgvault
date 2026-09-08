@@ -287,7 +287,16 @@ BASICS = {"Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes",
 #                   até playset de cada carta"*). Ver `partilhar_compras`;
 #   `prioridade_por` — `"pct"` faz a ordem DENTRO do grupo ser automática, pela
 #                   percentagem que cada caixa já tem (*"para já a prioridade vem
-#                   por ordem de % completo"*). Ver `resolve_slots`.
+#                   por ordem de % completo"*). Ver `resolve_slots`;
+#   `rl_lingua`   — as línguas em que este grupo aceita uma cópia da RESERVED
+#                   LIST, à frente da `lingua` e da tranca do Premodern (André,
+#                   2026-09-08: *"RL em PT pode servir para Legacy e Premodern,
+#                   mas não para cEDH nem outro formato"*). Ver `_porque_nao`;
+#   `por_formato` — excepções de UM formato dentro do grupo. O Legacy é SPML (a
+#                   ordem da alocação e a partilha de compras são as do grupo) e
+#                   só a RL é que muda: parti-lo num grupo próprio era inventar
+#                   um sexto grupo que ele nunca ditou, e mexer na ordem da
+#                   alocação para escrever uma excepção sobre a língua.
 REGRAS_FORMATO = [
     {"grupo": "premodern", "formatos": ["premodern"],
      # 2026-09-08: o Premodern deixou de ser dedicado e voltou a partilhar. Ver
@@ -306,11 +315,16 @@ REGRAS_FORMATO = [
     {"grupo": "pauper", "formatos": ["pauper"], "dedicado": True,
      "acabamento": "prefere_foil"},
     {"grupo": "spml", "formatos": ["standard", "pioneer", "modern", "legacy"],
-     "lingua": "en", "acabamento": "foil"},
+     "lingua": "en", "acabamento": "foil",
+     # 2026-09-08, à letra: *"RL em PT pode servir para Legacy e Premodern, mas
+     # não para cEDH nem outro formato."* Só o Legacy — o Standard, o Pioneer e
+     # o Modern continuam a ser "tudo foil e inglês", e por isso a excepção vive
+     # no `por_formato` e não na regra do grupo.
+     "por_formato": {"legacy": {"rl_lingua": ["pt", "en"]}}},
 ]
 # As chaves de uma regra que se copiam para o slot (as outras são só arrumação).
 CHAVES_REGRA = ("lingua", "acabamento", "edicoes", "baldes", "estrita", "dedicado",
-                "playset_maximo", "prioridade_por")
+                "playset_maximo", "prioridade_por", "rl_lingua")
 
 
 def _front(name: str) -> str:
@@ -484,12 +498,38 @@ def regra_do_formato(fmt: str | None,
 
     Um formato que não esteja em grupo nenhum fica no fim e sem regra de
     material — não se inventa uma restrição que ele não ditou.
+
+    O `por_formato` do grupo é a excepção de UM dos formatos dele, já fundida
+    aqui: quem chama recebe sempre uma regra e nunca tem de se lembrar de a
+    procurar. É por ela que o Legacy aceita Reserved List em PT sem sair do grupo
+    SPML — a ORDEM desta lista é a ordem da alocação, e dar-lhe um grupo próprio
+    para escrever uma excepção sobre a língua mudava também a ordem.
     """
     regras = regras if regras is not None else regras_por_formato()
     for i, r in enumerate(regras):
         if fmt in (r.get("formatos") or []):
-            return i, r
+            excepcao = (r.get("por_formato") or {}).get(fmt) or {}
+            return i, {k: v for k, v in {**r, **excepcao}.items()
+                       if k != "por_formato"}
     return len(regras), {}
+
+
+def linguas_rl(s: dict) -> tuple[str, ...]:
+    """As línguas em que este slot aceita uma cópia da Reserved List.
+
+    Vazio = a regra da língua vale para a RL como para tudo o resto (é o caso de
+    todos os grupos menos o Legacy). André, 2026-09-08: *"RL em PT pode servir
+    para Legacy e Premodern, mas não para cEDH nem outro formato."*
+    """
+    v = s.get("rl_lingua")
+    if not v:
+        return ()
+    return (v,) if isinstance(v, str) else tuple(v)
+
+
+def _rl_aceite(lot: dict, s: dict) -> bool:
+    """Esta cópia é Reserved List numa língua que o slot abre à RL."""
+    return bool(lot.get("rl")) and lot["lang"] in linguas_rl(s)
 
 
 def dedicadas(slots) -> set[str]:
@@ -1113,7 +1153,7 @@ def _fora_de_vista(lot: dict, s: dict) -> bool:
     """
     if not s.get("estrita"):
         return False
-    if s.get("lingua") and lot["lang"] != s["lingua"]:
+    if s.get("lingua") and lot["lang"] != s["lingua"] and not _rl_aceite(lot, s):
         return True
     baldes = s.get("baldes")
     return bool(baldes) and lot["sub"] not in set(baldes) | {s.get("balde")}
@@ -1142,10 +1182,16 @@ def _porque_nao(lot: dict, s: dict, baldes_de_deck: set[str],
     # balde de OUTRO slot do loadout, é desse deck (está fisicamente na caixa
     # dele) e não se lhe mexe. Vem antes da língua de propósito: é a razão mais
     # informativa das duas ("está trancada ao Premodern" > "não é EN").
+    #
+    # E a segunda excepção, de 2026-09-08: a RESERVED LIST em PT. *"RL em PT pode
+    # servir para Legacy e Premodern, mas não para cEDH nem outro formato."* A
+    # tranca de 2026-09-07 (*"essas cartas NÃO entram para outros formatos!!"*)
+    # continua inteira para tudo o resto — o que ele abriu foi uma porta só, e
+    # quem a abre é o `rl_lingua` do grupo, não este `if`.
     if (lot["lang"] == "pt" and lot["era_pm"] and s["formato"] != "premodern"
-            and lot["sub"] not in baldes_de_deck):
+            and not _rl_aceite(lot, s) and lot["sub"] not in baldes_de_deck):
         return "PT da era Premodern (trancada ao Premodern)"
-    if s.get("lingua") and lot["lang"] != s["lingua"]:
+    if s.get("lingua") and lot["lang"] != s["lingua"] and not _rl_aceite(lot, s):
         return f"não é {s['lingua'].upper()}"
     ac = s.get("acabamento")
     if ac == "foil" and lot["finish"] not in FOIL_FINISHES and not lot["rl"]:
@@ -1851,18 +1897,22 @@ def caixas_de_deck(slots) -> set[str]:
 RAZAO_PREMODERN = "Premodern: não usada por nenhum deck"
 
 
-def regra_premodern() -> dict:
-    """Um slot de mentira com as regras de material do Premodern.
+def regra_falsa(fmt: str) -> dict:
+    """Um slot de mentira com as regras de material de um formato.
 
-    Serve para perguntar *"esta cópia cabe no Premodern?"* fora de uma caixa
+    Serve para perguntar *"esta cópia cabe no <formato>?"* fora de uma caixa
     concreta — o que a venda precisa de saber. Sai das `regras_por_formato`, as
-    mesmas das caixas a sério: escrita à mão aqui, a venda decidia por um
-    critério e a alocação por outro.
+    mesmas das caixas a sério: escrita à mão, a venda decidia por um critério e a
+    alocação por outro.
     """
-    ps = {k: v for k, v in regra_do_formato("premodern")[1].items()
-          if k in CHAVES_REGRA}
-    ps.update({"formato": "premodern", "nome": None})
+    ps = {k: v for k, v in regra_do_formato(fmt)[1].items() if k in CHAVES_REGRA}
+    ps.update({"formato": fmt, "nome": None})
     return ps
+
+
+def regra_premodern() -> dict:
+    """As regras de material do Premodern, sem caixa (ver `regra_falsa`)."""
+    return regra_falsa("premodern")
 
 
 def cabe_no_premodern(lot: dict, ps: dict | None = None) -> bool:
@@ -1909,6 +1959,144 @@ def _serve_outra_caixa(lot: dict, nm: str, slots: list[dict],
 
 
 # ---------------------------------------------------------------------------
+# A RL que serve um formato SEM DECK ESCOLHIDO ainda (André, 2026-09-08)
+# ---------------------------------------------------------------------------
+# É a segunda metade de *"RL em PT pode servir para Legacy e Premodern"*: de nada
+# vale a caixa de Legacy passar a aceitar uma Mox Diamond PT se a lista de venda a
+# manda embora antes de ele escolher o deck. Enquanto a caixa está vazia, quem diz
+# o que ela vai pedir é o top-N do metagame — o mesmo `foil_report` que a página
+# mostra —, e as cópias de Reserved List que qualquer um desses candidatos usaria
+# ficam RESERVADAS em vez de irem à venda. Assim que ele escolher, a caixa passa a
+# ter lista e a reserva encolhe para a desse deck.
+FORMATOS_RESERVA_RL = ("legacy",)
+# Mínimo de listas de um arquétipo para entrar no ranking — o mesmo do
+# `metagame.MIN_LISTS`. Abaixo disto a lista de consenso é ruído de dois
+# resultados soltos, e reservar cartas por causa dela era segurar a colecção com
+# base em nada.
+RESERVA_MIN_LISTS = 8
+
+
+def formatos_reserva_rl() -> tuple[str, ...]:
+    """Os formatos cujos CANDIDATOS seguram Reserved List (`venda.reservar_rl_formatos`).
+
+    Só o Legacy, e é uma linha de config para não voltar a ser uma linha de
+    código: é o único formato onde ele abriu a porta à RL em PT e onde a caixa
+    ainda não tem deck escolhido.
+    """
+    v = regras_venda().get("reservar_rl_formatos")
+    if v is None:
+        return FORMATOS_RESERVA_RL
+    return tuple(v) if isinstance(v, list) else ()
+
+
+def _top_n_metagame() -> int:
+    """Quantos candidatos por formato — o mesmo `metagame_top_n` da página."""
+    try:
+        return max(1, int(sources.config().get("metagame_top_n") or 3))
+    except (TypeError, ValueError):
+        return 3
+
+
+def _nome_do_arquetipo(con, fmt: str, c: dict, cache: dict) -> str:
+    """O nome que a página do metagame dá a este candidato.
+
+    O `meta_coverage` importa-se aqui dentro, e não no topo: é um script da raiz
+    e este é um módulo do pacote — num contexto onde a raiz não esteja no
+    `sys.path`, um import à carga levava consigo o `loadout.report` inteiro (é o
+    mesmo cuidado do `premodern._nome_do_cluster`). Sem ele fica o rótulo do
+    clustering: é feio, mas é verdade, e a reserva não é indexada pelo nome — o
+    nome está aqui só para a linha dizer PORQUÊ.
+    """
+    try:
+        import meta_coverage as mc                       # noqa: PLC0415
+    except ImportError:                                  # pragma: no cover
+        return c["label"]
+    if "df" not in cache:
+        cache["df"] = mc._format_df(con, fmt)
+        cache["t"] = {}
+    return mc._name_for(con, c["archetype_id"], cache["df"], cache["t"]) or c["label"]
+
+
+def reservas_rl(con, res: dict) -> dict[str, dict]:
+    """`formato -> {regra, precisa: {carta: (quantas, [quem])}, escolhido}`.
+
+    Duas fontes, e nunca as duas ao mesmo tempo:
+      * a caixa desse formato **já tem lista** (ele escolheu, ou é um deck
+        vigiado) → é só essa, descontando o que a alocação já lhe deu. As cópias
+        que a caixa já levou não estão na lista de venda, e as que sobram acima
+        do que ela pede são excedente a sério;
+      * a caixa está **vazia** → o top-N do metagame. Aqui reserva-se o que a
+        lista PEDE e não o que lhe falta, pela mesma razão que as sugestões de
+        Premodern (`premodern.reservas`): as cópias que o candidato já "tem" são
+        exactamente as cópias livres que se estavam a pensar vender.
+
+    É o **máximo** entre os candidatos e não a soma — são alternativas entre si.
+    """
+    out: dict[str, dict] = {}
+    for fmt in formatos_reserva_rl():
+        ps = regra_falsa(fmt)
+        precisa: dict[str, tuple[int, list[str]]] = {}
+
+        def _junta(nome, cartas):
+            for nm, q in cartas.items():
+                tem, quem = precisa.get(nm, (0, []))
+                precisa[nm] = (max(tem, q), quem + [nome])
+
+        caixas = [s for s in res["slots"]
+                  if s.get("formato") == fmt and not s.get("vazio")]
+        for s in caixas:
+            por_carta = linhas_por_carta(s)
+            falta: dict[str, int] = defaultdict(int)
+            for (_b, nm), m in por_carta.items():
+                if not m.get("basica"):
+                    falta[nm] += max(m["need"] - m["got"], 0)
+            _junta(s.get("nome") or s["slot"], dict(falta))
+        if not caixas:
+            nomes: dict = {}
+            for c in foil_report(con, fmt, top=_top_n_metagame(),
+                                 min_lists=RESERVA_MIN_LISTS, res=res):
+                pede: dict[str, int] = defaultdict(int)
+                for m in c["linhas"]:
+                    if not m.get("basica"):
+                        pede[m["nm"]] += m["need"]
+                _junta(_nome_do_arquetipo(con, fmt, c, nomes), dict(pede))
+        out[fmt] = {"regra": ps, "escolhido": bool(caixas),
+                    "precisa": {nm: (q, sorted(set(quem)))
+                                for nm, (q, quem) in precisa.items() if q > 0}}
+    return out
+
+
+TITULOS_FORMATO = {"legacy": "Legacy", "cedh": "cEDH", "premodern": "Premodern",
+                   "duel-commander": "Duel Commander", "pauper": "Pauper"}
+
+
+def _titulo_formato(fmt: str) -> str:
+    return TITULOS_FORMATO.get(fmt) or (fmt or "").capitalize()
+
+
+def _reserva_para(lot: dict, nm: str, planos: dict, baldes: set[str],
+                  caixas: set[str] | frozenset) -> tuple[str, str] | None:
+    """(formato, quem) se esta cópia de Reserved List está guardada para um deles.
+
+    Só a **Reserved List**: é a carta que não se volta a imprimir, e foi por ela
+    que a regra do PT se abriu. Uma carta normal que um candidato use continua a
+    vender-se — vende-se uma cópia a mais de algo que se compra outra vez, e
+    segurar a colecção inteira por causa de três listas de metagame era o oposto
+    do que ele pediu ao mandar vender os excessos.
+    """
+    if not lot.get("rl"):
+        return None
+    for fmt, plano in planos.items():
+        if nm not in plano["precisa"]:
+            continue
+        ps = plano["regra"]
+        if _fora_de_vista(lot, ps) or _porque_nao(lot, ps, baldes, caixas):
+            continue
+        return fmt, ", ".join(plano["precisa"][nm][1])
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Reserved List: só se vende o que NÃO valorizou (André, 2026-09-08, à letra)
 # ---------------------------------------------------------------------------
 # *"Cartas de RL só vão para venda se não tiverem subido 5 % de valor nos últimos
@@ -1918,9 +2106,19 @@ def _serve_outra_caixa(lot: dict, nm: str, slots: list[dict],
 # subiu. Nesse caso NÃO se vende e diz-se desde quando é que há dados — inventar
 # uma resposta era exactamente o defeito do `event_tier`: um passo que corre sem
 # erro e produz um valor falso, sobre a decisão menos reversível de todas.
+#
+# A JANELA CRESCE SOZINHA (André, 2026-09-08: *"podemos começar já com 25 [dias]
+# e vamos vendo como avança o histórico"*). O `rl_janela_dias` deixou de ser a
+# janela e passou a ser o MÁXIMO dela: a janela efectiva de cada carta é o
+# histórico que o vault tem dessa carta (menos dois dias de folga, para o dia-alvo
+# cair DEPOIS da primeira cotação e não em cima dela), até ao máximo. Hoje decide
+# com ~27 dias; em Novembro está nos 90 sem ninguém mexer no config. Abaixo do
+# `rl_janela_minima_dias` não se decide de todo — é o "não sei" de sempre.
 RL_SUBIDA_MINIMA_PCT = 5.0
 RL_JANELA_DIAS = 90
+RL_JANELA_MINIMA_DIAS = 25
 RL_TOLERANCIA_DIAS = 10
+RL_FOLGA_DIAS = 2
 RAZAO_RL_SEGURAR = "RL em valorização"
 RAZAO_RL_SEM_HISTORICO = "RL sem histórico suficiente"
 
@@ -1951,39 +2149,123 @@ def rl_tolerancia_dias() -> int:
     return max(0, int(_num_venda("rl_tolerancia_dias", RL_TOLERANCIA_DIAS)))
 
 
+def rl_janela_minima() -> int:
+    """Abaixo desta janela não se decide — responde-se *"não sei"*.
+
+    André, 2026-09-08: *"podemos começar já com 25 e vamos vendo como avança o
+    histórico"*. Nunca passa do máximo: com um `rl_janela_dias` mais curto do que
+    o mínimo, o mínimo é o máximo — senão o config podia ficar numa combinação em
+    que nenhuma carta chega a ser avaliada.
+    """
+    return max(1, min(rl_janela_dias(),
+                      int(_num_venda("rl_janela_minima_dias",
+                                     RL_JANELA_MINIMA_DIAS))))
+
+
+def rl_limiar_fixo() -> bool:
+    """`True` = os 5 % aplicam-se à letra, seja qual for a janela efectiva.
+
+    Por omissão o limiar é PROPORCIONAL ao tempo medido (ver `avaliar_rl`). A
+    alternativa fica aqui, e não só no relatório, porque é uma decisão dele e não
+    minha: uma linha no config chega para a trocar.
+    """
+    return bool(regras_venda().get("rl_limiar_fixo"))
+
+
+def rl_janela_efectiva(desde: str | None, hoje: str) -> int:
+    """A janela que se consegue medir a esta carta, em dias.
+
+    É o histórico que existe (`hoje - desde`) menos `RL_FOLGA_DIAS`, até ao
+    máximo do config. A folga é o que faz o dia-alvo cair DEPOIS da primeira
+    cotação: em cima dela, uma carta cuja primeira linha fosse a de hoje-25 podia
+    não ter cotação *até* ao alvo e cair no "não sei" por dois dias de nada.
+    """
+    if not desde:
+        return 0
+    dias = (date.fromisoformat(hoje) - date.fromisoformat(desde)).days
+    return min(rl_janela_dias(), dias - RL_FOLGA_DIAS)
+
+
+def _texto_janela(subida: float, janela: int) -> str:
+    """*"+2.1 % em 27 d ≈ +7.0 %/90 d"* — a subida medida e a mesma ao ritmo do
+    máximo. Sem a segunda, dois números medidos em janelas diferentes leem-se
+    como se fossem comparáveis, e não são."""
+    # O sinal vem do `:+`, e não de um "+" escrito à mão: as linhas que se vendem
+    # também levam esta nota, e metade delas DESCEU — "+-3.2 %" era o que a
+    # tabela mostrava.
+    maxi = rl_janela_dias()
+    txt = f"{subida:+.1f} % em {janela} d"
+    if janela and janela != maxi:
+        txt += f" ≈ {subida * maxi / janela:+.1f} %/{maxi} d"
+    return txt
+
+
 def avaliar_rl(con, linha: dict, hoje: str | None = None,
-               cache: dict | None = None) -> tuple[str, str]:
+               cache: dict | None = None,
+               detalhe: dict | None = None) -> tuple[str, str]:
     """('venda' | 'segurar' | 'sem_historico', motivo) para uma linha de venda RL.
 
-    Compara o preço de hoje (o mesmo `unit` que a linha já mostra) com o de há
-    `rl_janela_dias`, pela mesma conta (`card_price_em`, que espelha o
+    Compara o preço de hoje (o mesmo `unit` que a linha já mostra) com o do
+    princípio da janela, pela mesma conta (`card_price_em`, que espelha o
     `card_price`). Subiu o mínimo → segura-se; não subiu → vende-se; não há
-    cotação que cubra a janela → **não se vende** e diz-se desde quando há dados.
+    histórico que chegue para uma janela mínima → **não se vende** e diz-se desde
+    quando há dados.
+
+    Duas coisas mudaram a 2026-09-08, e andam juntas:
+
+      * **a janela é a que a carta dá** (`rl_janela_efectiva`), até ao máximo do
+        config. Com a janela fixa nos 90 e um `price_history` de 29 dias, a regra
+        respondia *"não sei"* a tudo e a lista de RL ficava vazia por meses;
+      * **o limiar acompanha a janela**: exigir 5 % a 27 dias é exigir ~17 %/90 d,
+        ou seja vender em Setembro exactamente o que a regra dos 90 dias
+        seguraria. O mínimo efectivo é `rl_subida_minima_pct × janela / máximo` —
+        5 % a 90 dias, ~1,4 % a 25. Quem quiser os 5 % à letra tem o
+        `venda.rl_limiar_fixo`.
+
+    O `detalhe`, se vier, fica preenchido com o que a página e o CLI mostram por
+    cópia (janela, subida, o equivalente ao ritmo do máximo, e o limiar usado).
+    Vai por parâmetro e não no valor de retorno para não partir quem já faz
+    `estado, motivo = avaliar_rl(...)`.
     """
     hoje = hoje or date.today().isoformat()
-    janela, tol = rl_janela_dias(), rl_tolerancia_dias()
-    minima = rl_subida_minima()
-    d0 = date.fromisoformat(hoje)
-    alvo = (d0 - timedelta(days=janela)).isoformat()
-    limite = (d0 - timedelta(days=max(janela - tol, 0))).isoformat()
-    meses = max(1, round(janela / 30))
+    maxi, minima = rl_janela_dias(), rl_subida_minima()
     fin = linha.get("price_finish") or linha["finish"]
     chave = (linha["nm"], "foil" if e_foil(fin) else "nonfoil")
     cache = {} if cache is None else cache
     if chave not in cache:
         cache[chave] = _historico(con, linha["nm"], fin)
     rows = cache[chave]
-    antes, _quando = _cotacao_em(rows, alvo, limite) if rows else (None, None)
+    desde = rows[0]["d"] if rows else None
+    janela = rl_janela_efectiva(desde, hoje)
+    info = {"janela": janela, "desde": desde, "maximo": maxi,
+            "subida": None, "subida_max": None, "limiar": None}
+    if detalhe is not None:
+        detalhe.update(info)
+    if janela < rl_janela_minima():
+        return "sem_historico", (
+            f"{RAZAO_RL_SEM_HISTORICO} (desde {desde}: {max(janela, 0)} d, "
+            f"precisa de {rl_janela_minima()})" if desde
+            else f"{RAZAO_RL_SEM_HISTORICO} (sem preços na base)")
+    d0 = date.fromisoformat(hoje)
+    tol = rl_tolerancia_dias()
+    alvo = (d0 - timedelta(days=janela)).isoformat()
+    limite = (d0 - timedelta(days=max(janela - tol, 0))).isoformat()
+    antes, _quando = _cotacao_em(rows, alvo, limite)
     agora = linha.get("unit")
     if antes is None or antes <= 0 or agora is None:
-        desde = rows[0]["d"] if rows else None
-        return "sem_historico", (
-            f"{RAZAO_RL_SEM_HISTORICO} (desde {desde})" if desde
-            else f"{RAZAO_RL_SEM_HISTORICO} (sem preços na base)")
-    if agora >= antes * (1 + minima / 100):
-        subida = (agora - antes) / antes * 100
-        return "segurar", (f"{RAZAO_RL_SEGURAR}: +{subida:.1f} % em "
-                           f"{meses} {'mês' if meses == 1 else 'meses'}")
+        return "sem_historico", (f"{RAZAO_RL_SEM_HISTORICO} "
+                                 f"(desde {desde}: sem cotação a {janela} d)")
+    limiar = minima if rl_limiar_fixo() else minima * janela / maxi
+    subida = (agora - antes) / antes * 100
+    info.update({"subida": round(subida, 1), "limiar": round(limiar, 2),
+                 "subida_max": round(subida * maxi / janela, 1) if janela else None})
+    if detalhe is not None:
+        detalhe.update(info)
+    # A comparação é a de sempre — `hoje >= antes × (1 + limiar/100)`, com `>=`
+    # porque *"5 % certos já é subir"*. Só o limiar é que passou a acompanhar a
+    # janela; com `rl_limiar_fixo` é literalmente a linha de antes.
+    if agora >= antes * (1 + limiar / 100):
+        return "segurar", f"{RAZAO_RL_SEGURAR}: {_texto_janela(subida, janela)}"
     return "venda", ""
 
 
@@ -2071,6 +2353,15 @@ def sell_list(con, res: dict) -> dict:
                 cmd_need[(chave, nm)] = max(cmd_need[(chave, nm)], q)
 
     venda, venda_rl, retidos, guardar, reservadas = [], [], [], [], []
+    # A Reserved List que um formato SEM deck escolhido ainda usaria (hoje só o
+    # Legacy). O orçamento é por carta e gasta-se à medida que se reserva: são
+    # alternativas entre si, e reservar o que cada candidato pede dava três vezes
+    # a mesma carta. Ver `reservas_rl`.
+    planos_rl = reservas_rl(con, res)
+    orcamento: dict[str, int] = defaultdict(int)
+    for _f, _p in planos_rl.items():
+        for _nm, (_q, _quem) in _p["precisa"].items():
+            orcamento[_nm] = max(orcamento[_nm], _q)
     # Quantas cópias de cada sub-lote já foram propostas para venda. O `livre`
     # não se decrementa aqui (a alocação já acabou e o `plano_arrumacao` ainda o
     # lê), por isso a segunda passagem — a do Premodern não usado — precisa de
@@ -2150,6 +2441,21 @@ def sell_list(con, res: dict) -> dict:
                 elif linha["reter"]:
                     retidos.append(linha)
                 else:
+                    # RESERVA para um formato sem deck escolhido (o Legacy). Parte
+                    # o lote se for preciso: reservar 1 de um lote de 3 não pode
+                    # tirar os outros 2 da venda.
+                    guarda = min(take, orcamento.get(nm, 0))
+                    quem = (_reserva_para(lot, nm, planos_rl, baldes_de_slot, caixas)
+                            if guarda else None)
+                    if quem:
+                        orcamento[nm] -= guarda
+                        reservadas.append(linha_de(
+                            nm, lot, guarda,
+                            f"serve {_titulo_formato(quem[0])}: {quem[1]}"))
+                        take -= guarda
+                        if take <= 0:
+                            continue
+                        linha = linha_de(nm, lot, take, razao, grupo)
                     (venda_rl if lot["rl"] else venda).append(linha)
 
     # PREMODERN NÃO USADO (André, 2026-09-08): *"o que não estiver a ser usado em
@@ -2198,9 +2504,24 @@ def sell_list(con, res: dict) -> dict:
                     guardar.append(linha_de(
                         nm, lot, sobra,
                         f'serve o {serve.get("formato")} ({serve["nome"]})'))
-                else:
-                    (venda_rl if lot["rl"] else venda).append(
-                        linha_de(nm, lot, sobra, RAZAO_PREMODERN))
+                    continue
+                # E a RL que um CANDIDATO de outro formato usaria — hoje as PT da
+                # era que o Legacy passou a aceitar (2026-09-08). Vem depois do
+                # `_serve_outra_caixa` de propósito: uma caixa a sério ganha
+                # sempre a um candidato do metagame.
+                guarda = min(sobra, orcamento.get(nm, 0))
+                quem = (_reserva_para(lot, nm, planos_rl, baldes_de_slot, caixas)
+                        if guarda else None)
+                if quem:
+                    orcamento[nm] -= guarda
+                    reservadas.append(linha_de(
+                        nm, lot, guarda,
+                        f"serve {_titulo_formato(quem[0])}: {quem[1]}"))
+                    sobra -= guarda
+                    if sobra <= 0:
+                        continue
+                (venda_rl if lot["rl"] else venda).append(
+                    linha_de(nm, lot, sobra, RAZAO_PREMODERN))
 
     # RESERVED LIST: só sai o que NÃO valorizou (André, 2026-09-08). Corre no fim,
     # sobre a lista de venda já formada, e não dentro dos dois ciclos: a regra é
@@ -2213,7 +2534,18 @@ def sell_list(con, res: dict) -> dict:
         cache_precos: dict = {}
         passa = []
         for r in venda_rl:
-            estado, motivo = avaliar_rl(con, r, cache=cache_precos)
+            info: dict = {}
+            estado, motivo = avaliar_rl(con, r, cache=cache_precos, detalhe=info)
+            # A janela usada e a subida ficam na LINHA, e não só no motivo de quem
+            # ficou: com a janela a crescer todos os dias, "+1,8 %" sozinho não
+            # diz se foi medido em 27 dias ou em 90 — e é a diferença entre uma
+            # carta parada e uma que está a subir depressa.
+            r = dict(r, rl_janela=info.get("janela"), rl_desde=info.get("desde"),
+                     rl_subida=info.get("subida"),
+                     rl_subida_max=info.get("subida_max"),
+                     rl_limiar=info.get("limiar"),
+                     rl_nota=(_texto_janela(info["subida"], info["janela"])
+                              if info.get("subida") is not None else ""))
             if estado == "venda":
                 passa.append(r)
                 continue

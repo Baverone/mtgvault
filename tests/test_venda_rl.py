@@ -156,8 +156,10 @@ def caso_rl_que_subiu_5_por_cento_fica():
     seg = linhas(rep, "rl_segurar", "Gilded Drake")
     assert sum(r["q"] for r in seg) == 2, seg          # 6 cópias, playset 4
     assert loadout.RAZAO_RL_SEGURAR in seg[0]["reason"], seg[0]["reason"]
-    assert "+5.0 %" in seg[0]["reason"] and "3 meses" in seg[0]["reason"], \
-        seg[0]["reason"]
+    # A janela é a que a carta dá: a primeira cotação é de há 90 dias, por isso
+    # mediram-se 88 (o máximo são 90, e ficam 2 de folga). E o motivo diz-la —
+    # "+5 %" sozinho não distingue uma carta parada de uma que subiu numa semana.
+    assert "+5.0 % em 88 d" in seg[0]["reason"], seg[0]["reason"]
     # E diz-se porque é que ela ia à venda: "subiu 5%" é uma resposta, e sem a
     # pergunta ao lado não se percebe o que a regra impediu.
     assert seg[0]["porque_venderia"] == "excedente (mais de 4)", seg[0]
@@ -234,16 +236,90 @@ def caso_o_preco_de_ha_90_dias_e_a_ultima_cotacao_ate_esse_dia():
     print("uma cotação de há 200 dias serve de preço de há 90 — 'sem linha' "
           "quer dizer 'manteve-se'")
 
-    # A TOLERÂNCIA (±10 dias) é para o dia em que o histórico começa a meio da
-    # janela: uma cotação de há 85 dias ainda conta; a de há 75 já não.
+    # E um histórico mais curto do que o máximo já NÃO é "não sei": desde
+    # 2026-09-08 a janela encolhe para o que a carta dá (85 → mede-se a 83), e
+    # quem não chega ao mínimo é que fica sem resposta. Ver o caso a seguir.
     con2 = mundo("Tolarian Academy", antes=100.0, quando=dia(85), agora=130.0)
     rep2 = loadout.report(con2, [slot_legacy()])
     assert linhas(rep2, "rl_segurar", "Tolarian Academy"), rep2["rl_segurar"]
-    con3 = mundo("Tolarian Academy", antes=100.0, quando=dia(75), agora=130.0)
-    rep3 = loadout.report(con3, [slot_legacy()])
-    assert linhas(rep3, "rl_sem_historico", "Tolarian Academy"), rep3
-    print("a tolerância de ±10 dias aceita a cotação de há 85 dias e recusa a "
-          "de há 75")
+    assert "em 83 d" in linhas(rep2, "rl_segurar", "Tolarian Academy")[0]["reason"]
+    print("uma cotação de há 85 dias mede-se numa janela de 83")
+
+
+def caso_a_janela_cresce_com_o_historico():
+    """*"Podemos começar já com 25 e vamos vendo como avança o histórico."*
+
+    O `rl_janela_dias` deixou de ser A janela e passou a ser o MÁXIMO dela. A
+    janela efectiva é o histórico que o vault tem daquela carta (menos dois dias
+    de folga, para o dia-alvo cair depois da primeira cotação), até ao máximo. É
+    o que faz a regra decidir HOJE com os 29 dias que o `price_history` tem, e
+    estar nos 90 em Novembro sem ninguém lhe tocar no config.
+    """
+    cfg()
+    for hist, esperado in ((30, 28), (60, 58), (95, 90)):
+        con = mundo("Gilded Drake", antes=100.0, quando=dia(hist), agora=200.0)
+        rep = loadout.report(con, [slot_legacy()])
+        seg = linhas(rep, "rl_segurar", "Gilded Drake")
+        assert seg, (hist, rep["venda_rl"], rep["rl_sem_historico"])
+        assert seg[0]["rl_janela"] == esperado, (hist, seg[0]["rl_janela"])
+        assert f"em {esperado} d" in seg[0]["reason"], seg[0]["reason"]
+    print("a janela efectiva cresce com o histórico e pára no máximo do config")
+
+
+def caso_menos_de_25_dias_de_historico_e_nao_sei():
+    """Abaixo do `rl_janela_minima_dias` não se decide — nem para vender.
+
+    É o mesmo argumento do "sem histórico": uma RL é a venda menos reversível de
+    todas, e uma semana de preços não diz se uma carta subiu. O que muda é a
+    fronteira, que passou a ser um número dele (25) em vez do máximo (90).
+    """
+    cfg()
+    con = mundo("Grim Monolith", antes=100.0, quando=dia(20), agora=100.0)
+    rep = loadout.report(con, [slot_legacy()])
+    sem = linhas(rep, "rl_sem_historico", "Grim Monolith")
+    assert sem and not rep["venda_rl"], rep["venda_rl"]
+    assert "18 d, precisa de 25" in sem[0]["reason"], sem[0]["reason"]
+    # Mais cinco dias de histórico e a mesma carta já se decide.
+    con2 = mundo("Grim Monolith", antes=100.0, quando=dia(28), agora=100.0)
+    rep2 = loadout.report(con2, [slot_legacy()])
+    assert linhas(rep2, "venda_rl", "Grim Monolith"), rep2["rl_sem_historico"]
+    assert not rep2["rl_sem_historico"]
+    # E o mínimo é config, como tudo o resto.
+    cfg(rl_janela_minima_dias=15)
+    rep3 = loadout.report(con, [slot_legacy()])
+    assert linhas(rep3, "venda_rl", "Grim Monolith"), rep3["rl_sem_historico"]
+    print("menos de 25 dias de histórico é 'não sei', e a fronteira é config")
+
+
+def caso_o_limiar_e_proporcional_a_janela():
+    """Exigir 5 % a 27 dias era vender o que a regra dos 90 dias seguraria.
+
+    Os 5 % dele são *"nos últimos 3 meses"*. Medidos numa janela de 25 dias, os
+    mesmos 5 % são ~18 %/90 d — um filtro muito mais apertado, que deixava passar
+    para a venda exactamente as cartas que estão a valorizar depressa. Por isso o
+    limiar acompanha a janela: `5 % × janela / máximo`, ~1,4 % a 25 dias.
+    """
+    cfg()
+    # +2 % em 25 dias: ao ritmo de 90 dias são +7,2 %, acima dos 5 %.
+    con = mundo("Gilded Drake", antes=100.0, quando=dia(27), agora=102.0)
+    rep = loadout.report(con, [slot_legacy()])
+    seg = linhas(rep, "rl_segurar", "Gilded Drake")
+    assert seg, rep["venda_rl"]
+    assert seg[0]["rl_janela"] == 25 and seg[0]["rl_subida"] == 2.0, seg[0]
+    assert seg[0]["rl_limiar"] == 1.39, seg[0]["rl_limiar"]
+    assert "≈ +7.2 %/90 d" in seg[0]["reason"], seg[0]["reason"]
+    # E o que sobe DEVAGAR continua a vender-se: +1 % em 25 dias são +3,6 %/90 d.
+    con2 = mundo("Null Rod", antes=100.0, quando=dia(27), agora=101.0)
+    rep2 = loadout.report(con2, [slot_legacy()])
+    assert linhas(rep2, "venda_rl", "Null Rod"), rep2["rl_segurar"]
+    print("o limiar acompanha a janela: +2% em 25 dias segura, +1% vende")
+
+    # A ALTERNATIVA, que é dele e não minha: os 5 % à letra em qualquer janela.
+    cfg(rl_limiar_fixo=True)
+    rep3 = loadout.report(con, [slot_legacy()])
+    assert linhas(rep3, "venda_rl", "Gilded Drake"), rep3["rl_segurar"]
+    assert loadout.rl_limiar_fixo()
+    print("e com `rl_limiar_fixo` os 5% valem à letra, seja qual for a janela")
 
 
 def caso_os_dois_numeros_sao_do_config():
@@ -259,16 +335,19 @@ def caso_os_dois_numeros_sao_do_config():
     assert loadout.rl_subida_minima() == 3
     print("baixar o `rl_subida_minima_pct` para 3 segura o que a 5% se vendia")
 
-    # E a JANELA: com 30 dias, a cotação de há 90 fica fora do alcance da
-    # tolerância e a resposta passa a ser "não sei" — que é o que ele pode
-    # querer forçar ao contrário, enquanto o histórico do vault for curto.
-    con2 = mundo("Gilded Drake", antes=100.0, quando=dia(20), agora=104.0)
-    cfg(rl_subida_minima_pct=5, rl_janela_dias=20)
+    # E o MÁXIMO da janela também: com 40 dias de máximo, a mesma carta com 90
+    # dias de histórico passa a ser medida em 40 — e o limiar proporcional passa
+    # a ser sobre 40, não sobre 90.
+    con2 = mundo("Gilded Drake", antes=100.0, quando=dia(90), agora=104.0)
+    cfg(rl_subida_minima_pct=5, rl_janela_dias=40)
     rep2 = loadout.report(con2, [slot_legacy()])
-    assert loadout.rl_janela_dias() == 20
-    assert linhas(rep2, "venda_rl", "Gilded Drake"), rep2["rl_sem_historico"]
-    print("e a janela também: com `rl_janela_dias: 20` a regra já decide com o "
-          "histórico curto que o vault tem hoje")
+    assert loadout.rl_janela_dias() == 40
+    v = linhas(rep2, "venda_rl", "Gilded Drake")
+    assert v and v[0]["rl_janela"] == 40, (v, rep2["rl_segurar"])
+    # E o limiar é o do máximo, não o dos 90: a janela cheia paga os 5 % inteiros.
+    assert v[0]["rl_limiar"] == 5.0, v[0]
+    print("e o máximo da janela também: a 40 dias mede-se em 40, com os 5% "
+          "inteiros")
 
 
 def caso_nada_sai_da_base_e_nada_se_conta_duas_vezes():
@@ -402,6 +481,9 @@ def run():
                caso_rl_que_subiu_4_por_cento_vende_se,
                caso_sem_historico_nao_se_vende_e_diz_desde_quando,
                caso_o_preco_de_ha_90_dias_e_a_ultima_cotacao_ate_esse_dia,
+               caso_a_janela_cresce_com_o_historico,
+               caso_menos_de_25_dias_de_historico_e_nao_sei,
+               caso_o_limiar_e_proporcional_a_janela,
                caso_os_dois_numeros_sao_do_config,
                caso_nada_sai_da_base_e_nada_se_conta_duas_vezes,
                caso_a_poda_diaria_nao_pode_matar_a_regra,

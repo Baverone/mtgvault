@@ -811,7 +811,10 @@ def _vender(rep, csv_out=False, tudo=False):
                    ("RL SEM HISTÓRICO SUFICIENTE — não se vende sem saber",
                     rep["rl_sem_historico"]),
                    ("GUARDAR — servem um deck do loadout", rep["guardar"]),
-                   ("RESERVADAS — sugestões de Premodern por decidir", rep["reservadas"]),
+                   # Reservadas por uma sugestão de Premodern OU pela caixa de
+                   # Legacy, que desde 2026-09-08 aceita RL em PT e ainda não tem
+                   # deck escolhido (segura-a o top-N do metagame).
+                   ("RESERVADAS — decks por decidir", rep["reservadas"]),
                    ("RETIDOS — extras de deck (reter_extras_meses)", rep["retidos"])]
     if csv_out:
         print("bloco,quantidade,carta,balde,edicao,acabamento,lingua,"
@@ -828,21 +831,40 @@ def _vender(rep, csv_out=False, tudo=False):
         _p([{"q": r["q"], "carta": r["nm"], "balde": r["local"], "ed": r["set_code"],
              "fin": r["finish"], "ln": r["lang"],
              "unit": f"{r['unit']:.2f}" if r["unit"] else "?",
-             "total": f"{r['total']:.2f}", "motivo": r["reason"]} for r in linhas],
+             "total": f"{r['total']:.2f}",
+             # A janela em que a subida foi medida, por cópia: com a janela a
+             # crescer todos os dias, "não subiu" em 27 dias e em 90 não são a
+             # mesma afirmação.
+             "motivo": " ".join(x for x in (r["reason"], r.get("rl_nota")) if x)}
+            for r in linhas],
             ["q", "carta", "balde", "ed", "fin", "ln", "unit", "total", "motivo"])
     if not tudo:
         print(f"\n  (à parte: Reserved List {rep['copias_rl']} cópias / "
               f"{rep['total_rl']:.2f}€, substitutos a guardar {rep['copias_guardar']} / "
               f"{rep['total_guardar']:.2f}€ — vê com --tudo)")
     if rep["copias_rl_retidas"]:
+        maxi, mini = loadout.rl_janela_dias(), loadout.rl_janela_minima()
+        pct = loadout.rl_subida_minima()
         print(f"\n  🔒 REGRA DA RL: {rep['copias_rl_retidas']} cópias / "
               f"{rep['total_rl_retido']:.2f}€ NÃO entram na venda — só se vende "
-              f"Reserved List que não tenha subido {loadout.rl_subida_minima():.0f}% "
-              f"nos últimos {loadout.rl_janela_dias()} dias.\n"
+              f"Reserved List que não tenha subido {pct:.0f}% em {maxi} dias.\n"
+              # A janela é um MÁXIMO desde 2026-09-08: cada carta é medida no
+              # histórico que tem, e o limiar acompanha. Sem isto escrito, dois
+              # dias seguidos dão respostas diferentes sem explicação nenhuma.
+              f"     a janela é um máximo: cada carta mede-se no histórico que "
+              f"tem (mínimo {mini} d)"
+              + (f", com os {pct:.0f}% à letra (rl_limiar_fixo)."
+                 if loadout.rl_limiar_fixo() else
+                 f", e o limiar acompanha-a — {pct:.0f}% a {maxi} d, "
+                 f"{pct * mini / maxi:.1f}% a {mini} d.") + "\n"
               f"     valorizou: {rep['copias_rl_segurar']} / "
               f"{rep['total_rl_segurar']:.2f}€ · sem histórico: "
               f"{rep['copias_rl_sem_historico']} / "
               f"{rep['total_rl_sem_historico']:.2f}€")
+    if rep["copias_reservadas"]:
+        print(f"  💡 RESERVADAS: {rep['copias_reservadas']} cópias / "
+              f"{rep['total_reservado']:.2f}€ de decks por decidir "
+              f"(sugestões de Premodern e a RL que o Legacy usaria).")
     print("\n  SUGESTÃO A CONFIRMAR: nada sai da coleção sem tu dizeres.")
 
 
