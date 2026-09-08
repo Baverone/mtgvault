@@ -1423,6 +1423,62 @@ importadores (`processar_fotos.py` e a tarefa `mtg-fotos-novas` do ai-pc, via
   nome — o índice de ontem continua a valer). O `common.all_photos()` da revisão
   de fotos tinha o mesmo defeito e a mesma correcção.
 
+**3. «JÁ A TENHO, ESTÁ NO DECK»: dar check numa falta (André, 2026-09-08, à
+letra).** *"Arranja forma de eu poder dar check nas cartas das faltas, para dizer
+que já as tenho e já coloquei no deck."* Metade da lista de compras dele é coisa
+que já tem em casa e que o vault nunca catalogou; até aqui o único caminho era
+tirar foto e esperar, e entretanto a caixa continuava a somar a carta ao *"fechar
+tudo por X €"*, que é o número por que ele decide. Motor em
+`loadout.registar_falta`/`anular_falta`, botão no **passo 2** do painel *Montar*
+(`deckboxes.jaTenhoHTML`), acções `falta`/`falta-anular` no `webapp.py`.
+- **Um check faz DUAS escritas, e as duas são precisas**: a cópia (`copies`) e o
+  lugar dela (`copy_allocation` daquela caixa). Uma sem a outra deixava o vault a
+  discordar dele — a cópia sem caixa manda-o à gaveta onde ela não está, a caixa
+  sem cópia volta a pedir a carta amanhã. Não passa pelo config: nada disto é uma
+  preferência, é a estante.
+- **O MATERIAL sai da caixa** (`loadout.material_da_caixa`, `edicao_limite`,
+  `finishes_aceites`): o que ele acabou de dizer que tem é, por definição,
+  material que a caixa aceita — senão não fechava o slot. Premodern → `pt` e
+  impressão ≤ Scourge; SPML/Legacy → `en foil`; cEDH → `en nonfoil`.
+- **A EDIÇÃO é a parte incerta e não se finge que não é.** O selector da linha
+  mostra as impressões que cumprem a regra DAQUELA caixa
+  (`loadout.impressoes_da_falta` → `scryfall.impressoes`), com o palpite de
+  sempre à cabeça (`find_printing(adivinhar=True)`, agora com `ate`/`finishes` —
+  a impressão mais recente de Swords to Plowshares é de 2022 e é a que um palpite
+  sem regras escolhia, para uma caixa que a recusa). Uma edição escrita à mão que
+  não esteja na lista é **recusada** (409 com a razão).
+- **A cópia fica marcada `edicao por confirmar`** (`collection.MARCA_POR_CONFIRMAR`,
+  na `notes`) e aparece no **passo 1** num bloco próprio — *«✓ Já na caixa
+  (disseste que tinhas)»*, com **📷 edição por confirmar**. Sem esse bloco o
+  palpite virava facto por ninguém voltar a abrir a `notes` de uma cópia.
+- **A foto seguinte ACERTA essa cópia, não cria outra**
+  (`collection.acertar_edicao`, chamada do `import_csv` e por isso comum aos dois
+  importadores). Criar uma segunda era ficar com o dobro das cartas na base por
+  ele ter sido diligente. Com menos cópias do que as que esperavam, a linha
+  parte-se e a confirmada **leva consigo o lugar dentro da caixa**; o que a foto
+  trouxer a mais entra como sempre.
+- **O anular apaga a cópia que acabou de nascer, e só essa**: o `anular_falta`
+  recusa um `copy_id` sem a marca. Passada a janela (`montar.anular_segundos`) é
+  uma cópia normal e quem a tira é o **«vendida»** — um desfazer sem prazo era um
+  segundo caminho para apagar cartas, e esse já existe com backup.
+- **O rasto é `data/registos-faltas.csv`** (fora do Git, como o `vendas.csv`), e
+  escreve-se ANTES da alocação: é a contrapartida de um botão que CRIA cartas.
+- **Só no modo edição, e por duas razões.** No site publicado não há endpoint que
+  grave (a razão de sempre) — e o selector é uma consulta ao catálogo por carta
+  em falta. Aí morava uma armadilha de desempenho: o `lower(name) = lower(?)` do
+  `scryfall` **não usa o índice `ix_cards_name`** e varria as ~500 mil impressões;
+  o payload do modo edição demorava **10,7 s**, e ele corre a cada clique.
+  Passou a tentar `name = ?` primeiro (1,2 s), com o `lower()` como recurso.
+- **Medido na base de 2026-09-08:** a alocação não mexe (8 426,34 €, 232 a
+  comprar, 70 a ir buscar, 345 a arrumar). Um check de 2 Meddling Mage no UW
+  Replenish: 95 %→97 %, comprar 3→1, a caixa 4,42 €→1,10 €, fechar tudo
+  8 426,34 €→8 423,02 €, venda igual — e a arrumação 345→**347**, porque uma
+  linha INCOMPLETA vive em `missing` e o `movimentos_de_entrada` só percorre o
+  `have`: as 2 cópias que ele já tinha dessa carta só aparecem no plano quando a
+  linha fecha. É um buraco anterior a isto e ficou por corrigir de propósito
+  (mexer nele mudava o 345 de todas as caixas). Ver
+  `work/revisao/mtgvault-faltas-check.md`.
+
 ## Restrições externas (já testadas, não voltes a tentar)
 
 | Fonte | Estado |

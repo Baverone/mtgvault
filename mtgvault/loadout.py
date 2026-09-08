@@ -223,6 +223,11 @@ from pathlib import Path
 
 from . import caixas as _caixas
 from . import sources, stock
+# A marca das cópias que entraram pelo *"já a tenho"* e ainda esperam que uma
+# foto lhes diga a edição. Vive na `collection` porque é lá que a foto a apaga —
+# escrever o mesmo texto nos dois módulos era pedir que um deles ficasse para
+# trás e a marca deixasse de bater, sem um único erro.
+from .collection import MARCA_POR_CONFIRMAR
 
 # Última edição legal em Premodern (Scourge). É por aqui que se decide se uma
 # impressão é "da era" — a alternativa (a legalidade `premodern` da Scryfall) é
@@ -1225,6 +1230,7 @@ def lots(con, cfg_slots: list[dict] | None = None) -> dict[str, list[dict]]:
     for r in con.execute(
         """SELECT cp.id, cp.quantity q, cp.finish, cp.language lang,
                   cp.reserved_deck_id rdid, s.name sub, cp.balde_origem borigem,
+                  cp.notes notas,
                   c.name nm, c.scryfall_id sid, c.set_code, c.set_name,
                   c.released_at rel, COALESCE(c.reserved, 0) rl, c.legalities leg
              FROM copies cp
@@ -1234,6 +1240,11 @@ def lots(con, cfg_slots: list[dict] | None = None) -> dict[str, list[dict]]:
         d = dict(r)
         d["nm"] = _front(d["nm"])
         d["sub"] = d["sub"] or "(sem balde)"
+        # «JÁ A TENHO» (André, 2026-09-08): a cópia entrou pelo check das faltas
+        # e a edição é um palpite até a foto chegar. Não muda nada na alocação —
+        # é uma cópia como as outras — mas o painel *Montar* tem de o dizer, senão
+        # o palpite passa a facto por ninguém voltar a olhar para ele.
+        d["por_confirmar"] = MARCA_POR_CONFIRMAR in (d.get("notas") or "")
         d["era_pm"] = bool(d["rel"]) and d["rel"] <= PREMODERN_END
         d["rl"] = bool(d["rl"])
         # Uma linha de `copy_allocation` para uma caixa que já não está no
@@ -1438,6 +1449,7 @@ def _aloca_basica(pool: dict, s: dict, board: str, nm: str, need: int,
         gastos.append({"id": lot["id"], "q": take, "sub": lot["sub"],
                        "local": lot["local"], "balde": lot["balde"],
                        "caixa": lot["caixa"], "borigem": lot["borigem"],
+                       "por_confirmar": lot["por_confirmar"],
                        "finish": lot["finish"], "lang": lot["lang"],
                        "set_code": lot["set_code"], "sid": lot["sid"]})
     return {"board": board, "nm": nm, "need": need, "got": need,
@@ -2070,6 +2082,7 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                 gastos.append({"id": lot["id"], "q": take, "sub": lot["sub"],
                                "local": lot["local"], "balde": lot["balde"],
                                "caixa": lot["caixa"],
+                               "por_confirmar": lot["por_confirmar"],
                                "borigem": lot["borigem"],
                                "finish": lot["finish"], "lang": lot["lang"],
                                "set_code": lot["set_code"], "sid": lot["sid"]})
@@ -3290,8 +3303,14 @@ def plano_montar(res: dict, slot_id: str) -> dict:
     por_gaveta: dict[str, int] = defaultdict(int)
     for m in tirar:
         por_gaveta[m["de"]] += m["q"]
+    # «JÁ A TENHO» (André, 2026-09-08): as cópias que ele declarou e que estão
+    # dentro da caixa com a edição por confirmar. Não há nada para marcar nelas —
+    # já lá estão —, mas têm de aparecer: é o único sítio onde o palpite se vê.
+    por_confirmar = copias_por_confirmar(s)
     return {"slot": s["slot"], "caixa": s["nome"], "tirar": tirar,
             "de_outra": de_outra,
+            "por_confirmar": por_confirmar,
+            "copias_por_confirmar": sum(m["q"] for m in por_confirmar),
             "copias_de_outra": sum(m["q"] for m in de_outra),
             "basicas": basicas,
             "basicas_copias": sum(b["need"] for b in basicas),
@@ -3319,6 +3338,239 @@ def plano_montar(res: dict, slot_id: str) -> dict:
             "totais": totais_por_board(s),
             "por_gaveta": dict(sorted(por_gaveta.items(),
                                       key=lambda kv: (-kv[1], kv[0])))}
+
+
+# ---------------------------------------------------------------------------
+# «JÁ A TENHO, ESTÁ NO DECK»: dar check numa falta (André, 2026-09-08, à letra)
+# ---------------------------------------------------------------------------
+# *"Arranja forma de eu poder dar check nas cartas das faltas, para dizer que já
+# as tenho e já coloquei no deck."* Ele está à frente da estante com a caixa
+# meio montada e a lista de compras à frente: metade do que lá está ele já tinha
+# em casa, fora da colecção catalogada.
+#
+# O check faz DUAS escritas, e as duas são precisas: cria a cópia na `copies` (é
+# uma carta que existe em casa e o vault não sabia) e mete-a logo na
+# `copy_allocation` daquela caixa (é onde ela está — foi isso que ele disse). Uma
+# sem a outra deixava o vault a discordar dele: com a cópia sem caixa, o painel
+# mandava-o tirá-la da gaveta onde ela não está; com a caixa sem cópia, a lista
+# de compras voltava a pedir a carta amanhã.
+#
+# A EDIÇÃO é a parte incerta, e não se finge que não é: o selector da linha
+# mostra as impressões que cumprem a regra da caixa, o palpite é o mesmo do
+# `--adivinhar` (a mais recente e mais barata) e a cópia fica marcada
+# «edição por confirmar» até a foto chegar (`collection.acertar_edicao`).
+def finishes_aceites(s: dict) -> tuple[str, ...]:
+    """Os acabamentos que esta caixa aceita, para filtrar as impressões.
+
+    Vazio = qualquer um. O `prefere_foil` aceita os dois (é o Pauper: *"tudo foil
+    se houver disponível, senão pode ser non-foil"*), e por isso não filtra nada.
+    """
+    ac = s.get("acabamento")
+    if ac == "foil":
+        return FOIL_FINISHES
+    if ac == "nonfoil":
+        return ("nonfoil",)
+    return ()
+
+
+def material_da_caixa(s: dict) -> tuple[str, str]:
+    """`(acabamento, língua)` de uma cópia que serve esta caixa.
+
+    É a leitura em positivo do `_porque_nao`: o que ele acabou de dizer que tem
+    é, por definição, material que a caixa aceita — senão não fechava o slot. Uma
+    caixa sem regra de língua fica em `en`, que é o que o CSV de importação
+    assume desde sempre; uma caixa de `prefere_foil` fica em foil, que é o que
+    ela prefere e o que o `_ordem` gasta primeiro.
+    """
+    ac = s.get("acabamento")
+    finish = "foil" if ac in ("foil", "prefere_foil") else "nonfoil"
+    return finish, (s.get("lingua") or "en")
+
+
+def edicao_limite(s: dict) -> str | None:
+    """A data-limite das impressões desta caixa (`≤SCG` no Premodern)."""
+    return PREMODERN_END if s.get("edicoes") == "premodern" else None
+
+
+def impressoes_da_falta(con, s: dict, nm: str, cache: dict | None = None,
+                        limite: int = 12) -> list[dict]:
+    """As edições que o selector do *"já a tenho"* oferece, a do palpite primeiro.
+
+    Filtradas pelas regras da CAIXA — uma caixa de Premodern não pode oferecer
+    (nem adivinhar) uma reimpressão de 2024, que ela própria recusaria no dia
+    seguinte. A `cache` é por (carta, regra): a mesma carta aparece na wantlist
+    de várias caixas e o catálogo não muda entre elas.
+    """
+    finishes = finishes_aceites(s)
+    ate = edicao_limite(s)
+    chave = (nm, ate, finishes)
+    if cache is not None and chave in cache:
+        return cache[chave]
+    from . import scryfall                                # noqa: PLC0415
+
+    rows = scryfall.impressoes(con, nm, ate=ate, finishes=finishes,
+                               limite=limite)
+    if not rows:
+        oracle = scryfall.resolve_name(con, nm)
+        if oracle and oracle != nm:
+            rows = scryfall.impressoes(con, oracle, ate=ate, finishes=finishes,
+                                       limite=limite)
+    out = [{"set": (r["set_code"] or "").lower(),
+            "set_nome": r["set_name"] or (r["set_code"] or "").upper(),
+            "num": r["collector_number"] or "", "rel": r["released_at"] or ""}
+           for r in rows]
+    if cache is not None:
+        cache[chave] = out
+    return out
+
+
+def copias_por_confirmar(s: dict) -> list[dict]:
+    """As cópias que estão DENTRO desta caixa à espera de foto para a edição.
+
+    São as que entraram pelo *"já a tenho"*: no painel *Montar* aparecem no passo
+    1 como **na caixa ✓**, com o aviso *«📷 edição por confirmar»*. Mostrá-las é
+    a única coisa que impede o palpite de virar facto — ninguém volta a abrir a
+    `notes` de uma cópia à procura de uma marca.
+    """
+    out = []
+    for m in s["have"]:
+        for g in m["lotes"]:
+            if g.get("caixa") != s.get("slot") or not g.get("por_confirmar"):
+                continue
+            out.append({"nm": m["nm"], "q": g["q"], "board": m["board"],
+                        "copy_id": g["id"], "set_code": g["set_code"],
+                        "de": g["local"], "para": s["nome"],
+                        "finish": g["finish"], "lang": g["lang"],
+                        "basica": bool(m.get("basica"))})
+    return sorted(out, key=lambda m: (m["board"] != "main", m["nm"]))
+
+
+def ficheiro_registos_faltas() -> Path:
+    """`data/registos-faltas.csv` — o que ele declarou já ter em casa.
+
+    Vive ao lado da base, como o `vendas.csv` e pela mesma razão: a `vault.db` é
+    descarregada e republicada inteira a cada corrida, e um registo de alterações
+    à colecção que se pode perder numa publicação não é um registo. É a
+    contrapartida de um botão que CRIA cartas — a única maneira de, daqui a um
+    mês, saber donde é que uma cópia sem foto apareceu.
+    """
+    from . import db                                      # noqa: PLC0415
+    return db.pasta_dados() / "registos-faltas.csv"
+
+
+CABECALHO_FALTAS = ("data,accao,caixa,carta,bloco,quantidade,edicao,numero,"
+                    "lingua,acabamento,palpite,copy_id")
+
+
+def _linha_faltas(campos, csv_path: Path | None = None) -> Path:
+    alvo = csv_path or ficheiro_registos_faltas()
+    alvo.parent.mkdir(parents=True, exist_ok=True)
+    novo = not alvo.exists()
+    with alvo.open("a", encoding="utf-8", newline="") as fh:
+        if novo:
+            fh.write(CABECALHO_FALTAS + "\n")
+        fh.write(date.today().isoformat() + ","
+                 + ",".join('"' + str(c).replace('"', "'") + '"' for c in campos)
+                 + "\n")
+    return alvo
+
+
+def registar_falta(con, res: dict, slot_id: str, nm: str, board: str = "",
+                   quantidade: int | None = None, set_code: str | None = None,
+                   collector_number: str | None = None,
+                   csv_path: Path | None = None) -> dict:
+    """*"Já a tenho, está no deck"*: cria a cópia e mete-a nesta caixa.
+
+    A quantidade nunca passa o que a caixa ainda COMPRA daquela carta: a página
+    manda o número que estava à vista, e uma página aberta há duas horas podia
+    mandar registar quatro cópias de uma carta que entretanto só falta uma vez —
+    é a mesma precaução do botão *"vendida"*, e por isso o relatório se recalcula
+    antes (quem chama passa um `res` fresco).
+
+    A `notes` diz as duas coisas: **donde veio a cópia** e que a **edição é um
+    palpite**. É por essa marca que a foto seguinte a acerta em vez de criar uma
+    segunda (`collection.acertar_edicao`), e é por ela que o painel *Montar* põe
+    o «📷 edição por confirmar».
+    """
+    from . import collection                              # noqa: PLC0415
+
+    s = next((x for x in res["slots"] if x["slot"] == slot_id), None)
+    if s is None:
+        raise KeyError(slot_id)
+    linhas = [m for m in s["missing"] if m["nm"] == nm
+              and (not board or m["board"] == board)]
+    podem = sum(m["comprar"] for m in linhas)
+    if podem <= 0:
+        raise ValueError(f"{nm} já não está em falta na caixa {s['nome']} — "
+                         f"recarrega a página")
+    q = podem if quantidade is None else max(1, min(int(quantidade), podem))
+    finish, lang = material_da_caixa(s)
+    ate = edicao_limite(s)
+    if set_code:
+        # Uma edição escolhida à mão tem de estar na lista que o selector
+        # ofereceu: escrever `?set=lea` no pedido não pode meter um Plains de
+        # Alpha numa caixa que só usa impressões até ao Scourge.
+        validas = {e["set"] for e in impressoes_da_falta(con, s, nm, limite=999)}
+        if set_code.lower() not in validas:
+            raise ValueError(f"{set_code.upper()} não serve a caixa "
+                             f"{s['nome']} ({requisito_material(s) or 'sem regra'})")
+    nota = (f"registada a partir das faltas em {date.today().isoformat()}; "
+            f"{MARCA_POR_CONFIRMAR}")
+    copy_id = collection.add_copy(
+        con, nm, set_code=set_code, collector_number=collector_number,
+        quantity=q, finish=finish, language=lang,
+        sub_collection=(s.get("balde") or BALDE_COLECCAO),
+        notes=nota, adivinhar=not set_code, ate=ate,
+        finishes=finishes_aceites(s))
+    row = con.execute(
+        """SELECT c.set_code, c.collector_number FROM copies cp
+             JOIN cards c ON c.scryfall_id = cp.scryfall_id
+            WHERE cp.id = ?""", (copy_id,)).fetchone()
+    edicao = (row["set_code"] or "").upper() if row else ""
+    numero = (row["collector_number"] or "") if row else ""
+    # O CSV escreve-se ANTES da alocação e depois da cópia (precisa do
+    # `copy_id`). Se a alocação falhar a meio sobra uma cópia fora da caixa, que
+    # ele vê no painel; o contrário — criar a carta e não registar donde veio —
+    # é uma perda silenciosa, que é o que este ficheiro existe para evitar.
+    alvo = _linha_faltas(["registada", s["nome"], nm, board or "", q, edicao,
+                          numero, lang, finish, "sim" if not set_code else "nao",
+                          copy_id], csv_path)
+    con.execute("INSERT INTO copy_allocation (copy_id, slot, quantity, placed_at) "
+                "VALUES (?,?,?,datetime('now'))", (copy_id, slot_id, q))
+    con.commit()
+    return {"copy_id": copy_id, "q": q, "nm": nm, "caixa": s["nome"],
+            "slot": slot_id, "board": board, "set_code": edicao,
+            "collector_number": numero, "lang": lang, "finish": finish,
+            "palpite": not set_code, "csv": str(alvo)}
+
+
+def anular_falta(con, copy_id: int, csv_path: Path | None = None) -> dict:
+    """O *anular* do *"já a tenho"*: a cópia que acabou de nascer desaparece.
+
+    Só apaga cópias com a marca do `registar_falta` — sem isso, um `copy_id`
+    trocado apagava uma carta a sério da colecção, e este é o único botão do
+    vault que APAGA uma cópia sem passar pelo *"vendida"*.
+
+    Passada a janela do aviso, é uma cópia como as outras: a partir daí quem a
+    tira é o *"vendida"* ou uma correcção à mão na base. Um desfazer sem prazo
+    era um segundo caminho para apagar cartas, e esse já existe com backup.
+    """
+    row = con.execute(
+        """SELECT cp.id, cp.quantity, cp.notes, c.name nm, c.set_code
+             FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id
+            WHERE cp.id = ?""", (int(copy_id),)).fetchone()
+    if row is None or MARCA_POR_CONFIRMAR not in (row["notes"] or ""):
+        return {"copias": 0, "nm": ""}
+    slot = con.execute("SELECT slot FROM copy_allocation WHERE copy_id = ?",
+                       (row["id"],)).fetchone()
+    _linha_faltas(["anulada", (slot["slot"] if slot else ""), _front(row["nm"]),
+                   "", row["quantity"], (row["set_code"] or "").upper(), "", "",
+                   "", "", row["id"]], csv_path)
+    con.execute("DELETE FROM copy_allocation WHERE copy_id = ?", (row["id"],))
+    con.execute("DELETE FROM copies WHERE id = ?", (row["id"],))
+    con.commit()
+    return {"copias": row["quantity"], "nm": _front(row["nm"]),
+            "slot": (slot["slot"] if slot else "")}
 
 
 def linhas_parciais(s: dict, caixas_deck: set[str] | frozenset,

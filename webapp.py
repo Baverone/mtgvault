@@ -101,6 +101,12 @@ CABECALHO_TOKEN = "X-Mtgvault-Token"
 # acabou de acontecer, não um histórico. Se o servidor for reiniciado no meio,
 # perde-se — e aí o que há é o *Desmontar*, que é o gesto grande, com backup.
 _ULTIMO_REGISTO: dict[str, dict] = {}
+# O *anular* do «já a tenho» (André, 2026-09-08). `copy_id -> quando`: é a única
+# janela em que a cópia que ele acabou de declarar ainda se pode apagar. Passada
+# ela, é uma cópia como as outras — e o que a tira é o «vendida». Em memória
+# pela mesma razão do registo: um anular é o desfazer de um gesto que acabou de
+# acontecer, não um histórico.
+_ULTIMA_FALTA: dict[int, float] = {}
 # Quanto tempo o servidor ainda aceita o *anular*. É maior do que os segundos em
 # que o botão está à vista (`loadout.montar_anular_segundos`): um clique ao
 # segundo 5,9 num telemóvel na rede de casa não pode falhar por causa da latência.
@@ -593,6 +599,47 @@ def anular_registo(con, cfg, slot_id: str) -> str:
             + (f" com {n} cópias" if n else " e vazia"))
 
 
+def registar_falta(con, dados: dict) -> str:
+    """*"Já a tenho, está no deck"*: o check de uma linha da lista de compras.
+
+    André, 2026-09-08, à letra: *"Arranja forma de eu poder dar check nas cartas
+    das faltas, para dizer que já as tenho e já coloquei no deck."*
+
+    O relatório recalcula-se AQUI, e não se aproveita o da página: ela pode estar
+    aberta há duas horas e mandar registar quatro cópias de uma carta que
+    entretanto só falta uma vez. É a mesma precaução do botão *"vendida"*.
+    """
+    slot_id = dados.get("slot")
+    nm = (dados.get("nm") or "").strip()
+    if not nm:
+        raise ValueError("sem carta")
+    r = loadout.registar_falta(
+        con, loadout.report(con), slot_id, nm,
+        board=(dados.get("board") or ""),
+        quantidade=(int(dados["q"]) if dados.get("q") else None),
+        set_code=((dados.get("set") or "").strip().lower() or None),
+        collector_number=((dados.get("num") or "").strip() or None))
+    _ULTIMA_FALTA[r["copy_id"]] = _time.time()
+    return {**r, "msg": (f'{r["q"]}× {r["nm"]} ({r["set_code"]}) está na caixa '
+                         f'{r["caixa"]}'
+                         + (" — edição por confirmar, a próxima foto acerta-a"
+                            if r["palpite"] else ""))}
+
+
+def anular_falta(con, copy_id) -> str:
+    """O desfazer do check, enquanto o aviso está à vista. Ver `_ULTIMA_FALTA`."""
+    cid = int(copy_id or 0)
+    quando = _ULTIMA_FALTA.get(cid)
+    if quando is None or _time.time() - quando > ANULAR_JANELA:
+        _ULTIMA_FALTA.pop(cid, None)
+        return ""
+    r = loadout.anular_falta(con, cid)
+    _ULTIMA_FALTA.pop(cid, None)
+    if not r["copias"]:
+        return ""
+    return f'{r["copias"]}× {r["nm"]}: desfeito — a cópia voltou a ser falta'
+
+
 def regenerar(con) -> None:
     """Reescreve as páginas estáticas, para o site publicado acompanhar.
 
@@ -724,6 +771,13 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"erro": f"a caixa {e.args[0]!r} já não existe no "
                                     f"colecao_config.json — recarrega a página"}, 409)
                 return
+            except ValueError as e:
+                # Um pedido que já não bate com a base: a linha das faltas que
+                # ele carregou já não está em falta, ou a edição que veio no
+                # pedido não serve a caixa. A mensagem é para ele ler, e por isso
+                # vai sem o nome da excepção à frente.
+                self._json({"erro": str(e)}, 409)
+                return
             except Exception as e:                      # noqa: BLE001
                 self._json({"erro": f"{type(e).__name__}: {e}"}, 500)
                 return
@@ -734,6 +788,9 @@ class Handler(BaseHTTPRequestHandler):
         # As cópias que ele marcou no bloco «destinadas a outra caixa» do painel
         # Montar (2026-09-08). Só o `montado`/`confirmar` as usa.
         de_outra = [int(c) for c in (dados.get("de_outra") or [])]
+        # O que a resposta leva além do `msg` — hoje só o `copy_id` do «já a
+        # tenho», que é por onde o *anular* pega na cópia que acabou de nascer.
+        extra: dict = {}
         cfg = ler_config()
         with db.session() as con:
             if act == "permanente":
@@ -788,6 +845,18 @@ class Handler(BaseHTTPRequestHandler):
                           else f' · faltam {r["falta"]} por tirar')
                        + (f' ({r["de_outra"]} eram de outra caixa — ela passa a '
                           f'vir buscá-las aqui)' if r["de_outra"] else ""))
+            elif act == "falta":
+                # «JÁ A TENHO, ESTÁ NO DECK» (André, 2026-09-08): o check de uma
+                # linha da lista de compras. Não passa pelo config — o que muda é
+                # a colecção (uma cópia nova) e a estante (a caixa onde ela
+                # está), e isso vive na base.
+                r = registar_falta(con, dados)
+                msg, extra["copy_id"] = r["msg"], r["copy_id"]
+            elif act == "falta-anular":
+                msg = anular_falta(con, dados.get("copy_id"))
+                if not msg:
+                    return {"erro": "já passou a janela do «anular»: essa cópia "
+                                    "passou a ser uma cópia normal da colecção"}
             elif act == "anular":
                 # O desfazer do registo automático, enquanto o aviso está à vista.
                 msg = anular_registo(con, cfg, slot_id)
@@ -809,7 +878,7 @@ class Handler(BaseHTTPRequestHandler):
                 return {"erro": f"acção {act!r} desconhecida"}
             sources._CFG_CACHE.clear()     # relê já, sem esperar pelo mtime
             regenerar(con)
-        return {"ok": True, "msg": msg}
+        return {"ok": True, "msg": msg, **extra}
 
     def _vender(self, dados):
         """"Vendida": a cópia sai da colecção e fica registada no `vendas.csv`.

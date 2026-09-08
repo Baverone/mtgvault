@@ -186,29 +186,93 @@ def _preco(con: sqlite3.Connection, scryfall_id: str) -> float:
     return r["t"] if r and r["t"] is not None else float("inf")
 
 
+def _clausula_finish(finishes) -> tuple[str, list]:
+    """SQL que aceita só as impressões que existem num destes acabamentos.
+
+    O `cards.finishes` é JSON (`["nonfoil","foil"]`), e por isso a comparação é
+    com as aspas dentro: `LIKE '%foil%'` dá TODA a impressão nonfoil como foil —
+    é a mesma armadilha do `loadout.e_foil` (*"nonfoil" contém "foil"*), que já
+    marcou 41 linhas de venda com um ✨ que não lhes pertencia.
+    """
+    if not finishes:
+        return "", []
+    return (" AND (" + " OR ".join("finishes LIKE ?" for _f in finishes) + ")",
+            [f'%"{f}"%' for f in finishes])
+
+
+def impressoes(con: sqlite3.Connection, name: str, *, ate: str | None = None,
+               finishes=None, limite: int = 12) -> list[sqlite3.Row]:
+    """As impressões candidatas de uma carta, a MELHOR PRIMEIRA.
+
+    "Melhor" é a definição do `_adivinhar`: a mais RECENTE e, dentro dessa data,
+    a mais BARATA. As outras vêm por data decrescente, para o selector de edição
+    do *"já a tenho"* (deckboxes) começar no palpite e ter as alternativas
+    plausíveis logo a seguir.
+
+    `ate` corta as impressões posteriores a uma data — é a regra de edições de
+    uma caixa (`edicoes: "premodern"` = até ao Scourge). Sem ela, o palpite de
+    uma caixa de Premodern era uma reimpressão de 2024, que a própria caixa
+    depois recusa. `finishes` faz o mesmo para o acabamento.
+
+    O preço só se pergunta às impressões do PRIMEIRO dia (as que disputam o
+    palpite): uma carta com quarenta reimpressões dava quarenta consultas de
+    preço para ordenar uma lista que ele vai ler por data.
+    """
+    # O `name = ?` usa o índice `ix_cards_name`; o `lower(name) = lower(?)` faz
+    # uma varredura das ~500 mil impressões do catálogo. A página das caixas
+    # chama isto uma vez por carta em falta (~150), e pela via lenta eram 10
+    # segundos por cada regeneração do modo edição — que corre a cada clique.
+    # O caminho tolerante fica como recurso, para os nomes escritos à mão.
+    q = ("SELECT * FROM cards WHERE name = ? AND digital = 0 "
+         "AND COALESCE(set_type,'') != 'memorabilia'")
+    args: list = [name]
+    if ate:
+        q += " AND released_at <= ?"
+        args.append(ate)
+    extra, mais = _clausula_finish(finishes)
+    ordem = " ORDER BY released_at DESC, set_code"
+    rows = con.execute(q + extra + ordem, args + mais).fetchall()
+    if not rows:
+        q = q.replace("WHERE name = ?", "WHERE lower(name) = lower(?)", 1)
+        rows = con.execute(q + extra + ordem, args + mais).fetchall()
+    if not rows and extra:
+        # Nenhuma impressão neste acabamento (uma carta de 1997 numa caixa de
+        # foil). Vale mais oferecer a lista sem o filtro — a cópia fica com a
+        # nota "edição por confirmar" e a foto acerta-a — do que um selector
+        # vazio, que não diz porquê.
+        rows = con.execute(q + " ORDER BY released_at DESC, set_code",
+                           args).fetchall()
+    if not rows:
+        return []
+    dia = rows[0]["released_at"]
+    # o collector_number desempata o que o preço não desempata: sem ele, duas
+    # artes sem preço davam uma escolha que mudava com a ordem da tabela.
+    recentes = sorted((r for r in rows if r["released_at"] == dia),
+                      key=lambda r: (_preco(con, r["scryfall_id"]),
+                                     r["collector_number"] or ""))
+    resto = [r for r in rows if r["released_at"] != dia]
+    return (recentes + resto)[:limite]
+
+
 def _adivinhar(con: sqlite3.Connection, name: str,
-               collector_number: str | None) -> sqlite3.Row | None:
+               collector_number: str | None,
+               ate: str | None = None, finishes=None) -> sqlite3.Row | None:
     """A impressão mais RECENTE e, dentro dessa data, a mais BARATA.
 
     O contrário do que a função fazia antes, e de propósito: quem não sabe a
     edição de um Plains tem quase de certeza o Plains barato de um set recente,
     não o de Alpha. Continua a ser um palpite — quem o pede fica com a nota
     "edicao adivinhada" na cópia.
+
+    É, literalmente, a primeira linha do `impressoes()`: o selector de edição do
+    *"já a tenho"* mostra essa lista e pré-selecciona a primeira, e duas contas
+    diferentes deixariam o palpite do servidor a discordar do que a página
+    mostrou por omissão.
     """
-    q = "SELECT * FROM cards WHERE lower(name) = lower(?) AND digital = 0"
-    args: list = [name]
+    cands = impressoes(con, name, ate=ate, finishes=finishes, limite=999)
     if collector_number:
-        q += " AND collector_number = ?"
-        args.append(collector_number)
-    rows = con.execute(q + " ORDER BY released_at DESC", args).fetchall()
-    if not rows:
-        return None
-    recentes = [r for r in rows if r["released_at"] == rows[0]["released_at"]]
-    # o collector_number desempata o que o preço não desempata: sem ele, duas
-    # artes sem preço davam uma escolha que mudava com a ordem da tabela.
-    return min(recentes,
-               key=lambda r: (_preco(con, r["scryfall_id"]),
-                              r["collector_number"] or ""))
+        cands = [r for r in cands if r["collector_number"] == collector_number]
+    return cands[0] if cands else None
 
 
 def find_printing(
@@ -218,6 +282,8 @@ def find_printing(
     collector_number: str | None = None,
     *,
     adivinhar: bool = False,
+    ate: str | None = None,
+    finishes=None,
 ) -> sqlite3.Row | None:
     """Encontra uma impressão específica.
 
@@ -225,11 +291,18 @@ def find_printing(
     a classe). Quem quiser mesmo um palpite pede `adivinhar=True` e recebe a
     impressão mais recente e mais barata; nesse caso `collection.add_copy`
     escreve "edicao adivinhada" na `notes` da cópia.
+
+    `ate` é a regra de edições de quem pede (uma caixa de Premodern só usa
+    impressões até ao Scourge) e vale nos DOIS caminhos: um palpite que a
+    ignorasse escolhia uma edição que a caixa recusa, e uma edição escrita à mão
+    que a ignorasse era a mesma coisa com mais passos. O `finishes` guia só o
+    palpite e o selector — quando ele NOMEIA a edição está a dizer que tem
+    aquela cópia na mão, e o catálogo não é quem lhe diz o contrário.
     """
     if not set_code:
         if not adivinhar:
             raise EdicaoEmFalta(name)
-        return _adivinhar(con, name, collector_number)
+        return _adivinhar(con, name, collector_number, ate, finishes)
 
     q = ("SELECT * FROM cards WHERE lower(name) = lower(?) AND digital = 0 "
          "AND lower(set_code) = lower(?)")
@@ -237,6 +310,9 @@ def find_printing(
     if collector_number:
         q += " AND collector_number = ?"
         args.append(collector_number)
+    if ate:
+        q += " AND released_at <= ?"
+        args.append(ate)
     q += " ORDER BY released_at ASC LIMIT 1"
     return con.execute(q, args).fetchone()
 

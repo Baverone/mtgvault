@@ -42,6 +42,8 @@ def add_copy(
     acquired_price: float | None = None,
     notes: str | None = None,
     adivinhar: bool = False,
+    ate: str | None = None,
+    finishes=None,
 ) -> int:
     """Adiciona exemplares. Devolve o id da linha criada.
 
@@ -49,14 +51,19 @@ def add_copy(
     edição em branco parava aqui e saía como Alpha. `adivinhar=True` aceita o
     palpite (a impressão mais recente e mais barata) e deixa-o dito na `notes`
     da cópia, para uma auditoria futura o poder encontrar.
+
+    `ate`/`finishes` são as regras de material de quem pede — o *"já a tenho"*
+    de uma caixa de Premodern não pode adivinhar uma reimpressão de 2024.
     """
     card = scryfall.find_printing(con, name, set_code, collector_number,
-                                  adivinhar=adivinhar)
+                                  adivinhar=adivinhar, ate=ate,
+                                  finishes=finishes)
     if card is None:
         oracle = scryfall.resolve_name(con, name)
         if oracle:
             card = scryfall.find_printing(con, oracle, set_code,
-                                          collector_number, adivinhar=adivinhar)
+                                          collector_number, adivinhar=adivinhar,
+                                          ate=ate, finishes=finishes)
     if card is None:
         raise LookupError(f"Carta não encontrada no catálogo: {name!r} ({set_code})")
 
@@ -95,8 +102,136 @@ RESULT_FIELDS = ["linha", "name", "set_code", "collector_number", "quantity",
                  "sub_collection", "photo_path", "resultado", "motivo", "copy_id"]
 
 
+# ---------------------------------------------------------------------------
+# «Já a tenho»: a foto que chega DEPOIS acerta a edição, não cria cópia nova
+# ---------------------------------------------------------------------------
+# André, 2026-09-08: *"Arranja forma de eu poder dar check nas cartas das faltas,
+# para dizer que já as tenho e já coloquei no deck."* Esse check cria a cópia com
+# a edição por adivinhar (ver `mtgvault.loadout.registar_falta`) e deixa-lhe a
+# marca abaixo na `notes`. Quando a foto dessa carta chegar a `pendentes/`, a
+# importação tem de ACERTAR essa cópia — criar uma segunda era ficar com o dobro
+# das cartas na base por ele ter sido diligente, e a caixa passava a "ter" 8
+# Swords to Plowshares que na estante são 4.
+MARCA_POR_CONFIRMAR = "edicao por confirmar"
+
+
+def _nota_confirmada(notes: str | None, hoje: str) -> str:
+    """A `notes` de uma cópia cuja edição a foto acabou de confirmar.
+
+    Guarda o *"registada a partir das faltas em X"* (é a história da cópia) e
+    tira o *"edicao adivinhada"*: a auditoria de edições procura por essa marca,
+    e deixá-la numa cópia já confirmada era mandá-la investigar o que já está
+    resolvido.
+    """
+    partes = [p.strip() for p in (notes or "").split("|") if p.strip()]
+    partes = [p for p in partes
+              if MARCA_POR_CONFIRMAR not in p and "edicao adivinhada" not in p]
+    partes.append(f"edicao confirmada em {hoje} pela foto")
+    return " | ".join(partes)
+
+
+def copias_por_confirmar(con: sqlite3.Connection,
+                         name: str | None = None) -> list[sqlite3.Row]:
+    """As cópias que estão à espera de que uma foto lhes diga a edição.
+
+    O nome compara-se também pela FRENTE (`X // Y`): a lista do deck escreve a
+    frente e o catálogo guarda o nome inteiro, e sem isto uma dupla-face nunca
+    reencontrava a cópia que ela própria criou.
+    """
+    q = ("""SELECT cp.*, c.name AS card_name FROM copies cp
+              JOIN cards c ON c.scryfall_id = cp.scryfall_id
+             WHERE cp.notes LIKE ?""")
+    args: list = [f"%{MARCA_POR_CONFIRMAR}%"]
+    if name:
+        q += " AND (c.name = ? OR c.name LIKE ? || ' //%')"
+        args += [name, name]
+    return con.execute(q + " ORDER BY cp.id", args).fetchall()
+
+
+def acertar_edicao(con: sqlite3.Connection, name: str, set_code: str, *,
+                   collector_number: str | None = None, quantity: int = 1,
+                   photo_path: str | None = None) -> dict | None:
+    """Põe a edição certa nas cópias de `name` que estavam por confirmar.
+
+    Devolve `{copy_id, acertadas, restante, copias}` ou `None` quando não havia
+    nenhuma à espera (aí a importação segue o caminho normal e cria a cópia).
+
+    Quando a foto traz MENOS cópias do que as que estavam por confirmar, a linha
+    parte-se em duas: a que a foto confirmou fica com a edição e com o seu lugar
+    dentro da caixa (`copy_allocation`), e o resto continua à espera da próxima
+    foto. Actualizar a linha inteira era dar por confirmadas cópias que ninguém
+    fotografou — a mesma mentira que a marca existe para evitar.
+    """
+    pendentes = copias_por_confirmar(con, name)
+    if not pendentes:
+        return None
+    card = scryfall.find_printing(con, pendentes[0]["card_name"], set_code,
+                                  collector_number)
+    if card is None:
+        return None                        # edição que o catálogo não conhece
+    hoje = dt.date.today().isoformat()
+    resta, tocadas = max(int(quantity), 0), []
+    for p in pendentes:
+        if resta <= 0:
+            break
+        leva = min(resta, p["quantity"] or 0)
+        if leva <= 0:
+            continue
+        resta -= leva
+        nota = _nota_confirmada(p["notes"], hoje)
+        if leva >= (p["quantity"] or 0):
+            con.execute(
+                "UPDATE copies SET scryfall_id = ?, notes = ?, "
+                "photo_path = COALESCE(?, photo_path) WHERE id = ?",
+                (card["scryfall_id"], nota, photo_path, p["id"]))
+            tocadas.append(p["id"])
+            continue
+        con.execute("UPDATE copies SET quantity = quantity - ? WHERE id = ?",
+                    (leva, p["id"]))
+        cur = con.execute(
+            """INSERT INTO copies (scryfall_id, quantity, finish, language,
+                                   condition, purpose, sub_collection_id,
+                                   photo_path, acquired_at, acquired_price,
+                                   notes, reserved_deck_id, balde_origem)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (card["scryfall_id"], leva, p["finish"], p["language"],
+             p["condition"], p["purpose"], p["sub_collection_id"],
+             photo_path or p["photo_path"], p["acquired_at"],
+             p["acquired_price"], nota, p["reserved_deck_id"],
+             p["balde_origem"]))
+        novo = cur.lastrowid
+        tocadas.append(novo)
+        # O lugar dentro da caixa acompanha a cópia confirmada: era ela que lá
+        # estava. Sem isto a caixa perdia a carta que ele acabou de fotografar e
+        # mandava-o procurá-la outra vez.
+        for a in con.execute("SELECT slot, quantity, placed_at FROM "
+                             "copy_allocation WHERE copy_id = ?",
+                             (p["id"],)).fetchall():
+            passa = min(leva, a["quantity"] or 0)
+            if passa <= 0:
+                continue
+            if passa >= (a["quantity"] or 0):
+                con.execute("DELETE FROM copy_allocation WHERE copy_id = ? "
+                            "AND slot = ?", (p["id"], a["slot"]))
+            else:
+                con.execute("UPDATE copy_allocation SET quantity = quantity - ? "
+                            "WHERE copy_id = ? AND slot = ?",
+                            (passa, p["id"], a["slot"]))
+            con.execute("INSERT INTO copy_allocation (copy_id, slot, quantity, "
+                        "placed_at) VALUES (?,?,?,?)",
+                        (novo, a["slot"], passa, a["placed_at"]))
+            break                          # uma cópia vive numa caixa só
+    if not tocadas:
+        return None
+    con.commit()
+    return {"copy_id": tocadas[0], "copias": tocadas,
+            "acertadas": int(quantity) - resta, "restante": resta,
+            "set_code": card["set_code"],
+            "collector_number": card["collector_number"]}
+
+
 def import_csv(con: sqlite3.Connection, path: str | Path, *,
-               adivinhar: bool = False,
+               adivinhar: bool = False, acertar: bool = True,
                resultados: list[dict] | None = None) -> tuple[int, list[str]]:
     """Importa um CSV. Devolve (n_importadas, erros).
 
@@ -106,6 +241,10 @@ def import_csv(con: sqlite3.Connection, path: str | Path, *,
 
     Uma linha sem `set_code` **para** com `motivo: edicao em falta`; as outras
     continuam. `adivinhar=True` aceita o palpite (ver `add_copy`).
+
+    `acertar` (por omissão ligado) é a outra metade do *"já a tenho"*: se já
+    existe uma cópia daquela carta à espera de edição, esta linha ACERTA-A em
+    vez de criar uma segunda (ver `acertar_edicao`).
     """
     ok, errors = 0, []
     with open(path, newline="", encoding="utf-8-sig") as fh:
@@ -122,6 +261,28 @@ def import_csv(con: sqlite3.Connection, path: str | Path, *,
                    "photo_path": row.get("photo_path") or "",
                    "resultado": "", "motivo": "", "copy_id": ""}
             try:
+                qtd = int(row.get("quantity") or 1)
+                ajuste = (acertar_edicao(
+                    con, row["name"], row["set_code"],
+                    collector_number=row.get("collector_number") or None,
+                    quantity=qtd, photo_path=row.get("photo_path") or None)
+                    if acertar and row.get("set_code") else None)
+                if ajuste:
+                    res["copy_id"] = ajuste["copy_id"]
+                    res["resultado"] = "importada"
+                    res["motivo"] = (f'{ajuste["acertadas"]} de «já a tenho»: '
+                                     f'edição acertada')
+                    ok += 1
+                    if not ajuste["restante"]:
+                        if resultados is not None:
+                            resultados.append(res)
+                        continue
+                    # O que a foto trouxe a mais é uma cópia nova, como sempre.
+                    # A LINHA já foi contada em cima: uma linha do CSV é uma
+                    # importação, mesmo quando metade acerta uma cópia que já
+                    # existia e metade entra de novo.
+                    row["quantity"] = str(ajuste["restante"])
+                    ok -= 1
                 res["copy_id"] = add_copy(
                     con,
                     row.pop("name"),

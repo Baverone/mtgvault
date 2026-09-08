@@ -161,7 +161,13 @@ def _montar_payload(rep, s, cores):
                 "unit": b["unit"], "ja": b["ja"], "da_base": b["da_base"],
                 "tirar": [linha(m) for m in b["tirar"]]}
                for b in plano["basicas"]]
+    # «JÁ A TENHO» (André, 2026-09-08): as cópias que ele declarou ter em casa e
+    # que já estão dentro da caixa. Não há checkbox nenhuma nelas — já lá estão —
+    # mas levam o «📷 edição por confirmar» até a foto chegar.
+    confirmar = [linha(m) for m in plano["por_confirmar"]]
     return {"slot": plano["slot"], "caixa": plano["caixa"],
+            "por_confirmar": sorted(confirmar, key=por_cor),
+            "copias_por_confirmar": plano["copias_por_confirmar"],
             "tirar": tirar, "devolver": devolver, "copias": plano["copias"],
             "de_outra": de_outra, "copias_de_outra": plano["copias_de_outra"],
             "ja": plano["ja"], "por_gaveta": plano["por_gaveta"],
@@ -228,7 +234,26 @@ def _lista_texto(s):
     return main + (f"\n\nSideboard\n{side}" if side else "")
 
 
-def _caixa_payload(s, imgs, cfs, rep=None, col=None, tipos=None, cores=None):
+def _edicoes_das_faltas(con, rep):
+    """`{slot: {carta: [edições candidatas]}}` para o selector do «já a tenho».
+
+    É o que a linha de compra oferece quando ele diz que já tem a carta: as
+    impressões que cumprem a regra DAQUELA caixa, com o palpite à cabeça. As
+    regras são por caixa mas o catálogo não muda entre elas, e por isso a cache
+    é por (carta, regra) — a mesma Swords to Plowshares aparece na wantlist de
+    seis caixas de Premodern e é uma consulta só.
+    """
+    cache: dict = {}
+    out: dict[str, dict] = {}
+    for s in rep["slots"]:
+        faltas = {m["nm"] for m in s["missing"] if m["comprar"] > 0}
+        out[s["slot"]] = {nm: loadout.impressoes_da_falta(con, s, nm, cache)
+                          for nm in sorted(faltas)}
+    return out
+
+
+def _caixa_payload(s, imgs, cfs, rep=None, col=None, tipos=None, cores=None,
+                   edicoes=None):
     cartas = []
     for m in s["have"] + s["missing"]:
         cartas.append({
@@ -335,8 +360,13 @@ def _caixa_payload(s, imgs, cfs, rep=None, col=None, tipos=None, cores=None):
         # A wantlist da caixa também vem separada por bloco: a carta que falta no
         # main e no side são duas linhas, e o texto copiado leva `// Sideboard`
         # entre elas (o Cardmarket ignora a linha de comentário sem erro).
+        # `eds` são as edições que o selector do «já a tenho» oferece: é o que
+        # transforma uma linha de compra num check que grava (André, 2026-09-08:
+        # *"para dizer que já as tenho e já coloquei no deck"*). Só existe no
+        # modo edição — no site publicado não há endpoint para gravar.
         "wantlist": sorted(({"nm": m["nm"], "q": m["comprar"], "cost": m["cost"],
                              "board": m["board"],
+                             "eds": (edicoes or {}).get(m["nm"]) or [],
                              "mat": m.get("marca_compra") or ""}
                             for m in s["missing"] if m["comprar"] > 0),
                            key=lambda x: (x["board"] != "main", x["nm"])),
@@ -506,6 +536,11 @@ def payload(con, rep, editable=False, token="", ligacao=None):
     # partilha respeita as regras de quem vai buscar — o Enchantress vai buscar
     # a Swords to Plowshares PT ao UW Replenish, nunca a foil do Cloud.
     reqs = {s["nome"]: loadout.requisito_material(s) for s in rep["slots"]}
+    # As edições candidatas do «já a tenho», só no modo edição: no site
+    # publicado não há onde gravar, e um selector que não grava é ruído — a mesma
+    # razão por que os botões e a barra de montagem só lá existem. (E é uma
+    # consulta ao catálogo por carta em falta, que a página publicada não paga.)
+    eds = _edicoes_das_faltas(con, rep) if editable else {}
     return {
         "gerado": con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or "",
         "hoje": date.today().isoformat(),
@@ -520,7 +555,8 @@ def payload(con, rep, editable=False, token="", ligacao=None):
         # decide sozinha que vai escrever na base.
         "auto_registar": loadout.montar_auto_registar(),
         "anular_segundos": loadout.montar_anular_segundos(),
-        "caixas": [_caixa_payload(s, imgs, cfs, rep, col, tipos, cores)
+        "caixas": [_caixa_payload(s, imgs, cfs, rep, col, tipos, cores,
+                                  eds.get(s["slot"]))
                    for s in rep["slots"]],
         # A ORDEM por que montar as caixas (aba Plano) — permanentes por
         # prioridade, depois as que estão mais perto de fechar.
@@ -924,6 +960,23 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
    font-variant-numeric:tabular-nums}
  .sb{color:var(--muted);font-size:10.5px;font-weight:700;margin-left:5px}
  .mv .nm small{display:block;color:var(--dim);font-size:10.5px;line-height:1.3}
+ /* «JÁ A TENHO, ESTÁ NO DECK» (André, 2026-09-08): o check de uma linha de
+    compra, e o bloco das cópias que ele já declarou. O verde é o mesmo do
+    «na caixa»: são cartas que já estão na estante, ao contrário do âmbar das
+    que estão noutra caixa. */
+ .jat{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px}
+ .jat label{display:flex;align-items:center;gap:6px;color:var(--add);
+   font-size:11.5px;font-weight:600;cursor:pointer}
+ .jat input{width:17px;height:17px;flex:0 0 17px;accent-color:var(--add);
+   cursor:pointer}
+ select.jed{font:inherit;font-size:11px;max-width:210px;padding:3px 5px;
+   border-radius:6px;border:1px solid var(--line2);background:var(--card);
+   color:var(--ink2)}
+ .jnc{margin:10px 0 8px;background:#101a14;border:1px solid #23402c;
+   border-radius:var(--r);padding:9px 11px}
+ .jnc .flh{color:#6fbf8a}
+ .jnc .mv{opacity:1;text-decoration:none;border-bottom-color:#1a2b20}
+ .jnc .mv .to{color:#e2a15b}
  /* TERRENOS BÁSICOS: bloco próprio depois das cores (André, 2026-09-08) */
  .bas{margin:10px 0 8px;background:#101a14;border:1px solid #23402c;
    border-radius:var(--r);padding:9px 11px}
@@ -1370,6 +1423,7 @@ function montarHTML(c) {
   if (!M.tirar.length && !basTirar && !(M.de_outra || []).length) {
     h += `<p class="ok2">✓ Não falta tirar nada: tudo o que a alocação dá a esta `
       + `caixa já está lá dentro${M.ja ? ` (${M.ja} cópias)` : ''}.</p>`;
+    h += jaNaCaixaHTML(M);
     h += basicasHTML(M);
   } else {
     /* DOIS BLOCOS: main e sideboard (André, 2026-09-08 — "para ficar separado
@@ -1396,6 +1450,7 @@ function montarHTML(c) {
       }
       h += `</div>`;
     }
+    h += jaNaCaixaHTML(M);
     h += basicasHTML(M);
     h += deOutraHTML(M);
     /* O botão só se DESENHA no modo edição: no site publicado o endpoint não
@@ -1423,8 +1478,15 @@ function montarHTML(c) {
     + (M.basicas_comprar ? ` · + ${M.basicas_comprar} básicas (${eur(M.basicas_custo)})`
                          : '') + `</span></div>`
     + (c.wantlist.length || M.basicas_comprar
-       ? wantlistHTML(c.wantlist, c.marca, '', false, M.basicas, M.edicao)
+       ? wantlistHTML(c.wantlist, c.marca, '', false, M.basicas, M.edicao,
+                      c.slot)
        : `<p class="ok2">✓ Nada a comprar para esta caixa.</p>`)
+    + (D.editable && c.wantlist.length
+       ? `<p class="nota">Já tens alguma destas em casa? Confirma a edição e dá `
+         + `check em <b>«já a tenho, está no deck»</b>: a cópia entra na `
+         + `colecção e nesta caixa, e a linha passa para o passo 1. Se a edição `
+         + `for palpite, a próxima foto dessa carta acerta-a — não cria outra.</p>`
+       : '')
     + (c.noutra ? `<p class="nota">📦 Mais <b>${c.noutra}</b> cópias estão noutra `
         + `caixa: essas vão-se buscar, não se compram.</p>` : '')
     + (c.bloqueado ? `<p class="nota">🔒 E <b>${c.bloqueado}</b> que o limite de `
@@ -1569,10 +1631,15 @@ async function registar(c, btn) {
 /* O aviso com o ANULAR. Um `toast()` normal desaparece sozinho e não tem onde
    carregar; este fica os segundos que o config disser (`montar.anular_segundos`)
    e leva o botão que desfaz. Só DEPOIS é que a página recarrega — recarregar já
-   era deitar fora a única oportunidade de voltar atrás. */
-function avisoRegisto(c, texto, vistos) {
+   era deitar fora a única oportunidade de voltar atrás.
+
+   Serve os dois gestos que escrevem na base a partir de um toque: o registo da
+   caixa e o «já a tenho» das faltas. O que muda entre eles é o `desfazer`, e
+   mais nada — dois avisos com dois temporizadores era a segunda oportunidade de
+   um deles ficar sem botão. */
+function aviso(texto, desfazer) {
   const seg = Number(D.anular_segundos || 0);
-  if (!seg) { toast(texto); location.reload(); return; }
+  if (!seg || !desfazer) { toast(texto); location.reload(); return; }
   const d = document.createElement('div');
   d.className = 'toast aviso';
   d.innerHTML = `<span>${esc(texto)}</span>`
@@ -1580,8 +1647,12 @@ function avisoRegisto(c, texto, vistos) {
   document.body.appendChild(d);
   let fechado = false;
   const b = d.querySelector('#b-anular') || $('#b-anular');
-  if (b) b.onclick = () => { fechado = true; d.remove(); anularRegisto(c, vistos); };
+  if (b) b.onclick = () => { fechado = true; d.remove(); desfazer(); };
   setTimeout(() => { if (!fechado) { d.remove(); location.reload(); } }, seg * 1000);
+}
+
+function avisoRegisto(c, texto, vistos) {
+  aviso(texto, () => anularRegisto(c, vistos));
 }
 
 async function anularRegisto(c, vistos) {
@@ -1638,6 +1709,29 @@ function deOutraHTML(M) {
   return h + `</div>`;
 }
 
+/* ------------------------------------------- «JÁ A TENHO»: JÁ NA CAIXA ✓
+   A linha que ele deu como tendo em casa sai do passo 2 (comprar) e entra aqui:
+   está dentro da caixa, e é isso que ele disse. Não tem checkbox — não há nada
+   para tirar da gaveta —, mas leva o «📷 edição por confirmar» enquanto a edição
+   for palpite. Sem este bloco o palpite virava facto por ninguém voltar a olhar
+   para ele, que é o padrão do `event_tier` outra vez. */
+function jaNaCaixaHTML(M) {
+  const ms = M.por_confirmar || [];
+  if (!ms.length) return '';
+  let h = `<div class="jnc"><div class="flh">✓ Já na caixa (disseste que tinhas)`
+    + `<span class="dim">${M.copias_por_confirmar} cópias · edição por `
+    + `confirmar</span></div><div class="mvs">`;
+  for (const m of ms) {
+    h += `<div class="mv feito"><span class="q">${m.q}×</span>`
+      + `<span class="nm">${esc(m.nm)}<small>${esc(m.set)}`
+      + `${m.foil ? ' ✨' : ''} ${esc(m.lang)}</small></span>`
+      + `<span class="to">📷 edição por confirmar</span></div>`;
+  }
+  return h + `</div><p class="nota">A próxima foto destas cartas em `
+    + `<code>pendentes\\</code> acerta a edição desta mesma cópia — não cria `
+    + `outra.</p></div>`;
+}
+
 /* ------------------------------------------------------- TERRENOS BÁSICOS
    "Faltou marcares, para completar o deck, os terrenos básicos necessários!"
    (André, 2026-09-08). Vem DEPOIS do bloco de cores porque é outra gaveta: as
@@ -1689,7 +1783,73 @@ function basicasTexto(bs, edicao) {
   return linhas.join('\n');
 }
 
-function wantlistHTML(itens, marca, id, detalhe, basicas, edicao) {
+/* ------------------------------------------- «JÁ A TENHO, ESTÁ NO DECK»
+   André, 2026-09-08, à letra: *"Arranja forma de eu poder dar check nas cartas
+   das faltas, para dizer que já as tenho e já coloquei no deck."* Ele está à
+   frente da estante com o passo 2 aberto e metade da lista de compras é coisa
+   que ele já tem em casa, fora do que o vault catalogou.
+
+   Um check grava DUAS coisas: a cópia (na colecção) e o lugar dela (nesta
+   caixa). A EDIÇÃO é a parte que ele não sabe de cabeça — o selector traz as
+   impressões que a caixa aceita, com o palpite escolhido, e a cópia fica
+   marcada «edição por confirmar» até a foto chegar. Só existe no modo edição:
+   no site publicado não há endpoint, e um check que não grava mente. */
+function jaTenhoHTML(m, slot) {
+  const eds = m.eds || [];
+  /* Sem uma única edição no catálogo não há cópia para criar (é o caso do
+     «Ademi of the Silkchutes» na base de 2026-09-08: a carta não está lá). Um
+     check que só pode falhar é pior do que check nenhum — e a linha continua a
+     ser uma compra, que é a verdade. */
+  if (!D.editable || !slot || !eds.length) return '';
+  const opts = eds.map((e, i) =>
+    `<option value="${esc(e.set)}|${esc(e.num)}"${i ? '' : ' selected'}>`
+    + `${esc((e.set || '').toUpperCase())} · ${esc(e.set_nome)}`
+    + `${e.num ? ' #' + esc(e.num) : ''}</option>`).join('');
+  return `<span class="jat">`
+    + (opts ? `<select class="jed" aria-label="Edição de ${esc(m.nm)}">`
+              + `${opts}</select>` : '')
+    + `<label><input type="checkbox" data-falta="1" data-slot="${esc(slot)}"`
+    + ` data-nm="${esc(m.nm)}" data-board="${esc(m.board || '')}"`
+    + ` data-q="${m.q}"> já a tenho, está no deck</label></span>`;
+}
+
+async function faltaCheck(cb) {
+  if (!cb.checked) return;
+  const sel = (cb.closest('.jat') || document).querySelector('select.jed');
+  const par = ((sel && sel.value) || '|').split('|');
+  cb.disabled = true;
+  try {
+    const r = await gravar('api/caixa', {
+      act: 'falta', slot: cb.dataset.slot, nm: cb.dataset.nm,
+      board: cb.dataset.board, q: Number(cb.dataset.q || 1),
+      set: par[0] || '', num: par[1] || '' });
+    if (!r.ok && r.status !== 403 && r.status !== 409) {
+      throw new Error('HTTP ' + r.status);
+    }
+    const j = await r.json();
+    if (j.erro) throw new Error(j.erro);
+    /* O «anular» só existe enquanto o servidor o aceita (a mesma janela do
+       registo). Passada ela, a cópia é uma cópia normal — e o que a tira
+       passa a ser o «vendida», que é o caminho com rasto. */
+    aviso(j.msg || 'Registada.',
+          j.copy_id ? () => anularFalta(j.copy_id) : null);
+  } catch (e) {
+    cb.checked = false; cb.disabled = false;
+    toast('Não deu: ' + e.message);
+  }
+}
+
+async function anularFalta(copyId) {
+  try {
+    const r = await gravar('api/caixa', { act: 'falta-anular', copy_id: copyId });
+    const j = await r.json();
+    if (j.erro) throw new Error(j.erro);
+    toast(j.msg || 'Desfeito.');
+  } catch (e) { toast('Não deu anular: ' + e.message); }
+  location.reload();
+}
+
+function wantlistHTML(itens, marca, id, detalhe, basicas, edicao, slot) {
   if (!itens.length && !(basicas || []).length) return '';
   const li = itens.map(m => {
     const cara = detalhe && (m.unit || 0) >= CARA;
@@ -1705,6 +1865,7 @@ function wantlistHTML(itens, marca, id, detalhe, basicas, edicao) {
       + (m.partilhada ? `<span class="part">🔁 partilhada por `
         + `${m.partilhada} caixas</span>` : '')
       + (sub ? `<small>${esc(sub)}</small>` : '')
+      + jaTenhoHTML(m, slot)
       + `</span><span class="pz">${eur(m.cost)}</span></li>`;
   }).join('');
   /* DOIS formatos, porque servem dois sítios (André, 2026-09-08):
@@ -2695,6 +2856,12 @@ function ligar() {
       renderBarra();
       if (cb.checked) autoRegistar();
     };
+  }
+  /* «Já a tenho, está no deck»: o check das faltas. É um `change` e não um
+     clique num botão porque é o que ele faz com a lista à frente — marca e
+     segue. Grava logo (com o «anular» de alguns segundos ao lado). */
+  for (const cb of document.querySelectorAll('[data-falta]')) {
+    cb.onchange = () => faltaCheck(cb);
   }
   const cc = $('#compra-caixa');
   if (cc) cc.onchange = () => { P.compra = cc.value; save(); render(); };
