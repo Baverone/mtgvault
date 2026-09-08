@@ -760,15 +760,27 @@ escrever a mesma decisão em dois sítios.
   `card_price`: MIN(trend) sobre as impressões do mesmo nome, na mesma família de
   acabamento, na mesma fonte). Com uma conta diferente em cada ponta, a
   percentagem media a diferença entre as duas contas e não a do mercado.
+- **A PODA DIÁRIA TEM DE GUARDAR A RL O TEMPO DA JANELA** — e não guardava. O
+  `daily._prune_prices(con, 30)` apagava **tudo** o que tivesse mais de 30 dias,
+  todos os dias: com a janela a 90 **nunca** haveria um preço de há três meses
+  para comparar. A regra respondia *"não sei"* a tudo, para sempre, a lista de RL
+  ficava vazia e **nenhum passo dava erro** — o padrão do `event_tier`, desta vez
+  sobre a decisão de venda que vale mais dinheiro. Agora a poda guarda
+  `rl_janela_dias + rl_tolerancia_dias + 7` dias **só para as cartas da Reserved
+  List** e continua a podar o resto aos 30. Cabe bem: medido em 2026-09-08, a RL
+  são **2,5 %** das linhas (6 758 em 28 dias, ~240/dia) — 100 dias delas são
+  ~24 000 linhas contra as ~984 000 de guardar tudo. Tem teste
+  (`test_venda_rl.caso_a_poda_diaria_nao_pode_matar_a_regra`).
 - **Consequência a assumir hoje, e é grande: o `price_history` do vault começa em
-  2026-08-10** — 29 dias. Com a janela a 90, **nenhuma RL passa o teste**: as 101
-  cópias / **8 106,54 €** de Reserved List saem todas por `rl_sem_historico` e a
-  lista de RL fica **vazia** até 2026-11-08 (90 dias depois do primeiro preço). É
-  a resposta certa, não uma falha — mas é uma lista inteira que desaparece, e
-  está dita na página, no CLI e no `_venda` do config. Para decidir já com o
-  histórico que existe, baixa-se o `rl_janela_dias`. Medido com `25`: **21 cópias
-  / 3 420,63 € seguram-se** (Mox Diamond +6,2 % = 1 670,94 €, Gilded Drake +7,7 %,
-  Serra's Sanctum +10,2 %) e 80 / 4 685,91 € continuam a vender-se.
+  2026-08-10** — 29 dias, porque até agora a poda o cortava aos 30. Com a janela
+  a 90, **nenhuma RL passa o teste**: as 101 cópias / **8 106,54 €** de Reserved
+  List saem todas por `rl_sem_historico` e a lista de RL fica **vazia até
+  2026-11-08** (90 dias depois do primeiro preço; com a poda corrigida, a partir
+  daí enche). É a resposta certa, não uma falha — mas é uma lista inteira que
+  desaparece, e está dita na página, no CLI e no `_venda` do config. Para decidir
+  já com o histórico que existe, baixa-se o `rl_janela_dias`. Medido com `25`:
+  **21 cópias / 3 420,63 € seguram-se** (Mox Diamond +6,2 % = 1 670,94 €, Gilded
+  Drake +7,7 %, Serra's Sanctum +10,2 %) e 80 / 4 685,91 € continuam a vender-se.
 - A linha retida guarda o motivo por que ia à venda em **`porque_venderia`**, e a
   página e o CLI dizem-no (*"ia por: excedente (mais de 4)"*): *"subiu 7 %"* é
   uma resposta, e sem a pergunta ao lado não se percebe o que a regra impediu.

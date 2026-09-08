@@ -296,6 +296,50 @@ def caso_nada_sai_da_base_e_nada_se_conta_duas_vezes():
     print("cada cópia numa saída só, e o relatório não tira nada da base")
 
 
+def caso_a_poda_diaria_nao_pode_matar_a_regra():
+    """O `daily._prune_prices` guarda a Reserved List o tempo que a regra precisa.
+
+    A poda apagava TUDO o que tivesse mais de 30 dias, todos os dias. Com a
+    janela a 90, nunca haveria um preço de há três meses para comparar: a regra
+    respondia *"não sei"* a tudo, **para sempre**, a lista de RL ficava vazia e
+    nenhum passo do `daily.py` dava erro. É o padrão do `event_tier` — um passo
+    que corre sem erro e produz uma página vazia —, desta vez sobre a decisão da
+    venda que vale mais dinheiro.
+
+    O que se guarda mais tempo é só a RL, e é por isso que isto cabe: na base a
+    sério a RL são 2,5 % das linhas do `price_history`.
+    """
+    import daily
+    cfg(rl_janela_dias=90, rl_tolerancia_dias=10)
+    con = base()
+    # A mesma cotação de há 95 dias — dentro do que a janela precisa (90 + 10 de
+    # tolerância + 7 de folga = 107) e fora dos 30 da poda geral — para uma RL e
+    # para uma carta normal.
+    for nm in ("Gilded Drake", "Sol Ring"):
+        cota(con, nm, dia(95), 10.0)
+        cota(con, nm, dia(5), 11.0)
+    detalhe = daily._prune_prices(con, 30)
+    ficaram = {r["nm"]: r["n"] for r in con.execute(
+        """SELECT c.name nm, COUNT(*) n FROM price_history h
+             JOIN catalog.cards c ON c.scryfall_id = h.scryfall_id
+            WHERE h.date < date('now', '-30 days') GROUP BY c.name""")}
+    assert ficaram == {"Gilded Drake": 1}, ficaram
+    assert "Reserved List guarda-se 107d" in detalhe, detalhe
+    # E o resto continua a ser podado aos 30 dias, como sempre.
+    assert con.execute("SELECT COUNT(*) n FROM price_history").fetchone()["n"] == 3
+    print("a poda diária guarda a RL 107 dias e o resto 30 — sem isto a regra "
+          "nunca teria um preço de há 3 meses")
+
+    # E a JANELA do config é que manda: com 20 dias, guardam-se 37 e a mesma
+    # cotação de há 95 dias já não sobrevive — nem sendo Reserved List.
+    cfg(rl_janela_dias=20)
+    con2 = base()
+    cota(con2, "Gilded Drake", dia(95), 10.0)
+    assert "guarda-se 37d" in daily._prune_prices(con2, 30), "a folga acompanha"
+    assert con2.execute("SELECT COUNT(*) n FROM price_history").fetchone()["n"] == 0
+    print("e a janela do config é que manda quanto tempo se guarda")
+
+
 def _abas_desenhadas(pagina):
     """`{aba: HTML}` — o que o browser mostraria. `None` sem `node`."""
     import shutil
@@ -360,6 +404,7 @@ def run():
                caso_o_preco_de_ha_90_dias_e_a_ultima_cotacao_ate_esse_dia,
                caso_os_dois_numeros_sao_do_config,
                caso_nada_sai_da_base_e_nada_se_conta_duas_vezes,
+               caso_a_poda_diaria_nao_pode_matar_a_regra,
                caso_a_pagina_separa_o_que_se_vende_do_que_se_segura):
         fn()
     print("\nTUDO OK")
