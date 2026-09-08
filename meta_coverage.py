@@ -404,9 +404,9 @@ def _type_boost(con, name, cache):
     return 1.0
 
 
-def _distinctive_name(con, aid, df, tcache):
-    """Nome do deck = as cartas do núcleo mais distintivas (raras noutros decks),
-    com preferência pelo payoff. Melhor que a label crua do clustering."""
+def _distinctivas(con, aid, df, tcache):
+    """As cartas do núcleo mais distintivas (raras noutros decks), com
+    preferência pelo payoff — da mais para a menos."""
     best = []
     for r in _core_rows(con, aid, "main"):
         n = r["card_name"]
@@ -415,8 +415,75 @@ def _distinctive_name(con, aid, df, tcache):
         score = r["inclusion_rate"] / df.get(n, 1) * _type_boost(con, n, tcache)
         best.append((score, r["inclusion_rate"], n))
     best.sort(reverse=True)
-    top = [n for _, _, n in best[:2]]
+    return [n for _, _, n in best]
+
+
+def _distinctive_name(con, aid, df, tcache):
+    """O PAR de cartas distintivas — `Doc Aurlock / Appa`.
+
+    Desde 2026-09-07 (19:00) já não é o nome do deck: é o **subtítulo**. O André,
+    a olhar para o `metagame.html`: *"os nomes dos arquétipos por pares de cartas
+    são fracos"*. Continua a ser a identificação mais precisa que temos (é ela
+    que distingue duas listas parecidas), por isso fica à vista por baixo do
+    nome, em vez de desaparecer.
+    """
+    top = _distinctivas(con, aid, df, tcache)[:2]
     return " / ".join(top) if top else f"#{aid}"
+
+
+# As cores de um deck em nome de gente. São os nomes reais dos pares e trios em
+# Magic (usam-se em português tal e qual), e é assim que um deck se nomeia quando
+# não tem nome próprio: cor + carta-chave, "Boros Doc Aurlock".
+GUILDAS = {
+    "W": "Mono-Branco", "U": "Mono-Azul", "B": "Mono-Preto",
+    "R": "Mono-Vermelho", "G": "Mono-Verde",
+    "WU": "Azorius", "WB": "Orzhov", "WR": "Boros", "WG": "Selesnya",
+    "UB": "Dimir", "UR": "Izzet", "UG": "Simic",
+    "BR": "Rakdos", "BG": "Golgari", "RG": "Gruul",
+    "WUB": "Esper", "WUR": "Jeskai", "WUG": "Bant", "WBR": "Mardu",
+    "WBG": "Abzan", "WRG": "Naya", "UBR": "Grixis", "UBG": "Sultai",
+    "URG": "Temur", "BRG": "Jund",
+}
+_ORDEM_CORES = "WUBRG"
+# Quantas cartas do núcleo têm de levar uma cor para ela contar. Com 1 bastava,
+# um splash de uma carta punha o deck a chamar-se "Jeskai" em vez de "Izzet".
+MIN_CARTAS_POR_COR = 2
+
+
+def _cores_do_nucleo(con, aid) -> str:
+    """As cores do arquétipo em nome de gente ("Boros", "Mono-Azul", "4 cores").
+
+    Sai da identidade de cor das cartas do núcleo — terras incluídas, que é onde
+    a cor de um deck se vê melhor. Uma cor que só aparece numa carta não conta
+    (ver `MIN_CARTAS_POR_COR`).
+    """
+    nomes = [r["card_name"] for r in _core_rows(con, aid, "main")
+             if r["card_name"] not in BASICS]
+    if not nomes:
+        return ""
+    conta = dict.fromkeys(_ORDEM_CORES, 0)
+    for i in range(0, len(nomes), 300):
+        ch = nomes[i:i + 300]
+        ph = ",".join("?" for _ in ch)
+        for r in con.execute(
+                f"""SELECT name, MAX(color_identity) ci FROM cards
+                     WHERE name IN ({ph}) GROUP BY name""", ch):
+            for c in set(r["ci"] or ""):
+                if c in conta:
+                    conta[c] += 1
+    cores = "".join(c for c in _ORDEM_CORES if conta[c] >= MIN_CARTAS_POR_COR)
+    if not cores:
+        return "Incolor"
+    return GUILDAS.get(cores) or f"{len(cores)} cores"
+
+
+def _carta_chave(con, aid, df, tcache) -> str:
+    """A carta que dá nome ao deck, curta: `Doc Aurlock, Grizzled Genius` →
+    `Doc Aurlock`. O que vem depois da vírgula é o título, não o nome."""
+    top = _distinctivas(con, aid, df, tcache)
+    if not top:
+        return ""
+    return top[0].split(" // ")[0].split(",")[0].strip()
 
 
 def _known_name(con, aid):
@@ -429,7 +496,23 @@ def _known_name(con, aid):
 
 
 def _name_for(con, aid, df, tcache):
-    return _known_name(con, aid) or _distinctive_name(con, aid, df, tcache)
+    """O nome do deck: o próprio, se o conhecemos; senão **cores + carta-chave**.
+
+    André, 2026-09-07 (19:00): os nomes por pares de cartas (*"Doc Aurlock /
+    Appa"*) são fracos. A fonte não nos dá o nome do arquétipo — o mtgtop8 tem
+    `.dec` de cartas e não de rótulos, e não se inventa um que não veio de lado
+    nenhum — por isso o que se gera é um nome legível e verdadeiro:
+    `Boros Doc Aurlock`. O par continua à vista, como subtítulo
+    (`_distinctive_name`).
+    """
+    conhecido = _known_name(con, aid)
+    if conhecido:
+        return conhecido
+    chave = _carta_chave(con, aid, df, tcache)
+    if not chave:
+        return f"#{aid}"
+    cores = _cores_do_nucleo(con, aid)
+    return f"{cores} {chave}".strip()
 
 
 def _core_rows(con, aid, board="main"):

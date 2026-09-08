@@ -32,6 +32,43 @@ EXTRA = [("cobertura.html", "📊", "Cobertura"),
          ("colecao.html", "🖼️", "Galeria")]
 
 
+def img_map(con, names, da_coleccao: bool = True) -> dict[str, str]:
+    """`nome de carta -> scryfall_id` de uma impressão com arte.
+
+    Vive aqui pela mesma razão que o menu: estava copiada à letra no
+    `deckboxes.py` e no `metagame.py`, e quase à letra no `meusdecks.py` — três
+    sítios para corrigir de cada vez que um caso novo de dupla face aparecia.
+
+    `da_coleccao` prefere a impressão que ele TEM (é a carta que vai mesmo estar
+    na caixa). O `meusdecks` não a usa, e é de propósito: ali a lista é a do deck
+    seguido, não a da coleção.
+
+    As de dupla face casam-se pela FRENTE (o catálogo guarda `frente // verso`),
+    senão ficavam sem imagem — um quadrado preto na grelha.
+    """
+    out: dict[str, str] = {}
+    if da_coleccao:
+        for r in con.execute("""SELECT c.name nm, cp.scryfall_id sid FROM copies cp
+                                  JOIN cards c ON c.scryfall_id = cp.scryfall_id
+                                 WHERE cp.purpose = 'player'"""):
+            out.setdefault(r["nm"].split(" // ")[0], r["sid"])
+    falta = [n for n in names if n not in out]
+    for i in range(0, len(falta), 300):
+        ch = falta[i:i + 300]
+        ph = ",".join("?" for _ in ch)
+        for r in con.execute(f"""SELECT name nm, scryfall_id sid FROM cards
+                                  WHERE name IN ({ph}) AND digital = 0
+                                  GROUP BY name""", ch):
+            out.setdefault(r["nm"].split(" // ")[0], r["sid"])
+    for n in [x for x in falta if x not in out]:
+        r = con.execute("SELECT scryfall_id sid FROM catalog.cards "
+                        "WHERE (name = ? OR name LIKE ?) AND digital = 0 LIMIT 1",
+                        (n, n + " // %")).fetchone()
+        if r:
+            out[n] = r["sid"]
+    return out
+
+
 def nav(atual: str = "", extra: bool = False) -> str:
     """O menu, com a página `atual` marcada. `extra` acrescenta as secundárias."""
     itens = MENU + (EXTRA if extra else [])
@@ -55,9 +92,16 @@ META = ('<meta charset="utf-8">\n'
 #   --ob          o azul do "está noutra caixa";
 #   --pt          o azul da etiqueta de Português;
 #   --rem         o vermelho de "saiu da lista" do core_decks.
+#
+# O `--dim` era `#5a6472`: **2,88:1** sobre o `--card`, abaixo do mínimo do WCAG
+# AA (4,5:1) e abaixo até do de texto grande (3:1). É a cor do texto pequeno que
+# explica as coisas — a razão de uma venda, o cabeçalho de uma tabela, o "de que
+# gaveta vem" — e no telemóvel, de dia, não se lia. `#7a8494` dá 4,57:1 sobre o
+# `--card` e 5,03:1 sobre o `--bg`, e continua um degrau abaixo do `--muted`
+# (5,82:1), que é para o que serve.
 TEMA = (
     " :root{--bg:#0d1017;--card:#161b24;--card2:#12171f;--ink:#eef2f7;"
-    "--ink2:#c3cdd9;--muted:#8b97a6;--dim:#5a6472;--line:#242c38;--line2:#37445a;"
+    "--ink2:#c3cdd9;--muted:#8b97a6;--dim:#7a8494;--line:#242c38;--line2:#37445a;"
     "--accent:#5b8cff;--gold:#e0b64b;--add:#4ac585;--warn:#e0704b;--ob:#7fa8ff;"
     "--pt:#5b8cff;--rem:#ff6b6b}\n"
     " html{-webkit-text-size-adjust:100%}"

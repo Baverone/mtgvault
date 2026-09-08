@@ -84,28 +84,7 @@ def _art(sid):
     return f"https://cards.scryfall.io/small/front/{sid[0]}/{sid[1]}/{sid}.jpg" if sid else ""
 
 
-def _img_map(con, names):
-    """nome -> scryfall_id. Prefere-se a impressão que ele TEM: é a carta que vai
-    mesmo estar na caixa."""
-    out = {}
-    for r in con.execute("""SELECT c.name nm, cp.scryfall_id sid FROM copies cp
-                              JOIN cards c ON c.scryfall_id = cp.scryfall_id
-                             WHERE cp.purpose = 'player'"""):
-        out.setdefault(r["nm"].split(" // ")[0], r["sid"])
-    falta = [n for n in names if n not in out]
-    for i in range(0, len(falta), 300):
-        ch = falta[i:i + 300]
-        ph = ",".join("?" for _ in ch)
-        for r in con.execute(f"""SELECT name nm, scryfall_id sid FROM cards
-                                  WHERE name IN ({ph}) AND digital = 0 GROUP BY name""", ch):
-            out.setdefault(r["nm"].split(" // ")[0], r["sid"])
-    for n in [x for x in falta if x not in out]:      # DFCs: casa pela frente
-        r = con.execute("SELECT scryfall_id sid FROM catalog.cards "
-                        "WHERE name LIKE ? AND digital = 0 LIMIT 1",
-                        (n + " // %",)).fetchone()
-        if r:
-            out[n] = r["sid"]
-    return out
+_img_map = paginas.img_map      # era uma cópia à letra da do `deckboxes.py`
 
 
 def _eur(v):
@@ -205,7 +184,28 @@ def _wantlist(linhas, marca=""):
             f'<textarea class="cmk" readonly>{html.escape(txt)}</textarea></div>')
 
 
-def _deck_html(d, imgs):
+def _escolher_html(d, editable):
+    """O botão *"vou montar este"* — só no MODO EDIÇÃO (`python webapp.py`).
+
+    No site publicado os endpoints de escrita não existem, e um botão que não faz
+    nada é pior do que não haver botão nenhum (é a mesma regra do `deckboxes`).
+    Lá, o que se vê é o crachá *"✔ escolhido em <data>"*.
+    """
+    if not editable or not d.get("slot"):
+        return ""
+    if d.get("escolhido"):
+        return (f'<div class="acts"><button class="btn" data-act="desmarcar" '
+                f'data-slot="{html.escape(d["slot"])}" '
+                f'aria-label="Deixar de montar {html.escape(d["nome"])}">'
+                f'✕ Já não vou montar este</button></div>')
+    return (f'<div class="acts"><button class="btn pri" data-act="escolher" '
+            f'data-slot="{html.escape(d["slot"])}" '
+            f'data-aid="{d["archetype_id"]}" '
+            f'aria-label="Vou montar {html.escape(d["nome"])} nesta caixa">'
+            f'✔ Vou montar este</button></div>')
+
+
+def _deck_html(d, imgs, editable=False):
     r = _resumo(d["linhas"])
     badges = "".join(f'<span class="bdg {c}">{t}</span>' for c, t in d.get("badges", []))
     # A percentagem do cabeçalho é a de QUANTO ELE TEM — livre mais o que está
@@ -225,6 +225,7 @@ def _deck_html(d, imgs):
         f'<span>fechar por <b>{_eur(r["custo"])}</b></span></div>'
         f'<div class="cards">{_grid(d["linhas"], imgs)}</div>'
         f'{_onde_html(d["linhas"])}{_wantlist(d["linhas"], d.get("marca", ""))}'
+        f'{_escolher_html(d, editable)}'
         f'</details>')
 
 
@@ -253,23 +254,80 @@ def _decks_de_slots(slots, fmt, so_refs=None):
     return out
 
 
-def _decks_do_topo(con, fmt, res, n):
-    """Os N arquétipos que ele está mais perto de concluir, com lista de consenso."""
+def formatos_top() -> list[str]:
+    """Os formatos cuja secção é um TOP-N — os que têm "vou montar este"."""
+    return [f for f, _t, modo in SECOES if modo == "top"]
+
+
+def slot_do_formato(slots, fmt) -> dict | None:
+    """A caixa do loadout deste formato (a primeira pela ordem da alocação).
+
+    É nela que o botão *"vou montar este"* escreve. Um formato sem caixa não tem
+    botão: escolher um deck para uma caixa que não existe não quer dizer nada.
+    """
+    return next((s for s in slots if s.get("formato") == fmt), None)
+
+
+def candidatos(con, fmt, res, n=None):
+    """Os N arquétipos que ele está mais perto de concluir, com lista de consenso.
+
+    É a resposta a *"que deck é que eu meto nesta caixa?"*, e é a mesma lista nos
+    dois sítios onde ele decide: a secção do formato no `metagame.html` e a aba
+    da caixa no `deckboxes.html`. Uma segunda cópia deste cálculo era o padrão do
+    `event_tier` outra vez — duas páginas a dizerem números diferentes.
+
+    Cada entrada traz o `nome` legível (cores + carta-chave, ou o nome próprio),
+    o `subtitulo` com o par de cartas distintivas, e se é **o escolhido** desta
+    caixa (`escolhido` / `escolhido_em`).
+    """
+    n = n if n is not None else top_n()
+    slot = slot_do_formato(res["slots"], fmt)
+    escolhido = (slot or {}).get("archetype_id")
     df = mc._format_df(con, fmt)
     tcache = {}
     out = []
     for r in loadout.foil_report(con, fmt, top=n, min_lists=MIN_LISTS, res=res):
-        nome = mc._name_for(con, r["archetype_id"], df, tcache)
-        # Sem `html.escape` aqui: quem escapa é o `_deck_html`, e escapar duas
+        # Sem `html.escape` aqui: quem escapa é quem desenha, e escapar duas
         # vezes punha "It&#x27;ll Quench Ya!" à vista na página.
-        out.append({"nome": nome, "linhas": r["linhas"], "marca": "FOIL",
-                    "sub": f'{r["n_lists"]} listas que contam · {r["label"][:70]}',
-                    "badges": [("fo", "✨ só foil"), ("", "🧩 lista de consenso")]})
+        nome = mc._name_for(con, r["archetype_id"], df, tcache)
+        par = mc._distinctive_name(con, r["archetype_id"], df, tcache)
+        eu = escolhido is not None and escolhido in r["ids"]
+        out.append({
+            "nome": nome, "subtitulo": par, "linhas": r["linhas"], "marca": "FOIL",
+            "archetype_id": r["archetype_id"], "n_lists": r["n_lists"],
+            "formato": fmt, "slot": (slot or {}).get("slot"),
+            "escolhido": eu,
+            "escolhido_em": (slot or {}).get("escolhido_em") if eu else None,
+            "sub": f'{r["n_lists"]} listas que contam · {par}',
+            "badges": [("fo", "✨ só foil"), ("", "🧩 lista de consenso")]})
     return out
 
 
-def build(con, out_path=None):
+def _decks_do_topo(con, fmt, res, n):
+    """O top-N do formato, já com os crachás de escolhido/alternativa."""
+    decks = candidatos(con, fmt, res, n)
+    for d in decks:
+        if d["escolhido"]:
+            d["badges"] = [("ok", f'✔ escolhido em {d["escolhido_em"] or "?"}')
+                           ] + d["badges"]
+        elif any(x["escolhido"] for x in decks):
+            d["badges"] = [("", "alternativa")] + d["badges"]
+    return decks
+
+
+def build(con, out_path=None, editable=False):
     out = Path(out_path) if out_path else (ROOT / "metagame.html")
+    out.write_text(html_page(con, editable=editable), encoding="utf-8")
+    return out
+
+
+def html_page(con, editable=False) -> str:
+    """A página como texto — é o que o `webapp.py` serve sem escrever no disco.
+
+    Com `editable`, cada deck do top-N ganha o botão *"vou montar este"*: é onde
+    ele decide que deck vai para a caixa que está por escolher (André,
+    2026-09-07, 19:00). O ficheiro publicado é o mesmo, sem os botões.
+    """
     n = top_n()
     res = loadout.allocate(con)
     alvos = _alvos_premodern()
@@ -278,9 +336,20 @@ def build(con, out_path=None):
     for fmt, titulo, modo in SECOES:
         if modo == "top":
             decks = _decks_do_topo(con, fmt, res, n)
+            escolhido = next((d for d in decks if d["escolhido"]), None)
+            caixa = slot_do_formato(res["slots"], fmt)
             lead = (f'Os <b>{n}</b> arquétipos deste formato que estás mais perto de '
-                    f'concluir, com a lista de consenso de cada um. É a caixa que '
-                    f'ainda está por escolher no loadout.')
+                    f'concluir, com a lista de consenso de cada um. É a pergunta '
+                    f'"que deck meto na caixa <b>{html.escape((caixa or {}).get("nome") or fmt)}</b>?".')
+            if escolhido:
+                lead += (f' Escolheste o <b>{html.escape(escolhido["nome"])}</b> em '
+                         f'{escolhido["escolhido_em"] or "?"} — os outros ficam como '
+                         f'alternativas.')
+            elif editable:
+                lead += ' Carrega em <b>✔ vou montar este</b> no que escolheres.'
+            else:
+                lead += (' Para escolheres, corre <code>python webapp.py</code> no PC '
+                         '(porto 8771) e carrega em <b>vou montar este</b>.')
         elif modo == "caixas":
             decks = _decks_de_slots(res["slots"], fmt)
             lead = 'O deck já escolhido para a caixa deste formato, e as suas variantes.'
@@ -299,7 +368,7 @@ def build(con, out_path=None):
         subnav += f'<a href="#f-{fmt}">{html.escape(titulo)} {len(decks)}</a>'
         if decks:
             decks[0]["aberto"] = True     # o primeiro de cada formato já aberto
-            corpo = "".join(_deck_html(d, imgs) for d in decks)
+            corpo = "".join(_deck_html(d, imgs, editable) for d in decks)
         else:
             corpo = ('<p class="vazio">Sem listas que contem para este formato — '
                      'ou sem caixa escolhida. Não invento uma lista para encher a '
@@ -309,12 +378,12 @@ def build(con, out_path=None):
                  f'<p class="lead">{lead}</p>{corpo}</section>')
 
     today = con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or ""
-    out.write_text(_TMPL.replace("%META%", paginas.META)
-                   .replace("%TEMA%", paginas.TEMA)
-                   .replace("%TABS%", TABS).replace("%SUBNAV%", subnav)
-                   .replace("%SECS%", secs).replace("%N%", str(n))
-                   .replace("%TODAY%", today), encoding="utf-8")
-    return out
+    return (_TMPL.replace("%META%", paginas.META)
+            .replace("%TEMA%", paginas.TEMA)
+            .replace("%TABS%", TABS).replace("%SUBNAV%", subnav)
+            .replace("%SECS%", secs).replace("%N%", str(n))
+            .replace("%EDIT%", "1" if editable else "")
+            .replace("%TODAY%", today))
 
 
 _TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
@@ -356,6 +425,11 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
  .faltas ul.fl{list-style:none;margin:6px 0 0;padding:0;font-size:12px;column-width:250px;column-gap:22px} .faltas ul.fl li{display:flex;gap:6px;padding:1.5px 0;break-inside:avoid} .faltas ul.fl b{color:var(--gold);font-variant-numeric:tabular-nums}
  .faltas ul.fl .pz{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums}
  .cpbtn{font-size:11px;font-weight:700;padding:3px 11px;border-radius:20px;border:1px solid var(--line);background:#1a2230;color:var(--muted);cursor:pointer} .cpbtn:hover{border-color:var(--accent);color:var(--ink)} .cpbtn.done{background:#123020;border-color:#2f6a45;color:var(--add)}
+ .acts{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px;border-top:1px solid var(--line);padding-top:11px}
+ .btn{font:inherit;font-size:12px;font-weight:700;padding:7px 13px;border-radius:20px;border:1px solid var(--line);background:#1a2230;color:var(--ink2);cursor:pointer;transition:.12s}
+ .btn:hover{border-color:var(--accent);color:#fff} .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+ .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+ .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;z-index:9;background:#1b2c4d;border:1px solid var(--accent);color:#fff;font-size:13px;padding:10px 16px;border-radius:22px;box-shadow:0 8px 26px #0009}
  .cmk{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
  footer{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
@@ -387,6 +461,30 @@ function cp(btn){
     navigator.clipboard.writeText(t.value).then(done).catch(()=>{t.select();document.execCommand('copy');done();});
   }else{t.select();try{document.execCommand('copy');done();}catch(e){}}
 }
+/* "Vou montar este" — so existe no MODO EDICAO (webapp.py, porto 8771). No site
+   publicado o %EDIT% vem vazio, os botoes nem se desenham e este bloco nao liga
+   nada: um botao que nao faz nada e pior do que nao haver botao. */
+(function(){
+  if(!"%EDIT%") return;
+  const toast=t=>{const d=document.createElement('div');d.className='toast';
+    d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),3200);};
+  for(const b of document.querySelectorAll('[data-act]')){
+    b.onclick=async()=>{
+      b.disabled=true;
+      try{
+        const r=await fetch('api/escolher',{method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({act:b.dataset.act,slot:b.dataset.slot,
+                               aid:b.dataset.aid?Number(b.dataset.aid):null})});
+        if(!r.ok) throw new Error('HTTP '+r.status);
+        const j=await r.json();
+        if(j.erro) throw new Error(j.erro);
+        toast(j.msg||'Feito.');
+        location.reload();
+      }catch(e){b.disabled=false;toast('Nao deu: '+e.message);}
+    };
+  }
+})();
 </script>
 </body></html>"""
 

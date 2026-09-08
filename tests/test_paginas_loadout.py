@@ -52,11 +52,15 @@ _TMP = Path(tempfile.mkdtemp())
 os.environ["MTGVAULT_CONFIG"] = str(_TMP / "cfg.json")
 os.environ.setdefault("MTGVAULT_HOME", str(_TMP))
 
-from mtgvault import db, loadout  # noqa: E402
+from datetime import date  # noqa: E402
+
+from mtgvault import db, loadout, sources  # noqa: E402
 
 import deckboxes  # noqa: E402
-import meusdecks  # noqa: E402
+import meta_coverage as mc  # noqa: E402
 import metagame  # noqa: E402
+import meusdecks  # noqa: E402
+import webapp  # noqa: E402
 
 CATALOGO = [
     ("Utrom Monitor", "tmnt", "2025-09-26"),
@@ -163,14 +167,20 @@ def caso_utrom_monitor():
 def caso_noutra_caixa_e_o_terceiro_estado():
     """Duas caixas querem a mesma carta e só há um playset: a de prioridade mais
     baixa mostra 'em <caixa>' e NÃO a mete nas faltas. Somar `missing` mandava-o
-    comprar 4 Frogmite que estão na caixa do lado."""
+    comprar 4 Frogmite que estão na caixa do lado.
+
+    A caixa que empresta é aqui o Pauper com `dedicado: false` — desde
+    2026-09-07 (19:00) o "ir buscar" só existe fora dos grupos dedicados
+    (Duel Commander e SPML), e o outro lado está no caso a seguir.
+    """
     con = base()
     vigiado(con, "Luffy — Pauper", "pauper", "Pauper Affinity",
             [("main", "Frogmite", 4)])
     deck(con, "UW Oswald", "modern", [("Frogmite", 4), ("Thoughtcast", 4)])
     add(con, "Frogmite", 4, finish="foil", sub="SPML")
 
-    por_lista = loadout.slots_por_lista(loadout.allocate(con))
+    empresta = [dict(s, dedicado=False) for s in CFG["loadout"]]
+    por_lista = loadout.slots_por_lista(loadout.allocate(con, empresta))
     linhas = loadout.linhas_por_carta(por_lista["UW Oswald"])
     cards = meusdecks._cards([("Frogmite", 4), ("Thoughtcast", 4)],
                             {}, {}, {}, linhas, "main")
@@ -185,6 +195,17 @@ def caso_noutra_caixa_e_o_terceiro_estado():
     faltas = meusdecks._faltas(cards)
     assert faltas == {"Thoughtcast": 4}, faltas
     print("carta noutra caixa: terceiro estado, e fora das faltas")
+
+    # E com a caixa do Pauper DEDICADA (o default de 2026-09-07 às 19:00) a
+    # mesma carta deixa de ser "em <caixa>" e passa a compra: *"cada deck montado
+    # deixa de partilhar cartas com outros decks"*.
+    por_lista = loadout.slots_por_lista(loadout.allocate(con))
+    linhas = loadout.linhas_por_carta(por_lista["UW Oswald"])
+    cards = meusdecks._cards([("Frogmite", 4)], {}, {}, {}, linhas, "main")
+    fg = _por_nome(cards)["Frogmite"]
+    assert fg["state"] == "miss" and fg["comprar"] == 4 and fg["oq"] == 0, fg
+    assert meusdecks._faltas(cards) == {"Frogmite": 4}
+    print("com a caixa dedicada, a mesma carta e compra e nao 'ir buscar'")
 
 
 def caso_deck_fora_do_loadout_conta_a_colecao_toda():
@@ -257,7 +278,10 @@ def caso_foil_report_ve_as_outras_caixas():
     add(con, "Frogmite", 4, finish="foil", sub="SPML")
     add(con, "Thoughtcast", 4, finish="nonfoil", sub="SPML")   # nonfoil: não serve
 
-    res = loadout.allocate(con)
+    # A caixa que empresta tem de ser não-dedicada: um arquétipo candidato não
+    # conta com uma cópia que está sleevada dentro de uma caixa dedicada (regra
+    # de 2026-09-07, 19:00 — verificada logo a seguir).
+    res = loadout.allocate(con, [dict(s, dedicado=False) for s in CFG["loadout"]])
     r = loadout.foil_report(con, "modern", top=3, min_lists=5, res=res)[0]
     assert r["n_lists"] == 10, ("só as 10 Challenges contam; as 50 ligas não",
                                 r["n_lists"])
@@ -270,6 +294,13 @@ def caso_foil_report_ve_as_outras_caixas():
     assert r["custo"] == 20.0, r["custo"]
     assert r["comprar"] == 4 and r["tenho"] == 4 and r["pct"] == 50, r
     print("foil_report: 'noutra caixa' é posse, e o custo é só do que se compra")
+
+    # Com a caixa do Pauper dedicada (o default), os 4 Frogmite deixam de contar
+    # para o candidato: quem quiser este arquétipo compra os seus.
+    d = loadout.foil_report(con, "modern", top=3, min_lists=5,
+                            res=loadout.allocate(con))[0]
+    assert d["noutra_q"] == 0 and d["comprar"] == 8 and d["pct"] == 0, d
+    print("uma caixa dedicada nao empresta ao ranking de arquetipos")
 
 
 def caso_pagina_metagame_fecha():
@@ -302,10 +333,117 @@ def caso_pagina_metagame_fecha():
     print("metagame.html escreve-se: top-N, caixa escolhida e formatos vazios")
 
 
+import contextlib  # noqa: E402
+
+
+@contextlib.contextmanager
+def config(**extra):
+    """Corre com um `colecao_config.json` alterado, e repõe o do teste no fim."""
+    from mtgvault import sources
+    antigo = os.environ["MTGVAULT_CONFIG"]
+    novo = Path(tempfile.mkdtemp()) / "cfg.json"
+    novo.write_text(json.dumps({**CFG, **extra}, ensure_ascii=False),
+                    encoding="utf-8")
+    os.environ["MTGVAULT_CONFIG"] = str(novo)
+    sources._CFG_CACHE.clear()
+    try:
+        yield novo
+    finally:
+        os.environ["MTGVAULT_CONFIG"] = antigo
+        sources._CFG_CACHE.clear()
+
+
+def _base_legacy():
+    """Um arquétipo de Legacy com lista de consenso e uma caixa por escolher."""
+    con = base()
+    con.execute("INSERT INTO archetypes (format, label) VALUES "
+                "('legacy','Frogmite / Thoughtcast')")
+    aid = con.execute("SELECT id FROM archetypes").fetchone()["id"]
+    for nm, inc in (("Frogmite", 1.0), ("Thoughtcast", 0.9)):
+        con.execute("""INSERT INTO card_roles (archetype_id, window_end, window_days,
+                       card_name, board, n_lists, n_with_card, inclusion_rate,
+                       avg_copies, core_copies, flex_copies, dist, role)
+                       VALUES (?, '2026-09-07', 30, ?, 'main', 10, 10, ?,
+                               4, 4, 0, ?, 'core')""",
+                    (aid, nm, inc, json.dumps({"4": 1.0})))
+    for i in range(10):
+        con.execute("""INSERT INTO decklists (source, source_key, format, event_date,
+                       event_tier, archetype_id)
+                       VALUES ('mtgo', ?, 'legacy', '2026-09-01', 'Challenge', ?)""",
+                    (f"k{i}", aid))
+    con.commit()
+    return con, aid
+
+
+def caso_nome_de_arquetipo_e_legivel():
+    """*"Os nomes dos arquétipos por pares de cartas são fracos"* (André,
+    2026-09-07, 19:00). Sem nome próprio, o nome passa a ser **cores +
+    carta-chave** e o par fica como subtítulo — nunca um nome com `/`."""
+    con, aid = _base_legacy()
+    df, tc = mc._format_df(con, "legacy"), {}
+    nome = mc._name_for(con, aid, df, tc)
+    # As cartas do fixture são todas azuis (`color_identity` = 'U').
+    assert nome == "Mono-Azul Frogmite", nome
+    assert "/" not in nome, nome
+    assert mc._distinctive_name(con, aid, df, tc) == "Frogmite / Thoughtcast"
+    # E um arquétipo com carta-assinatura mantém o nome próprio, sem cores.
+    assert mc._known_name(con, aid) is None
+    print("nome de arquetipo: cores + carta-chave, e o par como subtitulo")
+
+
+def caso_vou_montar_este_escolhe_e_desmarca():
+    """*"Cada deck do top-3 tem um botão «vou montar este»"* (André, 2026-09-07,
+    19:00): escreve a lista de consenso CONGELADA COM A DATA no config, marca a
+    caixa como permanente, e o "já não vou montar este" devolve o que lá estava.
+    """
+    con, aid = _base_legacy()
+    caixa = {"slot": "legacy", "nome": "Legacy", "formato": "legacy",
+             "fonte": "deck", "ref": None, "balde": "SPML", "prioridade": 3,
+             "por_confirmar": True, "permanente": False}
+    with config(loadout=CFG["loadout"] + [caixa]) as caminho:
+        cfg = webapp.ler_config()
+        msg = webapp.escolher_lista(con, cfg, "legacy", aid)
+        assert "Mono-Azul Frogmite" in msg, msg
+        webapp.escrever_config(cfg, caminho)
+        sources._CFG_CACHE.clear()
+
+        s = next(x for x in loadout.resolve_slots(con) if x["slot"] == "legacy")
+        assert s["fonte"] == "escolhido" and s["ref"] == "legacy", s
+        assert s["permanente"] is True and not s["vazio"], s
+        assert s["escolhido_em"] == date.today().isoformat(), s
+        assert s["nome"] == "Legacy — Mono-Azul Frogmite", s["nome"]
+        assert ("Frogmite", 4) in [(n, q) for _b, n, q in s["cards"]], s["cards"]
+
+        # A lista fica congelada: mudar o consenso não lhe toca.
+        con.execute("UPDATE card_roles SET core_copies = 1 WHERE card_name='Frogmite'")
+        con.commit()
+        s = next(x for x in loadout.resolve_slots(con) if x["slot"] == "legacy")
+        assert ("Frogmite", 4) in [(n, q) for _b, n, q in s["cards"]], \
+            "a lista escolhida nao pode mudar debaixo dos pes"
+
+        # O botão só existe no modo edição, e o publicado diz a data.
+        ed, pub = (metagame.html_page(con, editable=True),
+                   metagame.html_page(con))
+        assert 'data-act="escolher"' in ed or 'data-act="desmarcar"' in ed, "sem botao"
+        assert "data-act=" not in pub, "o site publicado nao pode ter botoes"
+        assert "escolhido em" in pub, "o publicado tem de dizer quando escolheste"
+
+        cfg = webapp.ler_config()
+        webapp.desmarcar_lista(cfg, "legacy")
+        webapp.escrever_config(cfg, caminho)
+        sources._CFG_CACHE.clear()
+        volta = json.loads(caminho.read_text(encoding="utf-8"))
+        assert "listas_escolhidas" not in volta, volta.get("listas_escolhidas")
+        s = next(x for x in loadout.resolve_slots(con) if x["slot"] == "legacy")
+        assert s["fonte"] == "deck" and s["ref"] is None and s["vazio"], s
+        assert s["permanente"] is False and s.get("por_confirmar") is True, s
+    print("'vou montar este' congela a lista com a data, e desmarcar devolve tudo")
+
+
 # ---------------------------------------------------------------------------
 # Deckboxes: o payload e o JavaScript que o desenha
 # ---------------------------------------------------------------------------
-def _pagina_deckboxes():
+def _base_deckboxes():
     con = base()
     vigiado(con, "Luffy — Pauper", "pauper", "Pauper Affinity",
             [("main", "Utrom Monitor", 4), ("main", "Frogmite", 4)])
@@ -316,6 +454,11 @@ def _pagina_deckboxes():
     # NONFOIL a mais (o playset são 4) e 1 Chromatic Star FOIL a mais.
     add(con, "Utrom Monitor", 2, sub="SPML")
     add(con, "Chromatic Star", 5, finish="foil", sub="SPML")
+    return con
+
+
+def _pagina_deckboxes(con=None):
+    con = con if con is not None else _base_deckboxes()
     out = Path(tempfile.mkdtemp()) / "deckboxes.html"
     deckboxes.build(con, out)
     return out
@@ -338,7 +481,8 @@ def _abas_desenhadas(pagina):
 def caso_payload_do_deckboxes():
     """A página nova é JSON + JavaScript: se o payload não fechar, a página
     aparece em branco sem um único erro no gerador."""
-    txt = _pagina_deckboxes().read_text(encoding="utf-8")
+    con = _base_deckboxes()
+    txt = _pagina_deckboxes(con).read_text(encoding="utf-8")
     bruto = re.search(r'<script id="dados" type="application/json">(.*?)</script>',
                       txt, re.S).group(1)
     d = json.loads(bruto.replace("<\\/", "</"))
@@ -346,14 +490,26 @@ def caso_payload_do_deckboxes():
     caixas = {c["slot"]: c for c in d["caixas"]}
     assert set(caixas) == {"pauper", "modern"}, list(caixas)
     assert caixas["pauper"]["permanente"] is True
+    assert caixas["pauper"]["dedicado"] is True, caixas["pauper"]
     # O caso Utrom Monitor, agora pelo lado da página nova.
     um = next(c for c in caixas["pauper"]["cartas"] if c["nm"] == "Utrom Monitor")
     assert um["est"] == "have" and um["lotes"][0]["local"] == "SPML", um
-    # E o Frogmite que o Pauper levou aparece ao Modern como "noutra caixa".
+    # O Frogmite que o Pauper levou: a caixa do Pauper é DEDICADA e não empresta,
+    # por isso ao Modern a carta é compra e vai à wantlist dele (2026-09-07, 19:00).
     fg = next(c for c in caixas["modern"]["cartas"] if c["nm"] == "Frogmite")
+    assert fg["est"] == "miss" and fg["comprar"] == 4 and fg["noutra"] == {}, fg
+    assert any(w["nm"] == "Frogmite" for w in caixas["modern"]["wantlist"])
+
+    # E, com o mesmo material mas sem a regra `dedicado`, o terceiro estado
+    # (âmbar, "em <caixa>") continua a desenhar-se: é o que vale no Duel
+    # Commander e no SPML.
+    rep = loadout.report(con, [dict(s, dedicado=False) for s in CFG["loadout"]])
+    p = deckboxes.payload(con, rep)
+    mo = next(c for c in p["caixas"] if c["slot"] == "modern")
+    fg = next(c for c in mo["cartas"] if c["nm"] == "Frogmite")
     assert fg["est"] == "sub" and fg["noutra"] == {"Pauper (Luffy)": 4}, fg
     assert fg["comprar"] == 0
-    assert not any(w["nm"] == "Frogmite" for w in caixas["modern"]["wantlist"])
+    assert not any(w["nm"] == "Frogmite" for w in mo["wantlist"])
     print("o payload do deckboxes fecha, e o publicado nao traz botoes")
 
 
@@ -378,6 +534,45 @@ def caso_javascript_do_deckboxes_desenha_todas_as_abas():
     assert p.returncode == 0, (p.stdout or "") + (p.stderr or "")[-2000:]
     assert "renders sem erro" in p.stdout, p.stdout
     print("javascript do deckboxes: " + p.stdout.strip())
+
+
+def caso_aba_arrumar_separa_a_actualizacao_do_deck_montado():
+    """A caixa DEDICADA e MONTADA não se arruma, actualiza-se (André, 2026-09-07,
+    19:00: *"apenas mexer para actualizar"*). A carta que saiu da lista continua
+    lá dentro, aparece como *"tirar"* na secção própria — e o botão que aplica o
+    delta só existe no modo edição."""
+    con = _base_deckboxes()
+    # Ontem o Pauper foi arrumado com um Chromatic Star que a lista já não pede.
+    cid = con.execute("SELECT cp.id FROM copies cp JOIN cards c "
+                      "ON c.scryfall_id = cp.scryfall_id "
+                      "WHERE c.name = 'Chromatic Star'").fetchone()["id"]
+    con.execute("INSERT INTO copy_allocation (copy_id, slot, quantity) "
+                "VALUES (?, 'pauper', 1)", (cid,))
+    con.commit()
+    slots = [dict(s, montado=True) if s["slot"] == "pauper" else dict(s)
+             for s in CFG["loadout"]]
+    rep = loadout.report(con, slots)
+    d = deckboxes.payload(con, rep, editable=True)
+    acts = d["arrumar"]["actualizacoes"]
+    assert len(acts) == 1 and acts[0]["slot"] == "pauper", acts
+    assert [m["nm"] for m in acts[0]["sai"]] == ["Chromatic Star"], acts[0]
+    # A cópia presa não conta para a venda: das 5 que ele tem, 1 está dentro do
+    # deck montado e as outras 4 são o playset — sobra 1, não 2.
+    cs = [r for r in rep["venda"] if r["nm"] == "Chromatic Star"]
+    assert sum(r["q"] for r in cs) == 1, cs
+
+    if not shutil.which("node"):
+        print("aba Arrumar: sem `node`, so o payload verificado")
+        return
+    out = Path(tempfile.mkdtemp()) / "deckboxes.html"
+    out.write_text(deckboxes.html_page(con, editable=True, rep=rep),
+                   encoding="utf-8")
+    html = _abas_desenhadas(out)["arrumar"]
+    assert "Actualizar decks montados" in html, html[:400]
+    assert 'data-act="actualizar"' in html, "falta o botao no modo edicao"
+    publicado = _abas_desenhadas(_pagina_deckboxes(con))["arrumar"]
+    assert 'data-act="actualizar"' not in publicado, "o publicado nao pode ter botao"
+    print("aba Arrumar: a caixa montada actualiza-se, e o botao so no modo edicao")
 
 
 def caso_aba_vender_nao_marca_nonfoil():
@@ -487,6 +682,9 @@ def run():
                caso_foil_report_ve_as_outras_caixas, caso_pagina_metagame_fecha,
                caso_payload_do_deckboxes,
                caso_javascript_do_deckboxes_desenha_todas_as_abas,
+               caso_nome_de_arquetipo_e_legivel,
+               caso_vou_montar_este_escolhe_e_desmarca,
+               caso_aba_arrumar_separa_a_actualizacao_do_deck_montado,
                caso_aba_vender_nao_marca_nonfoil,
                caso_aba_comprar_diz_para_que_caixa_e_em_que_material,
                caso_aba_comprar_nao_soma_a_mesma_compra_por_caixa):

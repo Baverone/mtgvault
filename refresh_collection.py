@@ -36,7 +36,7 @@ def _front(n: str) -> str:
 
 def refresh(con) -> str:
     """Reconstrói `collection_owned` a partir dos `copies` (+ card_price + overrides).
-    Recebe uma conexão já com o catálogo ATTACHed (para correr dentro do job diário)."""
+    Recebe uma ligação já com o catálogo ATTACHed (para correr dentro do job diário)."""
     con.execute("""CREATE TABLE IF NOT EXISTS collection_owned(
         sub_collection TEXT NOT NULL, card_name TEXT NOT NULL,
         quantity INTEGER NOT NULL DEFAULT 1, unit_price REAL,

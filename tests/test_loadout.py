@@ -645,8 +645,11 @@ def caso_pauper_agrega_do_spml():
     s = por_nome(rep)
     assert s["PA"]["pct"] == 100, s["PA"]
     assert s["PA"]["origens"] == {"SPML": 4}, s["PA"]["origens"]
-    assert s["MO"]["noutra"] == 4 and s["MO"]["comprar"] == 0, s["MO"]
-    print("Pauper agrega do SPML o que precisa, e o Modern vai lá buscá-las")
+    # Desde 2026-09-07 (19:00) a caixa do Pauper é DEDICADA: não empresta. O
+    # Modern deixou de dizer "vai buscar ao Pauper" e passa a comprar as suas —
+    # *"cada deck montado deixa de partilhar cartas com outros decks"*.
+    assert s["MO"]["comprar"] == 4 and s["MO"]["noutra"] == 0, s["MO"]
+    print("Pauper agrega do SPML o que precisa; o Modern compra as dele")
 
 
 def caso_premodern_so_edicoes_da_era():
@@ -801,8 +804,11 @@ def caso_permanente_escolhe_antes_do_candidato():
     add(con, "Kappa Cannoneer", 1, finish="foil")
     # O candidato é de Premodern (grupo 1) e o permanente de Legacy (grupo 5):
     # sem a regra dos permanentes, o Premodern escolhia primeiro.
+    # As regras do grupo Premodern desligam-se todas neste slot: o que aqui se
+    # mede é a ordem dos permanentes, não o material nem o `dedicado` (que, sem
+    # isto, faria o candidato comprar em vez de dizer onde a carta está).
     cand = slot("Cand", "premodern", "Cand", lingua=None, estrita=False,
-                edicoes=None, baldes=None, permanente=False)
+                edicoes=None, baldes=None, dedicado=False, permanente=False)
     perm = slot("Perm", "legacy", "Perm", permanente=True)
     rep = loadout.report(con, [cand, perm])
     s = por_nome(rep)
@@ -882,8 +888,15 @@ def caso_arrumar_nao_transforma_ir_buscar_em_compra():
     deck(con, "Prem", "premodern", [("Swords to Plowshares", 2)])
     deck(con, "Ench", "premodern", [("Swords to Plowshares", 2)])
     add(con, "Swords to Plowshares", 2, lang="pt", sub="Colecção")
-    slots = [slot("Prem", "premodern", "Prem", prioridade=1, baldes=["Colecção"]),
-             slot("Ench", "premodern", "Ench", prioridade=2, baldes=["Colecção"])]
+    # `dedicado: false` de propósito: o "ir buscar" é o que este caso mede, e
+    # desde 2026-09-07 (19:00) ele só existe fora dos grupos dedicados (Duel
+    # Commander e SPML). O outro lado — a caixa dedicada a comprar em vez de ir
+    # buscar — está no `caso_caixa_dedicada_nao_empresta_nem_vai_buscar`, e a
+    # parte que interessa às duas está no fim deste caso.
+    slots = [slot("Prem", "premodern", "Prem", prioridade=1, baldes=["Colecção"],
+                  dedicado=False),
+             slot("Ench", "premodern", "Ench", prioridade=2, baldes=["Colecção"],
+                  dedicado=False)]
     antes = por_nome(loadout.report(con, slots))
     assert antes["Prem"]["tenho"] == 2 and antes["Ench"]["tenho"] == 0
     assert antes["Ench"]["comprar"] == 0, antes["Ench"]["comprar"]
@@ -904,6 +917,17 @@ def caso_arrumar_nao_transforma_ir_buscar_em_compra():
     assert virado["Prem"]["tenho"] == 2, virado["Prem"]["tenho"]
     assert virado["Ench"]["tenho"] == 0 and virado["Ench"]["comprar"] == 0
     print("confirmar a arrumacao nao transforma 'ir buscar' em compra")
+
+    # A mesma invariante nas caixas DEDICADAS: arrumar não pode mudar o que se
+    # compra. Ali a resposta é "compra 2" das duas vezes, não "0 e depois 2".
+    ded = [dict(s) for s in slots]
+    for s in ded:
+        s.pop("dedicado")
+    a = por_nome(loadout.report(con, ded))["Ench"]["comprar"]
+    loadout.guardar_arrumacao(con, loadout.report(con, ded))
+    b = por_nome(loadout.report(con, ded))["Ench"]["comprar"]
+    assert a == b == 2, (a, b)
+    print("e numa caixa dedicada compra o mesmo antes e depois de arrumar")
 
 
 def caso_carta_na_caixa_escapa_as_regras_de_material():
@@ -1001,6 +1025,201 @@ def caso_rotulo_material_diz_a_classe_e_as_fontes():
     print("o rotulo de material traz a classe certa e as fontes em nome de gente")
 
 
+# ---------------------------------------------------------------------------
+# CAIXAS DEDICADAS (André, 2026-09-07 às 19:00)
+# ---------------------------------------------------------------------------
+def caso_caixa_dedicada_nao_empresta_nem_vai_buscar():
+    """*"Cada deck montado deixa de partilhar cartas com outros decks nos
+    formatos: pauper, CDEH e premodern."*
+
+    Duas caixas de Premodern, um playset só: a primeira leva-o e a segunda, que
+    até 19:00 dizia *"vai buscar 4 ao UW Replenish"*, passa a COMPRAR as suas.
+    É o caso dos 3 Brushland do Enchantress.
+    """
+    con = base()
+    deck(con, "PM1", "premodern", [("Swords to Plowshares", 4)])
+    deck(con, "PM2", "premodern", [("Swords to Plowshares", 4)])
+    add(con, "Swords to Plowshares", 4, lang="pt", sub="Colecção")
+    rep = loadout.report(con, [slot("PM1", "premodern", "PM1", prioridade=1,
+                                    balde="Colecção"),
+                               slot("PM2", "premodern", "PM2", prioridade=2,
+                                    balde="Colecção")])
+    s = por_nome(rep)
+    assert s["PM1"]["pct"] == 100, s["PM1"]
+    assert s["PM2"]["noutra"] == 0, s["PM2"]["noutra_caixa"]
+    assert s["PM2"]["comprar"] == 4, s["PM2"]
+    assert s["PM2"]["missing"][0]["noutra"] == {}, s["PM2"]["missing"][0]
+    print("caixa dedicada nao empresta: a segunda compra em vez de ir buscar")
+
+
+def caso_caixa_dedicada_compra_sozinha():
+    """`dedicado` implica `compras_dedicadas`: *"vou precisar de múltiplos para
+    os decks de premodern"*. Duas caixas a que falta a mesma carta pedem duas
+    compras, não uma partilhada."""
+    con = base()
+    deck(con, "PM1", "premodern", [("Replenish", 2)])
+    deck(con, "PM2", "premodern", [("Replenish", 2)])
+    preco(con, "Replenish", "nonfoil", 10.0)
+    rep = loadout.report(con, [slot("PM1", "premodern", "PM1", prioridade=1),
+                               slot("PM2", "premodern", "PM2", prioridade=2)])
+    s = por_nome(rep)
+    assert rep["partilhas"] == [], rep["partilhas"]
+    assert s["PM1"]["comprar"] == 2 and s["PM2"]["comprar"] == 2, rep
+    assert rep["comprar_total"] == 4, rep["comprar_total"]
+    print("duas caixas dedicadas compram duas vezes — nao ha partilha")
+
+
+def caso_duel_commander_e_spml_continuam_a_partilhar():
+    """A regra é POR GRUPO: o Duel Commander e o SPML não são dedicados e
+    continuam a ir buscar um ao outro, como desde a v3."""
+    con = base()
+    deck(con, "DC", "duel-commander", [("Sol Ring", 1)])
+    deck(con, "MO", "modern", [("Sol Ring", 1)])
+    add(con, "Sol Ring", 1, finish="foil", sub="Colecção")
+    rep = loadout.report(con, [slot("DC", "duel-commander", "DC", prioridade=1,
+                                    balde="Colecção"),
+                               slot("MO", "modern", "MO", prioridade=1,
+                                    balde="Colecção")])
+    s = por_nome(rep)
+    assert s["DC"]["pct"] == 100, s["DC"]
+    assert s["MO"]["noutra"] == 1 and s["MO"]["comprar"] == 0, s["MO"]
+    assert s["MO"]["noutra_caixa"][0]["noutra"] == {"DC": 1}
+    print("Duel Commander e SPML continuam a partilhar entre si")
+
+
+def caso_excepcao_por_caixa_ganha_a_do_grupo():
+    """O que estiver escrito no slot ganha à regra do grupo — uma excepção é uma
+    linha de config, não uma linha de código."""
+    con = base()
+    deck(con, "PM1", "premodern", [("Swords to Plowshares", 4)])
+    deck(con, "PM2", "premodern", [("Swords to Plowshares", 4)])
+    add(con, "Swords to Plowshares", 4, lang="pt", sub="Colecção")
+    rep = loadout.report(con, [
+        slot("PM1", "premodern", "PM1", prioridade=1, balde="Colecção",
+             dedicado=False),
+        slot("PM2", "premodern", "PM2", prioridade=2, balde="Colecção",
+             dedicado=False)])
+    s = por_nome(rep)
+    assert s["PM2"]["noutra"] == 4 and s["PM2"]["comprar"] == 0, s["PM2"]
+    print("'dedicado': false num slot devolve-lhe o 'ir buscar'")
+
+
+def caso_caixa_congelada_nao_perde_copias():
+    """*"Apenas mexer para actualizar."* A caixa dedicada e montada fica
+    congelada: a cópia que a lista de hoje já não pede continua lá dentro — não
+    volta à gaveta, não é realocada e não entra na venda."""
+    con = base()
+    deck(con, "PA", "pauper", [("Thoughtcast", 1)])
+    add(con, "Thoughtcast", 1, sub="Colecção")
+    add(con, "Lotus Petal", 1, sub="Colecção")     # saiu da lista, ficou na caixa
+    cfg = [slot("PA", "pauper", "PA", prioridade=1, balde="Colecção",
+                montado=True)]
+    # Arruma-se a caixa com as duas cartas (é o "sleevado e na caixa" de ontem).
+    for cid in [r["id"] for r in con.execute("SELECT id FROM copies")]:
+        con.execute("INSERT INTO copy_allocation (copy_id, slot, quantity) "
+                    "VALUES (?, 'pa', 1)", (cid,))
+    con.commit()
+    rep = loadout.report(con, cfg)
+    s = por_nome(rep)["PA"]
+    assert s["congelada"] is True, s
+    # O Lotus Petal saiu da lista mas continua preso na caixa.
+    assert [p["nm"] for p in s["presos"]] == ["Lotus Petal"], s["presos"]
+    assert not any(r["nm"] == "Lotus Petal" for r in rep["venda"]), rep["venda"]
+    assert not any(m["nm"] == "Lotus Petal"
+                   for m in rep["arrumacao"]["movimentos"]), rep["arrumacao"]
+    # E aparece no delta de actualização daquela caixa, não no plano geral.
+    act = rep["actualizacoes"]["pa"]
+    assert [m["nm"] for m in act["sai"]] == ["Lotus Petal"], act
+    print("caixa congelada nao perde copias: o extra fica preso e sai no delta")
+
+
+def caso_delta_de_actualizacao_so_se_aplica_no_botao():
+    """A lista vigiada mudou: a caixa continua montada com a lista antiga e o
+    delta espera. O "já arrumei tudo" geral não lhe toca; o "actualizei" dela
+    aplica-o."""
+    con = base()
+    deck(con, "PA", "pauper", [("Thoughtcast", 1)])
+    add(con, "Thoughtcast", 1, sub="Colecção")          # a carta nova, na gaveta
+    add(con, "Lotus Petal", 1, sub="Colecção")          # a velha, já na caixa
+    velho = con.execute("SELECT id FROM copies WHERE quantity = 1 ORDER BY id"
+                        ).fetchall()[1]["id"]
+    con.execute("INSERT INTO copy_allocation (copy_id, slot, quantity) "
+                "VALUES (?, 'pa', 1)", (velho,))
+    con.commit()
+    cfg = [slot("PA", "pauper", "PA", prioridade=1, balde="Colecção",
+                montado=True)]
+
+    rep = loadout.report(con, cfg)
+    act = rep["actualizacoes"]["pa"]
+    assert [m["nm"] for m in act["sai"]] == ["Lotus Petal"], act
+    assert [m["nm"] for m in act["entra"]] == ["Thoughtcast"], act
+
+    # O botão geral arruma a colecção e deixa a caixa congelada como está.
+    loadout.guardar_arrumacao(con, loadout.report(con, cfg))
+    dentro = con.execute("SELECT copy_id FROM copy_allocation WHERE slot = 'pa'"
+                         ).fetchall()
+    assert [r["copy_id"] for r in dentro] == [velho], dentro
+
+    # O "actualizei" daquela caixa é que aplica o delta.
+    rep = loadout.report(con, cfg)
+    n = loadout.actualizar_caixa(con, rep, "pa")
+    assert n == 1, n
+    depois = con.execute("SELECT copy_id FROM copy_allocation WHERE slot = 'pa'"
+                         ).fetchall()
+    assert [r["copy_id"] for r in depois] != [velho], depois
+    assert not loadout.report(con, cfg)["actualizacoes"], "o delta ficou vazio"
+    print("o delta espera pelo botao 'actualizei' — o 'ja arrumei' nao lhe toca")
+
+
+def caso_montado_sem_arrumacao_nao_e_congelado():
+    """Uma caixa que se diz montada mas de que o vault não sabe o conteúdo não
+    está congelada — não há nada para prender, e dar a lista inteira como um
+    delta de *"actualização"* mentia sobre o que ele tem de fazer (é montá-la).
+    É o caso do Stiflenought: `montado: true` e zero linhas na `copy_allocation`.
+    """
+    con = base()
+    deck(con, "PA", "pauper", [("Thoughtcast", 1)])
+    add(con, "Thoughtcast", 1, sub="Colecção")
+    cfg = [slot("PA", "pauper", "PA", balde="Colecção", montado=True)]
+    s = por_nome(loadout.report(con, cfg))["PA"]
+    assert s["congelada"] is False and s["montado_por_confirmar"] is True, s
+    assert not loadout.report(con, cfg)["actualizacoes"], "nada a actualizar"
+    # E a página tem de o dizer, senão a caixa mente em silêncio.
+    assert any("Sleevado" in t for _i, t, _c in loadout.rotulo_material(s))
+    print("montada sem arrumacao confirmada: nao congela, e a pagina di-lo")
+
+
+def caso_alocacao_orfa_nao_prende_copias():
+    """Uma linha de `copy_allocation` para uma caixa que já não está no loadout é
+    órfã. Tratá-la como uma caixa a sério tirava a cópia de circulação para
+    sempre — e mostrava o `slot` cru no lugar do nome, sem erro nenhum."""
+    con = base()
+    deck(con, "A", "legacy", [("Sol Ring", 1)])
+    add(con, "Sol Ring", 1, finish="foil", sub="Colecção")
+    cid = con.execute("SELECT id FROM copies").fetchone()["id"]
+    con.execute("INSERT INTO copy_allocation (copy_id, slot, quantity) "
+                "VALUES (?, 'caixa-que-ja-nao-existe', 1)", (cid,))
+    con.commit()
+    s = por_nome(loadout.report(con, [slot("A", "legacy", "A",
+                                           balde="Colecção")]))["A"]
+    assert s["tenho"] == 1 and s["pct"] == 100, s
+    print("alocacao orfa ignora-se: a copia nao fica presa a uma caixa apagada")
+
+
+def caso_compras_sem_preco_contam_se():
+    """Uma carta sem preço na base entra na lista de compras a 0 € e some no
+    total. O custo de fechar tem de dizer que é um MÍNIMO, não a conta toda."""
+    con = base()
+    deck(con, "A", "legacy", [("Sol Ring", 1), ("Kappa Cannoneer", 2)])
+    preco(con, "Sol Ring", "foil", 3.0)          # a Kappa Cannoneer não tem
+    rep = loadout.report(con, [slot("A", "legacy", "A")])
+    s = por_nome(rep)["A"]
+    assert s["comprar"] == 3 and s["custo"] == 3.0, s
+    assert s["sem_preco"] == 2, s["sem_preco"]
+    assert rep["sem_preco_total"] == 2, rep["sem_preco_total"]
+    print("as copias a comprar sem preco contam-se: o custo e um minimo")
+
+
 def run():
     for fn in (caso_uma_copia_uma_caixa, caso_noutra_caixa_nao_e_compra,
                caso_noutra_caixa_e_compra_misturadas,
@@ -1032,7 +1251,16 @@ def run():
                caso_carta_na_caixa_escapa_as_regras_de_material,
                caso_lote_partido_entre_caixa_e_gaveta,
                caso_nonfoil_nunca_e_foil,
-               caso_rotulo_material_diz_a_classe_e_as_fontes):
+               caso_rotulo_material_diz_a_classe_e_as_fontes,
+               caso_caixa_dedicada_nao_empresta_nem_vai_buscar,
+               caso_caixa_dedicada_compra_sozinha,
+               caso_duel_commander_e_spml_continuam_a_partilhar,
+               caso_excepcao_por_caixa_ganha_a_do_grupo,
+               caso_caixa_congelada_nao_perde_copias,
+               caso_delta_de_actualizacao_so_se_aplica_no_botao,
+               caso_montado_sem_arrumacao_nao_e_congelado,
+               caso_alocacao_orfa_nao_prende_copias,
+               caso_compras_sem_preco_contam_se):
         fn()
     print("\nTUDO OK")
 

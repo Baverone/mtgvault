@@ -53,6 +53,8 @@ import re
 import socket
 import subprocess
 import sys
+import threading
+from datetime import date
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
@@ -63,9 +65,24 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 from mtgvault import db, loadout, migracao, sources  # noqa: E402
 
 import deckboxes  # noqa: E402
+import metagame  # noqa: E402
 
 PORT = 8771          # o 8770 é do riftvault — ver o cabeçalho
-CONFIG = Path(os.environ.get("MTGVAULT_CONFIG") or ROOT / "colecao_config.json")
+# Serializa TODAS as escritas (config + base de dados). Ver `do_POST`.
+ESCRITA = threading.Lock()
+
+
+def config_path() -> Path:
+    """O `colecao_config.json` que o motor está a ler NESTE momento.
+
+    Lê-se a cada chamada (e não uma vez no import) porque tem de ser o MESMO
+    ficheiro que o `sources.config()` lê: escrever num e ler do outro dava um
+    botão que "não faz nada" sem erro nenhum — o padrão que este vault já pagou.
+    """
+    return Path(os.environ.get("MTGVAULT_CONFIG") or ROOT / "colecao_config.json")
+
+
+CONFIG = config_path()
 # As chaves cujo conteúdo se escreve com um elemento por linha. São listas de
 # objectos curtos que se lêem melhor assim — e é como o ficheiro está hoje, à
 # mão. Reformatá-las com `indent=2` dava um diff de 200 linhas por cada clique.
@@ -73,13 +90,18 @@ UMA_LINHA = ("loadout", "regras_por_formato", "baldes_coleccao",
              "decks_vigiados", "premodern_arquetipos_alvo", "formatos_metagame",
              "so_jogadores_vigiados", "premodern_decks_completos",
              "decks_montados", "reserved_vender_ignorar_formatos")
+# As páginas que o modo edição GERA em vez de servir do disco: são as que têm
+# botões, e o `editable` é o que os faz aparecer. Servir o ficheiro estático a
+# partir daqui dava uma página sem botões e sem explicação nenhuma.
+PAGINAS_EDITAVEIS = {"/": deckboxes, "/index.html": deckboxes,
+                     "/deckboxes.html": deckboxes, "/metagame.html": metagame}
 
 
 # ---------------------------------------------------------------------------
 # Config: ler, mexer, gravar sem estragar a formatação
 # ---------------------------------------------------------------------------
 def ler_config(path: Path | None = None) -> dict:
-    return json.loads((path or CONFIG).read_text(encoding="utf-8"))
+    return json.loads((path or config_path()).read_text(encoding="utf-8"))
 
 
 def escrever_config(cfg: dict, path: Path | None = None) -> None:
@@ -88,6 +110,12 @@ def escrever_config(cfg: dict, path: Path | None = None) -> None:
     Um `json.dump(indent=2)` cru rebentava as catorze linhas do `loadout` em
     duzentas, e o ficheiro é para ser lido por uma pessoa — é lá que estão as
     explicações em português de cada regra.
+
+    Escreve-se **atomicamente** (ficheiro temporário ao lado + `os.replace`):
+    o `write_text` normal trunca o ficheiro antes de escrever, e um erro a meio
+    — ou dois pedidos ao mesmo tempo, que o `ThreadingHTTPServer` permite — dava
+    um `colecao_config.json` truncado. Perder esse ficheiro é perder o loadout,
+    as regras de material e as listas escolhidas de uma vez.
     """
     partes = []
     for k, v in cfg.items():
@@ -99,7 +127,10 @@ def escrever_config(cfg: dict, path: Path | None = None) -> None:
             corpo = json.dumps(v, ensure_ascii=False, indent=2)
             corpo = corpo.replace("\n", "\n  ")
         partes.append(f"  {chave}: {corpo}")
-    (path or CONFIG).write_text("{\n" + ",\n".join(partes) + "\n}\n", encoding="utf-8")
+    destino = path or config_path()
+    tmp = destino.with_name(destino.name + ".tmp")
+    tmp.write_text("{\n" + ",\n".join(partes) + "\n}\n", encoding="utf-8")
+    os.replace(tmp, destino)
 
 
 def _peers(con, cfg, slot_id):
@@ -142,6 +173,86 @@ def mover(con, cfg, slot_id, delta) -> str:
         if s["slot"] in posicao:
             s["prioridade"] = posicao[s["slot"]]
     return f"{alvo['nome']} {'subiu' if delta < 0 else 'desceu'} no grupo {alvo['grupo']}"
+
+
+# ---------------------------------------------------------------------------
+# "Vou montar este": escolher o deck de uma caixa a partir do top-N
+# ---------------------------------------------------------------------------
+# As chaves do slot que a escolha mexe — e por isso as que o `desmarcar` repõe.
+CHAVES_DA_ESCOLHA = ("fonte", "ref", "nome", "permanente", "por_confirmar")
+
+
+def _slot_do_cfg(cfg, slot_id) -> dict:
+    for s in cfg.get("loadout") or []:
+        if s.get("slot") == slot_id:
+            return s
+    raise KeyError(slot_id)
+
+
+def escolher_lista(con, cfg, slot_id: str, aid: int) -> str:
+    """*"Vou montar este"*: fixa na caixa a lista de consenso de um arquétipo.
+
+    André, 2026-09-07 (19:00): ele vê o top-3 que está mais perto de concluir e
+    marca qual vai montar. A lista fica **congelada com a data** em
+    `colecao_config.json → listas_escolhidas` — se o consenso do arquétipo mudar
+    amanhã, a caixa que ele mandou montar não muda debaixo dos pés, nem a lista
+    de compras dela. E a caixa passa a **permanente**: é o que a põe a receber
+    cartas na alocação.
+
+    O que estava lá antes (o Greasefang do Pioneer, por exemplo) fica guardado em
+    `_antes` — a chave começa por `_`, por isso o motor não a vê
+    (`loadout.config_slots`) e o *"já não vou montar este"* pode desfazer.
+    """
+    import meta_coverage as mc
+
+    from mtgvault import stock
+
+    sl = stock.stock_list(con, aid)
+    cards = [[b, c["card_name"], c["quantity"]]
+             for b in ("main", "side") for c in sl.get(b, [])]
+    if not cards:
+        return "esse arquétipo não tem lista de consenso"
+    fmt = con.execute("SELECT format FROM archetypes WHERE id = ?",
+                      (aid,)).fetchone()["format"]
+    df, tcache = mc._format_df(con, fmt), {}
+    nome = mc._name_for(con, aid, df, tcache)
+    s = _slot_do_cfg(cfg, slot_id)
+    cfg.setdefault("listas_escolhidas", {})[slot_id] = {
+        "nome": nome,
+        "subtitulo": mc._distinctive_name(con, aid, df, tcache),
+        "formato": fmt,
+        "archetype_id": aid,
+        "n_listas": mc._n_lists(con, aid),
+        "escolhido_em": date.today().isoformat(),
+        "cards": cards,
+    }
+    # Só as chaves que EXISTIAM, para o desmarcar saber distinguir "estava a
+    # `null`" de "não estava lá" — o `ref` do slot por confirmar é literalmente
+    # `null`, e apagá-lo em vez de o repor deixava a caixa sem a chave.
+    s.setdefault("_antes", {k: s[k] for k in CHAVES_DA_ESCOLHA if k in s})
+    s["fonte"] = "escolhido"
+    s["ref"] = slot_id
+    s["nome"] = f'{(s.get("nome") or slot_id).split(" — ")[0]} — {nome}'
+    s["permanente"] = True
+    s.pop("por_confirmar", None)
+    return f"{nome} escolhido para a caixa {s['nome']}"
+
+
+def desmarcar_lista(cfg, slot_id: str) -> str:
+    """*"Já não vou montar este"*: devolve a caixa ao que era antes da escolha."""
+    s = _slot_do_cfg(cfg, slot_id)
+    antes = s.pop("_antes", None)
+    (cfg.get("listas_escolhidas") or {}).pop(slot_id, None)
+    if not cfg.get("listas_escolhidas"):
+        cfg.pop("listas_escolhidas", None)
+    if antes is None:
+        return f'{s.get("nome") or slot_id} não tinha escolha para desmarcar'
+    for k in CHAVES_DA_ESCOLHA:
+        if k in antes:
+            s[k] = antes[k]
+        else:
+            s.pop(k, None)
+    return f'{s.get("nome") or slot_id}: escolha desfeita'
 
 
 def alternar(cfg, slot_id, chave, default=True) -> tuple[bool, str]:
@@ -188,13 +299,18 @@ def marcar_na_caixa(con, slot_id: str, dentro: bool) -> int:
 
 
 def regenerar(con) -> None:
-    """Reescreve o `deckboxes.html` estático, para o site publicado acompanhar.
+    """Reescreve as páginas estáticas, para o site publicado acompanhar.
 
     Sem isto, o modo edição e o GitHub Pages diziam coisas diferentes até à
     corrida seguinte do `daily.py` — e a diferença aparecia no telemóvel dele,
     fora de casa, sem explicação nenhuma.
+
+    São as DUAS: qualquer botão desta página muda a alocação, e a alocação é o
+    que o `metagame.html` mostra (a posse do top-N e o crachá "escolhido em").
+    Refazer só uma deixava a outra a dizer o contrário. Custam ~0,3 s cada.
     """
     deckboxes.build(con, ROOT / "deckboxes.html")
+    metagame.build(con, ROOT / "metagame.html")
 
 
 # ---------------------------------------------------------------------------
@@ -221,9 +337,10 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):                                  # noqa: N802
         caminho = urlparse(self.path).path
-        if caminho in ("/", "/index.html", "/deckboxes.html"):
+        modulo = PAGINAS_EDITAVEIS.get(caminho)
+        if modulo is not None:
             with db.session() as con:
-                self._envia(deckboxes.html_page(con, editable=True))
+                self._envia(modulo.html_page(con, editable=True))
             return
         nome = caminho.lstrip("/")
         alvo = (ROOT / nome).resolve()
@@ -241,20 +358,37 @@ class Handler(BaseHTTPRequestHandler):
             dados = json.loads(corpo or "{}")
         except json.JSONDecodeError:
             dados = {}
-        try:
-            if caminho == "/api/arrumar":
-                with db.session() as con:
-                    migracao.backup(con)
-                    n = loadout.guardar_arrumacao(con, loadout.report(con))
-                    regenerar(con)
-                self._json({"ok": True, "copias": n})
+        # UMA escrita de cada vez. O `ThreadingHTTPServer` atende os pedidos em
+        # paralelo, e cada botão é um ler-mexer-gravar do `colecao_config.json`:
+        # dois cliques ao mesmo tempo (ou um duplo-toque no telemóvel) faziam o
+        # segundo gravar por cima do primeiro, e a alteração desaparecia sem
+        # erro nenhum. O mesmo vale para a `copy_allocation`, que se apaga e
+        # reescreve inteira.
+        with ESCRITA:
+            try:
+                if caminho == "/api/arrumar":
+                    with db.session() as con:
+                        migracao.backup(con)
+                        n = loadout.guardar_arrumacao(con, loadout.report(con))
+                        regenerar(con)
+                    self._json({"ok": True, "copias": n})
+                    return
+                if caminho == "/api/caixa":
+                    self._json(self._caixa(dados))
+                    return
+                if caminho == "/api/escolher":
+                    self._json(self._escolher(dados))
+                    return
+            except KeyError as e:
+                # O caso normal: um `slot` que já não existe no config (a página
+                # aberta no telemóvel é de antes de ele o mudar). `repr` dava
+                # `KeyError('legacy')`, que não diz nada a quem está a olhar.
+                self._json({"erro": f"a caixa {e.args[0]!r} já não existe no "
+                                    f"colecao_config.json — recarrega a página"}, 409)
                 return
-            if caminho == "/api/caixa":
-                self._json(self._caixa(dados))
+            except Exception as e:                      # noqa: BLE001
+                self._json({"erro": f"{type(e).__name__}: {e}"}, 500)
                 return
-        except Exception as e:                          # noqa: BLE001
-            self._json({"erro": repr(e)}, 500)
-            return
         self._json({"erro": "endpoint desconhecido"}, 404)
 
     def _caixa(self, dados):
@@ -274,9 +408,37 @@ class Handler(BaseHTTPRequestHandler):
                 n = marcar_na_caixa(con, slot_id, novo)
                 msg = (f"{nome}: {n} cópias registadas na caixa" if novo
                        else f"{nome}: caixa esvaziada ({n} linhas)")
+            elif act == "actualizar":
+                # "Actualizei": aplica o delta de UMA caixa congelada. Não passa
+                # pelo config — o que muda é físico (que cartas estão na caixa),
+                # e isso vive na `copy_allocation`.
+                migracao.backup(con)
+                rep = loadout.report(con)
+                nome = next((s["nome"] for s in rep["slots"]
+                             if s["slot"] == slot_id), slot_id)
+                n = loadout.actualizar_caixa(con, rep, slot_id)
+                msg = f"{nome} actualizado: {n} cópias na caixa"
             else:
                 return {"erro": f"acção {act!r} desconhecida"}
             sources._CFG_CACHE.clear()     # relê já, sem esperar pelo mtime
+            regenerar(con)
+        return {"ok": True, "msg": msg}
+
+    def _escolher(self, dados):
+        """"Vou montar este" / "já não vou montar este", do `metagame.html`."""
+        act, slot_id, aid = dados.get("act"), dados.get("slot"), dados.get("aid")
+        cfg = ler_config()
+        with db.session() as con:
+            if act == "escolher":
+                if not aid:
+                    return {"erro": "sem arquétipo"}
+                msg = escolher_lista(con, cfg, slot_id, int(aid))
+            elif act == "desmarcar":
+                msg = desmarcar_lista(cfg, slot_id)
+            else:
+                return {"erro": f"acção {act!r} desconhecida"}
+            escrever_config(cfg)
+            sources._CFG_CACHE.clear()
             regenerar(con)
         return {"ok": True, "msg": msg}
 

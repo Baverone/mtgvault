@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 
 from . import (analysis, collection, db, loadout, mtgtop8, prices, scryfall,
@@ -539,6 +538,41 @@ def _loadout_detalhe(rep, procura):
             print(f"    {m['comprar']} {m['nm']}" + (f" [{marca}]" if marca else ""))
 
 
+def _carta(m):
+    """`Plains [10E]` — a carta com a edição, num movimento de arrumação.
+
+    Sem a edição, duas linhas do mesmo nome (dois lotes de impressões
+    diferentes) apareciam como *"tirar 5× Plains"* e *"tirar 7× Plains"*, uma a
+    seguir à outra, sem nada que as distinguisse. Não são a mesma pilha.
+    """
+    sc = (m.get("set_code") or "").upper()
+    return f"{m['nm']} [{sc}]" if sc else m["nm"]
+
+
+def _actualizacoes(plano):
+    """As caixas CONGELADAS que têm delta por aplicar ("tirar X, meter Y").
+
+    Vem antes da arrumação normal de propósito: é um gesto diferente e mais raro
+    — abrir um deck que está sleevado, trocar duas cartas e voltar a fechá-lo —
+    e o `--confirmar` NÃO lhe toca. É a ordem do André: *"apenas mexer para
+    actualizar"* (2026-09-07, 19:00).
+    """
+    acts = plano.get("actualizacoes") or {}
+    if not acts:
+        return
+    print(f"ACTUALIZAR DECKS MONTADOS — {plano['copias_actualizar']} cópias\n"
+          "  (caixas dedicadas e montadas: a lista mudou, o deck não. "
+          "Aplica-se no botão 'actualizei' do modo edição.)\n")
+    for a in acts.values():
+        print(f"  {a['caixa']}")
+        for m in a["sai"]:
+            print(f"    tirar  {m['q']}× {_carta(m):<40} -> {m['para']}")
+        for m in a["entra"]:
+            print(f"    meter  {m['q']}× {_carta(m):<40} <- {m['de']}")
+        print()
+    print()
+
+
 def _arrumar(con, csv_out=False, confirmar=False):
     """A folha de arrumação: de que gaveta sai cada carta e para que caixa vai.
 
@@ -551,20 +585,23 @@ def _arrumar(con, csv_out=False, confirmar=False):
     if csv_out:
         print(loadout.csv_arrumacao(plano), end="")
         return
+    _actualizacoes(plano)
     if not plano["movimentos"]:
-        print("Nada a arrumar: a estante já está igual à alocação.")
+        print("Nada a arrumar: a estante já está igual à alocação"
+              + (" (à parte das actualizações acima)." if plano.get("actualizacoes")
+                 else "."))
         return
     print(f"ARRUMAR — {plano['copias']} cópias em {plano['linhas']} linhas\n")
     print("DE CADA GAVETA (o que se tira)")
     for origem, movs in plano["por_origem"].items():
         print(f"\n  {origem}  ({sum(m['q'] for m in movs)} cópias)")
         for m in sorted(movs, key=lambda x: (x["para"], x["nm"])):
-            print(f"    {m['q']}× {m['nm']:<34} -> {m['para']}")
+            print(f"    {m['q']}× {_carta(m):<40} -> {m['para']}")
     print("\n\nPARA CADA CAIXA (o que entra)")
     for destino, movs in plano["por_destino"].items():
         print(f"\n  {destino}  ({sum(m['q'] for m in movs)} cópias)")
         for m in sorted(movs, key=lambda x: (x["de"], x["nm"])):
-            print(f"    {m['q']}× {m['nm']:<34} <- {m['de']}")
+            print(f"    {m['q']}× {_carta(m):<40} <- {m['de']}")
     if confirmar:
         n = loadout.guardar_arrumacao(con, rep)
         print(f"\n  ARRUMADO: {n} cópias registadas nas caixas. "

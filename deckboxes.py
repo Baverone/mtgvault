@@ -35,7 +35,6 @@ Reutiliza `mtgvault.loadout` para as contas. Não inventa nada.
 """
 from __future__ import annotations
 
-import html
 import json
 import os
 from datetime import date
@@ -53,27 +52,9 @@ def _art(sid):
     return f"https://cards.scryfall.io/small/front/{sid[0]}/{sid[1]}/{sid}.jpg" if sid else ""
 
 
-def _img_map(con, names):
-    """nome -> scryfall_id de uma impressão com arte. Preferem-se as impressões
-    que ele TEM (é a carta que vai estar na caixa)."""
-    out = {}
-    for r in con.execute("""SELECT c.name nm, cp.scryfall_id sid FROM copies cp
-                              JOIN cards c ON c.scryfall_id = cp.scryfall_id
-                             WHERE cp.purpose = 'player'"""):
-        out.setdefault(r["nm"].split(" // ")[0], r["sid"])
-    falta = [n for n in names if n not in out]
-    for i in range(0, len(falta), 300):
-        ch = falta[i:i + 300]
-        ph = ",".join("?" for _ in ch)
-        for r in con.execute(f"""SELECT name nm, scryfall_id sid FROM cards
-                                  WHERE name IN ({ph}) AND digital = 0 GROUP BY name""", ch):
-            out.setdefault(r["nm"].split(" // ")[0], r["sid"])
-    for n in [x for x in falta if x not in out]:      # DFCs: casa pela frente
-        r = con.execute("SELECT scryfall_id sid FROM catalog.cards "
-                        "WHERE name LIKE ? AND digital = 0 LIMIT 1", (n + " // %",)).fetchone()
-        if r:
-            out[n] = r["sid"]
-    return out
+# `nome -> scryfall_id`: vive no `paginas` desde a revisão de 2026-09-07 (19:00).
+# Estava copiado à letra aqui e no `metagame.py`.
+_img_map = paginas.img_map
 
 
 # ---------------------------------------------------------------------------
@@ -88,6 +69,38 @@ def _estado_carta(m):
     if m["noutra_q"] or m["alt"]:
         return "sub"
     return "miss"
+
+
+def _candidatos(con, rep):
+    """`slot -> top-N de arquétipos que ele está mais perto de concluir`.
+
+    André, 2026-09-07 (19:00): *"quero ver os top-3 mais perto de concluir e
+    marcar qual vou montar"* — e não só na página do Metagame: também na aba da
+    caixa, que é onde ele está quando decide. *"A caixa Pioneer já é Greasefang
+    mas mostra também os 3 candidatos."*
+
+    O cálculo é o do `metagame.candidatos` e mais nenhum: duas respostas
+    diferentes à mesma pergunta é o padrão que este vault já pagou caro.
+    """
+    import metagame
+
+    out = {}
+    for fmt in metagame.formatos_top():
+        s = metagame.slot_do_formato(rep["slots"], fmt)
+        if s is None:
+            continue
+        out[s["slot"]] = [
+            {"nome": c["nome"], "subtitulo": c["subtitulo"],
+             "archetype_id": c["archetype_id"], "n_lists": c["n_lists"],
+             "pct": round(100 * (sum(m["got"] for m in c["linhas"] if not m["basica"])
+                                 + sum(m["noutra_q"] for m in c["linhas"]))
+                          / max(1, sum(m["need"] for m in c["linhas"]
+                                       if not m["basica"]))),
+             "comprar": sum(m["comprar"] for m in c["linhas"]),
+             "custo": round(sum(m["cost"] or 0 for m in c["linhas"]), 2),
+             "escolhido": c["escolhido"], "escolhido_em": c["escolhido_em"]}
+            for c in metagame.candidatos(con, fmt, rep)]
+    return out
 
 
 def _caixa_payload(s, imgs, cfs):
@@ -112,11 +125,19 @@ def _caixa_payload(s, imgs, cfs):
         "slot": s["slot"], "nome": s["nome"], "formato": s["formato"],
         "grupo": s.get("grupo"), "prioridade": s["prioridade"],
         "permanente": s["permanente"], "montado": bool(s.get("montado")),
+        # Caixa DEDICADA (2026-09-07, 19:00): não empresta nem vai buscar. A
+        # página tem de o dizer — é o que explica porque é que uma carta que ele
+        # TEM aparece na lista de compras desta caixa.
+        "dedicado": bool(s.get("dedicado")),
+        "congelada": bool(s.get("congelada")),
         "por_confirmar": bool(s.get("por_confirmar")), "vazio": s["vazio"],
         "nota": s["nota"], "fonte": s.get("fonte"), "ref": s.get("ref"),
         "pct": s["pct"], "tenho": s["tenho"], "precisa": s["precisa"],
         "comprar": s["comprar"], "noutra": s["noutra"], "faltam": s["faltam"],
         "custo": s["custo"], "origens": s["origens"],
+        # Quantas cópias a comprar não têm preço na base: o "fechar por" é um
+        # MÍNIMO, e a página tem de o dizer em vez de o dar como a conta toda.
+        "sem_preco": s["sem_preco"],
         # (ícone, texto, classe) — a classe vem do loadout, não de um teste de
         # substring na página (ver `loadout.rotulo_material`).
         "regras": [[i, t, c] for i, t, c in loadout.rotulo_material(s)],
@@ -230,6 +251,9 @@ def payload(con, rep, editable=False):
         "hoje": date.today().isoformat(),
         "editable": bool(editable),
         "caixas": [_caixa_payload(s, imgs, cfs) for s in rep["slots"]],
+        # O top-N por caixa por escolher (Standard/Pioneer/Legacy) — o "vou
+        # montar este" também mora aqui, não só no metagame.html.
+        "candidatos": _candidatos(con, rep),
         "resumo": {"montados": sum(1 for s in rep["slots"] if s.get("montado")),
                    "permanentes": sum(1 for s in rep["slots"] if s["permanente"]),
                    "candidatos": sum(1 for s in rep["slots"] if not s["permanente"]),
@@ -237,6 +261,7 @@ def payload(con, rep, editable=False):
                    # Cópias que a partilha poupou (o que a soma caixa a caixa
                    # pedia a mais). Mostrado na aba Comprar.
                    "poupado": rep.get("poupado_total", 0),
+                   "sem_preco": rep.get("sem_preco_total", 0),
                    "custo": rep["custo_total"], "venda": rep["total"],
                    "venda_rl": rep["total_rl"], "arrumar": arr["copias"]},
         "compras": sorted(geral.values(), key=lambda g: -g["cost"]),
@@ -252,6 +277,12 @@ def payload(con, rep, editable=False):
                   "retidos": venda_bloco("retidos", "copias_retidas", "total_retido")},
         "arrumar": {"por_origem": arr["por_origem"], "por_destino": arr["por_destino"],
                     "copias": arr["copias"], "linhas": arr["linhas"],
+                    # As caixas CONGELADAS não se arrumam, actualizam-se: o
+                    # "já arrumei tudo" geral não lhes toca e cada uma tem o seu
+                    # botão "actualizei" (André, 2026-09-07: *"apenas mexer para
+                    # actualizar"*).
+                    "actualizacoes": list(arr["actualizacoes"].values()),
+                    "copias_actualizar": arr["copias_actualizar"],
                     "csv": loadout.csv_arrumacao(arr)},
     }
 
@@ -340,6 +371,7 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
    color:var(--muted);white-space:normal;max-width:100%;overflow-wrap:anywhere}
  .bdg.ok{background:#123020;color:var(--add)} .bdg.wt{background:#241a10;color:var(--gold)}
  .bdg.pt{background:#101c2e;color:#7fa8ff} .bdg.fo{background:#2a2410;color:var(--gold)}
+ .bdg.ded{background:#2c1b2e;color:#e0a8ea}
  .bdg.perm{background:#1b2c4d;color:#9dbcff;font-weight:700}
  .bdg.cand{background:#241a10;color:var(--gold);font-weight:700}
  .nums{display:flex;flex-wrap:wrap;gap:6px 10px;margin:8px 0}
@@ -387,13 +419,22 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
  ul.fl li{display:flex;gap:7px;padding:2px 0} ul.fl b{color:var(--gold);
    font-variant-numeric:tabular-nums;flex:0 0 auto}
  ul.fl .wn{flex:1 1 auto;min-width:0}
- ul.fl .wn small{display:block;color:var(--dim);font-size:11px;line-height:1.35}
+ ul.fl .wn{min-width:0} ul.fl .wn small{display:block;color:var(--dim);font-size:11px;line-height:1.35;overflow-wrap:anywhere}
  ul.fl .pz{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums;
    flex:0 0 auto}
  .cara{font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;
    background:#3a1f1f;color:#ff9f8f;margin-left:5px;white-space:nowrap}
  .part{font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;
    background:#101c2e;color:#7fa8ff;margin-left:5px;white-space:nowrap}
+ .chosen{font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;
+   background:#123020;color:var(--add);margin-left:5px;white-space:nowrap}
+ .cand-blk .flh{color:#7fa8ff}
+ .cand-blk ul.fl li{align-items:flex-start;padding:5px 0;
+   border-bottom:1px solid #1a212c}
+ .cand-blk ul.fl li:last-child{border-bottom:0}
+ .cand-blk ul.fl b{color:var(--ink);min-width:38px}
+ .cand-blk .pz{display:flex;align-items:center;gap:8px}
+ .cand-blk .nota{margin-top:8px}
  #v-compras ul.fl{column-width:280px;column-gap:22px} #v-compras ul.fl li{break-inside:avoid}
  .selc{font:inherit;font-size:12.5px;font-weight:600;padding:7px 12px;
    border-radius:20px;border:1px solid var(--line);background:var(--card);
@@ -486,8 +527,8 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
 <div class="lead" id="resumo"></div>
 %TABS%
 </header>
-<nav class="decktabs" id="decktabs" aria-label="Caixas"></nav>
-<main id="vista"></main>
+<nav class="decktabs" id="decktabs" role="tablist" aria-label="Caixas e vistas"></nav>
+<main id="vista" role="tabpanel" tabindex="-1" aria-live="polite"></main>
 <footer>
 Uma cópia física entra numa caixa e <b>só numa</b> — por isso os números aqui são mais
 baixos que os da página <b>Decks permanentes</b>, onde cada deck conta a coleção inteira.
@@ -550,25 +591,45 @@ function renderResumo() {
 
 function renderTabs() {
   const nav = $('#decktabs');
-  const fixas = [['todas', '▦ Todas', ''], ['arrumar', '📥 Arrumar',
-                  D.arrumar.copias + ' cópias'],
+  const arr = D.arrumar.copias + ' cópias'
+    + (D.arrumar.copias_actualizar ? ` · ${D.arrumar.copias_actualizar} a actualizar`
+                                   : '');
+  const fixas = [['todas', '▦ Todas', ''], ['arrumar', '📥 Arrumar', arr],
                  ['partilhadas', '🔁 Partilhadas', D.partilhadas.length + ' cartas'],
                  ['comprar', '🛒 Comprar', D.resumo.comprar + ' cópias'],
                  ['vender', '💰 Vender', eur(D.resumo.venda)]];
   let h = '';
+  /* `role=tab` + `aria-selected` para o leitor de ecrã dizer qual está aberta,
+     e `tabindex=-1` nas outras: numa fila de 19 abas, o Tab passava por todas
+     antes de chegar ao conteúdo. Andar entre elas é com as setas (ver abaixo),
+     que é o que o padrão de tablist manda. */
+  const tab = (id, dentro, extra) =>
+    `<button class="dt${aba === id ? ' on' : ''}${extra || ''}" role="tab"`
+    + ` aria-selected="${aba === id}" tabindex="${aba === id ? 0 : -1}"`
+    + ` data-aba="${esc(id)}">${dentro}</button>`;
   for (const [id, lbl, sub] of fixas) {
-    h += `<button class="dt${aba === id ? ' on' : ''}" data-aba="${id}">${lbl}`
-       + (sub ? `<small>${esc(sub)}</small>` : '') + `</button>`;
+    h += tab(id, lbl + (sub ? `<small>${esc(sub)}</small>` : ''));
   }
   for (const c of D.caixas) {
     const p = c.vazio ? '—' : c.pct + '%';
-    h += `<button class="dt${aba === c.slot ? ' on' : ''}`
-       + `${c.permanente ? '' : ' cand'}" data-aba="${c.slot}">`
-       + `<span><i class="pin ${c.vazio ? 'low' : pin(c.pct)}"></i>${esc(c.nome)}</span>`
-       + `<small>${p}${c.vazio ? '' : ` · ${c.tenho}/${c.precisa}`}</small></button>`;
+    h += tab(c.slot,
+      `<span><i class="pin ${c.vazio ? 'low' : pin(c.pct)}"></i>${esc(c.nome)}</span>`
+      + `<small>${p}${c.vazio ? '' : ` · ${c.tenho}/${c.precisa}`}</small>`,
+      c.permanente ? '' : ' cand');
   }
   nav.innerHTML = h;
-  for (const b of nav.querySelectorAll('.dt')) b.onclick = () => ir(b.dataset.aba);
+  const botoes = [...nav.querySelectorAll('.dt')];
+  botoes.forEach((b, i) => {
+    b.onclick = () => ir(b.dataset.aba);
+    b.onkeydown = (e) => {
+      const d = { ArrowRight: 1, ArrowLeft: -1, Home: -i, End: botoes.length - 1 - i };
+      if (!(e.key in d)) return;
+      e.preventDefault();
+      ir(botoes[(i + d[e.key] + botoes.length) % botoes.length].dataset.aba);
+      const novo = nav.querySelector('.dt.on');
+      if (novo) novo.focus();
+    };
+  });
   const on = nav.querySelector('.dt.on');
   if (on) on.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
@@ -643,9 +704,43 @@ function wantlistHTML(itens, marca, id, detalhe) {
   return `<div class="blk" id="${id || ''}"><div class="flh">🛒 Comprar`
     + (marca ? ` <span class="mrk">${esc(marca)}</span>` : '')
     + `<span class="dim">${itens.length} cartas</span>`
-    + `<button class="cpbtn" onclick="copiar(this)">copiar</button></div>`
+    + `<button class="cpbtn" onclick="copiar(this)" aria-label="Copiar as `
+    + `${itens.length} cartas desta lista de compras">copiar</button></div>`
     + `<ul class="fl">${li}</ul>`
     + `<textarea class="cmk" readonly>${esc(txt)}</textarea></div>`;
+}
+
+/* O top-N que ele está mais perto de concluir, para as caixas por escolher
+   (Standard, Pioneer, Legacy). "Vou montar este" fixa a lista de consenso desse
+   arquétipo nesta caixa, congelada com a data — no site publicado é só a lista
+   com o crachá de quem já foi escolhido. */
+function candidatosHTML(c) {
+  const lista = (D.candidatos || {})[c.slot] || [];
+  if (!lista.length) return '';
+  const escolhido = lista.some(x => x.escolhido);
+  const li = lista.map(x => `<li><b>${x.pct}%</b><span class="wn">${esc(x.nome)}`
+    + (x.escolhido ? `<span class="chosen">✔ escolhido em `
+        + `${esc(x.escolhido_em || '?')}</span>`
+       : escolhido ? `<span class="part">alternativa</span>` : '')
+    + `<small>${esc(x.subtitulo)} · ${x.n_lists} listas · comprar ${x.comprar}`
+    + `</small></span><span class="pz">${eur(x.custo)}`
+    + (D.editable ? (x.escolhido
+        ? `<button class="btn" data-act="desmarcar" data-slot="${esc(c.slot)}" `
+          + `aria-label="Deixar de montar ${esc(x.nome)}">✕ já não</button>`
+        : `<button class="btn pri" data-act="escolher" data-slot="${esc(c.slot)}" `
+          + `data-aid="${x.archetype_id}" `
+          + `aria-label="Vou montar ${esc(x.nome)} nesta caixa">✔ vou montar este`
+          + `</button>`) : '')
+    + `</span></li>`).join('');
+  return `<div class="blk cand-blk"><div class="flh">🎯 O que estás mais perto de `
+    + `concluir<span class="dim">${lista.length} arquétipos</span></div>`
+    + `<ul class="fl">${li}</ul>`
+    + `<p class="nota">A lista de cada um está na página `
+    + `<a href="metagame.html#f-${esc(c.formato)}">Metagame</a>. `
+    + (D.editable ? 'Escolher fixa a lista de consenso <b>com a data</b>: não muda '
+        + 'debaixo dos pés se o metagame mudar amanhã.'
+       : 'Para escolheres, corre <code>python webapp.py</code> no PC (porto 8771).')
+    + `</p></div>`;
 }
 
 function caixaHTML(c, compacta) {
@@ -654,8 +749,9 @@ function caixaHTML(c, compacta) {
       + `<span class="pct dim">—</span></div><div class="badges">${badges(c)}</div>`
       + `<div class="nota">${esc(c.nota)}</div>`
       + `<div class="vaziomsg">Caixa por atribuir — não escolhi por ti. `
-      + `Vê o top-3 que estás mais perto de concluir na página `
-      + `<a href="metagame.html">Metagame</a> e diz-me o deck.</div>`
+      + `Escolhe aqui em baixo, ou vê a lista de cada um na página `
+      + `<a href="metagame.html">Metagame</a>.</div>`
+      + (compacta ? '' : candidatosHTML(c))
       + (D.editable ? acoesHTML(c) : '') + `</div>`;
   }
   let h = `<div class="box"><div class="btop"><b>${esc(c.nome)}</b>`
@@ -666,7 +762,9 @@ function caixaHTML(c, compacta) {
     + `<div class="num">na caixa<b>${c.tenho}/${c.precisa}</b></div>`
     + `<div class="num buy">comprar<b>${c.comprar}</b></div>`
     + `<div class="num get">ir buscar<b>${c.noutra}</b></div>`
-    + `<div class="num eur">fechar por<b>${eur(c.custo)}</b></div></div>`
+    + `<div class="num eur">fechar por<b>${eur(c.custo)}</b>`
+    + (c.sem_preco ? `<span class="dim"> no mínimo — ${c.sem_preco} sem preço`
+                     + ` na base</span>` : '') + `</div></div>`
     + `<div class="nota">${esc(c.nota)}</div>`;
   const orig = Object.entries(c.origens);
   if (orig.length) {
@@ -702,6 +800,7 @@ function caixaHTML(c, compacta) {
     h += `<div class="blk"><b>↻ tens a carta, não serve a caixa</b><ul>${li}</ul></div>`;
   }
   h += wantlistHTML(c.wantlist, c.marca);
+  h += candidatosHTML(c);
   if (D.editable) h += acoesHTML(c);
   return h + `</div>`;
 }
@@ -742,10 +841,45 @@ function vistaTodas() {
       + 'marca-o como permanente (no modo edição, <code>python webapp.py</code>).');
 }
 
+/* A edição, num movimento de arrumação. Sem ela, dois lotes do mesmo nome
+   (impressões diferentes) apareciam como duas linhas iguais uma a seguir à
+   outra — e não são a mesma pilha. */
+const edicao = m => m.set_code
+  ? ` <span class="dim">[${esc(m.set_code.toUpperCase())}]</span>` : '';
+
+/* As caixas CONGELADAS (dedicadas e montadas) não se arrumam — actualizam-se.
+   O "já arrumei tudo" geral não lhes toca de propósito: abrir um deck que está
+   sleevado é outro gesto, e é ele que decide quando o faz. */
+function actualizarHTML() {
+  const acts = D.arrumar.actualizacoes || [];
+  if (!acts.length) return '';
+  const lado = (movs, verbo, seta) => movs.map(m =>
+    `<div class="mv"><span class="q">${m.q}×</span>`
+    + `<span class="nm">${esc(m.nm)}${edicao(m)}</span>`
+    + `<span class="to">${verbo} ${seta} ${esc(verbo === 'tirar' ? m.para : m.de)}`
+    + `</span></div>`).join('');
+  return `<h2>🔄 Actualizar decks montados <span class="n">${acts.length}</span></h2>`
+    + `<p class="lead">Caixas <b>dedicadas e montadas</b>: a lista mudou, o deck `
+    + `não. Ficam como estão até seres tu a abri-las — o <b>já arrumei tudo</b> `
+    + `não lhes toca. Quando as actualizares, `
+    + (D.editable ? 'carrega em <b>actualizei</b> nessa caixa.'
+                  : 'diz-me (ou usa o modo edição, <code>python webapp.py</code>).')
+    + `</p>`
+    + acts.map(a => `<div class="arr"><div class="arrh"><b>${esc(a.caixa)}</b>`
+        + `<span>${a.copias} cópias · tirar ${a.sai.length} · meter `
+        + `${a.entra.length}</span></div>`
+        + lado(a.sai, 'tirar', '→') + lado(a.entra, 'meter', '←')
+        + (D.editable ? `<div class="acts"><button class="btn pri" `
+            + `data-act="actualizar" data-slot="${esc(a.slot)}">🔄 Actualizei o `
+            + `${esc(a.caixa)}</button></div>` : '')
+        + `</div>`).join('');
+}
+
 function vistaArrumar() {
   const a = D.arrumar;
   if (!a.linhas) {
-    return `<h2>📥 Arrumar</h2><p class="empty">Nada a arrumar: a estante já está `
+    return actualizarHTML()
+      + `<h2>📥 Arrumar</h2><p class="empty">Nada a arrumar: a estante já está `
       + `igual à alocação. Quando comprares cartas novas (fotos em `
       + `<code>pendentes/</code>) ou mudares uma caixa, isto volta a encher-se.</p>`;
   }
@@ -754,7 +888,8 @@ function vistaArrumar() {
     const feito = !!P.feitos[id];
     return `<label class="mv${feito ? ' feito' : ''}" data-id="${esc(id)}">`
       + `<input type="checkbox"${feito ? ' checked' : ''}>`
-      + `<span class="q">${m.q}×</span><span class="nm">${esc(m.nm)}</span>`
+      + `<span class="q">${m.q}×</span>`
+      + `<span class="nm">${esc(m.nm)}${edicao(m)}</span>`
       + `<span class="to">${lado === 'origem' ? '→ ' + esc(m.para) : '← ' + esc(m.de)}`
       + `</span></label>`;
   };
@@ -768,7 +903,8 @@ function vistaArrumar() {
     }
     return h;
   };
-  return `<h2>📥 Arrumar — ${a.copias} cópias</h2>`
+  return actualizarHTML()
+    + `<h2>📥 Arrumar — ${a.copias} cópias</h2>`
     + `<p class="lead">A diferença entre <b>onde as cartas estão</b> e <b>onde a `
     + `alocação diz que deviam estar</b>. Vai marcando à medida que moves; os `
     + `visto ficam guardados neste aparelho. No fim, <b>já arrumei tudo</b>`
@@ -879,15 +1015,19 @@ function vistaComprar() {
          + `<span class="dim"> ${resto.length} cartas</span></div></div>`
        + (caras.length ? `<p class="lead">As <b>💶 caras</b> decidem-se uma a uma: `
          + `só elas valem ${eur(soma(caras))} dos ${eur(soma(itens))} da lista.</p>` : '')
+       + (D.resumo.sem_preco ? `<p class="lead">⚠️ <b>${D.resumo.sem_preco}</b> `
+         + `cópias desta lista não têm preço na base (contam como 0 €). `
+         + `O total é um <b>mínimo</b>, não a conta fechada.</p>` : '')
        + wantlistHTML(itens, '', 'v-compras', true));
 }
 
 function vistaVender() {
-  const bloco = (id, titulo, lead, b, aberto) => !b.linhas.length ? '' :
+  const bloco = (id, titulo, lead, b, aberto, rotulo) => !b.linhas.length ? '' :
     `<details class="vblk" id="${id}"${aberto ? ' open' : ''}>`
     + `<summary><span>${titulo}</span><span class="vtot">${b.copias} cópias · `
     + `${eur(b.total)}</span></summary><p class="lead">${lead}</p>`
-    + `<div class="flh"><button class="cpbtn" onclick="copiar(this)">copiar lista`
+    + `<div class="flh"><button class="cpbtn" onclick="copiar(this)" `
+    + `aria-label="Copiar a lista: ${esc(rotulo)}">copiar lista`
     + `</button></div><textarea class="cmk" readonly>`
     + esc(b.linhas.slice().sort((x, y) => x.nm.localeCompare(y.nm))
         .map(r => `${r.q} ${r.nm}`).join('\n')) + `</textarea>`
@@ -913,19 +1053,21 @@ function vistaVender() {
     + `por balde) e <b>1 por deck</b> nas caixas de Commander. <b>Básicas nunca.</b></p>`
     + bloco('v-normal', 'Excedente normal', 'Cópias a mais de cartas que não são '
         + 'Reserved List. É por aqui que se começa: o risco é baixo e o dinheiro é '
-        + 'real.', V.normal, true)
+        + 'real.', V.normal, true, 'excedente normal')
     + bloco('v-rl', '⚠️ Reserved List — confirmar uma a uma', 'Cartas que nunca mais '
         + 'são impressas. A regra dá-as como excedente, mas a decisão não se desfaz — '
         + 'e os preços de cartas antigas na base não são de confiança (ver '
-        + '<code>doubts.md</code>). Confere cada uma antes de listar.', V.rl)
+        + '<code>doubts.md</code>). Confere cada uma antes de listar.', V.rl, false,
+        'Reserved List')
     + bloco('v-guardar', '🔒 Guardar — servem um deck do loadout', 'Passariam o limite '
         + 'de 4, mas são substitutos de cartas que faltam a uma caixa: servem o deck e '
         + 'só não fecham o slot por causa da língua ou do acabamento. Vendê-las era '
-        + 'comprá-las outra vez.', V.guardar)
+        + 'comprá-las outra vez.', V.guardar, false, 'guardar')
     + bloco('v-retidos', '⏳ Retidos — extras de decks montados', 'Baldes com '
         + '<code>reter_extras_meses</code>: guardam-se até 6 meses depois da última '
         + 'utilização. Ainda não há registo de "última utilização", por isso ficam '
-        + 'todos — não se vende nada por uma regra que ainda não corre.', V.retidos)
+        + 'todos — não se vende nada por uma regra que ainda não corre.', V.retidos,
+        false, 'retidos')
     + (V.normal.linhas.length || V.rl.linhas.length ? '' :
        `<p class="empty">Não há nada a mais para vender.</p>`);
 }
@@ -946,10 +1088,13 @@ function render() {
 }
 
 function filtroHTML() {
-  return `<div class="seg">`
-    + `<button class="${filtro === 'tudo' ? 'on' : ''}" data-f="tudo">Todas as cartas</button>`
-    + `<button class="${filtro === 'faltam' ? 'on' : ''}" data-f="faltam">Só o que falta</button>`
-    + `</div>`;
+  /* `aria-pressed`: são dois botões que ficam carregados, não links. Sem isto o
+     leitor de ecrã lia "Todas as cartas, botão" nos dois, sem dizer qual está
+     activo — e a diferença é só a cor de fundo. */
+  const b = (f, t) => `<button class="${filtro === f ? 'on' : ''}" data-f="${f}"`
+    + ` aria-pressed="${filtro === f}">${t}</button>`;
+  return `<div class="seg" role="group" aria-label="Filtrar as cartas">`
+    + b('tudo', 'Todas as cartas') + b('faltam', 'Só o que falta') + `</div>`;
 }
 
 function ligar() {
@@ -959,11 +1104,15 @@ function ligar() {
   for (const b of document.querySelectorAll('.mini[data-slot]')) {
     b.onclick = () => ir(b.dataset.slot);
   }
-  for (const b of document.querySelectorAll('.acts [data-act]')) {
-    b.onclick = () => accao(b.dataset.act, b.dataset.slot, b);
+  /* Todos os botões de escrita, estejam num `.acts` ou dentro da lista de
+     candidatos — um selector demasiado apertado deixava o "vou montar este"
+     desenhado e morto, que é o pior dos dois mundos. */
+  for (const b of document.querySelectorAll('[data-act]')) {
+    b.onclick = () => accao(b.dataset.act, b.dataset.slot, b, b.dataset.aid);
   }
   for (const l of document.querySelectorAll('.mv')) {
     const cb = l.querySelector('input');
+    if (!cb) continue;  /* .mv da seccao Actualizar nao tem checkbox */
     cb.onchange = () => {
       if (cb.checked) P.feitos[l.dataset.id] = 1; else delete P.feitos[l.dataset.id];
       l.classList.toggle('feito', cb.checked);
@@ -1020,15 +1169,21 @@ async function jaArrumei() {
   } catch (e) { toast('Não deu: ' + e.message); }
 }
 
-async function accao(act, slot, btn) {
+/* Escolher um deck para uma caixa é outro endpoint (`api/escolher`): mexe na
+   `listas_escolhidas` e refaz as DUAS páginas, não só esta. */
+const ESCOLHA = { escolher: 1, desmarcar: 1 };
+
+async function accao(act, slot, btn, aid) {
   btn.disabled = true;
   try {
-    const r = await fetch('api/caixa', {
+    const r = await fetch(ESCOLHA[act] ? 'api/escolher' : 'api/caixa', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ act, slot }),
+      body: JSON.stringify({ act, slot, aid: aid ? Number(aid) : null }),
     });
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    toast('Feito — a alocação foi refeita.');
+    const j = await r.json();
+    if (j.erro) throw new Error(j.erro);
+    toast(j.msg || 'Feito — a alocação foi refeita.');
     location.reload();
   } catch (e) { btn.disabled = false; toast('Não deu: ' + e.message); }
 }
