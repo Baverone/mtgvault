@@ -217,7 +217,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from collections import defaultdict
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 from . import caixas as _caixas
@@ -371,6 +371,72 @@ def card_price(con, name: str, finish: str = "nonfoil",
         (name, source)).fetchone()
     return ((row["preco"], "nonfoil") if row and row["preco"] is not None
             else (None, None))
+
+
+def card_price_em(con, name: str, dia: str, finish: str = "nonfoil",
+                  source: str = "cardmarket") -> tuple[float | None, str | None,
+                                                       str | None]:
+    """(preço que o `card_price` daria NO DIA `dia`, data da cotação, 1ª cotação).
+
+    O `price_history` só guarda MUDANÇAS — *"não há linha nova quer dizer que o
+    preço se manteve"* (`prices.write_prices`). Por isso o preço de um dia é a
+    ÚLTIMA linha ATÉ esse dia, e não uma linha datada nesse dia: procurar só
+    dentro de uma janela estreita dava "sem preço" a toda a carta estável, que é
+    precisamente a que não subiu.
+
+    Faz a MESMA conta que o `card_price` — MIN(trend) sobre as impressões do
+    mesmo nome, na mesma família de acabamento e na mesma fonte — porque o que
+    daqui sai é uma variação: com uma conta diferente em cada ponta, a
+    percentagem media a diferença entre as duas contas e não a do mercado.
+
+    A terceira saída é a data da cotação mais antiga que existe para esta carta.
+    É ela que diz *desde quando* é que o vault sabe alguma coisa, e sem isso um
+    "não sei" não se distingue de um "não subiu".
+    """
+    rows = _historico(con, name, finish, source)
+    if not rows:
+        return None, None, None
+    preco, quando = _cotacao_em(rows, dia, dia)
+    return preco, quando, rows[0]["d"]
+
+
+def _historico(con, name: str, finish: str, source: str = "cardmarket") -> list:
+    """As linhas de `price_history` desta carta, por ordem de data."""
+    fins = FOIL_FINISHES if finish in FOIL_FINISHES else ("nonfoil",)
+    marks = ",".join("?" * len(fins))
+    return con.execute(
+        f"""SELECT h.scryfall_id sid, h.finish fin, h.date d, h.trend t
+              FROM price_history h JOIN cards c ON c.scryfall_id = h.scryfall_id
+             WHERE c.name = ? AND h.source = ? AND h.finish IN ({marks})
+                   AND h.trend IS NOT NULL
+             ORDER BY h.date""", (name, source, *fins)).fetchall()
+
+
+def _cotacao_em(rows, alvo: str, limite: str) -> tuple[float | None, str | None]:
+    """A cotação de `alvo` a partir das linhas do histórico, com tolerância.
+
+    Duas hipóteses, por esta ordem:
+      1. a última linha ATÉ ao dia-alvo — é o preço que estava em vigor nesse
+         dia, porque uma linha em falta quer dizer "manteve-se";
+      2. se o histórico ainda não chegava lá, a mais ANTIGA que esteja dentro da
+         tolerância (entre `alvo` e `limite`). É a regra do André à letra —
+         *"±10 dias; usa o mais antigo dentro da janela"* —, e serve para o dia
+         em que o histórico começa a meio da janela.
+    Sem nenhuma das duas não há resposta: a cópia não se vende e diz-se porquê.
+    """
+    ate_alvo: dict[tuple, dict] = {}
+    tolerado: dict[tuple, dict] = {}
+    for r in rows:
+        k = (r["sid"], r["fin"])
+        if r["d"] <= alvo:
+            ate_alvo[k] = r                      # fica a ÚLTIMA até ao alvo
+        elif r["d"] <= limite:
+            tolerado.setdefault(k, r)            # fica a MAIS ANTIGA da janela
+    escolha = ate_alvo or tolerado
+    if not escolha:
+        return None, None
+    melhor = min(escolha.values(), key=lambda r: r["t"])
+    return melhor["t"], melhor["d"]
 
 
 # ---------------------------------------------------------------------------
@@ -1181,7 +1247,12 @@ def _estado_carta(pool: dict, s: dict, nm: str, need: int, baldes: set[str],
         noutra[caixa] = min(q, resta)
         resta -= noutra[caixa]
     nq = sum(noutra.values())
-    return {"got": got, "noutra": noutra, "noutra_q": nq,
+    # `onde` é o `noutra` ANTES de ser cortado pelo que ainda falta: caixa -> todas
+    # as cópias que ela tem desta carta. O `noutra` só serve para tapar o buraco
+    # (pára em `resta`), e por isso não se pode filtrar depois — se uma caixa que
+    # não interessa apanhar o corte primeiro, a soma filtrada vinha a menos. Quem
+    # precisa disto é a cobertura *"como se fosse o principal"* do Premodern.
+    return {"got": got, "noutra": noutra, "noutra_q": nq, "onde": dict(onde),
             "comprar": need - got - nq}
 
 
@@ -1829,6 +1900,85 @@ def _serve_outra_caixa(lot: dict, nm: str, slots: list[dict],
     return None
 
 
+# ---------------------------------------------------------------------------
+# Reserved List: só se vende o que NÃO valorizou (André, 2026-09-08, à letra)
+# ---------------------------------------------------------------------------
+# *"Cartas de RL só vão para venda se não tiverem subido 5 % de valor nos últimos
+# 3 meses."* É a única regra da venda que olha para o TEMPO, e por isso é a única
+# que pode responder "não sei": o `price_history` do vault é recente (começou em
+# 2026-08-10) e uma carta sem cotação de há três meses não se pode dizer que não
+# subiu. Nesse caso NÃO se vende e diz-se desde quando é que há dados — inventar
+# uma resposta era exactamente o defeito do `event_tier`: um passo que corre sem
+# erro e produz um valor falso, sobre a decisão menos reversível de todas.
+RL_SUBIDA_MINIMA_PCT = 5.0
+RL_JANELA_DIAS = 90
+RL_TOLERANCIA_DIAS = 10
+RAZAO_RL_SEGURAR = "RL em valorização"
+RAZAO_RL_SEM_HISTORICO = "RL sem histórico suficiente"
+
+
+def regras_venda() -> dict:
+    """`colecao_config.json -> venda`. Sem ela valem os valores deste módulo."""
+    v = sources.config().get("venda")
+    return v if isinstance(v, dict) else {}
+
+
+def _num_venda(chave: str, omissao: float) -> float:
+    try:
+        v = regras_venda().get(chave)
+        return omissao if v is None else float(v)
+    except (TypeError, ValueError):
+        return omissao
+
+
+def rl_subida_minima() -> float:
+    return _num_venda("rl_subida_minima_pct", RL_SUBIDA_MINIMA_PCT)
+
+
+def rl_janela_dias() -> int:
+    return max(1, int(_num_venda("rl_janela_dias", RL_JANELA_DIAS)))
+
+
+def rl_tolerancia_dias() -> int:
+    return max(0, int(_num_venda("rl_tolerancia_dias", RL_TOLERANCIA_DIAS)))
+
+
+def avaliar_rl(con, linha: dict, hoje: str | None = None,
+               cache: dict | None = None) -> tuple[str, str]:
+    """('venda' | 'segurar' | 'sem_historico', motivo) para uma linha de venda RL.
+
+    Compara o preço de hoje (o mesmo `unit` que a linha já mostra) com o de há
+    `rl_janela_dias`, pela mesma conta (`card_price_em`, que espelha o
+    `card_price`). Subiu o mínimo → segura-se; não subiu → vende-se; não há
+    cotação que cubra a janela → **não se vende** e diz-se desde quando há dados.
+    """
+    hoje = hoje or date.today().isoformat()
+    janela, tol = rl_janela_dias(), rl_tolerancia_dias()
+    minima = rl_subida_minima()
+    d0 = date.fromisoformat(hoje)
+    alvo = (d0 - timedelta(days=janela)).isoformat()
+    limite = (d0 - timedelta(days=max(janela - tol, 0))).isoformat()
+    meses = max(1, round(janela / 30))
+    fin = linha.get("price_finish") or linha["finish"]
+    chave = (linha["nm"], "foil" if e_foil(fin) else "nonfoil")
+    cache = {} if cache is None else cache
+    if chave not in cache:
+        cache[chave] = _historico(con, linha["nm"], fin)
+    rows = cache[chave]
+    antes, _quando = _cotacao_em(rows, alvo, limite) if rows else (None, None)
+    agora = linha.get("unit")
+    if antes is None or antes <= 0 or agora is None:
+        desde = rows[0]["d"] if rows else None
+        return "sem_historico", (
+            f"{RAZAO_RL_SEM_HISTORICO} (desde {desde})" if desde
+            else f"{RAZAO_RL_SEM_HISTORICO} (sem preços na base)")
+    if agora >= antes * (1 + minima / 100):
+        subida = (agora - antes) / antes * 100
+        return "segurar", (f"{RAZAO_RL_SEGURAR}: +{subida:.1f} % em "
+                           f"{meses} {'mês' if meses == 1 else 'meses'}")
+    return "venda", ""
+
+
 def sell_list(con, res: dict) -> dict:
     """O que sobra depois de alocar e de guardar o backup permitido.
 
@@ -1873,6 +2023,14 @@ def sell_list(con, res: dict) -> dict:
     reserva, não serve nada e ele quer vendê-la. Fica com motivo próprio, e não
     misturada no "excedente (mais de 4)", porque são decisões diferentes: aquela
     é *"tens cópias a mais"*, esta é *"não tens onde a jogar"*.
+
+    E, por cima de tudo isto, um FILTRO sobre a Reserved List (André, 2026-09-08):
+    *"cartas de RL só vão para venda se não tiverem subido 5 % de valor nos
+    últimos 3 meses."* Uma linha da `venda_rl` que valorizou sai para
+    `rl_segurar`; uma que o vault não consegue medir (histórico mais curto do que
+    a janela) sai para `rl_sem_historico`. As duas ficam à parte da `venda_rl`
+    porque não são a mesma resposta: *"subiu"* é uma decisão tomada e *"não sei"*
+    é uma decisão por tomar — ver `avaliar_rl`.
     """
     pool = res["pool"]
     retidos_baldes = _retencao()
@@ -2036,6 +2194,28 @@ def sell_list(con, res: dict) -> dict:
                     (venda_rl if lot["rl"] else venda).append(
                         linha_de(nm, lot, sobra, RAZAO_PREMODERN))
 
+    # RESERVED LIST: só sai o que NÃO valorizou (André, 2026-09-08). Corre no fim,
+    # sobre a lista de venda já formada, e não dentro dos dois ciclos: a regra é
+    # sobre a CÓPIA e não sobre o motivo por que ela lá foi parar — *"cartas de RL
+    # só vão para venda se não tiverem subido 5 % nos últimos 3 meses"*, seja o
+    # motivo o excedente ou o "não usada por nenhum deck". Espalhá-la pelos dois
+    # ciclos era escrever a mesma decisão em dois sítios.
+    rl_segurar, rl_sem_historico = [], []
+    if venda_rl:
+        cache_precos: dict = {}
+        passa = []
+        for r in venda_rl:
+            estado, motivo = avaliar_rl(con, r, cache=cache_precos)
+            if estado == "venda":
+                passa.append(r)
+                continue
+            # `porque_venderia` guarda o motivo que a trouxe até aqui. Sem ele a
+            # linha só diz "subiu 7 %" e perde-se a pergunta a que isso responde
+            # — e é essa que ele vai querer rever quando a regra a libertar.
+            r = dict(r, reason=motivo, porque_venderia=r["reason"])
+            (rl_segurar if estado == "segurar" else rl_sem_historico).append(r)
+        venda_rl = passa
+
     def _fecha(rows):
         # Junta lotes iguais: dois lotes da mesma impressão são a mesma linha na
         # lista de venda, e apareciam duas vezes só porque entraram em alturas
@@ -2057,10 +2237,22 @@ def sell_list(con, res: dict) -> dict:
     v, vrl, ret, gd = (_fecha(venda), _fecha(venda_rl), _fecha(retidos),
                        _fecha(guardar))
     rsv = _fecha(reservadas)
+    seg, semh = _fecha(rl_segurar), _fecha(rl_sem_historico)
     return {"venda": v["linhas"], "venda_rl": vrl["linhas"],
             "retidos": ret["linhas"], "guardar": gd["linhas"],
             "reservadas": rsv["linhas"], "copias_reservadas": rsv["copias"],
             "total_reservado": rsv["total"],
+            # As duas saídas novas da Reserved List. Separadas de propósito: uma
+            # é "subiu, não vendas agora" e a outra é "não sei dizer" — a segunda
+            # é a que ele pode querer forçar, e um total que as some não serve
+            # para decidir nem uma coisa nem outra.
+            "rl_segurar": seg["linhas"], "copias_rl_segurar": seg["copias"],
+            "total_rl_segurar": seg["total"],
+            "rl_sem_historico": semh["linhas"],
+            "copias_rl_sem_historico": semh["copias"],
+            "total_rl_sem_historico": semh["total"],
+            "copias_rl_retidas": seg["copias"] + semh["copias"],
+            "total_rl_retido": round(seg["total"] + semh["total"], 2),
             "total": v["total"], "copias": v["copias"],
             "total_rl": vrl["total"], "copias_rl": vrl["copias"],
             "total_retido": ret["total"], "copias_retidas": ret["copias"],
@@ -2538,6 +2730,10 @@ def foil_report(con: sqlite3.Connection, fmt: str, top: int = 5,
                 "board": b, "nm": nm, "need": q, "got": e["got"], "basica": False,
                 "lotes": [], "missing": q - e["got"], "comprar": e["comprar"],
                 "noutra": e["noutra"], "noutra_q": e["noutra_q"],
+                # Todas as caixas que têm esta carta e a emprestam, sem o corte do
+                # `noutra` — é daqui que sai a cobertura *"como se fosse o
+                # principal"* (`premodern.pct_principal`).
+                "onde": e["onde"],
                 "unit": unit, "price_finish": pfin,
                 "cost": round((unit or 0) * e["comprar"], 2)})
             need += q

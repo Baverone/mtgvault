@@ -110,6 +110,11 @@ ENCHANTRESS = [("Argothian Enchantress", 4), ("Enchantress's Presence", 4),
 STASIS = [("Stasis", 4), ("Forsaken City", 4), ("Black Vise", 4), ("Island", 20)]
 GOBLINS = [("Goblin Warchief", 4), ("Goblin Piledriver", 4),
            ("Mogg Fanatic", 4), ("Plains", 20)]
+# Uma caixa que PARTILHA duas cartas com o Stasis. Serve para separar as duas
+# coberturas: com ela montada, o candidato Stasis não tem quase nada livre, mas
+# teria tudo se fosse ele a escolher primeiro.
+CONTROLO = [("Stasis", 4), ("Forsaken City", 4), ("Swords to Plowshares", 4),
+            ("Island", 20)]
 
 _ABERTAS = []
 
@@ -291,6 +296,56 @@ def caso_cobertura_e_do_que_sobra_e_sem_basicas():
     pm2 = pm_de(loadout.report(con2, [solta]))
     assert por_nome(pm2)["Enchantress"]["pct"] == 100
     print("as mesmas cópias, sem a caixa que as levava, dão 100%")
+
+
+def caso_cobertura_como_principal_conta_as_outras_caixas_do_grupo():
+    """*"Como as cartas em Premodern são partilhadas, tens que ver se a % desses
+    decks aumentaria se eles fossem o principal; mantém a 50 %."* (2026-09-08)
+
+    Uma caixa de Premodern já montada leva as cópias de Stasis e de Forsaken
+    City. Com o que SOBRA o candidato Stasis fica em 33 % — só lhe restam os
+    Black Vise — e não chegava aos 50 % nem por sombras. Mas as caixas de
+    Premodern **partilham** (`dedicado: false`): se fosse este deck a escolher
+    primeiro, ficava com tudo. É essa a percentagem que decide.
+
+    As duas continuam à vista, e a diferença entre elas é a informação que
+    interessa: 100 % − 33 % é quanto ele iria buscar às outras caixas.
+    """
+    cfg(sugerir_a_partir_de_pct=50, top_combo=2)
+    con = base()
+    listas(con, GOBLINS, 9, "gob")
+    listas(con, ENCHANTRESS, 7, "ench")
+    listas(con, STASIS, 6, "sta")
+    analisa(con)
+    deck(con, "Controlo (consenso)", "premodern", CONTROLO)
+    caixa_ctl = caixa("premodern-controlo", "Controlo", "premodern",
+                      "Controlo (consenso)")
+    for nm, q in (("Stasis", 4), ("Forsaken City", 4), ("Black Vise", 4)):
+        add(con, nm, q)
+
+    pm = pm_de(loadout.report(con, [caixa_ctl]))
+    c = por_nome(pm)["Stasis"]
+    assert c["pct"] == 33, c["pct"]                     # só os Black Vise sobram
+    assert c["pct_principal"] == 100, c["pct_principal"]
+    assert c["tenho_principal"] == c["need"] == 12, (c["tenho_principal"], c["need"])
+    assert c["estado"] == "sugerida", (c["estado"], c["pct"], c["pct_principal"])
+    print("33% com o que sobra, 100% como principal — e é o segundo que decide")
+
+    # E o contrário, para se ver que é mesmo o grupo que manda: uma caixa
+    # DEDICADA não empresta, e o candidato volta a valer só o que sobra.
+    ded = dict(caixa_ctl, dedicado=True)
+    pm2 = pm_de(loadout.report(con, [ded]))
+    c2 = por_nome(pm2)["Stasis"]
+    assert c2["pct_principal"] == 33, c2["pct_principal"]
+    assert c2["estado"] == "abaixo", c2["estado"]
+    print("com a caixa dedicada não há empréstimo: como principal volta aos 33%")
+
+    # E as cartas de uma caixa de OUTRO formato nunca contam — essas não voltam
+    # por partilha nenhuma. O Duel Commander é dedicado por omissão do grupo, e
+    # aqui prova-se pelo lado do formato: o Sylvan Library que ele leva não
+    # aparece na cobertura de ninguém em Premodern.
+    assert all(cx in {"Controlo"} for m in c["linhas"] for cx in (m.get("onde") or {})), \
+        [m.get("onde") for m in c["linhas"] if m.get("onde")]
 
 
 def caso_sugestao_reserva_as_cartas_e_tira_as_da_venda():
@@ -497,6 +552,10 @@ def caso_a_pagina_mostra_a_sugestao_e_a_venda():
         return
     s = abas["sugestoes"]
     assert "Stasis" in s and "sugerido — montar?" in s, s[:400]
+    # As DUAS percentagens, lado a lado: a que decide (como principal) e a que
+    # explica de onde vinham as cartas (com o que sobra). Mostrar só uma delas
+    # foi o que fez a página contradizer o limiar durante um dia.
+    assert "como principal" in s and "com o que sobra" in s, s[:600]
     assert "🧰" in s, "a caixa que ele já tem vem marcada como tal"
     assert "data-act=" not in s, "a página publicada não desenha botões"
     v = abas["vender"]
@@ -526,6 +585,7 @@ def run():
     for fn in (caso_top10_e_top5_combo,
                caso_combo_por_regra_nomeia_e_separa,
                caso_cobertura_e_do_que_sobra_e_sem_basicas,
+               caso_cobertura_como_principal_conta_as_outras_caixas_do_grupo,
                caso_sugestao_reserva_as_cartas_e_tira_as_da_venda,
                caso_recusa_liberta_as_cartas_para_a_venda,
                caso_pt_da_era_por_usar_vai_para_venda_com_motivo_proprio,

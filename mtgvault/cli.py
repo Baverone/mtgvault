@@ -722,27 +722,35 @@ def _premodern(rep, tudo=False):
               "nada e não se sugere nem se vende nada por esta regra.")
         return
     linhas = pm["todos"] if tudo else pm["elegiveis"]
-    print("PREMODERN — o que montar a seguir com o que SOBRA\n")
-    print(f"  cobertura medida nas cópias PT (≤SCG) que NENHUMA caixa levou; "
-          f"sugere-se a partir de {pm['limiar']}%\n")
+    print("PREMODERN — o que montar a seguir\n")
+    print(f"  «principal» = as caixas de Premodern PARTILHAM, por isso conta-se o "
+          f"que este deck\n  teria se escolhesse primeiro (livres + as que estão "
+          f"nas outras caixas do grupo).\n  «sobra» = só as que nenhuma caixa "
+          f"levou. Sugere-se a partir de {pm['limiar']}% como principal.\n")
     _p([{"listas": c["n_lists"],
+         "principal": f'{c["pct_principal"]}%',
          "sobra": f'{c["pct"]}%', "total": f'{c["pct_total"]}%',
-         "onde": "top-10" if c["top"] else "combo",
+         # Com `--tudo` entram arquétipos que não passaram por porta nenhuma: um
+         # "—" aqui quer dizer que o `estado` diz "sugerida" mas a sugestão não
+         # existe (só se sugere o que é top-10 ou top-5 de combo). Sem a coluna
+         # a dizê-lo, a lista prometia decks que a página não mostra.
+         "onde": ("top-10" if c["top"] else "combo" if c["top_combo"] else "—"),
          "combo": c["grau"] or "—", "estado": c["estado"],
          "comprar": c["comprar"], "custo": f'{c["custo"]:.2f}€',
          "arquétipo": c["nome"]} for c in linhas],
-       ["listas", "sobra", "total", "onde", "combo", "estado", "comprar", "custo",
-        "arquétipo"])
+       ["listas", "principal", "sobra", "total", "onde", "combo", "estado",
+        "comprar", "custo", "arquétipo"])
     sugs = pm["sugestoes"]
     if sugs:
         print(f"\nSUGESTÕES ({len(sugs)}) — no modo edição, «vou montar este» abre "
               f"a caixa; «não quero este» liberta as cartas para a venda")
         for c in sugs:
-            print(f'  {c["nome"]:<32} {c["pct"]:>3}% do que sobra · '
+            print(f'  {c["nome"]:<32} {c["pct_principal"]:>3}% como principal · '
+                  f'{c["pct"]:>3}% com o que sobra · '
                   f'comprar {c["comprar"]} ({c["custo"]:.2f}€)')
     else:
-        print("\n  Nenhum candidato chega ao limiar com o que sobra. As caixas de "
-              "Premodern ficam com as cópias primeiro; o que sobra vai à venda.")
+        print("\n  Nenhum candidato chega ao limiar, nem sequer como principal. "
+              "O que sobra vai à venda.")
     if pm["recusadas"]:
         print("\nRECUSADAS (as cartas delas estão livres para venda)")
         for nome, quando in sorted(pm["recusadas"].items()):
@@ -762,6 +770,13 @@ def _vender(rep, csv_out=False, tudo=False):
     blocos = [("VENDER", rep["venda"])]
     if tudo:
         blocos += [("VENDER — RESERVED LIST (confirmar uma a uma)", rep["venda_rl"]),
+                   # A RL que a regra dos 5 % segurou (André, 2026-09-08). Duas
+                   # listas e não uma: "subiu" é uma decisão tomada, "não sei" é
+                   # uma decisão por tomar — e é só a segunda que ele pode querer
+                   # forçar (baixando `venda.rl_janela_dias`).
+                   ("RL A SEGURAR — valorizou, não se vende", rep["rl_segurar"]),
+                   ("RL SEM HISTÓRICO SUFICIENTE — não se vende sem saber",
+                    rep["rl_sem_historico"]),
                    ("GUARDAR — servem um deck do loadout", rep["guardar"]),
                    ("RESERVADAS — sugestões de Premodern por decidir", rep["reservadas"]),
                    ("RETIDOS — extras de deck (reter_extras_meses)", rep["retidos"])]
@@ -786,6 +801,15 @@ def _vender(rep, csv_out=False, tudo=False):
         print(f"\n  (à parte: Reserved List {rep['copias_rl']} cópias / "
               f"{rep['total_rl']:.2f}€, substitutos a guardar {rep['copias_guardar']} / "
               f"{rep['total_guardar']:.2f}€ — vê com --tudo)")
+    if rep["copias_rl_retidas"]:
+        print(f"\n  🔒 REGRA DA RL: {rep['copias_rl_retidas']} cópias / "
+              f"{rep['total_rl_retido']:.2f}€ NÃO entram na venda — só se vende "
+              f"Reserved List que não tenha subido {loadout.rl_subida_minima():.0f}% "
+              f"nos últimos {loadout.rl_janela_dias()} dias.\n"
+              f"     valorizou: {rep['copias_rl_segurar']} / "
+              f"{rep['total_rl_segurar']:.2f}€ · sem histórico: "
+              f"{rep['copias_rl_sem_historico']} / "
+              f"{rep['total_rl_sem_historico']:.2f}€")
     print("\n  SUGESTÃO A CONFIRMAR: nada sai da coleção sem tu dizeres.")
 
 
