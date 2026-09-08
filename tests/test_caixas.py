@@ -173,7 +173,9 @@ def caso_o_config_a_serio_ja_esta_na_forma_nova():
     estados = {c["slot"]: c["estado"] for c in cfg["caixas"]}
     assert set(estados.values()) <= set(caixas.ESTADOS), estados
     assert estados["standard"] == "candidata" and estados["legacy"] == "candidata"
-    assert estados["pauper"] == "montada"
+    # O estado fisico muda com o tempo (08/09: so o Stiflenought esta montado);
+    # o que se tranca e a forma, nao o dia.
+    assert estados["pauper"] in ("permanente", "montada"), estados["pauper"]
     print(f"colecao_config.json: {len(cfg['caixas'])} caixas, estados {sorted(set(estados.values()))}")
 
 
