@@ -234,6 +234,34 @@ def caso_o_id_sai_do_nucleo_e_aguenta_uma_carta_trocada():
     print("o mesmo núcleo em dois formatos são dois arquétipos")
 
 
+def caso_um_punhado_de_cartas_nao_e_uma_identidade():
+    """O `NUCLEO_MIN` estava escrito e documentado — e nao estava a ser aplicado.
+
+    Viu-se na primeira corrida a serio: o registo publicado ficou com entradas de
+    DUAS e tres cartas (um *"Mono-Azul Frogmite"* de 2), porque a distintividade
+    do `card_roles` as vezes so devolve um punhado. Dois baralhos diferentes que
+    partilhassem essas duas cartas passavam a ser o mesmo arquetipo — e um `id`
+    que confunde dois decks e pior do que um `id` que muda, porque leva a recusa
+    de um a apagar a sugestao do outro.
+    """
+    poucas = ["Carta A", "Carta B"]
+    lista = sorted(f"Enchimento {i:02d}" for i in range(20))
+    assert arquetipos.nucleo(poucas) == sorted(poucas), "sem `resto`, fica curto"
+    cheio = arquetipos.nucleo(poucas, resto=lista)
+    assert len(cheio) == arquetipos.NUCLEO_MAX, cheio
+    assert set(poucas) <= set(cheio), "as distintivas ficam todas"
+
+    # Quem ja tem o minimo NAO se enche: o `resto` e um remendo, nao uma fonte —
+    # senao o nucleo passava a depender da lista inteira, que muda todos os dias.
+    oito = [f"Carta {i}" for i in range(arquetipos.NUCLEO_MIN)]
+    assert arquetipos.nucleo(oito, resto=lista) == sorted(oito)
+
+    # E o `resto` nao traz basicas nem repetidos.
+    assert arquetipos.nucleo(["Ilha"], resto=["Island", "Ilha", "Bosque"]) == \
+        sorted(["Ilha", "Bosque"])
+    print("um nucleo curto completa-se pela lista de consenso, ate ao minimo")
+
+
 def caso_dois_clusters_nao_herdam_a_mesma_identidade():
     """Dois clusters de hoje não podem herdar a MESMA entrada de ontem — senão o
     segundo roubava a identidade do primeiro e as duas linhas da página
@@ -560,6 +588,7 @@ def caso_migrar_config_passa_as_chaves_para_id():
 
 def run():
     for fn in (caso_o_id_sai_do_nucleo_e_aguenta_uma_carta_trocada,
+               caso_um_punhado_de_cartas_nao_e_uma_identidade,
                caso_dois_clusters_nao_herdam_a_mesma_identidade,
                caso_o_registo_grava_e_protege_o_que_o_config_refere,
                caso_o_registo_fica_ao_lado_da_base_e_nao_na_home,

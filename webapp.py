@@ -228,6 +228,14 @@ CHAVES_DA_ESCOLHA = ("fonte", "ref", "nome", "estado")
 _slot_do_cfg = caixas.caixa_do_cfg
 
 
+def _cartas_do_arquetipo(con, aid: int) -> set:
+    """As cartas da lista de consenso — a mesma que o `guardar_escolha` congela."""
+    from mtgvault import stock                           # noqa: PLC0415
+
+    sl = stock.stock_list(con, aid)
+    return {c["card_name"] for b in ("main", "side") for c in sl.get(b, [])}
+
+
 def identidade_do_arquetipo(con, aid: int, fmt: str) -> str:
     """O `id` estável de um arquétipo qualquer, e regista-o.
 
@@ -241,7 +249,11 @@ def identidade_do_arquetipo(con, aid: int, fmt: str) -> str:
     from mtgvault import arquetipos                     # noqa: PLC0415
 
     df, tcache = mc._format_df(con, fmt), {}
-    nuc = arquetipos.nucleo(mc._distinctivas(con, aid, df, tcache))
+    # A lista do arquétipo entra como `resto`, pela mesma razão do `premodern`:
+    # a distintividade dá às vezes duas ou três cartas, e duas cartas não são uma
+    # identidade.
+    nuc = arquetipos.nucleo(mc._distinctivas(con, aid, df, tcache),
+                            resto=sorted(_cartas_do_arquetipo(con, aid)))
     if not nuc:
         return ""
     reg = arquetipos.Registo.carregar()

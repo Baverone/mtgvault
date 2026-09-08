@@ -90,7 +90,7 @@ def ficheiro() -> Path:
     return db.pasta_dados() / "arquetipos.json"
 
 
-def nucleo(cartas, tecto: int = NUCLEO_MAX) -> list[str]:
+def nucleo(cartas, tecto: int = NUCLEO_MAX, resto=()) -> list[str]:
     """O núcleo, a partir das cartas JÁ ORDENADAS por distintividade.
 
     Recebe-as ordenadas (é o que o `meta_coverage._distinctivas` devolve) e não
@@ -98,14 +98,27 @@ def nucleo(cartas, tecto: int = NUCLEO_MAX) -> list[str]:
     `card_roles` à frente. Aqui só se corta o topo, se tiram as básicas e se
     ordena por nome — a ordem alfabética é o que faz o hash não depender de uma
     heurística que muda de corrida para corrida.
+
+    `resto` completa até ao `NUCLEO_MIN` quando a distintividade dá pouco, e não
+    é um requinte: na primeira corrida a sério o registo ficou com entradas de
+    **duas e três cartas** (um *"Mono-Azul Frogmite"* de 2). O mínimo estava
+    escrito e documentado desde o princípio, e não estava a ser aplicado — um
+    punhado de cartas não é uma identidade, e dois baralhos diferentes que
+    partilhem essas duas passavam a ser o mesmo arquétipo. Vem da lista de
+    consenso (ordenada por nome, para o hash não depender de nada que mude).
     """
+    def encher(fonte, ate):
+        for c in fonte:
+            if c in BASICAS or c in vistas:
+                continue
+            vistas.append(c)
+            if len(vistas) >= ate:
+                return
+
     vistas: list[str] = []
-    for c in cartas:
-        if c in BASICAS or c in vistas:
-            continue
-        vistas.append(c)
-        if len(vistas) >= tecto:
-            break
+    encher(cartas, tecto)
+    if len(vistas) < min(NUCLEO_MIN, tecto):
+        encher(resto, tecto)
     return sorted(vistas)
 
 

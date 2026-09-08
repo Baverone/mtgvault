@@ -496,8 +496,10 @@ def candidatos(con: sqlite3.Connection, res: dict,
         # é uma decisão dele) ou o que o registo já tinha para este núcleo. Só
         # quando o arquétipo é novo é que o rótulo do clustering serve de nome —
         # e a partir daí fica registado, para não mudar amanhã.
-        nucleo = arquetipos.nucleo(_distintivas(con, r["archetype_id"], cache)
-                                   or sorted(cartas))
+        # A lista de consenso entra como `resto`: a distintividade dá às vezes
+        # duas ou três cartas, e um punhado de cartas não é uma identidade.
+        nucleo = arquetipos.nucleo(_distintivas(con, r["archetype_id"], cache),
+                                   resto=sorted(cartas))
         gerado = (_nome_do_cluster(con, r["archetype_id"], cache) or r["label"])
         ident = registo.resolver(FMT, nucleo, nome or gerado,
                                  por_regra=bool(nome))
