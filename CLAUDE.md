@@ -208,6 +208,51 @@ cada uma a explicar que a outra também estava certa. É o padrão do `event_tie
    com material"* (`N Nome [PT]`). As ≥100 €/cópia levam chip «cara».
 3. **Quando as compras chegarem** — fotos em `pendentes/`, a caixa recalcula-se
    na corrida seguinte. Não há nada para marcar à mão.
+
+**OS TERRENOS BÁSICOS TÊM BLOCO PRÓPRIO (André, 2026-09-08, à letra).** *"Faltou
+marcares, para completar o deck, os terrenos básicos necessários!"* e, na mesma
+tarde, *"todas as minhas lands básicas são de Unhinged, em inglês, foil ou não
+foil."* Até aqui uma básica entrava na alocação com `got == need` e `lotes == []`:
+contava como tida e **não aparecia em lado nenhum** — o Stiflenought montava-se,
+no painel Montar, sem uma única das suas 17 Island. É o padrão do `event_tier`
+outra vez: nenhum passo dá erro, e a folha que ele leva para a estante está a
+menos 17 cartas. Motor em `loadout._aloca_basica`/`_basicas_do_slot`/
+`plano_basicas`, config em `colecao_config.json → basicas`.
+- **As básicas são ISENTAS das regras de material** (`basicas.isentas_de_regras`,
+  default `true`): a pilha dele é toda Unhinged EN, e trancar o Premodern ao PT
+  mandava comprar 17 Island que estão ali ao lado. Nas caixas de foil a foil vai
+  à frente (`_ordem_basica`), mas é **preferência e não requisito** — uma Island
+  non-foil fecha o slot na mesma. O que NÃO é material continua a valer: cópia
+  livre, não reservada a outro deck, e nunca uma que esteja sleevada noutra caixa.
+- **As cópias registadas alocam-se como qualquer carta**: têm `lotes`, dizem de
+  que gaveta sair e entram na arrumação (na base de 2026-09-08 são 12 Plains ODY
+  e 23 Snow-Covered Plains MH1 foil — as únicas básicas na `copies`). O que a
+  colecção não tem sai como *"N Island (Unhinged) — das tuas básicas"*, sem
+  `copy_id` e sem nada para marcar.
+- **Nunca se compram básicas**, excepto as que a pilha não cobre — as
+  Snow-Covered, que não existem em Unhinged (`basicas.compram_se_faltarem` +
+  `comprar_se_material_especial`). Essas vão para a aba Comprar num **bloco
+  próprio**, marcado *«confirma se já tens»*: ele pode tê-las e não as ter
+  registado, e uma linha a confirmar é mais barata do que um deck que não se monta
+  à hora de sair.
+- **O bloco vive numa chave própria (`s["basicas"]`) e nunca no `missing`**, e o
+  `basicas_comprar_total`/`basicas_custo_total` ficam **fora** do
+  `comprar_total`/`custo_total`. As básicas não contam para a percentagem nem para
+  as compras — a regra é dele e não mudou — e somá-las fazia o *"fechar tudo por
+  X €"* mudar por causa de cartas que ele já pode ter em casa, que é exactamente
+  o número por que ele decide. `requisito_basicas(s)` é só o ACABAMENTO: dizer
+  *"PT · ≤SCG"* numa linha de Island era pedir-lhe o que a alocação não exige.
+- **No texto copiado o bloco vai COMENTADO** (`// Basicas`, `// 17 Island (na
+  coleccao)`): o Cardmarket ignora as linhas com `//`, e mandá-las como linhas a
+  sério era comprar 17 Island que estão em casa. Só o que é mesmo compra vai em
+  linha normal.
+- **Efeito medido na base de 2026-09-08:** a alocação **não mexe** — 8 426,34 €
+  para fechar, 232 a comprar, 70 a ir buscar, venda 118c/1 621,76 € + 19 RL/
+  3 442,20 €, iguais antes e depois. O único número que muda é a arrumação:
+  **535 → 570** (+35), que são as básicas registadas a passarem a ter caixa. E
+  **zero básicas a comprar**: ele tem 29 Snow-Covered Plains foil para as 23 que o
+  Duel Commander pede.
+
 E uma aba **Plano** (`loadout.ordem_de_montagem`, a mesma no CLI): por onde
 começar — permanentes por prioridade, depois as candidatas mais perto de fechar —
 com *"tirar N · comprar N (X €) · estado"*, e por baixo a **venda**, que só entra

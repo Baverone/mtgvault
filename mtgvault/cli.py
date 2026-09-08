@@ -533,6 +533,58 @@ def _loadout_resumo(rep):
                   + (f"   vai buscar: {', '.join(vai)}" if vai else ""))
 
 
+def _basicas(rep, s):
+    """O bloco «terrenos básicos» de uma caixa, no CLI.
+
+    André, 2026-09-08: *"faltou marcares, para completar o deck, os terrenos
+    básicos necessários!"* Sai da MESMA lista que a página mostra
+    (`loadout.plano_basicas`) — duas contagens das terras eram duas
+    oportunidades de discordarem, como já aconteceu com tudo o resto.
+    """
+    plano = loadout.plano_montar(rep, s["slot"])
+    bs = (plano or {}).get("basicas") or []
+    if not bs:
+        return
+    total = sum(b["need"] for b in bs)
+    print(f"\n  TERRENOS BÁSICOS ({total} cópias — não contam para a %):")
+    for b in bs:
+        partes = [f"tirar {m['q']}× de {m['de']} [{(m['set_code'] or '').upper()}"
+                  f"{' foil' if loadout.e_foil(m['finish']) else ''}]"
+                  for m in b["tirar"]]
+        if b["ja"] > 0:
+            partes.append(f"{b['ja']} já na caixa")
+        if b["granel"]:
+            partes.append(f"{b['granel']} das tuas ({loadout.basicas_edicao()})")
+        if b["comprar"]:
+            partes.append(f"COMPRAR {b['comprar']} {b['req']} "
+                          f"({b['cost']:.2f}€) — confirma se já tens")
+        req = f" ({b['req']})" if b["req"] else ""
+        print(f"    {b['need']}× {b['nm']}{req}: " + " | ".join(partes))
+
+
+def _wantlist_basicas(s):
+    """As básicas dentro da wantlist copiável, comentadas com `//`.
+
+    O Cardmarket ignora as linhas que começam por `//`, e é isso que se quer: são
+    terras que ele já tem em casa. Sem o bloco, a lista que ele copia para ir
+    montar o deck não diz uma palavra sobre as 17 Island que ele tem de tirar da
+    pilha. O que é MESMO compra (as Snow-Covered, que não existem em Unhinged)
+    vai em linha normal, para entrar no carrinho.
+    """
+    bs = s.get("basicas") or []
+    if not bs:
+        return
+    print("\n    // Basicas")
+    for b in bs:
+        if b["comprar"]:
+            req = f" [{b['req']}]" if b["req"] else ""
+            print(f"    {b['comprar']} {b['nm']}{req}   // confirma se ja tens")
+        if b["da_base"]:
+            print(f"    // {b['da_base']} {b['nm']} (na coleccao)")
+        if b["granel"]:
+            print(f"    // {b['granel']} {b['nm']} ({loadout.basicas_edicao()})")
+
+
 def _loadout_detalhe(rep, procura):
     alvo = procura.lower()
     achados = [s for s in rep["slots"]
@@ -552,6 +604,7 @@ def _loadout_detalhe(rep, procura):
         # montar. A Caixa RL aparece partida em PT e EN, como está lá.
         if s["origens"]:
             print("  tirar de: " + " · ".join(f"{k} {v}" for k, v in s["origens"].items()))
+        _basicas(rep, s)
         if not s["missing"]:
             print("  COMPLETO.")
             continue
@@ -606,14 +659,15 @@ def _loadout_detalhe(rep, procura):
                          key=lambda x: x["nm"])
         if not compras:
             print("\n  nada a comprar: o que falta está todo noutras caixas.")
-            continue
-        print("\n  wantlist (formato Cardmarket) — só o que é mesmo compra:")
-        for m in compras:
-            # O material vai na LINHA, e vem da linha: numa compra partilhada
-            # entre caixas é o do pool, que pode ser mais exigente do que o
-            # desta caixa (ver `loadout.partilhar_compras`).
-            marca = m.get("marca_compra") or loadout.marca_wantlist(s)
-            print(f"    {m['comprar']} {m['nm']}" + (f" [{marca}]" if marca else ""))
+        else:
+            print("\n  wantlist (formato Cardmarket) — só o que é mesmo compra:")
+            for m in compras:
+                # O material vai na LINHA, e vem da linha: numa compra partilhada
+                # entre caixas é o do pool, que pode ser mais exigente do que o
+                # desta caixa (ver `loadout.partilhar_compras`).
+                marca = m.get("marca_compra") or loadout.marca_wantlist(s)
+                print(f"    {m['comprar']} {m['nm']}" + (f" [{marca}]" if marca else ""))
+        _wantlist_basicas(s)
 
 
 def _carta(m):

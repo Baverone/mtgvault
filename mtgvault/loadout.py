@@ -249,6 +249,32 @@ BASICS = {"Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes",
           "Snow-Covered Plains", "Snow-Covered Island", "Snow-Covered Swamp",
           "Snow-Covered Mountain", "Snow-Covered Forest", "Snow-Covered Wastes"}
 
+# TERRENOS BÁSICOS (André, 2026-09-08, à letra)
+# ------------------------------------------------------------------
+# *"Faltou marcares, para completar o deck, os terrenos básicos necessários!"* e,
+# na mesma tarde, *"todas as minhas lands básicas são de Unhinged, em inglês,
+# foil ou não foil."*
+#
+# Até aqui uma básica entrava na alocação com `got == need` e `lotes == []`:
+# contava-se como tida e **não aparecia em lado nenhum**. Um deck de Premodern
+# com 17 Island montava-se, no painel Montar, sem uma única terra — e o painel é
+# a folha que ele leva para a frente da estante.
+#
+# Duas decisões que vale a pena não voltar a discutir:
+#   * as básicas ficam **ISENTAS das regras de material** (língua e edição). A
+#     pilha dele é toda Unhinged EN, e trancar o Premodern ao PT mandava comprar
+#     17 Island que estão numa caixa ali ao lado. Nas caixas de foil prefere-se
+#     a foil, que é uma PREFERÊNCIA e não um requisito (`_ordem_basica`);
+#   * **nunca se compram básicas**, excepto as que a pilha não cobre — as
+#     Snow-Covered, que não existem em Unhinged. Essas entram na lista de compras
+#     como bloco próprio e *a confirmar*: ele pode ter a pilha e não a ter
+#     registado, e uma linha de compra a mais é mais barata do que um deck que
+#     não se monta.
+BASICAS_EDICAO = "Unhinged"
+BASICAS_COMPRAM_SE_FALTAREM = ("Snow-Covered Plains", "Snow-Covered Island",
+                               "Snow-Covered Swamp", "Snow-Covered Mountain",
+                               "Snow-Covered Forest", "Snow-Covered Wastes")
+
 # REGRAS POR GRUPO DE FORMATO (André, 2026-09-07, à letra)
 # ------------------------------------------------------------------
 # *"Língua/acabamento por formato: Premodern apenas as edições da era Premodern e
@@ -512,6 +538,55 @@ def regra_do_formato(fmt: str | None,
             return i, {k: v for k, v in {**r, **excepcao}.items()
                        if k != "por_formato"}
     return len(regras), {}
+
+
+def regras_basicas() -> dict:
+    """`colecao_config.json -> basicas`. Sem ela valem os valores deste módulo."""
+    v = sources.config().get("basicas")
+    return v if isinstance(v, dict) else {}
+
+
+def basicas_isentas() -> bool:
+    """As básicas escapam às regras de língua/edição/acabamento da caixa?
+
+    Por omissão sim (André, 2026-09-08: *"todas as minhas lands básicas são de
+    Unhinged, em inglês, foil ou não foil"*). A preferência pela foil nas caixas
+    de foil fica na ordem por que se gastam, não numa proibição — uma caixa de
+    Duel Commander com 17 Island non-foil monta-se na mesma.
+    """
+    return bool(regras_basicas().get("isentas_de_regras", True))
+
+
+def basicas_a_granel(nm: str) -> bool:
+    """A pilha de Unhinged cobre esta básica?
+
+    As Snow-Covered não existem em Unhinged: para essas, o que a colecção não tem
+    é compra. Para todas as outras, o que falta vem da pilha e nunca se compra.
+    """
+    v = regras_basicas().get("compram_se_faltarem")
+    lista = tuple(v) if isinstance(v, list) else BASICAS_COMPRAM_SE_FALTAREM
+    return nm not in lista
+
+
+def basicas_compram_se_especial() -> bool:
+    """Comprar as básicas que a pilha não cobre (as Snow-Covered)?"""
+    return bool(regras_basicas().get("comprar_se_material_especial", True))
+
+
+def basicas_edicao() -> str:
+    """O nome da pilha de básicas dele, para a página o poder dizer."""
+    return str(regras_basicas().get("edicao") or BASICAS_EDICAO)
+
+
+def requisito_basicas(s: dict) -> str:
+    """O material que esta caixa quer nas básicas — só o ACABAMENTO.
+
+    A língua e a edição não entram de propósito (ver `basicas_isentas`): dizer
+    *"PT · ≤SCG"* numa linha de Island era pedir-lhe uma coisa que ele não tem e
+    que a alocação não exige.
+    """
+    return {"foil": "foil", "nonfoil": "non-foil",
+            "prefere_foil": "foil se houver"}.get(s.get("acabamento") or "", "")
 
 
 def linguas_rl(s: dict) -> tuple[str, ...]:
@@ -1223,6 +1298,76 @@ def _ordem(lot: dict, s: dict) -> tuple:
             lot["set_code"] or "", lot["key"])
 
 
+def _ordem_basica(lot: dict, s: dict) -> tuple:
+    """Que básica gastar primeiro. É o `_ordem` com a preferência ao contrário.
+
+    Nas caixas que pedem foil a foil vai à FRENTE — ao contrário das outras
+    cartas, onde se gasta a menos versátil primeiro. A razão é a isenção: uma
+    básica non-foil também serve uma caixa de foil, por isso não há nada a
+    proteger e o que manda é o que ele quer ver dentro da caixa
+    (*"nas caixas foil prefere as foil se existirem, senão non-foil"*).
+    """
+    foil = e_foil(lot["finish"])
+    quer_foil = s.get("acabamento") in ("foil", "prefere_foil")
+    return (lot.get("caixa") != s.get("slot"),
+            lot["sub"] != s.get("balde"),
+            not foil if quer_foil else foil,
+            lot["set_code"] or "", lot["key"])
+
+
+def _serve_basica(lot: dict, s: dict, did: int | None,
+                  baldes: set[str], caixas: set[str] | frozenset) -> bool:
+    """Esta cópia de terreno básico pode entrar nesta caixa?
+
+    Com a isenção ligada só restam as regras que não são de material: a cópia tem
+    de estar livre, não estar reservada a outro deck e não estar já sleevada
+    dentro de outra caixa (dessas não se tira nada, básica ou não).
+    """
+    if lot["livre"] <= 0:
+        return False
+    if lot["rdid"] is not None and lot["rdid"] != did:
+        return False
+    if _noutra_caixa(lot, s):
+        return False
+    if basicas_isentas():
+        return True
+    return not (_fora_de_vista(lot, s) or _porque_nao(lot, s, baldes, caixas))
+
+
+def _aloca_basica(pool: dict, s: dict, board: str, nm: str, need: int,
+                  did: int | None, baldes: set[str],
+                  caixas: set[str] | frozenset) -> dict:
+    """Uma linha de terreno básico, com as cópias da colecção que a servem.
+
+    `got == need` continua a ser a regra (as básicas contam como tidas — senão a
+    percentagem de um deck passava a medir quantas terras ele joga), e o que
+    muda é o `lotes`: as cópias que a colecção TEM entram na alocação como
+    qualquer outra carta, e por isso aparecem no *tirar da colecção* e na
+    arrumação. O que a colecção não tem fica em `granel` (vem da pilha de
+    Unhinged) ou, se a pilha não o cobre, em `comprar`.
+    """
+    gastos = []
+    falta = need
+    for lot in sorted(pool.get(nm, []), key=lambda l: _ordem_basica(l, s)):
+        if falta <= 0:
+            break
+        if not _serve_basica(lot, s, did, baldes, caixas):
+            continue
+        take = min(lot["livre"], falta)
+        lot["livre"] -= take
+        falta -= take
+        lot["alocado"][s["nome"]] = lot["alocado"].get(s["nome"], 0) + take
+        gastos.append({"id": lot["id"], "q": take, "sub": lot["sub"],
+                       "local": lot["local"], "balde": lot["balde"],
+                       "caixa": lot["caixa"], "borigem": lot["borigem"],
+                       "finish": lot["finish"], "lang": lot["lang"],
+                       "set_code": lot["set_code"], "sid": lot["sid"]})
+    return {"board": board, "nm": nm, "need": need, "got": need,
+            "basica": True, "lotes": gastos, "da_base": need - falta,
+            "granel": falta if basicas_a_granel(nm) else 0,
+            "por_comprar": 0 if basicas_a_granel(nm) else falta}
+
+
 def _linha_cheia(linha: dict) -> dict:
     """Uma linha TIDA com as mesmas chaves de uma em falta.
 
@@ -1244,6 +1389,13 @@ def _linha_cheia(linha: dict) -> dict:
     # própria e não desaparece dentro do `comprar` porque não é o mesmo que "já
     # tenho": é uma falta que ele decidiu não tapar. Ver `partilhar_compras`.
     linha.setdefault("playset_bloqueado", 0)
+    # Terrenos básicos (2026-09-08): quantos vêm da colecção, quantos da pilha de
+    # Unhinged e quantos são mesmo compra. Ficam com default aqui pela mesma razão
+    # que tudo o resto nesta função — o `foil_report` também escreve linhas de
+    # básicas, e uma chave em falta rebentava em produção e não nos testes.
+    linha.setdefault("da_base", 0)
+    linha.setdefault("granel", linha["need"] if linha.get("basica") else 0)
+    linha.setdefault("por_comprar", 0)
     linha.setdefault("unit", None)
     linha.setdefault("price_finish", None)
     linha.setdefault("cost", 0.0)
@@ -1575,6 +1727,47 @@ def partilhar_compras(slots: list[dict]) -> list[dict]:
     return partilhas
 
 
+def _basicas_do_slot(con, s: dict) -> None:
+    """O bloco «Terrenos básicos» desta caixa: quantas, de onde, e o que comprar.
+
+    Fica numa chave PRÓPRIA (`s["basicas"]`) e nunca no `missing`. As básicas não
+    contam para a percentagem nem para as compras — a regra é dele e não mudou —,
+    e enfiá-las no `missing` mexia no `comprar`, no `custo` e na partilha de
+    compras de todas as caixas. A única excepção que ele abriu (as Snow-Covered,
+    que a pilha de Unhinged não cobre) sai aqui em `comprar`/`custo` e a página
+    mostra-a num bloco à parte, marcado *a confirmar*.
+
+    Agrupa-se por NOME e não por board: uma básica é uma pilha, e *"12 Island no
+    main + 2 no sideboard"* é a mesma ida à gaveta.
+    """
+    foil = s.get("acabamento") in ("foil", "prefere_foil")
+    linhas: dict[str, dict] = {}
+    for m in s["have"]:
+        if not m.get("basica"):
+            continue
+        b = linhas.setdefault(m["nm"], {
+            "nm": m["nm"], "need": 0, "da_base": 0, "granel": 0, "comprar": 0,
+            "lotes": [], "req": requisito_basicas(s), "foil": foil,
+            "unit": None, "price_finish": None, "cost": 0.0})
+        b["need"] += m["need"]
+        b["da_base"] += m["da_base"]
+        b["granel"] += m["granel"]
+        b["comprar"] += m["por_comprar"] if basicas_compram_se_especial() else 0
+        b["granel"] += 0 if basicas_compram_se_especial() else m["por_comprar"]
+        b["lotes"] += m["lotes"]
+    for b in linhas.values():
+        if b["comprar"]:
+            b["unit"], b["price_finish"] = card_price(
+                con, b["nm"], "foil" if foil else "nonfoil")
+            b["cost"] = round((b["unit"] or 0) * b["comprar"], 2)
+    s["basicas"] = sorted(linhas.values(), key=lambda b: (-b["need"], b["nm"]))
+    s["basicas_precisa"] = sum(b["need"] for b in s["basicas"])
+    s["basicas_da_base"] = sum(b["da_base"] for b in s["basicas"])
+    s["basicas_granel"] = sum(b["granel"] for b in s["basicas"])
+    s["basicas_comprar"] = sum(b["comprar"] for b in s["basicas"])
+    s["basicas_custo"] = round(sum(b["cost"] for b in s["basicas"]), 2)
+
+
 def _totais_do_slot(s: dict) -> None:
     """Os números de uma caixa que dependem das linhas em falta.
 
@@ -1651,8 +1844,8 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
             precisa += need
             if basica:                     # básicas: assume-se que as tem sempre
                 usadas += need
-                have.append(_linha_cheia({"board": board, "nm": nm, "need": need,
-                                          "got": need, "basica": True, "lotes": []}))
+                have.append(_linha_cheia(_aloca_basica(
+                    pool, s, board, nm, need, did, baldes, caixas)))
                 continue
             falta = need
             gastos = []
@@ -1795,6 +1988,7 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
         s["tenho"] = usadas
         s["pct"] = round(100 * usadas / precisa) if precisa else 0
         _totais_do_slot(s)
+        _basicas_do_slot(con, s)
         # De onde saem as cartas desta caixa. É a outra metade do "onde está a
         # carta": as que faltam dizem em que caixa estão, e estas dizem de que
         # prateleira as tirar para montar. Daqui vem o `Caixa RL (PT)`/`(EN)`.
@@ -2731,6 +2925,7 @@ def movimentos_de_entrada(s: dict, caixas: set[str] | frozenset) -> list[dict]:
             out.append({"nm": m["nm"], "q": g["q"], "de": g["local"],
                         "para": s["nome"], "slot": s["slot"],
                         "copy_id": g["id"], "sid": g["sid"],
+                        "basica": bool(m.get("basica")),
                         "finish": g["finish"], "lang": g["lang"],
                         "set_code": g["set_code"], "sentido": "entra"})
     return out
@@ -2753,18 +2948,55 @@ def plano_montar(res: dict, slot_id: str) -> dict:
     s = next((x for x in res["slots"] if x["slot"] == slot_id), None)
     if s is None:
         return {}
-    tirar = movimentos_de_entrada(s, caixas_de_deck(res["slots"]))
+    movs = movimentos_de_entrada(s, caixas_de_deck(res["slots"]))
+    # OS TERRENOS BÁSICOS SAEM À PARTE (André, 2026-09-08: *"faltou marcares,
+    # para completar o deck, os terrenos básicos necessários!"*). A grelha do
+    # passo 1 está ordenada por COR, que é como o binder está arrumado; as
+    # básicas não vivem lá — vivem numa pilha à parte, e metade delas nem sequer
+    # está registada na base. São o mesmo gesto com outra gaveta.
+    tirar = [m for m in movs if not m["basica"]]
+    basicas = plano_basicas(s, [m for m in movs if m["basica"]])
     devolver = list(s.get("presos") or [])
-    dentro = sum(g["q"] for m in s["have"] for g in m["lotes"])
+    dentro = sum(g["q"] for m in s["have"] for g in m["lotes"] if not m.get("basica"))
     por_gaveta: dict[str, int] = defaultdict(int)
     for m in tirar:
         por_gaveta[m["de"]] += m["q"]
     return {"slot": s["slot"], "caixa": s["nome"], "tirar": tirar,
+            "basicas": basicas,
+            "basicas_copias": sum(b["need"] for b in basicas),
+            "basicas_comprar": s.get("basicas_comprar", 0),
+            "basicas_custo": s.get("basicas_custo", 0.0),
+            "basicas_edicao": basicas_edicao(),
             "devolver": sorted(devolver, key=lambda m: m["nm"]),
             "copias": sum(m["q"] for m in tirar),
             "ja": dentro - sum(m["q"] for m in tirar),
             "por_gaveta": dict(sorted(por_gaveta.items(),
                                       key=lambda kv: (-kv[1], kv[0])))}
+
+
+def plano_basicas(s: dict, movs: list[dict] | None = None) -> list[dict]:
+    """O bloco «Terrenos básicos» de uma caixa, pronto a mostrar.
+
+    Junta as duas metades da mesma pergunta — *"quantas terras leva este deck e
+    de onde saem?"*: as cópias que a colecção TEM e que ainda não estão dentro da
+    caixa (`tirar`, com edição e acabamento, que é o que distingue duas pilhas do
+    mesmo nome) e as que vêm da pilha de Unhinged, que não estão registadas em
+    lado nenhum e por isso não têm cópia para tirar.
+
+    `movs` são os movimentos de entrada já filtrados; sem eles as cópias contam
+    como *já lá dentro* e a linha diz só o total — é o que serve o CLI, onde não
+    há caixa nenhuma por montar.
+    """
+    porto: dict[str, list[dict]] = defaultdict(list)
+    for m in movs or []:
+        porto[m["nm"]].append(m)
+    out = []
+    for b in s.get("basicas") or []:
+        ms = sorted(porto.get(b["nm"]) or [],
+                    key=lambda m: ((m["set_code"] or ""), m["copy_id"]))
+        out.append({**b, "tirar": ms, "tirar_q": sum(m["q"] for m in ms),
+                    "ja": b["da_base"] - sum(m["q"] for m in ms)})
+    return out
 
 
 def ordem_de_montagem(res: dict) -> list[dict]:
@@ -2982,6 +3214,15 @@ def report(con, cfg_slots: list[dict] | None = None) -> dict:
     # do `poupado`: uma é uma compra que não é precisa, a outra é uma falta que
     # fica por tapar de propósito.
     res["bloqueado_total"] = sum(s["playset_bloqueado"] for s in res["slots"])
+    # TERRENOS BÁSICOS (2026-09-08). Ficam FORA do `comprar_total`/`custo_total`
+    # de propósito: as básicas não contam para as compras nem para a percentagem,
+    # e o pouco que se compra (as Snow-Covered) é *a confirmar*. Somá-lo ao total
+    # fazia o "fechar tudo por X €" mudar por causa de cartas que ele já pode ter
+    # em casa — que é exactamente o número que ele usa para decidir.
+    res["basicas_comprar_total"] = sum(s.get("basicas_comprar", 0)
+                                       for s in res["slots"])
+    res["basicas_custo_total"] = round(sum(s.get("basicas_custo", 0.0)
+                                           for s in res["slots"]), 2)
     res["arrumacao"] = plano_arrumacao(res)
     # A ORDEM de montagem (v6): é a pergunta dele de 2026-09-08 — *"por onde
     # começo?"*. Vive no relatório e não na página para o CLI dar a mesma.

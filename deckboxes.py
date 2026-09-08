@@ -136,8 +136,44 @@ def _montar_payload(rep, s, cores):
                    key=lambda x: (ordem.get(x["cor"], 9), x["nm"], x["set"]))
     devolver = sorted((linha(m) for m in plano["devolver"]),
                       key=lambda x: (ordem.get(x["cor"], 9), x["nm"], x["set"]))
-    return {"tirar": tirar, "devolver": devolver, "copias": plano["copias"],
-            "ja": plano["ja"], "por_gaveta": plano["por_gaveta"]}
+    # TERRENOS BÁSICOS (André, 2026-09-08): *"faltou marcares, para completar o
+    # deck, os terrenos básicos necessários!"* Vêm num bloco à parte, depois das
+    # cores: a pilha de básicas não está arrumada no binder por cor, e metade
+    # delas nem sequer está registada na base — não têm `copy_id` para marcar.
+    basicas = [{"nm": b["nm"], "need": b["need"], "granel": b["granel"],
+                "comprar": b["comprar"], "req": b["req"], "cost": b["cost"],
+                "unit": b["unit"], "ja": b["ja"], "da_base": b["da_base"],
+                "tirar": [linha(m) for m in b["tirar"]]}
+               for b in plano["basicas"]]
+    return {"slot": plano["slot"],
+            "tirar": tirar, "devolver": devolver, "copias": plano["copias"],
+            "ja": plano["ja"], "por_gaveta": plano["por_gaveta"],
+            "basicas": basicas, "basicas_copias": plano["basicas_copias"],
+            "basicas_comprar": plano["basicas_comprar"],
+            "basicas_custo": plano["basicas_custo"],
+            "edicao": plano["basicas_edicao"]}
+
+
+def _basicas_geral(rep):
+    """As básicas a COMPRAR de todas as caixas, juntas por nome + material.
+
+    São só as que a pilha de Unhinged não cobre — hoje as Snow-Covered do Duel
+    Commander. Vão para a aba *Comprar* num bloco próprio, marcado *confirma se
+    já tens*: pode ser que ele as tenha e não as tenha registado, e uma linha a
+    confirmar é mais barata do que um deck que não se monta à hora de sair.
+    """
+    out: dict[tuple, dict] = {}
+    for s in rep["slots"]:
+        for b in s.get("basicas") or []:
+            if not b["comprar"]:
+                continue
+            g = out.setdefault((b["nm"], b["req"]), {
+                "nm": b["nm"], "req": b["req"], "q": 0, "cost": 0.0,
+                "unit": b["unit"], "para": []})
+            g["q"] += b["comprar"]
+            g["cost"] = round(g["cost"] + b["cost"], 2)
+            g["para"].append({"caixa": s["nome"], "q": b["comprar"]})
+    return sorted(out.values(), key=lambda g: (-g["cost"], g["nm"]))
 
 
 def _lista_texto(s):
@@ -428,8 +464,16 @@ def payload(con, rep, editable=False, token="", ligacao=None):
                    "poupado": rep.get("poupado_total", 0),
                    "sem_preco": rep.get("sem_preco_total", 0),
                    "custo": rep["custo_total"], "venda": rep["total"],
+                   # TERRENOS BÁSICOS a comprar (as Snow-Covered, que a pilha de
+                   # Unhinged não cobre). À parte do `comprar`/`custo`: são *a
+                   # confirmar*, e somá-las mexia no número por que ele decide.
+                   "basicas": rep.get("basicas_comprar_total", 0),
+                   "basicas_custo": rep.get("basicas_custo_total", 0.0),
                    "venda_rl": rep["total_rl"], "arrumar": arr["copias"]},
         "compras": sorted(geral.values(), key=lambda g: -g["cost"]),
+        # As básicas a comprar, juntas por nome+material, com a caixa que as pede.
+        "basicas": _basicas_geral(rep),
+        "basicas_edicao": loadout.basicas_edicao(),
         "partilhadas": [{"nm": c["nm"], "pedido": c["pedido"], "tenho": c["tenho"],
                          "sid": imgs.get(c["nm"]),
                          "por_slot": [dict(q, req=reqs.get(q["slot"], ""))
@@ -757,6 +801,18 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
  .corhdr{margin:9px 0 2px;font-size:10.5px;font-weight:700;color:var(--muted);
    text-transform:uppercase;letter-spacing:.06em}
  .mv .nm small{display:block;color:var(--dim);font-size:10.5px;line-height:1.3}
+ /* TERRENOS BÁSICOS: bloco próprio depois das cores (André, 2026-09-08) */
+ .bas{margin:10px 0 8px;background:#101a14;border:1px solid #23402c;
+   border-radius:var(--r);padding:9px 11px}
+ .bas .flh{color:#6fbf8a}
+ ul.bl{list-style:none;margin:6px 0 0;padding:0}
+ ul.bl li{padding:5px 0;border-bottom:1px solid #1a2b20;font-size:13px}
+ ul.bl li:last-child{border-bottom:0}
+ ul.bl b{color:var(--gold);font-variant-numeric:tabular-nums}
+ ul.bl .wn small{color:var(--dim);font-size:11px}
+ .bd{margin-top:2px} .bd .mv{border-bottom:0;padding:3px 4px}
+ .bt{display:block;color:var(--dim);font-size:11.5px;padding:2px 0 2px 28px}
+ .bt.warn{color:#e2a15b}
  .typehdr{margin:10px 0 2px;font-size:10.5px;font-weight:700;color:var(--muted);
    text-transform:uppercase;letter-spacing:.06em}
  .typehdr .dim{color:var(--dim)}
@@ -1062,6 +1118,7 @@ function montarHTML(c) {
         + `<b>Plano</b> no telemóvel) — é o que faz o vault parar de te mandar `
         + `procurar estas cartas.</p>`;
   }
+  h += basicasHTML(M);
   if (M.devolver.length) {
     h += `<p class="nota">🔄 E <b>${M.devolver.reduce((s, m) => s + m.q, 0)}</b> `
       + `cópias que estão na caixa e a lista de hoje já não pede — vê a aba `
@@ -1071,9 +1128,11 @@ function montarHTML(c) {
   /* passo 2 -------------------------------------------------------------- */
   h += `<div class="passo"><div class="ph"><span class="pn">2</span>`
     + `<b>Comprar o que falta</b><span class="dim">${c.comprar} cópias · `
-    + `${eur(c.custo)}${c.req ? ' · ' + esc(c.req) : ''}</span></div>`
-    + (c.wantlist.length
-       ? wantlistHTML(c.wantlist, c.marca)
+    + `${eur(c.custo)}${c.req ? ' · ' + esc(c.req) : ''}`
+    + (M.basicas_comprar ? ` · + ${M.basicas_comprar} básicas (${eur(M.basicas_custo)})`
+                         : '') + `</span></div>`
+    + (c.wantlist.length || M.basicas_comprar
+       ? wantlistHTML(c.wantlist, c.marca, '', false, M.basicas, M.edicao)
        : `<p class="ok2">✓ Nada a comprar para esta caixa.</p>`)
     + (c.noutra ? `<p class="nota">📦 Mais <b>${c.noutra}</b> cópias estão noutra `
         + `caixa: essas vão-se buscar, não se compram.</p>` : '')
@@ -1091,8 +1150,59 @@ function montarHTML(c) {
   return h + `</div>`;
 }
 
-function wantlistHTML(itens, marca, id, detalhe) {
-  if (!itens.length) return '';
+/* ------------------------------------------------------- TERRENOS BÁSICOS
+   "Faltou marcares, para completar o deck, os terrenos básicos necessários!"
+   (André, 2026-09-08). Vem DEPOIS do bloco de cores porque é outra gaveta: as
+   básicas dele são todas de Unhinged e vivem numa pilha, não no binder por cor.
+   Três estados por linha: as que a colecção tem e ainda não estão na caixa
+   (com checkbox, como as outras), as que já lá estão, e as que vêm da pilha —
+   estas últimas não têm cópia registada, por isso não têm nada para marcar. */
+function basicasHTML(M) {
+  if (!M.basicas || !M.basicas.length) return '';
+  let h = `<div class="bas"><div class="flh">🌱 Terrenos básicos`
+    + `<span class="dim">${M.basicas_copias} cópias</span></div><ul class="bl">`;
+  for (const b of M.basicas) {
+    const det = [];
+    for (const m of b.tirar) {
+      const id = `bs|${M.slot}|${m.copy_id}|${b.nm}`;
+      const feito = !!P.feitos[id];
+      det.push(`<label class="mv${feito ? ' feito' : ''}" data-id="${esc(id)}">`
+        + `<input type="checkbox"${feito ? ' checked' : ''}>`
+        + `<span class="q">${m.q}×</span>`
+        + `<span class="nm">${esc(b.nm)}<small>${esc(m.set)}`
+        + `${m.foil ? ' ✨' : ''} ${esc(m.lang)}</small></span>`
+        + `<span class="to">de ${esc(m.de)}</span></label>`);
+    }
+    if (b.ja > 0) det.push(`<span class="bt ok2">✓ ${b.ja} já na caixa</span>`);
+    if (b.granel) det.push(`<span class="bt">${b.granel}× das tuas básicas `
+      + `(${esc(M.edicao)}) — não estão registadas, não contam para a %</span>`);
+    if (b.comprar) det.push(`<span class="bt warn">🛒 ${b.comprar}× a comprar `
+      + `${esc(b.req)} (${eur(b.cost)}) — confirma se já tens</span>`);
+    h += `<li><b>${b.need}×</b> <span class="wn">${esc(b.nm)}`
+      + (b.req ? ` <small>${esc(b.req)}</small>` : '')
+      + `</span><div class="bd">${det.join('')}</div></li>`;
+  }
+  return h + `</ul></div>`;
+}
+
+/* O bloco de básicas no TEXTO copiado. Vai comentado com `//`, que o Cardmarket
+   ignora: são terras que ele já tem e que não se compram — mandá-las para o
+   carrinho como linhas a sério era comprar 17 Island por engano. O que é MESMO
+   compra (as Snow-Covered, que não existem em Unhinged) vai em linha normal. */
+function basicasTexto(bs, edicao) {
+  if (!bs || !bs.length) return '';
+  const linhas = ['', '// Basicas'];
+  for (const b of bs) {
+    if (b.comprar) linhas.push(`${b.comprar} ${b.nm}`
+      + (b.req ? ` [${b.req}]` : '') + '   // confirma se ja tens');
+    if (b.da_base) linhas.push(`// ${b.da_base} ${b.nm} (na coleccao)`);
+    if (b.granel) linhas.push(`// ${b.granel} ${b.nm} (${edicao || 'as tuas'})`);
+  }
+  return linhas.join('\n');
+}
+
+function wantlistHTML(itens, marca, id, detalhe, basicas, edicao) {
+  if (!itens.length && !(basicas || []).length) return '';
   const li = itens.map(m => {
     const cara = detalhe && (m.unit || 0) >= CARA;
     const compra = (m.para || []).filter(p => !p.serve);
@@ -1129,9 +1239,10 @@ function wantlistHTML(itens, marca, id, detalhe) {
       porVersao.push({ q: m.q, nm: m.nm, mat: m.mat || mats[0] || '' });
     }
   }
-  const so = porVersao.map(m => `${m.q} ${m.nm}`).join('\n');
+  const bt = basicasTexto(basicas, edicao);
+  const so = porVersao.map(m => `${m.q} ${m.nm}`).join('\n') + bt;
   const comMat = porVersao.map(m => `${m.q} ${m.nm}`
-    + (m.mat ? ` [${m.mat}]` : '')).join('\n');
+    + (m.mat ? ` [${m.mat}]` : '')).join('\n') + bt;
   return `<div class="blk" id="${id || ''}"><div class="flh">🛒 Comprar`
     + (marca ? ` <span class="mrk">${esc(marca)}</span>` : '')
     + `<span class="dim">${itens.length} cartas</span>`
@@ -1506,7 +1617,34 @@ function vistaComprar() {
        + (D.resumo.sem_preco ? `<p class="lead">⚠️ <b>${D.resumo.sem_preco}</b> `
          + `cópias desta lista não têm preço na base (contam como 0 €). `
          + `O total é um <b>mínimo</b>, não a conta fechada.</p>` : '')
-       + wantlistHTML(itens, '', 'v-compras', true));
+       + wantlistHTML(itens, '', 'v-compras', true))
+    + basicasComprarHTML(sel);
+}
+
+/* As básicas que a pilha de Unhinged NÃO cobre — hoje as Snow-Covered do Duel
+   Commander. Bloco à parte e não uma linha da lista: não contam para o total (é
+   a regra dele — as básicas não entram nas compras nem na %) e são *a
+   confirmar*, porque ele pode tê-las em casa sem as ter registado. */
+function basicasComprarHTML(sel) {
+  const bs = (D.basicas || []).filter(b => sel === 'todas'
+    || (b.para || []).some(p => p.caixa === (D.caixas.find(c => c.slot === sel) || {}).nome));
+  if (!bs.length) return '';
+  const li = bs.map(b => `<li><b>${b.q}×</b><span class="wn">${esc(b.nm)}`
+    + `<span class="cara">confirma se já tens</span>`
+    + `<small>${esc(b.req)} — para: `
+    + (b.para || []).map(p => `${esc(p.caixa)} ${p.q}×`).join(' · ')
+    + `</small></span><span class="pz">${eur(b.cost)}</span></li>`).join('');
+  const txt = bs.map(b => `${b.q} ${b.nm}` + (b.req ? ` [${b.req}]` : '')).join('\n');
+  return `<div class="blk"><div class="flh">🌱 Terrenos básicos`
+    + `<span class="dim">${bs.reduce((s, b) => s + b.q, 0)} cópias · `
+    + `${eur(bs.reduce((s, b) => s + (b.cost || 0), 0))}</span>`
+    + `<button class="cpbtn" onclick="copiar(this,'cm')" aria-label="Copiar as `
+    + `básicas a comprar">copiar p/ Cardmarket</button></div>`
+    + `<p class="nota">As tuas básicas são todas de <b>${esc(D.basicas_edicao)}</b>, `
+    + `e essas nunca se compram. Estas não existem lá — <b>não somam</b> ao total `
+    + `de compras acima nem à percentagem de nenhuma caixa.</p>`
+    + `<ul class="fl">${li}</ul>`
+    + `<textarea class="cmk" data-cmk="cm" readonly>${esc(txt)}</textarea></div>`;
 }
 
 /* ------------------------------------------------------------- sugestões
