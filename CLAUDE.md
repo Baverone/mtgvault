@@ -72,7 +72,7 @@ collection_gallery.py  colecao.html — galeria por sub-coleção
 core_decks.py       (coredecks.html APAGADO 2026-08-26, a redefinir; NÃO vai ao git-add) — mas core_decks.py continua a correr no daily p/ calcular card_price/posse
 alertas.py          alertas.html — vender/comprar por movimento de preço (fora do menu atual)
 meusdecks.py        FUNDIDO NO deckboxes.py (2026-09-08, v6) — a "Decks permanentes" fazia a MESMA pergunta ("quanto tenho deste deck?") e respondia outro número, porque contava a colecção inteira por deck em vez da alocação. Saiu do MENU e do `index.html`; o módulo continua a correr no daily mas só escreve um REENCAMINHAMENTO (`deckboxes.redireccionamento`), porque o link vive no telemóvel dele e no site publicado. O que ela tinha e a Deckboxes não tinha passou para a aba da caixa: lista por TIPO, imagens grandes, "copiar a lista" e "quantas tenho na colecção inteira" (informação secundária). Os ajudantes que outras páginas usavam (`_type_map`, `_group_by_type`, `_faltas`, `_faltas_html`, `_art`) estão agora em `mtgvault/paginas.py` — o `showcase.py` lê-os de lá
-deckboxes.py        deckboxes.html — "Deckboxes": o LOADOUT (colecao_config.json→loadout), os decks montados ao mesmo tempo com a coleção REPARTIDA entre eles (uma cópia física serve uma caixa só). NB (2026-09-07): a página foi reescrita com **uma ABA POR DECK** (o pedido dele: *"faz como no riftvault — no botão, cada deck tem uma aba própria"*), mais as abas **Todas**, **Arrumar**, **Partilhadas**, **Comprar**, **Vender** e — desde 2026-09-08 — **Sugestões** (as caixas candidatas de Premodern; só existe se houver caixas desse formato). Os dados vão em JSON dentro do HTML (`<script id="dados">`) e o render é JavaScript — o MESMO ficheiro serve o site publicado (`editable:false`) e o modo edição do `webapp.py` (`editable:true`, com botões). Por caixa: barra, dois números ("faltam comprar" e "ir buscar a outra caixa"), grelha de cartas com três estados, "tirar de:" (`slot["origens"]`), substitutos, wantlist Cardmarket (SÓ o que é mesmo compra). Na aba **Comprar**, cada linha diz para que caixa é a compra (`para`) e em que material (`loadout.requisito_material`), há selector por caixa (o "copiar" copia só o filtro activo) e as cartas ≥100 €/cópia levam chip «cara» e total à parte — Mishra's Workshop sozinha vale mais do que o resto da lista. Motor em mtgvault/loadout.py
+deckboxes.py        deckboxes.html — "Deckboxes": o LOADOUT (colecao_config.json→loadout), os decks montados ao mesmo tempo com a coleção REPARTIDA entre eles (uma cópia física serve uma caixa só). NB (2026-09-07): a página foi reescrita com **uma ABA POR DECK** (o pedido dele: *"faz como no riftvault — no botão, cada deck tem uma aba própria"*), mais as abas **Todas**, **✅ Decks montados** / **🔧 Decks para montar** (2026-09-08, ver a secção própria), **Arrumar**, **Partilhadas**, **Comprar**, **Vender** e — desde 2026-09-08 — **Sugestões** (as caixas candidatas de Premodern; só existe se houver caixas desse formato). Os dados vão em JSON dentro do HTML (`<script id="dados">`) e o render é JavaScript — o MESMO ficheiro serve o site publicado (`editable:false`) e o modo edição do `webapp.py` (`editable:true`, com botões). Por caixa: barra, dois números ("faltam comprar" e "ir buscar a outra caixa"), grelha de cartas com três estados, "tirar de:" (`slot["origens"]`), substitutos, wantlist Cardmarket (SÓ o que é mesmo compra). Na aba **Comprar**, cada linha diz para que caixa é a compra (`para`) e em que material (`loadout.requisito_material`), há selector por caixa (o "copiar" copia só o filtro activo) e as cartas ≥100 €/cópia levam chip «cara» e total à parte — Mishra's Workshop sozinha vale mais do que o resto da lista. Motor em mtgvault/loadout.py
 webapp.py           MODO EDIÇÃO local, **porto 8771** (o 8770 é do `riftvault serve` — não trocar). Serve o `deckboxes.html`/`metagame.html` com os botões: painel *Montar* (*Sleevado e na caixa*), *Já arrumei tudo*, *Actualizei*, *Vendida*, *Tornar permanente*, *Subir/Descer* e *Vou montar este*. As PREFERÊNCIAS vão para o `colecao_config.json` (as `caixas` vão no Git); o que é FÍSICO vai para a `copy_allocation` e, na venda, sai da `copies` + `data/vendas.csv`. NB (2026-09-08): **ouve em `MTGVAULT_BIND`, por omissão `127.0.0.1`** (a tarefa `mtgvault-serve` põe `0.0.0.0` para o telemóvel), e as ESCRITAS exigem o token de `data/webapp.token` — ver "O telemóvel e o token". Mantido de pé pela tarefa `ai-pc/tasks/mtgvault-serve` (verifica de 5 em 5 min, relança destacado)
 metagame.py         metagame.html — "Metagame": desde 2026-09-07 já NÃO é o top-10 de cada formato; é o **top-N que ele está mais perto de concluir** (`colecao_config.json`→`metagame_top_n`, default 3). `SECOES` decide o modo por formato: `top` (Standard/Pioneer/Legacy — as caixas do loadout por escolher, via `loadout.foil_report`), `caixas` (Modern — o deck já escolhido, do próprio loadout) e `premodern` (o ranking de sugestões — top-10 de representação + top-5 combo, cobertura **como principal** + a do que sobra ao lado, e os botões «vou montar este» / «não quero este»; era `alvos`, só o `premodern_arquetipos_alvo`, até 2026-09-08). Posse pela alocação do loadout, três estados, wantlist Cardmarket. NÃO lê `formatos_metagame` (o Legacy tinha de entrar e não está lá)
 (prioridade.py + metafaltas.py APAGADOS 2026-08-26, a redefinir)
@@ -351,6 +351,46 @@ começar — permanentes por prioridade, depois as candidatas mais perto de fech
 com *"tirar N · comprar N (X €) · estado"*, e por baixo a **venda**, que só entra
 depois de as caixas estarem servidas (uma cópia que serve uma caixa nunca aparece
 na venda: vai para `guardar`).
+
+**«DECKS MONTADOS» E «DECKS PARA MONTAR»: dois botões (André, 2026-09-08, à
+letra).** *"No mtgvault, quero decks montados num botão específico, e um botão a
+dizer «decks para montar», para poder separar as coisas."* São duas perguntas
+diferentes e ele está à frente da estante quando faz cada uma: num caso já tem a
+caixa na mão (o que lá está, e desmontá-la); no outro ainda a vai montar (o que
+tirar da colecção, o que comprar). A aba *Todas* junta-as por prioridade de
+alocação, que é a resposta a **outra** pergunta.
+- **A linha que separa é o `estado`**: `montada`/`congelada` de um lado, tudo o
+  resto do outro (`c.montado` no payload). Cada caixa está numa vista **e só
+  numa**, e o cabeçalho diz *«N montados · M para montar»* — os dois números
+  vêm do Python (`resumo.montados`/`por_montar`) e **somam sempre o total de
+  caixas**. Uma caixa que caísse fora das duas desaparecia da página sem um
+  único erro, que é o padrão do `event_tier` do lado do browser.
+- **O cartão é o MESMO da vista Todas** (`caixaHTML(c, true)`): a caixa não pode
+  dizer 61 % num sítio e outra coisa no do lado. O que muda é a barra por baixo
+  — *«montada em <data>»* + **Desmontar** (modo edição) de um lado, **Montar**
+  (que abre o painel Montar da caixa) do outro. Os botões ficam **fora** do
+  `<button class="mini">`: um botão dentro de outro não é HTML válido e o clique
+  de dentro disparava também a navegação de fora.
+- **A data sai da `copy_allocation`** (`loadout.datas_de_arrumacao`, o
+  `MAX(placed_at)` — quem grava substitui as linhas da caixa inteira, por isso a
+  data que se pode afirmar é a da última vez que ele disse o que lá está). **Uma
+  caixa que se diz montada e de que o vault não sabe o conteúdo não ganha data
+  nenhuma**: diz que falta confirmar. É o Stiflenought, hoje o único montado —
+  e dar-lhe o dia de hoje era assinar por ele uma confirmação que ele nunca fez.
+- **A ordem da vista de montar é a do Plano** (`ordem_de_montagem`): permanentes
+  primeiro, depois as candidatas pela percentagem. Reordená-la aqui dava duas
+  respostas a *"por onde começo?"*. As caixas **sem deck escolhido** não estão no
+  `montagem` (não há o que montar até ele escolher): vêm no fim, no grupo
+  **Por escolher**. Pela mesma razão o subtítulo da aba *Plano* deixou de trazer
+  contagem — *"N por montar"* ali e *"M por montar"* no botão do lado eram as
+  mesmas palavras com dois números.
+- **As abas individuais de cada deck mantêm-se**, agrupadas: montadas primeiro,
+  com o **ponto verde** (`pin done`, com anel para não se confundir com o verde
+  de *"90 % ou mais"*), e um separador entre os dois grupos. Antes vinham pela
+  ordem da alocação e a caixa que está na estante aparecia no meio das que ainda
+  não existem.
+- **Nada mudou no motor**: medido na base de 2026-09-08, fechar tudo 8 426,34 €,
+  232 a comprar, 70 a ir buscar, 570 a arrumar — iguais antes e depois.
 
 **«VENDIDA»: a cópia sai mesmo (`loadout.registar_venda`, 2026-09-08).** Botão
 por linha, só no modo edição. Duas decisões que valem estar escritas: (1) a cópia
