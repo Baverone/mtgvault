@@ -273,6 +273,9 @@ def _premodern_payload(rep, imgs):
 
     def linha(c):
         return {"nome": c["nome"], "subtitulo": c["subtitulo"],
+                # O `id` estável do arquétipo: é ele que vai nos botões e a chave
+                # por que a recusa/escolha se guarda. O nome é apresentação.
+                "id": c["id"],
                 "archetype_id": c["archetype_id"], "n_lists": c["n_lists"],
                 "pct": c["pct"], "pct_total": c["pct_total"],
                 "pct_principal": c["pct_principal"],
@@ -1524,11 +1527,16 @@ function sugestaoHTML(c) {
   const acts = !D.editable || c.estado === 'caixa' ? '' :
     c.estado === 'recusada'
       ? `<div class="acts"><button class="btn" data-act="pm-aceitar" `
-        + `data-nome="${esc(c.nome)}">↩ Voltar a considerar</button></div>`
+        + `data-nome="${esc(c.nome)}" data-id="${esc(c.id)}">`
+        + `↩ Voltar a considerar</button></div>`
+      /* O `data-id` é o id ESTÁVEL do arquétipo: é por ele que a recusa e a
+         escolha se guardam, porque o nome do clustering muda entre corridas. */
       : `<div class="acts"><button class="btn pri" data-act="pm-montar" `
-        + `data-nome="${esc(c.nome)}" data-aid="${c.archetype_id}">`
+        + `data-nome="${esc(c.nome)}" data-aid="${c.archetype_id}" `
+        + `data-id="${esc(c.id)}">`
         + `✔ Vou montar este</button>`
-        + `<button class="btn" data-act="pm-recusar" data-nome="${esc(c.nome)}">`
+        + `<button class="btn" data-act="pm-recusar" data-nome="${esc(c.nome)}" `
+        + `data-id="${esc(c.id)}">`
         + `✕ Não quero este</button></div>`;
   /* A percentagem grande é a de COMO PRINCIPAL — é a que decide o limiar desde
      2026-09-08, porque as caixas de Premodern partilham cartas. A do que sobra
@@ -1841,7 +1849,7 @@ function ligar() {
      desenhado e morto, que é o pior dos dois mundos. */
   for (const b of document.querySelectorAll('[data-act]')) {
     b.onclick = () => accao(b.dataset.act, b.dataset.slot, b, b.dataset.aid,
-                            b.dataset.nome);
+                            b.dataset.nome, b.dataset.id);
   }
   for (const l of document.querySelectorAll('.mv')) {
     const cb = l.querySelector('input');
@@ -1925,11 +1933,11 @@ function gravar(url, corpo) {
   });
 }
 
-async function accao(act, slot, btn, aid, nome) {
+async function accao(act, slot, btn, aid, nome, id) {
   btn.disabled = true;
   try {
     const r = await gravar(ESCOLHA[act] ? 'api/escolher' : 'api/caixa',
-                           { act, slot, nome: nome || null,
+                           { act, slot, nome: nome || null, id: id || null,
                              aid: aid ? Number(aid) : null });
     if (!r.ok && r.status !== 403 && r.status !== 409) {
       throw new Error('HTTP ' + r.status);

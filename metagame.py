@@ -199,17 +199,23 @@ def _premodern_acts_html(d, editable):
     if not editable:
         return ""
     nome = html.escape(d["nome"])
+    # O `id` estável vai em TODOS os botões: é por ele que a recusa e a escolha
+    # se guardam. O `nome` continua a ir a par — é o que fica escrito ao lado no
+    # config, para ele reconhecer a linha —, mas já não é a chave.
+    ident = html.escape(d.get("id") or "")
     if d["estado"] == "caixa":
         return ""
     if d["estado"] == "recusada":
         return (f'<div class="acts"><button class="btn" data-act="pm-aceitar" '
-                f'data-nome="{nome}" aria-label="Voltar a considerar {nome}">'
+                f'data-nome="{nome}" data-id="{ident}" '
+                f'aria-label="Voltar a considerar {nome}">'
                 f'↩ Voltar a considerar</button></div>')
     montar = (f'<button class="btn pri" data-act="pm-montar" data-nome="{nome}" '
-              f'data-aid="{d["archetype_id"]}" '
+              f'data-aid="{d["archetype_id"]}" data-id="{ident}" '
               f'aria-label="Vou montar {nome} numa caixa nova">'
               f'✔ Vou montar este</button>')
     recusar = (f'<button class="btn" data-act="pm-recusar" data-nome="{nome}" '
+               f'data-id="{ident}" '
                f'aria-label="Não quero {nome} — as cartas dele vão para a venda">'
                f'✕ Não quero este</button>')
     return f'<div class="acts">{montar}{recusar}</div>'
@@ -341,6 +347,7 @@ def _decks_premodern(res):
                                       f'{c["subtitulo"]}',
             "badges": badges, "linhas": c["linhas"], "marca": "PT",
             "pm": True, "estado": c["estado"],
+            "id": c["id"],
             "archetype_id": c["archetype_id"], "pct_total": c["pct_total"],
             # As duas percentagens que a página mostra lado a lado: a de COMO
             # PRINCIPAL (a que decide o limiar) e a do que sobra (a que explica
@@ -598,6 +605,7 @@ function cp(btn){
                    'X-Mtgvault-Token':"%TOKEN%"},
           body:JSON.stringify({act:b.dataset.act,slot:b.dataset.slot,
                                nome:b.dataset.nome||null,
+                               id:b.dataset.id||null,
                                aid:b.dataset.aid?Number(b.dataset.aid):null})});
         if(!r.ok) throw new Error('HTTP '+r.status);
         const j=await r.json();

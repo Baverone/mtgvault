@@ -69,6 +69,24 @@ As regras servem também de NOME. O `meta_coverage._name_for` chamava
 Replenish — porque a `KNOWN` bate na primeira carta que encontra. A regra com
 `none` separa-os, que é exactamente o que o `archetype_rules.json` já faz para os
 alvos de consenso.
+
+E porque a regra nomeia, há regras que **só** nomeiam: `"combo": false` (o
+Psychatog, o Landstill, os Goblins, o Sligh). Sem essa chave, acrescentar o
+Landstill à lista para lhe dar um nome estável punha-o a disputar o top-5 de
+combo com o Stiflenought — dar nome e dizer que é combo são duas coisas
+diferentes. Uma regra pode ainda pedir `"cor": true`, e aí o nome leva as cores
+do núcleo à frente (*"Orzhov Exalted Angel"*): é para os nomes que não implicam
+a cor, e evita chamar Orzhov a um deck mono-branco.
+
+E QUEM MUDA DE NOME NÃO MUDA DE IDENTIDADE
+------------------------------------------
+Quem não bate em regra nenhuma fica com o rótulo do clustering, e esse MUDA entre
+corridas (o *"Dimir Psychatog"* passou a *"Dimir Polluted Delta"*). Como uma
+sugestão, uma recusa e uma escolha se reconhecem pelo arquétipo, isso fazia a
+recusa de ontem deixar de bater hoje. Por isso cada candidato traz um `id`
+estável, derivado do núcleo de cartas e herdado quando o núcleo mexe pouco — ver
+`mtgvault/arquetipos.py`. **O nome é apresentação; quem liga as decisões é o
+`id`.**
 """
 from __future__ import annotations
 
@@ -77,7 +95,7 @@ import sqlite3
 import unicodedata
 from datetime import date
 
-from . import loadout, sources, tagging
+from . import arquetipos, loadout, sources, tagging
 
 FMT = "premodern"
 
@@ -122,6 +140,24 @@ COMBO_DEFAULT = [
     {"nome": "Terrageddon", "grau": "hibrido", "all": ["Terravore", "Armageddon"]},
     {"nome": "Elves / Survival", "grau": "hibrido",
      "all": ["Survival of the Fittest"]},
+    # SÓ PARA NOMEAR (`combo: false`) — os clássicos do formato que o ranking já
+    # mostrou e que, sem regra, ficavam com o rótulo do clustering e trocavam de
+    # nome de corrida para corrida. Não entram no top-5 de combo: dar nome e
+    # dizer que é combo são duas decisões diferentes.
+    # A ordem continua a mandar: o Pyrostatic Pillar joga Fireblast e, escrito
+    # depois do Sligh, chamava-se Sligh.
+    {"nome": "Psychatog", "combo": False, "all": ["Psychatog"]},
+    {"nome": "Landstill", "combo": False,
+     "all": ["Standstill", "Mishra's Factory"]},
+    {"nome": "The Rack", "combo": False, "all": ["The Rack"]},
+    {"nome": "Exalted Angel", "combo": False, "cor": True,
+     "all": ["Exalted Angel"]},
+    {"nome": "Graveborn Muse", "combo": False, "cor": True,
+     "all": ["Graveborn Muse"]},
+    {"nome": "Goblins", "combo": False,
+     "any": ["Goblin Lackey", "Goblin Piledriver", "Goblin Warchief"]},
+    {"nome": "Pyrostatic Pillar", "combo": False, "all": ["Pyrostatic Pillar"]},
+    {"nome": "Sligh", "combo": False, "all": ["Fireblast"]},
 ]
 GRAUS = {"puro": "combo puro", "prisao": "combo-prisão", "hibrido": "híbrido"}
 
@@ -167,15 +203,46 @@ def combo_regras() -> list[dict]:
     return [{k: r[k] for k in r if not str(k).startswith("_")} for r in v]
 
 
-def recusadas() -> dict[str, str]:
+def recusadas() -> dict[str, dict]:
     """As sugestões que ele já disse que não quer, e o dia em que o disse.
 
     Uma recusa não é o mesmo que "não passa dos 50 %": as cartas dela **libertam-
     se para a venda** (é o que o botão *"não quero este"* existe para fazer), e
     por isso tem de ficar escrita e datada em vez de se perder no browser.
+
+    A CHAVE é o `id` estável do arquétipo (2026-09-08). Era o NOME, e o nome do
+    clustering muda entre corridas: a recusa deixava de bater e a sugestão que
+    ele já tinha mandado embora voltava sozinha, com as cartas dela a sair outra
+    vez da lista de venda. A forma antiga — `{"<nome>": "<data>"}` — continua a
+    ler-se aqui e a bater pelo nome, para uma recusa escrita antes disto não se
+    perder; a `migrar_config` passa-a para a nova.
     """
     v = config().get("sugestoes_recusadas")
-    return {str(k): str(x) for k, x in v.items()} if isinstance(v, dict) else {}
+    out: dict[str, dict] = {}
+    for k, x in (v.items() if isinstance(v, dict) else ()):
+        if isinstance(x, dict):
+            out[str(k)] = {"nome": str(x.get("nome") or k),
+                           "em": str(x.get("em") or "")}
+        else:
+            out[str(k)] = {"nome": str(k), "em": str(x)}
+    return out
+
+
+def recusa_de(rec: dict[str, dict], ident: str | None, nome: str) -> str | None:
+    """O dia em que ele recusou este arquétipo, ou `None`.
+
+    Pelo `id` primeiro (é a chave a sério) e pelo NOME a seguir — o segundo
+    caminho é o que faz uma recusa da forma antiga continuar a valer sem ter de
+    correr migração nenhuma.
+    """
+    r = rec.get(ident or "")
+    if r:
+        return r["em"]
+    alvo = chave_nome(nome)
+    for k, v in rec.items():
+        if alvo and chave_nome(v.get("nome") or k) == alvo:
+            return v["em"]
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -202,14 +269,33 @@ def slug(nome: str) -> str:
     return "premodern-" + (re.sub(r"[^a-z0-9]+", "-", s).strip("-") or "sugestao")
 
 
-def classificar(cartas: set[str], regras: list[dict] | None = None
-                ) -> tuple[str | None, str | None]:
-    """(nome, grau) da primeira regra de combo que bate na lista. (None, None) se
-    não for combo — e não ser combo não tira ninguém do top-10."""
+def classificar_regra(cartas: set[str], regras: list[dict] | None = None
+                      ) -> dict | None:
+    """A primeira regra que bate na lista — a que a NOMEIA. `None` se nenhuma bate.
+
+    Uma regra pode nomear sem dizer que o deck é combo (`"combo": false`): é como
+    o Landstill e os Goblins ganham um nome estável sem passarem a disputar o
+    top-5 de combo com o Stiflenought.
+    """
     for r in (regras if regras is not None else combo_regras()):
         if tagging._matches(cartas, r):
-            return r.get("nome"), r.get("grau")
-    return None, None
+            return r
+    return None
+
+
+def e_combo(regra: dict | None) -> bool:
+    """Uma regra é de combo a menos que diga que não. O default é `True` porque
+    todas as que existiam antes de 2026-09-08 eram de combo — mudá-lo tirava-as
+    todas do top-5 de uma vez."""
+    return bool(regra) and regra.get("combo", True)
+
+
+def classificar(cartas: set[str], regras: list[dict] | None = None
+                ) -> tuple[str | None, str | None]:
+    """(nome, grau) da primeira regra de COMBO que bate na lista. (None, None) se
+    não for combo — e não ser combo não tira ninguém do top-10."""
+    r = classificar_regra(cartas, regras)
+    return (r.get("nome"), r.get("grau")) if e_combo(r) else (None, None)
 
 
 def _nome_do_cluster(con, aid: int, cache: dict) -> str:
@@ -239,6 +325,44 @@ def _subtitulo(con, aid: int, cache: dict) -> str:
         cache["df"] = mc._format_df(con, FMT)
         cache["t"] = {}
     return mc._distinctive_name(con, aid, cache["df"], cache["t"])
+
+
+def _distintivas(con, aid: int, cache: dict) -> list[str]:
+    """As cartas do núcleo por ordem de distintividade — a matéria-prima do `id`.
+
+    Quem sabe medir distintividade é o `meta_coverage` (tem o `card_roles` à
+    frente). Sem ele, cai-se para as cartas da própria lista de consenso: um
+    núcleo pior, mas verdadeiro, e a herança por semelhança absorve a diferença.
+    """
+    try:
+        import meta_coverage as mc                       # noqa: PLC0415
+    except ImportError:                                  # pragma: no cover
+        return []
+    if "df" not in cache:
+        cache["df"] = mc._format_df(con, FMT)
+        cache["t"] = {}
+    return mc._distinctivas(con, aid, cache["df"], cache["t"])
+
+
+def _cores(con, aid: int) -> str:
+    try:
+        import meta_coverage as mc                       # noqa: PLC0415
+    except ImportError:                                  # pragma: no cover
+        return ""
+    return mc._cores_do_nucleo(con, aid)
+
+
+def nome_da_regra(con, aid: int, regra: dict) -> str:
+    """O nome que a regra dá, com as cores à frente quando ela o pede.
+
+    *"A cor entra só quando o nome próprio não a implica"*: um Psychatog é Dimir
+    por definição e um Exalted Angel não diz cor nenhuma. Calcular a cor em vez
+    de a escrever na regra evita chamar *"Orzhov"* a um Exalted Angel mono-branco.
+    """
+    nome = regra.get("nome") or ""
+    if not regra.get("cor"):
+        return nome
+    return f"{_cores(con, aid)} {nome}".strip()
 
 
 # ---------------------------------------------------------------------------
@@ -294,14 +418,18 @@ def pct_principal(linhas: list[dict], grupo: set[str]) -> tuple[int, int]:
 def _caixa_de(cand: dict, caixas: list[dict]) -> dict | None:
     """A caixa que já É este arquétipo, se existir.
 
-    Duas maneiras, e as duas são precisas: pelo `archetype_id` (é o que fica
-    escrito quando ele carrega em *"vou montar este"*) e pelo NOME normalizado
-    (as seis caixas de hoje vieram do config à mão e não têm arquétipo nenhum
-    associado). Uma regra de combo pode ainda apontar a caixa à mão (`caixa`),
-    para o dia em que ele lhe mudar o nome.
+    Três maneiras, e as três são precisas: pelo `id` ESTÁVEL do arquétipo (o que
+    o *"vou montar este"* congela em `listas_escolhidas`, e o único que sobrevive
+    a uma mudança de rótulo), pelo `archetype_id` do clustering (que muda quando o
+    `rebuild_archetypes` corre, mas ainda é o que está escrito nas escolhas
+    antigas) e pelo NOME normalizado (as seis caixas de hoje vieram do config à
+    mão e não têm arquétipo nenhum associado). Uma regra pode ainda apontar a
+    caixa (`caixa`), para o dia em que ele lhe mudar o nome.
     """
     alvo = chave_nome(cand["nome"])
     for s in caixas:
+        if cand.get("id") and s.get("arquetipo") == cand["id"]:
+            return s
         if cand.get("archetype_id") and s.get("archetype_id") == cand["archetype_id"]:
             return s
         if cand.get("caixa") and s.get("slot") == cand["caixa"]:
@@ -312,13 +440,19 @@ def _caixa_de(cand: dict, caixas: list[dict]) -> dict | None:
     return None
 
 
-def candidatos(con: sqlite3.Connection, res: dict) -> list[dict]:
+def candidatos(con: sqlite3.Connection, res: dict,
+               registo: "arquetipos.Registo | None" = None) -> list[dict]:
     """Os arquétipos de Premodern a considerar, com a cobertura do que SOBRA.
 
     Devolve TODOS os que passam o mínimo de listas, já ordenados por
     representação; quem corta o top-10 / top-5 combo é o `ranking`. Cada entrada:
 
-      `nome`/`subtitulo`  o nome da regra de combo, ou o do clustering;
+      `id`                a IDENTIDADE estável, do núcleo de cartas
+                          (`mtgvault.arquetipos`). É por ela que uma sugestão,
+                          uma recusa e uma escolha se reconhecem de um dia para o
+                          outro — o `nome` é apresentação e pode mudar;
+      `nucleo`            as cartas de que o `id` saiu (é o que o registo guarda);
+      `nome`/`subtitulo`  o nome da regra, ou o herdado, ou o do clustering;
       `combo`/`grau`      se é combo e de que tipo;
       `n_lists`           listas que CONTAM (`sources.counting_sql`);
       `pct_principal`     a cobertura COMO SE ele fosse a caixa nº 1 do grupo de
@@ -337,14 +471,18 @@ def candidatos(con: sqlite3.Connection, res: dict) -> list[dict]:
     grupo = caixas_que_partilham(res)
     fora = recusadas()
     corte = limiar()
+    registo = registo or arquetipos.Registo.carregar()
     cache: dict = {}
     por_combo: dict[str, dict] = {}
     out: list[dict] = []
     for r in loadout.foil_report(con, FMT, top=10 ** 6,
                                  min_lists=min_listas(), res=res):
         cartas = {m["nm"] for m in r["linhas"]}
-        nome, grau = classificar(cartas, regras)
-        # Duas entradas com o MESMO nome de combo são o mesmo baralho partido em
+        regra = classificar_regra(cartas, regras)
+        combo = e_combo(regra)
+        nome = nome_da_regra(con, r["archetype_id"], regra) if regra else None
+        grau = (regra or {}).get("grau") if combo else None
+        # Duas entradas com o MESMO nome de regra são o mesmo baralho partido em
         # dois clusters (o Stasis aparece duas vezes na base de 2026-09-08): somam
         # as listas em vez de ocuparem dois lugares do top-5. Só se juntam pelo
         # nome de uma REGRA — juntar pelo nome gerado pelo clustering fundia dois
@@ -354,12 +492,21 @@ def candidatos(con: sqlite3.Connection, res: dict) -> list[dict]:
             velho["n_lists"] += r["n_lists"]
             velho["ids"] += r["ids"]
             continue
+        # A IDENTIDADE sai do núcleo, e o nome é o que a regra diz (autoritário,
+        # é uma decisão dele) ou o que o registo já tinha para este núcleo. Só
+        # quando o arquétipo é novo é que o rótulo do clustering serve de nome —
+        # e a partir daí fica registado, para não mudar amanhã.
+        nucleo = arquetipos.nucleo(_distintivas(con, r["archetype_id"], cache)
+                                   or sorted(cartas))
+        gerado = (_nome_do_cluster(con, r["archetype_id"], cache) or r["label"])
+        ident = registo.resolver(FMT, nucleo, nome or gerado,
+                                 por_regra=bool(nome))
         c = {
+            "id": ident["id"], "nucleo": nucleo, "id_novo": ident["novo"],
             "archetype_id": r["archetype_id"], "ids": list(r["ids"]),
-            "nome": nome or _nome_do_cluster(con, r["archetype_id"], cache)
-                    or r["label"],
+            "nome": ident["nome"],
             "subtitulo": _subtitulo(con, r["archetype_id"], cache) or r["label"],
-            "combo": bool(nome), "grau": GRAUS.get(grau or "", ""),
+            "combo": combo, "grau": GRAUS.get(grau or "", ""),
             "n_lists": r["n_lists"], "linhas": r["linhas"],
             "need": r["need"], "got": r["got"],
             "pct": r["pct_livre"], "pct_total": r["pct"],
@@ -373,7 +520,7 @@ def candidatos(con: sqlite3.Connection, res: dict) -> list[dict]:
         caixa = _caixa_de(c, caixas)
         c["slot"] = (caixa or {}).get("slot")
         c["caixa_nome"] = (caixa or {}).get("nome")
-        c["recusada_em"] = fora.get(c["nome"])
+        c["recusada_em"] = recusa_de(fora, c["id"], c["nome"])
         # O limiar corre sobre a cobertura COMO PRINCIPAL (André, 2026-09-08:
         # *"tens que ver se a % desses decks aumentaria se eles fossem o
         # principal; mantém a 50 % visto com esta regra de agora"*). Com o `pct`
@@ -387,7 +534,8 @@ def candidatos(con: sqlite3.Connection, res: dict) -> list[dict]:
 
 
 def ranking(con: sqlite3.Connection, res: dict,
-            cands: list[dict] | None = None) -> dict:
+            cands: list[dict] | None = None,
+            registo: "arquetipos.Registo | None" = None) -> dict:
     """O top-10 de representação e o top-5 de combo, com a marca de cada um.
 
     São duas listas e não uma soma: *"se o deck for top-10 de representação **ou**
@@ -395,7 +543,7 @@ def ranking(con: sqlite3.Connection, res: dict,
     marca `top`/`top_combo` diz em qual — misturá-las escondia o critério por que
     cada um entrou.
     """
-    cands = cands if cands is not None else candidatos(con, res)
+    cands = cands if cands is not None else candidatos(con, res, registo)
     top = cands[:top_representados()]
     combo = [c for c in cands if c["combo"]][:top_combo()]
     ids_top, ids_combo = {id(c) for c in top}, {id(c) for c in combo}
@@ -467,31 +615,107 @@ def contexto(con: sqlite3.Connection, res: dict) -> dict:
         return {"activo": False, "todos": [], "top": [], "combo": [],
                 "elegiveis": [], "sugestoes": [], "reservas": {},
                 "recusadas": recusadas(), "limiar": limiar()}
-    rank = ranking(con, res)
+    registo = arquetipos.Registo.carregar()
+    rank = ranking(con, res, registo=registo)
+    # O registo grava-se AQUI, uma vez por relatório, e só se mudou. É o que faz
+    # o nome de hoje valer amanhã — sem isto a identidade só duraria o tempo do
+    # processo, que é o mesmo que não existir. Os ids que o config refere ficam
+    # protegidos da poda: apagar a entrada de uma recusa fazia-a deixar de bater.
+    registo.podar(proteger=list(recusadas()) + ids_escolhidos())
+    registo.gravar()
     sugs = sugestoes(rank)
     return {"activo": True, **rank, "sugestoes": sugs,
             "reservas": reservas(sugs), "recusadas": recusadas(),
-            "limiar": limiar()}
+            "limiar": limiar(), "registo": len(registo.arquetipos)}
 
 
 # ---------------------------------------------------------------------------
 # Escrita no config (o modo edição)
 # ---------------------------------------------------------------------------
-def recusar(cfg: dict, nome: str, quando: str | None = None) -> str:
-    """*"Não quero este"*: a sugestão sai, e as cartas dela vão para a venda."""
+def ids_escolhidos() -> list[str]:
+    """Os `id` estáveis das listas que ele já mandou montar (`listas_escolhidas`)."""
+    v = sources.config().get("listas_escolhidas")
+    return [str(r["id"]) for r in (v or {}).values()
+            if isinstance(r, dict) and r.get("id")]
+
+
+def recusar(cfg: dict, nome: str, quando: str | None = None,
+            ident: str | None = None) -> str:
+    """*"Não quero este"*: a sugestão sai, e as cartas dela vão para a venda.
+
+    Escreve-se pelo `id` estável, com o NOME ao lado — o nome é para ele
+    reconhecer a linha quando abrir o config, e o `id` é o que faz a recusa
+    continuar a bater depois de o clustering trocar o rótulo.
+    """
     bloco = cfg.setdefault("premodern", {})
-    bloco.setdefault("sugestoes_recusadas", {})[nome] = (
-        quando or date.today().isoformat())
+    fora = bloco.setdefault("sugestoes_recusadas", {})
+    _limpar(fora, nome, ident)
+    fora[ident or nome] = {"nome": nome,
+                           "em": quando or date.today().isoformat()}
     return f"{nome}: sugestão recusada — as cartas dela libertam-se para a venda"
 
 
-def aceitar(cfg: dict, nome: str) -> str:
+def _limpar(fora: dict, nome: str, ident: str | None) -> bool:
+    """Tira as entradas que são este arquétipo — pela chave ou pelo nome.
+
+    Pelo nome também, e não só pela chave: senão o *"volta a considerar"* não
+    conseguia desfazer uma recusa escrita na forma antiga, e a sugestão ficava
+    recusada para sempre sem nada na página a dizer porquê.
+    """
+    alvo = chave_nome(nome)
+    velhas = [k for k, v in fora.items()
+              if k == ident or k == nome
+              or (alvo and chave_nome((v or {}).get("nome") if isinstance(v, dict)
+                                      else k) == alvo)]
+    for k in velhas:
+        fora.pop(k)
+    return bool(velhas)
+
+
+def aceitar(cfg: dict, nome: str, ident: str | None = None) -> str:
     """Desfaz o *"não quero este"*."""
     bloco = cfg.get("premodern") or {}
     fora = bloco.get("sugestoes_recusadas") or {}
-    if nome not in fora:
+    if not _limpar(fora, nome, ident):
         return f"{nome} não estava recusado"
-    fora.pop(nome)
     if not fora:
         bloco.pop("sugestoes_recusadas", None)
     return f"{nome}: volta a ser sugestão"
+
+
+# ---------------------------------------------------------------------------
+# Migração: das chaves por NOME para as chaves por `id`
+# ---------------------------------------------------------------------------
+def migrar_config(cfg: dict, mapa: dict[str, str]) -> tuple[dict, int]:
+    """Passa as recusas e as escolhas de chave-nome para chave-`id`.
+
+    `mapa` é `chave_nome -> id`, e sai do ranking do dia (é lá que os dois se
+    veem ao mesmo tempo). O que não aparecer no mapa **fica como está**: um
+    arquétipo que hoje não tem listas volta a ter daqui a um mês, e apagar-lhe a
+    recusa era decidir por ele. Idempotente, e devolve quantas linhas mexeu.
+    """
+    n = 0
+    fora = (cfg.get("premodern") or {}).get("sugestoes_recusadas")
+    if isinstance(fora, dict):
+        for k in list(fora):
+            v = fora[k]
+            if isinstance(v, dict) and v.get("nome"):
+                continue                       # já está na forma nova
+            ident = mapa.get(chave_nome(k))
+            if not ident:
+                continue
+            fora.pop(k)
+            fora[ident] = {"nome": k, "em": str(v)}
+            n += 1
+    for rec in (cfg.get("listas_escolhidas") or {}).values():
+        if isinstance(rec, dict) and not rec.get("id"):
+            ident = mapa.get(chave_nome(rec.get("nome") or ""))
+            if ident:
+                rec["id"] = ident
+                n += 1
+    return cfg, n
+
+
+def mapa_de_ids(cands: list[dict]) -> dict[str, str]:
+    """`chave_nome -> id`, para a `migrar_config`."""
+    return {chave_nome(c["nome"]): c["id"] for c in cands if c.get("id")}

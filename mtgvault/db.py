@@ -30,6 +30,24 @@ DEFAULT_DB = Path(os.environ.get("MTGVAULT_DB", ROOT / "vault.db"))
 DEFAULT_CATALOG = Path(os.environ.get("MTGVAULT_CATALOG", ROOT / "catalog.db"))
 
 
+def pasta_dados() -> Path:
+    """A pasta AO LADO DA BASE, onde vivem os ficheiros que a acompanham
+    (`vendas.csv`, `arquetipos.json`).
+
+    Não é o `ROOT`, e a diferença morde: neste PC o `MTGVAULT_HOME` **não está
+    definido** — só o `MTGVAULT_DB`, que aponta para o `data/` do repositório.
+    Pelo `ROOT` esses ficheiros iam parar a `~/mtgvault`, fora do repositório: o
+    `git add data/arquetipos.json` do `daily.yml` não encontrava nada, o registo
+    nunca era publicado e os nomes voltavam a mudar de um dia para o outro. Sem
+    um único erro — é o padrão do `event_tier`. O `.gitignore` já dizia qual era
+    a intenção (tem lá `data/vendas.csv`).
+
+    Com o `MTGVAULT_HOME` definido e sem `MTGVAULT_DB`, dá exactamente o mesmo
+    que dava: `DEFAULT_DB` é `ROOT/vault.db` e o pai é o `ROOT`.
+    """
+    return Path(DEFAULT_DB).parent
+
+
 def connect(path=None, catalog=None) -> sqlite3.Connection:
     path = Path(path) if path else DEFAULT_DB
     catalog = Path(catalog) if catalog else DEFAULT_CATALOG

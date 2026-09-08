@@ -228,8 +228,30 @@ CHAVES_DA_ESCOLHA = ("fonte", "ref", "nome", "estado")
 _slot_do_cfg = caixas.caixa_do_cfg
 
 
+def identidade_do_arquetipo(con, aid: int, fmt: str) -> str:
+    """O `id` estável de um arquétipo qualquer, e regista-o.
+
+    O ranking de Premodern já traz o `id` feito; as secções de top-N (Standard,
+    Pioneer, Legacy) não passam pelo `mtgvault.premodern`, e sem isto a escolha
+    dele ficava guardada só com o `archetype_id` do clustering — que muda na
+    corrida seguinte.
+    """
+    import meta_coverage as mc                          # noqa: PLC0415
+
+    from mtgvault import arquetipos                     # noqa: PLC0415
+
+    df, tcache = mc._format_df(con, fmt), {}
+    nuc = arquetipos.nucleo(mc._distinctivas(con, aid, df, tcache))
+    if not nuc:
+        return ""
+    reg = arquetipos.Registo.carregar()
+    r = reg.resolver(fmt, nuc, mc._name_for(con, aid, df, tcache))
+    reg.gravar()
+    return r["id"]
+
+
 def guardar_escolha(con, cfg, slot_id: str, aid: int,
-                    nome: str | None = None) -> str:
+                    nome: str | None = None, ident: str | None = None) -> str:
     """Congela em `listas_escolhidas[slot]` a lista de consenso de um arquétipo.
 
     A lista fica **congelada com a data**: se o consenso do arquétipo mudar
@@ -242,6 +264,12 @@ def guardar_escolha(con, cfg, slot_id: str, aid: int,
     `_name_for` chama *"Replenish"* tanto à Enchantress como ao UW Replenish, e
     guardar aqui um nome diferente do que está no botão fazia a caixa deixar de
     se reconhecer como sendo aquela sugestão.
+
+    `ident` é o `id` ESTÁVEL do arquétipo (`mtgvault.arquetipos`) e é a chave a
+    sério: o `archetype_id` que fica ao lado é o do clustering e muda quando o
+    `rebuild_archetypes` corre, e o `nome` pode mudar de rótulo entre corridas.
+    Sem ele, a caixa deixava de se reconhecer como sendo aquela sugestão e a
+    sugestão reaparecia ao lado da caixa que ela própria criou.
     """
     import meta_coverage as mc
 
@@ -259,6 +287,7 @@ def guardar_escolha(con, cfg, slot_id: str, aid: int,
         "nome": nome or mc._name_for(con, aid, df, tcache),
         "subtitulo": mc._distinctive_name(con, aid, df, tcache),
         "formato": fmt,
+        "id": ident or identidade_do_arquetipo(con, aid, fmt),
         "archetype_id": aid,
         "n_listas": mc._n_lists(con, aid),
         "escolhido_em": date.today().isoformat(),
@@ -331,19 +360,23 @@ def caixa_para_sugestao(cfg, nome: str, fmt: str = "premodern") -> dict:
     return nova
 
 
-def montar_sugestao(con, cfg, nome: str, aid: int) -> str:
+def montar_sugestao(con, cfg, nome: str, aid: int, ident: str | None = None) -> str:
     """*"Vou montar este"* numa sugestão do ranking de Premodern.
 
     O `nome` da caixa é o do arquétipo e mais nada — ao contrário do
     `escolher_lista`, que junta o nome da caixa ao do deck ("Legacy — Doomsday")
     porque ali a caixa já existia e tem identidade própria. Aqui a caixa NASCE do
-    arquétipo, e é por esse nome que ela se reconhece como sendo aquela sugestão
-    na corrida seguinte (`premodern._caixa_de`).
+    arquétipo.
+
+    Quem a faz reconhecer-se como sendo aquela sugestão na corrida seguinte é o
+    `id` estável (`premodern._caixa_de`), guardado na `listas_escolhidas`. Era o
+    nome, e o nome do clustering muda entre corridas: a caixa nascia com um
+    rótulo e no dia seguinte a sugestão reaparecia ao lado dela.
     """
     from mtgvault import premodern as pm                 # noqa: PLC0415
 
     s = caixa_para_sugestao(cfg, nome)
-    legivel = guardar_escolha(con, cfg, s["slot"], aid, nome=nome)
+    legivel = guardar_escolha(con, cfg, s["slot"], aid, nome=nome, ident=ident)
     if not legivel:
         cfg["caixas"].remove(s)          # não se deixa uma caixa vazia por trás
         return "esse arquétipo não tem lista de consenso"
@@ -357,7 +390,7 @@ def montar_sugestao(con, cfg, nome: str, aid: int) -> str:
     # Escolher também apaga a recusa: se ele já tinha dito que não e mudou de
     # ideias, deixar a recusa escrita punha o crachá "recusado" numa caixa que
     # ele acabou de mandar montar.
-    pm.aceitar(cfg, nome)
+    pm.aceitar(cfg, nome, ident)
     return (f'{nome}: caixa aberta ({s["slot"]}) com a lista de consenso '
             f'congelada em {date.today().isoformat()}')
 
@@ -653,6 +686,10 @@ class Handler(BaseHTTPRequestHandler):
 
         act, slot_id, aid = dados.get("act"), dados.get("slot"), dados.get("aid")
         nome = (dados.get("nome") or "").strip()
+        # O `id` estável do arquétipo, que a página manda no botão. É a chave por
+        # que a recusa e a escolha se guardam — o `nome` vai a par só para ele
+        # reconhecer a linha quando abrir o config à mão.
+        ident = (dados.get("id") or "").strip() or None
         cfg = ler_config()
         with db.session() as con:
             if act == "escolher":
@@ -667,11 +704,11 @@ class Handler(BaseHTTPRequestHandler):
                 if act == "pm-montar":
                     if not aid:
                         return {"erro": "sem arquétipo"}
-                    msg = montar_sugestao(con, cfg, nome, int(aid))
+                    msg = montar_sugestao(con, cfg, nome, int(aid), ident)
                 elif act == "pm-recusar":
-                    msg = pm.recusar(cfg, nome)
+                    msg = pm.recusar(cfg, nome, ident=ident)
                 else:
-                    msg = pm.aceitar(cfg, nome)
+                    msg = pm.aceitar(cfg, nome, ident)
             else:
                 return {"erro": f"acção {act!r} desconhecida"}
             escrever_config(cfg)

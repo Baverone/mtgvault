@@ -50,6 +50,26 @@ def caso_todas_as_paginas_do_menu_sao_publicadas():
     print("todas as paginas do menu vao ao git add do workflow")
 
 
+def caso_o_registo_de_arquetipos_e_publicado():
+    """O `data/arquetipos.json` tem de ir no `git add` — nas duas corridas.
+
+    É a mesma armadilha das páginas, com outra roupa: o registo dá os nomes
+    ESTÁVEIS aos arquétipos, e se ficasse só no PC a corrida do GitHub Actions
+    via um registo vazio, reescrevia os nomes todos e commitava-os. Ninguém dava
+    erro — os nomes é que voltavam a mudar de um dia para o outro, que é o
+    defeito que ele veio corrigir.
+    """
+    yml = (RAIZ / ".github" / "workflows" / "daily.yml").read_text(encoding="utf-8")
+    linha = next(l for l in yml.splitlines() if l.strip().startswith("git add "))
+    assert "data/arquetipos.json" in linha, \
+        "o registo de arquétipos não vai ao `git add` do daily.yml"
+    # E o registo não pode estar no `.gitignore` (o `data/` tem lá meia dúzia de
+    # linhas, e uma delas a mais deixava o `git add` a falhar em silêncio).
+    ignore = (RAIZ / ".gitignore").read_text(encoding="utf-8").splitlines()
+    assert "data/arquetipos.json" not in [l.strip() for l in ignore]
+    print("o registo de arquetipos vai ao git add do workflow")
+
+
 def caso_a_pagina_fundida_saiu_do_menu_mas_continua_publicada():
     """A *Decks permanentes* foi fundida na *Deckboxes* (v6). Duas coisas têm de
     ser verdade ao mesmo tempo: **sair do menu** (senão continuam duas páginas a
@@ -88,6 +108,7 @@ def caso_o_tema_tem_as_variaveis_que_as_paginas_usam():
 def run():
     for fn in (caso_o_menu_marca_a_pagina_actual, caso_o_menu_tem_todas_as_paginas,
                caso_todas_as_paginas_do_menu_sao_publicadas,
+               caso_o_registo_de_arquetipos_e_publicado,
                caso_a_pagina_fundida_saiu_do_menu_mas_continua_publicada,
                caso_o_tema_tem_as_variaveis_que_as_paginas_usam):
         fn()

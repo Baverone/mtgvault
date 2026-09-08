@@ -400,13 +400,16 @@ def caso_recusa_liberta_as_cartas_para_a_venda():
     assert vendidas["Stasis"]["reason"] == loadout.RAZAO_PREMODERN
     print("recusar a sugestão liberta as cartas dela, com o motivo próprio")
 
-    # E o botão do modo edição escreve isso no config — com a data.
+    # E o botão do modo edição escreve isso no config — com a data e pelo `id`
+    # ESTÁVEL, com o nome ao lado (2026-09-08). A chave era o nome, e o nome do
+    # clustering muda entre corridas: ver `test_arquetipos.py`.
     cfg2 = {"premodern": {}}
-    premodern.recusar(cfg2, "Stasis", "2026-09-08")
-    assert cfg2["premodern"]["sugestoes_recusadas"] == {"Stasis": "2026-09-08"}
-    premodern.aceitar(cfg2, "Stasis")
+    premodern.recusar(cfg2, "Stasis", "2026-09-08", ident="abc1234567")
+    assert cfg2["premodern"]["sugestoes_recusadas"] == {
+        "abc1234567": {"nome": "Stasis", "em": "2026-09-08"}}
+    premodern.aceitar(cfg2, "Stasis", "abc1234567")
     assert not cfg2["premodern"].get("sugestoes_recusadas")
-    print("o «não quero este» escreve-se com a data, e desfaz-se")
+    print("o «não quero este» escreve-se pelo id, com o nome e a data, e desfaz-se")
 
 
 def caso_pt_da_era_por_usar_vai_para_venda_com_motivo_proprio():

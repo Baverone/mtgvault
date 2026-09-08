@@ -172,6 +172,20 @@ KNOWN = [
     ("Ill-Gotten Gains", "Ill-Gotten Gains"),
     ("Reanimate", "Reanimator"),
     ("Griselbrand", "Reanimator"),
+    # Clássicos de Premodern que o ranking já mostrou e que, sem nome próprio,
+    # ficavam com o rótulo do clustering — e esse muda entre corridas (o "Dimir
+    # Psychatog" passou a "Dimir Polluted Delta"). Só cartas que essencialmente
+    # só aquele deck joga. Os que precisam de DUAS cartas para se distinguirem
+    # (o Landstill = Standstill + Mishra's Factory) vivem nas regras do
+    # `premodern.combo_arquetipos`, que a `KNOWN` não sabe exprimir.
+    ("Psychatog", "Psychatog"),
+    ("Volrath's Shapeshifter", "Full English Breakfast"),
+    ("The Rack", "The Rack"),
+    ("Pyrostatic Pillar", "Pyrostatic Pillar"),
+    ("Exalted Angel", "Exalted Angel"),
+    ("Graveborn Muse", "Graveborn Muse"),
+    ("Goblin Lackey", "Goblins"),
+    ("Stasis", "Stasis"),
     # standard — nomes reais aprendidos do mtggoldfish (evento 2026-08-01), só as
     # cartas que essencialmente definem cada deck (a "sopa Izzet" e os controlos
     # não se separam de forma fiável no clustering, por isso ficam de fora).

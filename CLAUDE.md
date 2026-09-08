@@ -46,6 +46,9 @@ mtgvault/
                   (uma cópia serve uma só), conflitos, substitutos e venda
   premodern.py    o que montar A SEGUIR (top-10 + top-5 combo, cobertura COMO SE
                   fosse a caixa nº1 do grupo — v8, 2026-09-08) e o que vai à venda
+  arquetipos.py   a IDENTIDADE de um arquétipo pelo NÚCLEO de cartas (id estável,
+                  herdado acima de 70 %), e o registo `data/arquetipos.json` —
+                  o nome é só apresentação (v9, 2026-09-08)
   analysis.py     clustering de arquétipos + core/flex/tech + prune
   stock.py        listas padrão e cobertura
   sources.py      mtgo.com + parser de texto + store_decklist (deduplicação)
@@ -523,7 +526,80 @@ CLI `python -m mtgvault.cli premodern`.
   aquela sugestão na corrida seguinte (`premodern._caixa_de`), e o *"Legacy —
   Doomsday"* do outro botão fazia a sugestão reaparecer ao lado da caixa que ela
   própria criou. Medido: escolher o Dimir Psychatog (a 36 %) abre a caixa, dá-lhe
-  a posição **#3 por % completo** e 51 % de alocação.
+  a posição **#3 por % completo** e 51 % de alocação. **Desde 2026-09-08 quem a
+  faz reconhecer-se é o `id` estável** (ver a secção a seguir): o nome mudava.
+
+**A IDENTIDADE DE UM ARQUÉTIPO É O NÚCLEO, NÃO O RÓTULO (`mtgvault/arquetipos.py`,
+2026-09-08).** Medido na base do próprio dia: o *"Dimir Psychatog"* do ranking
+passou a **"Dimir Polluted Delta"** e o *"Mono-Preto Graveborn Muse"* a
+*"Mono-Preto Withered Wretch"*. Não é falha do clustering — o nome sai das cartas
+mais distintivas do núcleo e o núcleo mexe todos os dias, porque a janela de 30
+dias entra e sai listas. Enquanto o nome era só um rótulo isso era feio; deixou
+de o ser no dia em que três decisões dele passaram a reconhecer-se **pelo nome**:
+a sugestão que já é uma caixa (`premodern._caixa_de`), a **recusa**
+(`sugestoes_recusadas`) e a **escolha** (`listas_escolhidas`). Com o rótulo a
+mudar, a recusa de ontem deixava de bater, a sugestão voltava sozinha e as cartas
+dela saíam outra vez da lista de venda — sem ninguém carregar em nada e **sem um
+único erro**. É o padrão do `event_tier`.
+- **O `id` sai do CONTEÚDO**: as 8–12 cartas mais distintivas do consenso, sem
+  básicas, ordenadas por nome, com um hash curto do (formato + núcleo). O formato
+  entra no hash porque um Doomsday de Legacy e um de Premodern são decisões
+  diferentes.
+- **E herda-se**, que é a metade que resolve o caso real: com **≥ 70 %** de
+  cartas em comum com um arquétipo que o registo já conhece, é o mesmo arquétipo
+  e fica com o `id` **e com o nome** que já tinha. O hash sozinho só resolveria o
+  caso em que nada muda — que é precisamente o caso que não dá problema. Dois
+  clusters da mesma corrida não podem herdar a mesma entrada.
+- **O registo é `data/arquetipos.json`** (id → nome, núcleo, primeira/última vez
+  visto), gravado uma vez por relatório e **só se mudou**. Vai ao `git add` do
+  `daily.yml` **e ao `EXTRA_COMMIT` da tarefa `ai-pc/tasks/mtgvault-daily`** — um
+  registo que só existisse num dos dois punha as duas corridas a discordar sobre
+  o nome, que é o defeito que isto vem corrigir. O `test_paginas.py` tranca-o. A
+  poda esquece o que não aparece há um ano, **menos** o que o config refere.
+- **O `id` vai no BOTÃO** (`data-id`), nas duas páginas onde ele decide. Se
+  ficasse só no Python, o servidor continuava a receber o nome e a guardar a
+  recusa por nome: motor certo, vault errado na mesma.
+- **`sugestoes_recusadas` passou a `{<id>: {nome, em}}`.** A forma antiga
+  (`{<nome>: <data>}`) continua a ler-se e a bater pelo nome, para uma recusa
+  escrita antes disto não se perder; a `python -m mtgvault.cli migrar-arquetipos`
+  (com `--dry-run`) passa-a para a nova, e o que hoje não tem listas **fica como
+  está** — um arquétipo volta ao metagame daqui a um mês e apagar-lhe a recusa
+  era decidir por ele. No config dele as duas chaves estavam vazias: não havia
+  nada a migrar.
+- **NOMES CONHECIDOS POR REGRA, e nomear não é ser combo.** Oito clássicos do
+  formato ganharam regra (Psychatog, Landstill = Standstill + Mishra's Factory,
+  The Rack, Exalted Angel, Graveborn Muse, Goblins, Pyrostatic Pillar, Sligh =
+  Fireblast) com **`"combo": false`** — sem essa chave o Landstill passava a
+  disputar o top-5 de combo com o Stiflenought. E **`"cor": true`** põe as cores
+  do núcleo à frente (*"Orzhov Exalted Angel"*), só para os nomes que não
+  implicam a cor; calcula-se em vez de se escrever, senão chamava-se Orzhov a um
+  Exalted Angel mono-branco. Estão **no fim** da lista: a primeira que bate ganha
+  e um deck que também é combo tem de ficar com o nome do combo (as listas de UW
+  Replenish jogam Exalted Angel).
+- **A armadilha que isto quase repetiu, e que vale a pena não repetir:
+  `combo_regras()` devolve a lista do `colecao_config.json` EM VEZ da do código,
+  não a par dela.** As oito regras ficaram escritas no `premodern.COMBO_DEFAULT`,
+  os testes passavam (constroem o seu próprio config) e na base a sério não
+  nomeavam nada — o Sligh continuava a chamar-se *"Mono-Vermelho Bloodstained
+  Mire"*. Tiveram de entrar **também** no config. Tem teste
+  (`test_arquetipos.caso_as_regras_do_codigo_estao_TAMBEM_no_config`).
+- **Os ficheiros que acompanham a base saem de `db.pasta_dados()`, não de
+  `db.ROOT`** — e a diferença mordia: neste PC o `MTGVAULT_HOME` **não está
+  definido**, só o `MTGVAULT_DB`. Pelo `ROOT`, o `arquetipos.json` (e o
+  `vendas.csv`, que já tinha o mesmo defeito) iam parar a `~/mtgvault`, fora do
+  repositório: o `git add data/arquetipos.json` não encontrava nada e o registo
+  nunca era publicado. O `.gitignore` já dizia qual era a intenção (tem lá
+  `data/vendas.csv`).
+- **Efeito medido na base de 2026-09-08 (o mesmo `vault.db` nos dois lados):** a
+  alocação **não mexe** — 7 901,85 € para fechar, 220 a comprar, 71 a ir buscar,
+  127 a arrumar, venda 223c/1 176,56 € + 100 RL/8 099,55 € retida, 30 reservadas,
+  iguais antes e depois. O que muda são os nomes: **17/17 arquétipos ficam com o
+  mesmo `id` e o mesmo nome** depois de correr o `rebuild_archetypes` (que é o
+  que o `daily` faz todos os dias e era de onde vinha o rótulo novo), e o top-10
+  deixou de ter um único rótulo do clustering — *"Dimir Polluted Delta"* →
+  **Psychatog**, *"Mono-Vermelho Bloodstained Mire"* → **Sligh**,
+  *"Mono-Preto Withered Wretch"* → **Mono-Preto Graveborn Muse**. As duas
+  sugestões são **Psychatog** (79 % / 35 %) e **Landstill** (68 % / 27 %).
 
 **CAIXAS DEDICADAS: o "ir buscar" e a partilha ficam só para o DC e o SPML
 (André, 2026-09-07 às 19:00, à letra; desde 2026-09-08 o Premodern voltou a
