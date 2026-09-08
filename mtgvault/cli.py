@@ -471,6 +471,11 @@ def _loadout_resumo(rep):
                   f"  {m['estado']}")
     print(f"\n  comprar: {rep['comprar_total']} cópias / {rep['custo_total']:.2f}€")
     print(f"  ir buscar a outra caixa: {rep['noutra_total']} cópias (não são compra)")
+    if rep.get("bloqueado_total"):
+        n, c = rep["bloqueado_total"], len(rep["limites"])
+        print(f"  limite de playset: {n} {'cópia' if n == 1 else 'cópias'} que "
+              f"não se {'compra' if n == 1 else 'compram'} "
+              f"({c} {'carta' if c == 1 else 'cartas'})")
     print(f"  partilhadas: {len(rep['conflitos'])} cartas que 2+ caixas querem")
     print(f"  venda: {rep['copias']} cópias / {rep['total']:.2f}€"
           f"  ·  Reserved List à parte: {rep['copias_rl']} / {rep['total_rl']:.2f}€")
@@ -548,6 +553,17 @@ def _loadout_detalhe(rep, procura):
                     for c, q in sorted(m["noutra"].items()))
                 mais = f"   (comprar mais {m['comprar']})" if m["comprar"] else ""
                 print(f"    {m['nm']:<34} {onde}{mais}")
+        # E o que o TECTO DE PLAYSET não deixa comprar (André, 2026-09-08: *"no
+        # Premodern, afinal só vou ter até playset de cada carta"*). Sem isto a
+        # caixa ficava à espera de uma carta que ninguém vai comprar.
+        if s.get("playset_faltas"):
+            n = s["playset_bloqueado"]
+            print(f"\n  LIMITE DE PLAYSET ({n} {'cópia' if n == 1 else 'cópias'} — "
+                  f"máximo {loadout.playset_maximo(s)} por carta em "
+                  f"{s.get('grupo')}, somando todas as caixas):")
+            for m in s["playset_faltas"]:
+                print(f"    {m['nm']:<34} falta {m['playset_bloqueado']} "
+                      f"que não se compra ({m['board']})")
         compras = sorted((m for m in s["missing"] if m["comprar"]),
                          key=lambda x: x["nm"])
         if not compras:

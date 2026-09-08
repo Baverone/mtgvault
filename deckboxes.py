@@ -162,6 +162,10 @@ def _caixa_payload(s, imgs, cfs, rep=None, col=None, tipos=None, cores=None):
             "est": _estado_carta(m), "sid": imgs.get(m["nm"]),
             "basica": bool(m.get("basica")),
             "missing": m["missing"], "comprar": m["comprar"],
+            # O que o TECTO DE PLAYSET não deixa comprar (André, 2026-09-08). Vem
+            # na carta e não só no resumo: é ali que ele está quando pergunta
+            # "porque é que isto não está na lista de compras?".
+            "bloq": m.get("playset_bloqueado", 0),
             "noutra": m["noutra"], "alt": m["alt"], "alt_onde": m["alt_onde"],
             "cost": m["cost"], "unit": m["unit"],
             "cf": m["nm"] in cfs,
@@ -182,6 +186,19 @@ def _caixa_payload(s, imgs, cfs, rep=None, col=None, tipos=None, cores=None):
     return {
         "slot": s["slot"], "nome": s["nome"], "formato": s["formato"],
         "grupo": s.get("grupo"), "prioridade": s["prioridade"],
+        # PRIORIDADE AUTOMÁTICA (André, 2026-09-08: *"para já a prioridade vem
+        # por ordem de % completo"*). A página tem de dizer de onde veio a ordem
+        # — e o modo edição tem de desactivar o subir/descer, senão o botão
+        # mexia num número que já não decide nada.
+        "prioridade_por": s.get("prioridade_por") or "",
+        "posicao_grupo": s.get("posicao_grupo") or 0,
+        "pct_coleccao": s.get("pct_coleccao"),
+        # O TECTO DE PLAYSET do grupo, e quantas cópias ele não deixa comprar.
+        "playset": loadout.playset_maximo(s) or 0,
+        "bloqueado": s.get("playset_bloqueado", 0),
+        "playset_faltas": [{"nm": m["nm"], "board": m["board"],
+                            "q": m["playset_bloqueado"]}
+                           for m in s.get("playset_faltas") or []],
         "estado": s.get("estado"), "notas": s.get("nota_config") or "",
         "permanente": s["permanente"], "montado": bool(s.get("montado")),
         # MONTAR (v6): as cópias a tirar das gavetas, por cor e depois por nome —
@@ -490,6 +507,7 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
  .bdg.ded{background:#2c1b2e;color:#e0a8ea}
  .bdg.perm{background:#1b2c4d;color:#9dbcff;font-weight:700}
  .bdg.cand{background:#241a10;color:var(--gold);font-weight:700}
+ .bdg.auto{background:#14262a;color:#79c9c4}
  .nums{display:flex;flex-wrap:wrap;gap:6px 10px;margin:8px 0}
  .num{background:var(--card2);border:1px solid var(--line);border-radius:10px;
    padding:6px 10px;font-size:12px;color:var(--muted);flex:1 1 auto;min-width:112px}
@@ -527,6 +545,8 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
  .blk li b{color:var(--ink)}
  .blk.onde{background:#0e1620;border-color:#25415e} .blk.onde>b{color:#7fa8ff}
  .blk.onde li b{color:#7fa8ff}
+ .blk.lim{background:#1d1622;border-color:#4a3355} .blk.lim>b{color:#e0a8ea}
+ .blk.lim li b{color:#e0a8ea}
  .flh{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;
    color:#e2795b;flex-wrap:wrap} .flh .dim{font-weight:400} .flh .cpbtn{margin-left:auto}
  .mrk{font-size:10px;font-weight:800;padding:1px 6px;border-radius:5px;
@@ -824,6 +844,7 @@ function cardTile(c) {
     onde ? 'em ' + onde : '',
     Object.entries(c.alt).map(([k, v]) => `${v}× ${k}`).join('; '),
     c.comprar ? `comprar ${c.comprar}` : '',
+    c.bloq ? `limite de playset: falta ${c.bloq} que não se compra` : '',
     c.lotes.map(l => `${l.q}× ${l.local}`).join(' · '),
     /* "quantas tenho ao todo" — a informação secundária que vinha da página dos
        decks. Secundária de propósito: o número que manda nesta caixa é o da
@@ -862,6 +883,16 @@ function badges(c) {
   }
   if (c.variantes.length) h += `<span class="bdg">⇄ ${c.variantes.length} variantes</span>`;
   h += `<span class="bdg">#${c.prioridade} na alocação</span>`;
+  /* De ONDE veio a ordem. Quando é automática (André, 2026-09-08: "para já a
+     prioridade vem por ordem de % completo") a página tem de o dizer: sem isto
+     o "#4 na alocação" parecia um número que ele tinha escolhido, e não era. */
+  if (c.prioridade_por === 'pct' && c.posicao_grupo) {
+    h += `<span class="bdg auto" title="Ordem automática dentro do grupo `
+      + `${esc(c.grupo || '')}: a caixa mais perto de fechar escolhe as cartas `
+      + `primeiro. A percentagem é a da colecção inteira, antes de alocar`
+      + (c.pct_coleccao === null ? '' : ` — ${c.pct_coleccao}%`) + `.">`
+      + `#${c.posicao_grupo} por % completo</span>`;
+  }
   return h;
 }
 
@@ -944,6 +975,9 @@ function montarHTML(c) {
        : `<p class="ok2">✓ Nada a comprar para esta caixa.</p>`)
     + (c.noutra ? `<p class="nota">📦 Mais <b>${c.noutra}</b> cópias estão noutra `
         + `caixa: essas vão-se buscar, não se compram.</p>` : '')
+    + (c.bloqueado ? `<p class="nota">🔒 E <b>${c.bloqueado}</b> que o limite de `
+        + `playset (${c.playset} por carta em ${esc(c.grupo || 'todo o grupo')}) `
+        + `não deixa comprar — vê a secção «limite de playset» acima.</p>` : '')
     + `</div>`;
   /* passo 3 -------------------------------------------------------------- */
   h += `<div class="passo"><div class="ph"><span class="pn">3</span>`
@@ -1113,6 +1147,21 @@ function caixaHTML(c, compacta) {
     h += `<div class="blk onde"><b>📦 ir buscar a outra caixa — ${c.noutra} cópias</b>`
       + `<ul>${li}</ul></div>`;
   }
+  /* O TECTO DE PLAYSET (André, 2026-09-08: "no Premodern, afinal só vou ter até
+     playset de cada carta"). Uma falta que ele decidiu não tapar não é o mesmo
+     que uma falta tapada — se saísse só da conta das compras, a caixa dizia-se
+     à espera de uma carta que ninguém vai comprar. */
+  if (c.playset_faltas.length) {
+    const li = c.playset_faltas.map(m => `<li>${esc(m.nm)}`
+      + (m.board === 'side' ? ' <span class="dim">(sideboard)</span>' : '')
+      + ` — <b>falta ${m.q}</b> que não se compra</li>`).join('');
+    h += `<div class="blk lim"><b>🔒 limite de playset — ${c.bloqueado} `
+      + `${c.bloqueado === 1 ? 'cópia' : 'cópias'}</b>`
+      + `<p class="nota">Pediste no máximo <b>${c.playset} cópias</b> de cada `
+      + `carta para ${esc(c.grupo || 'este grupo')}, somando todas as caixas e o `
+      + `que já tens. Estas passam disso: a caixa fica sem elas de propósito.</p>`
+      + `<ul>${li}</ul></div>`;
+  }
   if (c.subs.length) {
     const li = c.subs.map(m => `<li>${esc(m.nm)} — falta ${m.missing}: `
       + Object.entries(m.alt).map(([k, v]) => `tens <b>${v}</b> que ${esc(k)}`).join('; ')
@@ -1133,6 +1182,14 @@ function caixaHTML(c, compacta) {
    publicada não desenha nenhum. */
 function acoesHTML(c) {
   const i = D.caixas.findIndex(x => x.slot === c.slot);
+  /* PRIORIDADE AUTOMÁTICA (André, 2026-09-08): num grupo ordenado por %
+     completo o `prioridade` do config já não decide nada, e um botão que mexe
+     num número que ninguém lê é pior do que botão nenhum — mexia-o em silêncio
+     e a ordem ficava na mesma. Fica desactivado E diz porquê. */
+  const auto = c.prioridade_por === 'pct';
+  const porque = auto ? ` title="A ordem deste grupo é automática: vem da `
+    + `percentagem que cada caixa já tem. Para a mudares, muda o `
+    + `prioridade_por do grupo no colecao_config.json."` : '';
   /* O «sleevado e na caixa» NÃO está aqui: vive no fim do passo 1 do painel
      Montar, que é onde ele está quando acaba de a montar. Aqui fica o que muda
      o ESTADO da caixa e a ordem da alocação. */
@@ -1144,10 +1201,13 @@ function acoesHTML(c) {
          + `data-slot="${esc(c.slot)}">`
          + (c.permanente ? 'Deixar de ser permanente' : '★ Tornar permanente')
          + `</button>`)
-    + `<button class="btn" data-act="subir" data-slot="${esc(c.slot)}"`
-    + `${i === 0 ? ' disabled' : ''}>↑ Subir</button>`
-    + `<button class="btn" data-act="descer" data-slot="${esc(c.slot)}"`
-    + `${i === D.caixas.length - 1 ? ' disabled' : ''}>↓ Descer</button></div>`;
+    + `<button class="btn" data-act="subir" data-slot="${esc(c.slot)}"${porque}`
+    + `${auto || i === 0 ? ' disabled' : ''}>↑ Subir</button>`
+    + `<button class="btn" data-act="descer" data-slot="${esc(c.slot)}"${porque}`
+    + `${auto || i === D.caixas.length - 1 ? ' disabled' : ''}>↓ Descer</button>`
+    + (auto ? `<span class="dim">ordem automática: #${c.posicao_grupo} por % `
+        + `completo</span>` : '')
+    + `</div>`;
 }
 
 /* ------------------------------------------------------------- vistas */

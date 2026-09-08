@@ -70,6 +70,9 @@ CATALOGO = [
     # Não está em deck nenhum: serve só para a tabela de venda ter uma linha
     # FOIL a par de uma nonfoil (ver `caso_aba_vender_nao_marca_nonfoil`).
     ("Chromatic Star", "shm", "2008-05-02"),
+    # Da era Premodern (até ao Scourge, 2003-05-26): é a carta dos casos do
+    # tecto de playset e da ordem por % completo.
+    ("Swords to Plowshares", "4bb", "1995-04-01"),
 ]
 
 _ABERTAS = []      # segura os context managers: sem isto o GC fecha a ligação
@@ -682,6 +685,65 @@ def caso_aba_comprar_nao_soma_a_mesma_compra_por_caixa():
     print("aba Comprar: uma compra partilhada por duas caixas, não duas compras")
 
 
+def _pagina_premodern():
+    """Duas caixas de Premodern, uma quase fechada e outra longe, e uma carta
+    pedida acima do playset (5 num deck, tecto do grupo 4)."""
+    con = base()
+    deck(con, "Perto", "premodern", [("Swords to Plowshares", 2)])
+    deck(con, "Longe", "premodern", [("Swords to Plowshares", 5), ("Frogmite", 4)])
+    add(con, "Swords to Plowshares", 2, lang="pt", sub="Colecção")
+    # O `prioridade` do config está ao contrário da % de propósito: quem tem de
+    # mandar é a percentagem.
+    slots = [{"slot": "pm-longe", "nome": "PM Longe", "formato": "premodern",
+              "fonte": "deck", "ref": "Longe", "balde": "Colecção", "prioridade": 1},
+             {"slot": "pm-perto", "nome": "PM Perto", "formato": "premodern",
+              "fonte": "deck", "ref": "Perto", "balde": "Colecção", "prioridade": 2}]
+    out = Path(tempfile.mkdtemp()) / "deckboxes.html"
+    deckboxes.build(con, out, rep=loadout.report(con, slots))
+    return out
+
+
+def caso_pagina_diz_a_ordem_automatica_e_o_limite_de_playset():
+    """As duas decisões de 2026-09-08 têm de estar NA PÁGINA.
+
+      * a ordem do grupo é automática (*"a prioridade vem por ordem de % completo"*)
+        — sem o dizer, o *"#1 na alocação"* parecia um número escolhido por ele;
+      * o que o tecto de playset corta (*"limite de playset: falta 1 que não se
+        compra"*) — se saísse só da conta das compras, a caixa ficava à espera de
+        uma carta que ninguém vai comprar.
+    """
+    pagina = _pagina_premodern()
+    d = json.loads(re.search(r'<script id="dados" type="application/json">(.*?)</script>',
+                             pagina.read_text(encoding="utf-8"), re.S)
+                   .group(1).replace("<\\/", "</"))
+    caixas = {c["slot"]: c for c in d["caixas"]}
+    perto, longe = caixas["pm-perto"], caixas["pm-longe"]
+    assert perto["prioridade"] == 1 and perto["posicao_grupo"] == 1, perto
+    assert perto["prioridade_por"] == "pct" and perto["pct_coleccao"] == 100, perto
+    assert longe["posicao_grupo"] == 2, longe
+    # O tecto: pede 5, tem 2, compra 2 (=4 no total) e uma fica por comprar.
+    assert longe["playset"] == 4 and longe["bloqueado"] == 1, longe
+    assert longe["playset_faltas"] == [{"nm": "Swords to Plowshares",
+                                        "board": "main", "q": 1}], longe
+    stp = next(c for c in longe["cartas"] if c["nm"] == "Swords to Plowshares")
+    assert stp["comprar"] == 2 and stp["bloq"] == 1, stp
+    assert sum(w["q"] for w in longe["wantlist"]
+               if w["nm"] == "Swords to Plowshares") == 2, longe["wantlist"]
+
+    abas = _abas_desenhadas(pagina)
+    if abas is None:
+        print("ordem automatica e limite de playset: sem `node`, saltado")
+        return
+    assert "#1 por % completo" in abas["pm-perto"], abas["pm-perto"][:900]
+    assert "#2 por % completo" in abas["pm-longe"], abas["pm-longe"][:900]
+    assert "limite de playset" in abas["pm-longe"], abas["pm-longe"][:1500]
+    assert "falta 1</b> que não se compra" in abas["pm-longe"], abas["pm-longe"][:1500]
+    # E as caixas que não estão num grupo automático não ganham o crachá.
+    outra = _abas_desenhadas(_pagina_deckboxes())
+    assert "por % completo" not in outra["modern"], outra["modern"][:900]
+    print("a pagina diz a ordem automatica e o que o tecto de playset corta")
+
+
 def run():
     for fn in (caso_utrom_monitor, caso_noutra_caixa_e_o_terceiro_estado,
                caso_coleccao_inteira_e_informacao_secundaria,
@@ -694,7 +756,8 @@ def run():
                caso_aba_arrumar_separa_a_actualizacao_do_deck_montado,
                caso_aba_vender_nao_marca_nonfoil,
                caso_aba_comprar_diz_para_que_caixa_e_em_que_material,
-               caso_aba_comprar_nao_soma_a_mesma_compra_por_caixa):
+               caso_aba_comprar_nao_soma_a_mesma_compra_por_caixa,
+               caso_pagina_diz_a_ordem_automatica_e_o_limite_de_playset):
         fn()
     print("\nTUDO OK")
 

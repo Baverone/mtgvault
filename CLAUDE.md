@@ -384,8 +384,54 @@ ver `PAGINAS_EDITAVEIS`).
   cartas (`MIN_CARTAS_POR_COR`) — um splash de uma carta punha um Izzet a
   chamar-se Jeskai.
 
+**O PREMODERN VOLTOU A PARTILHAR, COM TECTO DE PLAYSET (André, 2026-09-08, à
+letra).** *"No Premodern, afinal só vou ter até playset de cada carta. E
+ordenamos os decks por prioridade; os que vêm depois na prioridade indicam onde
+estão as cartas em falta. Para já a prioridade vem por ordem de % completo."*
+Recorta a regra das CAIXAS DEDICADAS abaixo **só para o Premodern** — o cEDH e o
+Pauper continuam dedicados. São três chaves no grupo `premodern` do
+`regras_por_formato`, e as três andam juntas: sem o tecto, a partilha ainda
+comprava 4 quando 2 já estão em casa e nenhuma caixa lhes chega; sem a partilha,
+seis caixas dedicadas com playset de 4 são 24 cópias, que é o que ele recusou.
+- **`dedicado: false`** — as seis caixas de Premodern voltam a emprestar e a ir
+  buscar (*"em &lt;caixa&gt;"* em vez de comprar), e a partilha de compras volta
+  a ser o **máximo** de uma caixa e não a soma.
+- **`playset_maximo: 4`** — por cima da partilha, um tecto:
+  `comprar = max(0, min(4, o que a caixa que mais precisa pede) − as que o grupo
+  já vê)`. Quem faz a conta é `loadout.partilhar_compras`, com o `_ja_visto` a
+  ler a resposta que a ALOCAÇÃO já deu (`got + noutra_q`) em vez de recontar a
+  colecção — uma segunda contagem era uma segunda opinião. **As básicas ficam de
+  fora** (nunca entram na compra). O que o tecto corta **não desaparece dentro da
+  subtracção**: fica em `playset_bloqueado` na linha, sai em `res["limites"]`, e
+  a página/CLI dizem *"limite de playset: falta 1 que não se compra"*. Uma falta
+  que ele decidiu não tapar não é o mesmo que uma falta tapada.
+- **O tecto é por GRUPO DE PARTILHA, não por pool de material.** *"O Premodern
+  nunca chega a ter mais do que 4"* só é verdade porque as caixas trocam a carta
+  entre si; uma caixa `dedicado`/`compras_dedicadas` disse o contrário e é o seu
+  próprio grupo, com o seu próprio tecto.
+- **`prioridade_por: "pct"`** — a ordem DENTRO do grupo deixa de ser o
+  `prioridade` do config e passa a ser a percentagem de cada caixa, medida na
+  **colecção inteira e ANTES de alocar** (`loadout.pct_na_coleccao`, escrita em
+  `pct_coleccao`); empate pelo nome. Com a percentagem de DEPOIS a ordem
+  oscilava: alocar mudava o pct, o pct mudava a ordem e a ordem mudava a
+  alocação. A página põe o crachá **«#N por % completo»** e o **subir/descer do
+  modo edição fica desactivado** e diz porquê (`webapp.mover`) — escrever o
+  número na mesma era mudar o ficheiro sem mudar a ordem.
+- **Consequência a saber:** `congelada` exige ser dedicada, por isso **nenhuma
+  caixa de Premodern congela**. O que as protege continua a valer: uma cópia
+  dentro de uma caixa não é realocada a outra (`_noutra_caixa`), o `_ordem` gasta
+  primeiro a que já lá está, e o que está alocado nunca entra na venda.
+- **Efeito medido na base de 2026-09-08:** fechar tudo passou de **9 293,41 €**
+  para **7 905,72 €** (289 → **221** a comprar, 4 → **71** a ir buscar). A venda
+  **não mexeu** (91c/701,62 € + 39 RL/5 696,37 €), nem a arrumação (302/36). Do
+  desconto, 1 386,59 € vêm da partilha e 1,10 € do tecto (hoje só corta uma cópia:
+  o 5.º Swords to Plowshares do Enchantress, que joga 4 no main e 1 no side). A
+  nova ordem é Stiflenought 100% · UW Replenish 95% · Oath of Druids 73% ·
+  Enchantress 67% · Ill-Gotten Gains 65% · Elves / Survival 61%.
+
 **CAIXAS DEDICADAS: o "ir buscar" e a partilha ficam só para o DC e o SPML
-(André, 2026-09-07 às 19:00, à letra).** *"Cada deck montado deixa de partilhar
+(André, 2026-09-07 às 19:00, à letra; desde 2026-09-08 o Premodern voltou a
+partilhar — ver acima).** *"Cada deck montado deixa de partilhar
 cartas com outros decks nos formatos: pauper, CDEH e premodern"* e *"o que eu
 quero é conseguir organizar os decks dentro das caixas e apenas mexer para
 actualizar, logo vou precisar de múltiplos para os decks de premodern."* Isto

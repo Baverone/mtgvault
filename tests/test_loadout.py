@@ -889,14 +889,20 @@ def caso_arrumar_nao_transforma_ir_buscar_em_compra():
     deck(con, "Ench", "premodern", [("Swords to Plowshares", 2)])
     add(con, "Swords to Plowshares", 2, lang="pt", sub="Colecção")
     # `dedicado: false` de propósito: o "ir buscar" é o que este caso mede, e
-    # desde 2026-09-07 (19:00) ele só existe fora dos grupos dedicados (Duel
-    # Commander e SPML). O outro lado — a caixa dedicada a comprar em vez de ir
-    # buscar — está no `caso_caixa_dedicada_nao_empresta_nem_vai_buscar`, e a
-    # parte que interessa às duas está no fim deste caso.
+    # entre 2026-09-07 (19:00) e 2026-09-08 ele só existia fora dos grupos
+    # dedicados (Duel Commander e SPML). O outro lado — a caixa dedicada a
+    # comprar em vez de ir buscar — está no
+    # `caso_caixa_dedicada_nao_empresta_nem_vai_buscar`, e a parte que interessa
+    # às duas está no fim deste caso.
+    #
+    # `prioridade_por: None` também de propósito: o que este caso mede é a ORDEM
+    # a decidir quem fica com as cópias, e o `prioridade` do config só decide
+    # isso quando o grupo não ordena sozinho. A ordem automática do Premodern
+    # está no `caso_premodern_ordena_por_pct_completo`.
     slots = [slot("Prem", "premodern", "Prem", prioridade=1, baldes=["Colecção"],
-                  dedicado=False),
+                  dedicado=False, prioridade_por=None),
              slot("Ench", "premodern", "Ench", prioridade=2, baldes=["Colecção"],
-                  dedicado=False)]
+                  dedicado=False, prioridade_por=None)]
     antes = por_nome(loadout.report(con, slots))
     assert antes["Prem"]["tenho"] == 2 and antes["Ench"]["tenho"] == 0
     assert antes["Ench"]["comprar"] == 0, antes["Ench"]["comprar"]
@@ -920,9 +926,10 @@ def caso_arrumar_nao_transforma_ir_buscar_em_compra():
 
     # A mesma invariante nas caixas DEDICADAS: arrumar não pode mudar o que se
     # compra. Ali a resposta é "compra 2" das duas vezes, não "0 e depois 2".
-    ded = [dict(s) for s in slots]
-    for s in ded:
-        s.pop("dedicado")
+    # Explícito e não pela regra do grupo: desde 2026-09-08 o Premodern já não é
+    # dedicado (*"os que vêm depois na prioridade indicam onde estão as cartas em
+    # falta"*), e sem o `True` aqui este bloco deixava de medir o que diz medir.
+    ded = [dict(s, dedicado=True) for s in slots]
     a = por_nome(loadout.report(con, ded))["Ench"]["comprar"]
     loadout.guardar_arrumacao(con, loadout.report(con, ded))
     b = por_nome(loadout.report(con, ded))["Ench"]["comprar"]
@@ -1029,42 +1036,45 @@ def caso_rotulo_material_diz_a_classe_e_as_fontes():
 # CAIXAS DEDICADAS (André, 2026-09-07 às 19:00)
 # ---------------------------------------------------------------------------
 def caso_caixa_dedicada_nao_empresta_nem_vai_buscar():
-    """*"Cada deck montado deixa de partilhar cartas com outros decks nos
-    formatos: pauper, CDEH e premodern."*
+    """*"Cada deck montado deixa de partilhar cartas com outros decks."*
 
-    Duas caixas de Premodern, um playset só: a primeira leva-o e a segunda, que
-    até 19:00 dizia *"vai buscar 4 ao UW Replenish"*, passa a COMPRAR as suas.
-    É o caso dos 3 Brushland do Enchantress.
+    Duas caixas de cEDH, um playset só: a primeira leva-o e a segunda COMPRA as
+    suas em vez de dizer *"vai buscar 4 ao Blue Farm"*.
+
+    Era o Premodern que demonstrava isto até 2026-09-08 — nessa data ele voltou
+    a partilhar (*"os que vêm depois na prioridade indicam onde estão as cartas
+    em falta"*) e ficaram dedicados o cEDH e o Pauper. A regra é a mesma; o que
+    mudou foi quem a usa. O outro lado está no
+    `caso_premodern_voltou_a_partilhar`.
     """
     con = base()
-    deck(con, "PM1", "premodern", [("Swords to Plowshares", 4)])
-    deck(con, "PM2", "premodern", [("Swords to Plowshares", 4)])
-    add(con, "Swords to Plowshares", 4, lang="pt", sub="Colecção")
-    rep = loadout.report(con, [slot("PM1", "premodern", "PM1", prioridade=1,
+    deck(con, "C1", "cedh", [("Swords to Plowshares", 4)])
+    deck(con, "C2", "cedh", [("Swords to Plowshares", 4)])
+    add(con, "Swords to Plowshares", 4, lang="en", sub="Colecção")
+    rep = loadout.report(con, [slot("C1", "cedh", "C1", prioridade=1,
                                     balde="Colecção"),
-                               slot("PM2", "premodern", "PM2", prioridade=2,
+                               slot("C2", "cedh", "C2", prioridade=2,
                                     balde="Colecção")])
     s = por_nome(rep)
-    assert s["PM1"]["pct"] == 100, s["PM1"]
-    assert s["PM2"]["noutra"] == 0, s["PM2"]["noutra_caixa"]
-    assert s["PM2"]["comprar"] == 4, s["PM2"]
-    assert s["PM2"]["missing"][0]["noutra"] == {}, s["PM2"]["missing"][0]
+    assert s["C1"]["pct"] == 100, s["C1"]
+    assert s["C2"]["noutra"] == 0, s["C2"]["noutra_caixa"]
+    assert s["C2"]["comprar"] == 4, s["C2"]
+    assert s["C2"]["missing"][0]["noutra"] == {}, s["C2"]["missing"][0]
     print("caixa dedicada nao empresta: a segunda compra em vez de ir buscar")
 
 
 def caso_caixa_dedicada_compra_sozinha():
-    """`dedicado` implica `compras_dedicadas`: *"vou precisar de múltiplos para
-    os decks de premodern"*. Duas caixas a que falta a mesma carta pedem duas
-    compras, não uma partilhada."""
+    """`dedicado` implica `compras_dedicadas`. Duas caixas a que falta a mesma
+    carta pedem duas compras, não uma partilhada."""
     con = base()
-    deck(con, "PM1", "premodern", [("Replenish", 2)])
-    deck(con, "PM2", "premodern", [("Replenish", 2)])
-    preco(con, "Replenish", "nonfoil", 10.0)
-    rep = loadout.report(con, [slot("PM1", "premodern", "PM1", prioridade=1),
-                               slot("PM2", "premodern", "PM2", prioridade=2)])
+    deck(con, "C1", "cedh", [("Sol Ring", 2)])
+    deck(con, "C2", "cedh", [("Sol Ring", 2)])
+    preco(con, "Sol Ring", "nonfoil", 10.0)
+    rep = loadout.report(con, [slot("C1", "cedh", "C1", prioridade=1),
+                               slot("C2", "cedh", "C2", prioridade=2)])
     s = por_nome(rep)
     assert rep["partilhas"] == [], rep["partilhas"]
-    assert s["PM1"]["comprar"] == 2 and s["PM2"]["comprar"] == 2, rep
+    assert s["C1"]["comprar"] == 2 and s["C2"]["comprar"] == 2, rep
     assert rep["comprar_total"] == 4, rep["comprar_total"]
     print("duas caixas dedicadas compram duas vezes — nao ha partilha")
 
@@ -1089,19 +1099,23 @@ def caso_duel_commander_e_spml_continuam_a_partilhar():
 
 def caso_excepcao_por_caixa_ganha_a_do_grupo():
     """O que estiver escrito no slot ganha à regra do grupo — uma excepção é uma
-    linha de config, não uma linha de código."""
+    linha de config, não uma linha de código.
+
+    Escrito ao contrário do grupo de propósito: o Premodern é partilhado desde
+    2026-09-08, e é o `dedicado: true` na caixa que lhe tira o *"ir buscar"*.
+    """
     con = base()
     deck(con, "PM1", "premodern", [("Swords to Plowshares", 4)])
     deck(con, "PM2", "premodern", [("Swords to Plowshares", 4)])
     add(con, "Swords to Plowshares", 4, lang="pt", sub="Colecção")
-    rep = loadout.report(con, [
-        slot("PM1", "premodern", "PM1", prioridade=1, balde="Colecção",
-             dedicado=False),
-        slot("PM2", "premodern", "PM2", prioridade=2, balde="Colecção",
-             dedicado=False)])
-    s = por_nome(rep)
+    slots = [slot("PM1", "premodern", "PM1", prioridade=1, balde="Colecção"),
+             slot("PM2", "premodern", "PM2", prioridade=2, balde="Colecção")]
+    s = por_nome(loadout.report(con, slots))
     assert s["PM2"]["noutra"] == 4 and s["PM2"]["comprar"] == 0, s["PM2"]
-    print("'dedicado': false num slot devolve-lhe o 'ir buscar'")
+
+    s = por_nome(loadout.report(con, [dict(x, dedicado=True) for x in slots]))
+    assert s["PM2"]["noutra"] == 0 and s["PM2"]["comprar"] == 4, s["PM2"]
+    print("'dedicado': true num slot tira-lhe o 'ir buscar' que o grupo dá")
 
 
 def caso_caixa_congelada_nao_perde_copias():
@@ -1220,6 +1234,230 @@ def caso_compras_sem_preco_contam_se():
     print("as copias a comprar sem preco contam-se: o custo e um minimo")
 
 
+# ---------------------------------------------------------------------------
+# O PREMODERN VOLTOU A PARTILHAR, COM TECTO DE PLAYSET (André, 2026-09-08)
+# ---------------------------------------------------------------------------
+def caso_premodern_voltou_a_partilhar():
+    """*"No Premodern (...) os que vêm depois na prioridade indicam onde estão as
+    cartas em falta."*
+
+    O espelho do `caso_caixa_dedicada_nao_empresta_nem_vai_buscar`: as caixas de
+    Premodern voltaram a emprestar entre si, e as de cEDH e Pauper não. Sem esta
+    distinção o `dedicado: false` do config passava despercebido — era só um
+    booleano, e nada dizia de quem era.
+    """
+    con = base()
+    deck(con, "PM1", "premodern", [("Swords to Plowshares", 4)])
+    deck(con, "PM2", "premodern", [("Swords to Plowshares", 4)])
+    add(con, "Swords to Plowshares", 4, lang="pt", sub="Colecção")
+    rep = loadout.report(con, [slot("PM1", "premodern", "PM1", balde="Colecção"),
+                               slot("PM2", "premodern", "PM2", balde="Colecção")])
+    s = por_nome(rep)
+    primeira, segunda = (s["PM1"], s["PM2"]) if s["PM1"]["prioridade"] == 1 \
+        else (s["PM2"], s["PM1"])
+    assert primeira["pct"] == 100 and primeira["comprar"] == 0, primeira
+    assert segunda["comprar"] == 0 and segunda["noutra"] == 4, segunda
+    assert segunda["missing"][0]["noutra"] == {primeira["nome"]: 4}, segunda
+    print("as caixas de Premodern voltaram a emprestar umas as outras")
+
+    # E o cEDH continua dedicado: a mesma pergunta, a resposta contrária.
+    con2 = base()
+    deck(con2, "C1", "cedh", [("Sol Ring", 1)])
+    deck(con2, "C2", "cedh", [("Sol Ring", 1)])
+    add(con2, "Sol Ring", 1, lang="en", sub="Colecção")
+    s = por_nome(loadout.report(con2, [
+        slot("C1", "cedh", "C1", prioridade=1, balde="Colecção"),
+        slot("C2", "cedh", "C2", prioridade=2, balde="Colecção")]))
+    assert s["C2"]["comprar"] == 1 and s["C2"]["noutra"] == 0, s["C2"]
+    print("e o cEDH e o Pauper continuam dedicados")
+
+
+def caso_tecto_de_playset_no_premodern():
+    """*"No Premodern, afinal só vou ter até playset de cada carta."*
+
+    Cinco caixas a pedir 4 Swords to Plowshares e uma cópia em casa: compram-se
+    3, não 4 (a partilha sozinha ainda comprava 4, porque cada caixa que não
+    alcança a cópia pede as suas 4). E com 5 em casa não se compra nenhuma.
+    """
+    con = base()
+    preco(con, "Swords to Plowshares", "nonfoil", 2.0)
+    nomes = ["PM1", "PM2", "PM3", "PM4", "PM5"]
+    for n in nomes:
+        deck(con, n, "premodern", [("Swords to Plowshares", 4)])
+    add(con, "Swords to Plowshares", 1, lang="pt", sub="Colecção")
+    slots = [slot(n, "premodern", n, balde="Colecção") for n in nomes]
+    rep = loadout.report(con, slots)
+    assert rep["comprar_total"] == 3, rep["comprar_total"]
+    assert rep["custo_total"] == 6.0, rep["custo_total"]
+    assert rep["bloqueado_total"] == 0, rep["bloqueado_total"]
+    print("necessidade 4 com 1 em casa: compram-se 3, e o playset fecha nas 4")
+
+    # Com 5 em casa não se compra nada.
+    add(con, "Swords to Plowshares", 4, lang="pt", sub="Colecção")
+    rep = loadout.report(con, slots)
+    assert rep["comprar_total"] == 0 and rep["custo_total"] == 0.0, rep["custo_total"]
+    print("com 5 em casa nao se compra nenhuma")
+
+
+def caso_excedente_de_playset_do_premodern_vai_para_venda():
+    """O que passa das 4 PT — somando a Colecção e a Caixa RL (PT) — é venda.
+
+    É a regra geral do playset (`sell_list`), e o que este caso tranca é que ela
+    conta a colecção INTEIRA: contar 4 por balde deixava passar o dobro, porque
+    as PT da Caixa Reserved List servem o Premodern como as outras.
+
+    A cópia que uma caixa levou nunca entra aqui — é a regra de sempre, e é ela
+    que explica porque é que o excedente é uma e não duas: quatro estão dentro da
+    caixa.
+    """
+    con = base()
+    deck(con, "PM1", "premodern", [("Replenish", 4)])
+    add(con, "Replenish", 2, lang="pt", sub="Colecção")
+    add(con, "Replenish", 3, lang="pt", sub="Caixa Reserved List")
+    rep = loadout.report(con, [slot("PM1", "premodern", "PM1", balde="Colecção")])
+    s = por_nome(rep)["PM1"]
+    assert s["pct"] == 100 and s["comprar"] == 0, s
+    # A Caixa RL (PT) alimentou o Premodern: 2 da Colecção + 2 de lá.
+    assert s["origens"] == {"Colecção": 2, "Caixa RL (PT)": 2}, s["origens"]
+    # É Reserved List, por isso a saída é a `venda_rl` (confirma-se uma a uma).
+    linhas = [r for r in rep["venda_rl"] if r["nm"] == "Replenish"]
+    assert sum(r["q"] for r in linhas) == 1, linhas
+    assert linhas[0]["reason"] == "excedente (mais de 4)", linhas[0]["reason"]
+    assert not [r for r in rep["venda"] if r["nm"] == "Replenish"], rep["venda"]
+    print("o que passa das 4 PT (Colecção + Caixa RL) e excedente de venda")
+
+
+def caso_tecto_de_playset_diz_o_que_nao_se_compra():
+    """Uma caixa que precise de mais do que o tecto permite tem de o DIZER.
+
+    Se a falta saísse só da conta das compras, a caixa ficava à espera de uma
+    carta que ninguém vai comprar — e não havia como perceber porquê.
+    """
+    con = base()
+    preco(con, "Swords to Plowshares", "nonfoil", 2.0)
+    # 4 no main + 1 no side: dentro da mesma caixa as faltas somam (estão na mesa
+    # ao mesmo tempo), mas o tecto do grupo são 4.
+    deck(con, "PM1", "premodern", [("Swords to Plowshares", 4)],
+         side=[("Swords to Plowshares", 1)])
+    rep = loadout.report(con, [slot("PM1", "premodern", "PM1", balde="Colecção")])
+    s = por_nome(rep)["PM1"]
+    assert s["comprar"] == 4 and s["custo"] == 8.0, s
+    assert s["playset_bloqueado"] == 1, s["playset_bloqueado"]
+    assert [(m["nm"], m["playset_bloqueado"]) for m in s["playset_faltas"]] == \
+        [("Swords to Plowshares", 1)], s["playset_faltas"]
+    lim = rep["limites"]
+    assert [(g["nm"], g["bloqueado"], g["tecto"]) for g in lim] == \
+        [("Swords to Plowshares", 1, 4)], lim
+    assert lim[0]["caixas"] == [{"slot": "pm1", "caixa": "PM1", "q": 1,
+                                 "board": "side"}], lim[0]["caixas"]
+    print("o que o tecto corta diz-se: 'falta 1 que nao se compra'")
+
+
+def caso_basicas_fora_do_tecto_de_playset():
+    """As básicas são a excepção: um deck joga 12 Ilhas e não são um playset.
+
+    Nunca chegam à conta do tecto porque o `allocate` as dá sempre por tidas —
+    este caso tranca isso, porque um tecto que apanhasse as básicas punha metade
+    de cada deck de Premodern a dizer *"falta 8 que não se compra"*.
+    """
+    con = base()
+    deck(con, "PM1", "premodern", [("Island", 12), ("Swords to Plowshares", 4)])
+    rep = loadout.report(con, [slot("PM1", "premodern", "PM1", balde="Colecção")])
+    s = por_nome(rep)["PM1"]
+    assert s["playset_bloqueado"] == 0, s["playset_faltas"]
+    assert s["comprar"] == 4, s["comprar"]
+    ilha = [m for m in s["have"] if m["nm"] == "Island"][0]
+    assert ilha["got"] == 12 and ilha["playset_bloqueado"] == 0, ilha
+    print("as basicas ficam fora do tecto de playset")
+
+
+def caso_compras_partilhadas_nao_passam_do_tecto():
+    """A partilha compra o MÁXIMO de uma caixa; o tecto corta esse máximo.
+
+    O buraco que sobrava: seis caixas a pedir 4 e duas cópias em casa que só a
+    primeira alcança davam `max(comprar) = 4` — 4 compradas mais 2 em casa são
+    6, e ele disse quatro.
+    """
+    con = base()
+    preco(con, "Swords to Plowshares", "nonfoil", 2.0)
+    for n in ("PM1", "PM2"):
+        deck(con, n, "premodern", [("Swords to Plowshares", 4)])
+    add(con, "Swords to Plowshares", 2, lang="pt", sub="Colecção")
+    slots = [slot("PM1", "premodern", "PM1", balde="Colecção"),
+             slot("PM2", "premodern", "PM2", balde="Colecção")]
+    rep = loadout.report(con, slots)
+    assert rep["comprar_total"] == 2, rep["comprar_total"]
+    total = rep["comprar_total"] + sum(l["q"] for l in rep["pool"]
+                                       ["Swords to Plowshares"])
+    assert total == 4, total
+    print("comprar + o que ja tem nunca passa do tecto de playset")
+
+
+def caso_premodern_ordena_por_pct_completo():
+    """*"Ordenamos os decks por prioridade (...) para já a prioridade vem por
+    ordem de % completo."*
+
+    A caixa mais perto de fechar escolhe primeiro, e o `prioridade` do config
+    deixa de decidir — está escrito ao contrário aqui de propósito.
+    """
+    con = base()
+    deck(con, "Perto", "premodern", [("Swords to Plowshares", 2)])
+    deck(con, "Longe", "premodern", [("Swords to Plowshares", 1), ("Replenish", 1),
+                                     ("Opalescence", 1), ("Lotus Petal", 1)])
+    add(con, "Swords to Plowshares", 2, lang="pt", sub="Colecção")
+    rep = loadout.report(con, [
+        slot("Longe", "premodern", "Longe", prioridade=1, balde="Colecção"),
+        slot("Perto", "premodern", "Perto", prioridade=2, balde="Colecção")])
+    s = por_nome(rep)
+    assert s["Perto"]["pct_coleccao"] == 100 and s["Longe"]["pct_coleccao"] == 25, s
+    assert s["Perto"]["prioridade"] == 1 and s["Longe"]["prioridade"] == 2, \
+        (s["Perto"]["prioridade"], s["Longe"]["prioridade"])
+    assert s["Perto"]["posicao_grupo"] == 1 and s["Longe"]["posicao_grupo"] == 2
+    assert s["Perto"]["prioridade_por"] == "pct"
+    print("no Premodern manda a % completo, nao o numero do config")
+
+    # Empate: decide o nome, para a ordem não mudar de corrida para corrida.
+    deck(con, "Bea", "premodern", [("Replenish", 1)])
+    deck(con, "Ana", "premodern", [("Opalescence", 1)])
+    s = por_nome(loadout.report(con, [
+        slot("Bea", "premodern", "Bea", prioridade=1, balde="Colecção"),
+        slot("Ana", "premodern", "Ana", prioridade=2, balde="Colecção")]))
+    assert s["Ana"]["pct_coleccao"] == s["Bea"]["pct_coleccao"] == 0
+    assert s["Ana"]["prioridade"] == 1 and s["Bea"]["prioridade"] == 2, s
+    print("empate na percentagem: desempata o nome")
+
+    # E os outros grupos não mudaram: o `prioridade` do config continua a mandar.
+    con2 = base()
+    for n in ("A", "B"):
+        deck(con2, n, "legacy", [("Sol Ring", 1)])
+    s = por_nome(loadout.report(con2, [slot("A", "legacy", "A", prioridade=2),
+                                       slot("B", "legacy", "B", prioridade=1)]))
+    assert s["B"]["prioridade"] == 1 and not s["B"].get("prioridade_por"), s["B"]
+    print("fora do Premodern a ordem continua a ser a do config")
+
+
+def caso_pct_da_ordem_e_o_da_coleccao_inteira():
+    """A percentagem que ordena é medida ANTES de alocar.
+
+    Com a de depois, a caixa que ficasse em primeiro roubava a percentagem à
+    seguinte e as duas trocavam de lugar a cada corrida. Aqui as duas pedem a
+    mesma carta e só há um playset: a de depois dá 100%/0%, a de antes dá
+    100%/100% — e é a segunda que decide a ordem.
+    """
+    con = base()
+    for n in ("Ana", "Bea"):
+        deck(con, n, "premodern", [("Swords to Plowshares", 4)])
+    add(con, "Swords to Plowshares", 4, lang="pt", sub="Colecção")
+    s = por_nome(loadout.report(con, [
+        slot("Ana", "premodern", "Ana", balde="Colecção"),
+        slot("Bea", "premodern", "Bea", balde="Colecção")]))
+    assert s["Ana"]["pct_coleccao"] == s["Bea"]["pct_coleccao"] == 100, s
+    assert s["Ana"]["pct"] == 100 and s["Bea"]["pct"] == 0, (s["Ana"]["pct"],
+                                                            s["Bea"]["pct"])
+    assert s["Ana"]["prioridade"] == 1, s["Ana"]["prioridade"]
+    print("a % que ordena e a da coleccao inteira, antes de alocar")
+
+
 def run():
     for fn in (caso_uma_copia_uma_caixa, caso_noutra_caixa_nao_e_compra,
                caso_noutra_caixa_e_compra_misturadas,
@@ -1260,7 +1498,15 @@ def run():
                caso_delta_de_actualizacao_so_se_aplica_no_botao,
                caso_montado_sem_arrumacao_nao_e_congelado,
                caso_alocacao_orfa_nao_prende_copias,
-               caso_compras_sem_preco_contam_se):
+               caso_compras_sem_preco_contam_se,
+               caso_premodern_voltou_a_partilhar,
+               caso_tecto_de_playset_no_premodern,
+               caso_excedente_de_playset_do_premodern_vai_para_venda,
+               caso_tecto_de_playset_diz_o_que_nao_se_compra,
+               caso_basicas_fora_do_tecto_de_playset,
+               caso_compras_partilhadas_nao_passam_do_tecto,
+               caso_premodern_ordena_por_pct_completo,
+               caso_pct_da_ordem_e_o_da_coleccao_inteira):
         fn()
     print("\nTUDO OK")
 

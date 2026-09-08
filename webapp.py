@@ -184,10 +184,22 @@ def _peers(con, cfg, slot_id):
 
 
 def mover(con, cfg, slot_id, delta) -> str:
-    """Sobe (-1) ou desce (+1) um slot dentro do grupo. Devolve uma frase."""
+    """Sobe (-1) ou desce (+1) um slot dentro do grupo. Devolve uma frase.
+
+    Num grupo de PRIORIDADE AUTOMÁTICA não mexe (André, 2026-09-08: *"para já a
+    prioridade vem por ordem de % completo"*). Escrever o número na mesma era o
+    pior dos dois mundos: o config mudava, a ordem não, e o botão respondia "X
+    subiu" a uma caixa que ficou onde estava.
+    """
     alvo, pares = _peers(con, cfg, slot_id)
     if alvo is None:
         return "esse slot não existe"
+    if alvo.get("prioridade_por") == "pct":
+        return (f"{alvo['nome']} está num grupo de ordem automática "
+                f"({alvo['grupo']}): a prioridade vem da percentagem que cada "
+                f"caixa já tem — é #{alvo.get('posicao_grupo')} com "
+                f"{alvo.get('pct_coleccao')}%. Para ordenares à mão, tira o "
+                f"`prioridade_por` desse grupo no colecao_config.json")
     if len(pares) < 2:
         return f"{alvo['nome']} é o único do grupo — não há por onde mexer"
     i = [s["slot"] for s in pares].index(slot_id)
