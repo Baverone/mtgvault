@@ -550,8 +550,29 @@ dela saíam outra vez da lista de venda — sem ninguém carregar em nada e **se
   e fica com o `id` **e com o nome** que já tinha. O hash sozinho só resolveria o
   caso em que nada muda — que é precisamente o caso que não dá problema. Dois
   clusters da mesma corrida não podem herdar a mesma entrada.
+- **O núcleo tem um MÍNIMO, e ele conta.** O `NUCLEO_MIN = 8` esteve escrito e
+  documentado sem nunca ser aplicado, e a primeira corrida a sério mostrou o
+  preço: entradas de **duas** e três cartas (um *"Mono-Azul Frogmite"* de 2),
+  porque a distintividade do `card_roles` às vezes só devolve um punhado. Um `id`
+  de duas cartas é frágil, e dois baralhos que partilhem essas duas passavam a ser
+  o **mesmo** arquétipo — a recusa de um apagava a sugestão do outro. E como um
+  núcleo de 3 nunca chega aos 70 % do de 12 do mesmo deck, o mesmo baralho ficava
+  com duas entradas de nome igual. O `nucleo()` completa pelo `resto` (a lista de
+  consenso) **só abaixo do mínimo**: o `resto` é um remendo, não uma fonte — quem
+  já tem o mínimo não se enche, senão o núcleo passava a depender da lista
+  inteira, que muda todos os dias.
 - **O registo é `data/arquetipos.json`** (id → nome, núcleo, primeira/última vez
-  visto), gravado uma vez por relatório e **só se mudou**. Vai ao `git add` do
+  visto), gravado uma vez por relatório, **só se mudou** e **atomicamente**
+  (temporário + `os.replace`, como o `configio.escrever`). A atomicidade não é
+  higiene: o `daily` e o `webapp.py` — que fica de pé o dia todo, mantido pela
+  tarefa `mtgvault-serve` — escrevem os dois este ficheiro, e com um `write_text`
+  cru **24 arquétipos passaram a 7** numa tarde. O ficheiro fica truncado entre o
+  `open` e o `write`, quem o apanhe assim lê JSON inválido, o `carregar` responde
+  com um registo vazio (de propósito: um `daily` não pode parar por causa disto) e
+  a gravação seguinte escreve por cima. Um ficheiro mesmo corrompido guarda-se ao
+  lado (`arquetipos-mau-<data>.json`) antes de se começar do zero. **Se mexeres no
+  `webapp.py`, o que está de pé tem de ser reiniciado** — o antigo continua a
+  escrever pelo modo antigo. Vai ao `git add` do
   `daily.yml` **e ao `EXTRA_COMMIT` da tarefa `ai-pc/tasks/mtgvault-daily`** — um
   registo que só existisse num dos dois punha as duas corridas a discordar sobre
   o nome, que é o defeito que isto vem corrigir. O `test_paginas.py` tranca-o. A
