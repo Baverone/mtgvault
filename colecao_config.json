@@ -176,10 +176,71 @@
         "all": [
           "Survival of the Fittest"
         ]
+      },
+      {
+        "nome": "Psychatog",
+        "combo": false,
+        "all": [
+          "Psychatog"
+        ]
+      },
+      {
+        "nome": "Landstill",
+        "combo": false,
+        "all": [
+          "Standstill",
+          "Mishra's Factory"
+        ]
+      },
+      {
+        "nome": "The Rack",
+        "combo": false,
+        "all": [
+          "The Rack"
+        ]
+      },
+      {
+        "nome": "Exalted Angel",
+        "combo": false,
+        "cor": true,
+        "all": [
+          "Exalted Angel"
+        ]
+      },
+      {
+        "nome": "Graveborn Muse",
+        "combo": false,
+        "cor": true,
+        "all": [
+          "Graveborn Muse"
+        ]
+      },
+      {
+        "nome": "Goblins",
+        "combo": false,
+        "any": [
+          "Goblin Lackey",
+          "Goblin Piledriver",
+          "Goblin Warchief"
+        ]
+      },
+      {
+        "nome": "Pyrostatic Pillar",
+        "combo": false,
+        "all": [
+          "Pyrostatic Pillar"
+        ]
+      },
+      {
+        "nome": "Sligh",
+        "combo": false,
+        "all": [
+          "Fireblast"
+        ]
       }
     ]
   },
-  "_premodern": "PREMODERN: O QUE MONTAR A SEGUIR COM O QUE SOBRA, E VENDER O RESTO (André, 2026-09-08, à letra): 'O que não estiver a ser usado em Premodern e se encaixe na regra do Premodern deve ser sugerido para venda. Antes disso, procura decklists do formato; se o deck for top-10 de representação ou top-5 decks combo do formato, sugere a lista para montar o deck caso eu tenha pelo menos 50 % das cartas (sem contar com as básicas para a %); se não, envia para vender.' Chaves: 'top_representados' (quantos arquétipos entram pelo nº de listas que CONTAM — a regra de sempre, sources.counting_sql), 'top_combo' (quantos entram por serem combo, mesmo que não cheguem ao top-10), 'sugerir_a_partir_de_pct' (a partir de que cobertura um candidato passa a SUGESTÃO com botão «vou montar este»), 'min_listas' (abaixo disto o consenso é ruído), 'sugestoes_recusadas' (o «não quero este»: nome do arquétipo -> data; as cartas dele libertam-se para a venda no mesmo dia) e 'combo_arquetipos'. A COBERTURA mede-se sobre as cópias que a alocação NÃO deu a nenhuma caixa (nem às de Premodern nem a uma já escolhida): medi-la sobre a colecção inteira dava percentagens altas e falsas, porque as cartas estão dentro de decks montados — uma sugestão que conta com elas está a mandar desmontar um deck para montar outro. Consequência a saber: com seis caixas de Premodern a alocar primeiro sobra pouco, e é normal um candidato interessante aparecer nos 30-40%. As páginas mostram os dois números (o que sobra e o total). 'combo_arquetipos' classifica e NOMEIA por REGRA sobre a lista de consenso, com as mesmas três chaves do archetype_rules.json ('all' = tem todas, 'any' = basta uma, 'none' = não pode ter nenhuma) e o mesmo motor (tagging). A ORDEM é a prioridade — a primeira que bate ganha —, e não é decoração: o Full English Breakfast joga Survival of the Fittest e, escrito depois do Elves/Survival, chamava-se Elves/Survival. 'grau' = puro (a interacção mata no turno em que resolve) | prisao (tranca o jogo e mata depois) | hibrido (tem também um plano que ganha sozinho); o critério e a lista saíram do relatório work/revisao/premodern-combo.md, sobre 441 listas reais. A regra serve também de nome: o meta_coverage.KNOWN chamava 'Replenish' à Enchantress (que joga 96% de Replenish) e ao UW Replenish, e é o 'none' que os separa.",
+  "_premodern": "PREMODERN: O QUE MONTAR A SEGUIR COM O QUE SOBRA, E VENDER O RESTO (André, 2026-09-08, à letra): 'O que não estiver a ser usado em Premodern e se encaixe na regra do Premodern deve ser sugerido para venda. Antes disso, procura decklists do formato; se o deck for top-10 de representação ou top-5 decks combo do formato, sugere a lista para montar o deck caso eu tenha pelo menos 50 % das cartas (sem contar com as básicas para a %); se não, envia para vender.' Chaves: 'top_representados' (quantos arquétipos entram pelo nº de listas que CONTAM — a regra de sempre, sources.counting_sql), 'top_combo' (quantos entram por serem combo, mesmo que não cheguem ao top-10), 'sugerir_a_partir_de_pct' (a partir de que cobertura um candidato passa a SUGESTÃO com botão «vou montar este»), 'min_listas' (abaixo disto o consenso é ruído), 'sugestoes_recusadas' (o «não quero este»: nome do arquétipo -> data; as cartas dele libertam-se para a venda no mesmo dia) e 'combo_arquetipos'. A COBERTURA mede-se sobre as cópias que a alocação NÃO deu a nenhuma caixa (nem às de Premodern nem a uma já escolhida): medi-la sobre a colecção inteira dava percentagens altas e falsas, porque as cartas estão dentro de decks montados — uma sugestão que conta com elas está a mandar desmontar um deck para montar outro. Consequência a saber: com seis caixas de Premodern a alocar primeiro sobra pouco, e é normal um candidato interessante aparecer nos 30-40%. As páginas mostram os dois números (o que sobra e o total). 'combo_arquetipos' classifica e NOMEIA por REGRA sobre a lista de consenso, com as mesmas três chaves do archetype_rules.json ('all' = tem todas, 'any' = basta uma, 'none' = não pode ter nenhuma) e o mesmo motor (tagging). A ORDEM é a prioridade — a primeira que bate ganha —, e não é decoração: o Full English Breakfast joga Survival of the Fittest e, escrito depois do Elves/Survival, chamava-se Elves/Survival. 'grau' = puro (a interacção mata no turno em que resolve) | prisao (tranca o jogo e mata depois) | hibrido (tem também um plano que ganha sozinho); o critério e a lista saíram do relatório work/revisao/premodern-combo.md, sobre 441 listas reais. A regra serve também de nome: o meta_coverage.KNOWN chamava 'Replenish' à Enchantress (que joga 96% de Replenish) e ao UW Replenish, e é o 'none' que os separa. Desde 2026-09-08 há regras que SÓ nomeiam ('combo': false — o Psychatog, o Landstill, os Goblins, o Sligh): dar nome e dizer que é combo são duas decisões diferentes, e sem essa chave o Landstill passava a disputar o top-5 de combo com o Stiflenought. Estão escritas NO FIM da lista de propósito: a primeira que bate ganha, e um deck que também é combo tem de ficar com o nome do combo (as listas de UW Replenish jogam Exalted Angel). 'cor': true põe as cores do núcleo à frente do nome ('Orzhov Exalted Angel'), para os nomes que não implicam a cor — calcula-se em vez de se escrever, senão chamava-se Orzhov a um Exalted Angel mono-branco. ATENÇÃO: esta lista SUBSTITUI a de premodern.COMBO_DEFAULT, não se soma a ela — uma regra acrescentada só ao código fica morta aqui, sem erro nenhum. O test_arquetipos.py tranca as duas.",
   "metagame_top_n": 3,
   "_metagame_top_n": "Quantos decks por formato mostra o metagame.html. André, 2026-09-07, à letra: 'Para os decks metagame, em vez de me dares todas as listas, dás-me só o top-3 decks que estou mais perto de concluir para os formatos Standard, Pioneer, Legacy'. Vale só para as secções de TOP (Standard/Pioneer/Legacy — as caixas do loadout que ainda estão por escolher); o Modern mostra o deck já escolhido e o Premodern os alvos de premodern_arquetipos_alvo. A % que ordena é a das cartas que ele TEM (livres + as que estão noutra caixa, que se vão buscar), com a regra de material do loadout (foil menos Reserved List) e sem contar terras básicas. Sobe para 5 se quiseres mais opções por onde escolher. (Substituiu o decks_faziveis_min_pct: a página 'Decks fazíveis' foi retirada em 2026-09-07 — fazia a mesma pergunta e respondia pior.)",
   "metagame_fontes": {
