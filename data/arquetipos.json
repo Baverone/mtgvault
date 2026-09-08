@@ -40,20 +40,6 @@
    "primeira": "2026-09-08",
    "ultima": "2026-09-08"
   },
-  "202d412bd6": {
-   "formato": "premodern",
-   "nome": "Mono-Verde Werebear",
-   "nucleo": [
-    "Gaea's Blessing",
-    "Land Grant",
-    "Quirion Dryad",
-    "Sylvan Library",
-    "Wall of Blossoms",
-    "Werebear"
-   ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
-  },
   "26ac2152f1": {
    "formato": "premodern",
    "nome": "Full English Breakfast",
@@ -113,17 +99,6 @@
    "primeira": "2026-09-08",
    "ultima": "2026-09-08"
   },
-  "4841da6e7f": {
-   "formato": "premodern",
-   "nome": "Psychatog",
-   "nucleo": [
-    "Circular Logic",
-    "Psychatog",
-    "Upheaval"
-   ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
-  },
   "6bf428b231": {
    "formato": "premodern",
    "nome": "Elves / Survival",
@@ -164,16 +139,6 @@
    "primeira": "2026-09-08",
    "ultima": "2026-09-08"
   },
-  "7fbd22f4da": {
-   "formato": "legacy",
-   "nome": "Mono-Azul Frogmite",
-   "nucleo": [
-    "Frogmite",
-    "Thoughtcast"
-   ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
-  },
   "844004e1fe": {
    "formato": "premodern",
    "nome": "Landstill",
@@ -190,17 +155,6 @@
     "Powder Keg",
     "Standstill",
     "Wrath of God"
-   ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
-  },
-  "95a99aa40d": {
-   "formato": "premodern",
-   "nome": "Orzhov Exalted Angel",
-   "nucleo": [
-    "Duress",
-    "Exalted Angel",
-    "Vindicate"
    ],
    "primeira": "2026-09-08",
    "ultima": "2026-09-08"
@@ -302,17 +256,6 @@
    "primeira": "2026-09-08",
    "ultima": "2026-09-08"
   },
-  "e62ac61340": {
-   "formato": "premodern",
-   "nome": "Stasis",
-   "nucleo": [
-    "Black Vise",
-    "Forsaken City",
-    "Stasis"
-   ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
-  },
   "e637ee444c": {
    "formato": "premodern",
    "nome": "Golgari Wall of Blossoms",
@@ -333,18 +276,6 @@
    "primeira": "2026-09-08",
    "ultima": "2026-09-08"
   },
-  "e8c086499f": {
-   "formato": "premodern",
-   "nome": "Enchantress",
-   "nucleo": [
-    "Argothian Enchantress",
-    "Enchantress's Presence",
-    "Serra's Sanctum",
-    "Sterling Grove"
-   ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
-  },
   "f0f384fbd7": {
    "formato": "premodern",
    "nome": "Sligh",
@@ -361,17 +292,6 @@
     "Seal of Fire",
     "Treetop Village",
     "Wooded Foothills"
-   ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
-  },
-  "f102883ccf": {
-   "formato": "premodern",
-   "nome": "Goblins",
-   "nucleo": [
-    "Goblin Piledriver",
-    "Goblin Warchief",
-    "Mogg Fanatic"
    ],
    "primeira": "2026-09-08",
    "ultima": "2026-09-08"
