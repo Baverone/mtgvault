@@ -450,9 +450,35 @@ def alternar_montada(cfg, slot_id) -> tuple[bool, str]:
     return montada, (s.get("nome") or slot_id)
 
 
+def despromover(cfg, slot_id) -> str:
+    """Uma caixa que se desmonta deixa de estar `montada` — volta a `permanente`.
+
+    Só desce de `montada`: uma **candidata** com cartas registadas lá dentro
+    (o caso das quatro caixas de 2026-09-08, que herdaram alocação da migração)
+    fica candidata. Promovê-la aqui era mudar-lhe a ordem da alocação com um
+    botão que ele carregou para arrumar cartas, não para escolher prioridades.
+    """
+    s = caixas.caixa_do_cfg(cfg, slot_id)
+    if caixas.estado_de(s) == caixas.MONTADA:
+        s["estado"] = caixas.PERMANENTE
+    return s.get("nome") or slot_id
+
+
 # ---------------------------------------------------------------------------
 # Escritas na base de dados (o que é FÍSICO)
 # ---------------------------------------------------------------------------
+def desmontar(con, slot_id: str, nome: str | None = None) -> dict:
+    """"Desmontar": esvazia a `copy_allocation` desta caixa, com backup e registo.
+
+    O motor é o `loadout.desmontar_caixa` — aqui só se lhe dá o nome da caixa
+    para o registo dizer qual foi. A 2026-09-08 isto fez-se à mão em SQL nas
+    quatro caixas que não estavam montadas; um gesto que ele precisa de fazer e
+    que só existe no SQL acaba por ser feito no SQL, sem backup e sem rasto.
+    """
+    return loadout.desmontar_caixa(con, slot_id, nome)
+
+
+
 def marcar_na_caixa(con, slot_id: str, dentro: bool) -> int:
     """"Sleevado e na caixa": regista as cartas desta caixa como estando lá.
 
@@ -636,9 +662,25 @@ class Handler(BaseHTTPRequestHandler):
             elif act == "montado":
                 novo, nome = alternar_montada(cfg, slot_id)
                 escrever_config(cfg)
-                n = marcar_na_caixa(con, slot_id, novo)
-                msg = (f"{nome}: {n} cópias registadas na caixa" if novo
-                       else f"{nome}: caixa esvaziada ({n} linhas)")
+                if not novo:              # é uma desmontagem: backup e registo
+                    r = desmontar(con, slot_id, nome)
+                    msg = (f"{nome}: desmontada — {r['copias']} cópias voltam "
+                           f"à colecção ({r['linhas']} linhas)")
+                else:
+                    n = marcar_na_caixa(con, slot_id, novo)
+                    msg = f"{nome}: {n} cópias registadas na caixa"
+            elif act == "desmontar":
+                # O inverso do "sleevado e na caixa": as cartas voltam à gaveta.
+                # Passa pelo mesmo motor do botão de cima (backup + registo no
+                # `data/desmontar.log`) — dois caminhos para o mesmo gesto era o
+                # que a escala de estados da v6 veio evitar.
+                nome = despromover(cfg, slot_id)
+                escrever_config(cfg)
+                r = desmontar(con, slot_id, nome)
+                msg = (f"{nome}: desmontada — {r['copias']} cópias voltam à "
+                       f"colecção ({r['linhas']} linhas)"
+                       + (f", backup em {Path(r['backup']).name}"
+                          if r.get("backup") else ""))
             elif act == "confirmar":
                 # A caixa JÁ se diz montada (`estado: montada`) e o vault não
                 # sabe o que lá está: o que falta é registá-lo. Não mexe no

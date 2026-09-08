@@ -208,6 +208,42 @@ cada uma a explicar que a outra também estava certa. É o padrão do `event_tie
    com material"* (`N Nome [PT]`). As ≥100 €/cópia levam chip «cara».
 3. **Quando as compras chegarem** — fotos em `pendentes/`, a caixa recalcula-se
    na corrida seguinte. Não há nada para marcar à mão.
+
+**O SIDEBOARD FICA SEPARADO DENTRO DA CAIXA (André, 2026-09-08, à letra:
+*"Preciso também de saber o que é sideboard nos decks, para ficar separado dentro
+da mesma caixa."*)** Uma caixa é um deck e um deck são duas pilhas — 60 (ou 100)
+e 15. Quem parte é `loadout.blocos_de_board(movs, totais)`, num sítio só: o
+painel *Montar*, a aba *Arrumar* (dos dois lados, gaveta e caixa) e o
+`python -m mtgvault.cli arrumar` mostram os mesmos dois blocos, com o «N de M» de
+cada um (o M é `loadout.totais_por_board`, a MESMA lista por que a percentagem da
+caixa é calculada). A página não volta a decidir o que é sideboard em JavaScript,
+pela mesma razão que não decide o que é foil (ver `e_foil`).
+- **A carta que joga nos dois vem em DUAS linhas.** São duas cópias físicas em
+  duas pilhas; uma linha só (`2×`) não dizia qual ia para onde, que é
+  exactamente a pergunta. O `board` vem da linha da alocação (`movimentos_de_
+  entrada` passou a levá-lo), não se recalcula.
+- **O texto copiado da wantlist leva `// Sideboard`** entre os dois blocos — o
+  Cardmarket ignora a linha de comentário sem dar erro. Só na wantlist DA CAIXA:
+  a aba *Comprar* junta compras de várias caixas e aí a linha não tem bloco.
+- Um movimento **sem** bloco (o que SAI de uma caixa: vem do lote, não da lista)
+  fica num bloco próprio no fim. Chamar-lhe "main" era inventar uma resposta.
+
+**«DESMONTAR»: o inverso do «sleevado e na caixa» (2026-09-08).** Botão por caixa,
+só no modo edição: esvazia a `copy_allocation` daquela caixa, **com backup da
+base** (`backups/vault-<data>-desmontar.db`, VACUUM INTO) e **uma linha em
+`data/desmontar.log`** escrita ANTES de a base mexer — o que a caixa tinha lá
+dentro é a única coisa que se perde. Motor em `loadout.desmontar_caixa`; o
+*"tirar da caixa"* de uma caixa montada passa pelo mesmo motor (dois caminhos
+para o mesmo gesto era o que a escala de estados da v6 veio evitar).
+- **Aparece também numa caixa que NÃO se diz montada mas tem cartas registadas lá
+  dentro** (`slot["arrumada"]`, de `caixas_arrumadas`). Era o caso das quatro
+  caixas de 2026-09-08 (Blue Farm, Cloud cEDH, Cloud DC, Pauper): tinham alocação
+  herdada da migração e as cartas estavam na `Colecção`. Sem o botão, isso
+  fez-se em SQL à mão — sem backup e sem rasto.
+- **Só desce de `montada` para `permanente`** (`webapp.despromover`). Uma
+  candidata fica candidata: ele carregou para arrumar cartas, não para escolher
+  prioridades.
+
 E uma aba **Plano** (`loadout.ordem_de_montagem`, a mesma no CLI): por onde
 começar — permanentes por prioridade, depois as candidatas mais perto de fechar —
 com *"tirar N · comprar N (X €) · estado"*, e por baixo a **venda**, que só entra
