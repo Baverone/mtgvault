@@ -1417,6 +1417,22 @@ def _linha_cheia(linha: dict) -> dict:
     linha.setdefault("comprar", 0)
     linha.setdefault("noutra", {})
     linha.setdefault("noutra_q", 0)
+    # ONDE A CARTA ESTÁ vs A QUEM ESTÁ DESTINADA (André, 2026-09-08, à letra:
+    # *"ainda estás a assumir que há cartas que já estão nas deckboxes dos
+    # decks"*). O `noutra` responde *"de que caixa é a cópia"*, que é uma
+    # pergunta de ALOCAÇÃO; estas três respondem *"onde é que ela está"*:
+    #   · `noutra_montada`   — está mesmo lá dentro (`copy_allocation`);
+    #   · `noutra_reservada` — está na gaveta, destinada àquela caixa;
+    #   · `noutra_onde`      — de que gaveta, para as reservadas.
+    # Somá-las era o que fazia a página dizer "em UW Replenish" de uma carta que
+    # está na Colecção, na prateleira — e mandá-lo procurá-la numa caixa vazia.
+    linha.setdefault("noutra_montada", {})
+    linha.setdefault("noutra_reservada", {})
+    linha.setdefault("noutra_onde", {})
+    # As cópias reservadas, uma a uma (edição, língua, acabamento): é o que o
+    # painel *Montar* precisa para ele as poder tirar já, quando monta esta caixa
+    # antes da que as levou.
+    linha.setdefault("noutra_lotes", [])
     # A parte do `noutra` que ainda não está em casa: vem de uma compra
     # PARTILHADA com outra caixa (ver `partilhar_compras`). A página tem de o
     # dizer — "em Blue Farm" numa carta que ninguém comprou ainda era mentira.
@@ -1452,6 +1468,84 @@ def _empresta(s: dict, outra: str, ded: set[str] | frozenset) -> bool:
     return not (s.get("dedicado") or outra in ded)
 
 
+def _reparte_por_sitio(n: int, fis: dict[str, int], caixa: str) -> dict[str, int]:
+    """Reparte `n` cópias pelos SÍTIOS onde elas estão, a própria caixa primeiro.
+
+    O `noutra` é cortado pelo que ainda falta (pára em `resta`), e por isso não se
+    pode dizer só *"são da caixa X"*: dessas X cópias umas podem estar sleevadas
+    lá dentro e outras ainda na `Colecção`, à espera. Contá-las todas como
+    sleevadas era a mentira que o André apanhou a 2026-09-08.
+    """
+    out: dict[str, int] = {}
+    for sitio in sorted(fis, key=lambda k: (k != caixa, k)):
+        if n <= 0:
+            break
+        t = min(fis[sitio], n)
+        if t:
+            out[sitio] = t
+            n -= t
+    return out
+
+
+def _parte_noutra(noutra: dict[str, int],
+                  fisico: dict[str, dict[str, int]]) -> tuple[dict, dict, dict]:
+    """`(montada, reservada, onde)` — as duas metades do *"está noutra caixa"*.
+
+    * **montada** — a cópia está mesmo dentro daquela caixa (há linha na
+      `copy_allocation`): *"em UW Replenish"*, vai-se lá buscar;
+    * **reservada** — a alocação DESTINOU-A àquela caixa por prioridade, mas ela
+      continua na gaveta: *"na Colecção — destinada ao UW Replenish"*. O `onde`
+      diz de que gaveta.
+    """
+    montada: dict[str, int] = {}
+    reservada: dict[str, int] = {}
+    onde: dict[str, dict[str, int]] = {}
+    for caixa, q in noutra.items():
+        sitios = _reparte_por_sitio(q, fisico.get(caixa) or {}, caixa)
+        if sitios.get(caixa):
+            montada[caixa] = sitios[caixa]
+        resto = {k: v for k, v in sitios.items() if k != caixa}
+        if resto:
+            reservada[caixa] = sum(resto.values())
+            onde[caixa] = resto
+    return montada, reservada, onde
+
+
+def onde_esta(m: dict, so: str | None = None) -> list[str]:
+    """*"Onde está esta carta?"* — as frases de uma linha em falta, por ordem.
+
+    Escritas AQUI e não em cada página: era exactamente isto que o André apanhou
+    a 2026-09-08 (*"ainda estás a assumir que há cartas que já estão nas
+    deckboxes dos decks"*). Cada sítio escrevia a sua versão de *"em X"* a partir
+    do `noutra`, que é a caixa a quem a cópia está DESTINADA, e nenhum olhava
+    para a `copy_allocation`, que é a única prova de onde ela ESTÁ.
+
+    Três frases, três coisas diferentes:
+      * *"2× em Stiflenought"* — está lá dentro, vais àquela caixa;
+      * *"2× na Colecção — destinada a UW Replenish (prioridade)"* — está na
+        gaveta de sempre; podes tirá-la já (é o bloco do painel *Montar*);
+      * *"1× depois de Enchantress comprar"* — ainda não existe em casa.
+
+    `so` limita a uma das três (`montada` | `reservada` | `futura`), que é o que
+    cada secção do CLI e cada bloco da página querem: a mesma carta pode ter
+    cópias nos três sítios, e repetir as três frases em cada bloco era ruído.
+    """
+    fora = []
+    if so in (None, "montada"):
+        for caixa, q in sorted((m.get("noutra_montada") or {}).items()):
+            fora.append(f"{q}× em {caixa}")
+    if so in (None, "reservada"):
+        for caixa, q in sorted((m.get("noutra_reservada") or {}).items()):
+            sitios = (m.get("noutra_onde") or {}).get(caixa) or {}
+            onde = " + ".join(f"{v}× na {k}" for k, v in sorted(sitios.items()))
+            fora.append(f"{onde or f'{q}× na colecção'} — destinada a {caixa} "
+                        f"(prioridade)")
+    if so in (None, "futura"):
+        for caixa, q in sorted((m.get("noutra_futura") or {}).items()):
+            fora.append(f"{q}× depois de {caixa} comprar")
+    return fora
+
+
 def _estado_carta(pool: dict, s: dict, nm: str, need: int, baldes: set[str],
                   did: int | None = None,
                   caixas: set[str] | frozenset = frozenset(),
@@ -1468,6 +1562,10 @@ def _estado_carta(pool: dict, s: dict, nm: str, need: int, baldes: set[str],
     """
     livre = 0
     onde: dict[str, int] = defaultdict(int)
+    # ONDE ESTÁ vs A QUEM ESTÁ DESTINADA (André, 2026-09-08). `caixa -> {sítio
+    # físico: quantas}`: uma cópia que a alocação deu a outra caixa continua na
+    # gaveta até ele a lá meter, e só a `copy_allocation` prova o contrário.
+    fisico: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     for lot in pool.get(nm, []):
         if lot["rdid"] is not None and lot["rdid"] != did:
             continue
@@ -1476,11 +1574,13 @@ def _estado_carta(pool: dict, s: dict, nm: str, need: int, baldes: set[str],
         if _noutra_caixa(lot, s):
             if _empresta(s, lot["caixa_nome"], ded):
                 onde[lot["caixa_nome"]] += lot["q"]  # está sleevada noutra caixa
+                fisico[lot["caixa_nome"]][lot["caixa_nome"]] += lot["q"]
             continue
         livre += lot["livre"]
         for caixa, q in lot["alocado"].items():
             if caixa != s.get("nome") and _empresta(s, caixa, ded):
                 onde[caixa] += q
+                fisico[caixa][lot["local"]] += q
     got = min(need, livre)
     resta = need - got
     noutra: dict[str, int] = {}
@@ -1490,13 +1590,15 @@ def _estado_carta(pool: dict, s: dict, nm: str, need: int, baldes: set[str],
         noutra[caixa] = min(q, resta)
         resta -= noutra[caixa]
     nq = sum(noutra.values())
+    montada, reservada, onde_fis = _parte_noutra(noutra, fisico)
     # `onde` é o `noutra` ANTES de ser cortado pelo que ainda falta: caixa -> todas
     # as cópias que ela tem desta carta. O `noutra` só serve para tapar o buraco
     # (pára em `resta`), e por isso não se pode filtrar depois — se uma caixa que
     # não interessa apanhar o corte primeiro, a soma filtrada vinha a menos. Quem
     # precisa disto é a cobertura *"como se fosse o principal"* do Premodern.
     return {"got": got, "noutra": noutra, "noutra_q": nq, "onde": dict(onde),
-            "comprar": need - got - nq}
+            "noutra_montada": montada, "noutra_reservada": reservada,
+            "noutra_onde": onde_fis, "comprar": need - got - nq}
 
 
 def slots_por_lista(res: dict) -> dict[str, dict]:
@@ -1835,6 +1937,28 @@ def _totais_do_slot(s: dict) -> None:
     # para a página e o CLI poderem dizer as duas coisas sem as somar.
     s["noutra_caixa"] = sorted((m for m in missing if m["noutra_q"]),
                                key=lambda m: (-m["noutra_q"], m["nm"]))
+    # E o "ir buscar" parte-se em DOIS (André, 2026-09-08: *"o resto ainda nada
+    # está em deckbox"*): as que estão mesmo dentro de outra caixa e as que estão
+    # na gaveta, destinadas a outra caixa. Só as primeiras são uma ida a outra
+    # caixa; as segundas tiram-se do mesmo sítio de onde ele tira todo o resto.
+    # Quem parte é o Python — a página não volta a decidir isto em JavaScript,
+    # pela mesma razão que não decide o que é foil (ver `e_foil`).
+    s["noutra_montada"] = sum(sum(m["noutra_montada"].values()) for m in missing)
+    s["noutra_reservada"] = sum(sum(m["noutra_reservada"].values())
+                                for m in missing)
+    s["buscar_montada"] = sorted(
+        (m for m in missing if m["noutra_montada"]),
+        key=lambda m: (-sum(m["noutra_montada"].values()), m["nm"]))
+    s["buscar_reservada"] = sorted(
+        (m for m in missing if m["noutra_reservada"]),
+        key=lambda m: (-sum(m["noutra_reservada"].values()), m["nm"]))
+    # E a terceira, que já existia e não tinha bloco: a cópia que ninguém tem
+    # ainda — outra caixa vai comprá-la e partilhá-la (`partilhar_compras`).
+    s["noutra_futura"] = sum(sum((m.get("noutra_futura") or {}).values())
+                             for m in missing)
+    s["buscar_futura"] = sorted(
+        (m for m in missing if m.get("noutra_futura")),
+        key=lambda m: (-sum(m["noutra_futura"].values()), m["nm"]))
 
 
 # ---------------------------------------------------------------------------
@@ -1920,6 +2044,16 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                 # slot: uma que a caixa nem vê (Caixa RL no Premodern) ou que não
                 # serve na língua/acabamento continua a ser compra.
                 noutra: dict[str, int] = defaultdict(int)
+                # ONDE ESTÁ vs A QUEM ESTÁ DESTINADA (André, 2026-09-08). Estas
+                # duas somam sempre o `noutra`, e a diferença é a única coisa que
+                # ele pode verificar à frente da estante: `montada` é uma carta
+                # que está mesmo dentro da outra caixa; `reservada` é uma carta
+                # que está na Colecção e que a alocação prometeu a outra caixa.
+                montada: dict[str, int] = defaultdict(int)
+                reservada: dict[str, int] = defaultdict(int)
+                onde_fis: dict[str, dict[str, int]] = defaultdict(
+                    lambda: defaultdict(int))
+                res_lotes: list[dict] = []
                 resta = falta
                 for lot in cands:
                     if resta <= 0:
@@ -1930,10 +2064,14 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                         continue
                     # Uma cópia já SLEEVADA noutra caixa é dessa caixa por
                     # inteiro, tenha essa caixa corrido antes ou depois desta —
-                    # é a razão de o `alocado` não chegar aqui.
-                    donos = ([(lot["caixa_nome"], lot["q"])] if _noutra_caixa(lot, s)
-                             else list(lot["alocado"].items()))
-                    for outro, q in donos:
+                    # é a razão de o `alocado` não chegar aqui. O terceiro
+                    # elemento é o SÍTIO FÍSICO: para a que está sleevada é a
+                    # própria caixa, para a que só está destinada é a gaveta.
+                    donos = ([(lot["caixa_nome"], lot["q"], lot["caixa_nome"])]
+                             if _noutra_caixa(lot, s)
+                             else [(c, q, lot["local"])
+                                   for c, q in lot["alocado"].items()])
+                    for outro, q, sitio in donos:
                         if outro == s["nome"] or resta <= 0:
                             continue
                         # CAIXAS DEDICADAS (2026-09-07, 19:00): uma caixa
@@ -1950,6 +2088,18 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                         reclamado[(lot["key"], outro)] += pega
                         noutra[outro] += pega
                         resta -= pega
+                        if sitio == outro:
+                            montada[outro] += pega
+                        else:
+                            reservada[outro] += pega
+                            onde_fis[outro][sitio] += pega
+                            res_lotes.append({
+                                "id": lot["id"], "q": pega, "destino": outro,
+                                "local": sitio, "sub": lot["sub"],
+                                "balde": lot["balde"], "caixa": lot["caixa"],
+                                "borigem": lot["borigem"],
+                                "finish": lot["finish"], "lang": lot["lang"],
+                                "set_code": lot["set_code"], "sid": lot["sid"]})
                 # Existe mas não serve: é a diferença entre "não tenho" e "tenho
                 # a carta errada". São coisas diferentes na hora de comprar.
                 alt = defaultdict(int)
@@ -1979,6 +2129,10 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                 comprar = falta - noutra_q
                 linha.update(missing=falta, comprar=comprar,
                              noutra=dict(noutra), noutra_q=noutra_q,
+                             noutra_montada=dict(montada),
+                             noutra_reservada=dict(reservada),
+                             noutra_onde={k: dict(v) for k, v in onde_fis.items()},
+                             noutra_lotes=res_lotes,
                              noutra_futura={}, playset_bloqueado=0,
                              req_compra=requisito_material(s),
                              marca_compra=marca_compra(s),
@@ -2975,6 +3129,37 @@ def movimentos_de_entrada(s: dict, caixas: set[str] | frozenset) -> list[dict]:
     return out
 
 
+def movimentos_reservados(s: dict) -> list[dict]:
+    """As cópias que ESTA caixa quer, que a alocação prometeu a OUTRA, e que
+    continuam na gaveta — ao alcance da mão.
+
+    André, 2026-09-08, à letra: *"De todas as cartas, só o Stiflenought está em
+    deckbox; o resto ainda nada está em deckbox."* Se ele abrir a Enchantress
+    antes do UW Replenish, as cartas que o Replenish há-de levar estão ali, na
+    `Colecção`, e nada o impede de as tirar hoje. A alocação é um plano; a
+    estante é que é a realidade.
+
+    Ficam num bloco PRÓPRIO do painel *Montar* e vêm por marcar: tirá-las é uma
+    decisão dele, não uma consequência de abrir a aba. O que ele marcar passa
+    para a `copy_allocation`, e a partir daí é a arrumação que manda sobre a
+    prioridade — a outra caixa passa a dizer *"em Enchantress"*, que é verdade
+    porque a carta está mesmo lá.
+
+    O que está sleevado DENTRO de outra caixa nunca entra aqui: essa não se tira
+    da gaveta, tira-se de um deck montado, e é o bloco «ir buscar a outra caixa».
+    """
+    out = []
+    for m in s.get("missing") or []:
+        for g in m.get("noutra_lotes") or []:
+            out.append({"nm": m["nm"], "q": g["q"], "de": g["local"],
+                        "para": s["nome"], "slot": s["slot"],
+                        "destino": g["destino"], "board": m["board"],
+                        "copy_id": g["id"], "sid": g["sid"], "basica": False,
+                        "finish": g["finish"], "lang": g["lang"],
+                        "set_code": g["set_code"], "sentido": "entra"})
+    return out
+
+
 def totais_por_board(s: dict) -> dict[str, int]:
     """Quantas cópias pede cada bloco da lista da caixa: `{"main": 60, "side": 15}`.
 
@@ -3053,12 +3238,20 @@ def plano_montar(res: dict, slot_id: str) -> dict:
     # está registada na base. São o mesmo gesto com outra gaveta.
     tirar = [m for m in movs if not m["basica"]]
     basicas = plano_basicas(s, [m for m in movs if m["basica"]])
+    # MONTAR FORA DE ORDEM (André, 2026-09-08): as cartas que esta caixa quer e
+    # que a alocação deu a outra caixa AINDA POR MONTAR estão na mesma gaveta.
+    # Ficam à parte porque tirá-las tem consequência — a outra caixa passa a ir
+    # buscá-las aqui —, e por isso não entram no `copias` nem na arrumação geral.
+    de_outra = sorted(movimentos_reservados(s),
+                      key=lambda m: (m["board"] != "main", m["nm"]))
     devolver = list(s.get("presos") or [])
     dentro = sum(g["q"] for m in s["have"] for g in m["lotes"] if not m.get("basica"))
     por_gaveta: dict[str, int] = defaultdict(int)
     for m in tirar:
         por_gaveta[m["de"]] += m["q"]
     return {"slot": s["slot"], "caixa": s["nome"], "tirar": tirar,
+            "de_outra": de_outra,
+            "copias_de_outra": sum(m["q"] for m in de_outra),
             "basicas": basicas,
             "basicas_copias": sum(b["need"] for b in basicas),
             "basicas_comprar": s.get("basicas_comprar", 0),
@@ -3375,6 +3568,13 @@ def report(con, cfg_slots: list[dict] | None = None) -> dict:
     res["custo_total"] = round(sum(s["custo"] for s in res["slots"]), 2)
     res["comprar_total"] = sum(s["comprar"] for s in res["slots"])
     res["noutra_total"] = sum(s["noutra"] for s in res["slots"])
+    # As duas metades do "ir buscar" (André, 2026-09-08). Hoje, com a
+    # `copy_allocation` só do Stiflenought, o `montada_total` é quase todo zero e
+    # o `reservada_total` é o número a sério — que é exactamente o que ele
+    # apanhou: a página mandava-o a caixas que ainda não existem na estante.
+    res["noutra_montada_total"] = sum(s["noutra_montada"] for s in res["slots"])
+    res["noutra_reservada_total"] = sum(s["noutra_reservada"] for s in res["slots"])
+    res["noutra_futura_total"] = sum(s["noutra_futura"] for s in res["slots"])
     res["sem_preco_total"] = sum(s["sem_preco"] for s in res["slots"])
     # Quantas cópias a partilha poupou — é a diferença entre somar as faltas
     # caixa a caixa (o que a v3 fazia) e comprar o máximo de uma delas.
@@ -3484,6 +3684,12 @@ def foil_report(con: sqlite3.Connection, fmt: str, top: int = 5,
                 "board": b, "nm": nm, "need": q, "got": e["got"], "basica": False,
                 "lotes": [], "missing": q - e["got"], "comprar": e["comprar"],
                 "noutra": e["noutra"], "noutra_q": e["noutra_q"],
+                # As duas metades do "está noutra caixa" (André, 2026-09-08):
+                # dentro dela, ou na gaveta só prometida. O ranking dizia sempre
+                # a primeira, e hoje a primeira é quase toda zero.
+                "noutra_montada": e["noutra_montada"],
+                "noutra_reservada": e["noutra_reservada"],
+                "noutra_onde": e["noutra_onde"],
                 # Todas as caixas que têm esta carta e a emprestam, sem o corte do
                 # `noutra` — é daqui que sai a cobertura *"como se fosse o
                 # principal"* (`premodern.pct_principal`).

@@ -143,6 +143,13 @@ def _montar_payload(rep, s, cores):
     por_cor = lambda x: (ordem.get(x["cor"], 9), x["nm"], x["set"])  # noqa: E731
     tirar = sorted((linha(m) for m in plano["tirar"]), key=por_cor)
     devolver = sorted((linha(m) for m in plano["devolver"]), key=por_cor)
+    # MONTAR FORA DE ORDEM (André, 2026-09-08): se ele abre a Enchantress antes
+    # do UW Replenish, as cartas que o Replenish há-de levar estão na mesma
+    # gaveta, ali à mão. Vêm num bloco PRÓPRIO e por marcar — tirá-las tem
+    # consequência (a outra caixa passa a vir buscá-las aqui), e por isso é uma
+    # decisão dele e não algo que acontece por abrir a aba.
+    de_outra = sorted(({**linha(m), "destino": m["destino"]}
+                       for m in plano["de_outra"]), key=por_cor)
     # TERRENOS BÁSICOS (André, 2026-09-08): *"faltou marcares, para completar o
     # deck, os terrenos básicos necessários!"* Vêm num bloco à parte, DEPOIS do
     # main e do sideboard: a pilha de básicas não está arrumada no binder por
@@ -154,13 +161,17 @@ def _montar_payload(rep, s, cores):
                 "unit": b["unit"], "ja": b["ja"], "da_base": b["da_base"],
                 "tirar": [linha(m) for m in b["tirar"]]}
                for b in plano["basicas"]]
-    return {"slot": plano["slot"],
+    return {"slot": plano["slot"], "caixa": plano["caixa"],
             "tirar": tirar, "devolver": devolver, "copias": plano["copias"],
+            "de_outra": de_outra, "copias_de_outra": plano["copias_de_outra"],
             "ja": plano["ja"], "por_gaveta": plano["por_gaveta"],
             "totais": plano["totais"],
             "blocos": [{"board": b["board"], "titulo": b["titulo"],
                         "movs": b["movs"], "q": b["q"], "de": b["de"]}
                        for b in loadout.blocos_de_board(tirar, plano["totais"])],
+            "blocos_de_outra": [{"board": b["board"], "titulo": b["titulo"],
+                                 "movs": b["movs"], "q": b["q"], "de": 0}
+                                for b in loadout.blocos_de_board(de_outra)],
             "basicas": basicas, "basicas_copias": plano["basicas_copias"],
             "basicas_comprar": plano["basicas_comprar"],
             "basicas_custo": plano["basicas_custo"],
@@ -225,6 +236,14 @@ def _caixa_payload(s, imgs, cfs, rep=None, col=None, tipos=None, cores=None):
             # "porque é que isto não está na lista de compras?".
             "bloq": m.get("playset_bloqueado", 0),
             "noutra": m["noutra"], "alt": m["alt"], "alt_onde": m["alt_onde"],
+            # ONDE A CARTA ESTÁ vs A QUEM ESTÁ DESTINADA (André, 2026-09-08: *"o
+            # resto ainda nada está em deckbox — e ainda estás a assumir que há
+            # cartas que já estão nas deckboxes dos decks"*). A frase vem pronta
+            # do Python (`loadout.onde_esta`): a página não volta a compor "em
+            # X" a partir do `noutra`, que é a caixa DESTINO e não o sítio.
+            "onde": loadout.onde_esta(m),
+            "nmont": sum(m["noutra_montada"].values()),
+            "nres": sum(m["noutra_reservada"].values()),
             "cost": m["cost"], "unit": m["unit"],
             "cf": m["nm"] in cfs,
             # O TIPO (para agrupar a lista como ele a arruma) e as cópias que tem
@@ -289,6 +308,11 @@ def _caixa_payload(s, imgs, cfs, rep=None, col=None, tipos=None, cores=None):
         "nota": s["nota"], "fonte": s.get("fonte"), "ref": s.get("ref"),
         "pct": s["pct"], "tenho": s["tenho"], "precisa": s["precisa"],
         "comprar": s["comprar"], "noutra": s["noutra"], "faltam": s["faltam"],
+        # As três parcelas do "destinadas a outra caixa" (André, 2026-09-08).
+        # O cabeçalho da caixa mostra-as separadas: só a primeira é uma ida a
+        # outra caixa, e hoje ela é ZERO em todas menos no Stiflenought.
+        "nmont": s["noutra_montada"], "nres": s["noutra_reservada"],
+        "nfut": s["noutra_futura"],
         "custo": s["custo"], "origens": s["origens"],
         # Quantas cópias a comprar não têm preço na base: o "fechar por" é um
         # MÍNIMO, e a página tem de o dizer em vez de o dar como a conta toda.
@@ -311,12 +335,15 @@ def _caixa_payload(s, imgs, cfs, rep=None, col=None, tipos=None, cores=None):
                              "mat": m.get("marca_compra") or ""}
                             for m in s["missing"] if m["comprar"] > 0),
                            key=lambda x: (x["board"] != "main", x["nm"])),
-        # `futura`: a parte do "ir buscar" que ainda não está em casa — é uma
-        # cópia que outra caixa vai comprar e partilhar. Dizê-lo é a diferença
-        # entre uma indicação e uma mentira.
-        "buscar": [{"nm": m["nm"], "noutra": m["noutra"], "comprar": m["comprar"],
-                    "futura": m.get("noutra_futura") or {}}
-                   for m in s["noutra_caixa"]],
+        # O "ir buscar" em TRÊS blocos, porque são três sítios diferentes
+        # (André, 2026-09-08). Quem parte é o Python (`buscar_montada` /
+        # `buscar_reservada` / `buscar_futura`) e quem escreve a frase é o
+        # `loadout.onde_esta` — a página juntava as três num "em <caixa>" só, e
+        # mandava-o abrir caixas que ainda não existem na estante.
+        "buscar": {qual: [{"nm": m["nm"], "comprar": m["comprar"],
+                           "onde": loadout.onde_esta(m, qual)}
+                          for m in s[f"buscar_{qual}"]]
+                   for qual in ("montada", "reservada", "futura")},
         "subs": [{"nm": m["nm"], "missing": m["missing"], "alt": m["alt"],
                   "onde": m["alt_onde"]} for m in s["subs"]],
     }
@@ -500,6 +527,12 @@ def payload(con, rep, editable=False, token="", ligacao=None):
                    "permanentes": sum(1 for s in rep["slots"] if s["permanente"]),
                    "candidatos": sum(1 for s in rep["slots"] if not s["permanente"]),
                    "comprar": rep["comprar_total"], "noutra": rep["noutra_total"],
+                   # As três parcelas do "destinadas a outra caixa". O cabeçalho
+                   # diz as três: a 2026-09-08 a primeira era ZERO e a página
+                   # continuava a chamar "ir buscar a outra caixa" às 70.
+                   "nmont": rep["noutra_montada_total"],
+                   "nres": rep["noutra_reservada_total"],
+                   "nfut": rep["noutra_futura_total"],
                    # Cópias que a partilha poupou (o que a soma caixa a caixa
                    # pedia a mais). Mostrado na aba Comprar.
                    "poupado": rep.get("poupado_total", 0),
@@ -704,6 +737,10 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
  .num b{display:block;font-size:16px;color:var(--ink);font-weight:800;
    font-variant-numeric:tabular-nums}
  .num.buy b{color:var(--warn)} .num.get b{color:#7fa8ff} .num.eur b{color:var(--gold)}
+ /* "na gaveta, destinadas a outra caixa": âmbar e não azul — não é uma ida a
+    outra caixa, é a mesma gaveta de sempre (André, 2026-09-08). */
+ .num.get2 b{color:var(--gold)}
+ .num .dim{display:block;font-size:10.5px;line-height:1.25}
  .nota{color:var(--dim);font-size:11.5px;margin:4px 0 0}
  .orig{color:var(--muted);font-size:12px;margin:6px 0 0}
  .orig b{color:var(--ink);font-variant-numeric:tabular-nums}
@@ -888,6 +925,12 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
  .bd{margin-top:2px} .bd .mv{border-bottom:0;padding:3px 4px}
  .bt{display:block;color:var(--dim);font-size:11.5px;padding:2px 0 2px 28px}
  .bt.warn{color:#e2a15b}
+ /* DESTINADAS A OUTRA CAIXA (2026-09-08): âmbar, como o terceiro estado das
+    cartas — "tens, mas não é bem para aqui". Vêm por marcar de propósito. */
+ .dout{margin:10px 0 8px;background:#1a1509;border:1px solid #4a3a12;
+   border-radius:var(--r);padding:9px 11px}
+ .dout .flh{color:var(--gold)}
+ .dout .nota{margin:4px 0 6px}
  .typehdr{margin:10px 0 2px;font-size:10.5px;font-weight:700;color:var(--muted);
    text-transform:uppercase;letter-spacing:.06em}
  .typehdr .dim{color:var(--dim)}
@@ -941,10 +984,14 @@ o que tirar da coleção para o montar e o que sobra para vender. Uma cópia fí
 numa caixa e <b>só numa</b> — quem conta é a alocação, não a coleção inteira (essa
 aparece como informação secundária em cada carta).
 <b style="color:var(--add)">Verde</b> = está nesta caixa ·
-<b style="color:var(--gold)">âmbar</b> = tens a carta mas não está aqui (ou está
-<b>noutra caixa</b> — diz qual e quantas, vais lá buscá-la, não se compra — ou não serve
-esta caixa na língua/acabamento) · <b style="color:var(--warn)">vermelho</b> = não tens
-nenhuma, é compra · <b>⚔</b> = partilhada com outra caixa.
+<b style="color:var(--gold)">âmbar</b> = tens a carta mas não está aqui ·
+<b style="color:var(--warn)">vermelho</b> = não tens nenhuma, é compra ·
+<b>⚔</b> = partilhada com outra caixa.
+Dentro do âmbar há <b>duas coisas diferentes</b>, e a página diz sempre qual:
+<b>📦 em &lt;caixa&gt;</b> — a cópia está mesmo sleevada lá dentro, vais àquela caixa
+buscá-la — e <b>🗂️ na Colecção, destinada a &lt;caixa&gt;</b> — está na gaveta de
+sempre, só prometida por prioridade a uma caixa que ainda não está montada; essa
+podes tirá-la já, no passo 1 do painel <b>Montar</b>. Nenhuma das duas se compra.
 Os <b>permanentes</b> escolhem as cartas primeiro; uma <b>candidata</b> fica com o que
 sobrar. Quem manda é o <code>colecao_config.json → caixas</code>; para mexer nele com
 botões, corre <code>python webapp.py</code> no PC (porto 8771) — e aí a aba
@@ -1011,7 +1058,9 @@ function renderResumo() {
     + `<b>${r.por_montar}</b> para montar · `
     + `${D.caixas.length} caixas (<b>${r.permanentes}</b> permanentes · `
     + `${r.candidatos} candidatas) · comprar <b>${r.comprar}</b> cópias por `
-    + `<b>${eur(r.custo)}</b> · ir buscar a outra caixa <b>${r.noutra}</b> · `
+    + `<b>${eur(r.custo)}</b> · ir buscar a outra caixa <b>${r.nmont}</b> `
+    + `(mais <b>${r.nres}</b> na gaveta destinadas a outra caixa`
+    + (r.nfut ? ` e <b>${r.nfut}</b> por comprar` : '') + `) · `
     + `arrumar <b>${r.arrumar}</b> · vender <b>${eur(r.venda)}</b>`
     + (D.editable ? ' · <b style="color:var(--add)">modo edição</b>' : '')
     + `<br><span class="dim">dados de ${esc(D.gerado)}</span>`;
@@ -1097,11 +1146,18 @@ function ir(id) { aba = id; P.aba = id; save(); renderTabs(); render(); }
 
 /* ------------------------------------------------------------------ caixa */
 function cardTile(c) {
-  const onde = c.est === 'sub' && Object.keys(c.noutra).length
-    ? Object.entries(c.noutra).map(([k, v]) => `${v}× ${k}`).join(', ') : '';
+  /* ONDE A CARTA ESTÁ (André, 2026-09-08). A frase vem pronta do Python
+     (`loadout.onde_esta`): "em UW Replenish" só quando a cópia está MESMO lá
+     dentro, e "na Colecção — destinada ao UW Replenish" enquanto a caixa não
+     está montada. Compô-la aqui a partir do `c.noutra` era o que mandava o
+     André à estante procurar uma carta dentro de uma caixa que não existe.
+     O selo curto do canto usa a mesma repartição: 📦 quando é uma ida a outra
+     caixa, 🗂️ quando é a gaveta de sempre. */
+  const onde = c.est === 'sub' ? (c.onde || []).join(' · ') : '';
+  const selo = !onde ? '' : c.nmont ? `📦 ${c.nmont}×` : `🗂️ ${c.nres}×`;
   const tit = [c.nm, c.est === 'have' ? `tens ${c.got}/${c.need}`
     : `falta ${c.missing}`,
-    onde ? 'em ' + onde : '',
+    onde,
     Object.entries(c.alt).map(([k, v]) => `${v}× ${k}`).join('; '),
     c.comprar ? `comprar ${c.comprar}` : '',
     c.bloq ? `limite de playset: falta ${c.bloq} que não se compra` : '',
@@ -1117,7 +1173,7 @@ function cardTile(c) {
   return `<div class="cd ${c.est}" title="${esc(tit)}">`
     + (c.sid ? `<img loading="lazy" src="${art(c.sid)}" alt="${esc(c.nm)}">` : '')
     + q + (c.cf ? '<span class="cf">⚔</span>' : '')
-    + (onde ? `<span class="onde">${esc(onde)}</span>` : '') + '</div>';
+    + (selo ? `<span class="onde">${esc(selo)}</span>` : '') + '</div>';
 }
 
 /* O ESTADO da caixa numa palavra (v6): candidata < permanente < montada <
@@ -1191,7 +1247,11 @@ function montarHTML(c) {
      faltem as 23 Snow-Covered Plains não pode dizer "não falta tirar nada" e
      mostrar 23 terras por baixo. */
   const basTirar = (M.basicas || []).some(b => b.tirar.length);
-  if (!M.tirar.length && !basTirar) {
+  /* O bloco «destinadas a outra caixa» conta para "há alguma coisa a tirar?":
+     uma caixa a que a alocação não dá nada, mas cujas cartas estão todas na
+     gaveta à espera de outra caixa por montar, tem MUITO para tirar — e sem
+     isto dizia "não falta tirar nada" com 20 cartas listadas por baixo. */
+  if (!M.tirar.length && !basTirar && !(M.de_outra || []).length) {
     h += `<p class="ok2">✓ Não falta tirar nada: tudo o que a alocação dá a esta `
       + `caixa já está lá dentro${M.ja ? ` (${M.ja} cópias)` : ''}.</p>`;
     h += basicasHTML(M);
@@ -1221,6 +1281,7 @@ function montarHTML(c) {
       h += `</div>`;
     }
     h += basicasHTML(M);
+    h += deOutraHTML(M);
     /* O botão só se DESENHA no modo edição: no site publicado o endpoint não
        existe, e um botão que não faz nada é pior do que não haver botão. */
     h += D.editable
@@ -1261,6 +1322,46 @@ function montarHTML(c) {
     + `<code>pendentes\\</code> (ou manda-as pela app do GitHub para o repo `
     + `<b>mtg-fotos-novas</b>). O vault importa-as, e esta caixa recalcula-se `
     + `sozinha na corrida seguinte — não há nada para marcar à mão.</p></div>`;
+  return h + `</div>`;
+}
+
+/* --------------------------------------- DESTINADAS A OUTRA CAIXA (montar
+   fora de ordem). André, 2026-09-08: *"De todas as cartas, só o Stiflenought
+   está em deckbox; o resto ainda nada está em deckbox."* Se ele abrir a
+   Enchantress antes do UW Replenish, as cartas que o Replenish há-de levar
+   estão na mesma gaveta, ao lado das outras. A alocação é um plano; a estante
+   é a realidade — e quem manda é a estante.
+
+   Vêm POR MARCAR, ao contrário do bloco de cima: tirá-las é uma decisão (a
+   outra caixa passa a vir buscá-las aqui) e não uma consequência de abrir a
+   aba. O «sleevado e na caixa» só regista as que estiverem marcadas. */
+function deOutraHTML(M) {
+  const bs = M.blocos_de_outra || [];
+  if (!bs.length) return '';
+  let h = `<div class="dout"><div class="flh">⚠️ Destinadas a outra caixa`
+    + `<span class="dim">${M.copias_de_outra} cópias · por marcar</span></div>`
+    + `<p class="nota">Estas cópias estão na gaveta, como todas as outras — a `
+    + `alocação prometeu-as a outra caixa por prioridade, mas essa caixa ainda `
+    + `não está montada. <b>Podes tirá-las já.</b> O que marcares fica `
+    + `registado nesta caixa, e a outra passa a dizer «em ${esc(M.caixa || 'esta caixa')}».</p>`;
+  for (const b of bs) {
+    if (bs.length > 1) {
+      h += `<div class="bhdr">${esc(b.titulo)}<span>${b.q}</span></div>`;
+    }
+    h += `<div class="mvs">`;
+    for (const m of b.movs) {
+      const id = `mo|${M.slot}|${m.copy_id}|${m.nm}|${m.board}`;
+      const feito = !!P.feitos[id];
+      h += `<label class="mv${feito ? ' feito' : ''}" data-id="${esc(id)}" `
+        + `data-copy="${m.copy_id}" data-q="${m.q}">`
+        + `<input type="checkbox"${feito ? ' checked' : ''}>`
+        + `<span class="q">${m.q}×</span>`
+        + `<span class="nm">${esc(m.nm)}`
+        + `<small>${esc(m.set)}${m.foil ? ' ✨' : ''} ${esc(m.lang)}</small></span>`
+        + `<span class="to">de ${esc(m.de)} · era p/ ${esc(m.destino)}</span></label>`;
+    }
+    h += `</div>`;
+  }
   return h + `</div>`;
 }
 
@@ -1437,7 +1538,16 @@ function caixaHTML(c, compacta) {
     + `<div class="nums">`
     + `<div class="num">na caixa<b>${c.tenho}/${c.precisa}</b></div>`
     + `<div class="num buy">comprar<b>${c.comprar}</b></div>`
-    + `<div class="num get">ir buscar<b>${c.noutra}</b></div>`
+    /* DOIS números, não um (André, 2026-09-08): "ir buscar a outra caixa" só
+       vale para o que está MESMO dentro de outra caixa. O resto está na gaveta,
+       destinado a uma caixa por montar — tira-se do mesmo sítio que tudo o
+       resto, e chamar-lhe "ir buscar" mandava-o a uma caixa vazia. */
+    + `<div class="num get">ir buscar<b>${c.nmont}</b>`
+    + `<span class="dim">a outra caixa (montada)</span></div>`
+    + `<div class="num get2">na gaveta<b>${c.nres}</b>`
+    + `<span class="dim">destinadas a outra caixa</span></div>`
+    + (c.nfut ? `<div class="num get2">por comprar<b>${c.nfut}</b>`
+        + `<span class="dim">outra caixa compra-as</span></div>` : '')
     + `<div class="num eur">fechar por<b>${eur(c.custo)}</b>`
     + (c.sem_preco ? `<span class="dim"> no mínimo — ${c.sem_preco} sem preço`
                      + ` na base</span>` : '') + `</div></div>`
@@ -1476,18 +1586,28 @@ function caixaHTML(c, compacta) {
     + `aria-label="Copiar a lista completa desta caixa">copiar a lista</button>`
     + `</div><textarea class="cmk" data-cmk="lista" readonly>${esc(c.lista)}`
     + `</textarea></div>`;
-  if (c.buscar.length) {
-    /* `futura` = a cópia ainda não está em casa; é uma compra de OUTRA caixa
-       que esta partilha. Dizê-lo evita a página mandá-lo à caixa do lado
-       buscar uma carta que ninguém comprou ainda. */
-    const li = c.buscar.map(m => `<li>${esc(m.nm)} — `
-      + Object.entries(m.noutra).map(([k, v]) => `<b>${v}×</b> em ${esc(k)}`
-          + ((m.futura || {})[k] ? ` <span class="dim">(${m.futura[k]} depois de `
-             + `${esc(k)} comprar)</span>` : '')).join('; ')
+  /* TRÊS blocos, não um (André, 2026-09-08: *"só o Stiflenought está em
+     deckbox; o resto ainda nada está em deckbox"*). São três sítios diferentes:
+     dentro de outra caixa (vais lá), na gaveta de sempre (tiras já) e uma
+     compra que outra caixa ainda vai fazer (não existe em casa). Um bloco só
+     mandava-o abrir caixas vazias — e hoje o primeiro é o único que costuma
+     estar a zero. Quem parte é o Python; aqui só se desenha. */
+  for (const [qual, n, tit, ajuda] of [
+      ['montada', c.nmont, '📦 ir buscar a outra caixa',
+       'Estas cópias estão sleevadas dentro de outra deckbox — vais lá buscá-las.'],
+      ['reservada', c.nres, '🗂️ na gaveta, destinadas a outra caixa',
+       'Estão na colecção, como todas as outras: a alocação prometeu-as a outra '
+       + 'caixa por prioridade, mas essa caixa ainda não está montada. Podes '
+       + 'tirá-las já no passo 1 — a outra passa a vir buscá-las aqui.'],
+      ['futura', c.nfut, '🛒 outra caixa vai comprá-las',
+       'Ainda não existem em casa: são uma compra partilhada de outra caixa.']]) {
+    const rows = c.buscar[qual] || [];
+    if (!rows.length) continue;
+    const li = rows.map(m => `<li>${esc(m.nm)} — ${esc(m.onde.join('; '))}`
       + (m.comprar ? ` <span class="dim">(comprar mais ${m.comprar})</span>` : '')
       + `</li>`).join('');
-    h += `<div class="blk onde"><b>📦 ir buscar a outra caixa — ${c.noutra} cópias</b>`
-      + `<ul>${li}</ul></div>`;
+    h += `<div class="blk onde"><b>${tit} — ${n} cópias</b>`
+      + `<p class="nota">${esc(ajuda)}</p><ul>${li}</ul></div>`;
   }
   /* O TECTO DE PLAYSET (André, 2026-09-08: "no Premodern, afinal só vou ter até
      playset de cada carta"). Uma falta que ele decidiu não tapar não é o mesmo
@@ -2382,8 +2502,17 @@ async function accao(act, slot, btn, aid, nome, id) {
       + 'saber o que está lá dentro (a base é copiada antes).')) return;
   btn.disabled = true;
   try {
+    /* MONTAR FORA DE ORDEM: as cópias que ele MARCOU no bloco «destinadas a
+       outra caixa» vão no pedido. Só essas — o resto do painel é a alocação
+       desta caixa, que o servidor já sabe de cor; estas são uma decisão dele
+       que o vault não tem como adivinhar. */
+    const deOutra = [...document.querySelectorAll(
+      `.dout .mv[data-id^="mo|${(slot || '').replace(/"/g, '')}|"]`)]
+      .filter(l => l.querySelector('input') && l.querySelector('input').checked)
+      .map(l => Number(l.dataset.copy));
     const r = await gravar(ESCOLHA[act] ? 'api/escolher' : 'api/caixa',
                            { act, slot, nome: nome || null, id: id || null,
+                             de_outra: deOutra,
                              aid: aid ? Number(aid) : null });
     if (!r.ok && r.status !== 403 && r.status !== 409) {
       throw new Error('HTTP ' + r.status);

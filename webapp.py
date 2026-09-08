@@ -479,7 +479,8 @@ def desmontar(con, slot_id: str, nome: str | None = None) -> dict:
 
 
 
-def marcar_na_caixa(con, slot_id: str, dentro: bool) -> int:
+def marcar_na_caixa(con, slot_id: str, dentro: bool,
+                    de_outra: list | None = None) -> int:
     """"Sleevado e na caixa": regista as cartas desta caixa como estando lá.
 
     É o mesmo mecanismo do "já arrumei tudo", limitado a uma caixa. Substituiu a
@@ -487,6 +488,14 @@ def marcar_na_caixa(con, slot_id: str, dentro: bool) -> int:
     (`copies.reserved_deck_id`): no modelo de colecção única a caixa já não é um
     balde, e as cartas de uma caixa podem vir de vários sítios — os quatro Utrom
     Monitor do Pauper vêm do SPML.
+
+    **MONTAR FORA DE ORDEM** (André, 2026-09-08): `de_outra` são os `copy_id`
+    que ele MARCOU no bloco «destinadas a outra caixa» — cópias que a alocação
+    prometeu a uma caixa por montar e que ele decidiu meter nesta. A partir daí
+    a `copy_allocation` manda sobre a prioridade: a corrida seguinte vê a cópia
+    dentro desta caixa (`_noutra_caixa`) e a outra passa a dizer *"em X"*, que
+    agora é verdade. Só entram as que o painel oferecia — um `copy_id` que esta
+    caixa não pediu era registar uma carta que não está lá dentro.
     """
     if not dentro:
         n = con.execute("DELETE FROM copy_allocation WHERE slot = ?",
@@ -497,11 +506,17 @@ def marcar_na_caixa(con, slot_id: str, dentro: bool) -> int:
     alvo = next((s for s in rep["slots"] if s["slot"] == slot_id), None)
     if alvo is None:
         return 0
-    con.execute("DELETE FROM copy_allocation WHERE slot = ?", (slot_id,))
     linhas: dict[int, int] = {}
     for m in alvo["have"]:
         for g in m["lotes"]:
             linhas[g["id"]] = linhas.get(g["id"], 0) + g["q"]
+    marcadas = {int(c) for c in (de_outra or [])}
+    if marcadas:
+        oferta = loadout.plano_montar(rep, slot_id).get("de_outra") or []
+        for mv in oferta:
+            if mv["copy_id"] in marcadas:
+                linhas[mv["copy_id"]] = linhas.get(mv["copy_id"], 0) + mv["q"]
+    con.execute("DELETE FROM copy_allocation WHERE slot = ?", (slot_id,))
     con.executemany(
         "INSERT INTO copy_allocation (copy_id, slot, quantity, placed_at) "
         "VALUES (?,?,?,datetime('now'))",
@@ -648,6 +663,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def _caixa(self, dados):
         act, slot_id = dados.get("act"), dados.get("slot")
+        # As cópias que ele marcou no bloco «destinadas a outra caixa» do painel
+        # Montar (2026-09-08). Só o `montado`/`confirmar` as usa.
+        de_outra = [int(c) for c in (dados.get("de_outra") or [])]
         cfg = ler_config()
         with db.session() as con:
             if act == "permanente":
@@ -667,8 +685,10 @@ class Handler(BaseHTTPRequestHandler):
                     msg = (f"{nome}: desmontada — {r['copias']} cópias voltam "
                            f"à colecção ({r['linhas']} linhas)")
                 else:
-                    n = marcar_na_caixa(con, slot_id, novo)
-                    msg = f"{nome}: {n} cópias registadas na caixa"
+                    n = marcar_na_caixa(con, slot_id, novo, de_outra)
+                    msg = (f"{nome}: {n} cópias registadas na caixa"
+                           + (f" ({len(de_outra)} eram de outra caixa — ela "
+                              f"passa a vir buscá-las aqui)" if de_outra else ""))
             elif act == "desmontar":
                 # O inverso do "sleevado e na caixa": as cartas voltam à gaveta.
                 # Passa pelo mesmo motor do botão de cima (backup + registo no
@@ -686,7 +706,7 @@ class Handler(BaseHTTPRequestHandler):
                 # sabe o que lá está: o que falta é registá-lo. Não mexe no
                 # config — o estado já está certo, o que faltava era a estante.
                 nome = caixas.caixa_do_cfg(cfg, slot_id).get("nome") or slot_id
-                n = marcar_na_caixa(con, slot_id, True)
+                n = marcar_na_caixa(con, slot_id, True, de_outra)
                 msg = f"{nome}: {n} cópias confirmadas dentro da caixa"
             elif act == "actualizar":
                 # "Actualizei": aplica o delta de UMA caixa congelada. Não passa
