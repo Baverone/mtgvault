@@ -1,0 +1,419 @@
+{
+ "arquetipos": {
+  "04764272e3": {
+   "formato": "premodern",
+   "nome": "Goblins",
+   "nucleo": [
+    "Gempalm Incinerator",
+    "Goblin Lackey",
+    "Goblin Matron",
+    "Goblin Piledriver",
+    "Goblin Ringleader",
+    "Goblin Sharpshooter",
+    "Goblin Tinkerer",
+    "Goblin Warchief",
+    "Karplusan Forest",
+    "Mogg Fanatic",
+    "Rishadan Port",
+    "Siege-Gang Commander"
+   ],
+   "primeira": "2026-09-08",
+   "ultima": "2026-09-08"
+  },
+  "13eb5a8587": {
+   "formato": "premodern",
+   "nome": "Ill-Gotten Gains",
+   "nucleo": [
+    "Brain Freeze",
+    "Cabal Ritual",
+    "Cephalid Coliseum",
+    "Deep Analysis",
+    "Flash of Insight",
+    "Ill-Gotten Gains",
+    "Intuition",
+    "Lion's Eye Diamond",
+    "Lotus Petal",
+    "Polluted Delta",
+    "Recoup",
+    "Underground River"
+   ],
+   "primeira": "2026-09-08",
+   "ultima": "2026-09-08"
+  },
+  "202d412bd6": {
+   "formato": "premodern",
+   "nome": "Mono-Verde Werebear",
+   "nucleo": [
+    "Gaea's Blessing",
+    "Land Grant",
+    "Quirion Dryad",
+    "Sylvan Library",
+    "Wall of Blossoms",
+    "Werebear"
+   ],
+   "primeira": "2026-09-08",
+   "ultima": "2026-09-08"
+  },
+  "26ac2152f1": {
+   "formato": "premodern",
+   "nome": "Full English Breakfast",
+   "nucleo": [
+    "Akroma, Angel of Wrath",
+    "Battlefield Scrounger",
+    "Elvish Spirit Guide",
+    "Hermit Druid",
+    "Karmic Guide",
+    "Palinchron",
+    "Phyrexian Devourer",
+    "Squee, Goblin Nabob",
+    "Triskelion",
+    "Unearth",
+    "Volrath's Shapeshifter",
+    "Yavimaya Coast"
+   ],
+   "primeira": "2026-09-08",
+   "ultima": "2026-09-08"
+  },
+  "2811f9a69f": {
+   "formato": "premodern",
+   "nome": "Mono-Preto Graveborn Muse",
+   "nucleo": [
+    "Cabal Therapy",
+    "Cursed Scroll",
+    "Dark Ritual",
+    "Diabolic Edict",
+    "Duress",
+    "Hypnotic Specter",
+    "Mishra's Factory",
+    "Ravenous Rats",
+    "Smother",
+    "Wasteland",
+    "Withered Wretch"
+   ],
+   "primeira": "2026-09-08",
+   "ultima": "2026-09-08"
+  },
+  "3885b4666a": {
+   "formato": "premodern",
+   "nome": "UW Replenish",
+   "nucleo": [
+    "Adarkar Wastes",
+    "Ancient Tomb",
+    "Attunement",
+    "Decree of Silence",
+    "Flooded Strand",
+    "Frantic Search",
+    "Intuition",
+    "Opalescence",
+    "Parallax Wave",
+    "Replenish",
+    "Skycloud Expanse",
+    "Swords to Plowshares"
+   ],
+   "primeira": "2026-09-08",
+   "ultima": "2026-09-08"
+  },
+  "4841da6e7f": {
+   "formato": "premodern",
+   "nome": "Psychatog",
+   "nucleo": [
+    "Circular Logic",
+    "Psychatog",
+    "Upheaval"
+   ],
+   "primeira": "2026-09-08",
+   "ultima": "2026-09-08"
+  },
+  "6bf428b231": {
+   "formato": "premodern",
+   "nome": "Elves / Survival",
+   "nucleo": [
+    "Anger",
+    "Deranged Hermit",
+    "Fyndhorn Elves",
+    "Llanowar Elves",
+    "Masticore",
+    "Multani's Acolyte",
+    "Nantuko Vigilante",
+    "Priest of Titania",
+    "Quirion Ranger",
+    "Thornscape Battlemage",
+    "Wirewood Symbiote",
+    "Yavimaya Granger"
+   ],
+   "primeira": "2026-09-08",
+   "ultima": "2026-09-08"
+  },
+  "72740aba9b": {
+   "formato": "premodern",
+   "nome": "Orzhov Exalted Angel",
+   "nucleo": [
+    "Caves of Koilos",
+    "Dust Bowl",
+    "Eternal Dragon",
+    "Exalted Angel",
+    "Gerrard's Verdict",
+    "Haunting Echoes",
+    "Phyrexian Furnace",
+    "Seal of Cleansing",
+    "Secluded Steppe",
+    "Skeletal Scrying",
+    "Vindicate",
+    "Wrath of God"
+   ],
+   "primeira": "2026-09-08",
+   "ultima": "2026-09-08"
+  },
+  "7fbd22f4da": {
+   "formato": "legacy",
+   "nome": "Mono-Azul Frogmite",
+   "nucleo": [
+    "Frogmite",
+    "Thoughtcast"
+   ],
+   "primeira": "2026-09-08",
+   "ultima": "2026-09-08"
+  },
+  "844004e1fe": {
+   "formato": "premodern",
+   "nome": "Landstill",
+   "nucleo": [
+    "Adarkar Wastes",
+    "Coastal Tower",
+    "Decree of Justice",
+    "Disenchant",
+    "Dust Bowl",
+    "Fact or Fiction",
+    "Flooded Strand",
+    "Impulse",
+    "Mana Leak",
+    "Powder Keg",
+    "Standstill",
+    "Wrath of God"
+   ],
+   "primeira": "2026-09-08",
+   "ultima": "2026-09-08"
+  },
+  "95a99aa40d": {
+   "formato": "premodern",
+   "nome": "Orzhov Exalted Angel",
+   "nucleo": [
+    "Duress",
+    "Exalted Angel",
+    "Vindicate"
+   ],
+   "primeira": "2026-09-08",
+   "ultima": "2026-09-08"
+  },
+  "a8113fbe00": {
+   "formato": "premodern",
+   "nome": "Pyrostatic Pillar",
+   "nucleo": [
+    "Black Vise",
+    "Fireblast",
+    "Flame Rift",
+    "Grim Lavamancer",
+    "Incinerate",
+    "Lightning Bolt",
+    "Mogg Fanatic",
+    "Price of Progress",
+    "Pyrostatic Pillar",
+    "Seal of Fire"
+   ],
+   "primeira": "2026-09-08",
+   "ultima": "2026-09-08"
+  },
+  "b38b17cddb": {
+   "formato": "premodern",
+   "nome": "Stasis",
+   "nucleo": [
+    "Black Vise",
+    "Chain of Vapor",
+    "Daze",
+    "Flash of Insight",
+    "Forsaken City",
+    "Gush",
+    "Impulse",
+    "Mana Short",
+    "Portent",
+    "Root Maze",
+    "Stasis",
+    "Thwart"
+   ],
+   "primeira": "2026-09-08",
+   "ultima": "2026-09-08"
+  },
+  "b4dcbc5dbb": {
+   "formato": "premodern",
+   "nome": "Stiflenought",
+   "nucleo": [
+    "Counterspell",
+    "Flash of Insight",
+    "Foil",
+    "Gush",
+    "Impulse",
+    "Opt",
+    "Phyrexian Dreadnought",
+    "Portent",
+    "Stifle",
+    "Thwart",
+    "Vision Charm"
+   ],
+   "primeira": "2026-09-08",
+   "ultima": "2026-09-08"
+  },
+  "bfbba613c1": {
+   "formato": "premodern",
+   "nome": "Enchantress",
+   "nucleo": [
+    "Argothian Enchantress",
+    "Brushland",
+    "Enchantress's Presence",
+    "Mirri's Guile",
+    "Opalescence",
+    "Parallax Wave",
+    "Replenish",
+    "Seal of Cleansing",
+    "Serra's Sanctum",
+    "Solitary Confinement",
+    "Sterling Grove",
+    "Wild Growth"
+   ],
+   "primeira": "2026-09-08",
+   "ultima": "2026-09-08"
+  },
+  "c6998a9b7d": {
+   "formato": "premodern",
+   "nome": "Oath of Druids",
+   "nucleo": [
+    "Mishra's Factory",
+    "Mox Diamond",
+    "Oath of Druids",
+    "Rishadan Port",
+    "Sphere of Resistance",
+    "Sylvan Library",
+    "Terravore",
+    "Thermokarst",
+    "Treetop Village",
+    "Wasteland",
+    "Windswept Heath",
+    "Winter's Grasp"
+   ],
+   "primeira": "2026-09-08",
+   "ultima": "2026-09-08"
+  },
+  "e62ac61340": {
+   "formato": "premodern",
+   "nome": "Stasis",
+   "nucleo": [
+    "Black Vise",
+    "Forsaken City",
+    "Stasis"
+   ],
+   "primeira": "2026-09-08",
+   "ultima": "2026-09-08"
+  },
+  "e637ee444c": {
+   "formato": "premodern",
+   "nome": "Golgari Wall of Blossoms",
+   "nucleo": [
+    "Cabal Therapy",
+    "Diabolic Edict",
+    "Duress",
+    "Genesis",
+    "Haunting Echoes",
+    "Krosan Tusker",
+    "Llanowar Wastes",
+    "Pernicious Deed",
+    "Ravenous Baloth",
+    "Treetop Village",
+    "Wall of Blossoms",
+    "Wall of Roots"
+   ],
+   "primeira": "2026-09-08",
+   "ultima": "2026-09-08"
+  },
+  "e8c086499f": {
+   "formato": "premodern",
+   "nome": "Enchantress",
+   "nucleo": [
+    "Argothian Enchantress",
+    "Enchantress's Presence",
+    "Serra's Sanctum",
+    "Sterling Grove"
+   ],
+   "primeira": "2026-09-08",
+   "ultima": "2026-09-08"
+  },
+  "f0f384fbd7": {
+   "formato": "premodern",
+   "nome": "Sligh",
+   "nucleo": [
+    "Bloodstained Mire",
+    "Call of the Herd",
+    "Grim Lavamancer",
+    "Incinerate",
+    "Jackal Pup",
+    "Karplusan Forest",
+    "Lightning Bolt",
+    "Mogg Fanatic",
+    "Naturalize",
+    "Seal of Fire",
+    "Treetop Village",
+    "Wooded Foothills"
+   ],
+   "primeira": "2026-09-08",
+   "ultima": "2026-09-08"
+  },
+  "f102883ccf": {
+   "formato": "premodern",
+   "nome": "Goblins",
+   "nucleo": [
+    "Goblin Piledriver",
+    "Goblin Warchief",
+    "Mogg Fanatic"
+   ],
+   "primeira": "2026-09-08",
+   "ultima": "2026-09-08"
+  },
+  "f81c5e2a96": {
+   "formato": "premodern",
+   "nome": "Terrageddon",
+   "nucleo": [
+    "Armageddon",
+    "Battlefield Forge",
+    "Call of the Herd",
+    "Disenchant",
+    "Mox Diamond",
+    "Nimble Mongoose",
+    "Rith's Grove",
+    "Sylvan Library",
+    "Terravore",
+    "Tranquil Thicket",
+    "Weathered Wayfarer",
+    "Werebear"
+   ],
+   "primeira": "2026-09-08",
+   "ultima": "2026-09-08"
+  },
+  "f886821817": {
+   "formato": "premodern",
+   "nome": "Psychatog",
+   "nucleo": [
+    "Chain of Vapor",
+    "Counterspell",
+    "Duress",
+    "Foil",
+    "Gush",
+    "Opt",
+    "Polluted Delta",
+    "Portent",
+    "Psychatog",
+    "Smother"
+   ],
+   "primeira": "2026-09-08",
+   "ultima": "2026-09-08"
+  }
+ },
+ "versao": 1
+}
