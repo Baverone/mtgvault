@@ -3,9 +3,10 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 
-from . import (analysis, collection, db, loadout, mtgtop8, prices, scryfall,
-               sources, stock, wantlist, watchlist)
+from . import (analysis, caixas, collection, db, loadout, mtgtop8, prices,
+               scryfall, sources, stock, wantlist, watchlist)
 
 
 def _p(rows, cols):
@@ -146,6 +147,11 @@ def main(argv=None):
     ar.add_argument("--csv", action="store_true", help="saída em CSV (moves)")
     ar.add_argument("--confirmar", action="store_true",
                     help='"já arrumei tudo": grava a alocação como a arrumação real')
+
+    mc = sub.add_parser("migrar-caixas",
+                        help="colecao_config.json: `loadout` -> `caixas` (v6)")
+    mc.add_argument("--dry-run", action="store_true",
+                    help="só diz o que faria; não escreve nada")
 
     mig = sub.add_parser("migrar-coleccao-unica",
                          help="funde os baldes na `Colecção` (a RL fica de fora)")
@@ -432,19 +438,37 @@ def main(argv=None):
         elif args.cmd == "migrar-coleccao-unica":
             _migrar(con, dry_run=args.dry_run, com_backup=not args.sem_backup)
 
+        elif args.cmd == "migrar-caixas":
+            r = caixas.migrar_ficheiro(dry_run=args.dry_run)
+            if not r["mudou"]:
+                print(f"{r['path']}: já está no formato `caixas` (v6) — nada a fazer")
+            elif args.dry_run:
+                print(f"{r['path']}: {r['caixas']} caixas a converter (dry-run)")
+            else:
+                print(f"{r['path']}: {r['caixas']} caixas escritas "
+                      f"(backup em {Path(r['backup']).name})")
+
 
 def _loadout_resumo(rep):
-    print("DECKS EM DECKBOX\n")
+    print("DECKS EM DECKBOX (uma caixa = um deck)\n")
     linhas = []
     for s in rep["slots"]:
-        estado = ("por confirmar" if s.get("por_confirmar") or s["vazio"]
-                  else "montado" if s.get("montado") else "a montar")
+        estado = ("deck por escolher" if s["vazio"] else s.get("estado"))
         linhas.append({"slot": s["nome"], "formato": s["formato"], "%": s["pct"],
                        "tenho": f"{s['tenho']}/{s['precisa']}",
                        "comprar": s["comprar"], "ir buscar": s["noutra"],
                        "custo": f"{s['custo']:.2f}€", "estado": estado})
     _p(linhas, ["slot", "formato", "%", "tenho", "comprar", "ir buscar", "custo",
                 "estado"])
+    # POR ONDE COMEÇAR (v6): a mesma ordem da aba Plano — permanentes primeiro,
+    # depois as candidatas mais perto de fechar. Uma função só para os dois.
+    por_montar = [m for m in rep.get("montagem") or [] if not m["montado"]]
+    if por_montar:
+        print("\nPOR ONDE COMEÇAR")
+        for i, m in enumerate(por_montar, 1):
+            print(f"  {i}. {m['caixa']:<28} {m['pct']:>3}%  tirar {m['tirar']:>3}"
+                  f"  comprar {m['comprar']:>3} ({m['custo']:.2f}€)"
+                  f"  {m['estado']}")
     print(f"\n  comprar: {rep['comprar_total']} cópias / {rep['custo_total']:.2f}€")
     print(f"  ir buscar a outra caixa: {rep['noutra_total']} cópias (não são compra)")
     print(f"  partilhadas: {len(rep['conflitos'])} cartas que 2+ caixas querem")

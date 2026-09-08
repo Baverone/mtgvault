@@ -16,10 +16,20 @@ entra numa lista só. É a mesma lição do `sources.lista_conta` e do
 """
 from __future__ import annotations
 
+import html
+import json
+from collections import defaultdict
+
 # O menu, pela ordem em que aparece no `index.html`. (ficheiro, ícone, rótulo).
+#
+# A **Deckboxes é a página dos decks** (André, 2026-09-08: *"temos decks vigiados
+# e deckbox que é a mesma coisa"*). A antiga *Decks permanentes*
+# (`meusdecks.html`) saiu do menu na v6: fazia a mesma pergunta e respondia com
+# outro número, porque contava a colecção inteira por deck em vez da alocação. O
+# ficheiro continua a ser gerado, mas só como **reencaminhamento** — os links
+# antigos (e o histórico do telemóvel dele) não podem cair num 404.
 MENU = [
     ("index.html", "🏠", "Início"),
-    ("meusdecks.html", "🎴", "Decks permanentes"),
     ("deckboxes.html", "🧰", "Deckboxes"),
     ("metagame.html", "🌐", "Metagame"),
     ("showcase.html", "🎯", "Showcase Challenger"),
@@ -67,6 +77,155 @@ def img_map(con, names, da_coleccao: bool = True) -> dict[str, str]:
         if r:
             out[n] = r["sid"]
     return out
+
+
+def art(sid) -> str:
+    """O URL da arte pequena de uma impressão. Estava copiado em cinco páginas."""
+    return (f"https://cards.scryfall.io/small/front/{sid[0]}/{sid[1]}/{sid}.jpg"
+            if sid else "")
+
+
+# ---------------------------------------------------------------------------
+# Cartas: cor, tipo e quantas ele tem
+# ---------------------------------------------------------------------------
+# A COR, pela ordem por que ele arruma as cartas (a mesma do `colecao_cor.html`:
+# cor -> CMC). É por aqui que se procura numa caixa de colecção, e por isso é
+# esta a ordem da lista "tirar da Colecção" do painel Montar (v6).
+CORES = [("W", "⬜ Branco"), ("U", "🟦 Azul"), ("B", "⬛ Preto"),
+         ("R", "🟥 Vermelho"), ("G", "🟩 Verde"), ("M", "🌈 Multicor"),
+         ("C", "⚙️ Incolor / Artefacto"), ("L", "🏞️ Terras")]
+COR_ORDEM = {k: i for i, (k, _t) in enumerate(CORES)}
+COR_NOME = dict(CORES)
+
+# Ordem de organização dos decks por tipo de carta (pedido do André, 2026-08-31).
+TIPOS = ["Creature", "Planeswalker", "Sorcery", "Instant", "Artifact",
+         "Enchantment", "Land"]
+
+
+def cor_de(type_line: str | None, ci) -> str:
+    """A gaveta de cor de uma carta: W/U/B/R/G, M (multicor), C ou L (terra).
+
+    O mesmo critério do `colecao_cor._bucket` — as terras primeiro, senão uma
+    Ancient Tomb caía em "incolor" e ele procura-a nas terras.
+    """
+    if type_line and "Land" in (type_line or "").split(" // ")[0]:
+        return "L"
+    try:
+        cols = (json.loads(ci) if isinstance(ci, str) and ci.strip().startswith("[")
+                else [c for c in (ci or "") if c in "WUBRG"])
+    except (TypeError, ValueError):
+        cols = [c for c in (ci or "") if c in "WUBRG"]
+    cols = [c for c in cols if c in "WUBRG"]
+    if len(cols) >= 2:
+        return "M"
+    return cols[0] if cols else "C"
+
+
+def tipo_de(type_line: str | None) -> str:
+    """Tipo principal de uma carta, pela ordem do André (Creature 1º, Land último).
+    Cartas de múltiplos tipos caem no 1º tipo que casa (Artifact Creature →
+    Creature)."""
+    tl = (type_line or "").split(" // ")[0]
+    return next((t for t in TIPOS if t in tl), "Other")
+
+
+def _meta_cartas(con, names) -> dict[str, tuple[str, str]]:
+    """`nome (frente) -> (type_line, color_identity)`, do catálogo.
+
+    Uma consulta por lote de 300 e um fallback por LIKE para as de dupla face — o
+    catálogo guarda `frente // verso` e as listas escrevem só a frente.
+    """
+    out: dict[str, tuple[str, str]] = {}
+    names = [n for n in dict.fromkeys(names) if n]
+    for i in range(0, len(names), 300):
+        ch = names[i:i + 300]
+        ph = ",".join("?" for _ in ch)
+        for r in con.execute(f"""SELECT name nm, type_line tl, color_identity ci
+                                   FROM cards WHERE name IN ({ph}) AND digital = 0
+                                  GROUP BY name""", ch):
+            out.setdefault(r["nm"].split(" // ")[0], (r["tl"], r["ci"]))
+    for n in [x for x in names if x not in out]:
+        r = con.execute("SELECT type_line tl, color_identity ci FROM catalog.cards "
+                        "WHERE (name = ? OR name LIKE ?) AND digital = 0 LIMIT 1",
+                        (n, n + " // %")).fetchone()
+        if r:
+            out[n] = (r["tl"], r["ci"])
+    return out
+
+
+def cores(con, names) -> dict[str, str]:
+    """`nome -> gaveta de cor`. Usa-a o painel Montar para ordenar a lista."""
+    return {n: cor_de(tl, ci) for n, (tl, ci) in _meta_cartas(con, names).items()}
+
+
+def tipos(con, names) -> dict[str, str]:
+    """`nome -> tipo principal`. Era o `meusdecks._type_map`."""
+    return {n: tipo_de(tl) for n, (tl, _ci) in _meta_cartas(con, names).items()}
+
+
+def posse_total(con) -> dict[str, int]:
+    """`nome (frente) -> cópias jogáveis na COLECÇÃO INTEIRA.
+
+    Era o `meusdecks._owned_qty`, e é a única coisa que aquela página dizia e a
+    Deckboxes não: quantas ele tem ao todo, sem contar quem as leva. Na v6 é
+    informação **secundária** de cada carta — o número que manda é o da alocação
+    (é a mesma pergunta, e duas respostas era o defeito a corrigir).
+    """
+    out: dict[str, int] = defaultdict(int)
+    for r in con.execute("""SELECT c.name nm, SUM(cp.quantity) q FROM copies cp
+                              JOIN cards c ON c.scryfall_id = cp.scryfall_id
+                             WHERE cp.purpose = 'player' GROUP BY c.name"""):
+        out[r["nm"].split(" // ")[0]] += r["q"]
+    return dict(out)
+
+
+def grupos_por_tipo(cards, tm, render) -> str:
+    """Agrupa os cartões por tipo (ordem do André) com um cabeçalho por grupo.
+
+    Era o `meusdecks._group_by_type`, usado também pelo `showcase`. Cada carta
+    pode trazer o seu tipo em `_type`; senão vem de `tm`.
+    """
+    buckets = defaultdict(list)
+    for c in cards:
+        buckets[c.get("_type") or tm.get(c["nm"].split(" // ")[0], "Other")].append(c)
+    out = ""
+    for t in TIPOS + ["Other"]:
+        b = buckets.get(t)
+        if not b:
+            continue
+        out += (f'<div class="typehdr">{html.escape(t)} '
+                f'<span class="dim">{sum(c.get("qty", 1) for c in b)}</span></div>'
+                f'<div class="cards">{"".join(render(c) for c in b)}</div>')
+    return out
+
+
+def faltas_de(cards, basicas=frozenset()) -> dict[str, int]:
+    """`{nome: cópias a COMPRAR}` de uma lista de cartões, sem básicas.
+
+    `comprar`, não `qty - hq`: uma carta que está noutra caixa do loadout já é
+    dele e vai-se buscar (André, 2026-09-07). Era o `meusdecks._faltas`.
+    """
+    out: dict[str, int] = defaultdict(int)
+    for c in cards:
+        m = c.get("comprar", c["qty"] - c["hq"])
+        if m > 0 and c["nm"] not in basicas:
+            out[c["nm"].split(" // ")[0]] += m
+    return dict(out)
+
+
+def faltas_html(faltas, cls="", label="🛒 Faltas") -> str:
+    """Bloco de faltas: cabeçalho + lista 'N× Carta' + botão copiar (formato
+    Cardmarket numa textarea escondida). Era o `meusdecks._faltas_html`."""
+    if not faltas:
+        return ""
+    order = sorted(faltas.items())
+    items = "".join(f'<li><b>{q}×</b> {html.escape(nm)}</li>' for nm, q in order)
+    cmk = "\n".join(f"{q} {nm}" for nm, q in order)
+    return (f'<div class="faltas {cls}"><div class="flh">{label} '
+            f'<span class="dim">{len(faltas)} · {sum(faltas.values())} cóp.</span>'
+            f'<button class="cpbtn" onclick="cpFaltas(this)">copiar</button></div>'
+            f'<ul class="fl">{items}</ul>'
+            f'<textarea class="cmk" readonly>{html.escape(cmk)}</textarea></div>')
 
 
 def nav(atual: str = "", extra: bool = False) -> str:

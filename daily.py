@@ -33,7 +33,7 @@ import core_decks  # noqa: E402  (gera coredecks.html + tracking de alteracoes)
 import collection_gallery  # noqa: E402  (gera colecao.html — galeria com imagens)
 import colecao_cor  # noqa: E402  (gera colecao_cor.html — coleção por cor + custo de mana)
 import meta_coverage  # noqa: E402  (gera cobertura.html — top decks + % que tenho + o que falta)
-import meusdecks  # noqa: E402  (gera meusdecks.html — os meus decks: estado, % e evolução)
+import meusdecks  # noqa: E402  (gera meusdecks.html — reencaminhamento p/ deckboxes.html, v6)
 import deckboxes  # noqa: E402  (gera deckboxes.html — o loadout: decks montados em simultâneo + venda)
 import metagame  # noqa: E402  (gera metagame.html — o top-N que está mais perto de concluir)
 # (decks_faziveis RETIRADO 2026-09-07: fundido no metagame.py, que responde à

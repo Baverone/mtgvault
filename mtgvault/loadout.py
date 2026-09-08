@@ -5,9 +5,14 @@ preparar para montar os decks (em deckboxes) para estarem sempre prontos para ir
 jogar, e começar a vender o que está em excesso."*
 
 O LOADOUT é a lista de decks que estão montados AO MESMO TEMPO. Está em
-`colecao_config.json -> loadout`: um slot por caixa, cada um com a fonte da sua
-lista (`vigiado` / `deck` / `consenso`), o balde onde as cartas vivem, a
-prioridade (quem ganha um conflito) e as restrições de material.
+`colecao_config.json -> caixas` (era `loadout` até à v6, 2026-09-08 — ver
+`mtgvault.caixas`): uma caixa por deck, cada uma com a fonte da sua lista
+(`vigiado` / `deck` / `consenso` / `escolhido` / `manual`), o balde onde as
+cartas vivem, o `estado`, a prioridade e as restrições de material. Desde a v6 a
+CAIXA é a única noção de deck do vault — *"temos decks vigiados e deckbox que é a
+mesma coisa"* —, e o `caixas.para_slot` traduz as duas formas (v5 e v6) para a
+interna, que é a que este módulo consome. Por isso a unificação não mexeu num
+único número da alocação.
 
 O que este módulo faz é ALOCAR exemplares físicos aos slots. Não é uma soma de
 coberturas independentes: uma cópia física só entra numa caixa de cada vez, por
@@ -149,14 +154,33 @@ entra). Só se aplica quando ele carregar em *"actualizei"* no modo edição
 (`actualizar_caixa`); o *"já arrumei tudo"* geral deixa as caixas congeladas
 exactamente como estão.
 
-Sem rede e sem efeitos colaterais: lê o `vault.db` e devolve números.
+MONTAR, E VENDER O QUE SOBRA (v6, 2026-09-08)
+---------------------------------------------
+*"Espero começar a montar os decks em deckbox o mais cedo possível para começar a
+comprar as faltas e livrar-me dos excessos de cartas."* Daí três funções que são
+o gesto e não a conta:
+
+  * `plano_montar(res, slot)` — as cópias a tirar das gavetas para montar UMA
+    caixa (o painel *Montar*), pelo mesmo cálculo da arrumação geral
+    (`movimentos_de_entrada`) para as duas listas não poderem discordar;
+  * `ordem_de_montagem(res)` — por onde começar: permanentes por prioridade,
+    depois as candidatas mais perto de fechar;
+  * `registar_venda(con, linha)` — o *"vendida"*: a cópia sai da `copies` e a
+    venda fica no `data/vendas.csv`. É a única função deste módulo que ESCREVE
+    fora da `copy_allocation`, e por isso é a única que tira coisas de casa.
+
+Fora dessas (e do `guardar_arrumacao`/`actualizar_caixa`), sem rede e sem efeitos
+colaterais: lê o `vault.db` e devolve números.
 """
 from __future__ import annotations
 
 import json
 import sqlite3
 from collections import defaultdict
+from datetime import date
+from pathlib import Path
 
+from . import caixas as _caixas
 from . import sources, stock
 
 # Última edição legal em Premodern (Scourge). É por aqui que se decide se uma
@@ -302,9 +326,15 @@ def card_price(con, name: str, finish: str = "nonfoil",
 # Configuração
 # ---------------------------------------------------------------------------
 def config_slots() -> list[dict]:
-    """`colecao_config.json -> loadout`, sem as chaves de ajuda `_xxx`."""
-    v = sources.config().get("loadout") or []
-    return [{k: x[k] for k in x if not str(k).startswith("_")} for x in v]
+    """As caixas do config, na forma interna (ver `mtgvault.caixas`).
+
+    Desde a v6 a chave é `caixas` e não `loadout` — uma estrutura só para o que
+    eram duas (*"temos decks vigiados e deckbox que é a mesma coisa"*, André,
+    2026-09-08). Um config da v5 continua a servir: o `caixas.do_config` migra-o
+    em memória, e o `para_slot` devolve exactamente os mesmos campos de sempre.
+    É por isso que a unificação não mexe num único número da alocação.
+    """
+    return _caixas.slots()
 
 
 def baldes_coleccao() -> tuple[str, ...]:
@@ -671,7 +701,9 @@ def resolve_slots(con, cfg_slots: list[dict] | None = None) -> list[dict]:
     arrumadas = caixas_arrumadas(con)
     vigiados = set(sources.config().get("decks_vigiados") or [])
     for s in (cfg_slots if cfg_slots is not None else config_slots()):
-        s = dict(s)
+        # Aceita as duas formas — a caixa da v6 e a linha do `loadout` da v5 —
+        # e devolve sempre a interna. Uma função só, e idempotente.
+        s = _caixas.para_slot(s)
         ordem_grupo, regra = regra_do_formato(s.get("formato"), regras)
         for k in CHAVES_REGRA:
             if k in regra and k not in s:
@@ -680,17 +712,15 @@ def resolve_slots(con, cfg_slots: list[dict] | None = None) -> list[dict]:
         s["grupo_ordem"] = ordem_grupo
         s["vigiado"] = (s.get("fonte") == "vigiado"
                         or bool(s.get("ref")) and s["ref"] in vigiados)
-        # *"Os decks que eu pedi para serem permanentes são a minha prioridade
-        # máxima!"* (André, 2026-09-07). Sem a chave, o slot é permanente: era o
-        # que as catorze caixas do loadout eram antes de a distinção existir, e
-        # um default a `False` esvaziava a alocação de quem não a escrevesse.
-        s["permanente"] = bool(s.get("permanente", True))
         # `dedicado` chega aqui pela regra do grupo (ver `CHAVES_REGRA`) ou
-        # escrito no próprio slot. Normaliza-se para as páginas não terem de
+        # escrito na própria caixa. Normaliza-se para as páginas não terem de
         # distinguir `False` de "a chave não existe".
         s["dedicado"] = bool(s.get("dedicado"))
-        s["montado"] = bool(s.get("montado"))
         s["congelada"] = congelada(s, arrumadas)
+        # O `estado` que as páginas mostram é o EFECTIVO: `congelada` calcula-se
+        # (montada + dedicada + o vault sabe o que lá está), nunca se grava.
+        if s["congelada"]:
+            s["estado"] = _caixas.CONGELADA
         # Diz-se montada e o vault não sabe o que lá está dentro. Não é um erro —
         # é o estado normal de quem ainda não carregou em "Sleevado e na caixa" —
         # mas a página tem de o dizer, senão o "delta de actualização" mostra a
@@ -1574,6 +1604,11 @@ def sell_list(con, res: dict) -> dict:
                 unit, pfin = card_price(con, nm, lot["finish"])
                 linha = {"nm": nm, "sub": lot["sub"], "local": lot["local"],
                          "q": take,
+                         # Que exemplares são, para o botão "vendida" do modo
+                         # edição os poder tirar da base. Sem isto a linha era
+                         # só texto e a única maneira de registar uma venda era
+                         # editar a `copies` à mão.
+                         "copias": [[lot["id"], take]],
                          "finish": lot["finish"], "lang": lot["lang"],
                          "set_code": lot["set_code"], "set_name": lot["set_name"],
                          "sid": lot["sid"], "rl": lot["rl"], "unit": unit,
@@ -1601,6 +1636,7 @@ def sell_list(con, res: dict) -> dict:
                  r["reason"])
             if k in junto:
                 junto[k]["q"] += r["q"]
+                junto[k]["copias"] = junto[k]["copias"] + r["copias"]
                 junto[k]["total"] = round((junto[k]["unit"] or 0) * junto[k]["q"], 2)
             else:
                 junto[k] = dict(r)
@@ -1618,9 +1654,203 @@ def sell_list(con, res: dict) -> dict:
             "total_guardar": gd["total"], "copias_guardar": gd["copias"]}
 
 
+def ficheiro_vendas() -> Path:
+    """`data/vendas.csv` — o registo do que saiu da colecção.
+
+    Vive ao lado da base (`MTGVAULT_HOME`) e não dentro dela: a `vault.db` é
+    descarregada e republicada inteira a cada corrida, e um registo de vendas
+    que se pode perder numa publicação não é um registo. É um CSV para ele o
+    poder abrir no Excel e conferir contra o extracto do Cardmarket.
+    """
+    # Importa-se aqui e não no topo porque o `db` fixa o `MTGVAULT_HOME` no
+    # momento do import, e este módulo é importado por páginas que definem essa
+    # variável logo antes. Lê-se quando se usa, não quando se carrega.
+    from . import db                      # noqa: PLC0415
+    return Path(db.ROOT) / "vendas.csv"
+
+
+CABECALHO_VENDAS = ("data,carta,edicao,lingua,acabamento,quantidade,"
+                    "preco_referencia,onde_estava,motivo")
+
+
+def chave_venda(r: dict) -> str:
+    """A identidade de uma LINHA da lista de venda, para o botão "vendida".
+
+    É exactamente a chave por que o `_fecha` junta os lotes iguais. Vive aqui
+    para a página e o servidor concordarem: se a página inventasse a sua, um
+    botão passava a apontar para outra linha e ele vendia a carta errada.
+    """
+    return "|".join([r["nm"], r["local"], r["finish"] or "", r["lang"] or "",
+                     (r["set_code"] or "").upper(), r["reason"] or ""])
+
+
+def registar_venda(con, linha: dict, quantidade: int | None = None,
+                   csv_path: Path | None = None) -> dict:
+    """"Vendida": tira as cópias da colecção e escreve-o no `vendas.csv`.
+
+    É a última metade do que o André pediu para hoje (2026-09-08): *"começar a
+    comprar as faltas e livrar-me dos excessos de cartas."* Até aqui a lista de
+    venda era só uma sugestão a ler; tirar a carta da base era editar a `copies`
+    à mão, e por isso a lista repetia todos os dias as cartas que ele já tinha
+    vendido.
+
+    Duas decisões que valem a pena estar escritas:
+      * a cópia **sai da base** (a quantidade desce; a linha desaparece quando
+        chega a zero) em vez de ficar marcada como vendida. O vault conta cópias
+        físicas e uma cópia vendida já não está em casa — deixá-la lá com uma
+        bandeira era pedir a toda a consulta futura que se lembrasse da bandeira;
+      * o **registo fica no CSV**, com o preço de referência do dia. É o que
+        permite conferir depois quanto rendeu, sem guardar histórico na base.
+
+    A escrita é atómica no sentido que importa: primeiro a linha do CSV, depois a
+    base. Se a base falhar a meio, sobra uma linha no CSV que ele vê e corrige —
+    o contrário (tirar a carta e não registar) é uma perda silenciosa.
+    """
+    pedidos = [[int(c), int(q)] for c, q in (linha.get("copias") or [])]
+    total = quantidade if quantidade is not None else sum(q for _c, q in pedidos)
+    total = max(0, min(total, sum(q for _c, q in pedidos)))
+    if not total:
+        return {"copias": 0, "linhas": 0}
+    alvo = csv_path or ficheiro_vendas()
+    alvo.parent.mkdir(parents=True, exist_ok=True)
+    novo = not alvo.exists()
+    campos = [linha.get("nm") or "", (linha.get("set_code") or "").upper(),
+              linha.get("lang") or "", linha.get("finish") or "", str(total),
+              ("" if linha.get("unit") in (None, "") else f'{linha["unit"]:.2f}'),
+              linha.get("local") or "", linha.get("reason") or ""]
+    with alvo.open("a", encoding="utf-8", newline="") as fh:
+        if novo:
+            fh.write(CABECALHO_VENDAS + "\n")
+        fh.write(date.today().isoformat() + ","
+                 + ",".join('"' + str(c).replace('"', "'") + '"' for c in campos)
+                 + "\n")
+    resta, tocadas = total, 0
+    for cid, q in pedidos:
+        if resta <= 0:
+            break
+        leva = min(q, resta)
+        row = con.execute("SELECT quantity FROM copies WHERE id = ?", (cid,)).fetchone()
+        if row is None:
+            continue
+        leva = min(leva, row["quantity"] or 0)
+        if leva <= 0:
+            continue
+        resta -= leva
+        tocadas += 1
+        if (row["quantity"] or 0) - leva <= 0:
+            con.execute("DELETE FROM copies WHERE id = ?", (cid,))
+        else:
+            con.execute("UPDATE copies SET quantity = quantity - ? WHERE id = ?",
+                        (leva, cid))
+        # Uma cópia vendida não podia estar dentro de uma caixa (o que está
+        # alocado nunca entra na venda), mas se estivesse ficava uma linha órfã
+        # a mentir para sempre — a `copy_allocation` não tem FK entre bases.
+        try:
+            con.execute("DELETE FROM copy_allocation WHERE copy_id = ?", (cid,))
+        except sqlite3.OperationalError:
+            pass                          # base antiga, ainda sem a tabela
+    con.commit()
+    return {"copias": total - resta, "linhas": tocadas, "csv": str(alvo)}
+
+
 # ---------------------------------------------------------------------------
 # Arrumação física: pôr a estante igual à alocação
 # ---------------------------------------------------------------------------
+def movimentos_de_entrada(s: dict, caixas: set[str] | frozenset) -> list[dict]:
+    """As cópias que a alocação deu a esta caixa e que ainda não estão lá dentro.
+
+    É o mesmo cálculo para os dois gestos que o André faz: **montar** a caixa
+    pela primeira vez (o painel Montar, v6) e **arrumar** a estante toda depois
+    de a alocação mudar. Vive numa função só de propósito — a v5 tinha-o inline
+    no `plano_arrumacao`, e o painel Montar era a segunda oportunidade de as
+    duas listas discordarem em silêncio.
+
+    `caixas` = os baldes que SÃO a caixa de um deck. Antes da migração para a
+    colecção única a caixa de um deck ainda é um balde (`Pauper Affinity`,
+    `Cloud`, ...): uma cópia que já vive lá já está dentro da caixa, mesmo que o
+    balde e a caixa tenham nomes diferentes. Sem isso o plano mandava-o
+    "arrumar" 54 cartas que já estão sleevadas.
+    """
+    ja_la = s.get("balde") if s.get("balde") in caixas else None
+    out = []
+    for m in s["have"]:
+        for g in m["lotes"]:
+            if g["local"] == s["nome"]:
+                continue                  # já lá está
+            if g["caixa"] is None and ja_la and g["sub"] == ja_la:
+                continue                  # está no balde que É esta caixa
+            out.append({"nm": m["nm"], "q": g["q"], "de": g["local"],
+                        "para": s["nome"], "slot": s["slot"],
+                        "copy_id": g["id"], "sid": g["sid"],
+                        "finish": g["finish"], "lang": g["lang"],
+                        "set_code": g["set_code"], "sentido": "entra"})
+    return out
+
+
+def plano_montar(res: dict, slot_id: str) -> dict:
+    """MONTAR uma caixa: o que se tira das gavetas e o que se devolve a elas.
+
+    André, 2026-09-08: *"Espero começar a montar os decks em deckbox o mais cedo
+    possível para começar a comprar as faltas e livrar-me dos excessos de
+    cartas."* O painel **Montar** da aba de cada caixa é isto, mais a wantlist
+    dela — os dois passos, por esta ordem.
+
+    `tirar` são as cópias exactas (com edição, língua e acabamento: dois lotes
+    do mesmo nome não são a mesma pilha), `devolver` são as que estão lá dentro
+    e a lista de hoje já não pede — nas caixas congeladas é o delta de
+    actualização, nas outras já saiu na arrumação geral. `ja` são as que já lá
+    estão: uma caixa a meio montar tem de dizer o que falta, não a lista toda.
+    """
+    s = next((x for x in res["slots"] if x["slot"] == slot_id), None)
+    if s is None:
+        return {}
+    tirar = movimentos_de_entrada(s, caixas_de_deck(res["slots"]))
+    devolver = list(s.get("presos") or [])
+    dentro = sum(g["q"] for m in s["have"] for g in m["lotes"])
+    por_gaveta: dict[str, int] = defaultdict(int)
+    for m in tirar:
+        por_gaveta[m["de"]] += m["q"]
+    return {"slot": s["slot"], "caixa": s["nome"], "tirar": tirar,
+            "devolver": sorted(devolver, key=lambda m: m["nm"]),
+            "copias": sum(m["q"] for m in tirar),
+            "ja": dentro - sum(m["q"] for m in tirar),
+            "por_gaveta": dict(sorted(por_gaveta.items(),
+                                      key=lambda kv: (-kv[1], kv[0])))}
+
+
+def ordem_de_montagem(res: dict) -> list[dict]:
+    """Por que ordem montar as caixas, e quanto custa cada uma.
+
+    André, 2026-09-08: *"Espero começar a montar os decks em deckbox o mais cedo
+    possível."* A ordem é a que faz sentido à frente da estante e não a da
+    alocação: primeiro os **permanentes** por prioridade (são os que já ficaram
+    com as cartas), e depois as **candidatas** pela percentagem que já têm —
+    começa-se pelo que está mais perto de fechar.
+
+    As que já estão montadas ficam no fim: não há nada a fazer nelas hoje (as
+    congeladas trazem o delta de actualização à parte, na aba Arrumar).
+    """
+    caixas = caixas_de_deck(res["slots"])
+    out = []
+    for s in res["slots"]:
+        if s.get("vazio"):
+            continue                     # caixa por escolher: não se monta nada
+        tirar = movimentos_de_entrada(s, caixas)
+        out.append({
+            "slot": s["slot"], "caixa": s["nome"], "formato": s.get("formato"),
+            "estado": s.get("estado"), "pct": s["pct"],
+            "tenho": s["tenho"], "precisa": s["precisa"],
+            "tirar": sum(m["q"] for m in tirar),
+            "gavetas": len({m["de"] for m in tirar}),
+            "comprar": s["comprar"], "noutra": s["noutra"], "custo": s["custo"],
+            "prioridade": s["prioridade"], "permanente": s["permanente"],
+            "montado": bool(s.get("montado")), "congelada": bool(s.get("congelada")),
+            "req": requisito_material(s)})
+    out.sort(key=lambda x: (x["montado"], not x["permanente"],
+                            x["prioridade"] if x["permanente"] else -x["pct"]))
+    return out
+
+
 def plano_arrumacao(res: dict) -> dict:
     """As cartas a MOVER para a estante ficar igual à alocação de hoje.
 
@@ -1655,20 +1885,9 @@ def plano_arrumacao(res: dict) -> dict:
     actualizacoes: dict[str, dict] = {}
     entra: list[dict] = []
     for s in res["slots"]:
-        ja_la = s.get("balde") if s.get("balde") in caixas else None
-        meter: list[dict] = []
-        for m in s["have"]:
-            for g in m["lotes"]:
-                if g["local"] == s["nome"]:
-                    continue              # já lá está
-                if g["caixa"] is None and ja_la and g["sub"] == ja_la:
-                    continue              # está no balde que É esta caixa
-                mov = {"nm": m["nm"], "q": g["q"], "de": g["local"],
-                       "para": s["nome"], "slot": s["slot"],
-                       "copy_id": g["id"], "sid": g["sid"],
-                       "finish": g["finish"], "lang": g["lang"],
-                       "set_code": g["set_code"], "sentido": "entra"}
-                (meter if s.get("congelada") else entra).append(mov)
+        meter = movimentos_de_entrada(s, caixas)
+        if not s.get("congelada"):
+            entra.extend(meter)
         if s.get("congelada"):
             tirar = list(s.get("presos") or [])
             if meter or tirar:
@@ -1803,6 +2022,9 @@ def report(con, cfg_slots: list[dict] | None = None) -> dict:
     # caixa a caixa (o que a v3 fazia) e comprar o máximo de uma delas.
     res["poupado_total"] = sum(p["poupado"] for p in res["partilhas"])
     res["arrumacao"] = plano_arrumacao(res)
+    # A ORDEM de montagem (v6): é a pergunta dele de 2026-09-08 — *"por onde
+    # começo?"*. Vive no relatório e não na página para o CLI dar a mesma.
+    res["montagem"] = ordem_de_montagem(res)
     # As caixas congeladas que têm delta por aplicar ("tirar X, meter Y"). À
     # cabeça do relatório porque é o único movimento que o botão geral NÃO faz.
     res["actualizacoes"] = res["arrumacao"]["actualizacoes"]

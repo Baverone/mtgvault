@@ -50,6 +50,22 @@ def caso_todas_as_paginas_do_menu_sao_publicadas():
     print("todas as paginas do menu vao ao git add do workflow")
 
 
+def caso_a_pagina_fundida_saiu_do_menu_mas_continua_publicada():
+    """A *Decks permanentes* foi fundida na *Deckboxes* (v6). Duas coisas têm de
+    ser verdade ao mesmo tempo: **sair do menu** (senão continuam duas páginas a
+    responder à mesma pergunta com números diferentes) e **continuar a ser
+    publicada** (senão o link antigo, que ele tem no telemóvel, dá 404 em vez de
+    dizer para onde a coisa se mudou)."""
+    assert "meusdecks.html" not in [f for f, _i, _t in paginas.MENU + paginas.EXTRA]
+    assert 'href="meusdecks.html"' not in (RAIZ / "index.html").read_text(
+        encoding="utf-8"), "o índice ainda aponta para a página fundida"
+    yml = (RAIZ / ".github" / "workflows" / "daily.yml").read_text(encoding="utf-8")
+    linha = next(l for l in yml.splitlines() if l.strip().startswith("git add "))
+    assert "meusdecks.html" in linha, "o reencaminhamento tem de ser publicado"
+    assert "deckboxes.html" in [f for f, _i, _t in paginas.MENU]
+    print("a pagina fundida saiu do menu e continua a ser publicada")
+
+
 def caso_o_tema_tem_as_variaveis_que_as_paginas_usam():
     """O `TEMA` é um superconjunto: se uma página usa `var(--x)` e o tema não o
     define, a cor cai para o valor por omissão do browser — texto preto em fundo
@@ -72,6 +88,7 @@ def caso_o_tema_tem_as_variaveis_que_as_paginas_usam():
 def run():
     for fn in (caso_o_menu_marca_a_pagina_actual, caso_o_menu_tem_todas_as_paginas,
                caso_todas_as_paginas_do_menu_sao_publicadas,
+               caso_a_pagina_fundida_saiu_do_menu_mas_continua_publicada,
                caso_o_tema_tem_as_variaveis_que_as_paginas_usam):
         fn()
     print("\nTUDO OK")

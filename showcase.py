@@ -23,7 +23,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-import meusdecks as md  # noqa: E402  (_type_map/_group_by_type/_bucket/_art/_img_map/_faltas/_faltas_html)
 from mtgvault import paginas, sources  # noqa: E402
 from mtgvault.collection import owned_playable  # noqa: E402
 
@@ -212,7 +211,7 @@ def _archetype_html(a, name, tm, owned, owned_qty, sidmap):
     col = "var(--add)" if cov >= 90 else "var(--gold)" if cov >= 60 else "var(--warn)"
 
     def rc(c):
-        img = (f'<img loading="lazy" src="{md._art(c["sid"])}" alt="">' if c.get("sid")
+        img = (f'<img loading="lazy" src="{paginas.art(c["sid"])}" alt="">' if c.get("sid")
                else '<div class="noimg"></div>')
         qb = (f'<span class="cq">{c["hq"]}/{c["qty"]}</span>' if c.get("qty", 1) > 1
               else ('' if c["state"] == "have" else '<span class="cq">0/1</span>'))
@@ -223,10 +222,10 @@ def _archetype_html(a, name, tm, owned, owned_qty, sidmap):
         return f'<div class="cd {c["state"]}" title="{html.escape(c["nm"])}">{img}{qb}{fb}</div>'
 
     body = (f'<div class="cardshdr">🃏 Lista padrão <span class="dim">({html.escape(leader["player"] or "?")})</span></div>'
-            f'{md._group_by_type(lead_main, tm, rc)}')
+            f'{paginas.grupos_por_tipo(lead_main, tm, rc)}')
     if lead_side:
         body += (f'<div class="cardshdr sb">🎒 Sideboard</div>'
-                 f'{md._group_by_type(lead_side, tm, rc)}')
+                 f'{paginas.grupos_por_tipo(lead_side, tm, rc)}')
 
     if n > 1:
         freq = Counter()
@@ -242,8 +241,9 @@ def _archetype_html(a, name, tm, owned, owned_qty, sidmap):
             opt.sort(key=lambda c: -c["_freq"][0])
             body += (f'<div class="cardshdr op-h">🔀 Opções '
                      f'<span class="dim">(cartas de outras listas do arquétipo — o nº = em quantas, das {n})</span></div>'
-                     f'{md._group_by_type(opt, tm, rc)}')
-    body += md._faltas_html(md._faltas(lead_main + lead_side), cls="dk")
+                     f'{paginas.grupos_por_tipo(opt, tm, rc)}')
+    body += paginas.faltas_html(
+        paginas.faltas_de(lead_main + lead_side, BASICS), cls="dk")
 
     # Selo do líder: placement (presencial) ou "online"; ícone da fonte.
     if leader["placement"]:
@@ -282,8 +282,8 @@ def build(con, out_path=None):
         fmt_data[fmt] = {"events": events, "clusters": clusters, "df": df, "nlists": len(lists)}
         for L in lists:
             allnames |= set(L["main"]) | set(L["side"])
-    sidmap = md._img_map(con, allnames)
-    tm = md._type_map(con, allnames)
+    sidmap = paginas.img_map(con, list(allnames), da_coleccao=False)
+    tm = paginas.tipos(con, allnames)
 
     tabs, panels = "", ""
     for fmt, lbl in FORMATS:

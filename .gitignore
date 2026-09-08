@@ -11,6 +11,15 @@ data/*.db-wal
 data/*.db-shm
 # O vault.db vive num Release (tag 'data'), não no Git — ver scripts/README.md.
 data/vault.db
+# O token de escrita do modo edição: é um segredo DESTA máquina, não uma
+# preferência que viaje no Git (quem o tiver pode gravar a partir da rede local).
+data/webapp.token
+# O registo de vendas: histórico local do que saiu da colecção (data, carta,
+# edição, língua, acabamento, quantidade, preço). Não vai para um repo público.
+data/vendas.csv
+# O backup que a `migrar-caixas` deixa ao lado. Serve para desfazer à mão na
+# hora; o histórico do Git já guarda a versão anterior do config.
+colecao_config-v5-*.json
 cache/
 priceguide.json
 

@@ -32,7 +32,13 @@ mtgvault/
   schema.sql      vault.db (coleção, decks, decklists, preços, watchlist, copy_allocation)
   catalog_schema.sql   catalog.db (só a tabela cards)
   scryfall.py     catálogo via bulk data
-  paginas.py      o MENU e o TEMA de todas as páginas (uma lista só)
+  paginas.py      o MENU e o TEMA de todas as páginas (uma lista só) + os
+                  ajudantes que elas partilham (cor, tipo, posse total, faltas)
+  caixas.py       AS CAIXAS: a única noção de deck (v6, 2026-09-08) — lê/migra o
+                  `colecao_config.json → caixas`, e `para_slot` dá a forma
+                  interna que o loadout consome (aceita a v5 e a v6)
+  configio.py     ler/gravar o `colecao_config.json` sem lhe estragar a forma
+  qr.py           códigos QR em Python puro (o link do modo edição no telemóvel)
   migracao.py     modelo de colecção única: funde os baldes na `Colecção`
   collection.py   exemplares, sub-coleções, reservas, valor, movimentos
   wantlist.py     o que falta, para decks e para arquétipos
@@ -54,15 +60,15 @@ daily.py          o job diário (encadeia tudo o que está abaixo)
 ```
 meta_coverage.py    cobertura.html — top-10 ponderado + staples + emergentes. NB (2026-09-07): quem decide que listas contam é `sources.lista_conta`/`counting_sql` (ver "Que listas contam"), e o peso vem de `sources.tier_weight_sql`; janela 30 dias; expõe COLLECTION_BALDES={"SPML","Premodern (geral)"}, owned_available(con) (=coleção MENOS cartas comprometidas com decks vigiados) e counting_lists(con,fmt,aid). NB (2026-09-07): `FORMATS` deixou de ser fixo — filtra `_FORMATS` por `colecao_config.json`→`formatos_metagame` (hoje standard/pioneer/modern; o Premodern saiu). Só a COBERTURA lê essa lista: o `metagame.py` deixou de a ler (ver abaixo)
 decks_faziveis.py   RETIRADO 2026-09-07 — fundido no `metagame.py`, que faz a mesma pergunta com as regras de material e o "onde está a carta". O módulo ficou como lápide (levanta RuntimeError), o `decksfaziveis.html` reencaminha para o metagame, saiu do `daily.py` e do `git add` do workflow. Podem ser apagados os dois
-buildability.py     (DORMENTE) o "Montar" foi tirado do menu p/ o André refazer; já NÃO corre no daily nem vai ao git-add. Continua importado por meusdecks.py (FMT_LABEL/FMT_ORDER/BASICS)
+buildability.py     (DORMENTE) o "Montar" foi tirado do menu p/ o André refazer; já NÃO corre no daily nem vai ao git-add. já NÃO é importado por ninguém desde a v6 (o `meusdecks.py` ficou só com o reencaminhamento)
 classify.py         classificação Deck/Coleção/Vender (alimenta colecao_cor.html)
 colecao_cor.py      colecao_cor.html — "Binders": coleção INTEIRA por cor→CMC; cartas em uso a escuro + rótulo (classify rep["deck"]/used_by); + secção "Decks vigiados" (Blue Farm/Cloud cEDH/Cloud/Pauper): o deck por inteiro + cartas "extra" que saíram da lista (retidas até 6 meses da última utilização — `_watched_deck_pools`). NB (2026-09-07): `_de_outro_balde` acrescenta as cartas que o LOADOUT dá a essa caixa mas que estão arrumadas noutro balde, marcadas "de &lt;balde&gt;" (era aqui que os Utrom Monitor do SPML desapareciam do Pauper)
 collection_gallery.py  colecao.html — galeria por sub-coleção
 core_decks.py       (coredecks.html APAGADO 2026-08-26, a redefinir; NÃO vai ao git-add) — mas core_decks.py continua a correr no daily p/ calcular card_price/posse
 alertas.py          alertas.html — vender/comprar por movimento de preço (fora do menu atual)
-meusdecks.py        meusdecks.html — "Decks vigiados": agora SÓ os 5 fixos de colecao_config.json→decks_vigiados (Pauper-Luffy, Premodern-Luffy/Stiflenought, Blue Farm, Cloud cEDH, Cloud Duel Commander — este ÚLTIMO agora INCLUÍDO) MAIS os alvos de consenso de Premodern (`premodern_arquetipos_alvo`, sufixo " (consenso)"). Lista 75 verde/vermelho, % e evolução; checkmark "atualizado" (localStorage). NB (2026-09-07): a POSSE vem da alocação do loadout (`loadout.slots_por_lista`/`linhas_por_carta`), não de uma contagem própria — ver "Posse: quem conta o quê"
+meusdecks.py        FUNDIDO NO deckboxes.py (2026-09-08, v6) — a "Decks permanentes" fazia a MESMA pergunta ("quanto tenho deste deck?") e respondia outro número, porque contava a colecção inteira por deck em vez da alocação. Saiu do MENU e do `index.html`; o módulo continua a correr no daily mas só escreve um REENCAMINHAMENTO (`deckboxes.redireccionamento`), porque o link vive no telemóvel dele e no site publicado. O que ela tinha e a Deckboxes não tinha passou para a aba da caixa: lista por TIPO, imagens grandes, "copiar a lista" e "quantas tenho na colecção inteira" (informação secundária). Os ajudantes que outras páginas usavam (`_type_map`, `_group_by_type`, `_faltas`, `_faltas_html`, `_art`) estão agora em `mtgvault/paginas.py` — o `showcase.py` lê-os de lá
 deckboxes.py        deckboxes.html — "Deckboxes": o LOADOUT (colecao_config.json→loadout), os decks montados ao mesmo tempo com a coleção REPARTIDA entre eles (uma cópia física serve uma caixa só). NB (2026-09-07): a página foi reescrita com **uma ABA POR DECK** (o pedido dele: *"faz como no riftvault — no botão, cada deck tem uma aba própria"*), mais as abas **Todas**, **Arrumar**, **Partilhadas**, **Comprar** e **Vender**. Os dados vão em JSON dentro do HTML (`<script id="dados">`) e o render é JavaScript — o MESMO ficheiro serve o site publicado (`editable:false`) e o modo edição do `webapp.py` (`editable:true`, com botões). Por caixa: barra, dois números ("faltam comprar" e "ir buscar a outra caixa"), grelha de cartas com três estados, "tirar de:" (`slot["origens"]`), substitutos, wantlist Cardmarket (SÓ o que é mesmo compra). Na aba **Comprar**, cada linha diz para que caixa é a compra (`para`) e em que material (`loadout.requisito_material`), há selector por caixa (o "copiar" copia só o filtro activo) e as cartas ≥100 €/cópia levam chip «cara» e total à parte — Mishra's Workshop sozinha vale mais do que o resto da lista. Motor em mtgvault/loadout.py
-webapp.py           MODO EDIÇÃO local, **porto 8771** (o 8770 é do `riftvault serve` — não trocar). Serve o `deckboxes.html` com os botões *Tornar permanente / Deixar de ser permanente*, *Subir / Descer*, *Sleevado e na caixa* e *Já arrumei tudo*. As PREFERÊNCIAS vão para o `colecao_config.json` (que já manda no loadout e vai no Git); o que é FÍSICO vai para a `copy_allocation`. Mostra o URL da rede local + QR ao arrancar. Mantido de pé pela tarefa `ai-pc/tasks/mtgvault-serve` (verifica de 5 em 5 min, relança destacado)
+webapp.py           MODO EDIÇÃO local, **porto 8771** (o 8770 é do `riftvault serve` — não trocar). Serve o `deckboxes.html`/`metagame.html` com os botões: painel *Montar* (*Sleevado e na caixa*), *Já arrumei tudo*, *Actualizei*, *Vendida*, *Tornar permanente*, *Subir/Descer* e *Vou montar este*. As PREFERÊNCIAS vão para o `colecao_config.json` (as `caixas` vão no Git); o que é FÍSICO vai para a `copy_allocation` e, na venda, sai da `copies` + `data/vendas.csv`. NB (2026-09-08): **ouve em `MTGVAULT_BIND`, por omissão `127.0.0.1`** (a tarefa `mtgvault-serve` põe `0.0.0.0` para o telemóvel), e as ESCRITAS exigem o token de `data/webapp.token` — ver "O telemóvel e o token". Mantido de pé pela tarefa `ai-pc/tasks/mtgvault-serve` (verifica de 5 em 5 min, relança destacado)
 metagame.py         metagame.html — "Metagame": desde 2026-09-07 já NÃO é o top-10 de cada formato; é o **top-N que ele está mais perto de concluir** (`colecao_config.json`→`metagame_top_n`, default 3). `SECOES` decide o modo por formato: `top` (Standard/Pioneer/Legacy — as caixas do loadout por escolher, via `loadout.foil_report`), `caixas` (Modern — o deck já escolhido, do próprio loadout) e `alvos` (Premodern — só o `premodern_arquetipos_alvo`). Posse pela alocação do loadout, três estados, wantlist Cardmarket. NÃO lê `formatos_metagame` (o Legacy tinha de entrar e não está lá)
 (prioridade.py + metafaltas.py APAGADOS 2026-08-26, a redefinir)
 reservedlist.py     reservedlist.html — Reserved List (Scryfall) x coleção, por edição, preço/evolução, e 'VENDER' as que não jogam em formato nenhum
@@ -70,7 +76,7 @@ caixarl.py          caixarl.html — "Caixa Reserved List": a RL que está fora 
 showcase.py         showcase.html — "Decks Showcase Challenger": eventos competitivos recentes (MTGO + presenciais do mtgtop8) agrupados por arquétipo. Tinha filtro e pesos PRÓPRIOS (fonte + showcase_min_players + lista de nomes casuais) — era por isso que continuava a dar listas enquanto o metagame vinha vazio. Desde 2026-09-07 usa `sources.counting_sql`/`tier_weight` como toda a gente; a chave `showcase_min_players` do config deixou de existir
 my_decks.py         segue decks-alvo (por assinatura e por jogador de MTGO) -> tabela decks
 commander_decks.py  decks de comandante por consenso EM CAMADAS: núcleo>=50% (=deck, deck_cards) / flex 25-50% / tech 15-25%; FILTRA pela cor do comandante. `tiers()` reusado pelo colecao_cor
-premodern_decks.py  consenso dos arquétipos-alvo de Premodern (`colecao_config.json`→`premodern_arquetipos_alvo`: UW Replenish, Enchantress) -> decks/deck_cards com o sufixo " (consenso)". Agrupa pelas etiquetas do `tagging` (o clustering não os separa) e usa `stock.stock_from_lists`. Mostrado no `meusdecks`
+premodern_decks.py  consenso dos arquétipos-alvo de Premodern (`colecao_config.json`→`premodern_arquetipos_alvo`: UW Replenish, Enchantress) -> decks/deck_cards com o sufixo " (consenso)". Agrupa pelas etiquetas do `tagging` (o clustering não os separa) e usa `stock.stock_from_lists`. Mostrado nas `deckboxes` (era o `meusdecks`)
 refresh_collection.py  collection_owned p/ o index.html
 colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados
 ```
@@ -139,12 +145,110 @@ correção que importa: o playset de 4 conta a **coleção inteira**, não 4 por
 balde — 4 Intuition no `Premodern (geral)` mais 4 na `Caixa Reserved List` são
 8 cópias da mesma carta, e contar 4 por balde deixava passar o dobro.
 
+**UMA SÓ NOÇÃO DE DECK: A CAIXA (`mtgvault/caixas.py`, v6, 2026-09-08).** Palavras
+do André: *"No mtgvault já começamos a ter informação duplicada. Temos decks
+vigiados e deckbox que é a mesma coisa. Tenta revisar isso e implementar
+melhorias. Espero começar a montar os decks em deckbox o mais cedo possível para
+começar a comprar as faltas e livrar-me dos excessos de cartas."*
+
+Havia **duas** estruturas para o mesmo objecto: a `watchlist`/`decks_vigiados`
+(que alimentava a *Decks permanentes*, onde cada deck contava a **colecção
+inteira**) e o `loadout` (as caixas, onde a colecção é **repartida**). Duas
+páginas, dois números para a pergunta *"quanto tenho deste deck?"*, e o rodapé de
+cada uma a explicar que a outra também estava certa. É o padrão do `event_tier`.
+
+- **`colecao_config.json → caixas`** substitui o `loadout`. Uma caixa = um deck.
+  Chaves: `slot` (o id, é a chave da `copy_allocation` — não mudar), `nome`,
+  `formato`, `fonte` (`vigiado` | `deck` | `consenso` | `escolhido` | `manual`),
+  `ref`, `balde`, `estado`, `prioridade`, `variantes`, `notas`, e as regras de
+  material só quando abrem excepção ao grupo.
+- **`estado` é uma ESCALA, não três bandeiras**: `candidata` < `permanente` <
+  `montada`, e `congelada` **calcula-se** (montada + dedicada + há linhas na
+  `copy_allocation`). Antes eram `permanente`/`montado`/`por_confirmar` soltas, e
+  nada impedia "montado mas candidato" — um deck sleevado na estante não é um
+  candidato a nada. Escrever `congelada` no config vale `montada`; guardá-la a
+  sério era a terceira cópia da mesma verdade. `por_confirmar` deixou de ser uma
+  chave (é `fonte` sem `ref`): escrita à mão, ficava a mentir sempre que ele
+  escolhia um deck.
+- **A watchlist não desapareceu — passou a ser a FONTE de uma caixa.** O
+  `watch-check` do daily continua a seguir a lista do Luffy e do Blue Farm, e o
+  que ele traz é a lista da caixa (o delta *"actualizar deck"* é o resultado
+  disso). O `decks_vigiados` fica: já não define decks, só marca quais têm
+  prioridade dentro do grupo (`resolve_slots`) e o que o `meta_coverage` desconta.
+- **O motor por baixo não mudou uma linha.** `caixas.para_slot` aceita as duas
+  formas (v5 e v6) e devolve sempre a interna, com `permanente`/`montado` em
+  booleano. Medido na base de 2026-09-08: 9 195,01 € para fechar, 287 a comprar,
+  4 a ir buscar, venda 91c/702,95 € + 39 RL/5 736,16 €, arrumar 307 — **iguais**
+  antes e depois. Se mexeres nisto, é o número a repetir.
+- **Migração**: `python -m mtgvault.cli migrar-caixas` (tem `--dry-run`, faz
+  backup do JSON ao lado e é idempotente). Já correu no config do repositório. O
+  `webapp.ler_config` migra em memória, por isso um config da v5 continua a
+  funcionar e o primeiro clique deixa o ficheiro no formato novo.
+- **A Deckboxes é a página dos decks.** A *Decks permanentes* saiu do menu e o
+  `meusdecks.html` é só um reencaminhamento (o `test_paginas` tranca as duas
+  coisas: fora do menu **e** dentro do `git add`, senão o link antigo dá 404).
+
+**O FLUXO «MONTAR» (v6).** Na aba de cada caixa, três passos por esta ordem:
+1. **Tirar da colecção** — `loadout.plano_montar(res, slot)`: as cópias exactas
+   (nome, edição, língua, acabamento, quantidade), **ordenadas por COR e depois
+   por nome**, que é como as cartas estão no binder (`colecao_cor`: cor → CMC).
+   Ordená-las por nome, como a arrumação geral faz, obrigava-o a percorrer o
+   binder de trás para a frente por cada carta. Checkboxes no aparelho, e no fim
+   *"sleevado e na caixa"* grava a `copy_allocation` e põe a caixa em `montada`.
+   O cálculo é o mesmo da aba *Arrumar* (`loadout.movimentos_de_entrada`) — duas
+   listas para o mesmo gesto era a segunda oportunidade de discordarem.
+2. **Comprar** — a wantlist só desta caixa, em **dois formatos**: *"copiar p/
+   Cardmarket"* (`N Nome`, uma linha por versão quando a carta se compra em dois
+   materiais — somar as duas dava uma quantidade que nenhuma precisa) e *"copiar
+   com material"* (`N Nome [PT]`). As ≥100 €/cópia levam chip «cara».
+3. **Quando as compras chegarem** — fotos em `pendentes/`, a caixa recalcula-se
+   na corrida seguinte. Não há nada para marcar à mão.
+E uma aba **Plano** (`loadout.ordem_de_montagem`, a mesma no CLI): por onde
+começar — permanentes por prioridade, depois as candidatas mais perto de fechar —
+com *"tirar N · comprar N (X €) · estado"*, e por baixo a **venda**, que só entra
+depois de as caixas estarem servidas (uma cópia que serve uma caixa nunca aparece
+na venda: vai para `guardar`).
+
+**«VENDIDA»: a cópia sai mesmo (`loadout.registar_venda`, 2026-09-08).** Botão
+por linha, só no modo edição. Duas decisões que valem estar escritas: (1) a cópia
+**sai da base** (a quantidade desce, a linha desaparece a zero) em vez de ficar
+marcada — o vault conta cópias físicas, e deixá-la lá com uma bandeira era pedir
+a toda a consulta futura que se lembrasse da bandeira; (2) o registo fica em
+**`data/vendas.csv`** (data, carta, edição, língua, acabamento, quantidade, preço
+de referência, onde estava, motivo), fora do Git, porque a `vault.db` é
+descarregada e republicada inteira a cada corrida. Escreve-se o CSV **antes** de
+mexer na base: sobrar uma linha a mais é visível, perder a venda não é. A linha
+identifica-se por `loadout.chave_venda` — a mesma chave por que o `_fecha` junta
+os lotes — e o servidor **recalcula** o relatório antes de tirar nada, para uma
+página aberta há duas horas não mandar vender uma cópia que já está numa caixa.
+
+**O TELEMÓVEL E O TOKEN (2026-09-08).** *"Ele vai estar à frente da estante com o
+telemóvel."* O `webapp.py` ouve em `MTGVAULT_BIND` (por omissão `127.0.0.1`; a
+tarefa `mtgvault-serve` põe `0.0.0.0`) e a página mostra um **QR** com o link já
+com o token — o QR é desenhado por `mtgvault/qr.py`, em Python puro (modo byte,
+nível M, versões 1–10), porque uma dependência nova para um quadrado preto e
+branco paga-se todos os dias em instalações. **Ler é livre; escrever exige o
+token** (`data/webapp.token`, gerado uma vez, fora do Git): sem ele, `403`. E a
+página só leva o token dentro dela quando o pedido que a foi buscar já o trazia —
+senão bastava abri-la de qualquer telemóvel da rede para o descobrir. **O
+`/qr.svg` exige-o pela mesma razão**: um QR é um URL legível, e servi-lo a quem
+não o tem era dar o token pela porta do lado (a página pede-o com `?t=`).
+Pedidos de `127.0.0.1` são de confiança sem token (quem está no PC já tem os
+ficheiros).
+O `test_qr.py` verifica o QR de três maneiras (lê-se a si próprio, é igual ao da
+biblioteca de referência nas oito máscaras, e a estrutura está lá): um QR "quase
+certo" não dá erro, dá um quadrado que o telemóvel não lê e não diz porquê.
+**A firewall do Windows pode estar a tapar o 8771** — uma vez, em consola de
+Administrador: `netsh advfirewall firewall add rule name="mtgvault 8771" dir=in
+action=allow protocol=TCP localport=8771 profile=private` (só rede privada; o
+comando também é impresso no arranque do `webapp.py`).
+
 **Loadout: os decks montados em simultâneo (`mtgvault/loadout.py`, 2026-09-07).**
 Palavras do André: *"Vamos começar a reorganizar os decks e a colecção, para
 preparar para montar os decks (em deckboxes) para estarem sempre prontos para ir
 jogar, e começar a vender o que está em excesso."* A lista de caixas está em
-`colecao_config.json → loadout` (slot, formato, fonte da lista, balde,
-prioridade, regras de material). Gera `deckboxes.html` e os comandos
+`colecao_config.json → caixas` (v6; era `loadout`) — slot, formato, fonte da
+lista, balde, estado, prioridade, regras de material. Gera `deckboxes.html` e os comandos
 `loadout` / `loadout <deck>` / `vender`.
 
 A diferença para tudo o resto do vault: aqui a coleção é **repartida**. Uma
@@ -196,7 +300,7 @@ se abre) e por **destino** (a caixa que se monta) — são dois gestos diferente
   do dia seguinte trocava duas cópias equivalentes de caixa e mandava-o desmontar
   dois decks para não mudar nada.
 
-**Posse: quem conta o quê (2026-09-07 — mudou).** Até esta data cada página
+**Posse: quem conta o quê (2026-09-07; desde a v6 há uma página só).** Até esta data cada página
 contava a posse à sua maneira e discordavam em silêncio, que é o mesmo padrão do
 `event_tier` e do filtro de listas. O erro que obrigou a mudar, à letra: *"Meti 4
 fotos, estavam lá 4 Utrom Monitor, mas no deck Pauper não aparecem como se eu
@@ -207,16 +311,18 @@ estão no `SPML`: existiam, serviam a caixa, e a página dizia que faltavam.
 falta" em todo o site.** A ponte são `loadout.slots_por_lista(res)` (indexa os
 slots pelo `ref`, que é exactamente o nome do deck na tabela `decks` ou a
 etiqueta do `watched`) e `loadout.linhas_por_carta(slot)`. Já a usam:
-`meusdecks` (decks e vigiados), `colecao_cor` (secção "Decks vigiados", com as
+o `deckboxes`/`metagame`, `colecao_cor` (secção "Decks montados", com as
 cartas que vêm de outro balde marcadas *"de &lt;balde&gt;"*) e `metagame`.
 Consequências a saber:
 - as percentagens do `meusdecks.html` e do `deckboxes.html` **passaram a bater
   certo** — antes o `meusdecks` dava mais alto porque cada deck contava a coleção
-  inteira. Já não é "a pergunta a ser outra": é a mesma pergunta;
+  inteira. Já não é "a pergunta a ser outra": é a mesma pergunta. **E, desde a v6
+  (2026-09-08), é a mesma PÁGINA** — ver "Uma só noção de deck": duas páginas com
+  a mesma resposta são duas oportunidades de divergirem;
 - um deck que **não** seja caixa do loadout mantém a contagem antiga (a coleção
   inteira) — não se inventa uma alocação que não existe;
 - **toda a vista nova que some faltas soma `comprar`**, nunca `missing` (é a
-  regra de cima, e o `meusdecks._faltas` já a segue).
+  regra de cima, e o `paginas.faltas_de` já a segue).
 
 **Onde está a carta: 'noutra caixa' não é falta (André, 2026-09-07, à letra).**
 *"Vamos fazer como no riftvault: indicas onde está a carta, para, se eu quiser ir
@@ -561,7 +667,7 @@ tabela `deck_collection`. Já ligados: Blue Farm [Primer]→`Blue Farm`, Cloud
 [cEDH]→`Cloud cEDH` (distinto do Cloud de Duel Commander, balde `Cloud`), Luffy —
 Pauper→`Pauper Affinity`. Por ligar: Luffy — Premodern (Stiflenought), Harry1232
 — Legacy. `deck_collection` JÁ é lido: `colecao_cor._watched_deck_pools` e
-`meusdecks` (secção dos vigiados + a lista de nomes) juntam-se por ela. Atenção:
+`colecao_cor._watched_deck_pools` junta-se por ela. Atenção:
 tal como `deck_meta` (lida pelo `webapp.py`), a tabela não está no `schema.sql`
 nem no `db._migrate()` — só existe no `vault.db`, por isso numa base nova estas
 páginas rebentam. Ver o relatório de revisão de 2026-09-06.
@@ -620,7 +726,7 @@ pode ser ligas."*
   silêncio. Já usam: `meta_coverage._rank`/`emerging_decks`/`_n_lists`/
   `counting_lists`, `metagame._latest_list`, `decks_faziveis`, `showcase._lists`,
   `analysis._fetch_lists` (logo `rebuild_archetypes`/`rebuild_roles`),
-  `my_decks`, `meusdecks._cloud_consensus`, `commander_decks._inclusion`,
+  `my_decks`, `commander_decks._inclusion`,
   `buildable`.
 - **`classify.py` e `core_decks.py` NÃO usam a regra, de propósito.** O
   `_played_names`/`_last_played` do classify é a rede de segurança contra
@@ -685,6 +791,8 @@ rede. Se algo vier vazio, é aqui:
 ## Por fazer
 
 - Validar as cinco superfícies acima contra os sites reais e corrigir.
+- **Abrir o porto 8771 na firewall privada** (o comando está acima e no arranque
+  do `webapp.py`) — precisa de consola de Administrador, por isso não correu.
 - **Correr a migração `migrar-coleccao-unica` na base a sério.** Está feita,
   testada e medida (é neutra nos números), mas ainda só correu em cópias.
 - ~~Interface web local~~ — feita em 2026-09-07: `webapp.py`, porto **8771**,
@@ -764,7 +872,7 @@ caixa escolhida em Modern, e os alvos de consenso em Premodern. O quanto é
   essa mesma lista (não têm cópia própria). Em vez do top-10, o
   `premodern_decks.py` calcula a lista de consenso dos arquétipos que ele pediu
   e grava-a em `decks`/`deck_cards` com o sufixo `" (consenso)"`; aparece no
-  `meusdecks.html` com % e wantlist.
+  `deckboxes.html` com % e wantlist.
   - **O sufixo não é cosmética:** os alvos são decks POR MONTAR e **não podem**
     entrar em `decks_vigiados` — essa lista é a dos decks montados, e o
     `meta_coverage.owned_available` desconta-lhe as cartas à coleção

@@ -54,7 +54,7 @@ os.environ.setdefault("MTGVAULT_HOME", str(_TMP))
 
 from datetime import date  # noqa: E402
 
-from mtgvault import db, loadout, sources  # noqa: E402
+from mtgvault import db, loadout, paginas, sources  # noqa: E402
 
 import deckboxes  # noqa: E402
 import meta_coverage as mc  # noqa: E402
@@ -140,6 +140,14 @@ def _por_nome(cards):
 
 
 # ---------------------------------------------------------------------------
+def _caixas_de(con, cfg_slots=None):
+    """As caixas do payload da Deckboxes, por slot. É onde a posse vive na v6:
+    a página *Decks permanentes* desapareceu (fazia a mesma pergunta e respondia
+    outro número), e estes casos passaram a interrogar a página que ficou."""
+    rep = loadout.report(con, cfg_slots)
+    return {c["slot"]: c for c in deckboxes.payload(con, rep)["caixas"]}
+
+
 def caso_utrom_monitor():
     """O bug, à letra. Os 4 Utrom Monitor estão no SPML e o deck Pauper leva-os:
     a caixa do Pauper é quem os aloca, por isso a página tem de os dar como tidos."""
@@ -149,29 +157,31 @@ def caso_utrom_monitor():
     add(con, "Utrom Monitor", 4, sub="SPML")            # <- noutro balde
     add(con, "Frogmite", 4, sub="Pauper Affinity")
 
-    por_lista = loadout.slots_por_lista(loadout.allocate(con))
-    d = meusdecks._watched_decks(con, {}, {}, set(), por_lista)[0]
-    c = _por_nome(d["main"])["Utrom Monitor"]
-    assert c["hq"] == 4 and c["state"] == "have", c
-    assert c["comprar"] == 0 and c["oq"] == 0, c
-    assert not meusdecks._faltas(d["main"] + d["side"]), "não falta nada"
+    caixa = _caixas_de(con)["pauper"]
+    c = _por_nome(caixa["cartas"])["Utrom Monitor"]
+    assert c["got"] == 4 and c["est"] == "have", c
+    assert c["comprar"] == 0 and c["noutra"] == {}, c
+    assert c["lotes"][0]["local"] == "SPML", c["lotes"]
+    assert not caixa["wantlist"], "não falta nada nesta caixa"
     print("Utrom Monitor no SPML conta para a caixa do Pauper")
 
-    # E sem o loadout (o deck deixa de ser caixa) volta o comportamento antigo:
-    # só o balde ligado ao deck, que é onde o bug vivia.
-    velho = meusdecks._watched_decks(con, {}, {}, set(), {})[0]
-    assert _por_nome(velho["main"])["Utrom Monitor"]["state"] == "miss"
-    print("sem loadout, a contagem antiga (só o balde) — era aqui o erro")
+    # A carta a tirar da gaveta certa: o painel Montar diz "de SPML", que é o
+    # gesto que ele faz. Era esta a metade que faltava — a página antiga sabia
+    # que tinha a carta e não dizia onde ela estava.
+    tirar = {m["nm"]: m for m in caixa["montar"]["tirar"]}
+    assert tirar["Utrom Monitor"]["de"] == "SPML", tirar
+    assert caixa["montar"]["por_gaveta"].get("SPML") == 4, caixa["montar"]
+    print("e o painel Montar manda tirá-los do SPML")
 
 
 def caso_noutra_caixa_e_o_terceiro_estado():
     """Duas caixas querem a mesma carta e só há um playset: a de prioridade mais
-    baixa mostra 'em <caixa>' e NÃO a mete nas faltas. Somar `missing` mandava-o
+    baixa mostra 'em <caixa>' e NÃO a mete na wantlist. Somar `missing` mandava-o
     comprar 4 Frogmite que estão na caixa do lado.
 
     A caixa que empresta é aqui o Pauper com `dedicado: false` — desde
     2026-09-07 (19:00) o "ir buscar" só existe fora dos grupos dedicados
-    (Duel Commander e SPML), e o outro lado está no caso a seguir.
+    (Duel Commander e SPML), e o outro lado está no fim do caso.
     """
     con = base()
     vigiado(con, "Luffy — Pauper", "pauper", "Pauper Affinity",
@@ -180,59 +190,56 @@ def caso_noutra_caixa_e_o_terceiro_estado():
     add(con, "Frogmite", 4, finish="foil", sub="SPML")
 
     empresta = [dict(s, dedicado=False) for s in CFG["loadout"]]
-    por_lista = loadout.slots_por_lista(loadout.allocate(con, empresta))
-    linhas = loadout.linhas_por_carta(por_lista["UW Oswald"])
-    cards = meusdecks._cards([("Frogmite", 4), ("Thoughtcast", 4)],
-                            {}, {}, {}, linhas, "main")
-    fg = _por_nome(cards)["Frogmite"]
-    assert fg["state"] == "noutra" and fg["oq"] == 4 and fg["hq"] == 0, fg
-    assert fg["onde"] == {"Pauper (Luffy)": 4}, fg["onde"]
+    modern = _caixas_de(con, empresta)["modern"]
+    cards = _por_nome(modern["cartas"])
+    fg = cards["Frogmite"]
+    assert fg["est"] == "sub" and fg["missing"] == 4 and fg["got"] == 0, fg
+    assert fg["noutra"] == {"Pauper (Luffy)": 4}, fg["noutra"]
     assert fg["comprar"] == 0, fg
 
-    tc = _por_nome(cards)["Thoughtcast"]
-    assert tc["state"] == "miss" and tc["comprar"] == 4, tc
+    tc = cards["Thoughtcast"]
+    assert tc["est"] == "miss" and tc["comprar"] == 4, tc
 
-    faltas = meusdecks._faltas(cards)
-    assert faltas == {"Thoughtcast": 4}, faltas
-    print("carta noutra caixa: terceiro estado, e fora das faltas")
+    assert [w["nm"] for w in modern["wantlist"]] == ["Thoughtcast"], modern["wantlist"]
+    print("carta noutra caixa: terceiro estado, e fora da wantlist")
 
     # E com a caixa do Pauper DEDICADA (o default de 2026-09-07 às 19:00) a
     # mesma carta deixa de ser "em <caixa>" e passa a compra: *"cada deck montado
     # deixa de partilhar cartas com outros decks"*.
-    por_lista = loadout.slots_por_lista(loadout.allocate(con))
-    linhas = loadout.linhas_por_carta(por_lista["UW Oswald"])
-    cards = meusdecks._cards([("Frogmite", 4)], {}, {}, {}, linhas, "main")
-    fg = _por_nome(cards)["Frogmite"]
-    assert fg["state"] == "miss" and fg["comprar"] == 4 and fg["oq"] == 0, fg
-    assert meusdecks._faltas(cards) == {"Frogmite": 4}
+    modern = _caixas_de(con)["modern"]
+    fg = _por_nome(modern["cartas"])["Frogmite"]
+    assert fg["est"] == "miss" and fg["comprar"] == 4 and fg["noutra"] == {}, fg
+    assert {w["nm"] for w in modern["wantlist"]} == {"Frogmite", "Thoughtcast"}
     print("com a caixa dedicada, a mesma carta e compra e nao 'ir buscar'")
 
 
-def caso_deck_fora_do_loadout_conta_a_colecao_toda():
-    """Um deck que não é caixa nenhuma continua a contar a coleção inteira — é o
-    que se pode dizer sem inventar uma alocação que não existe."""
-    cards = meusdecks._cards([("Frogmite", 4), ("Island", 8)], {}, {},
-                            {"Frogmite": 2}, None, "main")
-    fg = _por_nome(cards)["Frogmite"]
-    assert fg["hq"] == 2 and fg["oq"] == 0 and fg["state"] == "part", fg
-    assert meusdecks._faltas(cards) == {"Frogmite": 2}
-    # Básicas: assume-se que as tem sempre.
-    assert _por_nome(cards)["Island"]["state"] == "have"
-    print("deck fora do loadout: contagem antiga, coleção inteira")
-
-
-def caso_pagina_meusdecks_fecha():
-    """A página tem de se escrever ponta a ponta com a alocação lá dentro."""
+def caso_coleccao_inteira_e_informacao_secundaria():
+    """"Quantas tenho ao todo" era a única coisa que a página dos decks dizia e
+    esta não. Na v6 entra como informação SECUNDÁRIA de cada carta: o número que
+    manda continua a ser o da alocação, senão volta a haver duas respostas para a
+    mesma pergunta — que era o defeito a corrigir."""
     con = base()
     vigiado(con, "Luffy — Pauper", "pauper", "Pauper Affinity",
-            [("main", "Utrom Monitor", 4)])
-    deck(con, "UW Oswald", "modern", [("Frogmite", 4)])
-    add(con, "Utrom Monitor", 4, sub="SPML")
+            [("main", "Frogmite", 2)])
+    add(con, "Frogmite", 4, sub="SPML")        # tem 4 na colecção, a caixa usa 2
+    caixa = _caixas_de(con)["pauper"]
+    fg = _por_nome(caixa["cartas"])["Frogmite"]
+    assert fg["need"] == 2 and fg["got"] == 2, fg
+    assert fg["col"] == 4, ("a colecção inteira tem 4", fg)
+    print("colecção inteira: informação secundária, a alocação é que manda")
+
+
+def caso_meusdecks_reencaminha():
+    """A *Decks permanentes* foi fundida na Deckboxes; o ficheiro fica como
+    reencaminhamento porque o telemóvel dele tem o link no histórico."""
     out = Path(tempfile.mkdtemp()) / "meusdecks.html"
-    meusdecks.build(con, out)
+    meusdecks.build(None, out)
     txt = out.read_text(encoding="utf-8")
-    assert "Utrom Monitor" in txt and "Luffy — Pauper" in txt
-    print("meusdecks.html escreve-se com a alocação do loadout")
+    assert 'http-equiv="refresh"' in txt and "deckboxes.html" in txt, txt[:400]
+    assert "Decks permanentes" not in paginas.nav("deckboxes.html"), \
+        "a página fundida não pode continuar no menu"
+    assert 'href="meusdecks.html"' not in paginas.nav("index.html", extra=True)
+    print("meusdecks.html reencaminha para as Deckboxes, e saiu do menu")
 
 
 # ---------------------------------------------------------------------------
@@ -677,8 +684,8 @@ def caso_aba_comprar_nao_soma_a_mesma_compra_por_caixa():
 
 def run():
     for fn in (caso_utrom_monitor, caso_noutra_caixa_e_o_terceiro_estado,
-               caso_deck_fora_do_loadout_conta_a_colecao_toda,
-               caso_pagina_meusdecks_fecha, caso_top_n_do_config,
+               caso_coleccao_inteira_e_informacao_secundaria,
+               caso_meusdecks_reencaminha, caso_top_n_do_config,
                caso_foil_report_ve_as_outras_caixas, caso_pagina_metagame_fecha,
                caso_payload_do_deckboxes,
                caso_javascript_do_deckboxes_desenha_todas_as_abas,

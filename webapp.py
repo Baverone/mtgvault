@@ -39,10 +39,29 @@ Onde fica a verdade
      sempre se fez.
 
 O que vai para a base de dados é só o que é **físico**: a `copy_allocation` (que
-cartas estão dentro de que caixa). Isso não é uma preferência, é o estado da
-estante — e não cabe num ficheiro de configuração.
+cartas estão dentro de que caixa) e as cópias que ele vende (o botão *"vendida"*
+tira-as da `copies` e escreve-as no `data/vendas.csv`). Isso não é uma
+preferência, é o estado da estante — e não cabe num ficheiro de configuração.
 
-Sem palavra-passe: quem chegar ao URL pode escrever. Não abras o porto no router.
+NO TELEMÓVEL, EM CASA (André, 2026-09-08)
+-----------------------------------------
+*"Ele vai estar à frente da estante com o telemóvel."* Por isso o servidor pode
+ouvir na rede local — `MTGVAULT_BIND=0.0.0.0` — e a página de arranque mostra um
+**QR** com o link já com o token. A predefinição continua a ser `127.0.0.1`:
+abrir um porto que escreve na base é uma decisão, não um efeito secundário de
+actualizar o vault.
+
+O **token** (`data/webapp.token`, fora do Git, gerado uma vez) é o que separa as
+duas coisas:
+
+  * **ler** funciona sempre — a página é a mesma do site publicado, sem botões;
+  * **escrever** exige o token. Sem ele, `403`. O token viaja no link do QR
+    (`?t=...`) e a página só o guarda dentro de si quando o pedido que a foi
+    buscar já o trazia — senão bastava abri-la para o descobrir.
+
+Os pedidos de `127.0.0.1` são de confiança sem token: quem está no PC já tem os
+ficheiros à frente, e pedir-lhe uma senha não protege nada. Continua a não ser
+para abrir no router.
 """
 from __future__ import annotations
 
@@ -50,6 +69,7 @@ import io
 import json
 import os
 import re
+import secrets
 import socket
 import subprocess
 import sys
@@ -57,39 +77,31 @@ import threading
 from datetime import date
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import db, loadout, migracao, sources  # noqa: E402
+from mtgvault import caixas, configio, db, loadout, migracao, qr, sources  # noqa: E402
 
 import deckboxes  # noqa: E402
 import metagame  # noqa: E402
 
 PORT = 8771          # o 8770 é do riftvault — ver o cabeçalho
+# Onde ouvir. `127.0.0.1` por omissão: só este PC. `0.0.0.0` para o telemóvel
+# chegar lá (é o que a tarefa `ai-pc/tasks/mtgvault-serve` define).
+BIND = os.environ.get("MTGVAULT_BIND") or "127.0.0.1"
 # Serializa TODAS as escritas (config + base de dados). Ver `do_POST`.
 ESCRITA = threading.Lock()
+CABECALHO_TOKEN = "X-Mtgvault-Token"
 
 
 def config_path() -> Path:
-    """O `colecao_config.json` que o motor está a ler NESTE momento.
-
-    Lê-se a cada chamada (e não uma vez no import) porque tem de ser o MESMO
-    ficheiro que o `sources.config()` lê: escrever num e ler do outro dava um
-    botão que "não faz nada" sem erro nenhum — o padrão que este vault já pagou.
-    """
-    return Path(os.environ.get("MTGVAULT_CONFIG") or ROOT / "colecao_config.json")
+    return configio.caminho()
 
 
 CONFIG = config_path()
-# As chaves cujo conteúdo se escreve com um elemento por linha. São listas de
-# objectos curtos que se lêem melhor assim — e é como o ficheiro está hoje, à
-# mão. Reformatá-las com `indent=2` dava um diff de 200 linhas por cada clique.
-UMA_LINHA = ("loadout", "regras_por_formato", "baldes_coleccao",
-             "decks_vigiados", "premodern_arquetipos_alvo", "formatos_metagame",
-             "so_jogadores_vigiados", "premodern_decks_completos",
-             "decks_montados", "reserved_vender_ignorar_formatos")
+UMA_LINHA = configio.UMA_LINHA
 # As páginas que o modo edição GERA em vez de servir do disco: são as que têm
 # botões, e o `editable` é o que os faz aparecer. Servir o ficheiro estático a
 # partir daqui dava uma página sem botões e sem explicação nenhuma.
@@ -98,39 +110,59 @@ PAGINAS_EDITAVEIS = {"/": deckboxes, "/index.html": deckboxes,
 
 
 # ---------------------------------------------------------------------------
-# Config: ler, mexer, gravar sem estragar a formatação
+# Config: ler, mexer, gravar sem estragar a formatação (ver `mtgvault.configio`)
 # ---------------------------------------------------------------------------
 def ler_config(path: Path | None = None) -> dict:
-    return json.loads((path or config_path()).read_text(encoding="utf-8"))
+    """O config, sempre já no formato **v6** (`caixas`).
+
+    Migra em memória quando encontra um ficheiro da v5, para o primeiro clique
+    dele não rebentar num config que ninguém converteu — e, como toda a escrita
+    passa por aqui, esse clique também deixa o ficheiro no formato novo. É o que
+    faz o *"o webapp escreve só no formato novo"* ser verdade sem exigir que a
+    migração corra primeiro.
+    """
+    return caixas.migrar_config(configio.ler(path))[0]
 
 
 def escrever_config(cfg: dict, path: Path | None = None) -> None:
-    """Grava o config mantendo a forma com que está escrito à mão.
+    """Grava o config e **esquece a cache** de quem o lê.
 
-    Um `json.dump(indent=2)` cru rebentava as catorze linhas do `loadout` em
-    duzentas, e o ficheiro é para ser lido por uma pessoa — é lá que estão as
-    explicações em português de cada regra.
-
-    Escreve-se **atomicamente** (ficheiro temporário ao lado + `os.replace`):
-    o `write_text` normal trunca o ficheiro antes de escrever, e um erro a meio
-    — ou dois pedidos ao mesmo tempo, que o `ThreadingHTTPServer` permite — dava
-    um `colecao_config.json` truncado. Perder esse ficheiro é perder o loadout,
-    as regras de material e as listas escolhidas de uma vez.
+    O `sources.config()` guarda o ficheiro em cache pelo mtime, e o Windows dá
+    mtimes com pouca resolução: gravar e voltar a ler no mesmo instante podia
+    devolver a versão de antes do clique. Aqui, a seguir a cada escrita, corre
+    logo a alocação — e ela tem de ver o que ele acabou de mudar.
     """
-    partes = []
-    for k, v in cfg.items():
-        chave = json.dumps(k, ensure_ascii=False)
-        if k in UMA_LINHA and isinstance(v, list):
-            itens = ",\n".join("    " + json.dumps(x, ensure_ascii=False) for x in v)
-            corpo = f"[\n{itens}\n  ]" if v else "[]"
-        else:
-            corpo = json.dumps(v, ensure_ascii=False, indent=2)
-            corpo = corpo.replace("\n", "\n  ")
-        partes.append(f"  {chave}: {corpo}")
-    destino = path or config_path()
-    tmp = destino.with_name(destino.name + ".tmp")
-    tmp.write_text("{\n" + ",\n".join(partes) + "\n}\n", encoding="utf-8")
-    os.replace(tmp, destino)
+    configio.escrever(cfg, path)
+    sources._CFG_CACHE.clear()
+
+
+# ---------------------------------------------------------------------------
+# Token: quem pode escrever
+# ---------------------------------------------------------------------------
+def ficheiro_token() -> Path:
+    """`data/webapp.token` — ao lado da base, e não no repositório: é um segredo
+    desta máquina e não uma preferência que viaje no Git."""
+    return Path(db.ROOT) / "webapp.token"
+
+
+def token(criar: bool = True) -> str:
+    """O token deste PC. Gera-se uma vez e fica — muda-se apagando o ficheiro."""
+    p = ficheiro_token()
+    if p.exists():
+        t = p.read_text(encoding="utf-8").strip()
+        if t:
+            return t
+    if not criar:
+        return ""
+    t = secrets.token_hex(16)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(t + "\n", encoding="utf-8")
+    return t
+
+
+def token_valido(dado: str | None) -> bool:
+    esperado = token(criar=False)
+    return bool(dado) and bool(esperado) and secrets.compare_digest(dado, esperado)
 
 
 def _peers(con, cfg, slot_id):
@@ -142,7 +174,7 @@ def _peers(con, cfg, slot_id):
     de Premodern acima de um permanente de cEDH não é um número — é mudar o
     `regras_por_formato`, e o botão diz isso em vez de fingir que fez algo.
     """
-    resolvidos = loadout.resolve_slots(con, cfg.get("loadout") or [])
+    resolvidos = loadout.resolve_slots(con, caixas.do_config(cfg))
     alvo = next((s for s in resolvidos if s["slot"] == slot_id), None)
     if alvo is None:
         return None, []
@@ -169,7 +201,7 @@ def mover(con, cfg, slot_id, delta) -> str:
     # swap simples não mexia em nada. É a mesma armadilha dos catorze números à
     # mão que a ordem por grupo veio resolver.
     posicao = {s: n for n, s in enumerate(ordem, 1)}
-    for s in cfg["loadout"]:
+    for s in cfg["caixas"]:
         if s["slot"] in posicao:
             s["prioridade"] = posicao[s["slot"]]
     return f"{alvo['nome']} {'subiu' if delta < 0 else 'desceu'} no grupo {alvo['grupo']}"
@@ -178,15 +210,10 @@ def mover(con, cfg, slot_id, delta) -> str:
 # ---------------------------------------------------------------------------
 # "Vou montar este": escolher o deck de uma caixa a partir do top-N
 # ---------------------------------------------------------------------------
-# As chaves do slot que a escolha mexe — e por isso as que o `desmarcar` repõe.
-CHAVES_DA_ESCOLHA = ("fonte", "ref", "nome", "permanente", "por_confirmar")
+# As chaves da caixa que a escolha mexe — e por isso as que o `desmarcar` repõe.
+CHAVES_DA_ESCOLHA = ("fonte", "ref", "nome", "estado")
 
-
-def _slot_do_cfg(cfg, slot_id) -> dict:
-    for s in cfg.get("loadout") or []:
-        if s.get("slot") == slot_id:
-            return s
-    raise KeyError(slot_id)
+_slot_do_cfg = caixas.caixa_do_cfg
 
 
 def escolher_lista(con, cfg, slot_id: str, aid: int) -> str:
@@ -233,8 +260,11 @@ def escolher_lista(con, cfg, slot_id: str, aid: int) -> str:
     s["fonte"] = "escolhido"
     s["ref"] = slot_id
     s["nome"] = f'{(s.get("nome") or slot_id).split(" — ")[0]} — {nome}'
-    s["permanente"] = True
-    s.pop("por_confirmar", None)
+    # Escolher um deck para a caixa é pô-la a receber cartas: é isso que
+    # `permanente` quer dizer. Uma caixa montada não perde esse estado por se
+    # escolher outra lista para ela (é o que o «actualizar» existe para fazer).
+    if caixas.estado_de(s) == caixas.CANDIDATA:
+        s["estado"] = caixas.PERMANENTE
     return f"{nome} escolhido para a caixa {s['nome']}"
 
 
@@ -255,13 +285,30 @@ def desmarcar_lista(cfg, slot_id: str) -> str:
     return f'{s.get("nome") or slot_id}: escolha desfeita'
 
 
-def alternar(cfg, slot_id, chave, default=True) -> tuple[bool, str]:
-    for s in cfg.get("loadout") or []:
-        if s["slot"] == slot_id:
-            novo = not bool(s.get(chave, default))
-            s[chave] = novo
-            return novo, s.get("nome") or slot_id
-    raise KeyError(slot_id)
+def alternar_permanente(cfg, slot_id) -> tuple[str, str]:
+    """`candidata` <-> `permanente`. Devolve (estado novo, nome).
+
+    Uma caixa **montada** não passa a candidata por aqui: está sleevada na
+    estante, e desfazer isso é o botão *"tirar da caixa"* (que também apaga a
+    `copy_allocation`). Dois caminhos para o mesmo estado é o que a escala de
+    estados da v6 veio evitar.
+    """
+    s = caixas.caixa_do_cfg(cfg, slot_id)
+    nome = s.get("nome") or slot_id
+    actual = caixas.estado_de(s)
+    if actual == caixas.MONTADA:
+        return actual, nome
+    s["estado"] = (caixas.CANDIDATA if actual == caixas.PERMANENTE
+                   else caixas.PERMANENTE)
+    return s["estado"], nome
+
+
+def alternar_montada(cfg, slot_id) -> tuple[bool, str]:
+    """`montada` <-> `permanente` — o *"sleevado e na caixa"* / *"tirar da caixa"*."""
+    s = caixas.caixa_do_cfg(cfg, slot_id)
+    montada = caixas.estado_de(s) != caixas.MONTADA
+    s["estado"] = caixas.MONTADA if montada else caixas.PERMANENTE
+    return montada, (s.get("nome") or slot_id)
 
 
 # ---------------------------------------------------------------------------
@@ -335,12 +382,45 @@ class Handler(BaseHTTPRequestHandler):
         self._envia(json.dumps(obj, ensure_ascii=False), code,
                     "application/json; charset=utf-8")
 
+    # -- quem pode escrever ------------------------------------------------
+    def _token_do_pedido(self) -> str | None:
+        u = urlparse(self.path)
+        q = parse_qs(u.query).get("t")
+        return self.headers.get(CABECALHO_TOKEN) or (q[0] if q else None)
+
+    def _pode_escrever(self) -> bool:
+        """Loopback é de confiança; da rede exige-se o token (ver o cabeçalho)."""
+        ip = (self.client_address[0] if self.client_address else "")
+        return ip in ("127.0.0.1", "::1") or token_valido(self._token_do_pedido())
+
     def do_GET(self):                                  # noqa: N802
         caminho = urlparse(self.path).path
+        if caminho in ("/qr.svg", "/qr"):
+            # O QR do link COMPLETO (com token) da rede local. É o que ele aponta
+            # com o telemóvel; escrever o URL à mão num teclado de telemóvel é
+            # exactamente o atrito que faz não se usar a ferramenta.
+            #
+            # E por isso esta imagem TAMBÉM exige o token: um QR é um URL
+            # legível: servi-lo a quem não o tem era dar-lhe o token pela porta
+            # do lado, e o 403 dos `POST` deixava de valer nada. A página pede-a
+            # com o `?t=` (ver `ligacaoHTML` no `deckboxes.py`).
+            if not self._pode_escrever():
+                self._envia("<h1>403</h1><p>o QR leva o token — não se serve a "
+                            "quem não o tem.</p>", 403)
+                return
+            self._envia(qr.svg(url_edicao()), tipo="image/svg+xml; charset=utf-8")
+            return
         modulo = PAGINAS_EDITAVEIS.get(caminho)
         if modulo is not None:
+            # A página só leva o token DENTRO dela quando o pedido já o trazia —
+            # senão bastava abri-la de qualquer telemóvel da rede para o
+            # descobrir, e o token não protegia nada.
+            editavel = self._pode_escrever()
             with db.session() as con:
-                self._envia(modulo.html_page(con, editable=True))
+                self._envia(modulo.html_page(
+                    con, editable=editavel,
+                    token=(token() if editavel else ""),
+                    ligacao=(ligacao_local() if editavel else None)))
             return
         nome = caminho.lstrip("/")
         alvo = (ROOT / nome).resolve()
@@ -358,6 +438,13 @@ class Handler(BaseHTTPRequestHandler):
             dados = json.loads(corpo or "{}")
         except json.JSONDecodeError:
             dados = {}
+        if not self._pode_escrever():
+            # Ler é livre, escrever não. Sem isto, pôr o porto na rede local
+            # (MTGVAULT_BIND=0.0.0.0) dava a qualquer aparelho de casa — ou a
+            # qualquer visita no Wi-Fi — o direito de lhe desmontar os decks.
+            self._json({"erro": "sem token: este link é só de leitura. Abre o "
+                                "link do QR (tem o ?t=) para poderes gravar."}, 403)
+            return
         # UMA escrita de cada vez. O `ThreadingHTTPServer` atende os pedidos em
         # paralelo, e cada botão é um ler-mexer-gravar do `colecao_config.json`:
         # dois cliques ao mesmo tempo (ou um duplo-toque no telemóvel) faziam o
@@ -379,6 +466,9 @@ class Handler(BaseHTTPRequestHandler):
                 if caminho == "/api/escolher":
                     self._json(self._escolher(dados))
                     return
+                if caminho == "/api/vender":
+                    self._json(self._vender(dados))
+                    return
             except KeyError as e:
                 # O caso normal: um `slot` que já não existe no config (a página
                 # aberta no telemóvel é de antes de ele o mudar). `repr` dava
@@ -396,18 +486,27 @@ class Handler(BaseHTTPRequestHandler):
         cfg = ler_config()
         with db.session() as con:
             if act == "permanente":
-                novo, nome = alternar(cfg, slot_id, "permanente", True)
+                novo, nome = alternar_permanente(cfg, slot_id)
+                if novo == caixas.MONTADA:
+                    return {"erro": f"{nome} está montada — usa «tirar da caixa»"}
                 escrever_config(cfg)
-                msg = f"{nome} passou a {'permanente' if novo else 'candidato'}"
+                msg = f"{nome} passou a {novo}"
             elif act in ("subir", "descer"):
                 msg = mover(con, cfg, slot_id, -1 if act == "subir" else 1)
                 escrever_config(cfg)
             elif act == "montado":
-                novo, nome = alternar(cfg, slot_id, "montado", False)
+                novo, nome = alternar_montada(cfg, slot_id)
                 escrever_config(cfg)
                 n = marcar_na_caixa(con, slot_id, novo)
                 msg = (f"{nome}: {n} cópias registadas na caixa" if novo
                        else f"{nome}: caixa esvaziada ({n} linhas)")
+            elif act == "confirmar":
+                # A caixa JÁ se diz montada (`estado: montada`) e o vault não
+                # sabe o que lá está: o que falta é registá-lo. Não mexe no
+                # config — o estado já está certo, o que faltava era a estante.
+                nome = caixas.caixa_do_cfg(cfg, slot_id).get("nome") or slot_id
+                n = marcar_na_caixa(con, slot_id, True)
+                msg = f"{nome}: {n} cópias confirmadas dentro da caixa"
             elif act == "actualizar":
                 # "Actualizei": aplica o delta de UMA caixa congelada. Não passa
                 # pelo config — o que muda é físico (que cartas estão na caixa),
@@ -423,6 +522,30 @@ class Handler(BaseHTTPRequestHandler):
             sources._CFG_CACHE.clear()     # relê já, sem esperar pelo mtime
             regenerar(con)
         return {"ok": True, "msg": msg}
+
+    def _vender(self, dados):
+        """"Vendida": a cópia sai da colecção e fica registada no `vendas.csv`.
+
+        A linha vem da própria página (é a que ele está a ver), e por isso o
+        servidor **recalcula-a** antes de tirar nada: uma página aberta há duas
+        horas podia mandar tirar uma cópia que a alocação já deu a uma caixa.
+        """
+        chave, q = dados.get("linha"), dados.get("q")
+        if not chave:
+            return {"erro": "sem linha"}
+        with db.session() as con:
+            migracao.backup(con)
+            rep = loadout.report(con)
+            alvo = next((r for k in ("venda", "venda_rl", "retidos")
+                         for r in rep[k]
+                         if loadout.chave_venda(r) == chave), None)
+            if alvo is None:
+                return {"erro": "essa linha já não está na lista de venda — "
+                                "recarrega a página"}
+            res = loadout.registar_venda(con, alvo, q)
+            regenerar(con)
+        return {"ok": True, "msg": f'{res["copias"]}× {alvo["nm"]} fora da '
+                                   f'colecção e no vendas.csv'}
 
     def _escolher(self, dados):
         """"Vou montar este" / "já não vou montar este", do `metagame.html`."""
@@ -495,39 +618,82 @@ def lan_ips() -> list[str]:
     return [principal] + sorted(x for x in todos if x != principal and util(x))
 
 
+def ligacao_local(port: int | None = None) -> dict:
+    """O link de escrita da rede local: `{url, ip, ips, porto, token}`.
+
+    É o que vai no QR e o que a página mostra. O token vai no URL de propósito:
+    escrever 32 dígitos hexadecimais num teclado de telemóvel é o atrito que faz
+    não se usar a ferramenta.
+    """
+    p = port or int(os.environ.get("MTGVAULT_PORT") or PORT)
+    ips = lan_ips()
+    t = token()
+    return {"ip": ips[0], "ips": ips, "porto": p, "token": t,
+            "url": f"http://{ips[0]}:{p}/?t={t}"}
+
+
+def url_edicao(port: int | None = None) -> str:
+    return ligacao_local(port)["url"]
+
+
 def qr_ascii(url: str) -> str:
+    """O QR na consola. O nosso desenhador (`mtgvault.qr`) primeiro; a biblioteca
+    `qrcode`, se estiver instalada, fica como alternativa para o caso de a
+    consola não conseguir com os blocos de meia-altura."""
     try:
-        import qrcode
-    except ImportError:
-        return "  (instala `qrcode` para veres o QR aqui: py -m pip install qrcode)"
+        arte = qr.ascii_arte(url)
+        arte.encode(getattr(sys.stdout, "encoding", None) or "utf-8")
+        return arte
+    except (UnicodeEncodeError, LookupError, ValueError):
+        pass
     try:
-        qr = qrcode.QRCode(border=2)
-        qr.add_data(url)
-        qr.make(fit=True)
+        import qrcode                                   # noqa: PLC0415
+        q = qrcode.QRCode(border=2)
+        q.add_data(url)
+        q.make(fit=True)
         buf = io.StringIO()
-        qr.print_ascii(out=buf, invert=True)
+        q.print_ascii(out=buf, invert=True)
         out = buf.getvalue()
         out.encode(getattr(sys.stdout, "encoding", None) or "utf-8")
         return out
     except Exception:                                   # noqa: BLE001
-        return "  (a consola não mostra o QR; usa o URL acima)"
+        return "  (a consola não mostra o QR; abre /qr.svg no browser)"
 
 
-def main(port: int = PORT, host: str = "0.0.0.0"):
-    ips = lan_ips()
-    lan = f"http://{ips[0]}:{port}/"
+def regra_firewall(port: int) -> str:
+    """O comando que abre o porto na rede PRIVADA do Windows.
+
+    Não se corre sozinho: `netsh advfirewall` precisa de consola elevada, e um
+    programa que abre portos na primeira execução sem avisar não é um programa
+    de confiança. Imprime-se para ele copiar uma vez.
+    """
+    return (f'netsh advfirewall firewall add rule name="mtgvault {port}" '
+            f'dir=in action=allow protocol=TCP localport={port} profile=private')
+
+
+def main(port: int = PORT, host: str | None = None):
+    host = host or BIND
+    lig = ligacao_local(port)
+    aberto = host not in ("127.0.0.1", "localhost", "::1")
     print("=" * 62)
     print("  mtgvault — MODO EDIÇÃO (escreve no colecao_config.json e no vault.db)")
     print("=" * 62)
     print(f"  Neste PC:          http://localhost:{port}/")
-    print(f"  Telemóvel (casa):  {lan}")
-    for extra in ips[1:]:
-        print(f"     ou:             http://{extra}:{port}/")
-    if len(ips) > 1:
-        print("     (redes diferentes — usa a que o telemóvel alcança)")
+    if aberto:
+        print(f"  Telemóvel (casa):  {lig['url']}")
+        for extra in lig["ips"][1:]:
+            print(f"     ou:             http://{extra}:{port}/?t={lig['token']}")
+        if len(lig["ips"]) > 1:
+            print("     (redes diferentes — usa a que o telemóvel alcança)")
+    else:
+        print("  Telemóvel:         DESLIGADO — corre com MTGVAULT_BIND=0.0.0.0")
     print(f"\n  Porto {port} — o 8770 é do riftvault, não lhe toques.\n")
-    print(qr_ascii(lan))
-    print("  Sem palavra-passe: quem chegar ao URL pode escrever.")
+    if aberto:
+        print(qr_ascii(lig["url"]))
+        print(f"  Token em {ficheiro_token()} (apaga-o para gerar outro).")
+        print("  Sem o ?t= do link, a página é só de leitura.")
+        print("  Se o telemóvel não chegar, abre o porto na rede privada:")
+        print("    " + regra_firewall(port))
     print("  Não abras este porto no router.  Ctrl+C para parar.")
     print("=" * 62)
     srv = ThreadingHTTPServer((host, port), Handler)

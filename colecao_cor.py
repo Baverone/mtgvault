@@ -429,8 +429,8 @@ def build(con, out_path=None):
 
     wsec = ""
     if wsec_body:
-        topnav += ' · <a href="#vigiados">🃏 Decks permanentes</a>'
-        wsec = ('<h2 id="vigiados" class="pool">🃏 Decks permanentes '
+        topnav += ' · <a href="#vigiados">🃏 Decks montados</a>'
+        wsec = ('<h2 id="vigiados" class="pool">🃏 Decks montados '
                 '<span class="n">só decks — não coleção</span></h2>'
                 '<p class="hint">Lista fixa (Blue Farm, Cloud cEDH, Pauper): o deck por inteiro '
                 '+ as <b>extra</b> (saíram da lista, retidas até 6 meses). As cartas com '
@@ -535,7 +535,7 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
 <div class="nav">%NAV%</div>
 %SECS%
 %VIGIADOS%
-<footer><b>Um binder por cor</b>; dentro de cada cor, <b>SPML</b> e <b>Premodern</b> separados, cada um por custo de mana (as Terras por nome). Mostra <b>TUDO</b> o que tens nesses baldes — nada é removido para decks (enche primeiro os binders; os decks vêm depois). Os decks montados (Blue Farm, Cloud, etc.) ficam <b>à parte</b>, na secção 🃏 Decks permanentes. O número em cada carta é quantas tens; ★ = foil, PT = português. <b>Se tiveres uma carta na mão que não aparece — ou mais do que o número — ainda não está catalogada: fotografa.</b> O botão <b>🎯 marcar as que vão p/ decks</b> sombreia (mais tarde, quando montares) as que já estão reservadas a um deck. Atualiza sozinho todos os dias.</footer>
+<footer><b>Um binder por cor</b>; dentro de cada cor, <b>SPML</b> e <b>Premodern</b> separados, cada um por custo de mana (as Terras por nome). Mostra <b>TUDO</b> o que tens nesses baldes — nada é removido para decks (enche primeiro os binders; os decks vêm depois). Os decks montados (Blue Farm, Cloud, etc.) ficam <b>à parte</b>, na secção 🃏 Decks montados. O número em cada carta é quantas tens; ★ = foil, PT = português. <b>Se tiveres uma carta na mão que não aparece — ou mais do que o número — ainda não está catalogada: fotografa.</b> O botão <b>🎯 marcar as que vão p/ decks</b> sombreia (mais tarde, quando montares) as que já estão reservadas a um deck. Atualiza sozinho todos os dias.</footer>
 </div>
 <script>
 function toggleDM(){var on=document.body.classList.toggle('deckmode');

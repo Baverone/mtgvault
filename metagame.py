@@ -12,13 +12,13 @@ isso**. O que mudou de fundo:
   * **Standard, Pioneer e Legacy** — os `metagame_top_n` arquétipos (3 por
     omissão, `colecao_config.json → metagame_top_n`) com maior percentagem já
     tida, cada um com a sua **lista de consenso** (a lista padrão de sempre, do
-    `stock.stock_list`). São os três slots que no `loadout` estão `por_confirmar`
-    — é a pergunta "que deck é que eu meto nesta caixa?".
+    `stock.stock_list`). São as três caixas do `colecao_config.json → caixas`
+    que ainda estão sem `ref` — a pergunta "que deck meto nesta caixa?".
   * **Modern** — não há nada a escolher: o deck está escolhido (UW Oswald) e
     mostra-se a caixa do loadout, com as variantes marcadas.
   * **Premodern** — só o UW Replenish e a Enchantress, os alvos de consenso do
     `premodern_arquetipos_alvo` (âmbito de 2026-09-07). O Stiflenought não está
-    aqui de propósito: segue a lista do Luffy e vive no `meusdecks.html`.
+    aqui de propósito: segue a lista do Luffy e é uma caixa como as outras.
 
 E a posse é a do LOADOUT, com os três estados de sempre — **tenho** (verde),
 **está noutra caixa** (azul, vai-se buscar, não se compra) e **falta** (vermelho,
@@ -321,7 +321,7 @@ def build(con, out_path=None, editable=False):
     return out
 
 
-def html_page(con, editable=False) -> str:
+def html_page(con, editable=False, token="", ligacao=None) -> str:
     """A página como texto — é o que o `webapp.py` serve sem escrever no disco.
 
     Com `editable`, cada deck do top-N ganha o botão *"vou montar este"*: é onde
@@ -356,7 +356,7 @@ def html_page(con, editable=False) -> str:
         else:
             decks = _decks_de_slots(res["slots"], fmt, so_refs=alvos)
             lead = ('Os alvos de consenso que pediste. O Stiflenought não está aqui: '
-                    'segue a lista do Luffy, e vive nos <b>Decks permanentes</b>.')
+                    'segue a lista do Luffy, e é uma caixa das <b>Deckboxes</b>.')
         for d in decks:
             for m in d["linhas"]:
                 names.add(m["nm"])
@@ -383,6 +383,9 @@ def html_page(con, editable=False) -> str:
             .replace("%TABS%", TABS).replace("%SUBNAV%", subnav)
             .replace("%SECS%", secs).replace("%N%", str(n))
             .replace("%EDIT%", "1" if editable else "")
+            # O token só entra na página quando o pedido que a foi buscar já o
+            # trazia (ver `webapp`): é ele que autoriza os botões a gravar.
+            .replace("%TOKEN%", token or "")
             .replace("%TODAY%", today))
 
 
@@ -450,7 +453,7 @@ cópia com maior probabilidade de lá estar, calculada das decklists reais que c
 decidires. <b>Modern</b> mostra o deck já escolhido; <b>Premodern</b>, os alvos de consenso.
 Regra de material: nesses formatos as cartas são todas <b>foil</b> menos as da Reserved List
 (o preço de fecho é o do foil), e no Premodern são todas <b>PT</b>.
-Quem manda é o <code>colecao_config.json</code> (<code>metagame_top_n</code>, <code>loadout</code>).
+Quem manda é o <code>colecao_config.json</code> (<code>metagame_top_n</code>, <code>caixas</code>).
 Para o metagame inteiro, com o top-10 ponderado, vê <b>cobertura.html</b>. Atualiza diariamente.</footer>
 </div>
 <script>
@@ -473,7 +476,8 @@ function cp(btn){
       b.disabled=true;
       try{
         const r=await fetch('api/escolher',{method:'POST',
-          headers:{'Content-Type':'application/json'},
+          headers:{'Content-Type':'application/json',
+                   'X-Mtgvault-Token':"%TOKEN%"},
           body:JSON.stringify({act:b.dataset.act,slot:b.dataset.slot,
                                aid:b.dataset.aid?Number(b.dataset.aid):null})});
         if(!r.ok) throw new Error('HTTP '+r.status);

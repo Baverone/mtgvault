@@ -33,13 +33,13 @@ CFG = {
     "regras_colecao": {},
     "baldes_coleccao": ["Colecção", "Caixa Reserved List"],
     "decks_vigiados": [],
-    "loadout": [
+    "caixas": [
         {"slot": "a", "nome": "A", "formato": "legacy", "fonte": "deck",
-         "ref": "A", "balde": "Colecção", "prioridade": 7, "permanente": True},
+         "ref": "A", "balde": "Colecção", "estado": "permanente", "prioridade": 7},
         {"slot": "b", "nome": "B", "formato": "legacy", "fonte": "deck",
-         "ref": "B", "balde": "Colecção", "prioridade": 7, "permanente": True},
+         "ref": "B", "balde": "Colecção", "estado": "permanente", "prioridade": 7},
         {"slot": "c", "nome": "C", "formato": "legacy", "fonte": "deck",
-         "ref": "C", "balde": "Colecção", "prioridade": 9, "permanente": False},
+         "ref": "C", "balde": "Colecção", "estado": "candidata", "prioridade": 9},
     ],
 }
 CAMINHO = _TMP / "cfg.json"
@@ -90,7 +90,7 @@ def repor():
 
 
 def quem_tem(con, cfg):
-    rep = loadout.report(con, cfg["loadout"])
+    rep = loadout.report(con, cfg["caixas"])
     return next(s["nome"] for s in rep["slots"] if s["tenho"])
 
 
@@ -102,9 +102,9 @@ def caso_tornar_permanente_muda_a_alocacao():
     assert quem_tem(con, cfg) == "A"      # A e B são permanentes, C é candidato
     # Tira-se a A e a B de permanentes: o candidato C passa a ser o primeiro.
     for slot in ("a", "b"):
-        webapp.alternar(cfg, slot, "permanente", True)
-    webapp.alternar(cfg, "c", "permanente", True)
-    for s in cfg["loadout"]:
+        webapp.alternar_permanente(cfg, slot)
+    webapp.alternar_permanente(cfg, "c")
+    for s in cfg["caixas"]:
         s["prioridade"] = {"a": 3, "b": 2, "c": 1}[s["slot"]]
     assert quem_tem(con, cfg) == "C", quem_tem(con, cfg)
     print("tornar permanente muda quem fica com a carta")
@@ -117,7 +117,7 @@ def caso_subir_renumera_o_grupo():
     # A e B têm o MESMO `prioridade` (7) no config: um swap de números não
     # mexia em nada. A renumeração é que faz isto funcionar.
     msg = webapp.mover(con, cfg, "b", -1)
-    prio = {s["slot"]: s["prioridade"] for s in cfg["loadout"]}
+    prio = {s["slot"]: s["prioridade"] for s in cfg["caixas"]}
     assert prio["b"] < prio["a"], prio
     assert "subiu" in msg, msg
     assert quem_tem(con, cfg) == "B", quem_tem(con, cfg)
@@ -146,7 +146,7 @@ def caso_gravar_o_config_a_serio_nao_o_estraga():
     assert list(volta) == list(original), "a ordem das chaves mudou"
     texto = destino.read_text(encoding="utf-8")
     # As catorze caixas continuam a ser catorze linhas, não duzentas.
-    assert texto.count('{ "slot"') + texto.count('{"slot"') == len(original["loadout"])
+    assert texto.count('{ "slot"') + texto.count('{"slot"') == len(original["caixas"])
     print("gravar o colecao_config.json a serio nao lhe estraga a forma")
 
 
@@ -158,7 +158,7 @@ def caso_sleevado_e_na_caixa():
     linhas = con.execute("SELECT slot, quantity FROM copy_allocation").fetchall()
     assert [(r["slot"], r["quantity"]) for r in linhas] == [("a", 1)], linhas
     # A caixa passa a ser a morada da carta.
-    rep = loadout.report(con, webapp.ler_config()["loadout"])
+    rep = loadout.report(con, webapp.ler_config()["caixas"])
     assert next(s for s in rep["slots"] if s["slot"] == "a")["origens"] == {"A": 1}
     # E tirar da caixa desfaz — só daquela caixa.
     assert webapp.marcar_na_caixa(con, "b", False) == 0
@@ -231,11 +231,11 @@ def caso_ler_config_segue_o_ficheiro_que_o_motor_le():
     que "não faz nada" sem erro nenhum."""
     antigo = os.environ["MTGVAULT_CONFIG"]
     outro = _TMP / "outro.json"
-    outro.write_text(json.dumps({"loadout": []}), encoding="utf-8")
+    outro.write_text(json.dumps({"caixas": []}), encoding="utf-8")
     os.environ["MTGVAULT_CONFIG"] = str(outro)
     try:
         assert webapp.config_path() == outro, webapp.config_path()
-        assert webapp.ler_config() == {"loadout": []}
+        assert webapp.ler_config() == {"caixas": []}
     finally:
         os.environ["MTGVAULT_CONFIG"] = antigo
     print("o webapp le e escreve o mesmo ficheiro que o motor le")

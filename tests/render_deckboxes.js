@@ -68,7 +68,8 @@ for (const s of scripts) vm.runInContext(s, ctx, { filename: 'deckboxes.js' });
 
 // O `const D` do script é uma ligação lexica, não uma propriedade do global.
 const slots = vm.runInContext('D.caixas.map(c => c.slot)', ctx);
-const abas = ['todas', 'arrumar', 'partilhadas', 'comprar', 'vender', ...slots];
+const abas = ['plano', 'todas', 'arrumar', 'partilhadas', 'comprar', 'vender',
+              ...slots];
 let n = 0;
 for (const filtro of ['tudo', 'faltam']) {
   vm.runInContext(`filtro = ${JSON.stringify(filtro)};`, ctx);

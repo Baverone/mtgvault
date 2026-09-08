@@ -82,6 +82,53 @@ normais que podes abrir, mover para o NAS ou copiar para a cloud.
 
 ---
 
+## Os decks são as caixas (deckboxes)
+
+Desde 2026-09-08 há **uma** noção de deck: a caixa. Vive em
+`colecao_config.json → caixas` (uma linha por caixa) e é dela que sai a página
+`deckboxes.html`, que é **a página dos decks** — a antiga *Decks permanentes*
+(`meusdecks.html`) foi fundida lá e ficou só como reencaminhamento.
+
+Cada caixa tem: `fonte` (de onde vem a lista — `vigiado` = o jogador/URL que o
+`watch-check` segue, `deck` = a tabela `decks`, `consenso`, `escolhido` = o *"vou
+montar este"* com a lista congelada e datada, `manual`), `estado` (`candidata` <
+`permanente` < `montada`; `congelada` calcula-se), `prioridade`, `notas` e as
+regras de material que herda do formato.
+
+```bat
+python -m mtgvault.cli migrar-caixas      :: converte um config antigo (com backup)
+python -m mtgvault.cli loadout            :: estado de cada caixa + por onde começar
+python -m mtgvault.cli loadout Pauper     :: o detalhe de uma
+python -m mtgvault.cli arrumar            :: o que mover de cada gaveta p/ cada caixa
+python -m mtgvault.cli vender             :: o que sobra depois de montar
+```
+
+### Modo edição, e no telemóvel
+
+```bat
+python webapp.py                          :: só este PC (127.0.0.1:8771)
+set MTGVAULT_BIND=0.0.0.0 && python webapp.py   :: também o telemóvel de casa
+```
+
+Serve a **mesma** página `deckboxes.html`, com os botões: o painel *Montar*
+("sleevado e na caixa"), *já arrumei tudo*, *vendida*, *tornar permanente*,
+*subir/descer* e *vou montar este*. O arranque imprime o link da rede local e um
+**QR** (a página também o mostra, na aba *Plano*).
+
+**Ler é livre; escrever exige o token** de `data/webapp.token` (gerado uma vez,
+fora do Git). O token vai no link do QR (`?t=...`) — sem ele a página é só de
+leitura, e um `POST` responde 403. Pedidos de `127.0.0.1` não precisam de token.
+
+Se o telemóvel não chegar ao PC, o porto pode estar fechado na firewall. **Numa
+consola de Administrador**, uma vez:
+
+```bat
+netsh advfirewall firewall add rule name="mtgvault 8771" dir=in action=allow protocol=TCP localport=8771 profile=private
+```
+
+(`profile=private` de propósito: só a rede de casa. Não abras o porto no router.)
+O mesmo comando é impresso no arranque do `webapp.py`.
+
 ## Os meus decks
 
 ```bat
@@ -513,6 +560,10 @@ python test_sources.py       :: parsing das páginas do mtgo.com
 python test_event_tier.py    :: a coluna de que o metagame depende
 python test_metagame_filtro.py :: que listas contam (ligas fora, presenciais 64+)
 python test_watch_revert.py  :: voltar a uma lista anterior não baralha o "atual"
+python test_caixas.py        :: a migração do config e a escala de estados
+python test_montar_vender.py :: montar, "vendida", e o token do modo edição
+python test_qr.py            :: o QR do link (lê-se a si próprio)
+python _bateria.py           :: corre-os todos (um processo cada) e resume
 python test_reserve.py       :: reservas por deck (e o colecionador fora delas)
 python test_movers.py        :: subidas e descidas não se misturam
 python test_cli_deck.py      :: deck-add repetido escreve no deck certo
