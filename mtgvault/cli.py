@@ -168,6 +168,11 @@ def main(argv=None):
     mc.add_argument("--dry-run", action="store_true",
                     help="só diz o que faria; não escreve nada")
 
+    ma = sub.add_parser("migrar-arquetipos",
+                        help="recusas/escolhas por NOME -> por `id` estável")
+    ma.add_argument("--dry-run", action="store_true",
+                    help="só diz o que faria; não escreve nada")
+
     mig = sub.add_parser("migrar-coleccao-unica",
                          help="funde os baldes na `Colecção` (a RL fica de fora)")
     mig.add_argument("--dry-run", action="store_true",
@@ -465,6 +470,9 @@ def main(argv=None):
         elif args.cmd == "premodern":
             _premodern(loadout.report(con), tudo=args.tudo)
 
+        elif args.cmd == "migrar-arquetipos":
+            _migrar_arquetipos(con, dry_run=args.dry_run)
+
         elif args.cmd == "migrar-coleccao-unica":
             _migrar(con, dry_run=args.dry_run, com_backup=not args.sem_backup)
 
@@ -679,6 +687,31 @@ def _arrumar(con, csv_out=False, confirmar=False):
     else:
         print("\n  (isto é só a folha — corre com --confirmar quando tiveres "
               "arrumado a sério)")
+
+
+def _migrar_arquetipos(con, dry_run=False):
+    """Passa as recusas e as escolhas de chave-NOME para chave-`id` estável.
+
+    O mapa nome→`id` sai do ranking do dia, que é o único sítio onde os dois se
+    veem ao mesmo tempo. O que hoje não tem listas fica como está — um arquétipo
+    volta ao metagame daqui a um mês e apagar-lhe a recusa era decidir por ele.
+    """
+    from . import configio, premodern, sources
+    cands = premodern.candidatos(con, loadout.report(con))
+    mapa = premodern.mapa_de_ids(cands)
+    p = configio.caminho(None)
+    cfg = configio.ler(p)
+    _novo, n = premodern.migrar_config(cfg, mapa)
+    print(f"{len(cands)} arquétipos de Premodern com `id` estável hoje.")
+    if not n:
+        print("Nada a migrar — as recusas e as escolhas já estão por `id`.")
+        return
+    if dry_run:
+        print(f"{n} linha(s) a converter (dry-run — nada escrito).")
+        return
+    configio.escrever(cfg, p)
+    sources._CFG_CACHE.clear()
+    print(f"{n} linha(s) convertidas em {p}.")
 
 
 def _migrar(con, dry_run=False, com_backup=True):
