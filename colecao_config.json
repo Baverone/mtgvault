@@ -12,167 +12,20 @@
   "decks_montados": [],
   "_decks_montados": "Decks fisicamente MONTADOS (nomes da tabela decks). As cartas de um deck montado saem da coleção (ficam reservadas a ele), esteja o formato ativo ou não — é o loadout a contar em todo o sistema. Na página buildability podes planear com os checkmarks (fica no navegador); quando decidires, diz-me os nomes e eu ponho aqui para contar de vez. Vazio = nada reservado por esta via.",
   "caixas": [
-    {
-      "slot": "pauper",
-      "nome": "Pauper (Luffy)",
-      "formato": "pauper",
-      "fonte": "vigiado",
-      "ref": "Luffy — Pauper",
-      "balde": "Pauper Affinity",
-      "estado": "permanente",
-      "prioridade": 1,
-      "notas": ""
-    },
-    {
-      "slot": "cedh-blue-farm",
-      "nome": "Blue Farm",
-      "formato": "cedh",
-      "fonte": "vigiado",
-      "ref": "Blue Farm [Primer]",
-      "balde": "Blue Farm",
-      "estado": "permanente",
-      "prioridade": 2,
-      "notas": ""
-    },
-    {
-      "slot": "cedh-cloud",
-      "nome": "Cloud cEDH",
-      "formato": "cedh",
-      "fonte": "vigiado",
-      "ref": "Cloud [cEDH]",
-      "balde": "Cloud cEDH",
-      "estado": "permanente",
-      "prioridade": 3,
-      "notas": ""
-    },
-    {
-      "slot": "duel-commander",
-      "nome": "Cloud (Duel Commander)",
-      "formato": "duel-commander",
-      "fonte": "deck",
-      "ref": "Cloud (Duel Commander)",
-      "balde": "Cloud",
-      "estado": "permanente",
-      "prioridade": 4,
-      "notas": ""
-    },
-    {
-      "slot": "premodern-stiflenought",
-      "nome": "Stiflenought",
-      "formato": "premodern",
-      "fonte": "deck",
-      "ref": "Stiflenought (Luffy)",
-      "balde": "Premodern (geral)",
-      "estado": "montada",
-      "prioridade": 5,
-      "notas": ""
-    },
-    {
-      "slot": "premodern-replenish",
-      "nome": "UW Replenish",
-      "formato": "premodern",
-      "fonte": "deck",
-      "ref": "UW Replenish (consenso)",
-      "balde": "Premodern (geral)",
-      "estado": "permanente",
-      "prioridade": 6,
-      "notas": ""
-    },
-    {
-      "slot": "premodern-enchantress",
-      "nome": "Enchantress",
-      "formato": "premodern",
-      "fonte": "deck",
-      "ref": "Enchantress (consenso)",
-      "balde": "Premodern (geral)",
-      "estado": "permanente",
-      "prioridade": 7,
-      "notas": ""
-    },
-    {
-      "slot": "premodern-elves",
-      "nome": "Elves / Survival",
-      "formato": "premodern",
-      "fonte": "consenso",
-      "assinatura": [
-        "Priest of Titania"
-      ],
-      "balde": "Premodern (geral)",
-      "estado": "permanente",
-      "prioridade": 8,
-      "notas": ""
-    },
-    {
-      "slot": "premodern-oath",
-      "nome": "Oath of Druids",
-      "formato": "premodern",
-      "fonte": "consenso",
-      "assinatura": [
-        "Oath of Druids"
-      ],
-      "balde": "Premodern (geral)",
-      "estado": "permanente",
-      "prioridade": 9,
-      "notas": ""
-    },
-    {
-      "slot": "premodern-igg",
-      "nome": "Ill-Gotten Gains",
-      "formato": "premodern",
-      "fonte": "consenso",
-      "assinatura": [
-        "Ill-Gotten Gains"
-      ],
-      "balde": "Premodern (geral)",
-      "estado": "permanente",
-      "prioridade": 10,
-      "notas": ""
-    },
-    {
-      "slot": "modern",
-      "nome": "Modern — UW Oswald",
-      "formato": "modern",
-      "fonte": "deck",
-      "ref": "UW Oswald",
-      "balde": "SPML",
-      "estado": "permanente",
-      "prioridade": 12,
-      "variantes": [],
-      "notas": ""
-    },
-    {
-      "slot": "standard",
-      "nome": "Standard",
-      "formato": "standard",
-      "fonte": "deck",
-      "ref": null,
-      "balde": "SPML",
-      "estado": "candidata",
-      "prioridade": 11,
-      "notas": ""
-    },
-    {
-      "slot": "pioneer",
-      "nome": "Pioneer — Greasefang",
-      "formato": "pioneer",
-      "fonte": "deck",
-      "ref": "Greasefang",
-      "balde": "SPML",
-      "estado": "permanente",
-      "prioridade": 13,
-      "notas": ""
-    },
-    {
-      "slot": "legacy",
-      "nome": "Legacy",
-      "formato": "legacy",
-      "fonte": "deck",
-      "ref": null,
-      "balde": "SPML",
-      "estado": "candidata",
-      "prioridade": 14,
-      "notas": ""
-    }
+    {"slot": "pauper", "nome": "Pauper (Luffy)", "formato": "pauper", "fonte": "vigiado", "ref": "Luffy — Pauper", "balde": "Pauper Affinity", "estado": "montada", "prioridade": 1, "notas": ""},
+    {"slot": "cedh-blue-farm", "nome": "Blue Farm", "formato": "cedh", "fonte": "vigiado", "ref": "Blue Farm [Primer]", "balde": "Blue Farm", "estado": "montada", "prioridade": 2, "notas": ""},
+    {"slot": "cedh-cloud", "nome": "Cloud cEDH", "formato": "cedh", "fonte": "vigiado", "ref": "Cloud [cEDH]", "balde": "Cloud cEDH", "estado": "permanente", "prioridade": 3, "notas": ""},
+    {"slot": "duel-commander", "nome": "Cloud (Duel Commander)", "formato": "duel-commander", "fonte": "deck", "ref": "Cloud (Duel Commander)", "balde": "Cloud", "estado": "permanente", "prioridade": 4, "notas": ""},
+    {"slot": "premodern-stiflenought", "nome": "Stiflenought", "formato": "premodern", "fonte": "deck", "ref": "Stiflenought (Luffy)", "balde": "Premodern (geral)", "estado": "montada", "prioridade": 5, "notas": ""},
+    {"slot": "premodern-replenish", "nome": "UW Replenish", "formato": "premodern", "fonte": "deck", "ref": "UW Replenish (consenso)", "balde": "Premodern (geral)", "estado": "permanente", "prioridade": 6, "notas": ""},
+    {"slot": "premodern-enchantress", "nome": "Enchantress", "formato": "premodern", "fonte": "deck", "ref": "Enchantress (consenso)", "balde": "Premodern (geral)", "estado": "permanente", "prioridade": 7, "notas": ""},
+    {"slot": "premodern-elves", "nome": "Elves / Survival", "formato": "premodern", "fonte": "consenso", "assinatura": ["Priest of Titania"], "balde": "Premodern (geral)", "estado": "permanente", "prioridade": 8, "notas": ""},
+    {"slot": "premodern-oath", "nome": "Oath of Druids", "formato": "premodern", "fonte": "consenso", "assinatura": ["Oath of Druids"], "balde": "Premodern (geral)", "estado": "permanente", "prioridade": 9, "notas": ""},
+    {"slot": "premodern-igg", "nome": "Ill-Gotten Gains", "formato": "premodern", "fonte": "consenso", "assinatura": ["Ill-Gotten Gains"], "balde": "Premodern (geral)", "estado": "permanente", "prioridade": 10, "notas": ""},
+    {"slot": "modern", "nome": "Modern — UW Oswald", "formato": "modern", "fonte": "deck", "ref": "UW Oswald", "balde": "SPML", "estado": "permanente", "prioridade": 12, "variantes": [], "notas": ""},
+    {"slot": "standard", "nome": "Standard", "formato": "standard", "fonte": "deck", "ref": null, "balde": "SPML", "estado": "candidata", "prioridade": 11, "notas": ""},
+    {"slot": "pioneer", "nome": "Pioneer — Greasefang", "formato": "pioneer", "fonte": "deck", "ref": "Greasefang", "balde": "SPML", "estado": "permanente", "prioridade": 13, "notas": ""},
+    {"slot": "legacy", "nome": "Legacy", "formato": "legacy", "fonte": "deck", "ref": null, "balde": "SPML", "estado": "candidata", "prioridade": 14, "notas": ""}
   ],
   "_caixas": "AS CAIXAS: a única noção de deck do vault (André, 2026-09-08: 'temos decks vigiados e deckbox que é a mesma coisa'). Substitui o `loadout` da v5 e a lista `decks_vigiados` como definição de deck. Um deck é uma caixa. Campos: 'slot' = o id (não mudar, é a chave da copy_allocation); 'nome' = como aparece nas páginas; 'formato' = decide as regras de material e a ordem da alocação (regras_por_formato); 'fonte' = de onde vem a lista — 'vigiado' (etiqueta da tabela `watched`, o jogador/URL que o watch-check segue), 'deck' (nome na tabela `decks`), 'consenso' (calculado das listas que contam, identificado por 'assinatura'), 'escolhido' (o «vou montar este»: lista congelada e datada em `listas_escolhidas`) ou 'manual' (lista escrita à mão em 'cards'); 'ref' = o nome nessa fonte (null = caixa por escolher, fica vazia de propósito — não se escolhe por ele); 'balde' = a gaveta de onde as cartas saem; 'estado' = candidata | permanente | montada | congelada (escala: montada implica permanente; congelada = montada + dedicada e é CALCULADA, escrevê-la vale montada); 'prioridade' = desempate DENTRO do grupo de formato; 'variantes' = outros decks que partilham a caixa; 'notas' = texto livre mostrado no cartão. As regras de material ('lingua', 'acabamento', 'edicoes', 'baldes', 'estrita', 'dedicado', 'compras_dedicadas') herdam-se do grupo de formato e só se escrevem aqui para abrir excepção. Marca-se tudo isto no MODO EDIÇÃO (python webapp.py, porto 8771 — no telemóvel com o QR).",
   "baldes_coleccao": [
@@ -187,67 +40,11 @@
   "_dedicado": "CAIXAS DEDICADAS (André, 2026-09-07 às 19:00, à letra): 'cada deck montado deixa de partilhar cartas com outros decks nos formatos: pauper, CDEH e premodern' e 'o que eu quero é conseguir organizar os decks dentro das caixas e apenas mexer para actualizar, logo vou precisar de múltiplos para os decks de premodern'. Escreve-se no 'regras_por_formato' do GRUPO ('dedicado': true — hoje premodern, cedh e pauper) e pode abrir-se excepção numa caixa só, escrevendo 'dedicado': false (ou true) nesse slot do 'loadout'. Uma caixa dedicada: (1) NÃO VAI BUSCAR — nunca diz 'em <caixa>', o que não conseguiu alocar da Colecção/Caixa RL é COMPRA; (2) NÃO EMPRESTA — as cópias que ela leva não aparecem como 'ir buscar' de mais ninguém; (3) COMPRA SOZINHA — implica 'compras_dedicadas', fica fora da partilha de compras. O 'ir buscar' e a partilha de compras ficam só para o Duel Commander e o SPML (Standard/Pioneer/Modern/Legacy). O que NÃO muda: a alocação continua a repartir as cópias que ele tem pela ordem de sempre, e a Caixa RL (PT) continua a alimentar o Premodern — uma cópia da colecção que uma caixa leve não se compra outra vez. E, quando a caixa dedicada também é 'montado': true, fica CONGELADA: as cartas que estão lá dentro não saem, mesmo que a lista mude; a aba Arrumar mostra o delta 'tirar X, meter Y' e só o botão 'actualizei' dessa caixa (modo edição) o aplica.",
   "_compras_dedicadas": "COMPRAS PARTILHADAS ENTRE CAIXAS (2026-09-07). Regra do André: 'indicas onde está a carta, para (...) não ter que comprar múltiplos para todos'. Quando duas caixas querem a mesma carta NO MESMO MATERIAL (mesma língua/acabamento/edições — o 'pool'), a lista de compras pede UMA cópia, não uma por caixa: compra-se o MÁXIMO que uma caixa precisa, a cópia fica na caixa que aloca primeiro e as outras vão lá buscá-la, como já acontece com as que ele tem. As faltas DENTRO da mesma caixa (main + sideboard) continuam a somar: essas estão na mesa ao mesmo tempo. Para uma caixa que ele queira fechar sem depender de trocas, escreve nesse slot do 'loadout' a chave 'compras_dedicadas': true — essa caixa compra as suas cópias e fica fora da partilha (as outras continuam a partilhar entre si). Sem a chave vale false, ou seja, partilha. Nota: 'compras_dedicadas' só manda nas COMPRAS; as cópias que ele já tem continuam a ser repartidas pela alocação normal.",
   "regras_por_formato": [
-    {
-      "grupo": "premodern",
-      "formatos": [
-        "premodern"
-      ],
-      "dedicado": false,
-      "playset_maximo": 4,
-      "prioridade_por": "pct",
-      "lingua": "pt",
-      "edicoes": "premodern",
-      "estrita": true,
-      "baldes": [
-        "Colecção",
-        "Premodern (geral)",
-        "SPML",
-        "Caixa Reserved List"
-      ]
-    },
-    {
-      "grupo": "cedh",
-      "formatos": [
-        "cedh"
-      ],
-      "dedicado": true,
-      "lingua": "en",
-      "acabamento": "nonfoil"
-    },
-    {
-      "grupo": "duel-commander",
-      "formatos": [
-        "duel-commander"
-      ],
-      "acabamento": "foil"
-    },
-    {
-      "grupo": "pauper",
-      "formatos": [
-        "pauper"
-      ],
-      "dedicado": true,
-      "acabamento": "prefere_foil"
-    },
-    {
-      "grupo": "spml",
-      "formatos": [
-        "standard",
-        "pioneer",
-        "modern",
-        "legacy"
-      ],
-      "lingua": "en",
-      "acabamento": "foil",
-      "por_formato": {
-        "legacy": {
-          "rl_lingua": [
-            "pt",
-            "en"
-          ]
-        }
-      }
-    }
+    {"grupo": "premodern", "formatos": ["premodern"], "dedicado": false, "playset_maximo": 4, "prioridade_por": "pct", "lingua": "pt", "edicoes": "premodern", "estrita": true, "baldes": ["Colecção", "Premodern (geral)", "SPML", "Caixa Reserved List"]},
+    {"grupo": "cedh", "formatos": ["cedh"], "dedicado": true, "lingua": "en", "acabamento": "nonfoil"},
+    {"grupo": "duel-commander", "formatos": ["duel-commander"], "acabamento": "foil"},
+    {"grupo": "pauper", "formatos": ["pauper"], "dedicado": true, "acabamento": "prefere_foil"},
+    {"grupo": "spml", "formatos": ["standard", "pioneer", "modern", "legacy"], "lingua": "en", "acabamento": "foil", "por_formato": {"legacy": {"rl_lingua": ["pt", "en"]}}}
   ],
   "_premodern_playset": "O PREMODERN VOLTOU A PARTILHAR (André, 2026-09-08, à letra): 'No Premodern, afinal só vou ter até playset de cada carta. E ordenamos os decks por prioridade; os que vêm depois na prioridade indicam onde estão as cartas em falta. Para já a prioridade vem por ordem de % completo.' Recorta a ordem de 2026-09-07 às 19:00 ('vou precisar de múltiplos para os decks de premodern') SÓ para o Premodern — o cEDH e o Pauper continuam 'dedicado': true. São três chaves no grupo 'premodern' do 'regras_por_formato', e as três andam juntas: (1) 'dedicado': false — as seis caixas voltam a emprestar e a ir buscar ('em <caixa>' em vez de comprar), e as compras entre elas voltam a ser o MÁXIMO de uma caixa e não a soma; (2) 'playset_maximo': 4 — por cima da partilha, um tecto: por muitas caixas que peçam a carta, o Premodern nunca chega a ter mais do que 4 cópias dela (comprar = max(0, min(4, o que a caixa que mais precisa pede) − as que ele já vê)). As básicas ficam de fora. O que o tecto corta aparece na página como 'limite de playset: falta N que não se compra' em vez de desaparecer numa subtracção; (3) 'prioridade_por': 'pct' — a ordem DENTRO do grupo deixa de ser o número de 'prioridade' e passa a ser a percentagem que cada caixa já tem, contada na COLECÇÃO INTEIRA e ANTES de alocar (com a percentagem de depois, alocar mudava o pct, o pct mudava a ordem e a ordem mudava a alocação); empate pelo nome. Nas caixas com prioridade automática os botões 'subir/descer' do modo edição ficam desactivados e dizem porquê. Consequência a saber: 'congelada' exige ser dedicada, por isso nenhuma caixa de Premodern congela — o que as protege é a cópia já alocada a uma caixa não ser realocada a outra, e nunca entrar na venda.",
   "_regras_por_formato": "AS REGRAS DE MATERIAL E A ORDEM DA ALOCAÇÃO, por grupo de formato (André, 2026-09-07, à letra: 'Premodern apenas as edições da era Premodern e em Português; cEDH apenas inglês non-foil; Duel Commander apenas foil; SPML tudo foil e inglês (RL pode ser non-foil); Pauper tudo foil se houver disponível, senão pode ser non-foil' e 'Ordem de prioridade na alocação: Premodern > cEDH > Duel Commander > Pauper > SPML'). A ORDEM DESTA LISTA É A ORDEM DA ALOCAÇÃO: quem está em cima escolhe as cartas primeiro. Dentro de cada grupo vêm primeiro os decks vigiados ('os decks vigiados têm prioridade para ficarem com as cartas, desde que respeitem as regras' — os de 'decks_vigiados' e os de fonte 'vigiado') e só depois o 'prioridade' de cada slot. Chaves: 'formatos' = os formatos dos slots deste grupo; 'lingua' = a cópia tem de ser desta língua; 'acabamento' = 'foil' (só foil/etched, menos Reserved List) | 'nonfoil' (só nonfoil) | 'prefere_foil' (aceita as duas, gasta a foil primeiro); 'edicoes' = 'premodern' (só impressões até ao Scourge, 2003-05-26); 'baldes' = os únicos baldes que estas caixas VÊEM (mais o seu); 'estrita' = true faz a 'lingua' e os 'baldes' porem a cópia FORA DE VISTA (falta a comprar em vez de 'tenho mas não serve') — é 'o Premodern só usa em PT, mesmo eu tendo a carta em inglês'; 'dedicado' = true faz a caixa NÃO EMPRESTAR nem IR BUSCAR cópias a outras caixas de deck (ver _dedicado). Uma cópia que está DENTRO da caixa do próprio deck (os baldes de 'regras_colecao' e os dos slots de Commander) escapa a estas regras: o deck está montado e uma regra nova não o desmonta. O Pauper não tem 'baldes' de propósito — 'para Pauper, utilizas as cartas que forem necessárias do SPML e agregas ao Pauper'. Para uma excepção a UM slot, escreve a chave nesse slot do 'loadout' e ela ganha à do grupo. RL EM PT SERVE O LEGACY (André, 2026-09-08, à letra: 'RL em PT pode servir para Legacy e Premodern, mas não para cEDH nem outro formato'): é o 'por_formato' do grupo spml — só o legacy ganha 'rl_lingua': ['pt','en'], e o Standard/Pioneer/Modern continuam 'tudo foil e inglês'. O 'rl_lingua' ganha à 'lingua' E à tranca do PT da era Premodern, mas SÓ para cópias da Reserved List. Vive no 'por_formato' e não num grupo próprio porque a ordem desta lista é a ordem da alocação e o grupo é também o grupo da partilha de compras: dar um grupo ao Legacy para escrever uma excepção sobre a língua mudava as duas coisas sem ninguém pedir.",
@@ -256,7 +53,14 @@
     "isentas_de_regras": true,
     "comprar_se_material_especial": true,
     "edicao": "Unhinged",
-    "compram_se_faltarem": ["Snow-Covered Plains", "Snow-Covered Island", "Snow-Covered Swamp", "Snow-Covered Mountain", "Snow-Covered Forest", "Snow-Covered Wastes"]
+    "compram_se_faltarem": [
+      "Snow-Covered Plains",
+      "Snow-Covered Island",
+      "Snow-Covered Swamp",
+      "Snow-Covered Mountain",
+      "Snow-Covered Forest",
+      "Snow-Covered Wastes"
+    ]
   },
   "_basicas": "TERRENOS BÁSICOS (André, 2026-09-08, à letra): 'Faltou marcares, para completar o deck, os terrenos básicos necessários!' e, na mesma tarde, 'Todas as minhas lands básicas são de Unhinged, em inglês, foil ou não foil.' Até aqui uma básica entrava na alocação como tida e não aparecia em lado nenhum — um deck de Premodern com 17 Island montava-se, no painel Montar, sem uma única terra. Agora: (1) 'isentas_de_regras': true — as básicas escapam às regras de língua e edição da caixa (a pilha dele é toda Unhinged EN; trancar o Premodern ao PT mandava comprar 17 Island que estão ali ao lado). Nas caixas de foil prefere-se a foil, mas é uma PREFERÊNCIA e não um requisito: uma caixa de Duel Commander monta-se na mesma com Island non-foil. (2) As cópias de básicas que ESTÃO registadas na 'copies' entram na alocação como qualquer outra carta e aparecem no 'tirar da colecção' e na arrumação; o resto vem da pilha e diz-se 'N Island (Unhinged) — das tuas básicas'. (3) 'comprar_se_material_especial': true + 'compram_se_faltarem' — nunca se compram básicas, EXCEPTO as que a pilha de Unhinged não cobre (as Snow-Covered, que não existem nessa edição). Essas entram na lista de Comprar num bloco próprio, marcado 'confirma se já tens'. As básicas continuam a não contar para a percentagem de nenhuma caixa nem para a venda, e o bloco de compra fica FORA do 'comprar_total'/'custo_total' — somá-lo mexia no número por que ele decide.",
   "premodern": {
