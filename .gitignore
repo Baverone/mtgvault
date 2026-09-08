@@ -17,6 +17,11 @@ data/webapp.token
 # O registo de vendas: histórico local do que saiu da colecção (data, carta,
 # edição, língua, acabamento, quantidade, preço). Não vai para um repo público.
 data/vendas.csv
+# O registo do «já a tenho, está no deck»: que cartas ele declarou ter em casa,
+# em que caixa as pôs e com que edição (palpite ou escolhida). É o rasto de um
+# botão que CRIA cópias — sem ele, daqui a um mês não há como saber donde veio
+# uma cópia sem foto. Local, como o de vendas.
+data/registos-faltas.csv
 # O backup que a `migrar-caixas` deixa ao lado. Serve para desfazer à mão na
 # hora; o histórico do Git já guarda a versão anterior do config.
 colecao_config-v5-*.json
