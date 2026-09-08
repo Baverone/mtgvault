@@ -342,6 +342,41 @@ def caso_o_registo_fica_ao_lado_da_base_e_nao_na_home():
     print("o registo (e o vendas.csv) ficam ao lado da base, não na home")
 
 
+def caso_gravar_o_registo_e_atomico():
+    """Duas escritas ao mesmo tempo nao podem apagar os nomes todos.
+
+    Aconteceu na primeira corrida a serio: o `daily` e o `webapp.py` (que fica de
+    pe o dia todo, servido pela tarefa `mtgvault-serve`) escrevem os dois este
+    ficheiro, e **24 arquetipos passaram a 7**. Com um `write_text` cru o
+    ficheiro fica truncado entre o `open` e o `write`; quem o apanhasse assim lia
+    um JSON invalido, o `carregar` respondia com um registo VAZIO e a gravacao
+    seguinte apagava os nomes todos. Nada disto da erro -- e o padrao do
+    `event_tier`, sobre a coisa que este modulo existe para nao perder.
+    """
+    p = _TMP / "atomico.json"
+    r = arquetipos.Registo(caminho=p)
+    for i in range(30):
+        r.resolver("premodern", [f"Carta {i}-{j}" for j in range(9)], f"Deck {i}")
+    r.gravar()
+
+    # NUNCA se ve o ficheiro a meio: a escrita vai a um temporario e so depois e
+    # que o `os.replace` o poe no lugar, que e uma operacao so.
+    ficheiros = sorted(x.name for x in p.parent.iterdir()
+                       if x.name.startswith("atomico"))
+    assert ficheiros == ["atomico.json"], f"ficou lixo: {ficheiros}"
+    assert len(json.loads(p.read_text(encoding="utf-8"))["arquetipos"]) == 30
+
+    # E um ficheiro estragado nao desaparece sem deixar rasto: guarda-se ao lado
+    # antes de se comecar do zero, senao a unica prova do que aconteceu ia-se.
+    mau = _TMP / "estragado.json"
+    mau.write_text('{"arquetipos": {"aaa": ', encoding="utf-8")
+    assert arquetipos.Registo.carregar(mau).arquetipos == {}
+    assert not mau.exists(), "o estragado sai da frente"
+    guardado = [x for x in _TMP.iterdir() if x.name.startswith("estragado-mau-")]
+    assert len(guardado) == 1, [x.name for x in _TMP.iterdir()]
+    print("a gravacao do registo e atomica, e um ficheiro estragado fica guardado")
+
+
 def caso_nomes_conhecidos_por_regra():
     """Os clássicos do formato ganham nome por REGRA — e nomear não é ser combo.
 
@@ -592,6 +627,7 @@ def run():
                caso_dois_clusters_nao_herdam_a_mesma_identidade,
                caso_o_registo_grava_e_protege_o_que_o_config_refere,
                caso_o_registo_fica_ao_lado_da_base_e_nao_na_home,
+               caso_gravar_o_registo_e_atomico,
                caso_nomes_conhecidos_por_regra,
                caso_as_regras_do_codigo_estao_TAMBEM_no_config,
                caso_o_nome_leva_a_cor_quando_o_nome_proprio_nao_a_implica,
