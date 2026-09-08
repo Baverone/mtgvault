@@ -262,7 +262,10 @@ de um ecrã inteiro de scroll é, na prática, um botão que não existe.
   40 RL/3 221,01 €, iguais antes e depois. O que a barra passa a dizer, por
   caixa: Cloud (DC) **75**, Cloud cEDH **60**, UW Replenish **59**, Modern — UW
   Oswald **49**, Oath of Druids **36**, Elves/Survival **22**, Enchantress
-  **17**, Ill-Gotten Gains **17**, Pioneer — Greasefang **10**. Sem barra: o
+  **17**, Ill-Gotten Gains **17**, Pioneer — Greasefang **10**. (Estes números
+  são os DESSE dia: subiram todos com a correcção das linhas incompletas — a
+  lista nova está em *"as cópias de uma linha incompleta também se tiram da
+  gaveta"*.) Sem barra: o
   Stiflenought, o Blue Farm e o Pauper (já não há nada por marcar neles — os
   dois últimos foram registados por ele na mesma tarde, no modo edição) e o
   Standard e o Legacy (ainda sem deck escolhido).
@@ -1475,9 +1478,42 @@ tudo por X €"*, que é o número por que ele decide. Motor em
   8 426,34 €→8 423,02 €, venda igual — e a arrumação 345→**347**, porque uma
   linha INCOMPLETA vive em `missing` e o `movimentos_de_entrada` só percorre o
   `have`: as 2 cópias que ele já tinha dessa carta só aparecem no plano quando a
-  linha fecha. É um buraco anterior a isto e ficou por corrigir de propósito
-  (mexer nele mudava o 345 de todas as caixas). Ver
-  `work/revisao/mtgvault-faltas-check.md`.
+  linha fecha. Era um buraco anterior a isto e ficou por corrigir nesse dia (ver
+  a secção a seguir, que o fecha). Ver `work/revisao/mtgvault-faltas-check.md`.
+
+**AS CÓPIAS DE UMA LINHA INCOMPLETA TAMBÉM SE TIRAM DA GAVETA (2026-09-08).**
+Uma linha que pede 4 e a que a alocação só deu 2 vive em `missing` — e **tudo**
+o que percorria a alocação de uma caixa percorria só o `have`. As duas cópias
+existiam, eram daquela caixa e estavam na gaveta, e não apareciam em lado
+nenhum: nem no painel *Montar*, nem na aba *Arrumar*, nem no CSV, nem na
+`copy_allocation` do *"já arrumei tudo"*. Ele montava a caixa, ficavam as duas
+na prateleira, e a aba *Comprar* pedia as outras duas. Padrão do `event_tier`:
+nenhum passo dá erro, e a folha que ele leva para a estante está a menos duas
+cartas.
+- **Quem responde é `loadout.linhas_alocadas(s)`** = `have` + as de `missing`
+  **com lotes**. Era `for m in s["have"]` escrito em cinco sítios, e o primeiro
+  que se esquecesse voltava a pôr a base e o painel a discordar. Já lêem de lá:
+  `movimentos_de_entrada` (logo o painel *Montar*, a aba *Arrumar*, o CLI
+  `arrumar`, o CSV e a barra «N de M»), `linhas_da_caixa` (o que se GRAVA — sem
+  isso ele tirava-as da gaveta e o vault não as registava), o `origens` do
+  *"tirar de:"*, o `copias_por_confirmar` e o `_de_outro_balde` do `colecao_cor`.
+  O `webapp.marcar_na_caixa` tinha o `linhas_da_caixa` **reescrito à mão** e por
+  isso ficava de fora: passou a chamá-lo (por isso deixou de ser `_privado`).
+- **Uma linha em falta SEM nenhuma cópia continua a não entrar**: não há nada
+  para tirar, é compra.
+- **A linha diz porque é que vem a menos** — *«2 de 4 — 2 em Comprar»*,
+  `loadout.nota_parcial`, com moldura âmbar (a mesma do *"está noutra caixa"*: a
+  pergunta é a mesma — esta linha não fecha com o que está aqui). O texto é
+  composto no Python e não no browser, pela razão de sempre: quem sabe partir a
+  falta em *comprar* e *ir buscar* é a alocação (ver `e_foil`).
+- **Efeito medido na base de 2026-09-08:** a alocação **não mexe** — 8 426,34 €
+  para fechar, 232 a comprar, 70 a ir buscar, venda 230 cópias, iguais antes e
+  depois. O que muda é a arrumação: **345 → 385** (+40 cópias, 202 → 226 linhas),
+  que são as parciais a passarem a ter caixa. Por caixa (tirar, antes→depois):
+  UW Replenish 59→66, Oath of Druids 36→49, Enchantress 17→23, Ill-Gotten Gains
+  17→24, Elves/Survival 22→24, Modern — UW Oswald 49→50, Pioneer — Greasefang
+  10→14. O «N de M» da barra sobe exactamente o mesmo. Relatório em
+  `work/revisao/mtgvault-movimentos-incompletos.md`.
 
 ## Restrições externas (já testadas, não voltes a tentar)
 

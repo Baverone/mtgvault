@@ -523,10 +523,11 @@ def marcar_na_caixa(con, slot_id: str, dentro: bool,
     alvo = next((s for s in rep["slots"] if s["slot"] == slot_id), None)
     if alvo is None:
         return 0
-    linhas: dict[int, int] = {}
-    for m in alvo["have"]:
-        for g in m["lotes"]:
-            linhas[g["id"]] = linhas.get(g["id"], 0) + g["q"]
+    # A MESMA lista que o "já arrumei tudo" grava (`loadout.linhas_da_caixa`).
+    # Estava reescrita aqui, e por isso ficou de fora a correcção de 2026-09-08
+    # — as cópias das linhas INCOMPLETAS são desta caixa e têm de ser gravadas,
+    # senão o painel manda-o tirá-las da gaveta e no dia seguinte outra vez.
+    linhas: dict[int, int] = dict(loadout.linhas_da_caixa(alvo))
     marcadas = {int(c) for c in (de_outra or [])}
     if marcadas:
         oferta = loadout.plano_montar(rep, slot_id).get("de_outra") or []

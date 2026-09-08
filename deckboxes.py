@@ -138,7 +138,13 @@ def _montar_payload(rep, s, cores):
                 "board": m.get("board") or "",
                 "set": (m["set_code"] or "").upper(),
                 "fin": m["finish"], "foil": loadout.e_foil(m["finish"]),
-                "lang": (m["lang"] or "").upper(), "copy_id": m["copy_id"]}
+                "lang": (m["lang"] or "").upper(), "copy_id": m["copy_id"],
+                # LINHA INCOMPLETA (2026-09-08): a caixa pede 4 e ele só tem 2.
+                # As 2 tiram-se na mesma, e a linha diz porque é que vem a menos
+                # («2 de 4 — as outras 2 em Comprar»). O texto vem do Python
+                # (`loadout.nota_parcial`) pela razão de sempre: quem sabe partir
+                # a falta em comprar/ir buscar é a alocação, não o browser.
+                "parcial": bool(m.get("parcial")), "nota": m.get("nota") or ""}
 
     por_cor = lambda x: (ordem.get(x["cor"], 9), x["nm"], x["set"])  # noqa: E731
     tirar = sorted((linha(m) for m in plano["tirar"]), key=por_cor)
@@ -960,6 +966,11 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
    font-variant-numeric:tabular-nums}
  .sb{color:var(--muted);font-size:10.5px;font-weight:700;margin-left:5px}
  .mv .nm small{display:block;color:var(--dim);font-size:10.5px;line-height:1.3}
+ /* LINHA INCOMPLETA (2026-09-08): a caixa pede 4 e ele só tem 2. As 2 tiram-se
+    na mesma — a moldura âmbar é a mesma do "está noutra caixa", porque a
+    pergunta é a mesma: esta linha não fecha com o que está aqui. */
+ .mv.parc{border-left:2px solid #e2a15b;padding-left:5px}
+ .parcn{color:#e2a15b;font-weight:700}
  /* «JÁ A TENHO, ESTÁ NO DECK» (André, 2026-09-08): o check de uma linha de
     compra, e o bloco das cópias que ele já declarou. O verde é o mesmo do
     «na caixa»: são cartas que já estão na estante, ao contrário do âmbar das
@@ -1441,11 +1452,14 @@ function montarHTML(c) {
         }
         const id = vistoId('mt', c.slot, m);
         const feito = !!P.feitos[id];
-        h += `<label class="mv${feito ? ' feito' : ''}" data-id="${esc(id)}">`
+        h += `<label class="mv${feito ? ' feito' : ''}${m.parcial ? ' parc' : ''}"`
+          + ` data-id="${esc(id)}">`
           + `<input type="checkbox"${feito ? ' checked' : ''}>`
           + `<span class="q">${m.q}×</span>`
           + `<span class="nm">${esc(m.nm)}`
-          + `<small>${esc(m.set)}${m.foil ? ' ✨' : ''} ${esc(m.lang)}</small></span>`
+          + `<small>${esc(m.set)}${m.foil ? ' ✨' : ''} ${esc(m.lang)}`
+          + (m.nota ? ` · <b class="parcn">${esc(m.nota)}</b>` : '')
+          + `</small></span>`
           + `<span class="to">de ${esc(m.de)}</span></label>`;
       }
       h += `</div>`;

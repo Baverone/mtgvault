@@ -149,7 +149,10 @@ def _de_outro_balde(con, res, balde, cur):
     if slot is None:
         return []
     fora = {}                               # (sid, finish, lang, balde) -> qty
-    for m in slot["have"]:
+    # `linhas_alocadas` e não só o `have`: as cópias de uma linha INCOMPLETA
+    # (pede 4, tem 2) são desta caixa na mesma, e estavam a desaparecer daqui
+    # exactamente como desapareciam do painel Montar.
+    for m in loadout.linhas_alocadas(slot):
         if m["nm"] not in cur:
             continue
         for g in m["lotes"]:
