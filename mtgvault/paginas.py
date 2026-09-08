@@ -228,6 +228,29 @@ def faltas_html(faltas, cls="", label="🛒 Faltas") -> str:
             f'<textarea class="cmk" readonly>{html.escape(cmk)}</textarea></div>')
 
 
+def eur(v, casas: int = 2, espaco: bool = True) -> str:
+    """Um valor em euros escrito em português: `1 009,27 €`.
+
+    Estava escrito à mão em cada página, e **quatro delas ficaram em inglês**: a
+    Cobertura, a Caixa RL, a Galeria e a Reserved List mostravam `1 009.27 €`
+    enquanto a Deckboxes e o Metagame mostravam `8 426,34 €`. A conta estava
+    certa nas seis; o que mudava era o ponto decimal, conforme a página em que
+    ele estava. Nenhuma dava erro — é o padrão do `event_tier` aplicado a um
+    número que ele lê todos os dias. (O `meta_coverage` chegava a ter as duas
+    dentro da MESMA página: o `_eur` do Python com ponto e o `ceur` do
+    JavaScript com vírgula.)
+
+    Só formata: quem decide o que mostrar quando não há valor é quem chama — a
+    Reserved List escreve `—` só para `None` e a Cobertura também para o zero, e
+    isso é uma decisão de cada página.
+
+    `casas` para as páginas que arredondam (a Caixa RL mostra o total sem
+    cêntimos) e `espaco=False` para as que colam o símbolo (`715,19€`).
+    """
+    return (f"{v:,.{casas}f}".replace(",", " ").replace(".", ",")
+            + (" €" if espaco else "€"))
+
+
 def nav(atual: str = "", extra: bool = False) -> str:
     """O menu, com a página `atual` marcada. `extra` acrescenta as secundárias."""
     itens = MENU + (EXTRA if extra else [])

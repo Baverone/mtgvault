@@ -4150,10 +4150,27 @@ def foil_report(con: sqlite3.Connection, fmt: str, top: int = 5,
             vistos[chave]["n_lists"] += r["n"]
             vistos[chave]["ids"].append(r["id"])
             continue
+        # UMA LINHA POR CARTA, não uma por bloco (2026-09-09). O main e o
+        # sideboard são duas pilhas do MESMO deck, não duas alternativas: as
+        # cópias que fecham o main não fecham outra vez o side. E o
+        # `_estado_carta` NÃO consome — é de propósito, serve para comparar
+        # arquétipos entre si —, por isso perguntar-lhe uma vez por bloco dava as
+        # MESMAS cópias como tidas dos dois lados. A cobertura vinha por cima
+        # (medido a 2026-09-09: até 3 pontos, o Pioneer "Memory Deluge" 24% →
+        # 21%) e a lista de compras saía com a carta repetida em duas linhas de
+        # 1 quando são 2 ("1× King T'Challa" duas vezes). Ninguém lê o `board`
+        # destas linhas — quem precisa de separar as pilhas é a caixa
+        # (`blocos_de_board`), que passa pela alocação a sério.
+        juntas: dict[str, list] = {}
+        for b, nm, q in cards:
+            if nm in juntas:
+                juntas[nm][2] += q
+            else:
+                juntas[nm] = [b, nm, q]
         need = got = nq = comprar = 0
         custo = 0.0
         linhas = []
-        for b, nm, q in cards:
+        for b, nm, q in juntas.values():
             if nm in BASICS:
                 linhas.append(_linha_cheia({"board": b, "nm": nm, "need": q,
                                             "got": q, "basica": True, "lotes": []}))

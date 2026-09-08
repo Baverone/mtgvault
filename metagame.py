@@ -91,7 +91,7 @@ _img_map = paginas.img_map      # era uma cópia à letra da do `deckboxes.py`
 
 
 def _eur(v):
-    return f"{v:,.2f} €".replace(",", " ").replace(".", ",", 1) if v else "—"
+    return paginas.eur(v) if v else "—"
 
 
 def _resumo(linhas):
@@ -112,9 +112,15 @@ def _resumo(linhas):
                 for q in ("montada", "reservada", "futura")}
     comprar = sum(m["comprar"] for m in nb)
     custo = round(sum(m["cost"] or 0 for m in nb), 2)
+    # Quantas cópias a comprar não têm preço na base. Sem isto o *"fechar por
+    # 162,80 €"* passava por uma conta fechada quando quatro das cartas da lista
+    # entravam a 0 € — a Deckboxes já dizia *"no mínimo — N sem preço"* e esta
+    # página não. O mesmo número com duas honestidades diferentes.
+    sem_preco = sum(m["comprar"] for m in nb
+                    if m["comprar"] > 0 and m.get("unit") is None)
     return {"need": need, "got": got, "noutra": noutra, "comprar": comprar,
             "nmont": parcelas["montada"], "nres": parcelas["reservada"],
-            "nfut": parcelas["futura"],
+            "nfut": parcelas["futura"], "sem_preco": sem_preco,
             "custo": custo, "tenho": got + noutra,
             "pct": round(100 * got / need) if need else 0,
             "pct_tenho": round(100 * (got + noutra) / need) if need else 0}
@@ -306,7 +312,10 @@ def _deck_html(d, imgs, editable=False):
         + (f'<span class="ob">na gaveta, p/ outra caixa <b>'
            f'{r["nres"] + r["nfut"]}</b></span>' if r["nres"] + r["nfut"] else "")
         + f'<span>comprar <b>{r["comprar"]}</b></span>'
-        f'<span>fechar por <b>{_eur(r["custo"])}</b></span></div>'
+        f'<span>fechar por <b>{_eur(r["custo"])}</b>'
+        + (f'<i class="semp" title="Estas cópias não têm preço na base e contam '
+           f'como 0 €.">no mínimo — {r["sem_preco"]} sem preço</i>'
+           if r["sem_preco"] else "") + '</span></div>'
         f'<div class="cards">{_grid(d["linhas"], imgs)}</div>'
         f'{_onde_html(d["linhas"])}{_wantlist(d["linhas"], d.get("marca", ""))}'
         f'{_escolher_html(d, editable)}'
@@ -562,6 +571,7 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
  .bdg{font-size:11px;padding:2px 8px;border-radius:20px;background:#1e2531;color:var(--muted)}
  .bdg.ok{background:#123020;color:var(--add)} .bdg.pt{background:#101c2e;color:var(--ob)} .bdg.fo{background:#2a2410;color:var(--gold)}
  .meta{display:flex;flex-wrap:wrap;gap:4px 12px;color:var(--muted);font-size:11.5px;margin:4px 0} .meta b{color:var(--ink)}
+ .semp{font-style:normal;color:var(--dim);margin-left:5px}
  .meta .ob,.meta .ob b{color:var(--ob)}
  .cards{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
  .cd{position:relative;width:56px;border-radius:5px} .cd img,.cd .noimg{width:56px;height:78px;border-radius:4px;display:block;background:#0c0f14}

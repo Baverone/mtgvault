@@ -359,7 +359,7 @@ def _value(con):
 
 
 def _eur(x):
-    return f"{x:,.0f} €".replace(",", " ")
+    return paginas.eur(x, 0)
 
 
 def build(con, out_path=None):

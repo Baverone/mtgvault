@@ -51,13 +51,14 @@ def _art(sid):
 
 
 def _eur(v):
+    """Quantos cêntimos mostrar depende da grandeza; o separador é o de sempre.
+
+    A formatação vive no `paginas.eur` — aqui fica só a decisão de quantas casas
+    (uma coluna de preços de 4 € a 4 000 € não se lê toda com dois decimais).
+    """
     if v is None:
         return "—"
-    if v >= 100:
-        return f"{v:,.0f}€".replace(",", " ")
-    if v >= 10:
-        return f"{v:.1f}€"
-    return f"{v:.2f}€"
+    return paginas.eur(v, 0 if v >= 100 else 1 if v >= 10 else 2, espaco=False)
 
 
 def _spark(points):

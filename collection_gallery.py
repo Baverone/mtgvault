@@ -1,9 +1,16 @@
 """Gera colecao.html — a galeria da coleção física, com imagens.
 
 Lê `copies` + o catálogo (`cards`: imagem, edição, número) + os preços
-(`price_latest`), e embute tudo num HTML estático, tal como o coredecks.html.
-O catálogo é reconstruído no job diário, por isso as imagens e as impressões
-exatas entram na página sem ser preciso carregar o catálogo (119 MB) no browser.
+(`price_latest`), e embute tudo num HTML estático. O catálogo é reconstruído no
+job diário, por isso as imagens e as impressões exatas entram na página sem ser
+preciso carregar o catálogo (119 MB) no browser.
+
+O MENU é o partilhado (`mtgvault.paginas.nav`). Esta era a última página gerada
+que escrevia a sua navegação à mão, e mostrou porquê: ficou com um *"core
+decks →"* a apontar para o `coredecks.html`, apagado a 2026-08-26 e desde então
+fora do `git add` do `daily.yml` — 404 no site publicado. E, sem o menu, da
+Galeria só se saía para o índice. Uma página órfã não dá erro: só deixa de se lá
+chegar (é a lição do `cobertura.html`, no cabeçalho do `paginas.py`).
 
 Corre à mão com `python collection_gallery.py`, ou é chamado pelo daily.py.
 Dados só de vault.db + catálogo — nunca inventa.
@@ -18,7 +25,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import db  # noqa: E402
+from mtgvault import db, paginas  # noqa: E402
 
 
 def _price_map(con):
@@ -156,8 +163,12 @@ _TMPL = """<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>A minha coleção</title>
 <style>
- :root{--bg:#f6f7f9;--card:#fff;--ink:#12151a;--muted:#5b6672;--line:#e4e7ec;--accent:#2f6df6;--gold:#b8860b}
- @media(prefers-color-scheme:dark){:root{--bg:#0e1116;--card:#171b22;--ink:#e8ecf1;--muted:#93a0ad;--line:#262c36;--accent:#5b8cff;--gold:#e0b64b}}
+ /* O `--add`/`--rem` (o verde de "subiu" e o vermelho de "desceu" da evolução do
+    valor) eram usados e nunca definidos: o indicador saía na cor do texto e a
+    linha do sparkline sem cor nenhuma. Sem um único erro — esta página escreve
+    a sua própria paleta e por isso escapava ao teste do tema partilhado. */
+ :root{--bg:#f6f7f9;--card:#fff;--ink:#12151a;--muted:#5b6672;--line:#e4e7ec;--accent:#2f6df6;--gold:#b8860b;--add:#1a7f4b;--rem:#c0392b}
+ @media(prefers-color-scheme:dark){:root{--bg:#0e1116;--card:#171b22;--ink:#e8ecf1;--muted:#93a0ad;--line:#262c36;--accent:#5b8cff;--gold:#e0b64b;--add:#4ac585;--rem:#ff6b6b}}
  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
  .wrap{max-width:1100px;margin:0 auto;padding:20px 16px 60px}
  @media(max-width:600px){.wrap{padding:14px 10px 48px}}
@@ -165,6 +176,12 @@ _TMPL = """<!doctype html>
  .tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:14px 0 4px}
  #q{flex:1;min-width:180px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font-size:14px}
  .count{color:var(--muted);font-size:12.5px;white-space:nowrap}
+ /* O menu do site. `nav.tabs` e não `.tabs`: a galeria já usava essa classe para
+    as suas próprias abas de sub-coleção, e as duas partilham o contentor. */
+ nav.tabs{margin:12px 0 4px}
+ nav.tabs a{padding:7px 12px;border-radius:999px;background:var(--card);border:1px solid var(--line);color:var(--muted);text-decoration:none;font-size:13px;font-weight:600}
+ nav.tabs a:hover{border-color:var(--accent);color:var(--ink)}
+ nav.tabs a.cur{background:var(--accent);border-color:var(--accent);color:#fff}
  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 2px}
  .tab{border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:999px;padding:6px 13px;font-size:13px;font-weight:600;cursor:pointer}
  .tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
@@ -198,8 +215,8 @@ _TMPL = """<!doctype html>
  .empty{color:var(--muted);padding:30px 0;text-align:center}
 </style></head><body><div class="wrap">
 <header><h1>A minha coleção</h1>
-<div class="sub">%TOTQ% exemplares · valor ~<b style="color:var(--gold)">%TOTV%</b> · imagens e preços via Scryfall/Cardmarket · dados até %TODAY% ·
-<a href="index.html">← resumo</a> · <a href="coredecks.html">core decks →</a></div></header>
+<div class="sub">%TOTQ% exemplares · valor ~<b style="color:var(--gold)">%TOTV%</b> · imagens e preços via Scryfall/Cardmarket · dados até %TODAY%</div></header>
+%TABS%
 %EVO%
 <div class="tools"><input id="q" type="search" placeholder="Procurar carta ou edição…" autocomplete="off"><span class="count" id="count"></span></div>
 <div id="tabs" class="tabs"></div>
@@ -248,8 +265,9 @@ render("");
 
 
 def _write_html(out_path, groups, total_qty, total_val, today, history):
-    eur = f"{total_val:,.2f} €".replace(",", " ")
+    eur = paginas.eur(total_val)
     html = (_TMPL
+            .replace("%TABS%", paginas.nav("colecao.html", extra=True))
             .replace("%DATA%", json.dumps(groups, ensure_ascii=False))
             .replace("%TOTQ%", str(total_qty))
             .replace("%TOTV%", eur)

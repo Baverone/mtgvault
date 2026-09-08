@@ -1115,7 +1115,12 @@ const D = JSON.parse(document.getElementById('dados').textContent);
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g,
   c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const eur = v => v ? (v.toFixed(2).replace('.', ',') + ' €') : '—';
+/* `8 426,34 €` e não `8426,34 €`: é o número por que ele decide, e sem o
+   separador dos milhares um `4619,24` lê-se mal ao lado de um `461,92`. O
+   agrupamento é o mesmo do Python (`mtgvault.paginas.eur`). */
+const eur = v => v
+  ? v.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d),)/g, ' ') + ' €'
+  : '—';
 const art = sid => sid
   ? `https://cards.scryfall.io/small/front/${sid[0]}/${sid[1]}/${sid}.jpg` : '';
 const cor = p => p >= 90 ? 'var(--add)' : p >= 60 ? 'var(--gold)' : 'var(--warn)';
@@ -1291,7 +1296,10 @@ function cardTile(c) {
    que não quer dizer nada: um deck sleevado na estante não é um candidato. */
 const ESTADO = {
   candidata: ['cand', 'candidata — recebe o que sobrar'],
-  permanente: ['perm', '★ permanente — escolhe as cartas primeiro'],
+  /* "escolhe as cartas primeiro" lia-se como uma ORDEM ("escolhe tu as cartas
+     primeiro") numa caixa que já tem deck e 95 % das cartas. É uma afirmação
+     sobre a caixa: é ela que fica com as cópias antes das outras. */
+  permanente: ['perm', '★ permanente — fica com as cartas primeiro'],
   montada: ['ok', '✅ montada'],
   congelada: ['ok', '🧊 montada e congelada — só mexe para actualizar'],
 };
@@ -1989,11 +1997,14 @@ function caixaHTML(c, compacta) {
     /* DOIS números, não um (André, 2026-09-08): "ir buscar a outra caixa" só
        vale para o que está MESMO dentro de outra caixa. O resto está na gaveta,
        destinado a uma caixa por montar — tira-se do mesmo sítio que tudo o
-       resto, e chamar-lhe "ir buscar" mandava-o a uma caixa vazia. */
-    + `<div class="num get">ir buscar<b>${c.nmont}</b>`
-    + `<span class="dim">a outra caixa (montada)</span></div>`
-    + `<div class="num get2">na gaveta<b>${c.nres}</b>`
-    + `<span class="dim">destinadas a outra caixa</span></div>`
+       resto, e chamar-lhe "ir buscar" mandava-o a uma caixa vazia.
+       A ZERO não se mostram, como o "por comprar" já fazia: num ecrã de 390 px
+       cinco quadrados por caixa, três deles a dizer 0, empurram a grelha das
+       cartas para fora do ecrã — e um zero não responde a pergunta nenhuma. */
+    + (c.nmont ? `<div class="num get">ir buscar<b>${c.nmont}</b>`
+        + `<span class="dim">a outra caixa (montada)</span></div>` : '')
+    + (c.nres ? `<div class="num get2">na gaveta<b>${c.nres}</b>`
+        + `<span class="dim">destinadas a outra caixa</span></div>` : '')
     + (c.nfut ? `<div class="num get2">por comprar<b>${c.nfut}</b>`
         + `<span class="dim">outra caixa compra-as</span></div>` : '')
     + `<div class="num eur">fechar por<b>${eur(c.custo)}</b>`
@@ -2790,7 +2801,13 @@ function vistaPlano() {
     h += `<div class="nums">`
       + `<div class="num">caixas por montar<b>${porMontar.length}</b></div>`
       + `<div class="num">tirar da colecção<b>${soma(porMontar, 'tirar')}</b></div>`
-      + `<div class="num buy">comprar<b>${soma(porMontar, 'comprar')}</b></div>`
+      /* As COMPRAS são de TODAS as caixas, não só das que faltam montar — é o
+         que o "fechar tudo por" ao lado já somava (`M`) e o que a aba Comprar
+         mostra. Somar só as `porMontar` dava 225 cópias ao lado de 8 426,34 €,
+         que são 232: os 601,29 € do Blue Farm (montado, congelado, 7 cartas por
+         comprar) entravam no preço e ficavam fora da contagem. Dois números
+         lado a lado a responder a perguntas diferentes, sem um único erro. */
+      + `<div class="num buy">comprar<b>${soma(M, 'comprar')}</b></div>`
       + `<div class="num eur">fechar tudo por<b>${eur(soma(M, 'custo'))}</b></div>`
       + `</div><div class="plano">`
       + porMontar.map((m, i) => linha(m, i + 1)).join('') + `</div>`;
@@ -2799,8 +2816,14 @@ function vistaPlano() {
   }
   if (montadas.length) {
     h += `<h2>✅ Já montadas <span class="n">${montadas.length}</span></h2>`
-      + `<p class="lead">Não há nada a fazer nestas hoje. As <b>congeladas</b> `
-      + `mostram na aba <b>Arrumar</b> o que trocar quando a lista mudar.</p>`
+      /* "Não há nada a fazer nestas hoje" era mentira quando uma delas ainda
+         tem compras: o Blue Farm está montado e congelado e mostra 7 cartas por
+         comprar, 601,29 €. Não há nada a TIRAR da gaveta — a caixa está feita —
+         e é isso que se pode afirmar. */
+      + `<p class="lead">Estão feitas: não há cartas para tirar da colecção. `
+      + `Se alguma ainda mostrar <b>comprar</b>, é a lista de hoje a pedir mais `
+      + `do que a caixa tem. As <b>congeladas</b> mostram na aba <b>Arrumar</b> `
+      + `o que trocar quando a lista mudar.</p>`
       + `<div class="plano">` + montadas.map(m => linha(m, 0)).join('') + `</div>`;
   }
   /* A VENDA vem depois, e a ordem não é decoração: o excedente é o que sobra
