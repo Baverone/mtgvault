@@ -387,7 +387,13 @@ def payload(con, rep, editable=False, token="", ligacao=None):
                             # cópia ia à venda antes de a regra dos 5 % a
                             # segurar. Sem ele a linha diz "subiu 7 %" e perde-se
                             # a pergunta a que isso responde.
-                            "porque": r.get("porque_venderia", "")}
+                            "porque": r.get("porque_venderia", ""),
+                            # A JANELA em que a subida foi medida, por cópia
+                            # (2026-09-08). Com a janela a crescer todos os dias,
+                            # "+1,8 %" sozinho não diz se foi medido em 27 dias
+                            # ou em 90 — e é a diferença entre uma carta parada e
+                            # uma que está a subir depressa.
+                            "rl_nota": r.get("rl_nota", "")}
                            for r in rep[chave]],
                 "copias": rep[copias], "total": rep[total]}
 
@@ -451,10 +457,16 @@ def payload(con, rep, editable=False, token="", ligacao=None):
                                                   "total_rl_sem_historico"),
                   "retidos": venda_bloco("retidos", "copias_retidas", "total_retido")},
         # Quanto é que a regra dos 5 % segurou ao todo, e com que parâmetros.
+        # A janela é um MÁXIMO desde 2026-09-08: a efectiva é a que cada carta
+        # dá, e o limiar acompanha-a. Os três números vão para a página porque
+        # são os três que explicam uma linha — "subiu 2 % e ficou" só se percebe
+        # com a janela ao lado.
         "rl_regra": {"copias": rep["copias_rl_retidas"],
                      "total": rep["total_rl_retido"],
                      "pct": loadout.rl_subida_minima(),
-                     "dias": loadout.rl_janela_dias()},
+                     "dias": loadout.rl_janela_dias(),
+                     "minima": loadout.rl_janela_minima(),
+                     "fixo": loadout.rl_limiar_fixo()},
         # PREMODERN (André, 2026-09-08): o que montar a seguir com o que sobra.
         # A conta é a do `mtgvault.premodern`, a mesma que o metagame.html mostra.
         "premodern": _premodern_payload(rep, imgs),
@@ -1625,6 +1637,10 @@ function vistaVender() {
          a segurou e porque é que ela ia à venda. Sem o segundo, "subiu 7%" é
          uma resposta sem pergunta. */
       + `<td class="dim rz">${esc(r.reason)}`
+      /* A janela em que a subida foi medida. Vai em TODAS as linhas de RL — nas
+         que se vendem também —, porque "não subiu" medido em 27 dias e medido
+         em 90 não são a mesma afirmação. */
+      + (r.rl_nota ? ` <b>${esc(r.rl_nota)}</b>` : '')
       + (r.porque ? ` <i>(ia por: ${esc(r.porque)})</i>` : '') + `</td>`
       /* «vendida»: tira as cópias da base e escreve-as no `data/vendas.csv`.
          Sem isto a lista repetia todos os dias as cartas que ele já vendeu — e
@@ -1665,8 +1681,18 @@ function vistaVender() {
        dinheiro — e ele tem de o ver antes de decidir seja o que for. */
     + (R.copias ? `<p class="lead">🔒 <b>${R.copias} cópias Reserved List `
         + `(${eur(R.total)}) NÃO entram na venda</b> pela tua regra: só se vende `
-        + `RL que não tenha subido <b>${R.pct}%</b> nos últimos <b>${R.dias} `
-        + `dias</b>. Estão nos dois blocos de baixo — as que valorizaram e as que `
+        + `RL que não tenha subido <b>${R.pct}%</b> em <b>${R.dias} dias</b>. `
+        /* A JANELA CRESCE SOZINHA (2026-09-08). Dizê-lo aqui, e não só no
+           relatório, porque muda o que a página mostra todos os dias: hoje
+           mede-se em ~27 dias e em Novembro em 90, sem ninguém mexer em nada. */
+        + `A janela é um <b>máximo</b>: cada carta é medida no histórico que o `
+        + `vault tem dela (mínimo ${R.minima} dias), e a subida exigida `
+        + (R.fixo ? `são os ${R.pct}% à letra em qualquer janela `
+                    + `(<code>venda.rl_limiar_fixo</code>).`
+                  : `acompanha a janela — ${R.pct}% em ${R.dias} dias, `
+                    + `~${(R.pct * R.minima / R.dias).toFixed(1)}% em ${R.minima}. `
+                    + `Cada linha diz em que janela foi medida.`)
+        + ` Estão nos dois blocos de baixo — as que valorizaram e as que `
         + `o vault ainda não consegue medir.</p>` : '')
     + bloco('v-normal', 'Excedente normal', 'Cópias a mais de cartas que não são '
         + 'Reserved List. É por aqui que se começa: o risco é baixo e o dinheiro é '
@@ -1680,27 +1706,32 @@ function vistaVender() {
        da RL porque é a metade dela que NÃO se vende hoje — e o total em € é o que
        ele quer ver: é dinheiro que fica na estante de propósito. */
     + bloco('v-rl-segurar', '🔒 RL a segurar — valorizou', 'Reserved List que '
-        + `subiu <b>${R.pct}%</b> ou mais nos últimos <b>${R.dias} dias</b>: não `
-        + 'entra na venda. A regra é tua (<i>"cartas de RL só vão para venda se '
-        + 'não tiverem subido 5% de valor nos últimos 3 meses"</i>) e afina-se em '
+        + 'subiu o suficiente na janela em que foi medida: não entra na venda. A '
+        + 'regra é tua (<i>"cartas de RL só vão para venda se não tiverem subido '
+        + '5% de valor nos últimos 3 meses"</i>) e afina-se em '
         + '<code>venda.rl_subida_minima_pct</code> / '
-        + '<code>venda.rl_janela_dias</code>.', V.rl_segurar, false,
+        + `<code>venda.rl_janela_dias</code>. Cada linha diz a subida e a janela `
+        + `(<b>+2.1 % em 27 d ≈ +7.0 %/${R.dias} d</b>).`, V.rl_segurar, false,
         'RL a segurar', true)
-    + bloco('v-rl-semhist', '❔ RL sem histórico suficiente', 'O vault ainda não '
-        + `tem cotação de há ${R.dias} dias para estas — o \`price_history\` só `
-        + 'guarda mudanças e começou em Agosto de 2026. Sem saber se subiram, '
-        + '<b>não vão para a venda</b>. Podes forçar baixando o '
-        + '<code>venda.rl_janela_dias</code>, ou esperar que a janela encha.',
+    + bloco('v-rl-semhist', '❔ RL sem histórico suficiente', 'O vault tem menos '
+        + `de <b>${R.minima} dias</b> de preços para estas — o \`price_history\` `
+        + 'só guarda mudanças e começou em Agosto de 2026. Sem saber se subiram, '
+        + '<b>não vão para a venda</b>. Esta lista encolhe sozinha à medida que o '
+        + 'histórico cresce; para a forçar, baixa o '
+        + '<code>venda.rl_janela_minima_dias</code>.',
         V.rl_sem_historico, false, 'RL sem histórico', true)
     + bloco('v-guardar', '🔒 Guardar — servem um deck do loadout', 'Passariam o limite '
         + 'de 4, mas são substitutos de cartas que faltam a uma caixa: servem o deck e '
         + 'só não fecham o slot por causa da língua ou do acabamento. Vendê-las era '
         + 'comprá-las outra vez.', V.guardar, false, 'guardar')
-    + bloco('v-reservadas', '💡 Reservadas — sugestões de Premodern por decidir',
-        'Cartas que uma <b>sugestão</b> usaria (aba <b>Sugestões</b>). Não são '
-        + 'excedente: são o deck que ainda não disseste se queres. Enquanto a '
-        + 'sugestão estiver aberta não se vendem — carrega em <b>não quero este</b> '
-        + 'na sugestão e elas passam para a lista de cima no mesmo dia.',
+    + bloco('v-reservadas', '💡 Reservadas — decks por decidir',
+        'Cartas de um deck que ainda não disseste se queres. Não são excedente. '
+        + 'Duas origens: as <b>sugestões de Premodern</b> (aba <b>Sugestões</b>) '
+        + '— carrega em <b>não quero este</b> e elas passam para a lista de cima '
+        + 'no mesmo dia — e a <b>Reserved List que o Legacy usaria</b>, desde que '
+        + 'as RL em PT passaram a servir esse formato (2026-09-08): enquanto a '
+        + 'caixa de Legacy não tiver deck escolhido, quem as segura é o top-N do '
+        + '<b>Metagame</b>. Escolhe lá o deck e a reserva encolhe para a lista dele.',
         V.reservadas, false, 'reservadas', true)
     + bloco('v-retidos', '⏳ Retidos — extras de decks montados', 'Baldes com '
         + '<code>reter_extras_meses</code>: guardam-se até 6 meses depois da última '

@@ -771,7 +771,10 @@ grupo — uma excepção é uma linha de config, não uma linha de código.
   702,95 € + 39 RL / 5 736,16 €, `guardar` a 0).
 
 1. *"Para Premodern as cartas são das edições que tínhamos visto e em Português;
-   essas cartas NÃO entram para outros formatos!!"* → um slot com `"lingua":"pt"`
+   essas cartas NÃO entram para outros formatos!!"* (recortada a 2026-09-08 para
+   a **Reserved List**, que passou a servir também o Legacy — ver *"A RESERVED
+   LIST EM PT SERVE O LEGACY"* acima; para tudo o resto continua inteira) → um
+   slot com `"lingua":"pt"`
    só fecha com cópias PT, e uma cópia PT de impressão até ao **Scourge
    (2003-05-26)** fica trancada ao Premodern. **Excepção que os dados obrigam a
    ter:** cópias que vivem no `balde` de outro slot do loadout já são desse deck
@@ -833,14 +836,17 @@ esses slots ainda cabem todas no playset).
 *"Cartas de RL só vão para venda se não tiverem subido 5 % de valor nos últimos
 3 meses."* Motor em `loadout.avaliar_rl` + `loadout.card_price_em`, config em
 `colecao_config.json → venda` (`rl_subida_minima_pct: 5`, `rl_janela_dias: 90`,
-`rl_tolerancia_dias: 10`). Corre no fim do `sell_list`, sobre a lista de venda já
+`rl_janela_minima_dias: 25`, `rl_tolerancia_dias: 10`, `rl_limiar_fixo: false`).
+Corre no fim do `sell_list`, sobre a lista de venda já
 formada: a regra é sobre a **cópia**, não sobre o motivo por que ela lá foi parar
 (excedente ou *"não usada por nenhum deck"*), e espalhá-la pelos dois ciclos era
 escrever a mesma decisão em dois sítios.
-- **Três respostas, não duas.** `hoje < antes × 1,05` → vende-se; `hoje ≥ antes ×
-  1,05` → **`rl_segurar`**, com o motivo *"RL em valorização: +X % em 3 meses"*;
-  **sem cotação que cubra a janela** → **`rl_sem_historico`**, com *"(desde
-  &lt;data&gt;)"*. A terceira é a que importa: uma RL é a decisão menos
+- **Três respostas, não duas.** `hoje < antes × (1 + limiar)` → vende-se;
+  `hoje ≥ antes × (1 + limiar)` → **`rl_segurar`**, com o motivo *"RL em
+  valorização: +X % em N d"*; **histórico mais curto do que a janela mínima** →
+  **`rl_sem_historico`**, com *"(desde &lt;data&gt;: N d, precisa de 25)"* (o
+  `limiar` é os 5 % ajustados à janela — ver o ponto da janela, abaixo).
+  A terceira é a que importa: uma RL é a decisão menos
   reversível de todas, e dar *"não subiu"* como resposta a *"não sei"* era o
   padrão do `event_tier` outra vez, mas sobre dinheiro que não volta. As duas
   saídas ficam separadas porque *"subiu"* é uma decisão tomada e *"não sei"* é
@@ -868,21 +874,96 @@ escrever a mesma decisão em dois sítios.
   são **2,5 %** das linhas (6 758 em 28 dias, ~240/dia) — 100 dias delas são
   ~24 000 linhas contra as ~984 000 de guardar tudo. Tem teste
   (`test_venda_rl.caso_a_poda_diaria_nao_pode_matar_a_regra`).
-- **Consequência a assumir hoje, e é grande: o `price_history` do vault começa em
-  2026-08-10** — 29 dias, porque até agora a poda o cortava aos 30. Com a janela
-  a 90, **nenhuma RL passa o teste**: as 101 cópias / **8 106,54 €** de Reserved
-  List saem todas por `rl_sem_historico` e a lista de RL fica **vazia até
-  2026-11-08** (90 dias depois do primeiro preço; com a poda corrigida, a partir
-  daí enche). É a resposta certa, não uma falha — mas é uma lista inteira que
-  desaparece, e está dita na página, no CLI e no `_venda` do config. Para decidir
-  já com o histórico que existe, baixa-se o `rl_janela_dias`. Medido com `25`:
-  **21 cópias / 3 420,63 € seguram-se** (Mox Diamond +6,2 % = 1 670,94 €, Gilded
-  Drake +7,7 %, Serra's Sanctum +10,2 %) e 80 / 4 685,91 € continuam a vender-se.
+- **A JANELA CRESCE SOZINHA, E O LIMIAR ACOMPANHA-A (André, 2026-09-08, à letra:
+  *"podemos começar já com 25 e vamos vendo como avança o histórico"*).** O
+  parágrafo anterior descrevia o problema: com a janela fixa nos 90 e um
+  `price_history` de 29 dias, **nenhuma** RL passava o teste, as 100 cópias /
+  8 099,55 € saíam todas por `rl_sem_historico` e a lista de RL ficava vazia até
+  2026-11-08. Baixar o `rl_janela_dias` à mão resolvia hoje e criava a tarefa de
+  o voltar a subir — que ninguém ia lembrar-se de fazer. Agora:
+  - **`rl_janela_dias` (90) é o MÁXIMO, não a janela.** A efectiva é
+    `min(máximo, histórico da carta − 2)` (`loadout.rl_janela_efectiva`); os dois
+    dias de folga são para o dia-alvo cair DEPOIS da primeira cotação e não em
+    cima dela. Abaixo de **`rl_janela_minima_dias` (25)** não se decide de todo —
+    é o *"não sei"* de sempre, com a fronteira num número dele em vez de no
+    máximo. Hoje mede em **27 dias**; em Novembro está nos 90 sem ninguém tocar
+    no config, e sem uma janela a saltar de 25 para 90 num dia.
+  - **O limiar é PROPORCIONAL**: `rl_subida_minima_pct × janela / máximo` — 5 % a
+    90 dias, **1,4 % a 25**. Os 5 % dele são *"nos últimos 3 meses"*; exigi-los
+    numa janela de 27 dias é exigir ~17 %/90 d, ou seja **vender em Setembro
+    exactamente o que a regra dos 3 meses seguraria**. A alternativa é dele e
+    está no config: **`venda.rl_limiar_fixo: true`** aplica os 5 % à letra —
+    medido, isso passa **13 cópias / 2 905,09 €** de *"a segurar"* para a venda
+    (os 2 Mox Diamond a +4,9 % em 27 d, que são +16,3 % ao ritmo de 90).
+  - **Cada linha diz em que janela foi medida** (`+4.9 % em 27 d ≈ +16.3 %/90 d`,
+    `loadout._texto_janela` → `rl_nota`), na página e no CLI, e nas linhas que
+    **se vendem** também: *"não subiu"* medido em 27 dias e medido em 90 não são
+    a mesma afirmação. O sinal vem do `:+` e não de um `+` escrito à mão — metade
+    destas linhas desceu, e a tabela mostrava `+-3.2 %`.
+  - **Efeito medido na base de 2026-09-08** (a mesma cópia dos dois lados): a
+    lista de RL deixa de estar vazia. **Vender 40c / 3 221,01 €** (Intuition EN
+    −3,2 %, Taiga, Tolarian Academy −9,4 %), **segurar 23c / 3 999,99 €** (2 Mox
+    Diamond +4,9 % = 1 670,94 €, 5 Null Rod +2,9 %, 3 Gilded Drake +4,4 %,
+    Serra's Sanctum +5,0 %, 4 Deranged Hermit +9,6 %) e **35c / 778,30 € ficam
+    por medir** — são as cartas cujo histórico só começa a **2026-08-17** (20 d).
+    A alocação **não mexe** (7 901,85 €, 220 a comprar, 70 a ir buscar, 309 a
+    arrumar) e a venda normal também não (221c / 1 152,19 €).
+  - A `rl_tolerancia_dias` fica, mas passou a ser quase inerte: com a janela a
+    encolher para o histórico da carta, o dia-alvo cai sempre depois da primeira
+    cotação e o ramo da tolerância deixa de ser preciso. Continua a valer para a
+    poda diária (que guarda `janela + tolerância + 7` = **107 dias** de RL) e
+    para o dia em que alguém volte a fixar a janela.
 - A linha retida guarda o motivo por que ia à venda em **`porque_venderia`**, e a
   página e o CLI dizem-no (*"ia por: excedente (mais de 4)"*): *"subiu 7 %"* é
   uma resposta, e sem a pergunta ao lado não se percebe o que a regra impediu.
 - **A regra é só para a Reserved List** (`lot["rl"]`, de `catalog.cards.reserved`)
   e **não tem botão «vendida»** — o que a liberta é o config, não um clique.
+
+**A RESERVED LIST EM PT SERVE O LEGACY (André, 2026-09-08, à letra).** *"RL em PT
+pode servir para Legacy e Premodern, mas não para cEDH nem outro formato."* É um
+recorte na tranca de 2026-09-07 (*"as cartas PT da era Premodern NÃO entram para
+outros formatos!!"*, ver a regra 1 mais abaixo), e **só nela**: para tudo o que
+não seja Reserved List a tranca continua inteira.
+- **A excepção é do FORMATO, não do grupo.** O Legacy é SPML — *"tudo foil e
+  inglês"* — e continua a sê-lo: a chave nova é
+  `regras_por_formato[].por_formato` (`{"legacy": {"rl_lingua": ["pt","en"]}}`),
+  fundida pelo `loadout.regra_do_formato`, e o `rl_lingua` ganha à `lingua` **e**
+  à tranca do PT, mas só quando `lot["rl"]`. Parti-lo num grupo próprio era
+  inventar um sexto grupo que ele nunca ditou e mexer em duas coisas que ninguém
+  pediu: a **ordem da alocação** (a ordem desta lista É a ordem) e o **grupo da
+  partilha de compras**. O Standard, o Pioneer e o Modern — o mesmo grupo — não
+  aceitam a carta; o cEDH e o Duel Commander também não.
+- **E a lista de venda tem de saber disto, senão a regra não vale nada.** A caixa
+  de Legacy dele está `candidata` e **vazia**: a alocação não lhe dá nada, e a
+  Mox Diamond que ela passou a aceitar ia à venda na mesma. Enquanto não há deck
+  escolhido, quem diz o que a caixa vai pedir é o **top-N do metagame** — o mesmo
+  `foil_report` que a página mostra —, e as cópias de **Reserved List** que
+  qualquer um desses candidatos usaria ficam em `reservadas`, com o motivo
+  *"serve Legacy: &lt;arquétipo&gt;"*. Motor em `loadout.reservas_rl` +
+  `_reserva_para`, config em `venda.reservar_rl_formatos: ["legacy"]`.
+  **Assim que a caixa tem lista, a reserva encolhe para o que falta a esse deck**
+  — reserva-se o que a caixa pede menos o que a alocação já lhe deu; com
+  candidatos reserva-se o que a lista PEDE, pela mesma razão que as sugestões de
+  Premodern (as cópias que o candidato já "tem" são exactamente as que se estava
+  a pensar vender). É o **máximo** entre candidatos, nunca a soma: são
+  alternativas entre si.
+- **Só a Reserved List.** Uma carta normal que um candidato use continua a
+  vender-se: compra-se outra vez, e segurar a colecção por causa de três listas
+  de metagame era o contrário do que ele pediu ao mandar vender os excessos.
+- **Efeito medido na base de 2026-09-08:** a alocação **não mexe** (7 901,85 €,
+  220 a comprar, 70 a ir buscar, 309 a arrumar) — a caixa de Legacy está vazia.
+  O que muda é o que o formato VÊ: **0 → 73 cópias / 3 474,79 €** de RL em PT
+  deixam de estar invisíveis para o Legacy (Null Rod, Gilded Drake, Serra's
+  Sanctum, Tolarian Academy, Deranged Hermit…). Na venda, a reserva tira hoje
+  **2 cópias / 100,25 €** (Scrubland 3ed EN, para o *Mardu Voice of Victory*, e
+  Tundra 3ed EN, para o *Azorius Stifle*) — poucas porque o top-3 de Legacy de
+  hoje são listas modernas cujas RL são duais, que ele tem em EN. As PT caras
+  (Mox Diamond, Gilded Drake, City of Traitors) não vão à venda por outra razão:
+  a regra dos 5 % está a segurá-las.
+- **O bloco «Reservadas» passou a ter duas origens** — as sugestões de Premodern
+  e a RL do Legacy. O título mudou (*"decks por decidir"*) na página e no CLI:
+  um bloco que diz *"sugestões de Premodern"* e traz uma Scrubland de Legacy é
+  uma página a mentir em silêncio.
 
 **MODELO DE COLECÇÃO ÚNICA (André, 2026-09-07, à letra).** *"Põe a colecção toda
 em uma coisa só, com excepção da RL, e assim vais buscar as cartas ao mesmo
