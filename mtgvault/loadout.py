@@ -218,6 +218,7 @@ import json
 import sqlite3
 from collections import defaultdict
 from datetime import date, timedelta
+from datetime import datetime as _datetime
 from pathlib import Path
 
 from . import caixas as _caixas
@@ -244,6 +245,12 @@ COMMANDER_FORMATS = {"duel-commander", "cedh", "commander", "edh"}
 # rede de segurança do classify.py: nunca sugerir vender uma carta jogável.
 REAL_FORMATS = ("standard", "pioneer", "modern", "legacy", "premodern",
                 "vintage", "pauper", "commander")
+
+# Os dois blocos de uma lista, com o nome que a página e o CLI mostram. Num
+# sítio só: um rótulo escrito à mão em cada lado é um rótulo que fica diferente
+# na primeira vez que alguém lhe mexe. O `None` é o movimento que SAI da caixa —
+# esse não vem da lista, e chamar-lhe "main" era inventar uma resposta.
+TITULO_BOARD = {"main": "Main", "side": "Sideboard", None: "A devolver à gaveta"}
 
 BASICS = {"Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes",
           "Snow-Covered Plains", "Snow-Covered Island", "Snow-Covered Swamp",
@@ -957,6 +964,11 @@ def resolve_slots(con, cfg_slots: list[dict] | None = None) -> list[dict]:
         # perdia o painel *confirmar* e voltava a ser mandado montar de novo.
         s["montado_por_confirmar"] = (s["montado"]
                                       and s.get("slot") not in arrumadas)
+        # Tem conteúdo confirmado na `copy_allocation` — é o que decide se há
+        # alguma coisa para DESMONTAR. Não é o mesmo que `montado`: as quatro
+        # caixas de 2026-09-08 tinham alocação herdada da migração e não estavam
+        # montadas em lado nenhum.
+        s["arrumada"] = s.get("slot") in arrumadas
         cards, nota = _slot_cards(con, s)
         so_de: dict[str, set[str]] = defaultdict(set)
         variantes = list(s.get("variantes") or [])
@@ -2730,9 +2742,62 @@ def movimentos_de_entrada(s: dict, caixas: set[str] | frozenset) -> list[dict]:
                 continue                  # está no balde que É esta caixa
             out.append({"nm": m["nm"], "q": g["q"], "de": g["local"],
                         "para": s["nome"], "slot": s["slot"],
+                        # O BLOCO da lista a que a cópia pertence (André,
+                        # 2026-09-08: *"preciso de saber o que é sideboard nos
+                        # decks, para ficar separado dentro da mesma caixa"*).
+                        # Vem da linha e não se recalcula: a mesma carta pode
+                        # estar no main E no side, e são duas pilhas diferentes
+                        # dentro da caixa.
+                        "board": m["board"],
                         "copy_id": g["id"], "sid": g["sid"],
                         "finish": g["finish"], "lang": g["lang"],
                         "set_code": g["set_code"], "sentido": "entra"})
+    return out
+
+
+def totais_por_board(s: dict) -> dict[str, int]:
+    """Quantas cópias pede cada bloco da lista da caixa: `{"main": 60, "side": 15}`.
+
+    Sai da MESMA lista que a caixa usa para contar (`s["cards"]`) e não de uma
+    segunda leitura da tabela: o "N de M" do cabeçalho tem de ser o mesmo M por
+    que a percentagem da caixa é calculada.
+    """
+    out: dict[str, int] = defaultdict(int)
+    for board, _nm, q in s["cards"]:
+        out["side" if board == "side" else "main"] += q
+    return dict(out)
+
+
+def blocos_de_board(movs: list[dict], totais: dict[str, int] | None = None
+                    ) -> list[dict]:
+    """Parte uma lista de movimentos nos blocos da caixa: **Main** e **Sideboard**.
+
+    André, 2026-09-08, à letra: *"Preciso também de saber o que é sideboard nos
+    decks, para ficar separado dentro da mesma caixa."* Uma caixa é um deck e um
+    deck são duas pilhas — 60 (ou 100) e 15 —, e uma lista corrida de 75 linhas
+    obrigava-o a separá-las de cabeça à frente da estante.
+
+    A carta que está nos dois blocos vem em **duas linhas**, uma em cada, porque
+    são duas cópias físicas em dois sítios: o `movimentos_de_entrada` já traz o
+    `board` da linha da alocação e aqui não se recalcula nada.
+
+    Um movimento SEM `board` (o que SAI de uma caixa: vem do lote, não da lista)
+    fica num bloco próprio no fim — chamar-lhe "main" era inventar uma resposta.
+    A ordem dentro de cada bloco é de quem chama: a página ordena por cor (é como
+    o binder está arrumado), o CLI por nome.
+    """
+    grupos: dict[str | None, list[dict]] = {"main": [], "side": [], None: []}
+    for m in movs:
+        grupos[m.get("board") if m.get("board") in ("main", "side") else None
+               ].append(m)
+    out = []
+    for board in ("main", "side", None):
+        movs_b = grupos[board]
+        if not movs_b:
+            continue
+        out.append({"board": board or "", "titulo": TITULO_BOARD[board],
+                    "movs": movs_b, "q": sum(m["q"] for m in movs_b),
+                    "de": (totais or {}).get(board, 0) if board else 0})
     return out
 
 
@@ -2763,6 +2828,10 @@ def plano_montar(res: dict, slot_id: str) -> dict:
             "devolver": sorted(devolver, key=lambda m: m["nm"]),
             "copias": sum(m["q"] for m in tirar),
             "ja": dentro - sum(m["q"] for m in tirar),
+            # Quanto pede cada bloco da lista (main 60/100, side 15): é o "de M"
+            # do cabeçalho de cada bloco. O "N" sai dos movimentos, que já trazem
+            # o `board` — a caixa fica separada por dentro, como ele pediu.
+            "totais": totais_por_board(s),
             "por_gaveta": dict(sorted(por_gaveta.items(),
                                       key=lambda kv: (-kv[1], kv[0])))}
 
@@ -2957,6 +3026,74 @@ def actualizar_caixa(con, res: dict, slot_id: str) -> int:
         [(cid, slot_id, q) for cid, q in sorted(linhas.items())])
     con.commit()
     return sum(linhas.values())
+
+
+def ficheiro_desmontar() -> Path:
+    """O registo das desmontagens (`data/desmontar.log`).
+
+    Ao lado da base (`db.pasta_dados()`) e não do `ROOT`, como o `vendas.csv` e o
+    `arquetipos.json`: neste PC o `MTGVAULT_HOME` não está definido, só o
+    `MTGVAULT_DB`, e pelo `ROOT` o ficheiro ia parar a `~/mtgvault`.
+    """
+    from . import db                      # noqa: PLC0415 — ver `ficheiro_vendas`
+    return db.pasta_dados() / "desmontar.log"
+
+
+def _pasta_backups(con) -> Path:
+    """A pasta de backups AO LADO da base a que esta ligação pertence."""
+    alvo = next((r[2] for r in con.execute("PRAGMA database_list")
+                 if r[1] == "main" and r[2]), None)
+    base = Path(alvo).resolve().parent if alvo else Path.cwd()
+    return base / "backups"
+
+
+def desmontar_caixa(con, slot_id: str, nome: str | None = None,
+                    log_path: Path | None = None) -> dict:
+    """"Desmontar": as cartas desta caixa voltam à gaveta. É o inverso do
+    *"sleevado e na caixa"*.
+
+    André, 2026-09-08: só o Stiflenought está fisicamente montado — as outras
+    quatro caixas tinham alocação herdada da migração e as cartas estão na
+    `Colecção`. Desfazer isso era uma limpeza à mão na `copy_allocation`; passa a
+    ser um botão, porque um gesto que ele precisa de fazer e que só existe no SQL
+    acaba por ser feito no SQL, sem backup e sem registo.
+
+    Duas decisões, pela mesma razão que a venda as tem:
+      * **backup antes de apagar** (`backups/vault-<data>-desmontar.db`, VACUUM
+        INTO: cópia consistente do `main`, sem o catálogo atrás). Desmontar é a
+        única operação da página que apaga o que ele CONFIRMOU à mão;
+      * **registo em `data/desmontar.log`**, escrito ANTES de a base mexer — o
+        que a caixa tinha lá dentro é a única coisa que se perde, e uma linha a
+        mais no log vê-se, uma desmontagem sem rasto não.
+
+    Não mexe no `estado` da caixa: quem o faz é quem chama (o `webapp`
+    põe-na em `permanente`), pela mesma razão que o *"actualizei"* não lhe toca —
+    o que é FÍSICO vive na `copy_allocation` e o estado vive no config.
+    """
+    try:
+        r = con.execute(
+            "SELECT COUNT(*) l, COALESCE(SUM(quantity), 0) q "
+            "FROM copy_allocation WHERE slot = ?", (slot_id,)).fetchone()
+    except sqlite3.OperationalError:
+        return {"linhas": 0, "copias": 0, "backup": None}  # base sem a tabela
+    linhas, copias = r["l"], r["q"] or 0
+    if not linhas:
+        return {"linhas": 0, "copias": 0, "backup": None}
+    carimbo = _datetime.now().strftime("%Y%m%d-%H%M")
+    pasta = _pasta_backups(con)
+    pasta.mkdir(parents=True, exist_ok=True)
+    bkp = pasta / f"vault-{carimbo}-desmontar.db"
+    if not bkp.exists():                  # dois cliques no mesmo minuto: um só
+        con.execute("VACUUM main INTO ?", (str(bkp),))
+    alvo = log_path or ficheiro_desmontar()
+    alvo.parent.mkdir(parents=True, exist_ok=True)
+    with alvo.open("a", encoding="utf-8") as fh:
+        fh.write(f"{carimbo} desmontar {slot_id!r} caixa={nome or slot_id!r} "
+                 f"linhas={linhas} copias={copias} backup={bkp.name}\n")
+    con.execute("DELETE FROM copy_allocation WHERE slot = ?", (slot_id,))
+    con.commit()
+    return {"linhas": linhas, "copias": copias, "backup": str(bkp),
+            "log": str(alvo)}
 
 
 def report(con, cfg_slots: list[dict] | None = None) -> dict:
