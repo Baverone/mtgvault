@@ -101,7 +101,7 @@ def base():
 
 
 def add(con, nm, q=1, finish="nonfoil", lang="en", sub=None, purpose="player",
-        reserved_deck_id=None):
+        reserved_deck_id=None, borigem=None):
     sid = con.execute("SELECT scryfall_id FROM catalog.cards WHERE name = ?",
                       (nm,)).fetchone()["scryfall_id"]
     sub_id = None
@@ -111,9 +111,9 @@ def add(con, nm, q=1, finish="nonfoil", lang="en", sub=None, purpose="player",
         sub_id = con.execute("SELECT id FROM sub_collections WHERE name = ?",
                              (sub,)).fetchone()["id"]
     con.execute("""INSERT INTO copies (scryfall_id, quantity, finish, language,
-                   purpose, sub_collection_id, reserved_deck_id)
-                   VALUES (?,?,?,?,?,?,?)""",
-                (sid, q, finish, lang, purpose, sub_id, reserved_deck_id))
+                   purpose, sub_collection_id, reserved_deck_id, balde_origem)
+                   VALUES (?,?,?,?,?,?,?,?)""",
+                (sid, q, finish, lang, purpose, sub_id, reserved_deck_id, borigem))
     con.commit()
 
 
@@ -953,11 +953,18 @@ def caso_arrumar_nao_transforma_ir_buscar_em_compra():
 def caso_carta_na_caixa_escapa_as_regras_de_material():
     """A irmã da excepção do balde, no modelo novo: uma cópia JÁ ARRUMADA na
     caixa deste deck escapa às regras de material — senão uma regra nova
-    desmontava no papel um deck que está na estante."""
+    desmontava no papel um deck que está na estante.
+
+    Desde 2026-09-09 a excepção pede uma prova a mais: a cópia tem de ter VINDO
+    do balde desta caixa (`copies.balde_origem`, que a migração escreve). Sem
+    ela, uma linha da `copy_allocation` escrita em bloco lavava uma correcção ao
+    acabamento da cópia — foi o que pôs uma foil a fechar um slot do Cloud cEDH
+    (ver `test_montada_alocacao.py`)."""
     con = base()
     deck(con, "EDH", "cedh", [("Lotus Petal", 1)])
-    add(con, "Lotus Petal", 1, finish="foil", lang="pt", sub="Colecção")
-    s = slot("EDH", "cedh", "EDH", balde="Colecção")
+    add(con, "Lotus Petal", 1, finish="foil", lang="pt", sub="Colecção",
+        borigem="Cloud cEDH")
+    s = slot("EDH", "cedh", "EDH", balde="Cloud cEDH")
     # Antes de arrumar: é PT da era Premodern e foil — o cEDH é "só EN nonfoil".
     assert por_nome(loadout.report(con, [s]))["EDH"]["tenho"] == 0
     cid = con.execute("SELECT id FROM copies").fetchone()["id"]
@@ -966,6 +973,15 @@ def caso_carta_na_caixa_escapa_as_regras_de_material():
     con.commit()
     rep = por_nome(loadout.report(con, [s]))["EDH"]
     assert rep["tenho"] == 1, rep["tenho"]
+
+    # E a mesma cópia, se tivesse vindo da gaveta partilhada, NÃO escapava: é a
+    # diferença entre "está sleevada neste deck desde sempre" e "um registo em
+    # bloco varreu-a para aqui".
+    con.execute("UPDATE copies SET balde_origem = 'SPML'")
+    con.commit()
+    rep = por_nome(loadout.report(con, [s]))["EDH"]
+    assert rep["tenho"] == 0, rep["tenho"]
+    assert [c["nm"] for c in rep["contradicoes"]] == ["Lotus Petal"]
     print("uma copia ja arrumada na caixa escapa as regras de material")
 
 
@@ -974,12 +990,14 @@ def caso_lote_partido_entre_caixa_e_gaveta():
     con = base()
     deck(con, "EDH", "cedh", [("Lotus Petal", 4)])
     deck(con, "Leg", "legacy", [("Lotus Petal", 1)])
-    add(con, "Lotus Petal", 4, finish="foil", lang="pt", sub="Colecção")
+    add(con, "Lotus Petal", 4, finish="foil", lang="pt", sub="Colecção",
+        borigem="Cloud cEDH")
     cid = con.execute("SELECT id FROM copies").fetchone()["id"]
     con.execute("INSERT INTO copy_allocation (copy_id, slot, quantity) VALUES (?,?,3)",
                 (cid, "edh"))
     con.commit()
-    rep = por_nome(loadout.report(con, [slot("EDH", "cedh", "EDH", balde="Colecção"),
+    rep = por_nome(loadout.report(con, [slot("EDH", "cedh", "EDH",
+                                             balde="Cloud cEDH"),
                                         slot("Leg", "legacy", "Leg", prioridade=2,
                                              balde="Colecção")]))
     # As 3 arrumadas fecham slot no cEDH; a 4ª continua PT da era e foil, por isso

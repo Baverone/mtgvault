@@ -387,6 +387,14 @@ def _caixa_payload(s, imgs, cfs, rep=None, col=None, tipos=None, cores=None,
                    for qual in ("montada", "reservada", "futura")},
         "subs": [{"nm": m["nm"], "missing": m["missing"], "alt": m["alt"],
                   "onde": m["alt_onde"]} for m in s["subs"]],
+        # REGISTOS QUE NÃO PODEM ESTAR CERTOS (2026-09-09): linhas da
+        # `copy_allocation` desta caixa que a regra de material DELA recusa. Não
+        # é uma falta nem um substituto — é o vault a dizer que uma coisa que ele
+        # próprio escreveu não bate certo, e a caixa deixou de contar com ela.
+        "contradicoes": [{"nm": c["nm"], "q": c["q"], "porque": c["porque"],
+                          "onde": c["onde"], "foil": c["foil"],
+                          "lang": c["lang"], "set_code": c["set_code"]}
+                         for c in s.get("contradicoes") or []],
     }
 
 
@@ -1348,7 +1356,13 @@ function badges(c) {
   /* «N de M na caixa» (André, 2026-09-08). Uma caixa registada A MEIO não é uma
      caixa montada nem uma caixa por montar, e dizer só "🔧 a montar" apagava o
      trabalho já feito — que é exactamente o que o registo parcial veio guardar. */
-  if (!c.montado && c.montar && c.montar.dentro) {
+  /* E também numa caixa que se DIZ montada e ainda tem cópias por lá meter
+     (2026-09-09). «Montada» é o que ele escreveu; «N de M» é o que a
+     `copy_allocation` sabe, e as duas podem discordar — o Cloud cEDH diz-se
+     montado e tem duas cartas que a caixa deixou de contar. Sem o número, a
+     caixa parecia fechada e o painel Montar por baixo dizia o contrário. */
+  if (c.montar && ((!c.montado && c.montar.dentro)
+                   || (c.montado && c.montar.marcar_q))) {
     h += `<span class="bdg cand">📦 ${c.montar.dentro} de `
       + `${c.montar.dentro + c.montar.marcar_q} na caixa</span>`;
   }
@@ -2195,11 +2209,36 @@ function caixaHTML(c, compacta) {
       + `</li>`).join('');
     h += `<div class="blk"><b>↻ tens a carta, não serve a caixa</b><ul>${li}</ul></div>`;
   }
+  h += contradicoesHTML(c);
   h += montarHTML(c);
   h += candidatosHTML(c);
   if (D.editable) h += acoesHTML(c);
   return h + `</div>`;
 }
+
+/* REGISTOS QUE NÃO PODEM ESTAR CERTOS (André, 2026-09-09: *"dizes que tenho
+   Chromatic Star mas eu não tenho"*). A caixa tinha estas cópias registadas lá
+   dentro e a regra de material DELA recusa-as — as duas do Cloud cEDH estavam
+   na base como nonfoil quando ele registou a caixa, e o acabamento foi
+   corrigido para foil depois. O vault deixou de contar com elas; o bloco diz
+   quais e porquê, senão a percentagem descia sozinha e sem explicação. */
+function contradicoesHTML(c) {
+  const rows = c.contradicoes || [];
+  if (!rows.length) return '';
+  const li = rows.map(m => `<li><b>${esc(m.nm)}</b>`
+    + `<span class="dim"> ${esc((m.set_code || '').toUpperCase())} `
+    + `${esc(m.lang || '')}${m.foil ? ' ✨foil' : ''}</span>`
+    + ` × ${m.q} — ${esc(m.porque)}. Tratada como estando em `
+    + `<b>${esc(m.onde)}</b>.</li>`).join('');
+  return `<div class="blk onde"><b>⚠️ registada nesta caixa e não pode lá estar `
+    + `— ${cop(rows.reduce((a, m) => a + m.q, 0))}</b>`
+    + `<p class="nota">Esta caixa tinha estas cópias registadas lá dentro, mas `
+    + `elas não cumprem a regra de material dela. A caixa deixou de contar com `
+    + `elas e as cartas voltaram a ser compra. Se estiverem mesmo na caixa, `
+    + `tira-as; se o registo é que estava errado, o «já arrumei tudo» deita-o `
+    + `fora sozinho.</p><ul>${li}</ul></div>`;
+}
+
 
 /* Os botões só se DESENHAM no modo edição. No site publicado os endpoints de
    escrita não existem, e um botão que não faz nada é pior do que não haver
