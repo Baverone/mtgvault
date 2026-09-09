@@ -14,10 +14,10 @@
   "caixas": [
     {"slot": "pauper", "nome": "Pauper (Luffy)", "formato": "pauper", "fonte": "vigiado", "ref": "Luffy — Pauper", "balde": "Pauper Affinity", "estado": "montada", "prioridade": 1, "notas": ""},
     {"slot": "cedh-blue-farm", "nome": "Blue Farm", "formato": "cedh", "fonte": "vigiado", "ref": "Blue Farm [Primer]", "balde": "Blue Farm", "estado": "montada", "prioridade": 2, "notas": ""},
-    {"slot": "cedh-cloud", "nome": "Cloud cEDH", "formato": "cedh", "fonte": "vigiado", "ref": "Cloud [cEDH]", "balde": "Cloud cEDH", "estado": "permanente", "prioridade": 3, "notas": ""},
+    {"slot": "cedh-cloud", "nome": "Cloud cEDH", "formato": "cedh", "fonte": "vigiado", "ref": "Cloud [cEDH]", "balde": "Cloud cEDH", "estado": "montada", "prioridade": 3, "notas": ""},
     {"slot": "duel-commander", "nome": "Cloud (Duel Commander)", "formato": "duel-commander", "fonte": "deck", "ref": "Cloud (Duel Commander)", "balde": "Cloud", "estado": "permanente", "prioridade": 4, "notas": ""},
     {"slot": "premodern-stiflenought", "nome": "Stiflenought", "formato": "premodern", "fonte": "deck", "ref": "Stiflenought (Luffy)", "balde": "Premodern (geral)", "estado": "montada", "prioridade": 5, "notas": ""},
-    {"slot": "premodern-replenish", "nome": "UW Replenish", "formato": "premodern", "fonte": "deck", "ref": "UW Replenish (consenso)", "balde": "Premodern (geral)", "estado": "permanente", "prioridade": 6, "notas": ""},
+    {"slot": "premodern-replenish", "nome": "UW Replenish", "formato": "premodern", "fonte": "deck", "ref": "UW Replenish (consenso)", "balde": "Premodern (geral)", "estado": "montada", "prioridade": 6, "notas": ""},
     {"slot": "premodern-enchantress", "nome": "Enchantress", "formato": "premodern", "fonte": "deck", "ref": "Enchantress (consenso)", "balde": "Premodern (geral)", "estado": "permanente", "prioridade": 7, "notas": ""},
     {"slot": "premodern-elves", "nome": "Elves / Survival", "formato": "premodern", "fonte": "consenso", "assinatura": ["Priest of Titania"], "balde": "Premodern (geral)", "estado": "permanente", "prioridade": 8, "notas": ""},
     {"slot": "premodern-oath", "nome": "Oath of Druids", "formato": "premodern", "fonte": "consenso", "assinatura": ["Oath of Druids"], "balde": "Premodern (geral)", "estado": "permanente", "prioridade": 9, "notas": ""},
