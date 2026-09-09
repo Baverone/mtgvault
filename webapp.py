@@ -122,8 +122,35 @@ UMA_LINHA = configio.UMA_LINHA
 # As páginas que o modo edição GERA em vez de servir do disco: são as que têm
 # botões, e o `editable` é o que os faz aparecer. Servir o ficheiro estático a
 # partir daqui dava uma página sem botões e sem explicação nenhuma.
-PAGINAS_EDITAVEIS = {"/": deckboxes, "/index.html": deckboxes,
+# O `/index.html` NÃO está aqui de propósito (2026-09-09): estava, e apontava
+# para o `deckboxes` — a aba **🏠 Início** do menu levava-o à página onde ele já
+# estava. O índice é escrito à mão e serve-se do disco, como todas as outras.
+# O `/` fica: é a porta de entrada do modo edição, e a Deckboxes é a página dos
+# decks.
+PAGINAS_EDITAVEIS = {"/": deckboxes,
                      "/deckboxes.html": deckboxes, "/metagame.html": metagame}
+
+# Os links do menu que o modo edição tem de reescrever para levarem o token.
+_LINK_HTML = re.compile(r'href="([a-z_]+\.html)"')
+
+
+def com_token(corpo: str, tok: str) -> str:
+    """Põe o `?t=` nos links internos de uma página servida em modo edição.
+
+    Sem isto, no telemóvel, **um toque no menu apagava o modo edição**: os links
+    do `paginas.nav` são `href="metagame.html"` sem query nenhuma, e o servidor
+    só confia em quem traz o token. Ele ia à Coleção, voltava à Deckboxes e os
+    botões tinham desaparecido — sem erro nenhum e sem uma linha a dizer porquê.
+    (No PC não se notava: o loopback é de confiança sem token, e por isso isto
+    ficou meses assim.)
+
+    Reescreve-se no servidor, e não no `paginas.nav`, porque metade destas
+    páginas é ESTÁTICA — vem do disco, escrita pela corrida do `daily` que não
+    sabe nada de tokens. Num sítio só, e vale para as geradas e para as outras.
+    """
+    if not tok:
+        return corpo
+    return _LINK_HTML.sub(lambda m: f'href="{m.group(1)}?t={tok}"', corpo)
 
 
 # ---------------------------------------------------------------------------
@@ -712,17 +739,27 @@ class Handler(BaseHTTPRequestHandler):
             # senão bastava abri-la de qualquer telemóvel da rede para o
             # descobrir, e o token não protegia nada.
             editavel = self._pode_escrever()
+            tok = token() if editavel else ""
             with db.session() as con:
-                self._envia(modulo.html_page(
-                    con, editable=editavel,
-                    token=(token() if editavel else ""),
-                    ligacao=(ligacao_local() if editavel else None)))
+                self._envia(com_token(modulo.html_page(
+                    con, editable=editavel, token=tok,
+                    ligacao=(ligacao_local() if editavel else None)), tok))
             return
         nome = caminho.lstrip("/")
         alvo = (ROOT / nome).resolve()
         if (nome.endswith((".html", ".css", ".js")) and alvo.is_file()
                 and str(alvo).startswith(str(ROOT))):
-            self._envia(alvo.read_text(encoding="utf-8"))
+            corpo = alvo.read_text(encoding="utf-8")
+            if nome.endswith(".html"):
+                # O menu destas páginas foi escrito pela corrida do `daily`, sem
+                # token nenhum: sem esta linha, sair da Deckboxes para a Coleção
+                # e voltar deixava-o numa página só de leitura.
+                corpo = com_token(corpo, token() if self._pode_escrever() else "")
+            self._envia(corpo, tipo=("text/html; charset=utf-8"
+                                     if nome.endswith(".html") else
+                                     "text/css; charset=utf-8"
+                                     if nome.endswith(".css") else
+                                     "text/javascript; charset=utf-8"))
             return
         self._envia("<h1>404</h1><p><a href='/'>Deckboxes</a></p>", 404)
 

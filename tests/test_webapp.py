@@ -309,6 +309,36 @@ def caso_ler_config_segue_o_ficheiro_que_o_motor_le():
     print("o webapp le e escreve o mesmo ficheiro que o motor le")
 
 
+def caso_o_menu_leva_o_token_no_modo_edicao():
+    """No telemóvel, um toque no menu não pode apagar o modo edição.
+
+    Os links do `paginas.nav` são `href="metagame.html"` — sem query nenhuma —
+    e o servidor só confia em quem traz o `?t=`. Ele ia à Coleção, voltava à
+    Deckboxes e os botões tinham desaparecido, sem erro e sem explicação. No PC
+    nunca se via: o loopback é de confiança sem token.
+
+    E o **🏠 Início** tem de ir para o índice: estava mapeado para a Deckboxes,
+    ou seja, levava-o à página onde ele já estava.
+    """
+    from mtgvault import paginas
+
+    menu = paginas.nav("deckboxes.html", extra=True)
+    com = webapp.com_token(menu, "abc123")
+    assert 'href="metagame.html?t=abc123"' in com, com
+    assert 'href="index.html?t=abc123"' in com, com
+    assert 'href="colecao.html?t=abc123"' in com, com
+    # Sem token (site publicado / leitura) a página não pode ganhar `?t=`.
+    assert webapp.com_token(menu, "") == menu
+    # E nada além dos links internos é tocado.
+    fora = '<a href="https://github.com/Baverone/mtgvault">repo</a>'
+    assert webapp.com_token(fora, "abc123") == fora
+
+    assert "/index.html" not in webapp.PAGINAS_EDITAVEIS, \
+        "o «Início» do menu voltava a dar a Deckboxes"
+    assert "/" in webapp.PAGINAS_EDITAVEIS
+    print("o menu do modo edicao leva o token, e o Inicio vai para o indice")
+
+
 def run():
     for fn in (caso_tornar_permanente_muda_a_alocacao, caso_subir_renumera_o_grupo,
                caso_descer_e_os_limites,
@@ -318,7 +348,8 @@ def run():
                caso_sugestao_de_premodern_abre_uma_caixa,
                caso_gravar_o_config_e_atomico,
                caso_escritas_em_paralelo_nao_se_atropelam,
-               caso_ler_config_segue_o_ficheiro_que_o_motor_le):
+               caso_ler_config_segue_o_ficheiro_que_o_motor_le,
+               caso_o_menu_leva_o_token_no_modo_edicao):
         fn()
     repor()
     print("\nTUDO OK")
