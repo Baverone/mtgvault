@@ -521,9 +521,23 @@ def _loadout_resumo(rep):
         print(f"  limite de playset: {n} {'cópia' if n == 1 else 'cópias'} que "
               f"não se {'compra' if n == 1 else 'compram'} "
               f"({c} {'carta' if c == 1 else 'cartas'})")
+    # REGISTOS QUE NÃO PODEM ESTAR CERTOS (2026-09-09). À cabeça e não escondido
+    # numa caixa: é o vault a dizer que uma coisa que ele próprio confirmou não
+    # bate certo, e é ele que decide o que fazer com ela.
+    if rep.get("contradicoes"):
+        n = rep["contradicoes_total"]
+        print(f"  registadas numa caixa e sem lá poderem estar: {n} "
+              f"{'cópia' if n == 1 else 'cópias'}")
     print(f"  partilhadas: {len(rep['conflitos'])} cartas que 2+ caixas querem")
     print(f"  venda: {rep['copias']} cópias / {rep['total']:.2f}€"
           f"  ·  Reserved List à parte: {rep['copias_rl']} / {rep['total_rl']:.2f}€")
+    if rep.get("contradicoes"):
+        print("\nREGISTADAS NUMA CAIXA E SEM LÁ PODEREM ESTAR")
+        print("  (a caixa deixou de contar com elas; a carta volta a ser compra)")
+        for c in rep["contradicoes"]:
+            mat = f"{(c['set_code'] or '').upper()} {c['lang'] or ''}".strip()
+            print(f"  {c['nm']:<28} {mat:<10} x{c['q']}  em {c['caixa']}: "
+                  f"{c['porque']}  ->  tratada como estando em {c['onde']}")
     if rep["conflitos"]:
         print("\nCARTAS PARTILHADAS ENTRE CAIXAS (as 10 mais pedidas)")
         for c in rep["conflitos"][:10]:
@@ -672,6 +686,15 @@ def _loadout_detalhe(rep, procura):
             for m in s["playset_faltas"]:
                 print(f"    {m['nm']:<34} falta {m['playset_bloqueado']} "
                       f"que não se compra ({m['board']})")
+        # E o que estava REGISTADO nesta caixa sem lá poder estar (2026-09-09).
+        # Vem antes da wantlist de propósito: é a explicação de metade dela.
+        if s.get("contradicoes"):
+            n = sum(c["q"] for c in s["contradicoes"])
+            print(f"\n  REGISTADAS NESTA CAIXA E SEM LÁ PODEREM ESTAR ({n} "
+                  f"{'cópia' if n == 1 else 'cópias'} — a caixa não conta com elas):")
+            for c in s["contradicoes"]:
+                print(f"    {c['nm']:<34} x{c['q']}  {c['porque']}  "
+                      f"(tratada como estando em {c['onde']})")
         compras = sorted((m for m in s["missing"] if m["comprar"]),
                          key=lambda x: x["nm"])
         if not compras:

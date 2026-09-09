@@ -1572,6 +1572,61 @@ aba **🔍 Não encontradas** na Deckboxes.
   8 426,51 €, arrumar 385→384 — e o *«afinal encontrei»* devolve os quatro números
   ao que eram. Ver `work/revisao/mtgvault-nao-encontrei.md`.
 
+**5. UM REGISTO NÃO LAVA UMA CORRECÇÃO: a `copy_allocation` deixou de ser
+excepção às regras de material (André, 2026-09-09, à letra).** *"Essa Chromatic
+Star fotografada é foil, tal como a Grinding Station"*, no mesmo dia em que disse
+que não as tem no Cloud cEDH. As duas cópias (694, 403) estavam na base como
+**nonfoil** — a 403 com a nota *"parece non-foil (sem holo); confirmar foil"*.
+Sendo nonfoil EN serviam o Cloud cEDH (*"só inglês non-foil"*), foram alocadas, e
+ao registar a caixa (65 linhas de uma vez, às 10:39 de 09/09) ficaram com linha
+na `copy_allocation`. Nessa tarde corrigiu-se o acabamento para **foil** — e a
+caixa continuou a dizer que as tinha, porque *"uma cópia que está DENTRO da caixa
+deste deck escapa às regras de material"*. **A linha da `copy_allocation` lavava
+a correcção**: padrão do `event_tier`, nenhum passo dá erro, e uma foil fechava um
+slot que só aceita nonfoil. Motor em `loadout.contradiz_a_caixa` +
+`loadout.contradicoes`.
+- **A alocação é uma afirmação sobre o SÍTIO, escrita com os dados de então.**
+  Corrigir os dados da cópia tem de poder corrigir a caixa. Uma cópia registada
+  numa caixa que a regra de material DELA recusa é uma **contradição**: trata-se
+  como estando na gaveta (`lots()` põe-lhe `caixa=None`, guarda
+  `caixa_registada`/`contradiz`), a carta volta a ser **compra** naquela caixa, a
+  cópia fica **substituto** visível (não vai à venda) e **liberta-se** para as
+  caixas que a aceitam — a Grinding Station foil passou a servir o Modern.
+- **A `key` do sub-lote continua a sair do REGISTO**, não do sítio calculado:
+  duas partes da mesma cópia com a mesma chave faziam o `reclamado` e o
+  `_reparte_por_sitio` contá-la duas vezes.
+- **O que continua protegido é o que a excepção existia para proteger:** a cópia
+  que já vivia no BALDE desta caixa. Antes da migração responde o `_porque_nao`
+  (`lot["sub"] == s["balde"]`); depois dela responde o **`copies.balde_origem`**,
+  que a migração escreve exactamente para isto. É o Tarnished Citadel PT foil do
+  Blue Farm — nunca saiu de dentro do deck. Medido: das 60 cópias registadas no
+  Cloud cEDH, **58 vieram do balde `Cloud cEDH`** (ficam) e as **duas** que ele
+  nomeou vieram do `SPML`, varridas para lá por um registo em bloco.
+- **Uma caixa CONGELADA não é excepção** — e a dele é uma (`montada` + dedicada +
+  com conteúdo). O que o `congelada` promete é outra coisa: *"as cópias lá dentro
+  ficam presas mesmo que a LISTA de hoje já não as peça"*. Uma contradição não é a
+  lista a mudar; é a cópia a não poder ali estar, hoje como ontem. O que CUMPRE e
+  a lista já não pede continua preso (tem caso de teste).
+- **O «já arrumei tudo» deita fora o registo contraditório**, inclusive numa
+  caixa congelada (onde ele preserva as linhas de propósito). É a *"linha órfã que
+  mentia para sempre"* de que o `guardar_arrumacao` se defende — e sem isso a
+  lista de contradições nunca se limpava, por muito que ele arrumasse.
+- **Os terrenos básicos são isentos**, a mesma isenção que a alocação já lhes dá.
+- **Diz-se em voz alta**, senão a percentagem descia sozinha e sem explicação:
+  `res["contradicoes"]` (mais `s["contradicoes"]` por caixa e
+  `contradicoes_total`), um bloco na aba da caixa da Deckboxes e duas secções no
+  `python -m mtgvault.cli loadout`. E o crachá **«N de M na caixa»** passou a
+  aparecer também numa caixa que se DIZ montada e tem cópias por lá meter — antes
+  só aparecia nas que não se diziam montadas, e a caixa parecia fechada com o
+  painel Montar por baixo a dizer o contrário.
+- **Efeito medido na base de 2026-09-09** (o mesmo `vault.db` dos dois lados, com
+  o config vivo): fechar tudo **8 245,37 € → 8 250,26 €**, comprar **220 → 222**,
+  Cloud cEDH **74 % → 72 %** (comprar 26 → 28). Tudo o resto **igual**: ir buscar
+  71 (37/20/14), arrumar 211 cópias em 118 linhas, venda 229 c/1 338,71 € + 40
+  RL/3 154,55 €, guardar 1, reservadas 31, e as outras 13 caixas ao cêntimo.
+  Contradições: **2**, as duas que ele nomeou. Ver
+  `work/revisao/mtgvault-montada-alocacao.md`.
+
 **AS CÓPIAS DE UMA LINHA INCOMPLETA TAMBÉM SE TIRAM DA GAVETA (2026-09-08).**
 Uma linha que pede 4 e a que a alocação só deu 2 vive em `missing` — e **tudo**
 o que percorria a alocação de uma caixa percorria só o `have`. As duas cópias

@@ -1054,6 +1054,43 @@ def _dentro_do_grupo(s: dict) -> tuple:
             s["nome"])
 
 
+def _cola_regras(s: dict, regras: list[dict] | None = None) -> tuple[int, dict]:
+    """Cola ao slot as regras de material do GRUPO de formato dele.
+
+    O que o config escrever no próprio slot GANHA — uma excepção é uma linha de
+    config e não uma linha de código. Vive numa função porque duas coisas
+    precisam da mesma colagem: o `resolve_slots` (a alocação) e o
+    `regras_das_caixas` (que o `lots` usa para saber se uma cópia REGISTADA numa
+    caixa podia lá estar). Escrita duas vezes, bastava acrescentar uma chave a
+    `CHAVES_REGRA` num sítio para as duas discordarem em silêncio.
+    """
+    ordem, regra = regra_do_formato(s.get("formato"),
+                                    regras if regras is not None
+                                    else regras_por_formato())
+    for k in CHAVES_REGRA:
+        if k in regra and k not in s:
+            s[k] = regra[k]
+    return ordem, regra
+
+
+def regras_das_caixas(cfg_slots: list[dict] | None = None) -> dict[str, dict]:
+    """`slot -> a caixa com as regras de material do grupo já coladas`.
+
+    É o mínimo de que o `lots()` precisa para julgar uma linha da
+    `copy_allocation`: as regras da caixa onde a cópia está registada. Não passa
+    pelo `resolve_slots` de propósito — esse resolve listas de cartas e a ordem
+    da alocação, e o `lots()` corre lá dentro.
+    """
+    regras = regras_por_formato()
+    out: dict[str, dict] = {}
+    for s in (cfg_slots if cfg_slots is not None else config_slots()):
+        s = _caixas.para_slot(s)
+        _cola_regras(s, regras)
+        if s.get("slot"):
+            out[s["slot"]] = s
+    return out
+
+
 def resolve_slots(con, cfg_slots: list[dict] | None = None) -> list[dict]:
     """Os slots do loadout com a lista de cada um já resolvida.
 
@@ -1082,10 +1119,7 @@ def resolve_slots(con, cfg_slots: list[dict] | None = None) -> list[dict]:
         # Aceita as duas formas — a caixa da v6 e a linha do `loadout` da v5 —
         # e devolve sempre a interna. Uma função só, e idempotente.
         s = _caixas.para_slot(s)
-        ordem_grupo, regra = regra_do_formato(s.get("formato"), regras)
-        for k in CHAVES_REGRA:
-            if k in regra and k not in s:
-                s[k] = regra[k]
+        ordem_grupo, regra = _cola_regras(s, regras)
         s["grupo"] = regra.get("grupo") or s.get("formato")
         s["grupo_ordem"] = ordem_grupo
         s["vigiado"] = (s.get("fonte") == "vigiado"
@@ -1227,9 +1261,18 @@ def lots(con, cfg_slots: list[dict] | None = None) -> dict[str, list[dict]]:
     dentro da caixa do próprio deck escapa às regras de material"* teria de
     valer para o lote inteiro, e um lote parcialmente arrumado passava a valer
     por inteiro. Cada sub-lote tem `key` própria (o `id` repete-se).
+
+    E um registo que CONTRADIZ a regra da própria caixa não conta como sítio
+    (`contradiz_a_caixa`, 2026-09-09): a cópia fica onde o balde diz, com o
+    porquê em `contradiz` e a caixa que a tinha registada em `caixa_registada`.
+    A `key` continua a sair do registo, senão dois sub-lotes da mesma cópia
+    passavam a ter a mesma chave e o `reclamado`/`_reparte_por_sitio` contavam-na
+    duas vezes.
     """
     conf = alocacao_confirmada(con)
     nomes = nomes_das_caixas(cfg_slots)
+    regras = regras_das_caixas(cfg_slots)
+    baldes_de_deck = caixas_de_deck(list(regras.values()))
     out: dict[str, list[dict]] = defaultdict(list)
     for r in con.execute(
         f"""SELECT cp.id, cp.quantity q, cp.finish, cp.language lang,
@@ -1269,6 +1312,13 @@ def lots(con, cfg_slots: list[dict] | None = None) -> dict[str, list[dict]]:
             e["livre"] = q
             e["key"] = (d["id"], caixa or "")
             e["balde"] = balde_local(e)       # a gaveta, mesmo estando na caixa
+            e["caixa_registada"] = caixa
+            e["caixa_registada_nome"] = e["caixa_nome"] if caixa else None
+            e["contradiz"] = contradiz_a_caixa(e, regras.get(caixa),
+                                               baldes_de_deck) if caixa else None
+            if e["contradiz"]:
+                e["caixa"] = None
+                e["caixa_nome"] = None
             e["local"] = local(e)
             e["substituto"] = {}      # slot -> porque é que não fecha o slot
             e["alocado"] = {}         # slot -> quantas cópias deste lote levou
@@ -1342,6 +1392,14 @@ def _porque_nao(lot: dict, s: dict, baldes_de_deck: set[str],
     # cópia está dentro DESTA caixa é a arrumação confirmada (`copy_allocation`).
     # Esta linha é a mesma excepção, na versão nova — e é a que impede que uma
     # regra de material nova desmonte no papel um deck que está na estante.
+    #
+    # Desde 2026-09-09 o `lot["caixa"]` que chega aqui já foi filtrado pelo
+    # `contradiz_a_caixa` (no `lots()`): um registo que a regra da própria caixa
+    # recusa não conta como sítio, porque uma linha da `copy_allocation` escrita
+    # ontem não pode lavar uma correcção de hoje ao acabamento da cópia. Um
+    # registo que aqui chega é, por construção, um que as regras aceitam — a
+    # excepção fica escrita porque é ela que dá a resposta certa (e barata) à
+    # cópia que ESTÁ na caixa e cumpre: essa não se volta a julgar.
     if lot.get("caixa") and lot["caixa"] == s.get("slot"):
         return None
     if s.get("balde") and lot["sub"] == s["balde"] and s["balde"] in caixas:
@@ -1369,6 +1427,70 @@ def _porque_nao(lot: dict, s: dict, baldes_de_deck: set[str],
     if s.get("edicoes") == "premodern" and not lot["era_pm"]:
         return "edição posterior ao Scourge"
     return None
+
+
+def contradiz_a_caixa(lot: dict, s: dict | None,
+                      baldes_de_deck: set[str] | frozenset = frozenset()
+                      ) -> str | None:
+    """Porque é que uma cópia REGISTADA numa caixa não podia lá estar (None = podia).
+
+    O caso real (André, 2026-09-09): *"dizes que tenho Chromatic Star mas eu não
+    tenho"*. As duas cópias que ele nomeou (694 Chromatic Star 2XM, 403 Grinding
+    Station 5DN) estavam na base como **nonfoil** — a 403 até com a nota
+    *"parece non-foil (sem holo); confirmar foil"*. Sendo nonfoil EN, serviam o
+    Cloud cEDH (*"só inglês non-foil"*), foram alocadas, e ao registar a caixa
+    ficaram com linha na `copy_allocation`. Nesse dia corrigiu-se o acabamento
+    para **foil** — e a caixa continuou a dizer que as tinha, porque *"uma cópia
+    que está dentro da caixa deste deck escapa às regras de material"*.
+
+    Ou seja: a linha da `copy_allocation` **lavava** a correcção. É o padrão do
+    `event_tier` — nenhum passo dá erro, e a caixa fica a mentir para sempre
+    sobre duas cartas. A alocação é uma afirmação sobre o SÍTIO, escrita a partir
+    dos dados de então; corrigir os dados da cópia tem de poder corrigir a caixa.
+
+    Por isso o registo deixou de ser uma excepção às regras de material: uma
+    cópia registada numa caixa que a regra dessa caixa recusa é uma
+    **contradição**. O `lots()` trata-a como estando na gaveta (a carta volta a
+    ser compra naquela caixa, a cópia fica livre para as caixas que a aceitam) e
+    di-lo em voz alta (`res["contradicoes"]`).
+
+    **Uma caixa CONGELADA não é excepção** — e a caixa dele é uma: o Cloud cEDH
+    está `montada`, é dedicada e tem conteúdo confirmado. O que o `congelada`
+    promete (2026-09-07, 19:00) é outra coisa: *"as cópias que estão lá dentro
+    ficam presas mesmo que a LISTA de hoje já não as peça"*. Uma contradição não
+    é a lista a mudar — é a cópia a não poder ali estar, hoje como ontem. Uma
+    foil é foil dentro de uma caixa congelada. Medido na base de 2026-09-09, as
+    outras congeladas (Blue Farm, Pauper) não têm uma única contradição: nada do
+    que está sleevado na estante se desmonta por causa disto.
+
+    **O que continua protegido, e é o que separa este caso do outro:** a cópia
+    que já vivia no BALDE desta caixa antes da migração para a colecção única. O
+    Tarnished Citadel PT foil do Blue Farm é essa — nunca saiu de dentro do deck,
+    e a excepção existe por causa dele. Antes da migração quem responde é o
+    `_porque_nao` (a cópia ainda está no balde `Blue Farm`); depois dela é o
+    `copies.balde_origem`, que a migração escreveu exactamente para isto. Medido
+    na base de 2026-09-09: das 60 cópias registadas no Cloud cEDH, 58 vieram do
+    balde `Cloud cEDH` (ficam) e as duas que ele nomeou vieram do `SPML` — foram
+    varridas para lá por um registo em bloco, e são só essas que caem.
+
+    A outra isenção são os **terrenos básicos**, quando
+    `basicas.isentas_de_regras` (a pilha dele é toda Unhinged EN e as caixas de
+    Premodern são PT) — é a mesma isenção que a alocação já lhes dá.
+    """
+    if not s:
+        return None
+    if lot["nm"] in BASICS and basicas_isentas():
+        return None
+    if (lot.get("borigem") and lot["borigem"] == s.get("balde")
+            and s["balde"] in baldes_de_deck):
+        return None
+    # Sem a caixa: é exactamente a pergunta *"se esta cópia estivesse na gaveta,
+    # esta caixa aceitava-a?"*. O `_porque_nao` continua a ter a excepção do
+    # BALDE (o balde que ainda É a caixa de um deck, antes da migração).
+    solta = dict(lot, caixa=None)
+    if _fora_de_vista(solta, s):
+        return "a caixa não vê esta cópia"
+    return _porque_nao(solta, s, baldes_de_deck, baldes_de_deck)
 
 
 def _ordem(lot: dict, s: dict) -> tuple:
@@ -2277,9 +2399,29 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
             "ficam_sem": sorted({q["slot"] for q in quem if q["levou"] < q["pediu"]}),
         })
     conflitos.sort(key=lambda c: (-(c["pedido"] - c["tenho"]), c["nm"]))
+    contras = contradicoes(pool)
+    for s in slots:
+        s["contradicoes"] = [c for c in contras if c["slot"] == s["slot"]]
     return {"slots": slots, "conflitos": conflitos, "pedido": dict(pedido),
             "partilhas": partilhas, "limites": limites_de_playset(slots),
-            "pool": pool}
+            "contradicoes": contras, "pool": pool}
+
+
+def contradicoes(pool: dict) -> list[dict]:
+    """As linhas da `copy_allocation` que a regra da própria caixa recusa.
+
+    Uma a uma, com o porquê — se ficassem só a mudar um número, ninguém sabia
+    que a caixa deixou de contar com aquela carta. É a lista que o André usa
+    para decidir: ou a cópia está mesmo na caixa e ele tira-a de lá, ou o registo
+    é que estava errado e o *"já arrumei tudo"* deita-o fora sozinho.
+    """
+    out = [{"nm": lot["nm"], "copy_id": lot["id"], "q": lot["q"],
+            "slot": lot["caixa_registada"], "caixa": lot["caixa_registada_nome"],
+            "porque": lot["contradiz"], "onde": lot["local"],
+            "finish": lot["finish"], "foil": e_foil(lot["finish"]),
+            "lang": lot["lang"], "set_code": lot["set_code"], "sid": lot["sid"]}
+           for lotes in pool.values() for lot in lotes if lot.get("contradiz")]
+    return sorted(out, key=lambda c: (c["caixa"] or "", c["nm"]))
 
 
 def limites_de_playset(slots: list[dict]) -> list[dict]:
@@ -4221,9 +4363,16 @@ def guardar_arrumacao(con, res: dict, actualizar: set[str] | frozenset = frozens
     """
     congeladas = {s["slot"] for s in res["slots"]
                   if s.get("congelada") and s["slot"] not in actualizar}
+    # Um registo que a regra da própria caixa recusa não se preserva, nem numa
+    # caixa congelada (2026-09-09, ver `contradiz_a_caixa`). O vault já deixou de
+    # contar com ele em todo o lado; mantê-lo aqui era a "linha órfã que mentia
+    # para sempre" de que esta função se defende — e a lista de contradições
+    # nunca mais se limpava, por muito que ele arrumasse.
+    contras = {(c["copy_id"], c["slot"]) for c in res.get("contradicoes") or []}
     manter = [(r["copy_id"], r["slot"], r["quantity"]) for r in con.execute(
         "SELECT copy_id, slot, quantity FROM copy_allocation")
-        if r["slot"] in congeladas and (r["quantity"] or 0) > 0]
+        if r["slot"] in congeladas and (r["quantity"] or 0) > 0
+        and (r["copy_id"], r["slot"]) not in contras]
     novas = [(cid, s["slot"], q) for s in res["slots"]
              if s["slot"] not in congeladas
              for cid, q in sorted(linhas_da_caixa(s).items())]
@@ -4363,6 +4512,10 @@ def report(con, cfg_slots: list[dict] | None = None) -> dict:
                                        for s in res["slots"])
     res["basicas_custo_total"] = round(sum(s.get("basicas_custo", 0.0)
                                            for s in res["slots"]), 2)
+    # REGISTOS QUE NÃO PODEM ESTAR CERTOS (2026-09-09). Ficam à parte de tudo o
+    # resto — não são faltas nem excedente: são linhas da `copy_allocation` que a
+    # regra da própria caixa recusa (ver `contradiz_a_caixa`).
+    res["contradicoes_total"] = sum(c["q"] for c in res["contradicoes"])
     res["arrumacao"] = plano_arrumacao(res)
     # A ORDEM de montagem (v6): é a pergunta dele de 2026-09-08 — *"por onde
     # começo?"*. Vive no relatório e não na página para o CLI dar a mesma.
