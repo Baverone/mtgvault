@@ -124,8 +124,10 @@ def _table(items):
         foil = ' <span class="st">(foil)</span>' if e["fin"] == "foil" else ""
         qcls = "q hi" if e["q"] >= 5 else "q"
         flag = '<span class="flag">⚠️</span>' if e["q"] >= 5 else ""
-        up = f'{e["unit"]:.2f}€' if e["unit"] else '<span class="st">s/preço</span>'
-        tot = f'{e["q"]*e["unit"]:.0f}€' if e["unit"] else '—'
+        up = (paginas.eur(e["unit"], espaco=False) if e["unit"]
+              else '<span class="st">s/preço</span>')
+        tot = (paginas.eur(e["q"] * e["unit"], 0, espaco=False)
+               if e["unit"] else '—')
         body += (f'<tr><td class="th">{img}</td>'
                  f'<td class="{qcls}">{e["q"]}{flag}</td>'
                  f'<td class="nm">{html.escape(e["nm"])}{foil}<div class="st">{html.escape(e["st"])}</div></td>'
@@ -145,7 +147,7 @@ def _section(title, sub, items, ref=False):
     cls = ' class="ref"' if ref else ""
     inner = f'<div class="ref">{_table(items)}</div>' if ref else _table(items)
     return (f'<h2{cls}>{title} <span class="n">{len(items)} cartas · {_qt(items)} cópias</span>'
-            f'<span class="val">~{_val(items):.0f}€</span></h2>'
+            f'<span class="val">~{paginas.eur(_val(items), 0, espaco=False)}</span></h2>'
             f'<p class="sub">{sub}</p>{inner}')
 
 
@@ -170,7 +172,8 @@ def build(con, out_path=None):
     secs += _section("✅ Inglesas em uso (cEDH/Duel-Commander)", "Ficam nos decks — não vão para a caixa (só referência).", en_used, ref=True)
 
     box = en_duals + en_rest + pt_duals + pt_rest
-    banner = (f'<div class="banner">📦 <b>{len(box)} cartas · {_qt(box)} cópias · ~{_val(box):.0f}€</b> na Caixa. '
+    banner = (f'<div class="banner">📦 <b>{len(box)} cartas · {_qt(box)} cópias · '
+              f'~{paginas.eur(_val(box), 0, espaco=False)}</b> na Caixa. '
               f'Fora da coleção jogável (não contam para Metagame/Decks fazíveis). '
               f'As portuguesas voltam à coleção à medida que montarmos cada deck Premodern.</div>')
 

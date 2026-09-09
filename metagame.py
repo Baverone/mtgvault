@@ -91,7 +91,7 @@ _img_map = paginas.img_map      # era uma cópia à letra da do `deckboxes.py`
 
 
 def _eur(v):
-    return f"{v:,.2f} €".replace(",", " ").replace(".", ",", 1) if v else "—"
+    return paginas.eur(v) if v else "—"
 
 
 def _resumo(linhas):
@@ -112,9 +112,15 @@ def _resumo(linhas):
                 for q in ("montada", "reservada", "futura")}
     comprar = sum(m["comprar"] for m in nb)
     custo = round(sum(m["cost"] or 0 for m in nb), 2)
+    # Quantas cópias a comprar não têm preço na base. Sem isto o *"fechar por
+    # 162,80 €"* passava por uma conta fechada quando quatro das cartas da lista
+    # entravam a 0 € — a Deckboxes já dizia *"no mínimo — N sem preço"* e esta
+    # página não. O mesmo número com duas honestidades diferentes.
+    sem_preco = sum(m["comprar"] for m in nb
+                    if m["comprar"] > 0 and m.get("unit") is None)
     return {"need": need, "got": got, "noutra": noutra, "comprar": comprar,
             "nmont": parcelas["montada"], "nres": parcelas["reservada"],
-            "nfut": parcelas["futura"],
+            "nfut": parcelas["futura"], "sem_preco": sem_preco,
             "custo": custo, "tenho": got + noutra,
             "pct": round(100 * got / need) if need else 0,
             "pct_tenho": round(100 * (got + noutra) / need) if need else 0}
@@ -131,8 +137,12 @@ def _bar(pct, pct_tenho):
 
 
 def _card(nm, sid, estado, etiq="", titulo=""):
-    img = (f'<img loading="lazy" src="{_art(sid)}" alt="">' if sid
-           else '<div class="noimg"></div>')
+    # O NOME no `alt` (2026-09-09): estava vazio e a imagem é o conteúdo, não
+    # decoração. Numa rede fraca — que é onde ele está, à frente da estante — a
+    # grelha virava uma parede de quadrados sem nada, e o nome só aparecia ao
+    # parar o dedo em cima (o `title`). É o que a `deckboxes` já fazia.
+    img = (f'<img loading="lazy" src="{_art(sid)}" alt="{html.escape(nm)}">'
+           if sid else '<div class="noimg"></div>')
     q = f'<span class="cq">{etiq}</span>' if etiq else ""
     return (f'<div class="cd {estado}" title="{html.escape(titulo or nm)}">'
             f'{img}{q}</div>')
@@ -191,7 +201,7 @@ def _onde_html(linhas):
             + html.escape("; ".join(loadout.onde_esta(m, qual)))
             + (f' <span class="dim">(comprar mais {m["comprar"]})</span>'
                if m["comprar"] else "") + "</li>" for m in rows)
-        out += (f'<div class="onde"><b>{titulo} — {n} cópias</b>'
+        out += (f'<div class="onde"><b>{titulo} — {paginas.plural(n, "cópia")}</b>'
                 f'<ul>{itens}</ul></div>')
     return out
 
@@ -206,7 +216,7 @@ def _wantlist(linhas, marca=""):
     txt = "\n".join(f'{m["comprar"]} {m["nm"]}' for m in ordem)
     extra = f' <span class="mrk">{marca}</span>' if marca else ""
     return (f'<div class="faltas"><div class="flh">🛒 Comprar{extra}'
-            f'<span class="dim">{len(ordem)} cartas</span>'
+            f'<span class="dim">{paginas.plural(len(ordem), "carta")}</span>'
             f'<button class="cpbtn" onclick="cp(this)">copiar</button></div>'
             f'<ul class="fl">{itens}</ul>'
             f'<textarea class="cmk" readonly>{html.escape(txt)}</textarea></div>')
@@ -306,7 +316,10 @@ def _deck_html(d, imgs, editable=False):
         + (f'<span class="ob">na gaveta, p/ outra caixa <b>'
            f'{r["nres"] + r["nfut"]}</b></span>' if r["nres"] + r["nfut"] else "")
         + f'<span>comprar <b>{r["comprar"]}</b></span>'
-        f'<span>fechar por <b>{_eur(r["custo"])}</b></span></div>'
+        f'<span>fechar por <b>{_eur(r["custo"])}</b>'
+        + (f'<i class="semp" title="Estas cópias não têm preço na base e contam '
+           f'como 0 €.">no mínimo — {r["sem_preco"]} sem preço</i>'
+           if r["sem_preco"] else "") + '</span></div>'
         f'<div class="cards">{_grid(d["linhas"], imgs)}</div>'
         f'{_onde_html(d["linhas"])}{_wantlist(d["linhas"], d.get("marca", ""))}'
         f'{_escolher_html(d, editable)}'
@@ -562,9 +575,14 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
  .bdg{font-size:11px;padding:2px 8px;border-radius:20px;background:#1e2531;color:var(--muted)}
  .bdg.ok{background:#123020;color:var(--add)} .bdg.pt{background:#101c2e;color:var(--ob)} .bdg.fo{background:#2a2410;color:var(--gold)}
  .meta{display:flex;flex-wrap:wrap;gap:4px 12px;color:var(--muted);font-size:11.5px;margin:4px 0} .meta b{color:var(--ink)}
+ .semp{font-style:normal;color:var(--dim);margin-left:5px}
  .meta .ob,.meta .ob b{color:var(--ob)}
  .cards{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
  .cd{position:relative;width:56px;border-radius:5px} .cd img,.cd .noimg{width:56px;height:78px;border-radius:4px;display:block;background:#0c0f14}
+ /* O `alt` passou a trazer o nome da carta; isto é como ele se lê quando a
+    imagem não carrega — pequeno e dentro do quadrado, em vez de rebentar a
+    grelha. */
+ .cd img{overflow:hidden;font-size:9px;line-height:1.15;color:var(--dim);padding:2px}
  .cd.have{box-shadow:0 0 0 2px var(--add)}
  .cd.noutra{box-shadow:0 0 0 2px var(--ob)} .cd.noutra img{filter:grayscale(.35) brightness(.74)}
  .cd.noutra::after{content:"\\1F4E6";position:absolute;top:1px;right:1px;font-size:10px;line-height:12px;background:#0e1620;border-radius:4px;padding:0 1px}

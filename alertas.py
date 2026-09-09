@@ -17,7 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import collection, db  # noqa: E402
+from mtgvault import collection, db, paginas  # noqa: E402
 import meta_coverage  # noqa: E402
 
 WINDOW = 7         # janela de comparação (dias) — o histórico ainda é curto
@@ -76,7 +76,7 @@ def build_report(con):
 
 
 def _eur(v):
-    return f"{v:,.2f} €".replace(",", " ") if v else "—"
+    return paginas.eur(v) if v else "—"
 
 
 def _rows_sell(items):

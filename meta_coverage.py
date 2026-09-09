@@ -643,7 +643,7 @@ def build_report(con):
 
 # --- HTML ------------------------------------------------------------------
 def _eur(v):
-    return f"{v:,.2f} €".replace(",", " ") if v else "—"
+    return paginas.eur(v) if v else "—"
 
 
 def _bar(pct):
