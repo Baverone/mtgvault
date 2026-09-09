@@ -120,6 +120,19 @@ def _slot(rep, slot_id):
     return next(s for s in rep["slots"] if s["slot"] == slot_id)
 
 
+def _regista(con, slot_id, de_outra=()):
+    """O *"sleevado e na caixa"* com TUDO marcado, que é o que estes casos dizem.
+
+    Desde 2026-09-09 o registo grava só as cópias marcadas (ver
+    `test_registo_marcadas.py`), por isso marcar-se-lhe a lista inteira aqui é
+    dizer que ele encontrou tudo o que a caixa lhe pedia."""
+    rep = loadout.report(con)
+    s = _slot(rep, slot_id)
+    marcadas = [m["copy_id"] for m in loadout.movimentos_de_entrada(
+        s, loadout.caixas_de_deck(rep["slots"]))]
+    return loadout.registar_marcadas(con, rep, slot_id, marcadas, de_outra)
+
+
 def _linha(rep, slot_id, nm):
     s = _slot(rep, slot_id)
     return next(m for m in s["have"] + s["missing"] if m["nm"] == nm)
@@ -176,7 +189,7 @@ def caso_com_a_caixa_montada_a_frase_muda():
     A"* — e aí é verdade, é mesmo lá que ela está."""
     repor()
     con = base()
-    assert webapp.marcar_na_caixa(con, "a", True) == 1
+    assert _regista(con, "a")["copias"] == 1
     rep = loadout.report(con)
     m = _linha(rep, "b", "Wrath of God")
     assert m["noutra_montada"] == {"Caixa A": 1}, m["noutra_montada"]
@@ -209,7 +222,7 @@ def caso_montar_fora_de_ordem():
     assert loadout.plano_montar(rep, "a")["de_outra"] == []
 
     cid = _copy_id(con, "Wrath of God")
-    n = webapp.marcar_na_caixa(con, "b", True, [cid])
+    n = _regista(con, "b", de_outra=[cid])["copias"]
     assert n == 2, f"a Ancestral Vision dela mais a Wrath que ele tirou: {n}"
     linhas = {r["slot"]: r["quantity"] for r in con.execute(
         "SELECT slot, quantity FROM copy_allocation WHERE copy_id = ?", (cid,))}
@@ -236,7 +249,7 @@ def caso_marcar_so_regista_o_que_o_painel_oferecia():
     con = base()
     intrusa = _copy_id(con, "Ancestral Vision")
     # A Caixa A não joga Ancestral Vision: mesmo marcada, não pode entrar.
-    n = webapp.marcar_na_caixa(con, "a", True, [intrusa])
+    n = _regista(con, "a", de_outra=[intrusa])["copias"]
     assert n == 1, f"só a Wrath, que é a que a alocação lhe dá: {n}"
     slots = [r["slot"] for r in con.execute(
         "SELECT slot FROM copy_allocation WHERE copy_id = ?", (intrusa,))]

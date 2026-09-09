@@ -592,7 +592,7 @@ certo a responder a outra pergunta, sem um único erro.
   movimentos_reservados` → `plano_montar()["de_outra"]` — e **por marcar**: tirá-
   las é uma decisão dele (a outra caixa passa a vir buscá-las aqui), não uma
   consequência de abrir a aba. Só o que ele marca é que vai no *"sleevado e na
-  caixa"* (`webapp.marcar_na_caixa(..., de_outra=[copy_id])`, que só aceita
+  caixa"* (`webapp.registar_parcial(..., de_outra=[copy_id])`, que só aceita
   `copy_id` que o painel oferecia). A partir daí **a `copy_allocation` manda
   sobre a prioridade**: a corrida seguinte vê a cópia dentro desta caixa
   (`_noutra_caixa`) e a outra passa a dizer *"em Enchantress"* — que aí é verdade.
@@ -1627,6 +1627,62 @@ slot que só aceita nonfoil. Motor em `loadout.contradiz_a_caixa` +
   Contradições: **2**, as duas que ele nomeou. Ver
   `work/revisao/mtgvault-montada-alocacao.md`.
 
+**6. O REGISTO GRAVA SÓ O QUE ELE MARCOU, CÓPIA A CÓPIA (2026-09-09).** A regra
+dele é a mesma do ponto 4 — *"se eu não seleccionar no deck que meti a carta, com
+checkmark, é porque eu não a tenho"* —, aplicada agora ao **outro lado**: não ao
+que fazer com as que sobram, mas ao que se grava. A 09/09 às **10:39:55** o Cloud
+cEDH ganhou **65 linhas** na `copy_allocation` de uma vez, e duas delas eram
+cartas que ele não tem lá dentro. A defesa das contradições
+(`contradiz_a_caixa`) é *posterior ao facto*: apanha-as no dia seguinte, e só
+quando os dados da cópia a denunciam. A defesa a sério é esta.
+- **Um só caminho para meter cartas numa caixa: `webapp.registar_parcial` →
+  `loadout.registar_marcadas`.** O *"sleevado e na caixa"* e o *"sim, está
+  montada assim"* eram um segundo, e esse gravava a **alocação calculada** — o
+  que o vault acha, não o que ele viu. O `webapp.marcar_na_caixa` foi-se; os
+  actos `montado` (a ligar) e `confirmar` chegam ao mesmo sítio e exigem o mesmo,
+  porque uma página aberta no telemóvel antes de hoje ainda manda esses nomes.
+  O botão do fim do painel passou a `data-reg` (o `registar()` da barra) em vez
+  de `data-act`: dois botões para o mesmo gesto era o que isto veio fechar.
+- **Sem lista explícita é 400** (`webapp.SemLista`, apanhado ANTES do `ValueError`
+  que dá 409), com a razão escrita para ele ler. Um pedido em branco tem de
+  falhar alto: ficar a valer *"então grava tudo"* é exactamente como as duas
+  cartas lá foram parar. O motor recusa pela raiz (`ValueError`), para nenhum
+  caminho futuro poder gravar uma caixa inteira sem ninguém ter marcado nada.
+  Lista vazia e lista ausente são a mesma coisa — as duas querem dizer que não há
+  nada confirmado.
+- **O «marcar tudo» fica, mas é só um atalho de ECRÃ**: marca as checkboxes
+  (visível, reversível, e não dispara o auto-registo). O registo continua a ler
+  o `P.feitos` uma a uma.
+- **O RESUMO ANTES DE GRAVAR** (`deckboxes.perguntaRegisto`): com cartas por
+  marcar, *«Registar N em X — ficam M por marcar. O que lhes faço?»* e três
+  saídas: **deixá-las por ir buscar**, **não as tenho** (o *«não encontrei
+  estas»*, que corre a seguir ao registo — as marcadas já entraram e o servidor
+  recalcula antes de tirar nada) ou **cancelar**, que não escreve. Um `confirm()`
+  do browser não chega: são três, e a do meio muda a colecção inteira. O
+  auto-registo dos 6 s não vê o resumo, porque só dispara com **M = 0**.
+- **O RASTO: `data/registos-caixas.csv`** (fora do Git, como o `vendas.csv`),
+  escrito **antes** da base, uma linha por cópia que ENTRA, com *quando, origem
+  do clique (`manual`/`auto`/`actualizar`/`arrumar`), caixa, carta, edição,
+  língua, acabamento, quantidade, copy_id*. Só o **delta** — repetir a cada
+  gravação o que já lá estava fazia o ficheiro deixar de se poder ler. Escrevem
+  lá os **três** caminhos que acrescentam à `copy_allocation` (`registar_marcadas`,
+  `actualizar_caixa`, `guardar_arrumacao`) e não só o do botão: o que isto serve
+  para apanhar é precisamente a escrita que ninguém está à espera. **Se um dia
+  uma cópia aparecer dentro de uma caixa sem linha neste ficheiro, é bug.**
+- **A correcção de dados de 09/09**: `loadout.corrigir_alocacao` (CLI
+  `python -m mtgvault.cli corrigir-alocacao --slot ... --copias ... --motivo ...`)
+  tira da `copy_allocation` de uma caixa cópias que ele diz não estar lá, com
+  backup (`data/backups/vault-<data>-<etiqueta>.db`) e uma linha em
+  `data/correcoes.log` escrita ANTES de a base mexer, como o *Desmontar*. **Não
+  mexe nas cópias** — quem as tira de circulação é o *«não encontrei estas»* e
+  quem as apaga é o *«vendida»*. É **idempotente**: sem nada para tirar não faz
+  backup nem escreve linha.
+- **O que fica de fora, e é a saber:** o *"já arrumei tudo"* continua a gravar a
+  alocação calculada de todas as caixas. É outro gesto — ele diz que fez o plano
+  inteiro, não que confirmou carta a carta — e agora **deixa rasto**; se voltar a
+  morder, é aqui.
+- Tem teste (`test_registo_marcadas.py`, 7 casos).
+
 **AS CÓPIAS DE UMA LINHA INCOMPLETA TAMBÉM SE TIRAM DA GAVETA (2026-09-08).**
 Uma linha que pede 4 e a que a alocação só deu 2 vive em `missing` — e **tudo**
 o que percorria a alocação de uma caixa percorria só o `have`. As duas cópias
@@ -1645,6 +1701,8 @@ cartas.
   *"tirar de:"*, o `copias_por_confirmar` e o `_de_outro_balde` do `colecao_cor`.
   O `webapp.marcar_na_caixa` tinha o `linhas_da_caixa` **reescrito à mão** e por
   isso ficava de fora: passou a chamá-lo (por isso deixou de ser `_privado`).
+  (Essa função **desapareceu** a 2026-09-09 — ver *"o registo grava só o que ele
+  marcou"*: gravava a alocação calculada, e era esse o segundo caminho.)
 - **Uma linha em falta SEM nenhuma cópia continua a não entrar**: não há nada
   para tirar, é compra.
 - **A linha diz porque é que vem a menos** — *«2 de 4 — 2 em Comprar»*,

@@ -137,17 +137,27 @@ def caso_montar_ordena_por_cor():
     print("montar: 3 copias da Coleccao, por cor (W, U, B) e com a edicao")
 
 
+def _marcadas(con, slot):
+    """Os `copy_id` de tudo o que a caixa tem para tirar da gaveta.
+
+    Desde 2026-09-09 um registo só grava o que ele MARCOU (ver
+    `test_registo_marcadas.py`); marcar tudo aqui é dizer que ele encontrou as
+    três cartas, que é o que este caso sempre quis dizer."""
+    rep = loadout.report(con)
+    s = next(x for x in rep["slots"] if x["slot"] == slot)
+    return [m["copy_id"] for m in loadout.movimentos_de_entrada(
+        s, loadout.caixas_de_deck(rep["slots"]))]
+
+
 def caso_sleevado_grava_e_muda_o_estado():
     """O botão do fim do passo 1: grava a `copy_allocation` e a caixa passa a
     `montada` — os dois, senão o estado e a estante ficavam a discordar."""
     repor()
     con = base()
     cfg = webapp.ler_config()
-    novo, nome = webapp.alternar_montada(cfg, "a")
-    assert novo is True and nome == "Caixa A"
+    r = webapp.registar_parcial(con, cfg, "a", _marcadas(con, "a"))
     webapp.escrever_config(cfg, CAMINHO)
-    n = webapp.marcar_na_caixa(con, "a", True)
-    assert n == 3, n
+    assert (r["copias"], r["estado"]) == (3, "montada"), r
     assert con.execute("SELECT COUNT(*) c FROM copy_allocation"
                        ).fetchone()["c"] == 3
 
@@ -166,7 +176,8 @@ def caso_sleevado_grava_e_muda_o_estado():
     assert novo is False and caixas.estado_de(
         caixas.caixa_do_cfg(cfg, "a")) == "permanente"
     webapp.escrever_config(cfg, CAMINHO)
-    assert webapp.marcar_na_caixa(con, "a", False) == 3
+    assert loadout.desmontar_caixa(con, "a", "Caixa A",
+                                   log_path=_TMP / "desmontar.log")["copias"] == 3
     repor()
     print("tirar da caixa: volta a permanente e a alocacao esvazia-se")
 
@@ -188,9 +199,13 @@ def caso_caixa_que_se_diz_montada_confirma_se():
     assert c["confirmar"] is True, "tem de se distinguir de uma caixa a montar"
     assert len(c["montar"]["tirar"]) == 3, c["montar"]
 
-    # O clique de confirmação: grava a alocação e não toca no config.
-    n = webapp.marcar_na_caixa(con, "a", True)
-    assert n == 3, n
+    # O clique de confirmação: grava as cópias que ele marcou e não toca no
+    # config. (Desde 2026-09-09 confirmar é o mesmo `registar` de todos os
+    # outros: o que ele diz que lá está, não o que a alocação calculou.)
+    cfg = webapp.ler_config()
+    r = webapp.registar_parcial(con, cfg, "a", _marcadas(con, "a"))
+    webapp.escrever_config(cfg, CAMINHO)
+    assert r["copias"] == 3, r
     c, _rep = _caixa(con)
     assert c["confirmar"] is False and c["congelada"] is True, c["estado"]
     assert caixas.estado_de(caixas.caixa_do_cfg(webapp.ler_config(), "a")) \
