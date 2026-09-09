@@ -15,6 +15,40 @@ FOTOS_PROCESSADAS = PENDENTES / "fotos processadas"
 IMG_EXT = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"}
 
 
+# ---------------------------------------------------------------------------
+# «SE NÃO MARQUEI, É PORQUE NÃO A TENHO» (André, 2026-09-09, à letra)
+# ---------------------------------------------------------------------------
+# *"No mtgvault, se eu não seleccionar no deck que meti a carta, com checkmark, é
+# porque eu não a tenho e estás a fazer confusão. Por exemplo, no Cloud cEDH,
+# dizes que tenho Chromatic Star mas eu não tenho, dizes que tenho Grinding
+# Station, mas também não tenho."*
+#
+# Uma cópia fotografada há meses pode já não estar na estante. Enquanto o vault
+# só soubesse contar o que a `copies` diz, ele ficava com a carta na coluna
+# "tenho" para sempre, e a lista de compras a menos uma carta que ele precisa
+# mesmo de comprar. O botão «Não encontrei estas» marca a cópia; a partir daí ela
+# está FORA da colecção para todos os efeitos.
+#
+# ESTE FILTRO ESCREVE-SE NUM SÍTIO SÓ, e é este. Era `cp.purpose = 'player'`
+# escrito à mão em catorze consultas — o padrão do `event_tier`: a primeira que
+# se esquecesse da coluna nova voltava a dizer-lhe que tem a carta, sem um único
+# erro. Há um teste que varre o código à procura do literal
+# (`test_nao_encontrei.caso_o_filtro_vive_num_sitio_so`).
+def jogaveis(alias: str = "cp") -> str:
+    """O WHERE de *"esta cópia conta para a colecção"*.
+
+    Duas condições, e as duas são regras de domínio: a coleção de colecionador é
+    avaliada mas nunca jogada, e uma cópia que ele **não encontrou** não está lá.
+    """
+    return f"{alias}.purpose = 'player' AND {alias}.nao_encontrada_em IS NULL"
+
+
+def na_estante(alias: str = "cp") -> str:
+    """Só a segunda metade, para as vistas que mostram TAMBÉM o colecionador
+    (a galeria, o valor da colecção, a Reserved List)."""
+    return f"{alias}.nao_encontrada_em IS NULL"
+
+
 def ensure_sub_collection(con, name: str, purpose: str = "player") -> int:
     con.execute(
         "INSERT OR IGNORE INTO sub_collections (name, purpose) VALUES (?,?)",
@@ -138,9 +172,13 @@ def copias_por_confirmar(con: sqlite3.Connection,
     frente e o catálogo guarda o nome inteiro, e sem isto uma dupla-face nunca
     reencontrava a cópia que ela própria criou.
     """
-    q = ("""SELECT cp.*, c.name AS card_name FROM copies cp
+    # Uma cópia que ele deu como NÃO ENCONTRADA sai daqui: a foto que chegar
+    # depois é de uma carta que está em casa, e acertá-la era ressuscitar em
+    # silêncio a cópia que ele disse que não tem. Essa foto entra como cópia
+    # nova, que é a verdade.
+    q = (f"""SELECT cp.*, c.name AS card_name FROM copies cp
               JOIN cards c ON c.scryfall_id = cp.scryfall_id
-             WHERE cp.notes LIKE ?""")
+             WHERE cp.notes LIKE ? AND {na_estante()}""")
     args: list = [f"%{MARCA_POR_CONFIRMAR}%"]
     if name:
         q += " AND (c.name = ? OR c.name LIKE ? || ' //%')"
@@ -429,8 +467,8 @@ def owned_playable(con: sqlite3.Connection,
     Savior"). Para nomes normais é um no-op.
     """
     join = "JOIN cards c ON c.scryfall_id = cp.scryfall_id"
-    where = ("cp.purpose = 'player' "
-             "AND (cp.reserved_deck_id IS NULL OR cp.reserved_deck_id = ?)")
+    where = (jogaveis() +
+             " AND (cp.reserved_deck_id IS NULL OR cp.reserved_deck_id = ?)")
     params: list = [for_deck_id]
     if baldes:
         join += " JOIN sub_collections s ON s.id = cp.sub_collection_id"
@@ -479,9 +517,9 @@ def reserve_for_deck(con: sqlite3.Connection, deck_id: int) -> dict:
         if falta <= 0:
             continue
         livres = con.execute(
-            """SELECT cp.id, cp.quantity FROM copies cp
+            f"""SELECT cp.id, cp.quantity FROM copies cp
                  JOIN cards c ON c.scryfall_id = cp.scryfall_id
-                WHERE c.name = ? AND cp.purpose = 'player'
+                WHERE c.name = ? AND {jogaveis()}
                   AND cp.reserved_deck_id IS NULL
                 ORDER BY cp.quantity ASC""", (name,)).fetchall()
         for lote in livres:
@@ -586,7 +624,8 @@ def collection_value(con: sqlite3.Connection, source: str = "cardmarket") -> lis
                   (SELECT date FROM price_latest p
                     WHERE p.scryfall_id = cp.scryfall_id AND p.source = ?
                       AND p.finish = cp.finish) AS price_date
-             FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id""",
+             FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id
+            WHERE """ + na_estante(),
         (source, source),
     ).fetchall()
     out = []

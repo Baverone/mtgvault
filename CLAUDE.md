@@ -1502,6 +1502,76 @@ tudo por X €"*, que é o número por que ele decide. Motor em
   linha fecha. Era um buraco anterior a isto e ficou por corrigir nesse dia (ver
   a secção a seguir, que o fecha). Ver `work/revisao/mtgvault-faltas-check.md`.
 
+**4. «SE NÃO MARQUEI, É PORQUE NÃO A TENHO»: o botão «Não encontrei estas»
+(André, 2026-09-09, à letra).** *"No mtgvault, se eu não seleccionar no deck que
+meti a carta, com checkmark, é porque eu não a tenho e estás a fazer confusão.
+Por exemplo, no Cloud cEDH, dizes que tenho Chromatic Star mas eu não tenho,
+dizes que tenho Grinding Station, mas também não tenho."* As duas cópias estão na
+base porque foram FOTOGRAFADAS há meses (`copies` 694 e 403, com `photo_path`,
+balde `SPML`), não estão dentro de caixa nenhuma, e já não estão na estante. O
+vault não tinha maneira nenhuma de saber isso: a caixa ficava eternamente a dizer
+*"tens"* sobre uma carta que ele não encontra, e a lista de compras ficava a menos
+duas cartas que ele precisa mesmo de comprar. Padrão do `event_tier` — nenhum
+passo dá erro. É o **inverso** do *"já a tenho, está no deck"*: aquele cria uma
+cópia, este tira uma de circulação. Motor em `loadout.marcar_nao_encontradas` /
+`devolver_a_coleccao` / `nao_encontradas`, botão na barra fixa do painel *Montar*,
+aba **🔍 Não encontradas** na Deckboxes.
+- **O botão leva o que SOBROU por marcar** (`loadout.copias_por_encontrar`, a
+  MESMA lista que desenhou as checkboxes e por que a barra conta) e só aparece
+  enquanto há linhas por marcar. As linhas de **comprar** nunca entram — não têm
+  cópia nenhuma na base, e é isso mesmo que ele quer dizer com *"não a tenho"*. O
+  bloco «destinadas a outra caixa» também não: dá-las como perdidas a partir daqui
+  era decidir pela caixa do lado. Um `copy_id` que o painel desta caixa não
+  ofereceu é recusado.
+- **Uma cópia não encontrada sai da colecção para TODOS os efeitos** — loadout,
+  cobertura, venda, valor, sugestões, galeria — e a carta volta a ser **compra**,
+  nesta caixa e nas outras que a pediam. **Nada é apagado**: a linha fica na base
+  com a data e a caixa onde faltou, e o *«afinal encontrei»* põe tudo como estava
+  (medido: os números voltam ao cêntimo).
+- **A marca é uma COLUNA (`copies.nao_encontrada_em` + `nao_encontrada_slot`), não
+  um `purpose` novo.** O CHECK do `purpose` só aceita `player`/`collector` e
+  mudá-lo obrigava a reconstruir a `copies` inteira numa base já feita — e a cópia
+  não deixa de ser 'player': ela é que não está lá.
+- **O filtro escreve-se NUM SÍTIO SÓ: `collection.jogaveis()`** (= `purpose =
+  'player' AND nao_encontrada_em IS NULL`), mais o `na_estante()` para as vistas
+  que também mostram o colecionador (galeria, valor, Reserved List). Era
+  `cp.purpose = 'player'` escrito à mão em **catorze** consultas; a primeira que
+  se esquecesse da coluna nova voltava a dizer-lhe que tem a carta, sem um único
+  erro. O `test_nao_encontrei.caso_o_filtro_vive_num_sitio_so` varre o código à
+  procura do literal (só a `migracao` é excepção: uma cópia não encontrada
+  continua a viver numa gaveta e muda de gaveta com todas — o que ela não faz é
+  entrar na `copy_allocation`).
+- **UM ÍNDICE SOBRE UMA COLUNA NOVA NÃO PODE VIVER NO `schema.sql`** (apanhado ao
+  medir contra a cópia da base a sério). O ficheiro corre INTEIRO antes do
+  `db._migrate()`, e numa base já criada a coluna ainda não existe: o
+  `CREATE INDEX` rebentava o `db.init` com *"no such column"* — em todas as
+  páginas e no `daily`. O `CREATE TABLE IF NOT EXISTS` é indiferente à ordem, um
+  índice não é. Os testes não o apanhavam porque criam sempre bases de raiz. Tem
+  caso próprio (`caso_a_base_do_andre_abre_na_mesma`, que apaga as colunas para
+  reproduzir a base dele).
+- **O lote parte-se.** Um lote de 4 com 1 já sleevado na caixa e 3 na gaveta são
+  duas linhas do `lots()` com o mesmo `copies.id` — marcar a linha inteira tirava
+  da caixa uma cópia que está lá dentro. Marca-se a quantidade do MOVIMENTO, e a
+  linha nova herda tudo (a foto inclusive). Consequência a saber: se ele tiver 3
+  cópias registadas de uma carta que a caixa pede 1 vez, marcar tira uma e a caixa
+  passa a usar a seguinte — que aparece no painel na corrida a seguir.
+- **A foto que chegue depois NÃO ressuscita a cópia** (`copias_por_confirmar`
+  ignora as não encontradas): entra como cópia nova, que é o que a foto prova.
+- **Rasto e backup**: `data/nao-encontradas.csv` (fora do Git, como o
+  `vendas.csv`), escrito ANTES da base; backup em
+  `backups/vault-<data>-nao-encontradas.db`, como o *Desmontar*. Marcar a mesma
+  cópia duas vezes é um **no-op** — sem linha nova e sem backup.
+- **A lista mostra a MINIATURA da foto de origem** (`/foto?copy=<id>` do modo
+  edição, com token; o caminho sai da base e nunca do pedido). É a única forma de
+  ele perceber se a carta existiu e se sumiu — sem ela a linha é um nome sem prova
+  nenhuma. No site publicado a lista aparece na mesma, sem foto e sem botão.
+- **Efeito medido na base de 2026-09-09:** a alocação **não mexe** — 8 426,34 €
+  para fechar, 232 a comprar, 70 a ir buscar, 385 a arrumar, venda 230c/1 315,68 €
+  + 40 RL/3 221,01 €, iguais antes e depois (a coluna nasce vazia). Marcar as duas
+  cartas dele: Cloud cEDH 67 %→66 %, comprar 33→34, fechar tudo 8 426,34 €→
+  8 426,51 €, arrumar 385→384 — e o *«afinal encontrei»* devolve os quatro números
+  ao que eram. Ver `work/revisao/mtgvault-nao-encontrei.md`.
+
 **AS CÓPIAS DE UMA LINHA INCOMPLETA TAMBÉM SE TIRAM DA GAVETA (2026-09-08).**
 Uma linha que pede 4 e a que a alocação só deu 2 vive em `missing` — e **tudo**
 o que percorria a alocação de uma caixa percorria só o `have`. As duas cópias

@@ -20,6 +20,10 @@ import html
 import json
 from collections import defaultdict
 
+# O filtro de *"esta cópia conta para a colecção"* vive num sítio só (ver
+# `collection.jogaveis`): 'player' e não marcada como NÃO ENCONTRADA.
+from . import collection as _col
+
 # O menu, pela ordem em que aparece no `index.html`. (ficheiro, ícone, rótulo).
 #
 # A **Deckboxes é a página dos decks** (André, 2026-09-08: *"temos decks vigiados
@@ -58,9 +62,9 @@ def img_map(con, names, da_coleccao: bool = True) -> dict[str, str]:
     """
     out: dict[str, str] = {}
     if da_coleccao:
-        for r in con.execute("""SELECT c.name nm, cp.scryfall_id sid FROM copies cp
+        for r in con.execute(f"""SELECT c.name nm, cp.scryfall_id sid FROM copies cp
                                   JOIN cards c ON c.scryfall_id = cp.scryfall_id
-                                 WHERE cp.purpose = 'player'"""):
+                                 WHERE {_col.jogaveis()}"""):
             out.setdefault(r["nm"].split(" // ")[0], r["sid"])
     falta = [n for n in names if n not in out]
     for i in range(0, len(falta), 300):
@@ -172,9 +176,9 @@ def posse_total(con) -> dict[str, int]:
     (é a mesma pergunta, e duas respostas era o defeito a corrigir).
     """
     out: dict[str, int] = defaultdict(int)
-    for r in con.execute("""SELECT c.name nm, SUM(cp.quantity) q FROM copies cp
+    for r in con.execute(f"""SELECT c.name nm, SUM(cp.quantity) q FROM copies cp
                               JOIN cards c ON c.scryfall_id = cp.scryfall_id
-                             WHERE cp.purpose = 'player' GROUP BY c.name"""):
+                             WHERE {_col.jogaveis()} GROUP BY c.name"""):
         out[r["nm"].split(" // ")[0]] += r["q"]
     return dict(out)
 

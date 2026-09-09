@@ -111,6 +111,12 @@ _ULTIMA_FALTA: dict[int, float] = {}
 # que o botão está à vista (`loadout.montar_anular_segundos`): um clique ao
 # segundo 5,9 num telemóvel na rede de casa não pode falhar por causa da latência.
 ANULAR_JANELA = 120.0
+# As fotos das cópias NÃO ENCONTRADAS (2026-09-09). São as extensões que o
+# `collection.IMG_EXT` aceita; o `.heic` do iPhone vai com o tipo dele — o
+# browser pode não o saber desenhar, e nesse caso é melhor um ícone partido do
+# que um JPEG que não é JPEG.
+TIPOS_FOTO = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
+              ".webp": "image/webp", ".heic": "image/heic", ".heif": "image/heif"}
 
 
 def config_path() -> Path:
@@ -654,6 +660,29 @@ def registar_falta(con, dados: dict) -> str:
                             if r["palpite"] else ""))}
 
 
+def marcar_nao_encontradas(con, slot_id: str, copias) -> dict:
+    """*"Não encontrei estas"*: as cópias por marcar saem da colecção.
+
+    André, 2026-09-09, à letra: *"se eu não seleccionar no deck que meti a carta,
+    com checkmark, é porque eu não a tenho e estás a fazer confusão."*
+
+    O relatório recalcula-se AQUI, como no *"vendida"* e no *"já a tenho"*: a
+    página pode estar aberta há duas horas e mandar tirar de circulação uma
+    cópia que entretanto já está dentro de uma caixa. Quem valida que cada
+    `copy_id` era mesmo desta caixa é o `loadout.marcar_nao_encontradas`.
+    """
+    r = loadout.marcar_nao_encontradas(con, loadout.report(con), slot_id,
+                                       [int(c) for c in (copias or [])])
+    nomes = ", ".join(f'{m["q"]}× {m["nm"]}' for m in r["linhas"][:4])
+    resto = len(r["linhas"]) - 4
+    return {**r, "ids": [m["copy_id"] for m in r["linhas"]],
+            "porque": (r["saltadas"][0]["porque"] if r["saltadas"]
+                       else "não havia nada por marcar nesta caixa"),
+            "msg": (f'{r["caixa"]}: {r["copias"]} cópia(s) fora da colecção — '
+                    f'{nomes}' + (f" e mais {resto}" if resto > 0 else "")
+                    + ". Voltam a ser compra.")}
+
+
 def anular_falta(con, copy_id) -> str:
     """O desfazer do check, enquanto o aviso está à vista. Ver `_ULTIMA_FALTA`."""
     cid = int(copy_id or 0)
@@ -732,6 +761,27 @@ class Handler(BaseHTTPRequestHandler):
                             "quem não o tem.</p>", 403)
                 return
             self._envia(qr.svg(url_edicao()), tipo="image/svg+xml; charset=utf-8")
+            return
+        if caminho == "/foto":
+            # A miniatura da foto de origem de uma cópia NÃO ENCONTRADA
+            # (2026-09-09). É a única prova de que a carta existiu, e sem ela a
+            # lista é um nome sem nada por trás.
+            #
+            # O caminho sai da BASE, pelo `copy_id`, e nunca do pedido: servir um
+            # caminho que veio no URL era dar qualquer ficheiro do PC a quem está
+            # na rede de casa. Exige token pela mesma razão que o `/qr.svg` — as
+            # fotos são da colecção dele.
+            if not self._pode_escrever():
+                self._envia("<h1>403</h1>", 403)
+                return
+            cid = (parse_qs(urlparse(self.path).query).get("copy") or ["0"])[0]
+            with db.session() as con:
+                alvo = loadout.foto_da_copia(con, int(cid or 0))
+            if alvo is None:
+                self._envia("<h1>404</h1><p>essa cópia não tem foto no disco</p>", 404)
+                return
+            self._envia(alvo.read_bytes(),
+                        tipo=TIPOS_FOTO.get(alvo.suffix.lower(), "image/jpeg"))
             return
         modulo = PAGINAS_EDITAVEIS.get(caminho)
         if modulo is not None:
@@ -895,6 +945,25 @@ class Handler(BaseHTTPRequestHandler):
                 if not msg:
                     return {"erro": "já passou a janela do «anular»: essa cópia "
                                     "passou a ser uma cópia normal da colecção"}
+            elif act == "nao-encontrei":
+                # «SE NÃO MARQUEI, É PORQUE NÃO A TENHO» (André, 2026-09-09): o
+                # inverso do «já a tenho». Não passa pelo config — o que muda é a
+                # colecção, e isso vive na base. O relatório é recalculado aqui,
+                # como no «vendida»: a página pode estar aberta há duas horas.
+                r = marcar_nao_encontradas(con, slot_id, dados.get("copias"))
+                if not r["copias"]:
+                    return {"erro": r["porque"]}
+                msg, extra["copias"] = r["msg"], r["ids"]
+            elif act == "encontrei":
+                # «Afinal encontrei»: a cópia volta a contar. Serve os dois
+                # caminhos — o «anular» do aviso e o botão da lista — porque é o
+                # mesmo gesto, e dois caminhos era a segunda oportunidade de
+                # discordarem.
+                r = loadout.devolver_a_coleccao(con, dados.get("copias") or [])
+                if not r["copias"]:
+                    return {"erro": "essas cópias já estão na colecção"}
+                msg = (f'{r["copias"]} cópia(s) de volta à colecção: '
+                       + ", ".join(m["nm"] for m in r["linhas"]))
             elif act == "anular":
                 # O desfazer do registo automático, enquanto o aviso está à vista.
                 msg = anular_registo(con, cfg, slot_id)

@@ -22,6 +22,11 @@ data/vendas.csv
 # botão que CRIA cópias — sem ele, daqui a um mês não há como saber donde veio
 # uma cópia sem foto. Local, como o de vendas.
 data/registos-faltas.csv
+# O registo do «não encontrei estas»: que cópias saíram da colecção por não
+# estarem na estante, em que caixa faltaram e com que foto de origem — e as que
+# voltaram pelo «afinal encontrei». É o inverso do de cima e o rasto de um botão
+# que tira cartas de circulação. Local, como os outros dois.
+data/nao-encontradas.csv
 # O backup que a `migrar-caixas` deixa ao lado. Serve para desfazer à mão na
 # hora; o histórico do Git já guarda a versão anterior do config.
 colecao_config-v5-*.json
