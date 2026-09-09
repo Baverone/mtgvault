@@ -214,9 +214,43 @@ def caso_o_indice_tem_o_mesmo_menu_que_o_paginas():
     print("o indice tem o mesmo menu (e a mesma ordem) que o paginas.MENU")
 
 
+def caso_a_bateria_nao_escreve_no_data_a_serio():
+    """Correr a bateria não pode mexer nos ficheiros da colecção dele.
+
+    Aconteceu, a 2026-09-09: uma corrida da bateria **esvaziou o
+    `data/arquetipos.json`** (24 arquétipos, 333 linhas). Os ficheiros que
+    acompanham a base saem de `db.pasta_dados()`, que é a pasta da
+    `MTGVAULT_DB` — e neste PC essa variável está no ambiente e aponta para o
+    `data/` a sério. Pôr só o `MTGVAULT_HOME`, como os testes faziam, não chega.
+    Nenhum teste falhou: o `arquetipos.carregar` responde com um registo vazio de
+    propósito, e a corrida seguinte reescrevia os nomes todos do zero.
+
+    O que se tranca: todo o teste que fixe o `MTGVAULT_HOME` fixa também o
+    `MTGVAULT_DB`, e nenhum deles aponta para dentro do repositório.
+    """
+    faltam, maus = [], []
+    for f in sorted((RAIZ / "tests").glob("test_*.py")):
+        txt = f.read_text(encoding="utf-8")
+        # Só o bloco de arranque (antes do primeiro `def`): o resto pode falar
+        # das variáveis sem as pôr — é o caso do `test_arquetipos`, que testa
+        # precisamente esta regra com subprocessos.
+        cabeca = txt.split("\ndef ", 1)[0]
+        if "MTGVAULT_HOME" not in cabeca:
+            continue
+        if "MTGVAULT_DB" not in cabeca:
+            faltam.append(f.name)
+        elif re.search(r'MTGVAULT_DB"\]\s*=\s*str\(RAIZ', cabeca):
+            maus.append(f.name)
+    assert not faltam, ("estes testes fixam o MTGVAULT_HOME e não o MTGVAULT_DB: "
+                        "vão escrever no data/ a sério", faltam)
+    assert not maus, maus
+    print("nenhum teste da bateria escreve nos ficheiros do data/ a serio")
+
+
 def run():
     for fn in (caso_o_menu_marca_a_pagina_actual, caso_o_menu_tem_todas_as_paginas,
                caso_o_indice_tem_o_mesmo_menu_que_o_paginas,
+               caso_a_bateria_nao_escreve_no_data_a_serio,
                caso_todas_as_paginas_do_menu_sao_publicadas,
                caso_o_registo_de_arquetipos_e_publicado,
                caso_a_pagina_fundida_saiu_do_menu_mas_continua_publicada,

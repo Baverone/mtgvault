@@ -38,6 +38,7 @@ BASE_CFG = {"regras_por_formato": [
 CFG_PATH.write_text(json.dumps(BASE_CFG), encoding="utf-8")
 os.environ["MTGVAULT_CONFIG"] = str(CFG_PATH)
 os.environ.setdefault("MTGVAULT_HOME", str(_TMP))
+os.environ["MTGVAULT_DB"] = str(_TMP / "vault.db")   # ver tests/_bateria.py
 
 from mtgvault import db, loadout, prices  # noqa: E402
 

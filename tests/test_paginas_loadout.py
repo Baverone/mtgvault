@@ -51,6 +51,7 @@ _TMP = Path(tempfile.mkdtemp())
 (_TMP / "cfg.json").write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
 os.environ["MTGVAULT_CONFIG"] = str(_TMP / "cfg.json")
 os.environ.setdefault("MTGVAULT_HOME", str(_TMP))
+os.environ["MTGVAULT_DB"] = str(_TMP / "vault.db")   # ver tests/_bateria.py
 
 from datetime import date  # noqa: E402
 

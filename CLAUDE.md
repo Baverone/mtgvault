@@ -18,7 +18,14 @@ descobrir o núcleo de cada arquétipo, e acompanha preços.
   captura um trecho real e mete-o como fixture no teste. Não faças `mock` de
   bibliotecas inteiras.
 - **Corre a bateria toda antes de dares uma tarefa por fechada:**
-  `cd tests && for f in test_*.py; do python "$f"; done`
+  `cd tests && py _bateria.py` (um processo por ficheiro, e resume no fim).
+  **Todo o teste que fixe o `MTGVAULT_HOME` tem de fixar também o
+  `MTGVAULT_DB`** — os ficheiros que acompanham a base (`arquetipos.json`,
+  `vendas.csv`, `registos-faltas.csv`) saem de `db.pasta_dados()`, que é a pasta
+  da `MTGVAULT_DB`, e neste PC essa variável aponta para o `data/` a sério.
+  Correr a bateria **esvaziava o `data/arquetipos.json`** dele (24 arquétipos,
+  333 linhas) sem um único teste falhar. Tem teste
+  (`test_paginas.caso_a_bateria_nao_escreve_no_data_a_serio`).
 - **Não inventes dados.** Se não conseguires aceder a uma fonte, diz que não
   conseguiste. Nunca preenchas uma decklist ou um preço a partir de memória.
 - Comentários explicam *porquê*, não *o quê*. Vários dos comentários atuais

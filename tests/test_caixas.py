@@ -30,6 +30,7 @@ sys.path.insert(0, str(RAIZ))
 
 _TMP = Path(tempfile.mkdtemp())
 os.environ.setdefault("MTGVAULT_HOME", str(_TMP))
+os.environ["MTGVAULT_DB"] = str(_TMP / "vault.db")   # ver tests/_bateria.py
 
 from mtgvault import caixas, configio, loadout  # noqa: E402
 
