@@ -104,6 +104,23 @@ def _migrate(con: sqlite3.Connection) -> None:
         con.execute("ALTER TABLE decklists ADD COLUMN event_tier TEXT")
         con.commit()
 
+    # Tabelas que existiam SÓ na vault.db do André (criadas à mão, nunca no
+    # schema.sql). Numa base nova o colecao_cor rebentava com "no such table:
+    # deck_collection". Aqui é para as bases JÁ criadas — o schema.sql trata das
+    # novas, e as duas definições têm de ser iguais.
+    con.execute("""CREATE TABLE IF NOT EXISTS deck_collection (
+        watched_id     INTEGER PRIMARY KEY,
+        sub_collection TEXT NOT NULL
+    )""")
+    con.execute("""CREATE TABLE IF NOT EXISTS deck_meta (
+        sub_collection TEXT PRIMARY KEY,
+        format         TEXT,
+        pool           TEXT,
+        priority       INTEGER,
+        active         INTEGER DEFAULT 1
+    )""")
+    con.commit()
+
     # Catálogo (BD anexada): a flag reserved da Reserved List. Em catálogos já
     # criados a coluna não existe — acrescenta-se aqui a 0 (o preenchimento vem
     # do bulk, via scryfall.load_bulk/backfill_reserved).

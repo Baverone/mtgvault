@@ -54,3 +54,22 @@ pendentes/**/*.gif
 # backups diarios da BD feitos pelo ai-pc (mtgvault-daily / mtg-fotos)
 data/backups/
 data/vault.db.download
+
+# ---------------------------------------------------------------------------
+# Ruído do `git status` (2026-09-09). Nenhum destes ficheiros era para ir no Git,
+# e cinco linhas de `??` permanentes fazem com que se deixe de olhar para o
+# `git status` — que é onde uma alteração a sério se vê.
+# ---------------------------------------------------------------------------
+# Gerado todos os dias pelo `core_decks.py` (que continua a correr, para o
+# card_price/posse) mas NUNCA publicado: saiu do `git add` a 2026-08-26, quando a
+# página foi apagada para ser redefinida. Se voltar ao menu, sai daqui.
+coredecks.html
+# Registos locais do modo edição (`webapp.log`) e do «desmontar». O que é preciso
+# guardar do desmontar já vai no backup da base que ele faz.
+data/*.log
+# Backups que os comandos deixam ao lado do config antes de lhe mexer (o
+# `migrar-caixas` já tinha regra própria; o `desmontar` não tinha).
+*.bak
+# Recortes de fotos feitos à mão durante a catalogação. São imagens, e as imagens
+# nunca vão para o repo.
+scratchpad_crops/

@@ -78,7 +78,7 @@ metagame.py         metagame.html — "Metagame": desde 2026-09-07 já NÃO é o
 (prioridade.py + metafaltas.py APAGADOS 2026-08-26, a redefinir)
 reservedlist.py     reservedlist.html — Reserved List (Scryfall) x coleção, por edição, preço/evolução, e 'VENDER' as que não jogam em formato nenhum
 caixarl.py          caixarl.html — "Caixa Reserved List": a RL que está fora da coleção jogável
-showcase.py         showcase.html — "Decks Showcase Challenger": eventos competitivos recentes (MTGO + presenciais do mtgtop8) agrupados por arquétipo. Tinha filtro e pesos PRÓPRIOS (fonte + showcase_min_players + lista de nomes casuais) — era por isso que continuava a dar listas enquanto o metagame vinha vazio. Desde 2026-09-07 usa `sources.counting_sql`/`tier_weight` como toda a gente; a chave `showcase_min_players` do config deixou de existir
+showcase.py         showcase.html — "Decks Showcase Challenger": eventos competitivos recentes (MTGO + presenciais do mtgtop8) agrupados por arquétipo. Tinha filtro e pesos PRÓPRIOS (fonte + showcase_min_players + lista de nomes casuais) — era por isso que continuava a dar listas enquanto o metagame vinha vazio. Desde 2026-09-07 usa `sources.counting_sql`/`tier_weight` como toda a gente; a chave `showcase_min_players` do config deixou de existir. NB (2026-09-09): cada arquétipo vai DOBRADO num `<details>` (o primeiro de cada formato aberto) — eram 4 320 `<img>` numa parede só e o browser tratava-as todas; agora trata **141**. As imagens continuam a ter `src` a sério e `loading="lazy"`: dentro de um `<details>` fechado o browser não as descarrega, e um `data-src` preenchido por JavaScript dava o mesmo ganho mas deixava a página vazia com o JS desligado. Tem teste (`test_showcase_dobrado.py`)
 my_decks.py         segue decks-alvo (por assinatura e por jogador de MTGO) -> tabela decks
 commander_decks.py  decks de comandante por consenso EM CAMADAS: núcleo>=50% (=deck, deck_cards) / flex 25-50% / tech 15-25%; FILTRA pela cor do comandante. `tiers()` reusado pelo colecao_cor
 premodern_decks.py  consenso dos arquétipos-alvo de Premodern (`colecao_config.json`→`premodern_arquetipos_alvo`: UW Replenish, Enchantress) -> decks/deck_cards com o sufixo " (consenso)". Agrupa pelas etiquetas do `tagging` (o clustering não os separa) e usa `stock.stock_from_lists`. Mostrado nas `deckboxes` (era o `meusdecks`)
@@ -97,6 +97,14 @@ não dá erro: só deixa de se lá chegar. Acrescentar uma aba é acrescentar um
 linha ao `paginas.MENU`; os templates trazem `%META%`, `%TEMA%` e `%TABS%`, e o
 `build()` de cada página substitui-os. O `test_paginas.py` tranca as duas coisas
 (o menu completo e o `git add` do workflow).
+**A EXCEPÇÃO É O `index.html`** (2026-09-09): é estático, escrito à mão, e é a
+única página cujo menu não sai do `paginas.nav()`. Gerá-lo por código era trazer
+um gerador novo para a porta de entrada do site, por isso o que fica é o TESTE —
+`test_paginas.caso_o_indice_tem_o_mesmo_menu_que_o_paginas` compara ficheiros e
+ícones do `<nav class="tabs">` com o `MENU` (sem o próprio índice) e do
+`<div class="subnav">` com o `EXTRA`, **nos dois sentidos e pela ordem**. Os
+rótulos podem ser mais compridos no índice (*"Decks & Deckboxes"* onde a barra de
+cima só diz *"Deckboxes"*), mas o do menu tem de estar lá dentro.
 
 ### Duas bases de dados
 
@@ -1279,10 +1287,16 @@ tabela `deck_collection`. Já ligados: Blue Farm [Primer]→`Blue Farm`, Cloud
 [cEDH]→`Cloud cEDH` (distinto do Cloud de Duel Commander, balde `Cloud`), Luffy —
 Pauper→`Pauper Affinity`. Por ligar: Luffy — Premodern (Stiflenought), Harry1232
 — Legacy. `deck_collection` JÁ é lido: `colecao_cor._watched_deck_pools` e
-`colecao_cor._watched_deck_pools` junta-se por ela. Atenção:
-tal como `deck_meta` (lida pelo `webapp.py`), a tabela não está no `schema.sql`
-nem no `db._migrate()` — só existe no `vault.db`, por isso numa base nova estas
-páginas rebentam. Ver o relatório de revisão de 2026-09-06.
+`colecao_cor._watched_deck_pools` junta-se por ela.
+**CORRIGIDO a 2026-09-09:** a `deck_collection` e a `deck_meta` só existiam no
+`vault.db` dele (criadas à mão) e numa base nova o `colecao_cor.build` rebentava
+com *"no such table: deck_collection"* — o irmão do `event_tier`, a estoirar em
+vez de mentir. Estão agora nos dois sítios (`schema.sql` **e** `db._migrate()`),
+com as colunas copiadas tal e qual da base dele, e o `test_schema_completo.py`
+tranca-o (com um caso que apaga as tabelas para provar que continuam a fazer
+falta). A `deck_meta` **não é lida por ninguém** — a decisão de 2026-09-07 pôs as
+preferências no `colecao_config.json` (ver o cabeçalho do `webapp.py`); fica
+declarada porque existe na base dele, não porque alguma página dependa dela.
 
 **Regras por coleção (`colecao_config.json` → `regras_colecao`).**
 `reter_extras_meses` = **6** (formalizado 2026-08-14) para os decks de

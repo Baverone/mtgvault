@@ -175,8 +175,48 @@ def caso_nenhuma_pagina_liga_a_uma_que_ninguem_publica():
     print("nenhuma pagina liga a um html que ninguem publica")
 
 
+def caso_o_indice_tem_o_mesmo_menu_que_o_paginas():
+    """O `index.html` é a ÚNICA página com o menu escrito à mão — é estático, não
+    é gerado por ninguém. É exactamente a situação que deu o `cobertura.html` com
+    um menu de Agosto: acrescentar uma aba ao `paginas.MENU` não lhe toca, e a
+    página nova fica sem entrada na porta de entrada do site.
+
+    Trancam-se as duas listas, **nos dois sentidos e pela ordem**:
+
+      * o `<nav class="tabs">` = `MENU` sem o próprio índice (uma página não se
+        liga a si mesma);
+      * o `<div class="subnav">` = `EXTRA`.
+
+    Os ÍCONES também: são o que ele vê primeiro no telemóvel. Os RÓTULOS não têm
+    de ser iguais ao caracter — o índice tem espaço para *"Decks & Deckboxes"*
+    onde a barra de cima só cabe *"Deckboxes"* — mas o do menu tem de estar lá
+    dentro, senão um rename no `MENU` passava despercebido aqui.
+    """
+    txt = (RAIZ / "index.html").read_text(encoding="utf-8")
+
+    def links(bloco):
+        m = re.search(bloco, txt, re.S)
+        assert m, bloco
+        return re.findall(r'<a href="([a-z_]+\.html)">(?:<span class="ic">)?'
+                          r'([^<\s]+)\s*(?:</span>)?([^<]*)</a>', m.group(1))
+
+    tabs = links(r'<nav class="tabs">(.*?)</nav>')
+    sub = links(r'<div class="subnav">(.*?)</div>')
+
+    esperado = [(f, i, t) for f, i, t in paginas.MENU if f != "index.html"]
+    assert [f for f, _i, _t in tabs] == [f for f, _i, _t in esperado], (tabs, esperado)
+    assert [i for _f, i, _t in tabs] == [i for _f, i, _t in esperado], (tabs, esperado)
+    for (_f, _i, rotulo), (_g, _j, menu) in zip(tabs, esperado):
+        assert menu in rotulo.strip(), (menu, rotulo)
+
+    assert [f for f, _i, _t in sub] == [f for f, _i, _t in paginas.EXTRA], sub
+    assert [i for _f, i, _t in sub] == [i for _f, i, _t in paginas.EXTRA], sub
+    print("o indice tem o mesmo menu (e a mesma ordem) que o paginas.MENU")
+
+
 def run():
     for fn in (caso_o_menu_marca_a_pagina_actual, caso_o_menu_tem_todas_as_paginas,
+               caso_o_indice_tem_o_mesmo_menu_que_o_paginas,
                caso_todas_as_paginas_do_menu_sao_publicadas,
                caso_o_registo_de_arquetipos_e_publicado,
                caso_a_pagina_fundida_saiu_do_menu_mas_continua_publicada,
