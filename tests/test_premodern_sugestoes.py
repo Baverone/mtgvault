@@ -80,6 +80,7 @@ def cfg(**premodern):
 CFG_PATH.write_text(json.dumps(BASE_CFG, ensure_ascii=False), encoding="utf-8")
 os.environ["MTGVAULT_CONFIG"] = str(CFG_PATH)
 os.environ.setdefault("MTGVAULT_HOME", str(_TMP))
+os.environ["MTGVAULT_DB"] = str(_TMP / "vault.db")   # ver tests/_bateria.py
 
 from mtgvault import analysis, db, loadout, premodern  # noqa: E402
 

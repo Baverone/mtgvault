@@ -65,6 +65,7 @@ os.environ["MTGVAULT_CONFIG"] = str(CFG_PATH)
 # O registo (`arquetipos.json`) vive ao lado da base: aponta-se para uma pasta
 # temporária ANTES de importar o `db`, que fixa a raiz no momento do import.
 os.environ["MTGVAULT_HOME"] = str(_TMP)
+os.environ["MTGVAULT_DB"] = str(_TMP / "vault.db")   # ver tests/_bateria.py
 
 from mtgvault import analysis, arquetipos, db, loadout, premodern  # noqa: E402
 

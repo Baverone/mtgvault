@@ -46,6 +46,7 @@ CAMINHO = _TMP / "cfg.json"
 CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
 os.environ["MTGVAULT_CONFIG"] = str(CAMINHO)
 os.environ.setdefault("MTGVAULT_HOME", str(_TMP))
+os.environ["MTGVAULT_DB"] = str(_TMP / "vault.db")   # ver tests/_bateria.py
 
 from mtgvault import db, loadout, sources  # noqa: E402
 
