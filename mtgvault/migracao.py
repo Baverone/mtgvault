@@ -139,11 +139,15 @@ def migrar(con, dry_run: bool = False, com_backup: bool = True,
             # O deck está montado: as cartas ficam registadas DENTRO da caixa.
             # `INSERT OR IGNORE` para a segunda corrida não mexer numa arrumação
             # que ele entretanto tenha confirmado à mão.
+            # Uma cópia que ele deu como NÃO ENCONTRADA não entra na caixa: não
+            # está lá. As outras UPDATEs abaixo tocam-lhe na mesma (continua a
+            # viver numa gaveta, e a gaveta muda de nome como todas).
             con.execute(
                 """INSERT OR IGNORE INTO copy_allocation (copy_id, slot, quantity,
                                                           placed_at)
                    SELECT id, ?, quantity, datetime('now') FROM copies
-                    WHERE sub_collection_id = ? AND purpose = 'player'""",
+                    WHERE sub_collection_id = ? AND purpose = 'player'
+                      AND nao_encontrada_em IS NULL""",
                 (slot["slot"], sid))
         # Só quando está a NULL: na segunda corrida o balde já é a `Colecção` e
         # gravá-lo apagava a gaveta verdadeira.

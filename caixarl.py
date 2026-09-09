@@ -20,6 +20,7 @@ import html
 from pathlib import Path
 
 from mtgvault import paginas
+from mtgvault.collection import jogaveis
 
 ROOT = Path(__file__).resolve().parent
 
@@ -90,12 +91,12 @@ def _rows(con):
     nf, fo = _price_maps(con)
     agg = {}
     for r in con.execute(
-            """SELECT c.name nm, c.set_name st, c.image_uri img, cp.scryfall_id sid,
+            f"""SELECT c.name nm, c.set_name st, c.image_uri img, cp.scryfall_id sid,
                       cp.finish fin, cp.language lang, COALESCE(s.name,'(sem balde)') balde,
                       SUM(cp.quantity) q
                  FROM copies cp JOIN catalog.cards c ON c.scryfall_id = cp.scryfall_id
                  LEFT JOIN sub_collections s ON s.id = cp.sub_collection_id
-                WHERE cp.purpose = 'player' AND c.reserved = 1
+                WHERE {jogaveis()} AND c.reserved = 1
                 GROUP BY c.name, cp.language, cp.finish, s.name"""):
         lang = "en" if (r["lang"] or "en") == "en" else "pt"
         unit = (fo if r["fin"] == "foil" else nf).get(r["sid"], 0) or 0

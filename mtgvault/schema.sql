@@ -36,10 +36,34 @@ CREATE TABLE IF NOT EXISTS copies (
     -- gaveta a tirar hoje. Sem ela, a migração apagava a única pista física que
     -- existe. Ver `mtgvault.migracao`.
     balde_origem      TEXT,
+    -- «SE NÃO MARQUEI, É PORQUE NÃO A TENHO» (André, 2026-09-09): a data em que
+    -- ele procurou esta cópia para montar uma caixa e não a encontrou. Não é
+    -- NULL => a cópia está FORA da colecção para todos os efeitos (loadout,
+    -- cobertura, venda, valor, sugestões, galeria) e a carta volta a ser compra.
+    -- Nada se apaga: a linha fica, com a foto de origem, e o «afinal encontrei»
+    -- põe as duas colunas a NULL outra vez. Ver `loadout.marcar_nao_encontradas`.
+    --
+    -- Porque é que não é um terceiro valor do `purpose`: o CHECK dessa coluna só
+    -- aceita 'player'/'collector' e mudá-lo obrigava a reconstruir a `copies`
+    -- inteira numa base já feita — e a cópia não deixa de ser 'player', ela é
+    -- que não está lá. Quem garante que ninguém se esquece de a filtrar é o
+    -- `collection.jogaveis()`, que é o único sítio onde este WHERE se escreve.
+    nao_encontrada_em   TEXT,
+    -- O `slot` da caixa que ele estava a montar quando faltou. É a única pista
+    -- de ONDE ela devia estar, e não se deriva de mais nada.
+    nao_encontrada_slot TEXT,
     created_at        TEXT DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS ix_copies_card    ON copies(scryfall_id);
 CREATE INDEX IF NOT EXISTS ix_copies_purpose ON copies(purpose);
+-- NÃO se declara aqui um índice sobre a `nao_encontrada_em` (2026-09-09). Este
+-- ficheiro corre INTEIRO antes do `db._migrate()`, e numa base já criada a
+-- coluna ainda não existe nesse momento: um `CREATE INDEX` sobre ela rebentava
+-- o `db.init` com *"no such column"* — em TODAS as páginas e no `daily`. O
+-- `CREATE TABLE IF NOT EXISTS` é indiferente à ordem, um índice sobre uma coluna
+-- nova não é. (E o índice não faz falta: quem filtra é o `collection.jogaveis`,
+-- que já traz o `purpose` e usa o `ix_copies_purpose`.) Se algum dia for
+-- preciso, tem de nascer no `_migrate`, depois do ALTER.
 
 -- ONDE A CÓPIA ESTÁ FISICAMENTE, quando está dentro de uma deckbox.
 --

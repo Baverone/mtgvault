@@ -88,6 +88,14 @@ def _migrate(con: sqlite3.Connection) -> None:
     if "balde_origem" not in cols:
         con.execute("ALTER TABLE copies ADD COLUMN balde_origem TEXT")
         con.commit()
+    # «Não encontrei estas» (André, 2026-09-09): a cópia está na base, tem foto,
+    # e não está na estante. Duas colunas — quando faltou e a que caixa. Quem as
+    # LÊ é o `collection.jogaveis()`, num sítio só; sem esse filtro a cópia
+    # continuava a contar e a página voltava a dizer-lhe que tem a carta.
+    if "nao_encontrada_em" not in cols:
+        con.execute("ALTER TABLE copies ADD COLUMN nao_encontrada_em TEXT")
+        con.execute("ALTER TABLE copies ADD COLUMN nao_encontrada_slot TEXT")
+        con.commit()
 
     cols = {r["name"] for r in con.execute("PRAGMA table_info(decklists)")}
     if "content_hash" not in cols:

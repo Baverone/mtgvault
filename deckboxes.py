@@ -659,6 +659,13 @@ def payload(con, rep, editable=False, token="", ligacao=None):
                     "actualizacoes": list(arr["actualizacoes"].values()),
                     "copias_actualizar": arr["copias_actualizar"],
                     "csv": loadout.csv_arrumacao(arr)},
+        # «SE NÃO MARQUEI, É PORQUE NÃO A TENHO» (André, 2026-09-09): as cópias
+        # que ele procurou e não encontrou. Estão fora da colecção para todos os
+        # efeitos e é AQUI que se vêem — com a foto de origem, que é a única
+        # prova de que a carta existiu. A lista é a mesma no site publicado (ele
+        # tem de a poder consultar fora de casa); o que só existe no modo edição
+        # é o botão «afinal encontrei» e a miniatura (a foto vive no PC).
+        "nao_encontradas": loadout.nao_encontradas(con),
     }
 
 
@@ -1006,6 +1013,21 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
    border-radius:var(--r);padding:9px 11px}
  .dout .flh{color:var(--gold)}
  .dout .nota{margin:4px 0 6px}
+ /* NÃO ENCONTRADAS (2026-09-09): a foto de origem à esquerda, porque é ela que
+    responde à pergunta ("existiu? sumiu?"). A cinzento e não a vermelho — não é
+    um erro, é uma carta que já não está lá. */
+ .nenc{display:grid;gap:7px;margin:10px 0}
+ .ne{display:flex;gap:10px;align-items:center;background:#12141a;
+   border:1px solid var(--line2);border-radius:var(--r);padding:8px 10px}
+ .ne .nei{flex:0 0 54px}
+ .ne .nef{width:54px;border-radius:5px;display:block;filter:grayscale(.55)}
+ .ne .nef.vazia{display:flex;align-items:center;justify-content:center;
+   height:54px;background:#0d1017;border:1px dashed var(--line2);
+   color:var(--dim);font-size:10px;text-align:center}
+ .ne .neb{flex:1;min-width:0}
+ .ne .neb b{display:block}
+ .ne .neb small{display:block;color:var(--dim);font-size:11.5px}
+ .ne .neb code{font-size:10.5px;color:var(--muted)}
  .typehdr{margin:10px 0 2px;font-size:10.5px;font-weight:700;color:var(--muted);
    text-transform:uppercase;letter-spacing:.06em}
  .typehdr .dim{color:var(--dim)}
@@ -1213,6 +1235,13 @@ function renderTabs() {
   if (D.premodern && D.premodern.activo) {
     fixas.push(['sugestoes', '💡 Sugestões',
                 D.premodern.sugestoes + ' por decidir']);
+  }
+  /* NÃO ENCONTRADAS: pela mesma razão, só quando há alguma. Uma aba vazia a
+     dizer "0 cartas" numa fila de vinte é ruído — e enquanto ele não carregar
+     no botão, não há pergunta nenhuma para responder aqui. */
+  if ((D.nao_encontradas || []).length) {
+    fixas.push(['naoenc', '🔍 Não encontradas',
+                D.nao_encontradas.reduce((s, m) => s + m.q, 0) + ' cópias']);
   }
   let h = '';
   /* `role=tab` + `aria-selected` para o leitor de ecrã dizer qual está aberta,
@@ -1566,6 +1595,12 @@ function barraHTML(c) {
      O `data-estado` diz em palavras o que a cor diz em verde: a barra tem de
      ser legível por quem não vê a cor — e é por ele que o teste a lê. */
   const grau = e.completo ? 'cheia' : (e.n ? 'meio' : 'vazio');
+  /* «SE NÃO MARQUEI, É PORQUE NÃO A TENHO» (André, 2026-09-09). O botão só
+     aparece enquanto SOBRAM linhas por marcar: com tudo marcado não há nada que
+     ele não tenha encontrado, e um botão que aí não faz nada era ruído no fundo
+     do ecrã. As linhas de COMPRAR nunca entram — não têm cópia nenhuma na base,
+     e é isso mesmo que ele quer dizer com «não a tenho». */
+  const faltam = e.total - e.n;
   return `<div class="bi" data-estado="${grau}"><div class="bt">`
     + `<b>${e.completo ? '✅' : '🧱'} ${c.confirmar ? 'Confirmar' : 'Montar'} `
     + `${esc(c.nome)}</b>`
@@ -1576,6 +1611,10 @@ function barraHTML(c) {
     + `<div class="ba">`
     + `<button class="btn sm" id="b-tudo">marcar tudo</button>`
     + `<button class="btn sm" id="b-limpar">limpar</button>`
+    + (e.completo ? ''
+       : `<button class="btn sm warn" id="b-nenc" data-slot="${esc(c.slot)}">`
+         + `🔍 Não encontrei ${faltam === e.total ? 'estas' : `estas ${faltam}`}`
+         + `</button>`)
     + `<button class="btn pri" id="b-reg" data-slot="${esc(c.slot)}"`
     + `${e.n ? '' : ' disabled'}>${rot}</button></div></div>`;
 }
@@ -1593,7 +1632,8 @@ function renderBarra() {
 }
 
 function ligarBarra(c) {
-  const t = $('#b-tudo'), l = $('#b-limpar'), r = $('#b-reg');
+  const t = $('#b-tudo'), l = $('#b-limpar'), r = $('#b-reg'), n = $('#b-nenc');
+  if (n) n.onclick = () => naoEncontrei(c, n);
   /* «Marcar tudo» NÃO dispara o registo automático, mesmo com tudo marcado: é
      um atalho para depois desmarcar duas ou três, não uma afirmação de que a
      caixa está montada. O botão fica verde ao lado, a um toque. */
@@ -1695,6 +1735,63 @@ async function anularRegisto(c, vistos) {
     save();
     toast(j.msg || 'Registo anulado.');
   } catch (e) { toast('Não deu anular: ' + e.message); }
+  location.reload();
+}
+
+/* ------------------------------------- «NÃO ENCONTREI ESTAS» (2026-09-09)
+   André, à letra: *"se eu não seleccionar no deck que meti a carta, com
+   checkmark, é porque eu não a tenho e estás a fazer confusão. Por exemplo, no
+   Cloud cEDH, dizes que tenho Chromatic Star mas eu não tenho."*
+
+   O inverso do «já a tenho, está no deck»: aquele cria uma cópia, este tira uma
+   de circulação. As cópias saem da colecção para todos os efeitos e a carta
+   volta a ser COMPRA — nesta caixa e nas outras que a pediam.
+
+   Pergunta-se antes, como no «vendida» e no «desmontar»: é reversível (há a aba
+   «Não encontradas» e o «afinal encontrei»), mas muda o que a colecção inteira
+   conta, e um toque enganado no telemóvel não pode fazer isso em silêncio. */
+async function naoEncontrei(c, btn) {
+  const e = montarEstado(c);
+  const porMarcar = e.itens.filter(i => !P.feitos[i.id]);
+  if (!porMarcar.length) return;
+  const q = porMarcar.reduce((s, i) => s + i.q, 0);
+  if (!confirm(`Marcar ${cop(q)} como NÃO ENCONTRADAS?\n\n`
+      + `Saem da colecção (deixam de contar em lado nenhum) e estas cartas `
+      + `voltam a ser compra. Ficam na aba «Não encontradas», com a foto, e há `
+      + `«afinal encontrei». A base é copiada antes.`)) return;
+  if (btn) btn.disabled = true;
+  const copias = [...new Set(porMarcar.map(i => i.copy))];
+  try {
+    const r = await gravar('api/caixa', { act: 'nao-encontrei', slot: c.slot,
+                                          copias });
+    if (!r.ok && r.status !== 403 && r.status !== 409) {
+      throw new Error('HTTP ' + r.status);
+    }
+    const j = await r.json();
+    if (j.erro) throw new Error(j.erro);
+    /* O «anular» do aviso é o MESMO gesto do «afinal encontrei» da lista, e por
+       isso o mesmo endpoint: dois caminhos para desfazer eram duas
+       oportunidades de discordarem. Os ids são os das cópias que ficaram
+       marcadas — um lote partido dá um id novo, e é esse que se devolve. */
+    aviso(j.msg || 'Fora da colecção.',
+          (j.copias || []).length ? () => encontrei(j.copias) : null);
+  } catch (err) {
+    if (btn) btn.disabled = false;
+    toast('Não deu: ' + err.message);
+  }
+}
+
+async function encontrei(copias, btn) {
+  if (btn) btn.disabled = true;
+  try {
+    const r = await gravar('api/caixa', { act: 'encontrei', copias });
+    const j = await r.json();
+    if (j.erro) throw new Error(j.erro);
+    toast(j.msg || 'De volta à colecção.');
+  } catch (e) {
+    if (btn) btn.disabled = false;
+    toast('Não deu: ' + e.message);
+  }
   location.reload();
 }
 
@@ -2742,6 +2839,60 @@ function ligacaoHTML() {
     + `<code>python webapp.py</code>.</p></div></div>`;
 }
 
+/* --------------------------------------------------- NÃO ENCONTRADAS
+   As cópias que ele procurou e não achou. Estão fora da colecção para todos os
+   efeitos — não contam para nenhuma caixa, para a cobertura, para a venda nem
+   para o valor —, mas **não foram apagadas**: é aqui que se vêem.
+
+   A MINIATURA DA FOTO não é enfeite. As duas cópias que motivaram isto (a
+   Chromatic Star e a Grinding Station do Cloud cEDH) entraram por foto há meses;
+   sem ela a linha é um nome sem prova nenhuma, e ele não tem como saber se a
+   carta existiu e se sumiu, ou se nunca lá esteve. A foto vive no PC: no site
+   publicado a lista aparece na mesma, com o nome do ficheiro em vez da imagem. */
+function vistaNaoEncontradas() {
+  const ms = D.nao_encontradas || [];
+  const q = ms.reduce((s, m) => s + m.q, 0);
+  const val = ms.reduce((s, m) => s + (m.total || 0), 0);
+  let h = `<h2>🔍 Não encontradas</h2>`
+    + `<p class="lead">Cartas que o vault tinha como tuas e que <b>não estavam `
+    + `na estante</b> quando as foste buscar. Estão fora da colecção — não `
+    + `contam para nenhuma caixa nem para a venda — e voltaram a ser compra. `
+    + `<b>Nada foi apagado</b>: se aparecerem, o «afinal encontrei» põe tudo `
+    + `como estava.</p>`
+    + `<p class="tot"><b>${cop(q)}</b> em <b>${ms.length}</b> linha${pl(ms.length)}`
+    + (val ? ` · ${eur(val)} de valor fora da colecção` : '') + `</p>`;
+  if (!ms.length) {
+    return h + `<p class="ok2">✓ Nada por encontrar.</p>`;
+  }
+  h += `<div class="nenc">`;
+  for (const m of ms) {
+    const foto = m.tem_foto && D.editable
+      ? `<img class="nef" src="foto?copy=${m.copy_id}`
+        + `${D.token ? '&t=' + encodeURIComponent(D.token) : ''}" alt="" `
+        + `loading="lazy">`
+      : (m.img ? `<img class="nef" src="${esc(m.img)}" alt="" loading="lazy">`
+               : `<span class="nef vazia">sem foto</span>`);
+    h += `<div class="ne"><div class="nei">${foto}</div>`
+      + `<div class="neb"><b>${m.q}× ${esc(m.nm)}</b>`
+      + `<small>${esc(m.set_code)}${m.foil ? ' ✨' : ''} ${esc(m.lang)}`
+      + ` · estava em ${esc(m.balde)}`
+      + (m.unit ? ` · ${eur(m.unit)}/cópia` : '') + `</small>`
+      + `<small>faltou a <b>${esc(m.caixa || '—')}</b> em ${esc(m.quando)}`
+      + (m.foto ? ` · 📷 <code>${esc(m.foto)}</code>` : ' · sem foto de origem')
+      + `</small></div>`
+      /* O botão só no modo edição, como todos os outros: no site publicado não
+         há endpoint que grave, e um botão que não grava mente. */
+      + (D.editable
+         ? `<button class="btn sm" data-enc="${m.copy_id}">✓ Afinal encontrei`
+           + `</button>`
+         : '')
+      + `</div>`;
+  }
+  return h + `</div><p class="nota">O registo de cada marca (e de cada volta) `
+    + `fica em <code>data\\nao-encontradas.csv</code>, ao lado da base — como o `
+    + `<code>vendas.csv</code>.</p>`;
+}
+
 /* ------------------------------------------------------------------ render */
 function render() {
   const v = $('#vista');
@@ -2758,6 +2909,7 @@ function render() {
   else if (aba === 'sugestoes') {
     v.innerHTML = D.premodern && D.premodern.activo ? vistaSugestoes() : vistaTodas();
   }
+  else if (aba === 'naoenc') { v.innerHTML = vistaNaoEncontradas(); }
   else { v.innerHTML = vistaTodas(); }
   ligar();
   renderBarra();
@@ -2911,6 +3063,11 @@ function ligar() {
   if (cc) cc.onchange = () => { P.compra = cc.value; save(); render(); };
   for (const b of document.querySelectorAll('[data-vend]')) {
     b.onclick = () => vendida(b);
+  }
+  /* «Afinal encontrei», da aba Não encontradas. Mesmo endpoint do «anular» do
+     aviso — é o mesmo gesto, só que sem prazo. */
+  for (const b of document.querySelectorAll('[data-enc]')) {
+    b.onclick = () => encontrei([Number(b.dataset.enc)], b);
   }
   const fim = $('#arr-fim'), csv = $('#arr-csv'), lim = $('#arr-limpar');
   if (csv) csv.onclick = baixarCSV;

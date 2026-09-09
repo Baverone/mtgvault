@@ -23,6 +23,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 HOME = Path(os.environ.get("MTGVAULT_HOME", ROOT / "data"))
 DB, CAT = HOME / "vault.db", HOME / "catalog.db"
+
+import sys  # noqa: E402
+sys.path.insert(0, str(ROOT))
+# «Não encontrei estas» (2026-09-09): uma cópia que ele não encontrou sai da
+# `collection_owned`, que é o que o `index.html` conta. Ver `collection.jogaveis`.
+from mtgvault.collection import na_estante  # noqa: E402
 OVERRIDES = ROOT / "price_overrides.csv"
 
 # Decks de versões foil/premium: o valor vem do price_latest (foil) + overrides,
@@ -45,13 +51,14 @@ def refresh(con) -> str:
     # 1. quantidades por sub+nome, com preço-base do price_latest da impressão
     con.execute("DELETE FROM collection_owned")
     for r in con.execute(
-        """SELECT s.name AS sub, cat.name AS nm, SUM(cp.quantity) AS q,
+        f"""SELECT s.name AS sub, cat.name AS nm, SUM(cp.quantity) AS q,
                   MAX((SELECT trend FROM price_latest p
                         WHERE p.scryfall_id = cp.scryfall_id
                           AND p.source = 'cardmarket' AND p.finish = cp.finish)) AS price
              FROM copies cp
              JOIN catalog.cards cat ON cat.scryfall_id = cp.scryfall_id
              JOIN sub_collections s ON s.id = cp.sub_collection_id
+            WHERE {na_estante()}
             GROUP BY s.name, cat.name"""):
         con.execute("INSERT OR REPLACE INTO collection_owned VALUES (?,?,?,?)",
                     (r["sub"], r["nm"], r["q"], r["price"]))

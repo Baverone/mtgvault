@@ -25,7 +25,7 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 import classify  # noqa: E402
 import commander_decks  # noqa: E402  (decks de consenso em camadas núcleo/flex/tech)
 from mtgvault import db, loadout, paginas  # noqa: E402
-from mtgvault.collection import owned_playable  # noqa: E402
+from mtgvault.collection import jogaveis, owned_playable  # noqa: E402
 
 COLOR = {"W": "Branco", "U": "Azul", "B": "Preto", "R": "Vermelho", "G": "Verde"}
 ORDER = ["Branco", "Azul", "Preto", "Vermelho", "Verde", "Multicor",
@@ -200,7 +200,7 @@ def _copias_na_caixa(con, res, balde):
     slot = _slot_do_balde(res, balde)
     sid = slot["slot"] if slot else None
     return con.execute(
-        """SELECT c.scryfall_id sid, c.name nm, c.cmc cmc, c.type_line tl,
+        f"""SELECT c.scryfall_id sid, c.name nm, c.cmc cmc, c.type_line tl,
                   c.color_identity ci, cp.finish fin, cp.language lang,
                   SUM(CASE WHEN a.quantity IS NOT NULL THEN a.quantity
                            ELSE cp.quantity END) q
@@ -208,7 +208,7 @@ def _copias_na_caixa(con, res, balde):
              JOIN cards c ON c.scryfall_id = cp.scryfall_id
              LEFT JOIN sub_collections s ON s.id = cp.sub_collection_id
              LEFT JOIN copy_allocation a ON a.copy_id = cp.id AND a.slot = ?
-            WHERE cp.purpose = 'player' AND (s.name = ? OR a.quantity IS NOT NULL)
+            WHERE {jogaveis()} AND (s.name = ? OR a.quantity IS NOT NULL)
             GROUP BY c.scryfall_id, cp.finish, cp.language
             HAVING q > 0""", (sid, balde)).fetchall()
 
@@ -287,7 +287,7 @@ def _consensus_tiers_html(con):
         osid, cat = {}, {}
         for r in con.execute("SELECT c.name nm, cp.scryfall_id sid FROM copies cp "
                              "JOIN cards c ON c.scryfall_id = cp.scryfall_id "
-                             "WHERE cp.purpose='player'"):
+                             "WHERE " + jogaveis()):
             osid.setdefault(r["nm"].split(" // ")[0], r["sid"])
         for i in range(0, len(names), 300):
             ch = names[i:i + 300]
@@ -346,13 +346,13 @@ def _value(con):
     # Uma cópia pode estar meio na caixa e meio na gaveta, e o valor tem de se
     # repartir na mesma proporção — senão um lote de 4 com 3 no deck contava
     # 4 como coleção.
-    for r in con.execute("""SELECT cp.scryfall_id sid, cp.finish fin, cp.quantity q,
+    for r in con.execute(f"""SELECT cp.scryfall_id sid, cp.finish fin, cp.quantity q,
                 COALESCE(s.name,'') bal,
                 COALESCE((SELECT SUM(a.quantity) FROM copy_allocation a
                            WHERE a.copy_id = cp.id), 0) na_caixa
                 FROM copies cp
                 LEFT JOIN sub_collections s ON s.id = cp.sub_collection_id
-               WHERE cp.purpose = 'player'"""):
+               WHERE {jogaveis()}"""):
         base = 0 if r["bal"] in coleccao else 2 if r["bal"] == loadout.BALDE_RL else 1
         dentro = min(r["na_caixa"] or 0, r["q"])
         for i, q in ((1, dentro), (base, r["q"] - dentro)):
@@ -389,7 +389,7 @@ def build(con, out_path=None):
                         FROM copy_allocation a WHERE a.copy_id = cp.id), 0)) q
               FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id
               JOIN sub_collections s ON s.id = cp.sub_collection_id
-             WHERE cp.purpose = 'player' AND s.name IN ({ph})
+             WHERE {jogaveis()} AND s.name IN ({ph})
              GROUP BY c.scryfall_id, cp.finish, cp.language, s.name
              HAVING q > 0""", baldes):
         # As cópias que já estão DENTRO de uma deckbox saem daqui: aparecem na

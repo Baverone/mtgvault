@@ -89,7 +89,11 @@ const abas = ['plano', 'todas', 'montados', 'pormontar',
               // A aba das sugestões de Premodern só existe quando há caixas
               // desse formato (ver `renderTabs`); pedi-la sem elas cai na vista
               // Todas, que também tem de desenhar sem erro.
-              'sugestoes', ...slots];
+              'sugestoes',
+              // A aba «Não encontradas» só aparece na FILA quando há alguma (ver
+              // `renderTabs`), mas a vista desenha-se na mesma, vazia — e tem de
+              // desenhar sem erro nos dois casos.
+              'naoenc', ...slots];
 let n = 0;
 for (const filtro of ['tudo', 'faltam']) {
   vm.runInContext(`filtro = ${JSON.stringify(filtro)};`, ctx);

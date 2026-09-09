@@ -228,6 +228,10 @@ from . import sources, stock
 # escrever o mesmo texto nos dois módulos era pedir que um deles ficasse para
 # trás e a marca deixasse de bater, sem um único erro.
 from .collection import MARCA_POR_CONFIRMAR
+# O filtro de *"esta cópia conta"* vem inteiro de lá: 'player' e não marcada como
+# NÃO ENCONTRADA (André, 2026-09-09). Importa-se o módulo e não a função solta
+# para o `lots()` não ficar com uma cópia local que uma regra nova deixe para trás.
+from . import collection as _col
 
 # Última edição legal em Premodern (Scourge). É por aqui que se decide se uma
 # impressão é "da era" — a alternativa (a legalidade `premodern` da Scryfall) é
@@ -1228,7 +1232,7 @@ def lots(con, cfg_slots: list[dict] | None = None) -> dict[str, list[dict]]:
     nomes = nomes_das_caixas(cfg_slots)
     out: dict[str, list[dict]] = defaultdict(list)
     for r in con.execute(
-        """SELECT cp.id, cp.quantity q, cp.finish, cp.language lang,
+        f"""SELECT cp.id, cp.quantity q, cp.finish, cp.language lang,
                   cp.reserved_deck_id rdid, s.name sub, cp.balde_origem borigem,
                   cp.notes notas,
                   c.name nm, c.scryfall_id sid, c.set_code, c.set_name,
@@ -1236,7 +1240,7 @@ def lots(con, cfg_slots: list[dict] | None = None) -> dict[str, list[dict]]:
              FROM copies cp
              JOIN cards c ON c.scryfall_id = cp.scryfall_id
              LEFT JOIN sub_collections s ON s.id = cp.sub_collection_id
-            WHERE cp.purpose = 'player'"""):
+            WHERE {_col.jogaveis()}"""):
         d = dict(r)
         d["nm"] = _front(d["nm"])
         d["sub"] = d["sub"] or "(sem balde)"
@@ -3631,6 +3635,293 @@ def anular_falta(con, copy_id: int, csv_path: Path | None = None) -> dict:
     con.commit()
     return {"copias": row["quantity"], "nm": _front(row["nm"]),
             "slot": (slot["slot"] if slot else "")}
+
+
+# ---------------------------------------------------------------------------
+# «SE NÃO MARQUEI, É PORQUE NÃO A TENHO» (André, 2026-09-09, à letra)
+# ---------------------------------------------------------------------------
+# *"No mtgvault, se eu não seleccionar no deck que meti a carta, com checkmark, é
+# porque eu não a tenho e estás a fazer confusão. Por exemplo, no Cloud cEDH,
+# dizes que tenho Chromatic Star mas eu não tenho, dizes que tenho Grinding
+# Station, mas também não tenho."*
+#
+# As duas cópias estão na base porque foram FOTOGRAFADAS há meses (têm
+# `photo_path`), vivem no balde `SPML` e não estão dentro de caixa nenhuma. O
+# vault não tem maneira nenhuma de saber que já não estão na estante — e enquanto
+# não tiver, aquela caixa fica eternamente a dizer *"tens"* sobre uma carta que
+# ele não encontra, e a lista de compras fica a menos duas cartas que ele precisa
+# mesmo de comprar. É o padrão do `event_tier`: nenhum passo dá erro.
+#
+# O botão é o INVERSO do *"já a tenho, está no deck"* (`registar_falta`): aquele
+# diz *"tenho-a e o vault não sabia"*, este diz *"o vault julga que tenho e não
+# tenho"*. Os dois vivem no painel *Montar* e não se pisam — o primeiro cria uma
+# cópia, o segundo tira uma da circulação.
+#
+# DUAS DECISÕES QUE VALEM ESTAR ESCRITAS:
+#   * **nada se apaga.** A cópia fica na base com a data e a caixa onde faltou, e
+#     com a foto de origem — é a única maneira de ele perceber, daqui a um mês, se
+#     a carta existiu e se sumiu. O que a apaga é o *"vendida"*, com o rasto dele;
+#   * **a marca é uma coluna, não um `purpose` novo.** O CHECK do `purpose` só
+#     aceita 'player'/'collector' e mudá-lo obrigava a reconstruir a `copies`
+#     inteira numa base já feita. E a cópia não deixa de ser 'player' — ela é que
+#     não está lá. Quem garante que ninguém se esquece de a filtrar é o
+#     `collection.jogaveis()`, que é o único sítio onde este WHERE se escreve.
+def ficheiro_nao_encontradas() -> Path:
+    """`data/nao-encontradas.csv` — o registo do que ele procurou e não achou.
+
+    Ao lado da base e fora do Git, como o `vendas.csv` e o `registos-faltas.csv`,
+    e pela mesma razão: a `vault.db` é descarregada e republicada inteira a cada
+    corrida, e um registo de alterações à colecção que se pode perder numa
+    publicação não é um registo.
+    """
+    from . import db                                        # noqa: PLC0415
+    return db.pasta_dados() / "nao-encontradas.csv"
+
+
+CABECALHO_NAO_ENCONTRADAS = ("data,accao,caixa,slot,carta,edicao,lingua,"
+                             "acabamento,quantidade,foto,copy_id")
+
+
+def _linha_nao_encontradas(campos, csv_path: Path | None = None) -> Path:
+    alvo = csv_path or ficheiro_nao_encontradas()
+    alvo.parent.mkdir(parents=True, exist_ok=True)
+    novo = not alvo.exists()
+    with alvo.open("a", encoding="utf-8", newline="") as fh:
+        if novo:
+            fh.write(CABECALHO_NAO_ENCONTRADAS + "\n")
+        fh.write(date.today().isoformat() + ","
+                 + ",".join('"' + str(c).replace('"', "'") + '"' for c in campos)
+                 + "\n")
+    return alvo
+
+
+def copias_por_encontrar(s: dict, caixas_deck: set[str] | frozenset,
+                         feitas=()) -> list[dict]:
+    """O que o botão «Não encontrei estas» leva: as linhas de *ir buscar* por marcar.
+
+    Sai da MESMA lista que desenhou as checkboxes e que a barra conta
+    (`movimentos_de_entrada`) — é essa a definição do gesto: *"o que sobrou por
+    marcar depois de eu ter marcado o que encontrei"*.
+
+    O que NUNCA entra:
+      * as linhas de **comprar** — não têm cópia nenhuma na base, não há nada
+        para marcar como não encontrada (e é o que ele pediu à letra);
+      * o bloco **destinadas a outra caixa** (`movimentos_reservados`) — tirá-las
+        é uma decisão à parte, e dá-las como perdidas a partir daqui era decidir
+        pela caixa do lado;
+      * as básicas **a granel**, que não têm cópia registada. As básicas que
+        ESTÃO na base entram como qualquer outra: se ele não as encontrar, não as
+        tem.
+    """
+    feitas = {int(c) for c in feitas}
+    return [m for m in movimentos_de_entrada(s, caixas_deck)
+            if m["copy_id"] not in feitas]
+
+
+def _livre_para_marcar(con, copy_id: int, quantidade: int) -> int:
+    """Quantas cópias deste lote estão FORA de qualquer caixa.
+
+    Um lote de 4 com 1 já sleevado nesta caixa e 3 na gaveta são duas linhas do
+    `lots()` com o mesmo `copies.id` (é a armadilha que o CLAUDE.md assinala). Só
+    as que estão na gaveta é que ele podia estar a procurar — marcar a linha
+    inteira tirava da caixa uma cópia que está lá dentro.
+    """
+    try:
+        dentro = con.execute(
+            "SELECT COALESCE(SUM(quantity), 0) q FROM copy_allocation "
+            "WHERE copy_id = ?", (int(copy_id),)).fetchone()["q"] or 0
+    except sqlite3.OperationalError:
+        dentro = 0                        # base antiga, ainda sem a tabela
+    return max(0, (quantidade or 0) - dentro)
+
+
+def marcar_nao_encontradas(con, res: dict, slot_id: str, copias=(),
+                           csv_path: Path | None = None,
+                           com_backup: bool = True) -> dict:
+    """*"Não encontrei estas"*: as cópias saem da colecção e a carta volta a compra.
+
+    Só aceita `copy_id` que o painel DESTA caixa oferecia (`copias_por_encontrar`)
+    — um id cru não pode tirar da colecção uma carta que ele nunca viu no ecrã. E
+    o relatório recalcula-se antes (quem chama passa um `res` fresco), como no
+    *"vendida"*: uma página aberta há duas horas podia mandar apagar uma cópia
+    que entretanto já está dentro de uma caixa.
+
+    A cópia que já está marcada é um **no-op**: nem linha nova no CSV, nem
+    backup. Duas caixas a pedir a mesma carta (numa página velha) são uma só
+    linha, que foi o que ele pediu.
+
+    Backup antes de mexer (`backups/vault-<data>-nao-encontradas.db`), como o
+    `desmontar_caixa`: isto muda o que a colecção inteira conta.
+    """
+    s = next((x for x in res["slots"] if x["slot"] == slot_id), None)
+    if s is None:
+        raise KeyError(slot_id)
+    oferta: dict[int, int] = defaultdict(int)
+    for m in copias_por_encontrar(s, caixas_de_deck(res["slots"])):
+        oferta[m["copy_id"]] += m["q"]
+    pedidas = [int(c) for c in copias] if copias else list(oferta)
+    linhas, saltadas, bkp = [], [], None
+    for cid in dict.fromkeys(pedidas):    # sem repetidos, pela ordem
+        if cid not in oferta:
+            saltadas.append({"copy_id": cid, "porque": "não estava nesta caixa"})
+            continue
+        row = con.execute(
+            """SELECT cp.id, cp.quantity, cp.finish, cp.language, cp.condition,
+                      cp.purpose, cp.sub_collection_id, cp.photo_path,
+                      cp.acquired_at, cp.acquired_price, cp.notes,
+                      cp.reserved_deck_id, cp.balde_origem, cp.nao_encontrada_em,
+                      cp.scryfall_id, c.name nm, c.set_code
+                 FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id
+                WHERE cp.id = ?""", (cid,)).fetchone()
+        if row is None:
+            saltadas.append({"copy_id": cid, "porque": "já não existe"})
+            continue
+        if row["nao_encontrada_em"]:
+            saltadas.append({"copy_id": cid, "nm": _front(row["nm"]),
+                             "porque": "já estava marcada"})
+            continue
+        livre = _livre_para_marcar(con, cid, row["quantity"])
+        q = min(oferta[cid], livre)
+        if q <= 0:
+            saltadas.append({"copy_id": cid, "nm": _front(row["nm"]),
+                             "porque": "está registada dentro de uma caixa"})
+            continue
+        if com_backup and bkp is None:
+            pasta = _pasta_backups(con)
+            pasta.mkdir(parents=True, exist_ok=True)
+            bkp = pasta / (f"vault-{_datetime.now():%Y%m%d-%H%M}"
+                           f"-nao-encontradas.db")
+            if not bkp.exists():          # dois cliques no mesmo minuto: um só
+                con.execute("VACUUM main INTO ?", (str(bkp),))
+        # O CSV ANTES da base, como na venda: uma linha a mais vê-se, uma cópia
+        # que saiu de circulação sem rasto não.
+        alvo = _linha_nao_encontradas(
+            ["nao encontrada", s["nome"], slot_id, _front(row["nm"]),
+             (row["set_code"] or "").upper(), row["language"], row["finish"], q,
+             Path(row["photo_path"]).name if row["photo_path"] else "", cid],
+            csv_path)
+        hoje = date.today().isoformat()
+        if q >= (row["quantity"] or 0):
+            con.execute("UPDATE copies SET nao_encontrada_em = ?, "
+                        "nao_encontrada_slot = ? WHERE id = ?", (hoje, slot_id, cid))
+            novo = cid
+        else:
+            # PARTE-SE O LOTE: as que ele não encontrou saem, as que estão dentro
+            # da caixa ficam. A linha nova herda TUDO — a foto inclusive, que é o
+            # que a lista mostra para ele perceber se a carta existiu.
+            con.execute("UPDATE copies SET quantity = quantity - ? WHERE id = ?",
+                        (q, cid))
+            novo = con.execute(
+                """INSERT INTO copies (scryfall_id, quantity, finish, language,
+                                       condition, purpose, sub_collection_id,
+                                       photo_path, acquired_at, acquired_price,
+                                       notes, reserved_deck_id, balde_origem,
+                                       nao_encontrada_em, nao_encontrada_slot)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (row["scryfall_id"], q, row["finish"], row["language"],
+                 row["condition"], row["purpose"], row["sub_collection_id"],
+                 row["photo_path"], row["acquired_at"], row["acquired_price"],
+                 row["notes"], row["reserved_deck_id"], row["balde_origem"],
+                 hoje, slot_id)).lastrowid
+        linhas.append({"copy_id": novo, "de": cid, "q": q,
+                       "nm": _front(row["nm"]),
+                       "set_code": (row["set_code"] or "").upper(),
+                       "lang": row["language"], "finish": row["finish"]})
+    con.commit()
+    return {"copias": sum(m["q"] for m in linhas), "linhas": linhas,
+            "saltadas": saltadas, "caixa": s["nome"], "slot": slot_id,
+            "backup": str(bkp) if bkp else None,
+            "csv": str(alvo) if linhas else ""}
+
+
+def devolver_a_coleccao(con, copy_ids, csv_path: Path | None = None) -> dict:
+    """*"Afinal encontrei"*: a cópia volta a contar, exactamente como contava.
+
+    Só toca em cópias que ESTÃO marcadas — um `copy_id` trocado não pode mexer
+    numa cópia normal. Não faz backup de propósito: isto não apaga nada, põe duas
+    colunas a NULL. O que se perde é a data em que ela faltou, e essa fica no CSV.
+    """
+    ids = [int(c) for c in (copy_ids if isinstance(copy_ids, (list, tuple, set))
+                            else [copy_ids])]
+    out = []
+    for cid in ids:
+        row = con.execute(
+            """SELECT cp.id, cp.quantity, cp.language, cp.finish, cp.photo_path,
+                      cp.nao_encontrada_em, cp.nao_encontrada_slot,
+                      c.name nm, c.set_code
+                 FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id
+                WHERE cp.id = ?""", (cid,)).fetchone()
+        if row is None or not row["nao_encontrada_em"]:
+            continue
+        _linha_nao_encontradas(
+            ["encontrada", "", row["nao_encontrada_slot"] or "", _front(row["nm"]),
+             (row["set_code"] or "").upper(), row["language"], row["finish"],
+             row["quantity"],
+             Path(row["photo_path"]).name if row["photo_path"] else "", cid],
+            csv_path)
+        con.execute("UPDATE copies SET nao_encontrada_em = NULL, "
+                    "nao_encontrada_slot = NULL WHERE id = ?", (cid,))
+        out.append({"copy_id": cid, "q": row["quantity"], "nm": _front(row["nm"]),
+                    "set_code": (row["set_code"] or "").upper()})
+    con.commit()
+    return {"copias": sum(m["q"] for m in out), "linhas": out}
+
+
+def nao_encontradas(con, cfg_slots: list[dict] | None = None) -> list[dict]:
+    """A lista da aba **Não encontradas**: o que ficou de fora, com a foto.
+
+    A miniatura da foto de origem não é um enfeite: é a única forma de ele
+    perceber se a carta existiu e se sumiu — as cópias que motivaram isto (a
+    Chromatic Star e a Grinding Station do Cloud cEDH) entraram por foto, e sem
+    ela a linha é só um nome sem prova nenhuma.
+    """
+    nomes = nomes_das_caixas(cfg_slots)
+    out = []
+    for r in con.execute(
+        """SELECT cp.id, cp.quantity q, cp.finish, cp.language lang,
+                  cp.photo_path foto, cp.nao_encontrada_em quando,
+                  cp.nao_encontrada_slot slot, cp.notes notas,
+                  COALESCE(s.name, '(sem balde)') balde,
+                  c.name nm, c.set_code, c.set_name, c.image_uri img,
+                  (SELECT p.trend FROM price_latest p
+                    WHERE p.scryfall_id = cp.scryfall_id
+                      AND p.source = 'cardmarket'
+                      AND p.finish = cp.finish) unit
+             FROM copies cp
+             JOIN cards c ON c.scryfall_id = cp.scryfall_id
+             LEFT JOIN sub_collections s ON s.id = cp.sub_collection_id
+            WHERE cp.nao_encontrada_em IS NOT NULL
+            ORDER BY cp.nao_encontrada_em DESC, c.name"""):
+        unit = r["unit"] or 0
+        out.append({"copy_id": r["id"], "q": r["q"], "nm": _front(r["nm"]),
+                    "set_code": (r["set_code"] or "").upper(),
+                    "set_nome": r["set_name"] or "", "img": r["img"] or "",
+                    "finish": r["finish"], "foil": e_foil(r["finish"]),
+                    "lang": (r["lang"] or "").upper(), "balde": r["balde"],
+                    "quando": r["quando"], "slot": r["slot"] or "",
+                    "caixa": nomes.get(r["slot"]) or r["slot"] or "",
+                    "foto": Path(r["foto"]).name if r["foto"] else "",
+                    "tem_foto": bool(r["foto"]),
+                    "unit": round(unit, 2) if unit else None,
+                    "total": round(unit * (r["q"] or 0), 2) if unit else 0.0})
+    return out
+
+
+def foto_da_copia(con, copy_id: int) -> Path | None:
+    """O ficheiro da foto de uma cópia, se ainda existir no disco.
+
+    Serve o `/foto` do modo edição. O caminho sai da BASE e nunca do pedido — um
+    parâmetro com um caminho lá dentro era servir qualquer ficheiro do PC a quem
+    esteja na rede de casa.
+    """
+    row = con.execute("SELECT photo_path FROM copies WHERE id = ?",
+                      (int(copy_id),)).fetchone()
+    if row is None or not row["photo_path"]:
+        return None
+    p = Path(row["photo_path"])
+    if not p.is_absolute():
+        p = _col.ROOT / p                 # os CSV de fotos gravam caminhos relativos
+    return p if p.exists() and p.is_file() else None
 
 
 def linhas_parciais(s: dict, caixas_deck: set[str] | frozenset,

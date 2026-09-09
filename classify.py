@@ -43,6 +43,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
+# O filtro de *"esta cópia conta"* num sítio só (ver `collection.jogaveis`).
+from mtgvault.collection import jogaveis  # noqa: E402
+
 # Baldes que são coleção (o resto é deck montado). Mapeia para o "pool" de decks.
 # O `Colecção` é o balde único do modelo novo e não diz por si qual é o pool — a
 # regra do pool para as cópias que lá estão é a de `_pool_da_copia` abaixo.
@@ -240,7 +243,7 @@ def _owned_premodern(con):
               FROM copies cp
               JOIN cards c ON c.scryfall_id = cp.scryfall_id
               JOIN sub_collections s ON s.id = cp.sub_collection_id
-             WHERE cp.purpose = 'player' AND s.name IN ({ph})""", baldes):
+             WHERE {jogaveis()} AND s.name IN ({ph})""", baldes):
         livre = r["q"] - na_caixa.get(r["id"], 0)
         if livre > 0 and _pool_da_copia(r["sub"], r["lang"], r["rel"]) == "premodern":
             owned[r["nm"]] += livre
@@ -333,7 +336,7 @@ def build(con):
               FROM copies cp
               JOIN cards c ON c.scryfall_id = cp.scryfall_id
               JOIN sub_collections s ON s.id = cp.sub_collection_id
-             WHERE cp.purpose = 'player' AND s.name IN ({ph})""", baldes):
+             WHERE {jogaveis()} AND s.name IN ({ph})""", baldes):
         # O que está dentro de uma deckbox já é Deck: sai da Coleção aqui, tal
         # como saíam as cartas dos baldes `Blue Farm`/`Cloud`/... antes de a
         # colecção passar a ser um balde só.

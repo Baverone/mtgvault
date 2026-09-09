@@ -33,7 +33,7 @@ ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 from mtgvault import db, loadout, paginas, sources  # noqa: E402
-from mtgvault.collection import owned_playable  # noqa: E402
+from mtgvault.collection import jogaveis, owned_playable  # noqa: E402
 
 _FORMATS = [
     ("standard", "Standard", 10, []),
@@ -218,13 +218,13 @@ def _visual(con, name, owned_qty):
     """
     if owned_qty > 0:
         r = con.execute(
-            """SELECT c.set_code, c.set_name, c.image_uri, cp.finish,
+            f"""SELECT c.set_code, c.set_name, c.image_uri, cp.finish,
                       SUM(cp.quantity) q,
                       (SELECT p.trend FROM price_latest p
                         WHERE p.scryfall_id = c.scryfall_id AND p.source = 'cardmarket'
                           AND p.finish = cp.finish) AS trend
                  FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id
-                WHERE c.name = ? AND cp.purpose = 'player'
+                WHERE c.name = ? AND {jogaveis()}
                 GROUP BY c.scryfall_id ORDER BY q DESC LIMIT 1""", (name,)).fetchone()
         if r:
             return {"img": _thumb(r["image_uri"]), "set_code": r["set_code"],
@@ -254,7 +254,7 @@ def _owned_sid(con, name):
     """A impressão que o André mais possui desta carta (para ser a opção por omissão)."""
     r = con.execute(
         "SELECT c.scryfall_id sid FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id "
-        "WHERE c.name = ? AND cp.purpose = 'player' GROUP BY c.scryfall_id "
+        "WHERE c.name = ? AND " + jogaveis() + " GROUP BY c.scryfall_id "
         "ORDER BY SUM(cp.quantity) DESC LIMIT 1", (name,)).fetchone()
     return r["sid"] if r else None
 

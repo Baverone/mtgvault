@@ -21,6 +21,7 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 from mtgvault import db as _db  # noqa: E402
 from mtgvault import paginas  # noqa: E402
+from mtgvault.collection import na_estante  # noqa: E402
 
 # Só edições a sério: as impressões da Reserved List que interessam colecionar.
 # memorabilia (30th Anniversary, World Championship Decks, Collectors' Edition,
@@ -131,7 +132,8 @@ def build(con, out_path=None):
     # Posse por impressão e língua (inglês vs português).
     owned = defaultdict(lambda: {"en": 0, "pt": 0})
     for r in con.execute("SELECT scryfall_id sid, language lang, SUM(quantity) q "
-                         "FROM copies GROUP BY scryfall_id, language"):
+                         "FROM copies cp WHERE " + na_estante()
+                         + " GROUP BY scryfall_id, language"):
         k = "en" if (r["lang"] or "en") == "en" else "pt"
         owned[r["sid"]][k] += r["q"]
 

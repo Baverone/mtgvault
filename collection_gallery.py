@@ -26,6 +26,7 @@ ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 from mtgvault import db, paginas  # noqa: E402
+from mtgvault.collection import na_estante  # noqa: E402
 
 
 def _price_map(con):
@@ -53,14 +54,18 @@ def _cards(con):
     price = _price_map(con)
     # A junção ao catálogo é LEFT para tolerar catálogo em falta.
     rows = []
+    # As cópias que ele deu como NÃO ENCONTRADAS saem da galeria (2026-09-09):
+    # esta página é o que ele TEM, e uma carta que não está na estante não é.
+    # Onde elas se vêem é na aba «Não encontradas» da Deckboxes, com a foto.
     for r in con.execute(
-        """SELECT cp.scryfall_id AS sid, cp.quantity AS qty, cp.finish AS finish,
+        f"""SELECT cp.scryfall_id AS sid, cp.quantity AS qty, cp.finish AS finish,
                   cp.purpose AS purpose, COALESCE(sc.name, '—') AS sub,
                   c.name AS name, c.set_code AS set_code,
                   c.collector_number AS cn, c.image_uri AS img
              FROM copies cp
              LEFT JOIN cards c ON c.scryfall_id = cp.scryfall_id
-             LEFT JOIN sub_collections sc ON sc.id = cp.sub_collection_id"""
+             LEFT JOIN sub_collections sc ON sc.id = cp.sub_collection_id
+            WHERE {na_estante()}"""
     ):
         p = price.get((r["sid"], r["finish"]))
         rows.append({
