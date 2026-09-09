@@ -27,6 +27,10 @@ data/registos-faltas.csv
 # voltaram pelo «afinal encontrei». É o inverso do de cima e o rasto de um botão
 # que tira cartas de circulação. Local, como os outros dois.
 data/nao-encontradas.csv
+# Quem entrou em que caixa, quando e por que clique (`registar` do botão, o
+# auto-registo, o "actualizei" e o "já arrumei tudo"). É a prova de que uma
+# cópia dentro de uma caixa veio de um gesto dele: sem linha aqui, é bug.
+data/registos-caixas.csv
 # O backup que a `migrar-caixas` deixa ao lado. Serve para desfazer à mão na
 # hora; o histórico do Git já guarda a versão anterior do config.
 colecao_config-v5-*.json

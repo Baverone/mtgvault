@@ -4124,8 +4124,91 @@ def restaurar_alocacao(con, slot_id: str, linhas) -> int:
     return sum(q for _c, q, _t in linhas)
 
 
+# ---------------------------------------------------------------------------
+# O RASTO DE QUEM ENTRA NUMA CAIXA (2026-09-09)
+# ---------------------------------------------------------------------------
+# André, 09/09, à letra: *"se eu não seleccionar no deck que meti a carta, com
+# checkmark, é porque eu não a tenho."* A defesa é o registo gravar só o que ele
+# marcou; isto é a maneira de o PROVAR daqui a um mês. A 09/09 às 10:39:55 o
+# Cloud cEDH ganhou 65 linhas de uma vez e não há como saber quais delas ele
+# marcou — a `copy_allocation` guarda o RESULTADO, nunca guardou o gesto.
+#
+# A regra que se quer poder afirmar: **uma cópia que apareça dentro de uma caixa
+# sem linha neste ficheiro é um bug.** Por isso escrevem aqui os TRÊS caminhos
+# que acrescentam à `copy_allocation` — o registo do botão, o *"actualizei"* de
+# uma caixa congelada e o *"já arrumei tudo"* — e não só o primeiro: o que isto
+# serve para apanhar é precisamente a escrita que ninguém está à espera.
+#
+# Fora do Git, ao lado da base (`db.pasta_dados()`), como o `vendas.csv` e o
+# `nao-encontradas.csv`: a `vault.db` é descarregada e republicada inteira a cada
+# corrida, e um rasto que uma publicação pode apagar não é um rasto.
+def ficheiro_registos_caixas() -> Path:
+    """`data/registos-caixas.csv` — quem entrou em que caixa, quando e por que clique."""
+    from . import db                                        # noqa: PLC0415
+    return db.pasta_dados() / "registos-caixas.csv"
+
+
+CABECALHO_REGISTOS_CAIXAS = ("data,hora,origem,caixa,slot,carta,edicao,lingua,"
+                             "acabamento,quantidade,copy_id")
+
+
+def _detalhes_das_copias(con, ids) -> dict[int, dict]:
+    """Nome/edição/língua/acabamento de um punhado de cópias, para o CSV.
+
+    Vai à base e não ao movimento que as trouxe: o rasto tem de conseguir
+    descrever também uma cópia que apareça por um caminho que ninguém previu —
+    que é exactamente o caso que ele existe para apanhar.
+    """
+    ids = [int(i) for i in ids]
+    if not ids:
+        return {}
+    marcas = ",".join("?" * len(ids))
+    return {r["id"]: {"nm": _front(r["nm"]),
+                      "set_code": (r["set_code"] or "").upper(),
+                      "lang": (r["language"] or "").upper(),
+                      "finish": r["finish"] or ""}
+            for r in con.execute(
+                f"""SELECT cp.id, cp.language, cp.finish, c.name nm, c.set_code
+                      FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id
+                     WHERE cp.id IN ({marcas})""", ids)}
+
+
+def regista_entradas(con, slot_id: str, caixa: str, antes: dict, depois: dict,
+                     origem: str, csv_path: Path | None = None) -> Path | None:
+    """Escreve no `registos-caixas.csv` o que ENTRA na caixa com esta escrita.
+
+    Só o delta: uma cópia que já lá estava e continua lá não é um gesto novo, e
+    repeti-la a cada gravação fazia o ficheiro deixar de se poder ler. O `origem`
+    diz de que clique veio (`manual`, `auto`, `actualizar`, `arrumar`).
+    """
+    novas = {int(cid): q - (antes.get(int(cid)) or 0)
+             for cid, q in depois.items() if q > (antes.get(int(cid)) or 0)}
+    if not novas:
+        return None
+    det = _detalhes_das_copias(con, novas)
+    agora = _datetime.now()
+    linhas = []
+    for cid in sorted(novas):
+        d = det.get(cid) or {}
+        linhas.append([agora.date().isoformat(), agora.strftime("%H:%M:%S"),
+                       origem, caixa or slot_id, slot_id, d.get("nm", "?"),
+                       d.get("set_code", ""), d.get("lang", ""),
+                       d.get("finish", ""), novas[cid], cid])
+    alvo = csv_path or ficheiro_registos_caixas()
+    alvo.parent.mkdir(parents=True, exist_ok=True)
+    novo = not alvo.exists()
+    with alvo.open("a", encoding="utf-8", newline="") as fh:
+        if novo:
+            fh.write(CABECALHO_REGISTOS_CAIXAS + "\n")
+        for campos in linhas:
+            fh.write(",".join('"' + str(c).replace('"', "'") + '"'
+                              for c in campos) + "\n")
+    return alvo
+
+
 def registar_marcadas(con, res: dict, slot_id: str,
-                      marcadas=(), de_outra=()) -> dict:
+                      marcadas=(), de_outra=(), origem: str = "manual",
+                      csv_path: Path | None = None) -> dict:
     """Regista na `copy_allocation` **só as cópias que ele marcou**.
 
     André, 2026-09-08: *"Não é mais fácil confirmares que eu seleccionei todas as
@@ -4143,6 +4226,12 @@ def registar_marcadas(con, res: dict, slot_id: str,
     que o painel oferecia: um `copy_id` que esta caixa não pediu era registar uma
     carta que não está lá dentro. **Não contam para o «completa»** — esperá-las
     era impedir a caixa de fechar por causa de cartas que são de outra.
+
+    **SEM LISTA NÃO SE GRAVA** (André, 2026-09-09). Um registo sem `marcadas`
+    seria o vault a decidir por ele o que está dentro da caixa, e é assim que as
+    duas cartas que ele não tem foram parar ao Cloud cEDH. Levanta `ValueError`:
+    o `webapp` traduz isso num 400 com a razão, e um pedido em branco tem de
+    falhar alto em vez de escrever a alocação calculada.
     """
     s = next((x for x in res["slots"] if x["slot"] == slot_id), None)
     if s is None:
@@ -4150,6 +4239,9 @@ def registar_marcadas(con, res: dict, slot_id: str,
                 "antes": [], "caixa": slot_id, "de_outra": 0}
     caixas_deck = caixas_de_deck(res["slots"])
     marcadas = {int(c) for c in marcadas}
+    if not marcadas and not de_outra:
+        raise ValueError("sem cartas marcadas: o registo grava só as cópias que "
+                         "marcaste, uma a uma")
     linhas = linhas_parciais(s, caixas_deck, marcadas)
     escolhidas = {int(c) for c in de_outra}
     extra = 0
@@ -4164,6 +4256,10 @@ def registar_marcadas(con, res: dict, slot_id: str,
     falta = sum(m["q"] for m in movimentos_de_entrada(s, caixas_deck)
                 if m["copy_id"] not in marcadas)
     antes = alocacao_da_caixa(con, slot_id)
+    # O CSV ANTES da base, como na venda e no «não encontrei»: uma linha a mais
+    # vê-se, uma cópia que entrou numa caixa sem rasto não.
+    regista_entradas(con, slot_id, s["nome"], {c: q for c, q, _t in antes},
+                     linhas, origem, csv_path)
     con.execute("DELETE FROM copy_allocation WHERE slot = ?", (slot_id,))
     con.executemany(
         "INSERT INTO copy_allocation (copy_id, slot, quantity, placed_at) "
@@ -4342,8 +4438,8 @@ def linhas_da_caixa(s: dict) -> dict[int, int]:
     return {cid: q for cid, q in linhas.items() if q > 0}
 
 
-def guardar_arrumacao(con, res: dict, actualizar: set[str] | frozenset = frozenset()
-                      ) -> int:
+def guardar_arrumacao(con, res: dict, actualizar: set[str] | frozenset = frozenset(),
+                      csv_path: Path | None = None) -> int:
     """Grava a alocação de hoje como a arrumação REAL ("já arrumei tudo").
 
     A partir daqui, `local()` diz *"está na caixa X"* em vez do balde, e o
@@ -4363,6 +4459,9 @@ def guardar_arrumacao(con, res: dict, actualizar: set[str] | frozenset = frozens
     """
     congeladas = {s["slot"] for s in res["slots"]
                   if s.get("congelada") and s["slot"] not in actualizar}
+    antes: dict[str, dict[int, int]] = defaultdict(dict)
+    for r in con.execute("SELECT copy_id, slot, quantity FROM copy_allocation"):
+        antes[r["slot"]][r["copy_id"]] = r["quantity"]
     # Um registo que a regra da própria caixa recusa não se preserva, nem numa
     # caixa congelada (2026-09-09, ver `contradiz_a_caixa`). O vault já deixou de
     # contar com ele em todo o lado; mantê-lo aqui era a "linha órfã que mentia
@@ -4376,6 +4475,14 @@ def guardar_arrumacao(con, res: dict, actualizar: set[str] | frozenset = frozens
     novas = [(cid, s["slot"], q) for s in res["slots"]
              if s["slot"] not in congeladas
              for cid, q in sorted(linhas_da_caixa(s).items())]
+    # O rasto do que ENTRA em cada caixa por este botão (ver `regista_entradas`).
+    # Este caminho não passa pelas checkboxes — é ele a dizer *"arrumei tudo"* —,
+    # e por isso é dos que mais interessa poder reler daqui a um mês.
+    for s in res["slots"]:
+        if s["slot"] in congeladas:
+            continue
+        regista_entradas(con, s["slot"], s["nome"], antes.get(s["slot"]) or {},
+                         linhas_da_caixa(s), "arrumar", csv_path)
     con.execute("DELETE FROM copy_allocation")
     con.executemany(
         "INSERT INTO copy_allocation (copy_id, slot, quantity, placed_at) "
@@ -4384,7 +4491,8 @@ def guardar_arrumacao(con, res: dict, actualizar: set[str] | frozenset = frozens
     return sum(q for _c, _s, q in manter + novas)
 
 
-def actualizar_caixa(con, res: dict, slot_id: str) -> int:
+def actualizar_caixa(con, res: dict, slot_id: str,
+                     csv_path: Path | None = None) -> int:
     """"Actualizei": aplica o delta de UMA caixa congelada e mais nada.
 
     O gesto que o André descreveu — *"apenas mexer para actualizar"* — é abrir a
@@ -4396,6 +4504,9 @@ def actualizar_caixa(con, res: dict, slot_id: str) -> int:
     if alvo is None:
         return 0
     linhas = linhas_da_caixa(alvo)
+    antes = {c: q for c, q, _t in alocacao_da_caixa(con, slot_id)}
+    regista_entradas(con, slot_id, alvo["nome"], antes, linhas, "actualizar",
+                     csv_path)
     con.execute("DELETE FROM copy_allocation WHERE slot = ?", (slot_id,))
     con.executemany(
         "INSERT INTO copy_allocation (copy_id, slot, quantity, placed_at) "
@@ -4471,6 +4582,71 @@ def desmontar_caixa(con, slot_id: str, nome: str | None = None,
     con.commit()
     return {"linhas": linhas, "copias": copias, "backup": str(bkp),
             "log": str(alvo)}
+
+
+def ficheiro_correcoes() -> Path:
+    """`data/correcoes.log` — as correcções à mão feitas ao que a base afirma.
+
+    Ao lado da base, como o `desmontar.log`. Uma correcção é a única escrita que
+    não vem de um gesto dele na página: tem de deixar dito o QUÊ, o PORQUÊ e onde
+    ficou o backup, senão daqui a um mês a única prova de que aconteceu é um
+    número que mudou.
+    """
+    from . import db                                        # noqa: PLC0415
+    return db.pasta_dados() / "correcoes.log"
+
+
+def corrigir_alocacao(con, slot_id: str, copias, motivo: str,
+                      etiqueta: str = "alocacao",
+                      log_path: Path | None = None) -> dict:
+    """Tira da `copy_allocation` de UMA caixa cópias que ele diz não estar lá.
+
+    André, 2026-09-09: *"no Cloud cEDH, dizes que tenho Chromatic Star mas eu não
+    tenho, dizes que tenho Grinding Station, mas também não tenho."* As duas
+    tinham linha na `copy_allocation` desde o registo em bloco das 10:39 — uma
+    afirmação sobre a estante que ele nunca fez. Isto desfaz UMA afirmação
+    dessas, e não mexe nas cópias: elas continuam na colecção (quem as tira de
+    circulação é o *«não encontrei estas»*, e quem as apaga é o *«vendida»*).
+
+    Com backup e registo, como o `desmontar_caixa` — o que se perde aqui é a
+    única coisa que a base sabia sobre onde a carta estava. **Idempotente**: sem
+    nada para tirar não faz backup nem escreve linha nenhuma, para se poder
+    correr duas vezes sem sujar o rasto.
+    """
+    ids = [int(c) for c in copias]
+    if not ids:
+        return {"linhas": 0, "copias": 0, "backup": None, "copy_ids": []}
+    marcas = ",".join("?" * len(ids))
+    try:
+        alvo_linhas = [(r["copy_id"], r["quantity"]) for r in con.execute(
+            f"SELECT copy_id, quantity FROM copy_allocation "
+            f"WHERE slot = ? AND copy_id IN ({marcas})", [slot_id, *ids])]
+    except sqlite3.OperationalError:
+        return {"linhas": 0, "copias": 0, "backup": None, "copy_ids": []}
+    if not alvo_linhas:
+        return {"linhas": 0, "copias": 0, "backup": None, "copy_ids": []}
+    det = _detalhes_das_copias(con, [c for c, _q in alvo_linhas])
+    carimbo = _datetime.now().strftime("%Y%m%d-%H%M")
+    pasta = _pasta_backups(con)
+    pasta.mkdir(parents=True, exist_ok=True)
+    bkp = pasta / f"vault-{carimbo}-{etiqueta}.db"
+    if not bkp.exists():                  # duas correcções no mesmo minuto: um só
+        con.execute("VACUUM main INTO ?", (str(bkp),))
+    registo = log_path or ficheiro_correcoes()
+    registo.parent.mkdir(parents=True, exist_ok=True)
+    descr = "; ".join(f'{q}x {(det.get(c) or {}).get("nm", "?")} '
+                      f'({(det.get(c) or {}).get("set_code", "?")}) #{c}'
+                      for c, q in alvo_linhas)
+    with registo.open("a", encoding="utf-8") as fh:     # ANTES de a base mexer
+        fh.write(f"{carimbo} corrigir-alocacao slot={slot_id!r} "
+                 f"copias=[{descr}] motivo={motivo!r} backup={bkp.name}\n")
+    con.execute(f"DELETE FROM copy_allocation WHERE slot = ? "
+                f"AND copy_id IN ({marcas})", [slot_id, *ids])
+    con.commit()
+    return {"linhas": len(alvo_linhas),
+            "copias": sum(q for _c, q in alvo_linhas),
+            "backup": str(bkp), "log": str(registo),
+            "copy_ids": [c for c, _q in alvo_linhas]}
 
 
 def report(con, cfg_slots: list[dict] | None = None) -> dict:

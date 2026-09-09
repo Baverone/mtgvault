@@ -163,6 +163,16 @@ def main(argv=None):
     pm.add_argument("--tudo", action="store_true",
                     help="mostrar todos os arquétipos, não só o top-10 e o top-5 combo")
 
+    ca = sub.add_parser("corrigir-alocacao",
+                        help="tirar de uma caixa cópias que ele diz não estar lá")
+    ca.add_argument("--slot", required=True, help="o id da caixa (ex.: cedh-cloud)")
+    ca.add_argument("--copias", required=True,
+                    help="copy_id separados por vírgula (ex.: 694,403)")
+    ca.add_argument("--motivo", required=True,
+                    help="porquê — vai para o data/correcoes.log")
+    ca.add_argument("--etiqueta", default="alocacao",
+                    help="sufixo do backup (vault-<data>-<etiqueta>.db)")
+
     mc = sub.add_parser("migrar-caixas",
                         help="colecao_config.json: `loadout` -> `caixas` (v6)")
     mc.add_argument("--dry-run", action="store_true",
@@ -475,6 +485,20 @@ def main(argv=None):
 
         elif args.cmd == "migrar-coleccao-unica":
             _migrar(con, dry_run=args.dry_run, com_backup=not args.sem_backup)
+
+        elif args.cmd == "corrigir-alocacao":
+            ids = [int(x) for x in args.copias.replace(";", ",").split(",")
+                   if x.strip()]
+            r = loadout.corrigir_alocacao(con, args.slot, ids, args.motivo,
+                                          etiqueta=args.etiqueta)
+            if not r["linhas"]:
+                print(f"{args.slot}: nenhuma dessas cópias estava registada "
+                      f"nesta caixa — nada a corrigir")
+            else:
+                print(f"{args.slot}: {r['copias']} cópia(s) em {r['linhas']} "
+                      f"linha(s) fora da caixa {r['copy_ids']}\n"
+                      f"  backup {Path(r['backup']).name}\n"
+                      f"  registo {r['log']}")
 
         elif args.cmd == "migrar-caixas":
             r = caixas.migrar_ficheiro(dry_run=args.dry_run)

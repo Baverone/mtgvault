@@ -118,6 +118,16 @@ def _caixa(con):
     return deckboxes.payload(con, rep)["caixas"][0], rep
 
 
+def _regista(con, slot_id):
+    """O *"sleevado e na caixa"* com tudo marcado — desde 2026-09-09 o registo
+    grava só as cópias marcadas (ver `test_registo_marcadas.py`)."""
+    rep = loadout.report(con)
+    s = next(x for x in rep["slots"] if x["slot"] == slot_id)
+    return loadout.registar_marcadas(
+        con, rep, slot_id, [m["copy_id"] for m in loadout.movimentos_de_entrada(
+            s, loadout.caixas_de_deck(rep["slots"]))])
+
+
 def _abas(con, editable=False):
     """`{aba: HTML}` — o que o browser mostraria. `None` sem `node`."""
     if not shutil.which("node"):
@@ -201,7 +211,7 @@ def caso_desmontar_limpa_e_regista():
     da migração — sem backup e sem rasto."""
     repor()
     con = base()
-    assert webapp.marcar_na_caixa(con, "a", True) == 4
+    assert _regista(con, "a")["copias"] == 4
     assert con.execute("SELECT COUNT(*) c FROM copy_allocation"
                        ).fetchone()["c"] == 3, "três lotes, quatro cópias"
 
@@ -230,7 +240,7 @@ def caso_o_botao_desmontar_esta_na_caixa_com_cartas_dentro():
     con = base()
     c, _rep = _caixa(con)
     assert c["arrumada"] is False and c["montado"] is False
-    webapp.marcar_na_caixa(con, "a", True)
+    _regista(con, "a")
     c, _rep = _caixa(con)
     assert c["arrumada"] is True, "tem linhas na copy_allocation"
 

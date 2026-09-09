@@ -529,54 +529,37 @@ def desmontar(con, slot_id: str, nome: str | None = None) -> dict:
 
 
 
-def marcar_na_caixa(con, slot_id: str, dentro: bool,
-                    de_outra: list | None = None) -> int:
-    """"Sleevado e na caixa": regista as cartas desta caixa como estando lá.
+class SemLista(ValueError):
+    """Um pedido de registo que não traz a lista de cópias marcadas.
 
-    É o mesmo mecanismo do "já arrumei tudo", limitado a uma caixa. Substituiu a
-    versão antiga, que reservava as cartas do BALDE do deck
-    (`copies.reserved_deck_id`): no modelo de colecção única a caixa já não é um
-    balde, e as cartas de uma caixa podem vir de vários sítios — os quatro Utrom
-    Monitor do Pauper vêm do SPML.
-
-    **MONTAR FORA DE ORDEM** (André, 2026-09-08): `de_outra` são os `copy_id`
-    que ele MARCOU no bloco «destinadas a outra caixa» — cópias que a alocação
-    prometeu a uma caixa por montar e que ele decidiu meter nesta. A partir daí
-    a `copy_allocation` manda sobre a prioridade: a corrida seguinte vê a cópia
-    dentro desta caixa (`_noutra_caixa`) e a outra passa a dizer *"em X"*, que
-    agora é verdade. Só entram as que o painel oferecia — um `copy_id` que esta
-    caixa não pediu era registar uma carta que não está lá dentro.
+    André, 2026-09-09, à letra: *"se eu não seleccionar no deck que meti a carta,
+    com checkmark, é porque eu não a tenho e estás a fazer confusão."* Até aqui o
+    *"sleevado e na caixa"* gravava a alocação CALCULADA — e foi assim que 65
+    linhas entraram no Cloud cEDH às 10:39 de 09/09, duas delas de cartas que ele
+    não tem. Um pedido sem lista deixou de ser um registo de tudo: é um **400**
+    com a razão, para uma página velha no telemóvel falhar alto em vez de
+    escrever na estante uma afirmação que ninguém fez.
     """
-    if not dentro:
-        n = con.execute("DELETE FROM copy_allocation WHERE slot = ?",
-                        (slot_id,)).rowcount
-        con.commit()
-        return n
-    rep = loadout.report(con)
-    alvo = next((s for s in rep["slots"] if s["slot"] == slot_id), None)
-    if alvo is None:
-        return 0
-    # A MESMA lista que o "já arrumei tudo" grava (`loadout.linhas_da_caixa`).
-    # Estava reescrita aqui, e por isso ficou de fora a correcção de 2026-09-08
-    # — as cópias das linhas INCOMPLETAS são desta caixa e têm de ser gravadas,
-    # senão o painel manda-o tirá-las da gaveta e no dia seguinte outra vez.
-    linhas: dict[int, int] = dict(loadout.linhas_da_caixa(alvo))
-    marcadas = {int(c) for c in (de_outra or [])}
-    if marcadas:
-        oferta = loadout.plano_montar(rep, slot_id).get("de_outra") or []
-        for mv in oferta:
-            if mv["copy_id"] in marcadas:
-                linhas[mv["copy_id"]] = linhas.get(mv["copy_id"], 0) + mv["q"]
-    con.execute("DELETE FROM copy_allocation WHERE slot = ?", (slot_id,))
-    con.executemany(
-        "INSERT INTO copy_allocation (copy_id, slot, quantity, placed_at) "
-        "VALUES (?,?,?,datetime('now'))",
-        [(cid, slot_id, q) for cid, q in sorted(linhas.items())])
-    con.commit()
-    return sum(linhas.values())
 
 
-def registar_parcial(con, cfg, slot_id: str, marcadas, de_outra=()) -> dict:
+def _marcadas_do_pedido(dados: dict, act: str) -> list[int]:
+    """Os `copy_id` que o browser diz que ele marcou. Sem eles não se grava.
+
+    A diferença entre *"não mandou lista"* e *"mandou uma lista vazia"* não
+    interessa aqui: as duas querem dizer que não há nada confirmado, e as duas
+    têm de ser recusadas. O que interessa é a mensagem dizer o que fazer.
+    """
+    lista = dados.get("copias")
+    if not isinstance(lista, list) or not lista:
+        raise SemLista(
+            f"o registo ({act}) só grava as cópias que marcaste, e este pedido "
+            f"não trouxe nenhuma. Marca as cartas que meteste na caixa e "
+            f"carrega outra vez (se a página é de antes de hoje, recarrega-a).")
+    return [int(c) for c in lista]
+
+
+def registar_parcial(con, cfg, slot_id: str, marcadas, de_outra=(),
+                     origem: str = "manual") -> dict:
     """Regista as cópias MARCADAS de uma caixa, e ajusta-lhe o estado.
 
     André, 2026-09-08, à letra: *"Não é mais fácil confirmares que eu seleccionei
@@ -593,11 +576,16 @@ def registar_parcial(con, cfg, slot_id: str, marcadas, de_outra=()) -> dict:
     `permanente` (está a ficar com as cartas, e é isso que `permanente` quer
     dizer), uma `permanente` completa passa a `montada`, e uma que já se diz
     montada continua montada — registar-lhe um delta não é desmontá-la.
+
+    É o ÚNICO caminho que mete cartas numa caixa a partir da página (2026-09-09).
+    O *"sleevado e na caixa"* e o *"sim, está montada assim"* eram um segundo, e
+    esse gravava a alocação calculada em vez do que ele marcou.
     """
     rep = loadout.report(con)
     s = caixas.caixa_do_cfg(cfg, slot_id)
     antes = caixas.estado_de(s)
-    r = loadout.registar_marcadas(con, rep, slot_id, marcadas, de_outra)
+    r = loadout.registar_marcadas(con, rep, slot_id, marcadas, de_outra,
+                                  origem=origem)
     if r["completa"]:
         novo = caixas.MONTADA
     elif antes == caixas.CANDIDATA:
@@ -859,6 +847,12 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"erro": f"a caixa {e.args[0]!r} já não existe no "
                                     f"colecao_config.json — recarrega a página"}, 409)
                 return
+            except SemLista as e:
+                # ANTES do `ValueError` (de que é subclasse): um registo sem
+                # lista não é um pedido que deixou de bater com a base — é um
+                # pedido malformado, e o 400 diz-lhe isso mesmo.
+                self._json({"erro": str(e)}, 400)
+                return
             except ValueError as e:
                 # Um pedido que já não bate com a base: a linha das faltas que
                 # ele carregou já não está em falta, ou a edição que veio no
@@ -890,18 +884,17 @@ class Handler(BaseHTTPRequestHandler):
             elif act in ("subir", "descer"):
                 msg = mover(con, cfg, slot_id, -1 if act == "subir" else 1)
                 escrever_config(cfg)
-            elif act == "montado":
+            elif act == "montado" and caixas.estado_de(
+                    caixas.caixa_do_cfg(cfg, slot_id)) == caixas.MONTADA:
+                # Só o sentido «tirar da caixa» é que ainda é um gesto próprio.
+                # O sentido contrário — meter cartas na caixa — passou a ser o
+                # `registar`, e por isso exige a lista do que ele marcou.
                 novo, nome = alternar_montada(cfg, slot_id)
+                assert novo is False                # já estava montada: desliga
                 escrever_config(cfg)
-                if not novo:              # é uma desmontagem: backup e registo
-                    r = desmontar(con, slot_id, nome)
-                    msg = (f"{nome}: desmontada — {r['copias']} cópias voltam "
-                           f"à colecção ({r['linhas']} linhas)")
-                else:
-                    n = marcar_na_caixa(con, slot_id, novo, de_outra)
-                    msg = (f"{nome}: {n} cópias registadas na caixa"
-                           + (f" ({len(de_outra)} eram de outra caixa — ela "
-                              f"passa a vir buscá-las aqui)" if de_outra else ""))
+                r = desmontar(con, slot_id, nome)
+                msg = (f"{nome}: desmontada — {r['copias']} cópias voltam "
+                       f"à colecção ({r['linhas']} linhas)")
             elif act == "desmontar":
                 # O inverso do "sleevado e na caixa": as cartas voltam à gaveta.
                 # Passa pelo mesmo motor do botão de cima (backup + registo no
@@ -914,19 +907,17 @@ class Handler(BaseHTTPRequestHandler):
                        f"colecção ({r['linhas']} linhas)"
                        + (f", backup em {Path(r['backup']).name}"
                           if r.get("backup") else ""))
-            elif act == "confirmar":
-                # A caixa JÁ se diz montada (`estado: montada`) e o vault não
-                # sabe o que lá está: o que falta é registá-lo. Não mexe no
-                # config — o estado já está certo, o que faltava era a estante.
-                nome = caixas.caixa_do_cfg(cfg, slot_id).get("nome") or slot_id
-                n = marcar_na_caixa(con, slot_id, True, de_outra)
-                msg = f"{nome}: {n} cópias confirmadas dentro da caixa"
-            elif act == "registar":
-                # A BARRA DE MONTAGEM (André, 2026-09-08): regista só o que ele
-                # marcou. É o mesmo gesto do "sleevado e na caixa" a meio — uma
-                # caixa monta-se aos poucos, e até aqui só havia tudo-ou-nada.
-                marcadas = [int(c) for c in (dados.get("copias") or [])]
-                r = registar_parcial(con, cfg, slot_id, marcadas, de_outra)
+            elif act in ("registar", "montado", "confirmar"):
+                # UM SÓ CAMINHO PARA METER CARTAS NUMA CAIXA (2026-09-09). Os
+                # três nomes chegam aqui — o `montado` e o `confirmar` são de
+                # páginas antigas — e todos exigem a lista de cópias marcadas:
+                # gravar a alocação calculada é o que pôs no Cloud cEDH duas
+                # cartas que ele não tem. A `origem` diz se o clique foi dele
+                # (`manual`) ou o auto-registo da última marca (`auto`).
+                marcadas = _marcadas_do_pedido(dados, act)
+                origem = "auto" if dados.get("origem") == "auto" else "manual"
+                r = registar_parcial(con, cfg, slot_id, marcadas, de_outra,
+                                     origem)
                 escrever_config(cfg)
                 msg = (f'{r["nome"]}: {r["copias"]} cópias na caixa'
                        + (" — montada ✅" if r["completa"]

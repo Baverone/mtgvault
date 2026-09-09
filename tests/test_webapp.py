@@ -175,7 +175,13 @@ def caso_gravar_o_config_a_serio_nao_o_estraga():
 def caso_sleevado_e_na_caixa():
     repor()
     con = base()
-    n = webapp.marcar_na_caixa(con, "a", True)
+    # Desde 2026-09-09 o registo grava as cópias MARCADAS, e nada mais (ver
+    # `test_registo_marcadas.py`): marcar tudo é dizer que ele as encontrou.
+    rep = loadout.report(con)
+    s = next(x for x in rep["slots"] if x["slot"] == "a")
+    marcadas = [m["copy_id"] for m in loadout.movimentos_de_entrada(
+        s, loadout.caixas_de_deck(rep["slots"]))]
+    n = loadout.registar_marcadas(con, rep, "a", marcadas)["copias"]
     assert n == 1, n
     linhas = con.execute("SELECT slot, quantity FROM copy_allocation").fetchall()
     assert [(r["slot"], r["quantity"]) for r in linhas] == [("a", 1)], linhas
@@ -183,8 +189,9 @@ def caso_sleevado_e_na_caixa():
     rep = loadout.report(con, webapp.ler_config()["caixas"])
     assert next(s for s in rep["slots"] if s["slot"] == "a")["origens"] == {"A": 1}
     # E tirar da caixa desfaz — só daquela caixa.
-    assert webapp.marcar_na_caixa(con, "b", False) == 0
-    assert webapp.marcar_na_caixa(con, "a", False) == 1
+    log = _TMP / "desmontar.log"
+    assert loadout.desmontar_caixa(con, "b", "B", log_path=log)["copias"] == 0
+    assert loadout.desmontar_caixa(con, "a", "A", log_path=log)["copias"] == 1
     assert con.execute("SELECT COUNT(*) c FROM copy_allocation").fetchone()["c"] == 0
     print("sleevado e na caixa grava (e tira) so aquela caixa")
 

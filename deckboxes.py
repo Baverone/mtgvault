@@ -1072,6 +1072,17 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
  .toast.aviso{display:flex;align-items:center;gap:12px;bottom:96px;z-index:11;
    background:#123020;border-color:#2f6a45}
  .toast.aviso .btn{margin:0}
+ /* O RESUMO ANTES DE GRAVAR (2026-09-09): três saídas — registar e ir buscar o
+    resto, registar e dizer que não tem o resto, ou cancelar. Um `confirm()` do
+    browser só tem duas, e a do meio muda a colecção inteira. */
+ .modal{position:fixed;inset:0;z-index:12;background:#000a;display:flex;
+   align-items:center;justify-content:center;padding:16px}
+ .modal .cx{background:#111823;border:1px solid var(--line2);border-radius:12px;
+   padding:16px 18px;max-width:440px;box-shadow:0 12px 40px #000b}
+ .modal .cx b{font-size:14px}
+ .modal .cx p{margin:8px 0 0;font-size:13px}
+ .modal .mb{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+ .modal .nota{color:var(--muted);font-size:11.5px}
  /* BARRA DE MONTAGEM (André, 2026-09-08): o «N de M» e o botão de registar
     sempre à mão, fixos no fundo do ecrã. O botão de hoje vive no fim do passo 1
     — 58 linhas abaixo — e à frente da estante, no telemóvel, ele não o achou. */
@@ -1526,11 +1537,14 @@ function montarHTML(c) {
     h += basicasHTML(M);
     h += deOutraHTML(M);
     /* O botão só se DESENHA no modo edição: no site publicado o endpoint não
-       existe, e um botão que não faz nada é pior do que não haver botão. */
+       existe, e um botão que não faz nada é pior do que não haver botão.
+       E é o MESMO gesto da barra (`data-reg`, não `data-act`): desde 2026-09-09
+       um registo grava as cópias MARCADAS, e este botão gravava a alocação
+       calculada — dois caminhos, e o segundo era o que metia na caixa cartas
+       que ele nunca marcou. */
     h += D.editable
-      ? `<div class="seg"><button class="btn pri" data-act="${c.confirmar
-            ? 'confirmar' : 'montado'}" data-slot="${esc(c.slot)}">`
-        + (c.confirmar ? '✅ Sim, está montada assim'
+      ? `<div class="seg"><button class="btn pri" data-reg="${esc(c.slot)}">`
+        + (c.confirmar ? '✅ Sim, está montada com estas'
                        : '📦 Sleevado e na caixa') + `</button></div>`
       : `<p class="nota">Quando estiver tudo sleevado na caixa, regista-o no `
         + `modo edição (<code>python webapp.py</code> no PC, ou o QR da aba `
@@ -1585,17 +1599,6 @@ function montarHTML(c) {
    «N de M», a barra de progresso e o botão de registar SEMPRE à mão. Só no modo
    edição: no site publicado o endpoint não existe, e uma barra que conta cópias
    e não regista nada seria pior do que barra nenhuma. */
-
-/* Que acção regista. O gesto de hoje continua a ser o mesmo — «sleevado e na
-   caixa» / «sim, está montada assim» — e não se inventa um segundo caminho para
-   ele. O `registar` novo é o que faltava: o registo A MEIO.
-   Uma caixa que JÁ se diz montada nunca usa o `montado`: esse ALTERNA, e
-   alterná-lo aqui desmontava-a — que é o contrário do que o botão diz. */
-function actoDeRegisto(c, completo) {
-  if (!completo) return 'registar';
-  if (c.confirmar) return 'confirmar';
-  return c.montado ? 'registar' : 'montado';
-}
 
 function barraHTML(c) {
   const e = montarEstado(c);
@@ -1685,23 +1688,75 @@ function autoRegistar() {
   const c = D.caixas.find(x => x.slot === aba);
   if (!c || !c.montar) return;
   if (!montarEstado(c).completo) return;
-  registar(c, $('#b-reg'));
+  /* Só se dispara com TUDO marcado, e por isso nunca traz o resumo por baixo:
+     com zero por marcar não há a pergunta do que lhes fazer. */
+  registar(c, $('#b-reg'), 'auto');
 }
 
-async function registar(c, btn) {
+/* O RESUMO ANTES DE GRAVAR (2026-09-09). Um registo a meio deixa duas listas na
+   estante: as que ele meteu na caixa e as que não encontrou. Gravar as primeiras
+   e ficar calado sobre as segundas era o vault a continuar a contar com cartas
+   que ele acabou de não achar — e é essa contagem que lhe enche a caixa de
+   cartas que não tem. Por isso a pergunta é a dele, com as duas respostas ao
+   lado; a terceira, `cancelar`, não escreve nada.
+
+   Devolve `'registar'`, `'nao-encontrei'` ou `null`. Um `confirm()` não chega:
+   são três saídas, e a do meio muda a colecção inteira. */
+function perguntaRegisto(c, e, faltam) {
+  return new Promise(res => {
+    const q = faltam.reduce((s, i) => s + i.q, 0);
+    const d = document.createElement('div');
+    d.className = 'modal';
+    d.innerHTML = `<div class="cx"><b>Registar ${cop(e.n)} em ${esc(c.nome)}</b>`
+      + `<p>Ficam <b>${cop(q)}</b> por marcar nesta caixa. O que lhes faço?</p>`
+      + `<div class="mb">`
+      + `<button class="btn pri" id="m-so">Deixá-las por ir buscar</button>`
+      + `<button class="btn warn" id="m-ne">Não as tenho — tirar da colecção`
+      + `</button>`
+      + `<button class="btn" id="m-nao">Cancelar</button></div>`
+      + `<p class="nota">«Não as tenho» tira ${cop(q)} da colecção (deixam de `
+      + `contar em lado nenhum) e estas cartas voltam a ser compra. Fica na aba `
+      + `«Não encontradas», com a foto, e há «afinal encontrei». A base é `
+      + `copiada antes.</p></div>`;
+    document.body.appendChild(d);
+    const sai = v => { d.remove(); res(v); };
+    d.querySelector('#m-so').onclick = () => sai('registar');
+    d.querySelector('#m-ne').onclick = () => sai('nao-encontrei');
+    d.querySelector('#m-nao').onclick = () => sai(null);
+    d.onclick = ev => { if (ev.target === d) sai(null); };
+  });
+}
+
+async function registar(c, btn, origem) {
   const e = montarEstado(c);
   if (!e.n) return;
+  /* O que ficou por marcar. Com a regra dele — «se não seleccionei, é porque não
+     a tenho» — isto não pode passar em silêncio: ou ele diz que as vai buscar
+     depois, ou diz que não as tem. */
+  const faltam = e.itens.filter(i => !P.feitos[i.id]);
+  let tambem = false;
+  if (faltam.length) {
+    const escolha = await perguntaRegisto(c, e, faltam);
+    if (!escolha) return;
+    tambem = escolha === 'nao-encontrei';
+  }
   if (btn) btn.disabled = true;
-  const act = actoDeRegisto(c, e.completo);
   try {
-    const r = await gravar('api/caixa', { act, slot: c.slot, copias: e.copias,
+    const r = await gravar('api/caixa', { act: 'registar', slot: c.slot,
+                                          copias: e.copias, origem: origem || 'manual',
                                           de_outra: deOutraMarcadas(c) });
-    if (!r.ok && r.status !== 403 && r.status !== 409) {
+    if (!r.ok && r.status !== 400 && r.status !== 403 && r.status !== 409) {
       throw new Error('HTTP ' + r.status);
     }
     const j = await r.json();
     if (j.erro) throw new Error(j.erro);
     const vistos = limparFeitos(c.slot);
+    if (tambem) {
+      /* O registo primeiro: as marcadas entram na caixa e deixam de estar «por
+         encontrar», e o servidor recalcula o relatório antes de tirar nada. */
+      await naoEncontrei(c, null, [...new Set(faltam.map(i => i.copy))], true);
+      return;
+    }
     avisoRegisto(c, e.completo
       ? `✅ ${c.nome} registada como montada`
       : (j.msg || `${c.nome}: ${cop(e.n)} registadas`), vistos);
@@ -1764,17 +1819,21 @@ async function anularRegisto(c, vistos) {
    Pergunta-se antes, como no «vendida» e no «desmontar»: é reversível (há a aba
    «Não encontradas» e o «afinal encontrei»), mas muda o que a colecção inteira
    conta, e um toque enganado no telemóvel não pode fazer isso em silêncio. */
-async function naoEncontrei(c, btn) {
-  const e = montarEstado(c);
-  const porMarcar = e.itens.filter(i => !P.feitos[i.id]);
-  if (!porMarcar.length) return;
-  const q = porMarcar.reduce((s, i) => s + i.q, 0);
-  if (!confirm(`Marcar ${cop(q)} como NÃO ENCONTRADAS?\n\n`
-      + `Saem da colecção (deixam de contar em lado nenhum) e estas cartas `
-      + `voltam a ser compra. Ficam na aba «Não encontradas», com a foto, e há `
-      + `«afinal encontrei». A base é copiada antes.`)) return;
+async function naoEncontrei(c, btn, ids, jaPerguntado) {
+  let copias = ids;
+  if (!copias) {
+    const e = montarEstado(c);
+    const porMarcar = e.itens.filter(i => !P.feitos[i.id]);
+    if (!porMarcar.length) return;
+    const q = porMarcar.reduce((s, i) => s + i.q, 0);
+    if (!jaPerguntado && !confirm(`Marcar ${cop(q)} como NÃO ENCONTRADAS?\n\n`
+        + `Saem da colecção (deixam de contar em lado nenhum) e estas cartas `
+        + `voltam a ser compra. Ficam na aba «Não encontradas», com a foto, e há `
+        + `«afinal encontrei». A base é copiada antes.`)) return;
+    copias = [...new Set(porMarcar.map(i => i.copy))];
+  }
+  if (!copias.length) return;
   if (btn) btn.disabled = true;
-  const copias = [...new Set(porMarcar.map(i => i.copy))];
   try {
     const r = await gravar('api/caixa', { act: 'nao-encontrei', slot: c.slot,
                                           copias });
@@ -3080,6 +3139,13 @@ function ligar() {
   for (const b of document.querySelectorAll('[data-act]')) {
     b.onclick = () => accao(b.dataset.act, b.dataset.slot, b, b.dataset.aid,
                             b.dataset.nome, b.dataset.id);
+  }
+  /* O botão de registo do painel Montar. Passa pelo MESMO `registar()` da barra
+     (com o resumo e a pergunta do que fazer às que ficaram por marcar) — era
+     aqui que morava o segundo caminho, o que gravava a alocação calculada. */
+  for (const b of document.querySelectorAll('[data-reg]')) {
+    const c = D.caixas.find(x => x.slot === b.dataset.reg);
+    if (c) b.onclick = () => registar(c, b);
   }
   for (const l of document.querySelectorAll('.mv')) {
     const cb = l.querySelector('input');
