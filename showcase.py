@@ -198,7 +198,7 @@ def _mkcards(cards, owned_qty, sidmap, freq=None, nlists=0):
     return out
 
 
-def _archetype_html(a, name, tm, owned, owned_qty, sidmap):
+def _archetype_html(a, name, tm, owned, owned_qty, sidmap, aberto=False):
     members = a["members"]
     n = len(members)
     wt = sum(m.get("weight", 1.0) for m in members)   # prevalência PESADA (importância)
@@ -254,7 +254,18 @@ def _archetype_html(a, name, tm, owned, owned_qty, sidmap):
     else:
         seal = "🌐 online"
     evset = {m["event"] for m in members}
+    # DOBRADO NUM <details> (2026-09-09). Eram 4 320 imagens numa parede só, 1,2 MB
+    # de HTML: no telemóvel dele a página levava segundos a assentar e ninguém
+    # olha para o 30.º arquétipo de Modern. O `<summary>` fica com tudo o que se
+    # lê a passar os olhos (nome, cobertura, selos, barra) — o que se dobra é a
+    # grelha de cartas.
+    #
+    # NÃO se troca o `src` por um `data-src`: uma `<img loading="lazy">` dentro de
+    # um `<details>` fechado já não é descarregada (não tem caixa de layout), e a
+    # página tem de continuar a funcionar com o JavaScript desligado. O
+    # `data-src` dava o mesmo ganho e partia isso.
     return (f'<div class="deck">'
+            f'<details class="dk"{" open" if aberto else ""}><summary>'
             f'<div class="dtop"><b>{html.escape(name)}</b>'
             f'<span class="pct" style="color:{col}">{have}/{len(nb)} · {cov}%</span></div>'
             f'<div class="badges"><span class="bdg seal">{seal}</span>'
@@ -263,7 +274,7 @@ def _archetype_html(a, name, tm, owned, owned_qty, sidmap):
             f'<span class="bdg">{len(evset)} evento{"s" if len(evset) > 1 else ""}</span>'
             f'<span class="bdg dim">{html.escape(_shortev(leader["event"]))}</span></div>'
             f'<div class="bar"><span style="width:{cov}%;background:{col}"></span></div>'
-            f'{body}</div>')
+            f'</summary>{body}</details></div>')
 
 
 def build(con, out_path=None):
@@ -295,8 +306,11 @@ def build(con, out_path=None):
             continue
         act = " act" if not tabs else ""
         tabs += f'<button class="ftab{act}" data-f="{fmt}">{html.escape(lbl)} <span class="n">{len(d["clusters"])}</span></button>'
-        cards = "".join(_archetype_html(a, _name(a, d["df"]), tm, owned, owned_qty, sidmap)
-                        for a in d["clusters"])
+        # O primeiro de cada formato fica ABERTO: quem entra na aba tem de ver
+        # logo alguma coisa, e é o arquétipo com mais peso.
+        cards = "".join(_archetype_html(a, _name(a, d["df"]), tm, owned, owned_qty,
+                                        sidmap, aberto=(i == 0))
+                        for i, a in enumerate(d["clusters"]))
         evlist = ", ".join(
             f'{html.escape(_shortev(e))} <span class="sc">{"🏆" if s == "mtgtop8" else "🌐"}'
             f'{(" " + str(pl) + "j") if pl else ""}</span>'
@@ -328,6 +342,13 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
  .evh{color:var(--muted);font-size:12px;margin:8px 0 12px;line-height:1.6} .evh .sc{font-size:10px}
  .grid{display:grid;grid-template-columns:1fr;gap:12px}
  .deck{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+ /* O arquétipo dobra-se: o `summary` é o cabeçalho inteiro (nome, cobertura,
+    selos e barra) e a grelha de cartas só se desenha ao abrir. Sem marcador do
+    browser (fica mal com conteúdo em bloco lá dentro) — o chevron é nosso. */
+ details.dk>summary{cursor:pointer;list-style:none} details.dk>summary::-webkit-details-marker{display:none}
+ details.dk>summary .dtop b::before{content:"▸ ";color:var(--muted);font-weight:400}
+ details.dk[open]>summary .dtop b::before{content:"▾ "}
+ details.dk>summary:hover .dtop b{color:var(--accent)}
  .dtop{display:flex;justify-content:space-between;align-items:baseline;gap:8px} .dtop b{font-size:16px} .pct{font-weight:800;font-size:16px}
  .badges{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:7px 0} .bdg{font-size:11px;padding:2px 8px;border-radius:20px;background:#1e2531;color:var(--muted)} .bdg.seal{background:#2a2410;color:var(--gold);font-weight:700} .bdg.wt{background:#101c2e;color:#7fa8ff;font-weight:700} .bdg.dim{color:#5a6472}
  .bar{position:relative;height:8px;background:#0b0e14;border-radius:999px;overflow:hidden;margin:5px 0 2px} .bar span{position:absolute;left:0;top:0;bottom:0;border-radius:999px}

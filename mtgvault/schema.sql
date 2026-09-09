@@ -207,6 +207,32 @@ CREATE TABLE IF NOT EXISTS watched_snapshots (
 );
 CREATE INDEX IF NOT EXISTS ix_snap_watch ON watched_snapshots(watched_id, taken_at);
 
+-- Liga uma lista vigiada ao balde onde as cartas desse deck vivem.
+-- (2026-09-09) Esta tabela e a `deck_meta` existiam SÓ no vault.db do André:
+-- foram criadas à mão e nunca entraram aqui nem no `db._migrate()`. Numa base
+-- nova o `colecao_cor._watched_deck_pools` rebentava com "no such table:
+-- deck_collection" — o padrão do `event_tier`, mas a estoirar em vez de mentir.
+-- A definição é copiada TAL E QUAL da base dele (sem FK sobre `watched`), para
+-- uma base nova e a dele terem o mesmo esquema.
+CREATE TABLE IF NOT EXISTS deck_collection (
+    watched_id     INTEGER PRIMARY KEY,
+    sub_collection TEXT NOT NULL
+);
+
+-- Metadados por balde, do tempo em que as preferências dos decks viviam na base.
+-- HOJE NÃO É LIDA POR NINGUÉM: a decisão de 2026-09-07 foi que o que é
+-- preferência vive no `colecao_config.json` e o que é físico na
+-- `copy_allocation` (ver o cabeçalho do `webapp.py`). Fica declarada porque
+-- existe na base dele e o `schema.sql` tem de a descrever — não porque alguma
+-- página dependa dela.
+CREATE TABLE IF NOT EXISTS deck_meta (
+    sub_collection TEXT PRIMARY KEY,
+    format         TEXT,
+    pool           TEXT,
+    priority       INTEGER,
+    active         INTEGER DEFAULT 1
+);
+
 -- Último preço conhecido de cada carta/fonte/acabamento.
 -- O price_history só guarda MUDANÇAS (ver prices.write_prices), por isso esta
 -- tabela é que responde a "quanto vale hoje" sem varrer o histórico.
