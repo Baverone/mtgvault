@@ -17,8 +17,8 @@
     "Rishadan Port",
     "Siege-Gang Commander"
    ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
+   "primeira": "2026-09-09",
+   "ultima": "2026-09-09"
   },
   "13eb5a8587": {
    "formato": "premodern",
@@ -27,18 +27,18 @@
     "Brain Freeze",
     "Cabal Ritual",
     "Cephalid Coliseum",
+    "Dark Ritual",
     "Deep Analysis",
-    "Flash of Insight",
     "Ill-Gotten Gains",
     "Intuition",
     "Lion's Eye Diamond",
     "Lotus Petal",
+    "Opt",
     "Polluted Delta",
-    "Recoup",
-    "Underground River"
+    "Recoup"
    ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
+   "primeira": "2026-09-09",
+   "ultima": "2026-09-09"
   },
   "202d412bd6": {
    "formato": "premodern",
@@ -51,8 +51,8 @@
     "Wall of Blossoms",
     "Werebear"
    ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
+   "primeira": "2026-09-09",
+   "ultima": "2026-09-09"
   },
   "26ac2152f1": {
    "formato": "premodern",
@@ -65,14 +65,14 @@
     "Karmic Guide",
     "Palinchron",
     "Phyrexian Devourer",
-    "Squee, Goblin Nabob",
     "Triskelion",
+    "Undiscovered Paradise",
     "Unearth",
     "Volrath's Shapeshifter",
     "Yavimaya Coast"
    ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
+   "primeira": "2026-09-09",
+   "ultima": "2026-09-09"
   },
   "2811f9a69f": {
    "formato": "premodern",
@@ -90,8 +90,8 @@
     "Wasteland",
     "Withered Wretch"
    ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
+   "primeira": "2026-09-09",
+   "ultima": "2026-09-09"
   },
   "3885b4666a": {
    "formato": "premodern",
@@ -110,8 +110,8 @@
     "Skycloud Expanse",
     "Swords to Plowshares"
    ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
+   "primeira": "2026-09-09",
+   "ultima": "2026-09-09"
   },
   "4841da6e7f": {
    "formato": "premodern",
@@ -121,8 +121,8 @@
     "Psychatog",
     "Upheaval"
    ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
+   "primeira": "2026-09-09",
+   "ultima": "2026-09-09"
   },
   "6bf428b231": {
    "formato": "premodern",
@@ -141,8 +141,8 @@
     "Wirewood Symbiote",
     "Yavimaya Granger"
    ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
+   "primeira": "2026-09-09",
+   "ultima": "2026-09-09"
   },
   "72740aba9b": {
    "formato": "premodern",
@@ -161,8 +161,8 @@
     "Vindicate",
     "Wrath of God"
    ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
+   "primeira": "2026-09-09",
+   "ultima": "2026-09-09"
   },
   "7fbd22f4da": {
    "formato": "legacy",
@@ -171,8 +171,8 @@
     "Frogmite",
     "Thoughtcast"
    ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
+   "primeira": "2026-09-09",
+   "ultima": "2026-09-09"
   },
   "844004e1fe": {
    "formato": "premodern",
@@ -184,15 +184,15 @@
     "Disenchant",
     "Dust Bowl",
     "Fact or Fiction",
-    "Flooded Strand",
     "Impulse",
     "Mana Leak",
+    "Mishra's Factory",
     "Powder Keg",
     "Standstill",
     "Wrath of God"
    ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
+   "primeira": "2026-09-09",
+   "ultima": "2026-09-09"
   },
   "95a99aa40d": {
    "formato": "premodern",
@@ -202,8 +202,8 @@
     "Exalted Angel",
     "Vindicate"
    ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
+   "primeira": "2026-09-09",
+   "ultima": "2026-09-09"
   },
   "a8113fbe00": {
    "formato": "premodern",
@@ -220,8 +220,8 @@
     "Pyrostatic Pillar",
     "Seal of Fire"
    ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
+   "primeira": "2026-09-09",
+   "ultima": "2026-09-09"
   },
   "b38b17cddb": {
    "formato": "premodern",
@@ -240,8 +240,8 @@
     "Stasis",
     "Thwart"
    ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
+   "primeira": "2026-09-09",
+   "ultima": "2026-09-09"
   },
   "b4dcbc5dbb": {
    "formato": "premodern",
@@ -259,8 +259,8 @@
     "Thwart",
     "Vision Charm"
    ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
+   "primeira": "2026-09-09",
+   "ultima": "2026-09-09"
   },
   "bfbba613c1": {
    "formato": "premodern",
@@ -279,8 +279,8 @@
     "Sterling Grove",
     "Wild Growth"
    ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
+   "primeira": "2026-09-09",
+   "ultima": "2026-09-09"
   },
   "c6998a9b7d": {
    "formato": "premodern",
@@ -299,8 +299,8 @@
     "Windswept Heath",
     "Winter's Grasp"
    ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
+   "primeira": "2026-09-09",
+   "ultima": "2026-09-09"
   },
   "e62ac61340": {
    "formato": "premodern",
@@ -310,8 +310,8 @@
     "Forsaken City",
     "Stasis"
    ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
+   "primeira": "2026-09-09",
+   "ultima": "2026-09-09"
   },
   "e637ee444c": {
    "formato": "premodern",
@@ -330,8 +330,8 @@
     "Wall of Blossoms",
     "Wall of Roots"
    ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
+   "primeira": "2026-09-09",
+   "ultima": "2026-09-09"
   },
   "e8c086499f": {
    "formato": "premodern",
@@ -342,8 +342,8 @@
     "Serra's Sanctum",
     "Sterling Grove"
    ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
+   "primeira": "2026-09-09",
+   "ultima": "2026-09-09"
   },
   "f0f384fbd7": {
    "formato": "premodern",
@@ -359,11 +359,10 @@
     "Mogg Fanatic",
     "Naturalize",
     "Seal of Fire",
-    "Treetop Village",
     "Wooded Foothills"
    ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
+   "primeira": "2026-09-09",
+   "ultima": "2026-09-09"
   },
   "f102883ccf": {
    "formato": "premodern",
@@ -373,8 +372,8 @@
     "Goblin Warchief",
     "Mogg Fanatic"
    ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
+   "primeira": "2026-09-09",
+   "ultima": "2026-09-09"
   },
   "f81c5e2a96": {
    "formato": "premodern",
@@ -383,18 +382,18 @@
     "Armageddon",
     "Battlefield Forge",
     "Call of the Herd",
-    "Disenchant",
     "Mox Diamond",
     "Nimble Mongoose",
     "Rith's Grove",
+    "Secluded Steppe",
     "Sylvan Library",
     "Terravore",
     "Tranquil Thicket",
     "Weathered Wayfarer",
     "Werebear"
    ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
+   "primeira": "2026-09-09",
+   "ultima": "2026-09-09"
   },
   "f886821817": {
    "formato": "premodern",
@@ -411,8 +410,8 @@
     "Psychatog",
     "Smother"
    ],
-   "primeira": "2026-09-08",
-   "ultima": "2026-09-08"
+   "primeira": "2026-09-09",
+   "ultima": "2026-09-09"
   }
  },
  "versao": 1
