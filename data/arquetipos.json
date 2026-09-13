@@ -10,7 +10,6 @@
     "Goblin Piledriver",
     "Goblin Ringleader",
     "Goblin Sharpshooter",
-    "Goblin Tinkerer",
     "Goblin Warchief",
     "Mogg Fanatic",
     "Rishadan Port",
@@ -18,7 +17,7 @@
     "Wasteland"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-12"
+   "ultima": "2026-09-13"
   },
   "13eb5a8587": {
    "formato": "premodern",
@@ -31,14 +30,14 @@
     "Deep Analysis",
     "Ill-Gotten Gains",
     "Infernal Contract",
+    "Intuition",
     "Lion's Eye Diamond",
     "Lotus Petal",
-    "Polluted Delta",
     "Recoup",
     "Tormod's Crypt"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-12"
+   "ultima": "2026-09-13"
   },
   "202d412bd6": {
    "formato": "premodern",
@@ -72,7 +71,7 @@
     "Yavimaya Coast"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-12"
+   "ultima": "2026-09-13"
   },
   "2811f9a69f": {
    "formato": "premodern",
@@ -85,13 +84,12 @@
     "Duress",
     "Hypnotic Specter",
     "Mishra's Factory",
-    "Ravenous Rats",
     "Smother",
     "Wasteland",
     "Withered Wretch"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-12"
+   "ultima": "2026-09-13"
   },
   "3885b4666a": {
    "formato": "premodern",
@@ -111,7 +109,7 @@
     "Skycloud Expanse"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-12"
+   "ultima": "2026-09-13"
   },
   "4841da6e7f": {
    "formato": "premodern",
@@ -142,7 +140,7 @@
     "Yavimaya Granger"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-12"
+   "ultima": "2026-09-13"
   },
   "72740aba9b": {
    "formato": "premodern",
@@ -162,7 +160,7 @@
     "Wrath of God"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-12"
+   "ultima": "2026-09-13"
   },
   "7fbd22f4da": {
    "formato": "legacy",
@@ -192,7 +190,7 @@
     "Wrath of God"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-12"
+   "ultima": "2026-09-13"
   },
   "95a99aa40d": {
    "formato": "premodern",
@@ -216,12 +214,11 @@
     "Incinerate",
     "Lightning Bolt",
     "Mogg Fanatic",
-    "Price of Progress",
     "Pyrostatic Pillar",
     "Seal of Fire"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-12"
+   "ultima": "2026-09-13"
   },
   "b38b17cddb": {
    "formato": "premodern",
@@ -241,7 +238,7 @@
     "Thwart"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-12"
+   "ultima": "2026-09-13"
   },
   "b4dcbc5dbb": {
    "formato": "premodern",
@@ -260,7 +257,7 @@
     "Vision Charm"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-12"
+   "ultima": "2026-09-13"
   },
   "bfbba613c1": {
    "formato": "premodern",
@@ -280,7 +277,7 @@
     "Wild Growth"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-12"
+   "ultima": "2026-09-13"
   },
   "c6998a9b7d": {
    "formato": "premodern",
@@ -300,7 +297,26 @@
     "Winter's Grasp"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-12"
+   "ultima": "2026-09-13"
+  },
+  "cc47c1209f": {
+   "formato": "premodern",
+   "nome": "Golgari Genesis",
+   "nucleo": [
+    "Cabal Therapy",
+    "Diabolic Edict",
+    "Duress",
+    "Genesis",
+    "Krosan Tusker",
+    "Llanowar Wastes",
+    "Pernicious Deed",
+    "Ravenous Baloth",
+    "Treetop Village",
+    "Wall of Blossoms",
+    "Wall of Roots"
+   ],
+   "primeira": "2026-09-13",
+   "ultima": "2026-09-13"
   },
   "e62ac61340": {
    "formato": "premodern",
@@ -320,18 +336,18 @@
     "Cabal Therapy",
     "Diabolic Edict",
     "Duress",
-    "Genesis",
-    "Haunting Echoes",
+    "Dust Bowl",
+    "Graveborn Muse",
     "Krosan Tusker",
     "Llanowar Wastes",
     "Pernicious Deed",
     "Ravenous Baloth",
+    "Smother",
     "Treetop Village",
-    "Wall of Blossoms",
-    "Wall of Roots"
+    "Wall of Blossoms"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-12"
+   "ultima": "2026-09-13"
   },
   "e8c086499f": {
    "formato": "premodern",
@@ -363,7 +379,7 @@
     "Wooded Foothills"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-12"
+   "ultima": "2026-09-13"
   },
   "f102883ccf": {
    "formato": "premodern",
@@ -394,12 +410,13 @@
     "Werebear"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-12"
+   "ultima": "2026-09-13"
   },
   "f886821817": {
    "formato": "premodern",
    "nome": "Psychatog",
    "nucleo": [
+    "Accumulated Knowledge",
     "Chain of Vapor",
     "Counterspell",
     "Duress",
@@ -413,7 +430,7 @@
     "Smother"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-12"
+   "ultima": "2026-09-13"
   }
  },
  "versao": 1
