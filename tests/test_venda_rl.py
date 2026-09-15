@@ -454,7 +454,7 @@ def caso_a_pagina_separa_o_que_se_vende_do_que_se_segura():
     cota(con, "Null Rod", HOJE.isoformat(), 100.0)          # parado: vende-se
     rep = loadout.report(con, [slot_legacy()])
     out = Path(tempfile.mkdtemp()) / "deckboxes.html"
-    deckboxes.build(con, out, rep=rep)
+    out.write_text(deckboxes.html_page(con, rep=rep), encoding="utf-8")
     d = json.loads(re.search(
         r'<script id="dados" type="application/json">(.*?)</script>',
         out.read_text(encoding="utf-8"), re.S).group(1).replace("<\\/", "</"))

@@ -90,10 +90,25 @@ def base():
     return con
 
 
+_PAGINA = None
+
+
 def pagina():
-    out = Path(tempfile.mkdtemp()) / "showcase.html"
-    showcase.build(base(), out)
-    return out.read_text(encoding="utf-8")
+    """`(casca, {fmt: html do painel como o browser o compõe}, {parte: obj})`.
+
+    Desde 2026-09-15 a página é uma CASCA e os arquétipos vivem em
+    `data/paginas/showcase/` — o painel de cada formato só existe depois do
+    `fetch`. O que aqui se lê é o HTML que o JavaScript compõe
+    (`showcase.html_de_formato`, o mesmo `juntar_arquetipo` do Python)."""
+    global _PAGINA
+    if _PAGINA is None:
+        out = Path(tempfile.mkdtemp()) / "showcase.html"
+        showcase.build(base(), out)
+        idx, partes = showcase.ler_dados(out)
+        paineis = {f["f"]: showcase.html_de_formato(out, f["f"])
+                   for f in idx["formatos"]}
+        _PAGINA = (out.read_text(encoding="utf-8"), paineis, partes)
+    return _PAGINA
 
 
 def _blocos(txt):
@@ -102,7 +117,8 @@ def _blocos(txt):
 
 
 def caso_cada_arquetipo_vai_dobrado():
-    txt = pagina()
+    _casca, paineis, partes = pagina()
+    txt = "".join(paineis.values())
     blocos = _blocos(txt)
     assert len(blocos) == 4, ("dois arquétipos em cada um dos dois formatos",
                               len(blocos))
@@ -114,17 +130,23 @@ def caso_cada_arquetipo_vai_dobrado():
         for pedaco in ('class="dtop"', 'class="pct"', 'class="badges"',
                        'class="bar"'):
             assert pedaco in cab, (pedaco, cab[:300])
-        assert "class=\"cards\"" in resto, "a grelha de cartas tem de ser o que dobra"
+        # A grelha de cartas é o que dobra: vem dentro do aberto, e num ficheiro
+        # próprio (`data-parte`) nos fechados — que só se vai buscar ao abrir.
+        parte = re.search(r'data-parte="([^"]+)"', attrs).group(1)
+        assert 'class="cards"' in partes[parte]["corpo"], parte
+        if " open" in attrs:
+            assert 'class="cards"' in resto, "o aberto leva a grelha já dentro"
+        else:
+            assert 'class="cards"' not in resto, "o fechado não traz a grelha"
     print("cada arquetipo vai num <details>, com o cabecalho no <summary>")
 
 
 def caso_um_aberto_por_formato():
-    txt = pagina()
-    abertos = [a for a, _c in _blocos(txt) if " open" in a]
+    _casca, paineis, _partes = pagina()
+    abertos = [a for p in paineis.values() for a, _c in _blocos(p) if " open" in a]
     assert len(abertos) == 2, ("um aberto por formato (Modern e Legacy)", abertos)
     # E é o PRIMEIRO de cada painel: quem entra na aba vê logo alguma coisa.
-    for painel in re.findall(r'<section class="fpanel[^"]*"[^>]*>(.*?)</section>',
-                             txt, re.S):
+    for painel in paineis.values():
         blocos = _blocos(painel)
         assert blocos, painel[:200]
         assert " open" in blocos[0][0], "o primeiro do painel tem de vir aberto"
@@ -133,29 +155,38 @@ def caso_um_aberto_por_formato():
 
 
 def caso_as_imagens_continuam_a_ter_src():
-    """A página tem de funcionar com o JavaScript desligado. Um `data-src` dava o
-    mesmo ganho e deixava-a com 4 000 quadrados vazios."""
-    txt = pagina()
+    """As imagens levam `src` a sério (um `data-src` deixava 4 000 quadrados
+    vazios), `loading="lazy"`, `decoding="async"` e as medidas — sem
+    `width`/`height` a grelha saltava a cada imagem que chegava (2026-09-15)."""
+    _casca, paineis, partes = pagina()
+    txt = "".join(paineis.values()) + "".join(
+        p["corpo"] for p in partes.values() if "corpo" in p)
     assert "data-src" not in txt, "as imagens não podem depender de JavaScript"
     imgs = re.findall(r"<img [^>]*>", txt)
     assert imgs, "a página tem de ter imagens"
     for i in imgs:
         assert 'src="http' in i and 'loading="lazy"' in i, i
-    print("as imagens mantem src a serio e loading=lazy: funciona sem JavaScript")
+        assert 'decoding="async"' in i and 'width="52"' in i and 'height="73"' in i, i
+    print("as imagens mantem src a serio, lazy, async e com medidas")
 
 
 def caso_o_browser_so_trata_as_imagens_abertas():
-    """O número que interessa: quantas `<img>` estão FORA de um `<details>`
-    fechado. Antes eram todas."""
-    txt = pagina()
-    total = len(re.findall(r"<img ", txt))
-    fechadas = sum(len(re.findall(r"<img ", c))
-                   for a, c in _blocos(txt) if " open" not in a)
-    fora = total - fechadas
-    assert 0 < fora < total, (fora, total)
+    """O número que interessa: quantas `<img>` o browser recebe ao abrir a
+    página. Antes eram todas; desde 2026-09-15 só as do arquétipo aberto de
+    cada formato — as outras vivem em ficheiros que só se vão buscar ao abrir."""
+    _casca, paineis, partes = pagina()
+    txt = "".join(paineis.values())
+    recebidas = len(re.findall(r"<img ", txt))
+    total = sum(len(re.findall(r"<img ", p["corpo"]))
+                for p in partes.values() if "corpo" in p)
+    assert 0 < recebidas < total, (recebidas, total)
     # Com dois arquétipos por formato e um aberto, é metade.
-    assert fora * 2 == total, (fora, total)
-    print(f"o browser trata {fora} de {total} imagens ao abrir a pagina")
+    assert recebidas * 2 == total, (recebidas, total)
+    # E o JSON de cada formato só leva o corpo do aberto.
+    for f, p in partes.items():
+        if "arquetipos" in p:
+            assert [bool(a.get("corpo")) for a in p["arquetipos"]] == [True, False], f
+    print(f"o browser recebe {recebidas} de {total} imagens ao abrir a pagina")
 
 
 def run():

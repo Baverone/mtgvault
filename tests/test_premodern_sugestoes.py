@@ -541,8 +541,8 @@ def caso_a_pagina_mostra_a_sugestao_e_a_venda():
     add(con, "Swords to Plowshares", 2)          # PT da era, sem deck nenhum
     rep = loadout.report(con, slots)
     out = Path(tempfile.mkdtemp()) / "deckboxes.html"
-    deckboxes.build(con, out, rep=rep)
-    texto = out.read_text(encoding="utf-8")
+    texto = deckboxes.html_page(con, rep=rep)   # o payload embutido
+    out.write_text(texto, encoding="utf-8")
     d = json.loads(re.search(
         r'<script id="dados" type="application/json">(.*?)</script>',
         texto, re.S).group(1).replace("<\\/", "</"))

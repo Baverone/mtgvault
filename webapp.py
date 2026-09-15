@@ -75,7 +75,7 @@ import subprocess
 import sys
 import threading
 import time as _time
-from datetime import date
+from datetime import date, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -138,6 +138,8 @@ PAGINAS_EDITAVEIS = {"/": deckboxes,
 
 # Os links do menu que o modo edição tem de reescrever para levarem o token.
 _LINK_HTML = re.compile(r'href="([a-z_]+\.html)"')
+# Os dados da Deckboxes: o índice e as partes (ver `deckboxes.partir`).
+_DADOS_DECKBOXES = re.compile(r"^/data/paginas/deckboxes(?:/([A-Za-z0-9_-]+))?\.json$")
 
 
 def com_token(corpo: str, tok: str) -> str:
@@ -698,6 +700,63 @@ def regenerar(con) -> None:
     """
     deckboxes.build(con, ROOT / "deckboxes.html")
     metagame.build(con, ROOT / "metagame.html")
+    _CACHE.clear()
+
+
+# ---------------------------------------------------------------------------
+# A CACHE do que custa caro (2026-09-15)
+# ---------------------------------------------------------------------------
+# Medido antes disto: um `GET /` demorava **4,4–5 s** do próprio PC (e mais de
+# 10 s do telemóvel, com a ligação a ficar em CLOSE_WAIT), porque cada pedido
+# corria o `loadout.report` inteiro + o payload da Deckboxes (745 KB) do zero —
+# e a sonda da tarefa `mtgvault-serve` fazia-o de 5 em 5 min. O `metagame.html`
+# custava 1,6 s pela mesma razão.
+#
+# Agora: (1) a página é a CASCA (estática, ~40 KB) e sai na hora; (2) os DADOS
+# (`/data/paginas/deckboxes.json` + as partes) calculam-se uma vez e ficam em
+# memória até a base, o config ou o registo de arquétipos mudarem — a VERSÃO
+# é o mtime desses ficheiros, e um POST limpa a cache de qualquer maneira
+# (`regenerar`). O `metagame.html` fica na mesma cache, pela mesma chave.
+_CACHE: dict = {}
+_CACHE_LOCK = threading.Lock()
+
+
+def _versao() -> tuple:
+    """O que, ao mudar, invalida tudo o que está em cache."""
+    base = Path(db.DEFAULT_DB)
+    ficheiros = [base, base.with_name(base.name + "-wal"), CONFIG,
+                 Path(db.pasta_dados()) / "arquetipos.json"]
+    out = []
+    for f in ficheiros:
+        try:
+            st = f.stat()
+            out.append((str(f), st.st_mtime_ns, st.st_size))
+        except OSError:
+            out.append((str(f), None, None))
+    return tuple(out)
+
+
+def em_cache(chave, calcular):
+    """`calcular()` uma vez por versão; os pedidos em paralelo esperam pelo
+    primeiro em vez de calcularem todos a mesma coisa."""
+    v = _versao()
+    with _CACHE_LOCK:
+        hit = _CACHE.get(chave)
+        if hit and hit[0] == v:
+            return hit[1]
+        valor = calcular()
+        _CACHE[chave] = (v, valor)
+        return valor
+
+
+def dados_deckboxes(editavel: bool, tok: str) -> tuple[dict, dict]:
+    """`(indice, partes)` da Deckboxes para este modo, da cache."""
+    def calcular():
+        with db.session() as con:
+            return deckboxes.partir(deckboxes.payload(
+                con, loadout.report(con), editable=editavel, token=tok,
+                ligacao=(ligacao_local() if editavel else None)))
+    return em_cache(("deckboxes", editavel), calcular)
 
 
 # ---------------------------------------------------------------------------
@@ -778,15 +837,46 @@ class Handler(BaseHTTPRequestHandler):
             # descobrir, e o token não protegia nada.
             editavel = self._pode_escrever()
             tok = token() if editavel else ""
-            with db.session() as con:
-                self._envia(com_token(modulo.html_page(
-                    con, editable=editavel, token=tok,
-                    ligacao=(ligacao_local() if editavel else None)), tok))
+            if modulo is deckboxes:
+                # A CASCA: estática, sem dados. Os dados vêm a seguir, por
+                # `fetch`, de `/data/paginas/deckboxes.json` (abaixo) — e é o
+                # `?t=` desse pedido que decide se levam os botões.
+                self._envia(com_token(deckboxes.casca(), tok))
+                return
+
+            def gerar():
+                with db.session() as con:
+                    return modulo.html_page(
+                        con, editable=editavel, token=tok,
+                        ligacao=(ligacao_local() if editavel else None))
+            self._envia(com_token(em_cache((caminho, editavel), gerar), tok))
+            return
+        m = _DADOS_DECKBOXES.match(caminho)
+        if m:
+            # Os DADOS da Deckboxes, calculados (e guardados) para este modo.
+            editavel = self._pode_escrever()
+            idx, partes = dados_deckboxes(editavel, token() if editavel else "")
+            parte = m.group(1)
+            if parte is None:
+                self._json({**idx,
+                            "_gerado_em": datetime.now().isoformat(timespec="seconds"),
+                            "_partes": sorted(partes)})
+            elif parte in partes:
+                self._json(partes[parte])
+            else:
+                self._json({"erro": f"não há parte {parte!r} na Deckboxes de "
+                                    f"hoje — recarrega a página"}, 404)
             return
         nome = caminho.lstrip("/")
         alvo = (ROOT / nome).resolve()
-        if (nome.endswith((".html", ".css", ".js")) and alvo.is_file()
+        # Os `.json` só de `data/paginas/` (os dados das outras páginas, escritos
+        # pelo `daily`): o resto de `data/` são a base, o token e os registos.
+        e_dados = nome.startswith("data/paginas/") and nome.endswith(".json")
+        if ((nome.endswith((".html", ".css", ".js")) or e_dados) and alvo.is_file()
                 and str(alvo).startswith(str(ROOT))):
+            if e_dados:
+                self._envia(alvo.read_bytes(), tipo="application/json; charset=utf-8")
+                return
             corpo = alvo.read_text(encoding="utf-8")
             if nome.endswith(".html"):
                 # O menu destas páginas foi escrito pela corrida do `daily`, sem

@@ -278,7 +278,7 @@ def caso_as_basicas_nao_entram_na_venda():
 # ---------------------------------------------------------------------------
 def _pagina(con):
     out = Path(tempfile.mkdtemp()) / "deckboxes.html"
-    deckboxes.build(con, out)
+    out.write_text(deckboxes.html_page(con), encoding="utf-8")   # embutido
     return out
 
 

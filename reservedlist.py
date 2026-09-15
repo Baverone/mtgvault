@@ -164,7 +164,13 @@ def build(con, out_path=None):
             order.append((c["set_code"], c["set_name"], (c["rel"] or "")[:4]))
         groups[c["set_code"]].append(c)
 
-    secs = ""
+    # OS DADOS À PARTE (André, 2026-09-15). Eram 460 KB de HTML e 750 `<img>`
+    # numa página só. A casca leva o cabeçalho, a caixa de venda e a LISTA das
+    # edições (`data/paginas/reservedlist.json`); as cartas de cada edição vão
+    # em `reservedlist/<edição>.json` e o JavaScript vai buscá-las quando a
+    # secção se aproxima do ecrã (IntersectionObserver) — o filtro «só as que
+    # tenho» continua a ser CSS sobre o que já está desenhado.
+    secs, partes, edicoes = "", {}, []
     for code, sname, year in order:
         rows = groups[code]
         rows.sort(key=lambda c: -(price.get(c["sid"]) or 0))
@@ -211,14 +217,17 @@ def build(con, out_path=None):
             cells += (
                 f'<div class="c {"sell" if to_sell else ("have" if has else "miss")}" '
                 f'title="{html.escape(c["name"])}">'
-                f'<img loading="lazy" src="{_art(sid)}" alt="">'
+                f'<img loading="lazy" decoding="async" width="38" height="53" '
+                f'src="{_art(sid)}" alt="">'
                 f'<div class="nm">{html.escape(c["name"])}{badge}</div>'
                 f'<div class="own">{own}</div>{plays}'
                 f'<div class="val">{_eur(val)} <small>hoje</small></div>'
                 f'<div class="ev">{_spark(hist.get(sid, []))}</div>{mon}</div>')
-        secs += (f'<section><h2>{html.escape(sname)} '
-                 f'<span class="dim">{year} · tens {n_have}/{len(rows)}</span></h2>'
-                 f'<div class="grid">{cells}</div></section>')
+        parte = paginas.slug(code)
+        partes[parte] = {"edicao": sname, "cartas": cells}
+        edicoes.append({"parte": parte, "nome": sname, "ano": year,
+                        "tens": n_have, "n": len(rows)})
+        secs += cabecalho_edicao(edicoes[-1])
 
     today = con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or ""
     head = (f'Tens <b>{len(have_names)}</b> de {total_rl} cartas da Reserved List · '
@@ -234,11 +243,27 @@ def build(con, out_path=None):
     else:
         sellbox = (f'<div class="sellnote">✓ Todas as tuas cartas da Reserved List jogam nalgum '
                    f'formato — nada a vender. <span class="fine">(a ignorar: {ign})</span></div>')
+    paginas.escrever_dados(out, "reservedlist",
+                           {"edicoes": edicoes, "dados_de": today}, partes)
     out.write_text(_TMPL.replace("%META%", paginas.META)
-                   .replace("%TEMA%", paginas.TEMA)
+                   .replace("%TEMA%", paginas.TEMA + paginas.CSS_DADOS)
+                   .replace("%JS_DADOS%", paginas.JS_DADOS)
                    .replace("%TABS%", TABS).replace("%SECS%", secs)
                    .replace("%HEAD%", head).replace("%SELL%", sellbox), encoding="utf-8")
     return out
+
+
+def cabecalho_edicao(e) -> str:
+    """A secção de uma edição SEM as cartas: o que vai na casca. O `data-parte`
+    é o ficheiro de onde o JavaScript as vai buscar."""
+    return (f'<section class="ed" data-parte="{e["parte"]}"><h2>{html.escape(e["nome"])} '
+            f'<span class="dim">{e["ano"]} · tens {e["tens"]}/{e["n"]}</span></h2>'
+            f'<div class="grid"><p class="carregando">A carregar…</p></div></section>')
+
+
+def ler_dados(out_path):
+    """`(indice, partes)` do que o `build` escreveu — para os testes."""
+    return paginas.ler_dados(Path(out_path), "reservedlist")
 
 
 _TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
@@ -280,11 +305,32 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
 <footer>A Reserved List da Wizards (cartas que nunca serão reimpressas), pela flag oficial da Scryfall — separada por edição, da mais recente para a mais antiga, só edições reais (core/expansion; sem 30th Anniversary, World Championship, Collectors' Edition, promos ou oversized). Por carta: cópias em Inglês (verde) e Português (azul), o <b>preço mínimo de hoje</b> (o <i>low</i> do Cardmarket) e o de <b>há ~1 mês</b> (média de 30 dias do Cardmarket, ou o valor exato quando a nossa própria história tiver 30 dias), com a variação. Nas que tens, mostra <b>em que formatos joga</b> (das listas de torneio que seguimos). Uma carta tua que <b>não jogue em formato nenhum</b> que conte fica marcada <b>VENDER</b> — os formatos que não contam afinam-se em colecao_config.json (por agora, só o Vintage fora). Sem cor = não tens nenhuma. Atualiza diariamente.</footer>
 </div>
 <script>
+%JS_DADOS%
 function toggle(){document.body.classList.toggle('only');
   const b=document.getElementById('tgl');const on=document.body.classList.contains('only');
   b.classList.toggle('on',on);b.textContent=on?'Mostrar todas':'Mostrar só as que tenho';
   try{localStorage.setItem('rl_only',on?'1':'');}catch(e){}}
 try{if(localStorage.getItem('rl_only'))toggle();}catch(e){}
+/* As cartas de cada edição vêm de `data/paginas/reservedlist/<edição>.json`
+   quando a secção se aproxima do ecrã. Sem IntersectionObserver (browsers
+   velhos) carregam-se todas, por ordem — devagar mas inteiras. */
+const PEDIDAS = {};
+async function carregaEdicao(sec) {
+  const parte = sec.dataset.parte, grid = sec.querySelector('.grid');
+  if (!parte || PEDIDAS[parte]) return;
+  PEDIDAS[parte] = true;
+  try { const d = await carregaDados('reservedlist/' + parte + '.json'); grid.innerHTML = d.cartas; }
+  catch (e) { PEDIDAS[parte] = false; erroDados(grid, e); }
+}
+const secs = [...document.querySelectorAll('section.ed')];
+if (window.IntersectionObserver) {
+  const io = new IntersectionObserver(es => es.forEach(x => {
+    if (x.isIntersecting) { carregaEdicao(x.target); io.unobserve(x.target); }
+  }), { rootMargin: '900px 0px' });
+  secs.forEach(s => io.observe(s));
+} else {
+  (async () => { for (const s of secs) await carregaEdicao(s); })();
+}
 </script>
 </body></html>"""
 

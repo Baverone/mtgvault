@@ -78,7 +78,11 @@ jobs:
           # dá nomes estáveis aos arquétipos (id -> nome, núcleo, datas). Se
           # ficasse só no PC, esta corrida via um registo vazio e reescrevia os
           # nomes todos — que é o defeito que ele veio corrigir.
-          git add colecao.html cobertura.html colecao_cor.html meusdecks.html metagame.html reservedlist.html caixarl.html showcase.html deckboxes.html data/arquetipos.json
+          # E `data/paginas/` (2026-09-15): os DADOS das páginas pesadas, à parte
+          # do HTML (a Deckboxes, o Showcase, a Reserved List e a Cobertura são
+          # cascas que os vão buscar por fetch). Sem esta pasta no commit a
+          # página publicada abre e diz "não consegui carregar os dados".
+          git add colecao.html cobertura.html colecao_cor.html meusdecks.html metagame.html reservedlist.html caixarl.html showcase.html deckboxes.html data/arquetipos.json data/paginas
           if git diff --cached --quiet; then
             echo "Sem alterações no HTML."
           else
