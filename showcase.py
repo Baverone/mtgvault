@@ -14,6 +14,7 @@ NÃO inventa nada: usa só as decklists reais do harvest (mtgo + mtgtop8).
 from __future__ import annotations
 
 import html
+import json
 import os
 import re
 from collections import Counter
@@ -198,7 +199,12 @@ def _mkcards(cards, owned_qty, sidmap, freq=None, nlists=0):
     return out
 
 
-def _archetype_html(a, name, tm, owned, owned_qty, sidmap, aberto=False):
+def _archetype_html(a, name, tm, owned, owned_qty, sidmap, aberto=False,
+                    partes=False):
+    """O arquétipo desenhado. Com `partes=True` devolve as duas metades —
+    `{cab, corpo, aberto}` — em vez do HTML inteiro: o cabeçalho vai no JSON do
+    formato e o corpo (a grelha de cartas) num ficheiro próprio, que só se vai
+    buscar quando ele abre o `<details>` (2026-09-15)."""
     members = a["members"]
     n = len(members)
     wt = sum(m.get("weight", 1.0) for m in members)   # prevalência PESADA (importância)
@@ -213,7 +219,11 @@ def _archetype_html(a, name, tm, owned, owned_qty, sidmap, aberto=False):
     def rc(c):
         # O NOME no `alt`: nesta grelha o nome só existe no `title`, e uma rede
         # fraca deixava 4 000 quadrados vazios. Ver `metagame._card`.
-        img = (f'<img loading="lazy" src="{paginas.art(c["sid"])}" '
+        # `width`/`height` (as do CSS) e `decoding="async"` (2026-09-15): sem as
+        # medidas a grelha saltava a cada imagem que chegava, e a descodificação
+        # síncrona travava o scroll no telemóvel.
+        img = (f'<img loading="lazy" decoding="async" width="52" height="73" '
+               f'src="{paginas.art(c["sid"])}" '
                f'alt="{html.escape(c["nm"])}">' if c.get("sid")
                else '<div class="noimg"></div>')
         qb = (f'<span class="cq">{c["hq"]}/{c["qty"]}</span>' if c.get("qty", 1) > 1
@@ -264,17 +274,28 @@ def _archetype_html(a, name, tm, owned, owned_qty, sidmap, aberto=False):
     # um `<details>` fechado já não é descarregada (não tem caixa de layout), e a
     # página tem de continuar a funcionar com o JavaScript desligado. O
     # `data-src` dava o mesmo ganho e partia isso.
+    cab = (f'<div class="dtop"><b>{html.escape(name)}</b>'
+           f'<span class="pct" style="color:{col}">{have}/{len(nb)} · {cov}%</span></div>'
+           f'<div class="badges"><span class="bdg seal">{seal}</span>'
+           f'<span class="bdg wt" title="prevalência pesada (Showcase/presencial contam mais que ligas)">⚖️ {wt:.0f}</span>'
+           f'<span class="bdg">{n} lista{"s" if n > 1 else ""}</span>'
+           f'<span class="bdg">{len(evset)} evento{"s" if len(evset) > 1 else ""}</span>'
+           f'<span class="bdg dim">{html.escape(_shortev(leader["event"]))}</span></div>'
+           f'<div class="bar"><span style="width:{cov}%;background:{col}"></span></div>')
+    if partes:
+        return {"nome": name, "cab": cab, "corpo": body, "aberto": bool(aberto)}
+    return juntar_arquetipo({"cab": cab, "corpo": body, "aberto": aberto})
+
+
+def juntar_arquetipo(a, corpo=True) -> str:
+    """O `<details>` de um arquétipo a partir das duas metades. É o MESMO HTML
+    que o JavaScript da página compõe (`desenha`), para quem lê a página sem
+    JavaScript ver exactamente o que ele vê."""
     return (f'<div class="deck">'
-            f'<details class="dk"{" open" if aberto else ""}><summary>'
-            f'<div class="dtop"><b>{html.escape(name)}</b>'
-            f'<span class="pct" style="color:{col}">{have}/{len(nb)} · {cov}%</span></div>'
-            f'<div class="badges"><span class="bdg seal">{seal}</span>'
-            f'<span class="bdg wt" title="prevalência pesada (Showcase/presencial contam mais que ligas)">⚖️ {wt:.0f}</span>'
-            f'<span class="bdg">{n} lista{"s" if n > 1 else ""}</span>'
-            f'<span class="bdg">{len(evset)} evento{"s" if len(evset) > 1 else ""}</span>'
-            f'<span class="bdg dim">{html.escape(_shortev(leader["event"]))}</span></div>'
-            f'<div class="bar"><span style="width:{cov}%;background:{col}"></span></div>'
-            f'</summary>{body}</details></div>')
+            f'<details class="dk"{" open" if a["aberto"] else ""}'
+            f'{" data-parte=" + chr(34) + a["parte"] + chr(34) if a.get("parte") else ""}>'
+            f'<summary>{a["cab"]}</summary>'
+            f'<div class="corpo">{a["corpo"] if corpo else ""}</div></details></div>')
 
 
 def build(con, out_path=None):
@@ -299,7 +320,15 @@ def build(con, out_path=None):
     sidmap = paginas.img_map(con, list(allnames), da_coleccao=False)
     tm = paginas.tipos(con, allnames)
 
-    tabs, panels = "", ""
+    # OS DADOS À PARTE (André, 2026-09-15). Eram 1,27 MB de HTML com 4 300
+    # `<img>`, tudo na mesma página. Agora a página é a casca (menu, abas, CSS,
+    # JS) e cada FORMATO é um JSON (`data/paginas/showcase/<fmt>.json`) com o
+    # cabeçalho de cada arquétipo; o CORPO (a grelha de cartas) de cada um vai
+    # num ficheiro próprio (`<fmt>-<i>.json`), que só se vai buscar quando ele
+    # abre o `<details>`. O primeiro de cada formato leva o corpo já dentro do
+    # JSON do formato: está aberto, e uma segunda ida ao servidor era esperar
+    # por nada.
+    tabs, panels, partes, indice = "", "", {}, {"formatos": [], "janela": WINDOW}
     for fmt, lbl in FORMATS:
         d = fmt_data.get(fmt)
         if not d:
@@ -308,22 +337,49 @@ def build(con, out_path=None):
         tabs += f'<button class="ftab{act}" data-f="{fmt}">{html.escape(lbl)} <span class="n">{len(d["clusters"])}</span></button>'
         # O primeiro de cada formato fica ABERTO: quem entra na aba tem de ver
         # logo alguma coisa, e é o arquétipo com mais peso.
-        cards = "".join(_archetype_html(a, _name(a, d["df"]), tm, owned, owned_qty,
-                                        sidmap, aberto=(i == 0))
-                        for i, a in enumerate(d["clusters"]))
+        arqs = []
+        for i, a in enumerate(d["clusters"]):
+            p = _archetype_html(a, _name(a, d["df"]), tm, owned, owned_qty,
+                                sidmap, aberto=(i == 0), partes=True)
+            p["parte"] = f"{fmt}-{i}"
+            partes[p["parte"]] = {"corpo": p["corpo"]}
+            if not p["aberto"]:
+                p = {k: v for k, v in p.items() if k != "corpo"}
+            arqs.append(p)
         evlist = ", ".join(
             f'{html.escape(_shortev(e))} <span class="sc">{"🏆" if s == "mtgtop8" else "🌐"}'
             f'{(" " + str(pl) + "j") if pl else ""}</span>'
             for e, (dt, s, pl) in sorted(d["events"].items(), key=lambda x: _datekey(x[1][0]), reverse=True))
+        evh = f'{d["nlists"]} listas · {len(d["events"])} eventos (últimos {WINDOW} dias): {evlist}'
+        partes[fmt] = {"formato": fmt, "rotulo": lbl, "evh": evh, "arquetipos": arqs}
+        indice["formatos"].append({"f": fmt, "rotulo": lbl, "n": len(arqs),
+                                   "listas": d["nlists"], "eventos": len(d["events"])})
         panels += (f'<section class="fpanel{act}" data-f="{fmt}">'
-                   f'<div class="evh">{d["nlists"]} listas · {len(d["events"])} eventos (últimos {WINDOW} dias): {evlist}</div>'
-                   f'<div class="grid">{cards}</div></section>')
+                   f'<p class="carregando">A carregar {html.escape(lbl)}…</p></section>')
 
+    paginas.escrever_dados(out, "showcase", indice, partes)
     out.write_text(_TMPL.replace("%META%", paginas.META)
-                   .replace("%TEMA%", paginas.TEMA)
+                   .replace("%TEMA%", paginas.TEMA + paginas.CSS_DADOS)
+                   .replace("%JS_DADOS%", paginas.JS_DADOS)
                    .replace("%NAV%", NAV).replace("%TABS%", tabs)
+                   .replace("%FORMATOS%", json.dumps([f["f"] for f in indice["formatos"]]))
                    .replace("%PANELS%", panels), encoding="utf-8")
     return out
+
+
+def ler_dados(out_path):
+    """`(indice, partes)` do que o `build` escreveu — para os testes."""
+    return paginas.ler_dados(Path(out_path), "showcase")
+
+
+def html_de_formato(out_path, fmt) -> str:
+    """O HTML do painel de um formato tal como o browser o compõe depois do
+    `fetch` (o cabeçalho de cada arquétipo, e o corpo dos que estão abertos)."""
+    _idx, partes = ler_dados(out_path)
+    d = partes[fmt]
+    return (f'<div class="evh">{d["evh"]}</div><div class="grid">'
+            + "".join(juntar_arquetipo(a, corpo=a["aberto"]) for a in d["arquetipos"])
+            + "</div>")
 
 
 def _datekey(d):
@@ -377,12 +433,46 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
 <footer>Agrupamento por Jaccard ≥ 0.5 das cartas não-básicas do main. Presencial 🏆 tem classificação real (fica líder); o MTGO 🌐 não dá placement (fica atrás). Janela de 21 dias. Atualiza diariamente.</footer>
 </div>
 <script>
+%JS_DADOS%
 function cpFaltas(btn){const c=btn.closest('.faltas'),t=c&&c.querySelector('textarea.cmk');if(!t)return;const d=()=>{btn.textContent='✓ copiado';btn.classList.add('done');};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t.value).then(d).catch(()=>{t.select();document.execCommand('copy');d();});}else{t.select();try{document.execCommand('copy');d();}catch(e){}}}
-document.querySelectorAll('.ftab').forEach(b=>b.onclick=()=>{
-  const f=b.dataset.f;
+/* Cada FORMATO vem de `data/paginas/showcase/<fmt>.json` quando a aba abre, e o
+   corpo de cada arquétipo (`<fmt>-<i>.json`) quando o `<details>` abre. O HTML
+   que se compõe aqui é o mesmo do `showcase.juntar_arquetipo` do Python. */
+const FORMATOS = {};
+const painel = f => document.querySelector(`.fpanel[data-f="${f}"]`);
+function desenha(f) {
+  const d = FORMATOS[f], p = painel(f);
+  if (!d || !p) return;
+  p.innerHTML = `<div class="evh">${d.evh}</div><div class="grid">`
+    + d.arquetipos.map(a => `<div class="deck"><details class="dk"${a.aberto ? ' open' : ''}`
+      + ` data-parte="${a.parte}"><summary>${a.cab}</summary>`
+      + `<div class="corpo"${a.corpo ? ' data-ok="1"' : ''}>${a.corpo || ''}</div></details></div>`).join('')
+    + `</div>`;
+  p.querySelectorAll('details.dk').forEach(dt => dt.addEventListener('toggle', () => abrir(dt)));
+}
+async function abrir(dt) {
+  if (!dt.open) return;
+  const c = dt.querySelector('.corpo');
+  if (!c || c.dataset.ok) return;
+  c.innerHTML = '<p class="carregando">A carregar a lista…</p>';
+  try {
+    const p = await carregaDados('showcase/' + dt.dataset.parte + '.json');
+    c.innerHTML = p.corpo; c.dataset.ok = '1';
+  } catch (e) { erroDados(c, e); }
+}
+async function mostra(f) {
   document.querySelectorAll('.ftab').forEach(x=>x.classList.toggle('act',x.dataset.f===f));
   document.querySelectorAll('.fpanel').forEach(x=>x.classList.toggle('act',x.dataset.f===f));
-});
+  if (FORMATOS[f]) return;
+  const p = painel(f);
+  try { FORMATOS[f] = await carregaDados('showcase/' + f + '.json'); }
+  catch (e) { erroDados(p, e); return; }
+  desenha(f);
+}
+document.querySelectorAll('.ftab').forEach(b=>b.onclick=()=>mostra(b.dataset.f));
+/* Os formatos com listas, pela ordem das abas; o primeiro é o que abre. */
+const FORMATOS_LISTA = %FORMATOS%;
+if (FORMATOS_LISTA.length) mostra(FORMATOS_LISTA[0]);
 </script>
 </body></html>"""
 

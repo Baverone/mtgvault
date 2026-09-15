@@ -18,7 +18,11 @@ from __future__ import annotations
 
 import html
 import json
+import os
+import re
 from collections import defaultdict
+from datetime import datetime
+from pathlib import Path
 
 # O filtro de *"esta cópia conta para a colecção"* vive num sítio só (ver
 # `collection.jogaveis`): 'player' e não marcada como NÃO ENCONTRADA.
@@ -262,6 +266,124 @@ def eur(v, casas: int = 2, espaco: bool = True) -> str:
     """
     return (f"{v:,.{casas}f}".replace(",", " ").replace(".", ",")
             + (" €" if espaco else "€"))
+
+
+# ---------------------------------------------------------------------------
+# OS DADOS À PARTE (André, 2026-09-15): as páginas pesadas são uma CASCA (menu,
+# separadores, CSS, JS) e os dados vivem em `data/paginas/<pagina>.json` (o
+# índice) + `data/paginas/<pagina>/<parte>.json` (cada secção, carregada quando
+# ele a abre). Ele abdicou de as abrir do disco (`file://`): têm de ser servidas
+# por HTTP — o GitHub Pages ou o modo edição (porto 8771) — e é no telemóvel que
+# têm de ficar rápidas. Quem escreve é `escrever_dados`; quem lê é o
+# `JS_DADOS`, o mesmo em todas as páginas, com a mensagem de erro em português
+# quando o `fetch` falha — um ecrã vazio sem explicação era o padrão do
+# `event_tier` do lado do browser.
+# ---------------------------------------------------------------------------
+PASTA_DADOS = Path("data") / "paginas"
+
+
+def slug(texto: str) -> str:
+    """Um nome de ficheiro seguro a partir de um id (`slot`, `set_code`, …)."""
+    s = re.sub(r"[^A-Za-z0-9_-]+", "_", str(texto)).strip("_")
+    return s or "_"
+
+
+def _escrever_json(destino: Path, obj) -> None:
+    """Escrita ATÓMICA (temporário + `os.replace`), como o `configio.escrever`:
+    o `webapp.py` e o `daily` podem escrever o mesmo ficheiro, e um JSON
+    truncado a meio dava uma página em branco a quem o apanhasse."""
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    tmp = destino.with_name(destino.name + ".tmp")
+    tmp.write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":")),
+                   encoding="utf-8")
+    os.replace(tmp, destino)
+
+
+def escrever_dados(out_html: Path, pagina: str, indice: dict,
+                   partes: dict[str, object] | None = None) -> list[Path]:
+    """Escreve `data/paginas/<pagina>.json` + `data/paginas/<pagina>/<parte>.json`
+    ao lado da página, e apaga as partes que deixaram de existir (uma caixa que
+    saiu do config não pode ficar a responder para sempre).
+
+    O índice leva `_gerado_em` (data-hora) — é por ele que os testes do ai-pc
+    sabem que os dados são de HOJE e não os de ontem.
+    """
+    base = Path(out_html).parent / PASTA_DADOS
+    idx = dict(indice)
+    idx["_gerado_em"] = datetime.now().isoformat(timespec="seconds")
+    idx["_partes"] = sorted(partes or {})
+    escritos = [base / f"{pagina}.json"]
+    _escrever_json(escritos[0], idx)
+    pasta = base / pagina
+    for nome, obj in (partes or {}).items():
+        p = pasta / f"{nome}.json"
+        _escrever_json(p, obj)
+        escritos.append(p)
+    if pasta.is_dir():
+        for velho in pasta.glob("*.json"):
+            if velho not in escritos:
+                velho.unlink()
+    return escritos
+
+
+def ler_dados(out_html: Path, pagina: str) -> tuple[dict, dict]:
+    """O inverso do `escrever_dados`: `(indice, {parte: obj})`."""
+    base = Path(out_html).parent / PASTA_DADOS
+    idx = json.loads((base / f"{pagina}.json").read_text(encoding="utf-8"))
+    partes = {}
+    for nome in idx.get("_partes", []):
+        partes[nome] = json.loads((base / pagina / f"{nome}.json")
+                                  .read_text(encoding="utf-8"))
+    return idx, partes
+
+
+# O CSS da mensagem de erro e do "a carregar", partilhado.
+CSS_DADOS = (
+    " .erro-dados{margin:18px 0;padding:14px 16px;border:1px solid #7a3030;"
+    "border-radius:12px;background:#2a1618;color:#f0d0c8;font-size:13.5px;line-height:1.55}"
+    " .erro-dados b{color:#ff9b8a} .erro-dados .fine{display:block;color:#b08a86;"
+    "font-size:12px;margin-top:6px} .erro-dados button{margin-top:8px;padding:6px 14px;"
+    "border-radius:20px;border:1px solid #7a3030;background:#3a2022;color:#fff;"
+    "font-weight:700;cursor:pointer}"
+    " .carregando{color:var(--muted);font-size:13px;padding:18px 0}"
+    " .carregando::before{content:'';display:inline-block;width:12px;height:12px;"
+    "margin-right:8px;border-radius:50%;border:2px solid var(--muted);"
+    "border-top-color:transparent;animation:gira .8s linear infinite;vertical-align:-2px}"
+    " @keyframes gira{to{transform:rotate(360deg)}}"
+)
+
+# O JavaScript que vai buscar os dados. `carregaDados('x/y.json')` devolve o
+# objecto; `erroDados(el, e)` escreve a mensagem em português. O `?t=` (o token
+# do modo edição) segue nos pedidos, porque é por ele que o servidor decide se
+# o índice da Deckboxes leva os botões.
+JS_DADOS = r"""
+const DADOS_BASE = 'data/paginas/';
+const TOKEN_URL = (() => { try { return new URLSearchParams(location.search).get('t') || ''; }
+                            catch (e) { return ''; } })();
+const escDados = s => String(s == null ? '' : s).replace(/[&<>"]/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function carregaDados(caminho) {
+  const url = DADOS_BASE + caminho + (TOKEN_URL ? '?t=' + encodeURIComponent(TOKEN_URL) : '');
+  let r;
+  try { r = await fetch(url); }
+  catch (e) {
+    throw new Error(`não consegui ir buscar ${caminho}: sem resposta do servidor`
+      + (location.protocol === 'file:' ? ' — a página foi aberta do disco (file://) e assim não funciona; tem de ser servida por HTTP' : '')
+      + ` (${e.message})`);
+  }
+  if (!r.ok) throw new Error(`não consegui ir buscar ${caminho}: o servidor respondeu ${r.status}`);
+  try { return await r.json(); }
+  catch (e) { throw new Error(`o ficheiro ${caminho} veio estragado (${e.message})`); }
+}
+function erroDados(el, e) {
+  if (!el) return;
+  el.innerHTML = `<div class="erro-dados" role="alert">⚠️ <b>Não consegui carregar os dados desta secção.</b>`
+    + `<br>${escDados(e && e.message ? e.message : e)}`
+    + `<span class="fine">Verifica a ligação e tenta outra vez. Se estás no modo edição, `
+    + `confirma que o servidor (porto 8771) está de pé.</span>`
+    + `<button type="button" onclick="location.reload()">recarregar</button></div>`;
+}
+"""
 
 
 def nav(atual: str = "", extra: bool = False) -> str:

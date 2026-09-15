@@ -335,20 +335,40 @@ def caso_ler_sem_token_da_pagina_so_de_leitura():
     # O que decide os botões é o payload (`editable`), não o HTML: o JavaScript
     # que os desenha está sempre lá, e é o `D.editable` que o cala. Que a página
     # publicada não desenha nenhum é o `render_deckboxes.js` que o prova.
+    # Desde 2026-09-15 a página é a CASCA (sem dados) e o payload vem de
+    # `/data/paginas/deckboxes.json` — e é o `?t=` DESSE pedido que decide.
     p = Pedido("/deckboxes.html")
     p.do_GET()
     assert p.codigo == 200, p.codigo
-    dados = _payload(p.corpo)
+    assert ('<script id="dados"' not in p.corpo and "Deckboxes" in p.corpo
+            and len(p.corpo) < 200_000), "a casca, sem dados"
+    assert t not in p.corpo, "a pagina sem token NAO pode conter o token"
+    p = Pedido("/data/paginas/deckboxes.json")
+    p.do_GET()
+    assert p.codigo == 200, p.codigo
+    dados = json.loads(p.corpo)
     assert dados["editable"] is False, "devia vir só de leitura"
     assert dados["token"] == "" and dados["ligacao"] is None, dados["token"]
-    assert t not in p.corpo, "a pagina sem token NAO pode conter o token"
-    print("ler sem token: 200, pagina de leitura e sem o token la dentro")
+    assert t not in p.corpo, "os dados sem token NAO podem conter o token"
+    assert "caixa-a" in dados["_partes"], dados["_partes"]
+    print("ler sem token: 200, casca + dados de leitura e sem o token la dentro")
 
     p = Pedido(f"/deckboxes.html?t={t}")
     p.do_GET()
+    assert p.codigo == 200 and f"?t={t}" in p.corpo, "os links do menu levam o token"
+    p = Pedido(f"/data/paginas/deckboxes.json?t={t}")
+    p.do_GET()
     assert p.codigo == 200, p.codigo
-    dados = _payload(p.corpo)
+    dados = json.loads(p.corpo)
     assert dados["editable"] is True and dados["token"] == t
+    # E a PARTE de uma caixa, também com o token (é onde vivem as edições do
+    # «já a tenho», que só existem no modo edição).
+    p = Pedido(f"/data/paginas/deckboxes/caixa-a.json?t={t}")
+    p.do_GET()
+    assert p.codigo == 200 and json.loads(p.corpo)["slot"] == "a", p.corpo[:200]
+    p = Pedido("/data/paginas/deckboxes/nao-existe.json")
+    p.do_GET()
+    assert p.codigo == 404 and "não há parte" in p.corpo, (p.codigo, p.corpo)
     assert dados["ligacao"]["url"].startswith("http://"), dados["ligacao"]
     assert dados["ligacao"]["url"].endswith(t), "o link do QR tem de levar o token"
     assert dados["ligacao"]["porto"] == webapp.PORT

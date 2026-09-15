@@ -471,7 +471,9 @@ def _base_deckboxes():
 def _pagina_deckboxes(con=None):
     con = con if con is not None else _base_deckboxes()
     out = Path(tempfile.mkdtemp()) / "deckboxes.html"
-    deckboxes.build(con, out)
+    # `html_page` embute o payload (o `build` escreve a casca + JSON à
+    # parte, desde 2026-09-15); é o embutido que o harness de node lê.
+    out.write_text(deckboxes.html_page(con), encoding="utf-8")
     return out
 
 
@@ -652,7 +654,8 @@ def _pagina_partilhada():
              {"slot": "modern2", "nome": "Modern — UR Murktide", "formato": "modern",
               "fonte": "deck", "ref": "UR Murktide", "balde": "SPML", "prioridade": 2}]
     out = Path(tempfile.mkdtemp()) / "deckboxes.html"
-    deckboxes.build(con, out, rep=loadout.report(con, slots))
+    out.write_text(deckboxes.html_page(con, rep=loadout.report(con, slots)),
+                   encoding="utf-8")
     return out
 
 
@@ -700,7 +703,8 @@ def _pagina_premodern():
              {"slot": "pm-perto", "nome": "PM Perto", "formato": "premodern",
               "fonte": "deck", "ref": "Perto", "balde": "Colecção", "prioridade": 2}]
     out = Path(tempfile.mkdtemp()) / "deckboxes.html"
-    deckboxes.build(con, out, rep=loadout.report(con, slots))
+    out.write_text(deckboxes.html_page(con, rep=loadout.report(con, slots)),
+                   encoding="utf-8")
     return out
 
 

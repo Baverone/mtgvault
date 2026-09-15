@@ -98,6 +98,50 @@ passo "Guardar HTML") **e na lista `HTML` da tarefa `ai-pc/tasks/mtgvault-daily`
 (o job que corre no PC) — o `deckboxes.html` esteve semanas só na primeira e
 nunca era publicado pelo PC. E, se for página nova, com link no `index.html`.
 
+**AS PÁGINAS PESADAS TÊM OS DADOS À PARTE (André, 2026-09-15).** *"As páginas
+pesadas passam a ter os dados à parte, carregados a pedido. Abdico de as abrir
+offline a partir do disco; têm é de funcionar bem servidas por HTTP — no GitHub
+Pages e no modo edição, que abro do telemóvel pela rede de casa."* Medido nesse
+dia: `showcase.html` **1 266 KB** (4 319 `<img>`), `deckboxes.html` **694 KB**
+(668 KB eram o JSON dentro do `<script id="dados">`), `reservedlist.html`
+**459 KB**, `cobertura.html` **274 KB**. Depois: **12 / 150 / 14 / 27 KB**.
+- **O HTML é a CASCA** (menu, separadores, CSS, JS) e os dados vivem em
+  `data/paginas/<pagina>.json` (o índice) + `data/paginas/<pagina>/<parte>.json`
+  (cada secção, ida buscar quando ele a abre). Quem escreve é
+  `paginas.escrever_dados` (atómico, apaga as partes que deixaram de existir,
+  põe `_gerado_em`); quem lê é o `paginas.JS_DADOS`, o mesmo em todas — e **um
+  `fetch` que falha diz-lho em português** (`erroDados`), nunca um ecrã vazio.
+- **Deckboxes**: o índice leva o resumo, a fila de abas e cada caixa SEM as
+  listas (`deckboxes.CAIXA_PESADO`; o `montar` fica só com os números do crachá
+  «N de M»); uma parte por caixa (`caixa-<slot>`) e uma por aba pesada
+  (`arrumar`, `venda`, `compras` = compras+partilhadas+básicas, `premodern`).
+  `partir`/`juntar` são inversos e há teste. **O `html_page` continua a
+  embutir tudo** — é o que os testes e o `render_deckboxes.js` lêem, e o JS
+  detecta o `script#dados` e não faz um único `fetch` nesse caso.
+- **Showcase**: um JSON por formato com o cabeçalho de cada arquétipo; o corpo
+  (a grelha) num ficheiro por arquétipo, ido buscar no `toggle` do `<details>`
+  — só o primeiro (aberto) vai dentro do JSON do formato. As `<img>` levam
+  `decoding="async"` e `width`/`height`. **Reserved List**: uma parte por
+  edição, carregada quando a secção se aproxima do ecrã (IntersectionObserver;
+  sem ele, todas por ordem). **Cobertura**: uma parte por formato + `prints` e
+  `want` (o selector de edições aplica-se quando chegam).
+- **O `webapp.py` deixou de gerar a Deckboxes a cada pedido.** Um `GET /`
+  demorava **4,4–5 s** do PC (>10 s do telemóvel, ligação em CLOSE_WAIT): corria
+  o `loadout.report` inteiro por pedido, e a sonda da `mtgvault-serve` fazia-o
+  de 5 em 5 min. Agora `/` e `/deckboxes.html` servem a casca (**0,02 s**) e os
+  dados saem de `/data/paginas/deckboxes.json` + partes, calculados **uma vez**
+  e guardados em memória até a base, o config ou o `arquetipos.json` mudarem
+  (`webapp.em_cache`/`_versao`; um POST limpa tudo). O `?t=` desse pedido é o
+  que decide se o índice leva os botões e o token. O `metagame.html` fica na
+  mesma cache (1,6 s → 0,5 s na primeira, 0 depois). **Os outros `.json` só se
+  servem de `data/paginas/`** — o resto de `data/` é a base e o token.
+- **A pasta vai no `git add` do `daily.yml` e no `EXTRA_COMMIT` da tarefa
+  `mtgvault-daily`** (é uma pasta: o `git add` leva o que lá estiver), e o
+  `.gitignore` não a apanha. Sem ela no commit, o site publicado abre e diz *"não
+  consegui carregar os dados"* — que é exactamente o que o teste de ponta a
+  ponta (`test_paginas_leves.py` + `tests/abrir_pagina.js`, que serve a pasta
+  por HTTP e corre o JS com `fetch` a sério) tranca.
+
 **O menu e a paleta vivem num sítio só: `mtgvault/paginas.py`** (2026-09-07).
 Antes cada gerador escrevia o seu `<nav class="tabs">` à mão, e o `cobertura.html`
 ficou meses com um menu de Agosto — sem Deckboxes nem Metagame. Uma página órfã

@@ -653,7 +653,8 @@ def _bar(pct):
 
 
 def _img_tag(uri):
-    return (f'<img class="th" loading="lazy" src="{html.escape(uri)}" alt="" width="42" height="59">'
+    return (f'<img class="th" loading="lazy" decoding="async" src="{html.escape(uri)}" '
+            f'alt="" width="42" height="59">'
             if uri else '<div class="noimg th"></div>')
 
 
@@ -692,7 +693,11 @@ def _gen_item(g):
                g.get("unit"), g.get("mine"), g.get("set_name"))
 
 
-def build_html(rep, today):
+def build_html(rep, today, partes=None):
+    """A página. Com `partes` (um dicionário) as SECÇÕES de cada formato e os
+    dados do selector de edições (`prints`, `want`) vão para lá em vez de
+    ficarem na página, e a casca fica com o cabeçalho de cada secção
+    (2026-09-15: eram 274 KB, 123 KB deles os dois `var` do JavaScript)."""
     secs = ""
     for s in rep["sections"]:
         cards = ""
@@ -729,7 +734,16 @@ def build_html(rep, today):
                 f'{RECENT_DAYS} dias)">⚖️ {d.get("score", 0)} · {d["n_lists"]} listas</div></div>{_bar(d["pct"])}'
                 f'<div class="cnt">{d["have"]}/{d["core_total"]} do núcleo · '
                 f'faltam {sum(m["missing"] for m in d["missing"])}</div>{body}{copybtn}{sbblock}</div>')
-        secs += f'<section><h2>{s["title"]}</h2><div class="grid">{cards}</div></section>'
+        if partes is not None:
+            parte = paginas.slug(s["fmt"])
+            partes[parte] = {"formato": s["fmt"], "titulo": s["title"], "html": cards}
+            secs += (f'<section class="fmt" data-parte="{parte}"><h2>{s["title"]}</h2>'
+                     f'<div class="grid"><p class="carregando">A carregar…</p></div></section>')
+        else:
+            secs += f'<section><h2>{s["title"]}</h2><div class="grid">{cards}</div></section>'
+    if partes is not None:
+        partes["prints"] = rep["prints"]
+        partes["want"] = rep["want"]
 
     shown = rep["general"][:GENERAL_MAX]
     gen = "".join(_gen_item(g) for g in shown)
@@ -751,8 +765,12 @@ def build_html(rep, today):
                          '<span class="dim">(fora do top-10, mas em torneios de peso — talvez algo novo)</span>'
                          f'</h2><ul class="eml">{rows}</ul></section>')
 
+    # Com os dados à parte, `PRINT`/`WANT` ficam a `null` e o JavaScript vai
+    # buscá-los a `data/paginas/cobertura/{prints,want}.json`.
+    a_parte = partes is not None
     return (_TMPL.replace("%META%", paginas.META)
-            .replace("%TEMA%", paginas.TEMA)
+            .replace("%TEMA%", paginas.TEMA + paginas.CSS_DADOS)
+            .replace("%JS_DADOS%", paginas.JS_DADOS)
             .replace("%TABS%", paginas.nav("cobertura.html", extra=True))
             .replace("%SECS%", secs).replace("%EMERGING%", emerging_html)
             .replace("%GEN%", gen or "<li class='dim'>—</li>")
@@ -760,8 +778,10 @@ def build_html(rep, today):
             .replace("%OWNED%", str(rep["owned_total"]))
             .replace("%GENSHOWN%", _eur(shown_cost))
             .replace("%GENCOST%", _eur(rep["general_cost"]))
-            .replace("%PRINTS%", json.dumps(rep["prints"], ensure_ascii=False))
-            .replace("%WANT%", json.dumps(rep["want"], ensure_ascii=False)))
+            .replace("%PRINTS%", "null" if a_parte
+                     else json.dumps(rep["prints"], ensure_ascii=False))
+            .replace("%WANT%", "null" if a_parte
+                     else json.dumps(rep["want"], ensure_ascii=False)))
 
 
 _TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
@@ -814,6 +834,7 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
 <footer>% completo = cartas do núcleo (mainboard + sideboard de consenso, sem terras básicas) que já tens, sobre o total do núcleo do arquétipo — o que as decklists reais levam quase sempre; cartas <span class="sb">SB</span> são de sideboard. Cada carta em falta mostra a imagem da edição a comprar: a que já tens (verde) se tiveres algumas, senão a impressão jogável mais barata. Preços: tendência Cardmarket (sem gold-border/digitais). O nome do deck vem das cartas mais distintivas do arquétipo (a label crua do clustering fica por baixo). "Específicas" de um deck = as que mais nenhum deck mostrado precisa; as partilhadas estão nos staples do topo. Podes escolher a edição de cada carta no seletor — a escolha fica guardada neste dispositivo.</footer>
 </div>
 <script>
+%JS_DADOS%
 var PRINT=%PRINTS%;
 var WANT=%WANT%;
 function cimg(s){return 'https://cards.scryfall.io/small/front/'+s[0]+'/'+s[1]+'/'+s+'.jpg';}
@@ -833,7 +854,12 @@ function crecompute(){
       var u=parseFloat(li.dataset.unit);if(!isNaN(u))t+=u*(+li.dataset.qty);});
     var out=document.getElementById(box.dataset.sum);if(out)out.textContent=ceur(t);});
 }
-document.querySelectorAll('li[data-card]').forEach(function(li){
+/* O selector de edição de cada carta em falta. Corre sobre uma RAIZ (a lista
+   dos staples ao arrancar; cada secção quando chega) e precisa do `PRINT`. */
+function preparar(root){
+if(!PRINT)return;
+root.querySelectorAll('li[data-card]').forEach(function(li){
+  if(li.dataset.pronto)return;li.dataset.pronto='1';
   var n=li.dataset.card,prints=PRINT[n]||[];if(!prints.length)return;
   var sel=document.createElement('select');sel.className='pick';
   prints.forEach(function(p,i){var o=document.createElement('option');o.value=i;
@@ -851,6 +877,7 @@ document.querySelectorAll('li[data-card]').forEach(function(li){
   sel.addEventListener('change',function(){localStorage.setItem(ckey(n),prints[sel.value].s);capply(li);crecompute();});
 });
 crecompute();
+}
 // --- exportar wantlist (formato Cardmarket: "<qtd> <nome>") ---
 function wlLines(pairs){var m={};pairs.forEach(function(p){var n=p[0],q=p[1];if(!(n in m)||q>m[n])m[n]=q;});
   return Object.keys(m).sort().map(function(n){return m[n]+' '+n;}).join('\\n');}
@@ -858,11 +885,37 @@ function copyWL(text,btn){var o=btn.textContent;
   function done(){btn.textContent='✓ copiado';setTimeout(function(){btn.textContent=o;},1500);}
   if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(done,function(){window.prompt('Copia (Ctrl+C):',text);});}
   else{window.prompt('Copia (Ctrl+C):',text);}}
-var _all=[];Object.keys(WANT).forEach(function(k){WANT[k].forEach(function(p){_all.push(p);});});
+function ligarCopiar(root){
+  if(!WANT)return;
+  root.querySelectorAll('button.cp[data-deck]').forEach(function(b){
+    if(b.dataset.pronto)return;b.dataset.pronto='1';
+    b.addEventListener('click',function(){copyWL(wlLines(WANT[b.dataset.deck]||[]),b);});});
+}
 var _ca=document.getElementById('copyall');
-if(_ca)_ca.addEventListener('click',function(){copyWL(wlLines(_all),_ca);});
-document.querySelectorAll('button.cp[data-deck]').forEach(function(b){
-  b.addEventListener('click',function(){copyWL(wlLines(WANT[b.dataset.deck]||[]),b);});});
+if(_ca)_ca.addEventListener('click',function(){
+  if(!WANT){_ca.textContent='a wantlist ainda não chegou — tenta outra vez';return;}
+  var _all=[];Object.keys(WANT).forEach(function(k){WANT[k].forEach(function(p){_all.push(p);});});
+  copyWL(wlLines(_all),_ca);});
+/* OS DADOS À PARTE (2026-09-15): as secções de cada formato e os dois
+   dicionários do selector vêm de `data/paginas/cobertura/`. As secções
+   desenham-se mal chegam; o selector aplica-se quando o `prints` chegar. */
+async function carregaSeccao(sec){
+  var grid=sec.querySelector('.grid');
+  try{var d=await carregaDados('cobertura/'+sec.dataset.parte+'.json');grid.innerHTML=d.html;
+    preparar(sec);ligarCopiar(sec);}
+  catch(e){erroDados(grid,e);}
+}
+(async function(){
+  var secs=[...document.querySelectorAll('section.fmt')];
+  var pedidos=secs.map(carregaSeccao);
+  if(!PRINT){
+    try{PRINT=await carregaDados('cobertura/prints.json');}
+    catch(e){erroDados(document.querySelector('.general'),e);}
+  }
+  if(!WANT){try{WANT=await carregaDados('cobertura/want.json');}catch(e){}}
+  await Promise.all(pedidos);
+  preparar(document);ligarCopiar(document);
+})();
 </script>
 </body></html>"""
 
@@ -871,8 +924,19 @@ def build(con, out_path=None):
     out = Path(out_path) if out_path else (ROOT / "cobertura.html")
     today = con.execute("SELECT MAX(window_end) w FROM card_roles").fetchone()["w"] or ""
     rep = build_report(con)
-    out.write_text(build_html(rep, today), encoding="utf-8")
+    partes: dict = {}
+    html_ = build_html(rep, today, partes)
+    paginas.escrever_dados(out, "cobertura",
+                           {"formatos": [{"f": s["fmt"], "titulo": s["title"],
+                                          "n": len(s["decks"])} for s in rep["sections"]],
+                            "dados_de": today}, partes)
+    out.write_text(html_, encoding="utf-8")
     return out, rep
+
+
+def ler_dados(out_path):
+    """`(indice, partes)` do que o `build` escreveu — para os testes."""
+    return paginas.ler_dados(Path(out_path), "cobertura")
 
 
 def main():

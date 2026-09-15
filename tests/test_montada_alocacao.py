@@ -303,7 +303,7 @@ def caso_a_pagina_diz_quais_sao():
         return
     out = Path(tempfile.mkdtemp())
     pagina = out / "deckboxes.html"
-    deckboxes.build(con, pagina)
+    pagina.write_text(deckboxes.html_page(con), encoding="utf-8")
     dump = out / "abas.json"
     harness = Path(__file__).with_name("render_deckboxes.js")
     p = subprocess.run(["node", str(harness), str(pagina), str(dump)],

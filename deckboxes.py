@@ -677,11 +677,90 @@ def payload(con, rep, editable=False, token="", ligacao=None):
     }
 
 
+# ---------------------------------------------------------------------------
+# OS DADOS À PARTE (André, 2026-09-15). A página eram 700 KB, dos quais 670 KB
+# eram o payload dentro do `<script id="dados">` — e o telemóvel dele, na rede
+# de casa, esperava por tudo antes de desenhar o menu. Agora o HTML é a CASCA e
+# os dados partem-se em: o ÍNDICE (`data/paginas/deckboxes.json`: o resumo, as
+# abas, cada caixa sem a grelha) e as PARTES (`data/paginas/deckboxes/*.json`),
+# que o JavaScript vai buscar quando ele abre a aba: uma por caixa, e uma por
+# cada aba pesada (arrumar, venda, compras, premodern). O `html_page` continua
+# a saber embutir tudo (é o que os testes e o harness de `node` lêem).
+# ---------------------------------------------------------------------------
+# O que sai de uma caixa no índice: as listas grandes. O `montar` fica só com
+# os números (`dentro`, `marcar_q`) — é o que o crachá «N de M na caixa» lê no
+# cartão compacto, antes de a caixa ser aberta.
+CAIXA_PESADO = ("cartas", "wantlist", "subs", "buscar", "lista", "montar", "eds")
+# As abas pesadas, e o que cada ficheiro leva.
+PARTES_ABAS = {"arrumar": ("arrumar",), "venda": ("venda",),
+               "premodern": ("premodern",),
+               "compras": ("compras", "partilhadas", "basicas")}
+
+
+def _so_escalares(d):
+    """A cópia de um dicionário sem as listas — os totais ficam, as linhas vão
+    para a parte. É o que o Plano e a fila de abas lêem sem abrir a aba."""
+    return {k: (_so_escalares(v) if isinstance(v, dict) else v)
+            for k, v in d.items() if not isinstance(v, list)}
+
+
+def _caixa_leve(c):
+    leve = {k: v for k, v in c.items() if k not in CAIXA_PESADO}
+    leve["montar"] = _so_escalares(c.get("montar") or {})
+    leve["parte"] = "caixa-" + paginas.slug(c["slot"])
+    return leve
+
+
+def partir(dados):
+    """`(indice, {parte: obj})` — o payload repartido pelos ficheiros."""
+    partes = {}
+    idx = dict(dados)
+    idx["caixas"] = [_caixa_leve(c) for c in dados["caixas"]]
+    for c in dados["caixas"]:
+        partes["caixa-" + paginas.slug(c["slot"])] = c
+    for nome, chaves in PARTES_ABAS.items():
+        if len(chaves) == 1:
+            partes[nome] = dados[chaves[0]]
+            idx[chaves[0]] = _so_escalares(dados[chaves[0]])
+        else:
+            partes[nome] = {k: dados[k] for k in chaves}
+            for k in chaves:
+                idx.pop(k, None)
+    # A fila de abas diz «N cartas» nas Partilhadas sem carregar a parte.
+    idx["n_partilhadas"] = len(dados["partilhadas"])
+    idx["n_compras"] = len(dados["compras"])
+    return idx, partes
+
+
+def juntar(idx, partes):
+    """O inverso do `partir`: o payload inteiro, como o `html_page` o embute."""
+    dados = {k: v for k, v in idx.items()
+             if k not in ("n_partilhadas", "n_compras", "_gerado_em", "_partes")}
+    dados["caixas"] = [partes[c["parte"]] for c in idx["caixas"]]
+    for nome, chaves in PARTES_ABAS.items():
+        if len(chaves) == 1:
+            dados[chaves[0]] = partes[nome]
+        else:
+            dados.update(partes[nome])
+    return dados
+
+
+def ler_dados(out_path):
+    """O payload inteiro lido dos ficheiros que o `build` escreveu."""
+    return juntar(*paginas.ler_dados(Path(out_path), "deckboxes"))
+
+
+def casca():
+    """A página SEM dados: o que o site e o modo edição servem."""
+    return _html(None)
+
+
 def build(con, out_path=None, editable=False, rep=None):
     out = Path(out_path) if out_path else (ROOT / "deckboxes.html")
     rep = rep if rep is not None else loadout.report(con)
-    dados = payload(con, rep, editable=editable)
-    out.write_text(_html(dados), encoding="utf-8")
+    idx, partes = partir(payload(con, rep, editable=editable))
+    paginas.escrever_dados(out, "deckboxes", idx, partes)
+    out.write_text(casca(), encoding="utf-8")
     return out
 
 
@@ -708,13 +787,19 @@ def redireccionamento(destino="deckboxes.html", titulo="Decks permanentes") -> s
 
 
 def _html(dados):
+    # Com `dados` a página leva o payload EMBUTIDO (`<script id="dados">`); sem
+    # eles é a casca, e o JavaScript vai buscá-los a `data/paginas/`.
+    # O `</` escapado é o que impede um nome de carta com `</script>` de fechar
+    # a etiqueta a meio do payload.
+    script = ("" if dados is None else
+              '<script id="dados" type="application/json">'
+              + json.dumps(dados, ensure_ascii=False).replace("</", "<\\/")
+              + "</script>")
     return (_TMPL.replace("%META%", paginas.META)
-            .replace("%TEMA%", paginas.TEMA)
+            .replace("%TEMA%", paginas.TEMA + paginas.CSS_DADOS)
             .replace("%TABS%", TABS)
-            # O `</` escapado é o que impede um nome de carta com `</script>` de
-            # fechar a etiqueta a meio do payload.
-            .replace("%DADOS%", json.dumps(dados, ensure_ascii=False)
-                     .replace("</", "<\\/")))
+            .replace("%JS_DADOS%", paginas.JS_DADOS)
+            .replace("%DADOS_SCRIPT%", script))
 
 
 def html_page(con, editable=False, rep=None, token="", ligacao=None):
@@ -1150,9 +1235,17 @@ A lista para vender é uma <b>sugestão a confirmar</b>. Atualiza diariamente.
 </footer>
 </div>
 <div class="barra" id="barra" hidden aria-live="polite"></div>
-<script id="dados" type="application/json">%DADOS%</script>
+%DADOS_SCRIPT%
 <script>
-const D = JSON.parse(document.getElementById('dados').textContent);
+%JS_DADOS%
+/* OS DADOS (2026-09-15): `D` é o ÍNDICE — o resumo, as caixas sem a grelha, os
+   totais das abas. Cada aba pesada e cada caixa têm uma PARTE em
+   `data/paginas/deckboxes/`, que o `render()` vai buscar na primeira vez que
+   ele a abre (`carregaParte`). Com o payload EMBUTIDO (o `script#dados` que o
+   `html_page` gera e o harness de `node` lê) está tudo já cá e não há um
+   único `fetch`. */
+let D = null;
+const PARTES = {};
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g,
   c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -1180,7 +1273,7 @@ const CARA = 100;
 /* O motivo da venda nova ("Premodern: não usada por nenhum deck"), vindo do
    Python (`loadout.RAZAO_PREMODERN`). Escrito à mão aqui, bastava mudar uma
    vírgula do lado de lá para o parágrafo desaparecer sem erro nenhum. */
-const PM_RAZAO = D.pm_razao || '';
+let PM_RAZAO = '';
 
 /* Estado no browser: a aba aberta, o filtro e o que já foi arrumado. É a mesma
    ideia do checkmark "atualizado" do meusdecks — o que é do André fica no
@@ -1246,7 +1339,8 @@ function renderTabs() {
                  ['pormontar', '🔧 Decks para montar',
                   D.resumo.por_montar + (D.resumo.por_montar === 1 ? ' deck' : ' decks')],
                  ['arrumar', '📥 Arrumar', arr],
-                 ['partilhadas', '🔁 Partilhadas', D.partilhadas.length + ' cartas'],
+                 ['partilhadas', '🔁 Partilhadas',
+                  (D.partilhadas ? D.partilhadas.length : D.n_partilhadas || 0) + ' cartas'],
                  ['comprar', '🛒 Comprar', D.resumo.comprar + ' cópias'],
                  ['vender', '💰 Vender', eur(D.resumo.venda)]];
   /* SUGESTÕES: só existe quando há Premodern configurado. Uma aba vazia numa
@@ -2992,8 +3086,40 @@ function vistaNaoEncontradas() {
 }
 
 /* ------------------------------------------------------------------ render */
-function render() {
+/* Que PARTES uma aba precisa. Uma caixa precisa da dela; as abas de resumo
+   (Plano, Todas, montados, por montar) desenham-se só com o índice. */
+function partesDe(id) {
+  if (D._completo) return [];
+  const c = D.caixas.find(x => x.slot === id);
+  if (c) return c.vazio ? [] : [c.parte];
+  return ({ arrumar: ['arrumar'], partilhadas: ['compras'], comprar: ['compras'],
+            vender: ['venda'], sugestoes: ['premodern'] })[id] || [];
+}
+async function carregaParte(nome) {
+  if (PARTES[nome]) return PARTES[nome];
+  const p = await carregaDados('deckboxes/' + nome + '.json');
+  if (nome.startsWith('caixa-')) {
+    const c = D.caixas.find(x => x.parte === nome);
+    if (c) Object.assign(c, p);
+  } else if (nome === 'compras') { Object.assign(D, p); }
+  else { D[nome] = p; }
+  PARTES[nome] = p;
+  return p;
+}
+let renderN = 0;
+async function render() {
   const v = $('#vista');
+  const faltam = partesDe(aba).filter(p => !PARTES[p]);
+  if (faltam.length) {
+    /* Só aqui é que se espera: com tudo já cá (o payload embutido, ou uma aba
+       já aberta) o resto corre de seguida, sem um `await` — e é isso que deixa
+       o harness de `node` chamar `render()` e ler o `#vista` logo a seguir. */
+    const n = ++renderN;
+    v.innerHTML = '<p class="carregando">A carregar…</p>';
+    try { await Promise.all(faltam.map(carregaParte)); }
+    catch (e) { if (n === renderN) erroDados(v, e); return; }
+    if (n !== renderN) return;    /* ele já mudou de aba entretanto */
+  }
   const caixa = D.caixas.find(c => c.slot === aba);
   if (caixa) {
     v.innerHTML = filtroHTML() + caixaHTML(caixa, false);
@@ -3285,12 +3411,26 @@ async function vendida(btn) {
   } catch (e) { btn.disabled = false; toast('Não deu: ' + e.message); }
 }
 
-if (!D.caixas.some(c => c.slot === aba)
-    && !['plano', 'todas', 'montados', 'pormontar', 'arrumar', 'partilhadas',
-         'comprar', 'vender', 'sugestoes'].includes(aba)) {
-  aba = 'plano';
+function iniciar(dados) {
+  D = dados;
+  PM_RAZAO = D.pm_razao || '';
+  if (!D.caixas.some(c => c.slot === aba)
+      && !['plano', 'todas', 'montados', 'pormontar', 'arrumar', 'partilhadas',
+           'comprar', 'vender', 'sugestoes'].includes(aba)) {
+    aba = 'plano';
+  }
+  renderResumo(); renderTabs(); render();
 }
-renderResumo(); renderTabs(); render();
+/* Embutido (testes, harness) ou à parte (o site e o modo edição). */
+const embutido = document.getElementById('dados');
+if (embutido) {
+  const d = JSON.parse(embutido.textContent);
+  d._completo = true;
+  iniciar(d);
+} else {
+  $('#vista').innerHTML = '<p class="carregando">A carregar os dados…</p>';
+  carregaDados('deckboxes.json').then(iniciar).catch(e => erroDados($('#vista'), e));
+}
 </script>
 </body></html>"""
 
