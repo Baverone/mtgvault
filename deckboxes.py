@@ -2909,10 +2909,11 @@ function vistaVender() {
         + 'caixa de Legacy não tiver deck escolhido, quem as segura é o top-N do '
         + '<b>Metagame</b>. Escolhe lá o deck e a reserva encolhe para a lista dele.',
         V.reservadas, false, 'reservadas', true)
-    + bloco('v-retidos', '⏳ Retidos — extras de decks montados', 'Baldes com '
-        + '<code>reter_extras_meses</code>: guardam-se até 6 meses depois da última '
-        + 'utilização. Ainda não há registo de "última utilização", por isso ficam '
-        + 'todos — não se vende nada por uma regra que ainda não corre.', V.retidos,
+    + bloco('v-retidos', '📦 Retidos — extras dos decks vigiados', 'Baldes com '
+        + '<code>reter_extras</code> (Blue Farm, Cloud, Cloud cEDH, Pauper Affinity): '
+        + 'as cartas que a lista do deck já não usa ficam <b>guardadas sem prazo</b> '
+        + '(decisão de 2026-09-15 — deixou de haver um prazo de 6 meses). Só saem '
+        + 'daqui quando tu o disseres, carta a carta, com <b>vendida</b>.', V.retidos,
         false, 'retidos')
     + (V.normal.linhas.length || V.rl.linhas.length ? '' :
        `<p class="empty">Não há nada a mais para vender.</p>`);

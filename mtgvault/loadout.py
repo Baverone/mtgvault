@@ -868,13 +868,25 @@ def marca_compra(s: dict) -> str:
     return " ".join(partes)
 
 
-def _retencao() -> dict[str, int]:
-    """Baldes com `reter_extras_meses` (regras_colecao). Enquanto não houver fonte
-    de "última utilização" (ver CLAUDE.md), estes extras RETÊM-SE — nunca entram
-    na venda; a página di-lo em vez de fingir que a regra já corre."""
+# O motivo das linhas `retidos`. É uma decisão dele e não um prazo: os extras dos
+# decks vigiados ficam guardados até ele carregar em «vendida», carta a carta.
+RAZAO_RETIDO = "extra de deck vigiado — guardada sem prazo"
+
+
+def _retencao() -> dict[str, bool]:
+    """Baldes com `reter_extras` (regras_colecao): os extras destes decks ficam
+    GUARDADOS SEM PRAZO — nunca entram na venda sozinhos (saída `retidos`).
+
+    Decisão do André a 2026-09-15. Até aí a chave era `reter_extras_meses: 6`
+    (*"guardam-se até 6 meses da última utilização"*) e a regra nunca correu,
+    porque a fonte de "última utilização" nunca foi decidida; ele acabou por
+    dizer que não a quer — o que sai destes decks sai quando ele o disser. A
+    chave antiga continua a ler-se e vale o mesmo (guardar, sem prazo): um config
+    que ainda a tenha não pode passar a vender o que ontem guardava."""
     regras = sources.config().get("regras_colecao") or {}
-    return {b: r["reter_extras_meses"] for b, r in regras.items()
-            if isinstance(r, dict) and r.get("reter_extras_meses")}
+    return {b: True for b, r in regras.items()
+            if isinstance(r, dict)
+            and (r.get("reter_extras") or r.get("reter_extras_meses"))}
 
 
 # ---------------------------------------------------------------------------
@@ -2881,10 +2893,12 @@ def sell_list(con, res: dict) -> dict:
                     do Premodern: desde 2026-09-07 essas caixas só vêem PT, e o
                     que sobrar do playset em EN vai para `venda`/`venda_rl` a
                     confirmar;
-      `retidos`   — baldes com `reter_extras_meses`. A regra dos 6 meses precisa
-                    de uma data de última utilização que ainda não existe (ver
-                    CLAUDE.md), por isso estes extras GUARDAM-SE e dizem-no, em
-                    vez de entrarem na venda como se a regra já corresse;
+      `retidos`   — baldes com `reter_extras` (os decks vigiados: Blue Farm,
+                    Cloud, Cloud cEDH, Pauper Affinity). Os extras destes decks
+                    GUARDAM-SE SEM PRAZO (André, 2026-09-15) e só saem quando ele
+                    carregar em «vendida», carta a carta. Era um prazo de 6
+                    meses desde a "última utilização" que nunca chegou a correr —
+                    ver `_retencao`;
       `reservadas` — cópias que uma SUGESTÃO de Premodern usaria (2026-09-08).
                     Não são excedente nenhum: são cartas de um deck que ele ainda
                     não disse se quer. Ficam à parte das outras três porque a
@@ -2915,8 +2929,9 @@ def sell_list(con, res: dict) -> dict:
     # GRUPO (ver abaixo): o `slot` da caixa no modelo novo, e o balde no antigo —
     # os dois, para a mesma regra valer antes e depois da migração.
     cmd_need: dict[tuple[str, str], int] = defaultdict(int)
-    # `grupo -> meses de retenção`, pela mesma dupla chave.
-    reter_grupo: dict[str, int] = {}
+    # `grupo -> True` para as caixas cujos extras se guardam sem prazo, pela
+    # mesma dupla chave.
+    reter_grupo: dict[str, bool] = {}
     # As caixas que contam como um GRUPO à parte no playset — as de deck, as
     # mesmas que os baldes `caixas_de_deck` sempre foram. Uma caixa de Premodern
     # ou de Modern NÃO entra aqui: essas cartas são colecção arrumada num deck e
@@ -3024,6 +3039,11 @@ def sell_list(con, res: dict) -> dict:
                     linha["reason"] = f"serve {quem} ({'; '.join(sorted(set(linha['substituto'].values())))})"
                     guardar.append(linha)
                 elif linha["reter"]:
+                    # O motivo por que IRIA à venda fica em `porque_venderia`,
+                    # como nas RL a segurar: "guardada sem prazo" é a resposta, e
+                    # sem a pergunta ao lado não se percebe o que se está a guardar.
+                    linha["porque_venderia"] = linha["reason"]
+                    linha["reason"] = RAZAO_RETIDO
                     retidos.append(linha)
                 else:
                     # RESERVA para um formato sem deck escolhido (o Legacy). Parte

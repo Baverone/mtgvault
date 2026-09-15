@@ -51,13 +51,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 # O loadout lê o config para as `regras_colecao`; um config próprio impede que o
 # teste passe a depender de o André não mexer no dele.
-CFG = {"regras_colecao": {"Blue Farm": {"reter_extras_meses": 6},
-                          "Cloud": {"reter_extras_meses": 6},
-                          "Cloud cEDH": {"reter_extras_meses": 6},
-                          "Pauper Affinity": {"reter_extras_meses": 6}},
+CFG = {"regras_colecao": {"Blue Farm": {"reter_extras": True},
+                          "Cloud": {"reter_extras": True},
+                          "Cloud cEDH": {"reter_extras": True},
+                          "Pauper Affinity": {"reter_extras": True}},
        "decks_vigiados": ["Oswald"]}
 _TMP = Path(tempfile.mkdtemp())
-(_TMP / "cfg.json").write_text(json.dumps(CFG), encoding="utf-8")
+_CFG_PATH = _TMP / "cfg.json"
+_CFG_PATH.write_text(json.dumps(CFG), encoding="utf-8")
 os.environ["MTGVAULT_CONFIG"] = str(_TMP / "cfg.json")
 os.environ.setdefault("MTGVAULT_HOME", str(_TMP))
 os.environ["MTGVAULT_DB"] = str(_TMP / "vault.db")   # ver tests/_bateria.py
@@ -730,12 +731,46 @@ def caso_backup_e_venda():
         "sugeriu vender terras básicas"
     print("terras básicas nunca vão para a venda")
 
-    # A caixa de Commander tem `reter_extras_meses`: os 2 extras guardam-se e
-    # dizem-no, em vez de entrarem na venda por uma regra que ainda não corre.
+    # A caixa de Commander tem `reter_extras`: os 2 extras guardam-se SEM PRAZO
+    # (André, 2026-09-15) e a linha diz-o — e diz também por que iria à venda,
+    # senão "guardada" é uma resposta sem a pergunta ao lado.
     sr = [r for r in rep["retidos"] if r["nm"] == "Sol Ring"]
     assert sum(r["q"] for r in sr) == 2, (sr, rep["venda"])
     assert not [r for r in rep["venda"] if r["nm"] == "Sol Ring"]
-    print("extras de uma caixa de Commander ficam retidos (6 meses), não à venda")
+    assert all(r["reason"] == loadout.RAZAO_RETIDO for r in sr), sr
+    assert "sem prazo" in loadout.RAZAO_RETIDO
+    assert sr[0]["porque_venderia"] == "excedente (Commander: 1 por deck)", sr[0]
+    print("extras de uma caixa de Commander ficam retidos sem prazo, não à venda")
+
+
+def caso_a_chave_antiga_reter_extras_meses_continua_a_guardar():
+    """A 2026-09-15 o `reter_extras_meses: 6` passou a `reter_extras: true` — o
+    prazo deixou de existir. Um config que ainda traga a chave antiga tem de
+    continuar a GUARDAR: ler a chave nova só, e dar a antiga como "sem regra",
+    mandava vender de um dia para o outro tudo o que ontem estava retido. E o
+    número (6, 3, 12) não muda nada: não é um prazo, é "guarda"."""
+    antigo = _CFG_PATH.read_text(encoding="utf-8")
+    _CFG_PATH.write_text(json.dumps({"regras_colecao": {
+        "Blue Farm": {"reter_extras_meses": 6},
+        "Cloud": {"reter_extras_meses": 3},
+        "Pauper Affinity": {"reter_extras": True},
+        "SPML": {"reter_extras": False},
+        "Outro": {"reter_extras_meses": 0}}}), encoding="utf-8")
+    # O cache do `sources.config` vai pelo mtime: garantir que mudou.
+    os.utime(_CFG_PATH, (os.path.getmtime(_CFG_PATH) + 5,) * 2)
+    try:
+        ret = loadout._retencao()
+        assert ret == {"Blue Farm": True, "Cloud": True, "Pauper Affinity": True}, ret
+        con = base()
+        deck(con, "EDH", "cedh", [("Sol Ring", 1)])
+        add(con, "Sol Ring", 3, sub="Blue Farm")
+        rep = loadout.report(con, [slot("EDH", "cedh", "EDH", balde="Blue Farm")])
+        assert sum(r["q"] for r in rep["retidos"] if r["nm"] == "Sol Ring") == 2, rep["retidos"]
+        assert not [r for r in rep["venda"] if r["nm"] == "Sol Ring"], rep["venda"]
+    finally:
+        _CFG_PATH.write_text(antigo, encoding="utf-8")
+        os.utime(_CFG_PATH, (os.path.getmtime(_CFG_PATH) + 10,) * 2)
+    print("a chave antiga reter_extras_meses continua a guardar (sem prazo)")
 
 
 def caso_substituto_nao_se_vende():
@@ -1515,7 +1550,8 @@ def run():
                caso_pauper_prefere_foil_mas_aceita_nonfoil,
                caso_pauper_agrega_do_spml,
                caso_foil, caso_colecionador_e_reservas_fora,
-               caso_backup_e_venda, caso_substituto_nao_se_vende, caso_variantes,
+               caso_backup_e_venda, caso_a_chave_antiga_reter_extras_meses_continua_a_guardar,
+               caso_substituto_nao_se_vende, caso_variantes,
                caso_slot_vazio, caso_preco_foil,
                caso_permanente_escolhe_antes_do_candidato,
                caso_candidato_promovido_a_permanente_recebe,

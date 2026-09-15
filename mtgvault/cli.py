@@ -963,7 +963,10 @@ def _vender(rep, csv_out=False, tudo=False):
                    # Legacy, que desde 2026-09-08 aceita RL em PT e ainda não tem
                    # deck escolhido (segura-a o top-N do metagame).
                    ("RESERVADAS — decks por decidir", rep["reservadas"]),
-                   ("RETIDOS — extras de deck (reter_extras_meses)", rep["retidos"])]
+                   # Os extras dos decks vigiados ficam guardados SEM PRAZO
+                   # (André, 2026-09-15): só saem com o «vendida», carta a carta.
+                   ("RETIDOS — extras dos decks vigiados, guardados sem prazo",
+                    rep["retidos"])]
     if csv_out:
         print("bloco,quantidade,carta,balde,edicao,acabamento,lingua,"
               "preco_unitario,total,reserved_list,motivo")

@@ -65,12 +65,10 @@ def _card(x, badge_cls="q"):
         tag = (f'<span class="fora" title="está em {html.escape(x["de"])} — '
                f'é de lá que a tiras para montar">de {html.escape(x["de"])}</span>')
         tip += f' — está em {html.escape(x["de"])}'
-    elif x.get("extra"):          # deck vigiado: carta que saiu da lista, retida
-        last = x.get("last")
+    elif x.get("extra"):          # deck vigiado: carta que saiu da lista, guardada
         cls = "c extra"
-        tag = (f'<span class="ex" title="fora da lista, retida'
-               f'{(" · última utilização " + last) if last else ""}">extra</span>')
-        tip += " — extra (saiu da lista, retida até 6 meses)"
+        tag = '<span class="ex" title="fora da lista, guardada sem prazo">extra</span>'
+        tip += " — extra (saiu da lista, guardada sem prazo)"
     # O NOME no `alt`: a imagem é o conteúdo. Sem ele, uma rede fraca deixava o
     # binder inteiro em quadrados vazios — e é esta a página com que ele enche
     # os binders. Ver a mesma nota no `metagame._card`.
@@ -215,43 +213,40 @@ def _copias_na_caixa(con, res, balde):
 
 def _watched_deck_pools(con):
     """Por cada deck vigiado: o deck por INTEIRO (o que tem e está na lista atual)
-    + as cartas EXTRA (as que já tem mas saíram da lista) — retidas até 6 meses da
-    última vez que estiveram na lista; passado isso, sugere-se vender.
+    + as cartas EXTRA (as que já tem mas saíram da lista) — GUARDADAS SEM PRAZO
+    (André, 2026-09-15; era "até 6 meses da última utilização, depois vender", e a
+    fonte dessa data nunca foi decidida — deixou de ser precisa). Saem daqui só
+    quando ele carregar em «vendida», carta a carta.
 
-    A lista atual e o histórico de "última utilização" vêm da lista vigiada
-    (watched_snapshots); para o Cloud (Duel Commander), do consenso (deck_cards).
+    A lista atual vem da lista vigiada (watched_snapshots); para o Cloud (Duel
+    Commander), do consenso (deck_cards).
 
     O que está NA CAIXA sai do balde do deck; o que o loadout lhe deu de OUTRO
     balde vem do `_de_outro_balde` e aparece marcado com "de <balde>" — é a mesma
     regra "indicas onde está a carta" que vale no resto do site.
     """
-    cutoff = con.execute("SELECT date('now','-6 months') d").fetchone()["d"]
     res = _alocacao(con)
     wmap = {r["sub_collection"]: r["watched_id"]
             for r in con.execute("SELECT sub_collection, watched_id FROM deck_collection")}
-    today = con.execute("SELECT date('now') d").fetchone()["d"]
 
-    def _list_and_last(balde):
-        cur, last = set(), {}
+    def _lista_actual(balde):
+        # Só a lista MAIS RECENTE. Até 2026-09-15 percorriam-se todos os
+        # snapshots para datar a "última utilização" de cada carta — era a base
+        # de um prazo de 6 meses que ele acabou por não querer.
         wid = wmap.get(balde)
         if wid:
-            for r in con.execute("SELECT taken_at, cards FROM watched_snapshots "
-                                 "WHERE watched_id = ? ORDER BY taken_at", (wid,)):
-                names = {c[1].split(" // ")[0] for c in json.loads(r["cards"])}
-                for nm in names:
-                    last[nm] = (r["taken_at"] or "")[:10]
-                cur = names
-        else:   # Cloud (Duel Commander): consenso, sem histórico
-            cur = {r["nm"].split(" // ")[0] for r in con.execute(
-                "SELECT card_name nm FROM deck_cards dc JOIN decks d ON d.id = dc.deck_id "
-                "WHERE d.name = 'Cloud (Duel Commander)'")}
-            for nm in cur:
-                last[nm] = today
-        return cur, last
+            r = con.execute("SELECT cards FROM watched_snapshots WHERE watched_id = ? "
+                            "ORDER BY taken_at DESC LIMIT 1", (wid,)).fetchone()
+            return ({c[1].split(" // ")[0] for c in json.loads(r["cards"])}
+                    if r else set())
+        # Cloud (Duel Commander): consenso.
+        return {r["nm"].split(" // ")[0] for r in con.execute(
+            "SELECT card_name nm FROM deck_cards dc JOIN decks d ON d.id = dc.deck_id "
+            "WHERE d.name = 'Cloud (Duel Commander)'")}
 
     out = []
     for balde, title in WATCHED_BALDES:
-        cur, last = _list_and_last(balde)
+        cur = _lista_actual(balde)
         deck_rows, extra_rows = [], []
         for r in _copias_na_caixa(con, res, balde):
             row = dict(r)
@@ -259,10 +254,7 @@ def _watched_deck_pools(con):
             if front in cur:
                 deck_rows.append(row)
             else:
-                lp = last.get(front)
                 row["extra"] = True
-                row["last"] = lp
-                row["expired"] = bool(lp and lp < cutoff)
                 extra_rows.append(row)
         outros = _de_outro_balde(con, res, balde, cur)
         deck_rows += outros
@@ -441,7 +433,8 @@ def build(con, out_path=None):
         wsec = ('<h2 id="vigiados" class="pool">🃏 Decks montados '
                 '<span class="n">só decks — não coleção</span></h2>'
                 '<p class="hint">Lista fixa (Blue Farm, Cloud cEDH, Pauper): o deck por inteiro '
-                '+ as <b>extra</b> (saíram da lista, retidas até 6 meses). As cartas com '
+                '+ as <b>extra</b> (saíram da lista, guardadas sem prazo — saem só quando '
+                'disseres «vendida»). As cartas com '
                 '<b style="color:#bcd4ff">de &lt;balde&gt;</b> estão arrumadas noutro sítio mas o '
                 '<b>loadout</b> dá-as a esta caixa — é de lá que as tiras para montar (foi o caso '
                 'dos 4 Utrom Monitor do Pauper, que vivem no SPML). Consenso (Cloud): em '
