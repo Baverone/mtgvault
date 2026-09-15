@@ -86,14 +86,47 @@ def caso_a_pagina_fundida_saiu_do_menu_mas_continua_publicada():
     print("a pagina fundida saiu do menu e continua a ser publicada")
 
 
-# As páginas que o site GERA e publica. O `buildability.py` fica de fora de
-# propósito: está dormente desde a v6 (o "Montar" saiu do menu para o André o
-# refazer), não corre no daily nem vai ao `git add`, e mexer-lhe era arrumar
-# código que ele quer redefinir. (Tem os mesmos dois defeitos, se algum dia
-# voltar: usa `var(--warn)` sem o definir e escreve os euros à mão.)
+# As páginas que o site GERA e publica. (O `alertas.py` e o `buildability.py`
+# foram apagados a 2026-09-15 por decisão do André — ver
+# `caso_as_paginas_orfas_foram_mesmo_apagadas`.)
 GERADORES = ["deckboxes.py", "metagame.py", "meta_coverage.py", "showcase.py",
              "colecao_cor.py", "caixarl.py", "reservedlist.py",
-             "collection_gallery.py", "alertas.py"]
+             "collection_gallery.py"]
+
+# Apagadas a 2026-09-15 (decisão do André): estavam fora do menu, não corriam no
+# daily e ninguém as importava desde a v6. Uma página órfã não dá erro — só
+# deixa de se lá chegar — e é por isso que fica aqui a lista: se alguém voltar a
+# criar um destes ficheiros, ou a referi-lo, o teste diz que a decisão foi outra.
+APAGADAS = ["alertas.py", "alertas.html", "buildability.py", "buildability.html"]
+
+
+def caso_as_paginas_orfas_foram_mesmo_apagadas():
+    """Os quatro ficheiros não existem, e nada no código, no workflow, no índice
+    nem na tarefa do PC os refere. O `CLAUDE.md` é a excepção de propósito: é lá
+    que a decisão fica registada, com a data."""
+    for nome in APAGADAS:
+        assert not (RAIZ / nome).exists(), f"{nome} voltou a aparecer"
+    padrao = re.compile(r"\b(alertas|buildability)\.(py|html)\b")
+    suspeitos = {}
+    ficheiros = (list(RAIZ.glob("*.py")) + list(RAIZ.glob("*.html"))
+                 + list((RAIZ / "mtgvault").glob("*.py"))
+                 + list((RAIZ / "tests").glob("*.py"))
+                 + list((RAIZ / "scripts").glob("*"))
+                 + [RAIZ / ".github" / "workflows" / "daily.yml", RAIZ / "README.md",
+                    RAIZ / "colecao_config.json"])
+    ficheiros = [p for p in ficheiros if p.is_file() and p.name != Path(__file__).name]
+    for p in ficheiros:
+        txt = p.read_text(encoding="utf-8", errors="replace")
+        achados = sorted(set(padrao.findall(txt)))
+        if achados:
+            suspeitos[p.name] = [".".join(a) for a in achados]
+    assert not suspeitos, suspeitos
+    # E a tarefa do PC, que tem a sua própria lista de HTML a publicar.
+    tarefa = RAIZ.parent.parent / "ai-pc" / "tasks" / "mtgvault-daily" / "run.py"
+    if tarefa.exists():
+        assert not padrao.search(tarefa.read_text(encoding="utf-8", errors="replace")), \
+            "a tarefa mtgvault-daily ainda refere uma página apagada"
+    print("alertas e buildability foram apagadas e ninguem as refere")
 
 
 def caso_o_tema_tem_as_variaveis_que_as_paginas_usam():
@@ -256,7 +289,8 @@ def run():
                caso_a_pagina_fundida_saiu_do_menu_mas_continua_publicada,
                caso_o_tema_tem_as_variaveis_que_as_paginas_usam,
                caso_os_precos_sao_escritos_em_portugues,
-               caso_nenhuma_pagina_liga_a_uma_que_ninguem_publica):
+               caso_nenhuma_pagina_liga_a_uma_que_ninguem_publica,
+               caso_as_paginas_orfas_foram_mesmo_apagadas):
         fn()
     print("\nTUDO OK")
 
