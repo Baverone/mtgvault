@@ -74,7 +74,7 @@ meta_coverage.py    cobertura.html — top-10 ponderado + staples + emergentes. 
 decks_faziveis.py   RETIRADO 2026-09-07 — fundido no `metagame.py`, que faz a mesma pergunta com as regras de material e o "onde está a carta". O módulo ficou como lápide (levanta RuntimeError), o `decksfaziveis.html` reencaminha para o metagame, saiu do `daily.py` e do `git add` do workflow. Podem ser apagados os dois
 buildability.py     APAGADO 2026-09-15 (decisão do André), com o `buildability.html`. Era o "Montar" (dormente desde a v6: fora do menu, fora do daily, sem um único import). O que respondia — que deck montar a seguir e o que lhe falta — passou para o **Metagame** (`metagame.py`, o top-N mais perto de fechar) e para a aba de cada caixa da Deckboxes. O `test_paginas.caso_as_paginas_orfas_foram_mesmo_apagadas` tranca que não voltam nem ficam referidas
 classify.py         classificação Deck/Coleção/Vender (alimenta colecao_cor.html)
-colecao_cor.py      colecao_cor.html — "Binders": coleção INTEIRA por cor→CMC; cartas em uso a escuro + rótulo (classify rep["deck"]/used_by); + secção "Decks vigiados" (Blue Farm/Cloud cEDH/Cloud/Pauper): o deck por inteiro + cartas "extra" que saíram da lista (retidas até 6 meses da última utilização — `_watched_deck_pools`). NB (2026-09-07): `_de_outro_balde` acrescenta as cartas que o LOADOUT dá a essa caixa mas que estão arrumadas noutro balde, marcadas "de &lt;balde&gt;" (era aqui que os Utrom Monitor do SPML desapareciam do Pauper)
+colecao_cor.py      colecao_cor.html — "Binders": coleção INTEIRA por cor→CMC; cartas em uso a escuro + rótulo (classify rep["deck"]/used_by); + secção "Decks vigiados" (Blue Farm/Cloud cEDH/Cloud/Pauper): o deck por inteiro + cartas "extra" que saíram da lista (guardadas SEM PRAZO desde 2026-09-15 — `_watched_deck_pools`; era "até 6 meses da última utilização"). NB (2026-09-07): `_de_outro_balde` acrescenta as cartas que o LOADOUT dá a essa caixa mas que estão arrumadas noutro balde, marcadas "de &lt;balde&gt;" (era aqui que os Utrom Monitor do SPML desapareciam do Pauper)
 collection_gallery.py  colecao.html — galeria por sub-coleção
 core_decks.py       (coredecks.html APAGADO 2026-08-26, a redefinir; NÃO vai ao git-add) — mas core_decks.py continua a correr no daily p/ calcular card_price/posse
 alertas.py          alertas.html — vender/comprar por movimento de preço (fora do menu atual)
@@ -1072,8 +1072,9 @@ podia usar: `venda` (excedente normal), `venda_rl` (Reserved List — não se
 volta a imprimir, confirma-se uma a uma, e desde 2026-09-08 só entra aqui a que
 passa a regra dos 5 % abaixo), **`rl_segurar`** e **`rl_sem_historico`** (a RL
 que a regra travou: *"subiu"* e *"não sei"*, ver a seguir), `retidos` (baldes com
-`reter_extras_meses`; a regra dos 6 meses continua inerte por falta de data de
-"última utilização", por isso guardam-se e dizem-no), **`reservadas`** (cópias
+`reter_extras` — os extras dos decks vigiados, **guardados sem prazo** desde
+2026-09-15; ver "Regras por coleção" abaixo. Até aí era `reter_extras_meses` e
+um prazo de 6 meses que nunca chegou a correr), **`reservadas`** (cópias
 que uma SUGESTÃO de Premodern usaria — ver a secção do Premodern abaixo: não são
 excedente nenhum, são o deck que ele ainda não disse se quer, e o botão *"não
 quero este"* liberta-as no mesmo dia) e **`guardar`**: os
@@ -1315,13 +1316,43 @@ preferências no `colecao_config.json` (ver o cabeçalho do `webapp.py`); fica
 declarada porque existe na base dele, não porque alguma página dependa dela.
 
 **Regras por coleção (`colecao_config.json` → `regras_colecao`).**
-`reter_extras_meses` = **6** (formalizado 2026-08-14) para os decks de
-Commander/cEDH/Duel Commander/Pauper — `Blue Farm`, `Cloud cEDH`, `Cloud`,
-`Pauper Affinity`. Estes são "coleção própria + lista vigiada": as cartas EXTRA
-(as do balde que a lista do deck já não usa) guardam-se até 6 meses da última
-utilização; passado isso sem uso → Vender. Premodern NÃO usa isto (tranca por
-completude). **Por decidir/implementar:** fonte de "última utilização" (última
-vez na lista vigiada) — ainda não em `classify.py`; inerte até haver histórico.
+`reter_extras: true` para os decks de Commander/cEDH/Duel Commander/Pauper —
+`Blue Farm`, `Cloud cEDH`, `Cloud`, `Pauper Affinity`. Estes são "coleção
+própria + lista vigiada": as cartas EXTRA (as do balde que a lista do deck já
+não usa) ficam **GUARDADAS SEM PRAZO** — saída `retidos` da venda, com o motivo
+`loadout.RAZAO_RETIDO` e, ao lado, `porque_venderia` (o motivo por que iriam à
+venda, como nas RL a segurar) — e só saem quando o André o disser, carta a
+carta, com o botão «vendida». Premodern NÃO usa isto (tranca por completude).
+
+**DECISÃO DE 2026-09-15: a regra dos 6 meses foi DESLIGADA.** Desde 2026-08-14
+a chave era `reter_extras_meses: 6` (*"guardam-se até 6 meses da última
+utilização; passado isso sem uso → Vender"*) e havia um segundo prazo no
+`classify.py` (`SELL_STALE_DAYS = 180`, *"6 meses sem ser jogada em torneio →
+vender"*). **Nenhum dos dois alguma vez correu**: o do loadout esperava por uma
+fonte de "última utilização" que nunca foi decidida (o `colecao_cor` chegou a
+datá-la pelos `watched_snapshots`, só para a mostrar), e o do classify não podia
+morder porque o `daily` só guarda ~30 dias de listas — nenhuma "última aparição"
+chegava aos 180 dias. Dois prazos escritos, nenhum a correr, e a página a dizer
+*"retidas até 6 meses"*: é o padrão do `event_tier`, uma regra que a página diz
+e não existe. Ele decidiu que não quer prazo nenhum: o que sai dos decks
+vigiados sai quando ele o disser. Consequências:
+- **A fonte de "última utilização" deixou de ser precisa** — saiu do "por
+  decidir" e do código (`classify._last_played`, o `last`/`expired` do
+  `colecao_cor._watched_deck_pools`, que passou a ler só o snapshot mais
+  recente). Não se volta a datar o que já não tem prazo.
+- **A chave antiga `reter_extras_meses` continua a ler-se e vale o mesmo**
+  (`loadout._retencao`: qualquer valor truthy = guardar). Um config que ainda a
+  tenha não pode passar a vender de um dia para o outro o que ontem guardava.
+- **Medido na base de 2026-09-15** (o mesmo `vault.db` no `main` e no ramo): as
+  sete saídas da venda **iguais ao cêntimo e linha a linha** — venda 230c/
+  1 345,89 €, venda_rl 55c/2 935,31 €, rl_segurar 43c/4 432,19 €,
+  rl_sem_historico 0, **retidos 0** (hoje não há extras nos quatro baldes),
+  reservadas 30c/168,20 €, guardar 1c/14,75 €; fechar tudo 8 131,37 €, 227 a
+  comprar, 71 a ir buscar, 209 a arrumar; classify deck 131/coleção 898/vender
+  73, só por *"excesso (mais de 4)"*. O caso com extras a sério está nos testes
+  (`test_loadout.caso_backup_e_venda` e
+  `caso_a_chave_antiga_reter_extras_meses_continua_a_guardar`; `test_sem_prazo.py`
+  tranca que o prazo não volta por outro nome e que o texto vivo diz "sem prazo").
 
 **Decks de comandante por consenso (`commander_decks.py`).** Alguns decks de
 comandante não copiam UMA decklist (como `my_decks.py` faz no Modern) — são
@@ -1371,7 +1402,8 @@ pode ser ligas."*
   `my_decks`, `commander_decks._inclusion`,
   `buildable`.
 - **`classify.py` e `core_decks.py` NÃO usam a regra, de propósito.** O
-  `_played_names`/`_last_played` do classify é a rede de segurança contra
+  `_played_names` do classify (o `_last_played` saiu a 2026-09-15 com a regra
+  dos 6 meses) é a rede de segurança contra
   sugerir vender uma carta jogável, e a tranca de completude do Premodern
   precisa de todas as listas do arquétipo — filtrar aí faria a página sugerir
   vendas a mais, que é o erro caro.

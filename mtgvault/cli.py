@@ -985,8 +985,14 @@ def _vender(rep, csv_out=False, tudo=False):
              "total": f"{r['total']:.2f}",
              # A janela em que a subida foi medida, por cópia: com a janela a
              # crescer todos os dias, "não subiu" em 27 dias e em 90 não são a
-             # mesma afirmação.
-             "motivo": " ".join(x for x in (r["reason"], r.get("rl_nota")) if x)}
+             # mesma afirmação. E, nas linhas SEGURADAS (RL a segurar, retidos),
+             # o motivo por que iriam à venda — "guardada sem prazo" é uma
+             # resposta, e sem a pergunta ao lado não se percebe o que se guarda.
+             # A página já o diz ("ia por: ..."); o CLI dizia só a resposta.
+             "motivo": " ".join(x for x in (
+                 r["reason"], r.get("rl_nota"),
+                 f"(ia por: {r['porque_venderia']})" if r.get("porque_venderia") else "")
+                 if x)}
             for r in linhas],
             ["q", "carta", "balde", "ed", "fin", "ln", "unit", "total", "motivo"])
     if not tudo:
