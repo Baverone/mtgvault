@@ -51,6 +51,10 @@ mtgvault/
   wantlist.py     o que falta, para decks e para arquétipos
   loadout.py      os decks montados ao mesmo tempo: aloca a coleção às caixas
                   (uma cópia serve uma só), conflitos, substitutos e venda
+  venda.py        a SAÍDA da lista de venda (2026-09-18): o CSV de stock p/ o
+                  Cardmarket (formato predefinido NÃO confirmado, ou aprendido
+                  de `data/cardmarket-stock-exemplo.csv`), a lista da estante
+                  por onde a cópia está, e o que fica de fora com o porquê
   premodern.py    o que montar A SEGUIR (top-10 + top-5 combo, cobertura COMO SE
                   fosse a caixa nº1 do grupo — v8, 2026-09-08) e o que vai à venda
   arquetipos.py   a IDENTIDADE de um arquétipo pelo NÚCLEO de cartas (id estável,
@@ -469,6 +473,58 @@ mexer na base: sobrar uma linha a mais é visível, perder a venda não é. A li
 identifica-se por `loadout.chave_venda` — a mesma chave por que o `_fecha` junta
 os lotes — e o servidor **recalcula** o relatório antes de tirar nada, para uma
 página aberta há duas horas não mandar vender uma cópia que já está numa caixa.
+
+**A SAÍDA DA LISTA DE VENDA (`mtgvault/venda.py`, 2026-09-18).** A aba Vender
+mostrava a lista e tinha o «vendida» por linha, mas nada a tirava do ecrã para o
+sítio onde as cartas se vendem — 230 cópias em `venda` e 55 em `venda_rl`, cerca
+de 4 300 € parados numa página só de leitura. Agora a aba (bloco **📤 Saída**, no
+topo), o CLI (`python -m mtgvault.cli vender --exportar`) e o `daily` (passo
+`venda-export`, logo a seguir ao `deckboxes` e com o MESMO `loadout.report`)
+produzem três coisas, todas do `mtgvault.venda`:
+- **`data/venda-stock.csv`** — o ficheiro para carregar stock: uma linha por
+  CÓPIA (não por linha da página — o estado NM/EX é da cópia, e dois lotes da
+  mesma impressão em estados diferentes são duas linhas), com nome em inglês,
+  edição (código), número, língua, acabamento (`foil`/`nonfoil`), estado,
+  quantidade, preço de referência e um comentário (`mtgvault #<copy_id> ·
+  <onde estava>` — **no Cardmarket o comentário de um artigo é público**; se não
+  o quiser à vista, apaga a coluna antes de carregar). **O formato predefinido
+  (`Name,Set,Number,Language,Foil,Condition,Quantity,Price,Comment`, vírgula)
+  NÃO foi confirmado contra uma conta real do Cardmarket** — não se conseguiu
+  ver de fora o que o site aceita hoje, e não se inventou um para o dar por
+  certo: a página, o CLI e o `daily` dizem-no. **O exportador APRENDE com o
+  ficheiro dele**: se existir **`data/cardmarket-stock-exemplo.csv`** (uma
+  exportação de stock que o André descarregue uma vez da conta), lê-se o
+  cabeçalho, o delimitador (`;`/`,`/TAB), o BOM, o fim de linha e — havendo
+  linhas — o VOCABULÁRIO (foil como `1`/`0`, `Yes`/`No` ou `true`/`false`;
+  língua por nome, por código ou pelos ids da API; decimal com vírgula), e a
+  exportação sai exactamente nessa forma, com as colunas que se reconhecem
+  preenchidas (`venda.mapear_coluna`: nome, edição, expansão, número, língua,
+  foil, estado, quantidade, preço, comentário, `idProduct` do catálogo) e as
+  outras **vazias, na posição delas**. Um teste para cada caminho
+  (`test_venda_export.py`). O exemplo fica fora do Git (é o stock dele, com
+  preços).
+- **`data/venda-estante.txt`** — a lista para ir buscar as cartas, agrupada por
+  ONDE a cópia está (`loadout.local`: caixa, Colecção, Caixa RL PT/EN), por COR
+  dentro de cada sítio (como o binder; o painel Montar já fazia o mesmo), com o
+  total de cópias e de euros por grupo. Na página é uma linha por cópia, sem
+  tabela — para o telemóvel à frente da estante — e imprime-se (`@media print`
+  esconde menus, botões e textareas).
+- **O que NÃO se vende fica visivelmente de fora** (`venda.fora_da_exportacao`):
+  `rl_segurar`, `rl_sem_historico`, `guardar`, `reservadas` e `retidos` não
+  entram no CSV nem na estante e aparecem no bloco **3. Fica de fora** com o
+  motivo por linha — na RL a percentagem e a janela (`rl_nota`) e o *"ia por:"*.
+  A decisão foi tomada, não esquecida.
+- Os dois ficheiros **reescrevem-se** a cada corrida (são "a lista de hoje", sem
+  data no nome; o histórico do que ele VENDEU continua a ser o `vendas.csv`), com
+  escrita atómica (o `daily` e o `webapp.py` escrevem os dois), e estão no
+  `.gitignore` — levam preços por cópia, a mesma regra do `vendas.csv`. Na
+  página há **copiar** e **⬇ descarregar** (site publicado e modo edição) e, só
+  no modo edição, **💾 gravar em data/** (`POST /api/venda-export`, exige o
+  token; recalcula o relatório antes de escrever).
+- **A venda passou a escolher o lote em PIOR ESTADO** (`loadout.ordem_estado`,
+  MT→PO; o `lots()` traz `cond`): entre lotes iguais desempatava pelo `id`, e a
+  lista de stock dizia NM de uma cópia que era a EX que ele ia vender. Só mexe no
+  desempate — os totais e as contagens da venda não mudam.
 
 **O TELEMÓVEL E O TOKEN (2026-09-08).** *"Ele vai estar à frente da estante com o
 telemóvel."* O `webapp.py` ouve em `MTGVAULT_BIND` (por omissão `127.0.0.1`; a

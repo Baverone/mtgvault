@@ -732,6 +732,19 @@ def e_foil(finish: str | None) -> bool:
     return finish in FOIL_FINISHES
 
 
+# Os estados da `copies.condition`, do melhor para o pior — os mesmos códigos
+# que o Cardmarket usa (MT, NM, EX, GD, LP, PL, PO). Um estado desconhecido
+# vale NM: é o default da coluna, e tratá-lo como "pior" mandava vender
+# primeiro exactamente as cópias de que ninguém sabe o estado.
+ESTADOS = ("MT", "NM", "EX", "GD", "LP", "PL", "PO")
+
+
+def ordem_estado(cond: str | None) -> int:
+    """0 = MT … 6 = PO. Quanto maior, pior a cópia — é a que se vende primeiro."""
+    c = (cond or "NM").strip().upper()
+    return ESTADOS.index(c) if c in ESTADOS else ESTADOS.index("NM")
+
+
 def fontes_material(s: dict) -> str | None:
     """As gavetas que esta caixa VÊ, em nome de gente ("Colecção + Caixa RL (PT)").
 
@@ -1289,7 +1302,7 @@ def lots(con, cfg_slots: list[dict] | None = None) -> dict[str, list[dict]]:
     for r in con.execute(
         f"""SELECT cp.id, cp.quantity q, cp.finish, cp.language lang,
                   cp.reserved_deck_id rdid, s.name sub, cp.balde_origem borigem,
-                  cp.notes notas,
+                  cp.notes notas, COALESCE(cp.condition, 'NM') cond,
                   c.name nm, c.scryfall_id sid, c.set_code, c.set_name,
                   c.released_at rel, COALESCE(c.reserved, 0) rl, c.legalities leg
              FROM copies cp
@@ -3022,10 +3035,15 @@ def sell_list(con, res: dict) -> dict:
             # Vender primeiro o que menos falta faz: os substitutos por último
             # (servem um deck), depois as que não são Reserved List, depois as
             # nonfoil, e as PT no fim — são as que servem o Premodern, o único
-            # formato onde ele exige a língua.
+            # formato onde ele exige a língua. E, entre lotes iguais, o que está
+            # em PIOR ESTADO (2026-09-18): o playset que fica em casa é o NM, e
+            # a EX é a que vai para o Cardmarket — antes desempatava pelo `id`,
+            # e a saída de stock dizia o estado errado da cópia a listar.
             for lot in sorted(lotes, key=lambda l: (bool(l["substituto"]), l["rl"],
                                                     l["finish"] in FOIL_FINISHES,
-                                                    l["lang"] == "pt", l["key"])):
+                                                    l["lang"] == "pt",
+                                                    -ordem_estado(l.get("cond")),
+                                                    l["key"])):
                 if resto <= 0:
                     break
                 take = min(lot["livre"], resto)

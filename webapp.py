@@ -83,7 +83,8 @@ from urllib.parse import parse_qs, urlparse
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import caixas, configio, db, loadout, migracao, qr, sources  # noqa: E402
+from mtgvault import (caixas, configio, db, loadout, migracao, qr,  # noqa: E402
+                      sources, venda)
 
 import deckboxes  # noqa: E402
 import metagame  # noqa: E402
@@ -929,6 +930,22 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 if caminho == "/api/vender":
                     self._json(self._vender(dados))
+                    return
+                if caminho == "/api/venda-export":
+                    # «Gravar em data/» (2026-09-18): os mesmos dois ficheiros
+                    # que o `daily` escreve (`venda-stock.csv` +
+                    # `venda-estante.txt`), com a lista RECALCULADA agora — a
+                    # página pode estar aberta desde ontem. Não mexe na base
+                    # nem no config, por isso não regenera nada.
+                    with db.session() as con:
+                        r = venda.exportar(con)
+                    self._json({"ok": True, "copias": r["copias"],
+                                "linhas": r["linhas"], "csv": r["csv"],
+                                "estante": r["estante"],
+                                "msg": (f'{r["copias"]} cópias em {r["linhas"]} '
+                                        f'linhas → {Path(r["csv"]).name} + '
+                                        f'{Path(r["estante"]).name} '
+                                        f'(formato {r["formato"]})')})
                     return
             except KeyError as e:
                 # O caso normal: um `slot` que já não existe no config (a página

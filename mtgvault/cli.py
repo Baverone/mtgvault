@@ -148,6 +148,9 @@ def main(argv=None):
     vd.add_argument("--csv", action="store_true", help="saída em CSV")
     vd.add_argument("--tudo", action="store_true",
                     help="incluir Reserved List, substitutos e retidos")
+    vd.add_argument("--exportar", action="store_true",
+                    help="escrever data/venda-stock.csv (stock p/ Cardmarket) e "
+                         "data/venda-estante.txt (ir buscar à estante)")
 
     ar = sub.add_parser("arrumar",
                         help="o que mover de cada gaveta para cada deckbox")
@@ -472,7 +475,20 @@ def main(argv=None):
                 _loadout_resumo(rep)
 
         elif args.cmd == "vender":
-            _vender(loadout.report(con), csv_out=args.csv, tudo=args.tudo)
+            rep = loadout.report(con)
+            if args.exportar:
+                # A SAÍDA (2026-09-18): os mesmos ficheiros que o daily escreve.
+                from . import venda            # noqa: PLC0415
+                r = venda.exportar(con, rep)
+                print(f"escrito: {r['csv']}\n         {r['estante']}\n  "
+                      f"{r['resumo']}")
+                if r["formato"] == "predefinido":
+                    print("  AVISO: formato predefinido, NÃO confirmado contra "
+                          "o Cardmarket — guarda uma exportação de stock da tua "
+                          f"conta como data/{venda.FICHEIRO_EXEMPLO} para o "
+                          "exportador aprender a forma certa.")
+            else:
+                _vender(rep, csv_out=args.csv, tudo=args.tudo)
 
         elif args.cmd == "arrumar":
             _arrumar(con, csv_out=args.csv, confirmar=args.confirmar)

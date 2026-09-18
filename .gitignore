@@ -31,6 +31,14 @@ data/nao-encontradas.csv
 # auto-registo, o "actualizei" e o "já arrumei tudo"). É a prova de que uma
 # cópia dentro de uma caixa veio de um gesto dele: sem linha aqui, é bug.
 data/registos-caixas.csv
+# A SAÍDA da lista de venda (2026-09-18): o CSV para carregar stock no
+# Cardmarket e a lista para ir buscar as cartas à estante, reescritos a cada
+# corrida do daily (e pelo «gravar em data/» do modo edição). Levam preços por
+# cópia — a mesma regra do `vendas.csv`. E o EXEMPLO de que o exportador
+# aprende o formato é uma exportação da conta dele, com o stock e os preços.
+data/venda-stock.csv
+data/venda-estante.txt
+data/cardmarket-stock-exemplo.csv
 # O backup que a `migrar-caixas` deixa ao lado. Serve para desfazer à mão na
 # hora; o histórico do Git já guarda a versão anterior do config.
 colecao_config-v5-*.json

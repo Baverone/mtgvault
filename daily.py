@@ -27,7 +27,7 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 os.environ.setdefault("MOXFIELD_USER_AGENT", "mtgvault/0.1 (coleccao pessoal)")
 
 from mtgvault import (analysis, db, loadout, mtgtop8, prices,  # noqa: E402
-                      scryfall, sources, tagging, watchlist)
+                      scryfall, sources, tagging, venda, watchlist)
 
 import core_decks  # noqa: E402  (gera coredecks.html + tracking de alteracoes)
 import collection_gallery  # noqa: E402  (gera colecao.html — galeria com imagens)
@@ -306,8 +306,22 @@ def main():
         # REPARTIDA entre eles, mais a lista de venda. Depois do `meus-decks` e
         # dos `decks-premodern`: lê as mesmas listas (decks/watched/consenso) e
         # precisa delas já atualizadas.
-        _step(con, "deckboxes",
-              lambda: str(deckboxes.build(con, ROOT / "deckboxes.html")))
+        # O `loadout.report` custa ~4 s e a exportação da venda (abaixo) lê o
+        # MESMO relatório que a página mostra — calcula-se uma vez e passa-se.
+        _rep: dict = {}
+
+        def _deckboxes():
+            _rep["v"] = loadout.report(con)
+            return str(deckboxes.build(con, ROOT / "deckboxes.html", rep=_rep["v"]))
+
+        _step(con, "deckboxes", _deckboxes)
+        # A SAÍDA DA VENDA (2026-09-18): `data/venda-stock.csv` (para carregar
+        # stock no Cardmarket) + `data/venda-estante.txt` (para ir buscar as
+        # cartas à estante). Fora do Git — levam preços por cópia, como o
+        # `vendas.csv`. O formato do CSV é o do `data/cardmarket-stock-exemplo.csv`
+        # se existir; senão o predefinido, que NÃO foi confirmado contra o site.
+        _step(con, "venda-export",
+              lambda: venda.exportar(con, _rep.get("v"))["resumo"])
         # Metagame: o top-N que ele está mais perto de concluir por formato.
         # DEPOIS do `deckboxes` na intenção, não na dependência — lê a mesma
         # alocação do loadout, e é dela que sai o "está noutra caixa".

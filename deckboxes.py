@@ -51,7 +51,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import loadout, paginas  # noqa: E402
+from mtgvault import loadout, paginas, venda  # noqa: E402
 
 TABS = paginas.nav("deckboxes.html")
 
@@ -634,7 +634,13 @@ def payload(con, rep, editable=False, token="", ligacao=None):
                   "rl_sem_historico": venda_bloco("rl_sem_historico",
                                                   "copias_rl_sem_historico",
                                                   "total_rl_sem_historico"),
-                  "retidos": venda_bloco("retidos", "copias_retidas", "total_retido")},
+                  "retidos": venda_bloco("retidos", "copias_retidas", "total_retido"),
+                  # A SAÍDA (2026-09-18): o CSV de stock, a lista da estante e o
+                  # que fica de fora, tudo do `mtgvault.venda` — a página não
+                  # recompõe nada disto em JavaScript. Sem as `linhas`: já vão
+                  # dentro da estante, agrupadas, e o CSV é a outra vista delas.
+                  "saida": {k: v for k, v in venda.relatorio(con, rep).items()
+                            if k != "linhas"}},
         # Quanto é que a regra dos 5 % segurou ao todo, e com que parâmetros.
         # A janela é um MÁXIMO desde 2026-09-08: a efectiva é a que cada carta
         # dá, e o limiar acompanha-a. Os três números vão para a página porque
@@ -695,6 +701,8 @@ CAIXA_PESADO = ("cartas", "wantlist", "subs", "buscar", "lista", "montar", "eds"
 PARTES_ABAS = {"arrumar": ("arrumar",), "venda": ("venda",),
                "premodern": ("premodern",),
                "compras": ("compras", "partilhadas", "basicas")}
+# O que sai da `venda.saida` no índice (ver `partir`).
+SAIDA_PESADO = ("csv", "texto_estante")
 
 
 def _so_escalares(d):
@@ -722,6 +730,12 @@ def partir(dados):
         if len(chaves) == 1:
             partes[nome] = dados[chaves[0]]
             idx[chaves[0]] = _so_escalares(dados[chaves[0]])
+            # O CSV e o texto da estante são strings — escalares para o
+            # `_so_escalares` — mas são os dois textos mais compridos da página
+            # e o índice não os precisa: ficam só na parte `venda`.
+            if chaves[0] == "venda" and "saida" in idx["venda"]:
+                idx["venda"]["saida"] = {k: v for k, v in idx["venda"]["saida"].items()
+                                         if k not in SAIDA_PESADO}
         else:
             partes[nome] = {k: dados[k] for k in chaves}
             for k in chaves:
@@ -1015,6 +1029,47 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
  table.vt td.tot{color:var(--gold);font-weight:700}
  .rl{font-size:9px;font-weight:800;padding:1px 4px;border-radius:4px;
    background:#3a1f1f;color:#ff9f8f;vertical-align:middle}
+ /* a saída da venda (2026-09-18): o CSV, a estante e o que fica de fora */
+ .sfmt{font-size:12px;color:var(--muted);border:1px dashed var(--line);
+   border-radius:8px;padding:7px 10px;margin:6px 0 10px;line-height:1.5}
+ .sfmt.nao{border-color:#7a5a20;color:#e6c27a} .sfmt b{color:var(--ink2)}
+ .est{margin:8px 0 4px} .estg{margin:10px 0 12px}
+ .estg>h4{margin:0 0 4px;font-size:14px;display:flex;justify-content:space-between;
+   gap:10px;flex-wrap:wrap;border-bottom:2px solid var(--line);padding-bottom:4px}
+ .estg>h4 span{color:var(--gold);font-variant-numeric:tabular-nums;font-weight:800;
+   font-size:13px}
+ .el{display:flex;align-items:center;gap:8px;padding:5px 2px;
+   border-bottom:1px solid #1a212c;font-size:13.5px;line-height:1.35}
+ .el:last-child{border-bottom:0}
+ .el .c{flex:0 0 auto;font-size:10px;font-weight:800;width:20px;height:20px;
+   border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+   background:#1c2430;color:var(--muted)}
+ .el .c.W{background:#efe6c4;color:#5a4a10} .el .c.U{background:#1f4c8f;color:#dbe8ff}
+ .el .c.B{background:#3a3040;color:#e6d6f0} .el .c.R{background:#8f2a1f;color:#ffe0d6}
+ .el .c.G{background:#1f6b3a;color:#dcffe6} .el .c.M{background:#7a5a20;color:#ffe9a8}
+ .el .c.L{background:#5a4a3a;color:#f0e6d6}
+ .el .q{color:var(--gold);font-weight:800;font-variant-numeric:tabular-nums;
+   flex:0 0 auto;min-width:26px}
+ .el .nm{flex:1 1 auto;min-width:0} .el .nm small{display:block;color:var(--muted);
+   font-size:11.5px}
+ .el .pz{flex:0 0 auto;color:var(--ink2);font-variant-numeric:tabular-nums;
+   font-size:12.5px}
+ .fora{margin-top:10px} .fora>details{margin:6px 0;border:1px solid var(--line);
+   border-radius:8px;padding:7px 10px;background:#10151d}
+ .fora summary{cursor:pointer;font-size:13px;font-weight:700;display:flex;
+   justify-content:space-between;gap:8px;flex-wrap:wrap}
+ .fora summary span{color:var(--muted);font-weight:600;font-variant-numeric:tabular-nums}
+ .fora p{margin:5px 0 6px;font-size:12px;color:var(--muted)}
+ .fora ul{margin:0;padding-left:18px;font-size:12.5px} .fora li{margin:2px 0}
+ .fora li i{color:var(--muted)}
+ @media print{
+   nav.tabs,.decktabs,.seg,.flh,.cpbtn,button,textarea.cmk,#barra,.lig{display:none!important}
+   body{background:#fff;color:#000} .wrap{padding:0;max-width:none}
+   details.vblk{border:0;padding:0;break-inside:avoid} details.vblk>summary{color:#000}
+   .estg>h4{border-bottom:1px solid #000} .estg>h4 span,.el .q{color:#000}
+   .el{border-bottom:1px solid #ddd;font-size:12px} .el .nm small,.el .pz{color:#333}
+   .el .c{border:1px solid #999;background:#fff!important;color:#000!important}
+ }
  /* arrumar */
  .arr{background:var(--card);border:1px solid var(--line);border-radius:var(--r2);
    padding:13px;margin-bottom:11px}
@@ -2964,6 +3019,7 @@ function vistaVender() {
                     + `Cada linha diz em que janela foi medida.`)
         + ` Estão nos dois blocos de baixo — as que valorizaram e as que `
         + `o vault ainda não consegue medir.</p>` : '')
+    + saidaHTML(V.saida)
     + bloco('v-normal', 'Excedente normal', 'Cópias a mais de cartas que não são '
         + 'Reserved List. É por aqui que se começa: o risco é baixo e o dinheiro é '
         + 'real.', V.normal, true, 'excedente normal')
@@ -3011,6 +3067,111 @@ function vistaVender() {
         false, 'retidos')
     + (V.normal.linhas.length || V.rl.linhas.length ? '' :
        `<p class="empty">Não há nada a mais para vender.</p>`);
+}
+
+/* A SAÍDA DA VENDA (2026-09-18): o que tira a lista do ecrã para o sítio onde
+   as cartas se vendem. Três blocos, todos calculados no Python
+   (`mtgvault.venda`) — a página só os desenha:
+     1. o CSV de stock, para copiar, descarregar ou (modo edição) gravar em
+        `data/`. O formato é o do ficheiro de exemplo dele se existir; senão o
+        predefinido, DITO como não confirmado — não se dá por certo um formato
+        que ninguém viu;
+     2. a lista para ir buscar as cartas à ESTANTE, por onde a cópia está e por
+        cor dentro de cada sítio, com totais por grupo. Legível no telemóvel
+        (uma linha por cópia, sem tabela) e imprimível (`@media print`);
+     3. o que NÃO entra, com o motivo por linha — para ele ver que a decisão foi
+        tomada, não esquecida. */
+function saidaHTML(S) {
+  if (!S) return '';
+  const F = S.formato || {};
+  const est = S.estante || { grupos: [] };
+  const grupoHTML = g => `<div class="estg"><h4>📍 ${esc(g.local)}`
+    + `<span>${cop(g.copias)} · ${eur(g.total)}</span></h4>`
+    + g.linhas.map(l => `<div class="el"><span class="c ${esc(l.cor)}" `
+      + `title="${esc(l.cor_nome)}">${esc(l.cor)}</span>`
+      + `<span class="q">${l.q}×</span><span class="nm">${esc(l.nm)}`
+      + (l.rl ? ' <span class="rl">RL</span>' : '')
+      + `<small>${esc(l.set)} ${esc((l.lang || '').toUpperCase())} `
+      + `${l.foil ? '✨ foil' : 'nonfoil'} · ${esc(l.cond)}</small></span>`
+      + `<span class="pz">${eur(l.unit)}</span></div>`).join('') + `</div>`;
+  const foraHTML = f => !f.copias ? '' :
+    `<details><summary>${esc(f.titulo)}<span>${cop(f.copias)} · ${eur(f.total)}`
+    + `</span></summary><p>${esc(f.porque)}</p><ul>`
+    + f.linhas.map(l => `<li><b>${l.q}× ${esc(l.nm)}</b>`
+      + (l.rl ? ' <span class="rl">RL</span>' : '') + ` <i>(${esc(l.local)})</i>`
+      + ` — ${esc(l.motivo)}</li>`).join('') + `</ul></details>`;
+  const foraTot = (S.fora || []).reduce((a, f) => a + f.copias, 0);
+  const foraEur = (S.fora || []).reduce((a, f) => a + (f.total || 0), 0);
+  return `<details class="vblk" id="v-saida" open><summary><span>📤 Saída: para o `
+    + `Cardmarket e para a estante</span><span class="vtot">${cop(S.copias)} · `
+    + `${eur(S.total)}</span></summary>`
+    + `<p class="lead">O que entra: o <b>excedente normal</b> e a <b>Reserved List `
+    + `que passou a tua regra</b> — ${cop(S.copias)} em ${S.estante.grupos.length} `
+    + `sítio${pl(S.estante.grupos.length)} da estante. Uma linha por cópia, com o `
+    + `estado de cada uma.</p>`
+    /* 1. O FICHEIRO */
+    + `<h3>1. O ficheiro para carregar stock</h3>`
+    + `<div class="sfmt${F.confirmado ? '' : ' nao'}">`
+    + (F.confirmado
+       ? `✅ <b>Formato aprendido do teu ficheiro</b> (<code>data/${esc(F.ficheiro)}</code>): `
+         + `${F.colunas.length} colunas, delimitador <code>${esc(F.delimitador === '\t' ? 'TAB' : F.delimitador)}</code>`
+         + (F.vazias && F.vazias.length
+            ? ` — deixei vazias: <b>${esc(F.vazias.join(', '))}</b>.` : '.')
+       : `⚠️ <b>Formato predefinido, NÃO confirmado</b> contra uma conta real do `
+         + `Cardmarket (${F.colunas.length} colunas: <code>${esc(F.colunas.join(', '))}</code>). `
+         + `Para o ficheiro sair na forma certa, descarrega uma vez o teu stock da `
+         + `conta e guarda-o como <code>data/cardmarket-stock-exemplo.csv</code>: `
+         + `o exportador lê o cabeçalho e o delimitador e passa a escrever assim.`)
+    + `</div>`
+    + `<div class="flh"><button class="cpbtn" onclick="copiar(this,'csv')" `
+    + `aria-label="Copiar o CSV de stock">copiar CSV</button>`
+    + `<button class="cpbtn" id="saida-csv">⬇ ${esc(S.nome_csv)}</button>`
+    + (D.editable
+       ? `<button class="btn sm" data-saida="gravar" aria-label="Gravar os ficheiros em data/">`
+         + `💾 gravar em data/</button>` : '')
+    + `</div>`
+    + `<textarea class="cmk" data-cmk="csv" readonly>${esc(S.csv)}</textarea>`
+    /* 2. A ESTANTE */
+    + `<h3>2. Ir buscar à estante</h3>`
+    + `<p class="lead">Por <b>onde a cópia está</b>, e por cor dentro de cada sítio `
+    + `(como no binder). Imprime esta aba ou copia o texto.</p>`
+    + `<div class="flh"><button class="cpbtn" onclick="copiar(this,'est')" `
+    + `aria-label="Copiar a lista da estante">copiar lista</button>`
+    + `<button class="cpbtn" id="saida-txt">⬇ ${esc(S.nome_estante)}</button></div>`
+    + `<textarea class="cmk" data-cmk="est" readonly>${esc(S.texto_estante)}</textarea>`
+    + `<div class="est">` + est.grupos.map(grupoHTML).join('') + `</div>`
+    /* 3. O QUE FICA DE FORA */
+    + `<h3>3. Fica de fora: ${cop(foraTot)} · ${eur(foraEur)}</h3>`
+    + `<p class="lead">Não entram no ficheiro nem na lista — a decisão está tomada `
+    + `(ou por tomar) e cada linha diz porquê. Os blocos completos estão mais abaixo.</p>`
+    + `<div class="fora">` + (S.fora || []).map(foraHTML).join('')
+    + (foraTot ? '' : `<p class="ok2">✓ Nada ficou de fora.</p>`) + `</div>`
+    + `</details>`;
+}
+
+/* Descarregar um texto como ficheiro — o mesmo gesto do CSV da arrumação. */
+function baixarTexto(texto, nome, tipo) {
+  const b = new Blob([texto], { type: tipo || 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(b);
+  a.download = nome;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  toast(`${nome} descarregado.`);
+}
+
+/* «Gravar em data/»: o servidor RECALCULA a lista e escreve os dois ficheiros
+   (`venda-stock.csv` + `venda-estante.txt`) ao lado da base — os mesmos que o
+   `daily` escreve todas as manhãs. Só no modo edição, pela razão de sempre. */
+async function gravarSaida(btn) {
+  btn.disabled = true;
+  try {
+    const r = await gravar('api/venda-export');
+    const j = await r.json();
+    if (j.erro) throw new Error(j.erro);
+    toast(j.msg || 'Gravado.');
+    btn.textContent = '✓ gravado'; btn.classList.add('done');
+  } catch (e) { btn.disabled = false; toast('Não deu: ' + e.message); }
 }
 
 /* O LINK E O QR para o telemóvel — só no modo edição, e só quando o pedido já
@@ -3300,6 +3461,14 @@ function ligar() {
      aviso — é o mesmo gesto, só que sem prazo. */
   for (const b of document.querySelectorAll('[data-enc]')) {
     b.onclick = () => encontrei([Number(b.dataset.enc)], b);
+  }
+  /* A saída da venda: descarregar o CSV / a lista da estante, e gravar em data/. */
+  const scsv = $('#saida-csv'), stxt = $('#saida-txt');
+  const S = D.venda && D.venda.saida;
+  if (scsv && S) scsv.onclick = () => baixarTexto(S.csv, S.nome_csv, 'text/csv;charset=utf-8');
+  if (stxt && S) stxt.onclick = () => baixarTexto(S.texto_estante, S.nome_estante);
+  for (const b of document.querySelectorAll('[data-saida]')) {
+    b.onclick = () => gravarSaida(b);
   }
   const fim = $('#arr-fim'), csv = $('#arr-csv'), lim = $('#arr-limpar');
   if (csv) csv.onclick = baixarCSV;
