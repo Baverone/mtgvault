@@ -112,9 +112,11 @@ def _scryfall_prices(con):
 def _cardmarket(con):
     caminho = os.environ.get("CARDMARKET_PRICEGUIDE")
     if not caminho:
-        p = prices.download_cardmarket_priceguide()   # usa o cookie, se existir
+        p = prices.download_cardmarket_priceguide()   # cookie, ou o público (opt-in)
         if not p:
-            return "sem ficheiro nem cookie — saltado"
+            return ("sem ficheiro nem cookie — saltado (o price guide público "
+                    "existe e é opt-in: CARDMARKET_PRICEGUIDE_PUBLICO=1; ver "
+                    "prices.download_cardmarket_priceguide — muda os números)")
         caminho = str(p)
     return f"{prices.load_cardmarket_file(con, caminho)} preços"
 

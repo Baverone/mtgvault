@@ -103,6 +103,70 @@ def run_scryfall_bulk():
     print("\nTUDO OK (scryfall bulk)")
 
 
+# Trecho REAL do price guide público do Cardmarket (2026-09-18, `createdAt` e
+# valores tal e qual; só o `idProduct` do 1.º foi posto a 1001 para bater com o
+# `cardmarket_id` do Black Lotus do `seed_catalog`). É a forma que o
+# `load_cardmarket_file` tem de continuar a ler.
+PRICE_GUIDE_TRECHO = (
+    '{"version":1,"createdAt":"2026-09-18T02:49:26+0200","priceGuides":['
+    '{"idProduct":1001,"idCategory":1,"avg":0.09,"low":0.02,"trend":0.09,"avg1":0.02,'
+    '"avg7":0.06,"avg30":0.09,"avg-foil":0.26,"low-foil":0.05,"trend-foil":0.36,'
+    '"avg1-foil":0.35,"avg7-foil":0.33,"avg30-foil":0.34},'
+    '{"idProduct":2,"idCategory":1,"avg":0.05,"low":0.02,"trend":0.05,"avg1":0.02,'
+    '"avg7":0.03,"avg30":0.04,"avg-foil":null,"low-foil":null,"trend-foil":null,'
+    '"avg1-foil":null,"avg7-foil":null,"avg30-foil":null}]}')
+
+
+class _Resposta:
+    def __init__(self, content: bytes):
+        self.content = content
+
+    def raise_for_status(self):
+        pass
+
+
+def run_priceguide_publico():
+    """O price guide público é OPT-IN: sem `CARDMARKET_PRICEGUIDE_PUBLICO` o
+    passo continua a saltar (ligá-lo muda os números — ver o docstring do
+    `download_cardmarket_priceguide`); com ele, vai ao URL público e o ficheiro
+    lê-se com low/trend/avg30 e as variantes foil."""
+    import os
+    pedidos = []
+
+    def get_falso(url, headers=None, timeout=None):
+        pedidos.append((url, dict(headers or {})))
+        return _Resposta(PRICE_GUIDE_TRECHO.encode("utf-8"))
+
+    tmp = Path(tempfile.mkdtemp())
+    for k in ("CARDMARKET_PRICEGUIDE_PUBLICO", "CARDMARKET_COOKIE",
+              "CARDMARKET_PRICEGUIDE_URL"):
+        os.environ.pop(k, None)
+    assert prices.download_cardmarket_priceguide(tmp / "pg.json", _get=get_falso) is None
+    assert pedidos == [], "sem opt-in não se faz um único pedido"
+
+    os.environ["CARDMARKET_PRICEGUIDE_PUBLICO"] = "1"
+    p = prices.download_cardmarket_priceguide(tmp / "pg.json", _get=get_falso)
+    assert p == tmp / "pg.json" and p.exists(), p
+    assert pedidos and pedidos[0][0] == prices.CM_PRICEGUIDE_PUBLICO, pedidos
+    assert "Cookie" not in pedidos[0][1], "o público não leva cookie"
+    os.environ.pop("CARDMARKET_PRICEGUIDE_PUBLICO", None)
+
+    with db.session(tmp / "p.db", tmp / "cat.db") as con:
+        seed_catalog(con, NAMES)
+        collection.add_copy(con, "Black Lotus", set_code="tst", quantity=1)  # id-1
+        n = prices.load_cardmarket_file(con, p)
+        assert n == 2, n                     # nonfoil + foil do Black Lotus
+        got = {(r["scryfall_id"], r["finish"]): (r["low"], r["trend"], r["avg30"])
+               for r in con.execute("SELECT scryfall_id, finish, low, trend, avg30 "
+                                    "FROM price_latest WHERE source='cardmarket'")}
+        assert got[("id-1", "nonfoil")] == (0.02, 0.09, 0.09), got
+        assert got[("id-1", "foil")] == (0.05, 0.36, 0.34), got
+        assert len(got) == 2, got            # o idProduct 2 não é de ninguém
+    print("Price guide público: opt-in, sem cookie, e o ficheiro real lê-se com low/trend/avg30")
+    print("\nTUDO OK (price guide publico)")
+
+
 if __name__ == "__main__":
     run()
     run_scryfall_bulk()
+    run_priceguide_publico()

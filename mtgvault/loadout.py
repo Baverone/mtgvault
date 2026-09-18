@@ -3760,6 +3760,10 @@ def registar_falta(con, res: dict, slot_id: str, nm: str, board: str = "",
                              f"{s['nome']} ({requisito_material(s) or 'sem regra'})")
     nota = (f"registada a partir das faltas em {date.today().isoformat()}; "
             f"{MARCA_POR_CONFIRMAR}")
+    # O `balde` da caixa é o nome do modelo antigo; numa base migrada o
+    # `add_copy` mete-a na `Colecção` com esse nome em `balde_origem`
+    # (`collection.gaveta_de_entrada`). Foi por aqui que, a 09/09, dez cópias
+    # voltaram a viver em `Blue Farm`/`Cloud cEDH` depois da migração.
     copy_id = collection.add_copy(
         con, nm, set_code=set_code, collector_number=collector_number,
         quantity=q, finish=finish, language=lang,

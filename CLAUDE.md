@@ -1357,10 +1357,36 @@ dizer de que prateleira a tirar hoje.
   material.
 - **A migração**: `python -m mtgvault.cli migrar-coleccao-unica` (tem `--dry-run`
   e faz backup sozinha; é idempotente e o `balde_origem` só se escreve quando
-  está a NULL). **Ainda NÃO correu na base do André** — corre-se quando isto
-  entrar no main. Medida na cópia da BD, é **neutra nos números**: 7 891,50 € para
+  está a NULL). Medida na cópia da BD, é **neutra nos números**: 7 891,50 € para
   fechar, 230 a comprar, 61 a ir buscar, venda 91c/702,95 €, classify
   {deck 152, coleção 938, vender 97} — iguais antes e depois.
+  **CORREU NA BASE DO ANDRÉ A 2026-09-07** (727 cópias, no lançamento da v2 —
+  `ai-pc/work/revisao/mtgvault-lancamento-0907.md` §6; o CLAUDE.md ficou onze
+  dias a dizer o contrário). **E outra vez a 2026-09-18**, porque a base tinha
+  voltado a ter duas gavetas de deck: **10 cópias** (729–738, criadas pelo botão
+  *"já a tenho"* a 09/09) viviam em `Blue Farm` (3) e `Cloud cEDH` (7) — o
+  `registar_falta` escrevia no `balde` da caixa, que é o nome do modelo antigo.
+  Medido nesse dia com backup de hora
+  (`data/backups/vault-2026-09-18-234209-antes-coleccao-unica.db`) e o relatório
+  inteiro de cada lado: **neutra ao cêntimo e linha a linha** — fechar tudo
+  7 057,57 €, 199 a comprar, 53 a ir buscar (26/16/11), 185 a arrumar em 103
+  linhas, venda 246c/1 499,70 € · venda_rl 58c/3 702,99 € · rl_segurar
+  42c/4 768,21 € · rl_sem_historico 0 · retidos 0 · reservadas 32c/353,04 € ·
+  guardar 1c/14,75 €, classify {deck 127, coleção 902, vender 73}, as 14 caixas e
+  a `copy_allocation` (411 cópias em 6 caixas) iguais. Só os baldes mudam:
+  {Colecção 1 487, RL 181, Cloud cEDH 7, Blue Farm 3} → {Colecção **1 497**, RL 181}.
+- **A REGRA DA MIGRAÇÃO PASSOU A SER A REGRA DE ENTRADA (2026-09-18).** Sem
+  isto a base desfazia a migração ao ritmo das compras dele, sem um único erro.
+  `collection.gaveta_de_entrada`: numa base já migrada (tem o balde `Colecção`),
+  um `sub_collection` dos baldes fundidos (`migracao.BALDES_A_FUNDIR` — `SPML`,
+  `Blue Farm`, `Cloud cEDH`…) já não é uma gaveta: a cópia entra na `Colecção`
+  com esse nome em `balde_origem`, que é exactamente o que a migração lhe faria,
+  e continua a valer como *"veio do balde deste deck"* para o
+  `contradiz_a_caixa`. Vale para o `add_copy` inteiro (fotos, CSV, *"já a
+  tenho"*); a `Caixa Reserved List` e o colecionador ficam como estão; numa base
+  por migrar não muda nada (os testes). O `PROCESSAR_FOTOS.md` passou a dizer
+  `Colecção`. Três casos em `test_migracao.py`, e o `--dry-run` a zero depois de
+  uma entrada é o que os tranca.
 - **A migração TEM de semear a `copy_allocation`** com as cartas que viviam nos
   baldes dos decks. Sem isso desmontava no papel quatro decks que estão na
   estante (as regras de material voltavam a aplicar-se a cartas já sleevadas) e o
@@ -1870,31 +1896,64 @@ cartas.
 | **mtgdecks.net** | PÁGINAS abrem com `requests` + User-Agent de browser (a deteção reage ao UA, não ao IP) — `mtgvault/mtgdecks.py` tira daí o ÍNDICE de torneios (jogadores/peso/data/nome). MAS as CARTAS das listas são anti-scraped (JS/base64, export a 403): para as cartas usa-se o mtgtop8 (.dec) |
 | **mtggoldfish** | acessível, mas é agregador — duplicaria dados. Termos proíbem reprodução |
 | Moxfield | precisa de User-Agent autorizado pelo suporte; sem isso, 403 |
-| Cardmarket | não se raspa; usa o price guide oficial. O cookie de sessão expira |
-| CardTrader | API v2, token no perfil, 200 pedidos/10s |
+| Cardmarket | não se raspa; usa o price guide oficial. O cookie de sessão expira. **O price guide de Magic está PÚBLICO** (`prices.CM_PRICEGUIDE_PUBLICO`, S3, sem sessão — 2026-09-18), mas ligá-lo é opt-in (ver abaixo) |
+| CardTrader | API v2, token no perfil, 200 pedidos/10s. O token existe neste PC (`CARDTRADER_TOKEN`); o `daily` só corre com `CARDTRADER_SETS` |
 
-## Superfícies ainda não validadas contra os sites reais
+## As cinco superfícies, validadas contra os sites reais (2026-09-18)
 
-Foram escritas a partir da estrutura observada, mas nunca correram contra a
-rede. Se algo vier vazio, é aqui:
+Estiveram um mês e meio nesta secção como *"nunca correram contra a rede"* —
+e as três primeiras corriam **todas as noites** no `mtgvault-daily` (a base tem
+7 741 listas de `mtgo` + `mtgtop8` até 2026-09-17). A 2026-09-18 correu-se cada
+uma, sozinha, contra o site, com as escritas numa CÓPIA da base
+(`_scratch/superficies.py` do ramo desse dia):
 
-1. `sources.fetch_mtgo_index` — a forma do URL do índice do mtgo.com.
-   Tenta duas variantes; pode ser preciso uma terceira.
-2. `sources.parse_mtgo_page` — o blob JSON embebido na página do evento.
-3. `mtgtop8.harvest` — os parsers estão testados com fixtures reais, mas o
-   ciclo completo nunca correu.
-4. `prices.load_cardmarket_file` — aceita JSON e CSV; o formato exato do
-   ficheiro não foi confirmado.
-5. `prices.sync_cardtrader_map` — se o blueprint traz `scryfall_id` ou se é
-   preciso cair para correspondência por nome.
+1. `sources.fetch_mtgo_index` — **funciona.** As duas formas de URL respondem
+   (200, 219 KB, 253 hrefs); a primeira ganha. Dado mais recente: **2026-09-18**
+   (10 eventos do próprio dia; 14 a 17/09).
+2. `sources.parse_mtgo_page` — **funciona.** Liga: `{name, publish_date,
+   decklists…}`; Challenge: `{description, starttime, format, player_count,
+   standings…}`. O `store_event` guardou as duas (e o filtro do Pauper deixou
+   passar só o Luffy: 1 de 32). **Remendo:** o `player_count` das Challenges
+   passou a ir para `event_players` — era de graça e ficava no chão; o peso do
+   MTGO continua a vir do tier. Dado mais recente: **2026-09-18** («Pauper
+   Challenge 32», 32 jogadores).
+3. `mtgtop8.harvest` — **funciona.** Página de formato → 23 eventos, página
+   de evento → nome/data/**125 jogadores**/32 decks/32 jogadores, `.dec` →
+   37 linhas com o prefixo `[SET]` limpo; `harvest` 0 novas porque o `daily`
+   das 02:30 já as tinha. Dado mais recente: **2026-09-17** (Premodern
+   Challenge do MTGO re-hospedada) e **2026-09-12** em papel («Buckeye Brawl II
+   — Retromancers», 125 jogadores).
+4. `prices.load_cardmarket_file` — **funciona, e o ficheiro é público.**
+   `https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_1.json`
+   (26 MB, 127 216 produtos, `createdAt` **2026-09-18 02:49**) lê-se tal e qual:
+   29 170 preços gravados na cópia, com low/trend/avg30 e as variantes foil.
+   **NÃO ficou ligado**, de propósito: por cima dos preços da Scryfall (que
+   são o `trend` do Cardmarket — 78 % iguais ao cêntimo) o guide traz **8 202
+   impressões** que a Scryfall não cota, e como o `card_price` é o MÍNIMO entre
+   impressões do mesmo nome a venda passa de 1 499,70 € para **665,60 €** (as
+   mesmas 246 cópias), o *fechar tudo* de 7 057,57 € para **5 164,65 €**, e a
+   regra dos 5 % da RL passa **22 cópias / 3 583 €** de *segurar* para *vender*
+   sem o mercado ter mexido (o mínimo de hoje tem impressões que o de há 90
+   dias não tinha). É decisão do André: `CARDMARKET_PRICEGUIDE_PUBLICO=1` no
+   ambiente do `daily` liga-o (`prices.priceguide_publico_ligado`, com teste
+   sobre um trecho real), e nesse dia a janela da RL recomeça.
+5. `prices.sync_cardtrader_map` — **funciona.** `/expansions` 3 859; ODY →
+   374 blueprints, **350 com `scryfall_id`** (o resto são variantes sem par
+   pelo nome), 350 pares no mapa; `fetch_cardtrader_prices` 699 linhas (ex.:
+   Mountain 0,14 €, 343 à venda). Dado mais recente: **2026-09-18** (é o
+   marketplace ao vivo). Sem `CARDTRADER_SETS` o `daily` continua a saltar —
+   com `set_codes=None` o `sync` percorria as 3 859 expansões.
 
 ## Por fazer
 
-- Validar as cinco superfícies acima contra os sites reais e corrigir.
-- **Abrir o porto 8771 na firewall privada** (o comando está acima e no arranque
-  do `webapp.py`) — precisa de consola de Administrador, por isso não correu.
-- **Correr a migração `migrar-coleccao-unica` na base a sério.** Está feita,
-  testada e medida (é neutra nos números), mas ainda só correu em cópias.
+- ~~Validar as cinco superfícies contra os sites reais~~ — feito a 2026-09-18,
+  ver a secção acima. Por decidir (André): ligar o price guide público.
+- ~~Abrir o porto 8771 na firewall privada~~ — feito a 2026-09-15 (regra
+  `mtgvault 8771`, TCP 8771, perfil privado).
+- ~~Correr a migração `migrar-coleccao-unica` na base a sério~~ — correu a
+  2026-09-07 (727 cópias) e a 2026-09-18 (as 10 que as entradas tinham voltado
+  a pôr nos baldes de deck); neutra ao cêntimo — ver *"Modelo de colecção
+  única"*. A entrada de cartas passou a escrever no modelo novo.
 - ~~Interface web local~~ — feita em 2026-09-07: `webapp.py`, porto **8771**,
   biblioteca-padrão (sem FastAPI, para não trazer uma dependência para uma coisa
   que são 200 linhas de `http.server`). Falta-lhe: ver fotos e gráficos de preço.

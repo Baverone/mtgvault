@@ -211,12 +211,79 @@ def caso_dry_run_nao_escreve():
     print("o --dry-run conta o que faria e nao escreve nada")
 
 
+def caso_depois_da_migracao_a_entrada_nao_recria_os_baldes():
+    """Medido na base a sério a 2026-09-18: a migração correu a 07/09 (727
+    cópias) e a 09/09 o *"já a tenho"* meteu dez cópias novas em `Blue Farm` e
+    `Cloud cEDH` — o `add_copy` escrevia no modelo antigo e a migração tinha
+    outra vez trabalho. Numa base migrada, uma cópia nova pedida para um balde
+    fundido entra na `Colecção` com o balde em `balde_origem`, e o `--dry-run`
+    da migração continua a zero. Sem o redireccionamento, `total` dá 1."""
+    from mtgvault import collection
+    con = povoada()
+    migracao.migrar(con, com_backup=False, cfg_slots=SLOTS)
+    cid = collection.add_copy(con, "Sol Ring", set_code="c21",
+                              sub_collection="Blue Farm")
+    r = con.execute("""SELECT s.name b, cp.balde_origem o FROM copies cp
+                         JOIN sub_collections s ON s.id = cp.sub_collection_id
+                        WHERE cp.id = ?""", (cid,)).fetchone()
+    assert r["b"] == "Colecção" and r["o"] == "Blue Farm", dict(r)
+    assert migracao.migrar(con, dry_run=True)["total"] == 0, "a migracao voltou a ter trabalho"
+    # E a `Caixa Reserved List` continua a ser uma gaveta a sério.
+    cid = collection.add_copy(con, "Mox Diamond", set_code="sth",
+                              sub_collection="Caixa Reserved List")
+    r = con.execute("""SELECT s.name b, cp.balde_origem o FROM copies cp
+                         JOIN sub_collections s ON s.id = cp.sub_collection_id
+                        WHERE cp.id = ?""", (cid,)).fetchone()
+    assert r["b"] == "Caixa Reserved List" and r["o"] is None, dict(r)
+    print("depois da migracao uma copia nova entra na Coleccao com o balde em balde_origem")
+
+
+def caso_antes_da_migracao_a_entrada_nao_muda():
+    """Numa base por migrar (uma base nova, os testes) o `add_copy` escreve o
+    balde que lhe pedem — o mesmo código tem de estar certo antes e depois."""
+    from mtgvault import collection
+    con = base()
+    cid = collection.add_copy(con, "Sol Ring", set_code="c21", sub_collection="SPML")
+    r = con.execute("""SELECT s.name b, cp.balde_origem o FROM copies cp
+                         JOIN sub_collections s ON s.id = cp.sub_collection_id
+                        WHERE cp.id = ?""", (cid,)).fetchone()
+    assert r["b"] == "SPML" and r["o"] is None, dict(r)
+    print("antes da migracao a entrada escreve o balde pedido")
+
+
+def caso_a_copia_nova_do_deck_continua_protegida_pelo_balde_de_origem():
+    """A cópia que a foto diz estar no Blue Farm (PT foil, que o cEDH recusa)
+    tem de valer como *"veio do balde deste deck"* depois de entrar na `Colecção`
+    — é a excepção do `contradiz_a_caixa`, e sem o `balde_origem` a cópia
+    registada na caixa era uma contradição."""
+    from mtgvault import collection
+    con = povoada()
+    migracao.migrar(con, com_backup=False, cfg_slots=SLOTS)
+    con.execute("DELETE FROM copies WHERE scryfall_id = 'id-2'")   # o Citadel antigo
+    con.execute("DELETE FROM copy_allocation")
+    cid = collection.add_copy(con, "Tarnished Citadel", set_code="ody",
+                              finish="foil", language="pt", sub_collection="Blue Farm")
+    con.execute("INSERT INTO copy_allocation (copy_id, slot, quantity) VALUES (?,?,1)",
+                (cid, "cedh-blue-farm"))
+    con.commit()
+    est = por_balde(con)
+    assert "Blue Farm" not in est, est          # entrou na Colecção, não no balde
+    rep = loadout.report(con, SLOTS)
+    s = rep["slots"][0]
+    assert s["tenho"] == 1 and s["comprar"] == 0, (s["tenho"], s["comprar"])
+    assert not rep.get("contradicoes"), rep.get("contradicoes")
+    print("a copia nova do deck fica protegida pelo balde_origem")
+
+
 def run():
     for fn in (caso_funde_gavetas_e_deixa_a_rl_em_paz, caso_colecionador_intocado,
                caso_idempotente_e_guarda_o_balde_de_origem,
                caso_deck_montado_continua_montado,
                caso_arrumacao_diz_de_que_gaveta_sai,
-               caso_o_que_esta_na_caixa_sai_da_coleccao, caso_dry_run_nao_escreve):
+               caso_o_que_esta_na_caixa_sai_da_coleccao, caso_dry_run_nao_escreve,
+               caso_depois_da_migracao_a_entrada_nao_recria_os_baldes,
+               caso_antes_da_migracao_a_entrada_nao_muda,
+               caso_a_copia_nova_do_deck_continua_protegida_pelo_balde_de_origem):
         fn()
     print("\nTUDO OK")
 

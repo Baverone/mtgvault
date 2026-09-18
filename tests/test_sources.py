@@ -24,7 +24,9 @@ from mtgvault import db, sources  # noqa: E402
 LEAGUE_JSON = r'''{"name": "Duel Commander League", "publish_date": "2026-08-01", "site_name": "duel-commander-league-2026-08-0110931", "playeventid": "10931", "instance_id": "10931_2026-08-01", "decklists": [{"loginid": "3522198", "player": "konviczka", "instance_id": "10931_2026-08-01", "main_deck": [{"qty": "1", "sideboard": "false", "card_attributes": {"card_name": "The Underworld Cookbook"}}, {"qty": "1", "sideboard": "false", "card_attributes": {"card_name": "Monument to Endurance"}}, {"qty": "1", "sideboard": "false", "card_attributes": {"card_name": "Currency Converter"}}], "sideboard_deck": [{"qty": "1", "sideboard": "true", "card_attributes": {"card_name": "Asmoranomardicadaistinaculdacar"}}]}]}'''
 
 # --- página de CHALLENGE: {description, starttime, format:"CMODERN"} ---------
-CHALLENGE_JSON = r'''{"description": "Modern Challenge 64", "starttime": "2026-08-01 01:00:00.0", "format": "CMODERN", "site_name": "modern-challenge-64-2026-08-0112849460", "type": "TOURNAMENT", "decklists": [{"loginid": "875470", "player": "Tree42o", "tournamentid": "12849460", "main_deck": [{"qty": "4", "sideboard": "false", "card_attributes": {"card_name": "Allosaurus Rider"}}, {"qty": "1", "sideboard": "false", "card_attributes": {"card_name": "Wooded Foothills"}}, {"qty": "1", "sideboard": "false", "card_attributes": {"card_name": "Ureni, the Song Unending"}}], "sideboard_deck": [{"qty": "1", "sideboard": "true", "card_attributes": {"card_name": "Atraxa, Grand Unifier"}}, {"qty": "2", "sideboard": "true", "card_attributes": {"card_name": "Nature's Claim"}}]}]}'''
+#     `player_count` é real: as challenges trazem-no (validado ao vivo a
+#     2026-09-18 — "Pauper Challenge 32" → 32); as ligas não.
+CHALLENGE_JSON = r'''{"description": "Modern Challenge 64", "starttime": "2026-08-01 01:00:00.0", "format": "CMODERN", "site_name": "modern-challenge-64-2026-08-0112849460", "type": "TOURNAMENT", "player_count": 64, "decklists": [{"loginid": "875470", "player": "Tree42o", "tournamentid": "12849460", "main_deck": [{"qty": "4", "sideboard": "false", "card_attributes": {"card_name": "Allosaurus Rider"}}, {"qty": "1", "sideboard": "false", "card_attributes": {"card_name": "Wooded Foothills"}}, {"qty": "1", "sideboard": "false", "card_attributes": {"card_name": "Ureni, the Song Unending"}}], "sideboard_deck": [{"qty": "1", "sideboard": "true", "card_attributes": {"card_name": "Atraxa, Grand Unifier"}}, {"qty": "2", "sideboard": "true", "card_attributes": {"card_name": "Nature's Claim"}}]}]}'''
 
 LEAGUE_URL = "https://www.mtgo.com/decklist/duel-commander-league-2026-08-0110931"
 CHALLENGE_URL = "https://www.mtgo.com/decklist/modern-challenge-64-2026-08-0112849460"
@@ -84,7 +86,10 @@ def run():
         chc = board_map(con, ch["id"])
         assert chc[("main", "Allosaurus Rider")] == 4      # qty vem como string "4"
         assert chc[("side", "Nature's Claim")] == 2        # não é comandante: fica no side
-        print("challenge: 'CMODERN' -> 'modern', starttime -> data, side preservado")
+        assert ch["event_players"] == 64, ch["event_players"]   # player_count do blob
+        assert row["event_players"] is None, row["event_players"]  # a liga não traz
+        print("challenge: 'CMODERN' -> 'modern', starttime -> data, side preservado, "
+              "player_count guardado")
 
     # --- _guess_format: premodern não pode ser classificado como modern -----
     assert sources._guess_format(

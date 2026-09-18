@@ -27,6 +27,13 @@ import requests
 
 CT_BASE = "https://api.cardtrader.com/api/v2"
 CM_EXPORTS = "https://www.cardmarket.com/en/Magic/Data/File-Exports"
+# O price guide de Magic (idCategory 1) está PÚBLICO no S3 do Cardmarket, sem
+# sessão — validado a 2026-09-18: 26 MB, 127 216 produtos, `createdAt` de hoje
+# às 02:49, e o `load_cardmarket_file` lê-o tal e qual (JSON com `priceGuides`,
+# `idProduct`, low/trend/avg30 e as variantes -foil). É a mesma família de
+# ficheiros da página de exports; a página só acrescenta o login.
+CM_PRICEGUIDE_PUBLICO = ("https://downloads.s3.cardmarket.com/productCatalog/"
+                         "priceGuide/price_guide_1.json")
 
 
 # ---------------------------------------------------------------------------
@@ -316,8 +323,15 @@ def fetch_cardtrader_prices(con: sqlite3.Connection, ct: CardTrader,
     return n
 
 
-def download_cardmarket_priceguide(dest: Path | None = None) -> Path | None:
-    """Descarrega o price guide usando um cookie de sessão.
+def priceguide_publico_ligado() -> bool:
+    """`CARDMARKET_PRICEGUIDE_PUBLICO=1` liga o price guide público (ver abaixo)."""
+    return os.environ.get("CARDMARKET_PRICEGUIDE_PUBLICO", "").strip().lower() in (
+        "1", "true", "sim", "yes")
+
+
+def download_cardmarket_priceguide(dest: Path | None = None,
+                                   _get=None) -> Path | None:
+    """Descarrega o price guide: com cookie de sessão, ou o público (opt-in).
 
     ISTO É A PARTE FRÁGIL DE TODO O SISTEMA. A página de exports do Cardmarket
     exige sessão iniciada, e num runner sem browser a única forma é guardar o
@@ -330,17 +344,35 @@ def download_cardmarket_priceguide(dest: Path | None = None) -> Path | None:
 
     Variáveis: CARDMARKET_COOKIE e CARDMARKET_PRICEGUIDE_URL (o link exato do
     ficheiro, copiado da página de exports).
+
+    **O PÚBLICO É OPT-IN, E NÃO POR ACASO (2026-09-18).** O ficheiro em
+    `CM_PRICEGUIDE_PUBLICO` não precisa de cookie e o parser lê-o à primeira —
+    mas ligá-lo MUDA OS NÚMEROS do vault, e não pouco. Medido numa cópia da base
+    desse dia, por cima dos preços da Scryfall (que são o `trend` do Cardmarket:
+    78 % iguais ao cêntimo, mediana |Δ| 0 %): o guide traz **8 202 impressões**
+    que a Scryfall não cota, e como o `loadout.card_price` é o MÍNIMO do `trend`
+    entre as impressões do mesmo nome, a lista de venda passa de 1 499,70 € para
+    **665,60 €** (as mesmas 246 cópias), o *"fechar tudo"* de 7 057,57 € para
+    **5 164,65 €**, e a regra dos 5 % da Reserved List compara o mínimo de hoje
+    (com as impressões novas) com o de há 90 dias (sem elas) e passa **22
+    cópias / 3 583 €** de *"a segurar"* para *"vender"* — sem que o mercado
+    tenha mexido. É a armadilha das *"duas contas"* do `card_price_em`, desta
+    vez entre fontes. Ligar isto é uma decisão do André, e no dia em que ligar
+    a janela da RL tem de recomeçar (o histórico de antes não é comparável).
+    `_get` é só para os testes trocarem o pedido HTTP por um ficheiro.
     """
+    get = _get or requests.get
     url = os.environ.get("CARDMARKET_PRICEGUIDE_URL")
     cookie = os.environ.get("CARDMARKET_COOKIE")
-    if not url or not cookie:
+    headers = {"User-Agent": "Mozilla/5.0 mtgvault/0.1"}
+    if url and cookie:
+        headers["Cookie"] = cookie
+    elif priceguide_publico_ligado():
+        url = CM_PRICEGUIDE_PUBLICO
+    else:
         return None
     dest = dest or Path("priceguide.json")
-    r = requests.get(
-        url,
-        headers={"Cookie": cookie, "User-Agent": "Mozilla/5.0 mtgvault/0.1"},
-        timeout=120,
-    )
+    r = get(url, headers=headers, timeout=120)
     r.raise_for_status()
     body = r.content
     if b"<html" in body[:200].lower():

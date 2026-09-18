@@ -60,6 +60,40 @@ def ensure_sub_collection(con, name: str, purpose: str = "player") -> int:
     ).fetchone()["id"]
 
 
+def gaveta_de_entrada(con, sub_collection: str | None
+                      ) -> tuple[str | None, str | None]:
+    """Onde uma cópia NOVA entra: `(gaveta, balde_origem)`.
+
+    A migração para a colecção única correu na base a sério a 2026-09-07 (727
+    cópias) — mas as ENTRADAS continuaram a escrever no modelo antigo: o *"já a
+    tenho"* metia a cópia no `balde` da caixa e o guia das fotos ainda dizia
+    `SPML`/`Blue Farm`. Medido a 2026-09-18: **10 cópias** (729–738, todas do
+    botão das faltas de 09/09) tinham voltado a viver em `Blue Farm` e `Cloud
+    cEDH`, gavetas que já não existem na estante, e a migração tinha outra vez
+    trabalho para fazer. Sem um único erro — é o padrão do `event_tier`: a base
+    desfazia a migração ao ritmo das compras dele.
+
+    Por isso a regra da migração passou a ser a regra de entrada. Numa base já
+    migrada (tem o balde `Colecção`), um nome dos baldes fundidos
+    (`migracao.BALDES_A_FUNDIR`) já não é uma gaveta: a cópia entra na
+    `Colecção` com esse nome em `balde_origem` — exactamente o que a migração
+    lhe faria — e continua a valer como *"veio do balde deste deck"* para as
+    excepções de material (`loadout.contradiz_a_caixa`). Numa base por migrar
+    (os testes, uma base nova) devolve o que lhe pedem, para o mesmo código estar
+    certo antes e depois.
+    """
+    if not sub_collection:
+        return None, None
+    from . import loadout, migracao                        # noqa: PLC0415
+    if sub_collection not in migracao.BALDES_A_FUNDIR:
+        return sub_collection, None
+    migrada = con.execute("SELECT 1 FROM sub_collections WHERE name = ?",
+                          (loadout.BALDE_COLECCAO,)).fetchone()
+    if not migrada:
+        return sub_collection, None
+    return loadout.BALDE_COLECCAO, sub_collection
+
+
 def add_copy(
     con: sqlite3.Connection,
     name: str,
@@ -106,16 +140,21 @@ def add_copy(
                  f"{card['set_code']} #{card['collector_number']}")
         notes = f"{notes} | {marca}" if notes else marca
 
+    # A colecção de colecionador não tem gavetas de jogador: fica onde lhe pedem.
+    if purpose == "player":
+        sub_collection, balde_origem = gaveta_de_entrada(con, sub_collection)
+    else:
+        balde_origem = None
     sub_id = (
         ensure_sub_collection(con, sub_collection, purpose) if sub_collection else None
     )
     cur = con.execute(
         """INSERT INTO copies (scryfall_id, quantity, finish, language, condition,
                                purpose, sub_collection_id, photo_path,
-                               acquired_at, acquired_price, notes)
-           VALUES (?,?,?,?,?,?,?,?,date('now'),?,?)""",
+                               acquired_at, acquired_price, notes, balde_origem)
+           VALUES (?,?,?,?,?,?,?,?,date('now'),?,?,?)""",
         (card["scryfall_id"], quantity, finish, language, condition, purpose,
-         sub_id, photo_path, acquired_price, notes),
+         sub_id, photo_path, acquired_price, notes, balde_origem),
     )
     con.commit()
     return cur.lastrowid

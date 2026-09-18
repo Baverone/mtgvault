@@ -115,6 +115,13 @@ def store_event(con: sqlite3.Connection, blob: dict, url: str) -> int:
         fmt = blob["format"].lower().lstrip("c")
     day = (blob.get("starttime") or blob.get("publish_date")
            or blob.get("date") or "")[:10] or date.today().isoformat()
+    # As Challenges trazem `player_count` (validado contra o site a 2026-09-18:
+    # "Pauper Challenge 32" → 32); as ligas não trazem nada. Guarda-se porque é
+    # de graça — o peso do MTGO continua a vir do tier, não daqui.
+    try:
+        jogadores = int(blob.get("player_count") or 0) or None
+    except (TypeError, ValueError):
+        jogadores = None
 
     new = 0
     for deck in blob.get("decklists") or []:
@@ -134,7 +141,8 @@ def store_event(con: sqlite3.Connection, blob: dict, url: str) -> int:
         if store_decklist(con, source="mtgo", source_key=key, fmt=fmt,
                           cards=cartas, event_name=event, event_date=day,
                           player=deck.get("player") or "",
-                          placement=str(deck.get("rank") or ""), url=url):
+                          placement=str(deck.get("rank") or ""), url=url,
+                          event_players=jogadores):
             new += 1
     con.commit()
     return new

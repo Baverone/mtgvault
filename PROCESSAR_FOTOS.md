@@ -53,10 +53,15 @@ name,set_code,collector_number,quantity,finish,language,condition,purpose,sub_co
 - **condition** — `NM` por omissão.
 - **purpose** — `player` (por omissão) ou `collector` (se for de coleção, não
   para jogar — essas nunca contam para decks).
-- **sub_collection** — o BALDE onde a carta fica. Valores atuais:
-  `SPML` (Standard/Pioneer/Modern/Legacy), `Premodern (geral)`, `Blue Farm`,
-  `Cloud`, `Cloud cEDH`, `Pauper Affinity`. Se a foto não disser, pergunta ao
-  André ou põe o mais provável e regista em `notes`.
+- **sub_collection** — a GAVETA onde a carta fica. Desde o modelo de colecção
+  única (2026-09-07; a base migrou nesse dia) há só duas: **`Colecção`** (tudo o
+  que joga) e **`Caixa Reserved List`** (só o que o André disser que é da caixa
+  RL). Os nomes antigos (`SPML`, `Premodern (geral)`, `Blue Farm`, `Cloud`,
+  `Cloud cEDH`, `Pauper Affinity`) continuam a aceitar-se — o `add_copy` mete a
+  cópia na `Colecção` e guarda esse nome em `balde_origem` (é o que a migração
+  fazia), por isso se a foto disser claramente de que deck é, podes escrevê-lo.
+  Onde a carta está DENTRO de uma deckbox é a alocação (`copy_allocation`), não
+  este campo. Em dúvida, `Colecção`.
 - **photo_path** — o nome do ficheiro da foto. **Põe-no sempre**: é o que liga
   a cópia à foto que lhe deu origem (a foto é arrumada, nunca apagada, e o
   caminho novo fica na cópia). Sem ele, uma suspeita de edição errada não tem
