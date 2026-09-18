@@ -42,8 +42,19 @@ function el(nome) {
   const r = await fetch(url);
   if (!r.ok) { console.error(`GET ${url} -> ${r.status}`); process.exit(2); }
   const html = await r.text();
-  const scripts = [...html.matchAll(
-    /<script(?![^>]*type="application\/json")[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]);
+  // Os scripts embutidos e os por REFERÊNCIA (`<script src="deckboxes.js?v=…">`,
+  // desde 2026-09-18) — estes vão-se buscar ao servidor como o browser faria,
+  // e um 404 aqui é exactamente o que se quer apanhar (o `.js` fora do
+  // `git add`, um hash a apontar para um ficheiro velho).
+  const scripts = [];
+  for (const m of html.matchAll(
+      /<script(?![^>]*type="application\/json")([^>]*)>([\s\S]*?)<\/script>/g)) {
+    const src = (m[1].match(/\bsrc="([^"]+)/) || [])[1];
+    if (!src) { scripts.push(m[2]); continue; }
+    const rs = await fetch(new URL(src, url).href);
+    if (!rs.ok) { console.error(`GET ${src} -> ${rs.status}`); process.exit(2); }
+    scripts.push(await rs.text());
+  }
   if (!scripts.length) { console.error('sem <script> na pagina'); process.exit(1); }
 
   const cache = {};

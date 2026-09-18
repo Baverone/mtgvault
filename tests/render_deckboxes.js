@@ -15,10 +15,24 @@
 const fs = require('fs');
 const vm = require('vm');
 
+const path = require('path');
+
 const caminho = process.argv[2];
 const html = fs.readFileSync(caminho, 'utf8');
+// Os scripts EMBUTIDOS e os por REFERÊNCIA (`<script src="deckboxes.js?v=…">`,
+// desde 2026-09-18): o ficheiro lê-se ao lado da página e, se não estiver lá,
+// da raiz do repositório — é o que o `build` escreve e o que a casca aponta.
 const scripts = [...html.matchAll(
-  /<script(?![^>]*type="application\/json")[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]);
+  /<script(?![^>]*type="application\/json")([^>]*)>([\s\S]*?)<\/script>/g)].map(m => {
+    const src = (m[1].match(/\bsrc="([^"?]+)/) || [])[1];
+    if (!src) return m[2];
+    for (const base of [path.dirname(caminho), path.join(__dirname, '..')]) {
+      const f = path.join(base, src);
+      if (fs.existsSync(f)) return fs.readFileSync(f, 'utf8');
+    }
+    console.error(`nao encontrei o script ${src} ao lado de ${caminho}`);
+    process.exit(1);
+  });
 const dados = html.match(
   /<script id="dados" type="application\/json">([\s\S]*?)<\/script>/)[1];
 if (!scripts.length) { console.error('sem <script> na pagina'); process.exit(1); }

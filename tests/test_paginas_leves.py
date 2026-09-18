@@ -173,7 +173,11 @@ def caso_os_json_sao_escritos_ao_lado_e_de_hoje():
             json.loads(f.read_text(encoding="utf-8"))     # é JSON válido
         casca = (d / f"{pagina}.html").read_text(encoding="utf-8")
         assert '<script id="dados"' not in casca, f"{pagina}: a casca leva dados"
-        assert "carregaDados(" in casca and "erroDados(" in casca, pagina
+        # O JavaScript da Deckboxes vive num `.js` ao lado desde 2026-09-18 (a
+        # casca só o aponta); o das outras continua embutido.
+        codigo = casca + ((d / "deckboxes.js").read_text(encoding="utf-8")
+                          if pagina == "deckboxes" else "")
+        assert "carregaDados(" in codigo and "erroDados(" in codigo, pagina
     print("as quatro paginas escrevem indice + partes em data/paginas/, com a data de hoje")
 
 

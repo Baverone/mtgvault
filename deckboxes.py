@@ -43,6 +43,7 @@ Reutiliza `mtgvault.loadout` para as contas. Não inventa nada.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from datetime import date
@@ -764,9 +765,30 @@ def ler_dados(out_path):
     return juntar(*paginas.ler_dados(Path(out_path), "deckboxes"))
 
 
+def js_texto() -> str:
+    """O JavaScript inteiro da página — o que vai para `deckboxes.js` e o que o
+    `html_page` embute. Uma função, para as duas saídas nunca divergirem."""
+    return JS.replace("%JS_DADOS%", paginas.JS_DADOS)
+
+
+def js_versao(texto: str | None = None) -> str:
+    """O `?v=` do `<script src>`: um hash curto do CONTEÚDO. Uma alteração ao
+    JavaScript muda o URL e o browser vai buscar o novo; sem alteração, o que
+    tem em cache serve — é o que permite dizer-lhe `immutable`."""
+    return hashlib.sha1((texto if texto is not None else js_texto())
+                        .encode("utf-8")).hexdigest()[:12]
+
+
+NOME_JS = "deckboxes.js"
+
+
 def casca():
-    """A página SEM dados: o que o site e o modo edição servem."""
-    return _html(None)
+    """A página SEM dados: o que o site e o modo edição servem.
+
+    Leva o JavaScript por REFERÊNCIA (`deckboxes.js?v=<hash>`), não embutido —
+    ver `JS`. Quem a serve tem de servir também o ficheiro: o `build` escreve-o
+    ao lado, o `webapp.py` dá-o da memória."""
+    return _html(None, js_externo=True)
 
 
 def build(con, out_path=None, editable=False, rep=None):
@@ -774,6 +796,9 @@ def build(con, out_path=None, editable=False, rep=None):
     rep = rep if rep is not None else loadout.report(con)
     idx, partes = partir(payload(con, rep, editable=editable))
     paginas.escrever_dados(out, "deckboxes", idx, partes)
+    # O JavaScript primeiro: se a escrita da casca falhar a meio, o ficheiro
+    # antigo continua a apontar para um `.js` que existe.
+    out.with_name(NOME_JS).write_text(js_texto(), encoding="utf-8")
     out.write_text(casca(), encoding="utf-8")
     return out
 
@@ -800,7 +825,7 @@ def redireccionamento(destino="deckboxes.html", titulo="Decks permanentes") -> s
             f'<p><a href="{destino}">Ir para as Deckboxes →</a></p></div>')
 
 
-def _html(dados):
+def _html(dados, js_externo: bool = False):
     # Com `dados` a página leva o payload EMBUTIDO (`<script id="dados">`); sem
     # eles é a casca, e o JavaScript vai buscá-los a `data/paginas/`.
     # O `</` escapado é o que impede um nome de carta com `</script>` de fechar
@@ -809,11 +834,16 @@ def _html(dados):
               '<script id="dados" type="application/json">'
               + json.dumps(dados, ensure_ascii=False).replace("</", "<\\/")
               + "</script>")
+    js = js_texto()
+    # O JavaScript: por referência na casca (cacheável, ver `JS`) ou embutido
+    # (o `html_page`, que os testes lêem de um ficheiro solto sem servidor).
+    codigo = (f'<script src="{NOME_JS}?v={js_versao(js)}"></script>' if js_externo
+              else "<script>\n" + js + "</script>")
     return (_TMPL.replace("%META%", paginas.META)
             .replace("%TEMA%", paginas.TEMA + paginas.CSS_DADOS)
             .replace("%TABS%", TABS)
-            .replace("%JS_DADOS%", paginas.JS_DADOS)
-            .replace("%DADOS_SCRIPT%", script))
+            .replace("%DADOS_SCRIPT%", script)
+            .replace("%SCRIPT%", codigo))
 
 
 def html_page(con, editable=False, rep=None, token="", ligacao=None):
@@ -1261,6 +1291,47 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
    table.vt td.rz,table.vt th.rz{display:none}
    .num{min-width:calc(50% - 6px)}
  }
+ /* O `hidden` tem de ganhar ao `display:flex` das classes: sem o `!important`
+    uma linha `.mv` escondida pela procura continuava à vista. */
+ [hidden]{display:none!important}
+ /* A PROCURA (2026-09-18) e a barra de filtros que fica no topo do ecrã. */
+ .seg.topo{position:sticky;top:0;z-index:5;background:var(--bg);
+   padding:8px 0 6px;margin:0 0 8px;box-shadow:0 8px 12px -10px #000}
+ .procura{display:flex;align-items:center;gap:6px;flex:1 1 220px;min-width:0}
+ .procura input{flex:1 1 auto;min-width:0;font:inherit;font-size:14px;
+   padding:8px 13px;border-radius:20px;border:1px solid var(--line2);
+   background:var(--card);color:var(--ink)}
+ .procura input:focus{outline:none;border-color:var(--accent)}
+ #procura-n{font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums}
+ .seg.topo .salto{flex:0 0 auto;padding:7px 11px;font-size:12px;
+   background:var(--card2);color:var(--ink2)}
+ /* Com o scroll a saltar para um bloco, o bloco não pode nascer debaixo da
+    barra presa ao topo. */
+ .montar,#passo2{scroll-margin-top:64px}
+ .cd{cursor:pointer}
+ /* Um botão ARMADO (o primeiro dos dois toques do «vendida»): fica a dizer o
+    que vai fazer, a vermelho, até ao segundo toque ou até desarmar. */
+ .btn.armado{background:#3a1f1f;border-color:#ff9f8f;color:#ff9f8f;
+   font-weight:800;white-space:nowrap}
+ /* O TELEMÓVEL A 390 px (2026-09-18): alvos de toque ≥ 40 px (os `.btn.sm`
+    tinham 22), linhas do passo 1 ≥ 44 px e o nome da carta a partir linha em
+    vez de "Swords to Plow…", a aba Plano em duas linhas em vez de "Modern —
+    UW O…", e as listas do passo 1 sem scroll próprio — um `overflow:auto` de
+    60vh dentro da página é uma armadilha para o dedo. */
+ @media(max-width:640px){
+   .btn,.cpbtn,.seg button,.selc{min-height:40px}
+   .btn.sm{min-height:36px;padding:6px 11px;font-size:12px}
+   .mv{min-height:44px;padding:7px 4px}
+   .mv input,.jat input{width:22px;height:22px;flex-basis:22px}
+   .mv .nm{white-space:normal;overflow:visible;text-overflow:clip}
+   .mv .to{max-width:34%;font-size:11px}
+   .mvs{max-height:none}
+   .pl{flex-wrap:wrap;gap:6px 11px}
+   .pl .pb{flex:1 1 calc(100% - 35px)} .pl .pb b{white-space:normal}
+   .pl .pn2{flex:1 1 auto;text-align:left;min-width:0;margin-left:35px}
+   .pl .pn2 ~ .pn2{margin-left:0}
+   body.combarra .wrap{padding-bottom:190px}
+ }
 </style></head><body><div class="wrap">
 <header><h1>🧰 Deckboxes</h1>
 <div class="lead" id="resumo"></div>
@@ -1291,8 +1362,18 @@ A lista para vender é uma <b>sugestão a confirmar</b>. Atualiza diariamente.
 </div>
 <div class="barra" id="barra" hidden aria-live="polite"></div>
 %DADOS_SCRIPT%
-<script>
-%JS_DADOS%
+%SCRIPT%
+</body></html>"""
+
+
+# O JAVASCRIPT DA PÁGINA, à parte do HTML (2026-09-18). A casca tinha 150 KB, e
+# 123 KB eram isto — baixados outra vez a cada toque no menu do telemóvel,
+# porque o `webapp.py` serve tudo com `no-store`. Agora o `build` escreve-o em
+# `deckboxes.js` e a casca referencia-o com um HASH do conteúdo no `?v=`: o
+# browser guarda-o para sempre, e quando o texto muda o URL muda com ele. O
+# `html_page` (os testes e o harness de node) continua a EMBUTIR este mesmo
+# texto — é uma string só, escrita em dois sítios, e não duas versões.
+JS = r"""%JS_DADOS%
 /* OS DADOS (2026-09-15): `D` é o ÍNDICE — o resumo, as caixas sem a grelha, os
    totais das abas. Cada aba pesada e cada caixa têm uma PARTE em
    `data/paginas/deckboxes/`, que o `render()` vai buscar na primeira vez que
@@ -1350,11 +1431,25 @@ const TIPO_PT = { Creature: 'Criaturas', Planeswalker: 'Planeswalkers',
   Sorcery: 'Feitiços', Instant: 'Instantâneos', Artifact: 'Artefactos',
   Enchantment: 'Encantamentos', Land: 'Terras', Other: 'Outros' };
 
-function toast(txt) {
+function toast(txt, ms) {
   const d = document.createElement('div');
   d.className = 'toast'; d.textContent = txt;
   document.body.appendChild(d);
-  setTimeout(() => d.remove(), 2600);
+  setTimeout(() => d.remove(), ms || 2600);
+}
+/* Um ERRO fica mais tempo (2026-09-18). "✓ copiado" lê-se em 2,6 s; *"a caixa
+   'x' já não existe no colecao_config.json — recarrega a página"* não — e no
+   telemóvel, com o Wi-Fi a hesitar, o erro é a única pista do que aconteceu. */
+function erro(txt) { toast(txt, 7000); }
+
+/* O QUE O `title` DIZIA, ao toque (2026-09-18). As miniaturas da grelha levam
+   em `title` o que importa — "tens 2/4", "em UW Replenish", "2× Caixa RL (PT)",
+   "na colecção inteira: 6" — e no telemóvel NÃO HÁ hover: essa informação não
+   existia lá. Um toque na miniatura mostra-a num toast de 5 s. Só leitura, e
+   por isso existe também na página publicada. */
+function tocarCarta(el) {
+  const t = el.getAttribute ? el.getAttribute('title') : el.title;
+  if (t) toast(t, 5000);
 }
 
 /* ---------------------------------------------------------------- cabeçalho */
@@ -1461,7 +1556,10 @@ function renderTabs() {
   if (on) on.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
 
-function ir(id) { aba = id; P.aba = id; save(); renderTabs(); render(); }
+function ir(id) {
+  if (id !== aba) procura = '';        /* a procura é da caixa, não da página */
+  aba = id; P.aba = id; save(); renderTabs(); render();
+}
 
 /* ------------------------------------------------------------------ caixa */
 function cardTile(c) {
@@ -1489,7 +1587,11 @@ function cardTile(c) {
   ].filter(Boolean).join(' — ');
   const q = c.need > 1 || c.est !== 'have'
     ? `<span class="cq">${c.got}/${c.need}</span>` : '';
-  return `<div class="cd ${c.est}" title="${esc(tit)}">`
+  /* `data-nm` é o que a procura lê; o `onclick` é o `title` ao toque, porque no
+     telemóvel não há hover (ver `tocarCarta`). `tabindex` para chegar lá com o
+     teclado, pela mesma razão. */
+  return `<div class="cd ${c.est}" title="${esc(tit)}" data-nm="${esc(c.nm)}" `
+    + `onclick="tocarCarta(this)" tabindex="0">`
     + (c.sid ? `<img loading="lazy" src="${art(c.sid)}" alt="${esc(c.nm)}">` : '')
     + q + (c.cf ? '<span class="cf">⚔</span>' : '')
     + (selo ? `<span class="onde">${esc(selo)}</span>` : '') + '</div>';
@@ -1671,7 +1773,7 @@ function montarHTML(c) {
         const id = vistoId('mt', c.slot, m);
         const feito = !!P.feitos[id];
         h += `<label class="mv${feito ? ' feito' : ''}${m.parcial ? ' parc' : ''}"`
-          + ` data-id="${esc(id)}">`
+          + ` data-id="${esc(id)}" data-nm="${esc(m.nm)}">`
           + `<input type="checkbox"${feito ? ' checked' : ''}>`
           + `<span class="q">${m.q}×</span>`
           + `<span class="nm">${esc(m.nm)}`
@@ -1707,7 +1809,7 @@ function montarHTML(c) {
   }
   h += `</div>`;
   /* passo 2 -------------------------------------------------------------- */
-  h += `<div class="passo"><div class="ph"><span class="pn">2</span>`
+  h += `<div class="passo" id="passo2"><div class="ph"><span class="pn">2</span>`
     + `<b>Comprar o que falta</b><span class="dim">${cop(c.comprar)} · `
     + `${eur(c.custo)}${c.req ? ' · ' + esc(c.req) : ''}`
     + (M.basicas_comprar ? ` · + ${M.basicas_comprar} básicas (${eur(M.basicas_custo)})`
@@ -1807,7 +1909,13 @@ function ligarBarra(c) {
     for (const i of montarItens(c)) P.feitos[i.id] = 1;
     save(); render();
   };
-  if (l) l.onclick = () => { limparFeitos(c.slot); render(); };
+  /* «limpar» pergunta (2026-09-18): está a um dedo do «marcar tudo» e do «não
+     encontrei», e deitava fora 58 marcas sem dizer nada. */
+  if (l) l.onclick = () => {
+    const n = montarEstado(c).n;
+    if (n && !confirm(`Desmarcar as ${cop(n)} marcadas em ${c.nome}?`)) return;
+    limparFeitos(c.slot); render();
+  };
   if (r) r.onclick = () => registar(c, r);
 }
 
@@ -1911,7 +2019,7 @@ async function registar(c, btn, origem) {
       : (j.msg || `${c.nome}: ${cop(e.n)} registadas`), vistos);
   } catch (err) {
     if (btn) btn.disabled = false;
-    toast('Não deu: ' + err.message);
+    erro('Não deu: ' +err.message);
   }
 }
 
@@ -1926,7 +2034,7 @@ async function registar(c, btn, origem) {
    um deles ficar sem botão. */
 function aviso(texto, desfazer) {
   const seg = Number(D.anular_segundos || 0);
-  if (!seg || !desfazer) { toast(texto); location.reload(); return; }
+  if (!seg || !desfazer) { toast(texto); recarregar(); return; }
   const d = document.createElement('div');
   d.className = 'toast aviso';
   d.innerHTML = `<span>${esc(texto)}</span>`
@@ -1935,7 +2043,7 @@ function aviso(texto, desfazer) {
   let fechado = false;
   const b = d.querySelector('#b-anular') || $('#b-anular');
   if (b) b.onclick = () => { fechado = true; d.remove(); desfazer(); };
-  setTimeout(() => { if (!fechado) { d.remove(); location.reload(); } }, seg * 1000);
+  setTimeout(() => { if (!fechado) { d.remove(); recarregar(); } }, seg * 1000);
 }
 
 function avisoRegisto(c, texto, vistos) {
@@ -1952,8 +2060,8 @@ async function anularRegisto(c, vistos) {
     Object.assign(P.feitos, vistos || {});
     save();
     toast(j.msg || 'Registo anulado.');
-  } catch (e) { toast('Não deu anular: ' + e.message); }
-  location.reload();
+  } catch (e) { erro('Não deu anular: ' +e.message); }
+  recarregar();
 }
 
 /* ------------------------------------- «NÃO ENCONTREI ESTAS» (2026-09-09)
@@ -1999,7 +2107,7 @@ async function naoEncontrei(c, btn, ids, jaPerguntado) {
           (j.copias || []).length ? () => encontrei(j.copias) : null);
   } catch (err) {
     if (btn) btn.disabled = false;
-    toast('Não deu: ' + err.message);
+    erro('Não deu: ' +err.message);
   }
 }
 
@@ -2012,9 +2120,9 @@ async function encontrei(copias, btn) {
     toast(j.msg || 'De volta à colecção.');
   } catch (e) {
     if (btn) btn.disabled = false;
-    toast('Não deu: ' + e.message);
+    erro('Não deu: ' +e.message);
   }
-  location.reload();
+  recarregar();
 }
 
 /* --------------------------------------- DESTINADAS A OUTRA CAIXA (montar
@@ -2045,7 +2153,7 @@ function deOutraHTML(M) {
       const id = vistoId('mo', M.slot, m);
       const feito = !!P.feitos[id];
       h += `<label class="mv${feito ? ' feito' : ''}" data-id="${esc(id)}" `
-        + `data-copy="${m.copy_id}" data-q="${m.q}">`
+        + `data-nm="${esc(m.nm)}" data-copy="${m.copy_id}" data-q="${m.q}">`
         + `<input type="checkbox"${feito ? ' checked' : ''}>`
         + `<span class="q">${m.q}×</span>`
         + `<span class="nm">${esc(m.nm)}`
@@ -2070,7 +2178,7 @@ function jaNaCaixaHTML(M) {
     + `<span class="dim">${cop(M.copias_por_confirmar)} · edição por `
     + `confirmar</span></div><div class="mvs">`;
   for (const m of ms) {
-    h += `<div class="mv feito"><span class="q">${m.q}×</span>`
+    h += `<div class="mv feito" data-nm="${esc(m.nm)}"><span class="q">${m.q}×</span>`
       + `<span class="nm">${esc(m.nm)}<small>${esc(m.set)}`
       + `${m.foil ? ' ✨' : ''} ${esc(m.lang)}</small></span>`
       + `<span class="to">📷 edição por confirmar</span></div>`;
@@ -2108,7 +2216,7 @@ function basicasHTML(M) {
       + `(${esc(M.edicao)}) — não estão registadas, não contam para a %</span>`);
     if (b.comprar) det.push(`<span class="bt warn">🛒 ${b.comprar}× a comprar `
       + `${esc(b.req)} (${eur(b.cost)}) — confirma se já tens</span>`);
-    h += `<li><b>${b.need}×</b> <span class="wn">${esc(b.nm)}`
+    h += `<li data-nm="${esc(b.nm)}"><b>${b.need}×</b> <span class="wn">${esc(b.nm)}`
       + (b.req ? ` <small>${esc(b.req)}</small>` : '')
       + `</span><div class="bd">${det.join('')}</div></li>`;
   }
@@ -2183,7 +2291,7 @@ async function faltaCheck(cb) {
           j.copy_id ? () => anularFalta(j.copy_id) : null);
   } catch (e) {
     cb.checked = false; cb.disabled = false;
-    toast('Não deu: ' + e.message);
+    erro('Não deu: ' +e.message);
   }
 }
 
@@ -2193,8 +2301,8 @@ async function anularFalta(copyId) {
     const j = await r.json();
     if (j.erro) throw new Error(j.erro);
     toast(j.msg || 'Desfeito.');
-  } catch (e) { toast('Não deu anular: ' + e.message); }
-  location.reload();
+  } catch (e) { erro('Não deu anular: ' +e.message); }
+  recarregar();
 }
 
 function wantlistHTML(itens, marca, id, detalhe, basicas, edicao, slot) {
@@ -2207,7 +2315,7 @@ function wantlistHTML(itens, marca, id, detalhe, basicas, edicao, slot) {
       compra.length ? 'para: ' + compra.map(p => `${p.caixa} ${p.q}×`).join(' · ') : '',
       serve.length ? 'serve também: ' + serve.map(p => p.caixa).join(', ') : '']
       .filter(Boolean).join(' — ');
-    return `<li><b>${m.q}×</b><span class="wn">${esc(m.nm)}`
+    return `<li data-nm="${esc(m.nm)}"><b>${m.q}×</b><span class="wn">${esc(m.nm)}`
       + (m.board === 'side' ? `<span class="sb">SB</span>` : '')
       + (cara ? `<span class="cara">💶 cara</span>` : '')
       + (m.partilhada ? `<span class="part">🔁 partilhada por `
@@ -2856,7 +2964,7 @@ function sugestaoHTML(c) {
       + `</span>`,
     `<span class="bdg">${c.n_lists} listas que contam</span>`].join('');
   const grelha = c.cartas.map(m => `<div class="cd ${m.est}" title="${esc(m.nm)} — `
-    + `tens ${m.got}/${m.need}">`
+    + `tens ${m.got}/${m.need}" onclick="tocarCarta(this)" tabindex="0">`
     + (m.sid ? `<img loading="lazy" src="${art(m.sid)}" alt="${esc(m.nm)}">` : '')
     + `<span class="cq">${m.got}/${m.need}</span></div>`).join('');
   /* Os botões só no modo edição, como em todo o resto da página: no site
@@ -2972,7 +3080,8 @@ function vistaVender() {
          a única maneira de a calar era editar a base à mão. */
       + (D.editable && !semBotao
          ? `<td><button class="btn sm" data-vend="${esc(r.chave)}" `
-           + `data-q="${r.q}" aria-label="Marcar ${r.q} ${esc(r.nm)} como vendida">`
+           + `data-q="${r.q}" data-nm="${esc(r.nm)}" `
+           + `aria-label="Marcar ${r.q} ${esc(r.nm)} como vendida (dois toques)">`
            + `vendida</button></td>` : '')
       + `</tr>`).join('')
     + `</tbody></table></details>`;
@@ -3171,7 +3280,7 @@ async function gravarSaida(btn) {
     if (j.erro) throw new Error(j.erro);
     toast(j.msg || 'Gravado.');
     btn.textContent = '✓ gravado'; btn.classList.add('done');
-  } catch (e) { btn.disabled = false; toast('Não deu: ' + e.message); }
+  } catch (e) { btn.disabled = false; erro('Não deu: ' +e.message); }
 }
 
 /* O LINK E O QR para o telemóvel — só no modo edição, e só quando o pedido já
@@ -3269,6 +3378,7 @@ async function carregaParte(nome) {
   return p;
 }
 let renderN = 0;
+let manterScroll = null;     /* o scroll a repor depois de um `recarregar()` */
 async function render() {
   const v = $('#vista');
   const faltam = partesDe(aba).filter(p => !PARTES[p]);
@@ -3299,7 +3409,9 @@ async function render() {
   else { v.innerHTML = vistaTodas(); }
   ligar();
   renderBarra();
-  window.scrollTo({ top: 0 });
+  aplicarProcura();
+  window.scrollTo({ top: manterScroll == null ? 0 : manterScroll });
+  manterScroll = null;
 }
 
 function filtroHTML() {
@@ -3310,11 +3422,78 @@ function filtroHTML() {
     + ` aria-pressed="${filtro === f}">${t}</button>`;
   const g = (f, t) => `<button class="${grupo === f ? 'on' : ''}" data-g="${f}"`
     + ` aria-pressed="${grupo === f}">${t}</button>`;
-  return `<div class="seg" role="group" aria-label="Filtrar as cartas">`
+  /* A PROCURA (2026-09-18): numa caixa de 75 cartas, à frente da estante, a
+     pergunta é "onde está a Cabal Therapy?" — e a resposta era percorrer a
+     grelha e as 75 linhas do passo 1. O campo filtra o que está desenhado
+     (grelha, passo 1, básicas, compras) sem voltar a desenhar nada, sem
+     acentos e sem maiúsculas (ver `casaProcura`). A barra é `sticky`: fica
+     no topo do ecrã enquanto ele desce a lista. */
+  /* Só a procura e os dois ATALHOS ficam presos ao topo — com os cinco filtros
+     lá dentro a barra eram três linhas a 390 px, um terço do ecrã sempre
+     tapado. Os atalhos são a resposta a "o painel Montar vive no fim da aba,
+     três ecrãs abaixo": um toque e está lá. */
+  const c = D.caixas.find(x => x.slot === aba);
+  const saltos = c && c.montar
+    ? `<button class="salto" data-salto=".montar" aria-label="Ir para o painel `
+      + `Montar">⬇ Montar</button>`
+      + `<button class="salto" data-salto="#passo2" aria-label="Ir para o que `
+      + `falta comprar">⬇ Comprar</button>` : '';
+  return `<div class="seg topo" role="search">`
+    + `<span class="procura"><input type="search" id="procura" `
+    + `placeholder="🔎 procurar carta…" autocomplete="off" autocapitalize="off" `
+    + `spellcheck="false" value="${esc(procura)}" aria-label="Procurar uma carta `
+    + `nesta caixa"><span id="procura-n" class="dim"></span></span>${saltos}</div>`
+    + `<div class="seg" role="group" aria-label="Filtrar as cartas">`
     + b('tudo', 'Todas as cartas') + b('faltam', 'Só o que falta')
     + g('estado', 'por estado') + g('tipo', 'por tipo')
     + `<button class="${grande ? 'on' : ''}" data-big="1" `
     + `aria-pressed="${grande}">🔍 imagens grandes</button></div>`;
+}
+
+/* ------------------------------------------------------------- PROCURA
+   O que ele escreve fica em `procura` enquanto a aba está aberta (mudar de
+   caixa limpa-a — a procura é desta caixa). Um `render()` — mudar o filtro,
+   voltar a ler os dados — volta a aplicá-la ao que desenhou. */
+let procura = '';
+
+/* Sem acentos, sem maiúsculas, sem ligaduras: "cabeca" acha "Cabeça", "aether"
+   acha "Æther Vial", "elan" acha "Élan". Só se compara o que o catálogo TEM —
+   o nome oracle, em inglês: o nome impresso em português não está na base
+   (o Scryfall só o traz no bulk `all_cards`, que o vault não descarrega). */
+function normProcura(s) {
+  return String(s == null ? '' : s).toLowerCase()
+    .replace(/æ/g, 'ae').replace(/œ/g, 'oe').replace(/ø/g, 'o').replace(/ß/g, 'ss')
+    .replace(/['’]/g, '')            /* "senseis" acha "Sensei's" */
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ').trim();
+}
+/* Cada palavra da procura tem de estar no nome, por qualquer ordem: "plow
+   swords" acha "Swords to Plowshares". */
+function casaProcura(nome, q) {
+  const n = normProcura(nome), termos = normProcura(q).split(' ').filter(Boolean);
+  return !termos.length || termos.every(t => n.includes(t));
+}
+
+/* Aplica a procura ao que está desenhado: tudo o que tem `data-nm` (as
+   miniaturas, as linhas do passo 1, as básicas, as linhas de compra) esconde-se
+   ou mostra-se; os cabeçalhos de cor/tipo/bloco saem enquanto há procura, para
+   a lista ficar plana. Sem `render()`: são 60+ elementos e um `hidden` cada. */
+function aplicarProcura() {
+  const alvo = $('#procura');
+  if (!alvo) return;
+  const q = procura;
+  let vistos = 0, total = 0;
+  for (const el of document.querySelectorAll('[data-nm]')) {
+    const bate = casaProcura(el.dataset.nm, q);
+    el.hidden = !bate;
+    total++; if (bate) vistos++;
+  }
+  for (const el of document.querySelectorAll('.corhdr,.typehdr,.bhdr')) {
+    el.hidden = !!normProcura(q);
+  }
+  const n = $('#procura-n');
+  if (n) n.textContent = normProcura(q) ? `${vistos} de ${total}` : '';
+  document.body.classList.toggle('comprocura', !!normProcura(q));
 }
 
 /* ------------------------------------------------------------------ plano
@@ -3394,6 +3573,22 @@ function vistaPlano() {
 }
 
 function ligar() {
+  /* A procura: a cada tecla, sem `render()` — só o `hidden` de cada elemento
+     (ver `aplicarProcura`). O `search` apanha o ✕ de limpar do teclado do
+     telemóvel, que não dispara `input` em todos os browsers. */
+  const pq = $('#procura');
+  if (pq) {
+    const muda = () => { procura = pq.value || ''; aplicarProcura(); };
+    pq.oninput = muda; pq.onsearch = muda;
+  }
+  /* Os atalhos da barra presa ao topo: descer até ao painel Montar / ao passo
+     2. Navegação, sem escrita — existem também na página publicada. */
+  for (const b of document.querySelectorAll('[data-salto]')) {
+    b.onclick = () => {
+      const alvo = document.querySelector(b.dataset.salto);
+      if (alvo && alvo.scrollIntoView) alvo.scrollIntoView({ block: 'start' });
+    };
+  }
   for (const b of document.querySelectorAll('[data-f]')) {
     b.onclick = () => { filtro = b.dataset.f; P.filtro = filtro; save(); render(); };
   }
@@ -3472,8 +3667,51 @@ function ligar() {
   }
   const fim = $('#arr-fim'), csv = $('#arr-csv'), lim = $('#arr-limpar');
   if (csv) csv.onclick = baixarCSV;
-  if (lim) lim.onclick = () => { P.feitos = {}; save(); render(); toast('Vistos limpos.'); };
+  if (lim) lim.onclick = () => limparVistosArrumar();
   if (fim) fim.onclick = jaArrumei;
+}
+
+/* «Limpar os vistos» da aba Arrumar (2026-09-18). Fazia `P.feitos = {}` — o
+   objecto INTEIRO, onde vivem também as marcas do passo 1 de todas as caixas
+   (`mt|`, `bs|`, `mo|`). Ele marcava 40 cartas numa caixa, vinha a esta aba,
+   carregava aqui a pensar na arrumação, e as 40 marcas iam-se. Sem pergunta e
+   sem erro. Agora só saem os vistos DA ARRUMAÇÃO (os que não têm prefixo de
+   caixa), e pergunta-se primeiro. `semPergunta` é para os testes. */
+function limparVistosArrumar(semPergunta) {
+  const deCaixa = k => /^(mt|bs|mo)\|/.test(k);
+  const alvo = Object.keys(P.feitos).filter(k => !deCaixa(k));
+  if (!alvo.length) { toast('Não há vistos da arrumação para limpar.'); return 0; }
+  if (!semPergunta && !confirm(`Limpar os ${alvo.length} vistos da arrumação? `
+      + `(As marcas do painel Montar de cada caixa ficam.)`)) return 0;
+  for (const k of alvo) delete P.feitos[k];
+  save(); render(); toast('Vistos da arrumação limpos.');
+  return alvo.length;
+}
+
+/* DOIS TOQUES PARA UMA ACÇÃO QUE NÃO SE DESFAZ (2026-09-18). O «vendida» era
+   um botão de 22 px numa coluna de 246, com um `confirm()` por defesa — que no
+   telemóvel se fecha com "OK" por reflexo, sem dizer que carta. O primeiro
+   toque ARMA o botão e escreve nele o que vai fazer («✓ vender 1× Lotus
+   Petal»); o segundo, nos 5 s seguintes, faz. Passado isso desarma-se sozinho.
+   Devolve `true` quando é para avançar. */
+const ARMAR_MS = 5000;
+function armar(btn, texto) {
+  if (btn.dataset.armado) {
+    clearTimeout(Number(btn.dataset.armado));
+    delete btn.dataset.armado;
+    btn.classList.remove('armado');
+    btn.textContent = btn.dataset.texto || btn.textContent;
+    return true;
+  }
+  btn.dataset.texto = btn.textContent;
+  btn.textContent = texto;
+  btn.classList.add('armado');
+  btn.dataset.armado = String(setTimeout(() => {
+    delete btn.dataset.armado;
+    btn.classList.remove('armado');
+    btn.textContent = btn.dataset.texto || btn.textContent;
+  }, ARMAR_MS));
+  return false;
 }
 
 function copiar(btn, qual) {
@@ -3517,8 +3755,8 @@ async function jaArrumei() {
     if (j.erro) throw new Error(j.erro);
     toast(`Arrumado: ${cop(j.copias)} registadas.`);
     P.feitos = {}; save();
-    location.reload();
-  } catch (e) { toast('Não deu: ' + e.message); }
+    recarregar();
+  } catch (e) { erro('Não deu: ' +e.message); }
 }
 
 /* Escolher um deck para uma caixa é outro endpoint (`api/escolher`): mexe na
@@ -3529,13 +3767,56 @@ const ESCOLHA = { escolher: 1, desmarcar: 1,
 /* O token vai em cabeçalho em TODAS as escritas: sem ele o servidor responde
    403 e a página fica só de leitura. É o que permite ter o porto aberto na rede
    de casa sem dar a qualquer aparelho o direito de lhe desmontar os decks. */
-function gravar(url, corpo) {
-  return fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json',
-               'X-Mtgvault-Token': D.token || '' },
-    body: JSON.stringify(corpo || {}),
-  });
+/* Quanto tempo se espera por uma escrita antes de desistir (2026-09-18). Um
+   `fetch` sem prazo deixava o botão `disabled` para sempre quando o Wi-Fi
+   hesitava — sem mensagem nenhuma. 25 s cobre um `loadout.report` inteiro na
+   base dele (≈5 s) com folga para a rede de casa. */
+let GRAVAR_TIMEOUT_MS = 25000;   /* `let`: o teste encurta-o para não esperar */
+async function gravar(url, corpo) {
+  const ctl = (typeof AbortController === 'function') ? new AbortController() : null;
+  const t = ctl ? setTimeout(() => ctl.abort(), GRAVAR_TIMEOUT_MS) : null;
+  try {
+    return await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json',
+                 'X-Mtgvault-Token': D.token || '' },
+      body: JSON.stringify(corpo || {}),
+      signal: ctl ? ctl.signal : undefined,
+    });
+  } catch (e) {
+    /* O `fetch` só rejeita quando o pedido NÃO chegou a ter resposta (rede, DNS,
+       timeout): o servidor pode ter gravado ou não, e a única coisa honesta a
+       dizer é isso — em português, e não "Failed to fetch". */
+    const porque = (e && e.name === 'AbortError')
+      ? `sem resposta do servidor em ${GRAVAR_TIMEOUT_MS / 1000} s`
+      : 'sem ligação ao servidor (porto 8771)';
+    throw new Error(`${porque} — não sei se gravou. Vê a rede, recarrega a `
+      + `página e confirma antes de repetir.`);
+  } finally {
+    if (t) clearTimeout(t);
+  }
+}
+
+/* RECARREGAR SEM PERDER A PÁGINA (2026-09-18). Depois de cada escrita fazia-se
+   `recarregar()`: se a rede caísse entre o POST e o reload, o browser
+   mostrava a página de erro DELE e a Deckboxes desaparecia — com a escrita
+   feita do lado do servidor. Agora vai-se buscar o índice outra vez (e as
+   partes voltam a ser pedidas quando ele as abrir) e redesenha-se; se isso
+   falhar, diz-se e a página fica onde está. Com o payload EMBUTIDO (testes)
+   não há de onde recarregar: aí é o `reload` de sempre. */
+async function recarregar() {
+  if (!D || D._completo) { location.reload(); return; }
+  try {
+    const d = await carregaDados('deckboxes.json');
+    for (const k of Object.keys(PARTES)) delete PARTES[k];
+    /* Fica onde estava: um «vendida» a meio de 246 linhas não o manda para o
+       topo da tabela. */
+    manterScroll = window.scrollY || 0;
+    iniciar(d);
+  } catch (e) {
+    erro('Gravou, mas não consegui voltar a ler os dados: ' + e.message
+         + ' — recarrega a página quando a rede voltar.');
+  }
 }
 
 async function accao(act, slot, btn, aid, nome, id) {
@@ -3563,22 +3844,23 @@ async function accao(act, slot, btn, aid, nome, id) {
     const j = await r.json();
     if (j.erro) throw new Error(j.erro);
     toast(j.msg || 'Feito — a alocação foi refeita.');
-    location.reload();
-  } catch (e) { btn.disabled = false; toast('Não deu: ' + e.message); }
+    recarregar();
+  } catch (e) { btn.disabled = false; erro('Não deu: ' +e.message); }
 }
 
 async function vendida(btn) {
   const q = Number(btn.dataset.q || 1);
-  if (!confirm(`Marcar ${q} cópia(s) como VENDIDA? Sai da coleção e fica `
-      + `registada no data/vendas.csv (a base é copiada antes).`)) return;
+  /* Dois toques, com o NOME no segundo (ver `armar`): sai da colecção e fica no
+     `data/vendas.csv`, com a base copiada antes — e não se desfaz com botão. */
+  if (!armar(btn, `✓ vender ${q}× ${btn.dataset.nm || ''}?`.trim())) return;
   btn.disabled = true;
   try {
     const r = await gravar('api/vender', { linha: btn.dataset.vend, q });
     const j = await r.json();
     if (j.erro) throw new Error(j.erro);
     toast(j.msg || 'Registado.');
-    location.reload();
-  } catch (e) { btn.disabled = false; toast('Não deu: ' + e.message); }
+    recarregar();
+  } catch (e) { btn.disabled = false; erro('Não deu: ' +e.message); }
 }
 
 function iniciar(dados) {
@@ -3601,8 +3883,7 @@ if (embutido) {
   $('#vista').innerHTML = '<p class="carregando">A carregar os dados…</p>';
   carregaDados('deckboxes.json').then(iniciar).catch(e => erroDados($('#vista'), e));
 }
-</script>
-</body></html>"""
+"""
 
 
 def main():

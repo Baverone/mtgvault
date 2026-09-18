@@ -146,6 +146,55 @@ dia: `showcase.html` **1 266 KB** (4 319 `<img>`), `deckboxes.html` **694 KB**
   ponta (`test_paginas_leves.py` + `tests/abrir_pagina.js`, que serve a pasta
   por HTTP e corre o JS com `fetch` a sério) tranca.
 
+**O JAVASCRIPT DA DECKBOXES ESTÁ À PARTE, E A PÁGINA FOI AFINADA PARA O TELEMÓVEL
+(2026-09-18).** O uso real é o André à frente da estante, com o telemóvel, no
+modo edição — e a casca tinha **150 KB, 123 deles JavaScript**, baixados outra
+vez a cada toque no menu (o `webapp.py` serve tudo com `no-store`). Auditoria e
+medidas em `ai-pc/work/revisao/mtgvault-telemovel-0918.md`; testes em
+`test_telemovel.py` (13 casos) e o harness `tests/avaliar_js.js`, que corre um
+script do teste DENTRO do contexto da página (é assim que se testa o que não
+desenha HTML: a procura, o `gravar`, o `recarregar`, o «vendida»).
+- **`deckboxes.js`** é o texto de `deckboxes.JS` (+ `paginas.JS_DADOS`), escrito
+  pelo `build` ao lado da página e apontado pela casca com **um hash do conteúdo
+  no `?v=`** (`js_versao`) — cacheável `immutable`, e muda de URL quando muda de
+  texto. Casca medida na base dele: **150 375 → 32 377 bytes**. O **`webapp.py`
+  serve-o DA MEMÓRIA** (`/deckboxes.js`, `cache=` só com `?v=`), nunca do disco:
+  o ficheiro em `ROOT` pode ser de uma corrida antiga do `daily`, e servi-lo era
+  dar ao telemóvel um `.js` velho com um URL novo, guardado para sempre. O
+  `html_page` **continua a embutir** o mesmo texto (é o que os testes lêem de
+  um ficheiro solto); os dois harness de node seguem `<script src>` na mesma.
+  **Vai no `git add` do `daily.yml` e no `EXTRA_COMMIT` da tarefa
+  `mtgvault-daily`** — sem ele no commit o site abre a casca e não desenha nada
+  (o `test_paginas_leves` de ponta a ponta apanha-o: o `abrir_pagina.js` vai
+  buscar o `.js` ao servidor).
+- **Procura na aba da caixa** (`#procura`, barra `sticky` com os atalhos «⬇
+  Montar / ⬇ Comprar»): filtra o que está desenhado por `data-nm` — grelha,
+  passo 1, básicas, compras — sem `render()`, sem acentos, sem maiúsculas, sem
+  apóstrofos e por palavras em qualquer ordem (`normProcura`/`casaProcura`).
+  **Só compara o nome oracle, em inglês**: o nome impresso em português não está
+  no catálogo (o Scryfall só o traz no bulk `all_cards`, que o vault não
+  descarrega). Existe também na página publicada — só lê.
+- **Toque numa miniatura = o `title`** num toast de 5 s (`tocarCarta`): no
+  telemóvel não há hover, e "tens 2/4 · em UW Replenish" não existia lá.
+- **«vendida» em DOIS toques** (`armar`): o primeiro escreve no botão «✓ vender
+  1× Lotus Petal?», o segundo grava; desarma-se em 5 s. Era um `confirm()` num
+  botão de 22 px, numa coluna de 246. O «limpar» da barra pergunta. **O «Limpar
+  os vistos» do Arrumar fazia `P.feitos = {}`** — apagava as marcas do passo 1
+  de todas as caixas; agora só limpa as da arrumação (`limparVistosArrumar`).
+- **Rede**: `gravar()` tem prazo (25 s) e, sem resposta, diz **em português**
+  que *"não sei se gravou"* (era `Failed to fetch` num toast de 2,6 s; os erros
+  duram 7 s, `erro()`). **`recarregar()` substituiu o `location.reload()`**
+  depois de cada escrita: vai buscar o índice de novo e redesenha no mesmo
+  sítio; se a rede falhar aí, diz e a página fica. Com o payload embutido
+  (testes) continua a ser `reload`.
+- **CSS a 640 px**: `.btn/.cpbtn/.seg button` ≥ 40 px, `.btn.sm` ≥ 36 (eram 22),
+  `.mv` ≥ 44, o nome da carta a partir linha em vez de «Swords to Plow…», a aba
+  Plano em duas linhas, `.mvs` sem scroll próprio, `[hidden]{display:none
+  !important}` (senão um `.mv` em `display:flex` não se escondia).
+- **O motor não mexeu**: medido na base de 2026-09-18, fechar tudo 7 057,57 €,
+  199 a comprar, 53 a ir buscar, 185 a arrumar, venda 246c/1 499,70 € + 58 RL/
+  3 702,99 € — iguais.
+
 **O menu e a paleta vivem num sítio só: `mtgvault/paginas.py`** (2026-09-07).
 Antes cada gerador escrevia o seu `<nav class="tabs">` à mão, e o `cobertura.html`
 ficou meses com um menu de Agosto — sem Deckboxes nem Metagame. Uma página órfã

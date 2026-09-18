@@ -766,15 +766,21 @@ def dados_deckboxes(editavel: bool, tok: str) -> tuple[dict, dict]:
 class Handler(BaseHTTPRequestHandler):
     server_version = "mtgvault"
 
-    def _envia(self, corpo, code=200, tipo="text/html; charset=utf-8"):
+    def _envia(self, corpo, code=200, tipo="text/html; charset=utf-8",
+               cache: bool = False):
         b = corpo.encode("utf-8") if isinstance(corpo, str) else corpo
         self.send_response(code)
         self.send_header("Content-Type", tipo)
         self.send_header("Content-Length", str(len(b)))
         # O telemóvel guardava o HTML antigo em cache e a página parecia partida
         # depois de qualquer alteração — sem erro nenhum à vista. É a mesma nota
-        # que está no `riftvault/server.py`.
-        self.send_header("Cache-Control", "no-store, must-revalidate")
+        # que está no `riftvault/server.py`. A EXCEPÇÃO (`cache=True`) é o
+        # `deckboxes.js` pedido com `?v=<hash do conteúdo>`: o URL muda quando o
+        # texto muda, por isso o que o telemóvel guardou nunca fica velho — e
+        # deixa de baixar 120 KB a cada toque no menu.
+        self.send_header("Cache-Control",
+                         "public, max-age=31536000, immutable" if cache
+                         else "no-store, must-revalidate")
         self.end_headers()
         self.wfile.write(b)
 
@@ -830,6 +836,15 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self._envia(alvo.read_bytes(),
                         tipo=TIPOS_FOTO.get(alvo.suffix.lower(), "image/jpeg"))
+            return
+        if caminho == "/" + deckboxes.NOME_JS:
+            # O JavaScript da Deckboxes (2026-09-18), DA MEMÓRIA e não do disco:
+            # a casca que este processo serve aponta para o hash do texto que
+            # este processo tem, e o ficheiro em `ROOT` pode ser de uma corrida
+            # antiga do `daily` — servi-lo era dar ao browser um `.js` velho com
+            # um URL novo, guardado para sempre. Só é cacheável com o `?v=`.
+            self._envia(deckboxes.js_texto(), tipo="text/javascript; charset=utf-8",
+                        cache="v=" in urlparse(self.path).query)
             return
         modulo = PAGINAS_EDITAVEIS.get(caminho)
         if modulo is not None:
