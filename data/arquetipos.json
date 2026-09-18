@@ -17,7 +17,7 @@
     "Wasteland"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-17"
+   "ultima": "2026-09-18"
   },
   "13eb5a8587": {
    "formato": "premodern",
@@ -71,7 +71,7 @@
     "Yavimaya Coast"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-17"
+   "ultima": "2026-09-18"
   },
   "2811f9a69f": {
    "formato": "premodern",
@@ -89,7 +89,7 @@
     "Withered Wretch"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-17"
+   "ultima": "2026-09-18"
   },
   "3885b4666a": {
    "formato": "premodern",
@@ -109,7 +109,7 @@
     "Skycloud Expanse"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-17"
+   "ultima": "2026-09-18"
   },
   "4841da6e7f": {
    "formato": "premodern",
@@ -140,7 +140,7 @@
     "Yavimaya Granger"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-17"
+   "ultima": "2026-09-18"
   },
   "72740aba9b": {
    "formato": "premodern",
@@ -182,7 +182,7 @@
     "Disenchant",
     "Dust Bowl",
     "Fact or Fiction",
-    "Flooded Strand",
+    "Faerie Conclave",
     "Mana Leak",
     "Mishra's Factory",
     "Powder Keg",
@@ -190,7 +190,7 @@
     "Wrath of God"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-17"
+   "ultima": "2026-09-18"
   },
   "95a99aa40d": {
    "formato": "premodern",
@@ -218,7 +218,7 @@
     "Seal of Fire"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-17"
+   "ultima": "2026-09-18"
   },
   "b38b17cddb": {
    "formato": "premodern",
@@ -258,7 +258,7 @@
     "Vision Charm"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-17"
+   "ultima": "2026-09-18"
   },
   "b827ca4ad1": {
    "formato": "premodern",
@@ -267,6 +267,7 @@
     "Black Vise",
     "Chain of Vapor",
     "Counterspell",
+    "Flash of Insight",
     "Foil",
     "Forsaken City",
     "Gush",
@@ -276,7 +277,7 @@
     "Thwart"
    ],
    "primeira": "2026-09-14",
-   "ultima": "2026-09-17"
+   "ultima": "2026-09-18"
   },
   "bfbba613c1": {
    "formato": "premodern",
@@ -296,7 +297,7 @@
     "Wild Growth"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-17"
+   "ultima": "2026-09-18"
   },
   "c6998a9b7d": {
    "formato": "premodern",
@@ -316,7 +317,7 @@
     "Winter's Grasp"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-17"
+   "ultima": "2026-09-18"
   },
   "cc47c1209f": {
    "formato": "premodern",
@@ -366,7 +367,7 @@
     "Wall of Blossoms"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-17"
+   "ultima": "2026-09-18"
   },
   "e8c086499f": {
    "formato": "premodern",
@@ -398,7 +399,7 @@
     "Wooded Foothills"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-17"
+   "ultima": "2026-09-18"
   },
   "f102883ccf": {
    "formato": "premodern",
@@ -417,6 +418,7 @@
    "nucleo": [
     "Armageddon",
     "Call of the Herd",
+    "Gemstone Mine",
     "Mox Diamond",
     "Naturalize",
     "Rishadan Port",
@@ -425,17 +427,16 @@
     "Sylvan Library",
     "Terravore",
     "Tranquil Thicket",
-    "Weathered Wayfarer",
-    "Werebear"
+    "Weathered Wayfarer"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-17"
+   "ultima": "2026-09-18"
   },
   "f886821817": {
    "formato": "premodern",
    "nome": "Psychatog",
    "nucleo": [
-    "Accumulated Knowledge",
+    "Annul",
     "Chain of Vapor",
     "Counterspell",
     "Duress",
@@ -449,7 +450,7 @@
     "Smother"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-17"
+   "ultima": "2026-09-18"
   }
  },
  "versao": 1
