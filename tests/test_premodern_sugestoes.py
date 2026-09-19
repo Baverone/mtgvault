@@ -281,7 +281,10 @@ def caso_cobertura_e_do_que_sobra_e_sem_basicas():
     pm = pm_de(loadout.report(con, slots))
     c = por_nome(pm)["Enchantress"]
     assert c["pct"] == 0, f'sobra {c["pct"]}%'
-    assert c["pct_total"] == 100, f'ao todo {c["pct_total"]}%'
+    # Até 2026-09-19 o `pct_total` contava o que estava noutra caixa (100%).
+    # Desde então nenhuma caixa empresta (*"cada deck deverá ter as suas
+    # próprias cartas dentro"*) e as três percentagens são a mesma: o livre.
+    assert c["pct_total"] == 0 and c["pct_principal"] == 0, c
     # E as básicas ficam de fora da conta: 20 Plains em 35 cartas fariam qualquer
     # deck começar acima dos 55% e nenhum se distinguia dos outros.
     assert c["need"] == sum(q for nm, q in ENCHANTRESS if nm != "Plains"), c["need"]
@@ -300,17 +303,19 @@ def caso_cobertura_e_do_que_sobra_e_sem_basicas():
 
 
 def caso_cobertura_como_principal_conta_as_outras_caixas_do_grupo():
-    """*"Como as cartas em Premodern são partilhadas, tens que ver se a % desses
-    decks aumentaria se eles fossem o principal; mantém a 50 %."* (2026-09-08)
+    """SUPERSEDED a 2026-09-19 — o nome ficou para o histórico dizer o que mudou.
 
-    Uma caixa de Premodern já montada leva as cópias de Stasis e de Forsaken
-    City. Com o que SOBRA o candidato Stasis fica em 33 % — só lhe restam os
-    Black Vise — e não chegava aos 50 % nem por sombras. Mas as caixas de
-    Premodern **partilham** (`dedicado: false`): se fosse este deck a escolher
-    primeiro, ficava com tudo. É essa a percentagem que decide.
-
-    As duas continuam à vista, e a diferença entre elas é a informação que
-    interessa: 100 % − 33 % é quanto ele iria buscar às outras caixas.
+    A 2026-09-08 (*"como as cartas em Premodern são partilhadas, tens que ver se
+    a % desses decks aumentaria se eles fossem o principal"*) a cobertura que
+    decidia era a de COMO PRINCIPAL: as cópias de Stasis e Forsaken City dentro
+    da caixa Controlo contavam para o candidato Stasis (100 %). Desde
+    2026-09-19 (*"cada deck deverá ter as suas próprias cartas dentro, não
+    repetindo com outros decks!"*) nenhuma caixa de Premodern empresta: a
+    cobertura é só a do que está LIVRE (33 %, os Black Vise), a "como
+    principal" é igual a ela, e o Stasis fica ABAIXO do limiar — com ou sem
+    `dedicado` escrito na caixa. Consequência assumida (e registada no
+    relatório): há menos sugestões, porque um deck novo só conta com o que
+    nenhuma caixa levou.
     """
     cfg(sugerir_a_partir_de_pct=50, top_combo=2)
     con = base()
@@ -324,29 +329,20 @@ def caso_cobertura_como_principal_conta_as_outras_caixas_do_grupo():
     for nm, q in (("Stasis", 4), ("Forsaken City", 4), ("Black Vise", 4)):
         add(con, nm, q)
 
-    pm = pm_de(loadout.report(con, [caixa_ctl]))
-    c = por_nome(pm)["Stasis"]
-    assert c["pct"] == 33, c["pct"]                     # só os Black Vise sobram
-    assert c["pct_principal"] == 100, c["pct_principal"]
-    assert c["tenho_principal"] == c["need"] == 12, (c["tenho_principal"], c["need"])
-    assert c["estado"] == "sugerida", (c["estado"], c["pct"], c["pct_principal"])
-    print("33% com o que sobra, 100% como principal — e é o segundo que decide")
-
-    # E o contrário, para se ver que é mesmo o grupo que manda: uma caixa
-    # DEDICADA não empresta, e o candidato volta a valer só o que sobra.
-    ded = dict(caixa_ctl, dedicado=True)
-    pm2 = pm_de(loadout.report(con, [ded]))
-    c2 = por_nome(pm2)["Stasis"]
-    assert c2["pct_principal"] == 33, c2["pct_principal"]
-    assert c2["estado"] == "abaixo", c2["estado"]
-    print("com a caixa dedicada não há empréstimo: como principal volta aos 33%")
-
-    # E as cartas de uma caixa de OUTRO formato nunca contam — essas não voltam
-    # por partilha nenhuma. O Duel Commander é dedicado por omissão do grupo, e
-    # aqui prova-se pelo lado do formato: o Sylvan Library que ele leva não
-    # aparece na cobertura de ninguém em Premodern.
-    assert all(cx in {"Controlo"} for m in c["linhas"] for cx in (m.get("onde") or {})), \
-        [m.get("onde") for m in c["linhas"] if m.get("onde")]
+    for cx in (caixa_ctl, dict(caixa_ctl, dedicado=False), dict(caixa_ctl, dedicado=True)):
+        pm = pm_de(loadout.report(con, [cx]))
+        c = por_nome(pm)["Stasis"]
+        assert c["pct"] == 33, c["pct"]                     # só os Black Vise sobram
+        assert c["pct_principal"] == 33, c["pct_principal"]
+        assert c["tenho_principal"] == 4 and c["need"] == 12, (c["tenho_principal"], c["need"])
+        assert c["estado"] == "abaixo", (c["estado"], c["pct"], c["pct_principal"])
+        # E nenhuma linha diz que conta com cartas de outra caixa (`onde`): a
+        # nota "tens N no Controlo" existe, mas é só informação.
+        assert not any(m.get("onde") for m in c["linhas"]), \
+            [m.get("onde") for m in c["linhas"] if m.get("onde")]
+        assert {cx2 for m in c["linhas"] for cx2 in (m.get("noutra_nota") or {})} \
+            == {"Controlo"}, [m.get("noutra_nota") for m in c["linhas"]]
+    print("33% com o que esta livre, e e isso que decide: a caixa Controlo nao empresta")
 
 
 def caso_sugestao_reserva_as_cartas_e_tira_as_da_venda():
@@ -556,10 +552,11 @@ def caso_a_pagina_mostra_a_sugestao_e_a_venda():
         return
     s = abas["sugestoes"]
     assert "Stasis" in s and "sugerido — montar?" in s, s[:400]
-    # As DUAS percentagens, lado a lado: a que decide (como principal) e a que
-    # explica de onde vinham as cartas (com o que sobra). Mostrar só uma delas
-    # foi o que fez a página contradizer o limiar durante um dia.
-    assert "como principal" in s and "com o que sobra" in s, s[:600]
+    # Desde 2026-09-19 há UMA percentagem — a do que está livre — porque
+    # nenhuma caixa empresta; a "como principal" de 2026-09-08 deixou de
+    # existir, e a página não pode continuar a nomeá-la.
+    assert "com o que está livre" in s, s[:600]
+    assert "como principal" not in s and "com o que sobra" not in s, s[:600]
     assert "🧰" in s, "a caixa que ele já tem vem marcada como tal"
     assert "data-act=" not in s, "a página publicada não desenha botões"
     v = abas["vender"]
