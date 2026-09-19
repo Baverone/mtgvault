@@ -2351,6 +2351,10 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                              noutra_onde={k: dict(v) for k, v in onde_fis.items()},
                              noutra_lotes=res_lotes,
                              noutra_futura={}, playset_bloqueado=0,
+                             # ENCOMENDAS (2026-09-19): preenchidas depois pelo
+                             # `encomendas.descontar`; a zero, para toda a
+                             # linha em falta ter as três chaves.
+                             a_caminho=0, pendente_foto=0, encomendado=0,
                              req_compra=requisito_material(s),
                              marca_compra=marca_compra(s),
                              unit=unit, price_finish=pfin,
