@@ -141,8 +141,6 @@ function renderTabs() {
                  ['pormontar', '🔧 Decks para montar',
                   D.resumo.por_montar + (D.resumo.por_montar === 1 ? ' deck' : ' decks')],
                  ['arrumar', '📥 Arrumar', arr],
-                 ['partilhadas', '🔁 Partilhadas',
-                  (D.partilhadas ? D.partilhadas.length : D.n_partilhadas || 0) + ' cartas'],
                  ['comprar', '🛒 Comprar', D.resumo.comprar + ' cópias'],
                  /* ENCOMENDAS (2026-09-19): o que comprou e ainda não fotografou.
                     Os totais vêm no índice (escalares) — a parte só se pede ao
@@ -155,6 +153,14 @@ function renderTabs() {
   if (D.premodern && D.premodern.activo) {
     fixas.push(['sugestoes', '💡 Sugestões',
                 D.premodern.sugestoes + ' por decidir']);
+  }
+  /* PARTILHADAS: desde 2026-09-19 nenhuma caixa partilha cartas ("cada deck
+     deverá ter as suas próprias cartas dentro, não repetindo com outros
+     decks!") e a lista é vazia por regra. A aba só aparece se um dia voltar a
+     ter linhas — uma aba a dizer "0 cartas" numa fila de vinte é ruído. */
+  const nPart = D.partilhadas ? D.partilhadas.length : (D.n_partilhadas || 0);
+  if (nPart) {
+    fixas.push(['partilhadas', '🔁 Partilhadas', nPart + ' cartas']);
   }
   /* NÃO ENCONTRADAS: pela mesma razão, só quando há alguma. Uma aba vazia a
      dizer "0 cartas" numa fila de vinte é ruído — e enquanto ele não carregar
@@ -251,11 +257,15 @@ function cardTile(c) {
   const tit = [c.nm, c.est === 'have' ? `tens ${c.got}/${c.need}`
     : `falta ${c.missing}`,
     onde,
+    /* CADA CAIXA COM AS SUAS CARTAS (2026-09-19): a nota "tens 2 no Blue Farm"
+       é só informação — esta caixa compra as suas. Vem pronta do Python. */
+    c.nota || '',
     Object.entries(c.alt).map(([k, v]) => `${v}× ${k}`).join('; '),
     c.comprar ? `comprar ${c.comprar}` : '',
     c.acam ? `${c.acam} a caminho` : '',
     c.pfoto ? `${c.pfoto} pendente${pl(c.pfoto)} de foto` : '',
-    c.bloq ? `limite de playset: falta ${c.bloq} que não se compra` : '',
+    c.bloq ? (c.bloq_txt || `limite de playset: falta ${c.bloq} que não se compra`) : '',
+    c.sfoil ? 'nunca saiu em foil — a nonfoil serve' : '',
     c.lotes.map(l => `${l.q}× ${l.local}`).join(' · '),
     /* "quantas tenho ao todo" — a informação secundária que vinha da página dos
        decks. Secundária de propósito: o número que manda nesta caixa é o da
@@ -504,9 +514,12 @@ function montarHTML(c) {
        : '')
     + (c.noutra ? `<p class="nota">📦 Mais <b>${c.noutra}</b> cópia${pl(c.noutra)} está${pl(c.noutra)} noutra `
         + `caixa: essas vão-se buscar, não se compram.</p>` : '')
-    + (c.bloqueado ? `<p class="nota">🔒 E <b>${c.bloqueado}</b> que o limite de `
-        + `playset (${c.playset} por carta em ${esc(c.grupo || 'todo o grupo')}) `
-        + `não deixa comprar — vê a secção «limite de playset» acima.</p>` : '')
+    + (c.bloqueado ? `<p class="nota">🔒 E <b>${c.bloqueado}</b> em falta que o limite de `
+        + `playset (${c.playset} por carta em ${esc(c.grupo || 'todo o grupo')}, no total) `
+        + `não deixa comprar — estão noutra caixa do grupo; vê a secção «limite de playset» acima.</p>` : '')
+    + ((c.notas_onde || []).length ? `<p class="nota">ℹ️ De <b>${c.notas_onde.length}</b> `
+        + `destas tens cópias noutra caixa (vê «tens noutra caixa» acima) — cada deck tem as `
+        + `suas próprias cartas, por isso compram-se na mesma.</p>` : '')
     + `</div>`;
   /* passo 3 -------------------------------------------------------------- */
   h += `<div class="passo"><div class="ph"><span class="pn">3</span>`
@@ -1059,9 +1072,14 @@ function wantlistHTML(itens, marca, id, detalhe, basicas, edicao, slot) {
     const cara = detalhe && (m.unit || 0) >= CARA;
     const compra = (m.para || []).filter(p => !p.serve);
     const serve = (m.para || []).filter(p => p.serve);
-    const sub = !detalhe ? '' : [m.req || '',
-      compra.length ? 'para: ' + compra.map(p => `${p.caixa} ${p.q}×`).join(' · ') : '',
-      serve.length ? 'serve também: ' + serve.map(p => p.caixa).join(', ') : '']
+    /* A regra PARA ESTA CARTA (2026-09-19) — numa que nunca saiu em foil a
+       linha diz "nonfoil — nunca saiu em foil" mesmo sem `detalhe`, senão a
+       caixa de foil pedia um material que não existe. E a nota "tens 2 no
+       Blue Farm": só informação, esta caixa compra as suas. */
+    const sub = [detalhe ? (m.req || '') : (m.sfoil ? (m.req || '') : ''),
+      m.nota || '',
+      detalhe && compra.length ? 'para: ' + compra.map(p => `${p.caixa} ${p.q}×`).join(' · ') : '',
+      detalhe && serve.length ? 'serve também: ' + serve.map(p => p.caixa).join(', ') : '']
       .filter(Boolean).join(' — ');
     /* ENCOMENDAS (2026-09-19): «a comprar 2 · 1 a caminho · 1 pendente de
        foto», com os `+`/`−`/«Chegou» quando a linha é de UMA caixa. Uma linha
@@ -1266,14 +1284,30 @@ function caixaHTML(c, compacta) {
      que uma falta tapada — se saísse só da conta das compras, a caixa dizia-se
      à espera de uma carta que ninguém vai comprar. */
   if (c.playset_faltas.length) {
+    /* Desde 2026-09-19 a frase vem inteira do Python (`loadout.texto_playset`):
+       "não se compra (limite de 4 no total; está no UW Replenish)" — é onde as
+       duas regras dele se tocam (cada caixa compra as suas, mas o Premodern não
+       passa de um playset no total), e a caixa tem de dizer ONDE estão. */
     const li = c.playset_faltas.map(m => `<li>${esc(m.nm)}`
       + (m.board === 'side' ? ' <span class="dim">(sideboard)</span>' : '')
-      + ` — <b>falta ${m.q}</b> que não se compra</li>`).join('');
+      + ` — <b>em falta</b>: ${esc(m.txt || `${m.q} não se compra (limite de playset)`)}</li>`).join('');
     h += `<div class="blk lim"><b>🔒 limite de playset — ${c.bloqueado} `
-      + `cópia${pl(c.bloqueado)}</b>`
+      + `cópia${pl(c.bloqueado)} em falta que não se ${c.bloqueado === 1 ? 'compra' : 'compram'}</b>`
       + `<p class="nota">Pediste no máximo <b>${cop(c.playset)}</b> de cada `
-      + `carta para ${esc(c.grupo || 'este grupo')}, somando todas as caixas e o `
-      + `que já tens. Estas passam disso: a caixa fica sem elas de propósito.</p>`
+      + `carta para ${esc(c.grupo || 'este grupo')}, somando todas as caixas. `
+      + `Estas passam disso: ficam em falta nesta caixa, fora do «fechar tudo», `
+      + `e as cópias que existem estão na caixa indicada.</p>`
+      + `<ul>${li}</ul></div>`;
+  }
+  /* CADA CAIXA COM AS SUAS CARTAS (André, 2026-09-19): as cartas em falta de
+     que ele TEM cópias noutra caixa. Só informação — esta caixa compra as suas;
+     nada aqui desconta da lista de compras. */
+  if ((c.notas_onde || []).length) {
+    const li = c.notas_onde.map(m => `<li>${esc(m.nm)} — ${esc(m.nota)}`
+      + `<span class="dim"> (compra-se na mesma: cada caixa tem as suas cartas)</span></li>`).join('');
+    h += `<div class="blk onde"><b>ℹ️ tens noutra caixa — ${cop(c.notas_onde.length)}</b>`
+      + `<p class="nota">Cada deck tem as suas próprias cartas, sem repetir com `
+      + `outros decks (2026-09-19): estas ficam onde estão, e esta caixa compra as dela.</p>`
       + `<ul>${li}</ul></div>`;
   }
   if (c.subs.length) {
@@ -1574,8 +1608,13 @@ function vistaArrumar() {
 
 function vistaPartilhadas() {
   if (!D.partilhadas.length) {
-    return `<h2>🔁 Cartas partilhadas</h2><p class="empty">Nenhuma caixa está a `
-      + `disputar cartas com outra.</p>`;
+    /* Desde 2026-09-19 é SEMPRE vazia — "cada deck deverá ter as suas próprias
+       cartas dentro, não repetindo com outros decks!" — e a aba nem aparece na
+       fila (ver `abas()`). Fica o texto para quem chegar aqui por um link. */
+    return `<h2>🔁 Cartas partilhadas</h2><p class="empty">Nenhuma caixa partilha `
+      + `cartas com outra: desde 19/09/2026 cada deck tem as suas próprias cartas, `
+      + `e a caixa que pede uma carta que está noutra caixa compra a dela. O `
+      + `«tens N no X» de cada carta está na aba da caixa.</p>`;
   }
   const rows = D.partilhadas.map(c => {
     const det = c.por_slot.map(q => `<span class="cs ${q.levou >= q.pediu ? 'ok' : 'no'}"`
@@ -1647,11 +1686,13 @@ function vistaComprar() {
     + `</select></div>`;
   return `<h2>🛒 Comprar — ${esc(nome)}</h2>`
     + `<p class="lead">Só o que <b>não existe</b> na coleção, ou existe mas não serve `
-    + `na língua/acabamento que a caixa exige. As cartas que estão noutra caixa `
-    + `<b>não estão aqui</b>: vão-se buscar. São <b>${D.resumo.noutra}</b> cópia${pl(D.resumo.noutra)} a ir `
-    + `buscar contra <b>${D.resumo.comprar}</b> a comprar. Debaixo de cada nome está `
+    + `na língua/acabamento que a caixa exige. <b>Cada deck tem as suas próprias `
+    + `cartas</b> (19/09/2026): uma carta que está noutra caixa compra-se na mesma `
+    + `para esta — a linha diz «tens N no X» só para saberes que a tens. São `
+    + `<b>${D.resumo.comprar}</b> cópia${pl(D.resumo.comprar)} a comprar. Debaixo de cada nome está `
     + `<b>para que caixa</b> é a compra e <b>em que material</b> — comprar a versão `
-    + `errada é comprar duas vezes.</p>`
+    + `errada é comprar duas vezes; numa carta que <b>nunca saiu em foil</b> a linha `
+    + `di-lo e pede nonfoil.</p>`
     + (D.resumo.poupado ? `<p class="lead">🔁 <b>Uma cópia serve as caixas todas.</b> `
         + `Quando duas caixas querem a mesma carta no mesmo material, compra-se `
         + `<b>uma vez</b> e as outras vão lá buscá-la — como já fazes com as que tens. `
@@ -1876,10 +1917,11 @@ function sugestaoHTML(c) {
         + `<button class="btn" data-act="pm-recusar" data-nome="${esc(c.nome)}" `
         + `data-id="${esc(c.id)}">`
         + `✕ Não quero este</button></div>`;
-  /* A percentagem grande é a de COMO PRINCIPAL — é a que decide o limiar desde
-     2026-09-08, porque as caixas de Premodern partilham cartas. A do que sobra
-     vem logo a seguir: a diferença entre as duas é quantas cartas viriam
-     emprestadas das outras caixas, e sem ela os 81% pareciam cartas em casa. */
+  /* A percentagem grande era a de COMO PRINCIPAL (2026-09-08, quando as caixas
+     de Premodern partilhavam). Desde 2026-09-19 nenhuma caixa empresta — "cada
+     deck deverá ter as suas próprias cartas dentro" — e as duas percentagens
+     são a MESMA: o que está livre. Mostra-se uma só; a "como principal" fica
+     no payload por forma (é igual). */
   const p = c.pct_principal;
   return `<div class="box"><div class="btop"><b>${esc(c.nome)}</b>`
     + `<span class="pct" style="color:${cor(p)}">${p}%</span></div>`
@@ -1887,8 +1929,7 @@ function sugestaoHTML(c) {
     + `background:${cor(p)}"></i></div>`
     + `<div class="badges">${chips}</div>`
     + `<div class="nums">`
-    + `<div class="num get">como principal<b>${c.tenho_principal}/${c.need}</b></div>`
-    + `<div class="num">com o que sobra<b>${c.pct}%</b> (${c.got}/${c.need})</div>`
+    + `<div class="num get">com o que está livre<b>${c.got}/${c.need}</b></div>`
     + `<div class="num buy">comprar<b>${c.comprar}</b></div>`
     + `<div class="num eur">fechar por<b>${eur(c.custo)}</b></div></div>`
     + `<div class="nota">${esc(c.subtitulo)}</div>`
@@ -1903,12 +1944,10 @@ function vistaSugestoes() {
   const sug = lista.filter(c => c.estado === 'sugerida');
   let h = `<h2>💡 Sugestões de Premodern</h2>`
     + `<p class="lead">O <b>top-10</b> do formato e os <b>melhores combo</b>, `
-    + `pelas listas que contam. A percentagem grande é a de <b>como principal</b>: `
-    + `as caixas de Premodern <b>partilham</b> cartas, por isso conta-se o que `
-    + `este deck teria se fosse ele a escolher primeiro — as cópias PT (≤SCG) `
-    + `livres <b>mais</b> as que estão nas outras caixas de Premodern. A segunda `
-    + `é a do que <b>sobra</b> sem tocar em nada, e a diferença entre as duas é `
-    + `quantas cartas irias buscar às outras caixas. A partir de `
+    + `pelas listas que contam. A percentagem é a do que está <b>livre</b>: as `
+    + `cópias PT (≤SCG) que nenhuma caixa levou. Desde 19/09/2026 <b>cada deck tem `
+    + `as suas próprias cartas</b> — nenhuma caixa empresta, por isso o que está `
+    + `dentro das outras caixas de Premodern não conta para um deck novo. A partir de `
     + `<b>${P2.limiar}%</b> vira sugestão.</p>`;
   h += sug.length
     ? `<p class="lead">Enquanto forem sugestões, as cartas delas <b>não vão para `
@@ -1917,9 +1956,9 @@ function vistaSugestoes() {
           + `alocação; <b>✕ não quero este</b> liberta as cartas para a venda.`
          : `Para decidires, corre <code>python webapp.py</code> no PC (porto 8771).`)
       + `</p>`
-    : `<p class="lead">Nenhum candidato chega aos ${P2.limiar}% nem sequer como `
-      + `principal: mesmo com as cartas emprestadas pelas outras caixas de `
-      + `Premodern faltava-lhes mais de metade. O que sobra vai para a venda com `
+    : `<p class="lead">Nenhum candidato chega aos ${P2.limiar}% com o que está `
+      + `livre (as outras caixas de Premodern não emprestam: cada deck tem as `
+      + `suas cartas). O que sobra vai para a venda com `
       + `o motivo <i>"não usada por nenhum deck"</i>. Se quiseres ver mais `
       + `opções, baixa o <code>sugerir_a_partir_de_pct</code> no `
       + `<code>colecao_config.json</code>.</p>`;
