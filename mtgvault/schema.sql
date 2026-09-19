@@ -83,6 +83,46 @@ CREATE TABLE IF NOT EXISTS copy_allocation (
 );
 CREATE INDEX IF NOT EXISTS ix_alloc_slot ON copy_allocation(slot);
 
+-- ENCOMENDAS (André, 2026-09-19): «SÓ A FOTO CRIA CÓPIAS».
+--
+-- *"dizia-te o que ia comprando, e tu só ias pedindo as fotos das cartas; cada
+-- vez que eu adiciono que tenho a carta, fica pendente de foto; quando coloco
+-- a foto, adicionas à coleção."* Uma encomenda NÃO é uma cópia: não conta para
+-- o valor, para a venda, para a galeria nem para nada que conte cartas. O que
+-- faz é DESCONTAR o «a comprar» da caixa a que pertence — o que está
+-- encomendado já não é para comprar. O caminho: `qty_a_caminho` (o `+`) →
+-- `qty_pendente_foto` (o «Chegou», ou o «já a tenho» directo) → a foto entra
+-- em `pendentes/`, o import cria a cópia, fecha a encomenda (`qty_fechada`,
+-- `copy_ids`) e aloca a cópia à caixa. Ver `mtgvault.encomendas`.
+--
+-- Sem `set_code` = qualquer impressão que cumpra a regra da caixa. `slot` a
+-- NULL = para a colecção, sem caixa. Uma linha por (carta, impressão, língua,
+-- acabamento, caixa); o `+` de uma linha igual soma em vez de criar outra.
+CREATE TABLE IF NOT EXISTS encomendas (
+    id                INTEGER PRIMARY KEY,
+    card_name         TEXT NOT NULL,          -- nome oracle (a frente, como as listas)
+    set_code          TEXT,
+    collector_number  TEXT,
+    lang              TEXT NOT NULL DEFAULT 'en',
+    finish            TEXT NOT NULL DEFAULT 'nonfoil',
+    slot              TEXT,                   -- `slot` da caixa (chave da copy_allocation)
+    qty_a_caminho     INTEGER NOT NULL DEFAULT 0,
+    qty_pendente_foto INTEGER NOT NULL DEFAULT 0,
+    qty_fechada       INTEGER NOT NULL DEFAULT 0,  -- o que a foto já transformou em cópia
+    copy_ids          TEXT,                   -- JSON: as cópias que a fecharam
+    origem            TEXT,                   -- texto livre: a loja
+    preco_unit        REAL,
+    notas             TEXT,
+    aviso             TEXT,                   -- ex.: a foto trouxe uma impressão que a caixa recusa
+    criado_em         TEXT DEFAULT CURRENT_TIMESTAMP,
+    actualizado_em    TEXT DEFAULT CURRENT_TIMESTAMP
+);
+-- A tabela NASCE aqui inteira, e por isso o índice pode viver neste ficheiro
+-- (a regra de 2026-09-09 é para índices sobre COLUNAS NOVAS de tabelas que
+-- já existem — essas só no `_migrate`, depois do ALTER).
+CREATE INDEX IF NOT EXISTS ix_encomendas_slot ON encomendas(slot);
+CREATE INDEX IF NOT EXISTS ix_encomendas_card ON encomendas(card_name);
+
 -- ---------------------------------------------------------------
 -- OS MEUS DECKS
 -- ---------------------------------------------------------------
