@@ -510,6 +510,9 @@ def caso_avisos_quando_a_caixa_ja_nao_pede():
     con = montavel()
     encomendas.adicionar(con, "lg", "Brainstorm", 2, log_path=_TMP / "e10.log")
     encomendas.adicionar(con, "pm", "Swords to Plowshares", 3, log_path=_TMP / "e10.log")
+    # O pm2 é SERVIDO pela compra partilhada do pm: uma encomenda dele é a mesma
+    # compra feita duas vezes, e o aviso tem de o dizer assim.
+    encomendas.adicionar(con, "pm2", "Swords to Plowshares", 1, log_path=_TMP / "e10.log")
     c, rep, d = caixa(con, "lg")
     assert c["comprar"] == 1, ("o Brainstorm não desconta o Force of Will", c)
     pm = next(x for x in rep["slots"] if x["slot"] == "pm")
@@ -519,7 +522,9 @@ def caso_avisos_quando_a_caixa_ja_nao_pede():
     assert av[("lg", "Brainstorm")]["q"] == 2
     assert av[("pm", "Swords to Plowshares")]["q"] == 1, av
     assert "a mais" in av[("pm", "Swords to Plowshares")]["porque"]
-    assert len(d["encomendas"]["avisos"]) == 2
+    assert av[("pm2", "Swords to Plowshares")]["porque"].startswith(
+        "compra partilhada: UW Replenish compra-a"), av
+    assert len(d["encomendas"]["avisos"]) == 3
     print("avisos: a caixa ja nao pede / a mais do que pede, sem descontar noutra")
 
 

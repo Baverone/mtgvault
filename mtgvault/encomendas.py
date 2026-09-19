@@ -455,12 +455,30 @@ def descontar(con, slots: list[dict]) -> list[dict]:
             m["cost"] = round((m["unit"] or 0) * m["comprar"], 2)
         sobra = resta_ac + resta_pf
         if sobra > 0:
-            pede = any(m["nm"] == nm for m in s["missing"] + s["have"])
             avisos.append({"slot": slot, "caixa": nomes.get(slot) or slot, "nm": nm,
                            "q": sobra, "ids": g["ids"],
-                           "porque": (f"a mais do que a caixa pede ({sobra})"
-                                      if pede else "a caixa já não a pede")})
+                           "porque": _porque_sobra(s, nm, sobra)})
     return sorted(avisos, key=lambda a: (a["caixa"], a["nm"]))
+
+
+def _porque_sobra(s: dict, nm: str, sobra: int) -> str:
+    """A razão de uma encomenda não ter onde descontar nesta caixa, dita com
+    a leitura da alocação e não com um «a mais» genérico: uma caixa SERVIDA por
+    uma compra partilhada não «deixou de pedir» a carta — outra caixa compra-a
+    (é o `noutra_futura`), e o que ele encomendou aqui é a mesma compra feita
+    duas vezes."""
+    falta = [m for m in s["missing"] if m["nm"] == nm]
+    if falta:
+        fut = {k: v for m in falta for k, v in (m.get("noutra_futura") or {}).items()}
+        if fut:
+            quem = ", ".join(sorted(fut))
+            return f"compra partilhada: {quem} compra-a e esta caixa vai lá buscá-la"
+        if any(m.get("noutra_q") for m in falta):
+            return "a caixa vai buscá-la a outra caixa, não a compra"
+        return f"a mais do que a caixa pede ({sobra})"
+    if any(m["nm"] == nm for m in s["have"]):
+        return "a caixa já a tem"
+    return "a caixa já não a pede"
 
 
 # ---------------------------------------------------------------------------
