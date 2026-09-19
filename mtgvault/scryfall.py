@@ -254,6 +254,55 @@ def impressoes(con: sqlite3.Connection, name: str, *, ate: str | None = None,
     return (recentes + resto)[:limite]
 
 
+FOIL_FINISHES = ("foil", "etched")
+
+
+def impressoes_foil(con: sqlite3.Connection, name: str) -> list[sqlite3.Row]:
+    """As impressões desta carta que EXISTEM em foil (ou etched), por data.
+
+    André, 2026-09-19, à letra: *"quando escreves que a carta não serve porque
+    devia ser foil e não é foil, confirma se há foil."* Uma caixa que exige foil
+    (SPML, Duel Commander) recusava a Glimmer Lens nonfoil — e a Glimmer Lens
+    nunca saiu em foil: a exigência não se pode cumprir, e a cópia que ele tem é
+    a única que existe. Quem decide o que isso significa para a caixa é o
+    `loadout.acabamento_efectivo`; aqui responde-se só à pergunta do catálogo.
+
+    Qualquer edição e qualquer língua contam para "existe" — o `cards.finishes`
+    é por impressão (`["nonfoil","foil"]`, `["foil"]`, `["etched"]`). As EN vêm
+    primeiro, porque é a lista que a mensagem *"existe em foil: MMQ 1999, EXP
+    2016…"* mostra. O `name = ?` usa o `ix_cards_name` (o `lower()` varria o
+    catálogo inteiro — ver `impressoes`); o segundo caminho é para a frente de
+    uma carta de dupla face, que as listas escrevem sem o `//`.
+
+    Só PAPEL: as impressões `digital` (MTGO — a Swift Reconfiguration só tem
+    foil na `prm` de MTGO, a Tundra na `vma`) e a memorabilia ficam de fora,
+    como no `impressoes`. Um foil que só existe no MTGO não é um foil que ele
+    possa meter na caixa, e dizer-lhe "existe em foil" por causa dele era
+    mandá-lo comprar o que não se vende.
+    """
+    extra, mais = _clausula_finish(FOIL_FINISHES)
+    q = ("SELECT set_code, released_at, lang, finishes FROM cards "
+         "WHERE name = ? AND digital = 0 "
+         "AND COALESCE(set_type,'') != 'memorabilia'" + extra
+         + " ORDER BY (lang != 'en'), released_at, set_code")
+    rows = con.execute(q, [name, *mais]).fetchall()
+    if not rows:
+        rows = con.execute(q.replace("name = ?", "name LIKE ? || ' // %'", 1),
+                           [name, *mais]).fetchall()
+    return rows
+
+
+def conhecida(con: sqlite3.Connection, name: str) -> bool:
+    """O catálogo conhece esta carta (pelo nome exacto, ou pela frente de uma
+    dupla face)? Pelo índice — o `resolve_name` tolerante varre o catálogo
+    inteiro, e isto corre uma vez por carta que nunca saiu em foil, que nos
+    anos 90 são todas."""
+    if con.execute("SELECT 1 FROM cards WHERE name = ? LIMIT 1", (name,)).fetchone():
+        return True
+    return con.execute("SELECT 1 FROM cards WHERE name LIKE ? || ' // %' LIMIT 1",
+                       (name,)).fetchone() is not None
+
+
 def _adivinhar(con: sqlite3.Connection, name: str,
                collector_number: str | None,
                ate: str | None = None, finishes=None) -> sqlite3.Row | None:

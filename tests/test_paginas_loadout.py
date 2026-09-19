@@ -179,13 +179,15 @@ def caso_utrom_monitor():
 
 
 def caso_noutra_caixa_e_o_terceiro_estado():
-    """Duas caixas querem a mesma carta e só há um playset: a de prioridade mais
-    baixa mostra 'em <caixa>' e NÃO a mete na wantlist. Somar `missing` mandava-o
-    comprar 4 Frogmite que estão na caixa do lado.
+    """SUPERSEDED a 2026-09-19 — o nome ficou para o histórico dizer o que mudou.
 
-    A caixa que empresta é aqui o Pauper com `dedicado: false` — desde
-    2026-09-07 (19:00) o "ir buscar" só existe fora dos grupos dedicados
-    (Duel Commander e SPML), e o outro lado está no fim do caso.
+    Até aí, duas caixas a quererem a mesma carta com um playset só davam à de
+    prioridade mais baixa o TERCEIRO estado (âmbar, *"em <caixa>"*, fora da
+    wantlist). Desde 2026-09-19 (*"cada deck deverá ter as suas próprias cartas
+    dentro, não repetindo com outros decks!"*) a carta é COMPRA (vermelho) na
+    caixa de Modern, entra na wantlist, e a página diz *"tens 4 no Pauper
+    (Luffy)"* só para ele saber que a tem. O `dedicado: false` no config já não
+    devolve o estado antigo.
     """
     con = base()
     vigiado(con, "Luffy — Pauper", "pauper", "Pauper Affinity",
@@ -193,28 +195,20 @@ def caso_noutra_caixa_e_o_terceiro_estado():
     deck(con, "UW Oswald", "modern", [("Frogmite", 4), ("Thoughtcast", 4)])
     add(con, "Frogmite", 4, finish="foil", sub="SPML")
 
-    empresta = [dict(s, dedicado=False) for s in CFG["loadout"]]
-    modern = _caixas_de(con, empresta)["modern"]
-    cards = _por_nome(modern["cartas"])
-    fg = cards["Frogmite"]
-    assert fg["est"] == "sub" and fg["missing"] == 4 and fg["got"] == 0, fg
-    assert fg["noutra"] == {"Pauper (Luffy)": 4}, fg["noutra"]
-    assert fg["comprar"] == 0, fg
-
-    tc = cards["Thoughtcast"]
-    assert tc["est"] == "miss" and tc["comprar"] == 4, tc
-
-    assert [w["nm"] for w in modern["wantlist"]] == ["Thoughtcast"], modern["wantlist"]
-    print("carta noutra caixa: terceiro estado, e fora da wantlist")
-
-    # E com a caixa do Pauper DEDICADA (o default de 2026-09-07 às 19:00) a
-    # mesma carta deixa de ser "em <caixa>" e passa a compra: *"cada deck montado
-    # deixa de partilhar cartas com outros decks"*.
-    modern = _caixas_de(con)["modern"]
-    fg = _por_nome(modern["cartas"])["Frogmite"]
-    assert fg["est"] == "miss" and fg["comprar"] == 4 and fg["noutra"] == {}, fg
-    assert {w["nm"] for w in modern["wantlist"]} == {"Frogmite", "Thoughtcast"}
-    print("com a caixa dedicada, a mesma carta e compra e nao 'ir buscar'")
+    for slots in ([dict(s, dedicado=False) for s in CFG["loadout"]], None):
+        modern = _caixas_de(con, slots)["modern"]
+        cards = _por_nome(modern["cartas"])
+        fg = cards["Frogmite"]
+        assert fg["est"] == "miss" and fg["missing"] == 4 and fg["got"] == 0, fg
+        assert fg["noutra"] == {} and fg["comprar"] == 4, fg
+        assert fg["nota"] == "tens 4 no Pauper (Luffy)", fg["nota"]
+        tc = cards["Thoughtcast"]
+        assert tc["est"] == "miss" and tc["comprar"] == 4 and tc["nota"] == "", tc
+        assert {w["nm"] for w in modern["wantlist"]} == {"Frogmite", "Thoughtcast"}
+        w = next(x for x in modern["wantlist"] if x["nm"] == "Frogmite")
+        assert w["nota"] == "tens 4 no Pauper (Luffy)", w
+        assert [n["nm"] for n in modern["notas_onde"]] == ["Frogmite"], modern["notas_onde"]
+    print("carta noutra caixa: e compra, com a nota 'tens 4 no Pauper' — com ou sem dedicado")
 
 
 def caso_coleccao_inteira_e_informacao_secundaria():
@@ -253,8 +247,11 @@ def caso_top_n_do_config():
 
 
 def caso_foil_report_ve_as_outras_caixas():
-    """O ranking do `metagame.html`: conta a regra do foil, dá como TIDA a carta
-    que está noutra caixa (vai-se buscar) e só cobra o que é mesmo compra."""
+    """O ranking do `metagame.html`: conta a regra do foil e só cobra o que é
+    mesmo compra. Até 2026-09-19 dava como TIDA a carta que estava noutra
+    caixa (ia-se buscar); desde então (*"cada deck deverá ter as suas próprias
+    cartas dentro"*) nenhuma caixa empresta ao ranking, e a carta é compra —
+    com a nota de onde a tem."""
     con = base()
     con.execute("INSERT INTO archetypes (format, label) VALUES ('modern','Affinity')")
     aid = con.execute("SELECT id FROM archetypes").fetchone()["id"]
@@ -289,29 +286,23 @@ def caso_foil_report_ve_as_outras_caixas():
     add(con, "Frogmite", 4, finish="foil", sub="SPML")
     add(con, "Thoughtcast", 4, finish="nonfoil", sub="SPML")   # nonfoil: não serve
 
-    # A caixa que empresta tem de ser não-dedicada: um arquétipo candidato não
-    # conta com uma cópia que está sleevada dentro de uma caixa dedicada (regra
-    # de 2026-09-07, 19:00 — verificada logo a seguir).
-    res = loadout.allocate(con, [dict(s, dedicado=False) for s in CFG["loadout"]])
-    r = loadout.foil_report(con, "modern", top=3, min_lists=5, res=res)[0]
-    assert r["n_lists"] == 10, ("só as 10 Challenges contam; as 50 ligas não",
-                                r["n_lists"])
-    assert r["got"] == 0 and r["noutra_q"] == 4, r
-    ln = {m["nm"]: m for m in r["linhas"]}
-    assert ln["Frogmite"]["noutra"] == {"Pauper (Luffy)": 4}, ln["Frogmite"]
-    assert ln["Frogmite"]["comprar"] == 0 and ln["Frogmite"]["cost"] == 0
-    # A nonfoil não fecha o slot: é compra, e ao preço FOIL.
-    assert ln["Thoughtcast"]["comprar"] == 4, ln["Thoughtcast"]
-    assert r["custo"] == 20.0, r["custo"]
-    assert r["comprar"] == 4 and r["tenho"] == 4 and r["pct"] == 50, r
-    print("foil_report: 'noutra caixa' é posse, e o custo é só do que se compra")
-
-    # Com a caixa do Pauper dedicada (o default), os 4 Frogmite deixam de contar
-    # para o candidato: quem quiser este arquétipo compra os seus.
-    d = loadout.foil_report(con, "modern", top=3, min_lists=5,
-                            res=loadout.allocate(con))[0]
-    assert d["noutra_q"] == 0 and d["comprar"] == 8 and d["pct"] == 0, d
-    print("uma caixa dedicada nao empresta ao ranking de arquetipos")
+    # Com ou sem `dedicado: false` no config (que já não tem efeito): os 4
+    # Frogmite que estão na caixa do Pauper NÃO contam para o candidato — quem
+    # quiser este arquétipo compra os seus, e a linha diz onde os tem.
+    for slots in ([dict(s, dedicado=False) for s in CFG["loadout"]], None):
+        res = loadout.allocate(con, slots)
+        r = loadout.foil_report(con, "modern", top=3, min_lists=5, res=res)[0]
+        assert r["n_lists"] == 10, ("só as 10 Challenges contam; as 50 ligas não",
+                                    r["n_lists"])
+        assert r["got"] == 0 and r["noutra_q"] == 0, r
+        ln = {m["nm"]: m for m in r["linhas"]}
+        assert ln["Frogmite"]["noutra"] == {} and ln["Frogmite"]["comprar"] == 4, ln["Frogmite"]
+        assert ln["Frogmite"]["noutra_nota"] == {"Pauper (Luffy)": 4}, ln["Frogmite"]
+        # A nonfoil não fecha o slot: é compra, e ao preço FOIL.
+        assert ln["Thoughtcast"]["comprar"] == 4, ln["Thoughtcast"]
+        assert r["custo"] == 20.0, ("só a Thoughtcast tem preço", r["custo"])
+        assert r["comprar"] == 8 and r["tenho"] == 0 and r["pct"] == 0, r
+    print("foil_report: nenhuma caixa empresta ao ranking; a carta e compra, com nota")
 
 
 def caso_pagina_metagame_fecha():
@@ -513,16 +504,17 @@ def caso_payload_do_deckboxes():
     assert fg["est"] == "miss" and fg["comprar"] == 4 and fg["noutra"] == {}, fg
     assert any(w["nm"] == "Frogmite" for w in caixas["modern"]["wantlist"])
 
-    # E, com o mesmo material mas sem a regra `dedicado`, o terceiro estado
-    # (âmbar, "em <caixa>") continua a desenhar-se: é o que vale no Duel
-    # Commander e no SPML.
+    # Até 2026-09-19, sem a regra `dedicado`, desenhava-se aqui o terceiro estado
+    # (âmbar, "em <caixa>"). Desde então (*"cada deck deverá ter as suas
+    # próprias cartas dentro"*) o `dedicado: false` não tem efeito e a carta
+    # continua a ser compra, com a nota de onde a tem.
     rep = loadout.report(con, [dict(s, dedicado=False) for s in CFG["loadout"]])
     p = deckboxes.payload(con, rep)
     mo = next(c for c in p["caixas"] if c["slot"] == "modern")
     fg = next(c for c in mo["cartas"] if c["nm"] == "Frogmite")
-    assert fg["est"] == "sub" and fg["noutra"] == {"Pauper (Luffy)": 4}, fg
-    assert fg["comprar"] == 0
-    assert not any(w["nm"] == "Frogmite" for w in mo["wantlist"])
+    assert fg["est"] == "miss" and fg["noutra"] == {} and fg["comprar"] == 4, fg
+    assert fg["nota"] == "tens 4 no Pauper (Luffy)", fg["nota"]
+    assert any(w["nm"] == "Frogmite" for w in mo["wantlist"])
     print("o payload do deckboxes fecha, e o publicado nao traz botoes")
 
 
@@ -660,33 +652,38 @@ def _pagina_partilhada():
 
 
 def caso_aba_comprar_nao_soma_a_mesma_compra_por_caixa():
-    """A regra do André — *"não ter que comprar múltiplos para todos"* — aplicada
-    às COMPRAS e não só às cópias que ele tem. Duas caixas de Modern pedem 4
-    Thoughtcast cada: a lista pede 4, não 8, e diz que a compra é partilhada."""
+    """SUPERSEDED a 2026-09-19: agora SOMA. Até aí (*"não ter que comprar
+    múltiplos para todos"*) duas caixas de Modern a pedir 4 Thoughtcast cada
+    davam uma compra de 4 «partilhada por 2 caixas». Desde 2026-09-19 (*"cada
+    deck deverá ter as suas próprias cartas dentro, não repetindo com outros
+    decks!"*) a lista pede 8 — 4 para cada caixa —, ninguém é «servido», a aba
+    Partilhadas não existe e o chip «partilhada» não se desenha."""
     pagina = _pagina_partilhada()
     d = json.loads(re.search(r'<script id="dados" type="application/json">(.*?)</script>',
                              pagina.read_text(encoding="utf-8"), re.S)
                    .group(1).replace("<\\/", "</"))
     tc = next(m for m in d["compras"] if m["nm"] == "Thoughtcast")
-    assert tc["q"] == 4, ("comprar o máximo de uma caixa, não a soma", tc)
-    assert tc["partilhada"] == 2, tc
-    assert [(p["caixa"], p["q"], bool(p.get("serve"))) for p in tc["para"]] == [
-        ("Modern — UW Oswald", 4, False), ("Modern — UR Murktide", 4, True)], tc["para"]
-    assert d["resumo"]["comprar"] == 4 and d["resumo"]["poupado"] == 4, d["resumo"]
-    # A posse de cada caixa NÃO mexe: a falta continua lá até a compra chegar.
+    assert tc["q"] == 8, ("cada caixa compra as suas 4", tc)
+    assert tc["partilhada"] == 0, tc
+    assert sorted((p["caixa"], p["q"], bool(p.get("serve"))) for p in tc["para"]) == [
+        ("Modern — UR Murktide", 4, False), ("Modern — UW Oswald", 4, False)], tc["para"]
+    assert d["resumo"]["comprar"] == 8 and d["resumo"]["poupado"] == 0, d["resumo"]
+    assert d["partilhadas"] == [], d["partilhadas"]
     assert all(c["pct"] == 0 and c["faltam"] == 4 for c in d["caixas"]), d["caixas"]
 
     abas = _abas_desenhadas(pagina)
     if abas is None:
-        print("aba Comprar partilhada: sem `node`, saltado")
+        print("aba Comprar: sem `node`, saltado")
         return
-    assert "partilhada por 2 caixas" in abas["comprar"], abas["comprar"][:900]
-    assert "serve também: Modern — UR Murktide" in abas["comprar"]
-    assert "4 Thoughtcast [EN foil]" in abas["comprar"]
-    # E a caixa servida não tem a carta na wantlist dela — comprá-la ali era
-    # comprá-la duas vezes, que é o defeito que a partilha veio corrigir.
-    assert "depois de Modern — UW Oswald comprar" in abas["modern2"], abas["modern2"][:900]
-    print("aba Comprar: uma compra partilhada por duas caixas, não duas compras")
+    assert "partilhada por" not in abas["comprar"], abas["comprar"][:900]
+    assert "serve também" not in abas["comprar"]
+    assert "8 Thoughtcast [EN foil]" in abas["comprar"], abas["comprar"][:900]
+    assert "para: Modern — UR Murktide 4× · Modern — UW Oswald 4×" in abas["comprar"] \
+        or "para: Modern — UW Oswald 4× · Modern — UR Murktide 4×" in abas["comprar"]
+    # E cada caixa tem a carta na wantlist DELA.
+    assert "4 Thoughtcast" in abas["modern2"], abas["modern2"][:900]
+    assert "depois de" not in abas["modern2"]
+    print("aba Comprar: duas caixas, duas compras — cada uma as suas 4")
 
 
 def _pagina_premodern():
@@ -726,12 +723,17 @@ def caso_pagina_diz_a_ordem_automatica_e_o_limite_de_playset():
     assert perto["prioridade"] == 1 and perto["posicao_grupo"] == 1, perto
     assert perto["prioridade_por"] == "pct" and perto["pct_coleccao"] == 100, perto
     assert longe["posicao_grupo"] == 2, longe
-    # O tecto: pede 5, tem 2, compra 2 (=4 no total) e uma fica por comprar.
-    assert longe["playset"] == 4 and longe["bloqueado"] == 1, longe
-    assert longe["playset_faltas"] == [{"nm": "Swords to Plowshares",
-                                        "board": "main", "q": 1}], longe
+    # O tecto: a Longe pede 5, a Perto tem as 2 (e desde 2026-09-19 não as
+    # empresta): a Longe compra 2 (=4 no grupo) e ficam 3 por tapar, ditas com
+    # o "está 2 no PM Perto" — a frase vem inteira do Python
+    # (`loadout.texto_playset`). Até 2026-09-19 ia buscar as 2 e ficava 1.
+    assert longe["playset"] == 4 and longe["bloqueado"] == 3, longe
+    assert longe["playset_faltas"] == [{
+        "nm": "Swords to Plowshares", "board": "main", "q": 3,
+        "txt": "3 não se compra (limite de 4 no total; está 2 no PM Perto)"}], longe
     stp = next(c for c in longe["cartas"] if c["nm"] == "Swords to Plowshares")
-    assert stp["comprar"] == 2 and stp["bloq"] == 1, stp
+    assert stp["comprar"] == 2 and stp["bloq"] == 3, stp
+    assert stp["nota"] == "tens 2 no PM Perto", stp["nota"]
     assert sum(w["q"] for w in longe["wantlist"]
                if w["nm"] == "Swords to Plowshares") == 2, longe["wantlist"]
 
@@ -742,7 +744,8 @@ def caso_pagina_diz_a_ordem_automatica_e_o_limite_de_playset():
     assert "#1 por % completo" in abas["pm-perto"], abas["pm-perto"][:900]
     assert "#2 por % completo" in abas["pm-longe"], abas["pm-longe"][:900]
     assert "limite de playset" in abas["pm-longe"], abas["pm-longe"][:1500]
-    assert "falta 1</b> que não se compra" in abas["pm-longe"], abas["pm-longe"][:1500]
+    assert "3 não se compra (limite de 4 no total; está 2 no PM Perto)" \
+        in abas["pm-longe"], abas["pm-longe"][:1500]
     # E as caixas que não estão num grupo automático não ganham o crachá.
     outra = _abas_desenhadas(_pagina_deckboxes())
     assert "por % completo" not in outra["modern"], outra["modern"][:900]

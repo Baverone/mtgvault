@@ -310,9 +310,15 @@ def caso_anular_repoe_a_alocacao_e_o_estado():
 
 
 def caso_o_que_e_de_outra_caixa_nao_impede_de_fechar():
-    """Uma cópia que a alocação deu a OUTRA caixa aparece no painel («podes
-    tirá-la já») mas **não conta para o «N de M»**: esperá-la era impedir esta
-    caixa de ficar completa por causa de uma carta que é de outra."""
+    """Uma cópia que a alocação deu a OUTRA caixa é dessa caixa e **não conta
+    para o «N de M»** desta: esperá-la era impedir esta caixa de ficar completa
+    por causa de uma carta que é de outra.
+
+    Até 2026-09-19 aparecia no painel num bloco próprio («destinadas a outra
+    caixa — podes tirá-la já»). Desde então (*"cada deck deverá ter as suas
+    próprias cartas dentro, não repetindo com outros decks!"*) esse bloco é
+    vazio por regra: a B COMPRA a sua Sol Ring, e sabe que tem uma na A.
+    """
     repor()
     con = base()
     deck(con, "A", [("Sol Ring", 1, "main")])
@@ -320,11 +326,15 @@ def caso_o_que_e_de_outra_caixa_nao_impede_de_fechar():
     add(con, "Sol Ring", 1)
     add(con, "Wrath of God", 1)
 
-    b, _rep, _d = caixa(con, "b")
-    # A caixa A (prioridade 1) levou o Sol Ring; a B vê-o como "destinado a A".
-    assert b["montar"]["copias_de_outra"] == 1, b["montar"]
+    b, rep, _d = caixa(con, "b")
+    # A caixa A (prioridade 1) levou o Sol Ring; a B compra a sua.
+    assert b["montar"]["copias_de_outra"] == 0, b["montar"]
     assert b["montar"]["marcar_q"] == 1, ("só o Wrath of God", b["montar"])
     assert sum(q for _i, q in ids_dos_vistos(b)) == 1
+    sb = next(s for s in rep["slots"] if s["slot"] == "b")
+    sol = next(m for m in sb["missing"] if m["nm"] == "Sol Ring")
+    assert sol["comprar"] == 1 and sol["noutra_lotes"] == [], sol
+    assert sol["noutra_nota"] == {"Caixa A": 1}, sol["noutra_nota"]
 
     # Marcar o Wrath of God fecha a caixa B, mesmo com o Sol Ring por tirar.
     alvo = b["montar"]["blocos"][0]["movs"][0]["copy_id"]

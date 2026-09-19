@@ -1,30 +1,31 @@
-"""Onde a carta ESTÁ fisicamente vs a quem está DESTINADA.
+"""Onde a carta ESTÁ fisicamente vs a quem está DESTINADA — e, desde 2026-09-19,
+nem uma nem outra é fonte para outra caixa.
 
 André, 2026-09-08, à letra: *"De todas as cartas, só o Stiflenought está em
 deckbox; o resto ainda nada está em deckbox — e ainda estás a assumir que há
-cartas que já estão nas deckboxes dos decks."*
+cartas que já estão nas deckboxes dos decks."* Daí o `noutra` ter sido partido
+em `montada` (está lá dentro) e `reservada` (está na gaveta, prometida).
 
-A alocação atribui cópias a caixas por PRIORIDADE (é um plano), e a página
-mostrava *"em &lt;caixa&gt;"* / *"ir buscar a outra caixa"* como se a cópia lá
-estivesse. Com a `copy_allocation` vazia — que era o estado da base nesse dia —
-as 70 cópias do *"ir buscar"* estavam todas na `Colecção`, na prateleira. É o
-padrão do `event_tier`: um número certo a responder a outra pergunta.
+André, 2026-09-19, à letra: *"cada deck deverá ter as suas próprias cartas
+dentro, não repetindo com outros decks!"* SUPERSEDE a partilha: uma cópia que a
+alocação deu a outra caixa é dessa caixa, esteja sleevada ou na gaveta, e esta
+caixa COMPRA a sua. O `noutra` e as suas metades são ZERO por regra; o que fica
+é uma NOTA (*"tens 1 no Caixa A"*, `noutra_nota`/`nota_onde`) para ele saber
+que a carta existe em casa — nunca como fonte, substituto nem desconto.
 
-O que aqui se tranca:
+O que aqui se tranca (reescrito a 2026-09-19; os casos antigos fixavam o "ir
+buscar" e o "montar fora de ordem", que deixaram de existir):
 
-  1. **destino ≠ físico** — uma cópia que a alocação deu a outra caixa, e que não
-     tem linha na `copy_allocation`, sai como `noutra_reservada` (*"na Colecção —
-     destinada a X"*) e nunca como `noutra_montada` (*"em X"*);
-  2. **a `copy_allocation` muda a frase** — assim que a cópia é registada dentro
-     da caixa, a outra passa a dizer *"em X"*, que aí é verdade;
-  3. **montar fora de ordem** — o painel *Montar* de uma caixa mostra, num bloco
-     próprio, as cópias que estão na gaveta destinadas a outra caixa por montar;
-     o que ele marcar fica registado NESTA, e a alocação segue a realidade
-     física (a outra caixa passa a vir buscá-las aqui);
-  4. **Arrumar sem caixas fantasma** — com a `copy_allocation` vazia, todos os
-     movimentos saem de uma gaveta, nunca de uma caixa;
-  5. **a página não diz "em &lt;caixa&gt;"** quando a caixa não tem nada lá
-     dentro (verificado no HTML que o browser desenha, se houver `node`).
+  1. **é compra, com nota** — com a `copy_allocation` vazia a Caixa B compra a
+     Wrath e diz *"tens 1 no Caixa A"*; nada em `noutra_*`;
+  2. **registar a Caixa A não muda nada para a B** — antes mudava a frase para
+     *"em Caixa A"*; agora continua a ser compra com a mesma nota;
+  3. **não há montar fora de ordem** — o bloco `de_outra` do painel Montar é
+     vazio, e um `copy_id` de outra caixa passado como `de_outra` não entra;
+  4. **Arrumar sem caixas fantasma** — tudo sai de uma gaveta;
+  5. **a página** diz *"tens 1 no Caixa A"* e nunca *"em Caixa A"* nem
+     *"destinada a"* (verificado no HTML desenhado, se houver `node`);
+  6. **`_estado_carta`** (o ranking) dá o mesmo: `noutra` vazio, nota cheia.
 
 Não abre socket nenhum e não toca na rede.
 """
@@ -40,8 +41,9 @@ RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
 
 _TMP = Path(tempfile.mkdtemp())
-# Duas caixas do MESMO grupo, que PARTILHA (não é dedicado): é a única forma de
-# uma dizer onde a outra tem a carta. A ordem é a do `prioridade`.
+# Duas caixas do MESMO grupo. O `dedicado: False` fica escrito de propósito: desde
+# 2026-09-19 não tem efeito nenhum (o `resolve_slots` força `True`), e é isso
+# que estes casos também trancam.
 CFG = {
     "regras_colecao": {},
     "baldes_coleccao": ["Colecção", "Caixa Reserved List"],
@@ -65,12 +67,11 @@ os.environ["MTGVAULT_DB"] = str(_TMP / "vault.db")   # ver tests/_bateria.py
 from mtgvault import db, loadout, sources  # noqa: E402
 
 import deckboxes  # noqa: E402
-import webapp  # noqa: E402
 
 CATALOGO = [("Wrath of God", "4ed", "W"), ("Ancestral Vision", "tsp", "U")]
 # As duas caixas querem a MESMA carta e só há uma cópia: a A (prioridade 1)
-# fica com ela, e a B tem de dizer onde ela está. A `Ancestral Vision` existe
-# para a B ter alguma coisa própria e não ser uma caixa vazia.
+# fica com ela, e a B compra a sua. A `Ancestral Vision` existe para a B ter
+# alguma coisa própria e não ser uma caixa vazia.
 LISTAS = {"A": [("main", "Wrath of God", 1)],
           "B": [("main", "Wrath of God", 1), ("main", "Ancestral Vision", 1)]}
 POSSE = {"Wrath of God": 1, "Ancestral Vision": 1}
@@ -159,86 +160,77 @@ def _abas(con, editable=False):
     return json.loads(dump.read_text(encoding="utf-8"))
 
 
+def _sem_noutra(m):
+    assert m["noutra"] == {} and m["noutra_q"] == 0, m["noutra"]
+    assert m["noutra_montada"] == {} and m["noutra_reservada"] == {}, m
+    assert m["noutra_onde"] == {} and m["noutra_lotes"] == [], m
+    assert loadout.onde_esta(m) == [], loadout.onde_esta(m)
+
+
 # ---------------------------------------------------------------------------
-def caso_destinada_a_outra_caixa_nao_e_estar_la_dentro():
-    """A cópia é da Caixa A por prioridade, mas está na `Colecção`. A Caixa B
-    tem de o dizer assim — *"na Colecção — destinada a Caixa A"*. Dizer *"em
-    Caixa A"* mandava-o procurar dentro de uma caixa que não existe."""
+def caso_destinada_a_outra_caixa_e_compra_com_nota():
+    """A cópia é da Caixa A por prioridade e está na `Colecção`. Até 2026-09-19
+    a Caixa B dizia *"na Colecção — destinada a Caixa A"* e não a comprava.
+    Agora COMPRA-A — e a nota diz-lhe que tem uma na A."""
     repor()
     con = base()
     rep = loadout.report(con)
     assert con.execute("SELECT COUNT(*) c FROM copy_allocation").fetchone()["c"] == 0
     m = _linha(rep, "b", "Wrath of God")
-    assert m["noutra"] == {"Caixa A": 1}, m["noutra"]
-    assert m["noutra_montada"] == {}, "não está dentro de caixa nenhuma"
-    assert m["noutra_reservada"] == {"Caixa A": 1}, m["noutra_reservada"]
-    assert m["noutra_onde"] == {"Caixa A": {"Colecção": 1}}, m["noutra_onde"]
-    assert m["comprar"] == 0, "continua a não se comprar: a cópia existe"
-    assert loadout.onde_esta(m) == [
-        "1× na Colecção — destinada a Caixa A (prioridade)"], loadout.onde_esta(m)
+    _sem_noutra(m)
+    assert m["comprar"] == 1 and m["cost"] == 3.0, m
+    assert m["noutra_nota"] == {"Caixa A": 1}, m["noutra_nota"]
+    assert loadout.nota_onde(m) == "tens 1 no Caixa A", loadout.nota_onde(m)
     b = _slot(rep, "b")
-    assert (b["noutra"], b["noutra_montada"], b["noutra_reservada"]) == (1, 0, 1)
-    assert rep["noutra_total"] == 1 and rep["noutra_montada_total"] == 0
-    assert rep["noutra_reservada_total"] == 1
-    print("destino != físico: 'na Colecção — destinada a Caixa A', e não 'em Caixa A'")
+    assert (b["noutra"], b["noutra_montada"], b["noutra_reservada"]) == (0, 0, 0)
+    assert b["comprar"] == 1 and [x["nm"] for x in b["noutra_notas"]] == ["Wrath of God"]
+    assert rep["noutra_total"] == 0 and rep["noutra_montada_total"] == 0
+    assert rep["noutra_reservada_total"] == 0 and rep["comprar_total"] == 1
+    # E o `dedicado: False` do config não devolveu a partilha.
+    assert all(s["dedicado"] for s in rep["slots"]), "dedicado: false nao tem efeito"
+    print("destinada a outra caixa: e compra, com a nota 'tens 1 no Caixa A'")
 
 
-def caso_com_a_caixa_montada_a_frase_muda():
-    """A `copy_allocation` é a única prova de que a carta está lá dentro. Depois
-    do *"sleevado e na caixa"* da Caixa A, a Caixa B passa a dizer *"em Caixa
-    A"* — e aí é verdade, é mesmo lá que ela está."""
+def caso_com_a_caixa_montada_nada_muda_para_a_outra():
+    """Depois do *"sleevado e na caixa"* da Caixa A, a Caixa B continua a
+    comprar a sua — antes passava a dizer *"em Caixa A"* e a ir lá buscá-la."""
     repor()
     con = base()
     assert _regista(con, "a")["copias"] == 1
     rep = loadout.report(con)
     m = _linha(rep, "b", "Wrath of God")
-    assert m["noutra_montada"] == {"Caixa A": 1}, m["noutra_montada"]
-    assert m["noutra_reservada"] == {} and m["noutra_onde"] == {}
-    assert loadout.onde_esta(m) == ["1× em Caixa A"], loadout.onde_esta(m)
+    _sem_noutra(m)
+    assert m["comprar"] == 1 and m["noutra_nota"] == {"Caixa A": 1}, m
     b = _slot(rep, "b")
-    assert (b["noutra_montada"], b["noutra_reservada"]) == (1, 0)
-    assert [x["nm"] for x in b["buscar_montada"]] == ["Wrath of God"]
-    assert b["buscar_reservada"] == []
-    print("com a caixa montada: 'em Caixa A' — e o bloco passa para 'ir buscar'")
+    assert b["buscar_montada"] == [] and b["buscar_reservada"] == []
+    assert _linha(rep, "a", "Wrath of God")["got"] == 1
+    print("com a caixa A montada: a B continua a comprar a sua, com a mesma nota")
 
 
-def caso_montar_fora_de_ordem():
-    """Ele abre a Caixa B antes da Caixa A. A Wrath está na `Colecção`, ali à
-    mão: o painel Montar da B mostra-a num bloco próprio, por marcar. O que ele
-    marcar fica registado na B — e a partir daí é a ARRUMAÇÃO que manda sobre a
-    prioridade: a Caixa A passa a dizer *"em Caixa B"*."""
+def caso_nao_ha_montar_fora_de_ordem():
+    """O bloco «destinadas a outra caixa» do painel Montar era a porta para tirar
+    da gaveta uma cópia que a alocação deu a outra caixa. Com cartas próprias
+    por caixa a porta fechou: o bloco é vazio e um `copy_id` que esta caixa não
+    pediu passado como `de_outra` não entra na `copy_allocation`."""
     repor()
     con = base()
     rep = loadout.report(con)
     plano = loadout.plano_montar(rep, "b")
-    # O que a alocação lhe dá é só a Ancestral Vision; a Wrath vem à parte.
     assert [m["nm"] for m in plano["tirar"]] == ["Ancestral Vision"], plano["tirar"]
-    assert [(m["nm"], m["de"], m["destino"]) for m in plano["de_outra"]] == [
-        ("Wrath of God", "Colecção", "Caixa A")], plano["de_outra"]
-    assert plano["copias_de_outra"] == 1
-    # E a Caixa A (que É a dona) não tem bloco nenhum destes: o que ela quer é
-    # dela. Um bloco "destinadas a outra caixa" na caixa de destino não quer
-    # dizer nada.
-    assert loadout.plano_montar(rep, "a")["de_outra"] == []
+    assert plano["de_outra"] == [] and plano["copias_de_outra"] == 0, plano["de_outra"]
+    assert loadout.movimentos_reservados(_slot(rep, "b")) == []
 
     cid = _copy_id(con, "Wrath of God")
     n = _regista(con, "b", de_outra=[cid])["copias"]
-    assert n == 2, f"a Ancestral Vision dela mais a Wrath que ele tirou: {n}"
+    assert n == 1, f"so a Ancestral Vision dela: {n}"
     linhas = {r["slot"]: r["quantity"] for r in con.execute(
         "SELECT slot, quantity FROM copy_allocation WHERE copy_id = ?", (cid,))}
-    assert linhas == {"b": 1}, linhas
-
+    assert linhas == {}, linhas
+    # A Caixa A continua com a Wrath, e a B continua a comprar a sua.
     rep2 = loadout.report(con)
-    a = _slot(rep2, "a")
-    m = _linha(rep2, "a", "Wrath of God")
-    assert m["noutra_montada"] == {"Caixa B": 1}, (
-        "a arrumação manda sobre a prioridade: a A tem de ir buscá-la à B")
-    assert m["comprar"] == 0, "não se compra o que está na caixa do lado"
-    assert (a["noutra_montada"], a["noutra_reservada"]) == (1, 0)
-    assert loadout.onde_esta(m) == ["1× em Caixa B"]
-    # E a Caixa B deixou de a ter em falta: está lá dentro.
-    assert _linha(rep2, "b", "Wrath of God")["got"] == 1
-    print("montar fora de ordem: ele tira-a para a B, e a A passa a 'em Caixa B'")
+    assert _linha(rep2, "a", "Wrath of God")["got"] == 1
+    assert _linha(rep2, "b", "Wrath of God")["comprar"] == 1
+    print("nao ha montar fora de ordem: o bloco e vazio e o de_outra nao entra")
 
 
 def caso_marcar_so_regista_o_que_o_painel_oferecia():
@@ -248,7 +240,6 @@ def caso_marcar_so_regista_o_que_o_painel_oferecia():
     repor()
     con = base()
     intrusa = _copy_id(con, "Ancestral Vision")
-    # A Caixa A não joga Ancestral Vision: mesmo marcada, não pode entrar.
     n = _regista(con, "a", de_outra=[intrusa])["copias"]
     assert n == 1, f"só a Wrath, que é a que a alocação lhe dá: {n}"
     slots = [r["slot"] for r in con.execute(
@@ -269,16 +260,15 @@ def caso_arrumar_nao_inventa_caixas():
     origens = {m["de"] for m in plano["movimentos"]}
     assert origens == {"Colecção"}, origens
     assert not (origens & caixas), f"caixa fantasma na origem: {origens & caixas}"
-    # Pelo outro lado: o que ENTRA vem sempre de uma gaveta.
     assert set(plano["por_origem"]) == {"Colecção"}, plano["por_origem"]
     print("arrumar: tudo sai da Colecção, nenhuma caixa fantasma")
 
 
-def caso_a_pagina_nao_diz_que_a_carta_esta_numa_caixa_vazia():
-    """O verificador do lado do browser: com a `copy_allocation` vazia, o HTML
-    desenhado não pode ter *"em Caixa A"* em lado nenhum — e tem de ter a frase
-    honesta. Um payload certo com uma página que o recompõe à sua maneira era
-    exactamente o defeito a corrigir (ver `e_foil`)."""
+def caso_a_pagina_diz_tens_noutra_caixa_e_compra():
+    """O verificador do lado do browser: a página da Caixa B diz *"tens 1 no
+    Caixa A"* (a nota), pede a Wrath na lista de compras, e não tem *"em Caixa
+    A"* nem *"destinada a"* em lado nenhum — nem o bloco «Destinadas a outra
+    caixa» do painel Montar."""
     repor()
     con = base()
     abas = _abas(con)
@@ -286,26 +276,30 @@ def caso_a_pagina_nao_diz_que_a_carta_esta_numa_caixa_vazia():
         print("HTML: sem `node`, saltado")
         return
     html = abas["b"]
-    assert "na Colecção — destinada a Caixa A" in html, html[-2500:]
-    assert "em Caixa A" not in html, "diz que a carta está numa caixa vazia"
-    assert "Destinadas a outra caixa" in html, "falta o bloco do painel Montar"
-    print("a pagina diz 'na Coleccao — destinada a Caixa A', nunca 'em Caixa A'")
+    assert "tens 1 no Caixa A" in html, html[-2500:]
+    assert "em Caixa A" not in html, "diz que a carta esta noutra caixa como fonte"
+    assert "destinada a" not in html, "o 'destinada a' desapareceu com a partilha"
+    assert "Destinadas a outra caixa" not in html, "o bloco do painel Montar e vazio"
+    assert "1 Wrath of God" in html, "a Wrath tem de estar na wantlist da B"
+    assert "tens noutra caixa" in html, "o bloco da nota"
+    print("a pagina diz 'tens 1 no Caixa A' e compra a Wrath na mesma")
 
 
 def caso_estado_carta_parte_o_mesmo(pool=None):
     """O `_estado_carta` (o ranking do `foil_report`, que é outro caminho) tem de
-    partir o *"noutra"* da mesma maneira. Dois caminhos com a mesma pergunta e
-    respostas diferentes é o defeito que este vault já pagou três vezes."""
+    dar o mesmo: `noutra` vazio e a nota cheia. Dois caminhos com a mesma
+    pergunta e respostas diferentes é o defeito que este vault já pagou três
+    vezes."""
     repor()
     con = base()
     rep = loadout.report(con)
     s = _slot(rep, "b")
     e = loadout._estado_carta(rep["pool"], s, "Wrath of God", 1,
                               {x["balde"] for x in rep["slots"] if x.get("balde")})
-    assert e["noutra"] == {"Caixa A": 1} and e["noutra_montada"] == {}
-    assert e["noutra_reservada"] == {"Caixa A": 1}
-    assert e["noutra_onde"] == {"Caixa A": {"Colecção": 1}}, e["noutra_onde"]
-    print("_estado_carta parte o 'noutra' da mesma maneira que o allocate")
+    assert e["noutra"] == {} and e["noutra_montada"] == {} and e["noutra_q"] == 0, e
+    assert e["noutra_reservada"] == {} and e["noutra_onde"] == {}, e
+    assert e["noutra_nota"] == {"Caixa A": 1} and e["comprar"] == 1, e
+    print("_estado_carta da o mesmo que o allocate: compra, com a nota")
 
 
 if __name__ == "__main__":
@@ -318,4 +312,3 @@ if __name__ == "__main__":
         except Exception:
             pass
     shutil.rmtree(_TMP, ignore_errors=True)
-    print("\nOK")

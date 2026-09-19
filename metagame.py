@@ -211,8 +211,12 @@ def _wantlist(linhas, marca=""):
     ordem = sorted((m for m in linhas if m["comprar"] > 0), key=lambda m: m["nm"])
     if not ordem:
         return '<div class="ok">nada a comprar ✓</div>'
+    # «SÓ FOIL» SÓ QUANDO EXISTE EM FOIL (2026-09-19): a linha de uma carta que
+    # nunca saiu em foil di-lo, para a marca «FOIL» do bloco não valer para ela.
     itens = "".join(f'<li><b>{m["comprar"]}×</b> {html.escape(m["nm"])}'
-                    f'<span class="pz">{_eur(m["cost"])}</span></li>' for m in ordem)
+                    + ('<small class="dim"> nonfoil — nunca saiu em foil</small>'
+                       if not m.get("foil_existe", True) else "")
+                    + f'<span class="pz">{_eur(m["cost"])}</span></li>' for m in ordem)
     txt = "\n".join(f'{m["comprar"]} {m["nm"]}' for m in ordem)
     extra = f' <span class="mrk">{marca}</span>' if marca else ""
     return (f'<div class="faltas"><div class="flh">🛒 Comprar{extra}'
@@ -296,7 +300,11 @@ def _deck_html(d, imgs, editable=False):
     # esse que vem à frente, com o do que sobra ao lado: mostrar um limiar de
     # 50 % ao lado de um número que não é o que ele mede era a página a
     # contradizer-se, e foi o que aconteceu quando o daqui era só o livre.
-    cov = (f'{d["pct_principal"]}% como principal · {r["pct"]}% com o que sobra'
+    # Desde 2026-09-19 (*"cada deck deverá ter as suas próprias cartas
+    # dentro"*) nenhuma caixa empresta: a "como principal" é igual à do que
+    # está livre, e o "ir buscar" é zero por regra. Mostra-se uma percentagem
+    # só; o "ir buscar" só se imprime se um dia deixar de ser zero.
+    cov = (f'{r["pct"]}% com o que está livre'
            if d.get("pm") else f'{r["tenho"]}/{r["need"]} · {r["pct_tenho"]}%')
     return (
         f'<details class="deck"{" open" if d.get("aberto") else ""}><summary>'
@@ -306,13 +314,9 @@ def _deck_html(d, imgs, editable=False):
         f'{_bar(r["pct"], d["pct_principal"] if d.get("pm") else r["pct_tenho"])}'
         f'<div class="badges">{badges}</div>'
         f'<div class="meta">'
-        + (f'<span class="ob">como principal <b>{d["tenho_principal"]}/'
-           f'{r["need"]}</b></span>' if d.get("pm") else "")
-        + f'<span>tenho livre <b>{r["got"]}</b></span>'
-        # DOIS números, não um (André, 2026-09-08): "ir buscar a outra caixa" só
-        # vale para o que está mesmo dentro de outra caixa; o resto está na
-        # gaveta de sempre, apenas prometido a uma caixa por montar.
-        f'<span class="ob">ir buscar a outra caixa <b>{r["nmont"]}</b></span>'
+        f'<span>tenho livre <b>{r["got"]}</b></span>'
+        + (f'<span class="ob">ir buscar a outra caixa <b>{r["nmont"]}</b></span>'
+           if r["nmont"] else "")
         + (f'<span class="ob">na gaveta, p/ outra caixa <b>'
            f'{r["nres"] + r["nfut"]}</b></span>' if r["nres"] + r["nfut"] else "")
         + f'<span>comprar <b>{r["comprar"]}</b></span>'
@@ -508,16 +512,15 @@ def html_page(con, editable=False, token="", ligacao=None) -> str:
             n_sug = len(pm.get("sugestoes") or [])
             lead = (f'Os <b>{len(pm.get("top") or [])}</b> arquétipos mais '
                     f'representados e os <b>{len(pm.get("combo") or [])}</b> '
-                    f'melhores <b>combo</b> do formato. A percentagem que decide '
-                    f'é a de <b>como principal</b>: as caixas de Premodern '
-                    f'<b>partilham</b> cartas, por isso conta-se o que este deck '
-                    f'teria se fosse ele a escolher primeiro. Ao lado vai a do '
-                    f'que <b>sobra</b> sem tocar em nada — a diferença entre as '
-                    f'duas é quantas cartas irias buscar às outras caixas. Com '
-                    f'<b>{pm.get("limiar", 50)}%</b> ou mais, vira sugestão. '
+                    f'melhores <b>combo</b> do formato. A percentagem é a do que '
+                    f'está <b>livre</b>: desde 19/09/2026 cada deck tem as suas '
+                    f'próprias cartas e nenhuma caixa de Premodern empresta, por '
+                    f'isso o que está dentro das outras caixas não conta para um '
+                    f'deck novo. Com <b>{pm.get("limiar", 50)}%</b> ou mais, vira '
+                    f'sugestão. '
                     + (f'Há <b>{n_sug}</b> por decidir.' if n_sug
-                       else 'Hoje não há nenhuma acima do limiar, nem sequer como '
-                            'principal: o que sobra vai para a venda (aba '
+                       else 'Hoje não há nenhuma acima do limiar com o que está '
+                            'livre: o que sobra vai para a venda (aba '
                             '<b>Vender</b> das Deckboxes).')
                     + (' Carrega em <b>✔ vou montar este</b> para lhe abrires uma '
                        'caixa, ou em <b>✕ não quero este</b> para libertares as '
@@ -607,18 +610,15 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
  footer{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
 <header><h1>🌐 Metagame</h1>
-<div class="lead">Os <b>%N%</b> decks que estás mais perto de concluir em cada formato — com a lista de consenso, o que tens, o que está noutra caixa e o que falta comprar · dados de %TODAY%</div>
+<div class="lead">Os <b>%N%</b> decks que estás mais perto de concluir em cada formato — com a lista de consenso, o que tens livre e o que falta comprar · dados de %TODAY%</div>
 %TABS%<div class="subnav">%SUBNAV%</div></header>
 %SECS%
 <footer><b style="color:var(--add)">Verde</b> = tens a carta livre para esta caixa ·
-<b style="color:var(--ob)">azul 📦</b> = tens a carta mas está noutra caixa do loadout —
-e há <b>duas maneiras</b> disso: <b>em &lt;caixa&gt;</b> (está mesmo sleevada lá dentro,
-vais lá buscá-la) ou <b>na Colecção, destinada a &lt;caixa&gt;</b> (está na gaveta de
-sempre, só prometida por prioridade a uma caixa que ainda não está montada). Nenhuma
-das duas <b>se compra</b> ·
-<b style="color:var(--warn)">vermelho</b> = não tens, é compra. A <b>percentagem</b> do topo é a do
-que <b>tens</b> — verde mais azul, porque a que está noutra caixa também é tua — e é ela que
-ordena o top-%N%; a barra mostra a repartição (a faixa clara é o verde). Ignora as terras
+<b style="color:var(--warn)">vermelho</b> = não tens livre, é compra. Desde 19/09/2026
+<b>cada deck tem as suas próprias cartas</b>: uma cópia que está noutra caixa do loadout é
+dessa caixa e <b>não conta</b> para esta — compra-se outra. A <b>percentagem</b> do topo é a do
+que <b>tens livre</b>, e é ela que
+ordena o top-%N%. Ignora as terras
 básicas: com elas, todos os decks começavam acima dos 30% e nenhum se distinguia dos outros.
 A <b>lista de consenso</b> é a lista padrão do arquétipo — cada lugar ocupado pela
 cópia com maior probabilidade de lá estar, calculada das decklists reais que contam.

@@ -244,6 +244,93 @@ uma coluna à mão, mete-a nos três sítios e escreve-a algures.
 
 ## Regras de domínio que não podem partir
 
+**DUAS REGRAS NOVAS (André, 2026-09-19, à letra) — SUPERSEDEM A PARTILHA ENTRE
+CAIXAS.** As palavras dele, no chat desse dia:
+1. *"quando escreves que a carta não serve porque devia ser foil e não é foil,
+   confirma se há foil"*
+2. *"cada deck deverá ter as suas próprias cartas dentro, não repetindo com
+   outros decks!"*
+
+Relatório e medições em `ai-pc/work/revisao/mtgvault-regras-0919.md`; testes em
+`test_foil_existe.py` e `test_caixas_dedicadas.py`; os casos antigos que
+fixavam a partilha (v4 de 2026-09-07, Premodern de 2026-09-08) foram
+reescritos um a um, com o porquê no docstring.
+
+- **Regra 1 — «só foil» só quando a carta EXISTE em foil.** O catálogo diz por
+  impressão (`cards.finishes`) e a resposta por carta é `scryfall.impressoes_foil`
+  → `loadout.foil_info` (uma consulta por nome, pelo `ix_cards_name`, guardada
+  por corrida em `foil_cache`; os lotes saem do `lots()` anotados com
+  `foil_existe`/`foil_edicoes`). **Só papel**: as impressões `digital` (MTGO —
+  a Swift Reconfiguration só tem foil na `prm` de MTGO) e a memorabilia não
+  contam, como no `scryfall.impressoes`. Uma carta que o catálogo **não
+  conhece** não é "sem foil": a regra da caixa fica (não se inventa).
+  **A verdade vive em `loadout.acabamento_efectivo(s, existe)`**: numa caixa que
+  quer foil (`foil` no SPML/Duel Commander, `prefere_foil` no Pauper) e numa
+  carta que nunca saiu em foil o acabamento efectivo é `SEM_FOIL` — a nonfoil
+  **serve** (aloca, fecha o slot, não é substituto, não vai à venda), e a compra
+  pede-a nonfoil, ao preço do nonfoil (`req_compra` *"nonfoil — nunca saiu em
+  foil"*, `marca_compra` `nonfoil`). O `_porque_nao`, o `requisito_material`, o
+  `marca_compra`, o `finishes_aceites`, o `material_da_caixa`, o
+  `impressoes_da_falta`, o `registar_falta` e o `encomendas.validar`/
+  `cumpre_regra` lêem de lá (via `regra_da_carta(con, s, nm)`). O `nonfoil` do
+  cEDH não muda. Quando a carta existe em foil, a recusa passou a dizer **em
+  que edições** (`razao_nao_foil` → *"não é foil (existe em foil: MMQ 1999, EXP
+  2016, OTP 2024, EOS 2025)"*, as 3–4 primeiras por data, EN à frente), e a
+  frase viaja com o `alt`/`substituto` para os substitutos, a aba Vender, a
+  exportação e o CLI. Medido na cópia da base de 2026-09-19: Glimmer Lens (ONC)
+  e Swift Reconfiguration (NEC; foil só digital) passam a fechar o slot do Duel
+  Commander (73→75 de 97); a Ademi of the Silkchutes não está no catálogo e a
+  wantlist continua a pedi-la foil.
+- **Regra 2 — cada deck box com as suas cartas, sem repetir.** Vale para
+  **todos os formatos** e substitui o *"ir buscar a outra caixa"* (`noutra`,
+  2026-09-07/08), a partilha de compras da v4 (Duel Commander e SPML) e a
+  partilha entre caixas de Premodern de 2026-09-08. `resolve_slots` força
+  `dedicado = True` em toda a caixa (o config também o diz em todos os grupos;
+  um `dedicado: false` **deixou de ter efeito**), `dedicadas()` devolve todas,
+  `_empresta` é sempre `False`. Uma cópia alocada a uma caixa é dessa caixa;
+  outra caixa que peça a mesma carta **compra-a** — o `missing` conta-a, o
+  "fechar tudo" soma-a, a wantlist pede-a. O `noutra` e as suas metades
+  (`noutra_montada`/`_reservada`/`_futura`, `noutra_lotes`) ficam a **zero**;
+  `conflitos` e `partilhas` são `[]`; `partilhar_compras` deixou de partilhar
+  (ficou só com o tecto). O que fica do "onde está" é a **NOTA** — `noutra_nota`
+  → `loadout.nota_onde(m)` = *"tens 2 no Blue Farm"* —, na carta, na wantlist e
+  num bloco «tens noutra caixa» da aba da caixa, nunca como fonte, substituto
+  nem desconto. A aba **Partilhadas** só aparece na fila se um dia voltar a ter
+  linhas; o bloco «destinadas a outra caixa» do painel Montar é vazio
+  (`movimentos_reservados` → `[]`); o CLI só imprime o "destinadas a outra caixa"
+  se deixar de ser zero. As funções da partilha (`pool_compra`, `pools_de_compra`,
+  `_parte_noutra`, `onde_esta`, `movimentos_reservados`, o `de_outra` do
+  `registar_marcadas`) **ficam no código** sem efeito — apagar é decisão dele.
+- **A EXCEPÇÃO mantida: o tecto de playset do Premodern** (2026-09-08, *"afinal
+  só vou ter até playset de cada carta"*) continua, e agora conta o **grupo
+  inteiro** (`partilhar_compras`, grupo por `s["grupo"]`): `comprar do grupo =
+  max(0, 4 − o que as caixas do grupo já têm)`, distribuído por prioridade; o
+  que não cabe fica em `playset_bloqueado` com `playset_onde` (*"está 4 no UW
+  Replenish"* — conta também o que o grupo vai comprar) e sai **fora** do
+  `comprar`/"fechar tudo". A frase é `loadout.texto_playset(m)` (*"4 não se
+  compra (limite de 4 no total; está 4 no UW Replenish)"*), na página, no
+  `nota_parcial`, no CLI e no aviso das encomendas. É onde as duas regras dele
+  se tocam e escolheu-se o que menos compra: na base de 2026-09-19 são **47
+  cópias** por tapar sem se comprarem (Enchantress 25, Elves 14, Oath 8).
+- **Consequências a saber:** (a) as caixas de Premodern montadas e com
+  conteúdo confirmado passam a **congelar** (`congelada` exige `dedicado`, que
+  agora todas têm) — Stiflenought e UW Replenish; (b) as **sugestões de
+  Premodern** medem-se só com o que está **livre** (`pct_principal` ==
+  `pct_livre`, porque nenhuma caixa empresta) — na base de 2026-09-19 nenhuma
+  chega aos 50 % e as 30 cópias que o Psychatog/Landstill reservavam voltam à
+  venda; (c) a ordem por % do Premodern (`pct_na_coleccao`) deixa de contar o
+  que está dentro de outras caixas — Elves (41 %) passou à frente da
+  Enchantress (39 %).
+- **Medido na cópia da base de 2026-09-19** (`_revisao/medir_loadout.py`, o
+  mesmo `vault.db` dos dois lados): fechar tudo **7 098,03 € → 7 133,62 €**,
+  comprar **203 → 207**, ir buscar **52 (25/16/11) → 0**, arrumar 180 (102 →
+  103 linhas), venda **244c/1 505,78 € → 273c/1 565,57 €**, venda_rl 63c/
+  4 152,94 € → 65c/4 347,64 €, rl_segurar 37c/4 316,39 € igual, reservadas
+  **32c/354,49 € → 1c/100,00 €**, guardar 2c/14,82 € igual. Por caixa: Duel
+  Commander 75→77 % (comprar 22, 727,39→737,17 €), Modern comprar 17→19
+  (117,57→123,83 €), Elves 40→41 % (29→30 a comprar), Enchantress 40→39 %
+  (20→21), Oath igual (17), as outras iguais.
+
 **Coleção de colecionador vs de jogador.** `copies.purpose` é `player` ou
 `collector`. As de colecionador são avaliadas mas **nunca** contam para decks,
 wantlists ou cobertura.
@@ -683,6 +770,10 @@ Consequências a saber:
   regra de cima, e o `paginas.faltas_de` já a segue).
 
 **Onde está a carta: 'noutra caixa' não é falta (André, 2026-09-07, à letra).**
+**[SUPERSEDED 19/09/2026 — *"cada deck deverá ter as suas próprias cartas
+dentro, não repetindo com outros decks!"*: o `noutra` é zero em todos os
+formatos e a carta que está noutra caixa é COMPRA, com a nota «tens N no X».
+Ver "DUAS REGRAS NOVAS" no topo desta secção. O que segue fica como histórico.]**
 *"Vamos fazer como no riftvault: indicas onde está a carta, para, se eu quiser ir
 jogar, saber onde ir buscar e não ter que comprar múltiplos para todos. Caso eu
 compre, depois indico (meto foto) e vais ajustando."*
@@ -716,6 +807,9 @@ compre, depois indico (meto foto) e vais ajustando."*
   guardado: o "onde está a carta" é sempre recalculado da coleção do dia.
 
 **ONDE A CARTA ESTÁ ≠ A QUEM ESTÁ DESTINADA (André, 2026-09-08, 14:30, à letra).**
+**[SUPERSEDED 19/09/2026: as três metades do `noutra` (`montada`/`reservada`/
+`futura`) e o bloco «destinadas a outra caixa» do painel Montar são zero/vazios
+por regra — cada caixa compra as suas. Histórico.]**
 *"De todas as cartas, só o Stiflenought está em deckbox; o resto ainda nada está
 em deckbox — e ainda estás a assumir que há cartas que já estão nas deckboxes dos
 decks."* Recorta a regra de cima, que ficou meio certa: o `noutra` responde
@@ -791,7 +885,13 @@ ver `PAGINAS_EDITAVEIS`).
   chamar-se Jeskai.
 
 **O PREMODERN VOLTOU A PARTILHAR, COM TECTO DE PLAYSET (André, 2026-09-08, à
-letra).** *"No Premodern, afinal só vou ter até playset de cada carta. E
+letra).** **[SUPERSEDED 19/09/2026 na PARTILHA: as caixas de Premodern voltaram a
+ser dedicadas como todas as outras (*"cada deck deverá ter as suas próprias
+cartas dentro"*). O que FICA desta secção é o `playset_maximo: 4`, agora contado
+sobre o grupo inteiro — se ele já tem 4, a caixa de menor prioridade mostra
+*"não se compra (limite de 4 no total; está no &lt;deck&gt;)"* — e o
+`prioridade_por: "pct"`. As caixas de Premodern montadas passam a congelar.]**
+*"No Premodern, afinal só vou ter até playset de cada carta. E
 ordenamos os decks por prioridade; os que vêm depois na prioridade indicam onde
 estão as cartas em falta. Para já a prioridade vem por ordem de % completo."*
 Recorta a regra das CAIXAS DEDICADAS abaixo **só para o Premodern** — o cEDH e o
@@ -850,7 +950,10 @@ CLI `python -m mtgvault.cli premodern`.
   Ao contrário, a lista de venda mandava vender exactamente o deck que a página
   do lado estava a sugerir montar.
 - **A cobertura mede-se COMO SE O CANDIDATO FOSSE O PRINCIPAL (André, 2026-09-08,
-  segunda ordem do dia, à letra):** *"Como as cartas em Premodern são
+  segunda ordem do dia, à letra):** **[SUPERSEDED 19/09/2026: nenhuma caixa
+  empresta, por isso `pct_principal` é igual à cobertura do que está LIVRE — a
+  página mostra uma percentagem só. Na base desse dia nenhum candidato chega aos
+  50 % e não há sugestões; ver a dúvida no relatório `mtgvault-regras-0919.md`.]** *"Como as cartas em Premodern são
   partilhadas, tens que ver se a % desses decks aumentaria se eles fossem o
   principal; mantém a 50 % visto com esta regra de agora."* A primeira versão
   media só o que SOBRA (`foil_report(..., res=...)` → `pct_livre`) — certo
@@ -1033,7 +1136,9 @@ dela saíam outra vez da lista de venda — sem ninguém carregar em nada e **se
 
 **CAIXAS DEDICADAS: o "ir buscar" e a partilha ficam só para o DC e o SPML
 (André, 2026-09-07 às 19:00, à letra; desde 2026-09-08 o Premodern voltou a
-partilhar — ver acima).** *"Cada deck montado deixa de partilhar
+partilhar — ver acima).** **[SUPERSEDED 19/09/2026: desde então TODAS as caixas
+são dedicadas, em todos os formatos, e o `dedicado: false` deixou de ter
+efeito. Histórico.]** *"Cada deck montado deixa de partilhar
 cartas com outros decks nos formatos: pauper, CDEH e premodern"* e *"o que eu
 quero é conseguir organizar os decks dentro das caixas e apenas mexer para
 actualizar, logo vou precisar de múltiplos para os decks de premodern."* Isto
@@ -1067,7 +1172,10 @@ peça. Se o Luffy actualizar o Pauper, a caixa continua montada com a lista anti
 - Se a caixa ainda não tem linhas na `copy_allocation`, congelá-la não prende
   nada — a regra opera sobre a arrumação confirmada, não sobre uma intenção.
 
-**COMPRAS PARTILHADAS: compra-se o MÁXIMO, não a soma (2026-09-07).** É a segunda
+**COMPRAS PARTILHADAS: compra-se o MÁXIMO, não a soma (2026-09-07).**
+**[SUPERSEDED 19/09/2026: agora é a SOMA — cada caixa compra as suas; o
+`partilhar_compras` devolve sempre `[]` e só aplica o tecto do Premodern; o
+`compras_dedicadas` do config deixou de fazer diferença. Histórico.]** É a segunda
 metade da regra de cima — *"não ter que comprar múltiplos para todos"*. O `noutra`
 tratava as cópias que ele TEM; a lista de compras continuava a **somar as faltas
 caixa a caixa**, o que contradiz a partilha. Na base de 2026-09-07 isso pedia 5

@@ -180,6 +180,9 @@ def cumpre_regra(con, s: dict | None, nm: str, set_code: str | None,
     from . import loadout                                  # noqa: PLC0415
     if s is None or nm in loadout.BASICS:
         return True, ""
+    # A regra PARA ESTA CARTA (2026-09-19): numa que nunca saiu em foil a caixa
+    # de foil aceita — e exige — nonfoil.
+    s = loadout.regra_da_carta(con, s, nm)
     req = loadout.requisito_material(s) or "sem regra"
     if s.get("lingua") and lang and lang.lower() != s["lingua"].lower():
         return False, f"{s['nome']} só usa {s['lingua'].upper()} ({req})"
@@ -214,7 +217,7 @@ def validar(con, s: dict | None, nm: str, set_code: str | None = None,
     set_code = (set_code or "").strip().lower() or None
     collector_number = (collector_number or "").strip() or None
     if s is not None:
-        fin_c, lang_c = loadout.material_da_caixa(s)
+        fin_c, lang_c = loadout.material_da_caixa(loadout.regra_da_carta(con, s, nome))
         # O Pauper é "foil se houver, senão nonfoil": uma encomenda dele pode
         # ser qualquer um dos dois. `material_da_caixa` diz foil porque é o que
         # a caixa PREFERE; aqui fica o que ele disser, senão a preferência.
@@ -469,12 +472,20 @@ def _porque_sobra(s: dict, nm: str, sobra: int) -> str:
     duas vezes."""
     falta = [m for m in s["missing"] if m["nm"] == nm]
     if falta:
+        # Os dois primeiros ramos são de antes de 2026-09-19 (a partilha e o
+        # "ir buscar"), que hoje são zero por regra — ficam para o dia em que
+        # alguém volte a ligá-los, e para o aviso não mentir se isso acontecer.
         fut = {k: v for m in falta for k, v in (m.get("noutra_futura") or {}).items()}
         if fut:
             quem = ", ".join(sorted(fut))
             return f"compra partilhada: {quem} compra-a e esta caixa vai lá buscá-la"
         if any(m.get("noutra_q") for m in falta):
             return "a caixa vai buscá-la a outra caixa, não a compra"
+        # O TECTO de playset do Premodern (a única coisa que ainda tira uma
+        # falta da compra): a carta está em falta mas o grupo já tem as 4.
+        if any(m.get("playset_bloqueado") for m in falta):
+            return ("limite de playset: o grupo já tem o máximo desta carta "
+                    "(está noutra caixa de Premodern), não se compra")
         return f"a mais do que a caixa pede ({sobra})"
     if any(m["nm"] == nm for m in s["have"]):
         return "a caixa já a tem"

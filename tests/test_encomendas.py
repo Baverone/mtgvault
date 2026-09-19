@@ -268,11 +268,14 @@ def caso_desconta_no_comprar_e_no_fechar_tudo():
     # O Plano (ordem de montagem) e a aba Comprar lêem o mesmo número.
     pl = next(x for x in rep["montagem"] if x["slot"] == "pm")
     assert pl["comprar"] == 1 and pl["custo"] == 1.5, pl
-    # A aba Comprar: o pm compra (a partilha dá-lhe a compra, o pm2 vai lá
-    # buscar), e a linha diz «1 a caminho» ao lado do 1 que ainda é compra.
+    # A aba Comprar: desde 2026-09-19 cada caixa compra as suas (o pm 1, o pm2
+    # a sua 1 — até aí a partilha dava a compra ao pm e o pm2 ia lá buscar), e a
+    # linha diz «1 a caminho» ao lado das 2 que ainda são compra.
     g = next(x for x in d["compras"] if x["nm"] == "Swords to Plowshares")
-    assert g["q"] == 1 and g["acam"] == 1, g
-    assert [p["caixa"] for p in g["para"] if p.get("serve")] == ["Enchantress"], g
+    assert g["q"] == 2 and g["acam"] == 1, g
+    assert not [p for p in g["para"] if p.get("serve")], ("ninguém é servido", g)
+    assert sorted((p["caixa"], p["q"]) for p in g["para"]) == \
+        [("Enchantress", 1), ("UW Replenish", 1)], g["para"]
     assert d["resumo"]["a_caminho"] == 1 and d["resumo"]["custo"] == rep["custo_total"]
     # Pendente de foto desconta exactamente da mesma maneira.
     encomendas.chegou(con, slot="pm", nm="Swords to Plowshares", log_path=_TMP / "e3.log")
@@ -510,21 +513,23 @@ def caso_avisos_quando_a_caixa_ja_nao_pede():
     con = montavel()
     encomendas.adicionar(con, "lg", "Brainstorm", 2, log_path=_TMP / "e10.log")
     encomendas.adicionar(con, "pm", "Swords to Plowshares", 3, log_path=_TMP / "e10.log")
-    # O pm2 é SERVIDO pela compra partilhada do pm: uma encomenda dele é a mesma
-    # compra feita duas vezes, e o aviso tem de o dizer assim.
+    # Até 2026-09-19 o pm2 era SERVIDO pela compra partilhada do pm e uma
+    # encomenda dele dava aviso ("compra partilhada"). Desde então cada caixa
+    # compra as suas: a encomenda do pm2 desconta na compra DELE, sem aviso.
     encomendas.adicionar(con, "pm2", "Swords to Plowshares", 1, log_path=_TMP / "e10.log")
     c, rep, d = caixa(con, "lg")
     assert c["comprar"] == 1, ("o Brainstorm não desconta o Force of Will", c)
     pm = next(x for x in rep["slots"] if x["slot"] == "pm")
     assert pm["comprar"] == 0 and pm["a_caminho"] == 2, ("desconta só o que pede", pm)
+    pm2 = next(x for x in rep["slots"] if x["slot"] == "pm2")
+    assert pm2["comprar"] == 0 and pm2["a_caminho"] == 1, ("a do pm2 é dele", pm2)
     av = {(a["slot"], a["nm"]): a for a in rep["encomendas_avisos"]}
     assert av[("lg", "Brainstorm")]["porque"] == "a caixa já não a pede"
     assert av[("lg", "Brainstorm")]["q"] == 2
     assert av[("pm", "Swords to Plowshares")]["q"] == 1, av
     assert "a mais" in av[("pm", "Swords to Plowshares")]["porque"]
-    assert av[("pm2", "Swords to Plowshares")]["porque"].startswith(
-        "compra partilhada: UW Replenish compra-a"), av
-    assert len(d["encomendas"]["avisos"]) == 3
+    assert ("pm2", "Swords to Plowshares") not in av, av
+    assert len(d["encomendas"]["avisos"]) == 2
     print("avisos: a caixa ja nao pede / a mais do que pede, sem descontar noutra")
 
 
