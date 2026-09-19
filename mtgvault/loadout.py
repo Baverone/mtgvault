@@ -2201,6 +2201,7 @@ def partilhar_compras(slots: list[dict]) -> list[dict]:
                     # buscar. Sem esta linha desaparecia numa subtracção e a
                     # caixa dizia-se completa.
                     m["playset_bloqueado"] = m.get("playset_bloqueado", 0) + corta
+                    m["playset_tecto"] = tecto
                     cortadas.append((s, m))
             for s, m in cortadas:
                 m["playset_onde"] = {k: v for k, v in tera.items()
@@ -3518,6 +3519,7 @@ def texto_playset(m: dict, tecto: int | None = None) -> str:
     senão "falta 1" lia-se como uma compra que a lista se esqueceu de pedir.
     """
     n = m.get("playset_bloqueado") or 0
+    tecto = tecto or m.get("playset_tecto")
     onde = " · ".join(f"{q} no {caixa}" for caixa, q in
                       sorted((m.get("playset_onde") or {}).items()))
     limite = f"limite de {tecto} no total" if tecto else "limite de playset no total"
