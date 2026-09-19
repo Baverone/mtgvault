@@ -256,48 +256,8 @@ def acertar_edicao(con: sqlite3.Connection, name: str, set_code: str, *,
             continue
         resta -= leva
         nota = _nota_confirmada(p["notes"], hoje)
-        if leva >= (p["quantity"] or 0):
-            con.execute(
-                "UPDATE copies SET scryfall_id = ?, notes = ?, "
-                "photo_path = COALESCE(?, photo_path) WHERE id = ?",
-                (card["scryfall_id"], nota, photo_path, p["id"]))
-            tocadas.append(p["id"])
-            continue
-        con.execute("UPDATE copies SET quantity = quantity - ? WHERE id = ?",
-                    (leva, p["id"]))
-        cur = con.execute(
-            """INSERT INTO copies (scryfall_id, quantity, finish, language,
-                                   condition, purpose, sub_collection_id,
-                                   photo_path, acquired_at, acquired_price,
-                                   notes, reserved_deck_id, balde_origem)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (card["scryfall_id"], leva, p["finish"], p["language"],
-             p["condition"], p["purpose"], p["sub_collection_id"],
-             photo_path or p["photo_path"], p["acquired_at"],
-             p["acquired_price"], nota, p["reserved_deck_id"],
-             p["balde_origem"]))
-        novo = cur.lastrowid
-        tocadas.append(novo)
-        # O lugar dentro da caixa acompanha a cópia confirmada: era ela que lá
-        # estava. Sem isto a caixa perdia a carta que ele acabou de fotografar e
-        # mandava-o procurá-la outra vez.
-        for a in con.execute("SELECT slot, quantity, placed_at FROM "
-                             "copy_allocation WHERE copy_id = ?",
-                             (p["id"],)).fetchall():
-            passa = min(leva, a["quantity"] or 0)
-            if passa <= 0:
-                continue
-            if passa >= (a["quantity"] or 0):
-                con.execute("DELETE FROM copy_allocation WHERE copy_id = ? "
-                            "AND slot = ?", (p["id"], a["slot"]))
-            else:
-                con.execute("UPDATE copy_allocation SET quantity = quantity - ? "
-                            "WHERE copy_id = ? AND slot = ?",
-                            (passa, p["id"], a["slot"]))
-            con.execute("INSERT INTO copy_allocation (copy_id, slot, quantity, "
-                        "placed_at) VALUES (?,?,?,?)",
-                        (novo, a["slot"], passa, a["placed_at"]))
-            break                          # uma cópia vive numa caixa só
+        tocadas.append(_partir_copia(con, p, leva, scryfall_id=card["scryfall_id"],
+                                     photo_path=photo_path, notes=nota))
     if not tocadas:
         return None
     con.commit()
@@ -307,23 +267,191 @@ def acertar_edicao(con: sqlite3.Connection, name: str, set_code: str, *,
             "collector_number": card["collector_number"]}
 
 
+def _partir_copia(con: sqlite3.Connection, p, leva: int, *,
+                  scryfall_id: str | None = None, photo_path: str | None = None,
+                  notes: str | None = None) -> int:
+    """Aplica (edição / foto / nota) a `leva` cópias do lote `p`. Devolve o id da
+    linha que ficou com a alteração.
+
+    Com `leva` igual ao lote, é a própria linha. Com menos, a linha PARTE-SE em
+    duas: a parte que a foto tocou ganha a edição/foto e leva consigo o seu
+    lugar dentro da caixa (`copy_allocation`); o resto fica como estava.
+    Actualizar a linha inteira era dar por confirmadas (ou fotografadas) cópias
+    que ninguém fotografou — a mesma mentira que a marca «edição por confirmar»
+    existe para evitar. Partilhado pelo `acertar_edicao` e pelo `ligar_foto`.
+    """
+    sid = scryfall_id or p["scryfall_id"]
+    nota = notes if notes is not None else p["notes"]
+    if leva >= (p["quantity"] or 0):
+        con.execute(
+            "UPDATE copies SET scryfall_id = ?, notes = ?, "
+            "photo_path = COALESCE(?, photo_path) WHERE id = ?",
+            (sid, nota, photo_path, p["id"]))
+        return p["id"]
+    con.execute("UPDATE copies SET quantity = quantity - ? WHERE id = ?",
+                (leva, p["id"]))
+    cur = con.execute(
+        """INSERT INTO copies (scryfall_id, quantity, finish, language,
+                               condition, purpose, sub_collection_id,
+                               photo_path, acquired_at, acquired_price,
+                               notes, reserved_deck_id, balde_origem)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (sid, leva, p["finish"], p["language"],
+         p["condition"], p["purpose"], p["sub_collection_id"],
+         photo_path or p["photo_path"], p["acquired_at"],
+         p["acquired_price"], nota, p["reserved_deck_id"],
+         p["balde_origem"]))
+    novo = cur.lastrowid
+    # O lugar dentro da caixa acompanha a cópia tocada: era ela que lá estava.
+    # Sem isto a caixa perdia a carta que ele acabou de fotografar e mandava-o
+    # procurá-la outra vez.
+    for a in con.execute("SELECT slot, quantity, placed_at FROM "
+                         "copy_allocation WHERE copy_id = ?",
+                         (p["id"],)).fetchall():
+        passa = min(leva, a["quantity"] or 0)
+        if passa <= 0:
+            continue
+        if passa >= (a["quantity"] or 0):
+            con.execute("DELETE FROM copy_allocation WHERE copy_id = ? "
+                        "AND slot = ?", (p["id"], a["slot"]))
+        else:
+            con.execute("UPDATE copy_allocation SET quantity = quantity - ? "
+                        "WHERE copy_id = ? AND slot = ?",
+                        (passa, p["id"], a["slot"]))
+        con.execute("INSERT INTO copy_allocation (copy_id, slot, quantity, "
+                    "placed_at) VALUES (?,?,?,?)",
+                    (novo, a["slot"], passa, a["placed_at"]))
+        break                              # uma cópia vive numa caixa só
+    return novo
+
+
+# ---------------------------------------------------------------------------
+# A foto de uma cópia que JÁ EXISTE sem foto liga-se a ela (2026-09-19)
+# ---------------------------------------------------------------------------
+# O André tem cópias na base sem `photo_path` (a 2026-09-19: 14 linhas — uma
+# Underground Sea 3ED, 5 Duress PT…): entraram por CSV escrito à mão ou pelo
+# «já a tenho». Fotografá-las agora, para ficarem auditáveis, não pode DUPLICAR
+# a cópia. Uma foto da MESMA impressão exacta (nome + edição + número + língua
+# + acabamento) liga-se à cópia que já lá está, em vez de criar uma segunda.
+# É o passo (iii) da conciliação do `import_csv`; corre depois do «edição por
+# confirmar» (i) e das encomendas pendentes (ii), e antes da entrada normal.
+def copias_sem_foto(con: sqlite3.Connection, name: str | None = None
+                    ) -> list[dict]:
+    """As cópias na estante sem foto de origem, ou com a edição por confirmar.
+
+    É a lista *"na base, sem foto"* do separador Encomendas e do
+    `pendentes/esperadas.md`. As NÃO ENCONTRADAS ficam de fora (não estão na
+    estante); o colecionador conta (também se fotografa).
+    """
+    q = (f"""SELECT cp.id, cp.quantity q, cp.finish, cp.language lang,
+                    cp.notes, cp.photo_path, c.name, c.set_code, c.collector_number,
+                    c.scryfall_id sid,
+                    (SELECT slot FROM copy_allocation a WHERE a.copy_id = cp.id
+                      ORDER BY quantity DESC LIMIT 1) slot
+               FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id
+              WHERE {na_estante()}
+                AND (cp.photo_path IS NULL OR cp.photo_path = ''
+                     OR cp.notes LIKE ?)""")
+    args: list = [f"%{MARCA_POR_CONFIRMAR}%"]
+    if name:
+        q += " AND (c.name = ? OR c.name LIKE ? || ' //%')"
+        args += [name, name]
+    out = []
+    for r in con.execute(q + " ORDER BY c.name, cp.id", args):
+        d = dict(r)
+        d["nm"] = d["name"].split(" // ", 1)[0]
+        d["por_confirmar"] = MARCA_POR_CONFIRMAR in (d["notes"] or "")
+        d["sem_foto"] = not d["photo_path"]
+        d["impressao"] = " · ".join(p for p in (
+            (d["set_code"] or "").upper()
+            + (f" #{d['collector_number']}" if d["collector_number"] else ""),
+            d["lang"] or "", d["finish"] or "") if p)
+        out.append(d)
+    return out
+
+
+def ligar_foto(con: sqlite3.Connection, name: str, set_code: str, *,
+               collector_number: str | None = None, language: str = "en",
+               finish: str = "nonfoil", quantity: int = 1,
+               photo_path: str | None = None) -> dict | None:
+    """Liga `photo_path` a cópias da MESMA impressão exacta que ainda não têm
+    foto. Devolve `{copy_id, copias, ligadas, restante}` ou `None`.
+
+    As que estão «edição por confirmar» não entram (são do `acertar_edicao`,
+    que corre antes); as não encontradas também não (a foto de uma carta que
+    está em casa é uma cópia nova, que é a verdade). Prefere-se a cópia com a
+    MESMA quantidade da foto, depois as menores (gastam-se inteiras), e só
+    então uma maior, que se parte.
+    """
+    if not photo_path:
+        return None
+    q = (f"""SELECT cp.* FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id
+              WHERE (c.name = ? OR c.name LIKE ? || ' //%')
+                AND lower(c.set_code) = lower(?)
+                AND (? = '' OR c.collector_number = ?)
+                AND cp.language = ? AND cp.finish = ?
+                AND (cp.photo_path IS NULL OR cp.photo_path = '')
+                AND {na_estante()}
+                AND (cp.notes IS NULL OR cp.notes NOT LIKE ?)""")
+    num = collector_number or ""
+    rows = con.execute(q, (name, name, set_code, num, num, language, finish,
+                           f"%{MARCA_POR_CONFIRMAR}%")).fetchall()
+    if not rows:
+        return None
+    qtd = max(int(quantity), 0)
+    rows = sorted(rows, key=lambda r: ((r["quantity"] or 0) != qtd,
+                                       (r["quantity"] or 0) > qtd,
+                                       -(r["quantity"] or 0), r["id"]))
+    resta, tocadas = qtd, []
+    for p in rows:
+        if resta <= 0:
+            break
+        leva = min(resta, p["quantity"] or 0)
+        if leva <= 0:
+            continue
+        resta -= leva
+        tocadas.append(_partir_copia(con, p, leva, photo_path=photo_path))
+    if not tocadas:
+        return None
+    con.commit()
+    return {"copy_id": tocadas[0], "copias": tocadas,
+            "ligadas": qtd - resta, "restante": resta}
+
+
 def import_csv(con: sqlite3.Connection, path: str | Path, *,
                adivinhar: bool = False, acertar: bool = True,
                resultados: list[dict] | None = None) -> tuple[int, list[str]]:
     """Importa um CSV. Devolve (n_importadas, erros).
 
     `resultados`, se dado, é preenchido com uma linha por linha do CSV
-    (`RESULT_FIELDS`) — inclui o `copy_id` de cada cópia criada, que é a ponte
-    foto ↔ cópia do `arrumar_fotos`.
+    (`RESULT_FIELDS`) — inclui o `copy_id` de cada cópia criada ou tocada (mais
+    do que uma vai separado por vírgula), que é a ponte foto ↔ cópia do
+    `arrumar_fotos`.
 
     Uma linha sem `set_code` **para** com `motivo: edicao em falta`; as outras
     continuam. `adivinhar=True` aceita o palpite (ver `add_copy`).
 
-    `acertar` (por omissão ligado) é a outra metade do *"já a tenho"*: se já
-    existe uma cópia daquela carta à espera de edição, esta linha ACERTA-A em
-    vez de criar uma segunda (ver `acertar_edicao`).
+    A CONCILIAÇÃO PELA FOTO (2026-09-19), por esta ordem e de forma
+    determinista — é o mesmo caminho para os dois importadores
+    (`processar_fotos.py` e a tarefa `mtg-fotos-novas`):
+
+      (i)   uma cópia «edição por confirmar» da mesma carta → `acertar_edicao`
+            (`acertar`, por omissão ligado), como desde 2026-09-08;
+      (ii)  uma ENCOMENDA pendente de foto com o mesmo nome + língua +
+            acabamento (e edição, se a encomenda a tiver), a caixa de maior
+            prioridade primeiro → cria a cópia, fecha a encomenda e ALOCA a
+            cópia à caixa (`encomendas.conciliar`). É o *"quando coloco a foto,
+            adicionas à coleção"* do André;
+      (iii) uma cópia da base SEM foto, da mesma impressão exacta →
+            `ligar_foto`, em vez de a duplicar;
+      (iv)  senão, entrada normal, como sempre.
+
+    Uma linha com `quantity` 3 pode fechar 2 de encomenda e entrar 1 normal:
+    cada passo consome o que lhe cabe e passa o resto ao seguinte.
     """
+    from . import encomendas                              # noqa: PLC0415
     ok, errors = 0, []
+    cache: dict = {}                     # a prioridade das caixas, uma vez
     with open(path, newline="", encoding="utf-8-sig") as fh:
         for i, row in enumerate(csv.DictReader(fh), start=2):
             row = {k: (v.strip() if isinstance(v, str) else v)
@@ -339,45 +467,71 @@ def import_csv(con: sqlite3.Connection, path: str | Path, *,
                    "resultado": "", "motivo": "", "copy_id": ""}
             try:
                 qtd = int(row.get("quantity") or 1)
-                ajuste = (acertar_edicao(
-                    con, row["name"], row["set_code"],
-                    collector_number=row.get("collector_number") or None,
-                    quantity=qtd, photo_path=row.get("photo_path") or None)
-                    if acertar and row.get("set_code") else None)
+                ids: list = []
+                motivos: list[str] = []
+                nm = row["name"]
+                set_code = row.get("set_code") or None
+                num = row.get("collector_number") or None
+                lang = (row.get("language") or "en").lower()
+                finish = (row.get("finish") or "nonfoil").lower()
+                foto = row.get("photo_path") or None
+                preco = (float(row["acquired_price"])
+                         if row.get("acquired_price") else None)
+                # (i) «edição por confirmar»
+                ajuste = (acertar_edicao(con, nm, set_code, collector_number=num,
+                                         quantity=qtd, photo_path=foto)
+                          if acertar and set_code and qtd > 0 else None)
                 if ajuste:
-                    res["copy_id"] = ajuste["copy_id"]
-                    res["resultado"] = "importada"
-                    res["motivo"] = (f'{ajuste["acertadas"]} de «já a tenho»: '
-                                     f'edição acertada')
-                    ok += 1
-                    if not ajuste["restante"]:
-                        if resultados is not None:
-                            resultados.append(res)
-                        continue
-                    # O que a foto trouxe a mais é uma cópia nova, como sempre.
-                    # A LINHA já foi contada em cima: uma linha do CSV é uma
-                    # importação, mesmo quando metade acerta uma cópia que já
-                    # existia e metade entra de novo.
-                    row["quantity"] = str(ajuste["restante"])
-                    ok -= 1
-                res["copy_id"] = add_copy(
-                    con,
-                    row.pop("name"),
-                    set_code=row.get("set_code") or None,
-                    collector_number=row.get("collector_number") or None,
-                    quantity=int(row.get("quantity") or 1),
-                    finish=row.get("finish") or "nonfoil",
-                    language=row.get("language") or "en",
-                    condition=row.get("condition") or "NM",
-                    purpose=row.get("purpose") or "player",
+                    ids += ajuste["copias"]
+                    motivos.append(f'{ajuste["acertadas"]} de «já a tenho»: '
+                                   f'edição acertada')
+                    qtd = ajuste["restante"]
+                # (ii) encomendas pendentes de foto
+                enc = (encomendas.conciliar(
+                    con, nm=nm, set_code=set_code, collector_number=num,
+                    lang=lang, finish=finish, qty=qtd, photo_path=foto,
                     sub_collection=row.get("sub_collection") or None,
-                    photo_path=row.get("photo_path") or None,
-                    acquired_price=float(row["acquired_price"])
-                    if row.get("acquired_price") else None,
-                    notes=row.get("notes") or None,
-                    adivinhar=adivinhar,
-                )
+                    condition=row.get("condition") or "NM", acquired_price=preco,
+                    notes=row.get("notes") or None, cache=cache)
+                    if set_code and qtd > 0 else None)
+                if enc:
+                    ids += enc["copias"]
+                    if enc["fechadas"]:
+                        motivos.append(
+                            f'{enc["fechadas"]} fecha{"m" if enc["fechadas"] > 1 else ""}'
+                            f' encomenda: '
+                            + ", ".join(f'{l["q"]}× {l["caixa"] or "colecção"}'
+                                        + ("" if l["alocada"] or not l["caixa"]
+                                           else " (sem caixa)")
+                                        for l in enc["linhas"]))
+                    motivos += [a["aviso"] for a in enc["avisos"]]
+                    qtd = enc["restante"]
+                # (iii) uma cópia da base sem foto, da mesma impressão exacta
+                lig = (ligar_foto(con, nm, set_code, collector_number=num,
+                                  language=lang, finish=finish, quantity=qtd,
+                                  photo_path=foto)
+                       if set_code and qtd > 0 and foto else None)
+                if lig:
+                    ids += lig["copias"]
+                    motivos.append(f'{lig["ligadas"]} já na base sem foto: '
+                                   f'foto ligada')
+                    qtd = lig["restante"]
+                # (iv) o que sobra entra como sempre. A LINHA conta uma vez:
+                # uma linha do CSV é uma importação, mesmo quando metade
+                # acerta uma cópia que já existia e metade entra de novo.
+                if qtd > 0 or not ids:
+                    ids.append(add_copy(
+                        con, nm, set_code=set_code, collector_number=num,
+                        quantity=qtd, finish=finish, language=lang,
+                        condition=row.get("condition") or "NM",
+                        purpose=row.get("purpose") or "player",
+                        sub_collection=row.get("sub_collection") or None,
+                        photo_path=foto, acquired_price=preco,
+                        notes=row.get("notes") or None, adivinhar=adivinhar))
+                res["copy_id"] = (ids[0] if len(ids) == 1
+                                  else ",".join(str(x) for x in ids))
                 res["resultado"] = "importada"
+                res["motivo"] = "; ".join(motivos)
                 ok += 1
             except Exception as e:                       # noqa: BLE001
                 res["resultado"] = "erro"
@@ -411,6 +565,15 @@ def gravar_resultado(resultados: list[dict], path: str | Path) -> Path:
 APLICADO = FOTOS_PROCESSADAS / "aplicado.csv"
 APLICADO_FIELDS = ["at", "foto", "copy_id", "name", "set_code",
                    "collector_number", "quantity", "sub_collection"]
+
+
+def _ids(copy_id) -> list[int]:
+    """Os `copy_id` de uma linha de resultado: um inteiro, ou `"12,13"`."""
+    if copy_id is None or copy_id == "":
+        return []
+    if isinstance(copy_id, int):
+        return [copy_id]
+    return [int(x) for x in str(copy_id).split(",") if x.strip()]
 
 
 def arrumar_fotos(con: sqlite3.Connection, resultados: list[dict], *,
@@ -448,10 +611,15 @@ def arrumar_fotos(con: sqlite3.Connection, resultados: list[dict], *,
         elif not (destino / nome).exists():
             continue                       # foto que nunca chegou ao disco
         for r in linhas:
-            if r["copy_id"]:
+            # Uma linha pode ter tocado em MAIS do que uma cópia (2026-09-19:
+            # metade fechou uma encomenda, metade entrou de novo) — vêm
+            # separadas por vírgula, e cada uma fica ligada à foto.
+            for cid in _ids(r.get("copy_id")):
                 con.execute("UPDATE copies SET photo_path = ? WHERE id = ?",
-                            (novo_rel, r["copy_id"]))
-            ligacoes.append(dict(r, foto=novo_rel))
+                            (novo_rel, cid))
+                ligacoes.append(dict(r, copy_id=cid, foto=novo_rel))
+            if not _ids(r.get("copy_id")):
+                ligacoes.append(dict(r, foto=novo_rel))
     con.commit()
 
     if ligacoes:

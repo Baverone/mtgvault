@@ -1646,6 +1646,12 @@ def _linha_cheia(linha: dict) -> dict:
     # própria e não desaparece dentro do `comprar` porque não é o mesmo que "já
     # tenho": é uma falta que ele decidiu não tapar. Ver `partilhar_compras`.
     linha.setdefault("playset_bloqueado", 0)
+    # ENCOMENDAS (2026-09-19): o que desta linha já está a caminho ou chegou e
+    # espera foto. Desconta-se do `comprar` (`encomendas.descontar`), nunca do
+    # `missing`/`got`: uma encomenda não é uma cópia.
+    linha.setdefault("a_caminho", 0)
+    linha.setdefault("pendente_foto", 0)
+    linha.setdefault("encomendado", 0)
     # Terrenos básicos (2026-09-08): quantos vêm da colecção, quantos da pilha de
     # Unhinged e quantos são mesmo compra. Ficam com default aqui pela mesma razão
     # que tudo o resto nesta função — o `foil_report` também escreve linhas de
@@ -2137,6 +2143,12 @@ def _totais_do_slot(s: dict) -> None:
     # mínimo, em vez de o apresentar como se fosse a conta toda.
     s["sem_preco"] = sum(m["comprar"] for m in missing
                          if m["comprar"] > 0 and m["unit"] is None)
+    # ENCOMENDAS (2026-09-19): o que já está a caminho e o que chegou e espera
+    # foto. Ficam à parte do `comprar` (que já os descontou) para a página
+    # dizer «a comprar 2 · 1 a caminho · 1 pendente de foto».
+    s["a_caminho"] = sum(m.get("a_caminho", 0) for m in missing)
+    s["pendente_foto"] = sum(m.get("pendente_foto", 0) for m in missing)
+    s["encomendado"] = sum(m.get("encomendado", 0) for m in missing)
     # As que estão noutra caixa: é "ir buscar", não "comprar". Ficam à parte
     # para a página e o CLI poderem dizer as duas coisas sem as somar.
     s["noutra_caixa"] = sorted((m for m in missing if m["noutra_q"]),
@@ -2339,6 +2351,10 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                              noutra_onde={k: dict(v) for k, v in onde_fis.items()},
                              noutra_lotes=res_lotes,
                              noutra_futura={}, playset_bloqueado=0,
+                             # ENCOMENDAS (2026-09-19): preenchidas depois pelo
+                             # `encomendas.descontar`; a zero, para toda a
+                             # linha em falta ter as três chaves.
+                             a_caminho=0, pendente_foto=0, encomendado=0,
                              req_compra=requisito_material(s),
                              marca_compra=marca_compra(s),
                              unit=unit, price_finish=pfin,
@@ -2399,6 +2415,13 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
     # DEPOIS da alocação toda, porque precisa das faltas de todas as caixas, e
     # obriga a refazer os totais de cada uma.
     partilhas = partilhar_compras(slots)
+    # ENCOMENDAS (André, 2026-09-19: *"dizia-te o que ia comprando"*): o que
+    # já está a caminho ou chegou e espera foto SAI do `comprar` — não é para
+    # comprar outra vez. Depois da partilha (a encomenda é de uma caixa
+    # concreta) e antes dos totais. A alocação não mexe: só a foto cria cópias.
+    # O import é aqui dentro porque o `mtgvault.encomendas` importa este módulo.
+    from . import encomendas as _enc                     # noqa: PLC0415
+    encomendas_avisos = _enc.descontar(con, slots)
     for s in slots:
         _totais_do_slot(s)
 
@@ -2429,7 +2452,8 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
         s["contradicoes"] = [c for c in contras if c["slot"] == s["slot"]]
     return {"slots": slots, "conflitos": conflitos, "pedido": dict(pedido),
             "partilhas": partilhas, "limites": limites_de_playset(slots),
-            "contradicoes": contras, "pool": pool}
+            "contradicoes": contras, "pool": pool,
+            "encomendas_avisos": encomendas_avisos}
 
 
 def contradicoes(pool: dict) -> list[dict]:
@@ -4714,6 +4738,10 @@ def report(con, cfg_slots: list[dict] | None = None) -> dict:
     res["noutra_reservada_total"] = sum(s["noutra_reservada"] for s in res["slots"])
     res["noutra_futura_total"] = sum(s["noutra_futura"] for s in res["slots"])
     res["sem_preco_total"] = sum(s["sem_preco"] for s in res["slots"])
+    # ENCOMENDAS (2026-09-19): o que está a caminho e o que espera foto, no
+    # total. O `comprar_total`/`custo_total` de cima já os descontaram.
+    res["a_caminho_total"] = sum(s["a_caminho"] for s in res["slots"])
+    res["pendente_foto_total"] = sum(s["pendente_foto"] for s in res["slots"])
     # Quantas cópias a partilha poupou — é a diferença entre somar as faltas
     # caixa a caixa (o que a v3 fazia) e comprar o máximo de uma delas.
     res["poupado_total"] = sum(p["poupado"] for p in res["partilhas"])

@@ -176,6 +176,34 @@ def main(argv=None):
     ca.add_argument("--etiqueta", default="alocacao",
                     help="sufixo do backup (vault-<data>-<etiqueta>.db)")
 
+    # ENCOMENDAS (André, 2026-09-19): é por aqui que o Claude na nuvem regista o
+    # que ele diz no chat («comprei 4 Brainstorm PT para o Stiflenought»).
+    en = sub.add_parser("encomendas",
+                        help="o que comprou e ainda não fotografou: listar, add "
+                             "(+), remover (-), chegou, desfazer-chegou")
+    en.add_argument("accao", nargs="?", default="listar",
+                    choices=["listar", "add", "remover", "chegou",
+                             "desfazer-chegou"])
+    en.add_argument("nome", nargs="?", help="o nome da carta (oracle, inglês)")
+    en.add_argument("--caixa", dest="slot",
+                    help="o `slot` da caixa (ex.: premodern-stiflenought); sem "
+                         "ele, para a colecção")
+    en.add_argument("--id", type=int, help="o id da encomenda (em vez de nome+caixa)")
+    en.add_argument("--qty", type=int, default=None,
+                    help="quantas (add/remover: 1; chegou/desfazer: todas)")
+    en.add_argument("--set", dest="set_code", help="edição (sem ela: qualquer)")
+    en.add_argument("--num", dest="collector_number", help="número de coleccionador")
+    en.add_argument("--lang", help="pt|en (omissão: o da caixa)")
+    en.add_argument("--finish", help="foil|nonfoil (omissão: o da caixa)")
+    en.add_argument("--origem", help="a loja (texto livre)")
+    en.add_argument("--preco", type=float, help="preço por cópia, em euros")
+    en.add_argument("--notas")
+    en.add_argument("--pendente", action="store_true",
+                    help="add: já a tem em casa — fica logo pendente de foto")
+    en.add_argument("--todas", action="store_true",
+                    help="listar: também as já fechadas pela foto")
+    en.add_argument("--json", action="store_true", help="saída em JSON")
+
     mc = sub.add_parser("migrar-caixas",
                         help="colecao_config.json: `loadout` -> `caixas` (v6)")
     mc.add_argument("--dry-run", action="store_true",
@@ -516,6 +544,9 @@ def main(argv=None):
                       f"  backup {Path(r['backup']).name}\n"
                       f"  registo {r['log']}")
 
+        elif args.cmd == "encomendas":
+            _encomendas(con, args)
+
         elif args.cmd == "migrar-caixas":
             r = caixas.migrar_ficheiro(dry_run=args.dry_run)
             if not r["mudou"]:
@@ -525,6 +556,83 @@ def main(argv=None):
             else:
                 print(f"{r['path']}: {r['caixas']} caixas escritas "
                       f"(backup em {Path(r['backup']).name})")
+
+
+def _encomendas(con, args):
+    """`encomendas listar|add|remover|chegou|desfazer-chegou` (2026-09-19).
+
+    A saída legível é para o André; o `--json` é para o Claude na nuvem, que
+    corre isto por `command` e lê a resposta. Um erro de validação (carta
+    desconhecida, edição que a caixa recusa) sai com código 2 e o motivo — é o
+    mesmo motivo que a página mostra num 409.
+    """
+    import json as _json
+    from . import encomendas as enc
+
+    def sai(obj, texto):
+        if args.json:
+            print(_json.dumps(obj, ensure_ascii=False, indent=1))
+        else:
+            print(texto)
+
+    try:
+        if args.accao == "listar":
+            linhas = enc.listar(con, slot=args.slot, so_abertas=not args.todas)
+            if args.json:
+                sai({"encomendas": linhas,
+                     "a_caminho": sum(l["qty_a_caminho"] for l in linhas),
+                     "pendente_foto": sum(l["qty_pendente_foto"] for l in linhas)}, "")
+                return
+            if not linhas:
+                print("  (nada encomendado)")
+                return
+            _p([{"id": l["id"], "caixa": l["caixa"] or "colecção", "carta": l["nm"],
+                 "impressao": l["impressao"], "a caminho": l["qty_a_caminho"],
+                 "p/ foto": l["qty_pendente_foto"], "fechada": l["qty_fechada"],
+                 "origem": l["origem"] or "", "aviso": l["aviso"] or ""}
+                for l in linhas],
+               ["id", "caixa", "carta", "impressao", "a caminho", "p/ foto",
+                "fechada", "origem", "aviso"])
+            print(f"\n  {sum(l['qty_a_caminho'] for l in linhas)} a caminho · "
+                  f"{sum(l['qty_pendente_foto'] for l in linhas)} pendentes de foto")
+            return
+        if args.accao == "add":
+            if not args.nome:
+                raise ValueError("add precisa do nome da carta")
+            r = enc.adicionar(con, args.slot, args.nome, args.qty or 1,
+                              set_code=args.set_code,
+                              collector_number=args.collector_number,
+                              lang=args.lang, finish=args.finish,
+                              origem=args.origem, preco=args.preco,
+                              notas=args.notas,
+                              estado=enc.PENDENTE if args.pendente else enc.A_CAMINHO)
+            sai(r, f'  #{r["id"]}: {r["nm"]} ({r["impressao"]}) para '
+                   f'{r["caixa"] or "a colecção"} — {r["qty_a_caminho"]} a caminho, '
+                   f'{r["qty_pendente_foto"]} pendente(s) de foto')
+            return
+        if args.accao == "remover":
+            r = enc.remover(con, args.id, slot=args.slot, nm=args.nome,
+                            qty=args.qty or 1)
+            sai(r, f'  {r["tirado"]}× {r["nm"]} a menos'
+                   + (f' (linha apagada: {r["apagadas"]})' if r["apagadas"] else ""))
+            return
+        if args.accao == "chegou":
+            r = enc.chegou(con, args.id, slot=args.slot, nm=args.nome, qty=args.qty)
+            sai(r, f'  {r["movido"]}× {r["nm"]} chegou — pendente de foto: tira-lhe '
+                   f'a foto e larga-a em pendentes/')
+            return
+        if args.accao == "desfazer-chegou":
+            r = enc.desfazer_chegou(con, args.id, slot=args.slot, nm=args.nome,
+                                    qty=args.qty)
+            sai(r, f'  {r["movido"]}× {r["nm"]} de volta a «a caminho»')
+            return
+    except KeyError as e:
+        sai({"erro": f"a caixa {e.args[0]!r} não existe no colecao_config.json"},
+            f"  ERRO: a caixa {e.args[0]!r} não existe no colecao_config.json")
+        sys.exit(2)
+    except ValueError as e:
+        sai({"erro": str(e)}, f"  ERRO: {e}")
+        sys.exit(2)
 
 
 def _loadout_resumo(rep):

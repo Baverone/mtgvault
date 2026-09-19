@@ -31,6 +31,14 @@ data/nao-encontradas.csv
 # auto-registo, o "actualizei" e o "já arrumei tudo"). É a prova de que uma
 # cópia dentro de uma caixa veio de um gesto dele: sem linha aqui, é bug.
 data/registos-caixas.csv
+# O rasto das ENCOMENDAS (2026-09-19): cada `+`, `−`, «Chegou», «desfazer» e
+# cada foto→cópia, com carta, impressão, quantidade, caixa e loja. Escrito antes
+# da base. Local, como os outros (o `data/*.log` abaixo já o apanhava; fica
+# nomeado para se saber que existe).
+data/encomendas.log
+# O que está pendente de foto, para o Claude que cataloga as fotos ler. É
+# gerado a cada corrida (daily e modo edição) e apaga-se quando fica vazio.
+pendentes/esperadas.md
 # A SAÍDA da lista de venda (2026-09-18): o CSV para carregar stock no
 # Cardmarket e a lista para ir buscar as cartas à estante, reescritos a cada
 # corrida do daily (e pelo «gravar em data/» do modo edição). Levam preços por

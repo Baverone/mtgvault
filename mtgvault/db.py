@@ -129,6 +129,17 @@ def _migrate(con: sqlite3.Connection) -> None:
     )""")
     con.commit()
 
+    # ENCOMENDAS (2026-09-19). O `schema.sql` cria a tabela numa base nova e
+    # numa antiga (é `IF NOT EXISTS`); isto é para as colunas que lhe venham a
+    # ser acrescentadas DEPOIS de existir na base dele — a mesma regra de
+    # sempre: uma coluna nova entra nos três sítios. Hoje não há nenhuma; a
+    # lista fica escrita para o primeiro `ALTER` ter onde cair.
+    cols = {r["name"] for r in con.execute("PRAGMA table_info(encomendas)")}
+    for coluna, tipo in ():
+        if coluna not in cols:
+            con.execute(f"ALTER TABLE encomendas ADD COLUMN {coluna} {tipo}")
+            con.commit()
+
     # Catálogo (BD anexada): a flag reserved da Reserved List. Em catálogos já
     # criados a coluna não existe — acrescenta-se aqui a 0 (o preenchimento vem
     # do bulk, via scryfall.load_bulk/backfill_reserved).

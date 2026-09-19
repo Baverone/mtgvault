@@ -25,6 +25,19 @@ sem o André estar ao PC.
 O reconhecimento (passo 2) és sempre **tu a olhar para as fotos** — o script só
 faz a parte mecânica.
 
+**Se existir `pendentes/esperadas.md`, lê-o antes de escrever o CSV.** É a
+lista do que o André disse que comprou / que já tem e ainda não fotografou
+(«pendente de foto»), por caixa, com a língua e o acabamento esperados — e as
+cópias que já estão na base sem foto. Desde 2026-09-19 **só a foto cria
+cópias**: uma foto de uma carta pendente **fecha a encomenda e mete a cópia na
+caixa** a que ela pertencia; uma foto de uma cópia que já está na base sem foto
+**liga-se a essa cópia** (não cria outra). Para isso a linha do CSV tem de
+trazer a **mesma língua e acabamento** da encomenda (e a mesma edição, se a
+encomenda a fixar). Se a foto mostrar outra coisa (uma edição posterior ao
+Scourge para uma caixa de Premodern, por exemplo), escreve o que vês na mesma —
+a cópia entra na Colecção sem caixa e a encomenda fica aberta com um aviso; o
+que não se faz é inventar a edição para bater com a lista.
+
 ## Formato do CSV
 
 Cabeçalho (esta ordem de colunas):

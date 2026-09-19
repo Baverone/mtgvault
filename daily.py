@@ -314,7 +314,13 @@ def main():
 
         def _deckboxes():
             _rep["v"] = loadout.report(con)
-            return str(deckboxes.build(con, ROOT / "deckboxes.html", rep=_rep["v"]))
+            out = deckboxes.build(con, ROOT / "deckboxes.html", rep=_rep["v"])
+            # ENCOMENDAS (2026-09-19): o separador vai dentro da Deckboxes (sem
+            # passo novo); o `pendentes/esperadas.md` é o que o Claude das
+            # fotos lê para saber que cartas esperar e para que caixa vão.
+            from mtgvault import encomendas                # noqa: PLC0415
+            encomendas.escrever_esperadas(con, ROOT / "pendentes")
+            return str(out)
 
         _step(con, "deckboxes", _deckboxes)
         # A SAÍDA DA VENDA (2026-09-18): `data/venda-stock.csv` (para carregar

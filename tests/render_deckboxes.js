@@ -107,7 +107,9 @@ const abas = ['plano', 'todas', 'montados', 'pormontar',
               // A aba «Não encontradas» só aparece na FILA quando há alguma (ver
               // `renderTabs`), mas a vista desenha-se na mesma, vazia — e tem de
               // desenhar sem erro nos dois casos.
-              'naoenc', ...slots];
+              'naoenc',
+              // ENCOMENDAS (2026-09-19): sempre na fila; desenha-se vazia e cheia.
+              'encomendas', ...slots];
 let n = 0;
 for (const filtro of ['tudo', 'faltam']) {
   vm.runInContext(`filtro = ${JSON.stringify(filtro)};`, ctx);
@@ -137,7 +139,10 @@ if (process.argv[3]) {
 // O site publicado não pode DESENHAR um botão de escrita: os endpoints não
 // existem lá, e um botão que não faz nada é pior do que não haver botão.
 const editavel = vm.runInContext('D.editable', ctx);
-const escrita = desenhado.filter(h => h.includes('data-act=')).length;
+// `data-act` são os botões de estado; os das ENCOMENDAS (2026-09-19) e do
+// «já a tenho» também escrevem, e também não podem existir no site publicado.
+const ESCRITA = /data-(act|enc|chegou|desfazer|falta|vend|reg|enc)=/;
+const escrita = desenhado.filter(h => ESCRITA.test(h)).length;
 if (!editavel && escrita) {
   console.error(`ERRO: ${escrita} blocos com botoes de escrita numa pagina publicada`);
   process.exit(1);

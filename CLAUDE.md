@@ -51,6 +51,11 @@ mtgvault/
   wantlist.py     o que falta, para decks e para arquétipos
   loadout.py      os decks montados ao mesmo tempo: aloca a coleção às caixas
                   (uma cópia serve uma só), conflitos, substitutos e venda
+  encomendas.py   o que ele COMPROU e ainda não fotografou (2026-09-19): a
+                  tabela `encomendas`, o `+`/`−`/«Chegou»/«desfazer», o
+                  DESCONTO no «a comprar» das caixas e a CONCILIAÇÃO pela foto
+                  (chamada pelo `collection.import_csv`) — «só a foto cria
+                  cópias»
   venda.py        a SAÍDA da lista de venda (2026-09-18): o CSV de stock p/ o
                   Cardmarket (formato predefinido NÃO confirmado, ou aprendido
                   de `data/cardmarket-stock-exemplo.csv`), a lista da estante
@@ -1898,6 +1903,122 @@ quando os dados da cópia a denunciam. A defesa a sério é esta.
   inteiro, não que confirmou carta a carta — e agora **deixa rasto**; se voltar a
   morder, é aqui.
 - Tem teste (`test_registo_marcadas.py`, 7 casos).
+
+**7. ENCOMENDAS: «SÓ A FOTO CRIA CÓPIAS» (André, 2026-09-19, à letra).**
+*"consegues, para o magic, criar algo igual ao que criaste para o Riftbound,
+mas ao invés de "coleção" colocas para os decks? assim fica mais fácil eu
+conseguir organizar-me; até porque assim até conseguia, ao invés de atualizar
+sempre a coleção, dizia-te o que ia comprando, e tu só ias pedindo as fotos das
+cartas; cada vez que eu adiciono que tenho a carta, fica pendente de foto;
+quando coloco a foto, adicionas à coleção"*. Motor em `mtgvault/encomendas.py`,
+aba **📦 Encomendas** na Deckboxes, `+`/`−`/«Chegou» nas linhas de compra de
+cada caixa, CLI `py -m mtgvault.cli encomendas`, endpoints
+`/api/encomenda`, `/api/encomenda-chegou`, `/api/encomenda-desfazer`.
+- **A REGRA: o caminho de uma carta é** *a comprar* → `+` **a caminho** →
+  «Chegou» **pendente de foto** → a foto entra em `pendentes/` → o import cria
+  a cópia, fecha a encomenda e **aloca a cópia à caixa** da encomenda. Nem o
+  `+` nem o «Chegou» escrevem em `copies` nem em `copy_allocation`: **uma
+  encomenda não é uma cópia** — não conta para o valor, para a venda, para a
+  galeria, para a percentagem nem para nada que conte cartas. O que faz é
+  **descontar o «a comprar» da caixa** (`encomendas.descontar`, no
+  `loadout.allocate`, depois da partilha de compras): `a comprar = falta − a
+  caminho − pendente de foto`, nunca abaixo de 0, linha a linha (main primeiro),
+  e daí para o «comprar N», o «fechar tudo por X €», as wantlists, o Plano e a
+  aba Comprar. `missing`/`got`/`pct` não mexem. Uma encomenda para uma caixa que
+  já não pede a carta (a lista mudou, a caixa saiu do config) fica visível com
+  o aviso *«a caixa já não a pede»* e **não desconta noutra caixa** — sem regra
+  de redistribuição, de propósito.
+- **A tabela `encomendas`** (`schema.sql` + `db._migrate`): carta (nome oracle,
+  a frente), `set_code`/`collector_number` opcionais (**sem edição = qualquer
+  impressão que cumpra a regra da caixa**, que é a omissão do selector — ele
+  raramente sabe a edição antes de a carta chegar), `lang`, `finish`, `slot`
+  (NULL = colecção), `qty_a_caminho`, `qty_pendente_foto`, `qty_fechada`,
+  `copy_ids` (JSON: as cópias que a fecharam), `origem` (a loja), `preco_unit`,
+  `notas`, `aviso`. Uma linha por (carta, impressão, língua, acabamento, caixa);
+  o `+` de uma linha igual soma. O **material é o da caixa**
+  (`loadout.material_da_caixa`: Premodern → PT e ≤ Scourge; SPML/Legacy → EN
+  foil; cEDH → EN nonfoil; Duel Commander → foil; Pauper → qualquer; básicas
+  isentas) e o `+` **valida** contra ela e contra o catálogo
+  (`encomendas.validar`; 409 na página, código 2 na CLI, sempre com o motivo).
+- **O rasto é `data/encomendas.log`** (fora do Git, como o `vendas.csv`),
+  escrito ANTES da base, uma linha por acção (`+`, `-`, `chegou`, `desfazer`,
+  `pendente`, `foto->copia`, `foto-recusada`) com data, carta, impressão,
+  quantidade, caixa, origem.
+- **O «já a tenho, está no deck» do passo 2 passou a entrar aqui**, directamente
+  em pendente de foto (`webapp.registar_falta` → `encomendas.adicionar(…,
+  estado=PENDENTE)`; o «anular» é o `−`). É o *"cada vez que eu adiciono que
+  tenho a carta, fica pendente de foto"*. O motor antigo
+  (`loadout.registar_falta`/`anular_falta`, cópia com «edição por confirmar» +
+  linha na `copy_allocation`) **fica no código como caminho antigo**, sem botão
+  — apagar é decisão dele; os testes dele continuam verdes. As cópias «edição
+  por confirmar» que já existem ficam como estão e aparecem na lista de
+  pendentes como *«na base, sem foto»* (`collection.copias_sem_foto`: as sem
+  `photo_path` ou com a marca; a 2026-09-19 são 18 cópias — 5 Duress PT, uma
+  Underground Sea 3ED…).
+- **A CONCILIAÇÃO PELA FOTO vive no `collection.import_csv`** (é comum ao
+  `processar_fotos.py` e à tarefa `mtg-fotos-novas`), por esta ordem e de forma
+  determinista: **(i)** cópia «edição por confirmar» da mesma carta →
+  `acertar_edicao`, como desde 09/08; **(ii)** encomenda **pendente de foto**
+  com o mesmo nome + língua + acabamento (e edição, se a encomenda a tiver),
+  **a caixa de maior prioridade primeiro** → `encomendas.conciliar` cria a
+  cópia (com `photo_path`, o preço da encomenda se o CSV não o trouxer, a nota
+  `encomenda #N`), baixa o pendente, guarda o `copy_id` e **aloca à caixa** se
+  a impressão cumprir a regra de material dela — se não cumprir, **não se toca
+  na encomenda** (fica aberta, com o aviso *«a foto trouxe X, que não cumpre a
+  regra da caixa»*, e continua a descontar: é a carta certa que ainda falta) e a
+  linha segue o caminho normal, a cópia entra na Colecção sem caixa. Nunca se
+  lava a regra com um registo (ponto 5); **(iii)** cópia da base **sem
+  `photo_path`** da mesma impressão exacta (nome + edição + número + língua +
+  acabamento), fora as não encontradas e as por confirmar →
+  `collection.ligar_foto`: a foto liga-se a ela em vez de a duplicar (com menos
+  cópias na foto do que no lote, o lote parte-se e só a parte fotografada ganha
+  a foto, levando o seu lugar na `copy_allocation` — `_partir_copia`, o mesmo
+  do `acertar_edicao`); **(iv)** senão, entrada normal. Uma linha com
+  `quantity` 3 pode acertar 1, fechar 1 e entrar 1: o `copy_id` do resultado
+  traz as três (`12,13,14`) e o `arrumar_fotos` liga-as todas à foto arrumada.
+  Tudo com linha no `encomendas.log` e no `aplicado.csv`.
+- **`pendentes/esperadas.md`** (`encomendas.escrever_esperadas`, escrito pelo
+  passo `deckboxes` do `daily` e pelo `webapp.regenerar`; apaga-se quando não
+  há nada; fora do Git): o que está pendente de foto, por caixa, com o material
+  esperado, mais as «na base, sem foto». O `PROCESSAR_FOTOS.md` manda lê-lo se
+  existir — e manda escrever o que a foto MOSTRA, não o que a lista espera.
+- **A aba 📦 Encomendas** (parte própria, `data/paginas/deckboxes/
+  encomendas.json`; o índice leva só os `totais`): (a) **📷 Pendentes de foto**
+  por caixa, com a instrução *«tira a foto e larga-a em `pendentes/` — entra na
+  colecção na corrida das 02:30 (`mtg-fotos-novas`)»*, tiles com a imagem da
+  carta e «↩ desfazer»/`−`; as «na base, sem foto» sem botões; (b) **🚚 A
+  caminho** por caixa e origem, com o preço da linha da caixa (o mesmo
+  `card_price`) e os totais; (c) **🛒 Falta encomendar** por caixa = o «a
+  comprar» depois do desconto, com o `+` ao lado de cada carta e o «copiar» da
+  wantlist de sempre; (d) os totais e os avisos. Botões só no modo edição; a
+  informação é a mesma no site publicado (`render_deckboxes.js` tranca-o —
+  passou a contar `data-enc`/`data-chegou`/`data-desfazer`/`data-falta` como
+  escrita). Na linha de compra de uma caixa: *«a comprar 2 · 📦 1 a caminho ·
+  1 pendente de foto»* e os `+`/`−`/«Chegou (N)» (alvos ≥ 40 px). **Uma linha
+  toda encomendada fica na wantlist com `0×`** — é lá que vivem o `−` e o
+  «Chegou» — e sai do texto copiado e do «N cartas». Na aba Comprar os botões
+  só aparecem com UMA caixa escolhida no selector (com todas, a linha junta
+  várias caixas e não há a quem encomendar).
+- **A CLI é por onde o Claude na nuvem regista o que ele diz no chat**
+  («comprei 4 Brainstorm PT para o Stiflenought»): `encomendas listar
+  [--json] [--todas]`, `add "<nome>" --caixa <slot> [--qty N] [--set X] [--num
+  N] [--lang pt|en] [--finish foil|nonfoil] [--origem "…"] [--preco 1.23]
+  [--pendente]`, `chegou "<nome>" --caixa <slot> [--qty N]` (ou `--id`),
+  `remover …`, `desfazer-chegou …`.
+- **Medido na cópia da base de 2026-09-19** (`_revisao/dbcopy`, o mesmo
+  `vault.db` dos dois lados): com zero encomendas o relatório é **igual ao
+  cêntimo e linha a linha** — fechar tudo 7 098,03 €, 203 a comprar, 52 a ir
+  buscar (25/16/11), 180 a arrumar, venda 244c/1 505,78 €, venda_rl
+  63c/4 152,94 €, rl_segurar 37c/4 316,39 €, reservadas 32c/354,49 €, guardar
+  2c/14,82 €, as 14 caixas. Um `+` de 2 Meddling Mage no UW Replenish: a caixa
+  comprar **4 → 2**, fechar por **8,89 → 5,35 €**, fechar tudo **7 098,03 →
+  7 094,49 €**, 203 → **201** a comprar; **95 % fica 95 %**, `copies` e
+  `copy_allocation` iguais, venda igual. O «Chegou» não muda um número (só o
+  estado). A foto (`Meddling Mage,pls,116,2,nonfoil,pt`) cria a cópia 739 com
+  `photo_path`, alocada a `premodern-replenish`, fecha a encomenda
+  (`qty_fechada 2`, `copy_ids [739]`): a caixa **95 → 97 %**, 71 → 73 na caixa,
+  comprar 2, arrumar igual (já está na caixa). Ver
+  `ai-pc/work/revisao/mtgvault-encomendas.md`.
 
 **AS CÓPIAS DE UMA LINHA INCOMPLETA TAMBÉM SE TIRAM DA GAVETA (2026-09-08).**
 Uma linha que pede 4 e a que a alocação só deu 2 vive em `missing` — e **tudo**
