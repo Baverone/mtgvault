@@ -52,7 +52,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import loadout, paginas, venda  # noqa: E402
+from mtgvault import collection, encomendas, loadout, paginas, venda  # noqa: E402
 
 TABS = paginas.nav("deckboxes.html")
 
@@ -282,6 +282,9 @@ def _caixa_payload(s, imgs, cfs, rep=None, col=None, tipos=None, cores=None,
             "nmont": sum(m["noutra_montada"].values()),
             "nres": sum(m["noutra_reservada"].values()),
             "cost": m["cost"], "unit": m["unit"],
+            # ENCOMENDAS (2026-09-19): o que desta linha já vem a caminho ou
+            # chegou e espera foto. O `title` da miniatura di-lo.
+            "acam": m.get("a_caminho", 0), "pfoto": m.get("pendente_foto", 0),
             "cf": m["nm"] in cfs,
             # O TIPO (para agrupar a lista como ele a arruma) e as cópias que tem
             # na COLECÇÃO INTEIRA. Este segundo número é a única coisa que a
@@ -371,11 +374,19 @@ def _caixa_payload(s, imgs, cfs, rep=None, col=None, tipos=None, cores=None,
         # transforma uma linha de compra num check que grava (André, 2026-09-08:
         # *"para dizer que já as tenho e já coloquei no deck"*). Só existe no
         # modo edição — no site publicado não há endpoint para gravar.
+        # E, desde 2026-09-19, a linha FICA na wantlist enquanto tiver alguma
+        # coisa encomendada (`q` pode ser 0): é aqui que vivem o `−` e o «Chegou»
+        # dela, e uma linha que desaparecesse ao `+` não tinha por onde voltar
+        # atrás. O texto copiado salta as que têm `q` 0.
         "wantlist": sorted(({"nm": m["nm"], "q": m["comprar"], "cost": m["cost"],
                              "board": m["board"],
                              "eds": (edicoes or {}).get(m["nm"]) or [],
-                             "mat": m.get("marca_compra") or ""}
-                            for m in s["missing"] if m["comprar"] > 0),
+                             "mat": m.get("marca_compra") or "",
+                             "acam": m.get("a_caminho", 0),
+                             "pfoto": m.get("pendente_foto", 0),
+                             "sid": imgs.get(m["nm"])}
+                            for m in s["missing"]
+                            if m["comprar"] > 0 or m.get("encomendado", 0) > 0),
                            key=lambda x: (x["board"] != "main", x["nm"])),
         # O "ir buscar" em TRÊS blocos, porque são três sítios diferentes
         # (André, 2026-09-08). Quem parte é o Python (`buscar_montada` /
@@ -446,6 +457,106 @@ def _premodern_payload(rep, imgs):
             "sugestoes": len(pm["sugestoes"])}
 
 
+def _encomendas_payload(con, rep, imgs):
+    """A aba **📦 Encomendas** (André, 2026-09-19): o que comprou e ainda não
+    fotografou, à imagem do separador do riftvault — tiles com a imagem da
+    carta, `+`/`−`, «Chegou (N)».
+
+    Quatro blocos, por esta ordem: (a) **pendentes de foto** — o que chegou e
+    espera foto, por caixa, mais as cópias da base sem foto («na base, sem
+    foto»: as que entraram por CSV à mão ou pelo «já a tenho» antigo); (b) **a
+    caminho**, por caixa e origem, com o preço da caixa; (c) **falta
+    encomendar**, por caixa = o «a comprar» DEPOIS do desconto; (d) os totais.
+    Os números de (c) são os mesmos das caixas (`s["comprar"]`/`s["custo"]`):
+    não há uma segunda conta.
+    """
+    from mtgvault import scryfall                          # noqa: PLC0415
+
+    abertas = encomendas.listar(con)
+    sem_foto = collection.copias_sem_foto(con)
+    slots = {s["slot"]: s for s in rep["slots"]}
+    # O preço por cópia é o da LINHA da caixa (o mesmo `card_price`, no
+    # acabamento que a caixa usa); sem linha, o preço no acabamento da encomenda.
+    unit_cache: dict = {}
+
+    def unit(r):
+        chave = (r["slot"], r["nm"], r["finish"])
+        if chave in unit_cache:
+            return unit_cache[chave]
+        s = slots.get(r["slot"])
+        u = None
+        if s is not None:
+            u = next((m["unit"] for m in s["missing"] + s["have"]
+                      if m["nm"] == r["nm"] and m.get("unit")), None)
+        if u is None:
+            u, _f = loadout.card_price(con, r["nm"],
+                                       "foil" if loadout.e_foil(r["finish"]) else "nonfoil")
+        unit_cache[chave] = u
+        return u
+
+    def sid_de(r):
+        if r.get("set_code"):
+            row = scryfall.find_printing(con, r["nm"], r["set_code"],
+                                         r.get("collector_number"))
+            if row is not None:
+                return row["scryfall_id"]
+        return imgs.get(r["nm"])
+
+    pede = {(a["slot"], a["nm"]): a["porque"] for a in rep.get("encomendas_avisos") or []}
+
+    def tile(r, q):
+        u = unit(r)
+        return {"id": r["id"], "nm": r["nm"], "sid": sid_de(r), "q": q,
+                "slot": r["slot"], "caixa": r["caixa"],
+                "set": (r["set_code"] or "").upper(), "num": r["collector_number"] or "",
+                "lang": (r["lang"] or "").upper(), "fin": r["finish"],
+                "foil": loadout.e_foil(r["finish"]), "impressao": r["impressao"],
+                "origem": r["origem"] or "", "preco": r["preco_unit"],
+                "unit": u, "total": round((u or 0) * q, 2),
+                "aviso": r["aviso"] or pede.get((r["slot"], r["nm"]), ""),
+                "na_base": False}
+
+    pendentes = [tile(r, r["qty_pendente_foto"]) for r in abertas
+                 if (r["qty_pendente_foto"] or 0) > 0]
+    nomes_caixas = loadout.nomes_das_caixas()
+    for c in sem_foto:
+        pendentes.append({
+            "copy_id": c["id"], "nm": c["nm"], "sid": c["sid"], "q": c["q"],
+            "slot": c["slot"], "caixa": nomes_caixas.get(c["slot"]) or "",
+            "set": (c["set_code"] or "").upper(), "num": c["collector_number"] or "",
+            "lang": (c["lang"] or "").upper(), "fin": c["finish"],
+            "foil": loadout.e_foil(c["finish"]), "impressao": c["impressao"],
+            "por_confirmar": c["por_confirmar"], "na_base": True})
+    a_caminho = [tile(r, r["qty_a_caminho"]) for r in abertas
+                 if (r["qty_a_caminho"] or 0) > 0]
+    falta = []
+    for s in rep["slots"]:
+        linhas = [{"nm": m["nm"], "q": m["comprar"], "board": m["board"],
+                   "unit": m["unit"], "cost": m["cost"],
+                   "mat": m.get("marca_compra") or "", "sid": imgs.get(m["nm"]),
+                   "acam": m.get("a_caminho", 0), "pfoto": m.get("pendente_foto", 0)}
+                  for m in s["missing"] if m["comprar"] > 0]
+        if not linhas:
+            continue
+        falta.append({"slot": s["slot"], "caixa": s["nome"], "comprar": s["comprar"],
+                      "custo": s["custo"], "req": loadout.requisito_material(s),
+                      "marca": loadout.marca_wantlist(s),
+                      "linhas": sorted(linhas, key=lambda x: (x["board"] != "main", x["nm"]))})
+    return {
+        "pendentes": pendentes, "a_caminho": a_caminho, "falta": falta,
+        "avisos": rep.get("encomendas_avisos") or [],
+        "totais": {
+            "a_caminho": sum(t["q"] for t in a_caminho),
+            "pendente_foto": sum(t["q"] for t in pendentes if not t["na_base"]),
+            "na_base_sem_foto": sum(t["q"] for t in pendentes if t["na_base"]),
+            "valor_a_caminho": round(sum(t["total"] for t in a_caminho), 2),
+            "pago": round(sum((t["preco"] or 0) * t["q"] for t in a_caminho), 2),
+            "sem_preco": sum(t["q"] for t in a_caminho if not t["unit"]),
+            "falta_comprar": rep["comprar_total"], "custo_falta": rep["custo_total"],
+        },
+    }
+
+
 def payload(con, rep, editable=False, token="", ligacao=None):
     nomes = {c["nm"] for c in rep["conflitos"]}
     for s in rep["slots"]:
@@ -453,6 +564,7 @@ def payload(con, rep, editable=False, token="", ligacao=None):
     for k in ("venda", "venda_rl", "guardar", "retidos", "reservadas"):
         nomes |= {r["nm"] for r in rep[k]}
     nomes |= {m["nm"] for m in rep["arrumacao"]["movimentos"]}
+    nomes |= {r["nm"] for r in encomendas.listar(con)}
     imgs = _img_map(con, sorted(nomes))
     cfs = {c["nm"] for c in rep["conflitos"]}
     # Tipo, cor e "quantas tenho ao todo" — as três coisas que a página dos decks
@@ -488,9 +600,14 @@ def payload(con, rep, editable=False, token="", ligacao=None):
                 continue
             g = geral.setdefault(m["nm"], {"nm": m["nm"], "q": 0, "cost": 0.0,
                                            "unit": None, "para": [], "req": "",
-                                           "mat": "", "partilhada": 0})
+                                           "mat": "", "partilhada": 0,
+                                           "acam": 0, "pfoto": 0})
             g["q"] += m["comprar"]
             g["cost"] = round(g["cost"] + (m["cost"] or 0), 2)
+            # O que já vem a caminho / espera foto (2026-09-19), para a linha
+            # dizer «· 1 a caminho» ao lado do que ainda é compra.
+            g["acam"] += m.get("a_caminho", 0)
+            g["pfoto"] += m.get("pendente_foto", 0)
             # O preço por cópia é o mais alto das caixas que a pedem — é o que
             # decide se a carta entra no bolo das "caras", e por baixo era pior.
             if m["unit"] and (g["unit"] is None or m["unit"] > g["unit"]):
@@ -599,6 +716,9 @@ def payload(con, rep, editable=False, token="", ligacao=None):
                    # pedia a mais). Mostrado na aba Comprar.
                    "poupado": rep.get("poupado_total", 0),
                    "sem_preco": rep.get("sem_preco_total", 0),
+                   # ENCOMENDAS (2026-09-19): já descontadas do `comprar`.
+                   "a_caminho": rep.get("a_caminho_total", 0),
+                   "pendente_foto": rep.get("pendente_foto_total", 0),
                    "custo": rep["custo_total"], "venda": rep["total"],
                    # TERRENOS BÁSICOS a comprar (as Snow-Covered, que a pilha de
                    # Unhinged não cobre). À parte do `comprar`/`custo`: são *a
@@ -681,6 +801,10 @@ def payload(con, rep, editable=False, token="", ligacao=None):
         # tem de a poder consultar fora de casa); o que só existe no modo edição
         # é o botão «afinal encontrei» e a miniatura (a foto vive no PC).
         "nao_encontradas": loadout.nao_encontradas(con),
+        # ENCOMENDAS (André, 2026-09-19): o que comprou e ainda não fotografou.
+        # Vive numa parte própria (`data/paginas/deckboxes/encomendas.json`); o
+        # índice fica só com os `totais`, que é o que a fila de abas mostra.
+        "encomendas": _encomendas_payload(con, rep, imgs),
     }
 
 
@@ -701,6 +825,7 @@ CAIXA_PESADO = ("cartas", "wantlist", "subs", "buscar", "lista", "montar", "eds"
 # As abas pesadas, e o que cada ficheiro leva.
 PARTES_ABAS = {"arrumar": ("arrumar",), "venda": ("venda",),
                "premodern": ("premodern",),
+               "encomendas": ("encomendas",),
                "compras": ("compras", "partilhadas", "basicas")}
 # O que sai da `venda.saida` no índice (ver `partir`).
 SAIDA_PESADO = ("csv", "texto_estante")
@@ -1173,6 +1298,47 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
  .jnc .flh{color:#6fbf8a}
  .jnc .mv{opacity:1;text-decoration:none;border-bottom-color:#1a2b20}
  .jnc .mv .to{color:#e2a15b}
+ /* ENCOMENDAS (André, 2026-09-19): «só a foto cria cópias». Os `+`/`−` e o
+    «Chegou» numa linha de compra, e o separador com tiles à imagem do
+    riftvault. Azul tracejado = a caminho (não é uma cópia); verde = chegou e
+    espera foto. Alvos de toque ≥ 40 px, como o resto (2026-09-18). */
+ .encs{display:block;color:#7fa8ff;font-size:11px;line-height:1.35}
+ .encs .pf{color:var(--add)}
+ .stp{display:inline-flex;align-items:center;gap:4px;margin-left:6px;
+   vertical-align:middle;flex-wrap:wrap}
+ .stp .btn.sm{min-width:36px;padding:3px 8px;font-weight:800}
+ .stp .btn.sm.chg{background:#123020;border-color:#2f6a45;color:var(--add)}
+ ul.fl li.enc-l{border-left:2px dashed #7fa8ff;padding-left:6px}
+ .enc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+   gap:9px;margin:10px 0}
+ .enct{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+   padding:8px;display:flex;flex-direction:column;gap:5px;font-size:12px}
+ .enct.caminho{border:1px dashed #7fa8ff}
+ .enct.foto{border-color:#2f6a45}
+ .enct.base{border-style:dotted}
+ .enct.aviso{border-color:var(--warn)}
+ .enct .cd{aspect-ratio:.716;border-radius:6px;overflow:hidden;background:#0c0f14}
+ .enct .cd img{width:100%;height:100%;object-fit:cover;display:block}
+ .enct .cd .cq{font-size:12px;padding:1px 6px}
+ .enct .en{font-weight:700;font-size:12.5px;line-height:1.3;overflow-wrap:anywhere}
+ .enct .ed{color:var(--muted);font-size:11px;line-height:1.35}
+ .enct .ed b{color:var(--gold);font-variant-numeric:tabular-nums}
+ .enct .ea{color:#ff9f8f;font-size:11px;line-height:1.35}
+ .enct .stp{margin:0;justify-content:space-between}
+ .enct .stp .btn.sm{flex:1 1 auto;text-align:center}
+ .enct .btn.chg{width:100%;background:#123020;border-color:#2f6a45;color:var(--add)}
+ .enc-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;
+   flex-wrap:wrap;margin:14px 0 2px;border-bottom:1px solid var(--line);
+   padding-bottom:3px}
+ .enc-h b{font-size:14px} .enc-h span{color:var(--muted);font-size:12px;
+   font-variant-numeric:tabular-nums}
+ .enc-nota{background:#101c2e;border:1px solid #25415e;border-radius:var(--r);
+   padding:9px 12px;font-size:12.5px;color:#c9d8ff;margin:8px 0}
+ .enc-nota code{background:#0f141c;padding:1px 5px;border-radius:4px}
+ @media(max-width:640px){
+   .enc-grid{grid-template-columns:repeat(auto-fill,minmax(132px,1fr))}
+   .stp .btn.sm{min-height:40px;min-width:44px}
+ }
  /* TERRENOS BÁSICOS: bloco próprio depois das cores (André, 2026-09-08) */
  .bas{margin:10px 0 8px;background:#101a14;border:1px solid #23402c;
    border-radius:var(--r);padding:9px 11px}
@@ -1492,6 +1658,11 @@ function renderTabs() {
                  ['partilhadas', '🔁 Partilhadas',
                   (D.partilhadas ? D.partilhadas.length : D.n_partilhadas || 0) + ' cartas'],
                  ['comprar', '🛒 Comprar', D.resumo.comprar + ' cópias'],
+                 /* ENCOMENDAS (2026-09-19): o que comprou e ainda não fotografou.
+                    Os totais vêm no índice (escalares) — a parte só se pede ao
+                    abrir. Está sempre na fila: o «falta encomendar» é a resposta
+                    a "o que compro a seguir?", mesmo sem nada a caminho. */
+                 ['encomendas', '📦 Encomendas', encSub()],
                  ['vender', '💰 Vender', eur(D.resumo.venda)]];
   /* SUGESTÕES: só existe quando há Premodern configurado. Uma aba vazia numa
      fila de vinte é ruído — e sem caixas de Premodern não há pergunta nenhuma. */
@@ -1561,6 +1732,25 @@ function ir(id) {
   aba = id; P.aba = id; save(); renderTabs(); render();
 }
 
+/* O subtítulo da aba Encomendas: «2 a caminho · 1 p/ foto», ou o que falta
+   encomendar quando não há nada em curso. */
+function encSub() {
+  const t = (D.encomendas && D.encomendas.totais) || {};
+  const p = [];
+  if (t.a_caminho) p.push(`${t.a_caminho} a caminho`);
+  if (t.pendente_foto) p.push(`${t.pendente_foto} p/ foto`);
+  if (!p.length) return `${t.falta_comprar || 0} por encomendar`;
+  return p.join(' · ');
+}
+
+/* «1 a caminho · 1 pendente de foto» de uma linha, ou nada. */
+function encTexto(m) {
+  const p = [];
+  if (m.acam) p.push(`${m.acam} a caminho`);
+  if (m.pfoto) p.push(`<b class="pf">${m.pfoto} pendente${pl(m.pfoto)} de foto</b>`);
+  return p.length ? `<small class="encs">📦 ${p.join(' · ')}</small>` : '';
+}
+
 /* ------------------------------------------------------------------ caixa */
 function cardTile(c) {
   /* ONDE A CARTA ESTÁ (André, 2026-09-08). A frase vem pronta do Python
@@ -1577,6 +1767,8 @@ function cardTile(c) {
     onde,
     Object.entries(c.alt).map(([k, v]) => `${v}× ${k}`).join('; '),
     c.comprar ? `comprar ${c.comprar}` : '',
+    c.acam ? `${c.acam} a caminho` : '',
+    c.pfoto ? `${c.pfoto} pendente${pl(c.pfoto)} de foto` : '',
     c.bloq ? `limite de playset: falta ${c.bloq} que não se compra` : '',
     c.lotes.map(l => `${l.q}× ${l.local}`).join(' · '),
     /* "quantas tenho ao todo" — a informação secundária que vinha da página dos
@@ -2257,18 +2449,26 @@ function jaTenhoHTML(m, slot) {
      check que só pode falhar é pior do que check nenhum — e a linha continua a
      ser uma compra, que é a verdade. */
   if (!D.editable || !slot || !eds.length) return '';
-  const opts = eds.map((e, i) =>
-    `<option value="${esc(e.set)}|${esc(e.num)}"${i ? '' : ' selected'}>`
+  /* «QUALQUER EDIÇÃO» por omissão (2026-09-19): ele raramente sabe a edição
+     antes de a carta chegar, e desde que só a foto cria cópias a edição já não
+     é um palpite gravado — é a foto que a diz. O selector fica, para quando
+     sabe (a encomenda guarda-a e a foto tem de a trazer igual). */
+  const opts = `<option value="|" selected>qualquer edição</option>`
+    + eds.map(e =>
+    `<option value="${esc(e.set)}|${esc(e.num)}">`
     + `${esc((e.set || '').toUpperCase())} · ${esc(e.set_nome)}`
     + `${e.num ? ' #' + esc(e.num) : ''}</option>`).join('');
   return `<span class="jat">`
-    + (opts ? `<select class="jed" aria-label="Edição de ${esc(m.nm)}">`
-              + `${opts}</select>` : '')
+    + `<select class="jed" aria-label="Edição de ${esc(m.nm)}">${opts}</select>`
     + `<label><input type="checkbox" data-falta="1" data-slot="${esc(slot)}"`
     + ` data-nm="${esc(m.nm)}" data-board="${esc(m.board || '')}"`
     + ` data-q="${m.q}"> já a tenho, está no deck</label></span>`;
 }
 
+/* «JÁ A TENHO» (André, 2026-09-19: *"cada vez que eu adiciono que tenho a
+   carta, fica pendente de foto"*). O check já NÃO cria uma cópia: abre uma
+   encomenda directamente em «pendente de foto», e é a foto que a transforma em
+   cópia e a mete na caixa. O «anular» é o `−` dessa encomenda. */
 async function faltaCheck(cb) {
   if (!cb.checked) return;
   const sel = (cb.closest('.jat') || document).querySelector('select.jed');
@@ -2284,25 +2484,87 @@ async function faltaCheck(cb) {
     }
     const j = await r.json();
     if (j.erro) throw new Error(j.erro);
-    /* O «anular» só existe enquanto o servidor o aceita (a mesma janela do
-       registo). Passada ela, a cópia é uma cópia normal — e o que a tira
-       passa a ser o «vendida», que é o caminho com rasto. */
-    aviso(j.msg || 'Registada.',
-          j.copy_id ? () => anularFalta(j.copy_id) : null);
+    aviso(j.msg || 'Pendente de foto.',
+          j.id ? () => anularFalta(j.id, Number(cb.dataset.q || 1)) : null);
   } catch (e) {
     cb.checked = false; cb.disabled = false;
     erro('Não deu: ' +e.message);
   }
 }
 
-async function anularFalta(copyId) {
+async function anularFalta(id, q) {
   try {
-    const r = await gravar('api/caixa', { act: 'falta-anular', copy_id: copyId });
+    const r = await gravar('api/caixa', { act: 'falta-anular', id, q: q || 1 });
     const j = await r.json();
     if (j.erro) throw new Error(j.erro);
     toast(j.msg || 'Desfeito.');
   } catch (e) { erro('Não deu anular: ' +e.message); }
   recarregar();
+}
+
+/* ------------------------------------------------------------ ENCOMENDAS
+   André, 2026-09-19, à letra: *"dizia-te o que ia comprando, e tu só ias
+   pedindo as fotos das cartas; cada vez que eu adiciono que tenho a carta, fica
+   pendente de foto; quando coloco a foto, adicionas à coleção."*
+
+   Os três gestos, os mesmos na linha de compra de uma caixa e no tile do
+   separador: `+`/`−` (a caminho), «Chegou (N)» (passa a pendente de foto) e
+   «desfazer» (volta a a caminho). Nenhum deles cria uma cópia — só a foto. O
+   `−` numa linha só de pendentes tira do pendente (é o «anular» do «já a
+   tenho»). Só no modo edição: no site publicado não há endpoint que grave. */
+function encBotoes(slot, nm, m, board) {
+  if (!D.editable || !slot) return '';
+  const a = `data-slot="${esc(slot)}" data-nm="${esc(nm)}" data-board="${esc(board || '')}"`;
+  const total = (m.acam || 0) + (m.pfoto || 0);
+  return `<span class="stp">`
+    + `<button class="btn sm" data-enc="-1" ${a}${total ? '' : ' disabled'}`
+    + ` aria-label="menos uma encomendada de ${esc(nm)}" title="menos uma">−</button>`
+    + `<button class="btn sm" data-enc="1" ${a}`
+    + ` aria-label="mais uma encomendada de ${esc(nm)}"`
+    + ` title="comprei mais uma (fica a caminho)">+</button>`
+    + (m.acam ? `<button class="btn sm chg" data-chegou="1" ${a}`
+      + ` title="chegou: passa a pendente de foto">Chegou (${m.acam})</button>` : '')
+    + `</span>`;
+}
+
+/* O `+`/`−` numa linha: grava e relê. A edição do `+` é a do selector da linha
+   (se o houver), por omissão «qualquer edição». */
+async function encAjustar(btn) {
+  const delta = Number(btn.dataset.enc);
+  const sel = (btn.closest('li') || btn.closest('.enct') || document)
+    .querySelector('select.jed');
+  const par = ((sel && sel.value) || '|').split('|');
+  btn.disabled = true;
+  try {
+    const corpo = { delta, slot: btn.dataset.slot || null, nm: btn.dataset.nm,
+                    id: btn.dataset.id ? Number(btn.dataset.id) : null,
+                    set: delta > 0 ? (par[0] || '') : '',
+                    num: delta > 0 ? (par[1] || '') : '' };
+    const r = await gravar('api/encomenda', corpo);
+    if (!r.ok && r.status !== 403 && r.status !== 409) {
+      throw new Error('HTTP ' + r.status);
+    }
+    const j = await r.json();
+    if (j.erro) throw new Error(j.erro);
+    toast(j.msg || 'Feito.');
+    recarregar();
+  } catch (e) { btn.disabled = false; erro('Não deu: ' + e.message); }
+}
+
+async function encChegou(btn, desfazer) {
+  btn.disabled = true;
+  try {
+    const r = await gravar(desfazer ? 'api/encomenda-desfazer' : 'api/encomenda-chegou',
+                           { slot: btn.dataset.slot || null, nm: btn.dataset.nm,
+                             id: btn.dataset.id ? Number(btn.dataset.id) : null });
+    if (!r.ok && r.status !== 403 && r.status !== 409) {
+      throw new Error('HTTP ' + r.status);
+    }
+    const j = await r.json();
+    if (j.erro) throw new Error(j.erro);
+    toast(j.msg || 'Feito.');
+    recarregar();
+  } catch (e) { btn.disabled = false; erro('Não deu: ' + e.message); }
 }
 
 function wantlistHTML(itens, marca, id, detalhe, basicas, edicao, slot) {
@@ -2315,13 +2577,21 @@ function wantlistHTML(itens, marca, id, detalhe, basicas, edicao, slot) {
       compra.length ? 'para: ' + compra.map(p => `${p.caixa} ${p.q}×`).join(' · ') : '',
       serve.length ? 'serve também: ' + serve.map(p => p.caixa).join(', ') : '']
       .filter(Boolean).join(' — ');
-    return `<li data-nm="${esc(m.nm)}"><b>${m.q}×</b><span class="wn">${esc(m.nm)}`
+    /* ENCOMENDAS (2026-09-19): «a comprar 2 · 1 a caminho · 1 pendente de
+       foto», com os `+`/`−`/«Chegou» quando a linha é de UMA caixa. Uma linha
+       toda encomendada fica com `0×` — continua aqui para ele poder voltar
+       atrás, e sai do texto copiado. */
+    const enc = (m.acam || 0) + (m.pfoto || 0);
+    return `<li data-nm="${esc(m.nm)}"${enc ? ' class="enc-l"' : ''}>`
+      + `<b>${m.q}×</b><span class="wn">${esc(m.nm)}`
       + (m.board === 'side' ? `<span class="sb">SB</span>` : '')
       + (cara ? `<span class="cara">💶 cara</span>` : '')
       + (m.partilhada ? `<span class="part">🔁 partilhada por `
         + `${m.partilhada} caixas</span>` : '')
       + (sub ? `<small>${esc(sub)}</small>` : '')
-      + jaTenhoHTML(m, slot)
+      + encTexto(m)
+      + (m.q > 0 ? jaTenhoHTML(m, slot) : '')
+      + encBotoes(slot, m.nm, m, m.board)
       + `</span><span class="pz">${eur(m.cost)}</span></li>`;
   }).join('');
   /* DOIS formatos, porque servem dois sítios (André, 2026-09-08):
@@ -2333,6 +2603,7 @@ function wantlistHTML(itens, marca, id, detalhe, basicas, edicao, slot) {
          Comprar a versão errada é comprar duas vezes. */
   const porVersao = [];
   for (const m of itens) {
+    if (!m.q) continue;                 /* toda encomendada: não é compra */
     const mats = [...new Set((m.para || []).filter(p => !p.serve)
       .map(p => p.mat || ''))];
     if (mats.length > 1) {
@@ -2363,14 +2634,16 @@ function wantlistHTML(itens, marca, id, detalhe, basicas, edicao, slot) {
   };
   const so = texto(m => `${m.q} ${m.nm}`);
   const comMat = texto(m => `${m.q} ${m.nm}` + (m.mat ? ` [${m.mat}]` : ''));
+  const nComp = itens.filter(m => m.q > 0).length;
+  const nEnc = itens.length - nComp;
   return `<div class="blk" id="${id || ''}"><div class="flh">🛒 Comprar`
     + (marca ? ` <span class="mrk">${esc(marca)}</span>` : '')
-    + `<span class="dim">${car(itens.length)}</span>`
+    + `<span class="dim">${car(nComp)}${nEnc ? ` · ${nEnc} encomendada${pl(nEnc)}` : ''}</span>`
     + `<button class="cpbtn" onclick="copiar(this,'cm')" aria-label="Copiar as `
-    + `${car(itens.length)} no formato do Cardmarket">copiar p/ Cardmarket`
+    + `${car(nComp)} no formato do Cardmarket">copiar p/ Cardmarket`
     + `</button>`
     + `<button class="cpbtn" onclick="copiar(this,'mat')" aria-label="Copiar as `
-    + `${car(itens.length)} com o material de cada uma">copiar com material`
+    + `${car(nComp)} com o material de cada uma">copiar com material`
     + `</button></div>`
     + `<ul class="fl">${li}</ul>`
     + `<textarea class="cmk" data-cmk="cm" readonly>${esc(so)}</textarea>`
@@ -2912,8 +3185,142 @@ function vistaComprar() {
        + (D.resumo.sem_preco ? `<p class="lead">⚠️ <b>${D.resumo.sem_preco}</b> `
          + `cópias desta lista não têm preço na base (contam como 0 €). `
          + `O total é um <b>mínimo</b>, não a conta fechada.</p>` : '')
-       + wantlistHTML(itens, '', 'v-compras', true))
+       /* Com UMA caixa escolhida no selector a linha é dessa caixa e leva os
+          `+`/`−`/«Chegou» (2026-09-19); com todas, a linha junta várias caixas
+          e não há a quem encomendar — fica só o «N a caminho». */
+       + wantlistHTML(itens, '', 'v-compras', true, null, '',
+                      sel === 'todas' ? '' : sel))
     + basicasComprarHTML(sel);
+}
+
+/* ------------------------------------------------------------ ENCOMENDAS
+   O separador (André, 2026-09-19), à imagem do do riftvault: tiles com a
+   imagem da carta. (a) pendentes de foto — o que chegou e espera foto, mais as
+   cópias da base sem foto; (b) a caminho, por caixa e origem; (c) falta
+   encomendar, por caixa, com o «copiar»; (d) os totais. Os botões só no modo
+   edição; a informação é a mesma no site publicado. */
+function encTile(t) {
+  const cls = t.na_base ? 'base' : t.q && t.acaminho ? 'caminho' : 'foto';
+  const a = `data-id="${t.id || ''}" data-slot="${esc(t.slot || '')}" data-nm="${esc(t.nm)}"`;
+  let h = `<div class="enct ${cls}${t.aviso ? ' aviso' : ''}" data-nm="${esc(t.nm)}">`
+    + `<div class="cd" title="${esc(t.nm)}" onclick="tocarCarta(this)">`
+    + (t.sid ? `<img loading="lazy" decoding="async" src="${art(t.sid)}" alt="${esc(t.nm)}">` : '')
+    + `<span class="cq">${t.q}×</span></div>`
+    + `<div class="en">${esc(t.nm)}</div>`
+    + `<div class="ed">${esc(t.impressao)}`
+    + (t.caixa ? `<br>→ <b>${esc(t.caixa)}</b>` : '<br>→ colecção')
+    + (t.origem ? `<br>${esc(t.origem)}` : '')
+    + (t.na_base ? `<br>${t.por_confirmar ? '📷 edição por confirmar' : 'na base, sem foto'}`
+                 : t.unit != null ? `<br>${eur(t.unit)}/cópia` : '')
+    + `</div>`
+    + (t.aviso ? `<div class="ea">⚠️ ${esc(t.aviso)}</div>` : '');
+  if (D.editable && !t.na_base) {
+    if (t.acaminho) {
+      h += `<span class="stp"><button class="btn sm" data-enc="-1" ${a}`
+        + ` aria-label="menos uma de ${esc(t.nm)}">−</button>`
+        + `<button class="btn sm" data-enc="1" ${a} aria-label="mais uma de ${esc(t.nm)}">+</button></span>`
+        + `<button class="btn sm chg" data-chegou="1" ${a}>Chegou (${t.q})</button>`;
+    } else {
+      h += `<span class="stp"><button class="btn sm" data-desfazer="1" ${a}`
+        + ` title="voltar a «a caminho»">↩ desfazer</button>`
+        + `<button class="btn sm" data-enc="-1" ${a} title="tirar uma (afinal não tenho)">−</button></span>`;
+    }
+  }
+  return h + `</div>`;
+}
+
+function vistaEncomendas() {
+  const E = D.encomendas || { pendentes: [], a_caminho: [], falta: [], avisos: [], totais: {} };
+  const t = E.totais || {};
+  const porCaixa = (lista) => {
+    const g = new Map();
+    for (const x of lista) {
+      const k = x.caixa || 'Colecção';
+      if (!g.has(k)) g.set(k, []);
+      g.get(k).push(x);
+    }
+    return [...g.entries()];
+  };
+  let h = `<h2>📦 Encomendas</h2>`
+    + `<p class="lead"><b>Só a foto cria cópias.</b> O que compras marca-se aqui com o `
+    + `<b>+</b> (fica <b>a caminho</b>); quando chega, <b>Chegou</b> (fica `
+    + `<b>pendente de foto</b>); quando lhe tiras a foto e a largas em `
+    + `<code>pendentes\\</code>, entra na colecção <b>e na caixa</b> a que a `
+    + `encomenda pertencia. Nada disto conta como carta tida — mas já saiu do `
+    + `«a comprar» das caixas.</p>`
+    + `<div class="nums">`
+    + `<div class="num get">a caminho<b>${t.a_caminho || 0}</b>`
+    + (t.valor_a_caminho ? `<span class="dim">${eur(t.valor_a_caminho)} ao preço de hoje`
+      + (t.pago ? ` · pagaste ${eur(t.pago)}` : '') + `</span>` : '') + `</div>`
+    + `<div class="num"><span style="color:var(--add)">pendentes de foto</span><b>${t.pendente_foto || 0}</b>`
+    + (t.na_base_sem_foto ? `<span class="dim">+ ${t.na_base_sem_foto} na base sem foto</span>` : '')
+    + `</div>`
+    + `<div class="num buy">falta encomendar<b>${t.falta_comprar || 0}</b></div>`
+    + `<div class="num eur">por<b>${eur(t.custo_falta)}</b></div></div>`;
+  /* (a) pendentes de foto ------------------------------------------------ */
+  const pend = E.pendentes || [];
+  h += `<div class="enc-h"><b>📷 Pendentes de foto</b>`
+    + `<span>${cop(pend.reduce((s, x) => s + x.q, 0))}</span></div>`;
+  if (!pend.length) {
+    h += `<p class="ok2">✓ Nada à espera de foto.</p>`;
+  } else {
+    h += `<div class="enc-nota">Tira a foto a estas cartas e larga-a em `
+      + `<code>pendentes\\</code> (ou pela app do GitHub, repo <b>mtg-fotos-novas</b>): `
+      + `entram na colecção na corrida das 02:30 (<code>mtg-fotos-novas</code>) — e `
+      + `cada uma vai para a caixa da encomenda. As «na base, sem foto» já são `
+      + `cópias: a foto liga-se a elas, não cria outra.</div>`;
+    for (const [caixa, lista] of porCaixa(pend)) {
+      h += `<div class="enc-h"><span>${esc(caixa)}</span>`
+        + `<span>${cop(lista.reduce((s, x) => s + x.q, 0))}</span></div>`
+        + `<div class="enc-grid">` + lista.map(encTile).join('') + `</div>`;
+    }
+  }
+  /* (b) a caminho -------------------------------------------------------- */
+  const cam = (E.a_caminho || []).map(x => Object.assign({}, x, { acaminho: true }));
+  h += `<div class="enc-h"><b>🚚 A caminho</b>`
+    + `<span>${cop(cam.reduce((s, x) => s + x.q, 0))}`
+    + (t.valor_a_caminho ? ` · ${eur(t.valor_a_caminho)}` : '')
+    + (t.sem_preco ? ` · ${t.sem_preco} sem preço` : '') + `</span></div>`;
+  if (!cam.length) {
+    h += `<p class="ok2">✓ Nada a caminho.</p>`;
+  } else {
+    for (const [caixa, lista] of porCaixa(cam)) {
+      const origens = [...new Set(lista.map(x => x.origem).filter(Boolean))];
+      h += `<div class="enc-h"><span>${esc(caixa)}</span><span>`
+        + `${cop(lista.reduce((s, x) => s + x.q, 0))} · ${eur(lista.reduce((s, x) => s + (x.total || 0), 0))}`
+        + (origens.length ? ` · ${esc(origens.join(', '))}` : '') + `</span></div>`
+        + `<div class="enc-grid">` + lista.map(encTile).join('') + `</div>`;
+    }
+  }
+  /* (c) falta encomendar ------------------------------------------------- */
+  const falta = E.falta || [];
+  h += `<div class="enc-h"><b>🛒 Falta encomendar</b>`
+    + `<span>${cop(t.falta_comprar || 0)} · ${eur(t.custo_falta)}</span></div>`
+    + `<p class="nota">O «a comprar» de cada caixa <b>depois</b> de descontar o que já `
+    + `vem a caminho. É a mesma lista da aba <b>Comprar</b>; aqui está por caixa, `
+    + `com o <b>+</b> ao lado de cada carta para marcares o que compraste.</p>`;
+  if (!falta.length) {
+    h += `<p class="ok2">✓ Não falta encomendar nada. 🎉</p>`;
+  } else {
+    for (const f of falta) {
+      h += `<div class="box"><div class="btop"><b>${esc(f.caixa)}</b>`
+        + `<span class="pct" style="font-size:15px">${cop(f.comprar)} · ${eur(f.custo)}</span></div>`
+        + wantlistHTML(f.linhas, f.marca, '', false, null, '', f.slot) + `</div>`;
+    }
+  }
+  /* avisos ------------------------------------------------------------- */
+  const av = E.avisos || [];
+  if (av.length) {
+    h += `<div class="blk onde"><b>⚠️ encomendas que a caixa já não pede — ${cop(av.reduce((s, a) => s + a.q, 0))}</b>`
+      + `<p class="nota">A lista vigiada mudou, a carta veio de outro lado, ou a caixa `
+      + `saiu do config. Ficam à vista e <b>não descontam noutra caixa</b>: decide `
+      + `tu (o <b>−</b> tira-as).</p><ul>`
+      + av.map(a => `<li><b>${a.q}× ${esc(a.nm)}</b> → ${esc(a.caixa)} — ${esc(a.porque)}</li>`).join('')
+      + `</ul></div>`;
+  }
+  return h + `<p class="nota">Cada <b>+</b>, <b>−</b>, «Chegou», «desfazer» e cada `
+    + `foto→cópia fica registado em <code>data\\encomendas.log</code>, ao lado da `
+    + `base. Pelo terminal: <code>py -m mtgvault.cli encomendas</code>.</p>`;
 }
 
 /* As básicas que a pilha de Unhinged NÃO cobre — hoje as Snow-Covered do Duel
@@ -3364,7 +3771,8 @@ function partesDe(id) {
   const c = D.caixas.find(x => x.slot === id);
   if (c) return c.vazio ? [] : [c.parte];
   return ({ arrumar: ['arrumar'], partilhadas: ['compras'], comprar: ['compras'],
-            vender: ['venda'], sugestoes: ['premodern'] })[id] || [];
+            vender: ['venda'], sugestoes: ['premodern'],
+            encomendas: ['encomendas'] })[id] || [];
 }
 async function carregaParte(nome) {
   if (PARTES[nome]) return PARTES[nome];
@@ -3406,6 +3814,7 @@ async function render() {
     v.innerHTML = D.premodern && D.premodern.activo ? vistaSugestoes() : vistaTodas();
   }
   else if (aba === 'naoenc') { v.innerHTML = vistaNaoEncontradas(); }
+  else if (aba === 'encomendas') { v.innerHTML = vistaEncomendas(); }
   else { v.innerHTML = vistaTodas(); }
   ligar();
   renderBarra();
@@ -3647,6 +4056,17 @@ function ligar() {
   for (const cb of document.querySelectorAll('[data-falta]')) {
     cb.onchange = () => faltaCheck(cb);
   }
+  /* ENCOMENDAS (2026-09-19): `+`/`−`, «Chegou», «desfazer» — nas linhas de
+     compra de uma caixa e nos tiles do separador. */
+  for (const b of document.querySelectorAll('[data-enc]')) {
+    b.onclick = () => encAjustar(b);
+  }
+  for (const b of document.querySelectorAll('[data-chegou]')) {
+    b.onclick = () => encChegou(b, false);
+  }
+  for (const b of document.querySelectorAll('[data-desfazer]')) {
+    b.onclick = () => encChegou(b, true);
+  }
   const cc = $('#compra-caixa');
   if (cc) cc.onchange = () => { P.compra = cc.value; save(); render(); };
   for (const b of document.querySelectorAll('[data-vend]')) {
@@ -3868,7 +4288,7 @@ function iniciar(dados) {
   PM_RAZAO = D.pm_razao || '';
   if (!D.caixas.some(c => c.slot === aba)
       && !['plano', 'todas', 'montados', 'pormontar', 'arrumar', 'partilhadas',
-           'comprar', 'vender', 'sugestoes'].includes(aba)) {
+           'comprar', 'vender', 'sugestoes', 'encomendas', 'naoenc'].includes(aba)) {
     aba = 'plano';
   }
   renderResumo(); renderTabs(); render();

@@ -86,10 +86,12 @@ def _front(nm: str) -> str:
 
 
 def impressao(r) -> str:
-    """`ODY #123 · pt · foil` — a impressão em texto, para o log e as listas."""
-    partes = [((r["set_code"] or "").upper() + (f" #{r['collector_number']}"
-                                                if r.get("collector_number") else ""))
-              or "qualquer edição", r.get("lang") or "", r.get("finish") or ""]
+    """`ODY #123 · pt · foil` — a impressão em texto, para o log e as listas.
+    Aceita um `sqlite3.Row` (sem `.get`) ou um dicionário."""
+    d = dict(r)
+    partes = [((d.get("set_code") or "").upper()
+               + (f" #{d['collector_number']}" if d.get("collector_number") else ""))
+              or "qualquer edição", d.get("lang") or "", d.get("finish") or ""]
     return " · ".join(p for p in partes if p)
 
 

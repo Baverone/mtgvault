@@ -83,8 +83,8 @@ from urllib.parse import parse_qs, urlparse
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import (caixas, configio, db, loadout, migracao, qr,  # noqa: E402
-                      sources, venda)
+from mtgvault import (caixas, configio, db, encomendas, loadout,  # noqa: E402
+                      migracao, qr, sources, venda)
 
 import deckboxes  # noqa: E402
 import metagame  # noqa: E402
@@ -624,31 +624,83 @@ def anular_registo(con, cfg, slot_id: str) -> str:
             + (f" com {n} cópias" if n else " e vazia"))
 
 
-def registar_falta(con, dados: dict) -> str:
+def registar_falta(con, dados: dict) -> dict:
     """*"Já a tenho, está no deck"*: o check de uma linha da lista de compras.
 
     André, 2026-09-08, à letra: *"Arranja forma de eu poder dar check nas cartas
     das faltas, para dizer que já as tenho e já coloquei no deck."*
 
-    O relatório recalcula-se AQUI, e não se aproveita o da página: ela pode estar
-    aberta há duas horas e mandar registar quatro cópias de uma carta que
-    entretanto só falta uma vez. É a mesma precaução do botão *"vendida"*.
+    **Desde 2026-09-19 não cria cópia nenhuma** (André: *"cada vez que eu
+    adiciono que tenho a carta, fica pendente de foto; quando coloco a foto,
+    adicionas à coleção"*): abre uma ENCOMENDA directamente em *pendente de
+    foto*, e é a foto que a transforma em cópia e a mete na caixa
+    (`encomendas.conciliar`, no import). O motor antigo
+    (`loadout.registar_falta`, cópia com «edição por confirmar» + linha na
+    `copy_allocation`) fica no código como caminho antigo, sem botão.
     """
     slot_id = dados.get("slot")
     nm = (dados.get("nm") or "").strip()
     if not nm:
         raise ValueError("sem carta")
-    r = loadout.registar_falta(
-        con, loadout.report(con), slot_id, nm,
-        board=(dados.get("board") or ""),
-        quantidade=(int(dados["q"]) if dados.get("q") else None),
+    r = encomendas.adicionar(
+        con, slot_id, nm, int(dados.get("q") or 1),
         set_code=((dados.get("set") or "").strip().lower() or None),
-        collector_number=((dados.get("num") or "").strip() or None))
-    _ULTIMA_FALTA[r["copy_id"]] = _time.time()
-    return {**r, "msg": (f'{r["q"]}× {r["nm"]} ({r["set_code"]}) está na caixa '
-                         f'{r["caixa"]}'
-                         + (" — edição por confirmar, a próxima foto acerta-a"
-                            if r["palpite"] else ""))}
+        collector_number=((dados.get("num") or "").strip() or None),
+        origem=encomendas.ORIGEM_JA_TENHO, estado=encomendas.PENDENTE)
+    return {**r, "q": int(dados.get("q") or 1),
+            "msg": (f'{dados.get("q") or 1}× {r["nm"]} pendente de foto para '
+                    f'{r["caixa"] or "a colecção"} ({r["impressao"]}) — tira-lhe a '
+                    f'foto e larga-a em pendentes/: é a foto que a mete na '
+                    f'colecção e na caixa')}
+
+
+def _encomenda(con, dados: dict) -> str:
+    """`POST /api/encomenda`: o `+` (delta > 0) e o `−` (delta < 0).
+
+    Por `id` (um tile do separador) ou por (`slot`, `nm`) (uma linha de compra
+    de uma caixa). O `+` valida contra a regra de material da caixa e o
+    catálogo (`encomendas.validar`); o `−` nunca vai abaixo de zero.
+    """
+    delta = int(dados.get("delta") or 0)
+    if not delta:
+        raise ValueError("sem delta")
+    ident = dados.get("id") or None
+    slot, nm = dados.get("slot") or None, (dados.get("nm") or "").strip()
+    if delta > 0:
+        if ident and not nm:
+            r = encomendas.por_id(con, ident)
+            if r is None:
+                raise ValueError("essa encomenda já não existe — recarrega a página")
+            slot, nm = r["slot"], r["nm"]
+            dados = {**dados, "set": r["set_code"] or "", "num": r["collector_number"] or ""}
+        r = encomendas.adicionar(
+            con, slot, nm, delta,
+            set_code=((dados.get("set") or "").strip().lower() or None),
+            collector_number=((dados.get("num") or "").strip() or None),
+            origem=(dados.get("origem") or "").strip() or None,
+            preco=(float(dados["preco"]) if dados.get("preco") else None))
+        return (f'{r["qty_a_caminho"]}× {r["nm"]} a caminho para '
+                f'{r["caixa"] or "a colecção"} ({r["impressao"]})')
+    r = encomendas.remover(con, ident, slot=slot, nm=nm, qty=-delta)
+    if not r["tirado"]:
+        raise ValueError(f"{r['nm'] or nm}: não há nada encomendado para tirar")
+    return f'{r["tirado"]}× {r["nm"]} a menos na encomenda'
+
+
+def _encomenda_chegou(con, dados: dict, desfazer: bool = False) -> str:
+    ident = dados.get("id") or None
+    slot, nm = dados.get("slot") or None, (dados.get("nm") or "").strip()
+    q = int(dados["q"]) if dados.get("q") else None
+    if desfazer:
+        r = encomendas.desfazer_chegou(con, ident, slot=slot, nm=nm, qty=q)
+        if not r["movido"]:
+            raise ValueError(f"{r['nm'] or nm}: não há nada pendente de foto para desfazer")
+        return f'{r["movido"]}× {r["nm"]} de volta a «a caminho»'
+    r = encomendas.chegou(con, ident, slot=slot, nm=nm, qty=q)
+    if not r["movido"]:
+        raise ValueError(f"{r['nm'] or nm}: não há nada a caminho para dar como chegado")
+    return (f'{r["movido"]}× {r["nm"]} chegou — pendente de foto: tira-lhe a foto '
+            f'e larga-a em pendentes/')
 
 
 def marcar_nao_encontradas(con, slot_id: str, copias) -> dict:
@@ -674,18 +726,22 @@ def marcar_nao_encontradas(con, slot_id: str, copias) -> dict:
                     + ". Voltam a ser compra.")}
 
 
-def anular_falta(con, copy_id) -> str:
-    """O desfazer do check, enquanto o aviso está à vista. Ver `_ULTIMA_FALTA`."""
-    cid = int(copy_id or 0)
-    quando = _ULTIMA_FALTA.get(cid)
-    if quando is None or _time.time() - quando > ANULAR_JANELA:
-        _ULTIMA_FALTA.pop(cid, None)
+def anular_falta(con, dados: dict) -> str:
+    """O desfazer do check: o `−` da encomenda pendente que ele acabou de abrir.
+
+    Desde 2026-09-19 não há janela (`_ULTIMA_FALTA` ficou do caminho antigo):
+    o check já não cria cópia nenhuma, e tirar uma encomenda pendente é um
+    gesto sem custo, com rasto no `encomendas.log`. Aceita o `copy_id` de uma
+    página antiga só para responder com uma frase em vez de um 500.
+    """
+    ident = dados.get("id")
+    if not ident:
         return ""
-    r = loadout.anular_falta(con, cid)
-    _ULTIMA_FALTA.pop(cid, None)
-    if not r["copias"]:
+    r = encomendas.remover(con, ident, qty=int(dados.get("q") or 1),
+                           estado=encomendas.PENDENTE)
+    if not r["tirado"]:
         return ""
-    return f'{r["copias"]}× {r["nm"]}: desfeito — a cópia voltou a ser falta'
+    return f'{r["tirado"]}× {r["nm"]}: desfeito — voltou a ser compra'
 
 
 def regenerar(con) -> None:
@@ -701,6 +757,9 @@ def regenerar(con) -> None:
     """
     deckboxes.build(con, ROOT / "deckboxes.html")
     metagame.build(con, ROOT / "metagame.html")
+    # O que está pendente de foto, para o Claude que cataloga as fotos
+    # (2026-09-19). Ao lado das fotos, e apaga-se quando não há nada.
+    encomendas.escrever_esperadas(con, ROOT / "pendentes")
     _CACHE.clear()
 
 
@@ -946,6 +1005,22 @@ class Handler(BaseHTTPRequestHandler):
                 if caminho == "/api/vender":
                     self._json(self._vender(dados))
                     return
+                if caminho in ("/api/encomenda", "/api/encomenda-chegou",
+                               "/api/encomenda-desfazer"):
+                    # ENCOMENDAS (André, 2026-09-19): «só a foto cria cópias».
+                    # Nenhum destes três escreve em `copies` nem em
+                    # `copy_allocation` — mexem na tabela `encomendas`, e por
+                    # isso não há backup: nada se perde que uma foto não refaça.
+                    # Regenera-se porque o «a comprar» de cada caixa mudou.
+                    with db.session() as con:
+                        if caminho == "/api/encomenda":
+                            msg = _encomenda(con, dados)
+                        else:
+                            msg = _encomenda_chegou(
+                                con, dados, desfazer=caminho.endswith("-desfazer"))
+                        regenerar(con)
+                    self._json({"ok": True, "msg": msg})
+                    return
                 if caminho == "/api/venda-export":
                     # «Gravar em data/» (2026-09-18): os mesmos dois ficheiros
                     # que o `daily` escreve (`venda-stock.csv` +
@@ -1047,17 +1122,18 @@ class Handler(BaseHTTPRequestHandler):
                        + (f' ({r["de_outra"]} eram de outra caixa — ela passa a '
                           f'vir buscá-las aqui)' if r["de_outra"] else ""))
             elif act == "falta":
-                # «JÁ A TENHO, ESTÁ NO DECK» (André, 2026-09-08): o check de uma
-                # linha da lista de compras. Não passa pelo config — o que muda é
-                # a colecção (uma cópia nova) e a estante (a caixa onde ela
-                # está), e isso vive na base.
+                # «JÁ A TENHO, ESTÁ NO DECK» (André, 2026-09-08; desde
+                # 2026-09-19 abre uma encomenda PENDENTE DE FOTO em vez de criar
+                # a cópia — só a foto cria cópias). Não passa pelo config: vive
+                # na tabela `encomendas`, e o `id` é por onde o «anular» pega.
                 r = registar_falta(con, dados)
-                msg, extra["copy_id"] = r["msg"], r["copy_id"]
+                msg, extra["id"] = r["msg"], r["id"]
             elif act == "falta-anular":
-                msg = anular_falta(con, dados.get("copy_id"))
+                msg = anular_falta(con, dados)
                 if not msg:
-                    return {"erro": "já passou a janela do «anular»: essa cópia "
-                                    "passou a ser uma cópia normal da colecção"}
+                    return {"erro": "essa encomenda já não está pendente — "
+                                    "recarrega a página (na aba Encomendas o «−» "
+                                    "tira o que lá estiver)"}
             elif act == "nao-encontrei":
                 # «SE NÃO MARQUEI, É PORQUE NÃO A TENHO» (André, 2026-09-09): o
                 # inverso do «já a tenho». Não passa pelo config — o que muda é a
