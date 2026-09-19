@@ -496,7 +496,11 @@ def caso_a_aba_vender_leva_a_saida_e_o_modo_edicao_grava():
             q = Pedido(f"/data/paginas/deckboxes/{c['parte']}.json?t={webapp.token()}")
             q.do_GET()
             partes[c["parte"]] = json.loads(q.corpo)
-        for nome in ("arrumar", "compras", "premodern"):
+        # As partes das abas são as que o ÍNDICE anuncia (`_partes`), não uma
+        # lista escrita aqui: a aba Encomendas (2026-09-19) chegou e o `juntar`
+        # rebentava com KeyError por a lista estar à mão.
+        for nome in (n for n in idx["_partes"]
+                     if not n.startswith("caixa-") and n != "venda"):
             q = Pedido(f"/data/paginas/deckboxes/{nome}.json?t={webapp.token()}")
             q.do_GET()
             partes[nome] = json.loads(q.corpo)
