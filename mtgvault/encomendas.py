@@ -180,6 +180,9 @@ def cumpre_regra(con, s: dict | None, nm: str, set_code: str | None,
     from . import loadout                                  # noqa: PLC0415
     if s is None or nm in loadout.BASICS:
         return True, ""
+    # A regra PARA ESTA CARTA (2026-09-19): numa que nunca saiu em foil a caixa
+    # de foil aceita — e exige — nonfoil.
+    s = loadout.regra_da_carta(con, s, nm)
     req = loadout.requisito_material(s) or "sem regra"
     if s.get("lingua") and lang and lang.lower() != s["lingua"].lower():
         return False, f"{s['nome']} só usa {s['lingua'].upper()} ({req})"
@@ -214,7 +217,7 @@ def validar(con, s: dict | None, nm: str, set_code: str | None = None,
     set_code = (set_code or "").strip().lower() or None
     collector_number = (collector_number or "").strip() or None
     if s is not None:
-        fin_c, lang_c = loadout.material_da_caixa(s)
+        fin_c, lang_c = loadout.material_da_caixa(loadout.regra_da_carta(con, s, nome))
         # O Pauper é "foil se houver, senão nonfoil": uma encomenda dele pode
         # ser qualquer um dos dois. `material_da_caixa` diz foil porque é o que
         # a caixa PREFERE; aqui fica o que ele disser, senão a preferência.

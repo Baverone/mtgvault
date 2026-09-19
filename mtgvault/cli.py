@@ -655,20 +655,24 @@ def _loadout_resumo(rep):
             print(f"  {i}. {m['caixa']:<28} {m['pct']:>3}%  tirar {m['tirar']:>3}"
                   f"  comprar {m['comprar']:>3} ({m['custo']:.2f}€)"
                   f"  {m['estado']}")
-    print(f"\n  comprar: {rep['comprar_total']} cópias / {rep['custo_total']:.2f}€")
+    print(f"\n  comprar: {rep['comprar_total']} cópias / {rep['custo_total']:.2f}€"
+          "  (cada caixa compra as suas cartas — 2026-09-19)")
     # ONDE A CARTA ESTÁ (André, 2026-09-08): "ir buscar a outra caixa" só é
-    # verdade quando a caixa está montada. Enquanto não está, a cópia está na
-    # gaveta como todas as outras — e mandá-lo a uma caixa vazia era a mentira
-    # que ele apanhou. As três parcelas dizem-se, nunca só a soma.
-    print(f"  destinadas a outra caixa: {rep['noutra_total']} cópias "
-          f"(não são compra) — {rep['noutra_montada_total']} dentro de uma caixa "
-          f"montada, {rep['noutra_reservada_total']} ainda na gaveta, "
-          f"{rep['noutra_futura_total']} por comprar")
+    # verdade quando a caixa está montada. Desde 2026-09-19 NÃO HÁ ir buscar —
+    # *"cada deck deverá ter as suas próprias cartas dentro"* — e as três
+    # parcelas são zero por regra; só se imprimem se alguma vez deixarem de o
+    # ser, para o defeito se ver.
+    if rep["noutra_total"]:
+        print(f"  destinadas a outra caixa: {rep['noutra_total']} cópias "
+              f"(não são compra) — {rep['noutra_montada_total']} dentro de uma caixa "
+              f"montada, {rep['noutra_reservada_total']} ainda na gaveta, "
+              f"{rep['noutra_futura_total']} por comprar  <- NÃO DEVIA ACONTECER")
     if rep.get("bloqueado_total"):
         n, c = rep["bloqueado_total"], len(rep["limites"])
         print(f"  limite de playset: {n} {'cópia' if n == 1 else 'cópias'} que "
               f"não se {'compra' if n == 1 else 'compram'} "
-              f"({c} {'carta' if c == 1 else 'cartas'})")
+              f"({c} {'carta' if c == 1 else 'cartas'}; máximo por carta no "
+              f"grupo, somando as caixas — estão noutra caixa do Premodern)")
     # REGISTOS QUE NÃO PODEM ESTAR CERTOS (2026-09-09). À cabeça e não escondido
     # numa caixa: é o vault a dizer que uma coisa que ele próprio confirmou não
     # bate certo, e é ele que decide o que fazer com ela.
@@ -777,19 +781,35 @@ def _loadout_detalhe(rep, procura):
         if not s["missing"]:
             print("  COMPLETO.")
             continue
+        # Desde 2026-09-19 o "destinadas a outra caixa" é zero por regra (cada
+        # caixa compra as suas); só se imprime se um dia deixar de o ser.
         print(f"\n  FALTAM {s['faltam']} cópias: {s['comprar']} a comprar "
-              f"({s['custo']:.2f}€) + {s['noutra']} destinadas a outra caixa "
-              f"({s['noutra_montada']} dentro dela, {s['noutra_reservada']} "
-              f"ainda na gaveta, {s['noutra_futura']} por comprar)")
+              f"({s['custo']:.2f}€)"
+              + (f" + {s['noutra']} destinadas a outra caixa "
+                 f"({s['noutra_montada']} dentro dela, {s['noutra_reservada']} "
+                 f"ainda na gaveta, {s['noutra_futura']} por comprar)"
+                 if s["noutra"] else "")
+              + (f" + {s['playset_bloqueado']} que o limite de playset não deixa "
+                 f"comprar" if s.get("playset_bloqueado") else ""))
         for m in s["missing"]:
             u = f"{m['unit']:.2f}€" if m["unit"] else "?"
             # Quando o slot é de foil e o preço veio do nonfoil, diz-se: a
             # estimativa está por baixo, e é melhor sabê-lo antes de comprar.
-            if s.get("acabamento") == "foil" and m["price_finish"] == "nonfoil":
+            # Numa carta que nunca saiu em foil não há estimativa por baixo
+            # nenhuma — o nonfoil é o preço certo (2026-09-19).
+            if (s.get("acabamento") == "foil" and m["price_finish"] == "nonfoil"
+                    and m.get("foil_existe", True)):
                 u += "*"
             partes = [f"comprar {m['comprar']}"
                       if 0 < m["comprar"] < m["missing"] else "",
                       "; ".join(loadout.onde_esta(m)),
+                      # A NOTA (2026-09-19): "tens 2 no Blue Farm" — só informação.
+                      loadout.nota_onde(m),
+                      (loadout.texto_playset(m, loadout.playset_maximo(s))
+                       if m.get("playset_bloqueado") else ""),
+                      "nonfoil — nunca saiu em foil"
+                      if not m.get("foil_existe", True)
+                      and s.get("acabamento") in ("foil", "prefere_foil") else "",
                       "; ".join(f"{v}× {k}" for k, v in m["alt"].items()),
                       "; ".join(f"em {k}: {v}" for k, v in m["alt_onde"].items())]
             extra = "   [" + " | ".join(p for p in partes if p) + "]" \
@@ -828,12 +848,14 @@ def _loadout_detalhe(rep, procura):
         # caixa ficava à espera de uma carta que ninguém vai comprar.
         if s.get("playset_faltas"):
             n = s["playset_bloqueado"]
-            print(f"\n  LIMITE DE PLAYSET ({n} {'cópia' if n == 1 else 'cópias'} — "
-                  f"máximo {loadout.playset_maximo(s)} por carta em "
-                  f"{s.get('grupo')}, somando todas as caixas):")
+            print(f"\n  LIMITE DE PLAYSET ({n} {'cópia' if n == 1 else 'cópias'} em "
+                  f"falta que não se compram — máximo {loadout.playset_maximo(s)} "
+                  f"por carta em {s.get('grupo')}, somando todas as caixas; "
+                  f"cada caixa tem as suas cartas, e estas estão noutra):")
             for m in s["playset_faltas"]:
-                print(f"    {m['nm']:<34} falta {m['playset_bloqueado']} "
-                      f"que não se compra ({m['board']})")
+                print(f"    {m['nm']:<34} "
+                      f"{loadout.texto_playset(m, loadout.playset_maximo(s))} "
+                      f"({m['board']})")
         # E o que estava REGISTADO nesta caixa sem lá poder estar (2026-09-09).
         # Vem antes da wantlist de propósito: é a explicação de metade dela.
         if s.get("contradicoes"):
