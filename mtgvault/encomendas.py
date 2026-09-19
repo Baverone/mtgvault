@@ -472,12 +472,20 @@ def _porque_sobra(s: dict, nm: str, sobra: int) -> str:
     duas vezes."""
     falta = [m for m in s["missing"] if m["nm"] == nm]
     if falta:
+        # Os dois primeiros ramos são de antes de 2026-09-19 (a partilha e o
+        # "ir buscar"), que hoje são zero por regra — ficam para o dia em que
+        # alguém volte a ligá-los, e para o aviso não mentir se isso acontecer.
         fut = {k: v for m in falta for k, v in (m.get("noutra_futura") or {}).items()}
         if fut:
             quem = ", ".join(sorted(fut))
             return f"compra partilhada: {quem} compra-a e esta caixa vai lá buscá-la"
         if any(m.get("noutra_q") for m in falta):
             return "a caixa vai buscá-la a outra caixa, não a compra"
+        # O TECTO de playset do Premodern (a única coisa que ainda tira uma
+        # falta da compra): a carta está em falta mas o grupo já tem as 4.
+        if any(m.get("playset_bloqueado") for m in falta):
+            return ("limite de playset: o grupo já tem o máximo desta carta "
+                    "(está noutra caixa de Premodern), não se compra")
         return f"a mais do que a caixa pede ({sobra})"
     if any(m["nm"] == nm for m in s["have"]):
         return "a caixa já a tem"

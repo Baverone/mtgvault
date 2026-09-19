@@ -39,6 +39,19 @@ O que aqui se tranca são as regras que custam dinheiro se partirem em silêncio
      e uma cópia já arrumada numa caixa escapa às regras de material — a versão
      nova da excepção do balde, agora que a caixa já não é um balde.
 
+DESDE 2026-09-19 (André, à letra: *"cada deck deverá ter as suas próprias cartas
+dentro, não repetindo com outros decks!"*) o ponto 7 está SUPERSEDED: uma carta
+que a alocação deu a outra caixa é COMPRA para esta (com uma nota *"tens N no
+X"*), o `noutra` é zero em todos os formatos, não há compras partilhadas, e
+`conflitos`/`partilhas` são vazios por regra. Os casos que fixavam a partilha
+(v4, 2026-09-07; Premodern, 2026-09-08) foram reescritos para a regra nova, um a
+um, com o porquê no docstring. O que se mantém é o TECTO de playset do
+Premodern, agora sobre o grupo inteiro (ver `test_caixas_dedicadas.py`).
+
+E a segunda regra do mesmo dia (*"confirma se há foil"*) mudou a mensagem *"não
+é foil"*: passou a dizer em que edições a carta existe em foil — `nao_foil(nm)`
+abaixo compõe-na a partir do catálogo de teste (ver `test_foil_existe.py`).
+
 Não toca na rede.
 """
 import json
@@ -140,10 +153,24 @@ def por_nome(rep):
     return {s["nome"]: s for s in rep["slots"]}
 
 
+def nao_foil(nm):
+    """A mensagem *"não é foil (existe em foil: 4BB 1995)"* desta carta, tal como
+    o `loadout.razao_nao_foil` a compõe do catálogo de teste (uma impressão por
+    carta, todas com foil)."""
+    sc, rel = next((sc, rel) for n, sc, rel, _rl in CATALOGO if n == nm)
+    return loadout.razao_nao_foil([f"{sc.upper()} {rel[:4]}"])
+
+
 # ---------------------------------------------------------------------------
 def caso_uma_copia_uma_caixa():
-    """Duas caixas, uma cópia: ganha a de prioridade mais alta, e o conflito diz
-    quem ficou sem. Somar coberturas independentes dava 100% às duas."""
+    """Duas caixas, uma cópia: ganha a de prioridade mais alta. Somar coberturas
+    independentes dava 100% às duas.
+
+    Até 2026-09-19 a segunda ficava em `conflitos` (*"ficam_sem"*) e ia buscar a
+    cópia à primeira. Desde então (*"cada deck deverá ter as suas próprias
+    cartas dentro"*) a segunda COMPRA a sua, os `conflitos` são vazios por regra
+    e o que fica é a nota *"tens 1 no A"*.
+    """
     con = base()
     deck(con, "A", "legacy", [("Sol Ring", 1)])
     deck(con, "B", "legacy", [("Sol Ring", 1)])
@@ -152,9 +179,11 @@ def caso_uma_copia_uma_caixa():
                                slot("B", "legacy", "B", prioridade=2)])
     s = por_nome(rep)
     assert s["A"]["pct"] == 100 and s["B"]["pct"] == 0, (s["A"]["pct"], s["B"]["pct"])
-    c = [x for x in rep["conflitos"] if x["nm"] == "Sol Ring"]
-    assert c and c[0]["ficam_com"] == ["A"] and c[0]["ficam_sem"] == ["B"], c
-    print("uma cópia física serve uma caixa só; o conflito diz quem fica sem")
+    assert rep["conflitos"] == [], rep["conflitos"]
+    m = s["B"]["missing"][0]
+    assert m["comprar"] == 1 and m["noutra"] == {} and m["noutra_nota"] == {"A": 1}, m
+    assert loadout.nota_onde(m) == "tens 1 no A", loadout.nota_onde(m)
+    print("uma cópia física serve uma caixa só; a outra compra e sabe que a tem")
 
     # A prioridade manda: invertida, ganha o B.
     rep = loadout.report(con, [slot("A", "legacy", "A", prioridade=2),
@@ -173,19 +202,22 @@ def preco(con, nm, finish, trend):
 
 
 def caso_noutra_caixa_nao_e_compra():
-    """André, 2026-09-07: *"indicas onde está a carta, para, se eu quiser ir jogar,
-    saber onde ir buscar e não ter que comprar múltiplos para todos."*
+    """SUPERSEDED a 2026-09-19 — o nome ficou para o histórico dizer o que mudou.
 
-    Quatro Swords to Plowshares pedidas por três caixas: uma fica com elas, as
-    outras duas dizem "em <caixa>" e **não somam ao custo**. Antes desta regra o
-    vault pedia 8 Swords compradas para tapar um buraco que não existe.
+    Até aí (André, 2026-09-07: *"indicas onde está a carta, para (...) não ter
+    que comprar múltiplos para todos"*) quatro Swords pedidas por três caixas
+    eram uma compra de zero: a primeira ficava com elas e as outras diziam "em
+    A". Desde 2026-09-19 (*"cada deck deverá ter as suas próprias cartas dentro,
+    não repetindo com outros decks!"*) as outras duas COMPRAM as suas 4 — o
+    `noutra` é zero, o custo soma, e a nota *"tens 4 no A"* fica só para ele
+    saber que a carta existe em casa.
     """
     con = base()
     preco(con, "Swords to Plowshares", "foil", 1.5)
     for nome in ("A", "B", "C"):
         deck(con, nome, "legacy", [("Swords to Plowshares", 4)])
     # Foil porque o grupo SPML é "tudo foil e inglês" (a regra dele de
-    # 2026-09-07); o que este caso tranca é o "noutra caixa", não o acabamento.
+    # 2026-09-07); o que este caso tranca é o "cada caixa compra as suas".
     add(con, "Swords to Plowshares", 4, finish="foil", sub="SPML")
     rep = loadout.report(con, [slot("A", "legacy", "A", prioridade=1, balde="SPML"),
                                slot("B", "legacy", "B", prioridade=2, balde="SPML"),
@@ -196,30 +228,26 @@ def caso_noutra_caixa_nao_e_compra():
     for nome in ("B", "C"):
         m = [x for x in s[nome]["missing"] if x["nm"] == "Swords to Plowshares"][0]
         assert m["missing"] == 4, m
-        assert m["noutra"] == {"A": 4}, m["noutra"]
-        assert m["comprar"] == 0 and m["cost"] == 0, m
-        assert s[nome]["comprar"] == 0 and s[nome]["noutra"] == 4, s[nome]
-        assert s[nome]["custo"] == 0, s[nome]["custo"]
-        assert [x["nm"] for x in s[nome]["noutra_caixa"]] == ["Swords to Plowshares"]
-    assert rep["custo_total"] == 0, rep["custo_total"]
-    assert rep["comprar_total"] == 0 and rep["noutra_total"] == 8
-    print("carta que está noutra caixa diz onde está e não entra na compra")
-
-    # E continua a ser uma carta partilhada: quem a TEM é o A, quem a vai BUSCAR
-    # são o B e o C. É a mesma leitura da antiga secção de conflitos.
-    c = [x for x in rep["conflitos"] if x["nm"] == "Swords to Plowshares"][0]
-    assert c["ficam_com"] == ["A"] and c["ficam_sem"] == ["B", "C"], c
-    print("as partilhadas dizem quem a tem e quem a vai buscar")
+        assert m["noutra"] == {} and m["noutra_q"] == 0, m["noutra"]
+        assert m["noutra_nota"] == {"A": 4}, m["noutra_nota"]
+        assert m["comprar"] == 4 and m["cost"] == 6.0, m
+        assert s[nome]["comprar"] == 4 and s[nome]["noutra"] == 0, s[nome]
+        assert s[nome]["custo"] == 6.0, s[nome]["custo"]
+        assert s[nome]["noutra_caixa"] == [], s[nome]["noutra_caixa"]
+        assert [x["nm"] for x in s[nome]["noutra_notas"]] == ["Swords to Plowshares"]
+    assert rep["custo_total"] == 12.0, rep["custo_total"]
+    assert rep["comprar_total"] == 8 and rep["noutra_total"] == 0
+    assert rep["conflitos"] == [] and rep["partilhas"] == []
+    print("carta que está noutra caixa compra-se para esta — e diz onde a tens")
 
 
 def caso_noutra_caixa_e_compra_misturadas():
     """O caso meio: duas caixas pedem 4, só existem 2 e foram para a primeira.
 
-    Faltam 2 cópias no mundo, não 4: compram-se DUAS (a caixa de maior
-    prioridade fica com elas) e a outra caixa vai buscar as quatro — é a regra
-    dele, *"não ter que comprar múltiplos para todos"*, aplicada às compras e não
-    só às cópias que já tem. Até 2026-09-07 cada caixa comprava as suas 2 e a
-    lista pedia 4.
+    Até 2026-09-19 compravam-se DUAS (a partilha de compras da v4) e a segunda
+    ia buscar as quatro. Desde então cada caixa compra as suas: o A compra as 2
+    que lhe faltam e o B compra 4 — com a nota de que 2 estão no A. Nada é
+    partilhado nem "futuro"; `partilhas` e `poupado_total` são zero por regra.
     """
     con = base()
     preco(con, "Swords to Plowshares", "foil", 10.0)
@@ -230,37 +258,25 @@ def caso_noutra_caixa_e_compra_misturadas():
                                slot("B", "legacy", "B", prioridade=2, balde="SPML")])
     b = por_nome(rep)["B"]
     m = b["missing"][0]
-    assert m["missing"] == 4 and m["comprar"] == 0 and m["cost"] == 0, m
-    # 2 que estão mesmo na caixa do A + 2 que o A vai comprar. As segundas dizem
-    # que ainda não estão em casa, para a página não mentir.
-    assert m["noutra"] == {"A": 4} and m["noutra_futura"] == {"A": 2}, m
-    assert b["comprar"] == 0 and b["noutra"] == 4 and b["custo"] == 0, b
-    print("duas caixas, faltam 2 no mundo: compram-se 2 e a outra vai buscá-las")
-
-    # O A, que também não fecha (precisa de 4 e só levou 2), não tem para onde ir
-    # buscar: as cópias são dele. É ele que compra as duas que faltam.
+    assert m["missing"] == 4 and m["comprar"] == 4 and m["cost"] == 40.0, m
+    assert m["noutra"] == {} and m["noutra_futura"] == {}, m
+    assert m["noutra_nota"] == {"A": 2}, m["noutra_nota"]
+    assert b["comprar"] == 4 and b["noutra"] == 0 and b["custo"] == 40.0, b
     a = por_nome(rep)["A"]
     assert a["noutra"] == 0 and a["comprar"] == 2 and a["custo"] == 20.0, a
-    assert rep["comprar_total"] == 2 and rep["custo_total"] == 20.0, rep["custo_total"]
-    assert rep["poupado_total"] == 2, rep["partilhas"]
-    print("a caixa que já tem as cópias não se vai buscar a si própria")
-
-    # E a partilha diz-se por inteiro: quanto se compra, quanto se poupou e quem
-    # é servido — é o que a aba Comprar mostra como «partilhada por N caixas».
-    p = [x for x in rep["partilhas"] if x["nm"] == "Swords to Plowshares"][0]
-    assert p["comprar"] == 2 and p["soma"] == 4 and p["poupado"] == 2, p
-    assert p["marca"] == "EN foil" and p["req"] == "EN · foil", p
-    assert [(c["caixa"], c["compra"]) for c in p["caixas"]] == [("A", 2), ("B", 0)], p
-    print("a partilha diz quanto se compra, quanto se poupa e quem é servido")
+    assert rep["comprar_total"] == 6 and rep["custo_total"] == 60.0, rep["custo_total"]
+    assert rep["poupado_total"] == 0 and rep["partilhas"] == [], rep["partilhas"]
+    print("duas caixas, faltam 2 no mundo: cada uma compra as suas (2 + 4)")
 
 
 def caso_compra_partilhada_e_o_maximo_nao_a_soma():
-    """Três caixas do mesmo material pedem 4 cartas que ele não tem nenhuma.
+    """SUPERSEDED a 2026-09-19: agora é a SOMA, não o máximo.
 
-    Comprar 12 contradizia a regra do André (*"não ter que comprar múltiplos para
-    todos"*): 4 chegam, e cada caixa joga com elas de cada vez, indo buscá-las à
-    caixa que ficou com a compra. Era o buraco que sobrava da v3 — o `noutra`
-    tratava as cópias que ele TEM e as compras continuavam a somar-se.
+    Até aí três caixas do mesmo material a pedir 4 cartas que ele não tinha
+    compravam 4 (a partilha da v4, *"não ter que comprar múltiplos para
+    todos"*). Desde 2026-09-19 (*"cada deck deverá ter as suas próprias cartas
+    dentro, não repetindo com outros decks!"*) compram 12: cada caixa as suas,
+    e é isso que o "fechar tudo" diz.
     """
     con = base()
     preco(con, "Swords to Plowshares", "foil", 10.0)
@@ -270,23 +286,21 @@ def caso_compra_partilhada_e_o_maximo_nao_a_soma():
                                slot("B", "legacy", "B", prioridade=2),
                                slot("C", "legacy", "C", prioridade=3)])
     s = por_nome(rep)
-    assert s["A"]["comprar"] == 4 and s["A"]["custo"] == 40.0, s["A"]
-    for nome in ("B", "C"):
-        assert s[nome]["comprar"] == 0 and s[nome]["custo"] == 0, s[nome]
-        assert s[nome]["noutra"] == 4, s[nome]
+    for nome in "ABC":
+        assert s[nome]["comprar"] == 4 and s[nome]["custo"] == 40.0, s[nome]
+        assert s[nome]["noutra"] == 0, s[nome]
         m = s[nome]["missing"][0]
-        assert m["noutra"] == {"A": 4} and m["noutra_futura"] == {"A": 4}, m
-    assert rep["comprar_total"] == 4 and rep["custo_total"] == 40.0, rep["custo_total"]
-    assert rep["poupado_total"] == 8, rep["poupado_total"]
-    # A posse NÃO mexe: a caixa continua a ter a falta até a compra chegar.
+        assert m["noutra"] == {} and m["noutra_futura"] == {} and m["noutra_nota"] == {}, m
+    assert rep["comprar_total"] == 12 and rep["custo_total"] == 120.0, rep["custo_total"]
+    assert rep["poupado_total"] == 0, rep["poupado_total"]
     assert all(s[n]["pct"] == 0 and s[n]["faltam"] == 4 for n in "ABC"), s
-    print("três caixas, uma compra: compra-se o máximo de uma, não a soma das três")
+    print("três caixas, três compras: cada caixa compra as suas cartas")
 
 
 def caso_main_e_side_da_mesma_caixa_continuam_a_somar():
     """Dentro da MESMA caixa o main e o side estão na mesa ao mesmo tempo: essas
-    faltas somam. É entre caixas que não somam — e confundir as duas coisas era
-    fazer o vault mandar montar um deck com 3 cópias onde a lista pede 5."""
+    faltas somam (5). E desde 2026-09-19 entre caixas também somam — o B compra
+    as suas 4, em vez de ir buscar as do A."""
     con = base()
     preco(con, "Swords to Plowshares", "foil", 10.0)
     deck(con, "A", "legacy", [("Swords to Plowshares", 3)],
@@ -297,9 +311,9 @@ def caso_main_e_side_da_mesma_caixa_continuam_a_somar():
     s = por_nome(rep)
     assert s["A"]["comprar"] == 5 and s["A"]["custo"] == 50.0, s["A"]
     assert sorted(m["comprar"] for m in s["A"]["missing"]) == [2, 3], s["A"]["missing"]
-    assert s["B"]["comprar"] == 0 and s["B"]["noutra"] == 4, s["B"]
-    assert rep["comprar_total"] == 5, rep["comprar_total"]
-    print("main + side da mesma caixa somam; entre caixas é o máximo")
+    assert s["B"]["comprar"] == 4 and s["B"]["noutra"] == 0, s["B"]
+    assert rep["comprar_total"] == 9, rep["comprar_total"]
+    print("main + side da mesma caixa somam; e entre caixas também (cada uma as suas)")
 
 
 def caso_pools_de_material_diferentes_nao_se_partilham():
@@ -323,10 +337,10 @@ def caso_pools_de_material_diferentes_nao_se_partilham():
 
 
 def caso_pool_foil_en_junta_o_duel_commander_e_o_spml():
-    """Os pools que SE TOCAM: o Duel Commander é *"apenas foil"* (sem exigir
-    língua) e o SPML é *"tudo foil e inglês"*. Uma cópia **EN foil** serve os
-    dois, por isso é uma compra só — e o material da compra é o mais exigente dos
-    dois, senão comprava-se uma foil PT que o Modern depois recusa."""
+    """SUPERSEDED a 2026-09-19. Os pools que SE TOCAM (o Duel Commander é
+    *"apenas foil"* sem língua, o SPML *"tudo foil e inglês"*) já não fundem
+    compra nenhuma: cada caixa compra a sua Sol Ring. O que fica do pool é o
+    MATERIAL de cada linha (`marca_compra`), que continua certo por caixa."""
     con = base()
     preco(con, "Sol Ring", "foil", 12.0)
     deck(con, "Cloud", "duel-commander", [("Sol Ring", 1)])
@@ -334,19 +348,19 @@ def caso_pool_foil_en_junta_o_duel_commander_e_o_spml():
     rep = loadout.report(con, [slot("Cloud", "duel-commander", "Cloud"),
                                slot("Oswald", "modern", "Oswald")])
     s = por_nome(rep)
-    # O Duel Commander aloca antes do SPML: é ele que compra.
-    assert s["Cloud"]["comprar"] == 1 and s["Oswald"]["comprar"] == 0, (s, )
-    assert s["Oswald"]["noutra"] == 1, s["Oswald"]
-    assert rep["comprar_total"] == 1 and rep["custo_total"] == 12.0, rep["custo_total"]
-    p = rep["partilhas"][0]
-    assert p["marca"] == "EN foil" and p["req"] == "EN · foil", p
-    print("foil sem língua + EN foil são um pool só, e compra-se a EN foil")
+    assert s["Cloud"]["comprar"] == 1 and s["Oswald"]["comprar"] == 1, (s, )
+    assert s["Oswald"]["noutra"] == 0 and s["Cloud"]["noutra"] == 0, s["Oswald"]
+    assert rep["comprar_total"] == 2 and rep["custo_total"] == 24.0, rep["custo_total"]
+    assert rep["partilhas"] == [], rep["partilhas"]
+    assert s["Cloud"]["missing"][0]["marca_compra"] == "foil"
+    assert s["Oswald"]["missing"][0]["marca_compra"] == "EN foil"
+    print("Duel Commander e Modern compram cada um a sua Sol Ring, no seu material")
 
 
 def caso_compras_dedicadas_nao_partilham():
-    """`colecao_config.json -> loadout[].compras_dedicadas`: a caixa que ele quer
-    fechar sem depender de trocas compra as suas cópias e não entra na partilha.
-    As outras continuam a partilhar entre si."""
+    """`compras_dedicadas` deixou de fazer diferença a 2026-09-19: TODAS as
+    caixas compram as suas (a chave fica no config sem efeito — apagá-la é
+    decisão dele). Três caixas a pedir 4, três compras de 4."""
     con = base()
     preco(con, "Swords to Plowshares", "foil", 10.0)
     for nome in ("A", "B", "C"):
@@ -356,21 +370,17 @@ def caso_compras_dedicadas_nao_partilham():
         slot("B", "legacy", "B", prioridade=2, compras_dedicadas=True),
         slot("C", "legacy", "C", prioridade=3)])
     s = por_nome(rep)
-    assert s["A"]["comprar"] == 4 and s["B"]["comprar"] == 4, (s["A"], s["B"])
-    assert s["C"]["comprar"] == 0 and s["C"]["noutra"] == 4, s["C"]
-    assert rep["comprar_total"] == 8, rep["comprar_total"]
-    # E o B não aparece como quem serve o C: as cópias dele são dele.
-    p = [x for x in rep["partilhas"] if x["nm"] == "Swords to Plowshares"][0]
-    assert [c["caixa"] for c in p["caixas"]] == ["A", "C"], p
-    assert s["C"]["missing"][0]["noutra"] == {"A": 4}, s["C"]["missing"][0]
-    print("uma caixa com compras dedicadas compra as suas e fica fora da partilha")
+    assert all(s[n]["comprar"] == 4 and s[n]["noutra"] == 0 for n in "ABC"), s
+    assert rep["comprar_total"] == 12, rep["comprar_total"]
+    assert rep["partilhas"] == [], rep["partilhas"]
+    print("com ou sem compras_dedicadas, cada caixa compra as suas")
 
 
 def caso_noutra_caixa_nao_conta_a_mesma_copia_duas_vezes():
-    """A mesma carta no main E no side são DUAS linhas de falta. Se cada uma
-    olhar para a caixa do lado por si, prometem a mesma cópia física duas vezes —
-    e o "ir buscar" fica maior do que o que lá está. É a mesma armadilha do
-    `livre`, um nível acima."""
+    """A mesma carta no main E no side são DUAS linhas de falta. Desde
+    2026-09-19 nenhuma vai buscar nada: o B compra as 5 (3 + 2), e a nota diz
+    que o A tem 4 — a nota é por linha, e as duas linhas dizem o mesmo, porque
+    é informação e não uma cópia a repartir."""
     con = base()
     preco(con, "Swords to Plowshares", "foil", 2.0)
     deck(con, "A", "legacy", [("Swords to Plowshares", 4)])
@@ -380,10 +390,10 @@ def caso_noutra_caixa_nao_conta_a_mesma_copia_duas_vezes():
     rep = loadout.report(con, [slot("A", "legacy", "A", prioridade=1, balde="SPML"),
                                slot("B", "legacy", "B", prioridade=2, balde="SPML")])
     b = por_nome(rep)["B"]
-    # O A tem 4; o B pede 5. Vai buscar 4 (não 5) e compra 1.
-    assert b["noutra"] == 4 and b["comprar"] == 1, b
-    assert b["custo"] == 2.0, b["custo"]
-    print("main + side não reclamam a mesma cópia física duas vezes")
+    assert b["noutra"] == 0 and b["comprar"] == 5, b
+    assert b["custo"] == 10.0, b["custo"]
+    assert all(m["noutra_nota"] == {"A": 4} for m in b["missing"]), b["missing"]
+    print("main + side compram-se os dois; a nota 'tens 4 no A' vai nas duas linhas")
 
 
 def caso_falta_partilhada_nao_e_conflito():
@@ -622,7 +632,8 @@ def caso_duel_commander_so_foil():
     add(con, "Sol Ring", 1, finish="nonfoil", sub="SPML")
     rep = loadout.report(con, [slot("DC", "duel-commander", "DC", balde="Cloud")])
     s = por_nome(rep)["DC"]
-    assert s["tenho"] == 1 and s["missing"][0]["alt"] == {"não é foil": 1}, s
+    # A recusa diz em que edições a carta existe em foil (2026-09-19).
+    assert s["tenho"] == 1 and s["missing"][0]["alt"] == {nao_foil("Sol Ring"): 1}, s
     print("Duel Commander: só foil fecha o slot")
 
 
@@ -694,7 +705,7 @@ def caso_foil():
     # 1 Kappa foil + 2 Ancient Tomb (RL, podem ser nonfoil) = 3 de 4
     assert s["tenho"] == 3, s["tenho"]
     falta = [m for m in s["missing"] if m["nm"] == "Kappa Cannoneer"][0]
-    assert falta["alt"] == {"não é foil": 3}, falta["alt"]
+    assert falta["alt"] == {nao_foil("Kappa Cannoneer"): 3}, falta["alt"]
     print("só foil fecha o slot; a Reserved List pode ser nonfoil")
 
 
@@ -864,9 +875,11 @@ def caso_permanente_escolhe_antes_do_candidato():
         [x["nome"] for x in rep["slots"]]
     assert s["Perm"]["tenho"] == 1
     assert s["Cand"]["tenho"] == 0
-    # E o candidato não pede a carta para comprar: sabe onde ela está.
-    assert s["Cand"]["missing"][0]["noutra"] == {"Perm": 1}
-    assert s["Cand"]["comprar"] == 0
+    # E o candidato COMPRA a carta (2026-09-19: cada caixa tem as suas), com a
+    # nota de que a tem no Perm. Até aí dizia "em Perm" e não comprava.
+    assert s["Cand"]["missing"][0]["noutra"] == {}
+    assert s["Cand"]["missing"][0]["noutra_nota"] == {"Perm": 1}
+    assert s["Cand"]["comprar"] == 1
     print("um deck permanente aloca antes de um candidato de grupo melhor")
 
 
@@ -923,66 +936,50 @@ def caso_ja_arrumei_persiste_e_o_plano_esvazia():
 
 
 def caso_arrumar_nao_transforma_ir_buscar_em_compra():
-    """A regra que quase se perdeu: uma cópia sleevada NOUTRA caixa continua a
-    ser *"em &lt;caixa&gt;"*, não uma compra.
+    """Arrumar não pode mudar o que se compra — a invariante que este caso
+    sempre trancou. Até 2026-09-19 media-a pelo "ir buscar" (a segunda caixa
+    dizia "em Prem" antes e depois de arrumar); desde então (*"cada deck deverá
+    ter as suas próprias cartas dentro"*) mede-a pela COMPRA: a segunda compra
+    2 antes e 2 depois de arrumar, não "0 e depois 2". E a cópia que está dentro
+    de uma caixa continua a não poder ser tirada de lá por um slot que corra
+    ANTES — a ordem da alocação, sozinha, não chega para isso.
 
-    Depois de confirmar a arrumação, a alocação tem de dar exactamente o mesmo —
-    senão o "já arrumei tudo" fazia o custo de fechar subir 1 200 € só por ele
-    ter arrumado as cartas. E a cópia que está dentro de uma caixa não pode ser
-    tirada de lá por um slot que corra ANTES: a ordem da alocação, sozinha, não
-    chega para isso.
+    O tecto de playset do Premodern fica desligado aqui (`playset_maximo=None`)
+    para o caso medir a arrumação e não o tecto — esse tem casos próprios.
     """
     con = base()
     deck(con, "Prem", "premodern", [("Swords to Plowshares", 2)])
     deck(con, "Ench", "premodern", [("Swords to Plowshares", 2)])
     add(con, "Swords to Plowshares", 2, lang="pt", sub="Colecção")
-    # `dedicado: false` de propósito: o "ir buscar" é o que este caso mede, e
-    # entre 2026-09-07 (19:00) e 2026-09-08 ele só existia fora dos grupos
-    # dedicados (Duel Commander e SPML). O outro lado — a caixa dedicada a
-    # comprar em vez de ir buscar — está no
-    # `caso_caixa_dedicada_nao_empresta_nem_vai_buscar`, e a parte que interessa
-    # às duas está no fim deste caso.
-    #
-    # `prioridade_por: None` também de propósito: o que este caso mede é a ORDEM
-    # a decidir quem fica com as cópias, e o `prioridade` do config só decide
+    # `prioridade_por: None` de propósito: o que este caso mede é a ORDEM a
+    # decidir quem fica com as cópias, e o `prioridade` do config só decide
     # isso quando o grupo não ordena sozinho. A ordem automática do Premodern
     # está no `caso_premodern_ordena_por_pct_completo`.
     slots = [slot("Prem", "premodern", "Prem", prioridade=1, baldes=["Colecção"],
-                  dedicado=False, prioridade_por=None),
+                  prioridade_por=None, playset_maximo=None),
              slot("Ench", "premodern", "Ench", prioridade=2, baldes=["Colecção"],
-                  dedicado=False, prioridade_por=None)]
+                  prioridade_por=None, playset_maximo=None)]
     antes = por_nome(loadout.report(con, slots))
     assert antes["Prem"]["tenho"] == 2 and antes["Ench"]["tenho"] == 0
-    assert antes["Ench"]["comprar"] == 0, antes["Ench"]["comprar"]
-    assert antes["Ench"]["missing"][0]["noutra"] == {"Prem": 2}
+    assert antes["Ench"]["comprar"] == 2, antes["Ench"]["comprar"]
+    assert antes["Ench"]["missing"][0]["noutra"] == {}
+    assert antes["Ench"]["missing"][0]["noutra_nota"] == {"Prem": 2}
 
     loadout.guardar_arrumacao(con, loadout.report(con, slots))
     depois = por_nome(loadout.report(con, slots))
     assert depois["Prem"]["tenho"] == 2, depois["Prem"]["tenho"]
-    assert depois["Ench"]["comprar"] == 0, depois["Ench"]["comprar"]
-    assert depois["Ench"]["missing"][0]["noutra"] == {"Prem": 2}, \
-        depois["Ench"]["missing"][0]["noutra"]
-    # E não é um substituto: é ir buscar.
+    assert depois["Ench"]["comprar"] == 2, depois["Ench"]["comprar"]
+    assert depois["Ench"]["missing"][0]["noutra_nota"] == {"Prem": 2}, \
+        depois["Ench"]["missing"][0]
+    # E não é um substituto: é compra, com a nota.
     assert not depois["Ench"]["subs"], depois["Ench"]["subs"]
 
     # A caixa que corre PRIMEIRO não pode roubar o que está dentro da segunda.
     trocado = [dict(slots[0], prioridade=5), dict(slots[1], prioridade=1)]
     virado = por_nome(loadout.report(con, trocado))
     assert virado["Prem"]["tenho"] == 2, virado["Prem"]["tenho"]
-    assert virado["Ench"]["tenho"] == 0 and virado["Ench"]["comprar"] == 0
-    print("confirmar a arrumacao nao transforma 'ir buscar' em compra")
-
-    # A mesma invariante nas caixas DEDICADAS: arrumar não pode mudar o que se
-    # compra. Ali a resposta é "compra 2" das duas vezes, não "0 e depois 2".
-    # Explícito e não pela regra do grupo: desde 2026-09-08 o Premodern já não é
-    # dedicado (*"os que vêm depois na prioridade indicam onde estão as cartas em
-    # falta"*), e sem o `True` aqui este bloco deixava de medir o que diz medir.
-    ded = [dict(s, dedicado=True) for s in slots]
-    a = por_nome(loadout.report(con, ded))["Ench"]["comprar"]
-    loadout.guardar_arrumacao(con, loadout.report(con, ded))
-    b = por_nome(loadout.report(con, ded))["Ench"]["comprar"]
-    assert a == b == 2, (a, b)
-    print("e numa caixa dedicada compra o mesmo antes e depois de arrumar")
+    assert virado["Ench"]["tenho"] == 0 and virado["Ench"]["comprar"] == 2
+    print("confirmar a arrumacao nao muda o que se compra, nem quem tem a copia")
 
 
 def caso_carta_na_caixa_escapa_as_regras_de_material():
@@ -1108,10 +1105,10 @@ def caso_caixa_dedicada_nao_empresta_nem_vai_buscar():
     suas em vez de dizer *"vai buscar 4 ao Blue Farm"*.
 
     Era o Premodern que demonstrava isto até 2026-09-08 — nessa data ele voltou
-    a partilhar (*"os que vêm depois na prioridade indicam onde estão as cartas
-    em falta"*) e ficaram dedicados o cEDH e o Pauper. A regra é a mesma; o que
-    mudou foi quem a usa. O outro lado está no
-    `caso_premodern_voltou_a_partilhar`.
+    a partilhar e ficaram dedicados o cEDH e o Pauper. Desde 2026-09-19 é a
+    regra de TODAS as caixas (*"cada deck deverá ter as suas próprias cartas
+    dentro, não repetindo com outros decks!"*); o cEDH continua a ser o exemplo,
+    e o resto está no `test_caixas_dedicadas.py`.
     """
     con = base()
     deck(con, "C1", "cedh", [("Swords to Plowshares", 4)])
@@ -1146,8 +1143,9 @@ def caso_caixa_dedicada_compra_sozinha():
 
 
 def caso_duel_commander_e_spml_continuam_a_partilhar():
-    """A regra é POR GRUPO: o Duel Commander e o SPML não são dedicados e
-    continuam a ir buscar um ao outro, como desde a v3."""
+    """SUPERSEDED a 2026-09-19: o Duel Commander e o SPML eram os dois grupos que
+    ainda iam buscar um ao outro (desde a v3). Agora também não: o Modern compra
+    a sua Sol Ring e sabe que tem uma no DC."""
     con = base()
     deck(con, "DC", "duel-commander", [("Sol Ring", 1)])
     deck(con, "MO", "modern", [("Sol Ring", 1)])
@@ -1158,17 +1156,19 @@ def caso_duel_commander_e_spml_continuam_a_partilhar():
                                     balde="Colecção")])
     s = por_nome(rep)
     assert s["DC"]["pct"] == 100, s["DC"]
-    assert s["MO"]["noutra"] == 1 and s["MO"]["comprar"] == 0, s["MO"]
-    assert s["MO"]["noutra_caixa"][0]["noutra"] == {"DC": 1}
-    print("Duel Commander e SPML continuam a partilhar entre si")
+    assert s["MO"]["noutra"] == 0 and s["MO"]["comprar"] == 1, s["MO"]
+    assert s["MO"]["noutra_caixa"] == [], s["MO"]["noutra_caixa"]
+    assert s["MO"]["missing"][0]["noutra_nota"] == {"DC": 1}
+    print("Duel Commander e SPML ja nao partilham: o Modern compra a sua")
 
 
 def caso_excepcao_por_caixa_ganha_a_do_grupo():
     """O que estiver escrito no slot ganha à regra do grupo — uma excepção é uma
-    linha de config, não uma linha de código.
-
-    Escrito ao contrário do grupo de propósito: o Premodern é partilhado desde
-    2026-09-08, e é o `dedicado: true` na caixa que lhe tira o *"ir buscar"*.
+    linha de config, não uma linha de código. Com UMA excepção, desde
+    2026-09-19: o `dedicado` já não se escreve por caixa — um `dedicado: false`
+    no slot NÃO devolve a partilha (é a regra dele para todos os decks, não uma
+    preferência). O que continua a ganhar são as outras chaves (a `lingua`,
+    aqui): uma caixa de Premodern com `lingua: "en"` aceita a EN.
     """
     con = base()
     deck(con, "PM1", "premodern", [("Swords to Plowshares", 4)])
@@ -1176,12 +1176,17 @@ def caso_excepcao_por_caixa_ganha_a_do_grupo():
     add(con, "Swords to Plowshares", 4, lang="pt", sub="Colecção")
     slots = [slot("PM1", "premodern", "PM1", prioridade=1, balde="Colecção"),
              slot("PM2", "premodern", "PM2", prioridade=2, balde="Colecção")]
-    s = por_nome(loadout.report(con, slots))
-    assert s["PM2"]["noutra"] == 4 and s["PM2"]["comprar"] == 0, s["PM2"]
+    s = por_nome(loadout.report(con, [dict(x, dedicado=False) for x in slots]))
+    assert s["PM2"]["noutra"] == 0 and s["PM2"]["comprar"] == 0, s["PM2"]
+    assert s["PM2"]["playset_bloqueado"] == 4, s["PM2"]["playset_faltas"]
+    assert all(x["dedicado"] for x in s.values()), "dedicado: false nao tem efeito"
 
-    s = por_nome(loadout.report(con, [dict(x, dedicado=True) for x in slots]))
-    assert s["PM2"]["noutra"] == 0 and s["PM2"]["comprar"] == 4, s["PM2"]
-    print("'dedicado': true num slot tira-lhe o 'ir buscar' que o grupo dá")
+    # A excepção que continua a valer: uma chave de material escrita no slot.
+    add(con, "Swords to Plowshares", 4, lang="en", sub="Colecção")
+    s = por_nome(loadout.report(con, [slots[0],
+                                      dict(slots[1], lingua="en", estrita=False)]))
+    assert s["PM1"]["tenho"] == 4 and s["PM2"]["tenho"] == 4, (s["PM1"], s["PM2"])
+    print("uma excepcao de material no slot ganha ao grupo; o dedicado nao se desliga")
 
 
 def caso_caixa_congelada_nao_perde_copias():
@@ -1304,13 +1309,15 @@ def caso_compras_sem_preco_contam_se():
 # O PREMODERN VOLTOU A PARTILHAR, COM TECTO DE PLAYSET (André, 2026-09-08)
 # ---------------------------------------------------------------------------
 def caso_premodern_voltou_a_partilhar():
-    """*"No Premodern (...) os que vêm depois na prioridade indicam onde estão as
-    cartas em falta."*
+    """SUPERSEDED a 2026-09-19 — o nome ficou para o histórico.
 
-    O espelho do `caso_caixa_dedicada_nao_empresta_nem_vai_buscar`: as caixas de
-    Premodern voltaram a emprestar entre si, e as de cEDH e Pauper não. Sem esta
-    distinção o `dedicado: false` do config passava despercebido — era só um
-    booleano, e nada dizia de quem era.
+    A 2026-09-08 o Premodern voltou a emprestar entre caixas (*"os que vêm
+    depois na prioridade indicam onde estão as cartas em falta"*). A 2026-09-19
+    (*"cada deck deverá ter as suas próprias cartas dentro, não repetindo com
+    outros decks!"*) deixou de o fazer, como toda a gente. O que FICA da regra
+    de 08/09 é o tecto de playset: a segunda caixa não vai buscar as 4 Swords
+    nem as compra — o grupo já tem 4 — e diz *"não se compra (limite de 4 no
+    total; está 4 no PM1)"*. Ver `test_caixas_dedicadas.py`.
     """
     con = base()
     deck(con, "PM1", "premodern", [("Swords to Plowshares", 4)])
@@ -1322,9 +1329,13 @@ def caso_premodern_voltou_a_partilhar():
     primeira, segunda = (s["PM1"], s["PM2"]) if s["PM1"]["prioridade"] == 1 \
         else (s["PM2"], s["PM1"])
     assert primeira["pct"] == 100 and primeira["comprar"] == 0, primeira
-    assert segunda["comprar"] == 0 and segunda["noutra"] == 4, segunda
-    assert segunda["missing"][0]["noutra"] == {primeira["nome"]: 4}, segunda
-    print("as caixas de Premodern voltaram a emprestar umas as outras")
+    assert segunda["comprar"] == 0 and segunda["noutra"] == 0, segunda
+    m = segunda["missing"][0]
+    assert m["noutra"] == {} and m["noutra_nota"] == {primeira["nome"]: 4}, m
+    assert m["playset_bloqueado"] == 4 and m["playset_onde"] == {primeira["nome"]: 4}, m
+    assert loadout.texto_playset(m, 4) == \
+        f"4 não se compra (limite de 4 no total; está 4 no {primeira['nome']})"
+    print("as caixas de Premodern ja nao emprestam; o tecto de 4 no total fica")
 
     # E o cEDH continua dedicado: a mesma pergunta, a resposta contrária.
     con2 = base()
@@ -1342,8 +1353,11 @@ def caso_tecto_de_playset_no_premodern():
     """*"No Premodern, afinal só vou ter até playset de cada carta."*
 
     Cinco caixas a pedir 4 Swords to Plowshares e uma cópia em casa: compram-se
-    3, não 4 (a partilha sozinha ainda comprava 4, porque cada caixa que não
-    alcança a cópia pede as suas 4). E com 5 em casa não se compra nenhuma.
+    3, não 20 — o grupo nunca passa de 4. Desde 2026-09-19 as outras quatro
+    caixas já não vão buscar as 4 à primeira (*"cada deck deverá ter as suas
+    próprias cartas dentro"*): ficam com a falta POR TAPAR, dita como tal
+    (`playset_bloqueado`, 16 cópias), fora do "fechar tudo". E com 5 em casa
+    não se compra nenhuma.
     """
     con = base()
     preco(con, "Swords to Plowshares", "nonfoil", 2.0)
@@ -1355,8 +1369,9 @@ def caso_tecto_de_playset_no_premodern():
     rep = loadout.report(con, slots)
     assert rep["comprar_total"] == 3, rep["comprar_total"]
     assert rep["custo_total"] == 6.0, rep["custo_total"]
-    assert rep["bloqueado_total"] == 0, rep["bloqueado_total"]
-    print("necessidade 4 com 1 em casa: compram-se 3, e o playset fecha nas 4")
+    assert rep["bloqueado_total"] == 16, rep["bloqueado_total"]
+    assert rep["noutra_total"] == 0, rep["noutra_total"]
+    print("necessidade 4 com 1 em casa: compram-se 3; as outras caixas ficam por tapar")
 
     # Com 5 em casa não se compra nada.
     add(con, "Swords to Plowshares", 4, lang="pt", sub="Colecção")
@@ -1443,11 +1458,10 @@ def caso_basicas_fora_do_tecto_de_playset():
 
 
 def caso_compras_partilhadas_nao_passam_do_tecto():
-    """A partilha compra o MÁXIMO de uma caixa; o tecto corta esse máximo.
-
-    O buraco que sobrava: seis caixas a pedir 4 e duas cópias em casa que só a
-    primeira alcança davam `max(comprar) = 4` — 4 compradas mais 2 em casa são
-    6, e ele disse quatro.
+    """O tecto conta o que o GRUPO já tem: duas caixas a pedir 4 e duas cópias
+    em casa (na primeira) compram 2, não 4 nem 8 — 2 compradas mais 2 em casa
+    são 4, e ele disse quatro. (O nome vem de 2026-09-08, quando havia partilha
+    de compras; desde 2026-09-19 não há, e o tecto passou a ser a única conta.)
     """
     con = base()
     preco(con, "Swords to Plowshares", "nonfoil", 2.0)
