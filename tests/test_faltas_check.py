@@ -355,7 +355,14 @@ def caso_a_foto_a_mais_continua_a_entrar():
 
 def caso_o_pedido_passa_pelo_handler():
     """O caminho todo, pelo mesmo handler HTTP que o telemóvel usa: `falta`
-    grava, `falta-anular` desfaz — e sem token, da rede, é 403 nos dois."""
+    grava, `falta-anular` desfaz — e sem token, da rede, é 403 nos dois.
+
+    DESDE 2026-09-19 O CHECK NÃO CRIA CÓPIA (André: *"cada vez que eu adiciono
+    que tenho a carta, fica pendente de foto; quando coloco a foto, adicionas
+    à coleção"*): o `falta` abre uma ENCOMENDA pendente de foto, sem tocar na
+    `copies` nem na `copy_allocation`, e a caixa deixa de a ter em «comprar».
+    O motor antigo (`loadout.registar_falta`, casos acima) fica no código; o
+    que o handler faz é isto."""
     repor()
     con = montavel()
     dbs = con.execute("PRAGMA database_list").fetchall()
@@ -368,28 +375,41 @@ def caso_o_pedido_passa_pelo_handler():
     p.do_POST()
     assert p.codigo == 403, (p.codigo, p.corpo)
     assert not copias(con), "um pedido sem token nao pode ter criado nada"
+    assert not con.execute("SELECT 1 FROM encomendas").fetchall()
 
     p = Pedido("/api/caixa", corpo, ip="127.0.0.1")
     p.do_POST()
     assert p.codigo == 200, (p.codigo, p.corpo[:300])
     j = json.loads(p.corpo)
-    assert "UW Replenish" in j["msg"] and j["copy_id"], j
-    assert len(copias(con)) == 1 and alocacao(con, "pm"), copias(con)
+    assert "UW Replenish" in j["msg"] and "pendente de foto" in j["msg"], j
+    assert j.get("id"), j
+    # Só a foto cria cópias: nada na `copies`, nada na `copy_allocation`.
+    assert not copias(con) and not alocacao(con), (copias(con), alocacao(con))
+    enc = [dict(r) for r in con.execute(
+        "SELECT card_name, slot, qty_a_caminho, qty_pendente_foto, lang, finish "
+        "FROM encomendas")]
+    assert enc == [{"card_name": "Swords to Plowshares", "slot": "pm",
+                    "qty_a_caminho": 0, "qty_pendente_foto": 1,
+                    "lang": "pt", "finish": "nonfoil"}], enc
+    c, _rep, _d = caixa(con)
+    assert c["comprar"] == 1, ("2 em falta, 1 pendente de foto", c["comprar"])
+    assert c["pct"] == 0, ("uma encomenda não é posse", c["pct"])
 
-    p = Pedido("/api/caixa", json.dumps({"act": "falta-anular",
-                                         "copy_id": j["copy_id"]}),
+    p = Pedido("/api/caixa", json.dumps({"act": "falta-anular", "id": j["id"]}),
                ip="127.0.0.1")
     p.do_POST()
     assert p.codigo == 200, (p.codigo, p.corpo[:300])
-    assert not copias(con) and not alocacao(con), "a copia saiu"
+    assert not con.execute("SELECT 1 FROM encomendas").fetchall(), "a linha saiu"
+    c, _rep, _d = caixa(con)
+    assert c["comprar"] == 2, ("a falta voltou inteira", c["comprar"])
 
-    # E anular duas vezes não é um segundo caminho para apagar cartas.
-    p = Pedido("/api/caixa", json.dumps({"act": "falta-anular",
-                                         "copy_id": j["copy_id"]}),
+    # E anular duas vezes não é um segundo caminho para tirar coisas.
+    p = Pedido("/api/caixa", json.dumps({"act": "falta-anular", "id": j["id"]}),
                ip="127.0.0.1")
     p.do_POST()
     assert p.codigo == 200 and "erro" in json.loads(p.corpo), p.corpo[:300]
-    print("handler: falta grava, falta-anular desfaz uma vez, e sem token e 403")
+    print("handler: falta abre uma encomenda pendente (sem copia), "
+          "falta-anular tira-a uma vez, e sem token e 403")
 
 
 # ---------------------------------------------------------------------------
@@ -427,8 +447,10 @@ def caso_a_pagina_desenha_o_check_e_o_selector():
     assert "já a tenho, está no deck" in html, html[-1500:]
     assert 'data-falta="1"' in html and 'data-nm="Swords to Plowshares"' in html
     assert 'class="jed"' in html, "o selector de edição"
-    # A edição pré-seleccionada é o palpite — e é uma da era, não a de 2022.
-    assert '<option value="ody|1" selected>' in html, html[-1500:]
+    # Desde 2026-09-19 a omissão é «qualquer edição» (é a foto que a diz); o
+    # palpite da era vem a seguir, e a de 2022 continua a não ser oferecida.
+    assert '<option value="|" selected>qualquer edição</option>' in html, html[-1500:]
+    assert '<option value="ody|1">' in html, html[-1500:]
     assert '2x2' not in html.lower().split('class="jed"')[1][:600], "nem a oferece"
 
     pub = _abas(con, False)
