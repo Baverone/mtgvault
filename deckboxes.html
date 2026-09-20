@@ -106,6 +106,38 @@
  .cd .onde{position:absolute;left:0;right:0;bottom:0;background:#000000cc;
    color:var(--gold);font-size:9px;line-height:1.25;padding:2px 3px;
    text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ /* REVALIDAÇÃO POR FOTO (2026-09-20): o selo 📷 no canto da miniatura, a barra
+    «validadas N/M», as linhas por cópia com o estado, o alvo e o bloco. */
+ .cd .rvb{position:absolute;top:2px;left:2px;background:#000d;color:#ffd27a;
+   font-size:10px;font-weight:700;padding:0 4px;border-radius:5px;line-height:15px}
+ .cd .rvb.corr{color:#ff9f6b}
+ .rvbar{display:flex;flex-direction:column;gap:4px;margin:8px 0;font-size:12.5px;
+   color:var(--muted)}
+ .rvbar b{color:var(--ink)} .rvbar b.warn{color:#ffd27a}
+ .rvbar .pg{display:block;position:relative;height:6px;background:#0a0d13;
+   border-radius:999px;overflow:hidden;border:1px solid var(--line)}
+ .rvbar .pg b{position:absolute;left:0;top:0;bottom:0;background:var(--add);
+   border-radius:999px}
+ .rvbar.mini{margin:6px 0 0;font-size:11.5px}
+ .blk.rev{background:#131a22;border-color:#2a3b52}
+ .blk.rev .flh{color:#ffd27a}
+ .mv.rv{opacity:1;text-decoration:none}
+ .mv.rv .to{white-space:nowrap}
+ .mv.rv.foto .to{color:#ffd27a} .mv.rv.ok .to{color:var(--add)}
+ .mv.rv.corr .to{color:#ff9f6b}
+ .mv.rv.ok{opacity:.72}
+ .rvalvo{margin:8px 0;padding:10px 12px;background:#1a1509;border:1px solid #4a3a12;
+   border-radius:var(--r);font-size:12.5px;color:var(--muted)}
+ .rvalvo>b{color:var(--gold)} .rvalvo .nota{margin:4px 0 8px}
+ .rvcaixas{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+   gap:10px;margin:8px 0 14px}
+ .rvc .mini{width:100%;text-align:left;padding:10px 12px}
+ .rvc .mini b{color:var(--ink)}
+ .rvc .seg{margin:6px 0 0}
+ .vt td.rvok{color:var(--add);font-weight:700;text-align:center}
+ .vt td.rvfoto{color:#ffd27a;font-weight:700;text-align:center;white-space:nowrap}
+ .el.rvfoto .nm small{color:#ffd27a}
+ details.vblk.rev summary .vtot{color:#ffd27a}
  /* blocos de detalhe */
  .blk{margin-top:11px;background:var(--card2);border:1px solid var(--line);
    border-radius:var(--r);padding:10px 12px;font-size:12.5px;color:var(--muted)}
@@ -548,5 +580,5 @@ A lista para vender é uma <b>sugestão a confirmar</b>. Atualiza diariamente.
 </div>
 <div class="barra" id="barra" hidden aria-live="polite"></div>
 
-<script src="deckboxes.js?v=ae5d0c53dbcb"></script>
+<script src="deckboxes.js?v=6a8c16d075dc"></script>
 </body></html>
