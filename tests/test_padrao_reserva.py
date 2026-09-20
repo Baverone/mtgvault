@@ -21,6 +21,7 @@ O que aqui se tranca (`mtgvault/padrao.py` + o que o `loadout` lê dele):
 
 Não toca na rede.
 """
+import io
 import json
 import os
 import shutil
@@ -61,6 +62,13 @@ os.environ["MTGVAULT_DB"] = str(_TMP / "vault.db")   # ver tests/_bateria.py
 from mtgvault import configio, db, loadout, padrao, sources, venda  # noqa: E402
 
 import deckboxes  # noqa: E402
+import webapp  # noqa: E402
+
+# O `webapp._padrao` regenera as páginas e escreve-as no `webapp.ROOT` — que é a
+# raiz do repositório. Apontado aqui, logo no import, para um teste nunca
+# reescrever o `deckboxes.html` a sério.
+webapp.ROOT = _TMP / "site"
+webapp.ROOT.mkdir(exist_ok=True)
 
 # (nome, edição, data, reserved)
 CATALOGO = [
@@ -386,12 +394,92 @@ def caso_a_cli_escreve_no_config_e_valida_no_catalogo():
     print("a CLI escreve no config e valida no catalogo")
 
 
+class Pedido(webapp.Handler):
+    """Um pedido de mentira: o mesmo handler, sem rede por baixo."""
+
+    def __init__(self, path, corpo=None, ip="127.0.0.1"):
+        self.path = path
+        self.client_address = (ip, 5555)
+        self.rfile = io.BytesIO((corpo or "").encode("utf-8"))
+        self.headers = {"Content-Length": str(len(corpo or ""))}
+        self.codigo, self.corpo = None, ""
+
+    def send_response(self, code, *_a):
+        self.codigo = code
+
+    def send_header(self, *_a):
+        pass
+
+    def end_headers(self):
+        pass
+
+    @property
+    def wfile(self):
+        self_ = self
+
+        class Escritor:
+            def write(self, b):
+                self_.corpo = b.decode("utf-8", "replace")
+        return Escritor()
+
+
+def _post(dados, ip="127.0.0.1"):
+    p = Pedido("/api/padrao", json.dumps(dados), ip=ip)
+    p.do_POST()
+    return p.codigo, (json.loads(p.corpo) if p.corpo.startswith("{") else p.corpo)
+
+
+def caso_o_endpoint_do_8771_escreve_e_valida():
+    """`POST /api/padrao`: fixar, add (409 sem catálogo), tirar, reserva-add /
+    reserva-tirar, voltar — e sem token (rede) é 403 e não escreve."""
+    cfg = json.loads(json.dumps(CFG))
+    cfg_escrever(cfg)
+    con = base()
+    deck(con, "Cloud (Duel Commander)", "duel-commander", [("Winter Moon", 1)])
+    add(con, "Mother of Runes", 1, finish="foil")
+    dbs = con.execute("PRAGMA database_list").fetchall()
+    db.DEFAULT_DB = Path(next(r["file"] for r in dbs if r["name"] == "main"))
+    db.DEFAULT_CATALOG = Path(next(r["file"] for r in dbs if r["name"] == "catalog"))
+    webapp.CONFIG = CFG_PATH
+    cod, j = _post({"act": "fixar", "slot": "duel-commander", "texto": "1 Mother of Runes",
+                    "origem": "8771"}, ip="192.168.1.9")
+    assert cod == 403 and "listas_escolhidas" not in cfg_ler(), (cod, j)
+    cod, j = _post({"act": "fixar", "slot": "duel-commander",
+                    "texto": "1 mother of runes\n1 Get Lost", "origem": "8771"})
+    assert cod == 200 and "2 cartas" in j["msg"], (cod, j)
+    rec = cfg_ler()["listas_escolhidas"]["duel-commander"]
+    assert rec["origem"] == "8771" and [c[1] for c in rec["cards"]] == ["Get Lost", "Mother of Runes"]
+    cod, j = _post({"act": "add", "slot": "duel-commander", "nome": "Carta Que Nao Ha"})
+    assert cod == 409 and "catálogo" in j["erro"], (cod, j)
+    cod, j = _post({"act": "add", "slot": "duel-commander", "nome": "Path to Exile",
+                    "q": 1, "board": "side"})
+    assert cod == 200, (cod, j)
+    assert ["side", "Path to Exile", 1] in cfg_ler()["listas_escolhidas"]["duel-commander"]["cards"]
+    cod, j = _post({"act": "tirar", "slot": "duel-commander", "nome": "Get Lost"})
+    assert cod == 200 and "Get Lost" not in json.dumps(cfg_ler()["listas_escolhidas"]), (cod, j)
+    cod, j = _post({"act": "reserva-add", "slot": "duel-commander", "nome": "Winter Moon"})
+    assert cod == 200 and cfg_ler()["caixas"][0]["reserva"] == ["Winter Moon"], (cod, j)
+    cod, j = _post({"act": "reserva-add", "slot": "duel-commander", "nome": "Winter Moon"})
+    assert cod == 409 and "já está" in j["erro"], (cod, j)
+    cod, j = _post({"act": "reserva-tirar", "slot": "duel-commander", "nome": "Winter Moon"})
+    assert cod == 200 and "reserva" not in cfg_ler()["caixas"][0], (cod, j)
+    cod, j = _post({"act": "voltar", "slot": "nao-existe"})
+    assert cod == 409 and "já não existe" in j["erro"], (cod, j)
+    cod, j = _post({"act": "voltar", "slot": "duel-commander"})
+    assert cod == 200 and "listas_escolhidas" not in cfg_ler(), (cod, j)
+    assert cfg_ler()["caixas"][0]["fonte"] == "deck"
+    # As páginas regeneraram-se no ROOT de teste, nunca no repositório.
+    assert (webapp.ROOT / "deckboxes.html").exists()
+    print("o endpoint /api/padrao escreve, valida e recusa sem token")
+
+
 def run():
     for fn in (caso_a_lista_padrao_nao_e_pisada_pelo_daily,
                caso_a_reserva_sai_da_venda_e_da_exportacao,
                caso_uma_pt_da_era_nao_serve_o_cloud,
                caso_a_pagina_desenha_a_reserva_e_a_lista_padrao,
-               caso_a_cli_escreve_no_config_e_valida_no_catalogo):
+               caso_a_cli_escreve_no_config_e_valida_no_catalogo,
+               caso_o_endpoint_do_8771_escreve_e_valida):
         fn()
     print("\nTUDO OK")
 
