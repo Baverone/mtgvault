@@ -148,6 +148,20 @@
  .blk.onde li b{color:#7fa8ff}
  .blk.lim{background:#1d1622;border-color:#4a3355} .blk.lim>b{color:#e0a8ea}
  .blk.lim li b{color:#e0a8ea}
+ /* LISTA PADRÃO e RESERVA (André, 2026-09-20) */
+ .blk.padrao{background:#101a14;border-color:#254a33} .blk.padrao>b{color:#8fd9a8}
+ .blk.reserva{background:#1a1810;border-color:#4a4325} .blk.reserva>b{color:var(--gold)}
+ .blk.reserva li{padding:3px 0} .blk.reserva .rsv-ok{color:var(--add)}
+ .blk.reserva .rsv-no{color:#ffd27a}
+ .pform{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
+ .pform input,.pform select{font:inherit;font-size:12.5px;padding:7px 10px;
+   border-radius:8px;border:1px solid var(--line);background:var(--card);
+   color:var(--ink);min-height:40px}
+ .pform input.nm{flex:1 1 160px;min-width:0} .pform input.q{width:58px}
+ .pform textarea{width:100%;min-height:120px;font:inherit;font-size:12px;
+   border-radius:8px;border:1px solid var(--line);background:var(--card);
+   color:var(--ink);padding:8px}
+ .blk .btn.sm{margin-left:6px}
  .flh{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;
    color:#e2795b;flex-wrap:wrap} .flh .dim{font-weight:400} .flh .cpbtn{margin-left:auto}
  .mrk{font-size:10px;font-weight:800;padding:1px 6px;border-radius:5px;
@@ -580,5 +594,5 @@ A lista para vender é uma <b>sugestão a confirmar</b>. Atualiza diariamente.
 </div>
 <div class="barra" id="barra" hidden aria-live="polite"></div>
 
-<script src="deckboxes.js?v=6a8c16d075dc"></script>
+<script src="deckboxes.js?v=2b174ec073ae"></script>
 </body></html>
