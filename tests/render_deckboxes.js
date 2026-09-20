@@ -112,7 +112,9 @@ const abas = ['plano', 'todas', 'montados', 'pormontar',
               'encomendas',
               // REVALIDAÇÃO (2026-09-20): só na fila com a campanha ligada; a
               // vista tem de desenhar sem erro nos dois casos.
-              'revalidacao', ...slots];
+              'revalidacao',
+              // A FEIRA (2026-09-20): sempre na fila; desenha-se vazia e cheia.
+              'feira', ...slots];
 let n = 0;
 for (const filtro of ['tudo', 'faltam']) {
   vm.runInContext(`filtro = ${JSON.stringify(filtro)};`, ctx);
@@ -146,8 +148,9 @@ const editavel = vm.runInContext('D.editable', ctx);
 // «já a tenho» também escrevem, e também não podem existir no site publicado.
 // ... e os da REVALIDAÇÃO (2026-09-20: «Fotografar», «parar») e o «afinal
 // encontrei» (`data-encontrei`, desde o mesmo dia). E os da LISTA PADRÃO e da
-// RESERVA (`data-padrao`, `data-reserva`, 2026-09-20).
-const ESCRITA = /data-(act|enc|chegou|desfazer|falta|vend|reg|encontrei|rev|rev-parar|padrao|reserva)=/;
+// RESERVA (`data-padrao`, `data-reserva`, 2026-09-20). E os da FEIRA
+// (`data-feira`: taxas, levo/nao levo, wantlist, vendors — 2026-09-20).
+const ESCRITA = /data-(act|enc|chegou|desfazer|falta|vend|reg|encontrei|rev|rev-parar|padrao|reserva|feira)=/;
 const escrita = desenhado.filter(h => ESCRITA.test(h)).length;
 if (!editavel && escrita) {
   console.error(`ERRO: ${escrita} blocos com botoes de escrita numa pagina publicada`);

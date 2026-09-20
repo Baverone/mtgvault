@@ -243,6 +243,33 @@ def main(argv=None):
                     choices=["listar", "add", "remover"])
     rs.add_argument("nome", nargs="?", help="add/remover: o nome da carta")
 
+    # A FEIRA (André, 2026-09-20): a projecção (levar vs. trazer), e a wantlist
+    # e os vendors — é por aqui que o Claude na nuvem lê e escreve sem o 8771.
+    fe = sub.add_parser("feira",
+                        help="a feira: projecção (levar como moeda de troca vs. "
+                             "trazer), `wantlist add|remover|listar`, `vendor "
+                             "add|remover|listar`, `taxas`, `levo|nao-levo`")
+    fe.add_argument("accao", nargs="?", default="projeccao",
+                    choices=["projeccao", "wantlist", "vendor", "taxas", "levo",
+                             "nao-levo", "pode-ter"])
+    fe.add_argument("sub", nargs="?",
+                    help="wantlist/vendor: add|remover|listar; levo/nao-levo: a chave "
+                         "`nome|EDIÇÃO|língua|acabamento`; pode-ter: o nome da carta")
+    fe.add_argument("nome", nargs="?", help="wantlist/vendor add|remover: o nome; "
+                                            "pode-ter: o vendor")
+    fe.add_argument("--caixa", dest="slot", help="wantlist: o `slot` da caixa")
+    fe.add_argument("--qty", type=int, default=1, help="wantlist add: quantas (1)")
+    fe.add_argument("--lang", help="wantlist add: pt|en (omissão: o da caixa)")
+    fe.add_argument("--finish", help="wantlist add: foil|nonfoil (omissão: o da caixa)")
+    fe.add_argument("--max", dest="maximo", help="wantlist add: preço máximo por cópia")
+    fe.add_argument("--notas", help="wantlist add / vendor add: notas")
+    fe.add_argument("--cardmarket", help="vendor add: o utilizador Cardmarket")
+    fe.add_argument("--site", help="vendor add: o site")
+    fe.add_argument("--dinheiro", help="taxas: a taxa em dinheiro (0.55 ou 55)")
+    fe.add_argument("--troca", help="taxas: a taxa em troca (0.70 ou 70)")
+    fe.add_argument("--nao", action="store_true", help="pode-ter: tirar a marca")
+    fe.add_argument("--json", action="store_true", help="saída em JSON")
+
     mc = sub.add_parser("migrar-caixas",
                         help="colecao_config.json: `loadout` -> `caixas` (v6)")
     mc.add_argument("--dry-run", action="store_true",
@@ -592,6 +619,9 @@ def main(argv=None):
         elif args.cmd in ("padrao", "reserva"):
             _padrao_reserva(con, args)
 
+        elif args.cmd == "feira":
+            _feira(con, args)
+
         elif args.cmd == "migrar-caixas":
             r = caixas.migrar_ficheiro(dry_run=args.dry_run)
             if not r["mudou"]:
@@ -690,6 +720,152 @@ def _padrao_reserva(con, args):
             rec = padrao.tirar(cfg, args.slot, args.nome, board=board if args.side else None)
         configio.escrever(cfg)
         print(f"  {nome_caixa}: lista padrão com {sum(c[2] for c in rec['cards'])} cartas")
+    except ValueError as e:
+        print(f"  ERRO: {e}")
+        sys.exit(2)
+
+
+def _feira(con, args):
+    """`feira [--json]` — a projecção (levar vs. trazer, saldo nas duas taxas,
+    por caixa) e as duas listas; `feira wantlist add|remover|listar`, `feira
+    vendor add|remover|listar`, `feira taxas --dinheiro --troca`, `feira
+    levo|nao-levo <chave>`, `feira pode-ter <carta> <vendor> [--nao]`. As
+    escritas vão para o `colecao_config.json` (André, 2026-09-20) e validam
+    os nomes no catálogo; não tocam na base.
+    """
+    import json as _json
+    from . import configio, feira, padrao
+
+    if args.accao == "projeccao":
+        rep = loadout.report(con)
+        p = feira.projeccao(con, rep)
+        if args.json:
+            print(_json.dumps(p, ensure_ascii=False, indent=1))
+            return
+        lv, tz, s = p["levar"], p["trazer"], p["saldo"]
+        print(f"  FEIRA ({p['hoje']}) — {feira.resumo(p)}")
+        print(f"  taxas: dinheiro {p['taxa_dinheiro']:.0%} · troca {p['taxa_troca']:.0%} "
+              f"do Trend (estimativas tuas — feira.taxa_dinheiro / feira.taxa_troca)")
+        if lv["revalidacao"]:
+            print(f"  foto: {'só validadas' if lv['so_validadas'] else 'tudo'}"
+                  + (f" — {lv['fora_foto']} cópia{'s' if lv['fora_foto'] != 1 else ''} / "
+                     f"{lv['fora_foto_trend']:.2f} € ficam por não terem foto desta campanha"
+                     if lv["fora_foto"] else ""))
+        if lv["nao_levo"]:
+            print(f"  marcadas «não levo»: {lv['nao_levo']} cópia"
+                  f"{'s' if lv['nao_levo'] != 1 else ''} / {lv['nao_levo_trend']:.2f} €")
+        print(f"  saldo: dinheiro {s['dinheiro']:+.2f} € · troca {s['troca']:+.2f} €"
+              + (f" · com os teus máximos: dinheiro {s['dinheiro_max']:+.2f} € · "
+                 f"troca {s['troca_max']:+.2f} €" if tz["com_maximo"] else ""))
+        if p["por_caixa"]:
+            print("  por caixa (trazer):")
+            for c in p["por_caixa"]:
+                print(f"    {c['caixa']}: {c['copias']} cópias · mín {c['minimo']:.2f} €"
+                      + (f" · máx {c['maximo']:.2f} €" if c["maximo"] != c["minimo"] else "")
+                      + f" · saldo em troca {c['saldo_troca']:+.2f} €")
+        if tz["vendors"]:
+            print("  vendors: " + ", ".join(v["nome"] for v in tz["vendors"]))
+        print()
+        print(p["texto_levar"])
+        print(p["texto_trazer"])
+        return
+
+    cfg = configio.ler()
+
+    def canon(n):
+        c = padrao.nome_no_catalogo(con, n or "")
+        if c is None:
+            print(f"  ERRO: o catálogo não conhece {n!r} — confirma o nome em inglês")
+            sys.exit(2)
+        return c
+
+    try:
+        if args.accao == "taxas":
+            if args.dinheiro is None and args.troca is None:
+                d, t = feira.taxas(cfg)
+                print(f"  taxas: dinheiro {d:.0%} · troca {t:.0%} do Trend")
+                return
+            feira.definir_taxas(cfg, args.dinheiro, args.troca)
+            d, t = feira.taxas(cfg)
+            configio.escrever(cfg)
+            print(f"  taxas: dinheiro {d:.0%} · troca {t:.0%} do Trend")
+            return
+        if args.accao in ("levo", "nao-levo"):
+            if not args.sub:
+                print("  ERRO: diz a chave `nome|EDIÇÃO|língua|acabamento`")
+                sys.exit(2)
+            lista = feira.marcar(cfg, args.sub, args.accao == "levo")
+            configio.escrever(cfg)
+            print(f"  {args.sub.split('|')[0]}: {args.accao.replace('-', ' ')} "
+                  f"({len(lista)} marcadas «não levo»)")
+            return
+        if args.accao == "pode-ter":
+            if not args.sub or not args.nome:
+                print("  ERRO: `feira pode-ter <carta> <vendor> [--nao]`")
+                sys.exit(2)
+            lista = feira.pode_ter(cfg, canon(args.sub), args.nome, not args.nao)
+            configio.escrever(cfg)
+            print(f"  {args.sub}: " + (", ".join(lista) + " pode ter" if lista else "sem vendor"))
+            return
+        if args.accao == "vendor":
+            if (args.sub or "listar") == "listar":
+                vs = feira.vendors(cfg)
+                print(f"  {len(vs)} vendor(es)")
+                for v in vs:
+                    print(f"    {v['nome']}"
+                          + (f" · Cardmarket: {v['cardmarket']}" if v["cardmarket"] else "")
+                          + (f" · {v['site']}" if v["site"] else "")
+                          + (f" · {v['notas']}" if v["notas"] else ""))
+                return
+            if not args.nome:
+                print("  ERRO: diz o nome do vendor")
+                sys.exit(2)
+            if args.sub == "add":
+                v = feira.vendor_add(cfg, args.nome, args.notas or "", args.cardmarket or "",
+                                     args.site or "")
+                print(f"  vendor {v['nome']} acrescentado")
+            elif args.sub == "remover":
+                n = feira.vendor_remover(cfg, args.nome)
+                print(f"  vendor {args.nome} tirado ({n} ficam)")
+            else:
+                print(f"  ERRO: `feira vendor {args.sub}`? (add|remover|listar)")
+                sys.exit(2)
+            configio.escrever(cfg)
+            return
+        if args.accao == "wantlist":
+            if (args.sub or "listar") == "listar":
+                wl = feira.wantlist(cfg)
+                nomes = loadout.nomes_das_caixas(cfg.get("caixas") or [])
+                print(f"  {len(wl)} entrada(s) manual(is)")
+                for e in wl:
+                    print(f"    {e['q']}× {e['nome']}"
+                          + (f" [{(e['lang'] or '').upper()} {e['finish'] or ''}]".replace("[ ", "[").replace(" ]", "]")
+                             if e["lang"] or e["finish"] else "")
+                          + (f" · máx {e['max']:.2f} €" if e["max"] is not None else "")
+                          + (f" · para {nomes.get(e['slot'], e['slot'])}" if e["slot"] else "")
+                          + (f" · {e['notas']}" if e["notas"] else ""))
+                return
+            if not args.nome:
+                print("  ERRO: diz o nome da carta")
+                sys.exit(2)
+            if args.sub == "add":
+                nome = canon(args.nome)
+                e = feira.wantlist_add(cfg, nome, args.qty, args.lang, args.finish,
+                                       args.maximo, args.slot, args.notas or "")
+                print(f"  {e['q']}× {nome} na wantlist da feira"
+                      + (f" (máx {e['max']:.2f} €)" if e.get("max") is not None else "")
+                      + (f" para {args.slot}" if args.slot else ""))
+            elif args.sub == "remover":
+                n = feira.wantlist_remover(cfg, args.nome, args.slot)
+                print(f"  {args.nome} fora da wantlist ({n} entradas ficam)")
+            else:
+                print(f"  ERRO: `feira wantlist {args.sub}`? (add|remover|listar)")
+                sys.exit(2)
+            configio.escrever(cfg)
+            return
+    except KeyError as e:
+        print(f"  ERRO: a caixa {e.args[0]!r} não existe no colecao_config.json")
+        sys.exit(2)
     except ValueError as e:
         print(f"  ERRO: {e}")
         sys.exit(2)
