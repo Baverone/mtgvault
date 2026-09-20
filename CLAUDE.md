@@ -56,6 +56,12 @@ mtgvault/
                   DESCONTO no «a comprar» das caixas e a CONCILIAÇÃO pela foto
                   (chamada pelo `collection.import_csv`) — «só a foto cria
                   cópias»
+  revalidacao.py  a REVALIDAÇÃO POR FOTO de toda a colecção (2026-09-20): a
+                  campanha (`revalidacao.desde`), o ALVO (a caixa que ele está
+                  a fotografar), o passo (0) da conciliação (a foto nova liga-se
+                  à cópia por revalidar; a discrepância corrige a cópia da
+                  caixa, `data/revalidacao.log`), o progresso da aba «📷
+                  Revalidação» e a secção do `pendentes/esperadas.md`
   venda.py        a SAÍDA da lista de venda (2026-09-18): o CSV de stock p/ o
                   Cardmarket (formato predefinido NÃO confirmado, ou aprendido
                   de `data/cardmarket-stock-exemplo.csv`), a lista da estante
@@ -2065,7 +2071,8 @@ cada caixa, CLI `py -m mtgvault.cli encomendas`, endpoints
   Underground Sea 3ED…).
 - **A CONCILIAÇÃO PELA FOTO vive no `collection.import_csv`** (é comum ao
   `processar_fotos.py` e à tarefa `mtg-fotos-novas`), por esta ordem e de forma
-  determinista: **(i)** cópia «edição por confirmar» da mesma carta →
+  determinista (desde 2026-09-20 com o passo **(0)** da REVALIDAÇÃO à frente —
+  ver o ponto 8): **(i)** cópia «edição por confirmar» da mesma carta →
   `acertar_edicao`, como desde 09/08; **(ii)** encomenda **pendente de foto**
   com o mesmo nome + língua + acabamento (e edição, se a encomenda a tiver),
   **a caixa de maior prioridade primeiro** → `encomendas.conciliar` cria a
@@ -2127,6 +2134,106 @@ cada caixa, CLI `py -m mtgvault.cli encomendas`, endpoints
   (`qty_fechada 2`, `copy_ids [739]`): a caixa **95 → 97 %**, 71 → 73 na caixa,
   comprar 2, arrumar igual (já está na caixa). Ver
   `ai-pc/work/revisao/mtgvault-encomendas.md`.
+
+**8. REVALIDAÇÃO POR FOTO DE TODA A COLECÇÃO (André, 2026-09-20, à letra).**
+*"quero que quando se clique, ele mostre as cartas, como está a fazer, e que
+depois peça a foto das cartas. Quero revalidar todas as fotos agora que vamos
+colocar tudo em decks para que nada falhe ou escape; assim o que eu for vender
+também vai com foto e vamos pouco a pouco arrumando tudo no devido lugar e bem
+feito."* Motor em `mtgvault/revalidacao.py`, config em `colecao_config.json →
+revalidacao` (`desde`, `alvo`), aba **📷 Revalidação** e bloco **«📷 Na caixa
+— fotografar»** em cada aba de caixa da Deckboxes, CLI `py -m mtgvault.cli
+revalidacao [--caixa slot] [--json]` / `revalidacao esperadas --caixa slot` /
+`revalidacao parar`, endpoint `POST /api/revalidacao` (`act: alvo|parar`).
+Relatório e medições em `ai-pc/work/revisao/mtgvault-revalidacao-0920.md`;
+testes em `test_revalidacao.py` (11 casos).
+- **É uma CAMPANHA: a partir de `revalidacao.desde` (2026-09-20) NENHUMA cópia
+  está validada até uma foto NOVA lhe ser ligada.** O estado vive em duas
+  colunas da `copies` — `validado_em` (a data; NULL = por revalidar) e
+  `foto_anterior` (o `photo_path` que a foto nova substituiu; a foto antiga
+  NÃO se apaga, fica em «fotos processadas» como sempre, e o `aplicado.csv`
+  ganhou a coluna `foto_anterior`). Coluna nova = os três sítios; o índice
+  `ix_copies_validado` nasce no `_migrate`, depois do ALTER (a armadilha de
+  09/09). Uma cópia que NASÇA com foto durante a campanha nasce validada
+  (`collection.add_copy`); as que uma foto acerta/liga (`acertar_edicao`,
+  `ligar_foto`) ficam validadas por ela. Apagar `desde` desliga tudo (a aba
+  desaparece, `rev` é `None`, os `.json` levam `null`).
+- **O ESTADO NÃO MUDA UM NÚMERO.** Medido na cópia da base de 2026-09-20, o
+  mesmo `vault.db` com o código do `main` e do ramo: fechar tudo **7 157,16 €**,
+  **209** a comprar, 0 a ir buscar, **181** a arrumar (104 linhas), venda
+  **272c/1 570,73 €**, venda_rl 70c/4 373,90 €, rl_segurar 32c/4 204,76 €,
+  reservadas 1c/100,00 €, guardar 2c/14,81 €, as 14 caixas ao cêntimo —
+  **iguais**. O progresso (`revalidacao.progresso`, 0,7 s) parte as 1 678
+  cópias em caixas **592** (Blue Farm 96, DC 75, Pauper 74, Replenish 66,
+  cEDH 65, Stiflenought 58, Modern 53, Oath 49, Elves 24, Enchantress 23,
+  Pioneer 9), venda **342**, Caixa RL **78**, resto **666** — a soma É a
+  colecção (tem teste). Uma cópia parcialmente numa caixa conta a parte de
+  dentro na caixa e o resto onde está.
+- **O ALVO (`revalidacao.alvo` = `{tipo: caixa|venda|rl|coleccao, slot, em}`)
+  é o que ele está a fotografar AGORA**, escrito pelo botão **«📷 Fotografar
+  esta caixa»** (só no 8771) ou pela CLI. Vive no config porque é uma
+  preferência e três processos têm de o ler: o `daily` das 08:00 e o
+  `webapp.regenerar` escrevem o mesmo `pendentes/esperadas.md` (secção
+  **«## Caixa <nome> — por revalidar (N cópias)»** à cabeça, com a impressão
+  esperada, a quantidade e o `copy_id`; depois «## Encomendas pendentes» e
+  «## Na base, sem foto»), e o import das 02:30 (`mtg-fotos-novas`, que NÃO
+  mudou) lê-o para dar preferência às cópias dessa caixa. O
+  `PROCESSAR_FOTOS.md` manda o Claude das fotos **escrever a impressão que VÊ,
+  não a esperada**, e assinalar em `notes` quando difere. «parar» tira o alvo.
+- **A CONCILIAÇÃO ganhou o passo (0), à frente das quatro de 19/09
+  (`collection.import_csv`):** a linha casa com uma cópia POR REVALIDAR da
+  mesma impressão exacta (nome + edição + número + língua + acabamento) →
+  `revalidacao.revalidar`: liga a foto (`photo_path` novo, `foto_anterior`,
+  `validado_em`), **não cria cópia**; prefere as cópias do alvo, depois a da
+  mesma quantidade, depois qualquer (determinista); com `quantity` maior do
+  que o que há por revalidar, o resto segue (i)→(iv). As «edição por
+  confirmar» ficam para o (i), que também as valida. O que entrar por (iv)
+  com a campanha ligada fica marcado **«nova nesta campanha (<data>)»** nas
+  `notes` — é a lista do que apareceu nas fotos sem cópia na base.
+- **DISCREPÂNCIA (0b): não há cópia igual à foto, mas o alvo tem uma cópia por
+  revalidar da MESMA CARTA noutra edição/acabamento/língua → é uma correcção,
+  não uma carta nova** (`revalidacao.corrigir`). A cópia da caixa passa a ser
+  o que a foto prova, com a marca **«corrigida pela foto em <data>: NEM #17
+  nonfoil en → NEM #17 foil en»** nas `notes` e a linha em
+  **`data/revalidacao.log`** (fora do Git), escrita ANTES da base; o backup é
+  o que o `mtg-fotos-novas` já faz antes de cada import. Se depois disso a
+  cópia deixar de cumprir a regra de material da caixa
+  (`loadout.lots(ids=[…])` → `contradiz`), **sai da `copy_allocation`** com
+  «saiu da caixa X: <porquê>» nas `notes` — nunca se lava a regra com um
+  registo (ponto 5). A decisão de 09/09 mantém-se: **nada se apaga**; uma
+  cópia que nunca receba foto continua por revalidar e visível.
+  **Consequência a saber:** a cópia igual à foto ganha sempre, esteja onde
+  estiver — se a caixa-alvo tem a carta noutra edição e a Colecção tem a
+  edição da foto, liga-se a da Colecção e a da caixa fica por revalidar (é o
+  que a ordem diz; a alocação não se move). Simulado na cópia da base com
+  4 fotos: Abeyance WTH igual → cópia 461 validada; Abeyance «WC97» → cópia
+  712 partida, a nova corrigida e fica na caixa; Exalted Angel «G06» → cópia
+  517 partida, a nova corrigida e **sai** da caixa (pós-Scourge); Llanowar
+  Elves LEA → nova, marcada. `copies` 737→740 linhas (1 678→1 679), alocação
+  411→410, Replenish 66→65 cópias (2 validadas, 1 corrigida), venda
+  1 570,73→1 569,10 € (só porque a cópia mudou).
+- **A PÁGINA:** em cada aba de caixa, a lista **«📷 Na caixa — fotografar»**
+  (uma cópia por linha, por COR como o binder, com 📷 «por fotografar» / ✓
+  «validada <data>» / ⚠ «corrigida pela foto», a barra «validadas N/M» e o
+  botão); o selo **📷N** na miniatura da grelha e no `title`; o chip
+  «validadas N/M» no cartão da fila. Na aba **Vender**, a coluna 📷/✓ por linha
+  (uma linha junta lotes: «📷 2/4»), «📷 N/M validadas» por bloco, o filtro
+  **«📷 Só validadas»** (troca a tabela, o CSV e a estante para a versão por
+  cópia com foto — `venda.relatorio` traz `csv_validadas`/
+  `texto_estante_validadas`), e o CSV de stock com a coluna **`Foto`**
+  (`validada <data>` / `por revalidar`) no formato predefinido; no formato
+  aprendido do ficheiro dele não se acrescenta coluna (o site tem de o
+  aceitar tal e qual) e a informação vai no comentário. `vender --exportar
+  --so-validadas` e `POST /api/venda-export {so_validadas}` escrevem só essas.
+  A aba **📷 Revalidação**: o total, o alvo com a instrução, cada caixa (barra
+  + botão), a Venda / Caixa RL / Colecção (listas por cor, com o botão), «entrou
+  hoje», «corrigidas pela foto» e «novas nesta campanha». Site publicado só
+  leitura (o `render_deckboxes.js` conta `data-rev`/`data-rev-parar` como
+  escrita). Dados na parte `deckboxes/revalidacao.json`; o índice leva os totais.
+- **CORRIGIDO DE CAMINHO:** o «afinal encontrei» da aba Não encontradas usava
+  `data-enc`, o mesmo atributo dos `+`/`−` das encomendas, e o `ligar()` deixava
+  o segundo `onclick` ganhar — o `+` de uma encomenda chamava o `encontrei`.
+  Passou a `data-encontrei` (o `test_nao_encontrei` tranca-o).
 
 **AS CÓPIAS DE UMA LINHA INCOMPLETA TAMBÉM SE TIRAM DA GAVETA (2026-09-08).**
 Uma linha que pede 4 e a que a alocação só deu 2 vive em `missing` — e **tudo**
