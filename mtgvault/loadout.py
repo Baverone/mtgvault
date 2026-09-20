@@ -477,6 +477,44 @@ def card_price(con, name: str, finish: str = "nonfoil",
             else (None, None))
 
 
+def impressao_mais_barata(con, name: str, finish: str = "nonfoil",
+                          source: str = "cardmarket", cache: dict | None = None):
+    """O `scryfall_id` da impressão a que o `card_price` corresponde — a mais
+    barata no acabamento pedido — ou `None` sem preço.
+
+    AS CARTAS EM IMAGEM (André, 2026-09-20: *"cada deck poderia ter as cartas
+    visualmente ao invés de só o nome?"*): para o que ele TEM mostra-se a
+    impressão exacta da cópia; para o que FALTA não há cópia nenhuma, e a
+    imagem honesta é a da impressão cujo preço a lista de compras já usa. É a
+    mesma consulta do `card_price` com `ORDER BY` em vez de `MIN` — duas
+    contas diferentes davam um preço de uma impressão e a imagem de outra.
+    """
+    chave = (name, finish in FOIL_FINISHES, source)
+    if cache is not None and chave in cache:
+        return cache[chave]
+    fins = FOIL_FINISHES if finish in FOIL_FINISHES else ("nonfoil",)
+    marks = ",".join("?" * len(fins))
+    row = con.execute(
+        f"""SELECT c.scryfall_id sid FROM cards c
+              JOIN price_latest p ON p.scryfall_id = c.scryfall_id
+             WHERE c.name = ? AND p.source = ? AND p.finish IN ({marks})
+               AND p.trend IS NOT NULL
+             ORDER BY p.trend, c.released_at DESC LIMIT 1""",
+        (name, source, *fins)).fetchone()
+    if row is None and fins[0] != "nonfoil":
+        row = con.execute(
+            """SELECT c.scryfall_id sid FROM cards c
+                 JOIN price_latest p ON p.scryfall_id = c.scryfall_id
+                WHERE c.name = ? AND p.source = ? AND p.finish = 'nonfoil'
+                  AND p.trend IS NOT NULL
+                ORDER BY p.trend, c.released_at DESC LIMIT 1""",
+            (name, source)).fetchone()
+    sid = row["sid"] if row else None
+    if cache is not None:
+        cache[chave] = sid
+    return sid
+
+
 def card_price_em(con, name: str, dia: str, finish: str = "nonfoil",
                   source: str = "cardmarket") -> tuple[float | None, str | None,
                                                        str | None]:
@@ -2521,6 +2559,7 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                                    "de": s["nome"], "para": lot["balde"],
                                    "slot": s["slot"], "copy_id": lot["id"],
                                    "sid": lot["sid"], "finish": lot["finish"],
+                                   "foil": e_foil(lot["finish"]),
                                    "lang": lot["lang"],
                                    "set_code": lot["set_code"],
                                    "sentido": "sai"})
@@ -2755,6 +2794,8 @@ def reserva_da_caixa(res: dict, s: dict) -> list[dict]:
                           "set_code": lot["set_code"], "lang": lot["lang"],
                           "finish": lot["finish"], "foil": e_foil(lot["finish"]),
                           "rl": bool(lot["rl"]), "copy_id": lot["id"],
+                          # A impressão exacta, para o tile em imagem (2026-09-20).
+                          "sid": lot["sid"],
                           "serve": porque is None, "porque": porque or ""})
         out.append({"nm": nm, "q": sum(l["q"] for l in lotes), "lotes": lotes,
                     "na_lista": nm in na_lista,
@@ -3686,6 +3727,7 @@ def movimentos_de_entrada(s: dict, caixas: set[str] | frozenset) -> list[dict]:
                         "copy_id": g["id"], "sid": g["sid"],
                         "basica": bool(m.get("basica")),
                         "finish": g["finish"], "lang": g["lang"],
+                        "foil": e_foil(g["finish"]),
                         "set_code": g["set_code"], "sentido": "entra"})
     return out
 
@@ -3717,6 +3759,7 @@ def movimentos_reservados(s: dict) -> list[dict]:
                         "destino": g["destino"], "board": m["board"],
                         "copy_id": g["id"], "sid": g["sid"], "basica": False,
                         "finish": g["finish"], "lang": g["lang"],
+                        "foil": e_foil(g["finish"]),
                         "set_code": g["set_code"], "sentido": "entra"})
     return out
 
@@ -3959,6 +4002,7 @@ def copias_por_confirmar(s: dict) -> list[dict]:
                         "copy_id": g["id"], "set_code": g["set_code"],
                         "de": g["local"], "para": s["nome"],
                         "finish": g["finish"], "lang": g["lang"],
+                        "sid": g.get("sid"),
                         "basica": bool(m.get("basica"))})
     return sorted(out, key=lambda m: (m["board"] != "main", m["nm"]))
 
@@ -4703,6 +4747,7 @@ def plano_arrumacao(res: dict) -> dict:
                         "de": lot["caixa_nome"], "para": lot["balde"],
                         "slot": lot["caixa"], "copy_id": lot["id"],
                         "sid": lot["sid"], "finish": lot["finish"],
+                        "foil": e_foil(lot["finish"]),
                         "lang": lot["lang"], "set_code": lot["set_code"],
                         "sentido": "sai"})
     movs = sorted(entra + sai, key=lambda m: (m["de"], m["para"], m["nm"]))

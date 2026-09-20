@@ -2414,6 +2414,88 @@ pronta com o que a base já sabe.
   PT do Oath (847,76 €) e o Cloud cEDH são o grosso do trazer.
   `feira.projeccao` custa 0,03 s por cima do `report`.
 
+**11. AS CARTAS EM IMAGEM, NÃO SÓ O NOME (André, 2026-09-20, à letra).** *"cada
+deck poderia ter as cartas visualmente ao invés de só o nome?"* — e a regra
+geral dele, de 16/09: *"gosto de ter em imagem da carta e não apenas texto, faz
+algo visualmente apelativo"*. Relatório e medições em
+`ai-pc/work/revisao/mtgvault-visual-0920.md`; testes em `tests/test_visual.py`
+(12 casos) e o `render_deckboxes.js` passou a desenhar cada aba nos DOIS modos
+(`lista:<aba>` no dump). Só a página mudou: **nenhum número da alocação, da
+venda ou da feira mexe** (medido na cópia da base de 2026-09-20: fechar tudo
+7 077,07 €, 208 a comprar, venda 272c/1 570,73 € + RL 70c/4 373,90 €, iguais).
+- **O que já era imagem** antes: a grelha de três estados da aba da caixa, os
+  tiles das Encomendas (19/09) e a grelha das Sugestões. **O que era texto**:
+  o passo 1 e 2 do painel Montar, as básicas, as destinadas a outra caixa, o
+  «já na caixa», a Reserva e a lista «Na caixa» da Revalidação (20/09), a aba
+  Comprar, a aba Vender (tabela) e a estante da saída, a Feira, o Arrumar e o
+  «actualizar decks montados», a aba Revalidação (Venda/RL/Colecção). **Agora
+  é tudo a MESMA componente**: `deckboxes.tileHTML` (JS), com `grelhaHTML`
+  (uma grelha) e `grelhaPorCor` (com o cabeçalho de cor, como o binder). A
+  informação vai EM CIMA da imagem e não escondida no `title`: o chip do
+  estado (`.tlr`: ✓ tens · tens, não serve · 🛒 comprar N · 🚚 a caminho · 📷
+  pendente de foto · 📷 por fotografar · ✓ validada · ⚠ corrigida · 🛡️
+  reserva · ✕ não levo · tirar/→ caixa), a quantidade (`.tlq`), o material
+  (`.tlm`: edição, ✨, língua), o preço quando é compra ou venda (`.tlx`), e
+  os botões que a lista tinha no rodapé (`.tla`) — a checkbox do passo 1
+  (28 px, canto superior direito, com o MESMO `data-id` de `vistoId`, por isso
+  a barra «N de M» conta na mesma), o «já a tenho», os `+`/`−`/«Chegou», o
+  «vendida» (dois toques), o «levo», o ✕ da reserva, o selector de vendor.
+  O `ligar()` não sabe se está a olhar para uma linha ou para um tile: os
+  `data-*` são os mesmos, e os pedidos aos endpoints também (tem teste).
+  Toque na imagem = os detalhes de sempre (`tocarCarta`).
+- **A imagem é a da IMPRESSÃO EXACTA** que ele tem: o `sid` da cópia, que
+  passou a viajar no payload em todo o lado (`lots()` já o tinha; o
+  `reserva_da_caixa`, o `copias_por_confirmar`, o `venda._detalhe_copias`/
+  `linhas_export`, o `feira.levar` e o `plano_arrumacao` ganharam-no). Numa
+  carta que FALTA não há cópia, e a imagem honesta é a da **impressão mais
+  barata no acabamento da compra** — `loadout.impressao_mais_barata`, a
+  mesma consulta do `card_price` com `ORDER BY` em vez de `MIN`, para o preço
+  ao lado e a imagem serem da mesma impressão. Só nas cartas que a base cota;
+  sem preço fica a impressão de sempre do nome (`paginas.img_map`). **Sem
+  `sid` nenhum** (a carta não está no catálogo) fica o NOME no quadrado
+  (`.tlnm`), nunca um buraco; e cada `<img>` leva `onerror="this.remove()"`
+  — a imagem que falhe na rede deixa o nome à vista.
+- **O interruptor «Imagens / Lista»** está no topo de cada aba com cartas (na
+  aba da caixa, na barra de filtros). «Lista» é exactamente a página de antes
+  de 20/09 (as linhas `.mv`, os `<li>` da wantlist, a tabela da venda), com
+  os mesmos `data-id`. A omissão é **imagens**; o valor vive em
+  `colecao_config.json → deckboxes.vista` (`deckboxes.vista_config`, escrito
+  pelo `POST /api/vista` do 8771 — `webapp.gravar_vista`, 409 fora de
+  `imagens`/`lista`) e, por cima dele, no aparelho (`P.imagens`, o
+  `localStorage`; no site publicado é só aí). No config porque é uma
+  preferência dele e o PC e o telemóvel têm de dizer o mesmo.
+- **Desempenho**: `loading="lazy"`, `decoding="async"`, o tamanho `small` do
+  Scryfall (146×204) escrito no `<img>` e `aspect-ratio:.716` no quadrado —
+  a grelha não salta enquanto as imagens chegam. 3 colunas a 640 px
+  (`repeat(3,minmax(0,1fr))` — com `1fr` a grelha saía do ecrã: um `<select>`
+  não encolhe abaixo da opção mais comprida; medido a 400 px numa captura do
+  Chrome headless), `minmax(120px,1fr)` em ecrã largo, `.big` para as imagens
+  grandes. **As grelhas grandes vêm aos poucos** (`MAX_TILES = 60` por grelha
+  ou por lista de cores, com um botão «⬇ mostrar as outras N» —
+  `GRELHAS_ABERTAS`), só nas abas SEM procura (Vender, Feira, Revalidação,
+  Arrumar, Encomendas, Sugestões, Comprar não): na aba da caixa a procura
+  filtra o que está desenhado e um tile por desenhar era uma carta que ela
+  não achava. A decisão de 15/09 (os dados à parte, por secção) não mudou:
+  o JSON de cada parte só ganhou o `sid` (a maior, `revalidacao.json`,
+  fica em 278 KB; a `caixa-duel-commander` 104 → 115 KB); o `deckboxes.js`
+  passou de 198 a 224 KB, cacheável pelo `?v=`.
+- **Medido na cópia da base de 2026-09-20** (Chrome headless a 400 px,
+  `render()` + layout, o melhor de 3): a caixa maior (Cloud DC, 227 tiles)
+  **10,7 → 17,0 ms**, Vender 34,7 → 33,7 ms (211 tiles, com o tecto), Feira
+  26,1 → 20,7 ms, Encomendas 9,6 → 14,5 ms, Todas 2,6 → 2,7 ms (não tem
+  cartas) — tudo muito abaixo dos 300 ms a partir dos quais se virtualizava.
+  O `payload` no modo edição custa o mesmo (3,3 s, dominado pelas edições do
+  «já a tenho»); no publicado 0,63 s. Os `sid` estão todos preenchidos: 0
+  cartas sem imagem nas 11 caixas, na venda (121 linhas), na feira (141 +
+  132) e nas compras (124).
+- **Consequências a saber:** (a) os testes que liam a tabela da venda ou as
+  linhas `.mv` (`test_paginas_loadout`, `test_revalidacao`, `test_incompletos`,
+  `test_encomendas`, `test_telemovel`) passaram a lê-las em `lista:<aba>` e a
+  verificar o tile no modo de omissão; (b) o `❓ deck por escolher`, o Plano,
+  Todas/Montados/Para montar e as Não encontradas ficaram como estavam (não
+  têm lista de cartas, ou já têm a foto); (c) o `title` continua a existir
+  em cada tile — é o que o `tocarCarta` mostra ao toque.
+
 **AS CÓPIAS DE UMA LINHA INCOMPLETA TAMBÉM SE TIRAM DA GAVETA (2026-09-08).**
 Uma linha que pede 4 e a que a alocação só deu 2 vive em `missing` — e **tudo**
 o que percorria a alocação de uma caixa percorria só o `have`. As duas cópias

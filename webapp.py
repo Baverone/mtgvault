@@ -190,6 +190,25 @@ def escrever_config(cfg: dict, path: Path | None = None) -> None:
     sources._CFG_CACHE.clear()
 
 
+def gravar_vista(dados: dict, path: Path | None = None) -> dict:
+    """«Imagens / Lista» (André, 2026-09-20): `colecao_config.json →
+    deckboxes.vista`. Um valor fora de `deckboxes.VISTAS` é 409 — a página só
+    manda estes dois, e um terceiro seria um erro dela."""
+    v = str(dados.get("vista") or "").strip().lower()
+    if v not in deckboxes.VISTAS:
+        raise ValueError(f"vista {v!r} — usa imagens ou lista")
+    cfg = ler_config(path)
+    bloco = cfg.get("deckboxes")
+    if not isinstance(bloco, dict):
+        bloco = cfg["deckboxes"] = {}
+    bloco["vista"] = v
+    escrever_config(cfg, path)
+    _CACHE.clear()
+    return {"ok": True, "vista": v,
+            "msg": "a mostrar as cartas em imagem" if v == "imagens"
+                   else "a mostrar as cartas em lista"}
+
+
 # ---------------------------------------------------------------------------
 # Token: quem pode escrever
 # ---------------------------------------------------------------------------
@@ -1024,6 +1043,14 @@ class Handler(BaseHTTPRequestHandler):
                     # wantlist e vendors. Só config — nada toca na base;
                     # regenera porque a aba (e o seu subtítulo) mudou.
                     self._json(self._feira(dados))
+                    return
+                if caminho == "/api/vista":
+                    # AS CARTAS EM IMAGEM (André, 2026-09-20): o interruptor
+                    # «Imagens / Lista» grava a preferência no config
+                    # (`deckboxes.vista`) — no PC e no telemóvel tem de ser a
+                    # mesma. Só config, e não regenera nada: o índice sai da
+                    # cache, que o mtime do config já invalida.
+                    self._json(gravar_vista(dados))
                     return
                 if caminho in ("/api/encomenda", "/api/encomenda-chegou",
                                "/api/encomenda-desfazer"):

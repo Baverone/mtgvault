@@ -713,7 +713,10 @@ def caso_o_separador_desenha_nos_dois_modos():
     assert "pendentes\\" in h, "diz onde largar a foto"
     # A linha de compra da caixa: «2 a caminho», 0×, botões.
     c = abas["pm"]
-    assert "📦 2 a caminho" in c and "<b>0×</b>" in c and "Chegou (2)" in c, c[-3000:]
+    # EM IMAGEM (2026-09-20) a quantidade é o selo «×0» do tile; em «Lista» é o
+    # `<b>0×</b>` de sempre — os dois modos têm de dizer o mesmo.
+    assert "📦 2 a caminho" in c and '"tlq">×0</span>' in c and "Chegou (2)" in c, c[-3000:]
+    assert "📦 2 a caminho" in abas["lista:pm"] and "<b>0×</b>" in abas["lista:pm"]
     # Toda encomendada: não há «já a tenho» a dar (o selector vive nele), mas o
     # `+`/`−` ficam — é por eles que se volta atrás.
     assert 'data-falta="1"' not in c and 'data-enc="-1"' in c

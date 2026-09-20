@@ -622,10 +622,17 @@ def caso_a_pagina_nos_dois_modos():
     c = abas["pm"]
     assert "📷 Na caixa — fotografar" in c and "validadas <b>1/3</b>" in c, c[-4000:]
     assert 'data-rev-parar="1"' in c and "A fotografar UW Replenish" in c, c[-4000:]
-    assert 'class="mv rv foto"' in c and 'class="mv rv corr"' in c, c[-4000:]
-    assert '<span class="rvb foto">📷2</span>' in c, "o selo na miniatura"
+    # EM IMAGEM (2026-09-20): um tile por cópia, com o estado na moldura
+    # (`tl rev` = 📷 por fotografar, `tl corr` = ⚠ corrigida) e a grelha com
+    # «📷 2 por fotografar» no chip; em «Lista» é a linha `.mv.rv` de sempre.
+    assert 'class="tl rev"' in c and 'class="tl corr"' in c, c[-4000:]
+    assert "📷 por fotografar" in c and "⚠ corrigida pela foto" in c, c[-4000:]
+    assert '"tlr">📷 2 por fotografar' in c, "o estado da grelha"
+    cl = abas["lista:pm"]
+    assert 'class="mv rv foto"' in cl and 'class="mv rv corr"' in cl, cl[-4000:]
     v = abas["vender"]
-    assert "📷 Só validadas" in v and 'class="rvfoto"' in v, v[:3000]
+    assert "📷 Só validadas" in v and 'class="tl rev"' in v, v[:3000]
+    assert 'class="rvfoto"' in abas["lista:vender"], abas["lista:vender"][:3000]
     # A caixa da Enchantress (sem alvo) tem o botão «Fotografar esta caixa»;
     # a barra da fila diz «validadas».
     pub = _abas(con, False)
@@ -633,7 +640,8 @@ def caso_a_pagina_nos_dois_modos():
     for marca in ("data-rev=", "data-rev-parar"):
         assert marca not in pub["pm"] and marca not in pub["revalidacao"], marca
     assert "📷 Revalidação" in pub["__fila"]
-    assert 'class="rvfoto"' in pub["vender"], "a venda marca 📷 também no publicado"
+    assert 'class="tl rev"' in pub["vender"], "a venda marca 📷 também no publicado"
+    assert 'class="rvfoto"' in pub["lista:vender"]
     repor()
     print("pagina: aba, barra, lista Na caixa e venda com 📷 nos dois modos; botoes so no 8771")
 
