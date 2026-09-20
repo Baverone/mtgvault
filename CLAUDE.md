@@ -68,6 +68,11 @@ mtgvault/
                   — as cartas «que poderão entrar», que nunca vão à venda
                   (saída `guardar`, «reserva da caixa X»). Só config; CLI
                   `padrao`/`reserva`, endpoint `/api/padrao`
+  feira.py        A FEIRA (2026-09-20): o que LEVAR como moeda de troca (a
+                  venda, com Trend, 📷 e duas taxas de banca — estimativas
+                  dele) contra o que TRAZER (o «a comprar» das caixas + a
+                  wantlist manual + os vendors), o saldo e as listas p/ o
+                  telemóvel. Só config (`feira`); CLI `feira`, `/api/feira`
   venda.py        a SAÍDA da lista de venda (2026-09-18): o CSV de stock p/ o
                   Cardmarket (formato predefinido NÃO confirmado, ou aprendido
                   de `data/cardmarket-stock-exemplo.csv`), a lista da estante
@@ -2325,6 +2330,89 @@ tirar|voltar` e `reserva <slot> listar|add|remover`. Relatório e medições em
   lista do McWinSauce), não a padrão — é a cobertura, não a caixa; (c) a
   secção em camadas do `colecao_cor` (`commander_decks.tiers`) é o consenso e
   não a caixa, e não mudou.
+
+**10. A FEIRA: MOEDA DE TROCA vs. O QUE QUERO TRAZER (André, 2026-09-20, à
+letra).** *"como vou ter um objetivo de ir ao RC "trocar" cartas nas bancas,
+fazemos logo uma projeção do que vou levar como moeda de troca para o que quero
+trazer; indico-te a wantlist e prováveis vendors que lá estarão, que poderão
+ter os preços das cartas no market, e avaliamos; será sobretudo cartas que eu
+preciso para completar decks."* Motor em `mtgvault/feira.py` (só config — nada
+toca na base), aba **🎒 Feira** na Deckboxes (parte própria
+`deckboxes/feira.json`; o índice leva os totais e o saldo, que é o subtítulo
+da aba), endpoint `POST /api/feira`, CLI `py -m mtgvault.cli feira [--json]`
++ `feira wantlist add|remover|listar` / `vendor add|remover|listar` / `taxas`
+/ `levo|nao-levo <chave>` / `pode-ter <carta> <vendor> [--nao]`. Config em
+`colecao_config.json → feira`. Relatório e medições em
+`ai-pc/work/revisao/mtgvault-feira-0920.md`; testes em `test_feira.py` (8
+casos). **A wantlist e os vendors dele ainda não chegaram** — a estrutura está
+pronta com o que a base já sabe.
+- **LEVAR (a moeda de troca) é a lista de venda de hoje** (`venda` +
+  `venda_rl`, as duas saídas que se vendem; as outras cinco são decisões
+  tomadas ou por tomar), lida das MESMAS linhas por cópia da exportação
+  (`venda.linhas_export`) — o Trend por cópia é o `card_price` da aba Vender e
+  o 📷 é o da revalidação, não uma segunda conta. Uma linha por impressão e
+  sítio, por COR (como o binder). **Duas taxas**, `feira.taxa_dinheiro`
+  (omissão **0,55**) e `feira.taxa_troca` (omissão **0,70**): o que uma banca
+  costuma dar pelo Trend em dinheiro e em crédito de troca. **São estimativas
+  dele, não dados** — nenhuma banca publicou nada; a página di-lo ao lado dos
+  campos e ele afina-as no 8771 (`act: taxas`, aceita `55` ou `0.55`).
+- **«levo / não levo» fica no CONFIG, não no browser** (`feira.nao_levo`, uma
+  lista de chaves `nome|EDIÇÃO|língua|acabamento` — `feira.chave`): a decisão
+  toma-se no PC e vai no telemóvel. A chave é a IMPRESSÃO e não a
+  `chave_venda` (que leva o sítio e o motivo, que mudam de um dia para o outro
+  e apagavam a marca sem ninguém lhe tocar). Uma linha marcada fica à vista,
+  riscada, com `leva_q: 0`, e sai dos totais.
+- **«só validadas» é o filtro predefinido** (`feira.so_validadas: true`):
+  com a campanha de revalidação ligada só vão as cópias com foto desta
+  campanha — *"o que eu for vender também vai com foto"* —, e o que fica de
+  fora está DITO (`fora_foto`/`fora_foto_trend`, na página, no texto e na
+  CLI). Sem campanha o filtro não corta nada. **Consequência a saber: na base
+  de 2026-09-20 a moeda de troca é ZERO** — as 342 cópias da venda
+  (5 944,63 €) estão todas por fotografar; a página avisa e manda fotografar
+  ou passar a «Tudo».
+- **TRAZER = o «a comprar» das caixas DEPOIS das encomendas** (`s["missing"]
+  [].comprar`, a lista padrão do Cloud incluída — a mesma lista da aba
+  Comprar, com `m["unit"]`, o preço mínimo no acabamento da caixa, e o
+  material `req_compra`/`marca_compra`) **+ a wantlist manual**
+  (`feira.wantlist`: nome, `q`, `lang`, `finish`, `max` = preço máximo por
+  cópia, `slot`, `notas`). **Sem duplicar:** uma manual para a MESMA carta e a
+  MESMA caixa funde-se na linha automática (`origem: "caixa+manual"`, `q` =
+  o máximo das duas, o `max`/`notas` da manual); uma manual sem caixa é uma
+  compra para a Colecção, na sua linha, ao preço da língua/acabamento que
+  disser (omissão nonfoil). `wantlist_add` SUBSTITUI a entrada (carta, caixa)
+  em vez de somar — escrever «2 Brainstorm» duas vezes quer dizer 2. Os
+  nomes validam-se no catálogo (`padrao.nome_no_catalogo`; 409 no 8771,
+  código 2 na CLI). **Nenhuma consulta ao Cardmarket parte do código**: os
+  preços são os do `card_price`/`price_latest` que a base já tem.
+- **VENDORS** (`feira.vendors`: nome, notas, utilizador Cardmarket, site) e,
+  por CARTA, a marca *"o vendor X pode ter"* (`feira.pode_ter`: `{carta:
+  [vendor, …]}`) — por carta e não por linha, porque vale para a linha
+  automática e para a manual. É tudo manual: só ele sabe quem lá vai estar, e
+  os preços dos vendors vê-os ele. Tirar um vendor tira as marcas dele.
+- **A PROJECÇÃO**: total a levar (Trend, dinheiro, troca), total a trazer
+  (mínimo e, com preço máximo escrito, *"com os teus máximos"* — onde não há
+  máximo vale o mínimo), o **saldo** nas duas taxas (`saldo.dinheiro`/`troca`
+  = levar − trazer mínimo; `*_max` contra os máximos), e por caixa (mínimo,
+  máximo, saldo em troca e % da troca que a caixa come). Os dois textos para o
+  telemóvel — «Levar» por cor com preço e 📷, «Trazer» por caixa com material
+  e preço — e o `texto_cardmarket` (`// caixa` entre blocos) saem do Python
+  (`feira.texto_levar`/`texto_trazer`), os mesmos na página e na CLI. Site
+  publicado só leitura (o `render_deckboxes.js` conta `data-feira` como
+  escrita).
+- **Medido na cópia da base de 2026-09-20** (o mesmo `vault.db` dos dois
+  lados): a alocação e a venda **não mexem** — fechar tudo 7 077,07 €, 208 a
+  comprar, 184 a arrumar, venda 272c/1 570,73 € + RL 70c/4 373,90 €, iguais
+  com e sem o bloco `feira`. A projecção de hoje: **trazer 208 cópias /
+  7 077,07 €** (3 sem preço; por caixa: Cloud cEDH 4 477,97 €, Oath 907,57 €,
+  Cloud DC 656,17 €, Blue Farm 547,70 €, Pioneer 185,71 €, Modern 124,04 €,
+  Enchantress 119,25 €, Elves 45,58 €, Replenish 13,08 €), **levar 0** com o
+  filtro da foto (342 cópias / 5 944,63 € por fotografar; com «Tudo»: 141
+  linhas, Trend 5 944,63 € → dinheiro 3 269,59 € · troca 4 161,21 €, RL
+  70c/4 373,90 €, o Lion's Eye Diamond MIR ×2 a 486,75 € à cabeça), saldo em
+  troca **−7 077,07 €** hoje (−2 915,86 € se fotografar tudo; sem o Cloud
+  cEDH, que sozinho come 107,6 % da troca, sobrava +1 562 €). A Mox Diamond
+  PT do Oath (847,76 €) e o Cloud cEDH são o grosso do trazer.
+  `feira.projeccao` custa 0,03 s por cima do `report`.
 
 **AS CÓPIAS DE UMA LINHA INCOMPLETA TAMBÉM SE TIRAM DA GAVETA (2026-09-08).**
 Uma linha que pede 4 e a que a alocação só deu 2 vive em `missing` — e **tudo**
