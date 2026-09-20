@@ -194,8 +194,10 @@ def caso_csv_predefinido_uma_linha_por_copia_com_estado():
     assert rows[0] == list(venda.COLUNAS_PREDEFINIDAS), rows[0]
     assert len(rows) == 4, rows
     sr = next(r for r in rows[1:] if r[0] == "Sol Ring")
+    # A décima coluna, `Foto`, é da REVALIDAÇÃO (2026-09-20): sem foto desta
+    # campanha diz «por revalidar» — o que ele vender vai com foto.
     assert sr == ["Sol Ring", "C21", "263", "English", "nonfoil", "EX", "2",
-                  "2.00", sr[8]], sr
+                  "2.00", sr[8], "por revalidar"], sr
     assert sr[8].startswith("mtgvault #"), sr
     # E o formato diz-se NÃO confirmado — é a parte honesta do predefinido.
     f = venda.descricao_formato(None)

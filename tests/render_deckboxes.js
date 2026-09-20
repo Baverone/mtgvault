@@ -109,7 +109,10 @@ const abas = ['plano', 'todas', 'montados', 'pormontar',
               // desenhar sem erro nos dois casos.
               'naoenc',
               // ENCOMENDAS (2026-09-19): sempre na fila; desenha-se vazia e cheia.
-              'encomendas', ...slots];
+              'encomendas',
+              // REVALIDAÇÃO (2026-09-20): só na fila com a campanha ligada; a
+              // vista tem de desenhar sem erro nos dois casos.
+              'revalidacao', ...slots];
 let n = 0;
 for (const filtro of ['tudo', 'faltam']) {
   vm.runInContext(`filtro = ${JSON.stringify(filtro)};`, ctx);
@@ -141,7 +144,9 @@ if (process.argv[3]) {
 const editavel = vm.runInContext('D.editable', ctx);
 // `data-act` são os botões de estado; os das ENCOMENDAS (2026-09-19) e do
 // «já a tenho» também escrevem, e também não podem existir no site publicado.
-const ESCRITA = /data-(act|enc|chegou|desfazer|falta|vend|reg|enc)=/;
+// ... e os da REVALIDAÇÃO (2026-09-20: «Fotografar», «parar») e o «afinal
+// encontrei» (`data-encontrei`, desde o mesmo dia).
+const ESCRITA = /data-(act|enc|chegou|desfazer|falta|vend|reg|encontrei|rev|rev-parar)=/;
 const escrita = desenhado.filter(h => ESCRITA.test(h)).length;
 if (!editavel && escrita) {
   console.error(`ERRO: ${escrita} blocos com botoes de escrita numa pagina publicada`);

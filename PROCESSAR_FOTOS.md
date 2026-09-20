@@ -25,18 +25,35 @@ sem o André estar ao PC.
 O reconhecimento (passo 2) és sempre **tu a olhar para as fotos** — o script só
 faz a parte mecânica.
 
-**Se existir `pendentes/esperadas.md`, lê-o antes de escrever o CSV.** É a
-lista do que o André disse que comprou / que já tem e ainda não fotografou
-(«pendente de foto»), por caixa, com a língua e o acabamento esperados — e as
-cópias que já estão na base sem foto. Desde 2026-09-19 **só a foto cria
-cópias**: uma foto de uma carta pendente **fecha a encomenda e mete a cópia na
-caixa** a que ela pertencia; uma foto de uma cópia que já está na base sem foto
-**liga-se a essa cópia** (não cria outra). Para isso a linha do CSV tem de
-trazer a **mesma língua e acabamento** da encomenda (e a mesma edição, se a
-encomenda a fixar). Se a foto mostrar outra coisa (uma edição posterior ao
-Scourge para uma caixa de Premodern, por exemplo), escreve o que vês na mesma —
-a cópia entra na Colecção sem caixa e a encomenda fica aberta com um aviso; o
-que não se faz é inventar a edição para bater com a lista.
+**Se existir `pendentes/esperadas.md`, lê-o antes de escrever o CSV.** Tem
+até três secções:
+
+1. **«<Caixa> — por revalidar»** (desde 2026-09-20 — a REVALIDAÇÃO POR FOTO):
+   o André está a fotografar de novo TODA a colecção, caixa a caixa, e a
+   secção diz que cópias ele está a fotografar agora (impressão esperada e
+   quantidade, com o `copy_id`). Uma foto destas **liga-se à cópia que já
+   existe** — não cria outra. **Escreve a impressão que VÊS na foto** (edição,
+   número, língua, acabamento), não a esperada; se for diferente do esperado,
+   escreve o que vês na mesma e diz em `notes` o que esperavas (ex.:
+   «esperava NEM nonfoil, é foil») — o import trata isso como uma correcção
+   da cópia da caixa. A `quantity` é o que está NA FOTO.
+2. **«Encomendas pendentes»**: o que o André disse que comprou / que já tem e
+   ainda não fotografou («pendente de foto»), por caixa, com a língua e o
+   acabamento esperados. Desde 2026-09-19 **só a foto cria cópias**: uma foto
+   de uma carta pendente **fecha a encomenda e mete a cópia na caixa** a que
+   ela pertencia. Para isso a linha do CSV tem de trazer a **mesma língua e
+   acabamento** da encomenda (e a mesma edição, se a encomenda a fixar). Se a
+   foto mostrar outra coisa (uma edição posterior ao Scourge para uma caixa de
+   Premodern, por exemplo), escreve o que vês na mesma — a cópia entra na
+   Colecção sem caixa e a encomenda fica aberta com um aviso; o que não se faz
+   é inventar a edição para bater com a lista.
+3. **«Na base, sem foto»**: cópias que já existem na base sem foto — uma foto
+   de uma destas **liga-se a essa cópia** (não cria outra).
+
+Em todos os casos a regra é a mesma: **escreve o que a foto MOSTRA**, com o
+`photo_path`. Quem decide a que cópia a linha se liga é o import, pela ordem
+que está no `CLAUDE.md` (revalidação → edição por confirmar → encomenda →
+cópia sem foto → entrada normal).
 
 ## Formato do CSV
 

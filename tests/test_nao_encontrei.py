@@ -542,13 +542,16 @@ def caso_a_lista_mostra_a_foto_e_o_afinal_encontrei():
     html = abas["naoenc"]
     assert "Não encontradas" in html and "Chromatic Star" in html, html[:900]
     assert f'src="foto?copy={star["id"]}' in html, html[:1500]
-    assert f'data-enc="{star["id"]}"' in html, html[:1500]
+    # `data-encontrei` (2026-09-20): era `data-enc`, o mesmo atributo dos
+    # `+`/`−` das encomendas, e o `ligar()` deixava o segundo `onclick` a
+    # ganhar — o `+` de uma encomenda chamava o «afinal encontrei».
+    assert f'data-encontrei="{star["id"]}"' in html, html[:1500]
     assert "Cloud cEDH" in html, html[:1500]
     assert "🔍 Não encontradas" in abas["__fila"], abas["__fila"][:600]
 
     pub = _abas(con, False)
     assert "Chromatic Star" in pub["naoenc"], "a lista vê-se no site publicado"
-    assert "data-enc" not in pub["naoenc"], "mas o botão não"
+    assert "data-encontrei" not in pub["naoenc"], "mas o botão não"
     assert "foto?copy=" not in pub["naoenc"], "nem a foto, que vive no PC"
     print("aba: foto + «afinal encontrei» no modo edicao, so a lista no publicado")
 
