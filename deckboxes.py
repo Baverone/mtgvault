@@ -394,6 +394,22 @@ def _caixa_payload(s, imgs, cfs, rep=None, col=None, tipos=None, cores=None,
         "arrumada_em": s.get("arrumada_em") or "",
         "por_confirmar": bool(s.get("por_confirmar")), "vazio": s["vazio"],
         "nota": s["nota"], "fonte": s.get("fonte"), "ref": s.get("ref"),
+        # LISTA PADRÃO (André, 2026-09-20): a caixa tem uma lista FIXA, com a
+        # data e a origem — a página di-lo e, no modo edição, deixa acrescentar
+        # e tirar cartas e «voltar ao consenso». `None` = segue a fonte.
+        "padrao": s.get("padrao"),
+        # A RESERVA (2026-09-20): as cartas «que poderão entrar», com as cópias
+        # que ele tem, onde estão e se servem. Fora da venda; só informação
+        # para a caixa.
+        "reserva": [{"nm": r["nm"], "q": r["q"], "na_lista": r["na_lista"],
+                     "serve": r["serve"], "sid": imgs.get(r["nm"]),
+                     "lotes": [{"onde": l["onde"], "local": l["local"], "q": l["q"],
+                                "set": (l["set_code"] or "").upper(),
+                                "lang": (l["lang"] or "").upper(), "fin": l["finish"],
+                                "foil": l["foil"], "serve": l["serve"],
+                                "porque": l["porque"]} for l in r["lotes"]]}
+                    for r in s.get("reserva_linhas") or []],
+        "reserva_nomes": list(s.get("reserva") or []),
         "pct": s["pct"], "tenho": s["tenho"], "precisa": s["precisa"],
         "comprar": s["comprar"], "noutra": s["noutra"], "faltam": s["faltam"],
         # As três parcelas do "destinadas a outra caixa" (André, 2026-09-08).
@@ -619,6 +635,7 @@ def payload(con, rep, editable=False, token="", ligacao=None):
     nomes = {c["nm"] for c in rep["conflitos"]}
     for s in rep["slots"]:
         nomes |= {n for _b, n, _q in s["cards"]}
+        nomes |= set(s.get("reserva") or [])
     for k in ("venda", "venda_rl", "guardar", "retidos", "reservadas"):
         nomes |= {r["nm"] for r in rep[k]}
     nomes |= {m["nm"] for m in rep["arrumacao"]["movimentos"]}
@@ -906,7 +923,7 @@ def payload(con, rep, editable=False, token="", ligacao=None):
 # os números (`dentro`, `marcar_q`) — é o que o crachá «N de M na caixa» lê no
 # cartão compacto, antes de a caixa ser aberta.
 CAIXA_PESADO = ("cartas", "wantlist", "subs", "buscar", "lista", "montar", "eds",
-                "notas_onde", "rev")
+                "notas_onde", "rev", "reserva")
 # As abas pesadas, e o que cada ficheiro leva.
 PARTES_ABAS = {"arrumar": ("arrumar",), "venda": ("venda",),
                "premodern": ("premodern",),
@@ -1223,6 +1240,20 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
  .blk.onde li b{color:#7fa8ff}
  .blk.lim{background:#1d1622;border-color:#4a3355} .blk.lim>b{color:#e0a8ea}
  .blk.lim li b{color:#e0a8ea}
+ /* LISTA PADRÃO e RESERVA (André, 2026-09-20) */
+ .blk.padrao{background:#101a14;border-color:#254a33} .blk.padrao>b{color:#8fd9a8}
+ .blk.reserva{background:#1a1810;border-color:#4a4325} .blk.reserva>b{color:var(--gold)}
+ .blk.reserva li{padding:3px 0} .blk.reserva .rsv-ok{color:var(--add)}
+ .blk.reserva .rsv-no{color:#ffd27a}
+ .pform{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
+ .pform input,.pform select{font:inherit;font-size:12.5px;padding:7px 10px;
+   border-radius:8px;border:1px solid var(--line);background:var(--card);
+   color:var(--ink);min-height:40px}
+ .pform input.nm{flex:1 1 160px;min-width:0} .pform input.q{width:58px}
+ .pform textarea{width:100%;min-height:120px;font:inherit;font-size:12px;
+   border-radius:8px;border:1px solid var(--line);background:var(--card);
+   color:var(--ink);padding:8px}
+ .blk .btn.sm{margin-left:6px}
  .flh{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;
    color:#e2795b;flex-wrap:wrap} .flh .dim{font-weight:400} .flh .cpbtn{margin-left:auto}
  .mrk{font-size:10px;font-weight:800;padding:1px 6px;border-radius:5px;
@@ -3026,7 +3057,7 @@ function caixaHTML(c, compacta) {
       + `<div class="vaziomsg">Caixa por atribuir — não escolhi por ti. `
       + `Escolhe aqui em baixo, ou vê a lista de cada um na página `
       + `<a href="metagame.html">Metagame</a>.</div>`
-      + (compacta ? '' : candidatosHTML(c))
+      + (compacta ? '' : candidatosHTML(c) + padraoHTML(c) + reservaHTML(c))
       + (D.editable ? acoesHTML(c) : '') + `</div>`;
   }
   let h = `<div class="box"><div class="btop"><b>${esc(c.nome)}</b>`
@@ -3093,6 +3124,10 @@ function caixaHTML(c, compacta) {
     + `aria-label="Copiar a lista completa desta caixa">copiar a lista</button>`
     + `</div><textarea class="cmk" data-cmk="lista" readonly>${esc(c.lista)}`
     + `</textarea></div>`;
+  /* LISTA PADRÃO (André, 2026-09-20): a lista fixa, com data e origem, e — no
+     modo edição — acrescentar/tirar e «voltar ao consenso». Logo a seguir à
+     lista, porque é dela que fala. */
+  h += padraoHTML(c);
   /* TRÊS blocos, não um (André, 2026-09-08: *"só o Stiflenought está em
      deckbox; o resto ainda nada está em deckbox"*). São três sítios diferentes:
      dentro de outra caixa (vais lá), na gaveta de sempre (tiras já) e uma
@@ -3156,10 +3191,94 @@ function caixaHTML(c, compacta) {
     h += `<div class="blk"><b>↻ tens a carta, não serve a caixa</b><ul>${li}</ul></div>`;
   }
   h += contradicoesHTML(c);
+  /* A RESERVA (André, 2026-09-20): as cartas «que poderão entrar», com onde
+     cada cópia está e se serve — e a garantia de que não vão à venda. */
+  h += reservaHTML(c);
   h += montarHTML(c);
   h += candidatosHTML(c);
   if (D.editable) h += acoesHTML(c);
   return h + `</div>`;
+}
+
+/* LISTA PADRÃO (André, 2026-09-20: *"preciso urgentemente de estabelecer uma
+   lista padrão para completar"*). Uma caixa com lista padrão segue uma lista
+   FIXA, com data e origem, em vez da que a fonte (o McWinSauce, o consenso)
+   recalcula todos os dias. O bloco di-lo sempre; no modo edição deixa
+   acrescentar e tirar cartas (`api/padrao`) e «voltar ao consenso». Sem lista
+   padrão, no modo edição, oferece o formulário para fixar uma — a partir da
+   lista actual ou de texto colado. */
+function padraoHTML(c) {
+  const p = c.padrao;
+  const S = esc(c.slot);
+  if (!p) {
+    if (!D.editable) return '';
+    return `<div class="blk padrao"><b>📌 Lista padrão</b>`
+      + `<p class="nota">Esta caixa segue a fonte (${esc(c.fonte || '?')}: `
+      + `${esc(c.ref || '—')}) e a lista pode mudar de um dia para o outro. Fixar `
+      + `uma lista padrão congela-a com a data — só muda quando lhe mexeres.</p>`
+      + `<details><summary class="dim">fixar uma lista padrão…</summary>`
+      + `<div class="pform"><textarea id="padrao-txt-${S}" placeholder="1 Nome da carta\n`
+      + `1 Outra carta\n// Sideboard\n1 …" aria-label="A lista, uma carta por linha">`
+      + `${c.vazio ? '' : esc(c.lista)}</textarea>`
+      + `<input id="padrao-origem-${S}" placeholder="origem (ex.: 83 listas mono-brancas, mtgtop8)" `
+      + `aria-label="De onde veio a lista">`
+      + `<button class="btn pri" data-padrao="fixar" data-slot="${S}">📌 Fixar como padrão`
+      + `</button></div></details></div>`;
+  }
+  const cabec = `<b>📌 Lista padrão desde ${esc(p.desde || '?')}</b>`
+    + `<p class="nota">Lista fixa — ${esc(p.origem || 'fixada à mão')}. Não muda com o `
+    + `metagame nem com o daily: só quando lhe mexeres.</p>`;
+  if (!D.editable) return `<div class="blk padrao">${cabec}</div>`;
+  const li = (c.cartas || []).filter(x => !x.basica).map(x =>
+    `<li>${x.need}× ${esc(x.nm)}${x.board === 'side' ? ' <span class="dim">(side)</span>' : ''}`
+    + `<button class="btn sm" data-padrao="tirar" data-slot="${S}" data-nome="${esc(x.nm)}" `
+    + `data-board="${esc(x.board || 'main')}" aria-label="Tirar ${esc(x.nm)} da lista padrão">`
+    + `✕ tirar</button></li>`).join('');
+  return `<div class="blk padrao">${cabec}`
+    + `<div class="pform"><input class="nm" id="padrao-nome-${S}" placeholder="carta a acrescentar" `
+    + `aria-label="Nome da carta a acrescentar à lista padrão">`
+    + `<input class="q" id="padrao-q-${S}" type="number" min="1" value="1" aria-label="Quantas">`
+    + `<select id="padrao-board-${S}" aria-label="Main ou sideboard"><option value="main">main`
+    + `</option><option value="side">side</option></select>`
+    + `<button class="btn pri" data-padrao="add" data-slot="${S}">+ acrescentar</button>`
+    + `<button class="btn warn" data-padrao="voltar" data-slot="${S}">↩ voltar ao consenso</button>`
+    + `</div><details><summary class="dim">tirar uma carta da lista…</summary><ul>${li}</ul>`
+    + `</details></div>`;
+}
+
+/* A RESERVA (André, 2026-09-20: *"ver algumas cartas que poderão ser possível
+   entrar; não quero ter que vender cartas que depois me poderão fazer
+   falta"*). Por carta: quantas tem, onde cada cópia está (gaveta ou caixa) e se
+   serve esta caixa tal como está — o porquê vem do Python (`_porque_nao`), a
+   mesma régua da alocação. Estas cópias ficam FORA da venda e da exportação
+   (saída «guardar», motivo "reserva da caixa X"). */
+function reservaHTML(c) {
+  const rows = c.reserva || [];
+  const S = esc(c.slot);
+  if (!rows.length && !D.editable) return '';
+  const li = rows.map(r => {
+    const lotes = r.lotes.length
+      ? r.lotes.map(l => `${l.q}× ${esc(l.set)} ${esc(l.lang)}${l.foil ? ' ✨' : ''} `
+          + `<span class="dim">em ${esc(l.onde)}</span>`
+          + (l.serve ? ` <span class="rsv-ok">serve</span>`
+                     : ` <span class="rsv-no">não serve: ${esc(l.porque)}</span>`)).join('; ')
+      : '<span class="dim">não tens nenhuma</span>';
+    return `<li><b>${esc(r.nm)}</b>${r.na_lista ? ' <span class="chosen">na lista</span>' : ''}`
+      + ` — ${lotes}`
+      + (D.editable ? `<button class="btn sm" data-reserva="tirar" data-slot="${S}" `
+          + `data-nome="${esc(r.nm)}" aria-label="Tirar ${esc(r.nm)} da reserva">✕</button>` : '')
+      + `</li>`;
+  }).join('');
+  const n = rows.reduce((a, r) => a + r.q, 0);
+  return `<div class="blk reserva"><b>🛡️ Reserva (${rows.length}) — ${cop(n)} guardada${n === 1 ? '' : 's'}</b>`
+    + `<p class="nota">Cartas que poderão entrar nesta caixa. As cópias ficam fora da `
+    + `lista de venda e da exportação (bloco «guardar»), sirvam ou não a regra de `
+    + `material — para não vender o que depois faz falta.</p>`
+    + (rows.length ? `<ul>${li}</ul>` : '')
+    + (D.editable ? `<div class="pform"><input class="nm" id="reserva-nome-${S}" `
+        + `placeholder="carta a reservar" aria-label="Nome da carta a pôr na reserva">`
+        + `<button class="btn pri" data-reserva="add" data-slot="${S}">+ reservar</button></div>` : '')
+    + `</div>`;
 }
 
 /* REGISTOS QUE NÃO PODEM ESTAR CERTOS (André, 2026-09-09: *"dizes que tenho
@@ -4484,6 +4603,11 @@ function ligar() {
   for (const b of document.querySelectorAll('[data-desfazer]')) {
     b.onclick = () => encChegou(b, true);
   }
+  /* LISTA PADRÃO e RESERVA (2026-09-20): fixar / acrescentar / tirar / voltar,
+     e reservar / tirar da reserva. Um endpoint só (`api/padrao`). */
+  for (const b of document.querySelectorAll('[data-padrao],[data-reserva]')) {
+    b.onclick = () => padraoAccao(b);
+  }
   const cc = $('#compra-caixa');
   if (cc) cc.onchange = () => { P.compra = cc.value; save(); render(); };
   for (const b of document.querySelectorAll('[data-vend]')) {
@@ -4699,6 +4823,46 @@ async function accao(act, slot, btn, aid, nome, id) {
     toast(j.msg || 'Feito — a alocação foi refeita.');
     recarregar();
   } catch (e) { btn.disabled = false; erro('Não deu: ' +e.message); }
+}
+
+/* LISTA PADRÃO e RESERVA (André, 2026-09-20). O botão diz a acção
+   (`data-padrao` = fixar|add|tirar|voltar; `data-reserva` = add|tirar) e a
+   caixa; o nome, a quantidade e o bloco lêem-se dos campos ao lado. O
+   «voltar ao consenso» é em dois toques (`armar`): perde a lista fixada. */
+async function padraoAccao(btn) {
+  const slot = btn.dataset.slot;
+  const S = slot.replace(/"/g, '');
+  const reserva = 'reserva' in btn.dataset;
+  const act = reserva ? 'reserva-' + btn.dataset.reserva : btn.dataset.padrao;
+  const campo = id => { const e = $('#' + id); return e ? String(e.value || '').trim() : ''; };
+  const corpo = { act, slot };
+  if (act === 'fixar') {
+    corpo.texto = campo(`padrao-txt-${S}`);
+    corpo.origem = campo(`padrao-origem-${S}`);
+    if (!corpo.texto) { erro('Cola a lista primeiro (uma carta por linha).'); return; }
+  } else if (act === 'add') {
+    corpo.nome = campo(`padrao-nome-${S}`);
+    corpo.q = Number(campo(`padrao-q-${S}`) || 1);
+    corpo.board = campo(`padrao-board-${S}`) || 'main';
+    if (!corpo.nome) { erro('Escreve o nome da carta.'); return; }
+  } else if (act === 'tirar') {
+    corpo.nome = btn.dataset.nome; corpo.board = btn.dataset.board || null;
+  } else if (act === 'voltar') {
+    if (!armar(btn, '✓ voltar ao consenso e perder a lista fixada?')) return;
+  } else if (act === 'reserva-add') {
+    corpo.nome = campo(`reserva-nome-${S}`);
+    if (!corpo.nome) { erro('Escreve o nome da carta a reservar.'); return; }
+  } else if (act === 'reserva-tirar') {
+    corpo.nome = btn.dataset.nome;
+  }
+  btn.disabled = true;
+  try {
+    const r = await gravar('api/padrao', corpo);
+    const j = await r.json();
+    if (j.erro) throw new Error(j.erro);
+    toast(j.msg || 'Feito — a alocação foi refeita.');
+    recarregar();
+  } catch (e) { btn.disabled = false; erro('Não deu: ' + e.message); }
 }
 
 async function vendida(btn) {

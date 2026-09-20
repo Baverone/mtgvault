@@ -91,7 +91,10 @@ FONTES = ("vigiado", "deck", "consenso", "escolhido", "manual")
 ORDEM = ("slot", "nome", "formato", "fonte", "ref", "assinatura", "cards",
          "balde", "estado", "prioridade", "variantes", "notas",
          "lingua", "acabamento", "edicoes", "baldes", "estrita", "dedicado",
-         "compras_dedicadas")
+         "compras_dedicadas",
+         # A RESERVA (André, 2026-09-20): as cartas *"que poderão entrar"* —
+         # ficam fora da venda. Ver `mtgvault/padrao.py`.
+         "reserva")
 
 
 def estado_de(d: dict) -> str:
@@ -191,7 +194,12 @@ AJUDA = (
     "partilham a caixa; 'notas' = texto livre mostrado no cartão. As regras de "
     "material ('lingua', 'acabamento', 'edicoes', 'baldes', 'estrita', "
     "'dedicado', 'compras_dedicadas') herdam-se do grupo de formato e só se "
-    "escrevem aqui para abrir excepção. Marca-se tudo isto no MODO EDIÇÃO "
+    "escrevem aqui para abrir excepção. 'reserva' (2026-09-20) = as cartas «que "
+    "poderão entrar» nesta caixa: as cópias delas nunca vão para a venda nem para "
+    "a exportação (saída `guardar`, motivo 'reserva da caixa <nome>'); uma LISTA "
+    "PADRÃO (fixa, com data e origem, em vez da que a fonte recalcula) escreve-se "
+    "em `listas_escolhidas[slot]` com 'padrao': true — `py -m mtgvault.cli padrao` "
+    "e `reserva`. Marca-se tudo isto no MODO EDIÇÃO "
     "(python webapp.py, porto 8771 — no telemóvel com o QR)."
 )
 

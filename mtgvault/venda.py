@@ -90,8 +90,9 @@ FORA = (
     ("rl_sem_historico", "RL sem histórico suficiente",
      "Reserved List que o vault ainda não consegue medir: sem saber se subiu, "
      "não se vende."),
-    ("guardar", "Guardar — servem um deck do loadout",
-     "Substitutos: servem uma caixa e só falham no material. Vendê-las era "
+    ("guardar", "Guardar — servem um deck do loadout, ou estão na reserva de uma caixa",
+     "Substitutos (servem uma caixa e só falham no material) e a RESERVA de "
+     "cada caixa (2026-09-20: «cartas que poderão entrar»). Vendê-las era "
      "comprá-las outra vez."),
     ("reservadas", "Reservadas — decks por decidir",
      "Cartas de uma sugestão de Premodern ou da RL que o Legacy usaria: a "
