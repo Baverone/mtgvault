@@ -547,6 +547,78 @@
    table.vt td.rz,table.vt th.rz{display:none}
    .num{min-width:calc(50% - 6px)}
  }
+ /* AS CARTAS EM IMAGEM (André, 2026-09-20: «cada deck poderia ter as cartas
+    visualmente ao invés de só o nome?»). UMA componente — `.tl` — para todas
+    as secções: a imagem da impressão exacta, e por cima dela a quantidade, o
+    estado (a cor da moldura e o chip), o material e, quando é compra, o preço.
+    Os botões que a lista tinha ficam no rodapé do tile. Sem imagem (o
+    catálogo não a tem, ou o `fetch` falhou) fica o NOME no quadrado — nunca
+    um buraco. 3 colunas a 400 px, mais em ecrã largo; a checkbox tem 28 px. */
+ .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));
+   gap:8px;margin:8px 0;padding:0;list-style:none;min-width:0}
+ .tiles.big{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+ .tl{display:flex;flex-direction:column;gap:3px;min-width:0;position:relative;
+   background:var(--card);border:1px solid var(--line);border-radius:10px;
+   padding:5px;font-size:11.5px;color:var(--ink2);margin:0;cursor:default}
+ label.tl{cursor:pointer}
+ .tl .tli{position:relative;display:block;aspect-ratio:.716;border-radius:7px;
+   overflow:hidden;background:#0c0f14;cursor:pointer}
+ .tl .tli img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+   display:block;z-index:1}
+ .tl .tlnm{position:absolute;inset:0;display:flex;align-items:center;
+   justify-content:center;text-align:center;padding:8px;font-size:11px;
+   font-weight:700;color:var(--muted);line-height:1.3;overflow-wrap:anywhere}
+ .tl .tlq{position:absolute;left:4px;bottom:4px;z-index:2;background:#000d;
+   color:#fff;font-weight:800;font-size:12px;padding:1px 6px;border-radius:6px;
+   font-variant-numeric:tabular-nums}
+ .tl .tlm{position:absolute;right:4px;bottom:4px;z-index:2;display:flex;gap:2px;
+   flex-wrap:wrap;justify-content:flex-end;max-width:70%}
+ .tl .tlm span{background:#000d;color:#ffd27a;font-size:9.5px;font-weight:800;
+   padding:1px 4px;border-radius:5px;white-space:nowrap}
+ .tl .tlr{position:absolute;left:4px;top:4px;z-index:2;background:#000d;
+   color:#fff;font-size:9.5px;font-weight:800;padding:1px 5px;border-radius:5px;
+   max-width:calc(100% - 8px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .tl .tlt{font-weight:700;line-height:1.25;overflow-wrap:anywhere;display:-webkit-box;
+   -webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--ink)}
+ .tl .tlx{color:var(--muted);font-size:10.5px;line-height:1.3;overflow-wrap:anywhere}
+ .tl .tlx b{color:var(--gold);font-variant-numeric:tabular-nums}
+ .tl .tlx .parcn{color:#e2a15b}
+ .tl .tla{display:flex;flex-wrap:wrap;gap:4px;margin-top:auto;align-items:center;
+   min-width:0}
+ .tl .tla .stp{margin:0;min-width:0} .tl .tla .jat{margin:0;min-width:0;max-width:100%}
+ /* Um `<select>` tem a largura da opção mais comprida e não encolhe: numa
+    coluna de 120 px empurrava a grelha para fora do ecrã (medido a 400 px).
+    Com `width:100%` e `min-width:0` cabe na coluna e corta o texto. */
+ .tl .tla select.jed,.tl .tla select.feira-vend{max-width:100%;min-width:0;width:100%}
+ .tl .tla .btn.sm{min-width:0}
+ .tl input.tlck{position:absolute;top:4px;right:4px;z-index:3;width:28px;height:28px;
+   margin:0;accent-color:var(--add);cursor:pointer}
+ .tl.feito .tli{opacity:.45} .tl.feito .tlt{text-decoration:line-through;opacity:.6}
+ /* os estados: a moldura da imagem diz o mesmo que a grelha de sempre */
+ .tl.have .tli,.tl.ok .tli{box-shadow:0 0 0 2px var(--add)} .tl.have .tlr,.tl.ok .tlr{color:var(--add)}
+ .tl.miss .tli{box-shadow:0 0 0 2px var(--warn)} .tl.miss .tli img{filter:grayscale(.75) brightness(.55)}
+ .tl.miss .tlr{color:#ff9f8f}
+ .tl.sub .tli,.tl.rev .tli,.tl.res .tli{box-shadow:0 0 0 2px var(--gold)}
+ .tl.sub .tli img{filter:grayscale(.35) brightness(.7)} .tl.sub .tlr,.tl.rev .tlr,.tl.res .tlr{color:var(--gold)}
+ .tl.enc .tli{box-shadow:0 0 0 2px #7fa8ff} .tl.enc .tlr{color:#7fa8ff} .tl.enc{border-style:dashed}
+ .tl.pfoto .tli{box-shadow:0 0 0 2px var(--add)} .tl.pfoto .tlr{color:var(--add)} .tl.pfoto{border-style:dashed}
+ .tl.corr .tli{box-shadow:0 0 0 2px #ff9f6b} .tl.corr .tlr{color:#ff9f6b}
+ .tl.base{border-style:dotted}
+ .tl.nao .tli{opacity:.35} .tl.nao .tlt{text-decoration:line-through;opacity:.6}
+ .tl.parc{border-left:3px solid #e2a15b}
+ .tl.aviso{border-color:var(--warn)}
+ .tl .rl{margin-left:3px}
+ #v-compras ul.fl.tiles{column-width:auto}
+ .seg .vista{margin-left:auto}
+ @media(max-width:640px){
+   /* `minmax(0,1fr)` e não `1fr`: um `1fr` nunca encolhe abaixo do conteúdo
+      mínimo da coluna, e a grelha saía do ecrã (medido a 400 px). */
+   .tiles{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+   .tiles.big{grid-template-columns:repeat(2,minmax(0,1fr))}
+   .tl{padding:4px;font-size:11px}
+   .tl input.tlck{width:32px;height:32px}
+   .tl .tla .btn.sm{min-height:36px;flex:1 1 auto;text-align:center}
+ }
  /* O `hidden` tem de ganhar ao `display:flex` das classes: sem o `!important`
     uma linha `.mv` escondida pela procura continuava à vista. */
  [hidden]{display:none!important}
@@ -618,5 +690,5 @@ A lista para vender é uma <b>sugestão a confirmar</b>. Atualiza diariamente.
 </div>
 <div class="barra" id="barra" hidden aria-live="polite"></div>
 
-<script src="deckboxes.js?v=9ee2db8b3555"></script>
+<script src="deckboxes.js?v=2b2813f3f2f2"></script>
 </body></html>
