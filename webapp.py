@@ -83,7 +83,7 @@ from urllib.parse import parse_qs, urlparse
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import (caixas, configio, db, encomendas, loadout,  # noqa: E402
+from mtgvault import (caixas, configio, db, encomendas, feira, loadout,  # noqa: E402
                       migracao, qr, sources, venda)
 from mtgvault import padrao as padrao_mod  # noqa: E402
 
@@ -1019,6 +1019,12 @@ class Handler(BaseHTTPRequestHandler):
                 if caminho == "/api/vender":
                     self._json(self._vender(dados))
                     return
+                if caminho == "/api/feira":
+                    # A FEIRA (André, 2026-09-20): taxas, «levo/não levo»,
+                    # wantlist e vendors. Só config — nada toca na base;
+                    # regenera porque a aba (e o seu subtítulo) mudou.
+                    self._json(self._feira(dados))
+                    return
                 if caminho in ("/api/encomenda", "/api/encomenda-chegou",
                                "/api/encomenda-desfazer"):
                     # ENCOMENDAS (André, 2026-09-19): «só a foto cria cópias».
@@ -1312,6 +1318,93 @@ class Handler(BaseHTTPRequestHandler):
             elif act == "reserva-tirar":
                 lista = padrao.reserva_tirar(cfg, slot_id, nome)
                 msg = f"{nome} fora da reserva ({len(lista)} cartas reservadas)"
+            else:
+                return {"erro": f"acção {act!r} desconhecida"}
+            escrever_config(cfg)
+            sources._CFG_CACHE.clear()
+            regenerar(con)
+        return {"ok": True, "msg": msg}
+
+    def _feira(self, dados):
+        """As escritas da FEIRA (André, 2026-09-20), todas no config.
+
+        `act`: `taxas` (dinheiro, troca — em % ou fracção), `filtro`
+        (so_validadas), `levo`/`nao-levo` (chave da impressão), `wl-add`
+        (nome, q, slot, lang, finish, max, notas), `wl-tirar` (nome, slot),
+        `max` (nome, slot, q, max — fixa o preço máximo: cria/actualiza a
+        entrada manual dessa carta e caixa), `vendor-add` (nome, cardmarket,
+        site, notas), `vendor-tirar` (vendor), `pode-ter`/`pode-ter-nao`
+        (nome, vendor). Os nomes de carta VALIDAM-SE no catálogo, como na
+        lista padrão; erros de regra → 409.
+        """
+        act = dados.get("act")
+        cfg = ler_config()
+        with db.session() as con:
+            def canon(n):
+                c = padrao_mod.nome_no_catalogo(con, n or "")
+                if c is None:
+                    raise ValueError(f"o catálogo não conhece {n!r} — confirma o "
+                                     f"nome em inglês (oracle)")
+                return c
+
+            if act == "taxas":
+                f = feira.definir_taxas(cfg, dados.get("dinheiro"), dados.get("troca"))
+                d, t = feira.taxas(cfg)
+                msg = f"taxas: dinheiro {d:.0%} · troca {t:.0%} do Trend"
+                del f
+            elif act == "filtro":
+                feira.definir_so_validadas(cfg, bool(dados.get("so_validadas")))
+                msg = ("a levar só as cópias com foto desta campanha"
+                       if dados.get("so_validadas") else "a levar tudo, com ou sem foto")
+            elif act in ("levo", "nao-levo"):
+                feira.marcar(cfg, dados.get("chave") or "", act == "levo")
+                nm = (dados.get("chave") or "").split("|")[0]
+                msg = f"{nm}: {'levo' if act == 'levo' else 'não levo'}"
+            elif act in ("wl-add", "max"):
+                nome = canon(dados.get("nome"))
+                slot = dados.get("slot") or None
+                if slot:
+                    caixas.caixa_do_cfg(cfg, slot)          # KeyError → 409
+                maximo = dados.get("max")
+                if act == "max" and maximo in (None, ""):
+                    # Tirar o máximo: se a entrada manual só existia por causa
+                    # dele (linha automática), vai-se embora; senão fica sem max.
+                    ent = next((e for e in feira.wantlist(cfg)
+                                if feira._k(e["nome"], e["slot"]) == feira._k(nome, slot)), None)
+                    if ent is None:
+                        msg = f"{nome}: sem preço máximo"
+                    else:
+                        feira.wantlist_add(cfg, nome, ent["q"], ent["lang"], ent["finish"],
+                                           None, slot, ent["notas"])
+                        msg = f"{nome}: preço máximo tirado"
+                else:
+                    antiga = next((e for e in feira.wantlist(cfg)
+                                   if feira._k(e["nome"], e["slot"]) == feira._k(nome, slot)), None)
+                    ent = feira.wantlist_add(
+                        cfg, nome, dados.get("q") or (antiga or {}).get("q") or 1,
+                        dados.get("lang") or (antiga or {}).get("lang"),
+                        dados.get("finish") or (antiga or {}).get("finish"),
+                        maximo, slot,
+                        dados.get("notas") if dados.get("notas") is not None
+                        else (antiga or {}).get("notas") or "")
+                    msg = (f"{ent['q']}× {nome} na wantlist"
+                           + (f" (máx {ent['max']:.2f} €)" if ent.get("max") is not None else "")
+                           + (f" para {caixas.caixa_do_cfg(cfg, slot).get('nome')}" if slot else ""))
+            elif act == "wl-tirar":
+                n = feira.wantlist_remover(cfg, dados.get("nome") or "", dados.get("slot") or None)
+                msg = f"{dados.get('nome')} fora da wantlist ({n} entradas)"
+            elif act == "vendor-add":
+                v = feira.vendor_add(cfg, dados.get("nome") or "", dados.get("notas") or "",
+                                     dados.get("cardmarket") or "", dados.get("site") or "")
+                msg = f"vendor {v['nome']} acrescentado"
+            elif act == "vendor-tirar":
+                n = feira.vendor_remover(cfg, dados.get("vendor") or "")
+                msg = f"vendor {dados.get('vendor')} tirado ({n} ficam)"
+            elif act in ("pode-ter", "pode-ter-nao"):
+                nome = canon(dados.get("nome"))
+                lista = feira.pode_ter(cfg, nome, dados.get("vendor") or "", act == "pode-ter")
+                msg = (f"{nome}: " + (", ".join(lista) + " pode ter" if lista
+                                      else "sem vendor marcado"))
             else:
                 return {"erro": f"acção {act!r} desconhecida"}
             escrever_config(cfg)

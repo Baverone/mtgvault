@@ -52,8 +52,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import (collection, encomendas, loadout, paginas,  # noqa: E402
-                      revalidacao, venda)
+from mtgvault import (collection, encomendas, feira, loadout,  # noqa: E402
+                      paginas, revalidacao, venda)
 
 TABS = paginas.nav("deckboxes.html")
 
@@ -906,6 +906,11 @@ def payload(con, rep, editable=False, token="", ligacao=None):
         # (`deckboxes/revalidacao.json`); o índice fica com os totais. `None`
         # com a campanha desligada — a aba não aparece.
         "revalidacao": prog,
+        # A FEIRA (André, 2026-09-20): a moeda de troca (a venda, com as taxas
+        # dele) contra o que quer trazer (o «a comprar» das caixas + a wantlist
+        # manual + os vendors). Parte própria (`deckboxes/feira.json`); o
+        # índice fica com os totais e o saldo. Tudo do `mtgvault.feira`.
+        "feira": feira.projeccao(con, rep),
     }
 
 
@@ -931,10 +936,16 @@ PARTES_ABAS = {"arrumar": ("arrumar",), "venda": ("venda",),
                # REVALIDAÇÃO (2026-09-20): as listas por cor da Colecção
                # inteira vivem aqui; o índice leva os totais e o alvo.
                "revalidacao": ("revalidacao",),
+               # A FEIRA (2026-09-20): as linhas de levar e de trazer vivem
+               # aqui; o índice leva os totais e o saldo (o subtítulo da aba).
+               "feira": ("feira",),
                "compras": ("compras", "partilhadas", "basicas")}
 # O que sai da `venda.saida` no índice (ver `partir`).
 SAIDA_PESADO = ("csv", "texto_estante", "csv_validadas",
                 "texto_estante_validadas")
+# O que sai da `feira` no índice: os dois textos para o telemóvel são strings
+# (escalares para o `_so_escalares`) e são o que a parte tem de maior.
+FEIRA_PESADO = ("texto_levar", "texto_trazer", "texto_cardmarket")
 
 
 def _so_escalares(d):
@@ -974,6 +985,9 @@ def partir(dados):
             if chaves[0] == "venda" and "saida" in idx["venda"]:
                 idx["venda"]["saida"] = {k: v for k, v in idx["venda"]["saida"].items()
                                          if k not in SAIDA_PESADO}
+            if chaves[0] == "feira" and idx["feira"]:
+                idx["feira"] = {k: v for k, v in idx["feira"].items()
+                                if k not in FEIRA_PESADO}
         else:
             partes[nome] = {k: dados[k] for k in chaves}
             for k in chaves:
@@ -1245,6 +1259,30 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
  .blk.reserva{background:#1a1810;border-color:#4a4325} .blk.reserva>b{color:var(--gold)}
  .blk.reserva li{padding:3px 0} .blk.reserva .rsv-ok{color:var(--add)}
  .blk.reserva .rsv-no{color:#ffd27a}
+ /* A FEIRA (André, 2026-09-20): levar vs. trazer */
+ .feira .num.sal b{font-size:19px} .feira .num.sal.pos b{color:var(--add)}
+ .feira .num.sal.neg b{color:#ff9f8f}
+ .feira .taxas{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;
+   background:#1a1810;border:1px solid #4a4325;border-radius:10px;padding:8px 12px;
+   margin:8px 0;font-size:12.5px}
+ .feira .taxas label{display:flex;align-items:center;gap:6px}
+ .feira .taxas input{width:64px;font:inherit;font-size:13px;padding:6px 8px;
+   border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);
+   min-height:40px;text-align:right}
+ .feira .taxas .nota{flex:1 1 100%;margin:0}
+ .feira table.vt tr.nao td{opacity:.45;text-decoration:line-through}
+ .feira table.vt tr.nao td.act,.feira table.vt tr.nao td.act *{opacity:1;text-decoration:none}
+ .feira table.vt td.act{white-space:nowrap}
+ .feira .vend{display:inline-block;font-size:10.5px;padding:1px 7px;border-radius:10px;
+   background:#101c2e;color:#7fa8ff;margin:1px 3px 1px 0;white-space:nowrap}
+ .feira .org{font-size:10px;font-weight:800;padding:1px 5px;border-radius:5px;
+   background:#14262a;color:#79c9c4;margin-left:5px;white-space:nowrap}
+ .feira .org.man{background:#2c1b2e;color:#e0a8ea}
+ .feira .pform input.px{width:74px}
+ .feira .vendors li{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;
+   padding:4px 0;border-bottom:1px solid #1a212c}
+ .feira .vendors li small{color:var(--dim)}
+ .feira .corhdr{margin-top:10px}
  .pform{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
  .pform input,.pform select{font:inherit;font-size:12.5px;padding:7px 10px;
    border-radius:8px;border:1px solid var(--line);background:var(--card);
@@ -1819,7 +1857,11 @@ function renderTabs() {
                     abrir. Está sempre na fila: o «falta encomendar» é a resposta
                     a "o que compro a seguir?", mesmo sem nada a caminho. */
                  ['encomendas', '📦 Encomendas', encSub()],
-                 ['vender', '💰 Vender', eur(D.resumo.venda)]];
+                 ['vender', '💰 Vender', eur(D.resumo.venda)],
+                 /* A FEIRA (André, 2026-09-20): o que levo como moeda de troca
+                    contra o que quero trazer. Sempre na fila: o «trazer» é o
+                    «a comprar» das caixas, que raramente é zero. */
+                 ['feira', '🎒 Feira', feiraSub()]];
   /* REVALIDAÇÃO POR FOTO (André, 2026-09-20): só com a campanha ligada no
      config (`revalidacao.desde`). O subtítulo é o progresso total — o número
      por que ele sabe quanto falta fotografar. */
@@ -1913,6 +1955,17 @@ function encSub() {
   if (t.pendente_foto) p.push(`${t.pendente_foto} p/ foto`);
   if (!p.length) return `${t.falta_comprar || 0} por encomendar`;
   return p.join(' · ');
+}
+
+/* O subtítulo da aba Feira: o saldo em troca («troca +120 €»), que é a
+   resposta curta a "dá para trazer o que quero?". Vem do índice. */
+function feiraSub() {
+  const F = D.feira || {};
+  const s = F.saldo || {};
+  const lv = F.levar || {}, tz = F.trazer || {};
+  if (!lv.copias && !tz.copias) return 'nada a levar nem a trazer';
+  const v = s.troca || 0;
+  return `troca ${v >= 0 ? '+' : '−'}${eur(Math.abs(v))}`;
 }
 
 /* «1 a caminho · 1 pendente de foto» de uma linha, ou nada. */
@@ -4297,6 +4350,293 @@ function vistaNaoEncontradas() {
     + `<code>vendas.csv</code>.</p>`;
 }
 
+/* ------------------------------------------------------------ A FEIRA
+   André, 2026-09-20, à letra: *"como vou ter um objetivo de ir ao RC "trocar"
+   cartas nas bancas, fazemos logo uma projeção do que vou levar como moeda de
+   troca para o que quero trazer; indico-te a wantlist e prováveis vendors que
+   lá estarão, que poderão ter os preços das cartas no market, e avaliamos;
+   será sobretudo cartas que eu preciso para completar decks."*
+
+   Tudo vem do Python (`mtgvault.feira`): a página desenha LEVAR (a venda, com
+   a marca «levo/não levo» e o 📷), TRAZER (o «a comprar» das caixas + a
+   wantlist manual + os vendors) e o SALDO nas duas taxas. As taxas, as marcas,
+   a wantlist e os vendors vivem no config — os botões só no modo edição. */
+const pct = v => `${Math.round((v || 0) * 100)} %`;
+
+function feiraTaxasHTML(F) {
+  const nota = `<p class="nota">As taxas são <b>estimativas tuas</b>, não dados: o que `
+    + `uma banca costuma dar pelo Trend, em dinheiro e em crédito de troca. Afina-as `
+    + `depois da primeira feira (<code>feira.taxa_dinheiro</code> / `
+    + `<code>feira.taxa_troca</code> no <code>colecao_config.json</code>).</p>`;
+  if (!D.editable) {
+    return `<div class="taxas"><span>💶 dinheiro <b>${pct(F.taxa_dinheiro)}</b> do Trend</span>`
+      + `<span>🔁 troca <b>${pct(F.taxa_troca)}</b> do Trend</span>${nota}</div>`;
+  }
+  return `<div class="taxas"><label>💶 dinheiro <input id="feira-tdin" type="number" `
+    + `min="0" max="100" step="1" value="${Math.round(F.taxa_dinheiro * 100)}" `
+    + `aria-label="Taxa em dinheiro, por cento do Trend"> %</label>`
+    + `<label>🔁 troca <input id="feira-ttroca" type="number" min="0" max="100" step="1" `
+    + `value="${Math.round(F.taxa_troca * 100)}" aria-label="Taxa em troca, por cento do Trend"> %</label>`
+    + `<button class="btn sm" data-feira="taxas">guardar as taxas</button>${nota}</div>`;
+}
+
+function feiraLevarHTML(F) {
+  const L = F.levar || { linhas: [] };
+  const rev = !!L.revalidacao;
+  const so = !!L.so_validadas;
+  const filtro = rev ? `<div class="seg" role="group" aria-label="Que cópias levar">`
+    + (D.editable
+       ? `<button class="${so ? 'on' : ''}" data-feira="filtro" data-v="1" aria-pressed="${so}">📷 Só validadas</button>`
+         + `<button class="${so ? '' : 'on'}" data-feira="filtro" data-v="0" aria-pressed="${!so}">Tudo</button>`
+       : `<span class="bdg ${so ? 'ok' : ''}">${so ? '📷 só validadas' : 'tudo, com ou sem foto'}</span>`)
+    + `<span class="dim">${so ? `${L.fora_foto || 0} cópias ficam por não terem foto desta campanha (${eur(L.fora_foto_trend)})`
+                              : 'a levar também o que ainda não tem foto'}</span></div>` : '';
+  let h = `<details class="vblk" id="f-levar" open><summary><span>1. Levar — moeda de troca</span>`
+    + `<span class="vtot">${cop(L.copias || 0)} · Trend ${eur(L.trend)} · troca ~${eur(L.troca)}</span></summary>`
+    + `<p class="lead">A <b>lista de venda de hoje</b> (aba <b>Vender</b>: excedente normal + `
+    + `Reserved List que passou a tua regra), com o Trend por cópia. `
+    + (rev ? `Por omissão só vão as cópias <b>com foto desta campanha</b> — <i>"o que eu `
+      + `for vender também vai com foto"</i>. ` : '')
+    + `Marca <b>não levo</b> no que fica em casa; a marca fica no config, não neste aparelho.</p>`
+    + filtro
+    + `<div class="flh"><button class="cpbtn" onclick="copiar(this,'lv')" aria-label="Copiar a lista `
+    + `Levar">copiar lista Levar</button></div>`
+    + `<textarea class="cmk" data-cmk="lv" readonly>${esc(F.texto_levar || '')}</textarea>`;
+  if (!L.linhas.length) return h + `<p class="empty">Não há nada na lista de venda.</p></details>`;
+  h += `<table class="vt"><thead><tr><th></th>${rev ? '<th title="foto desta campanha">📷</th>' : ''}`
+    + `<th>carta</th><th>edição</th><th>onde está</th><th>Trend/un</th><th>Trend</th>`
+    + `<th>💶 ${pct(L.taxa_dinheiro)}</th><th>🔁 ${pct(L.taxa_troca)}</th>`
+    + (D.editable ? '<th></th>' : '') + `</tr></thead><tbody>`;
+  let cor = null;
+  const ncol = 7 + (rev ? 1 : 0) + (D.editable ? 1 : 0);
+  for (const l of L.linhas) {
+    if (l.cor !== cor) {
+      cor = l.cor;
+      h += `<tr><td colspan="${ncol}"><div class="corhdr">${esc(l.cor_nome)}</div></td></tr>`;
+    }
+    const foto = !rev ? '' : !l.por_revalidar
+      ? `<td class="rvok" title="validada${pl(l.validadas)}">✓</td>`
+      : !l.validadas ? `<td class="rvfoto" title="por fotografar">📷</td>`
+      : `<td class="rvfoto" title="${l.validadas} com foto, ${l.por_revalidar} sem">📷 ${l.validadas}/${l.q}</td>`;
+    h += `<tr class="${l.levo ? '' : 'nao'}" data-nm="${esc(l.nm)}">`
+      + `<td class="q">${l.leva_q !== l.q && l.levo ? `${l.leva_q}/${l.q}×` : `${l.q}×`}</td>` + foto
+      + `<td>${esc(l.nm)}${l.rl ? ' <span class="rl">RL</span>' : ''}</td>`
+      + `<td class="dim">${esc(l.set)} ${l.foil ? '✨' : ''} ${esc((l.lang || '').toUpperCase())}`
+      + `${l.cond ? ' ' + esc(l.cond) : ''}</td>`
+      + `<td class="dim">${esc(l.local)}</td>`
+      + `<td class="pz">${eur(l.unit)}</td><td class="pz tot">${eur(l.trend)}</td>`
+      + `<td class="pz">${eur(l.dinheiro)}</td><td class="pz">${eur(l.troca)}</td>`
+      + (D.editable ? `<td class="act"><button class="btn sm" data-feira="${l.levo ? 'nao-levo' : 'levo'}" `
+        + `data-chave="${esc(l.chave)}" aria-label="${l.levo ? 'Não levar' : 'Levar'} ${esc(l.nm)}">`
+        + `${l.levo ? '✕ não levo' : '✓ levo'}</button></td>` : '')
+      + `</tr>`;
+  }
+  h += `</tbody></table>`;
+  if (L.nao_levo) {
+    h += `<p class="nota">Marcadas «não levo»: ${cop(L.nao_levo)} · ${eur(L.nao_levo_trend)} — ficam em casa.</p>`;
+  }
+  if (L.sem_preco) h += `<p class="nota">${cop(L.sem_preco)} sem preço na base: contam a zero.</p>`;
+  return h + `</details>`;
+}
+
+/* Os chips «X pode ter» de uma linha de Trazer (com o ✕ no modo edição). */
+function vendChips(l) {
+  return (l.vendors || []).map(v => `<span class="vend">${esc(v)} pode ter`
+    + (D.editable ? ` <button class="btn sm" data-feira="pode-ter-nao" data-nome="${esc(l.nm)}" `
+      + `data-vendor="${esc(v)}" aria-label="Tirar ${esc(v)} de ${esc(l.nm)}" `
+      + `style="min-height:24px;padding:0 6px">✕</button>` : '') + `</span>`).join('');
+}
+
+function feiraTrazerHTML(F) {
+  const T = F.trazer || { linhas: [], por_caixa: [], vendors: [] };
+  const vends = T.vendors || [];
+  const opcoes = sel => vends.map(v => `<option value="${esc(v.nome)}"${v.nome === sel ? ' selected' : ''}>`
+    + `${esc(v.nome)}</option>`).join('');
+  let h = `<details class="vblk" id="f-trazer" open><summary><span>2. Trazer — o que quero</span>`
+    + `<span class="vtot">${cop(T.copias || 0)} · mínimo ${eur(T.minimo)}`
+    + (T.com_maximo ? ` · com os teus máximos ${eur(T.maximo)}` : '') + `</span></summary>`
+    + `<p class="lead"><b>Automático:</b> o «a comprar» de cada caixa <b>depois</b> das encomendas `
+    + `(a mesma lista da aba <b>Comprar</b>, a lista padrão do Cloud incluída), com o preço `
+    + `mínimo de hoje e o material que a caixa exige. <b>Manual:</b> o que acrescentares aqui `
+    + `(<code>feira.wantlist</code>) — com preço máximo, notas e para que caixa; uma entrada `
+    + `para a mesma carta e a mesma caixa <b>funde-se</b> na linha automática, não a duplica. `
+    + `Os preços são os da base (Trend do Cardmarket via Scryfall): <b>nenhuma consulta ao `
+    + `Cardmarket</b> parte daqui.</p>`
+    + `<div class="flh"><button class="cpbtn" onclick="copiar(this,'tz')" aria-label="Copiar a lista `
+    + `Trazer">copiar lista Trazer</button><button class="cpbtn" onclick="copiar(this,'tcm')" `
+    + `aria-label="Copiar a wantlist para o Cardmarket">copiar p/ Cardmarket</button></div>`
+    + `<textarea class="cmk" data-cmk="tz" readonly>${esc(F.texto_trazer || '')}</textarea>`
+    + `<textarea class="cmk" data-cmk="tcm" readonly>${esc(F.texto_cardmarket || '')}</textarea>`;
+  if (D.editable) {
+    const caixas = D.caixas.map(c => `<option value="${esc(c.slot)}">${esc(c.nome)}</option>`).join('');
+    h += `<div class="pform" role="group" aria-label="Acrescentar à wantlist">`
+      + `<input class="nm" id="feira-wl-nome" placeholder="carta (nome em inglês)" autocomplete="off">`
+      + `<input class="q" id="feira-wl-q" type="number" min="1" value="1" aria-label="quantas">`
+      + `<select id="feira-wl-slot" aria-label="para que caixa"><option value="">— colecção —</option>${caixas}</select>`
+      + `<select id="feira-wl-lang" aria-label="língua"><option value="">língua da caixa</option>`
+      + `<option value="pt">PT</option><option value="en">EN</option></select>`
+      + `<select id="feira-wl-finish" aria-label="acabamento"><option value="">acabamento da caixa</option>`
+      + `<option value="nonfoil">nonfoil</option><option value="foil">foil</option></select>`
+      + `<input class="px" id="feira-wl-max" type="number" min="0" step="0.01" placeholder="máx €" aria-label="preço máximo">`
+      + `<input class="nm" id="feira-wl-notas" placeholder="notas" autocomplete="off">`
+      + `<button class="btn sm" data-feira="wl-add">+ acrescentar</button></div>`;
+  }
+  if (!T.linhas.length) return h + `<p class="ok2">✓ Não falta nada às caixas e a wantlist está vazia.</p></details>`;
+  for (const c of T.por_caixa) {
+    h += `<div class="box"><div class="btop"><b>${esc(c.caixa)}</b><span class="pct" style="font-size:15px">`
+      + `${cop(c.copias)} · ${eur(c.minimo)}${c.maximo !== c.minimo ? ` · máx ${eur(c.maximo)}` : ''}`
+      + (c.sem_preco ? ` · ${c.sem_preco} sem preço` : '') + `</span></div>`
+      + `<table class="vt"><thead><tr><th></th><th>carta</th><th>material</th><th>mín/un</th>`
+      + `<th>mínimo</th><th>máx</th><th class="rz">vendors · notas</th>${D.editable ? '<th></th>' : ''}</tr></thead><tbody>`;
+    for (const l of c.linhas) {
+      const org = l.origem === 'caixa' ? '' : `<span class="org${l.origem === 'manual' ? ' man' : ''}">`
+        + `${l.origem === 'manual' ? 'manual' : 'caixa + manual'}</span>`;
+      h += `<tr data-nm="${esc(l.nm)}"><td class="q">${l.q}×</td>`
+        + `<td>${esc(l.nm)}${l.cara ? '<span class="cara">cara</span>' : ''}${org}`
+        + (l.sfoil ? `<small class="dim"> nunca saiu em foil</small>` : '')
+        + (l.acam || l.pfoto ? `<small class="encs">📦 ${l.acam ? l.acam + ' a caminho' : ''}`
+          + `${l.acam && l.pfoto ? ' · ' : ''}${l.pfoto ? l.pfoto + ' pendente de foto' : ''}</small>` : '')
+        + (l.nota ? `<small class="dim"> ${esc(l.nota)}</small>` : '') + `</td>`
+        + `<td class="dim">${esc(l.mat || l.req || '')}</td>`
+        + `<td class="pz">${eur(l.unit)}</td><td class="pz tot">${eur(l.minimo)}</td>`
+        + `<td class="pz">${l.max != null ? eur(l.max) + '/un' : '<span class="dim">—</span>'}</td>`
+        + `<td class="rz">${vendChips(l)}`
+        + (l.notas ? `<small class="dim">${esc(l.notas)}</small>` : '') + `</td>`
+        + (D.editable ? `<td class="act">`
+          + (vends.length ? `<select class="feira-vend" data-nome="${esc(l.nm)}" aria-label="Vendor que pode ter ${esc(l.nm)}">`
+            + `<option value="">vendor…</option>${opcoes('')}</select>` : '')
+          + `<button class="btn sm" data-feira="max" data-nome="${esc(l.nm)}" data-slot="${esc(l.slot || '')}" `
+          + `data-q="${l.q}" data-lang="" data-finish="" aria-label="Fixar o preço máximo de ${esc(l.nm)}">máx €</button>`
+          + (l.origem !== 'caixa' ? `<button class="btn sm" data-feira="wl-tirar" data-nome="${esc(l.nm)}" `
+            + `data-slot="${esc(l.slot || '')}" aria-label="Tirar ${esc(l.nm)} da wantlist">✕ tirar</button>` : '')
+          + `</td>` : '')
+        + `</tr>`;
+    }
+    h += `</tbody></table></div>`;
+  }
+  if (T.sem_preco) h += `<p class="nota">${cop(T.sem_preco)} sem preço na base: contam a zero no mínimo.</p>`;
+  return h + `</details>`;
+}
+
+function feiraVendorsHTML(F) {
+  const vends = (F.trazer && F.trazer.vendors) || [];
+  let h = `<details class="vblk" id="f-vendors"${vends.length ? ' open' : ''}><summary><span>3. Vendors — quem lá vai estar</span>`
+    + `<span class="vtot">${vends.length}</span></summary>`
+    + `<p class="lead">Os que achas que lá estarão, com o utilizador do Cardmarket ou o site, para `
+    + `veres os preços deles <b>tu</b> antes de ir — o vault não os consulta. Em cada carta de `
+    + `<b>Trazer</b> podes marcar «o vendor X pode ter».</p>`;
+  if (D.editable) {
+    h += `<div class="pform" role="group" aria-label="Acrescentar um vendor">`
+      + `<input class="nm" id="feira-v-nome" placeholder="nome do vendor" autocomplete="off">`
+      + `<input class="nm" id="feira-v-cm" placeholder="utilizador Cardmarket" autocomplete="off">`
+      + `<input class="nm" id="feira-v-site" placeholder="site" autocomplete="off">`
+      + `<input class="nm" id="feira-v-notas" placeholder="notas" autocomplete="off">`
+      + `<button class="btn sm" data-feira="vendor-add">+ vendor</button></div>`;
+  }
+  if (!vends.length) return h + `<p class="empty">Ainda sem vendors.</p></details>`;
+  h += `<ul class="vendors fl">` + vends.map(v => `<li><b>${esc(v.nome)}</b>`
+    + (v.cardmarket ? `<small>Cardmarket: ${esc(v.cardmarket)}</small>` : '')
+    + (v.site ? `<small>${esc(v.site)}</small>` : '')
+    + (v.notas ? `<small>${esc(v.notas)}</small>` : '')
+    + (D.editable ? `<button class="btn sm" data-feira="vendor-tirar" data-vendor="${esc(v.nome)}" `
+      + `aria-label="Tirar o vendor ${esc(v.nome)}">✕</button>` : '') + `</li>`).join('') + `</ul>`;
+  return h + `</details>`;
+}
+
+function vistaFeira() {
+  const F = D.feira;
+  if (!F) return `<h2>🎒 Feira</h2><p class="empty">Sem dados da feira.</p>`;
+  const L = F.levar || {}, T = F.trazer || {}, S = F.saldo || {};
+  const sal = (v, tit, sub) => `<div class="num sal ${v >= 0 ? 'pos' : 'neg'}">${tit}<b>`
+    + `${v >= 0 ? '+' : '−'}${eur(Math.abs(v))}</b>${sub ? `<span class="dim">${sub}</span>` : ''}</div>`;
+  let h = `<div class="feira"><h2>🎒 Feira: moeda de troca vs. o que quero trazer</h2>`
+    + `<p class="lead"><i>"fazemos logo uma projeção do que vou levar como moeda de troca para o que `
+    + `quero trazer"</i> (20/09/2026). <b>Levar</b> é a lista de venda de hoje; <b>trazer</b> é o `
+    + `que falta às caixas mais a tua wantlist. O saldo diz se a moeda chega, ao Trend e às `
+    + `duas taxas de banca.</p>`
+    + feiraTaxasHTML(F)
+    + `<div class="nums">`
+    + `<div class="num eur">levar · Trend<b>${eur(L.trend)}</b><span class="dim">${cop(L.copias || 0)}`
+    + (L.rl_copias ? ` · RL ${L.rl_copias}` : '') + `</span></div>`
+    + `<div class="num">em dinheiro<b>${eur(L.dinheiro)}</b><span class="dim">${pct(L.taxa_dinheiro)} do Trend</span></div>`
+    + `<div class="num">em troca<b>${eur(L.troca)}</b><span class="dim">${pct(L.taxa_troca)} do Trend</span></div>`
+    + `<div class="num buy">trazer · mínimo<b>${eur(T.minimo)}</b><span class="dim">${cop(T.copias || 0)}`
+    + (T.com_maximo ? ` · com máximos ${eur(T.maximo)}` : '') + `</span></div>`
+    + sal(S.dinheiro, 'saldo em dinheiro', T.com_maximo ? `com máximos ${S.dinheiro_max >= 0 ? '+' : '−'}${eur(Math.abs(S.dinheiro_max))}` : '')
+    + sal(S.troca, 'saldo em troca', T.com_maximo ? `com máximos ${S.troca_max >= 0 ? '+' : '−'}${eur(Math.abs(S.troca_max))}` : '')
+    + `</div>`;
+  if (L.revalidacao && L.so_validadas && !L.copias && L.fora_foto) {
+    h += `<p class="lead">⚠️ <b>Ainda não há nada validado para levar</b>: as ${cop(L.fora_foto)} da venda `
+      + `(${eur(L.fora_foto_trend)}) estão por fotografar nesta campanha. Fotografa-as (aba `
+      + `<b>📷 Revalidação</b>) ou passa o filtro a <b>Tudo</b>.</p>`;
+  }
+  h += feiraLevarHTML(F) + feiraTrazerHTML(F) + feiraVendorsHTML(F);
+  /* Por caixa: quanto custa trazer o que falta a cada uma, e que fatia da
+     moeda de troca isso é. */
+  const pc = F.por_caixa || [];
+  if (pc.length) {
+    h += `<details class="vblk" id="f-caixas" open><summary><span>4. Por caixa</span>`
+      + `<span class="vtot">${pc.length} caixa${pl(pc.length)}</span></summary>`
+      + `<table class="vt"><thead><tr><th>caixa</th><th>cópias</th><th>mínimo</th><th>máx</th>`
+      + `<th>saldo troca</th><th>% da troca</th></tr></thead><tbody>`
+      + pc.map(c => `<tr><td>${esc(c.caixa)}</td><td class="q">${c.copias}</td>`
+        + `<td class="pz">${eur(c.minimo)}</td><td class="pz dim">${eur(c.maximo)}</td>`
+        + `<td class="pz ${c.saldo_troca >= 0 ? 'tot' : ''}">${c.saldo_troca >= 0 ? '+' : '−'}${eur(Math.abs(c.saldo_troca))}</td>`
+        + `<td class="pz dim">${c.pct_da_troca == null ? '—' : c.pct_da_troca + ' %'}</td></tr>`).join('')
+      + `</tbody></table></details>`;
+  }
+  return h + `<p class="nota">Pelo terminal: <code>py -m mtgvault.cli feira</code> (a projecção) e `
+    + `<code>feira wantlist add|remover|listar</code>. Tudo o que aqui se marca fica no `
+    + `<code>colecao_config.json → feira</code>.</p></div>`;
+}
+
+/* As escritas da feira, todas para `api/feira` (só config). O botão diz a
+   acção em `data-feira`; os campos lêem-se ao lado. */
+async function feiraAccao(btn) {
+  const act = btn.dataset.feira;
+  const campo = id => { const e = $('#' + id); return e ? String(e.value || '').trim() : ''; };
+  const corpo = { act };
+  if (act === 'taxas') {
+    corpo.dinheiro = campo('feira-tdin'); corpo.troca = campo('feira-ttroca');
+  } else if (act === 'filtro') {
+    corpo.so_validadas = btn.dataset.v === '1';
+  } else if (act === 'levo' || act === 'nao-levo') {
+    corpo.chave = btn.dataset.chave;
+  } else if (act === 'wl-add') {
+    corpo.nome = campo('feira-wl-nome'); corpo.q = Number(campo('feira-wl-q') || 1);
+    corpo.slot = campo('feira-wl-slot') || null; corpo.lang = campo('feira-wl-lang') || null;
+    corpo.finish = campo('feira-wl-finish') || null; corpo.max = campo('feira-wl-max') || null;
+    corpo.notas = campo('feira-wl-notas');
+    if (!corpo.nome) { erro('Escreve o nome da carta.'); return; }
+  } else if (act === 'wl-tirar') {
+    corpo.nome = btn.dataset.nome; corpo.slot = btn.dataset.slot || null;
+  } else if (act === 'max') {
+    /* O preço máximo de uma linha: pergunta-se o número (um campo por linha
+       era uma tabela ilegível no telemóvel). Vazio = tirar o máximo. */
+    const v = prompt(`Preço máximo por cópia para ${btn.dataset.nome} (vazio = sem máximo):`);
+    if (v === null) return;
+    corpo.nome = btn.dataset.nome; corpo.slot = btn.dataset.slot || null;
+    corpo.q = Number(btn.dataset.q || 1); corpo.max = String(v).trim() || null;
+  } else if (act === 'vendor-add') {
+    corpo.nome = campo('feira-v-nome'); corpo.cardmarket = campo('feira-v-cm');
+    corpo.site = campo('feira-v-site'); corpo.notas = campo('feira-v-notas');
+    if (!corpo.nome) { erro('Escreve o nome do vendor.'); return; }
+  } else if (act === 'vendor-tirar') {
+    if (!armar(btn, `✓ tirar ${btn.dataset.vendor}?`)) return;
+    corpo.vendor = btn.dataset.vendor;
+  } else if (act === 'pode-ter' || act === 'pode-ter-nao') {
+    corpo.nome = btn.dataset.nome; corpo.vendor = btn.dataset.vendor;
+  }
+  btn.disabled = true;
+  try {
+    const r = await gravar('api/feira', corpo);
+    const j = await r.json();
+    if (j.erro) throw new Error(j.erro);
+    toast(j.msg || 'Feito.');
+    recarregar();
+  } catch (e) { btn.disabled = false; erro('Não deu: ' + e.message); }
+}
+
 /* ------------------------------------------------------------------ render */
 /* Que PARTES uma aba precisa. Uma caixa precisa da dela; as abas de resumo
    (Plano, Todas, montados, por montar) desenham-se só com o índice. */
@@ -4306,7 +4646,7 @@ function partesDe(id) {
   if (c) return c.vazio ? [] : [c.parte];
   return ({ arrumar: ['arrumar'], partilhadas: ['compras'], comprar: ['compras'],
             vender: ['venda'], sugestoes: ['premodern'],
-            encomendas: ['encomendas'],
+            encomendas: ['encomendas'], feira: ['feira'],
             revalidacao: D.revalidacao ? ['revalidacao'] : [] })[id] || [];
 }
 async function carregaParte(nome) {
@@ -4351,6 +4691,7 @@ async function render() {
   else if (aba === 'naoenc') { v.innerHTML = vistaNaoEncontradas(); }
   else if (aba === 'encomendas') { v.innerHTML = vistaEncomendas(); }
   else if (aba === 'revalidacao') { v.innerHTML = vistaRevalidacao(); }
+  else if (aba === 'feira') { v.innerHTML = vistaFeira(); }
   else { v.innerHTML = vistaTodas(); }
   ligar();
   renderBarra();
@@ -4607,6 +4948,18 @@ function ligar() {
      e reservar / tirar da reserva. Um endpoint só (`api/padrao`). */
   for (const b of document.querySelectorAll('[data-padrao],[data-reserva]')) {
     b.onclick = () => padraoAccao(b);
+  }
+  /* A FEIRA (2026-09-20): taxas, «levo/não levo», wantlist, vendors e o
+     «pode ter» (o selector de vendor de cada linha). Um endpoint (`api/feira`). */
+  for (const b of document.querySelectorAll('[data-feira]')) {
+    b.onclick = () => feiraAccao(b);
+  }
+  for (const s of document.querySelectorAll('select.feira-vend')) {
+    s.onchange = () => {
+      if (!s.value) return;
+      feiraAccao({ dataset: { feira: 'pode-ter', nome: s.dataset.nome, vendor: s.value },
+                   disabled: false });
+    };
   }
   const cc = $('#compra-caixa');
   if (cc) cc.onchange = () => { P.compra = cc.value; save(); render(); };
@@ -4886,7 +5239,7 @@ function iniciar(dados) {
   if (!D.caixas.some(c => c.slot === aba)
       && !['plano', 'todas', 'montados', 'pormontar', 'arrumar', 'partilhadas',
            'comprar', 'vender', 'sugestoes', 'encomendas', 'naoenc',
-           'revalidacao'].includes(aba)) {
+           'revalidacao', 'feira'].includes(aba)) {
     aba = 'plano';
   }
   renderResumo(); renderTabs(); render();
