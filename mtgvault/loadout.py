@@ -1136,6 +1136,12 @@ def _cards_from_escolhido(ref: str) -> tuple[list[tuple[str, str, int]], str]:
              for b, n, q in rec["cards"]]
     quando = rec.get("escolhido_em") or "?"
     fonte = rec.get("subtitulo") or rec.get("label") or ""
+    # LISTA PADRÃO (André, 2026-09-20): o mesmo registo, mas fixado por ele (ou
+    # pela CLI) e não pelo top-N — a nota diz de onde veio, porque é isso que
+    # distingue "o consenso de hoje" de "a lista que eu decidi".
+    if rec.get("padrao"):
+        return cards, (f"lista padrão fixada em {quando}"
+                       + (f" · {rec['origem']}" if rec.get("origem") else ""))
     nota = f"escolhido por ti em {quando}"
     if rec.get("n_listas"):
         nota += f" · consenso de {rec['n_listas']} listas"
@@ -1363,6 +1369,16 @@ def resolve_slots(con, cfg_slots: list[dict] | None = None) -> list[dict]:
         # como uma caixa feita à mão se pode prender a um arquétipo sem passar
         # pelo botão.
         s["arquetipo"] = (esc or {}).get("id") or s.get("arquetipo")
+        # LISTA PADRÃO (André, 2026-09-20): a caixa tem uma lista FIXA, com
+        # data e origem, em vez da que a fonte recalcula. A página e o CLI
+        # dizem-no — uma lista que não muda e ninguém sabe porquê é uma caixa
+        # a mentir sobre o que segue.
+        s["padrao"] = ({"desde": esc.get("escolhido_em") or "",
+                        "origem": esc.get("origem") or ""}
+                       if esc and esc.get("padrao") else None)
+        # A RESERVA (2026-09-20): os nomes das cartas «que poderão entrar».
+        # Normalizados à frente (`_front`), como as listas.
+        s["reserva"] = [_front(str(n)) for n in (s.get("reserva") or [])]
         s.setdefault("prioridade", 99)
         s.setdefault("nome", s.get("ref") or s.get("slot"))
         out.append(s)
@@ -2686,6 +2702,66 @@ def cabe_no_premodern(lot: dict, ps: dict | None = None) -> bool:
     return not _fora_de_vista(lot, ps)
 
 
+# A RESERVA DE UMA CAIXA (André, 2026-09-20). O motivo da saída `guardar` leva
+# o nome da caixa a seguir (*"reserva da caixa Cloud (Duel Commander)"*): é
+# uma constante porque a página, o CLI, a exportação e o teste têm de a
+# reconhecer, e porque a separa dos substitutos (*"serve X (não é foil)"*),
+# que é outra decisão sobre a mesma cópia.
+RAZAO_RESERVA = "reserva da caixa"
+
+
+def reservas_das_caixas(slots) -> dict[str, list[str]]:
+    """`carta -> [nomes das caixas que a reservam]`, pela ordem da alocação.
+
+    Lê `s["reserva"]` (já normalizada à frente pelo `resolve_slots`). Uma
+    carta que está na LISTA da caixa não precisa de reserva — a alocação já a
+    guarda — mas se ele a escreveu nas duas, a reserva vale na mesma: é o que
+    segura as cópias a MAIS (a 2.ª Get Lost, que o singleton não usa).
+    """
+    out: dict[str, list[str]] = {}
+    for s in slots:
+        for nm in s.get("reserva") or []:
+            out.setdefault(nm, [])
+            if s["nome"] not in out[nm]:
+                out[nm].append(s["nome"])
+    return out
+
+
+def reserva_da_caixa(res: dict, s: dict) -> list[dict]:
+    """O bloco «Reserva (N)» da aba da caixa: por carta reservada, as cópias
+    que ele tem, ONDE estão (gaveta ou caixa) e se cada uma SERVE esta caixa
+    tal como está (`_porque_nao` — a mesma pergunta da alocação, para a
+    página não decidir por outra régua).
+
+    Corre depois da alocação e da venda, sobre o mesmo `pool`: uma cópia que
+    a alocação deu a outra caixa aparece com essa caixa ao lado, e uma que
+    está livre diz a gaveta. `na_lista` marca as que já estão na lista da
+    caixa — aí a reserva é só a garantia sobre as cópias a mais.
+    """
+    pool = res["pool"]
+    baldes = {x["balde"] for x in res["slots"] if x.get("balde")}
+    caixas = caixas_de_deck(res["slots"])
+    na_lista = {nm for _b, nm, _q in s.get("cards") or []}
+    out = []
+    for nm in s.get("reserva") or []:
+        lotes = []
+        for lot in sorted(pool.get(nm, []), key=lambda l: l["key"]):
+            porque = (("a caixa não vê esta cópia" if _fora_de_vista(lot, s) else None)
+                      or _porque_nao(dict(lot, caixa=None), s, baldes, caixas))
+            # A caixa onde a alocação a pôs (esta ou outra), ou a gaveta.
+            onde = lot["caixa_nome"] or next(
+                (c for c, q in lot["alocado"].items() if q), None) or lot["local"]
+            lotes.append({"local": lot["local"], "onde": onde, "q": lot["q"],
+                          "set_code": lot["set_code"], "lang": lot["lang"],
+                          "finish": lot["finish"], "foil": e_foil(lot["finish"]),
+                          "rl": bool(lot["rl"]), "copy_id": lot["id"],
+                          "serve": porque is None, "porque": porque or ""})
+        out.append({"nm": nm, "q": sum(l["q"] for l in lotes), "lotes": lotes,
+                    "na_lista": nm in na_lista,
+                    "serve": any(l["serve"] for l in lotes)})
+    return out
+
+
 def _quem_reserva(sugs: list[dict], nm: str) -> str:
     """As sugestões que seguram esta carta (o gémeo de `premodern.quem_reserva`,
     do lado de cá para não haver import circular)."""
@@ -3289,6 +3365,30 @@ def sell_list(con, res: dict) -> dict:
                         continue
                 (venda_rl if lot["rl"] else venda).append(
                     linha_de(nm, lot, sobra, RAZAO_PREMODERN))
+
+    # A RESERVA DE UMA CAIXA (André, 2026-09-20: *"ver algumas cartas que
+    # poderão ser possível entrar; não quero ter que vender cartas que depois me
+    # poderão fazer falta"*). Corre sobre a lista já formada, pela mesma razão
+    # da regra da RL a seguir: é sobre a CARTA, seja qual for o motivo por que a
+    # cópia ia à venda — excedente, "não usada por nenhum deck", não legal. E
+    # ANTES da RL: uma carta reservada não se vende, subisse ou não. Vai para
+    # `guardar` (a saída que a exportação já deixa de fora), com o motivo a
+    # dizer QUE caixa a segura — *"não vendas isto"* sem o porquê ao lado é uma
+    # ordem que daqui a um mês ninguém percebe.
+    reservas = reservas_das_caixas(res["slots"])
+    if reservas:
+        def _segura(rows):
+            ficam = []
+            for r in rows:
+                quem = reservas.get(r["nm"])
+                if not quem:
+                    ficam.append(r)
+                    continue
+                guardar.append(dict(r, porque_venderia=r["reason"],
+                                    reason=f"{RAZAO_RESERVA} {', '.join(quem)}",
+                                    reserva_de=list(quem)))
+            return ficam
+        venda, venda_rl = _segura(venda), _segura(venda_rl)
 
     # RESERVED LIST: só sai o que NÃO valorizou (André, 2026-09-08). Corre no fim,
     # sobre a lista de venda já formada, e não dentro dos dois ciclos: a regra é
@@ -4880,6 +4980,11 @@ def report(con, cfg_slots: list[dict] | None = None) -> dict:
     from . import premodern as _pm                       # noqa: PLC0415
     res["premodern"] = _pm.contexto(con, res)
     res.update(sell_list(con, res))
+    # A RESERVA de cada caixa (2026-09-20): o bloco da aba, depois da venda
+    # (para a cópia poder dizer que já não está na lista) e sobre o mesmo pool.
+    for s in res["slots"]:
+        s["reserva_linhas"] = reserva_da_caixa(res, s) if s.get("reserva") else []
+    res["reserva_total"] = sum(r["q"] for s in res["slots"] for r in s["reserva_linhas"])
     res["custo_total"] = round(sum(s["custo"] for s in res["slots"]), 2)
     res["comprar_total"] = sum(s["comprar"] for s in res["slots"])
     res["noutra_total"] = sum(s["noutra"] for s in res["slots"])

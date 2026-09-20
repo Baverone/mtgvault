@@ -85,6 +85,7 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 from mtgvault import (caixas, configio, db, encomendas, loadout,  # noqa: E402
                       migracao, qr, sources, venda)
+from mtgvault import padrao as padrao_mod  # noqa: E402
 
 import deckboxes  # noqa: E402
 import metagame  # noqa: E402
@@ -276,7 +277,10 @@ def mover(con, cfg, slot_id, delta) -> str:
 # "Vou montar este": escolher o deck de uma caixa a partir do top-N
 # ---------------------------------------------------------------------------
 # As chaves da caixa que a escolha mexe — e por isso as que o `desmarcar` repõe.
-CHAVES_DA_ESCOLHA = ("fonte", "ref", "nome", "estado")
+# As chaves que uma escolha substitui e o desfazer repõe. Vivem no
+# `mtgvault.padrao` desde 2026-09-20, porque a LISTA PADRÃO faz o mesmo gesto
+# (fixar/voltar) e as duas listas não podem divergir.
+CHAVES_DA_ESCOLHA = padrao_mod.CHAVES_DA_ESCOLHA
 
 _slot_do_cfg = caixas.caixa_do_cfg
 
@@ -1006,6 +1010,12 @@ class Handler(BaseHTTPRequestHandler):
                 if caminho == "/api/escolher":
                     self._json(self._escolher(dados))
                     return
+                if caminho == "/api/padrao":
+                    # LISTA PADRÃO e RESERVA (André, 2026-09-20). Só config —
+                    # nada disto toca na base; regenera porque a lista da
+                    # caixa (e logo a alocação e a venda) mudou.
+                    self._json(self._padrao(dados))
+                    return
                 if caminho == "/api/vender":
                     self._json(self._vender(dados))
                     return
@@ -1253,6 +1263,61 @@ class Handler(BaseHTTPRequestHandler):
                         f"por fotografar. Tira as fotos e larga-as em pendentes\\ — "
                         f"entram na corrida das 02:30; o esperadas.md já diz o que "
                         f"esperar.")}
+
+    def _padrao(self, dados):
+        """LISTA PADRÃO e RESERVA de uma caixa (André, 2026-09-20).
+
+        `act`: `fixar` (texto + origem), `add` (nome, q, board), `tirar` (nome,
+        board), `voltar`, `reserva-add` (nome), `reserva-tirar` (nome). Os
+        nomes VALIDAM-SE no catálogo antes de se escrever (um nome mal escrito
+        na lista era uma falta que nunca fechava e uma compra que não existe);
+        o que se guarda é o nome oracle, a frente. Erros de regra → 409.
+        """
+        padrao = padrao_mod
+        act, slot_id = dados.get("act"), dados.get("slot")
+        nome = (dados.get("nome") or "").strip()
+        cfg = ler_config()
+        caixas.caixa_do_cfg(cfg, slot_id)                  # KeyError → 409
+        with db.session() as con:
+            def canon(n):
+                c = padrao.nome_no_catalogo(con, n)
+                if c is None:
+                    raise ValueError(f"o catálogo não conhece {n!r} — confirma o "
+                                     f"nome em inglês (oracle)")
+                return c
+
+            if act == "fixar":
+                cards = padrao.parse_lista(dados.get("texto") or "")
+                if not cards:
+                    raise ValueError("a lista veio vazia")
+                cards = [[b, canon(n), q] for b, n, q in cards]
+                rec = padrao.fixar(cfg, slot_id, cards, dados.get("origem") or "")
+                msg = (f'{caixas.caixa_do_cfg(cfg, slot_id).get("nome")}: lista padrão '
+                       f'fixada em {rec["escolhido_em"]} — {len(rec["cards"])} linhas, '
+                       f'{sum(c[2] for c in rec["cards"])} cartas')
+            elif act == "add":
+                nome = canon(nome)
+                rec = padrao.acrescentar(cfg, slot_id, nome, int(dados.get("q") or 1),
+                                         dados.get("board") or "main")
+                msg = f'{nome} na lista padrão ({sum(c[2] for c in rec["cards"])} cartas)'
+            elif act == "tirar":
+                rec = padrao.tirar(cfg, slot_id, nome, board=dados.get("board") or None)
+                msg = f'{nome} fora da lista padrão ({sum(c[2] for c in rec["cards"])} cartas)'
+            elif act == "voltar":
+                msg = padrao.voltar(cfg, slot_id)
+            elif act == "reserva-add":
+                nome = canon(nome)
+                lista = padrao.reserva_add(cfg, slot_id, nome)
+                msg = f"{nome} na reserva ({len(lista)} cartas reservadas)"
+            elif act == "reserva-tirar":
+                lista = padrao.reserva_tirar(cfg, slot_id, nome)
+                msg = f"{nome} fora da reserva ({len(lista)} cartas reservadas)"
+            else:
+                return {"erro": f"acção {act!r} desconhecida"}
+            escrever_config(cfg)
+            sources._CFG_CACHE.clear()
+            regenerar(con)
+        return {"ok": True, "msg": msg}
 
     def _escolher(self, dados):
         """"Vou montar este" / "já não vou montar este", do `metagame.html`.

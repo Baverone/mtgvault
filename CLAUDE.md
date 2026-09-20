@@ -62,6 +62,12 @@ mtgvault/
                   à cópia por revalidar; a discrepância corrige a cópia da
                   caixa, `data/revalidacao.log`), o progresso da aba «📷
                   Revalidação» e a secção do `pendentes/esperadas.md`
+  padrao.py       a LISTA PADRÃO e a RESERVA por caixa (2026-09-20): a lista
+                  fixa (com data e origem) em `listas_escolhidas[slot]` +
+                  `padrao: true`, que o daily nunca pisa, e `caixas[].reserva`
+                  — as cartas «que poderão entrar», que nunca vão à venda
+                  (saída `guardar`, «reserva da caixa X»). Só config; CLI
+                  `padrao`/`reserva`, endpoint `/api/padrao`
   venda.py        a SAÍDA da lista de venda (2026-09-18): o CSV de stock p/ o
                   Cardmarket (formato predefinido NÃO confirmado, ou aprendido
                   de `data/cardmarket-stock-exemplo.csv`), a lista da estante
@@ -2234,6 +2240,91 @@ testes em `test_revalidacao.py` (11 casos).
   `data-enc`, o mesmo atributo dos `+`/`−` das encomendas, e o `ligar()` deixava
   o segundo `onclick` ganhar — o `+` de uma encomenda chamava o `encontrei`.
   Passou a `data-encontrei` (o `test_nao_encontrei` tranca-o).
+
+**9. LISTA PADRÃO E RESERVA POR CAIXA; O CLOUD (DUEL COMMANDER) TEM AS DUAS
+(André, 2026-09-20, à letra).** *"quero que olhes também com muita atenção para
+a lista de Duel-Commander de Cloud; preciso urgentemente de estabelecer uma
+lista padrão para completar, e ver algumas cartas que poderão ser possível
+entrar; não quero ter que vender cartas que depois me poderão fazer falta."*
+Motor em `mtgvault/padrao.py` (só config) + o que o `loadout` lê dele; aba da
+caixa na Deckboxes (blocos **📌 Lista padrão** e **🛡️ Reserva (N)**), endpoint
+`POST /api/padrao`, CLI `py -m mtgvault.cli padrao <slot> listar|fixar|add|
+tirar|voltar` e `reserva <slot> listar|add|remover`. Relatório e medições em
+`ai-pc/work/revisao/mtgvault-cloud-padrao-0920.md`; testes em
+`test_padrao_reserva.py` (5 casos).
+- **A LISTA PADRÃO reutiliza o «vou montar este»** (v5): fica em
+  `listas_escolhidas[slot]` com `padrao: true`, `origem` e `escolhido_em`, e a
+  caixa passa a `fonte: "escolhido"`, `ref: <slot>`, com o que tinha em
+  `_antes`. O motor não ganhou um caminho novo — `_cards_from_escolhido` já
+  lia isto — e o **`daily` nunca escreve em `listas_escolhidas`** (só o
+  `webapp.py` e a CLI): o `my_decks.refresh` continua a reescrever o deck
+  «Cloud (Duel Commander)» na tabela `decks` todas as noites, e a caixa deixou
+  de o ler. A diferença para o botão do top-N: o **nome da caixa não muda** e
+  a lista vem dele. `resolve_slots` põe `s["padrao"] = {desde, origem}` e a
+  nota diz *"lista padrão fixada em <data> · <origem>"*. **«Voltar ao
+  consenso»** é o mesmo desfazer do «já não vou montar este» (`_antes`), e no
+  8771 é em dois toques — perde a lista fixada. Fixar por cima de uma padrão
+  já fixada **não esquece o `_antes`**. `configio.escrever` passou a escrever
+  as `listas_escolhidas` com **cada carta numa linha** (`CARTAS_UMA_LINHA`):
+  eram cinco linhas por carta, 380 por caixa.
+- **A RESERVA é `caixas[].reserva`** (nomes oracle, a frente). As cópias
+  dessas cartas — **cumpram ou não a regra de material** da caixa, foi assim
+  que ele o pediu — saem de `venda`/`venda_rl` para **`guardar`**, com o motivo
+  `loadout.RAZAO_RESERVA` + o nome da caixa (*"reserva da caixa Cloud (Duel
+  Commander)"*) e o `porque_venderia` ao lado, **antes** do filtro da RL (uma
+  carta reservada não se vende, subisse ou não). O `guardar` já ficava fora do
+  CSV de stock e da estante (`venda.fora_da_exportacao`). **O que a reserva
+  NÃO faz:** não aloca, não conta para a %, não compra — é só *"não vendas
+  isto"*. O bloco da caixa (`loadout.reserva_da_caixa` → `s["reserva_linhas"]`,
+  parte pesada `reserva` no JSON) diz, por carta, quantas tem, **onde** cada
+  cópia está (gaveta, ou a caixa a que a alocação a deu) e se **serve** a caixa
+  tal como está (`_porque_nao`, a mesma régua da alocação — *"não serve: não é
+  foil (existe em foil: NEM 2000)"*).
+- **Os nomes VALIDAM-SE no catálogo** antes de se escrever (`padrao.
+  nome_no_catalogo`: `name = ?` primeiro, `LIKE 'x // %'` para as duas faces,
+  `lower()` como recurso) — no 8771 é 409 com o motivo, na CLI código 2. Um
+  nome mal escrito na lista era uma falta que nunca fechava.
+- **O CLOUD, aplicado neste dia pela CLI**: lista padrão de **75 não-básicas +
+  24 Snow-Covered Plains** (99 cartas) tirada das **83 listas mono-brancas com
+  Cloud, Midgar Mercenary** que contam (mtgtop8, 22/08–19/09; as outras 100
+  com a carta são GW/Jeskai/Boros, fora por identidade de cor), regra *≥ 50 %
+  entram; 40–50 % as que ele tem em foil* — **verificada contra a base carta a
+  carta, desvio máximo 1 ponto**. Reserva de **20**: as 12 da ordem (Extraction
+  Specialist, Path to Exile, Lay Down Arms, Helitrooper, Cid, Get Lost, Thalia
+  HC, Armageddon, Mirrex, Lavaspur Boots, Touch the Spirit Realm, Burrenton
+  Forge-Tender), a Sunpearl Kirin (*"ficam na reserva as que ele tem"*) e as 7
+  nonfoil EN da lista padrão (Parallax Wave, Enlightened Tutor, Reverent
+  Mantra, Crystal Vein, Talon Gates, Starfield Shepherd, Helping Hand).
+- **Medido na cópia da base de 2026-09-20** (o mesmo `vault.db` dos dois
+  lados): o Cloud passa de **77 % (75/97, comprar 22, 736,26 €)** a **79 %
+  (78/99, comprar 21, 656,17 €)**; fechar tudo **7 157,16 → 7 077,07 €**, 209
+  → **208** a comprar, arrumar 181 → **184** (as 3 cópias novas que o Cloud
+  tira), **venda igual** (272c/1 570,73 € + 70 RL/4 373,90 €, guardar
+  2c/14,81 €) — **a reserva não tira hoje nenhuma cópia da venda**: nenhuma
+  das 20 estava lá (são singletons dentro do playset). As outras 13 caixas ao
+  cêntimo. Dos 21 a comprar: **8 que não tem** (Flagstones, Abandoned Air
+  Temple, Erode, Mana Tithe, Disruptor Flute, Reprieve, Static Prison,
+  Razorgrass Ambush — 38,91 € a preço mínimo, a Razorgrass sem preço), **7 só
+  nonfoil EN** (3 livres como substituto, 4 dentro das caixas de cEDH), **4 PT
+  da era** (Rishadan Port, Tangle Wire, Cataclysm, Mishra's Factory — *"PT da
+  era Premodern (trancada ao Premodern)"*: o motor já os dava como falta e a
+  wantlist pede-os **foil**, confirmado) e **2 foil dentro da caixa do Modern**
+  (Shadowspear, Skateboard — regra de 19/09, *"tens 2 no Modern"*). A Parallax
+  Wave foil (388,96 €) e a Talon Gates foil (101,83 €) são 75 % do custo. A
+  **Witch Enchanter** vinha na ordem como *falta* e ele tem 4× MH3 foil — a
+  base ganha. **Pioneer (só verificação):** o Izzet Prowess (4362, 81 listas)
+  é o **4.º** a 39 % (28/72 cópias, 44 a comprar, 73,64 €), atrás de Jeskai
+  Revelation 51 %, Izzet Pop Quiz 44 % e Izzet Vivi 41 % — a página mostra
+  `metagame_top_n: 3`, e a % é por CÓPIAS em material certo (foil EN) depois
+  da alocação, não por cartas distintas. A regra não se mexeu; `metagame_top_n:
+  4` no config mostrava-o.
+- **Consequências a saber:** (a) o `ref` do Cloud passou a `duel-commander`,
+  por isso `s["vigiado"]` (que lê `decks_vigiados` pelo `ref`) fica falso —
+  sem efeito, é a única caixa do grupo; (b) o `meta_coverage.owned_available`
+  continua a descontar o deck «Cloud (Duel Commander)» da tabela `decks` (a
+  lista do McWinSauce), não a padrão — é a cobertura, não a caixa; (c) a
+  secção em camadas do `colecao_cor` (`commander_decks.tiers`) é o consenso e
+  não a caixa, e não mudou.
 
 **AS CÓPIAS DE UMA LINHA INCOMPLETA TAMBÉM SE TIRAM DA GAVETA (2026-09-08).**
 Uma linha que pede 4 e a que a alocação só deu 2 vive em `missing` — e **tudo**

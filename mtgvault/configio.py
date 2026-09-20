@@ -18,6 +18,31 @@ UMA_LINHA = ("caixas", "loadout", "regras_por_formato", "baldes_coleccao",
              "decks_vigiados", "premodern_arquetipos_alvo", "formatos_metagame",
              "so_jogadores_vigiados", "premodern_decks_completos",
              "decks_montados", "reserved_vender_ignorar_formatos")
+# As chaves cujas LISTAS DE ESCALARES vão numa linha cada (2026-09-20): as
+# `listas_escolhidas` levam uma lista de 75 cartas, e com `indent=2` cada
+# `["main", "Solitude", 1]` ocupava cinco linhas — 380 linhas por caixa, que
+# ninguém lê nem confere. Só aqui: as outras chaves ficam como estão escritas,
+# senão cada gravação reformatava o ficheiro inteiro.
+CARTAS_UMA_LINHA = ("listas_escolhidas",)
+
+
+def _compacto(v, nivel: int = 0) -> str:
+    """`json.dumps(indent=2)` com as listas de escalares numa linha só."""
+    pad, pad1 = "  " * nivel, "  " * (nivel + 1)
+    if isinstance(v, dict):
+        if not v:
+            return "{}"
+        itens = [f"{pad1}{json.dumps(k, ensure_ascii=False)}: {_compacto(x, nivel + 1)}"
+                 for k, x in v.items()]
+        return "{\n" + ",\n".join(itens) + f"\n{pad}}}"
+    if isinstance(v, list):
+        if not v:
+            return "[]"
+        if all(not isinstance(x, (dict, list)) for x in v):
+            return json.dumps(v, ensure_ascii=False)
+        itens = [f"{pad1}{_compacto(x, nivel + 1)}" for x in v]
+        return "[\n" + ",\n".join(itens) + f"\n{pad}]"
+    return json.dumps(v, ensure_ascii=False)
 
 
 def caminho(path: Path | str | None = None) -> Path:
@@ -55,6 +80,8 @@ def escrever(cfg: dict, path: Path | str | None = None) -> None:
         if k in UMA_LINHA and isinstance(v, list):
             itens = ",\n".join("    " + json.dumps(x, ensure_ascii=False) for x in v)
             corpo = f"[\n{itens}\n  ]" if v else "[]"
+        elif k in CARTAS_UMA_LINHA:
+            corpo = _compacto(v).replace("\n", "\n  ")
         else:
             corpo = json.dumps(v, ensure_ascii=False, indent=2)
             corpo = corpo.replace("\n", "\n  ")

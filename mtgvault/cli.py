@@ -220,6 +220,29 @@ def main(argv=None):
                     help="listar: também as já fechadas pela foto")
     en.add_argument("--json", action="store_true", help="saída em JSON")
 
+    # LISTA PADRÃO e RESERVA por caixa (André, 2026-09-20). É por aqui que o
+    # Claude na nuvem fixa uma lista que ele dita no chat, sem o 8771.
+    pd = sub.add_parser("padrao",
+                        help="a LISTA PADRÃO de uma caixa (fixa, com data e origem): "
+                             "listar, fixar, add, tirar, voltar")
+    pd.add_argument("slot", help="o `slot` da caixa (ex.: duel-commander)")
+    pd.add_argument("accao", nargs="?", default="listar",
+                    choices=["listar", "fixar", "add", "tirar", "voltar"])
+    pd.add_argument("nome", nargs="?", help="add/tirar: o nome da carta")
+    pd.add_argument("--ficheiro", help="fixar: a lista em texto (`N Nome` por linha; "
+                                       "`// Sideboard` separa); `-` = stdin")
+    pd.add_argument("--origem", help="fixar: de onde veio a lista (fica escrito)")
+    pd.add_argument("--qty", type=int, default=1, help="add: quantas (1)")
+    pd.add_argument("--side", action="store_true", help="add/tirar: no sideboard")
+
+    rs = sub.add_parser("reserva",
+                        help="a RESERVA de uma caixa (cartas que poderão entrar; "
+                             "nunca vão à venda): listar, add, remover")
+    rs.add_argument("slot", help="o `slot` da caixa (ex.: duel-commander)")
+    rs.add_argument("accao", nargs="?", default="listar",
+                    choices=["listar", "add", "remover"])
+    rs.add_argument("nome", nargs="?", help="add/remover: o nome da carta")
+
     mc = sub.add_parser("migrar-caixas",
                         help="colecao_config.json: `loadout` -> `caixas` (v6)")
     mc.add_argument("--dry-run", action="store_true",
@@ -566,6 +589,9 @@ def main(argv=None):
         elif args.cmd == "revalidacao":
             _revalidacao(con, args)
 
+        elif args.cmd in ("padrao", "reserva"):
+            _padrao_reserva(con, args)
+
         elif args.cmd == "migrar-caixas":
             r = caixas.migrar_ficheiro(dry_run=args.dry_run)
             if not r["mudou"]:
@@ -575,6 +601,98 @@ def main(argv=None):
             else:
                 print(f"{r['path']}: {r['caixas']} caixas escritas "
                       f"(backup em {Path(r['backup']).name})")
+
+
+def _padrao_reserva(con, args):
+    """`padrao <slot> listar|fixar|add|tirar|voltar` e `reserva <slot>
+    listar|add|remover` (André, 2026-09-20). Escrevem no `colecao_config.json`
+    (com a forma de sempre, `configio.escrever`) e validam os nomes no
+    catálogo antes: código 2 e o motivo quando não conhece a carta. Não tocam
+    na base.
+    """
+    from . import caixas as _cx, configio, padrao
+
+    cfg = configio.ler()
+    try:
+        s = _cx.caixa_do_cfg(cfg, args.slot)
+    except KeyError:
+        print(f"  ERRO: a caixa {args.slot!r} não existe no colecao_config.json "
+              f"(slots: {', '.join(c.get('slot', '?') for c in cfg.get('caixas') or [])})")
+        sys.exit(2)
+    nome_caixa = s.get("nome") or args.slot
+
+    def canon(n):
+        c = padrao.nome_no_catalogo(con, n or "")
+        if c is None:
+            print(f"  ERRO: o catálogo não conhece {n!r} — confirma o nome em inglês")
+            sys.exit(2)
+        return c
+
+    try:
+        if args.cmd == "reserva":
+            if args.accao == "listar":
+                lista = padrao.reserva(cfg, args.slot)
+                print(f"  {nome_caixa}: {len(lista)} na reserva")
+                for n in lista:
+                    print(f"    {n}")
+                return
+            if not args.nome:
+                print("  ERRO: diz o nome da carta")
+                sys.exit(2)
+            if args.accao == "add":
+                lista = padrao.reserva_add(cfg, args.slot, canon(args.nome))
+            else:
+                lista = padrao.reserva_tirar(cfg, args.slot, args.nome)
+            configio.escrever(cfg)
+            print(f"  {nome_caixa}: reserva com {len(lista)} carta(s)")
+            return
+        # padrao
+        if args.accao == "listar":
+            rec = padrao.registo(cfg, args.slot)
+            if rec is None:
+                print(f"  {nome_caixa}: sem lista padrão — segue a fonte "
+                      f"{s.get('fonte')!r}: {s.get('ref')!r}")
+                return
+            print(f"  {nome_caixa}: lista padrão desde {rec.get('escolhido_em')} "
+                  f"· {rec.get('origem') or 'fixada à mão'} — "
+                  f"{sum(c[2] for c in rec['cards'])} cartas")
+            print(padrao.texto(rec["cards"]))
+            return
+        if args.accao == "fixar":
+            if not args.ficheiro:
+                print("  ERRO: fixar precisa de --ficheiro <lista.txt> (ou `-` para stdin)")
+                sys.exit(2)
+            texto = (sys.stdin.read() if args.ficheiro == "-"
+                     else Path(args.ficheiro).read_text(encoding="utf-8"))
+            cards = padrao.parse_lista(texto)
+            maus = padrao.validar_lista(con, cards)
+            if maus:
+                print("  ERRO: o catálogo não conhece: " + ", ".join(maus))
+                sys.exit(2)
+            cards = [[b, canon(n), q] for b, n, q in cards]
+            rec = padrao.fixar(cfg, args.slot, cards, args.origem or "")
+            configio.escrever(cfg)
+            print(f"  {nome_caixa}: lista padrão fixada em {rec['escolhido_em']} — "
+                  f"{len(rec['cards'])} linhas, {sum(c[2] for c in rec['cards'])} cartas"
+                  f" · {rec['origem']}")
+            return
+        if args.accao == "voltar":
+            print("  " + padrao.voltar(cfg, args.slot))
+            configio.escrever(cfg)
+            return
+        if not args.nome:
+            print("  ERRO: diz o nome da carta")
+            sys.exit(2)
+        board = "side" if args.side else "main"
+        if args.accao == "add":
+            rec = padrao.acrescentar(cfg, args.slot, canon(args.nome), args.qty, board)
+        else:
+            rec = padrao.tirar(cfg, args.slot, args.nome, board=board if args.side else None)
+        configio.escrever(cfg)
+        print(f"  {nome_caixa}: lista padrão com {sum(c[2] for c in rec['cards'])} cartas")
+    except ValueError as e:
+        print(f"  ERRO: {e}")
+        sys.exit(2)
 
 
 def _revalidacao(con, args):
