@@ -36,6 +36,11 @@ data/registos-caixas.csv
 # da base. Local, como os outros (o `data/*.log` abaixo já o apanhava; fica
 # nomeado para se saber que existe).
 data/encomendas.log
+# O rasto da REVALIDAÇÃO POR FOTO (2026-09-20): cada cópia corrigida pela foto
+# («cópia 123: NEM 17 nonfoil en → NEM 17 foil en, foto X») e cada saída de
+# uma caixa por deixar de cumprir a regra. Escrito antes da base. Local, como
+# os outros (o `data/*.log` abaixo já o apanha; fica nomeado).
+data/revalidacao.log
 # O que está pendente de foto, para o Claude que cataloga as fotos ler. É
 # gerado a cada corrida (daily e modo edição) e apaga-se quando fica vazio.
 pendentes/esperadas.md

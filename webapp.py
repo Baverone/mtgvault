@@ -755,11 +755,15 @@ def regenerar(con) -> None:
     que o `metagame.html` mostra (a posse do top-N e o crachá "escolhido em").
     Refazer só uma deixava a outra a dizer o contrário. Custam ~0,3 s cada.
     """
-    deckboxes.build(con, ROOT / "deckboxes.html")
+    # O relatório calcula-se UMA vez (2026-09-20): a Deckboxes, o
+    # `esperadas.md` (que desde a revalidação precisa da alocação para saber
+    # que cópias são da caixa que ele está a fotografar) lêem o mesmo.
+    rep = loadout.report(con)
+    deckboxes.build(con, ROOT / "deckboxes.html", rep=rep)
     metagame.build(con, ROOT / "metagame.html")
     # O que está pendente de foto, para o Claude que cataloga as fotos
     # (2026-09-19). Ao lado das fotos, e apaga-se quando não há nada.
-    encomendas.escrever_esperadas(con, ROOT / "pendentes")
+    encomendas.escrever_esperadas(con, ROOT / "pendentes", rep=rep)
     _CACHE.clear()
 
 
@@ -1021,21 +1025,31 @@ class Handler(BaseHTTPRequestHandler):
                         regenerar(con)
                     self._json({"ok": True, "msg": msg})
                     return
+                if caminho == "/api/revalidacao":
+                    # REVALIDAÇÃO POR FOTO (André, 2026-09-20): «Fotografar»
+                    # fixa o ALVO no config (uma preferência — vai no Git, como
+                    # as caixas) e reescreve o `pendentes/esperadas.md`; «parar»
+                    # tira-o. Nada disto toca na base.
+                    self._json(self._revalidacao(dados))
+                    return
                 if caminho == "/api/venda-export":
                     # «Gravar em data/» (2026-09-18): os mesmos dois ficheiros
                     # que o `daily` escreve (`venda-stock.csv` +
                     # `venda-estante.txt`), com a lista RECALCULADA agora — a
                     # página pode estar aberta desde ontem. Não mexe na base
-                    # nem no config, por isso não regenera nada.
+                    # nem no config, por isso não regenera nada. Com
+                    # `so_validadas` (2026-09-20) só as cópias com foto.
                     with db.session() as con:
-                        r = venda.exportar(con)
+                        r = venda.exportar(con, so_validadas=bool(dados.get("so_validadas")))
                     self._json({"ok": True, "copias": r["copias"],
                                 "linhas": r["linhas"], "csv": r["csv"],
                                 "estante": r["estante"],
                                 "msg": (f'{r["copias"]} cópias em {r["linhas"]} '
                                         f'linhas → {Path(r["csv"]).name} + '
                                         f'{Path(r["estante"]).name} '
-                                        f'(formato {r["formato"]})')})
+                                        f'(formato {r["formato"]}'
+                                        + ("; só validadas" if r.get("so_validadas") else "")
+                                        + ")")})
                     return
             except KeyError as e:
                 # O caso normal: um `slot` que já não existe no config (a página
@@ -1199,6 +1213,46 @@ class Handler(BaseHTTPRequestHandler):
             regenerar(con)
         return {"ok": True, "msg": f'{res["copias"]}× {alvo["nm"]} fora da '
                                    f'colecção e no vendas.csv'}
+
+    def _revalidacao(self, dados):
+        """«Fotografar esta caixa» / «Fotografar a venda…» / «parar» (2026-09-20).
+
+        `act: "alvo"` escreve `revalidacao.alvo` no config (tipo + slot) e liga
+        a campanha se ainda não estivesse (`desde` = hoje); `act: "parar"`
+        tira o alvo. Depois regenera — é o `regenerar` que reescreve o
+        `pendentes/esperadas.md` com as cópias por revalidar desse alvo. A
+        resposta traz a instrução para o telemóvel.
+        """
+        from mtgvault import revalidacao                   # noqa: PLC0415
+        act = dados.get("act")
+        cfg = ler_config()
+        if act == "parar":
+            havia = revalidacao.limpar_alvo(cfg)
+            escrever_config(cfg)
+            sources._CFG_CACHE.clear()
+            with db.session() as con:
+                regenerar(con)
+            return {"ok": True, "msg": ("Parei: já não há alvo de revalidação."
+                                        if havia else "Não havia alvo para parar.")}
+        if act != "alvo":
+            return {"erro": f"acção {act!r} desconhecida (alvo|parar)"}
+        tipo, slot = dados.get("tipo"), dados.get("slot") or None
+        if tipo == "caixa" and slot and not any(
+                s.get("slot") == slot for s in cfg.get("caixas") or []):
+            raise KeyError(slot)
+        a = revalidacao.definir_alvo(cfg, tipo, slot)      # ValueError → 409
+        escrever_config(cfg)
+        sources._CFG_CACHE.clear()
+        with db.session() as con:
+            regenerar(con)
+            prog = revalidacao.progresso(con, loadout.report(con))
+        nome = revalidacao.titulo(a)
+        n = (prog["alvo"] or {}).get("por_revalidar", 0)
+        return {"ok": True, "alvo": a, "nome": nome, "por_revalidar": n,
+                "msg": (f"📷 A fotografar {nome}: {n} cópia{'s' if n != 1 else ''} "
+                        f"por fotografar. Tira as fotos e larga-as em pendentes\\ — "
+                        f"entram na corrida das 02:30; o esperadas.md já diz o que "
+                        f"esperar.")}
 
     def _escolher(self, dados):
         """"Vou montar este" / "já não vou montar este", do `metagame.html`.

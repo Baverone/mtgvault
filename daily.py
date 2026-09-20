@@ -318,8 +318,10 @@ def main():
             # ENCOMENDAS (2026-09-19): o separador vai dentro da Deckboxes (sem
             # passo novo); o `pendentes/esperadas.md` é o que o Claude das
             # fotos lê para saber que cartas esperar e para que caixa vão.
+            # Com o MESMO relatório (2026-09-20): a secção da revalidação
+            # precisa da alocação para saber que cópias são do alvo.
             from mtgvault import encomendas                # noqa: PLC0415
-            encomendas.escrever_esperadas(con, ROOT / "pendentes")
+            encomendas.escrever_esperadas(con, ROOT / "pendentes", rep=_rep["v"])
             return str(out)
 
         _step(con, "deckboxes", _deckboxes)

@@ -56,9 +56,14 @@ from . import loadout, paginas
 # que o site exporta. Quem tem o formato certo é o ficheiro dele — ver
 # `formato_exemplo`.
 # ---------------------------------------------------------------------------
-CHAVES = ("nm", "set", "num", "lang", "foil", "cond", "q", "price", "comment")
+CHAVES = ("nm", "set", "num", "lang", "foil", "cond", "q", "price", "comment",
+          "foto")
+# `Foto` (2026-09-20): `validada <data>` / `por revalidar` — o que ele vender
+# vai com foto desta campanha, e a coluna diz-lhe qual ainda não tem. No formato
+# APRENDIDO do ficheiro dele não se acrescenta coluna nenhuma (o site tem de o
+# aceitar tal e qual): aí a informação vai no comentário.
 COLUNAS_PREDEFINIDAS = ("Name", "Set", "Number", "Language", "Foil", "Condition",
-                        "Quantity", "Price", "Comment")
+                        "Quantity", "Price", "Comment", "Foto")
 DELIMITADOR_PREDEFINIDO = ","
 FICHEIRO_EXEMPLO = "cardmarket-stock-exemplo.csv"
 FICHEIRO_STOCK = "venda-stock.csv"
@@ -114,23 +119,29 @@ def _detalhe_copias(con, ids: list[int]) -> dict[int, dict]:
         marks = ",".join("?" * len(ch))
         for r in con.execute(
                 f"""SELECT cp.id, cp.condition cond, c.collector_number num,
-                           c.cardmarket_id cm_id, c.set_code, c.set_name
+                           c.cardmarket_id cm_id, c.set_code, c.set_name,
+                           cp.validado_em validado
                       FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id
                      WHERE cp.id IN ({marks})""", ch):
             out[r["id"]] = {"cond": (r["cond"] or "NM").upper(),
                             "num": r["num"] or "", "cm_id": r["cm_id"],
                             "set": (r["set_code"] or "").upper(),
-                            "set_name": r["set_name"] or ""}
+                            "set_name": r["set_name"] or "",
+                            "validado": r["validado"] or ""}
     return out
 
 
-def linhas_export(con, rep: dict) -> list[dict]:
+def linhas_export(con, rep: dict, so_validadas: bool = False) -> list[dict]:
     """O que ENTRA na exportação: `venda` + `venda_rl`, uma linha por cópia.
 
     Só estas duas saídas são compras a listar; as outras cinco são decisões
     tomadas (ou por tomar) e ficam em `fora_da_exportacao`. A `copias` de cada
     linha da página diz que exemplares são e quantos de cada um — é por aí que
     se parte, para o estado de cada cópia ir certo.
+
+    `so_validadas` (2026-09-20): só as cópias com foto desta campanha — *"o que
+    eu for vender também vai com foto"*. Cada linha traz `validada` (a data ou
+    `""`) e `foto` (o texto da coluna) de qualquer maneira.
     """
     ids = [int(c) for k in ("venda", "venda_rl") for r in rep[k]
            for c, _q in (r.get("copias") or [])]
@@ -142,7 +153,12 @@ def linhas_export(con, rep: dict) -> list[dict]:
                 d = det.get(int(cid), {})
                 if int(q) <= 0:
                     continue
+                validada = d.get("validado") or ""
+                if so_validadas and not validada:
+                    continue
                 out.append({
+                    "validada": validada,
+                    "foto": f"validada {validada}" if validada else "por revalidar",
                     "copy_id": int(cid), "nm": r["nm"],
                     "set": d.get("set") or (r["set_code"] or "").upper(),
                     "set_name": d.get("set_name") or r.get("set_name") or "",
@@ -157,9 +173,14 @@ def linhas_export(con, rep: dict) -> list[dict]:
                     # O comentário: de onde saiu e que cópia é. É o que permite
                     # ligar um artigo vendido à cópia da base. NB: no Cardmarket
                     # o comentário de um artigo é PÚBLICO — se não o quiser à
-                    # vista, apaga a coluna antes de carregar.
+                    # vista, apaga a coluna antes de carregar. No formato
+                    # aprendido é aqui que vai o estado da foto (não há coluna).
                     "comment": f"mtgvault #{int(cid)} · {r['local']}",
                 })
+    return _ordenadas(out)
+
+
+def _ordenadas(out: list[dict]) -> list[dict]:
     out.sort(key=lambda l: (-(l["total"] or 0), l["nm"], l["copy_id"]))
     return out
 
@@ -285,6 +306,9 @@ def _valor(l: dict, chave: str | None, voc: dict) -> str:
         return "" if l.get("cm_id") in (None, "") else str(l["cm_id"])
     if chave == "q":
         return str(l["q"])
+    if chave == "comment" and voc.get("foto_no_comentario"):
+        # O formato aprendido não tem coluna para a foto: vai no comentário.
+        return f"{l.get('comment') or ''} · foto {l.get('foto') or ''}".strip(" ·")
     return str(l.get(chave, "") or "")
 
 
@@ -293,7 +317,8 @@ def csv_stock(linhas: list[dict], formato: dict | None = None) -> str:
     if formato:
         colunas = list(formato["colunas"])
         chaves = [formato["mapa"].get(c) for c in colunas]
-        delim, voc = formato["delimitador"], formato.get("vocabulario") or {}
+        delim = formato["delimitador"]
+        voc = dict(formato.get("vocabulario") or {}, foto_no_comentario=True)
         fim = formato.get("fim_de_linha") or "\n"
         bom = "﻿" if formato.get("bom") else ""
     else:
@@ -391,7 +416,11 @@ def texto_estante(estante: dict, hoje: str | None = None) -> str:
                        + (" (RL)" if l["rl"] else "")
                        + f" · {l['set']} {l['lang'].upper()}"
                        f" {'foil' if l['foil'] else 'nonfoil'} {l['cond']}"
-                       f" · {_eur(l['unit'])}")
+                       f" · {_eur(l['unit'])}"
+                       # A foto desta campanha (2026-09-20): o que vai vender
+                       # sem ela está por fotografar — di-lo na lista da estante,
+                       # que é a que ele leva à frente das cartas.
+                       + ("" if l.get("validada") else " · 📷 por revalidar"))
         out.append("")
     return "\n".join(out).rstrip() + "\n"
 
@@ -436,17 +465,31 @@ def _pasta() -> Path:
 
 def relatorio(con, rep: dict, exemplo: Path | None = None,
               hoje: str | None = None) -> dict:
-    """O pacote inteiro: o CSV, o formato, a estante, o que ficou de fora."""
+    """O pacote inteiro: o CSV, o formato, a estante, o que ficou de fora.
+
+    Desde 2026-09-20 vem em DUAS versões — tudo, e só as cópias com foto desta
+    campanha (`csv_validadas`/`texto_estante_validadas`) — e com a contagem de
+    cada lado (`copias_validadas`/`copias_por_revalidar`). O filtro «só
+    validadas» da página troca entre as duas; a conta é a mesma.
+    """
     hoje = hoje or date.today().isoformat()
     linhas = linhas_export(con, rep)
     fmt = formato_exemplo(exemplo)
     est = lista_estante(con, rep, linhas)
+    validadas = [l for l in linhas if l["validada"]]
+    est_v = lista_estante(con, rep, validadas)
     return {"hoje": hoje, "linhas": linhas, "copias": sum(l["q"] for l in linhas),
             "total": round(sum(l["total"] or 0 for l in linhas), 2),
             "csv": csv_stock(linhas, fmt), "formato": descricao_formato(fmt),
             "nome_csv": f"venda-stock-{hoje}.csv",
             "estante": est, "texto_estante": texto_estante(est, hoje),
             "nome_estante": f"venda-estante-{hoje}.txt",
+            "copias_validadas": sum(l["q"] for l in validadas),
+            "copias_por_revalidar": sum(l["q"] for l in linhas if not l["validada"]),
+            "csv_validadas": csv_stock(validadas, fmt),
+            "nome_csv_validadas": f"venda-stock-{hoje}-validadas.csv",
+            "estante_validadas": est_v,
+            "texto_estante_validadas": texto_estante(est_v, hoje),
             "fora": fora_da_exportacao(rep)}
 
 
@@ -460,25 +503,41 @@ def _escrever(destino: Path, texto: str) -> None:
 
 
 def exportar(con, rep: dict | None = None, pasta: Path | None = None,
-             exemplo: Path | None = None) -> dict:
+             exemplo: Path | None = None, so_validadas: bool = False) -> dict:
     """Escreve `data/venda-stock.csv` e `data/venda-estante.txt`.
 
     Sem data no nome de propósito: são "a lista de HOJE", reescrita a cada
     corrida, e um ficheiro por dia era um `data/` cheio de listas velhas que
     ninguém apagava. O histórico do que ele VENDEU é outro ficheiro
     (`vendas.csv`) e esse, sim, só cresce.
+
+    `so_validadas` (2026-09-20): só as cópias com foto desta campanha — o
+    botão «só validadas» da página e o `vender --exportar --so-validadas`.
     """
     rep = rep if rep is not None else loadout.report(con)
     pasta = Path(pasta) if pasta else _pasta()
     r = relatorio(con, rep, exemplo=exemplo)
     stock, estante = pasta / FICHEIRO_STOCK, pasta / FICHEIRO_ESTANTE
-    _escrever(stock, r["csv"])
-    _escrever(estante, r["texto_estante"])
+    if so_validadas:
+        linhas = [l for l in r["linhas"] if l["validada"]]
+        _escrever(stock, r["csv_validadas"])
+        _escrever(estante, r["texto_estante_validadas"])
+    else:
+        linhas = r["linhas"]
+        _escrever(stock, r["csv"])
+        _escrever(estante, r["texto_estante"])
+    copias, total = sum(l["q"] for l in linhas), round(sum(l["total"] or 0 for l in linhas), 2)
     fora = sum(f["copias"] for f in r["fora"])
-    return {"csv": str(stock), "estante": str(estante), "copias": r["copias"],
-            "total": r["total"], "linhas": len(r["linhas"]),
+    return {"csv": str(stock), "estante": str(estante), "copias": copias,
+            "total": total, "linhas": len(linhas),
             "formato": r["formato"]["origem"], "fora": fora,
-            "resumo": (f"{r['copias']} cópias / {r['total']:.2f}€ em "
-                       f"{len(r['linhas'])} linhas → {stock.name} + "
+            "so_validadas": so_validadas,
+            "copias_por_revalidar": r["copias_por_revalidar"],
+            "resumo": (f"{copias} cópias / {total:.2f}€ em "
+                       f"{len(linhas)} linhas → {stock.name} + "
                        f"{estante.name} (formato {r['formato']['origem']}; "
-                       f"{fora} cópias ficam de fora)")}
+                       f"{fora} cópias ficam de fora"
+                       + (f"; só validadas — {r['copias_por_revalidar']} por "
+                          f"revalidar fora" if so_validadas
+                          else f"; {r['copias_por_revalidar']} por revalidar")
+                       + ")")}

@@ -96,6 +96,19 @@ def _migrate(con: sqlite3.Connection) -> None:
         con.execute("ALTER TABLE copies ADD COLUMN nao_encontrada_em TEXT")
         con.execute("ALTER TABLE copies ADD COLUMN nao_encontrada_slot TEXT")
         con.commit()
+    # REVALIDAÇÃO POR FOTO (André, 2026-09-20): a data em que uma foto NOVA se
+    # ligou à cópia (NULL = por revalidar) e a foto que ela substituiu. O índice
+    # nasce AQUI, depois do ALTER, e nunca no `schema.sql` — esse corre inteiro
+    # antes disto, e numa base já criada a coluna ainda não existe nesse momento
+    # (é a armadilha de 2026-09-09, que rebentava o `db.init` em todas as
+    # páginas). Quem escreve é o `mtgvault.revalidacao` + `collection.add_copy`.
+    if "validado_em" not in cols:
+        con.execute("ALTER TABLE copies ADD COLUMN validado_em TEXT")
+        con.execute("ALTER TABLE copies ADD COLUMN foto_anterior TEXT")
+        con.commit()
+    con.execute("CREATE INDEX IF NOT EXISTS ix_copies_validado "
+                "ON copies(validado_em)")
+    con.commit()
 
     cols = {r["name"] for r in con.execute("PRAGMA table_info(decklists)")}
     if "content_hash" not in cols:

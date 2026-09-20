@@ -151,6 +151,22 @@ def main(argv=None):
     vd.add_argument("--exportar", action="store_true",
                     help="escrever data/venda-stock.csv (stock p/ Cardmarket) e "
                          "data/venda-estante.txt (ir buscar à estante)")
+    vd.add_argument("--so-validadas", action="store_true",
+                    help="--exportar: só as cópias com foto desta campanha de "
+                         "revalidação (2026-09-20)")
+
+    # REVALIDAÇÃO POR FOTO (André, 2026-09-20): o progresso, e o alvo (a caixa
+    # que ele está a fotografar) sem precisar do 8771.
+    rv = sub.add_parser("revalidacao",
+                        help="revalidação por foto: progresso, e `esperadas` "
+                             "para fixar o alvo e escrever pendentes/esperadas.md")
+    rv.add_argument("accao", nargs="?", default="progresso",
+                    choices=["progresso", "esperadas", "parar"])
+    rv.add_argument("--caixa", dest="slot",
+                    help="o `slot` da caixa (progresso: só ela; esperadas: o alvo)")
+    rv.add_argument("--tipo", choices=["caixa", "venda", "rl", "coleccao"],
+                    default=None, help="esperadas: o alvo sem ser uma caixa")
+    rv.add_argument("--json", action="store_true", help="saída em JSON")
 
     ar = sub.add_parser("arrumar",
                         help="o que mover de cada gaveta para cada deckbox")
@@ -507,7 +523,7 @@ def main(argv=None):
             if args.exportar:
                 # A SAÍDA (2026-09-18): os mesmos ficheiros que o daily escreve.
                 from . import venda            # noqa: PLC0415
-                r = venda.exportar(con, rep)
+                r = venda.exportar(con, rep, so_validadas=args.so_validadas)
                 print(f"escrito: {r['csv']}\n         {r['estante']}\n  "
                       f"{r['resumo']}")
                 if r["formato"] == "predefinido":
@@ -547,6 +563,9 @@ def main(argv=None):
         elif args.cmd == "encomendas":
             _encomendas(con, args)
 
+        elif args.cmd == "revalidacao":
+            _revalidacao(con, args)
+
         elif args.cmd == "migrar-caixas":
             r = caixas.migrar_ficheiro(dry_run=args.dry_run)
             if not r["mudou"]:
@@ -556,6 +575,81 @@ def main(argv=None):
             else:
                 print(f"{r['path']}: {r['caixas']} caixas escritas "
                       f"(backup em {Path(r['backup']).name})")
+
+
+def _revalidacao(con, args):
+    """`revalidacao [progresso] [--caixa slot] [--json]` — quanto falta
+    fotografar, por caixa / venda / RL / resto; `revalidacao esperadas --caixa
+    slot` (ou `--tipo venda|rl|coleccao`) fixa o ALVO no config e escreve o
+    `pendentes/esperadas.md`, sem precisar do 8771; `parar` tira o alvo.
+    """
+    import json as _json
+    from . import configio, encomendas, revalidacao
+
+    if args.accao in ("esperadas", "parar"):
+        cfg = configio.ler()
+        if args.accao == "parar":
+            havia = revalidacao.limpar_alvo(cfg)
+            configio.escrever(cfg)
+            sources._CFG_CACHE.clear()
+        else:
+            tipo = args.tipo or ("caixa" if args.slot else None)
+            if not tipo:
+                print("  ERRO: diz --caixa <slot> ou --tipo venda|rl|coleccao")
+                sys.exit(2)
+            if tipo == "caixa" and not any(s.get("slot") == args.slot
+                                           for s in cfg.get("caixas") or []):
+                print(f"  ERRO: a caixa {args.slot!r} não existe no colecao_config.json")
+                sys.exit(2)
+            revalidacao.definir_alvo(cfg, tipo, args.slot)
+            configio.escrever(cfg)
+            sources._CFG_CACHE.clear()
+        rep = loadout.report(con)
+        p = encomendas.escrever_esperadas(con, _pendentes(), rep=rep)
+        prog = revalidacao.progresso(con, rep)
+        if args.accao == "parar":
+            print("  alvo tirado" if havia else "  não havia alvo")
+        else:
+            a = prog["alvo"] or {}
+            print(f"  alvo: {a.get('nome')} — {a.get('por_revalidar', 0)} por fotografar")
+        print(f"  esperadas.md: {p if p else 'apagado (nada a esperar)'}")
+        return
+    rep = loadout.report(con)
+    prog = revalidacao.progresso(con, rep)
+    if args.json:
+        print(_json.dumps(prog, ensure_ascii=False, indent=1))
+        return
+    if not prog["activa"]:
+        print("  campanha desligada (revalidacao.desde no colecao_config.json)")
+        return
+    t = prog["total"]
+    print(f"  campanha desde {prog['desde']}: {t['validadas']}/{t['q']} validadas "
+          f"({t['pct']}%), {t['por_revalidar']} por fotografar, "
+          f"{t['corrigidas']} corrigidas pela foto, {t['novas']} novas")
+    if prog["alvo"]:
+        a = prog["alvo"]
+        print(f"  a fotografar: {a['nome']} desde {a.get('em')} — "
+              f"{a['por_revalidar']} por fotografar")
+    grupos = [c for c in prog["caixas"] if not args.slot or c["slot"] == args.slot]
+    if not args.slot:
+        grupos += [prog["venda"], prog["rl"], prog["resto"]]
+    _p([{"onde": g["nome"], "cópias": g["q"], "validadas": g["validadas"],
+         "por fotografar": g["por_revalidar"], "corrigidas": g["corrigidas"]}
+        for g in grupos if g["q"] or args.slot],
+       ["onde", "cópias", "validadas", "por fotografar", "corrigidas"])
+    if args.slot and grupos:
+        print()
+        for l in grupos[0]["linhas"]:
+            est = {"foto": "📷 por fotografar", "ok": "✓ " + l["validado_em"],
+                   "corr": "⚠ " + (l["nota"] or "corrigida")}[l["estado"]]
+            print(f"  [{l['cor']}] {l['q']}× {l['nm']} · {l['set']}"
+                  f"{' #' + l['num'] if l['num'] else ''} {l['lang']} {l['fin']} "
+                  f"· #{l['copy_id']} — {est}")
+
+
+def _pendentes() -> Path:
+    """A pasta `pendentes/` do repositório (a mesma do `processar_fotos.py`)."""
+    return collection.PENDENTES
 
 
 def _encomendas(con, args):

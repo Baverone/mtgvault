@@ -52,7 +52,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import collection, encomendas, loadout, paginas, venda  # noqa: E402
+from mtgvault import (collection, encomendas, loadout, paginas,  # noqa: E402
+                      revalidacao, venda)
 
 TABS = paginas.nav("deckboxes.html")
 
@@ -259,14 +260,44 @@ def _edicoes_das_faltas(con, rep):
     return out
 
 
+def _rev_caixa(prog, slot):
+    """A REVALIDAÇÃO desta caixa (2026-09-20): a lista «Na caixa» com o estado
+    de cada cópia (📷 por fotografar / ✓ validada / ⚠ corrigida pela foto), os
+    totais para a barra «validadas N/M», e por CARTA quantas faltam — é o que a
+    miniatura da grelha mostra. Tudo do `revalidacao.progresso`, a mesma conta
+    da aba «📷 Revalidação»."""
+    g = next((c for c in (prog or {}).get("caixas") or [] if c["slot"] == slot), None)
+    if g is None:
+        return None, {}
+    por_carta: dict[str, dict] = {}
+    for l in g["linhas"]:
+        d = por_carta.setdefault(l["nm"], {"foto": 0, "ok": 0, "corr": 0})
+        d["foto" if l["estado"] == "foto" else "ok"] += l["q"]
+        if l["estado"] == "corr":
+            d["corr"] += l["q"]
+    rev = {"q": g["q"], "validadas": g["validadas"],
+           "por_revalidar": g["por_revalidar"], "corrigidas": g["corrigidas"],
+           "pct": round(100 * g["validadas"] / g["q"]) if g["q"] else 0,
+           "alvo": bool((prog or {}).get("alvo")
+                        and prog["alvo"]["tipo"] == "caixa"
+                        and prog["alvo"]["slot"] == slot),
+           "activa": bool((prog or {}).get("activa")),
+           "linhas": g["linhas"]}
+    return rev, por_carta
+
+
 def _caixa_payload(s, imgs, cfs, rep=None, col=None, tipos=None, cores=None,
-                   edicoes=None):
+                   edicoes=None, prog=None):
+    rev, rev_carta = _rev_caixa(prog, s["slot"])
     cartas = []
     for m in s["have"] + s["missing"]:
         cartas.append({
             "nm": m["nm"], "board": m["board"], "need": m["need"], "got": m["got"],
             "est": _estado_carta(m), "sid": imgs.get(m["nm"]),
             "basica": bool(m.get("basica")),
+            # REVALIDAÇÃO (2026-09-20): quantas cópias desta carta, nesta
+            # caixa, ainda não têm foto da campanha (`foto`) e quantas têm.
+            "rev": rev_carta.get(m["nm"]) or {"foto": 0, "ok": 0, "corr": 0},
             "missing": m["missing"], "comprar": m["comprar"],
             # O que o TECTO DE PLAYSET não deixa comprar (André, 2026-09-08). Vem
             # na carta e não só no resumo: é ali que ele está quando pergunta
@@ -430,6 +461,10 @@ def _caixa_payload(s, imgs, cfs, rep=None, col=None, tipos=None, cores=None,
                           "onde": c["onde"], "foil": c["foil"],
                           "lang": c["lang"], "set_code": c["set_code"]}
                          for c in s.get("contradicoes") or []],
+        # REVALIDAÇÃO POR FOTO (André, 2026-09-20): a lista «Na caixa» com o
+        # estado de cada cópia e a barra «validadas N/M». `None` sem campanha
+        # ligada no config — aí a página não desenha nada disto.
+        "rev": rev if rev and rev["activa"] else None,
     }
 
 
@@ -662,8 +697,22 @@ def payload(con, rep, editable=False, token="", ligacao=None):
         g["partilhada"] = n_partilha.get(g["nm"], 0)
         g["para"].sort(key=lambda p: (bool(p.get("serve")), -p["q"], p["caixa"]))
 
+    # REVALIDAÇÃO POR FOTO (André, 2026-09-20): o progresso por caixa / venda /
+    # RL / resto, e o estado de cada cópia para a aba Vender. A conta é UMA
+    # (`revalidacao.progresso`) e não muda nada na alocação nem na venda.
+    prog = revalidacao.progresso(con, rep) if revalidacao.activa() else None
+    estado_rev = revalidacao.estado_das_copias(con) if prog else {}
+
     def venda_bloco(chave, copias, total):
-        return {"linhas": [{"nm": r["nm"], "q": r["q"], "local": r["local"],
+        linhas = rep[chave]
+        fotos = [revalidacao.foto_da_linha(estado_rev, r.get("copias")) for r in linhas]
+        return {"validadas": sum(f["ok"] for f in fotos),
+                "por_revalidar": sum(f["falta"] for f in fotos),
+                "linhas": [{"nm": r["nm"], "q": r["q"], "local": r["local"],
+                            # A foto desta campanha, por linha: `ok` cópias com
+                            # ela, `falta` sem — a linha diz 📷/✓ e o filtro
+                            # «só validadas» lê daqui.
+                            "foto": f,
                             # A identidade da linha, para o botão "vendida" do
                             # modo edição. Vem do `loadout` (`chave_venda`) e não
                             # da página: se cada lado inventasse a sua, um clique
@@ -688,7 +737,7 @@ def payload(con, rep, editable=False, token="", ligacao=None):
                             # ou em 90 — e é a diferença entre uma carta parada e
                             # uma que está a subir depressa.
                             "rl_nota": r.get("rl_nota", "")}
-                           for r in rep[chave]],
+                           for r, f in zip(linhas, fotos)],
                 "copias": rep[copias], "total": rep[total]}
 
     arr = rep["arrumacao"]
@@ -717,7 +766,7 @@ def payload(con, rep, editable=False, token="", ligacao=None):
         "auto_registar": loadout.montar_auto_registar(),
         "anular_segundos": loadout.montar_anular_segundos(),
         "caixas": [_caixa_payload(s, imgs, cfs, rep, col, tipos, cores,
-                                  eds.get(s["slot"]))
+                                  eds.get(s["slot"]), prog)
                    for s in rep["slots"]],
         # A ORDEM por que montar as caixas (aba Plano) — permanentes por
         # prioridade, depois as que estão mais perto de fechar.
@@ -834,6 +883,12 @@ def payload(con, rep, editable=False, token="", ligacao=None):
         # Vive numa parte própria (`data/paginas/deckboxes/encomendas.json`); o
         # índice fica só com os `totais`, que é o que a fila de abas mostra.
         "encomendas": _encomendas_payload(con, rep, imgs),
+        # REVALIDAÇÃO POR FOTO (André, 2026-09-20): o progresso total, o alvo
+        # que ele está a fotografar, o que entrou hoje, as discrepâncias
+        # corrigidas e as cópias novas nesta campanha. Parte própria
+        # (`deckboxes/revalidacao.json`); o índice fica com os totais. `None`
+        # com a campanha desligada — a aba não aparece.
+        "revalidacao": prog,
     }
 
 
@@ -851,14 +906,18 @@ def payload(con, rep, editable=False, token="", ligacao=None):
 # os números (`dentro`, `marcar_q`) — é o que o crachá «N de M na caixa» lê no
 # cartão compacto, antes de a caixa ser aberta.
 CAIXA_PESADO = ("cartas", "wantlist", "subs", "buscar", "lista", "montar", "eds",
-                "notas_onde")
+                "notas_onde", "rev")
 # As abas pesadas, e o que cada ficheiro leva.
 PARTES_ABAS = {"arrumar": ("arrumar",), "venda": ("venda",),
                "premodern": ("premodern",),
                "encomendas": ("encomendas",),
+               # REVALIDAÇÃO (2026-09-20): as listas por cor da Colecção
+               # inteira vivem aqui; o índice leva os totais e o alvo.
+               "revalidacao": ("revalidacao",),
                "compras": ("compras", "partilhadas", "basicas")}
 # O que sai da `venda.saida` no índice (ver `partir`).
-SAIDA_PESADO = ("csv", "texto_estante")
+SAIDA_PESADO = ("csv", "texto_estante", "csv_validadas",
+                "texto_estante_validadas")
 
 
 def _so_escalares(d):
@@ -871,6 +930,9 @@ def _so_escalares(d):
 def _caixa_leve(c):
     leve = {k: v for k, v in c.items() if k not in CAIXA_PESADO}
     leve["montar"] = _so_escalares(c.get("montar") or {})
+    # Os totais da revalidação ficam (o cartão compacto diz «validadas N/M»);
+    # a lista de cópias vai na parte da caixa. `None` continua `None`.
+    leve["rev"] = _so_escalares(c["rev"]) if c.get("rev") else None
     leve["parte"] = "caixa-" + paginas.slug(c["slot"])
     return leve
 
@@ -885,7 +947,10 @@ def partir(dados):
     for nome, chaves in PARTES_ABAS.items():
         if len(chaves) == 1:
             partes[nome] = dados[chaves[0]]
-            idx[chaves[0]] = _so_escalares(dados[chaves[0]])
+            # Uma aba que hoje não existe (a revalidação com a campanha
+            # desligada) é `None` nos dois lados, não um dicionário vazio.
+            idx[chaves[0]] = (_so_escalares(dados[chaves[0]])
+                              if dados[chaves[0]] is not None else None)
             # O CSV e o texto da estante são strings — escalares para o
             # `_so_escalares` — mas são os dois textos mais compridos da página
             # e o índice não os precisa: ficam só na parte `venda`.
@@ -1116,6 +1181,38 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
  .cd .onde{position:absolute;left:0;right:0;bottom:0;background:#000000cc;
    color:var(--gold);font-size:9px;line-height:1.25;padding:2px 3px;
    text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ /* REVALIDAÇÃO POR FOTO (2026-09-20): o selo 📷 no canto da miniatura, a barra
+    «validadas N/M», as linhas por cópia com o estado, o alvo e o bloco. */
+ .cd .rvb{position:absolute;top:2px;left:2px;background:#000d;color:#ffd27a;
+   font-size:10px;font-weight:700;padding:0 4px;border-radius:5px;line-height:15px}
+ .cd .rvb.corr{color:#ff9f6b}
+ .rvbar{display:flex;flex-direction:column;gap:4px;margin:8px 0;font-size:12.5px;
+   color:var(--muted)}
+ .rvbar b{color:var(--ink)} .rvbar b.warn{color:#ffd27a}
+ .rvbar .pg{display:block;position:relative;height:6px;background:#0a0d13;
+   border-radius:999px;overflow:hidden;border:1px solid var(--line)}
+ .rvbar .pg b{position:absolute;left:0;top:0;bottom:0;background:var(--add);
+   border-radius:999px}
+ .rvbar.mini{margin:6px 0 0;font-size:11.5px}
+ .blk.rev{background:#131a22;border-color:#2a3b52}
+ .blk.rev .flh{color:#ffd27a}
+ .mv.rv{opacity:1;text-decoration:none}
+ .mv.rv .to{white-space:nowrap}
+ .mv.rv.foto .to{color:#ffd27a} .mv.rv.ok .to{color:var(--add)}
+ .mv.rv.corr .to{color:#ff9f6b}
+ .mv.rv.ok{opacity:.72}
+ .rvalvo{margin:8px 0;padding:10px 12px;background:#1a1509;border:1px solid #4a3a12;
+   border-radius:var(--r);font-size:12.5px;color:var(--muted)}
+ .rvalvo>b{color:var(--gold)} .rvalvo .nota{margin:4px 0 8px}
+ .rvcaixas{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+   gap:10px;margin:8px 0 14px}
+ .rvc .mini{width:100%;text-align:left;padding:10px 12px}
+ .rvc .mini b{color:var(--ink)}
+ .rvc .seg{margin:6px 0 0}
+ .vt td.rvok{color:var(--add);font-weight:700;text-align:center}
+ .vt td.rvfoto{color:#ffd27a;font-weight:700;text-align:center;white-space:nowrap}
+ .el.rvfoto .nm small{color:#ffd27a}
+ details.vblk.rev summary .vtot{color:#ffd27a}
  /* blocos de detalhe */
  .blk{margin-top:11px;background:var(--card2);border:1px solid var(--line);
    border-radius:var(--r);padding:10px 12px;font-size:12.5px;color:var(--muted)}
@@ -1692,6 +1789,14 @@ function renderTabs() {
                     a "o que compro a seguir?", mesmo sem nada a caminho. */
                  ['encomendas', '📦 Encomendas', encSub()],
                  ['vender', '💰 Vender', eur(D.resumo.venda)]];
+  /* REVALIDAÇÃO POR FOTO (André, 2026-09-20): só com a campanha ligada no
+     config (`revalidacao.desde`). O subtítulo é o progresso total — o número
+     por que ele sabe quanto falta fotografar. */
+  if (D.revalidacao && D.revalidacao.activa) {
+    const t = D.revalidacao.total || {};
+    fixas.push(['revalidacao', '📷 Revalidação',
+                `${t.pct || 0}% · ${t.por_revalidar || 0} por fotografar`]);
+  }
   /* SUGESTÕES: só existe quando há Premodern configurado. Uma aba vazia numa
      fila de vinte é ruído — e sem caixas de Premodern não há pergunta nenhuma. */
   if (D.premodern && D.premodern.activo) {
@@ -1810,6 +1915,10 @@ function cardTile(c) {
     c.pfoto ? `${c.pfoto} pendente${pl(c.pfoto)} de foto` : '',
     c.bloq ? (c.bloq_txt || `limite de playset: falta ${c.bloq} que não se compra`) : '',
     c.sfoil ? 'nunca saiu em foil — a nonfoil serve' : '',
+    /* REVALIDAÇÃO (2026-09-20): quantas cópias desta carta, nesta caixa,
+       ainda não têm foto da campanha. */
+    c.rev && c.rev.foto ? `📷 ${c.rev.foto} por fotografar` : '',
+    c.rev && c.rev.corr ? `⚠ ${c.rev.corr} corrigida${pl(c.rev.corr)} pela foto` : '',
     c.lotes.map(l => `${l.q}× ${l.local}`).join(' · '),
     /* "quantas tenho ao todo" — a informação secundária que vinha da página dos
        decks. Secundária de propósito: o número que manda nesta caixa é o da
@@ -1826,7 +1935,185 @@ function cardTile(c) {
     + `onclick="tocarCarta(this)" tabindex="0">`
     + (c.sid ? `<img loading="lazy" src="${art(c.sid)}" alt="${esc(c.nm)}">` : '')
     + q + (c.cf ? '<span class="cf">⚔</span>' : '')
-    + (selo ? `<span class="onde">${esc(selo)}</span>` : '') + '</div>';
+    + (selo ? `<span class="onde">${esc(selo)}</span>` : '')
+    /* O selo da revalidação no canto: 📷 enquanto houver cópias por fotografar
+       nesta caixa, ⚠ se alguma foi corrigida pela foto. Só com campanha. */
+    + (c.rev && c.rev.foto ? `<span class="rvb foto">📷${c.rev.foto}</span>`
+       : c.rev && c.rev.corr ? `<span class="rvb corr">⚠</span>` : '')
+    + '</div>';
+}
+
+/* ------------------------------------------------ REVALIDAÇÃO POR FOTO
+   André, 2026-09-20, à letra: *"quero que quando se clique, ele mostre as
+   cartas, como está a fazer, e que depois peça a foto das cartas. Quero
+   revalidar todas as fotos agora que vamos colocar tudo em decks para que
+   nada falhe ou escape; assim o que eu for vender também vai com foto."*
+
+   Tudo vem do Python (`revalidacao.progresso`): a página desenha o estado de
+   cada cópia — 📷 por fotografar / ✓ validada <data> / ⚠ corrigida pela foto —
+   e o botão «Fotografar» (só no modo edição) que fixa o ALVO no config e
+   escreve o `pendentes/esperadas.md`. Nada aqui muda um número da caixa. */
+const REV_ESTADO = {
+  foto: ['📷', 'por fotografar'], ok: ['✓', 'validada'], corr: ['⚠', 'corrigida pela foto'],
+};
+
+/* A barra «validadas N/M», a mesma no cartão da caixa, na aba dela e na aba
+   da revalidação. `g` é um grupo do `progresso` ({q, validadas, ...}). */
+function revBarra(g, compacta) {
+  if (!g || !g.q) return compacta ? '' : `<p class="ok2">Nada para fotografar aqui.</p>`;
+  const pct = Math.round(100 * g.validadas / g.q);
+  return `<div class="rvbar${compacta ? ' mini' : ''}" title="validadas ${g.validadas} de ${g.q}">`
+    + `<span>📷 validadas <b>${g.validadas}/${g.q}</b>`
+    + (g.por_revalidar ? ` · <b class="warn">${g.por_revalidar}</b> por fotografar` : ' · ✓ tudo')
+    + (g.corrigidas ? ` · ⚠ ${g.corrigidas} corrigida${pl(g.corrigidas)}` : '')
+    + `</span><i class="pg"><b style="width:${pct}%"></b></i></div>`;
+}
+
+/* Uma cópia por linha, por cor (como o binder), com o estado. É a lista «Na
+   caixa» que ele pediu: o que já mostra, mais o que falta fotografar. */
+function revLinhas(linhas, semLocal) {
+  const ls = linhas;
+  if (!ls.length) return '';
+  let h = '<div class="mvs">', cor = null;
+  for (const l of ls) {
+    if (l.cor !== cor) { cor = l.cor; h += `<div class="corhdr">${esc(l.cor_nome)}</div>`; }
+    const [ico, txt] = REV_ESTADO[l.estado] || REV_ESTADO.foto;
+    h += `<div class="mv rv ${l.estado}" data-nm="${esc(l.nm)}" data-copy="${l.copy_id}">`
+      + `<span class="q">${l.q}×</span><span class="nm">${esc(l.nm)}`
+      + (l.rl ? ' <span class="rl">RL</span>' : '')
+      + `<small>${esc(l.set)}${l.num ? ' #' + esc(l.num) : ''}${l.foil ? ' ✨' : ''} `
+      + `${esc(l.lang)} · #${l.copy_id}${l.local && !semLocal ? ' · ' + esc(l.local) : ''}`
+      + (l.nota ? ` · <b class="parcn">${esc(l.nota)}</b>` : '') + `</small></span>`
+      + `<span class="to">${ico} ${txt}${l.estado !== 'foto' && l.validado_em
+          ? ' ' + esc(l.validado_em) : ''}</span></div>`;
+  }
+  return h + '</div>';
+}
+
+/* O botão «Fotografar» e a instrução. `tipo` é caixa/venda/rl/coleccao; o
+   `slot` só nas caixas. Só no modo edição — no site publicado não há onde
+   gravar o alvo, e um botão que não faz nada é pior do que nenhum. */
+function revBotao(tipo, slot, nome, g) {
+  if (!D.editable || !g || !g.por_revalidar) return '';
+  const R = D.revalidacao || {};
+  const alvo = R.alvo && R.alvo.tipo === tipo && (tipo !== 'caixa' || R.alvo.slot === slot);
+  if (alvo) {
+    return `<div class="rvalvo">📷 <b>A fotografar ${esc(nome)}</b> (desde ${esc(R.alvo.em || '')})`
+      + `<p class="nota">${revInstrucao(g)}</p>`
+      + `<button class="btn sm" data-rev-parar="1">✕ parar</button></div>`;
+  }
+  return `<div class="seg"><button class="btn pri" data-rev="${esc(tipo)}" `
+    + `data-slot="${esc(slot || '')}" data-nome="${esc(nome)}">📷 Fotografar `
+    + `${tipo === 'caixa' ? 'esta caixa' : esc(nome)}</button></div>`;
+}
+
+function revInstrucao(g) {
+  return `Tira fotos às <b>${cop(g.por_revalidar)}</b> por fotografar (várias `
+    + `cartas por foto serve) e larga-as em <code>pendentes\\</code> — entram na `
+    + `corrida das 02:30. Cada foto liga-se à cópia que já existe, não cria outra; `
+    + `se a carta estiver noutra edição/acabamento, a cópia é corrigida e fica `
+    + `dito aqui.`;
+}
+
+/* O bloco «📷 Na caixa» da aba de uma caixa. */
+function revCaixaHTML(c) {
+  const g = c.rev;
+  if (!g) return '';
+  const falta = (g.linhas || []).filter(l => l.estado === 'foto')
+    .reduce((s, l) => s + l.q, 0);
+  return `<div class="blk rev" id="rev"><div class="flh">📷 Na caixa — fotografar`
+    + `<span class="dim">${cop(g.q)}</span></div>` + revBarra(g)
+    + revBotao('caixa', c.slot, c.nome, g)
+    + (g.linhas && g.linhas.length
+       ? `<details${falta ? ' open' : ''}><summary>as cópias, por cor `
+         + `<span class="dim">(${cop(falta)} por fotografar)</span></summary>`
+         + revLinhas(g.linhas, true) + `</details>` : '')
+    + `</div>`;
+}
+
+/* A aba «📷 Revalidação»: o progresso total, o alvo, cada caixa, a venda, a
+   Caixa RL e o resto da Colecção (por cor, com o botão), o que entrou hoje,
+   as discrepâncias corrigidas e as cópias novas nesta campanha. */
+function vistaRevalidacao() {
+  const R = D.revalidacao;
+  if (!R) return `<h2>📷 Revalidação</h2><p class="empty">A campanha não está ligada `
+    + `(<code>revalidacao.desde</code> no <code>colecao_config.json</code>).</p>`;
+  const T = R.total || {};
+  let h = `<h2>📷 Revalidação por foto</h2>`
+    + `<p class="lead">Desde <b>${esc(R.desde)}</b> nenhuma cópia está validada até uma `
+    + `foto NOVA lhe ser ligada. Vai caixa a caixa: carrega em <b>Fotografar</b>, tira `
+    + `as fotos, larga-as em <code>pendentes\\</code>. A corrida das 02:30 liga cada foto `
+    + `à cópia que já existe — não cria outra —, e uma carta que apareça noutra `
+    + `edição/acabamento corrige a cópia (fica dito abaixo). Nada se apaga: o que `
+    + `nunca receber foto continua por revalidar, à vista.</p>`
+    + `<div class="nums"><div class="num">validadas<b>${T.validadas || 0}/${T.q || 0}</b>`
+    + `<span class="dim">${T.pct || 0}%</span></div>`
+    + `<div class="num buy">por fotografar<b>${T.por_revalidar || 0}</b></div>`
+    + `<div class="num">corrigidas pela foto<b>${T.corrigidas || 0}</b></div>`
+    + `<div class="num">novas nesta campanha<b>${T.novas || 0}</b></div></div>`;
+  if (R.alvo) {
+    h += `<div class="rvalvo">📷 <b>A fotografar: ${esc(R.alvo.nome)}</b> `
+      + `(desde ${esc(R.alvo.em || '')}) · ${cop(R.alvo.por_revalidar || 0)} por fotografar`
+      + `<p class="nota">${revInstrucao({ por_revalidar: R.alvo.por_revalidar || 0 })}</p>`
+      + (D.editable ? `<button class="btn sm" data-rev-parar="1">✕ parar</button>` : '')
+      + `</div>`;
+  }
+  /* Por caixa: a barra e o botão; a lista vive na aba da caixa. */
+  h += `<h3>Por caixa</h3><div class="rvcaixas">`;
+  for (const g of (R.caixas || [])) {
+    if (!g.q) continue;
+    h += `<div class="rvc"><button class="mini" data-slot="${esc(g.slot)}">`
+      + `<b>${esc(g.nome)}</b>${revBarra(g, true)}</button>`
+      + revBotao('caixa', g.slot, g.nome, g) + `</div>`;
+  }
+  h += `</div>`;
+  const grupo = (tipo, g, tit, lead) => !g || !g.q ? '' :
+    `<details class="vblk rev"${g.por_revalidar && R.alvo && R.alvo.tipo === tipo ? ' open' : ''}>`
+    + `<summary><span>${tit}</span><span class="vtot">${g.validadas}/${g.q} validadas</span></summary>`
+    + `<p class="lead">${lead}</p>` + revBarra(g) + revBotao(tipo, null, g.nome, g)
+    + revLinhas(g.linhas || []) + `</details>`;
+  h += grupo('venda', R.venda, '💰 Venda', 'O que vai vender vai com foto: estas são as '
+      + 'cópias da lista de venda de hoje (aba <b>Vender</b>, que também as marca).')
+    + grupo('rl', R.rl, '🔒 Caixa Reserved List', 'A Caixa RL, fora das caixas de deck e da venda.')
+    + grupo('coleccao', R.resto, '🗂️ Colecção (o resto)', 'Tudo o que não está numa caixa, '
+      + 'na venda nem na Caixa RL — no fim, quando as caixas estiverem feitas.');
+  const lista = (tit, ls, vazio) => `<details class="vblk rev"><summary><span>${tit}</span>`
+    + `<span class="vtot">${cop(ls.reduce((s, l) => s + l.q, 0))}</span></summary>`
+    + (ls.length ? revLinhas(ls) : `<p class="ok2">${vazio}</p>`) + `</details>`;
+  h += lista('📥 Entrou hoje', R.hoje_entradas || [], 'Nada validado hoje.')
+    + lista('⚠ Corrigidas pela foto', R.corrigidas || [],
+            'Nenhuma discrepância até agora.')
+    + lista('🆕 Novas nesta campanha', R.novas || [],
+            'Nenhuma carta apareceu nas fotos sem cópia na base.');
+  return h + `<p class="nota">O registo de cada correcção fica em `
+    + `<code>data\\revalidacao.log</code>; a foto antiga de cada cópia revalidada fica `
+    + `em <code>pendentes\\fotos processadas\\</code> e no <code>aplicado.csv</code>.</p>`;
+}
+
+/* «Fotografar»: fixa o ALVO no config (é uma preferência, vai no Git) e o
+   servidor reescreve o `pendentes/esperadas.md`. A resposta traz a instrução. */
+async function fotografar(btn) {
+  btn.disabled = true;
+  try {
+    const r = await gravar('api/revalidacao', { act: 'alvo', tipo: btn.dataset.rev,
+                                                slot: btn.dataset.slot || null });
+    if (!r.ok && r.status !== 403 && r.status !== 409) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    if (j.erro) throw new Error(j.erro);
+    toast(j.msg || 'A fotografar.', 6000);
+    recarregar();
+  } catch (e) { btn.disabled = false; erro('Não deu: ' +e.message); }
+}
+
+async function pararRevalidacao(btn) {
+  btn.disabled = true;
+  try {
+    const r = await gravar('api/revalidacao', { act: 'parar' });
+    const j = await r.json();
+    if (j.erro) throw new Error(j.erro);
+    toast(j.msg || 'Parado.');
+    recarregar();
+  } catch (e) { btn.disabled = false; erro('Não deu: ' +e.message); }
 }
 
 /* O ESTADO da caixa numa palavra (v6): candidata < permanente < montada <
@@ -2772,6 +3059,8 @@ function caixaHTML(c, compacta) {
       + orig.map(([k, v]) => `${esc(k)} <b>${v}</b>`).join(' · ') + `</div>`;
   }
   if (c.notas) h += `<div class="nota">📝 ${esc(c.notas)}</div>`;
+  /* REVALIDAÇÃO (2026-09-20): «validadas N/M» também no cartão da fila. */
+  if (c.rev) h += revBarra(c.rev, true);
   if (compacta) return h + `</div>`;
 
   const cartas = c.cartas.filter(x => filtro === 'tudo' || x.est !== 'have');
@@ -2793,6 +3082,10 @@ function caixaHTML(c, compacta) {
   if (!cartas.length) {
     h += `<p class="empty">Nada em falta nesta caixa — está completa.</p>`;
   }
+  /* REVALIDAÇÃO POR FOTO (2026-09-20): a lista «Na caixa» com o estado de
+     cada cópia e o botão «Fotografar esta caixa». Logo a seguir à grelha —
+     é o que ele vê ao clicar, e é daí que pede as fotos. */
+  h += revCaixaHTML(c);
   /* A lista em texto, para levar para outro sítio. */
   h += `<div class="blk"><div class="flh">🃏 A lista`
     + `<span class="dim">${cop(c.precisa)}</span>`
@@ -3509,18 +3802,43 @@ function vistaSugestoes() {
   return h + `<div class="grid">` + lista.map(sugestaoHTML).join('') + `</div>`;
 }
 
+/* O filtro «só validadas» da aba Vender (2026-09-20): o que ele vender vai
+   com foto desta campanha. Fica no aparelho, como os outros filtros. */
+let soValidadas = !!P.soValidadas;
+const REV_ON = () => !!(D.revalidacao && D.revalidacao.activa);
+/* A célula 📷/✓ de uma linha de venda, a partir do `foto` que o Python deu
+   ({ok, falta}); uma linha junta lotes, e pode estar a meio. */
+function fotoCelula(r) {
+  if (!REV_ON() || !r.foto) return '';
+  const f = r.foto;
+  if (!f.falta) return `<td class="rvok" title="validada${pl(f.ok)}">✓</td>`;
+  if (!f.ok) return `<td class="rvfoto" title="por fotografar">📷</td>`;
+  return `<td class="rvfoto" title="${f.ok} validada${pl(f.ok)}, ${f.falta} por fotografar">`
+    + `📷 ${f.ok}/${f.ok + f.falta}</td>`;
+}
+
 function vistaVender() {
   const ordena = l => l.slice().sort((x, y) => x.nm.localeCompare(y.nm));
+  const rev = REV_ON();
+  /* Com o filtro ligado, ficam só as linhas com alguma cópia validada — o
+     CSV e a estante da saída trocam para a versão «validadas» (por cópia). */
+  const filtra = b => !rev || !soValidadas ? b
+    : { ...b, linhas: b.linhas.filter(r => r.foto && r.foto.ok > 0) };
   /* Duas listas para copiar, porque servem duas coisas: a do Cardmarket é só
      `N Nome`, e a de conferir leva a edição, a língua e o acabamento — vender a
      versão errada é anunciar uma carta que não se tem. */
   const so = l => ordena(l).map(r => `${r.q} ${r.nm}`).join('\n');
   const detalhe = l => ordena(l).map(r => `${r.q} ${r.nm} [${r.set}`
     + `${r.foil ? ' foil' : ' nonfoil'} ${(r.lang || '').toUpperCase()}]`).join('\n');
-  const bloco = (id, titulo, lead, b, aberto, rotulo, semBotao) => !b.linhas.length ? '' :
+  const bloco = (id, titulo, lead, b0, aberto, rotulo, semBotao) => {
+   const b = filtra(b0);
+   return !b.linhas.length ? '' :
     `<details class="vblk" id="${id}"${aberto ? ' open' : ''}>`
     + `<summary><span>${titulo}</span><span class="vtot">${cop(b.copias)} · `
-    + `${eur(b.total)}</span></summary><p class="lead">${lead}</p>`
+    + `${eur(b.total)}`
+    /* REVALIDAÇÃO (2026-09-20): quantas destas já têm foto da campanha. */
+    + (rev ? ` · 📷 ${b0.validadas || 0}/${(b0.validadas || 0) + (b0.por_revalidar || 0)} validadas` : '')
+    + `</span></summary><p class="lead">${lead}</p>`
     + `<div class="flh"><button class="cpbtn" onclick="copiar(this,'cm')" `
     + `aria-label="Copiar a lista: ${esc(rotulo)}">copiar lista Cardmarket`
     + `</button><button class="cpbtn" onclick="copiar(this,'mat')" `
@@ -3529,10 +3847,11 @@ function vistaVender() {
     + `<textarea class="cmk" data-cmk="cm" readonly>${esc(so(b.linhas))}</textarea>`
     + `<textarea class="cmk" data-cmk="mat" readonly>${esc(detalhe(b.linhas))}`
     + `</textarea>`
-    + `<table class="vt"><thead><tr><th></th><th>carta</th><th>onde está</th>`
+    + `<table class="vt"><thead><tr><th></th>${rev ? '<th title="foto desta campanha">📷</th>' : ''}`
+    + `<th>carta</th><th>onde está</th>`
     + `<th>edição</th><th>un.</th><th>total</th><th class="rz">porquê</th>`
     + (D.editable && !semBotao ? `<th></th>` : '') + `</tr></thead>`
-    + `<tbody>` + b.linhas.map(r => `<tr><td class="q">${r.q}×</td>`
+    + `<tbody>` + b.linhas.map(r => `<tr><td class="q">${r.q}×</td>` + fotoCelula(r)
       + `<td>${esc(r.nm)}${r.rl ? ' <span class="rl">RL</span>' : ''}</td>`
       + `<td class="dim">${esc(r.local)}</td>`
       // `r.foil` vem do Python (`loadout.e_foil`). Este teste era
@@ -3561,7 +3880,18 @@ function vistaVender() {
            + `vendida</button></td>` : '')
       + `</tr>`).join('')
     + `</tbody></table></details>`;
+  };
   const V = D.venda, R = D.rl_regra;
+  /* O filtro «só validadas» (2026-09-20), à cabeça: é a pergunta *"o que já
+     posso listar com foto?"*. Muda a tabela e a saída; a conta é a mesma. */
+  const filtroRev = !rev ? '' :
+    `<div class="seg" role="group" aria-label="Filtrar pela foto">`
+    + `<button class="${soValidadas ? '' : 'on'}" data-sov="0" aria-pressed="${!soValidadas}">`
+    + `Tudo</button><button class="${soValidadas ? 'on' : ''}" data-sov="1" `
+    + `aria-pressed="${soValidadas}">📷 Só validadas</button>`
+    + `<span class="dim">${V.normal.validadas + V.rl.validadas} de `
+    + `${V.normal.validadas + V.rl.validadas + V.normal.por_revalidar + V.rl.por_revalidar} `
+    + `cópias da venda têm foto desta campanha</span></div>`;
   /* Quanto da lista entra pelo motivo novo. Conta-se das LINHAS e não de um
      total à parte: o que a tabela mostra e o que o parágrafo diz têm de vir do
      mesmo sítio. */
@@ -3604,7 +3934,8 @@ function vistaVender() {
                     + `Cada linha diz em que janela foi medida.`)
         + ` Estão nos dois blocos de baixo — as que valorizaram e as que `
         + `o vault ainda não consegue medir.</p>` : '')
-    + saidaHTML(V.saida)
+    + filtroRev
+    + saidaHTML(V.saida, rev && soValidadas)
     + bloco('v-normal', 'Excedente normal', 'Cópias a mais de cartas que não são '
         + 'Reserved List. É por aqui que se começa: o risco é baixo e o dinheiro é '
         + 'real.', V.normal, true, 'excedente normal')
@@ -3666,18 +3997,28 @@ function vistaVender() {
         (uma linha por cópia, sem tabela) e imprimível (`@media print`);
      3. o que NÃO entra, com o motivo por linha — para ele ver que a decisão foi
         tomada, não esquecida. */
-function saidaHTML(S) {
+function saidaHTML(S, so) {
   if (!S) return '';
   const F = S.formato || {};
-  const est = S.estante || { grupos: [] };
+  /* «Só validadas» (2026-09-20): o CSV e a estante trocam para a versão por
+     cópia com foto desta campanha — calculada no Python, como a outra. */
+  const csv = so ? (S.csv_validadas || '') : S.csv;
+  const nomeCsv = so ? (S.nome_csv_validadas || S.nome_csv) : S.nome_csv;
+  const txt = so ? (S.texto_estante_validadas || '') : S.texto_estante;
+  const est = (so ? S.estante_validadas : S.estante) || { grupos: [] };
+  const copias = so ? (S.copias_validadas || 0) : S.copias;
+  const rev = REV_ON();
   const grupoHTML = g => `<div class="estg"><h4>📍 ${esc(g.local)}`
     + `<span>${cop(g.copias)} · ${eur(g.total)}</span></h4>`
-    + g.linhas.map(l => `<div class="el"><span class="c ${esc(l.cor)}" `
+    + g.linhas.map(l => `<div class="el${rev && !l.validada ? ' rvfoto' : ''}">`
+      + `<span class="c ${esc(l.cor)}" `
       + `title="${esc(l.cor_nome)}">${esc(l.cor)}</span>`
       + `<span class="q">${l.q}×</span><span class="nm">${esc(l.nm)}`
       + (l.rl ? ' <span class="rl">RL</span>' : '')
       + `<small>${esc(l.set)} ${esc((l.lang || '').toUpperCase())} `
-      + `${l.foil ? '✨ foil' : 'nonfoil'} · ${esc(l.cond)}</small></span>`
+      + `${l.foil ? '✨ foil' : 'nonfoil'} · ${esc(l.cond)}`
+      + (rev ? (l.validada ? ` · ✓ ${esc(l.validada)}` : ' · 📷 por fotografar') : '')
+      + `</small></span>`
       + `<span class="pz">${eur(l.unit)}</span></div>`).join('') + `</div>`;
   const foraHTML = f => !f.copias ? '' :
     `<details><summary>${esc(f.titulo)}<span>${cop(f.copias)} · ${eur(f.total)}`
@@ -3688,12 +4029,14 @@ function saidaHTML(S) {
   const foraTot = (S.fora || []).reduce((a, f) => a + f.copias, 0);
   const foraEur = (S.fora || []).reduce((a, f) => a + (f.total || 0), 0);
   return `<details class="vblk" id="v-saida" open><summary><span>📤 Saída: para o `
-    + `Cardmarket e para a estante</span><span class="vtot">${cop(S.copias)} · `
-    + `${eur(S.total)}</span></summary>`
+    + `Cardmarket e para a estante${so ? ' — só validadas' : ''}</span><span class="vtot">`
+    + `${cop(copias)}${so ? '' : ' · ' + eur(S.total)}</span></summary>`
     + `<p class="lead">O que entra: o <b>excedente normal</b> e a <b>Reserved List `
-    + `que passou a tua regra</b> — ${cop(S.copias)} em ${S.estante.grupos.length} `
-    + `sítio${pl(S.estante.grupos.length)} da estante. Uma linha por cópia, com o `
-    + `estado de cada uma.</p>`
+    + `que passou a tua regra</b> — ${cop(copias)} em ${est.grupos.length} `
+    + `sítio${pl(est.grupos.length)} da estante. Uma linha por cópia, com o `
+    + `estado de cada uma`
+    + (rev ? `, e a coluna <b>Foto</b> (validada / por revalidar)${so
+        ? ' — <b>só as que têm foto desta campanha</b>' : ''}` : '') + `.</p>`
     /* 1. O FICHEIRO */
     + `<h3>1. O ficheiro para carregar stock</h3>`
     + `<div class="sfmt${F.confirmado ? '' : ' nao'}">`
@@ -3710,12 +4053,12 @@ function saidaHTML(S) {
     + `</div>`
     + `<div class="flh"><button class="cpbtn" onclick="copiar(this,'csv')" `
     + `aria-label="Copiar o CSV de stock">copiar CSV</button>`
-    + `<button class="cpbtn" id="saida-csv">⬇ ${esc(S.nome_csv)}</button>`
+    + `<button class="cpbtn" id="saida-csv" data-nome="${esc(nomeCsv)}">⬇ ${esc(nomeCsv)}</button>`
     + (D.editable
        ? `<button class="btn sm" data-saida="gravar" aria-label="Gravar os ficheiros em data/">`
-         + `💾 gravar em data/</button>` : '')
+         + `💾 gravar em data/${so ? ' (só validadas)' : ''}</button>` : '')
     + `</div>`
-    + `<textarea class="cmk" data-cmk="csv" readonly>${esc(S.csv)}</textarea>`
+    + `<textarea class="cmk" data-cmk="csv" readonly>${esc(csv)}</textarea>`
     /* 2. A ESTANTE */
     + `<h3>2. Ir buscar à estante</h3>`
     + `<p class="lead">Por <b>onde a cópia está</b>, e por cor dentro de cada sítio `
@@ -3723,7 +4066,7 @@ function saidaHTML(S) {
     + `<div class="flh"><button class="cpbtn" onclick="copiar(this,'est')" `
     + `aria-label="Copiar a lista da estante">copiar lista</button>`
     + `<button class="cpbtn" id="saida-txt">⬇ ${esc(S.nome_estante)}</button></div>`
-    + `<textarea class="cmk" data-cmk="est" readonly>${esc(S.texto_estante)}</textarea>`
+    + `<textarea class="cmk" data-cmk="est" readonly>${esc(txt)}</textarea>`
     + `<div class="est">` + est.grupos.map(grupoHTML).join('') + `</div>`
     /* 3. O QUE FICA DE FORA */
     + `<h3>3. Fica de fora: ${cop(foraTot)} · ${eur(foraEur)}</h3>`
@@ -3748,10 +4091,10 @@ function baixarTexto(texto, nome, tipo) {
 /* «Gravar em data/»: o servidor RECALCULA a lista e escreve os dois ficheiros
    (`venda-stock.csv` + `venda-estante.txt`) ao lado da base — os mesmos que o
    `daily` escreve todas as manhãs. Só no modo edição, pela razão de sempre. */
-async function gravarSaida(btn) {
+async function gravarSaida(btn, soValid) {
   btn.disabled = true;
   try {
-    const r = await gravar('api/venda-export');
+    const r = await gravar('api/venda-export', { so_validadas: !!soValid });
     const j = await r.json();
     if (j.erro) throw new Error(j.erro);
     toast(j.msg || 'Gravado.');
@@ -3821,8 +4164,11 @@ function vistaNaoEncontradas() {
       + `</small></div>`
       /* O botão só no modo edição, como todos os outros: no site publicado não
          há endpoint que grave, e um botão que não grava mente. */
+      /* `data-encontrei`, e não `data-enc` (2026-09-20): esse é o `+`/`−` das
+         encomendas, e os dois `onclick` no mesmo atributo faziam o segundo
+         ganhar — o `+` de uma encomenda chamava o «afinal encontrei». */
       + (D.editable
-         ? `<button class="btn sm" data-enc="${m.copy_id}">✓ Afinal encontrei`
+         ? `<button class="btn sm" data-encontrei="${m.copy_id}">✓ Afinal encontrei`
            + `</button>`
          : '')
       + `</div>`;
@@ -3841,7 +4187,8 @@ function partesDe(id) {
   if (c) return c.vazio ? [] : [c.parte];
   return ({ arrumar: ['arrumar'], partilhadas: ['compras'], comprar: ['compras'],
             vender: ['venda'], sugestoes: ['premodern'],
-            encomendas: ['encomendas'] })[id] || [];
+            encomendas: ['encomendas'],
+            revalidacao: D.revalidacao ? ['revalidacao'] : [] })[id] || [];
 }
 async function carregaParte(nome) {
   if (PARTES[nome]) return PARTES[nome];
@@ -3884,6 +4231,7 @@ async function render() {
   }
   else if (aba === 'naoenc') { v.innerHTML = vistaNaoEncontradas(); }
   else if (aba === 'encomendas') { v.innerHTML = vistaEncomendas(); }
+  else if (aba === 'revalidacao') { v.innerHTML = vistaRevalidacao(); }
   else { v.innerHTML = vistaTodas(); }
   ligar();
   renderBarra();
@@ -4143,16 +4491,32 @@ function ligar() {
   }
   /* «Afinal encontrei», da aba Não encontradas. Mesmo endpoint do «anular» do
      aviso — é o mesmo gesto, só que sem prazo. */
-  for (const b of document.querySelectorAll('[data-enc]')) {
-    b.onclick = () => encontrei([Number(b.dataset.enc)], b);
+  for (const b of document.querySelectorAll('[data-encontrei]')) {
+    b.onclick = () => encontrei([Number(b.dataset.encontrei)], b);
   }
   /* A saída da venda: descarregar o CSV / a lista da estante, e gravar em data/. */
   const scsv = $('#saida-csv'), stxt = $('#saida-txt');
   const S = D.venda && D.venda.saida;
-  if (scsv && S) scsv.onclick = () => baixarTexto(S.csv, S.nome_csv, 'text/csv;charset=utf-8');
-  if (stxt && S) stxt.onclick = () => baixarTexto(S.texto_estante, S.nome_estante);
+  const so = REV_ON() && soValidadas;
+  if (scsv && S) scsv.onclick = () => baixarTexto(
+    so ? S.csv_validadas : S.csv, so ? S.nome_csv_validadas : S.nome_csv,
+    'text/csv;charset=utf-8');
+  if (stxt && S) stxt.onclick = () => baixarTexto(
+    so ? S.texto_estante_validadas : S.texto_estante, S.nome_estante);
   for (const b of document.querySelectorAll('[data-saida]')) {
-    b.onclick = () => gravarSaida(b);
+    b.onclick = () => gravarSaida(b, so);
+  }
+  /* REVALIDAÇÃO (2026-09-20): o filtro «só validadas» da venda, o
+     «Fotografar» (fixa o alvo) e o «parar». */
+  for (const b of document.querySelectorAll('[data-sov]')) {
+    b.onclick = () => { soValidadas = b.dataset.sov === '1'; P.soValidadas = soValidadas;
+                        save(); render(); };
+  }
+  for (const b of document.querySelectorAll('[data-rev]')) {
+    b.onclick = () => fotografar(b);
+  }
+  for (const b of document.querySelectorAll('[data-rev-parar]')) {
+    b.onclick = () => pararRevalidacao(b);
   }
   const fim = $('#arr-fim'), csv = $('#arr-csv'), lim = $('#arr-limpar');
   if (csv) csv.onclick = baixarCSV;
@@ -4357,7 +4721,8 @@ function iniciar(dados) {
   PM_RAZAO = D.pm_razao || '';
   if (!D.caixas.some(c => c.slot === aba)
       && !['plano', 'todas', 'montados', 'pormontar', 'arrumar', 'partilhadas',
-           'comprar', 'vender', 'sugestoes', 'encomendas', 'naoenc'].includes(aba)) {
+           'comprar', 'vender', 'sugestoes', 'encomendas', 'naoenc',
+           'revalidacao'].includes(aba)) {
     aba = 'plano';
   }
   renderResumo(); renderTabs(); render();
