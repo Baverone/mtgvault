@@ -153,6 +153,30 @@
  .blk.reserva{background:#1a1810;border-color:#4a4325} .blk.reserva>b{color:var(--gold)}
  .blk.reserva li{padding:3px 0} .blk.reserva .rsv-ok{color:var(--add)}
  .blk.reserva .rsv-no{color:#ffd27a}
+ /* A FEIRA (André, 2026-09-20): levar vs. trazer */
+ .feira .num.sal b{font-size:19px} .feira .num.sal.pos b{color:var(--add)}
+ .feira .num.sal.neg b{color:#ff9f8f}
+ .feira .taxas{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;
+   background:#1a1810;border:1px solid #4a4325;border-radius:10px;padding:8px 12px;
+   margin:8px 0;font-size:12.5px}
+ .feira .taxas label{display:flex;align-items:center;gap:6px}
+ .feira .taxas input{width:64px;font:inherit;font-size:13px;padding:6px 8px;
+   border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);
+   min-height:40px;text-align:right}
+ .feira .taxas .nota{flex:1 1 100%;margin:0}
+ .feira table.vt tr.nao td{opacity:.45;text-decoration:line-through}
+ .feira table.vt tr.nao td.act,.feira table.vt tr.nao td.act *{opacity:1;text-decoration:none}
+ .feira table.vt td.act{white-space:nowrap}
+ .feira .vend{display:inline-block;font-size:10.5px;padding:1px 7px;border-radius:10px;
+   background:#101c2e;color:#7fa8ff;margin:1px 3px 1px 0;white-space:nowrap}
+ .feira .org{font-size:10px;font-weight:800;padding:1px 5px;border-radius:5px;
+   background:#14262a;color:#79c9c4;margin-left:5px;white-space:nowrap}
+ .feira .org.man{background:#2c1b2e;color:#e0a8ea}
+ .feira .pform input.px{width:74px}
+ .feira .vendors li{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;
+   padding:4px 0;border-bottom:1px solid #1a212c}
+ .feira .vendors li small{color:var(--dim)}
+ .feira .corhdr{margin-top:10px}
  .pform{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
  .pform input,.pform select{font:inherit;font-size:12.5px;padding:7px 10px;
    border-radius:8px;border:1px solid var(--line);background:var(--card);
@@ -594,5 +618,5 @@ A lista para vender é uma <b>sugestão a confirmar</b>. Atualiza diariamente.
 </div>
 <div class="barra" id="barra" hidden aria-live="polite"></div>
 
-<script src="deckboxes.js?v=2b174ec073ae"></script>
+<script src="deckboxes.js?v=9ee2db8b3555"></script>
 </body></html>
