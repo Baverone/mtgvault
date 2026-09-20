@@ -447,25 +447,33 @@ def caso_as_grelhas_grandes_vem_aos_poucos():
       const muitos = (n) => Array.from({ length: n }, (_, i) => ({ nm: 'c' + i, sid: null }));
       const conta = (h) => (h.match(/class="tl[ "]/g) || []).length;
       imagens = true; aba = 'x';
-      const zera = () => { grelhaN = 0; tilesDesenhados = 0; GRELHAS_ABERTAS.clear(); };
+      const zera = () => { grelhaN = 0; GRELHAS_ABERTAS.clear(); };
       zera(); const semTecto = grelhaHTML(muitos(200));
       zera(); const comTecto = grelhaHTML(muitos(200), { max: 60 });
-      zera(); const duas = grelhaHTML(muitos(100), { max: 60 }) + grelhaHTML(muitos(100), { max: 60 })
-                          + grelhaHTML(muitos(100), { max: 60 });
+      zera(); const tres = grelhaHTML(muitos(100), { max: 60 }) + grelhaHTML(muitos(100), { max: 60 })
+                          + grelhaHTML(muitos(30), { max: 60 });
       zera(); GRELHAS_ABERTAS.add('x|0'); const aberta = grelhaHTML(muitos(200), { max: 60 });
+      /* Por COR: o tecto é sobre a lista inteira, com um botão só no fim. */
+      const cores = muitos(200).map((t, i) => ({ ...t, cor: i < 150 ? 'W' : 'U', cor_nome: 'c' }));
+      zera(); const porCor = grelhaPorCor(cores, t => t, { max: 60 });
+      zera(); GRELHAS_ABERTAS.add('x|0'); const porCorAberta = grelhaPorCor(cores, t => t, { max: 60 });
       const resultado = { semTecto: conta(semTecto), comTecto: conta(comTecto),
                           botao: /data-mais="x\\|0"/.test(comTecto) && /mostrar as outras 140 cartas/.test(comTecto),
-                          duas: conta(duas), botoes: (duas.match(/data-mais=/g) || []).length,
-                          aberta: conta(aberta), semBotao: !/data-mais/.test(aberta) };""")
+                          tres: conta(tres), botoes: (tres.match(/data-mais=/g) || []).length,
+                          aberta: conta(aberta), semBotao: !/data-mais/.test(aberta),
+                          porCor: conta(porCor), porCorBotoes: (porCor.match(/data-mais=/g) || []).length,
+                          porCorHdr: (porCor.match(/corhdr/g) || []).length,
+                          porCorAberta: conta(porCorAberta), hdr2: (porCorAberta.match(/corhdr/g) || []).length };""")
     if r is None:
         print("grelhas grandes: sem node, saltado")
         return
     assert r["semTecto"] == 200, r
     assert r["comTecto"] == 60 and r["botao"], r
-    # O tecto é por ABA (150): 60 + 60 + 30, e três botões.
-    assert r["duas"] == 150 and r["botoes"] == 3, r
+    assert r["tres"] == 150 and r["botoes"] == 2, r
     assert r["aberta"] == 200 and r["semBotao"], r
-    print("grelhas grandes: 60 por grelha, 150 por aba, «mostrar as outras N» abre")
+    assert r["porCor"] == 60 and r["porCorBotoes"] == 1 and r["porCorHdr"] == 1, r
+    assert r["porCorAberta"] == 200 and r["hdr2"] == 2, r
+    print("grelhas grandes: 60 por grelha ou por lista de cores, «mostrar as outras N» abre")
 
 
 # ---------------------------------------------------------------------------
@@ -540,9 +548,10 @@ def caso_o_css_dos_tiles():
     assert re.search(r"\.tiles\{[^}]*grid-template-columns:repeat\(auto-fill,minmax\(120px", css)
     assert re.search(r"\.tl \.tli\{[^}]*aspect-ratio:\.716", css), "sem aspect-ratio a grelha salta"
     assert re.search(r"\.tl input\.tlck\{[^}]*width:28px", css), "a checkbox do tile ≥ 28 px"
-    movel = css[css.find(".tiles{grid-template-columns:repeat(3,1fr)"):]
-    assert movel and "@media(max-width:640px)" in css[:css.find(".tiles{grid-template-columns:repeat(3,1fr)")][-400:], \
-        "3 colunas a 640 px"
+    tres = ".tiles{grid-template-columns:repeat(3,minmax(0,1fr))"
+    movel = css[css.find(tres):]
+    assert movel and "@media(max-width:640px)" in css[:css.find(tres)][-500:], \
+        "3 colunas a 640 px (minmax(0,1fr), senão a grelha sai do ecrã)"
     assert re.search(r"\.tl input\.tlck\{width:32px;height:32px\}", movel)
     assert ".tl .tlnm{" in css and ".tl.miss .tli{" in css and ".tl.enc .tli{" in css
     print("CSS: minmax(120px) em largo, 3 colunas a 640 px, aspect-ratio, checkbox 28/32 px")

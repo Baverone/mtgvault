@@ -1737,7 +1737,7 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
     catálogo não a tem, ou o `fetch` falhou) fica o NOME no quadrado — nunca
     um buraco. 3 colunas a 400 px, mais em ecrã largo; a checkbox tem 28 px. */
  .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));
-   gap:8px;margin:8px 0;padding:0;list-style:none}
+   gap:8px;margin:8px 0;padding:0;list-style:none;min-width:0}
  .tiles.big{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
  .tl{display:flex;flex-direction:column;gap:3px;min-width:0;position:relative;
    background:var(--card);border:1px solid var(--line);border-radius:10px;
@@ -1765,9 +1765,14 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
  .tl .tlx{color:var(--muted);font-size:10.5px;line-height:1.3;overflow-wrap:anywhere}
  .tl .tlx b{color:var(--gold);font-variant-numeric:tabular-nums}
  .tl .tlx .parcn{color:#e2a15b}
- .tl .tla{display:flex;flex-wrap:wrap;gap:4px;margin-top:auto;align-items:center}
- .tl .tla .stp{margin:0} .tl .tla .jat{margin:0}
- .tl .tla select.jed{max-width:100%}
+ .tl .tla{display:flex;flex-wrap:wrap;gap:4px;margin-top:auto;align-items:center;
+   min-width:0}
+ .tl .tla .stp{margin:0;min-width:0} .tl .tla .jat{margin:0;min-width:0;max-width:100%}
+ /* Um `<select>` tem a largura da opção mais comprida e não encolhe: numa
+    coluna de 120 px empurrava a grelha para fora do ecrã (medido a 400 px).
+    Com `width:100%` e `min-width:0` cabe na coluna e corta o texto. */
+ .tl .tla select.jed,.tl .tla select.feira-vend{max-width:100%;min-width:0;width:100%}
+ .tl .tla .btn.sm{min-width:0}
  .tl input.tlck{position:absolute;top:4px;right:4px;z-index:3;width:28px;height:28px;
    margin:0;accent-color:var(--add);cursor:pointer}
  .tl.feito .tli{opacity:.45} .tl.feito .tlt{text-decoration:line-through;opacity:.6}
@@ -1788,8 +1793,10 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
  #v-compras ul.fl.tiles{column-width:auto}
  .seg .vista{margin-left:auto}
  @media(max-width:640px){
-   .tiles{grid-template-columns:repeat(3,1fr);gap:6px}
-   .tiles.big{grid-template-columns:repeat(2,1fr)}
+   /* `minmax(0,1fr)` e não `1fr`: um `1fr` nunca encolhe abaixo do conteúdo
+      mínimo da coluna, e a grelha saía do ecrã (medido a 400 px). */
+   .tiles{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+   .tiles.big{grid-template-columns:repeat(2,minmax(0,1fr))}
    .tl{padding:4px;font-size:11px}
    .tl input.tlck{width:32px;height:32px}
    .tl .tla .btn.sm{min-height:36px;flex:1 1 auto;text-align:center}
@@ -2051,31 +2058,30 @@ function grelhaHTML(itens, opts) {
      abas sem procura: na aba da caixa a procura filtra o que está desenhado,
      e um tile por desenhar era uma carta que ela não achava. */
   const chave = `${aba}|${grelhaN++}`;
-  let mostra = itens;
-  if (o.max && !GRELHAS_ABERTAS.has(chave)) {
-    /* O tecto é por ABA e não por grelha: a estante da venda são 20 grelhas
-       pequenas (por sítio e por cor) que juntas passam de 300 tiles. */
-    mostra = itens.slice(0, Math.max(0, Math.min(o.max, ORCAMENTO_TILES - tilesDesenhados)));
-  }
-  tilesDesenhados += mostra.length;
-  const resto = itens.length - mostra.length;
-  return (mostra.length
-    ? `<${tag} class="tiles${grande ? ' big' : ''}${o.cls ? ' ' + o.cls : ''}">`
-      + mostra.map(tileHTML).join('') + `</${tag}>` : '')
-    + (!resto ? '' : `<div class="seg"><button class="btn" data-mais="${esc(chave)}">`
-       + `⬇ mostrar ${mostra.length ? 'as outras ' : ''}${car(resto)}</button></div>`);
+  const mostra = (o.max && itens.length > o.max && !GRELHAS_ABERTAS.has(chave))
+    ? itens.slice(0, o.max) : itens;
+  return `<${tag} class="tiles${grande ? ' big' : ''}${o.cls ? ' ' + o.cls : ''}">`
+    + mostra.map(tileHTML).join('') + `</${tag}>` + maisHTML(chave, itens.length - mostra.length);
 }
-let grelhaN = 0, tilesDesenhados = 0;   /* repostos a zero em cada `render()` */
+const maisHTML = (chave, resto) => !resto ? '' :
+  `<div class="seg"><button class="btn" data-mais="${esc(chave)}">⬇ mostrar as outras `
+  + `${car(resto)}</button></div>`;
+let grelhaN = 0;                        /* reposto a zero em cada `render()` */
 const GRELHAS_ABERTAS = new Set();
-const MAX_TILES = 60;                   /* por grelha, nas abas sem procura */
-const ORCAMENTO_TILES = 150;            /* por aba, nas grelhas com `max` */
+const MAX_TILES = 60;                   /* por grelha (ou por lista de cores) */
 
 /* Por COR, como o binder (o passo 1, a revalidação): um cabeçalho e uma
    grelha por cor. `f` transforma cada linha num `t`. */
 function grelhaPorCor(linhas, f, opts) {
+  /* O tecto (`max`) é sobre a LISTA inteira e não por cor: a estante da venda
+     são 20 grupos pequenos que juntos passam de 300 tiles. Um botão só, no fim. */
+  const max = (opts || {}).max;
+  const chave = `${aba}|${grelhaN++}`;
+  const mostra = (max && comImagens() && linhas.length > max && !GRELHAS_ABERTAS.has(chave))
+    ? linhas.slice(0, max) : linhas;
   let h = '', cor = null, grupo = [];
-  const fecha = () => { if (grupo.length) h += grelhaHTML(grupo, opts); grupo = []; };
-  for (const l of linhas) {
+  const fecha = () => { if (grupo.length) h += grelhaHTML(grupo); grupo = []; };
+  for (const l of mostra) {
     if (l.cor !== cor) {
       fecha(); cor = l.cor;
       h += `<div class="corhdr">${esc(l.cor_nome)}</div>`;
@@ -2083,7 +2089,7 @@ function grelhaPorCor(linhas, f, opts) {
     grupo.push(f(l));
   }
   fecha();
-  return h;
+  return h + maisHTML(chave, linhas.length - mostra.length);
 }
 
 /* O material de uma cópia em chips curtos: edição, ✨ se foil, língua. */
@@ -5218,7 +5224,7 @@ let renderN = 0;
 let manterScroll = null;     /* o scroll a repor depois de um `recarregar()` */
 async function render() {
   const v = $('#vista');
-  grelhaN = 0; tilesDesenhados = 0;
+  grelhaN = 0;
   const faltam = partesDe(aba).filter(p => !PARTES[p]);
   if (faltam.length) {
     /* Só aqui é que se espera: com tudo já cá (o payload embutido, ou uma aba
