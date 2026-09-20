@@ -289,12 +289,19 @@ def caso_a_pagina_escreve_a_nota_na_linha():
         capture_output=True, text=True, encoding="utf-8", errors="replace",
         timeout=120)
     assert p.returncode == 0, (p.stdout or "") + (p.stderr or "")[-2000:]
-    aba = json.loads(dump.read_text(encoding="utf-8"))["a"]
+    abas = json.loads(dump.read_text(encoding="utf-8"))
+    aba = abas["a"]
     assert "2 de 4 — 2 em Comprar" in aba, aba[:2000]
-    assert "mv parc" in aba, "a linha parcial leva a moldura âmbar"
-    # E a completa não leva nota nenhuma.
-    assert aba.count("parcn") == 1, aba.count("parcn")
-    print("pagina: a linha parcial desenha a nota e a moldura ambar")
+    # EM IMAGEM (2026-09-20) é o tile que leva a moldura âmbar (`tl have parc`),
+    # com a nota no chip; em «Lista» é a linha `.mv.parc` de sempre.
+    assert 'class="tl have parc"' in aba, "o tile parcial leva a moldura âmbar"
+    lista = abas["lista:a"]
+    assert "mv parc" in lista and "2 de 4 — 2 em Comprar" in lista, "a linha parcial leva a moldura âmbar"
+    # E a completa não leva nota nenhuma (o tile tem a nota no chip E no title).
+    assert aba.count("parcn") == 1 and aba.count("2 de 4 — 2 em Comprar") == 2, \
+        (aba.count("parcn"), aba.count("2 de 4 — 2 em Comprar"))
+    assert lista.count("parcn") == 1, lista.count("parcn")
+    print("pagina: a linha parcial desenha a nota e a moldura ambar, em tile e em lista")
 
 
 if __name__ == "__main__":

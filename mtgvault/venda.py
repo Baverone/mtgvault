@@ -121,14 +121,17 @@ def _detalhe_copias(con, ids: list[int]) -> dict[int, dict]:
         for r in con.execute(
                 f"""SELECT cp.id, cp.condition cond, c.collector_number num,
                            c.cardmarket_id cm_id, c.set_code, c.set_name,
-                           cp.validado_em validado
+                           cp.validado_em validado, cp.scryfall_id sid
                       FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id
                      WHERE cp.id IN ({marks})""", ch):
             out[r["id"]] = {"cond": (r["cond"] or "NM").upper(),
                             "num": r["num"] or "", "cm_id": r["cm_id"],
                             "set": (r["set_code"] or "").upper(),
                             "set_name": r["set_name"] or "",
-                            "validado": r["validado"] or ""}
+                            "validado": r["validado"] or "",
+                            # A impressão exacta — é a imagem do tile da aba
+                            # Vender / Feira (2026-09-20).
+                            "sid": r["sid"]}
     return out
 
 
@@ -161,6 +164,7 @@ def linhas_export(con, rep: dict, so_validadas: bool = False) -> list[dict]:
                     "validada": validada,
                     "foto": f"validada {validada}" if validada else "por revalidar",
                     "copy_id": int(cid), "nm": r["nm"],
+                    "sid": d.get("sid") or r.get("sid"),
                     "set": d.get("set") or (r["set_code"] or "").upper(),
                     "set_name": d.get("set_name") or r.get("set_name") or "",
                     "num": d.get("num", ""), "cm_id": d.get("cm_id"),
@@ -446,7 +450,9 @@ def fora_da_exportacao(rep: dict) -> list[dict]:
             "total": round(sum(r["total"] or 0 for r in ls), 2),
             "linhas": [{"nm": r["nm"], "q": r["q"], "local": r["local"],
                         "set": (r["set_code"] or "").upper(), "rl": bool(r["rl"]),
-                        "total": r["total"],
+                        "total": r["total"], "sid": r.get("sid"),
+                        "foil": loadout.e_foil(r.get("finish")),
+                        "lang": (r.get("lang") or "").upper(),
                         "motivo": " ".join(x for x in (
                             r.get("reason") or "", r.get("rl_nota") or "",
                             (f"(ia por: {r['porque_venderia']})"

@@ -316,7 +316,13 @@ def caso_a_aba_da_caixa_tem_a_procura_e_tudo_leva_o_nome():
         nomes = re.findall(r'data-nm="([^"]+)"', a)
         assert nomes.count("Swords to Plowshares") >= 2, nomes    # grelha + passo 1
         assert "Séance" in nomes and "Island" in nomes and "Æther Vial" in nomes, nomes
-        assert a.count('onclick="tocarCarta(this)"') == 5, "cada miniatura responde ao toque"
+        # Desde 2026-09-20 TODAS as secções são tiles (ver `test_visual.py`) e
+        # cada tile sem checkbox responde ao toque: as 5 da grelha, mais a
+        # compra (Séance) e as cópias da revalidação... — pelo menos as 5.
+        assert a.count('onclick="tocarCarta(this)"') >= 5, "cada miniatura responde ao toque"
+        # Em «Lista» a grelha vira linhas e continua a levar o nome.
+        lista = d["lista:a"]
+        assert re.findall(r'data-nm="([^"]+)"', lista).count("Swords to Plowshares") >= 2
     print("a aba da caixa tem a procura nos dois modos, e a grelha/passo 1/compras levam data-nm")
 
 

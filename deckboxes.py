@@ -141,6 +141,9 @@ def _montar_payload(rep, s, cores):
                 "set": (m["set_code"] or "").upper(),
                 "fin": m["finish"], "foil": loadout.e_foil(m["finish"]),
                 "lang": (m["lang"] or "").upper(), "copy_id": m["copy_id"],
+                # AS CARTAS EM IMAGEM (André, 2026-09-20): a impressão EXACTA da
+                # cópia que ele vai tirar da gaveta — não a primeira do nome.
+                "sid": m.get("sid"),
                 # LINHA INCOMPLETA (2026-09-08): a caixa pede 4 e ele só tem 2.
                 # As 2 tiram-se na mesma, e a linha diz porque é que vem a menos
                 # («2 de 4 — as outras 2 em Comprar»). O texto vem do Python
@@ -286,14 +289,41 @@ def _rev_caixa(prog, slot):
     return rev, por_carta
 
 
+def _sid_da_falta(con, m, imgs, cache):
+    """A imagem de uma linha que FALTA: a impressão mais barata no acabamento
+    que a compra usa (`price_finish`), a mesma do `card_price` — e, sem preço na
+    base, a impressão de sempre do nome. Sem `con` (testes sem catálogo) fica a
+    do nome."""
+    if con is not None:
+        sid = loadout.impressao_mais_barata(con, m["nm"], m.get("price_finish")
+                                            or "nonfoil", cache=cache)
+        if sid:
+            return sid
+    return imgs.get(m["nm"])
+
+
 def _caixa_payload(s, imgs, cfs, rep=None, col=None, tipos=None, cores=None,
-                   edicoes=None, prog=None):
+                   edicoes=None, prog=None, con=None, baratas=None):
     rev, rev_carta = _rev_caixa(prog, s["slot"])
+    baratas = {} if baratas is None else baratas
     cartas = []
     for m in s["have"] + s["missing"]:
+        est = _estado_carta(m)
+        # AS CARTAS EM IMAGEM (André, 2026-09-20: *"cada deck poderia ter as
+        # cartas visualmente ao invés de só o nome?"*). A imagem é a da cópia
+        # que a alocação deu a ESTA caixa (a primeira do lote), e não a primeira
+        # do nome que ele tenha algures; numa linha que falta é a da impressão
+        # mais barata — a que o preço da compra já usa.
+        lotes = [{"local": g["local"], "q": g["q"], "fin": g["finish"],
+                  "lang": g["lang"], "set": (g["set_code"] or "").upper(),
+                  "foil": loadout.e_foil(g["finish"]), "sid": g.get("sid"),
+                  "copy_id": g.get("id")}
+                 for g in m["lotes"]]
+        sid = next((l["sid"] for l in lotes if l["sid"]), None) or (
+            _sid_da_falta(con, m, imgs, baratas) if est == "miss" else imgs.get(m["nm"]))
         cartas.append({
             "nm": m["nm"], "board": m["board"], "need": m["need"], "got": m["got"],
-            "est": _estado_carta(m), "sid": imgs.get(m["nm"]),
+            "est": est, "sid": sid,
             "basica": bool(m.get("basica")),
             # REVALIDAÇÃO (2026-09-20): quantas cópias desta carta, nesta
             # caixa, ainda não têm foto da campanha (`foto`) e quantas têm.
@@ -337,9 +367,7 @@ def _caixa_payload(s, imgs, cfs, rep=None, col=None, tipos=None, cores=None,
             "tipo": (tipos or {}).get(m["nm"], "Other"),
             "col": (col or {}).get(m["nm"], 0),
             "so_de": s["so_de_variante"].get(m["nm"]) or [],
-            "lotes": [{"local": g["local"], "q": g["q"], "fin": g["finish"],
-                       "lang": g["lang"], "set": (g["set_code"] or "").upper()}
-                      for g in m["lotes"]],
+            "lotes": lotes,
         })
     cartas.sort(key=lambda c: (c["board"] != "main",
                                {"have": 0, "sub": 1, "miss": 2}[c["est"]], c["nm"]))
@@ -402,11 +430,15 @@ def _caixa_payload(s, imgs, cfs, rep=None, col=None, tipos=None, cores=None,
         # que ele tem, onde estão e se servem. Fora da venda; só informação
         # para a caixa.
         "reserva": [{"nm": r["nm"], "q": r["q"], "na_lista": r["na_lista"],
-                     "serve": r["serve"], "sid": imgs.get(r["nm"]),
+                     "serve": r["serve"],
+                     # A imagem da cópia que ele tem (a primeira), senão a do nome.
+                     "sid": next((l.get("sid") for l in r["lotes"] if l.get("sid")),
+                                 None) or imgs.get(r["nm"]),
                      "lotes": [{"onde": l["onde"], "local": l["local"], "q": l["q"],
                                 "set": (l["set_code"] or "").upper(),
                                 "lang": (l["lang"] or "").upper(), "fin": l["finish"],
                                 "foil": l["foil"], "serve": l["serve"],
+                                "sid": l.get("sid"), "copy_id": l.get("copy_id"),
                                 "porque": l["porque"]} for l in r["lotes"]]}
                     for r in s.get("reserva_linhas") or []],
         "reserva_nomes": list(s.get("reserva") or []),
@@ -454,7 +486,10 @@ def _caixa_payload(s, imgs, cfs, rep=None, col=None, tipos=None, cores=None,
                              "nota": loadout.nota_onde(m),
                              "acam": m.get("a_caminho", 0),
                              "pfoto": m.get("pendente_foto", 0),
-                             "sid": imgs.get(m["nm"])}
+                             # A impressão mais barata no acabamento da compra:
+                             # é a que o preço ao lado já usa (2026-09-20).
+                             "sid": _sid_da_falta(con, m, imgs, baratas),
+                             "unit": m.get("unit")}
                             for m in s["missing"]
                             if m["comprar"] > 0 or m.get("encomendado", 0) > 0),
                            key=lambda x: (x["board"] != "main", x["nm"])),
@@ -531,7 +566,7 @@ def _premodern_payload(rep, imgs):
             "sugestoes": len(pm["sugestoes"])}
 
 
-def _encomendas_payload(con, rep, imgs):
+def _encomendas_payload(con, rep, imgs, baratas=None):
     """A aba **📦 Encomendas** (André, 2026-09-19): o que comprou e ainda não
     fotografou, à imagem do separador do riftvault — tiles com a imagem da
     carta, `+`/`−`, «Chegou (N)».
@@ -607,7 +642,8 @@ def _encomendas_payload(con, rep, imgs):
     for s in rep["slots"]:
         linhas = [{"nm": m["nm"], "q": m["comprar"], "board": m["board"],
                    "unit": m["unit"], "cost": m["cost"],
-                   "mat": m.get("marca_compra") or "", "sid": imgs.get(m["nm"]),
+                   "mat": m.get("marca_compra") or "",
+                   "sid": _sid_da_falta(con, m, imgs, baratas if baratas is not None else {}),
                    "acam": m.get("a_caminho", 0), "pfoto": m.get("pendente_foto", 0)}
                   for m in s["missing"] if m["comprar"] > 0]
         if not linhas:
@@ -640,8 +676,15 @@ def payload(con, rep, editable=False, token="", ligacao=None):
         nomes |= {r["nm"] for r in rep[k]}
     nomes |= {m["nm"] for m in rep["arrumacao"]["movimentos"]}
     nomes |= {r["nm"] for r in encomendas.listar(con)}
+    # As cartas das SUGESTÕES de Premodern também (2026-09-20): ficavam sem
+    # imagem — um quadrado preto — porque nunca entraram aqui.
+    for c in (rep.get("premodern") or {}).get("elegiveis") or []:
+        nomes |= {m["nm"] for m in c["linhas"]}
     imgs = _img_map(con, sorted(nomes))
     cfs = {c["nm"] for c in rep["conflitos"]}
+    # A impressão mais barata por (carta, acabamento), UMA consulta por par: a
+    # mesma Swords to Plowshares falta a seis caixas (2026-09-20).
+    baratas: dict = {}
     # Tipo, cor e "quantas tenho ao todo" — as três coisas que a página dos decks
     # tinha e que passaram para a aba da caixa (ver `mtgvault.paginas`).
     meta = paginas._meta_cartas(con, sorted(nomes))
@@ -680,7 +723,10 @@ def payload(con, rep, editable=False, token="", ligacao=None):
                                            # (2026-09-19) nunca saiu em foil, e
                                            # a nota "tens N no X" (só informação).
                                            "sfoil": not m.get("foil_existe", True),
-                                           "nota": ""})
+                                           "nota": "",
+                                           # A imagem: a impressão mais barata
+                                           # no acabamento da compra (2026-09-20).
+                                           "sid": _sid_da_falta(con, m, imgs, baratas)})
             g["q"] += m["comprar"]
             if loadout.nota_onde(m) and loadout.nota_onde(m) not in g["nota"]:
                 g["nota"] = (g["nota"] + " · " if g["nota"] else "") + loadout.nota_onde(m)
@@ -742,7 +788,9 @@ def payload(con, rep, editable=False, token="", ligacao=None):
                             "foil": loadout.e_foil(r["finish"]),
                             "lang": r["lang"], "unit": r["unit"],
                             "total": r["total"], "rl": bool(r["rl"]),
-                            "reason": r["reason"], "sid": imgs.get(r["nm"]),
+                            "reason": r["reason"],
+                            # A impressão exacta da cópia à venda (2026-09-20).
+                            "sid": r.get("sid") or imgs.get(r["nm"]),
                             # Só nos blocos da RL retida: o motivo por que a
                             # cópia ia à venda antes de a regra dos 5 % a
                             # segurar. Sem ele a linha diz "subiu 7 %" e perde-se
@@ -768,10 +816,24 @@ def payload(con, rep, editable=False, token="", ligacao=None):
     # razão por que os botões e a barra de montagem só lá existem. (E é uma
     # consulta ao catálogo por carta em falta, que a página publicada não paga.)
     eds = _edicoes_das_faltas(con, rep) if editable else {}
+    # A FEIRA: as linhas de «trazer» são compras (a impressão mais barata); as
+    # de «levar» já trazem a impressão exacta do `venda.linhas_export`.
+    fr = feira.projeccao(con, rep)
+    for g in ((fr.get("trazer") or {}).get("linhas") or []):
+        g.setdefault("sid", loadout.impressao_mais_barata(
+            con, g["nm"], "foil" if "foil" in (g.get("mat") or "").lower()
+            and "nonfoil" not in (g.get("mat") or "").lower() else "nonfoil",
+            cache=baratas) or imgs.get(g["nm"]))
+    for g in ((fr.get("levar") or {}).get("linhas") or []):
+        g.setdefault("sid", imgs.get(g["nm"]))
     return {
         "gerado": con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or "",
         "hoje": date.today().isoformat(),
         "editable": bool(editable),
+        # AS CARTAS EM IMAGEM (André, 2026-09-20): a vista por omissão —
+        # `imagens` ou `lista` — vem do config (`deckboxes.vista`); no modo
+        # edição o interruptor grava-a lá, no site publicado fica no aparelho.
+        "vista": vista_config(),
         # O token de escrita e o link/QR do telemóvel só existem em modo edição —
         # o ficheiro publicado no GitHub Pages não pode levar nem um nem outro.
         "token": token if editable else "",
@@ -783,7 +845,7 @@ def payload(con, rep, editable=False, token="", ligacao=None):
         "auto_registar": loadout.montar_auto_registar(),
         "anular_segundos": loadout.montar_anular_segundos(),
         "caixas": [_caixa_payload(s, imgs, cfs, rep, col, tipos, cores,
-                                  eds.get(s["slot"]), prog)
+                                  eds.get(s["slot"]), prog, con, baratas)
                    for s in rep["slots"]],
         # A ORDEM por que montar as caixas (aba Plano) — permanentes por
         # prioridade, depois as que estão mais perto de fechar.
@@ -899,7 +961,7 @@ def payload(con, rep, editable=False, token="", ligacao=None):
         # ENCOMENDAS (André, 2026-09-19): o que comprou e ainda não fotografou.
         # Vive numa parte própria (`data/paginas/deckboxes/encomendas.json`); o
         # índice fica só com os `totais`, que é o que a fila de abas mostra.
-        "encomendas": _encomendas_payload(con, rep, imgs),
+        "encomendas": _encomendas_payload(con, rep, imgs, baratas),
         # REVALIDAÇÃO POR FOTO (André, 2026-09-20): o progresso total, o alvo
         # que ele está a fotografar, o que entrou hoje, as discrepâncias
         # corrigidas e as cópias novas nesta campanha. Parte própria
@@ -910,8 +972,22 @@ def payload(con, rep, editable=False, token="", ligacao=None):
         # dele) contra o que quer trazer (o «a comprar» das caixas + a wantlist
         # manual + os vendors). Parte própria (`deckboxes/feira.json`); o
         # índice fica com os totais e o saldo. Tudo do `mtgvault.feira`.
-        "feira": feira.projeccao(con, rep),
+        "feira": fr,
     }
+
+
+# A VISTA POR OMISSÃO (André, 2026-09-20: *"gosto de ter em imagem da carta e
+# não apenas texto, faz algo visualmente apelativo"*): `imagens`, salvo se o
+# config disser `lista` (`colecao_config.json -> deckboxes.vista`). É o que o
+# interruptor «Imagens / Lista» do modo edição grava (`/api/vista`).
+VISTAS = ("imagens", "lista")
+
+
+def vista_config(cfg: dict | None = None) -> str:
+    from mtgvault import sources                               # noqa: PLC0415
+    d = (cfg if cfg is not None else sources.config()).get("deckboxes")
+    v = (d or {}).get("vista") if isinstance(d, dict) else None
+    return v if v in VISTAS else "imagens"
 
 
 # ---------------------------------------------------------------------------
@@ -1653,6 +1729,71 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
    table.vt td.rz,table.vt th.rz{display:none}
    .num{min-width:calc(50% - 6px)}
  }
+ /* AS CARTAS EM IMAGEM (André, 2026-09-20: «cada deck poderia ter as cartas
+    visualmente ao invés de só o nome?»). UMA componente — `.tl` — para todas
+    as secções: a imagem da impressão exacta, e por cima dela a quantidade, o
+    estado (a cor da moldura e o chip), o material e, quando é compra, o preço.
+    Os botões que a lista tinha ficam no rodapé do tile. Sem imagem (o
+    catálogo não a tem, ou o `fetch` falhou) fica o NOME no quadrado — nunca
+    um buraco. 3 colunas a 400 px, mais em ecrã largo; a checkbox tem 28 px. */
+ .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));
+   gap:8px;margin:8px 0;padding:0;list-style:none}
+ .tiles.big{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+ .tl{display:flex;flex-direction:column;gap:3px;min-width:0;position:relative;
+   background:var(--card);border:1px solid var(--line);border-radius:10px;
+   padding:5px;font-size:11.5px;color:var(--ink2);margin:0;cursor:default}
+ label.tl{cursor:pointer}
+ .tl .tli{position:relative;display:block;aspect-ratio:.716;border-radius:7px;
+   overflow:hidden;background:#0c0f14;cursor:pointer}
+ .tl .tli img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+   display:block;z-index:1}
+ .tl .tlnm{position:absolute;inset:0;display:flex;align-items:center;
+   justify-content:center;text-align:center;padding:8px;font-size:11px;
+   font-weight:700;color:var(--muted);line-height:1.3;overflow-wrap:anywhere}
+ .tl .tlq{position:absolute;left:4px;bottom:4px;z-index:2;background:#000d;
+   color:#fff;font-weight:800;font-size:12px;padding:1px 6px;border-radius:6px;
+   font-variant-numeric:tabular-nums}
+ .tl .tlm{position:absolute;right:4px;bottom:4px;z-index:2;display:flex;gap:2px;
+   flex-wrap:wrap;justify-content:flex-end;max-width:70%}
+ .tl .tlm span{background:#000d;color:#ffd27a;font-size:9.5px;font-weight:800;
+   padding:1px 4px;border-radius:5px;white-space:nowrap}
+ .tl .tlr{position:absolute;left:4px;top:4px;z-index:2;background:#000d;
+   color:#fff;font-size:9.5px;font-weight:800;padding:1px 5px;border-radius:5px;
+   max-width:calc(100% - 8px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .tl .tlt{font-weight:700;line-height:1.25;overflow-wrap:anywhere;display:-webkit-box;
+   -webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--ink)}
+ .tl .tlx{color:var(--muted);font-size:10.5px;line-height:1.3;overflow-wrap:anywhere}
+ .tl .tlx b{color:var(--gold);font-variant-numeric:tabular-nums}
+ .tl .tlx .parcn{color:#e2a15b}
+ .tl .tla{display:flex;flex-wrap:wrap;gap:4px;margin-top:auto;align-items:center}
+ .tl .tla .stp{margin:0} .tl .tla .jat{margin:0}
+ .tl .tla select.jed{max-width:100%}
+ .tl input.tlck{position:absolute;top:4px;right:4px;z-index:3;width:28px;height:28px;
+   margin:0;accent-color:var(--add);cursor:pointer}
+ .tl.feito .tli{opacity:.45} .tl.feito .tlt{text-decoration:line-through;opacity:.6}
+ /* os estados: a moldura da imagem diz o mesmo que a grelha de sempre */
+ .tl.have .tli,.tl.ok .tli{box-shadow:0 0 0 2px var(--add)} .tl.have .tlr,.tl.ok .tlr{color:var(--add)}
+ .tl.miss .tli{box-shadow:0 0 0 2px var(--warn)} .tl.miss .tli img{filter:grayscale(.75) brightness(.55)}
+ .tl.miss .tlr{color:#ff9f8f}
+ .tl.sub .tli,.tl.rev .tli,.tl.res .tli{box-shadow:0 0 0 2px var(--gold)}
+ .tl.sub .tli img{filter:grayscale(.35) brightness(.7)} .tl.sub .tlr,.tl.rev .tlr,.tl.res .tlr{color:var(--gold)}
+ .tl.enc .tli{box-shadow:0 0 0 2px #7fa8ff} .tl.enc .tlr{color:#7fa8ff} .tl.enc{border-style:dashed}
+ .tl.pfoto .tli{box-shadow:0 0 0 2px var(--add)} .tl.pfoto .tlr{color:var(--add)} .tl.pfoto{border-style:dashed}
+ .tl.corr .tli{box-shadow:0 0 0 2px #ff9f6b} .tl.corr .tlr{color:#ff9f6b}
+ .tl.base{border-style:dotted}
+ .tl.nao .tli{opacity:.35} .tl.nao .tlt{text-decoration:line-through;opacity:.6}
+ .tl.parc{border-left:3px solid #e2a15b}
+ .tl.aviso{border-color:var(--warn)}
+ .tl .rl{margin-left:3px}
+ #v-compras ul.fl.tiles{column-width:auto}
+ .seg .vista{margin-left:auto}
+ @media(max-width:640px){
+   .tiles{grid-template-columns:repeat(3,1fr);gap:6px}
+   .tiles.big{grid-template-columns:repeat(2,1fr)}
+   .tl{padding:4px;font-size:11px}
+   .tl input.tlck{width:32px;height:32px}
+   .tl .tla .btn.sm{min-height:36px;flex:1 1 auto;text-align:center}
+ }
  /* O `hidden` tem de ganhar ao `display:flex` das classes: sem o `!important`
     uma linha `.mv` escondida pela procura continuava à vista. */
  [hidden]{display:none!important}
@@ -1812,6 +1953,163 @@ function erro(txt) { toast(txt, 7000); }
 function tocarCarta(el) {
   const t = el.getAttribute ? el.getAttribute('title') : el.title;
   if (t) toast(t, 5000);
+}
+
+/* ------------------------------------------------ AS CARTAS EM IMAGEM
+   André, 2026-09-20, à letra: *"cada deck poderia ter as cartas visualmente ao
+   invés de só o nome?"* — e a regra geral dele, de 16/09: *"gosto de ter em
+   imagem da carta e não apenas texto, faz algo visualmente apelativo"*.
+
+   UMA componente (`tileHTML`) para todas as secções que até aqui eram texto:
+   o passo 1 do painel Montar, as básicas, as destinadas a outra caixa, a
+   wantlist e a aba Comprar, a Reserva, a Revalidação, as Encomendas, a aba
+   Vender (e a estante), a Feira e o Arrumar. A imagem é a da IMPRESSÃO EXACTA
+   que ele tem (`sid` da cópia, do Python); para o que falta, a da impressão
+   mais barata — a que o preço ao lado já usa. A informação vai EM CIMA da
+   imagem, não escondida no `title`: quantidade, estado (moldura + chip),
+   material (✨, PT, edição) e o preço quando é compra. Os botões que a lista
+   tinha (`+`/`−`, «Chegou», a checkbox do passo 1, «levo», «vendida») ficam no
+   rodapé do tile com os MESMOS `data-*` — o `ligar()` não sabe se está a olhar
+   para uma linha ou para um tile. Toque na imagem = os detalhes (`tocarCarta`).
+
+   Sem imagem (o catálogo não a tem, ou o `fetch` falhou — `onerror` tira o
+   `<img>`) fica o NOME no quadrado. Nunca um buraco.
+
+   O interruptor «Imagens / Lista» fica no aparelho (`P.imagens`); sem ele
+   escrito vale o config (`D.vista`, `colecao_config.json → deckboxes.vista`),
+   que é o que o modo edição grava (`api/vista`). Em «Lista» cada secção
+   desenha exactamente o que desenhava antes de 20/09. */
+let imagens = (P.imagens === undefined || P.imagens === null) ? null : !!P.imagens;
+const comImagens = () => (imagens === null ? (D.vista !== 'lista') : imagens);
+
+/* O `<img>` de um tile: `small` do Scryfall (146×204), `lazy` e com o tamanho
+   escrito para a grelha não saltar enquanto carrega. `alt` vazio de propósito
+   — o nome está por baixo, e o leitor de ecrã lia-o duas vezes. */
+function tileImg(sid) {
+  return sid ? `<img loading="lazy" decoding="async" src="${art(sid)}" alt="" `
+    + `width="146" height="204" onerror="this.remove()">` : '';
+}
+
+/* `t`: {nm, sid, q, est, rot, mat[], pz, nota, tit, check{id,feito}, acts,
+   attrs, cls, tag, rl, chips}. Com `check` o tile é um `<label>` com a
+   checkbox (28 px, canto superior direito) e leva `data-id` — é o que o
+   `ligar()` procura, tal como numa linha `.mv`. */
+function tileHTML(t) {
+  const tag = t.check ? 'label' : (t.tag || 'div');
+  const cls = ['tl', t.est || '', t.cls || '', t.check && t.check.feito ? 'feito' : '']
+    .filter(Boolean).join(' ');
+  const tit = t.tit || t.nm;
+  const toque = t.check ? '' : ` onclick="tocarCarta(this)" tabindex="0"`;
+  return `<${tag} class="${cls}" data-nm="${esc(t.nm)}"`
+    + (t.check ? ` data-id="${esc(t.check.id)}"` : '')
+    + (t.attrs ? ' ' + t.attrs : '') + `>`
+    + `<span class="tli" title="${esc(tit)}"${toque}>`
+    + tileImg(t.sid) + `<b class="tlnm">${esc(t.nm)}</b>`
+    + (t.rot ? `<span class="tlr">${t.rot}</span>` : '')
+    + (t.q ? `<span class="tlq">${esc(t.q)}</span>` : '')
+    + ((t.mat || []).filter(Boolean).length
+       ? `<span class="tlm">${t.mat.filter(Boolean).map(m => `<span>${esc(m)}</span>`).join('')}</span>` : '')
+    + (t.check ? `<input class="tlck" type="checkbox"${t.check.feito ? ' checked' : ''}>` : '')
+    + `</span>`
+    + `<span class="tlt">${esc(t.nm)}${t.rl ? ' <span class="rl">RL</span>' : ''}${t.chips || ''}</span>`
+    + (t.nota || t.pz ? `<span class="tlx">${t.nota || ''}${t.nota && t.pz ? ' · ' : ''}`
+       + (t.pz ? `<b>${esc(t.pz)}</b>` : '') + `</span>` : '')
+    + (t.acts ? `<span class="tla">${t.acts}</span>` : '')
+    + `</${tag}>`;
+}
+
+/* A mesma informação numa LINHA (o modo «Lista» das secções que antes de
+   20/09 já eram imagem: a grelha da caixa, as Encomendas, as Sugestões). */
+function linhaHTML(t) {
+  const tag = t.check ? 'label' : 'div';
+  return `<${tag} class="mv ${t.est || ''}${t.check && t.check.feito ? ' feito' : ''}${t.cls ? ' ' + t.cls : ''}"`
+    + ` data-nm="${esc(t.nm)}"${t.check ? ` data-id="${esc(t.check.id)}"` : ''}`
+    + (t.attrs ? ' ' + t.attrs : '') + `>`
+    + (t.check ? `<input type="checkbox"${t.check.feito ? ' checked' : ''}>` : '')
+    + (t.q ? `<span class="q">${esc(t.q)}</span>` : '')
+    + `<span class="nm">${esc(t.nm)}${t.rl ? ' <span class="rl">RL</span>' : ''}${t.chips || ''}`
+    + `<small>${(t.mat || []).filter(Boolean).map(esc).join(' ')}${t.nota ? ' · ' + t.nota : ''}`
+    + (t.pz ? ` · <b>${esc(t.pz)}</b>` : '') + `</small></span>`
+    + (t.rot ? `<span class="to">${t.rot}</span>` : '')
+    + (t.acts ? `<span class="to">${t.acts}</span>` : '')
+    + `</${tag}>`;
+}
+
+/* Uma grelha de tiles — ou, em «Lista», as linhas. `tag` é o elemento do
+   contentor (`ul` para a wantlist, que o `encAjustar` procura pelo `li`). */
+function grelhaHTML(itens, opts) {
+  const o = opts || {};
+  if (!itens.length) return '';
+  if (!comImagens()) {
+    return `<div class="mvs${o.cls ? ' ' + o.cls : ''}">${itens.map(linhaHTML).join('')}</div>`;
+  }
+  const tag = o.tag || 'div';
+  /* AS GRELHAS GRANDES VÊM AOS POUCOS (2026-09-20): a lista de venda são 300+
+     cópias e a Colecção por revalidar 600+ — 300 KB de HTML de uma vez é o que
+     faz um telemóvel hesitar. Acima de `max` desenham-se as primeiras e um
+     botão «mostrar as outras N» (`data-mais`), que abre ESTA grelha. Só nas
+     abas sem procura: na aba da caixa a procura filtra o que está desenhado,
+     e um tile por desenhar era uma carta que ela não achava. */
+  const chave = `${aba}|${grelhaN++}`;
+  let mostra = itens;
+  if (o.max && !GRELHAS_ABERTAS.has(chave)) {
+    /* O tecto é por ABA e não por grelha: a estante da venda são 20 grelhas
+       pequenas (por sítio e por cor) que juntas passam de 300 tiles. */
+    mostra = itens.slice(0, Math.max(0, Math.min(o.max, ORCAMENTO_TILES - tilesDesenhados)));
+  }
+  tilesDesenhados += mostra.length;
+  const resto = itens.length - mostra.length;
+  return (mostra.length
+    ? `<${tag} class="tiles${grande ? ' big' : ''}${o.cls ? ' ' + o.cls : ''}">`
+      + mostra.map(tileHTML).join('') + `</${tag}>` : '')
+    + (!resto ? '' : `<div class="seg"><button class="btn" data-mais="${esc(chave)}">`
+       + `⬇ mostrar ${mostra.length ? 'as outras ' : ''}${car(resto)}</button></div>`);
+}
+let grelhaN = 0, tilesDesenhados = 0;   /* repostos a zero em cada `render()` */
+const GRELHAS_ABERTAS = new Set();
+const MAX_TILES = 60;                   /* por grelha, nas abas sem procura */
+const ORCAMENTO_TILES = 150;            /* por aba, nas grelhas com `max` */
+
+/* Por COR, como o binder (o passo 1, a revalidação): um cabeçalho e uma
+   grelha por cor. `f` transforma cada linha num `t`. */
+function grelhaPorCor(linhas, f, opts) {
+  let h = '', cor = null, grupo = [];
+  const fecha = () => { if (grupo.length) h += grelhaHTML(grupo, opts); grupo = []; };
+  for (const l of linhas) {
+    if (l.cor !== cor) {
+      fecha(); cor = l.cor;
+      h += `<div class="corhdr">${esc(l.cor_nome)}</div>`;
+    }
+    grupo.push(f(l));
+  }
+  fecha();
+  return h;
+}
+
+/* O material de uma cópia em chips curtos: edição, ✨ se foil, língua. */
+const matDe = (m) => [m.set || '', m.foil ? '✨' : '', m.lang || ''];
+
+/* O interruptor «Imagens / Lista». Fica no topo de cada aba que tem cartas.
+   Grava no aparelho e, no modo edição, no config (`api/vista`) — é uma
+   preferência dele, e no telemóvel e no PC tem de ser a mesma. */
+function vistaSwitchHTML() {
+  const im = comImagens();
+  return `<div class="seg" role="group" aria-label="Como mostrar as cartas">`
+    + `<button class="${im ? 'on' : ''}" data-vista="imagens" aria-pressed="${im}">🖼️ Imagens</button>`
+    + `<button class="${im ? '' : 'on'}" data-vista="lista" aria-pressed="${!im}">☰ Lista</button></div>`;
+}
+
+async function mudarVista(v) {
+  imagens = v === 'imagens';
+  P.imagens = imagens; save();
+  render();
+  if (!D.editable) return;
+  try {
+    const r = await gravar('api/vista', { vista: v });
+    const j = await r.json();
+    if (j.erro) throw new Error(j.erro);
+    D.vista = v;
+  } catch (e) { erro('A vista ficou neste aparelho, mas não gravei no config: ' + e.message); }
 }
 
 /* ---------------------------------------------------------------- cabeçalho */
@@ -2010,21 +2308,34 @@ function cardTile(c) {
     c.col ? `na colecção inteira: ${c.col}` : '',
     c.so_de.length ? 'só da variante ' + c.so_de.join('/') : ''
   ].filter(Boolean).join(' — ');
-  const q = c.need > 1 || c.est !== 'have'
-    ? `<span class="cq">${c.got}/${c.need}</span>` : '';
-  /* `data-nm` é o que a procura lê; o `onclick` é o `title` ao toque, porque no
-     telemóvel não há hover (ver `tocarCarta`). `tabindex` para chegar lá com o
-     teclado, pela mesma razão. */
-  return `<div class="cd ${c.est}" title="${esc(tit)}" data-nm="${esc(c.nm)}" `
-    + `onclick="tocarCarta(this)" tabindex="0">`
-    + (c.sid ? `<img loading="lazy" src="${art(c.sid)}" alt="${esc(c.nm)}">` : '')
-    + q + (c.cf ? '<span class="cf">⚔</span>' : '')
-    + (selo ? `<span class="onde">${esc(selo)}</span>` : '')
-    /* O selo da revalidação no canto: 📷 enquanto houver cópias por fotografar
-       nesta caixa, ⚠ se alguma foi corrigida pela foto. Só com campanha. */
-    + (c.rev && c.rev.foto ? `<span class="rvb foto">📷${c.rev.foto}</span>`
-       : c.rev && c.rev.corr ? `<span class="rvb corr">⚠</span>` : '')
-    + '</div>';
+  /* AS CARTAS EM IMAGEM (2026-09-20): o mesmo tile de todas as secções. O
+     estado vai no chip de cima (na caixa / tens, não aqui / comprar N), a
+     quantidade em baixo à esquerda, o material da cópia que a alocação deu a
+     esta caixa em baixo à direita, e o preço quando é compra. Em «Lista» é
+     uma linha por carta. `data-nm` é o que a procura lê. */
+  const lote = c.lotes[0] || {};
+  const enc = [c.acam ? `${c.acam} a caminho` : '',
+               c.pfoto ? `${c.pfoto} p/ foto` : ''].filter(Boolean).join(' · ');
+  const rot = c.est === 'have' ? (c.rev && c.rev.foto ? `📷 ${c.rev.foto} por fotografar` : '✓ tens')
+    : c.est === 'sub' ? (selo || 'tens, não serve')
+    : c.comprar ? `🛒 comprar ${c.comprar}`
+    : c.bloq ? '🔒 não se compra'
+    /* toda encomendada (2026-09-19): não é compra, é a caminho / p/ foto */
+    : c.pfoto ? '📷 pendente de foto' : c.acam ? '🚚 a caminho' : 'falta';
+  const t = {
+    nm: c.nm, sid: c.sid, est: c.est, tit,
+    q: c.need > 1 || c.est !== 'have' ? `${c.got}/${c.need}` : '',
+    rot: esc(rot),
+    mat: c.est === 'miss' ? [] : matDe({ set: lote.set, foil: lote.foil,
+                                         lang: (lote.lang || '').toUpperCase() }),
+    pz: c.est === 'miss' && c.cost ? eur(c.cost) : '',
+    nota: [c.board === 'side' ? '<span class="sb">SB</span>' : '',
+           enc ? `📦 ${esc(enc)}` : '',
+           c.nota ? esc(c.nota) : '',
+           c.rev && c.rev.corr ? '⚠ corrigida pela foto' : ''].filter(Boolean).join(' · '),
+    chips: (c.cf ? ' <span class="cf" style="position:static;display:inline-block">⚔</span>' : ''),
+  };
+  return comImagens() ? tileHTML(t) : linhaHTML(t);
 }
 
 /* ------------------------------------------------ REVALIDAÇÃO POR FOTO
@@ -2055,9 +2366,29 @@ function revBarra(g, compacta) {
 
 /* Uma cópia por linha, por cor (como o binder), com o estado. É a lista «Na
    caixa» que ele pediu: o que já mostra, mais o que falta fotografar. */
-function revLinhas(linhas, semLocal) {
+function revLinhas(linhas, semLocal, max) {
   const ls = linhas;
   if (!ls.length) return '';
+  /* EM IMAGEM (2026-09-20): um tile por cópia, por cor — a impressão exacta
+     que a foto tem de mostrar, com o estado no chip (📷 por fotografar / ✓
+     validada / ⚠ corrigida) e o `#copy_id` por baixo. */
+  if (comImagens()) {
+    return grelhaPorCor(ls, l => {
+      const [ico, txt] = REV_ESTADO[l.estado] || REV_ESTADO.foto;
+      return {
+        nm: l.nm, sid: l.sid, q: `×${l.q}`, rl: !!l.rl,
+        est: l.estado === 'foto' ? 'rev' : l.estado === 'corr' ? 'corr' : 'ok',
+        rot: `${ico} ${esc(txt)}${l.estado !== 'foto' && l.validado_em ? ' ' + esc(l.validado_em) : ''}`,
+        mat: [`${l.set}${l.num ? ' #' + l.num : ''}`, l.foil ? '✨' : '', l.lang],
+        nota: `#${l.copy_id}${l.local && !semLocal ? ' · ' + esc(l.local) : ''}`
+          + (l.nota ? ` · <span class="parcn">${esc(l.nota)}</span>` : ''),
+        attrs: `data-copy="${l.copy_id}"`,
+        tit: `${l.nm} — ${l.q}× ${l.set}${l.num ? ' #' + l.num : ''} ${l.lang}${l.foil ? ' foil' : ''}`
+          + ` · #${l.copy_id}${l.local && !semLocal ? ' · ' + l.local : ''} — ${ico} ${txt}`
+          + (l.validado_em ? ' ' + l.validado_em : '') + (l.nota ? ` — ${l.nota}` : ''),
+      };
+    }, { max });
+  }
   let h = '<div class="mvs">', cor = null;
   for (const l of ls) {
     if (l.cor !== cor) { cor = l.cor; h += `<div class="corhdr">${esc(l.cor_nome)}</div>`; }
@@ -2155,7 +2486,7 @@ function vistaRevalidacao() {
     `<details class="vblk rev"${g.por_revalidar && R.alvo && R.alvo.tipo === tipo ? ' open' : ''}>`
     + `<summary><span>${tit}</span><span class="vtot">${g.validadas}/${g.q} validadas</span></summary>`
     + `<p class="lead">${lead}</p>` + revBarra(g) + revBotao(tipo, null, g.nome, g)
-    + revLinhas(g.linhas || []) + `</details>`;
+    + revLinhas(g.linhas || [], false, MAX_TILES) + `</details>`;
   h += grupo('venda', R.venda, '💰 Venda', 'O que vai vender vai com foto: estas são as '
       + 'cópias da lista de venda de hoje (aba <b>Vender</b>, que também as marca).')
     + grupo('rl', R.rl, '🔒 Caixa Reserved List', 'A Caixa RL, fora das caixas de deck e da venda.')
@@ -2163,7 +2494,7 @@ function vistaRevalidacao() {
       + 'na venda nem na Caixa RL — no fim, quando as caixas estiverem feitas.');
   const lista = (tit, ls, vazio) => `<details class="vblk rev"><summary><span>${tit}</span>`
     + `<span class="vtot">${cop(ls.reduce((s, l) => s + l.q, 0))}</span></summary>`
-    + (ls.length ? revLinhas(ls) : `<p class="ok2">${vazio}</p>`) + `</details>`;
+    + (ls.length ? revLinhas(ls, false, MAX_TILES) : `<p class="ok2">${vazio}</p>`) + `</details>`;
   h += lista('📥 Entrou hoje', R.hoje_entradas || [], 'Nada validado hoje.')
     + lista('⚠ Corrigidas pela foto', R.corrigidas || [],
             'Nenhuma discrepância até agora.')
@@ -2365,9 +2696,25 @@ function montarHTML(c) {
        dentro de cada um a ordem é a do binder: cor e depois nome. A carta que
        joga nos dois vem nos dois — são duas pilhas, não uma linha repetida. */
     for (const b of (M.blocos || [])) {
-      let cor = null;
       h += `<div class="bhdr">${esc(b.titulo)}`
-        + `<span>${b.q}${b.de ? ' de ' + b.de : ''}</span></div><div class="mvs">`;
+        + `<span>${b.q}${b.de ? ' de ' + b.de : ''}</span></div>`;
+      /* EM IMAGEM (2026-09-20): um tile por cópia a tirar, com a checkbox
+         grande no canto — o mesmo `data-id` (`vistoId`) da linha, por isso a
+         barra conta na mesma. Em «Lista» é a linha de sempre. */
+      if (comImagens()) {
+        h += grelhaPorCor(b.movs, m => ({
+          nm: m.nm, sid: m.sid, est: 'have', q: `×${m.q}`,
+          rot: m.parcial ? `<span class="parcn">${esc(m.nota)}</span>` : 'tirar',
+          mat: matDe(m), nota: `de ${esc(m.de)}`,
+          cls: m.parcial ? 'parc' : '',
+          check: { id: vistoId('mt', c.slot, m), feito: !!P.feitos[vistoId('mt', c.slot, m)] },
+          tit: `${m.nm} — ${m.q}× ${m.set} ${m.lang}${m.foil ? ' foil' : ''} — de ${m.de}`
+            + (m.nota ? ` — ${m.nota}` : ''),
+        }));
+        continue;
+      }
+      let cor = null;
+      h += `<div class="mvs">`;
       for (const m of b.movs) {
         if (m.cor !== cor) {
           cor = m.cor;
@@ -2754,6 +3101,16 @@ function deOutraHTML(M) {
     if (bs.length > 1) {
       h += `<div class="bhdr">${esc(b.titulo)}<span>${b.q}</span></div>`;
     }
+    if (comImagens()) {
+      h += grelhaHTML(b.movs.map(m => ({
+        nm: m.nm, sid: m.sid, est: 'sub', q: `×${m.q}`, rot: `era p/ ${esc(m.destino)}`,
+        mat: matDe(m), nota: `de ${esc(m.de)}`,
+        attrs: `data-copy="${m.copy_id}" data-q="${m.q}"`,
+        check: { id: vistoId('mo', M.slot, m), feito: !!P.feitos[vistoId('mo', M.slot, m)] },
+        tit: `${m.nm} — ${m.q}× ${m.set} ${m.lang} — de ${m.de} · destinada a ${m.destino}`,
+      })));
+      continue;
+    }
     h += `<div class="mvs">`;
     for (const m of b.movs) {
       const id = vistoId('mo', M.slot, m);
@@ -2782,14 +3139,24 @@ function jaNaCaixaHTML(M) {
   if (!ms.length) return '';
   let h = `<div class="jnc"><div class="flh">✓ Já na caixa (disseste que tinhas)`
     + `<span class="dim">${cop(M.copias_por_confirmar)} · edição por `
-    + `confirmar</span></div><div class="mvs">`;
-  for (const m of ms) {
-    h += `<div class="mv feito" data-nm="${esc(m.nm)}"><span class="q">${m.q}×</span>`
-      + `<span class="nm">${esc(m.nm)}<small>${esc(m.set)}`
-      + `${m.foil ? ' ✨' : ''} ${esc(m.lang)}</small></span>`
-      + `<span class="to">📷 edição por confirmar</span></div>`;
+    + `confirmar</span></div>`;
+  if (comImagens()) {
+    h += grelhaHTML(ms.map(m => ({
+      nm: m.nm, sid: m.sid, est: 'have', q: `×${m.q}`, rot: '📷 edição por confirmar',
+      mat: matDe(m), cls: 'feito',
+      tit: `${m.nm} — ${m.q}× ${m.set} ${m.lang} — na caixa, edição por confirmar`,
+    })));
+  } else {
+    h += `<div class="mvs">`;
+    for (const m of ms) {
+      h += `<div class="mv feito" data-nm="${esc(m.nm)}"><span class="q">${m.q}×</span>`
+        + `<span class="nm">${esc(m.nm)}<small>${esc(m.set)}`
+        + `${m.foil ? ' ✨' : ''} ${esc(m.lang)}</small></span>`
+        + `<span class="to">📷 edição por confirmar</span></div>`;
+    }
+    h += `</div>`;
   }
-  return h + `</div><p class="nota">A próxima foto destas cartas em `
+  return h + `<p class="nota">A próxima foto destas cartas em `
     + `<code>pendentes\\</code> acerta a edição desta mesma cópia — não cria `
     + `outra.</p></div>`;
 }
@@ -2807,15 +3174,28 @@ function basicasHTML(M) {
     + `<span class="dim">${cop(M.basicas_copias)}</span></div><ul class="bl">`;
   for (const b of M.basicas) {
     const det = [];
-    for (const m of b.tirar) {
-      const id = vistoId('bs', M.slot, m, b.nm);
-      const feito = !!P.feitos[id];
-      det.push(`<label class="mv${feito ? ' feito' : ''}" data-id="${esc(id)}">`
-        + `<input type="checkbox"${feito ? ' checked' : ''}>`
-        + `<span class="q">${m.q}×</span>`
-        + `<span class="nm">${esc(b.nm)}<small>${esc(m.set)}`
-        + `${m.foil ? ' ✨' : ''} ${esc(m.lang)}</small></span>`
-        + `<span class="to">de ${esc(m.de)}</span></label>`);
+    /* EM IMAGEM (2026-09-20): as cópias registadas a tirar são tiles com a
+       checkbox — o mesmo `vistoId('bs', …)`; as linhas de texto (já na caixa,
+       a granel, a comprar) ficam por baixo, porque não têm cópia para mostrar. */
+    if (comImagens() && b.tirar.length) {
+      det.push(grelhaHTML(b.tirar.map(m => ({
+        nm: b.nm, sid: m.sid, est: 'have', q: `×${m.q}`, rot: 'tirar',
+        mat: matDe(m), nota: `de ${esc(m.de)}`,
+        check: { id: vistoId('bs', M.slot, m, b.nm),
+                 feito: !!P.feitos[vistoId('bs', M.slot, m, b.nm)] },
+        tit: `${b.nm} — ${m.q}× ${m.set} ${m.lang}${m.foil ? ' foil' : ''} — de ${m.de}`,
+      }))));
+    } else {
+      for (const m of b.tirar) {
+        const id = vistoId('bs', M.slot, m, b.nm);
+        const feito = !!P.feitos[id];
+        det.push(`<label class="mv${feito ? ' feito' : ''}" data-id="${esc(id)}">`
+          + `<input type="checkbox"${feito ? ' checked' : ''}>`
+          + `<span class="q">${m.q}×</span>`
+          + `<span class="nm">${esc(b.nm)}<small>${esc(m.set)}`
+          + `${m.foil ? ' ✨' : ''} ${esc(m.lang)}</small></span>`
+          + `<span class="to">de ${esc(m.de)}</span></label>`);
+      }
     }
     if (b.ja > 0) det.push(`<span class="bt ok2">✓ ${b.ja} já na caixa</span>`);
     if (b.granel) det.push(`<span class="bt">${b.granel}× das tuas básicas `
@@ -3001,6 +3381,31 @@ function wantlistHTML(itens, marca, id, detalhe, basicas, edicao, slot) {
        toda encomendada fica com `0×` — continua aqui para ele poder voltar
        atrás, e sai do texto copiado. */
     const enc = (m.acam || 0) + (m.pfoto || 0);
+    /* EM IMAGEM (2026-09-20): um tile por compra — a impressão mais barata no
+       acabamento pedido, o «comprar N» no chip, o material da caixa, o preço,
+       e os botões de sempre (`já a tenho`, `+`/`−`/«Chegou») no rodapé. É um
+       `<li>` na mesma: o `encAjustar` procura o selector de edição pelo `li`. */
+    if (comImagens()) {
+      const rot = m.q > 0 ? `🛒 comprar ${m.q}` : m.pfoto ? '📷 pendente de foto' : '🚚 a caminho';
+      const est = m.q > 0 ? 'miss' : m.pfoto ? 'pfoto' : 'enc';
+      return tileHTML({
+        nm: m.nm, sid: m.sid, est, tag: 'li', q: `×${m.q}`, rot: esc(rot),
+        cls: enc ? 'enc-l' : '',
+        mat: [detalhe ? (m.req || '') : (m.sfoil ? (m.req || '') : (m.mat || ''))]
+          .filter(Boolean).join(' ').split(' · '),
+        pz: m.q > 0 ? eur(m.cost) + (m.unit && m.q > 1 ? ` (${eur(m.unit)}/un)` : '') : '',
+        chips: (m.board === 'side' ? `<span class="sb">SB</span>` : '')
+          + (cara ? `<span class="cara">💶 cara</span>` : '')
+          + (m.partilhada ? `<span class="part">🔁 ${m.partilhada} caixas</span>` : ''),
+        nota: [m.nota ? esc(m.nota) : '',
+               detalhe && compra.length ? 'para: ' + esc(compra.map(p => `${p.caixa} ${p.q}×`).join(' · ')) : '',
+               detalhe && serve.length ? 'serve também: ' + esc(serve.map(p => p.caixa).join(', ')) : '',
+               enc ? encTexto(m) : ''].filter(Boolean).join(' · '),
+        acts: (m.q > 0 ? jaTenhoHTML(m, slot) : '') + encBotoes(slot, m.nm, m, m.board),
+        tit: [m.nm, `comprar ${m.q}`, m.req || m.mat || '', sub, enc ? encTexto(m).replace(/<[^>]+>/g, '') : '']
+          .filter(Boolean).join(' — '),
+      });
+    }
     return `<li data-nm="${esc(m.nm)}"${enc ? ' class="enc-l"' : ''}>`
       + `<b>${m.q}×</b><span class="wn">${esc(m.nm)}`
       + (m.board === 'side' ? `<span class="sb">SB</span>` : '')
@@ -3064,7 +3469,7 @@ function wantlistHTML(itens, marca, id, detalhe, basicas, edicao, slot) {
     + `<button class="cpbtn" onclick="copiar(this,'mat')" aria-label="Copiar as `
     + `${car(nComp)} com o material de cada uma">copiar com material`
     + `</button></div>`
-    + `<ul class="fl">${li}</ul>`
+    + `<ul class="fl${comImagens() ? ' tiles' + (grande ? ' big' : '') : ''}">${li}</ul>`
     + `<textarea class="cmk" data-cmk="cm" readonly>${esc(so)}</textarea>`
     + `<textarea class="cmk" data-cmk="mat" readonly>${esc(comMat)}</textarea></div>`;
 }
@@ -3151,8 +3556,9 @@ function caixaHTML(c, compacta) {
   /* A lista agrupada POR TIPO (criaturas primeiro, terras no fim) e com a
      imagem grande à escolha: as duas coisas vinham da página dos decks, e são o
      que faz esta lista servir para conferir a caixa carta a carta. */
-  const grelha = l => `<div class="cards${grande ? ' big' : ''}">`
-    + l.map(cardTile).join('') + `</div>`;
+  const grelha = l => (comImagens()
+    ? `<div class="tiles${grande ? ' big' : ''}">` + l.map(cardTile).join('') + `</div>`
+    : `<div class="mvs">` + l.map(cardTile).join('') + `</div>`);
   if (grupo === 'tipo') {
     for (const t of TIPOS) {
       const b = cartas.filter(x => x.tipo === t);
@@ -3323,11 +3729,29 @@ function reservaHTML(c) {
       + `</li>`;
   }).join('');
   const n = rows.reduce((a, r) => a + r.q, 0);
+  /* EM IMAGEM (2026-09-20): um tile por carta reservada — a cópia que ele tem
+     (verde se serve, âmbar se tem mas não serve, vermelho se não tem), com
+     onde cada cópia está por baixo e o ✕ no rodapé. */
+  const tiles = !rows.length ? '' : grelhaHTML(rows.map(r => ({
+    nm: r.nm, sid: r.sid, est: r.serve ? 'have' : r.q ? 'sub' : 'miss',
+    q: r.q ? `×${r.q}` : '', rot: r.serve ? '🛡️ reserva · serve' : r.q ? '🛡️ reserva · não serve' : '🛡️ reserva · não tens',
+    chips: r.na_lista ? ' <span class="chosen">na lista</span>' : '',
+    nota: r.lotes.length
+      ? r.lotes.map(l => `${l.q}× ${esc(l.set)} ${esc(l.lang)}${l.foil ? ' ✨' : ''} em ${esc(l.onde)}`
+          + (l.serve ? '' : ` <span class="rsv-no">(${esc(l.porque)})</span>`)).join(' · ')
+      : 'não tens nenhuma',
+    acts: D.editable ? `<button class="btn sm" data-reserva="tirar" data-slot="${S}" `
+      + `data-nome="${esc(r.nm)}" aria-label="Tirar ${esc(r.nm)} da reserva">✕ tirar</button>` : '',
+    tit: `${r.nm} — reserva — ` + (r.lotes.length
+      ? r.lotes.map(l => `${l.q}× ${l.set} ${l.lang}${l.foil ? ' foil' : ''} em ${l.onde}`
+          + (l.serve ? ' (serve)' : ` (não serve: ${l.porque})`)).join('; ')
+      : 'não tens nenhuma'),
+  })));
   return `<div class="blk reserva"><b>🛡️ Reserva (${rows.length}) — ${cop(n)} guardada${n === 1 ? '' : 's'}</b>`
     + `<p class="nota">Cartas que poderão entrar nesta caixa. As cópias ficam fora da `
     + `lista de venda e da exportação (bloco «guardar»), sirvam ou não a regra de `
     + `material — para não vender o que depois faz falta.</p>`
-    + (rows.length ? `<ul>${li}</ul>` : '')
+    + (rows.length ? (comImagens() ? tiles : `<ul>${li}</ul>`) : '')
     + (D.editable ? `<div class="pform"><input class="nm" id="reserva-nome-${S}" `
         + `placeholder="carta a reservar" aria-label="Nome da carta a pôr na reserva">`
         + `<button class="btn pri" data-reserva="add" data-slot="${S}">+ reservar</button></div>` : '')
@@ -3537,7 +3961,15 @@ const bloco = m => m.board === 'side' ? ` <span class="sb">SB</span>` : '';
 function actualizarHTML() {
   const acts = D.arrumar.actualizacoes || [];
   if (!acts.length) return '';
-  const lado = (movs, verbo, seta) => movs.map(m =>
+  const lado = (movs, verbo, seta) => comImagens()
+    ? grelhaHTML(movs.map(m => ({
+        nm: m.nm, sid: m.sid, est: verbo === 'tirar' ? 'sub' : 'have', q: `×${m.q}`,
+        rot: `${verbo} ${seta} ${esc(verbo === 'tirar' ? m.para : m.de)}`,
+        mat: [(m.set_code || '').toUpperCase(), m.foil ? '✨' : '', (m.lang || '').toUpperCase()],
+        chips: bloco(m),
+        tit: `${m.nm} — ${m.q}× — ${verbo} ${seta} ${verbo === 'tirar' ? m.para : m.de}`,
+      })))
+    : movs.map(m =>
     `<div class="mv"><span class="q">${m.q}×</span>`
     + `<span class="nm">${esc(m.nm)}${edicao(m)}${bloco(m)}</span>`
     + `<span class="to">${verbo} ${seta} ${esc(verbo === 'tirar' ? m.para : m.de)}`
@@ -3593,7 +4025,20 @@ function vistaArrumar() {
         if (bs.length > 1) {
           h += `<div class="bhdr">${esc(b.titulo)}<span>${cop(b.q)}</span></div>`;
         }
-        h += b.movs.map(m => linha(m, lado)).join('');
+        /* EM IMAGEM (2026-09-20): um tile por movimento com a checkbox — o
+           mesmo `data-id` da linha, por isso os vistos são os mesmos. */
+        h += comImagens()
+          ? grelhaHTML(b.movs.map(m => {
+              const id = `${m.copy_id}|${m.de}|${m.para}|${m.nm}`;
+              return {
+                nm: m.nm, sid: m.sid, est: lado === 'origem' ? 'sub' : 'have', q: `×${m.q}`,
+                rot: lado === 'origem' ? `→ ${esc(m.para)}` : `← ${esc(m.de)}`,
+                mat: [(m.set_code || '').toUpperCase(), m.foil ? '✨' : '', (m.lang || '').toUpperCase()],
+                chips: bloco(m), check: { id, feito: !!P.feitos[id] },
+                tit: `${m.nm} — ${m.q}× ${(m.set_code || '').toUpperCase()} — de ${m.de} para ${m.para}`,
+              };
+            }), { max: MAX_TILES })
+          : b.movs.map(m => linha(m, lado)).join('');
       }
       h += `</div>`;
     }
@@ -3736,33 +4181,43 @@ function vistaComprar() {
    encomendar, por caixa, com o «copiar»; (d) os totais. Os botões só no modo
    edição; a informação é a mesma no site publicado. */
 function encTile(t) {
-  const cls = t.na_base ? 'base' : t.q && t.acaminho ? 'caminho' : 'foto';
   const a = `data-id="${t.id || ''}" data-slot="${esc(t.slot || '')}" data-nm="${esc(t.nm)}"`;
-  let h = `<div class="enct ${cls}${t.aviso ? ' aviso' : ''}" data-nm="${esc(t.nm)}">`
-    + `<div class="cd" title="${esc(t.nm)}" onclick="tocarCarta(this)">`
-    + (t.sid ? `<img loading="lazy" decoding="async" src="${art(t.sid)}" alt="${esc(t.nm)}">` : '')
-    + `<span class="cq">${t.q}×</span></div>`
-    + `<div class="en">${esc(t.nm)}</div>`
-    + `<div class="ed">${esc(t.impressao)}`
-    + (t.caixa ? `<br>→ <b>${esc(t.caixa)}</b>` : '<br>→ colecção')
-    + (t.origem ? `<br>${esc(t.origem)}` : '')
-    + (t.na_base ? `<br>${t.por_confirmar ? '📷 edição por confirmar' : 'na base, sem foto'}`
-                 : t.unit != null ? `<br>${eur(t.unit)}/cópia` : '')
-    + `</div>`
-    + (t.aviso ? `<div class="ea">⚠️ ${esc(t.aviso)}</div>` : '');
+  let acts = '';
   if (D.editable && !t.na_base) {
     if (t.acaminho) {
-      h += `<span class="stp"><button class="btn sm" data-enc="-1" ${a}`
+      acts = `<span class="stp"><button class="btn sm" data-enc="-1" ${a}`
         + ` aria-label="menos uma de ${esc(t.nm)}">−</button>`
         + `<button class="btn sm" data-enc="1" ${a} aria-label="mais uma de ${esc(t.nm)}">+</button></span>`
         + `<button class="btn sm chg" data-chegou="1" ${a}>Chegou (${t.q})</button>`;
     } else {
-      h += `<span class="stp"><button class="btn sm" data-desfazer="1" ${a}`
+      acts = `<span class="stp"><button class="btn sm" data-desfazer="1" ${a}`
         + ` title="voltar a «a caminho»">↩ desfazer</button>`
         + `<button class="btn sm" data-enc="-1" ${a} title="tirar uma (afinal não tenho)">−</button></span>`;
     }
   }
-  return h + `</div>`;
+  /* O MESMO tile de todas as secções (2026-09-20): azul tracejado = a caminho
+     (não é uma cópia), verde tracejado = chegou e espera foto, pontilhado =
+     já na base, sem foto. */
+  const est = t.na_base ? 'base' : t.acaminho ? 'enc' : 'pfoto';
+  const rot = t.na_base ? (t.por_confirmar ? '📷 edição por confirmar' : 'na base, sem foto')
+    : t.acaminho ? '🚚 a caminho' : '📷 pendente de foto';
+  const dest = t.caixa ? `→ <b>${esc(t.caixa)}</b>` : '→ colecção';
+  const tile = {
+    nm: t.nm, sid: t.sid, est, q: `×${t.q}`, rot, cls: t.aviso ? 'aviso' : '',
+    mat: [t.set, t.foil ? '✨' : '', t.lang],
+    pz: !t.na_base && t.unit != null ? `${eur(t.unit)}/un` : '',
+    nota: `${esc(t.impressao)} · ${dest}` + (t.origem ? ` · ${esc(t.origem)}` : '')
+      + (t.aviso ? ` · <span class="ea">⚠️ ${esc(t.aviso)}</span>` : ''),
+    acts,
+    tit: `${t.nm} — ${t.q}× ${t.impressao} — ${rot} — ${t.caixa || 'colecção'}`
+      + (t.origem ? ` — ${t.origem}` : '') + (t.aviso ? ` — ⚠️ ${t.aviso}` : ''),
+  };
+  return tile;
+}
+
+/* O contentor dos tiles das encomendas — ou as linhas, em «Lista». */
+function encGrelha(lista) {
+  return grelhaHTML(lista.map(encTile), { max: MAX_TILES });
 }
 
 function vistaEncomendas() {
@@ -3808,7 +4263,7 @@ function vistaEncomendas() {
     for (const [caixa, lista] of porCaixa(pend)) {
       h += `<div class="enc-h"><span>${esc(caixa)}</span>`
         + `<span>${cop(lista.reduce((s, x) => s + x.q, 0))}</span></div>`
-        + `<div class="enc-grid">` + lista.map(encTile).join('') + `</div>`;
+        + encGrelha(lista);
     }
   }
   /* (b) a caminho -------------------------------------------------------- */
@@ -3825,7 +4280,7 @@ function vistaEncomendas() {
       h += `<div class="enc-h"><span>${esc(caixa)}</span><span>`
         + `${cop(lista.reduce((s, x) => s + x.q, 0))} · ${eur(lista.reduce((s, x) => s + (x.total || 0), 0))}`
         + (origens.length ? ` · ${esc(origens.join(', '))}` : '') + `</span></div>`
-        + `<div class="enc-grid">` + lista.map(encTile).join('') + `</div>`;
+        + encGrelha(lista);
     }
   }
   /* (c) falta encomendar ------------------------------------------------- */
@@ -3906,10 +4361,12 @@ function sugestaoHTML(c) {
     `<span class="bdg">${c.top ? '🔟 top de representação' : '🎯 top de combo'}`
       + `</span>`,
     `<span class="bdg">${c.n_lists} listas que contam</span>`].join('');
-  const grelha = c.cartas.map(m => `<div class="cd ${m.est}" title="${esc(m.nm)} — `
-    + `tens ${m.got}/${m.need}" onclick="tocarCarta(this)" tabindex="0">`
-    + (m.sid ? `<img loading="lazy" src="${art(m.sid)}" alt="${esc(m.nm)}">` : '')
-    + `<span class="cq">${m.got}/${m.need}</span></div>`).join('');
+  /* O mesmo tile das caixas (2026-09-20); em «Lista», uma linha por carta. */
+  const grelha = grelhaHTML(c.cartas.map(m => ({
+    nm: m.nm, sid: m.sid, est: m.est, q: `${m.got}/${m.need}`,
+    rot: m.est === 'have' ? '✓ tens' : m.est === 'sub' ? 'tens, noutra caixa' : `falta ${m.need - m.got}`,
+    tit: `${m.nm} — tens ${m.got}/${m.need}`,
+  })), { max: MAX_TILES });
   /* Os botões só no modo edição, como em todo o resto da página: no site
      publicado o endpoint não existe e um botão morto é pior que botão nenhum. */
   const acts = !D.editable || c.estado === 'caixa' ? '' :
@@ -3942,7 +4399,7 @@ function sugestaoHTML(c) {
     + `<div class="num buy">comprar<b>${c.comprar}</b></div>`
     + `<div class="num eur">fechar por<b>${eur(c.custo)}</b></div></div>`
     + `<div class="nota">${esc(c.subtitulo)}</div>`
-    + `<div class="cards">${grelha}</div>${acts}</div>`;
+    + grelha + `${acts}</div>`;
 }
 
 function vistaSugestoes() {
@@ -4002,6 +4459,31 @@ function vistaVender() {
   const so = l => ordena(l).map(r => `${r.q} ${r.nm}`).join('\n');
   const detalhe = l => ordena(l).map(r => `${r.q} ${r.nm} [${r.set}`
     + `${r.foil ? ' foil' : ' nonfoil'} ${(r.lang || '').toUpperCase()}]`).join('\n');
+  /* EM IMAGEM (2026-09-20): um tile por linha de venda — a impressão exacta
+     da cópia, o total no chip, o estado da foto na moldura (✓ verde / 📷
+     âmbar), o material, onde está e o porquê por baixo, e o «vendida» (dois
+     toques) no rodapé. Em «Lista» é a tabela de sempre. */
+  const tilesVenda = (linhas, semBotao) => grelhaHTML(linhas.map(r => {
+    const f = r.foto || null;
+    const est = !rev || !f ? 'venda' : !f.falta ? 'ok' : 'rev';
+    const foto = !rev || !f ? '' : !f.falta ? '✓ ' : !f.ok ? '📷 ' : `📷 ${f.ok}/${f.ok + f.falta} `;
+    return {
+      nm: r.nm, sid: r.sid, est, q: `×${r.q}`, rl: r.rl,
+      rot: `${foto}${esc(eur(r.total))}`,
+      mat: matDe({ set: r.set, foil: r.foil, lang: (r.lang || '').toUpperCase() }),
+      pz: r.q > 1 ? `${eur(r.unit)}/un` : '',
+      nota: `${esc(r.local)} · ${esc(r.reason)}`
+        + (r.rl_nota ? ` <b>${esc(r.rl_nota)}</b>` : '')
+        + (r.porque ? ` <i>(ia por: ${esc(r.porque)})</i>` : ''),
+      acts: D.editable && !semBotao
+        ? `<button class="btn sm" data-vend="${esc(r.chave)}" data-q="${r.q}" data-nm="${esc(r.nm)}" `
+          + `aria-label="Marcar ${r.q} ${esc(r.nm)} como vendida (dois toques)">vendida</button>` : '',
+      tit: `${r.nm} — ${r.q}× ${r.set} ${(r.lang || '').toUpperCase()}${r.foil ? ' foil' : ''} — ${r.local}`
+        + ` — ${eur(r.unit)}/un · ${eur(r.total)} — ${r.reason}${r.rl_nota ? ' ' + r.rl_nota : ''}`
+        + (r.porque ? ` (ia por: ${r.porque})` : '')
+        + (f && rev ? (f.falta ? ` — 📷 ${f.falta} por fotografar` : ' — ✓ validada') : ''),
+    };
+  }), { max: MAX_TILES });
   const bloco = (id, titulo, lead, b0, aberto, rotulo, semBotao) => {
    const b = filtra(b0);
    return !b.linhas.length ? '' :
@@ -4019,7 +4501,8 @@ function vistaVender() {
     + `<textarea class="cmk" data-cmk="cm" readonly>${esc(so(b.linhas))}</textarea>`
     + `<textarea class="cmk" data-cmk="mat" readonly>${esc(detalhe(b.linhas))}`
     + `</textarea>`
-    + `<table class="vt"><thead><tr><th></th>${rev ? '<th title="foto desta campanha">📷</th>' : ''}`
+    + (comImagens() ? tilesVenda(b.linhas, semBotao) + `</details>` :
+      `<table class="vt"><thead><tr><th></th>${rev ? '<th title="foto desta campanha">📷</th>' : ''}`
     + `<th>carta</th><th>onde está</th>`
     + `<th>edição</th><th>un.</th><th>total</th><th class="rz">porquê</th>`
     + (D.editable && !semBotao ? `<th></th>` : '') + `</tr></thead>`
@@ -4051,7 +4534,7 @@ function vistaVender() {
            + `aria-label="Marcar ${r.q} ${esc(r.nm)} como vendida (dois toques)">`
            + `vendida</button></td>` : '')
       + `</tr>`).join('')
-    + `</tbody></table></details>`;
+    + `</tbody></table></details>`);
   };
   const V = D.venda, R = D.rl_regra;
   /* O filtro «só validadas» (2026-09-20), à cabeça: é a pergunta *"o que já
@@ -4180,9 +4663,20 @@ function saidaHTML(S, so) {
   const est = (so ? S.estante_validadas : S.estante) || { grupos: [] };
   const copias = so ? (S.copias_validadas || 0) : S.copias;
   const rev = REV_ON();
+  /* EM IMAGEM (2026-09-20): a estante por sítio e por cor, em tiles — é a
+     lista para ir buscar as cartas, e a imagem é a da cópia exacta. */
   const grupoHTML = g => `<div class="estg"><h4>📍 ${esc(g.local)}`
     + `<span>${cop(g.copias)} · ${eur(g.total)}</span></h4>`
-    + g.linhas.map(l => `<div class="el${rev && !l.validada ? ' rvfoto' : ''}">`
+    + (comImagens() ? grelhaPorCor(g.linhas, l => ({
+        nm: l.nm, sid: l.sid, q: `×${l.q}`, rl: !!l.rl,
+        est: !rev ? 'venda' : l.validada ? 'ok' : 'rev',
+        rot: rev ? (l.validada ? `✓ ${esc(l.validada)}` : '📷 por fotografar') : esc(l.cond),
+        mat: [l.set, l.foil ? '✨' : '', (l.lang || '').toUpperCase(), l.cond],
+        pz: eur(l.unit),
+        tit: `${l.nm} — ${l.q}× ${l.set} ${(l.lang || '').toUpperCase()} ${l.foil ? 'foil' : 'nonfoil'} ${l.cond}`
+          + ` — ${eur(l.unit)}` + (rev ? (l.validada ? ` — ✓ ${l.validada}` : ' — 📷 por fotografar') : ''),
+      }), { max: MAX_TILES }) :
+    g.linhas.map(l => `<div class="el${rev && !l.validada ? ' rvfoto' : ''}">`
       + `<span class="c ${esc(l.cor)}" `
       + `title="${esc(l.cor_nome)}">${esc(l.cor)}</span>`
       + `<span class="q">${l.q}×</span><span class="nm">${esc(l.nm)}`
@@ -4191,7 +4685,7 @@ function saidaHTML(S, so) {
       + `${l.foil ? '✨ foil' : 'nonfoil'} · ${esc(l.cond)}`
       + (rev ? (l.validada ? ` · ✓ ${esc(l.validada)}` : ' · 📷 por fotografar') : '')
       + `</small></span>`
-      + `<span class="pz">${eur(l.unit)}</span></div>`).join('') + `</div>`;
+      + `<span class="pz">${eur(l.unit)}</span></div>`).join('')) + `</div>`;
   const foraHTML = f => !f.copias ? '' :
     `<details><summary>${esc(f.titulo)}<span>${cop(f.copias)} · ${eur(f.total)}`
     + `</span></summary><p>${esc(f.porque)}</p><ul>`
@@ -4403,6 +4897,34 @@ function feiraLevarHTML(F) {
     + `Levar">copiar lista Levar</button></div>`
     + `<textarea class="cmk" data-cmk="lv" readonly>${esc(F.texto_levar || '')}</textarea>`;
   if (!L.linhas.length) return h + `<p class="empty">Não há nada na lista de venda.</p></details>`;
+  /* EM IMAGEM (2026-09-20): um tile por impressão e sítio, por cor — a cópia
+     exacta, o que rende em troca no chip, o Trend e o «levo / não levo» no
+     rodapé; o que fica em casa (não levo) aparece apagado. */
+  const levoBtn = l => D.editable
+    ? `<button class="btn sm" data-feira="${l.levo ? 'nao-levo' : 'levo'}" data-chave="${esc(l.chave)}" `
+      + `aria-label="${l.levo ? 'Não levar' : 'Levar'} ${esc(l.nm)}">${l.levo ? '✕ não levo' : '✓ levo'}</button>` : '';
+  if (comImagens()) {
+    h += grelhaPorCor(L.linhas, l => ({
+      nm: l.nm, sid: l.sid, rl: !!l.rl,
+      q: l.leva_q !== l.q && l.levo ? `${l.leva_q}/${l.q}×` : `×${l.q}`,
+      est: !l.levo ? 'nao' : !rev ? 'venda' : !l.por_revalidar ? 'ok' : !l.validadas ? 'rev' : 'rev',
+      rot: !l.levo ? '✕ não levo'
+        : (rev ? (!l.por_revalidar ? '✓ ' : !l.validadas ? '📷 ' : `📷 ${l.validadas}/${l.q} `) : '')
+          + `🔁 ${esc(eur(l.troca))}`,
+      mat: [l.set, l.foil ? '✨' : '', (l.lang || '').toUpperCase(), l.cond || ''],
+      pz: `Trend ${eur(l.trend)}`,
+      nota: `${esc(l.local)} · 💶 ${esc(eur(l.dinheiro))}`,
+      acts: levoBtn(l), cls: l.levo ? '' : 'nao',
+      tit: `${l.nm} — ${l.q}× ${l.set} ${(l.lang || '').toUpperCase()}${l.foil ? ' foil' : ''} — ${l.local}`
+        + ` — Trend ${eur(l.unit)}/un · ${eur(l.trend)} — dinheiro ${eur(l.dinheiro)} · troca ${eur(l.troca)}`
+        + (l.levo ? '' : ' — não levo'),
+    }), { max: MAX_TILES });
+    if (L.nao_levo) {
+      h += `<p class="nota">Marcadas «não levo»: ${cop(L.nao_levo)} · ${eur(L.nao_levo_trend)} — ficam em casa.</p>`;
+    }
+    if (L.sem_preco) h += `<p class="nota">${cop(L.sem_preco)} sem preço na base: contam a zero.</p>`;
+    return h + `</details>`;
+  }
   h += `<table class="vt"><thead><tr><th></th>${rev ? '<th title="foto desta campanha">📷</th>' : ''}`
     + `<th>carta</th><th>edição</th><th>onde está</th><th>Trend/un</th><th>Trend</th>`
     + `<th>💶 ${pct(L.taxa_dinheiro)}</th><th>🔁 ${pct(L.taxa_troca)}</th>`
@@ -4482,11 +5004,43 @@ function feiraTrazerHTML(F) {
       + `<button class="btn sm" data-feira="wl-add">+ acrescentar</button></div>`;
   }
   if (!T.linhas.length) return h + `<p class="ok2">✓ Não falta nada às caixas e a wantlist está vazia.</p></details>`;
+  /* EM IMAGEM (2026-09-20): por caixa, um tile por carta a trazer — a
+     impressão mais barata, o mínimo no chip, o material, os vendors e as
+     notas por baixo, e o selector de vendor / «máx €» / «tirar» no rodapé. */
+  const actsTrazer = l => !D.editable ? '' :
+    (vends.length ? `<select class="feira-vend" data-nome="${esc(l.nm)}" aria-label="Vendor que pode ter ${esc(l.nm)}">`
+      + `<option value="">vendor…</option>${opcoes('')}</select>` : '')
+    + `<button class="btn sm" data-feira="max" data-nome="${esc(l.nm)}" data-slot="${esc(l.slot || '')}" `
+    + `data-q="${l.q}" data-lang="" data-finish="" aria-label="Fixar o preço máximo de ${esc(l.nm)}">máx €</button>`
+    + (l.origem !== 'caixa' ? `<button class="btn sm" data-feira="wl-tirar" data-nome="${esc(l.nm)}" `
+      + `data-slot="${esc(l.slot || '')}" aria-label="Tirar ${esc(l.nm)} da wantlist">✕ tirar</button>` : '');
   for (const c of T.por_caixa) {
     h += `<div class="box"><div class="btop"><b>${esc(c.caixa)}</b><span class="pct" style="font-size:15px">`
       + `${cop(c.copias)} · ${eur(c.minimo)}${c.maximo !== c.minimo ? ` · máx ${eur(c.maximo)}` : ''}`
-      + (c.sem_preco ? ` · ${c.sem_preco} sem preço` : '') + `</span></div>`
-      + `<table class="vt"><thead><tr><th></th><th>carta</th><th>material</th><th>mín/un</th>`
+      + (c.sem_preco ? ` · ${c.sem_preco} sem preço` : '') + `</span></div>`;
+    if (comImagens()) {
+      h += grelhaHTML(c.linhas.map(l => ({
+        nm: l.nm, sid: l.sid, est: 'miss', q: `×${l.q}`,
+        rot: `🛒 ${esc(eur(l.minimo))}`,
+        mat: String(l.mat || l.req || '').split(' · ').filter(Boolean),
+        pz: `${eur(l.unit)}/un` + (l.max != null ? ` · máx ${eur(l.max)}` : ''),
+        chips: (l.cara ? '<span class="cara">cara</span>' : '')
+          + (l.origem === 'caixa' ? '' : `<span class="org${l.origem === 'manual' ? ' man' : ''}">`
+            + `${l.origem === 'manual' ? 'manual' : 'caixa + manual'}</span>`),
+        nota: [l.sfoil ? 'nunca saiu em foil' : '',
+               l.acam || l.pfoto ? `📦 ${l.acam ? l.acam + ' a caminho' : ''}${l.acam && l.pfoto ? ' · ' : ''}`
+                 + `${l.pfoto ? l.pfoto + ' pendente de foto' : ''}` : '',
+               l.nota ? esc(l.nota) : '', vendChips(l), l.notas ? esc(l.notas) : '']
+          .filter(Boolean).join(' · '),
+        acts: actsTrazer(l),
+        tit: `${l.nm} — ${l.q}× ${l.mat || l.req || ''} — ${eur(l.unit)}/un · mínimo ${eur(l.minimo)}`
+          + (l.max != null ? ` · máx ${eur(l.max)}/un` : '') + (l.notas ? ` — ${l.notas}` : '')
+          + ((l.vendors || []).length ? ` — pode ter: ${l.vendors.join(', ')}` : ''),
+      })), { max: MAX_TILES });
+      h += `</div>`;
+      continue;
+    }
+    h += `<table class="vt"><thead><tr><th></th><th>carta</th><th>material</th><th>mín/un</th>`
       + `<th>mínimo</th><th>máx</th><th class="rz">vendors · notas</th>${D.editable ? '<th></th>' : ''}</tr></thead><tbody>`;
     for (const l of c.linhas) {
       const org = l.origem === 'caixa' ? '' : `<span class="org${l.origem === 'manual' ? ' man' : ''}">`
@@ -4664,6 +5218,7 @@ let renderN = 0;
 let manterScroll = null;     /* o scroll a repor depois de um `recarregar()` */
 async function render() {
   const v = $('#vista');
+  grelhaN = 0; tilesDesenhados = 0;
   const faltam = partesDe(aba).filter(p => !PARTES[p]);
   if (faltam.length) {
     /* Só aqui é que se espera: com tudo já cá (o payload embutido, ou uma aba
@@ -4676,22 +5231,26 @@ async function render() {
     if (n !== renderN) return;    /* ele já mudou de aba entretanto */
   }
   const caixa = D.caixas.find(c => c.slot === aba);
+  /* O interruptor «Imagens / Lista» (2026-09-20) no topo de cada aba que
+     mostra cartas; na aba da caixa vive na barra de filtros (`filtroHTML`). */
+  const sw = ['arrumar', 'comprar', 'vender', 'sugestoes', 'encomendas',
+              'revalidacao', 'feira'].includes(aba) ? vistaSwitchHTML() : '';
   if (caixa) {
     v.innerHTML = filtroHTML() + caixaHTML(caixa, false);
   } else if (aba === 'plano') { v.innerHTML = ligacaoHTML() + vistaPlano(); }
   else if (aba === 'montados') { v.innerHTML = vistaMontados(); }
   else if (aba === 'pormontar') { v.innerHTML = vistaPorMontar(); }
-  else if (aba === 'arrumar') { v.innerHTML = vistaArrumar(); }
+  else if (aba === 'arrumar') { v.innerHTML = sw + vistaArrumar(); }
   else if (aba === 'partilhadas') { v.innerHTML = vistaPartilhadas(); }
-  else if (aba === 'comprar') { v.innerHTML = vistaComprar(); }
-  else if (aba === 'vender') { v.innerHTML = vistaVender(); }
+  else if (aba === 'comprar') { v.innerHTML = sw + vistaComprar(); }
+  else if (aba === 'vender') { v.innerHTML = sw + vistaVender(); }
   else if (aba === 'sugestoes') {
-    v.innerHTML = D.premodern && D.premodern.activo ? vistaSugestoes() : vistaTodas();
+    v.innerHTML = D.premodern && D.premodern.activo ? sw + vistaSugestoes() : vistaTodas();
   }
   else if (aba === 'naoenc') { v.innerHTML = vistaNaoEncontradas(); }
-  else if (aba === 'encomendas') { v.innerHTML = vistaEncomendas(); }
-  else if (aba === 'revalidacao') { v.innerHTML = vistaRevalidacao(); }
-  else if (aba === 'feira') { v.innerHTML = vistaFeira(); }
+  else if (aba === 'encomendas') { v.innerHTML = sw + vistaEncomendas(); }
+  else if (aba === 'revalidacao') { v.innerHTML = sw + vistaRevalidacao(); }
+  else if (aba === 'feira') { v.innerHTML = sw + vistaFeira(); }
   else { v.innerHTML = vistaTodas(); }
   ligar();
   renderBarra();
@@ -4733,7 +5292,10 @@ function filtroHTML() {
     + b('tudo', 'Todas as cartas') + b('faltam', 'Só o que falta')
     + g('estado', 'por estado') + g('tipo', 'por tipo')
     + `<button class="${grande ? 'on' : ''}" data-big="1" `
-    + `aria-pressed="${grande}">🔍 imagens grandes</button></div>`;
+    + `aria-pressed="${grande}">🔍 imagens grandes</button></div>`
+    /* «Imagens / Lista» (2026-09-20): vale para a aba inteira — grelha, passo
+       1, básicas, compras, reserva, revalidação. */
+    + vistaSwitchHTML();
 }
 
 /* ------------------------------------------------------------- PROCURA
@@ -4884,6 +5446,15 @@ function ligar() {
   for (const b of document.querySelectorAll('[data-big]')) {
     b.onclick = () => { grande = !grande; P.grande = grande; save(); render(); };
   }
+  /* «Imagens / Lista» (2026-09-20): no aparelho e, no modo edição, no config. */
+  for (const b of document.querySelectorAll('[data-vista]')) {
+    b.onclick = () => mudarVista(b.dataset.vista);
+  }
+  /* «mostrar as outras N» de uma grelha grande: abre-a e redesenha no sítio. */
+  for (const b of document.querySelectorAll('[data-mais]')) {
+    b.onclick = () => { GRELHAS_ABERTAS.add(b.dataset.mais);
+                        manterScroll = window.scrollY || 0; render(); };
+  }
   for (const b of document.querySelectorAll('.mini[data-slot],.pl[data-slot]')) {
     b.onclick = () => ir(b.dataset.slot);
   }
@@ -4916,7 +5487,11 @@ function ligar() {
     const c = D.caixas.find(x => x.slot === b.dataset.reg);
     if (c) b.onclick = () => registar(c, b);
   }
-  for (const l of document.querySelectorAll('.mv')) {
+  /* As checkboxes dos vistos: numa linha `.mv` ou num tile `.tl` (2026-09-20)
+     — o `data-id` é o mesmo, e é por ele que a barra conta. Só as que TÊM
+     `data-id`: o tile de uma compra tem uma checkbox própria («já a tenho»),
+     que é outro gesto (`data-falta`). */
+  for (const l of document.querySelectorAll('.mv[data-id],.tl[data-id]')) {
     const cb = l.querySelector('input');
     if (!cb) continue;  /* .mv da seccao Actualizar nao tem checkbox */
     cb.onchange = () => {

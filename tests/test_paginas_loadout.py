@@ -592,7 +592,8 @@ def caso_aba_vender_nao_marca_nonfoil():
     if abas is None:
         print("aba Vender: sem `node`, saltado")
         return
-    html = abas["vender"]
+    # A TABELA vive no modo «Lista» (desde 2026-09-20 a omissão são tiles).
+    html = abas["lista:vender"]
     linhas = {re.sub("<[^>]+>", " ", tr): tr
               for tr in re.findall(r"<tr>.*?</tr>", html, re.S)}
     nf = [tr for txt, tr in linhas.items() if "Utrom Monitor" in txt]
@@ -600,7 +601,14 @@ def caso_aba_vender_nao_marca_nonfoil():
     assert nf and fo, ("faltam as duas linhas na tabela de venda", list(linhas))
     assert "✨" not in nf[0], ("uma cópia nonfoil não leva ✨", nf[0])
     assert "✨" in fo[0], ("uma cópia foil leva ✨", fo[0])
-    print("aba Vender: ✨ so nas foil, nunca nas nonfoil")
+    # E nos TILES o mesmo: o ✨ vem do `foil` do Python, nunca de um teste de
+    # substring — só o tile da Chromatic Star (foil) o tem no material.
+    tiles = {m.group(1): m.group(0) for m in re.finditer(
+        r'<div class="tl [^"]*" data-nm="([^"]+)".*?</span><span class="tlt">', abas["vender"], re.S)}
+    assert "Utrom Monitor" in tiles and "Chromatic Star" in tiles, list(tiles)
+    assert "✨" not in tiles["Utrom Monitor"], tiles["Utrom Monitor"]
+    assert "✨" in tiles["Chromatic Star"], tiles["Chromatic Star"]
+    print("aba Vender: ✨ so nas foil, nunca nas nonfoil — na tabela e nos tiles")
 
 
 def caso_aba_comprar_diz_para_que_caixa_e_em_que_material():

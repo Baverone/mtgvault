@@ -182,6 +182,8 @@ def levar(con, rep: dict, cfg: dict | None = None) -> dict:
             cor = cores.get(l["nm"], "C")
             g = grupos[k] = {
                 "chave": ch, "nm": l["nm"], "set": l["set"],
+                # A impressão exacta, para o tile em imagem (2026-09-20).
+                "sid": l.get("sid"),
                 "set_name": l.get("set_name") or "", "lang": l["lang"],
                 "foil": bool(l["foil"]), "rl": bool(l["rl"]), "local": l["local"],
                 "reason": l.get("reason") or "", "saida": l.get("saida") or "venda",

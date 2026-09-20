@@ -116,19 +116,26 @@ const abas = ['plano', 'todas', 'montados', 'pormontar',
               // A FEIRA (2026-09-20): sempre na fila; desenha-se vazia e cheia.
               'feira', ...slots];
 let n = 0;
-for (const filtro of ['tudo', 'faltam']) {
-  vm.runInContext(`filtro = ${JSON.stringify(filtro)};`, ctx);
-  for (const a of abas) {
-    vm.runInContext(`aba = ${JSON.stringify(a)}; renderTabs(); render();`, ctx);
-    n++;
+// AS CARTAS EM IMAGEM (2026-09-20): cada aba desenha-se nos DOIS modos do
+// interruptor «Imagens / Lista» (`imagens`), nos dois filtros.
+for (const modo of [true, false]) {
+  vm.runInContext(`imagens = ${modo};`, ctx);
+  for (const filtro of ['tudo', 'faltam']) {
+    vm.runInContext(`filtro = ${JSON.stringify(filtro)};`, ctx);
+    for (const a of abas) {
+      vm.runInContext(`aba = ${JSON.stringify(a)}; renderTabs(); render();`, ctx);
+      n++;
+    }
   }
 }
 // O HTML de cada aba, para quem chamou poder verificá-lo. Sai do `#vista`, que
 // é onde o `render()` o escreve; a BARRA de montagem sai à parte, em
-// `barra:<aba>`, porque vive fora da vista (fixa no fundo do ecrã).
+// `barra:<aba>`, porque vive fora da vista (fixa no fundo do ecrã). Em
+// `lista:<aba>` vai a mesma aba no modo «Lista» (2026-09-20); `<aba>` é o
+// modo «Imagens», que é o de omissão.
 if (process.argv[3]) {
   const dump = {};
-  vm.runInContext('filtro = "tudo";', ctx);
+  vm.runInContext('filtro = "tudo"; imagens = null;', ctx);
   for (const a of abas) {
     vm.runInContext(`aba = ${JSON.stringify(a)}; renderTabs(); render();`, ctx);
     dump[a] = um('#vista').innerHTML || '';
@@ -138,6 +145,12 @@ if (process.argv[3]) {
     // desenhou. Vai num nome que nao pode colidir com um `slot`.
     dump['__fila'] = um('#decktabs').innerHTML || '';
   }
+  vm.runInContext('imagens = false;', ctx);
+  for (const a of abas) {
+    vm.runInContext(`aba = ${JSON.stringify(a)}; renderTabs(); render();`, ctx);
+    dump['lista:' + a] = um('#vista').innerHTML || '';
+  }
+  vm.runInContext('imagens = null;', ctx);
   fs.writeFileSync(process.argv[3], JSON.stringify(dump), 'utf8');
 }
 
