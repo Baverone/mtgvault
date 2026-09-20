@@ -17,7 +17,7 @@
     "Wasteland"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-19"
+   "ultima": "2026-09-20"
   },
   "13eb5a8587": {
    "formato": "premodern",
@@ -71,7 +71,7 @@
     "Yavimaya Coast"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-19"
+   "ultima": "2026-09-20"
   },
   "2811f9a69f": {
    "formato": "premodern",
@@ -89,7 +89,7 @@
     "Withered Wretch"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-19"
+   "ultima": "2026-09-20"
   },
   "3885b4666a": {
    "formato": "premodern",
@@ -109,7 +109,7 @@
     "Skycloud Expanse"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-19"
+   "ultima": "2026-09-20"
   },
   "4841da6e7f": {
    "formato": "premodern",
@@ -140,7 +140,7 @@
     "Yavimaya Granger"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-19"
+   "ultima": "2026-09-20"
   },
   "72740aba9b": {
    "formato": "premodern",
@@ -190,7 +190,7 @@
     "Wrath of God"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-19"
+   "ultima": "2026-09-20"
   },
   "95a99aa40d": {
    "formato": "premodern",
@@ -202,6 +202,26 @@
    ],
    "primeira": "2026-09-09",
    "ultima": "2026-09-09"
+  },
+  "a137ea300c": {
+   "formato": "premodern",
+   "nome": "Psychatog",
+   "nucleo": [
+    "Duress",
+    "Fact or Fiction",
+    "Foil",
+    "Impulse",
+    "Mana Leak",
+    "Opt",
+    "Polluted Delta",
+    "Portent",
+    "Psychatog",
+    "Sickening Dreams",
+    "Smother",
+    "Underground River"
+   ],
+   "primeira": "2026-09-20",
+   "ultima": "2026-09-20"
   },
   "a8113fbe00": {
    "formato": "premodern",
@@ -218,7 +238,7 @@
     "Seal of Fire"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-19"
+   "ultima": "2026-09-20"
   },
   "b38b17cddb": {
    "formato": "premodern",
@@ -238,7 +258,7 @@
     "Thwart"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-19"
+   "ultima": "2026-09-20"
   },
   "b4dcbc5dbb": {
    "formato": "premodern",
@@ -258,7 +278,7 @@
     "Vision Charm"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-19"
+   "ultima": "2026-09-20"
   },
   "b827ca4ad1": {
    "formato": "premodern",
@@ -297,7 +317,7 @@
     "Wild Growth"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-19"
+   "ultima": "2026-09-20"
   },
   "c6998a9b7d": {
    "formato": "premodern",
@@ -317,7 +337,23 @@
     "Winter's Grasp"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-19"
+   "ultima": "2026-09-20"
+  },
+  "c8d54b483e": {
+   "formato": "premodern",
+   "nome": "Sligh",
+   "nucleo": [
+    "Bloodstained Mire",
+    "Fireblast",
+    "Grim Lavamancer",
+    "Incinerate",
+    "Lightning Bolt",
+    "Mogg Fanatic",
+    "Seal of Fire",
+    "Wooded Foothills"
+   ],
+   "primeira": "2026-09-20",
+   "ultima": "2026-09-20"
   },
   "cc47c1209f": {
    "formato": "premodern",
@@ -367,7 +403,7 @@
     "Wall of Blossoms"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-19"
+   "ultima": "2026-09-20"
   },
   "e8c086499f": {
    "formato": "premodern",
@@ -399,7 +435,7 @@
     "Wooded Foothills"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-19"
+   "ultima": "2026-09-20"
   },
   "f102883ccf": {
    "formato": "premodern",
@@ -416,7 +452,6 @@
    "formato": "premodern",
    "nome": "Terrageddon",
    "nucleo": [
-    "Armageddon",
     "Call of the Herd",
     "Gemstone Mine",
     "Mox Diamond",
@@ -427,10 +462,11 @@
     "Sylvan Library",
     "Terravore",
     "Tranquil Thicket",
-    "Weathered Wayfarer"
+    "Weathered Wayfarer",
+    "Werebear"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-19"
+   "ultima": "2026-09-20"
   },
   "f886821817": {
    "formato": "premodern",
