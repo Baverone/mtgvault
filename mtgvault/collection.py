@@ -492,9 +492,11 @@ def import_csv(con: sqlite3.Connection, path: str | Path, *,
     from . import encomendas, revalidacao                 # noqa: PLC0415
     ok, errors = 0, []
     cache: dict = {}                     # a prioridade das caixas, uma vez
-    # O alvo da revalidação (a caixa que ele está a fotografar), UMA vez por
-    # importação — é o que decide a preferência do passo (0) e a discrepância.
-    alvo = revalidacao.alvo_da_importacao(con, cache) if revalidacao.activa() else None
+    # A campanha, e o alvo (a caixa que ele está a fotografar), UMA vez por
+    # importação — o alvo decide a preferência do passo (0) e a discrepância;
+    # sem alvo o passo (0) corre na mesma, sem preferência.
+    campanha = revalidacao.activa()
+    alvo = revalidacao.alvo_da_importacao(con, cache) if campanha else None
     with open(path, newline="", encoding="utf-8-sig") as fh:
         for i, row in enumerate(csv.DictReader(fh), start=2):
             row = {k: (v.strip() if isinstance(v, str) else v)
@@ -526,7 +528,7 @@ def import_csv(con: sqlite3.Connection, path: str | Path, *,
                     con, nm, set_code, collector_number=num, language=lang,
                     finish=finish, quantity=qtd, photo_path=foto,
                     preferir=(alvo or {}).get("copias"))
-                    if alvo is not None and set_code and qtd > 0 and foto else None)
+                    if campanha and set_code and qtd > 0 and foto else None)
                 if rev:
                     ids += rev["copias"]
                     motivos.append(f'{rev["ligadas"]} revalidada'
