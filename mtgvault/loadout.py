@@ -1431,9 +1431,15 @@ def nomes_das_caixas(cfg_slots: list[dict] | None = None) -> dict[str, str]:
 
 
 def lots(con, cfg_slots: list[dict] | None = None,
-         foil_cache: dict | None = None) -> dict[str, list[dict]]:
+         foil_cache: dict | None = None,
+         ids=None) -> dict[str, list[dict]]:
     """Exemplares 'player' por nome de carta. A coleção de colecionador nunca
     entra (regra de domínio: é avaliada, não é jogada).
+
+    `ids`: só essas cópias — é como a REVALIDAÇÃO (2026-09-20) pergunta, depois
+    de corrigir uma cópia pela foto, se ela ainda pode estar na caixa onde está
+    registada (`contradiz`), sem refazer a colecção inteira. Cada lote traz
+    também `validado` (a data da foto desta campanha, ou `None`).
 
     Cada lote sai ANOTADO com `foil_existe`/`foil_edicoes` (`foil_info`, uma
     consulta por nome, guardada em `foil_cache`): é o que o `_porque_nao`
@@ -1460,16 +1466,23 @@ def lots(con, cfg_slots: list[dict] | None = None,
     regras = regras_das_caixas(cfg_slots)
     baldes_de_deck = caixas_de_deck(list(regras.values()))
     out: dict[str, list[dict]] = defaultdict(list)
+    so_ids = ""
+    args: tuple = ()
+    if ids is not None:
+        ids = [int(i) for i in ids]
+        so_ids = f" AND cp.id IN ({','.join('?' * len(ids))})"
+        args = tuple(ids)
     for r in con.execute(
         f"""SELECT cp.id, cp.quantity q, cp.finish, cp.language lang,
                   cp.reserved_deck_id rdid, s.name sub, cp.balde_origem borigem,
                   cp.notes notas, COALESCE(cp.condition, 'NM') cond,
+                  cp.validado_em validado,
                   c.name nm, c.scryfall_id sid, c.set_code, c.set_name,
                   c.released_at rel, COALESCE(c.reserved, 0) rl, c.legalities leg
              FROM copies cp
              JOIN cards c ON c.scryfall_id = cp.scryfall_id
              LEFT JOIN sub_collections s ON s.id = cp.sub_collection_id
-            WHERE {_col.jogaveis()}"""):
+            WHERE {_col.jogaveis()}{so_ids}""", args):
         d = dict(r)
         d["nm"] = _front(d["nm"])
         d["sub"] = d["sub"] or "(sem balde)"

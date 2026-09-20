@@ -148,13 +148,19 @@ def add_copy(
     sub_id = (
         ensure_sub_collection(con, sub_collection, purpose) if sub_collection else None
     )
+    # REVALIDAÇÃO (2026-09-20): uma cópia que NASCE com foto durante a campanha
+    # nasce validada — a foto é desta campanha. Sem foto (CSV à mão, o «já a
+    # tenho» antigo) fica por revalidar, como tudo o que já existia.
+    from . import revalidacao                              # noqa: PLC0415
     cur = con.execute(
         """INSERT INTO copies (scryfall_id, quantity, finish, language, condition,
                                purpose, sub_collection_id, photo_path,
-                               acquired_at, acquired_price, notes, balde_origem)
-           VALUES (?,?,?,?,?,?,?,?,date('now'),?,?,?)""",
+                               acquired_at, acquired_price, notes, balde_origem,
+                               validado_em)
+           VALUES (?,?,?,?,?,?,?,?,date('now'),?,?,?,?)""",
         (card["scryfall_id"], quantity, finish, language, condition, purpose,
-         sub_id, photo_path, acquired_price, notes, balde_origem),
+         sub_id, photo_path, acquired_price, notes, balde_origem,
+         revalidacao.marca_validada(photo_path)),
     )
     con.commit()
     return cur.lastrowid
@@ -247,6 +253,10 @@ def acertar_edicao(con: sqlite3.Connection, name: str, set_code: str, *,
     if card is None:
         return None                        # edição que o catálogo não conhece
     hoje = dt.date.today().isoformat()
+    # REVALIDAÇÃO (2026-09-20): uma foto que confirma a edição É uma foto nova
+    # desta campanha — a cópia fica validada com ela.
+    from . import revalidacao                              # noqa: PLC0415
+    extra = revalidacao.extra_validada(photo_path)
     resta, tocadas = max(int(quantity), 0), []
     for p in pendentes:
         if resta <= 0:
@@ -257,7 +267,8 @@ def acertar_edicao(con: sqlite3.Connection, name: str, set_code: str, *,
         resta -= leva
         nota = _nota_confirmada(p["notes"], hoje)
         tocadas.append(_partir_copia(con, p, leva, scryfall_id=card["scryfall_id"],
-                                     photo_path=photo_path, notes=nota))
+                                     photo_path=photo_path, notes=nota,
+                                     extra=extra))
     if not tocadas:
         return None
     con.commit()
@@ -267,40 +278,51 @@ def acertar_edicao(con: sqlite3.Connection, name: str, set_code: str, *,
             "collector_number": card["collector_number"]}
 
 
+# As colunas de uma cópia que a parte NOVA de um lote partido herda tal e qual.
+# `photo_path`/`notes`/`scryfall_id` vêm por cima (são o que se está a mudar) e
+# o `extra` por cima de tudo — é por ele que a revalidação escreve
+# `validado_em`, `foto_anterior`, e uma correcção de acabamento/língua.
+_HERDA = ("scryfall_id", "finish", "language", "condition", "purpose",
+          "sub_collection_id", "photo_path", "acquired_at", "acquired_price",
+          "notes", "reserved_deck_id", "balde_origem", "validado_em",
+          "foto_anterior")
+
+
 def _partir_copia(con: sqlite3.Connection, p, leva: int, *,
                   scryfall_id: str | None = None, photo_path: str | None = None,
-                  notes: str | None = None) -> int:
-    """Aplica (edição / foto / nota) a `leva` cópias do lote `p`. Devolve o id da
-    linha que ficou com a alteração.
+                  notes: str | None = None, extra: dict | None = None) -> int:
+    """Aplica (edição / foto / nota / `extra`) a `leva` cópias do lote `p`.
+    Devolve o id da linha que ficou com a alteração.
 
     Com `leva` igual ao lote, é a própria linha. Com menos, a linha PARTE-SE em
     duas: a parte que a foto tocou ganha a edição/foto e leva consigo o seu
     lugar dentro da caixa (`copy_allocation`); o resto fica como estava.
     Actualizar a linha inteira era dar por confirmadas (ou fotografadas) cópias
     que ninguém fotografou — a mesma mentira que a marca «edição por confirmar»
-    existe para evitar. Partilhado pelo `acertar_edicao` e pelo `ligar_foto`.
+    existe para evitar. Partilhado pelo `acertar_edicao`, pelo `ligar_foto` e
+    pela REVALIDAÇÃO (`revalidacao.revalidar`/`corrigir`), que é quem usa o
+    `extra`: colunas a escrever por cima (`validado_em`, `foto_anterior`, e
+    numa discrepância o `finish`/`language`). O `photo_path` solto continua a
+    ser "só se não havia" (`COALESCE`); para SUBSTITUIR a foto vai no `extra`.
     """
-    sid = scryfall_id or p["scryfall_id"]
-    nota = notes if notes is not None else p["notes"]
+    chaves = set(p.keys())
+    novos = {"scryfall_id": scryfall_id or p["scryfall_id"],
+             "notes": notes if notes is not None else p["notes"],
+             "photo_path": photo_path or p["photo_path"]}
+    novos.update(extra or {})
     if leva >= (p["quantity"] or 0):
-        con.execute(
-            "UPDATE copies SET scryfall_id = ?, notes = ?, "
-            "photo_path = COALESCE(?, photo_path) WHERE id = ?",
-            (sid, nota, photo_path, p["id"]))
+        sets = ", ".join(f"{k} = ?" for k in novos)
+        con.execute(f"UPDATE copies SET {sets} WHERE id = ?",
+                    (*novos.values(), p["id"]))
         return p["id"]
     con.execute("UPDATE copies SET quantity = quantity - ? WHERE id = ?",
                 (leva, p["id"]))
+    linha = {k: (p[k] if k in chaves else None) for k in _HERDA}
+    linha.update(novos)
+    linha["quantity"] = leva
     cur = con.execute(
-        """INSERT INTO copies (scryfall_id, quantity, finish, language,
-                               condition, purpose, sub_collection_id,
-                               photo_path, acquired_at, acquired_price,
-                               notes, reserved_deck_id, balde_origem)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-        (sid, leva, p["finish"], p["language"],
-         p["condition"], p["purpose"], p["sub_collection_id"],
-         photo_path or p["photo_path"], p["acquired_at"],
-         p["acquired_price"], nota, p["reserved_deck_id"],
-         p["balde_origem"]))
+        f"INSERT INTO copies ({', '.join(linha)}) "
+        f"VALUES ({', '.join('?' * len(linha))})", tuple(linha.values()))
     novo = cur.lastrowid
     # O lugar dentro da caixa acompanha a cópia tocada: era ela que lá estava.
     # Sem isto a caixa perdia a carta que ele acabou de fotografar e mandava-o
@@ -402,6 +424,9 @@ def ligar_foto(con: sqlite3.Connection, name: str, set_code: str, *,
     rows = sorted(rows, key=lambda r: ((r["quantity"] or 0) != qtd,
                                        (r["quantity"] or 0) > qtd,
                                        -(r["quantity"] or 0), r["id"]))
+    # REVALIDAÇÃO (2026-09-20): a foto que se liga agora é desta campanha.
+    from . import revalidacao                              # noqa: PLC0415
+    extra = revalidacao.extra_validada(photo_path)
     resta, tocadas = qtd, []
     for p in rows:
         if resta <= 0:
@@ -410,7 +435,8 @@ def ligar_foto(con: sqlite3.Connection, name: str, set_code: str, *,
         if leva <= 0:
             continue
         resta -= leva
-        tocadas.append(_partir_copia(con, p, leva, photo_path=photo_path))
+        tocadas.append(_partir_copia(con, p, leva, photo_path=photo_path,
+                                     extra=extra))
     if not tocadas:
         return None
     con.commit()
@@ -448,10 +474,27 @@ def import_csv(con: sqlite3.Connection, path: str | Path, *,
 
     Uma linha com `quantity` 3 pode fechar 2 de encomenda e entrar 1 normal:
     cada passo consome o que lhe cabe e passa o resto ao seguinte.
+
+    A REVALIDAÇÃO (André, 2026-09-20: *"quero revalidar todas as fotos agora
+    que vamos colocar tudo em decks para que nada falhe ou escape"*) entra à
+    frente de tudo, como passo **(0)**, só com a campanha ligada
+    (`revalidacao.desde`): a linha casa com uma cópia POR REVALIDAR da mesma
+    impressão exacta → liga-lhe a foto nova (`photo_path`, `foto_anterior`,
+    `validado_em`) e NÃO cria cópia; prefere as cópias do ALVO que ele está a
+    fotografar (`revalidacao.alvo`, o que o botão «Fotografar» escreveu). Sem
+    cópia igual à foto mas com uma do alvo POR REVALIDAR da mesma carta noutra
+    edição/acabamento/língua, é uma **discrepância**: corrige-se essa cópia
+    para o que a foto prova (`revalidacao.corrigir`, com linha no
+    `revalidacao.log`; se deixar de cumprir a regra da caixa, sai da
+    `copy_allocation`), e também não se cria cópia. O que entrar por (iv) com
+    a campanha ligada fica marcado *«nova nesta campanha»* nas `notes`.
     """
-    from . import encomendas                              # noqa: PLC0415
+    from . import encomendas, revalidacao                 # noqa: PLC0415
     ok, errors = 0, []
     cache: dict = {}                     # a prioridade das caixas, uma vez
+    # O alvo da revalidação (a caixa que ele está a fotografar), UMA vez por
+    # importação — é o que decide a preferência do passo (0) e a discrepância.
+    alvo = revalidacao.alvo_da_importacao(con, cache) if revalidacao.activa() else None
     with open(path, newline="", encoding="utf-8-sig") as fh:
         for i, row in enumerate(csv.DictReader(fh), start=2):
             row = {k: (v.strip() if isinstance(v, str) else v)
@@ -477,6 +520,30 @@ def import_csv(con: sqlite3.Connection, path: str | Path, *,
                 foto = row.get("photo_path") or None
                 preco = (float(row["acquired_price"])
                          if row.get("acquired_price") else None)
+                notas_linha = row.get("notes") or None
+                # (0) REVALIDAÇÃO: a mesma impressão exacta, por revalidar
+                rev = (revalidacao.revalidar(
+                    con, nm, set_code, collector_number=num, language=lang,
+                    finish=finish, quantity=qtd, photo_path=foto,
+                    preferir=(alvo or {}).get("copias"))
+                    if alvo is not None and set_code and qtd > 0 and foto else None)
+                if rev:
+                    ids += rev["copias"]
+                    motivos.append(f'{rev["ligadas"]} revalidada'
+                                   f'{"s" if rev["ligadas"] > 1 else ""}: foto nova')
+                    qtd = rev["restante"]
+                # (0b) DISCREPÂNCIA: a cópia do alvo é desta carta mas noutra
+                # edição/acabamento/língua, e não há cópia igual à foto — é uma
+                # correcção, não uma carta nova.
+                cor = (revalidacao.corrigir(
+                    con, nm, set_code, collector_number=num, language=lang,
+                    finish=finish, quantity=qtd, photo_path=foto, alvo=alvo,
+                    cache=cache)
+                    if alvo is not None and set_code and qtd > 0 and foto else None)
+                if cor:
+                    ids += cor["copias"]
+                    motivos += cor["motivos"]
+                    qtd = cor["restante"]
                 # (i) «edição por confirmar»
                 ajuste = (acertar_edicao(con, nm, set_code, collector_number=num,
                                          quantity=qtd, photo_path=foto)
@@ -520,6 +587,10 @@ def import_csv(con: sqlite3.Connection, path: str | Path, *,
                 # uma linha do CSV é uma importação, mesmo quando metade
                 # acerta uma cópia que já existia e metade entra de novo.
                 if qtd > 0 or not ids:
+                    # Com a campanha ligada, a cópia que entra de novo fica
+                    # marcada: é a lista do que apareceu nas fotos SEM cópia
+                    # na base — a resposta a "o que escapou?".
+                    notas_nova = revalidacao.nota_nova(notas_linha)
                     ids.append(add_copy(
                         con, nm, set_code=set_code, collector_number=num,
                         quantity=qtd, finish=finish, language=lang,
@@ -527,7 +598,7 @@ def import_csv(con: sqlite3.Connection, path: str | Path, *,
                         purpose=row.get("purpose") or "player",
                         sub_collection=row.get("sub_collection") or None,
                         photo_path=foto, acquired_price=preco,
-                        notes=row.get("notes") or None, adivinhar=adivinhar))
+                        notes=notas_nova, adivinhar=adivinhar))
                 res["copy_id"] = (ids[0] if len(ids) == 1
                                   else ",".join(str(x) for x in ids))
                 res["resultado"] = "importada"
@@ -563,8 +634,13 @@ def gravar_resultado(resultados: list[dict], path: str | Path) -> Path:
 # sítios: `copies.photo_path` (o caminho novo, dentro da cópia) e o
 # `aplicado.csv` ao lado das fotos. Nunca se apaga nada.
 APLICADO = FOTOS_PROCESSADAS / "aplicado.csv"
+# `foto_anterior` (2026-09-20): a foto que esta SUBSTITUIU numa revalidação —
+# a antiga fica em «fotos processadas» como sempre, e é aqui que se sabe qual
+# era. Vai no fim: um `aplicado.csv` já existente ganha a coluna só nas linhas
+# novas (o cabeçalho antigo fica), e quem o ler por posição continua certo.
 APLICADO_FIELDS = ["at", "foto", "copy_id", "name", "set_code",
-                   "collector_number", "quantity", "sub_collection"]
+                   "collector_number", "quantity", "sub_collection",
+                   "foto_anterior"]
 
 
 def _ids(copy_id) -> list[int]:
@@ -615,11 +691,16 @@ def arrumar_fotos(con: sqlite3.Connection, resultados: list[dict], *,
             # metade fechou uma encomenda, metade entrou de novo) — vêm
             # separadas por vírgula, e cada uma fica ligada à foto.
             for cid in _ids(r.get("copy_id")):
+                # A foto que esta substituiu (revalidação): sai da base, onde o
+                # `revalidar` a guardou, para o registo ao lado das fotos.
+                ant = con.execute("SELECT foto_anterior FROM copies WHERE id = ?",
+                                  (cid,)).fetchone()
                 con.execute("UPDATE copies SET photo_path = ? WHERE id = ?",
                             (novo_rel, cid))
-                ligacoes.append(dict(r, copy_id=cid, foto=novo_rel))
+                ligacoes.append(dict(r, copy_id=cid, foto=novo_rel,
+                                     foto_anterior=(ant[0] if ant else "") or ""))
             if not _ids(r.get("copy_id")):
-                ligacoes.append(dict(r, foto=novo_rel))
+                ligacoes.append(dict(r, foto=novo_rel, foto_anterior=""))
     con.commit()
 
     if ligacoes:
@@ -636,7 +717,8 @@ def arrumar_fotos(con: sqlite3.Connection, resultados: list[dict], *,
                             "name": r["name"], "set_code": r["set_code"],
                             "collector_number": r["collector_number"],
                             "quantity": r["quantity"],
-                            "sub_collection": r.get("sub_collection", "")})
+                            "sub_collection": r.get("sub_collection", ""),
+                            "foto_anterior": r.get("foto_anterior", "")})
     return {"movidas": len(movidas), "destino": destino_rel,
             "ligadas": len(ligacoes), "ficaram": sorted(ficaram)}
 

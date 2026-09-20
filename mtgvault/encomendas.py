@@ -610,23 +610,33 @@ def conciliar(con, *, nm: str, set_code: str, collector_number: str | None,
 # ---------------------------------------------------------------------------
 # `pendentes/esperadas.md`: o que o Claude das fotos deve esperar
 # ---------------------------------------------------------------------------
-def esperadas_md(con, slots=None) -> str:
+def esperadas_md(con, slots=None, rep: dict | None = None) -> str:
     """O texto: o que está pendente de foto, por caixa, com o material esperado.
-    Vazio quando não há nada — e aí o ficheiro apaga-se (`escrever_esperadas`)."""
-    from . import collection, loadout                      # noqa: PLC0415
+    Vazio quando não há nada — e aí o ficheiro apaga-se (`escrever_esperadas`).
+
+    Desde 2026-09-20 leva à cabeça a secção da REVALIDAÇÃO (`revalidacao.
+    seccao_esperadas`): a caixa (ou a venda, a Caixa RL, a Colecção) que o
+    André está a fotografar, com as cópias por revalidar — é por ela que o
+    Claude das fotos sabe que uma foto destas se LIGA a uma cópia que já existe.
+    """
+    from . import collection, loadout, revalidacao         # noqa: PLC0415
     slots = _slots(con, slots)
     nomes = {s["slot"]: s["nome"] for s in slots}
     pend = [r for r in listar(con) if (r["qty_pendente_foto"] or 0) > 0]
     sem_foto = collection.copias_sem_foto(con)
-    if not pend and not sem_foto:
+    rev = revalidacao.seccao_esperadas(con, rep)
+    if not pend and not sem_foto and not rev:
         return ""
-    out = ["# Fotos esperadas (gerado pelo mtgvault — não editar)", "",
-           "Estas cartas estão **pendentes de foto**: o André disse que as tem "
-           "(ou que chegaram) e ainda não as fotografou. Quando uma foto de uma "
-           "destas aparecer, escreve a linha com a MESMA língua e acabamento "
-           "que aqui está — é por eles que o import a liga à encomenda e a mete "
-           "na caixa. A edição, se aqui disser «qualquer», é a que a foto "
-           "mostrar; confirma-a no catálogo como sempre.", ""]
+    out = ["# Fotos esperadas (gerado pelo mtgvault — não editar)", ""]
+    out += rev
+    if pend:
+        out += ["## Encomendas pendentes", "",
+                "Estas cartas estão **pendentes de foto**: o André disse que as tem "
+                "(ou que chegaram) e ainda não as fotografou. Quando uma foto de uma "
+                "destas aparecer, escreve a linha com a MESMA língua e acabamento "
+                "que aqui está — é por eles que o import a liga à encomenda e a mete "
+                "na caixa. A edição, se aqui disser «qualquer», é a que a foto "
+                "mostrar; confirma-a no catálogo como sempre.", ""]
     por_caixa: dict[str, list[dict]] = {}
     for r in pend:
         por_caixa.setdefault(nomes.get(r["slot"]) or r["slot"] or "Colecção", []).append(r)
@@ -653,12 +663,16 @@ def esperadas_md(con, slots=None) -> str:
     return "\n".join(out)
 
 
-def escrever_esperadas(con, pasta: Path | str, slots=None) -> Path | None:
+def escrever_esperadas(con, pasta: Path | str, slots=None,
+                       rep: dict | None = None) -> Path | None:
     """Escreve `<pasta>/esperadas.md`; apaga-o quando não há nada pendente, para o
-    Claude das fotos não ler uma lista de ontem. Devolve o caminho ou `None`."""
+    Claude das fotos não ler uma lista de ontem. Devolve o caminho ou `None`.
+    `rep` é o `loadout.report` já calculado por quem chama (o `daily` e o
+    `webapp.regenerar` têm-no): sem ele, e com um alvo de revalidação, a
+    secção da revalidação calcula-o outra vez."""
     pasta = Path(pasta)
     alvo = pasta / "esperadas.md"
-    texto = esperadas_md(con, slots)
+    texto = esperadas_md(con, slots, rep)
     if not texto:
         if alvo.exists():
             alvo.unlink()

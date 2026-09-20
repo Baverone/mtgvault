@@ -52,6 +52,16 @@ CREATE TABLE IF NOT EXISTS copies (
     -- O `slot` da caixa que ele estava a montar quando faltou. É a única pista
     -- de ONDE ela devia estar, e não se deriva de mais nada.
     nao_encontrada_slot TEXT,
+    -- REVALIDAÇÃO POR FOTO (André, 2026-09-20): *"quero revalidar todas as
+    -- fotos agora que vamos colocar tudo em decks para que nada falhe ou
+    -- escape"*. A partir de `revalidacao.desde` (config) NENHUMA cópia está
+    -- validada até uma foto NOVA lhe ser ligada. `validado_em` é a data em que
+    -- isso aconteceu (NULL = por revalidar); `foto_anterior` é o `photo_path`
+    -- que a foto nova substituiu — a foto antiga NÃO se apaga, fica em «fotos
+    -- processadas» como sempre. Não muda um único número da alocação/venda: é
+    -- só o estado 📷/✓ que a página mostra. Ver `mtgvault.revalidacao`.
+    validado_em       TEXT,
+    foto_anterior     TEXT,
     created_at        TEXT DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS ix_copies_card    ON copies(scryfall_id);
@@ -64,6 +74,8 @@ CREATE INDEX IF NOT EXISTS ix_copies_purpose ON copies(purpose);
 -- nova não é. (E o índice não faz falta: quem filtra é o `collection.jogaveis`,
 -- que já traz o `purpose` e usa o `ix_copies_purpose`.) Se algum dia for
 -- preciso, tem de nascer no `_migrate`, depois do ALTER.
+-- O mesmo para o `ix_copies_validado` sobre a `validado_em` (2026-09-20): vive
+-- no `db._migrate`, depois do ALTER — aqui rebentava a base dele.
 
 -- ONDE A CÓPIA ESTÁ FISICAMENTE, quando está dentro de uma deckbox.
 --
