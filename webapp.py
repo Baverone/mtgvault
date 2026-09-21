@@ -1482,9 +1482,9 @@ class Handler(BaseHTTPRequestHandler):
         n = (prog["alvo"] or {}).get("por_revalidar", 0)
         return {"ok": True, "alvo": a, "nome": nome, "por_revalidar": n,
                 "msg": (f"📷 A fotografar {nome}: {n} cópia{'s' if n != 1 else ''} "
-                        f"por fotografar. Tira as fotos e larga-as em pendentes\\ — "
-                        f"entram na corrida das 02:30; o esperadas.md já diz o que "
-                        f"esperar.")}
+                        f"por fotografar. Tira as fotos com «📷 Tirar fotos» (ou larga-as "
+                        f"em pendentes\\) — entram na corrida das 02:30 ou com «⚡ Processar "
+                        f"agora»; o esperadas.md já diz o que esperar.")}
 
     def _padrao(self, dados):
         """LISTA PADRÃO e RESERVA de uma caixa (André, 2026-09-20).

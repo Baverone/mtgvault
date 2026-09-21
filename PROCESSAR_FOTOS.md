@@ -31,8 +31,20 @@ modo edição recolhem sozinhos (`mtgvault/fotocaixa.py`). Não as cataloguas,
 não as metes no CSV, não as moves. Só as fotos na **raiz** de `pendentes/`
 são cartas.
 
+**As fotos `site-…` vieram do TELEMÓVEL, pela própria Deckboxes** (2026-09-21,
+André: *"tirar as fotos directamente do site"*). O nome diz de onde:
+`site-<slot>-<AAAAMMDD-HHMMSS>-<n>.jpg` é a CAIXA `<slot>` que ele estava a
+fotografar (`site-duel-commander-…`, `site-modern-…`); `site-venda-…`,
+`site-rl-…` e `site-colecao-…` são a lista de venda, a Caixa Reserved List e o
+resto da Colecção; e `…-c<copy_id>.jpg` diz a CÓPIA esperada nessa foto (o
+André carregou no 📷 dessa carta). **É uma pista, não uma resposta**: escreve o
+que VÊS na foto, como sempre, com o `photo_path` — o import prefere as cópias
+dessa caixa (e essa cópia) ao ligar a foto, e trata uma edição/acabamento
+diferente como correcção da cópia. O `esperadas.md` lista estas fotos com a
+caixa e a cópia por extenso (secção «Fotos tiradas no site»).
+
 **Se existir `pendentes/esperadas.md`, lê-o antes de escrever o CSV.** Tem
-até três secções:
+até quatro secções:
 
 1. **«<Caixa> — por revalidar»** (desde 2026-09-20 — a REVALIDAÇÃO POR FOTO):
    o André está a fotografar de novo TODA a colecção, caixa a caixa, e a
@@ -43,6 +55,9 @@ até três secções:
    escreve o que vês na mesma e diz em `notes` o que esperavas (ex.:
    «esperava NEM nonfoil, é foil») — o import trata isso como uma correcção
    da cópia da caixa. A `quantity` é o que está NA FOTO.
+1b. **«Fotos tiradas no site»** (desde 2026-09-21): cada foto `site-…` que está
+   em `pendentes/`, com a caixa que o nome indica e, quando há `-c<copy_id>`,
+   a cópia esperada (nome e impressão). Mesma regra: escreve o que vês.
 2. **«Encomendas pendentes»**: o que o André disse que comprou / que já tem e
    ainda não fotografou («pendente de foto»), por caixa, com a língua e o
    acabamento esperados. Desde 2026-09-19 **só a foto cria cópias**: uma foto
