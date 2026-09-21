@@ -157,6 +157,18 @@
  .rvalvo{margin:8px 0;padding:10px 12px;background:#1a1509;border:1px solid #4a3a12;
    border-radius:var(--r);font-size:12.5px;color:var(--muted)}
  .rvalvo>b{color:var(--gold)} .rvalvo .nota{margin:4px 0 8px}
+ /* AS FOTOS DAS CARTAS, DO SITE (2026-09-21): o «Tirar fotos» é um <label>
+    com o <input type="file"> escondido — tem de parecer botão e ter 40 px no
+    telemóvel; o 📷 por cópia fica no rodapé do tile (`.tla`). */
+ .fstirar{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+ .fstirar input,.fscam input{display:none}
+ label.aenviar{opacity:.5;pointer-events:none}
+ .fscam{cursor:pointer;min-width:0;padding:0 8px}
+ .fsite{margin:8px 0;padding:10px 12px;background:#101a14;border:1px solid #24402c;
+   border-radius:var(--r);font-size:12.5px;color:var(--muted)}
+ .fsite .flh{color:var(--add)}
+ .fsl{margin:6px 0;padding-left:18px} .fsl li{margin:2px 0;word-break:break-all}
+ .fsl code{font-size:11.5px;color:var(--ink)} .fsl ul{padding-left:16px;margin:2px 0}
  .rvcaixas{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
    gap:10px;margin:8px 0 14px}
  .rvc .mini{width:100%;text-align:left;padding:10px 12px}
@@ -718,5 +730,5 @@ A lista para vender é uma <b>sugestão a confirmar</b>. Atualiza diariamente.
 </div>
 <div class="barra" id="barra" hidden aria-live="polite"></div>
 
-<script src="deckboxes.js?v=93fa904c46ec"></script>
+<script src="deckboxes.js?v=7fefb240e410"></script>
 </body></html>
