@@ -55,6 +55,34 @@
  .btop{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
    flex-wrap:wrap}
  .btop b{font-size:17px;letter-spacing:-.01em}
+ /* A FOTO DA DECKBOX FÍSICA (2026-09-21): a miniatura ao lado do nome (no
+    cartão da fila e na aba Revalidação), a foto maior no cabeçalho da aba da
+    caixa, o quadrado «sem foto» (que só no modo edição é botão — um `<label>`
+    com o `<input type="file">` escondido) e o véu de ampliar. */
+ .btit{display:inline-flex;align-items:center;gap:8px;min-width:0}
+ .dbthumb{width:44px;height:44px;border-radius:8px;object-fit:cover;flex:none;
+   background:#0a0d13;border:1px solid var(--line2);display:block}
+ span.dbthumb{display:inline-flex;align-items:center;justify-content:center;
+   font-size:18px;color:var(--dim);border-style:dashed}
+ .dbfoto{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:8px 0}
+ .dbfoto img{max-height:200px;max-width:100%;border-radius:10px;cursor:zoom-in;
+   border:1px solid var(--line2);background:#0a0d13;display:block}
+ .dbfoto .dbleg{display:flex;flex-direction:column;gap:6px;align-items:flex-start;
+   font-size:12px;color:var(--muted)}
+ .dbfoto .dbq{display:inline-flex;flex-direction:column;align-items:center;
+   justify-content:center;gap:2px;min-width:150px;min-height:72px;padding:10px 14px;
+   border:1px dashed var(--line2);border-radius:10px;background:#0f141c;
+   color:var(--dim);font-size:12.5px;text-align:center}
+ .dbfoto label.dbq{cursor:pointer;color:var(--ink2);border-color:#3f5478}
+ .dbfoto label.dbq:hover{background:#151d29}
+ .dbfoto label.dbq small{color:var(--dim);font-size:11px}
+ .dbfoto label input{display:none}
+ .dbfoto label.aenviar{opacity:.5;pointer-events:none}
+ .lightbox{position:fixed;inset:0;background:#000d;z-index:20;display:flex;
+   flex-direction:column;align-items:center;justify-content:center;gap:10px;
+   cursor:zoom-out;padding:12px}
+ .lightbox img{max-width:96vw;max-height:86vh;border-radius:8px;object-fit:contain}
+ .lightbox span{color:#d8dee8;font-size:13px}
  .pct{font-weight:800;font-size:19px;font-variant-numeric:tabular-nums}
  .pct.dim{color:var(--muted)}
  .bar{position:relative;height:8px;background:#0a0d13;border-radius:999px;
@@ -690,5 +718,5 @@ A lista para vender é uma <b>sugestão a confirmar</b>. Atualiza diariamente.
 </div>
 <div class="barra" id="barra" hidden aria-live="polite"></div>
 
-<script src="deckboxes.js?v=2b2813f3f2f2"></script>
+<script src="deckboxes.js?v=93fa904c46ec"></script>
 </body></html>

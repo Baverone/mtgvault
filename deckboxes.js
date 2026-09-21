@@ -625,8 +625,12 @@ function vistaRevalidacao() {
   h += `<h3>Por caixa</h3><div class="rvcaixas">`;
   for (const g of (R.caixas || [])) {
     if (!g.q) continue;
+    /* A FOTO DA DECKBOX (2026-09-21) ao lado do progresso: é a caixa que ele
+       tem na mão quando fotografa as cartas dela. */
+    const cx = D.caixas.find(c => c.slot === g.slot);
     h += `<div class="rvc"><button class="mini" data-slot="${esc(g.slot)}">`
-      + `<b>${esc(g.nome)}</b>${revBarra(g, true)}</button>`
+      + `<span class="btit">${cx ? fotoThumbHTML(cx) : ''}<b>${esc(g.nome)}</b></span>`
+      + `${revBarra(g, true)}</button>`
       + revBotao('caixa', g.slot, g.nome, g) + `</div>`;
   }
   h += `</div>`;
@@ -1655,10 +1659,99 @@ function candidatosHTML(c) {
     + `</p></div>`;
 }
 
+/* ------------------------------------------ A FOTO DA DECKBOX FÍSICA
+   André, 2026-09-21, à letra: *"quero poder tirar foto à deckbox onde vai
+   ficar cada deck, para ser referência também"*. Uma foto por caixa — a caixa
+   de plástico na estante, não as cartas. `c.foto` é `{em, url}` (a versão
+   reduzida em `assets/deckboxes/`, do Python: `fotocaixa.info`) ou `null`.
+
+   Três sítios: a MINIATURA no cartão da fila (`fotoThumbHTML`, ao lado do
+   nome, dentro do `<button class="mini">` — por isso é só uma `<img>`), o
+   CABEÇALHO da aba da caixa (`fotoCaixaHTML`, maior, toque para ampliar) e a
+   aba Revalidação ao lado do progresso de cada caixa. Sem foto, um quadrado
+   «📦 sem foto da deckbox» — que só no modo edição é um botão: no site
+   publicado não há onde a mandar, e um botão morto é pior do que nenhum. O
+   botão é um `<input type="file" capture="environment">`: no telemóvel abre a
+   câmara, no PC o selector de ficheiros. */
+function fotoInputHTML(c) {
+  return `<input type="file" accept="image/*" capture="environment" `
+    + `data-foto-caixa="${esc(c.slot)}" aria-label="Foto da deckbox de ${esc(c.nome)}" hidden>`;
+}
+
+function fotoThumbHTML(c) {
+  if (c.foto) {
+    return `<img class="dbthumb" loading="lazy" decoding="async" src="${esc(c.foto.url)}" `
+      + `alt="deckbox de ${esc(c.nome)}" width="44" height="44" `
+      + `title="foto da deckbox${c.foto.em ? ' · ' + esc(c.foto.em) : ''}" onerror="this.remove()">`;
+  }
+  return `<span class="dbthumb vazia" title="sem foto da deckbox" aria-label="sem foto da deckbox">📦</span>`;
+}
+
+function fotoCaixaHTML(c) {
+  if (c.foto) {
+    return `<div class="dbfoto"><img loading="lazy" decoding="async" src="${esc(c.foto.url)}" `
+      + `alt="deckbox de ${esc(c.nome)}" data-ampliar="${esc(c.foto.url)}" data-nome="${esc(c.nome)}" `
+      + `title="toca para ampliar">`
+      + `<span class="dbleg">📦 a deckbox desta caixa`
+      + (c.foto.em ? ` <span class="dim">· foto de ${esc(c.foto.em)}</span>` : '')
+      + (D.editable ? `<label class="btn sm">📷 trocar a foto${fotoInputHTML(c)}</label>` : '')
+      + `</span></div>`;
+  }
+  if (!D.editable) {
+    return `<div class="dbfoto vazia"><div class="dbq">📦 sem foto da deckbox</div></div>`;
+  }
+  return `<div class="dbfoto vazia"><label class="dbq btn">📦 sem foto da deckbox`
+    + `<small>toca para fotografar a caixa</small>${fotoInputHTML(c)}</label></div>`;
+}
+
+/* Ampliar: um véu por cima da página com a foto inteira; toque em qualquer
+   sítio (ou Esc) fecha. Só leitura — existe também no site publicado. */
+function ampliarFoto(url, nome) {
+  const v = document.createElement('div');
+  v.className = 'lightbox';
+  v.innerHTML = `<img src="${esc(url)}" alt="deckbox de ${esc(nome)}">`
+    + `<span>${esc(nome)} · toca para fechar</span>`;
+  v.onclick = () => v.remove();
+  v.tabIndex = 0;
+  v.onkeydown = e => { if (e.key === 'Escape') v.remove(); };
+  document.body.appendChild(v);
+  if (v.focus) v.focus();
+}
+
+/* Enviar: o ficheiro vai tal e qual no corpo do `POST /api/foto-caixa?slot=…`
+   (com o token no cabeçalho, como toda a escrita). O servidor valida pelos
+   primeiros bytes, guarda o original em `data/deckboxes/`, a anterior em
+   `anteriores/`, escreve a reduzida em `assets/deckboxes/` e a data no config
+   — e a resposta diz o que fez, com os tamanhos. */
+async function enviarFotoCaixa(input) {
+  const f = input.files && input.files[0];
+  if (!f) return;
+  const slot = input.dataset.fotoCaixa;
+  const lbl = input.closest ? input.closest('label') : null;
+  if (lbl) lbl.classList.add('aenviar');
+  toast(`A enviar a foto (${Math.max(1, Math.round(f.size / 1024))} KB)…`, 4000);
+  try {
+    const r = await gravar(`api/foto-caixa?slot=${encodeURIComponent(slot)}`, null, f);
+    if (!r.ok && r.status !== 403 && r.status !== 409 && r.status !== 413) {
+      throw new Error('HTTP ' + r.status);
+    }
+    const j = await r.json();
+    if (j.erro) throw new Error(j.erro);
+    toast(j.msg || 'Foto guardada.', 6000);
+    recarregar();
+  } catch (e) {
+    if (lbl) lbl.classList.remove('aenviar');
+    input.value = '';
+    erro('Não deu: ' + e.message);
+  }
+}
+
 function caixaHTML(c, compacta) {
   if (c.vazio) {
-    return `<div class="box"><div class="btop"><b>${esc(c.nome)}</b>`
+    return `<div class="box"><div class="btop"><span class="btit">${fotoThumbHTML(c)}`
+      + `<b>${esc(c.nome)}</b></span>`
       + `<span class="pct dim">—</span></div><div class="badges">${badges(c)}</div>`
+      + (compacta ? '' : fotoCaixaHTML(c))
       + `<div class="nota">${esc(c.nota)}</div>`
       + `<div class="vaziomsg">Caixa por atribuir — não escolhi por ti. `
       + `Escolhe aqui em baixo, ou vê a lista de cada um na página `
@@ -1666,10 +1759,14 @@ function caixaHTML(c, compacta) {
       + (compacta ? '' : candidatosHTML(c) + padraoHTML(c) + reservaHTML(c))
       + (D.editable ? acoesHTML(c) : '') + `</div>`;
   }
-  let h = `<div class="box"><div class="btop"><b>${esc(c.nome)}</b>`
+  let h = `<div class="box"><div class="btop"><span class="btit">${fotoThumbHTML(c)}`
+    + `<b>${esc(c.nome)}</b></span>`
     + `<span class="pct" style="color:${cor(c.pct)}">${c.pct}%</span></div>`
     + `<div class="bar"><i style="width:${Math.max(c.pct, 2)}%;background:${cor(c.pct)}"></i></div>`
     + `<div class="badges">${badges(c)}</div>`
+    /* A FOTO DA DECKBOX (2026-09-21), maior, só na aba da caixa — no cartão
+       compacto da fila fica a miniatura ao lado do nome. */
+    + (compacta ? '' : fotoCaixaHTML(c))
     + `<div class="nums">`
     + `<div class="num">na caixa<b>${c.tenho}/${c.precisa}</b></div>`
     + `<div class="num buy">comprar<b>${c.comprar}</b></div>`
@@ -3718,6 +3815,14 @@ function ligar() {
   for (const b of document.querySelectorAll('[data-rev-parar]')) {
     b.onclick = () => pararRevalidacao(b);
   }
+  /* A FOTO DA DECKBOX (2026-09-21): ampliar (leitura, nos dois modos) e o
+     `<input type="file">` do botão (só existe no modo edição). */
+  for (const i of document.querySelectorAll('[data-ampliar]')) {
+    i.onclick = () => ampliarFoto(i.dataset.ampliar, i.dataset.nome || '');
+  }
+  for (const i of document.querySelectorAll('input[data-foto-caixa]')) {
+    i.onchange = () => enviarFotoCaixa(i);
+  }
   const fim = $('#arr-fim'), csv = $('#arr-csv'), lim = $('#arr-limpar');
   if (csv) csv.onclick = baixarCSV;
   if (lim) lim.onclick = () => limparVistosArrumar();
@@ -3825,15 +3930,21 @@ const ESCOLHA = { escolher: 1, desmarcar: 1,
    hesitava — sem mensagem nenhuma. 25 s cobre um `loadout.report` inteiro na
    base dele (≈5 s) com folga para a rede de casa. */
 let GRAVAR_TIMEOUT_MS = 25000;   /* `let`: o teste encurta-o para não esperar */
-async function gravar(url, corpo) {
+/* Com `ficheiro` (a foto da deckbox, 2026-09-21) o corpo é o ficheiro tal e
+   qual, com o tipo dele, e o prazo é maior: 8 MB pela rede de casa não cabem
+   em 25 s. O resto — token, prazo, a mensagem em português — é o mesmo. */
+const ENVIAR_FICHEIRO_TIMEOUT_MS = 90000;
+async function gravar(url, corpo, ficheiro) {
   const ctl = (typeof AbortController === 'function') ? new AbortController() : null;
-  const t = ctl ? setTimeout(() => ctl.abort(), GRAVAR_TIMEOUT_MS) : null;
+  const prazo = ficheiro ? ENVIAR_FICHEIRO_TIMEOUT_MS : GRAVAR_TIMEOUT_MS;
+  const t = ctl ? setTimeout(() => ctl.abort(), prazo) : null;
   try {
     return await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json',
+      headers: { 'Content-Type': ficheiro ? (ficheiro.type || 'application/octet-stream')
+                                          : 'application/json',
                  'X-Mtgvault-Token': D.token || '' },
-      body: JSON.stringify(corpo || {}),
+      body: ficheiro ? ficheiro : JSON.stringify(corpo || {}),
       signal: ctl ? ctl.signal : undefined,
     });
   } catch (e) {
@@ -3841,7 +3952,7 @@ async function gravar(url, corpo) {
        timeout): o servidor pode ter gravado ou não, e a única coisa honesta a
        dizer é isso — em português, e não "Failed to fetch". */
     const porque = (e && e.name === 'AbortError')
-      ? `sem resposta do servidor em ${GRAVAR_TIMEOUT_MS / 1000} s`
+      ? `sem resposta do servidor em ${prazo / 1000} s`
       : 'sem ligação ao servidor (porto 8771)';
     throw new Error(`${porque} — não sei se gravou. Vê a rede, recarrega a `
       + `página e confirma antes de repetir.`);
