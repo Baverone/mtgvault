@@ -216,16 +216,16 @@ def guardar(pasta: Path, tipo: str, ficheiros: list[dict], *, slot: str | None =
     # O `n` salta o que já lá está com o mesmo segundo — dois pedidos no mesmo
     # segundo (o telemóvel manda várias) não se pisam.
     nome_ficheiro(tipo, slot, quando, 1, "jpg", copy_id)        # valida tipo/slot antes de escrever
-    existentes = {p.name for p in pasta.glob(f"{PREFIXO}-*")} if pasta.is_dir() else set()
+    existentes = {p.stem for p in pasta.glob(f"{PREFIXO}-*")} if pasta.is_dir() else set()
     out, n = [], 0
     for nome, dados, ext in validas:
         while True:
             n += 1
             novo = nome_ficheiro(tipo, slot, quando, n, ext, copy_id)
-            if novo not in existentes:
+            if Path(novo).stem not in existentes:
                 break
         _escrever(pasta / novo, dados)
-        existentes.add(novo)
+        existentes.add(Path(novo).stem)
         out.append({"nome": novo, "bytes": len(dados), "ext": ext, "original": nome})
     return out
 
