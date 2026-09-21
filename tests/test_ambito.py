@@ -164,6 +164,12 @@ def caso_formatos_do_metagame_saem_do_config():
         ["standard", "pioneer", "legacy"], secoes
     assert secoes["modern"] == "caixas" and secoes["premodern"] == "premodern", secoes
     assert metagame.top_n() == 3, "top-3 por omissão (ordem do André)"
+    # Desde 2026-09-21 o modo EFECTIVO vem de `secoes()`: um formato em
+    # `formatos_decididos` (o Pioneer, no config a sério) passa a `caixas`. O
+    # config deste teste não tem a chave, logo é igual ao `SECOES`; o caso com
+    # a chave está em `test_pioneer_jeskai.py`.
+    assert [f for f, _t, m in metagame.secoes() if m == "top"] == metagame.formatos_top() \
+        == ["standard", "pioneer", "legacy"]
     print("cobertura: formatos do config · metagame: top-3 + caixa escolhida")
 
 
