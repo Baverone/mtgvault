@@ -84,7 +84,7 @@ ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 from mtgvault import (caixas, configio, db, encomendas, feira, fotocaixa,  # noqa: E402
-                      loadout, migracao, qr, sources, venda)
+                      fotosite, loadout, migracao, qr, sources, venda)
 from mtgvault import padrao as padrao_mod  # noqa: E402
 
 import deckboxes  # noqa: E402
@@ -841,10 +841,17 @@ _CACHE_LOCK = threading.Lock()
 
 
 def _versao() -> tuple:
-    """O que, ao mudar, invalida tudo o que está em cache."""
+    """O que, ao mudar, invalida tudo o que está em cache.
+
+    A pasta `pendentes/` entra (2026-09-21) pelo mtime da PASTA: o NTFS
+    actualiza-o quando um ficheiro entra ou sai dela, e é isso que a aba
+    Revalidação mostra («fotos à espera») — uma foto que o telemóvel acabou
+    de mandar, ou que o `mtg-fotos-novas` das 02:30 acabou de arrumar, sem
+    ninguém carregar em nada.
+    """
     base = Path(db.DEFAULT_DB)
     ficheiros = [base, base.with_name(base.name + "-wal"), CONFIG,
-                 Path(db.pasta_dados()) / "arquetipos.json"]
+                 Path(db.pasta_dados()) / "arquetipos.json", ROOT / "pendentes"]
     out = []
     for f in ficheiros:
         try:
@@ -1045,10 +1052,13 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):                                 # noqa: N802
         caminho = urlparse(self.path).path
         tam = int(self.headers.get("Content-Length") or 0)
-        if tam > fotocaixa.MAX_BYTES:
-            # Sem ler: uma "foto" de 40 MB não é uma foto, é um engano.
+        # As FOTOS DAS CARTAS (2026-09-21) vêm várias num pedido: o tecto é o
+        # do pedido inteiro (`fotosite.MAX_PEDIDO`); o resto continua a ser o
+        # de UMA foto. Sem ler: uma "foto" de 40 MB não é uma foto, é um engano.
+        tecto = fotosite.MAX_PEDIDO if caminho == "/api/foto" else fotocaixa.MAX_BYTES
+        if tam > tecto:
             self._json({"erro": f"o corpo tem {tam / 1e6:.1f} MB — o máximo é "
-                                f"{fotocaixa.MAX_BYTES // (1024 * 1024)} MB"}, 413)
+                                f"{tecto // (1024 * 1024)} MB"}, 413)
             return
         bruto = self.rfile.read(tam) if tam else b""
         if not self._pode_escrever():
@@ -1068,6 +1078,23 @@ class Handler(BaseHTTPRequestHandler):
                     self._json(self._foto_caixa(bruto))
                 except fotocaixa.FotoInvalida as e:
                     self._json({"erro": str(e)}, 409)
+                except Exception as e:                  # noqa: BLE001
+                    self._json({"erro": f"{type(e).__name__}: {e}"}, 500)
+            return
+        if caminho == "/api/foto":
+            # AS FOTOS DAS CARTAS, TIRADAS DO SITE (André, 2026-09-21): o corpo
+            # é um `multipart/form-data` com uma ou várias fotos, que vão TAL E
+            # QUAL para a raiz de `pendentes/` com o nome a dizer a origem
+            # (`fotosite`). Não toca na base: quem cria/liga cópias é o
+            # `mtg-fotos-novas`, como sempre. Regenera-se pelo `esperadas.md`.
+            with ESCRITA:
+                try:
+                    self._json(self._foto_site(bruto))
+                except fotocaixa.FotoInvalida as e:
+                    self._json({"erro": str(e)}, 409)
+                except KeyError as e:
+                    self._json({"erro": f"a caixa {e.args[0]!r} não existe no "
+                                        f"colecao_config.json — recarrega a página"}, 409)
                 except Exception as e:                  # noqa: BLE001
                     self._json({"erro": f"{type(e).__name__}: {e}"}, 500)
             return
@@ -1141,6 +1168,18 @@ class Handler(BaseHTTPRequestHandler):
                     # as caixas) e reescreve o `pendentes/esperadas.md`; «parar»
                     # tira-o. Nada disto toca na base.
                     self._json(self._revalidacao(dados))
+                    return
+                if caminho == "/api/processar-fotos":
+                    # «⚡ PROCESSAR AGORA» (2026-09-21): uma ordem na inbox do
+                    # runner do ai-pc que corre o `mtg-fotos-novas` — o MESMO
+                    # programa das 02:30. Não toca na base nem no config, e não
+                    # corre o Claude local de nenhuma outra forma. Não regenera
+                    # (nada da alocação mudou): limpa-se a cache para o índice
+                    # passar a dizer «já está a processar» — a inbox não entra
+                    # no `_versao`, só `pendentes/`.
+                    r = fotosite.pedir_processamento(ROOT / "pendentes", fotosite.pasta_inbox())
+                    _CACHE.clear()
+                    self._json({"ok": True, **r})
                     return
                 if caminho == "/api/venda-export":
                     # «Gravar em data/» (2026-09-18): os mesmos dois ficheiros
@@ -1352,6 +1391,60 @@ class Handler(BaseHTTPRequestHandler):
                 "bytes_original": r["bytes_original"],
                 "bytes_reduzida": r["bytes_reduzida"], "anterior": r["anterior"],
                 "aviso": r["aviso"]}
+
+    def _foto_site(self, bruto: bytes) -> dict:
+        """`POST /api/foto?tipo=caixa&slot=…[&copy=<id>]` com as fotos no corpo
+        (`multipart/form-data`, uma ou várias) — André, 2026-09-21: *"tirar as
+        fotos directamente do site"*.
+
+        Tudo o que decide vive no `mtgvault.fotosite`: o multipart, o tipo
+        pelos primeiros bytes, o nome com a origem, a escrita atómica na RAIZ
+        de `pendentes/` (a foto inteira, tal como veio). Aqui lê-se o alvo do
+        URL, valida-se a caixa contra o config e a cópia contra a base, e
+        regenera-se — é o `regenerar` que reescreve o `esperadas.md`, e a
+        secção das fotos do site tem de lá estar antes das 02:30.
+        """
+        q = parse_qs(urlparse(self.path).query)
+        tipo = (q.get("tipo") or ["caixa"])[0].strip() or "caixa"
+        slot = (q.get("slot") or [""])[0].strip() or None
+        copy_raw = (q.get("copy") or [""])[0].strip()
+        if tipo not in fotosite.TIPOS:
+            raise fotocaixa.FotoInvalida(f"alvo {tipo!r} desconhecido "
+                                         f"({'/'.join(fotosite.TIPOS)})")
+        cfg = ler_config()
+        if tipo == "caixa":
+            if not slot:
+                raise fotocaixa.FotoInvalida("uma foto de caixa precisa do slot (`?slot=`)")
+            caixas.caixa_do_cfg(cfg, slot)                 # KeyError → 409
+        else:
+            slot = None
+        copy_id = None
+        with db.session() as con:
+            if copy_raw:
+                try:
+                    copy_id = int(copy_raw)
+                except ValueError:
+                    raise fotocaixa.FotoInvalida(f"cópia {copy_raw!r} não é um número") from None
+                if not con.execute("SELECT 1 FROM copies WHERE id = ?", (copy_id,)).fetchone():
+                    raise fotocaixa.FotoInvalida(f"a cópia #{copy_id} já não existe na base — "
+                                                 f"recarrega a página")
+            ficheiros = fotosite.ler_multipart(self.headers.get("Content-Type") or "", bruto)
+            guardadas = fotosite.guardar(ROOT / "pendentes", tipo, ficheiros,
+                                         slot=slot, copy_id=copy_id)
+            regenerar(con)
+        nome = (loadout.nomes_das_caixas().get(slot) if slot
+                else {"venda": "a venda", "rl": "a Caixa RL",
+                      "coleccao": "a Colecção"}.get(tipo, tipo))
+        n = len(guardadas)
+        mb = sum(g["bytes"] for g in guardadas) / 1e6
+        return {"ok": True, "tipo": tipo, "slot": slot, "copy_id": copy_id,
+                "ficheiros": [g["nome"] for g in guardadas],
+                "espera_s": fotosite.ESPERA_S,
+                "msg": (f"📷 {n} foto{'s' if n != 1 else ''} ({mb:.1f} MB) em pendentes\\ para "
+                        f"{nome}" + (f" · cópia #{copy_id}" if copy_id else "")
+                        + f" — entra{'m' if n != 1 else ''} na corrida das 02:30 ou com "
+                        f"«⚡ Processar agora» (a foto tem de ter mais de "
+                        f"{fotosite.ESPERA_S // 60} min).")}
 
     def _revalidacao(self, dados):
         """«Fotografar esta caixa» / «Fotografar a venda…» / «parar» (2026-09-20).

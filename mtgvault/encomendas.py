@@ -610,7 +610,8 @@ def conciliar(con, *, nm: str, set_code: str, collector_number: str | None,
 # ---------------------------------------------------------------------------
 # `pendentes/esperadas.md`: o que o Claude das fotos deve esperar
 # ---------------------------------------------------------------------------
-def esperadas_md(con, slots=None, rep: dict | None = None) -> str:
+def esperadas_md(con, slots=None, rep: dict | None = None,
+                 pasta: Path | str | None = None) -> str:
     """O texto: o que está pendente de foto, por caixa, com o material esperado.
     Vazio quando não há nada — e aí o ficheiro apaga-se (`escrever_esperadas`).
 
@@ -618,17 +619,22 @@ def esperadas_md(con, slots=None, rep: dict | None = None) -> str:
     seccao_esperadas`): a caixa (ou a venda, a Caixa RL, a Colecção) que o
     André está a fotografar, com as cópias por revalidar — é por ela que o
     Claude das fotos sabe que uma foto destas se LIGA a uma cópia que já existe.
+    E desde 2026-09-21 a das FOTOS TIRADAS NO SITE (`fotosite.seccao_esperadas`):
+    cada `site-<slot>-…` que está em `pasta` com a caixa e a cópia que o nome
+    indica — `pasta` é a própria `pendentes/`, onde este ficheiro se escreve.
     """
-    from . import collection, loadout, revalidacao         # noqa: PLC0415
+    from . import collection, fotosite, loadout, revalidacao  # noqa: PLC0415
     slots = _slots(con, slots)
     nomes = {s["slot"]: s["nome"] for s in slots}
     pend = [r for r in listar(con) if (r["qty_pendente_foto"] or 0) > 0]
     sem_foto = collection.copias_sem_foto(con)
     rev = revalidacao.seccao_esperadas(con, rep)
-    if not pend and not sem_foto and not rev:
+    site = fotosite.seccao_esperadas(con, Path(pasta)) if pasta else []
+    if not pend and not sem_foto and not rev and not site:
         return ""
     out = ["# Fotos esperadas (gerado pelo mtgvault — não editar)", ""]
     out += rev
+    out += site
     if pend:
         out += ["## Encomendas pendentes", "",
                 "Estas cartas estão **pendentes de foto**: o André disse que as tem "
@@ -672,7 +678,7 @@ def escrever_esperadas(con, pasta: Path | str, slots=None,
     secção da revalidação calcula-o outra vez."""
     pasta = Path(pasta)
     alvo = pasta / "esperadas.md"
-    texto = esperadas_md(con, slots, rep)
+    texto = esperadas_md(con, slots, rep, pasta=pasta)
     if not texto:
         if alvo.exists():
             alvo.unlink()
