@@ -1,0 +1,19 @@
+FOTOS DAS DECKBOXES (as caixas, nao as cartas)
+==============================================
+
+Larga aqui a foto da deckbox fisica de uma caixa com o NOME DO SLOT dela:
+
+    pendentes\deckboxes\premodern-replenish.jpg
+    pendentes\deckboxes\duel-commander.jpg
+
+(os slots estao em colecao_config.json -> caixas[].slot). O daily das 08:00 e
+o modo edicao (8771) recolhem-na: o original vai para data\deckboxes\, a versao
+reduzida para assets\deckboxes\ (vai no Git, e o site publicado que a mostra) e
+a data para o config. Substituir uma foto guarda a anterior em
+data\deckboxes\anteriores\. Nada se apaga.
+
+Um ficheiro cujo nome NAO seja um slot fica aqui e o daily diz porque.
+
+Esta subpasta NAO e lida pelo Claude que cataloga cartas (mtg-fotos-novas) nem
+pelo processar_fotos.py — os dois so olham para ficheiros na raiz de pendentes\.
+Uma foto de CARTAS e na raiz de pendentes\, nunca aqui.

@@ -44,6 +44,11 @@ data/revalidacao.log
 # O que está pendente de foto, para o Claude que cataloga as fotos ler. É
 # gerado a cada corrida (daily e modo edição) e apaga-se quando fica vazio.
 pendentes/esperadas.md
+# A FOTO DA DECKBOX FÍSICA de cada caixa (2026-09-21): o ORIGINAL (3–8 MB por
+# foto de telemóvel) e as anteriores ficam fora do Git. O que vai no Git é a
+# versão reduzida em `assets/deckboxes/` — a excepção consciente ao «não
+# guardar imagens», que é uma regra para a base. Ver `mtgvault/fotocaixa.py`.
+data/deckboxes/
 # A SAÍDA da lista de venda (2026-09-18): o CSV para carregar stock no
 # Cardmarket e a lista para ir buscar as cartas à estante, reescritos a cada
 # corrida do daily (e pelo «gravar em data/» do modo edição). Levam preços por

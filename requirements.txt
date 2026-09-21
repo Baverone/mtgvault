@@ -1,2 +1,5 @@
 requests>=2.31
 ijson>=3.2
+# A FOTO DA DECKBOX (2026-09-21): reduzir a foto de telemovel para o site
+# (mtgvault/fotocaixa.py). Sem ele o original copia-se tal e qual e diz-se.
+Pillow>=10

@@ -312,6 +312,27 @@ def main():
         # MESMO relatório que a página mostra — calcula-se uma vez e passa-se.
         _rep: dict = {}
 
+        # A FOTO DA DECKBOX FÍSICA largada em `pendentes/deckboxes/<slot>.jpg`
+        # (André, 2026-09-21): recolhe-se ANTES da Deckboxes, que é quem a
+        # mostra. Escreve a data no config e a reduzida em `assets/deckboxes/`
+        # (vai no `git add` desta corrida). Um nome que não é slot fica lá e
+        # diz-se aqui — nunca se apaga nada.
+        def _fotos_caixas():
+            from mtgvault import configio, fotocaixa       # noqa: PLC0415
+            cfg = configio.ler()
+            r = fotocaixa.recolher(cfg, raiz=ROOT)
+            if r["recolhidas"]:
+                configio.escrever(cfg)
+                sources._CFG_CACHE.clear()
+            return (f"{len(r['recolhidas'])} recolhida(s)"
+                    + (": " + ", ".join(x["slot"] for x in r["recolhidas"])
+                       if r["recolhidas"] else "")
+                    + ("; ignoradas: " + "; ".join(f"{i['ficheiro']} ({i['porque']})"
+                                                   for i in r["ignorados"])
+                       if r["ignorados"] else ""))
+
+        _step(con, "fotos-caixas", _fotos_caixas)
+
         def _deckboxes():
             _rep["v"] = loadout.report(con)
             out = deckboxes.build(con, ROOT / "deckboxes.html", rep=_rep["v"])

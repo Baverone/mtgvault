@@ -94,7 +94,10 @@ ORDEM = ("slot", "nome", "formato", "fonte", "ref", "assinatura", "cards",
          "compras_dedicadas",
          # A RESERVA (André, 2026-09-20): as cartas *"que poderão entrar"* —
          # ficam fora da venda. Ver `mtgvault/padrao.py`.
-         "reserva")
+         "reserva",
+         # A FOTO DA DECKBOX FÍSICA (André, 2026-09-21): `{"em", "ficheiro"}`,
+         # escrita pelo `fotocaixa.guardar`. Ver `mtgvault/fotocaixa.py`.
+         "foto")
 
 
 def estado_de(d: dict) -> str:
@@ -199,8 +202,12 @@ AJUDA = (
     "a exportação (saída `guardar`, motivo 'reserva da caixa <nome>'); uma LISTA "
     "PADRÃO (fixa, com data e origem, em vez da que a fonte recalcula) escreve-se "
     "em `listas_escolhidas[slot]` com 'padrao': true — `py -m mtgvault.cli padrao` "
-    "e `reserva`. Marca-se tudo isto no MODO EDIÇÃO "
-    "(python webapp.py, porto 8771 — no telemóvel com o QR)."
+    "e `reserva`. 'foto' (2026-09-21) = a data da FOTO DA DECKBOX FÍSICA desta "
+    "caixa ({em, ficheiro}); o original fica em data/deckboxes/<slot>.<ext> e a "
+    "versão do site em assets/deckboxes/<slot>.jpg — escreve-a o botão «Foto da "
+    "deckbox» do 8771 ou um ficheiro em pendentes/deckboxes/<slot>.jpg. Marca-se "
+    "tudo isto no MODO EDIÇÃO (python webapp.py, porto 8771 — no telemóvel com o "
+    "QR)."
 )
 
 

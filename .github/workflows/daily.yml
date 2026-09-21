@@ -84,7 +84,10 @@ jobs:
           # página publicada abre e diz "não consegui carregar os dados".
           # E `deckboxes.js` (2026-09-18): o JavaScript da Deckboxes saiu da
           # casca para um ficheiro cacheável; a casca aponta-lhe pelo hash.
-          git add colecao.html cobertura.html colecao_cor.html meusdecks.html metagame.html reservedlist.html caixarl.html showcase.html deckboxes.html deckboxes.js data/arquetipos.json data/paginas
+          # E `assets/deckboxes/` (2026-09-21): a versão reduzida da FOTO DA
+          # DECKBOX FÍSICA de cada caixa — a excepção consciente ao «não guardar
+          # imagens» (essa regra é para a base). É uma pasta: leva o que lá estiver.
+          git add colecao.html cobertura.html colecao_cor.html meusdecks.html metagame.html reservedlist.html caixarl.html showcase.html deckboxes.html deckboxes.js data/arquetipos.json data/paginas assets/deckboxes
           if git diff --cached --quiet; then
             echo "Sem alterações no HTML."
           else
