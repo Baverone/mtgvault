@@ -107,7 +107,7 @@ alertas.py          alertas.html — vender/comprar por movimento de preço (for
 meusdecks.py        FUNDIDO NO deckboxes.py (2026-09-08, v6) — a "Decks permanentes" fazia a MESMA pergunta ("quanto tenho deste deck?") e respondia outro número, porque contava a colecção inteira por deck em vez da alocação. Saiu do MENU e do `index.html`; o módulo continua a correr no daily mas só escreve um REENCAMINHAMENTO (`deckboxes.redireccionamento`), porque o link vive no telemóvel dele e no site publicado. O que ela tinha e a Deckboxes não tinha passou para a aba da caixa: lista por TIPO, imagens grandes, "copiar a lista" e "quantas tenho na colecção inteira" (informação secundária). Os ajudantes que outras páginas usavam (`_type_map`, `_group_by_type`, `_faltas`, `_faltas_html`, `_art`) estão agora em `mtgvault/paginas.py` — o `showcase.py` lê-os de lá
 deckboxes.py        deckboxes.html — "Deckboxes": o LOADOUT (colecao_config.json→loadout), os decks montados ao mesmo tempo com a coleção REPARTIDA entre eles (uma cópia física serve uma caixa só). NB (2026-09-07): a página foi reescrita com **uma ABA POR DECK** (o pedido dele: *"faz como no riftvault — no botão, cada deck tem uma aba própria"*), mais as abas **Todas**, **✅ Decks montados** / **🔧 Decks para montar** (2026-09-08, ver a secção própria), **Arrumar**, **Partilhadas**, **Comprar**, **Vender** e — desde 2026-09-08 — **Sugestões** (as caixas candidatas de Premodern; só existe se houver caixas desse formato). Os dados vão em JSON dentro do HTML (`<script id="dados">`) e o render é JavaScript — o MESMO ficheiro serve o site publicado (`editable:false`) e o modo edição do `webapp.py` (`editable:true`, com botões). Por caixa: barra, dois números ("faltam comprar" e "ir buscar a outra caixa"), grelha de cartas com três estados, "tirar de:" (`slot["origens"]`), substitutos, wantlist Cardmarket (SÓ o que é mesmo compra). Na aba **Comprar**, cada linha diz para que caixa é a compra (`para`) e em que material (`loadout.requisito_material`), há selector por caixa (o "copiar" copia só o filtro activo) e as cartas ≥100 €/cópia levam chip «cara» e total à parte — Mishra's Workshop sozinha vale mais do que o resto da lista. Motor em mtgvault/loadout.py
 webapp.py           MODO EDIÇÃO local, **porto 8771** (o 8770 é do `riftvault serve` — não trocar). Serve o `deckboxes.html`/`metagame.html` com os botões: painel *Montar* (*Sleevado e na caixa*), *Já arrumei tudo*, *Actualizei*, *Vendida*, *Tornar permanente*, *Subir/Descer* e *Vou montar este*. As PREFERÊNCIAS vão para o `colecao_config.json` (as `caixas` vão no Git); o que é FÍSICO vai para a `copy_allocation` e, na venda, sai da `copies` + `data/vendas.csv`. NB (2026-09-08): **ouve em `MTGVAULT_BIND`, por omissão `127.0.0.1`** (a tarefa `mtgvault-serve` põe `0.0.0.0` para o telemóvel), e as ESCRITAS exigem o token de `data/webapp.token` — ver "O telemóvel e o token". Mantido de pé pela tarefa `ai-pc/tasks/mtgvault-serve` (verifica de 5 em 5 min, relança destacado)
-metagame.py         metagame.html — "Metagame": desde 2026-09-07 já NÃO é o top-10 de cada formato; é o **top-N que ele está mais perto de concluir** (`colecao_config.json`→`metagame_top_n`, default 3). `SECOES` decide o modo por formato: `top` (Standard/Pioneer/Legacy — as caixas do loadout por escolher, via `loadout.foil_report`), `caixas` (Modern — o deck já escolhido, do próprio loadout) e `premodern` (o ranking de sugestões — top-10 de representação + top-5 combo, cobertura **como principal** + a do que sobra ao lado, e os botões «vou montar este» / «não quero este»; era `alvos`, só o `premodern_arquetipos_alvo`, até 2026-09-08). Posse pela alocação do loadout, três estados, wantlist Cardmarket. NÃO lê `formatos_metagame` (o Legacy tinha de entrar e não está lá)
+metagame.py         metagame.html — "Metagame": desde 2026-09-07 já NÃO é o top-10 de cada formato; é o **top-N que ele está mais perto de concluir** (`colecao_config.json`→`metagame_top_n`, default 3). `SECOES` decide o modo por formato: `top` (Standard/Pioneer/Legacy — as caixas do loadout por escolher, via `loadout.foil_report`), `caixas` (Modern — o deck já escolhido, do próprio loadout) e `premodern` (o ranking de sugestões — top-10 de representação + top-5 combo, cobertura **como principal** + a do que sobra ao lado, e os botões «vou montar este» / «não quero este»; era `alvos`, só o `premodern_arquetipos_alvo`, até 2026-09-08). Posse pela alocação do loadout, três estados, wantlist Cardmarket. NÃO lê `formatos_metagame` (o Legacy tinha de entrar e não está lá). NB (2026-09-21): `colecao_config.json → formatos_decididos` (hoje `["pioneer"]`) passa um formato de `top` a `caixas` — `metagame.secoes()` é o modo efectivo, `formatos_top()` lê de lá (e a Deckboxes e o `/api/escolher` também); ver o ponto 12
 _reiniciar_webapp.py  mata o `webapp.py` que OUVE no 8771 (por porto, nunca por nome de processo — o 8770 é do riftvault e o 8773 do Treinador) para a tarefa `mtgvault-serve` o relançar com o código novo. É o único caminho na allowlist do Claude local (`taskkill`/`netstat` não estão lá). Tem teste (`test_reiniciar_webapp.py`, com um trecho real de `netstat -ano`)
 (prioridade.py + metafaltas.py APAGADOS 2026-08-26, a redefinir)
 reservedlist.py     reservedlist.html — Reserved List (Scryfall) x coleção, por edição, preço/evolução, e 'VENDER' as que não jogam em formato nenhum
@@ -2495,6 +2495,72 @@ venda ou da feira mexe** (medido na cópia da base de 2026-09-20: fechar tudo
   Todas/Montados/Para montar e as Não encontradas ficaram como estavam (não
   têm lista de cartas, ou já têm a foto); (c) o `title` continua a existir
   em cada tile — é o que o `tocarCarta` mostra ao toque.
+
+**12. PIONEER: SÓ O GREASEFANG E O JESKAI CONTROL (André, 2026-09-21, à
+letra).** *"Pioneer apenas Greasefang e jeskai control
+https://mtgtop8.com/event?e=90797&d=889461&f=PI"*. Recorta, só para o
+Pioneer, a decisão de 2026-09-07 (*"dás-me só o top-3 decks que estou mais
+perto de concluir para os formatos Standard, Pioneer, Legacy"*) — para o
+Standard e o Legacy essa continua inteira. Relatório e medições em
+`ai-pc/work/revisao/mtgvault-pioneer-0921.md`; testes em
+`test_pioneer_jeskai.py` (5 casos). Só config e a leitura dele: **o motor não
+mudou uma linha.**
+- **A segunda caixa é `pioneer-jeskai`** («Jeskai Control», formato pioneer,
+  grupo SPML — EN foil, RL pode ser nonfoil, «só foil se existir» —, dedicada
+  e permanente como todas), a seguir ao Greasefang no config e na ordem da
+  alocação (Greasefang é a mais antiga; `prioridade` 13 → 14, o Legacy passou
+  a 15 — está vazio, não muda nada). **A lista é FIXA pelo mecanismo da lista
+  padrão** (ponto 9, `padrao.py`): `listas_escolhidas["pioneer-jeskai"]` com
+  `padrao: true`, `escolhido_em: 2026-09-21` e `origem` = o URL dele — é a
+  `decklists.id 18876` (McWinSauce, «Pioneer event - MTGO RC Qualifier»
+  13/09/2026, 5–8.º), **60 main + 15 side, 37 linhas, confirmada linha a
+  linha contra o export `.dec` do mtgtop8** nesse dia. O side vai separado
+  como em todas as caixas (decisão de 08/09: o Thor joga 2 no main + 1 no
+  side e são duas linhas). Aplicada pela CLI (`padrao pioneer-jeskai fixar
+  --ficheiro … --origem …`), nunca à mão no JSON; o `daily` não a pisa (não
+  escreve em `listas_escolhidas`).
+- **A reserva da caixa** (`caixas[].reserva`, 8 cartas) são as **nonfoil EN
+  que ele já tem das cartas da lista**, para não irem à venda até ele ter as
+  foil: Thor, God of Thunder (3× MSH), Jeskai Revelation (4× TDM), Tablet of
+  Discovery (4× SOS), Great Hall of the Biblioplex (4× SOS), Combustion
+  Technique (2× TLA nonfoil), It'll Quench Ya! (1× TLA nonfoil) — as seis da
+  ordem, verificadas na base — **mais duas que a ordem não nomeou e cabem na
+  mesma regra**: Price of Freedom (4× TLA nonfoil) e Soul-Guide Lantern (2×
+  SLD nonfoil). Hoje nenhuma ia à venda (cabem no playset; as que a lista
+  pede são substitutos — `guardar`, *"serve Jeskai Control"*): a reserva é
+  para o dia em que as foil chegarem e as nonfoil passarem a excedente.
+- **`colecao_config.json → formatos_decididos: ["pioneer"]`** é o que tira o
+  top-N ao Pioneer. `metagame.formatos_decididos()` lê-o e `metagame.secoes()`
+  dá o modo EFECTIVO de cada secção (`top` → `caixas` para um formato
+  decidido); o `SECOES` fica como ele o deu em 2026-09-07. Lêem de lá os
+  três sítios onde havia candidatos: a **secção do Metagame** (mostra as duas
+  caixas, com o `lead` a dizer porquê e o rodapé a listar quem é top-N e quem
+  mostra caixas — sai da mesma lista, escrito à mão dizia *"Standard,
+  Pioneer e Legacy"*), a **Deckboxes** (`_candidatos` percorre
+  `metagame.formatos_top()`, logo as duas abas do Pioneer ficam sem o bloco
+  «o que estás mais perto de concluir» e sem «vou montar este») e o
+  **`/api/escolher`** (recusa `escolher` para uma caixa de um formato
+  decidido — uma página aberta ontem no telemóvel ainda tem o botão). **O
+  código do top-N não se apagou**: tirar o formato da lista devolve-lhe os
+  candidatos (tem caso de teste). O Standard e o Legacy continuam com 3.
+- **Medido na cópia da base de 2026-09-21** (o mesmo `vault.db` dos dois
+  lados): a caixa nova **49 % · 37/75 · comprar 38 · 84,67 €** (3 Riverglide
+  Pathway sem preço); fechar tudo **7 028,04 → 7 112,71 €** (+84,67 = a
+  caixa), comprar **201 → 239** (+38), arrumar **190 → 224** (+34 = as cópias
+  que a Jeskai tira da gaveta; as 3 Island são da pilha de básicas), venda
+  **273c/1 563,40 € igual**, venda_rl 74c/5 485,87 € igual, rl_segurar
+  28c/3 081,19 € igual, reservadas 1c/100 € igual, guardar 1c/14,75 € igual,
+  **as outras 14 caixas ao cêntimo**. Dos 38 a comprar: 3 Hallowed Fountain
+  (os 4 EXP foil estão na caixa do Modern — regra de 19/09, *"tens 4 no
+  Modern"*), 2 Thor, 4 Jeskai Revelation, 4 Tablet, 3 Great Hall, 1
+  Combustion Technique + 1 no side, 1 It'll Quench Ya!, 1 Price of Freedom,
+  1 Soul-Guide Lantern (todas *"não é foil (existe em foil: …)"*), 1 Annul
+  (os 4 USG são PT da era, trancados ao Premodern), 4 Divide by Zero, 3
+  Riverglide Pathway, 1 Deserted Beach, 1 Pop Quiz e 6 cartas de side que não
+  tem. Já EN foil: Abandon Attachments, Accumulate Wisdom, Firebending
+  Lesson, Gran-Gran, Iroh's Demonstration, Spell Pierce, Spirebluff Canal,
+  Steam Vents, Stock Up, Riverpyre Verge, Ghost Vacuum, Improvisation
+  Capstone.
 
 **AS CÓPIAS DE UMA LINHA INCOMPLETA TAMBÉM SE TIRAM DA GAVETA (2026-09-08).**
 Uma linha que pede 4 e a que a alocação só deu 2 vive em `missing` — e **tudo**
