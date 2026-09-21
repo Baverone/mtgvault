@@ -16,6 +16,11 @@ isso**. O que mudou de fundo:
     que ainda estão sem `ref` — a pergunta "que deck meto nesta caixa?".
   * **Modern** — não há nada a escolher: o deck está escolhido (UW Oswald) e
     mostra-se a caixa do loadout, com as variantes marcadas.
+  * **Pioneer, desde 2026-09-21** — o mesmo que o Modern, por decisão dele
+    (*"Pioneer apenas Greasefang e jeskai control"*): as duas caixas, sem
+    top-N. É `colecao_config.json → formatos_decididos` (`formatos_decididos()`
+    / `secoes()`), não código: o top-N fica pronto para o dia em que ele tirar
+    o formato de lá.
   * **Premodern** — o **top-10 de representação** e o **top-5 de combo** do
     formato (André, 2026-09-08), cada um com a cobertura medida sobre o que
     SOBRA: as cópias PT que nenhuma caixa levou. É a pergunta *"que mais posso
@@ -81,6 +86,31 @@ def top_n() -> int:
         return max(1, int(sources.config().get("metagame_top_n") or 3))
     except (TypeError, ValueError):
         return 3
+
+
+def formatos_decididos() -> list[str]:
+    """Os formatos em que ele já DECIDIU os decks — sem top-N, sem candidatos,
+    sem «vou montar este».
+
+    André, 2026-09-21, à letra: *"Pioneer apenas Greasefang e jeskai control"*.
+    A decisão de 2026-09-07 (ver o top-3 mais perto de concluir e escolher) fica
+    para os formatos que não estão aqui — Standard e Legacy —; para o Pioneer
+    é substituída por esta. Vive em `colecao_config.json → formatos_decididos`
+    e não no código: tirar o formato da lista devolve-lhe os candidatos, e o
+    código do top-N não se apaga (apagar é decisão dele).
+    """
+    v = sources.config().get("formatos_decididos")
+    return [str(f).lower() for f in v] if isinstance(v, list) else []
+
+
+def secoes() -> list[tuple[str, str, str]]:
+    """As `SECOES` com o modo EFECTIVO: um formato de `top` que ele já decidiu
+    passa a `caixas` — mostra as caixas dele, como o Modern, e mais nada. O
+    `SECOES` fica como a ordem que ele deu em 2026-09-07; o que muda por
+    formato é config."""
+    dec = set(formatos_decididos())
+    return [(f, t, "caixas" if modo == "top" and f in dec else modo)
+            for f, t, modo in SECOES]
 
 
 def _art(sid):
@@ -404,9 +434,24 @@ def _decks_premodern(res):
     return out
 
 
+def _e_lista(nomes) -> str:
+    """`["A", "B", "C"]` → `"A, B e C"` (o rodapé)."""
+    nomes = list(nomes)
+    if not nomes:
+        return "—"
+    if len(nomes) == 1:
+        return nomes[0]
+    return ", ".join(nomes[:-1]) + " e " + nomes[-1]
+
+
 def formatos_top() -> list[str]:
-    """Os formatos cuja secção é um TOP-N — os que têm "vou montar este"."""
-    return [f for f, _t, modo in SECOES if modo == "top"]
+    """Os formatos cuja secção é um TOP-N — os que têm "vou montar este".
+
+    Lê o modo EFECTIVO (`secoes()`): um formato decidido (2026-09-21, o
+    Pioneer) não entra, e é por aqui que a Deckboxes (`_candidatos`) e o
+    `webapp` deixam de lhe oferecer candidatos — uma lista só, nos três sítios.
+    """
+    return [f for f, _t, modo in secoes() if modo == "top"]
 
 
 def slot_do_formato(slots, fmt) -> dict | None:
@@ -486,7 +531,8 @@ def html_page(con, editable=False, token="", ligacao=None) -> str:
     res = loadout.report(con)
 
     data, names = [], set()
-    for fmt, titulo, modo in SECOES:
+    decididos = set(formatos_decididos())
+    for fmt, titulo, modo in secoes():
         if modo == "top":
             decks = _decks_do_topo(con, fmt, res, n)
             escolhido = next((d for d in decks if d["escolhido"]), None)
@@ -505,7 +551,18 @@ def html_page(con, editable=False, token="", ligacao=None) -> str:
                          '(porto 8771) e carrega em <b>vou montar este</b>.')
         elif modo == "caixas":
             decks = _decks_de_slots(res["slots"], fmt)
-            lead = 'O deck já escolhido para a caixa deste formato, e as suas variantes.'
+            if fmt in decididos:
+                # FORMATO DECIDIDO (André, 2026-09-21: *"Pioneer apenas
+                # Greasefang e jeskai control"*): as caixas dele e mais nada —
+                # nem top-N, nem candidatos, nem «vou montar este». Diz-se
+                # porquê, senão a secção parecia o Modern por acaso.
+                lead = (f'Os <b>{len(decks)}</b> decks que decidiste para este '
+                        f'formato, tal como estão nas caixas — sem top-{n} nem '
+                        f'candidatos, de propósito (<code>colecao_config.json → '
+                        f'formatos_decididos</code>; tirar o formato de lá devolve '
+                        f'o top-{n}).')
+            else:
+                lead = 'O deck já escolhido para a caixa deste formato, e as suas variantes.'
         else:
             decks = _decks_premodern(res)
             pm = res.get("premodern") or {}
@@ -546,10 +603,17 @@ def html_page(con, editable=False, token="", ligacao=None) -> str:
                  f'<p class="lead">{lead}</p>{corpo}</section>')
 
     today = con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or ""
+    # O rodapé diz QUE formatos são top-N e quais mostram as caixas — escrito
+    # à mão dizia "Standard, Pioneer e Legacy" no dia em que o Pioneer deixou
+    # de o ser (2026-09-21). Sai da mesma lista que desenha as secções.
+    tops = [t for _f, t, modo in secoes() if modo == "top"]
+    cxs = [t for _f, t, modo in secoes() if modo == "caixas"]
     return (_TMPL.replace("%META%", paginas.META)
             .replace("%TEMA%", paginas.TEMA)
             .replace("%TABS%", TABS).replace("%SUBNAV%", subnav)
             .replace("%SECS%", secs).replace("%N%", str(n))
+            .replace("%TOPS%", html.escape(_e_lista(tops)))
+            .replace("%CAIXAS%", html.escape(_e_lista(cxs)))
             .replace("%EDIT%", "1" if editable else "")
             # O token só entra na página quando o pedido que a foi buscar já o
             # trazia (ver `webapp`): é ele que autoriza os botões a gravar.
@@ -622,8 +686,8 @@ ordena o top-%N%. Ignora as terras
 básicas: com elas, todos os decks começavam acima dos 30% e nenhum se distinguia dos outros.
 A <b>lista de consenso</b> é a lista padrão do arquétipo — cada lugar ocupado pela
 cópia com maior probabilidade de lá estar, calculada das decklists reais que contam.
-<b>Standard, Pioneer e Legacy</b> são as caixas por escolher: aqui está o top-%N% para
-decidires. <b>Modern</b> mostra o deck já escolhido. No <b>Premodern</b> a pergunta é outra —
+<b>%TOPS%</b> são as caixas por escolher: aqui está o top-%N% para
+decidires. Em <b>%CAIXAS%</b> mostram-se os decks já escolhidos. No <b>Premodern</b> a pergunta é outra —
 o top-10 do formato e os melhores combo, com a percentagem do que <b>sobra</b> depois de as
 seis caixas estarem servidas: é com essas cartas que se monta mais um deck, e é o que não
 for reservado por uma sugestão que vai para a venda.

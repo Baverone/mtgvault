@@ -1460,6 +1460,18 @@ class Handler(BaseHTTPRequestHandler):
             if act == "escolher":
                 if not aid:
                     return {"erro": "sem arquétipo"}
+                # FORMATO DECIDIDO (André, 2026-09-21: *"Pioneer apenas
+                # Greasefang e jeskai control"*): a página já não desenha o
+                # botão, mas uma página aberta no telemóvel antes de hoje ainda
+                # o tem — e escolher um top-N para uma caixa do Pioneer era
+                # desfazer a decisão dele sem ninguém dar por isso.
+                try:
+                    fmt = (_slot_do_cfg(cfg, slot_id).get("formato") or "").lower()
+                except KeyError:
+                    return {"erro": f"caixa {slot_id!r} desconhecida"}
+                if fmt in metagame.formatos_decididos():
+                    return {"erro": f"o {fmt} está decidido (colecao_config.json → "
+                                    f"formatos_decididos): não há top-N para escolher"}
                 msg = escolher_lista(con, cfg, slot_id, int(aid))
             elif act == "desmarcar":
                 msg = desmarcar_lista(cfg, slot_id)

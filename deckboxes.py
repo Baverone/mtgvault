@@ -91,6 +91,11 @@ def _candidatos(con, rep):
 
     O cálculo é o do `metagame.candidatos` e mais nenhum: duas respostas
     diferentes à mesma pergunta é o padrão que este vault já pagou caro.
+
+    Desde 2026-09-21 o Pioneer JÁ NÃO os mostra (André: *"Pioneer apenas
+    Greasefang e jeskai control"*): sai do `metagame.formatos_top()` por
+    `colecao_config.json → formatos_decididos`, e as duas caixas dele ficam
+    sem o bloco «o que estás mais perto de concluir» e sem «vou montar este».
     """
     import metagame
 

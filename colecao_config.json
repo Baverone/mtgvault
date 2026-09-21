@@ -25,7 +25,8 @@
     {"slot": "modern", "nome": "Modern — UW Oswald", "formato": "modern", "fonte": "deck", "ref": "UW Oswald", "balde": "SPML", "estado": "permanente", "prioridade": 12, "variantes": [], "notas": ""},
     {"slot": "standard", "nome": "Standard", "formato": "standard", "fonte": "deck", "ref": null, "balde": "SPML", "estado": "candidata", "prioridade": 11, "notas": ""},
     {"slot": "pioneer", "nome": "Pioneer — Greasefang", "formato": "pioneer", "fonte": "deck", "ref": "Greasefang", "balde": "SPML", "estado": "permanente", "prioridade": 13, "notas": ""},
-    {"slot": "legacy", "nome": "Legacy", "formato": "legacy", "fonte": "deck", "ref": null, "balde": "SPML", "estado": "candidata", "prioridade": 14, "notas": ""}
+    {"slot": "pioneer-jeskai", "nome": "Jeskai Control", "formato": "pioneer", "fonte": "escolhido", "ref": "pioneer-jeskai", "balde": "SPML", "estado": "permanente", "prioridade": 14, "notas": "André, 2026-09-21: «Pioneer apenas Greasefang e jeskai control» — a lista padrão é a do McWinSauce (MTGO RC Qualifier, 13/09/2026).", "_antes": {"fonte": "deck", "ref": null, "nome": "Jeskai Control", "estado": "permanente"}, "reserva": ["Combustion Technique", "Great Hall of the Biblioplex", "It'll Quench Ya!", "Jeskai Revelation", "Price of Freedom", "Soul-Guide Lantern", "Tablet of Discovery", "Thor, God of Thunder"]},
+    {"slot": "legacy", "nome": "Legacy", "formato": "legacy", "fonte": "deck", "ref": null, "balde": "SPML", "estado": "candidata", "prioridade": 15, "notas": ""}
   ],
   "_caixas": "AS CAIXAS: a única noção de deck do vault (André, 2026-09-08: 'temos decks vigiados e deckbox que é a mesma coisa'). Substitui o `loadout` da v5 e a lista `decks_vigiados` como definição de deck. Um deck é uma caixa. Campos: 'slot' = o id (não mudar, é a chave da copy_allocation); 'nome' = como aparece nas páginas; 'formato' = decide as regras de material e a ordem da alocação (regras_por_formato); 'fonte' = de onde vem a lista — 'vigiado' (etiqueta da tabela `watched`, o jogador/URL que o watch-check segue), 'deck' (nome na tabela `decks`), 'consenso' (calculado das listas que contam, identificado por 'assinatura'), 'escolhido' (o «vou montar este»: lista congelada e datada em `listas_escolhidas`) ou 'manual' (lista escrita à mão em 'cards'); 'ref' = o nome nessa fonte (null = caixa por escolher, fica vazia de propósito — não se escolhe por ele); 'balde' = a gaveta de onde as cartas saem; 'estado' = candidata | permanente | montada | congelada (escala: montada implica permanente; congelada = montada + dedicada e é CALCULADA, escrevê-la vale montada); 'prioridade' = desempate DENTRO do grupo de formato; 'variantes' = outros decks que partilham a caixa; 'notas' = texto livre mostrado no cartão. As regras de material ('lingua', 'acabamento', 'edicoes', 'baldes', 'estrita', 'dedicado', 'compras_dedicadas') herdam-se do grupo de formato e só se escrevem aqui para abrir excepção. Marca-se tudo isto no MODO EDIÇÃO (python webapp.py, porto 8771 — no telemóvel com o QR).",
   "baldes_coleccao": [
@@ -262,6 +263,10 @@
   },
   "_premodern": "PREMODERN: O QUE MONTAR A SEGUIR COM O QUE SOBRA, E VENDER O RESTO (André, 2026-09-08, à letra): 'O que não estiver a ser usado em Premodern e se encaixe na regra do Premodern deve ser sugerido para venda. Antes disso, procura decklists do formato; se o deck for top-10 de representação ou top-5 decks combo do formato, sugere a lista para montar o deck caso eu tenha pelo menos 50 % das cartas (sem contar com as básicas para a %); se não, envia para vender.' Chaves: 'top_representados' (quantos arquétipos entram pelo nº de listas que CONTAM — a regra de sempre, sources.counting_sql), 'top_combo' (quantos entram por serem combo, mesmo que não cheguem ao top-10), 'sugerir_a_partir_de_pct' (a partir de que cobertura um candidato passa a SUGESTÃO com botão «vou montar este»), 'min_listas' (abaixo disto o consenso é ruído), 'sugestoes_recusadas' (o «não quero este»: nome do arquétipo -> data; as cartas dele libertam-se para a venda no mesmo dia) e 'combo_arquetipos'. A COBERTURA mede-se sobre as cópias que a alocação NÃO deu a nenhuma caixa (nem às de Premodern nem a uma já escolhida): medi-la sobre a colecção inteira dava percentagens altas e falsas, porque as cartas estão dentro de decks montados — uma sugestão que conta com elas está a mandar desmontar um deck para montar outro. Consequência a saber: com seis caixas de Premodern a alocar primeiro sobra pouco, e é normal um candidato interessante aparecer nos 30-40%. As páginas mostram os dois números (o que sobra e o total). 'combo_arquetipos' classifica e NOMEIA por REGRA sobre a lista de consenso, com as mesmas três chaves do archetype_rules.json ('all' = tem todas, 'any' = basta uma, 'none' = não pode ter nenhuma) e o mesmo motor (tagging). A ORDEM é a prioridade — a primeira que bate ganha —, e não é decoração: o Full English Breakfast joga Survival of the Fittest e, escrito depois do Elves/Survival, chamava-se Elves/Survival. 'grau' = puro (a interacção mata no turno em que resolve) | prisao (tranca o jogo e mata depois) | hibrido (tem também um plano que ganha sozinho); o critério e a lista saíram do relatório work/revisao/premodern-combo.md, sobre 441 listas reais. A regra serve também de nome: o meta_coverage.KNOWN chamava 'Replenish' à Enchantress (que joga 96% de Replenish) e ao UW Replenish, e é o 'none' que os separa. Desde 2026-09-08 há regras que SÓ nomeiam ('combo': false — o Psychatog, o Landstill, os Goblins, o Sligh): dar nome e dizer que é combo são duas decisões diferentes, e sem essa chave o Landstill passava a disputar o top-5 de combo com o Stiflenought. Estão escritas NO FIM da lista de propósito: a primeira que bate ganha, e um deck que também é combo tem de ficar com o nome do combo (as listas de UW Replenish jogam Exalted Angel). 'cor': true põe as cores do núcleo à frente do nome ('Orzhov Exalted Angel'), para os nomes que não implicam a cor — calcula-se em vez de se escrever, senão chamava-se Orzhov a um Exalted Angel mono-branco. ATENÇÃO: esta lista SUBSTITUI a de premodern.COMBO_DEFAULT, não se soma a ela — uma regra acrescentada só ao código fica morta aqui, sem erro nenhum. O test_arquetipos.py tranca as duas.",
   "metagame_top_n": 3,
+  "formatos_decididos": [
+    "pioneer"
+  ],
+  "_formatos_decididos": "Os formatos em que o André já DECIDIU os decks (2026-09-21, à letra: 'Pioneer apenas Greasefang e jeskai control'). Nestes o metagame.html deixa de mostrar o top-N que ele está mais perto de concluir e a aba da caixa deixa de ter os candidatos e o «vou montar este» — mostram só as caixas dele, como o Modern. A decisão de 2026-09-07 (ver o top-3 para escolher) continua a valer para os formatos que NÃO estão aqui (Standard, Legacy). O código do top-N fica: tirar um formato desta lista devolve-lhe os candidatos.",
   "_metagame_top_n": "Quantos decks por formato mostra o metagame.html. André, 2026-09-07, à letra: 'Para os decks metagame, em vez de me dares todas as listas, dás-me só o top-3 decks que estou mais perto de concluir para os formatos Standard, Pioneer, Legacy'. Vale só para as secções de TOP (Standard/Pioneer/Legacy — as caixas do loadout que ainda estão por escolher); o Modern mostra o deck já escolhido e o Premodern os alvos de premodern_arquetipos_alvo. A % que ordena é a das cartas que ele TEM (livres + as que estão noutra caixa, que se vão buscar), com a regra de material do loadout (foil menos Reserved List) e sem contar terras básicas. Sobe para 5 se quiseres mais opções por onde escolher. (Substituiu o decks_faziveis_min_pct: a página 'Decks fazíveis' foi retirada em 2026-09-07 — fazia a mesma pergunta e respondia pior.)",
   "metagame_fontes": {
     "_default": {
@@ -453,6 +458,52 @@
         ["main", "Urza's Saga", 1],
         ["main", "Voice of Victory", 1],
         ["main", "Witch Enchanter", 1]
+      ]
+    },
+    "pioneer-jeskai": {
+      "nome": "Jeskai Control",
+      "padrao": true,
+      "origem": "https://mtgtop8.com/event?e=90797&d=889461&f=PI — McWinSauce, Jeskai Control, MTGO RC Qualifier 13/09/2026 (5-8.º); ordem do André de 2026-09-21",
+      "formato": "pioneer",
+      "escolhido_em": "2026-09-21",
+      "cards": [
+        ["main", "Abandon Attachments", 3],
+        ["main", "Accumulate Wisdom", 3],
+        ["main", "Combustion Technique", 3],
+        ["main", "Deserted Beach", 1],
+        ["main", "Divide by Zero", 4],
+        ["main", "Firebending Lesson", 4],
+        ["main", "Gran-Gran", 4],
+        ["main", "Great Hall of the Biblioplex", 3],
+        ["main", "Hallowed Fountain", 3],
+        ["main", "Iroh's Demonstration", 1],
+        ["main", "Island", 3],
+        ["main", "It'll Quench Ya!", 2],
+        ["main", "Jeskai Revelation", 4],
+        ["main", "Pop Quiz", 1],
+        ["main", "Riverglide Pathway", 3],
+        ["main", "Riverpyre Verge", 2],
+        ["main", "Spell Pierce", 1],
+        ["main", "Spirebluff Canal", 4],
+        ["main", "Steam Vents", 4],
+        ["main", "Stock Up", 1],
+        ["main", "Tablet of Discovery", 4],
+        ["main", "Thor, God of Thunder", 2],
+        ["side", "Abrade", 1],
+        ["side", "Accumulate Wisdom", 1],
+        ["side", "Airbender's Reversal", 1],
+        ["side", "Anger of the Gods", 1],
+        ["side", "Annul", 1],
+        ["side", "Change the Equation", 1],
+        ["side", "Combustion Technique", 1],
+        ["side", "Ghost Vacuum", 1],
+        ["side", "Improvisation Capstone", 1],
+        ["side", "Iroh's Demonstration", 1],
+        ["side", "Negate", 1],
+        ["side", "Price of Freedom", 1],
+        ["side", "Sokka's Haiku", 1],
+        ["side", "Soul-Guide Lantern", 1],
+        ["side", "Teachings of the Archaics", 1]
       ]
     }
   }
