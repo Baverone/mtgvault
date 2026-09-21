@@ -822,6 +822,41 @@ def regenerar(con) -> None:
     _CACHE.clear()
 
 
+# REGENERAR EM FUNDO (2026-09-21). Medido no 8771 a sério, no dia em que as
+# fotos passaram a vir do telemóvel: um `POST /api/foto` que regenerava antes
+# de responder demorava **109–112 s** (o `loadout.report` + as duas páginas +
+# o `esperadas.md`, neste PC e nesse dia) — mais do que o prazo do `gravar()`
+# da página, que dizia *"não sei se gravou"* com a foto já em `pendentes/`.
+# A foto está guardada no instante em que o ficheiro fecha; o que a
+# regeneração acrescenta (a secção do `esperadas.md`, as páginas estáticas)
+# pode vir a seguir. Uma thread por pedido, a pegar no MESMO lock de escrita
+# (`ESCRITA`) — nunca duas regenerações ao mesmo tempo, nunca por cima de um
+# botão. `esperar_fundo()` é para os testes (e para quem precise da
+# regeneração feita antes de ler o ficheiro).
+_FUNDO: list[threading.Thread] = []
+
+
+def regenerar_em_fundo(motivo: str = "") -> threading.Thread:
+    def corre():
+        with ESCRITA:
+            try:
+                with db.session() as con:
+                    regenerar(con)
+            except Exception as e:                          # noqa: BLE001
+                print(f"[regenerar em fundo{' — ' + motivo if motivo else ''}] "
+                      f"falhou: {type(e).__name__}: {e}")
+    t = threading.Thread(target=corre, name=f"regenerar-{motivo or 'fundo'}", daemon=True)
+    _FUNDO[:] = [x for x in _FUNDO if x.is_alive()]
+    _FUNDO.append(t)
+    t.start()
+    return t
+
+
+def esperar_fundo(timeout: float | None = None) -> None:
+    for t in list(_FUNDO):
+        t.join(timeout)
+
+
 # ---------------------------------------------------------------------------
 # A CACHE do que custa caro (2026-09-15)
 # ---------------------------------------------------------------------------
@@ -1401,8 +1436,10 @@ class Handler(BaseHTTPRequestHandler):
         pelos primeiros bytes, o nome com a origem, a escrita atómica na RAIZ
         de `pendentes/` (a foto inteira, tal como veio). Aqui lê-se o alvo do
         URL, valida-se a caixa contra o config e a cópia contra a base, e
-        regenera-se — é o `regenerar` que reescreve o `esperadas.md`, e a
-        secção das fotos do site tem de lá estar antes das 02:30.
+        responde-se LOGO — a regeneração (é o `regenerar` que reescreve o
+        `esperadas.md`, e a secção das fotos do site tem de lá estar antes das
+        02:30) corre em fundo (`regenerar_em_fundo`): medida a 109–112 s neste
+        PC, não cabe no prazo da página, e a foto já está guardada.
         """
         q = parse_qs(urlparse(self.path).query)
         tipo = (q.get("tipo") or ["caixa"])[0].strip() or "caixa"
@@ -1431,7 +1468,10 @@ class Handler(BaseHTTPRequestHandler):
             ficheiros = fotosite.ler_multipart(self.headers.get("Content-Type") or "", bruto)
             guardadas = fotosite.guardar(ROOT / "pendentes", tipo, ficheiros,
                                          slot=slot, copy_id=copy_id)
-            regenerar(con)
+        # O índice passa já a contar a foto (o mtime de `pendentes/` também o
+        # faria); o `esperadas.md` e as páginas vêm a seguir, em fundo.
+        _CACHE.clear()
+        regenerar_em_fundo("foto")
         nome = (loadout.nomes_das_caixas().get(slot) if slot
                 else {"venda": "a venda", "rl": "a Caixa RL",
                       "coleccao": "a Colecção"}.get(tipo, tipo))

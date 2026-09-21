@@ -2713,8 +2713,14 @@ não tem onde receber uma foto. **O `mtg-fotos-novas` NÃO se alterou.**
   esperada (nome + impressão). O `PROCESSAR_FOTOS.md` diz ao Claude das fotos
   que o prefixo é a caixa e o `c<id>` a cópia — **uma pista, não uma
   resposta**: escreve o que VÊ, como sempre. É por isso que o `POST /api/foto`
-  faz `regenerar` (~5 s na base dele): a secção tem de estar escrita antes das
-  02:30, e nada mais escreve o ficheiro entretanto.
+  regenera (a secção tem de estar escrita antes das 02:30, e nada mais escreve
+  o ficheiro entretanto) — mas **EM FUNDO** (`webapp.regenerar_em_fundo`, uma
+  thread por pedido, com o mesmo lock `ESCRITA`): medido no 8771 a sério nesse
+  dia, o `POST` que regenerava antes de responder demorava **109–112 s**
+  (`loadout.report` + duas páginas + `esperadas.md` neste PC), mais do que o
+  prazo do `gravar()`, e a página dizia *"não sei se gravou"* com a foto já em
+  `pendentes/`. Agora responde no instante em que os ficheiros fecham (~0,1 s)
+  e o `esperadas.md` chega a seguir; `esperar_fundo()` é para os testes.
 - **«⚡ PROCESSAR AGORA»** (`fotosite.pedir_processamento`) escreve uma ordem
   `command` na inbox do runner do ai-pc — `inbox/mtgvault-fotos-<AAAAMMDD-
   HHMMSS>.json`, `{"kind":"command","command":["py","runner.py","run",
