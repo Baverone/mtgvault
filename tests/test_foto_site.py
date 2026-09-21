@@ -164,6 +164,7 @@ def copias(con):
 
 
 def cfg_novo(alvo=None):
+    webapp.esperar_fundo(120)          # uma regeneração em fundo do caso anterior
     cfg = json.loads(json.dumps(CFG))
     cfg["revalidacao"]["alvo"] = alvo
     configio.escrever(cfg, CFG_PATH)
@@ -366,8 +367,10 @@ def caso_o_endpoint_grava_com_token_e_recusa_sem():
     cod, j = _post("/api/foto?tipo=caixa&slot=modern", json_={"x": 1})
     assert cod == 409 and "multipart" in j["erro"], (cod, j)
     assert len(list(PEND.glob("site-*"))) == n_antes, "as recusas não escreveram nada"
-    # Regenerou: o `esperadas.md` tem a secção das fotos do site, com a caixa
-    # e a cópia que o nome indica.
+    # Regenerou EM FUNDO (a resposta não espera): o `esperadas.md` tem a
+    # secção das fotos do site, com a caixa e a cópia que o nome indica.
+    webapp.esperar_fundo(120)
+    assert not any(t.is_alive() for t in webapp._FUNDO), "a regeneração em fundo acabou"
     esp = (PEND / "esperadas.md").read_text(encoding="utf-8")
     assert "## Fotos tiradas no site (6)" in esp, esp[:400]
     assert f"cópia #{c}: 2× **Path to Exile** — PF20 #2 foil en" in esp, esp
