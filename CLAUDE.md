@@ -73,6 +73,13 @@ mtgvault/
                   dele) contra o que TRAZER (o «a comprar» das caixas + a
                   wantlist manual + os vendors), o saldo e as listas p/ o
                   telemóvel. Só config (`feira`); CLI `feira`, `/api/feira`
+  fotocaixa.py    A FOTO DA DECKBOX FÍSICA de cada caixa (2026-09-21): o
+                  original em `data/deckboxes/<slot>.<ext>` (fora do Git, a
+                  anterior em `anteriores/`), a reduzida em
+                  `assets/deckboxes/<slot>.jpg` (NO Git — a excepção ao «não
+                  guardar imagens»), a data em `caixas[].foto`. Entra pelo
+                  `POST /api/foto-caixa` (8771) ou por
+                  `pendentes/deckboxes/<slot>.jpg` (daily/8771 recolhem). Ponto 13
   venda.py        a SAÍDA da lista de venda (2026-09-18): o CSV de stock p/ o
                   Cardmarket (formato predefinido NÃO confirmado, ou aprendido
                   de `data/cardmarket-stock-exemplo.csv`), a lista da estante
@@ -2562,6 +2569,79 @@ mudou uma linha.**
   Steam Vents, Stock Up, Riverpyre Verge, Ghost Vacuum, Improvisation
   Capstone.
 
+**13. A FOTO DA DECKBOX FÍSICA DE CADA CAIXA (André, 2026-09-21, à letra).**
+*"quero poder tirar foto à deckbox onde vai ficar cada deck, para ser
+referência também"*. Uma foto por caixa (`slot`) — a caixa de plástico na
+estante, não as cartas. Motor em `mtgvault/fotocaixa.py` (a única escrita é
+`guardar`), endpoint `POST /api/foto-caixa?slot=…` (a foto vai tal e qual no
+corpo, com o token), passo `fotos-caixas` do `daily` (antes do `deckboxes`),
+`recolher_fotos_de_caixas` no `webapp.py` (a cada pedido do índice). Relatório
+em `ai-pc/work/revisao/mtgvault-foto-caixa-0921.md`; testes em
+`test_foto_caixa.py` (5 casos). **O motor de alocação não mudou uma linha.**
+- **DOIS CAMINHOS DE ENTRADA, UM DESTINO.** (a) No 8771, na aba da caixa, o
+  botão **«📦 Foto da deckbox»** — um `<input type="file" accept="image/*"
+  capture="environment">`, que no telemóvel abre a câmara — envia o ficheiro
+  em bytes (não JSON: o `do_POST` lê o corpo em bytes ANTES de tentar
+  decifrá-lo, e um corpo acima de `fotocaixa.MAX_BYTES` (25 MB) é 413 sem se
+  ler). (b) Largar **`pendentes/deckboxes/<slot>.jpg`**: o `daily` e o modo
+  edição recolhem-na (`fotocaixa.recolher`); o ficheiro MOVE-SE (é o próprio
+  original), um nome que não é slot fica lá e diz-se porquê (no `webapp.log`
+  uma vez — `_FOTOS_IGNORADAS` memoriza nome+tamanho+mtime — e no `[ok]
+  fotos-caixas` do daily). **É uma SUBPASTA de propósito**: o
+  `mtg-fotos-novas` (`PEND.iterdir()` + `is_file()`) e o
+  `collection.arrumar_fotos` (`pend / nome`) só olham para ficheiros na RAIZ
+  de `pendentes/` — uma foto de uma caixa de plástico nunca chega ao Claude
+  que cataloga cartas. O teste prova-o **com os próprios programas** (importa
+  o `run.py` da tarefa com só a subpasta cheia e espera *"sem fotos novas"*),
+  e o `PROCESSAR_FOTOS.md` e os dois `LEIA-ME` dizem-no.
+- **ONDE FICA, E PORQUÊ EM TRÊS SÍTIOS.** O ORIGINAL em
+  `data/deckboxes/<slot>.<ext>` (pelo `db.pasta_dados()`, como o
+  `arquetipos.json`; fora do Git — `data/deckboxes/` está no `.gitignore`); a
+  VERSÃO REDUZIDA (≤ 800 px, JPEG, ~60–150 KB, orientação EXIF respeitada) em
+  **`assets/deckboxes/<slot>.jpg`, DENTRO do repositório** — é a **excepção
+  consciente** à regra «não guardar imagens» do *Não fazer* (essa regra é para
+  a BASE DE DADOS; quinze ficheiros de 100 KB no Git são aceitáveis, e sem
+  eles o site publicado não tinha a foto); e a DATA em `colecao_config.json →
+  caixas[].foto` (`{em, ficheiro}`). **A verdade para a página é o ficheiro
+  em `assets/`** (`fotocaixa.info`): uma data sem ficheiro (um clone antes do
+  commit) é «sem foto», um ficheiro sem data mostra-se sem data. O URL leva
+  `?v=<hash do conteúdo>` — cacheável, muda quando a foto muda. **Substituir
+  guarda a anterior** em `data/deckboxes/anteriores/<slot>-<data>.<ext>`.
+  **Nunca se apaga nada.** A validação é pelos PRIMEIROS BYTES (JPEG, PNG,
+  WebP, HEIC), nunca pelo nome, e vem — com a redução — ANTES do primeiro
+  ficheiro tocado: uma recusa (409) não escreve nada. A redução precisa do
+  **Pillow** (entrou no `requirements.txt`; neste PC já estava, 12.2.0); sem
+  ele o original copia-se tal e qual para `assets/` e a resposta di-lo
+  (`aviso`), excepto HEIC, que os browsers não abrem — aí é recusa. Medido:
+  uma "foto" de 4000×3000 / 9 MB → 63 KB em 0,11 s.
+- **A PASTA VAI NO `git add` DO `daily.yml` E NO `EXTRA_COMMIT` DA TAREFA
+  `mtgvault-daily`** (é uma pasta, como `data/paginas`; o `LEIA-ME.md` lá
+  dentro é o que garante que o caminho existe no checkout da cloud — um
+  `git add` a uma pasta que não existe falha). Sem isto no commit o site
+  publicado mostra «sem foto» numa caixa que a tem.
+- **ONDE APARECE.** A MINIATURA (44 px, `fotoThumbHTML`) ao lado do nome no
+  cartão da fila (Todas / Montados / Para montar — dentro do `<button
+  class="mini">`, por isso é só uma `<img>`) e na aba **📷 Revalidação** ao
+  lado do progresso de cada caixa; no CABEÇALHO da aba da caixa a foto maior
+  (`fotoCaixaHTML`, ≤ 200 px de altura) com a data e **toque para ampliar**
+  (`ampliarFoto`: um véu com a foto inteira, toque ou Esc fecha — só leitura,
+  existe também no site publicado). Sem foto, o quadrado **«📦 sem foto da
+  deckbox»** — que **só no 8771 é botão** (um `<label>` com o `<input
+  type="file">` escondido; no site publicado não há onde a mandar). As
+  imagens levam `loading="lazy"`, `decoding="async"` e `onerror`. O
+  `gravar()` ganhou um terceiro parâmetro (`ficheiro`: o corpo é o ficheiro
+  com o tipo dele e o prazo sobe de 25 s para 90 s — 8 MB pela rede de casa).
+  O `render_deckboxes.js` conta `data-foto-caixa` como escrita. O
+  `test_montados._cartoes` passou a ler o nome depois do `<span
+  class="btit">`.
+- **Medido na cópia da base de 2026-09-21** (o mesmo `vault.db` nos dois
+  lados, `_revisao/_medir_foto_caixa.py`): main, ramo, e ramo com `foto` em
+  TODAS as caixas — **iguais ao cêntimo e caixa a caixa**: fechar tudo
+  7 112,71 €, 239 a comprar, 224 a arrumar (124 linhas), venda 273c/1 563,40 €,
+  venda_rl 74c/5 485,87 €, rl_segurar 28c/3 081,19 €, reservadas 1c/100,00 €,
+  guardar 1c/14,75 €, as 15 caixas. O índice da Deckboxes ganha `foto` por
+  caixa (`{em, url}` ou `null`); nenhuma parte cresce.
+
 **AS CÓPIAS DE UMA LINHA INCOMPLETA TAMBÉM SE TIRAM DA GAVETA (2026-09-08).**
 Uma linha que pede 4 e a que a alocação só deu 2 vive em `missing` — e **tudo**
 o que percorria a alocação de uma caixa percorria só o `have`. As duas cópias
@@ -2679,7 +2759,11 @@ uma, sozinha, contra o site, com as escritas numa CÓPIA da base
 
 - Não acrescentes agregadores de decklists (ver deduplicação acima).
 - Não guardes imagens na base de dados. As fotos ficam no disco;
-  `copies.photo_path` guarda o caminho.
+  `copies.photo_path` guarda o caminho. **A única excepção, consciente
+  (2026-09-21):** a versão reduzida (~100 KB) da foto da DECKBOX física de
+  cada caixa vai no Git, em `assets/deckboxes/<slot>.jpg`, porque o site
+  publicado só vê o Git — ver o ponto 13 e `mtgvault/fotocaixa.py`. O
+  original continua fora (`data/deckboxes/`).
 - Não gravar preços de todas as cartas do mercado — só as de interesse
   (`prices.cards_of_interest`), e só quando o valor muda. O `vault.db` já NÃO
   vai para o Git (está no `.gitignore` desde 2026-08; vive no Release `data`,

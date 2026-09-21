@@ -25,6 +25,12 @@ sem o André estar ao PC.
 O reconhecimento (passo 2) és sempre **tu a olhar para as fotos** — o script só
 faz a parte mecânica.
 
+**A subpasta `pendentes/deckboxes/` NÃO é tua** (2026-09-21): são fotos das
+DECKBOXES físicas (as caixas de plástico, uma por `slot`), que o `daily` e o
+modo edição recolhem sozinhos (`mtgvault/fotocaixa.py`). Não as cataloguas,
+não as metes no CSV, não as moves. Só as fotos na **raiz** de `pendentes/`
+são cartas.
+
 **Se existir `pendentes/esperadas.md`, lê-o antes de escrever o CSV.** Tem
 até três secções:
 

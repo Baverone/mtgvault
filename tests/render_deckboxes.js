@@ -162,8 +162,9 @@ const editavel = vm.runInContext('D.editable', ctx);
 // ... e os da REVALIDAÇÃO (2026-09-20: «Fotografar», «parar») e o «afinal
 // encontrei» (`data-encontrei`, desde o mesmo dia). E os da LISTA PADRÃO e da
 // RESERVA (`data-padrao`, `data-reserva`, 2026-09-20). E os da FEIRA
-// (`data-feira`: taxas, levo/nao levo, wantlist, vendors — 2026-09-20).
-const ESCRITA = /data-(act|enc|chegou|desfazer|falta|vend|reg|encontrei|rev|rev-parar|padrao|reserva|feira)=/;
+// (`data-feira`: taxas, levo/nao levo, wantlist, vendors — 2026-09-20). E o
+// `<input type="file">` da FOTO DA DECKBOX (`data-foto-caixa`, 2026-09-21).
+const ESCRITA = /data-(act|enc|chegou|desfazer|falta|vend|reg|encontrei|rev|rev-parar|padrao|reserva|feira|foto-caixa)=/;
 const escrita = desenhado.filter(h => ESCRITA.test(h)).length;
 if (!editavel && escrita) {
   console.error(`ERRO: ${escrita} blocos com botoes de escrita numa pagina publicada`);

@@ -83,8 +83,8 @@ from urllib.parse import parse_qs, urlparse
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import (caixas, configio, db, encomendas, feira, loadout,  # noqa: E402
-                      migracao, qr, sources, venda)
+from mtgvault import (caixas, configio, db, encomendas, feira, fotocaixa,  # noqa: E402
+                      loadout, migracao, qr, sources, venda)
 from mtgvault import padrao as padrao_mod  # noqa: E402
 
 import deckboxes  # noqa: E402
@@ -142,6 +142,8 @@ PAGINAS_EDITAVEIS = {"/": deckboxes,
 _LINK_HTML = re.compile(r'href="([a-z_]+\.html)"')
 # Os dados da Deckboxes: o índice e as partes (ver `deckboxes.partir`).
 _DADOS_DECKBOXES = re.compile(r"^/data/paginas/deckboxes(?:/([A-Za-z0-9_-]+))?\.json$")
+# A versão reduzida da foto de cada deckbox (2026-09-21, `mtgvault.fotocaixa`).
+_FOTO_CAIXA = re.compile(r"^/assets/deckboxes/([A-Za-z0-9_-]+)\.jpg$")
 
 
 def com_token(corpo: str, tok: str) -> str:
@@ -767,6 +769,36 @@ def anular_falta(con, dados: dict) -> str:
     return f'{r["tirado"]}× {r["nm"]}: desfeito — voltou a ser compra'
 
 
+def recolher_fotos_de_caixas() -> dict | None:
+    """O caminho (b) da FOTO DA DECKBOX (2026-09-21): `pendentes/deckboxes/
+    <slot>.jpg` → `fotocaixa.recolher`. Só pega no lock de escrita quando há
+    mesmo alguma coisa lá — corre a cada pedido do índice. Os ignorados (um
+    nome que não é slot, um ficheiro que não é imagem) ficam onde estão e
+    saem no `webapp.log` via `print`; nada se apaga."""
+    if not fotocaixa.ha_pendentes(ROOT, ignorar=_FOTOS_IGNORADAS):
+        return None
+    with ESCRITA:
+        if not fotocaixa.ha_pendentes(ROOT, ignorar=_FOTOS_IGNORADAS):
+            return None                             # outro pedido já as levou
+        cfg = ler_config()
+        r = fotocaixa.recolher(cfg, raiz=ROOT, ignorar=_FOTOS_IGNORADAS)
+        if r["recolhidas"]:
+            escrever_config(cfg)
+            sources._CFG_CACHE.clear()
+            _CACHE.clear()
+        for ig in r["ignorados"]:
+            # Fica memorizado (nome + tamanho + mtime): um ficheiro que não é
+            # slot nem imagem não se volta a ler a cada pedido do índice, e a
+            # linha sai UMA vez no `webapp.log`. Mudá-lo (ou renomeá-lo) volta
+            # a tentar.
+            print(f"[foto-caixa] ignorado pendentes/deckboxes/{ig['ficheiro']}: {ig['porque']}")
+        return r
+
+
+# O que já se viu em `pendentes/deckboxes/` e não serve: `{nome: (tamanho, mtime)}`.
+_FOTOS_IGNORADAS: dict[str, tuple] = {}
+
+
 def regenerar(con) -> None:
     """Reescreve as páginas estáticas, para o site publicado acompanhar.
 
@@ -957,6 +989,11 @@ class Handler(BaseHTTPRequestHandler):
         if m:
             # Os DADOS da Deckboxes, calculados (e guardados) para este modo.
             editavel = self._pode_escrever()
+            if m.group(1) is None:
+                # A FOTO DA DECKBOX largada em `pendentes/deckboxes/<slot>.jpg`
+                # (2026-09-21): recolhe-se ao pedir o índice, para o modo edição
+                # a mostrar sem esperar pelo daily. Barato quando não há nada.
+                recolher_fotos_de_caixas()
             idx, partes = dados_deckboxes(editavel, token() if editavel else "")
             parte = m.group(1)
             if parte is None:
@@ -971,6 +1008,18 @@ class Handler(BaseHTTPRequestHandler):
             return
         nome = caminho.lstrip("/")
         alvo = (ROOT / nome).resolve()
+        mf = _FOTO_CAIXA.match(caminho)
+        if mf:
+            # A versão reduzida da FOTO DA DECKBOX (2026-09-21), do disco: é a
+            # mesma que vai no Git para o site publicado. Leitura livre — é
+            # pública de qualquer maneira. Com o `?v=<hash>` é cacheável
+            # (`fotocaixa.versao`: o URL muda quando a foto muda).
+            if not (alvo.is_file() and str(alvo).startswith(str(ROOT))):
+                self._envia("<h1>404</h1><p>essa caixa não tem foto</p>", 404)
+                return
+            self._envia(alvo.read_bytes(), tipo="image/jpeg",
+                        cache="v=" in urlparse(self.path).query)
+            return
         # Os `.json` só de `data/paginas/` (os dados das outras páginas, escritos
         # pelo `daily`): o resto de `data/` são a base, o token e os registos.
         e_dados = nome.startswith("data/paginas/") and nome.endswith(".json")
@@ -996,11 +1045,12 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):                                 # noqa: N802
         caminho = urlparse(self.path).path
         tam = int(self.headers.get("Content-Length") or 0)
-        corpo = self.rfile.read(tam).decode("utf-8") if tam else "{}"
-        try:
-            dados = json.loads(corpo or "{}")
-        except json.JSONDecodeError:
-            dados = {}
+        if tam > fotocaixa.MAX_BYTES:
+            # Sem ler: uma "foto" de 40 MB não é uma foto, é um engano.
+            self._json({"erro": f"o corpo tem {tam / 1e6:.1f} MB — o máximo é "
+                                f"{fotocaixa.MAX_BYTES // (1024 * 1024)} MB"}, 413)
+            return
+        bruto = self.rfile.read(tam) if tam else b""
         if not self._pode_escrever():
             # Ler é livre, escrever não. Sem isto, pôr o porto na rede local
             # (MTGVAULT_BIND=0.0.0.0) dava a qualquer aparelho de casa — ou a
@@ -1008,6 +1058,23 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"erro": "sem token: este link é só de leitura. Abre o "
                                 "link do QR (tem o ?t=) para poderes gravar."}, 403)
             return
+        if caminho == "/api/foto-caixa":
+            # A FOTO DA DECKBOX (André, 2026-09-21): o corpo é o FICHEIRO tal e
+            # qual, não JSON — fica em bytes e nunca se tenta decifrar como
+            # texto. O `slot` vem no URL (`?slot=…`). Só config + ficheiros:
+            # não toca na base, e regenera porque o índice mudou.
+            with ESCRITA:
+                try:
+                    self._json(self._foto_caixa(bruto))
+                except fotocaixa.FotoInvalida as e:
+                    self._json({"erro": str(e)}, 409)
+                except Exception as e:                  # noqa: BLE001
+                    self._json({"erro": f"{type(e).__name__}: {e}"}, 500)
+            return
+        try:
+            dados = json.loads(bruto.decode("utf-8") or "{}") if bruto else {}
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            dados = {}
         # UMA escrita de cada vez. O `ThreadingHTTPServer` atende os pedidos em
         # paralelo, e cada botão é um ler-mexer-gravar do `colecao_config.json`:
         # dois cliques ao mesmo tempo (ou um duplo-toque no telemóvel) faziam o
@@ -1256,6 +1323,35 @@ class Handler(BaseHTTPRequestHandler):
             regenerar(con)
         return {"ok": True, "msg": f'{res["copias"]}× {alvo["nm"]} fora da '
                                    f'colecção e no vendas.csv'}
+
+    def _foto_caixa(self, bruto: bytes) -> dict:
+        """`POST /api/foto-caixa?slot=…` com a foto no corpo (André, 2026-09-21).
+
+        Tudo o que decide vive no `mtgvault.fotocaixa.guardar`: o tipo pelos
+        primeiros bytes, a anterior para `anteriores/`, o original em
+        `data/deckboxes/`, a reduzida em `assets/deckboxes/` e a data na caixa.
+        Aqui só se lê o `slot`, se grava o config e se regenera.
+        """
+        q = parse_qs(urlparse(self.path).query)
+        slot = (q.get("slot") or [""])[0].strip()
+        if not slot:
+            raise fotocaixa.FotoInvalida("sem caixa (`?slot=`)")
+        cfg = ler_config()
+        r = fotocaixa.guardar(cfg, slot, bruto, origem="enviada pelo 8771", raiz=ROOT)
+        escrever_config(cfg)
+        sources._CFG_CACHE.clear()
+        with db.session() as con:
+            regenerar(con)
+        kb = lambda n: f"{max(1, round(n / 1024))} KB"        # noqa: E731
+        return {"ok": True, "slot": slot,
+                "msg": (f"📦 Foto da deckbox «{r['nome']}» guardada: original "
+                        f"{kb(r['bytes_original'])} em data/deckboxes/, versão do site "
+                        f"{kb(r['bytes_reduzida'])} em assets/deckboxes/"
+                        + (" (a anterior ficou em anteriores/)" if r["anterior"] else "")
+                        + (f" — {r['aviso']}" if r["aviso"] else "")),
+                "bytes_original": r["bytes_original"],
+                "bytes_reduzida": r["bytes_reduzida"], "anterior": r["anterior"],
+                "aviso": r["aviso"]}
 
     def _revalidacao(self, dados):
         """«Fotografar esta caixa» / «Fotografar a venda…» / «parar» (2026-09-20).
