@@ -158,9 +158,11 @@ def _abas(con, editable=False):
 
 
 def _cartoes(html):
-    """Os nomes das caixas que a vista desenhou, pela ordem em que lá estão."""
+    """Os nomes das caixas que a vista desenhou, pela ordem em que lá estão.
+    (Desde 2026-09-21 o nome vem depois da miniatura da FOTO DA DECKBOX,
+    dentro de um `<span class="btit">`.)"""
     return [re.sub(r"<[^>]+>", "", m) for m in
-            re.findall(r'<div class="btop"><b>(.*?)</b>', html)]
+            re.findall(r'<div class="btop">(?:<span class="btit">(?:<(?!b>)[^>]*>|[^<])*)?<b>(.*?)</b>', html)]
 
 
 # ---------------------------------------------------------------------------

@@ -14,3 +14,7 @@ Isso cataloga tudo no vault.db, LIMPA estas fotos (já não são precisas aqui),
 e faz push. O site atualiza-se sozinho.
 
 Regras de reconhecimento: ver PROCESSAR_FOTOS.md.
+
+A subpasta deckboxes\ e OUTRA coisa: a foto da DECKBOX fisica de cada caixa
+(deckboxes\<slot>.jpg), que o daily e o modo edicao recolhem sozinhos. Nao e
+para catalogar. Ver deckboxes\LEIA-ME.txt.
