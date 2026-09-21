@@ -17,7 +17,7 @@
     "Wasteland"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-20"
+   "ultima": "2026-09-21"
   },
   "13eb5a8587": {
    "formato": "premodern",
@@ -71,7 +71,7 @@
     "Yavimaya Coast"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-20"
+   "ultima": "2026-09-21"
   },
   "2811f9a69f": {
    "formato": "premodern",
@@ -89,7 +89,7 @@
     "Withered Wretch"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-20"
+   "ultima": "2026-09-21"
   },
   "3885b4666a": {
    "formato": "premodern",
@@ -109,7 +109,7 @@
     "Skycloud Expanse"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-20"
+   "ultima": "2026-09-21"
   },
   "4841da6e7f": {
    "formato": "premodern",
@@ -140,27 +140,27 @@
     "Yavimaya Granger"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-20"
+   "ultima": "2026-09-21"
   },
   "72740aba9b": {
    "formato": "premodern",
    "nome": "Orzhov Exalted Angel",
    "nucleo": [
+    "Barren Moor",
     "Caves of Koilos",
     "Decree of Justice",
+    "Dust Bowl",
     "Eternal Dragon",
     "Exalted Angel",
     "Gerrard's Verdict",
-    "Haunting Echoes",
     "Phyrexian Furnace",
-    "Seal of Cleansing",
     "Secluded Steppe",
     "Skeletal Scrying",
     "Vindicate",
     "Wrath of God"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-14"
+   "ultima": "2026-09-21"
   },
   "7fbd22f4da": {
    "formato": "legacy",
@@ -190,7 +190,7 @@
     "Wrath of God"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-20"
+   "ultima": "2026-09-21"
   },
   "95a99aa40d": {
    "formato": "premodern",
@@ -207,9 +207,9 @@
    "formato": "premodern",
    "nome": "Psychatog",
    "nucleo": [
-    "Duress",
     "Fact or Fiction",
     "Foil",
+    "Gush",
     "Impulse",
     "Mana Leak",
     "Opt",
@@ -221,7 +221,7 @@
     "Underground River"
    ],
    "primeira": "2026-09-20",
-   "ultima": "2026-09-20"
+   "ultima": "2026-09-21"
   },
   "a8113fbe00": {
    "formato": "premodern",
@@ -238,7 +238,27 @@
     "Seal of Fire"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-20"
+   "ultima": "2026-09-21"
+  },
+  "aa210fdd32": {
+   "formato": "premodern",
+   "nome": "Esper Exalted Angel",
+   "nucleo": [
+    "Caves of Koilos",
+    "Decree of Justice",
+    "Diabolic Edict",
+    "Disenchant",
+    "Exalted Angel",
+    "Fact or Fiction",
+    "Mana Leak",
+    "Meddling Mage",
+    "Polluted Delta",
+    "Shadowmage Infiltrator",
+    "Underground River",
+    "Vindicate"
+   ],
+   "primeira": "2026-09-21",
+   "ultima": "2026-09-21"
   },
   "b38b17cddb": {
    "formato": "premodern",
@@ -258,7 +278,7 @@
     "Thwart"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-20"
+   "ultima": "2026-09-21"
   },
   "b4dcbc5dbb": {
    "formato": "premodern",
@@ -278,7 +298,7 @@
     "Vision Charm"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-20"
+   "ultima": "2026-09-21"
   },
   "b827ca4ad1": {
    "formato": "premodern",
@@ -317,7 +337,7 @@
     "Wild Growth"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-20"
+   "ultima": "2026-09-21"
   },
   "c6998a9b7d": {
    "formato": "premodern",
@@ -337,23 +357,26 @@
     "Winter's Grasp"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-20"
+   "ultima": "2026-09-21"
   },
   "c8d54b483e": {
    "formato": "premodern",
    "nome": "Sligh",
    "nucleo": [
+    "Barbarian Ring",
     "Bloodstained Mire",
+    "Cursed Scroll",
     "Fireblast",
     "Grim Lavamancer",
     "Incinerate",
+    "Jackal Pup",
     "Lightning Bolt",
     "Mogg Fanatic",
     "Seal of Fire",
     "Wooded Foothills"
    ],
    "primeira": "2026-09-20",
-   "ultima": "2026-09-20"
+   "ultima": "2026-09-21"
   },
   "cc47c1209f": {
    "formato": "premodern",
@@ -403,7 +426,7 @@
     "Wall of Blossoms"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-20"
+   "ultima": "2026-09-21"
   },
   "e8c086499f": {
    "formato": "premodern",
@@ -435,7 +458,7 @@
     "Wooded Foothills"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-20"
+   "ultima": "2026-09-21"
   },
   "f102883ccf": {
    "formato": "premodern",
@@ -466,7 +489,7 @@
     "Werebear"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-20"
+   "ultima": "2026-09-21"
   },
   "f886821817": {
    "formato": "premodern",
