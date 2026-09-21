@@ -52,7 +52,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import (collection, encomendas, feira, fotocaixa,  # noqa: E402
+from mtgvault import (collection, encomendas, feira, fotocaixa, fotosite,  # noqa: E402
                       loadout, paginas, revalidacao, venda)
 
 TABS = paginas.nav("deckboxes.html")
@@ -290,7 +290,13 @@ def _rev_caixa(prog, slot):
                         and prog["alvo"]["tipo"] == "caixa"
                         and prog["alvo"]["slot"] == slot),
            "activa": bool((prog or {}).get("activa")),
-           "linhas": g["linhas"]}
+           "linhas": g["linhas"],
+           # AS FOTOS TIRADAS NO SITE para esta caixa (2026-09-21), ainda em
+           # `pendentes/` à espera do `mtg-fotos-novas` — é o que a aba mostra
+           # a seguir ao «Tirar fotos», para ele saber que entraram.
+           "site": [e for e in ((prog or {}).get("site") or {}).get("enviadas") or []
+                    if e["origem"] and e["origem"]["tipo"] == "caixa"
+                    and e["origem"]["slot"] == slot]}
     return rev, por_carta
 
 
@@ -775,6 +781,13 @@ def payload(con, rep, editable=False, token="", ligacao=None):
     # (`revalidacao.progresso`) e não muda nada na alocação nem na venda.
     prog = revalidacao.progresso(con, rep) if revalidacao.activa() else None
     estado_rev = revalidacao.estado_das_copias(con) if prog else {}
+    if prog is not None:
+        # AS FOTOS TIRADAS NO SITE (André, 2026-09-21): o que está na raiz de
+        # `pendentes/` à espera do `mtg-fotos-novas`, o que ficou por resolver
+        # e onde está o «processar agora». Só leitura da pasta e da inbox —
+        # nada da alocação. Vai nos dois modos (é a pasta do PC que gerou a
+        # página); os BOTÕES só existem no 8771.
+        prog["site"] = fotosite.estado(fotosite.pasta_pendentes())
 
     def venda_bloco(chave, copias, total):
         linhas = rep[chave]
@@ -1349,6 +1362,18 @@ _TMPL = r"""<!doctype html><html lang="pt-PT"><head>%META%
  .rvalvo{margin:8px 0;padding:10px 12px;background:#1a1509;border:1px solid #4a3a12;
    border-radius:var(--r);font-size:12.5px;color:var(--muted)}
  .rvalvo>b{color:var(--gold)} .rvalvo .nota{margin:4px 0 8px}
+ /* AS FOTOS DAS CARTAS, DO SITE (2026-09-21): o «Tirar fotos» é um <label>
+    com o <input type="file"> escondido — tem de parecer botão e ter 40 px no
+    telemóvel; o 📷 por cópia fica no rodapé do tile (`.tla`). */
+ .fstirar{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+ .fstirar input,.fscam input{display:none}
+ label.aenviar{opacity:.5;pointer-events:none}
+ .fscam{cursor:pointer;min-width:0;padding:0 8px}
+ .fsite{margin:8px 0;padding:10px 12px;background:#101a14;border:1px solid #24402c;
+   border-radius:var(--r);font-size:12.5px;color:var(--muted)}
+ .fsite .flh{color:var(--add)}
+ .fsl{margin:6px 0;padding-left:18px} .fsl li{margin:2px 0;word-break:break-all}
+ .fsl code{font-size:11.5px;color:var(--ink)} .fsl ul{padding-left:16px;margin:2px 0}
  .rvcaixas{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
    gap:10px;margin:8px 0 14px}
  .rvc .mini{width:100%;text-align:left;padding:10px 12px}
@@ -2409,10 +2434,15 @@ function revBarra(g, compacta) {
 }
 
 /* Uma cópia por linha, por cor (como o binder), com o estado. É a lista «Na
-   caixa» que ele pediu: o que já mostra, mais o que falta fotografar. */
-function revLinhas(linhas, semLocal, max) {
+   caixa» que ele pediu: o que já mostra, mais o que falta fotografar.
+   `origem` ({tipo, slot}) liga o 📷 de CADA cópia por fotografar à câmara
+   (2026-09-21, só no modo edição): a foto vai com `-c<copy_id>` no nome. */
+function revLinhas(linhas, semLocal, max, origem) {
   const ls = linhas;
   if (!ls.length) return '';
+  const cam = l => (D.editable && origem && l.estado === 'foto')
+    ? `<label class="btn sm fscam" title="Tirar a foto desta cópia">📷${fotoSiteInputHTML(origem.tipo, origem.slot, l.copy_id, false)}</label>`
+    : '';
   /* EM IMAGEM (2026-09-20): um tile por cópia, por cor — a impressão exacta
      que a foto tem de mostrar, com o estado no chip (📷 por fotografar / ✓
      validada / ⚠ corrigida) e o `#copy_id` por baixo. */
@@ -2427,6 +2457,7 @@ function revLinhas(linhas, semLocal, max) {
         nota: `#${l.copy_id}${l.local && !semLocal ? ' · ' + esc(l.local) : ''}`
           + (l.nota ? ` · <span class="parcn">${esc(l.nota)}</span>` : ''),
         attrs: `data-copy="${l.copy_id}"`,
+        acts: cam(l),
         tit: `${l.nm} — ${l.q}× ${l.set}${l.num ? ' #' + l.num : ''} ${l.lang}${l.foil ? ' foil' : ''}`
           + ` · #${l.copy_id}${l.local && !semLocal ? ' · ' + l.local : ''} — ${ico} ${txt}`
           + (l.validado_em ? ' ' + l.validado_em : '') + (l.nota ? ` — ${l.nota}` : ''),
@@ -2444,34 +2475,124 @@ function revLinhas(linhas, semLocal, max) {
       + `${esc(l.lang)} · #${l.copy_id}${l.local && !semLocal ? ' · ' + esc(l.local) : ''}`
       + (l.nota ? ` · <b class="parcn">${esc(l.nota)}</b>` : '') + `</small></span>`
       + `<span class="to">${ico} ${txt}${l.estado !== 'foto' && l.validado_em
-          ? ' ' + esc(l.validado_em) : ''}</span></div>`;
+          ? ' ' + esc(l.validado_em) : ''}${cam(l)}</span></div>`;
   }
   return h + '</div>';
 }
 
 /* O botão «Fotografar» e a instrução. `tipo` é caixa/venda/rl/coleccao; o
    `slot` só nas caixas. Só no modo edição — no site publicado não há onde
-   gravar o alvo, e um botão que não faz nada é pior do que nenhum. */
+   gravar o alvo, e um botão que não faz nada é pior do que nenhum.
+   Desde 2026-09-21 ao lado dele está o «📷 Tirar fotos» — a CÂMARA a partir
+   da página (`tirarFotosHTML`), nos dois estados (com e sem alvo fixado). */
 function revBotao(tipo, slot, nome, g) {
   if (!D.editable || !g || !g.por_revalidar) return '';
   const R = D.revalidacao || {};
   const alvo = R.alvo && R.alvo.tipo === tipo && (tipo !== 'caixa' || R.alvo.slot === slot);
   if (alvo) {
     return `<div class="rvalvo">📷 <b>A fotografar ${esc(nome)}</b> (desde ${esc(R.alvo.em || '')})`
-      + `<p class="nota">${revInstrucao(g)}</p>`
-      + `<button class="btn sm" data-rev-parar="1">✕ parar</button></div>`;
+      + `<p class="nota">${revInstrucao(g)}</p><div class="seg">${tirarFotosHTML(tipo, slot, g)}`
+      + `<button class="btn sm" data-rev-parar="1">✕ parar</button></div></div>`;
   }
-  return `<div class="seg"><button class="btn pri" data-rev="${esc(tipo)}" `
-    + `data-slot="${esc(slot || '')}" data-nome="${esc(nome)}">📷 Fotografar `
+  /* O «Fotografar …» de 20/09 fica com o nome de sempre (fixa o ALVO e escreve
+     o `esperadas.md`); o «Tirar fotos» à frente é a câmara. */
+  return `<div class="seg">${tirarFotosHTML(tipo, slot, g)}<button class="btn" data-rev="${esc(tipo)}" `
+    + `data-slot="${esc(slot || '')}" data-nome="${esc(nome)}" title="Fixa esta como a caixa `
+    + `que estás a fotografar (o esperadas.md passa a dizê-lo)">📷 Fotografar `
     + `${tipo === 'caixa' ? 'esta caixa' : esc(nome)}</button></div>`;
 }
 
 function revInstrucao(g) {
   return `Tira fotos às <b>${cop(g.por_revalidar)}</b> por fotografar (várias `
-    + `cartas por foto serve) e larga-as em <code>pendentes\\</code> — entram na `
-    + `corrida das 02:30. Cada foto liga-se à cópia que já existe, não cria outra; `
-    + `se a carta estiver noutra edição/acabamento, a cópia é corrigida e fica `
-    + `dito aqui.`;
+    + `cartas por foto serve) — com <b>📷 Tirar fotos</b> aqui mesmo, ou larga-as em `
+    + `<code>pendentes\\</code>. Entram na corrida das 02:30 ou com «⚡ Processar agora». `
+    + `Cada foto liga-se à cópia que já existe, não cria outra; se a carta estiver `
+    + `noutra edição/acabamento, a cópia é corrigida e fica dito aqui.`;
+}
+
+/* ------------------------------------------ FOTOS DAS CARTAS, DO SITE
+   André, 2026-09-21, à letra: *"é possível ter o site preparado para eu
+   abrir no telefone e tirar as fotos directamente do site?"* — e *"e
+   guardares as fotos, claro"*. O botão é um `<input type="file"
+   accept="image/*" capture="environment" multiple>` (no telemóvel abre a
+   câmara, várias seguidas; no PC o selector), como o da foto da deckbox. A
+   foto vai INTEIRA, tal como veio, para a raiz de `pendentes\` pelo
+   `POST /api/foto` (multipart, com token), com o nome a dizer a origem —
+   `site-<slot>-<data>-<n>[-c<copy_id>].jpg` — e é o `mtg-fotos-novas` das
+   02:30 (ou o «⚡ Processar agora») que a lê e liga à cópia. Nada disto
+   existe no site publicado: não há onde a mandar. */
+function fotoSiteInputHTML(tipo, slot, copy, varias) {
+  return `<input type="file" accept="image/*" capture="environment"${varias ? ' multiple' : ''} `
+    + `data-foto-site="${esc(tipo)}" data-slot="${esc(slot || '')}"`
+    + (copy ? ` data-copy="${copy}"` : '')
+    + ` aria-label="Tirar foto${varias ? 's' : ''}" hidden>`;
+}
+
+function tirarFotosHTML(tipo, slot, g) {
+  if (!D.editable || !g || !g.por_revalidar) return '';
+  return `<label class="btn pri fstirar">📷 Tirar fotos${fotoSiteInputHTML(tipo, slot, null, true)}</label>`;
+}
+
+const kbs = n => n >= 1e6 ? `${(n / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
+const ORIGEM_NOME = { venda: 'Venda', rl: 'Caixa RL', coleccao: 'Colecção' };
+function origemFoto(o) {
+  if (!o) return 'largada à mão';
+  if (o.tipo !== 'caixa') return ORIGEM_NOME[o.tipo] || o.tipo;
+  const c = D.caixas.find(x => x.slot === o.slot);
+  return c ? c.nome : o.slot;
+}
+
+/* As fotos que ele mandou do site e AINDA estão em pendentes\ — «à espera das
+   02:30 ou de Processar agora» — mais o botão. `comOrigem` (aba Revalidação)
+   diz de que caixa é cada uma; na aba da caixa já se sabe. */
+function fotosSiteHTML(fotos, comOrigem) {
+  const S = (D.revalidacao || {}).site || {};
+  if (!fotos || !fotos.length) return '';
+  const min = Math.round((S.espera_s || 120) / 60);
+  return `<div class="fsite"><div class="flh">📸 Fotos enviadas, à espera`
+    + `<span class="dim">${cop(fotos.length)}</span></div>`
+    + `<p class="nota">Estão em <code>pendentes\\</code>, à espera da corrida das 02:30 `
+    + `ou de <b>⚡ Processar agora</b>. A tarefa (<code>mtg-fotos-novas</code>) só pega numa `
+    + `foto com mais de ${min} min; o Claude local lê-a e liga-a à cópia — demora uns minutos. `
+    + `Recarrega depois: a cópia passa a ✓ validada.</p><ul class="fsl">`
+    + fotos.map(f => `<li><code>${esc(f.nome)}</code> <span class="dim">${kbs(f.bytes)} · `
+      + `${esc((f.em || '').slice(11, 16))}${comOrigem ? ' · ' + esc(origemFoto(f.origem)) : ''}`
+      + `${f.origem && f.origem.copy_id ? ' · cópia #' + f.origem.copy_id : ''}`
+      + `${f.pronta ? '' : ' · <i>a chegar (menos de ' + min + ' min)</i>'}</span></li>`).join('')
+    + `</ul>` + processarHTML(S) + `</div>`;
+}
+
+/* «⚡ Processar agora»: escreve uma ordem na inbox do runner do ai-pc, que
+   corre o `mtg-fotos-novas` — o mesmo das 02:30. Com uma ordem já na inbox
+   diz-se isso em vez do botão (e no site publicado não há botão). */
+function processarHTML(S) {
+  const P = (S || {}).processar || {};
+  if (P.pendente) {
+    return `<p class="rvalvo">⚡ <b>Já está a processar</b>: a ordem <code>${esc(P.pendente.nome)}</code> `
+      + `está na inbox do runner${P.pendente.nao_antes ? ` (corre a partir das ${esc(String(P.pendente.nao_antes).slice(11, 16))})` : ''}. `
+      + `Recarrega daqui a uns minutos.</p>`;
+  }
+  if (!D.editable) return '';
+  return `<div class="seg"><button class="btn" data-processar="1">⚡ Processar agora</button>`
+    + (P.ultima ? `<span class="dim">última ordem: ${esc(String(P.ultima.em).slice(0, 16))}</span>` : '')
+    + `</div>`;
+}
+
+/* As fotos que o import NÃO conseguiu resolver (linhas paradas do
+   `recat-…-resultado.csv`, foto ainda em pendentes\): o motivo por linha, para
+   ele voltar a fotografar em vez de esperar por uma corrida que dá o mesmo. */
+function porResolverHTML(lista) {
+  if (!lista || !lista.length) return '';
+  return `<details class="vblk rev" open><summary><span>⚠ Fotos por resolver</span>`
+    + `<span class="vtot">${cop(lista.length)}</span></summary>`
+    + `<p class="lead">O import passou por estas fotos e não conseguiu ligar ou importar `
+    + `todas as linhas — ficaram em <code>pendentes\\</code> com o motivo. Volta a fotografar `
+    + `a carta (com a edição legível) ou confirma o nome; a foto antiga não se apaga.</p>`
+    + `<ul class="fsl">` + lista.map(f => `<li><code>${esc(f.foto)}</code> `
+      + `<span class="dim">${esc(f.resultado)}</span><ul>`
+      + f.linhas.map(l => `<li><b>${esc(l.name)}</b>${l.set_code ? ' ' + esc(l.set_code.toUpperCase()) : ''}`
+        + ` — <span class="warn">${esc(l.motivo || 'sem motivo')}</span></li>`).join('')
+      + `</ul></li>`).join('') + `</ul></details>`;
 }
 
 /* O bloco «📷 Na caixa» da aba de uma caixa. */
@@ -2483,10 +2604,11 @@ function revCaixaHTML(c) {
   return `<div class="blk rev" id="rev"><div class="flh">📷 Na caixa — fotografar`
     + `<span class="dim">${cop(g.q)}</span></div>` + revBarra(g)
     + revBotao('caixa', c.slot, c.nome, g)
+    + fotosSiteHTML(g.site, false)
     + (g.linhas && g.linhas.length
        ? `<details${falta ? ' open' : ''}><summary>as cópias, por cor `
          + `<span class="dim">(${cop(falta)} por fotografar)</span></summary>`
-         + revLinhas(g.linhas, true) + `</details>` : '')
+         + revLinhas(g.linhas, true, null, { tipo: 'caixa', slot: c.slot }) + `</details>` : '')
     + `</div>`;
 }
 
@@ -2514,9 +2636,14 @@ function vistaRevalidacao() {
     h += `<div class="rvalvo">📷 <b>A fotografar: ${esc(R.alvo.nome)}</b> `
       + `(desde ${esc(R.alvo.em || '')}) · ${cop(R.alvo.por_revalidar || 0)} por fotografar`
       + `<p class="nota">${revInstrucao({ por_revalidar: R.alvo.por_revalidar || 0 })}</p>`
+      + `<div class="seg">${tirarFotosHTML(R.alvo.tipo, R.alvo.slot, { por_revalidar: R.alvo.por_revalidar || 0 })}`
       + (D.editable ? `<button class="btn sm" data-rev-parar="1">✕ parar</button>` : '')
-      + `</div>`;
+      + `</div></div>`;
   }
+  /* AS FOTOS TIRADAS NO SITE (2026-09-21): as que estão à espera em pendentes\
+     (de todas as caixas, com a origem) e as que o import deixou por resolver. */
+  const S = R.site || {};
+  h += fotosSiteHTML(S.enviadas || [], true) + porResolverHTML(S.por_resolver || []);
   /* Por caixa: a barra e o botão; a lista vive na aba da caixa. */
   h += `<h3>Por caixa</h3><div class="rvcaixas">`;
   for (const g of (R.caixas || [])) {
@@ -2534,7 +2661,7 @@ function vistaRevalidacao() {
     `<details class="vblk rev"${g.por_revalidar && R.alvo && R.alvo.tipo === tipo ? ' open' : ''}>`
     + `<summary><span>${tit}</span><span class="vtot">${g.validadas}/${g.q} validadas</span></summary>`
     + `<p class="lead">${lead}</p>` + revBarra(g) + revBotao(tipo, null, g.nome, g)
-    + revLinhas(g.linhas || [], false, MAX_TILES) + `</details>`;
+    + revLinhas(g.linhas || [], false, MAX_TILES, { tipo, slot: null }) + `</details>`;
   h += grupo('venda', R.venda, '💰 Venda', 'O que vai vender vai com foto: estas são as '
       + 'cópias da lista de venda de hoje (aba <b>Vender</b>, que também as marca).')
     + grupo('rl', R.rl, '🔒 Caixa Reserved List', 'A Caixa RL, fora das caixas de deck e da venda.')
@@ -3640,6 +3767,57 @@ async function enviarFotoCaixa(input) {
     input.value = '';
     erro('Não deu: ' + e.message);
   }
+}
+
+/* AS FOTOS DAS CARTAS (2026-09-21): todas as que o `<input multiple>` trouxe
+   vão num só `POST /api/foto?tipo=…&slot=…[&copy=…]` (multipart, com o
+   token). O servidor valida cada uma pelos primeiros bytes, guarda-as INTEIRAS
+   em pendentes\ com o nome a dizer a origem, e a resposta diz quantas e para
+   onde; a seguir a página recarrega e a lista «à espera» mostra-as. Um pedido
+   com um ficheiro que não é imagem é recusado inteiro (409) — sem metade
+   das fotos já na pasta. */
+async function enviarFotosSite(input) {
+  const fs = input.files ? Array.from(input.files) : [];
+  if (!fs.length) return;
+  const tipo = input.dataset.fotoSite, slot = input.dataset.slot || '';
+  const copy = input.dataset.copy || '';
+  const lbl = input.closest ? input.closest('label') : null;
+  if (lbl) lbl.classList.add('aenviar');
+  const fd = new FormData();
+  let bytes = 0;
+  for (const f of fs) { fd.append('foto', f, f.name || 'foto.jpg'); bytes += f.size || 0; }
+  fd._bytes = bytes;
+  toast(`A enviar ${cop(fs.length)}… (${kbs(bytes)})`, 6000);
+  try {
+    const q = `tipo=${encodeURIComponent(tipo)}&slot=${encodeURIComponent(slot)}`
+      + (copy ? `&copy=${encodeURIComponent(copy)}` : '');
+    const r = await gravar(`api/foto?${q}`, null, fd);
+    if (!r.ok && r.status !== 403 && r.status !== 409 && r.status !== 413) {
+      throw new Error('HTTP ' + r.status);
+    }
+    const j = await r.json();
+    if (j.erro) throw new Error(j.erro);
+    toast(j.msg || 'Fotos guardadas.', 9000);
+    recarregar();
+  } catch (e) {
+    if (lbl) lbl.classList.remove('aenviar');
+    input.value = '';
+    erro('Não deu: ' + e.message);
+  }
+}
+
+/* «⚡ Processar agora»: o servidor escreve a ordem para o runner (ou diz que
+   já há uma, ou que a última foi há menos de 5 min) — a mensagem é a dele. */
+async function processarAgora(btn) {
+  btn.disabled = true;
+  try {
+    const r = await gravar('api/processar-fotos', {});
+    if (!r.ok && r.status !== 403 && r.status !== 409) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    if (j.erro) throw new Error(j.erro);
+    toast(j.msg || 'Pedido.', 9000);
+    recarregar();
+  } catch (e) { btn.disabled = false; erro('Não deu: ' + e.message); }
 }
 
 function caixaHTML(c, compacta) {
@@ -5719,6 +5897,14 @@ function ligar() {
   for (const i of document.querySelectorAll('input[data-foto-caixa]')) {
     i.onchange = () => enviarFotoCaixa(i);
   }
+  /* AS FOTOS DAS CARTAS, DO SITE (2026-09-21): a câmara por alvo e por cópia,
+     e o «processar agora». Só existem no modo edição. */
+  for (const i of document.querySelectorAll('input[data-foto-site]')) {
+    i.onchange = () => enviarFotosSite(i);
+  }
+  for (const b of document.querySelectorAll('[data-processar]')) {
+    b.onclick = () => processarAgora(b);
+  }
   const fim = $('#arr-fim'), csv = $('#arr-csv'), lim = $('#arr-limpar');
   if (csv) csv.onclick = baixarCSV;
   if (lim) lim.onclick = () => limparVistosArrumar();
@@ -5830,16 +6016,27 @@ let GRAVAR_TIMEOUT_MS = 25000;   /* `let`: o teste encurta-o para não esperar *
    qual, com o tipo dele, e o prazo é maior: 8 MB pela rede de casa não cabem
    em 25 s. O resto — token, prazo, a mensagem em português — é o mesmo. */
 const ENVIAR_FICHEIRO_TIMEOUT_MS = 90000;
+/* Um `FormData` (as FOTOS DAS CARTAS, 2026-09-21: várias num pedido) vai sem
+   `Content-Type` escrito à mão — é o browser que põe o `multipart/form-data`
+   com a fronteira; escrevê-lo aqui dava um corpo que o servidor não sabia
+   partir. O prazo é o dos ficheiros, e sobe com o tamanho: 5 fotos de 4 MB
+   pela rede de casa não cabem em 90 s. */
+const ENVIAR_MB_TIMEOUT_MS = 20000;              /* por MB, por cima do prazo base */
 async function gravar(url, corpo, ficheiro) {
   const ctl = (typeof AbortController === 'function') ? new AbortController() : null;
-  const prazo = ficheiro ? ENVIAR_FICHEIRO_TIMEOUT_MS : GRAVAR_TIMEOUT_MS;
+  const multipart = !!(ficheiro && typeof FormData === 'function' && ficheiro instanceof FormData);
+  let prazo = ficheiro ? ENVIAR_FICHEIRO_TIMEOUT_MS : GRAVAR_TIMEOUT_MS;
+  if (ficheiro && ficheiro._bytes) prazo += Math.ceil(ficheiro._bytes / 1e6) * ENVIAR_MB_TIMEOUT_MS;
   const t = ctl ? setTimeout(() => ctl.abort(), prazo) : null;
   try {
+    const headers = { 'X-Mtgvault-Token': D.token || '' };
+    if (!multipart) {
+      headers['Content-Type'] = ficheiro ? (ficheiro.type || 'application/octet-stream')
+                                         : 'application/json';
+    }
     return await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': ficheiro ? (ficheiro.type || 'application/octet-stream')
-                                          : 'application/json',
-                 'X-Mtgvault-Token': D.token || '' },
+      headers,
       body: ficheiro ? ficheiro : JSON.stringify(corpo || {}),
       signal: ctl ? ctl.signal : undefined,
     });

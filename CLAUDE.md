@@ -80,6 +80,15 @@ mtgvault/
                   guardar imagens»), a data em `caixas[].foto`. Entra pelo
                   `POST /api/foto-caixa` (8771) ou por
                   `pendentes/deckboxes/<slot>.jpg` (daily/8771 recolhem). Ponto 13
+  fotosite.py     AS FOTOS DAS CARTAS TIRADAS DO SITE, no telemóvel (2026-09-21):
+                  a câmara a partir da Deckboxes (8771), `POST /api/foto`
+                  (multipart, várias), a foto INTEIRA na RAIZ de `pendentes/`
+                  com o nome a dizer a origem (`site-<slot>-<data>-<n>[-c<copy_id>]
+                  .jpg`, `site-venda-/rl-/colecao-`), que o `import_csv` prefere
+                  (`revalidacao.alvo_da_foto`); o «⚡ Processar agora» = uma
+                  ordem `command` na inbox do runner do ai-pc (`mtg-fotos-novas`,
+                  `nao_antes` = foto + 2 min, uma por 5 min); as fotos por
+                  resolver (`recat-*-resultado.csv`). Ponto 14
   venda.py        a SAÍDA da lista de venda (2026-09-18): o CSV de stock p/ o
                   Cardmarket (formato predefinido NÃO confirmado, ou aprendido
                   de `data/cardmarket-stock-exemplo.csv`), a lista da estante
@@ -2641,6 +2650,110 @@ em `ai-pc/work/revisao/mtgvault-foto-caixa-0921.md`; testes em
   venda_rl 74c/5 485,87 €, rl_segurar 28c/3 081,19 €, reservadas 1c/100,00 €,
   guardar 1c/14,75 €, as 15 caixas. O índice da Deckboxes ganha `foto` por
   caixa (`{em, url}` ou `null`); nenhuma parte cresce.
+
+**14. TIRAR AS FOTOS DAS CARTAS DIRECTAMENTE DO SITE, NO TELEMÓVEL (André,
+2026-09-21, à letra).** *"é possível ter o site preparado para eu abrir no
+telefone e tirar as fotos directamente do site?"* — e, no mesmo dia, *"e
+guardares as fotos, claro"*. Fecha o passo que faltava à revalidação (ponto
+8): até aqui ele carregava em «Fotografar esta caixa», fotografava com a app
+da câmara e levava as fotos à mão para `pendentes/` (app do GitHub ou o PC).
+Motor em `mtgvault/fotosite.py`, endpoint `POST /api/foto` (multipart, uma ou
+várias fotos, token) e `POST /api/processar-fotos`, botões na aba de cada
+caixa (bloco «📷 Na caixa — fotografar») e na aba «📷 Revalidação» (Venda,
+Caixa RL, Colecção). Relatório em
+`ai-pc/work/revisao/mtgvault-foto-site-0921.md`; testes em
+`test_foto_site.py` (8 casos). **Só no 8771** — o site publicado é estático e
+não tem onde receber uma foto. **O `mtg-fotos-novas` NÃO se alterou.**
+- **A CÂMARA A PARTIR DA PÁGINA.** O botão **«📷 Tirar fotos»** é um `<label>`
+  com `<input type="file" accept="image/*" capture="environment" multiple>`
+  (no telemóvel abre a câmara, várias seguidas; no PC o selector) — o mesmo
+  gesto da foto da deckbox (ponto 13). E **um 📷 por cópia** por fotografar
+  no tile/linha da lista «Na caixa» e nos grupos da Revalidação: a foto vai
+  com a cópia esperada no nome. O «📷 Fotografar esta caixa» de 20/09 fica
+  com o nome de sempre (fixa o ALVO e escreve o `esperadas.md`); o «Tirar
+  fotos» está à frente dele, nos dois estados (com e sem alvo). O `gravar()`
+  aceita um `FormData` **sem `Content-Type` escrito à mão** (é o browser que
+  põe a fronteira do multipart; escrevê-lo dava um corpo que o servidor não
+  partia) e o prazo sobe 20 s por MB (5 fotos de 4 MB pela rede de casa não
+  cabem em 90 s).
+- **A FOTO GUARDA-SE TAL COMO VEIO, INTEIRA, NA RAIZ DE `pendentes/`** —
+  onde o `mtg-fotos-novas` (`PEND.iterdir()`) as vai buscar. Nunca se reduz
+  nem se apaga: é ela que fica ligada à cópia (`copies.photo_path`) e vai
+  para «fotos processadas». O multipart lê-se com o `email` da biblioteca-
+  padrão (`fotosite.ler_multipart`; o `cgi` saiu do Python), valida-se cada
+  ficheiro pelos PRIMEIROS BYTES (`fotocaixa.tipo_da_imagem`) e **recusa-se o
+  pedido inteiro ANTES do primeiro ficheiro tocado** (409): «3 guardadas, 1
+  recusada» obrigava a adivinhar qual. Escrita atómica (tmp + `os.replace`).
+  Tectos: `MAX_FICHEIROS` 30 por pedido, `fotocaixa.MAX_BYTES` (25 MB) por
+  foto, `MAX_PEDIDO` (150 MB) por corpo — o `do_POST` passou a escolher o
+  tecto pelo caminho, sem ler. Se um dia a leitura pelo Claude local ficar
+  pesada com fotos de 3–5 MB, faz-se uma cópia reduzida temporária SÓ para a
+  leitura (fora de `pendentes\`, apagada no fim), nunca em vez do original —
+  hoje não se fez: as fotos que ele largava pela app do GitHub tinham o mesmo
+  tamanho.
+- **O NOME DIZ A ORIGEM**: `site-<slot>-<AAAAMMDD-HHMMSS>-<n>.jpg` para a
+  caixa, `site-venda-…`, `site-rl-…`, `site-colecao-…` para os outros três
+  alvos, e `…-c<copy_id>.jpg` quando a foto foi pedida pelo 📷 de uma carta.
+  `nome_ficheiro` ↔ `origem` são inversos (tem teste; um slot com hífenes —
+  `duel-commander`, `pioneer-jeskai` — não confunde porque a data tem forma
+  fixa; um slot chamado `venda`/`rl`/`colecao` é recusado). Dois pedidos no
+  mesmo segundo não se pisam (`n` salta o que já lá está).
+- **O IMPORT PREFERE A CAIXA E A CÓPIA DO NOME** (`revalidacao.alvo_da_foto`,
+  chamado pelo `collection.import_csv` linha a linha): o passo (0) e a
+  discrepância (0b) usam como alvo a caixa do prefixo — e a cópia do
+  `-c<id>` primeiro (`_ordem(..., primeiro)`) — **mesmo que o alvo do config
+  seja outro ou não haja nenhum**: o nome da foto é uma afirmação mais
+  recente e mais precisa do que o botão de ontem. Uma foto sem prefixo
+  (largada à mão) fica com o alvo global, como até aqui. A partição das
+  cópias calcula-se uma vez por importação (`cache["particao"]`, a mesma do
+  `alvo_da_importacao`). Uma caixa que já não existe no nome deixa só a cópia.
+- **O `esperadas.md` ganhou a secção «Fotos tiradas no site»**
+  (`fotosite.seccao_esperadas`, via `encomendas.esperadas_md(..., pasta=)`):
+  cada `site-…` presente com a caixa por extenso e, com `-c<id>`, a cópia
+  esperada (nome + impressão). O `PROCESSAR_FOTOS.md` diz ao Claude das fotos
+  que o prefixo é a caixa e o `c<id>` a cópia — **uma pista, não uma
+  resposta**: escreve o que VÊ, como sempre. É por isso que o `POST /api/foto`
+  faz `regenerar` (~5 s na base dele): a secção tem de estar escrita antes das
+  02:30, e nada mais escreve o ficheiro entretanto.
+- **«⚡ PROCESSAR AGORA»** (`fotosite.pedir_processamento`) escreve uma ordem
+  `command` na inbox do runner do ai-pc — `inbox/mtgvault-fotos-<AAAAMMDD-
+  HHMMSS>.json`, `{"kind":"command","command":["py","runner.py","run",
+  "mtg-fotos-novas"],"cwd":"C:\\Users\\Catarina\\Desktop\\ai-pc"}`, atómica —
+  que corre o MESMO programa das 02:30. Com **`nao_antes` = a foto mais
+  recente + 2 min + 15 s**: sem isso o runner apanhava a ordem em 30 s, a
+  tarefa dizia *«fotos a chegar — espera»* (só pega em fotos com mais de 2
+  min) e não fazia nada, com a página a prometer processar. **Uma por 5 min**
+  no máximo (lê `inbox/`, `inbox/done/` e `inbox/cancelados/` pelo nome); com
+  uma já na inbox diz «já está a processar» e a página mostra-o em vez do
+  botão. Não se corre o Claude local de nenhuma outra forma a partir do 8771.
+  O resultado vê-se quando as cópias ficarem ✓ (o `recarregar()` ao toque).
+- **O QUE FICOU POR RESOLVER** (`fotosite.por_resolver`): as linhas paradas
+  (`resultado != importada`) dos `recat-*-resultado.csv` cuja foto AINDA está
+  em `pendentes/` (a foto que não entrou toda fica lá — regra do
+  `arrumar_fotos`), com o motivo do resultado mais recente. Aba Revalidação,
+  bloco «⚠ Fotos por resolver», para ele voltar a fotografar em vez de esperar
+  por uma corrida que dá o mesmo.
+- **A PÁGINA.** O bloco «📸 Fotos enviadas, à espera» (na aba da caixa só as
+  dela; na Revalidação todas, com a origem — «largada à mão» para as sem
+  prefixo) lista nome, tamanho, hora, cópia, e *«a chegar (menos de 2 min)»*;
+  diz que estão *«à espera das 02:30 ou de Processar agora»*. Vai no payload
+  em `revalidacao.site` (`{enviadas, n, prontas, por_resolver, espera_s,
+  processar: {pendente, ultima}}`; o índice leva os escalares, a parte
+  `revalidacao` as listas) e em `caixa.rev.site` (as dessa caixa). A
+  informação vai nos DOIS modos; os botões (`data-foto-site`, `data-processar`)
+  só no 8771 — o `render_deckboxes.js` conta-os como escrita. **A pasta
+  `pendentes/` entrou no `webapp._versao()`** pelo mtime da pasta (o NTFS
+  actualiza-o quando um ficheiro entra ou sai): a foto acabada de chegar e a
+  que o `mtg-fotos-novas` arrumou às 02:30 aparecem/desaparecem sem ninguém
+  carregar em nada.
+- **Medido na cópia da base de 2026-09-21** (`_revisao/_medir_foto_site.py`,
+  o mesmo `vault.db` nos dois lados; o ramo com duas fotos `site-*` em
+  `pendentes/` e uma ordem pendente): **iguais ao cêntimo e caixa a caixa** —
+  fechar tudo 7 112,71 €, 239 a comprar, 224 a arrumar (124 linhas), venda
+  273c/1 563,40 €, venda_rl 74c/5 485,87 €, rl_segurar 28c/3 081,19 €,
+  reservadas 1c/100,00 €, guardar 1c/14,75 €, as 15 caixas. O
+  `fotosite.estado` custa 0,04 s; o índice fica em 44 KB e a parte
+  `revalidacao` em 270 KB (+2 fotos); a caixa leva as suas duas em `rev.site`.
 
 **AS CÓPIAS DE UMA LINHA INCOMPLETA TAMBÉM SE TIRAM DA GAVETA (2026-09-08).**
 Uma linha que pede 4 e a que a alocação só deu 2 vive em `missing` — e **tudo**

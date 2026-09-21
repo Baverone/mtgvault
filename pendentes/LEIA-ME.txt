@@ -4,6 +4,13 @@ PASTA DE FOTOS POR CATALOGAR
 Larga aqui as fotos das cartas novas (do telemóvel: app do GitHub -> este
 repositório -> pasta pendentes -> "Add file / Upload files"; ou no PC).
 
+Desde 2026-09-21 tambem se tiram DIRECTAMENTE da Deckboxes no telemovel (modo
+edicao, porto 8771: o botao «Tirar fotos» de cada caixa / da revalidacao, ou o
+camera de cada carta): a foto entra AQUI, inteira, com o nome a dizer de onde
+veio — site-<slot>-<data>-<n>.jpg (a caixa), site-venda-/site-rl-/site-colecao-,
+e -c<copy_id> quando e a foto de UMA carta. O botao «Processar agora» da pagina
+pede ao runner do ai-pc que corra o mtg-fotos-novas sem esperar pelas 02:30.
+
 Depois, um Claude (esta sessão no PC, OU o claude.ai/code aberto no telemóvel
 apontado a Baverone/mtgvault) olha para estas fotos, reconhece as cartas e
 corre:

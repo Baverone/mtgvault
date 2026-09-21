@@ -488,6 +488,11 @@ def import_csv(con: sqlite3.Connection, path: str | Path, *,
     `revalidacao.log`; se deixar de cumprir a regra da caixa, sai da
     `copy_allocation`), e também não se cria cópia. O que entrar por (iv) com
     a campanha ligada fica marcado *«nova nesta campanha»* nas `notes`.
+
+    Uma foto TIRADA NO SITE (2026-09-21, `fotosite`: `site-<slot>-…[-c<id>]
+    .jpg`) traz a caixa e a cópia no nome — o (0) e a discrepância preferem
+    essa caixa e essa cópia (`revalidacao.alvo_da_foto`), mesmo que o alvo do
+    config seja outro ou não haja nenhum.
     """
     from . import encomendas, revalidacao                 # noqa: PLC0415
     ok, errors = 0, []
@@ -523,11 +528,17 @@ def import_csv(con: sqlite3.Connection, path: str | Path, *,
                 preco = (float(row["acquired_price"])
                          if row.get("acquired_price") else None)
                 notas_linha = row.get("notes") or None
+                # O alvo DESTA linha (2026-09-21): uma foto tirada no site
+                # (`site-<slot>-…-c<id>.jpg`, ver `fotosite`) diz a caixa e a
+                # cópia; o passo (0) e a discrepância preferem-nas a partir do
+                # nome, mesmo sem alvo no config. Sem prefixo é o alvo global.
+                alvo_linha, primeiro = (revalidacao.alvo_da_foto(con, foto, cache, alvo)
+                                        if campanha and foto else (alvo, None))
                 # (0) REVALIDAÇÃO: a mesma impressão exacta, por revalidar
                 rev = (revalidacao.revalidar(
                     con, nm, set_code, collector_number=num, language=lang,
                     finish=finish, quantity=qtd, photo_path=foto,
-                    preferir=(alvo or {}).get("copias"))
+                    preferir=(alvo_linha or {}).get("copias"), primeiro=primeiro)
                     if campanha and set_code and qtd > 0 and foto else None)
                 if rev:
                     ids += rev["copias"]
@@ -539,9 +550,9 @@ def import_csv(con: sqlite3.Connection, path: str | Path, *,
                 # correcção, não uma carta nova.
                 cor = (revalidacao.corrigir(
                     con, nm, set_code, collector_number=num, language=lang,
-                    finish=finish, quantity=qtd, photo_path=foto, alvo=alvo,
-                    cache=cache)
-                    if alvo is not None and set_code and qtd > 0 and foto else None)
+                    finish=finish, quantity=qtd, photo_path=foto, alvo=alvo_linha,
+                    cache=cache, primeiro=primeiro)
+                    if alvo_linha is not None and set_code and qtd > 0 and foto else None)
                 if cor:
                     ids += cor["copias"]
                     motivos += cor["motivos"]

@@ -191,21 +191,27 @@ def copias_por_revalidar(con, name: str | None = None) -> list[sqlite3.Row]:
     return _sel_copias(con, "1=1", ())
 
 
-def _ordem(preferir, qtd):
+def _ordem(preferir, qtd, primeiro=None):
+    """A ordem por que uma foto gasta as cópias: a CÓPIA que o nome da foto
+    nomeia (`primeiro`, o `-c<copy_id>` de uma foto tirada no site —
+    `fotosite`), depois as do alvo (`preferir`), depois a da mesma quantidade
+    da foto, as menores, e só então uma maior (que se parte); empate pelo id."""
     pref = set(preferir or ())
-    return lambda r: (r["id"] not in pref, (r["quantity"] or 0) != qtd,
-                      (r["quantity"] or 0) > qtd, -(r["quantity"] or 0), r["id"])
+    return lambda r: (r["id"] != primeiro if primeiro else False, r["id"] not in pref,
+                      (r["quantity"] or 0) != qtd, (r["quantity"] or 0) > qtd,
+                      -(r["quantity"] or 0), r["id"])
 
 
 def revalidar(con, name: str, set_code: str, *, collector_number: str | None = None,
               language: str = "en", finish: str = "nonfoil", quantity: int = 1,
               photo_path: str | None = None, preferir=None,
-              quando: str | None = None) -> dict | None:
+              quando: str | None = None, primeiro: int | None = None) -> dict | None:
     """Liga a foto NOVA a cópias por revalidar da MESMA impressão exacta.
 
-    Prefere as do alvo (`preferir`), depois a cópia com a mesma quantidade da
-    foto, depois as menores (gastam-se inteiras) e só então uma maior, que se
-    parte. Devolve `{copy_id, copias, ligadas, restante}` ou `None`.
+    Prefere a cópia que a foto nomeia (`primeiro`), as do alvo (`preferir`),
+    depois a cópia com a mesma quantidade da foto, depois as menores
+    (gastam-se inteiras) e só então uma maior, que se parte. Devolve
+    `{copy_id, copias, ligadas, restante}` ou `None`.
     """
     if not photo_path or not set_code:
         return None
@@ -218,7 +224,7 @@ def revalidar(con, name: str, set_code: str, *, collector_number: str | None = N
     if not rows:
         return None
     qtd = max(int(quantity), 0)
-    rows = sorted(rows, key=_ordem(preferir, qtd))
+    rows = sorted(rows, key=_ordem(preferir, qtd, primeiro))
     dia = quando or hoje()
     resta, tocadas = qtd, []
     for p in rows:
@@ -246,7 +252,7 @@ def corrigir(con, name: str, set_code: str, *, collector_number: str | None = No
              language: str = "en", finish: str = "nonfoil", quantity: int = 1,
              photo_path: str | None = None, alvo: dict | None = None,
              cache: dict | None = None, log_path: Path | None = None,
-             quando: str | None = None) -> dict | None:
+             quando: str | None = None, primeiro: int | None = None) -> dict | None:
     """A foto traz `name` numa edição/acabamento/língua que o ALVO não tem —
     mas o alvo tem essa carta por revalidar noutra. É uma CORRECÇÃO da cópia
     da caixa (o que ele fotografou é o que lá está), não uma carta nova.
@@ -282,7 +288,7 @@ def corrigir(con, name: str, set_code: str, *, collector_number: str | None = No
     if not rows:
         return None
     qtd = max(int(quantity), 0)
-    rows = sorted(rows, key=_ordem(None, qtd))
+    rows = sorted(rows, key=_ordem(None, qtd, primeiro))
     dia = quando or hoje()
     depois = impressao({"set_code": card["set_code"],
                         "collector_number": card["collector_number"],
@@ -450,9 +456,55 @@ def alvo_da_importacao(con, cache: dict | None = None) -> dict | None:
             rep = None                     # sem config de caixas: só o registado
         if cache is not None:
             cache["rep"] = rep
-    a["copias"] = copias_do_alvo(con, a, rep)
+    part = particao(con, rep)
+    if cache is not None:
+        cache["particao"] = part           # o `alvo_da_foto` lê a mesma
+    chave = _chave(a)
+    a["copias"] = {cid for cid, partes in part.items() if any(g == chave for g, _q in partes)}
     a["nome"] = titulo(a)
     return a
+
+
+def alvo_da_foto(con, photo_path: str | None, cache: dict | None,
+                 alvo_global: dict | None) -> tuple[dict | None, int | None]:
+    """O alvo a usar para UMA linha do CSV, pelo NOME da foto (2026-09-21).
+
+    Uma foto tirada no site chama-se `site-<slot>-…[-c<copy_id>].jpg`
+    (`fotosite.nome_ficheiro`): o slot diz a caixa que ele estava a
+    fotografar e o `c<copy_id>` a cópia. Aí o passo (0) prefere as cópias
+    DESSA caixa — e essa cópia primeiro —, mesmo que o alvo do config seja
+    outro ou não haja nenhum: o nome da foto é uma afirmação mais recente e
+    mais precisa do que o botão «Fotografar» de ontem. Uma foto sem prefixo
+    (largada à mão) fica com o alvo global, como até aqui. Devolve `(alvo,
+    primeiro)`; a partição das cópias calcula-se UMA vez por importação
+    (`cache["particao"]`), como o relatório.
+    """
+    from . import fotosite, loadout                        # noqa: PLC0415
+    o = fotosite.origem(photo_path or "")
+    if not o:
+        return alvo_global, None
+    primeiro = o["copy_id"]
+    a = {"tipo": o["tipo"], "slot": o["slot"], "em": None}
+    if a["tipo"] == "caixa" and a["slot"] not in loadout.nomes_das_caixas():
+        return alvo_global, primeiro       # uma caixa que já não existe: só a cópia
+    if alvo_global and alvo_global.get("tipo") == a["tipo"] and alvo_global.get("slot") == a["slot"]:
+        return alvo_global, primeiro       # é o mesmo alvo — não se recalcula
+    cache = cache if cache is not None else {}
+    if "particao" not in cache:
+        if "rep" in cache:
+            rep = cache["rep"]
+        else:
+            try:
+                rep = loadout.report(con)
+            except Exception:                              # noqa: BLE001
+                rep = None
+            cache["rep"] = rep
+        cache["particao"] = particao(con, rep)
+    chave = _chave(a)
+    a["copias"] = {cid for cid, partes in cache["particao"].items()
+                   if any(g == chave for g, _q in partes)}
+    a["nome"] = titulo(a)
+    return a, primeiro
 
 
 def titulo(alvo_: dict) -> str:
