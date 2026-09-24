@@ -235,7 +235,18 @@ def caso_a_barra_lateral_nao_tem_emojis():
         for _f, _a, _ic, rot, nota in itens:
             if nota:
                 assert nota.lower() not in rot.lower(), (rot, nota)
-    print("a barra lateral nao tem emojis, e nenhum rotulo se repete")
+    # E o TÍTULO da página é o mesmo rótulo por que ele lá chegou: clicar em
+    # «Binders por cor» e aterrar numa página chamada «Coleção por cor» é a
+    # página a discordar do menu.
+    maus = {}
+    for f in _publicadas():
+        txt = (RAIZ / f).read_text(encoding="utf-8", errors="replace")
+        m = re.search(r'<h1 class="pgt">(.*?)</h1>', txt)
+        rot = shell.titulo_de(f)
+        if m and m.group(1) != rot:
+            maus[f] = (m.group(1), rot)
+    assert not maus, ("o título da página não é o rótulo da barra", maus)
+    print("a barra lateral nao tem emojis, nenhum rotulo se repete, e o titulo bate")
 
 
 def caso_os_rodapes_longos_ficam_recolhidos():

@@ -552,8 +552,8 @@ _RODAPE = ("<b>Um binder por cor</b>; dentro de cada cor, <b>SPML</b> e "
            "reservadas a um deck. Atualiza sozinho todos os dias.")
 
 _TMPL = ("""<!doctype html><html lang="pt-PT"><head>"""
-         + shell.head("Coleção por cor", _CSS) + """</head><body>"""
-         + shell.abrir("colecao_cor.html", "Coleção por cor", _LEAD, _ACCOES) + """
+         + shell.head("Binders por cor", _CSS) + """</head><body>"""
+         + shell.abrir("colecao_cor.html", "Binders por cor", _LEAD, _ACCOES) + """
 <div class="wrap">
 <div class="cfg">%CFG%</div>
 %VALOR%

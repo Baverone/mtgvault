@@ -318,8 +318,8 @@ _ACCOES = ('<button class="btn" id="tgl" type="button" onclick="toggle()">'
            'Mostrar só as que tenho</button>')
 
 _TMPL = ("""<!doctype html><html lang="pt-PT"><head>"""
-         + shell.head("Reserved List", _CSS) + """</head><body>"""
-         + shell.abrir("reservedlist.html", "Reserved List", "%HEAD%", _ACCOES) + """
+         + shell.head("Reserved List · preços", _CSS) + """</head><body>"""
+         + shell.abrir("reservedlist.html", "Reserved List · preços", "%HEAD%", _ACCOES) + """
 <div class="wrap">
 %SELL%
 <div class="edidx"><div class="seg">%EDIDX%</div></div>

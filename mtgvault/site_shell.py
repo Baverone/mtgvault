@@ -183,7 +183,12 @@ def js_icones() -> str:
 # nota só existe quando ACRESCENTA: *"Por cor · os binders"* eram duas palavras
 # para a mesma coisa em duas linhas, e *"Caixa Reserved List"* logo por cima de
 # *"Reserved List"* obrigava a ler a nota para saber qual era qual. Agora são
-# «Binders por cor», «Reserved List · caixa» e «Reserved List · preços».
+# «Binders por cor», «Reserved List · caixa» e «Reserved List · preços» — os
+# nomes que ele escreveu na ordem.
+#
+# E o TÍTULO de cada página é o MESMO rótulo (`shell.abrir`): clicar em «Binders
+# por cor» e chegar a uma página que se chama «Coleção por cor» é a página a
+# discordar do menu que lá levou.
 SECCOES: list[tuple[str, list[tuple[str, str, str, str, str]]]] = [
     ("", [
         ("index.html", "", "inicio", "Início", "o painel de hoje"),
@@ -204,7 +209,8 @@ SECCOES: list[tuple[str, list[tuple[str, str, str, str, str]]]] = [
     ("Metagame", [
         ("metagame.html", "", "metagame", "Metagame", "o que estás perto de fechar"),
         ("cobertura.html", "", "cobertura", "Cobertura do metagame", ""),
-        ("showcase.html", "", "showcase", "Decks Showcase", ""),
+        ("showcase.html", "", "showcase", "Showcase Challenger",
+         "decks de eventos recentes"),
     ]),
     ("Compras e venda", [
         ("deckboxes.html", "comprar", "comprar", "Comprar", ""),

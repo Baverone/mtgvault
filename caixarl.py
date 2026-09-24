@@ -66,8 +66,8 @@ _RODAPE = ("Regra do André (2026-08-31). Preços: Cardmarket (mínimo à venda)
            "mercado limitados). ⚠️ = quantidade alta, confirma na revisão.")
 
 _TMPL = ("""<!doctype html><html lang="pt-PT"><head>"""
-         + shell.head("Caixa Reserved List", _CSS) + """</head><body>"""
-         + shell.abrir("caixarl.html", "Caixa Reserved List", _LEAD) + """
+         + shell.head("Reserved List · caixa", _CSS) + """</head><body>"""
+         + shell.abrir("caixarl.html", "Reserved List · caixa", _LEAD) + """
 <div class="wrap">
 %BANNER%
 %SECS%

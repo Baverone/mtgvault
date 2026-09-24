@@ -368,8 +368,12 @@ fechar tudo **7 017,06 €**, 239 a comprar, 225 a arrumar (129 linhas), venda
   «Reserved List · preços» (estava «Caixa Reserved List» logo por cima de
   «Reserved List»), «Cobertura do metagame», «Decks Showcase», «Plano de
   montagem», «Arrumar cartas», «Revalidação por foto». A nota por baixo só fica
-  onde ACRESCENTA. Tem teste: zero emojis dentro do `<nav class="sidenav">`,
-  nenhum rótulo repetido e nenhuma nota a repetir o rótulo.
+  onde ACRESCENTA. **E o TÍTULO de cada página é o MESMO rótulo**: clicar em
+  «Binders por cor» e aterrar numa página chamada «Coleção por cor» é a página a
+  discordar do menu que lá levou (o mesmo com a Galeria e as duas de Reserved
+  List). Só o `<h1>` mudou — o balde `Caixa Reserved List` da base não se tocou.
+  Tem teste: zero emojis dentro do `<nav class="sidenav">`, nenhum rótulo
+  repetido, nenhuma nota a repetir o rótulo e o `<h1>` igual ao rótulo.
 - **A GRELHA DO INÍCIO É 3 × 2.** Era `auto-fit` com mínimo de 262 px: a 1440
   cabiam quatro e os seis cartões saíam 4 + 2, com um buraco. São três colunas
   fixas em desktop, duas no telemóvel (uma abaixo dos 360 px), com

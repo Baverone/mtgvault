@@ -210,8 +210,8 @@ _RODAPE = ("Cada imagem é a impressão exata da carta (edição + número). Cli
            "abrir em grande. A galeria regenera-se sozinha no job diário.")
 
 _TMPL = ("""<!doctype html><html lang="pt-PT"><head>"""
-         + shell.head("Galeria da coleção", _CSS) + """</head><body>"""
-         + shell.abrir("colecao.html", "Galeria da coleção", _LEAD) + """
+         + shell.head("Galeria de cartas", _CSS) + """</head><body>"""
+         + shell.abrir("colecao.html", "Galeria de cartas", _LEAD) + """
 <div class="wrap">
 %EVO%
 <div class="tools"><input id="q" type="search" placeholder="Procurar carta ou edição…" autocomplete="off"><span class="count" id="count"></span></div>
