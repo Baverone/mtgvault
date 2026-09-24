@@ -18,8 +18,10 @@
  .c .plays{grid-area:play;font-size:9.5px;color:#6f7b8a;line-height:1.2}
  .c.sell{border-color:#7a3030} .c.sell .plays.vd{color:var(--warn);font-weight:700}
  .sellbadge{background:#5a1f1f;color:#ff9b8a;font-size:8px;font-weight:800;padding:1px 4px;border-radius:5px;vertical-align:middle}
- .c .own .en{color:var(--add)} .c .own .pt{color:var(--pt)} .c .own .no{color:#4a5666;font-weight:400}
- .c .val{grid-area:val;font-weight:800;font-size:14px;color:var(--gold)} .c .val small{color:var(--muted);font-weight:600;font-size:9px}
+ .c .own .en{color:var(--add)} .c .own .pt{color:var(--pt)} .c .own .no{color:var(--dim);font-weight:400}
+ /* `nowrap`: o separador de milhares é um espaço fino, e `1 078€` partia-se em
+    duas linhas («1» e «078€») no meio da grelha. */
+ .c .val{grid-area:val;font-weight:800;font-size:14px;color:var(--gold);white-space:nowrap} .c .val small{color:var(--muted);font-weight:600;font-size:9px}
  .c .ev{grid-area:ev;display:flex;align-items:center;gap:4px;justify-content:flex-end} .c .ev .sk{opacity:.9} .c .ev .chg{font-size:10px;font-weight:700}
  .c .mon{grid-area:mon;font-size:10.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:3px;margin-top:2px} .c .mon b{font-weight:700}
  /* SEM COR quando não tenho nenhuma cópia */
