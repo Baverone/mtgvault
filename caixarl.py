@@ -19,7 +19,7 @@ from __future__ import annotations
 import html
 from pathlib import Path
 
-from mtgvault import paginas
+from mtgvault import collection, paginas
 from mtgvault import site_shell as shell
 from mtgvault.collection import jogaveis
 
@@ -59,11 +59,15 @@ _CSS = """
 
 _LEAD = ("RL guardada fora da coleção jogável. Inglesas → só cEDH/Duel-Commander; "
          "Portuguesas → só Premodern. O que não está em uso fica aqui, separado "
-         "por idioma e ordenado por preço unitário. · dados de <b>%TODAY%</b>")
+         "por idioma e ordenado por preço unitário — <b>uma linha por "
+         "impressão</b> (o Taiga de Unlimited e o de Revised são duas). · dados "
+         "de <b>%TODAY%</b>")
 
-_RODAPE = ("Regra do André (2026-08-31). Preços: Cardmarket (mínimo à venda) por "
-           "impressão — as antigas mostram <code>low==trend</code> (dados de "
-           "mercado limitados). ⚠️ = quantidade alta, confirma na revisão.")
+_RODAPE = ("Regra do André (2026-08-31). Preços: a mesma conta dos "
+           "<a href=\"colecao_cor.html\">binders</a> (impressão + acabamento); as "
+           "antigas mostram <code>low==trend</code>. Lá a fatia «Caixa RL» é "
+           "menor: o que já está numa deckbox conta como <i>decks</i>. "
+           "⚠️ = quantidade alta, confirma na revisão.")
 
 _TMPL = ("""<!doctype html><html lang="pt-PT"><head>"""
          + shell.head("Reserved List · caixa", _CSS) + """</head><body>"""
@@ -74,21 +78,40 @@ _TMPL = ("""<!doctype html><html lang="pt-PT"><head>"""
 </div>""" + shell.fechar(_RODAPE) + """</body></html>""")
 
 
-def _price_maps(con):
-    nf, fo = {}, {}
-    for r in con.execute(
-            "SELECT scryfall_id sid, finish, MIN(COALESCE(low,trend)) m FROM price_latest "
-            "WHERE COALESCE(low,trend) IS NOT NULL GROUP BY scryfall_id, finish"):
-        (fo if r["finish"] == "foil" else nf)[r["sid"]] = r["m"]
-    return nf, fo
+def _preco(con):
+    """`(sid, acabamento) -> €`, pela conta ÚNICA do valor de uma cópia.
+
+    Era um mapa próprio (2026-09-24: o sexto): `MIN(COALESCE(low,trend))` sobre a
+    `price_latest` INTEIRA, partido em foil/não-foil à mão. Três defeitos, todos
+    silenciosos — uma `etched` caía no balde do nonfoil (é foil), uma foil sem
+    cotação foil valia **0 €** em vez do nonfoil, e ligar a CardTrader mudava os
+    preços desta página e não os das outras. Ver o cabeçalho da secção no
+    `mtgvault/collection.py`.
+    """
+    mapa = collection.mapa_precos(con)
+    cache: dict = {}
+
+    def preco(sid, finish):
+        if (sid, finish) not in cache:
+            cache[(sid, finish)] = collection.preco_impressao(mapa, sid, finish)[0] or 0
+        return cache[(sid, finish)]
+    return preco
 
 
 def _rows(con):
-    """Cópias de RL do André, agregadas por (carta, idioma, finish). Guarda em
-    SEPARADO as cópias que estão num deck de cEDH/DC (`used_q`) das que estão fora
-    (`box_q`) — uma carta pode ter parte no deck e parte na coleção, e só o que
-    está fora do deck vai à caixa. Idioma: en vs pt."""
-    nf, fo = _price_maps(con)
+    """Cópias de RL do André, agregadas por IMPRESSÃO (carta, edição, idioma,
+    acabamento). Guarda em SEPARADO as cópias que estão num deck de cEDH/DC
+    (`used_q`) das que estão fora (`box_q`) — uma carta pode ter parte no deck e
+    parte na coleção, e só o que está fora do deck vai à caixa.
+
+    A chave levava o NOME e não a impressão (2026-09-24). Com duas impressões da
+    mesma carta, a linha ficava com a edição e o **preço de uma delas** e a
+    quantidade de todas: 6 Taiga (Unlimited + Revised) e 5 Tropical Island,
+    todas ao preço de uma das duas — **1 391,77 € a mais** na Caixa, e o nome de
+    uma edição por cima de cópias da outra. Uma linha por impressão diz a
+    verdade nas três colunas (edição, preço/un, total).
+    """
+    preco = _preco(con)
     agg = {}
     for r in con.execute(
             f"""SELECT c.name nm, c.set_name st, c.image_uri img, cp.scryfall_id sid,
@@ -97,13 +120,13 @@ def _rows(con):
                  FROM copies cp JOIN catalog.cards c ON c.scryfall_id = cp.scryfall_id
                  LEFT JOIN sub_collections s ON s.id = cp.sub_collection_id
                 WHERE {jogaveis()} AND c.reserved = 1
-                GROUP BY c.name, cp.language, cp.finish, s.name"""):
+                GROUP BY c.name, cp.language, cp.finish, cp.scryfall_id, s.name"""):
         lang = "en" if (r["lang"] or "en") == "en" else "pt"
-        unit = (fo if r["fin"] == "foil" else nf).get(r["sid"], 0) or 0
-        key = (r["nm"], lang, r["fin"])
+        unit = preco(r["sid"], r["fin"])
+        key = (r["nm"], lang, r["fin"], r["sid"])
         e = agg.setdefault(key, {"nm": r["nm"], "st": r["st"], "img": r["img"],
                                  "fin": r["fin"], "lang": lang, "unit": unit,
-                                 "box_q": 0, "used_q": 0})
+                                 "sid": r["sid"], "box_q": 0, "used_q": 0})
         if r["balde"] == CAIXA:
             e["box_q"] += r["q"]      # o que está mesmo na Caixa
         elif r["balde"] in CEDH_DC:
@@ -141,6 +164,9 @@ def _table(items):
 
 def _val(items): return sum(e["q"] * e["unit"] for e in items)
 def _qt(items): return sum(e["q"] for e in items)
+# Uma linha é uma IMPRESSÃO; «cartas» são nomes distintos. Com o Taiga em duas
+# edições, `len(items)` deixou de ser o número de cartas (2026-09-24).
+def _cartas(items): return len({e["nm"] for e in items})
 
 
 def _section(title, sub, items, ref=False):
@@ -148,7 +174,7 @@ def _section(title, sub, items, ref=False):
         return ""
     cls = ' class="ref"' if ref else ""
     inner = f'<div class="ref">{_table(items)}</div>' if ref else _table(items)
-    return (f'<h2{cls}>{title} <span class="n">{len(items)} cartas · {_qt(items)} cópias</span>'
+    return (f'<h2{cls}>{title} <span class="n">{_cartas(items)} cartas · {_qt(items)} cópias</span>'
             f'<span class="val">~{paginas.eur(_val(items), 0, espaco=False)}</span></h2>'
             f'<p class="sub">{sub}</p>{inner}')
 
@@ -174,7 +200,7 @@ def build(con, out_path=None):
     secs += _section("✅ Inglesas em uso (cEDH/Duel-Commander)", "Ficam nos decks — não vão para a caixa (só referência).", en_used, ref=True)
 
     box = en_duals + en_rest + pt_duals + pt_rest
-    banner = (f'<div class="banner">📦 <b>{len(box)} cartas · {_qt(box)} cópias · '
+    banner = (f'<div class="banner">📦 <b>{_cartas(box)} cartas · {_qt(box)} cópias · '
               f'~{paginas.eur(_val(box), 0, espaco=False)}</b> na Caixa. '
               f'Fora da coleção jogável (não contam para Metagame/Decks fazíveis). '
               f'As portuguesas voltam à coleção à medida que montarmos cada deck Premodern.</div>')

@@ -26,7 +26,8 @@ import classify  # noqa: E402
 import commander_decks  # noqa: E402  (decks de consenso em camadas núcleo/flex/tech)
 from mtgvault import db, loadout, paginas  # noqa: E402
 from mtgvault import site_shell as shell  # noqa: E402
-from mtgvault.collection import jogaveis, owned_playable  # noqa: E402
+from mtgvault import collection as col  # noqa: E402
+from mtgvault.collection import jogaveis, owned_playable, valor_da_coleccao  # noqa: E402
 
 COLOR = {"W": "Branco", "U": "Azul", "B": "Preto", "R": "Vermelho", "G": "Verde"}
 ORDER = ["Branco", "Azul", "Preto", "Vermelho", "Verde", "Multicor",
@@ -317,47 +318,29 @@ def _consensus_tiers_html(con):
 
 
 def _value(con):
-    """Valor de TUDO o que o André tem (todas as cópias 'player') em DOIS cenários:
+    """Valor de TUDO o que o André tem na estante, em DOIS cenários:
       'min'   = preço mais BAIXO à venda (Cardmarket `low`)
       'trend' = preço de TENDÊNCIA (Cardmarket `trend`)
-    Cada um repartido em [coleção, decks, caixa]. Foil cai para nonfoil (e vice-versa)
-    se faltar o preço nesse acabamento; e um cenário cai no outro se faltar."""
-    lo, tr = {}, {}
-    for r in con.execute("SELECT scryfall_id sid, finish, MIN(low) lo, MIN(trend) tr "
-                         "FROM price_latest GROUP BY scryfall_id, finish"):
-        if r["lo"] is not None:
-            lo[(r["sid"], r["finish"])] = r["lo"]
-        if r["tr"] is not None:
-            tr[(r["sid"], r["finish"])] = r["tr"]
+    Cada um repartido em [coleção, decks, caixa RL, colecionador].
 
-    def price(sid, fin, a, b):
-        o = "foil" if fin == "nonfoil" else "nonfoil"
-        return a.get((sid, fin)) or a.get((sid, o)) or b.get((sid, fin)) or b.get((sid, o)) or 0
-
-    coleccao = {b for b, _ in _pools()}
-    grp = {"min": [0.0, 0.0, 0.0], "trend": [0.0, 0.0, 0.0]}   # [coleção, decks, caixa]
-    # Uma cópia pode estar meio na caixa e meio na gaveta, e o valor tem de se
-    # repartir na mesma proporção — senão um lote de 4 com 3 no deck contava
-    # 4 como coleção.
-    for r in con.execute(f"""SELECT cp.scryfall_id sid, cp.finish fin, cp.quantity q,
-                COALESCE(s.name,'') bal,
-                COALESCE((SELECT SUM(a.quantity) FROM copy_allocation a
-                           WHERE a.copy_id = cp.id), 0) na_caixa
-                FROM copies cp
-                LEFT JOIN sub_collections s ON s.id = cp.sub_collection_id
-               WHERE {jogaveis()}"""):
-        base = 0 if r["bal"] in coleccao else 2 if r["bal"] == loadout.BALDE_RL else 1
-        dentro = min(r["na_caixa"] or 0, r["q"])
-        for i, q in ((1, dentro), (base, r["q"] - dentro)):
-            if q <= 0:
-                continue
-            grp["min"][i] += price(r["sid"], r["fin"], lo, tr) * q
-            grp["trend"][i] += price(r["sid"], r["fin"], tr, lo) * q
-    return grp
+    A CONTA NÃO VIVE AQUI (2026-09-24): é a `collection.valor_da_coleccao`, a
+    mesma que a Galeria, o Início e o `cli value` usam. Esta função ficou só a
+    dar-lhe a forma que a página já lia (duas listas por cenário) — havia quatro
+    contas para *"quanto vale esta cópia?"* e duas páginas a dizerem 97 761,26 €
+    e 97 772,93 € sobre o mesmo dinheiro. Ver o cabeçalho da secção no
+    `mtgvault/collection.py`.
+    """
+    v = valor_da_coleccao(con)
+    return {c: [v["partes"][cen][p] for p in col.PARTES]
+            for c, cen in (("min", "low"), ("trend", "trend"))}
 
 
 def _eur(x):
-    return paginas.eur(x, 0)
+    # COM CÊNTIMOS (2026-09-24). Era `casas=0`: o total desta página saía
+    # «97 773 €» e o mesmo número saía «97 772,93 €» na Galeria e no Início.
+    # A conta era a mesma, o arredondamento é que não — e quem lê as duas
+    # páginas vê dois números. É o irmão pequeno do `event_tier`.
+    return paginas.eur(x)
 
 
 def build(con, out_path=None):
@@ -467,13 +450,21 @@ def build(con, out_path=None):
 
     def _vrow(lbl, i):
         return f'<tr><td>{lbl}</td><td>{_eur(val["trend"][i])}</td></tr>'
+    # A linha do colecionador só aparece quando há alguma: um «0,00 €» fixo é
+    # ruído, e omiti-la quando existe era somá-la sem o dizer.
+    rows = _vrow("📚 Coleção", 0) + _vrow("🃏 Decks", 1) + _vrow("📦 Caixa RL", 2)
+    if val["trend"][3]:
+        rows += _vrow("🏛️ Colecionador", 3)
     valor_html = (
         f'<div class="valor"><div class="vtot">💰 <b class="vtr">{_eur(total)}</b> '
         f'<span class="vall">— valor total de tudo (coleção + decks + caixa), a preço Cardmarket</span></div>'
-        f'<table class="vtab"><tr><th></th><th>valor</th></tr>'
-        f'{_vrow("📚 Coleção", 0)}{_vrow("🃏 Decks", 1)}{_vrow("📦 Caixa RL", 2)}</table>'
-        f'<div class="vnote">Preço Cardmarket por impressão. A fonte atual dá <b>um só valor</b> por carta '
-        f'— o «mínimo» (low) e o «trend» coincidem, por isso mostro um só. (Separá-los precisa de afinar o harvest de preços.)</div></div>')
+        f'<table class="vtab"><tr><th></th><th>valor</th></tr>{rows}</table>'
+        f'<div class="vnote">Preço Cardmarket por impressão — a <b>mesma conta</b> da '
+        f'<a href="colecao.html">Galeria</a> e do <a href="index.html">Início</a>. '
+        f'Quando o acabamento da cópia não está cotado, cai para o outro (uma foil sem preço '
+        f'vale o nonfoil) — a Galeria marca essas com <b>~</b>. A fonte atual dá <b>um só valor</b> '
+        f'por carta: o «mínimo» (low) e o «trend» coincidem, por isso mostro um só. '
+        f'(Separá-los precisa de afinar o harvest de preços.)</div></div>')
 
     out.write_text(_TMPL
                    .replace("%SECS%", secs).replace("%VIGIADOS%", wsec)
