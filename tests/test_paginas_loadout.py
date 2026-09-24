@@ -234,9 +234,10 @@ def caso_meusdecks_reencaminha():
     meusdecks.build(None, out)
     txt = out.read_text(encoding="utf-8")
     assert 'http-equiv="refresh"' in txt and "deckboxes.html" in txt, txt[:400]
-    assert "Decks permanentes" not in paginas.nav("deckboxes.html"), \
+    from mtgvault import site_shell as shell               # noqa: PLC0415
+    assert "Decks permanentes" not in shell.barra("deckboxes.html"), \
         "a página fundida não pode continuar no menu"
-    assert 'href="meusdecks.html"' not in paginas.nav("index.html", extra=True)
+    assert 'href="meusdecks.html"' not in shell.barra("index.html")
     print("meusdecks.html reencaminha para as Deckboxes, e saiu do menu")
 
 

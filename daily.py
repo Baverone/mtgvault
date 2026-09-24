@@ -42,6 +42,7 @@ import metagame  # noqa: E402  (gera metagame.html — o top-N que está mais pe
 import reservedlist  # noqa: E402  (gera reservedlist.html — Reserved List x coleção)
 import caixarl  # noqa: E402  (gera caixarl.html — Caixa Reserved List: RL fora da coleção jogável)
 import showcase  # noqa: E402  (gera showcase.html — Decks Showcase Challenger, arquétipos por formato)
+import inicio  # noqa: E402  (gera index.html — o painel de Início, com os números de hoje)
 import my_decks  # noqa: E402  (mantém atualizadas as listas dos decks que o André segue)
 import commander_decks  # noqa: E402  (decks de comandante seguidos por consenso, ex.: Cloud DC)
 import premodern_decks  # noqa: E402  (consenso dos arquétipos-alvo de Premodern: UW Replenish, Enchantress)
@@ -364,6 +365,13 @@ def main():
               lambda: str(caixarl.build(con, ROOT / "caixarl.html")))
         _step(con, "showcase-challenger",
               lambda: str(showcase.build(con, ROOT / "showcase.html")))
+        # O INÍCIO (2026-09-24): o painel com os números de hoje. Corre por
+        # ÚLTIMO das páginas e com o MESMO relatório do `deckboxes` — se
+        # recalculasse o seu, a porta de entrada do site podia dizer um número
+        # e a Deckboxes outro, que é exactamente o que o rodapé dela promete
+        # que não acontece.
+        _step(con, "inicio",
+              lambda: str(inicio.build(con, ROOT / "index.html", rep=_rep.get("v"))))
 
         _step(con, "podar-precos", lambda: _prune_prices(con, 30))
         # Ligas fora (2026-09-07). ANTES do `prune`, que é quem faz o VACUUM.

@@ -320,21 +320,26 @@ def caso_ler_config_segue_o_ficheiro_que_o_motor_le():
 def caso_o_menu_leva_o_token_no_modo_edicao():
     """No telemóvel, um toque no menu não pode apagar o modo edição.
 
-    Os links do `paginas.nav` são `href="metagame.html"` — sem query nenhuma —
+    Os links da barra lateral são `href="metagame.html"` — sem query nenhuma —
     e o servidor só confia em quem traz o `?t=`. Ele ia à Coleção, voltava à
     Deckboxes e os botões tinham desaparecido, sem erro e sem explicação. No PC
     nunca se via: o loopback é de confiança sem token.
 
-    E o **🏠 Início** tem de ir para o índice: estava mapeado para a Deckboxes,
+    E o **Início** tem de ir para o índice: estava mapeado para a Deckboxes,
     ou seja, levava-o à página onde ele já estava.
-    """
-    from mtgvault import paginas
 
-    menu = paginas.nav("deckboxes.html", extra=True)
+    Desde 2026-09-24 metade dos itens da barra tem ÂNCORA
+    (`deckboxes.html#comprar`): o `?t=` tem de entrar ANTES do `#`, senão o
+    browser lê o token como parte da âncora e o servidor não o vê.
+    """
+    from mtgvault import site_shell as shell
+
+    menu = shell.barra("deckboxes.html")
     com = webapp.com_token(menu, "abc123")
     assert 'href="metagame.html?t=abc123"' in com, com
     assert 'href="index.html?t=abc123"' in com, com
     assert 'href="colecao.html?t=abc123"' in com, com
+    assert 'href="deckboxes.html?t=abc123#comprar"' in com, com
     # Sem token (site publicado / leitura) a página não pode ganhar `?t=`.
     assert webapp.com_token(menu, "") == menu
     # E nada além dos links internos é tocado.

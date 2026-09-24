@@ -25,6 +25,7 @@ ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 from mtgvault import paginas, sources  # noqa: E402
+from mtgvault import site_shell as shell  # noqa: E402
 from mtgvault.collection import owned_playable  # noqa: E402
 
 FORMATS = [("standard", "Standard"), ("pioneer", "Pioneer"),
@@ -62,7 +63,6 @@ KNOWN = {
     "Cori-Steel Cutter": "Izzet Prowess", "Grinding Station": "Grinding Station",
 }
 
-NAV = paginas.nav("showcase.html")
 
 
 def _prank(placement):
@@ -334,7 +334,9 @@ def build(con, out_path=None):
         if not d:
             continue
         act = " act" if not tabs else ""
-        tabs += f'<button class="ftab{act}" data-f="{fmt}">{html.escape(lbl)} <span class="n">{len(d["clusters"])}</span></button>'
+        tabs += (f'<button class="ftab{act}" type="button" role="tab" '
+                 f'aria-selected="{"true" if act else "false"}" data-f="{fmt}">'
+                 f'{html.escape(lbl)} <span class="n">{len(d["clusters"])}</span></button>')
         # O primeiro de cada formato fica ABERTO: quem entra na aba tem de ver
         # logo alguma coisa, e é o arquétipo com mais peso.
         arqs = []
@@ -358,12 +360,16 @@ def build(con, out_path=None):
                    f'<p class="carregando">A carregar {html.escape(lbl)}…</p></section>')
 
     paginas.escrever_dados(out, "showcase", indice, partes)
-    out.write_text(_TMPL.replace("%META%", paginas.META)
-                   .replace("%TEMA%", paginas.TEMA + paginas.CSS_DADOS)
+    out.write_text(_TMPL
+                   .replace("%TEMA_DADOS%", paginas.CSS_DADOS)
                    .replace("%JS_DADOS%", paginas.JS_DADOS)
-                   .replace("%NAV%", NAV).replace("%TABS%", tabs)
+                   .replace("%TABS%", tabs)
                    .replace("%FORMATOS%", json.dumps([f["f"] for f in indice["formatos"]]))
-                   .replace("%PANELS%", panels), encoding="utf-8")
+                   .replace("%PANELS%", panels or
+                            '<p class="vazio">Não há eventos que contem na janela '
+                            'de 21 dias. Quem decide que listas contam é o '
+                            '<code>colecao_config.json → metagame_fontes</code>.</p>'),
+                   encoding="utf-8")
     return out
 
 
@@ -386,14 +392,8 @@ def _datekey(d):
     return tuple(int(x) for x in d.split("-")) if d else (0, 0, 0)
 
 
-_TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
-<title>Showcase Challenger</title><style>
-%TEMA%
- *{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#10141d,#0d1017);color:var(--ink);font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
- .wrap{max-width:1100px;margin:0 auto;padding:22px 14px 60px}
- h1{margin:0;font-size:24px;font-weight:800;letter-spacing:-.02em} .lead{color:var(--muted);font-size:13px;margin:2px 0 12px}
- .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0} .tabs a{flex:1;min-width:100px;text-align:center;padding:11px 8px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:600;font-size:14px;transition:.15s} .tabs a:hover{border-color:var(--accent);transform:translateY(-1px)} .tabs a.cur{background:linear-gradient(180deg,#26406f,#1b2c4d);border-color:var(--accent)}
- .ftabs{display:flex;gap:7px;flex-wrap:wrap;margin:14px 0 4px} .ftab{padding:8px 15px;border-radius:20px;background:#141a24;border:1px solid var(--line);color:var(--muted);font-weight:700;font-size:13px;cursor:pointer} .ftab .n{color:#4a5666;font-weight:600} .ftab:hover{color:var(--ink)} .ftab.act{background:linear-gradient(180deg,#26406f,#1b2c4d);border-color:var(--accent);color:var(--ink)} .ftab.act .n{color:var(--accent)}
+_CSS = """
+ .ftab .n{color:var(--dim);font-weight:600;font-size:11px} .ftab.act .n{color:var(--accent)}
  .fpanel{display:none} .fpanel.act{display:block}
  .evh{color:var(--muted);font-size:12px;margin:8px 0 12px;line-height:1.6} .evh .sc{font-size:10px}
  .grid{display:grid;grid-template-columns:1fr;gap:12px}
@@ -421,17 +421,30 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
  .cd .cs.opt{background:rgba(91,140,255,.95)}
  .faltas.dk{margin-top:2px} .flh{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;font-weight:700;color:#e2795b} .flh .dim{color:var(--muted);font-weight:400}
  .faltas ul.fl{list-style:none;margin:6px 0 0;padding:0;column-width:200px;column-gap:18px;font-size:12px} .faltas ul.fl li{padding:1.5px 0;break-inside:avoid} .faltas ul.fl b{color:var(--gold);font-variant-numeric:tabular-nums;margin-right:2px}
- .cpbtn{font-size:11px;font-weight:700;padding:3px 11px;border-radius:20px;border:1px solid var(--line);background:#1a2230;color:var(--muted);cursor:pointer} .cpbtn:hover{border-color:var(--accent);color:var(--ink)} .cpbtn.done{background:#123020;border-color:#2f6a45;color:var(--add)} .flh .cpbtn{margin-left:auto}
+ .cpbtn{font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;border:1px solid var(--line2);background:var(--card3);color:var(--muted);cursor:pointer} .cpbtn:hover{border-color:var(--accent);color:var(--ink)} .cpbtn.done{background:#0f2a1c;border-color:#2f6a45;color:var(--add)} .flh .cpbtn{margin-left:auto}
  .cmk{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
- footer{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
-</style></head><body><div class="wrap">
-<header><h1>🎯 Decks Showcase Challenger</h1>
-<div class="lead">Os eventos competitivos recentes de cada formato — <b>🌐 Showcase Challenge</b> (online) + <b>🏆 torneios presenciais</b> (mtgtop8) — agrupados por arquétipo. Por classificação: a <b>lista padrão</b> (a melhor) com main e sideboard, e por baixo as <b style="color:#7fa8ff">🔀 opções</b> das outras listas. Cartas <b style="color:var(--add)">a cor = tens</b>.</div>
-%NAV%
-<div class="ftabs">%TABS%</div></header>
+%TEMA_DADOS%
+"""
+
+_LEAD = ("Os eventos competitivos recentes de cada formato — <b>🌐 Showcase "
+         "Challenge</b> (online) + <b>🏆 torneios presenciais</b> (mtgtop8) — "
+         "agrupados por arquétipo. Por classificação: a <b>lista padrão</b> (a "
+         "melhor) com main e sideboard, e por baixo as <b style=\"color:var(--ob)\">"
+         "🔀 opções</b> das outras listas. Cartas "
+         "<b style=\"color:var(--add)\">a cor = tens</b>.")
+
+_RODAPE = ("Agrupamento por Jaccard ≥ 0.5 das cartas não-básicas do main. "
+           "Presencial 🏆 tem classificação real (fica líder); o MTGO 🌐 não dá "
+           "placement (fica atrás). Janela de 21 dias. Atualiza diariamente.")
+
+_TMPL = ("""<!doctype html><html lang="pt-PT"><head>"""
+         + shell.head("Showcase Challenger", _CSS) + """</head><body>"""
+         + shell.abrir("showcase.html", "Showcase Challenger", _LEAD,
+                       '<div class="seg" role="tablist" '
+                       'aria-label="Formato">%TABS%</div>') + """
+<div class="wrap">
 %PANELS%
-<footer>Agrupamento por Jaccard ≥ 0.5 das cartas não-básicas do main. Presencial 🏆 tem classificação real (fica líder); o MTGO 🌐 não dá placement (fica atrás). Janela de 21 dias. Atualiza diariamente.</footer>
-</div>
+</div>""" + shell.fechar(_RODAPE, """
 <script>
 %JS_DADOS%
 function cpFaltas(btn){const c=btn.closest('.faltas'),t=c&&c.querySelector('textarea.cmk');if(!t)return;const d=()=>{btn.textContent='✓ copiado';btn.classList.add('done');};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t.value).then(d).catch(()=>{t.select();document.execCommand('copy');d();});}else{t.select();try{document.execCommand('copy');d();}catch(e){}}}
@@ -460,9 +473,18 @@ async function abrir(dt) {
     c.innerHTML = p.corpo; c.dataset.ok = '1';
   } catch (e) { erroDados(c, e); }
 }
-async function mostra(f) {
-  document.querySelectorAll('.ftab').forEach(x=>x.classList.toggle('act',x.dataset.f===f));
+async function mostra(f, guardar) {
+  document.querySelectorAll('.ftab').forEach(x=>{
+    const on = x.dataset.f===f; x.classList.toggle('act',on);
+    if (x.setAttribute) x.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
   document.querySelectorAll('.fpanel').forEach(x=>x.classList.toggle('act',x.dataset.f===f));
+  /* O formato aberto vai para o URL (`#standard`), para ele poder partilhar e
+     voltar — era a mesma página para os quatro. `replaceState` e não um salto:
+     mudar o hash a sério fazia o browser rolar para o topo do painel. */
+  if (guardar !== false) {
+    try { history.replaceState(null, '', '#' + f); } catch (e) {}
+  }
   if (FORMATOS[f]) return;
   const p = painel(f);
   try { FORMATOS[f] = await carregaDados('showcase/' + f + '.json'); }
@@ -470,11 +492,15 @@ async function mostra(f) {
   desenha(f);
 }
 document.querySelectorAll('.ftab').forEach(b=>b.onclick=()=>mostra(b.dataset.f));
-/* Os formatos com listas, pela ordem das abas; o primeiro é o que abre. */
+/* Os formatos com listas, pela ordem das abas; o primeiro é o que abre — ou o
+   que vier no `#`, se for um deles. */
 const FORMATOS_LISTA = %FORMATOS%;
-if (FORMATOS_LISTA.length) mostra(FORMATOS_LISTA[0]);
-</script>
-</body></html>"""
+let inicial = '';
+try { inicial = (location.hash || '').replace('#',''); } catch (e) {}
+if (FORMATOS_LISTA.length) {
+  mostra(FORMATOS_LISTA.indexOf(inicial) >= 0 ? inicial : FORMATOS_LISTA[0], false);
+}
+</script>""") + """</body></html>""")
 
 
 def main():

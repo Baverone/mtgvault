@@ -61,8 +61,12 @@ function el(nome) {
   const um = (sel) => (cache[sel] = cache[sel] || el(sel));
   // As secções por `data-parte` (Reserved List: `section.ed`; Cobertura:
   // `section.fmt`), cada uma com o seu `.grid`.
+  // `[^>]*?` entre a classe e o `data-parte`: desde 2026-09-24 cada secção
+  // leva também um `id` (é o alvo do índice de edições/formatos, que substituiu
+  // as filas de botões horizontais), e a regex colada partia em silêncio — o
+  // dump vinha sem uma única grelha.
   const seccoes = (cls) => [...html.matchAll(
-    new RegExp(`<section class="${cls}" data-parte="([^"]+)"`, 'g'))].map(m => {
+    new RegExp(`<section class="${cls}"[^>]*?data-parte="([^"]+)"`, 'g'))].map(m => {
       const s = um(`section.${cls}[data-parte="${m[1]}"]`);
       s.dataset.parte = m[1];
       s.filhos = { '.grid': um(`grid:${cls}:${m[1]}`) };

@@ -436,7 +436,8 @@ def caso_a_pagina_nos_dois_modos():
                            encoding="utf-8", errors="replace", timeout=120)
         assert p.returncode == 0, (p.stdout or "") + (p.stderr or "")[-2000:]
         abas = json.loads(dump.read_text(encoding="utf-8"))
-        assert "🎒 Feira" in abas["__fila"] and "troca +" in abas["__fila"], abas["__fila"][-600:]
+        assert ('data-aba="feira"' in abas["__fila"] and "Feira" in abas["__fila"]
+                and "troca +" in abas["__fila"]), abas["__fila"][-600:]
         aba = abas["feira"]
         for txt in ("1. Levar", "2. Trazer", "3. Vendors", "4. Por caixa", "Get Lost",
                     "City of Traitors", "Mother of Runes", "Winter Moon", "Banca A pode ter",

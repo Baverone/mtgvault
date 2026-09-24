@@ -139,7 +139,11 @@ PAGINAS_EDITAVEIS = {"/": deckboxes,
                      "/deckboxes.html": deckboxes, "/metagame.html": metagame}
 
 # Os links do menu que o modo edição tem de reescrever para levarem o token.
-_LINK_HTML = re.compile(r'href="([a-z_]+\.html)"')
+# A ÂNCORA vai à parte (2026-09-24): metade dos itens da barra lateral aponta
+# para uma SUB-VISTA da Deckboxes (`deckboxes.html#comprar`), e o `?t=` tem de
+# entrar ANTES do `#` — `deckboxes.html#comprar?t=…` faz o browser ler o token
+# como parte da âncora e o servidor nunca o vê.
+_LINK_HTML = re.compile(r'href="([a-z_]+\.html)(#[a-z0-9-]+)?"')
 # Os dados da Deckboxes: o índice e as partes (ver `deckboxes.partir`).
 _DADOS_DECKBOXES = re.compile(r"^/data/paginas/deckboxes(?:/([A-Za-z0-9_-]+))?\.json$")
 # A versão reduzida da foto de cada deckbox (2026-09-21, `mtgvault.fotocaixa`).
@@ -150,19 +154,20 @@ def com_token(corpo: str, tok: str) -> str:
     """Põe o `?t=` nos links internos de uma página servida em modo edição.
 
     Sem isto, no telemóvel, **um toque no menu apagava o modo edição**: os links
-    do `paginas.nav` são `href="metagame.html"` sem query nenhuma, e o servidor
+    da barra lateral são `href="metagame.html"` sem query nenhuma, e o servidor
     só confia em quem traz o token. Ele ia à Coleção, voltava à Deckboxes e os
     botões tinham desaparecido — sem erro nenhum e sem uma linha a dizer porquê.
     (No PC não se notava: o loopback é de confiança sem token, e por isso isto
     ficou meses assim.)
 
-    Reescreve-se no servidor, e não no `paginas.nav`, porque metade destas
+    Reescreve-se no servidor, e não no `site_shell.barra`, porque metade destas
     páginas é ESTÁTICA — vem do disco, escrita pela corrida do `daily` que não
     sabe nada de tokens. Num sítio só, e vale para as geradas e para as outras.
     """
     if not tok:
         return corpo
-    return _LINK_HTML.sub(lambda m: f'href="{m.group(1)}?t={tok}"', corpo)
+    return _LINK_HTML.sub(
+        lambda m: f'href="{m.group(1)}?t={tok}{m.group(2) or ""}"', corpo)
 
 
 # ---------------------------------------------------------------------------

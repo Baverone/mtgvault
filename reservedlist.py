@@ -21,6 +21,7 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 from mtgvault import db as _db  # noqa: E402
 from mtgvault import paginas  # noqa: E402
+from mtgvault import site_shell as shell  # noqa: E402
 from mtgvault.collection import na_estante  # noqa: E402
 
 # Só edições a sério: as impressões da Reserved List que interessam colecionar.
@@ -43,8 +44,6 @@ def _ignore_formats():
         return set(cfg.get("reserved_vender_ignorar_formatos", ["vintage"]))
     except Exception:  # noqa: BLE001
         return {"vintage"}
-
-TABS = paginas.nav("reservedlist.html", extra=True)
 
 
 def _art(sid):
@@ -245,10 +244,17 @@ def build(con, out_path=None):
                    f'formato — nada a vender. <span class="fine">(a ignorar: {ign})</span></div>')
     paginas.escrever_dados(out, "reservedlist",
                            {"edicoes": edicoes, "dados_de": today}, partes)
-    out.write_text(_TMPL.replace("%META%", paginas.META)
-                   .replace("%TEMA%", paginas.TEMA + paginas.CSS_DADOS)
+    # O ÍNDICE DAS EDIÇÕES: 22 secções longas, e antes só se lá chegava a
+    # rolar. Um controlo segmentado que envolve — não uma fila que corre para o
+    # lado — com a contagem de cada uma.
+    edidx = "".join(f'<a href="#ed-{e["parte"]}" data-ed="{e["parte"]}">'
+                    f'{html.escape(e["nome"])} '
+                    f'<span class="dim">{e["tens"]}/{e["n"]}</span></a>'
+                    for e in edicoes)
+    out.write_text(_TMPL
+                   .replace("%TEMA_DADOS%", paginas.CSS_DADOS)
                    .replace("%JS_DADOS%", paginas.JS_DADOS)
-                   .replace("%TABS%", TABS).replace("%SECS%", secs)
+                   .replace("%SECS%", secs).replace("%EDIDX%", edidx)
                    .replace("%HEAD%", head).replace("%SELL%", sellbox), encoding="utf-8")
     return out
 
@@ -256,7 +262,8 @@ def build(con, out_path=None):
 def cabecalho_edicao(e) -> str:
     """A secção de uma edição SEM as cartas: o que vai na casca. O `data-parte`
     é o ficheiro de onde o JavaScript as vai buscar."""
-    return (f'<section class="ed" data-parte="{e["parte"]}"><h2>{html.escape(e["nome"])} '
+    return (f'<section class="ed" id="ed-{e["parte"]}" data-parte="{e["parte"]}">'
+            f'<h2>{html.escape(e["nome"])} '
             f'<span class="dim">{e["ano"]} · tens {e["tens"]}/{e["n"]}</span></h2>'
             f'<div class="grid"><p class="carregando">A carregar…</p></div></section>')
 
@@ -266,17 +273,10 @@ def ler_dados(out_path):
     return paginas.ler_dados(Path(out_path), "reservedlist")
 
 
-_TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
-<title>Reserved List</title><style>
-%TEMA%
- *{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#10141d,#0d1017);color:var(--ink);font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
- .wrap{max-width:1100px;margin:0 auto;padding:22px 14px 60px}
- h1{margin:0;font-size:24px;font-weight:800} .lead{color:var(--muted);font-size:13px;margin:2px 0 12px} .lead b{color:var(--ink)}
- .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0} .tabs a{flex:1;min-width:110px;text-align:center;padding:11px 8px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:600;font-size:14px} .tabs a:hover{border-color:var(--accent)} .tabs a.cur{background:linear-gradient(180deg,#26406f,#1b2c4d);border-color:var(--accent)}
- .filter{display:flex;gap:8px;align-items:center;margin:6px 0 4px} .filter button{background:var(--card);border:1px solid var(--line);color:var(--ink);border-radius:20px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer} .filter button.on{background:linear-gradient(180deg,#26406f,#1b2c4d);border-color:var(--accent)}
- h2{font-size:15px;margin:20px 0 8px;border-bottom:1px solid var(--line);padding-bottom:5px} .dim{color:var(--muted);font-size:12px;font-weight:400}
- .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
- .c{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px;display:grid;grid-template-columns:38px 1fr;grid-template-areas:"img nm" "img own" "play play" "val ev" "mon mon";gap:2px 8px;align-items:center}
+_CSS = """
+ h2{font-size:15px;margin:26px 0 9px;border-bottom:1px solid var(--line);padding-bottom:6px;scroll-margin-top:calc(var(--sticky) + 12px)} .dim{color:var(--muted);font-size:12px;font-weight:400}
+ .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:9px}
+ .c{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:9px;display:grid;grid-template-columns:38px 1fr;grid-template-areas:"img nm" "img own" "play play" "val ev" "mon mon";gap:2px 8px;align-items:center}
  .c img{grid-area:img;width:38px;height:53px;border-radius:4px;display:block;background:#0c0f14}
  .c .nm{grid-area:nm;font-weight:600;font-size:12.5px;line-height:1.15;align-self:end}
  .c .own{grid-area:own;font-size:11px;align-self:start} .c .own span{margin-right:5px;font-weight:700}
@@ -290,20 +290,39 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
  /* SEM COR quando não tenho nenhuma cópia */
  .c.miss{opacity:.62} .c.miss img{filter:grayscale(1) brightness(.7)} .c.miss .val{color:var(--muted)}
  body.only .c.miss{display:none}
- .sellbox{background:#2a1618;border:1px solid #7a3030;border-radius:10px;padding:10px 12px;margin:10px 0;font-size:12.5px;color:#f0d0c8}
+ .sellbox{background:#2a1618;border:1px solid #7a3030;border-radius:var(--r);padding:12px 14px;margin:0 0 14px;font-size:12.5px;color:#f0d0c8}
  .sellbox b{color:#ff9b8a}
- .sellnote{background:#111820;border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin:10px 0;font-size:12.5px;color:var(--muted)}
- .fine{color:#6f7b8a;font-size:11px}
- footer{margin-top:24px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
-</style></head><body><div class="wrap">
-<header><h1>🏆 Reserved List</h1>
-<div class="lead">%HEAD%</div>
-%TABS%
-<div class="filter"><button id="tgl" onclick="toggle()">Mostrar só as que tenho</button></div></header>
+ .sellnote{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:11px 14px;margin:0 0 14px;font-size:12.5px;color:var(--muted)}
+ .fine{color:var(--dim);font-size:11px}
+ .edidx{margin:0 0 18px} .edidx .seg{max-width:100%}
+%TEMA_DADOS%
+"""
+
+_RODAPE = ("A Reserved List da Wizards (cartas que nunca serão reimpressas), pela "
+           "flag oficial da Scryfall — separada por edição, da mais recente para a "
+           "mais antiga, só edições reais (core/expansion; sem 30th Anniversary, "
+           "World Championship, Collectors' Edition, promos ou oversized). Por "
+           "carta: cópias em Inglês (verde) e Português (azul), o <b>preço mínimo "
+           "de hoje</b> (o <i>low</i> do Cardmarket) e o de <b>há ~1 mês</b> (média "
+           "de 30 dias do Cardmarket, ou o valor exato quando a nossa própria "
+           "história tiver 30 dias), com a variação. Nas que tens, mostra <b>em que "
+           "formatos joga</b> (das listas de torneio que seguimos). Uma carta tua "
+           "que <b>não jogue em formato nenhum</b> que conte fica marcada "
+           "<b>VENDER</b> — os formatos que não contam afinam-se em "
+           "<code>colecao_config.json</code> (por agora, só o Vintage fora). Sem "
+           "cor = não tens nenhuma. Atualiza diariamente.")
+
+_ACCOES = ('<button class="btn" id="tgl" type="button" onclick="toggle()">'
+           'Mostrar só as que tenho</button>')
+
+_TMPL = ("""<!doctype html><html lang="pt-PT"><head>"""
+         + shell.head("Reserved List", _CSS) + """</head><body>"""
+         + shell.abrir("reservedlist.html", "Reserved List", "%HEAD%", _ACCOES) + """
+<div class="wrap">
 %SELL%
+<div class="edidx"><div class="seg">%EDIDX%</div></div>
 %SECS%
-<footer>A Reserved List da Wizards (cartas que nunca serão reimpressas), pela flag oficial da Scryfall — separada por edição, da mais recente para a mais antiga, só edições reais (core/expansion; sem 30th Anniversary, World Championship, Collectors' Edition, promos ou oversized). Por carta: cópias em Inglês (verde) e Português (azul), o <b>preço mínimo de hoje</b> (o <i>low</i> do Cardmarket) e o de <b>há ~1 mês</b> (média de 30 dias do Cardmarket, ou o valor exato quando a nossa própria história tiver 30 dias), com a variação. Nas que tens, mostra <b>em que formatos joga</b> (das listas de torneio que seguimos). Uma carta tua que <b>não jogue em formato nenhum</b> que conte fica marcada <b>VENDER</b> — os formatos que não contam afinam-se em colecao_config.json (por agora, só o Vintage fora). Sem cor = não tens nenhuma. Atualiza diariamente.</footer>
-</div>
+</div>""" + shell.fechar(_RODAPE, """
 <script>
 %JS_DADOS%
 function toggle(){document.body.classList.toggle('only');
@@ -331,8 +350,16 @@ if (window.IntersectionObserver) {
 } else {
   (async () => { for (const s of secs) await carregaEdicao(s); })();
 }
-</script>
-</body></html>"""
+/* Um salto para uma edição tem de a CARREGAR já: com o IntersectionObserver
+   sozinho, clicar em «ARN» levava a uma secção que ainda dizia «A carregar…»
+   e só se enchia quando ele voltasse a passar por ela. */
+for (const a of document.querySelectorAll('.edidx a')) {
+  a.addEventListener('click', () => {
+    const s = document.querySelector('section.ed[data-parte="' + a.dataset.ed + '"]');
+    if (s) carregaEdicao(s);
+  });
+}
+</script>""") + """</body></html>""")
 
 
 def main():

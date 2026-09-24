@@ -5,7 +5,7 @@ Lê `copies` + o catálogo (`cards`: imagem, edição, número) + os preços
 job diário, por isso as imagens e as impressões exatas entram na página sem ser
 preciso carregar o catálogo (119 MB) no browser.
 
-O MENU é o partilhado (`mtgvault.paginas.nav`). Esta era a última página gerada
+O MENU é o partilhado (`mtgvault.site_shell.barra`). Esta era a última página gerada
 que escrevia a sua navegação à mão, e mostrou porquê: ficou com um *"core
 decks →"* a apontar para o `coredecks.html`, apagado a 2026-08-26 e desde então
 fora do `git add` do `daily.yml` — 404 no site publicado. E, sem o menu, da
@@ -26,6 +26,7 @@ ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 from mtgvault import db, paginas  # noqa: E402
+from mtgvault import site_shell as shell  # noqa: E402
 from mtgvault.collection import na_estante  # noqa: E402
 
 
@@ -163,37 +164,20 @@ def build(con, out_path):
     return f"{total_qty} exemplares em {len(ordered)} coleções ({out_path.name})"
 
 
-_TMPL = """<!doctype html>
-<html lang="pt-PT"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>A minha coleção</title>
-<style>
- /* O `--add`/`--rem` (o verde de "subiu" e o vermelho de "desceu" da evolução do
-    valor) eram usados e nunca definidos: o indicador saía na cor do texto e a
-    linha do sparkline sem cor nenhuma. Sem um único erro — esta página escreve
-    a sua própria paleta e por isso escapava ao teste do tema partilhado. */
- :root{--bg:#f6f7f9;--card:#fff;--ink:#12151a;--muted:#5b6672;--line:#e4e7ec;--accent:#2f6df6;--gold:#b8860b;--add:#1a7f4b;--rem:#c0392b}
- @media(prefers-color-scheme:dark){:root{--bg:#0e1116;--card:#171b22;--ink:#e8ecf1;--muted:#93a0ad;--line:#262c36;--accent:#5b8cff;--gold:#e0b64b;--add:#4ac585;--rem:#ff6b6b}}
- *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
- .wrap{max-width:1100px;margin:0 auto;padding:20px 16px 60px}
- @media(max-width:600px){.wrap{padding:14px 10px 48px}}
- h1{margin:0 0 2px;font-size:21px} .sub{color:var(--muted);font-size:13px} .sub a{color:var(--accent)}
- .tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:14px 0 4px}
- #q{flex:1;min-width:180px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font-size:14px}
+_CSS = """
+ /* A galeria era a ÚNICA página em tema claro (`--bg:#f6f7f9`), com paleta
+    própria — e por isso escapava ao teste do tema partilhado: usava `--add`/
+    `--rem` sem os definir, e o indicador da evolução saía sem cor. Passou ao
+    tema partilhado na reestruturação de 2026-09-24: passar da Coleção para a
+    Galeria deixou de ser um flash branco. */
+ .tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px}
+ #q{flex:1;min-width:180px;padding:10px 13px;border:1px solid var(--line2);border-radius:10px;background:var(--card);color:var(--ink);font:inherit;font-size:14px;min-height:40px}
  .count{color:var(--muted);font-size:12.5px;white-space:nowrap}
- /* O menu do site. `nav.tabs` e não `.tabs`: a galeria já usava essa classe para
-    as suas próprias abas de sub-coleção, e as duas partilham o contentor. */
- nav.tabs{margin:12px 0 4px}
- nav.tabs a{padding:7px 12px;border-radius:999px;background:var(--card);border:1px solid var(--line);color:var(--muted);text-decoration:none;font-size:13px;font-weight:600}
- nav.tabs a:hover{border-color:var(--accent);color:var(--ink)}
- nav.tabs a.cur{background:var(--accent);border-color:var(--accent);color:#fff}
- .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 2px}
- .tab{border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:999px;padding:6px 13px;font-size:13px;font-weight:600;cursor:pointer}
- .tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
- .tab b{opacity:.65}
- .tab .tv{color:var(--gold);font-weight:600}
- .tab.active .tv{color:#fff}
- .evo{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:14px 0 2px}
+ .tabs{margin:0 0 12px} .tabs .seg{max-width:100%}
+ .tab b{opacity:.7;font-weight:600}
+ .tab .tv{color:var(--gold);font-weight:700}
+ .tab.active .tv{color:var(--accent)}
+ .evo{background:var(--card);border:1px solid var(--line);border-radius:var(--r2);padding:13px 16px;margin:0 0 14px}
  .evo-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
  .evo-h{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
  .evo-ind{font-weight:700;font-size:15px} .evo-ind em{font-style:normal;font-weight:400;color:var(--muted);font-size:12px}
@@ -204,10 +188,10 @@ _TMPL = """<!doctype html>
  .spark .fill.up{fill:var(--add);opacity:.13} .spark .fill.down{fill:var(--rem);opacity:.13}
  .spark .dot{stroke:var(--card);stroke-width:1} .spark .dot.up{fill:var(--add)} .spark .dot.down{fill:var(--rem)}
  .evo-note{color:var(--muted);font-size:12.5px;margin-top:6px}
- h2{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:26px 0 6px;border-bottom:1px solid var(--line);padding-bottom:6px;display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+ h2{font-size:13px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:26px 0 8px;border-bottom:1px solid var(--line);padding-bottom:7px;display:flex;justify-content:space-between;gap:10px;align-items:baseline}
  h2 b{color:var(--ink)} h2 .gv{color:var(--gold);font-variant-numeric:tabular-nums;font-size:13px;text-transform:none;letter-spacing:0}
  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
- .c{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;position:relative}
+ .c{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;position:relative}
  .c .imgwrap{position:relative;aspect-ratio:488/680;background:var(--line)}
  .c img{width:100%;height:100%;object-fit:cover;display:block}
  .c .noimg{width:100%;height:100%;display:flex;align-items:center;justify-content:center;text-align:center;padding:8px;font-size:12px;color:var(--muted)}
@@ -216,18 +200,24 @@ _TMPL = """<!doctype html>
  .c .meta{padding:7px 9px} .c .nm{font-weight:600;font-size:12.5px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
  .c .ed{color:var(--muted);font-size:11px;margin-top:1px} .c .pr{color:var(--gold);font-size:12px;font-weight:600;margin-top:2px;font-variant-numeric:tabular-nums}
  .c .col{color:var(--muted);font-size:10.5px}
- footer{margin-top:34px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
  .empty{color:var(--muted);padding:30px 0;text-align:center}
-</style></head><body><div class="wrap">
-<header><h1>A minha coleção</h1>
-<div class="sub">%TOTQ% exemplares · valor ~<b style="color:var(--gold)">%TOTV%</b> · imagens e preços via Scryfall/Cardmarket · dados até %TODAY%</div></header>
-%TABS%
+"""
+
+_LEAD = ("<b>%TOTQ%</b> exemplares · valor ~<b style=\"color:var(--gold)\">%TOTV%</b>"
+         " · imagens e preços via Scryfall/Cardmarket · dados até <b>%TODAY%</b>")
+
+_RODAPE = ("Cada imagem é a impressão exata da carta (edição + número). Clica para "
+           "abrir em grande. A galeria regenera-se sozinha no job diário.")
+
+_TMPL = ("""<!doctype html><html lang="pt-PT"><head>"""
+         + shell.head("Galeria da coleção", _CSS) + """</head><body>"""
+         + shell.abrir("colecao.html", "Galeria da coleção", _LEAD) + """
+<div class="wrap">
 %EVO%
 <div class="tools"><input id="q" type="search" placeholder="Procurar carta ou edição…" autocomplete="off"><span class="count" id="count"></span></div>
 <div id="tabs" class="tabs"></div>
 <div id="app"></div>
-<footer>Cada imagem é a impressão exata da carta (edição + número). Clica para abrir em grande. A galeria regenera-se sozinha no job diário.</footer>
-</div>
+</div>""" + shell.fechar(_RODAPE, """
 <script>
 const DATA=%DATA%;
 const esc=s=>(s==null?"":String(s)).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
@@ -244,14 +234,18 @@ function cardHtml(c){
 let ACTIVE="*";
 function buildTabs(){
  const t=document.getElementById("tabs"), total=DATA.reduce((s,g)=>s+g.qty,0), totv=DATA.reduce((s,g)=>s+g.value,0);
- let h='<button class="tab" data-sub="*">Todas <b>('+total+')</b> <span class="tv">'+eur(totv)+'</span></button>';
- for(const g of DATA) h+='<button class="tab" data-sub="'+esc(g.sub)+'">'+esc(g.sub)+' <b>('+g.qty+')</b> <span class="tv">'+eur(g.value)+'</span></button>';
- t.innerHTML=h;
+ let h='<button class="tab" type="button" data-sub="*">Todas <b>('+total+')</b> <span class="tv">'+eur(totv)+'</span></button>';
+ for(const g of DATA) h+='<button class="tab" type="button" data-sub="'+esc(g.sub)+'">'+esc(g.sub)+' <b>('+g.qty+')</b> <span class="tv">'+eur(g.value)+'</span></button>';
+ /* `.seg` — o controlo segmentado partilhado. Era uma fila de pastilhas com o
+    CSS desta página; agora é o mesmo de todas, e envolve em vez de correr. */
+ t.innerHTML='<div class="seg" role="tablist" aria-label="Sub-coleção">'+h+'</div>';
  t.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{ACTIVE=b.dataset.sub;render(document.getElementById("q").value);}));
 }
 function render(filter){
  const f=(filter||"").trim().toLowerCase(); const app=document.getElementById("app"); let html="", shown=0;
- document.querySelectorAll("#tabs .tab").forEach(b=>b.classList.toggle("active",b.dataset.sub===ACTIVE));
+ document.querySelectorAll("#tabs .tab").forEach(b=>{
+   const on=b.dataset.sub===ACTIVE; b.classList.toggle("active",on); b.classList.toggle("on",on);
+   b.setAttribute("aria-selected",on?"true":"false");});
  for(const g of DATA){
   if(ACTIVE!=="*" && g.sub!==ACTIVE) continue;
   const cards=f?g.cards.filter(c=>(c.name+' '+c.set).toLowerCase().includes(f)):g.cards;
@@ -265,14 +259,12 @@ function render(filter){
 document.getElementById("q").addEventListener("input",e=>render(e.target.value));
 buildTabs();
 render("");
-</script></body></html>
-"""
+</script>""") + """</body></html>""")
 
 
 def _write_html(out_path, groups, total_qty, total_val, today, history):
     eur = paginas.eur(total_val)
     html = (_TMPL
-            .replace("%TABS%", paginas.nav("colecao.html", extra=True))
             .replace("%DATA%", json.dumps(groups, ensure_ascii=False))
             .replace("%TOTQ%", str(total_qty))
             .replace("%TOTV%", eur)

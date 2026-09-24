@@ -20,6 +20,7 @@ import html
 from pathlib import Path
 
 from mtgvault import paginas
+from mtgvault import site_shell as shell
 from mtgvault.collection import jogaveis
 
 ROOT = Path(__file__).resolve().parent
@@ -34,44 +35,43 @@ CEDH_DC = {"Blue Farm", "Cloud cEDH", "Cloud"}
 DUALS = {"Tundra", "Underground Sea", "Badlands", "Taiga", "Savannah",
          "Scrubland", "Volcanic Island", "Bayou", "Plateau", "Tropical Island"}
 
-NAV = paginas.nav("caixarl.html")
-
-_CSS = f"""
-{paginas.TEMA}
- *{{box-sizing:border-box}}""" + """ body{margin:0;background:linear-gradient(180deg,#10141d,#0d1017);color:var(--ink);font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
- .wrap{max-width:1000px;margin:0 auto;padding:22px 14px 60px}
- .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0} .tabs a{flex:1;min-width:100px;text-align:center;padding:11px 8px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:600;font-size:14px;transition:.15s} .tabs a:hover{border-color:var(--accent);transform:translateY(-1px)} .tabs a.cur{background:linear-gradient(180deg,#26406f,#1b2c4d);border-color:var(--accent)}
- h1{margin:0;font-size:24px;font-weight:800;letter-spacing:-.02em}
- .lead{color:var(--muted);font-size:13px;margin:2px 0 12px}
- .banner{background:#2a1f0b;border:1px solid #4a3714;color:var(--gold);border-radius:10px;padding:10px 14px;font-size:13px;margin:10px 0 18px}
- h2{font-size:15px;margin:24px 0 4px;display:flex;align-items:baseline;gap:10px}
+_CSS = """
+ .banner{background:var(--accent-soft);border:1px solid var(--accent-line);color:var(--accent);border-radius:var(--r);padding:11px 15px;font-size:13px;margin:0 0 20px}
+ h2{font-size:15px;margin:26px 0 4px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
  h2 .n{color:var(--muted);font-size:12px;font-weight:500}
  h2 .val{margin-left:auto;color:var(--gold);font-size:13px;font-weight:700}
- .sub{color:var(--muted);font-size:12px;margin:0 0 8px}
+ .sub{color:var(--muted);font-size:12px;margin:0 0 10px}
+ .tw{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:var(--r);-webkit-overflow-scrolling:touch}
  table{width:100%;border-collapse:collapse;font-size:13px}
- th{text-align:left;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding:4px 8px;border-bottom:1px solid var(--line)}
- td{padding:5px 8px;border-bottom:1px solid #1b212c;vertical-align:middle}
- tr:hover td{background:#141a24}
- .th{width:34px} .th img{width:30px;height:42px;border-radius:3px;display:block;background:#0c0f14;object-fit:cover;object-position:top}
- .q{text-align:center;font-weight:700;width:34px}
+ th{text-align:left;color:var(--dim);font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+ td{padding:6px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+ tbody tr:last-child td{border-bottom:0}
+ tr:hover td{background:var(--card3)}
+ .th{width:40px} .th img{width:32px;height:45px;border-radius:4px;display:block;background:var(--bg);object-fit:cover;object-position:top}
+ .q{text-align:center;font-weight:700;width:40px}
  .q.hi{color:var(--warn)}
- .nm{font-weight:600} .st{color:var(--muted);font-size:11px}
+ .nm{font-weight:600} .st{color:var(--dim);font-size:11px}
  .u{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
  .t{text-align:right;white-space:nowrap;color:var(--muted);font-variant-numeric:tabular-nums}
  .flag{color:var(--warn);font-size:11px;margin-left:5px}
- footer{margin-top:28px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
- .ref{opacity:.72}
+ .ref{opacity:.74}
 """
 
-_TMPL = ("""<!doctype html><html lang="pt-PT"><head>""" + paginas.META + """
-<title>Caixa Reserved List</title><style>""" + _CSS + """</style></head><body><div class="wrap">
-<header><h1>📦 Caixa Reserved List</h1>
-<div class="lead">RL guardada fora da coleção jogável. Inglesas → só cEDH/Duel-Commander; Portuguesas → só Premodern. O que não está em uso fica aqui, separado por idioma e ordenado por preço unitário. · dados %TODAY%</div>
-%NAV%</header>
+_LEAD = ("RL guardada fora da coleção jogável. Inglesas → só cEDH/Duel-Commander; "
+         "Portuguesas → só Premodern. O que não está em uso fica aqui, separado "
+         "por idioma e ordenado por preço unitário. · dados de <b>%TODAY%</b>")
+
+_RODAPE = ("Regra do André (2026-08-31). Preços: Cardmarket (mínimo à venda) por "
+           "impressão — as antigas mostram <code>low==trend</code> (dados de "
+           "mercado limitados). ⚠️ = quantidade alta, confirma na revisão.")
+
+_TMPL = ("""<!doctype html><html lang="pt-PT"><head>"""
+         + shell.head("Caixa Reserved List", _CSS) + """</head><body>"""
+         + shell.abrir("caixarl.html", "Caixa Reserved List", _LEAD) + """
+<div class="wrap">
 %BANNER%
 %SECS%
-<footer>Regra do André (2026-08-31). Preços: Cardmarket (mínimo à venda) por impressão — as antigas mostram <code>low==trend</code> (dados de mercado limitados). ⚠️ = quantidade alta, confirma na revisão.</footer>
-</div></body></html>""")
+</div>""" + shell.fechar(_RODAPE) + """</body></html>""")
 
 
 def _price_maps(con):
@@ -133,9 +133,10 @@ def _table(items):
                  f'<td class="{qcls}">{e["q"]}{flag}</td>'
                  f'<td class="nm">{html.escape(e["nm"])}{foil}<div class="st">{html.escape(e["st"])}</div></td>'
                  f'<td class="u">{up}</td><td class="t">{tot}</td></tr>')
-    return ('<table><thead><tr><th class="th"></th><th class="q">Qt</th><th>Carta</th>'
+    return ('<div class="tw"><table><thead><tr><th class="th"></th>'
+            '<th class="q">Qt</th><th>Carta</th>'
             '<th class="u">Preço/un</th><th class="t">Total</th></tr></thead>'
-            f'<tbody>{body}</tbody></table>')
+            f'<tbody>{body}</tbody></table></div>')
 
 
 def _val(items): return sum(e["q"] * e["unit"] for e in items)
@@ -179,8 +180,11 @@ def build(con, out_path=None):
               f'As portuguesas voltam à coleção à medida que montarmos cada deck Premodern.</div>')
 
     today = con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or ""
-    out.write_text(_TMPL.replace("%NAV%", NAV).replace("%BANNER%", banner)
-                   .replace("%SECS%", secs).replace("%TODAY%", today), encoding="utf-8")
+    out.write_text(_TMPL.replace("%BANNER%", banner)
+                   .replace("%SECS%", secs or
+                            '<p class="vazio">Não há nada na Caixa Reserved List '
+                            'hoje.</p>')
+                   .replace("%TODAY%", today), encoding="utf-8")
     return out
 
 

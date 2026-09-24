@@ -702,7 +702,8 @@ def caso_o_separador_desenha_nos_dois_modos():
         return
     abas, _pag = r
     fila = abas["__fila"]
-    assert "📦 Encomendas" in fila and "2 a caminho · 1 p/ foto" in fila, fila
+    assert ('data-aba="encomendas"' in fila and "Encomendas" in fila
+            and "2 a caminho · 1 p/ foto" in fila), fila
     h = abas["encomendas"]
     assert "📷 Pendentes de foto" in h and "🚚 A caminho" in h and "Falta encomendar" in h
     assert "Force of Will" in h and "Swords to Plowshares" in h

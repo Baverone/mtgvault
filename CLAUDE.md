@@ -39,8 +39,14 @@ mtgvault/
   schema.sql      vault.db (coleção, decks, decklists, preços, watchlist, copy_allocation)
   catalog_schema.sql   catalog.db (só a tabela cards)
   scryfall.py     catálogo via bulk data
-  paginas.py      o MENU e o TEMA de todas as páginas (uma lista só) + os
-                  ajudantes que elas partilham (cor, tipo, posse total, faltas)
+  site_shell.py   A CASCA DE TODO O SITE (2026-09-24): a paleta (`TEMA`), os
+                  tipos de letra, a BARRA LATERAL agrupada em secções
+                  (`SECCOES`), o cabeçalho com migalhas e o rodapé —
+                  `head()`/`abrir()`/`fechar()`. Uma secção nova é uma linha
+                  numa lista. Ver «Uma casca só para o site inteiro»
+  paginas.py      os ajudantes que as páginas partilham e NÃO são casca (cor,
+                  tipo, posse total, faltas, euros em português) + os DADOS À
+                  PARTE. O `TEMA`/`META` reencaminham para o `site_shell`
   caixas.py       AS CAIXAS: a única noção de deck (v6, 2026-09-08) — lê/migra o
                   `colecao_config.json → caixas`, e `para_slot` dá a forma
                   interna que o loadout consome (aceita a v5 e a v6)
@@ -112,6 +118,7 @@ daily.py          o job diário (encadeia tudo o que está abaixo)
 
 **Geradores do site (scripts na raiz, corridos pelo `daily.py`, HTML no GitHub Pages):**
 ```
+inicio.py           index.html — o INÍCIO (2026-09-24): o painel com os números de hoje (decks montados/por montar, o que falta comprar aos permanentes, cartas e valor da coleção, venda, arrumação, «fechar tudo», encomendas e revalidação), os atalhos e as «últimas atualizações dos dados». Corre por ÚLTIMO e com o MESMO `loadout.report` do `deckboxes` — dois relatórios eram duas respostas à mesma pergunta na porta de entrada do site. O valor da coleção sai do `colecao_cor._value` e não de uma consulta própria (a primeira versão dava 97 761,26 € contra os 97 772,93 € da outra página). Era um HTML estático escrito à mão. Ver «Uma casca só para o site inteiro»
 meta_coverage.py    cobertura.html — top-10 ponderado + staples + emergentes. NB (2026-09-07): quem decide que listas contam é `sources.lista_conta`/`counting_sql` (ver "Que listas contam"), e o peso vem de `sources.tier_weight_sql`; janela 30 dias; expõe COLLECTION_BALDES={"SPML","Premodern (geral)"}, owned_available(con) (=coleção MENOS cartas comprometidas com decks vigiados) e counting_lists(con,fmt,aid). NB (2026-09-07): `FORMATS` deixou de ser fixo — filtra `_FORMATS` por `colecao_config.json`→`formatos_metagame` (hoje standard/pioneer/modern; o Premodern saiu). Só a COBERTURA lê essa lista: o `metagame.py` deixou de a ler (ver abaixo)
 decks_faziveis.py   RETIRADO 2026-09-07 — fundido no `metagame.py`, que faz a mesma pergunta com as regras de material e o "onde está a carta". O módulo ficou como lápide (levanta RuntimeError), o `decksfaziveis.html` reencaminha para o metagame, saiu do `daily.py` e do `git add` do workflow. Podem ser apagados os dois
 buildability.py     APAGADO 2026-09-15 (decisão do André), com o `buildability.html`. Era o "Montar" (dormente desde a v6: fora do menu, fora do daily, sem um único import). O que respondia — que deck montar a seguir e o que lhe falta — passou para o **Metagame** (`metagame.py`, o top-N mais perto de fechar) e para a aba de cada caixa da Deckboxes. O `test_paginas.caso_as_paginas_orfas_foram_mesmo_apagadas` tranca que não voltam nem ficam referidas
@@ -233,21 +240,88 @@ desenha HTML: a procura, o `gravar`, o `recarregar`, o «vendida»).
   199 a comprar, 53 a ir buscar, 185 a arrumar, venda 246c/1 499,70 € + 58 RL/
   3 702,99 € — iguais.
 
-**O menu e a paleta vivem num sítio só: `mtgvault/paginas.py`** (2026-09-07).
-Antes cada gerador escrevia o seu `<nav class="tabs">` à mão, e o `cobertura.html`
-ficou meses com um menu de Agosto — sem Deckboxes nem Metagame. Uma página órfã
-não dá erro: só deixa de se lá chegar. Acrescentar uma aba é acrescentar uma
-linha ao `paginas.MENU`; os templates trazem `%META%`, `%TEMA%` e `%TABS%`, e o
-`build()` de cada página substitui-os. O `test_paginas.py` tranca as duas coisas
-(o menu completo e o `git add` do workflow).
-**A EXCEPÇÃO É O `index.html`** (2026-09-09): é estático, escrito à mão, e é a
-única página cujo menu não sai do `paginas.nav()`. Gerá-lo por código era trazer
-um gerador novo para a porta de entrada do site, por isso o que fica é o TESTE —
-`test_paginas.caso_o_indice_tem_o_mesmo_menu_que_o_paginas` compara ficheiros e
-ícones do `<nav class="tabs">` com o `MENU` (sem o próprio índice) e do
-`<div class="subnav">` com o `EXTRA`, **nos dois sentidos e pela ordem**. Os
-rótulos podem ser mais compridos no índice (*"Decks & Deckboxes"* onde a barra de
-cima só diz *"Deckboxes"*), mas o do menu tem de estar lá dentro.
+**UMA CASCA SÓ PARA O SITE INTEIRO (André, 2026-09-24, à letra).** *"no
+mtgvault quero uma organização diferente, acho tudo muito confuso, ter que andar
+a correr os botões para os lados. Faz toda uma reestruturação para um site
+profissional, bem organizado, bem estruturado!"* Substitui a decisão de
+2026-09-07 (*"o menu e a paleta vivem num sítio só: `mtgvault/paginas.py`"*),
+que estava certa e era pequena de mais: partilhava-se a LISTA do menu e as
+CORES, mas não a estrutura — cada gerador escrevia o seu `<header>`, a sua
+`.wrap` e o seu `body{}`, e cada página tinha a sua própria barra de
+separadores. Motor em `mtgvault/site_shell.py`; inventário e mapa antigo → novo
+em `ai-pc/Claude outputs/reestruturacao/mapa.md`, relatório em `RESUMO.md`;
+testes em `tests/test_casca.py` (7 casos) e o medidor `tests/medir_layout.py` +
+`medir_layout.js`.
+- **O que estava mal, medido**: SEIS barras de navegação diferentes
+  (`nav.tabs`, `.decktabs`, `.ftabs`, `.subnav`, `.filter`, as `.tabs` da
+  Galeria), a da Deckboxes com **`overflow-x:auto` e até 27 botões** — a
+  390 px viam-se 2; SETE larguras de `.wrap` (1000 a 1180 px), por isso o
+  conteúdo mudava de sítio ao passar de página; a Galeria em tema CLARO e todas
+  as outras escuras; e o `index.html` sem um único número da coleção.
+- **A casca**: barra lateral fixa à esquerda (≥ 900 px) agrupada em cinco
+  secções — **Início · Decks · Coleção · Metagame · Compras e venda**, a
+  arquitetura que ele pediu — e, no telemóvel, a MESMA `<aside>` num painel que
+  abre pelo botão ☰ (não há duas listas: é CSS a movê-la). À direita, o
+  cabeçalho da página com migalhas *«Início › Secção › Página»*, título,
+  subtítulo e a área de ações. Uma secção nova é **uma linha** no
+  `site_shell.SECCOES`.
+- **A ORDEM DO CSS é `TEMA → CSS da página → CSS da casca`** (`shell.head`).
+  Ao contrário, o `.tabs a.cur` de cada página pintava por cima da barra
+  lateral. Tem teste.
+- **A paleta é a do baverone.com** (valores dele): fundo `#07080d`, painéis
+  `#0e1018`/`#12151f`, texto `#eef0f6`, destaque **dourado `#f5c451`**; Space
+  Grotesk nos títulos e Inter no texto, via Google Fonts com pilha de sistema
+  por trás (sem rede, a página lê-se na mesma). **O `--accent` passou a ser o
+  dourado**; o azul que ele era continua em `--info`/`--ob`/`--pt`, porque nesta
+  página o azul QUER DIZER uma coisa — *"a carta está noutra caixa"* — e dar-lhe
+  a cor da marca punha dois significados na mesma cor. Quem escreve por cima do
+  dourado usa `--accent-ink` (escuro): branco sobre `#f5c451` é 1,9:1.
+- **As sub-vistas passaram a ter URL.** A Deckboxes lê o `location.hash` e abre
+  a aba certa (`abaDoHash`; o `ir()` escreve-o com `replaceState`), e é isso que
+  torna possível a secção *Compras e venda* da barra lateral apontar para dentro
+  da página — `deckboxes.html#comprar`, `#vender`, `#encomendas`, `#feira`,
+  `#revalidacao` — sem duplicar página nenhuma. O Showcase faz o mesmo com o
+  formato. **O `webapp.com_token` teve de aprender a âncora**: o `?t=` entra
+  ANTES do `#` (`deckboxes.html#comprar?t=…` fazia o browser ler o token como
+  parte da âncora e o servidor nunca o via).
+- **A fila de abas da Deckboxes é agora um ÍNDICE VERTICAL** (`.vidx`), à
+  esquerda do conteúdo, agrupado em *Geral · Fluxo · Compras e venda · ✅ Decks
+  montados · 🔧 Decks para montar*; no telemóvel vira um `<select>` com os
+  mesmos grupos (`<optgroup>`), que abre a lista inteira de uma vez. As duas
+  saem da MESMA lista (`_filaDeAbas`). As setas do teclado passaram a ↑/↓.
+- **Os números do dia são CHIPS** no cabeçalho, não uma frase de cinco linhas, e
+  cada um leva à vista que o explica.
+- **`index.html` deixou de ser estático**: é o `inicio.py`, o painel com os
+  números de hoje. A decisão de 2026-09-09 (*"gerá-lo por código era trazer um
+  gerador novo para a porta de entrada"*) caiu porque ele pediu números — e um
+  número escrito à mão numa página estática é a definição de um número que vai
+  ficar errado. Foi para o `git add` do `daily.yml` e para o `HTML` da tarefa
+  `mtgvault-daily`; o `test_paginas.caso_o_indice_tem_o_mesmo_menu_que_o_paginas`
+  deu lugar ao `caso_todas_as_paginas_geradas_levam_a_barra_lateral`, que
+  verifica o HTML publicado das nove.
+- **A Galeria passou ao tema partilhado.** Era a única clara, e por isso
+  escapava ao teste do tema: usava `--add`/`--rem` sem os definir.
+- **Nada de funcionalidade se perdeu.** As ações do modo edição são as mesmas,
+  com os mesmos `data-*` e os mesmos endpoints; os dados continuam à parte
+  (decisão de 15/09); as tiles com imagem (20/09) ficam. Medido na base de
+  2026-09-24, com o mesmo `vault.db`: fechar tudo **7 017,06 €**, 239 a comprar,
+  225 a arrumar, venda 268c/1 555,06 € + 68 RL/3 941,08 €, 5 montados e 10 por
+  montar — **iguais antes e depois**.
+- **O que se mede, mede-se num browser a sério.** `tests/medir_layout.py` serve
+  o site, abre-o num Chrome headless por CDP e mede, a 1440 e a 390 px: o
+  `scrollWidth` do corpo (e QUEM o excede), os alvos de toque abaixo de 36 px,
+  os links internos partidos e as páginas que ficaram vazias. **O
+  `chrome --headless --screenshot --window-size=390,…` não serve**: no Windows
+  a janela tem largura mínima (~500 px) e o flag é ignorado em silêncio — a
+  captura saía com 390 px de uma página desenhada a 500 e parecia haver scroll
+  horizontal que não existia.
+- **A casca cresceu 17 KB por página** (46 692 → 64 045 bytes na Deckboxes): o
+  CSS do layout (11 KB), a barra (3,5 KB) e o JavaScript do menu (2 KB). O tecto
+  do `test_telemovel` subiu de 60 para 70 KB. O JavaScript continua fora e
+  cacheável (`deckboxes.js`, 243 KB), que é o que aquele tecto defende. Se
+  voltar a subir, o passo seguinte é tirar o CSS partilhado para um `.css` com
+  hash no `?v=` — com o custo de mais um ficheiro nas duas listas de `git add` e
+  o site inteiro sem estilo se faltar lá.
 
 ### Duas bases de dados
 
