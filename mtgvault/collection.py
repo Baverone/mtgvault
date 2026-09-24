@@ -921,19 +921,29 @@ def deck_extras(con: sqlite3.Connection) -> list[dict]:
 # «Corrige tudo o que achares que é erro» (André, 2026-09-24), sobre os
 # 97 761,26 € da Galeria contra os 97 772,93 € dos Binders por cor.
 #
-# Havia QUATRO contas para a mesma pergunta — *"quanto vale esta cópia?"*:
+# Havia SEIS contas para a mesma pergunta — *"quanto vale esta cópia?"*:
 # o `collection_gallery._price_map` (trend da impressão exacta, sem mais nada),
-# o `colecao_cor._value` (cai para o outro acabamento e para o outro cenário),
-# este `collection_value` (como a Galeria, mas com `JOIN` ao catálogo, que
-# deixava cair em silêncio uma cópia sem impressão conhecida) e o
-# `inicio._valor_coleccao` (que já tinha desistido da sua e chamava o
-# `colecao_cor`). Duas páginas a dizer números diferentes sobre o mesmo dinheiro,
-# sem um único erro — o padrão do `event_tier`.
+# o `colecao_cor._value` (cai para o outro acabamento e para o outro cenário, mas
+# fazia `MIN` sobre a `price_latest` inteira, sem filtrar a fonte), este
+# `collection_value` (como a Galeria, mas com `JOIN` ao catálogo, que deixava cair
+# em silêncio uma cópia sem impressão conhecida), o `inicio._valor_coleccao` (que
+# já tinha desistido da sua e chamava o `colecao_cor` — mas contava as CARTAS com
+# outro filtro), o `caixarl._price_maps` e o `reservedlist.price_maps` (só
+# nonfoil). Páginas a dizer números diferentes sobre o mesmo dinheiro, sem um
+# único erro — o padrão do `event_tier`.
 #
 # A CONTA É ESTA, e escreve-se aqui: `mapa_precos` + `preco_impressao` +
-# `valor_da_coleccao`. Quem mostra valor de cópias lê de cá (Galeria, Binders por
-# cor, Início, `cli value`); há teste que falha se as três páginas discordarem
-# (`test_valor_unificado.py`).
+# `valor_da_coleccao`. Quem mostra o valor de cópias lê de cá: Galeria, Binders
+# por cor, Início, `cli value`, Caixa RL, o *valor da tua RL* e
+# `loadout.nao_encontradas`. Há teste que falha se as três páginas publicadas
+# discordarem (`test_valor_unificado.py`).
+#
+# O QUE NÃO É ESTA PERGUNTA, e por isso não vem daqui: o `loadout.card_price` —
+# quanto CUSTA comprar uma carta (o mínimo entre impressões do mesmo nome) —, que
+# é o que a venda, a regra dos 5 % da Reserved List e a feira usam; as colunas
+# *hoje* / *há 1 mês* da Reserved List, que são o mercado de uma impressão em
+# nonfoil nas duas pontas de uma percentagem; e o `meta_coverage._visual`, que é
+# o preço do que FALTA.
 #
 # A REGRA, por esta ordem: o preço da impressão EXACTA no acabamento da cópia;
 # senão, o mesmo cenário noutro acabamento da mesma família (foil ↔ etched, que é
