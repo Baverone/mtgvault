@@ -25,24 +25,19 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
+from mtgvault import collection as col  # noqa: E402
 from mtgvault import db, paginas  # noqa: E402
 from mtgvault import site_shell as shell  # noqa: E402
 from mtgvault.collection import na_estante  # noqa: E402
 
-
-def _price_map(con):
-    """(scryfall_id, finish) -> preço Cardmarket mais recente. Opcional: se não
-    houver catálogo/preços, fica vazio e a galeria mostra as cartas sem valor."""
-    price = {}
-    try:
-        for r in con.execute(
-            "SELECT scryfall_id, finish, trend FROM price_latest WHERE source='cardmarket'"
-        ):
-            if r["trend"] is not None:
-                price[(r["scryfall_id"], r["finish"])] = r["trend"]
-    except Exception:  # noqa: BLE001
-        pass
-    return price
+# O dia em que a Galeria passou a usar a conta única do valor (André,
+# 2026-09-24: *"corrige tudo o que achares que é erro"*). Antes exigia o preço do
+# acabamento EXACTO da cópia e por isso dava «sem preço» às foil que o Cardmarket
+# não cota em foil — 11,67 € de discórdia com os Binders por cor, em três cartas
+# (Ethersworn Canonist SLD, Cid FIC, Helitrooper FIC). O gráfico da evolução tem
+# pontos dos DOIS lados desta data: os anteriores ficam como foram gravados (não
+# se reescreve um histórico que se mediu), e o gráfico diz onde está a costura.
+REGRA_NOVA = "2026-09-24"
 
 
 def _cards(con):
@@ -51,15 +46,21 @@ def _cards(con):
     Junta ao catálogo (ATTACH) para a imagem e a edição exata. Se o catálogo não
     estiver presente, a carta entra na mesma (sem imagem/edição), para nunca
     desaparecer da galeria.
+
+    O PREÇO sai da `collection.valor_da_coleccao` — a conta única (2026-09-24).
+    Esta página tinha o seu `_price_map`, que exigia o acabamento exacto da cópia;
+    agora cai para o outro acabamento como em todo o resto do vault, e a linha diz
+    (`est`) quando o preço veio de lá.
     """
-    price = _price_map(con)
+    precos = {c["copy_id"]: c for c in col.valor_da_coleccao(con)["copias"]}
     # A junção ao catálogo é LEFT para tolerar catálogo em falta.
     rows = []
     # As cópias que ele deu como NÃO ENCONTRADAS saem da galeria (2026-09-09):
     # esta página é o que ele TEM, e uma carta que não está na estante não é.
     # Onde elas se vêem é na aba «Não encontradas» da Deckboxes, com a foto.
     for r in con.execute(
-        f"""SELECT cp.scryfall_id AS sid, cp.quantity AS qty, cp.finish AS finish,
+        f"""SELECT cp.id AS id, cp.scryfall_id AS sid, cp.quantity AS qty,
+                  cp.finish AS finish,
                   cp.purpose AS purpose, COALESCE(sc.name, '—') AS sub,
                   c.name AS name, c.set_code AS set_code,
                   c.collector_number AS cn, c.image_uri AS img
@@ -68,7 +69,7 @@ def _cards(con):
              LEFT JOIN sub_collections sc ON sc.id = cp.sub_collection_id
             WHERE {na_estante()}"""
     ):
-        p = price.get((r["sid"], r["finish"]))
+        p = precos.get(r["id"], {})
         rows.append({
             "name": r["name"] or "(desconhecida)",
             "set": (r["set_code"] or "").upper(),
@@ -78,7 +79,9 @@ def _cards(con):
             "foil": r["finish"] == "foil",
             "collector": r["purpose"] == "collector",
             "sub": r["sub"],
-            "eur": round(p, 2) if p is not None else None,
+            "eur": round(p["unit"], 2) if p.get("unit") is not None else None,
+            # O preço veio do OUTRO acabamento: é uma estimativa, e diz-se.
+            "est": p.get("price_finish") if p.get("estimado") else None,
         })
     return rows
 
@@ -101,6 +104,22 @@ def _record_value(con, total_eur, cards, day):
 def _value_history(con):
     return [(r["date"], r["total_eur"]) for r in
             con.execute("SELECT date, total_eur FROM value_history ORDER BY date")]
+
+
+def _costura(dates):
+    """O índice do primeiro ponto já medido pela REGRA NOVA, ou `None`.
+
+    O que está gravado antes de `REGRA_NOVA` foi medido com a regra antiga (sem a
+    queda para o outro acabamento) e fica como está: reescrever pontos antigos com
+    a regra de hoje era inventar um histórico que ninguém mediu. O que se faz é
+    DIZER onde está a costura — um degrau de ~11,67 € que não é o mercado a mexer.
+    """
+    if dates[0] >= REGRA_NOVA:        # tudo já pela regra nova: não há costura
+        return None
+    for i, d in enumerate(dates):
+        if d >= REGRA_NOVA:
+            return i
+    return None
 
 
 def _evo_block(history):
@@ -130,12 +149,24 @@ def _evo_block(history):
     area = f"{px(0):.1f},{H - pad} " + pts + f" {px(n - 1):.1f},{H - pad}"
     dots = "".join(f'<circle cx="{px(i):.1f}" cy="{py(v):.1f}" r="2.6" class="dot {cls}"/>'
                    for i, v in enumerate(vals))
+    # A costura da mudança de regra, desenhada: uma linha tracejada no primeiro
+    # ponto já medido pela regra nova. Sem ela, o degrau lia-se como mercado.
+    ic = _costura(dates)
+    marca = (f'<line x1="{px(ic):.1f}" y1="{pad}" x2="{px(ic):.1f}" y2="{H - pad}" '
+             f'class="regra"/>' if ic is not None else "")
+    nota = (f'<div class="evo-note">A <b>regra do preço mudou a {REGRA_NOVA}</b> '
+            f'(uma cópia cujo acabamento não está cotado passou a valer o outro '
+            f'acabamento, como nos <a href="colecao_cor.html">binders por cor</a>): '
+            f'a linha tracejada é essa costura, e os pontos à esquerda dela estão '
+            f'pela regra antiga (~11,67 € abaixo). Não é o mercado a mexer.</div>'
+            if ic is not None else "")
     svg = (f'<svg viewBox="0 0 {W} {H}" class="spark">'
            f'<polygon points="{area}" class="fill {cls}"/>'
-           f'<polyline points="{pts}" class="line {cls}"/>{dots}</svg>')
+           f'<polyline points="{pts}" class="line {cls}"/>{dots}{marca}</svg>')
     return (f'<div class="evo"><div class="evo-top"><span class="evo-h">Evolução do valor</span>'
             f'<span class="evo-ind {cls}">{arrow} {pct:+.1f}% <em>desde {dates[0]}</em></span></div>'
-            f'<div class="evo-axis"><span>{dates[0]}</span><span>{dates[-1]}</span></div>{svg}</div>')
+            f'<div class="evo-axis"><span>{dates[0]}</span><span>{dates[-1]}</span></div>{svg}'
+            f'{nota}</div>')
 
 
 def build(con, out_path):
@@ -187,6 +218,7 @@ _CSS = """
  .spark .line{fill:none;stroke-width:2;vector-effect:non-scaling-stroke} .spark .line.up{stroke:var(--add)} .spark .line.down{stroke:var(--rem)}
  .spark .fill.up{fill:var(--add);opacity:.13} .spark .fill.down{fill:var(--rem);opacity:.13}
  .spark .dot{stroke:var(--card);stroke-width:1} .spark .dot.up{fill:var(--add)} .spark .dot.down{fill:var(--rem)}
+ .spark .regra{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
  .evo-note{color:var(--muted);font-size:12.5px;margin-top:6px}
  h2{font-size:13px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:26px 0 8px;border-bottom:1px solid var(--line);padding-bottom:7px;display:flex;justify-content:space-between;gap:10px;align-items:baseline}
  h2 b{color:var(--ink)} h2 .gv{color:var(--gold);font-variant-numeric:tabular-nums;font-size:13px;text-transform:none;letter-spacing:0}
@@ -199,6 +231,7 @@ _CSS = """
  .c .foil{position:absolute;top:6px;left:6px;font-size:12px;background:linear-gradient(135deg,#8ae,#e8a,#8ea);color:#111;font-weight:700;padding:1px 6px;border-radius:999px}
  .c .meta{padding:7px 9px} .c .nm{font-weight:600;font-size:12.5px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
  .c .ed{color:var(--muted);font-size:11px;margin-top:1px} .c .pr{color:var(--gold);font-size:12px;font-weight:600;margin-top:2px;font-variant-numeric:tabular-nums}
+ .c .pr .est{color:var(--muted);font-weight:400;cursor:help}
  .c .col{color:var(--muted);font-size:10.5px}
  .empty{color:var(--muted);padding:30px 0;text-align:center}
 """
@@ -207,7 +240,9 @@ _LEAD = ("<b>%TOTQ%</b> exemplares · valor ~<b style=\"color:var(--gold)\">%TOT
          " · imagens e preços via Scryfall/Cardmarket · dados até <b>%TODAY%</b>")
 
 _RODAPE = ("Cada imagem é a impressão exata da carta (edição + número). Clica para "
-           "abrir em grande. A galeria regenera-se sozinha no job diário.")
+           "abrir em grande. O valor é a mesma conta dos "
+           '<a href="colecao_cor.html">binders</a>: as cartas com <b>~</b> não '
+           "têm preço no acabamento da cópia e valem o do outro.")
 
 _TMPL = ("""<!doctype html><html lang="pt-PT"><head>"""
          + shell.head("Galeria de cartas", _CSS) + """</head><body>"""
@@ -229,7 +264,7 @@ function cardHtml(c){
   '<span class="qty">'+c.qty+'x</span>'+(c.foil?'<span class="foil">foil</span>':'')+'</div>'+
   '<div class="meta"><div class="nm" title="'+esc(c.name)+'">'+esc(c.name)+'</div>'+
   '<div class="ed">'+esc(c.set)+(c.cn?' · '+esc(c.cn):'')+(c.collector?' <span class="col">· colec.</span>':'')+'</div>'+
-  (c.eur!=null?'<div class="pr">'+eur(c.eur)+'</div>':'')+'</div></div>';
+  (c.eur!=null?'<div class="pr">'+(c.est?'<span class="est" title="sem preço neste acabamento — vale o preço '+esc(c.est)+'">~</span>':'')+eur(c.eur)+'</div>':'')+'</div></div>';
 }
 let ACTIVE="*";
 function buildTabs(){

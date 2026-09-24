@@ -4382,22 +4382,25 @@ def nao_encontradas(con, cfg_slots: list[dict] | None = None) -> list[dict]:
     """
     nomes = nomes_das_caixas(cfg_slots)
     out = []
+    # O valor de uma cópia sai da conta única (`collection.valor_da_coleccao`,
+    # 2026-09-24) e não de uma subconsulta com o acabamento EXACTO — era o
+    # defeito da Galeria, aqui também: uma foil que o Cardmarket não cota em foil
+    # aparecia sem preço. Hoje não há nenhuma cópia não encontrada e por isso não
+    # move um número; é a regra que fica a ser a mesma.
+    mapa = _col.mapa_precos(con)
     for r in con.execute(
         """SELECT cp.id, cp.quantity q, cp.finish, cp.language lang,
+                  cp.scryfall_id sid,
                   cp.photo_path foto, cp.nao_encontrada_em quando,
                   cp.nao_encontrada_slot slot, cp.notes notas,
                   COALESCE(s.name, '(sem balde)') balde,
-                  c.name nm, c.set_code, c.set_name, c.image_uri img,
-                  (SELECT p.trend FROM price_latest p
-                    WHERE p.scryfall_id = cp.scryfall_id
-                      AND p.source = 'cardmarket'
-                      AND p.finish = cp.finish) unit
+                  c.name nm, c.set_code, c.set_name, c.image_uri img
              FROM copies cp
              JOIN cards c ON c.scryfall_id = cp.scryfall_id
              LEFT JOIN sub_collections s ON s.id = cp.sub_collection_id
             WHERE cp.nao_encontrada_em IS NOT NULL
             ORDER BY cp.nao_encontrada_em DESC, c.name"""):
-        unit = r["unit"] or 0
+        unit = _col.preco_impressao(mapa, r["sid"], r["finish"])[0] or 0
         out.append({"copy_id": r["id"], "q": r["q"], "nm": _front(r["nm"]),
                     "set_code": (r["set_code"] or "").upper(),
                     "set_nome": r["set_name"] or "", "img": r["img"] or "",

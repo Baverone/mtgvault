@@ -915,24 +915,196 @@ def deck_extras(con: sqlite3.Connection) -> list[dict]:
     return sorted(out, key=lambda x: -x["extra"])
 
 
-def collection_value(con: sqlite3.Connection, source: str = "cardmarket") -> list[dict]:
-    """Valor atual de cada lote, com o preço mais recente disponível."""
-    rows = con.execute(
-        """SELECT cp.id, c.name, c.set_code, cp.quantity, cp.finish, cp.purpose,
-                  cp.acquired_price,
-                  (SELECT trend FROM price_latest p
-                    WHERE p.scryfall_id = cp.scryfall_id AND p.source = ?
-                      AND p.finish = cp.finish) AS unit_price,
-                  (SELECT date FROM price_latest p
-                    WHERE p.scryfall_id = cp.scryfall_id AND p.source = ?
-                      AND p.finish = cp.finish) AS price_date
-             FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id
-            WHERE """ + na_estante(),
-        (source, source),
-    ).fetchall()
-    out = []
+# ---------------------------------------------------------------------------
+# O VALOR DE UMA CÓPIA: UMA CONTA SÓ (2026-09-24)
+# ---------------------------------------------------------------------------
+# «Corrige tudo o que achares que é erro» (André, 2026-09-24), sobre os
+# 97 761,26 € da Galeria contra os 97 772,93 € dos Binders por cor.
+#
+# Havia QUATRO contas para a mesma pergunta — *"quanto vale esta cópia?"*:
+# o `collection_gallery._price_map` (trend da impressão exacta, sem mais nada),
+# o `colecao_cor._value` (cai para o outro acabamento e para o outro cenário),
+# este `collection_value` (como a Galeria, mas com `JOIN` ao catálogo, que
+# deixava cair em silêncio uma cópia sem impressão conhecida) e o
+# `inicio._valor_coleccao` (que já tinha desistido da sua e chamava o
+# `colecao_cor`). Duas páginas a dizer números diferentes sobre o mesmo dinheiro,
+# sem um único erro — o padrão do `event_tier`.
+#
+# A CONTA É ESTA, e escreve-se aqui: `mapa_precos` + `preco_impressao` +
+# `valor_da_coleccao`. Quem mostra valor de cópias lê de cá (Galeria, Binders por
+# cor, Início, `cli value`); há teste que falha se as três páginas discordarem
+# (`test_valor_unificado.py`).
+#
+# A REGRA, por esta ordem: o preço da impressão EXACTA no acabamento da cópia;
+# senão, o mesmo cenário noutro acabamento da mesma família (foil ↔ etched, que é
+# a `loadout.FOIL_FINISHES` — uma etched sem preço valia o NONFOIL antes desta
+# correcção, porque o «outro acabamento» estava escrito à mão como
+# `"foil" if fin == "nonfoil" else "nonfoil"`); senão, a outra família; e só no
+# fim o outro cenário (trend ↔ low). É a mesma tolerância do
+# `loadout.card_price`, que devolve o nonfoil quando não há foil e DIZ que é
+# nonfoil — por isso daqui também sai o acabamento a que o preço corresponde:
+# uma estimativa que veio do outro acabamento tem de poder ser mostrada como
+# estimativa (na Galeria vai com `~` e a razão no `title`).
+CENARIOS = ("trend", "low")
+
+
+def mapa_precos(con: sqlite3.Connection, source: str = "cardmarket") -> dict:
+    """`{"trend": {(sid, acabamento): €}, "low": {...}}` — o mais barato por
+    impressão e acabamento.
+
+    A `source` está FIXA em `cardmarket` de propósito, como no
+    `loadout.card_price`: o `colecao_cor._value` fazia `MIN` sobre a `price_latest`
+    inteira, sem filtrar a fonte, e no dia em que o `CARDTRADER_SETS` ligar o
+    marketplace da CardTrader o valor da colecção mudava por causa de uma fonte
+    nova, sem ninguém mexer numa carta. É o mesmo tipo de armadilha que o price
+    guide público do Cardmarket (ver «As cinco superfícies» no CLAUDE.md).
+    """
+    out: dict[str, dict] = {c: {} for c in CENARIOS}
+    try:
+        rows = con.execute(
+            "SELECT scryfall_id sid, finish, MIN(low) lo, MIN(trend) tr "
+            "FROM price_latest WHERE source = ? GROUP BY scryfall_id, finish",
+            (source,))
+    except sqlite3.Error:      # sem tabela de preços a vista mostra-se sem valor
+        return out
     for r in rows:
+        if r["tr"] is not None:
+            out["trend"][(r["sid"], r["finish"])] = r["tr"]
+        if r["lo"] is not None:
+            out["low"][(r["sid"], r["finish"])] = r["lo"]
+    return out
+
+
+def _familias(finish: str | None) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """(os acabamentos da família desta cópia, os da outra) — a família primeiro.
+
+    Quem decide o que é foil é a `loadout.FOIL_FINISHES`, num sítio só: é a
+    mesma razão do `loadout.e_foil` (*"nonfoil CONTÉM foil"*).
+    """
+    from . import loadout                                  # noqa: PLC0415
+    fam = tuple(loadout.FOIL_FINISHES)
+    if finish in fam:
+        return (finish, *(f for f in fam if f != finish)), ("nonfoil",)
+    return ("nonfoil",), fam
+
+
+def preco_impressao(mapa: dict, sid: str, finish: str | None,
+                    cenario: str = "trend") -> tuple[float | None, str | None]:
+    """(preço desta impressão, acabamento a que o preço corresponde) ou (None, None)."""
+    fam, outra = _familias(finish)
+    ordem = [cenario] + [c for c in CENARIOS if c != cenario]
+    for c in ordem:
+        tabela = mapa.get(c) or {}
+        for f in (*fam, *outra):
+            p = tabela.get((sid, f))
+            if p is not None:
+                return p, f
+    return None, None
+
+
+# Os quatro sítios onde uma cópia pode estar, para o valor se repartir. A ordem é
+# a das colunas da tabela dos Binders por cor.
+PARTES = ("coleccao", "decks", "rl", "colecionador")
+
+
+def valor_da_coleccao(con: sqlite3.Connection, source: str = "cardmarket") -> dict:
+    """Quanto vale TUDO o que ele tem na estante, por cópia e por sítio.
+
+    Devolve `{"total": {cenário: €}, "partes": {cenário: {parte: €}},
+    "copias": [ ... ], "q": nº de exemplares, "q_jogaveis": ..., "sem_preco": ...}`.
+
+    O conjunto de cópias é o `na_estante()` — o colecionador **entra** (a regra de
+    domínio é que essas cópias *"são avaliadas mas nunca contam para decks,
+    wantlists ou cobertura"*) e o que ele deu como não encontrado **não**. O
+    `colecao_cor._value` usava o `jogaveis()`, que deixa o colecionador de fora:
+    hoje não há uma única cópia de colecionador e por isso as duas contas davam o
+    mesmo número de cartas, mas eram duas respostas à espera de discordarem. O
+    colecionador vai numa PARTE própria, para nenhuma vista o somar sem o dizer.
+
+    Uma cópia pode estar meio na caixa e meio na gaveta, e o valor reparte-se na
+    mesma proporção — senão um lote de 4 com 3 no deck contava 4 como coleção.
+    """
+    from . import loadout                                  # noqa: PLC0415
+    mapa = mapa_precos(con, source)
+    baldes = set(loadout.baldes_coleccao()) - {loadout.BALDE_RL}
+    partes = {c: dict.fromkeys(PARTES, 0.0) for c in CENARIOS}
+    copias, q_total, q_jog, sem_preco = [], 0, 0, 0
+    for r in con.execute(f"""
+            SELECT cp.id, cp.scryfall_id sid, cp.finish fin, cp.quantity q,
+                   cp.purpose, cp.acquired_price, COALESCE(s.name, '') bal,
+                   COALESCE((SELECT SUM(a.quantity) FROM copy_allocation a
+                              WHERE a.copy_id = cp.id), 0) na_caixa
+              FROM copies cp
+              LEFT JOIN sub_collections s ON s.id = cp.sub_collection_id
+             WHERE {na_estante()}"""):
+        precos = {c: preco_impressao(mapa, r["sid"], r["fin"], c) for c in CENARIOS}
+        unit, pfin = precos["trend"]
+        if r["purpose"] == "collector":
+            base = "colecionador"
+        elif r["bal"] == loadout.BALDE_RL:
+            base = "rl"
+        elif r["bal"] in baldes:
+            base = "coleccao"
+        else:
+            base = "decks"
+        # Dentro de uma deckbox é "decks", esteja a gaveta de origem onde estiver
+        # — menos o colecionador, que nunca entra numa caixa.
+        dentro = min(r["na_caixa"] or 0, r["q"])
+        dentro_parte = "decks" if base != "colecionador" else base
+        for parte, q in ((dentro_parte, dentro), (base, r["q"] - dentro)):
+            if q <= 0:
+                continue
+            for c in CENARIOS:
+                partes[c][parte] += (precos[c][0] or 0) * q
+        q_total += r["q"]
+        if r["purpose"] == "player":
+            q_jog += r["q"]
+        if unit is None:
+            sem_preco += r["q"]
+        copias.append({
+            "copy_id": r["id"], "sid": r["sid"], "finish": r["fin"],
+            "q": r["q"], "purpose": r["purpose"], "balde": r["bal"],
+            "parte": base, "na_caixa": dentro,
+            "acquired_price": r["acquired_price"],
+            "unit": unit, "price_finish": pfin,
+            # Uma estimativa que veio do outro acabamento tem de se poder marcar
+            # como estimativa — é para isso que o `price_finish` viaja.
+            "estimado": bool(unit is not None and pfin != r["fin"]),
+            "total": round((unit or 0) * r["q"], 2),
+        })
+    return {
+        "total": {c: round(sum(partes[c].values()), 2) for c in CENARIOS},
+        "partes": {c: {p: round(v, 2) for p, v in partes[c].items()}
+                   for c in CENARIOS},
+        "copias": copias, "q": q_total, "q_jogaveis": q_jog,
+        "sem_preco": sem_preco,
+    }
+
+
+def collection_value(con: sqlite3.Connection, source: str = "cardmarket") -> list[dict]:
+    """Valor atual de cada lote, com o preço mais recente disponível.
+
+    O preço é o do `valor_da_coleccao` — a conta única. Era uma subconsulta
+    própria, que exigia o acabamento EXACTO e por isso dava `sem preço` às três
+    cópias foil cujo foil não está cotado (11,67 € que a página dos Binders
+    contava e esta não). O `JOIN cards` passou a `LEFT JOIN`: uma cópia que o
+    catálogo não conheça vale 0 € mas não desaparece da lista.
+    """
+    precos = {c["copy_id"]: c for c in valor_da_coleccao(con, source)["copias"]}
+    dia = con.execute("SELECT MAX(date) d FROM price_latest WHERE source = ?",
+                      (source,)).fetchone()
+    dia = dia["d"] if dia else None
+    out = []
+    for r in con.execute(
+        """SELECT cp.id, c.name, c.set_code, cp.quantity, cp.finish, cp.purpose,
+                  cp.acquired_price
+             FROM copies cp LEFT JOIN cards c ON c.scryfall_id = cp.scryfall_id
+            WHERE """ + na_estante()):
         d = dict(r)
+        p = precos.get(r["id"], {})
+        d["unit_price"] = p.get("unit")
+        d["price_finish"] = p.get("price_finish")
+        d["price_date"] = dia if p.get("unit") is not None else None
         d["total"] = round((d["unit_price"] or 0) * d["quantity"], 2)
         out.append(d)
     return out

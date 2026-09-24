@@ -36,9 +36,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import loadout, paginas  # noqa: E402
+from mtgvault import collection, loadout, paginas  # noqa: E402
 from mtgvault import site_shell as shell  # noqa: E402
-from mtgvault.collection import jogaveis  # noqa: E402
 
 _CSS = """
  /* A GRELHA DOS NÚMEROS (2.ª passagem, 2026-09-24). Era `auto-fit` com um
@@ -156,20 +155,23 @@ def _linha_caixa(c: dict, out_dir: Path) -> str:
 
 
 def _valor_coleccao(con) -> tuple[int, float]:
-    """(cópias jogáveis, valor total a preço Cardmarket).
+    """(exemplares na estante, valor total a preço Cardmarket).
 
-    O valor sai do **`colecao_cor._value`**, que é quem o calcula para a página
-    da Coleção — e não de uma consulta escrita aqui. Escrevi uma primeira versão
-    própria e ela dava **97 761,26 €** contra os **97 772,93 €** da outra
-    página: a diferença são as cópias cujo acabamento não tem preço e caem para
-    o outro (foil → nonfoil), que a consulta nova não fazia. Onze euros e sete
-    cêntimos de discórdia entre duas páginas sobre o mesmo número, sem um único
-    erro — o padrão do `event_tier` na porta de entrada do site.
+    OS DOIS NÚMEROS SAEM DA MESMA CHAMADA — `collection.valor_da_coleccao`, a
+    conta única do valor (2026-09-24). Escrevi uma primeira versão própria e ela
+    dava **97 761,26 €** contra os **97 772,93 €** da página dos binders: a
+    diferença são as cópias cujo acabamento não tem preço e caem para o outro
+    (foil → nonfoil). Passei então a chamar o `colecao_cor._value`, o que tirava
+    a discórdia desta página mas deixava a Galeria a dizer o número antigo — e o
+    **número de cartas** continuava a sair de uma consulta própria, com o
+    `jogaveis()`, enquanto o valor contava o `na_estante()`: bastava entrar uma
+    cópia de colecionador para o cartão dizer *"N cartas valem X"* com o X a
+    contar cartas que o N não conta. Onze euros e sete cêntimos de discórdia
+    entre duas páginas sobre o mesmo número, sem um único erro — o padrão do
+    `event_tier` na porta de entrada do site.
     """
-    import colecao_cor                                   # noqa: PLC0415
-    q = con.execute(f"SELECT SUM(quantity) q FROM copies cp "
-                    f"WHERE {jogaveis()}").fetchone()["q"]
-    return int(q or 0), float(sum(colecao_cor._value(con)["trend"]))
+    v = collection.valor_da_coleccao(con)
+    return int(v["q"]), float(v["total"]["trend"])
 
 
 def _fontes(con) -> list[tuple[str, str, str]]:
@@ -233,8 +235,8 @@ def build(con, out_path=None, rep=None):
              "warn", "deckboxes.html#comprar"),
         _kpi("binders", "Cartas na coleção", f"{n_copias:,}".replace(",", " "),
              f"valor ~{paginas.eur(valor)} — o mesmo número dos "
-             f"<a href=\"colecao_cor.html\">binders por cor</a> "
-             f"(coleção + decks + caixa RL)", "info", "colecao_cor.html"),
+             f"<a href=\"colecao_cor.html\">binders por cor</a> e da "
+             f"<a href=\"colecao.html\">galeria</a>", "info", "colecao_cor.html"),
         _kpi("vender", "Para vender", paginas.eur(venda_v),
              f"{venda_q} cópias · mais {rl_q} da Reserved List "
              f"({paginas.eur(rl_v)})", "gold", "deckboxes.html#vender"),

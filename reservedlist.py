@@ -19,6 +19,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
+from mtgvault import collection  # noqa: E402
 from mtgvault import db as _db  # noqa: E402
 from mtgvault import paginas  # noqa: E402
 from mtgvault import site_shell as shell  # noqa: E402
@@ -139,6 +140,24 @@ def build(con, out_path=None):
     # Preços (mínimo entre fontes, nonfoil): hoje, há ~1 mês e a série do gráfico.
     price, month, hist = price_maps(con)
 
+    # QUANTO VALEM AS CÓPIAS DELE — a conta única do valor (2026-09-24), a mesma
+    # da Galeria, dos Binders por cor e do Início. As colunas *hoje* / *há 1 mês*
+    # / o gráfico continuam a ser a série NONFOIL de cima: essas são o MERCADO da
+    # impressão (existem para cartas que ele nem tem) e as duas pontas de uma
+    # percentagem têm de sair da mesma conta. O que não pode sair de lá é o
+    # **valor das cópias DELE**, que era a quinta conta do mesmo número.
+    #
+    # Medido a 2026-09-24: o total NÃO muda (47 884,57 €). As seis cópias de
+    # cartas da RL que não são nonfoil — as únicas que a queda de acabamento
+    # afectaria — são de impressões fora do âmbito desta página (promo, 30th
+    # Anniversary, World Championship: ver `SET_TYPES`), e por isso nunca
+    # entravam nesta soma. Fica alinhado porque a próxima foil de uma edição
+    # core/expansion não pode voltar a ser avaliada ao preço do nonfoil sem que
+    # ninguém dê por isso — é o defeito da Galeria, com outra roupa.
+    meu = defaultdict(float)
+    for c in collection.valor_da_coleccao(con)["copias"]:
+        meu[c["sid"]] += c["total"]
+
     # Formatos onde cada carta joga (nº de listas), das decklists de torneio que
     # seguimos. "Não joga em lado nenhum" = não joga em NENHUM formato que conta
     # (os ignorados, ex.: Vintage, não contam). Essas — as que o André tem — vão
@@ -183,12 +202,12 @@ def build(con, out_path=None):
             if has:
                 n_have += 1
                 have_names.add(c["name"])
-                have_value += (price.get(sid) or 0) * (en + pt)
+                have_value += meu.get(sid, 0.0)
             fmts = card_formats.get(c["name"], {})
             counted = sorted((f for f in fmts if f not in ignore), key=lambda f: -fmts[f])
             to_sell = has and not counted
             if to_sell:
-                sell.append((c["name"], en + pt, (price.get(sid) or 0) * (en + pt)))
+                sell.append((c["name"], en + pt, meu.get(sid, 0.0)))
             val = price.get(sid)
             m = month.get(sid)
             own = (f'<span class="en">{en} EN</span>' if en else "") + \
@@ -312,7 +331,12 @@ _RODAPE = ("A Reserved List da Wizards (cartas que nunca serão reimpressas), pe
            "que <b>não jogue em formato nenhum</b> que conte fica marcada "
            "<b>VENDER</b> — os formatos que não contam afinam-se em "
            "<code>colecao_config.json</code> (por agora, só o Vintage fora). Sem "
-           "cor = não tens nenhuma. Atualiza diariamente.")
+           "cor = não tens nenhuma. O <b>valor da tua RL</b> do cabeçalho é a "
+           "mesma conta da <a href=\"colecao.html\">galeria</a> e dos "
+           "<a href=\"colecao_cor.html\">binders</a> — o preço da impressão e do "
+           "acabamento de cada cópia tua; as colunas <i>hoje</i> e <i>há 1 mês</i> "
+           "são o mercado da impressão em nonfoil, que é o que se compara de um "
+           "mês para o outro. Atualiza diariamente.")
 
 _ACCOES = ('<button class="btn" id="tgl" type="button" onclick="toggle()">'
            'Mostrar só as que tenho</button>')

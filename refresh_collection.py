@@ -27,7 +27,16 @@ DB, CAT = HOME / "vault.db", HOME / "catalog.db"
 import sys  # noqa: E402
 sys.path.insert(0, str(ROOT))
 # «Não encontrei estas» (2026-09-09): uma cópia que ele não encontrou sai da
-# `collection_owned`, que é o que o `index.html` conta. Ver `collection.jogaveis`.
+# `collection_owned`. Ver `collection.jogaveis`.
+#
+# NB (2026-09-24): a `collection_owned` JÁ NÃO ALIMENTA NENHUMA PÁGINA. Dizia
+# aqui que era «o que o `index.html` conta», e era — até o índice passar a ser o
+# `inicio.py`, que lê o valor da `collection.valor_da_coleccao` como a Galeria e
+# os Binders. Hoje quem a lê é só o `buildable.py` (dormente) e a impressão que
+# este ficheiro faz no log do `daily`. É por isso que o modelo de preço descrito
+# acima — três camadas, com overrides à mão — **não é** a conta do valor da
+# coleção e não se pode comparar com ela: a dela vive na
+# `collection.valor_da_coleccao` e é uma só.
 from mtgvault.collection import na_estante  # noqa: E402
 OVERRIDES = ROOT / "price_overrides.csv"
 

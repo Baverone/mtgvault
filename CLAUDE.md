@@ -120,7 +120,7 @@ daily.py          o job diário (encadeia tudo o que está abaixo)
 
 **Geradores do site (scripts na raiz, corridos pelo `daily.py`, HTML no GitHub Pages):**
 ```
-inicio.py           index.html — o INÍCIO (2026-09-24): o painel com os números de hoje (decks montados/por montar, o que falta comprar aos permanentes, cartas e valor da coleção, venda, arrumação, «fechar tudo», encomendas e revalidação), os atalhos e as «últimas atualizações dos dados». Corre por ÚLTIMO e com o MESMO `loadout.report` do `deckboxes` — dois relatórios eram duas respostas à mesma pergunta na porta de entrada do site. O valor da coleção sai do `colecao_cor._value` e não de uma consulta própria (a primeira versão dava 97 761,26 € contra os 97 772,93 € da outra página). Era um HTML estático escrito à mão. Ver «Uma casca só para o site inteiro»
+inicio.py           index.html — o INÍCIO (2026-09-24): o painel com os números de hoje (decks montados/por montar, o que falta comprar aos permanentes, cartas e valor da coleção, venda, arrumação, «fechar tudo», encomendas e revalidação), os atalhos e as «últimas atualizações dos dados». Corre por ÚLTIMO e com o MESMO `loadout.report` do `deckboxes` — dois relatórios eram duas respostas à mesma pergunta na porta de entrada do site. O valor da coleção e o número de cartas saem os DOIS da `collection.valor_da_coleccao` — a conta única (2026-09-24); a primeira versão tinha consulta própria e dava 97 761,26 € contra os 97 772,93 € da outra página. Era um HTML estático escrito à mão. Ver «Uma casca só para o site inteiro» e «O VALOR DE UMA CÓPIA É UMA CONTA SÓ»
 meta_coverage.py    cobertura.html — top-10 ponderado + staples + emergentes. NB (2026-09-07): quem decide que listas contam é `sources.lista_conta`/`counting_sql` (ver "Que listas contam"), e o peso vem de `sources.tier_weight_sql`; janela 30 dias; expõe COLLECTION_BALDES={"SPML","Premodern (geral)"}, owned_available(con) (=coleção MENOS cartas comprometidas com decks vigiados) e counting_lists(con,fmt,aid). NB (2026-09-07): `FORMATS` deixou de ser fixo — filtra `_FORMATS` por `colecao_config.json`→`formatos_metagame` (hoje standard/pioneer/modern; o Premodern saiu). Só a COBERTURA lê essa lista: o `metagame.py` deixou de a ler (ver abaixo)
 decks_faziveis.py   RETIRADO 2026-09-07 — fundido no `metagame.py`, que faz a mesma pergunta com as regras de material e o "onde está a carta". O módulo ficou como lápide (levanta RuntimeError), o `decksfaziveis.html` reencaminha para o metagame, saiu do `daily.py` e do `git add` do workflow. Podem ser apagados os dois
 buildability.py     APAGADO 2026-09-15 (decisão do André), com o `buildability.html`. Era o "Montar" (dormente desde a v6: fora do menu, fora do daily, sem um único import). O que respondia — que deck montar a seguir e o que lhe falta — passou para o **Metagame** (`metagame.py`, o top-N mais perto de fechar) e para a aba de cada caixa da Deckboxes. O `test_paginas.caso_as_paginas_orfas_foram_mesmo_apagadas` tranca que não voltam nem ficam referidas
@@ -401,7 +401,81 @@ fechar tudo **7 017,06 €**, 239 a comprar, 225 a arrumar (129 linhas), venda
   linhas escondido atrás de um botão é pior do que rodapé nenhum.
 - **As três dúvidas da 1.ª passagem, decididas por ele:** o CSS **fica
   embutido** (robustez > 11 KB); os selectores de 34 px da Cobertura **ficam**;
-  a diferença de valor entre a Galeria e os Binders por cor **não se tocou**.
+  a diferença de valor entre a Galeria e os Binders por cor **não se tocou** —
+  **e foi corrigida no mesmo dia**, na secção a seguir.
+
+**O VALOR DE UMA CÓPIA É UMA CONTA SÓ (André, 2026-09-24, à letra: *"corrige
+tudo o que achares que é erro"*).** Sobre a dúvida nº 1 da reestruturação: a
+Galeria dizia **97 761,26 €** e os Binders por cor **97 772,93 €** para o mesmo
+dinheiro. Havia **seis** contas para *"quanto vale esta cópia?"* e nenhum passo
+dava erro — o padrão do `event_tier` aplicado ao número que ele vê todos os
+dias. Motor em **`mtgvault/collection.py`** (`mapa_precos` + `preco_impressao` +
+`valor_da_coleccao`); testes em `tests/test_valor_unificado.py` (9 casos);
+relatório em `ai-pc/work/revisao/mtgvault-valor-0924.md`.
+- **A REGRA, por esta ordem**: o preço da impressão **exacta** no acabamento da
+  cópia; senão, o mesmo cenário noutro acabamento da mesma **família** (foil ↔
+  etched, a `loadout.FOIL_FINISHES`); senão, a outra família; e só no fim o
+  outro cenário (trend ↔ low). É a tolerância do `loadout.card_price`, que
+  devolve o nonfoil quando não há foil **e diz que é nonfoil** — por isso daqui
+  sai também o acabamento a que o preço corresponde, e a Galeria marca essas
+  cópias com **`~`** e a razão no `title`. A **fonte está fixa no `cardmarket`**:
+  a conta dos Binders fazia `MIN` sobre a `price_latest` inteira, e ligar a
+  CardTrader mudava o valor da coleção sem ninguém mexer numa carta.
+- **O conjunto de cópias é o `na_estante()`** — o colecionador **entra** (*"são
+  avaliadas mas nunca contam para decks, wantlists ou cobertura"*) e o que ele
+  deu como não encontrado **não**. Os Binders usavam o `jogaveis()`, que o deixa
+  de fora: hoje não há uma única cópia de colecionador, e por isso eram duas
+  respostas à espera de discordarem. Vai numa **parte própria**
+  (`partes.colecionador`), e a linha só aparece na tabela quando não é zero.
+- **O NÚMERO DE CARTAS sai da MESMA chamada que o valor.** O Início contava com
+  o `jogaveis()` e valorizava com o `na_estante()`: bastava entrar uma cópia de
+  colecionador para o cartão dizer *"N cartas valem X"* com o X a contar cartas
+  que o N não conta.
+- **Quem lê de lá**: `collection_gallery` (tinha o `_price_map`, apagado),
+  `colecao_cor._value` (ficou só a dar a forma que a página já lia),
+  `inicio._valor_coleccao`, `collection.collection_value` (o `cli value`, que
+  passou a `LEFT JOIN cards` — uma cópia sem impressão conhecida vale 0 € mas
+  não desaparece da lista), `caixarl` (tinha o `_price_maps`, apagado),
+  `reservedlist` (só o *valor da tua RL*) e `loadout.nao_encontradas`. **O que
+  NÃO mudou, de propósito:** o `loadout.card_price` (o preço de COMPRA de uma
+  carta — o mínimo entre impressões do mesmo nome — que é outra pergunta e é o
+  que a venda, a regra dos 5 % da RL e a feira usam), as colunas *hoje* / *há 1
+  mês* / o gráfico da Reserved List (o MERCADO de uma impressão, em nonfoil nas
+  duas pontas da percentagem) e o `meta_coverage._visual` (o preço do que
+  FALTA). O `refresh_collection` continua com o seu modelo de três camadas: a
+  `collection_owned` já não alimenta página nenhuma.
+- **Três defeitos apanhados pelo caminho**, todos da mesma família: (a) uma
+  **etched** caía para o preço do **nonfoil** porque o «outro acabamento» estava
+  escrito à mão como `"foil" if fin == "nonfoil" else "nonfoil"` — hoje são 3
+  Blood Moon (SLD) que o Cardmarket não cota de todo, por isso não move um
+  número, mas a próxima move; (b) a **Caixa RL** agregava por `(carta, idioma,
+  acabamento)` e dava a uma linha a edição e o preço de UMA impressão com a
+  quantidade de TODAS — 6 Taiga e 5 Tropical Island (Unlimited + Revised) ao
+  preço da outra edição: **1 391,77 € a mais**. Passou a **uma linha por
+  impressão** (e o «N cartas» dos cabeçalhos conta nomes distintos, não linhas);
+  (c) os Binders mostravam o total com `casas=0` — *«97 773 €»* onde as outras
+  duas páginas diziam *«97 772,93 €»*, com a conta certa por trás.
+- **Medido na cópia da base de 2026-09-24** (o mesmo `vault.db` dos dois lados):
+  valor **97 761,26 € → 97 772,93 €** nas quatro superfícies (Galeria, Binders,
+  Início, `cli value`); a diferença são **3 cópias** foil sem cotação foil —
+  Ethersworn Canonist (SLD) 10,67 €, Cid (FIC) 0,75 €, Helitrooper (FIC) 0,25 €.
+  Cartas **1 678** nas três. Partes: coleção 31 295,53 € · decks 23 597,84 € ·
+  Caixa RL 42 879,56 € · colecionador 0,00 €. Caixa RL (página) **48 429,13 € →
+  47 037,36 €**, que é exactamente o que a conta única dá para as suas 181
+  cópias (a fatia dos Binders é menor — 16 já estão dentro de deckboxes e contam
+  como *decks*). `reservedlist` **47 885 € igual** (as 6 cópias de RL não-nonfoil
+  são de impressões fora do âmbito da página). E o **`loadout.report` não mexe
+  ao cêntimo e caixa a caixa**: fechar tudo 7 017,06 €, 239 a comprar, 225 a
+  arrumar (129 linhas), venda 268c/1 555,06 €, venda_rl 68c/3 941,08 €,
+  rl_segurar 34c/4 756,11 €, reservadas 1c/100,00 €, guardar 2c/14,26 €, as 15
+  caixas.
+- **O GRÁFICO DA EVOLUÇÃO DIZ ONDE A REGRA MUDOU.** O `value_history` da Galeria
+  tem um ponto por dia; o de hoje recalcula-se sozinho (o `build` faz `INSERT OR
+  REPLACE`), os anteriores **ficam como foram medidos** — reescrever um
+  histórico que ninguém mediu era inventá-lo. O que se faz é marcar a costura:
+  `collection_gallery.REGRA_NOVA` (`2026-09-24`) e `_costura()` dão a linha
+  tracejada no primeiro ponto da regra nova, com a nota por baixo a dizer que o
+  degrau de ~11,67 € **não é o mercado**.
 
 ### Duas bases de dados
 
