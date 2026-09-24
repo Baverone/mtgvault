@@ -33,6 +33,7 @@ ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 from mtgvault import db, loadout, paginas, sources  # noqa: E402
+from mtgvault import site_shell as shell  # noqa: E402
 from mtgvault.collection import jogaveis, owned_playable  # noqa: E402
 
 _FORMATS = [
@@ -698,9 +699,11 @@ def build_html(rep, today, partes=None):
     dados do selector de edições (`prints`, `want`) vão para lá em vez de
     ficarem na página, e a casca fica com o cabeçalho de cada secção
     (2026-09-15: eram 274 KB, 123 KB deles os dois `var` do JavaScript)."""
-    secs = ""
+    secs, idx = "", ""
     for s in rep["sections"]:
         cards = ""
+        idx += (f'<a href="#fmt-{paginas.slug(s["fmt"])}">{html.escape(s["title"])}'
+                f' <span class="dim">{len(s["decks"])}</span></a>')
         for d in s["decks"]:
             spec = d["specific"]
             if spec:
@@ -734,13 +737,15 @@ def build_html(rep, today, partes=None):
                 f'{RECENT_DAYS} dias)">⚖️ {d.get("score", 0)} · {d["n_lists"]} listas</div></div>{_bar(d["pct"])}'
                 f'<div class="cnt">{d["have"]}/{d["core_total"]} do núcleo · '
                 f'faltam {sum(m["missing"] for m in d["missing"])}</div>{body}{copybtn}{sbblock}</div>')
+        parte = paginas.slug(s["fmt"])
         if partes is not None:
-            parte = paginas.slug(s["fmt"])
             partes[parte] = {"formato": s["fmt"], "titulo": s["title"], "html": cards}
-            secs += (f'<section class="fmt" data-parte="{parte}"><h2>{s["title"]}</h2>'
+            secs += (f'<section class="fmt" id="fmt-{parte}" data-parte="{parte}">'
+                     f'<h2>{s["title"]}</h2>'
                      f'<div class="grid"><p class="carregando">A carregar…</p></div></section>')
         else:
-            secs += f'<section><h2>{s["title"]}</h2><div class="grid">{cards}</div></section>'
+            secs += (f'<section id="fmt-{parte}"><h2>{s["title"]}</h2>'
+                     f'<div class="grid">{cards}</div></section>')
     if partes is not None:
         partes["prints"] = rep["prints"]
         partes["want"] = rep["want"]
@@ -768,10 +773,10 @@ def build_html(rep, today, partes=None):
     # Com os dados à parte, `PRINT`/`WANT` ficam a `null` e o JavaScript vai
     # buscá-los a `data/paginas/cobertura/{prints,want}.json`.
     a_parte = partes is not None
-    return (_TMPL.replace("%META%", paginas.META)
-            .replace("%TEMA%", paginas.TEMA + paginas.CSS_DADOS)
+    return (_TMPL
+            .replace("%TEMA_DADOS%", paginas.CSS_DADOS)
             .replace("%JS_DADOS%", paginas.JS_DADOS)
-            .replace("%TABS%", paginas.nav("cobertura.html", extra=True))
+            .replace("%IDX%", idx)
             .replace("%SECS%", secs).replace("%EMERGING%", emerging_html)
             .replace("%GEN%", gen or "<li class='dim'>—</li>")
             .replace("%GENMORE%", more).replace("%TODAY%", today)
@@ -784,15 +789,11 @@ def build_html(rep, today, partes=None):
                      else json.dumps(rep["want"], ensure_ascii=False)))
 
 
-_TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
-<title>mtgvault — cobertura do metagame</title><style>
-%TEMA%
- *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
- .wrap{max-width:1120px;margin:0 auto;padding:24px 16px 70px}
- h1{margin:0 0 2px;font-size:22px} .sub{color:var(--muted);font-size:13px;margin-bottom:8px} .sub a{color:var(--accent)}
- h2{font-size:16px;margin:26px 0 6px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+_CSS = """
+ h2{font-size:16px;margin:28px 0 8px;padding-bottom:7px;border-bottom:1px solid var(--line);scroll-margin-top:calc(var(--sticky) + 12px)}
+ .fidx{margin:0 0 16px} .fidx .seg{max-width:100%}
  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px}
- .deck{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+ .deck{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:13px 15px}
  .dh{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
  .dn{font-weight:700} .lab{display:block;color:var(--muted);font-size:11px;font-weight:400;margin-top:1px}
  .pop{color:var(--muted);font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}
@@ -806,33 +807,52 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
  ul.ml img,ul.gl img,.noimg{border-radius:4px;flex:none;background:#0c0f14} .noimg{width:42px;height:59px;border:1px dashed var(--line)}
  .ci{min-width:0;flex:1} .cn{white-space:normal} .cn b{color:var(--ink)}
  .ed{display:block;font-size:11px;color:var(--muted)} .ed.mine{color:var(--add)}
- .nd{display:inline-block;font-size:11px;color:var(--accent);background:#12203f;padding:0 6px;border-radius:999px}
+ .nd{display:inline-block;font-size:11px;color:var(--ob);background:var(--info-soft);padding:0 6px;border-radius:999px}
  .sb{font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 4px;vertical-align:middle}
  .pz{margin-left:auto;color:var(--gold);font-variant-numeric:tabular-nums;white-space:nowrap;align-self:flex-start;padding-top:2px}
  .own{color:var(--add);font-size:11px} .ed-slot{margin-top:2px;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
- select.pick{max-width:100%;background:#0c0f14;color:var(--ink);border:1px solid var(--line);border-radius:6px;font-size:11px;padding:2px 4px;cursor:pointer}
+ select.pick{max-width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--line2);border-radius:6px;font-size:11px;padding:3px 5px;cursor:pointer}
  .sbd{margin-top:8px} .sbd>summary{color:var(--muted);cursor:pointer;font-size:12px} .sbg{margin:6px 0} .sbg a{color:var(--accent);font-size:12px;text-decoration:none}
  ul.sl{list-style:none;margin:6px 0 0;padding:0;font-size:12px} ul.sl li{padding:2px 0} .si{display:inline-block;width:36px;color:var(--muted);font-variant-numeric:tabular-nums} .own2{color:var(--add);font-size:11px}
- button.cp{background:#12203f;color:var(--accent);border:1px solid var(--line);border-radius:8px;font-size:12px;padding:5px 10px;cursor:pointer;margin-top:8px} button.cp:hover{border-color:var(--accent)}
- .general{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:8px}
- .general h2{margin-top:0;border:0} .dim{color:var(--muted);font-size:12px}
- .emerging{background:#141b12;border:1px solid #2c3a1f;border-radius:12px;padding:12px 16px;margin-top:8px}
- .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0} .tabs a{flex:1;min-width:110px;text-align:center;padding:11px 8px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:600;font-size:14px;transition:.15s} .tabs a:hover{border-color:var(--accent);transform:translateY(-1px)} .tabs a.cur{background:linear-gradient(180deg,#26406f,#1b2c4d);border-color:var(--accent)}
- .emerging h2{margin:0 0 6px;border:0;font-size:15px} .eml{list-style:none;margin:0;padding:0}
+ button.cp{background:var(--card3);color:var(--accent);border:1px solid var(--line2);border-radius:10px;font-size:12px;font-weight:700;padding:7px 12px;cursor:pointer;margin-top:8px;min-height:34px} button.cp:hover{border-color:var(--accent)}
+ .general{background:var(--card);border:1px solid var(--line);border-radius:var(--r2);padding:15px 17px;margin:0 0 18px}
+ .general h2{margin-top:0;border:0;padding-bottom:0} .dim{color:var(--dim);font-size:12px}
+ .emerging{background:#111a10;border:1px solid #2c3a1f;border-radius:var(--r2);padding:13px 17px;margin:0 0 18px}
+ .emerging h2{margin:0 0 6px;border:0;padding-bottom:0;font-size:15px} .eml{list-style:none;margin:0;padding:0}
  .eml li{padding:4px 0;border-top:1px solid #2c3a1f} .eml li:first-child{border-top:0}
  .ef{display:inline-block;min-width:74px;color:var(--add);font-size:11px;text-transform:uppercase}
- footer{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
-</style></head><body><div class="wrap">
-<header><h1>📊 Cobertura do metagame</h1>
-<div class="sub">Os decks com mais peso em cada formato e quanto já tens · %OWNED% cartas na coleção · dados de %TODAY% · para o <b>top-N que estás mais perto de concluir</b>, vê a página <a href="metagame.html">Metagame</a></div>
-%TABS%</header>
+%TEMA_DADOS%
+"""
+
+_LEAD = ("Os decks com mais peso em cada formato e quanto já tens · <b>%OWNED%</b> "
+         "cartas na coleção · dados de <b>%TODAY%</b>. Para o <b>top-N que estás "
+         "mais perto de concluir</b>, vê a página "
+         "<a href=\"metagame.html\">Metagame</a>.")
+
+_RODAPE = ("<b>% completo</b> = cartas do núcleo (mainboard + sideboard de "
+           "consenso, sem terras básicas) que já tens, sobre o total do núcleo do "
+           "arquétipo — o que as decklists reais levam quase sempre; cartas "
+           "<span class=\"sb\">SB</span> são de sideboard. Cada carta em falta "
+           "mostra a imagem da edição a comprar: a que já tens (verde) se tiveres "
+           "algumas, senão a impressão jogável mais barata. Preços: tendência "
+           "Cardmarket (sem gold-border/digitais). O nome do deck vem das cartas "
+           "mais distintivas do arquétipo (a label crua do clustering fica por "
+           "baixo). «Específicas» de um deck = as que mais nenhum deck mostrado "
+           "precisa; as partilhadas estão nos staples do topo. Podes escolher a "
+           "edição de cada carta no seletor — a escolha fica guardada neste "
+           "dispositivo.")
+
+_TMPL = ("""<!doctype html><html lang="pt-PT"><head>"""
+         + shell.head("Cobertura do metagame", _CSS) + """</head><body>"""
+         + shell.abrir("cobertura.html", "Cobertura do metagame", _LEAD) + """
+<div class="wrap">
+<div class="fidx"><div class="seg">%IDX%</div></div>
 %EMERGING%
 <div class="general"><h2>🛒 Staples que te faltam <span class="dim">(servem vários dos decks abaixo · mostrados <b id="gen-shown">%GENSHOWN%</b> de %GENCOST%)</span></h2>
 <div><button id="copyall" class="cp">📋 Copiar wantlist completa (Cardmarket)</button></div>
 <ul class="gl" data-sum="gen-shown">%GEN%</ul>%GENMORE%</div>
 %SECS%
-<footer>% completo = cartas do núcleo (mainboard + sideboard de consenso, sem terras básicas) que já tens, sobre o total do núcleo do arquétipo — o que as decklists reais levam quase sempre; cartas <span class="sb">SB</span> são de sideboard. Cada carta em falta mostra a imagem da edição a comprar: a que já tens (verde) se tiveres algumas, senão a impressão jogável mais barata. Preços: tendência Cardmarket (sem gold-border/digitais). O nome do deck vem das cartas mais distintivas do arquétipo (a label crua do clustering fica por baixo). "Específicas" de um deck = as que mais nenhum deck mostrado precisa; as partilhadas estão nos staples do topo. Podes escolher a edição de cada carta no seletor — a escolha fica guardada neste dispositivo.</footer>
-</div>
+</div>""" + shell.fechar(_RODAPE, """
 <script>
 %JS_DADOS%
 var PRINT=%PRINTS%;
@@ -916,8 +936,7 @@ async function carregaSeccao(sec){
   await Promise.all(pedidos);
   preparar(document);ligarCopiar(document);
 })();
-</script>
-</body></html>"""
+</script>""") + """</body></html>""")
 
 
 def build(con, out_path=None):

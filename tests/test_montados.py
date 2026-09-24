@@ -281,7 +281,13 @@ def caso_os_botoes_certos_em_cada_vista():
 def caso_as_abas_de_cada_deck_ficam_agrupadas():
     """As abas individuais MANTÊM-SE — só passam a vir agrupadas, montadas
     primeiro e com o ponto verde. Antes vinham pela ordem da alocação e a caixa
-    que está na estante aparecia no meio das que ainda não existem."""
+    que está na estante aparecia no meio das que ainda não existem.
+
+    Desde a reestruturação de 2026-09-24 a fila é um ÍNDICE VERTICAL (era uma
+    fila horizontal com scroll), e o rótulo de cada item está num `<span
+    class="vtx">` — o agrupamento e a ordem são os mesmos, e é isso que aqui se
+    tranca.
+    """
     repor()
     con = base()
     abas = _abas(con)
@@ -293,10 +299,11 @@ def caso_as_abas_de_cada_deck_ficam_agrupadas():
     # As abas de deck: montadas primeiro, com o ponto verde; depois as outras.
     ordem = re.findall(r'data-aba="(montada|porconfirmar|perm|cand)"', fila)
     assert ordem == ["montada", "porconfirmar", "perm", "cand"], ordem
-    verdes = re.findall(r'<i class="pin (\w+)"></i>([^<]+)', fila)
+    verdes = re.findall(r'<i class="pin (\w+)"></i><span class="vtx">([^<]+)', fila)
     assert [nm for cls, nm in verdes if cls == "done"] == ["Caixa Montada",
                                                            "Caixa Por Confirmar"], verdes
-    assert fila.count('class="dtsep"') == 2, "faltam os separadores dos grupos"
+    # Os cabeçalhos dos grupos: os dois dos decks mais os das vistas fixas.
+    assert fila.count('class="vgh dtsep"') >= 2, "faltam os separadores dos grupos"
     # E a aba de cada caixa continua a existir e a desenhar, uma por caixa.
     d = _dados(con)
     for c in d["caixas"]:

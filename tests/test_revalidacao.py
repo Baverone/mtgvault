@@ -613,7 +613,8 @@ def caso_a_pagina_nos_dois_modos():
         print("pagina: sem `node`, saltado")
         return
     fila = abas["__fila"]
-    assert "📷 Revalidação" in fila and "por fotografar" in fila, fila
+    assert ('data-aba="revalidacao"' in fila and "Revalidação" in fila
+            and "por fotografar" in fila), fila
     r = abas["revalidacao"]
     assert "A fotografar: Caixa UW Replenish" in r and 'data-rev-parar="1"' in r, r[:2000]
     assert 'data-rev="venda"' in r and 'data-rev="rl"' in r, r[:3000]
@@ -639,7 +640,7 @@ def caso_a_pagina_nos_dois_modos():
     assert "📷 Na caixa — fotografar" in pub["pm"] and "validadas <b>1/3</b>" in pub["pm"]
     for marca in ("data-rev=", "data-rev-parar"):
         assert marca not in pub["pm"] and marca not in pub["revalidacao"], marca
-    assert "📷 Revalidação" in pub["__fila"]
+    assert 'data-aba="revalidacao"' in pub["__fila"]
     assert 'class="tl rev"' in pub["vender"], "a venda marca 📷 também no publicado"
     assert 'class="rvfoto"' in pub["lista:vender"]
     repor()

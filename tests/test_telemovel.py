@@ -195,9 +195,20 @@ def caso_a_casca_aponta_para_o_js_pelo_hash():
     assert v == deckboxes.js_versao() and js == deckboxes.js_texto()
     assert "function render(" not in casca and "function render(" in js
     assert "%JS_DADOS%" not in js and "carregaDados(" in js and "erroDados(" in js
-    # O tamanho é o ganho: 150 KB → ~30 KB (medido na base dele a 2026-09-18).
+    # O TAMANHO é o ganho, e é ele que se tranca: 150 375 bytes antes de
+    # 2026-09-18, 32 377 depois — porque os 123 KB de JavaScript saíram para o
+    # `deckboxes.js`, que é cacheável e hoje já vai em 243 KB.
+    #
+    # O tecto subiu de 60 para 70 KB na reestruturação de 2026-09-24: a casca
+    # ganhou a CASCA PARTILHADA (o CSS do layout e da barra lateral, 11 KB, mais
+    # 3,5 KB da própria barra e 2 KB do JavaScript do menu). Medido: 46 692 →
+    # 64 045 bytes. O que o tecto defende continua intacto — o JavaScript está
+    # fora e é cacheável; o que cresceu foi CSS e markup partilhados por nove
+    # páginas. Se voltar a subir, o passo seguinte é tirar o CSS partilhado para
+    # um `.css` com hash no `?v=`, como se fez ao `.js` (custo: mais um ficheiro
+    # nas duas listas de `git add`, e o site inteiro sem estilo se faltar lá).
     tam = len(casca.encode("utf-8"))
-    assert tam < 60_000, tam
+    assert tam < 70_000, tam
     # Mudar o texto muda o hash — é o que faz o `immutable` ser honesto.
     assert deckboxes.js_versao(js + "\n// x") != v
     # O html_page embute, para os testes lerem de um ficheiro solto.

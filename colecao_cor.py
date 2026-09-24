@@ -25,6 +25,7 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 import classify  # noqa: E402
 import commander_decks  # noqa: E402  (decks de consenso em camadas núcleo/flex/tech)
 from mtgvault import db, loadout, paginas  # noqa: E402
+from mtgvault import site_shell as shell  # noqa: E402
 from mtgvault.collection import jogaveis, owned_playable  # noqa: E402
 
 COLOR = {"W": "Branco", "U": "Azul", "B": "Preto", "R": "Vermelho", "G": "Verde"}
@@ -401,7 +402,8 @@ def build(con, out_path=None):
             continue
         total = sum(x["q"] for rs in pools.values() for x in rs)
         slug = SLUG[b]
-        navs.append(f'<a href="#bind-{slug}">{ICON[b]} {b}</a>')
+        navs.append(f'<a href="#bind-{slug}">{ICON[b]} {b} '
+                    f'<span class="sn">{total}</span></a>')
         secs += (f'<h2 id="bind-{slug}" class="pool">{ICON[b]} {html.escape(b)} '
                  f'<span class="n">{total}</span></h2>')
         for sub, short in _pools():
@@ -410,7 +412,10 @@ def build(con, out_path=None):
                 continue
             secs += f'<h3>{short} <span class="n">{sum(x["q"] for x in rs)}</span></h3>'
             secs += _cmc_grids(rs, b == "Terras")
-    topnav = " · ".join(navs)
+    # O índice das cores: era uma linha de links separados por `·` numa barra
+    # sticky. Passou a controlo segmentado (`.seg`), o mesmo de todas as
+    # páginas — envolve em vez de correr para o lado.
+    topnav = "".join(navs)
 
     # Decks permanentes (só decks). Lista fixa (Blue Farm/Cloud cEDH/Pauper): o deck
     # por inteiro + extras. Consenso (Cloud DC): camadas núcleo/flex/tech.
@@ -429,7 +434,7 @@ def build(con, out_path=None):
 
     wsec = ""
     if wsec_body:
-        topnav += ' · <a href="#vigiados">🃏 Decks montados</a>'
+        topnav += '<a href="#vigiados">🃏 Decks montados</a>'
         wsec = ('<h2 id="vigiados" class="pool">🃏 Decks montados '
                 '<span class="n">só decks — não coleção</span></h2>'
                 '<p class="hint">Lista fixa (Blue Farm, Cloud cEDH, Pauper): o deck por inteiro '
@@ -470,9 +475,7 @@ def build(con, out_path=None):
         f'<div class="vnote">Preço Cardmarket por impressão. A fonte atual dá <b>um só valor</b> por carta '
         f'— o «mínimo» (low) e o «trend» coincidem, por isso mostro um só. (Separá-los precisa de afinar o harvest de preços.)</div></div>')
 
-    out.write_text(_TMPL.replace("%META%", paginas.META)
-                   .replace("%TEMA%", paginas.TEMA)
-                   .replace("%TABS%", paginas.nav("colecao_cor.html"))
+    out.write_text(_TMPL
                    .replace("%SECS%", secs).replace("%VIGIADOS%", wsec)
                    .replace("%VALOR%", valor_html)
                    .replace("%NAV%", topnav).replace("%TOTAL%", str(total_col))
@@ -481,18 +484,17 @@ def build(con, out_path=None):
     return out
 
 
-_TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
-<title>Coleção por cor</title><style>
-%TEMA%
- *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
- .wrap{max-width:1100px;margin:0 auto;padding:20px 14px 60px}
- h1{margin:0 0 2px;font-size:21px} .sub{color:var(--muted);font-size:13px;margin-bottom:6px} .sub a{color:var(--accent)}
- .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0} .tabs a{flex:1;min-width:110px;text-align:center;padding:11px 8px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:600;font-size:14px;transition:.15s} .tabs a:hover{border-color:var(--accent);transform:translateY(-1px)} .tabs a.cur{background:linear-gradient(180deg,#26406f,#1b2c4d);border-color:var(--accent)}
- .nav{position:sticky;top:0;background:var(--bg);padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;z-index:5}
- .nav a{color:var(--accent);margin-right:10px;text-decoration:none}
- h2.pool{font-size:20px;margin:30px 0 2px;padding:6px 10px;border-radius:8px;background:#141b26;border:1px solid var(--line);border-left:4px solid var(--accent)}
- .colnav{font-size:12px;margin:0 0 6px;padding-left:2px} .colnav a{color:var(--accent);margin-right:8px;text-decoration:none}
- h3{font-size:16px;margin:16px 0 4px;border-bottom:2px solid var(--line);padding-bottom:3px}
+_CSS = """
+ .nav{position:sticky;top:var(--sticky);z-index:20;padding:10px 0 12px;margin-bottom:4px;
+   background:linear-gradient(180deg,var(--bg) 78%,transparent)}
+ .nav .seg{max-width:100%}
+ .nav .sn{color:var(--dim);font-weight:600;font-size:11px}
+ h2.pool{font-family:var(--font-hd);font-size:19px;margin:34px 0 4px;padding:9px 13px;
+   border-radius:var(--r);background:var(--card);border:1px solid var(--line);
+   border-left:3px solid var(--accent);scroll-margin-top:calc(var(--sticky) + 58px)}
+ .colnav{font-size:12px;margin:0 0 8px;display:flex;flex-wrap:wrap;gap:4px 10px}
+ .colnav a{color:var(--muted);text-decoration:none} .colnav a:hover{color:var(--accent)}
+ h3{font-size:15px;margin:18px 0 5px;border-bottom:1px solid var(--line);padding-bottom:5px}
  h4{color:var(--muted);font-size:12px;margin:10px 0 4px;text-transform:uppercase;letter-spacing:.04em}
  .n{color:var(--muted);font-size:12px;font-weight:400}
  .grid{display:flex;flex-wrap:wrap;gap:6px}
@@ -514,42 +516,58 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
  .c.miss{opacity:.72} .c.miss img{filter:grayscale(1) brightness(.5)}
  .c .noimg{width:74px;height:103px;border-radius:5px;background:#0c0f14}
  .c .q.pctb{background:#1c2c4a;color:#9cc2ff}
- .tiersep{margin:12px 0 6px;padding:5px 10px;border-radius:7px;background:#141b26;border:1px dashed var(--line);color:var(--muted);font-size:12px;text-align:center;font-weight:600}
+ .tiersep{margin:14px 0 7px;padding:6px 11px;border-radius:9px;background:var(--card);border:1px dashed var(--line2);color:var(--muted);font-size:12px;text-align:center;font-weight:600}
  .mk{position:absolute;bottom:3px;right:3px;font-size:10px;font-weight:700}
  .mk.foil{color:var(--gold);text-shadow:0 0 3px #000} .mk.pt{background:#12351f;color:var(--add);border-radius:4px;padding:0 3px;font-size:9px}
- .tally{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 2px}
- .tally b{display:inline-block;padding:3px 9px;border-radius:20px;font-size:12px;font-weight:600}
- .t-col{background:#16283f;color:#9cc2ff} .t-deck{background:#123020;color:#6ee0a0} .t-sell{background:#3a1516;color:#f0a0a0}
- .tgl{margin-left:auto;font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px;border:1px solid var(--line);background:var(--card);color:var(--muted);cursor:pointer}
- .tgl.on{background:linear-gradient(180deg,#26406f,#1b2c4d);border-color:var(--accent);color:var(--ink)}
- .hint{color:var(--muted);font-size:12px;margin:4px 0 8px}
- .cfg{font-size:12.5px;margin:2px 0 4px;padding:5px 9px;border-radius:7px;background:#141b26;border:1px solid var(--line)}
+ .tally{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+ .tally b{display:inline-block;padding:4px 11px;border-radius:999px;font-size:12px;font-weight:700}
+ .t-col{background:var(--info-soft);color:var(--ob)} .t-deck{background:#0f2a1c;color:var(--add)} .t-sell{background:#3a1516;color:#f0a0a0}
+ .hint{color:var(--muted);font-size:12px;margin:4px 0 10px}
+ .cfg{font-size:12.5px;margin:0 0 14px;padding:10px 13px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);color:var(--ink2)}
  .cfg .muted{color:var(--muted)}
- footer{margin-top:24px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
- .valor{margin-top:10px;background:#0f1620;border:1px solid #242c38;border-radius:12px;padding:11px 14px}
- .valor .vtot{font-size:15px} .valor .vmin{color:#4ac585;font-weight:800;font-size:19px} .valor .vtr{color:#e0b64b;font-weight:800;font-size:19px} .valor .vlbl{color:#8b97a6;font-size:11px} .valor .vall{color:#8b97a6;font-size:12px;margin-left:4px}
- .vtab{border-collapse:collapse;margin:8px 0 3px;font-size:13px} .vtab th{color:#8b97a6;font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;padding:2px 16px 3px 0;text-align:right} .vtab th:first-child{text-align:left} .vtab td{padding:2px 16px 2px 0;text-align:right;font-variant-numeric:tabular-nums} .vtab td:first-child{text-align:left} .vtab td:nth-child(2){color:#4ac585} .vtab td:nth-child(3){color:#e0b64b}
- .vnote{color:#5a6472;font-size:11px;margin-top:3px}
-</style></head><body><div class="wrap">
-<header><h1>📚 Coleção — organizar e fotografar</h1>
-<div class="sub">TUDO o que tens nos baldes de coleção, por cor→custo de mana · nada removido para decks · enche os binders e fotografa o que não aparecer · dados de %TODAY%</div>
-%TABS%
-<div class="tally"><b class="t-col">🔵 %TOTAL% cartas nos binders</b><b class="t-deck">🟢 %DECKN% que vão p/ decks</b><button class="tgl" id="dm" onclick="toggleDM()">🎯 marcar as que vão p/ decks</button></div>
+ .valor{margin:0 0 6px;background:var(--card);border:1px solid var(--line);border-radius:var(--r2);padding:13px 16px}
+ .valor .vtot{font-size:15px} .valor .vmin{color:var(--add);font-weight:800;font-size:19px} .valor .vtr{color:var(--gold);font-weight:800;font-size:19px} .valor .vlbl{color:var(--muted);font-size:11px} .valor .vall{color:var(--muted);font-size:12px;margin-left:4px}
+ .vtab{border-collapse:collapse;margin:9px 0 3px;font-size:13px} .vtab th{color:var(--dim);font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.07em;padding:2px 18px 4px 0;text-align:right} .vtab th:first-child{text-align:left} .vtab td{padding:2px 18px 2px 0;text-align:right;font-variant-numeric:tabular-nums} .vtab td:first-child{text-align:left} .vtab td:nth-child(2){color:var(--add)} .vtab td:nth-child(3){color:var(--gold)}
+ .vnote{color:var(--dim);font-size:11px;margin-top:5px}
+"""
+
+_LEAD = ("TUDO o que tens nos baldes de coleção, por <b>cor → custo de mana</b> — "
+         "nada removido para decks. Enche os binders e fotografa o que não "
+         "aparecer · dados de <b>%TODAY%</b>")
+
+_ACCOES = ('<div class="tally"><b class="t-col">🔵 %TOTAL% nos binders</b>'
+           '<b class="t-deck">🟢 %DECKN% p/ decks</b></div>'
+           '<button class="btn" id="dm" type="button" onclick="toggleDM()">'
+           '🎯 marcar as que vão p/ decks</button>')
+
+_RODAPE = ("<b>Um binder por cor</b>; dentro de cada cor, <b>SPML</b> e "
+           "<b>Premodern</b> separados, cada um por custo de mana (as Terras por "
+           "nome). Mostra <b>TUDO</b> o que tens nesses baldes — nada é removido "
+           "para decks (enche primeiro os binders; os decks vêm depois). Os decks "
+           "montados (Blue Farm, Cloud, etc.) ficam <b>à parte</b>, na secção "
+           "🃏 Decks montados. O número em cada carta é quantas tens; ★ = foil, "
+           "PT = português. <b>Se tiveres uma carta na mão que não aparece — ou "
+           "mais do que o número — ainda não está catalogada: fotografa.</b> O "
+           "botão <b>🎯 marcar as que vão p/ decks</b> sombreia as que já estão "
+           "reservadas a um deck. Atualiza sozinho todos os dias.")
+
+_TMPL = ("""<!doctype html><html lang="pt-PT"><head>"""
+         + shell.head("Coleção por cor", _CSS) + """</head><body>"""
+         + shell.abrir("colecao_cor.html", "Coleção por cor", _LEAD, _ACCOES) + """
+<div class="wrap">
 <div class="cfg">%CFG%</div>
-%VALOR%</header>
-<div class="nav">%NAV%</div>
+%VALOR%
+<div class="nav"><div class="seg">%NAV%</div></div>
 %SECS%
 %VIGIADOS%
-<footer><b>Um binder por cor</b>; dentro de cada cor, <b>SPML</b> e <b>Premodern</b> separados, cada um por custo de mana (as Terras por nome). Mostra <b>TUDO</b> o que tens nesses baldes — nada é removido para decks (enche primeiro os binders; os decks vêm depois). Os decks montados (Blue Farm, Cloud, etc.) ficam <b>à parte</b>, na secção 🃏 Decks montados. O número em cada carta é quantas tens; ★ = foil, PT = português. <b>Se tiveres uma carta na mão que não aparece — ou mais do que o número — ainda não está catalogada: fotografa.</b> O botão <b>🎯 marcar as que vão p/ decks</b> sombreia (mais tarde, quando montares) as que já estão reservadas a um deck. Atualiza sozinho todos os dias.</footer>
-</div>
+</div>""" + shell.fechar(_RODAPE, """
 <script>
 function toggleDM(){var on=document.body.classList.toggle('deckmode');
   var b=document.getElementById('dm');b.classList.toggle('on',on);
   b.textContent=on?'🎯 a sombrear as de decks':'🎯 marcar as que vão p/ decks';
   try{localStorage.setItem('cc_deckmode',on?'1':'');}catch(e){}}
 try{if(localStorage.getItem('cc_deckmode'))toggleDM();}catch(e){}
-</script>
-</body></html>"""
+</script>""") + """</body></html>""")
 
 
 def main():

@@ -54,6 +54,7 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 import meta_coverage as mc  # noqa: E402
 from mtgvault import loadout, paginas, sources  # noqa: E402
+from mtgvault import site_shell as shell  # noqa: E402
 
 # Que formatos aparecem e COMO. É a ordem do André, tal como ele a deu:
 #   'top'    — os N arquétipos que ele está mais perto de concluir (os slots do
@@ -76,7 +77,6 @@ SECOES = [
 # consenso é ruído de um ou dois resultados soltos.
 MIN_LISTS = 8
 
-TABS = paginas.nav("metagame.html")
 
 
 def top_n() -> int:
@@ -590,7 +590,8 @@ def html_page(con, editable=False, token="", ligacao=None) -> str:
 
     subnav, secs = "", ""
     for fmt, titulo, decks, lead in data:
-        subnav += f'<a href="#f-{fmt}">{html.escape(titulo)} {len(decks)}</a>'
+        subnav += (f'<a href="#f-{fmt}">{html.escape(titulo)} '
+                   f'<span class="n">{len(decks)}</span></a>')
         if decks:
             decks[0]["aberto"] = True     # o primeiro de cada formato já aberto
             corpo = "".join(_deck_html(d, imgs, editable) for d in decks)
@@ -608,9 +609,8 @@ def html_page(con, editable=False, token="", ligacao=None) -> str:
     # de o ser (2026-09-21). Sai da mesma lista que desenha as secções.
     tops = [t for _f, t, modo in secoes() if modo == "top"]
     cxs = [t for _f, t, modo in secoes() if modo == "caixas"]
-    return (_TMPL.replace("%META%", paginas.META)
-            .replace("%TEMA%", paginas.TEMA)
-            .replace("%TABS%", TABS).replace("%SUBNAV%", subnav)
+    return (_TMPL
+            .replace("%SUBNAV%", subnav)
             .replace("%SECS%", secs).replace("%N%", str(n))
             .replace("%TOPS%", html.escape(_e_lista(tops)))
             .replace("%CAIXAS%", html.escape(_e_lista(cxs)))
@@ -621,20 +621,19 @@ def html_page(con, editable=False, token="", ligacao=None) -> str:
             .replace("%TODAY%", today))
 
 
-_TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
-<title>Metagame</title><style>
-%TEMA%
- *{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#10141d,#0d1017);color:var(--ink);font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
- .wrap{max-width:1100px;margin:0 auto;padding:22px 14px 60px}
- h1{margin:0;font-size:24px;font-weight:800;letter-spacing:-.02em} .lead{color:var(--muted);font-size:12.5px;margin:2px 0 12px} .lead b{color:#c3cdd9}
- .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0} .tabs a{flex:1;min-width:110px;text-align:center;padding:11px 8px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:600;font-size:14px;transition:.15s} .tabs a:hover{border-color:var(--accent);transform:translateY(-1px)} .tabs a.cur{background:linear-gradient(180deg,#26406f,#1b2c4d);border-color:var(--accent)}
- .subnav{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px} .subnav a{font-size:12px;padding:5px 11px;border-radius:20px;background:#141a24;border:1px solid var(--line);color:var(--muted);text-decoration:none} .subnav a:hover{color:var(--ink);border-color:var(--accent)}
- h2{font-size:14px;margin:24px 0 4px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em} h2 .n{color:#4a5666}
- .vazio{color:#5a6472;font-size:12.5px;background:var(--card);border:1px dashed var(--line);border-radius:12px;padding:12px 14px} .vazio code{background:#0f141c;padding:0 4px;border-radius:4px}
- .deck{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:8px}
+_CSS = """
+ .lead{color:var(--muted);font-size:12.5px;margin:2px 0 12px} .lead b{color:var(--ink2)}
+ .subnav{margin:0 0 16px} .subnav .seg{max-width:100%}
+ h2{font-family:var(--font-hd);font-size:13px;margin:28px 0 5px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;scroll-margin-top:calc(var(--sticky) + 12px)} h2 .n{color:var(--dim)}
+ .deck{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:11px 15px;margin-bottom:8px}
  .deck>summary{cursor:pointer;display:flex;justify-content:space-between;align-items:baseline;gap:10px;list-style:none}
  .deck>summary::-webkit-details-marker{display:none} .deck>summary b{font-size:15px} .deck>summary::before{content:"\\25B8";color:var(--muted);margin-right:6px} .deck[open]>summary::before{content:"\\25BE"}
- .src{color:var(--muted);font-size:11px;margin-left:auto;text-align:right}
+ /* `min-width:0` + `overflow-wrap`: sem eles, *"96 listas que contam ·
+    Argothian Enchantress…"* empurrava o cartão 14 px para fora do ecrã a
+    390 px, e a página inteira ganhava scroll horizontal por causa de uma linha
+    de texto. */
+ .src{color:var(--muted);font-size:11px;margin-left:auto;text-align:right;
+   min-width:0;overflow-wrap:anywhere}
  .cov{font-size:12px;font-weight:700;padding:1px 9px;border-radius:20px;background:#1e2531;flex:none;white-space:nowrap}
  .bar{position:relative;height:8px;background:#0b0e14;border-radius:999px;overflow:hidden;margin:8px 0}
  .bar span{position:absolute;left:0;top:0;bottom:0;border-radius:999px} .bar span.ob{background:#26406f}
@@ -664,20 +663,17 @@ _TMPL = """<!doctype html><html lang="pt-PT"><head>%META%
  .mrk{font-size:10px;font-weight:800;padding:1px 6px;border-radius:5px;background:#2a2410;color:var(--gold)}
  .faltas ul.fl{list-style:none;margin:6px 0 0;padding:0;font-size:12px;column-width:250px;column-gap:22px} .faltas ul.fl li{display:flex;gap:6px;padding:1.5px 0;break-inside:avoid} .faltas ul.fl b{color:var(--gold);font-variant-numeric:tabular-nums}
  .faltas ul.fl .pz{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums}
- .cpbtn{font-size:11px;font-weight:700;padding:3px 11px;border-radius:20px;border:1px solid var(--line);background:#1a2230;color:var(--muted);cursor:pointer} .cpbtn:hover{border-color:var(--accent);color:var(--ink)} .cpbtn.done{background:#123020;border-color:#2f6a45;color:var(--add)}
- .acts{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px;border-top:1px solid var(--line);padding-top:11px}
- .btn{font:inherit;font-size:12px;font-weight:700;padding:7px 13px;border-radius:20px;border:1px solid var(--line);background:#1a2230;color:var(--ink2);cursor:pointer;transition:.12s}
- .btn:hover{border-color:var(--accent);color:#fff} .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
- .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
- .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;z-index:9;background:#1b2c4d;border:1px solid var(--accent);color:#fff;font-size:13px;padding:10px 16px;border-radius:22px;box-shadow:0 8px 26px #0009}
+ .cpbtn{font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;border:1px solid var(--line2);background:var(--card3);color:var(--muted);cursor:pointer} .cpbtn:hover{border-color:var(--accent);color:var(--ink)} .cpbtn.done{background:#0f2a1c;border-color:#2f6a45;color:var(--add)}
+ .acts{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px;border-top:1px solid var(--line);padding-top:12px}
+ .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;z-index:60;background:var(--card3);border:1px solid var(--accent);color:var(--ink);font-size:13px;padding:11px 17px;border-radius:22px;box-shadow:var(--sombra)}
  .cmk{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
- footer{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
-</style></head><body><div class="wrap">
-<header><h1>🌐 Metagame</h1>
-<div class="lead">Os <b>%N%</b> decks que estás mais perto de concluir em cada formato — com a lista de consenso, o que tens livre e o que falta comprar · dados de %TODAY%</div>
-%TABS%<div class="subnav">%SUBNAV%</div></header>
-%SECS%
-<footer><b style="color:var(--add)">Verde</b> = tens a carta livre para esta caixa ·
+"""
+
+_LEAD = ("Os <b>%N%</b> decks que estás mais perto de concluir em cada formato — "
+         "com a lista de consenso, o que tens livre e o que falta comprar · dados "
+         "de <b>%TODAY%</b>")
+
+_RODAPE = ("""<b style="color:var(--add)">Verde</b> = tens a carta livre para esta caixa ·
 <b style="color:var(--warn)">vermelho</b> = não tens livre, é compra. Desde 19/09/2026
 <b>cada deck tem as suas próprias cartas</b>: uma cópia que está noutra caixa do loadout é
 dessa caixa e <b>não conta</b> para esta — compra-se outra. A <b>percentagem</b> do topo é a do
@@ -694,8 +690,15 @@ for reservado por uma sugestão que vai para a venda.
 Regra de material: nesses formatos as cartas são todas <b>foil</b> menos as da Reserved List
 (o preço de fecho é o do foil), e no Premodern são todas <b>PT</b>.
 Quem manda é o <code>colecao_config.json</code> (<code>metagame_top_n</code>, <code>caixas</code>).
-Para o metagame inteiro, com o top-10 ponderado, vê <b>cobertura.html</b>. Atualiza diariamente.</footer>
-</div>
+Para o metagame inteiro, com o top-10 ponderado, vê a <a href="cobertura.html">Cobertura</a>. Atualiza diariamente.""")
+
+_TMPL = ("""<!doctype html><html lang="pt-PT"><head>"""
+         + shell.head("Metagame", _CSS) + """</head><body>"""
+         + shell.abrir("metagame.html", "Metagame", _LEAD) + """
+<div class="wrap">
+<div class="subnav"><div class="seg">%SUBNAV%</div></div>
+%SECS%
+</div>""" + shell.fechar(_RODAPE, """
 <script>
 function cp(btn){
   const c=btn.closest('.faltas'); const t=c&&c.querySelector('textarea.cmk'); if(!t)return;
@@ -731,8 +734,7 @@ function cp(btn){
     };
   }
 })();
-</script>
-</body></html>"""
+</script>""") + """</body></html>""")
 
 
 def main():

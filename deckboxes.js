@@ -263,25 +263,48 @@ async function mudarVista(v) {
 /* ---------------------------------------------------------------- cabeçalho */
 function renderResumo() {
   const r = D.resumo;
-  /* Os dois números à cabeça (André, 2026-09-08: *"quero decks montados num
-     botão específico, e um botão a dizer decks para montar"*). São a mesma
-     conta das duas abas — e vêm do Python (`resumo.montados`/`por_montar`),
-     para o cabeçalho e as vistas nunca poderem discordar. */
+  /* Os números do dia, no cabeçalho da página. Eram UMA frase de cinco linhas
+     («5 montados · 10 para montar · 15 caixas (13 permanentes · 2 candidatas) ·
+     comprar 239 cópias por 7 017,06 € · ir buscar…»), e à frente da estante,
+     no telemóvel, isso é um parágrafo para ler, não um número para ver. Desde a
+     reestruturação de 2026-09-24 são CHIPS: um número por chip, com o rótulo
+     por baixo, e cada um leva à vista que o explica.
+     Os dois primeiros são os de 2026-09-08 (*"quero decks montados num botão
+     específico, e um botão a dizer decks para montar"*) e vêm do Python
+     (`resumo.montados`/`por_montar`) — o cabeçalho e as vistas nunca podem
+     discordar. */
+  const chip = (v, lbl, cor, aba_) =>
+    `<a class="rs" href="#${aba_}" data-aba="${aba_}">`
+    + `<b${cor ? ` style="color:${cor}"` : ''}>${v}</b>`
+    + `<small>${esc(lbl)}</small></a>`;
+  const ir_ = r.nmont + r.nres + r.nfut;
+  let h = chip(r.montados, 'montados', 'var(--add)', 'montados')
+    + chip(r.por_montar, 'para montar', '', 'pormontar')
+    + chip(r.comprar, 'a comprar', 'var(--warn)', 'comprar')
+    + chip(eur(r.custo), 'fechar tudo', 'var(--gold)', 'plano')
+    + chip(r.arrumar, 'a arrumar', '', 'arrumar')
+    + chip(eur(r.venda), 'a vender', 'var(--gold)', 'vender');
+  if (ir_) h += chip(r.nmont, 'ir buscar a outra caixa', 'var(--ob)', 'todas');
   $('#resumo').innerHTML =
-    `<b style="color:var(--add)">${r.montados}</b> montados · `
-    + `<b>${r.por_montar}</b> para montar · `
-    + `${D.caixas.length} caixas (<b>${r.permanentes}</b> permanentes · `
-    + `${r.candidatos} candidatas) · comprar <b>${r.comprar}</b> cópia${pl(r.comprar)} por `
-    + `<b>${eur(r.custo)}</b> · ir buscar a outra caixa <b>${r.nmont}</b> `
-    + `(mais <b>${r.nres}</b> na gaveta destinadas a outra caixa`
-    + (r.nfut ? ` e <b>${r.nfut}</b> por comprar` : '') + `) · `
-    + `arrumar <b>${r.arrumar}</b> · vender <b>${eur(r.venda)}</b>`
+    `<span class="rsl">${h}</span>`
+    + `<span class="dim rsd">${D.caixas.length} caixas — ${r.permanentes} `
+    + `permanentes, ${r.candidatos} candidatas · dados de ${esc(D.gerado)}`
     + (D.editable ? ' · <b style="color:var(--add)">modo edição</b>' : '')
-    + `<br><span class="dim">dados de ${esc(D.gerado)}</span>`;
+    + `</span>`;
+  for (const a of $('#resumo').querySelectorAll('.rs')) {
+    a.onclick = (e) => { e.preventDefault(); ir(a.dataset.aba); };
+  }
 }
 
-function renderTabs() {
-  const nav = $('#decktabs');
+/* O ÍNDICE DAS VISTAS E DAS CAIXAS (reestruturação de 2026-09-24).
+   Era uma fila de até 27 botões com scroll lateral — o *"andar a correr os
+   botões para os lados"* do pedido dele. Agora é uma COLUNA à esquerda do
+   conteúdo, agrupada («Geral», «Fluxo», «Compras e venda», «Decks montados»,
+   «Decks para montar»), e no telemóvel um `<select>` com a mesma lista e os
+   mesmos grupos (`<optgroup>`): a lista inteira abre de uma vez, em vez de
+   deslizar. As duas escrevem-se da MESMA lista (`_filaDeAbas`) — duas listas
+   era a segunda oportunidade de discordarem. */
+function _filaDeAbas() {
   const arr = D.arrumar.copias + ' cópias'
     + (D.arrumar.copias_actualizar ? ` · ${D.arrumar.copias_actualizar} a actualizar`
                                    : '');
@@ -290,36 +313,36 @@ function renderTabs() {
      O subtítulo NÃO leva contagem: o `D.montagem` só tem as caixas com lista, e
      "N por montar" aqui e "M por montar" no botão do lado eram as mesmas
      palavras com dois números — o defeito que os dois botões vêm corrigir. */
-  const fixas = [['plano', '🗺️ Plano', 'por onde começar'],
-                 ['todas', '▦ Todas', ''],
-                 ['montados', '✅ Decks montados',
+  const geral = [['plano', '🗺️', 'Plano', 'por onde começar'],
+                 ['todas', '▦', 'Todas as caixas', D.caixas.length + ' caixas'],
+                 ['montados', '✅', 'Decks montados',
                   D.resumo.montados + (D.resumo.montados === 1 ? ' deck' : ' decks')],
-                 ['pormontar', '🔧 Decks para montar',
-                  D.resumo.por_montar + (D.resumo.por_montar === 1 ? ' deck' : ' decks')],
-                 ['arrumar', '📥 Arrumar', arr],
-                 ['comprar', '🛒 Comprar', D.resumo.comprar + ' cópias'],
+                 ['pormontar', '🔧', 'Decks para montar',
+                  D.resumo.por_montar + (D.resumo.por_montar === 1 ? ' deck' : ' decks')]];
+  const fluxo = [['arrumar', '📥', 'Arrumar', arr]];
+  const compras = [['comprar', '🛒', 'Comprar', D.resumo.comprar + ' cópias'],
                  /* ENCOMENDAS (2026-09-19): o que comprou e ainda não fotografou.
                     Os totais vêm no índice (escalares) — a parte só se pede ao
                     abrir. Está sempre na fila: o «falta encomendar» é a resposta
                     a "o que compro a seguir?", mesmo sem nada a caminho. */
-                 ['encomendas', '📦 Encomendas', encSub()],
-                 ['vender', '💰 Vender', eur(D.resumo.venda)],
+                 ['encomendas', '📦', 'Encomendas', encSub()],
+                 ['vender', '💰', 'Vender', eur(D.resumo.venda)],
                  /* A FEIRA (André, 2026-09-20): o que levo como moeda de troca
                     contra o que quero trazer. Sempre na fila: o «trazer» é o
                     «a comprar» das caixas, que raramente é zero. */
-                 ['feira', '🎒 Feira', feiraSub()]];
+                 ['feira', '🎒', 'Feira', feiraSub()]];
   /* REVALIDAÇÃO POR FOTO (André, 2026-09-20): só com a campanha ligada no
      config (`revalidacao.desde`). O subtítulo é o progresso total — o número
      por que ele sabe quanto falta fotografar. */
   if (D.revalidacao && D.revalidacao.activa) {
     const t = D.revalidacao.total || {};
-    fixas.push(['revalidacao', '📷 Revalidação',
+    fluxo.push(['revalidacao', '📷', 'Revalidação',
                 `${t.pct || 0}% · ${t.por_revalidar || 0} por fotografar`]);
   }
   /* SUGESTÕES: só existe quando há Premodern configurado. Uma aba vazia numa
      fila de vinte é ruído — e sem caixas de Premodern não há pergunta nenhuma. */
   if (D.premodern && D.premodern.activo) {
-    fixas.push(['sugestoes', '💡 Sugestões',
+    geral.push(['sugestoes', '💡', 'Sugestões',
                 D.premodern.sugestoes + ' por decidir']);
   }
   /* PARTILHADAS: desde 2026-09-19 nenhuma caixa partilha cartas ("cada deck
@@ -328,54 +351,67 @@ function renderTabs() {
      ter linhas — uma aba a dizer "0 cartas" numa fila de vinte é ruído. */
   const nPart = D.partilhadas ? D.partilhadas.length : (D.n_partilhadas || 0);
   if (nPart) {
-    fixas.push(['partilhadas', '🔁 Partilhadas', nPart + ' cartas']);
+    fluxo.push(['partilhadas', '🔁', 'Partilhadas', nPart + ' cartas']);
   }
   /* NÃO ENCONTRADAS: pela mesma razão, só quando há alguma. Uma aba vazia a
      dizer "0 cartas" numa fila de vinte é ruído — e enquanto ele não carregar
      no botão, não há pergunta nenhuma para responder aqui. */
   if ((D.nao_encontradas || []).length) {
-    fixas.push(['naoenc', '🔍 Não encontradas',
+    fluxo.push(['naoenc', '🔍', 'Não encontradas',
                 D.nao_encontradas.reduce((s, m) => s + m.q, 0) + ' cópias']);
   }
-  let h = '';
+  /* As caixas ficam AGRUPADAS: montadas primeiro (ponto verde), depois as que
+     faltam montar (André, 2026-09-08: *"para poder separar as coisas"*). Antes
+     vinham pela ordem da alocação, e a caixa que está na estante aparecia no
+     meio das que ainda não existem. O ponto de uma caixa montada é verde por
+     ESTAR montada, não pela percentagem — a percentagem continua no subtítulo,
+     que é onde ela ainda quer dizer alguma coisa. */
+  const daCaixa = c => [c.slot,
+    `<i class="pin ${c.montado ? 'done' : c.vazio ? 'low' : pin(c.pct)}"></i>`,
+    c.nome,
+    (c.vazio ? 'sem deck escolhido' : `${c.pct}% · ${c.tenho}/${c.precisa}`),
+    (c.permanente ? '' : ' cand')];
+  const montadas = D.caixas.filter(c => c.montado).map(daCaixa);
+  const faltam = D.caixas.filter(c => !c.montado).map(daCaixa);
+  const grupos = [['Geral', geral], ['Fluxo', fluxo],
+                  ['Compras e venda', compras]];
+  if (montadas.length) grupos.push(['✅ Decks montados', montadas]);
+  if (faltam.length) grupos.push(['🔧 Decks para montar', faltam]);
+  return grupos;
+}
+
+function renderTabs() {
+  const nav = $('#decktabs'), sel = $('#decksel');
+  const grupos = _filaDeAbas();
   /* `role=tab` + `aria-selected` para o leitor de ecrã dizer qual está aberta,
-     e `tabindex=-1` nas outras: numa fila de 19 abas, o Tab passava por todas
-     antes de chegar ao conteúdo. Andar entre elas é com as setas (ver abaixo),
+     e `tabindex=-1` nas outras: num índice de 27 itens, o Tab passava por todos
+     antes de chegar ao conteúdo. Andar entre eles é com as setas (ver abaixo),
      que é o que o padrão de tablist manda. */
-  const tab = (id, dentro, extra) =>
-    `<button class="dt${aba === id ? ' on' : ''}${extra || ''}" role="tab"`
-    + ` aria-selected="${aba === id}" tabindex="${aba === id ? 0 : -1}"`
-    + ` data-aba="${esc(id)}">${dentro}</button>`;
-  for (const [id, lbl, sub] of fixas) {
-    h += tab(id, lbl + (sub ? `<small>${esc(sub)}</small>` : ''));
+  let h = '', ops = '';
+  for (const [titulo, itens] of grupos) {
+    if (!itens.length) continue;
+    h += `<div class="vgh dtsep">${esc(titulo)}</div>`;
+    ops += `<optgroup label="${esc(titulo)}">`;
+    for (const [id, ic, lbl, sub, extra] of itens) {
+      const on = aba === id;
+      h += `<button class="dt${on ? ' on' : ''}${extra || ''}" role="tab"`
+        + ` aria-selected="${on}" tabindex="${on ? 0 : -1}"`
+        + ` data-aba="${esc(id)}">`
+        + (ic.charAt(0) === '<' ? ic : `<span class="ic" aria-hidden="true">${ic}</span>`)
+        + `<span class="vtx">${esc(lbl)}`
+        + (sub ? `<small>${esc(sub)}</small>` : '') + `</span></button>`;
+      ops += `<option value="${esc(id)}"${on ? ' selected' : ''}>`
+        + `${esc(lbl)}${sub ? ' — ' + esc(sub) : ''}</option>`;
+    }
+    ops += '</optgroup>';
   }
-  /* As abas de cada deck ficam AGRUPADAS: montadas primeiro (ponto verde),
-     depois as que faltam montar (André, 2026-09-08: *"para poder separar as
-     coisas"*). Antes vinham pela ordem da alocação, e a caixa que está na
-     estante aparecia no meio das que ainda não existem. O ponto de uma caixa
-     montada é verde por ESTAR montada, não pela percentagem — a percentagem
-     continua no subtítulo, que é onde ela ainda quer dizer alguma coisa. */
-  const sep = t => `<span class="dtsep" aria-hidden="true">${esc(t)}</span>`;
-  const abaDeCaixa = c => {
-    const p = c.vazio ? '—' : c.pct + '%';
-    return tab(c.slot,
-      `<span><i class="pin ${c.montado ? 'done' : c.vazio ? 'low' : pin(c.pct)}">`
-      + `</i>${esc(c.nome)}</span>`
-      + `<small>${p}${c.vazio ? '' : ` · ${c.tenho}/${c.precisa}`}</small>`,
-      (c.permanente ? '' : ' cand') + (c.montado ? ' mont' : ''));
-  };
-  const montadas = D.caixas.filter(c => c.montado);
-  const faltam = D.caixas.filter(c => !c.montado);
-  if (montadas.length && faltam.length) h += sep('✅ montados');
-  for (const c of montadas) h += abaDeCaixa(c);
-  if (montadas.length && faltam.length) h += sep('🔧 para montar');
-  for (const c of faltam) h += abaDeCaixa(c);
   nav.innerHTML = h;
+  if (sel) { sel.innerHTML = ops; sel.onchange = () => ir(sel.value); }
   const botoes = [...nav.querySelectorAll('.dt')];
   botoes.forEach((b, i) => {
     b.onclick = () => ir(b.dataset.aba);
     b.onkeydown = (e) => {
-      const d = { ArrowRight: 1, ArrowLeft: -1, Home: -i, End: botoes.length - 1 - i };
+      const d = { ArrowDown: 1, ArrowUp: -1, Home: -i, End: botoes.length - 1 - i };
       if (!(e.key in d)) return;
       e.preventDefault();
       ir(botoes[(i + d[e.key] + botoes.length) % botoes.length].dataset.aba);
@@ -384,12 +420,34 @@ function renderTabs() {
     };
   });
   const on = nav.querySelector('.dt.on');
-  if (on) on.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  if (on) on.scrollIntoView({ block: 'nearest' });
 }
 
-function ir(id) {
+function ir(id, doHash) {
   if (id !== aba) procura = '';        /* a procura é da caixa, não da página */
-  aba = id; P.aba = id; save(); renderTabs(); render();
+  aba = id; P.aba = id; save();
+  /* A VISTA VAI PARA O URL (`deckboxes.html#comprar`). É o que torna possível a
+     secção «Compras e venda» da barra lateral apontar para dentro desta página,
+     e o que ele partilha/marca nos favoritos. `replaceState` e não um salto: o
+     `#` a sério fazia o browser procurar um elemento com esse id e rolar. */
+  if (doHash !== false) {
+    try { history.replaceState(null, '', '#' + id); } catch (e) {}
+    if (window.marcaSubVista) window.marcaSubVista();
+  }
+  renderTabs(); render();
+}
+
+/* A aba que o `#` do URL pede, se existir. Uma âncora que não seja vista nenhuma
+   (um `#` velho de um favorito) não muda nada — vale a de sempre. */
+function abaDoHash() {
+  let h = '';
+  try { h = (location.hash || '').replace('#', ''); } catch (e) {}
+  if (!h) return '';
+  const fixas = ['plano', 'todas', 'montados', 'pormontar', 'arrumar', 'comprar',
+                 'encomendas', 'vender', 'feira', 'revalidacao', 'sugestoes',
+                 'partilhadas', 'naoenc'];
+  if (fixas.indexOf(h) >= 0) return h;
+  return (D.caixas || []).some(c => c.slot === h) ? h : '';
 }
 
 /* O subtítulo da aba Encomendas: «2 a caminho · 1 p/ foto», ou o que falta
@@ -4248,7 +4306,18 @@ function iniciar(dados) {
            'revalidacao', 'feira'].includes(aba)) {
     aba = 'plano';
   }
+  /* O `#` do URL GANHA à aba guardada no aparelho: é a única maneira de um link
+     da barra lateral (`deckboxes.html#comprar`) abrir onde diz, e o que ele
+     partilha do telemóvel para o PC. */
+  const doHash = abaDoHash();
+  if (doHash) aba = doHash;
   renderResumo(); renderTabs(); render();
+  /* Voltar atrás no browser, ou tocar noutro item da barra lateral já nesta
+     página, muda só o `#` — sem isto a página ficava na mesma vista. */
+  if (window.addEventListener) window.addEventListener('hashchange', () => {
+    const h = abaDoHash();
+    if (h && h !== aba) ir(h, false);
+  });
 }
 /* Embutido (testes, harness) ou à parte (o site e o modo edição). */
 const embutido = document.getElementById('dados');

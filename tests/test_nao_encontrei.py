@@ -547,7 +547,8 @@ def caso_a_lista_mostra_a_foto_e_o_afinal_encontrei():
     # ganhar — o `+` de uma encomenda chamava o «afinal encontrei».
     assert f'data-encontrei="{star["id"]}"' in html, html[:1500]
     assert "Cloud cEDH" in html, html[:1500]
-    assert "🔍 Não encontradas" in abas["__fila"], abas["__fila"][:600]
+    assert ('data-aba="naoenc"' in abas["__fila"]
+            and "Não encontradas" in abas["__fila"]), abas["__fila"][:600]
 
     pub = _abas(con, False)
     assert "Chromatic Star" in pub["naoenc"], "a lista vê-se no site publicado"

@@ -1,18 +1,20 @@
-"""O que TODAS as páginas do site partilham: o tema e o menu.
+"""O que TODAS as páginas partilham e não é CASCA: cartas, faltas, euros, dados.
 
-Antes, cada gerador escrevia o seu `:root{...}` e o seu `<nav class="tabs">` à
-mão. As consequências apareceram as duas:
+A estrutura — o tema, o menu, o cabeçalho, o rodapé — mudou-se para
+`mtgvault/site_shell.py` na reestruturação de 2026-09-24. O pedido do André era
+*"uma organização diferente [...] ter que andar a correr os botões para os
+lados"*, e a resposta a isso é **uma casca só** para todas as páginas, não um
+menu só: a barra lateral, o cabeçalho com migalhas e a largura do conteúdo têm
+de ser os mesmos em todo o lado, senão passar de uma página para a outra volta a
+ser um salto.
 
-  * o `cobertura.html` ficou com um menu de Agosto — sem **Deckboxes** e sem
-    **Metagame** — porque quem acrescentou as abas novas não se lembrou de lá ir.
-    Uma página órfã não dá erro nenhum: só deixa de se lá chegar;
-  * metade das páginas usava `#0d1017` e a outra metade `#0e1116`, com dois
-    cinzentos de texto diferentes. Passar de uma para a outra no telemóvel dava
-    um salto de cor que não queria dizer nada.
+Aqui ficou o resto, que continua a ser de todos: a cor e o tipo de uma carta, a
+posse total, os blocos de faltas, os euros escritos em português e os DADOS À
+PARTE (`escrever_dados` + `JS_DADOS`).
 
-Por isso o menu e a paleta vivem aqui, e as páginas pedem-nos. Uma aba nova
-entra numa lista só. É a mesma lição do `sources.lista_conta` e do
-`loadout.rotulo_material`: a regra num sítio só.
+O `TEMA` e o `META` continuam a chamar-se o que se chamavam — são um
+reencaminhamento para o `site_shell`, porque o nome está escrito em todos os
+geradores e não tinha nada de errado.
 """
 from __future__ import annotations
 
@@ -27,27 +29,17 @@ from pathlib import Path
 # O filtro de *"esta cópia conta para a colecção"* vive num sítio só (ver
 # `collection.jogaveis`): 'player' e não marcada como NÃO ENCONTRADA.
 from . import collection as _col
+# A CASCA. O import é só neste sentido: o `site_shell` não importa nada do
+# pacote, de propósito — ao contrário seria um ciclo.
+from . import site_shell as _shell
 
-# O menu, pela ordem em que aparece no `index.html`. (ficheiro, ícone, rótulo).
-#
-# A **Deckboxes é a página dos decks** (André, 2026-09-08: *"temos decks vigiados
-# e deckbox que é a mesma coisa"*). A antiga *Decks permanentes*
-# (`meusdecks.html`) saiu do menu na v6: fazia a mesma pergunta e respondia com
-# outro número, porque contava a colecção inteira por deck em vez da alocação. O
-# ficheiro continua a ser gerado, mas só como **reencaminhamento** — os links
-# antigos (e o histórico do telemóvel dele) não podem cair num 404.
-MENU = [
-    ("index.html", "🏠", "Início"),
-    ("deckboxes.html", "🧰", "Deckboxes"),
-    ("metagame.html", "🌐", "Metagame"),
-    ("showcase.html", "🎯", "Showcase Challenger"),
-    ("colecao_cor.html", "📚", "Coleção"),
-    ("caixarl.html", "📦", "Caixa RL"),
-]
-# Páginas que não estão no menu principal mas que devem poder voltar a ele.
-EXTRA = [("cobertura.html", "📊", "Cobertura"),
-         ("reservedlist.html", "🏆", "Reserved List"),
-         ("colecao.html", "🖼️", "Galeria")]
+META = _shell.META
+TEMA = _shell.TEMA
+
+# As páginas a que o menu leva (sem âncora), pela ordem da barra lateral. É uma
+# VISTA do `site_shell.SECCOES`: a lista vive lá, para não haver duas. Era aqui
+# que viviam o `MENU`/`EXTRA` e o `nav()` das barras horizontais.
+MENU = list(_shell.PAGINAS_DO_MENU)
 
 
 def img_map(con, names, da_coleccao: bool = True) -> dict[str, str]:
@@ -386,40 +378,6 @@ function erroDados(el, e) {
 """
 
 
-def nav(atual: str = "", extra: bool = False) -> str:
-    """O menu, com a página `atual` marcada. `extra` acrescenta as secundárias."""
-    itens = MENU + (EXTRA if extra else [])
-    return ('<nav class="tabs">' + "".join(
-        f'<a{" class=\"cur\"" if f == atual else ""} href="{f}">{i} {t}</a>'
-        for f, i, t in itens) + '</nav>')
-
-
-# As duas linhas do `<head>` que mudam a leitura no telemóvel: o `viewport-fit`
-# (para o entalhe do ecrã não comer o conteúdo) e a `theme-color` (a barra do
-# browser deixa de ser branca por cima de uma página escura).
-META = ('<meta charset="utf-8">\n'
-        '<meta name="viewport" content="width=device-width, initial-scale=1, '
-        'viewport-fit=cover">\n'
-        '<meta name="theme-color" content="#0d1017">')
-
-# A paleta. É um SUPERCONJUNTO: tem as variáveis de todas as páginas, para
-# nenhuma ficar sem a sua ao passar a usar este bloco.
-#   --ink2/--dim  são os dois cinzentos abaixo do texto normal (antes cada
-#                 página inventava o seu);
-#   --ob          o azul do "está noutra caixa";
-#   --pt          o azul da etiqueta de Português;
-#   --rem         o vermelho de "saiu da lista" do core_decks.
-#
-# O `--dim` era `#5a6472`: **2,88:1** sobre o `--card`, abaixo do mínimo do WCAG
-# AA (4,5:1) e abaixo até do de texto grande (3:1). É a cor do texto pequeno que
-# explica as coisas — a razão de uma venda, o cabeçalho de uma tabela, o "de que
-# gaveta vem" — e no telemóvel, de dia, não se lia. `#7a8494` dá 4,57:1 sobre o
-# `--card` e 5,03:1 sobre o `--bg`, e continua um degrau abaixo do `--muted`
-# (5,82:1), que é para o que serve.
-TEMA = (
-    " :root{--bg:#0d1017;--card:#161b24;--card2:#12171f;--ink:#eef2f7;"
-    "--ink2:#c3cdd9;--muted:#8b97a6;--dim:#7a8494;--line:#242c38;--line2:#37445a;"
-    "--accent:#5b8cff;--gold:#e0b64b;--add:#4ac585;--warn:#e0704b;--ob:#7fa8ff;"
-    "--pt:#5b8cff;--rem:#ff6b6b}\n"
-    " html{-webkit-text-size-adjust:100%}"
-)
+# O menu, o tema e o `<head>` vivem em `mtgvault/site_shell.py` desde
+# 2026-09-24 (ver o cabeçalho deste ficheiro). O `nav()` que desenhava a barra
+# horizontal de cada página foi-se com eles: agora é `site_shell.barra()`.
