@@ -209,10 +209,12 @@ def caso_uma_foil_sem_preco_foil_vale_o_nonfoil():
     l = linhas["Ethersworn Canonist"]
     assert l["eur"] == 10.67, l
     assert l["est"] == "nonfoil", "a Galeria tem de dizer que é estimativa"
-    # E a que TEM preço no seu acabamento não é estimativa nenhuma.
+    # E a que TEM preço no seu acabamento não é estimativa nenhuma: a chave `est`
+    # nem sequer existe (os dados vão embutidos na página — um `null` por linha
+    # eram 10,7 KB na base dele para marcar três cartas).
     foil = [c for c in collection_gallery._cards(con)
             if c["name"] == "Brainstorm" and c["foil"]][0]
-    assert foil["eur"] == 9.00 and foil["est"] is None, foil
+    assert foil["eur"] == 9.00 and "est" not in foil, foil
     print("uma foil sem preco foil vale o nonfoil, e diz que e estimativa")
 
 

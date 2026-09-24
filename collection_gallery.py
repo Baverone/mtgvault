@@ -70,7 +70,7 @@ def _cards(con):
             WHERE {na_estante()}"""
     ):
         p = precos.get(r["id"], {})
-        rows.append({
+        linha = {
             "name": r["name"] or "(desconhecida)",
             "set": (r["set_code"] or "").upper(),
             "cn": r["cn"] or "",
@@ -80,9 +80,13 @@ def _cards(con):
             "collector": r["purpose"] == "collector",
             "sub": r["sub"],
             "eur": round(p["unit"], 2) if p.get("unit") is not None else None,
-            # O preço veio do OUTRO acabamento: é uma estimativa, e diz-se.
-            "est": p.get("price_finish") if p.get("estimado") else None,
-        })
+        }
+        # O preço veio do OUTRO acabamento: é uma estimativa, e diz-se. A chave só
+        # existe quando é verdade — os dados vão EMBUTIDOS nesta página, e um
+        # `"est": null` em cada uma das 737 linhas eram 10,7 KB para marcar três.
+        if p.get("estimado"):
+            linha["est"] = p["price_finish"]
+        rows.append(linha)
     return rows
 
 
