@@ -33,6 +33,142 @@ e um import ao contrário fazia um ciclo.
 from __future__ import annotations
 
 import html
+import json
+
+# ---------------------------------------------------------------------------
+# OS ÍCONES, num sítio só (2.ª passagem, 2026-09-24)
+# ---------------------------------------------------------------------------
+# *"Troca os emojis da barra lateral, dos atalhos e dos títulos de secção por um
+# conjunto único de ícones SVG em linha (traço 1.8, estilo «outline», cor
+# herdada), iguais em todo o lado."*
+#
+# Porquê SVG e não emoji: um emoji é desenhado pelo SISTEMA, não pela página.
+# O 🧰 do telemóvel dele (Android) e o do Chrome no Windows são dois desenhos
+# diferentes, com pesos e cores diferentes — e o 🗺️ e o 🛡️ levam variação
+# `FE0F`, que em Windows saía a preto-e-branco no meio de ícones a cor. Um
+# conjunto único, com `currentColor` e traço 1.8, é a única forma de a barra
+# lateral se ver igual nos dois sítios e de acender a dourado quando está activa.
+#
+# **Os emojis DENTRO DOS DADOS ficam** (ordem dele, à letra: *"podem ficar se
+# forem informação"*): o ✅/🛒/📷 de uma carta diz o ESTADO dela — é conteúdo,
+# não decoração de navegação.
+#
+# A geometria é a do conjunto Feather (MIT, feathericons.com), redesenhada aqui
+# em `path`s soltos para não trazer uma dependência nem um segundo ficheiro: são
+# ~3 KB dentro de uma casca que já vai embutida.
+_SVG: dict[str, str] = {
+    "inicio": '<path d="M3 9.5 12 2l9 7.5V20a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'
+              '<path d="M9 22V12.5h6V22"/>',
+    "caixas": '<path d="M2.5 3.5h19v5h-19z"/><path d="M4.4 8.5V20a1.5 1.5 0 0 0 '
+              '1.5 1.5h12.2a1.5 1.5 0 0 0 1.5-1.5V8.5"/><path d="M10 12.5h4"/>',
+    "montado": '<path d="M21.5 11.1V12a9.5 9.5 0 1 1-5.6-8.7"/>'
+               '<path d="m8 11.5 3.2 3.2L22 4"/>',
+    "montar": '<path d="M14.6 6.2a1 1 0 0 0 0 1.4l1.8 1.8a1 1 0 0 0 1.4 0l3.6-3.6'
+              'a6 6 0 0 1-7.9 7.9l-6.6 6.6a2.1 2.1 0 1 1-3-3l6.6-6.6a6 6 0 0 1 '
+              '7.9-7.9z"/>',
+    "plano": '<path d="M1.8 6.2 8.4 2.6l7.2 3.6 6.6-3.6v15.2l-6.6 3.6-7.2-3.6'
+             '-6.6 3.6z"/><path d="M8.4 2.6v18.2"/><path d="M15.6 6.2v18"/>',
+    "arrumar": '<path d="M22 12.5h-5.4l-1.8 2.8H9.2l-1.8-2.8H2"/>'
+               '<path d="M5.4 5.1 2 12.5V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.5'
+               'l-3.4-7.4A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.8 1.1z"/>',
+    "binders": '<path d="M12 2.4 2.2 7.2 12 12l9.8-4.8z"/>'
+               '<path d="m2.2 16.8 9.8 4.8 9.8-4.8"/><path d="m2.2 12 9.8 4.8L21.8 12"/>',
+    "galeria": '<rect x="3" y="3" width="18" height="18" rx="2.2"/>'
+               '<circle cx="8.6" cy="8.6" r="1.6"/><path d="m21 15.5-4.8-4.8L5.5 21"/>',
+    "caixarl": '<path d="M16.5 9.4 7.5 4.2"/><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4'
+               'a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 '
+               '2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5"/>'
+               '<path d="M12 22V12"/>',
+    "precos": '<path d="M22.5 6.5 13.8 15.2l-4.6-4.6L1.5 18.3"/>'
+              '<path d="M16.8 6.5h5.7v5.7"/>',
+    "metagame": '<circle cx="12" cy="12" r="9.5"/><path d="M2.5 12h19"/>'
+                '<path d="M12 2.5A14.6 14.6 0 0 1 15.8 12 14.6 14.6 0 0 1 12 21.5'
+                ' 14.6 14.6 0 0 1 8.2 12 14.6 14.6 0 0 1 12 2.5z"/>',
+    "cobertura": '<path d="M12 20.5V9.5"/><path d="M18.2 20.5v-17"/>'
+                 '<path d="M5.8 20.5v-6"/>',
+    "showcase": '<circle cx="12" cy="8.6" r="6.6"/>'
+                '<path d="m8.2 14 -1.2 7.6L12 18.4l5 3.2L15.8 14"/>',
+    "comprar": '<circle cx="9.5" cy="20.5" r="1.3"/><circle cx="19" cy="20.5" r="1.3"/>'
+               '<path d="M1.5 2h3.3l2.5 12.2a1.9 1.9 0 0 0 1.9 1.5h9.2a1.9 1.9 0 0 0 '
+               '1.9-1.5L22.2 6H6.2"/>',
+    "encomendas": '<path d="M1.5 4h13.6v12.4H1.5z"/>'
+                  '<path d="M15.1 8.4h3.9l3.5 3.5v4.5h-7.4z"/>'
+                  '<circle cx="6" cy="19" r="2.2"/><circle cx="18.4" cy="19" r="2.2"/>',
+    "vender": '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L2 12V2h10l8.6 8.6'
+              'a2 2 0 0 1 0 2.8z"/><circle cx="7.2" cy="7.2" r="1.1"/>',
+    "feira": '<rect x="2" y="7.2" width="20" height="13.3" rx="2.2"/>'
+             '<path d="M16 20.5V5.2a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v15.3"/>',
+    "revalidacao": '<path d="M22.5 19a2 2 0 0 1-2 2h-17a2 2 0 0 1-2-2V8.4a2 2 0 0 1 '
+                   '2-2h3.4l1.9-2.9h6.4l1.9 2.9h3.4a2 2 0 0 1 2 2z"/>'
+                   '<circle cx="12" cy="13.4" r="3.8"/>',
+    "sugestoes": '<path d="M13.2 2 3.4 13.8h8.1l-.7 8.2 9.8-11.8h-8.1z"/>',
+    "partilhadas": '<path d="m17 1.5 4 4-4 4"/><path d="M3 11.5v-2a4 4 0 0 1 4-4h14"/>'
+                   '<path d="m7 22.5-4-4 4-4"/><path d="M21 12.5v2a4 4 0 0 1-4 4H3"/>',
+    "procurar": '<circle cx="10.8" cy="10.8" r="7.8"/><path d="m21 21-4.7-4.7"/>',
+    "todas": '<path d="M3.2 3.2h7.2v7.2H3.2z"/><path d="M13.6 3.2h7.2v7.2h-7.2z"/>'
+             '<path d="M13.6 13.6h7.2v7.2h-7.2z"/><path d="M3.2 13.6h7.2v7.2H3.2z"/>',
+    "fechar": '<path d="M4 15.2s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>'
+              '<path d="M4 22v-6.8"/>',
+    "colecao": '<path d="M2 3.5h5.5a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/>'
+               '<path d="M22 3.5h-5.5a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3H22z"/>',
+    "atualizar": '<path d="M22.5 4.2v6h-6"/><path d="M1.5 19.8v-6h6"/>'
+                 '<path d="M4 9.2a8.5 8.5 0 0 1 14-3.2l4.5 4.2"/>'
+                 '<path d="M1.5 13.8 6 18a8.5 8.5 0 0 0 14-3.2"/>',
+    "local": '<path d="M20.5 10.5c0 6.6-8.5 12.4-8.5 12.4S3.5 17.1 3.5 10.5a8.5 8.5 '
+             '0 0 1 17 0z"/><circle cx="12" cy="10.3" r="2.9"/>',
+    "saida": '<path d="M21 15.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3.6"/>'
+             '<path d="m16.8 7.8 -4.8-4.8-4.8 4.8"/><path d="M12 3v12.6"/>',
+    "sideboard": '<path d="M12 22s8-4.1 8-10.2V5.1L12 2 4 5.1v6.7C4 17.9 12 22 12 22z"/>',
+    "emergir": '<path d="M22 12h-4.2l-2.9 8.4L9 3.6 6.1 12H2"/>',
+    "aviso": '<path d="m10.3 3.9-8.5 14.2A2 2 0 0 0 3.5 21h17a2 2 0 0 0 1.7-3L13.7 3.9'
+             'a2 2 0 0 0-3.4 0z"/><path d="M12 9.2v4.2"/><path d="M12 17.2h.01"/>',
+    "nuvem": '<path d="M18 10.2h-1.3A8 8 0 1 0 9 20.2h9a5 5 0 0 0 0-10z"/>',
+    "livro": '<path d="M4 3.5h13a2 2 0 0 1 2 2v15H6a2 2 0 0 1-2-2z"/>'
+             '<path d="M6 16.5h13"/>',
+    "ajuda": '<circle cx="12" cy="12" r="9.5"/>'
+             '<path d="M9.3 9.2a2.8 2.8 0 0 1 5.4.9c0 1.9-2.7 2.8-2.7 2.8"/>'
+             '<path d="M12 17h.01"/>',
+    "menu": '<path d="M3.5 12h17"/><path d="M3.5 6h17"/><path d="M3.5 18h17"/>',
+}
+
+
+# Os tamanhos que o site usa. São CLASSES e não atributos `width`/`height`
+# porque o resto — `fill`, `stroke`, a espessura e as pontas do traço — também
+# vive no CSS: escrito em cada `<svg>`, eram **190 bytes de repetição por
+# ícone**, e a casca da Deckboxes (que leva a barra lateral inteira) passava dos
+# 70 KB que o `test_telemovel` defende. Assim são ~48.
+TAMANHOS = (14, 15, 16, 17, 18, 21, 24)
+
+
+def icone(nome: str, tam: int = 18) -> str:
+    """Um ícone do conjunto, em linha. Cor herdada (`currentColor`), traço 1.8.
+
+    Um nome que não exista devolve **string vazia** e não um quadrado vazio: um
+    ícone a faltar não pode tapar o rótulo que está ao lado dele.
+    """
+    d = _SVG.get(nome)
+    if not d:
+        return ""
+    if tam == 18:
+        cls, sty = "ico", ""
+    elif tam in TAMANHOS:
+        cls, sty = f"ico i{tam}", ""
+    else:                       # um tamanho fora da lista continua a funcionar
+        cls, sty = "ico", f' style="width:{tam}px;height:{tam}px"'
+    return (f'<svg class="{cls}"{sty} viewBox="0 0 24 24" aria-hidden="true">'
+            f'{d}</svg>')
+
+
+def js_icones() -> str:
+    """O MESMO conjunto, para o JavaScript que desenha as vistas da Deckboxes.
+
+    Um segundo conjunto escrito à mão em JS era a segunda oportunidade de os
+    dois discordarem — a lição do `loadout.e_foil` e do `vistoId`.
+    """
+    return ("const ICO = " + json.dumps({n: icone(n) for n in _SVG},
+                                        ensure_ascii=False) + ";\n"
+            "const ico = n => ICO[n] || '';\n")
+
 
 # ---------------------------------------------------------------------------
 # A NAVEGAÇÃO, num sítio só
@@ -42,34 +178,40 @@ import html
 # `location.hash` e abre a aba certa — ver `deckboxes.JS`, `abaDoHash`).
 #
 # A ordem é a do pedido dele: Início, Decks, Coleção, Metagame, Compras e venda.
+#
+# **Os rótulos dizem o que é à primeira leitura** (2.ª passagem, 2026-09-24), e a
+# nota só existe quando ACRESCENTA: *"Por cor · os binders"* eram duas palavras
+# para a mesma coisa em duas linhas, e *"Caixa Reserved List"* logo por cima de
+# *"Reserved List"* obrigava a ler a nota para saber qual era qual. Agora são
+# «Binders por cor», «Reserved List · caixa» e «Reserved List · preços».
 SECCOES: list[tuple[str, list[tuple[str, str, str, str, str]]]] = [
     ("", [
-        ("index.html", "", "◈", "Início", "o painel de hoje"),
+        ("index.html", "", "inicio", "Início", "o painel de hoje"),
     ]),
     ("Decks", [
-        ("deckboxes.html", "", "🧰", "Deck boxes", "as 15 caixas"),
-        ("deckboxes.html", "montados", "✅", "Montados", ""),
-        ("deckboxes.html", "pormontar", "🔧", "Para montar", ""),
-        ("deckboxes.html", "plano", "🗺️", "Plano", "por onde começar"),
-        ("deckboxes.html", "arrumar", "📥", "Arrumar", ""),
+        ("deckboxes.html", "", "caixas", "Deck boxes", "todas as caixas"),
+        ("deckboxes.html", "montados", "montado", "Decks montados", ""),
+        ("deckboxes.html", "pormontar", "montar", "Decks para montar", ""),
+        ("deckboxes.html", "plano", "plano", "Plano de montagem", ""),
+        ("deckboxes.html", "arrumar", "arrumar", "Arrumar cartas", ""),
     ]),
     ("Coleção", [
-        ("colecao_cor.html", "", "📚", "Por cor", "os binders"),
-        ("colecao.html", "", "🖼️", "Galeria", "por sub-coleção"),
-        ("caixarl.html", "", "📦", "Caixa Reserved List", ""),
-        ("reservedlist.html", "", "🏆", "Reserved List", "preços e evolução"),
+        ("colecao_cor.html", "", "binders", "Binders por cor", ""),
+        ("colecao.html", "", "galeria", "Galeria de cartas", ""),
+        ("caixarl.html", "", "caixarl", "Reserved List · caixa", ""),
+        ("reservedlist.html", "", "precos", "Reserved List · preços", ""),
     ]),
     ("Metagame", [
-        ("metagame.html", "", "🌐", "Metagame", "o que estás perto de fechar"),
-        ("cobertura.html", "", "📊", "Cobertura", "o top-10 ponderado"),
-        ("showcase.html", "", "🎯", "Showcase Challenger", "eventos recentes"),
+        ("metagame.html", "", "metagame", "Metagame", "o que estás perto de fechar"),
+        ("cobertura.html", "", "cobertura", "Cobertura do metagame", ""),
+        ("showcase.html", "", "showcase", "Decks Showcase", ""),
     ]),
     ("Compras e venda", [
-        ("deckboxes.html", "comprar", "🛒", "Comprar", ""),
-        ("deckboxes.html", "encomendas", "📦", "Encomendas", "pendente de foto"),
-        ("deckboxes.html", "vender", "💰", "Vender", ""),
-        ("deckboxes.html", "feira", "🎒", "Feira", ""),
-        ("deckboxes.html", "revalidacao", "📷", "Revalidação", ""),
+        ("deckboxes.html", "comprar", "comprar", "Comprar", ""),
+        ("deckboxes.html", "encomendas", "encomendas", "Encomendas", ""),
+        ("deckboxes.html", "vender", "vender", "Vender", ""),
+        ("deckboxes.html", "feira", "feira", "Feira", ""),
+        ("deckboxes.html", "revalidacao", "revalidacao", "Revalidação por foto", ""),
     ]),
 ]
 
@@ -172,6 +314,19 @@ CSS = r"""
    color:var(--accent-ink);padding:10px 16px;border-radius:0 0 10px 0;font-weight:700}
  .salta:focus{left:0}
 
+ /* OS ÍCONES (2.ª passagem, 2026-09-24). Um só conjunto, `currentColor`: o
+    ícone acende com o rótulo quando o item da barra fica activo, o que um emoji
+    — desenhado pelo sistema, com cor própria — nunca fez. */
+ svg.ico{display:inline-block;flex:none;width:18px;height:18px;fill:none;
+   stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;
+   vertical-align:-.16em}
+ svg.i14{width:14px;height:14px} svg.i15{width:15px;height:15px}
+ svg.i16{width:16px;height:16px} svg.i17{width:17px;height:17px}
+ svg.i21{width:21px;height:21px} svg.i24{width:24px;height:24px}
+ .ic>svg.ico{display:block;vertical-align:baseline}
+ h1 svg.ico,h2 svg.ico,h3 svg.ico,h4 svg.ico,summary svg.ico{
+   width:1em;height:1em;vertical-align:-.12em;margin-right:.14em;opacity:.85}
+
  /* ------------------------------------------------------------- estrutura */
  .shell{display:flex;min-height:100vh;align-items:stretch}
  .mainc{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
@@ -205,17 +360,20 @@ CSS = r"""
  .sli{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:10px;
    color:var(--ink2);text-decoration:none;font-size:13.5px;font-weight:600;
    line-height:1.25;min-height:38px;transition:background .12s,color .12s}
- .sli .ic{flex:none;width:19px;text-align:center;font-size:14px;opacity:.9}
+ .sli .ic{flex:none;width:19px;display:flex;align-items:center;justify-content:center;
+   color:var(--muted)}
  .sli .tx{min-width:0}
  .sli .tx small{display:block;color:var(--dim);font-size:11px;font-weight:500;
    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
  .sli:hover{background:var(--card);color:var(--ink)}
+ .sli:hover .ic{color:var(--ink2)}
  .sli.cur{background:var(--accent-soft);color:var(--accent);
    box-shadow:inset 2px 0 0 var(--accent)}
+ .sli.cur .ic{color:var(--accent)}
  .sli.cur .tx small{color:#b9a066}
  .sli.sub{min-height:32px;padding:5px 10px 5px 14px;font-size:12.5px;
    font-weight:500;color:var(--muted)}
- .sli.sub .ic{font-size:12px;width:16px}
+ .sli.sub .ic{width:16px}
  .sli.sub:hover{color:var(--ink)}
  .sli.sub.cur{color:var(--accent);background:var(--accent-soft)}
  .sidept{padding:12px 16px 18px;border-top:1px solid var(--line);color:var(--dim);
@@ -284,11 +442,27 @@ CSS = r"""
  .pgft .pghin{padding-block:18px 30px}
  .pgft b{color:var(--muted)} .pgft a{color:var(--muted)}
  .pgft code{background:var(--bg);padding:1px 5px;border-radius:5px}
+ /* «COMO LER ESTA PÁGINA» (2.ª passagem, 2026-09-24). O rodapé da Deckboxes eram
+    dezoito linhas de explicação abertas no fim de todas as vistas — texto que se
+    lê UMA vez e depois é só distância até ao fim da página. Fechado por
+    omissão, com o `<summary>` a dizer que está lá. */
+ .pgft details.comoler>summary{cursor:pointer;list-style:none;display:inline-flex;
+   align-items:center;gap:7px;color:var(--muted);font-weight:700;font-size:12.5px;
+   padding:7px 12px;border:1px solid var(--line2);border-radius:10px;
+   background:var(--card);min-height:36px}
+ .pgft details.comoler>summary::-webkit-details-marker{display:none}
+ .pgft details.comoler>summary:hover{border-color:var(--accent);color:var(--ink2)}
+ .pgft details.comoler>summary svg.ico{opacity:.9;margin:0}
+ .pgft details.comoler[open]>summary{margin-bottom:12px}
+ .pgft details.comoler .cltx{max-width:92ch}
 
  /* ÍNDICE VERTICAL: a alternativa às filas de botões que corriam para o lado.
     Em ecrã largo fica numa coluna à esquerda do conteúdo; no telemóvel vira um
     `<select>` (é o `vindexHTML` do `deckboxes.js` que o desenha). */
- .comidx{display:grid;grid-template-columns:238px minmax(0,1fr);gap:22px;
+ /* 216 px e não 238 (2.ª passagem, 2026-09-24): o índice deixou de repetir as
+    vistas que já estão na barra lateral e ficou só com os NOMES das caixas —
+    cabem em menos, e o que sobra é largura para o conteúdo. */
+ .comidx{display:grid;grid-template-columns:216px minmax(0,1fr);gap:20px;
    align-items:start}
  .vidx{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow-y:auto;
    scrollbar-width:thin;background:var(--card2);border:1px solid var(--line);
@@ -306,7 +480,9 @@ CSS = r"""
  .vidx .vtx small{display:block;font-size:11px;font-weight:500;color:var(--dim);
    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
  .vidx button.on .vtx small{color:#b9a066}
- .vidx .ic{flex:none;width:18px;text-align:center;font-size:13px}
+ .vidx .ic{flex:none;width:18px;display:flex;align-items:center;justify-content:center;
+   color:var(--muted);font-size:13px}
+ .vidx button.on .ic,.vidx a.on .ic{color:var(--accent)}
  .vidxsel{display:none;margin:0 0 12px}
  .vidxsel .vlbl{display:block;font-size:10px;font-weight:700;letter-spacing:.11em;
    text-transform:uppercase;color:var(--dim);margin-bottom:5px}
@@ -415,7 +591,7 @@ def _item(f: str, ancora: str, ic: str, rot: str, nota: str, atual: str) -> str:
     aria = ' aria-current="page"' if cur else ""
     nt = f'<small>{html.escape(nota)}</small>' if nota else ""
     return (f'<a class="{cls}" href="{href}"{dat}{aria}>'
-            f'<span class="ic" aria-hidden="true">{ic}</span>'
+            f'<span class="ic">{icone(ic, 17 if ancora else 18)}</span>'
             f'<span class="tx">{html.escape(rot)}{nt}</span></a>')
 
 
@@ -474,7 +650,7 @@ def abrir(atual: str, titulo: str, subtitulo: str = "", accoes: str = "",
         '<div class="mainc">'
         '<header class="topbar">'
         '<button class="menub" id="menub" type="button" aria-expanded="false" '
-        'aria-controls="side">☰ <span>Menu</span></button>'
+        'aria-controls="side">' + icone("menu", 17) + '<span>Menu</span></button>'
         f'<span class="tbt">{html.escape(titulo)}</span></header>'
         '<div class="pgh"><div class="pghin">'
         + migalhas(atual, titulo) +
@@ -484,9 +660,31 @@ def abrir(atual: str, titulo: str, subtitulo: str = "", accoes: str = "",
         '<main id="conteudo" tabindex="-1">')
 
 
-def fechar(rodape: str = "", scripts: str = "") -> str:
-    """O fim: fecha o conteúdo, escreve o rodapé e liga o JavaScript da casca."""
-    ft = (f'<footer class="pgft"><div class="pghin">{rodape}</div></footer>'
-          if rodape else "")
+# Acima deste tamanho um rodapé deixa de ser uma nota e passa a ser um texto: o
+# da Deckboxes tem ~1 200 caracteres e era a coisa mais comprida da página
+# depois das cartas. O limiar é generoso de propósito — um rodapé de duas linhas
+# escondido atrás de um botão é pior do que rodapé nenhum.
+RODAPE_LONGO = 320
+
+
+def fechar(rodape: str = "", scripts: str = "", recolher: bool | None = None) -> str:
+    """O fim: fecha o conteúdo, escreve o rodapé e liga o JavaScript da casca.
+
+    *"Rodapés explicativos longos: passa para um bloco «Como ler esta página»
+    recolhível, fechado por defeito"* (André, 2.ª passagem, 2026-09-24). Quem
+    decide é o TAMANHO (`RODAPE_LONGO`), e não cada gerador a lembrar-se — era
+    assim que o `cobertura.html` ficava para trás de cada vez que a casca mudava.
+    `recolher=True/False` força, para quem tenha razão para o fazer.
+    """
+    if not rodape:
+        return '</main></div></div>' + scripts + f'<script>{JS}</script>'
+    longo = len(rodape) > RODAPE_LONGO if recolher is None else recolher
+    if longo:
+        corpo = ('<details class="comoler"><summary>'
+                 + icone("ajuda", 16) + '<span>Como ler esta página</span>'
+                 f'</summary><div class="cltx">{rodape}</div></details>')
+    else:
+        corpo = rodape
+    ft = f'<footer class="pgft"><div class="pghin">{corpo}</div></footer>'
     return ('</main>' + ft + '</div></div>' + scripts
             + f'<script>{JS}</script>')

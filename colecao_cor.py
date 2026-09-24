@@ -303,7 +303,7 @@ def _consensus_tiers_html(con):
         def own(lst):
             return sum(1 for nm, _ in lst if nm.split(" // ")[0] in owned)
         ico = CI_ICON.get(t["ci"], "🌈") if len(t["ci"]) == 1 else ("⚙️" if not t["ci"] else "🌈")
-        out += (f'<h3>☁️ {html.escape(name)} {ico} <span class="n">núcleo {len(t["core"])} '
+        out += (f'<h3>{shell.icone("nuvem")} {html.escape(name)} {ico} <span class="n">núcleo {len(t["core"])} '
                 f'(tens {own(t["core"])}) · flex {len(t["flex"])} (tens {own(t["flex"])}) · '
                 f'tech {len(t["tech"])} (tens {own(t["tech"])}) · de {n} listas</span></h3>')
         out += ('<h4>núcleo (≥50%) — o deck</h4><div class="grid">'

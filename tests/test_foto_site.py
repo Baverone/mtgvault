@@ -592,7 +592,8 @@ def caso_a_pagina_nos_dois_modos():
         rv = abas["revalidacao"]
         assert "Fotos enviadas, à espera" in rv and "site-modern-20260921-101500-1.jpg" in rv
         assert "Modern — UW Oswald" in rv and "largada à mão" in rv, rv[:1500]
-        assert "⚠ Fotos por resolver" in rv and "edicao em falta: Path to Exile" in rv and "IMG_7.jpg" in rv
+        # (o ⚠ passou a ícone SVG na 2.ª passagem de 2026-09-24)
+        assert "Fotos por resolver" in rv and "edicao em falta: Path to Exile" in rv and "IMG_7.jpg" in rv
         assert ('data-foto-site="venda"' in rv) is editable
         assert ('data-foto-site="coleccao"' in rv) is editable
         assert ("blocos de escrita (editavel=" in p.stdout), p.stdout

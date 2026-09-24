@@ -162,6 +162,128 @@ def caso_a_barra_e_a_mesma_no_pc_e_no_telemovel():
 
 
 # ---------------------------------------------------------------------------
+# A 2.ª PASSAGEM (revisão de 2026-09-24): navegação sem duplicação, um conjunto
+# único de ícones, rodapés longos recolhidos e ortografia do Acordo.
+# ---------------------------------------------------------------------------
+def caso_o_indice_da_deckboxes_nao_repete_a_barra_lateral():
+    """*"Hoje há duas colunas de navegação lado a lado (...) tira do índice
+    interno tudo o que já está na barra lateral"*.
+
+    O índice interno é desenhado em JavaScript (`deckboxes._filaDeAbas`), por
+    isso quem aqui se lê é o TEXTO do `deckboxes.js`: as vistas que a barra
+    lateral leva não podem voltar a ser itens do índice. A prova de que o índice
+    desenha mesmo só as caixas está no `test_montados
+    .caso_as_abas_de_cada_deck_ficam_agrupadas`, que corre o JS num `node`.
+    """
+    import deckboxes                                       # noqa: PLC0415
+    js = deckboxes.js_texto()
+    inicio = js.index("function _filaDeAbas()")
+    fim = js.index("function renderTabs()")
+    fila = js[inicio:fim]
+    # As âncoras que a barra lateral já leva
+    da_barra = {a for _sec, itens in shell.SECCOES
+                for f, a, *_r in itens if a and f == "deckboxes.html"}
+    assert da_barra, "a barra deixou de ter sub-vistas da Deckboxes"
+    repetidas = sorted(a for a in da_barra if f"['{a}'," in fila)
+    assert not repetidas, ("o índice interno voltou a repetir a barra lateral",
+                           repetidas)
+    # E o que NÃO está na barra continua a ter por onde se chegar lá.
+    for a in ("todas", "sugestoes", "partilhadas", "naoenc"):
+        assert f"['{a}'," in fila, f"a vista #{a} ficou sem entrada em lado nenhum"
+    print("o indice interno da Deckboxes ficou so com as caixas")
+
+
+def caso_ha_um_so_conjunto_de_icones():
+    """Ícones SVG `outline`, traço 1.8, cor herdada — e o MESMO conjunto no
+    Python e no JavaScript. Dois conjuntos era a segunda oportunidade de
+    discordarem, a lição do `e_foil` e do `vistoId`."""
+    import deckboxes                                       # noqa: PLC0415
+    svg = shell.icone("comprar")
+    assert svg.startswith('<svg class="ico"') and 'viewBox="0 0 24 24"' in svg
+    assert shell.icone("nao-existe-isto") == "", "um nome errado tem de dar vazio"
+    # O traço e a cor herdada vivem no CSS (é o que mantém a casca pequena).
+    for regra in ("stroke:currentColor", "stroke-width:1.8", "fill:none"):
+        assert regra in shell.CSS, regra
+    # O conjunto do JavaScript é gerado do mesmo dicionário.
+    js = deckboxes.js_texto()
+    assert "const ICO = {" in js and "%JS_ICONES%" not in js
+    for nome in ("comprar", "vender", "revalidacao", "arrumar"):
+        assert f'"{nome}": "<svg' in js, nome
+    # E as páginas publicadas usam-nos (a barra lateral leva um por item).
+    for f in _publicadas():
+        txt = (RAIZ / f).read_text(encoding="utf-8", errors="replace")
+        n = txt.count('<svg class="ico')       # «ico» ou «ico i15», «ico i21»…
+        assert n >= 15, (f, n, "a barra lateral perdeu os ícones")
+    print("um so conjunto de icones, no Python e no JavaScript")
+
+
+def caso_a_barra_lateral_nao_tem_emojis():
+    """A navegação é o sítio onde um emoji desenhado pelo sistema mais se nota:
+    o mesmo item tinha um peso no telemóvel dele e outro no Chrome do PC."""
+    emoji = re.compile("[\U0001F300-\U0001FAFF①-➿⬀-⯿☀-⛿]")
+    for f in _publicadas():
+        txt = (RAIZ / f).read_text(encoding="utf-8", errors="replace")
+        i = txt.index('<nav class="sidenav">')
+        nav = txt[i:txt.index("</nav>", i)]
+        achados = sorted(set(emoji.findall(nav)))
+        assert not achados, (f, achados)
+    # E os rótulos dizem o que são à primeira leitura, sem notas redundantes.
+    rotulos = [rot for _s, itens in shell.SECCOES for _f, _a, _i, rot, _n in itens]
+    assert len(rotulos) == len(set(rotulos)), ("dois itens com o mesmo rótulo",
+                                               rotulos)
+    for _sec, itens in shell.SECCOES:
+        for _f, _a, _ic, rot, nota in itens:
+            if nota:
+                assert nota.lower() not in rot.lower(), (rot, nota)
+    print("a barra lateral nao tem emojis, e nenhum rotulo se repete")
+
+
+def caso_os_rodapes_longos_ficam_recolhidos():
+    """*"Rodapés explicativos longos: passa para um bloco «Como ler esta página»
+    recolhível, fechado por defeito."* Quem decide é o TAMANHO, para nenhum
+    gerador ficar para trás."""
+    longo = "x" * (shell.RODAPE_LONGO + 1)
+    h = shell.fechar(longo)
+    assert '<details class="comoler">' in h and "Como ler esta página" in h
+    assert "<details open" not in h and 'class="comoler" open' not in h
+    curto = shell.fechar("uma nota curta")
+    assert "comoler" not in curto and "uma nota curta" in curto
+    # E no HTML publicado: o rodapé da Deckboxes é o caso de que ele se queixou.
+    txt = (RAIZ / "deckboxes.html").read_text(encoding="utf-8", errors="replace")
+    i = txt.index('<footer class="pgft">')
+    rod = txt[i:]
+    assert '<details class="comoler">' in rod, "o rodapé da Deckboxes está aberto"
+    assert "<details class=\"comoler\" open" not in rod
+    print("os rodapes longos ficam num <details> fechado")
+
+
+def caso_a_ortografia_e_a_do_acordo():
+    """*"O site mistura «coleção» e «colecção», «atualizar» e «actualizar»."*
+
+    Lê o HTML PUBLICADO, e só o TEXTO (fora das etiquetas): o `data-act=
+    "actualizar"` é o nome de uma ação que o servidor compara literalmente, e o
+    balde **`Colecção`** é um valor da base de dados — nenhum dos dois é texto
+    que o site escreva, e por isso nenhum dos dois conta aqui.
+    """
+    velhas = re.compile(r"\b(colec[çc][ãõ]\w*|actualiz\w*|ac[çc][ãõ]\w*"
+                        r"|selec[çc][ãõ]\w*|exac[t]\w*|excep[çc]\w*"
+                        r"|correc[çc][ãõ]\w*|projec[çc][ãõ]\w*)", re.I)
+    maus = {}
+    for f in _publicadas():
+        txt = (RAIZ / f).read_text(encoding="utf-8", errors="replace")
+        texto = re.sub(r"<[^>]+>", " ", re.sub(r"(?s)<(script|style)\b.*?</\1>",
+                                               " ", txt))
+        # O balde `Colecção` é um VALOR da base de dados (o nome da gaveta), não
+        # texto que o site escreva: sai da conta enquanto lá estiver.
+        achados = [m for m in velhas.findall(texto)
+                   if m.lower() not in ("colecção",)]
+        if achados:
+            maus[f] = sorted(set(achados))[:8]
+    assert not maus, ("ortografia fora do Acordo no texto visível", maus)
+    print("o texto visivel das paginas publicadas segue o Acordo Ortografico")
+
+
+# ---------------------------------------------------------------------------
 # O caso que mede a sério: um Chrome, duas larguras, zero scroll horizontal.
 # ---------------------------------------------------------------------------
 def caso_nenhuma_pagina_tem_scroll_horizontal():
@@ -185,6 +307,11 @@ def run():
                caso_nenhum_link_interno_esta_partido,
                caso_a_ordem_do_css_da_a_ultima_palavra_a_casca,
                caso_a_barra_e_a_mesma_no_pc_e_no_telemovel,
+               caso_o_indice_da_deckboxes_nao_repete_a_barra_lateral,
+               caso_ha_um_so_conjunto_de_icones,
+               caso_a_barra_lateral_nao_tem_emojis,
+               caso_os_rodapes_longos_ficam_recolhidos,
+               caso_a_ortografia_e_a_do_acordo,
                caso_nenhuma_pagina_tem_scroll_horizontal):
         fn()
     print("\nTUDO OK")

@@ -35,8 +35,11 @@ def caso_o_menu_marca_a_pagina_actual():
     nav = shell.barra("deckboxes.html")
     assert nav.count('class="sli cur"') == 1, nav
     assert 'href="deckboxes.html" aria-current="page"' in nav
-    # E sem página actual não há nenhuma marcada.
-    assert "cur" not in shell.barra("")
+    # E sem página actual não há nenhuma marcada. Procura-se a CLASSE e não a
+    # palavra: desde os ícones SVG da 2.ª passagem (2026-09-24) há um
+    # `stroke="currentColor"` em cada item, e «cur» está lá dentro.
+    assert 'class="sli cur"' not in shell.barra("")
+    assert 'aria-current' not in shell.barra("")
     print("a barra lateral marca a pagina actual, e so uma")
 
 
