@@ -724,7 +724,9 @@ def build_html(rep, today, partes=None):
                     mark = ' <span class="own2">✓ tens</span>' if x["have"] else ""
                     sbli += (f'<li><span class="si">{x["incl"]}%</span> <b>{x["qty"]}×</b> '
                              f'{html.escape(x["name"])}{mark}</li>')
-                sbblock = (f'<details class="sbd"><summary>🛡️ Sideboard típico ({len(sb)})</summary>'
+                sbblock = ('<details class="sbd"><summary>'
+                           + shell.icone("sideboard", 15)
+                           + f' Sideboard típico ({len(sb)})</summary>'
                            f'<div class="sbg">{glink}</div><ul class="sl">{sbli}</ul></details>')
             else:
                 sbblock = f'<div class="sbg">{glink}</div>'
@@ -766,7 +768,7 @@ def build_html(rep, today, partes=None):
             f'<b>{html.escape(e["name"])}</b> <span class="dim">⚖️ {e["score"]} · '
             f'{e["nlists"]} listas de peso · {html.escape(e["ev"] or "")}</span></li>'
             for e in em)
-        emerging_html = ('<section class="emerging"><h2>🌱 Decks a emergir '
+        emerging_html = ('<section class="emerging"><h2>' + shell.icone("emergir") + ' Decks a emergir '
                          '<span class="dim">(fora do top-10, mas em torneios de peso — talvez algo novo)</span>'
                          f'</h2><ul class="eml">{rows}</ul></section>')
 
@@ -848,7 +850,7 @@ _TMPL = ("""<!doctype html><html lang="pt-PT"><head>"""
 <div class="wrap">
 <div class="fidx"><div class="seg">%IDX%</div></div>
 %EMERGING%
-<div class="general"><h2>🛒 Staples que te faltam <span class="dim">(servem vários dos decks abaixo · mostrados <b id="gen-shown">%GENSHOWN%</b> de %GENCOST%)</span></h2>
+<div class="general"><h2>""" + shell.icone("comprar") + """ Staples que te faltam <span class="dim">(servem vários dos decks abaixo · mostrados <b id="gen-shown">%GENSHOWN%</b> de %GENCOST%)</span></h2>
 <div><button id="copyall" class="cp">📋 Copiar wantlist completa (Cardmarket)</button></div>
 <ul class="gl" data-sum="gen-shown">%GEN%</ul>%GENMORE%</div>
 %SECS%

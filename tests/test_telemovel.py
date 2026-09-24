@@ -207,8 +207,15 @@ def caso_a_casca_aponta_para_o_js_pelo_hash():
     # páginas. Se voltar a subir, o passo seguinte é tirar o CSS partilhado para
     # um `.css` com hash no `?v=`, como se fez ao `.js` (custo: mais um ficheiro
     # nas duas listas de `git add`, e o site inteiro sem estilo se faltar lá).
+    #
+    # 2.ª PASSAGEM (2026-09-24): 64 045 → 68 842. Os ~4,8 KB são os 19 ícones
+    # SVG da barra lateral (a decisão de trocar os emojis por um conjunto único)
+    # e o CSS deles. Já estão MAGROS: `fill`, `stroke`, a espessura e as pontas
+    # do traço vivem no CSS e não em cada `<svg>` — escritos em cada um, eram
+    # 190 bytes de repetição por ícone e a casca ia a 71 336. O tecto sobe para
+    # 74 KB, que deixa margem sem deixar de morder.
     tam = len(casca.encode("utf-8"))
-    assert tam < 70_000, tam
+    assert tam < 74_000, tam
     # Mudar o texto muda o hash — é o que faz o `immutable` ser honesto.
     assert deckboxes.js_versao(js + "\n// x") != v
     # O html_page embute, para os testes lerem de um ficheiro solto.

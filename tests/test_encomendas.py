@@ -700,12 +700,17 @@ def caso_o_separador_desenha_nos_dois_modos():
     if r is None:
         print("separador: sem `node`, saltado")
         return
-    abas, _pag = r
-    fila = abas["__fila"]
-    assert ('data-aba="encomendas"' in fila and "Encomendas" in fila
-            and "2 a caminho · 1 p/ foto" in fila), fila
+    abas, pag = r
+    # Desde a 2.ª passagem de 2026-09-24 a Encomendas está na BARRA LATERAL do
+    # site e não no índice interno da página (que ficou só com as caixas): dois
+    # menus iguais lado a lado era o defeito que essa passagem veio corrigir.
+    # O resumo («2 a caminho · 1 p/ foto») passou para o título da vista.
+    assert 'href="deckboxes.html#encomendas"' in pag.read_text(encoding="utf-8"), \
+        "a barra lateral deixou de levar à Encomendas"
     h = abas["encomendas"]
-    assert "📷 Pendentes de foto" in h and "🚚 A caminho" in h and "Falta encomendar" in h
+    assert "2 a caminho · 1 p/ foto" in h, h[:900]
+    # (os emojis dos títulos de bloco passaram a ícones SVG em 2026-09-24)
+    assert "Pendentes de foto" in h and "A caminho" in h and "Falta encomendar" in h
     assert "Force of Will" in h and "Swords to Plowshares" in h
     assert "na base, sem foto" in h and "Brainstorm" in h, h
     assert 'data-chegou="1"' in h and "Chegou (2)" in h, h

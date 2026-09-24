@@ -1123,7 +1123,8 @@ def ler_dados(out_path):
 def js_texto() -> str:
     """O JavaScript inteiro da página — o que vai para `deckboxes.js` e o que o
     `html_page` embute. Uma função, para as duas saídas nunca divergirem."""
-    return JS.replace("%JS_DADOS%", paginas.JS_DADOS)
+    return (JS.replace("%JS_DADOS%", paginas.JS_DADOS)
+              .replace("%JS_ICONES%", shell.js_icones()))
 
 
 def js_versao(texto: str | None = None) -> str:
@@ -1176,7 +1177,7 @@ def redireccionamento(destino="deckboxes.html", titulo="Decks permanentes") -> s
             f'padding:24px}}a{{color:#f5c451}}</style>'
             f'<div><h1>🧰 Mudou de sítio</h1><p>Os decks e as deckboxes passaram '
             f'a ser <b>a mesma página</b>: cada deck é uma caixa, com a lista, o '
-            f'que falta comprar e o que tirar da colecção para o montar.</p>'
+            f'que falta comprar e o que tirar da coleção para o montar.</p>'
             f'<p><a href="{destino}">Ir para as Deckboxes →</a></p></div>')
 
 
@@ -1946,6 +1947,10 @@ _TMPL = ("""<!doctype html><html lang="pt-PT"><head>"""
 # `html_page` (os testes e o harness de node) continua a EMBUTIR este mesmo
 # texto — é uma string só, escrita em dois sítios, e não duas versões.
 JS = r"""%JS_DADOS%
+/* OS ÍCONES: o MESMO conjunto da casca (`site_shell._SVG`), injectado aqui pelo
+   `js_texto()`. Um segundo conjunto escrito à mão em JavaScript era a segunda
+   oportunidade de os dois discordarem — a lição do `e_foil` e do `vistoId`. */
+%JS_ICONES%
 /* OS DADOS (2026-09-15): `D` é o ÍNDICE — o resumo, as caixas sem a grelha, os
    totais das abas. Cada aba pesada e cada caixa têm uma PARTE em
    `data/paginas/deckboxes/`, que o `render()` vai buscar na primeira vez que
@@ -2216,69 +2221,59 @@ function renderResumo() {
   }
 }
 
-/* O ÍNDICE DAS VISTAS E DAS CAIXAS (reestruturação de 2026-09-24).
-   Era uma fila de até 27 botões com scroll lateral — o *"andar a correr os
-   botões para os lados"* do pedido dele. Agora é uma COLUNA à esquerda do
-   conteúdo, agrupada («Geral», «Fluxo», «Compras e venda», «Decks montados»,
-   «Decks para montar»), e no telemóvel um `<select>` com a mesma lista e os
-   mesmos grupos (`<optgroup>`): a lista inteira abre de uma vez, em vez de
-   deslizar. As duas escrevem-se da MESMA lista (`_filaDeAbas`) — duas listas
-   era a segunda oportunidade de discordarem. */
+/* O NOME de cada vista que NÃO é uma caixa. Existe num sítio só porque desde a
+   2.ª passagem (2026-09-24) o índice interno já não as lista — quem lá chega
+   vem da barra lateral do site — e mesmo assim é preciso dizer, no `<select>`
+   do telemóvel, em que vista ele está. */
+const VISTAS = {
+  plano: 'Plano de montagem', todas: 'Todas as caixas',
+  montados: 'Decks montados', pormontar: 'Decks para montar',
+  arrumar: 'Arrumar cartas', comprar: 'Comprar', encomendas: 'Encomendas',
+  vender: 'Vender', feira: 'Feira', revalidacao: 'Revalidação por foto',
+  sugestoes: 'Sugestões de Premodern', partilhadas: 'Cartas partilhadas',
+  naoenc: 'Não encontradas',
+};
+
+/* O ÍNDICE DAS CAIXAS (2.ª passagem, 2026-09-24).
+   Era uma fila de até 27 botões com scroll lateral; a 1.ª passagem fez dela uma
+   COLUNA agrupada («Geral», «Fluxo», «Compras e venda», e depois as caixas) — e
+   a revisão apanhou o defeito que sobrou: essa coluna repetia, palavra por
+   palavra, a barra lateral do site que estava mesmo ao lado dela. **Dois menus
+   iguais lado a lado**, e o conteúdo espremido entre os dois.
+   Agora o índice interno é só o que a barra lateral NÃO tem: **as caixas**, nos
+   dois grupos de 2026-09-08 (*"decks montados num botão específico, e um botão
+   a dizer «decks para montar»"*), com a percentagem, mais «Todas as caixas» à
+   cabeça e — em «Mais vistas» — as três vistas CONDICIONAIS (Sugestões,
+   Partilhadas, Não encontradas), que aparecem e desaparecem conforme os dados e
+   por isso não podem viver numa barra lateral escrita em Python, igual em todas
+   as páginas. Tirá-las daqui sem as pôr em lado nenhum era perdê-las.
+   No telemóvel é o mesmo `<select>`, com os mesmos `<optgroup>` — as duas saem
+   desta lista, que duas listas era a segunda oportunidade de discordarem. */
 function _filaDeAbas() {
-  const arr = D.arrumar.copias + ' cópias'
-    + (D.arrumar.copias_actualizar ? ` · ${D.arrumar.copias_actualizar} a actualizar`
-                                   : '');
-  /* O PLANO à cabeça: é a pergunta dele de 2026-09-08 — "por onde começo?" —
-     e a resposta é uma ordem, não uma lista de caixas por ordem alfabética.
-     O subtítulo NÃO leva contagem: o `D.montagem` só tem as caixas com lista, e
-     "N por montar" aqui e "M por montar" no botão do lado eram as mesmas
-     palavras com dois números — o defeito que os dois botões vêm corrigir. */
-  const geral = [['plano', '🗺️', 'Plano', 'por onde começar'],
-                 ['todas', '▦', 'Todas as caixas', D.caixas.length + ' caixas'],
-                 ['montados', '✅', 'Decks montados',
-                  D.resumo.montados + (D.resumo.montados === 1 ? ' deck' : ' decks')],
-                 ['pormontar', '🔧', 'Decks para montar',
-                  D.resumo.por_montar + (D.resumo.por_montar === 1 ? ' deck' : ' decks')]];
-  const fluxo = [['arrumar', '📥', 'Arrumar', arr]];
-  const compras = [['comprar', '🛒', 'Comprar', D.resumo.comprar + ' cópias'],
-                 /* ENCOMENDAS (2026-09-19): o que comprou e ainda não fotografou.
-                    Os totais vêm no índice (escalares) — a parte só se pede ao
-                    abrir. Está sempre na fila: o «falta encomendar» é a resposta
-                    a "o que compro a seguir?", mesmo sem nada a caminho. */
-                 ['encomendas', '📦', 'Encomendas', encSub()],
-                 ['vender', '💰', 'Vender', eur(D.resumo.venda)],
-                 /* A FEIRA (André, 2026-09-20): o que levo como moeda de troca
-                    contra o que quero trazer. Sempre na fila: o «trazer» é o
-                    «a comprar» das caixas, que raramente é zero. */
-                 ['feira', '🎒', 'Feira', feiraSub()]];
-  /* REVALIDAÇÃO POR FOTO (André, 2026-09-20): só com a campanha ligada no
-     config (`revalidacao.desde`). O subtítulo é o progresso total — o número
-     por que ele sabe quanto falta fotografar. */
-  if (D.revalidacao && D.revalidacao.activa) {
-    const t = D.revalidacao.total || {};
-    fluxo.push(['revalidacao', '📷', 'Revalidação',
-                `${t.pct || 0}% · ${t.por_revalidar || 0} por fotografar`]);
-  }
-  /* SUGESTÕES: só existe quando há Premodern configurado. Uma aba vazia numa
-     fila de vinte é ruído — e sem caixas de Premodern não há pergunta nenhuma. */
+  const geral = [['todas', 'todas', 'Todas as caixas',
+                  D.caixas.length + ' caixas']];
+  /* As três CONDICIONAIS. Ficam no fim, num grupo próprio: não são caixas, mas
+     também não estão na barra lateral. */
+  const mais = [];
+  /* SUGESTÕES: só existe quando há Premodern configurado. Uma vista vazia é
+     ruído — e sem caixas de Premodern não há pergunta nenhuma. */
   if (D.premodern && D.premodern.activo) {
-    geral.push(['sugestoes', '💡', 'Sugestões',
-                D.premodern.sugestoes + ' por decidir']);
+    mais.push(['sugestoes', 'sugestoes', 'Sugestões',
+               D.premodern.sugestoes + ' por decidir']);
   }
   /* PARTILHADAS: desde 2026-09-19 nenhuma caixa partilha cartas ("cada deck
      deverá ter as suas próprias cartas dentro, não repetindo com outros
-     decks!") e a lista é vazia por regra. A aba só aparece se um dia voltar a
-     ter linhas — uma aba a dizer "0 cartas" numa fila de vinte é ruído. */
+     decks!") e a lista é vazia por regra. Só aparece se um dia voltar a ter
+     linhas. */
   const nPart = D.partilhadas ? D.partilhadas.length : (D.n_partilhadas || 0);
   if (nPart) {
-    fluxo.push(['partilhadas', '🔁', 'Partilhadas', nPart + ' cartas']);
+    mais.push(['partilhadas', 'partilhadas', 'Partilhadas', nPart + ' cartas']);
   }
-  /* NÃO ENCONTRADAS: pela mesma razão, só quando há alguma. Uma aba vazia a
-     dizer "0 cartas" numa fila de vinte é ruído — e enquanto ele não carregar
-     no botão, não há pergunta nenhuma para responder aqui. */
+  /* NÃO ENCONTRADAS: pela mesma razão, só quando há alguma — enquanto ele não
+     carregar no botão, não há pergunta nenhuma para responder aqui. */
   if ((D.nao_encontradas || []).length) {
-    fluxo.push(['naoenc', '🔍', 'Não encontradas',
-                D.nao_encontradas.reduce((s, m) => s + m.q, 0) + ' cópias']);
+    mais.push(['naoenc', 'procurar', 'Não encontradas',
+               D.nao_encontradas.reduce((s, m) => s + m.q, 0) + ' cópias']);
   }
   /* As caixas ficam AGRUPADAS: montadas primeiro (ponto verde), depois as que
      faltam montar (André, 2026-09-08: *"para poder separar as coisas"*). Antes
@@ -2293,10 +2288,10 @@ function _filaDeAbas() {
     (c.permanente ? '' : ' cand')];
   const montadas = D.caixas.filter(c => c.montado).map(daCaixa);
   const faltam = D.caixas.filter(c => !c.montado).map(daCaixa);
-  const grupos = [['Geral', geral], ['Fluxo', fluxo],
-                  ['Compras e venda', compras]];
-  if (montadas.length) grupos.push(['✅ Decks montados', montadas]);
-  if (faltam.length) grupos.push(['🔧 Decks para montar', faltam]);
+  const grupos = [['', geral]];
+  if (montadas.length) grupos.push(['Decks montados', montadas]);
+  if (faltam.length) grupos.push(['Decks para montar', faltam]);
+  if (mais.length) grupos.push(['Mais vistas', mais]);
   return grupos;
 }
 
@@ -2307,17 +2302,18 @@ function renderTabs() {
      e `tabindex=-1` nas outras: num índice de 27 itens, o Tab passava por todos
      antes de chegar ao conteúdo. Andar entre eles é com as setas (ver abaixo),
      que é o que o padrão de tablist manda. */
-  let h = '', ops = '';
+  let h = '', ops = '', achou = false;
   for (const [titulo, itens] of grupos) {
     if (!itens.length) continue;
-    h += `<div class="vgh dtsep">${esc(titulo)}</div>`;
-    ops += `<optgroup label="${esc(titulo)}">`;
+    if (titulo) h += `<div class="vgh dtsep">${esc(titulo)}</div>`;
+    ops += `<optgroup label="${esc(titulo || 'Caixas')}">`;
     for (const [id, ic, lbl, sub, extra] of itens) {
       const on = aba === id;
+      if (on) achou = true;
       h += `<button class="dt${on ? ' on' : ''}${extra || ''}" role="tab"`
         + ` aria-selected="${on}" tabindex="${on ? 0 : -1}"`
         + ` data-aba="${esc(id)}">`
-        + (ic.charAt(0) === '<' ? ic : `<span class="ic" aria-hidden="true">${ic}</span>`)
+        + (ic.charAt(0) === '<' ? ic : `<span class="ic">${ico(ic)}</span>`)
         + `<span class="vtx">${esc(lbl)}`
         + (sub ? `<small>${esc(sub)}</small>` : '') + `</span></button>`;
       ops += `<option value="${esc(id)}"${on ? ' selected' : ''}>`
@@ -2326,7 +2322,17 @@ function renderTabs() {
     ops += '</optgroup>';
   }
   nav.innerHTML = h;
-  if (sel) { sel.innerHTML = ops; sel.onchange = () => ir(sel.value); }
+  /* Estando ele numa VISTA (Comprar, Vender, …), nenhuma caixa está marcada — e
+     um `<select>` sem nada seleccionado mostrava a primeira opção, a mentir
+     sobre onde ele está. Uma opção desactivada à cabeça diz a verdade. */
+  if (sel) {
+    if (!achou) {
+      ops = `<option value="" selected disabled>`
+        + `${esc(VISTAS[aba] || 'Vista aberta')}</option>` + ops;
+    }
+    sel.innerHTML = ops;
+    sel.onchange = () => { if (sel.value) ir(sel.value); };
+  }
   const botoes = [...nav.querySelectorAll('.dt')];
   botoes.forEach((b, i) => {
     b.onclick = () => ir(b.dataset.aba);
@@ -2431,7 +2437,7 @@ function cardTile(c) {
     /* "quantas tenho ao todo" — a informação secundária que vinha da página dos
        decks. Secundária de propósito: o número que manda nesta caixa é o da
        alocação, e é ele que está no canto do cartão. */
-    c.col ? `na colecção inteira: ${c.col}` : '',
+    c.col ? `na coleção inteira: ${c.col}` : '',
     c.so_de.length ? 'só da variante ' + c.so_de.join('/') : ''
   ].filter(Boolean).join(' — ');
   /* AS CARTAS EM IMAGEM (2026-09-20): o mesmo tile de todas as secções. O
@@ -2591,7 +2597,7 @@ function tirarFotosHTML(tipo, slot, g) {
 }
 
 const kbs = n => n >= 1e6 ? `${(n / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
-const ORIGEM_NOME = { venda: 'Venda', rl: 'Caixa RL', coleccao: 'Colecção' };
+const ORIGEM_NOME = { venda: 'Venda', rl: 'Caixa RL', coleccao: 'Coleção' };
 function origemFoto(o) {
   if (!o) return 'largada à mão';
   if (o.tipo !== 'caixa') return ORIGEM_NOME[o.tipo] || o.tipo;
@@ -2606,7 +2612,7 @@ function fotosSiteHTML(fotos, comOrigem) {
   const S = (D.revalidacao || {}).site || {};
   if (!fotos || !fotos.length) return '';
   const min = Math.round((S.espera_s || 120) / 60);
-  return `<div class="fsite"><div class="flh">📸 Fotos enviadas, à espera`
+  return `<div class="fsite"><div class="flh">${ico('revalidacao')} Fotos enviadas, à espera`
     + `<span class="dim">${cop(fotos.length)}</span></div>`
     + `<p class="nota">Estão em <code>pendentes\\</code>, à espera da corrida das 02:30 `
     + `ou de <b>⚡ Processar agora</b>. A tarefa (<code>mtg-fotos-novas</code>) só pega numa `
@@ -2640,7 +2646,7 @@ function processarHTML(S) {
    ele voltar a fotografar em vez de esperar por uma corrida que dá o mesmo. */
 function porResolverHTML(lista) {
   if (!lista || !lista.length) return '';
-  return `<details class="vblk rev" open><summary><span>⚠ Fotos por resolver</span>`
+  return `<details class="vblk rev" open><summary><span>${ico('aviso')} Fotos por resolver</span>`
     + `<span class="vtot">${cop(lista.length)}</span></summary>`
     + `<p class="lead">O import passou por estas fotos e não conseguiu ligar ou importar `
     + `todas as linhas — ficaram em <code>pendentes\\</code> com o motivo. Volta a fotografar `
@@ -2658,7 +2664,7 @@ function revCaixaHTML(c) {
   if (!g) return '';
   const falta = (g.linhas || []).filter(l => l.estado === 'foto')
     .reduce((s, l) => s + l.q, 0);
-  return `<div class="blk rev" id="rev"><div class="flh">📷 Na caixa — fotografar`
+  return `<div class="blk rev" id="rev"><div class="flh">${ico('revalidacao')} Na caixa — fotografar`
     + `<span class="dim">${cop(g.q)}</span></div>` + revBarra(g)
     + revBotao('caixa', c.slot, c.nome, g)
     + fotosSiteHTML(g.site, false)
@@ -2674,10 +2680,10 @@ function revCaixaHTML(c) {
    as discrepâncias corrigidas e as cópias novas nesta campanha. */
 function vistaRevalidacao() {
   const R = D.revalidacao;
-  if (!R) return `<h2>📷 Revalidação</h2><p class="empty">A campanha não está ligada `
+  if (!R) return `<h2>${ico('revalidacao')} Revalidação</h2><p class="empty">A campanha não está ligada `
     + `(<code>revalidacao.desde</code> no <code>colecao_config.json</code>).</p>`;
   const T = R.total || {};
-  let h = `<h2>📷 Revalidação por foto</h2>`
+  let h = `<h2>${ico('revalidacao')} Revalidação por foto</h2>`
     + `<p class="lead">Desde <b>${esc(R.desde)}</b> nenhuma cópia está validada até uma `
     + `foto NOVA lhe ser ligada. Vai caixa a caixa: carrega em <b>Fotografar</b>, tira `
     + `as fotos, larga-as em <code>pendentes\\</code>. A corrida das 02:30 liga cada foto `
@@ -2719,20 +2725,24 @@ function vistaRevalidacao() {
     + `<summary><span>${tit}</span><span class="vtot">${g.validadas}/${g.q} validadas</span></summary>`
     + `<p class="lead">${lead}</p>` + revBarra(g) + revBotao(tipo, null, g.nome, g)
     + revLinhas(g.linhas || [], false, MAX_TILES, { tipo, slot: null }) + `</details>`;
-  h += grupo('venda', R.venda, '💰 Venda', 'O que vai vender vai com foto: estas são as '
+  h += grupo('venda', R.venda, ico('vender') + ' Venda',
+             'O que vai vender vai com foto: estas são as '
       + 'cópias da lista de venda de hoje (aba <b>Vender</b>, que também as marca).')
-    + grupo('rl', R.rl, '🔒 Caixa Reserved List', 'A Caixa RL, fora das caixas de deck e da venda.')
-    + grupo('coleccao', R.resto, '🗂️ Colecção (o resto)', 'Tudo o que não está numa caixa, '
+    + grupo('rl', R.rl, ico('caixarl') + ' Caixa Reserved List',
+            'A Caixa RL, fora das caixas de deck e da venda.')
+    + grupo('coleccao', R.resto, ico('colecao') + ' Coleção (o resto)',
+            'Tudo o que não está numa caixa, '
       + 'na venda nem na Caixa RL — no fim, quando as caixas estiverem feitas.');
   const lista = (tit, ls, vazio) => `<details class="vblk rev"><summary><span>${tit}</span>`
     + `<span class="vtot">${cop(ls.reduce((s, l) => s + l.q, 0))}</span></summary>`
     + (ls.length ? revLinhas(ls, false, MAX_TILES) : `<p class="ok2">${vazio}</p>`) + `</details>`;
-  h += lista('📥 Entrou hoje', R.hoje_entradas || [], 'Nada validado hoje.')
-    + lista('⚠ Corrigidas pela foto', R.corrigidas || [],
+  h += lista(ico('arrumar') + ' Entrou hoje', R.hoje_entradas || [],
+             'Nada validado hoje.')
+    + lista(ico('aviso') + ' Corrigidas pela foto', R.corrigidas || [],
             'Nenhuma discrepância até agora.')
-    + lista('🆕 Novas nesta campanha', R.novas || [],
+    + lista(ico('sugestoes') + ' Novas nesta campanha', R.novas || [],
             'Nenhuma carta apareceu nas fotos sem cópia na base.');
-  return h + `<p class="nota">O registo de cada correcção fica em `
+  return h + `<p class="nota">O registo de cada correção fica em `
     + `<code>data\\revalidacao.log</code>; a foto antiga de cada cópia revalidada fica `
     + `em <code>pendentes\\fotos processadas\\</code> e no <code>aplicado.csv</code>.</p>`;
 }
@@ -2773,7 +2783,7 @@ const ESTADO = {
      sobre a caixa: é ela que fica com as cópias antes das outras. */
   permanente: ['perm', '★ permanente — fica com as cartas primeiro'],
   montada: ['ok', '✅ montada'],
-  congelada: ['ok', '🧊 montada e congelada — só mexe para actualizar'],
+  congelada: ['ok', '🧊 montada e congelada — só mexe para atualizar'],
 };
 
 function badges(c) {
@@ -2808,7 +2818,7 @@ function badges(c) {
   if (c.prioridade_por === 'pct' && c.posicao_grupo) {
     h += `<span class="bdg auto" title="Ordem automática dentro do grupo `
       + `${esc(c.grupo || '')}: a caixa mais perto de fechar escolhe as cartas `
-      + `primeiro. A percentagem é a da colecção inteira, antes de alocar`
+      + `primeiro. A percentagem é a da coleção inteira, antes de alocar`
       + (c.pct_coleccao === null ? '' : ` — ${c.pct_coleccao}%`) + `.">`
       + `#${c.posicao_grupo} por % completo</span>`;
   }
@@ -2904,7 +2914,7 @@ function montarHTML(c) {
   /* passo 1 -------------------------------------------------------------- */
   h += `<div class="passo"><div class="ph"><span class="pn">1</span>`
     + `<b>${c.confirmar ? 'Confirmar que está montada com estas cartas'
-                        : 'Tirar da colecção'}</b>`
+                        : 'Tirar da coleção'}</b>`
     + `<span class="dim">${cop(total)}${gav ? ' · ' + gav : ''}</span></div>`
     + (c.confirmar ? `<p class="nota">São as cópias que a alocação dá a esta `
         + `caixa. Se é isto que está lá dentro, um clique regista — e o vault `
@@ -2987,7 +2997,7 @@ function montarHTML(c) {
   if (M.devolver.length) {
     h += `<p class="nota">🔄 E <b>${M.devolver.reduce((s, m) => s + m.q, 0)}</b> `
       + `cópias que estão na caixa e a lista de hoje já não pede — vê a aba `
-      + `<b>Arrumar</b>, secção «actualizar decks montados».</p>`;
+      + `<b>Arrumar</b>, secção «atualizar decks montados».</p>`;
   }
   h += `</div>`;
   /* passo 2 -------------------------------------------------------------- */
@@ -3003,7 +3013,7 @@ function montarHTML(c) {
     + (D.editable && c.wantlist.length
        ? `<p class="nota">Já tens alguma destas em casa? Confirma a edição e dá `
          + `check em <b>«já a tenho, está no deck»</b>: a cópia entra na `
-         + `colecção e nesta caixa, e a linha passa para o passo 1. Se a edição `
+         + `coleção e nesta caixa, e a linha passa para o passo 1. Se a edição `
          + `for palpite, a próxima foto dessa carta acerta-a — não cria outra.</p>`
        : '')
     + (c.noutra ? `<p class="nota">📦 Mais <b>${c.noutra}</b> cópia${pl(c.noutra)} está${pl(c.noutra)} noutra `
@@ -3153,10 +3163,10 @@ function perguntaRegisto(c, e, faltam) {
       + `<p>Ficam <b>${cop(q)}</b> por marcar nesta caixa. O que lhes faço?</p>`
       + `<div class="mb">`
       + `<button class="btn pri" id="m-so">Deixá-las por ir buscar</button>`
-      + `<button class="btn warn" id="m-ne">Não as tenho — tirar da colecção`
+      + `<button class="btn warn" id="m-ne">Não as tenho — tirar da coleção`
       + `</button>`
       + `<button class="btn" id="m-nao">Cancelar</button></div>`
-      + `<p class="nota">«Não as tenho» tira ${cop(q)} da colecção (deixam de `
+      + `<p class="nota">«Não as tenho» tira ${cop(q)} da coleção (deixam de `
       + `contar em lado nenhum) e estas cartas voltam a ser compra. Fica na aba `
       + `«Não encontradas», com a foto, e há «afinal encontrei». A base é `
       + `copiada antes.</p></div>`;
@@ -3269,7 +3279,7 @@ async function naoEncontrei(c, btn, ids, jaPerguntado) {
     if (!porMarcar.length) return;
     const q = porMarcar.reduce((s, i) => s + i.q, 0);
     if (!jaPerguntado && !confirm(`Marcar ${cop(q)} como NÃO ENCONTRADAS?\n\n`
-        + `Saem da colecção (deixam de contar em lado nenhum) e estas cartas `
+        + `Saem da coleção (deixam de contar em lado nenhum) e estas cartas `
         + `voltam a ser compra. Ficam na aba «Não encontradas», com a foto, e há `
         + `«afinal encontrei». A base é copiada antes.`)) return;
     copias = [...new Set(porMarcar.map(i => i.copy))];
@@ -3288,7 +3298,7 @@ async function naoEncontrei(c, btn, ids, jaPerguntado) {
        isso o mesmo endpoint: dois caminhos para desfazer eram duas
        oportunidades de discordarem. Os ids são os das cópias que ficaram
        marcadas — um lote partido dá um id novo, e é esse que se devolve. */
-    aviso(j.msg || 'Fora da colecção.',
+    aviso(j.msg || 'Fora da coleção.',
           (j.copias || []).length ? () => encontrei(j.copias) : null);
   } catch (err) {
     if (btn) btn.disabled = false;
@@ -3302,7 +3312,7 @@ async function encontrei(copias, btn) {
     const r = await gravar('api/caixa', { act: 'encontrei', copias });
     const j = await r.json();
     if (j.erro) throw new Error(j.erro);
-    toast(j.msg || 'De volta à colecção.');
+    toast(j.msg || 'De volta à coleção.');
   } catch (e) {
     if (btn) btn.disabled = false;
     erro('Não deu: ' +e.message);
@@ -3323,7 +3333,7 @@ async function encontrei(copias, btn) {
 function deOutraHTML(M) {
   const bs = M.blocos_de_outra || [];
   if (!bs.length) return '';
-  let h = `<div class="dout"><div class="flh">⚠️ Destinadas a outra caixa`
+  let h = `<div class="dout"><div class="flh">${ico('aviso')} Destinadas a outra caixa`
     + `<span class="dim">${cop(M.copias_de_outra)} · por marcar</span></div>`
     + `<p class="nota">Estas cópias estão na gaveta, como todas as outras — a `
     + `alocação prometeu-as a outra caixa por prioridade, mas essa caixa ainda `
@@ -3369,7 +3379,7 @@ function deOutraHTML(M) {
 function jaNaCaixaHTML(M) {
   const ms = M.por_confirmar || [];
   if (!ms.length) return '';
-  let h = `<div class="jnc"><div class="flh">✓ Já na caixa (disseste que tinhas)`
+  let h = `<div class="jnc"><div class="flh">${ico('montado')} Já na caixa (disseste que tinhas)`
     + `<span class="dim">${cop(M.copias_por_confirmar)} · edição por `
     + `confirmar</span></div>`;
   if (comImagens()) {
@@ -3402,7 +3412,7 @@ function jaNaCaixaHTML(M) {
    estas últimas não têm cópia registada, por isso não têm nada para marcar. */
 function basicasHTML(M) {
   if (!M.basicas || !M.basicas.length) return '';
-  let h = `<div class="bas"><div class="flh">🌱 Terrenos básicos`
+  let h = `<div class="bas"><div class="flh">${ico('binders')} Terrenos básicos`
     + `<span class="dim">${cop(M.basicas_copias)}</span></div><ul class="bl">`;
   for (const b of M.basicas) {
     const det = [];
@@ -3692,7 +3702,7 @@ function wantlistHTML(itens, marca, id, detalhe, basicas, edicao, slot) {
   const comMat = texto(m => `${m.q} ${m.nm}` + (m.mat ? ` [${m.mat}]` : ''));
   const nComp = itens.filter(m => m.q > 0).length;
   const nEnc = itens.length - nComp;
-  return `<div class="blk" id="${id || ''}"><div class="flh">🛒 Comprar`
+  return `<div class="blk" id="${id || ''}"><div class="flh">${ico('comprar')} Comprar`
     + (marca ? ` <span class="mrk">${esc(marca)}</span>` : '')
     + `<span class="dim">${car(nComp)}${nEnc ? ` · ${nEnc} encomendada${pl(nEnc)}` : ''}</span>`
     + `<button class="cpbtn" onclick="copiar(this,'cm')" aria-label="Copiar as `
@@ -3728,7 +3738,7 @@ function candidatosHTML(c) {
           + `aria-label="Vou montar ${esc(x.nome)} nesta caixa">✔ vou montar este`
           + `</button>`) : '')
     + `</span></li>`).join('');
-  return `<div class="blk cand-blk"><div class="flh">🎯 O que estás mais perto de `
+  return `<div class="blk cand-blk"><div class="flh">${ico('showcase')} O que estás mais perto de `
     + `concluir<span class="dim">${lista.length} arquétipos</span></div>`
     + `<ul class="fl">${li}</ul>`
     + `<p class="nota">A lista de cada um está na página `
@@ -3973,7 +3983,7 @@ function caixaHTML(c, compacta) {
       ['montada', c.nmont, '📦 ir buscar a outra caixa',
        'Estas cópias estão sleevadas dentro de outra deckbox — vais lá buscá-las.'],
       ['reservada', c.nres, '🗂️ na gaveta, destinadas a outra caixa',
-       'Estão na colecção, como todas as outras: a alocação prometeu-as a outra '
+       'Estão na coleção, como todas as outras: a alocação prometeu-as a outra '
        + 'caixa por prioridade, mas essa caixa ainda não está montada. Podes '
        + 'tirá-las já no passo 1 — a outra passa a vir buscá-las aqui.'],
       ['futura', c.nfut, '🛒 outra caixa vai comprá-las',
@@ -3998,7 +4008,7 @@ function caixaHTML(c, compacta) {
     const li = c.playset_faltas.map(m => `<li>${esc(m.nm)}`
       + (m.board === 'side' ? ' <span class="dim">(sideboard)</span>' : '')
       + ` — <b>em falta</b>: ${esc(m.txt || `${m.q} não se compra (limite de playset)`)}</li>`).join('');
-    h += `<div class="blk lim"><b>🔒 limite de playset — ${c.bloqueado} `
+    h += `<div class="blk lim"><b>${ico('sideboard')} limite de playset — ${c.bloqueado} `
       + `cópia${pl(c.bloqueado)} em falta que não se ${c.bloqueado === 1 ? 'compra' : 'compram'}</b>`
       + `<p class="nota">Pediste no máximo <b>${cop(c.playset)}</b> de cada `
       + `carta para ${esc(c.grupo || 'este grupo')}, somando todas as caixas. `
@@ -4012,7 +4022,7 @@ function caixaHTML(c, compacta) {
   if ((c.notas_onde || []).length) {
     const li = c.notas_onde.map(m => `<li>${esc(m.nm)} — ${esc(m.nota)}`
       + `<span class="dim"> (compra-se na mesma: cada caixa tem as suas cartas)</span></li>`).join('');
-    h += `<div class="blk onde"><b>ℹ️ tens noutra caixa — ${cop(c.notas_onde.length)}</b>`
+    h += `<div class="blk onde"><b>${ico('local')} tens noutra caixa — ${cop(c.notas_onde.length)}</b>`
       + `<p class="nota">Cada deck tem as suas próprias cartas, sem repetir com `
       + `outros decks (2026-09-19): estas ficam onde estão, e esta caixa compra as dela.</p>`
       + `<ul>${li}</ul></div>`;
@@ -4047,7 +4057,7 @@ function padraoHTML(c) {
   const S = esc(c.slot);
   if (!p) {
     if (!D.editable) return '';
-    return `<div class="blk padrao"><b>📌 Lista padrão</b>`
+    return `<div class="blk padrao"><b>${ico('plano')} Lista padrão</b>`
       + `<p class="nota">Esta caixa segue a fonte (${esc(c.fonte || '?')}: `
       + `${esc(c.ref || '—')}) e a lista pode mudar de um dia para o outro. Fixar `
       + `uma lista padrão congela-a com a data — só muda quando lhe mexeres.</p>`
@@ -4123,7 +4133,7 @@ function reservaHTML(c) {
           + (l.serve ? ' (serve)' : ` (não serve: ${l.porque})`)).join('; ')
       : 'não tens nenhuma'),
   })));
-  return `<div class="blk reserva"><b>🛡️ Reserva (${rows.length}) — ${cop(n)} guardada${n === 1 ? '' : 's'}</b>`
+  return `<div class="blk reserva"><b>${ico('sideboard')} Reserva (${rows.length}) — ${cop(n)} guardada${n === 1 ? '' : 's'}</b>`
     + `<p class="nota">Cartas que poderão entrar nesta caixa. As cópias ficam fora da `
     + `lista de venda e da exportação (bloco «guardar»), sirvam ou não a regra de `
     + `material — para não vender o que depois faz falta.</p>`
@@ -4148,7 +4158,7 @@ function contradicoesHTML(c) {
     + `${esc(m.lang || '')}${m.foil ? ' ✨foil' : ''}</span>`
     + ` × ${m.q} — ${esc(m.porque)}. Tratada como estando em `
     + `<b>${esc(m.onde)}</b>.</li>`).join('');
-  return `<div class="blk onde"><b>⚠️ registada nesta caixa e não pode lá estar `
+  return `<div class="blk onde"><b>${ico('aviso')} registada nesta caixa e não pode lá estar `
     + `— ${cop(rows.reduce((a, m) => a + m.q, 0))}</b>`
     + `<p class="nota">Esta caixa tinha estas cópias registadas lá dentro, mas `
     + `elas não cumprem a regra de material dela. A caixa deixou de contar com `
@@ -4221,7 +4231,7 @@ function cartaoCaixa(c, extra) {
 
 function vistaMontados() {
   const montadas = D.caixas.filter(c => c.montado);
-  let h = `<h2>✅ Decks montados <span class="n">${montadas.length}</span></h2>`;
+  let h = `<h2>${ico('montado')} Decks montados <span class="n">${montadas.length}</span></h2>`;
   if (!montadas.length) {
     return h + `<p class="empty">Ainda não há nenhum deck montado. Vê a aba `
       + `<b>🔧 Decks para montar</b> — ou o <b>🗺️ Plano</b>, que diz por onde `
@@ -4229,7 +4239,7 @@ function vistaMontados() {
   }
   h += `<p class="lead">Estes estão sleevados e na caixa, prontos para ir jogar. `
     + `Clica num para ver a lista carta a carta. As <b>congeladas</b> só mexem `
-    + `para actualizar — o que trocar está na aba <b>Arrumar</b>.</p>`
+    + `para atualizar — o que trocar está na aba <b>Arrumar</b>.</p>`
     + `<div class="grid">`;
   for (const c of montadas) {
     /* A DATA é a da `copy_allocation` (`loadout.datas_de_arrumacao`). Uma caixa
@@ -4265,14 +4275,14 @@ function vistaPorMontar() {
   const perm = naOrdem(falta.filter(c => c.permanente && !c.vazio));
   const cand = naOrdem(falta.filter(c => !c.permanente && !c.vazio));
   const vazias = falta.filter(c => c.vazio);
-  let h = `<h2>🔧 Decks para montar <span class="n">${falta.length}</span></h2>`;
+  let h = `<h2>${ico('montar')} Decks para montar <span class="n">${falta.length}</span></h2>`;
   if (!falta.length) {
     return h + `<p class="empty">Está tudo montado. 🎉</p>`;
   }
   h += `<p class="lead">Por esta ordem: primeiro os <b>permanentes</b> (são eles `
     + `que ficaram com as cartas), depois as <b>candidatas</b>, que só recebem o `
     + `que sobra. <b>Montar</b> abre o passo a passo da caixa: o que tirar da `
-    + `colecção, e só depois o que comprar.</p>`;
+    + `coleção, e só depois o que comprar.</p>`;
   const bloco = (titulo, lista, lead) => {
     if (!lista.length) return '';
     let b = `<h3>${titulo} <span class="n">${lista.length}</span></h3>`
@@ -4350,11 +4360,11 @@ function actualizarHTML() {
     + `<span class="nm">${esc(m.nm)}${edicao(m)}${bloco(m)}</span>`
     + `<span class="to">${verbo} ${seta} ${esc(verbo === 'tirar' ? m.para : m.de)}`
     + `</span></div>`).join('');
-  return `<h2>🔄 Actualizar decks montados <span class="n">${acts.length}</span></h2>`
+  return `<h2>${ico('atualizar')} Atualizar decks montados <span class="n">${acts.length}</span></h2>`
     + `<p class="lead">Caixas <b>dedicadas e montadas</b>: a lista mudou, o deck `
     + `não. Ficam como estão até seres tu a abri-las — o <b>já arrumei tudo</b> `
-    + `não lhes toca. Quando as actualizares, `
-    + (D.editable ? 'carrega em <b>actualizei</b> nessa caixa.'
+    + `não lhes toca. Quando as atualizares, `
+    + (D.editable ? 'carrega em <b>atualizei</b> nessa caixa.'
                   : 'diz-me (ou usa o modo edição, <code>python webapp.py</code>).')
     + `</p>`
     + acts.map(a => `<div class="arr"><div class="arrh"><b>${esc(a.caixa)}</b>`
@@ -4362,7 +4372,7 @@ function actualizarHTML() {
         + `${a.entra.length}</span></div>`
         + lado(a.sai, 'tirar', '→') + lado(a.entra, 'meter', '←')
         + (D.editable ? `<div class="acts"><button class="btn pri" `
-            + `data-act="actualizar" data-slot="${esc(a.slot)}">🔄 Actualizei o `
+            + `data-act="actualizar" data-slot="${esc(a.slot)}">🔄 Atualizei o `
             + `${esc(a.caixa)}</button></div>` : '')
         + `</div>`).join('');
 }
@@ -4371,7 +4381,7 @@ function vistaArrumar() {
   const a = D.arrumar;
   if (!a.linhas) {
     return actualizarHTML()
-      + `<h2>📥 Arrumar</h2><p class="empty">Nada a arrumar: a estante já está `
+      + `<h2>${ico('arrumar')} Arrumar</h2><p class="empty">Nada a arrumar: a estante já está `
       + `igual à alocação. Quando comprares cartas novas (fotos em `
       + `<code>pendentes/</code>) ou mudares uma caixa, isto volta a encher-se.</p>`;
   }
@@ -4421,7 +4431,7 @@ function vistaArrumar() {
     return h;
   };
   return actualizarHTML()
-    + `<h2>📥 Arrumar — ${cop(a.copias)}</h2>`
+    + `<h2>${ico('arrumar')} Arrumar — ${cop(a.copias)}</h2>`
     + `<p class="lead">A diferença entre <b>onde as cartas estão</b> e <b>onde a `
     + `alocação diz que deviam estar</b>. Vai marcando à medida que moves; os `
     + `visto ficam guardados neste aparelho. No fim, <b>já arrumei tudo</b>`
@@ -4441,7 +4451,7 @@ function vistaPartilhadas() {
     /* Desde 2026-09-19 é SEMPRE vazia — "cada deck deverá ter as suas próprias
        cartas dentro, não repetindo com outros decks!" — e a aba nem aparece na
        fila (ver `abas()`). Fica o texto para quem chegar aqui por um link. */
-    return `<h2>🔁 Cartas partilhadas</h2><p class="empty">Nenhuma caixa partilha `
+    return `<h2>${ico('partilhadas')} Cartas partilhadas</h2><p class="empty">Nenhuma caixa partilha `
       + `cartas com outra: desde 19/09/2026 cada deck tem as suas próprias cartas, `
       + `e a caixa que pede uma carta que está noutra caixa compra a dela. O `
       + `«tens N no X» de cada carta está na aba da caixa.</p>`;
@@ -4466,7 +4476,7 @@ function vistaPartilhadas() {
       + (regras ? `<span class="dim creq">${regras}</span>` : '')
       + `</div></div>`;
   }).join('');
-  return `<h2>🔁 Cartas partilhadas entre caixas <span class="n">`
+  return `<h2>${ico('partilhadas')} Cartas partilhadas entre caixas <span class="n">`
     + `${D.partilhadas.length}</span></h2>`
     + `<p class="lead"><b>Só se partilham cópias que cumprem as regras da caixa que `
     + `vai buscar.</b> `
@@ -4514,7 +4524,7 @@ function vistaComprar() {
     + comCompras.map(c => opt(c.slot, c.nome,
         D.compras.filter(m => compraDe(m, c.slot)).length)).join('')
     + `</select></div>`;
-  return `<h2>🛒 Comprar — ${esc(nome)}</h2>`
+  return `<h2>${ico('comprar')} Comprar — ${esc(nome)}</h2>`
     + `<p class="lead">Só o que <b>não existe</b> na coleção, ou existe mas não serve `
     + `na língua/acabamento que a caixa exige. <b>Cada deck tem as suas próprias `
     + `cartas</b> (19/09/2026): uma carta que está noutra caixa compra-se na mesma `
@@ -4577,7 +4587,7 @@ function encTile(t) {
   const est = t.na_base ? 'base' : t.acaminho ? 'enc' : 'pfoto';
   const rot = t.na_base ? (t.por_confirmar ? '📷 edição por confirmar' : 'na base, sem foto')
     : t.acaminho ? '🚚 a caminho' : '📷 pendente de foto';
-  const dest = t.caixa ? `→ <b>${esc(t.caixa)}</b>` : '→ colecção';
+  const dest = t.caixa ? `→ <b>${esc(t.caixa)}</b>` : '→ coleção';
   const tile = {
     nm: t.nm, sid: t.sid, est, q: `×${t.q}`, rot, cls: t.aviso ? 'aviso' : '',
     mat: [t.set, t.foil ? '✨' : '', t.lang],
@@ -4585,7 +4595,7 @@ function encTile(t) {
     nota: `${esc(t.impressao)} · ${dest}` + (t.origem ? ` · ${esc(t.origem)}` : '')
       + (t.aviso ? ` · <span class="ea">⚠️ ${esc(t.aviso)}</span>` : ''),
     acts,
-    tit: `${t.nm} — ${t.q}× ${t.impressao} — ${rot} — ${t.caixa || 'colecção'}`
+    tit: `${t.nm} — ${t.q}× ${t.impressao} — ${rot} — ${t.caixa || 'coleção'}`
       + (t.origem ? ` — ${t.origem}` : '') + (t.aviso ? ` — ⚠️ ${t.aviso}` : ''),
   };
   return tile;
@@ -4602,17 +4612,17 @@ function vistaEncomendas() {
   const porCaixa = (lista) => {
     const g = new Map();
     for (const x of lista) {
-      const k = x.caixa || 'Colecção';
+      const k = x.caixa || 'Coleção';
       if (!g.has(k)) g.set(k, []);
       g.get(k).push(x);
     }
     return [...g.entries()];
   };
-  let h = `<h2>📦 Encomendas</h2>`
+  let h = `<h2>${ico('encomendas')} Encomendas <span class="n">${esc(encSub())}</span></h2>`
     + `<p class="lead"><b>Só a foto cria cópias.</b> O que compras marca-se aqui com o `
     + `<b>+</b> (fica <b>a caminho</b>); quando chega, <b>Chegou</b> (fica `
     + `<b>pendente de foto</b>); quando lhe tiras a foto e a largas em `
-    + `<code>pendentes\\</code>, entra na colecção <b>e na caixa</b> a que a `
+    + `<code>pendentes\\</code>, entra na coleção <b>e na caixa</b> a que a `
     + `encomenda pertencia. Nada disto conta como carta tida — mas já saiu do `
     + `«a comprar» das caixas.</p>`
     + `<div class="nums">`
@@ -4626,14 +4636,14 @@ function vistaEncomendas() {
     + `<div class="num eur">por<b>${eur(t.custo_falta)}</b></div></div>`;
   /* (a) pendentes de foto ------------------------------------------------ */
   const pend = E.pendentes || [];
-  h += `<div class="enc-h"><b>📷 Pendentes de foto</b>`
+  h += `<div class="enc-h"><b>${ico('revalidacao')} Pendentes de foto</b>`
     + `<span>${cop(pend.reduce((s, x) => s + x.q, 0))}</span></div>`;
   if (!pend.length) {
     h += `<p class="ok2">✓ Nada à espera de foto.</p>`;
   } else {
     h += `<div class="enc-nota">Tira a foto a estas cartas e larga-a em `
       + `<code>pendentes\\</code> (ou pela app do GitHub, repo <b>mtg-fotos-novas</b>): `
-      + `entram na colecção na corrida das 02:30 (<code>mtg-fotos-novas</code>) — e `
+      + `entram na coleção na corrida das 02:30 (<code>mtg-fotos-novas</code>) — e `
       + `cada uma vai para a caixa da encomenda. As «na base, sem foto» já são `
       + `cópias: a foto liga-se a elas, não cria outra.</div>`;
     for (const [caixa, lista] of porCaixa(pend)) {
@@ -4644,7 +4654,7 @@ function vistaEncomendas() {
   }
   /* (b) a caminho -------------------------------------------------------- */
   const cam = (E.a_caminho || []).map(x => Object.assign({}, x, { acaminho: true }));
-  h += `<div class="enc-h"><b>🚚 A caminho</b>`
+  h += `<div class="enc-h"><b>${ico('encomendas')} A caminho</b>`
     + `<span>${cop(cam.reduce((s, x) => s + x.q, 0))}`
     + (t.valor_a_caminho ? ` · ${eur(t.valor_a_caminho)}` : '')
     + (t.sem_preco ? ` · ${t.sem_preco} sem preço` : '') + `</span></div>`;
@@ -4661,7 +4671,7 @@ function vistaEncomendas() {
   }
   /* (c) falta encomendar ------------------------------------------------- */
   const falta = E.falta || [];
-  h += `<div class="enc-h"><b>🛒 Falta encomendar</b>`
+  h += `<div class="enc-h"><b>${ico('comprar')} Falta encomendar</b>`
     + `<span>${cop(t.falta_comprar || 0)} · ${eur(t.custo_falta)}</span></div>`
     + `<p class="nota">O «a comprar» de cada caixa <b>depois</b> de descontar o que já `
     + `vem a caminho. É a mesma lista da aba <b>Comprar</b>; aqui está por caixa, `
@@ -4678,7 +4688,7 @@ function vistaEncomendas() {
   /* avisos ------------------------------------------------------------- */
   const av = E.avisos || [];
   if (av.length) {
-    h += `<div class="blk onde"><b>⚠️ encomendas que a caixa já não pede — ${cop(av.reduce((s, a) => s + a.q, 0))}</b>`
+    h += `<div class="blk onde"><b>${ico('aviso')} encomendas que a caixa já não pede — ${cop(av.reduce((s, a) => s + a.q, 0))}</b>`
       + `<p class="nota">A lista vigiada mudou, a carta veio de outro lado, ou a caixa `
       + `saiu do config. Ficam à vista e <b>não descontam noutra caixa</b>: decide `
       + `tu (o <b>−</b> tira-as).</p><ul>`
@@ -4704,7 +4714,7 @@ function basicasComprarHTML(sel) {
     + (b.para || []).map(p => `${esc(p.caixa)} ${p.q}×`).join(' · ')
     + `</small></span><span class="pz">${eur(b.cost)}</span></li>`).join('');
   const txt = bs.map(b => `${b.q} ${b.nm}` + (b.req ? ` [${b.req}]` : '')).join('\n');
-  return `<div class="blk"><div class="flh">🌱 Terrenos básicos`
+  return `<div class="blk"><div class="flh">${ico('binders')} Terrenos básicos`
     + `<span class="dim">${cop(bs.reduce((s, b) => s + b.q, 0))} · `
     + `${eur(bs.reduce((s, b) => s + (b.cost || 0), 0))}</span>`
     + `<button class="cpbtn" onclick="copiar(this,'cm')" aria-label="Copiar as `
@@ -4784,7 +4794,7 @@ function vistaSugestoes() {
   const lista = P2.candidatos.slice().sort((a, b) =>
     (ordem[a.estado] - ordem[b.estado]) || (b.pct_principal - a.pct_principal));
   const sug = lista.filter(c => c.estado === 'sugerida');
-  let h = `<h2>💡 Sugestões de Premodern</h2>`
+  let h = `<h2>${ico('sugestoes')} Sugestões de Premodern</h2>`
     + `<p class="lead">O <b>top-10</b> do formato e os <b>melhores combo</b>, `
     + `pelas listas que contam. A percentagem é a do que está <b>livre</b>: as `
     + `cópias PT (≤SCG) que nenhuma caixa levou. Desde 19/09/2026 <b>cada deck tem `
@@ -4930,7 +4940,7 @@ function vistaVender() {
     .filter(r => r.reason === PM_RAZAO)
     .reduce((a, r) => ({ copias: a.copias + r.q, total: a.total + (r.total || 0) }),
             { copias: 0, total: 0 });
-  return `<h2>💰 Para vender</h2>`
+  return `<h2>${ico('vender')} Para vender</h2>`
     + `<p class="lead"><b>Sugestão a confirmar.</b> Nada sai da coleção sem tu dizeres. `
     + `É o que sobra depois de encher todas as caixas e de guardar o backup: `
     + `<b>4 por carta</b> na coleção (playset, a somar a Coleção e a Caixa RL — não 4 `
@@ -5041,7 +5051,7 @@ function saidaHTML(S, so) {
   const rev = REV_ON();
   /* EM IMAGEM (2026-09-20): a estante por sítio e por cor, em tiles — é a
      lista para ir buscar as cartas, e a imagem é a da cópia exacta. */
-  const grupoHTML = g => `<div class="estg"><h4>📍 ${esc(g.local)}`
+  const grupoHTML = g => `<div class="estg"><h4>${ico('local')} ${esc(g.local)}`
     + `<span>${cop(g.copias)} · ${eur(g.total)}</span></h4>`
     + (comImagens() ? grelhaPorCor(g.linhas, l => ({
         nm: l.nm, sid: l.sid, q: `×${l.q}`, rl: !!l.rl,
@@ -5070,7 +5080,7 @@ function saidaHTML(S, so) {
       + ` — ${esc(l.motivo)}</li>`).join('') + `</ul></details>`;
   const foraTot = (S.fora || []).reduce((a, f) => a + f.copias, 0);
   const foraEur = (S.fora || []).reduce((a, f) => a + (f.total || 0), 0);
-  return `<details class="vblk" id="v-saida" open><summary><span>📤 Saída: para o `
+  return `<details class="vblk" id="v-saida" open><summary><span>${ico('saida')} Saída: para o `
     + `Cardmarket e para a estante${so ? ' — só validadas' : ''}</span><span class="vtot">`
     + `${cop(copias)}${so ? '' : ' · ' + eur(S.total)}</span></summary>`
     + `<p class="lead">O que entra: o <b>excedente normal</b> e a <b>Reserved List `
@@ -5177,14 +5187,14 @@ function vistaNaoEncontradas() {
   const ms = D.nao_encontradas || [];
   const q = ms.reduce((s, m) => s + m.q, 0);
   const val = ms.reduce((s, m) => s + (m.total || 0), 0);
-  let h = `<h2>🔍 Não encontradas</h2>`
+  let h = `<h2>${ico('procurar')} Não encontradas</h2>`
     + `<p class="lead">Cartas que o vault tinha como tuas e que <b>não estavam `
-    + `na estante</b> quando as foste buscar. Estão fora da colecção — não `
+    + `na estante</b> quando as foste buscar. Estão fora da coleção — não `
     + `contam para nenhuma caixa nem para a venda — e voltaram a ser compra. `
     + `<b>Nada foi apagado</b>: se aparecerem, o «afinal encontrei» põe tudo `
     + `como estava.</p>`
     + `<p class="tot"><b>${cop(q)}</b> em <b>${ms.length}</b> linha${pl(ms.length)}`
-    + (val ? ` · ${eur(val)} de valor fora da colecção` : '') + `</p>`;
+    + (val ? ` · ${eur(val)} de valor fora da coleção` : '') + `</p>`;
   if (!ms.length) {
     return h + `<p class="ok2">✓ Nada por encontrar.</p>`;
   }
@@ -5370,7 +5380,7 @@ function feiraTrazerHTML(F) {
     h += `<div class="pform" role="group" aria-label="Acrescentar à wantlist">`
       + `<input class="nm" id="feira-wl-nome" placeholder="carta (nome em inglês)" autocomplete="off">`
       + `<input class="q" id="feira-wl-q" type="number" min="1" value="1" aria-label="quantas">`
-      + `<select id="feira-wl-slot" aria-label="para que caixa"><option value="">— colecção —</option>${caixas}</select>`
+      + `<select id="feira-wl-slot" aria-label="para que caixa"><option value="">— coleção —</option>${caixas}</select>`
       + `<select id="feira-wl-lang" aria-label="língua"><option value="">língua da caixa</option>`
       + `<option value="pt">PT</option><option value="en">EN</option></select>`
       + `<select id="feira-wl-finish" aria-label="acabamento"><option value="">acabamento da caixa</option>`
@@ -5475,11 +5485,11 @@ function feiraVendorsHTML(F) {
 
 function vistaFeira() {
   const F = D.feira;
-  if (!F) return `<h2>🎒 Feira</h2><p class="empty">Sem dados da feira.</p>`;
+  if (!F) return `<h2>${ico('feira')} Feira</h2><p class="empty">Sem dados da feira.</p>`;
   const L = F.levar || {}, T = F.trazer || {}, S = F.saldo || {};
   const sal = (v, tit, sub) => `<div class="num sal ${v >= 0 ? 'pos' : 'neg'}">${tit}<b>`
     + `${v >= 0 ? '+' : '−'}${eur(Math.abs(v))}</b>${sub ? `<span class="dim">${sub}</span>` : ''}</div>`;
-  let h = `<div class="feira"><h2>🎒 Feira: moeda de troca vs. o que quero trazer</h2>`
+  let h = `<div class="feira"><h2>${ico('feira')} Feira: moeda de troca vs. o que quero trazer <span class="n">${esc(feiraSub())}</span></h2>`
     + `<p class="lead"><i>"fazemos logo uma projeção do que vou levar como moeda de troca para o que `
     + `quero trazer"</i> (20/09/2026). <b>Levar</b> é a lista de venda de hoje; <b>trazer</b> é o `
     + `que falta às caixas mais a tua wantlist. O saldo diz se a moeda chega, ao Trend e às `
@@ -5515,7 +5525,7 @@ function vistaFeira() {
         + `<td class="pz dim">${c.pct_da_troca == null ? '—' : c.pct_da_troca + ' %'}</td></tr>`).join('')
       + `</tbody></table></details>`;
   }
-  return h + `<p class="nota">Pelo terminal: <code>py -m mtgvault.cli feira</code> (a projecção) e `
+  return h + `<p class="nota">Pelo terminal: <code>py -m mtgvault.cli feira</code> (a projeção) e `
     + `<code>feira wantlist add|remover|listar</code>. Tudo o que aqui se marca fica no `
     + `<code>colecao_config.json → feira</code>.</p></div>`;
 }
@@ -5740,7 +5750,7 @@ function vistaPlano() {
     + `${m.gavetas > 1 ? ` · ${m.gavetas} gavetas` : ''}</small></span>`
     + `<span class="pn2"><b class="buy">${m.comprar}</b>`
     + `<small>comprar ${eur(m.custo)}</small></span></button>`;
-  let h = `<h2>🗺️ Por onde começar</h2>`
+  let h = `<h2>${ico('plano')} Por onde começar</h2>`
     + `<p class="lead">Primeiro os <b>permanentes</b>, por ordem de alocação — são `
     + `eles que ficaram com as cartas. Depois as <b>candidatas</b>, pela `
     + `percentagem que já tens: começa-se pelo que está mais perto de fechar. `
@@ -5748,7 +5758,7 @@ function vistaPlano() {
   if (porMontar.length) {
     h += `<div class="nums">`
       + `<div class="num">caixas por montar<b>${porMontar.length}</b></div>`
-      + `<div class="num">tirar da colecção<b>${soma(porMontar, 'tirar')}</b></div>`
+      + `<div class="num">tirar da coleção<b>${soma(porMontar, 'tirar')}</b></div>`
       /* As COMPRAS são de TODAS as caixas, não só das que faltam montar — é o
          que o "fechar tudo por" ao lado já somava (`M`) e o que a aba Comprar
          mostra. Somar só as `porMontar` dava 225 cópias ao lado de 8 426,34 €,
@@ -5763,12 +5773,12 @@ function vistaPlano() {
     h += `<p class="empty">Está tudo montado. 🎉</p>`;
   }
   if (montadas.length) {
-    h += `<h2>✅ Já montadas <span class="n">${montadas.length}</span></h2>`
+    h += `<h2>${ico('montado')} Já montadas <span class="n">${montadas.length}</span></h2>`
       /* "Não há nada a fazer nestas hoje" era mentira quando uma delas ainda
          tem compras: o Blue Farm está montado e congelado e mostra 7 cartas por
          comprar, 601,29 €. Não há nada a TIRAR da gaveta — a caixa está feita —
          e é isso que se pode afirmar. */
-      + `<p class="lead">Estão feitas: não há cartas para tirar da colecção. `
+      + `<p class="lead">Estão feitas: não há cartas para tirar da coleção. `
       + `Se alguma ainda mostrar <b>comprar</b>, é a lista de hoje a pedir mais `
       + `do que a caixa tem. As <b>congeladas</b> mostram na aba <b>Arrumar</b> `
       + `o que trocar quando a lista mudar.</p>`
@@ -5778,7 +5788,7 @@ function vistaPlano() {
      DEPOIS de encher as caixas. Uma cópia que serve uma caixa do loadout nunca
      entra na lista de venda — é a saída `guardar`. */
   const V = D.venda;
-  h += `<h2>💰 Depois de montar: vender o excesso</h2>`
+  h += `<h2>${ico('vender')} Depois de montar: vender o excesso</h2>`
     + `<p class="lead"><b>Primeiro montar, depois vender.</b> Esta lista é o que `
     + `sobra <b>depois</b> de todas as caixas terem as cartas que a alocação lhes `
     + `deu: uma cópia que serve uma caixa nunca aparece aqui, mesmo que passe o `
@@ -6138,7 +6148,7 @@ async function accao(act, slot, btn, aid, nome, id) {
      base é copiada antes, mas um toque enganado no telemóvel manda-o procurar
      as cartas todas outra vez. */
   if (act === 'desmontar' && !confirm(
-      'Desmontar esta caixa? As cartas voltam à colecção e o vault deixa de '
+      'Desmontar esta caixa? As cartas voltam à coleção e o vault deixa de '
       + 'saber o que está lá dentro (a base é copiada antes).')) return;
   btn.disabled = true;
   try {

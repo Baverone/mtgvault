@@ -574,7 +574,11 @@ def caso_aba_arrumar_separa_a_actualizacao_do_deck_montado():
     out.write_text(deckboxes.html_page(con, editable=True, rep=rep),
                    encoding="utf-8")
     html = _abas_desenhadas(out)["arrumar"]
-    assert "Actualizar decks montados" in html, html[:400]
+    # «Atualizar» com o Acordo Ortográfico (2.ª passagem, 2026-09-24); o
+    # `data-act="actualizar"` NÃO muda — é o nome de uma ação que o `webapp.py`
+    # compara literalmente, e uma página aberta ontem no telemóvel ainda manda o
+    # nome antigo.
+    assert "Atualizar decks montados" in html, html[:400]
     assert 'data-act="actualizar"' in html, "falta o botao no modo edicao"
     publicado = _abas_desenhadas(_pagina_deckboxes(con))["arrumar"]
     assert 'data-act="actualizar"' not in publicado, "o publicado nao pode ter botao"

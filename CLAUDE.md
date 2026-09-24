@@ -40,7 +40,9 @@ mtgvault/
   catalog_schema.sql   catalog.db (só a tabela cards)
   scryfall.py     catálogo via bulk data
   site_shell.py   A CASCA DE TODO O SITE (2026-09-24): a paleta (`TEMA`), os
-                  tipos de letra, a BARRA LATERAL agrupada em secções
+                  tipos de letra, os ÍCONES (`_SVG`/`icone`/`js_icones` — um
+                  conjunto só, partilhado com o JavaScript da Deckboxes), a
+                  BARRA LATERAL agrupada em secções
                   (`SECCOES`), o cabeçalho com migalhas e o rodapé —
                   `head()`/`abrir()`/`fechar()`. Uma secção nova é uma linha
                   numa lista. Ver «Uma casca só para o site inteiro»
@@ -285,10 +287,10 @@ testes em `tests/test_casca.py` (7 casos) e o medidor `tests/medir_layout.py` +
   ANTES do `#` (`deckboxes.html#comprar?t=…` fazia o browser ler o token como
   parte da âncora e o servidor nunca o via).
 - **A fila de abas da Deckboxes é agora um ÍNDICE VERTICAL** (`.vidx`), à
-  esquerda do conteúdo, agrupado em *Geral · Fluxo · Compras e venda · ✅ Decks
-  montados · 🔧 Decks para montar*; no telemóvel vira um `<select>` com os
-  mesmos grupos (`<optgroup>`), que abre a lista inteira de uma vez. As duas
-  saem da MESMA lista (`_filaDeAbas`). As setas do teclado passaram a ↑/↓.
+  esquerda do conteúdo; no telemóvel vira um `<select>` com os mesmos grupos
+  (`<optgroup>`), que abre a lista inteira de uma vez. As duas saem da MESMA
+  lista (`_filaDeAbas`). As setas do teclado passaram a ↑/↓. **Na 2.ª passagem
+  do mesmo dia ficou só com as CAIXAS** — ver a secção a seguir.
 - **Os números do dia são CHIPS** no cabeçalho, não uma frase de cinco linhas, e
   cada um leva à vista que o explica.
 - **`index.html` deixou de ser estático**: é o `inicio.py`, o painel com os
@@ -322,6 +324,80 @@ testes em `tests/test_casca.py` (7 casos) e o medidor `tests/medir_layout.py` +
   voltar a subir, o passo seguinte é tirar o CSS partilhado para um `.css` com
   hash no `?v=` — com o custo de mais um ficheiro nas duas listas de `git add` e
   o site inteiro sem estilo se faltar lá.
+
+**A 2.ª PASSAGEM, depois de ele rever as capturas (2026-09-24, mesmo dia).**
+Ordem em `ai-pc/work/mtg-reestruturar-2.md`; relatório e medições na secção
+«2.ª passagem» de `ai-pc/Claude outputs/reestruturacao/RESUMO.md`; capturas em
+`capturas/depois-2/`; cinco casos novos em `tests/test_casca.py`. **O motor não
+mexeu**: medido na cópia da base de 24/09, o mesmo `vault.db` dos dois lados —
+fechar tudo **7 017,06 €**, 239 a comprar, 225 a arrumar (129 linhas), venda
+268c/1 555,06 €, venda_rl 68c/3 941,08 €, rl_segurar 34c/4 756,11 €, reservadas
+1c/100,00 €, guardar 2c/14,26 €, as 15 caixas — **iguais**.
+- **UM SÓ MENU.** A barra lateral do site e o índice interno da Deckboxes
+  estavam lado a lado com **os mesmos itens** (Plano, Montados, Para montar,
+  Arrumar, Comprar, Encomendas, Vender, Feira, Revalidação). O índice interno
+  (`deckboxes._filaDeAbas`) ficou só com **as caixas** — nos dois grupos de
+  2026-09-08, com a percentagem —, mais «Todas as caixas» à cabeça e um grupo
+  **«Mais vistas»** com as três CONDICIONAIS (Sugestões, Partilhadas, Não
+  encontradas): aparecem e desaparecem conforme os dados, e por isso não podem
+  viver numa barra escrita em Python, igual em todas as páginas — tirá-las daqui
+  sem as pôr em lado nenhum era perdê-las. A coluna encolheu de 238 para 216 px.
+  No `<select>` do telemóvel, estando ele numa VISTA nenhuma caixa fica
+  seleccionada e o selector mostrava a primeira opção, a mentir sobre onde ele
+  estava; passou a levar uma opção desactivada com o nome da vista aberta. Tem
+  teste (`caso_o_indice_da_deckboxes_nao_repete_a_barra_lateral`): nenhuma
+  âncora que a barra leve pode voltar a ser item do índice, e as quatro que a
+  barra NÃO leva têm de continuar a ter entrada.
+- **UM CONJUNTO ÚNICO DE ÍCONES SVG** (`site_shell._SVG`, 32 ícones `outline`,
+  traço 1.8, `currentColor`; geometria do Feather, MIT, em `path`s soltos para
+  não trazer dependência nem um segundo ficheiro). `shell.icone(nome, tam)` no
+  Python e `shell.js_icones()` para o JavaScript da Deckboxes (`const ICO` /
+  `ico(n)`, injectado pelo `js_texto`) — **um conjunto só**, pela razão do
+  `e_foil` e do `vistoId`. Um emoji é desenhado pelo SISTEMA: o mesmo item tinha
+  um peso no telemóvel dele e outro no Chrome do PC, o 🗺️/🛡️ levam `FE0F` e
+  saíam a preto-e-branco no meio de ícones a cor, e um emoji não acende a
+  dourado quando o item da barra fica activo. **Os emojis DENTRO dos dados
+  ficam** (ordem dele, à letra: *"podem ficar se forem informação"*) — o ✅/🛒/📷
+  de uma carta diz o ESTADO dela. **O `<svg>` está magro de propósito**: `fill`,
+  `stroke`, a espessura e as pontas do traço vivem no CSS e não em cada ícone —
+  escritos em cada um eram **190 bytes de repetição por ícone**, e a casca ia a
+  71 336 bytes, acima do tecto de 70 KB do `test_telemovel`. Ficou em **68 842**
+  (era 64 045) e o tecto subiu para **74 KB**.
+- **Os rótulos da barra dizem o que são à primeira leitura**, sem notas
+  redundantes: «Binders por cor», «Galeria de cartas», «Reserved List · caixa» e
+  «Reserved List · preços» (estava «Caixa Reserved List» logo por cima de
+  «Reserved List»), «Cobertura do metagame», «Decks Showcase», «Plano de
+  montagem», «Arrumar cartas», «Revalidação por foto». A nota por baixo só fica
+  onde ACRESCENTA. Tem teste: zero emojis dentro do `<nav class="sidenav">`,
+  nenhum rótulo repetido e nenhuma nota a repetir o rótulo.
+- **A GRELHA DO INÍCIO É 3 × 2.** Era `auto-fit` com mínimo de 262 px: a 1440
+  cabiam quatro e os seis cartões saíam 4 + 2, com um buraco. São três colunas
+  fixas em desktop, duas no telemóvel (uma abaixo dos 360 px), com
+  `align-items:stretch` e o cartão em `flex` — as alturas de cada linha são
+  iguais mesmo com detalhes de uma ou de três linhas.
+- **ORTOGRAFIA DO ACORDO no texto visível** (45 correções: *colecção → coleção*,
+  *actualizar/Actualizei → atualizar/Atualizei*, *acção → ação*, *correcção*,
+  *projecção*). **Três coisas NÃO mudaram, e são a armadilha**: os nomes de
+  funções e as chaves do relatório (`actualizacoes`, `copias_actualizar`,
+  `activa`); o **`data-act="actualizar"`**, que é o nome de uma AÇÃO que o
+  `webapp.py` compara literalmente — uma página aberta ontem no telemóvel ainda
+  manda o nome antigo; e o balde **`Colecção`**, que é um VALOR da base
+  (`sub_collections.name`) e é hoje **a única palavra fora do Acordo à vista no
+  site** — mudá-lo é uma migração (a coluna é lida por dezenas de consultas,
+  pelo `venda-stock.csv` e pelo `venda-estante.txt`), não uma correção de texto,
+  e fica para ele decidir. O `caso_a_ortografia_e_a_do_acordo` lê o TEXTO das
+  nove páginas publicadas, fora das etiquetas, e desconta esse balde.
+- **OS RODAPÉS LONGOS FICAM RECOLHIDOS**: `shell.fechar()` embrulha o rodapé num
+  `<details class="comoler">` — *«Como ler esta página»*, fechado por omissão —
+  acima de `shell.RODAPE_LONGO` (320 caracteres). **Quem decide é o tamanho e
+  não cada gerador a lembrar-se**, que é como o `cobertura.html` ficava para
+  trás. Recolhem-se seis (Deckboxes 1 365 caracteres, Metagame 1 466, Reserved
+  List 859, Cobertura 746, Coleção por cor 656, Início 343); os três curtos
+  (Galeria 132, Caixa RL 196, Showcase 192) ficam abertos — um rodapé de duas
+  linhas escondido atrás de um botão é pior do que rodapé nenhum.
+- **As três dúvidas da 1.ª passagem, decididas por ele:** o CSS **fica
+  embutido** (robustez > 11 KB); os selectores de 34 px da Cobertura **ficam**;
+  a diferença de valor entre a Galeria e os Binders por cor **não se tocou**.
 
 ### Duas bases de dados
 

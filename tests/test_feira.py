@@ -436,9 +436,12 @@ def caso_a_pagina_nos_dois_modos():
                            encoding="utf-8", errors="replace", timeout=120)
         assert p.returncode == 0, (p.stdout or "") + (p.stderr or "")[-2000:]
         abas = json.loads(dump.read_text(encoding="utf-8"))
-        assert ('data-aba="feira"' in abas["__fila"] and "Feira" in abas["__fila"]
-                and "troca +" in abas["__fila"]), abas["__fila"][-600:]
+        # Desde a 2.ª passagem de 2026-09-24 a Feira entra pela BARRA LATERAL do
+        # site (o índice interno ficou só com as caixas) e o saldo em troca é o
+        # subtítulo do título da vista, não da fila.
+        assert 'href="deckboxes.html#feira"' in html, "a barra perdeu a Feira"
         aba = abas["feira"]
+        assert "troca +" in aba, aba[:600]
         for txt in ("1. Levar", "2. Trazer", "3. Vendors", "4. Por caixa", "Get Lost",
                     "City of Traitors", "Mother of Runes", "Winter Moon", "Banca A pode ter",
                     "estimativas tuas", "55 %", "70 %", "se houver", "Cloud (Duel Commander)"):

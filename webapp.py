@@ -679,9 +679,9 @@ def registar_falta(con, dados: dict) -> dict:
         origem=encomendas.ORIGEM_JA_TENHO, estado=encomendas.PENDENTE)
     return {**r, "q": int(dados.get("q") or 1),
             "msg": (f'{dados.get("q") or 1}× {r["nm"]} pendente de foto para '
-                    f'{r["caixa"] or "a colecção"} ({r["impressao"]}) — tira-lhe a '
+                    f'{r["caixa"] or "a coleção"} ({r["impressao"]}) — tira-lhe a '
                     f'foto e larga-a em pendentes/: é a foto que a mete na '
-                    f'colecção e na caixa')}
+                    f'coleção e na caixa')}
 
 
 def _encomenda(con, dados: dict) -> str:
@@ -710,7 +710,7 @@ def _encomenda(con, dados: dict) -> str:
             origem=(dados.get("origem") or "").strip() or None,
             preco=(float(dados["preco"]) if dados.get("preco") else None))
         return (f'{r["qty_a_caminho"]}× {r["nm"]} a caminho para '
-                f'{r["caixa"] or "a colecção"} ({r["impressao"]})')
+                f'{r["caixa"] or "a coleção"} ({r["impressao"]})')
     r = encomendas.remover(con, ident, slot=slot, nm=nm, qty=-delta)
     if not r["tirado"]:
         raise ValueError(f"{r['nm'] or nm}: não há nada encomendado para tirar")
@@ -751,7 +751,7 @@ def marcar_nao_encontradas(con, slot_id: str, copias) -> dict:
     return {**r, "ids": [m["copy_id"] for m in r["linhas"]],
             "porque": (r["saltadas"][0]["porque"] if r["saltadas"]
                        else "não havia nada por marcar nesta caixa"),
-            "msg": (f'{r["caixa"]}: {r["copias"]} cópia(s) fora da colecção — '
+            "msg": (f'{r["caixa"]}: {r["copias"]} cópia(s) fora da coleção — '
                     f'{nomes}' + (f" e mais {resto}" if resto > 0 else "")
                     + ". Voltam a ser compra.")}
 
@@ -1294,7 +1294,7 @@ class Handler(BaseHTTPRequestHandler):
                 escrever_config(cfg)
                 r = desmontar(con, slot_id, nome)
                 msg = (f"{nome}: desmontada — {r['copias']} cópias voltam "
-                       f"à colecção ({r['linhas']} linhas)")
+                       f"à coleção ({r['linhas']} linhas)")
             elif act == "desmontar":
                 # O inverso do "sleevado e na caixa": as cartas voltam à gaveta.
                 # Passa pelo mesmo motor do botão de cima (backup + registo no
@@ -1304,7 +1304,7 @@ class Handler(BaseHTTPRequestHandler):
                 escrever_config(cfg)
                 r = desmontar(con, slot_id, nome)
                 msg = (f"{nome}: desmontada — {r['copias']} cópias voltam à "
-                       f"colecção ({r['linhas']} linhas)"
+                       f"coleção ({r['linhas']} linhas)"
                        + (f", backup em {Path(r['backup']).name}"
                           if r.get("backup") else ""))
             elif act in ("registar", "montado", "confirmar"):
@@ -1353,8 +1353,8 @@ class Handler(BaseHTTPRequestHandler):
                 # discordarem.
                 r = loadout.devolver_a_coleccao(con, dados.get("copias") or [])
                 if not r["copias"]:
-                    return {"erro": "essas cópias já estão na colecção"}
-                msg = (f'{r["copias"]} cópia(s) de volta à colecção: '
+                    return {"erro": "essas cópias já estão na coleção"}
+                msg = (f'{r["copias"]} cópia(s) de volta à coleção: '
                        + ", ".join(m["nm"] for m in r["linhas"]))
             elif act == "anular":
                 # O desfazer do registo automático, enquanto o aviso está à vista.
@@ -1372,9 +1372,9 @@ class Handler(BaseHTTPRequestHandler):
                 nome = next((s["nome"] for s in rep["slots"]
                              if s["slot"] == slot_id), slot_id)
                 n = loadout.actualizar_caixa(con, rep, slot_id)
-                msg = f"{nome} actualizado: {n} cópias na caixa"
+                msg = f"{nome} atualizado: {n} cópias na caixa"
             else:
-                return {"erro": f"acção {act!r} desconhecida"}
+                return {"erro": f"ação {act!r} desconhecida"}
             sources._CFG_CACHE.clear()     # relê já, sem esperar pelo mtime
             regenerar(con)
         return {"ok": True, "msg": msg, **extra}
@@ -1401,7 +1401,7 @@ class Handler(BaseHTTPRequestHandler):
             res = loadout.registar_venda(con, alvo, q)
             regenerar(con)
         return {"ok": True, "msg": f'{res["copias"]}× {alvo["nm"]} fora da '
-                                   f'colecção e no vendas.csv'}
+                                   f'coleção e no vendas.csv'}
 
     def _foto_caixa(self, bruto: bytes) -> dict:
         """`POST /api/foto-caixa?slot=…` com a foto no corpo (André, 2026-09-21).
@@ -1479,7 +1479,7 @@ class Handler(BaseHTTPRequestHandler):
         regenerar_em_fundo("foto")
         nome = (loadout.nomes_das_caixas().get(slot) if slot
                 else {"venda": "a venda", "rl": "a Caixa RL",
-                      "coleccao": "a Colecção"}.get(tipo, tipo))
+                      "coleccao": "a Coleção"}.get(tipo, tipo))
         n = len(guardadas)
         mb = sum(g["bytes"] for g in guardadas) / 1e6
         return {"ok": True, "tipo": tipo, "slot": slot, "copy_id": copy_id,
@@ -1512,7 +1512,7 @@ class Handler(BaseHTTPRequestHandler):
             return {"ok": True, "msg": ("Parei: já não há alvo de revalidação."
                                         if havia else "Não havia alvo para parar.")}
         if act != "alvo":
-            return {"erro": f"acção {act!r} desconhecida (alvo|parar)"}
+            return {"erro": f"ação {act!r} desconhecida (alvo|parar)"}
         tipo, slot = dados.get("tipo"), dados.get("slot") or None
         if tipo == "caixa" and slot and not any(
                 s.get("slot") == slot for s in cfg.get("caixas") or []):
@@ -1580,7 +1580,7 @@ class Handler(BaseHTTPRequestHandler):
                 lista = padrao.reserva_tirar(cfg, slot_id, nome)
                 msg = f"{nome} fora da reserva ({len(lista)} cartas reservadas)"
             else:
-                return {"erro": f"acção {act!r} desconhecida"}
+                return {"erro": f"ação {act!r} desconhecida"}
             escrever_config(cfg)
             sources._CFG_CACHE.clear()
             regenerar(con)
@@ -1667,7 +1667,7 @@ class Handler(BaseHTTPRequestHandler):
                 msg = (f"{nome}: " + (", ".join(lista) + " pode ter" if lista
                                       else "sem vendor marcado"))
             else:
-                return {"erro": f"acção {act!r} desconhecida"}
+                return {"erro": f"ação {act!r} desconhecida"}
             escrever_config(cfg)
             sources._CFG_CACHE.clear()
             regenerar(con)
@@ -1721,7 +1721,7 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     msg = pm.aceitar(cfg, nome, ident)
             else:
-                return {"erro": f"acção {act!r} desconhecida"}
+                return {"erro": f"ação {act!r} desconhecida"}
             escrever_config(cfg)
             sources._CFG_CACHE.clear()
             regenerar(con)

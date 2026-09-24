@@ -612,16 +612,18 @@ def caso_a_pagina_nos_dois_modos():
     if abas is None:
         print("pagina: sem `node`, saltado")
         return
-    fila = abas["__fila"]
-    assert ('data-aba="revalidacao"' in fila and "Revalidação" in fila
-            and "por fotografar" in fila), fila
+    # Desde a 2.ª passagem de 2026-09-24 a Revalidação entra pela BARRA LATERAL
+    # do site — o índice interno da página ficou só com as caixas, para não
+    # haver dois menus iguais lado a lado.
+    assert 'href="deckboxes.html#revalidacao"' in deckboxes.html_page(
+        con, editable=True), "a barra perdeu a Revalidação"
     r = abas["revalidacao"]
     assert "A fotografar: Caixa UW Replenish" in r and 'data-rev-parar="1"' in r, r[:2000]
     assert 'data-rev="venda"' in r and 'data-rev="rl"' in r, r[:3000]
     assert 'data-rev="caixa" data-slot="pm2"' in r, "a Enchantress tem o botão"
-    assert "⚠ Corrigidas pela foto" in r and "ODY → 4ED" in r, r
+    assert "Corrigidas pela foto" in r and "ODY → 4ED" in r, r
     c = abas["pm"]
-    assert "📷 Na caixa — fotografar" in c and "validadas <b>1/3</b>" in c, c[-4000:]
+    assert "Na caixa — fotografar" in c and "validadas <b>1/3</b>" in c, c[-4000:]
     assert 'data-rev-parar="1"' in c and "A fotografar UW Replenish" in c, c[-4000:]
     # EM IMAGEM (2026-09-20): um tile por cópia, com o estado na moldura
     # (`tl rev` = 📷 por fotografar, `tl corr` = ⚠ corrigida) e a grelha com
@@ -637,10 +639,11 @@ def caso_a_pagina_nos_dois_modos():
     # A caixa da Enchantress (sem alvo) tem o botão «Fotografar esta caixa»;
     # a barra da fila diz «validadas».
     pub = _abas(con, False)
-    assert "📷 Na caixa — fotografar" in pub["pm"] and "validadas <b>1/3</b>" in pub["pm"]
+    assert "Na caixa — fotografar" in pub["pm"] and "validadas <b>1/3</b>" in pub["pm"]
     for marca in ("data-rev=", "data-rev-parar"):
         assert marca not in pub["pm"] and marca not in pub["revalidacao"], marca
-    assert 'data-aba="revalidacao"' in pub["__fila"]
+    assert 'href="deckboxes.html#revalidacao"' in deckboxes.html_page(
+        con, editable=False), "a barra do site publicado perdeu a Revalidação"
     assert 'class="tl rev"' in pub["vender"], "a venda marca 📷 também no publicado"
     assert 'class="rvfoto"' in pub["lista:vender"]
     repor()

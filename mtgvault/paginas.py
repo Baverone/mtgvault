@@ -213,11 +213,13 @@ def faltas_de(cards, basicas=frozenset()) -> dict[str, int]:
     return dict(out)
 
 
-def faltas_html(faltas, cls="", label="🛒 Faltas") -> str:
+def faltas_html(faltas, cls="", label=None) -> str:
     """Bloco de faltas: cabeçalho + lista 'N× Carta' + botão copiar (formato
     Cardmarket numa textarea escondida). Era o `meusdecks._faltas_html`."""
     if not faltas:
         return ""
+    if label is None:                      # o ícone do conjunto único (24/09)
+        label = _shell.icone("comprar", 15) + " Faltas"
     order = sorted(faltas.items())
     items = "".join(f'<li><b>{q}×</b> {html.escape(nm)}</li>' for nm, q in order)
     cmk = "\n".join(f"{q} {nm}" for nm, q in order)

@@ -286,7 +286,9 @@ def caso_as_abas_de_cada_deck_ficam_agrupadas():
     Desde a reestruturação de 2026-09-24 a fila é um ÍNDICE VERTICAL (era uma
     fila horizontal com scroll), e o rótulo de cada item está num `<span
     class="vtx">` — o agrupamento e a ordem são os mesmos, e é isso que aqui se
-    tranca.
+    tranca. Na 2.ª passagem do mesmo dia os cabeçalhos perderam o emoji (o site
+    passou a ter um conjunto único de ícones SVG) e o índice deixou de repetir
+    as vistas que já estão na barra lateral: ficou só com as caixas.
     """
     repor()
     con = base()
@@ -295,7 +297,7 @@ def caso_as_abas_de_cada_deck_ficam_agrupadas():
         print("fila de abas agrupada: sem `node`, saltado")
         return
     fila = abas["__fila"]
-    assert "✅ Decks montados" in fila and "🔧 Decks para montar" in fila, fila[:900]
+    assert "Decks montados" in fila and "Decks para montar" in fila, fila[:900]
     # As abas de deck: montadas primeiro, com o ponto verde; depois as outras.
     ordem = re.findall(r'data-aba="(montada|porconfirmar|perm|cand)"', fila)
     assert ordem == ["montada", "porconfirmar", "perm", "cand"], ordem
