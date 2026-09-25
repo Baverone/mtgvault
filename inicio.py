@@ -36,7 +36,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import collection, loadout, paginas  # noqa: E402
+from mtgvault import collection, loadout, paginas, venda  # noqa: E402
 from mtgvault import site_shell as shell  # noqa: E402
 
 _CSS = """
@@ -104,19 +104,25 @@ _CSS = """
 """
 
 _RODAPE = ("Todos os números desta página saem de onde as outras os vão buscar — "
-           "o <code>loadout.report</code> (as caixas, o que falta comprar, a venda) "
+           "o <code>loadout.report</code> (as caixas, o que falta comprar%VENDA%) "
            "e a base (as cópias e o valor). Se um número aqui discordasse da "
            "Deckboxes seria um <b>bug</b>, não uma segunda opinião: é a regra de "
            "«posse: quem conta o quê». O site atualiza-se sozinho todos os dias.")
 
-_TMPL = ("""<!doctype html><html lang="pt-PT"><head>"""
-         + shell.head("Início", _CSS) + """</head><body>"""
-         + shell.abrir("index.html", "Início", "%LEAD%") + """
+
+def _tmpl() -> str:
+    """O molde. É uma FUNÇÃO desde 2026-09-25 pela mesma razão do `deckboxes`:
+    a barra lateral e o rodapé seguem o `venda.mostrar`, e uma constante de
+    módulo congelava-os no instante do `import`."""
+    rodape = _RODAPE.replace("%VENDA%", ", a venda" if venda.mostrar() else "")
+    return ("""<!doctype html><html lang="pt-PT"><head>"""
+            + shell.head("Início", _CSS) + """</head><body>"""
+            + shell.abrir("index.html", "Início", "%LEAD%") + """
 <div class="wrap">
 %KPIS%
 %ATALHOS%
 %PAINEIS%
-</div>""" + shell.fechar(_RODAPE) + """</body></html>""")
+</div>""" + shell.fechar(rodape) + """</body></html>""")
 
 
 def _cor_pct(p: int) -> str:
@@ -218,6 +224,10 @@ def build(con, out_path=None, rep=None):
     custo_perm = round(sum(s["custo"] for s in perm), 2)
     n_copias, valor = _valor_coleccao(con)
 
+    # «PARA JÁ TIRA O VENDER» (André, 2026-09-25). O cartão e o atalho saem com
+    # o interruptor: este é o primeiro ecrã que ele abre, e era aqui que o valor
+    # da venda estava em euros, a negrito, com um link para a aba.
+    mostra_venda = venda.mostrar()
     venda_q = sum(m["q"] for m in res.get("venda", []))
     venda_v = round(sum(m["q"] * (m.get("unit") or 0) for m in res.get("venda", [])), 2)
     rl_q = sum(m["q"] for m in res.get("venda_rl", []))
@@ -240,9 +250,10 @@ def build(con, out_path=None, rep=None):
              f"valor ~{paginas.eur(valor)} — o mesmo número dos "
              f"<a href=\"colecao_cor.html\">binders por cor</a> e da "
              f"<a href=\"colecao.html\">galeria</a>", "info", "colecao_cor.html"),
-        _kpi("vender", "Para vender", paginas.eur(venda_v),
-             f"{venda_q} cópias · mais {rl_q} da Reserved List "
-             f"({paginas.eur(rl_v)})", "gold", "deckboxes.html#vender"),
+        (_kpi("vender", "Para vender", paginas.eur(venda_v),
+              f"{venda_q} cópias · mais {rl_q} da Reserved List "
+              f"({paginas.eur(rl_v)})", "gold", "deckboxes.html#vender")
+         if mostra_venda else ""),
         _kpi("arrumar", "Para arrumar", str(res["arrumacao"]["copias"]),
              f'{len(res["arrumacao"]["movimentos"])} linhas de movimento', "",
              "deckboxes.html#arrumar"),
@@ -270,25 +281,29 @@ def build(con, out_path=None, rep=None):
                       "deckboxes.html#revalidacao")
     kpis = f'<div class="kpis">{kpis}{extra}</div>'
 
+    # Seis atalhos, e a grelha é 3×2 (2.ª passagem, 2026-09-24). Sem a venda
+    # ficam cinco — e é a Feira que passa a fechar a linha, para a grelha não
+    # ficar com um buraco.
+    _atalhos = [("deckboxes.html#plano", "plano", "Plano", "por onde começar"),
+                ("deckboxes.html#comprar", "comprar", "Comprar",
+                 "a wantlist de todas")]
+    if mostra_venda:
+        _atalhos.append(("deckboxes.html#vender", "vender", "Vender",
+                         "o excedente, a confirmar"))
+    else:
+        _atalhos.append(("deckboxes.html#encomendas", "encomendas", "Encomendas",
+                         "o que já compraste"))
+    _atalhos += [("deckboxes.html#arrumar", "arrumar", "Arrumar",
+                  "o que muda de sítio"),
+                 ("metagame.html", "metagame", "Metagame",
+                  "o que estás perto de fechar"),
+                 ("colecao_cor.html", "binders", "Binders", "a coleção por cor")]
     atalhos = ('<h2 class="sh">Onde vais mais vezes</h2><div class="atalhos">'
                + "".join(
                    f'<a class="at" href="{h}"><span class="ai">'
                    f'{shell.icone(i, 21)}</span>'
                    f'<span><b>{t}</b><small>{d}</small></span></a>'
-                   for h, i, t, d in [
-                       ("deckboxes.html#plano", "plano", "Plano",
-                        "por onde começar"),
-                       ("deckboxes.html#comprar", "comprar", "Comprar",
-                        "a wantlist de todas"),
-                       ("deckboxes.html#vender", "vender", "Vender",
-                        "o excedente, a confirmar"),
-                       ("deckboxes.html#arrumar", "arrumar", "Arrumar",
-                        "o que muda de sítio"),
-                       ("metagame.html", "metagame", "Metagame",
-                        "o que estás perto de fechar"),
-                       ("colecao_cor.html", "binders", "Binders",
-                        "a coleção por cor"),
-                   ]) + "</div>")
+                   for h, i, t, d in _atalhos) + "</div>")
 
     def bloco(titulo, lista, vazio, nota=""):
         corpo = ("".join(_linha_caixa(c, out.parent) for c in lista) if lista
@@ -317,7 +332,7 @@ def build(con, out_path=None, rep=None):
     paineis += ('<h2 class="sh">Últimas atualizações dos dados</h2>'
                 f'<div class="painel"><ul class="fontes">{linhas}</ul></div>')
 
-    out.write_text(_TMPL.replace("%LEAD%", lead).replace("%KPIS%", kpis)
+    out.write_text(_tmpl().replace("%LEAD%", lead).replace("%KPIS%", kpis)
                    .replace("%ATALHOS%", atalhos).replace("%PAINEIS%", paineis),
                    encoding="utf-8")
     return out

@@ -347,6 +347,8 @@
     }
   },
   "venda": {
+    "mostrar": false,
+    "_mostrar": "André, 25/09/2026: 'para já tira o vender'. A false, a venda sai da VISTA — a aba Vender e o bloco Saída da Deckboxes, os botões 'vendida', o item da barra lateral, o cartão e o atalho do Início, o selo VENDER da Reserved List, a metade 'levar' da Feira, o grupo Venda da Revalidação, o passo venda-export do daily e os dois endpoints de escrita do 8771. O MOTOR continua a calcular as sete saídas (é ele que segura a regra dos 5% da Reserved List e o que NÃO se vende), o data/vendas.csv fica, e os data/venda-stock.csv / venda-estante.txt que já existem não se apagam — deixam de ser reescritos. Põe true (ou 'py -m mtgvault.cli vender --mostrar on') e volta tudo como estava.",
     "rl_subida_minima_pct": 5,
     "rl_janela_dias": 90,
     "rl_janela_minima_dias": 25,

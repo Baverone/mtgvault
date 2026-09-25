@@ -6,6 +6,7 @@ está a testar nada.
 
 Não entra na bateria — corre-se à mão: `py tests/_provar_chumba.py`.
 """
+import subprocess
 import sys
 from pathlib import Path
 
@@ -101,6 +102,33 @@ prices.write_prices = _sem_receita_wp
 bom &= exige_falha("a receita na comparacao",
                    T.caso_a_receita_entra_na_comparacao_do_write_prices)
 prices.write_prices = _wp
+
+# ---------------------------------------------------------------------------
+# O INTERRUPTOR DA VENDA (André, 2026-09-25: *"para já tira o «vender»"*)
+#
+# Corre-se NOUTRO PROCESSO: o `test_venda_interruptor` fixa o `MTGVAULT_CONFIG`
+# e o `MTGVAULT_DB` no import, e importá-lo aqui dentro punha-o a partilhar o
+# ambiente do ficheiro de cima. O `--neutralizar` faz o interruptor responder
+# sempre «à vista» — que é exactamente o que o mtgvault era ontem.
+# ---------------------------------------------------------------------------
+AQUI = Path(__file__).resolve().parent
+for alvo, casos in (
+    ("mostrar", ["caso_desligado_nao_sobra_venda_no_que_ele_ve",
+                 "caso_os_endpoints_de_escrita_recusam_se_em_condicoes",
+                 "caso_a_revalidacao_nao_perde_as_copias_da_venda",
+                 "caso_o_daily_salta_o_passo_e_diz_porque"]),
+    ("seccoes", ["caso_desligado_nao_sobra_venda_no_que_ele_ve"]),
+):
+    for caso in casos:
+        p = subprocess.run(
+            [sys.executable, str(AQUI / "_chumba_venda.py"), alvo, caso],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            cwd=AQUI)
+        ok = p.returncode != 0
+        bom &= ok
+        motivo = (p.stdout or p.stderr or "").strip().splitlines()
+        print(f"  {'ok  ' if ok else 'FAIL'} chumba sem «{alvo}» "
+              f"({caso}): {motivo[-1][:90] if motivo else ''}")
 
 print("TODOS OS CASOS CHUMBAM SEM A FUNCIONALIDADE" if bom
       else "HA CASOS QUE PASSAM SEM A FUNCIONALIDADE")

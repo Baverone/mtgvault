@@ -42,6 +42,9 @@ sys.path.insert(0, str(RAIZ))
 
 _TMP = Path(tempfile.mkdtemp())
 CFG = {
+    # O grupo «Venda» da aba Revalidação e a coluna 📷 da aba Vender seguem o
+    # interruptor de 2026-09-25 (omissão: desligado). Aqui ligam-se.
+    "venda": {"mostrar": True},
     "regras_colecao": {},
     "baldes_coleccao": ["Colecção", "Caixa Reserved List"],
     "decks_vigiados": [],

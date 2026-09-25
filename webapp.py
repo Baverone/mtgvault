@@ -562,6 +562,25 @@ def desmontar(con, slot_id: str, nome: str | None = None) -> dict:
 
 
 
+class VendaDesligada(ValueError):
+    """Uma escrita da venda com o interruptor de 2026-09-25 desligado.
+
+    Subclasse de `ValueError` de propósito: o `do_POST` já traduz um
+    `ValueError` num **409 com a mensagem para ele ler**, que é exactamente a
+    resposta certa aqui — *"este pedido já não bate com o que a aplicação é
+    hoje"*. Uma página aberta no telemóvel antes de hoje ainda tem os botões
+    «vendida» e «gravar em data/», e o que ela merece é uma frase em português
+    e não um `AttributeError` (a página não desenha nenhum, mas um favorito
+    velho, um `curl` ou um teste podem chegar aqui).
+    """
+
+
+def _exige_venda() -> None:
+    """Recusa, em condições, uma escrita da venda que está desligada."""
+    if not venda.mostrar():
+        raise VendaDesligada(venda.MOTIVO_DESLIGADO)
+
+
 class SemLista(ValueError):
     """Um pedido de registo que não traz a lista de cópias marcadas.
 
@@ -1236,6 +1255,7 @@ class Handler(BaseHTTPRequestHandler):
                     # página pode estar aberta desde ontem. Não mexe na base
                     # nem no config, por isso não regenera nada. Com
                     # `so_validadas` (2026-09-20) só as cópias com foto.
+                    _exige_venda()
                     with db.session() as con:
                         r = venda.exportar(con, so_validadas=bool(dados.get("so_validadas")))
                     self._json({"ok": True, "copias": r["copias"],
@@ -1393,7 +1413,14 @@ class Handler(BaseHTTPRequestHandler):
         A linha vem da própria página (é a que ele está a ver), e por isso o
         servidor **recalcula-a** antes de tirar nada: uma página aberta há duas
         horas podia mandar tirar uma cópia que a alocação já deu a uma caixa.
+
+        E, desde 2026-09-25, recusa-se ANTES de tocar em nada se a venda estiver
+        desligada: este é o botão que APAGA cartas da base, e um pedido de uma
+        página velha não pode passar só porque o `loadout.report` ainda calcula
+        a lista. O `migracao.backup` fica do outro lado da recusa de propósito —
+        uma chamada recusada não deixa um ficheiro de backup atrás dela.
         """
+        _exige_venda()
         chave, q = dados.get("linha"), dados.get("q")
         if not chave:
             return {"erro": "sem linha"}

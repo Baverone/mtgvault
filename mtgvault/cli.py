@@ -154,6 +154,13 @@ def main(argv=None):
     vd.add_argument("--so-validadas", action="store_true",
                     help="--exportar: só as cópias com foto desta campanha de "
                          "revalidação (2026-09-20)")
+    # O INTERRUPTOR (André, 2026-09-25): *"para já tira o «vender»"*. Liga-se e
+    # desliga-se AQUI, e não num botão da página: com a venda desligada não há
+    # aba nenhuma onde esse botão pudesse viver.
+    vd.add_argument("--mostrar", choices=["on", "off"], default=None,
+                    help="pôr a venda à vista no site, ou tirá-la "
+                         "(venda.mostrar). O motor calcula-a na mesma — isto "
+                         "só decide o que se vê")
 
     # REVALIDAÇÃO POR FOTO (André, 2026-09-20): o progresso, e o alvo (a caixa
     # que ele está a fotografar) sem precisar do 8771.
@@ -579,10 +586,28 @@ def main(argv=None):
                 _loadout_resumo(rep)
 
         elif args.cmd == "vender":
+            from . import venda                # noqa: PLC0415
+            # `--mostrar` é só config: não corre o relatório nem toca na base.
+            if args.mostrar is not None:
+                r = venda.gravar_mostrar(args.mostrar == "on")
+                estado = "à vista" if r["mostrar"] else "fora de vista"
+                print(f"venda {estado} no site (venda.mostrar: "
+                      f"{str(r['mostrar']).lower()})"
+                      + ("" if r["mudou"] else " — já estava assim"))
+                if r["mudou"]:
+                    print("  o webapp.py que estiver de pé tem de ser "
+                          "reiniciado, e o site republica-se na corrida "
+                          "seguinte do daily.")
+                return
             rep = loadout.report(con)
+            # O CLI continua a imprimir a lista com a venda desligada, de
+            # propósito: é por aqui que o Claude na nuvem e ele próprio vêem o
+            # que o motor continua a calcular. Diz-se só que não está no site,
+            # para ninguém a procurar lá.
+            if not venda.mostrar():
+                print(f"  NOTA: {venda.MOTIVO_DESLIGADO}\n")
             if args.exportar:
                 # A SAÍDA (2026-09-18): os mesmos ficheiros que o daily escreve.
-                from . import venda            # noqa: PLC0415
                 r = venda.exportar(con, rep, so_validadas=args.so_validadas)
                 print(f"escrito: {r['csv']}\n         {r['estante']}\n  "
                       f"{r['resumo']}")

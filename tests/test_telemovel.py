@@ -44,6 +44,9 @@ sys.path.insert(0, str(RAIZ))
 
 _TMP = Path(tempfile.mkdtemp())
 CFG = {
+    # O «vendida» em dois toques é um dos casos deste ficheiro: o interruptor
+    # de 2026-09-25 (omissão desligado) tem de estar ligado.
+    "venda": {"mostrar": True},
     "regras_colecao": {}, "baldes_coleccao": ["Colecção", "Caixa Reserved List"],
     "decks_vigiados": [], "premodern_arquetipos_alvo": [],
     "regras_por_formato": [{"grupo": "legacy", "formatos": ["legacy"],

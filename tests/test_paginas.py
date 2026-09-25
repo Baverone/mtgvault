@@ -48,12 +48,22 @@ def caso_o_menu_tem_todas_as_paginas():
     for f in paginas.MENU:
         assert f'href="{f}"' in nav, f
     # E toda a sub-vista da barra aponta para uma página que o menu leva.
-    for _sec, itens in shell.SECCOES:
+    # Quem se lê aqui é o `seccoes()` — a lista EFECTIVA — e não o `SECCOES`:
+    # desde 2026-09-25 o `venda.mostrar` pode tirar de lá um item, e exigir que
+    # a barra desenhe o que ela própria decidiu esconder era pedir-lhe que se
+    # contradissesse. Que o `SECCOES` continua a ser a arquitectura de
+    # 2026-09-24 está no `caso_as_seccoes_do_menu_sao_as_que_ele_pediu`.
+    for _sec, itens in shell.seccoes():
         for f, a, *_r in itens:
             assert f in paginas.MENU, f
             if a:
                 assert f'href="{f}#{a}"' in nav, (f, a)
-    print("a barra lateral leva a todas as paginas e sub-vistas")
+    # E o que está DESLIGADO não pode ter ficado lá.
+    todas = {(f, a) for _s, itens in shell.SECCOES for f, a, *_r in itens}
+    vivas = {(f, a) for _s, itens in shell.seccoes() for f, a, *_r in itens}
+    for f, a in todas - vivas:
+        assert f'href="{f}#{a}"' not in nav, (f, a, "item desligado na barra")
+    print("a barra lateral leva a todas as paginas e sub-vistas ligadas")
 
 
 def caso_as_seccoes_do_menu_sao_as_que_ele_pediu():

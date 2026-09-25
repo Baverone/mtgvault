@@ -37,6 +37,25 @@ mostra (uma segunda contagem era uma segunda opinião):
 O `exportar` escreve as duas primeiras em `data/` (fora do Git: levam preços
 por cópia, a mesma regra do `vendas.csv`), a partir do `daily` e do botão
 «gravar em data/» do modo edição.
+
+O INTERRUPTOR: «para já tira o vender» (André, 2026-09-25)
+----------------------------------------------------------
+Palavras dele, à letra: *"para já tira o «vender»"*. O **«para já» é literal** —
+isto tem de voltar com UM interruptor, e **nada se apaga**. Por isso a resposta
+não foi tirar código nenhum: é `colecao_config.json → venda.mostrar`
+(`mostrar()`, omissão **`False` desde 2026-09-25**), lido por toda a superfície
+que MOSTRA venda — a aba Vender e o bloco «📤 Saída» da Deckboxes, os botões
+«vendida», o item da barra lateral (`site_shell.seccoes`), o cartão e o atalho
+do Início, a caixa «A vender» e o selo VENDER da Reserved List, a metade
+«levar» da Feira, o grupo «Venda» da Revalidação, o passo `venda-export` do
+`daily` e os dois endpoints de escrita do `webapp.py`.
+
+**O motor não sabe que isto existe.** As sete saídas continuam a calcular-se a
+cada corrida — é o `loadout.sell_list` que segura a regra dos 5 % da Reserved
+List e que decide o `guardar`, as `reservadas` e os `retidos`, e desligá-lo era
+deixar de saber o que NÃO se vende. Este módulo inteiro fica como estava, o
+`data/vendas.csv` também, e os `data/venda-stock.csv`/`venda-estante.txt` que já
+existem não se apagam — deixam só de ser reescritos. O que muda é quem DESENHA.
 """
 from __future__ import annotations
 
@@ -47,6 +66,60 @@ from datetime import date
 from pathlib import Path
 
 from . import loadout, paginas
+
+# ---------------------------------------------------------------------------
+# O INTERRUPTOR (André, 2026-09-25): *"para já tira o «vender»"*
+# ---------------------------------------------------------------------------
+# A omissão é FALSE a partir de hoje, que é o que ele pediu. Um config sem a
+# chave vale desligado — e ligá-lo é escrever `"mostrar": true` no bloco `venda`
+# (ou `py -m mtgvault.cli vender --mostrar on`).
+MOSTRAR_OMISSAO = False
+
+# O que dizer quando alguém bate a uma porta desligada. Uma frase só, em
+# português, e a dizer ONDE se liga: um 409 com «não disponível» mandava-o
+# procurar um bug que não existe.
+MOTIVO_DESLIGADO = (
+    "a venda está desligada (colecao_config.json → venda.mostrar: false, "
+    "2026-09-25). O motor continua a calculá-la — volta a ligar com "
+    "«venda.mostrar: true» ou com `py -m mtgvault.cli vender --mostrar on`.")
+
+
+def mostrar(cfg: dict | None = None) -> bool:
+    """A venda está à vista? `colecao_config.json → venda.mostrar`.
+
+    Vive AQUI, e num sítio só, pela mesma razão que o `precos.sql()`: são nove
+    superfícies a fazer a mesma pergunta (a barra lateral, a Deckboxes, o
+    Início, a Reserved List, a Feira, a Revalidação, o `daily`, o `webapp` e o
+    CLI), e a primeira que a respondesse por si própria deixava um botão órfão
+    a apontar para uma aba que já não existe.
+
+    Lê-se pelo `loadout.regras_venda()` — o mesmo bloco `venda` de onde saem os
+    parâmetros da regra dos 5 % da RL, e a mesma leitura EM CACHE que todo o
+    motor usa (`sources.config()`, que recarrega quando o ficheiro muda).
+    """
+    b = loadout.regras_venda() if cfg is None else (cfg.get("venda") or {})
+    v = b.get("mostrar") if isinstance(b, dict) else None
+    return MOSTRAR_OMISSAO if v is None else bool(v)
+
+
+def gravar_mostrar(ligar: bool, path=None) -> dict:
+    """Escreve `venda.mostrar` no config e esquece a cache. `{antes, mostrar}`.
+
+    É o caminho do CLI (`vender --mostrar on|off`). Não há botão na página, de
+    propósito: com a venda desligada não há aba nenhuma onde o pôr, e pô-lo
+    noutra aba era dar à venda um sítio novo no dia em que ele a mandou tirar.
+    """
+    from . import configio, sources                          # noqa: PLC0415
+    cfg = configio.ler(path)
+    antes = mostrar(cfg)
+    b = cfg.get("venda")
+    if not isinstance(b, dict):
+        b = cfg["venda"] = {}
+    b["mostrar"] = bool(ligar)
+    configio.escrever(cfg, path)
+    sources._CFG_CACHE.clear()
+    return {"antes": antes, "mostrar": bool(ligar), "mudou": antes != bool(ligar)}
+
 
 # ---------------------------------------------------------------------------
 # O formato PREDEFINIDO. NÃO FOI CONFIRMADO CONTRA UMA CONTA REAL DO CARDMARKET

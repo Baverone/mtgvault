@@ -48,6 +48,13 @@ TRAZER (o que quero)
       e, por CARTA, a marca *"o vendor X pode ter"* (`feira.pode_ter`:
       `{nome da carta: [vendor, …]}`). É manual: só ele sabe quem vai estar.
 
+A METADE «LEVAR» SEGUE O INTERRUPTOR DA VENDA (2026-09-25)
+----------------------------------------------------------
+*"Para já tira o «vender»"*. Com `venda.mostrar` a `false`, o `levar()` devolve
+a mesma forma com zeros e `desligado: True`: a lista de venda carta a carta não
+fica à vista aqui com outro nome. O «trazer» — que é uma lista de COMPRAS —
+fica inteiro, e a aba também; o saldo passa a ser só o que ele quer trazer.
+
 PROJECÇÃO
 ---------
 Total a levar (Trend, dinheiro, troca), total a trazer (mínimo, e o "dele" —
@@ -168,6 +175,22 @@ def levar(con, rep: dict, cfg: dict | None = None) -> dict:
     f = bloco(cfg)
     t_din, t_troca = taxas(cfg)
     rev = revalidacao.activa()
+    # «PARA JÁ TIRA O VENDER» (André, 2026-09-25). A metade «levar» É a lista de
+    # venda, carta a carta e com preço: mantê-la à vista era tirar a aba Vender
+    # e deixá-la aqui com outro nome. Desliga-se com o MESMO interruptor
+    # (`venda.mostrar`) e a metade «trazer» — que é uma lista de COMPRAS — fica.
+    # Zeros em vez de nada: o saldo continua a somar, e tudo o que o leia
+    # (a página, o CLI, os textos) recebe a mesma forma de sempre.
+    if not venda.mostrar(cfg):
+        return {"linhas": [], "desligado": True,
+                "porque": venda.MOTIVO_DESLIGADO,
+                "taxa_dinheiro": t_din, "taxa_troca": t_troca,
+                "so_validadas": bool(f["so_validadas"]), "revalidacao": rev,
+                "copias": 0, "trend": 0.0, "dinheiro": 0.0, "troca": 0.0,
+                "rl_copias": 0, "rl_trend": 0.0, "sem_preco": 0,
+                "nao_levo": 0, "nao_levo_trend": 0.0,
+                "fora_foto": 0, "fora_foto_trend": 0.0,
+                "na_venda": 0, "na_venda_trend": 0.0}
     so_v = bool(f["so_validadas"]) and rev
     nao = set(str(x) for x in f["nao_levo"])
     copias = venda.linhas_export(con, rep)
@@ -218,7 +241,7 @@ def levar(con, rep: dict, cfg: dict | None = None) -> dict:
     linhas.sort(key=lambda g: (ordem.get(g["cor"], 9), g["nm"], g["set"], g["local"]))
     vao = [g for g in linhas if g["leva_q"]]
     return {
-        "linhas": linhas,
+        "linhas": linhas, "desligado": False, "porque": "",
         "taxa_dinheiro": t_din, "taxa_troca": t_troca,
         "so_validadas": bool(f["so_validadas"]), "revalidacao": rev,
         "copias": sum(g["leva_q"] for g in vao),
@@ -548,6 +571,11 @@ def texto_levar(p: dict) -> str:
     """«Levar» para o telemóvel: por cor, uma linha por impressão/sítio, com
     o Trend por cópia, o sítio e o 📷. Só o que VAI (`leva_q`)."""
     lv = p["levar"]
+    # Com a venda desligada (2026-09-25) não há moeda de troca para copiar para
+    # o telemóvel — e um texto vazio parecia uma falha. Diz-se porquê.
+    if lv.get("desligado"):
+        return (f"FEIRA — LEVAR ({p['hoje']})\n"
+                f"Sem moeda de troca: {lv.get('porque') or ''}\n")
     out = [f"FEIRA — LEVAR ({p['hoje']})",
            f"{_cop(lv['copias'])} · Trend {_eur(lv['trend'])} · dinheiro ~{_eur(lv['dinheiro'])}"
            f" ({lv['taxa_dinheiro']:.0%}) · troca ~{_eur(lv['troca'])} ({lv['taxa_troca']:.0%})"
@@ -610,9 +638,14 @@ def texto_cardmarket(p: dict) -> str:
 def resumo(p: dict) -> str:
     """Uma linha, para a CLI e para o relatório."""
     lv, tz, s = p["levar"], p["trazer"], p["saldo"]
-    return (f"levar {lv['copias']}c / Trend {lv['trend']:.2f} € "
+    # `levar 0c` com a venda desligada seria a dizer que não há nada a levar,
+    # quando o que há é a metade escondida. Diz-se a verdade.
+    meia = ("levar DESLIGADO (venda.mostrar: false) "
+            if lv.get("desligado") else
+            f"levar {lv['copias']}c / Trend {lv['trend']:.2f} € "
             f"(dinheiro {lv['dinheiro']:.2f} € @ {lv['taxa_dinheiro']:.0%} · "
-            f"troca {lv['troca']:.2f} € @ {lv['taxa_troca']:.0%}) · "
+            f"troca {lv['troca']:.2f} € @ {lv['taxa_troca']:.0%}) ")
+    return (meia + "· "
             f"trazer {tz['copias']}c / {tz['minimo']:.2f} €"
             + (f" (máx {tz['maximo']:.2f} €)" if tz["com_maximo"] else "")
             + f" · saldo dinheiro {s['dinheiro']:+.2f} € · troca {s['troca']:+.2f} €")

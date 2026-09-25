@@ -41,6 +41,9 @@ sys.path.insert(0, str(RAIZ))
 
 _TMP = Path(tempfile.mkdtemp())
 CFG = {
+    # A aba Vender, a estante e o «levo» da Feira estão neste ficheiro: o
+    # interruptor de 2026-09-25 tem de estar LIGADO para elas existirem.
+    "venda": {"mostrar": True},
     "regras_colecao": {}, "decks_vigiados": [],
     "baldes_coleccao": ["Colecção", "Caixa Reserved List"],
     "regras_por_formato": [
