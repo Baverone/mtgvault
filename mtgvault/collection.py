@@ -7,7 +7,7 @@ import shutil
 import sqlite3
 from pathlib import Path
 
-from . import scryfall
+from . import precos, scryfall
 
 ROOT = Path(__file__).resolve().parents[1]
 PENDENTES = ROOT / "pendentes"
@@ -955,20 +955,32 @@ def deck_extras(con: sqlite3.Connection) -> list[dict]:
 # nonfoil — por isso daqui também sai o acabamento a que o preço corresponde:
 # uma estimativa que veio do outro acabamento tem de poder ser mostrada como
 # estimativa (na Galeria vai com `~` e a razão no `title`).
-CENARIOS = ("trend", "low")
+# Os cenários são as duas colunas mais a média delas, que é exactamente o MODO
+# DE PREÇO do André (2026-09-25): `market` = trend, `best` = low, `media` =
+# a média. Quem traduz um pelo outro é `precos.sql`/`precos.de_valores`; aqui
+# ficam com o nome das colunas porque é o que a Galeria já lê no `title`.
+CENARIOS = ("trend", "low", "media")
 
 
-def mapa_precos(con: sqlite3.Connection, source: str = "cardmarket") -> dict:
-    """`{"trend": {(sid, acabamento): €}, "low": {...}}` — o mais barato por
-    impressão e acabamento.
+def cenario_em_vigor() -> str:
+    """O cenário que corresponde ao modo de preço escolhido no config."""
+    return {precos.MARKET: "trend", precos.BEST: "low",
+            precos.MEDIA: "media"}[precos.modo()]
 
-    A `source` está FIXA em `cardmarket` de propósito, como no
-    `loadout.card_price`: o `colecao_cor._value` fazia `MIN` sobre a `price_latest`
-    inteira, sem filtrar a fonte, e no dia em que o `CARDTRADER_SETS` ligar o
+
+def mapa_precos(con: sqlite3.Connection, source: str | None = None) -> dict:
+    """`{"trend": {(sid, acabamento): €}, "low": {...}, "media": {...}}` — o
+    mais barato por impressão e acabamento.
+
+    A `source` NÃO se escolhe por chamada: vem do `precos.fonte()`
+    (`colecao_config.json → precos.fonte`, hoje `cardmarket`). Estava fixa no
+    código pela mesma razão — o `colecao_cor._value` fazia `MIN` sobre a
+    `price_latest` inteira, e no dia em que o `CARDTRADER_SETS` ligasse o
     marketplace da CardTrader o valor da colecção mudava por causa de uma fonte
-    nova, sem ninguém mexer numa carta. É o mesmo tipo de armadilha que o price
-    guide público do Cardmarket (ver «As cinco superfícies» no CLAUDE.md).
+    nova, sem ninguém mexer numa carta. Passou ao config porque agora é uma
+    decisão dele; o que não pode é ser um `MIN` por cima de todas.
     """
+    source = source or precos.fonte()
     out: dict[str, dict] = {c: {} for c in CENARIOS}
     try:
         rows = con.execute(
@@ -978,10 +990,14 @@ def mapa_precos(con: sqlite3.Connection, source: str = "cardmarket") -> dict:
     except sqlite3.Error:      # sem tabela de preços a vista mostra-se sem valor
         return out
     for r in rows:
+        chave = (r["sid"], r["finish"])
         if r["tr"] is not None:
-            out["trend"][(r["sid"], r["finish"])] = r["tr"]
+            out["trend"][chave] = r["tr"]
         if r["lo"] is not None:
-            out["low"][(r["sid"], r["finish"])] = r["lo"]
+            out["low"][chave] = r["lo"]
+        m = precos.de_valores(r["lo"], r["tr"], precos.MEDIA)
+        if m is not None:
+            out["media"][chave] = m
     return out
 
 
@@ -999,8 +1015,13 @@ def _familias(finish: str | None) -> tuple[tuple[str, ...], tuple[str, ...]]:
 
 
 def preco_impressao(mapa: dict, sid: str, finish: str | None,
-                    cenario: str = "trend") -> tuple[float | None, str | None]:
-    """(preço desta impressão, acabamento a que o preço corresponde) ou (None, None)."""
+                    cenario: str | None = None) -> tuple[float | None, str | None]:
+    """(preço desta impressão, acabamento a que o preço corresponde) ou (None, None).
+
+    Sem `cenario`, o do MODO DE PREÇO em vigor. Uma impressão que a fonte
+    escolhida não cota devolve `(None, None)` — *"sem preço"*, nunca 0 €.
+    """
+    cenario = cenario or cenario_em_vigor()
     fam, outra = _familias(finish)
     ordem = [cenario] + [c for c in CENARIOS if c != cenario]
     for c in ordem:
@@ -1017,7 +1038,7 @@ def preco_impressao(mapa: dict, sid: str, finish: str | None,
 PARTES = ("coleccao", "decks", "rl", "colecionador")
 
 
-def valor_da_coleccao(con: sqlite3.Connection, source: str = "cardmarket") -> dict:
+def valor_da_coleccao(con: sqlite3.Connection, source: str | None = None) -> dict:
     """Quanto vale TUDO o que ele tem na estante, por cópia e por sítio.
 
     Devolve `{"total": {cenário: €}, "partes": {cenário: {parte: €}},
@@ -1036,6 +1057,7 @@ def valor_da_coleccao(con: sqlite3.Connection, source: str = "cardmarket") -> di
     """
     from . import loadout                                  # noqa: PLC0415
     mapa = mapa_precos(con, source)
+    cenario = cenario_em_vigor()
     baldes = set(loadout.baldes_coleccao()) - {loadout.BALDE_RL}
     partes = {c: dict.fromkeys(PARTES, 0.0) for c in CENARIOS}
     copias, q_total, q_jog, sem_preco = [], 0, 0, 0
@@ -1047,8 +1069,10 @@ def valor_da_coleccao(con: sqlite3.Connection, source: str = "cardmarket") -> di
               FROM copies cp
               LEFT JOIN sub_collections s ON s.id = cp.sub_collection_id
              WHERE {na_estante()}"""):
-        precos = {c: preco_impressao(mapa, r["sid"], r["fin"], c) for c in CENARIOS}
-        unit, pfin = precos["trend"]
+        # `pr` e não `precos`: o módulo `precos` é quem decide o cenário em
+        # vigor e uma variável com o mesmo nome tapava-o aqui dentro.
+        pr = {c: preco_impressao(mapa, r["sid"], r["fin"], c) for c in CENARIOS}
+        unit, pfin = pr[cenario]
         if r["purpose"] == "collector":
             base = "colecionador"
         elif r["bal"] == loadout.BALDE_RL:
@@ -1065,7 +1089,7 @@ def valor_da_coleccao(con: sqlite3.Connection, source: str = "cardmarket") -> di
             if q <= 0:
                 continue
             for c in CENARIOS:
-                partes[c][parte] += (precos[c][0] or 0) * q
+                partes[c][parte] += (pr[c][0] or 0) * q
         q_total += r["q"]
         if r["purpose"] == "player":
             q_jog += r["q"]
@@ -1088,6 +1112,10 @@ def valor_da_coleccao(con: sqlite3.Connection, source: str = "cardmarket") -> di
                    for c in CENARIOS},
         "copias": copias, "q": q_total, "q_jogaveis": q_jog,
         "sem_preco": sem_preco,
+        # Por que MODO é que este valor foi medido. Vai no retorno para as
+        # páginas o poderem dizer: um total sem o modo ao lado é um número que
+        # muda sozinho de um dia para o outro.
+        "modo": precos.modo(), "cenario": cenario, "fonte": source or precos.fonte(),
     }
 
 

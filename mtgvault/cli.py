@@ -5,8 +5,8 @@ import argparse
 import sys
 from pathlib import Path
 
-from . import (analysis, caixas, collection, db, loadout, mtgtop8, prices,
-               scryfall, sources, stock, wantlist, watchlist)
+from . import (analysis, caixas, collection, db, loadout, mtgtop8, precos,
+               prices, scryfall, sources, stock, wantlist, watchlist)
 
 
 def _p(rows, cols):
@@ -242,6 +242,16 @@ def main(argv=None):
     rs.add_argument("accao", nargs="?", default="listar",
                     choices=["listar", "add", "remover"])
     rs.add_argument("nome", nargs="?", help="add/remover: o nome da carta")
+
+    # O MODO DE PREÇO (André, 2026-09-25): market | best | media.
+    pm = sub.add_parser("precos",
+                        help="o modo de preço: `precos` mostra, `precos modo "
+                             "<market|best|media>` troca, `precos comparar` "
+                             "põe os três lado a lado")
+    pm.add_argument("accao", nargs="?", default="mostrar",
+                    choices=["mostrar", "modo", "comparar"])
+    pm.add_argument("valor", nargs="?", help="modo: market|best|media")
+    pm.add_argument("--json", action="store_true")
 
     # A FEIRA (André, 2026-09-20): a projecção (levar vs. trazer), e a wantlist
     # e os vendors — é por aqui que o Claude na nuvem lê e escreve sem o 8771.
@@ -619,6 +629,9 @@ def main(argv=None):
         elif args.cmd in ("padrao", "reserva"):
             _padrao_reserva(con, args)
 
+        elif args.cmd == "precos":
+            _precos(con, args)
+
         elif args.cmd == "feira":
             _feira(con, args)
 
@@ -723,6 +736,101 @@ def _padrao_reserva(con, args):
     except ValueError as e:
         print(f"  ERRO: {e}")
         sys.exit(2)
+
+
+def comparar_modos(con) -> dict:
+    """Os TRÊS modos lado a lado: quanto vale a colecção e quem muda de lado
+    na lista de venda (André, 2026-09-25: *"mostra-lhe a diferença"*).
+
+    É a pergunta com que ele escolhe, por isso vive no código e não num script
+    de medição que se perde: `py -m mtgvault.cli precos comparar`. Corre o
+    `loadout.report` uma vez por modo — é lento de propósito, porque a lista
+    de venda depende do preço em vários sítios (o tecto, a regra dos 5 % da
+    RL, o que é «cara») e recalculá-la é a única forma honesta de dizer
+    quantas cartas mudam de lado.
+
+    «Mudar de lado» é sair de uma das SETE saídas da venda para outra —
+    incluindo entrar ou sair da venda por causa da regra da Reserved List.
+    """
+    SAIDAS = ("venda", "venda_rl", "rl_segurar", "rl_sem_historico",
+              "retidos", "reservadas", "guardar")
+    out, lados = {}, {}
+    for m in precos.MODOS:
+        with precos.forcar(m):
+            val = collection.valor_da_coleccao(con)
+            res = loadout.report(con)
+        saidas = {s: res.get(s) or [] for s in SAIDAS}
+        lados[m] = {loadout.chave_venda(l): s
+                    for s, linhas in saidas.items() for l in linhas}
+        out[m] = {
+            "rotulo": precos.ROTULOS[m],
+            # O cenário sai do PRÓPRIO relatório (`val["cenario"]`) e não de uma
+            # segunda chamada ao `cenario_em_vigor()`: essa corre fora do
+            # `forcar` e devolvia sempre o modo do config — os três modos
+            # mostravam o mesmo valor da colecção com o resto a mudar.
+            "valor": val["total"][val["cenario"]],
+            "cartas": val["q"], "sem_preco": val["sem_preco"],
+            "fechar_tudo": round(res.get("custo_total") or 0, 2),
+            "comprar": res.get("comprar_total"),
+            "saidas": {s: {"copias": sum(l.get("q") or 0 for l in linhas),
+                           "eur": round(sum((l.get("unit") or 0) * (l.get("q") or 0)
+                                            for l in linhas), 2)}
+                       for s, linhas in saidas.items()},
+        }
+    base = precos.MARKET
+    for m in precos.MODOS:
+        mudam = [k for k in set(lados[base]) | set(lados[m])
+                 if lados[base].get(k) != lados[m].get(k)]
+        out[m]["mudam_de_lado"] = len(mudam)
+        out[m]["exemplos"] = sorted(
+            f"{k[0]}: {lados[base].get(k, '(fora)')} -> {lados[m].get(k, '(fora)')}"
+            for k in mudam)[:8]
+    return {"base": base, "modos": out, "em_vigor": precos.modo()}
+
+
+def _precos(con, args):
+    """`precos` | `precos modo <market|best|media>` | `precos comparar`."""
+    import json as _json                                    # noqa: PLC0415
+    if args.accao == "modo":
+        try:
+            r = precos.gravar_modo(args.valor)
+        except ValueError as e:
+            print(f"erro: {e}")
+            raise SystemExit(2) from None
+        print(f"modo de preço: {r['antes']} -> {r['modo']} ({r['rotulo']})")
+        if r["mudou"]:
+            print(f"  `precos.modo_desde` = {r['desde']}: a regra dos 5 % da "
+                  f"Reserved List responde «não sei» até haver "
+                  f"{loadout.rl_janela_minima()} dias neste modo.")
+        return
+    if args.accao == "comparar":
+        r = comparar_modos(con)
+        if args.json:
+            print(_json.dumps(r, ensure_ascii=False, indent=1))
+            return
+        print(f"modo em vigor: {r['em_vigor']}\n")
+        for m, d in r["modos"].items():
+            print(f"[{m}] {d['rotulo']}")
+            print(f"  colecção   {d['valor']:>12,.2f} EUR  "
+                  f"({d['cartas']} cartas, {d['sem_preco']} sem preço)")
+            print(f"  fechar tudo{d['fechar_tudo']:>12,.2f} EUR  "
+                  f"({d['comprar']} a comprar)")
+            for s, v in d["saidas"].items():
+                print(f"    {s:<18} {v['copias']:>4}c {v['eur']:>11,.2f} EUR")
+            print(f"  mudam de lado face a «{r['base']}»: {d['mudam_de_lado']}")
+            for ex in d["exemplos"]:
+                print(f"    {ex}")
+            print()
+        return
+    cfg = precos.bloco()
+    print(f"modo   {precos.modo()} ({precos.ROTULOS[precos.modo()]})")
+    print(f"fonte  {precos.fonte()}   receita em vigor: "
+          f"{precos.receita_em_vigor(con)}")
+    print(f"desde  {precos.modo_desde() or '(nunca trocado)'}")
+    print(f"línguas {', '.join(sorted(precos.linguas()))}")
+    if args.json:
+        import json as _j                                   # noqa: PLC0415
+        print(_j.dumps(cfg, ensure_ascii=False))
 
 
 def _feira(con, args):

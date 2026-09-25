@@ -37,6 +37,7 @@ sys.path.insert(0, str(ROOT))
 # acima — três camadas, com overrides à mão — **não é** a conta do valor da
 # coleção e não se pode comparar com ela: a dela vive na
 # `collection.valor_da_coleccao` e é uma só.
+from mtgvault import precos  # noqa: E402
 from mtgvault.collection import na_estante  # noqa: E402
 OVERRIDES = ROOT / "price_overrides.csv"
 
@@ -61,9 +62,10 @@ def refresh(con) -> str:
     con.execute("DELETE FROM collection_owned")
     for r in con.execute(
         f"""SELECT s.name AS sub, cat.name AS nm, SUM(cp.quantity) AS q,
-                  MAX((SELECT trend FROM price_latest p
+                  MAX((SELECT {precos.sql(alias="p")} FROM price_latest p
                         WHERE p.scryfall_id = cp.scryfall_id
-                          AND p.source = 'cardmarket' AND p.finish = cp.finish)) AS price
+                          AND p.source = '{precos.fonte()}'
+                          AND p.finish = cp.finish)) AS price
              FROM copies cp
              JOIN catalog.cards cat ON cat.scryfall_id = cp.scryfall_id
              JOIN sub_collections s ON s.id = cp.sub_collection_id

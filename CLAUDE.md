@@ -112,7 +112,17 @@ mtgvault/
   mtgtop8.py      duel-commander, premodern, cedh, e papel
   moxfield.py     decks do Moxfield
   watchlist.py    vigiar jogadores e decks, snapshots e diffs
-  prices.py       Scryfall bulk (grátis) + Cardmarket (ficheiro) + CardTrader (API)
+  precos.py       O MODO DE PREÇO (2026-09-25): `market` (o que o mercado pede)
+                  / `best` (a oferta mais barata) / `media`, em
+                  `colecao_config.json → precos`. `sql()` é a EXPRESSÃO do preço
+                  num sítio só (era `MIN(p.trend)` em oito consultas), `fonte()`
+                  a fonte fixa, `modo_desde` o carimbo que trava a regra da RL, e
+                  as RECEITAS (`unico`/`cm-guide`/`ct-ofertas`) dizem como é que
+                  cada linha de preço foi produzida — é o que impede comparar
+                  duas escalas diferentes. Ver «O PREÇO TEM TRÊS MODOS»
+  prices.py       Scryfall bulk (grátis) + Cardmarket (ficheiro) + CardTrader (API,
+                  agora com OS DOIS valores: `low` = melhor oferta, `trend` =
+                  mediana das ofertas utilizáveis)
   cli.py          interface de linha de comandos
 daily.py          o job diário (encadeia tudo o que está abaixo)
 .github/workflows/daily.yml
@@ -476,6 +486,128 @@ relatório em `ai-pc/work/revisao/mtgvault-valor-0924.md`.
   `collection_gallery.REGRA_NOVA` (`2026-09-24`) e `_costura()` dão a linha
   tracejada no primeiro ponto da regra nova, com a nota por baixo a dizer que o
   degrau de ~11,67 € **não é o mercado**.
+
+**O PREÇO TEM TRÊS MODOS: market, best e a média dos dois (André, 2026-09-25, à
+letra).** *"tal como no riftvault, o preço da colecção pode ser pelo market value
+do cardtrader, ou o best value, ou a média dos 2"*. Continua a decisão de
+2026-09-24 (*"o valor de uma cópia é uma conta só"*): aquela unificou a CONTA,
+esta dá-lhe a RÉGUA. Motor em **`mtgvault/precos.py`**; testes em
+`tests/test_preco_modo.py` (13 casos) e a prova de que chumbam sem a
+funcionalidade em `tests/_provar_chumba.py` (corre-se à mão).
+
+- **O QUE O RIFTVAULT FAZ MESMO — foi lido antes de se escrever uma linha, e a
+  premissa dele estava meio errada.** O riftvault (`riftvault/prices.py`,
+  `oferta()`) guarda **um só** preço por impressão: `min(price_cents)` das
+  ofertas utilizáveis. Isso é o **best value** — **não há market value nem média
+  no riftvault**, e os três modos são desenho novo. O que se copiou de lá foi o
+  **filtro das ofertas** (sem graded, sem vendedor de férias, sem altered/signed,
+  estado em Mint/NM/SP/MP, língua em `precos.linguas`, EUR, > 0) e o **sítio da
+  configuração**: `precos.linguas` é a mesma chave nos dois, e `precos.modo` com
+  os nomes `market`/`best`/`media` cai no `riftvault_config.json` sem mudar uma
+  letra no dia em que ele lá os quiser.
+- **O CARDTRADER NÃO PUBLICA "MARKET VALUE" NENHUM** (sondado contra a API a
+  2026-09-25, `/blueprints/export` e `/marketplace/products` da `ody`): os
+  blueprints não trazem campo de preço nenhum e cada oferta traz só o seu
+  `price_cents`. Por isso calcula-se, e está escrito o que é cada um:
+  **best = a oferta mais barata**, **market = a MEDIANA das utilizáveis**. A
+  mediana e não a média porque a cauda de cópias raras e estrangeiras puxa uma
+  média que ninguém pratica: nessa sonda, Tainted Pact best 20,27 € contra
+  mediana 34,27 € (28 ofertas).
+- **O `fetch_cardtrader_prices` guardava UM valor, copiado para as duas colunas**
+  (`low = trend = min(ofertas)`) — por isso os três modos dariam todos o mesmo
+  número, e por isso **não se conseguia ver a diferença**. Agora escreve os dois,
+  e **filtra as ofertas**: sem o filtro, o preço de um Mountain de Odyssey eram
+  os 0,28 € de uma cópia italiana «Poor» com o verso escrito à mão — e esse
+  número entrava no valor da colecção e na lista de compras.
+- **A EXPRESSÃO DO PREÇO VIVE NUM SÍTIO SÓ: `precos.sql()`** (`market` → `trend`,
+  `best` → `low`, `media` → a média, `NULL` só quando faltam os dois). Era
+  `MIN(p.trend)` escrito à mão em **oito** consultas — `loadout.card_price`,
+  `impressao_mais_barata`, `_historico`, `collection.mapa_precos`,
+  `wantlist.cheapest_price`, `meta_coverage` (×4), `core_decks`, `scryfall`,
+  `reservedlist`, `refresh_collection`, `import_owned` —, e a primeira que se
+  esquecesse do modo punha duas páginas a dizer dois números para o mesmo
+  dinheiro, que é exactamente o defeito que 24/09 fechou. Tem teste que varre o
+  código à procura do literal (`caso_o_sql_do_preco_vive_num_sitio_so`).
+- **A FONTE passou ao config** (`precos.fonte`, hoje `cardmarket`). Estava fixa
+  no código pela razão certa — um `MIN` por cima de todas as fontes mudava o
+  valor da colecção no dia em que o CardTrader entrasse —, e continua a ser uma
+  fonte de cada vez; só que agora é ele que escolhe. O `reservedlist.price_maps`
+  fazia esse `MIN` sobre a `price_latest` INTEIRA e com o `low` escolhido à mão:
+  passou pela mesma régua.
+- **«SEM PREÇO» NÃO É ZERO EUROS.** Uma impressão que a fonte escolhida não cota
+  devolve `None` e conta em `sem_preco`. Zero numa soma tira uma carta de 900 €
+  do total sem nenhuma linha dizer que faltou.
+- **A REGRA DA RESERVED LIST — a parte que mais podia custar dinheiro.** A regra
+  de 2026-09-08 compara o preço de hoje com o de há N dias, e é ela que decide se
+  uma carta que não se volta a imprimir vai à venda. **Duas defesas, e as duas
+  são precisas:**
+  - **A RECEITA.** Cada linha de `price_latest`/`price_history` passou a dizer
+    COMO foi produzida (`price_*.receita`: `unico` = um valor copiado para as
+    duas colunas — o bulk da Scryfall e o CardTrader antigo; `cm-guide` = o price
+    guide do Cardmarket; `ct-ofertas` = melhor oferta + mediana). O
+    `loadout._historico` **só traz pontos da receita em vigor**. Sem isto, no dia
+    em que o `trend` deixasse de ser «o único preço da Scryfall» e passasse a ser
+    «a mediana das ofertas», a regra comparava as duas escalas e inventava
+    subidas de dezenas por cento — sem um único erro, o padrão do `event_tier`
+    sobre a decisão de venda que vale mais dinheiro. Coluna nova = os três
+    sítios: `schema.sql`, `db._migrate()` e quem a escreve (`prices.write_prices`,
+    onde ela **entra também na comparação** — os mesmos números com outra receita
+    são uma linha nova de histórico).
+  - **O CARIMBO DO MODO.** `precos.modo_desde` guarda a data da última troca, e o
+    `avaliar_rl` encurta a janela até lá. Trocar de modo troca a régua com que
+    ele anda a olhar para os números: até haver `venda.rl_janela_minima_dias`
+    (25) dias medidos no modo novo a resposta é **`rl_sem_historico`** — a
+    terceira resposta que existe desde 08/09 —, nunca *"não subiu"*. **Trocar
+    para o modo que já lá está é um no-op** e não reinicia janela nenhuma.
+    É o caso que ele mandou forçar e tem teste próprio
+    (`caso_trocar_de_modo_nao_manda_nenhuma_rl_para_a_venda`), que chumba em cima
+    de um `avaliar_rl` sem o carimbo.
+- **Onde se troca:** o interruptor **market · best · média** no cabeçalho da
+  Deckboxes, só no modo edição (`POST /api/preco-modo`; um valor fora dos três é
+  409, como a `vista`), e `py -m mtgvault.cli precos modo <market|best|media>`.
+  A troca **regenera** — muda todos os números da página ao mesmo tempo — e a
+  resposta diz, em português, que a regra da RL fica em suspenso. O modo viaja no
+  payload (`D.preco`) e os Binders dizem-no debaixo do total: um total sem a
+  régua ao lado é um número que muda sozinho de um dia para o outro.
+- **`py -m mtgvault.cli precos comparar`** põe os três lado a lado — valor da
+  colecção, fechar tudo, as sete saídas da venda e **quantas cartas mudam de
+  lado**. Vive no código e não num script de medição que se perde: é a pergunta
+  com que ele escolhe.
+- **MEDIDO NA CÓPIA DA BASE DE 2026-09-25** (`py -m mtgvault.cli precos comparar`
+  sobre uma cópia do `vault.db`, o mesmo nos três modos):
+  - **Com a fonte de hoje (`cardmarket`, receita `unico`) os três modos são
+    IGUAIS ao cêntimo**: colecção **97 913,68 €** (1 678 cartas, 4 sem preço),
+    fechar tudo **6 978,93 €** (253 a comprar), venda 268c/1 566,55 €, venda_rl
+    66c/4 915,91 €, rl_segurar 36c/3 618,39 €, reservadas 1c/100,00 €, guardar
+    2c/14,71 €, **0 cartas mudam de lado**. Ligar isto hoje não mexe um número —
+    de propósito: `low` e `trend` são o mesmo valor da Scryfall.
+  - **Com o CardTrader puxado para as 145 edições dele** (30 162 impressões no
+    mapa, **53 113 linhas de preço** — 29 365 nonfoil + 23 748 foil —, **todas
+    com os dois valores** e só **312** com `low == trend`, que são as de oferta
+    única), os três modos separam-se mesmo:
+
+    | | market | best | média |
+    |---|---|---|---|
+    | colecção | **108 368,46 €** | **74 125,29 €** | **91 246,88 €** |
+    | fechar tudo | 6 406,16 € | 4 191,18 € | 5 302,01 € |
+    | venda (268 c) | 2 857,20 € | 1 921,79 € | 2 399,03 € |
+
+    São **34 243 € entre a ponta de cima e a de baixo** — 32 % do valor da
+    colecção. As maiores diferenças por cópia são as caras: Gaea's Cradle (USG)
+    best 1 100,64 € / market 1 765,86 €, Mox Diamond (STH) 850,64 / 1 487,64,
+    Underground Sea (3ED) 630,64 / 1 127,96.
+  - **E MUDAM DE LADO ZERO CARTAS, nos três modos.** As 268 cópias da venda
+    normal são as mesmas; o que muda é o euro que valem. A Reserved List —
+    **102 cópias** — cai INTEIRA em `rl_sem_historico` assim que a fonte passa a
+    `cardtrader`, porque o histórico dessa fonte começa hoje: é a regra a
+    proteger-se, não um efeito do modo.
+  - **A DECISÃO QUE FICA PARA ELE, e o número que a manda:** dos **1 678**
+    exemplares, o Cardmarket deixa **7** sem preço na impressão exacta e o
+    CardTrader deixa **606** (36 %) — são as PT, as edições antigas e as foil
+    que o marketplace não tem à venda hoje. Ligar `precos.fonte: "cardtrader"`
+    hoje era trocar 32 % de valor por 36 % da colecção sem cotação. Por isso a
+    fonte ficou em `cardmarket` e o modo em `market`, que é onde ela já estava:
+    **nada mudou de número no dia em que isto entrou** (ver a linha de cima).
 
 ### Duas bases de dados
 
@@ -3036,7 +3168,7 @@ cartas.
 | **mtggoldfish** | acessível, mas é agregador — duplicaria dados. Termos proíbem reprodução |
 | Moxfield | precisa de User-Agent autorizado pelo suporte; sem isso, 403 |
 | Cardmarket | não se raspa; usa o price guide oficial. O cookie de sessão expira. **O price guide de Magic está PÚBLICO** (`prices.CM_PRICEGUIDE_PUBLICO`, S3, sem sessão — 2026-09-18), mas ligá-lo é opt-in (ver abaixo) |
-| CardTrader | API v2, token no perfil, 200 pedidos/10s. O token existe neste PC (`CARDTRADER_TOKEN`); o `daily` só corre com `CARDTRADER_SETS` |
+| CardTrader | API v2, token no perfil, 200 pedidos/10s. O token existe neste PC (`CARDTRADER_TOKEN`); o `daily` só corre com `CARDTRADER_SETS`. **NÃO publica «market value» nenhum** (sondado a 2026-09-25): os blueprints não trazem preço e cada oferta traz só o `price_cents` — o market value é a MEDIANA das ofertas, calculada por nós. As 145 edições dele são **450 s** e **53 113 linhas** |
 
 ## As cinco superfícies, validadas contra os sites reais (2026-09-18)
 
@@ -3076,7 +3208,11 @@ uma, sozinha, contra o site, com as escritas numa CÓPIA da base
    dias não tinha). É decisão do André: `CARDMARKET_PRICEGUIDE_PUBLICO=1` no
    ambiente do `daily` liga-o (`prices.priceguide_publico_ligado`, com teste
    sobre um trecho real), e nesse dia a janela da RL recomeça.
-5. `prices.sync_cardtrader_map` — **funciona.** `/expansions` 3 859; ODY →
+5. `prices.sync_cardtrader_map` — **funciona, e voltou a correr a 2026-09-25**
+   para as **145 edições** da colecção dele, numa cópia da base: 30 162
+   impressões no mapa (70 s) e **53 113 preços** (450 s), agora com os DOIS
+   valores. Deixou de ser uma superfície por validar. O texto de 18/09 fica:
+   `/expansions` 3 859; ODY →
    374 blueprints, **350 com `scryfall_id`** (o resto são variantes sem par
    pelo nome), 350 pares no mapa; `fetch_cardtrader_prices` 699 linhas (ex.:
    Mountain 0,14 €, 343 à venda). Dado mais recente: **2026-09-18** (é o

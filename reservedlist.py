@@ -21,7 +21,7 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 from mtgvault import collection  # noqa: E402
 from mtgvault import db as _db  # noqa: E402
-from mtgvault import paginas  # noqa: E402
+from mtgvault import paginas, precos  # noqa: E402
 from mtgvault import site_shell as shell  # noqa: E402
 from mtgvault.collection import na_estante  # noqa: E402
 
@@ -91,28 +91,40 @@ def price_maps(con):
     nossa história (o último ponto até há 30 dias É o preço nesse dia) ou, na
     falta dela, o avg30 do Cardmarket.
     """
+    # O MODO DE PREÇO (2026-09-25) manda também aqui, e a FONTE deixou de ser
+    # todas: era `MIN(COALESCE(low, trend))` sobre a `price_latest` inteira —
+    # um `low` escolhido à mão (portanto sempre o *best value*) e um mínimo por
+    # cima de fontes que ainda vão aparecer. É o mesmo defeito que a conta única
+    # do valor corrigiu nas outras páginas a 2026-09-24.
+    pr, fonte = precos.sql(alias="p"), precos.fonte()
     price = {r["sid"]: r["m"] for r in con.execute(
-        "SELECT scryfall_id sid, MIN(COALESCE(low, trend)) m FROM price_latest "
-        "WHERE finish='nonfoil' AND COALESCE(low, trend) IS NOT NULL GROUP BY scryfall_id")}
+        f"SELECT scryfall_id sid, MIN({pr}) m FROM price_latest p "
+        f"WHERE source = ? AND finish='nonfoil' AND {pr} IS NOT NULL "
+        "GROUP BY scryfall_id", (fonte,))}
 
     cutoff = (date.today() - timedelta(days=30)).isoformat()
+    ph = precos.sql(alias="ph")
     month = {}
     for r in con.execute(
-        """SELECT ph.scryfall_id sid, COALESCE(ph.low, ph.trend) v FROM price_history ph
+        f"""SELECT ph.scryfall_id sid, {ph} v FROM price_history ph
              JOIN (SELECT scryfall_id, MAX(date) d FROM price_history
-                    WHERE finish='nonfoil' AND date <= ? GROUP BY scryfall_id) x
+                    WHERE source = ? AND finish='nonfoil' AND date <= ?
+                    GROUP BY scryfall_id) x
                ON x.scryfall_id = ph.scryfall_id AND x.d = ph.date
-            WHERE ph.finish='nonfoil'""", (cutoff,)):
+            WHERE ph.source = ? AND ph.finish='nonfoil'""",
+            (fonte, cutoff, fonte)):
         if r["v"] is not None:
             month[r["sid"]] = r["v"]
     for r in con.execute("SELECT scryfall_id sid, avg30 FROM price_latest "
-                         "WHERE source='cardmarket' AND finish='nonfoil' AND avg30 IS NOT NULL"):
+                         "WHERE source = ? AND finish='nonfoil' AND avg30 IS NOT NULL",
+                         (fonte,)):
         month.setdefault(r["sid"], r["avg30"])
 
     hist = defaultdict(list)
     for r in con.execute(
-        "SELECT scryfall_id sid, date, MIN(COALESCE(low, trend)) v FROM price_history "
-        "WHERE finish='nonfoil' GROUP BY scryfall_id, date ORDER BY date"):
+        f"SELECT scryfall_id sid, date, MIN({ph}) v FROM price_history ph "
+        "WHERE source = ? AND finish='nonfoil' "
+        "GROUP BY scryfall_id, date ORDER BY date", (fonte,)):
         if r["v"] is not None:
             hist[r["sid"]].append(r["v"])
     return price, month, hist

@@ -25,6 +25,8 @@ from pathlib import Path
 
 import requests
 
+from . import precos
+
 CT_BASE = "https://api.cardtrader.com/api/v2"
 CM_EXPORTS = "https://www.cardmarket.com/en/Magic/Data/File-Exports"
 # O price guide de Magic (idCategory 1) está PÚBLICO no S3 do Cardmarket, sem
@@ -87,7 +89,8 @@ def load_cardmarket_file(con: sqlite3.Connection, path: str | Path,
             low, trend, avg30 = (_f(row.get(k)) for k in keys)
             if trend is None and low is None:
                 continue
-            batch.append((sid, "cardmarket", day, finish, low, trend, avg30, None, "EUR"))
+            batch.append((sid, "cardmarket", day, finish, low, trend, avg30,
+                          None, "EUR", precos.RECEITA_CM_GUIDE))
         if len(batch) >= 5000:
             n += _flush(con, batch)
     n += _flush(con, batch)
@@ -139,7 +142,10 @@ def load_scryfall_prices(con: sqlite3.Connection, bulk_path, day: str | None = N
                     eur = float(v)
                 except (TypeError, ValueError):
                     continue
-                batch.append((sid, "cardmarket", day, finish, eur, eur, None, None, "EUR"))
+                # `unico`: um valor só, copiado para as duas colunas — os três
+                # modos de preço dão aqui exactamente o mesmo número.
+                batch.append((sid, "cardmarket", day, finish, eur, eur, None,
+                              None, "EUR", precos.RECEITA_UNICA))
             if len(batch) >= 5000:
                 n += write_prices(con, batch)
     n += write_prices(con, batch)
@@ -188,29 +194,45 @@ def write_prices(con: sqlite3.Connection, rows: list[tuple]) -> int:
     price_latest fica sempre atualizado, por isso não se perde informação:
     "não há linha nova" quer dizer "o preço manteve-se".
 
-    rows = [(scryfall_id, source, date, finish, low, trend, avg30, available, cur)]
+    rows = [(scryfall_id, source, date, finish, low, trend, avg30, available, cur
+             [, receita])]
+
+    A RECEITA é o 10.º elemento e é opcional (quem não a manda fica com
+    `unico`, que é o que os dois carregadores antigos escrevem: um valor só,
+    copiado para as duas colunas). **Ela entra na comparação**: os números
+    podem ser os mesmos e quererem dizer outra coisa, e uma linha de histórico
+    sem a receita nova deixava a regra da Reserved List a comparar receitas
+    diferentes sem dar por isso — ver `mtgvault.precos`.
     """
     if not rows:
         return 0
+    # `rows` é o batch do chamador e é ELE que se esvazia no fim (`_flush`
+    # conta com isso) — por isso a normalização vai para uma lista à parte.
+    linhas = [tuple(r) + (precos.RECEITA_UNICA,) if len(r) < 10 else tuple(r)
+              for r in rows]
     latest = {
-        (r["scryfall_id"], r["source"], r["finish"]): (r["low"], r["trend"], r["avg30"])
+        (r["scryfall_id"], r["source"], r["finish"]):
+            (r["low"], r["trend"], r["avg30"],
+             r["receita"] or precos.RECEITA_UNICA)
         for r in con.execute("SELECT * FROM price_latest")
     }
     changed = []
-    for row in rows:
+    for row in linhas:
         sid, src, day, fin, low, trend, avg30 = row[:7]
-        if latest.get((sid, src, fin)) != (low, trend, avg30):
+        if latest.get((sid, src, fin)) != (low, trend, avg30, row[9]):
             changed.append(row)
     if changed:
         con.executemany(
             """INSERT OR REPLACE INTO price_history
                (scryfall_id, source, date, finish, low, trend, avg30, available,
-                currency) VALUES (?,?,?,?,?,?,?,?,?)""", changed)
+                currency, receita) VALUES (?,?,?,?,?,?,?,?,?,?)""", changed)
     con.executemany(
         """INSERT OR REPLACE INTO price_latest
-           (scryfall_id, source, finish, date, low, trend, avg30, available, currency)
-           VALUES (?,?,?,?,?,?,?,?,?)""",
-        [(r[0], r[1], r[3], r[2], r[4], r[5], r[6], r[7], r[8]) for r in rows])
+           (scryfall_id, source, finish, date, low, trend, avg30, available,
+            currency, receita)
+           VALUES (?,?,?,?,?,?,?,?,?,?)""",
+        [(r[0], r[1], r[3], r[2], r[4], r[5], r[6], r[7], r[8], r[9])
+         for r in linhas])
     con.commit()
     rows.clear()
     return len(changed)
@@ -289,8 +311,27 @@ def sync_cardtrader_map(con: sqlite3.Connection, ct: CardTrader,
 
 def fetch_cardtrader_prices(con: sqlite3.Connection, ct: CardTrader,
                             set_codes: list[str]) -> int:
-    """Preço mais baixo por blueprint, para as edições indicadas."""
+    """OS DOIS VALORES por blueprint: best value e market value (2026-09-25).
+
+    Até esta data guardava-se **um só** — `min(ofertas)` copiado para o `low` e
+    para o `trend` —, e por isso os três modos de preço do André davam todos o
+    mesmo número. Agora:
+
+        low   = a oferta mais barata das utilizáveis   (**best value**)
+        trend = a MEDIANA das utilizáveis              (**market value**)
+
+    A API do CardTrader não publica campo nenhum de "market value" (sondada a
+    2026-09-25: os blueprints não trazem preço e cada oferta traz só o seu
+    `price_cents`) — por isso calcula-se, e a mediana é o que resiste à cauda
+    de cópias estrangeiras e maltratadas. **E as ofertas filtram-se**, com o
+    mesmo crivo do riftvault (`precos.oferta_utilizavel`): sem ele o preço de
+    um Mountain de Odyssey era os 0,28 € de uma cópia italiana «Poor» com o
+    verso escrito à mão.
+
+    Devolve o nº de linhas gravadas em `price_history`.
+    """
     day = date.today().isoformat()
+    aceites = precos.linguas()
     exps = {e["code"].lower(): e["id"] for e in ct.expansions() if e.get("code")}
     bp_to_sid = {
         r["blueprint_id"]: r["scryfall_id"]
@@ -307,18 +348,17 @@ def fetch_cardtrader_prices(con: sqlite3.Connection, ct: CardTrader,
             sid = bp_to_sid.get(int(bp_id))
             if not sid or not offers:
                 continue
+            uteis = [o for o in offers if precos.oferta_utilizavel(o, aceites)]
             for finish, want_foil in (("nonfoil", False), ("foil", True)):
                 sel = [
-                    o for o in offers
+                    o for o in uteis
                     if bool((o.get("properties_hash") or {}).get("mtg_foil")) == want_foil
                 ]
                 if not sel:
                     continue
-                prices = [o["price"]["cents"] / 100 for o in sel if o.get("price")]
-                if not prices:
-                    continue
-                batch.append((sid, "cardtrader", day, finish, min(prices), min(prices),
-                              None, sum(o.get("quantity", 0) for o in sel), "EUR"))
+                v = precos.dois_valores(sel)
+                batch.append((sid, "cardtrader", day, finish, v["low"], v["trend"],
+                              None, v["copias"], "EUR", precos.RECEITA_CT_OFERTAS))
         n += _flush(con, batch)
     return n
 

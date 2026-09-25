@@ -3,6 +3,11 @@ __pycache__/
 .venv/
 # Medições e ficheiros de trabalho das revisões (nunca vão para o repo).
 _scratch/
+# Os worktrees de trabalho e as cópias da base que se medem lá dentro. É onde
+# se compara o `main` com um ramo sobre o MESMO `vault.db` sem tocar no a
+# sério (ver as medições de cada secção do CLAUDE.md).
+_revisao/
+_med/
 
 # O catálogo Scryfall é reconstruível e grande de mais para o Git.
 data/catalog.db

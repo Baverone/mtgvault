@@ -24,7 +24,7 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 import classify  # noqa: E402
 import commander_decks  # noqa: E402  (decks de consenso em camadas núcleo/flex/tech)
-from mtgvault import db, loadout, paginas  # noqa: E402
+from mtgvault import db, loadout, paginas, precos  # noqa: E402
 from mtgvault import site_shell as shell  # noqa: E402
 from mtgvault import collection as col  # noqa: E402
 from mtgvault.collection import jogaveis, owned_playable, valor_da_coleccao  # noqa: E402
@@ -331,8 +331,12 @@ def _value(con):
     `mtgvault/collection.py`.
     """
     v = valor_da_coleccao(con)
+    # Desde o MODO DE PREÇO (2026-09-25) o `trend` desta página é o cenário EM
+    # VIGOR (market/best/média) e não a coluna `trend`: o rótulo interno ficou,
+    # porque é o que o resto do ficheiro já lia, mas o número é o mesmo que a
+    # Galeria e o Início mostram. O `min` continua a ser o best value.
     return {c: [v["partes"][cen][p] for p in col.PARTES]
-            for c, cen in (("min", "low"), ("trend", "trend"))}
+            for c, cen in (("min", "low"), ("trend", v["cenario"]))}
 
 
 def _eur(x):
@@ -446,7 +450,11 @@ def build(con, out_path=None):
     today = con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or ""
 
     val = _value(con)
-    total = sum(val["trend"])   # == sum(val["min"]) enquanto a fonte der um só preço
+    total = sum(val["trend"])   # o cenário EM VIGOR (ver `_value`)
+    # Com a receita `unico` (o bulk da Scryfall) as duas colunas são iguais e os
+    # três modos dão o mesmo número — vale a pena dizê-lo, senão o interruptor
+    # parece avariado. Com o CardTrader ligado deixa de ser verdade.
+    todos_iguais = abs(sum(val["min"]) - total) < 0.005
 
     def _vrow(lbl, i):
         return f'<tr><td>{lbl}</td><td>{_eur(val["trend"][i])}</td></tr>'
@@ -457,14 +465,18 @@ def build(con, out_path=None):
         rows += _vrow("🏛️ Colecionador", 3)
     valor_html = (
         f'<div class="valor"><div class="vtot">💰 <b class="vtr">{_eur(total)}</b> '
-        f'<span class="vall">— valor total de tudo (coleção + decks + caixa), a preço Cardmarket</span></div>'
+        f'<span class="vall">— valor total de tudo (coleção + decks + caixa), '
+        f'pelo <b>{html.escape(precos.ROTULOS[precos.modo()])}</b> '
+        f'({html.escape(precos.fonte())})</span></div>'
         f'<table class="vtab"><tr><th></th><th>valor</th></tr>{rows}</table>'
-        f'<div class="vnote">Preço Cardmarket por impressão — a <b>mesma conta</b> da '
-        f'<a href="colecao.html">Galeria</a> e do <a href="index.html">Início</a>. '
-        f'Quando o acabamento da cópia não está cotado, cai para o outro (uma foil sem preço '
-        f'vale o nonfoil) — a Galeria marca essas com <b>~</b>. A fonte atual dá <b>um só valor</b> '
-        f'por carta: o «mínimo» (low) e o «trend» coincidem, por isso mostro um só. '
-        f'(Separá-los precisa de afinar o harvest de preços.)</div></div>')
+        f'<div class="vnote">A <b>mesma conta</b> da '
+        f'<a href="colecao.html">Galeria</a> e do <a href="index.html">Início</a>, '
+        f'no modo de preço que está escolhido (<b>market</b> = o que o mercado pede · '
+        f'<b>best</b> = a oferta mais barata · <b>média</b> dos dois; troca-se no modo '
+        f'edição). Quando o acabamento da cópia não está cotado, cai para o outro (uma '
+        f'foil sem preço vale o nonfoil) — a Galeria marca essas com <b>~</b>. '
+        f'{"Enquanto a fonte der <b>um só valor</b> por carta os três modos coincidem." if todos_iguais else ""}'
+        f'</div></div>')
 
     out.write_text(_TMPL
                    .replace("%SECS%", secs).replace("%VIGIADOS%", wsec)

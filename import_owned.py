@@ -41,11 +41,13 @@ def resolve(con: sqlite3.Connection, name: str) -> str | None:
     primeira impressão da carta — para as básicas, Alpha.
     """
     like = name + " // %"
+    from mtgvault import precos                            # noqa: PLC0415
+    expr = precos.sql(alias="p")
     r = con.execute(
-        """SELECT c.scryfall_id FROM catalog.cards c
+        f"""SELECT c.scryfall_id FROM catalog.cards c
              JOIN price_latest p ON p.scryfall_id = c.scryfall_id AND p.finish = 'nonfoil'
-            WHERE (c.name = ? OR c.name LIKE ?) AND p.trend IS NOT NULL
-            ORDER BY p.trend ASC LIMIT 1""", (name, like)).fetchone()
+            WHERE (c.name = ? OR c.name LIKE ?) AND {expr} IS NOT NULL
+            ORDER BY {expr} ASC LIMIT 1""", (name, like)).fetchone()
     if r:
         return r[0]
     r = con.execute(

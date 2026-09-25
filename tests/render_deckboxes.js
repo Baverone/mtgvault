@@ -165,8 +165,9 @@ const editavel = vm.runInContext('D.editable', ctx);
 // (`data-feira`: taxas, levo/nao levo, wantlist, vendors — 2026-09-20). E o
 // `<input type="file">` da FOTO DA DECKBOX (`data-foto-caixa`, 2026-09-21). E os
 // das FOTOS DAS CARTAS tiradas do site (`data-foto-site`, a câmara; e o
-// `data-processar` do «⚡ Processar agora» — 2026-09-21).
-const ESCRITA = /data-(act|enc|chegou|desfazer|falta|vend|reg|encontrei|rev|rev-parar|padrao|reserva|feira|foto-caixa|foto-site|processar)=/;
+// `data-processar` do «⚡ Processar agora» — 2026-09-21). E o interruptor do
+// MODO DE PREÇO (`data-preco-modo`, 2026-09-25), que muda TODOS os números.
+const ESCRITA = /data-(act|enc|chegou|desfazer|falta|vend|reg|encontrei|rev|rev-parar|padrao|reserva|feira|foto-caixa|foto-site|processar|preco-modo)=/;
 const escrita = desenhado.filter(h => ESCRITA.test(h)).length;
 if (!editavel && escrita) {
   console.error(`ERRO: ${escrita} blocos com botoes de escrita numa pagina publicada`);

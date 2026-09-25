@@ -59,7 +59,7 @@ ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 from mtgvault import (collection, encomendas, feira, fotocaixa, fotosite,  # noqa: E402
-                      loadout, paginas, revalidacao, venda)
+                      loadout, paginas, precos, revalidacao, venda)
 from mtgvault import site_shell as shell  # noqa: E402
 
 
@@ -862,6 +862,13 @@ def payload(con, rep, editable=False, token="", ligacao=None):
         # `imagens` ou `lista` — vem do config (`deckboxes.vista`); no modo
         # edição o interruptor grava-a lá, no site publicado fica no aparelho.
         "vista": vista_config(),
+        # O MODO DE PREÇO (André, 2026-09-25). Vai no índice porque a página
+        # tem de DIZER por que régua é que os euros que mostra foram medidos —
+        # um total sem o modo ao lado é um número que muda sozinho de um dia
+        # para o outro. O interruptor só aparece em modo edição.
+        "preco": {"modo": precos.modo(), "fonte": precos.fonte(),
+                  "rotulo": precos.ROTULOS[precos.modo()],
+                  "desde": precos.modo_desde()},
         # O token de escrita e o link/QR do telemóvel só existem em modo edição —
         # o ficheiro publicado no GitHub Pages não pode levar nem um nem outro.
         "token": token if editable else "",
@@ -1227,6 +1234,11 @@ _CSS = r"""
    font-variant-numeric:tabular-nums}
  .rs small{color:var(--dim);font-size:10.5px;font-weight:600;white-space:nowrap}
  .pgsub .rsd{display:block;font-size:11.5px}
+ /* O interruptor do MODO DE PREÇO (2026-09-25), no cabeçalho e só em modo
+    edição. Os alvos seguem a régua do telemóvel de 18/09 (≥ 36 px) — ele está
+    à frente da estante quando decide. */
+ .pgsub .rsp{display:flex;align-items:center;gap:8px;margin-top:7px;flex-wrap:wrap}
+ .pgsub .rsp .seg button{min-height:36px;padding:0 12px;font-size:12px}
  /* O ÍNDICE DAS CAIXAS E DAS VISTAS (reestruturação de 2026-09-24).
     Era a `.decktabs`: até 27 botões numa fila com `overflow-x:auto` — o
     *"andar a correr os botões para os lados"* do pedido dele. Agora é uma
@@ -2215,10 +2227,45 @@ function renderResumo() {
     + `<span class="dim rsd">${D.caixas.length} caixas — ${r.permanentes} `
     + `permanentes, ${r.candidatos} candidatas · dados de ${esc(D.gerado)}`
     + (D.editable ? ' · <b style="color:var(--add)">modo edição</b>' : '')
-    + `</span>`;
+    + `</span>`
+    + precoModoHTML();
   for (const a of $('#resumo').querySelectorAll('.rs')) {
     a.onclick = (e) => { e.preventDefault(); ir(a.dataset.aba); };
   }
+  for (const bt of $('#resumo').querySelectorAll('[data-preco-modo]')) {
+    bt.onclick = () => mudarPrecoModo(bt.dataset.precoModo);
+  }
+}
+
+/* O MODO DE PREÇO (André, 2026-09-25): *"o preço da coleção pode ser pelo
+   market value do cardtrader, ou o best value, ou a média dos 2"*.
+   Fica no CABEÇALHO e não numa aba porque não é a preferência de uma vista —
+   muda TODOS os números da página ao mesmo tempo: o valor, o que falta comprar,
+   a venda e o chip «cara». Só no modo edição: no site publicado não há
+   endpoint que grave, e um botão que não grava é pior do que botão nenhum. */
+function precoModoHTML() {
+  if (!D.editable || !D.preco) return '';
+  const m = D.preco.modo;
+  const b = (v, t) => `<button class="${m === v ? 'on' : ''}" `
+    + `data-preco-modo="${v}" aria-pressed="${m === v}">${t}</button>`;
+  return `<span class="rsp"><small class="dim">preço</small>`
+    + `<span class="seg" role="group" aria-label="Modo de preço">`
+    + b('market', 'market') + b('best', 'best') + b('media', 'média')
+    + `</span><small class="dim">${esc(D.preco.fonte)}</small></span>`;
+}
+
+async function mudarPrecoModo(v) {
+  if (!D.preco || D.preco.modo === v) return;
+  try {
+    const r = await gravar('api/preco-modo', { modo: v });
+    const j = await r.json();
+    if (j.erro) throw new Error(j.erro);
+    /* Recarrega em vez de mudar o rótulo: TODOS os números que estão no ecrã
+       acabaram de mudar, e deixar a página com os de antes e o botão no modo
+       novo era mostrar-lhe dois modos ao mesmo tempo. */
+    toast(j.msg || 'preço trocado', 9000);
+    await recarregar();
+  } catch (e) { erro('Não troquei o modo de preço: ' + e.message); }
 }
 
 /* O NOME de cada vista que NÃO é uma caixa. Existe num sítio só porque desde a

@@ -32,7 +32,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import db, loadout, paginas, sources  # noqa: E402
+from mtgvault import db, loadout, paginas, precos, sources  # noqa: E402
 from mtgvault import site_shell as shell  # noqa: E402
 from mtgvault.collection import jogaveis, owned_playable  # noqa: E402
 
@@ -217,26 +217,31 @@ def _visual(con, name, owned_qty):
     owned_qty>0  -> a edição que o André mais possui (para comprar igual).
     owned_qty==0 -> a impressão jogável mais barata (a que dita o preço).
     """
+    # O preço do que FALTA, no MODO DE PREÇO em vigor (2026-09-25). Estava
+    # `p.trend` escrito à mão em quatro consultas desta página — com o modo
+    # `best` ligado, a Cobertura somava `trend` e a aba Comprar somava `low`.
+    pr, fonte = precos.sql(alias="p"), precos.fonte()
     if owned_qty > 0:
         r = con.execute(
             f"""SELECT c.set_code, c.set_name, c.image_uri, cp.finish,
                       SUM(cp.quantity) q,
-                      (SELECT p.trend FROM price_latest p
-                        WHERE p.scryfall_id = c.scryfall_id AND p.source = 'cardmarket'
+                      (SELECT {pr} FROM price_latest p
+                        WHERE p.scryfall_id = c.scryfall_id AND p.source = ?
                           AND p.finish = cp.finish) AS trend
                  FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id
                 WHERE c.name = ? AND {jogaveis()}
-                GROUP BY c.scryfall_id ORDER BY q DESC LIMIT 1""", (name,)).fetchone()
+                GROUP BY c.scryfall_id ORDER BY q DESC LIMIT 1""",
+            (fonte, name)).fetchone()
         if r:
             return {"img": _thumb(r["image_uri"]), "set_code": r["set_code"],
                     "set_name": r["set_name"], "unit": r["trend"], "mine": True}
 
     r = con.execute(
-        f"""SELECT c.set_code, c.set_name, c.image_uri, p.trend
+        f"""SELECT c.set_code, c.set_name, c.image_uri, {pr} trend
               FROM cards c JOIN price_latest p ON p.scryfall_id = c.scryfall_id
-             WHERE c.name = ? AND p.source = 'cardmarket' AND p.finish = 'nonfoil'
+             WHERE c.name = ? AND p.source = ? AND p.finish = 'nonfoil'
                AND c.lang = 'en' {_NOT_PLAYABLE}
-             ORDER BY p.trend ASC LIMIT 1""", (name,)).fetchone()
+             ORDER BY {pr} ASC LIMIT 1""", (name, fonte)).fetchone()
     if r:
         return {"img": _thumb(r["image_uri"]), "set_code": r["set_code"],
                 "set_name": r["set_name"], "unit": r["trend"], "mine": False}
@@ -266,9 +271,11 @@ def _playable_printings(con, name, limit=14):
     no cliente a partir do id (poupa embeber URLs longos)."""
     rows = con.execute(
         f"""SELECT c.scryfall_id sid, c.set_name,
-                   (SELECT p.trend FROM price_latest p WHERE p.scryfall_id = c.scryfall_id
-                     AND p.source = 'cardmarket' AND p.finish = 'nonfoil') price
-              FROM cards c WHERE c.name = ? AND c.lang = 'en' {_NOT_PLAYABLE}""", (name,)).fetchall()
+                   (SELECT {precos.sql(alias="p")} FROM price_latest p
+                     WHERE p.scryfall_id = c.scryfall_id
+                       AND p.source = ? AND p.finish = 'nonfoil') price
+              FROM cards c WHERE c.name = ? AND c.lang = 'en' {_NOT_PLAYABLE}""",
+        (precos.fonte(), name)).fetchall()
     out = [{"s": r["sid"], "n": r["set_name"], "p": r["price"]} for r in rows]
     out.sort(key=lambda p: (p["p"] is None, p["p"] or 0))
     return out[:limit]
@@ -281,9 +288,10 @@ def _prints_for(con, name, owned):
     osid = _owned_sid(con, name) if owned.get(name, 0) else None
     if osid and not any(p["s"] == osid for p in lst):
         r = con.execute(
-            "SELECT c.scryfall_id sid, c.set_name, (SELECT p.trend FROM price_latest p "
-            "WHERE p.scryfall_id = c.scryfall_id AND p.source = 'cardmarket' AND p.finish = 'nonfoil') price "
-            "FROM cards c WHERE c.scryfall_id = ?", (osid,)).fetchone()
+            f"SELECT c.scryfall_id sid, c.set_name, (SELECT {precos.sql(alias='p')} "
+            "FROM price_latest p WHERE p.scryfall_id = c.scryfall_id "
+            "AND p.source = ? AND p.finish = 'nonfoil') price "
+            "FROM cards c WHERE c.scryfall_id = ?", (precos.fonte(), osid)).fetchone()
         if r:
             lst.insert(0, {"s": r["sid"], "n": r["set_name"], "p": r["price"]})
     for p in lst:

@@ -178,9 +178,11 @@ def _preco(con: sqlite3.Connection, scryfall_id: str) -> float:
     invente um número escolheria sempre a mesma impressão sem razão nenhuma.
     """
     try:
+        from . import precos                               # noqa: PLC0415
+        expr = precos.sql(alias="p")
         r = con.execute(
-            "SELECT MIN(trend) t FROM price_latest WHERE scryfall_id = ? "
-            "AND trend IS NOT NULL", (scryfall_id,)).fetchone()
+            f"SELECT MIN({expr}) t FROM price_latest p WHERE scryfall_id = ? "
+            f"AND {expr} IS NOT NULL", (scryfall_id,)).fetchone()
     except sqlite3.OperationalError:      # catálogo sozinho, sem a vault.db
         return float("inf")
     return r["t"] if r and r["t"] is not None else float("inf")

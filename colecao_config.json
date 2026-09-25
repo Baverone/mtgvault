@@ -506,5 +506,15 @@
         ["side", "Teachings of the Archaics", 1]
       ]
     }
-  }
+  },
+  "precos": {
+    "modo": "market",
+    "fonte": "cardmarket",
+    "modo_desde": null,
+    "linguas": [
+      "en",
+      "pt"
+    ]
+  },
+  "_precos": "O MODO DE PREÇO (André, 2026-09-25): 'tal como no riftvault, o preço da coleção pode ser pelo market value do cardtrader, ou o best value, ou a média dos 2'. `modo` = market | best | media, e vale em TODO o lado onde um preço aparece ou é somado (valor da coleção, as sete saídas da venda, o que falta comprar, as wantlists, o chip «cara», a Cobertura e a Caixa RL). `fonte` = cardmarket | cardtrader. `modo_desde` é a data da última troca de modo e TRAVA a regra dos 5 % da Reserved List até haver `venda.rl_janela_minima_dias` dias medidos no modo novo — trocar de modo nunca pode mandar uma RL à venda. `linguas` são as ofertas que contam para o preço do CardTrader (a mesma chave do riftvault). Troca-se no 8771 ou com `py -m mtgvault.cli precos modo <market|best|media>`."
 }

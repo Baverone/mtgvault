@@ -224,6 +224,14 @@ CREATE TABLE IF NOT EXISTS card_roles (
 -- ---------------------------------------------------------------
 -- PREÇOS
 -- ---------------------------------------------------------------
+-- `low` e `trend` são as duas pontas do MODO DE PREÇO (2026-09-25):
+--   `best`   = a oferta mais barata      -> low
+--   `market` = o que o mercado pede      -> trend
+--   `media`  = a média das duas
+-- e a `receita` diz COMO é que os números desta linha foram produzidos
+-- (`unico` | `cm-guide` | `ct-ofertas`, em `mtgvault.precos`). Sem ela, a regra
+-- dos 5 % da Reserved List comparava a mediana de hoje com o mínimo de há 90
+-- dias e inventava uma subida que nunca houve — ver `precos.py`.
 CREATE TABLE IF NOT EXISTS price_history (
     scryfall_id TEXT NOT NULL,          -- -> catalog.cards
     source      TEXT NOT NULL,           -- cardmarket | cardtrader
@@ -234,6 +242,7 @@ CREATE TABLE IF NOT EXISTS price_history (
     avg30       REAL,
     available   INTEGER,
     currency    TEXT DEFAULT 'EUR',
+    receita     TEXT,
     PRIMARY KEY (scryfall_id, source, date, finish)
 );
 CREATE INDEX IF NOT EXISTS ix_price_date ON price_history(date);
@@ -322,6 +331,7 @@ CREATE TABLE IF NOT EXISTS price_latest (
     avg30       REAL,
     available   INTEGER,
     currency    TEXT DEFAULT 'EUR',
+    receita     TEXT,                    -- ver price_history e mtgvault/precos.py
     PRIMARY KEY (scryfall_id, source, finish)
 );
 

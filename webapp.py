@@ -84,7 +84,7 @@ ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 from mtgvault import (caixas, configio, db, encomendas, feira, fotocaixa,  # noqa: E402
-                      fotosite, loadout, migracao, qr, sources, venda)
+                      fotosite, loadout, migracao, precos, qr, sources, venda)
 from mtgvault import padrao as padrao_mod  # noqa: E402
 
 import deckboxes  # noqa: E402
@@ -1178,6 +1178,14 @@ class Handler(BaseHTTPRequestHandler):
                     # regenera porque a aba (e o seu subtítulo) mudou.
                     self._json(self._feira(dados))
                     return
+                if caminho == "/api/preco-modo":
+                    # O MODO DE PREÇO (André, 2026-09-25): market | best |
+                    # media. Só config — nada toca na base —, mas **regenera**,
+                    # porque muda TODOS os números da página: o valor, o que
+                    # falta comprar, a venda e o chip «cara». E carimba a data
+                    # (`precos.modo_desde`), que é o que trava a regra da RL.
+                    self._json(self._preco_modo(dados))
+                    return
                 if caminho == "/api/vista":
                     # AS CARTAS EM IMAGEM (André, 2026-09-20): o interruptor
                     # «Imagens / Lista» grava a preferência no config
@@ -1585,6 +1593,29 @@ class Handler(BaseHTTPRequestHandler):
             sources._CFG_CACHE.clear()
             regenerar(con)
         return {"ok": True, "msg": msg}
+
+    def _preco_modo(self, dados):
+        """«Preço: market / best / média» (André, 2026-09-25).
+
+        Um valor fora de `precos.MODOS` é 409 (`ValueError`), como a `vista`:
+        a página só manda estes três. Regenera porque muda tudo o que tem um
+        euro à frente — e a resposta diz, em português, que a regra da Reserved
+        List fica em suspenso enquanto não houver janela no modo novo. Isso não
+        é um detalhe: é a única coisa que muda de COMPORTAMENTO e não só de
+        número.
+        """
+        r = precos.gravar_modo(dados.get("modo"))
+        sources._CFG_CACHE.clear()
+        _CACHE.clear()
+        with db.session() as con:
+            regenerar(con)
+        msg = f"Preços pelo {r['rotulo']}."
+        if r["mudou"]:
+            msg += (f" A regra dos 5 % da Reserved List fica em «não sei» até "
+                    f"haver {loadout.rl_janela_minima()} dias medidos neste "
+                    f"modo (desde {r['desde']}) — nenhuma RL vai à venda por "
+                    f"teres trocado de modo.")
+        return {"ok": True, "msg": msg, **r}
 
     def _feira(self, dados):
         """As escritas da FEIRA (André, 2026-09-20), todas no config.

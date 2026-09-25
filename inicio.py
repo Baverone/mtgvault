@@ -171,7 +171,10 @@ def _valor_coleccao(con) -> tuple[int, float]:
     `event_tier` na porta de entrada do site.
     """
     v = collection.valor_da_coleccao(con)
-    return int(v["q"]), float(v["total"]["trend"])
+    # O cenário é o do MODO DE PREÇO em vigor (2026-09-25) e não o `trend`
+    # escrito à mão: com o modo `best` ligado, esta página dizia o market value
+    # e a do lado o best value — a mesma discórdia que a conta única fechou.
+    return int(v["q"]), float(v["total"][v["cenario"]])
 
 
 def _fontes(con) -> list[tuple[str, str, str]]:

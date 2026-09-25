@@ -258,7 +258,7 @@ from datetime import datetime as _datetime
 from pathlib import Path
 
 from . import caixas as _caixas
-from . import sources, stock
+from . import precos, sources, stock
 # A marca das cópias que entraram pelo *"já a tenho"* e ainda esperam que uma
 # foto lhes diga a edição. Vive na `collection` porque é lá que a foto a apaga —
 # escrever o mesmo texto nos dois módulos era pedir que um deles ficasse para
@@ -449,18 +449,25 @@ def local(lot: dict) -> str:
 # Preços
 # ---------------------------------------------------------------------------
 def card_price(con, name: str, finish: str = "nonfoil",
-               source: str = "cardmarket") -> tuple[float | None, str | None]:
+               source: str | None = None) -> tuple[float | None, str | None]:
     """(preço da impressão mais barata, acabamento a que esse preço corresponde).
 
     O `wantlist.cheapest_price` só olha para nonfoil, e metade do loadout tem de
     ser comprada em FOIL — com o preço nonfoil o custo de fechar esses decks vinha
     sistematicamente abaixo do real. Quando não há preço foil, devolve o nonfoil e
     diz que é nonfoil, para quem mostra poder marcar a estimativa como incerta.
+
+    O PREÇO é o do MODO em vigor (`precos.sql`: market → `trend`, best → `low`,
+    média → a média dos dois). Escrito à mão como `MIN(p.trend)`, este `MIN`
+    estava em oito consultas e a primeira que se esquecesse do modo punha duas
+    páginas a dizer dois números para o mesmo dinheiro.
     """
+    source = source or precos.fonte()
+    expr = precos.sql(alias="p")
     fins = FOIL_FINISHES if finish in FOIL_FINISHES else ("nonfoil",)
     marks = ",".join("?" * len(fins))
     row = con.execute(
-        f"""SELECT MIN(p.trend) preco FROM cards c
+        f"""SELECT MIN({expr}) preco FROM cards c
               JOIN price_latest p ON p.scryfall_id = c.scryfall_id
              WHERE c.name = ? AND p.source = ? AND p.finish IN ({marks})""",
         (name, source, *fins)).fetchone()
@@ -469,7 +476,7 @@ def card_price(con, name: str, finish: str = "nonfoil",
     if fins[0] == "nonfoil":
         return None, None
     row = con.execute(
-        """SELECT MIN(p.trend) preco FROM cards c
+        f"""SELECT MIN({expr}) preco FROM cards c
              JOIN price_latest p ON p.scryfall_id = c.scryfall_id
             WHERE c.name = ? AND p.source = ? AND p.finish = 'nonfoil'""",
         (name, source)).fetchone()
@@ -478,7 +485,7 @@ def card_price(con, name: str, finish: str = "nonfoil",
 
 
 def impressao_mais_barata(con, name: str, finish: str = "nonfoil",
-                          source: str = "cardmarket", cache: dict | None = None):
+                          source: str | None = None, cache: dict | None = None):
     """O `scryfall_id` da impressão a que o `card_price` corresponde — a mais
     barata no acabamento pedido — ou `None` sem preço.
 
@@ -489,7 +496,12 @@ def impressao_mais_barata(con, name: str, finish: str = "nonfoil",
     mesma consulta do `card_price` com `ORDER BY` em vez de `MIN` — duas
     contas diferentes davam um preço de uma impressão e a imagem de outra.
     """
-    chave = (name, finish in FOIL_FINISHES, source)
+    source = source or precos.fonte()
+    # A MESMA expressão do `card_price` (o modo em vigor): com `trend` escrito
+    # aqui e o modo `best` ao lado, o preço vinha de uma impressão e a imagem
+    # de outra.
+    expr = precos.sql(alias="p")
+    chave = (name, finish in FOIL_FINISHES, source, precos.modo())
     if cache is not None and chave in cache:
         return cache[chave]
     fins = FOIL_FINISHES if finish in FOIL_FINISHES else ("nonfoil",)
@@ -498,16 +510,16 @@ def impressao_mais_barata(con, name: str, finish: str = "nonfoil",
         f"""SELECT c.scryfall_id sid FROM cards c
               JOIN price_latest p ON p.scryfall_id = c.scryfall_id
              WHERE c.name = ? AND p.source = ? AND p.finish IN ({marks})
-               AND p.trend IS NOT NULL
-             ORDER BY p.trend, c.released_at DESC LIMIT 1""",
+               AND {expr} IS NOT NULL
+             ORDER BY {expr}, c.released_at DESC LIMIT 1""",
         (name, source, *fins)).fetchone()
     if row is None and fins[0] != "nonfoil":
         row = con.execute(
-            """SELECT c.scryfall_id sid FROM cards c
+            f"""SELECT c.scryfall_id sid FROM cards c
                  JOIN price_latest p ON p.scryfall_id = c.scryfall_id
                 WHERE c.name = ? AND p.source = ? AND p.finish = 'nonfoil'
-                  AND p.trend IS NOT NULL
-                ORDER BY p.trend, c.released_at DESC LIMIT 1""",
+                  AND {expr} IS NOT NULL
+                ORDER BY {expr}, c.released_at DESC LIMIT 1""",
             (name, source)).fetchone()
     sid = row["sid"] if row else None
     if cache is not None:
@@ -516,7 +528,7 @@ def impressao_mais_barata(con, name: str, finish: str = "nonfoil",
 
 
 def card_price_em(con, name: str, dia: str, finish: str = "nonfoil",
-                  source: str = "cardmarket") -> tuple[float | None, str | None,
+                  source: str | None = None) -> tuple[float | None, str | None,
                                                        str | None]:
     """(preço que o `card_price` daria NO DIA `dia`, data da cotação, 1ª cotação).
 
@@ -542,16 +554,34 @@ def card_price_em(con, name: str, dia: str, finish: str = "nonfoil",
     return preco, quando, rows[0]["d"]
 
 
-def _historico(con, name: str, finish: str, source: str = "cardmarket") -> list:
-    """As linhas de `price_history` desta carta, por ordem de data."""
+def _historico(con, name: str, finish: str, source: str | None = None,
+               receita: str | None = None) -> list:
+    """As linhas de `price_history` desta carta, por ordem de data.
+
+    **Só as da MESMA RECEITA que está em vigor hoje**, e lidas pelo MODO em
+    vigor. É a defesa do ponto 3 da ordem do André (2026-09-25): a coluna
+    `trend` já quis dizer «o único preço da Scryfall» e, com o CardTrader
+    ligado, passa a querer dizer «a mediana das ofertas». Comparar uma com a
+    outra inventa uma subida — ou uma descida — que nunca aconteceu, e é essa
+    percentagem que decide se uma carta da Reserved List, que não se volta a
+    imprimir, vai à venda. Sem histórico que chegue na receita de hoje, a
+    resposta é `rl_sem_historico`; nunca *"não subiu"*.
+
+    Uma linha antiga tem `receita` a NULL e vale `unico`, que é o que ela é.
+    """
+    source = source or precos.fonte()
+    receita = receita or precos.receita_em_vigor(con, source)
+    expr = precos.sql(alias="h")
     fins = FOIL_FINISHES if finish in FOIL_FINISHES else ("nonfoil",)
     marks = ",".join("?" * len(fins))
     return con.execute(
-        f"""SELECT h.scryfall_id sid, h.finish fin, h.date d, h.trend t
+        f"""SELECT h.scryfall_id sid, h.finish fin, h.date d, {expr} t
               FROM price_history h JOIN cards c ON c.scryfall_id = h.scryfall_id
              WHERE c.name = ? AND h.source = ? AND h.finish IN ({marks})
-                   AND h.trend IS NOT NULL
-             ORDER BY h.date""", (name, source, *fins)).fetchall()
+                   AND COALESCE(h.receita, ?) = ?
+                   AND {expr} IS NOT NULL
+             ORDER BY h.date""",
+        (name, source, *fins, precos.RECEITA_UNICA, receita)).fetchall()
 
 
 def _cotacao_em(rows, alvo: str, limite: str) -> tuple[float | None, str | None]:
@@ -3107,6 +3137,15 @@ def avaliar_rl(con, linha: dict, hoje: str | None = None,
         cache[chave] = _historico(con, linha["nm"], fin)
     rows = cache[chave]
     desde = rows[0]["d"] if rows else None
+    # O MODO DE PREÇO trava a janela (André, 2026-09-25, ponto 3 da ordem).
+    # O `_historico` já só traz pontos da MESMA receita; falta o outro lado —
+    # trocar de modo troca o número que ele anda a ver, e a comparação entre o
+    # `low` de hoje e o `low` de há 90 dias só vale se os dois foram medidos e
+    # olhados no mesmo modo. Até haver `rl_janela_minima_dias` dias no modo
+    # novo a resposta é «não sei»; uma RL vendida não volta.
+    desde_modo = precos.modo_desde()
+    if desde_modo:
+        desde = max(desde, desde_modo) if desde else desde_modo
     janela = rl_janela_efectiva(desde, hoje)
     info = {"janela": janela, "desde": desde, "maximo": maxi,
             "subida": None, "subida_max": None, "limiar": None}

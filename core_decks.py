@@ -23,7 +23,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import db  # noqa: E402
+from mtgvault import db, precos  # noqa: E402
 
 BASICS = {"Island", "Plains", "Swamp", "Mountain", "Forest",
           "Snow-Covered Island", "Snow-Covered Plains", "Snow-Covered Swamp",
@@ -83,8 +83,10 @@ def _prices(con):
              if r["eur"] is not None}
     try:
         for r in con.execute(
-            """SELECT c.name n, MIN(p.trend) e FROM cards c JOIN price_latest p ON p.scryfall_id=c.scryfall_id
-               WHERE p.finish='nonfoil' GROUP BY c.name"""):
+            f"""SELECT c.name n, MIN({precos.sql(alias="p")}) e
+                  FROM cards c JOIN price_latest p ON p.scryfall_id=c.scryfall_id
+                 WHERE p.source = ? AND p.finish='nonfoil' GROUP BY c.name""",
+                (precos.fonte(),)):
             if r["e"] is not None and r["n"] not in price:
                 price[r["n"]] = r["e"]
     except Exception:  # sem catalog.db (CI): fica so com card_price

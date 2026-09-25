@@ -110,6 +110,17 @@ def _migrate(con: sqlite3.Connection) -> None:
                 "ON copies(validado_em)")
     con.commit()
 
+    # O MODO DE PREÇO (2026-09-25): a `receita` diz como é que o `low` e o
+    # `trend` desta linha foram produzidos. As linhas que já lá estão ficam a
+    # NULL e valem `unico` (ver `precos.receita_em_vigor`) — que é o que elas
+    # SÃO: o bulk da Scryfall escreve o mesmo número nas duas colunas. Marcá-las
+    # com uma receita que nunca tiveram era inventar histórico.
+    for tabela in ("price_latest", "price_history"):
+        cols = {r["name"] for r in con.execute(f"PRAGMA table_info({tabela})")}
+        if cols and "receita" not in cols:
+            con.execute(f"ALTER TABLE {tabela} ADD COLUMN receita TEXT")
+            con.commit()
+
     cols = {r["name"] for r in con.execute("PRAGMA table_info(decklists)")}
     if "content_hash" not in cols:
         con.execute("ALTER TABLE decklists ADD COLUMN content_hash TEXT")

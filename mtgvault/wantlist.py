@@ -3,17 +3,23 @@ from __future__ import annotations
 
 import sqlite3
 
+from . import precos
 from .collection import owned_playable
 
 
-def cheapest_price(con, card_name: str, source: str = "cardmarket") -> float | None:
-    """Preço da impressão não-foil mais barata com preço conhecido."""
+def cheapest_price(con, card_name: str, source: str | None = None) -> float | None:
+    """Preço da impressão não-foil mais barata com preço conhecido.
+
+    Pelo MODO DE PREÇO em vigor (2026-09-25), como todo o resto — uma wantlist
+    a somar `low` ao lado de uma página a somar `trend` era o defeito que o
+    `precos.sql` veio fechar.
+    """
     row = con.execute(
-        """SELECT MIN(p.trend) AS price
+        f"""SELECT MIN({precos.sql(alias="p")}) AS price
              FROM cards c
              JOIN price_latest p ON p.scryfall_id = c.scryfall_id
             WHERE c.name = ? AND p.source = ? AND p.finish = 'nonfoil'""",
-        (card_name, source),
+        (card_name, source or precos.fonte()),
     ).fetchone()
     return row["price"] if row else None
 
