@@ -458,28 +458,33 @@ def card_price(con, name: str, finish: str = "nonfoil",
     diz que é nonfoil, para quem mostra poder marcar a estimativa como incerta.
 
     O PREÇO é o do MODO em vigor (`precos.sql`: market → `trend`, best → `low`,
-    média → a média dos dois). Escrito à mão como `MIN(p.trend)`, este `MIN`
-    estava em oito consultas e a primeira que se esquecesse do modo punha duas
-    páginas a dizer dois números para o mesmo dinheiro.
+    média → a média dos dois) e da CADEIA de fontes (`precos.sql_impressao`: por
+    impressão, a primeira fonte que a cote). Escrito à mão como `MIN(p.trend)`,
+    este `MIN` estava em oito consultas e a primeira que se esquecesse do modo
+    punha duas páginas a dizer dois números para o mesmo dinheiro.
+
+    ESTE `MIN` É O MÍNIMO ENTRE IMPRESSÕES, e fica — aqui está certo. A pergunta
+    é *"quanto custa comprar esta carta"*, e quem compra compra a impressão mais
+    barata que serve. **O que NÃO pode é responder a *"quanto vale esta cópia"***
+    (André, 2026-09-25: *"o preço REFERÊNCIA (...) ao invés de MÍNIMO"*) — uma
+    Underground Sea de Revised não vale a reimpressão mais barata que existe.
+    Para uma cópia o preço é o da impressão DELA: `preco_da_copia`.
     """
-    source = source or precos.fonte()
-    expr = precos.sql(alias="p")
+    fontes = (source,) if source else precos.fontes()
+    expr = precos.sql_impressao(fontes_=fontes)
     fins = FOIL_FINISHES if finish in FOIL_FINISHES else ("nonfoil",)
-    marks = ",".join("?" * len(fins))
     row = con.execute(
-        f"""SELECT MIN({expr}) preco FROM cards c
-              JOIN price_latest p ON p.scryfall_id = c.scryfall_id
-             WHERE c.name = ? AND p.source = ? AND p.finish IN ({marks})""",
-        (name, source, *fins)).fetchone()
+        f"""SELECT MIN({expr}) preco
+              FROM cards c JOIN {precos.sql_acabamentos(fins)} f
+             WHERE c.name = ?""", (*fins, name)).fetchone()
     if row and row["preco"] is not None:
         return row["preco"], fins[0]
     if fins[0] == "nonfoil":
         return None, None
     row = con.execute(
-        f"""SELECT MIN({expr}) preco FROM cards c
-             JOIN price_latest p ON p.scryfall_id = c.scryfall_id
-            WHERE c.name = ? AND p.source = ? AND p.finish = 'nonfoil'""",
-        (name, source)).fetchone()
+        f"""SELECT MIN({expr}) preco
+              FROM cards c JOIN {precos.sql_acabamentos(("nonfoil",))} f
+             WHERE c.name = ?""", ("nonfoil", name)).fetchone()
     return ((row["preco"], "nonfoil") if row and row["preco"] is not None
             else (None, None))
 
@@ -496,35 +501,78 @@ def impressao_mais_barata(con, name: str, finish: str = "nonfoil",
     mesma consulta do `card_price` com `ORDER BY` em vez de `MIN` — duas
     contas diferentes davam um preço de uma impressão e a imagem de outra.
     """
-    source = source or precos.fonte()
-    # A MESMA expressão do `card_price` (o modo em vigor): com `trend` escrito
-    # aqui e o modo `best` ao lado, o preço vinha de uma impressão e a imagem
-    # de outra.
-    expr = precos.sql(alias="p")
-    chave = (name, finish in FOIL_FINISHES, source, precos.modo())
+    fontes = (source,) if source else precos.fontes()
+    # A MESMA expressão do `card_price` (o modo E a cadeia em vigor): com
+    # `trend` escrito aqui e o modo `best` ao lado, o preço vinha de uma
+    # impressão e a imagem de outra.
+    expr = precos.sql_impressao(fontes_=fontes)
+    chave = (name, finish in FOIL_FINISHES, fontes, precos.modo())
     if cache is not None and chave in cache:
         return cache[chave]
     fins = FOIL_FINISHES if finish in FOIL_FINISHES else ("nonfoil",)
-    marks = ",".join("?" * len(fins))
     row = con.execute(
-        f"""SELECT c.scryfall_id sid FROM cards c
-              JOIN price_latest p ON p.scryfall_id = c.scryfall_id
-             WHERE c.name = ? AND p.source = ? AND p.finish IN ({marks})
-               AND {expr} IS NOT NULL
-             ORDER BY {expr}, c.released_at DESC LIMIT 1""",
-        (name, source, *fins)).fetchone()
+        f"""SELECT c.scryfall_id sid, {expr} preco
+              FROM cards c JOIN {precos.sql_acabamentos(fins)} f
+             WHERE c.name = ? AND {expr} IS NOT NULL
+             ORDER BY preco, c.released_at DESC LIMIT 1""",
+        (*fins, name)).fetchone()
     if row is None and fins[0] != "nonfoil":
         row = con.execute(
-            f"""SELECT c.scryfall_id sid FROM cards c
-                 JOIN price_latest p ON p.scryfall_id = c.scryfall_id
-                WHERE c.name = ? AND p.source = ? AND p.finish = 'nonfoil'
-                  AND {expr} IS NOT NULL
-                ORDER BY {expr}, c.released_at DESC LIMIT 1""",
-            (name, source)).fetchone()
+            f"""SELECT c.scryfall_id sid, {expr} preco
+                  FROM cards c JOIN {precos.sql_acabamentos(("nonfoil",))} f
+                 WHERE c.name = ? AND {expr} IS NOT NULL
+                 ORDER BY preco, c.released_at DESC LIMIT 1""",
+            ("nonfoil", name)).fetchone()
     sid = row["sid"] if row else None
     if cache is not None:
         cache[chave] = sid
     return sid
+
+
+def preco_da_copia(con, sid: str | None, finish: str, nome: str,
+                   cache: dict | None = None) -> dict:
+    """O PREÇO DE REFERÊNCIA de uma cópia: `{unit, price_finish, fonte, origem}`.
+
+    André, 2026-09-25, à letra: *"o que tinha pedido era alterar o preço
+    REFERÊNCIA para Market Price ou Best Deal, ao invés de MÍNIMO"*.
+
+    Até aqui uma cópia era avaliada pelo `card_price`, que é o **mínimo entre
+    IMPRESSÕES do mesmo nome**. Para o que falta comprar está certo — compra-se
+    a mais barata. Para uma cópia que ele TEM na estante é avaliar a Underground
+    Sea de Revised pela reimpressão mais barata que exista, e o número mudava
+    por causa de uma carta que não é a dele. A ordem, agora:
+
+      1. o preço da IMPRESSÃO DELA, na cadeia de fontes (a mesma conta única do
+         valor da colecção — `collection.preco_impressao_detalhe`, 2026-09-24 —,
+         com a tolerância de acabamento: foil ↔ etched primeiro, nonfoil depois);
+      2. só se NENHUMA fonte cotar aquela impressão, o mínimo entre impressões
+         (`card_price`), marcado `origem = min-impressoes`. É uma ESTIMATIVA, e
+         é dita: sem a marca, um preço de outra carta somava-se calado a preços
+         a sério;
+      3. nem isso: `unit = None` — *"sem preço"*, nunca 0 €.
+
+    O `cache` guarda o mapa de preços da corrida (uma consulta a
+    `price_latest`), porque isto é chamado por cópia.
+    """
+    from . import collection as _col                        # noqa: PLC0415
+    cache = {} if cache is None else cache
+    mapa = cache.get("_mapa")
+    if mapa is None:
+        mapa = cache["_mapa"] = _col.mapa_precos(con)
+    if sid:
+        d = _col.preco_impressao_detalhe(mapa, sid, finish)
+        if d["preco"] is not None:
+            return {"unit": d["preco"], "price_finish": d["price_finish"],
+                    "fonte": d["fonte"], "origem": precos.ORIGEM_IMPRESSAO}
+    chave = ("min", nome, finish in FOIL_FINISHES)
+    if chave not in cache:
+        cache[chave] = card_price(con, nome, finish)
+    unit, pfin = cache[chave]
+    if unit is None:
+        return {"unit": None, "price_finish": None, "fonte": None,
+                "origem": precos.ORIGEM_SEM_PRECO}
+    return {"unit": unit, "price_finish": pfin, "fonte": None,
+            "origem": precos.ORIGEM_MIN_IMPRESSOES}
 
 
 def card_price_em(con, name: str, dia: str, finish: str = "nonfoil",
@@ -538,10 +586,13 @@ def card_price_em(con, name: str, dia: str, finish: str = "nonfoil",
     dentro de uma janela estreita dava "sem preço" a toda a carta estável, que é
     precisamente a que não subiu.
 
-    Faz a MESMA conta que o `card_price` — MIN(trend) sobre as impressões do
-    mesmo nome, na mesma família de acabamento e na mesma fonte — porque o que
-    daqui sai é uma variação: com uma conta diferente em cada ponta, a
-    percentagem media a diferença entre as duas contas e não a do mercado.
+    Faz a MESMA conta que o `card_price` — o mínimo entre as impressões do mesmo
+    nome, na mesma família de acabamento e na mesma fonte — porque o que daqui
+    sai é uma variação: com uma conta diferente em cada ponta, a percentagem
+    media a diferença entre as duas contas e não a do mercado. **É por isso que
+    o `avaliar_rl` filtra estas linhas pela impressão** desde 2026-09-25: o
+    preço de hoje passou a ser o da impressão dele, e as duas pontas têm de
+    medir a mesma carta.
 
     A terceira saída é a data da cotação mais antiga que existe para esta carta.
     É ela que diz *desde quando* é que o vault sabe alguma coisa, e sem isso um
@@ -568,6 +619,13 @@ def _historico(con, name: str, finish: str, source: str | None = None,
     resposta é `rl_sem_historico`; nunca *"não subiu"*.
 
     Uma linha antiga tem `receita` a NULL e vale `unico`, que é o que ela é.
+
+    E **só da fonte PRINCIPAL**, nunca da cadeia (2026-09-25). A cadeia serve
+    para dizer quanto vale hoje uma impressão que a fonte principal não cota; um
+    histórico que saltasse do CardTrader para o Cardmarket a meio media a
+    diferença entre dois mercados e chamava-lhe subida. Quando o preço de HOJE
+    veio da fonte de recurso, quem responde é o `avaliar_rl`, com
+    `rl_sem_historico` — ver lá.
     """
     source = source or precos.fonte()
     receita = receita or precos.receita_em_vigor(con, source)
@@ -3136,16 +3194,36 @@ def avaliar_rl(con, linha: dict, hoje: str | None = None,
     if chave not in cache:
         cache[chave] = _historico(con, linha["nm"], fin)
     rows = cache[chave]
+    # AS DUAS PONTAS TÊM DE MEDIR A MESMA COISA. O preço de hoje passou a ser o
+    # da IMPRESSÃO dela (2026-09-25); o `_cotacao_em` faz `min` sobre as
+    # impressões do nome, que é o que o `card_price` sempre fez. Comparar o
+    # Revised de hoje com a reimpressão mais barata de há 90 dias dava uma
+    # percentagem que não é de carta nenhuma. Quando o preço de hoje já é o
+    # mínimo entre impressões (a impressão dela não está cotada), as duas pontas
+    # são o mínimo e não se filtra nada.
+    if linha.get("preco_origem") == precos.ORIGEM_IMPRESSAO and linha.get("sid"):
+        rows = [r for r in rows if r["sid"] == linha["sid"]]
     desde = rows[0]["d"] if rows else None
-    # O MODO DE PREÇO trava a janela (André, 2026-09-25, ponto 3 da ordem).
-    # O `_historico` já só traz pontos da MESMA receita; falta o outro lado —
-    # trocar de modo troca o número que ele anda a ver, e a comparação entre o
-    # `low` de hoje e o `low` de há 90 dias só vale se os dois foram medidos e
-    # olhados no mesmo modo. Até haver `rl_janela_minima_dias` dias no modo
-    # novo a resposta é «não sei»; uma RL vendida não volta.
-    desde_modo = precos.modo_desde()
-    if desde_modo:
-        desde = max(desde, desde_modo) if desde else desde_modo
+    # O PREÇO DE HOJE TEM DE SER DA MESMA RÉGUA QUE O HISTÓRICO (2026-09-25).
+    # Com a cadeia de fontes, o `unit` desta linha pode ter vindo do Cardmarket
+    # porque o CardTrader não tem a carta à venda — e o histórico é do
+    # CardTrader. Comparar os dois é medir a diferença entre dois mercados e
+    # chamar-lhe subida, sobre a decisão de venda que vale mais dinheiro.
+    veio_de = linha.get("preco_fonte")
+    if veio_de and veio_de != precos.fonte():
+        return "sem_historico", (
+            f"{RAZAO_RL_SEM_HISTORICO} (o preço de hoje veio do {veio_de} e o "
+            f"histórico é do {precos.fonte()})")
+    # A RÉGUA trava a janela (André, 2026-09-25, ponto 3 da ordem, alargado à
+    # fonte no mesmo dia). O `_historico` já só traz pontos da MESMA receita e
+    # da MESMA fonte; falta o outro lado — trocar de modo ou de fonte troca o
+    # número que ele anda a ver, e a comparação entre o de hoje e o de há 90
+    # dias só vale se os dois foram medidos e olhados com a mesma régua. Até
+    # haver `rl_janela_minima_dias` dias na régua nova a resposta é «não sei»;
+    # uma RL vendida não volta.
+    desde_regua = precos.regua_desde()
+    if desde_regua:
+        desde = max(desde, desde_regua) if desde else desde_regua
     janela = rl_janela_efectiva(desde, hoje)
     info = {"janela": janela, "desde": desde, "maximo": maxi,
             "subida": None, "subida_max": None, "limiar": None}
@@ -3281,13 +3359,22 @@ def sell_list(con, res: dict) -> dict:
     # saber o que a primeira já levou. Sem isto a mesma cópia saía nas duas
     # listas, com dois motivos, e o total contava-a duas vezes.
     vendido: dict[tuple, int] = defaultdict(int)
+    # O mapa de preços por impressão, construído uma vez para a lista toda (ver
+    # `preco_da_copia`): é uma consulta a `price_latest`, e isto corre por cópia.
+    precos_cache: dict = {}
 
     # `nm` vai por parâmetro e não pelo fecho: há DUAS passagens sobre o `pool`
     # (o excedente e o Premodern não usado), e uma função que fosse buscar o `nm`
     # ao ciclo era uma linha de venda com o nome da carta anterior no dia em que
     # alguém mudasse a ordem das passagens.
     def linha_de(nm, lot, take, razao, grupo=""):
-        unit, pfin = card_price(con, nm, lot["finish"])
+        # O PREÇO DE REFERÊNCIA DE UMA CÓPIA É O DA IMPRESSÃO DELA (2026-09-25).
+        # Era o `card_price` — o mínimo entre impressões do mesmo nome —, e por
+        # isso uma Underground Sea de Revised valia aqui a reimpressão mais
+        # barata que exista. O mínimo só entra quando a impressão dela não está
+        # cotada em fonte nenhuma, e nesse caso a linha di-lo (`preco_origem`).
+        p = preco_da_copia(con, lot["sid"], lot["finish"], nm, precos_cache)
+        unit, pfin = p["unit"], p["price_finish"]
         return {"nm": nm, "sub": lot["sub"], "local": lot["local"], "q": take,
                 # Que exemplares são, para o botão "vendida" do modo edição os
                 # poder tirar da base. Sem isto a linha era só texto e a única
@@ -3297,6 +3384,10 @@ def sell_list(con, res: dict) -> dict:
                 "set_code": lot["set_code"], "set_name": lot["set_name"],
                 "sid": lot["sid"], "rl": lot["rl"], "unit": unit,
                 "price_finish": pfin,
+                # De onde veio o preço: a fonte da cadeia e se é a impressão
+                # dela ou o mínimo entre impressões. O `avaliar_rl` lê o
+                # `preco_fonte` para não comparar dois mercados.
+                "preco_fonte": p["fonte"], "preco_origem": p["origem"],
                 "total": round((unit or 0) * take, 2), "reason": razao,
                 "reter": (reter_grupo.get(grupo)
                           or retidos_baldes.get(lot["sub"])),

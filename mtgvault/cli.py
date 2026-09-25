@@ -256,8 +256,12 @@ def main(argv=None):
                              "<market|best|media>` troca, `precos comparar` "
                              "põe os três lado a lado")
     pm.add_argument("accao", nargs="?", default="mostrar",
-                    choices=["mostrar", "modo", "comparar"])
-    pm.add_argument("valor", nargs="?", help="modo: market|best|media")
+                    choices=["mostrar", "modo", "fonte", "comparar"])
+    pm.add_argument("valor", nargs="?",
+                    help="modo: market|best|media · fonte: cardtrader|cardmarket")
+    pm.add_argument("--recurso", nargs="*",
+                    help="fonte: as fontes de recurso, por ordem (a que responde "
+                         "quando a principal não cota a impressão)")
     pm.add_argument("--json", action="store_true")
 
     # A FEIRA (André, 2026-09-20): a projecção (levar vs. trazer), e a wantlist
@@ -828,6 +832,18 @@ def _precos(con, args):
                   f"Reserved List responde «não sei» até haver "
                   f"{loadout.rl_janela_minima()} dias neste modo.")
         return
+    if args.accao == "fonte":
+        try:
+            r = precos.gravar_fonte(args.valor, args.recurso)
+        except ValueError as e:
+            print(f"erro: {e}")
+            raise SystemExit(2) from None
+        print(f"fontes: {' -> '.join(r['antes'])} => {' -> '.join(r['fontes'])}")
+        if r["mudou"]:
+            print(f"  `precos.fonte_desde` = {r['desde']}: a régua mudou, e a "
+                  f"regra dos 5 % da Reserved List responde «não sei» até haver "
+                  f"{loadout.rl_janela_minima()} dias medidos nela.")
+        return
     if args.accao == "comparar":
         r = comparar_modos(con)
         if args.json:
@@ -849,9 +865,13 @@ def _precos(con, args):
         return
     cfg = precos.bloco()
     print(f"modo   {precos.modo()} ({precos.ROTULOS[precos.modo()]})")
-    print(f"fonte  {precos.fonte()}   receita em vigor: "
-          f"{precos.receita_em_vigor(con)}")
-    print(f"desde  {precos.modo_desde() or '(nunca trocado)'}")
+    print(f"fontes {' -> '.join(precos.fontes())}   (a primeira que cote a "
+          f"impressão ganha)")
+    for f, rec in precos.receitas_em_vigor(con).items():
+        print(f"       {f}: receita {rec}")
+    print(f"desde  modo {precos.modo_desde() or '(nunca trocado)'} · "
+          f"fonte {precos.fonte_desde() or '(nunca trocada)'} · "
+          f"régua {precos.regua_desde() or '(nunca)'}")
     print(f"línguas {', '.join(sorted(precos.linguas()))}")
     if args.json:
         import json as _j                                   # noqa: PLC0415

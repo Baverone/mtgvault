@@ -96,7 +96,12 @@ def price_maps(con):
     # um `low` escolhido à mão (portanto sempre o *best value*) e um mínimo por
     # cima de fontes que ainda vão aparecer. É o mesmo defeito que a conta única
     # do valor corrigiu nas outras páginas a 2026-09-24.
-    pr, fonte = precos.sql(alias="p"), precos.fonte()
+    # A FONTE aqui é a da SÉRIE (`precos.fonte_serie`, por omissão a última da
+    # cadeia — o price guide), não a principal: estas três saídas são as duas
+    # pontas de uma percentagem e um gráfico, e medem-se de ponta a ponta na
+    # mesma fonte. O CardTrader é o mercado ao vivo e a história dele começou no
+    # dia em que entrou — a coluna ficaria vazia para tudo.
+    pr, fonte = precos.sql(alias="p"), precos.fonte_serie()
     price = {r["sid"]: r["m"] for r in con.execute(
         f"SELECT scryfall_id sid, MIN({pr}) m FROM price_latest p "
         f"WHERE source = ? AND finish='nonfoil' AND {pr} IS NOT NULL "

@@ -972,32 +972,48 @@ def mapa_precos(con: sqlite3.Connection, source: str | None = None) -> dict:
     """`{"trend": {(sid, acabamento): €}, "low": {...}, "media": {...}}` — o
     mais barato por impressão e acabamento.
 
-    A `source` NÃO se escolhe por chamada: vem do `precos.fonte()`
-    (`colecao_config.json → precos.fonte`, hoje `cardmarket`). Estava fixa no
-    código pela mesma razão — o `colecao_cor._value` fazia `MIN` sobre a
-    `price_latest` inteira, e no dia em que o `CARDTRADER_SETS` ligasse o
-    marketplace da CardTrader o valor da colecção mudava por causa de uma fonte
-    nova, sem ninguém mexer numa carta. Passou ao config porque agora é uma
-    decisão dele; o que não pode é ser um `MIN` por cima de todas.
+    Mais `"_fonte": {(sid, acabamento): (fonte, receita)}` — de onde veio.
+
+    A `source` NÃO se escolhe por chamada: vem da CADEIA do config
+    (`precos.fontes()`, hoje `cardtrader` e, para o que ele não tem à venda,
+    `cardmarket`). Estava fixa no código pela mesma razão por que a cadeia é uma
+    cadeia e não um `MIN`: o `colecao_cor._value` fazia `MIN` sobre a
+    `price_latest` inteira e no dia em que a CardTrader entrasse o valor da
+    colecção mudava sozinho — pior, somava a mediana das ofertas de uma carta
+    com o Trend de outra, que são duas escalas diferentes.
+
+    **Uma impressão pertence a UMA fonte**, a primeira da cadeia que a cote no
+    MODO em vigor; os outros dois cenários saem dessa mesma linha. Ir buscar o
+    `low` a uma fonte e o `trend` a outra dava uma «média» de duas réguas.
+
+    Uma `source` explícita (o `precos comparar`, os testes) continua a valer —
+    aí a cadeia é só ela.
     """
-    source = source or precos.fonte()
+    fontes = (source,) if source else precos.fontes()
     out: dict[str, dict] = {c: {} for c in CENARIOS}
-    try:
-        rows = con.execute(
-            "SELECT scryfall_id sid, finish, MIN(low) lo, MIN(trend) tr "
-            "FROM price_latest WHERE source = ? GROUP BY scryfall_id, finish",
-            (source,))
-    except sqlite3.Error:      # sem tabela de preços a vista mostra-se sem valor
-        return out
-    for r in rows:
-        chave = (r["sid"], r["finish"])
-        if r["tr"] is not None:
-            out["trend"][chave] = r["tr"]
-        if r["lo"] is not None:
-            out["low"][chave] = r["lo"]
-        m = precos.de_valores(r["lo"], r["tr"], precos.MEDIA)
-        if m is not None:
-            out["media"][chave] = m
+    out["_fonte"] = {}
+    alvo = cenario_em_vigor()
+    # De trás para a frente: a última a escrever fica, e a última a escrever é a
+    # de MAIOR prioridade. É isto que faz *"a primeira da cadeia ganha"*.
+    for f in reversed(fontes):
+        try:
+            rows = con.execute(
+                "SELECT scryfall_id sid, finish, low lo, trend tr, receita "
+                "FROM price_latest WHERE source = ?", (f,)).fetchall()
+        except sqlite3.Error:  # sem tabela de preços a vista mostra-se sem valor
+            return out
+        for r in rows:
+            vals = {"trend": r["tr"], "low": r["lo"],
+                    "media": precos.de_valores(r["lo"], r["tr"], precos.MEDIA)}
+            if vals[alvo] is None:
+                continue        # esta fonte não a cota no modo dele: passa adiante
+            chave = (r["sid"], r["finish"])
+            for c in CENARIOS:
+                if vals[c] is None:
+                    out[c].pop(chave, None)
+                else:
+                    out[c][chave] = vals[c]
+            out["_fonte"][chave] = (f, r["receita"] or precos.RECEITA_UNICA)
     return out
 
 
@@ -1014,12 +1030,16 @@ def _familias(finish: str | None) -> tuple[tuple[str, ...], tuple[str, ...]]:
     return ("nonfoil",), fam
 
 
-def preco_impressao(mapa: dict, sid: str, finish: str | None,
-                    cenario: str | None = None) -> tuple[float | None, str | None]:
-    """(preço desta impressão, acabamento a que o preço corresponde) ou (None, None).
+def preco_impressao_detalhe(mapa: dict, sid: str, finish: str | None,
+                            cenario: str | None = None) -> dict:
+    """`{preco, price_finish, fonte, receita}` desta impressão — ou tudo a `None`.
 
-    Sem `cenario`, o do MODO DE PREÇO em vigor. Uma impressão que a fonte
-    escolhida não cota devolve `(None, None)` — *"sem preço"*, nunca 0 €.
+    Sem `cenario`, o do MODO DE PREÇO em vigor. Uma impressão que nenhuma fonte
+    da cadeia cota devolve `preco = None` — *"sem preço"*, nunca 0 €.
+
+    A `fonte` viaja porque desde 2026-09-25 ela pode não ser a principal: com o
+    CardTrader à frente e o Cardmarket atrás, uma página que só mostre o número
+    não deixa ver que um terço das cópias veio da segunda.
     """
     cenario = cenario or cenario_em_vigor()
     fam, outra = _familias(finish)
@@ -1029,8 +1049,21 @@ def preco_impressao(mapa: dict, sid: str, finish: str | None,
         for f in (*fam, *outra):
             p = tabela.get((sid, f))
             if p is not None:
-                return p, f
-    return None, None
+                fonte, receita = (mapa.get("_fonte") or {}).get(
+                    (sid, f), (precos.fonte(), None))
+                return {"preco": p, "price_finish": f,
+                        "fonte": fonte, "receita": receita}
+    return {"preco": None, "price_finish": None, "fonte": None, "receita": None}
+
+
+def preco_impressao(mapa: dict, sid: str, finish: str | None,
+                    cenario: str | None = None) -> tuple[float | None, str | None]:
+    """(preço desta impressão, acabamento a que o preço corresponde) ou (None, None).
+
+    A forma curta do `preco_impressao_detalhe`, que é o que as páginas já liam.
+    """
+    d = preco_impressao_detalhe(mapa, sid, finish, cenario)
+    return d["preco"], d["price_finish"]
 
 
 # Os quatro sítios onde uma cópia pode estar, para o valor se repartir. A ordem é
@@ -1061,6 +1094,10 @@ def valor_da_coleccao(con: sqlite3.Connection, source: str | None = None) -> dic
     baldes = set(loadout.baldes_coleccao()) - {loadout.BALDE_RL}
     partes = {c: dict.fromkeys(PARTES, 0.0) for c in CENARIOS}
     copias, q_total, q_jog, sem_preco = [], 0, 0, 0
+    # Quantos exemplares vieram de cada fonte da cadeia (e quantos de nenhuma).
+    # Sem esta conta, ligar o CardTrader era mudar o valor da colecção sem
+    # ninguém saber que um terço dele continuava a vir do Cardmarket.
+    por_fonte: dict[str, int] = {}
     for r in con.execute(f"""
             SELECT cp.id, cp.scryfall_id sid, cp.finish fin, cp.quantity q,
                    cp.purpose, cp.acquired_price, COALESCE(s.name, '') bal,
@@ -1072,7 +1109,10 @@ def valor_da_coleccao(con: sqlite3.Connection, source: str | None = None) -> dic
         # `pr` e não `precos`: o módulo `precos` é quem decide o cenário em
         # vigor e uma variável com o mesmo nome tapava-o aqui dentro.
         pr = {c: preco_impressao(mapa, r["sid"], r["fin"], c) for c in CENARIOS}
-        unit, pfin = pr[cenario]
+        det = preco_impressao_detalhe(mapa, r["sid"], r["fin"], cenario)
+        unit, pfin = det["preco"], det["price_finish"]
+        por_fonte[det["fonte"] or "sem preço"] = (
+            por_fonte.get(det["fonte"] or "sem preço", 0) + r["q"])
         if r["purpose"] == "collector":
             base = "colecionador"
         elif r["bal"] == loadout.BALDE_RL:
@@ -1100,7 +1140,7 @@ def valor_da_coleccao(con: sqlite3.Connection, source: str | None = None) -> dic
             "q": r["q"], "purpose": r["purpose"], "balde": r["bal"],
             "parte": base, "na_caixa": dentro,
             "acquired_price": r["acquired_price"],
-            "unit": unit, "price_finish": pfin,
+            "unit": unit, "price_finish": pfin, "preco_fonte": det["fonte"],
             # Uma estimativa que veio do outro acabamento tem de se poder marcar
             # como estimativa — é para isso que o `price_finish` viaja.
             "estimado": bool(unit is not None and pfin != r["fin"]),
@@ -1112,6 +1152,11 @@ def valor_da_coleccao(con: sqlite3.Connection, source: str | None = None) -> dic
                    for c in CENARIOS},
         "copias": copias, "q": q_total, "q_jogaveis": q_jog,
         "sem_preco": sem_preco,
+        # Quantos exemplares vieram de cada fonte da cadeia. É o número que
+        # responde a *"ligar o CardTrader deixa um terço da colecção sem
+        # preço?"* — não deixa, porque o Cardmarket responde por essas; mas
+        # tem de se poder dizer quantas são.
+        "por_fonte": por_fonte,
         # Por que MODO é que este valor foi medido. Vai no retorno para as
         # páginas o poderem dizer: um total sem o modo ao lado é um número que
         # muda sozinho de um dia para o outro.

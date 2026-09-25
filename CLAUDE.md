@@ -452,11 +452,18 @@ relatório em `ai-pc/work/revisao/mtgvault-valor-0924.md`.
   não desaparece da lista), `caixarl` (tinha o `_price_maps`, apagado),
   `reservedlist` (só o *valor da tua RL*) e `loadout.nao_encontradas`. **O que
   NÃO mudou, de propósito:** o `loadout.card_price` (o preço de COMPRA de uma
-  carta — o mínimo entre impressões do mesmo nome — que é outra pergunta e é o
-  que a venda, a regra dos 5 % da RL e a feira usam), as colunas *hoje* / *há 1
-  mês* / o gráfico da Reserved List (o MERCADO de uma impressão, em nonfoil nas
-  duas pontas da percentagem) e o `meta_coverage._visual` (o preço do que
-  FALTA). O `refresh_collection` continua com o seu modelo de três camadas: a
+  carta — o mínimo entre impressões do mesmo nome — que é outra pergunta), as
+  colunas *hoje* / *há 1 mês* / o gráfico da Reserved List (o MERCADO de uma
+  impressão, em nonfoil nas duas pontas da percentagem) e o
+  `meta_coverage._visual` (o preço do que FALTA).
+  **[CORRIGIDO A 2026-09-25]** esta linha dizia também que o `card_price` era
+  *"o que a venda, a regra dos 5 % da RL e a feira usam"* — e era verdade, e era
+  esse o defeito. Um mínimo entre impressões a responder a *"quanto vale a cópia
+  dele"* punha a Tundra de Revised dele a valer os **0,25 €** de uma impressão
+  de Summer Magic. Hoje quem responde é o `loadout.preco_da_copia`, e o
+  `card_price` ficou só com a pergunta da COMPRA — ver «O PREÇO DE REFERÊNCIA É
+  O DA IMPRESSÃO QUE ELE TEM», abaixo.
+  O `refresh_collection` continua com o seu modelo de três camadas: a
   `collection_owned` já não alimenta página nenhuma.
 - **Três defeitos apanhados pelo caminho**, todos da mesma família: (a) uma
   **etched** caía para o preço do **nonfoil** porque o «outro acabamento» estava
@@ -532,10 +539,11 @@ funcionalidade em `tests/_provar_chumba.py` (corre-se à mão).
   esquecesse do modo punha duas páginas a dizer dois números para o mesmo
   dinheiro, que é exactamente o defeito que 24/09 fechou. Tem teste que varre o
   código à procura do literal (`caso_o_sql_do_preco_vive_num_sitio_so`).
-- **A FONTE passou ao config** (`precos.fonte`, hoje `cardmarket`). Estava fixa
+- **A FONTE passou ao config** (`precos.fonte`; **desde 2026-09-25 é uma CADEIA
+  e a principal é o `cardtrader`** — ver a secção a seguir). Estava fixa
   no código pela razão certa — um `MIN` por cima de todas as fontes mudava o
-  valor da colecção no dia em que o CardTrader entrasse —, e continua a ser uma
-  fonte de cada vez; só que agora é ele que escolhe. O `reservedlist.price_maps`
+  valor da colecção no dia em que o CardTrader entrasse —, e continua a não ser
+  um `MIN`: é uma ORDEM. O `reservedlist.price_maps`
   fazia esse `MIN` sobre a `price_latest` INTEIRA e com o `low` escolhido à mão:
   passou pela mesma régua.
 - **«SEM PREÇO» NÃO É ZERO EUROS.** Uma impressão que a fonte escolhida não cota
@@ -612,6 +620,140 @@ funcionalidade em `tests/_provar_chumba.py` (corre-se à mão).
     hoje era trocar 32 % de valor por 36 % da colecção sem cotação. Por isso a
     fonte ficou em `cardmarket` e o modo em `market`, que é onde ela já estava:
     **nada mudou de número no dia em que isto entrou** (ver a linha de cima).
+    **[RESOLVIDO no MESMO DIA]** a escolha era falsa: ver a secção a seguir —
+    a fonte é uma CADEIA, e as 606 sem cotação no CardTrader são respondidas
+    pelo Cardmarket, com a linha a dizer de onde veio. Zero sem preço por
+    causa da troca.
+
+**O PREÇO DE REFERÊNCIA É O DA IMPRESSÃO QUE ELE TEM, E A FONTE É UMA CADEIA
+(André, 2026-09-25, à letra).** *"o que tinha pedido era alterar o preço
+REFERÊNCIA para Market Price ou Best Deal, ao invés de MÍNIMO"*. A secção de
+cima deu-lhe a RÉGUA (os três modos) e mediu que, com a fonte em `cardmarket`,
+**os três davam o mesmo ao cêntimo** — o interruptor existia e não mudava um
+número. Esta fecha o pedido: tira os DOIS mínimos e liga a régua a sério.
+Motor em `mtgvault/precos.py` (`fontes`, `sql_impressao`, `regua_desde`,
+`gravar_fonte`, `fonte_serie`) e `loadout.preco_da_copia`; testes em
+`tests/test_preco_referencia.py` (14 casos) + `tests/_chumba_preco_ref.py`;
+relatório em `ai-pc/work/revisao/mtgvault-preco-referencia-0925.md`.
+
+- **HAVIA DOIS MÍNIMOS, e só um tinha sido tratado.**
+  1. **O mínimo entre OFERTAS** — fechado a 25/09 pelo `precos.oferta_utilizavel`
+     (o crivo do riftvault). **Medido agora**, na puxada às 145 edições dele:
+     das **53 113** linhas (impressão × acabamento), o filtro muda o preço em
+     **43 003** — 81 % —, e só **10 110** ficam iguais. Não é um caso de bordo:
+     é a regra. Exemplo real desse dia, um Mountain de 10E com 209 ofertas, 117
+     utilizáveis: sem filtro 0,11 € / 0,33 €, com filtro 0,14 € / 0,43 €.
+  2. **O mínimo entre IMPRESSÕES** — o `loadout.card_price` faz `MIN` sobre as
+     impressões do mesmo NOME. Para o que FALTA está certo (compra-se a mais
+     barata) e **fica**. Aplicado a uma cópia dele era a resposta errada à
+     pergunta errada, e **era o que a venda, a feira e a regra dos 5 % da RL
+     usavam**: a **Tundra de Revised** dele (354,80 €) valia **0,25 €**, o
+     preço de uma impressão de Summer Magic; a Mox Opal valia 234,05 € em vez
+     de 1 166,58 €; a Gaea's Cradle 272,71 € em vez de 1 066,30 €.
+- **A REGRA NOVA, por esta ordem** (`loadout.preco_da_copia`): (1) o preço da
+  IMPRESSÃO dela, na cadeia de fontes — é a mesma conta única do valor da
+  colecção (`collection.preco_impressao_detalhe`, 24/09), com a tolerância de
+  acabamento de sempre; (2) só se nenhuma fonte cotar aquela impressão, o mínimo
+  entre impressões, marcado `origem = min-impressoes` — é uma ESTIMATIVA e é
+  dita, porque um preço de outra carta somado calado é a mentira que isto veio
+  corrigir; (3) nem isso, `None` — *"sem preço"*, nunca 0 €. A linha da venda
+  leva `preco_fonte` e `preco_origem`.
+- **A FONTE É UMA CADEIA: `cardtrader` → `cardmarket`** (`precos.fontes`,
+  `precos.fonte_recurso`). O `market`/`best` só querem dizer coisas diferentes
+  com as ofertas de um marketplace por trás, por isso a principal passou a ser
+  o CardTrader. O buraco medido a 25/09 — **606 cópias (36 %) que ele não cota**
+  — resolve-se por IMPRESSÃO: a primeira fonte da cadeia que a cote ganha e a
+  cópia diz de qual veio. **Não é um `MIN` entre fontes**: isso somava a mediana
+  das ofertas de uma carta com o Trend de outra, que é exactamente o que a
+  `receita` existe para impedir. Tem caso próprio.
+- **A CADEIA É MAIS UMA RÉGUA, e trava a Reserved List como o modo.** Três
+  defesas, e as três são precisas:
+  - **`precos.fonte_desde`** carimba a troca e o **`precos.regua_desde()`** é a
+    mais recente entre ela e o `modo_desde`. O `avaliar_rl` encurta a janela até
+    lá: enquanto não houver `venda.rl_janela_minima_dias` (25) dias medidos com
+    a régua nova, a resposta é **`rl_sem_historico`** — nunca *"não subiu"*.
+  - **O preço de hoje e o histórico têm de ser da MESMA fonte.** O histórico
+    (`loadout._historico`) lê-se **só da fonte principal**; uma cópia cujo preço
+    de hoje veio da fonte de recurso responde `rl_sem_historico` e diz porquê.
+    Uma percentagem entre um ponto do CardTrader e outro do Cardmarket é uma
+    subida que nunca aconteceu.
+  - **As duas pontas medem a MESMA impressão.** O preço de hoje passou a ser o
+    da impressão dele; o `_cotacao_em` fazia `min` sobre as impressões do nome.
+    Comparar o Revised de hoje com a reimpressão mais barata de há 90 dias dava
+    uma percentagem que não é de carta nenhuma — e num sentido mandava vender
+    uma carta que valorizou. Tem caso próprio.
+- **AS COLUNAS DE EVOLUÇÃO DA RESERVED LIST ficam na `precos.fonte_serie`** (por
+  omissão a ÚLTIMA da cadeia, o price guide). Não é incoerência: o *valor* de
+  uma cópia é uma cadeia porque a pergunta é *"quanto vale"*; uma *série* é uma
+  percentagem e mede-se de ponta a ponta na mesma fonte — e a fonte com série é
+  a que tem história. Por isso a página pode mostrar uma evolução enquanto a
+  regra dos 5 % responde *"não sei"*: são duas perguntas.
+- **AS EDIÇÕES DO CARDTRADER SAEM DA COLECÇÃO** (`prices.edicoes_da_coleccao`,
+  hoje **145**, ~3 min). Com a fonte em `cardtrader`, um `CARDTRADER_SETS`
+  esquecido era o site inteiro a cair na fonte de recurso sem um único erro — o
+  padrão do `event_tier` sobre o número que ele vê todos os dias. A variável
+  continua a ganhar quando está escrita.
+- **O HISTÓRICO DO MARKETPLACE PODA-SE** (`daily._prune_marketplace`). A
+  primeira corrida do CardTrader escreveu **53 113 linhas de histórico, 27 MB**
+  (a base passou de 88,2 a 115,3 MB), contra as ~5 400/dia do price guide — e
+  o `vault.db` é descarregado e republicado INTEIRO a cada corrida. Dessas,
+  **1 025** são de cartas que ele tem ou da Reserved List; as outras 52 088 não
+  alimentam página nenhuma (o que a lista de compras usa é o `price_latest`, que
+  fica inteiro). Guardam-se essas.
+- **A CADEIA EM SQL É UMA SUBCONSULTA CORRELACIONADA** (`precos.sql_impressao`),
+  e isso é uma decisão de desempenho tomada duas vezes. A primeira versão era
+  uma tabela derivada com `ROW_NUMBER` por cima da `price_latest` inteira: o
+  `card_price` é chamado milhares de vezes por relatório e varrer 86 480 linhas
+  por chamada punha-o em dezenas de minutos. **Materializá-la numa temporária
+  indexada resolvia o tempo e criava dois problemas piores:** (a) o esquema
+  `temp` passa a aparecer no `PRAGMA database_list`, e há **quinze ficheiros de
+  teste** a apanhar o catálogo pelo ÍNDICE 1 dessa lista — o `webapp.py`
+  respondia *"unable to open database: ."* a um POST; (b) qualquer carimbo de
+  validade que se guardasse numa tabela contava como escrita e punha a
+  temporária a refazer-se a cada chamada. A correlacionada entra pela chave
+  primária `(scryfall_id, source, finish)`, lê duas linhas, e **não há cache
+  nenhuma que possa responder com um preço de antes**. Tem teste que lê o
+  `EXPLAIN QUERY PLAN` e exige que não haja `SCAN` da `price_latest`. Medido: o
+  relatório inteiro sobre a base dele com as duas fontes, **32 s**.
+- **Onde se troca:** o interruptor **market · best · média** do cabeçalho da
+  Deckboxes (agora com a CADEIA ao lado, `cardtrader → cardmarket`, e não só a
+  primeira), `py -m mtgvault.cli precos fonte <nome> [--recurso ...]` e
+  `precos modo <...>`. O `precos` do CLI mostra a cadeia, a receita de cada
+  fonte e as três datas (modo, fonte, régua).
+- **MEDIDO na cópia da base de 2026-09-25** (o mesmo `vault.db` nos quatro
+  lados, com o CardTrader puxado às 145 edições dele):
+
+  | | A: `main` cardmarket | B: ramo, cardmarket | C: ramo, cadeia, market | D: ramo, cadeia, best |
+  |---|---|---|---|---|
+  | **preço de referência das 1 678 cópias** | 44 578,72 € | **97 954,17 €** | **134 280,67 €** | 100 134,87 € |
+  | valor da colecção (Galeria/Binders/Início) | 97 913,68 € | 97 913,68 € | **134 237,47 €** | **100 094,14 €** |
+  | fechar tudo | 6 978,93 € | 6 978,93 € | 9 020,89 € | 7 341,37 € |
+  | a comprar / a arrumar | 253 / 225c | 253 / 225c | 253 / 225c | 253 / 225c |
+
+  - **A→B é o mínimo entre impressões a cair** (mesma fonte, mesmo modo): o
+    preço de referência das cópias **mais do que duplica**, 509 cópias sobem, 2
+    descem, 226 ficam iguais. **A alocação não mexe** — fechar tudo, a comprar
+    e a arrumar ao cêntimo e caixa a caixa —, porque a COMPRA continua a ser o
+    mínimo entre impressões: é a prova de que as duas perguntas ficaram
+    separadas. O valor da colecção também não mexe: essa conta já era por
+    impressão desde 24/09.
+  - **B→C é a cadeia a entrar**: 454 cópias sobem, 6 descem, 277 iguais;
+    **1 072 avaliadas pelo CardTrader, 602 pelo Cardmarket, 4 sem preço** — as
+    mesmas 4 de sempre, ou seja **a troca de fonte não deixou uma única cópia
+    nova sem cotação**, que era a dúvida de 25/09 de manhã.
+  - **C vs D é o interruptor**, e agora vê-se: **34 143,33 €** entre `market` e
+    `best` no valor da colecção (117 165,80 € na média), e 1 679,52 € no
+    *fechar tudo*. Com a fonte em `cardmarket` os três davam o MESMO ao cêntimo.
+  - **A Reserved List: as 102 cópias caem todas em `rl_sem_historico`**, nos
+    dois modos — **é a regra a proteger-se**, não uma avaria: a régua mudou hoje
+    (`precos.fonte_desde`) e o histórico do CardTrader começa hoje. Voltam a
+    decidir-se quando houver 25 dias medidos nesta régua, ou no dia em que ele
+    puser a fonte de volta em `cardmarket`.
+  - Consequência na VENDA (que está fora da vista, `venda.mostrar: false`, e
+    que esta ordem não tocou): o motor continua a escolher **as mesmas 268
+    cópias** nos quatro cenários — o que muda é o euro que valem
+    (1 566,55 € → 6 033,90 € só pela correcção do mínimo, e 7 491,44 € com o
+    CardTrader em `market`).
 
 **«PARA JÁ TIRA O VENDER»: UM INTERRUPTOR, NÃO UMA AMPUTAÇÃO (André,
 2026-09-25, à letra).** *"para já tira o «vender»"*. O **«para já» é literal** —

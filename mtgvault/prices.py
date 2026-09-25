@@ -309,6 +309,21 @@ def sync_cardtrader_map(con: sqlite3.Connection, ct: CardTrader,
     return n
 
 
+def edicoes_da_coleccao(con: sqlite3.Connection) -> list[str]:
+    """Os códigos de edição das cartas que ele TEM (hoje 145).
+
+    É a lista de que o CardTrader precisa, e sai da colecção em vez de uma
+    variável de ambiente escrita à mão: uma edição nova entra no dia em que a
+    primeira carta dela entrar, e nenhuma cópia fica sem preço por causa de uma
+    lista que ninguém se lembrou de actualizar. As não encontradas e as de
+    colecionador contam — continuam a ser avaliadas.
+    """
+    return [r[0] for r in con.execute(
+        "SELECT DISTINCT lower(c.set_code) FROM copies cp "
+        "JOIN cards c ON c.scryfall_id = cp.scryfall_id "
+        "WHERE c.set_code IS NOT NULL AND c.set_code <> '' ORDER BY 1")]
+
+
 def fetch_cardtrader_prices(con: sqlite3.Connection, ct: CardTrader,
                             set_codes: list[str]) -> int:
     """OS DOIS VALORES por blueprint: best value e market value (2026-09-25).

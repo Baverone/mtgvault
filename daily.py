@@ -26,8 +26,8 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 # um UA autorizado, define MOXFIELD_USER_AGENT no ambiente e este default cede.
 os.environ.setdefault("MOXFIELD_USER_AGENT", "mtgvault/0.1 (coleccao pessoal)")
 
-from mtgvault import (analysis, db, loadout, mtgtop8, prices,  # noqa: E402
-                      scryfall, sources, tagging, venda, watchlist)
+from mtgvault import (analysis, db, loadout, mtgtop8, precos,  # noqa: E402
+                      prices, scryfall, sources, tagging, venda, watchlist)
 
 import core_decks  # noqa: E402  (gera coredecks.html + tracking de alteracoes)
 import collection_gallery  # noqa: E402  (gera colecao.html — galeria com imagens)
@@ -140,14 +140,30 @@ def _cardmarket(con):
 
 
 def _cardtrader(con):
+    """Os preços do CardTrader — as ofertas de que saem o market e o best value.
+
+    AS EDIÇÕES SAEM DA COLECÇÃO, não de uma lista escrita à mão (2026-09-25).
+    Com o `precos.fonte` em `cardtrader`, um `CARDTRADER_SETS` esquecido era o
+    site inteiro a cair para a fonte de recurso sem um único erro — o padrão do
+    `event_tier`, sobre o número que ele vê todos os dias. O `CARDTRADER_SETS`
+    continua a ganhar quando está escrito (é como se mede uma edição sozinha);
+    sem ele, e só se a cadeia de fontes incluir o CardTrader, pedem-se as
+    edições que ele tem na estante (hoje 145, ~3 min). Sem o CardTrader na
+    cadeia continua a saltar: são 145 pedidos que não alimentam número nenhum.
+    """
     if not os.environ.get("CARDTRADER_TOKEN"):
         return "sem token — saltado"
     sets = [s.strip() for s in os.environ.get("CARDTRADER_SETS", "").split(",") if s.strip()]
     if not sets:
-        return "sem CARDTRADER_SETS — saltado"
+        if "cardtrader" not in precos.fontes():
+            return "sem CARDTRADER_SETS e fora da cadeia de preços — saltado"
+        sets = prices.edicoes_da_coleccao(con)
+        if not sets:
+            return "colecção sem edições conhecidas — saltado"
     ct = prices.CardTrader()
     prices.sync_cardtrader_map(con, ct, sets)
-    return f"{prices.fetch_cardtrader_prices(con, ct, sets)} preços"
+    return (f"{prices.fetch_cardtrader_prices(con, ct, sets)} preços "
+            f"({len(sets)} edições)")
 
 
 def _watch(con):
@@ -209,10 +225,38 @@ def _prune_prices(con, keep_days: int = 30):
                                    WHERE c.scryfall_id = price_history.scryfall_id
                                      AND c.reserved = 1))""",
         (f"-{keep_days} days", f"-{fundo} days")).rowcount
+    m = _prune_marketplace(con)
     con.commit()
     return (f"{n} preços >{keep_days}d apagados "
             f"(Reserved List guarda-se {fundo}d, p/ a regra dos "
-            f"{loadout.rl_subida_minima():.0f}%)")
+            f"{loadout.rl_subida_minima():.0f}%)"
+            + (f"; {m} do marketplace sem consumidor" if m else ""))
+
+
+def _prune_marketplace(con) -> int:
+    """O histórico de um feed de OFERTAS só se guarda para o que ele tem.
+
+    O CardTrader é o mercado ao vivo: a mediana das ofertas de uma carta mexe
+    quase todos os dias, e a primeira corrida escreveu **53 113** linhas de
+    histórico — 27 MB, contra as ~5 400 por dia do price guide do Cardmarket.
+    A trinta dias isso são centenas de megabytes num ficheiro que é descarregado
+    e republicado INTEIRO a cada corrida.
+
+    Medido na base de 2026-09-25: dessas 53 113 linhas, **1 025** são de cartas
+    que ele tem ou da Reserved List. As outras 52 088 não alimentam página
+    nenhuma — o que a lista de compras usa é o `price_latest` (o preço de hoje),
+    que fica inteiro; o histórico só serve a regra dos 5 % da RL e as colunas
+    *há 1 mês* de cartas dele. Guardam-se essas, apagam-se as outras.
+    """
+    return con.execute(
+        """DELETE FROM price_history
+            WHERE receita = ?
+              AND NOT EXISTS (SELECT 1 FROM copies cp
+                               WHERE cp.scryfall_id = price_history.scryfall_id)
+              AND NOT EXISTS (SELECT 1 FROM cards c
+                               WHERE c.scryfall_id = price_history.scryfall_id
+                                 AND c.reserved = 1)""",
+        (precos.RECEITA_CT_OFERTAS,)).rowcount
 
 
 def _podar_ligas(con):
