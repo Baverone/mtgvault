@@ -21,7 +21,7 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 from mtgvault import collection  # noqa: E402
 from mtgvault import db as _db  # noqa: E402
-from mtgvault import paginas, precos  # noqa: E402
+from mtgvault import paginas, precos, venda  # noqa: E402
 from mtgvault import site_shell as shell  # noqa: E402
 from mtgvault.collection import na_estante  # noqa: E402
 
@@ -186,6 +186,10 @@ def build(con, out_path=None):
                            "WHERE reserved=1").fetchone()["c"]
     have_names, have_value = set(), 0.0
     sell = []  # [(nome, qty, valor_total)] — RL que tem e não joga em lado nenhum
+    # As mesmas cartas, só os nomes: é o que a caixa diz quando a SUGESTÃO de
+    # venda está desligada (2026-09-25) — o facto sem o conselho.
+    sem_jogo_nomes: set[str] = set()
+    mostra_venda = venda.mostrar()
 
     # Agrupar por edição, mantendo a ordem (mais recente -> mais antiga).
     order, groups = [], defaultdict(list)
@@ -217,7 +221,15 @@ def build(con, out_path=None):
                 have_value += meu.get(sid, 0.0)
             fmts = card_formats.get(c["name"], {})
             counted = sorted((f for f in fmts if f not in ignore), key=lambda f: -fmts[f])
-            to_sell = has and not counted
+            # «PARA JÁ TIRA O VENDER» (André, 2026-09-25). O selo VENDER e a
+            # caixa «A vender» são a sugestão de venda desta página — saem com
+            # o mesmo interruptor. O que NÃO sai é o *"não joga em formato
+            # nenhum"*: isso é um facto sobre a carta, não um conselho para a
+            # vender, e é metade da razão por que esta página existe.
+            sem_jogo = has and not counted
+            to_sell = sem_jogo and mostra_venda
+            if sem_jogo:
+                sem_jogo_nomes.add(c["name"])
             if to_sell:
                 sell.append((c["name"], en + pt, meu.get(sid, 0.0)))
             val = price.get(sid)
@@ -231,7 +243,7 @@ def build(con, out_path=None):
             if has and counted:
                 plays = ('<div class="plays">joga: '
                          + " · ".join(FMT_LABEL.get(f, f) for f in counted[:4]) + "</div>")
-            elif to_sell:
+            elif sem_jogo:
                 plays = '<div class="plays vd">não joga em formato nenhum</div>'
             mon = ""
             if m:
@@ -245,7 +257,7 @@ def build(con, out_path=None):
                     mon = f'<div class="mon">há 1 mês {_eur(m)}</div>'
             badge = ' <span class="sellbadge">VENDER</span>' if to_sell else ""
             cells += (
-                f'<div class="c {"sell" if to_sell else ("have" if has else "miss")}" '
+                f'<div class="c {"sell" if sem_jogo else ("have" if has else "miss")}" '
                 f'title="{html.escape(c["name"])}">'
                 f'<img loading="lazy" decoding="async" width="38" height="53" '
                 f'src="{_art(sid)}" alt="">'
@@ -263,7 +275,14 @@ def build(con, out_path=None):
     head = (f'Tens <b>{len(have_names)}</b> de {total_rl} cartas da Reserved List · '
             f'valor da tua RL: <b>{_eur(have_value)}</b> · {len(cards)} impressões · dados de {today}')
     ign = ", ".join(sorted(FMT_LABEL.get(f, f) for f in ignore)) or "nenhum"
-    if sell:
+    if not mostra_venda:
+        # Sem a sugestão de venda a caixa não desaparece: continua a dizer
+        # quantas RL dele não têm onde jogar, que é a informação, sem o
+        # conselho. Zero é uma resposta e mostra-se na mesma.
+        sellbox = (f'<div class="sellnote">{len(sem_jogo_nomes)} carta(s) da tua '
+                   f'Reserved List não jogam em formato nenhum que conte. '
+                   f'<span class="fine">(a ignorar: {ign})</span></div>')
+    elif sell:
         tot = sum(v for _n, _q, v in sell)
         items = " · ".join(f"{html.escape(n)} ({q}×, {_eur(v)})"
                            for n, q, v in sorted(sell, key=lambda s: -s[2]))
@@ -282,7 +301,7 @@ def build(con, out_path=None):
                     f'{html.escape(e["nome"])} '
                     f'<span class="dim">{e["tens"]}/{e["n"]}</span></a>'
                     for e in edicoes)
-    out.write_text(_TMPL
+    out.write_text(_tmpl()
                    .replace("%TEMA_DADOS%", paginas.CSS_DADOS)
                    .replace("%JS_DADOS%", paginas.JS_DADOS)
                    .replace("%SECS%", secs).replace("%EDIDX%", edidx)
@@ -340,8 +359,8 @@ _RODAPE = ("A Reserved List da Wizards (cartas que nunca serão reimpressas), pe
            "de 30 dias do Cardmarket, ou o valor exato quando a nossa própria "
            "história tiver 30 dias), com a variação. Nas que tens, mostra <b>em que "
            "formatos joga</b> (das listas de torneio que seguimos). Uma carta tua "
-           "que <b>não jogue em formato nenhum</b> que conte fica marcada "
-           "<b>VENDER</b> — os formatos que não contam afinam-se em "
+           "que <b>não jogue em formato nenhum</b> que conte fica marcada"
+           "%VENDER% — os formatos que não contam afinam-se em "
            "<code>colecao_config.json</code> (por agora, só o Vintage fora). Sem "
            "cor = não tens nenhuma. O <b>valor da tua RL</b> do cabeçalho é a "
            "mesma conta da <a href=\"colecao.html\">galeria</a> e dos "
@@ -353,14 +372,19 @@ _RODAPE = ("A Reserved List da Wizards (cartas que nunca serão reimpressas), pe
 _ACCOES = ('<button class="btn" id="tgl" type="button" onclick="toggle()">'
            'Mostrar só as que tenho</button>')
 
-_TMPL = ("""<!doctype html><html lang="pt-PT"><head>"""
-         + shell.head("Reserved List · preços", _CSS) + """</head><body>"""
-         + shell.abrir("reservedlist.html", "Reserved List · preços", "%HEAD%", _ACCOES) + """
+def _tmpl() -> str:
+    """O molde. FUNÇÃO desde 2026-09-25 (ver o `deckboxes`): a barra lateral e o
+    rodapé seguem o `venda.mostrar`."""
+    rodape = _RODAPE.replace(
+        "%VENDER%", " <b>VENDER</b>" if venda.mostrar() else " a vermelho")
+    return ("""<!doctype html><html lang="pt-PT"><head>"""
+            + shell.head("Reserved List · preços", _CSS) + """</head><body>"""
+            + shell.abrir("reservedlist.html", "Reserved List · preços", "%HEAD%", _ACCOES) + """
 <div class="wrap">
 %SELL%
 <div class="edidx"><div class="seg">%EDIDX%</div></div>
 %SECS%
-</div>""" + shell.fechar(_RODAPE, """
+</div>""" + shell.fechar(rodape, """
 <script>
 %JS_DADOS%
 function toggle(){document.body.classList.toggle('only');

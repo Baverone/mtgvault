@@ -225,14 +225,51 @@ SECCOES: list[tuple[str, list[tuple[str, str, str, str, str]]]] = [
 # mtgvault é uma secção do baverone.com).
 CASA = ("https://baverone.com", "baverone.com")
 
+# «PARA JÁ TIRA O VENDER» (André, 2026-09-25). Com `venda.mostrar` a `false`, a
+# secção fica só com as COMPRAS — e por isso muda de nome. «Compras e venda»
+# por cima de quatro itens que não têm venda nenhuma era a barra a prometer uma
+# vista que já não existe, que é o mesmo defeito do item órfão que isto veio
+# tirar. A arquitectura de 2026-09-24 não mudou: `SECCOES` continua a ser a
+# lista inteira, e é o que o teste dela lê.
+SECCAO_VENDA = "Compras e venda"
+SECCAO_SEM_VENDA = "Compras"
+
 # As páginas que o site GERA, para quem precise da lista (testes, `daily`).
+# Sai de `SECCOES` e não de `seccoes()`: o interruptor tira uma SUB-VISTA (uma
+# âncora), nunca uma página — nenhum ficheiro `.html` deixa de se gerar, e uma
+# lista de publicação que encolhesse com um config era como o `deckboxes.html`
+# ficou semanas sem ser publicado.
 PAGINAS_DO_MENU = list(dict.fromkeys(f for _s, itens in SECCOES
                                      for f, a, *_r in itens if not a))
 
 
+def seccoes() -> list[tuple[str, list[tuple[str, str, str, str, str]]]]:
+    """As secções EFECTIVAS da barra lateral — `SECCOES` menos o que está
+    desligado hoje.
+
+    Hoje só há um interruptor (`venda.mostrar`, 2026-09-25) e por isso isto é
+    quase a lista inteira. Existe na mesma como função porque é ela que a barra,
+    as migalhas e o título de cada página passam a ler: com a lista a ser lida
+    directamente em cinco sítios, o primeiro que se esquecesse do interruptor
+    punha um item «Vender» numa página onde a aba não existe — um 404 com mais
+    passos. O import é lá dentro porque o `venda` chega aqui pelo `paginas`.
+    """
+    from . import venda                                      # noqa: PLC0415
+    if venda.mostrar():
+        return SECCOES
+    fora = {("deckboxes.html", "vender")}
+    out = []
+    for sec, itens in SECCOES:
+        restam = [it for it in itens if (it[0], it[1]) not in fora]
+        if not restam:
+            continue
+        out.append((SECCAO_SEM_VENDA if sec == SECCAO_VENDA else sec, restam))
+    return out
+
+
 def seccao_de(ficheiro: str) -> str:
     """A secção a que uma página pertence (a primeira que a tem, sem âncora)."""
-    for sec, itens in SECCOES:
+    for sec, itens in seccoes():
         for f, a, *_r in itens:
             if f == ficheiro and not a:
                 return sec
@@ -556,8 +593,8 @@ JS = r"""
     if (links[i].addEventListener) links[i].addEventListener('click', fecha);
   }
   /* A sub-vista activa: o `#comprar` da barra lateral acende quando a Deckboxes
-     está nessa aba. Sem isto, cinco itens da secção «Compras e venda»
-     apontavam para a página em que ele já está sem dizer qual estava aberta. */
+     está nessa aba. Sem isto, os itens da última secção apontavam todos para a
+     página em que ele já está, sem dizer qual estava aberta. */
   function marcaHash(){
     var h = '';
     try { h = (location.hash || '').replace('#',''); } catch(e){}
@@ -604,7 +641,7 @@ def _item(f: str, ancora: str, ic: str, rot: str, nota: str, atual: str) -> str:
 def nav_lateral(atual: str = "") -> str:
     """A navegação, agrupada por secções. A mesma no PC e no painel do telemóvel."""
     out = ""
-    for sec, itens in SECCOES:
+    for sec, itens in seccoes():
         cab = (f'<div class="sgh">{html.escape(sec)}</div>' if sec else "")
         out += ('<div class="sgrp">' + cab
                 + "".join(_item(*it, atual) for it in itens) + "</div>")

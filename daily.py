@@ -66,6 +66,23 @@ ANALYSE_FORMATS = ["standard", "pioneer", "modern", "legacy", "vintage",
                    "premodern"]
 
 
+def venda_export(con, rep=None) -> str:
+    """O passo `venda-export`, ou a razão por que hoje não corre.
+
+    Vive numa função e não num `lambda` para poder ser CHAMADO por um teste: a
+    metade que interessa provar é a de baixo — com `venda.mostrar` a `false`
+    (André, 2026-09-25: *"para já tira o «vender»"*) não se escreve ficheiro
+    nenhum, e os que já lá estão **ficam como estão**, com a data da última vez
+    que valeram. Saltar em silêncio deixava o log igual a um dia em que o passo
+    corre, e é aí que se perde a diferença entre «está desligado» e «avariou».
+    """
+    if not venda.mostrar():
+        return (f"saltado: {venda.MOTIVO_DESLIGADO} Os ficheiros "
+                f"{venda.FICHEIRO_STOCK} / {venda.FICHEIRO_ESTANTE} que já "
+                f"existam ficam como estão — não se apagam nem se reescrevem.")
+    return venda.exportar(con, rep)["resumo"]
+
+
 def _step(con, nome, fn):
     """Corre um passo, regista o resultado, e nunca deixa rebentar o resto."""
     try:
@@ -352,8 +369,14 @@ def main():
         # cartas à estante). Fora do Git — levam preços por cópia, como o
         # `vendas.csv`. O formato do CSV é o do `data/cardmarket-stock-exemplo.csv`
         # se existir; senão o predefinido, que NÃO foi confirmado contra o site.
-        _step(con, "venda-export",
-              lambda: venda.exportar(con, _rep.get("v"))["resumo"])
+        #
+        # SALTA-SE com `venda.mostrar` a `false` (André, 2026-09-25: *"para já
+        # tira o vender"*) — e o passo DIZ que saltou, com o porquê. Saltar em
+        # silêncio deixava o log igual a um dia em que o passo corre, e a
+        # diferença entre «está desligado» e «está avariado» é exactamente o
+        # que se perde. Os ficheiros que já existem não se apagam: deixam de ser
+        # reescritos, e ficam com a data da última vez que valeram.
+        _step(con, "venda-export", lambda: venda_export(con, _rep.get("v")))
         # Metagame: o top-N que ele está mais perto de concluir por formato.
         # DEPOIS do `deckboxes` na intenção, não na dependência — lê a mesma
         # alocação do loadout, e é dela que sai o "está noutra caixa".

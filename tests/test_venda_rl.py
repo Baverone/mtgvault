@@ -33,8 +33,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 _TMP = Path(tempfile.mkdtemp())
 CFG_PATH = _TMP / "cfg.json"
+# `venda.mostrar` a `True`: desde 2026-09-25 a omissão é DESLIGADO (*"para já
+# tira o vender"*), e este ficheiro testa a aba Vender — sem isto, metade dele
+# passava a medir uma página que não se desenha.
 BASE_CFG = {"regras_por_formato": [
-    {"grupo": "spml", "formatos": ["legacy"], "lingua": "en"}]}
+    {"grupo": "spml", "formatos": ["legacy"], "lingua": "en"}],
+    "venda": {"mostrar": True}}
 CFG_PATH.write_text(json.dumps(BASE_CFG), encoding="utf-8")
 os.environ["MTGVAULT_CONFIG"] = str(CFG_PATH)
 os.environ.setdefault("MTGVAULT_HOME", str(_TMP))
@@ -56,8 +60,9 @@ def cfg(**venda):
     """Reescreve o config e esquece a cache — os limiares têm de ser config."""
     from mtgvault import sources
     novo = json.loads(json.dumps(BASE_CFG))
-    if venda:
-        novo["venda"] = venda
+    # O `mostrar` fica sempre: quem chama isto passa os limiares da RL, e
+    # apagá-lo aqui desligava a página que o caso a seguir lê.
+    novo["venda"] = {"mostrar": True, **venda}
     CFG_PATH.write_text(json.dumps(novo, ensure_ascii=False), encoding="utf-8")
     sources._CFG_CACHE.clear()
     return novo

@@ -60,6 +60,9 @@ BASE_CFG = {
     ],
     "premodern": {"top_representados": 2, "top_combo": 1, "min_listas": 5,
                   "sugerir_a_partir_de_pct": 50},
+    # A aba Vender é lida aqui (o bloco «reservadas», o motivo novo). A omissão
+    # do `venda.mostrar` é DESLIGADO desde 2026-09-25.
+    "venda": {"mostrar": True},
 }
 
 

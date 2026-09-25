@@ -425,8 +425,11 @@ def build(con, out_path=None):
         wsec = ('<h2 id="vigiados" class="pool">🃏 Decks montados '
                 '<span class="n">só decks — não coleção</span></h2>'
                 '<p class="hint">Lista fixa (Blue Farm, Cloud cEDH, Pauper): o deck por inteiro '
-                '+ as <b>extra</b> (saíram da lista, guardadas sem prazo — saem só quando '
-                'disseres «vendida»). As cartas com '
+                # «vendida» era o nome do botão que as tirava daqui, e esse
+                # botão está fora de vista desde 25/09/2026. A frase diz a
+                # mesma coisa sem nomear uma acção que ele já não vê.
+                '+ as <b>extra</b> (saíram da lista, guardadas sem prazo — só saem '
+                'quando tu o disseres, carta a carta). As cartas com '
                 '<b style="color:#bcd4ff">de &lt;balde&gt;</b> estão arrumadas noutro sítio mas o '
                 '<b>loadout</b> dá-as a esta caixa — é de lá que as tiras para montar (foi o caso '
                 'dos 4 Utrom Monitor do Pauper, que vivem no SPML). Consenso (Cloud): em '

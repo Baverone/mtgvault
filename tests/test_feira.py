@@ -37,6 +37,9 @@ sys.path.insert(0, str(RAIZ))
 
 _TMP = Path(tempfile.mkdtemp())
 CFG = {
+    # A metade «levar» da feira É a lista de venda, e segue o mesmo interruptor
+    # (2026-09-25). Este ficheiro testa-a: liga-o.
+    "venda": {"mostrar": True},
     "regras_colecao": {}, "decks_vigiados": [],
     "baldes_coleccao": ["Colecção", "Caixa Reserved List"],
     "regras_por_formato": [

@@ -41,6 +41,9 @@ sys.path.insert(0, str(RAIZ))
 
 _TMP = Path(tempfile.mkdtemp())
 CFG = {
+    # Este ficheiro é a SAÍDA da venda: o interruptor de 2026-09-25 tem de estar
+    # ligado (a omissão passou a ser desligado).
+    "venda": {"mostrar": True},
     "regras_colecao": {"Blue Farm": {"reter_extras": True}},
     "baldes_coleccao": ["Colecção", "Caixa Reserved List"],
     "decks_vigiados": [],

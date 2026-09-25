@@ -97,7 +97,11 @@ mtgvault/
                   ordem `command` na inbox do runner do ai-pc (`mtg-fotos-novas`,
                   `nao_antes` = foto + 2 min, uma por 5 min); as fotos por
                   resolver (`recat-*-resultado.csv`). Ponto 14
-  venda.py        a SAÍDA da lista de venda (2026-09-18): o CSV de stock p/ o
+  venda.py        O INTERRUPTOR (2026-09-25): `venda.mostrar` — *"para já tira o
+                  «vender»"*, hoje `false`. Tira a venda da VISTA em nove
+                  superfícies e NÃO toca no motor (as sete saídas, a regra da
+                  RL e o `vendas.csv` continuam). Ver «Para já tira o vender».
+                  E a SAÍDA da lista de venda (2026-09-18): o CSV de stock p/ o
                   Cardmarket (formato predefinido NÃO confirmado, ou aprendido
                   de `data/cardmarket-stock-exemplo.csv`), a lista da estante
                   por onde a cópia está, e o que fica de fora com o porquê
@@ -152,7 +156,7 @@ my_decks.py         segue decks-alvo (por assinatura e por jogador de MTGO) -> t
 commander_decks.py  decks de comandante por consenso EM CAMADAS: núcleo>=50% (=deck, deck_cards) / flex 25-50% / tech 15-25%; FILTRA pela cor do comandante. `tiers()` reusado pelo colecao_cor
 premodern_decks.py  consenso dos arquétipos-alvo de Premodern (`colecao_config.json`→`premodern_arquetipos_alvo`: UW Replenish, Enchantress) -> decks/deck_cards com o sufixo " (consenso)". Agrupa pelas etiquetas do `tagging` (o clustering não os separa) e usa `stock.stock_from_lists`. Mostrado nas `deckboxes` (era o `meusdecks`)
 refresh_collection.py  collection_owned p/ o index.html
-colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados
+colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados, venda (a regra dos 5 % da RL **e** o `mostrar` de 2026-09-25)
 ```
 Cada `.html` gerado tem de estar na lista do `git add` do workflow (`daily.yml`,
 passo "Guardar HTML") **e na lista `HTML` da tarefa `ai-pc/tasks/mtgvault-daily`**
@@ -608,6 +612,93 @@ funcionalidade em `tests/_provar_chumba.py` (corre-se à mão).
     hoje era trocar 32 % de valor por 36 % da colecção sem cotação. Por isso a
     fonte ficou em `cardmarket` e o modo em `market`, que é onde ela já estava:
     **nada mudou de número no dia em que isto entrou** (ver a linha de cima).
+
+**«PARA JÁ TIRA O VENDER»: UM INTERRUPTOR, NÃO UMA AMPUTAÇÃO (André,
+2026-09-25, à letra).** *"para já tira o «vender»"*. O **«para já» é literal** —
+por isso não se apagou uma linha de código: é `colecao_config.json →
+venda.mostrar`, hoje **`false`**, e pô-lo a `true` (ou
+`py -m mtgvault.cli vender --mostrar on`) devolve tudo exactamente como estava.
+Motor do interruptor em `mtgvault/venda.py` (`mostrar()`, `gravar_mostrar()`,
+`MOTIVO_DESLIGADO`); testes em `tests/test_venda_interruptor.py` (8 casos) e a
+prova de que chumbam sem a funcionalidade em `tests/_provar_chumba.py`
+(+ `tests/_chumba_venda.py`, que corre um caso com o interruptor neutralizado).
+
+- **O QUE ELE DEIXA DE VER**, e onde estava cada coisa: a **aba Vender** da
+  Deckboxes (`#vender`) com as sete saídas e o bloco **📤 Saída** (o CSV de
+  stock, a lista da estante e o «fica de fora»); os botões **«vendida»**
+  (`data-vend`) e **«💾 gravar em data/»** (`data-saida`); o item **Vender** da
+  barra lateral — e a secção passou de *«Compras e venda»* a **«Compras»**, que
+  é o que ela é agora (`site_shell.seccoes()`); no **Início**, o cartão **«Para
+  vender»** (era 1 566,55 € a negrito, o terceiro de seis) e o atalho *Vender*,
+  que deu o lugar a **Encomendas** para a grelha continuar 3×2; o **chip «a
+  vender»** do cabeçalho da Deckboxes e o bloco *«Depois de montar: vender o
+  excesso»* do **Plano**; na **Reserved List**, o selo **VENDER** e a caixa **💸
+  A vender** (a linha *"não joga em formato nenhum"* FICA — é um facto sobre a
+  carta, não um conselho, e é metade da razão por que a página existe); no
+  **Metagame**, a frase que mandava o que sobra para a venda e a etiqueta do
+  «não quero este»; e a metade **«levar»** da **Feira**. A **Cobertura**, a
+  **Caixa RL**, a **Galeria** e o **Showcase** só tinham a barra lateral —
+  varridas as nove páginas, no HTML e nos `data/paginas/*.json`.
+- **A FEIRA fica, com meia cara, e foi uma decisão.** A ordem dele não nomeou a
+  Feira; mas a metade «levar» É a lista de venda, carta a carta e com preço —
+  mantê-la era tirar a aba Vender e deixá-la ali com outro nome. Desliga-se com
+  o mesmo interruptor (`feira.levar` devolve zeros e `desligado: True`, num
+  sítio só, e daí saem o saldo, os textos e o subtítulo) e o **«trazer»** —
+  que é uma lista de COMPRAS — fica inteiro. Se ele preferir a Feira inteira ou
+  nenhuma, é uma linha.
+- **A REVALIDAÇÃO NÃO PODE PERDER CÓPIAS.** O `revalidacao.particao` tinha um
+  grupo `venda` com **334 cópias**; esconder o grupo levava-as com ele, e a
+  campanha é fotografar a colecção INTEIRA. Agora, com o interruptor desligado,
+  essas cópias caem no sítio onde ESTÃO (Caixa RL ou Coleção) e a soma dos
+  grupos continua a ser a colecção — medido: 1 678 dos dois lados (caixas 636 ·
+  venda 0 · RL 148 · resto 894). Tem teste.
+- **NADA SE APAGOU, e é a metade que interessa quando ele voltar a ligar.** O
+  `mtgvault/venda.py` está intacto; o `loadout.sell_list` corre a cada relatório
+  e continua a calcular as **sete saídas** — é ele que segura a regra dos 5 % da
+  Reserved List, o `guardar`, as `reservadas` e os `retidos`, e desligá-lo era
+  deixar de saber o que NÃO se vende; o `data/vendas.csv` fica; os
+  `data/venda-stock.csv` e `data/venda-estante.txt` que já existem **não se
+  apagam** — deixam só de ser reescritos, com a data da última vez que valeram.
+  O **CLI continua a imprimir a lista** (`py -m mtgvault.cli vender [--tudo]`),
+  com uma linha à cabeça a dizer que não está no site: é por aí que ele e o
+  Claude na nuvem vêem o que o motor continua a decidir.
+- **O `daily` SALTA o passo `venda-export` e DIZ porquê** (`daily.venda_export`,
+  numa função para poder ser chamada por um teste): `[ok] venda-export:
+  saltado: a venda está desligada (…)`. Saltar em silêncio deixava o log igual
+  a um dia em que o passo corre, e é aí que se perde a diferença entre «está
+  desligado» e «avariou».
+- **OS DOIS ENDPOINTS DE ESCRITA RECUSAM-SE EM CONDIÇÕES.** Uma página aberta no
+  telemóvel antes de hoje ainda pode mandar `POST /api/vender` (o botão que
+  APAGA cartas da base) e `POST /api/venda-export`. `webapp.VendaDesligada` é
+  subclasse de `ValueError`, por isso o `do_POST` traduz num **409 com a frase
+  em português** e o `_exige_venda()` corre **antes** do `migracao.backup` —
+  uma chamada recusada não deixa um ficheiro de backup atrás dela.
+- **A PERGUNTA VIVE NUM SÍTIO SÓ** (`venda.mostrar`). São nove superfícies a
+  fazê-la; a segunda que a respondesse por si própria deixava um item da barra a
+  apontar para uma aba que já não existe — a lição do `e_foil`, do `vistoId` e do
+  `precos.sql()`. Tem teste que varre o código à procura de quem volte a ler a
+  chave à mão. Do lado do browser a pergunta é **uma só** (`VENDA_ON()`, = o
+  payload trazer `venda: null`), e daí saem a aba, o chip, o Plano, as
+  `abasFixas()` (que tiram o `#vender` de um favorito velho e a aba `vender`
+  guardada ontem no `localStorage`) e os botões.
+- **UMA EXCEPÇÃO deliberada ao «nem uma palavra»**: o **nome da chave**
+  (`venda.mostrar`) aparece onde a página explica uma ausência — a metade
+  «levar» da Feira. É a maçaneta da porta que acabou de fechar; sem ela, a
+  explicação mandava-o procurar. O teste desconta-a, e só a ela.
+- **OS MOLDES PASSARAM A SER FUNÇÕES** (`_tmpl()` no `deckboxes`, `inicio`,
+  `reservedlist` e `metagame`). Eram constantes de módulo com a barra lateral e
+  o rodapé já lá dentro, calculados no instante do `import`: o molde ficava com
+  a resposta que o config deu a quem importasse primeiro. É concatenação de
+  strings, corre uma vez por página.
+- **MEDIDO na cópia da base de 2026-09-25**, com o interruptor nos DOIS estados
+  e o mesmo `vault.db`: o `loadout.report` é **igual ao cêntimo e caixa a
+  caixa** — fechar tudo **6 978,93 €**, 253 a comprar, 225 a arrumar (129
+  linhas), venda 268c/1 566,55 €, venda_rl 66c/4 915,91 €, rl_segurar
+  36c/3 618,39 €, rl_sem_historico 0, guardar 2c/14,71 €, reservadas
+  1c/100,00 €, retidos 0, as 15 caixas; e a saída para o Cardmarket continua a
+  produzir-se a pedido (334 cópias / 6 482,46 € em 158 linhas). Nas nove páginas
+  geradas: **zero** palavras de venda no texto visível, **zero** `#vender`,
+  **zero** botões.
 
 ### Duas bases de dados
 

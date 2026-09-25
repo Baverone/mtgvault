@@ -688,6 +688,50 @@ def _encomendas_payload(con, rep, imgs, baratas=None):
     }
 
 
+def _venda_payload(con, rep, venda_bloco):
+    """O bloco `venda` do payload — ou `None` (André, 2026-09-25: *"para já tira
+    o «vender»"*).
+
+    Vive numa função e não dentro do literal do `payload` porque a decisão é uma
+    só e tem de se ver: ou sai tudo (as sete saídas E a saída para o Cardmarket)
+    ou não sai nada. Meia venda — os blocos sem a saída, ou a saída sem os
+    blocos — era deixar-lhe o número à vista e tirar-lhe a maneira de agir sobre
+    ele, que é pior do que qualquer das duas.
+
+    O `venda.relatorio` nem chega a correr com o interruptor desligado: é a
+    parte cara (o CSV, a estante, o formato lido do disco) e ninguém a lê.
+    """
+    if not venda.mostrar():
+        return None
+    return {
+        "normal": venda_bloco("venda", "copias", "total"),
+        "rl": venda_bloco("venda_rl", "copias_rl", "total_rl"),
+        "guardar": venda_bloco("guardar", "copias_guardar", "total_guardar"),
+        # RESERVADAS por uma sugestão de Premodern por decidir: não são
+        # excedente, são cartas de um deck que ele ainda não disse se quer.
+        # Ficam num bloco próprio — e sem botão «vendida», porque a decisão que
+        # as liberta é o «não quero este».
+        "reservadas": venda_bloco("reservadas", "copias_reservadas",
+                                  "total_reservado"),
+        # RESERVED LIST QUE VALORIZOU e RL que o vault ainda não sabe medir
+        # (André, 2026-09-08: *"cartas de RL só vão para venda se não tiverem
+        # subido 5 % de valor nos últimos 3 meses"*). Dois blocos e não um:
+        # "subiu" é uma decisão tomada, "não sei" é uma decisão por tomar.
+        "rl_segurar": venda_bloco("rl_segurar", "copias_rl_segurar",
+                                  "total_rl_segurar"),
+        "rl_sem_historico": venda_bloco("rl_sem_historico",
+                                        "copias_rl_sem_historico",
+                                        "total_rl_sem_historico"),
+        "retidos": venda_bloco("retidos", "copias_retidas", "total_retido"),
+        # A SAÍDA (2026-09-18): o CSV de stock, a lista da estante e o que fica
+        # de fora, tudo do `mtgvault.venda` — a página não recompõe nada disto
+        # em JavaScript. Sem as `linhas`: já vão dentro da estante, agrupadas, e
+        # o CSV é a outra vista delas.
+        "saida": {k: v for k, v in venda.relatorio(con, rep).items()
+                  if k != "linhas"},
+    }
+
+
 def payload(con, rep, editable=False, token="", ligacao=None):
     nomes = {c["nm"] for c in rep["conflitos"]}
     for s in rep["slots"]:
@@ -911,13 +955,21 @@ def payload(con, rep, editable=False, token="", ligacao=None):
                    # ENCOMENDAS (2026-09-19): já descontadas do `comprar`.
                    "a_caminho": rep.get("a_caminho_total", 0),
                    "pendente_foto": rep.get("pendente_foto_total", 0),
-                   "custo": rep["custo_total"], "venda": rep["total"],
+                   "custo": rep["custo_total"],
+                   # Os dois totais da venda: só o chip do cabeçalho os lê, e
+                   # com o interruptor de 2026-09-25 desligado vão a `None` em
+                   # vez de irem a zero. O `deckboxes.json` é PÚBLICO (GitHub
+                   # Pages) e um número que ninguém desenha continua a ser um
+                   # número que ele lá pode ir buscar — e zero era pior: dizia
+                   # que não há nada para vender, o que é falso.
+                   "venda": rep["total"] if venda.mostrar() else None,
+                   "venda_rl": rep["total_rl"] if venda.mostrar() else None,
                    # TERRENOS BÁSICOS a comprar (as Snow-Covered, que a pilha de
                    # Unhinged não cobre). À parte do `comprar`/`custo`: são *a
                    # confirmar*, e somá-las mexia no número por que ele decide.
                    "basicas": rep.get("basicas_comprar_total", 0),
                    "basicas_custo": rep.get("basicas_custo_total", 0.0),
-                   "venda_rl": rep["total_rl"], "arrumar": arr["copias"]},
+                   "arrumar": arr["copias"]},
         "compras": sorted(geral.values(), key=lambda g: -g["cost"]),
         # As básicas a comprar, juntas por nome+material, com a caixa que as pede.
         "basicas": _basicas_geral(rep),
@@ -928,43 +980,27 @@ def payload(con, rep, editable=False, token="", ligacao=None):
                                       for q in c["por_slot"]],
                          "ficam_com": c["ficam_com"], "ficam_sem": c["ficam_sem"]}
                         for c in rep["conflitos"]],
-        "venda": {"normal": venda_bloco("venda", "copias", "total"),
-                  "rl": venda_bloco("venda_rl", "copias_rl", "total_rl"),
-                  "guardar": venda_bloco("guardar", "copias_guardar", "total_guardar"),
-                  # RESERVADAS por uma sugestão de Premodern por decidir: não são
-                  # excedente, são cartas de um deck que ele ainda não disse se
-                  # quer. Ficam num bloco próprio — e sem botão «vendida», porque
-                  # a decisão que as liberta é o «não quero este».
-                  "reservadas": venda_bloco("reservadas", "copias_reservadas",
-                                            "total_reservado"),
-                  # RESERVED LIST QUE VALORIZOU e RL que o vault ainda não sabe
-                  # medir (André, 2026-09-08: *"cartas de RL só vão para venda se
-                  # não tiverem subido 5 % de valor nos últimos 3 meses"*). Dois
-                  # blocos e não um: "subiu" é uma decisão tomada, "não sei" é
-                  # uma decisão por tomar.
-                  "rl_segurar": venda_bloco("rl_segurar", "copias_rl_segurar",
-                                            "total_rl_segurar"),
-                  "rl_sem_historico": venda_bloco("rl_sem_historico",
-                                                  "copias_rl_sem_historico",
-                                                  "total_rl_sem_historico"),
-                  "retidos": venda_bloco("retidos", "copias_retidas", "total_retido"),
-                  # A SAÍDA (2026-09-18): o CSV de stock, a lista da estante e o
-                  # que fica de fora, tudo do `mtgvault.venda` — a página não
-                  # recompõe nada disto em JavaScript. Sem as `linhas`: já vão
-                  # dentro da estante, agrupadas, e o CSV é a outra vista delas.
-                  "saida": {k: v for k, v in venda.relatorio(con, rep).items()
-                            if k != "linhas"}},
+        # «PARA JÁ TIRA O VENDER» (André, 2026-09-25): `None` com
+        # `venda.mostrar` a `false`. Não é um dicionário vazio de propósito —
+        # é a mesma forma que a `revalidacao` desligada usa, e é o que o
+        # JavaScript testa para não desenhar a aba, o chip do cabeçalho, o
+        # bloco do Plano, o grupo da Revalidação nem um único botão «vendida».
+        # O motor por baixo não muda: as sete saídas continuam no `rep`.
+        "venda": _venda_payload(con, rep, venda_bloco),
         # Quanto é que a regra dos 5 % segurou ao todo, e com que parâmetros.
         # A janela é um MÁXIMO desde 2026-09-08: a efectiva é a que cada carta
         # dá, e o limiar acompanha-a. Os três números vão para a página porque
         # são os três que explicam uma linha — "subiu 2 % e ficou" só se percebe
-        # com a janela ao lado.
-        "rl_regra": {"copias": rep["copias_rl_retidas"],
-                     "total": rep["total_rl_retido"],
-                     "pct": loadout.rl_subida_minima(),
-                     "dias": loadout.rl_janela_dias(),
-                     "minima": loadout.rl_janela_minima(),
-                     "fixo": loadout.rl_limiar_fixo()},
+        # com a janela ao lado. Só a aba Vender o lê, por isso vai a `None` com
+        # o interruptor de 2026-09-25 desligado — a REGRA continua a correr no
+        # `loadout.sell_list` e a segurar exactamente as mesmas cópias.
+        "rl_regra": ({"copias": rep["copias_rl_retidas"],
+                      "total": rep["total_rl_retido"],
+                      "pct": loadout.rl_subida_minima(),
+                      "dias": loadout.rl_janela_dias(),
+                      "minima": loadout.rl_janela_minima(),
+                      "fixo": loadout.rl_limiar_fixo()}
+                     if venda.mostrar() else None),
         # PREMODERN (André, 2026-09-08): o que montar a seguir com o que sobra.
         # A conta é a do `mtgvault.premodern`, a mesma que o metagame.html mostra.
         "premodern": _premodern_payload(rep, imgs),
@@ -1093,7 +1129,9 @@ def partir(dados):
             # O CSV e o texto da estante são strings — escalares para o
             # `_so_escalares` — mas são os dois textos mais compridos da página
             # e o índice não os precisa: ficam só na parte `venda`.
-            if chaves[0] == "venda" and "saida" in idx["venda"]:
+            # `idx["venda"]` é `None` com o interruptor de 2026-09-25 desligado
+            # — a mesma forma da revalidação sem campanha.
+            if chaves[0] == "venda" and idx["venda"] and "saida" in idx["venda"]:
                 idx["venda"]["saida"] = {k: v for k, v in idx["venda"]["saida"].items()
                                          if k not in SAIDA_PESADO}
             if chaves[0] == "feira" and idx["feira"]:
@@ -1202,7 +1240,7 @@ def _html(dados, js_externo: bool = False):
     # (o `html_page`, que os testes lêem de um ficheiro solto sem servidor).
     codigo = (f'<script src="{NOME_JS}?v={js_versao(js)}"></script>' if js_externo
               else "<script>\n" + js + "</script>")
-    return (_TMPL
+    return (_tmpl()
             .replace("%TEMA_DADOS%", paginas.CSS_DADOS)
             .replace("%DADOS_SCRIPT%", script)
             .replace("%SCRIPT%", codigo))
@@ -1912,8 +1950,8 @@ _CSS = r"""
 """
 
 _RODAPE = """
-<b>Cada deck é uma caixa.</b> Esta é a página dos decks: a lista, o que falta comprar,
-o que tirar da coleção para o montar e o que sobra para vender. Uma cópia física entra
+<b>Cada deck é uma caixa.</b> Esta é a página dos decks: a lista, o que falta comprar
+e o que tirar da coleção para o montar%SOBRA%. Uma cópia física entra
 numa caixa e <b>só numa</b> — quem conta é a alocação, não a coleção inteira (essa
 aparece como informação secundária em cada carta).
 <b style="color:var(--add)">Verde</b> = está nesta caixa ·
@@ -1929,11 +1967,32 @@ Os <b>permanentes</b> escolhem as cartas primeiro; uma <b>candidata</b> fica com
 sobrar. Quem manda é o <code>colecao_config.json → caixas</code>; para mexer nele com
 botões, corre <code>python webapp.py</code> no PC (porto 8771) — e aí a aba
 <b>Plano</b> dá-te um QR para abrires isto no telemóvel, à frente da estante.
-A lista para vender é uma <b>sugestão a confirmar</b>. Atualiza diariamente."""
+%CONFIRMAR%Atualiza diariamente."""
 
-_TMPL = ("""<!doctype html><html lang="pt-PT"><head>"""
-         + shell.head("Deck boxes", _CSS) + """</head><body>"""
-         + shell.abrir("deckboxes.html", "Deck boxes", "", "", id_sub="resumo") + r"""
+
+def _rodape() -> str:
+    """O rodapé, com as duas frases da venda só quando ela está à vista
+    (André, 2026-09-25). Um rodapé a explicar «a lista para vender» numa página
+    onde essa lista não existe é a página a prometer o que não dá."""
+    if venda.mostrar():
+        return (_RODAPE.replace("%SOBRA%", " e o que sobra para vender")
+                .replace("%CONFIRMAR%",
+                         "A lista para vender é uma <b>sugestão a confirmar</b>. "))
+    return _RODAPE.replace("%SOBRA%", "").replace("%CONFIRMAR%", "")
+
+
+def _tmpl() -> str:
+    """O molde da página.
+
+    É uma FUNÇÃO e não uma constante de módulo desde 2026-09-25: a barra
+    lateral e o rodapé passaram a depender do `venda.mostrar`, e uma constante
+    congelava-os no instante do `import` — o molde ficava com a resposta que o
+    config dava ao primeiro que importasse o módulo. Não se guarda em cache: é
+    concatenação de strings, corre uma vez por página gerada.
+    """
+    return ("""<!doctype html><html lang="pt-PT"><head>"""
+            + shell.head("Deck boxes", _CSS) + """</head><body>"""
+            + shell.abrir("deckboxes.html", "Deck boxes", "", "", id_sub="resumo") + r"""
 <div class="wrap">
 <div class="comidx">
 <div>
@@ -1945,7 +2004,7 @@ _TMPL = ("""<!doctype html><html lang="pt-PT"><head>"""
 </div>
 </div>
 <div class="barra" id="barra" hidden aria-live="polite"></div>
-""" + shell.fechar(_RODAPE, """
+""" + shell.fechar(_rodape(), """
 %DADOS_SCRIPT%
 %SCRIPT%""") + """
 </body></html>""")
@@ -2197,6 +2256,25 @@ async function mudarVista(v) {
   } catch (e) { erro('A vista ficou neste aparelho, mas não gravei no config: ' + e.message); }
 }
 
+/* «PARA JÁ TIRA O VENDER» (André, 2026-09-25). O Python manda `D.venda = null`
+   quando `colecao_config.json → venda.mostrar` está a `false`, e esta é a
+   ÚNICA pergunta que o JavaScript faz sobre isso — a mesma lição do `e_foil` e
+   do `vistoId`: um segundo teste escrito à mão noutro sítio era a primeira
+   oportunidade de ficar um botão «vendida» órfão a chamar um endpoint que hoje
+   responde 409. Com o interruptor ligado, tudo volta exactamente como estava. */
+const VENDA_ON = () => !!D.venda;
+
+/* As VISTAS fixas da página, num sítio só. A `vender` sai da lista quando o
+   interruptor está desligado: é ela que decide o que um `#vender` de um
+   favorito antigo faz (nada — fica na vista de sempre) e o que acontece a uma
+   aba `vender` guardada ontem no `localStorage` (volta ao Plano). */
+function abasFixas() {
+  const f = ['plano', 'todas', 'montados', 'pormontar', 'arrumar', 'partilhadas',
+             'comprar', 'encomendas', 'feira', 'revalidacao', 'sugestoes', 'naoenc'];
+  if (VENDA_ON()) f.push('vender');
+  return f;
+}
+
 /* ---------------------------------------------------------------- cabeçalho */
 function renderResumo() {
   const r = D.resumo;
@@ -2219,8 +2297,11 @@ function renderResumo() {
     + chip(r.por_montar, 'para montar', '', 'pormontar')
     + chip(r.comprar, 'a comprar', 'var(--warn)', 'comprar')
     + chip(eur(r.custo), 'fechar tudo', 'var(--gold)', 'plano')
-    + chip(r.arrumar, 'a arrumar', '', 'arrumar')
-    + chip(eur(r.venda), 'a vender', 'var(--gold)', 'vender');
+    + chip(r.arrumar, 'a arrumar', '', 'arrumar');
+  /* «PARA JÁ TIRA O VENDER» (André, 2026-09-25): sem o interruptor não há chip
+     nenhum com o valor da venda — era o número dela no sítio mais visível da
+     página, e a levar a uma aba que já não existe. */
+  if (VENDA_ON()) h += chip(eur(r.venda), 'a vender', 'var(--gold)', 'vender');
   if (ir_) h += chip(r.nmont, 'ir buscar a outra caixa', 'var(--ob)', 'todas');
   $('#resumo').innerHTML =
     `<span class="rsl">${h}</span>`
@@ -2416,10 +2497,7 @@ function abaDoHash() {
   let h = '';
   try { h = (location.hash || '').replace('#', ''); } catch (e) {}
   if (!h) return '';
-  const fixas = ['plano', 'todas', 'montados', 'pormontar', 'arrumar', 'comprar',
-                 'encomendas', 'vender', 'feira', 'revalidacao', 'sugestoes',
-                 'partilhadas', 'naoenc'];
-  if (fixas.indexOf(h) >= 0) return h;
+  if (abasFixas().indexOf(h) >= 0) return h;
   return (D.caixas || []).some(c => c.slot === h) ? h : '';
 }
 
@@ -2440,6 +2518,10 @@ function feiraSub() {
   const F = D.feira || {};
   const s = F.saldo || {};
   const lv = F.levar || {}, tz = F.trazer || {};
+  /* Sem a metade «levar» (2026-09-25) o saldo seria `−<tudo o que falta>`, a
+     fingir que não há moeda de troca. O subtítulo passa a dizer o que resta:
+     quanto custa trazer o que falta. */
+  if (lv.desligado) return `trazer ${eur(tz.minimo)}`;
   if (!lv.copias && !tz.copias) return 'nada a levar nem a trazer';
   const v = s.troca || 0;
   return `troca ${v >= 0 ? '+' : '−'}${eur(Math.abs(v))}`;
@@ -2772,14 +2854,26 @@ function vistaRevalidacao() {
     + `<summary><span>${tit}</span><span class="vtot">${g.validadas}/${g.q} validadas</span></summary>`
     + `<p class="lead">${lead}</p>` + revBarra(g) + revBotao(tipo, null, g.nome, g)
     + revLinhas(g.linhas || [], false, MAX_TILES, { tipo, slot: null }) + `</details>`;
+  /* O grupo «Venda» desaparece sozinho com o interruptor de 2026-09-25: quem
+     o esvazia é o `revalidacao.particao`, que nesse caso põe essas cópias no
+     sítio onde ELAS ESTÃO (Caixa RL ou Coleção) em vez de as esconder — e o
+     `grupo()` não desenha um grupo a zero. Um segundo teste aqui era a mesma
+     decisão escrita em dois sítios. */
   h += grupo('venda', R.venda, ico('vender') + ' Venda',
              'O que vai vender vai com foto: estas são as '
       + 'cópias da lista de venda de hoje (aba <b>Vender</b>, que também as marca).')
+    /* Os dois textos dizem de que grupos estas cópias NÃO são, e um deles é a
+       venda. Com o interruptor desligado a frase encurta em vez de nomear uma
+       vista que ele já não vê. */
     + grupo('rl', R.rl, ico('caixarl') + ' Caixa Reserved List',
-            'A Caixa RL, fora das caixas de deck e da venda.')
+            VENDA_ON() ? 'A Caixa RL, fora das caixas de deck e da venda.'
+                       : 'A Caixa RL, fora das caixas de deck.')
     + grupo('coleccao', R.resto, ico('colecao') + ' Coleção (o resto)',
-            'Tudo o que não está numa caixa, '
-      + 'na venda nem na Caixa RL — no fim, quando as caixas estiverem feitas.');
+            VENDA_ON()
+              ? 'Tudo o que não está numa caixa, na venda nem na Caixa RL'
+                + ' — no fim, quando as caixas estiverem feitas.'
+              : 'Tudo o que não está numa caixa nem na Caixa RL'
+                + ' — no fim, quando as caixas estiverem feitas.');
   const lista = (tit, ls, vazio) => `<details class="vblk rev"><summary><span>${tit}</span>`
     + `<span class="vtot">${cop(ls.reduce((s, l) => s + l.q, 0))}</span></summary>`
     + (ls.length ? revLinhas(ls, false, MAX_TILES) : `<p class="ok2">${vazio}</p>`) + `</details>`;
@@ -4181,9 +4275,15 @@ function reservaHTML(c) {
       : 'não tens nenhuma'),
   })));
   return `<div class="blk reserva"><b>${ico('sideboard')} Reserva (${rows.length}) — ${cop(n)} guardada${n === 1 ? '' : 's'}</b>`
-    + `<p class="nota">Cartas que poderão entrar nesta caixa. As cópias ficam fora da `
-    + `lista de venda e da exportação (bloco «guardar»), sirvam ou não a regra de `
-    + `material — para não vender o que depois faz falta.</p>`
+    /* A reserva é, literalmente, «não te desfaças disto». Com a venda fora de
+       vista (2026-09-25) a promessa é a mesma, sem nomear a lista que ele já
+       não vê: as cópias ficam guardadas. */
+    + `<p class="nota">Cartas que poderão entrar nesta caixa. As cópias ficam `
+    + (VENDA_ON()
+       ? `fora da lista de venda e da exportação (bloco «guardar»), sirvam ou `
+         + `não a regra de material — para não vender o que depois faz falta.`
+       : `<b>guardadas</b> (bloco «guardar»), sirvam ou não a regra de `
+         + `material — para não te desfazeres do que depois faz falta.`) + `</p>`
     + (rows.length ? (comImagens() ? tiles : `<ul>${li}</ul>`) : '')
     + (D.editable ? `<div class="pform"><input class="nm" id="reserva-nome-${S}" `
         + `placeholder="carta a reservar" aria-label="Nome da carta a pôr na reserva">`
@@ -5237,7 +5337,8 @@ function vistaNaoEncontradas() {
   let h = `<h2>${ico('procurar')} Não encontradas</h2>`
     + `<p class="lead">Cartas que o vault tinha como tuas e que <b>não estavam `
     + `na estante</b> quando as foste buscar. Estão fora da coleção — não `
-    + `contam para nenhuma caixa nem para a venda — e voltaram a ser compra. `
+    + `contam para nenhuma caixa${VENDA_ON() ? ' nem para a venda' : ''} — e `
+    + `voltaram a ser compra. `
     + `<b>Nada foi apagado</b>: se aparecerem, o «afinal encontrei» põe tudo `
     + `como estava.</p>`
     + `<p class="tot"><b>${cop(q)}</b> em <b>${ms.length}</b> linha${pl(ms.length)}`
@@ -5309,6 +5410,18 @@ function feiraTaxasHTML(F) {
 
 function feiraLevarHTML(F) {
   const L = F.levar || { linhas: [] };
+  /* «PARA JÁ TIRA O VENDER» (André, 2026-09-25). A metade «levar» É a lista de
+     venda, com preço e carta a carta — deixá-la aqui era tirar a aba Vender e
+     mantê-la nesta com outro nome. Quem decide é o Python (`feira.levar`, que
+     devolve zeros e `desligado`), para o saldo e os textos virem já certos. */
+  if (L.desligado) {
+    return `<details class="vblk" id="f-levar" open><summary>`
+      + `<span>1. Moeda de troca — desligada</span></summary>`
+      + `<p class="lead">Esta metade está <b>desligada</b> em `
+      + `<code>colecao_config.json → venda.mostrar</code> (25/09/2026). `
+      + `O que ela mostrava continua a ser calculado todos os dias; volta `
+      + `inteira quando puseres a chave a <code>true</code>.</p></details>`;
+  }
   const rev = !!L.revalidacao;
   const so = !!L.so_validadas;
   const filtro = rev ? `<div class="seg" role="group" aria-label="Que cópias levar">`
@@ -5534,25 +5647,36 @@ function vistaFeira() {
   const F = D.feira;
   if (!F) return `<h2>${ico('feira')} Feira</h2><p class="empty">Sem dados da feira.</p>`;
   const L = F.levar || {}, T = F.trazer || {}, S = F.saldo || {};
+  /* Com a metade «levar» desligada (2026-09-25) a página fica com o que ele
+     quer TRAZER: os números da moeda de troca e o saldo seriam quatro zeros a
+     dizer que não tem nada para trocar, o que não é verdade — é que não está à
+     vista. A aba fica, o subtítulo passa a ser o que falta comprar. */
+  const meia = !!L.desligado;
   const sal = (v, tit, sub) => `<div class="num sal ${v >= 0 ? 'pos' : 'neg'}">${tit}<b>`
     + `${v >= 0 ? '+' : '−'}${eur(Math.abs(v))}</b>${sub ? `<span class="dim">${sub}</span>` : ''}</div>`;
-  let h = `<div class="feira"><h2>${ico('feira')} Feira: moeda de troca vs. o que quero trazer <span class="n">${esc(feiraSub())}</span></h2>`
+  let h = `<div class="feira"><h2>${ico('feira')} Feira: ${meia ? 'o que quero trazer'
+      : 'moeda de troca vs. o que quero trazer'} <span class="n">${esc(feiraSub())}</span></h2>`
     + `<p class="lead"><i>"fazemos logo uma projeção do que vou levar como moeda de troca para o que `
-    + `quero trazer"</i> (20/09/2026). <b>Levar</b> é a lista de venda de hoje; <b>trazer</b> é o `
-    + `que falta às caixas mais a tua wantlist. O saldo diz se a moeda chega, ao Trend e às `
-    + `duas taxas de banca.</p>`
-    + feiraTaxasHTML(F)
+    + `quero trazer"</i> (20/09/2026). ` + (meia
+      ? `A metade de <b>levar</b> está desligada em <code>venda.mostrar</code> `
+        + `(25/09/2026) — fica o <b>trazer</b>: o que falta às caixas mais a tua wantlist.`
+      : `<b>Levar</b> é a lista de venda de hoje; <b>trazer</b> é o `
+        + `que falta às caixas mais a tua wantlist. O saldo diz se a moeda chega, ao Trend e às `
+        + `duas taxas de banca.`) + `</p>`
+    + (meia ? '' : feiraTaxasHTML(F))
     + `<div class="nums">`
-    + `<div class="num eur">levar · Trend<b>${eur(L.trend)}</b><span class="dim">${cop(L.copias || 0)}`
+    + (meia ? '' :
+       `<div class="num eur">levar · Trend<b>${eur(L.trend)}</b><span class="dim">${cop(L.copias || 0)}`
     + (L.rl_copias ? ` · RL ${L.rl_copias}` : '') + `</span></div>`
     + `<div class="num">em dinheiro<b>${eur(L.dinheiro)}</b><span class="dim">${pct(L.taxa_dinheiro)} do Trend</span></div>`
-    + `<div class="num">em troca<b>${eur(L.troca)}</b><span class="dim">${pct(L.taxa_troca)} do Trend</span></div>`
+    + `<div class="num">em troca<b>${eur(L.troca)}</b><span class="dim">${pct(L.taxa_troca)} do Trend</span></div>`)
     + `<div class="num buy">trazer · mínimo<b>${eur(T.minimo)}</b><span class="dim">${cop(T.copias || 0)}`
     + (T.com_maximo ? ` · com máximos ${eur(T.maximo)}` : '') + `</span></div>`
-    + sal(S.dinheiro, 'saldo em dinheiro', T.com_maximo ? `com máximos ${S.dinheiro_max >= 0 ? '+' : '−'}${eur(Math.abs(S.dinheiro_max))}` : '')
-    + sal(S.troca, 'saldo em troca', T.com_maximo ? `com máximos ${S.troca_max >= 0 ? '+' : '−'}${eur(Math.abs(S.troca_max))}` : '')
+    + (meia ? '' :
+       sal(S.dinheiro, 'saldo em dinheiro', T.com_maximo ? `com máximos ${S.dinheiro_max >= 0 ? '+' : '−'}${eur(Math.abs(S.dinheiro_max))}` : '')
+    + sal(S.troca, 'saldo em troca', T.com_maximo ? `com máximos ${S.troca_max >= 0 ? '+' : '−'}${eur(Math.abs(S.troca_max))}` : ''))
     + `</div>`;
-  if (L.revalidacao && L.so_validadas && !L.copias && L.fora_foto) {
+  if (!meia && L.revalidacao && L.so_validadas && !L.copias && L.fora_foto) {
     h += `<p class="lead">⚠️ <b>Ainda não há nada validado para levar</b>: as ${cop(L.fora_foto)} da venda `
       + `(${eur(L.fora_foto_trend)}) estão por fotografar nesta campanha. Fotografa-as (aba `
       + `<b>📷 Revalidação</b>) ou passa o filtro a <b>Tudo</b>.</p>`;
@@ -5564,12 +5688,14 @@ function vistaFeira() {
   if (pc.length) {
     h += `<details class="vblk" id="f-caixas" open><summary><span>4. Por caixa</span>`
       + `<span class="vtot">${pc.length} caixa${pl(pc.length)}</span></summary>`
+      /* As duas últimas colunas são sobre a moeda de troca: saem com ela. */
       + `<table class="vt"><thead><tr><th>caixa</th><th>cópias</th><th>mínimo</th><th>máx</th>`
-      + `<th>saldo troca</th><th>% da troca</th></tr></thead><tbody>`
+      + (meia ? '' : `<th>saldo troca</th><th>% da troca</th>`) + `</tr></thead><tbody>`
       + pc.map(c => `<tr><td>${esc(c.caixa)}</td><td class="q">${c.copias}</td>`
         + `<td class="pz">${eur(c.minimo)}</td><td class="pz dim">${eur(c.maximo)}</td>`
-        + `<td class="pz ${c.saldo_troca >= 0 ? 'tot' : ''}">${c.saldo_troca >= 0 ? '+' : '−'}${eur(Math.abs(c.saldo_troca))}</td>`
-        + `<td class="pz dim">${c.pct_da_troca == null ? '—' : c.pct_da_troca + ' %'}</td></tr>`).join('')
+        + (meia ? '' :
+           `<td class="pz ${c.saldo_troca >= 0 ? 'tot' : ''}">${c.saldo_troca >= 0 ? '+' : '−'}${eur(Math.abs(c.saldo_troca))}</td>`
+        + `<td class="pz dim">${c.pct_da_troca == null ? '—' : c.pct_da_troca + ' %'}</td>`) + `</tr>`).join('')
       + `</tbody></table></details>`;
   }
   return h + `<p class="nota">Pelo terminal: <code>py -m mtgvault.cli feira</code> (a projeção) e `
@@ -5632,7 +5758,7 @@ function partesDe(id) {
   const c = D.caixas.find(x => x.slot === id);
   if (c) return c.vazio ? [] : [c.parte];
   return ({ arrumar: ['arrumar'], partilhadas: ['compras'], comprar: ['compras'],
-            vender: ['venda'], sugestoes: ['premodern'],
+            vender: VENDA_ON() ? ['venda'] : [], sugestoes: ['premodern'],
             encomendas: ['encomendas'], feira: ['feira'],
             revalidacao: D.revalidacao ? ['revalidacao'] : [] })[id] || [];
 }
@@ -5676,7 +5802,12 @@ async function render() {
   else if (aba === 'arrumar') { v.innerHTML = sw + vistaArrumar(); }
   else if (aba === 'partilhadas') { v.innerHTML = vistaPartilhadas(); }
   else if (aba === 'comprar') { v.innerHTML = sw + vistaComprar(); }
-  else if (aba === 'vender') { v.innerHTML = sw + vistaVender(); }
+  /* Sem o interruptor (2026-09-25) não se desenha a aba Vender: a `abasFixas`
+     já a tira do `#` e do que ficou guardado no aparelho, e este ramo é a
+     terceira defesa — um `ir('vender')` de um botão velho cai nas caixas. */
+  else if (aba === 'vender') {
+    v.innerHTML = VENDA_ON() ? sw + vistaVender() : vistaTodas();
+  }
   else if (aba === 'sugestoes') {
     v.innerHTML = D.premodern && D.premodern.activo ? sw + vistaSugestoes() : vistaTodas();
   }
@@ -5833,7 +5964,10 @@ function vistaPlano() {
   }
   /* A VENDA vem depois, e a ordem não é decoração: o excedente é o que sobra
      DEPOIS de encher as caixas. Uma cópia que serve uma caixa do loadout nunca
-     entra na lista de venda — é a saída `guardar`. */
+     entra na lista de venda — é a saída `guardar`.
+     Com o interruptor de 2026-09-25 desligado o Plano acaba nas caixas: o
+     resumo da venda era três euros e um botão para a aba que já não existe. */
+  if (!VENDA_ON()) return h;
   const V = D.venda;
   h += `<h2>${ico('vender')} Depois de montar: vender o excesso</h2>`
     + `<p class="lead"><b>Primeiro montar, depois vender.</b> Esta lista é o que `
@@ -6277,10 +6411,7 @@ async function vendida(btn) {
 function iniciar(dados) {
   D = dados;
   PM_RAZAO = D.pm_razao || '';
-  if (!D.caixas.some(c => c.slot === aba)
-      && !['plano', 'todas', 'montados', 'pormontar', 'arrumar', 'partilhadas',
-           'comprar', 'vender', 'sugestoes', 'encomendas', 'naoenc',
-           'revalidacao', 'feira'].includes(aba)) {
+  if (!D.caixas.some(c => c.slot === aba) && !abasFixas().includes(aba)) {
     aba = 'plano';
   }
   /* O `#` do URL GANHA à aba guardada no aparelho: é a única maneira de um link

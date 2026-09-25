@@ -46,6 +46,9 @@ CFG = {
     "decks_vigiados": ["UW Oswald"],
     "premodern_arquetipos_alvo": [],
     "regras_colecao": {},
+    # A aba Vender é lida aqui (`caso_aba_vender_nao_marca_nonfoil`). A omissão
+    # do `venda.mostrar` é DESLIGADO desde 2026-09-25.
+    "venda": {"mostrar": True},
 }
 _TMP = Path(tempfile.mkdtemp())
 (_TMP / "cfg.json").write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")

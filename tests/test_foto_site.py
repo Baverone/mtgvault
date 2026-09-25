@@ -50,6 +50,11 @@ SITE = _TMP / "site"
 SITE.mkdir()
 INBOX = _TMP / "aipc" / "inbox"
 CFG = {
+    # O alvo «venda» da câmara vive no grupo Venda da aba Revalidação, e esse
+    # grupo fica VAZIO com o interruptor de 2026-09-25 (a omissão é desligado):
+    # as cópias passam a contar no sítio onde estão. Este ficheiro testa esse
+    # alvo, por isso liga-o.
+    "venda": {"mostrar": True},
     "regras_colecao": {}, "decks_vigiados": [],
     "baldes_coleccao": ["Colecção", "Caixa Reserved List"],
     "regras_por_formato": [

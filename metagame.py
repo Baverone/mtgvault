@@ -53,7 +53,7 @@ ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 import meta_coverage as mc  # noqa: E402
-from mtgvault import loadout, paginas, sources  # noqa: E402
+from mtgvault import loadout, paginas, sources, venda  # noqa: E402
 from mtgvault import site_shell as shell  # noqa: E402
 
 # Que formatos aparecem e COMO. É a ordem do André, tal como ele a deu:
@@ -283,9 +283,13 @@ def _premodern_acts_html(d, editable):
               f'data-aid="{d["archetype_id"]}" data-id="{ident}" '
               f'aria-label="Vou montar {nome} numa caixa nova">'
               f'✔ Vou montar este</button>')
+    # A etiqueta diz o que o botão FAZ às cartas. Com a venda fora de vista
+    # (2026-09-25) diz a metade que continua verdadeira: elas libertam-se.
+    porque = ("as cartas dele vão para a venda" if venda.mostrar()
+              else "as cartas dele deixam de estar reservadas")
     recusar = (f'<button class="btn" data-act="pm-recusar" data-nome="{nome}" '
                f'data-id="{ident}" '
-               f'aria-label="Não quero {nome} — as cartas dele vão para a venda">'
+               f'aria-label="Não quero {nome} — {porque}">'
                f'✕ Não quero este</button>')
     return f'<div class="acts">{montar}{recusar}</div>'
 
@@ -576,9 +580,13 @@ def html_page(con, editable=False, token="", ligacao=None) -> str:
                     f'deck novo. Com <b>{pm.get("limiar", 50)}%</b> ou mais, vira '
                     f'sugestão. '
                     + (f'Há <b>{n_sug}</b> por decidir.' if n_sug
+                       # Sem o interruptor da venda (2026-09-25) a frase acaba
+                       # aqui: mandá-lo a uma aba que já não existe era um
+                       # convite para um 404.
                        else 'Hoje não há nenhuma acima do limiar com o que está '
-                            'livre: o que sobra vai para a venda (aba '
-                            '<b>Vender</b> das Deckboxes).')
+                            'livre: o que sobra fica no excedente'
+                            + (' (aba <b>Vender</b> das Deckboxes).'
+                               if venda.mostrar() else '.'))
                     + (' Carrega em <b>✔ vou montar este</b> para lhe abrires uma '
                        'caixa, ou em <b>✕ não quero este</b> para libertares as '
                        'cartas dele.' if editable else ''))
@@ -609,7 +617,7 @@ def html_page(con, editable=False, token="", ligacao=None) -> str:
     # de o ser (2026-09-21). Sai da mesma lista que desenha as secções.
     tops = [t for _f, t, modo in secoes() if modo == "top"]
     cxs = [t for _f, t, modo in secoes() if modo == "caixas"]
-    return (_TMPL
+    return (_tmpl()
             .replace("%SUBNAV%", subnav)
             .replace("%SECS%", secs).replace("%N%", str(n))
             .replace("%TOPS%", html.escape(_e_lista(tops)))
@@ -685,20 +693,25 @@ cópia com maior probabilidade de lá estar, calculada das decklists reais que c
 <b>%TOPS%</b> são as caixas por escolher: aqui está o top-%N% para
 decidires. Em <b>%CAIXAS%</b> mostram-se os decks já escolhidos. No <b>Premodern</b> a pergunta é outra —
 o top-10 do formato e os melhores combo, com a percentagem do que <b>sobra</b> depois de as
-seis caixas estarem servidas: é com essas cartas que se monta mais um deck, e é o que não
-for reservado por uma sugestão que vai para a venda.
+seis caixas estarem servidas: é com essas cartas que se monta mais um deck%SOBRA%.
 Regra de material: nesses formatos as cartas são todas <b>foil</b> menos as da Reserved List
 (o preço de fecho é o do foil), e no Premodern são todas <b>PT</b>.
 Quem manda é o <code>colecao_config.json</code> (<code>metagame_top_n</code>, <code>caixas</code>).
 Para o metagame inteiro, com o top-10 ponderado, vê a <a href="cobertura.html">Cobertura</a>. Atualiza diariamente.""")
 
-_TMPL = ("""<!doctype html><html lang="pt-PT"><head>"""
-         + shell.head("Metagame", _CSS) + """</head><body>"""
-         + shell.abrir("metagame.html", "Metagame", _LEAD) + """
+def _tmpl() -> str:
+    """O molde. FUNÇÃO desde 2026-09-25 (ver o `deckboxes`): a barra lateral e o
+    rodapé seguem o `venda.mostrar`."""
+    rodape = _RODAPE.replace(
+        "%SOBRA%", ", e é o que não for reservado por uma sugestão que vai "
+                   "para a venda" if venda.mostrar() else "")
+    return ("""<!doctype html><html lang="pt-PT"><head>"""
+            + shell.head("Metagame", _CSS) + """</head><body>"""
+            + shell.abrir("metagame.html", "Metagame", _LEAD) + """
 <div class="wrap">
 <div class="subnav"><div class="seg">%SUBNAV%</div></div>
 %SECS%
-</div>""" + shell.fechar(_RODAPE, """
+</div>""" + shell.fechar(rodape, """
 <script>
 function cp(btn){
   const c=btn.closest('.faltas'); const t=c&&c.querySelector('textarea.cmk'); if(!t)return;

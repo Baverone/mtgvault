@@ -388,8 +388,15 @@ def particao(con, rep: dict | None) -> dict[int, list[tuple]]:
     `copy_allocation` (o que está registado lá dentro, mesmo preso). A venda
     são as linhas `venda` + `venda_rl` do relatório. O resto parte-se pela
     gaveta: Caixa RL ou Colecção. Sem relatório só há caixas registadas.
+
+    COM A VENDA DESLIGADA (André, 2026-09-25: *"para já tira o «vender»"*) **não
+    há grupo de venda**: essas cópias caem no sítio onde estão mesmo (Caixa RL
+    ou Colecção). Não é cosmética — a campanha é fotografar a colecção INTEIRA,
+    e esconder só o grupo levava com ele as cópias que lá estavam, sem uma
+    linha a dizer para onde foram. A soma continua a ser a colecção, e é isso
+    que o teste desta partição tranca.
     """
-    from . import loadout                                  # noqa: PLC0415
+    from . import loadout, venda as venda_mod              # noqa: PLC0415
     nomes = loadout.nomes_das_caixas()
     por_nome = {v: k for k, v in nomes.items()}
     caixa: dict[int, dict[str, int]] = defaultdict(lambda: defaultdict(int))
@@ -407,7 +414,7 @@ def particao(con, rep: dict | None) -> dict[int, list[tuple]]:
                 if e.get("caixa") and e["caixa"] in nomes:
                     caixa[e["id"]][e["caixa"]] = max(caixa[e["id"]][e["caixa"]], e["q"])
     venda: dict[int, int] = defaultdict(int)
-    if rep is not None:
+    if rep is not None and venda_mod.mostrar():
         for k in ("venda", "venda_rl"):
             for r in rep.get(k) or []:
                 for cid, q in (r.get("copias") or []):
