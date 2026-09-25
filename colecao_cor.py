@@ -335,8 +335,27 @@ def _value(con):
     # VIGOR (market/best/média) e não a coluna `trend`: o rótulo interno ficou,
     # porque é o que o resto do ficheiro já lia, mas o número é o mesmo que a
     # Galeria e o Início mostram. O `min` continua a ser o best value.
-    return {c: [v["partes"][cen][p] for p in col.PARTES]
-            for c, cen in (("min", "low"), ("trend", v["cenario"]))}
+    out = {c: [v["partes"][cen][p] for p in col.PARTES]
+           for c, cen in (("min", "low"), ("trend", v["cenario"]))}
+    out["por_fonte"] = v.get("por_fonte") or {}
+    return out
+
+
+def _fontes_html(val):
+    """*"1 072 cópias pelo cardtrader · 602 pelo cardmarket · 4 sem preço"*.
+
+    A FONTE é uma cadeia desde 2026-09-25, e por isso este total é medido com
+    mais do que uma régua. Dizer só a primeira — ou nem isso — era deixar um
+    número grande sem a informação que o explica: no dia em que o CardTrader
+    passar a cotar mais cartas, o total sobe sem ninguém mexer numa carta, e é
+    esta linha que o mostra.
+    """
+    pf = (val.get("por_fonte") or {})
+    if len(pf) < 2:
+        return ""
+    partes = " · ".join(f"<b>{q}</b> {html.escape(f)}"
+                        for f, q in sorted(pf.items(), key=lambda kv: -kv[1]))
+    return f'<br>Cópias por fonte de preço: {partes}.'
 
 
 def _eur(x):
@@ -470,7 +489,12 @@ def build(con, out_path=None):
         f'<div class="valor"><div class="vtot">💰 <b class="vtr">{_eur(total)}</b> '
         f'<span class="vall">— valor total de tudo (coleção + decks + caixa), '
         f'pelo <b>{html.escape(precos.ROTULOS[precos.modo()])}</b> '
-        f'({html.escape(precos.fonte())})</span></div>'
+        # A CADEIA inteira, e não só a primeira (2026-09-25): «cardtrader →
+        # cardmarket» quer dizer que parte deste total foi medida com outra
+        # régua, e a linha de baixo diz quantas cópias. Um total que esconde
+        # isso é um número que muda sozinho no dia em que a segunda responder
+        # por mais cartas.
+        f'({html.escape(" → ".join(precos.fontes()))})</span></div>'
         f'<table class="vtab"><tr><th></th><th>valor</th></tr>{rows}</table>'
         f'<div class="vnote">A <b>mesma conta</b> da '
         f'<a href="colecao.html">Galeria</a> e do <a href="index.html">Início</a>, '
@@ -479,6 +503,7 @@ def build(con, out_path=None):
         f'edição). Quando o acabamento da cópia não está cotado, cai para o outro (uma '
         f'foil sem preço vale o nonfoil) — a Galeria marca essas com <b>~</b>. '
         f'{"Enquanto a fonte der <b>um só valor</b> por carta os três modos coincidem." if todos_iguais else ""}'
+        f'{_fontes_html(val)}'
         f'</div></div>')
 
     out.write_text(_TMPL

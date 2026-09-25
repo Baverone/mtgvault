@@ -130,6 +130,33 @@ for alvo, casos in (
         print(f"  {'ok  ' if ok else 'FAIL'} chumba sem «{alvo}» "
               f"({caso}): {motivo[-1][:90] if motivo else ''}")
 
+# ---------------------------------------------------------------------------
+# O PREÇO DE REFERÊNCIA (André, 2026-09-25: *"para Market Price ou Best Deal,
+# ao invés de MÍNIMO"*). Noutro processo, pela razão de cima.
+# ---------------------------------------------------------------------------
+for alvo, casos in (
+    # O `caso_sem_cotacao_...` fica de fora de propósito: o que ele descreve é o
+    # ÚLTIMO RECURSO, que é exactamente o comportamento de ontem. Não prova a
+    # funcionalidade, prova que o caminho antigo continua lá e marcado.
+    ("preco_da_copia", ["caso_o_preco_de_uma_copia_e_o_da_impressao_dela",
+                        "caso_a_regra_da_rl_compara_a_impressao_dela_nas_duas_pontas"]),
+    ("regua_desde", ["caso_trocar_de_fonte_nao_manda_nenhuma_rl_para_a_venda"]),
+    ("fontes", ["caso_a_cadeia_usa_a_principal_e_cai_na_de_recurso",
+                "caso_o_preco_de_hoje_e_o_historico_tem_de_ser_da_mesma_fonte"]),
+    ("cadeia_ordem", ["caso_a_cadeia_nao_e_um_minimo_entre_fontes"]),
+    ("prune_marketplace", ["caso_o_historico_do_marketplace_sem_consumidor_e_podado"]),
+):
+    for caso in casos:
+        p = subprocess.run(
+            [sys.executable, str(AQUI / "_chumba_preco_ref.py"), alvo, caso],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            cwd=AQUI)
+        ok = p.returncode != 0
+        bom &= ok
+        motivo = (p.stdout or p.stderr or "").strip().splitlines()
+        print(f"  {'ok  ' if ok else 'FAIL'} chumba sem «{alvo}» "
+              f"({caso}): {motivo[-1][:90] if motivo else ''}")
+
 print("TODOS OS CASOS CHUMBAM SEM A FUNCIONALIDADE" if bom
       else "HA CASOS QUE PASSAM SEM A FUNCIONALIDADE")
 sys.exit(0 if bom else 1)

@@ -51,10 +51,44 @@ A RECEITA — E PORQUE É QUE ELA É O QUE SALVA A REGRA DA RESERVED LIST
     E o mesmo vale para o MODO: trocá-lo muda o número que ele anda a ver, por
     isso `precos.modo_desde` trava a janela da RL até haver `rl_janela_minima_dias`
     dias medidos no modo novo. Uma RL vendida não volta.
+
+O PREÇO DE REFERÊNCIA É O DA IMPRESSÃO QUE ELE TEM (André, 2026-09-25, à letra:
+*"o que tinha pedido era alterar o preço REFERÊNCIA para Market Price ou Best
+Deal, ao invés de MÍNIMO"*)
+    Havia DOIS mínimos, e só um tinha sido tratado:
+
+      1. o mínimo entre OFERTAS — o preço de um Mountain de Odyssey eram os
+         0,28 € de uma cópia italiana «Poor» com o verso escrito à mão. Fechado
+         a 2026-09-25 pelo `oferta_utilizavel`.
+      2. o mínimo entre IMPRESSÕES — o `loadout.card_price` faz `MIN` sobre
+         todas as impressões do mesmo NOME. Para o que FALTA está certo (é
+         quanto custa comprá-la, e compra-se a mais barata); aplicado a uma
+         cópia QUE ELE TEM é avaliar a Underground Sea de Revised pela
+         reimpressão mais barata que exista. Desde hoje o preço de REFERÊNCIA de
+         uma cópia é o da IMPRESSÃO DELA (`loadout.preco_da_copia`), e o mínimo
+         entre impressões só entra como ÚLTIMO RECURSO, dito na `origem`: um
+         preço e uma estimativa não se somam calados.
+
+A FONTE É UMA CADEIA, NÃO UMA SÓ (2026-09-25)
+    `market` e `best` só querem dizer coisas diferentes com as ofertas de um
+    marketplace por trás, por isso a fonte principal passou a `cardtrader`. Mas o
+    CardTrader não cota 36 % das cópias dele (as PT, as edições antigas, as foil
+    que ninguém tem à venda hoje) — e um terço da colecção «sem preço» é pior do
+    que o mínimo que isto veio corrigir. Por isso `fontes()` é uma CADEIA: por
+    IMPRESSÃO, a primeira fonte que a cote ganha, e a linha diz de qual veio
+    (`fonte`). **Nunca é um `MIN` por cima de todas** — isso era misturar duas
+    escalas, que é precisamente o que a receita existe para impedir.
+
+    A cadeia é mais uma RÉGUA: trocá-la carimba `precos.fonte_desde`, e o
+    `regua_desde()` trava a janela da Reserved List exactamente como o
+    `modo_desde` já fazia. E o histórico continua a ler-se **só da fonte
+    principal** (`loadout._historico`): uma percentagem medida entre um ponto do
+    CardTrader e um do Cardmarket é uma subida que nunca aconteceu.
 """
 from __future__ import annotations
 
 import contextlib
+import re
 import sqlite3
 import statistics
 
@@ -138,16 +172,96 @@ def forcar(qual: str):
 
 
 def fonte(cfg: dict | None = None) -> str:
-    """A fonte dos preços. Fica FIXA no config pela mesma razão que o
-    `collection.mapa_precos` a tinha fixa no código: ligar uma fonte nova mudava
-    o valor da colecção sem ninguém mexer numa carta."""
-    return str(bloco(cfg).get("fonte") or "cardmarket").strip().lower()
+    """A fonte PRINCIPAL dos preços — a primeira da cadeia (ver `fontes`).
+
+    Fica no config pela mesma razão que o `collection.mapa_precos` a tinha fixa
+    no código: ligar uma fonte nova mudava o valor da colecção sem ninguém mexer
+    numa carta. O que ela responde é *"qual é a régua"*, e por isso é ela — e só
+    ela — que o histórico da Reserved List lê.
+    """
+    return fontes(cfg)[0]
+
+
+# O nome de uma fonte entra em SQL como LITERAL (a cadeia é uma cláusula `CASE`,
+# e um `?` não serve para ordenar). Vem do config, que ele edita à mão: sem esta
+# tranca uma gralha com uma plica era uma injecção na consulta do valor da
+# colecção.
+_NOME_FONTE = re.compile(r"[a-z0-9_-]{1,32}")
+
+
+def _fonte_limpa(f) -> str | None:
+    f = str(f or "").strip().lower()
+    return f if _NOME_FONTE.fullmatch(f) else None
+
+
+def fontes(cfg: dict | None = None) -> tuple[str, ...]:
+    """A CADEIA de fontes, por ordem: a principal e as de recurso.
+
+    Por IMPRESSÃO, a primeira que a cote ganha. Não é um `MIN` por cima de todas
+    (isso misturava duas escalas de preço na mesma soma, que é o defeito que a
+    receita existe para impedir): é *"pergunta ao CardTrader; se ele não a tem à
+    venda, pergunta ao Cardmarket, e diz que foi de lá"*.
+
+    `precos.fonte` é a principal e `precos.fonte_recurso` as seguintes (uma
+    string ou uma lista). Uma fonte repetida conta uma vez, e a ordem é a do
+    config.
+    """
+    b = bloco(cfg)
+    rec = b.get("fonte_recurso")
+    if isinstance(rec, str):
+        rec = [rec]
+    elif not isinstance(rec, list):
+        rec = []
+    fora: list[str] = []
+    for f in [b.get("fonte") or "cardmarket", *rec]:
+        limpa = _fonte_limpa(f)
+        if limpa and limpa not in fora:
+            fora.append(limpa)
+    return tuple(fora) or ("cardmarket",)
 
 
 def modo_desde(cfg: dict | None = None) -> str | None:
     """A data (ISO) em que o modo passou a ser este. Escrita por quem o troca."""
     v = bloco(cfg).get("modo_desde")
     return str(v) if v else None
+
+
+def fonte_serie(cfg: dict | None = None) -> str:
+    """A fonte das SÉRIES de preço — as colunas *hoje* / *há 1 mês* e o gráfico
+    da Reserved List, que são o MERCADO de uma impressão ao longo do tempo.
+
+    Uma percentagem mede-se de ponta a ponta na MESMA fonte; ao contrário do
+    VALOR de uma cópia, aqui não há cadeia que valha — um ponto do CardTrader e
+    outro do Cardmarket dão uma subida que não aconteceu. E a fonte certa para
+    uma série é a que TEM série: por omissão a ÚLTIMA da cadeia, que é o price
+    guide (o CardTrader é o mercado ao vivo e a sua história começa no dia em
+    que entrou). `precos.fonte_serie` no config troca-a.
+
+    Não confundir com a régua da regra dos 5 %: essa é a fonte PRINCIPAL, e é
+    por isso que ela pode responder *"não sei"* enquanto esta coluna já mostra
+    uma evolução — são duas perguntas, uma sobre as cópias dele e outra sobre o
+    mercado de uma impressão.
+    """
+    return _fonte_limpa(bloco(cfg).get("fonte_serie")) or fontes(cfg)[-1]
+
+
+def fonte_desde(cfg: dict | None = None) -> str | None:
+    """A data (ISO) em que a CADEIA de fontes passou a ser esta."""
+    v = bloco(cfg).get("fonte_desde")
+    return str(v) if v else None
+
+
+def regua_desde(cfg: dict | None = None) -> str | None:
+    """Desde quando é que os números que ele vê são medidos com ESTA régua.
+
+    A régua é o par (cadeia de fontes, modo): mudar qualquer um deles muda o
+    número sem o mercado ter mexido. É a data mais RECENTE das duas — a regra
+    dos 5 % da Reserved List encurta a janela até aqui, e enquanto não houver
+    `venda.rl_janela_minima_dias` dias medidos assim a resposta é
+    `rl_sem_historico`, nunca *"não subiu"*. Uma RL vendida não volta.
+    """
+    datas = [d for d in (modo_desde(cfg), fonte_desde(cfg)) if d]
+    return max(datas) if datas else None
 
 
 def linguas(cfg: dict | None = None) -> frozenset[str]:
@@ -201,6 +315,46 @@ def sql(qual: str | None = None, alias: str = "p") -> str:
     return (f"(COALESCE({a}trend, {a}low) + COALESCE({a}low, {a}trend)) / 2.0")
 
 
+def sql_impressao(qual: str | None = None, fontes_: tuple[str, ...] | None = None,
+                  sid: str = "c.scryfall_id", fin: str = "f.finish",
+                  base: str = "price_latest") -> str:
+    """O preço de UMA impressão e acabamento, na CADEIA: uma subconsulta escalar.
+
+    A cadeia num sítio só, como o `sql()` fez ao `MIN(p.trend)`. O `ORDER BY
+    CASE source ... LIMIT 1` é que faz *"a primeira da cadeia que a cote"* — um
+    `MIN` sobre as fontes seria comparar a mediana das ofertas do CardTrader com
+    o Trend do Cardmarket e ficar com a mais barata, que é somar duas escalas
+    diferentes.
+
+    **É correlacionada de propósito.** A primeira versão era uma tabela derivada
+    com `ROW_NUMBER` por cima da `price_latest` inteira, e o `card_price` é
+    chamado milhares de vezes por relatório: 86 480 linhas varridas por chamada
+    punham o relatório em dezenas de minutos. Assim, o SQLite entra pela chave
+    primária `(scryfall_id, source, finish)` e lê as duas linhas que interessam.
+    (Materializá-la numa temporária resolvia o tempo e criava outro problema: o
+    esquema `temp` passa a aparecer no `PRAGMA database_list`, e há quinze
+    ficheiros de teste a apanhar o catálogo pelo ÍNDICE 1 dessa lista.)
+    """
+    qual = qual if qual in MODOS else modo()
+    fs = tuple(fontes_) if fontes_ else fontes()
+    expr = sql(qual, alias="q")
+    casos = " ".join(f"WHEN '{f}' THEN {i}" for i, f in enumerate(fs))
+    lista = ", ".join(f"'{f}'" for f in fs)
+    return (f"(SELECT {expr} FROM {base} q "
+            f"WHERE q.scryfall_id = {sid} AND q.finish = {fin} "
+            f"AND q.source IN ({lista}) AND {expr} IS NOT NULL "
+            f"ORDER BY CASE q.source {casos} ELSE 99 END LIMIT 1)")
+
+
+def sql_acabamentos(fins: tuple[str, ...]) -> str:
+    """Os acabamentos aceites como tabela derivada `f(finish)`, com um `?` cada.
+
+    Existe para o `sql_impressao` poder correlacionar-se com o acabamento sem
+    que cada chamador invente o seu `UNION ALL`.
+    """
+    return "(" + " UNION ALL ".join(["SELECT ? AS finish"] * len(fins)) + ")"
+
+
 # ---------------------------------------------------------------------------
 # A receita em vigor
 # ---------------------------------------------------------------------------
@@ -220,6 +374,28 @@ def receita_em_vigor(con: sqlite3.Connection, qual_fonte: str | None = None) -> 
     except sqlite3.Error:
         return RECEITA_UNICA
     return (r["receita"] if r and r["receita"] else RECEITA_UNICA)
+
+
+def receitas_em_vigor(con: sqlite3.Connection,
+                      fontes_: tuple[str, ...] | None = None) -> dict:
+    """`{fonte: receita}` para a cadeia inteira. Cada fonte tem a sua."""
+    return {f: receita_em_vigor(con, f) for f in (fontes_ or fontes())}
+
+
+# DE ONDE VEIO O PREÇO DE REFERÊNCIA DE UMA CÓPIA (2026-09-25). Não é cosmética:
+# `min-impressoes` é uma ESTIMATIVA — o preço da reimpressão mais barata, porque
+# a impressão que ele tem não está cotada em fonte nenhuma — e quem a soma tem de
+# a poder separar de um preço a sério.
+ORIGEM_IMPRESSAO = "impressao"
+ORIGEM_MIN_IMPRESSOES = "min-impressoes"
+ORIGEM_SEM_PRECO = "sem-preco"
+
+ROTULOS_ORIGEM = {
+    ORIGEM_IMPRESSAO: "o preço desta impressão",
+    ORIGEM_MIN_IMPRESSOES: "estimativa: a impressão mais barata desta carta "
+                           "(esta não está cotada)",
+    ORIGEM_SEM_PRECO: "sem preço em nenhuma fonte",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -271,6 +447,45 @@ def gravar_modo(novo: str, path=None, hoje: str | None = None) -> dict:
     sources._CFG_CACHE.clear()
     return {"antes": antes, "modo": novo, "desde": b.get("modo_desde"),
             "mudou": novo != antes, "rotulo": ROTULOS[novo]}
+
+
+def gravar_fonte(nova: str, recurso=None, path=None,
+                 hoje: str | None = None) -> dict:
+    """Troca a CADEIA de fontes e CARIMBA A DATA (`precos.fonte_desde`).
+
+    O gémeo do `gravar_modo`, e pela mesma razão: a cadeia é uma régua, e trocar
+    de régua é, por uns dias, deixar de saber. Sem o carimbo, passar de
+    `cardmarket` para `cardtrader` punha a regra dos 5 % a comparar a mediana
+    das ofertas de hoje com o Trend de há 90 dias — e a decidir, com essa
+    percentagem inventada, se uma carta que não se volta a imprimir vai à venda.
+
+    Trocar para a cadeia que já lá está é um no-op: não se carimba nada.
+    """
+    from datetime import date                              # noqa: PLC0415
+    limpa = _fonte_limpa(nova)
+    if not limpa:
+        raise ValueError(f"fonte {nova!r} — só letras, dígitos, '-' e '_'")
+    if isinstance(recurso, str):
+        recurso = [recurso]
+    cfg = configio.ler(path)
+    antes = fontes(cfg)
+    b = cfg.get("precos")
+    if not isinstance(b, dict):
+        b = cfg["precos"] = {}
+    b["fonte"] = limpa
+    if recurso is not None:
+        limpas = [f for f in (_fonte_limpa(r) for r in recurso) if f]
+        if len(limpas) != len(list(recurso)):
+            raise ValueError("fonte de recurso inválida")
+        b["fonte_recurso"] = limpas
+    depois = fontes(cfg)
+    if depois != antes:
+        b["fonte_desde"] = hoje or date.today().isoformat()
+    configio.escrever(cfg, path)
+    from . import sources                                   # noqa: PLC0415
+    sources._CFG_CACHE.clear()
+    return {"antes": list(antes), "fontes": list(depois),
+            "desde": b.get("fonte_desde"), "mudou": depois != antes}
 
 
 def dois_valores(ofertas: list[dict]) -> dict:
