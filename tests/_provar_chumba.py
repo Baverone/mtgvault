@@ -157,6 +157,30 @@ for alvo, casos in (
         print(f"  {'ok  ' if ok else 'FAIL'} chumba sem «{alvo}» "
               f"({caso}): {motivo[-1][:90] if motivo else ''}")
 
+# ---------------------------------------------------------------------------
+# A VIGIA DE CARTAS (André, 2026-09-26: *"vai conferindo"*). Noutro processo,
+# pela razão de cima.
+# ---------------------------------------------------------------------------
+for alvo, casos in (
+    ("nomes_na_lista", ["caso_a_vigia_apanha_um_5_0_de_league",
+                        "caso_a_poda_de_ligas_nao_apaga_a_lista_vigiada",
+                        "caso_o_bloco_do_metagame_mostra_a_vigia"]),
+    ("achados", ["caso_a_poda_de_ligas_nao_apaga_a_lista_vigiada",
+                 "caso_o_bloco_do_metagame_mostra_a_vigia"]),
+    ("chave", ["caso_uma_lista_ja_vista_nao_volta_a_avisar"]),
+    ("nota_faltas", ["caso_as_faltas_saem_da_base_e_dizem_no"]),
+):
+    for caso in casos:
+        p = subprocess.run(
+            [sys.executable, str(AQUI / "_chumba_vigia.py"), alvo, caso],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            cwd=AQUI)
+        ok = p.returncode != 0
+        bom &= ok
+        motivo = (p.stdout or p.stderr or "").strip().splitlines()
+        print(f"  {'ok  ' if ok else 'FAIL'} chumba sem «{alvo}» "
+              f"({caso}): {motivo[-1][:90] if motivo else ''}")
+
 print("TODOS OS CASOS CHUMBAM SEM A FUNCIONALIDADE" if bom
       else "HA CASOS QUE PASSAM SEM A FUNCIONALIDADE")
 sys.exit(0 if bom else 1)

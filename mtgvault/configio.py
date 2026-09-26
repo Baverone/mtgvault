@@ -17,7 +17,11 @@ from pathlib import Path
 UMA_LINHA = ("caixas", "loadout", "regras_por_formato", "baldes_coleccao",
              "decks_vigiados", "premodern_arquetipos_alvo", "formatos_metagame",
              "so_jogadores_vigiados", "premodern_decks_completos",
-             "decks_montados", "reserved_vender_ignorar_formatos")
+             "decks_montados", "reserved_vender_ignorar_formatos",
+             # A VIGIA DE CARTAS (2026-09-26): uma linha por carta vigiada. Sem
+             # isto, o primeiro clique no modo edição reescrevia as duas linhas
+             # em doze — e é uma lista que ele lê e edita à mão.
+             "cartas_vigiadas")
 # As chaves cujas LISTAS DE ESCALARES vão numa linha cada (2026-09-20): as
 # `listas_escolhidas` levam uma lista de 75 cartas, e com `indent=2` cada
 # `["main", "Solitude", 1]` ocupava cinco linhas — 380 linhas por caixa, que
