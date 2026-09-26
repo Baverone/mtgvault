@@ -1,0 +1,28 @@
+{
+  "versao": 1,
+  "cartas": {
+    "kasmina, enigma sage": {
+      "carta": "Kasmina, Enigma Sage",
+      "formatos": [
+        "modern"
+      ],
+      "nota": "combo Jace/Kasmina, Reality Fracture sai 02/10/2026",
+      "achados": 0,
+      "primeira": null,
+      "ultima": null
+    },
+    "jace's machinations": {
+      "carta": "Jace's Machinations",
+      "formatos": [
+        "modern"
+      ],
+      "nota": "combo Jace/Kasmina, Reality Fracture sai 02/10/2026",
+      "achados": 0,
+      "primeira": null,
+      "ultima": null
+    }
+  },
+  "achados": {},
+  "verificado_em": "2026-09-26",
+  "desde": "2026-09-26"
+}
