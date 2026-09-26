@@ -116,6 +116,15 @@ mtgvault/
   mtgtop8.py      duel-commander, premodern, cedh, e papel
   moxfield.py     decks do Moxfield
   watchlist.py    vigiar jogadores e decks, snapshots e diffs
+  vigia.py        A VIGIA DE CARTAS (2026-09-26): «vai conferindo» — que cartas
+                  ele espera ver numa decklist (`cartas_vigiadas`), e o aviso no
+                  dia em que aparecem. Abre o filtro de tier SÓ para essas listas
+                  (um 5-0 de league é o sinal), guarda o que já viu em
+                  `data/vigia-cartas.json` e diz o que falta para montar. Ver
+                  «A VIGIA DE CARTAS»
+  aviso.py        o TOAST do Windows (BurntToast se existir, senão o balão do
+                  NotifyIcon), por `-EncodedCommand`; nunca levanta e diz sempre
+                  o que aconteceu
   precos.py       O MODO DE PREÇO (2026-09-25): `market` (o que o mercado pede)
                   / `best` (a oferta mais barata) / `media`, em
                   `colecao_config.json → precos`. `sql()` é a EXPRESSÃO do preço
@@ -156,7 +165,7 @@ my_decks.py         segue decks-alvo (por assinatura e por jogador de MTGO) -> t
 commander_decks.py  decks de comandante por consenso EM CAMADAS: núcleo>=50% (=deck, deck_cards) / flex 25-50% / tech 15-25%; FILTRA pela cor do comandante. `tiers()` reusado pelo colecao_cor
 premodern_decks.py  consenso dos arquétipos-alvo de Premodern (`colecao_config.json`→`premodern_arquetipos_alvo`: UW Replenish, Enchantress) -> decks/deck_cards com o sufixo " (consenso)". Agrupa pelas etiquetas do `tagging` (o clustering não os separa) e usa `stock.stock_from_lists`. Mostrado nas `deckboxes` (era o `meusdecks`)
 refresh_collection.py  collection_owned p/ o index.html
-colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados, venda (a regra dos 5 % da RL **e** o `mostrar` de 2026-09-25)
+colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados, venda (a regra dos 5 % da RL **e** o `mostrar` de 2026-09-25), cartas_vigiadas (a VIGIA DE CARTAS de 2026-09-26)
 ```
 Cada `.html` gerado tem de estar na lista do `git add` do workflow (`daily.yml`,
 passo "Guardar HTML") **e na lista `HTML` da tarefa `ai-pc/tasks/mtgvault-daily`**
@@ -841,6 +850,110 @@ prova de que chumbam sem a funcionalidade em `tests/_provar_chumba.py`
   produzir-se a pedido (334 cópias / 6 482,46 € em 158 linhas). Nas nove páginas
   geradas: **zero** palavras de venda no texto visível, **zero** `#vender`,
   **zero** botões.
+
+**A VIGIA DE CARTAS: «VAI CONFERINDO» (André, 2026-09-26, à letra).** Ele comprou
+**4× «Kasmina, Enigma Sage»** e **2× «Enter the Infinite»** por causa de um combo
+novo e quer saber quando aparecerem decklists com ele — *"vai conferindo"*. O que
+interessa é o **Modern**. A segunda peça é o **«Jace's Machinations»**, do
+*Reality Fracture*, que só sai a **02/10/2026**: hoje **não pode existir** uma
+única lista de torneio com o combo, e é precisamente por isso que isto é uma
+funcionalidade e não uma resposta — o valor está em ele ser avisado **no dia** em
+que a primeira aparecer, sem pedir a ninguém. Motor em `mtgvault/vigia.py` (só
+config + um ficheiro de estado; nada de esquema novo) e `mtgvault/aviso.py` (o
+toast); config em `colecao_config.json → cartas_vigiadas`; passo `vigia-cartas`
+do `daily`; bloco no topo do `metagame.html`; testes em `test_vigia_cartas.py`
+(6 casos) e a prova de que chumbam sem a funcionalidade em `tests/_provar_chumba.py`
+(+ `tests/_chumba_vigia.py`).
+
+- **O FILTRO DE TIER TINHA DE SER ABERTO — E SÓ PARA AS CARTAS VIGIADAS.** É a
+  parte que, sem ela, estragava isto em silêncio. A regra dele de 2026-09-07
+  (*"não quero listas de league; quero challenge, showcase, e presenciais com 64
+  ou mais jogadores"*) está certa para o metagame e é **exactamente ao contrário**
+  do que serve aqui: a primeira aparição de um combo novo **é** um 5-0 de league
+  ou um torneio de 20 pessoas. Com o filtro ligado, a lista que ele quer ver era
+  recusada à entrada (`store_decklist` devolve `None` a uma liga) e, se tivesse
+  escapado, o `analysis.prune_leagues` apagava-a **na mesma corrida**, minutos
+  depois. O aviso nunca chegava e **nenhum passo dava erro** — o padrão do
+  `event_tier` sobre a única pergunta que ele fez. São **três portas**, e as três
+  só se abrem para uma lista que TENHA uma carta vigiada
+  (`vigia.nomes_na_lista`, num sítio só): (1) `sources.harvest_mtgo` deixa de
+  saltar as páginas de liga dos formatos vigiados — sem descarregar a página não
+  há como saber o que ela tem; (2) `sources.store_decklist` guarda-a, e passa
+  também à frente do `so_jogadores_vigiados` (o Pauper); (3)
+  `analysis.prune_leagues` não a apaga. **Para tudo o resto o filtro fica como
+  estava**: a liga sem carta vigiada continua a não se guardar, e a vigiada
+  **continua a não contar para o metagame** (`lista_conta` e `counting_sql`
+  recusam-na — tem caso de teste). Uma primeira aparição num 5-0 não é um dado de
+  metagame; é um aviso.
+- **O CUSTO, MEDIDO CONTRA O MTGO.COM A SÉRIO** (`_revisao/medir_vigia.py`, duas
+  corridas a 2026-09-26): com o Modern vigiado são **3 páginas a mais** por
+  corrida (uma página de liga por dia, `MTGO_DAYS = 3`), **87–153 listas lidas**
+  e **+41 s a +69 s** no `harvest-mtgo` (o mtgo.com varia muito: 1,2 s a 31 s por
+  página, e uma das corridas devolveu a página truncada — o `daily` já tolera
+  isso e continua). **Guardadas: ZERO.** Não é um acidente da medição — é o que
+  tem de ser hoje: nenhuma lista de Modern joga estas cartas, e uma delas ainda
+  não existe. Cada carta vigiada num formato NOVO acrescenta as páginas de liga
+  desse formato; vigiar uma carta de Duel Commander é grátis (lá as ligas já
+  contavam).
+- **O AVISO CHEGA-LHE POR QUATRO CAMINHOS**, e é de propósito — *"sem ele ter de
+  ir procurar"*: (a) o **stdout** do passo (uma linha por carta vigiada, e o que
+  apareceu com `[NOVA]`, o link e o que falta para montar — o pormenor é impresso
+  pela função, como no `_watch`; o `_step` só guarda o resumo de uma linha em
+  `job_runs`); (b) o **ficheiro de estado** `data/vigia-cartas.json`, com carta,
+  formato, evento, data, jogador, colocação, link, tier e fonte; (c) o **bloco no
+  `metagame.html`**, com o tier À VISTA (*"League"* é o sinal mais valioso aqui, e
+  escondê-lo dava a impressão de ser um Challenge); (d) um **toast do Windows**,
+  `mtgvault/aviso.py`. O padrão do toast é o que o `ai-pc` descreve
+  (`prompts/baiakidle-coach.md`: *"BurntToast se existir; senão msg/balloon
+  stdlib"*) — mas a tarefa que o faria (`baiak-relogio`) **não existe**, e
+  varrido o `ai-pc` não havia uma linha de código que emitisse um toast: reusou-se
+  a RECEITA, não código que não há. Vai por `-EncodedCommand` (base64 UTF-16LE)
+  para não ter de escapar apóstrofos nem passar pelo code page da consola, **nunca
+  levanta** (devolve `"toast (balloon)"` / `"sem toast: …"`, e é essa string que
+  fica no estado) e é **injectável**, que é como o teste prova que o segundo dia
+  não avisa. Testado neste PC a 2026-09-26: **`toast (balloon)`** — o BurntToast
+  não está instalado.
+- **UM TOAST POR LISTA NOVA, E MAIS NENHUM.** A identidade de um avistamento é
+  `formato|carta|data|jogador|evento` (`vigia.chave`) e **não o `decklist_id`**:
+  a deduplicação entre fontes apaga e reinsere a mesma lista, e com o id na chave
+  o aviso repetia-se sem nada de novo ter acontecido. Tem caso próprio (muda-se o
+  id à mão e exige-se silêncio). Uma lista com as **duas** cartas vigiadas são
+  dois avistamentos e **um** toast.
+- **O ESTADO É CUMULATIVO, e guarda a LISTA.** O `prune_decklists(30)` apaga as
+  decklists ao fim de um mês: sem isto o combo aparecia em Outubro e desaparecia
+  da página em Novembro. Por isso cada avistamento leva a decklist inteira
+  (`[[board, nome, qty], …]`). **O que NÃO se guarda é a lista de faltas** — essa
+  calcula-se sempre da base, porque ele vai fotografar as cartas e uma falta
+  congelada passava a mentir no dia seguinte.
+- **AS FALTAS SAEM DA BASE, E A PÁGINA DI-LO.** Ele diz ter 4 Kasmina e 2 Enter
+  the Infinite; a base tem **0 de cada** — as cópias novas só entram quando ele
+  as fotografar (*"só a foto cria cópias"*, 19/09). Não se inventa que as tem: a
+  posse é a `paginas.posse_total` (a colecção inteira) e a nota fixa
+  (`vigia.NOTA_FALTAS`) diz que uma cópia só entra com a foto. E é **sem regra de
+  material**, de propósito: uma lista de metagame não é uma caixa — não tem grupo
+  de formato, e aplicar-lhe o *tudo foil e inglês* do SPML era inventar uma
+  exigência que ele não pôs a um deck que ainda não decidiu montar.
+- **O ficheiro de estado vai no `git add` do `daily.yml` e no `EXTRA_COMMIT` da
+  tarefa `mtgvault-daily`**, pela razão do `arquetipos.json`: se só existisse
+  numa das corridas, a outra dava tudo por novo e avisava outra vez. No
+  `daily.yml` vai **à parte e com `-f`** — o ficheiro só existe quando há cartas
+  vigiadas, e um `git add` a um caminho que não existe falhava e levava o commit
+  das páginas atrás dele.
+- **SEM CARTAS VIGIADAS NADA MUDA**, e isso tem caso de teste: a liga volta a ser
+  recusada à entrada, a poda volta a apagá-la, o `harvest` volta a saltar a
+  página, o passo do daily diz *"sem cartas vigiadas — nada a fazer"* em vez de
+  saltar calado, a secção do Metagame **não existe** e **não se escreve ficheiro
+  de estado nenhum** (nem um commit por causa dele). Esvaziar a lista é o
+  interruptor, como no `venda.mostrar`.
+- **MEDIDO na cópia da base de 2026-09-26** (7 970 listas, 2 279 de Modern):
+  `vigia.achados` **0 avistamentos em 0,14 s**, `verificar` **0,14 s**,
+  `prune_leagues` **0 apagadas** (igual — a base já não tem ligas), e o estado
+  escrito com as duas cartas a *"ainda sem listas"*. O `loadout.report`, a venda
+  e as páginas **não foram tocados**: esta funcionalidade não lê a alocação.
+- **Por fazer, e é uma linha:** o **«Enter the Infinite»** não está vigiado (a
+  ordem dele pedia só as duas), e a vigia não sabe que as três cartas são **um
+  combo** — avisa por carta. Se quiser *"avisa-me só quando aparecerem as três na
+  mesma lista"*, é uma chave nova (`combo: [...]`) no mesmo sítio.
 
 ### Duas bases de dados
 

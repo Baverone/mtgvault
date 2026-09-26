@@ -29,7 +29,7 @@ import sqlite3
 from collections import Counter, defaultdict
 from datetime import date, timedelta
 
-from . import sources
+from . import sources, vigia
 
 BASIC_LANDS = {
     "Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes",
@@ -295,6 +295,14 @@ def prune_leagues(con: sqlite3.Connection) -> int:
     base (não contam para o metagame, mas são histórico barato e o André ainda
     pode querer dar-lhes uma exceção no config). `card_roles` não é tocado — a
     análise já calculada mantém-se, como no `prune_decklists`.
+
+    AS LISTAS COM CARTA VIGIADA NÃO SE APAGAM (André, 2026-09-26). É a terceira
+    porta da VIGIA DE CARTAS, e sem ela as outras duas não valiam nada: a liga
+    com o combo entrava às 03:30 e este passo apagava-a na MESMA corrida, minutos
+    depois. O aviso ainda chegava (o estado em `data/vigia-cartas.json` é escrito
+    antes), mas a lista que ele quer ver — e de onde saem as faltas — desaparecia
+    no dia em que apareceu. Sem cartas vigiadas isto é um conjunto vazio e a poda
+    é a mesma de sempre.
     """
     formatos = [r["format"] for r in con.execute(
         "SELECT DISTINCT format FROM decklists WHERE event_tier = 'League'")]
@@ -304,18 +312,23 @@ def prune_leagues(con: sqlite3.Connection) -> int:
         return 0
     marcas = ",".join("?" for _ in fora)
     onde = f"source <> 'manual' AND event_tier = 'League' AND format IN ({marcas})"
+    params = list(fora)
+    poupadas = sorted({a["decklist_id"] for a in vigia.achados(con)})
+    if poupadas:
+        onde += f" AND id NOT IN ({','.join('?' for _ in poupadas)})"
+        params += poupadas
     n = con.execute(f"SELECT COUNT(*) c FROM decklists WHERE {onde}",
-                    fora).fetchone()["c"]
+                    params).fetchone()["c"]
     if n:
         con.execute(f"DELETE FROM decklist_cards WHERE decklist_id IN "
-                    f"(SELECT id FROM decklists WHERE {onde})", fora)
+                    f"(SELECT id FROM decklists WHERE {onde})", params)
         # `decklist_tags` só existe depois do `tagging` correr uma vez (não está
         # no schema.sql) — daí o IF EXISTS à mão.
         if con.execute("SELECT 1 FROM sqlite_master WHERE type='table' "
                        "AND name='decklist_tags'").fetchone():
             con.execute(f"DELETE FROM decklist_tags WHERE decklist_id IN "
-                        f"(SELECT id FROM decklists WHERE {onde})", fora)
-        con.execute(f"DELETE FROM decklists WHERE {onde}", fora)
+                        f"(SELECT id FROM decklists WHERE {onde})", params)
+        con.execute(f"DELETE FROM decklists WHERE {onde}", params)
         con.commit()
     return n
 

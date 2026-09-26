@@ -53,7 +53,7 @@ ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 import meta_coverage as mc  # noqa: E402
-from mtgvault import loadout, paginas, sources, venda  # noqa: E402
+from mtgvault import loadout, paginas, sources, venda, vigia  # noqa: E402
 from mtgvault import site_shell as shell  # noqa: E402
 
 # Que formatos aparecem e COMO. É a ordem do André, tal como ele a deu:
@@ -514,6 +514,102 @@ def _decks_do_topo(con, fmt, res, n):
     return decks
 
 
+# ---------------------------------------------------------------------------
+# A VIGIA DE CARTAS (André, 2026-09-26)
+# ---------------------------------------------------------------------------
+def _faltas_vigia_html(f) -> str:
+    """O que falta para montar a lista que apareceu — e DE ONDE sai o número.
+
+    Só as linhas em falta, que são as que ele precisa de ler; a nota diz que o
+    número vem da BASE e não do que ele diz ter em casa (as cópias novas só
+    entram com a foto). Sem essa nota, a página dizia *"faltam 4 Kasmina"* a
+    quem tem 4 na mão e ficava a parecer avariada.
+    """
+    em_falta = [m for m in f["linhas"] if m["falta"] and not m["basica"]]
+    if not em_falta:
+        return ('<div class="ok">tens tudo o que esta lista pede (fora as '
+                'básicas) ✓</div>')
+    itens = "".join(
+        f'<li><b>{m["falta"]}×</b> {html.escape(m["nm"])}'
+        f'<span class="pz">tens {m["tem"]} de {m["precisa"]}</span></li>'
+        for m in em_falta)
+    txt = "\n".join(f'{m["falta"]} {m["nm"]}' for m in em_falta)
+    return (f'<div class="faltas"><div class="flh">🛒 Para montares esta lista'
+            f'<span class="dim">{paginas.plural(len(em_falta), "carta")} · '
+            f'{f["falta_total"]} cóp.</span>'
+            f'<button class="cpbtn" onclick="cp(this)">copiar</button></div>'
+            f'<ul class="fl">{itens}</ul>'
+            f'<textarea class="cmk" readonly>{html.escape(txt)}</textarea>'
+            f'<p class="dim vnota">{html.escape(f["nota"])}</p></div>')
+
+
+def _achado_html(a) -> str:
+    cab = [html.escape(a["carta"]), html.escape(str(a.get("formato") or ""))]
+    tier = a.get("tier") or ""
+    badges = [("ok", "🆕 apareceu")]
+    if tier:
+        # O TIER VAI À VISTA de propósito: *"League"* é o sinal mais valioso aqui
+        # (é a primeira aparição de um combo) e é exactamente o que a regra do
+        # metagame deita fora. Escondê-lo dava a impressão de ser um Challenge.
+        badges.append(("", f"🏷️ {html.escape(tier)}"))
+    if a.get("jogadores"):
+        badges.append(("", f'👥 {a["jogadores"]} jogadores'))
+    if a.get("copias"):
+        badges.append(("fo", f'{a["copias"]}× no {html.escape(a.get("board") or "main")}'))
+    link = (f' <a href="{html.escape(a["link"])}" rel="noopener">ver a lista</a>'
+            if a.get("link") else "")
+    quem = " · ".join(x for x in (a.get("jogador"), a.get("colocacao")) if x)
+    return (f'<details class="deck" open><summary>'
+            f'<b>{cab[0]}</b><span class="cov">{cab[1]}</span>'
+            f'<span class="src">{html.escape(a.get("evento") or "")}</span>'
+            f'</summary>'
+            f'<div class="badges">'
+            + "".join(f'<span class="bdg {c}">{t}</span>' for c, t in badges)
+            + '</div>'
+            f'<div class="meta"><span>{html.escape(a.get("data") or "—")}</span>'
+            + (f'<span>{html.escape(quem)}</span>' if quem else "")
+            + f'<span>{html.escape(a.get("fonte") or "")}{link}</span></div>'
+            + _faltas_vigia_html(a["faltas"])
+            + '</details>')
+
+
+def _vigia_html(con) -> str:
+    """O bloco das cartas vigiadas. Vazio quando não há nenhuma — uma secção a
+    dizer *"vigio 0 cartas"* é ruído na página que ele abre todos os dias."""
+    p = vigia.painel(con)
+    if not p["vigiadas"]:
+        return ""
+    itens = ""
+    for v in p["vigiadas"]:
+        onde = ", ".join(v["formatos"]) or "todos os formatos"
+        estado = (f'<b class="sim">{paginas.plural(v["achados"], "lista")}</b> '
+                  f'— a mais recente de {html.escape(v["ultima"] or "?")}'
+                  if v["achados"] else '<span class="dim">ainda sem listas</span>')
+        itens += (f'<li><b>{html.escape(v["carta"])}</b>'
+                  f'<span class="bdg">{html.escape(onde)}</span>{estado}'
+                  + (f'<small class="dim">{html.escape(v["nota"])}</small>'
+                     if v["nota"] else "") + '</li>')
+    lead = ('As cartas que estás a vigiar. Uma lista com uma destas cartas '
+            'entra na base <b>venha de onde vier</b> — incluindo um <b>5-0 de '
+            'league</b> e um torneio pequeno, que a regra do metagame deita fora: '
+            'a primeira aparição de um combo novo é lá que acontece. O filtro '
+            'normal não mudou para mais nada. Quem manda é o '
+            '<code>colecao_config.json → cartas_vigiadas</code>.')
+    corpo = ("".join(_achado_html(a) for a in p["achados"]) if p["achados"]
+             else '<p class="vazio">Nenhuma lista com estas cartas, por enquanto. '
+                  'O passo <code>vigia-cartas</code> do job diário confere todas '
+                  'as noites e avisa com um toast do Windows no dia em que a '
+                  'primeira aparecer.</p>')
+    visto = (f' · conferido em {html.escape(p["verificado_em"])}'
+             if p.get("verificado_em") else "")
+    return (f'<section id="vigia"><h2>👁️ Vigia de cartas '
+            f'<span class="n">{len(p["vigiadas"])}</span></h2>'
+            f'<p class="lead">{lead}</p>'
+            f'<ul class="vcl">{itens}</ul>{corpo}'
+            f'<p class="lead dim">Estado em <code>data/vigia-cartas.json</code>'
+            f'{visto}.</p></section>')
+
+
 def build(con, out_path=None, editable=False):
     out = Path(out_path) if out_path else (ROOT / "metagame.html")
     out.write_text(html_page(con, editable=editable), encoding="utf-8")
@@ -619,6 +715,9 @@ def html_page(con, editable=False, token="", ligacao=None) -> str:
     cxs = [t for _f, t, modo in secoes() if modo == "caixas"]
     return (_tmpl()
             .replace("%SUBNAV%", subnav)
+            # A VIGIA vai ANTES das secções dos formatos: é a pergunta com prazo
+            # (*"apareceu hoje?"*), e as outras estão lá todos os dias.
+            .replace("%VIGIA%", _vigia_html(con))
             .replace("%SECS%", secs).replace("%N%", str(n))
             .replace("%TOPS%", html.escape(_e_lista(tops)))
             .replace("%CAIXAS%", html.escape(_e_lista(cxs)))
@@ -675,6 +774,14 @@ _CSS = """
  .acts{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px;border-top:1px solid var(--line);padding-top:12px}
  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;z-index:60;background:var(--card3);border:1px solid var(--accent);color:var(--ink);font-size:13px;padding:11px 17px;border-radius:22px;box-shadow:var(--sombra)}
  .cmk{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+ /* A VIGIA DE CARTAS (2026-09-26). Reusa o `.deck`/`.bdg`/`.faltas` — o que é
+    próprio é só a lista das cartas vigiadas. */
+ .vcl{list-style:none;margin:0 0 10px;padding:0;font-size:12.5px}
+ .vcl li{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 10px;
+   background:var(--card);border:1px solid var(--line);border-radius:var(--r);margin-bottom:5px}
+ .vcl li>b{font-size:13.5px} .vcl .sim{color:var(--add)}
+ .vcl small{flex:1 1 100%;font-size:11px}
+ .vnota{margin:7px 0 0;font-size:11px}
 """
 
 _LEAD = ("Os <b>%N%</b> decks que estás mais perto de concluir em cada formato — "
@@ -710,6 +817,7 @@ def _tmpl() -> str:
             + shell.abrir("metagame.html", "Metagame", _LEAD) + """
 <div class="wrap">
 <div class="subnav"><div class="seg">%SUBNAV%</div></div>
+%VIGIA%
 %SECS%
 </div>""" + shell.fechar(rodape, """
 <script>

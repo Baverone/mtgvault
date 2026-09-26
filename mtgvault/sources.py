@@ -175,8 +175,18 @@ def harvest_mtgo(con: sqlite3.Connection, days_back: int = 1,
                 continue
             # Liga que não conta para aquele formato: nem se descarrega a página
             # (o slug do mtgo já diz "…-league-…"). Poupa pedidos e BD.
+            #
+            # EXCEPÇÃO — A VIGIA DE CARTAS (André, 2026-09-26). Num formato com
+            # cartas vigiadas a página DESCARREGA-SE: a primeira aparição de um
+            # combo novo é exactamente um 5-0 de liga, e sem abrir a página não há
+            # maneira de saber o que ela tem lá dentro. Quem filtra é o
+            # `store_decklist`, que só guarda as listas COM carta vigiada — a base
+            # não cresce com as outras. Sem cartas vigiadas salta como sempre
+            # saltou, e é isso que faz ligar isto não mudar nada no daily.
+            fmt_url = _guess_format(url)
             if ("league" in url.lower()
-                    and "League" not in metagame_rules(_guess_format(url))["tiers"]):
+                    and "League" not in metagame_rules(fmt_url)["tiers"]
+                    and not _vigia().ha_vigia(fmt_url)):
                 continue
             try:
                 html = requests.get(url, headers=UA, timeout=30).text
@@ -362,6 +372,17 @@ def _sem_comentarios(d) -> dict:
     return {k: v for k, v in (d or {}).items() if not str(k).startswith("_")}
 
 
+def _vigia():
+    """O módulo da VIGIA DE CARTAS, importado TARDE.
+
+    O `mtgvault.vigia` lê o config por aqui (`sources.config()`), por isso um
+    `import` no topo deste ficheiro fechava um ciclo. É o mesmo padrão do
+    `daily._fotos_caixas` e do `deckboxes` com as `encomendas`.
+    """
+    from mtgvault import vigia                               # noqa: PLC0415
+    return vigia
+
+
 def metagame_rules(fmt: str | None) -> dict:
     """A regra em vigor para um formato: {tiers, min_jogadores_presencial, ligas}."""
     fmt = (fmt or "").lower()
@@ -520,15 +541,24 @@ def store_decklist(con: sqlite3.Connection, *, source: str, source_key: str,
         return None
     fmt = fmt.lower()
     tier = event_tier(source, event_name)
+    # A VIGIA DE CARTAS PASSA À FRENTE DOS DOIS FILTROS (André, 2026-09-26).
+    # Uma lista com uma carta vigiada guarda-se venha de onde vier — é o sinal
+    # que ele pediu, e as PRIMEIRAS aparições de um combo novo são precisamente
+    # as que os dois filtros abaixo deitam fora (um 5-0 de liga, um torneio de 20
+    # pessoas, a lista de um jogador que ele não segue). Só estas: a liga sem
+    # carta vigiada continua a não se guardar, e o metagame não vê uma lista a
+    # mais. Sem cartas vigiadas isto é sempre `[]` e nada muda.
+    vigiadas = _vigia().nomes_na_lista(fmt, cards)
     # Ligas fora (regra 2026-09-07): nem se guardam, para o vault.db não crescer
     # com listas que nenhuma página conta. O Duel Commander é a exceção — lá as
     # ligas contam (colecao_config.json -> metagame_fontes["duel-commander"]).
-    if tier == "League" and "League" not in metagame_rules(fmt)["tiers"]:
+    if (tier == "League" and "League" not in metagame_rules(fmt)["tiers"]
+            and not vigiadas):
         return None
     # Formato sem metagame, seguido só por jogador (Pauper): guarda-se a lista de
     # quem está vigiado e mais nada. As `manual` passam sempre.
     if (source != "manual" and fmt in so_jogadores_vigiados()
-            and not _jogador_vigiado(con, fmt, player)):
+            and not _jogador_vigiado(con, fmt, player) and not vigiadas):
         return None
     h = content_hash(fmt, cards)
     event_date = event_date or date.today().isoformat()

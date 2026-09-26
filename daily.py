@@ -83,6 +83,23 @@ def venda_export(con, rep=None) -> str:
     return venda.exportar(con, rep)["resumo"]
 
 
+def _vigia_cartas(con) -> str:
+    """O passo `vigia-cartas` — e o AVISO que ele não tem de ir procurar.
+
+    Vive numa função e não num `lambda` por duas razões: para um teste poder
+    chamá-lo (é o que prova que sem cartas vigiadas o daily não muda nada), e
+    porque IMPRIME — uma linha por carta vigiada, e o que apareceu de novo em
+    destaque com o link e com o que lhe falta para o montar. O `_step` só imprime
+    o resumo de uma linha; o pormenor tem de ficar no log da corrida, como no
+    `_watch`.
+    """
+    from mtgvault import vigia                                # noqa: PLC0415
+    res = vigia.verificar(con)
+    for linha in res["linhas"]:
+        print(linha)
+    return res["resumo"]
+
+
 def _step(con, nome, fn):
     """Corre um passo, regista o resultado, e nunca deixa rebentar o resto."""
     try:
@@ -312,6 +329,13 @@ def main():
         # Poucos eventos por corrida e a 1 pedido/s — o mtgtop8 é pequeno.
         _step(con, "jogadores-eventos",
               lambda: mtgtop8.backfill_event_players(con, max_events=40))
+
+        # A VIGIA DE CARTAS (André, 2026-09-26): *"vai conferindo"*. Logo a
+        # seguir ao `tier-eventos`/`jogadores-eventos` — precisa do tier já
+        # escrito para o dizer no aviso — e ANTES do `podar-ligas`, que corre no
+        # fim: é este passo que decide que uma liga com carta vigiada não se
+        # apaga, e o estado tem de estar escrito antes de a poda passar.
+        _step(con, "vigia-cartas", lambda: _vigia_cartas(con))
 
         # Preços — cada fonte é opcional e salta em silêncio se não estiver
         # configurada. O bulk da Scryfall é a base grátis; Cardmarket e CardTrader
