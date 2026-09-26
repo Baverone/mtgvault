@@ -342,7 +342,15 @@ function precoModoHTML() {
   return `<span class="rsp"><small class="dim">preço</small>`
     + `<span class="seg" role="group" aria-label="Modo de preço">`
     + b('market', 'market') + b('best', 'best') + b('media', 'média')
-    + `</span><small class="dim">${esc(D.preco.fonte)}</small></span>`;
+    + `</span><small class="dim">${esc(fontesTxt())}</small></span>`;
+}
+
+/* A FONTE é uma CADEIA desde 2026-09-25 (`precos.fontes`): «cardtrader →
+   cardmarket» quer dizer *"o preço é o do CardTrader; o que ele não tem à venda
+   vem do Cardmarket"*. Dizer só a primeira era esconder que um terço das cópias
+   foi avaliado com outra régua. */
+function fontesTxt() {
+  return ((D.preco && D.preco.fontes) || [D.preco.fonte]).join(' → ');
 }
 
 async function mudarPrecoModo(v) {
