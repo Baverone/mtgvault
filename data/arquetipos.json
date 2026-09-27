@@ -17,7 +17,7 @@
     "Wasteland"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-26"
+   "ultima": "2026-09-27"
   },
   "13eb5a8587": {
    "formato": "premodern",
@@ -71,7 +71,7 @@
     "Yavimaya Coast"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-26"
+   "ultima": "2026-09-27"
   },
   "2811f9a69f": {
    "formato": "premodern",
@@ -81,17 +81,15 @@
     "Cursed Scroll",
     "Dark Ritual",
     "Diabolic Edict",
-    "Graveborn Muse",
+    "Duress",
     "Hypnotic Specter",
     "Mishra's Factory",
-    "Nantuko Shade",
-    "Ravenous Rats",
     "Smother",
     "Wasteland",
     "Withered Wretch"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-26"
+   "ultima": "2026-09-27"
   },
   "3885b4666a": {
    "formato": "premodern",
@@ -111,7 +109,7 @@
     "Skycloud Expanse"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-26"
+   "ultima": "2026-09-27"
   },
   "4841da6e7f": {
    "formato": "premodern",
@@ -142,7 +140,7 @@
     "Yavimaya Granger"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-26"
+   "ultima": "2026-09-27"
   },
   "72740aba9b": {
    "formato": "premodern",
@@ -150,11 +148,11 @@
    "nucleo": [
     "Barren Moor",
     "Caves of Koilos",
-    "Decree of Justice",
-    "Dust Bowl",
     "Eternal Dragon",
     "Exalted Angel",
     "Gerrard's Verdict",
+    "Haunting Echoes",
+    "Kor Haven",
     "Phyrexian Furnace",
     "Secluded Steppe",
     "Skeletal Scrying",
@@ -162,7 +160,7 @@
     "Wrath of God"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-26"
+   "ultima": "2026-09-27"
   },
   "7fbd22f4da": {
    "formato": "legacy",
@@ -179,12 +177,12 @@
    "nome": "Landstill",
    "nucleo": [
     "Adarkar Wastes",
-    "Coastal Tower",
     "Decree of Justice",
     "Disenchant",
     "Dust Bowl",
     "Fact or Fiction",
     "Faerie Conclave",
+    "Impulse",
     "Mana Leak",
     "Mishra's Factory",
     "Powder Keg",
@@ -192,7 +190,7 @@
     "Wrath of God"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-26"
+   "ultima": "2026-09-27"
   },
   "95a99aa40d": {
    "formato": "premodern",
@@ -280,7 +278,7 @@
     "Vindicate"
    ],
    "primeira": "2026-09-21",
-   "ultima": "2026-09-26"
+   "ultima": "2026-09-27"
   },
   "b38b17cddb": {
    "formato": "premodern",
@@ -300,27 +298,27 @@
     "Thwart"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-26"
+   "ultima": "2026-09-27"
   },
   "b4dcbc5dbb": {
    "formato": "premodern",
    "nome": "Stiflenought",
    "nucleo": [
-    "Counterspell",
     "Daze",
     "Flash of Insight",
     "Foil",
     "Gush",
-    "Impulse",
+    "Misdirection",
     "Opt",
     "Phyrexian Dreadnought",
     "Portent",
+    "Powder Keg",
     "Stifle",
     "Thwart",
     "Vision Charm"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-26"
+   "ultima": "2026-09-27"
   },
   "b827ca4ad1": {
    "formato": "premodern",
@@ -359,7 +357,7 @@
     "Wild Growth"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-26"
+   "ultima": "2026-09-27"
   },
   "c6998a9b7d": {
    "formato": "premodern",
@@ -379,11 +377,11 @@
     "Winter's Grasp"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-26"
+   "ultima": "2026-09-27"
   },
   "c8d54b483e": {
    "formato": "premodern",
-   "nome": "Sligh",
+   "nome": "Pyrostatic Pillar",
    "nucleo": [
     "Barbarian Ring",
     "Bloodstained Mire",
@@ -398,7 +396,7 @@
     "Wooded Foothills"
    ],
    "primeira": "2026-09-20",
-   "ultima": "2026-09-26"
+   "ultima": "2026-09-27"
   },
   "cc47c1209f": {
    "formato": "premodern",
@@ -436,19 +434,19 @@
    "nucleo": [
     "Cabal Therapy",
     "Diabolic Edict",
+    "Duress",
     "Dust Bowl",
     "Graveborn Muse",
     "Krosan Tusker",
     "Llanowar Wastes",
     "Pernicious Deed",
     "Ravenous Baloth",
-    "Ravenous Rats",
     "Smother",
     "Treetop Village",
     "Wall of Blossoms"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-26"
+   "ultima": "2026-09-27"
   },
   "e8c086499f": {
    "formato": "premodern",
@@ -469,18 +467,18 @@
     "Bloodstained Mire",
     "Call of the Herd",
     "Grim Lavamancer",
-    "Incinerate",
     "Jackal Pup",
     "Karplusan Forest",
     "Lava Dart",
     "Lightning Bolt",
     "Mogg Fanatic",
     "Naturalize",
-    "Seal of Fire",
+    "Quirion Dryad",
+    "Sylvan Library",
     "Treetop Village"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-26"
+   "ultima": "2026-09-27"
   },
   "f102883ccf": {
    "formato": "premodern",
@@ -511,7 +509,7 @@
     "Weathered Wayfarer"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-26"
+   "ultima": "2026-09-27"
   },
   "f886821817": {
    "formato": "premodern",
@@ -529,7 +527,7 @@
     "Smother"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-26"
+   "ultima": "2026-09-27"
   }
  },
  "versao": 1
