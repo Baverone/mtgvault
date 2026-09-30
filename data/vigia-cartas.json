@@ -4,9 +4,10 @@
     "kasmina, enigma sage": {
       "carta": "Kasmina, Enigma Sage",
       "formatos": [
-        "modern"
+        "modern",
+        "pioneer"
       ],
-      "nota": "combo Jace/Kasmina, Reality Fracture sai 02/10/2026",
+      "nota": "combo Jace/Kasmina — Reality Fracture no MTGO 29/09/2026, em papel 02/10/2026; Pioneer acrescentado a pedido do Andre 30/09",
       "achados": 0,
       "primeira": null,
       "ultima": null
@@ -14,9 +15,10 @@
     "jace's machinations": {
       "carta": "Jace's Machinations",
       "formatos": [
-        "modern"
+        "modern",
+        "pioneer"
       ],
-      "nota": "combo Jace/Kasmina, Reality Fracture sai 02/10/2026",
+      "nota": "combo Jace/Kasmina — Reality Fracture no MTGO 29/09/2026, em papel 02/10/2026; Pioneer acrescentado a pedido do Andre 30/09",
       "achados": 0,
       "primeira": null,
       "ultima": null
