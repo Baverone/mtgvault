@@ -12,222 +12,21 @@
   "decks_montados": [],
   "_decks_montados": "Decks fisicamente MONTADOS (nomes da tabela decks). As cartas de um deck montado saem da coleção (ficam reservadas a ele), esteja o formato ativo ou não — é o loadout a contar em todo o sistema. (A página Montar/buildability, onde se planeava com checkmarks, foi apagada a 2026-09-15 — o que ela respondia está no Metagame e na aba de cada caixa da Deckboxes.) Quando decidires, diz-me os nomes e eu ponho aqui para contar de vez. Vazio = nada reservado por esta via.",
   "caixas": [
-    {
-      "slot": "pauper",
-      "nome": "Pauper (Luffy)",
-      "formato": "pauper",
-      "fonte": "vigiado",
-      "ref": "Luffy — Pauper",
-      "balde": "Pauper Affinity",
-      "estado": "montada",
-      "prioridade": 1,
-      "notas": ""
-    },
-    {
-      "slot": "cedh-blue-farm",
-      "nome": "Blue Farm",
-      "formato": "cedh",
-      "fonte": "vigiado",
-      "ref": "Blue Farm [Primer]",
-      "balde": "Blue Farm",
-      "estado": "montada",
-      "prioridade": 2,
-      "notas": ""
-    },
-    {
-      "slot": "cedh-cloud",
-      "nome": "Cloud cEDH",
-      "formato": "cedh",
-      "fonte": "vigiado",
-      "ref": "Cloud [cEDH]",
-      "balde": "Cloud cEDH",
-      "estado": "montada",
-      "prioridade": 3,
-      "notas": ""
-    },
-    {
-      "slot": "duel-commander",
-      "nome": "Cloud (Duel Commander)",
-      "formato": "duel-commander",
-      "fonte": "escolhido",
-      "ref": "duel-commander",
-      "balde": "Cloud",
-      "estado": "permanente",
-      "prioridade": 4,
-      "notas": "",
-      "_antes": {
-        "fonte": "deck",
-        "ref": "Cloud (Duel Commander)",
-        "nome": "Cloud (Duel Commander)",
-        "estado": "permanente"
-      },
-      "reserva": [
-        "Armageddon",
-        "Burrenton Forge-Tender",
-        "Cid, Freeflier Pilot",
-        "Crystal Vein",
-        "Enlightened Tutor",
-        "Extraction Specialist",
-        "Get Lost",
-        "Helitrooper",
-        "Helping Hand",
-        "Lavaspur Boots",
-        "Lay Down Arms",
-        "Mirrex",
-        "Parallax Wave",
-        "Path to Exile",
-        "Reverent Mantra",
-        "Starfield Shepherd",
-        "Sunpearl Kirin",
-        "Talon Gates of Madara",
-        "Thalia, Heretic Cathar",
-        "Touch the Spirit Realm"
-      ]
-    },
-    {
-      "slot": "premodern-stiflenought",
-      "nome": "Stiflenought",
-      "formato": "premodern",
-      "fonte": "deck",
-      "ref": "Stiflenought (Luffy)",
-      "balde": "Premodern (geral)",
-      "estado": "montada",
-      "prioridade": 5,
-      "notas": ""
-    },
-    {
-      "slot": "premodern-replenish",
-      "nome": "UW Replenish",
-      "formato": "premodern",
-      "fonte": "deck",
-      "ref": "UW Replenish (consenso)",
-      "balde": "Premodern (geral)",
-      "estado": "montada",
-      "prioridade": 6,
-      "notas": ""
-    },
-    {
-      "slot": "premodern-enchantress",
-      "nome": "Enchantress",
-      "formato": "premodern",
-      "fonte": "deck",
-      "ref": "Enchantress (consenso)",
-      "balde": "Premodern (geral)",
-      "estado": "permanente",
-      "prioridade": 7,
-      "notas": ""
-    },
-    {
-      "slot": "premodern-elves",
-      "nome": "Elves / Survival",
-      "formato": "premodern",
-      "fonte": "consenso",
-      "assinatura": [
-        "Priest of Titania"
-      ],
-      "balde": "Premodern (geral)",
-      "estado": "permanente",
-      "prioridade": 8,
-      "notas": ""
-    },
-    {
-      "slot": "premodern-oath",
-      "nome": "Oath of Druids",
-      "formato": "premodern",
-      "fonte": "consenso",
-      "assinatura": [
-        "Oath of Druids"
-      ],
-      "balde": "Premodern (geral)",
-      "estado": "permanente",
-      "prioridade": 9,
-      "notas": ""
-    },
-    {
-      "slot": "premodern-igg",
-      "nome": "Ill-Gotten Gains",
-      "formato": "premodern",
-      "fonte": "consenso",
-      "assinatura": [
-        "Ill-Gotten Gains"
-      ],
-      "balde": "Premodern (geral)",
-      "estado": "permanente",
-      "prioridade": 10,
-      "notas": ""
-    },
-    {
-      "slot": "modern",
-      "nome": "Modern — UW Oswald",
-      "formato": "modern",
-      "fonte": "deck",
-      "ref": "UW Oswald",
-      "balde": "SPML",
-      "estado": "permanente",
-      "prioridade": 12,
-      "variantes": [],
-      "notas": ""
-    },
-    {
-      "slot": "standard",
-      "nome": "Standard",
-      "formato": "standard",
-      "fonte": "deck",
-      "ref": null,
-      "balde": "SPML",
-      "estado": "candidata",
-      "prioridade": 11,
-      "notas": ""
-    },
-    {
-      "slot": "pioneer",
-      "nome": "Pioneer — Greasefang",
-      "formato": "pioneer",
-      "fonte": "deck",
-      "ref": "Greasefang",
-      "balde": "SPML",
-      "estado": "permanente",
-      "prioridade": 13,
-      "notas": ""
-    },
-    {
-      "slot": "pioneer-jeskai",
-      "nome": "Jeskai Control",
-      "formato": "pioneer",
-      "fonte": "escolhido",
-      "ref": "pioneer-jeskai",
-      "balde": "SPML",
-      "estado": "permanente",
-      "prioridade": 14,
-      "notas": "André, 2026-09-21: «Pioneer apenas Greasefang e jeskai control» — a lista padrão é a do McWinSauce (MTGO RC Qualifier, 13/09/2026).",
-      "_antes": {
-        "fonte": "deck",
-        "ref": null,
-        "nome": "Jeskai Control",
-        "estado": "permanente"
-      },
-      "reserva": [
-        "Combustion Technique",
-        "Great Hall of the Biblioplex",
-        "It'll Quench Ya!",
-        "Jeskai Revelation",
-        "Price of Freedom",
-        "Soul-Guide Lantern",
-        "Tablet of Discovery",
-        "Thor, God of Thunder"
-      ]
-    },
-    {
-      "slot": "legacy",
-      "nome": "Legacy",
-      "formato": "legacy",
-      "fonte": "deck",
-      "ref": null,
-      "balde": "SPML",
-      "estado": "candidata",
-      "prioridade": 15,
-      "notas": ""
-    }
+    {"slot": "pauper", "nome": "Pauper (Luffy)", "formato": "pauper", "fonte": "vigiado", "ref": "Luffy — Pauper", "balde": "Pauper Affinity", "estado": "montada", "prioridade": 1, "notas": ""},
+    {"slot": "cedh-blue-farm", "nome": "Blue Farm", "formato": "cedh", "fonte": "vigiado", "ref": "Blue Farm [Primer]", "balde": "Blue Farm", "estado": "montada", "prioridade": 2, "notas": ""},
+    {"slot": "cedh-cloud", "nome": "Cloud cEDH", "formato": "cedh", "fonte": "vigiado", "ref": "Cloud [cEDH]", "balde": "Cloud cEDH", "estado": "montada", "prioridade": 3, "notas": ""},
+    {"slot": "duel-commander", "nome": "Cloud (Duel Commander)", "formato": "duel-commander", "fonte": "escolhido", "ref": "duel-commander", "balde": "Cloud", "estado": "permanente", "prioridade": 4, "notas": "", "_antes": {"fonte": "deck", "ref": "Cloud (Duel Commander)", "nome": "Cloud (Duel Commander)", "estado": "permanente"}, "reserva": ["Armageddon", "Burrenton Forge-Tender", "Cid, Freeflier Pilot", "Crystal Vein", "Enlightened Tutor", "Extraction Specialist", "Get Lost", "Helitrooper", "Helping Hand", "Lavaspur Boots", "Lay Down Arms", "Mirrex", "Parallax Wave", "Path to Exile", "Reverent Mantra", "Starfield Shepherd", "Sunpearl Kirin", "Talon Gates of Madara", "Thalia, Heretic Cathar", "Touch the Spirit Realm"]},
+    {"slot": "premodern-stiflenought", "nome": "Stiflenought", "formato": "premodern", "fonte": "deck", "ref": "Stiflenought (Luffy)", "balde": "Premodern (geral)", "estado": "montada", "prioridade": 5, "notas": ""},
+    {"slot": "premodern-replenish", "nome": "UW Replenish", "formato": "premodern", "fonte": "deck", "ref": "UW Replenish (consenso)", "balde": "Premodern (geral)", "estado": "montada", "prioridade": 6, "notas": ""},
+    {"slot": "premodern-enchantress", "nome": "Enchantress", "formato": "premodern", "fonte": "deck", "ref": "Enchantress (consenso)", "balde": "Premodern (geral)", "estado": "permanente", "prioridade": 7, "notas": ""},
+    {"slot": "premodern-elves", "nome": "Elves / Survival", "formato": "premodern", "fonte": "consenso", "assinatura": ["Priest of Titania"], "balde": "Premodern (geral)", "estado": "permanente", "prioridade": 8, "notas": ""},
+    {"slot": "premodern-oath", "nome": "Oath of Druids", "formato": "premodern", "fonte": "consenso", "assinatura": ["Oath of Druids"], "balde": "Premodern (geral)", "estado": "permanente", "prioridade": 9, "notas": ""},
+    {"slot": "premodern-igg", "nome": "Ill-Gotten Gains", "formato": "premodern", "fonte": "consenso", "assinatura": ["Ill-Gotten Gains"], "balde": "Premodern (geral)", "estado": "permanente", "prioridade": 10, "notas": ""},
+    {"slot": "modern", "nome": "Modern — UW Oswald", "formato": "modern", "fonte": "deck", "ref": "UW Oswald", "balde": "SPML", "estado": "permanente", "prioridade": 12, "variantes": [], "notas": ""},
+    {"slot": "standard", "nome": "Standard", "formato": "standard", "fonte": "deck", "ref": null, "balde": "SPML", "estado": "candidata", "prioridade": 11, "notas": ""},
+    {"slot": "pioneer", "nome": "Pioneer — Greasefang", "formato": "pioneer", "fonte": "deck", "ref": "Greasefang", "balde": "SPML", "estado": "permanente", "prioridade": 13, "notas": ""},
+    {"slot": "pioneer-jeskai", "nome": "Jeskai Control", "formato": "pioneer", "fonte": "escolhido", "ref": "pioneer-jeskai", "balde": "SPML", "estado": "permanente", "prioridade": 14, "notas": "André, 2026-09-21: «Pioneer apenas Greasefang e jeskai control» — a lista padrão é a do McWinSauce (MTGO RC Qualifier, 13/09/2026).", "_antes": {"fonte": "deck", "ref": null, "nome": "Jeskai Control", "estado": "permanente"}, "reserva": ["Combustion Technique", "Great Hall of the Biblioplex", "It'll Quench Ya!", "Jeskai Revelation", "Price of Freedom", "Soul-Guide Lantern", "Tablet of Discovery", "Thor, God of Thunder"]},
+    {"slot": "legacy", "nome": "Legacy", "formato": "legacy", "fonte": "deck", "ref": null, "balde": "SPML", "estado": "candidata", "prioridade": 15, "notas": ""}
   ],
   "_caixas": "AS CAIXAS: a única noção de deck do vault (André, 2026-09-08: 'temos decks vigiados e deckbox que é a mesma coisa'). Substitui o `loadout` da v5 e a lista `decks_vigiados` como definição de deck. Um deck é uma caixa. Campos: 'slot' = o id (não mudar, é a chave da copy_allocation); 'nome' = como aparece nas páginas; 'formato' = decide as regras de material e a ordem da alocação (regras_por_formato); 'fonte' = de onde vem a lista — 'vigiado' (etiqueta da tabela `watched`, o jogador/URL que o watch-check segue), 'deck' (nome na tabela `decks`), 'consenso' (calculado das listas que contam, identificado por 'assinatura'), 'escolhido' (o «vou montar este»: lista congelada e datada em `listas_escolhidas`) ou 'manual' (lista escrita à mão em 'cards'); 'ref' = o nome nessa fonte (null = caixa por escolher, fica vazia de propósito — não se escolhe por ele); 'balde' = a gaveta de onde as cartas saem; 'estado' = candidata | permanente | montada | congelada (escala: montada implica permanente; congelada = montada + dedicada e é CALCULADA, escrevê-la vale montada); 'prioridade' = desempate DENTRO do grupo de formato; 'variantes' = outros decks que partilham a caixa; 'notas' = texto livre mostrado no cartão. As regras de material ('lingua', 'acabamento', 'edicoes', 'baldes', 'estrita', 'dedicado', 'compras_dedicadas') herdam-se do grupo de formato e só se escrevem aqui para abrir excepção. Marca-se tudo isto no MODO EDIÇÃO (python webapp.py, porto 8771 — no telemóvel com o QR).",
   "baldes_coleccao": [
@@ -243,69 +42,11 @@
   "_compras_dedicadas": "COMPRAS PARTILHADAS ENTRE CAIXAS (2026-09-07). Regra do André: 'indicas onde está a carta, para (...) não ter que comprar múltiplos para todos'. Quando duas caixas querem a mesma carta NO MESMO MATERIAL (mesma língua/acabamento/edições — o 'pool'), a lista de compras pede UMA cópia, não uma por caixa: compra-se o MÁXIMO que uma caixa precisa, a cópia fica na caixa que aloca primeiro e as outras vão lá buscá-la, como já acontece com as que ele tem. As faltas DENTRO da mesma caixa (main + sideboard) continuam a somar: essas estão na mesa ao mesmo tempo. Para uma caixa que ele queira fechar sem depender de trocas, escreve nesse slot do 'loadout' a chave 'compras_dedicadas': true — essa caixa compra as suas cópias e fica fora da partilha (as outras continuam a partilhar entre si). Sem a chave vale false, ou seja, partilha. Nota: 'compras_dedicadas' só manda nas COMPRAS; as cópias que ele já tem continuam a ser repartidas pela alocação normal.",
   "_regras_2026_09_19": "DUAS REGRAS NOVAS (André, 2026-09-19, à letra). (1) 'quando escreves que a carta não serve porque devia ser foil e não é foil, confirma se há foil' — a exigência de foil ('acabamento': 'foil' no SPML e no Duel Commander, 'prefere_foil' no Pauper) só se aplica a uma carta que EXISTA em foil no catálogo (papel, qualquer edição/língua; as impressões digitais do MTGO não contam). Numa que nunca saiu em foil a cópia nonfoil serve, fecha o slot, não é substituto nem vai à venda, e a wantlist pede-a 'nonfoil — nunca saiu em foil'. Quando existe, a recusa diz em que edições ('não é foil (existe em foil: MMQ 1999, EXP 2016)'). Motor em loadout.acabamento_efectivo/foil_info. (2) 'cada deck deverá ter as suas próprias cartas dentro, não repetindo com outros decks!' — TODAS as caixas passam a 'dedicado': true, em todos os formatos: não há 'ir buscar a outra caixa' nem compras partilhadas; uma cópia alocada a uma caixa é dessa caixa e a outra caixa que a peça COMPRA-A (o 'fechar tudo' soma as faltas caixa a caixa). O 'dedicado': false deixou de ter efeito (o loadout.resolve_slots força true). O que fica do 'onde está' é uma NOTA ('tens 2 no Blue Farm'). EXCEPÇÃO mantida: o tecto de playset do Premodern ('playset_maximo': 4) continua, sobre o GRUPO inteiro — se ele já tem 4 no Premodern, a caixa de menor prioridade mostra 'não se compra (limite de 4 no total; está no <deck>)' e essa falta não entra no 'fechar tudo'. Consequência: as caixas de Premodern montadas passam a poder CONGELAR (montada + conteúdo confirmado), e as sugestões de Premodern medem-se só com o que está LIVRE (nenhuma caixa empresta). As notas '_dedicado', '_compras_dedicadas' e '_premodern_playset' abaixo ficam como histórico — superseded 19/09/2026.",
   "regras_por_formato": [
-    {
-      "grupo": "premodern",
-      "formatos": [
-        "premodern"
-      ],
-      "dedicado": true,
-      "playset_maximo": 4,
-      "prioridade_por": "pct",
-      "lingua": "pt",
-      "edicoes": "premodern",
-      "estrita": true,
-      "baldes": [
-        "Colecção",
-        "Premodern (geral)",
-        "SPML",
-        "Caixa Reserved List"
-      ]
-    },
-    {
-      "grupo": "cedh",
-      "formatos": [
-        "cedh"
-      ],
-      "dedicado": true,
-      "lingua": "en",
-      "acabamento": "nonfoil"
-    },
-    {
-      "grupo": "duel-commander",
-      "formatos": [
-        "duel-commander"
-      ],
-      "dedicado": true,
-      "acabamento": "foil"
-    },
-    {
-      "grupo": "pauper",
-      "formatos": [
-        "pauper"
-      ],
-      "dedicado": true,
-      "acabamento": "prefere_foil"
-    },
-    {
-      "grupo": "spml",
-      "formatos": [
-        "standard",
-        "pioneer",
-        "modern",
-        "legacy"
-      ],
-      "dedicado": true,
-      "lingua": "en",
-      "acabamento": "foil",
-      "por_formato": {
-        "legacy": {
-          "rl_lingua": [
-            "pt",
-            "en"
-          ]
-        }
-      }
-    }
+    {"grupo": "premodern", "formatos": ["premodern"], "dedicado": true, "playset_maximo": 4, "prioridade_por": "pct", "lingua": "pt", "edicoes": "premodern", "estrita": true, "baldes": ["Colecção", "Premodern (geral)", "SPML", "Caixa Reserved List"]},
+    {"grupo": "cedh", "formatos": ["cedh"], "dedicado": true, "lingua": "en", "acabamento": "nonfoil"},
+    {"grupo": "duel-commander", "formatos": ["duel-commander"], "dedicado": true, "acabamento": "foil"},
+    {"grupo": "pauper", "formatos": ["pauper"], "dedicado": true, "acabamento": "prefere_foil"},
+    {"grupo": "spml", "formatos": ["standard", "pioneer", "modern", "legacy"], "dedicado": true, "lingua": "en", "acabamento": "foil", "por_formato": {"legacy": {"rl_lingua": ["pt", "en"]}}}
   ],
   "_premodern_playset": "O PREMODERN VOLTOU A PARTILHAR (André, 2026-09-08, à letra): 'No Premodern, afinal só vou ter até playset de cada carta. E ordenamos os decks por prioridade; os que vêm depois na prioridade indicam onde estão as cartas em falta. Para já a prioridade vem por ordem de % completo.' Recorta a ordem de 2026-09-07 às 19:00 ('vou precisar de múltiplos para os decks de premodern') SÓ para o Premodern — o cEDH e o Pauper continuam 'dedicado': true. São três chaves no grupo 'premodern' do 'regras_por_formato', e as três andam juntas: (1) 'dedicado': false — as seis caixas voltam a emprestar e a ir buscar ('em <caixa>' em vez de comprar), e as compras entre elas voltam a ser o MÁXIMO de uma caixa e não a soma; (2) 'playset_maximo': 4 — por cima da partilha, um tecto: por muitas caixas que peçam a carta, o Premodern nunca chega a ter mais do que 4 cópias dela (comprar = max(0, min(4, o que a caixa que mais precisa pede) − as que ele já vê)). As básicas ficam de fora. O que o tecto corta aparece na página como 'limite de playset: falta N que não se compra' em vez de desaparecer numa subtracção; (3) 'prioridade_por': 'pct' — a ordem DENTRO do grupo deixa de ser o número de 'prioridade' e passa a ser a percentagem que cada caixa já tem, contada na COLECÇÃO INTEIRA e ANTES de alocar (com a percentagem de depois, alocar mudava o pct, o pct mudava a ordem e a ordem mudava a alocação); empate pelo nome. Nas caixas com prioridade automática os botões 'subir/descer' do modo edição ficam desactivados e dizem porquê. Consequência a saber: 'congelada' exige ser dedicada, por isso nenhuma caixa de Premodern congela — o que as protege é a cópia já alocada a uma caixa não ser realocada a outra, e nunca entrar na venda.",
   "_regras_por_formato": "AS REGRAS DE MATERIAL E A ORDEM DA ALOCAÇÃO, por grupo de formato (André, 2026-09-07, à letra: 'Premodern apenas as edições da era Premodern e em Português; cEDH apenas inglês non-foil; Duel Commander apenas foil; SPML tudo foil e inglês (RL pode ser non-foil); Pauper tudo foil se houver disponível, senão pode ser non-foil' e 'Ordem de prioridade na alocação: Premodern > cEDH > Duel Commander > Pauper > SPML'). A ORDEM DESTA LISTA É A ORDEM DA ALOCAÇÃO: quem está em cima escolhe as cartas primeiro. Dentro de cada grupo vêm primeiro os decks vigiados ('os decks vigiados têm prioridade para ficarem com as cartas, desde que respeitem as regras' — os de 'decks_vigiados' e os de fonte 'vigiado') e só depois o 'prioridade' de cada slot. Chaves: 'formatos' = os formatos dos slots deste grupo; 'lingua' = a cópia tem de ser desta língua; 'acabamento' = 'foil' (só foil/etched, menos Reserved List) | 'nonfoil' (só nonfoil) | 'prefere_foil' (aceita as duas, gasta a foil primeiro); 'edicoes' = 'premodern' (só impressões até ao Scourge, 2003-05-26); 'baldes' = os únicos baldes que estas caixas VÊEM (mais o seu); 'estrita' = true faz a 'lingua' e os 'baldes' porem a cópia FORA DE VISTA (falta a comprar em vez de 'tenho mas não serve') — é 'o Premodern só usa em PT, mesmo eu tendo a carta em inglês'; 'dedicado' = true faz a caixa NÃO EMPRESTAR nem IR BUSCAR cópias a outras caixas de deck (ver _dedicado). Uma cópia que está DENTRO da caixa do próprio deck (os baldes de 'regras_colecao' e os dos slots de Commander) escapa a estas regras: o deck está montado e uma regra nova não o desmonta. O Pauper não tem 'baldes' de propósito — 'para Pauper, utilizas as cartas que forem necessárias do SPML e agregas ao Pauper'. Para uma excepção a UM slot, escreve a chave nesse slot do 'loadout' e ela ganha à do grupo. RL EM PT SERVE O LEGACY (André, 2026-09-08, à letra: 'RL em PT pode servir para Legacy e Premodern, mas não para cEDH nem outro formato'): é o 'por_formato' do grupo spml — só o legacy ganha 'rl_lingua': ['pt','en'], e o Standard/Pioneer/Modern continuam 'tudo foil e inglês'. O 'rl_lingua' ganha à 'lingua' E à tranca do PT da era Premodern, mas SÓ para cópias da Reserved List. Vive no 'por_formato' e não num grupo próprio porque a ordem desta lista é a ordem da alocação e o grupo é também o grupo da partilha de compras: dar um grupo ao Legacy para escrever uma excepção sobre a língua mudava as duas coisas sem ninguém pedir.",
@@ -528,22 +269,8 @@
   "_formatos_decididos": "Os formatos em que o André já DECIDIU os decks (2026-09-21, à letra: 'Pioneer apenas Greasefang e jeskai control'). Nestes o metagame.html deixa de mostrar o top-N que ele está mais perto de concluir e a aba da caixa deixa de ter os candidatos e o «vou montar este» — mostram só as caixas dele, como o Modern. A decisão de 2026-09-07 (ver o top-3 para escolher) continua a valer para os formatos que NÃO estão aqui (Standard, Legacy). O código do top-N fica: tirar um formato desta lista devolve-lhe os candidatos.",
   "_metagame_top_n": "Quantos decks por formato mostra o metagame.html. André, 2026-09-07, à letra: 'Para os decks metagame, em vez de me dares todas as listas, dás-me só o top-3 decks que estou mais perto de concluir para os formatos Standard, Pioneer, Legacy'. Vale só para as secções de TOP (Standard/Pioneer/Legacy — as caixas do loadout que ainda estão por escolher); o Modern mostra o deck já escolhido e o Premodern os alvos de premodern_arquetipos_alvo. A % que ordena é a das cartas que ele TEM (livres + as que estão noutra caixa, que se vão buscar), com a regra de material do loadout (foil menos Reserved List) e sem contar terras básicas. Sobe para 5 se quiseres mais opções por onde escolher. (Substituiu o decks_faziveis_min_pct: a página 'Decks fazíveis' foi retirada em 2026-09-07 — fazia a mesma pergunta e respondia pior.)",
   "cartas_vigiadas": [
-    {
-      "carta": "Kasmina, Enigma Sage",
-      "formatos": [
-        "modern",
-        "pioneer"
-      ],
-      "nota": "combo Jace/Kasmina — Reality Fracture no MTGO 29/09/2026, em papel 02/10/2026; Pioneer acrescentado a pedido do Andre 30/09"
-    },
-    {
-      "carta": "Jace's Machinations",
-      "formatos": [
-        "modern",
-        "pioneer"
-      ],
-      "nota": "combo Jace/Kasmina — Reality Fracture no MTGO 29/09/2026, em papel 02/10/2026; Pioneer acrescentado a pedido do Andre 30/09"
-    }
+    {"carta": "Kasmina, Enigma Sage", "formatos": ["modern", "pioneer"], "nota": "combo Jace/Kasmina — Reality Fracture no MTGO 29/09/2026, em papel 02/10/2026; Pioneer acrescentado a pedido do Andre 30/09"},
+    {"carta": "Jace's Machinations", "formatos": ["modern", "pioneer"], "nota": "combo Jace/Kasmina — Reality Fracture no MTGO 29/09/2026, em papel 02/10/2026; Pioneer acrescentado a pedido do Andre 30/09"}
   ],
   "_cartas_vigiadas": "A VIGIA DE CARTAS (André, 2026-09-26): ele comprou 4x «Kasmina, Enigma Sage» e 2x «Enter the Infinite» por causa de um combo novo e quer saber quando aparecerem decklists com ele — 'vai conferindo'. A segunda peça é «Jace's Machinations», do Reality Fracture, que só sai a 02/10/2026: hoje não pode existir uma única lista com o combo, e é por isso que isto existe — o valor é ser avisado no DIA em que a primeira aparecer. Cada linha é {'carta': o nome oracle em inglês (a frente, nas de duas faces), 'formatos': os formatos que interessam (uma lista vazia ou sem a chave = todos), 'nota': texto livre que aparece na página e no log}. Motor em mtgvault/vigia.py; passo 'vigia-cartas' do daily; bloco no topo do metagame.html; estado em data/vigia-cartas.json (vai no Git, como o arquetipos.json). O QUE ISTO ABRE, e é a parte que de outra forma estragava tudo: para as listas que TÊM uma carta vigiada, a recolha IGNORA o filtro de tier de metagame_fontes — a primeira aparição de um combo novo é um 5-0 de league ou um torneio pequeno, exactamente o que a regra de 2026-09-07 deita fora. São três portas (sources.harvest_mtgo não salta as páginas de liga dos formatos vigiados, sources.store_decklist guarda a lista com carta vigiada, analysis.prune_leagues não a apaga) e SÓ para essas listas: o metagame, a cobertura, o clustering e o showcase não vêem uma lista a mais. Esvaziar esta lista põe o daily exactamente como estava — nem estado se escreve. O aviso é um toast do Windows, uma vez por lista nova (mtgvault/aviso.py).",
   "metagame_fontes": {
@@ -662,386 +389,82 @@
       "formato": "duel-commander",
       "escolhido_em": "2026-09-20",
       "cards": [
-        [
-          "main",
-          "Abandoned Air Temple",
-          1
-        ],
-        [
-          "main",
-          "Ancient Den",
-          1
-        ],
-        [
-          "main",
-          "Anointed Peacekeeper",
-          1
-        ],
-        [
-          "main",
-          "Aven Interrupter",
-          1
-        ],
-        [
-          "main",
-          "Benevolent Bodyguard",
-          1
-        ],
-        [
-          "main",
-          "Castle Ardenvale",
-          1
-        ],
-        [
-          "main",
-          "Cataclysm",
-          1
-        ],
-        [
-          "main",
-          "Cathar Commando",
-          1
-        ],
-        [
-          "main",
-          "City of Traitors",
-          1
-        ],
-        [
-          "main",
-          "Containment Priest",
-          1
-        ],
-        [
-          "main",
-          "Crystal Vein",
-          1
-        ],
-        [
-          "main",
-          "Disruptor Flute",
-          1
-        ],
-        [
-          "main",
-          "Drannith Magistrate",
-          1
-        ],
-        [
-          "main",
-          "Dust Bowl",
-          1
-        ],
-        [
-          "main",
-          "Eiganjo Castle",
-          1
-        ],
-        [
-          "main",
-          "Eiganjo, Seat of the Empire",
-          1
-        ],
-        [
-          "main",
-          "Elite Spellbinder",
-          1
-        ],
-        [
-          "main",
-          "Enlightened Tutor",
-          1
-        ],
-        [
-          "main",
-          "Ephemerate",
-          1
-        ],
-        [
-          "main",
-          "Erode",
-          1
-        ],
-        [
-          "main",
-          "Esper Sentinel",
-          1
-        ],
-        [
-          "main",
-          "Flagstones of Trokair",
-          1
-        ],
-        [
-          "main",
-          "Flickerwisp",
-          1
-        ],
-        [
-          "main",
-          "Gemstone Caverns",
-          1
-        ],
-        [
-          "main",
-          "Ghost Vacuum",
-          1
-        ],
-        [
-          "main",
-          "Giver of Runes",
-          1
-        ],
-        [
-          "main",
-          "Glimmer Lens",
-          1
-        ],
-        [
-          "main",
-          "Guide of Souls",
-          1
-        ],
-        [
-          "main",
-          "Helping Hand",
-          1
-        ],
-        [
-          "main",
-          "Jolted Awake",
-          1
-        ],
-        [
-          "main",
-          "Lion Sash",
-          1
-        ],
-        [
-          "main",
-          "Mana Tithe",
-          1
-        ],
-        [
-          "main",
-          "March of Otherworldly Light",
-          1
-        ],
-        [
-          "main",
-          "Masterwork of Ingenuity",
-          1
-        ],
-        [
-          "main",
-          "Mishra's Factory",
-          1
-        ],
-        [
-          "main",
-          "Mother of Runes",
-          1
-        ],
-        [
-          "main",
-          "Ocelot Pride",
-          1
-        ],
-        [
-          "main",
-          "On Thin Ice",
-          1
-        ],
-        [
-          "main",
-          "Oust",
-          1
-        ],
-        [
-          "main",
-          "Parallax Wave",
-          1
-        ],
-        [
-          "main",
-          "Phelia, Exuberant Shepherd",
-          1
-        ],
-        [
-          "main",
-          "Portable Hole",
-          1
-        ],
-        [
-          "main",
-          "Pre-War Formalwear",
-          1
-        ],
-        [
-          "main",
-          "Puresteel Paladin",
-          1
-        ],
-        [
-          "main",
-          "Ranger-Captain of Eos",
-          1
-        ],
-        [
-          "main",
-          "Razorgrass Ambush",
-          1
-        ],
-        [
-          "main",
-          "Recruiter of the Guard",
-          1
-        ],
-        [
-          "main",
-          "Reprieve",
-          1
-        ],
-        [
-          "main",
-          "Reverent Mantra",
-          1
-        ],
-        [
-          "main",
-          "Rishadan Port",
-          1
-        ],
-        [
-          "main",
-          "Sanctifier en-Vec",
-          1
-        ],
-        [
-          "main",
-          "Seam Rip",
-          1
-        ],
-        [
-          "main",
-          "Shadowspear",
-          1
-        ],
-        [
-          "main",
-          "Sigarda's Aid",
-          1
-        ],
-        [
-          "main",
-          "Skateboard",
-          1
-        ],
-        [
-          "main",
-          "Skrelv, Defector Mite",
-          1
-        ],
-        [
-          "main",
-          "Skullclamp",
-          1
-        ],
-        [
-          "main",
-          "Skyclave Apparition",
-          1
-        ],
-        [
-          "main",
-          "Snow-Covered Plains",
-          24
-        ],
-        [
-          "main",
-          "Solitude",
-          1
-        ],
-        [
-          "main",
-          "Spectacular Spider-Man",
-          1
-        ],
-        [
-          "main",
-          "Springleaf Drum",
-          1
-        ],
-        [
-          "main",
-          "Starfield Shepherd",
-          1
-        ],
-        [
-          "main",
-          "Static Prison",
-          1
-        ],
-        [
-          "main",
-          "Stoneforge Mystic",
-          1
-        ],
-        [
-          "main",
-          "Swift Reconfiguration",
-          1
-        ],
-        [
-          "main",
-          "Swords to Plowshares",
-          1
-        ],
-        [
-          "main",
-          "Talon Gates of Madara",
-          1
-        ],
-        [
-          "main",
-          "Tangle Wire",
-          1
-        ],
-        [
-          "main",
-          "Tectonic Edge",
-          1
-        ],
-        [
-          "main",
-          "Thalia, Guardian of Thraben",
-          1
-        ],
-        [
-          "main",
-          "Tithe Taker",
-          1
-        ],
-        [
-          "main",
-          "Umezawa's Jitte",
-          1
-        ],
-        [
-          "main",
-          "Urza's Saga",
-          1
-        ],
-        [
-          "main",
-          "Voice of Victory",
-          1
-        ],
-        [
-          "main",
-          "Witch Enchanter",
-          1
-        ]
+        ["main", "Abandoned Air Temple", 1],
+        ["main", "Ancient Den", 1],
+        ["main", "Anointed Peacekeeper", 1],
+        ["main", "Aven Interrupter", 1],
+        ["main", "Benevolent Bodyguard", 1],
+        ["main", "Castle Ardenvale", 1],
+        ["main", "Cataclysm", 1],
+        ["main", "Cathar Commando", 1],
+        ["main", "City of Traitors", 1],
+        ["main", "Containment Priest", 1],
+        ["main", "Crystal Vein", 1],
+        ["main", "Disruptor Flute", 1],
+        ["main", "Drannith Magistrate", 1],
+        ["main", "Dust Bowl", 1],
+        ["main", "Eiganjo Castle", 1],
+        ["main", "Eiganjo, Seat of the Empire", 1],
+        ["main", "Elite Spellbinder", 1],
+        ["main", "Enlightened Tutor", 1],
+        ["main", "Ephemerate", 1],
+        ["main", "Erode", 1],
+        ["main", "Esper Sentinel", 1],
+        ["main", "Flagstones of Trokair", 1],
+        ["main", "Flickerwisp", 1],
+        ["main", "Gemstone Caverns", 1],
+        ["main", "Ghost Vacuum", 1],
+        ["main", "Giver of Runes", 1],
+        ["main", "Glimmer Lens", 1],
+        ["main", "Guide of Souls", 1],
+        ["main", "Helping Hand", 1],
+        ["main", "Jolted Awake", 1],
+        ["main", "Lion Sash", 1],
+        ["main", "Mana Tithe", 1],
+        ["main", "March of Otherworldly Light", 1],
+        ["main", "Masterwork of Ingenuity", 1],
+        ["main", "Mishra's Factory", 1],
+        ["main", "Mother of Runes", 1],
+        ["main", "Ocelot Pride", 1],
+        ["main", "On Thin Ice", 1],
+        ["main", "Oust", 1],
+        ["main", "Parallax Wave", 1],
+        ["main", "Phelia, Exuberant Shepherd", 1],
+        ["main", "Portable Hole", 1],
+        ["main", "Pre-War Formalwear", 1],
+        ["main", "Puresteel Paladin", 1],
+        ["main", "Ranger-Captain of Eos", 1],
+        ["main", "Razorgrass Ambush", 1],
+        ["main", "Recruiter of the Guard", 1],
+        ["main", "Reprieve", 1],
+        ["main", "Reverent Mantra", 1],
+        ["main", "Rishadan Port", 1],
+        ["main", "Sanctifier en-Vec", 1],
+        ["main", "Seam Rip", 1],
+        ["main", "Shadowspear", 1],
+        ["main", "Sigarda's Aid", 1],
+        ["main", "Skateboard", 1],
+        ["main", "Skrelv, Defector Mite", 1],
+        ["main", "Skullclamp", 1],
+        ["main", "Skyclave Apparition", 1],
+        ["main", "Snow-Covered Plains", 24],
+        ["main", "Solitude", 1],
+        ["main", "Spectacular Spider-Man", 1],
+        ["main", "Springleaf Drum", 1],
+        ["main", "Starfield Shepherd", 1],
+        ["main", "Static Prison", 1],
+        ["main", "Stoneforge Mystic", 1],
+        ["main", "Swift Reconfiguration", 1],
+        ["main", "Swords to Plowshares", 1],
+        ["main", "Talon Gates of Madara", 1],
+        ["main", "Tangle Wire", 1],
+        ["main", "Tectonic Edge", 1],
+        ["main", "Thalia, Guardian of Thraben", 1],
+        ["main", "Tithe Taker", 1],
+        ["main", "Umezawa's Jitte", 1],
+        ["main", "Urza's Saga", 1],
+        ["main", "Voice of Victory", 1],
+        ["main", "Witch Enchanter", 1]
       ]
     },
     "pioneer-jeskai": {
@@ -1051,191 +474,43 @@
       "formato": "pioneer",
       "escolhido_em": "2026-09-21",
       "cards": [
-        [
-          "main",
-          "Abandon Attachments",
-          3
-        ],
-        [
-          "main",
-          "Accumulate Wisdom",
-          3
-        ],
-        [
-          "main",
-          "Combustion Technique",
-          3
-        ],
-        [
-          "main",
-          "Deserted Beach",
-          1
-        ],
-        [
-          "main",
-          "Divide by Zero",
-          4
-        ],
-        [
-          "main",
-          "Firebending Lesson",
-          4
-        ],
-        [
-          "main",
-          "Gran-Gran",
-          4
-        ],
-        [
-          "main",
-          "Great Hall of the Biblioplex",
-          3
-        ],
-        [
-          "main",
-          "Hallowed Fountain",
-          3
-        ],
-        [
-          "main",
-          "Iroh's Demonstration",
-          1
-        ],
-        [
-          "main",
-          "Island",
-          3
-        ],
-        [
-          "main",
-          "It'll Quench Ya!",
-          2
-        ],
-        [
-          "main",
-          "Jeskai Revelation",
-          4
-        ],
-        [
-          "main",
-          "Pop Quiz",
-          1
-        ],
-        [
-          "main",
-          "Riverglide Pathway",
-          3
-        ],
-        [
-          "main",
-          "Riverpyre Verge",
-          2
-        ],
-        [
-          "main",
-          "Spell Pierce",
-          1
-        ],
-        [
-          "main",
-          "Spirebluff Canal",
-          4
-        ],
-        [
-          "main",
-          "Steam Vents",
-          4
-        ],
-        [
-          "main",
-          "Stock Up",
-          1
-        ],
-        [
-          "main",
-          "Tablet of Discovery",
-          4
-        ],
-        [
-          "main",
-          "Thor, God of Thunder",
-          2
-        ],
-        [
-          "side",
-          "Abrade",
-          1
-        ],
-        [
-          "side",
-          "Accumulate Wisdom",
-          1
-        ],
-        [
-          "side",
-          "Airbender's Reversal",
-          1
-        ],
-        [
-          "side",
-          "Anger of the Gods",
-          1
-        ],
-        [
-          "side",
-          "Annul",
-          1
-        ],
-        [
-          "side",
-          "Change the Equation",
-          1
-        ],
-        [
-          "side",
-          "Combustion Technique",
-          1
-        ],
-        [
-          "side",
-          "Ghost Vacuum",
-          1
-        ],
-        [
-          "side",
-          "Improvisation Capstone",
-          1
-        ],
-        [
-          "side",
-          "Iroh's Demonstration",
-          1
-        ],
-        [
-          "side",
-          "Negate",
-          1
-        ],
-        [
-          "side",
-          "Price of Freedom",
-          1
-        ],
-        [
-          "side",
-          "Sokka's Haiku",
-          1
-        ],
-        [
-          "side",
-          "Soul-Guide Lantern",
-          1
-        ],
-        [
-          "side",
-          "Teachings of the Archaics",
-          1
-        ]
+        ["main", "Abandon Attachments", 3],
+        ["main", "Accumulate Wisdom", 3],
+        ["main", "Combustion Technique", 3],
+        ["main", "Deserted Beach", 1],
+        ["main", "Divide by Zero", 4],
+        ["main", "Firebending Lesson", 4],
+        ["main", "Gran-Gran", 4],
+        ["main", "Great Hall of the Biblioplex", 3],
+        ["main", "Hallowed Fountain", 3],
+        ["main", "Iroh's Demonstration", 1],
+        ["main", "Island", 3],
+        ["main", "It'll Quench Ya!", 2],
+        ["main", "Jeskai Revelation", 4],
+        ["main", "Pop Quiz", 1],
+        ["main", "Riverglide Pathway", 3],
+        ["main", "Riverpyre Verge", 2],
+        ["main", "Spell Pierce", 1],
+        ["main", "Spirebluff Canal", 4],
+        ["main", "Steam Vents", 4],
+        ["main", "Stock Up", 1],
+        ["main", "Tablet of Discovery", 4],
+        ["main", "Thor, God of Thunder", 2],
+        ["side", "Abrade", 1],
+        ["side", "Accumulate Wisdom", 1],
+        ["side", "Airbender's Reversal", 1],
+        ["side", "Anger of the Gods", 1],
+        ["side", "Annul", 1],
+        ["side", "Change the Equation", 1],
+        ["side", "Combustion Technique", 1],
+        ["side", "Ghost Vacuum", 1],
+        ["side", "Improvisation Capstone", 1],
+        ["side", "Iroh's Demonstration", 1],
+        ["side", "Negate", 1],
+        ["side", "Price of Freedom", 1],
+        ["side", "Sokka's Haiku", 1],
+        ["side", "Soul-Guide Lantern", 1],
+        ["side", "Teachings of the Archaics", 1]
       ]
     }
   },

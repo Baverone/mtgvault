@@ -28,6 +28,17 @@ descobrir o núcleo de cada arquétipo, e acompanha preços.
   (`test_paginas.caso_a_bateria_nao_escreve_no_data_a_serio`).
 - **Não inventes dados.** Se não conseguires aceder a uma fonte, diz que não
   conseguiste. Nunca preenchas uma decklist ou um preço a partir de memória.
+- **O `colecao_config.json` edita-se CIRURGICAMENTE — nunca se reformata.** É um
+  ficheiro para ser LIDO por uma pessoa: cada regra tem a explicação em português
+  ao lado, e as listas de objectos (`caixas`, `regras_por_formato`,
+  `cartas_vigiadas`, …) estão escritas **uma linha por objecto**. Muda as linhas
+  que tens de mudar (Edit, ou substituição de texto); se tiveres de o escrever
+  por código, usa **`mtgvault.configio.escrever`**, que preserva esta forma
+  (`UMA_LINHA`/`CARTAS_UMA_LINHA`) — nunca `json.dump(..., indent=2)`. Já
+  aconteceu: o commit `ac1f776` (2026-09-30) acrescentou `pioneer` a duas cartas
+  vigiadas e saiu com **861 inserções e 136 remoções**, porque o ficheiro foi
+  lido e reescrito com `indent=2`. O conteúdo estava certo e o diff ficou
+  ilegível — e um diff ilegível neste ficheiro é a revisão a deixar de existir.
 - Comentários explicam *porquê*, não *o quê*. Vários dos comentários atuais
   existem para registar decisões que custaram a descobrir — não os apagues.
 
