@@ -17,7 +17,7 @@
     "Wasteland"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-29"
+   "ultima": "2026-09-30"
   },
   "13eb5a8587": {
    "formato": "premodern",
@@ -71,7 +71,7 @@
     "Yavimaya Coast"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-29"
+   "ultima": "2026-09-30"
   },
   "2811f9a69f": {
    "formato": "premodern",
@@ -89,7 +89,7 @@
     "Withered Wretch"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-29"
+   "ultima": "2026-09-30"
   },
   "3885b4666a": {
    "formato": "premodern",
@@ -109,7 +109,7 @@
     "Skycloud Expanse"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-29"
+   "ultima": "2026-09-30"
   },
   "4841da6e7f": {
    "formato": "premodern",
@@ -140,7 +140,7 @@
     "Yavimaya Granger"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-29"
+   "ultima": "2026-09-30"
   },
   "72740aba9b": {
    "formato": "premodern",
@@ -160,7 +160,7 @@
     "Wrath of God"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-29"
+   "ultima": "2026-09-30"
   },
   "7fbd22f4da": {
    "formato": "legacy",
@@ -177,12 +177,12 @@
    "nome": "Landstill",
    "nucleo": [
     "Adarkar Wastes",
+    "Coastal Tower",
     "Decree of Justice",
     "Disenchant",
     "Dust Bowl",
     "Fact or Fiction",
     "Faerie Conclave",
-    "Impulse",
     "Mana Leak",
     "Mishra's Factory",
     "Powder Keg",
@@ -190,7 +190,27 @@
     "Wrath of God"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-29"
+   "ultima": "2026-09-30"
+  },
+  "8a1f5ac7b3": {
+   "formato": "premodern",
+   "nome": "Mono-Azul Cloud of Faeries",
+   "nucleo": [
+    "Brain Freeze",
+    "Cloud of Faeries",
+    "Flash of Insight",
+    "Frantic Search",
+    "Helm of Awakening",
+    "Lotus Petal",
+    "Meditate",
+    "Merchant Scroll",
+    "Sapphire Medallion",
+    "Snap",
+    "Teferi's Isle",
+    "Words of Wisdom"
+   ],
+   "primeira": "2026-09-30",
+   "ultima": "2026-09-30"
   },
   "95a99aa40d": {
    "formato": "premodern",
@@ -253,12 +273,11 @@
     "Lightning Bolt",
     "Mogg Fanatic",
     "Seal of Fire",
-    "Volcanic Hammer",
     "Wasteland",
     "Wooded Foothills"
    ],
    "primeira": "2026-09-23",
-   "ultima": "2026-09-26"
+   "ultima": "2026-09-30"
   },
   "aa210fdd32": {
    "formato": "premodern",
@@ -278,7 +297,7 @@
     "Vindicate"
    ],
    "primeira": "2026-09-21",
-   "ultima": "2026-09-29"
+   "ultima": "2026-09-30"
   },
   "b38b17cddb": {
    "formato": "premodern",
@@ -286,19 +305,18 @@
    "nucleo": [
     "Black Vise",
     "Chain of Vapor",
+    "Counterspell",
     "Daze",
     "Flash of Insight",
     "Forsaken City",
     "Gush",
     "Impulse",
     "Mana Short",
-    "Portent",
-    "Root Maze",
     "Stasis",
     "Thwart"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-29"
+   "ultima": "2026-09-30"
   },
   "b4dcbc5dbb": {
    "formato": "premodern",
@@ -318,7 +336,7 @@
     "Vision Charm"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-29"
+   "ultima": "2026-09-30"
   },
   "b827ca4ad1": {
    "formato": "premodern",
@@ -357,7 +375,7 @@
     "Wild Growth"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-29"
+   "ultima": "2026-09-30"
   },
   "c6998a9b7d": {
    "formato": "premodern",
@@ -377,11 +395,11 @@
     "Winter's Grasp"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-29"
+   "ultima": "2026-09-30"
   },
   "c8d54b483e": {
    "formato": "premodern",
-   "nome": "Pyrostatic Pillar",
+   "nome": "Sligh",
    "nucleo": [
     "Barbarian Ring",
     "Bloodstained Mire",
@@ -396,7 +414,7 @@
     "Wooded Foothills"
    ],
    "primeira": "2026-09-20",
-   "ultima": "2026-09-29"
+   "ultima": "2026-09-30"
   },
   "cc47c1209f": {
    "formato": "premodern",
@@ -446,7 +464,7 @@
     "Wall of Blossoms"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-29"
+   "ultima": "2026-09-30"
   },
   "e8c086499f": {
    "formato": "premodern",
@@ -478,7 +496,7 @@
     "Treetop Village"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-29"
+   "ultima": "2026-09-30"
   },
   "f102883ccf": {
    "formato": "premodern",
@@ -509,7 +527,7 @@
     "Weathered Wayfarer"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-29"
+   "ultima": "2026-09-30"
   },
   "f886821817": {
    "formato": "premodern",
@@ -527,7 +545,7 @@
     "Smother"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-09-29"
+   "ultima": "2026-09-30"
   }
  },
  "versao": 1
