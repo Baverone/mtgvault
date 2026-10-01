@@ -348,7 +348,8 @@ def caso_ler_sem_token_da_pagina_so_de_leitura():
     assert p.codigo == 200, p.codigo
     dados = json.loads(p.corpo)
     assert dados["editable"] is False, "devia vir só de leitura"
-    assert dados["token"] == "" and dados["ligacao"] is None, dados["token"]
+    assert dados["token"] == "", dados["token"]
+    assert "ligacao" not in dados, "a `ligacao` saiu do payload com o QR"
     assert t not in p.corpo, "os dados sem token NAO podem conter o token"
     assert "caixa-a" in dados["_partes"], dados["_partes"]
     print("ler sem token: 200, casca + dados de leitura e sem o token la dentro")
@@ -369,26 +370,19 @@ def caso_ler_sem_token_da_pagina_so_de_leitura():
     p = Pedido("/data/paginas/deckboxes/nao-existe.json")
     p.do_GET()
     assert p.codigo == 404 and "não há parte" in p.corpo, (p.codigo, p.corpo)
-    # O ENDEREÇO É O NOME, NUNCA O IP (ordem dele, 2026-10-01): era
-    # `http://192.168.x.y:8771/?t=…`. O `ip`/`ips` saíram do payload de
-    # propósito — tirá-lo do ecrã e deixá-lo nos dados era tirá-lo só da vista.
-    assert dados["ligacao"]["url"].startswith("https://editar-mtg.baverone.com/"), \
-        dados["ligacao"]
-    assert "ip" not in dados["ligacao"] and "ips" not in dados["ligacao"], \
-        dados["ligacao"]
-    assert dados["ligacao"]["url"].endswith(t), "o link do QR tem de levar o token"
-    assert dados["ligacao"]["porto"] == webapp.PORT
-    print("com o token no link: modo edicao, botoes e o QR do telemovel")
+    # O QR SAIU DA PORTA DA FRENTE (ordem dele, 2026-10-01: *"não quero QR
+    # Codes, quero editar logo e pronto"*). Nem a `ligacao` no payload, nem o
+    # painel na página, nem a rota — e a rota ia atrás porque o seu único
+    # consumidor era o painel, e servia um URL com o token lá dentro.
+    assert "ligacao" not in dados, "a `ligacao` saiu do payload com o QR"
+    assert "qr.svg" not in p.corpo, "nem o endereço do QR pode sobrar nos dados"
+    print("com o token no link: modo edicao e botoes, sem QR nenhum")
 
-    # O QR É o link com o token lá dentro: servi-lo a quem não o tem era dar o
-    # token pela porta do lado, e o 403 dos POST deixava de valer nada.
-    p = Pedido("/qr.svg")
-    p.do_GET()
-    assert p.codigo == 403, (p.codigo, p.corpo[:120])
-    p = Pedido(f"/qr.svg?t={t}")
-    p.do_GET()
-    assert p.codigo == 200 and p.corpo.startswith("<svg"), p.corpo[:80]
-    print("o /qr.svg desenha-se — e so para quem ja tem o token")
+    for caminho in ("/qr.svg", f"/qr.svg?t={t}", "/qr", f"/qr?t={t}"):
+        p = Pedido(caminho)
+        p.do_GET()
+        assert p.codigo == 404, (caminho, p.codigo, p.corpo[:120])
+    print("o /qr.svg deixou de existir — 404 com e sem token")
 
 
 def caso_a_predefinicao_e_so_este_pc():

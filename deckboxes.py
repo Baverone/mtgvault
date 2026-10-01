@@ -732,7 +732,7 @@ def _venda_payload(con, rep, venda_bloco):
     }
 
 
-def payload(con, rep, editable=False, token="", ligacao=None):
+def payload(con, rep, editable=False, token=""):
     nomes = {c["nm"] for c in rep["conflitos"]}
     for s in rep["slots"]:
         nomes |= {n for _b, n, _q in s["cards"]}
@@ -919,10 +919,11 @@ def payload(con, rep, editable=False, token="", ligacao=None):
                   "fontes": list(precos.fontes()),
                   "rotulo": precos.ROTULOS[precos.modo()],
                   "desde": precos.regua_desde()},
-        # O token de escrita e o link/QR do telemóvel só existem em modo edição —
-        # o ficheiro publicado no GitHub Pages não pode levar nem um nem outro.
+        # O token de escrita só existe em modo edição — o ficheiro publicado no
+        # GitHub Pages não o pode levar. A `ligacao` (o link e o QR do
+        # telemóvel) SAIU do payload a 2026-10-01 com o painel que a mostrava:
+        # ver «FORA O QR DA PORTA DA FRENTE» no CLAUDE.md.
         "token": token if editable else "",
-        "ligacao": ligacao if editable else None,
         # A BARRA DE MONTAGEM (André, 2026-09-08): marcar a última cópia regista
         # a caixa sozinha, com um *anular* de alguns segundos ao lado. Os dois
         # números vêm do config (`colecao_config.json -> montar`) — a página não
@@ -1252,14 +1253,14 @@ def _html(dados, js_externo: bool = False):
             .replace("%SCRIPT%", codigo))
 
 
-def html_page(con, editable=False, rep=None, token="", ligacao=None):
+def html_page(con, editable=False, rep=None, token=""):
     """A página como texto — é o que o `webapp.py` serve sem escrever no disco.
 
-    `token`/`ligacao` só vêm preenchidos quando o pedido já trazia o token: é o
-    que autoriza os botões a gravar e o que desenha o QR para o telemóvel.
+    O `token` só vem preenchido quando o pedido já podia escrever: é o que
+    autoriza os botões a gravar.
     """
     return _html(payload(con, rep if rep is not None else loadout.report(con),
-                         editable=editable, token=token, ligacao=ligacao))
+                         editable=editable, token=token))
 
 
 _CSS = r"""
@@ -1600,7 +1601,7 @@ _CSS = r"""
  .fora ul{margin:0;padding-left:18px;font-size:12.5px} .fora li{margin:2px 0}
  .fora li i{color:var(--muted)}
  @media print{
-   .vidx,.vidxsel,.seg,.flh,.cpbtn,button,textarea.cmk,#barra,.lig{display:none!important}
+   .vidx,.vidxsel,.seg,.flh,.cpbtn,button,textarea.cmk,#barra{display:none!important}
    body{background:#fff;color:#000} .wrap{padding:0;max-width:none}
    .comidx{display:block}
    details.vblk{border:0;padding:0;break-inside:avoid} details.vblk>summary{color:#000}
@@ -1774,14 +1775,7 @@ _CSS = r"""
  .pl .pn2{flex:0 0 auto;text-align:right;min-width:66px;
    font-variant-numeric:tabular-nums}
  .pl .pn2 b{font-size:15px;font-weight:800} .pl .pn2 b.buy{color:var(--warn)}
- /* link/QR do telemóvel (modo edição) */
- .lig{display:flex;gap:14px;align-items:flex-start;background:var(--card);
-   border:1px solid var(--line2);border-radius:var(--r2);padding:13px;
-   margin-bottom:14px;flex-wrap:wrap}
- .lig img{border-radius:8px;background:#fff;flex:0 0 auto}
- .lig>div{flex:1 1 240px;min-width:0}
- .lig code{background:#0f141c;padding:1px 5px;border-radius:4px;
-   overflow-wrap:anywhere}
+ /* o `.lig` (o painel do link/QR do telemóvel) saiu a 2026-10-01 com o QR */
  .btn.sm{padding:3px 9px;font-size:11px}
  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;z-index:9;
    background:#1b2c4d;border:1px solid var(--accent);color:#fff;font-size:13px;
@@ -5315,25 +5309,14 @@ async function gravarSaida(btn, soValid) {
   } catch (e) { btn.disabled = false; erro('Não deu: ' +e.message); }
 }
 
-/* O LINK E O QR para o telemóvel — só no modo edição, e só quando o pedido já
-   trazia o token (senão a página estaria a dar-lho a quem não o tem). É o que
-   ele aponta com o telemóvel para ir à frente da estante com os botões. */
-function ligacaoHTML() {
-  if (!D.editable || !D.ligacao) return '';
-  /* O `?t=` na imagem não é decoração: o QR É o link com o token lá dentro, e o
-     servidor recusa-o (403) a quem não o traga — senão bastava pedir a imagem
-     para receber o token pela porta do lado. */
-  return `<div class="lig"><img src="qr.svg?t=${encodeURIComponent(D.token)}" `
-    + `alt="QR do link do modo edição" width="150" height="150">`
-    + `<div><b>📱 Abrir no telemóvel</b>`
-    + `<p class="lead">Aponta a câmara ao QR, ou escreve `
-    + `<code>${esc(D.ligacao.base)}</code>. O link leva o token: <b>sem ele a `
-    + `página é só de leitura</b>.</p>`
-    + `<p class="nota">É o mesmo modo de edição deste PC, por HTTPS e com o `
-    + `login do Cloudflare — de casa ou da rua. Se não abrir, o servidor pode `
-    + `estar em baixo: a tarefa <code>mtgvault-serve</code> relança-o de 5 em `
-    + `5 minutos.</p></div></div>`;
-}
+/* O PAINEL DO QR SAIU (2026-10-01, ordem dele à letra: *"não quero QR Codes,
+   quero editar logo e pronto"*). Era a primeira coisa na aba Plano: um QR de
+   150 px e a frase *«sem ele a página é só de leitura»* — escrita para quem
+   chega pela rede de casa, e lida por quem já tinha entrado por
+   `https://editar-mtg.baverone.com/` e já estava autenticado pelo Cloudflare
+   Access. Ou seja: o painel só aparecia a quem JÁ podia escrever (ver o
+   `if (!D.editable …)` que ele tinha à cabeça) e passava-lhe exactamente a
+   mensagem contrária. Ver «FORA O QR DA PORTA DA FRENTE» no CLAUDE.md. */
 
 /* --------------------------------------------------- NÃO ENCONTRADAS
    As cópias que ele procurou e não achou. Estão fora da colecção para todos os
@@ -5811,7 +5794,7 @@ async function render() {
               'revalidacao', 'feira'].includes(aba) ? vistaSwitchHTML() : '';
   if (caixa) {
     v.innerHTML = filtroHTML() + caixaHTML(caixa, false);
-  } else if (aba === 'plano') { v.innerHTML = ligacaoHTML() + vistaPlano(); }
+  } else if (aba === 'plano') { v.innerHTML = vistaPlano(); }
   else if (aba === 'montados') { v.innerHTML = vistaMontados(); }
   else if (aba === 'pormontar') { v.innerHTML = vistaPorMontar(); }
   else if (aba === 'arrumar') { v.innerHTML = sw + vistaArrumar(); }

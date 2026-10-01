@@ -346,7 +346,7 @@
  .fora ul{margin:0;padding-left:18px;font-size:12.5px} .fora li{margin:2px 0}
  .fora li i{color:var(--muted)}
  @media print{
-   .vidx,.vidxsel,.seg,.flh,.cpbtn,button,textarea.cmk,#barra,.lig{display:none!important}
+   .vidx,.vidxsel,.seg,.flh,.cpbtn,button,textarea.cmk,#barra{display:none!important}
    body{background:#fff;color:#000} .wrap{padding:0;max-width:none}
    .comidx{display:block}
    details.vblk{border:0;padding:0;break-inside:avoid} details.vblk>summary{color:#000}
@@ -520,14 +520,7 @@
  .pl .pn2{flex:0 0 auto;text-align:right;min-width:66px;
    font-variant-numeric:tabular-nums}
  .pl .pn2 b{font-size:15px;font-weight:800} .pl .pn2 b.buy{color:var(--warn)}
- /* link/QR do telemóvel (modo edição) */
- .lig{display:flex;gap:14px;align-items:flex-start;background:var(--card);
-   border:1px solid var(--line2);border-radius:var(--r2);padding:13px;
-   margin-bottom:14px;flex-wrap:wrap}
- .lig img{border-radius:8px;background:#fff;flex:0 0 auto}
- .lig>div{flex:1 1 240px;min-width:0}
- .lig code{background:#0f141c;padding:1px 5px;border-radius:4px;
-   overflow-wrap:anywhere}
+ /* o `.lig` (o painel do link/QR do telemóvel) saiu a 2026-10-01 com o QR */
  .btn.sm{padding:3px 9px;font-size:11px}
  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;z-index:9;
    background:#1b2c4d;border:1px solid var(--accent);color:#fff;font-size:13px;
@@ -955,7 +948,7 @@ botões, corre <code>python webapp.py</code> no PC (porto 8771) — e aí a aba
 <b>Plano</b> dá-te um QR para abrires isto no telemóvel, à frente da estante.
 Atualiza diariamente.</div></details></div></footer></div></div>
 
-<script src="deckboxes.js?v=9ac775c65f72"></script><script>
+<script src="deckboxes.js?v=d95250681be9"></script><script>
 (function(){
   var b = document.body, side = document.getElementById('side'),
       bt = document.getElementById('menub'), veu = document.getElementById('veu');

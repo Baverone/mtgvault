@@ -2195,26 +2195,68 @@ produzem três coisas, todas do `mtgvault.venda`:
   lista de stock dizia NM de uma cópia que era a EX que ele ia vender. Só mexe no
   desempate — os totais e as contagens da venda não mudam.
 
-**O TELEMÓVEL E O TOKEN (2026-09-08).** *"Ele vai estar à frente da estante com o
-telemóvel."* O `webapp.py` ouve em `MTGVAULT_BIND` (por omissão `127.0.0.1`; a
-tarefa `mtgvault-serve` põe `0.0.0.0`) e a página mostra um **QR** com o link já
-com o token — o QR é desenhado por `mtgvault/qr.py`, em Python puro (modo byte,
-nível M, versões 1–10), porque uma dependência nova para um quadrado preto e
-branco paga-se todos os dias em instalações. **Ler é livre; escrever exige o
-token** (`data/webapp.token`, gerado uma vez, fora do Git): sem ele, `403`. E a
-página só leva o token dentro dela quando o pedido que a foi buscar já o trazia —
-senão bastava abri-la de qualquer telemóvel da rede para o descobrir. **O
-`/qr.svg` exige-o pela mesma razão**: um QR é um URL legível, e servi-lo a quem
-não o tem era dar o token pela porta do lado (a página pede-o com `?t=`).
-Pedidos de `127.0.0.1` são de confiança sem token (quem está no PC já tem os
-ficheiros).
-O `test_qr.py` verifica o QR de três maneiras (lê-se a si próprio, é igual ao da
-biblioteca de referência nas oito máscaras, e a estrutura está lá): um QR "quase
-certo" não dá erro, dá um quadrado que o telemóvel não lê e não diz porquê.
+**O TELEMÓVEL E O TOKEN (2026-09-08; o QR saiu a 2026-10-01).** *"Ele vai estar à
+frente da estante com o telemóvel."* O `webapp.py` ouve em `MTGVAULT_BIND` (por
+omissão `127.0.0.1`; a tarefa `mtgvault-serve` põe `0.0.0.0`). **Ler é livre;
+escrever exige o token** (`data/webapp.token`, gerado uma vez, fora do Git): sem
+ele, `403`. E a página só leva o token dentro dela quando o pedido que a foi
+buscar já o trazia — senão bastava abri-la de qualquer telemóvel da rede para o
+descobrir. Pedidos de `127.0.0.1` são de confiança sem token (quem está no PC já
+tem os ficheiros). **O painel do QR e a rota `/qr.svg` deixaram de existir** —
+ver «FORA O QR DA PORTA DA FRENTE», a seguir.
+O `test_qr.py` continua a verificar o desenhador (`mtgvault/qr.py`, Python puro,
+modo byte, nível M, versões 1–10) de três maneiras — lê-se a si próprio, é igual
+ao da biblioteca de referência nas oito máscaras, e a estrutura está lá. **O
+módulo ficou e já não é chamado por ninguém**: apagá-lo é decisão dele, e o
+teste é barato.
 **A firewall do Windows pode estar a tapar o 8771** — uma vez, em consola de
 Administrador: `netsh advfirewall firewall add rule name="mtgvault 8771" dir=in
 action=allow protocol=TCP localport=8771 profile=private` (só rede privada; o
 comando também é impresso no arranque do `webapp.py`).
+
+**FORA O QR DA PORTA DA FRENTE (André, 2026-10-01, à letra).** *"não quero QR
+Codes, quero editar logo e pronto"*. Saíram: o painel da aba *Plano*
+(`deckboxes.ligacaoHTML`, um QR de 150 px + *«sem ele a página é só de
+leitura»*), a chave `ligacao` do payload, o CSS `.lig`, a rota **`/qr.svg`** e o
+QR em ASCII do arranque na consola.
+
+- **A razão não é estética, é que o painel dizia o contrário do que se passava.**
+  Ele só se desenhava com `D.editable` verdadeiro — ou seja, **só aparecia a quem
+  JÁ podia escrever** — e a frase que lhe passava era *«sem ele a página é só de
+  leitura»*. Quem entra por `https://editar-mtg.baverone.com/` já passou pelo
+  Cloudflare Access e já está autenticado; mandá-lo apontar a câmara a um QR para
+  obter uma permissão que ele tem é atrito a fingir que é segurança.
+- **A rota foi atrás do painel** porque era o seu único consumidor, e servia um
+  URL com o token lá dentro. O `mtgvault/qr.py` fica (é só o desenhador, em
+  Python puro, com teste próprio); o que deixou de existir é a porta HTTP.
+- **O MODELO DE AUTORIZAÇÃO NÃO SE TOCOU, e isso foi uma decisão.**
+  `_pode_escrever()` continua a ser *«loopback é de confiança; da rede exige-se o
+  token»*. **Não se passou a confiar nos cabeçalhos do Access**
+  (`Cf-Access-Authenticated-User-Email`, `Cf-Access-Jwt-Assertion`): com o
+  `MTGVAULT_BIND` em `0.0.0.0`, qualquer máquina da rede de casa os pode
+  **inventar** num pedido directo ao 8771, e aí o cabeçalho não prova nada. Fazê-
+  lo em condições é validar o JWT contra as chaves públicas do Access, e **isso
+  precisa de uma dependência que este PC não tem** — não há `PyJWT`, `cryptography`,
+  `pyOpenSSL` nem `pycryptodome` instalados, e escrever à mão a verificação RSA
+  de uma fechadura de ESCRITA é exactamente o atalho que não se dá.
+  O que ficou apurado, para quem pegue nisto (sondado a 2026-10-01):
+  team domain **`spring-cake-2060.cloudflareaccess.com`**, JWKS em
+  `/cdn-cgi/access/certs` (200, RS256, duas chaves), e o **AUD** da aplicação é o
+  `kid=` do redireccionamento de login,
+  `b045551a6b5d8b08fef75c6f1d4cc401ce0cfac1f5bc8387882f6601d6d88a75`. Com
+  `pip install "PyJWT[crypto]"` é meia hora de trabalho — validar assinatura,
+  `iss`, `aud` e `exp`, e **só então** dar escrita.
+- **E é provável que não seja preciso nada disso.** O `cloudflared` corre NESTE
+  PC; se o túnel aponta para `http://localhost:8771` (a configuração normal), os
+  pedidos dele chegam como `127.0.0.1` e **já** são de confiança — era o que o
+  próprio painel provava, porque só se desenha em modo edição e foi isso que ele
+  viu no telemóvel. **Não se conseguiu confirmar daqui**: o túnel é gerido
+  remotamente (em `C:\ProgramData\cloudflared` só está o `token`, não há regras
+  de ingress em disco) e o Access responde `403`/`1010` a um pedido automático,
+  por isso não há como fazer um pedido autenticado a partir do PC. Se ele abrir o
+  modo de edição e os botões **não** aparecerem, a correcção certa é apontar o
+  ingress para `localhost` no painel da Cloudflare — não é código, e é mais
+  seguro do que confiar num cabeçalho.
 
 **Loadout: os decks montados em simultâneo (`mtgvault/loadout.py`, 2026-09-07).**
 Palavras do André: *"Vamos começar a reorganizar os decks e a colecção, para

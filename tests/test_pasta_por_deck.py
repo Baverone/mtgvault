@@ -466,8 +466,13 @@ def caso_o_endereco_do_modo_de_edicao_e_o_nome_e_nunca_o_ip():
     """Ordem dele de 2026-10-01: o modo de edição é
     `https://editar-mtg.baverone.com/` e **o IP da rede local não se usa**. O
     `ip`/`ips` saíram do dicionário de propósito: ele viajava daqui para o
-    payload da página e para o QR, e tirá-lo do ecrã e deixá-lo nos dados era
-    tirá-lo só da vista."""
+    payload da página, e tirá-lo do ecrã e deixá-lo nos dados era tirá-lo só da
+    vista.
+
+    O `ligacao_local` sobreviveu ao QR (que saiu nesse mesmo dia, mais tarde):
+    é dele que sai a linha do arranque na consola. O que deixou de existir é a
+    viagem até à página.
+    """
     import webapp                                            # noqa: PLC0415
     lig = webapp.ligacao_local()
     assert lig["url"].startswith("https://editar-mtg.baverone.com/?t="), lig
@@ -475,9 +480,6 @@ def caso_o_endereco_do_modo_de_edicao_e_o_nome_e_nunca_o_ip():
     assert "ip" not in lig and "ips" not in lig, lig
     assert not any("192.168." in str(v) for v in lig.values()), lig
     assert lig["porto"] == webapp.PORT
-    # O QR é o link, e cabe nas versões que o nosso desenhador faz.
-    from mtgvault import qr                                  # noqa: PLC0415
-    assert qr.svg(lig["url"]).startswith("<svg")
     print("o endereco do modo de edicao e o nome, nunca o IP da rede local")
 
 
