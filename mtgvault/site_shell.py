@@ -199,6 +199,11 @@ SECCOES: list[tuple[str, list[tuple[str, str, str, str, str]]]] = [
         ("deckboxes.html", "pormontar", "montar", "Decks para montar", ""),
         ("deckboxes.html", "plano", "plano", "Plano de montagem", ""),
         ("deckboxes.html", "arrumar", "arrumar", "Arrumar cartas", ""),
+        # 2026-10-01: o consenso por COMANDANTE (Duel Commander). Fica em «Decks»
+        # e não em «Metagame» porque a pergunta é *"o que é que este deck meu
+        # leva"* e não *"o que é que o formato está a jogar"*.
+        ("comandantes.html", "", "livro", "Consenso por comandante",
+         "Duel Commander"),
     ]),
     ("Coleção", [
         ("colecao_cor.html", "", "binders", "Binders por cor", ""),

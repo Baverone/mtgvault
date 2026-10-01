@@ -131,7 +131,9 @@ def caso_a_pagina_fundida_saiu_do_menu_mas_continua_publicada():
 # `caso_as_paginas_orfas_foram_mesmo_apagadas`.)
 GERADORES = ["inicio.py", "deckboxes.py", "metagame.py", "meta_coverage.py",
              "showcase.py", "colecao_cor.py", "caixarl.py", "reservedlist.py",
-             "collection_gallery.py"]
+             "collection_gallery.py",
+             # 2026-10-01: o CONSENSO POR COMANDANTE (Duel Commander).
+             "comandantes.py"]
 
 # Apagadas a 2026-09-15 (decisão do André): estavam fora do menu, não corriam no
 # daily e ninguém as importava desde a v6. Uma página órfã não dá erro — só

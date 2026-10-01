@@ -90,7 +90,10 @@ jobs:
           # E `index.html` (2026-09-24): o Início deixou de ser estático — é o
           # PAINEL com os números de hoje (`inicio.py`). Sem ele aqui, a porta de
           # entrada do site ficava com os números do dia em que foi escrita.
-          git add index.html colecao.html cobertura.html colecao_cor.html meusdecks.html metagame.html reservedlist.html caixarl.html showcase.html deckboxes.html deckboxes.js data/arquetipos.json data/paginas assets/deckboxes
+          # E `comandantes.html` (2026-10-01): o CONSENSO POR COMANDANTE (Duel
+          # Commander). Os dados vão em `data/paginas/comandantes/`, que a pasta
+          # já apanha.
+          git add index.html colecao.html cobertura.html colecao_cor.html meusdecks.html metagame.html reservedlist.html caixarl.html showcase.html deckboxes.html comandantes.html deckboxes.js data/arquetipos.json data/paginas assets/deckboxes
           # `data/vigia-cartas.json` (2026-09-26): o estado da VIGIA DE CARTAS —
           # que listas com carta vigiada já foram vistas. É o que impede o aviso
           # de se repetir todos os dias, e pela razão do `arquetipos.json` tem de
