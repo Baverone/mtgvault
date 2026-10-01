@@ -177,7 +177,7 @@ inicio.py           index.html — o INÍCIO (2026-09-24): o painel com os núme
 meta_coverage.py    cobertura.html — top-10 ponderado + staples + emergentes. NB (2026-09-07): quem decide que listas contam é `sources.lista_conta`/`counting_sql` (ver "Que listas contam"), e o peso vem de `sources.tier_weight_sql`; janela 30 dias; expõe COLLECTION_BALDES={"SPML","Premodern (geral)"}, owned_available(con) (=coleção MENOS cartas comprometidas com decks vigiados) e counting_lists(con,fmt,aid). NB (2026-09-07): `FORMATS` deixou de ser fixo — filtra `_FORMATS` por `colecao_config.json`→`formatos_metagame` (hoje standard/pioneer/modern; o Premodern saiu). Só a COBERTURA lê essa lista: o `metagame.py` deixou de a ler (ver abaixo)
 decks_faziveis.py   RETIRADO 2026-09-07 — fundido no `metagame.py`, que faz a mesma pergunta com as regras de material e o "onde está a carta". O módulo ficou como lápide (levanta RuntimeError), o `decksfaziveis.html` reencaminha para o metagame, saiu do `daily.py` e do `git add` do workflow. Podem ser apagados os dois
 buildability.py     APAGADO 2026-09-15 (decisão do André), com o `buildability.html`. Era o "Montar" (dormente desde a v6: fora do menu, fora do daily, sem um único import). O que respondia — que deck montar a seguir e o que lhe falta — passou para o **Metagame** (`metagame.py`, o top-N mais perto de fechar) e para a aba de cada caixa da Deckboxes. O `test_paginas.caso_as_paginas_orfas_foram_mesmo_apagadas` tranca que não voltam nem ficam referidas
-arrumacao.py        arrumacao.html — "Arrumação por fases" (2026-10-01): o sítio que diz SEMPRE onde ele está e o que vem a seguir. Casca + dados à parte; a **Fase 1 vai INTEIRA no índice** (é o ecrã da decisão: não pode esperar por um segundo pedido) e cada fase pesada é uma parte (`fase2`, `candidatos`, `fase4`, `inventario`). Botões só no 8771 (`/api/fase-decisao`, `/api/fase-reserva`); no site publicado é a mesma informação, só de leitura. Motor em `mtgvault/fases.py`
+arrumacao.py        arrumacao.html — "Arrumação por fases" (2026-10-01): o sítio que diz SEMPRE onde ele está e o que vem a seguir. Casca + dados à parte; a **Fase 1 vai INTEIRA no índice** (é o ecrã da decisão: não pode esperar por um segundo pedido) e cada fase pesada é uma parte (`fase2`, `candidatos`, `fase4`, `inventario`). Botões só no 8771 (`/api/fase-decisao`, `/api/fase-reserva` e — desde 2026-10-01 — o `/api/revalidacao` do ALVO das fotos, ver «A FILA DA FASE 2 E O BOTÃO DO ALVO»); no site publicado é a mesma informação, só de leitura. Motor em `mtgvault/fases.py`
 comandantes.py      comandantes.html — "Consenso por comandante" (2026-10-01): o consenso de Duel Commander por COMANDANTE, abrindo no Cloud. Casca + dados à parte (`data/paginas/comandantes.json` + uma parte por comandante, 40); cada carta diz a percentagem de listas, a moda de cópias, o papel (núcleo ≥90 % / flex 40–90 % / raro <40 %) e quantas ele TEM / FALTAM (`paginas.posse_total`). Motor em `mtgvault/consenso.py`
 classify.py         classificação Deck/Coleção/Vender (alimenta colecao_cor.html)
 colecao_cor.py      colecao_cor.html — "Binders": coleção INTEIRA por cor→CMC; cartas em uso a escuro + rótulo (classify rep["deck"]/used_by); + secção "Decks vigiados" (Blue Farm/Cloud cEDH/Cloud/Pauper): o deck por inteiro + cartas "extra" que saíram da lista (guardadas SEM PRAZO desde 2026-09-15 — `_watched_deck_pools`; era "até 6 meses da última utilização"). NB (2026-09-07): `_de_outro_balde` acrescenta as cartas que o LOADOUT dá a essa caixa mas que estão arrumadas noutro balde, marcadas "de &lt;balde&gt;" (era aqui que os Utrom Monitor do SPML desapareciam do Pauper)
@@ -1286,6 +1286,45 @@ alvos / 16 casos). As palavras dele:
   `reserva_assinatura` no config; e o `fases.formatos_que_joga` sai das caixas
   por omissão, o que é o que ele quer hoje, mas aceita `fases.formatos_jogados`
   no config se um dia quiser recortá-lo.
+
+**A FILA DA FASE 2 E O BOTÃO DO ALVO NO MESMO SÍTIO (André, 2026-10-01, no mesmo
+dia).** Ele perguntou **onde é que punha as fotos** — e a pergunta é a avaria. A
+fila das fotos dos decks montados estava na página das Fases e o botão que diz
+*"é esta caixa que estou a fotografar"* só na Deckboxes: o caminho existia desde
+2026-09-20 (ver «REVALIDAÇÃO POR FOTO») e não estava à vista de onde ele
+trabalha. Testes em `tests/test_fases_fotos.py` (7 casos; 6 deles chumbam com a
+funcionalidade neutralizada, medido). **O motor não mudou uma linha** — isto é
+página e leitura.
+- **O botão da Fase 2 é o MESMO endpoint da Deckboxes** (`POST /api/revalidacao`,
+  `act: "alvo"`, `tipo: "caixa"`), logo o mesmo `revalidacao.definir_alvo`, o
+  mesmo `escrever_config` e o mesmo `regenerar` que reescreve o
+  `pendentes/esperadas.md`. **Não se escreveu um segundo caminho ao lado**: dois
+  caminhos para o mesmo gesto discordam um dia em silêncio, que é a lição do
+  `e_foil`, do `vistoId` e do `venda.mostrar`.
+- **O ALVO ACTUAL vai em destaque nas duas fases de fotos**, com quantas cópias
+  faltam fotografar nele, e **sem alvo di-lo em voz alta** (*"Não há alvo de
+  revalidação"*). Sem isso ele fotografa uma caixa a pensar que está a
+  fotografar outra e a corrida da noite liga as fotos às cópias erradas — sem um
+  único erro. O número sai do **mesmo `revalidacao.progresso`** que a Deckboxes
+  mostra (`arrumacao.alvo_actual`), nunca de uma contagem própria; e **só se
+  calcula quando há alvo**, porque o progresso percorre a colecção inteira.
+- **A página diz ONDE largar as fotos, e onde NÃO** — na própria página e no
+  rodapé, não só no `LEIA-ME`: soltas na **raiz de `pendentes\`**; nunca em
+  `pendentes\deckboxes\` (é a foto da caixa de plástico, ponto 13) nem em
+  `Colocar fotos da coleção aqui\` (essa é para cartas **novas**, e estas cópias
+  já estão no inventário — o que a foto faz é **ligar-se à cópia que já
+  existe**).
+- **A TRAVA DE 12/10 NÃO APANHA AS FOTOS, e foi verificado em vez de assumido.**
+  `fases.exige_descongelado` vive em três sítios e só nesses — `venda.exportar`,
+  `webapp._exige_venda` (as duas portas de escrita da venda) e
+  `daily.venda_export`. Nem o `/api/revalidacao`, nem o `fila_decks`, nem a
+  página são gatilhados por ela (a página só a LÊ, para o 🔒 do cabeçalho).
+  Estava certo: **não havia nada a corrigir**. Tem caso de teste que o tranca com
+  a trava LIGADA, no mesmo pedido: a exportação é 409 e o alvo é 200.
+- **A FASE 4 É A MESMA MECÂNICA, com o alvo `venda`** — o caminho está feito e
+  **abre-se sozinho na data da trava**, sem ninguém mexer no código: até lá a
+  página mostra o que vai aparecer e porque é que ainda não aparece. Abrir o
+  botão antes de 12/10 era começar o passo que a trava existe para adiar.
 
 ### Duas bases de dados
 

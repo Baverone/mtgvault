@@ -25,7 +25,11 @@ AS QUATRO FASES, e a via paralela:
     Fase 1  FECHAR OS DECKS      decidir montado/guardado/dissolvido, e ver o
                                  que cada decisão liberta + a RESERVA proposta
     Fase 2  FOTOS DOS DECKS      antes de Ghent: confirmar que cada deck que
-                                 fica montado está fisicamente completo
+                                 fica montado está fisicamente completo. O
+                                 BOTÃO DO ALVO DA REVALIDAÇÃO está aqui
+                                 (2026-10-01): a fila estava nesta página e o
+                                 botão só na Deckboxes, e ele perguntou onde é
+                                 que punha as fotos — ver `alvo_actual`
     Fase 3  CANDIDATOS           sai sozinha da Fase 1, com as quatro
                                  protecções aplicadas e o motivo à vista
     Fase 4  FOTOS DOS CANDIDATOS depois de Ghent: fila POR CARTA, da mais cara
@@ -104,6 +108,16 @@ _CSS = """
  .fl .wh{color:var(--dim);font-size:11.5px}
  .fl .ok{color:var(--add);font-size:11.5px}
  .vazio{color:var(--muted);font-size:13px;padding:16px 0}
+ .alvo{border:1px solid var(--line);border-radius:var(--r);background:var(--card2);padding:13px 15px;margin:0 0 16px}
+ .alvo p{margin:0 0 8px;font-size:13px;line-height:1.6}
+ .alvo p:last-child{margin:0}
+ .alvo .on{color:var(--accent);font-weight:600}
+ .alvo .off{color:var(--warn);font-weight:600}
+ .alvo .onde{color:var(--muted);font-size:12.5px}
+ .alvo code{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:1px 5px;font-size:11.5px}
+ .alvo button{min-height:40px;padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--muted);font:inherit;font-size:13px;font-weight:600;cursor:pointer;margin:4px 6px 0 0}
+ .alvob{min-height:40px;padding:8px 14px;border-radius:10px;border:1px solid var(--accent-line);background:var(--accent-soft);color:var(--accent);font:inherit;font-size:13px;font-weight:700;cursor:pointer;margin:10px 0 0}
+ .alvob.ja{border-color:var(--line);background:var(--card);color:var(--muted);cursor:default}
  @media (max-width:640px){
    table.cd th:nth-child(3),table.cd td:nth-child(3){display:none}
    .deck{padding:12px}
@@ -141,9 +155,16 @@ _RODAPE = (
     "estado é reversível e não apaga nada.</p>"
     "<p><b>A fila de fotos conta cópias físicas, não nomes.</b> Se jogas quatro "
     "da mesma carta, são quatro fotos — e por isso a barra de progresso e os "
-    "totais são em cópias. As fotos entram pelo caminho de sempre: largas-as em "
-    "<code>pendentes/</code> (ou tiras-as do telemóvel na Deck boxes) e a corrida "
-    "da noite liga cada uma à sua cópia.</p>"
+    "totais são em cópias.</p>"
+    "<p><b>Onde largar as fotos.</b> Primeiro fixas o <b>alvo</b> no botão da "
+    "fila (é o mesmo botão «Fotografar» da Deckboxes, e escreve o "
+    "<code>esperadas.md</code> que diz à corrida da noite o que esperar); depois "
+    "as fotos vão <b>soltas na raiz de <code>pendentes\\</code></b>. Não vão para "
+    "<code>pendentes\\deckboxes\\</code> — essa é a foto da caixa de plástico — "
+    "nem para <code>Colocar fotos da coleção aqui\\</code>, que é para cartas "
+    "<b>novas</b>: estas cópias já estão no inventário, e o que a foto faz é "
+    "<b>ligar-se à cópia que já existe</b> em vez de criar outra. Também as podes "
+    "tirar do telemóvel, na Deckboxes, que as põe no sítio certo sozinha.</p>"
     "<p><b>O inventário é paralelo.</b> As fotos da Reserved List e das "
     "shock/fetchlands não são um passo da venda e nunca bloqueiam nenhuma fase.</p>")
 
@@ -271,6 +292,57 @@ function fase1() {
     + ds.map(deckHTML).join('');
 }
 
+/* ------------------------------------------------- O ALVO DA REVALIDAÇÃO */
+/* A fila das fotos está NESTA página e o botão que diz «é esta caixa que estou
+   a fotografar» vivia só na Deckboxes — ele perguntou onde é que punha as
+   fotos, que é o sinal de que o caminho não estava à vista de onde ele
+   trabalha. Fecha-se a volta aqui, com o MESMO endpoint (`/api/revalidacao`) e
+   o mesmo motor (`revalidacao.definir_alvo`): um segundo caminho ao lado
+   discordava do primeiro um dia qualquer, em silêncio. */
+const ONDE = 'Depois de fixar o alvo, as fotos vão <b>soltas na raiz de '
+  + '<code>pendentes\\</code></b>. Não vão para <code>pendentes\\deckboxes\\</code> '
+  + '(essa é a foto da caixa de plástico) nem para '
+  + '<code>Colocar fotos da coleção aqui\\</code> (essa é para cartas <b>novas</b>; '
+  + 'estas cópias já estão no inventário). A corrida da noite <b>liga cada foto à '
+  + 'cópia que já existe</b> em vez de criar outra.';
+
+function alvoHTML() {
+  const r = D.revalidacao || {};
+  if (!r.activa) {
+    return `<div class="alvo"><p>A campanha de revalidação por foto está `
+      + `desligada (<code>revalidacao.desde</code>), por isso não há alvo para `
+      + `fixar. As fotos destas cópias passam por lá.</p></div>`;
+  }
+  const a = r.alvo;
+  // O alvo ACTUAL em destaque, sempre: sem ele, fotografa-se uma caixa a pensar
+  // que se está a fotografar outra, e a corrida da noite liga as fotos às
+  // cópias erradas. O número por fotografar sai do MESMO `revalidacao.progresso`
+  // que a Deckboxes mostra.
+  const cab = a
+    ? `<p class="on">📷 Estás a fotografar <b>${escDados(a.nome)}</b> — `
+      + `<b>${cop(a.por_revalidar)}</b> por fotografar`
+      + (a.em ? ` · alvo fixado em ${escDados(a.em)}` : '') + `.</p>`
+    : `<p class="off">📷 <b>Não há alvo de revalidação.</b> Antes de fotografares, `
+      + `escolhe no botão de cada fila o deck que tens na mão.</p>`;
+  let bot = '';
+  if (D.editavel && a) {
+    bot = `<button type="button" data-alvo-parar="1">parar de fotografar</button>`;
+  }
+  return `<div class="alvo">${cab}<p class="onde">${ONDE}</p>${bot}</div>`;
+}
+function alvoBotao(tipo, slot, rotulo) {
+  if (!D.editavel) return '';
+  const a = (D.revalidacao || {}).alvo;
+  const ja = a && a.tipo === tipo && (a.slot || null) === (slot || null);
+  if (ja) {
+    return `<button type="button" class="alvob ja" disabled>📷 é este que estás `
+      + `a fotografar</button>`;
+  }
+  return `<button type="button" class="alvob" data-alvo-tipo="${escDados(tipo)}"`
+    + (slot ? ` data-alvo-slot="${escDados(slot)}"` : '')
+    + `>📷 ${escDados(rotulo)}</button>`;
+}
+
 /* ------------------------------------------------------- FASE 2 e FASE 4 */
 function barraHTML(b) {
   return `<div class="bar"><i style="width:${b.pct}%"></i></div>`
@@ -304,18 +376,34 @@ function fase2(p) {
     + `${p.barra.copias} cópias</span></h2>`
     + `<p class="sub">As cartas dos decks que ficam <b>montados</b>, para `
     + `confirmares que cada deck está fisicamente completo antes de 10/10. `
-    + `A fila conta <b>cópias</b>: um playset são quatro fotos.</p>`
+    + `A fila conta <b>cópias</b>: um playset são quatro fotos. `
+    + `<b>Fotografar um deck não espera por 12/10</b> — a trava dessa data é para `
+    + `a saída de venda, não para as fotos.</p>`
+    + alvoHTML()
     + barraHTML(p.barra)
     + p.filas.map(f => `<h2>${escDados(f.nome)} <span class="n">`
         + `${f.barra.copias} cópias · ${eur(f.barra.valor)}</span></h2>`
-        + barraHTML(f.barra) + lotesHTML(f.lotes, 1)).join('');
+        + barraHTML(f.barra)
+        + alvoBotao('caixa', f.slot, 'Fotografar este deck')
+        + lotesHTML(f.lotes, 1)).join('');
 }
 function fase4(p) {
+  // A Fase 4 usa a MESMA mecânica da Fase 2, com o alvo `venda` em vez de uma
+  // caixa — o caminho está feito e abre-se SOZINHO na data da trava. Antes dela
+  // não se mostra o botão: fotografar para vender antes de Ghent era começar o
+  // passo que a trava existe para adiar.
+  const pronto = !D.congelada
+    ? alvoHTML() + alvoBotao('venda', null, 'Fotografar a venda')
+    : `<div class="alvo"><p>A partir de <b>${escDados(D.congelado_ate)}</b> aparece `
+      + `aqui o <b>mesmo botão da Fase 2</b>, com o alvo <b>venda</b>: a mecânica `
+      + `das fotos é a mesma e o caminho já está feito. Até lá não se abre — antes `
+      + `de Ghent não sai nada para venda.</p><p class="onde">${ONDE}</p></div>`;
   return `<h2>Fase 4 · Fotos dos candidatos <span class="n">`
     + `${p.barra.copias} cópias em ${p.lotes.length} lotes</span></h2>`
     + `<p class="sub">Depois de Ghent. A fila é <b>por carta, da mais cara para `
     + `a mais barata</b> — foi o que pediste —, em lotes de ${p.lote} cópias, e `
     + `cada linha diz onde a cópia está guardada para a ires buscar.</p>`
+    + pronto
     + barraHTML(p.barra) + lotesHTML(p.lotes, 1);
 }
 function inventario(p) {
@@ -418,6 +506,18 @@ function ligar() {
              dados: {slot: b.dataset.dec, decisao: b.dataset.valor}}, b);
       return;
     }
+    if (b.dataset.alvoTipo) {
+      // O MESMO endpoint do botão «Fotografar esta caixa» da Deckboxes: fixa
+      // `revalidacao.alvo` no config e reescreve o `pendentes/esperadas.md`.
+      grava({url: '/api/revalidacao',
+             dados: {act: 'alvo', tipo: b.dataset.alvoTipo,
+                     slot: b.dataset.alvoSlot || null}}, b);
+      return;
+    }
+    if (b.dataset.alvoParar) {
+      grava({url: '/api/revalidacao', dados: {act: 'parar'}}, b);
+      return;
+    }
     if (b.dataset.resFora) {
       grava({url: '/api/fase-reserva',
              dados: {slot: b.dataset.resFora, act: 'remover',
@@ -478,6 +578,32 @@ def _magra(c: dict) -> dict:
     return dict(c, linhas=corta(c["linhas"]), protegidas=corta(c["protegidas"]))
 
 
+def alvo_actual(con, rep) -> dict:
+    """O ALVO da revalidação, para a Fase 2 dizer sempre onde ele está.
+
+    A revalidação de 2026-09-20 é o caminho destas fotos — a foto LIGA-SE à
+    cópia que já existe em vez de criar outra —, mas o botão que fixa o alvo
+    vivia só na Deckboxes. A fila está nesta página e ele perguntou onde é que
+    punha as fotos: o botão tem de estar onde ele trabalha.
+
+    O número por fotografar sai do **mesmo `revalidacao.progresso`** que a
+    Deckboxes mostra, e não de uma contagem própria — duas contagens da mesma
+    coisa discordam um dia em silêncio. Só se calcula **quando há alvo**: sem
+    alvo não há número para mostrar, e o progresso percorre a colecção inteira.
+
+    Nada aqui é travado pelo `venda.congelado_ate`: a trava é para a SAÍDA de
+    venda, e as fotos dos decks são de ANTES de Ghent.
+    """
+    from mtgvault import revalidacao
+    base = {"desde": revalidacao.desde(), "activa": revalidacao.activa(),
+            "alvo": None}
+    if revalidacao.alvo() is None:
+        return base
+    prog = revalidacao.progresso(con, rep)
+    return {"desde": prog["desde"], "activa": prog["activa"],
+            "alvo": prog["alvo"]}
+
+
 def dados(con, rep=None, editavel: bool = False) -> tuple[dict, dict]:
     """`(índice, partes)` — a forma que o `paginas.escrever_dados` leva ao disco.
 
@@ -499,6 +625,9 @@ def dados(con, rep=None, editavel: bool = False) -> tuple[dict, dict]:
         "terras": {k: {"n": v["n"], "nomes": v["nomes"], "regra": v["regra"]}
                    for k, v in r["terras"].items()},
         "decisoes": r["decisoes"],
+        # O alvo da revalidação (2026-10-01): a Fase 2 é a fila das fotos e o
+        # botão que fixa o alvo estava noutra página. Ver `alvo_actual`.
+        "revalidacao": alvo_actual(con, rep),
         "decks": r["decks"],
         "por_decidir": sum(1 for d in r["decks"] if not d["decisao_explicita"]),
         "totais": {
