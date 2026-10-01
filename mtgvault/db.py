@@ -27,6 +27,9 @@ CATALOG_SCHEMA = Path(__file__).with_name("catalog_schema.sql")
 
 ROOT = Path(os.environ.get("MTGVAULT_HOME", Path.home() / "mtgvault"))
 DEFAULT_DB = Path(os.environ.get("MTGVAULT_DB", ROOT / "vault.db"))
+# Quanto tempo uma ligação espera por quem está a escrever antes de dizer
+# «database is locked». Ver o comentário no `connect`.
+BUSY_TIMEOUT_MS = int(os.environ.get("MTGVAULT_BUSY_TIMEOUT_MS") or 15000)
 DEFAULT_CATALOG = Path(os.environ.get("MTGVAULT_CATALOG", ROOT / "catalog.db"))
 
 
@@ -54,9 +57,22 @@ def connect(path=None, catalog=None) -> sqlite3.Connection:
     path.parent.mkdir(parents=True, exist_ok=True)
     catalog.parent.mkdir(parents=True, exist_ok=True)
 
-    con = sqlite3.connect(path)
+    con = sqlite3.connect(path, timeout=BUSY_TIMEOUT_MS / 1000)
     con.row_factory = sqlite3.Row
     con.execute("PRAGMA foreign_keys = ON")
+    # ESPERAR POR QUEM ESTÁ A ESCREVER, EM VEZ DE DESISTIR (2026-10-01). O
+    # `vault.db` tem três escritores: o `webapp.py` (os botões dele), o `daily`
+    # das 03:30 e as ordens do runner. O `timeout` do `sqlite3.connect` são 5 s
+    # por omissão e só vale para a ligação `main`; o `PRAGMA busy_timeout`
+    # aplica-se à ligação INTEIRA, o `catalog` anexado incluído. Sem isto, uma
+    # ordem a escrever durante seis segundos dava *"database is locked"* a uma
+    # página — um erro a sério por uma coisa que só precisava de esperar.
+    #
+    # O tecto do pedido HTTP está ACIMA deste de propósito (`webapp.ESPERA_DADOS`):
+    # primeiro espera-se por quem escreve, e só se mesmo assim não der é que se
+    # responde. Um `busy_timeout` maior do que o tecto do pedido punha o pedido a
+    # desistir sempre antes de a base ter a oportunidade de responder.
+    con.execute(f"PRAGMA busy_timeout = {int(BUSY_TIMEOUT_MS)}")
     con.execute("ATTACH DATABASE ? AS catalog", (str(catalog),))
     return con
 

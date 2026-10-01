@@ -275,6 +275,116 @@ dia: `showcase.html` **1 266 KB** (4 319 `<img>`), `deckboxes.html` **694 KB**
   ponta (`test_paginas_leves.py` + `tests/abrir_pagina.js`, que serve a pasta
   por HTTP e corre o JS com `fetch` a sério) tranca.
 
+**O 502 NO TELEMÓVEL: NENHUM PEDIDO DO WEBAPP FICA PENDURADO (2026-10-01).** Ele
+abriu `https://editar-mtg.baverone.com/` no telemóvel; a casca da Deckboxes
+carregou e a secção do deck deu *«não consegui ir buscar
+deckboxes/caixa-premodern-stiflenought.json: o servidor respondeu 502»*. Do lado
+do PC o pedido não estava lento, estava **a correr**, e ninguém lhe punha um fim.
+Motor em `webapp.py` (`em_cache`/`_Calculo`/`DadosAindaNaoProntos`/`escrita`/
+`aquecer`), `mtgvault/scryfall.py` (`frente_de_dupla_face`) e `mtgvault/db.py`
+(`BUSY_TIMEOUT_MS`); testes em `tests/test_webapp_prazo.py` (11 casos, por HTTP)
+e a prova de que chumbam em `tests/_chumba_prazo.py` (9 alvos, **um processo por
+caso** — metade do que ali se desliga PENDURA, e num processo só o primeiro que
+pendurasse envenenava os seguintes em silêncio).
+
+- **A CAUSA, com a pilha de chamadas e não com um palpite** (`faulthandler` não
+  chegava no Windows, por isso a prova foi subir o MESMO `webapp.Handler` num
+  porto à parte e imprimir `sys._current_frames()` de 5 em 5 s): o fio parado
+  estava sempre em `scryfall.impressoes_foil`, chamado por `loadout.foil_info` ←
+  `lots()` ← `allocate` ← `report`. A consulta de recurso para a frente de uma
+  carta de dupla face era `name LIKE ? || ' // %'`, e o `EXPLAIN QUERY PLAN`
+  dava-a como **`SCAN cards`** — a optimização do LIKE do SQLite não se aplica a
+  um padrão que é uma EXPRESSÃO (`? || '…'`) nem a uma coluna de colação BINARY.
+  Corre uma vez por carta que nunca saiu em foil, que nos anos 90 são quase
+  todas. **E o que a tornou intolerável foi o `oracle_text`**, que entrou no
+  catálogo nesse mesmo dia (as quatro protecções da venda): o `catalog.db` passou
+  a 143 MB / 112 754 impressões, e cada varredura passou a ler muito mais página.
+  Medido na base dele: **276 ms por nome, 550 nomes, 57 s dos 74,5 s** do
+  `loadout.report`.
+- **A correcção é um INTERVALO DE PREFIXO** (`scryfall.frente_de_dupla_face` +
+  `limites_dupla_face`, num sítio só): `name >= 'X // ' AND name < 'X // ' ||
+  U+10FFFF` entra pelo `ix_cards_name` que já existia. Medido nos **550 nomes
+  reais** dele: **276 ms → 0,29 ms** cada (950×) e **0 diferenças** no resultado,
+  comparadas uma a uma. O `U+10FFFF` é seguro porque o SQLite compara TEXT byte a
+  byte em UTF-8 e não há ponto de código mais alto. O `conhecida` tinha o mesmo
+  padrão e levou a mesma correcção.
+- **O `foil_cache` passou a ser partilhado pelas DUAS passagens do `lots()`.** O
+  `resolve_slots` corre a sua (`_pcts_da_coleccao`, para os grupos com
+  `prioridade_por: "pct"`) **sem cache nenhuma** — o `foil_info` com `cache=None`
+  nunca guarda — e o `allocate` corria outra com cache própria: 1 683 consultas
+  ao catálogo onde 946 bastam. O `foil_cache` nasce agora ANTES do
+  `resolve_slots`.
+- **Resultado medido na base dele**: `loadout.report` **74,5 s → 1,97 s** (e
+  41,5 s → 2,5 s na comparação lado a lado das duas árvores), e **o motor não
+  mexeu um número** — fechar tudo 8 928,35 €, 240 a comprar, 15 caixas, venda
+  247c/4 539,39 €, protegidas 24c/2 949,39 €, `rl_sem_historico` 102c/24 393,12 €,
+  reservadas 1c/496,52 €, candidatos 1 029c/31 150,15 €, caixa a caixa iguais.
+- **O `-wal` VAZIO SAIU DO `_versao()`, e era isto que matava a cache.** O
+  `vault.db-wal` **aparece e desaparece** ao ritmo de quem abre e fecha a base — o
+  webapp, o `daily` das 03:30, as ordens do runner —, e a versão saltava entre
+  `(mtime, 0)` e `(None, None)` **sem uma única carta ter mudado**. A cache era
+  atirada fora quase a cada pedido e cada pedido voltava a pagar o relatório
+  inteiro. Um `-wal` de zero bytes não tem frames: vale o mesmo que não existir.
+  Com dados dentro, continua a contar. Tem caso próprio.
+- **O TECTO VIVE NO `do_GET`/`do_POST`, e não em cada rota** — a primeira rota
+  nova que se esquecesse dele voltava a pendurar um pedido. Acima de
+  `webapp.ESPERA_DADOS` (**25 s**, generoso de propósito: o custo honesto a frio
+  é 6–8 s) o servidor responde **503** com `Retry-After` e a frase em português
+  (*«estou a gerar os dados das Deckboxes … o cálculo continua e o próximo pedido
+  já o encontra feito»*). **503 e não 500**: isto não é uma avaria, é um «ainda
+  não». A página já sabia mostrar erros (`paginas.erroDados`); o que nunca lhe
+  chegava era um.
+- **O CÁLCULO NÃO MORRE COM O PEDIDO.** Corre num fio próprio (`_Calculo`), um só
+  por chave (`_EM_CURSO`); quem bate no tecto desiste, o cálculo continua, e o
+  pedido seguinte encontra-o feito. Matá-lo era garantir que ninguém chegava ao
+  fim. Um cálculo que acabe com a versão já mudada **não escreve** por cima de um
+  mais novo.
+- **O LOCK DA CACHE JÁ NÃO SE SEGURA DURANTE O CÁLCULO.** Segurava: um
+  `GET /metagame.html` ficava doze segundos atrás de um cálculo da Deckboxes que
+  não lhe diz nada. Agora o lock só guarda o dicionário. Tem caso próprio.
+- **O `with ESCRITA:` passou a `with escrita()`, com prazo** (`ESPERA_ESCRITA`,
+  60 s): um `acquire()` sem prazo pendurava um botão do telemóvel para sempre
+  atrás de uma regeneração em fundo encalhada. Ao esgotar, 503 a dizer que está a
+  gravar outra coisa. A regeneração em fundo leva prazo largo (não há pedido à
+  espera dela), mas leva.
+- **`PRAGMA busy_timeout = 15 000`** em toda a ligação (`db.connect`, e por isso
+  também no `catalog` anexado). O `timeout` do `sqlite3.connect` são 5 s por
+  omissão e só vale para o `main`: uma ordem do runner a escrever durante seis
+  segundos dava *«database is locked»* a uma página — foi o que ele apanhou às
+  15:30 desse dia. **Fica ABAIXO do tecto do pedido de propósito**: primeiro
+  espera-se por quem escreve, e só depois se responde. Tem caso que exige as duas
+  pontas.
+- **O AQUECEDOR é o que torna verdade o «sai em milissegundos»**
+  (`vigia_versao`/`aquecer`): um fio vigia o `_versao()` e recalcula sozinho, mas
+  só quando a versão está **estável há uma passagem** (começar um cálculo de 12 s
+  sobre uma base que está a ser escrita era pedir um resultado a meio) e nunca
+  mais do que um por `INTERVALO_AQUECER` (30 s). Arranca **com** o servidor e não
+  antes — aquecer primeiro deixava o porto doze segundos sem atender e a tarefa
+  `mtgvault-serve` relançava o processo.
+- **UM RELATÓRIO SÓ PARA AS DUAS VISTAS** (`webapp.relatorio`): a Deckboxes e a
+  Arrumação por fases pediam cada uma o seu. É a decisão de 2026-09-24 sobre o
+  Início e a Deckboxes — *"dois relatórios eram duas respostas à mesma
+  pergunta"*. **Abre a sua PRÓPRIA ligação** e não recebe a de quem chama: o
+  cálculo corre num fio próprio e dava *«SQLite objects created in a thread can
+  only be used in that same thread»*. O que atravessa o fio é o `dict`.
+  Consequência que vale a pena saber: o primeiro relatório do dia
+  **invalida-se a si próprio uma vez** (escreve `ultima = hoje` no
+  `arquetipos.json`, que está no `_versao()` — de propósito, porque o `daily`
+  também o escreve). É o aquecedor que paga isso, nunca um pedido dele.
+- **AS 22 SECÇÕES, medidas por HTTP antes e depois** (o mesmo `vault.db`): o
+  índice da Deckboxes **45 240 → 37 ms**, a Arrumação **37 249 → 11 ms**, o
+  `metagame.html` **39 717 → 25 ms**, e a pior das 27 partes **57 ms** (era 1–5 ms
+  só porque vinham atrás do índice que pagou tudo). **Não era «o
+  Stiflenought»**: pedida a frio como PRIMEIRO pedido do servidor, a secção do
+  Modern dava **46 911 ms** — era a primeira secção que fosse pedida, qualquer
+  que fosse. Com a correcção, o mesmo pedido a frio dá **7,5 s**, e com o
+  aquecedor **12 ms**.
+- **As outras páginas com dados à parte não tinham o defeito, e foi VERIFICADO e
+  não assumido**: o `showcase`, o `reservedlist`, o `cobertura` e o
+  `comandantes` só têm regex de rota para `deckboxes` e `arrumacao` — os deles
+  caem no servidor de ficheiros estáticos e respondem do disco. Medidos: **1 ms**
+  cada, antes e depois.
+
 **O JAVASCRIPT DA DECKBOXES ESTÁ À PARTE, E A PÁGINA FOI AFINADA PARA O TELEMÓVEL
 (2026-09-18).** O uso real é o André à frente da estante, com o telemóvel, no
 modo edição — e a casca tinha **150 KB, 123 deles JavaScript**, baixados outra

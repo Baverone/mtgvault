@@ -1327,9 +1327,16 @@ def pct_na_coleccao(pool: dict, s: dict, baldes: set[str],
     return round(100 * tem / precisa) if precisa else 0
 
 
-def _pcts_da_coleccao(con, slots: list[dict]) -> None:
-    """Escreve `pct_coleccao` nas caixas cujo grupo ordena por % completo."""
-    pool = lots(con, slots)
+def _pcts_da_coleccao(con, slots: list[dict],
+                      foil_cache: dict | None = None) -> None:
+    """Escreve `pct_coleccao` nas caixas cujo grupo ordena por % completo.
+
+    O `foil_cache` vem de FORA (2026-10-01): o `allocate` chama o `lots()` outra
+    vez a seguir, e sem o cache partilhado o catálogo era consultado DUAS vezes
+    por nome — esta passagem corria sem cache nenhum (`foil_info` com `cache` a
+    `None` nunca guarda). Eram 1 683 consultas onde 550 bastam.
+    """
+    pool = lots(con, slots, foil_cache)
     baldes = {s["balde"] for s in slots if s.get("balde")}
     caixas = caixas_de_deck(slots)
     ded = dedicadas(slots)
@@ -1398,7 +1405,8 @@ def regras_das_caixas(cfg_slots: list[dict] | None = None) -> dict[str, dict]:
     return out
 
 
-def resolve_slots(con, cfg_slots: list[dict] | None = None) -> list[dict]:
+def resolve_slots(con, cfg_slots: list[dict] | None = None,
+                  foil_cache: dict | None = None) -> list[dict]:
     """Os slots do loadout com a lista de cada um já resolvida.
 
     `variantes`: um slot pode juntar mais do que um deck (o André: *"1 deck de
@@ -1521,7 +1529,7 @@ def resolve_slots(con, cfg_slots: list[dict] | None = None) -> list[dict]:
     # for, por isso calcula-se aqui, antes do `sort`, e só quando alguém a pede —
     # é uma leitura da colecção inteira que nenhum outro grupo precisa de pagar.
     if any(s.get("prioridade_por") == "pct" for s in out):
-        _pcts_da_coleccao(con, out)
+        _pcts_da_coleccao(con, out, foil_cache)
     out.sort(key=lambda x: (not x["permanente"], x["grupo_ordem"],
                             _dentro_do_grupo(x)))
     posicao: dict[str, int] = defaultdict(int)
@@ -2479,11 +2487,16 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
     Cada slot traz `have`/`missing`/`subs` (substitutos: existe mas não serve) e
     o custo de fechar. Uma cópia física entra numa caixa e só numa.
     """
-    slots = resolve_slots(con, cfg_slots)
     # «SÓ FOIL» SÓ QUANDO EXISTE EM FOIL (2026-09-19): a resposta do catálogo
     # por carta, UMA vez por corrida — o `lots()` anota cada lote e as linhas em
     # falta perguntam pelo nome. Sem a cache eram duas consultas por cópia.
+    #
+    # Nasce ANTES do `resolve_slots` (2026-10-01) porque ele também corre um
+    # `lots()` (o `_pcts_da_coleccao`, para os grupos que ordenam por % completo)
+    # e corria-o sem cache nenhuma: o catálogo respondia duas vezes à mesma
+    # pergunta sobre os mesmos nomes.
     foil_cache: dict = {}
+    slots = resolve_slots(con, cfg_slots, foil_cache)
     pool = lots(con, slots, foil_cache)
     dids = _deck_ids(con, slots)
     baldes = {s["balde"] for s in slots if s.get("balde")}

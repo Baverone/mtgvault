@@ -296,6 +296,38 @@ def impressoes(con: sqlite3.Connection, name: str, *, ate: str | None = None,
 
 FOIL_FINISHES = ("foil", "etched")
 
+# O limite de cima de um prefixo, para a FRENTE de uma carta de dupla face
+# (2026-10-01). O SQLite compara TEXT byte a byte (UTF-8) e o U+10FFFF é o ponto
+# de código mais alto que existe, por isso nenhum nome válido pode passar daqui.
+_ALTO = "\U0010ffff"
+
+
+def frente_de_dupla_face(coluna: str = "name") -> str:
+    """`name >= ? AND name < ?` — a frente de uma carta de dupla face, PELO ÍNDICE.
+
+    Era `name LIKE ? || ' // %'`, e isso **varria o catálogo inteiro**: o
+    `EXPLAIN QUERY PLAN` dizia `SCAN cards`, porque a optimização do LIKE do
+    SQLite não se aplica a um padrão que é uma EXPRESSÃO (`? || '…'`) nem a uma
+    coluna de colação BINARY. Um intervalo de prefixo usa o `ix_cards_name` que
+    já existe (`SEARCH cards USING INDEX ix_cards_name (name>? AND name<?)`).
+
+    **Porque é que isto era a avaria de 2026-10-01**: o `impressoes_foil` corre
+    esta consulta uma vez por carta que nunca saiu em foil — nos anos 90 são
+    quase todas —, e o `oracle_text` que entrou no catálogo nesse mesmo dia pôs
+    o `catalog.db` em 143 MB: cada varredura passou a ler muito mais página.
+    Medido na base dele, nos 550 nomes reais que caem aqui: **276 ms cada** com
+    o LIKE contra **0,29 ms** com o intervalo, e o `loadout.report` inteiro de
+    74,5 s para 18,7 s. O resultado é o MESMO nos 550 (comparado um a um).
+
+    Dá os parâmetros com o `limites_dupla_face(nome)`, na mesma ordem.
+    """
+    return f"{coluna} >= ? AND {coluna} < ?"
+
+
+def limites_dupla_face(name: str) -> tuple[str, str]:
+    """Os dois parâmetros do `frente_de_dupla_face`, por esta ordem."""
+    return (f"{name} // ", f"{name} // {_ALTO}")
+
 
 def impressoes_foil(con: sqlite3.Connection, name: str) -> list[sqlite3.Row]:
     """As impressões desta carta que EXISTEM em foil (ou etched), por data.
@@ -327,8 +359,8 @@ def impressoes_foil(con: sqlite3.Connection, name: str) -> list[sqlite3.Row]:
          + " ORDER BY (lang != 'en'), released_at, set_code")
     rows = con.execute(q, [name, *mais]).fetchall()
     if not rows:
-        rows = con.execute(q.replace("name = ?", "name LIKE ? || ' // %'", 1),
-                           [name, *mais]).fetchall()
+        rows = con.execute(q.replace("name = ?", frente_de_dupla_face(), 1),
+                           [*limites_dupla_face(name), *mais]).fetchall()
     return rows
 
 
@@ -339,8 +371,9 @@ def conhecida(con: sqlite3.Connection, name: str) -> bool:
     anos 90 são todas."""
     if con.execute("SELECT 1 FROM cards WHERE name = ? LIMIT 1", (name,)).fetchone():
         return True
-    return con.execute("SELECT 1 FROM cards WHERE name LIKE ? || ' // %' LIMIT 1",
-                       (name,)).fetchone() is not None
+    return con.execute(
+        f"SELECT 1 FROM cards WHERE {frente_de_dupla_face()} LIMIT 1",
+        limites_dupla_face(name)).fetchone() is not None
 
 
 def _adivinhar(con: sqlite3.Connection, name: str,
