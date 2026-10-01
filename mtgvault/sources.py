@@ -128,6 +128,10 @@ def store_event(con: sqlite3.Connection, blob: dict, url: str) -> int:
         key = str(deck.get("loginid") or deck.get("player") or "") + "|" + url
         main = _cards(deck, "main")
         side = _cards(deck, "side")
+        # O COMANDANTE (2026-10-01): lê-se do sideboard ANTES de ele ser fundido
+        # no main, que é onde a informação se perdia. Ver `mtgvault/consenso.py`.
+        comandante = (_consenso().nome_do_comandante(con, [n for n, _q in side])
+                      if fmt in COMMANDER_FORMATS else None)
         if fmt in COMMANDER_FORMATS:
             # Nos formatos de comandante, o MTGO serve o comandante no
             # sideboard_deck (o mtgtop8 faz o mesmo no .dec). Reencaminha-se
@@ -142,7 +146,7 @@ def store_event(con: sqlite3.Connection, blob: dict, url: str) -> int:
                           cards=cartas, event_name=event, event_date=day,
                           player=deck.get("player") or "",
                           placement=str(deck.get("rank") or ""), url=url,
-                          event_players=jogadores):
+                          event_players=jogadores, commander=comandante):
             new += 1
     con.commit()
     return new
@@ -383,6 +387,14 @@ def _vigia():
     return vigia
 
 
+def _consenso():
+    """O módulo do CONSENSO POR COMANDANTE, importado TARDE — ele lê o config por
+    aqui (`sources.config()`), e um `import` no topo fechava um ciclo. É o mesmo
+    padrão do `_vigia()`."""
+    from mtgvault import consenso                            # noqa: PLC0415
+    return consenso
+
+
 def metagame_rules(fmt: str | None) -> dict:
     """A regra em vigor para um formato: {tiers, min_jogadores_presencial, ligas}."""
     fmt = (fmt or "").lower()
@@ -522,8 +534,15 @@ def store_decklist(con: sqlite3.Connection, *, source: str, source_key: str,
                    fmt: str, cards: list[tuple[str, str, int]],
                    event_name: str = "", event_date: str = "",
                    player: str = "", placement: str = "",
-                   url: str = "", event_players: int | None = None) -> int | None:
+                   url: str = "", event_players: int | None = None,
+                   commander: str | None = None) -> int | None:
     """Grava uma decklist, a não ser que já lá esteja por outra via.
+
+    `commander` é o comandante nos formatos de comandante (2026-10-01). Quem o
+    passa já o leu da FONTE — o `SB:` do .dec do mtgtop8, o `sideboard_deck` do
+    mtgo.com —, antes de essas cartas serem fundidas no mainboard; é por isso que
+    fica com `commander_fonte = 'sideboard'` e nunca é reescrito por um palpite.
+    Ver `mtgvault/consenso.py`.
 
     Duas listas são a mesma se tiverem o mesmo conteúdo, o mesmo formato, o
     mesmo dia e o mesmo jogador. Quando isso acontece, fica a da fonte com
@@ -581,10 +600,12 @@ def store_decklist(con: sqlite3.Connection, *, source: str, source_key: str,
     cur = con.execute(
         """INSERT OR IGNORE INTO decklists
            (source, source_key, format, event_name, event_date, player,
-            placement, url, content_hash, event_players, event_tier)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+            placement, url, content_hash, event_players, event_tier,
+            commander, commander_fonte)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (source, source_key, fmt, event_name, event_date, player, placement,
-         url, h, event_players, tier),
+         url, h, event_players, tier,
+         commander or None, "sideboard" if commander else None),
     )
     if not cur.rowcount:
         return None

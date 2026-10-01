@@ -133,6 +133,14 @@ mtgvault/
                   (um 5-0 de league é o sinal), guarda o que já viu em
                   `data/vigia-cartas.json` e diz o que falta para montar. Ver
                   «A VIGIA DE CARTAS»
+  consenso.py     O CONSENSO POR COMANDANTE (2026-10-01): em Duel Commander a
+                  identidade de um deck é o COMANDANTE e nunca a etiqueta do
+                  clustering (870 etiquetas, 808 sem listas). O comandante de
+                  cada lista fica GRAVADO em `decklists.commander`, lido do
+                  SIDEBOARD da fonte (`commander_fonte='sideboard'`) ou derivado
+                  pela ordem de inserção (`'ordem'`); daqui saem os
+                  `comandantes()` e o `consenso()` por carta (percentagem,
+                  moda de cópias, papel). Ver «O CONSENSO É POR COMANDANTE»
   aviso.py        o TOAST do Windows (BurntToast se existir, senão o balão do
                   NotifyIcon), por `-EncodedCommand`; nunca levanta e diz sempre
                   o que aconteceu
@@ -158,6 +166,7 @@ inicio.py           index.html — o INÍCIO (2026-09-24): o painel com os núme
 meta_coverage.py    cobertura.html — top-10 ponderado + staples + emergentes. NB (2026-09-07): quem decide que listas contam é `sources.lista_conta`/`counting_sql` (ver "Que listas contam"), e o peso vem de `sources.tier_weight_sql`; janela 30 dias; expõe COLLECTION_BALDES={"SPML","Premodern (geral)"}, owned_available(con) (=coleção MENOS cartas comprometidas com decks vigiados) e counting_lists(con,fmt,aid). NB (2026-09-07): `FORMATS` deixou de ser fixo — filtra `_FORMATS` por `colecao_config.json`→`formatos_metagame` (hoje standard/pioneer/modern; o Premodern saiu). Só a COBERTURA lê essa lista: o `metagame.py` deixou de a ler (ver abaixo)
 decks_faziveis.py   RETIRADO 2026-09-07 — fundido no `metagame.py`, que faz a mesma pergunta com as regras de material e o "onde está a carta". O módulo ficou como lápide (levanta RuntimeError), o `decksfaziveis.html` reencaminha para o metagame, saiu do `daily.py` e do `git add` do workflow. Podem ser apagados os dois
 buildability.py     APAGADO 2026-09-15 (decisão do André), com o `buildability.html`. Era o "Montar" (dormente desde a v6: fora do menu, fora do daily, sem um único import). O que respondia — que deck montar a seguir e o que lhe falta — passou para o **Metagame** (`metagame.py`, o top-N mais perto de fechar) e para a aba de cada caixa da Deckboxes. O `test_paginas.caso_as_paginas_orfas_foram_mesmo_apagadas` tranca que não voltam nem ficam referidas
+comandantes.py      comandantes.html — "Consenso por comandante" (2026-10-01): o consenso de Duel Commander por COMANDANTE, abrindo no Cloud. Casca + dados à parte (`data/paginas/comandantes.json` + uma parte por comandante, 40); cada carta diz a percentagem de listas, a moda de cópias, o papel (núcleo ≥90 % / flex 40–90 % / raro <40 %) e quantas ele TEM / FALTAM (`paginas.posse_total`). Motor em `mtgvault/consenso.py`
 classify.py         classificação Deck/Coleção/Vender (alimenta colecao_cor.html)
 colecao_cor.py      colecao_cor.html — "Binders": coleção INTEIRA por cor→CMC; cartas em uso a escuro + rótulo (classify rep["deck"]/used_by); + secção "Decks vigiados" (Blue Farm/Cloud cEDH/Cloud/Pauper): o deck por inteiro + cartas "extra" que saíram da lista (guardadas SEM PRAZO desde 2026-09-15 — `_watched_deck_pools`; era "até 6 meses da última utilização"). NB (2026-09-07): `_de_outro_balde` acrescenta as cartas que o LOADOUT dá a essa caixa mas que estão arrumadas noutro balde, marcadas "de &lt;balde&gt;" (era aqui que os Utrom Monitor do SPML desapareciam do Pauper)
 collection_gallery.py  colecao.html — galeria por sub-coleção
@@ -965,6 +974,116 @@ do `daily`; bloco no topo do `metagame.html`; testes em `test_vigia_cartas.py`
   ordem dele pedia só as duas), e a vigia não sabe que as três cartas são **um
   combo** — avisa por carta. Se quiser *"avisa-me só quando aparecerem as três na
   mesma lista"*, é uma chave nova (`combo: [...]`) no mesmo sítio.
+
+**O CONSENSO É POR COMANDANTE, NUNCA PELA ETIQUETA DO CLUSTERING (André,
+2026-10-01).** *"Quero consenso de Duel Commander do deck dele (comandante CLOUD)
+sempre actualizado, da mesma forma que já tem para os arquétipos de Modern"* — e
+*"tem de passar a correr no mtgvault-daily das 03:30, não é um relatório de uma
+vez"*. Motor em `mtgvault/consenso.py`, página `comandantes.py` →
+`comandantes.html`, passo `consenso-comandante` do `daily`, config em
+`colecao_config.json → consenso_comandante`; testes em
+`tests/test_consenso_comandante.py` (12 casos, com ponta a ponta por HTTP).
+
+- **A IDENTIDADE DE UM DECK DE COMANDANTE É O COMANDANTE**, e a etiqueta do
+  clustering não serve aqui: medido na base de 01/10, a tabela `archetypes` tinha
+  **870** etiquetas de `duel-commander` e **808 delas sem uma única lista**; as
+  que tinham chamavam-se *"Aragorn, King of Gondor / Sulfur Falls / Stormcarved
+  Coast"* — três cartas distintivas que mudam de corrida para corrida. É o mesmo
+  defeito que o `mtgvault/arquetipos.py` fechou para o Premodern (ver «A IDENTIDADE
+  DE UM ARQUÉTIPO É O NÚCLEO»), mas numa pergunta em que a resposta certa está
+  escrita na própria carta. Tem teste: a MESMA etiqueta com comandantes diferentes
+  dá dois decks, etiquetas diferentes com o mesmo comandante dão um.
+- **A BASE NÃO GUARDAVA O COMANDANTE, e isso não era descuido.** O
+  `decklist_cards.board` tem `CHECK (board IN ('main','side'))` e nas 652 listas de
+  `duel-commander` **só havia `main`** — as duas fontes servem o comandante no
+  SIDEBOARD (o `SB:` do `.dec` do mtgtop8, o `sideboard_deck` do mtgo.com) e o
+  `store_event`/`harvest` reencaminham-no para o mainboard, porque é lá que conta
+  para as 100 cartas e porque é isso que faz o `content_hash` das duas fontes
+  coincidir (sem isso a deduplicação entre elas não funciona). A informação de
+  *qual* das 100 era o comandante era deitada fora no momento da recolha.
+- **E NÃO SE PODE ADIVINHAR pelas cartas.** As listas de DC trazem em média **6
+  lendárias de quantidade 1** (até 30 numa só), e o crivo pela identidade de cor
+  (o comandante tem de conter a CI de todo o deck) deixava **0 ou mais do que um**
+  candidato em **409 das 652** listas — porque **609** delas têm cartas que o
+  catálogo ainda não conhece (o formato joga sets do mês).
+- **A REGRA, em duas metades, e as duas são honestas:**
+  1. **Daqui para a frente a FONTE diz qual é** (`commander_fonte = 'sideboard'`).
+     O `mtgtop8.comandantes_do_dec` e o `sources.store_event` lêem o sideboard
+     ANTES de o fundirem no main e passam o nome ao `store_decklist`. Não é um
+     palpite: é o dado que estava a ser perdido.
+  2. **Para as listas que já cá estavam, deriva-se pela ORDEM DE INSERÇÃO**
+     (`'ordem'`): o comandante vem no FIM do `.dec` e o `store_event` faz
+     `main += side`, por isso a ÚLTIMA linha de `decklist_cards` de uma lista de
+     comandante é o comandante — e a `decklist_cards` é uma tabela com `rowid`, por
+     isso essa ordem sobreviveu. **Medido** nas 652 listas: a última linha é uma
+     lendária criatura/planeswalker de quantidade 1 em **554**, está fora do
+     catálogo (sets recentes: *Brigid, Clachan's Heart*, *Terra, Magical Adept*,
+     *Aang, Swift Savior* — todos comandantes) em **97**, e há **1** caso real a
+     mais (um `Legendary Enchantment — Background`, que é mesmo uma segunda carta
+     de comandante). **Controlo:** a PRIMEIRA linha só é lendária de quantidade 1
+     em **29** das 652 — o sinal é posicional, não um acidente de haver muitas
+     lendárias.
+- **GRAVA-SE, NÃO SE RECALCULA** (ordem dele, à letra). `decklists.commander` +
+  `decklists.commander_fonte`, nos **três sítios** (`schema.sql`, `db._migrate()` e
+  quem as escreve). O `derivar` é **idempotente** e só toca nas linhas a NULL: um
+  palpite nunca pisa o que a fonte disse. **O ÍNDICE do `commander` NÃO vive no
+  `schema.sql`** — esse ficheiro corre inteiro antes do `_migrate`, e numa base já
+  criada a coluna ainda não existe nesse momento: o `CREATE INDEX` rebentava o
+  `db.init` com *"no such column: commander"* em todas as páginas e no `daily`.
+  Aconteceu nesta mesma ordem, e é a armadilha de 2026-09-09 (o
+  `ix_copies_validado`) outra vez. Tem teste.
+- **QUE LISTAS CONTAM — medido, não adivinhado, e é a parte que podia ter dado em
+  nada.** A regra do Modern (sem ligas, presencial com 64+ jogadores) **deixa o
+  formato sem amostra**. Sobre as 652 listas de 01/10 (`_scratch/medir_filtro.py`):
+
+  | listas | do Cloud | comandantes com ≥10 listas | hipótese |
+  |---|---|---|---|
+  | **652** | **41** | 19 | ligas + presencial sem mínimo ← **escolhida** |
+  | 518 | 37 | 14 | sem ligas, presencial sem mínimo |
+  | 425 | 26 | 11 | com ligas, presencial 16+ |
+  | 291 | 22 | 8 | sem ligas, presencial 16+ |
+  | 182 | 4 | 2 | com ligas, presencial 64+ |
+  | **48** | **0** | 0 | **sem ligas, presencial 64+ (a regra do Modern)** |
+
+  Escolheu-se a primeira — que é, por acaso, exactamente a regra que ele já tinha
+  dado para o Duel Commander a 2026-09-07 (*"menos Duel Commander, que pode ter
+  menos jogadores e pode ser ligas"*). **Por isso o filtro desta página é o
+  `sources.lista_conta`/`counting_sql` de sempre e NÃO um segundo filtro ao lado**:
+  a lição do `event_tier` é que o segundo filtro discorda do primeiro em silêncio.
+  Ajusta-se em `metagame_fontes → duel-commander`, e há teste que prova as três
+  pontas (com ligas 7, sem ligas 3, com mínimo de 64 → 0).
+- **O que é DESTA página está em `consenso_comandante`**: `formato`,
+  `comandante` (o que abre — hoje o Cloud), `min_listas` (8), `nucleo_pct` (90),
+  `flex_pct` (40) e `max_comandantes` (40). Os papéis são por **percentagem** e
+  não por número de cópias: o formato é **singleton**, a moda de cópias é 1 em
+  praticamente tudo, e o que separa uma carta obrigatória de uma opção é em
+  quantas listas ela aparece. (São mais apertados do que os do
+  `commander_decks.tiers` — 50/25/15 — de propósito: aquele CONSTRÓI uma lista de
+  100 cartas a partir do consenso, este diz de cada carta quão obrigatória é. São
+  duas perguntas.)
+- **O comandante que abre é SEMPRE o do config, mesmo sem listas.** Abrir no mais
+  jogado quando o dele não tem listas era responder a outra pergunta sem avisar;
+  a página diz *"ainda não há nenhuma lista deste"*, que é uma resposta. Tem caso
+  próprio (e com um nome que nem está no catálogo também não rebenta).
+- **A PÁGINA segue a decisão de 2026-09-15**: casca de **34 KB** + índice de
+  **30 KB** + **uma parte por comandante** (40 ficheiros, 904 KB no total, ~22 KB
+  cada, ida buscar ao toque); o que ABRE vem também no índice, para o primeiro
+  ecrã não precisar de um segundo pedido; um `fetch` que falhe diz-lho em
+  português (`paginas.erroDados`). As imagens são da impressão que ele TEM
+  (`paginas.img_map`), com `loading="lazy"`, `decoding="async"` e o tamanho
+  escrito. A pasta `data/paginas` subiu de 3,5 para **4,4 MB** — a escala do
+  `showcase/` (1,5 MB).
+- **MEDIDO na base de 2026-10-01:** 652 listas de `duel-commander` (01/09 a
+  29/09), **652 comandantes derivados** (`sideboard` 0 — as listas novas é que
+  virão por aí), **113 comandantes** com listas que contam, **533** listas nos 40
+  que a página mostra. O **Cloud, Midgar Mercenary** tem **41 listas**: núcleo
+  **36**, flex **39**, raro **105** (180 cartas), e ele tem **2 cópias** do
+  comandante. As 12 cartas a 100 %: Benevolent Bodyguard, Mother of Runes, Ocelot
+  Pride, On Thin Ice, Phelia, Skrelv, Skullclamp, Snow-Covered Plains, Solitude,
+  Stoneforge Mystic, Swords to Plowshares, Umezawa's Jitte — **tem todas**. A
+  seguir vêm Phelia (37), Brigid (35), Slimefoot and Squee (32), Aragorn (30).
+- **Nada da alocação, da venda ou dos preços foi tocado**: este módulo não lê a
+  `copy_allocation` nem o `loadout`. A bateria inteira (63 ficheiros) ficou verde.
 
 ### Duas bases de dados
 
@@ -3659,7 +3778,10 @@ caixa escolhida em Modern, e os alvos de consenso em Premodern. O quanto é
   `decklist_cards` directamente, nunca precisou dos `archetypes`. Confirmado
   antes/depois: Cloud = 167 listas, núcleo 44 · flex 43 · tech 30 na altura em
   que ficou escrito acima; na base de 2026-09-07, 167 listas, núcleo 40 · flex
-  40 · tech 39, **igual antes e depois da mudança**.
+  40 · tech 39, **igual antes e depois da mudança**. **Desde 2026-10-01** há uma
+  PÁGINA para este formato — o `comandantes.html`, o consenso por COMANDANTE — e
+  ela também não lê os `archetypes`: lê o `decklists.commander`, que é a razão de
+  ser dela (ver «O CONSENSO É POR COMANDANTE»).
 - **Premodern — `formatos_metagame` + `premodern_arquetipos_alvo`.** Continua a
   recolher-se e a analisar-se (as listas são precisas para o consenso), mas saiu
   das páginas de metagame/cobertura/decks-fazíveis: `meta_coverage.FORMATS`

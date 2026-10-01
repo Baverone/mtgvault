@@ -176,10 +176,26 @@ CREATE TABLE IF NOT EXISTS decklists (
     -- Challenges/Showcases (meta_coverage) e que o consenso exclui as Leagues
     -- (buildable). Preenchida em sources.store_decklist / backfill_event_tiers.
     event_tier   TEXT,
+    -- O COMANDANTE da lista, nos formatos de comandante (2026-10-01). Em Duel
+    -- Commander a identidade de um deck é o COMANDANTE e nunca a etiqueta do
+    -- clustering: na base de 01/10 havia 870 etiquetas de duel-commander, 808
+    -- delas sem uma única lista. Guarda-se em vez de se recalcular a cada
+    -- corrida, e o `commander_fonte` diz COMO foi obtido — `sideboard` (a fonte
+    -- serve o comandante no sideboard: é o `SB:` do .dec do mtgtop8 e o
+    -- `sideboard_deck` do mtgo.com) ou `ordem` (derivado pela ordem de inserção
+    -- das cartas, para as listas que já estavam na base — ver mtgvault/consenso.py).
+    commander       TEXT,
+    commander_fonte TEXT,
     fetched_at   TEXT DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (source, source_key)
 );
 CREATE INDEX IF NOT EXISTS ix_dl_fmt_date ON decklists(format, event_date);
+-- O índice do `commander` NÃO vive aqui, e a tentativa custou uma corrida: este
+-- ficheiro corre INTEIRO antes do `db._migrate()`, e numa base já criada a
+-- coluna ainda não existe neste momento — o `CREATE INDEX` rebentava o `db.init`
+-- com *"no such column: commander"*, em todas as páginas e no `daily`. O
+-- `CREATE TABLE IF NOT EXISTS` é indiferente à ordem; um índice não é. É a mesma
+-- armadilha de 2026-09-09 (o `ix_copies_validado`), e está no `_migrate`.
 
 CREATE TABLE IF NOT EXISTS decklist_cards (
     decklist_id INTEGER NOT NULL REFERENCES decklists(id) ON DELETE CASCADE,

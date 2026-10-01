@@ -135,6 +135,20 @@ def _migrate(con: sqlite3.Connection) -> None:
     if "event_tier" not in cols:
         con.execute("ALTER TABLE decklists ADD COLUMN event_tier TEXT")
         con.commit()
+    # O COMANDANTE da lista (2026-10-01). Em Duel Commander a identidade do deck
+    # é o comandante, e a etiqueta do clustering não serve para nada aqui (870
+    # etiquetas, 808 sem listas). As duas colunas andam juntas: o nome e a FONTE
+    # do nome (`sideboard` = veio do sideboard da fonte; `ordem` = derivado).
+    # O índice nasce AQUI, depois do ALTER, e nunca no `schema.sql`: esse corre
+    # inteiro antes disto e numa base já criada a coluna ainda não existe — é a
+    # armadilha de 2026-09-09, que rebentava o `db.init` em todas as páginas.
+    if "commander" not in cols:
+        con.execute("ALTER TABLE decklists ADD COLUMN commander TEXT")
+        con.execute("ALTER TABLE decklists ADD COLUMN commander_fonte TEXT")
+        con.commit()
+    con.execute("CREATE INDEX IF NOT EXISTS ix_dl_commander "
+                "ON decklists(format, commander)")
+    con.commit()
 
     # Tabelas que existiam SÓ na vault.db do André (criadas à mão, nunca no
     # schema.sql). Numa base nova o colecao_cor rebentava com "no such table:

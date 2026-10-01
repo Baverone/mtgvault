@@ -26,9 +26,11 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 # um UA autorizado, define MOXFIELD_USER_AGENT no ambiente e este default cede.
 os.environ.setdefault("MOXFIELD_USER_AGENT", "mtgvault/0.1 (coleccao pessoal)")
 
-from mtgvault import (analysis, db, loadout, mtgtop8, precos,  # noqa: E402
-                      prices, scryfall, sources, tagging, venda, watchlist)
+from mtgvault import (analysis, consenso, db, loadout, mtgtop8,  # noqa: E402
+                      precos, prices, scryfall, sources, tagging, venda,
+                      watchlist)
 
+import comandantes  # noqa: E402  (gera comandantes.html — consenso por COMANDANTE, Duel Commander)
 import core_decks  # noqa: E402  (gera coredecks.html + tracking de alteracoes)
 import collection_gallery  # noqa: E402  (gera colecao.html — galeria com imagens)
 import colecao_cor  # noqa: E402  (gera colecao_cor.html — coleção por cor + custo de mana)
@@ -372,6 +374,21 @@ def main():
         # cada arquétipo (o clustering não os separa — a Enchantress joga 96% de
         # Replenish e vinham colados).
         _step(con, "decks-premodern", lambda: premodern_decks.refresh(con))
+
+        # CONSENSO POR COMANDANTE (2026-10-01). Dois gestos num passo, por esta
+        # ordem: derivar o `decklists.commander` das listas que ainda o não têm
+        # (as listas novas já vêm marcadas pela FONTE, no `harvest`) e escrever a
+        # página. Corre DEPOIS do harvest e ANTES do `prune` — e o facto de o
+        # comandante ficar GRAVADO é o que garante que a página não depende de
+        # um palpite feito outra vez em cada corrida.
+        def _consenso_comandante():
+            d = consenso.derivar(con)
+            out = comandantes.build(con, ROOT / "comandantes.html")
+            n = len(consenso.comandantes(con))
+            return (f"{d['derivadas']} comandantes derivados, {n} comandantes "
+                    f"com listas que contam -> {out}")
+
+        _step(con, "consenso-comandante", _consenso_comandante)
 
         # Core decks: recalcula o consenso dos decks que sigo e regista se o
         # padrão mudou (core_snapshots). Corre DEPOIS de preços + tags.

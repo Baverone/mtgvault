@@ -30,7 +30,7 @@ from datetime import date
 
 import requests
 
-from . import sources
+from . import consenso, sources
 
 BASE = "https://mtgtop8.com"
 UA = {"User-Agent": "mtgvault/0.1 (colecção pessoal)"}
@@ -192,8 +192,32 @@ def _bracket(pos: int) -> str:
     return str(pos)
 
 
-def fetch_deck(deck_id: int, commander_format: bool) -> list[tuple[str, str, int]]:
-    return parse_dec(_get("/dec", d=deck_id), commander_format)
+def comandantes_do_dec(text: str) -> list[str]:
+    """Os nomes que vinham em `SB:` — nos formatos de comandante, o COMANDANTE.
+
+    O `parse_dec` manda-os para o mainboard (é lá que contam para as 100 cartas e
+    é isso que faz o `content_hash` coincidir com o do mtgo.com), e com isso a
+    informação de QUAL das 100 é o comandante era deitada fora. Lê-se aqui, do
+    mesmo texto, para `decklists.commander` a poder guardar — ver
+    `mtgvault/consenso.py`.
+    """
+    out = []
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("//"):
+            continue
+        m = DEC_LINE.match(line)
+        if m and m.group(1):
+            out.append(DEC_SET_PREFIX.sub("", m.group(3)).strip())
+    return out
+
+
+def fetch_deck(deck_id: int,
+               commander_format: bool) -> tuple[list[tuple[str, str, int]], list[str]]:
+    """`(cartas, nomes do SB)`. O segundo só interessa num formato de comandante
+    — é de lá que sai o `decklists.commander` (2026-10-01)."""
+    texto = _get("/dec", d=deck_id)
+    return parse_dec(texto, commander_format), comandantes_do_dec(texto)
 
 
 def harvest(con: sqlite3.Connection, fmt: str, max_events: int = 8,
@@ -229,9 +253,12 @@ def harvest(con: sqlite3.Connection, fmt: str, max_events: int = 8,
                            "AND source_key = ?", (str(did),)).fetchone():
                 continue
             try:
-                cartas = fetch_deck(did, is_cmd)
+                cartas, do_sb = fetch_deck(did, is_cmd)
             except requests.RequestException:
                 continue
+            # O comandante, nos formatos de comandante: o `SB:` do .dec. Vai para
+            # a coluna `decklists.commander` ANTES de se perder no main.
+            comandante = (consenso.nome_do_comandante(con, do_sb) if is_cmd else None)
             # store_decklist descarta se esta lista já cá estiver vinda do
             # mtgo.com — o mtgtop8 re-hospeda muitos eventos de MTGO. O placement
             # vem da posição (a página lista por classificação).
@@ -240,7 +267,7 @@ def harvest(con: sqlite3.Connection, fmt: str, max_events: int = 8,
                 cards=cartas, event_name=meta["event_name"] or "",
                 event_date=meta["event_date"] or date.today().isoformat(),
                 player=jogadores.get(did, ""), placement=_bracket(pos),
-                event_players=meta.get("players"),
+                event_players=meta.get("players"), commander=comandante,
                 url=f"{BASE}/event?e={eid}&d={did}&f={code}",
             ):
                 novas += 1
