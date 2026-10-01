@@ -69,6 +69,7 @@ os.environ["MTGVAULT_DB"] = str(_TMP / "vault.db")   # ver tests/_bateria.py
 
 from mtgvault import db, paginas  # noqa: E402
 
+import arrumacao  # noqa: E402
 import deckboxes  # noqa: E402
 import meta_coverage  # noqa: E402
 import reservedlist  # noqa: E402
@@ -152,6 +153,9 @@ def site():
         showcase.build(con, d / "showcase.html")
         reservedlist.build(con, d / "reservedlist.html")
         meta_coverage.build(con, d / "cobertura.html")
+        # A ARRUMAÇÃO POR FASES (2026-10-01) segue a mesma decisão: casca + uma
+        # parte por fase. A maior é a fila de fotos dos candidatos.
+        arrumacao.build(con, d / "arrumacao.html")
         # A versão INTEIRA da Deckboxes, para medir o que se poupou.
         (d / "_inteira.html").write_text(deckboxes.html_page(con), encoding="utf-8")
         _SITE = (d, con)
@@ -161,7 +165,8 @@ def site():
 def caso_os_json_sao_escritos_ao_lado_e_de_hoje():
     d, _con = site()
     hoje = date.today().isoformat()
-    for pagina in ("deckboxes", "showcase", "reservedlist", "cobertura"):
+    for pagina in ("deckboxes", "showcase", "reservedlist", "cobertura",
+                   "arrumacao"):
         idx = d / "data" / "paginas" / f"{pagina}.json"
         assert idx.is_file(), f"{pagina}: sem índice em data/paginas/"
         j = json.loads(idx.read_text(encoding="utf-8"))
@@ -275,7 +280,16 @@ def caso_ponta_a_ponta_servida_por_http():
         assert "grid:fmt:modern" in grelhas, list(dom)
         assert all("erro-dados" not in v and "carregando" not in v
                    for v in grelhas.values()), grelhas
-        print("ponta a ponta: as quatro paginas desenham a seccao principal depois do fetch")
+        # A ARRUMAÇÃO POR FASES: a Fase 1 vem no ÍNDICE de propósito (é o ecrã
+        # da decisão e não pode esperar por um segundo pedido), por isso o que
+        # se tranca é que ela desenha e que a barra das fases tem as cinco.
+        dom = _abrir(f"{url}/arrumacao.html")
+        vista, fasebar = dom["#vista"], dom["#fasebar"]
+        assert "Fase 1" in vista and "Fechar os decks" in vista, vista[:400]
+        assert "carregando" not in vista and "erro-dados" not in vista, vista[:400]
+        assert "conta como montado" in vista, "a página tem de dizer a omissão"
+        assert fasebar.count("<button") == 5, fasebar[:400]
+        print("ponta a ponta: as cinco paginas desenham a seccao principal depois do fetch")
 
         # SEM os dados: a mensagem, em português, em vez de um ecrã em branco.
         shutil.rmtree(d / "data" / "paginas" / "deckboxes")

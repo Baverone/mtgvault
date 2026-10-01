@@ -1,0 +1,756 @@
+"""AS QUATRO PROTECÇÕES E AS FASES DA ARRUMAÇÃO (André, 2026-10-01).
+
+Cada caso aqui chumba se a regra for RETIRADA — é o padrão do `_provar_chumba`
+que a regra dos 5 % da Reserved List já usa. O que se tranca:
+
+  1. as duas listas de terras **derivam-se do catálogo** e dão exactamente 10 e
+     10; sem `oracle_text` a derivação **levanta** em vez de devolver uma lista
+     curta (uma protecção vazia em silêncio é o que a ordem proíbe);
+  2. **P1** — uma shockland non-foil extra, fora de qualquer deck, nunca aparece
+     nos candidatos. Nem nenhuma outra cópia de uma shock/fetch: *"todas as
+     cópias"*, todos os acabamentos, todas as línguas;
+  3. **P2** — uma carta de Reserved List que ele joga nunca aparece; a que ele
+     NÃO joga não é protegida por aqui (segue a regra dos 5 %);
+  4. **P3** — uma cópia alocada a um deck `guardado` nunca aparece, e um deck
+     `dissolvido` liberta as cartas dele;
+  5. **a omissão é `montado`** — um deck sem decisão não manda uma única carta
+     para a venda;
+  6. **P4** — uma carta da reserva acima do limiar nunca aparece, e abaixo do
+     limiar volta a ser candidata. Sem amostra (menos de `MIN_LISTAS_RESERVA`
+     listas) a reserva automática fica VAZIA;
+  7. a **trava** de 2026-10-12 recusa a saída de venda, e deixa-a passar no dia;
+  8. a fila de candidatos sai **por valor decrescente** e um **playset dá quatro
+     linhas**, não uma (*"se jogar 4 da mesma, tiro foto às 4"*);
+  9. cada exclusão guarda o **motivo em português** e **qual** das quatro
+     protecções a apanhou;
+ 10. as protecções valem **também no motor** (`loadout.sell_list`), e não só na
+     página — uma protecção que valesse numa página só deixava a aba Vender a
+     oferecer a mesma carta.
+
+Não toca na rede nem na base a sério. Fixa `MTGVAULT_HOME` **e** `MTGVAULT_DB`
+(ver `tests/_bateria.py`: os ficheiros que acompanham a base saem da pasta da
+`MTGVAULT_DB`, e sem a fixar a bateria escrevia no `data/` a sério).
+"""
+import json
+import os
+import sys
+import tempfile
+from datetime import date
+from pathlib import Path
+
+RAIZ = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(RAIZ))
+
+_TMP = Path(tempfile.mkdtemp())
+
+# ---------------------------------------------------------------------------
+# O catálogo de mentira, com ORACLE TEXT A SÉRIO
+# ---------------------------------------------------------------------------
+# As dez shocklands e as dez fetchlands, com o texto REAL da Scryfall (trechos
+# capturados do catálogo deste PC a 2026-10-01). É o que a regra do projecto
+# manda: um trecho real como fixture, nunca um `mock` da biblioteca.
+SHOCK = [
+    ("Hallowed Fountain", "Plains Island", "{W}", "{U}"),
+    ("Watery Grave", "Island Swamp", "{U}", "{B}"),
+    ("Blood Crypt", "Swamp Mountain", "{B}", "{R}"),
+    ("Stomping Ground", "Mountain Forest", "{R}", "{G}"),
+    ("Temple Garden", "Forest Plains", "{G}", "{W}"),
+    ("Godless Shrine", "Plains Swamp", "{W}", "{B}"),
+    ("Steam Vents", "Island Mountain", "{U}", "{R}"),
+    ("Overgrown Tomb", "Swamp Forest", "{B}", "{G}"),
+    ("Sacred Foundry", "Mountain Plains", "{R}", "{W}"),
+    ("Breeding Pool", "Forest Island", "{G}", "{U}"),
+]
+FETCH = [
+    ("Flooded Strand", "a Plains or Island"),
+    ("Polluted Delta", "an Island or Swamp"),      # «an», não «a» — ver o módulo
+    ("Bloodstained Mire", "a Swamp or Mountain"),
+    ("Wooded Foothills", "a Mountain or Forest"),
+    ("Windswept Heath", "a Forest or Plains"),
+    ("Marsh Flats", "a Plains or Swamp"),
+    ("Scalding Tarn", "an Island or Mountain"),    # idem
+    ("Verdant Catacombs", "a Swamp or Forest"),
+    ("Arid Mesa", "a Mountain or Plains"),
+    ("Misty Rainforest", "a Forest or Island"),
+]
+# As terras que NÃO podem entrar: têm o mesmo `type_line` (ou o mesmo género de
+# texto) e não são do ciclo. Se a derivação as apanhar, a conta deixa de dar 10
+# e o caso chumba — que é exactamente o controlo que se quer.
+ISCAS = [
+    # As duais originais: dois sub-tipos básicos e nenhum texto.
+    ("Tundra", "Land — Plains Island", "({T}: Add {W} or {U}.)"),
+    ("Underground Sea", "Land — Island Swamp", "({T}: Add {U} or {B}.)"),
+    # Surveil land (MKM): dois sub-tipos básicos, entra SEMPRE virada.
+    ("Undercity Sewers", "Land — Island Swamp",
+     "({T}: Add {U} or {B}.) This land enters tapped. When this land enters, "
+     "surveil 1."),
+    # Slow land (DMU): dois sub-tipos básicos, entra virada por condição.
+    ("Contaminated Aquifer", "Land — Island Swamp",
+     "({T}: Add {U} or {B}.) This land enters tapped."),
+    # Procura uma BÁSICA qualquer: paga 1 de vida e sacrifica-se, mas não nomeia
+    # dois tipos — não é deste ciclo.
+    ("Prismatic Vista", "Land",
+     "{T}, Pay 1 life, Sacrifice Prismatic Vista: Search your library for a "
+     "basic land card, put it onto the battlefield, then shuffle."),
+    # Terra rara de Onslaught que o filtro SEM oracle text apanhava.
+    ("Riptide Laboratory", "Land",
+     "{T}: Add {C}. {1}{U}, {T}: Return target Wizard you control to its "
+     "owner's hand."),
+]
+
+OUTRAS = [
+    # (nome, edição, nº, reserved, cor, tipo)
+    ("Sol Ring", "c21", "263", 0, "", "Artifact"),
+    ("Dark Ritual", "4ed", "129", 0, "B", "Instant"),
+    ("Gilded Drake", "usg", "76", 1, "U", "Creature"),      # RL que ele JOGA
+    ("Taiga", "3ed", "287", 1, "RG", "Land"),               # RL que NÃO joga
+    ("Force of Will", "all", "42", 0, "U", "Instant"),      # a reserva
+    ("Oswald Fiddlebender", "clb", "60", 0, "W", "Creature"),  # a assinatura
+    ("Swan Song", "the", "48", 0, "U", "Instant"),          # 30 % do consenso
+]
+
+HOJE = date.today().isoformat()
+
+CFG_BASE = {
+    "regras_colecao": {},
+    "baldes_coleccao": ["Colecção", "Caixa Reserved List"],
+    "decks_vigiados": [], "premodern_arquetipos_alvo": [],
+    # Um grupo só, sem regras de material: o que se mede aqui são as quatro
+    # protecções, e uma regra de língua/acabamento punha substitutos pelo meio.
+    "regras_por_formato": [{"grupo": "livre", "formatos": ["modern", "premodern"]}],
+    "metagame_fontes": {"_default": {"tiers": ["Challenge"],
+                                     "min_jogadores_presencial": 0}},
+    "caixas": [
+        {"slot": "d1", "nome": "Deck Um", "formato": "modern", "fonte": "deck",
+         "ref": "Deck Um", "balde": "Colecção", "estado": "montada",
+         "prioridade": 1, "reserva_assinatura": ["Oswald Fiddlebender"]},
+        {"slot": "d2", "nome": "Deck Dois", "formato": "premodern",
+         "fonte": "deck", "ref": "Deck Dois", "balde": "Colecção",
+         "estado": "permanente", "prioridade": 2},
+    ],
+    "venda": {"mostrar": True, "congelado_ate": "2026-10-12"},
+    "reserva": {"limiar_pct": 20},
+}
+CFG_PATH = _TMP / "cfg.json"
+
+
+def escreve_cfg(**muda):
+    cfg = json.loads(json.dumps(CFG_BASE))
+    for k, v in muda.items():
+        if k == "caixas_decisao":
+            for c in cfg["caixas"]:
+                if c["slot"] in v:
+                    c["decisao"] = v[c["slot"]]
+        elif k == "caixa_chave":
+            for c in cfg["caixas"]:
+                if c["slot"] in v:
+                    c.update(v[c["slot"]])
+        elif k == "limiar":
+            cfg["reserva"]["limiar_pct"] = v
+        elif k == "congelado_ate":
+            if v is None:
+                cfg["venda"].pop("congelado_ate", None)
+            else:
+                cfg["venda"]["congelado_ate"] = v
+        else:
+            cfg[k] = v
+    CFG_PATH.write_text(json.dumps(cfg, ensure_ascii=False), encoding="utf-8")
+    from mtgvault import sources
+    sources._CFG_CACHE.clear()
+    return cfg
+
+
+CFG_PATH.write_text(json.dumps(CFG_BASE, ensure_ascii=False), encoding="utf-8")
+os.environ["MTGVAULT_CONFIG"] = str(CFG_PATH)
+os.environ["MTGVAULT_HOME"] = str(_TMP)
+# TEM de ser fixa junto com o HOME: os ficheiros que acompanham a base saem de
+# `db.pasta_dados()`, que é a pasta da MTGVAULT_DB (ver tests/_bateria.py).
+os.environ["MTGVAULT_DB"] = str(_TMP / "vault.db")
+
+from mtgvault import db, fases, loadout, sources, venda  # noqa: E402
+
+_ABERTAS = []
+
+
+# ---------------------------------------------------------------------------
+# A base de mentira
+# ---------------------------------------------------------------------------
+def _carta(con, i, nm, sc, num, rl, ci, tl, texto, finishes=("nonfoil", "foil")):
+    con.execute(
+        """INSERT OR REPLACE INTO catalog.cards (scryfall_id, oracle_id, name,
+           set_code, set_name, collector_number, lang, rarity, type_line,
+           oracle_text, cmc, color_identity, finishes, released_at, legalities,
+           digital, reserved, set_type)
+           VALUES (?,?,?,?,?,?,'en','rare',?,?,0,?,?,'2005-10-07',?,0,?,'expansion')""",
+        (f"id-{i}", f"or-{i}", nm, sc, f"Set {sc.upper()}", num, tl, texto, ci,
+         json.dumps(list(finishes)), json.dumps({"modern": "legal",
+                                                 "premodern": "legal"}), rl))
+    for fin in finishes:
+        con.execute("""INSERT OR REPLACE INTO price_latest (scryfall_id, source,
+                       finish, date, low, trend, receita)
+                       VALUES (?,'cardmarket',?,?,?,?,'unico')""",
+                    (f"id-{i}", fin, HOJE, 10.0 + i, 10.0 + i))
+
+
+def base():
+    d = Path(tempfile.mkdtemp())
+    cm = db.session(d / "v.db", d / "c.db")
+    _ABERTAS.append(cm)
+    con = cm.__enter__()
+    i = 0
+    for nm, sub, m1, m2 in SHOCK:
+        _carta(con, i, nm, "rav", str(100 + i), 0, "".join(
+            c for c in (m1 + m2) if c in "WUBRG"), f"Land — {sub}",
+            f"({{T}}: Add {m1} or {m2}.)\nAs {nm} enters, you may pay 2 life. "
+            f"If you don't, it enters tapped.")
+        i += 1
+    for nm, alvo in FETCH:
+        _carta(con, i, nm, "ons", str(200 + i), 0, "", "Land",
+               f"{{T}}, Pay 1 life, Sacrifice {nm}: Search your library for "
+               f"{alvo} card, put it onto the battlefield, then shuffle.")
+        i += 1
+    for nm, tl, texto in ISCAS:
+        _carta(con, i, nm, "isc", str(300 + i), 0, "", tl, texto)
+        i += 1
+    for nm, sc, num, rl, ci, tl in OUTRAS:
+        _carta(con, i, nm, sc, num, rl, ci, tl, "")
+        i += 1
+    for nome, fmt, cartas in (
+            ("Deck Um", "modern", [("Sol Ring", 1), ("Gilded Drake", 1)]),
+            ("Deck Dois", "premodern", [("Dark Ritual", 1)])):
+        con.execute("INSERT INTO decks (name, format) VALUES (?,?)", (nome, fmt))
+        did = con.execute("SELECT id FROM decks WHERE name = ?",
+                          (nome,)).fetchone()["id"]
+        for nm, q in cartas:
+            con.execute("INSERT INTO deck_cards (deck_id, card_name, quantity, "
+                        "board) VALUES (?,?,?, 'main')", (did, nm, q))
+    for sub in ("Colecção", "Caixa Reserved List"):
+        con.execute("INSERT OR IGNORE INTO sub_collections (name, purpose) "
+                    "VALUES (?, 'player')", (sub,))
+    con.commit()
+    return con
+
+
+def add(con, nm, q=1, sub="Colecção", lang="en", finish="nonfoil", slot=None):
+    sid = con.execute("SELECT scryfall_id FROM catalog.cards WHERE name = ?",
+                      (nm,)).fetchone()["scryfall_id"]
+    sub_id = con.execute("SELECT id FROM sub_collections WHERE name = ?",
+                         (sub,)).fetchone()["id"]
+    cid = con.execute("""INSERT INTO copies (scryfall_id, quantity, finish,
+                         language, condition, purpose, sub_collection_id)
+                         VALUES (?,?,?,?,'NM','player',?)""",
+                      (sid, q, finish, lang, sub_id)).lastrowid
+    if slot:
+        con.execute("INSERT INTO copy_allocation (copy_id, slot, quantity) "
+                    "VALUES (?,?,?)", (cid, slot, q))
+    con.commit()
+    return cid
+
+
+def decklists(con, fmt="modern", n=10, assinatura="Oswald Fiddlebender",
+              extras=()):
+    """`n` listas que CONTAM, todas com a carta-assinatura.
+
+    `extras` são `(carta, em_quantas)` — a carta entra nas primeiras `em_quantas`
+    listas, e é assim que se fabrica uma percentagem conhecida (8 de 10 = 80 %).
+    """
+    for k in range(n):
+        con.execute("""INSERT INTO decklists (source, source_key, format,
+                       event_date, event_tier, player)
+                       VALUES ('mtgo', ?, ?, ?, 'Challenge', ?)""",
+                    (f"k{fmt}{k}", fmt, HOJE, f"j{k}"))
+        lid = con.execute("SELECT id FROM decklists WHERE source_key = ?",
+                          (f"k{fmt}{k}",)).fetchone()["id"]
+        cartas = [(assinatura, 1)]
+        for nm, quantas in extras:
+            if k < quantas:
+                cartas.append((nm, 1))
+        for nm, q in cartas:
+            con.execute("""INSERT OR REPLACE INTO decklist_cards (decklist_id,
+                           card_name, quantity, board) VALUES (?,?,?, 'main')""",
+                        (lid, nm, q))
+    con.commit()
+
+
+def nomes(linhas):
+    return {l["nm"] for l in linhas}
+
+
+def cands(con, **cfg):
+    escreve_cfg(**cfg)
+    res = loadout.report(con)
+    return fases.candidatos(con, res), res
+
+
+# ===========================================================================
+# 1. AS DUAS LISTAS DE TERRAS
+# ===========================================================================
+def caso_as_duas_listas_de_terras_derivam_do_catalogo():
+    con = base()
+    sh, fe = fases.shocklands(con), fases.fetchlands(con)
+    assert sh["n"] == 10, sh
+    assert fe["n"] == 10, fe
+    assert sh["nomes"] == sorted(n for n, _s, _a, _b in SHOCK), sh["nomes"]
+    assert fe["nomes"] == sorted(n for n, _a in FETCH), fe["nomes"]
+    # A regra fica GRAVADA, que é o que a ordem pede.
+    assert "2 life" in sh["regra"] and "oracle" not in sh["regra"].lower()[:5]
+    assert "1 life" in fe["regra"] or "1 ponto de vida" in fe["regra"]
+    # E as iscas ficaram todas de fora.
+    for nm, _tl, _t in ISCAS:
+        assert nm not in sh["nomes"] and nm not in fe["nomes"], nm
+
+
+def caso_a_derivacao_levanta_quando_nao_da_dez():
+    """Sem `oracle_text` não se devolve uma lista curta: levanta-se.
+
+    É a diferença entre um erro alto e uma protecção vazia em silêncio — que
+    mandaria shocklands para a lista de venda sem um único passo a falhar.
+    """
+    con = base()
+    con.execute("UPDATE catalog.cards SET oracle_text = NULL "
+                " WHERE name = 'Hallowed Fountain'")
+    con.commit()
+    try:
+        fases.verificar(con)
+    except fases.TerrasNaoDerivadas as e:
+        assert len(e.nomes) == 9, e.nomes
+        assert "Hallowed Fountain" not in e.nomes
+        assert "sync-cards" in str(e)          # diz como se resolve
+        assert e.regra                          # e diz a regra que usou
+    else:
+        raise AssertionError("a derivação devolveu 9 nomes sem levantar")
+
+
+def caso_um_catalogo_pequeno_nao_rebenta_o_motor():
+    """A conta tem de dar dez NUM CATÁLOGO COMPLETO. Numa base de trinta cartas
+    que não tem shocklands nenhumas, «zero» é a resposta certa — é o mesmo
+    princípio do `foil_info` (uma carta que o catálogo não conhece não é uma
+    carta «sem foil»).
+
+    Sem esta distinção, acrescentar a P1 ao `loadout.sell_list` rebentava o
+    `report` em **vinte ficheiros de teste** e, pior, em qualquer base nova.
+    """
+    d = Path(tempfile.mkdtemp())
+    cm = db.session(d / "v.db", d / "c.db")
+    _ABERTAS.append(cm)
+    con = cm.__enter__()
+    _carta(con, 900, "Sol Ring", "c21", "263", 0, "", "Artifact", "")
+    con.commit()
+    assert not fases.catalogo_completo(con)
+    assert fases.shocklands(con)["n"] == 0          # não levanta
+    assert fases.terras_protegidas(con) == {}
+    escreve_cfg()
+    res = loadout.report(con)                       # e o motor corre
+    assert res["protegidas"] == []
+    # Mas a verificação explícita continua a dizer que não dá dez.
+    try:
+        fases.verificar(con)
+    except fases.TerrasNaoDerivadas:
+        pass
+    else:
+        raise AssertionError("o `verificar` não insistiu")
+
+
+# ===========================================================================
+# 2. P1 — TODAS as cópias das shock/fetch
+# ===========================================================================
+def caso_uma_shockland_extra_fora_de_qualquer_deck_nunca_e_candidata():
+    con = base()
+    add(con, "Hallowed Fountain", 1)             # non-foil, solta, a mais
+    c, _res = cands(con)
+    assert "Hallowed Fountain" not in nomes(c["linhas"]), \
+        "uma shockland solta apareceu nos candidatos"
+    linha = next(l for l in c["protegidas"] if l["nm"] == "Hallowed Fountain")
+    assert linha["proteccao"] == fases.P1, linha
+    assert "shockland" in linha["motivo"], linha["motivo"]
+
+
+def caso_todas_as_copias_de_uma_shock_fetch_ficam_protegidas():
+    """*"Todas as cópias — todos os acabamentos, todas as línguas, todas as
+    repetidas, estejam ou não num deck. Sem excepções."*"""
+    con = base()
+    add(con, "Flooded Strand", 1, finish="nonfoil")
+    add(con, "Flooded Strand", 4, finish="foil")
+    add(con, "Flooded Strand", 2, lang="pt")
+    add(con, "Flooded Strand", 1, slot="d1")     # dentro de um deck
+    add(con, "Steam Vents", 3, sub="Caixa Reserved List")
+    c, _res = cands(con)
+    assert "Flooded Strand" not in nomes(c["linhas"])
+    assert "Steam Vents" not in nomes(c["linhas"])
+    # As 8 cópias de Flooded Strand + as 3 de Steam Vents, todas pela P1 — a que
+    # está dentro do deck inclusive (a P1 vem ANTES da P3 de propósito: é a razão
+    # que SOBREVIVE se ele dissolver o deck).
+    p1 = [l for l in c["protegidas"] if l["proteccao"] == fases.P1]
+    assert sum(l["q"] for l in p1) == 11, [(l["nm"], l["q"], l["finish"]) for l in p1]
+
+
+# ===========================================================================
+# 3. P2 — a Reserved List que ele JOGA
+# ===========================================================================
+def caso_uma_rl_que_ele_joga_nunca_e_candidata():
+    con = base()
+    add(con, "Gilded Drake", 3, sub="Caixa Reserved List")   # 1 no deck, 2 a mais
+    c, _res = cands(con)
+    assert "Gilded Drake" not in nomes(c["linhas"]), \
+        "uma RL que ele joga apareceu nos candidatos"
+    linha = next(l for l in c["protegidas"] if l["nm"] == "Gilded Drake")
+    assert linha["proteccao"] in (fases.P2, fases.P3), linha
+    joga = fases.rl_que_joga(con, loadout.report(con))
+    assert "Gilded Drake" in joga and "Deck Um" in joga["Gilded Drake"], joga
+
+
+def caso_uma_rl_que_ele_nao_joga_nao_e_protegida_pela_p2():
+    """A P2 protege o que ele JOGA. O resto da RL **não** é protegido por aqui:
+    continua a passar pela regra dos 5 % de 2026-09-08, que é outra decisão."""
+    con = base()
+    add(con, "Taiga", 2, sub="Caixa Reserved List")
+    res = loadout.report(con)
+    assert "Taiga" not in fases.rl_que_joga(con, res), \
+        "a Taiga não está em deck nenhum e a P2 deu-a como jogada"
+    c = fases.candidatos(con, res)
+    prot = [l for l in c["protegidas"] if l["nm"] == "Taiga"]
+    assert not prot, prot
+
+
+# ===========================================================================
+# 4. P3 — os decks montados e guardados
+# ===========================================================================
+def caso_uma_copia_num_deck_guardado_nunca_e_candidata():
+    con = base()
+    add(con, "Sol Ring", 1, slot="d1")
+    c, _res = cands(con, caixas_decisao={"d1": fases.GUARDADO})
+    assert "Sol Ring" not in nomes(c["linhas"])
+    linha = next(l for l in c["protegidas"] if l["nm"] == "Sol Ring")
+    assert linha["proteccao"] == fases.P3, linha
+    assert "guardar" in linha["motivo"], linha["motivo"]
+
+
+def caso_um_deck_dissolvido_liberta_as_cartas():
+    """É para isto que o `dissolvido` existe: as cartas passam a candidatas."""
+    con = base()
+    add(con, "Sol Ring", 1, slot="d1")
+    c_mont, _ = cands(con, caixas_decisao={"d1": fases.MONTADO})
+    c_diss, _ = cands(con, caixas_decisao={"d1": fases.DISSOLVIDO})
+    assert "Sol Ring" not in nomes(c_mont["linhas"])
+    assert "Sol Ring" in nomes(c_diss["linhas"]), \
+        "dissolver o deck não libertou a carta"
+    assert c_diss["copias"] > c_mont["copias"]
+
+
+# ===========================================================================
+# 5. A OMISSÃO É `montado`
+# ===========================================================================
+def caso_um_deck_sem_decisao_conta_como_montado():
+    assert fases.DECISAO_OMISSAO == fases.MONTADO
+    assert fases.decisao_de({"slot": "x"}) == fases.MONTADO
+    assert fases.decisao_de({"slot": "x", "decisao": None}) == fases.MONTADO
+    # Um valor que não é dos três também não liberta nada.
+    assert fases.decisao_de({"slot": "x", "decisao": "qualquer"}) == fases.MONTADO
+    assert fases.decisao_de({"slot": "x", "decisao": "dissolvido"}) == fases.DISSOLVIDO
+
+
+def caso_um_deck_sem_decisao_nao_manda_nada_para_a_venda():
+    """Um deck novo, sem decisão nenhuma escrita, não manda uma única carta.
+
+    Se a omissão fosse `dissolvido`, acrescentar uma caixa ao config punha o
+    conteúdo dela à venda sem ninguém decidir nada.
+    """
+    con = base()
+    add(con, "Sol Ring", 1, slot="d1")
+    add(con, "Dark Ritual", 1, slot="d1")
+    escreve_cfg()                                 # NENHUMA decisão escrita
+    res = loadout.report(con)
+    d = fases.decisoes()
+    assert d["d1"] == fases.MONTADO and d["d2"] == fases.MONTADO, d
+    c = fases.candidatos(con, res)
+    for nm in ("Sol Ring", "Dark Ritual"):
+        assert nm not in nomes(c["linhas"]), f"{nm} foi à venda sem decisão"
+    # E a página diz que a decisão NÃO foi tomada — não a dá por tomada.
+    decks = fases.decks_para_decidir(con, res)
+    assert all(not x["decisao_explicita"] for x in decks), decks
+
+
+# ===========================================================================
+# 6. P4 — a reserva («maybe») e o limiar
+# ===========================================================================
+def caso_uma_carta_da_reserva_acima_do_limiar_nunca_e_candidata():
+    con = base()
+    decklists(con, extras=[("Force of Will", 8)])    # 8 de 10 = 80 %
+    add(con, "Force of Will", 2)
+    c, res = cands(con, limiar=20)
+    r = next(x for x in fases.decks_para_decidir(con, res)
+             if x["slot"] == "d1")["reserva"]
+    assert r["listas"] == 10 and r["suficiente"], r
+    assert "Force of Will" in {x["nm"] for x in r["final"]}, r["final"]
+    assert "Force of Will" not in nomes(c["linhas"]), \
+        "uma carta da reserva acima do limiar apareceu nos candidatos"
+    linha = next(l for l in c["protegidas"] if l["nm"] == "Force of Will")
+    assert linha["proteccao"] == fases.P4, linha
+    assert "reserva de Deck Um" in linha["motivo"], linha["motivo"]
+
+
+def caso_abaixo_do_limiar_a_carta_volta_a_ser_candidata():
+    """O limiar é o que trava o efeito perverso, e tem de morder nos dois
+    sentidos: uma carta a 30 % entra a 20 % e sai a 40 %."""
+    con = base()
+    decklists(con, extras=[("Swan Song", 3)])        # 3 de 10 = 30 %
+    add(con, "Swan Song", 2)
+    c20, _ = cands(con, limiar=20)
+    c40, _ = cands(con, limiar=40)
+    assert "Swan Song" not in nomes(c20["linhas"]), "a 20 % devia estar protegida"
+    assert "Swan Song" in nomes(c40["linhas"]), "a 40 % devia ser candidata"
+
+
+def caso_a_reserva_nao_se_enche_sem_amostra():
+    """Com menos de `MIN_LISTAS_RESERVA` listas a reserva automática é VAZIA.
+
+    Medido na base dele a 2026-10-01: a caixa *Ill-Gotten Gains* casava **3**
+    listas pela assinatura, uma carta numa só valia 33 %, passava o limiar de
+    20 % e a reserva dela sozinha segurava 52 cópias / 6 879 € — 96 % de tudo o
+    que a P4 protegia. Não é o limiar que estava mal; é a amostra.
+    """
+    con = base()
+    decklists(con, n=3, extras=[("Force of Will", 1)])   # 1 de 3 = 33 %
+    add(con, "Force of Will", 2)
+    c, res = cands(con, limiar=20)
+    r = next(x for x in fases.decks_para_decidir(con, res)
+             if x["slot"] == "d1")["reserva"]
+    assert r["listas"] == 3 and not r["suficiente"], r
+    assert not r["automatica"], r["automatica"]
+    assert "poucas para consenso" in r["nota"], r["nota"]
+    assert "Force of Will" in nomes(c["linhas"]), \
+        "uma reserva de 3 listas protegeu uma carta"
+
+
+def caso_a_reserva_manual_fica_mesmo_sem_consenso():
+    """O que ele escreveu à mão é uma DECISÃO, não uma inferência: fica, haja ou
+    não amostra."""
+    con = base()
+    add(con, "Force of Will", 2)
+    c, _res = cands(con, caixa_chave={"d1": {"reserva": ["Force of Will"]}})
+    assert "Force of Will" not in nomes(c["linhas"])
+
+
+# ===========================================================================
+# 7. A TRAVA de 2026-10-12
+# ===========================================================================
+def caso_a_saida_de_venda_recusa_se_antes_de_doze_de_outubro():
+    con = base()
+    add(con, "Dark Ritual", 6)
+    escreve_cfg()
+    assert fases.venda_congelada(hoje="2026-10-01") is True
+    assert fases.venda_congelada(hoje="2026-10-11") is True
+    pasta = Path(tempfile.mkdtemp())
+    try:
+        venda.exportar(con, pasta=pasta)
+    except fases.VendaCongelada as e:
+        assert "2026-10-12" in str(e), str(e)
+        assert "Ghent" in str(e), "a razão tem de dizer porquê"
+        assert isinstance(e, ValueError)          # o do_POST traduz em 409
+    else:
+        raise AssertionError("a exportação correu com a venda congelada")
+    # E NÃO deixou ficheiro nenhum atrás dela.
+    assert not list(pasta.glob("*")), list(pasta.glob("*"))
+
+
+def caso_a_saida_corre_a_partir_de_doze_de_outubro():
+    """A trava é uma data, não um interruptor: passa sozinha."""
+    assert fases.venda_congelada(hoje="2026-10-12") is False
+    assert fases.venda_congelada(hoje="2026-11-01") is False
+    escreve_cfg(congelado_ate=None)
+    assert fases.venda_congelada(hoje="2026-10-01") is False, \
+        "sem a chave não há trava"
+    escreve_cfg()
+    con = base()
+    add(con, "Dark Ritual", 6)
+    pasta = Path(tempfile.mkdtemp())
+    fases.exige_descongelado(hoje="2026-10-12")      # não levanta
+    r = venda.relatorio(con, loadout.report(con))
+    assert r["linhas"], "sem a trava a lista continua a sair"
+    assert not list(pasta.glob("*"))
+
+
+# ===========================================================================
+# 8. AS FILAS: cópias físicas, por valor
+# ===========================================================================
+def caso_a_fila_de_candidatos_sai_por_valor_decrescente():
+    con = base()
+    add(con, "Dark Ritual", 6)
+    add(con, "Taiga", 2, sub="Caixa Reserved List")
+    add(con, "Swan Song", 4)
+    escreve_cfg()
+    res = loadout.report(con)
+    f = fases.fila_candidatos(con, res)
+    vals = [l["total"] or 0 for l in f["linhas"]]
+    assert vals == sorted(vals, reverse=True), vals[:12]
+    assert f["lote"] == 50
+
+
+def caso_um_playset_na_fila_da_quatro_linhas():
+    """*"se for 1 carta e 1 carta, mas se jogar 4 da mesma, tiro foto às 4"* — a
+    fila conta CÓPIAS FÍSICAS e não nomes. Um lote de 4 é UMA linha da `copies`
+    e TEM de dar quatro linhas na fila, senão a barra de progresso e as contas
+    ficam a 1/4 do número certo."""
+    con = base()
+    add(con, "Swan Song", 4)                 # um lote de 4: uma linha da copies
+    escreve_cfg()
+    res = loadout.report(con)
+    f = fases.fila_candidatos(con, res)
+    swan = [l for l in f["linhas"] if l["nm"] == "Swan Song"]
+    assert len(swan) == 4, f"o playset deu {len(swan)} linhas"
+    assert all(l["q"] == 1 for l in swan), swan
+    assert len({l["fila_id"] for l in swan}) == 4, "ids repetidos na fila"
+    assert f["barra"]["copias"] >= 4
+    # E cada linha leva o seu acabamento, língua e estado.
+    assert all(l["finish"] and l["lang"] and l["cond"] for l in swan)
+
+
+def caso_a_fila_dos_decks_conta_copias_e_valor():
+    con = base()
+    add(con, "Swan Song", 4, slot="d1")
+    add(con, "Sol Ring", 1, slot="d1")
+    escreve_cfg(caixas_decisao={"d1": fases.MONTADO})
+    res = loadout.report(con)
+    f = fases.fila_decks(con, res)
+    fila = next(x for x in f["filas"] if x["slot"] == "d1")
+    assert fila["barra"]["copias"] == 5, fila["barra"]
+    assert fila["barra"]["falta"] == 5 and fila["barra"]["feitas"] == 0
+    assert fila["barra"]["valor"] > 0
+    # Um deck `dissolvido` não é para fotografar antes de Ghent.
+    escreve_cfg(caixas_decisao={"d1": fases.DISSOLVIDO})
+    f2 = fases.fila_decks(con, loadout.report(con))
+    assert not any(x["slot"] == "d1" for x in f2["filas"]), f2["filas"]
+
+
+def caso_o_inventario_e_paralelo_e_nunca_bloqueia():
+    """*"Nunca bloqueia nada e aparece como tal na página — é inventário, não é
+    passo da venda."*"""
+    con = base()
+    add(con, "Taiga", 2, sub="Caixa Reserved List")
+    add(con, "Hallowed Fountain", 1)
+    add(con, "Flooded Strand", 1)
+    escreve_cfg()
+    inv = fases.fila_inventario(con, loadout.report(con))
+    chaves = {g["chave"]: g["barra"]["copias"] for g in inv["grupos"]}
+    assert chaves == {"rl": 2, "shockland": 1, "fetchland": 1}, chaves
+    assert "não é um passo da venda" in inv["nota"]
+
+
+# ===========================================================================
+# 9. O MOTIVO, E QUAL DAS QUATRO
+# ===========================================================================
+def caso_cada_exclusao_tem_motivo_em_portugues_e_a_proteccao():
+    """*"Cada cópia excluída da venda guarda o MOTIVO em português, e qual das
+    quatro protecções a apanhou. Sem motivo não há exclusão silenciosa."*"""
+    con = base()
+    add(con, "Hallowed Fountain", 1)
+    add(con, "Gilded Drake", 2, sub="Caixa Reserved List")
+    add(con, "Sol Ring", 1, slot="d1")
+    add(con, "Force of Will", 1)
+    decklists(con, extras=[("Force of Will", 9)])
+    c, _res = cands(con, caixa_chave={"d1": {"reserva_assinatura":
+                                             ["Oswald Fiddlebender"]}})
+    assert c["protegidas"], "nada ficou protegido — o caso não mede nada"
+    for l in c["protegidas"]:
+        assert l["proteccao"] in fases.PROTECCOES, l
+        assert l["motivo"] and len(l["motivo"]) > 15, l
+        assert fases.ROTULOS[l["proteccao"]] in l["motivo"], l
+        # Em português: nenhum motivo em inglês cru.
+        assert not l["motivo"].startswith(("protected", "reserved")), l
+    vistas = {l["proteccao"] for l in c["protegidas"]}
+    assert fases.P1 in vistas and fases.P4 in vistas, vistas
+    for p, v in c["por_proteccao"].items():
+        assert v["rotulo"] == fases.ROTULOS[p]
+
+
+# ===========================================================================
+# 10. AS PROTECÇÕES VALEM NO MOTOR, NÃO SÓ NA PÁGINA
+# ===========================================================================
+def caso_as_proteccoes_valem_tambem_no_motor_da_venda():
+    """Uma protecção que valesse só na página das Fases deixava a aba Vender e a
+    exportação a oferecer a mesma carta — o padrão do `event_tier` aplicado à
+    decisão que vale mais dinheiro."""
+    con = base()
+    # 6 shocklands soltas: pelo playset de 4, duas seriam excedente de venda.
+    add(con, "Hallowed Fountain", 6)
+    add(con, "Dark Ritual", 6)            # o controlo: estas SIM, vão à venda
+    escreve_cfg()
+    res = loadout.report(con)
+    assert "protegidas" in res, "o sell_list não ganhou a saída `protegidas`"
+    assert "Hallowed Fountain" not in nomes(res["venda"]), \
+        "uma shockland excedente ficou na lista de venda do motor"
+    assert "Hallowed Fountain" in nomes(res["protegidas"])
+    linha = next(l for l in res["protegidas"] if l["nm"] == "Hallowed Fountain")
+    assert linha["proteccao"] == fases.P1, linha
+    # O motivo por que IRIA à venda guarda-se, como nas RL a segurar.
+    assert linha["porque_venderia"], linha
+    assert "Dark Ritual" in nomes(res["venda"]), \
+        "o controlo falhou: o motor deixou de vender o que devia"
+    # E a saída aparece no «fica de fora» da exportação, com o motivo.
+    fora = {f["chave"]: f for f in venda.fora_da_exportacao(res)}
+    assert "protegidas" in fora and fora["protegidas"]["copias"] > 0, fora
+    assert all(l["motivo"] for l in fora["protegidas"]["linhas"])
+
+
+def caso_a_decisao_grava_se_no_config_sem_o_reformatar():
+    """O `colecao_config.json` edita-se CIRURGICAMENTE (regra do CLAUDE.md): o
+    commit `ac1f776` saiu com 861 inserções por ter sido reescrito com
+    `indent=2`. A decisão escreve-se com o `configio.escrever`, que preserva a
+    forma uma-linha-por-caixa."""
+    from mtgvault import configio
+    escreve_cfg()
+    # Parte-se de um ficheiro JÁ na forma canónica — é nessa forma que o
+    # `colecao_config.json` dele está. (O `escreve_cfg` do teste escreve-o numa
+    # linha só; medir o delta a partir daí media a formatação inicial, não o
+    # efeito da gravação.)
+    configio.escrever(configio.ler(CFG_PATH), CFG_PATH)
+    sources._CFG_CACHE.clear()
+    antes = CFG_PATH.read_text(encoding="utf-8")
+    # Uma linha por caixa, como no ficheiro dele.
+    assert '"slot": "d1"' in antes
+    assert sum(1 for l in antes.splitlines() if '"slot":' in l) == 2, \
+        "o fixture não está na forma uma-linha-por-caixa"
+    r = fases.gravar_decisao("d1", fases.GUARDADO, CFG_PATH)
+    assert r == {"antes": fases.MONTADO, "decisao": fases.GUARDADO,
+                 "mudou": True, "nome": "Deck Um"}, r
+    depois = CFG_PATH.read_text(encoding="utf-8")
+    cfg = configio.ler(CFG_PATH)
+    assert fases.decisao_de(cfg["caixas"][0]) == fases.GUARDADO
+    # Uma linha por caixa, como estava: o ficheiro não cresceu em dezenas de
+    # linhas por causa de uma chave.
+    assert len(depois.splitlines()) - len(antes.splitlines()) <= 2, \
+        f"o config cresceu {len(depois.splitlines()) - len(antes.splitlines())} linhas"
+    # Reversível: voltar atrás não apaga nada do que lá estava.
+    fases.gravar_decisao("d1", fases.MONTADO, CFG_PATH)
+    cfg2 = configio.ler(CFG_PATH)
+    assert cfg2["caixas"][0].get("reserva_assinatura") == ["Oswald Fiddlebender"]
+    try:
+        fases.gravar_decisao("d1", "qualquer", CFG_PATH)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("gravou uma decisão que não existe")
+
+
+# ===========================================================================
+def main():
+    casos = [v for k, v in sorted(globals().items()) if k.startswith("caso_")]
+    falhas = 0
+    for f in casos:
+        try:
+            f()
+            print(f"  ok   {f.__name__}")
+        except Exception as e:                       # noqa: BLE001
+            falhas += 1
+            print(f"  FAIL {f.__name__}: {type(e).__name__}: {e}")
+    for cm in _ABERTAS:
+        try:
+            cm.__exit__(None, None, None)
+        except Exception:                            # noqa: BLE001, S110
+            pass
+    print(f"\n{len(casos) - falhas}/{len(casos)} casos ok")
+    return 1 if falhas else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

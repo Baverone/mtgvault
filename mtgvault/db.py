@@ -188,6 +188,17 @@ def _migrate(con: sqlite3.Connection) -> None:
     if cols and "set_type" not in cols:
         con.execute("ALTER TABLE catalog.cards ADD COLUMN set_type TEXT")
         con.commit()
+    # O TEXTO DA CARTA (2026-10-01). Entra para as quatro protecções da venda
+    # poderem DERIVAR do catálogo as shocklands e as fetchlands, em vez de as
+    # terem escritas à mão (ver `mtgvault/fases.py`). Num catálogo já criado a
+    # coluna nasce a NULL e o preenchimento vem do bulk (`scryfall.load_bulk`) —
+    # como aconteceu com o `reserved` e o `set_type`. Por isso é que o
+    # `fases.fetchlands` **levanta** quando não encontra as dez em vez de
+    # devolver uma lista curta: um catálogo por sincronizar tem de dar erro alto,
+    # não uma protecção vazia em silêncio (o padrão do `event_tier`).
+    if cols and "oracle_text" not in cols:
+        con.execute("ALTER TABLE catalog.cards ADD COLUMN oracle_text TEXT")
+        con.commit()
 
 
 def catalog_size(con: sqlite3.Connection) -> int:

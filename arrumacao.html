@@ -1,0 +1,654 @@
+<!doctype html><html lang=pt><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07080d">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
+<title>Arrumação por fases · mtgvault</title>
+<style>
+ :root{--bg:#07080d;--card:#12151f;--card2:#0e1018;--card3:#171b28;--ink:#eef0f6;--ink2:#c8cede;--muted:#949cb0;--dim:#838b9e;--line:#1d2130;--line2:#2c3243;--accent:#f5c451;--accent-ink:#0b0d14;--accent-soft:#2a2210;--accent-line:#5a4a1c;--info:#6f9bff;--info-soft:#131c31;--gold:#f5c451;--add:#4fd08a;--warn:#f0805a;--ob:#8ab0ff;--pt:#8ab0ff;--rem:#ff7b7b;--font:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;--font-hd:'Space Grotesk','Inter',system-ui,-apple-system,sans-serif;--maxw:1200px;--side:258px;--sticky:0px;--r:12px;--r2:16px;--sombra:0 10px 30px rgba(0,0,0,.35)}
+ html{-webkit-text-size-adjust:100%}
+
+ .fasebar{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 20px}
+ .fasebar button{min-height:40px;padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:var(--card2);color:var(--muted);font:inherit;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px}
+ .fasebar button.cur{border-color:var(--accent-line);background:var(--accent-soft);color:var(--accent)}
+ .fasebar button .nq{background:var(--card);border-radius:999px;padding:1px 7px;font-size:11px;color:var(--dim)}
+ .fasebar button.par{border-style:dashed}
+ .trava{background:var(--card2);border:1px solid var(--accent-line);color:var(--accent);border-radius:var(--r);padding:12px 15px;font-size:13px;line-height:1.6;margin:0 0 18px}
+ .chips{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px}
+ .chip{background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:12px;color:var(--muted)}
+ .chip b{color:var(--ink)}
+ .chip.gold{border-color:var(--accent-line);background:var(--accent-soft);color:var(--accent)}
+ h2{font-size:15px;margin:24px 0 4px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+ h2 .n{color:var(--muted);font-size:12px;font-weight:500}
+ .sub{color:var(--muted);font-size:12.5px;line-height:1.6;margin:0 0 14px}
+ .deck{border:1px solid var(--line);border-radius:var(--r);background:var(--card2);padding:14px;margin:0 0 12px}
+ .deck .dh{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+ .deck .dn{font-family:var(--font-hd);font-size:15.5px}
+ .deck .dm{color:var(--dim);font-size:12px}
+ .seg{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 0}
+ .seg button{min-height:40px;padding:8px 13px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--muted);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+ .seg button.on{border-color:var(--accent-line);background:var(--accent-soft);color:var(--accent)}
+ .seg button.ro{cursor:default}
+ .lib{color:var(--muted);font-size:12.5px;margin:10px 0 0;line-height:1.6}
+ .lib b{color:var(--ink)}
+ .pordecidir{color:var(--warn);font-size:12px;font-weight:600}
+ .bar{height:7px;border-radius:999px;background:var(--card);overflow:hidden;margin:10px 0 6px}
+ .bar i{display:block;height:100%;background:var(--accent)}
+ .barl{color:var(--muted);font-size:12px}
+ details.res{margin:12px 0 0;border-top:1px solid var(--line);padding-top:10px}
+ details.res summary{cursor:pointer;color:var(--muted);font-size:12.5px;font-weight:600}
+ .rl{list-style:none;padding:0;margin:10px 0 0;display:grid;gap:4px}
+ .rl li{display:flex;align-items:center;gap:9px;font-size:13px;padding:3px 0}
+ .rl .pc{min-width:52px;color:var(--accent);font-size:12px;font-weight:700;text-align:right}
+ .rl .tm{color:var(--dim);font-size:11.5px;min-width:56px}
+ .rl .mn{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:1px 7px;font-size:10.5px;color:var(--dim)}
+ .rl button{min-height:36px;min-width:36px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--muted);cursor:pointer;font:inherit}
+ .addres{display:flex;gap:7px;margin:10px 0 0;flex-wrap:wrap}
+ .addres input{flex:1 1 180px;min-height:40px;padding:8px 11px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:13px}
+ .addres button{min-height:40px;padding:8px 14px;border-radius:10px;border:1px solid var(--accent-line);background:var(--accent-soft);color:var(--accent);font:inherit;font-weight:700;cursor:pointer}
+ table.cd{width:100%;border-collapse:collapse;font-size:13px}
+ table.cd th{text-align:left;color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;padding:6px 8px;border-bottom:1px solid var(--line);font-weight:700}
+ table.cd td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+ table.cd td.v{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+ table.cd tr:hover td{background:var(--card2)}
+ .mot{color:var(--dim);font-size:11.5px;line-height:1.5}
+ .prot{display:inline-block;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:1px 8px;font-size:10.5px;color:var(--muted);white-space:nowrap}
+ .lote{border:1px solid var(--line);border-radius:var(--r);background:var(--card2);margin:0 0 12px}
+ .lote>summary{cursor:pointer;padding:12px 14px;font-size:13.5px;font-weight:600;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+ .lote>summary .lm{color:var(--muted);font-weight:500;font-size:12px}
+ .lote .lb{padding:0 14px 14px}
+ .fl{list-style:none;padding:0;margin:0;display:grid;gap:3px}
+ .fl li{display:flex;align-items:center;gap:9px;font-size:13px;padding:4px 0;border-bottom:1px solid var(--line)}
+ .fl .q{min-width:68px;color:var(--muted);font-size:11.5px;text-align:right;font-variant-numeric:tabular-nums}
+ .fl .wh{color:var(--dim);font-size:11.5px}
+ .fl .ok{color:var(--add);font-size:11.5px}
+ .vazio{color:var(--muted);font-size:13px;padding:16px 0}
+ @media (max-width:640px){
+   table.cd th:nth-child(3),table.cd td:nth-child(3){display:none}
+   .deck{padding:12px}
+ }
+ .erro-dados{margin:18px 0;padding:14px 16px;border:1px solid #7a3030;border-radius:12px;background:#2a1618;color:#f0d0c8;font-size:13.5px;line-height:1.55} .erro-dados b{color:#ff9b8a} .erro-dados .fine{display:block;color:#b08a86;font-size:12px;margin-top:6px} .erro-dados button{margin-top:8px;padding:6px 14px;border-radius:20px;border:1px solid #7a3030;background:#3a2022;color:#fff;font-weight:700;cursor:pointer} .carregando{color:var(--muted);font-size:13px;padding:18px 0} .carregando::before{content:'';display:inline-block;width:12px;height:12px;margin-right:8px;border-radius:50%;border:2px solid var(--muted);border-top-color:transparent;animation:gira .8s linear infinite;vertical-align:-2px} @keyframes gira{to{transform:rotate(360deg)}}
+
+ *{box-sizing:border-box}
+ body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 var(--font);
+   -webkit-font-smoothing:antialiased;padding-bottom:env(safe-area-inset-bottom)}
+ h1,h2,h3,h4,.fonte-hd{font-family:var(--font-hd);letter-spacing:-.01em}
+ a{color:var(--accent);text-underline-offset:2px}
+ img,svg,video,canvas,table,pre{max-width:100%}
+ :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+ .salta{position:absolute;left:-9999px;top:0;z-index:99;background:var(--accent);
+   color:var(--accent-ink);padding:10px 16px;border-radius:0 0 10px 0;font-weight:700}
+ .salta:focus{left:0}
+
+ /* OS ÍCONES (2.ª passagem, 2026-09-24). Um só conjunto, `currentColor`: o
+    ícone acende com o rótulo quando o item da barra fica activo, o que um emoji
+    — desenhado pelo sistema, com cor própria — nunca fez. */
+ svg.ico{display:inline-block;flex:none;width:18px;height:18px;fill:none;
+   stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;
+   vertical-align:-.16em}
+ svg.i14{width:14px;height:14px} svg.i15{width:15px;height:15px}
+ svg.i16{width:16px;height:16px} svg.i17{width:17px;height:17px}
+ svg.i21{width:21px;height:21px} svg.i24{width:24px;height:24px}
+ .ic>svg.ico{display:block;vertical-align:baseline}
+ h1 svg.ico,h2 svg.ico,h3 svg.ico,h4 svg.ico,summary svg.ico{
+   width:1em;height:1em;vertical-align:-.12em;margin-right:.14em;opacity:.85}
+
+ /* ------------------------------------------------------------- estrutura */
+ .shell{display:flex;min-height:100vh;align-items:stretch}
+ .mainc{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+ main{flex:1 0 auto}
+ .wrap,.pghin{width:100%;max-width:var(--maxw);margin-inline:auto;
+   padding-inline:clamp(14px,2.6vw,30px)}
+ .wrap{padding-block:22px 72px}
+
+ /* --------------------------------------------------------- barra lateral */
+ .side{flex:0 0 var(--side);width:var(--side);background:var(--card2);
+   border-right:1px solid var(--line);position:sticky;top:0;align-self:flex-start;
+   height:100vh;overflow-y:auto;overscroll-behavior:contain;
+   scrollbar-width:thin;display:flex;flex-direction:column;z-index:40}
+ .sidetop{padding:18px 16px 12px;border-bottom:1px solid var(--line)}
+ .casa{display:inline-flex;align-items:center;gap:6px;color:var(--muted);
+   font-size:11.5px;font-weight:600;text-decoration:none;padding:3px 0}
+ .casa:hover{color:var(--accent)}
+ .marca{display:flex;align-items:center;gap:9px;margin-top:8px;color:var(--ink);
+   text-decoration:none}
+ .marca .mk{width:30px;height:30px;flex:none;border-radius:9px;display:grid;
+   place-items:center;background:linear-gradient(145deg,var(--accent),#c89a2c);
+   color:var(--accent-ink);font-weight:800;font-size:15px;font-family:var(--font-hd)}
+ .marca b{font-family:var(--font-hd);font-size:16.5px;font-weight:700;letter-spacing:-.02em}
+ .marca small{display:block;color:var(--dim);font-size:10.5px;font-weight:600;
+   letter-spacing:.09em;text-transform:uppercase;line-height:1.3}
+ .sidenav{padding:10px 10px 22px;flex:1 0 auto}
+ .sgrp{margin-top:14px}
+ .sgrp:first-child{margin-top:2px}
+ .sgh{padding:6px 10px 5px;font-size:10px;font-weight:700;letter-spacing:.11em;
+   text-transform:uppercase;color:var(--dim)}
+ .sli{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:10px;
+   color:var(--ink2);text-decoration:none;font-size:13.5px;font-weight:600;
+   line-height:1.25;min-height:38px;transition:background .12s,color .12s}
+ .sli .ic{flex:none;width:19px;display:flex;align-items:center;justify-content:center;
+   color:var(--muted)}
+ .sli .tx{min-width:0}
+ .sli .tx small{display:block;color:var(--dim);font-size:11px;font-weight:500;
+   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .sli:hover{background:var(--card);color:var(--ink)}
+ .sli:hover .ic{color:var(--ink2)}
+ .sli.cur{background:var(--accent-soft);color:var(--accent);
+   box-shadow:inset 2px 0 0 var(--accent)}
+ .sli.cur .ic{color:var(--accent)}
+ .sli.cur .tx small{color:#b9a066}
+ .sli.sub{min-height:32px;padding:5px 10px 5px 14px;font-size:12.5px;
+   font-weight:500;color:var(--muted)}
+ .sli.sub .ic{width:16px}
+ .sli.sub:hover{color:var(--ink)}
+ .sli.sub.cur{color:var(--accent);background:var(--accent-soft)}
+ .sidept{padding:12px 16px 18px;border-top:1px solid var(--line);color:var(--dim);
+   font-size:11px;line-height:1.5}
+ .sidept a{color:var(--muted);text-decoration:none} .sidept a:hover{color:var(--accent)}
+
+ /* ------------------------------------------------- barra de topo (móvel) */
+ .topbar{display:none;position:sticky;top:0;z-index:35;align-items:center;gap:10px;
+   padding:9px clamp(10px,3vw,16px);background:rgba(7,8,13,.94);
+   backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+ .menub{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:6px 12px;
+   border-radius:10px;border:1px solid var(--line2);background:var(--card);
+   color:var(--ink);font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+ .menub:hover{border-color:var(--accent)}
+ .tbt{font-family:var(--font-hd);font-weight:700;font-size:15px;min-width:0;
+   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .veu{position:fixed;inset:0;background:rgba(3,4,8,.62);z-index:38;border:0}
+
+ /* --------------------------------------------------- cabeçalho da página */
+ .pgh{border-bottom:1px solid var(--line);
+   background:radial-gradient(900px 260px at 12% -60%,rgba(245,196,81,.10),transparent 70%),
+              var(--card2)}
+ .pgh .pghin{padding-block:20px 18px}
+ .crumbs{font-size:11.5px;color:var(--dim);display:flex;flex-wrap:wrap;gap:5px;
+   align-items:center;margin-bottom:7px}
+ .crumbs a{color:var(--muted);text-decoration:none} .crumbs a:hover{color:var(--accent)}
+ .crumbs b{color:var(--ink2);font-weight:600}
+ .crumbs i{font-style:normal;color:var(--line2)}
+ .pgtop{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap}
+ .pgtit{min-width:0;flex:1 1 320px}
+ h1.pgt{margin:0;font-size:clamp(21px,2.6vw,27px);font-weight:700;letter-spacing:-.025em}
+ .pgsub{margin:5px 0 0;color:var(--muted);font-size:13px;line-height:1.55;max-width:78ch}
+ .pgsub b{color:var(--ink2)} .pgsub a{color:var(--accent)}
+ .pgacts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-left:auto}
+
+ /* ----------------------------------------------- componentes partilhados */
+ .seg{display:inline-flex;flex-wrap:wrap;gap:4px;padding:4px;border-radius:12px;
+   background:var(--card2);border:1px solid var(--line)}
+ .seg button,.seg a{appearance:none;border:0;background:transparent;color:var(--muted);
+   font:inherit;font-size:12.5px;font-weight:600;padding:7px 13px;border-radius:9px;
+   cursor:pointer;min-height:36px;text-decoration:none;white-space:nowrap}
+ .seg button:hover,.seg a:hover{color:var(--ink);background:var(--card)}
+ .seg button.on,.seg a.on,.seg button[aria-selected="true"]{
+   background:var(--accent-soft);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent-line)}
+ .btn{font:inherit;font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:10px;
+   border:1px solid var(--line2);background:var(--card);color:var(--ink2);cursor:pointer;
+   min-height:38px;transition:.12s;text-decoration:none;display:inline-flex;
+   align-items:center;gap:6px;justify-content:center}
+ .btn:hover{border-color:var(--accent);color:var(--ink)}
+ .btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+ .btn.pri:hover{background:#ffd671;color:var(--accent-ink)}
+ .btn.on{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent)}
+ .btn.sm{min-height:32px;padding:5px 11px;font-size:12px;border-radius:9px}
+ .btn[disabled]{opacity:.5;cursor:default}
+ .chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;
+   padding:3px 10px;border-radius:999px;background:var(--card3);color:var(--muted);
+   border:1px solid var(--line)}
+ .chip.ok{background:#0f2a1c;color:var(--add);border-color:#1e4a33}
+ .chip.gold{background:var(--accent-soft);color:var(--accent);border-color:var(--accent-line)}
+ .chip.info{background:var(--info-soft);color:var(--ob);border-color:#25406b}
+ .vazio{color:var(--muted);font-size:13px;background:var(--card2);
+   border:1px dashed var(--line2);border-radius:var(--r);padding:16px 18px}
+ .vazio code{background:var(--bg);padding:1px 5px;border-radius:5px;font-size:12px}
+ .pgft{border-top:1px solid var(--line);background:var(--card2);color:var(--dim);
+   font-size:12px;line-height:1.65}
+ .pgft .pghin{padding-block:18px 30px}
+ .pgft b{color:var(--muted)} .pgft a{color:var(--muted)}
+ .pgft code{background:var(--bg);padding:1px 5px;border-radius:5px}
+ /* «COMO LER ESTA PÁGINA» (2.ª passagem, 2026-09-24). O rodapé da Deckboxes eram
+    dezoito linhas de explicação abertas no fim de todas as vistas — texto que se
+    lê UMA vez e depois é só distância até ao fim da página. Fechado por
+    omissão, com o `<summary>` a dizer que está lá. */
+ .pgft details.comoler>summary{cursor:pointer;list-style:none;display:inline-flex;
+   align-items:center;gap:7px;color:var(--muted);font-weight:700;font-size:12.5px;
+   padding:7px 12px;border:1px solid var(--line2);border-radius:10px;
+   background:var(--card);min-height:36px}
+ .pgft details.comoler>summary::-webkit-details-marker{display:none}
+ .pgft details.comoler>summary:hover{border-color:var(--accent);color:var(--ink2)}
+ .pgft details.comoler>summary svg.ico{opacity:.9;margin:0}
+ .pgft details.comoler[open]>summary{margin-bottom:12px}
+ .pgft details.comoler .cltx{max-width:92ch}
+
+ /* ÍNDICE VERTICAL: a alternativa às filas de botões que corriam para o lado.
+    Em ecrã largo fica numa coluna à esquerda do conteúdo; no telemóvel vira um
+    `<select>` (é o `vindexHTML` do `deckboxes.js` que o desenha). */
+ /* 216 px e não 238 (2.ª passagem, 2026-09-24): o índice deixou de repetir as
+    vistas que já estão na barra lateral e ficou só com os NOMES das caixas —
+    cabem em menos, e o que sobra é largura para o conteúdo. */
+ .comidx{display:grid;grid-template-columns:216px minmax(0,1fr);gap:20px;
+   align-items:start}
+ .vidx{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow-y:auto;
+   scrollbar-width:thin;background:var(--card2);border:1px solid var(--line);
+   border-radius:var(--r2);padding:8px}
+ .vidx .vgh{padding:9px 10px 5px;font-size:10px;font-weight:700;letter-spacing:.11em;
+   text-transform:uppercase;color:var(--dim)}
+ .vidx button,.vidx a{display:flex;width:100%;text-align:left;gap:8px;align-items:center;
+   appearance:none;border:0;background:transparent;color:var(--ink2);font:inherit;
+   font-size:13px;font-weight:600;padding:7px 10px;border-radius:9px;cursor:pointer;
+   min-height:36px;text-decoration:none;line-height:1.25}
+ .vidx button:hover,.vidx a:hover{background:var(--card);color:var(--ink)}
+ .vidx button.on,.vidx a.on{background:var(--accent-soft);color:var(--accent);
+   box-shadow:inset 2px 0 0 var(--accent)}
+ .vidx .vtx{min-width:0;flex:1}
+ .vidx .vtx small{display:block;font-size:11px;font-weight:500;color:var(--dim);
+   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .vidx button.on .vtx small{color:#b9a066}
+ .vidx .ic{flex:none;width:18px;display:flex;align-items:center;justify-content:center;
+   color:var(--muted);font-size:13px}
+ .vidx button.on .ic,.vidx a.on .ic{color:var(--accent)}
+ .vidxsel{display:none;margin:0 0 12px}
+ .vidxsel .vlbl{display:block;font-size:10px;font-weight:700;letter-spacing:.11em;
+   text-transform:uppercase;color:var(--dim);margin-bottom:5px}
+ .selc,select.selc{background:var(--card);color:var(--ink);border:1px solid var(--line2);
+   border-radius:10px;font:inherit;font-size:13px;font-weight:600;padding:9px 12px;
+   min-height:40px;width:100%;max-width:100%;cursor:pointer}
+
+ /* ------------------------------------------------------------ telemóvel */
+ @media (max-width:899px){
+   :root{--sticky:57px}
+   .topbar{display:flex}
+   .side{position:fixed;inset:0 auto 0 0;transform:translateX(-102%);
+     transition:transform .18s ease;box-shadow:var(--sombra);width:min(86vw,var(--side))}
+   body.menu-on .side{transform:none}
+   body:not(.menu-on) .veu{display:none}
+   body.menu-on{overflow:hidden}
+   .comidx{grid-template-columns:minmax(0,1fr);gap:12px}
+   .vidx{display:none}
+   .vidxsel{display:block}
+   .pgh .pghin{padding-block:16px 14px}
+   .wrap{padding-block:16px 60px}
+   .pgacts{margin-left:0;width:100%}
+   /* ALVOS DE TOQUE (a decisão de 2026-09-18, que só valia para a Deckboxes e
+      só a 640 px: *"ele vai estar à frente da estante com o telemóvel"*).
+      Passou para a casca e para os 900 px — o `.cpbtn` de 11 px do Metagame
+      era um alvo de 22 px numa página que ele abre no telemóvel tal como a
+      outra. */
+   .btn,.cpbtn,.seg button,.seg a,.selc,select.selc,button.cp{min-height:40px}
+   .btn.sm{min-height:36px}
+   .sli.sub{min-height:38px}
+   .casa{min-height:32px}
+   /* O selector de edição da Cobertura fica nos 34 px, e não nos 40: são 199
+      numa página só, e levá-los a 40 acrescentava ~1 600 px de altura a uma
+      lista que já é longa. É um compromisso assumido, não um esquecimento. */
+   select.pick{min-height:34px}
+ }
+ @media (min-width:900px){ .veu{display:none} }
+ @media print{
+   .side,.topbar,.veu,.salta,.pgacts,.pgft{display:none!important}
+   .shell{display:block} body{background:#fff;color:#000}
+ }
+
+</style></head><body><a class="salta" href="#conteudo">Saltar para o conteúdo</a><div class="shell"><aside class="side" id="side" tabindex="-1" aria-label="Navegação do site"><div class="sidetop"><a class="casa" href="https://baverone.com">← baverone.com</a><a class="marca" href="index.html"><span class="mk" aria-hidden="true">M</span><span><b>mtgvault</b><small>coleção do Prime</small></span></a></div><nav class="sidenav"><div class="sgrp"><a class="sli" href="index.html"><span class="ic"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9.5 12 2l9 7.5V20a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12.5h6V22"/></svg></span><span class="tx">Início<small>o painel de hoje</small></span></a><a class="sli cur" href="arrumacao.html" aria-current="page"><span class="ic"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M1.8 6.2 8.4 2.6l7.2 3.6 6.6-3.6v15.2l-6.6 3.6-7.2-3.6-6.6 3.6z"/><path d="M8.4 2.6v18.2"/><path d="M15.6 6.2v18"/></svg></span><span class="tx">Arrumação por fases<small>onde estás e o que vem a seguir</small></span></a></div><div class="sgrp"><div class="sgh">Decks</div><a class="sli" href="deckboxes.html"><span class="ic"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 3.5h19v5h-19z"/><path d="M4.4 8.5V20a1.5 1.5 0 0 0 1.5 1.5h12.2a1.5 1.5 0 0 0 1.5-1.5V8.5"/><path d="M10 12.5h4"/></svg></span><span class="tx">Deck boxes<small>todas as caixas</small></span></a><a class="sli sub" href="deckboxes.html#montados" data-ancora="montados"><span class="ic"><svg class="ico i17" viewBox="0 0 24 24" aria-hidden="true"><path d="M21.5 11.1V12a9.5 9.5 0 1 1-5.6-8.7"/><path d="m8 11.5 3.2 3.2L22 4"/></svg></span><span class="tx">Decks montados</span></a><a class="sli sub" href="deckboxes.html#pormontar" data-ancora="pormontar"><span class="ic"><svg class="ico i17" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.6 6.2a1 1 0 0 0 0 1.4l1.8 1.8a1 1 0 0 0 1.4 0l3.6-3.6a6 6 0 0 1-7.9 7.9l-6.6 6.6a2.1 2.1 0 1 1-3-3l6.6-6.6a6 6 0 0 1 7.9-7.9z"/></svg></span><span class="tx">Decks para montar</span></a><a class="sli sub" href="deckboxes.html#plano" data-ancora="plano"><span class="ic"><svg class="ico i17" viewBox="0 0 24 24" aria-hidden="true"><path d="M1.8 6.2 8.4 2.6l7.2 3.6 6.6-3.6v15.2l-6.6 3.6-7.2-3.6-6.6 3.6z"/><path d="M8.4 2.6v18.2"/><path d="M15.6 6.2v18"/></svg></span><span class="tx">Plano de montagem</span></a><a class="sli sub" href="deckboxes.html#arrumar" data-ancora="arrumar"><span class="ic"><svg class="ico i17" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12.5h-5.4l-1.8 2.8H9.2l-1.8-2.8H2"/><path d="M5.4 5.1 2 12.5V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.5l-3.4-7.4A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.8 1.1z"/></svg></span><span class="tx">Arrumar cartas</span></a><a class="sli" href="comandantes.html"><span class="ic"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3.5h13a2 2 0 0 1 2 2v15H6a2 2 0 0 1-2-2z"/><path d="M6 16.5h13"/></svg></span><span class="tx">Consenso por comandante<small>Duel Commander</small></span></a></div><div class="sgrp"><div class="sgh">Coleção</div><a class="sli" href="colecao_cor.html"><span class="ic"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.4 2.2 7.2 12 12l9.8-4.8z"/><path d="m2.2 16.8 9.8 4.8 9.8-4.8"/><path d="m2.2 12 9.8 4.8L21.8 12"/></svg></span><span class="tx">Binders por cor</span></a><a class="sli" href="colecao.html"><span class="ic"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2.2"/><circle cx="8.6" cy="8.6" r="1.6"/><path d="m21 15.5-4.8-4.8L5.5 21"/></svg></span><span class="tx">Galeria de cartas</span></a><a class="sli" href="caixarl.html"><span class="ic"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.5 9.4 7.5 4.2"/><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></span><span class="tx">Reserved List · caixa</span></a><a class="sli" href="reservedlist.html"><span class="ic"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M22.5 6.5 13.8 15.2l-4.6-4.6L1.5 18.3"/><path d="M16.8 6.5h5.7v5.7"/></svg></span><span class="tx">Reserved List · preços</span></a></div><div class="sgrp"><div class="sgh">Metagame</div><a class="sli" href="metagame.html"><span class="ic"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M2.5 12h19"/><path d="M12 2.5A14.6 14.6 0 0 1 15.8 12 14.6 14.6 0 0 1 12 21.5 14.6 14.6 0 0 1 8.2 12 14.6 14.6 0 0 1 12 2.5z"/></svg></span><span class="tx">Metagame<small>o que estás perto de fechar</small></span></a><a class="sli" href="cobertura.html"><span class="ic"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5V9.5"/><path d="M18.2 20.5v-17"/><path d="M5.8 20.5v-6"/></svg></span><span class="tx">Cobertura do metagame</span></a><a class="sli" href="showcase.html"><span class="ic"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.6" r="6.6"/><path d="m8.2 14 -1.2 7.6L12 18.4l5 3.2L15.8 14"/></svg></span><span class="tx">Showcase Challenger<small>decks de eventos recentes</small></span></a></div><div class="sgrp"><div class="sgh">Compras</div><a class="sli sub" href="deckboxes.html#comprar" data-ancora="comprar"><span class="ic"><svg class="ico i17" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9.5" cy="20.5" r="1.3"/><circle cx="19" cy="20.5" r="1.3"/><path d="M1.5 2h3.3l2.5 12.2a1.9 1.9 0 0 0 1.9 1.5h9.2a1.9 1.9 0 0 0 1.9-1.5L22.2 6H6.2"/></svg></span><span class="tx">Comprar</span></a><a class="sli sub" href="deckboxes.html#encomendas" data-ancora="encomendas"><span class="ic"><svg class="ico i17" viewBox="0 0 24 24" aria-hidden="true"><path d="M1.5 4h13.6v12.4H1.5z"/><path d="M15.1 8.4h3.9l3.5 3.5v4.5h-7.4z"/><circle cx="6" cy="19" r="2.2"/><circle cx="18.4" cy="19" r="2.2"/></svg></span><span class="tx">Encomendas</span></a><a class="sli sub" href="deckboxes.html#feira" data-ancora="feira"><span class="ic"><svg class="ico i17" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="7.2" width="20" height="13.3" rx="2.2"/><path d="M16 20.5V5.2a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v15.3"/></svg></span><span class="tx">Feira</span></a><a class="sli sub" href="deckboxes.html#revalidacao" data-ancora="revalidacao"><span class="ic"><svg class="ico i17" viewBox="0 0 24 24" aria-hidden="true"><path d="M22.5 19a2 2 0 0 1-2 2h-17a2 2 0 0 1-2-2V8.4a2 2 0 0 1 2-2h3.4l1.9-2.9h6.4l1.9 2.9h3.4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13.4" r="3.8"/></svg></span><span class="tx">Revalidação por foto</span></a></div></nav><div class="sidept">Atualiza sozinho todos os dias · <a href="https://github.com/Baverone/mtgvault">repositório</a></div></aside><button class="veu" id="veu" type="button" aria-label="Fechar o menu"></button><div class="mainc"><header class="topbar"><button class="menub" id="menub" type="button" aria-expanded="false" aria-controls="side"><svg class="ico i17" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12h17"/><path d="M3.5 6h17"/><path d="M3.5 18h17"/></svg><span>Menu</span></button><span class="tbt">Arrumação por fases</span></header><div class="pgh"><div class="pghin"><nav class="crumbs" aria-label="Migalhas"><a href="index.html">Início</a><i>›</i><b>Arrumação por fases</b></nav><div class="pgtop"><div class="pgtit"><h1 class="pgt">Arrumação por fases</h1><p class="pgsub">Onde estás na arrumação da coleção e o que vem a seguir. As quatro regras de 1 de outubro de 2026 valem em todas as fases, e cada cópia que fica de fora da venda diz por que regra ficou.</p></div></div></div></div><main id="conteudo" tabindex="-1"><div class="trava" id="trava" hidden></div><div class="trava" id="toast" hidden></div><div class="fasebar" id="fasebar"></div><div id="vista"><p class="carregando">a carregar…</p></div></main><footer class="pgft"><div class="pghin"><details class="comoler"><summary><svg class="ico i16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.2a2.8 2.8 0 0 1 5.4.9c0 1.9-2.7 2.8-2.7 2.8"/><path d="M12 17h.01"/></svg><span>Como ler esta página</span></summary><div class="cltx"><p><b>As quatro proteções.</b> <b>P1</b> — todas as cópias das shocklands e das fetchlands ficam protegidas: todos os acabamentos, todas as línguas, todas as repetidas, estejam ou não num deck. As duas listas são <b>derivadas do catálogo</b> pelo texto da carta e pelos tipos, nunca escritas à mão, e a conta tem de dar dez de cada — se não der, a página diz e para. <b>P2</b> — a Reserved List que jogas (alocada a um deck ou no consenso de um formato que jogas); o resto da Reserved List continua a passar pela regra dos 5 % de 8 de setembro. <b>P3</b> — nada do que está num deck que decidiste manter montado ou guardar. <b>P4</b> — a reserva de cada deck.</p><p><b>A reserva («maybe»).</b> Enche-se sozinha a partir do consenso do arquétipo — a banda flex e o resto do sideboard que não estão nas 75 de hoje — mais o que acrescentares à mão. Tem um <b>limiar</b>: só entra o que aparece em pelo menos essa percentagem das listas. Sem limiar não sobrava nada para vender, porque um arquétipo tem dezenas de cartas distintas entre o main e o sideboard. Abaixo de oito listas não se chama consenso a nada e a reserva automática fica vazia. A reserva protege só o que tens; o que não tens alimenta a lista de compras.</p><p><b>Os três estados.</b> <i>Montado</i> fica montado e as cartas ficam protegidas; <i>guardado</i> desmonta-se e as cartas continuam protegidas; <i>dissolvido</i> desmonta-se e as cartas passam a candidatas, menos as que P1, P2 ou P4 apanhem. <b>Um deck sem decisão conta como montado</b> — nunca o contrário: um deck novo não manda uma única carta para a venda. Mudar de estado é reversível e não apaga nada.</p><p><b>A fila de fotos conta cópias físicas, não nomes.</b> Se jogas quatro da mesma carta, são quatro fotos — e por isso a barra de progresso e os totais são em cópias. As fotos entram pelo caminho de sempre: largas-as em <code>pendentes/</code> (ou tiras-as do telemóvel na Deck boxes) e a corrida da noite liga cada uma à sua cópia.</p><p><b>O inventário é paralelo.</b> As fotos da Reserved List e das shock/fetchlands não são um passo da venda e nunca bloqueiam nenhuma fase.</p></div></details></div></footer></div></div><script>
+
+const DADOS_BASE = 'data/paginas/';
+const TOKEN_URL = (() => { try { return new URLSearchParams(location.search).get('t') || ''; }
+                            catch (e) { return ''; } })();
+const escDados = s => String(s == null ? '' : s).replace(/[&<>"]/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function carregaDados(caminho) {
+  const url = DADOS_BASE + caminho + (TOKEN_URL ? '?t=' + encodeURIComponent(TOKEN_URL) : '');
+  let r;
+  try { r = await fetch(url); }
+  catch (e) {
+    throw new Error(`não consegui ir buscar ${caminho}: sem resposta do servidor`
+      + (location.protocol === 'file:' ? ' — a página foi aberta do disco (file://) e assim não funciona; tem de ser servida por HTTP' : '')
+      + ` (${e.message})`);
+  }
+  if (!r.ok) throw new Error(`não consegui ir buscar ${caminho}: o servidor respondeu ${r.status}`);
+  try { return await r.json(); }
+  catch (e) { throw new Error(`o ficheiro ${caminho} veio estragado (${e.message})`); }
+}
+function erroDados(el, e) {
+  if (!el) return;
+  el.innerHTML = `<div class="erro-dados" role="alert">⚠️ <b>Não consegui carregar os dados desta secção.</b>`
+    + `<br>${escDados(e && e.message ? e.message : e)}`
+    + `<span class="fine">Verifica a ligação e tenta outra vez. Se estás no modo edição, `
+    + `confirma que o servidor (porto 8771) está de pé.</span>`
+    + `<button type="button" onclick="location.reload()">recarregar</button></div>`;
+}
+
+let D = null, ABA = 'f1';
+const PARTES = {};
+const el = id => document.getElementById(id);
+const eur = v => (v == null ? '—' : Number(v).toLocaleString('pt-PT',
+  {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' €');
+const cop = n => n + (n === 1 ? ' cópia' : ' cópias');
+const ESTADOS = [['montado', 'Montado'], ['guardado', 'Guardado'],
+                 ['dissolvido', 'Dissolvido']];
+const ABAS = [
+  ['f1', 'Fase 1 · Fechar os decks'],
+  ['f2', 'Fase 2 · Fotos dos decks'],
+  ['f3', 'Fase 3 · Candidatos'],
+  ['f4', 'Fase 4 · Fotos dos candidatos'],
+  ['inv', 'Inventário (paralelo)'],
+];
+
+/* ---------------------------------------------------------------- gravar */
+async function grava(corpo, botao) {
+  if (!D.editavel) return;
+  const antes = botao ? botao.textContent : '';
+  if (botao) { botao.disabled = true; botao.textContent = '…'; }
+  let r;
+  try {
+    const ctl = new AbortController();
+    const prazo = setTimeout(() => ctl.abort(), 25000);
+    r = await fetch(corpo.url + (TOKEN_URL ? '?t=' + encodeURIComponent(TOKEN_URL) : ''),
+      {method: 'POST', headers: {'Content-Type': 'application/json'},
+       body: JSON.stringify(corpo.dados), signal: ctl.signal});
+    clearTimeout(prazo);
+  } catch (e) {
+    if (botao) { botao.disabled = false; botao.textContent = antes; }
+    toast('não sei se gravou — a rede não respondeu em 25 s. Recarrega para ver.', true);
+    return;
+  }
+  let j = {};
+  try { j = await r.json(); } catch (e) { j = {}; }
+  if (!r.ok) {
+    if (botao) { botao.disabled = false; botao.textContent = antes; }
+    toast(j.erro || ('o servidor respondeu ' + r.status), true);
+    return;
+  }
+  await recarrega();
+}
+async function recarrega() {
+  try {
+    D = await carregaDados('arrumacao.json');
+    for (const k of Object.keys(PARTES)) delete PARTES[k];
+    render();
+  } catch (e) { erroDados(el('vista'), e); }
+}
+let _t = null;
+function toast(msg, erro) {
+  const t = el('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.className = 'trava' + (erro ? ' err' : '');
+  t.hidden = false;
+  clearTimeout(_t);
+  _t = setTimeout(() => { t.hidden = true; }, erro ? 7000 : 4000);
+}
+
+/* ------------------------------------------------------------- FASE 1 */
+function reservaHTML(d) {
+  const r = d.reserva || {};
+  const ls = r.final || [];
+  let corpo = ls.length
+    ? `<ul class="rl">` + ls.map(x =>
+        `<li><span class="pc">${x.pct == null ? '—' : x.pct + ' %'}</span>`
+        + `<span class="tm">${x.tem ? 'tens ' + x.tem : 'não tens'}</span>`
+        + `<span style="flex:1">${escDados(x.nm)}</span>`
+        + (x.manual ? `<span class="mn">à mão</span>` : '')
+        + (D.editavel ? `<button type="button" data-res-fora="${escDados(d.slot)}"`
+            + ` data-carta="${escDados(x.nm)}" title="tirar da reserva">✕</button>` : '')
+        + `</li>`).join('') + `</ul>`
+    : `<p class="vazio">Sem reserva. ${escDados(r.nota || '')}</p>`;
+  if (D.editavel) {
+    corpo += `<div class="addres"><input type="text" id="novares-${escDados(d.slot)}"`
+      + ` placeholder="acrescentar uma carta à mão (nome em inglês)">`
+      + `<button type="button" data-res-add="${escDados(d.slot)}">acrescentar</button></div>`;
+  }
+  return `<details class="res"><summary>Reserva («maybe»): `
+    + `<b>${ls.length}</b> cartas · ${r.tem || 0} que tens`
+    + `, ${r.sem || 0} que não tens · limiar ${r.limiar} %</summary>`
+    + `<p class="sub" style="margin:8px 0 0">${escDados(r.nota || '')}</p>`
+    + corpo + `</details>`;
+}
+function deckHTML(d) {
+  const seg = ESTADOS.map(([k, rot]) =>
+    `<button type="button" class="${d.decisao === k ? 'on' : ''}${D.editavel ? '' : ' ro'}"`
+    + (D.editavel ? ` data-dec="${escDados(d.slot)}" data-valor="${k}"` : '')
+    + `>${rot}</button>`).join('');
+  const lib = d.decisao === 'dissolvido'
+    ? `Dissolvido: <b>${cop(d.liberta.copias)}</b> · <b>${eur(d.liberta.valor)}</b> já estão a contar como candidatas.`
+    : `Dissolver este deck libertava <b>${cop(d.liberta.copias)}</b> · <b>${eur(d.liberta.valor)}</b>`
+      + ` (o resto fica protegido por P1 ou P2).`;
+  return `<div class="deck"><div class="dh"><div>`
+    + `<div class="dn">${escDados(d.nome)}</div>`
+    + `<div class="dm">${escDados(d.formato || '')} · ${cop(d.na_caixa)} na caixa`
+    + (d.montada_em ? ` · montada em ${escDados(d.montada_em)}` : '')
+    + `</div></div><div class="dm" style="text-align:right">${eur(d.valor)}`
+    + (d.decisao_explicita ? '' : `<br><span class="pordecidir">por decidir`
+        + ` (conta como montado)</span>`)
+    + `</div></div>`
+    + `<div class="seg">${seg}</div>`
+    + `<p class="lib">${lib}</p>`
+    + reservaHTML(d) + `</div>`;
+}
+function fase1() {
+  const ds = D.decks || [];
+  const n = {montado: 0, guardado: 0, dissolvido: 0};
+  for (const d of ds) n[d.decisao]++;
+  return `<h2>Fase 1 · Fechar os decks <span class="n">${ds.length} decks</span></h2>`
+    + `<p class="sub">Para cada deck: fica montado, guarda-se (desmonta-se mas as `
+    + `cartas continuam protegidas) ou dissolve-se. <b>Um deck sem decisão conta `
+    + `como montado.</b> Mudar de estado é reversível e não apaga nada.</p>`
+    + `<div class="chips"><span class="chip gold"><b>${n.montado}</b> montados</span>`
+    + `<span class="chip"><b>${n.guardado}</b> guardados</span>`
+    + `<span class="chip"><b>${n.dissolvido}</b> dissolvidos</span>`
+    + `<span class="chip"><b>${D.por_decidir}</b> por decidir</span></div>`
+    + ds.map(deckHTML).join('');
+}
+
+/* ------------------------------------------------------- FASE 2 e FASE 4 */
+function barraHTML(b) {
+  return `<div class="bar"><i style="width:${b.pct}%"></i></div>`
+    + `<p class="barl"><b>${b.feitas}</b> de <b>${b.copias}</b> cópias `
+    + `(${b.pct} %) · feito ${eur(b.feitas_valor)} · falta ${eur(b.falta_valor)}</p>`;
+}
+function filaLinha(l) {
+  return `<li><span style="flex:1">${escDados(l.nm)}</span>`
+    + `<span class="wh">${escDados(l.set)} ${escDados((l.lang || '').toUpperCase())}`
+    + `${l.foil ? ' ✨' : ''} ${escDados(l.cond || '')}</span>`
+    + `<span class="wh">${escDados(l.local || '')}</span>`
+    + `<span class="q">${eur(l.total)}</span>`
+    + (l.validado ? `<span class="ok">✓ ${escDados(l.validado)}</span>`
+                  : `<span class="wh">📷</span>`) + `</li>`;
+}
+function lotesHTML(lotes, aberto) {
+  if (!lotes.length) return `<p class="vazio">Nada nesta fila.</p>`;
+  return lotes.map((lo, i) =>
+    `<details class="lote"${i < aberto ? ' open' : ''}><summary>`
+    + `<span>Lote ${lo.n} · cópias ${lo.de}–${lo.ate}</span>`
+    + `<span class="lm">${lo.feitas} de ${lo.copias} feitas · ${eur(lo.valor)}</span>`
+    + `</summary><div class="lb"><ul class="fl">`
+    + lo.linhas.map(filaLinha).join('') + `</ul></div></details>`).join('');
+}
+function fase2(p) {
+  if (!p.filas.length) {
+    return `<h2>Fase 2 · Fotos dos decks</h2><p class="vazio">Nenhum deck está `
+      + `montado com cartas lá dentro, por isso não há nada para confirmar.</p>`;
+  }
+  return `<h2>Fase 2 · Fotos dos decks <span class="n">${p.decks} decks, `
+    + `${p.barra.copias} cópias</span></h2>`
+    + `<p class="sub">As cartas dos decks que ficam <b>montados</b>, para `
+    + `confirmares que cada deck está fisicamente completo antes de 10/10. `
+    + `A fila conta <b>cópias</b>: um playset são quatro fotos.</p>`
+    + barraHTML(p.barra)
+    + p.filas.map(f => `<h2>${escDados(f.nome)} <span class="n">`
+        + `${f.barra.copias} cópias · ${eur(f.barra.valor)}</span></h2>`
+        + barraHTML(f.barra) + lotesHTML(f.lotes, 1)).join('');
+}
+function fase4(p) {
+  return `<h2>Fase 4 · Fotos dos candidatos <span class="n">`
+    + `${p.barra.copias} cópias em ${p.lotes.length} lotes</span></h2>`
+    + `<p class="sub">Depois de Ghent. A fila é <b>por carta, da mais cara para `
+    + `a mais barata</b> — foi o que pediste —, em lotes de ${p.lote} cópias, e `
+    + `cada linha diz onde a cópia está guardada para a ires buscar.</p>`
+    + barraHTML(p.barra) + lotesHTML(p.lotes, 1);
+}
+function inventario(p) {
+  return `<h2>Inventário <span class="n">${p.barra.copias} cópias · `
+    + `${eur(p.barra.valor)}</span></h2>`
+    + `<p class="sub">${escDados(p.nota)} São as fotos da Reserved List e das `
+    + `shock/fetchlands, para teres registo do que vale mais.</p>`
+    + p.grupos.map(g => `<h2>${escDados(g.titulo)} <span class="n">`
+        + `${g.barra.copias} cópias · ${eur(g.barra.valor)}</span></h2>`
+        + barraHTML(g.barra) + lotesHTML(g.lotes, 0)).join('');
+}
+
+/* ------------------------------------------------------------- FASE 3 */
+function fase3(p) {
+  const c = p.candidatos;
+  const linhas = c.linhas.map(l =>
+    `<tr><td>${escDados(l.nm)}${l.rl ? ' <span class="prot">RL</span>' : ''}</td>`
+    + `<td class="mot">${escDados(l.set)} ${escDados((l.lang || '').toUpperCase())}`
+    + `${l.foil ? ' ✨' : ''} · ${escDados(l.cond || '')}</td>`
+    + `<td class="mot">${escDados(l.local || '')}</td>`
+    + `<td class="v">${l.q}</td><td class="v">${eur(l.total)}</td></tr>`).join('');
+  const prot = c.protegidas.map(l =>
+    `<tr><td>${escDados(l.nm)}</td>`
+    + `<td class="mot">${escDados(l.set)} ${escDados((l.lang || '').toUpperCase())}`
+    + `${l.foil ? ' ✨' : ''}</td>`
+    + `<td class="mot">${escDados(l.motivo)}</td>`
+    + `<td class="v">${l.q}</td><td class="v">${eur(l.total)}</td></tr>`).join('');
+  const porp = Object.entries(c.por_proteccao).map(([, v]) =>
+    `<span class="chip"><b>${v.copias}</b> ${escDados(v.rotulo)} · ${eur(v.valor)}</span>`
+    ).join('');
+  return `<h2>Fase 3 · Candidatos <span class="n">${c.copias} cópias, `
+    + `${c.cartas} cartas</span></h2>`
+    + `<p class="sub">Sai sozinha das decisões da Fase 1, com as quatro `
+    + `proteções aplicadas. <b>Só leitura</b> — aqui não se vende nada.</p>`
+    + `<div class="chips"><span class="chip gold"><b>${eur(c.valor)}</b> candidato`
+    + `</span>${porp}</div>`
+    + `<table class="cd"><thead><tr><th>Carta</th><th>Versão</th><th>Onde está`
+    + `</th><th class="v">Cóp.</th><th class="v">Valor</th></tr></thead>`
+    + `<tbody>${linhas || '<tr><td colspan=5 class="vazio">Nada candidato.</td></tr>'}`
+    + `</tbody></table>`
+    + `<h2>Protegidas <span class="n">${c.protegidas_copias} cópias · `
+    + `${eur(c.protegidas_valor)}</span></h2>`
+    + `<p class="sub">Cada linha diz <b>qual</b> das quatro regras a apanhou e `
+    + `<b>porquê</b>. Sem motivo não há exclusão silenciosa.</p>`
+    + `<table class="cd"><thead><tr><th>Carta</th><th>Versão</th><th>Porque está `
+    + `protegida</th><th class="v">Cóp.</th><th class="v">Valor</th></tr></thead>`
+    + `<tbody>${prot}</tbody></table>`;
+}
+
+/* ---------------------------------------------------------------- render */
+async function parte(nome) {
+  if (D.partes && D.partes[nome]) return D.partes[nome];
+  if (PARTES[nome]) return PARTES[nome];
+  PARTES[nome] = await carregaDados('arrumacao/' + nome + '.json');
+  return PARTES[nome];
+}
+function barra() {
+  const b = el('fasebar');
+  if (!b) return;
+  const nq = {f1: D.decks.length, f2: D.totais.fase2_copias,
+              f3: D.totais.candidatos_copias, f4: D.totais.fase4_copias,
+              inv: D.totais.inventario_copias};
+  b.innerHTML = ABAS.map(([k, rot]) =>
+    `<button type="button" data-aba="${k}" class="${ABA === k ? 'cur' : ''}`
+    + `${k === 'inv' ? ' par' : ''}">${escDados(rot)}`
+    + `<span class="nq">${nq[k]}</span></button>`).join('');
+}
+async function render() {
+  const v = el('vista');
+  barra();
+  const t = el('trava');
+  if (t) {
+    t.hidden = !D.congelada;
+    if (D.congelada) t.textContent = '🔒 ' + D.motivo_congelado;
+  }
+  try {
+    if (ABA === 'f1') v.innerHTML = fase1();
+    else {
+      v.innerHTML = '<p class="carregando">a carregar…</p>';
+      if (ABA === 'f2') v.innerHTML = fase2(await parte('fase2'));
+      else if (ABA === 'f3') v.innerHTML = fase3(await parte('candidatos'));
+      else if (ABA === 'f4') v.innerHTML = fase4(await parte('fase4'));
+      else v.innerHTML = inventario(await parte('inventario'));
+    }
+  } catch (e) { erroDados(v, e); return; }
+  try { history.replaceState(null, '', '#' + ABA); } catch (e) { /* file:// */ }
+}
+function ligar() {
+  // O harness de node (`tests/abrir_pagina.js`) desenha o HTML num DOM mínimo
+  // que não tem `addEventListener` — e não faz falta: ali o que se mede é o que
+  // o `render()` escreveu, não o que acontece a um toque. Sem esta guarda a
+  // página rebentava no arranque e o teste de ponta a ponta nunca via a Fase 1.
+  if (typeof document.addEventListener !== 'function') return;
+  document.addEventListener('click', ev => {
+    const b = ev.target.closest('button');
+    if (!b) return;
+    if (b.dataset.aba) { ABA = b.dataset.aba; render(); return; }
+    if (b.dataset.dec) {
+      grava({url: '/api/fase-decisao',
+             dados: {slot: b.dataset.dec, decisao: b.dataset.valor}}, b);
+      return;
+    }
+    if (b.dataset.resFora) {
+      grava({url: '/api/fase-reserva',
+             dados: {slot: b.dataset.resFora, act: 'remover',
+                     carta: b.dataset.carta}}, b);
+      return;
+    }
+    if (b.dataset.resAdd) {
+      const i = el('novares-' + b.dataset.resAdd);
+      const nm = (i && i.value || '').trim();
+      if (!nm) { toast('escreve o nome da carta primeiro', true); return; }
+      grava({url: '/api/fase-reserva',
+             dados: {slot: b.dataset.resAdd, act: 'add', carta: nm}}, b);
+    }
+  });
+}
+async function arranca() {
+  try { D = await carregaDados('arrumacao.json'); }
+  catch (e) { erroDados(el('vista'), e); return; }
+  const h = (location.hash || '').replace('#', '');
+  if (ABAS.some(([k]) => k === h)) ABA = h;
+  ligar();
+  await render();
+}
+arranca();
+</script><script>
+(function(){
+  var b = document.body, side = document.getElementById('side'),
+      bt = document.getElementById('menub'), veu = document.getElementById('veu');
+  function fecha(){ if(!b||!b.classList) return; b.classList.remove('menu-on');
+    if(bt&&bt.setAttribute) bt.setAttribute('aria-expanded','false'); }
+  function abre(){ if(!b||!b.classList) return; b.classList.add('menu-on');
+    if(bt&&bt.setAttribute) bt.setAttribute('aria-expanded','true');
+    if(side&&side.focus) try{ side.focus(); }catch(e){} }
+  if(bt&&bt.addEventListener) bt.addEventListener('click', function(){
+    (b.classList && b.classList.contains('menu-on')) ? fecha() : abre(); });
+  if(veu&&veu.addEventListener) veu.addEventListener('click', fecha);
+  if(document.addEventListener) document.addEventListener('keydown', function(e){
+    if(e && e.key === 'Escape') fecha(); });
+  /* Um toque num link do menu fecha o painel — senão, no telemóvel, ele ficava
+     por cima da página a que acabou de chegar. */
+  var links = document.querySelectorAll ? document.querySelectorAll('.sidenav a') : [];
+  for (var i = 0; i < links.length; i++) {
+    if (links[i].addEventListener) links[i].addEventListener('click', fecha);
+  }
+  /* A sub-vista activa: o `#comprar` da barra lateral acende quando a Deckboxes
+     está nessa aba. Sem isto, os itens da última secção apontavam todos para a
+     página em que ele já está, sem dizer qual estava aberta. */
+  function marcaHash(){
+    var h = '';
+    try { h = (location.hash || '').replace('#',''); } catch(e){}
+    var subs = document.querySelectorAll ? document.querySelectorAll('.sli.sub') : [];
+    for (var i = 0; i < subs.length; i++) {
+      var s = subs[i];
+      if (!s.classList || !s.dataset) continue;
+      s.classList.toggle('cur', !!h && s.dataset.ancora === h);
+    }
+  }
+  if (window.addEventListener) window.addEventListener('hashchange', marcaHash);
+  marcaHash();
+  window.marcaSubVista = marcaHash;
+})();
+</script></body></html>

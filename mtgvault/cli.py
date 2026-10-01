@@ -5,8 +5,8 @@ import argparse
 import sys
 from pathlib import Path
 
-from . import (analysis, caixas, collection, db, loadout, mtgtop8, precos,
-               prices, scryfall, sources, stock, wantlist, watchlist)
+from . import (analysis, caixas, collection, db, fases, loadout, mtgtop8,
+               precos, prices, scryfall, sources, stock, wantlist, watchlist)
 
 
 def _p(rows, cols):
@@ -251,6 +251,25 @@ def main(argv=None):
     rs.add_argument("nome", nargs="?", help="add/remover: o nome da carta")
 
     # O MODO DE PREÇO (André, 2026-09-25): market | best | media.
+    # A ARRUMAÇÃO POR FASES (André, 2026-10-01). Vive no CLI e não num script de
+    # medição que se perde: é por aqui que ele (e o Claude na nuvem) vê as
+    # quatro protecções e ESCOLHE o limiar da reserva com os euros à frente.
+    pf = sub.add_parser("fases",
+                        help="as quatro protecções, os candidatos e as filas de "
+                             "fotos; `fases decisao <slot> <montado|guardado|"
+                             "dissolvido>` decide, `fases --curva` mede o limiar "
+                             "da reserva, `fases terras` verifica as duas listas")
+    pf.add_argument("accao", nargs="?", default="mostrar",
+                    choices=["mostrar", "decisao", "terras"])
+    pf.add_argument("slot", nargs="?")
+    pf.add_argument("decisao", nargs="?")
+    pf.add_argument("--curva", action="store_true",
+                    help="a curva do limiar da reserva (10/20/30/40/50 %%), em "
+                         "cópias e valor por deck")
+    pf.add_argument("--limiar", type=int,
+                    help="medir com este limiar em vez do do config")
+    pf.add_argument("--json", action="store_true")
+
     pm = sub.add_parser("precos",
                         help="o modo de preço: `precos` mostra, `precos modo "
                              "<market|best|media>` troca, `precos comparar` "
@@ -658,6 +677,9 @@ def main(argv=None):
         elif args.cmd in ("padrao", "reserva"):
             _padrao_reserva(con, args)
 
+        elif args.cmd == "fases":
+            return _fases(con, args)
+
         elif args.cmd == "precos":
             _precos(con, args)
 
@@ -815,6 +837,110 @@ def comparar_modos(con) -> dict:
             f"{k[0]}: {lados[base].get(k, '(fora)')} -> {lados[m].get(k, '(fora)')}"
             for k in mudam)[:8]
     return {"base": base, "modos": out, "em_vigor": precos.modo()}
+
+
+def _fases(con, args):
+    """`fases` — AS QUATRO PROTECÇÕES E AS FASES DA ARRUMAÇÃO (2026-10-01).
+
+    `fases` mostra tudo; `fases --curva` acrescenta a curva do limiar da
+    reserva; `fases terras` verifica as duas listas derivadas (e **levanta** se
+    não der dez de cada, que é o que a ordem manda); `fases decisao <slot>
+    <montado|guardado|dissolvido>` decide um deck.
+    """
+    import json as _json                                     # noqa: PLC0415
+
+    if args.accao == "terras":
+        try:
+            v = fases.verificar(con)
+        except fases.TerrasNaoDerivadas as e:
+            print(f"ERRO: {e}")
+            return 2
+        for qual in ("shocklands", "fetchlands"):
+            d = v[qual]
+            print(f"{qual}: {d['n']}")
+            print(f"  regra: {d['regra']}")
+            for nm in d["nomes"]:
+                print(f"    {nm}")
+        return 0
+
+    if args.accao == "decisao":
+        if not args.slot or not args.decisao:
+            print("falta o slot e/ou a decisão "
+                  f"({'|'.join(fases.DECISOES)})")
+            return 2
+        try:
+            r = fases.gravar_decisao(args.slot, args.decisao)
+        except (KeyError, ValueError) as e:
+            print(f"ERRO: {e}")
+            return 2
+        print(f"{r['nome']}: {r['antes']} -> {r['decisao']}"
+              + ("" if r["mudou"] else " (já estava)"))
+        print(f"  {fases.TEXTO_DECISAO[r['decisao']]}")
+        return 0
+
+    rep = loadout.report(con)
+    r = fases.relatorio(con, rep, curva=args.curva)
+    if args.json:
+        print(_json.dumps(r, ensure_ascii=False, indent=2, default=str))
+        return 0
+
+    def eur(v):
+        return "—" if v is None else f"{v:,.2f} €".replace(",", " ")
+
+    print(f"ARRUMAÇÃO POR FASES — {r['hoje']}")
+    if r["congelada"]:
+        print(f"\n  *** {r['motivo_congelado']}")
+    t = r["terras"]
+    print(f"\nTERRAS DERIVADAS DO CATÁLOGO: shocklands {t['shocklands']['n']} · "
+          f"fetchlands {t['fetchlands']['n']}")
+
+    print(f"\nFASE 1 — FECHAR OS DECKS ({len(r['decks'])} decks; a omissão é "
+          f"«{fases.DECISAO_OMISSAO}»)")
+    _p([{"deck": d["nome"], "formato": d["formato"], "decisão": d["decisao"],
+         "escrita": "sim" if d["decisao_explicita"] else "NÃO",
+         "na caixa": d["na_caixa"], "valor": eur(d["valor"]),
+         "liberta": d["liberta"]["copias"],
+         "liberta €": eur(d["liberta"]["valor"]),
+         "reserva": f'{len(d["reserva"]["final"])} ({d["reserva"]["fonte"]}, '
+                    f'{d["reserva"]["listas"]} listas)'}
+        for d in r["decks"]],
+       ["deck", "formato", "decisão", "escrita", "na caixa", "valor",
+        "liberta", "liberta €", "reserva"])
+
+    c = r["candidatos"]
+    print(f"\nAS QUATRO PROTECÇÕES")
+    for p in fases.PROTECCOES:
+        v = c["por_proteccao"][p]
+        print(f"  {v['rotulo']:40s} {v['copias']:5d} cópias "
+              f"{v['cartas']:4d} cartas {eur(v['valor']):>14s}")
+    print(f"  {'PROTEGIDAS (total)':40s} {c['protegidas_copias']:5d} cópias "
+          f"{' ':9s} {eur(c['protegidas_valor']):>14s}")
+    print(f"  {'FASE 3 — CANDIDATO A VENDA':40s} {c['copias']:5d} cópias "
+          f"{c['cartas']:4d} cartas {eur(c['valor']):>14s}")
+
+    f2, f4, inv = r["fase2"], r["fase4"], r["inventario"]
+    print(f"\nFILAS DE FOTOS (cópias físicas — um playset são 4 fotos)")
+    print(f"  Fase 2 · decks montados   {f2['barra']['copias']:5d} cópias em "
+          f"{f2['decks']} decks · {f2['barra']['feitas']} feitas "
+          f"({f2['barra']['pct']} %)")
+    print(f"  Fase 4 · candidatos       {f4['barra']['copias']:5d} cópias em "
+          f"{len(f4['lotes'])} lotes de {f4['lote']}")
+    print(f"  Inventário (paralelo)     {inv['barra']['copias']:5d} cópias · "
+          f"{eur(inv['barra']['valor'])} — nunca bloqueia nenhuma fase")
+
+    if args.curva:
+        print(f"\nA CURVA DO LIMIAR DA RESERVA (o do config é {r['limiar']} %)")
+        _p([{"limiar": f'{x["limiar"]} %', "cópias": x["copias"],
+             "valor": eur(x["valor"])} for x in r["curva"]],
+           ["limiar", "cópias", "valor"])
+        nomes = sorted({n for x in r["curva"] for n in x["decks"]})
+        print("\n  por deck (cópias / €):")
+        for n in nomes:
+            partes = " · ".join(
+                f'{x["limiar"]}%: {x["decks"][n]["copias"]}/'
+                f'{x["decks"][n]["valor"]:.0f}' for x in r["curva"])
+            print(f"    {n[:28]:30s} {partes}")
+    return 0
 
 
 def _precos(con, args):

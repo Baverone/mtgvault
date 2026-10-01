@@ -157,6 +157,14 @@ LINGUAS_ID = {"en": 1, "fr": 2, "de": 3, "es": 4, "it": 5, "zhs": 6, "ja": 7,
 # A ordem é a da página: a RL primeiro (é onde está o dinheiro), depois os
 # substitutos, as reservadas e os retidos.
 FORA = (
+    # AS QUATRO PROTECÇÕES (André, 2026-10-01). À cabeça, e não no fim: é a
+    # decisão mais recente e é a que ele quer ver primeiro. Cada linha traz o
+    # motivo em português e qual das quatro a apanhou (ver `mtgvault/fases.py`).
+    ("protegidas", "Protegidas pelas quatro regras de 01/10",
+     "Shocklands e fetchlands (todas as cópias), a Reserved List que jogas, as "
+     "cartas dos decks que decidiste manter montados ou guardar, e a reserva "
+     "(«maybe») de cada deck. O motivo de cada linha diz qual das quatro a "
+     "apanhou."),
     ("rl_segurar", "RL a segurar — valorizou",
      "Reserved List que subiu o suficiente na janela em que foi medida: pela "
      "tua regra não se vende."),
@@ -593,7 +601,16 @@ def exportar(con, rep: dict | None = None, pasta: Path | None = None,
 
     `so_validadas` (2026-09-20): só as cópias com foto desta campanha — o
     botão «só validadas» da página e o `vender --exportar --so-validadas`.
+
+    A TRAVA DE 2026-10-01: antes de `venda.congelado_ate` (**2026-10-12**) isto
+    **recusa-se**, com `fases.VendaCongelada`. Ele joga o RC Ghent de Modern a
+    9-11/10, e uma carta do deck numa lista de stock na véspera é o erro que não
+    se desfaz. A pergunta vem ANTES de se escrever o primeiro ficheiro — uma
+    chamada recusada não deixa um CSV meio feito atrás dela, pela mesma razão
+    por que o `_exige_venda()` corre antes do `migracao.backup`.
     """
+    from . import fases                                      # noqa: PLC0415
+    fases.exige_descongelado()
     rep = rep if rep is not None else loadout.report(con)
     pasta = Path(pasta) if pasta else _pasta()
     r = relatorio(con, rep, exemplo=exemplo)

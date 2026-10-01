@@ -95,6 +95,15 @@ ORDEM = ("slot", "nome", "formato", "fonte", "ref", "assinatura", "cards",
          # A RESERVA (André, 2026-09-20): as cartas *"que poderão entrar"* —
          # ficam fora da venda. Ver `mtgvault/padrao.py`.
          "reserva",
+         # A ARRUMAÇÃO POR FASES (André, 2026-10-01). `decisao` é o que ele
+         # decidiu FAZER com este deck (`montado`/`guardado`/`dissolvido`,
+         # omissão `montado`) e vive numa chave PRÓPRIA, nunca no `estado`: o
+         # `estado` é a escala da ALOCAÇÃO, e escrever a decisão lá era mudar
+         # quem escolhe cartas primeiro com um botão que ele carrega para
+         # arrumar. `reserva_fora` é o que ele TIROU da reserva automática e
+         # `comandante`/`reserva_assinatura` são as excepções explícitas de onde
+         # vem o consenso dela. Ver `mtgvault/fases.py`.
+         "decisao", "reserva_fora", "comandante", "reserva_assinatura",
          # A FOTO DA DECKBOX FÍSICA (André, 2026-09-21): `{"em", "ficheiro"}`,
          # escrita pelo `fotocaixa.guardar`. Ver `mtgvault/fotocaixa.py`.
          "foto")

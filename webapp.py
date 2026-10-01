@@ -83,10 +83,12 @@ from urllib.parse import parse_qs, urlparse
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import (caixas, configio, db, encomendas, feira, fotocaixa,  # noqa: E402
-                      fotosite, loadout, migracao, precos, qr, sources, venda)
+from mtgvault import (caixas, configio, db, encomendas, fases, feira,  # noqa: E402
+                      fotocaixa, fotosite, loadout, migracao, precos, qr,
+                      sources, venda)
 from mtgvault import padrao as padrao_mod  # noqa: E402
 
+import arrumacao  # noqa: E402
 import deckboxes  # noqa: E402
 import metagame  # noqa: E402
 
@@ -146,6 +148,8 @@ PAGINAS_EDITAVEIS = {"/": deckboxes,
 _LINK_HTML = re.compile(r'href="([a-z_]+\.html)(#[a-z0-9-]+)?"')
 # Os dados da Deckboxes: o índice e as partes (ver `deckboxes.partir`).
 _DADOS_DECKBOXES = re.compile(r"^/data/paginas/deckboxes(?:/([A-Za-z0-9_-]+))?\.json$")
+# Os dados da ARRUMAÇÃO POR FASES (2026-10-01), pelo mesmo caminho.
+_DADOS_ARRUMACAO = re.compile(r"^/data/paginas/arrumacao(?:/([A-Za-z0-9_-]+))?\.json$")
 # A versão reduzida da foto de cada deckbox (2026-09-21, `mtgvault.fotocaixa`).
 _FOTO_CAIXA = re.compile(r"^/assets/deckboxes/([A-Za-z0-9_-]+)\.jpg$")
 
@@ -576,9 +580,24 @@ class VendaDesligada(ValueError):
 
 
 def _exige_venda() -> None:
-    """Recusa, em condições, uma escrita da venda que está desligada."""
+    """Recusa, em condições, uma escrita da venda — por duas razões diferentes.
+
+    São DUAS trancas e são independentes, de propósito:
+
+      * o INTERRUPTOR de 2026-09-25 (`venda.mostrar`) tira a venda da VISTA;
+      * a TRAVA de 2026-10-01 (`venda.congelado_ate`, **2026-10-12**) impede a
+        SAÍDA, porque ele joga o RC Ghent de Modern a 9-11/10.
+
+    As duas vivem aqui, num sítio só, e por isso valem para os dois endpoints de
+    escrita — o `/api/vender`, que **apaga cópias da base**, e o
+    `/api/venda-export`. Corre ANTES do `migracao.backup`: um pedido recusado
+    não deixa um ficheiro de backup atrás dele. A `fases.VendaCongelada` é
+    `ValueError`, como a `VendaDesligada`, e por isso o `do_POST` traduz as duas
+    num 409 com a frase em português.
+    """
     if not venda.mostrar():
         raise VendaDesligada(venda.MOTIVO_DESLIGADO)
+    fases.exige_descongelado()
 
 
 class SemLista(ValueError):
@@ -934,6 +953,19 @@ def em_cache(chave, calcular):
         return valor
 
 
+def dados_arrumacao(editavel: bool) -> tuple[dict, dict]:
+    """`(indice, partes)` da ARRUMAÇÃO POR FASES (2026-10-01), da cache.
+
+    Na MESMA cache da Deckboxes (`em_cache`/`_versao`): as duas saem do mesmo
+    `loadout.report` e um POST limpa as duas. Sem isto, a página das fases
+    corria o relatório inteiro a cada toque numa aba.
+    """
+    def calcular():
+        with db.session() as con:
+            return arrumacao.dados(con, loadout.report(con), editavel=editavel)
+    return em_cache(("arrumacao", editavel), calcular)
+
+
 def dados_deckboxes(editavel: bool, tok: str) -> tuple[dict, dict]:
     """`(indice, partes)` da Deckboxes para este modo, da cache."""
     def calcular():
@@ -1030,6 +1062,12 @@ class Handler(BaseHTTPRequestHandler):
             self._envia(deckboxes.js_texto(), tipo="text/javascript; charset=utf-8",
                         cache="v=" in urlparse(self.path).query)
             return
+        if caminho == "/arrumacao.html":
+            # A ARRUMAÇÃO POR FASES (2026-10-01): a CASCA, estática e imediata.
+            # Os dados vêm por `fetch` de `/data/paginas/arrumacao.json`.
+            self._envia(com_token(arrumacao.casca(),
+                                  token() if self._pode_escrever() else ""))
+            return
         modulo = PAGINAS_EDITAVEIS.get(caminho)
         if modulo is not None:
             # A página só leva o token DENTRO dela quando o pedido já o trazia —
@@ -1050,6 +1088,24 @@ class Handler(BaseHTTPRequestHandler):
                         con, editable=editavel, token=tok,
                         ligacao=(ligacao_local() if editavel else None))
             self._envia(com_token(em_cache((caminho, editavel), gerar), tok))
+            return
+        ma = _DADOS_ARRUMACAO.match(caminho)
+        if ma:
+            # Os DADOS da ARRUMAÇÃO POR FASES (2026-10-01). O `?t=` deste pedido
+            # é o que decide se o índice leva `editavel` — e logo se a Fase 1
+            # desenha os botões dos três estados.
+            editavel = self._pode_escrever()
+            idx, partes = dados_arrumacao(editavel)
+            parte = ma.group(1)
+            if parte is None:
+                self._json({**idx,
+                            "_gerado_em": datetime.now().isoformat(timespec="seconds"),
+                            "_partes": sorted(partes)})
+            elif parte in partes:
+                self._json(partes[parte])
+            else:
+                self._json({"erro": f"não há parte {parte!r} na Arrumação de "
+                                    f"hoje — recarrega a página"}, 404)
             return
         m = _DADOS_DECKBOXES.match(caminho)
         if m:
@@ -1247,6 +1303,22 @@ class Handler(BaseHTTPRequestHandler):
                     r = fotosite.pedir_processamento(ROOT / "pendentes", fotosite.pasta_inbox())
                     _CACHE.clear()
                     self._json({"ok": True, **r})
+                    return
+                if caminho == "/api/fase-decisao":
+                    # A ARRUMAÇÃO POR FASES (2026-10-01): os três estados de cada
+                    # deck. Escreve `caixas[].decisao` no config (com o
+                    # `configio.escrever`, que preserva a forma do ficheiro) e
+                    # **não toca na base nem nas alocações** — é o que a ordem
+                    # dele exige. Reversível: mudar de estado não apaga nada.
+                    self._json(self._fase_decisao(dados))
+                    return
+                if caminho == "/api/fase-reserva":
+                    # A RESERVA («maybe») de um deck: acrescentar à mão
+                    # (`caixas[].reserva`) ou tirar da automática
+                    # (`caixas[].reserva_fora`). Guarda-se o que ele TIROU e não
+                    # a lista final, para a reserva continuar a crescer com o
+                    # consenso sem lhe devolver o que ele já recusou.
+                    self._json(self._fase_reserva(dados))
                     return
                 if caminho == "/api/venda-export":
                     # «Gravar em data/» (2026-09-18): os mesmos dois ficheiros
@@ -1565,6 +1637,95 @@ class Handler(BaseHTTPRequestHandler):
                         f"por fotografar. Tira as fotos com «📷 Tirar fotos» (ou larga-as "
                         f"em pendentes\\) — entram na corrida das 02:30 ou com «⚡ Processar "
                         f"agora»; o esperadas.md já diz o que esperar.")}
+
+    def _fase_decisao(self, dados):
+        """A DECISÃO de um deck (André, 2026-10-01): montado | guardado |
+        dissolvido.
+
+        Escreve `caixas[].decisao` no config e **mais nada**: não toca na
+        `copies`, na `copy_allocation` nem na alocação — é a ordem dele, à
+        letra (*"a página de decisão não mexe em alocações nem na base"*). Um
+        valor fora dos três é 409 (`ValueError`), como a `vista` e o modo de
+        preço.
+
+        Não REGENERA as páginas: a decisão muda o que a venda pode oferecer, e
+        isso recalcula-se no pedido seguinte (a `em_cache` já invalida pelo
+        mtime do config). Regenerar aqui punha um toque num botão a esperar
+        pelo `loadout.report` inteiro, que é o que a decisão de 2026-09-21 veio
+        tirar do caminho.
+        """
+        slot = dados.get("slot")
+        decisao = (dados.get("decisao") or "").strip().lower()
+        cfg = ler_config()
+        caixas.caixa_do_cfg(cfg, slot)                     # KeyError → 409
+        if decisao not in fases.DECISOES:
+            raise ValueError(
+                f"decisão {decisao!r} desconhecida — tem de ser uma de "
+                f"{', '.join(fases.DECISOES)}")
+        r = fases.gravar_decisao(slot, decisao, configio.caminho())
+        _CACHE.clear()
+        return {"ok": True, **r,
+                "msg": (f"{r['nome']}: {decisao} — "
+                        f"{fases.TEXTO_DECISAO[decisao]}."
+                        if r["mudou"] else
+                        f"{r['nome']} já estava {decisao}.")}
+
+    def _fase_reserva(self, dados):
+        """A RESERVA («maybe») de um deck: acrescentar à mão, ou tirar.
+
+        `act: "add"` escreve em `caixas[].reserva` (a chave de 2026-09-20, que
+        já quer dizer exactamente isto); `act: "remover"` tira de lá e, se a
+        carta vier da reserva AUTOMÁTICA, escreve-a em `caixas[].reserva_fora`.
+        Guarda-se o que ele TIROU e não a lista final, para a reserva continuar
+        a crescer com o consenso sem lhe devolver o que ele já recusou.
+
+        O nome VALIDA-SE no catálogo antes de se escrever (`padrao.nome_no_catalogo`,
+        o mesmo da lista padrão): um nome mal escrito na reserva era uma
+        protecção que nunca batia em cópia nenhuma — e, pior, silenciosa.
+        """
+        act = (dados.get("act") or "").strip().lower()
+        slot = dados.get("slot")
+        carta = (dados.get("carta") or "").strip()
+        cfg = ler_config()
+        c = caixas.caixa_do_cfg(cfg, slot)                 # KeyError → 409
+        if act not in ("add", "remover"):
+            raise ValueError(f"ação {act!r} desconhecida (add|remover)")
+        if not carta:
+            raise ValueError("falta o nome da carta")
+        with db.session() as con:
+            nome = padrao_mod.nome_no_catalogo(con, carta)
+        if not nome:
+            raise ValueError(f"não encontrei {carta!r} no catálogo — confirma o "
+                             f"nome em inglês (é o nome oracle, a frente nas de "
+                             f"duas faces)")
+        reserva = [str(x) for x in (c.get("reserva") or [])]
+        fora = [str(x) for x in (c.get("reserva_fora") or [])]
+        if act == "add":
+            if nome in reserva:
+                return {"ok": True, "mudou": False,
+                        "msg": f"{nome} já estava na reserva de {c.get('nome')}."}
+            reserva.append(nome)
+            # Acrescentar à mão o que ele tinha tirado desfaz a recusa — senão a
+            # carta ficava nas duas listas e a de «fora» ganhava em silêncio.
+            fora = [x for x in fora if x != nome]
+            msg = f"{nome} entrou na reserva de {c.get('nome')}."
+        else:
+            reserva = [x for x in reserva if x != nome]
+            if nome not in fora:
+                fora.append(nome)
+            msg = (f"{nome} saiu da reserva de {c.get('nome')} — e fica de fora "
+                   f"mesmo que o consenso a volte a propor.")
+        c["reserva"] = sorted(reserva)
+        if fora:
+            c["reserva_fora"] = sorted(fora)
+        else:
+            c.pop("reserva_fora", None)
+        if not c["reserva"]:
+            c.pop("reserva", None)
+        escrever_config(cfg)
+        sources._CFG_CACHE.clear()
+        _CACHE.clear()
+        return {"ok": True, "mudou": True, "carta": nome, "act": act, "msg": msg}
 
     def _padrao(self, dados):
         """LISTA PADRÃO e RESERVA de uma caixa (André, 2026-09-20).

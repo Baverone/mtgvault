@@ -192,6 +192,13 @@ def js_icones() -> str:
 SECCOES: list[tuple[str, list[tuple[str, str, str, str, str]]]] = [
     ("", [
         ("index.html", "", "inicio", "Início", "o painel de hoje"),
+        # A ARRUMAÇÃO POR FASES (André, 2026-10-01). Fica no topo, a seguir ao
+        # Início e fora de qualquer secção, porque é a pergunta que atravessa
+        # tudo — *"onde estou e o que vem a seguir"* — e não uma vista de decks,
+        # de colecção ou de compras. Reusa o ícone do «plano»: um conjunto só de
+        # ícones, pela razão do `e_foil` e do `vistoId`.
+        ("arrumacao.html", "", "plano", "Arrumação por fases",
+         "onde estás e o que vem a seguir"),
     ]),
     ("Decks", [
         ("deckboxes.html", "", "caixas", "Deck boxes", "todas as caixas"),
