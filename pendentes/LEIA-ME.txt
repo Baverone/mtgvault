@@ -17,8 +17,30 @@ corre:
 
     py processar_fotos.py <csv>
 
-Isso cataloga tudo no vault.db, LIMPA estas fotos (já não são precisas aqui),
-e faz push. O site atualiza-se sozinho.
+Isso cataloga tudo no vault.db, ARRUMA estas fotos (nunca as apaga) e faz push.
+O site atualiza-se sozinho.
+
+ATE 4 CARTAS POR FOTO (Andre, 01/10/2026)
+-----------------------------------------
+"organiza o Blue farm e CDEH por tipo de carta e ate 4 cartas por foto" e "se
+sao 4 fotos, e 1 foto com as 4 cartas". Uma foto leva NO MAXIMO 4 cartas:
+
+  - as copias da MESMA carta vao sempre juntas na mesma foto (4x Mox Opal = 1
+    foto, nao 4);
+  - num deck singleton (os de cEDH) juntam-se ate 4 cartas DIFERENTES na mesma
+    foto, agrupadas POR TIPO (planeswalkers, criaturas, artefactos,
+    encantamentos, instantaneos, feiticos, terras);
+  - cada carta tem de estar a vista e poder avaliar-se.
+
+Uma foto com mais de 4 cartas NAO valida nada: a pagina «Arrumacao por fases»
+(Fase 2) diz, foto a foto, o que fotografar e por que ordem.
+
+ONDE FICAM AS FOTOS DEPOIS DE ENTRAREM
+--------------------------------------
+Em data\fotos\<slot>\ — uma pasta POR DECK, pelo alvo da revalidacao (o botao
+«Fotografar este deck»). Sem alvo vao para data\fotos\sem-alvo\<AAAA-MM>\. As
+antigas estao arquivadas em data\fotos\anteriores\ (eram
+pendentes\fotos processadas\). Nada se apaga.
 
 Regras de reconhecimento: ver PROCESSAR_FOTOS.md.
 

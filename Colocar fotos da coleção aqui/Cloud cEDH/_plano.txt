@@ -1,0 +1,106 @@
+PLANO DE FOTOS -- Cloud cEDH
+slot: cedh-cloud | 19 fotos para 65 cartas
+
+REGRA: no maximo 4 CARTAS por foto, agrupadas por TIPO.
+As copias da MESMA carta vao sempre juntas (4x Mox Opal = 1 foto).
+Cada carta tem de estar a vista e poder avaliar-se.
+
+ONDE LARGAR AS FOTOS: soltas na RAIZ de  pendentes\
+  (ou pelo telemovel, no botao «Tirar fotos» da pagina)
+NAO as largues nesta pasta: 'Colocar fotos da colecao aqui' e para
+  cartas NOVAS e NADA a processa -- as fotos ficavam aqui para sempre.
+Antes de fotografar, fixa o ALVO: pagina «Arrumacao por fases», Fase 2,
+  botao «Fotografar este deck». E o alvo que arruma as fotos por deck.
+
+======================================================================
+
+  PLANESWALKERS
+    foto 01  (1 carta)
+            Tezzeret, Cruel Captain                EOE   nonfoil  en   [a foto antiga desapareceu]
+  CRIATURAS
+    foto 02  (4 cartas)
+            Auriok Salvagers                       MMA   nonfoil  en   [a foto antiga desapareceu]
+            Auriok Steelshaper                     MRD   nonfoil  en
+            Boromir, Warden of the Tower           LTR   nonfoil  en   [a foto antiga desapareceu]
+            Cloud, Midgar Mercenary                FIN   nonfoil  en   [a foto antiga desapareceu]
+    foto 03  (4 cartas)
+            Curious Farm Animals                   TLA   nonfoil  en   [a foto antiga desapareceu]
+            Esper Sentinel                         H2R   nonfoil  en
+            Glaring Fleshraker                     MH3   nonfoil  en
+            Grand Abolisher                        PBIG  nonfoil  en
+    foto 04  (4 cartas)
+            Memnite                                SOM   nonfoil  en   [a foto antiga desapareceu]
+            Myr Moonvessel                         DST   nonfoil  en   [a foto antiga desapareceu]
+            Myr Retriever                          2XM   nonfoil  en   [a foto antiga desapareceu]
+            Ornithopter                            10E   nonfoil  en   [a foto antiga desapareceu]
+    foto 05  (4 cartas)
+            Puresteel Paladin                      SLD   nonfoil  en   [a foto antiga desapareceu]
+            Ranger-Captain of Eos                  FCA   nonfoil  en   [a foto antiga desapareceu]
+            Recruiter of the Guard                 MH3   nonfoil  en   [a foto antiga desapareceu]
+            Salvage Scout                          SOM   nonfoil  en   [a foto antiga desapareceu]
+    foto 06  (4 cartas)
+            Scrap Trawler                          AER   nonfoil  en   [a foto antiga desapareceu]
+            Solitude                               MH2   nonfoil  en   [a foto antiga desapareceu]
+            Starfield Shepherd                     EOE   nonfoil  en   [a foto antiga desapareceu]
+            Teshar, Ancestor's Apostle             DOM   nonfoil  en   [a foto antiga desapareceu]
+    foto 07  (4 cartas)
+            Voice of Victory                       TDM   nonfoil  en   [a foto antiga desapareceu]
+            Walking Ballista                       MB2   nonfoil  en   [a foto antiga desapareceu]
+            Witch Enchanter                        MH3   nonfoil  en   [a foto antiga desapareceu]
+            Éowyn, Lady of Rohan                   LTR   nonfoil  en   [a foto antiga desapareceu]
+  ARTEFACTOS
+    foto 08  (4 cartas)
+            Ancient Den                            SLD   nonfoil  en   [a foto antiga desapareceu]
+            Arcane Signet                          ELD   nonfoil  en   [a foto antiga desapareceu]
+            Ashnod's Altar                         SLD   nonfoil  en   [a foto antiga desapareceu]
+            Chrome Mox                             SPG   nonfoil  en
+    foto 09  (4 cartas)
+            Grim Monolith                          ULG   nonfoil  en   [a foto antiga desapareceu]
+            Krark-Clan Ironworks                   SLC   nonfoil  en   [a foto antiga desapareceu]
+            Lotus Petal                            MB2   nonfoil  en
+            Mana Vault                             2X2   nonfoil  en   [a foto antiga desapareceu]
+    foto 10  (4 cartas)
+            Moonsilver Key                         MID   nonfoil  en   [a foto antiga desapareceu]
+            Mox Amber                              DOM   nonfoil  en   [a foto antiga desapareceu]
+            Mox Diamond                            STH   nonfoil  en
+            Mox Opal                               2XM   nonfoil  en   [a foto antiga desapareceu]
+    foto 11  (4 cartas)
+            Oketra's Monument                      AKH   nonfoil  en   [a foto antiga desapareceu]
+            Paradise Mantle                        SLD   nonfoil  en   [a foto antiga desapareceu]
+            Phoenix Down                           FIN   nonfoil  en   [a foto antiga desapareceu]
+            Phyrexian Altar                        2X2   nonfoil  en   [a foto antiga desapareceu]
+    foto 12  (4 cartas)
+            Pre-War Formalwear                     PIP   nonfoil  en   [a foto antiga desapareceu]
+            Skullclamp                             SLD   nonfoil  en   [a foto antiga desapareceu]
+            Sol Ring                               SLD   nonfoil  en   [a foto antiga desapareceu]
+            Springleaf Drum                        SLP   nonfoil  en   [a foto antiga desapareceu]
+    foto 13  (1 carta)
+            Tormod's Crypt                         MB2   nonfoil  en   [a foto antiga desapareceu]
+  ENCANTAMENTOS
+    foto 14  (2 cartas)
+            Touch the Spirit Realm                 GDY   nonfoil  en   [a foto antiga desapareceu]
+            Urza's Saga                            SLC   nonfoil  en
+  INSTANTÂNEOS
+    foto 15  (4 cartas)
+            Abolish                                PCY   nonfoil  en   [a foto antiga desapareceu]
+            Enlightened Tutor                      TLE   nonfoil  en   [a foto antiga desapareceu]
+            Orim's Chant                           MH3   nonfoil  en   [a foto antiga desapareceu]
+            Patrician's Scorn                      FUT   nonfoil  en   [a foto antiga desapareceu]
+    foto 16  (1 carta)
+            Silence                                SLD   nonfoil  en   [a foto antiga desapareceu]
+  FEITIÇOS
+    foto 17  (4 cartas)
+            Helping Hand                           LCI   nonfoil  en   [a foto antiga desapareceu]
+            Jolted Awake                           MH3   nonfoil  en   [a foto antiga desapareceu]
+            Return to the Ranks                    M15   nonfoil  en   [a foto antiga desapareceu]
+            Sevinne's Reclamation                  MH3   nonfoil  en   [a foto antiga desapareceu]
+  TERRAS
+    foto 18  (4 cartas)
+            Ancient Tomb                           LTC   nonfoil  en   [a foto antiga desapareceu]
+            Cavern of Souls                        LTC   nonfoil  en   [a foto antiga desapareceu]
+            City of Traitors                       EXO   nonfoil  en   [a foto antiga desapareceu]
+            Crystal Vein                           MIR   nonfoil  en
+    foto 19  (4 cartas)
+            Gemstone Caverns                       LTC   nonfoil  en   [a foto antiga desapareceu]
+         3x Plains                                 ODY   nonfoil  en   [a foto antiga desapareceu]
+

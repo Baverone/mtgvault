@@ -175,6 +175,16 @@ def main(argv=None):
                     default=None, help="esperadas: o alvo sem ser uma caixa")
     rv.add_argument("--json", action="store_true", help="saída em JSON")
 
+    # AS FOTOS (André, 2026-10-01): arquivar as antigas (mover, nunca apagar) e
+    # dizer quais já não têm ficheiro no disco.
+    ft = sub.add_parser("fotos",
+                        help="fotos: `arquivar` move as de «fotos processadas» "
+                             "para data/fotos/anteriores; `perdidas` lista as "
+                             "que já não estão no disco; `estado` resume")
+    ft.add_argument("accao", nargs="?", default="estado",
+                    choices=["estado", "arquivar", "perdidas", "plano"])
+    ft.add_argument("--json", action="store_true", help="saída em JSON")
+
     ar = sub.add_parser("arrumar",
                         help="o que mover de cada gaveta para cada deckbox")
     ar.add_argument("--csv", action="store_true", help="saída em CSV (moves)")
@@ -674,6 +684,9 @@ def main(argv=None):
         elif args.cmd == "revalidacao":
             _revalidacao(con, args)
 
+        elif args.cmd == "fotos":
+            _fotos_cmd(con, args)
+
         elif args.cmd in ("padrao", "reserva"):
             _padrao_reserva(con, args)
 
@@ -918,15 +931,27 @@ def _fases(con, args):
     print(f"  {'FASE 3 — CANDIDATO A VENDA':40s} {c['copias']:5d} cópias "
           f"{c['cartas']:4d} cartas {eur(c['valor']):>14s}")
 
-    f2, f4, inv = r["fase2"], r["fase4"], r["inventario"]
-    print(f"\nFILAS DE FOTOS (cópias físicas — um playset são 4 fotos)")
-    print(f"  Fase 2 · decks montados   {f2['barra']['copias']:5d} cópias em "
-          f"{f2['decks']} decks · {f2['barra']['feitas']} feitas "
+    f2, f4, inv, perd = (r["fase2"], r["fase4"], r["inventario"], r["perdidas"])
+    print(f"\nFILAS DE FOTOS (até {r['max_cartas_foto']} CARTAS por foto; as "
+          f"cópias da mesma carta juntas)")
+    print(f"  Fase 2 · decks montados   {f2['barra']['fotos']:5d} fotos "
+          f"({f2['barra']['cartas']} cartas em {f2['barra']['linhas']} linhas) "
+          f"em {f2['decks']} decks · {f2['barra']['feitas']} feitas "
           f"({f2['barra']['pct']} %)")
-    print(f"  Fase 4 · candidatos       {f4['barra']['copias']:5d} cópias em "
-          f"{len(f4['lotes'])} lotes de {f4['lote']}")
-    print(f"  Inventário (paralelo)     {inv['barra']['copias']:5d} cópias · "
-          f"{eur(inv['barra']['valor'])} — nunca bloqueia nenhuma fase")
+    for f in f2["filas"]:
+        print(f"      {f['nome'][:26]:28s} {f['barra']['fotos']:4d} fotos "
+              f"{f['barra']['cartas']:4d} cartas"
+              + ("   ⏸ por conversão: fica para depois" if f["conversao"]
+                 else "   lista única"))
+    print(f"  Fase 4 · candidatos       {f4['barra']['fotos']:5d} fotos "
+          f"({f4['barra']['cartas']} cartas) em {len(f4['lotes'])} lotes de "
+          f"{f4['lote']}")
+    print(f"  Inventário (paralelo)     {inv['barra']['fotos']:5d} fotos "
+          f"({inv['barra']['cartas']} cartas) · {eur(inv['barra']['valor'])} — "
+          f"nunca bloqueia nenhuma fase")
+    print(f"  ⚠ FOTOS PERDIDAS          {perd['n_fotos']:5d} fotos "
+          f"({perd['copias']} cópias em {len(perd['linhas'])} linhas) · "
+          f"{eur(perd['valor'])} — sem prova nenhuma, são as primeiras")
 
     if args.curva:
         print(f"\nA CURVA DO LIMIAR DA RESERVA (o do config é {r['limiar']} %)")
@@ -1148,6 +1173,114 @@ def _feira(con, args):
     except ValueError as e:
         print(f"  ERRO: {e}")
         sys.exit(2)
+
+
+def _fotos_cmd(con, args):
+    """`fotos [estado] | fotos arquivar | fotos perdidas`.
+
+    `arquivar` MOVE as fotos de `pendentes/fotos processadas/` para
+    `data/fotos/anteriores/` — **nunca apaga** (a regra dele de 09/09). Não
+    reescreve uma única linha de `copies`: quem passa a procurar nas duas pastas
+    é o `fotos.resolver`.
+    """
+    import json as _json                                    # noqa: PLC0415
+
+    from . import fases, fotos as fotos_mod, revalidacao    # noqa: PLC0415
+    if args.accao == "arquivar":
+        r = fotos_mod.arquivar()
+        if args.json:
+            print(_json.dumps(r, ensure_ascii=False, indent=1))
+            return
+        print(f"  arquivadas {r['movidas']} fotos ({r['bytes'] / 1e6:.1f} MB) "
+              f"para {r['destino']}")
+        if r["ja_la"]:
+            print(f"  {r['ja_la']} já lá estavam e NÃO se pisaram: "
+                  + ", ".join(r["lista_ja_la"][:6]))
+        if r["outros"]:
+            print(f"  {r['outros']} ficheiros que não são imagens ficaram onde "
+                  f"estavam (o `aplicado.csv` vive lá)")
+        print("  nada se apagou; o resolvedor procura nas duas pastas")
+        return
+    if args.accao == "plano":
+        # O plano de cada deck em TEXTO, das MESMAS fotos que a página desenha.
+        # Só se escreve onde a pasta JÁ existe — não se criam pastas por
+        # iniciativa própria.
+        pasta = loadout._col.ROOT / "Colocar fotos da coleção aqui"
+
+        def _dir(nome):
+            # O nome da caixa pode ter `/` (a «Elves / Survival»), que não cabe
+            # num caminho — a pasta à mão tem ` - `. Tenta as duas formas.
+            for n in (nome, nome.replace(" / ", " - ").replace("/", "-")):
+                if (pasta / n).is_dir():
+                    return pasta / n
+            return pasta / nome
+
+        rep = loadout.report(con)
+        f2 = fases.fila_decks(con, rep)
+        escritos, sem_pasta, vazios = [], [], []
+        com_fila = set()
+        for f in f2["filas"]:
+            d = _dir(f["nome"])
+            if not d.is_dir():
+                sem_pasta.append(f["nome"])
+                continue
+            com_fila.add(f["nome"])
+            alvo = d / "_plano.txt"
+            alvo.write_text(fotos_mod.texto_do_plano(
+                f["nome"], f["slot"], f["fotos"], conversao=f["conversao"],
+                nota=f["nota"]), encoding="utf-8")
+            escritos.append(f'{f["nome"]} ({f["barra"]["fotos"]} fotos, '
+                            f'{f["barra"]["cartas"]} cartas)')
+        # As pastas dos decks SEM nada na caixa também têm o `_plano.txt`
+        # pré-escrito que manda largar as fotos ali. Não se deixa a mentir.
+        for s in rep["slots"]:
+            nome = s.get("nome") or s["slot"]
+            d = _dir(nome)
+            if nome in com_fila or not (d / "_plano.txt").is_file():
+                continue
+            (d / "_plano.txt").write_text(
+                f"PLANO DE FOTOS -- {nome}\nslot: {s['slot']}\n\n"
+                "Este deck NAO tem cartas registadas dentro da caixa, por isso\n"
+                "nao ha nada para fotografar aqui ainda.\n\n"
+                "E quando houver: as fotos vao soltas na RAIZ de  pendentes\\\n"
+                "NAO nesta pasta -- 'Colocar fotos da colecao aqui' e para\n"
+                "cartas NOVAS e NADA a processa.\n"
+                "O plano a serio esta na pagina «Arrumacao por fases», Fase 2.\n",
+                encoding="utf-8")
+            vazios.append(nome)
+        for x in escritos:
+            print(f"  escrito  {x}")
+        if vazios:
+            print(f"  sem cartas na caixa (nota corrigida): {', '.join(vazios)}")
+        if sem_pasta:
+            print(f"  sem pasta (não se criou nenhuma): {', '.join(sem_pasta)}")
+        print("  o plano sai da MESMA fila da página; as fotos vão para "
+              "`pendentes\\`, não para estas pastas")
+        return
+    perd = fotos_mod.copias_sem_foto_no_disco(con)
+    grandes = revalidacao.fotos_que_nao_validam(con)
+    if args.accao == "perdidas" or args.json:
+        dados = {"perdidas": sorted(set(perd.values())),
+                 "copias": sorted(perd),
+                 "fotos_com_mais_de_4": grandes}
+        if args.json:
+            print(_json.dumps(dados, ensure_ascii=False, indent=1))
+            return
+        for f in sorted(set(perd.values())):
+            ids = sorted(c for c, p in perd.items() if p == f)
+            print(f"  {f}  cópias {', '.join(str(i) for i in ids)}")
+        print(f"  {len(set(perd.values()))} fotos sem ficheiro no disco, "
+              f"{len(perd)} linhas de copies")
+        return
+    todas = con.execute("SELECT COUNT(DISTINCT photo_path) n FROM copies "
+                        "WHERE photo_path IS NOT NULL AND photo_path <> ''"
+                        ).fetchone()["n"]
+    print(f"  fotos na base: {todas} distintas")
+    print(f"  sem ficheiro no disco: {len(set(perd.values()))} "
+          f"({len(perd)} linhas de copies) — `fotos perdidas` lista-as")
+    print(f"  com mais de {fotos_mod.MAX_CARTAS} cartas (não validam): "
+          f"{len(grandes)}; a maior tem {max(grandes.values()) if grandes else 0}")
+    print(f"  arquivo das fotos: {fotos_mod.pasta_arquivo()}")
 
 
 def _revalidacao(con, args):

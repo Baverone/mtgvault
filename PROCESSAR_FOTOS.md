@@ -15,8 +15,11 @@ sem o André estar ao PC.
    py processar_fotos.py pendentes/recat.csv
    ```
    O script garante o catálogo, importa para `data/vault.db`, **arruma as
-   fotos** para `pendentes/fotos processadas/<AAAA-MM>/` (nunca as apaga) e
-   publica a BD. O site atualiza-se sozinho.
+   fotos** para **`data/fotos/<slot>/`** — uma pasta POR DECK, pelo alvo da
+   revalidação; sem alvo vão para `data/fotos/sem-alvo/<AAAA-MM>/` — e **nunca
+   as apaga**. Depois publica a BD. O site atualiza-se sozinho.
+   (Até 2026-10-01 o destino era `pendentes/fotos processadas/<AAAA-MM>/`; as
+   antigas estão arquivadas em `data/fotos/anteriores/`.)
 
    Ao lado do teu CSV fica um `<nome>-resultado.csv` com o que aconteceu a cada
    linha. **As linhas que pararam vêm lá com o motivo** — a foto delas fica em
@@ -129,5 +132,14 @@ name,set_code,collector_number,quantity,finish,language,condition,purpose,sub_co
 - **Terras básicas** contam à mesma (quantidade certa).
 - Uma foto pode ter várias cartas — uma linha por carta distinta
   (nome+edição+finish+língua), com a `quantity` das repetidas.
+- **ATÉ 4 CARTAS POR FOTO** (André, 2026-10-01: *"organiza o Blue farm e CDEH
+  por tipo de carta e ate 4 cartas por foto"*, *"se sao 4 fotos, e 1 foto com as
+  4 cartas"*). Com a campanha de revalidação ligada, uma foto com **mais de 4
+  cartas não valida nada**: se já existe na base uma cópia por revalidar daquela
+  impressão, a linha é **recusada** com o motivo em português e a foto fica em
+  `pendentes/` para ser tirada outra vez em grupos de quatro. Isto é sobre o
+  número de **cartas** (um `4× Mox Opal` são quatro), não sobre o número de
+  linhas. **Não somes cartas a mais numa linha para «caber»**: escreve o que
+  vês — se a foto tem seis cartas, a resposta certa é dizer que tem seis.
 
 Contexto do projeto: ver `CLAUDE.md`. Regras da coleção/decks: idem.

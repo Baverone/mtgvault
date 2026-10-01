@@ -200,13 +200,49 @@ for alvo, casos in (
     ("limiar", ["caso_abaixo_do_limiar_a_carta_volta_a_ser_candidata"]),
     ("min_listas", ["caso_a_reserva_nao_se_enche_sem_amostra"]),
     ("congelado", ["caso_a_saida_de_venda_recusa_se_antes_de_doze_de_outubro"]),
-    ("explode", ["caso_um_playset_na_fila_da_quatro_linhas",
-                 "caso_a_fila_dos_decks_conta_copias_e_valor"]),
+    # A regra ERRADA de 2026-10-01 (uma linha por cópia física) e o tecto.
+    ("explode", ["caso_um_playset_e_UMA_foto_e_nunca_quatro",
+                 "caso_a_fila_dos_decks_conta_fotos_cartas_e_valor"]),
+    ("ate4", ["caso_uma_foto_leva_no_maximo_quatro_cartas"]),
+    ("por_tipo", ["caso_a_fila_dos_decks_conta_fotos_cartas_e_valor"]),
     ("ordem_fila", ["caso_a_fila_de_candidatos_sai_por_valor_decrescente"]),
 ):
     for caso in casos:
         p = subprocess.run(
             [sys.executable, str(AQUI / "_chumba_fases.py"), alvo, caso],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            cwd=AQUI)
+        ok = p.returncode != 0
+        bom &= ok
+        motivo = (p.stdout or p.stderr or "").strip().splitlines()
+        print(f"  {'ok  ' if ok else 'FAIL'} chumba sem «{alvo}» "
+              f"({caso}): {motivo[-1][:90] if motivo else ''}")
+
+# ---------------------------------------------------------------------------
+# AS FOTOS DE ATÉ 4 CARTAS (André, 2026-10-01). Noutro processo, pela razão de
+# cima — e é aqui que se prova que a regra CERTA está a ser medida, depois de
+# duas regras erradas terem passado por este ficheiro no mesmo dia.
+# ---------------------------------------------------------------------------
+for alvo, casos in (
+    # O `caso_um_playset_e_uma_foto_de_quatro_cartas` fica de fora deste alvo de
+    # propósito: um playset cabe em 4 e cabe em infinito, logo tirar o TECTO não
+    # o parte. Quem o parte é o `explode` (acima), e é lá que ele está.
+    ("ate4", ["caso_nenhuma_foto_passa_de_quatro_cartas",
+              "caso_a_barra_mede_fotos_e_diz_as_cartas_e_as_linhas",
+              "caso_uma_foto_nova_com_mais_de_quatro_cartas_e_recusada_inteira",
+              "caso_uma_carta_nova_numa_foto_grande_entra_mas_nao_fica_validada",
+              "caso_uma_foto_antiga_com_mais_de_quatro_nao_conta_como_validacao"]),
+    ("por_tipo", ["caso_quatro_cartas_diferentes_na_mesma_foto_agrupadas_por_tipo"]),
+    ("resolver", ["caso_uma_foto_no_arquivo_continua_a_ser_encontrada",
+                  "caso_as_fotos_perdidas_ficam_marcadas_e_a_cabeca"]),
+    ("perdidas", ["caso_as_fotos_perdidas_ficam_marcadas_e_a_cabeca"]),
+    ("por_deck", ["caso_as_fotos_novas_arrumam_se_por_deck"]),
+    ("conversao", ["caso_os_decks_de_lista_unica_vem_primeiro"]),
+    ("nao_pisa", ["caso_arquivar_move_e_nunca_apaga_nem_pisa"]),
+):
+    for caso in casos:
+        p = subprocess.run(
+            [sys.executable, str(AQUI / "_chumba_fotos.py"), alvo, caso],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
             cwd=AQUI)
         ok = p.returncode != 0

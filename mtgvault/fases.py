@@ -1079,132 +1079,168 @@ def exige_descongelado(cfg: dict | None = None, hoje: str | None = None) -> None
 # ---------------------------------------------------------------------------
 # AS FILAS DE FOTOS (Fase 2 e Fase 4)
 # ---------------------------------------------------------------------------
-# *"a fila conta CÓPIAS FÍSICAS, não nomes. Se for 1 carta e 1 carta, mas se
-# jogar 4 da mesma, tiro foto às 4."* Um deck de 60+15 com playsets são 75
-# fotos, não 25.
-LOTE = 50
+# A UNIDADE DA FILA É A FOTO, e uma foto leva no máximo QUATRO CARTAS (André,
+# 2026-10-01, à letra: *"organiza o Blue farm e CDEH por tipo de carta e ate 4
+# cartas por foto"*, *"se sao 4 fotos, e 1 foto com as 4 cartas"*).
+#
+# Esteve aqui escrito o contrário — *"a fila conta CÓPIAS FÍSICAS: um playset dá
+# quatro linhas"* (o `_explode`) —, e dava **quatro fotos** a um playset. A regra
+# e o agrupamento vivem num sítio só, o `mtgvault/fotos.py`, porque a mesma
+# pergunta («quantas cartas cabem numa foto?») é feita também pela conciliação
+# do import, que recusa a foto que traga mais do que quatro.
+LOTE = 50                                  # fotos por lote na Fase 4
 
 
-# Os campos que uma linha de FILA leva para o browser, e só esses. Uma fila é
-# uma cópia por linha e a maior tem mil — com a linha inteira de candidato (que
-# traz o `set_name`, a fonte e a origem do preço, o `sid`, a caixa…) a parte
-# `fase4` saía em **704 KB**, e esta página é para abrir no telemóvel pela rede
-# de casa. Com esta projecção fica em ~250 KB. É a mesma disciplina do
-# `deckboxes.CAIXA_PESADO` (2026-09-15).
-CAMPOS_FILA = ("nm", "copy_id", "set", "lang", "finish", "foil", "cond",
-               "local", "validado", "rl")
-
-
-def _explode(linha: dict) -> list[dict]:
-    """Uma linha de `q` cópias em `q` LINHAS de uma cópia cada.
-
-    É a regra da fila, e é ela que faz as contas e a barra de progresso darem o
-    número certo: um playset dá quatro linhas e não uma. Cada uma leva o seu
-    acabamento, língua e estado, e marca-se uma a uma — o `n` distingue-as
-    dentro do mesmo `copy_id` (um lote de 4 é uma só linha da `copies`).
-    """
-    magra = {k: linha[k] for k in CAMPOS_FILA if k in linha}
+def _filas_por_lotes(fotos_: list[dict], lote: int = LOTE) -> list[dict]:
+    """Parte a fila em lotes de `lote` FOTOS, com a barra de cada um."""
     out = []
-    for i in range(int(linha.get("q") or 0)):
-        out.append(dict(magra, q=1, n=i + 1,
-                        total=round(linha.get("unit") or 0, 2),
-                        fila_id=f'{linha["copy_id"]}-{i + 1}'))
-    return out
-
-
-def _em_lotes(linhas: list[dict], lote: int = LOTE) -> list[dict]:
-    """Parte a fila em lotes de `lote` cópias, com a barra de cada um."""
-    out = []
-    for i in range(0, len(linhas), lote):
-        ch = linhas[i:i + lote]
+    for i in range(0, len(fotos_), lote):
+        ch = fotos_[i:i + lote]
         out.append({
             "n": i // lote + 1, "de": i + 1, "ate": i + len(ch),
-            "copias": len(ch),
-            "valor": round(sum(l["total"] or 0 for l in ch), 2),
-            "feitas": sum(1 for l in ch if l.get("validado")),
+            "fotos": len(ch), "cartas": sum(f["cartas"] for f in ch),
+            "valor": round(sum(f["valor"] for f in ch), 2),
+            "feitas": sum(1 for f in ch if f["feita"]),
             "linhas": ch,
         })
     return out
 
 
-def _barra(linhas: list[dict]) -> dict:
-    """A barra de progresso de uma fila, em CÓPIAS e em VALOR, feito e por fazer."""
-    feitas = [l for l in linhas if l.get("validado")]
-    falta = [l for l in linhas if not l.get("validado")]
-    tot_v = round(sum(l["total"] or 0 for l in linhas), 2)
-    return {"copias": len(linhas), "valor": tot_v,
-            "feitas": len(feitas),
-            "feitas_valor": round(sum(l["total"] or 0 for l in feitas), 2),
-            "falta": len(falta),
-            "falta_valor": round(sum(l["total"] or 0 for l in falta), 2),
-            "pct": round(100 * len(feitas) / len(linhas), 1) if linhas else 0.0}
+# ---------------------------------------------------------------------------
+# A ORDEM DE TRABALHO: primeiro os decks de LISTA ÚNICA (André, 2026-10-01)
+# ---------------------------------------------------------------------------
+# *"Começa pelos decks que são LISTA ÚNICA e não são «de conversão» — os dois de
+# cEDH (Blue Farm e Cloud cEDH), que têm cartas dedicadas e uma lista cada. A
+# família de Premodern partilha o mesmo conjunto de cartas e monta-se por
+# conversão de uma noutra: fica para depois."*
+#
+# A base não tem uma coluna «de conversão», e não se inventa uma: DERIVA-SE,
+# e a regra é esta — **o grupo de formato da caixa tem um tecto de playset
+# contado sobre o GRUPO INTEIRO (`regras_por_formato[].playset_maximo`) e há
+# duas ou mais caixas nesse grupo**. Esse tecto só existe porque as caixas
+# trocam a carta entre si: é a decisão de 2026-09-08 (*"afinal só vou ter até
+# playset de cada carta"*), e o `prioridade_por: "pct"` do mesmo grupo
+# confirma-o (a ordem entre elas é pela percentagem, o que só faz sentido quando
+# competem). Está ESCRITO no config — não é um palpite.
+#
+# O que NÃO serve para derivar isto, e foi medido antes de se escolher: a
+# SOBREPOSIÇÃO das listas. Na base de 2026-10-01 o Blue Farm e o Cloud cEDH
+# partilham 24 nomes (26 % do menor), **mais** do que a maior sobreposição entre
+# duas caixas de Premodern (Oath × Enchantress, 32 %, e a média é ~20 %). Pela
+# sobreposição, o cEDH era «de conversão» e parte do Premodern não — ao
+# contrário do que ele disse.
+NOTA_CONVERSAO = (
+    "Fica para depois: estas caixas são do mesmo grupo de formato, com tecto de "
+    "playset contado sobre o grupo — partilham o mesmo conjunto de cartas e "
+    "montam-se por conversão de uma noutra. Primeiro os decks de lista única.")
+NOTA_LISTA_UNICA = ("Lista única e cartas dedicadas: é por aqui que se começa.")
+
+
+def de_conversao(res: dict, cfg: dict | None = None) -> dict[str, bool]:
+    """`slot -> é «de conversão»?` Ver a nota acima para a regra derivada."""
+    from . import loadout                                    # noqa: PLC0415
+    regras = (cfg or {}).get("regras_por_formato")
+    if not isinstance(regras, list) or not regras:
+        regras = loadout.regras_por_formato()
+    tecto: dict[str, int] = {}
+    for r in regras:
+        if r.get("playset_maximo"):
+            tecto[r.get("grupo") or ""] = int(r["playset_maximo"])
+    quantas: dict[str, int] = defaultdict(int)
+    for s in res.get("slots") or []:
+        quantas[s.get("grupo") or s.get("formato") or ""] += 1
+    return {s["slot"]: bool(tecto.get(s.get("grupo") or "")
+                            and quantas[s.get("grupo") or ""] > 1)
+            for s in res.get("slots") or []}
+
+
+def _linha_de_lote(con, nm: str, lot: dict, pc: dict, perdidas: dict) -> dict:
+    from . import loadout                                    # noqa: PLC0415
+    p = loadout.preco_da_copia(con, lot["sid"], lot["finish"], nm, pc)
+    return {"nm": nm, "copy_id": lot["id"], "q": lot["q"],
+            "set": (lot["set_code"] or "").upper(),
+            "lang": (lot["lang"] or "en"), "finish": lot["finish"],
+            "foil": loadout.e_foil(lot["finish"]),
+            "cond": lot.get("cond") or "NM",
+            "validado": lot.get("validado") or "",
+            "foto_perdida": lot["id"] in perdidas,
+            "local": lot.get("local") or "", "unit": p["unit"],
+            "total": round((p["unit"] or 0) * lot["q"], 2)}
 
 
 def fila_decks(con, res: dict, cfg: dict | None = None,
                cache: dict | None = None) -> dict:
-    """A FASE 2: as cartas dos decks em `montado`, para ele confirmar que o deck
-    está fisicamente completo antes de 10/10.
+    """A FASE 2: as cartas dos decks em `montado`, em FOTOS de até 4 cartas.
 
     Uma fila POR DECK (é assim que ele vai à estante: tira a caixa, fotografa o
-    que lá está), ordenada por COR e nome — é como o binder está arrumado, a
-    mesma decisão do painel Montar de 2026-09-08.
+    que lá está), **agrupada por TIPO de carta** — a ordem que ele deu hoje
+    («planeswalkers, criaturas, artefactos, encantamentos, instantâneos,
+    feitiços, terras»), e não a ordem por COR do painel Montar: ali ele procura
+    cartas num binder arrumado por cor, aqui dispõe na mesa o que já tem na mão.
+
+    Os decks de LISTA ÚNICA vêm primeiro e os «de conversão» no fim, com a
+    razão escrita (`de_conversao`).
     """
-    from . import loadout, paginas                           # noqa: PLC0415
+    from . import fotos as fotos_mod, paginas                # noqa: PLC0415
     cache = {} if cache is None else cache
     dec = decisoes(cfg)
     pc: dict = cache.setdefault("_precos", {})
+    perdidas = _perdidas(con, cache)
     por_slot: dict[str, list[dict]] = defaultdict(list)
     for nm, lotes in (res.get("pool") or {}).items():
         for lot in lotes:
             slot = lot.get("caixa")
             if not slot or dec.get(slot, DECISAO_OMISSAO) != MONTADO:
                 continue
-            p = loadout.preco_da_copia(con, lot["sid"], lot["finish"], nm, pc)
-            por_slot[slot].append({
-                "nm": nm, "copy_id": lot["id"], "q": lot["q"],
-                "sid": lot["sid"], "set": (lot["set_code"] or "").upper(),
-                "lang": (lot["lang"] or "en"), "finish": lot["finish"],
-                "foil": loadout.e_foil(lot["finish"]),
-                "cond": lot.get("cond") or "NM",
-                "validado": lot.get("validado") or "",
-                "local": lot["local"], "unit": p["unit"],
-                "total": round((p["unit"] or 0) * lot["q"], 2)})
+            por_slot[slot].append(_linha_de_lote(con, nm, lot, pc, perdidas))
     nomes = {s["slot"]: s.get("nome") or s["slot"] for s in res["slots"]}
-    cores = paginas.cores(con, [l["nm"] for ls in por_slot.values() for l in ls])
-    ordem = paginas.COR_ORDEM
+    conv = de_conversao(res, cfg)
+    tipos = paginas.tipos(con, [l["nm"] for ls in por_slot.values() for l in ls])
     filas = []
     for slot, ls in por_slot.items():
-        linhas = [x for l in ls for x in _explode(l)]
-        for l in linhas:
-            l["cor"] = cores.get(l["nm"], "C")
-            l["cor_nome"] = paginas.COR_NOME.get(l["cor"], l["cor"])
-        linhas.sort(key=lambda l: (ordem.get(l["cor"], 9), l["nm"], l["set"],
-                                   l["fila_id"]))
+        fs = fotos_mod.agrupar(ls, tipos=tipos, prefixo=f"{slot}-")
         filas.append({"slot": slot, "nome": nomes.get(slot, slot),
-                      "barra": _barra(linhas), "linhas": linhas,
-                      "lotes": _em_lotes(linhas)})
-    filas.sort(key=lambda f: (-f["barra"]["falta"], f["nome"]))
-    todas = [l for f in filas for l in f["linhas"]]
-    return {"filas": filas, "barra": _barra(todas), "decks": len(filas)}
+                      "conversao": bool(conv.get(slot)),
+                      "nota": (NOTA_CONVERSAO if conv.get(slot)
+                               else NOTA_LISTA_UNICA),
+                      "barra": fotos_mod.barra(fs), "fotos": fs,
+                      "lotes": _filas_por_lotes(fs)})
+    # Lista única primeiro; depois a que tem mais fotos por tirar; o nome
+    # desempata. A ordem de TRABALHO é a ordem dele, não a do alfabeto.
+    filas.sort(key=lambda f: (f["conversao"], -f["barra"]["falta"], f["nome"]))
+    todas = [x for f in filas for x in f["fotos"]]
+    return {"filas": filas, "barra": fotos_mod.barra(todas),
+            "decks": len(filas),
+            "conversao": sum(1 for f in filas if f["conversao"]),
+            "max_cartas": fotos_mod.MAX_CARTAS}
 
 
 def fila_candidatos(con, res: dict, cfg: dict | None = None,
                     cache: dict | None = None, cands: dict | None = None) -> dict:
-    """A FASE 4: a fila de fotos dos candidatos, **por CARTA, da mais cara para a
-    mais barata** — escolha dele, e não por caixa.
+    """A FASE 4: as fotos dos candidatos, **por CARTA, da mais cara para a mais
+    barata** — escolha dele, e não por caixa.
 
-    Lotes de `LOTE` (50) cópias. Cada linha é **uma cópia física** e diz onde
-    está guardada, para ele a ir buscar.
+    Também em fotos de até 4 cartas, mas sem agrupar por tipo: aqui a ordem é o
+    preço, e agrupar por tipo era trocar a ordem que ele pediu. As cópias da
+    mesma carta continuam juntas (a ordenação é por valor e depois por nome, e o
+    lote inteiro é uma linha só). As que **não têm foto no disco** vêm à cabeça.
     """
+    from . import fotos as fotos_mod                         # noqa: PLC0415
     cache = {} if cache is None else cache
     c = cands if cands is not None else candidatos(con, res, cfg, cache)
-    linhas = [x for l in c["linhas"] for x in _explode(l)]
-    # Por valor DECRESCENTE da cópia (e não da linha): a fila é por carta, e o
-    # que ele quer é começar pelas caras. Empate pelo nome, para as quatro
-    # cópias da mesma carta ficarem juntas.
-    linhas.sort(key=lambda l: (-(l["total"] or 0), l["nm"], l["fila_id"]))
-    return {"linhas": linhas, "barra": _barra(linhas),
-            "lotes": _em_lotes(linhas), "lote": LOTE}
+    perdidas = _perdidas(con, cache)
+    linhas = [dict(l, foto_perdida=l["copy_id"] in perdidas) for l in c["linhas"]]
+    # A foto perdida primeiro (é a única cópia sem prova nenhuma), depois pelo
+    # preço DA CÓPIA, decrescente — *"por carta, da mais cara para a mais
+    # barata"*. É o `unit` e não o `total` da linha: um lote de 6 Dark Ritual a
+    # 37 € soma mais do que uma Taiga de 84 €, e ordenar pelo total punha o
+    # barato à frente do caro, que é o contrário do que ele pediu.
+    linhas.sort(key=lambda l: (not l["foto_perdida"], -(l["unit"] or 0),
+                               l["nm"], l["copy_id"]))
+    fs = fotos_mod.agrupar(linhas, por_tipo=False, prefixo="f4-")
+    return {"fotos": fs, "barra": fotos_mod.barra(fs),
+            "lotes": _filas_por_lotes(fs), "lote": LOTE,
+            "max_cartas": fotos_mod.MAX_CARTAS}
 
 
 def fila_inventario(con, res: dict, cfg: dict | None = None,
@@ -1215,36 +1251,97 @@ def fila_inventario(con, res: dict, cfg: dict | None = None,
     passo da venda."* Por isso vive à parte das quatro fases e não entra em
     percentagem nenhuma delas.
     """
-    from . import loadout                                    # noqa: PLC0415
+    from . import fotos as fotos_mod                         # noqa: PLC0415
     cache = {} if cache is None else cache
     terras = terras_protegidas(con, cache)
     pc: dict = cache.setdefault("_precos", {})
+    perdidas = _perdidas(con, cache)
     grupos: dict[str, list[dict]] = {"rl": [], "shockland": [], "fetchland": []}
     for nm, lotes in (res.get("pool") or {}).items():
         qual = terras.get(nm) or ("rl" if any(l["rl"] for l in lotes) else None)
         if not qual:
             continue
         for lot in lotes:
-            p = loadout.preco_da_copia(con, lot["sid"], lot["finish"], nm, pc)
-            grupos[qual].append({
-                "nm": nm, "copy_id": lot["id"], "q": lot["q"],
-                "sid": lot["sid"], "set": (lot["set_code"] or "").upper(),
-                "lang": (lot["lang"] or "en"), "finish": lot["finish"],
-                "foil": loadout.e_foil(lot["finish"]),
-                "cond": lot.get("cond") or "NM", "local": lot["local"],
-                "validado": lot.get("validado") or "", "unit": p["unit"],
-                "total": round((p["unit"] or 0) * lot["q"], 2)})
+            grupos[qual].append(_linha_de_lote(con, nm, lot, pc, perdidas))
     out = []
     for chave, titulo in (("rl", "Reserved List"), ("shockland", "ShockLands"),
                           ("fetchland", "FetchLands")):
-        linhas = [x for l in grupos[chave] for x in _explode(l)]
-        linhas.sort(key=lambda l: (-(l["total"] or 0), l["nm"], l["fila_id"]))
-        out.append({"chave": chave, "titulo": titulo, "barra": _barra(linhas),
-                    "linhas": linhas, "lotes": _em_lotes(linhas)})
-    todas = [l for g in out for l in g["linhas"]]
-    return {"grupos": out, "barra": _barra(todas),
+        ls = sorted(grupos[chave],
+                    key=lambda l: (not l["foto_perdida"], -(l["unit"] or 0),
+                                   l["nm"], l["copy_id"]))
+        fs = fotos_mod.agrupar(ls, por_tipo=False, prefixo=f"inv-{chave}-")
+        out.append({"chave": chave, "titulo": titulo,
+                    "barra": fotos_mod.barra(fs), "fotos": fs,
+                    "lotes": _filas_por_lotes(fs)})
+    todas = [x for g in out for x in g["fotos"]]
+    return {"grupos": out, "barra": fotos_mod.barra(todas),
+            "max_cartas": fotos_mod.MAX_CARTAS,
             "nota": ("É inventário, não é um passo da venda: nunca bloqueia "
                      "nenhuma fase.")}
+
+
+# ---------------------------------------------------------------------------
+# AS FOTOS PERDIDAS: as únicas cópias sem prova nenhuma
+# ---------------------------------------------------------------------------
+def _fotos_mod():
+    from . import fotos as fotos_mod                         # noqa: PLC0415
+    return fotos_mod
+
+
+def _perdidas(con, cache: dict | None = None) -> dict[int, str]:
+    from . import fotos as fotos_mod                         # noqa: PLC0415
+    cache = {} if cache is None else cache
+    if "_perdidas" not in cache:
+        cache["_perdidas"] = fotos_mod.copias_sem_foto_no_disco(con)
+    return cache["_perdidas"]
+
+
+def fotos_perdidas(con, res: dict, cfg: dict | None = None,
+                   cache: dict | None = None) -> dict:
+    """As cópias cujo `photo_path` já não tem ficheiro no disco.
+
+    Medido na base de 2026-10-01: **33 fotos, 155 linhas da `copies`**. Não se
+    inventa a foto nem se limpa o campo — o campo é a prova de que ela existiu.
+    São as únicas cópias que hoje não têm prova nenhuma, e por isso vão à cabeça
+    da fila de revalidação e têm bloco próprio na página.
+    """
+    from . import loadout                                    # noqa: PLC0415
+    cache = {} if cache is None else cache
+    perdidas = _perdidas(con, cache)
+    pc: dict = cache.setdefault("_precos", {})
+    # A lista sai da `copies` e NÃO do `res["pool"]`: um lote sai do `lots()`
+    # PARTIDO por sítio (um lote de 4 com 3 na caixa e 1 na gaveta são duas
+    # linhas com o mesmo `copies.id`) e contá-lo pelo pool dava a mesma cópia
+    # duas vezes. Aqui a pergunta é sobre a LINHA da base, não sobre a caixa.
+    linhas = []
+    if perdidas:
+        marks = ",".join("?" * len(perdidas))
+        for r in con.execute(
+                f"""SELECT cp.id, cp.quantity q, cp.photo_path, cp.language lang,
+                           cp.finish, COALESCE(cp.condition,'NM') cond,
+                           c.name nm, c.scryfall_id sid, c.set_code,
+                           c.collector_number num,
+                           (SELECT slot FROM copy_allocation a WHERE a.copy_id = cp.id
+                             ORDER BY quantity DESC LIMIT 1) slot
+                      FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id
+                     WHERE cp.id IN ({marks})""", sorted(perdidas)):
+            nm = (r["nm"] or "").split(" // ", 1)[0]
+            p = loadout.preco_da_copia(con, r["sid"], r["finish"], nm, pc)
+            linhas.append({
+                "nm": nm, "copy_id": r["id"], "q": r["q"],
+                "set": (r["set_code"] or "").upper(), "num": r["num"] or "",
+                "lang": r["lang"] or "en", "finish": r["finish"],
+                "foil": loadout.e_foil(r["finish"]), "cond": r["cond"],
+                "caixa": r["slot"] or "", "foto": r["photo_path"],
+                "unit": p["unit"], "total": round((p["unit"] or 0) * r["q"], 2)})
+    linhas.sort(key=lambda l: (-(l["total"] or 0), l["nm"], l["copy_id"]))
+    return {"fotos": sorted({l["foto"] for l in linhas}),
+            "n_fotos": len({l["foto"] for l in linhas}),
+            "copias": sum(l["q"] for l in linhas), "linhas": linhas,
+            "valor": round(sum(l["total"] or 0 for l in linhas), 2),
+            "nota": ("A foto destas cópias já não está no disco. Não se "
+                     "inventa nem se limpa o campo: são as únicas cópias sem "
+                     "prova nenhuma, e por isso são as primeiras a fotografar.")}
 
 
 # ---------------------------------------------------------------------------
@@ -1340,6 +1437,9 @@ def relatorio(con, res: dict, cfg: dict | None = None,
         "candidatos": cands,
         "fase4": fila_candidatos(con, res, cfg, cache, cands),
         "inventario": fila_inventario(con, res, cfg, cache),
+        # As únicas cópias sem prova nenhuma: vêm à cabeça de tudo.
+        "perdidas": fotos_perdidas(con, res, cfg, cache),
+        "max_cartas_foto": _fotos_mod().MAX_CARTAS,
         "decisoes": {"valores": list(DECISOES), "omissao": DECISAO_OMISSAO,
                      "texto": dict(TEXTO_DECISAO)},
     }

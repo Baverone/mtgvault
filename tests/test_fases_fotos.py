@@ -18,7 +18,8 @@ funcionalidade for retirada:
   4. **definir o alvo e ver a fila NÃO são travados pelo `venda.congelado_ate`**:
      a trava de 12/10 é para a SAÍDA de venda, e as fotos dos decks são de ANTES
      de Ghent. A mesma chamada que recusa a exportação deixa passar o alvo;
-  5. a fila continua a contar **cópias físicas**: um playset dá quatro linhas;
+  5. a fila mede **FOTOS de até 4 cartas**: um playset é **uma** foto (corrigido
+     a 2026-10-01 — esteve aqui a regra errada, «um playset dá quatro linhas»);
   6. o caminho da Fase 4 está preparado (o mesmo botão, com alvo `venda`) e **não
      se abre antes da data da trava**.
 
@@ -294,7 +295,7 @@ def caso_a_pagina_mostra_o_alvo_actual_e_onde_largar_as_fotos():
     repor(alvo={"tipo": "caixa", "slot": "pm", "em": "2026-10-01"})
     v = desenha(con, "f2")
     assert "Estás a fotografar" in v and "Caixa UW Replenish" in v, v[:900]
-    assert "4 cópias</b> por fotografar" in v, v[:1200]
+    assert "4 cópias</b> por fotografar" in v, v[:1500]
     assert "data-alvo-parar" in v, "tem de haver como parar"
     # (c) ONDE: soltas na raiz de `pendentes\`, e NÃO nas outras duas pastas.
     assert "pendentes\\</code></b>" in v, v[:1500]
@@ -338,10 +339,10 @@ def caso_definir_o_alvo_nao_e_travado_pela_data():
     # A fila da Fase 2 também não se cala com a trava ligada.
     rep = loadout.report(con)
     f2 = fases.fila_decks(con, rep)
-    assert f2["barra"]["copias"] == 4, f2["barra"]
+    assert f2["barra"]["cartas"] == 4, f2["barra"]
     idx, partes = arrumacao.dados(con, rep, editavel=True)
     assert idx["congelada"] is True, idx["congelada"]
-    assert partes["fase2"]["barra"]["copias"] == 4, partes["fase2"]["barra"]
+    assert partes["fase2"]["barra"]["cartas"] == 4, partes["fase2"]["barra"]
     assert idx["revalidacao"]["alvo"]["por_revalidar"] == 4
     _post("/api/revalidacao", {"act": "parar"})
     repor()
@@ -349,27 +350,37 @@ def caso_definir_o_alvo_nao_e_travado_pela_data():
 
 
 # ===========================================================================
-# 5. A FILA CONTA CÓPIAS FÍSICAS
+# 5. A FILA MEDE FOTOS DE ATÉ 4 CARTAS
 # ===========================================================================
-def caso_a_fila_da_fase2_conta_copias_fisicas():
-    """*"se for 1 carta e 1 carta, mas se jogar 4 da mesma, tiro foto às 4"* — um
-    lote de 4 é UMA linha da `copies` e TEM de dar quatro linhas na fila, senão a
-    barra de progresso e o número do alvo ficam a um quarto do certo."""
+def caso_a_fila_da_fase2_mede_fotos_de_ate_quatro_cartas():
+    """*"organiza o Blue farm e CDEH por tipo de carta e ate 4 cartas por foto"*
+    e *"se sao 4 fotos, e 1 foto com as 4 cartas"*.
+
+    CORRIGIDO a 2026-10-01: este caso exigia o contrário (quatro linhas para um
+    playset), que era quatro vezes o trabalho dele. O playset é UMA foto de
+    quatro cartas; o ALVO continua a contar CÓPIAS, que é outra pergunta (quantas
+    cópias faltam revalidar) e tem de continuar a dar 4.
+    """
     repor()
     con = mundo()
     f2 = fases.fila_decks(con, loadout.report(con))
     fila = next(x for x in f2["filas"] if x["slot"] == "pm")
-    swords = [l for l in fila["linhas"] if l["nm"] == "Swords to Plowshares"]
-    assert len(swords) == 4, f"o playset deu {len(swords)} linhas"
-    assert all(l["q"] == 1 for l in swords), swords
-    assert len({l["fila_id"] for l in swords}) == 4, "ids repetidos na fila"
-    assert fila["barra"]["copias"] == 4 and fila["barra"]["falta"] == 4
-    # E o número do ALVO conta as mesmas quatro (é a mesma pergunta).
+    swords = [f for f in fila["fotos"]
+              if any(i["nm"] == "Swords to Plowshares" for i in f["itens"])]
+    assert len(swords) == 1, f"o playset deu {len(swords)} fotos"
+    assert swords[0]["cartas"] == 4 and swords[0]["linhas"] == 1, swords[0]
+    assert fila["barra"]["fotos"] == 1 and fila["barra"]["falta"] == 1
+    assert fila["barra"]["cartas"] == 4 and fila["barra"]["linhas"] == 1
+    assert f2["max_cartas"] == 4
+    assert all(f["cartas"] <= 4 for f in fila["fotos"])
+    # E o número do ALVO conta CÓPIAS (quantas faltam revalidar): 4.
     repor(alvo={"tipo": "caixa", "slot": "pm", "em": "2026-10-01"})
     idx, _p = arrumacao.dados(con, loadout.report(con))
     assert idx["revalidacao"]["alvo"]["por_revalidar"] == 4, idx["revalidacao"]
+    assert idx["totais"]["fase2_fotos"] == 1, idx["totais"]
+    assert idx["totais"]["fase2_cartas"] == 4, idx["totais"]
     repor()
-    print("a fila da Fase 2 e o numero do alvo contam copias fisicas: 4 e 4")
+    print("a fila da Fase 2 mede FOTOS (1 de 4 cartas) e o alvo conta 4 copias")
 
 
 # ===========================================================================

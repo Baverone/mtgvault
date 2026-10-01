@@ -1,0 +1,72 @@
+PLANO DE FOTOS -- UW Replenish
+slot: premodern-replenish | 20 fotos para 66 cartas
+
+REGRA: no maximo 4 CARTAS por foto, agrupadas por TIPO.
+As copias da MESMA carta vao sempre juntas (4x Mox Opal = 1 foto).
+Cada carta tem de estar a vista e poder avaliar-se.
+
+*** ESTE DECK FICA PARA DEPOIS ***
+Fica para depois: estas caixas são do mesmo grupo de formato, com tecto de playset contado sobre o grupo — partilham o mesmo conjunto de cartas e montam-se por conversão de uma noutra. Primeiro os decks de lista única.
+
+ONDE LARGAR AS FOTOS: soltas na RAIZ de  pendentes\
+  (ou pelo telemovel, no botao «Tirar fotos» da pagina)
+NAO as largues nesta pasta: 'Colocar fotos da colecao aqui' e para
+  cartas NOVAS e NADA a processa -- as fotos ficavam aqui para sempre.
+Antes de fotografar, fixa o ALVO: pagina «Arrumacao por fases», Fase 2,
+  botao «Fotografar este deck». E o alvo que arruma as fotos por deck.
+
+======================================================================
+
+  CRIATURAS
+    foto 01  (3 cartas)
+         3x Exalted Angel                          ONS   nonfoil  pt
+    foto 02  (2 cartas)
+         2x Meddling Mage                          PLS   nonfoil  pt
+  ARTEFACTOS
+    foto 03  (3 cartas)
+         2x Defense Grid                           ULG   nonfoil  pt
+            Tsabo's Web                            INV   nonfoil  pt
+  ENCANTAMENTOS
+    foto 04  (4 cartas)
+         4x Attunement                             USG   nonfoil  pt
+    foto 05  (4 cartas)
+            Decree of Silence                      SCG   nonfoil  pt
+         2x Decree of Silence                      SCG   nonfoil  pt
+            Opalescence                            UDS   nonfoil  pt
+    foto 06  (3 cartas)
+         3x Opalescence                            UDS   nonfoil  pt
+    foto 07  (4 cartas)
+         4x Parallax Wave                          NEM   nonfoil  pt
+    foto 08  (4 cartas)
+         4x Seal of Cleansing                      NEM   nonfoil  pt
+  INSTANTÂNEOS
+    foto 09  (3 cartas)
+            Abeyance                               WTH   nonfoil  pt
+         2x Abeyance                               WTH   nonfoil  pt
+    foto 10  (3 cartas)
+         3x Frantic Search                         ULG   nonfoil  pt
+    foto 11  (2 cartas)
+         2x Hydroblast                             ICE   nonfoil  pt
+    foto 12  (4 cartas)
+         3x Intuition                              TMP   nonfoil  pt
+            Mana Leak                              STH   nonfoil  pt
+    foto 13  (3 cartas)
+         2x Swords to Plowshares                   4BB   nonfoil  pt
+            Swords to Plowshares                   4ED   nonfoil  pt
+  FEITIÇOS
+    foto 14  (4 cartas)
+         4x Replenish                              UDS   nonfoil  pt
+  TERRAS
+    foto 15  (4 cartas)
+         4x Adarkar Wastes                         5ED   nonfoil  pt
+    foto 16  (4 cartas)
+         4x Ancient Tomb                           TMP   nonfoil  pt
+    foto 17  (4 cartas)
+         4x Flooded Strand                         ONS   nonfoil  pt
+    foto 18  (4 cartas, lote partido)
+         4x Plains                                 ODY   nonfoil  en   [a foto antiga desapareceu]
+    foto 19  (1 carta, lote partido)
+            Plains                                 ODY   nonfoil  en   [a foto antiga desapareceu]
+    foto 20  (3 cartas)
+         3x Skycloud Expanse                       ODY   nonfoil  pt
+

@@ -107,6 +107,13 @@ _CSS = """
  .fl .q{min-width:68px;color:var(--muted);font-size:11.5px;text-align:right;font-variant-numeric:tabular-nums}
  .fl .wh{color:var(--dim);font-size:11.5px}
  .fl .ok{color:var(--add);font-size:11.5px}
+ .fl li.ft{align-items:flex-start;gap:10px}
+ .fl li.ft.ok .fn{color:var(--add)}
+ .fl .fn{min-width:34px;color:var(--muted);font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums}
+ .fl .fi{flex:1;display:flex;flex-direction:column;gap:2px}
+ .fl .it{font-size:13px}
+ .tph{margin:14px 0 4px;color:var(--accent);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+ .tph .wh{color:var(--dim);font-size:11px;font-weight:500;text-transform:none;letter-spacing:0}
  .vazio{color:var(--muted);font-size:13px;padding:16px 0}
  .alvo{border:1px solid var(--line);border-radius:var(--r);background:var(--card2);padding:13px 15px;margin:0 0 16px}
  .alvo p{margin:0 0 8px;font-size:13px;line-height:1.6}
@@ -153,9 +160,29 @@ _RODAPE = (
     "P1, P2 ou P4 apanhem. <b>Um deck sem decisão conta como montado</b> — nunca "
     "o contrário: um deck novo não manda uma única carta para a venda. Mudar de "
     "estado é reversível e não apaga nada.</p>"
-    "<p><b>A fila de fotos conta cópias físicas, não nomes.</b> Se jogas quatro "
-    "da mesma carta, são quatro fotos — e por isso a barra de progresso e os "
-    "totais são em cópias.</p>"
+    "<p><b>Uma foto leva no máximo quatro cartas.</b> As tuas palavras: "
+    "<i>«organiza o Blue farm e CDEH por tipo de carta e até 4 cartas por "
+    "foto»</i> e <i>«se são 4 fotos, é 1 foto com as 4 cartas»</i>. As cópias da "
+    "<b>mesma carta</b> vão sempre juntas na mesma foto — quatro Mox Opal são "
+    "<b>uma</b> foto, não quatro; num deck singleton juntam-se até quatro cartas "
+    "<b>diferentes</b>, agrupadas por tipo. Uma linha da coleção não se parte "
+    "entre duas fotos, a não ser que sozinha passe das quatro (as vinte e nove "
+    "Snow-Covered Plains), e aí a foto di-lo. <b>A barra de progresso conta "
+    "FOTOS</b>, com as cartas e as linhas ao lado: é a foto que é o gesto. E uma "
+    "foto com mais de quatro cartas <b>não conta como validação</b> — nas antigas "
+    "(média de quase cinco cartas, até trinta e três num monte) não se consegue "
+    "julgar o estado de cada uma.</p>"
+    "<p><b>A ordem de trabalho: primeiro os decks de lista única.</b> Os dois de "
+    "cEDH têm cartas dedicadas e uma lista cada, e é por aí que se começa. As "
+    "caixas de um grupo com <b>tecto de playset sobre o grupo inteiro</b> — hoje "
+    "a família de Premodern — partilham o mesmo conjunto de cartas e montam-se "
+    "por conversão de uma noutra: ficam para depois, e a fila di-lo em cada "
+    "uma.</p>"
+    "<p><b>As fotos perdidas vêm primeiro.</b> Algumas cópias têm foto registada "
+    "e o ficheiro já não está no disco. Não se inventa a foto nem se limpa o "
+    "campo: são as únicas cópias sem prova nenhuma, e por isso abrem a Fase 2. "
+    "<b>Nada se apaga</b> — as fotos antigas foram <b>arquivadas</b>, não "
+    "apagadas, e continuam a responder por todas as outras.</p>"
     "<p><b>Onde largar as fotos.</b> Primeiro fixas o <b>alvo</b> no botão da "
     "fila (é o mesmo botão «Fotografar» da Deckboxes, e escreve o "
     "<code>esperadas.md</code> que diz à corrida da noite o que esperar); depois "
@@ -344,28 +371,83 @@ function alvoBotao(tipo, slot, rotulo) {
 }
 
 /* ------------------------------------------------------- FASE 2 e FASE 4 */
+/* A UNIDADE É A FOTO, e uma foto leva no máximo 4 CARTAS (André, 2026-10-01:
+   «organiza o Blue farm e CDEH por tipo de carta e ate 4 cartas por foto», «se
+   sao 4 fotos, e 1 foto com as 4 cartas»). A barra conta FOTOS — é a foto que
+   é o gesto — e diz ao lado quantas CARTAS e quantas LINHAS da coleção cada
+   fila cobre, que é o que ele precisa de saber para ir à estante. Esteve aqui
+   escrito o contrário («a fila conta cópias físicas: um playset são quatro
+   fotos»), e era quatro vezes o trabalho. Quem agrupa é o `mtgvault/fotos.py`,
+   num sítio só — a mesma régua que recusa uma foto com mais de quatro. */
 function barraHTML(b) {
   return `<div class="bar"><i style="width:${b.pct}%"></i></div>`
-    + `<p class="barl"><b>${b.feitas}</b> de <b>${b.copias}</b> cópias `
-    + `(${b.pct} %) · feito ${eur(b.feitas_valor)} · falta ${eur(b.falta_valor)}</p>`;
+    + `<p class="barl"><b>${b.feitas}</b> de <b>${b.fotos}</b> fotos `
+    + `(${b.pct} %) · ${b.cartas} cartas em ${b.linhas} linhas · `
+    + `feito ${eur(b.feitas_valor)} · falta ${eur(b.falta_valor)}`
+    + (b.perdidas ? ` · <b>${b.perdidas}</b> sem foto no disco` : '') + `</p>`;
 }
-function filaLinha(l) {
-  return `<li><span style="flex:1">${escDados(l.nm)}</span>`
-    + `<span class="wh">${escDados(l.set)} ${escDados((l.lang || '').toUpperCase())}`
-    + `${l.foil ? ' ✨' : ''} ${escDados(l.cond || '')}</span>`
-    + `<span class="wh">${escDados(l.local || '')}</span>`
-    + `<span class="q">${eur(l.total)}</span>`
-    + (l.validado ? `<span class="ok">✓ ${escDados(l.validado)}</span>`
-                  : `<span class="wh">📷</span>`) + `</li>`;
+function itemHTML(i) {
+  return `<span class="it">${i.q > 1 ? `<b>${i.q}×</b> ` : ''}`
+    + `${escDados(i.nm)} <span class="wh">${escDados(i.set)} `
+    + `${escDados((i.lang || '').toUpperCase())}${i.foil ? ' ✨' : ''}`
+    + `${i.foto_perdida ? ' ⚠' : ''}</span></span>`;
+}
+function fotoHTML(f) {
+  return `<li class="ft${f.feita ? ' ok' : ''}">`
+    + `<span class="fn">${f.feita ? '✓' : '📷'} ${f.n}</span>`
+    + `<span class="fi">${f.itens.map(itemHTML).join('')}</span>`
+    + `<span class="q">${f.cartas} carta${f.cartas === 1 ? '' : 's'}`
+    + `${f.linhas > 1 ? ` · ${f.linhas} linhas` : ''}`
+    + `${f.partida ? ' · lote partido' : ''}</span>`
+    + `<span class="q">${eur(f.valor)}</span></li>`;
+}
+function fotosHTML(fs) {
+  if (!fs.length) return `<p class="vazio">Nada nesta fila.</p>`;
+  /* Agrupadas por TIPO, com o cabeçalho — é a ordem em que ele dispõe as cartas
+     na mesa, e as fotos nunca atravessam um tipo. Sem tipo (a Fase 4, que é por
+     preço) sai uma lista só. */
+  let out = '', tipo = null;
+  for (const f of fs) {
+    if (f.tipo && f.tipo !== tipo) {
+      if (tipo !== null) out += `</ul>`;
+      const n = fs.filter(x => x.tipo === f.tipo);
+      out += `<div class="tph">${escDados(f.tipo_nome)} <span class="wh">`
+        + `${n.length} foto${n.length === 1 ? '' : 's'} · `
+        + `${n.reduce((a, x) => a + x.cartas, 0)} cartas</span></div><ul class="fl">`;
+      tipo = f.tipo;
+    } else if (tipo === null) {
+      out += `<ul class="fl">`;
+      tipo = f.tipo || '';
+    }
+    out += fotoHTML(f);
+  }
+  return out + `</ul>`;
 }
 function lotesHTML(lotes, aberto) {
   if (!lotes.length) return `<p class="vazio">Nada nesta fila.</p>`;
   return lotes.map((lo, i) =>
     `<details class="lote"${i < aberto ? ' open' : ''}><summary>`
-    + `<span>Lote ${lo.n} · cópias ${lo.de}–${lo.ate}</span>`
-    + `<span class="lm">${lo.feitas} de ${lo.copias} feitas · ${eur(lo.valor)}</span>`
-    + `</summary><div class="lb"><ul class="fl">`
-    + lo.linhas.map(filaLinha).join('') + `</ul></div></details>`).join('');
+    + `<span>Lote ${lo.n} · fotos ${lo.de}–${lo.ate}</span>`
+    + `<span class="lm">${lo.feitas} de ${lo.fotos} feitas · ${lo.cartas} cartas `
+    + `· ${eur(lo.valor)}</span>`
+    + `</summary><div class="lb">` + fotosHTML(lo.linhas) + `</div></details>`).join('');
+}
+/* AS FOTOS PERDIDAS abrem a Fase 2: são as únicas cópias sem prova nenhuma. */
+function perdidasHTML() {
+  const p = D.perdidas || {};
+  if (!p.n_fotos) return '';
+  return `<details class="lote" open><summary>`
+    + `<span>⚠ ${p.n_fotos} fotos perdidas · ${p.copias} cópias</span>`
+    + `<span class="lm">${eur(p.valor)} — fotografa estas primeiro</span>`
+    + `</summary><div class="lb"><p class="sub">${escDados(p.nota)}</p>`
+    + `<ul class="fl">` + (p.linhas || []).map(l =>
+        `<li><span style="flex:1">${l.q > 1 ? `<b>${l.q}×</b> ` : ''}`
+        + `${escDados(l.nm)}</span>`
+        + `<span class="wh">${escDados(l.set)} `
+        + `${escDados((l.lang || '').toUpperCase())}${l.foil ? ' ✨' : ''}</span>`
+        + `<span class="wh">${escDados(l.caixa || '—')}</span>`
+        + `<span class="q">${eur(l.total)}</span></li>`).join('')
+    + `</ul></div></details>`;
 }
 function fase2(p) {
   if (!p.filas.length) {
@@ -373,16 +455,23 @@ function fase2(p) {
       + `montado com cartas lá dentro, por isso não há nada para confirmar.</p>`;
   }
   return `<h2>Fase 2 · Fotos dos decks <span class="n">${p.decks} decks, `
-    + `${p.barra.copias} cópias</span></h2>`
+    + `${p.barra.fotos} fotos, ${p.barra.cartas} cartas</span></h2>`
     + `<p class="sub">As cartas dos decks que ficam <b>montados</b>, para `
     + `confirmares que cada deck está fisicamente completo antes de 10/10. `
-    + `A fila conta <b>cópias</b>: um playset são quatro fotos. `
+    + `Cada foto leva <b>até ${p.max_cartas} cartas</b>, agrupadas <b>por tipo</b>: `
+    + `as cópias da mesma carta vão sempre juntas (quatro Mox Opal são uma foto) e `
+    + `num deck singleton juntam-se até ${p.max_cartas} cartas diferentes do mesmo `
+    + `tipo. <b>Primeiro os decks de lista única</b>; os que se montam por `
+    + `conversão vêm no fim e dizem-no. `
     + `<b>Fotografar um deck não espera por 12/10</b> — a trava dessa data é para `
     + `a saída de venda, não para as fotos.</p>`
     + alvoHTML()
     + barraHTML(p.barra)
+    + perdidasHTML()
     + p.filas.map(f => `<h2>${escDados(f.nome)} <span class="n">`
-        + `${f.barra.copias} cópias · ${eur(f.barra.valor)}</span></h2>`
+        + `${f.barra.fotos} fotos · ${f.barra.cartas} cartas · ${eur(f.barra.valor)}`
+        + (f.conversao ? ' · ⏸ por conversão' : '') + `</span></h2>`
+        + `<p class="sub">${escDados(f.nota)}</p>`
         + barraHTML(f.barra)
         + alvoBotao('caixa', f.slot, 'Fotografar este deck')
         + lotesHTML(f.lotes, 1)).join('');
@@ -399,20 +488,25 @@ function fase4(p) {
       + `das fotos é a mesma e o caminho já está feito. Até lá não se abre — antes `
       + `de Ghent não sai nada para venda.</p><p class="onde">${ONDE}</p></div>`;
   return `<h2>Fase 4 · Fotos dos candidatos <span class="n">`
-    + `${p.barra.copias} cópias em ${p.lotes.length} lotes</span></h2>`
+    + `${p.barra.fotos} fotos (${p.barra.cartas} cartas) em ${p.lotes.length} `
+    + `lotes</span></h2>`
     + `<p class="sub">Depois de Ghent. A fila é <b>por carta, da mais cara para `
-    + `a mais barata</b> — foi o que pediste —, em lotes de ${p.lote} cópias, e `
-    + `cada linha diz onde a cópia está guardada para a ires buscar.</p>`
+    + `a mais barata</b> — foi o que pediste —, em fotos de até ${p.max_cartas} `
+    + `cartas e lotes de ${p.lote} fotos. Aqui <b>não se agrupa por tipo</b>: a `
+    + `ordem é o preço, e agrupar por tipo era trocar a ordem que pediste. As que `
+    + `não têm foto no disco vêm à cabeça.</p>`
     + pronto
     + barraHTML(p.barra) + lotesHTML(p.lotes, 1);
 }
 function inventario(p) {
-  return `<h2>Inventário <span class="n">${p.barra.copias} cópias · `
-    + `${eur(p.barra.valor)}</span></h2>`
+  return `<h2>Inventário <span class="n">${p.barra.fotos} fotos `
+    + `(${p.barra.cartas} cartas) · ${eur(p.barra.valor)}</span></h2>`
     + `<p class="sub">${escDados(p.nota)} São as fotos da Reserved List e das `
-    + `shock/fetchlands, para teres registo do que vale mais.</p>`
+    + `shock/fetchlands, para teres registo do que vale mais — em fotos de até `
+    + `${p.max_cartas} cartas, como tudo o resto.</p>`
     + p.grupos.map(g => `<h2>${escDados(g.titulo)} <span class="n">`
-        + `${g.barra.copias} cópias · ${eur(g.barra.valor)}</span></h2>`
+        + `${g.barra.fotos} fotos · ${g.barra.cartas} cartas · `
+        + `${eur(g.barra.valor)}</span></h2>`
         + barraHTML(g.barra) + lotesHTML(g.lotes, 0)).join('');
 }
 
@@ -463,9 +557,9 @@ async function parte(nome) {
 function barra() {
   const b = el('fasebar');
   if (!b) return;
-  const nq = {f1: D.decks.length, f2: D.totais.fase2_copias,
-              f3: D.totais.candidatos_copias, f4: D.totais.fase4_copias,
-              inv: D.totais.inventario_copias};
+  const nq = {f1: D.decks.length, f2: D.totais.fase2_fotos,
+              f3: D.totais.candidatos_copias, f4: D.totais.fase4_fotos,
+              inv: D.totais.inventario_fotos};
   b.innerHTML = ABAS.map(([k, rot]) =>
     `<button type="button" data-aba="${k}" class="${ABA === k ? 'cur' : ''}`
     + `${k === 'inv' ? ' par' : ''}">${escDados(rot)}`
@@ -630,15 +724,27 @@ def dados(con, rep=None, editavel: bool = False) -> tuple[dict, dict]:
         "revalidacao": alvo_actual(con, rep),
         "decks": r["decks"],
         "por_decidir": sum(1 for d in r["decks"] if not d["decisao_explicita"]),
+        # AS FOTOS PERDIDAS (2026-10-01) vão no ÍNDICE e não numa parte: são 33
+        # fotos e abrem a Fase 2 — fazê-las esperar por um segundo pedido era
+        # esconder a única coisa que não tem prova nenhuma.
+        "perdidas": r["perdidas"],
+        "max_cartas_foto": r["max_cartas_foto"],
         "totais": {
-            "fase2_copias": r["fase2"]["barra"]["copias"],
+            # A unidade é a FOTO (as cartas e as linhas ao lado). Era `*_copias`
+            # e contava cópias: um playset dizia «4 fotos».
+            "fase2_fotos": r["fase2"]["barra"]["fotos"],
+            "fase2_cartas": r["fase2"]["barra"]["cartas"],
             "fase2_feitas": r["fase2"]["barra"]["feitas"],
             "candidatos_copias": r["candidatos"]["copias"],
             "candidatos_valor": r["candidatos"]["valor"],
             "protegidas_copias": r["candidatos"]["protegidas_copias"],
             "protegidas_valor": r["candidatos"]["protegidas_valor"],
-            "fase4_copias": r["fase4"]["barra"]["copias"],
-            "inventario_copias": r["inventario"]["barra"]["copias"],
+            "fase4_fotos": r["fase4"]["barra"]["fotos"],
+            "fase4_cartas": r["fase4"]["barra"]["cartas"],
+            "inventario_fotos": r["inventario"]["barra"]["fotos"],
+            "inventario_cartas": r["inventario"]["barra"]["cartas"],
+            "perdidas_fotos": r["perdidas"]["n_fotos"],
+            "perdidas_copias": r["perdidas"]["copias"],
         },
     }
     return idx, partes

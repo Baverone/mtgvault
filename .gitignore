@@ -54,6 +54,12 @@ pendentes/esperadas.md
 # versão reduzida em `assets/deckboxes/` — a excepção consciente ao «não
 # guardar imagens», que é uma regra para a base. Ver `mtgvault/fotocaixa.py`.
 data/deckboxes/
+# AS FOTOS DAS CARTAS (2026-10-01): o ARQUIVO das antigas
+# (`data/fotos/anteriores/`) e as novas organizadas por deck
+# (`data/fotos/<slot>/`). São imagens, e as imagens não vão para o Git — o
+# `backup-offsite` do ai-pc é que as guarda. A única excepção consciente
+# continua a ser a reduzida da deckbox física, em `assets/deckboxes/`.
+data/fotos/
 # A SAÍDA da lista de venda (2026-09-18): o CSV para carregar stock no
 # Cardmarket e a lista para ir buscar as cartas à estante, reescritos a cada
 # corrida do daily (e pelo «gravar em data/» do modo edição). Levam preços por

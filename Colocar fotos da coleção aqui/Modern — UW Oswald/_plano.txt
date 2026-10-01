@@ -1,0 +1,65 @@
+PLANO DE FOTOS -- Modern — UW Oswald
+slot: modern | 16 fotos para 52 cartas
+
+REGRA: no maximo 4 CARTAS por foto, agrupadas por TIPO.
+As copias da MESMA carta vao sempre juntas (4x Mox Opal = 1 foto).
+Cada carta tem de estar a vista e poder avaliar-se.
+
+ONDE LARGAR AS FOTOS: soltas na RAIZ de  pendentes\
+  (ou pelo telemovel, no botao «Tirar fotos» da pagina)
+NAO as largues nesta pasta: 'Colocar fotos da colecao aqui' e para
+  cartas NOVAS e NADA a processa -- as fotos ficavam aqui para sempre.
+Antes de fotografar, fixa o ALVO: pagina «Arrumacao por fases», Fase 2,
+  botao «Fotografar este deck». E o alvo que arruma as fotos por deck.
+
+======================================================================
+
+  PLANESWALKERS
+    foto 01  (2 cartas)
+         2x Teferi, Time Raveler                   SLD   foil     en
+  CRIATURAS
+    foto 02  (4 cartas)
+         4x Emry, Lurker of the Loch               SLC   foil     en
+    foto 03  (3 cartas)
+         3x Loki, God of Mischief                  MSH   foil     en
+    foto 04  (4 cartas)
+         4x Tamiyo, Inquisitive Student            MH3   foil     en
+  ARTEFACTOS
+    foto 05  (3 cartas)
+            Aether Spellbomb                       MMA   foil     en
+            Damping Sphere                         DMR   foil     en
+            Grinding Station                       5DN   foil     en
+    foto 06  (4 cartas)
+         4x Mishra's Bauble                        SLD   foil     en
+    foto 07  (3 cartas)
+         3x Mox Amber                              DOM   foil     en
+    foto 08  (4 cartas)
+         4x Mox Opal                               MPS   foil     en
+    foto 09  (4 cartas)
+            Pithing Needle                         MPS   foil     en
+            Sewer-veillance Cam                    TMT   foil     en
+            Shadowspear                            PZA   foil     en
+            Shadowspear                            SLD   foil     en
+    foto 10  (3 cartas)
+            Skateboard                             TMT   foil     en
+            Tormod's Crypt                         M21   foil     en
+            Vexing Bauble                          MH3   foil     en
+  ENCANTAMENTOS
+    foto 11  (4 cartas)
+            Urza's Saga                            SCH   foil     en   [a foto antiga desapareceu]
+         3x Urza's Saga                            SCH   foil     en
+  INSTANTÂNEOS
+    foto 12  (3 cartas)
+         3x Consign to Memory                      MH3   foil     en
+    foto 13  (4 cartas)
+         3x Force of Negation                      TLE   foil     en
+            Metallic Rebuke                        2XM   foil     en
+  TERRAS
+    foto 14  (1 carta)
+            Flooded Strand                         EXP   foil     en
+    foto 15  (4 cartas)
+         4x Hallowed Fountain                      EXP   foil     en
+    foto 16  (2 cartas)
+            Otawara, Soaring City                  NEO   foil     en
+            Scalding Tarn                          EXP   foil     en
+

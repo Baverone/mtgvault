@@ -43,6 +43,8 @@ from collections import defaultdict
 from pathlib import Path
 
 from . import db, scryfall, sources
+from .fotos import MAX_CARTAS as MAX_CARTAS_FOTO
+from .fotos import motivo_demasiadas, valida as foto_valida
 
 MARCA_CORRIGIDA = "corrigida pela foto"
 MARCA_NOVA = "nova nesta campanha"
@@ -76,10 +78,40 @@ def activa(quando: str | None = None) -> bool:
     return bool(d) and (quando or hoje()) >= d
 
 
+# QUANTAS CARTAS TEM CADA FOTO DESTE LOTE (André, 2026-10-01). Quem o enche é o
+# `collection.import_csv`, uma vez por importação. Vive aqui, e não passado de
+# função em função, porque a pergunta *"esta foto pode validar?"* é feita por
+# QUATRO caminhos (o `add_copy` da entrada normal, o `ligar_foto`, o
+# `acertar_edicao` e as duas metades da revalidação) e todos acabam no
+# `marca_validada` — enfiar um `validar=False` em cada um era dar a cada um a
+# oportunidade de se esquecer dele, que é a lição do `e_foil` e do `vistoId`.
+_CARTAS_DO_LOTE: dict[str, int] = {}
+
+
+def declarar_lote(cartas_por_foto: dict[str, int] | None) -> None:
+    """Diz quantas cartas tem cada foto desta importação (ou limpa)."""
+    _CARTAS_DO_LOTE.clear()
+    if cartas_por_foto:
+        _CARTAS_DO_LOTE.update(cartas_por_foto)
+
+
+def valida_esta_foto(photo_path: str | None) -> bool:
+    """Esta foto pode validar? Uma foto deste lote com mais de
+    `MAX_CARTAS_FOTO` cartas **não valida** — ver `fotos.valida`. Uma foto que
+    o lote não conheça (fora de uma importação) não se presume grande."""
+    if not photo_path:
+        return False
+    import os.path                                          # noqa: PLC0415
+
+    n = _CARTAS_DO_LOTE.get(os.path.basename(str(photo_path)))
+    return True if n is None else foto_valida(n)
+
+
 def marca_validada(photo_path: str | None, quando: str | None = None) -> str | None:
     """O `validado_em` a escrever numa cópia que ganha uma foto AGORA: a data,
-    se a campanha estiver ligada e houver foto; senão nada."""
-    if not photo_path or not activa(quando):
+    se a campanha estiver ligada, houver foto, e a foto **puder validar** (no
+    máximo quatro cartas); senão nada."""
+    if not photo_path or not activa(quando) or not valida_esta_foto(photo_path):
         return None
     return quando or hoje()
 
@@ -189,6 +221,25 @@ def copias_por_revalidar(con, name: str | None = None) -> list[sqlite3.Row]:
         return _sel_copias(con, "(c.name = ? OR c.name LIKE ? || ' //%')",
                            (name, name))
     return _sel_copias(con, "1=1", ())
+
+
+def revalidaria(con, name: str, set_code: str | None, *,
+                collector_number: str | None = None, language: str = "en",
+                finish: str = "nonfoil") -> bool:
+    """Há na base uma cópia POR REVALIDAR desta impressão exacta?
+
+    É a pergunta que o `import_csv` faz a uma foto que **não pode validar** (mais
+    de 4 cartas): se há, a linha é recusada em vez de seguir — seguir criava uma
+    cópia NOVA de uma carta que já lá está. Se não há, é uma carta a catalogar e
+    entra como sempre, só sem `validado_em`.
+    """
+    if not set_code:
+        return False
+    num = collector_number or ""
+    return bool(_sel_copias(
+        con, "(c.name = ? OR c.name LIKE ? || ' //%') AND lower(c.set_code) = lower(?)"
+             " AND (? = '' OR c.collector_number = ?) AND cp.language = ? AND cp.finish = ?",
+        (name, name, set_code, num, num, language, finish)))
 
 
 def _ordem(preferir, qtd, primeiro=None):
@@ -351,7 +402,8 @@ def _sai_da_caixa_se_nao_cumpre(con, copy_id: int, dia: str,
 # ---------------------------------------------------------------------------
 def _copias(con) -> list[dict]:
     """Todas as cópias NA ESTANTE (jogador e colecionador), com o estado."""
-    from . import collection, loadout                      # noqa: PLC0415
+    from . import collection, fotos, loadout               # noqa: PLC0415
+    perdidas = fotos.copias_sem_foto_no_disco(con)
     out = []
     for r in con.execute(
             f"""SELECT cp.id, cp.quantity q, cp.finish, cp.language lang,
@@ -370,6 +422,11 @@ def _copias(con) -> list[dict]:
         d["nova"] = MARCA_NOVA in n
         d["saiu"] = MARCA_SAIU in n
         d["validada"] = bool(d["validado_em"])
+        # A FOTO PERDIDA (2026-10-01): o `photo_path` está preenchido e o
+        # ficheiro já NÃO está no disco — 33 fotos, 155 linhas na base dele.
+        # Não se inventa a foto nem se limpa o campo: são as únicas cópias sem
+        # prova nenhuma, e por isso vão à CABEÇA da lista de por revalidar.
+        d["foto_perdida"] = d["id"] in perdidas
         d["estado"] = ("corr" if d["corrigida"] else "ok") if d["validada"] else "foto"
         d["foil"] = loadout.e_foil(d["finish"])
         d["nota"] = next((p.strip() for p in n.split("|")
@@ -533,12 +590,13 @@ def _linha(d: dict, q: int, cores: dict, local: str) -> dict:
             "validado_em": d["validado_em"] or "", "nota": d["nota"],
             "foto": bool(d["foto"]), "local": local, "cor": cor,
             "cor_nome": paginas.COR_NOME.get(cor, cor), "rl": bool(d["rl"]),
-            "por_confirmar": d["por_confirmar"]}
+            "por_confirmar": d["por_confirmar"],
+            "foto_perdida": d.get("foto_perdida", False)}
 
 
 def _grupo_vazio(chave, nome):
     return {"chave": list(chave), "nome": nome, "q": 0, "validadas": 0,
-            "por_revalidar": 0, "corrigidas": 0, "linhas": []}
+            "por_revalidar": 0, "corrigidas": 0, "perdidas": 0, "linhas": []}
 
 
 def progresso(con, rep: dict | None = None, dia: str | None = None) -> dict:
@@ -577,16 +635,23 @@ def progresso(con, rep: dict | None = None, dia: str | None = None) -> dict:
                 grp["por_revalidar"] += q
             if d["corrigida"]:
                 grp["corrigidas"] += q
+            if d.get("foto_perdida"):
+                grp["perdidas"] += q
             local = (nomes.get(g[1]) if g[0] == "caixa"
                      else (BALDE_RL if d["sub"] == BALDE_RL else d["sub"]))
             grp["linhas"].append(_linha(d, q, cores, local))
     for grp in grupos.values():
-        grp["linhas"].sort(key=lambda l: (ordem.get(l["cor"], 9), l["nm"],
+        # A FOTO PERDIDA À CABEÇA (2026-10-01): dentro de cada grupo as cópias
+        # sem ficheiro no disco vêm primeiro — são as únicas sem prova nenhuma.
+        # Depois, a ordem de sempre: COR e nome, como o binder está arrumado.
+        grp["linhas"].sort(key=lambda l: (not l.get("foto_perdida"),
+                                          ordem.get(l["cor"], 9), l["nm"],
                                           l["set"], l["copy_id"]))
     total = {"q": sum(d["q"] for d in copias.values()),
              "validadas": sum(d["q"] for d in copias.values() if d["validada"]),
              "por_revalidar": sum(d["q"] for d in copias.values() if not d["validada"]),
              "corrigidas": sum(d["q"] for d in copias.values() if d["corrigida"]),
+             "perdidas": sum(d["q"] for d in copias.values() if d.get("foto_perdida")),
              "novas": sum(d["q"] for d in copias.values() if d["nova"])}
     total["pct"] = round(100 * total["validadas"] / total["q"]) if total["q"] else 0
 
@@ -612,7 +677,30 @@ def progresso(con, rep: dict | None = None, dia: str | None = None) -> dict:
         "hoje_entradas": lista(lambda d: d["validado_em"] == dia),
         "corrigidas": lista(lambda d: d["corrigida"]),
         "novas": lista(lambda d: d["nova"]),
+        # As únicas cópias sem prova nenhuma — à cabeça da prioridade.
+        "perdidas": lista(lambda d: d.get("foto_perdida")),
+        "max_cartas_foto": MAX_CARTAS_FOTO,
     }
+
+
+def fotos_que_nao_validam(con) -> dict[str, int]:
+    """`photo_path -> cartas` das fotos da base que têm MAIS do que quatro.
+
+    Medido na base de 2026-10-01: das 348 fotos, **172 têm mais de 4 cartas**
+    (1 171 cartas no total) e a maior tem **33**. Numa foto dessas não se
+    consegue julgar o estado de cada carta, e por isso **não conta como
+    validação** — as cópias dela continuam por revalidar até ele as fotografar
+    outra vez em grupos de até quatro. É a mesma régua que recusa uma foto NOVA
+    com mais do que quatro (`fotos.valida`).
+    """
+    from . import collection                                # noqa: PLC0415
+    cartas: dict[str, int] = defaultdict(int)
+    for r in con.execute(
+            f"""SELECT photo_path p, quantity q FROM copies cp
+                 WHERE {collection.na_estante()} AND photo_path IS NOT NULL
+                   AND photo_path <> ''"""):
+        cartas[r["p"]] += r["q"]
+    return {p: n for p, n in cartas.items() if not foto_valida(n)}
 
 
 def estado_das_copias(con) -> dict[int, dict]:
@@ -667,7 +755,10 @@ def seccao_esperadas(con, rep: dict | None = None) -> list[str]:
            "vês for diferente do esperado, escreve o que vês na mesma e diz em "
            "`notes` o que esperavas (ex.: «esperava NEM nonfoil, é foil») — o "
            "import corrige a cópia da caixa, não cria outra. Uma foto pode ter "
-           "várias cartas; a `quantity` é o que está NA FOTO."]
+           f"várias cartas — ATÉ {MAX_CARTAS_FOTO}, agrupadas por tipo — e a "
+           "`quantity` é o que está NA FOTO. Uma foto com mais do que "
+           f"{MAX_CARTAS_FOTO} cartas NÃO valida nada: diz-se, e tira-se outra "
+           "vez em grupos de quatro."]
     junto: dict[tuple, dict] = {}
     for l in por:
         k = (l["nm"], l["set"], l["num"], l["lang"], l["fin"])
