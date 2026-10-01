@@ -571,8 +571,12 @@ def caso_a_saida_corre_a_partir_de_doze_de_outubro():
 
 
 # ===========================================================================
-# 8. AS FILAS: cópias físicas, por valor
+# 8. AS FILAS: FOTOS de até 4 cartas, por valor
 # ===========================================================================
+# CORRIGIDO a 2026-10-01: estes casos estavam escritos com a regra ERRADA — *"a
+# fila conta cópias físicas: um playset dá quatro linhas"*. A regra dele, à
+# letra, é *"organiza o Blue farm e CDEH por tipo de carta e ate 4 cartas por
+# foto"* e *"se sao 4 fotos, e 1 foto com as 4 cartas"*: um playset é UMA foto.
 def caso_a_fila_de_candidatos_sai_por_valor_decrescente():
     con = base()
     add(con, "Dark Ritual", 6)
@@ -581,31 +585,57 @@ def caso_a_fila_de_candidatos_sai_por_valor_decrescente():
     escreve_cfg()
     res = loadout.report(con)
     f = fases.fila_candidatos(con, res)
-    vals = [l["total"] or 0 for l in f["linhas"]]
+    # Pelo preço DA CÓPIA (`preco_max`), não pelo total da foto: um lote de 6
+    # Dark Ritual soma mais do que uma Taiga e nem por isso é mais caro à carta.
+    vals = [x["preco_max"] for x in f["fotos"]]
     assert vals == sorted(vals, reverse=True), vals[:12]
     assert f["lote"] == 50
+    assert f["max_cartas"] == 4
 
 
-def caso_um_playset_na_fila_da_quatro_linhas():
-    """*"se for 1 carta e 1 carta, mas se jogar 4 da mesma, tiro foto às 4"* — a
-    fila conta CÓPIAS FÍSICAS e não nomes. Um lote de 4 é UMA linha da `copies`
-    e TEM de dar quatro linhas na fila, senão a barra de progresso e as contas
-    ficam a 1/4 do número certo."""
+def caso_um_playset_e_UMA_foto_e_nunca_quatro():
+    """*"se são 4 fotos, é 1 foto com as 4 cartas"* — as cópias da MESMA carta
+    vão sempre juntas. Um lote de 4 é UMA linha da `copies` e tem de dar **uma**
+    foto de 4 cartas; dar-lhe quatro era quadruplicar o trabalho dele."""
     con = base()
     add(con, "Swan Song", 4)                 # um lote de 4: uma linha da copies
     escreve_cfg()
     res = loadout.report(con)
     f = fases.fila_candidatos(con, res)
-    swan = [l for l in f["linhas"] if l["nm"] == "Swan Song"]
-    assert len(swan) == 4, f"o playset deu {len(swan)} linhas"
-    assert all(l["q"] == 1 for l in swan), swan
-    assert len({l["fila_id"] for l in swan}) == 4, "ids repetidos na fila"
-    assert f["barra"]["copias"] >= 4
-    # E cada linha leva o seu acabamento, língua e estado.
-    assert all(l["finish"] and l["lang"] and l["cond"] for l in swan)
+    swan = [x for x in f["fotos"]
+            if any(i["nm"] == "Swan Song" for i in x["itens"])]
+    assert len(swan) == 1, f"o playset deu {len(swan)} fotos"
+    assert swan[0]["cartas"] == 4 and swan[0]["linhas"] == 1, swan[0]
+    assert f["barra"]["fotos"] == 1 and f["barra"]["cartas"] == 4, f["barra"]
+    # A barra conta FOTOS e diz as cartas e as linhas ao lado.
+    assert set(f["barra"]) >= {"fotos", "cartas", "linhas", "feitas", "pct"}
+    # E cada item leva o seu acabamento, língua e estado.
+    assert all(i["finish"] and i["lang"] and i["cond"] for i in swan[0]["itens"])
 
 
-def caso_a_fila_dos_decks_conta_copias_e_valor():
+def caso_uma_foto_leva_no_maximo_quatro_cartas():
+    """O tecto é por CARTAS e não por linhas: três cartas diferentes de uma cópia
+    cada mais um lote de 2 são duas fotos (3 + 2 não cabe em 4), e nenhuma foto
+    passa das quatro."""
+    con = base()
+    add(con, "Dark Ritual", 6)               # sozinha passa do tecto: 2 fotos
+    add(con, "Swan Song", 2)
+    add(con, "Sol Ring", 1)
+    add(con, "Taiga", 1, sub="Caixa Reserved List")
+    escreve_cfg()
+    f = fases.fila_candidatos(con, loadout.report(con))
+    assert f["fotos"], "a fila está vazia — o caso não mede nada"
+    assert all(x["cartas"] <= 4 for x in f["fotos"]), \
+        [(x["n"], x["cartas"]) for x in f["fotos"]]
+    # A linha que SOZINHA passa das 4 cartas enche fotos inteiras só dela, e
+    # a foto di-lo (`partida`) em vez de o esconder.
+    dr = [x for x in f["fotos"] if any(i["nm"] == "Dark Ritual" for i in x["itens"])]
+    assert len(dr) == 2 and sum(x["cartas"] for x in dr) == 6, dr
+    assert all(x["partida"] for x in dr), dr
+    assert all(x["linhas"] == 1 for x in dr), "misturou a linha partida com outras"
+
+
+def caso_a_fila_dos_decks_conta_fotos_cartas_e_valor():
     con = base()
     add(con, "Swan Song", 4, slot="d1")
     add(con, "Sol Ring", 1, slot="d1")
@@ -613,9 +643,15 @@ def caso_a_fila_dos_decks_conta_copias_e_valor():
     res = loadout.report(con)
     f = fases.fila_decks(con, res)
     fila = next(x for x in f["filas"] if x["slot"] == "d1")
-    assert fila["barra"]["copias"] == 5, fila["barra"]
-    assert fila["barra"]["falta"] == 5 and fila["barra"]["feitas"] == 0
+    # 4 Swan Song (instantâneo) + 1 Sol Ring (artefacto) = 5 cartas. As fotos
+    # NÃO atravessam tipos, por isso são DUAS: uma de 4 e uma de 1.
+    assert fila["barra"]["cartas"] == 5, fila["barra"]
+    assert fila["barra"]["fotos"] == 2, [x["itens"] for x in fila["fotos"]]
+    assert fila["barra"]["linhas"] == 2
+    assert fila["barra"]["falta"] == 2 and fila["barra"]["feitas"] == 0
     assert fila["barra"]["valor"] > 0
+    tipos = [x["tipo"] for x in fila["fotos"]]
+    assert tipos == ["Artifact", "Instant"], tipos
     # Um deck `dissolvido` não é para fotografar antes de Ghent.
     escreve_cfg(caixas_decisao={"d1": fases.DISSOLVIDO})
     f2 = fases.fila_decks(con, loadout.report(con))
@@ -631,8 +667,11 @@ def caso_o_inventario_e_paralelo_e_nunca_bloqueia():
     add(con, "Flooded Strand", 1)
     escreve_cfg()
     inv = fases.fila_inventario(con, loadout.report(con))
-    chaves = {g["chave"]: g["barra"]["copias"] for g in inv["grupos"]}
+    chaves = {g["chave"]: g["barra"]["cartas"] for g in inv["grupos"]}
     assert chaves == {"rl": 2, "shockland": 1, "fetchland": 1}, chaves
+    # 2 Taiga são UMA foto, não duas.
+    rl = next(g for g in inv["grupos"] if g["chave"] == "rl")
+    assert rl["barra"]["fotos"] == 1, [x["itens"] for x in rl["fotos"]]
     assert "não é um passo da venda" in inv["nota"]
 
 

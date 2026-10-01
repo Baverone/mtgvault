@@ -23,8 +23,12 @@ Cada `alvo` é o mtgvault de ONTEM numa peça só:
   min_listas   — o mínimo de listas desaparece: um «consenso» de 3 listas volta
                  a encher a reserva (33 % numa lista só passa qualquer limiar);
   congelado    — a trava do RC Ghent desaparece e a exportação volta a correr;
-  explode      — a fila volta a contar NOMES e não cópias: um playset dá uma
-                 linha em vez de quatro;
+  ate4         — o tecto das 4 cartas por foto desaparece: uma foto volta a
+                 levar o que lhe caia, que é o monte de 33 cartas das antigas;
+  por_tipo     — a fila deixa de se agrupar por tipo de carta, que é
+                 exactamente o contrário da ordem que ele deu;
+  explode      — a fila volta à regra ERRADA de 2026-10-01 (uma linha por CÓPIA
+                 FÍSICA: um playset dá quatro fotos em vez de uma);
   ordem_fila   — a fila dos candidatos deixa de sair por valor decrescente.
 """
 import sys
@@ -61,21 +65,39 @@ elif alvo == "min_listas":
     fases.MIN_LISTAS_RESERVA = 1
 elif alvo == "congelado":
     fases.congelado_ate = lambda cfg=None: ""
+elif alvo == "ate4":
+    # Sem tecto: uma foto leva tudo o que lhe caia (o monte das antigas).
+    from mtgvault import fotos as _ft                        # noqa: E402
+
+    _ag = _ft.agrupar
+    _ft.agrupar = lambda linhas, **kw: _ag(linhas, **{**kw, "max_cartas": 10 ** 6})
+    _ft.valida = lambda cartas, max_cartas=_ft.MAX_CARTAS: int(cartas or 0) > 0
+elif alvo == "por_tipo":
+    # A fila deixa de se agrupar por tipo: as fotos atravessam tipos.
+    from mtgvault import fotos as _ft                        # noqa: E402
+
+    _ag = _ft.agrupar
+    _ft.agrupar = lambda linhas, **kw: _ag(linhas, **{**kw, "por_tipo": False})
 elif alvo == "explode":
-    fases._explode = lambda linha: [dict(
-        {k: linha[k] for k in fases.CAMPOS_FILA if k in linha},
-        q=linha.get("q") or 0, n=1,
-        total=round((linha.get("unit") or 0) * (linha.get("q") or 0), 2),
-        fila_id=str(linha["copy_id"]))]
+    # A regra ERRADA que esteve escrita: uma linha por CÓPIA FÍSICA.
+    from mtgvault import fotos as _ft                        # noqa: E402
+
+    _ag = _ft.agrupar
+
+    def _explode(linhas, **kw):
+        soltas = [dict(l, q=1) for l in linhas for _ in range(int(l.get("q") or 0))]
+        return _ag(soltas, **{**kw, "max_cartas": 1})
+
+    _ft.agrupar = _explode
 elif alvo == "ordem_fila":
-    _em = fases._em_lotes
     _fc = fases.fila_candidatos
 
     def _sem_ordem(con, res, cfg=None, cache=None, cands=None):
         r = _fc(con, res, cfg, cache, cands)
         # A ordem de ontem: pelo nome, que é o que uma lista "arrumada" daria.
-        r["linhas"] = sorted(r["linhas"], key=lambda l: (l["nm"], l["fila_id"]))
-        r["lotes"] = _em(r["linhas"])
+        r["fotos"] = sorted(r["fotos"],
+                            key=lambda f: (f["itens"][0]["nm"], f["n"]))
+        r["lotes"] = fases._filas_por_lotes(r["fotos"])
         return r
 
     fases.fila_candidatos = _sem_ordem

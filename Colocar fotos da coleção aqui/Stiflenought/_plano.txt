@@ -1,0 +1,66 @@
+PLANO DE FOTOS -- Stiflenought
+slot: premodern-stiflenought | 19 fotos para 58 cartas
+
+REGRA: no maximo 4 CARTAS por foto, agrupadas por TIPO.
+As copias da MESMA carta vao sempre juntas (4x Mox Opal = 1 foto).
+Cada carta tem de estar a vista e poder avaliar-se.
+
+*** ESTE DECK FICA PARA DEPOIS ***
+Fica para depois: estas caixas são do mesmo grupo de formato, com tecto de playset contado sobre o grupo — partilham o mesmo conjunto de cartas e montam-se por conversão de uma noutra. Primeiro os decks de lista única.
+
+ONDE LARGAR AS FOTOS: soltas na RAIZ de  pendentes\
+  (ou pelo telemovel, no botao «Tirar fotos» da pagina)
+NAO as largues nesta pasta: 'Colocar fotos da colecao aqui' e para
+  cartas NOVAS e NADA a processa -- as fotos ficavam aqui para sempre.
+Antes de fotografar, fixa o ALVO: pagina «Arrumacao por fases», Fase 2,
+  botao «Fotografar este deck». E o alvo que arruma as fotos por deck.
+
+======================================================================
+
+  CRIATURAS
+    foto 01  (4 cartas)
+         4x Phyrexian Dreadnought                  MIR   nonfoil  pt
+  ARTEFACTOS
+    foto 02  (1 carta)
+            Powder Keg                             UDS   nonfoil  pt
+  ENCANTAMENTOS
+    foto 03  (2 cartas)
+         2x Back to Basics                         USG   nonfoil  pt
+    foto 04  (3 cartas)
+         3x Essence Flare                          ICE   nonfoil  pt
+  INSTANTÂNEOS
+    foto 05  (3 cartas)
+         3x Annul                                  USG   nonfoil  pt
+    foto 06  (4 cartas)
+         2x Blue Elemental Blast                   4BB   nonfoil  pt
+         2x Brain Freeze                           SCG   nonfoil  pt
+    foto 07  (2 cartas)
+         2x Chain of Vapor                         ONS   nonfoil  pt
+    foto 08  (4 cartas)
+         4x Counterspell                           5ED   nonfoil  pt
+    foto 09  (4 cartas)
+         2x Daze                                   NEM   nonfoil  pt
+         2x Flash of Insight                       JUD   nonfoil  pt
+    foto 10  (4 cartas)
+         4x Foil                                   PCY   nonfoil  pt
+    foto 11  (4 cartas)
+         4x Gush                                   MMQ   nonfoil  pt
+    foto 12  (4 cartas)
+         2x Hydroblast                             ICE   nonfoil  pt
+         2x Impulse                                VIS   nonfoil  pt
+    foto 13  (1 carta)
+            Misdirection                           MMQ   nonfoil  pt
+    foto 14  (4 cartas)
+         4x Opt                                    INV   nonfoil  pt
+    foto 15  (1 carta)
+            Peek                                   ODY   nonfoil  pt
+    foto 16  (4 cartas)
+         4x Stifle                                 SCG   nonfoil  pt
+    foto 17  (1 carta)
+            Thwart                                 MMQ   nonfoil  pt
+    foto 18  (4 cartas)
+         4x Vision Charm                           VIS   nonfoil  pt
+  FEITIÇOS
+    foto 19  (4 cartas)
+         4x Portent                                5ED   nonfoil  pt
+

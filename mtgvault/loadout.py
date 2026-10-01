@@ -4574,15 +4574,19 @@ def foto_da_copia(con, copy_id: int) -> Path | None:
     Serve o `/foto` do modo edição. O caminho sai da BASE e nunca do pedido — um
     parâmetro com um caminho lá dentro era servir qualquer ficheiro do PC a quem
     esteja na rede de casa.
+
+    QUEM PROCURA É O `fotos.resolver` (2026-10-01), num sítio só. Aqui estava
+    `_col.ROOT / photo_path`, e os 348 `photo_path` da base dele são **nomes
+    simples** (`<uuid>.jpg`, zero com separador de pasta): resolviam para
+    `<repo>/<uuid>.jpg`, que não existe — **as 723 linhas com foto davam todas
+    `None`** e a miniatura de uma cópia «não encontrada» respondia 404. Com as
+    fotos arquivadas em `data/fotos/` passam a ser duas pastas, e duas respostas
+    a *"onde está esta foto?"* discordavam um dia em silêncio.
     """
+    from . import fotos as _fotos                            # noqa: PLC0415
     row = con.execute("SELECT photo_path FROM copies WHERE id = ?",
                       (int(copy_id),)).fetchone()
-    if row is None or not row["photo_path"]:
-        return None
-    p = Path(row["photo_path"])
-    if not p.is_absolute():
-        p = _col.ROOT / p                 # os CSV de fotos gravam caminhos relativos
-    return p if p.exists() and p.is_file() else None
+    return _fotos.resolver(row["photo_path"] if row else None)
 
 
 def linhas_parciais(s: dict, caixas_deck: set[str] | frozenset,

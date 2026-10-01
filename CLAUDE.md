@@ -92,6 +92,16 @@ mtgvault/
                   dele) contra o que TRAZER (o «a comprar» das caixas + a
                   wantlist manual + os vendors), o saldo e as listas p/ o
                   telemóvel. Só config (`feira`); CLI `feira`, `/api/feira`
+  fotos.py        AS FOTOS: a regra das QUATRO CARTAS (2026-10-01) e o «onde
+                  está a foto», num sítio só — `MAX_CARTAS`/`valida` (o tecto,
+                  que vale para a fila e para a trava do import), `agrupar`
+                  (as fotos de até 4 cartas, por TIPO), `barra` (o progresso em
+                  FOTOS, com as cartas e as linhas ao lado), `resolver` (procura
+                  na pasta de trabalho E no arquivo, a de trabalho a ganhar),
+                  `arquivar` (move `pendentes/fotos processadas/` para
+                  `data/fotos/anteriores/` — nunca apaga), `pasta_do_alvo` (as
+                  fotos novas por DECK) e `texto_do_plano`. Ver «UMA FOTO LEVA
+                  NO MÁXIMO QUATRO CARTAS»
   fotocaixa.py    A FOTO DA DECKBOX FÍSICA de cada caixa (2026-09-21): o
                   original em `data/deckboxes/<slot>.<ext>` (fora do Git, a
                   anterior em `anteriores/`), a reduzida em
@@ -1238,17 +1248,19 @@ alvos / 16 casos). As palavras dele:
   uma decisão que foi tomada, e um vermelho que é normal deixa de se ler). Não é
   o mesmo que o `venda.mostrar`: aquele tira a venda da VISTA, este impede a
   SAÍDA — e o `mostrar` fica como estava (`false`).
-- **A FILA DE FOTOS CONTA CÓPIAS FÍSICAS, NÃO NOMES** (palavras dele: *"se for 1
-  carta e 1 carta, mas se jogar 4 da mesma, tiro foto às 4"*). Um lote de 4 é
-  **uma** linha da `copies` e dá **quatro** linhas na fila (`_explode`), cada
-  uma com o seu acabamento, língua e estado, marcada uma a uma — senão a barra de
-  progresso e os totais ficavam a um quarto do número certo. A Fase 4 é **por
-  carta, da mais cara para a mais barata** (escolha dele, não por caixa), em
-  lotes de 50; a Fase 2 é por deck e por COR, que é como o binder está arrumado
-  (a mesma decisão do painel Montar). O **inventário** (RL + shock/fetchlands) é
-  a via paralela: *"nunca bloqueia nada e aparece como tal na página"*.
-  Reaproveita o fluxo de fotos que já existe (`pendentes/`, a conciliação do
-  `import_csv`): esta página **só ordena a fila e mostra o progresso**.
+- **A FILA DE FOTOS MEDE FOTOS DE ATÉ 4 CARTAS.**
+  **[CORRIGIDO A 2026-10-01, no mesmo dia]** esta linha dizia *"a fila conta
+  CÓPIAS FÍSICAS, não nomes: um lote de 4 dá quatro linhas na fila"* (o
+  `_explode`), e dava **quatro fotos a um playset** — quatro vezes o trabalho
+  dele. A regra verdadeira é *"até 4 cartas por foto"*: ver «UMA FOTO LEVA NO
+  MÁXIMO QUATRO CARTAS», abaixo. A Fase 4 é **por carta, da mais cara para a
+  mais barata** (escolha dele, não por caixa), em lotes de 50 FOTOS; a Fase 2 é
+  por deck e **por TIPO de carta** (era por COR — a ordem do painel Montar; ali
+  ele procura num binder arrumado por cor, aqui dispõe na mesa o que já tem na
+  mão). O **inventário** (RL + shock/fetchlands) é a via paralela: *"nunca
+  bloqueia nada e aparece como tal na página"*. Reaproveita o fluxo de fotos que
+  já existe (`pendentes/`, a conciliação do `import_csv`): esta página **só
+  ordena a fila e mostra o progresso**.
 - **A PÁGINA NÃO MEXE EM ALOCAÇÕES NEM NA BASE** (ordem dele, à letra): lê a
   colecção e escreve o estado do deck e a reserva no `colecao_config.json`, com o
   `configio.escrever`. Tem teste que mede que o ficheiro **não cresce** (a lição
@@ -1325,6 +1337,175 @@ página e leitura.
   **abre-se sozinho na data da trava**, sem ninguém mexer no código: até lá a
   página mostra o que vai aparecer e porque é que ainda não aparece. Abrir o
   botão antes de 12/10 era começar o passo que a trava existe para adiar.
+
+**UMA FOTO LEVA NO MÁXIMO QUATRO CARTAS, E AS ANTIGAS ARQUIVAM-SE (André,
+2026-10-01, à letra).** *"organiza o Blue farm e CDEH por tipo de carta e ate 4
+cartas por foto"* e *"se sao 4 fotos, e 1 foto com as 4 cartas"*. Motor em
+**`mtgvault/fotos.py`** (a regra, o agrupamento, o resolvedor e o arquivo, tudo
+num sítio só); testes em `tests/test_fotos_ate_4.py` (12 casos) e a prova de que
+chumbam sem a funcionalidade em `tests/_provar_chumba.py`
+(+ `tests/_chumba_fotos.py`, 7 alvos / 14 casos). CLI `py -m mtgvault.cli fotos
+[estado|arquivar|perdidas]`.
+
+- **DUAS REGRAS ERRADAS ESTIVERAM AQUI ESCRITAS NO MESMO DIA, e as duas pela
+  mesma razão: a UNIDADE da fila.** A primeira — *"a fila conta CÓPIAS FÍSICAS:
+  um playset dá quatro linhas"* (o `fases._explode`) — dava **quatro fotos a um
+  playset**, quatro vezes o trabalho dele. A segunda — *"uma foto por linha, e
+  uma foto só valida cópias da MESMA carta"* — também não: **uma foto PODE
+  validar cartas diferentes**, até quatro. O que distingue estas fotos das de
+  grupo antigas **não é serem da mesma carta**: é serem no máximo quatro,
+  dispostas e agrupadas, com cada carta à vista e avaliável.
+- **A REGRA, e é uma só:** (1) as cópias da **mesma carta** vão sempre juntas na
+  mesma foto (4× Mox Opal = **1** foto); (2) num deck **singleton** (os dois de
+  cEDH) juntam-se até 4 cartas **diferentes**, agrupadas **por tipo** —
+  planeswalkers, criaturas, artefactos, encantamentos, instantâneos, feitiços,
+  terras — e **uma foto nunca atravessa dois tipos**; (3) uma linha da `copies`
+  não se parte entre duas fotos, **excepto** a que sozinha passa das quatro (as
+  29 Snow-Covered Plains): essa enche fotos inteiras só dela, marcadas
+  `partida`, porque não há outra forma de respeitar o tecto — e fica dito em vez
+  de resolvido em silêncio.
+- **A ORDEM é a dele e é DELIBERADAMENTE outra que a do `paginas.TIPOS`**
+  (Creature primeiro, pedido dele de 2026-08-31, que é a ordem por que se LÊ uma
+  decklist). O que **não** se duplicou foi a PRECEDÊNCIA: em que tipo cai uma
+  carta de vários tipos continua a responder o `paginas.tipo_de` — Artifact Land
+  → Artifact (Ancient Den), Enchantment Land → Enchantment (Urza's Saga),
+  Artifact Creature → Creature (Memnite, Walking Ballista). Duas perguntas, duas
+  ordens, uma precedência.
+- **A BARRA DE PROGRESSO CONTA FOTOS**, com as **cartas** e as **linhas** ao
+  lado (`fotos.barra`). A foto é o gesto; e uma foto de 4 e uma de 1 não dão o
+  mesmo trabalho, por isso os dois números vão ao lado em vez de um substituir o
+  outro. O número do **alvo** continua a contar CÓPIAS (*"quantas faltam
+  revalidar"*) — é outra pergunta, e sai do mesmo `revalidacao.progresso`.
+- **A TRAVA, e vale para os dois lados** (`fotos.valida`): uma foto valida **no
+  máximo 4 cartas**. Uma foto **NOVA** com mais do que quatro é **recusada
+  inteira** (`collection.import_csv`, com o motivo em português), e a foto fica
+  em `pendentes/` — é por aí que ela aparece em «fotos por resolver» e ele a
+  volta a tirar. **Recusar só o passo (0) não bastava**: a linha caía na entrada
+  normal (iv) e criava cópias NOVAS de cartas que já estão na base — uma
+  duplicação em silêncio, o padrão do `event_tier`. A conta é **por FOTO e não
+  por linha** (uma foto traz várias linhas de CSV), e por isso o CSV lê-se
+  inteiro ANTES de se escrever uma linha: saber-se-ia o total só na última, com
+  as primeiras já na base. Uma foto **ANTIGA** com mais de quatro **não conta
+  como validação** (`revalidacao.fotos_que_nao_validam`) e as cópias dela
+  continuam por revalidar.
+- **MEDIDO na base de 2026-10-01** (contra os números do supervisor, que
+  batiam quase todos): **348** `photo_path` distintos ✓, **322** ficheiros em
+  `pendentes/fotos processadas` (**96,4 MiB**; ele disse 98 MB) ✓, **33** já sem
+  ficheiro no disco ✓, **723** das 737 linhas com foto e **14** sem ✓,
+  `validado_em` e `foto_anterior` a **zero** nas 737 ✓. Dois números a corrigir:
+  a *"média de 2,1 cópias por foto e máximo 12"* é a média de **LINHAS** por
+  foto — em **CARTAS** a média é **4,77** e o máximo **33**, e é essa que conta
+  para a trava (**172 das 348** fotos antigas têm mais de 4 cartas, 1 171 cartas
+  nelas); e as fotos **sem** alocação são **242** e não 282 (348 − 106).
+  A lista de por-revalidar diz **727** linhas e não 737: as outras **10** estão
+  «edição por confirmar» e saem de propósito (são do `acertar_edicao`, que
+  também as valida).
+- **O PLANO DELE E O MEU DÃO O MESMO**, carta a carta: **47 fotos para 161
+  cartas** — Blue Farm **28** fotos / 96 cartas (96 linhas), Cloud cEDH **19** /
+  65 (63 linhas). Comparados foto a foto (`_revisao/comparar_plano.py`), a única
+  diferença é cosmética: o plano dele imprime o nome inteiro de uma carta de
+  dupla face (*"Birgi, God of Storytelling // Harn"*) e o meu só a frente, que é
+  a chave por que o `loadout` indexa. Fase 2 inteira: **124 fotos, 411 cartas,
+  261 linhas** (as 411 cópias que o CLAUDE.md de hoje já media); Fase 4 **308
+  fotos / 1 029 cartas**; inventário **94 / 305**.
+- **A ORDEM DE TRABALHO: primeiro os decks de LISTA ÚNICA** (ordem dele: *"começa
+  pelos decks que são lista única e não são «de conversão» — os dois de cEDH, que
+  têm cartas dedicadas e uma lista cada. A família de Premodern partilha o mesmo
+  conjunto de cartas e monta-se por conversão de uma noutra: fica para depois"*).
+  A base não tem coluna «de conversão» e não se inventou uma: **DERIVA-SE**, e a
+  regra é — *o grupo de formato da caixa tem um tecto de playset contado sobre o
+  **grupo inteiro** (`regras_por_formato[].playset_maximo`) e há 2+ caixas nesse
+  grupo*. Esse tecto só existe porque as caixas trocam a carta entre si (decisão
+  de 2026-09-08), e o `prioridade_por: "pct"` do mesmo grupo confirma-o. Está
+  **escrito no config**. Hoje apanha exactamente as 6 caixas de Premodern e mais
+  nenhuma. **O que NÃO serve para derivar isto, e foi medido antes de se
+  escolher: a SOBREPOSIÇÃO das listas** — o Blue Farm e o Cloud cEDH partilham
+  **24 nomes (26 % do menor)**, *mais* do que a maior sobreposição entre duas
+  caixas de Premodern (Oath × Enchantress, 32 %, com a média do grupo em ~20 %):
+  pela sobreposição o cEDH era «de conversão» e parte do Premodern não, ao
+  contrário do que ele disse. A fila ordena lista-única primeiro e **escreve a
+  razão em cada deck** (`fases.NOTA_CONVERSAO`), porque uma ordem sem razão à
+  vista é uma ordem que se desfaz no dia seguinte.
+- **ARQUIVAR, NÃO APAGAR.** Ele propôs **apagar** as fotos antigas e tirar tudo
+  de novo; concordou-se com o refotografar (é a campanha de 20/09) e discordou-se
+  do apagar, e ele aceitou. **Não se apagou um único ficheiro**: o
+  `fotos.arquivar` (CLI `fotos arquivar`) **move** `pendentes/fotos processadas/`
+  para **`data/fotos/anteriores/`**, para a pasta de trabalho dele ficar limpa
+  sem se perder prova. As razões, porque é a parte que se esquece: **98 MB não
+  custam nada**; enquanto a campanha não acabar as antigas são a **única prova de
+  723 das 737 linhas**; o **`foto_anterior`** existe para a correcção (0b) ser
+  confiável, e sem a foto antiga no disco não há como confirmar uma correcção; e
+  **33 já estavam perdidas**, que é exactamente a razão para não perder o resto.
+  Um ficheiro que já exista no destino **não se pisa** — fica e diz-se.
+- **E NÃO SE REESCREVEU UMA ÚNICA DAS 723 LINHAS.** Os `photo_path` da base dele
+  são **nomes simples** (`<uuid>.jpg`; medido: **zero** com separador de pasta) e
+  valiam por estar numa pasta só — mover sem mais nada quebrava-os todos. Quem
+  passa a procurar nas DUAS é o **`fotos.resolver`**, num sítio só, com a pasta
+  de **trabalho a ganhar** quando a foto existe nas duas. **E encontrou um
+  defeito anterior a isto:** o `loadout.foto_da_copia` resolvia
+  `ROOT / photo_path`, logo `<repo>/<uuid>.jpg`, que **não existe** — as 723
+  linhas com foto davam **todas `None`** e o `/foto?copy=` do 8771 (a miniatura
+  de uma cópia «não encontrada», a única prova de que a carta existiu) respondia
+  **404**. Hoje responde.
+- **AS FOTOS NOVAS ARRUMAM-SE POR DECK, sozinhas** (ordem dele): o `arrumar_fotos`
+  passou a guardar em **`data/fotos/<slot>/`** quando a foto traz um alvo de
+  caixa, `data/fotos/venda|rl|coleccao/` nos outros tipos de alvo, e
+  `data/fotos/sem-alvo/<AAAA-MM>/` quando não há alvo — **o slot vem do ALVO da
+  revalidação** (do nome da foto, `site-<slot>-…`, que é o botão «Fotografar» a
+  escrevê-lo, e na falta dele do `revalidacao.alvo` do config), **nunca de
+  adivinhar pela carta**. A árvore:
+
+  ```
+  data/fotos/
+    anteriores/            as 322 antigas (arquivo; eram pendentes/fotos processadas/)
+    <slot>/                uma pasta por deck: cedh-blue-farm/, cedh-cloud/, …
+    venda/  rl/  coleccao/ os outros três tipos de alvo
+    sem-alvo/<AAAA-MM>/    foto sem alvo nenhum — à vista, não escondida num deck
+  ```
+
+  A pasta fica **fora do Git** (`.gitignore`: `data/fotos/`) — são imagens, e a
+  única excepção consciente continua a ser a reduzida da deckbox física em
+  `assets/deckboxes/`. Quem as guarda é o `backup-offsite` do ai-pc.
+- **AS 33 FOTOS PERDIDAS SÃO AS PRIMEIRAS** (`fases.fotos_perdidas`,
+  `revalidacao.progresso → perdidas`): o `photo_path` está preenchido e o
+  ficheiro já não está no disco. **Não se inventa a foto nem se limpa o campo** —
+  o campo é a prova de que ela existiu. São as únicas cópias **sem prova
+  nenhuma**, por isso abrem a Fase 2 num bloco próprio, vêm à cabeça de cada
+  grupo da lista de por-revalidar e à cabeça da Fase 4. Medido: **33 fotos, 156
+  linhas da `copies`, 165 cópias, 12 639,42 €** — e **92 das 96** cartas do Blue
+  Farm e **56 das 65** do Cloud cEDH estão entre elas, que é outra razão para
+  começar por esses dois.
+- **A CAMPANHA ESTÁ LIGADA E COERENTE**: `revalidacao.desde = 2026-09-20` (≤ hoje),
+  `alvo = null`. As 737 linhas / 1 678 cópias estão todas por revalidar
+  (`validado_em` = 0), e o fluxo ponta a ponta está trancado por teste: uma foto
+  nova de 4 cartas diferentes **não cria cópia nova**, grava `validado_em`, grava
+  `foto_anterior` com a foto antiga, a antiga **continua no disco**, e as quatro
+  ficam validadas **de uma vez**.
+- **O PLANO DE CADA DECK TAMBÉM EM TEXTO, e por uma razão de segurança**
+  (`fotos.texto_do_plano`, CLI `fotos plano`). Apareceram no repositório, feitas
+  à mão, **uma pasta por deck dentro de `Colocar fotos da coleção aqui\`** com um
+  `_plano.txt` que prometia o plano **e mandava largar as fotos nessa pasta** —
+  e **nada no vault processa essa pasta** (o `mtg-fotos-novas` e o
+  `processar_fotos.py` lêem a RAIZ de `pendentes/`): as fotos ficavam lá para
+  sempre, sem um único erro. O `fotos plano` reescreve esses ficheiros com o
+  plano a sério — **das MESMAS fotos que a página desenha**, nunca de uma
+  segunda contagem — e com a instrução certa (`pendentes\`, e fixar o alvo
+  primeiro). Só escreve onde a pasta JÁ existe: não se criam pastas por
+  iniciativa própria.
+- **O `backup-offsite` do ai-pc teve de aprender as duas pastas**
+  (`plano.FOTOS_DIRS`). Lia só `pendentes/fotos processadas/`: a partir do dia
+  em que as fotos passaram para `data/fotos/` dizia *«0 novas»* e guardava
+  nada, verde, para sempre — o MESMO defeito que o `iterdir()` teve a 08/09, e
+  as 322 fotos arquivadas são a prova de 723 linhas da base. E a entrada do
+  índice **muda de chave** quando a foto só mudou de pasta (mesmo nome, mesmo
+  `sha256`), senão subiam 96 MB outra vez sem necessidade. Verificado com
+  `work/revisao/_verificar_backup_fotos.py` (três corridas: vê as duas pastas,
+  não reenvia a arquivada, 0 novas à terceira).
+- **O MOTOR NÃO MEXEU.** Medido na base de 2026-10-01, antes e depois: candidatos
+  **1 029 cópias / 31 150,15 €**, Fase 2 **411 cartas**, inventário **305
+  cópias / 97 249,84 €** — os mesmos números da secção «A ARRUMAÇÃO POR FASES».
+  O que mudou foi a UNIDADE da fila (411 cartas em **124 fotos**), o resolvedor,
+  o arquivo e a ordem dos decks.
 
 ### Duas bases de dados
 

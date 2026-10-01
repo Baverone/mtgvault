@@ -4,21 +4,36 @@ As fotos de origem das cópias 1-156 (10 042 €) já não existem: o fluxo anti
 movia-as para uma pasta única e nada guardava a que cópia cada uma deu origem.
 Quando apareceu a primeira suspeita de edição errada não houve nada para reler.
 
-Agora: a foto vai para `pendentes/fotos processadas/<AAAA-MM>/` com o nome
-original, a `copies.photo_path` passa a apontar para lá, e a ligação repete-se
-no `aplicado.csv`. Uma foto cujas linhas não entraram todas fica em `pendentes/`
-— arrumá-la escondia trabalho por fazer.
+Agora: a foto vai para **`data/fotos/<slot>/`** com o nome original (era
+`pendentes/fotos processadas/<AAAA-MM>/`; mudou a 2026-10-01 — as fotos novas
+ficam organizadas POR DECK, com o slot a vir do alvo da revalidação, e sem alvo
+vão para `fotos/sem-alvo/<AAAA-MM>/`), a `copies.photo_path` passa a apontar
+para lá, e a ligação repete-se no `aplicado.csv`. Uma foto cujas linhas não
+entraram todas fica em `pendentes/` — arrumá-la escondia trabalho por fazer.
 """
 import csv
 import datetime as dt
 import json
+import os
 import sys
 import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from mtgvault import collection, db  # noqa: E402
+# Fixa o ambiente ANTES do import: sem isto este teste lia o
+# `colecao_config.json` a sério (a campanha de revalidação ligada) e, desde
+# 2026-10-01, o `arrumar_fotos` escrevia as fotos no `data/` dele — ver a regra
+# do `MTGVAULT_DB` no CLAUDE.md e o `tests/_bateria.py`.
+_ENV = Path(tempfile.mkdtemp())
+(_ENV / "cfg.json").write_text(json.dumps(
+    {"baldes_coleccao": ["Colecção"], "caixas": [], "regras_colecao": {}}),
+    encoding="utf-8")
+os.environ["MTGVAULT_CONFIG"] = str(_ENV / "cfg.json")
+os.environ["MTGVAULT_HOME"] = str(_ENV)
+os.environ["MTGVAULT_DB"] = str(_ENV / "vault.db")
+
+from mtgvault import collection, db, fotos as fotos_mod  # noqa: E402
 
 
 def seed(con):
@@ -51,8 +66,9 @@ def run():
 
     csv_path = tmp / "recat.csv"
     escrever_csv(csv_path, [
-        # IMG_0001: as duas linhas entram -> a foto arruma-se
-        {"name": "Lightning Bolt", "set_code": "tst", "quantity": 4,
+        # IMG_0001: as duas linhas entram -> a foto arruma-se. 3 + 1 = 4 cartas,
+        # que é o tecto de 2026-10-01 («até 4 cartas por foto»).
+        {"name": "Lightning Bolt", "set_code": "tst", "quantity": 3,
          "sub_collection": "Colecção", "photo_path": "IMG_0001.jpg"},
         {"name": "Sol Ring", "set_code": "tst", "quantity": 1,
          "sub_collection": "Colecção", "photo_path": "IMG_0001.jpg"},
@@ -71,20 +87,25 @@ def run():
         fotos = collection.arrumar_fotos(con, resultados, pendentes=pend)
 
         mes = f"{dt.date.today():%Y-%m}"
-        destino = pend / "fotos processadas" / mes / "IMG_0001.jpg"
+        # SEM ALVO não se adivinha o deck: a foto vai para `fotos/sem-alvo/<mês>`
+        # (com alvo iria para `fotos/<slot>/` — ver `test_fotos_ate_4`).
+        rel_dir = f"fotos/{fotos_mod.SEM_ALVO}/{mes}"
+        destino = db.pasta_dados() / rel_dir / "IMG_0001.jpg"
 
         # 1. a foto está no sítio certo, com o nome original, e não se apagou
-        assert destino.exists(), sorted(p.name for p in pend.rglob("*"))
+        assert destino.exists(), sorted(
+            str(p) for p in db.pasta_dados().rglob("*"))
         assert destino.read_bytes() == b"\xff\xd8foto1"
         assert not boa.exists(), "a foto ficou duplicada em pendentes/"
-        assert fotos["movidas"] == 1 and fotos["destino"] == f"fotos processadas/{mes}"
-        print(f"foto arrumada em 'pendentes/fotos processadas/{mes}/', nome original")
+        assert fotos["movidas"] == 1 and fotos["destinos"] == [rel_dir], fotos
+        print(f"foto arrumada em 'data/{rel_dir}/', nome original")
 
-        # 2. a ligação foto -> cópia está na base
-        rel = f"fotos processadas/{mes}/IMG_0001.jpg"
+        # 2. a ligação foto -> cópia está na base, e o resolvedor acha-a
+        rel = f"{rel_dir}/IMG_0001.jpg"
         ligadas = [dict(r) for r in con.execute(
             "SELECT id, photo_path FROM copies WHERE photo_path = ? ORDER BY id", (rel,))]
         assert len(ligadas) == 2, ligadas
+        assert fotos_mod.resolver(rel) == destino, fotos_mod.resolver(rel)
         print("copies.photo_path aponta para a foto arrumada:", rel)
 
         # 3. e no aplicado.csv, ao lado das fotos
@@ -98,7 +119,7 @@ def run():
         # 4. a foto do lote incompleto FICA em pendentes/, por catalogar
         assert mista.exists(), "arrumou uma foto com linhas por resolver"
         assert fotos["ficaram"] == ["IMG_0002.jpg"], fotos["ficaram"]
-        assert not (pend / "fotos processadas" / mes / "IMG_0002.jpg").exists()
+        assert not (db.pasta_dados() / rel_dir / "IMG_0002.jpg").exists()
         # e a cópia que ENTROU dessa foto não fica a apontar para um sítio errado
         pendente = con.execute(
             "SELECT photo_path FROM copies WHERE photo_path = 'IMG_0002.jpg'").fetchall()

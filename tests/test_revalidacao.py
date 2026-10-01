@@ -344,11 +344,16 @@ def caso_quantidade_maior_parte_e_o_resto_segue():
     print("quantidade: parte-se; o que sobra entra como nova nesta campanha")
 
 
-def caso_os_cinco_caminhos_numa_linha():
-    """Uma foto de 5 Swords 4ED PT: (0) 1 revalida a cópia igual da caixa-alvo,
-    (0b) 1 corrige a ODY da mesma caixa, (i) 1 acerta a «edição por
-    confirmar», (ii) 1 fecha a encomenda pendente da Enchantress, (iv) 1 entra
-    como nova. Cinco cópias, cinco `copy_id`, todas validadas."""
+def caso_os_cinco_caminhos_em_duas_fotos_de_quatro_e_uma():
+    """Os cinco caminhos da conciliação, EM DUAS FOTOS.
+
+    CORRIGIDO a 2026-10-01: este caso era *"uma foto de 5 Swords"* e passou a ser
+    ilegal — **uma foto valida no máximo 4 cartas** (ver `mtgvault/fotos.py`).
+    Não se mede menos por isso: a primeira foto leva 4 e faz (0) revalidar a
+    cópia igual da caixa-alvo, (0b) corrigir a ODY da mesma caixa, (i) acertar a
+    «edição por confirmar» e (ii) fechar a encomenda pendente da Enchantress; a
+    segunda leva 1 e faz (iv) entrar como nova. Cinco cópias, todas validadas.
+    """
     repor(alvo={"tipo": "caixa", "slot": "pm", "em": "2026-09-20"})
     con = mundo()
     a = copia(con, "Swords to Plowshares", "4ed", foto="a.jpg", slot="pm")
@@ -358,18 +363,22 @@ def caso_os_cinco_caminhos_numa_linha():
                                 quantidade=1, csv_path=_TMP / "f9.csv")["copy_id"]
     encomendas.adicionar(con, "pm2", "Swords to Plowshares", 1,
                          estado=encomendas.PENDENTE, log_path=_TMP / "e9.log")
-    res = importar(con, "Swords to Plowshares,4ed,0,5,nonfoil,pt,Colecção,IMG_9.jpg")
+    res = importar(con, "Swords to Plowshares,4ed,0,4,nonfoil,pt,Colecção,IMG_9.jpg")
     m = res[0]["motivo"]
     assert "1 revalidada" in m and "1 corrigida pela foto: ODY" in m, m
     assert "1 de «já a tenho»" in m and "1 fecha encomenda" in m, m
     ids = [int(x) for x in str(res[0]["copy_id"]).split(",")]
-    assert len(ids) == 5 and a in ids and b in ids and c_ in ids, (ids, a, b, c_)
+    assert len(ids) == 4 and a in ids and b in ids and c_ in ids, (ids, a, b, c_)
+    # A quinta, na SUA foto: entra como nova nesta campanha.
+    res2 = importar(con, "Swords to Plowshares,4ed,0,1,nonfoil,pt,Colecção,IMG_9b.jpg",
+                    "foto9b.csv")
+    assert res2[0]["motivo"] == "", res2[0]["motivo"]
     cps = copias(con)
     assert len(cps) == 5 and sum(c["quantity"] for c in cps) == 5, cps
     assert all(c["validado_em"] and c["set_code"] == "4ed" for c in cps), cps
     assert sum(1 for c in cps if revalidacao.MARCA_NOVA in (c["notes"] or "")) == 1
     assert sum(1 for c in cps if revalidacao.MARCA_CORRIGIDA in (c["notes"] or "")) == 1
-    print("os cinco caminhos: revalida > corrige > acerta > encomenda > nova")
+    print("os cinco caminhos, em duas fotos de 4 e 1 (o tecto das 4 cartas)")
 
 
 def caso_a_exportacao_da_venda_marca_foto():
@@ -564,8 +573,11 @@ def caso_cli_progresso_e_esperadas():
     cod, out, err = cli("--json")
     assert cod == 0, (cod, out, err)
     j = json.loads(out)
+    # `perdidas` (2026-10-01): as cópias cujo `photo_path` já não tem ficheiro
+    # no disco. Neste teste as fotos são nomes inventados e nenhuma existe, por
+    # isso são as três — é a conta certa.
     assert j["total"] == {"q": 3, "validadas": 1, "por_revalidar": 2, "corrigidas": 0,
-                          "novas": 0, "pct": 33}, j["total"]
+                          "perdidas": 3, "novas": 0, "pct": 33}, j["total"]
     cod, out, err = cli()
     assert cod == 0 and "1/3 validadas" in out and "UW Replenish" in out, (out, err)
     cod, out, err = cli("--caixa", "pm")
@@ -659,7 +671,7 @@ def run():
                caso_discrepancia_corrige_e_tira_da_caixa_se_a_regra_mandar,
                caso_a_copia_igual_a_foto_ganha_a_discrepancia,
                caso_quantidade_maior_parte_e_o_resto_segue,
-               caso_os_cinco_caminhos_numa_linha,
+               caso_os_cinco_caminhos_em_duas_fotos_de_quatro_e_uma,
                caso_a_exportacao_da_venda_marca_foto,
                caso_o_progresso_conta_certo_e_nao_muda_numeros,
                caso_endpoint_e_esperadas_md,

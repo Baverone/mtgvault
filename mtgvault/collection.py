@@ -494,14 +494,37 @@ def import_csv(con: sqlite3.Connection, path: str | Path, *,
     essa caixa e essa cópia (`revalidacao.alvo_da_foto`), mesmo que o alvo do
     config seja outro ou não haja nenhum.
     """
-    from . import encomendas, revalidacao                 # noqa: PLC0415
-    ok, errors = 0, []
+    from . import revalidacao                             # noqa: PLC0415
     cache: dict = {}                     # a prioridade das caixas, uma vez
     # A campanha, e o alvo (a caixa que ele está a fotografar), UMA vez por
     # importação — o alvo decide a preferência do passo (0) e a discrepância;
     # sem alvo o passo (0) corre na mesma, sem preferência.
     campanha = revalidacao.activa()
     alvo = revalidacao.alvo_da_importacao(con, cache) if campanha else None
+    # A TRAVA DAS 4 CARTAS (André, 2026-10-01): uma foto valida no máximo
+    # quatro. Conta-se por FOTO e não por linha — uma foto traz várias linhas de
+    # CSV, e é a soma delas que diz quantas cartas lá estão. Por isso tem de se
+    # ler o ficheiro todo ANTES: saber-se-ia o total só na última linha, e as
+    # primeiras já estariam escritas na base.
+    cartas_por_foto = _cartas_por_foto(path) if campanha else {}
+    # E diz-se ao `revalidacao` num sítio só: é o `marca_validada` que decide se
+    # uma cópia ganha `validado_em`, e são QUATRO os caminhos que lá chegam.
+    revalidacao.declarar_lote(cartas_por_foto)
+    try:
+        return _import_csv(con, path, adivinhar=adivinhar, acertar=acertar,
+                           resultados=resultados, cache=cache,
+                           campanha=campanha, alvo=alvo,
+                           cartas_por_foto=cartas_por_foto)
+    finally:
+        revalidacao.declarar_lote(None)
+
+
+def _import_csv(con: sqlite3.Connection, path, *, adivinhar, acertar,
+                resultados, cache, campanha, alvo, cartas_por_foto):
+    """O corpo do `import_csv`. Está à parte só para o `declarar_lote` ter um
+    `finally` — o lote não pode ficar declarado depois da importação."""
+    from . import encomendas, fotos, revalidacao          # noqa: PLC0415
+    ok, errors = 0, []
     with open(path, newline="", encoding="utf-8-sig") as fh:
         for i, row in enumerate(csv.DictReader(fh), start=2):
             row = {k: (v.strip() if isinstance(v, str) else v)
@@ -516,6 +539,11 @@ def import_csv(con: sqlite3.Connection, path: str | Path, *,
                    "photo_path": row.get("photo_path") or "",
                    "resultado": "", "motivo": "", "copy_id": ""}
             try:
+                # A TRAVA DAS 4 CARTAS: esta foto pode VALIDAR?
+                nf = Path(row.get("photo_path") or "").name
+                foto_grande = bool(
+                    campanha and nf
+                    and not fotos.valida(cartas_por_foto.get(nf, 0)))
                 qtd = int(row.get("quantity") or 1)
                 ids: list = []
                 motivos: list[str] = []
@@ -534,12 +562,32 @@ def import_csv(con: sqlite3.Connection, path: str | Path, *,
                 # nome, mesmo sem alvo no config. Sem prefixo é o alvo global.
                 alvo_linha, primeiro = (revalidacao.alvo_da_foto(con, foto, cache, alvo)
                                         if campanha and foto else (alvo, None))
+                # A FOTO COM MAIS DE 4 CARTAS NÃO VALIDA — e se há na base uma
+                # cópia por revalidar desta impressão, a linha é RECUSADA em
+                # vez de seguir: deixá-la cair na entrada normal (iv) criava uma
+                # cópia NOVA de uma carta que já lá está, que é uma duplicação
+                # em silêncio (o padrão do `event_tier`). A foto fica em
+                # `pendentes/` — o `arrumar_fotos` só arruma as que entraram
+                # todas — e aparece em «fotos por resolver», que é onde ele a vê
+                # para a voltar a tirar em grupos de quatro. Uma carta que a
+                # base NÃO tem continua a entrar (é uma compra a catalogar),
+                # mas sem `validado_em`: a foto não serve de prova.
+                if foto_grande and set_code and revalidacao.revalidaria(
+                        con, nm, set_code, collector_number=num, language=lang,
+                        finish=finish):
+                    res["resultado"] = "erro"
+                    res["motivo"] = fotos.motivo_demasiadas(cartas_por_foto[nf])
+                    errors.append(f"linha {i}: {res['name']} — {res['motivo']}")
+                    if resultados is not None:
+                        resultados.append(res)
+                    continue
                 # (0) REVALIDAÇÃO: a mesma impressão exacta, por revalidar
                 rev = (revalidacao.revalidar(
                     con, nm, set_code, collector_number=num, language=lang,
                     finish=finish, quantity=qtd, photo_path=foto,
                     preferir=(alvo_linha or {}).get("copias"), primeiro=primeiro)
-                    if campanha and set_code and qtd > 0 and foto else None)
+                    if campanha and not foto_grande and set_code and qtd > 0
+                    and foto else None)
                 if rev:
                     ids += rev["copias"]
                     motivos.append(f'{rev["ligadas"]} revalidada'
@@ -552,7 +600,8 @@ def import_csv(con: sqlite3.Connection, path: str | Path, *,
                     con, nm, set_code, collector_number=num, language=lang,
                     finish=finish, quantity=qtd, photo_path=foto, alvo=alvo_linha,
                     cache=cache, primeiro=primeiro)
-                    if alvo_linha is not None and set_code and qtd > 0 and foto else None)
+                    if alvo_linha is not None and not foto_grande and set_code
+                    and qtd > 0 and foto else None)
                 if cor:
                     ids += cor["copias"]
                     motivos += cor["motivos"]
@@ -626,6 +675,28 @@ def import_csv(con: sqlite3.Connection, path: str | Path, *,
     return ok, errors
 
 
+def _cartas_por_foto(path: str | Path) -> dict[str, int]:
+    """`nome da foto -> quantas CARTAS o CSV lhe atribui`.
+
+    A conta é por foto, não por linha: *"se são 4 fotos, é 1 foto com as 4
+    cartas"* e *"até 4 cartas por foto"* — logo um `4× Mox Opal` é uma linha de
+    quatro cartas, e quatro linhas de uma carta cada na mesma foto são também
+    quatro. As linhas sem foto não contam (não há foto para medir).
+    """
+    out: dict[str, int] = {}
+    with open(path, newline="", encoding="utf-8-sig") as fh:
+        for row in csv.DictReader(fh):
+            nome = Path((row.get("photo_path") or "").strip()).name
+            if not nome or not (row.get("name") or "").strip():
+                continue
+            try:
+                q = int(row.get("quantity") or 1)
+            except (TypeError, ValueError):
+                q = 1
+            out[nome] = out.get(nome, 0) + max(q, 0)
+    return out
+
+
 def gravar_resultado(resultados: list[dict], path: str | Path) -> Path:
     """Escreve o CSV de resultado da importação."""
     path = Path(path)
@@ -669,16 +740,27 @@ def arrumar_fotos(con: sqlite3.Connection, resultados: list[dict], *,
                   pendentes: str | Path | None = None) -> dict:
     """Arruma as fotos deste lote e regista a ligação foto ↔ cópia.
 
-    Move `pendentes/<foto>` para `pendentes/fotos processadas/<AAAA-MM>/<foto>`,
-    com o nome original, e actualiza a `copies.photo_path` das cópias criadas
-    para o caminho novo (relativo à `pendentes/`).
+    AS FOTOS NOVAS FICAM ORGANIZADAS POR DECK, sem ele arrumar nada (André,
+    2026-10-01): `data/fotos/<slot>/<foto>` quando a foto traz um ALVO de caixa,
+    `data/fotos/venda|rl|coleccao/` nos outros tipos de alvo, e
+    `data/fotos/sem-alvo/<AAAA-MM>/` quando não há alvo nenhum. **O slot vem do
+    alvo da revalidação** — do nome da foto (`site-<slot>-…`, que é o botão
+    «Fotografar» a escrevê-lo) e, na falta dele, do `revalidacao.alvo` do
+    config. Nunca de adivinhar pela carta.
+    Era um saco único (`pendentes/fotos processadas/<AAAA-MM>/`), e por isso
+    ele não conseguia ver as fotos de um deck sem as procurar entre milhares.
+
+    A `copies.photo_path` fica com o caminho novo, relativo à pasta da base
+    (`fotos/<slot>/<foto>`) — e quem o volta a encontrar é o `fotos.resolver`,
+    que procura nas duas pastas.
 
     Uma foto cujas linhas **não** entraram todas fica onde está: a linha ainda
     está por catalogar, e arrumá-la escondia trabalho por fazer.
     """
+    from . import fotos as fotos_mod, revalidacao            # noqa: PLC0415
     pend = Path(pendentes) if pendentes else PENDENTES
-    destino_rel = f"fotos processadas/{dt.date.today():%Y-%m}"
-    destino = pend / destino_rel
+    raiz_dados = _pasta_dados()
+    alvo_cfg = revalidacao.alvo()
 
     por_foto: dict[str, list[dict]] = {}
     for r in resultados:
@@ -687,14 +769,22 @@ def arrumar_fotos(con: sqlite3.Connection, resultados: list[dict], *,
             por_foto.setdefault(nome, []).append(r)
 
     movidas, ficaram, ligacoes = [], [], []
+    destinos: set[str] = set()
     for nome, linhas in por_foto.items():
         if any(r["resultado"] != "importada" for r in linhas):
             ficaram.append(nome)
             continue
         origem = pend / nome
+        destino = _destino_da_foto(nome, alvo_cfg, raiz_dados, fotos_mod)
+        destino_rel = destino.relative_to(raiz_dados).as_posix()
+        destinos.add(destino_rel)
         novo_rel = f"{destino_rel}/{nome}"
         if origem.suffix.lower() in IMG_EXT and origem.exists():
             destino.mkdir(parents=True, exist_ok=True)
+            if (destino / nome).exists():
+                # Nunca se pisa uma foto que já lá está: é prova de outra cópia.
+                ficaram.append(nome)
+                continue
             shutil.move(str(origem), str(destino / nome))
             movidas.append(novo_rel)
         elif not (destino / nome).exists():
@@ -732,8 +822,36 @@ def arrumar_fotos(con: sqlite3.Connection, resultados: list[dict], *,
                             "quantity": r["quantity"],
                             "sub_collection": r.get("sub_collection", ""),
                             "foto_anterior": r.get("foto_anterior", "")})
-    return {"movidas": len(movidas), "destino": destino_rel,
+    return {"movidas": len(movidas), "destino": " · ".join(sorted(destinos)),
+            "destinos": sorted(destinos),
             "ligadas": len(ligacoes), "ficaram": sorted(ficaram)}
+
+
+def _pasta_dados() -> Path:
+    from . import db                                         # noqa: PLC0415
+    return db.pasta_dados()
+
+
+def _destino_da_foto(nome: str, alvo_cfg: dict | None, raiz: Path,
+                     fotos_mod) -> Path:
+    """A pasta onde a foto `nome` se arruma. O ALVO manda, e por esta ordem:
+
+      1. o que o NOME da foto diz (`site-<slot>-…`, escrito pelo botão
+         «Fotografar» — a afirmação mais recente e mais precisa, a mesma
+         preferência do `revalidacao.alvo_da_foto`);
+      2. o `revalidacao.alvo` do config (a caixa que ele fixou);
+      3. nenhum — `sem-alvo/<AAAA-MM>`, à vista, porque adivinhar o deck pela
+         carta era inventar.
+    """
+    from . import fotosite                                   # noqa: PLC0415
+    o = fotosite.origem(nome)
+    alvo = ({"tipo": o["tipo"], "slot": o["slot"]} if o else alvo_cfg)
+    p = fotos_mod.pasta_do_alvo(alvo)
+    if p.name == fotos_mod.SEM_ALVO:
+        p = p / f"{dt.date.today():%Y-%m}"
+    # A `pasta_do_alvo` já é absoluta e debaixo de `raiz`; o argumento existe
+    # para o chamador não ter de a recalcular.
+    return p if p.is_absolute() else raiz / p
 
 
 # ---------------------------------------------------------------------------
