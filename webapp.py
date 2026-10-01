@@ -75,6 +75,7 @@ import subprocess
 import sys
 import threading
 import time as _time
+from contextlib import contextmanager
 from datetime import date, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -84,8 +85,8 @@ ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 from mtgvault import (caixas, configio, db, encomendas, fases, feira,  # noqa: E402
-                      fotocaixa, fotosite, loadout, migracao, precos, qr,
-                      sources, venda)
+                      fotocaixa, fotos as fotos_mod, fotosite, loadout,
+                      migracao, precos, qr, site_shell, sources, venda)
 from mtgvault import padrao as padrao_mod  # noqa: E402
 
 import arrumacao  # noqa: E402
@@ -820,7 +821,7 @@ def recolher_fotos_de_caixas() -> dict | None:
     saem no `webapp.log` via `print`; nada se apaga."""
     if not fotocaixa.ha_pendentes(ROOT, ignorar=_FOTOS_IGNORADAS):
         return None
-    with ESCRITA:
+    with escrita():
         if not fotocaixa.ha_pendentes(ROOT, ignorar=_FOTOS_IGNORADAS):
             return None                             # outro pedido já as levou
         cfg = ler_config()
@@ -840,6 +841,44 @@ def recolher_fotos_de_caixas() -> dict | None:
 
 # O que já se viu em `pendentes/deckboxes/` e não serve: `{nome: (tamanho, mtime)}`.
 _FOTOS_IGNORADAS: dict[str, tuple] = {}
+# O mesmo memo para as pastas por deck: um ficheiro numa pasta de grupo não se
+# volta a anunciar a cada pedido do índice.
+_PASTAS_IGNORADAS: dict[str, tuple] = {}
+
+
+def recolher_fotos_das_pastas() -> dict | None:
+    """A PASTA POR DECK (2026-10-01): `Colocar fotos da coleção aqui/<deck>/` →
+    raiz de `pendentes/` com o nome do alvo. Corre a cada pedido do índice, para
+    uma foto que ele acabou de largar aparecer na página («📸 fotos enviadas, à
+    espera») sem esperar pelas 02:30 — e para o «⚡ Processar agora» a apanhar.
+
+    Barato quando não há nada (um `iterdir` das pastas). Não escreve no config
+    nem na base: só move ficheiros.
+    """
+    # A `raiz` é a MESMA nas duas chamadas (a guarda e a recolha): com raízes
+    # diferentes, a guarda olhava para uma pasta e a recolha para outra.
+    itens = fotos_mod.fotos_nas_pastas(ler_config(), raiz=ROOT)
+    if not itens:
+        return None
+    try:
+        with escrita():
+            r = fotos_mod.recolher_das_pastas(ler_config(), raiz=ROOT)
+    except DadosAindaNaoProntos:
+        # Está a gravar outra coisa. Isto é um GET: mover a foto pode esperar
+        # pelo pedido seguinte, e rebentar o índice por causa disso não.
+        return None
+    for x in r["recolhidas"]:
+        print(f"[fotos-pasta] {x['pasta']}/{x['de']} -> pendentes/{x['para']} "
+              f"(alvo {x['slot']})")
+    for ig in r["ignorados"]:
+        chave = f"{ig['pasta']}/{ig['ficheiro']}"
+        if _PASTAS_IGNORADAS.get(chave) == ig["porque"]:
+            continue
+        _PASTAS_IGNORADAS[chave] = ig["porque"]
+        print(f"[fotos-pasta] deixado em {chave}: {ig['porque']}")
+    if r["recolhidas"]:
+        _CACHE.clear()                     # a pasta `pendentes/` mudou
+    return r
 
 
 def regenerar(con) -> None:
@@ -881,13 +920,16 @@ _FUNDO: list[threading.Thread] = []
 
 def regenerar_em_fundo(motivo: str = "") -> threading.Thread:
     def corre():
-        with ESCRITA:
-            try:
+        try:
+            # Prazo largo: não há pedido nenhum à espera disto, e desistir
+            # deixava o `esperadas.md` desactualizado em silêncio. O que o prazo
+            # evita é o fio ficar pendurado para sempre (ver `escrita`).
+            with escrita(espera=ESPERA_ESCRITA * 10):
                 with db.session() as con:
                     regenerar(con)
-            except Exception as e:                          # noqa: BLE001
-                print(f"[regenerar em fundo{' — ' + motivo if motivo else ''}] "
-                      f"falhou: {type(e).__name__}: {e}")
+        except Exception as e:                              # noqa: BLE001
+            print(f"[regenerar em fundo{' — ' + motivo if motivo else ''}] "
+                  f"falhou: {type(e).__name__}: {e}")
     t = threading.Thread(target=corre, name=f"regenerar-{motivo or 'fundo'}", daemon=True)
     _FUNDO[:] = [x for x in _FUNDO if x.is_alive()]
     _FUNDO.append(t)
@@ -914,8 +956,118 @@ def esperar_fundo(timeout: float | None = None) -> None:
 # memória até a base, o config ou o registo de arquétipos mudarem — a VERSÃO
 # é o mtime desses ficheiros, e um POST limpa a cache de qualquer maneira
 # (`regenerar`). O `metagame.html` fica na mesma cache, pela mesma chave.
+#
+# E, desde 2026-10-01, **nenhum pedido espera para sempre** — ver
+# `DadosAindaNaoProntos` e `em_cache` logo abaixo.
 _CACHE: dict = {}
 _CACHE_LOCK = threading.Lock()
+
+# ---------------------------------------------------------------------------
+# NENHUM PEDIDO FICA PENDURADO (André, 2026-10-01)
+# ---------------------------------------------------------------------------
+# Ele abriu a Deckboxes no telemóvel, pelo túnel, e a secção de um deck deu
+# *«o servidor respondeu 502»* — o Cloudflare a desistir de esperar pelo origem.
+# Do lado do PC o pedido não estava lento, estava **a correr**: o
+# `/data/paginas/deckboxes/caixa-premodern-stiflenought.json` não cai no
+# servidor de ficheiros estáticos (o `_DADOS_DECKBOXES` apanha-o primeiro) e
+# GERA o payload inteiro a pedido — `loadout.report` + `deckboxes.payload`.
+# Medido nesse dia: **74,5 s** só o relatório (ver `scryfall.frente_de_dupla_face`,
+# que era a causa), e 11,7 s + 15,7 s depois de corrigida.
+#
+# A correcção do tempo é uma metade. A outra é esta: **um tecto**. Um 503 que
+# diz, em português, *"estou a gerar os dados desta caixa"* é infinitamente
+# melhor do que cem segundos de espera e um 502 que não explica nada — a página
+# já sabe mostrar erros (`paginas.erroDados`); o que nunca lhe chegava era um.
+#
+# Três decisões que vale a pena ter escritas:
+#
+# 1. **O cálculo corre num fio à parte e não morre com o pedido.** O pedido que
+#    bate no tecto desiste; o cálculo continua, e o pedido seguinte (ou o
+#    `Retry-After`) encontra-o feito. Matá-lo era garantir que ninguém nunca
+#    chegava ao fim.
+# 2. **O lock da cache já NÃO se segura durante o cálculo.** Segurava — e por
+#    isso um `GET /metagame.html` ficava doze segundos atrás de um cálculo da
+#    Deckboxes que não tem nada a ver com ele. Agora o lock só guarda o
+#    dicionário; quem chega a um cálculo em curso espera no `Event` dele (e
+#    nunca há dois cálculos da mesma chave: é isso o `_EM_CURSO`).
+# 3. **O prazo é generoso de propósito.** O custo honesto medido é 12–16 s a
+#    frio; o tecto é 25 s. Não é para cortar o trabalho normal — é para que o
+#    anormal tenha um fim e um nome.
+ESPERA_DADOS = float(os.environ.get("MTGVAULT_ESPERA_DADOS") or 25.0)
+# Quanto tempo se espera pelo lock de escrita antes de dizer que está ocupado.
+# Sem isto, um `ESCRITA.acquire()` sem prazo pendurava um botão para sempre
+# atrás de uma regeneração em fundo.
+ESPERA_ESCRITA = float(os.environ.get("MTGVAULT_ESPERA_ESCRITA") or 60.0)
+
+
+class DadosAindaNaoProntos(Exception):
+    """Os dados desta vista estão a ser calculados e o prazo deste pedido acabou.
+
+    Não é uma avaria: é o servidor a dizer o que está a fazer em vez de deixar o
+    browser (ou o túnel) adivinhar. Vira um **503** com `Retry-After`.
+    """
+
+    def __init__(self, o_que: str, decorrido: float, espera: float):
+        self.o_que, self.decorrido, self.espera = o_que, decorrido, espera
+        super().__init__(f"ainda a gerar {o_que}")
+
+    def resposta(self) -> dict:
+        return {"erro": f"estou a gerar {self.o_que} — a colecção mudou e o "
+                        f"relatório está a ser recalculado (já vai em "
+                        f"{self.decorrido:.0f} s). Tenta daqui a pouco: o "
+                        f"cálculo continua e o próximo pedido já o encontra "
+                        f"feito.",
+                "a_gerar": self.o_que, "decorrido_s": round(self.decorrido, 1),
+                "espera_s": self.espera}
+
+
+class _Calculo:
+    """Um cálculo em curso: o fio, o resultado e quem está à espera dele."""
+
+    def __init__(self, chave, calcular, etiqueta: str, versao):
+        self.chave, self.etiqueta = chave, etiqueta
+        self.feito = threading.Event()
+        self.valor = self.erro = None
+        self.t0 = _time.monotonic()
+        # A versão vem de FORA, a mesma que o chamador leu. Lê-la aqui outra vez
+        # podia dar outra (um ficheiro mudou entretanto) e aí o `em_cache`
+        # achava este cálculo velho no pedido seguinte e recomeçava-o para
+        # sempre, sem nunca servir nada.
+        self.versao = versao
+        self._calcular = calcular
+        self.fio = threading.Thread(target=self._corre, daemon=True,
+                                    name=f"calcular-{etiqueta or chave}")
+
+    def _corre(self):
+        try:
+            self.valor = self._calcular()
+        except BaseException as e:                              # noqa: BLE001
+            self.erro = e
+            print(f"[dados] {self.etiqueta or self.chave} falhou depois de "
+                  f"{_time.monotonic() - self.t0:.1f} s: {type(e).__name__}: {e}",
+                  flush=True)
+        else:
+            d = _time.monotonic() - self.t0
+            if d > 3:
+                print(f"[dados] {self.etiqueta or self.chave} em {d:.1f} s",
+                      flush=True)
+        finally:
+            with _CACHE_LOCK:
+                mais_novo = _EM_CURSO.get(self.chave)
+                # Nunca escrever por cima de um cálculo MAIS NOVO: se a versão
+                # mudou a meio, já há outro fio a calcular os dados de agora e
+                # este traz os de antes.
+                if self.erro is None and (mais_novo is None or mais_novo is self):
+                    _CACHE[self.chave] = (self.versao, self.valor)
+                if mais_novo is self:
+                    del _EM_CURSO[self.chave]
+            self.feito.set()
+
+    def decorrido(self) -> float:
+        return _time.monotonic() - self.t0
+
+
+_EM_CURSO: dict = {}
 
 
 def _versao() -> tuple:
@@ -940,17 +1092,80 @@ def _versao() -> tuple:
     return tuple(out)
 
 
-def em_cache(chave, calcular):
-    """`calcular()` uma vez por versão; os pedidos em paralelo esperam pelo
-    primeiro em vez de calcularem todos a mesma coisa."""
+def em_cache(chave, calcular, etiqueta: str = "", espera: float | None = None):
+    """`calcular()` uma vez por versão, num fio à parte, com PRAZO.
+
+    Os pedidos em paralelo esperam pelo primeiro em vez de calcularem todos a
+    mesma coisa — e quem esgotar o prazo leva `DadosAindaNaoProntos` em vez de
+    ficar pendurado. O cálculo **não** é interrompido: continua, e o pedido
+    seguinte encontra-o em cache. Ver o cabeçalho desta secção.
+
+    `espera=0` responde na hora: ou está em cache, ou levanta. É por aí que o
+    aquecedor em fundo sabe se vale a pena trabalhar.
+    """
     v = _versao()
+    espera = ESPERA_DADOS if espera is None else espera
     with _CACHE_LOCK:
         hit = _CACHE.get(chave)
         if hit and hit[0] == v:
             return hit[1]
-        valor = calcular()
-        _CACHE[chave] = (v, valor)
-        return valor
+        job = _EM_CURSO.get(chave)
+        if job is None or job.versao != v:
+            # Uma versão nova manda: o cálculo em curso é de dados velhos e quem
+            # espera por ele receberia uma resposta já desactualizada.
+            job = _Calculo(chave, calcular, etiqueta or str(chave), v)
+            _EM_CURSO[chave] = job
+            job.fio.start()
+    if espera > 0:
+        job.feito.wait(espera)
+    if not job.feito.is_set():
+        raise DadosAindaNaoProntos(etiqueta or str(chave), job.decorrido(), espera)
+    if job.erro is not None:
+        raise job.erro
+    return job.valor
+
+
+def pagina_editavel(caminho: str, editavel: bool) -> str:
+    """O HTML de uma página que o modo edição GERA (hoje só o `metagame.html`).
+
+    Está fora do `do_GET` para o aquecedor poder chamá-la: é a página mais
+    pesada que ainda se gera inteira a pedido (3,2 s medidos a 2026-10-01), e
+    aquecer só os `.json` deixava-a de fora sem ninguém dar por isso.
+    """
+    modulo = PAGINAS_EDITAVEIS[caminho]
+
+    def gerar():
+        with db.session() as con:
+            return modulo.html_page(
+                con, editable=editavel, token=(token() if editavel else ""),
+                ligacao=(ligacao_local() if editavel else None))
+    return em_cache((caminho, editavel), gerar, f"a página {caminho}")
+
+
+def relatorio():
+    """O `loadout.report` desta versão — UM só, partilhado pelas vistas todas.
+
+    A Deckboxes e a Arrumação por fases pediam cada uma o seu (2 s cada, na
+    base dele a 2026-10-01). São duas respostas à MESMA pergunta na mesma
+    versão dos dados — é a decisão de 2026-09-24 sobre o Início e a Deckboxes
+    (*"dois relatórios eram duas respostas à mesma pergunta"*), e o risco é o
+    mesmo: as duas páginas a discordarem sem um único erro.
+
+    **ABRE A SUA PRÓPRIA LIGAÇÃO, e não recebe a de quem chama.** A primeira
+    versão recebia o `con` do chamador e dava
+    *«SQLite objects created in a thread can only be used in that same
+    thread»*: este cálculo corre num fio PRÓPRIO (é o que lhe dá o prazo), e a
+    ligação do fio de cima não vale lá. O que atravessa o fio é o `dict` do
+    relatório, que é só dados.
+
+    O prazo é largo de propósito: quem chama isto é sempre um fio de cálculo em
+    fundo, nunca um pedido HTTP directamente — e esse já tem o tecto dele.
+    """
+    def calcular():
+        with db.session() as con:
+            return loadout.report(con)
+    return em_cache(("relatorio",), calcular,
+                    "o relatório da colecção", espera=ESPERA_DADOS * 4)
 
 
 def dados_arrumacao(editavel: bool) -> tuple[dict, dict]:
@@ -962,8 +1177,9 @@ def dados_arrumacao(editavel: bool) -> tuple[dict, dict]:
     """
     def calcular():
         with db.session() as con:
-            return arrumacao.dados(con, loadout.report(con), editavel=editavel)
-    return em_cache(("arrumacao", editavel), calcular)
+            return arrumacao.dados(con, relatorio(), editavel=editavel)
+    return em_cache(("arrumacao", editavel), calcular,
+                    "os dados da Arrumação por fases")
 
 
 def dados_deckboxes(editavel: bool, tok: str) -> tuple[dict, dict]:
@@ -971,9 +1187,98 @@ def dados_deckboxes(editavel: bool, tok: str) -> tuple[dict, dict]:
     def calcular():
         with db.session() as con:
             return deckboxes.partir(deckboxes.payload(
-                con, loadout.report(con), editable=editavel, token=tok,
+                con, relatorio(), editable=editavel, token=tok,
                 ligacao=(ligacao_local() if editavel else None)))
-    return em_cache(("deckboxes", editavel), calcular)
+    return em_cache(("deckboxes", editavel), calcular,
+                    "os dados das Deckboxes")
+
+
+@contextmanager
+def escrita(espera: float | None = None):
+    """O lock de escrita COM PRAZO (2026-10-01).
+
+    Era `with escrita():` sem prazo: um botão no telemóvel ficava pendurado para
+    sempre atrás de uma regeneração em fundo que tivesse encalhado. Agora, ao
+    esgotar o prazo, o `do_POST` responde **503** a dizer que está a gravar
+    outra coisa — que é uma resposta, e um pedido pendurado não é.
+    """
+    espera = ESPERA_ESCRITA if espera is None else espera
+    if not ESCRITA.acquire(timeout=espera):
+        raise DadosAindaNaoProntos("a gravar outra alteração", espera, espera)
+    try:
+        yield
+    finally:
+        ESCRITA.release()
+
+
+# ---------------------------------------------------------------------------
+# O AQUECEDOR (2026-10-01)
+# ---------------------------------------------------------------------------
+# O que torna verdade o *"um ficheiro de 21 KB tem de sair em milissegundos"*:
+# quando ele abre a página, os dados já estão calculados. A cache acerta sempre
+# que nada mudou (medido: 0,16 ms) — o problema é o PRIMEIRO pedido depois de
+# uma mudança, e mudanças há muitas (uma foto que entra em `pendentes/`, uma
+# ordem do runner a escrever na base, um botão dele).
+#
+# Por isso um fio vigia o `_versao()` e aquece sozinho. Duas regras:
+#  - só aquece quando a versão está ESTÁVEL há uma passagem — começar um
+#    cálculo de 12 s sobre uma base que está a ser escrita era pedir um
+#    resultado a meio;
+#  - nunca mais do que um aquecimento por `INTERVALO_AQUECER`, para um ficheiro
+#    que muda a toda a hora não pôr o PC a calcular sem parar.
+INTERVALO_VIGIA = 5.0
+INTERVALO_AQUECER = 30.0
+# O `metagame.html` está aqui porque MEDIU 3,2 s a frio (2026-10-01): é a única
+# página que o modo edição ainda GERA inteira a pedido (as outras são casca).
+_AQUECER = [("deckboxes", lambda: dados_deckboxes(True, token())),
+            ("arrumacao", lambda: dados_arrumacao(True)),
+            ("metagame.html", lambda: pagina_editavel("/metagame.html", True))]
+
+
+def aquecer() -> list[str]:
+    """Põe a calcular o que está frio, SEM esperar. Devolve o que estava frio.
+
+    Com `espera=0` o `em_cache` responde na hora: devolve o que está em cache
+    ou levanta — e, ao levantar, deixou o cálculo a correr em fundo. É isso que
+    se quer aqui: o aquecedor não espera por nada, só empurra.
+
+    Aquece a vista do modo EDIÇÃO (`editavel=True`), que é a que ele usa: o
+    `cloudflared` liga-se ao origem pelo loopback, por isso os pedidos do túnel
+    são de confiança e caem nessa. A de leitura paga uma vez, com o tecto.
+    """
+    frios = []
+    for nome, fn in _AQUECER:
+        try:
+            fn()
+        except DadosAindaNaoProntos:
+            frios.append(nome)
+        except Exception as e:                                  # noqa: BLE001
+            print(f"[aquecer] {nome} falhou: {type(e).__name__}: {e}", flush=True)
+    return frios
+
+
+def vigia_versao() -> threading.Thread:
+    def corre():
+        anterior = _versao()
+        # O primeiro aquecimento é logo: o servidor acabou de arrancar e a cache
+        # está vazia — sem isto, o primeiro pedido do dia pagava os 12 s.
+        ultimo = _time.monotonic()
+        aquecer()
+        while True:
+            _time.sleep(INTERVALO_VIGIA)
+            try:
+                v = _versao()
+                estavel = (v == anterior)
+                anterior = v
+                if not estavel or _time.monotonic() - ultimo < INTERVALO_AQUECER:
+                    continue
+                if aquecer():
+                    ultimo = _time.monotonic()
+            except Exception as e:                              # noqa: BLE001
+                print(f"[vigia] {type(e).__name__}: {e}", flush=True)
+    t = threading.Thread(target=corre, daemon=True, name="vigia-versao")
+    t.start()
+    return t
 
 
 # ---------------------------------------------------------------------------
@@ -1000,9 +1305,28 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(b)
 
-    def _json(self, obj, code=200):
-        self._envia(json.dumps(obj, ensure_ascii=False), code,
-                    "application/json; charset=utf-8")
+    def _json(self, obj, code=200, retry: int = 0):
+        b = json.dumps(obj, ensure_ascii=False).encode("utf-8")
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(b)))
+        self.send_header("Cache-Control", "no-store, must-revalidate")
+        if retry:
+            self.send_header("Retry-After", str(retry))
+        self.end_headers()
+        self.wfile.write(b)
+
+    def _ainda_nao(self, e: DadosAindaNaoProntos):
+        """O 503 do *«estou a gerar»* — a resposta que faltava (2026-10-01).
+
+        **503 e não 500**: isto não é uma avaria, é um «ainda não». O
+        `Retry-After` diz ao browser (e ao túnel) que vale a pena voltar, e a
+        frase diz, em português, o que está a acontecer — era exactamente o que
+        o 502 do Cloudflare não dizia.
+        """
+        print(f"[503] {self.path} — {e.o_que}, {e.decorrido:.0f} s "
+              f"(tecto {e.espera:.0f} s)", flush=True)
+        self._json(e.resposta(), 503, retry=5)
 
     # -- quem pode escrever ------------------------------------------------
     def _token_do_pedido(self) -> str | None:
@@ -1015,7 +1339,23 @@ class Handler(BaseHTTPRequestHandler):
         ip = (self.client_address[0] if self.client_address else "")
         return ip in ("127.0.0.1", "::1") or token_valido(self._token_do_pedido())
 
+    # O TECTO VALE PARA TODOS OS CAMINHOS (2026-10-01), e por isso vive AQUI e
+    # não em cada rota: a primeira rota nova que se esquecesse de o apanhar
+    # voltava a pendurar um pedido para sempre — e foi um pedido pendurado que
+    # deu o 502 que ninguém conseguia explicar.
     def do_GET(self):                                  # noqa: N802
+        try:
+            self._get()
+        except DadosAindaNaoProntos as e:
+            self._ainda_nao(e)
+
+    def do_POST(self):                                 # noqa: N802
+        try:
+            self._post()
+        except DadosAindaNaoProntos as e:
+            self._ainda_nao(e)
+
+    def _get(self):
         caminho = urlparse(self.path).path
         if caminho in ("/qr.svg", "/qr"):
             # O QR do link COMPLETO (com token) da rede local. É o que ele aponta
@@ -1082,12 +1422,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._envia(com_token(deckboxes.casca(), tok))
                 return
 
-            def gerar():
-                with db.session() as con:
-                    return modulo.html_page(
-                        con, editable=editavel, token=tok,
-                        ligacao=(ligacao_local() if editavel else None))
-            self._envia(com_token(em_cache((caminho, editavel), gerar), tok))
+            self._envia(com_token(pagina_editavel(caminho, editavel), tok))
             return
         ma = _DADOS_ARRUMACAO.match(caminho)
         if ma:
@@ -1116,6 +1451,7 @@ class Handler(BaseHTTPRequestHandler):
                 # (2026-09-21): recolhe-se ao pedir o índice, para o modo edição
                 # a mostrar sem esperar pelo daily. Barato quando não há nada.
                 recolher_fotos_de_caixas()
+                recolher_fotos_das_pastas()
             idx, partes = dados_deckboxes(editavel, token() if editavel else "")
             parte = m.group(1)
             if parte is None:
@@ -1164,7 +1500,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         self._envia("<h1>404</h1><p><a href='/'>Deckboxes</a></p>", 404)
 
-    def do_POST(self):                                 # noqa: N802
+    def _post(self):
         caminho = urlparse(self.path).path
         tam = int(self.headers.get("Content-Length") or 0)
         # As FOTOS DAS CARTAS (2026-09-21) vêm várias num pedido: o tecto é o
@@ -1188,7 +1524,7 @@ class Handler(BaseHTTPRequestHandler):
             # qual, não JSON — fica em bytes e nunca se tenta decifrar como
             # texto. O `slot` vem no URL (`?slot=…`). Só config + ficheiros:
             # não toca na base, e regenera porque o índice mudou.
-            with ESCRITA:
+            with escrita():
                 try:
                     self._json(self._foto_caixa(bruto))
                 except fotocaixa.FotoInvalida as e:
@@ -1202,7 +1538,7 @@ class Handler(BaseHTTPRequestHandler):
             # QUAL para a raiz de `pendentes/` com o nome a dizer a origem
             # (`fotosite`). Não toca na base: quem cria/liga cópias é o
             # `mtg-fotos-novas`, como sempre. Regenera-se pelo `esperadas.md`.
-            with ESCRITA:
+            with escrita():
                 try:
                     self._json(self._foto_site(bruto))
                 except fotocaixa.FotoInvalida as e:
@@ -1223,7 +1559,7 @@ class Handler(BaseHTTPRequestHandler):
         # segundo gravar por cima do primeiro, e a alteração desaparecia sem
         # erro nenhum. O mesmo vale para a `copy_allocation`, que se apaga e
         # reescreve inteira.
-        with ESCRITA:
+        with escrita():
             try:
                 if caminho == "/api/arrumar":
                     with db.session() as con:
@@ -1953,7 +2289,19 @@ class Handler(BaseHTTPRequestHandler):
 # ---------------------------------------------------------------------------
 # Arranque (o mesmo do riftvault: URL da rede local + QR)
 # ---------------------------------------------------------------------------
+# O ENDEREÇO QUE SE DÁ AO ANDRÉ É O NOME, NUNCA O IP (ordem dele, 2026-10-01).
+# O modo de edição chega-lhe por `https://editar-mtg.baverone.com/` — HTTPS,
+# atrás do Cloudflare Access, o mesmo webapp deste porto 8771 por dentro. O
+# `MTGVAULT_URL_EDICAO` serve para quem corra isto sem o túnel (um `http://
+# localhost:8771/` chega), e é por aí que o endereço se muda sem tocar no
+# código. O IP da rede local deixou de viajar para a página e para o QR.
+URL_EDICAO = os.environ.get("MTGVAULT_URL_EDICAO") or site_shell.URL_EDICAO
+
+
 def lan_ip() -> str:
+    """Em que IP é que este processo está a OUVIR. Fica para diagnosticar o
+    bind e o túnel (`MTGVAULT_BIND`); **não é o endereço que se lhe dá** — ver
+    o `URL_EDICAO` acima."""
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         s.connect(("10.255.255.255", 1))
@@ -2000,17 +2348,23 @@ def lan_ips() -> list[str]:
 
 
 def ligacao_local(port: int | None = None) -> dict:
-    """O link de escrita da rede local: `{url, ip, ips, porto, token}`.
+    """O link de escrita: `{url, base, porto, token}`.
 
     É o que vai no QR e o que a página mostra. O token vai no URL de propósito:
     escrever 32 dígitos hexadecimais num teclado de telemóvel é o atrito que faz
     não se usar a ferramenta.
+
+    **Desde 2026-10-01 o endereço é o NOME e não o IP** (ordem dele): era
+    `http://192.168.x.y:8771/?t=…`, que mudava quando o router lhe dava outro
+    IP, não servia fora de casa e era o que ele pediu para não lhe ser dado.
+    O `ip`/`ips` SAÍRAM do dicionário de propósito — ele viajava daqui para o
+    payload da página e para o QR, e tirá-lo do ecrã e deixá-lo nos dados era
+    tirá-lo só da vista. O `lan_ips()` fica para diagnosticar o bind.
     """
     p = port or int(os.environ.get("MTGVAULT_PORT") or PORT)
-    ips = lan_ips()
+    base = URL_EDICAO if URL_EDICAO.endswith("/") else URL_EDICAO + "/"
     t = token()
-    return {"ip": ips[0], "ips": ips, "porto": p, "token": t,
-            "url": f"http://{ips[0]}:{p}/?t={t}"}
+    return {"base": base, "porto": p, "token": t, "url": f"{base}?t={t}"}
 
 
 def url_edicao(port: int | None = None) -> str:
@@ -2060,24 +2414,29 @@ def main(port: int = PORT, host: str | None = None):
     print("  mtgvault — MODO EDIÇÃO (escreve no colecao_config.json e no vault.db)")
     print("=" * 62)
     print(f"  Neste PC:          http://localhost:{port}/")
+    print(f"  Telemóvel:         {lig['url']}")
+    if not aberto:
+        print("     (a ouvir só em 127.0.0.1 — o túnel precisa de "
+              "MTGVAULT_BIND=0.0.0.0)")
+    print(f"\n  Porto {port} — o 8770 é do riftvault, não lhe toques.")
+    print("  O endereço que se dá ao André é o NOME, nunca o IP da rede local.\n")
+    print(qr_ascii(lig["url"]))
+    print(f"  Token em {ficheiro_token()} (apaga-o para gerar outro).")
+    print("  Sem o ?t= do link, a página é só de leitura.")
     if aberto:
-        print(f"  Telemóvel (casa):  {lig['url']}")
-        for extra in lig["ips"][1:]:
-            print(f"     ou:             http://{extra}:{port}/?t={lig['token']}")
-        if len(lig["ips"]) > 1:
-            print("     (redes diferentes — usa a que o telemóvel alcança)")
-    else:
-        print("  Telemóvel:         DESLIGADO — corre com MTGVAULT_BIND=0.0.0.0")
-    print(f"\n  Porto {port} — o 8770 é do riftvault, não lhe toques.\n")
-    if aberto:
-        print(qr_ascii(lig["url"]))
-        print(f"  Token em {ficheiro_token()} (apaga-o para gerar outro).")
-        print("  Sem o ?t= do link, a página é só de leitura.")
-        print("  Se o telemóvel não chegar, abre o porto na rede privada:")
+        print("  Se o túnel estiver em baixo e for preciso ir pela rede de casa,")
+        print("  o porto tem de estar aberto na rede privada:")
         print("    " + regra_firewall(port))
     print("  Não abras este porto no router.  Ctrl+C para parar.")
     print("=" * 62)
     srv = ThreadingHTTPServer((host, port), Handler)
+    # O AQUECEDOR arranca COM o servidor e não antes (2026-10-01): o porto
+    # responde na hora (a sonda do `mtgvault-serve` pede a casca de 5 em 5 min)
+    # e os dados vão sendo calculados em fundo. Ao contrário — aquecer primeiro —
+    # o porto ficava doze segundos sem atender e a tarefa relançava o processo.
+    print(f"  Dados a aquecer em fundo (tecto de {ESPERA_DADOS:.0f} s por "
+          f"pedido; acima disso é um 503 explicado).")
+    vigia_versao()
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
