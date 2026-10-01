@@ -65,7 +65,6 @@ para abrir no router.
 """
 from __future__ import annotations
 
-import io
 import json
 import os
 import re
@@ -86,7 +85,7 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 from mtgvault import (caixas, configio, db, encomendas, fases, feira,  # noqa: E402
                       fotocaixa, fotos as fotos_mod, fotosite, loadout,
-                      migracao, precos, qr, site_shell, sources, venda)
+                      migracao, precos, site_shell, sources, venda)
 from mtgvault import padrao as padrao_mod  # noqa: E402
 
 import arrumacao  # noqa: E402
@@ -1150,8 +1149,7 @@ def pagina_editavel(caminho: str, editavel: bool) -> str:
     def gerar():
         with db.session() as con:
             return modulo.html_page(
-                con, editable=editavel, token=(token() if editavel else ""),
-                ligacao=(ligacao_local() if editavel else None))
+                con, editable=editavel, token=(token() if editavel else ""))
     return em_cache((caminho, editavel), gerar, f"a página {caminho}")
 
 
@@ -1200,8 +1198,7 @@ def dados_deckboxes(editavel: bool, tok: str) -> tuple[dict, dict]:
     def calcular():
         with db.session() as con:
             return deckboxes.partir(deckboxes.payload(
-                con, relatorio(), editable=editavel, token=tok,
-                ligacao=(ligacao_local() if editavel else None)))
+                con, relatorio(), editable=editavel, token=tok))
     return em_cache(("deckboxes", editavel), calcular,
                     "os dados das Deckboxes")
 
@@ -1370,21 +1367,13 @@ class Handler(BaseHTTPRequestHandler):
 
     def _get(self):
         caminho = urlparse(self.path).path
-        if caminho in ("/qr.svg", "/qr"):
-            # O QR do link COMPLETO (com token) da rede local. É o que ele aponta
-            # com o telemóvel; escrever o URL à mão num teclado de telemóvel é
-            # exactamente o atrito que faz não se usar a ferramenta.
-            #
-            # E por isso esta imagem TAMBÉM exige o token: um QR é um URL
-            # legível: servi-lo a quem não o tem era dar-lhe o token pela porta
-            # do lado, e o 403 dos `POST` deixava de valer nada. A página pede-a
-            # com o `?t=` (ver `ligacaoHTML` no `deckboxes.py`).
-            if not self._pode_escrever():
-                self._envia("<h1>403</h1><p>o QR leva o token — não se serve a "
-                            "quem não o tem.</p>", 403)
-                return
-            self._envia(qr.svg(url_edicao()), tipo="image/svg+xml; charset=utf-8")
-            return
+        # O `/qr.svg` SAIU (2026-10-01, ordem dele: *"não quero QR Codes, quero
+        # editar logo e pronto"*). Era a imagem do painel do telemóvel, e o
+        # painel saiu da página — ver «FORA O QR DA PORTA DA FRENTE» no
+        # CLAUDE.md. A rota ia atrás: o seu único consumidor era esse painel, e
+        # uma rota que serve um URL com o token lá dentro não se deixa de pé por
+        # inércia. O `mtgvault/qr.py` fica (é o desenhador, em Python puro, e
+        # tem teste próprio); o que deixou de existir é a porta HTTP.
         if caminho == "/foto":
             # A miniatura da foto de origem de uma cópia NÃO ENCONTRADA
             # (2026-09-09). É a única prova de que a carta existiu, e sem ela a
@@ -2384,30 +2373,6 @@ def url_edicao(port: int | None = None) -> str:
     return ligacao_local(port)["url"]
 
 
-def qr_ascii(url: str) -> str:
-    """O QR na consola. O nosso desenhador (`mtgvault.qr`) primeiro; a biblioteca
-    `qrcode`, se estiver instalada, fica como alternativa para o caso de a
-    consola não conseguir com os blocos de meia-altura."""
-    try:
-        arte = qr.ascii_arte(url)
-        arte.encode(getattr(sys.stdout, "encoding", None) or "utf-8")
-        return arte
-    except (UnicodeEncodeError, LookupError, ValueError):
-        pass
-    try:
-        import qrcode                                   # noqa: PLC0415
-        q = qrcode.QRCode(border=2)
-        q.add_data(url)
-        q.make(fit=True)
-        buf = io.StringIO()
-        q.print_ascii(out=buf, invert=True)
-        out = buf.getvalue()
-        out.encode(getattr(sys.stdout, "encoding", None) or "utf-8")
-        return out
-    except Exception:                                   # noqa: BLE001
-        return "  (a consola não mostra o QR; abre /qr.svg no browser)"
-
-
 def regra_firewall(port: int) -> str:
     """O comando que abre o porto na rede PRIVADA do Windows.
 
@@ -2433,9 +2398,8 @@ def main(port: int = PORT, host: str | None = None):
               "MTGVAULT_BIND=0.0.0.0)")
     print(f"\n  Porto {port} — o 8770 é do riftvault, não lhe toques.")
     print("  O endereço que se dá ao André é o NOME, nunca o IP da rede local.\n")
-    print(qr_ascii(lig["url"]))
     print(f"  Token em {ficheiro_token()} (apaga-o para gerar outro).")
-    print("  Sem o ?t= do link, a página é só de leitura.")
+    print("  Escrever: de 127.0.0.1 é livre; da rede de casa exige o ?t= do link.")
     if aberto:
         print("  Se o túnel estiver em baixo e for preciso ir pela rede de casa,")
         print("  o porto tem de estar aberto na rede privada:")

@@ -616,7 +616,7 @@ def build(con, out_path=None, editable=False):
     return out
 
 
-def html_page(con, editable=False, token="", ligacao=None) -> str:
+def html_page(con, editable=False, token="") -> str:
     """A página como texto — é o que o `webapp.py` serve sem escrever no disco.
 
     Com `editable`, cada deck do top-N ganha o botão *"vou montar este"*: é onde
