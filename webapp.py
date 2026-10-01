@@ -1078,17 +1078,30 @@ def _versao() -> tuple:
     Revalidação mostra («fotos à espera») — uma foto que o telemóvel acabou
     de mandar, ou que o `mtg-fotos-novas` das 02:30 acabou de arrumar, sem
     ninguém carregar em nada.
+
+    O `-wal` VAZIO NÃO CONTA (2026-10-01), e isto custava caro. O ficheiro
+    `vault.db-wal` **aparece e desaparece** ao ritmo de quem abre e fecha a
+    base — o `webapp`, o `daily`, as ordens do runner —, e a versão saltava
+    entre `(mtime, 0)` e `(None, None)` sem uma única carta ter mudado. Ou
+    seja: a cache era atirada fora quase a cada pedido, e cada pedido voltava a
+    pagar o relatório inteiro (45 s, medidos). Um `-wal` de **zero bytes** não
+    tem frames nenhuns — não há nada por escrever —, por isso vale o mesmo que
+    não existir. Com dados dentro, conta como qualquer outro ficheiro.
     """
     base = Path(db.DEFAULT_DB)
-    ficheiros = [base, base.with_name(base.name + "-wal"), CONFIG,
+    wal = base.with_name(base.name + "-wal")
+    ficheiros = [base, wal, CONFIG,
                  Path(db.pasta_dados()) / "arquetipos.json", ROOT / "pendentes"]
     out = []
     for f in ficheiros:
         try:
             st = f.stat()
-            out.append((str(f), st.st_mtime_ns, st.st_size))
+            if f == wal and st.st_size == 0:
+                out.append((str(f), None, 0))       # vazio = como se não existisse
+            else:
+                out.append((str(f), st.st_mtime_ns, st.st_size))
         except OSError:
-            out.append((str(f), None, None))
+            out.append((str(f), None, 0 if f == wal else None))
     return tuple(out)
 
 
