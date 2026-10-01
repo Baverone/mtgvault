@@ -133,6 +133,17 @@ mtgvault/
                   (um 5-0 de league é o sinal), guarda o que já viu em
                   `data/vigia-cartas.json` e diz o que falta para montar. Ver
                   «A VIGIA DE CARTAS»
+  fases.py        A ARRUMAÇÃO POR FASES E AS QUATRO PROTECÇÕES (2026-10-01): as
+                  listas de shock/fetchlands DERIVADAS do catálogo
+                  (`shocklands`/`fetchlands`/`verificar`, que levanta se não der
+                  10+10), os TRÊS ESTADOS de cada deck (`caixas[].decisao` —
+                  `montado`/`guardado`/`dissolvido`, omissão **montado**), a
+                  RESERVA («maybe») que se enche do consenso com um LIMIAR
+                  (`reserva.limiar_pct`, 20 %) e a `curva_do_limiar`, a lista de
+                  CANDIDATOS (`candidatos`) e o filtro que entra no motor
+                  (`filtrar_venda` → saída `protegidas`), as FILAS de fotos por
+                  CÓPIA FÍSICA e a TRAVA do RC Ghent (`venda.congelado_ate`).
+                  Ver «A ARRUMAÇÃO POR FASES»
   consenso.py     O CONSENSO POR COMANDANTE (2026-10-01): em Duel Commander a
                   identidade de um deck é o COMANDANTE e nunca a etiqueta do
                   clustering (870 etiquetas, 808 sem listas). O comandante de
@@ -166,6 +177,7 @@ inicio.py           index.html — o INÍCIO (2026-09-24): o painel com os núme
 meta_coverage.py    cobertura.html — top-10 ponderado + staples + emergentes. NB (2026-09-07): quem decide que listas contam é `sources.lista_conta`/`counting_sql` (ver "Que listas contam"), e o peso vem de `sources.tier_weight_sql`; janela 30 dias; expõe COLLECTION_BALDES={"SPML","Premodern (geral)"}, owned_available(con) (=coleção MENOS cartas comprometidas com decks vigiados) e counting_lists(con,fmt,aid). NB (2026-09-07): `FORMATS` deixou de ser fixo — filtra `_FORMATS` por `colecao_config.json`→`formatos_metagame` (hoje standard/pioneer/modern; o Premodern saiu). Só a COBERTURA lê essa lista: o `metagame.py` deixou de a ler (ver abaixo)
 decks_faziveis.py   RETIRADO 2026-09-07 — fundido no `metagame.py`, que faz a mesma pergunta com as regras de material e o "onde está a carta". O módulo ficou como lápide (levanta RuntimeError), o `decksfaziveis.html` reencaminha para o metagame, saiu do `daily.py` e do `git add` do workflow. Podem ser apagados os dois
 buildability.py     APAGADO 2026-09-15 (decisão do André), com o `buildability.html`. Era o "Montar" (dormente desde a v6: fora do menu, fora do daily, sem um único import). O que respondia — que deck montar a seguir e o que lhe falta — passou para o **Metagame** (`metagame.py`, o top-N mais perto de fechar) e para a aba de cada caixa da Deckboxes. O `test_paginas.caso_as_paginas_orfas_foram_mesmo_apagadas` tranca que não voltam nem ficam referidas
+arrumacao.py        arrumacao.html — "Arrumação por fases" (2026-10-01): o sítio que diz SEMPRE onde ele está e o que vem a seguir. Casca + dados à parte; a **Fase 1 vai INTEIRA no índice** (é o ecrã da decisão: não pode esperar por um segundo pedido) e cada fase pesada é uma parte (`fase2`, `candidatos`, `fase4`, `inventario`). Botões só no 8771 (`/api/fase-decisao`, `/api/fase-reserva`); no site publicado é a mesma informação, só de leitura. Motor em `mtgvault/fases.py`
 comandantes.py      comandantes.html — "Consenso por comandante" (2026-10-01): o consenso de Duel Commander por COMANDANTE, abrindo no Cloud. Casca + dados à parte (`data/paginas/comandantes.json` + uma parte por comandante, 40); cada carta diz a percentagem de listas, a moda de cópias, o papel (núcleo ≥90 % / flex 40–90 % / raro <40 %) e quantas ele TEM / FALTAM (`paginas.posse_total`). Motor em `mtgvault/consenso.py`
 classify.py         classificação Deck/Coleção/Vender (alimenta colecao_cor.html)
 colecao_cor.py      colecao_cor.html — "Binders": coleção INTEIRA por cor→CMC; cartas em uso a escuro + rótulo (classify rep["deck"]/used_by); + secção "Decks vigiados" (Blue Farm/Cloud cEDH/Cloud/Pauper): o deck por inteiro + cartas "extra" que saíram da lista (guardadas SEM PRAZO desde 2026-09-15 — `_watched_deck_pools`; era "até 6 meses da última utilização"). NB (2026-09-07): `_de_outro_balde` acrescenta as cartas que o LOADOUT dá a essa caixa mas que estão arrumadas noutro balde, marcadas "de &lt;balde&gt;" (era aqui que os Utrom Monitor do SPML desapareciam do Pauper)
@@ -185,7 +197,7 @@ my_decks.py         segue decks-alvo (por assinatura e por jogador de MTGO) -> t
 commander_decks.py  decks de comandante por consenso EM CAMADAS: núcleo>=50% (=deck, deck_cards) / flex 25-50% / tech 15-25%; FILTRA pela cor do comandante. `tiers()` reusado pelo colecao_cor
 premodern_decks.py  consenso dos arquétipos-alvo de Premodern (`colecao_config.json`→`premodern_arquetipos_alvo`: UW Replenish, Enchantress) -> decks/deck_cards com o sufixo " (consenso)". Agrupa pelas etiquetas do `tagging` (o clustering não os separa) e usa `stock.stock_from_lists`. Mostrado nas `deckboxes` (era o `meusdecks`)
 refresh_collection.py  collection_owned p/ o index.html
-colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados, venda (a regra dos 5 % da RL **e** o `mostrar` de 2026-09-25), cartas_vigiadas (a VIGIA DE CARTAS de 2026-09-26)
+colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados, venda (a regra dos 5 % da RL, o `mostrar` de 2026-09-25 **e** o `congelado_ate` de 2026-10-01), cartas_vigiadas (a VIGIA DE CARTAS de 2026-09-26), reserva (o LIMIAR da reserva «maybe», 2026-10-01), caixas[].decisao / reserva / reserva_fora / comandante / reserva_assinatura (AS FASES, 2026-10-01)
 ```
 Cada `.html` gerado tem de estar na lista do `git add` do workflow (`daily.yml`,
 passo "Guardar HTML") **e na lista `HTML` da tarefa `ai-pc/tasks/mtgvault-daily`**
@@ -1085,6 +1097,196 @@ vez"*. Motor em `mtgvault/consenso.py`, página `comandantes.py` →
 - **Nada da alocação, da venda ou dos preços foi tocado**: este módulo não lê a
   `copy_allocation` nem o `loadout`. A bateria inteira (63 ficheiros) ficou verde.
 
+**A ARRUMAÇÃO POR FASES, E AS QUATRO PROTECÇÕES DA VENDA (André, 2026-10-01).**
+Ele vai arrumar a colecção por FASES e ditou as regras neste dia. Motor em
+`mtgvault/fases.py`, página `arrumacao.py` → `arrumacao.html`, passo `arrumacao`
+do `daily`, CLI `py -m mtgvault.cli fases [--curva] | fases terras | fases
+decisao <slot> <montado|guardado|dissolvido>`, endpoints `/api/fase-decisao` e
+`/api/fase-reserva`; config em `venda.congelado_ate`, `reserva` e
+`caixas[].decisao`/`reserva`/`reserva_fora`/`comandante`/`reserva_assinatura`.
+Testes em `tests/test_fases.py` (24 casos) e a prova de que chumbam sem a
+funcionalidade em `tests/_provar_chumba.py` (+ `tests/_chumba_fases.py`, 10
+alvos / 16 casos). As palavras dele:
+
+- **P1 shocklands e fetchlands:** *"**Todas as cópias** ficam protegidas — todos
+  os acabamentos, todas as línguas, todas as repetidas, estejam ou não num deck.
+  Sem excepções."*
+- **P2 Reserved List:** protege-se *"o RL que ele joga"*, e **joga** é alocado a
+  um deck montado OU presente no consenso de um formato que ele joga. O resto da
+  RL **não** é protegido por aqui: segue a regra dos 5 % de 2026-09-08, com o
+  carimbo da régua de preço.
+- **P3 decks:** *"nenhuma cópia alocada a um deck no estado «montado» ou
+  «guardado» vai à venda."*
+- **P4 reserva:** *"pede também, para cada deck, os maybe porque é preciso ter
+  reserva dessas cartas para não estar a vender agora e ter que comprar mais
+  tarde."*
+
+- **AS LISTAS DE TERRAS DERIVAM-SE DO CATÁLOGO, e para isso o catálogo mudou.**
+  Ordem dele: *"as listas de shocklands e fetchlands NÃO podem ser escritas à
+  mão a partir da tua memória: deriva-as do catálogo (tipos, oracle text,
+  edições) e grava a regra usada. Se não der exactamente 10 e 10, PARA e diz
+  quais achaste — não arredondes a conta."* O `catalog.db` **não tinha oracle
+  text** (o inventário de 01/10 de manhã deu por isso e teve de se ficar por uma
+  lista nomeada): a coluna `oracle_text` entrou nos **três sítios**
+  (`catalog_schema.sql`, `db._migrate()` e `scryfall._row`/`INSERT`) e o
+  catálogo foi sincronizado — 112 754 impressões, **111 390 com texto**, 13 s. O
+  **`scryfall.has_card_meta` passou a perguntar pela coluna**, senão o
+  `daily._catalog` — que salta o `sync` quando o catálogo tem linhas — deixava-a
+  a NULL para sempre, que é o padrão do `event_tier`.
+  - **shocklands → 10**: dois sub-tipos de terra básica no `type_line` **e** o
+    texto a dizer que se pode pagar 2 de vida para não entrar virada. A primeira
+    metade sozinha dá **66** nomes (as duais originais, as de BFZ, as surveil de
+    MKM, as de cycling de AKH, as «Turbulent» de SOC); é a segunda que corta.
+  - **fetchlands → 10**: pagar 1 de vida, sacrificar-se e procurar na biblioteca
+    uma carta que põe em jogo, nomeando **exactamente dois** tipos básicos. O
+    «exactamente dois» exclui a Prismatic Vista e a Elven Passage, que procuram
+    uma básica qualquer. **A armadilha que custou uma passagem:** o texto da
+    Polluted Delta e da Scalding Tarn diz *"for **an** Island"* — um padrão com
+    `for a ` dava **oito** das dez, sem um único erro.
+  - As duas regras **não usam a edição**, e isso é melhor do que parecia: uma
+    reimpressão futura entra sozinha e um ciclo novo com o mesmo `type_line`
+    fica fora sem ninguém mexer na lista. O filtro que as outras colunas
+    permitiam (`type_line = 'Land'`, 1.ª impressão em ONS/ZEN, rare) dava **19**.
+  - **A CONTA TEM DE DAR DEZ *NUM CATÁLOGO COMPLETO*, e esta distinção é
+    precisa.** Há dois motivos para não dar dez: o catálogo a sério sem
+    `oracle_text` (por sincronizar — aí a protecção ficava vazia e mandava
+    shocklands para a venda sem um passo a falhar, e é aqui que se PARA, alto) e
+    um catálogo PEQUENO que simplesmente não contém aquelas cartas (as bases dos
+    testes têm trinta cartas; aí «zero» é a resposta certa, o mesmo princípio do
+    `foil_info`). Separa-os o TAMANHO (`fases.CATALOGO_COMPLETO = 1000`, o mesmo
+    limiar do `daily._catalog`). Sem esta distinção, acrescentar a P1 ao
+    `sell_list` rebentava o `report` em **vinte ficheiros de teste** e em
+    qualquer base nova. O `fases.verificar` (e o `cli fases terras`) exige
+    sempre, e é por aí que a conta curta é um erro à vista.
+- **OS TRÊS ESTADOS VIVEM EM `caixas[].decisao` E NUNCA NO `estado`.** O
+  `estado` (`candidata`/`permanente`/`montada`, v6 de 2026-09-08) é a escala da
+  ALOCAÇÃO — diz quem escolhe cartas primeiro e o que está sleevado. A decisão
+  desta arrumação é outro eixo (*"o que faço com este deck"*), e escrevê-la na
+  mesma chave era mudar a alocação com um botão que ele carrega para arrumar.
+  `montado` fica montado e as cartas ficam protegidas; `guardado` desmonta-se e
+  as cartas continuam protegidas; `dissolvido` desmonta-se e as cartas passam a
+  candidatas, menos as que P1, P2 ou P4 apanhem.
+  **A OMISSÃO É `montado`, nunca o contrário**: um deck sem decisão não manda uma
+  única carta para a venda. Um default a `dissolvido` punha o conteúdo de uma
+  caixa à venda no dia em que alguém a acrescentasse ao config. Tem dois casos de
+  teste e dois alvos no `_chumba_fases`.
+- **A RESERVA ENCHE-SE SOZINHA, E O LIMIAR É QUE A TORNA UTILIZÁVEL.** Sai do
+  consenso do arquétipo — a banda flex e o resto do sideboard que não estão nas
+  75 de hoje — mais o que ele acrescentar à mão (`caixas[].reserva`, a chave de
+  2026-09-20, que já queria dizer isto). Para o Duel Commander é o **consenso
+  por comandante** de 2026-10-01, como a ordem manda. O que ele TIRA guarda-se em
+  `caixas[].reserva_fora` — guarda-se o que ele tirou e não a lista final, para a
+  reserva continuar a crescer com o consenso sem lhe devolver o que ele já
+  recusou. A reserva **protege só o que ele TEM**; o que não tem alimenta a lista
+  de compras que o loadout já faz.
+  - **O EFEITO PERVERSO é real e mede-se**: a 10 % a reserva segura **217
+    cópias / 12 679,10 €**, a 20 % **77 / 4 095,87 €**, a 30 % **47 / 829,98 €**,
+    a 40 % **25 / 595,98 €**, a 50 % **21 / 544,98 €**. Ficou em **20 %**
+    (`reserva.limiar_pct`) e a curva mede-se com `cli fases --curva`.
+  - **ABAIXO DE OITO LISTAS NÃO HÁ RESERVA AUTOMÁTICA** (`MIN_LISTAS_RESERVA`,
+    o mesmo mínimo do `consenso.MIN_LISTAS`), e não é um requinte: a caixa
+    *Ill-Gotten Gains* (que nem tem lista — 0/0) casava **3** listas pela
+    assinatura, uma carta que aparece numa só valia 33 %, passava folgadamente o
+    limiar de 20 %, e a reserva dela sozinha segurava **52 cópias / 6 879 €** —
+    96 % de tudo o que a P4 protegia. Não era o limiar que estava mal: era a
+    amostra. O que ele escreveu à mão **fica**, haja ou não amostra: isso é uma
+    decisão, não uma inferência.
+  - **A ASSINATURA DERIVA-SE quando não está escrita** (`assinatura_derivada`):
+    as cartas da própria lista da caixa que são mais RARAS no formato. Muitas
+    caixas não têm `assinatura` — a do Modern e a do Pioneer vêm de uma lista
+    seguida, não de um arquétipo —, e pedir-lhe uma lista à mão era escrevê-la de
+    memória, que é o que a ordem proíbe. Resultado medido: Modern 18 listas,
+    Jeskai 21, Greasefang 18, Enchantress 111, UW Replenish 39, Stiflenought 99.
+    O cEDH, o Pauper, o Legacy e o Standard ficam sem consenso e **dizem-no** (o
+    cEDH não tem metagame no vault, o Pauper só guarda as listas do Luffy, e os
+    outros dois não têm lista).
+  - **O COMANDANTE DA CAIXA SAI DO CONFIG ANTES DE SE ADIVINHAR, e é um defeito
+    que foi apanhado a medir.** A caixa *Cloud (Duel Commander)* resolvia para
+    **Phelia, Exuberant Shepherd**: a lista padrão dela (fixada a 2026-09-20)
+    **não inclui o próprio comandante** — a Cloud aparece como carta de reserva,
+    a 89 % — e a Phelia está na lista e é ela própria um comandante com 37
+    listas; o desempate por «mais listas» escolhia-a, e a reserva do deck de
+    Duel Commander dele saía do consenso de outro deck, sem um único erro.
+    Agora a ordem é `caixas[].comandante` → `consenso_comandante.comandante` (a
+    escolha dele, que já estava escrita) → intersecção com os comandantes que a
+    base conhece, desempatada primeiro pelo NOME da caixa. Hoje dá **Cloud,
+    Midgar Mercenary, 41 listas, 180 cartas de consenso, 22 na reserva**.
+- **AS PROTECÇÕES MORDEM EM DOIS SÍTIOS, com a mesma resposta.** `candidatos()`
+  é a Fase 3 (varre a colecção inteira, só leitura) e `filtrar_venda()` entra no
+  **`loadout.sell_list`**, no fim, como o filtro da reserva das caixas de
+  2026-09-20 já entrava — uma cópia protegida sai de `venda`/`venda_rl` para a
+  saída nova **`protegidas`**. Uma protecção que valesse só na página das Fases
+  deixava a aba Vender e a exportação a oferecer a mesma carta, que é o padrão do
+  `event_tier` aplicado à decisão que vale mais dinheiro. **Cada cópia excluída
+  guarda o MOTIVO em português e QUAL das quatro a apanhou** — sem motivo não há
+  exclusão silenciosa —, e a saída entra à cabeça do «fica de fora» da
+  exportação (`venda.FORA`).
+  - **A P3 lê a caixa do SUB-LOTE e nunca do `copy_id`**, e isto custou uma
+    correcção: um lote de 4 com 3 na caixa e 1 na gaveta são dois sub-lotes com o
+    mesmo `copies.id`, e perguntar pelo id protegia a parte que está na gaveta —
+    uma cópia a desaparecer da venda sem motivo. O `linha_de` carimba a caixa na
+    linha. Apanhado pelo `test_paginas_loadout`.
+- **A TRAVA: `venda.congelado_ate` = 2026-10-12.** Ele joga o RC Ghent de Modern
+  a 9-11/10. Qualquer geração de saída de venda ou exportação **recusa-se** antes
+  dessa data (`fases.VendaCongelada`, subclasse de `ValueError` como a
+  `webapp.VendaDesligada`, por isso o `do_POST` traduz num 409 com a frase em
+  português). A pergunta vive no `_exige_venda()` — um sítio só, as duas portas
+  de escrita (o `/api/vender`, que **apaga cópias da base**, e o
+  `/api/venda-export`) — e corre **antes** do `migracao.backup`: um pedido
+  recusado não deixa ficheiro atrás dele. O `daily` **salta o passo e DIZ
+  porquê** (deixar a excepção subir punha o passo a vermelho todos os dias por
+  uma decisão que foi tomada, e um vermelho que é normal deixa de se ler). Não é
+  o mesmo que o `venda.mostrar`: aquele tira a venda da VISTA, este impede a
+  SAÍDA — e o `mostrar` fica como estava (`false`).
+- **A FILA DE FOTOS CONTA CÓPIAS FÍSICAS, NÃO NOMES** (palavras dele: *"se for 1
+  carta e 1 carta, mas se jogar 4 da mesma, tiro foto às 4"*). Um lote de 4 é
+  **uma** linha da `copies` e dá **quatro** linhas na fila (`_explode`), cada
+  uma com o seu acabamento, língua e estado, marcada uma a uma — senão a barra de
+  progresso e os totais ficavam a um quarto do número certo. A Fase 4 é **por
+  carta, da mais cara para a mais barata** (escolha dele, não por caixa), em
+  lotes de 50; a Fase 2 é por deck e por COR, que é como o binder está arrumado
+  (a mesma decisão do painel Montar). O **inventário** (RL + shock/fetchlands) é
+  a via paralela: *"nunca bloqueia nada e aparece como tal na página"*.
+  Reaproveita o fluxo de fotos que já existe (`pendentes/`, a conciliação do
+  `import_csv`): esta página **só ordena a fila e mostra o progresso**.
+- **A PÁGINA NÃO MEXE EM ALOCAÇÕES NEM NA BASE** (ordem dele, à letra): lê a
+  colecção e escreve o estado do deck e a reserva no `colecao_config.json`, com o
+  `configio.escrever`. Tem teste que mede que o ficheiro **não cresce** (a lição
+  do commit `ac1f776`, 861 inserções por um `indent=2`), e que mudar de estado é
+  **reversível** e não apaga a lista nem a reserva. A página vai no `git add` do
+  `daily.yml` e no `HTML` da tarefa `mtgvault-daily`.
+- **MEDIDO na base de 2026-10-01** (`py -m mtgvault.cli fases --curva`; o
+  inventário de leitura da manhã está em
+  `ai-pc/work/saidas/venda-inventario-2026-10-01.txt`). Preço de referência:
+  modo `market`, cadeia `cardtrader → cardmarket`.
+
+  | protecção | cópias | cartas | valor |
+  |---|---|---|---|
+  | P1 shock/fetchlands | 106 | 20 | 13 969,42 € |
+  | P2 RL que ele joga | 128 | 26 | 74 861,33 € |
+  | P3 deck montado/guardado | 361 | 189 | 15 826,36 € |
+  | P4 reserva («maybe») | 54 | 27 | 729,58 € |
+  | **protegidas (sem sobreposição)** | **649** | | **105 386,69 €** |
+  | **candidato a venda** | **1 029** | **382** | **31 150,15 €** |
+
+  Os **15 decks**, todos sem decisão escrita (logo `montado`): Blue Farm
+  10 272,95 € · Modern — UW Oswald 9 079,59 € · UW Replenish 4 369,31 € · Cloud
+  cEDH 4 210,84 € · Stiflenought 1 952,80 € · Pauper (Luffy) 918,03 €; os outros
+  nove ainda não têm nada na caixa. Filas: **Fase 2 = 411 cópias** em 6 decks,
+  **Fase 4 = 1 029 cópias** em 21 lotes de 50, inventário 305 cópias /
+  97 249,84 €. No MOTOR, com as protecções ligadas: `venda` **271c/7 488,78 € →
+  217c/3 647,73 €** e `protegidas` **54c/3 841,05 €**; a alocação **não mexe**
+  (fechar tudo 8 928,35 €, 240 a comprar, 225 a arrumar, `rl_sem_historico`
+  102c/24 393,12 €, `guardar` 2c/46,76 €, `reservadas` 1c/496,52 €).
+  A diferença para o inventário da manhã (1 022 cópias / 30 282,24 €) é
+  esperada e é uma melhoria: a protecção dele levava a cópia INTEIRA de um lote
+  partido, e a P3 leva só a parte que está dentro da caixa.
+- **POR FAZER, e é uma linha cada:** os **quatro decks sem consenso** (cEDH,
+  Pauper, Legacy, Standard) ficam com a reserva só manual — basta escrever-lhes
+  `reserva_assinatura` no config; e o `fases.formatos_que_joga` sai das caixas
+  por omissão, o que é o que ele quer hoje, mas aceita `fases.formatos_jogados`
+  no config se um dia quiser recortá-lo.
+
 ### Duas bases de dados
 
 `catalog.db` (Scryfall, centenas de MB) é ATTACHed como schema `catalog`.
@@ -1103,6 +1305,16 @@ Colunas/tabelas novas de 2026-09-07 (todas nos três sítios): `copies.balde_ori
 (o balde de ONDE a cópia veio, escrito pela `migracao`) e a tabela
 `copy_allocation` (que cartas estão dentro de que deckbox — escrita pelo
 `loadout.guardar_arrumacao` e pelo botão "Sleevado e na caixa").
+
+Coluna nova do CATÁLOGO de 2026-10-01: **`catalog.cards.oracle_text`** (nos três
+sítios: `catalog_schema.sql`, `db._migrate()` e `scryfall._row`/`INSERT`). Entrou
+para as quatro protecções da venda poderem DERIVAR do catálogo as listas de
+shocklands e fetchlands em vez de as terem escritas à mão (ver «A ARRUMAÇÃO POR
+FASES»). **Uma coluna do catálogo não se preenche sozinha**: o `daily._catalog`
+salta o `sync` quando o catálogo tem linhas, por isso teve de entrar também no
+**`scryfall.has_card_meta`** — é essa a pergunta que faz o catálogo recarregar,
+e foi por aí que o `reserved` e o `set_type` se preencheram. Sem ela, a coluna
+ficava a NULL para sempre e o `fases.fetchlands` levantava.
 
 Já custou caro uma vez: `decklists.event_tier` foi acrescentada só ao `vault.db`
 (commit 56ffa3f, 2026-08-03), nunca ao `schema.sql` nem ao `_migrate()`, e nada

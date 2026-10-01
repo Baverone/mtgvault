@@ -3384,6 +3384,14 @@ def sell_list(con, res: dict) -> dict:
                 "set_code": lot["set_code"], "set_name": lot["set_name"],
                 "sid": lot["sid"], "rl": lot["rl"], "unit": unit,
                 "price_finish": pfin,
+                # A caixa onde ESTE sub-lote está registado (ou None). Vem do
+                # lote e não se reconstrói pelo `copy_id`: um lote de 4 com 3 na
+                # caixa e 1 na gaveta são DOIS sub-lotes com o mesmo
+                # `copies.id`, e perguntar pelo id dava a caixa à parte que está
+                # na gaveta. É o que a P3 das protecções lê (2026-10-01) —
+                # procurar pelo id protegia a cópia solta de um lote meio
+                # arrumado, e a venda perdia uma cópia sem motivo nenhum.
+                "caixa": lot.get("caixa"),
                 # De onde veio o preço: a fonte da cadeia e se é a impressão
                 # dela ou o mínimo entre impressões. O `avaliar_rl` lê o
                 # `preco_fonte` para não comparar dois mercados.
@@ -3612,11 +3620,26 @@ def sell_list(con, res: dict) -> dict:
         return {"linhas": out, "total": round(sum(r["total"] or 0 for r in out), 2),
                 "copias": sum(r["q"] for r in out)}
 
+    # AS QUATRO PROTECÇÕES DA ARRUMAÇÃO POR FASES (André, 2026-10-01). Corre no
+    # FIM, sobre a lista já formada, pela mesma razão da reserva das caixas e da
+    # regra dos 5 %: a regra é sobre a CÓPIA e não sobre o motivo por que ela foi
+    # parar à lista. E corre AQUI, no motor, e não só na página das Fases — uma
+    # protecção que valesse numa página só deixava a aba Vender e a exportação a
+    # oferecer a mesma carta, que é o padrão do `event_tier` aplicado à decisão
+    # que vale mais dinheiro. Cada cópia excluída leva o MOTIVO e qual das quatro
+    # protecções a apanhou; sem motivo não há exclusão silenciosa (regra dele).
+    from . import fases as _fases                            # noqa: PLC0415
+    venda, venda_rl, protegidas = _fases.filtrar_venda(con, res, venda, venda_rl)
+
     v, vrl, ret, gd = (_fecha(venda), _fecha(venda_rl), _fecha(retidos),
                        _fecha(guardar))
     rsv = _fecha(reservadas)
+    prot = _fecha(protegidas)
     seg, semh = _fecha(rl_segurar), _fecha(rl_sem_historico)
     return {"venda": v["linhas"], "venda_rl": vrl["linhas"],
+            # A saída NOVA de 2026-10-01: o que as quatro protecções seguram.
+            "protegidas": prot["linhas"], "copias_protegidas": prot["copias"],
+            "total_protegido": prot["total"],
             "retidos": ret["linhas"], "guardar": gd["linhas"],
             "reservadas": rsv["linhas"], "copias_reservadas": rsv["copias"],
             "total_reservado": rsv["total"],

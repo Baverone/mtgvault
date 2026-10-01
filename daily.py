@@ -16,6 +16,7 @@ de um PC ligado para refrescar preços.
 from __future__ import annotations
 
 import os
+from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -26,10 +27,11 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 # um UA autorizado, define MOXFIELD_USER_AGENT no ambiente e este default cede.
 os.environ.setdefault("MOXFIELD_USER_AGENT", "mtgvault/0.1 (coleccao pessoal)")
 
-from mtgvault import (analysis, consenso, db, loadout, mtgtop8,  # noqa: E402
+from mtgvault import (analysis, consenso, db, fases, loadout, mtgtop8,  # noqa: E402
                       precos, prices, scryfall, sources, tagging, venda,
                       watchlist)
 
+import arrumacao  # noqa: E402  (gera arrumacao.html — as fases e as quatro protecções)
 import comandantes  # noqa: E402  (gera comandantes.html — consenso por COMANDANTE, Duel Commander)
 import core_decks  # noqa: E402  (gera coredecks.html + tracking de alteracoes)
 import collection_gallery  # noqa: E402  (gera colecao.html — galeria com imagens)
@@ -82,6 +84,13 @@ def venda_export(con, rep=None) -> str:
         return (f"saltado: {venda.MOTIVO_DESLIGADO} Os ficheiros "
                 f"{venda.FICHEIRO_STOCK} / {venda.FICHEIRO_ESTANTE} que já "
                 f"existam ficam como estão — não se apagam nem se reescrevem.")
+    # A TRAVA DE 2026-10-01 (`venda.congelado_ate`): o RC Ghent é a 9-11/10.
+    # Diz-se que se saltou e PORQUÊ, como no interruptor — deixar a excepção
+    # subir punha o passo a vermelho todos os dias por uma decisão que foi
+    # tomada, e um passo vermelho que é normal deixa de se ler.
+    if fases.venda_congelada():
+        return ("saltado: " + fases.motivo_congelado(
+            fases.congelado_ate(), date.today().isoformat()))
     return venda.exportar(con, rep)["resumo"]
 
 
@@ -449,6 +458,14 @@ def main():
             return str(out)
 
         _step(con, "deckboxes", _deckboxes)
+        # A ARRUMAÇÃO POR FASES (André, 2026-10-01): as quatro protecções, os
+        # três estados de cada deck, a reserva e as filas de fotos. Corre
+        # imediatamente depois do `deckboxes` e com o MESMO `loadout.report`,
+        # pela razão do `inicio`: dois relatórios eram duas respostas à mesma
+        # pergunta sobre o que se pode vender.
+        _step(con, "arrumacao",
+              lambda: str(arrumacao.build(con, ROOT / "arrumacao.html",
+                                          rep=_rep.get("v"))))
         # A SAÍDA DA VENDA (2026-09-18): `data/venda-stock.csv` (para carregar
         # stock no Cardmarket) + `data/venda-estante.txt` (para ir buscar as
         # cartas à estante). Fora do Git — levam preços por cópia, como o

@@ -368,11 +368,24 @@
     "rl_janela_minima_dias": 25,
     "rl_tolerancia_dias": 10,
     "rl_limiar_fixo": false,
+    "congelado_ate": "2026-10-12",
+    "_congelado_ate": "A TRAVA DE SEGURANÇA (André, 01/10/2026): ele joga o RC Ghent de Modern a 9-11/10. Até esta data, QUALQUER geração de saída de venda ou exportação recusa-se a correr — o venda.exportar (logo o passo venda-export do daily e o `cli vender --exportar`) e os dois endpoints de escrita do 8771 levantam fases.VendaCongelada, que o webapp traduz num 409 com a frase em português. Nada se perde: a lista volta a gerar-se sozinha a partir desta data. Apaga a chave (ou põe uma data passada) para destravar. NÃO é o mesmo que venda.mostrar: aquele tira a venda da VISTA, este impede a SAÍDA.",
     "reservar_rl_formatos": [
       "legacy"
     ]
   },
   "_venda": "RESERVED LIST: só vende o que NÃO valorizou (André, 2026-09-08, à letra): 'cartas de RL só vão para venda se não tiverem subido 5 % de valor nos últimos 3 meses'. Uma linha da lista de venda que seja Reserved List (qualquer motivo: excedente, 'não usada por nenhum deck', ...) só passa se hoje valer MENOS de 'preço de há rl_janela_dias' x (1 + rl_subida_minima_pct/100). Subiu → bloco '🔒 RL a segurar'. E, se o vault não tiver cotação que cubra a janela, a cópia TAMBÉM não vai para a venda: fica em 'RL sem histórico suficiente (desde <data>)', porque não se pode dizer que uma carta não subiu quando não se sabe. O `price_history` só guarda MUDANÇAS (prices.write_prices), por isso o preço de há 90 dias é a última cotação ATÉ esse dia; a 'rl_tolerancia_dias' cobre o caso em que o histórico começa a meio da janela (usa-se então a cotação mais antiga que lá esteja). A JANELA CRESCE SOZINHA (André, 2026-09-08, à letra: 'podemos começar já com 25 e vamos vendo como avança o histórico'): o 'rl_janela_dias' (90) deixou de ser A janela e passou a ser o MÁXIMO dela. A janela efectiva de cada carta é o histórico que o vault tem DELA menos 2 dias de folga, até ao máximo; abaixo de 'rl_janela_minima_dias' (25) não se decide de todo e a cópia fica em 'sem histórico'. Assim decide HOJE com ~27 dias (o price_history começou a 2026-08-10) e está nos 90 a 2026-11-08 sem ninguém mexer no config. E o LIMIAR ACOMPANHA A JANELA: a subida exigida é 'rl_subida_minima_pct x janela / máximo' — 5 % a 90 dias, ~1,4 % a 25 —, porque exigir os 5 % em 27 dias é exigir ~17 %/90 d, ou seja vender em Setembro exactamente o que a regra dos 3 meses seguraria. A alternativa é 'rl_limiar_fixo': true (os 5 % à letra em qualquer janela). A poda diária (daily._prune_prices) passou a guardar a Reserved List 'rl_janela_dias + rl_tolerancia_dias + 7' dias (o resto continua aos 30): sem isso a janela nunca encheria e a regra respondia 'não sei' para sempre, sem erro nenhum. 'reservar_rl_formatos': os formatos cujos CANDIDATOS do metagame (o top-N que o metagame.html mostra) SEGURAM as cópias de Reserved List que usariam, em vez de as mandarem vender — hoje só o Legacy, que desde 2026-09-08 aceita RL em PT. Ficam no bloco 'Reservadas' da aba Vender, com o motivo 'serve Legacy: <arquétipo>'. Assim que a caixa desse formato tiver deck escolhido, a reserva encolhe para o que falta a esse deck. É só para a RL: uma carta normal que um candidato use continua a vender-se, porque se compra outra vez.",
+  "reserva": {
+    "limiar_pct": 20,
+    "curva": [
+      10,
+      20,
+      30,
+      40,
+      50
+    ]
+  },
+  "_reserva": "A RESERVA («maybe») DE CADA DECK (André, 01/10/2026, à letra): 'pede também, para cada deck, os maybe porque é preciso ter reserva dessas cartas para não estar a vender agora e ter que comprar mais tarde'. É a quarta protecção da venda (P4, mtgvault/fases.py): as cartas que NÃO estão nas 75 de hoje mas que o consenso do arquétipo mostra — a banda flex e o resto do sideboard. Enche-se SOZINHA (do consenso por comandante, para o Duel Commander, ou das listas por assinatura), mais o que ele acrescentar à mão em caixas[].reserva. 'limiar_pct' (20) é o que trava o EFEITO PERVERSO que a ordem nomeia: se a reserva apanhasse tudo o que alguma vez apareceu numa lista não sobrava nada para vender (um arquétipo de Modern tem ~55 cartas distintas no main e ~37 no side). Entra na reserva o que aparece em pelo menos esta percentagem das listas do consenso. 'curva' são os limiares que o `cli fases --curva` mede, em cópias e em valor por deck, para ele escolher o número com os euros à frente. A reserva protege SÓ o que ele TEM; o que não tem alimenta a lista de compras que o loadout já faz. Tira-se uma carta da reserva automática com caixas[].reserva_fora (guarda-se o que ele TIROU e não a lista final, para a reserva continuar a crescer com o consenso sem lhe devolver o que ele já recusou).",
   "revalidacao": {
     "desde": "2026-09-20",
     "alvo": null

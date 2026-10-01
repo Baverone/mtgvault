@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS catalog.cards (
     lang             TEXT,
     rarity           TEXT,
     type_line        TEXT,
+    oracle_text      TEXT,                   -- o texto da carta (ver mtgvault/fases.py)
     mana_cost        TEXT,
     cmc              REAL,
     color_identity   TEXT,

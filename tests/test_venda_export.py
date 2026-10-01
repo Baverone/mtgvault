@@ -310,8 +310,13 @@ def caso_o_que_nao_se_vende_fica_de_fora_e_diz_porque():
         assert fora not in r["csv"], fora
         assert fora not in r["texto_estante"], fora
     fora = {f["chave"]: f for f in r["fora"]}
-    assert set(fora) == {"rl_segurar", "rl_sem_historico", "guardar",
-                         "reservadas", "retidos"}, set(fora)
+    # `protegidas` entrou a 2026-10-01 (as quatro protecções das Fases). Está
+    # vazia neste mundo — nenhuma shock/fetch, nenhuma RL que ele jogue, nenhum
+    # deck com decisão escrita, nenhuma reserva — e é por isso que a lista de
+    # venda deste teste não mexeu um cêntimo.
+    assert set(fora) == {"protegidas", "rl_segurar", "rl_sem_historico",
+                         "guardar", "reservadas", "retidos"}, set(fora)
+    assert fora["protegidas"]["copias"] == 0, fora["protegidas"]
     seg = fora["rl_segurar"]
     assert seg["copias"] == 2 and seg["linhas"][0]["nm"] == "Gilded Drake", seg
     # A percentagem e a janela, e o motivo por que ia à venda.
@@ -444,8 +449,9 @@ def caso_a_aba_vender_leva_a_saida_e_o_modo_edicao_grava():
     assert s["copias"] == 5 and s["formato"]["origem"] == "predefinido", s
     assert s["csv"].startswith("Name,Set,Number") and "Null Rod" in s["csv"]
     assert [g["local"] for g in s["estante"]["grupos"]] == ["Colecção", "Caixa RL (EN)"]
-    assert {f["chave"] for f in s["fora"]} == {"rl_segurar", "rl_sem_historico",
-                                               "guardar", "reservadas", "retidos"}
+    assert {f["chave"] for f in s["fora"]} == {"protegidas", "rl_segurar",
+                                               "rl_sem_historico", "guardar",
+                                               "reservadas", "retidos"}
     # A parte pesada da venda leva a saída (é lá que a aba a vai buscar).
     idx, partes = deckboxes.partir(d)
     assert partes["venda"]["saida"]["copias"] == 5

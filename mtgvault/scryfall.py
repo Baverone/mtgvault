@@ -57,6 +57,29 @@ def download_bulk(kind: str = "default_cards", dest: Path | None = None) -> Path
     return dest
 
 
+def _texto_oracle(c: dict) -> str | None:
+    """O texto da carta. Numa carta de duas faces junta as duas com ` // `.
+
+    É de 2026-10-01, e existe para UMA pergunta: derivar do catálogo as listas de
+    shocklands e de fetchlands das quatro protecções da venda (ver
+    `mtgvault/fases.py`). Sem ele, as fetchlands não se distinguem das outras
+    terras de Onslaught/Zendikar — o filtro possível (`type_line = 'Land'`, 1.ª
+    impressão em ONS/ZEN, rare) dá **19** nomes e não 10: leva o Riptide
+    Laboratory, o Grand Coliseum, o Valakut. A alternativa era escrever as dez à
+    mão, e uma lista escrita de memória não se pode verificar.
+
+    Guarda-se o texto das DUAS faces porque o `fases` procura por padrões
+    (*"Search your library for a ... land card"*) e a face de trás de uma
+    modal-DFC pode ser precisamente a terra.
+    """
+    t = c.get("oracle_text")
+    if t:
+        return t
+    faces = [f.get("oracle_text") or "" for f in (c.get("card_faces") or [])]
+    faces = [f for f in faces if f]
+    return " // ".join(faces) if faces else None
+
+
 def _row(c: dict) -> tuple | None:
     if c.get("layout") in ("art_series", "token", "double_faced_token", "emblem"):
         return None
@@ -73,6 +96,7 @@ def _row(c: dict) -> tuple | None:
         c.get("lang"),
         c.get("rarity"),
         c.get("type_line"),
+        _texto_oracle(c),
         c.get("mana_cost"),
         c.get("cmc"),
         "".join(c.get("color_identity") or []),
@@ -91,10 +115,10 @@ def _row(c: dict) -> tuple | None:
 
 INSERT = """INSERT OR REPLACE INTO catalog.cards (
     scryfall_id, oracle_id, name, set_code, set_name, collector_number, lang,
-    rarity, type_line, mana_cost, cmc, color_identity, finishes, released_at,
-    cardmarket_id, tcgplayer_id, image_uri, legalities, digital, reprint, reserved,
-    set_type
-) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
+    rarity, type_line, oracle_text, mana_cost, cmc, color_identity, finishes,
+    released_at, cardmarket_id, tcgplayer_id, image_uri, legalities, digital,
+    reprint, reserved, set_type
+) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
 
 
 def load_bulk(con: sqlite3.Connection, path: Path, batch: int = 5000) -> int:
@@ -135,9 +159,23 @@ def load_bulk(con: sqlite3.Connection, path: Path, batch: int = 5000) -> int:
 
 
 def has_card_meta(con: sqlite3.Connection) -> bool:
-    """Se o catálogo já traz a metadata nova (reserved/set_type). Um catálogo
-    antigo em cache (ex.: na cloud) tem as colunas a 0/NULL — daí o reload."""
-    return con.execute("SELECT COUNT(*) c FROM catalog.cards WHERE reserved = 1").fetchone()["c"] > 0
+    """Se o catálogo já traz a metadata nova. Um catálogo antigo em cache (ex.: na
+    cloud, ou o deste PC antes de 2026-10-01) tem as colunas a 0/NULL — daí o
+    reload. É o `daily._catalog` que a pergunta, e é por aqui que uma coluna
+    nova do catálogo se faz PREENCHER: o `_catalog` salta o `sync` quando o
+    catálogo tem linhas, e sem esta pergunta a coluna ficava a NULL para sempre.
+
+    `oracle_text` (2026-10-01) entrou por isso mesmo: é dele que saem as
+    shocklands e as fetchlands das quatro protecções da venda
+    (`mtgvault/fases.py`), e um catálogo sem ele faz o `fases.fetchlands`
+    levantar — alto, e não com uma protecção vazia.
+    """
+    r = con.execute("""SELECT
+            SUM(CASE WHEN reserved = 1 THEN 1 ELSE 0 END) rl,
+            SUM(CASE WHEN oracle_text IS NOT NULL AND oracle_text <> ''
+                     THEN 1 ELSE 0 END) txt
+          FROM catalog.cards""").fetchone()
+    return bool(r) and (r["rl"] or 0) > 0 and (r["txt"] or 0) > 0
 
 
 def sync(con: sqlite3.Connection) -> int:

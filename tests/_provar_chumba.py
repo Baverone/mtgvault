@@ -181,6 +181,40 @@ for alvo, casos in (
         print(f"  {'ok  ' if ok else 'FAIL'} chumba sem «{alvo}» "
               f"({caso}): {motivo[-1][:90] if motivo else ''}")
 
+# ---------------------------------------------------------------------------
+# AS QUATRO PROTECÇÕES E AS FASES (André, 2026-10-01). Noutro processo, pela
+# razão de cima.
+# ---------------------------------------------------------------------------
+for alvo, casos in (
+    ("terras", ["caso_uma_shockland_extra_fora_de_qualquer_deck_nunca_e_candidata",
+                "caso_todas_as_copias_de_uma_shock_fetch_ficam_protegidas",
+                "caso_as_proteccoes_valem_tambem_no_motor_da_venda"]),
+    ("rl_joga", ["caso_uma_rl_que_ele_joga_nunca_e_candidata"]),
+    ("decisoes", ["caso_uma_copia_num_deck_guardado_nunca_e_candidata",
+                  "caso_um_deck_sem_decisao_nao_manda_nada_para_a_venda"]),
+    # A OMISSÃO: é a que mais dinheiro custava se estivesse ao contrário.
+    ("omissao", ["caso_um_deck_sem_decisao_conta_como_montado",
+                 "caso_um_deck_sem_decisao_nao_manda_nada_para_a_venda"]),
+    ("reservas", ["caso_uma_carta_da_reserva_acima_do_limiar_nunca_e_candidata",
+                  "caso_a_reserva_manual_fica_mesmo_sem_consenso"]),
+    ("limiar", ["caso_abaixo_do_limiar_a_carta_volta_a_ser_candidata"]),
+    ("min_listas", ["caso_a_reserva_nao_se_enche_sem_amostra"]),
+    ("congelado", ["caso_a_saida_de_venda_recusa_se_antes_de_doze_de_outubro"]),
+    ("explode", ["caso_um_playset_na_fila_da_quatro_linhas",
+                 "caso_a_fila_dos_decks_conta_copias_e_valor"]),
+    ("ordem_fila", ["caso_a_fila_de_candidatos_sai_por_valor_decrescente"]),
+):
+    for caso in casos:
+        p = subprocess.run(
+            [sys.executable, str(AQUI / "_chumba_fases.py"), alvo, caso],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            cwd=AQUI)
+        ok = p.returncode != 0
+        bom &= ok
+        motivo = (p.stdout or p.stderr or "").strip().splitlines()
+        print(f"  {'ok  ' if ok else 'FAIL'} chumba sem «{alvo}» "
+              f"({caso}): {motivo[-1][:90] if motivo else ''}")
+
 print("TODOS OS CASOS CHUMBAM SEM A FUNCIONALIDADE" if bom
       else "HA CASOS QUE PASSAM SEM A FUNCIONALIDADE")
 sys.exit(0 if bom else 1)
