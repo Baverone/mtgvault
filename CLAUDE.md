@@ -1406,8 +1406,12 @@ chumbam sem a funcionalidade em `tests/_provar_chumba.py`
   diferença é cosmética: o plano dele imprime o nome inteiro de uma carta de
   dupla face (*"Birgi, God of Storytelling // Harn"*) e o meu só a frente, que é
   a chave por que o `loadout` indexa. Fase 2 inteira: **124 fotos, 411 cartas,
-  261 linhas** (as 411 cópias que o CLAUDE.md de hoje já media); Fase 4 **308
-  fotos / 1 029 cartas**; inventário **94 / 305**.
+  261 linhas** (as 411 cópias que o CLAUDE.md de hoje já media); Fase 4 **315
+  fotos / 1 029 cartas**; inventário **92 / 305**. (A Fase 4 e o inventário
+  agrupam as **fotos perdidas à cabeça**, e é isso que lhes muda a contagem face
+  a uma medição sem essa ordem — 308 e 94: a foto perdida à frente parte um
+  grupo de quatro ao meio. É o custo de a prioridade dele mandar na fila, e é
+  deliberado.)
 - **A ORDEM DE TRABALHO: primeiro os decks de LISTA ÚNICA** (ordem dele: *"começa
   pelos decks que são lista única e não são «de conversão» — os dois de cEDH, que
   têm cartas dedicadas e uma lista cada. A família de Premodern partilha o mesmo
@@ -1471,7 +1475,7 @@ chumbam sem a funcionalidade em `tests/_provar_chumba.py`
   ficheiro já não está no disco. **Não se inventa a foto nem se limpa o campo** —
   o campo é a prova de que ela existiu. São as únicas cópias **sem prova
   nenhuma**, por isso abrem a Fase 2 num bloco próprio, vêm à cabeça de cada
-  grupo da lista de por-revalidar e à cabeça da Fase 4. Medido: **33 fotos, 156
+  grupo da lista de por-revalidar e à cabeça da Fase 4. Medido: **33 fotos, 155
   linhas da `copies`, 165 cópias, 12 639,42 €** — e **92 das 96** cartas do Blue
   Farm e **56 das 65** do Cloud cEDH estão entre elas, que é outra razão para
   começar por esses dois.
