@@ -10,6 +10,18 @@ Gestor pessoal de coleção de Magic, do André. Python + SQLite, corre no PC de
 Faz quatro coisas: gere a coleção física, segue decks, analisa o metagame para
 descobrir o núcleo de cada arquétipo, e acompanha preços.
 
+## OS ENDEREÇOS QUE SE DÃO AO ANDRÉ (2026-10-01)
+
+- **Modo de edição:** <https://editar-mtg.baverone.com/> — é o `webapp.py` deste
+  PC, por HTTPS e atrás do Cloudflare Access.
+- **Site publicado (só leitura):** <https://mtg.baverone.com/>; o centro é o
+  <https://baverone.com>, que tem lá o link *«Editar mtgvault»*.
+- **O IP da rede local NÃO se usa nem se lhe dá** (`http://192.168.x.y:8771/…`).
+  O **porto 8771 continua a ser o porto**, por dentro e nas tarefas do ai-pc
+  (`mtgvault-serve`, `_reiniciar_webapp.py`) — porto não é endereço. Os dois
+  URLs vivem num sítio só, `site_shell.URL_EDICAO`/`URL_PUBLICO`, e o
+  `webapp.py` aceita `MTGVAULT_URL_EDICAO` para quem corra isto sem o túnel.
+
 ## Regras de trabalho
 
 - **Comentários e mensagens em português (de Portugal).** Nomes de funções,
@@ -100,8 +112,13 @@ mtgvault/
                   na pasta de trabalho E no arquivo, a de trabalho a ganhar),
                   `arquivar` (move `pendentes/fotos processadas/` para
                   `data/fotos/anteriores/` — nunca apaga), `pasta_do_alvo` (as
-                  fotos novas por DECK) e `texto_do_plano`. Ver «UMA FOTO LEVA
-                  NO MÁXIMO QUATRO CARTAS»
+                  fotos novas por DECK) e `texto_do_plano`. E, desde 2026-10-01
+                  à tarde, A PASTA POR DECK COMO ALVO: `mapa_pastas`/
+                  `slot_da_pasta` (pasta → slot, DERIVADO do `caixas` do
+                  config), `fotos_nas_pastas`, `recolher_das_pastas` (move para
+                  `pendentes/` com o nome `site-<slot>-…`) e `escrever_planos`
+                  (os `_plano.txt`, reescritos pelo daily). Ver «UMA FOTO LEVA
+                  NO MÁXIMO QUATRO CARTAS» e «A PASTA POR DECK VALE COMO ALVO»
   fotocaixa.py    A FOTO DA DECKBOX FÍSICA de cada caixa (2026-09-21): o
                   original em `data/deckboxes/<slot>.<ext>` (fora do Git, a
                   anterior em `anteriores/`), a reduzida em
@@ -1321,11 +1338,17 @@ página e leitura.
   mostra (`arrumacao.alvo_actual`), nunca de uma contagem própria; e **só se
   calcula quando há alvo**, porque o progresso percorre a colecção inteira.
 - **A página diz ONDE largar as fotos, e onde NÃO** — na própria página e no
-  rodapé, não só no `LEIA-ME`: soltas na **raiz de `pendentes\`**; nunca em
-  `pendentes\deckboxes\` (é a foto da caixa de plástico, ponto 13) nem em
-  `Colocar fotos da coleção aqui\` (essa é para cartas **novas**, e estas cópias
-  já estão no inventário — o que a foto faz é **ligar-se à cópia que já
-  existe**).
+  rodapé, não só no `LEIA-ME`.
+  **[CORRIGIDO A 2026-10-01, à tarde]** esta linha dizia *"soltas na raiz de
+  `pendentes\`; nunca em `Colocar fotos da coleção aqui\`, que é para cartas
+  novas"* — e ele decidiu o contrário (*"o melhor é criar pasta"*). São **duas
+  portas**: o botão «Tirar fotos» da página (a foto guarda-se sozinha) ou a
+  **pasta do deck**, `Colocar fotos da coleção aqui\<Nome do deck>\`, que
+  **vale como alvo** — ver «A PASTA POR DECK VALE COMO ALVO». O que fica
+  igual: o que não é de um deck (a venda, o inventário) vai solto na raiz de
+  `pendentes\` com o alvo no botão; `pendentes\deckboxes\` **nunca** é para
+  cartas (é a foto da caixa de plástico, ponto 13); e estas cópias já estão no
+  inventário — o que a foto faz é **ligar-se à cópia que já existe**.
 - **A TRAVA DE 12/10 NÃO APANHA AS FOTOS, e foi verificado em vez de assumido.**
   `fases.exige_descongelado` vive em três sítios e só nesses — `venda.exportar`,
   `webapp._exige_venda` (as duas portas de escrita da venda) e
@@ -1493,9 +1516,14 @@ chumbam sem a funcionalidade em `tests/_provar_chumba.py`
   `processar_fotos.py` lêem a RAIZ de `pendentes/`): as fotos ficavam lá para
   sempre, sem um único erro. O `fotos plano` reescreve esses ficheiros com o
   plano a sério — **das MESMAS fotos que a página desenha**, nunca de uma
-  segunda contagem — e com a instrução certa (`pendentes\`, e fixar o alvo
-  primeiro). Só escreve onde a pasta JÁ existe: não se criam pastas por
+  segunda contagem. Só escreve onde a pasta JÁ existe: não se criam pastas por
   iniciativa própria.
+  **[CORRIGIDO A 2026-10-01, à tarde]** esta linha dizia que a instrução certa
+  era «`pendentes\`, e fixar o alvo primeiro» — e a decisão dele foi a outra:
+  *"o melhor é criar pasta"*. A pasta **passou a valer como alvo**, o
+  `_plano.txt` manda largar as fotos ali, e o motor saiu do CLI para o
+  `fotos.escrever_planos`, que o **daily reescreve todas as noites**. Ver a
+  secção a seguir.
 - **O `backup-offsite` do ai-pc teve de aprender as duas pastas**
   (`plano.FOTOS_DIRS`). Lia só `pendentes/fotos processadas/`: a partir do dia
   em que as fotos passaram para `data/fotos/` dizia *«0 novas»* e guardava
@@ -1510,6 +1538,91 @@ chumbam sem a funcionalidade em `tests/_provar_chumba.py`
   cópias / 97 249,84 €** — os mesmos números da secção «A ARRUMAÇÃO POR FASES».
   O que mudou foi a UNIDADE da fila (411 cartas em **124 fotos**), o resolvedor,
   o arquivo e a ordem dos decks.
+
+**A PASTA POR DECK VALE COMO ALVO (André, 2026-10-01, à tarde, à letra: «o
+melhor é criar pasta»).** Ele perguntou de manhã onde é que punha as fotos, e a
+resposta foi mandá-lo para a raiz de `pendentes/` depois de fixar o alvo no
+botão. **Ele decidiu outra coisa, e a decisão dele é que vale**: quer uma pasta
+por deck em `Colocar fotos da coleção aqui\<Nome do deck>\` e largar as fotos
+lá. Motor em `mtgvault/fotos.py` (`mapa_pastas`, `slot_da_pasta`,
+`fotos_nas_pastas`, `recolher_das_pastas`, `escrever_planos`); CLI
+`py -m mtgvault.cli fotos pastas|recolher|plano`; passos `fotos-pastas` e
+`fotos-plano` do `daily`; testes em `tests/test_pasta_por_deck.py` (13 casos) e
+a prova de que chumbam sem a funcionalidade em `tests/_provar_chumba.py`
+(+ `tests/_chumba_pasta.py`, 9 alvos / 11 casos). **O motor de alocação não
+mudou uma linha** — isto é pasta, nome de ficheiro e texto.
+
+- **UM CAMINHO SÓ, e é o que já estava testado.** A foto da pasta é **movida**
+  para a raiz de `pendentes/` com o nome `site-<slot>-<data>-<n>.<ext>`, que é
+  exactamente o nome que o botão «Tirar fotos» escreve (`fotosite.nome_ficheiro`,
+  2026-09-21). Daí para a frente não há uma linha nova: o
+  `revalidacao.alvo_da_foto` prefere as cópias daquela caixa, o `esperadas.md`
+  lista-a na secção «Fotos tiradas no site», o `arrumar_fotos`/`pasta_do_alvo`
+  arruma-a em `data/fotos/<slot>/`, e o Claude que cataloga vê a mesma coisa que
+  sempre viu. Escrever um segundo caminho ao lado era deixar os dois discordarem
+  um dia qualquer, em silêncio — a lição do `e_foil`, do `vistoId` e do
+  `venda.mostrar`. O nome ORIGINAL dele vai no relatório da recolha e no
+  `webapp.log`: não se perde em silêncio.
+- **O MAPA pasta → slot É DERIVADO DO `caixas` DO CONFIG, nunca escrito à mão.**
+  No dia em que ele renomear um deck, a pasta que o vault reconhece muda com ele
+  — uma lista à mão funcionava até esse dia e falhava calada. Aceita o NOME nas
+  duas formas (a «Elves / Survival» não cabe num caminho: a pasta tem ` - `, e é
+  o `fotos.nome_de_pasta`, a MESMA regra por que o `_plano.txt` se escreve) e o
+  próprio `slot`, com o nome a ganhar sempre. O `_norm` reduz `-`, `/`, `—`, `–`,
+  `_`, `(`, `)` e espaços a um espaço só: o «Modern — UW Oswald» não depende de
+  ele acertar no travessão. Medido no config dele: **28 chaves, as 15 caixas**.
+- **ONDE É QUE O MAPA ESTAVA ANTES: EM LADO NENHUM.** Procurado no vault e na
+  tarefa — o `mtg-fotos-novas` faz `PEND.iterdir()` e o `processar_fotos.py`
+  também: os dois só olham para a RAIZ de `pendentes/`. A correspondência
+  pasta → deck só existia em prosa, no `LEIA-ME.txt`, para eu a ler a pedido
+  dele. Ficou no mtgvault, com teste, e a tarefa **chama-o** (`fotos recolher
+  --json`) em vez de o reimplementar.
+- **AS SUBPASTAS DE LOTE CONTAM PARA O MESMO DECK** (`Blue Farm\lote1\`): o
+  `LEIA-ME` sempre disse que se podiam fazer, e perdê-las aqui era mudar-lhe a
+  rotina sem o avisar. O que manda é a **primeira** pasta abaixo da pasta-mãe —
+  um ficheiro largado na pasta-mãe não tem deck e não se adivinha.
+- **AS PASTAS DE GRUPO FICAM COMO SEMPRE FORAM.** `Premodern (geral)`,
+  `SPML (…)`, `Coleção Pessoal` e `Vender` não são um deck: ninguém as processa
+  sozinho, e era assim antes disto. A foto fica lá — e **diz-se porquê**, que é a
+  diferença entre «decidido» e «esquecido». O `_nomes antigos\` (onde o
+  supervisor pôs duas pastas renomeadas, sem apagar nada) fica fora: uma pasta
+  que começa por `_` não é um deck. Adivinhar o deck pelo nome da pasta é
+  exactamente o que o `fotocaixa.recolher` já tinha aprendido a não fazer.
+- **O SOSSEGO DE 20 s.** Uma foto acabada de largar pode estar a meio da cópia;
+  movê-la era parti-la. Espera-se, e vem na passagem seguinte. O `shutil.move`
+  **preserva o mtime** dentro do mesmo volume, por isso a regra dos 2 minutos do
+  `mtg-fotos-novas` continua a valer do outro lado — e o nome novo leva o mtime
+  da foto (quando ela foi tirada), não a hora da recolha.
+- **TRÊS CHAMADORES, e é de propósito**: o **`mtg-fotos-novas`** das 02:30 (antes
+  de olhar para `pendentes/`), o **modo de edição** a cada pedido do índice (para
+  a foto aparecer em «📸 fotos enviadas, à espera» e o «⚡ Processar agora» a
+  apanhar, sem esperar pela noite — e num GET um lock ocupado não rebenta a
+  página: a recolha pode esperar pelo pedido seguinte) e o **`daily`**
+  (`fotos-pastas`, rede de segurança, imediatamente antes do `esperadas.md`). Uma
+  foto parada numa pasta de grupo **não põe a tarefa a vermelho** (sai em
+  `das_pastas_deixadas`, não em `errors`): um vermelho que é normal deixa de se
+  ler.
+- **O `_plano.txt` É REESCRITO PELO DAILY** (passo `fotos-plano`), das MESMAS
+  fotos da Fase 2 que a página acabou de desenhar — **a pasta e a página têm de
+  dizer o mesmo número**. Por isso o motor saiu do CLI para o
+  `fotos.escrever_planos`: duas escritas do mesmo ficheiro divergiam no dia em
+  que uma mudasse. A pasta entrou no **`git add` do `daily.yml`** e no
+  **`EXTRA_COMMIT` da tarefa `mtgvault-daily`** (é uma pasta, como
+  `data/paginas`); as imagens continuam fora pelo `.gitignore`, que ganhou o
+  `.heif` que lhe faltava nas duas listas. A pasta de um deck **sem cartas na
+  caixa** fica com a nota a dizê-lo: um plano que promete fotos de um deck vazio
+  é um ficheiro a mentir.
+- **MEDIDO na base de 2026-10-01**, antes e depois: `loadout.report` **igual** —
+  fechar tudo **8 928,35 €**, **240** a comprar, **225** a arrumar; Fase 2
+  **124 fotos / 411 cartas** em 6 decks (Blue Farm 28/96, Pauper 22/74, Cloud
+  cEDH 19/65, Modern 16/52, UW Replenish 20/66 ⏸, Stiflenought 19/58 ⏸), os
+  mesmos números das duas secções de cima. **15 pastas de deck reconhecidas**,
+  15 `_plano.txt` escritos (6 com plano, 9 com a nota de «sem cartas na caixa»),
+  4 pastas de grupo intocadas. Ponta a ponta no repositório a sério: uma foto
+  largada em `Blue Farm\` saiu com
+  `site-cedh-blue-farm-<data>-1.jpg`, o `fotosite.origem` leu-lhe a caixa e o
+  `alvo_da_foto` deu as cópias do `cedh-blue-farm` (a foto de prova foi apagada
+  — era minha, de mentira, e não é prova de nada).
 
 ### Duas bases de dados
 

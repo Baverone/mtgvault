@@ -3331,11 +3331,12 @@ function ligacaoHTML() {
     + `alt="QR do link do modo edição" width="150" height="150">`
     + `<div><b>📱 Abrir no telemóvel</b>`
     + `<p class="lead">Aponta a câmara ao QR, ou escreve `
-    + `<code>${esc(D.ligacao.url)}</code>. O link leva o token: <b>sem ele a `
-    + `página é só de leitura</b>. Estás na mesma rede de casa.</p>`
-    + `<p class="nota">Se não abrir, o porto ${D.ligacao.porto} pode estar `
-    + `fechado na firewall da rede privada — o comando está no arranque do `
-    + `<code>python webapp.py</code>.</p></div></div>`;
+    + `<code>${esc(D.ligacao.base)}</code>. O link leva o token: <b>sem ele a `
+    + `página é só de leitura</b>.</p>`
+    + `<p class="nota">É o mesmo modo de edição deste PC, por HTTPS e com o `
+    + `login do Cloudflare — de casa ou da rua. Se não abrir, o servidor pode `
+    + `estar em baixo: a tarefa <code>mtgvault-serve</code> relança-o de 5 em `
+    + `5 minutos.</p></div></div>`;
 }
 
 /* --------------------------------------------------- NÃO ENCONTRADAS

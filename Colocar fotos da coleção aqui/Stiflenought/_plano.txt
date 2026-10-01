@@ -8,12 +8,16 @@ Cada carta tem de estar a vista e poder avaliar-se.
 *** ESTE DECK FICA PARA DEPOIS ***
 Fica para depois: estas caixas são do mesmo grupo de formato, com tecto de playset contado sobre o grupo — partilham o mesmo conjunto de cartas e montam-se por conversão de uma noutra. Primeiro os decks de lista única.
 
-ONDE LARGAR AS FOTOS: soltas na RAIZ de  pendentes\
-  (ou pelo telemovel, no botao «Tirar fotos» da pagina)
-NAO as largues nesta pasta: 'Colocar fotos da colecao aqui' e para
-  cartas NOVAS e NADA a processa -- as fotos ficavam aqui para sempre.
-Antes de fotografar, fixa o ALVO: pagina «Arrumacao por fases», Fase 2,
-  botao «Fotografar este deck». E o alvo que arruma as fotos por deck.
+ONDE LARGAR AS FOTOS: NESTA PASTA.
+  O vault reconhece a pasta como este deck (alvo: premodern-stiflenought) e trata
+  as fotos como se as tivesses tirado na pagina. Nao precisas de
+  fixar alvo nenhum. Podes fazer subpastas de lote ('lote1').
+  A foto e MOVIDA daqui para pendentes\ com o nome a dizer o deck,
+  e depois arrumada em data\fotos\premodern-stiflenought\. Nada se apaga.
+
+A OUTRA PORTA: https://editar-mtg.baverone.com/
+  botao «Tirar fotos» (abre a camara do telemovel) -- ai nao ha
+  pasta nenhuma, a foto guarda-se sozinha.
 
 ======================================================================
 

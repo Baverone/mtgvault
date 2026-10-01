@@ -93,7 +93,10 @@ jobs:
           # E `comandantes.html` (2026-10-01): o CONSENSO POR COMANDANTE (Duel
           # Commander). Os dados vão em `data/paginas/comandantes/`, que a pasta
           # já apanha.
-          git add index.html colecao.html cobertura.html colecao_cor.html meusdecks.html metagame.html reservedlist.html caixarl.html showcase.html deckboxes.html comandantes.html arrumacao.html deckboxes.js data/arquetipos.json data/paginas assets/deckboxes
+          # A pasta "Colocar fotos da coleção aqui" leva o `_plano.txt` de cada
+          # deck, reescrito pelo passo `fotos-plano` (01/10/2026: a pasta por
+          # deck vale como alvo). Só os `.txt` — as IMAGENS estão no .gitignore.
+          git add index.html colecao.html cobertura.html colecao_cor.html meusdecks.html metagame.html reservedlist.html caixarl.html showcase.html deckboxes.html comandantes.html arrumacao.html deckboxes.js data/arquetipos.json data/paginas assets/deckboxes "Colocar fotos da coleção aqui"
           # `data/vigia-cartas.json` (2026-09-26): o estado da VIGIA DE CARTAS —
           # que listas com carta vigiada já foram vistas. É o que impede o aviso
           # de se repetir todos os dias, e pela razão do `arquetipos.json` tem de

@@ -2,7 +2,8 @@
 
 Uma imagem por caixa (`<slot>.jpg`), reduzida (≤ 800 px, JPEG, ~100 KB),
 escrita pelo `mtgvault/fotocaixa.py` a partir da foto que o André tira à
-deckbox — pelo botão «📦 Foto da deckbox» do modo edição (8771) ou por um
+deckbox — pelo botão «📦 Foto da deckbox» do modo de edição
+(<https://editar-mtg.baverone.com/>) ou por um
 ficheiro largado em `pendentes/deckboxes/<slot>.jpg`, que o `daily` recolhe.
 
 **Vai no Git de propósito** (é a excepção consciente ao «não guardar imagens»

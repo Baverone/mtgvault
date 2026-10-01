@@ -49,13 +49,40 @@ discorda da primeira um dia qualquer, em silêncio.
   * `pasta_do_alvo` — as fotos NOVAS ficam arrumadas por DECK sozinhas
     (`data/fotos/<slot>/`), com o slot a vir do **alvo da revalidação** e nunca
     de um palpite.
+
+E DESDE 2026-10-01, À TARDE: **A PASTA POR DECK VALE COMO ALVO.** Decisão dele,
+à letra — *"o melhor é criar pasta"*. Ele quer fotografar com a app da câmara e
+largar as fotos numa pasta com o nome do deck, em ``Colocar fotos da coleção
+aqui\\<Nome do deck>\\``, e isso tem de ser tratado **exactamente** como se ele
+tivesse carregado em «Fotografar este deck» e tirado a foto na página.
+
+  * `mapa_pastas`/`slot_da_pasta` — o mapa pasta → slot sai do `caixas` do
+    config, nunca de uma lista escrita à mão: no dia em que ele renomear um deck
+    a pasta reconhecida muda sozinha, sem se tocar em código. As subpastas de
+    lote (`lote1`) contam para o mesmo slot. As pastas de GRUPO que já lá
+    estavam — `Premodern (geral)`, `SPML (…)`, `Coleção Pessoal`, `Vender` — não
+    mapeiam para slot nenhum e ficam com o comportamento que sempre tiveram.
+  * `recolher_das_pastas` — **um caminho só, e é o que já estava testado**: a
+    foto MOVE-SE para a raiz de `pendentes/` com o nome
+    `site-<slot>-<data>-<n>.<ext>` (`fotosite.nome_ficheiro`), que é o mesmo
+    nome que o botão «Tirar fotos» escreve. Daí para a frente é tudo o caminho
+    de 2026-09-21 sem uma linha nova: o `revalidacao.alvo_da_foto` prefere as
+    cópias daquela caixa, o `esperadas.md` diz o que esperar, o
+    `arrumar_fotos`/`pasta_do_alvo` arruma-a em `data/fotos/<slot>/`. Escrever
+    um segundo caminho ao lado era deixar os dois discordarem um dia, em
+    silêncio — a lição do `e_foil`, do `vistoId` e do `venda.mostrar`.
 """
 from __future__ import annotations
 
+import datetime as _dt
+import re
 import shutil
+import time
+import unicodedata
 from pathlib import Path
 
 from . import db
+from .site_shell import URL_EDICAO
 
 # ---------------------------------------------------------------------------
 # A REGRA, num sítio só
@@ -209,11 +236,13 @@ def texto_do_plano(nome: str, slot: str, fotos_: list[dict], *,
     """O plano de fotos de um deck em TEXTO, para ele ler à frente da estante.
 
     Sai das MESMAS fotos que a página desenha (`fases.fila_decks`) — não é uma
-    segunda contagem. Existe porque o supervisor pré-criou uma pasta por deck em
-    `Colocar fotos da coleção aqui\\` com um `_plano.txt` que prometia este
-    plano **e mandava largar as fotos nessa pasta** — e nada no vault processa
-    essa pasta: as fotos ficavam lá para sempre, sem um único erro. O plano
-    fica; a instrução passou a dizer o sítio certo.
+    segunda contagem: a pasta e a página têm de dizer o mesmo número.
+
+    A instrução mudou DUAS vezes no mesmo dia, e a segunda é a dele: de manhã
+    este ficheiro mandava largar as fotos nesta pasta e **nada no vault a
+    processava** (ficavam lá para sempre); corrigiu-se para `pendentes\\`; e à
+    tarde ele decidiu *"o melhor é criar pasta"*. Agora a pasta **é** o alvo —
+    ver `recolher_das_pastas` —, e é isso que aqui está escrito.
     """
     cartas = sum(f["cartas"] for f in fotos_)
     out = [f"PLANO DE FOTOS -- {nome}",
@@ -225,12 +254,16 @@ def texto_do_plano(nome: str, slot: str, fotos_: list[dict], *,
            ""]
     if conversao:
         out += ["*** ESTE DECK FICA PARA DEPOIS ***", nota or NOTA_CONVERSAO_TXT, ""]
-    out += ["ONDE LARGAR AS FOTOS: soltas na RAIZ de  pendentes\\",
-            "  (ou pelo telemovel, no botao «Tirar fotos» da pagina)",
-            "NAO as largues nesta pasta: 'Colocar fotos da colecao aqui' e para",
-            "  cartas NOVAS e NADA a processa -- as fotos ficavam aqui para sempre.",
-            "Antes de fotografar, fixa o ALVO: pagina «Arrumacao por fases», Fase 2,",
-            "  botao «Fotografar este deck». E o alvo que arruma as fotos por deck.",
+    out += ["ONDE LARGAR AS FOTOS: NESTA PASTA.",
+            f"  O vault reconhece a pasta como este deck (alvo: {slot}) e trata",
+            "  as fotos como se as tivesses tirado na pagina. Nao precisas de",
+            "  fixar alvo nenhum. Podes fazer subpastas de lote ('lote1').",
+            "  A foto e MOVIDA daqui para pendentes\\ com o nome a dizer o deck,",
+            "  e depois arrumada em data\\fotos\\" + slot + "\\. Nada se apaga.",
+            "",
+            "A OUTRA PORTA: " + URL_EDICAO,
+            "  botao «Tirar fotos» (abre a camara do telemovel) -- ai nao ha",
+            "  pasta nenhuma, a foto guarda-se sozinha.",
             "", "=" * 70, ""]
     tipo = None
     for f in fotos_:
@@ -252,6 +285,76 @@ def texto_do_plano(nome: str, slot: str, fotos_: list[dict], *,
 
 NOTA_CONVERSAO_TXT = ("Este deck e do grupo que partilha as cartas e se monta "
                       "por conversao de outro. Primeiro os de lista unica.")
+
+
+def pasta_do_deck(nome: str, raiz: Path | str | None = None) -> Path:
+    """A pasta de um deck em `Colocar fotos da coleção aqui\\`, nas duas formas
+    (com `/` e com ` - `). A que EXISTE ganha; senão devolve a forma com o nome
+    tal e qual, para quem chama poder dizer «não há pasta»."""
+    base = pasta_novas(raiz)
+    for n in (nome, nome_de_pasta(nome)):
+        if (base / n).is_dir():
+            return base / n
+    return base / nome
+
+
+_PLANO = "_plano.txt"
+
+
+def escrever_planos(con, res: dict, cfg: dict | None = None,
+                    raiz: Path | str | None = None) -> dict:
+    """Reescreve o `_plano.txt` de cada pasta de deck, das MESMAS fotos que a
+    página desenha (`fases.fila_decks`).
+
+    Chamam-no o `cli fotos plano` e o passo `fotos-plano` do `daily` — o segundo
+    é o que faz o ficheiro **nunca ficar velho** (ordem dele). Por isso o motor
+    está aqui e não no CLI: a pasta e a página têm de dizer o mesmo número, e
+    duas escritas do mesmo ficheiro divergiam no dia em que uma mudasse.
+
+    **Só escreve onde a pasta JÁ existe** — não se criam pastas por iniciativa
+    própria —, e a pasta de um deck sem nada na caixa, se já tiver um
+    `_plano.txt`, fica com a nota a dizer que não há nada para fotografar: um
+    plano que promete fotos de um deck vazio é um ficheiro a mentir.
+    """
+    from . import fases                                      # noqa: PLC0415
+    f2 = fases.fila_decks(con, res, cfg)
+    out: dict = {"escritos": [], "sem_pasta": [], "vazios": [],
+                 "fotos": f2["barra"]["fotos"], "cartas": f2["barra"]["cartas"]}
+    com_fila = set()
+    for f in f2["filas"]:
+        d = pasta_do_deck(f["nome"], raiz)
+        if not d.is_dir():
+            out["sem_pasta"].append(f["nome"])
+            continue
+        com_fila.add(f["nome"])
+        (d / _PLANO).write_text(
+            texto_do_plano(f["nome"], f["slot"], f["fotos"],
+                           conversao=f["conversao"], nota=f["nota"]),
+            encoding="utf-8")
+        out["escritos"].append({"nome": f["nome"], "slot": f["slot"],
+                                "fotos": f["barra"]["fotos"],
+                                "cartas": f["barra"]["cartas"],
+                                "ficheiro": str(d / _PLANO)})
+    for s in res.get("slots") or []:
+        nome = s.get("nome") or s["slot"]
+        d = pasta_do_deck(nome, raiz)
+        if nome in com_fila or not (d / _PLANO).is_file():
+            continue
+        (d / _PLANO).write_text(texto_sem_cartas(nome, s["slot"]),
+                                encoding="utf-8")
+        out["vazios"].append(nome)
+    return out
+
+
+def texto_sem_cartas(nome: str, slot: str) -> str:
+    return (f"PLANO DE FOTOS -- {nome}\nslot: {slot}\n\n"
+            "Este deck NAO tem cartas registadas dentro da caixa, por isso\n"
+            "nao ha nada para fotografar aqui ainda.\n\n"
+            "Quando houver, as fotos vem para ESTA pasta: o vault reconhece\n"
+            f"a pasta como este deck (alvo: {slot}) e trata-as como se as\n"
+            "tivesses tirado na pagina. Nada se apaga.\n"
+            f"A outra porta: {URL_EDICAO}\n"
+            "O plano a serio esta na pagina «Arrumacao por fases», Fase 2.\n")
 
 
 def barra(fotos: list[dict]) -> dict:
@@ -475,3 +578,179 @@ def arquivar(pendentes: str | Path | None = None,
     return {"movidas": len(movidas), "ja_la": len(ja_la), "outros": len(outros),
             "bytes": tam, "destino": str(alvo), "lista": movidas,
             "lista_ja_la": ja_la}
+
+
+# ---------------------------------------------------------------------------
+# A PASTA POR DECK VALE COMO ALVO (André, 2026-10-01, à letra: «o melhor é
+# criar pasta»)
+# ---------------------------------------------------------------------------
+PASTA_NOVAS = "Colocar fotos da coleção aqui"
+# As pastas de GRUPO que já lá estavam. Não mapeiam para slot nenhum e ficam
+# com o comportamento de sempre — ninguém as processa automaticamente. Estão
+# aqui NOMEADAS só para a recolha poder dizer *porquê* é que não lhes mexe, em
+# vez de as tratar como uma pasta desconhecida.
+PASTAS_DE_GRUPO = ("Premodern (geral)", "SPML (Standard Pioneer Modern Legacy)",
+                   "Coleção Pessoal", "Vender")
+# Quanto tempo uma foto tem de estar quieta antes de se mexer nela. Uma foto
+# que ainda está a ser copiada (do telemóvel, da app do GitHub) movia-se a
+# meio. O `mtg-fotos-novas` tem a sua própria regra de 2 min sobre o mtime, e o
+# `shutil.move` dentro do mesmo volume PRESERVA o mtime — por isso esta espera
+# curta chega: a de 2 min continua a valer do outro lado.
+SOSSEGO_S = 20
+
+
+def _norm(s: str) -> str:
+    """O nome de uma pasta reduzido ao que se pode comparar.
+
+    `-`, `/`, `—`, `–`, `_`, `(`, `)` e qualquer espaço passam a UM espaço, e
+    tudo em minúsculas. É o que faz «Elves - Survival» (a pasta, que não pode
+    ter `/`), «Elves / Survival» (o nome da caixa) e «elves survival» serem a
+    mesma coisa — e «Modern — UW Oswald» não depender de ele ter escrito o
+    travessão certo.
+    """
+    t = unicodedata.normalize("NFC", str(s or "")).casefold()
+    t = re.sub(r"[-/—–_()\s]+", " ", t)
+    return t.strip()
+
+
+def pasta_novas(raiz: Path | str | None = None) -> Path:
+    from . import fotocaixa                                  # noqa: PLC0415
+    return Path(raiz or fotocaixa.RAIZ) / PASTA_NOVAS
+
+
+def nome_de_pasta(nome: str) -> str:
+    """O nome de uma caixa como PASTA: a «Elves / Survival» não cabe num
+    caminho. Vivia escrito à mão no `cli.fotos plano`; está aqui para a escrita
+    e a leitura da pasta usarem a mesma regra."""
+    return str(nome or "").replace(" / ", " - ").replace("/", "-")
+
+
+def mapa_pastas(cfg: dict | None = None) -> dict[str, str]:
+    """`nome de pasta normalizado -> slot`, DERIVADO do `caixas` do config.
+
+    Nunca uma lista escrita à mão: no dia em que ele renomear um deck no config,
+    a pasta que o vault reconhece muda com ele. Aceita o NOME da caixa (nas duas
+    formas, com `/` e com ` - `) e o próprio `slot` — o nome ganha sempre, para
+    um slot não poder roubar a pasta de outra caixa.
+    """
+    from . import caixas                                     # noqa: PLC0415
+    slots = caixas.slots(cfg)
+    out: dict[str, str] = {}
+    for s in slots:                        # primeiro os NOMES
+        if not s.get("slot"):
+            continue
+        nome = s.get("nome") or s["slot"]
+        for forma in (nome, nome_de_pasta(nome)):
+            out.setdefault(_norm(forma), s["slot"])
+    for s in slots:                        # e só depois os slots
+        if s.get("slot"):
+            out.setdefault(_norm(s["slot"]), s["slot"])
+    return out
+
+
+def slot_da_pasta(caminho: Path | str, cfg: dict | None = None) -> str | None:
+    """O slot da caixa a que uma foto pertence, pela PASTA em que está — ou
+    `None` (pasta de grupo, pasta desconhecida, ou foto à solta na pasta-mãe).
+
+    A subpasta de lote conta para o mesmo slot: o que manda é a **primeira**
+    pasta abaixo de `Colocar fotos da coleção aqui\\`.
+    """
+    partes = Path(str(caminho)).parts
+    base = _norm(PASTA_NOVAS)
+    i = next((k for k, p in enumerate(partes) if _norm(p) == base), None)
+    resto = partes[i + 1:] if i is not None else partes
+    if len(resto) < 2:
+        return None                        # está na pasta-mãe: não tem deck
+    return mapa_pastas(cfg).get(_norm(resto[0]))
+
+
+def _nome_livre(pasta: Path, slot: str, quando: _dt.datetime, ext: str) -> str:
+    from . import fotosite                                   # noqa: PLC0415
+    usados = {p.name.lower() for p in pasta.glob("*")} if pasta.is_dir() else set()
+    n = 1
+    while True:
+        nome = fotosite.nome_ficheiro("caixa", slot, quando, n, ext)
+        if nome.lower() not in usados:
+            return nome
+        n += 1
+
+
+def fotos_nas_pastas(cfg: dict | None = None,
+                     raiz: Path | str | None = None) -> list[dict]:
+    """O que está hoje nas pastas por deck: `[{ficheiro, pasta, slot, mtime}]`.
+
+    Serve a recolha e serve para a página/CLI poderem dizer o que lá está sem
+    mexer em nada. As pastas que começam por `_` (o `_nomes antigos\\` que o
+    supervisor criou) ficam de fora, e o `_plano.txt` também (não é imagem).
+    """
+    base = pasta_novas(raiz)
+    if not base.is_dir():
+        return []
+    mapa = mapa_pastas(cfg)
+    grupos = {_norm(g) for g in PASTAS_DE_GRUPO}
+    out = []
+    for d in sorted(x for x in base.iterdir() if x.is_dir()):
+        if d.name.startswith("_"):
+            continue
+        slot = mapa.get(_norm(d.name))
+        for f in sorted(x for x in d.rglob("*")
+                        if x.is_file() and x.suffix.lower() in EXT):
+            out.append({"ficheiro": f, "pasta": d.name, "slot": slot,
+                        "grupo": _norm(d.name) in grupos,
+                        "mtime": f.stat().st_mtime})
+    return out
+
+
+def recolher_das_pastas(cfg: dict | None = None, *,
+                        raiz: Path | str | None = None,
+                        agora: float | None = None,
+                        sossego_s: float = SOSSEGO_S) -> dict:
+    """As fotos das pastas por DECK → raiz de `pendentes/`, com o nome do alvo.
+
+    É a decisão dele de 2026-10-01 à tarde (*"o melhor é criar pasta"*), e
+    resolve-se com **o caminho que já existia**: a foto fica a chamar-se
+    `site-<slot>-<data>-<n>.<ext>`, que é o nome que o botão «Tirar fotos» da
+    página escreve, e por isso o passo (0) da revalidação, o `esperadas.md` e o
+    `arrumar_fotos` tratam-na exactamente como uma foto tirada na página.
+
+    MOVE-SE, nunca se copia nem se apaga (a regra dele de 09/09): o original é
+    que fica ligado à cópia, e a pasta dele fica limpa para o lote seguinte. O
+    nome ORIGINAL vai no relatório — não se perde em silêncio. O `quando` do
+    nome novo é o **mtime** da foto (quando ela foi tirada/copiada), e não a hora
+    da recolha: é o mtime que o `mtg-fotos-novas` usa para esperar 2 min, e o
+    `move` dentro do mesmo volume preserva-o.
+
+    Uma pasta de GRUPO ou desconhecida com imagens dentro **não se toca** e
+    aparece em `ignorados` com o porquê — nunca se adivinha a caixa.
+    """
+    from . import fotosite                                   # noqa: PLC0415
+    agora = time.time() if agora is None else agora
+    pend = fotosite.pasta_pendentes(raiz)
+    out: dict = {"recolhidas": [], "ignorados": [], "a_chegar": [],
+                 "pastas": 0, "destino": str(pend)}
+    itens = fotos_nas_pastas(cfg, raiz)
+    if not itens:
+        return out
+    out["pastas"] = len({i["pasta"] for i in itens})
+    pend.mkdir(parents=True, exist_ok=True)
+    for it in itens:
+        f = it["ficheiro"]
+        if not it["slot"]:
+            out["ignorados"].append({
+                "ficheiro": f.name, "pasta": it["pasta"],
+                "porque": ("é uma pasta de grupo — ninguém a processa "
+                           "automaticamente, como sempre" if it["grupo"] else
+                           f"{it['pasta']!r} não é o nome de nenhuma caixa do "
+                           "config (não se adivinha o deck)")})
+            continue
+        if agora - it["mtime"] < sossego_s:
+            out["a_chegar"].append({"ficheiro": f.name, "pasta": it["pasta"]})
+            continue
+        quando = _dt.datetime.fromtimestamp(it["mtime"]).replace(microsecond=0)
+        nome = _nome_livre(pend, it["slot"], quando, f.suffix.lstrip(".").lower())
+        shutil.move(str(f), str(pend / nome))
+        out["recolhidas"].append({"de": f.name, "pasta": it["pasta"],
+                                  "slot": it["slot"], "para": nome})
+    if out["recolhidas"]:
+        _CACHE.clear()
+    return out

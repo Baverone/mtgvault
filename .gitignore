@@ -83,6 +83,11 @@ Colocar fotos da coleção aqui/**/*.png
 Colocar fotos da coleção aqui/**/*.heic
 Colocar fotos da coleção aqui/**/*.webp
 Colocar fotos da coleção aqui/**/*.gif
+# O `.heif` faltava nas duas listas e o `mtgvault.fotos.EXT` aceita-o: uma foto
+# de iPhone largada na pasta do deck ia para o Git enquanto a recolha não
+# passasse por lá (01/10/2026).
+Colocar fotos da coleção aqui/**/*.heif
+pendentes/**/*.heif
 Fotos processadas da coleção/**/*.jpg
 Fotos processadas da coleção/**/*.jpeg
 Fotos processadas da coleção/**/*.png

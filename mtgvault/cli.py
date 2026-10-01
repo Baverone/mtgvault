@@ -179,10 +179,12 @@ def main(argv=None):
     # dizer quais já não têm ficheiro no disco.
     ft = sub.add_parser("fotos",
                         help="fotos: `arquivar` move as de «fotos processadas» "
-                             "para data/fotos/anteriores; `perdidas` lista as "
-                             "que já não estão no disco; `estado` resume")
+                             "para data/fotos/anteriores; `recolher` leva as "
+                             "das pastas por deck para pendentes/; `perdidas` "
+                             "lista as que já não estão no disco; `estado` resume")
     ft.add_argument("accao", nargs="?", default="estado",
-                    choices=["estado", "arquivar", "perdidas", "plano"])
+                    choices=["estado", "arquivar", "perdidas", "plano",
+                             "recolher", "pastas"])
     ft.add_argument("--json", action="store_true", help="saída em JSON")
 
     ar = sub.add_parser("arrumar",
@@ -1201,61 +1203,62 @@ def _fotos_cmd(con, args):
                   f"estavam (o `aplicado.csv` vive lá)")
         print("  nada se apagou; o resolvedor procura nas duas pastas")
         return
+    if args.accao in ("recolher", "pastas"):
+        # A PASTA POR DECK VALE COMO ALVO (2026-10-01): as fotos que ele largou
+        # em `Colocar fotos da coleção aqui/<deck>/` vão para a raiz de
+        # `pendentes/` com o nome `site-<slot>-…`, que é o mesmo nome que o
+        # botão «Tirar fotos» escreve — daí para a frente é o caminho de
+        # 2026-09-21 sem uma linha nova. `pastas` só mostra o que lá está.
+        if args.accao == "pastas":
+            itens = fotos_mod.fotos_nas_pastas()
+            if args.json:
+                print(_json.dumps([{"ficheiro": str(i["ficheiro"]),
+                                    "pasta": i["pasta"], "slot": i["slot"],
+                                    "grupo": i["grupo"]} for i in itens],
+                                  ensure_ascii=False, indent=1))
+                return
+            for i in itens:
+                print(f"  {i['pasta']}/{i['ficheiro'].name}  -> "
+                      + (i["slot"] or ("grupo (ninguém a processa)" if i["grupo"]
+                                       else "pasta sem caixa no config")))
+            print(f"  {len(itens)} fotos em "
+                  f"{len({i['pasta'] for i in itens})} pastas")
+            mapa = fotos_mod.mapa_pastas()
+            print(f"  {len(set(mapa.values()))} caixas reconhecidas pela pasta "
+                  "(o mapa sai do `caixas` do config)")
+            return
+        r = fotos_mod.recolher_das_pastas()
+        if args.json:
+            print(_json.dumps(r, ensure_ascii=False, indent=1))
+            return
+        for x in r["recolhidas"]:
+            print(f"  {x['pasta']}/{x['de']}  ->  pendentes/{x['para']}  "
+                  f"(alvo {x['slot']})")
+        for x in r["a_chegar"]:
+            print(f"  a chegar (ainda a ser copiada): {x['pasta']}/{x['ficheiro']}")
+        for x in r["ignorados"]:
+            print(f"  deixado em {x['pasta']}/{x['ficheiro']}: {x['porque']}")
+        print(f"  {len(r['recolhidas'])} fotos recolhidas de {r['pastas']} "
+              "pastas; nada se apagou")
+        return
     if args.accao == "plano":
-        # O plano de cada deck em TEXTO, das MESMAS fotos que a página desenha.
-        # Só se escreve onde a pasta JÁ existe — não se criam pastas por
-        # iniciativa própria.
-        pasta = loadout._col.ROOT / "Colocar fotos da coleção aqui"
-
-        def _dir(nome):
-            # O nome da caixa pode ter `/` (a «Elves / Survival»), que não cabe
-            # num caminho — a pasta à mão tem ` - `. Tenta as duas formas.
-            for n in (nome, nome.replace(" / ", " - ").replace("/", "-")):
-                if (pasta / n).is_dir():
-                    return pasta / n
-            return pasta / nome
-
+        # O motor vive no `fotos.escrever_planos` e não aqui: o `daily` escreve
+        # os mesmos ficheiros todas as noites (passo `fotos-plano`), e duas
+        # escritas do mesmo `_plano.txt` discordavam no dia em que uma delas
+        # mudasse — a pasta e a página têm de dizer o mesmo número.
         rep = loadout.report(con)
-        f2 = fases.fila_decks(con, rep)
-        escritos, sem_pasta, vazios = [], [], []
-        com_fila = set()
-        for f in f2["filas"]:
-            d = _dir(f["nome"])
-            if not d.is_dir():
-                sem_pasta.append(f["nome"])
-                continue
-            com_fila.add(f["nome"])
-            alvo = d / "_plano.txt"
-            alvo.write_text(fotos_mod.texto_do_plano(
-                f["nome"], f["slot"], f["fotos"], conversao=f["conversao"],
-                nota=f["nota"]), encoding="utf-8")
-            escritos.append(f'{f["nome"]} ({f["barra"]["fotos"]} fotos, '
-                            f'{f["barra"]["cartas"]} cartas)')
-        # As pastas dos decks SEM nada na caixa também têm o `_plano.txt`
-        # pré-escrito que manda largar as fotos ali. Não se deixa a mentir.
-        for s in rep["slots"]:
-            nome = s.get("nome") or s["slot"]
-            d = _dir(nome)
-            if nome in com_fila or not (d / "_plano.txt").is_file():
-                continue
-            (d / "_plano.txt").write_text(
-                f"PLANO DE FOTOS -- {nome}\nslot: {s['slot']}\n\n"
-                "Este deck NAO tem cartas registadas dentro da caixa, por isso\n"
-                "nao ha nada para fotografar aqui ainda.\n\n"
-                "E quando houver: as fotos vao soltas na RAIZ de  pendentes\\\n"
-                "NAO nesta pasta -- 'Colocar fotos da colecao aqui' e para\n"
-                "cartas NOVAS e NADA a processa.\n"
-                "O plano a serio esta na pagina «Arrumacao por fases», Fase 2.\n",
-                encoding="utf-8")
-            vazios.append(nome)
-        for x in escritos:
-            print(f"  escrito  {x}")
-        if vazios:
-            print(f"  sem cartas na caixa (nota corrigida): {', '.join(vazios)}")
-        if sem_pasta:
-            print(f"  sem pasta (não se criou nenhuma): {', '.join(sem_pasta)}")
-        print("  o plano sai da MESMA fila da página; as fotos vão para "
-              "`pendentes\\`, não para estas pastas")
+        r = fotos_mod.escrever_planos(con, rep)
+        if args.json:
+            print(_json.dumps(r, ensure_ascii=False, indent=1))
+            return
+        for x in r["escritos"]:
+            print(f'  escrito  {x["nome"]} ({x["fotos"]} fotos, {x["cartas"]} cartas)')
+        if r["vazios"]:
+            print(f"  sem cartas na caixa (nota corrigida): {', '.join(r['vazios'])}")
+        if r["sem_pasta"]:
+            print(f"  sem pasta (não se criou nenhuma): {', '.join(r['sem_pasta'])}")
+        print("  o plano sai da MESMA fila da página; as fotos largam-se na "
+              "pasta do deck (`fotos recolher` leva-as a `pendentes\\`)")
         return
     perd = fotos_mod.copias_sem_foto_no_disco(con)
     grandes = revalidacao.fotos_que_nao_validam(con)

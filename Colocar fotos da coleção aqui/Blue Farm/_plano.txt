@@ -5,12 +5,16 @@ REGRA: no maximo 4 CARTAS por foto, agrupadas por TIPO.
 As copias da MESMA carta vao sempre juntas (4x Mox Opal = 1 foto).
 Cada carta tem de estar a vista e poder avaliar-se.
 
-ONDE LARGAR AS FOTOS: soltas na RAIZ de  pendentes\
-  (ou pelo telemovel, no botao «Tirar fotos» da pagina)
-NAO as largues nesta pasta: 'Colocar fotos da colecao aqui' e para
-  cartas NOVAS e NADA a processa -- as fotos ficavam aqui para sempre.
-Antes de fotografar, fixa o ALVO: pagina «Arrumacao por fases», Fase 2,
-  botao «Fotografar este deck». E o alvo que arruma as fotos por deck.
+ONDE LARGAR AS FOTOS: NESTA PASTA.
+  O vault reconhece a pasta como este deck (alvo: cedh-blue-farm) e trata
+  as fotos como se as tivesses tirado na pagina. Nao precisas de
+  fixar alvo nenhum. Podes fazer subpastas de lote ('lote1').
+  A foto e MOVIDA daqui para pendentes\ com o nome a dizer o deck,
+  e depois arrumada em data\fotos\cedh-blue-farm\. Nada se apaga.
+
+A OUTRA PORTA: https://editar-mtg.baverone.com/
+  botao «Tirar fotos» (abre a camara do telemovel) -- ai nao ha
+  pasta nenhuma, a foto guarda-se sozinha.
 
 ======================================================================
 

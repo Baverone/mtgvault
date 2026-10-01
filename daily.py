@@ -445,6 +445,30 @@ def main():
 
         _step(con, "fotos-caixas", _fotos_caixas)
 
+        # A PASTA POR DECK VALE COMO ALVO (André, 2026-10-01, à letra: «o melhor
+        # é criar pasta»): as fotos largadas em `Colocar fotos da coleção aqui/
+        # <nome do deck>/` passam para a raiz de `pendentes/` com o nome
+        # `site-<slot>-…` — o mesmo que o botão «Tirar fotos» escreve. Aqui é a
+        # REDE DE SEGURANÇA: quem as recolhe primeiro é o `mtg-fotos-novas` das
+        # 02:30 e o modo de edição a cada pedido; mas se uma foto ficar para
+        # trás, esta corrida leva-a, e o `esperadas.md` que se escreve logo a
+        # seguir (passo `deckboxes`) já a conta.
+        def _fotos_pastas():
+            from mtgvault import fotos as _fotos            # noqa: PLC0415
+            r = _fotos.recolher_das_pastas(raiz=ROOT)
+            if not (r["recolhidas"] or r["ignorados"] or r["a_chegar"]):
+                return "sem fotos nas pastas dos decks"
+            return (f"{len(r['recolhidas'])} recolhida(s) de {r['pastas']} pasta(s)"
+                    + ("; " + ", ".join(f"{x['pasta']}/{x['de']}→{x['slot']}"
+                                        for x in r["recolhidas"][:8])
+                       if r["recolhidas"] else "")
+                    + (f"; {len(r['a_chegar'])} a chegar" if r["a_chegar"] else "")
+                    + ("; deixadas: " + "; ".join(f"{i['pasta']}/{i['ficheiro']}"
+                                                  for i in r["ignorados"][:6])
+                       if r["ignorados"] else ""))
+
+        _step(con, "fotos-pastas", _fotos_pastas)
+
         def _deckboxes():
             _rep["v"] = loadout.report(con)
             out = deckboxes.build(con, ROOT / "deckboxes.html", rep=_rep["v"])
@@ -466,6 +490,24 @@ def main():
         _step(con, "arrumacao",
               lambda: str(arrumacao.build(con, ROOT / "arrumacao.html",
                                           rep=_rep.get("v"))))
+
+        # O `_plano.txt` DE CADA PASTA DE DECK (André, 2026-10-01): reescreve-se
+        # todas as noites, das MESMAS fotos da Fase 2 que a página acabou de
+        # desenhar. Sem isto, o plano que ele lê à frente da estante era uma
+        # fotografia do dia em que alguém correu o CLI à mão — e uma lista de
+        # fotos velha manda-o fotografar cartas que já validou.
+        def _fotos_plano():
+            from mtgvault import fotos as _fotos            # noqa: PLC0415
+            rep = _rep.get("v") or loadout.report(con)
+            r = _fotos.escrever_planos(con, rep)
+            return (f"{len(r['escritos'])} planos ({r['fotos']} fotos, "
+                    f"{r['cartas']} cartas)"
+                    + (f"; {len(r['vazios'])} sem cartas na caixa"
+                       if r["vazios"] else "")
+                    + ("; sem pasta: " + ", ".join(r["sem_pasta"][:6])
+                       if r["sem_pasta"] else ""))
+
+        _step(con, "fotos-plano", _fotos_plano)
         # A SAÍDA DA VENDA (2026-09-18): `data/venda-stock.csv` (para carregar
         # stock no Cardmarket) + `data/venda-estante.txt` (para ir buscar as
         # cartas à estante). Fora do Git — levam preços por cópia, como o

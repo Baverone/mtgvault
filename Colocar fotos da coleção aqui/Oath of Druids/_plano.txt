@@ -4,7 +4,8 @@ slot: premodern-oath
 Este deck NAO tem cartas registadas dentro da caixa, por isso
 nao ha nada para fotografar aqui ainda.
 
-E quando houver: as fotos vao soltas na RAIZ de  pendentes\
-NAO nesta pasta -- 'Colocar fotos da colecao aqui' e para
-cartas NOVAS e NADA a processa.
+Quando houver, as fotos vem para ESTA pasta: o vault reconhece
+a pasta como este deck (alvo: premodern-oath) e trata-as como se as
+tivesses tirado na pagina. Nada se apaga.
+A outra porta: https://editar-mtg.baverone.com/
 O plano a serio esta na pagina «Arrumacao por fases», Fase 2.

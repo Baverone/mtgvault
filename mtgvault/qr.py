@@ -8,9 +8,12 @@ em instalações e não se paga uma única vez. O `qrcode`, quando está instala
 continua a servir para o QR em ASCII na consola; a página não depende dele.
 
 O que está implementado: **modo byte, nível de correcção M, versões 1 a 10** — o
-suficiente com folga para um `http://192.168.1.70:8771/?t=<32 hex>` (54 bytes,
-versão 4). O resto da norma (modos numérico/alfanumérico, versões acima de 10,
-ECI) não entra: código que ninguém corre é código que ninguém corrige.
+suficiente com folga para o link do modo de edição. Era um
+`http://192.168.1.70:8771/?t=<32 hex>` (54 bytes, versão 4); desde 2026-10-01 é
+`https://editar-mtg.baverone.com/?t=<32 hex>` (68 bytes, versão 5 — a 10 cabem
+213), porque o endereço que se lhe dá é o NOME e nunca o IP da rede local. O
+resto da norma (modos numérico/alfanumérico, versões acima de 10, ECI) não
+entra: código que ninguém corre é código que ninguém corrige.
 
 Referência: ISO/IEC 18004. O `test_qr.py` compara a matriz, quando a biblioteca
 `qrcode` está instalada, com a dela — é a verificação que importa, porque um QR

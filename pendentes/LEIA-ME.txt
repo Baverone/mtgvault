@@ -4,12 +4,20 @@ PASTA DE FOTOS POR CATALOGAR
 Larga aqui as fotos das cartas novas (do telemóvel: app do GitHub -> este
 repositório -> pasta pendentes -> "Add file / Upload files"; ou no PC).
 
-Desde 2026-09-21 tambem se tiram DIRECTAMENTE da Deckboxes no telemovel (modo
-edicao, porto 8771: o botao «Tirar fotos» de cada caixa / da revalidacao, ou o
-camera de cada carta): a foto entra AQUI, inteira, com o nome a dizer de onde
-veio — site-<slot>-<data>-<n>.jpg (a caixa), site-venda-/site-rl-/site-colecao-,
-e -c<copy_id> quando e a foto de UMA carta. O botao «Processar agora» da pagina
-pede ao runner do ai-pc que corra o mtg-fotos-novas sem esperar pelas 02:30.
+Desde 2026-09-21 tambem se tiram DIRECTAMENTE da pagina, no telemovel — modo
+de edicao em  https://editar-mtg.baverone.com/  (o botao «Tirar fotos» de cada
+caixa / da revalidacao, ou o camera de cada carta): a foto entra AQUI, inteira,
+com o nome a dizer de onde veio — site-<slot>-<data>-<n>.jpg (a caixa),
+site-venda-/site-rl-/site-colecao-, e -c<copy_id> quando e a foto de UMA carta.
+O botao «Processar agora» da pagina pede ao runner do ai-pc que corra o
+mtg-fotos-novas sem esperar pelas 02:30.
+
+E desde 2026-10-01 entram aqui TAMBEM as fotos que ele larga na PASTA DO DECK
+(«Colocar fotos da colecao aqui\<nome do deck>\»): o vault reconhece a pasta
+pelo nome do deck e MOVE a foto para ca com o mesmo nome site-<slot>-... --
+daqui para a frente e o caminho de cima, sem diferenca nenhuma. Quem o faz e o
+`fotos.recolher_das_pastas` (CLI: `py -m mtgvault.cli fotos recolher`), chamado
+pelo mtg-fotos-novas e pelo modo de edicao a cada pedido do indice.
 
 Depois, um Claude (esta sessão no PC, OU o claude.ai/code aberto no telemóvel
 apontado a Baverone/mtgvault) olha para estas fotos, reconhece as cartas e

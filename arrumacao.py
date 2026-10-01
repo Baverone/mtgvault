@@ -183,15 +183,19 @@ _RODAPE = (
     "campo: são as únicas cópias sem prova nenhuma, e por isso abrem a Fase 2. "
     "<b>Nada se apaga</b> — as fotos antigas foram <b>arquivadas</b>, não "
     "apagadas, e continuam a responder por todas as outras.</p>"
-    "<p><b>Onde largar as fotos.</b> Primeiro fixas o <b>alvo</b> no botão da "
-    "fila (é o mesmo botão «Fotografar» da Deckboxes, e escreve o "
-    "<code>esperadas.md</code> que diz à corrida da noite o que esperar); depois "
-    "as fotos vão <b>soltas na raiz de <code>pendentes\\</code></b>. Não vão para "
-    "<code>pendentes\\deckboxes\\</code> — essa é a foto da caixa de plástico — "
-    "nem para <code>Colocar fotos da coleção aqui\\</code>, que é para cartas "
-    "<b>novas</b>: estas cópias já estão no inventário, e o que a foto faz é "
-    "<b>ligar-se à cópia que já existe</b> em vez de criar outra. Também as podes "
-    "tirar do telemóvel, na Deckboxes, que as põe no sítio certo sozinha.</p>"
+    "<p><b>Onde largar as fotos — há duas portas, e as duas dão ao mesmo.</b> "
+    "(a) <b>Pela página</b>, no botão «Tirar fotos» (abre a câmara do "
+    "telemóvel): a foto guarda-se sozinha, não há pasta nenhuma. (b) <b>Com a "
+    "app da câmara</b>, largando-as na <b>pasta do deck</b> — "
+    "<code>Colocar fotos da coleção aqui\\&lt;nome do deck&gt;\\</code> —, onde o "
+    "<code>_plano.txt</code> diz o que tirar; o vault reconhece a pasta como o "
+    "deck (é o mesmo alvo do botão «Fotografar») e trata-as como se tivessem "
+    "sido tiradas aqui. Subpastas de lote (<code>lote1</code>) contam para o "
+    "mesmo deck. O que não é de um deck (a venda, o inventário) vai solto na "
+    "raiz de <code>pendentes\\</code>, com o alvo fixado no botão. Nunca para "
+    "<code>pendentes\\deckboxes\\</code> — essa é a foto "
+    "da caixa de plástico. Estas cópias <b>já estão no inventário</b>: o que a "
+    "foto faz é <b>ligar-se à cópia que já existe</b> em vez de criar outra.</p>"
     "<p><b>O inventário é paralelo.</b> As fotos da Reserved List e das "
     "shock/fetchlands não são um passo da venda e nunca bloqueiam nenhuma fase.</p>")
 
@@ -326,12 +330,16 @@ function fase1() {
    trabalha. Fecha-se a volta aqui, com o MESMO endpoint (`/api/revalidacao`) e
    o mesmo motor (`revalidacao.definir_alvo`): um segundo caminho ao lado
    discordava do primeiro um dia qualquer, em silêncio. */
-const ONDE = 'Depois de fixar o alvo, as fotos vão <b>soltas na raiz de '
-  + '<code>pendentes\\</code></b>. Não vão para <code>pendentes\\deckboxes\\</code> '
-  + '(essa é a foto da caixa de plástico) nem para '
-  + '<code>Colocar fotos da coleção aqui\\</code> (essa é para cartas <b>novas</b>; '
-  + 'estas cópias já estão no inventário). A corrida da noite <b>liga cada foto à '
-  + 'cópia que já existe</b> em vez de criar outra.';
+const ONDE = 'Duas portas: <b>«Tirar fotos»</b> aqui na página (a foto '
+  + 'guarda-se sozinha, não há pasta), ou a app da câmara e largá-las na '
+  + '<b>pasta do deck</b> — <code>Colocar fotos da coleção aqui\\&lt;nome do '
+  + 'deck&gt;\\</code>, onde está o <code>_plano.txt</code>. A pasta <b>vale '
+  + 'como alvo</b>: o vault reconhece-a pelo nome do deck. O que não é de um '
+  + 'deck (a venda, o inventário) vai <b>solto na raiz de '
+  + '<code>pendentes\\</code></b>, com o alvo fixado no botão. Nunca para '
+  + '<code>pendentes\\deckboxes\\</code> (essa é a foto da caixa de plástico). '
+  + 'A corrida da noite <b>liga cada foto à cópia que já existe</b> em vez de '
+  + 'criar outra.';
 
 function alvoHTML() {
   const r = D.revalidacao || {};

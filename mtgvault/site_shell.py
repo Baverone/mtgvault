@@ -237,6 +237,17 @@ SECCOES: list[tuple[str, list[tuple[str, str, str, str, str]]]] = [
 # mtgvault é uma secção do baverone.com).
 CASA = ("https://baverone.com", "baverone.com")
 
+# OS DOIS ENDEREÇOS DO MTGVAULT, NUM SÍTIO SÓ (André, 2026-10-01, à letra: o
+# centro é o baverone.com, e o modo de edição é o editar-mtg). **O IP da rede
+# local não se usa, nem se lhe dá**: o modo de edição chega-lhe pelo nome, por
+# HTTPS e atrás do Cloudflare Access — o porto 8771 continua a ser o porto, por
+# dentro e nas tarefas do ai-pc, e não um endereço. Vivem aqui pela razão do
+# `venda.mostrar` e do `precos.sql()`: são sete superfícies a dizer o mesmo
+# endereço, e a segunda que o escrevesse à mão mandava-o a um sítio que já não
+# existe.
+URL_PUBLICO = "https://mtg.baverone.com/"
+URL_EDICAO = "https://editar-mtg.baverone.com/"
+
 # «PARA JÁ TIRA O VENDER» (André, 2026-09-25). Com `venda.mostrar` a `false`, a
 # secção fica só com as COMPRAS — e por isso muda de nome. «Compras e venda»
 # por cima de quatro itens que não têm venda nenhuma era a barra a prometer uma

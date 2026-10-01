@@ -369,7 +369,13 @@ def caso_ler_sem_token_da_pagina_so_de_leitura():
     p = Pedido("/data/paginas/deckboxes/nao-existe.json")
     p.do_GET()
     assert p.codigo == 404 and "não há parte" in p.corpo, (p.codigo, p.corpo)
-    assert dados["ligacao"]["url"].startswith("http://"), dados["ligacao"]
+    # O ENDEREÇO É O NOME, NUNCA O IP (ordem dele, 2026-10-01): era
+    # `http://192.168.x.y:8771/?t=…`. O `ip`/`ips` saíram do payload de
+    # propósito — tirá-lo do ecrã e deixá-lo nos dados era tirá-lo só da vista.
+    assert dados["ligacao"]["url"].startswith("https://editar-mtg.baverone.com/"), \
+        dados["ligacao"]
+    assert "ip" not in dados["ligacao"] and "ips" not in dados["ligacao"], \
+        dados["ligacao"]
     assert dados["ligacao"]["url"].endswith(t), "o link do QR tem de levar o token"
     assert dados["ligacao"]["porto"] == webapp.PORT
     print("com o token no link: modo edicao, botoes e o QR do telemovel")

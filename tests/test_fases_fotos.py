@@ -297,23 +297,34 @@ def caso_a_pagina_mostra_o_alvo_actual_e_onde_largar_as_fotos():
     assert "Estás a fotografar" in v and "Caixa UW Replenish" in v, v[:900]
     assert "4 cópias</b> por fotografar" in v, v[:1500]
     assert "data-alvo-parar" in v, "tem de haver como parar"
-    # (c) ONDE: soltas na raiz de `pendentes\`, e NÃO nas outras duas pastas.
-    assert "pendentes\\</code></b>" in v, v[:1500]
+    # (c) ONDE: as DUAS portas. Esta asserção mudou a 2026-10-01 à tarde, com a
+    # decisão dele (*"o melhor é criar pasta"*): até aí a página mandava-o para
+    # a raiz de `pendentes\` e dizia que «Colocar fotos da coleção aqui» era só
+    # para cartas NOVAS. Agora a PASTA DO DECK é uma porta a sério — ver
+    # `test_pasta_por_deck.py` — e o que tem de continuar escrito é a outra
+    # pasta que nunca é para cartas.
+    assert "Colocar fotos da coleção aqui" in v, v[:1500]
+    assert "pasta do deck" in v and "vale" in v, v[:1500]
     assert "pendentes\\deckboxes\\" in v and "caixa de plástico" in v, v[:1500]
-    assert "Colocar fotos da coleção aqui" in v and "novas" in v, v[:1500]
     assert "liga cada foto à" in v, "tem de dizer que a foto se LIGA à cópia"
     repor()
-    print("a pagina diz qual e o alvo, quantas faltam, e onde largar as fotos")
+    print("a pagina diz qual e o alvo, quantas faltam, e as duas portas das fotos")
 
 
 def caso_o_rodape_tambem_diz_onde_e_onde_nao():
-    """Escrito na PRÓPRIA página, não só no LEIA-ME: é na página que ele está."""
+    """Escrito na PRÓPRIA página, não só no LEIA-ME: é na página que ele está.
+
+    Desde a decisão dele de 2026-10-01 à tarde o rodapé tem de dizer as DUAS
+    portas (a página e a pasta do deck) e continuar a dizer a pasta que NUNCA é
+    para cartas (`pendentes\\deckboxes\\`).
+    """
     rod = arrumacao._RODAPE
-    assert "pendentes\\</code>" in rod, rod[-900:]
+    assert "Colocar fotos da coleção aqui" in rod, rod[-900:]
+    assert "pasta do deck" in rod and "_plano.txt" in rod, rod[-900:]
+    assert "Tirar fotos" in rod, "a outra porta é a página"
     assert "pendentes\\deckboxes\\" in rod and "caixa de plástico" in rod
-    assert "Colocar fotos da coleção aqui" in rod
     assert "ligar-se à cópia que já existe" in rod
-    print("o rodape da pagina diz onde largar as fotos e onde NAO")
+    print("o rodape da pagina diz as duas portas das fotos e a pasta que nao e")
 
 
 # ===========================================================================

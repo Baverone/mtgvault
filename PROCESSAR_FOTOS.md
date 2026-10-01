@@ -40,7 +40,12 @@ André: *"tirar as fotos directamente do site"*). O nome diz de onde:
 fotografar (`site-duel-commander-…`, `site-modern-…`); `site-venda-…`,
 `site-rl-…` e `site-colecao-…` são a lista de venda, a Caixa Reserved List e o
 resto da Colecção; e `…-c<copy_id>.jpg` diz a CÓPIA esperada nessa foto (o
-André carregou no 📷 dessa carta). **É uma pista, não uma resposta**: escreve o
+André carregou no 📷 dessa carta). **Desde 2026-10-01 um nome `site-<slot>-…`
+pode também vir da PASTA DO DECK** — ele larga as fotos em `Colocar fotos da
+coleção aqui/<nome do deck>/` e o `mtgvault.fotos.recolher_das_pastas` move-as
+para a raiz de `pendentes/` com este mesmo nome, de propósito: para ti e para o
+import são a mesma coisa, e por isso não há nada de diferente a fazer com elas.
+**É uma pista, não uma resposta**: escreve o
 que VÊS na foto, como sempre, com o `photo_path` — o import prefere as cópias
 dessa caixa (e essa cópia) ao ligar a foto, e trata uma edição/acabamento
 diferente como correcção da cópia. O `esperadas.md` lista estas fotos com a

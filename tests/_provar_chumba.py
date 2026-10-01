@@ -251,6 +251,34 @@ for alvo, casos in (
         print(f"  {'ok  ' if ok else 'FAIL'} chumba sem «{alvo}» "
               f"({caso}): {motivo[-1][:90] if motivo else ''}")
 
+# ---------------------------------------------------------------------------
+# A PASTA POR DECK VALE COMO ALVO (André, 2026-10-01, à tarde: «o melhor é criar
+# pasta»). Noutro processo, pela razão de cima.
+# ---------------------------------------------------------------------------
+for alvo, casos in (
+    ("mapa", ["caso_uma_foto_na_pasta_do_deck_e_reconhecida",
+              "caso_a_subpasta_de_lote_conta_para_o_mesmo_deck",
+              "caso_a_recolha_move_a_foto_com_o_nome_do_alvo"]),
+    ("escrito", ["caso_renomear_a_caixa_muda_a_pasta_sem_tocar_em_codigo"]),
+    ("primeira", ["caso_a_subpasta_de_lote_conta_para_o_mesmo_deck"]),
+    ("grupo", ["caso_as_pastas_de_grupo_nao_valem_como_alvo"]),
+    ("recolhe", ["caso_a_recolha_move_a_foto_com_o_nome_do_alvo"]),
+    ("sossego", ["caso_uma_foto_ainda_a_ser_copiada_nao_se_mexe"]),
+    ("planos", ["caso_o_plano_manda_largar_as_fotos_NESTA_pasta"]),
+    ("vazios", ["caso_uma_caixa_vazia_nao_rebenta_a_geracao"]),
+    ("ip", ["caso_o_endereco_do_modo_de_edicao_e_o_nome_e_nunca_o_ip"]),
+):
+    for caso in casos:
+        p = subprocess.run(
+            [sys.executable, str(AQUI / "_chumba_pasta.py"), alvo, caso],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            cwd=AQUI)
+        ok = p.returncode != 0
+        bom &= ok
+        motivo = (p.stdout or p.stderr or "").strip().splitlines()
+        print(f"  {'ok  ' if ok else 'FAIL'} chumba sem «{alvo}» "
+              f"({caso}): {motivo[-1][:90] if motivo else ''}")
+
 print("TODOS OS CASOS CHUMBAM SEM A FUNCIONALIDADE" if bom
       else "HA CASOS QUE PASSAM SEM A FUNCIONALIDADE")
 sys.exit(0 if bom else 1)

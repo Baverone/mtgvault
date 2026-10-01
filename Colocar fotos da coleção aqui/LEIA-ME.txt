@@ -1,28 +1,73 @@
-COMO ORGANIZAR AS FOTOS DA COLEÇÃO
-==================================
+COMO TIRAR E ONDE LARGAR AS FOTOS DAS CARTAS
+============================================
 
-Arrasta cada foto para a pasta certa:
+Ha DUAS portas, e as duas dao ao mesmo sitio. Escolhe a que te der mais jeito.
 
-DECKS ESPECÍFICOS (cartas que estão nesse deck):
-  Blue Farm/
-  Cloud Duel Commander/
-  Cloud cEDH/
-  Pauper Affinity/
 
-GRUPOS:
-  Premodern (geral)/                       -> qualquer carta dos decks de Premodern
-  SPML (Standard Pioneer Modern Legacy)/   -> cartas destes formatos
-  Coleção Pessoal/                         -> só tuas; NUNCA vão para venda nem
-                                              para decks (no sistema: collector)
+(a) PELA PAGINA, NO TELEMOVEL  ->  https://editar-mtg.baverone.com/
+-------------------------------------------------------------------
+Abres o modo de edicao, vais a caixa (ou a aba «Revalidacao») e carregas em
+«Tirar fotos»: abre a camara, tiras as que quiseres e a foto GUARDA-SE SOZINHA.
+Nao ha pasta nenhuma para arrumar, e o vault ja sabe de que deck e.
 
-PARA VENDER:
-  Vender/                                  -> cartas destinadas a venda
+O site publico (so de leitura) e  https://mtg.baverone.com/
 
-Podes fazer subpastas por lote dentro de qualquer uma (ex.: "lote1").
 
-Depois diz-me: "processa as fotos novas".
-Eu leio todas, identifico as cartas, atualizo o inventário e movo as fotos
-para "Fotos processadas da coleção".
+(b) COM A APP DA CAMARA  ->  LARGA AS FOTOS NA PASTA DO DECK
+------------------------------------------------------------
+Uma pasta por deck, aqui dentro. O nome da pasta e o nome do deck:
 
-Nota: as IMAGENS não vão para o Git (ficam só no PC); as PASTAS sim, para
-teres a mesma estrutura em qualquer PC.
+  Blue Farm\              Cloud cEDH\             Cloud (Duel Commander)\
+  Stiflenought\           UW Replenish\           Enchantress\
+  Oath of Druids\         Elves - Survival\       Ill-Gotten Gains\
+  Modern - UW Oswald\     Pioneer - Greasefang\   Jeskai Control\
+  Pauper (Luffy)\         Standard\               Legacy\
+
+A PASTA VALE COMO ALVO: o vault reconhece-a pelo nome do deck (sai do
+colecao_config.json, por isso se renomeares um deck a pasta acompanha) e trata
+as fotos EXACTAMENTE como se as tivesses tirado na pagina. Nao tens de fixar
+alvo nenhum.
+
+  - dentro de cada pasta ha um _plano.txt que diz O QUE fotografar e por que
+    ordem -- foto a foto, agrupado por tipo de carta;
+  - podes fazer subpastas de lote ("lote1", "lote2"): contam para o mesmo deck;
+  - as fotos sao MOVIDAS daqui para pendentes\ com o nome a dizer o deck, e
+    depois arrumadas em data\fotos\<deck>\. Nada se apaga, nunca.
+
+A corrida da noite (02:30) cataloga-as; na pagina ha o botao «Processar agora»
+se nao quiseres esperar. O _plano.txt e reescrito todos os dias pelo job
+diario, por isso nunca fica velho.
+
+ATE 4 CARTAS POR FOTO (regra tua, 01/10/2026)
+---------------------------------------------
+  - as copias da MESMA carta vao sempre juntas na mesma foto (4x Mox Opal = 1
+    foto, nao 4);
+  - num deck singleton juntam-se ate 4 cartas DIFERENTES, agrupadas POR TIPO
+    (planeswalkers, criaturas, artefactos, encantamentos, instantaneos,
+    feiticos, terras);
+  - cada carta tem de estar a vista e poder avaliar-se.
+Uma foto com mais de 4 cartas NAO valida nada.
+
+
+AS PASTAS DE GRUPO (ficam como sempre foram)
+--------------------------------------------
+  Premodern (geral)\                       cartas dos decks de Premodern
+  SPML (Standard Pioneer Modern Legacy)\   cartas destes formatos
+  Colecao Pessoal\                         so tuas; NUNCA vao para venda nem
+                                           para decks (no sistema: collector)
+  Vender\                                  cartas destinadas a venda
+
+Estas NAO sao um deck e por isso nao valem como alvo: ninguem as processa
+sozinho. Para elas, diz-me "processa as fotos novas" e eu leio-as.
+
+  _nomes antigos\   duas pastas vazias com nomes que mudaram. Nao se apagou
+                    nada; podes apagar a pasta a mao se quiseres.
+
+
+O QUE NAO E PARA AQUI
+---------------------
+pendentes\deckboxes\   e SO para a foto da DECKBOX DE PLASTICO de cada deck
+                       (deckboxes\<slot>.jpg). Nao e para cartas.
+
+Nota: as IMAGENS nao vao para o Git (ficam so no PC); as PASTAS e os _plano.txt
+sim, para teres a mesma estrutura em qualquer PC.
