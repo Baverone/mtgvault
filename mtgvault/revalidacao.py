@@ -53,6 +53,17 @@ TIPOS = ("caixa", "venda", "rl", "coleccao")
 BALDE_RL = "Caixa Reserved List"
 TITULO = {"venda": "Venda", "rl": "Caixa Reserved List",
           "coleccao": "Colecção (o resto)"}
+# O TIPO DE ALVO E O GRUPO DA PARTIÇÃO TÊM NOMES DIFERENTES, e a tradução vive
+# AQUI, num sítio só (2026-10-02). O alvo chama-lhe `coleccao` e a `particao`
+# chama-lhe `resto` — e havia TRÊS sítios a traduzir à mão (o `progresso`, a
+# `seccao_esperadas`) e **um que se esqueceu**: o `_chave`, que devolvia
+# `("coleccao",)` para um grupo que nunca existe. Consequência medida: o alvo da
+# colecção dava `copias = set()`, logo o passo (0) ficava sem preferência e a
+# correcção por discrepância (0b) — que EXIGE `alvo["copias"]` — nunca disparava
+# fora dos decks. Uma carta dos «Extras» fotografada noutra edição criava uma
+# cópia nova em vez de corrigir a que lá está. É o padrão do `event_tier`: nenhum
+# passo dá erro.
+GRUPO_DO_TIPO = {"venda": "venda", "rl": "rl", "coleccao": "resto"}
 
 
 # ---------------------------------------------------------------------------
@@ -495,7 +506,12 @@ def particao(con, rep: dict | None) -> dict[int, list[tuple]]:
 
 
 def _chave(alvo_: dict) -> tuple:
-    return ("caixa", alvo_["slot"]) if alvo_["tipo"] == "caixa" else (alvo_["tipo"],)
+    """O grupo da `particao` a que um ALVO corresponde. A tradução
+    `coleccao → resto` sai do `GRUPO_DO_TIPO` e não de um literal: era aqui que
+    faltava, e o alvo da colecção ficava sem cópias nenhumas."""
+    if alvo_["tipo"] == "caixa":
+        return ("caixa", alvo_["slot"])
+    return (GRUPO_DO_TIPO.get(alvo_["tipo"], alvo_["tipo"]),)
 
 
 def copias_do_alvo(con, alvo_: dict, rep: dict | None) -> set[int]:
@@ -620,8 +636,8 @@ def progresso(con, rep: dict | None = None, dia: str | None = None) -> dict:
     grupos: dict[tuple, dict] = {("caixa", s): _grupo_vazio(("caixa", s), n)
                                  for s, n in nomes.items()}
     for k in ("venda", "rl", "coleccao"):
-        grupos[(k if k != "coleccao" else "resto",)] = _grupo_vazio(
-            (k if k != "coleccao" else "resto",), TITULO[k])
+        chave = (GRUPO_DO_TIPO[k],)
+        grupos[chave] = _grupo_vazio(chave, TITULO[k])
     for cid, ps in partes.items():
         d = copias[cid]
         for g, q in ps:
@@ -694,12 +710,20 @@ def fotos_que_nao_validam(con) -> dict[str, int]:
     com mais do que quatro (`fotos.valida`).
     """
     from . import collection                                # noqa: PLC0415
+    # PELO NOME DO FICHEIRO, como nos outros três sítios que fazem esta conta
+    # (`collection._cartas_por_foto`, `fotos.consumidas`, `valida_esta_foto`).
+    # Era pelo `photo_path` inteiro — e o `arrumar_fotos` reescreve-o com a pasta
+    # do deck à frente só para as cópias da corrida em que a foto SAI de
+    # `pendentes/`: a MESMA foto ficava com duas chaves (`X.jpg` e
+    # `fotos/<slot>/X.jpg`), a contagem partia-se entre as duas e uma foto de 6
+    # cartas lia-se como 3 + 3 — as duas dentro do tecto de 4. O detector da
+    # regra das quatro cartas dava o número errado, em silêncio.
     cartas: dict[str, int] = defaultdict(int)
     for r in con.execute(
             f"""SELECT photo_path p, quantity q FROM copies cp
                  WHERE {collection.na_estante()} AND photo_path IS NOT NULL
                    AND photo_path <> ''"""):
-        cartas[r["p"]] += r["q"]
+        cartas[Path(str(r["p"])).name] += r["q"]
     return {p: n for p, n in cartas.items() if not foto_valida(n)}
 
 
@@ -741,8 +765,7 @@ def seccao_esperadas(con, rep: dict | None = None) -> list[str]:
             rep = None                     # sem caixas no config: só o registado
     prog = progresso(con, rep)
     grp = (next((c for c in prog["caixas"] if c["slot"] == a["slot"]), None)
-           if a["tipo"] == "caixa" else prog[{"venda": "venda", "rl": "rl",
-                                              "coleccao": "resto"}[a["tipo"]]])
+           if a["tipo"] == "caixa" else prog[GRUPO_DO_TIPO[a["tipo"]]])
     if not grp:
         return []
     por = [l for l in grp["linhas"] if l["estado"] == "foto"]

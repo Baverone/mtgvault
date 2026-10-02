@@ -510,17 +510,25 @@ def import_csv(con: sqlite3.Connection, path: str | Path, *,
     # E diz-se ao `revalidacao` num sítio só: é o `marca_validada` que decide se
     # uma cópia ganha `validado_em`, e são QUATRO os caminhos que lá chegam.
     revalidacao.declarar_lote(cartas_por_foto)
+    # A MESMA FOTO NÃO É PROVA DE DUAS CARTAS (2026-10-02): de que impressões é
+    # que cada ficheiro de foto JÁ é prova. Lê-se UMA vez, **antes** de se
+    # escrever a primeira linha — senão uma cópia criada por esta importação
+    # travava a linha seguinte do mesmo lote (duas linhas da mesma impressão na
+    # mesma foto são um erro do catalogador, não uma repetição).
+    from . import fotos as _fotos                            # noqa: PLC0415
+    ja_prova = _fotos.consumidas(con)
     try:
         return _import_csv(con, path, adivinhar=adivinhar, acertar=acertar,
                            resultados=resultados, cache=cache,
                            campanha=campanha, alvo=alvo,
-                           cartas_por_foto=cartas_por_foto)
+                           cartas_por_foto=cartas_por_foto, ja_prova=ja_prova)
     finally:
         revalidacao.declarar_lote(None)
 
 
 def _import_csv(con: sqlite3.Connection, path, *, adivinhar, acertar,
-                resultados, cache, campanha, alvo, cartas_por_foto):
+                resultados, cache, campanha, alvo, cartas_por_foto,
+                ja_prova=None):
     """O corpo do `import_csv`. Está à parte só para o `declarar_lote` ter um
     `finally` — o lote não pode ficar declarado depois da importação."""
     from . import encomendas, fotos, revalidacao          # noqa: PLC0415
@@ -578,6 +586,19 @@ def _import_csv(con: sqlite3.Connection, path, *, adivinhar, acertar,
                     res["resultado"] = "erro"
                     res["motivo"] = fotos.motivo_demasiadas(cartas_por_foto[nf])
                     errors.append(f"linha {i}: {res['name']} — {res['motivo']}")
+                    if resultados is not None:
+                        resultados.append(res)
+                    continue
+                # ESTA FOTO JÁ É PROVA DESTA CARTA: não se cria uma segunda
+                # cópia da mesma foto. Acontece sempre que uma foto fica em
+                # `pendentes/` por ter uma linha que não fechou e é relida na
+                # corrida seguinte. NÃO é um erro — é um não-fazer-nada, e por
+                # isso tem resultado próprio (`repetida`) em vez de ir para os
+                # `errors`: um vermelho que é normal deixa de se ler.
+                if fotos.ja_e_prova(ja_prova or {}, foto, nm, set_code, num,
+                                    lang, finish):
+                    res["resultado"] = "repetida"
+                    res["motivo"] = fotos.MOTIVO_REPETIDA
                     if resultados is not None:
                         resultados.append(res)
                     continue
@@ -771,7 +792,11 @@ def arrumar_fotos(con: sqlite3.Connection, resultados: list[dict], *,
     movidas, ficaram, ligacoes = [], [], []
     destinos: set[str] = set()
     for nome, linhas in por_foto.items():
-        if any(r["resultado"] != "importada" for r in linhas):
+        # `repetida` conta como resolvida: a foto JÁ é prova daquelas cartas, e
+        # deixá-la em `pendentes/` punha a corrida seguinte a lê-la outra vez
+        # para dar o mesmo não-fazer-nada, todas as noites. O que fica é só o
+        # que tem trabalho por fazer.
+        if any(r["resultado"] not in ("importada", "repetida") for r in linhas):
             ficaram.append(nome)
             continue
         origem = pend / nome

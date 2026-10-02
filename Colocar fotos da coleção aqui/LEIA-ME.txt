@@ -23,6 +23,14 @@ Uma pasta por deck, aqui dentro. O nome da pasta e o nome do deck:
   Modern - UW Oswald\     Pioneer - Greasefang\   Jeskai Control\
   Pauper (Luffy)\         Standard\               Legacy\
 
+E, para o que NAO esta em deck nenhum (02/10/2026):
+
+  Extras (fora dos decks)\
+
+Esta vale como alvo da COLECCAO: repetidas, cartas soltas, o que sobra das
+caixas. O que vier de la NAO fica alocado a deck nenhum, e as fotos arrumam-se
+em data\fotos\coleccao\. Tem subpastas de lote como as outras.
+
 A PASTA VALE COMO ALVO: o vault reconhece-a pelo nome do deck (sai do
 colecao_config.json, por isso se renomeares um deck a pasta acompanha) e trata
 as fotos EXACTAMENTE como se as tivesses tirado na pagina. Nao tens de fixar

@@ -45,6 +45,10 @@ pode também vir da PASTA DO DECK** — ele larga as fotos em `Colocar fotos da
 coleção aqui/<nome do deck>/` e o `mtgvault.fotos.recolher_das_pastas` move-as
 para a raiz de `pendentes/` com este mesmo nome, de propósito: para ti e para o
 import são a mesma coisa, e por isso não há nada de diferente a fazer com elas.
+**E desde 2026-10-02 um `site-colecao-…` pode vir da pasta `Colocar fotos da
+coleção aqui/Extras (fora dos decks)/`** — é a pasta do que NÃO está em deck
+nenhum (repetidas, cartas soltas, o que sobra das caixas), e o alvo dela é o
+resto da Colecção: nada do que vier de lá fica alocado a um deck.
 **É uma pista, não uma resposta**: escreve o
 que VÊS na foto, como sempre, com o `photo_path` — o import prefere as cópias
 dessa caixa (e essa cópia) ao ligar a foto, e trata uma edição/acabamento

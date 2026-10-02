@@ -301,6 +301,78 @@ def pasta_do_deck(nome: str, raiz: Path | str | None = None) -> Path:
 _PLANO = "_plano.txt"
 
 
+def garantir_pastas(res: dict, raiz: Path | str | None = None) -> list[str]:
+    """Uma pasta por DECK do config, criada se faltar (2026-10-02).
+
+    Medido no dia em que ele ia começar a fotografar: das 17 caixas, **7 não
+    tinham pasta** (Affinity (Luffy), Elves, Modern — Affinity, Bant Airbend,
+    Engineer Welder Cam, Aluren, Artifacts Blue) — umas porque o deck foi
+    renomeado, outras porque são as caixas novas de 02/10. Sem pasta, o caminho
+    que ele escolheu (*"o melhor é criar pasta"*) simplesmente não existe para
+    esses decks, e ele não tem como saber qual é o nome que o vault espera.
+
+    O nome sai do `caixas` do config, como o `mapa_pastas`: é a MESMA regra que
+    reconhece a pasta, por isso a que se cria é, por construção, a que se
+    reconhece. Cria-se a pasta e um `.gitkeep` (a estrutura viaja no Git; as
+    imagens não — ver o `.gitignore`); o `_plano.txt` é o `escrever_planos` que
+    o escreve a seguir. **Não se apaga nem se move nada** — a pasta de um deck
+    que já não existe fica onde está e é o `escrever_planos` que lhe troca o
+    texto (ver `TEXTO_ORFA`).
+    """
+    base = pasta_novas(raiz)
+    if not base.is_dir():
+        return []
+    criadas = []
+    for s in res.get("slots") or []:
+        nome = nome_de_pasta(s.get("nome") or s["slot"])
+        d = pasta_do_deck(s.get("nome") or s["slot"], raiz)
+        if d.is_dir():
+            continue
+        (base / nome).mkdir(parents=True, exist_ok=True)
+        gk = base / nome / ".gitkeep"
+        if not gk.exists():
+            gk.write_text("", encoding="ascii")
+        criadas.append(nome)
+    return criadas
+
+
+def _pastas_do_slot(slot: str, nome: str, cfg: dict | None = None,
+                    raiz: Path | str | None = None) -> list[Path]:
+    """TODAS as pastas que o `mapa_pastas` manda para este slot, a do nome de
+    hoje à frente.
+
+    São normalmente uma; são duas quando o deck foi renomeado e o nome antigo é
+    o próprio `slot` — o `Standard\\` do slot `standard`, que hoje se chama «Bant
+    Airbend». Essa continua a valer como alvo (o mapa indexa o slot), e por isso
+    o plano dela também tem de estar certo: não é órfã, é a mesma caixa por outro
+    nome.
+    """
+    base = pasta_novas(raiz)
+    if not base.is_dir():
+        return []
+    mapa = mapa_pastas(cfg)
+    primeira = pasta_do_deck(nome, raiz)
+    out = [primeira] if primeira.is_dir() else []
+    for d in sorted(x for x in base.iterdir() if x.is_dir()):
+        if d.name.startswith("_") or d in out:
+            continue
+        if mapa.get(_norm(d.name)) == slot:
+            out.append(d)
+    return out
+
+
+TEXTO_ORFA = (
+    "ESTA PASTA JA NAO E UM DECK\n"
+    "===========================\n\n"
+    "O deck que tinha este nome foi renomeado ou dissolvido, por isso o vault\n"
+    "JA NAO RECONHECE esta pasta: uma foto largada aqui fica aqui e nao e\n"
+    "catalogada.\n\n"
+    "Larga as fotos na pasta com o nome ACTUAL do deck (estao todas em\n"
+    "«Colocar fotos da colecao aqui\\», uma por deck), ou usa o botao\n"
+    "«Tirar fotos» no modo de edicao.\n\n"
+    "Nada se apagou. Podes apagar esta pasta a mao quando quiseres.\n")
+
+
 def escrever_planos(con, res: dict, cfg: dict | None = None,
                     raiz: Path | str | None = None) -> dict:
     """Reescreve o `_plano.txt` de cada pasta de deck, das MESMAS fotos que a
@@ -318,31 +390,63 @@ def escrever_planos(con, res: dict, cfg: dict | None = None,
     """
     from . import fases                                      # noqa: PLC0415
     f2 = fases.fila_decks(con, res, cfg)
-    out: dict = {"escritos": [], "sem_pasta": [], "vazios": [],
+    out: dict = {"escritos": [], "sem_pasta": [], "vazios": [], "orfas": [],
+                 "criadas": garantir_pastas(res, raiz),
                  "fotos": f2["barra"]["fotos"], "cartas": f2["barra"]["cartas"]}
     com_fila = set()
     for f in f2["filas"]:
-        d = pasta_do_deck(f["nome"], raiz)
-        if not d.is_dir():
+        pastas = _pastas_do_slot(f["slot"], f["nome"], cfg, raiz)
+        if not pastas:
             out["sem_pasta"].append(f["nome"])
             continue
         com_fila.add(f["nome"])
-        (d / _PLANO).write_text(
-            texto_do_plano(f["nome"], f["slot"], f["fotos"],
-                           conversao=f["conversao"], nota=f["nota"]),
-            encoding="utf-8")
+        texto = texto_do_plano(f["nome"], f["slot"], f["fotos"],
+                               conversao=f["conversao"], nota=f["nota"])
+        for d in pastas:
+            (d / _PLANO).write_text(texto, encoding="utf-8")
         out["escritos"].append({"nome": f["nome"], "slot": f["slot"],
                                 "fotos": f["barra"]["fotos"],
                                 "cartas": f["barra"]["cartas"],
-                                "ficheiro": str(d / _PLANO)})
+                                "ficheiro": str(pastas[0] / _PLANO)})
     for s in res.get("slots") or []:
         nome = s.get("nome") or s["slot"]
-        d = pasta_do_deck(nome, raiz)
-        if nome in com_fila or not (d / _PLANO).is_file():
+        if nome in com_fila:
             continue
-        (d / _PLANO).write_text(texto_sem_cartas(nome, s["slot"]),
-                                encoding="utf-8")
+        # Escreve-se em TODAS as pastas que apontam para este slot, e não só na
+        # que tem o nome de hoje. Duas razões, as duas medidas a 02/10:
+        #   * a pasta ACABADA DE CRIAR não tinha `_plano.txt` nenhum — a guarda
+        #     era `not (d/_PLANO).is_file(): continue`, e as seis caixas novas
+        #     ficavam com um `.gitkeep` e mais nada, sem uma linha a dizer que a
+        #     pasta vale como alvo;
+        #   * a pasta com o nome ANTIGO do deck, quando esse nome é o próprio
+        #     `slot` (o `Standard\` do slot `standard`, hoje «Bant Airbend»),
+        #     continua a valer como alvo pelo `mapa_pastas` — por isso não é
+        #     órfã — mas o `pasta_do_deck` não a encontra, e ficava com o plano
+        #     congelado do dia anterior ao rename.
+        for d in _pastas_do_slot(s["slot"], nome, cfg, raiz):
+            (d / _PLANO).write_text(texto_sem_cartas(nome, s["slot"]),
+                                    encoding="utf-8")
         out["vazios"].append(nome)
+    # AS PASTAS ORFAS: um `_plano.txt` NOSSO a mentir é pior do que nenhum.
+    # Uma pasta cujo deck foi renomeado ou dissolvido (medido a 02/10:
+    # `Elves - Survival`, `Pauper (Luffy)`, `Jeskai Control`, `Legacy`) ficava
+    # com o plano de 01/10 lá dentro a dizer «LARGA AS FOTOS NESTA PASTA» — e o
+    # vault já não a reconhece, por isso a foto fica lá, calada. Troca-se o
+    # TEXTO; não se apaga nem se move a pasta (a regra dele de 09/09), e só se
+    # toca onde já existe um `_plano.txt`, que é um ficheiro escrito por nós.
+    base = pasta_novas(raiz)
+    if base.is_dir():
+        mapa = mapa_pastas(cfg)
+        conhecidas = ({_norm(g) for g in PASTAS_DE_GRUPO}
+                      | {_norm(g) for g in PASTAS_FORA_DOS_DECKS})
+        for d in sorted(x for x in base.iterdir() if x.is_dir()):
+            if d.name.startswith("_") or _norm(d.name) in conhecidas:
+                continue
+            if _norm(d.name) in mapa or not (d / _PLANO).is_file():
+                continue
+            if (d / _PLANO).read_text(encoding="utf-8") != TEXTO_ORFA:
+                (d / _PLANO).write_text(TEXTO_ORFA, encoding="utf-8")
+            out["orfas"].append(d.name)
     return out
 
 
@@ -514,6 +618,81 @@ def perdidas(photo_paths) -> set[str]:
     return out
 
 
+# ---------------------------------------------------------------------------
+# A MESMA FOTO NÃO É PROVA DE DUAS CARTAS (2026-10-02)
+# ---------------------------------------------------------------------------
+# Medido no ensaio de ponta a ponta, com o fluxo das 02:30 a sério: uma foto com
+# quatro cartas em que UMA linha não fecha (o Claude não conseguiu fixar a
+# edição) **fica em `pendentes/`** — é a regra do `arrumar_fotos`, e está certa:
+# «arrumá-la escondia trabalho por fazer». Só que a corrida seguinte volta a ler
+# a MESMA foto, com o MESMO nome, e as três linhas que já tinham entrado voltam a
+# entrar: a cópia já está validada, por isso o passo (0) não a apanha, já tem
+# `photo_path`, por isso o (iii) também não — e cai no (iv), que CRIA uma cópia
+# nova. Medido: duas linhas da `copies` com o mesmo `photo_path`, e **uma por
+# noite** enquanto a linha falhada não fosse resolvida.
+#
+# Numa campanha de ~500 fotos isto não é um caso de bordo, é a regra: basta uma
+# carta cuja edição não se consiga fixar para a colecção inflacionar sozinha,
+# sem um único erro — o padrão do `event_tier` sobre o inventário dele.
+#
+# A trava é a identidade da FOTO, e não a campanha: um ficheiro de foto não pode
+# ser a prova de duas cartas físicas. É a mesma razão por que a foto com mais de
+# quatro cartas é recusada em vez de seguir para o (iv).
+def consumidas(con) -> dict[str, set[tuple]]:
+    """`nome do ficheiro -> {impressões de que essa foto já é prova}`.
+
+    Uma consulta, lida UMA vez por importação (não por linha). A chave é o NOME
+    do ficheiro porque é o que sobrevive ao `arrumar_fotos`, que reescreve o
+    `photo_path` com a pasta do deck à frente.
+    """
+    out: dict[str, set[tuple]] = {}
+    for r in con.execute(
+            """SELECT cp.photo_path, c.name, c.set_code, c.collector_number,
+                      cp.language, cp.finish
+                 FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id
+                WHERE cp.photo_path IS NOT NULL AND cp.photo_path <> ''"""):
+        nome = Path(str(r["photo_path"])).name.casefold()
+        if nome:
+            out.setdefault(nome, set()).add(_chave_impressao(
+                r["name"], r["set_code"], r["collector_number"],
+                r["language"], r["finish"]))
+    return out
+
+
+def _chave_impressao(nm, set_code, num, lang, finish) -> tuple:
+    return (str(nm or "").casefold(), str(set_code or "").casefold(),
+            str(num or ""), str(lang or "").casefold(),
+            str(finish or "").casefold())
+
+
+def ja_e_prova(indice: dict[str, set[tuple]], photo_path: str | None,
+               nm: str, set_code: str | None, num: str | None,
+               lang: str, finish: str) -> bool:
+    """Esta foto já é a prova desta impressão?
+
+    O NÚMERO de coleccionador só conta quando os DOIS lados o têm: o guia manda
+    escrever a edição, mas o número pode faltar — e exigi-lo deixava passar
+    exactamente a repetição que isto trava.
+    """
+    if not photo_path:
+        return False
+    tem = indice.get(Path(str(photo_path)).name.casefold())
+    if not tem:
+        return False
+    alvo = _chave_impressao(nm, set_code, num, lang, finish)
+    for k in tem:
+        if (k[0], k[1], k[3], k[4]) != (alvo[0], alvo[1], alvo[3], alvo[4]):
+            continue
+        if not k[2] or not alvo[2] or k[2] == alvo[2]:
+            return True
+    return False
+
+
+MOTIVO_REPETIDA = ("esta foto já é a prova desta carta na base — não se cria "
+                   "uma segunda cópia da mesma foto. Se tens mesmo outra cópia "
+                   "desta carta, fotografa-a à parte.")
+
+
 def copias_sem_foto_no_disco(con) -> dict[int, str]:
     """`copy_id -> photo_path` das cópias cuja foto se perdeu. Uma consulta e
     um índice: é o que a lista de por-revalidar e o relatório usam."""
@@ -591,6 +770,26 @@ PASTA_NOVAS = "Colocar fotos da coleção aqui"
 # vez de as tratar como uma pasta desconhecida.
 PASTAS_DE_GRUPO = ("Premodern (geral)", "SPML (Standard Pioneer Modern Legacy)",
                    "Coleção Pessoal", "Vender")
+# A PASTA DO QUE NÃO ESTÁ EM DECK NENHUM (André, 2026-10-02). Ele criou
+# `Extras (fora dos decks)\` para fotografar o resto da colecção — as cartas que
+# nenhuma caixa usa — e a pasta não estava ligada a nada: as fotos ficavam lá
+# para sempre e a tarefa das 02:30 dizia «sem fotos novas», VERDE. Era o padrão
+# do `event_tier` no sítio mais caro possível, porque o que se perde são dias de
+# trabalho dele.
+#
+# Não mapeia para um SLOT — mapeia para o alvo **`coleccao`** da revalidação, que
+# já existia desde 2026-09-21 (`fotosite.TIPOS`) e é exactamente isto: *"estou a
+# fotografar a colecção, não um deck"*. Daí para a frente é o caminho de sempre,
+# sem uma linha nova: a foto chama-se `site-colecao-<data>-<n>.<ext>`, o
+# `revalidacao.alvo_da_foto` prefere as cópias que não estão em caixa nenhuma, e
+# o `arrumar_fotos` arruma-a em `data/fotos/coleccao/`.
+#
+# As QUATRO de cima **não** se ligaram, e é uma decisão: `Vender`,
+# `Premodern (geral)`, `SPML (…)` e `Coleção Pessoal` já tinham um significado
+# dele antes disto, e pôr-me a processá-las por iniciativa própria era mudar-lhe
+# a rotina sem ele pedir. Ligar qualquer uma é acrescentar uma linha aqui.
+PASTAS_FORA_DOS_DECKS = ("Extras (fora dos decks)",)
+ALVO_FORA_DOS_DECKS = "coleccao"
 # Quanto tempo uma foto tem de estar quieta antes de se mexer nela. Uma foto
 # que ainda está a ser copiada (do telemóvel, da app do GitHub) movia-se a
 # meio. O `mtg-fotos-novas` tem a sua própria regra de 2 min sobre o mtime, e o
@@ -664,12 +863,43 @@ def slot_da_pasta(caminho: Path | str, cfg: dict | None = None) -> str | None:
     return mapa_pastas(cfg).get(_norm(resto[0]))
 
 
-def _nome_livre(pasta: Path, slot: str, quando: _dt.datetime, ext: str) -> str:
+def alvo_da_pasta(caminho: Path | str, cfg: dict | None = None,
+                  mapa: dict[str, str] | None = None) -> dict | None:
+    """O ALVO da revalidação a que uma foto pertence, pela PASTA em que está:
+
+        {"tipo": "caixa",    "slot": "cedh-blue-farm"}   uma pasta de deck
+        {"tipo": "coleccao", "slot": None}               `Extras (fora dos decks)`
+        None                                             grupo/desconhecida/raiz
+
+    É a pergunta de que a recolha precisa, e vive **num sítio só**: o
+    `slot_da_pasta` responde a *"que caixa é esta pasta"* e continua a responder
+    só isso (devolve `None` para os Extras, que não são caixa nenhuma). Duas
+    respostas à mesma pergunta discordam um dia qualquer, em silêncio — a lição
+    do `e_foil`, do `vistoId` e do `precos.sql()`.
+
+    O `mapa` é só uma optimização de quem chama em ciclo (o `fotos_nas_pastas`
+    faz esta pergunta uma vez por pasta): a REGRA continua a viver aqui, e sem
+    ele calcula-se na hora.
+    """
+    partes = Path(str(caminho)).parts
+    base = _norm(PASTA_NOVAS)
+    i = next((k for k, p in enumerate(partes) if _norm(p) == base), None)
+    resto = partes[i + 1:] if i is not None else partes
+    if len(resto) < 2:
+        return None                        # está na pasta-mãe: não tem alvo
+    if _norm(resto[0]) in {_norm(p) for p in PASTAS_FORA_DOS_DECKS}:
+        return {"tipo": ALVO_FORA_DOS_DECKS, "slot": None}
+    slot = (mapa if mapa is not None else mapa_pastas(cfg)).get(_norm(resto[0]))
+    return {"tipo": "caixa", "slot": slot} if slot else None
+
+
+def _nome_livre(pasta: Path, tipo: str, slot: str | None,
+                quando: _dt.datetime, ext: str) -> str:
     from . import fotosite                                   # noqa: PLC0415
     usados = {p.name.lower() for p in pasta.glob("*")} if pasta.is_dir() else set()
     n = 1
     while True:
-        nome = fotosite.nome_ficheiro("caixa", slot, quando, n, ext)
+        nome = fotosite.nome_ficheiro(tipo, slot, quando, n, ext)
         if nome.lower() not in usados:
             return nome
         n += 1
@@ -686,16 +916,24 @@ def fotos_nas_pastas(cfg: dict | None = None,
     base = pasta_novas(raiz)
     if not base.is_dir():
         return []
-    mapa = mapa_pastas(cfg)
     grupos = {_norm(g) for g in PASTAS_DE_GRUPO}
+    mapa = mapa_pastas(cfg)                # uma vez, não uma por pasta
     out = []
     for d in sorted(x for x in base.iterdir() if x.is_dir()):
         if d.name.startswith("_"):
             continue
-        slot = mapa.get(_norm(d.name))
+        # O ALVO da pasta sai do `alvo_da_pasta` e NÃO de uma segunda conta aqui.
+        # Escrevi as duas no mesmo dia e a docstring dizia «vive num sítio só» —
+        # era falso: a produção passa toda por aqui e o `alvo_da_pasta` só era
+        # chamado pelos testes. Ligar uma pasta nova mexendo na função que a
+        # documentação aponta não teria efeito nenhum, e as fotos ficavam na
+        # pasta, caladas. É o defeito dos `Extras` recriado.
+        alvo = alvo_da_pasta(d / "x.jpg", cfg, mapa)
         for f in sorted(x for x in d.rglob("*")
                         if x.is_file() and x.suffix.lower() in EXT):
-            out.append({"ficheiro": f, "pasta": d.name, "slot": slot,
+            out.append({"ficheiro": f, "pasta": d.name,
+                        "slot": (alvo or {}).get("slot"),
+                        "tipo": (alvo or {}).get("tipo"),
                         "grupo": _norm(d.name) in grupos,
                         "mtime": f.stat().st_mtime})
     return out
@@ -735,7 +973,7 @@ def recolher_das_pastas(cfg: dict | None = None, *,
     pend.mkdir(parents=True, exist_ok=True)
     for it in itens:
         f = it["ficheiro"]
-        if not it["slot"]:
+        if not it.get("tipo"):
             out["ignorados"].append({
                 "ficheiro": f.name, "pasta": it["pasta"],
                 "porque": ("é uma pasta de grupo — ninguém a processa "
@@ -747,10 +985,12 @@ def recolher_das_pastas(cfg: dict | None = None, *,
             out["a_chegar"].append({"ficheiro": f.name, "pasta": it["pasta"]})
             continue
         quando = _dt.datetime.fromtimestamp(it["mtime"]).replace(microsecond=0)
-        nome = _nome_livre(pend, it["slot"], quando, f.suffix.lstrip(".").lower())
+        nome = _nome_livre(pend, it["tipo"], it["slot"], quando,
+                           f.suffix.lstrip(".").lower())
         shutil.move(str(f), str(pend / nome))
         out["recolhidas"].append({"de": f.name, "pasta": it["pasta"],
-                                  "slot": it["slot"], "para": nome})
+                                  "slot": it["slot"], "tipo": it["tipo"],
+                                  "para": nome})
     if out["recolhidas"]:
         _CACHE.clear()
     return out

@@ -514,6 +514,10 @@ def main():
                     f"{r['cartas']} cartas)"
                     + (f"; {len(r['vazios'])} sem cartas na caixa"
                        if r["vazios"] else "")
+                    + ("; pastas criadas: " + ", ".join(r["criadas"][:6])
+                       if r["criadas"] else "")
+                    + ("; órfãs: " + ", ".join(r["orfas"][:6])
+                       if r["orfas"] else "")
                     + ("; sem pasta: " + ", ".join(r["sem_pasta"][:6])
                        if r["sem_pasta"] else ""))
 

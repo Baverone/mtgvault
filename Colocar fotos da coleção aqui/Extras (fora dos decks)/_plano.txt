@@ -1,0 +1,15 @@
+EXTRAS -- cartas que NAO estao em nenhum deck
+=============================================
+
+Larga aqui a foto de tudo o que nao pertence a um dos decks:
+repetidas, cartas soltas, o que sobra das caixas.
+
+REGRA DA FOTO, a mesma de todas as outras pastas:
+  no maximo 4 CARTAS por foto;
+  as copias da mesma carta vao sempre juntas na mesma foto;
+  nos singleton, agrupa ate 4 por tipo (terras com terras, criaturas com criaturas).
+
+Podes fazer subpastas por lote ('lote1', 'lote2') -- contam todas para extras.
+
+O que vier daqui NAO fica alocado a deck nenhum. E sobre estas cartas
+que a decisao de vender vai ser tomada, depois de estarem todas fotografadas.

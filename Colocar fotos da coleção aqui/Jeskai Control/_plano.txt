@@ -1,11 +1,12 @@
-PLANO DE FOTOS -- Jeskai Control
-slot: pioneer-jeskai
+ESTA PASTA JA NAO E UM DECK
+===========================
 
-Este deck NAO tem cartas registadas dentro da caixa, por isso
-nao ha nada para fotografar aqui ainda.
+O deck que tinha este nome foi renomeado ou dissolvido, por isso o vault
+JA NAO RECONHECE esta pasta: uma foto largada aqui fica aqui e nao e
+catalogada.
 
-Quando houver, as fotos vem para ESTA pasta: o vault reconhece
-a pasta como este deck (alvo: pioneer-jeskai) e trata-as como se as
-tivesses tirado na pagina. Nada se apaga.
-A outra porta: https://editar-mtg.baverone.com/
-O plano a serio esta na pagina «Arrumacao por fases», Fase 2.
+Larga as fotos na pasta com o nome ACTUAL do deck (estao todas em
+«Colocar fotos da colecao aqui\», uma por deck), ou usa o botao
+«Tirar fotos» no modo de edicao.
+
+Nada se apagou. Podes apagar esta pasta a mao quando quiseres.
