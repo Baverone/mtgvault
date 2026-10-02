@@ -117,6 +117,12 @@ def conta(lot: dict) -> bool:
 UNIDADES = {"cartas": ("carta", "cartas"), "copias": ("cópia", "cópias"),
             "fotos": ("foto", "fotos")}
 
+# O NOME da terceira parcela, num sítio só: é por ele que as páginas, os textos e
+# o CLI distinguem *«confirmada por foto»* de *«contei e digo-te quantas tenho»*.
+# Hoje só os terrenos básicos entram por aqui.
+TERMO_DECLARADO = "básicas"
+ORIGEM_DECLARADA = "declarada"
+
 
 class MetadesQueNaoSomam(AssertionError):
     """As duas metades não somam o total.
@@ -129,43 +135,66 @@ class MetadesQueNaoSomam(AssertionError):
 
 
 def metades(confirmado: float, total: float, *, unidade: str = "cartas",
-            casas: int = 0) -> dict:
-    """As duas metades de um número: `{confirmado, por_confirmar, total, pct,
-    frase, unidade}`.
+            casas: int = 0, declarado: float = 0) -> dict:
+    """As metades de um número: `{confirmado, declarado, por_confirmar, total,
+    pct, frase, unidade}`.
 
-    **É a única forma de apresentar um número desta app**, e devolve sempre as
-    TRÊS parcelas — nunca só a de cima. O `por_confirmar` CALCULA-SE do total
-    (nunca se recebe de fora) exactamente para as duas somarem por construção,
-    e mesmo assim confere-se.
+    **É a única forma de apresentar um número desta app**, e devolve sempre
+    TODAS as parcelas — nunca só a de cima. O `por_confirmar` CALCULA-SE do
+    total (nunca se recebe de fora) exactamente para elas somarem por
+    construção, e mesmo assim confere-se.
+
+    **A TERCEIRA PARCELA É A CONTAGEM DECLARADA (André, 2026-10-02).** Os
+    terrenos básicos entram por contagem dele e não por foto — *"depois indico
+    quantas básicas tenho de cada"* —, e por isso **não podem somar-se ao
+    «confirmado por foto»**: são duas afirmações de força diferente (uma tem uma
+    fotografia por trás, a outra tem a palavra dele) e juntá-las dava um número
+    que não serve para nenhuma das duas perguntas. É a mesma disciplina por que
+    a venda tem nove saídas em vez de um total. Fica a ZERO por omissão, logo
+    quem não a usa continua a ver exactamente as duas metades de sempre.
     """
     if unidade not in UNIDADES:
         raise ValueError(f"unidade desconhecida: {unidade}")
-    c = round(float(confirmado or 0), casas) if casas else (confirmado or 0)
-    t = round(float(total or 0), casas) if casas else (total or 0)
-    pc = round(t - c, casas) if casas else (t - c)
-    if round(c + pc, 6) != round(t, 6):
+
+    def _r(v):
+        return round(float(v or 0), casas) if casas else (v or 0)
+
+    c, t, d = _r(confirmado), _r(total), _r(declarado)
+    pc = round(t - c - d, casas) if casas else (t - c - d)
+    if round(c + d + pc, 6) != round(t, 6):
         raise MetadesQueNaoSomam(
-            f"{c} + {pc} != {t} — as duas metades têm de somar o total")
-    return {"confirmado": c, "por_confirmar": pc, "total": t,
+            f"{c} + {d} + {pc} != {t} — as parcelas têm de somar o total")
+    return {"confirmado": c, "declarado": d, "por_confirmar": pc, "total": t,
             "pct": round(100 * c / t) if t else 0,
-            "unidade": unidade, "frase": frase(c, t, unidade=unidade)}
+            "pct_contado": round(100 * (c + d) / t) if t else 0,
+            "unidade": unidade,
+            "frase": frase(c, t, unidade=unidade, declarado=d)}
 
 
-def frase(confirmado: float, total: float, *, unidade: str = "cartas") -> str:
+def frase(confirmado: float, total: float, *, unidade: str = "cartas",
+          declarado: float = 0) -> str:
     """A LINHA HONESTA que vai em cada página: *«X de 1 678 cartas confirmadas
     por foto»* — e, no estado de hoje, *«0 de 1 678 …»*, que é a verdade.
 
     Com a foto desligada diz o total e cala-se sobre metades que não mandam em
     nada: uma frase a prometer uma regra que não está ligada é pior do que
     frase nenhuma.
+
+    A CONTAGEM DECLARADA vai **ao lado e com outro nome** (02/10/2026), nunca
+    somada ao confirmado: *«0 de 1 678 cartas confirmadas por foto · 95 por
+    contagem declarada (básicas)»*. Só aparece quando existe.
     """
     sing, plur = UNIDADES.get(unidade, UNIDADES["cartas"])
     nome = sing if total == 1 else plur
     if not manda():
         return f"{_n(total)} {nome}"
-    return (f"{_n(confirmado)} de {_n(total)} {nome} confirmadas por foto"
+    base = (f"{_n(confirmado)} de {_n(total)} {nome} confirmadas por foto"
             if confirmado != total
             else f"as {_n(total)} {nome} estão confirmadas por foto")
+    if declarado:
+        base += (f" · {_n(declarado)} por contagem declarada "
+                 f"({TERMO_DECLARADO})")
+    return base
 
 
 def _n(v) -> str:

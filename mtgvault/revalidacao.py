@@ -97,25 +97,43 @@ def activa(quando: str | None = None) -> bool:
 # `marca_validada` — enfiar um `validar=False` em cada um era dar a cada um a
 # oportunidade de se esquecer dele, que é a lição do `e_foil` e do `vistoId`.
 _CARTAS_DO_LOTE: dict[str, int] = {}
+# As fotos deste lote que são SÓ de terrenos básicos, e por isso não têm tecto
+# (André, 2026-10-02). Vive ao lado da contagem e não dentro dela porque a
+# contagem é lida por três sítios que não querem saber da isenção.
+_ISENTAS_DO_LOTE: set[str] = set()
 
 
-def declarar_lote(cartas_por_foto: dict[str, int] | None) -> None:
-    """Diz quantas cartas tem cada foto desta importação (ou limpa)."""
+def declarar_lote(cartas_por_foto: dict[str, int] | None,
+                  isentas: set[str] | None = None) -> None:
+    """Diz quantas cartas tem cada foto desta importação (ou limpa).
+
+    `isentas` são os nomes de ficheiro das fotos que só trazem básicas — essas
+    valem com quantas cartas tiverem (ver `fotos.valida`).
+    """
     _CARTAS_DO_LOTE.clear()
+    _ISENTAS_DO_LOTE.clear()
     if cartas_por_foto:
         _CARTAS_DO_LOTE.update(cartas_por_foto)
+    if isentas:
+        _ISENTAS_DO_LOTE.update(isentas)
 
 
 def valida_esta_foto(photo_path: str | None) -> bool:
     """Esta foto pode validar? Uma foto deste lote com mais de
     `MAX_CARTAS_FOTO` cartas **não valida** — ver `fotos.valida`. Uma foto que
-    o lote não conheça (fora de uma importação) não se presume grande."""
+    o lote não conheça (fora de uma importação) não se presume grande.
+
+    **Excepção: uma foto só de terrenos básicos não tem tecto** (02/10/2026).
+    """
     if not photo_path:
         return False
     import os.path                                          # noqa: PLC0415
 
-    n = _CARTAS_DO_LOTE.get(os.path.basename(str(photo_path)))
-    return True if n is None else foto_valida(n)
+    nome = os.path.basename(str(photo_path))
+    n = _CARTAS_DO_LOTE.get(nome)
+    if n is None:
+        return True
+    return foto_valida(n, isenta=nome in _ISENTAS_DO_LOTE)
 
 
 def marca_validada(photo_path: str | None, quando: str | None = None) -> str | None:
@@ -718,13 +736,21 @@ def fotos_que_nao_validam(con) -> dict[str, int]:
     # `fotos/<slot>/X.jpg`), a contagem partia-se entre as duas e uma foto de 6
     # cartas lia-se como 3 + 3 — as duas dentro do tecto de 4. O detector da
     # regra das quatro cartas dava o número errado, em silêncio.
+    from . import fotos as _fotos                           # noqa: PLC0415
     cartas: dict[str, int] = defaultdict(int)
+    # E os NOMES das cartas de cada foto: uma foto só de básicas não tem tecto
+    # (02/10/2026), e sem os nomes não há como saber qual é qual.
+    nomes: dict[str, set] = defaultdict(set)
     for r in con.execute(
-            f"""SELECT photo_path p, quantity q FROM copies cp
-                 WHERE {collection.na_estante()} AND photo_path IS NOT NULL
-                   AND photo_path <> ''"""):
-        cartas[Path(str(r["p"])).name] += r["q"]
-    return {p: n for p, n in cartas.items() if not foto_valida(n)}
+            f"""SELECT cp.photo_path p, cp.quantity q, c.name nm FROM copies cp
+                 LEFT JOIN cards c ON c.scryfall_id = cp.scryfall_id
+                 WHERE {collection.na_estante('cp')} AND cp.photo_path IS NOT NULL
+                   AND cp.photo_path <> ''"""):
+        chave = Path(str(r["p"])).name
+        cartas[chave] += r["q"]
+        nomes[chave].add((r["nm"] or "").split(" // ", 1)[0])
+    return {p: n for p, n in cartas.items()
+            if not foto_valida(n, isenta=_fotos.so_basicas(nomes[p]))}
 
 
 def estado_das_copias(con) -> dict[int, dict]:

@@ -537,6 +537,22 @@ def actual(con, copy_id: int) -> dict:
         "foto": r[4] or "", "verso": r[5] or ""}
 
 
+def e_basica(con, copy_id: int) -> bool:
+    """Esta cópia é um terreno básico? — a pergunta num sítio só.
+
+    Lê o NOME do catálogo e compara com o `loadout.BASICS`, que é a única lista
+    de básicas que conta (ver `fotos.so_basicas`). Uma cópia que o catálogo não
+    conheça **não** é básica: não se inventa.
+    """
+    from . import loadout                                    # noqa: PLC0415
+    r = con.execute(
+        """SELECT c.name nm FROM copies cp
+             LEFT JOIN cards c ON c.scryfall_id = cp.scryfall_id
+            WHERE cp.id = ?""", (int(copy_id),)).fetchone()
+    nm = (r["nm"] if r else None) or ""
+    return nm.split(" // ", 1)[0] in loadout.BASICS
+
+
 def registar(con, copy_id: int, grade: str, *, origem: str,
              motivos: str = "", photo_path: str | None = None,
              autor: str | None = None, dia: str | None = None,
@@ -557,6 +573,16 @@ def registar(con, copy_id: int, grade: str, *, origem: str,
             + ", ".join(f"{c} ({NOMES[c]})" for c in ESCALA))
     if origem not in ORIGENS:
         raise EstadoInvalido(f"origem {origem!r} — usa {', '.join(ORIGENS)}")
+    # AS BÁSICAS NÃO LEVAM ESCALÃO NEM VERSO (André, 2026-10-02). Entram por
+    # CONTAGEM DECLARADA (`loadout.basicas_declaradas`) e nunca por foto, logo
+    # não há foto de onde tirar um escalão; e a pilha de Unhinged é a granel —
+    # julgar o estado de uma terra que vale cêntimos e que ele tem às dezenas é
+    # trabalho sem nada do outro lado. Recusa-se ALTO em vez de se ignorar em
+    # silêncio: um `aplicado = 0` aqui parecia a regra da correcção dele.
+    if e_basica(con, copy_id):
+        raise EstadoInvalido(
+            "os terrenos básicos não levam escalão de estado nem verso: "
+            "entram por contagem declarada (basicas.declaradas no config)")
     antes = actual(con, copy_id)
     hoje = _hoje(dia)
     autor = autor or (AUTOR_ANDRE if origem == ORIGEM_MAO else AUTOR_CLAUDE)

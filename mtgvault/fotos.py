@@ -105,20 +105,50 @@ ROTULO_TIPO = {"Planeswalker": "Planeswalkers", "Creature": "Criaturas",
                "Land": "Terras", "Other": "Outras"}
 
 
-def valida(cartas: int, max_cartas: int = MAX_CARTAS) -> bool:
+def so_basicas(nomes) -> bool:
+    """Esta foto é SÓ de terrenos básicos? — e por isso isenta do tecto de 4.
+
+    André, 2026-10-02, à letra: *"para as básicas, nos decks, tens que permitir
+    tirar foto com mais cartas e não apenas 4"*. A razão é o gesto: um deck com
+    27 Snow-Covered Plains não se fotografa em sete fotos de cartas idênticas, e
+    o tecto de quatro existe para cada carta ficar **à vista e avaliável** — numa
+    pilha de terras iguais não há nada para distinguir entre a 5.ª e a 20.ª.
+
+    A lista de básicas vem do **`loadout.BASICS`** e não de uma sexta cópia dela
+    neste módulo (já há cinco espalhadas pelo repositório): a pergunta *"isto é
+    uma básica?"* tem de ter uma resposta só, pela razão do `e_foil` e do
+    `precos.sql()`. O import é tardio porque o `loadout` é pesado e o `fotos` é
+    importado por quem não precisa dele.
+    """
+    from . import loadout                                    # noqa: PLC0415
+    lista = [str(n) for n in (nomes or []) if n]
+    return bool(lista) and all(n in loadout.BASICS for n in lista)
+
+
+def valida(cartas: int, max_cartas: int = MAX_CARTAS, *,
+           isenta: bool = False) -> bool:
     """Esta foto conta como validação? Só se trouxer 1 a `max_cartas` cartas.
 
     É a trava, e vale para os dois lados: a foto NOVA que traga mais do que
     quatro é recusada à entrada, e a foto ANTIGA com mais do que quatro nunca
     conta — as cópias dela continuam por revalidar.
+
+    **`isenta` abre a excepção dos terrenos básicos** (02/10/2026): aí não há
+    tecto, só a exigência de trazer pelo menos uma carta. Quem responde se uma
+    foto é isenta é o `so_basicas`, para a pergunta viver num sítio só.
     """
-    return 0 < int(cartas or 0) <= max_cartas
+    n = int(cartas or 0)
+    if n <= 0:
+        return False
+    return True if isenta else n <= max_cartas
 
 
 def motivo_demasiadas(cartas: int, max_cartas: int = MAX_CARTAS) -> str:
     return (f"a foto tem {cartas} cartas — uma foto valida no máximo "
             f"{max_cartas}. Volta a fotografar em grupos de até {max_cartas}, "
-            "agrupados por tipo de carta, com cada carta à vista.")
+            "agrupados por tipo de carta, com cada carta à vista. "
+            "(Os terrenos básicos são a excepção: podes pôr quantos quiseres "
+            "na mesma foto, desde que seja só básicas.)")
 
 
 # ---------------------------------------------------------------------------
@@ -171,11 +201,25 @@ def agrupar(linhas: list[dict], *, tipos: dict[str, str] | None = None,
             q = int(l.get("q") or 0)
             if q <= 0:
                 continue
+            if q > max_cartas and so_basicas([l.get("nm")]):
+                # AS BÁSICAS NÃO SE PARTEM (André, 2026-10-02): *"para as
+                # básicas, nos decks, tens que permitir tirar foto com mais
+                # cartas e não apenas 4"*. As 27 Snow-Covered Plains são UMA
+                # foto, não sete fotos de cartas idênticas. Vai numa foto só
+                # dela (não se mistura com outras cartas, senão a foto deixava
+                # de ser «só básicas» e o tecto voltava a valer) e marcada
+                # `isenta`, para a página poder dizer porque é que esta tem 27.
+                if atual:
+                    out.append(_foto(out, atual, tipo, prefixo))
+                    atual, cartas = [], 0
+                out.append(_foto(out, [dict(l, q=q)], tipo, prefixo,
+                                 isenta=True))
+                continue
             if q > max_cartas:
-                # A linha que SOZINHA passa do tecto (as 29 Snow-Covered
-                # Plains): fecha o que estava a juntar e enche fotos inteiras
-                # só dela. É a única forma de respeitar as 4 cartas, e por isso
-                # a foto di-lo (`partida`) em vez de o esconder.
+                # A linha que SOZINHA passa do tecto e NÃO é básica: fecha o que
+                # estava a juntar e enche fotos inteiras só dela. É a única forma
+                # de respeitar as 4 cartas, e por isso a foto di-lo (`partida`)
+                # em vez de o esconder.
                 if atual:
                     out.append(_foto(out, atual, tipo, prefixo))
                     atual, cartas = [], 0
@@ -210,7 +254,7 @@ CAMPOS_ITEM = ("nm", "copy_id", "q", "set", "lang", "finish", "foil", "cond",
 
 
 def _foto(ja: list, itens: list[dict], tipo: str, prefixo: str,
-          partida: bool = False) -> dict:
+          partida: bool = False, isenta: bool = False) -> dict:
     n = len(ja) + 1
     magros = [{k: i[k] for k in CAMPOS_ITEM if k in i} for i in itens]
     cartas = sum(int(i["q"]) for i in magros)
@@ -228,6 +272,10 @@ def _foto(ja: list, itens: list[dict], tipo: str, prefixo: str,
         "feitas_cartas": sum(int(i["q"]) for i in magros if i.get("validado")),
         "perdidas": sum(int(i["q"]) for i in magros if i.get("foto_perdida")),
         "partida": partida,
+        # ISENTA do tecto de 4: só os terrenos básicos (02/10/2026). Vai no
+        # payload para a página poder explicar porque é que esta foto tem 27
+        # cartas em vez de quatro — uma excepção calada parece um defeito.
+        "isenta": isenta,
     }
 
 
