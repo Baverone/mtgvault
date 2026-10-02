@@ -1177,15 +1177,21 @@ def caso_excepcao_por_caixa_ganha_a_do_grupo():
     slots = [slot("PM1", "premodern", "PM1", prioridade=1, balde="Colecção"),
              slot("PM2", "premodern", "PM2", prioridade=2, balde="Colecção")]
     s = por_nome(loadout.report(con, [dict(x, dedicado=False) for x in slots]))
-    assert s["PM2"]["noutra"] == 0 and s["PM2"]["comprar"] == 0, s["PM2"]
-    assert s["PM2"]["playset_bloqueado"] == 4, s["PM2"]["playset_faltas"]
+    # O TECTO DE PLAYSET FOI-SE (André, 2026-10-02). Era `comprar == 0` com as
+    # quatro em `playset_bloqueado`; hoje a PM2 compra as suas quatro — cada deck
+    # as suas cartas, sem tecto por cima. A asserção muda com a decisão.
+    assert s["PM2"]["noutra"] == 0 and s["PM2"]["comprar"] == 4, s["PM2"]
+    assert s["PM2"]["playset_bloqueado"] == 0, s["PM2"]["playset_faltas"]
     assert all(x["dedicado"] for x in s.values()), "dedicado: false nao tem efeito"
 
     # A excepção que continua a valer: uma chave de material escrita no slot.
     add(con, "Swords to Plowshares", 4, lang="en", sub="Colecção")
     s = por_nome(loadout.report(con, [slots[0],
                                       dict(slots[1], lingua="en", estrita=False)]))
-    assert s["PM1"]["tenho"] == 4 and s["PM2"]["tenho"] == 4, (s["PM1"], s["PM2"])
+    # `tenho_fisico` e nao `tenho`: desde 2026-10-02 o `tenho` e a metade
+    # CONFIRMADA POR FOTO, e estas cópias do teste não têm foto desta campanha.
+    # O que este caso mede é a regra de MATERIAL, que não mudou.
+    assert s["PM1"]["tenho_fisico"] == 4 and s["PM2"]["tenho_fisico"] == 4,         (s["PM1"], s["PM2"])
     print("uma excepcao de material no slot ganha ao grupo; o dedicado nao se desliga")
 
 
@@ -1315,9 +1321,12 @@ def caso_premodern_voltou_a_partilhar():
     depois na prioridade indicam onde estão as cartas em falta"*). A 2026-09-19
     (*"cada deck deverá ter as suas próprias cartas dentro, não repetindo com
     outros decks!"*) deixou de o fazer, como toda a gente. O que FICA da regra
-    de 08/09 é o tecto de playset: a segunda caixa não vai buscar as 4 Swords
-    nem as compra — o grupo já tem 4 — e diz *"não se compra (limite de 4 no
-    total; está 4 no PM1)"*. Ver `test_caixas_dedicadas.py`.
+    de 08/09 era o tecto de playset — e a 2026-10-02 ele mandou ESQUECÊ-LO
+    (*"esquece a regra do máximo um playset em Premodern: já não vale"*). Hoje
+    não fica NADA da regra de 08/09: a segunda caixa não vai buscar as 4 Swords
+    (19/09) e COMPRA as suas quatro (02/10). O nome deste caso e as duas datas
+    ficam como histórico — é o registo de uma regra que existiu e de outra que a
+    substituiu. Ver `test_caixas_dedicadas.py` e `test_foto_manda.py`.
     """
     con = base()
     deck(con, "PM1", "premodern", [("Swords to Plowshares", 4)])
@@ -1328,14 +1337,17 @@ def caso_premodern_voltou_a_partilhar():
     s = por_nome(rep)
     primeira, segunda = (s["PM1"], s["PM2"]) if s["PM1"]["prioridade"] == 1 \
         else (s["PM2"], s["PM1"])
-    assert primeira["pct"] == 100 and primeira["comprar"] == 0, primeira
-    assert segunda["comprar"] == 0 and segunda["noutra"] == 0, segunda
+    # `pct_fisico` e não `pct`: desde 2026-10-02 o `pct` é a metade CONFIRMADA
+    # POR FOTO, e estas cópias do teste não têm foto desta campanha.
+    assert primeira["pct_fisico"] == 100 and primeira["comprar"] == 0, primeira
+    assert segunda["comprar"] == 4 and segunda["noutra"] == 0, segunda
     m = segunda["missing"][0]
+    # A NOTA fica (19/09): ele tem de saber que as tem noutra caixa.
     assert m["noutra"] == {} and m["noutra_nota"] == {primeira["nome"]: 4}, m
-    assert m["playset_bloqueado"] == 4 and m["playset_onde"] == {primeira["nome"]: 4}, m
-    assert loadout.texto_playset(m, 4) == \
-        f"4 não se compra (limite de 4 no total; está 4 no {primeira['nome']})"
-    print("as caixas de Premodern ja nao emprestam; o tecto de 4 no total fica")
+    # O TECTO foi-se (02/10): nada bloqueado, e por isso nenhuma frase.
+    assert m["playset_bloqueado"] == 0 and m["playset_onde"] == {}, m
+    assert loadout.texto_playset(m, 4) == "", loadout.texto_playset(m, 4)
+    print("as caixas de Premodern nao emprestam e nao tem tecto: compram as suas")
 
     # E o cEDH continua dedicado: a mesma pergunta, a resposta contrária.
     con2 = base()
@@ -1350,14 +1362,18 @@ def caso_premodern_voltou_a_partilhar():
 
 
 def caso_tecto_de_playset_no_premodern():
-    """*"No Premodern, afinal só vou ter até playset de cada carta."*
+    """O TECTO DE PLAYSET DO PREMODERN FOI-SE (André, 2026-10-02, à letra:
+    *"esquece a regra do máximo um playset em Premodern: já não vale"*).
 
-    Cinco caixas a pedir 4 Swords to Plowshares e uma cópia em casa: compram-se
-    3, não 20 — o grupo nunca passa de 4. Desde 2026-09-19 as outras quatro
-    caixas já não vão buscar as 4 à primeira (*"cada deck deverá ter as suas
-    próprias cartas dentro"*): ficam com a falta POR TAPAR, dita como tal
-    (`playset_bloqueado`, 16 cópias), fora do "fechar tudo". E com 5 em casa
-    não se compra nenhuma.
+    Este caso era o que trancava a regra de 2026-09-08 (*"no Premodern, afinal só
+    vou ter até playset de cada carta"*) e por isso é ele que muda de afirmação —
+    não de número. Cinco caixas a pedir 4 Swords to Plowshares e uma cópia em
+    casa: a primeira leva a cópia e as cinco compram o que lhes falta, **19**.
+    Era 3, com 16 em `playset_bloqueado` e fora do «fechar tudo».
+
+    A razão de a regra cair está escrita na ordem dele do mesmo dia: um tecto
+    contado sobre o GRUPO INTEIRO é a última peça da partilha entre caixas, e
+    *"cada deck tem as suas cartas"*. Ver `test_foto_manda.py`.
     """
     con = base()
     preco(con, "Swords to Plowshares", "nonfoil", 2.0)
@@ -1367,17 +1383,20 @@ def caso_tecto_de_playset_no_premodern():
     add(con, "Swords to Plowshares", 1, lang="pt", sub="Colecção")
     slots = [slot(n, "premodern", n, balde="Colecção") for n in nomes]
     rep = loadout.report(con, slots)
-    assert rep["comprar_total"] == 3, rep["comprar_total"]
-    assert rep["custo_total"] == 6.0, rep["custo_total"]
-    assert rep["bloqueado_total"] == 16, rep["bloqueado_total"]
+    # 19 = 20 pedidas menos a única cópia que existe (a primeira caixa leva-a).
+    assert rep["comprar_total"] == 19, rep["comprar_total"]
+    assert rep["custo_total"] == 38.0, rep["custo_total"]
+    assert rep["bloqueado_total"] == 0, rep["bloqueado_total"]
     assert rep["noutra_total"] == 0, rep["noutra_total"]
-    print("necessidade 4 com 1 em casa: compram-se 3; as outras caixas ficam por tapar")
+    print("sem tecto: as cinco caixas compram as suas (19 de 20)")
 
-    # Com 5 em casa não se compra nada.
+    # Com 5 em casa, a primeira leva 4 e a segunda leva 1: as outras compram.
+    # Era «não se compra nenhuma», que era o tecto a falar.
     add(con, "Swords to Plowshares", 4, lang="pt", sub="Colecção")
     rep = loadout.report(con, slots)
-    assert rep["comprar_total"] == 0 and rep["custo_total"] == 0.0, rep["custo_total"]
-    print("com 5 em casa nao se compra nenhuma")
+    assert rep["comprar_total"] == 15, rep["comprar_total"]
+    assert rep["bloqueado_total"] == 0, rep["bloqueado_total"]
+    print("com 5 em casa: 5 alocadas, 15 a comprar, nada bloqueado")
 
 
 def caso_excedente_de_playset_do_premodern_vai_para_venda():
@@ -1414,29 +1433,32 @@ def caso_excedente_de_playset_do_premodern_vai_para_venda():
 
 
 def caso_tecto_de_playset_diz_o_que_nao_se_compra():
-    """Uma caixa que precise de mais do que o tecto permite tem de o DIZER.
+    """SUPERSEDED a 2026-10-02: **o tecto foi-se, e por isso não há nada para
+    dizer.** O nome e o histórico ficam.
 
-    Se a falta saísse só da conta das compras, a caixa ficava à espera de uma
-    carta que ninguém vai comprar — e não havia como perceber porquê.
+    Era o caso que trancava o *"falta 1 que não se compra (limite de 4 no total)"*
+    — a caixa tinha de DIZER a falta que o tecto cortava, senão ficava à espera
+    de uma carta que ninguém ia comprar. Hoje compra-se: 4 no main + 1 no side
+    são **5 a comprar**, e `playset_bloqueado`/`limites` ficam a zero.
+
+    Vale a pena manter o caso em vez de o apagar: ele é agora a prova de que o
+    tecto não volta por uma chave esquecida — o `slot` deste teste traz
+    `playset_maximo: 4` do grupo `premodern` do config do teste, e mesmo assim
+    não corta nada.
     """
     con = base()
     preco(con, "Swords to Plowshares", "nonfoil", 2.0)
     # 4 no main + 1 no side: dentro da mesma caixa as faltas somam (estão na mesa
-    # ao mesmo tempo), mas o tecto do grupo são 4.
+    # ao mesmo tempo) e já nada as corta.
     deck(con, "PM1", "premodern", [("Swords to Plowshares", 4)],
          side=[("Swords to Plowshares", 1)])
     rep = loadout.report(con, [slot("PM1", "premodern", "PM1", balde="Colecção")])
     s = por_nome(rep)["PM1"]
-    assert s["comprar"] == 4 and s["custo"] == 8.0, s
-    assert s["playset_bloqueado"] == 1, s["playset_bloqueado"]
-    assert [(m["nm"], m["playset_bloqueado"]) for m in s["playset_faltas"]] == \
-        [("Swords to Plowshares", 1)], s["playset_faltas"]
-    lim = rep["limites"]
-    assert [(g["nm"], g["bloqueado"], g["tecto"]) for g in lim] == \
-        [("Swords to Plowshares", 1, 4)], lim
-    assert lim[0]["caixas"] == [{"slot": "pm1", "caixa": "PM1", "q": 1,
-                                 "board": "side"}], lim[0]["caixas"]
-    print("o que o tecto corta diz-se: 'falta 1 que nao se compra'")
+    assert s["comprar"] == 5 and s["custo"] == 10.0, s
+    assert s["playset_bloqueado"] == 0, s["playset_bloqueado"]
+    assert s["playset_faltas"] == [], s["playset_faltas"]
+    assert rep["limites"] == [], rep["limites"]
+    print("o tecto foi-se: as 5 compram-se e nada fica 'por tapar'")
 
 
 def caso_basicas_fora_do_tecto_de_playset():
@@ -1458,10 +1480,16 @@ def caso_basicas_fora_do_tecto_de_playset():
 
 
 def caso_compras_partilhadas_nao_passam_do_tecto():
-    """O tecto conta o que o GRUPO já tem: duas caixas a pedir 4 e duas cópias
-    em casa (na primeira) compram 2, não 4 nem 8 — 2 compradas mais 2 em casa
-    são 4, e ele disse quatro. (O nome vem de 2026-09-08, quando havia partilha
-    de compras; desde 2026-09-19 não há, e o tecto passou a ser a única conta.)
+    """SUPERSEDED a 2026-10-02: já não há tecto por que não passar.
+
+    O nome vem de 2026-09-08 (partilha de compras, que caiu a 19/09) e o corpo
+    passou a medir o tecto, que caiu a 02/10 (*"esquece a regra do máximo um
+    playset em Premodern"*). Duas caixas a pedir 4 e duas cópias em casa: a
+    primeira leva as duas e compra 2, a segunda compra 4 — **6**, e o grupo
+    passa a ter 8 cópias da carta. Era 2, com o grupo preso em 4.
+
+    O caso fica porque é o único que mede a conta do GRUPO de ponta a ponta, e
+    agora é ele a provar que o grupo já não é um tecto.
     """
     con = base()
     preco(con, "Swords to Plowshares", "nonfoil", 2.0)
@@ -1471,11 +1499,12 @@ def caso_compras_partilhadas_nao_passam_do_tecto():
     slots = [slot("PM1", "premodern", "PM1", balde="Colecção"),
              slot("PM2", "premodern", "PM2", balde="Colecção")]
     rep = loadout.report(con, slots)
-    assert rep["comprar_total"] == 2, rep["comprar_total"]
+    assert rep["comprar_total"] == 6, rep["comprar_total"]
     total = rep["comprar_total"] + sum(l["q"] for l in rep["pool"]
                                        ["Swords to Plowshares"])
-    assert total == 4, total
-    print("comprar + o que ja tem nunca passa do tecto de playset")
+    assert total == 8, total
+    assert rep["bloqueado_total"] == 0, rep["bloqueado_total"]
+    print("sem tecto: cada caixa compra o que lhe falta (6), e o grupo fica com 8")
 
 
 def caso_premodern_ordena_por_pct_completo():

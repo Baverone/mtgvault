@@ -148,7 +148,13 @@ def coleccao():
     add(con, "Get Lost", 4, finish="foil", validado="2026-09-20")
     add(con, "Get Lost", 2, finish="foil")
     add(con, "Winter Moon", 1, finish="nonfoil")
-    add(con, "City of Traitors", 5, finish="nonfoil", sub="Caixa Reserved List")
+    # COM FOTO DESTA CAMPANHA (2026-10-02): desde que *"se não tiver foto, não
+    # tem carta"*, uma cópia só chega à lista de venda com prova. Este caso mede
+    # os TILES da aba Vender e da Feira, e por isso precisa de uma linha de RL
+    # lá — sem a foto ela sai em `sem_foto` e a aba fica vazia, que é a regra a
+    # funcionar e não o que este teste quer medir.
+    add(con, "City of Traitors", 5, finish="nonfoil", sub="Caixa Reserved List",
+        validado="2026-09-20")
     encomendas.adicionar(con, "dc", "Path to Exile", 1, origem="loja X",
                          log_path=_TMP / "enc.log")
     con.commit()

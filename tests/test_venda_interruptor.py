@@ -110,20 +110,26 @@ def base():
                     "VALUES (?, 'player')", (sub,))
     con.commit()
     # 6 Dark Ritual (playset de 4 -> 2 de excedente) e 1 Gilded Drake da RL.
-    add(con, "Dark Ritual", 6)
-    add(con, "Gilded Drake", 1, sub="Caixa Reserved List")
+    # COM FOTO DESTA CAMPANHA (2026-10-02): desde que *"se não tiver foto, não
+    # tem carta"*, uma cópia sem foto não chega à lista de venda — e o caso
+    # `caso_a_revalidacao_nao_perde_as_copias_da_venda` precisa de um grupo
+    # «Venda» com cópias lá dentro para provar que esconder a venda não as perde.
+    add(con, "Dark Ritual", 6, validado="2026-09-20")
+    add(con, "Gilded Drake", 1, sub="Caixa Reserved List", validado="2026-09-20")
     return con
 
 
-def add(con, nm, q=1, sub="Colecção", lang="en", finish="nonfoil"):
+def add(con, nm, q=1, sub="Colecção", lang="en", finish="nonfoil", validado=None):
     sid = con.execute("SELECT scryfall_id FROM catalog.cards WHERE name = ?",
                       (nm,)).fetchone()["scryfall_id"]
     sub_id = con.execute("SELECT id FROM sub_collections WHERE name = ?",
                          (sub,)).fetchone()["id"]
     cur = con.execute("""INSERT INTO copies (scryfall_id, quantity, finish, language,
-                         condition, purpose, sub_collection_id)
-                         VALUES (?,?,?,?,'NM','player',?)""",
-                      (sid, q, finish, lang, sub_id))
+                         condition, purpose, sub_collection_id, validado_em,
+                         photo_path)
+                         VALUES (?,?,?,?,'NM','player',?,?,?)""",
+                      (sid, q, finish, lang, sub_id, validado,
+                       "fotos/x.jpg" if validado else None))
     con.commit()
     return cur.lastrowid
 

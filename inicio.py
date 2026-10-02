@@ -36,7 +36,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import collection, loadout, paginas, venda  # noqa: E402
+from mtgvault import collection, confirmado, loadout, paginas, venda  # noqa: E402
 from mtgvault import site_shell as shell  # noqa: E402
 
 _CSS = """
@@ -233,11 +233,23 @@ def build(con, out_path=None, rep=None):
     rl_q = sum(m["q"] for m in res.get("venda_rl", []))
     rl_v = round(sum(m["q"] * (m.get("unit") or 0) for m in res.get("venda_rl", [])), 2)
 
+    # A FOTO É A VERDADE (André, 2026-10-02). As duas metades do valor e das
+    # cartas, e a LINHA HONESTA — este é o primeiro ecrã que ele abre, e é aqui
+    # que a regra nova tem de ser impossível de não ver. Quem compõe é o
+    # `confirmado`, nunca esta página: duas somas ao lado davam dois números.
+    prog = confirmado.progresso(con, res) if confirmado.manda() else None
+    cartas_m = (prog["total"]["cartas"] if prog else None)
+    valor_m = (prog["total"]["valor"] if prog else None)
+
     hoje = date.today().isoformat()
     lead = (f'O que a coleção diz <b>hoje</b> ({hoje}). '
             f'<b>{len(montadas)}</b> deck{"s" if len(montadas) != 1 else ""} '
             f'na estante, <b>{len(por_montar)}</b> por montar, '
             f'<b>{res["comprar_total"]}</b> cópias por comprar.')
+    if prog:
+        lead += (f' 📷 <b>{html.escape(prog["frase"])}</b> — a foto é a verdade '
+                 f'e a base é o registo dela: uma cópia só conta para as '
+                 f'decisões quando tem foto desta campanha.')
 
     kpis = "".join([
         _kpi("montado", "Decks montados", str(len(montadas)),
@@ -246,10 +258,20 @@ def build(con, out_path=None, rep=None):
         _kpi("comprar", "Faltam aos permanentes", str(falta_perm),
              f"{paginas.eur(custo_perm)} · {len(perm)} caixas permanentes",
              "warn", "deckboxes.html#comprar"),
+        # AS DUAS METADES, E DIZ QUAL É QUAL (André, 2026-10-02). O número grande
+        # continua a ser a colecção INTEIRA — nada se apaga, e uma cópia sem foto
+        # continua a valer dinheiro — e por baixo diz-se quanto está confirmado
+        # por foto e quanto está por confirmar. Mostrar só o confirmado era pôr a
+        # colecção dele a valer zero durante os dias em que fotografa.
         _kpi("binders", "Cartas na coleção", f"{n_copias:,}".replace(",", " "),
              f"valor ~{paginas.eur(valor)} — o mesmo número dos "
              f"<a href=\"colecao_cor.html\">binders por cor</a> e da "
-             f"<a href=\"colecao.html\">galeria</a>", "info", "colecao_cor.html"),
+             f"<a href=\"colecao.html\">galeria</a>"
+             + (f'<br>📷 <b>{cartas_m["confirmado"]}</b> confirmadas por foto '
+                f'({valor_m["texto_confirmado"]}) · '
+                f'<b>{cartas_m["por_confirmar"]}</b> por confirmar '
+                f'({valor_m["texto_por_confirmar"]})' if prog else ""),
+             "info", "colecao_cor.html"),
         (_kpi("vender", "Para vender", paginas.eur(venda_v),
               f"{venda_q} cópias · mais {rl_q} da Reserved List "
               f"({paginas.eur(rl_v)})", "gold", "deckboxes.html#vender")

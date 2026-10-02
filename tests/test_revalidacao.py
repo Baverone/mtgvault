@@ -201,9 +201,17 @@ def log_de(p):
 
 
 def numeros(rep):
+    """A ALOCACAO, que a campanha nunca mexeu e continua a nao mexer.
+
+    A 2026-09-20 este tuplo levava tambem a VENDA e o `pct`/`tenho` — era a
+    decisao desse dia (*"o estado nao muda um unico numero"*). A 2026-10-02 ela
+    foi invertida (*"se nao tiver foto, nao tem carta"*) e esses PASSARAM a
+    mudar, de proposito. O que ficou de 20/09 e o que este tuplo mede: o que a
+    alocacao escolhe, o que ha para comprar e o que ha para arrumar.
+    """
     return (rep["custo_total"], rep["comprar_total"], rep["arrumacao"]["copias"],
-            rep["copias"], rep["total"], rep["copias_rl"], rep["total_rl"],
-            [(s["slot"], s["pct"], s["tenho"], s["comprar"]) for s in rep["slots"]])
+            [(s["slot"], s["pct_fisico"], s["tenho_fisico"], s["comprar"])
+             for s in rep["slots"]])
 
 
 # ---------------------------------------------------------------------------
@@ -292,7 +300,11 @@ def caso_discrepancia_corrige_e_tira_da_caixa_se_a_regra_mandar():
     # A caixa passou a contar 3 (a 2X2 não serve) — a correcção não se lava.
     rep = loadout.report(con)
     pm = next(s for s in rep["slots"] if s["slot"] == "pm")
-    assert pm["tenho"] == 2 and pm["comprar"] == 0, (pm["tenho"], pm["comprar"])
+    # `tenho_fisico` e não `tenho`: desde 2026-10-02 o `tenho` é a metade
+    # CONFIRMADA POR FOTO, e as 3 cópias ODY que ficaram na caixa não têm foto
+    # desta campanha (a foto validou a cópia CORRIGIDA, que saiu da caixa). O que
+    # este caso mede é que a correcção não se lava, e isso não mudou.
+    assert pm["tenho_fisico"] == 2 and pm["comprar"] == 0,         (pm["tenho_fisico"], pm["comprar"])
     prog = revalidacao.progresso(con, rep)
     assert prog["total"]["corrigidas"] == 1 and prog["corrigidas"][0]["copy_id"] == nova["id"]
     assert "2X2" in prog["corrigidas"][0]["nota"], prog["corrigidas"][0]
@@ -303,8 +315,10 @@ def caso_discrepancia_corrige_e_tira_da_caixa_se_a_regra_mandar():
     assert "saiu da caixa" not in res[0]["motivo"], res[0]
     assert sorted(a["quantity"] for a in alocacao(con, "pm")) == [1, 2], alocacao(con)
     # A caixa pede 2 e tinha 4 ODY: antes e depois fecha com 2 — a 2X2 corrigida
-    # saiu, sobram 3 que servem. A campanha sozinha não mexe em nada (caso 7).
-    assert next(s for s in rep0["slots"] if s["slot"] == "pm")["tenho"] == 2
+    # saiu, sobram 3 que servem. (`tenho_fisico` desde 2026-10-02: o `tenho`
+    # passou a ser a metade CONFIRMADA POR FOTO, e estas cópias não a têm.)
+    assert next(s for s in rep0["slots"]
+                if s["slot"] == "pm")["tenho_fisico"] == 2
     print("discrepancia: corrige a copia da caixa, log, e sai da caixa so quando a regra manda")
 
 
@@ -382,13 +396,25 @@ def caso_os_cinco_caminhos_em_duas_fotos_de_quatro_e_uma():
 
 
 def caso_a_exportacao_da_venda_marca_foto():
-    """8 Brainstorm (nenhuma caixa os pede): 4 ficam, 4 vão à venda — os de
-    pior estado, duas linhas de 2 EX. Uma revalidada, outra não: cada linha do
-    CSV diz `validada <data>` / `por revalidar`, a estante marca 📷, o
-    `csv_validadas` só tem as 2, e o `exportar(so_validadas=True)` escreve só
-    essas."""
+    """A COLUNA `Foto` DA EXPORTAÇÃO FICOU DEGENERADA a 2026-10-02, e este caso
+    passou a ser o registo disso.
+
+    Era: 8 Brainstorm, 4 à venda em duas linhas de 2 EX, uma revalidada e outra
+    não — e o CSV dizia `validada <data>` numa e `por revalidar` na outra, com o
+    `csv_validadas` a levar só metade. Desde que *"se não tiver foto, não tem
+    carta"* (02/10) **nada entra na lista de venda sem foto desta campanha**:
+    logo a coluna diz sempre `validada`, o `copias_por_revalidar` é sempre 0 e o
+    `so_validadas` do `exportar` deixou de cortar o que quer que seja.
+
+    O caso fica (e a funcionalidade de 20/09 também, intacta): é ela que mantém o
+    CSV honesto se um dia o `foto_manda` for desligado. O que mudou é a
+    afirmação — e com ela a de que a venda só oferece cópias com prova, que é o
+    que ele pediu a 20/09: *"o que eu for vender também vai com foto"*.
+    """
     repor()
     con = mundo()
+    # A v1 fica SEM foto desta campanha de propósito: é ela a prova de que não
+    # chega à venda. A v2 tem foto e é a única que sai.
     v1 = copia(con, "Brainstorm", "ice", q=2, lang="en", foto="x.jpg")
     v2 = copia(con, "Brainstorm", "ice", q=2, lang="en", foto="y.jpg",
                validado="2026-09-21")
@@ -397,28 +423,36 @@ def caso_a_exportacao_da_venda_marca_foto():
     con.commit()
     rep = loadout.report(con)
     vend = [c for r in rep["venda"] for c in r["copias"]]
-    assert sorted(int(c) for c, _q in vend) == sorted([v1, v2]), (vend, v1, v2, ok)
+    assert sorted(int(c) for c, _q in vend) == [v2], (vend, v1, v2, ok)
+    # E a v1 não desapareceu: está na saída NOVA, com o motivo e o que fazer.
+    sf = [c for r in rep["sem_foto"] for c in r["copias"]]
+    assert sorted(int(c) for c, _q in sf) == [v1], (sf, v1)
+    assert rep["copias_sem_foto"] == 2, rep["copias_sem_foto"]
     r = venda.relatorio(con, rep)
-    assert r["copias"] == 4 and r["copias_validadas"] == 2 and r["copias_por_revalidar"] == 2, r["copias"]
+    assert r["copias"] == 2 and r["copias_validadas"] == 2, r["copias"]
+    assert r["copias_por_revalidar"] == 0, "nada sem foto chega à venda"
     rows = list(csv.reader(io.StringIO(r["csv"])))
     assert rows[0][-1] == "Foto"
     fotos = {int(row[8].split("#")[1].split(" ")[0]): row[-1] for row in rows[1:]}
-    assert fotos == {v1: "por revalidar", v2: "validada 2026-09-21"}, fotos
+    assert fotos == {v2: "validada 2026-09-21"}, fotos
     rv = list(csv.reader(io.StringIO(r["csv_validadas"])))
     assert len(rv) == 2 and rv[1][-1] == "validada 2026-09-21", rv
-    assert "📷 por revalidar" in r["texto_estante"] and "📷" not in r["texto_estante_validadas"]
+    # A estante já não tem nada «por revalidar» para marcar.
+    assert "📷 por revalidar" not in r["texto_estante"], r["texto_estante"]
     pasta = _TMP / "exp"
     e = venda.exportar(con, rep, pasta=pasta, so_validadas=True)
     assert e["copias"] == 2 and e["so_validadas"] and "só validadas" in e["resumo"], e
-    assert (pasta / venda.FICHEIRO_STOCK).read_text(encoding="utf-8").count("\n") == 2
-    e = venda.exportar(con, rep, pasta=pasta)
-    assert e["copias"] == 4 and "2 por revalidar" in e["resumo"], e
-    # A página: a linha de venda diz {ok: 2, falta: 2} e o bloco soma.
+    # O `so_validadas` deixou de cortar: as duas exportações dão o mesmo.
+    e2 = venda.exportar(con, rep, pasta=pasta)
+    assert e2["copias"] == 2 and e2["copias_por_revalidar"] == 0, e2
+    assert "0 por revalidar" in e2["resumo"], e2["resumo"]
+    # A página: a linha de venda diz {ok: 2, falta: 0} e o bloco soma.
     d = deckboxes.payload(con, rep)
     n = d["venda"]["normal"]
-    assert n["validadas"] == 2 and n["por_revalidar"] == 2, n
-    assert n["linhas"][0]["foto"] == {"ok": 2, "falta": 2}, n["linhas"][0]
-    print("venda: coluna Foto por copia, csv_validadas, estante com 📷, exportar --so-validadas")
+    assert n["validadas"] == 2 and n["por_revalidar"] == 0, n
+    assert n["linhas"][0]["foto"] == {"ok": 2, "falta": 0}, n["linhas"][0]
+    print("venda: so copias com foto desta campanha; a coluna Foto diz sempre "
+          "'validada' e o --so-validadas deixou de cortar")
 
 
 def caso_o_progresso_conta_certo_e_nao_muda_numeros():
@@ -445,11 +479,26 @@ def caso_o_progresso_conta_certo_e_nao_muda_numeros():
     assert prog["hoje_entradas"] == [] or prog["hoje_entradas"][0]["nm"] == "Brainstorm"
     # A lista de uma caixa vem por COR: o Swords (branco) antes de nada.
     assert por["pm"]["linhas"][0]["cor"] == "W" and por["pm"]["linhas"][0]["estado"] == "foto"
-    # A campanha não mexe nos números.
+    # A CAMPANHA NAO MEXE NA ALOCACAO — mas desde 2026-10-02 MEXE NA VENDA.
+    # A decisao de 20/09 era *"o estado nao muda um unico numero"*; a de 02/10
+    # inverteu-a: *"se nao tiver foto, nao tem carta"*. O que continua verdade e
+    # que a alocacao nao se move — a foto manda em quem CONTA, nao em quem e
+    # escolhido —, e e isso que o `numeros()` mede.
     antes = numeros(rep)
+    venda_on = (rep["copias"], rep["copias_rl"], rep.get("copias_sem_foto"))
+    pct_on = [(s["slot"], s["pct"], s["tenho"]) for s in rep["slots"]]
     repor(campanha=False)
     rep2 = loadout.report(con)
-    assert numeros(rep2) == antes, "a campanha mudou a alocação/venda?!"
+    assert numeros(rep2) == antes, "a campanha mudou a alocação?!"
+    # Sem campanha, a venda volta a levar as copias sem foto e a saida nova
+    # fica vazia: 10 das 13 copias deste mundo nao tem foto desta campanha.
+    venda_off = (rep2["copias"], rep2["copias_rl"], rep2.get("copias_sem_foto"))
+    assert venda_on != venda_off, (venda_on, venda_off)
+    assert venda_on[2] > 0 and venda_off[2] == 0, (venda_on, venda_off)
+    assert venda_off[0] + venda_off[1] == venda_on[0] + venda_on[1] + venda_on[2],         "a venda e o «sem foto» tem de somar a venda de antes — nada se perde"
+    # E o `pct`/`tenho` volta a ser o fisico.
+    assert [(s["slot"], s["pct"], s["tenho"]) for s in rep2["slots"]] != pct_on         or all(p == 0 for _s, p, _t in pct_on)
+    assert [(s["slot"], s["pct"], s["tenho"]) for s in rep2["slots"]] ==         [(s["slot"], s["pct_fisico"], s["tenho_fisico"]) for s in rep2["slots"]]
     assert not revalidacao.activa() and revalidacao.desde() is None
     d = deckboxes.payload(con, rep2)
     assert d["revalidacao"] is None and all(c["rev"] is None for c in d["caixas"])
@@ -634,7 +683,14 @@ def caso_a_pagina_nos_dois_modos():
         con, editable=True), "a barra perdeu a Revalidação"
     r = abas["revalidacao"]
     assert "A fotografar: Caixa UW Replenish" in r and 'data-rev-parar="1"' in r, r[:2000]
-    assert 'data-rev="venda"' in r and 'data-rev="rl"' in r, r[:3000]
+    # O GRUPO «VENDA» DESAPARECEU DA ABA (2026-10-02), e e uma consequencia
+    # logica e nao uma avaria: desde que *"se nao tiver foto, nao tem carta"*
+    # nada entra na lista de venda sem foto desta campanha, logo o grupo nunca
+    # tem copias — e um grupo vazio nao se desenha. As copias que ele vai vender
+    # fotografam-se onde ESTAO (a Caixa RL e a Coleccao, que continuam la) e
+    # entram na venda depois. Com `foto_manda: false` o grupo volta.
+    assert 'data-rev="venda"' not in r, "o grupo «Venda» ja nao tem copias"
+    assert 'data-rev="rl"' in r, r[:3000]
     assert 'data-rev="caixa" data-slot="pm2"' in r, "a Enchantress tem o botão"
     assert "Corrigidas pela foto" in r and "ODY → 4ED" in r, r
     c = abas["pm"]
@@ -648,9 +704,14 @@ def caso_a_pagina_nos_dois_modos():
     assert '"tlr">📷 2 por fotografar' in c, "o estado da grelha"
     cl = abas["lista:pm"]
     assert 'class="mv rv foto"' in cl and 'class="mv rv corr"' in cl, cl[-4000:]
+    # A ABA VENDER FICOU VAZIA (2026-10-02), e é a regra a funcionar: as 5 cópias
+    # que iam à venda neste mundo não têm foto desta campanha, por isso saem em
+    # `sem_foto`. O 📷 por cópia e o filtro «Só validadas» (20/09) continuam no
+    # código e voltam com `foto_manda: false`; o que já não há é uma linha sem
+    # foto na venda para eles marcarem.
     v = abas["vender"]
-    assert "📷 Só validadas" in v and 'class="tl rev"' in v, v[:3000]
-    assert 'class="rvfoto"' in abas["lista:vender"], abas["lista:vender"][:3000]
+    assert 'class="tl rev"' not in v, "nada sem foto chega à venda desde 02/10"
+    assert "0 cópias" in v, v[:3000]
     # A caixa da Enchantress (sem alvo) tem o botão «Fotografar esta caixa»;
     # a barra da fila diz «validadas».
     pub = _abas(con, False)
@@ -659,8 +720,9 @@ def caso_a_pagina_nos_dois_modos():
         assert marca not in pub["pm"] and marca not in pub["revalidacao"], marca
     assert 'href="deckboxes.html#revalidacao"' in deckboxes.html_page(
         con, editable=False), "a barra do site publicado perdeu a Revalidação"
-    assert 'class="tl rev"' in pub["vender"], "a venda marca 📷 também no publicado"
-    assert 'class="rvfoto"' in pub["lista:vender"]
+    assert 'class="tl rev"' not in pub["vender"],         "no publicado como no 8771: nada sem foto chega à venda (02/10/2026)"
+    # idem no modo Lista: sem linha de venda, não há coluna 📷 para marcar.
+    assert 'class="rvfoto"' not in pub["lista:vender"]
     repor()
     print("pagina: aba, barra, lista Na caixa e venda com 📷 nos dois modos; botoes so no 8771")
 

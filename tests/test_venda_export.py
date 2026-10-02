@@ -314,8 +314,16 @@ def caso_o_que_nao_se_vende_fica_de_fora_e_diz_porque():
     # vazia neste mundo — nenhuma shock/fetch, nenhuma RL que ele jogue, nenhum
     # deck com decisão escrita, nenhuma reserva — e é por isso que a lista de
     # venda deste teste não mexeu um cêntimo.
-    assert set(fora) == {"protegidas", "rl_segurar", "rl_sem_historico",
-                         "guardar", "reservadas", "retidos"}, set(fora)
+    # `sem_foto` entrou a 2026-10-02 (*"se não tiver foto, não tem carta"*), à
+    # CABEÇA: é a única destas saídas que ele resolve com um gesto. Está vazia
+    # neste mundo porque o config do teste não liga a campanha
+    # (`revalidacao.desde`), e por isso a lista de venda deste teste não mexeu um
+    # cêntimo — é a prova de que a saída nova não muda o motor onde a regra não
+    # está ligada.
+    assert set(fora) == {"sem_foto", "protegidas", "rl_segurar",
+                         "rl_sem_historico", "guardar", "reservadas",
+                         "retidos"}, set(fora)
+    assert fora["sem_foto"]["copias"] == 0, fora["sem_foto"]
     assert fora["protegidas"]["copias"] == 0, fora["protegidas"]
     seg = fora["rl_segurar"]
     assert seg["copias"] == 2 and seg["linhas"][0]["nm"] == "Gilded Drake", seg
@@ -449,7 +457,9 @@ def caso_a_aba_vender_leva_a_saida_e_o_modo_edicao_grava():
     assert s["copias"] == 5 and s["formato"]["origem"] == "predefinido", s
     assert s["csv"].startswith("Name,Set,Number") and "Null Rod" in s["csv"]
     assert [g["local"] for g in s["estante"]["grupos"]] == ["Colecção", "Caixa RL (EN)"]
-    assert {f["chave"] for f in s["fora"]} == {"protegidas", "rl_segurar",
+    # `sem_foto` entrou a 2026-10-02, à cabeça (ver `venda.FORA`).
+    assert {f["chave"] for f in s["fora"]} == {"sem_foto", "protegidas",
+                                               "rl_segurar",
                                                "rl_sem_historico", "guardar",
                                                "reservadas", "retidos"}
     # A parte pesada da venda leva a saída (é lá que a aba a vai buscar).

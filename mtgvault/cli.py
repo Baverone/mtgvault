@@ -287,6 +287,19 @@ def main(argv=None):
                          "(10/20/30/40/50 %%), em cópias e valor")
     pf.add_argument("--json", action="store_true")
 
+    # A FOTO É A VERDADE (André, 2026-10-02). Vive no CLI pela razão do `fases`:
+    # é por aqui que ele e o Claude na nuvem vêem o progresso da campanha e os
+    # conflitos de alocação dupla sem abrir o site.
+    pfm = sub.add_parser("foto",
+                         help="o progresso da campanha («X de 1 678 cartas "
+                              "confirmadas por foto»), por deck e em euros, e os "
+                              "conflitos de alocação dupla; `foto manda "
+                              "<on|off>` liga e desliga a regra")
+    pfm.add_argument("accao", nargs="?", default="mostrar",
+                     choices=["mostrar", "manda", "conflitos"])
+    pfm.add_argument("valor", nargs="?", help="on|off, para `foto manda`")
+    pfm.add_argument("--json", action="store_true")
+
     pm = sub.add_parser("precos",
                         help="o modo de preço: `precos` mostra, `precos modo "
                              "<market|best|media>` troca, `precos comparar` "
@@ -721,6 +734,9 @@ def main(argv=None):
         elif args.cmd == "fases":
             return _fases(con, args)
 
+        elif args.cmd == "foto":
+            return _foto(con, args)
+
         elif args.cmd == "precos":
             _precos(con, args)
 
@@ -878,6 +894,56 @@ def comparar_modos(con) -> dict:
             f"{k[0]}: {lados[base].get(k, '(fora)')} -> {lados[m].get(k, '(fora)')}"
             for k in mudam)[:8]
     return {"base": base, "modos": out, "em_vigor": precos.modo()}
+
+
+def _foto(con, args):
+    """`foto` — A FOTO É A VERDADE (André, 2026-10-02).
+
+    `foto` dá o progresso («X de 1 678 cartas confirmadas por foto»), por deck e
+    em euros, mais os conflitos de alocação dupla; `foto conflitos` só esses;
+    `foto manda on|off` é o interruptor (o padrão do `vender --mostrar`).
+    """
+    import json as _json                                     # noqa: PLC0415
+
+    from . import configio, confirmado, loadout, sources      # noqa: PLC0415
+    if args.accao == "manda":
+        v = (args.valor or "").lower()
+        if v not in ("on", "off", "true", "false", "sim", "nao"):
+            print("diz `foto manda on` ou `foto manda off`")
+            return 2
+        ligar = v in ("on", "true", "sim")
+        cfg = sources.config()
+        cfg.setdefault("revalidacao", {})["foto_manda"] = ligar
+        configio.escrever(cfg)
+        print(f"a foto {'MANDA' if ligar else 'deixou de mandar'}: "
+              f"revalidacao.foto_manda = {str(ligar).lower()}.")
+        print("As páginas só mudam na corrida seguinte do daily (ou num POST no "
+              "8771, que limpa a cache).")
+        return 0
+    rep = loadout.report(con)
+    if args.accao == "conflitos":
+        cs = confirmado.conflitos(con)
+        if args.json:
+            print(_json.dumps(cs, ensure_ascii=False, indent=1))
+            return 0
+        if not cs:
+            print("sem conflitos: nenhuma cópia está alocada a dois decks.")
+            return 0
+        print(f"{len(cs)} conflito(s) de alocação dupla — para ele resolver ao "
+              f"fotografar; não se tocam:")
+        for c in cs:
+            print(f"  cópia {c['copy_id']}: {c['q']}× {c['nm']} ({c['set']} "
+                  f"{c['lang']} {c['finish']}) — "
+                  + ", ".join(f"{n}={q}" for n, q in
+                              zip(c["decks"], c["quantidades"].values()))
+                  + f" · {c['motivo']}")
+        return 0
+    if args.json:
+        print(_json.dumps(confirmado.progresso(con, rep), ensure_ascii=False,
+                          indent=1, default=str))
+        return 0
+    print(confirmado.texto(con, rep))
+    return 0
 
 
 def _fases(con, args):

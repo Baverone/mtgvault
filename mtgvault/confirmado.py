@@ -169,18 +169,31 @@ def frase(confirmado: float, total: float, *, unidade: str = "cartas") -> str:
 
 
 def _n(v) -> str:
-    """O número em português: milhares com espaço fino, decimais com vírgula."""
-    if isinstance(v, float) and round(v, 2) != round(v):
-        return f"{v:,.2f}".replace(",", " ").replace(".", ",")
-    return f"{int(round(v)):,}".replace(",", " ")
+    """Um numero INTEIRO em portugues: milhares separados por ESPACO.
+
+    O mesmo separador do `paginas.eur`, e de proposito: a licao de 2026-09-24 e
+    que *"a conta estava certa nas seis paginas; o que mudava era o separador"*.
+    A primeira versao disto levava um espaco fino (U+202F) e dava
+    `0 de 1 678` onde o resto do site diz `1 678` — o mesmo defeito, com um
+    caracter invisivel.
+
+    Os EUROS nao se formatam aqui: vao ao `paginas.eur`, que e o unico sitio onde
+    isso se escreve.
+    """
+    return f"{int(round(v)):,}".replace(",", " ")
 
 
 def euros(confirmado: float, total: float) -> dict:
-    """As duas metades de um VALOR, com os textos em euros já feitos."""
+    """As duas metades de um VALOR, com os textos em euros ja feitos.
+
+    Os textos saem do **`paginas.eur`** e nao de um formatador novo: quatro
+    paginas ja ficaram em ingles (`1 009.27 €`) por cada uma escrever o seu.
+    """
+    from . import paginas                                     # noqa: PLC0415
     m = metades(confirmado, total, unidade="cartas", casas=2)
-    m["texto_confirmado"] = f"{_n(m['confirmado'])} €"
-    m["texto_por_confirmar"] = f"{_n(m['por_confirmar'])} €"
-    m["texto_total"] = f"{_n(m['total'])} €"
+    m["texto_confirmado"] = paginas.eur(m["confirmado"])
+    m["texto_por_confirmar"] = paginas.eur(m["por_confirmar"])
+    m["texto_total"] = paginas.eur(m["total"])
     m["frase"] = (f"{m['texto_confirmado']} confirmados por foto · "
                   f"{m['texto_por_confirmar']} por confirmar"
                   if manda() else m["texto_total"])
@@ -323,6 +336,16 @@ def exige_alocacao_unica(con, linhas, *, permitir=None) -> None:
                 f" — a mesma carta não está em dois sítios.")
 
 
+def exige_uma_so(con, copy_id: int, slot: str, q: int) -> None:
+    """A versão de UMA cópia, para quem insere uma linha só (a encomenda que a
+    foto fecha, o *"já a tenho"*): o estado final desta cópia é o que ela já tem
+    nos OUTROS slots mais o que se vai escrever neste."""
+    al = {s: n for s, n in alocacoes(con, copy_id).items() if s != slot}
+    linhas = [(copy_id, s, n) for s, n in al.items()]
+    linhas.append((copy_id, slot, int(q)))
+    exige_alocacao_unica(con, linhas)
+
+
 def conflitos(con, nomes: dict[str, str] | None = None) -> list[dict]:
     """O CONFLITO VISÍVEL: as cópias em dois decks, para ele resolver quando
     fotografar esses decks.
@@ -397,6 +420,37 @@ def _log(accao: str, detalhe: str, log_path: Path | None = None) -> Path:
     with open(p, "a", encoding="utf-8") as fh:
         fh.write(f"{dt.datetime.now():%Y-%m-%d %H:%M:%S}\t{accao}\t{detalhe}\n")
     return p
+
+
+def alvo_da_pasta(photo_path: str | None) -> tuple[bool, str | None]:
+    """A PASTA onde a foto foi largada decide a que deck a carta pertence:
+    devolve `(decide, slot)`.
+
+    `(True, "cedh-blue-farm")` — a foto veio da pasta daquele deck (ou do botão
+    «Tirar fotos» com aquela caixa como alvo); `(True, None)` — veio de
+    `Extras (fora dos decks)`, logo a cópia fica **sem deck**; `(False, None)` —
+    a foto não diz nada e a alocação não se toca.
+
+    Quem sabe ler isto é o `fotosite.origem`, pelo NOME do ficheiro
+    (`site-<slot>-…`, `site-colecao-…`) — e é o `fotos.recolher_das_pastas` que
+    renomeia a foto da pasta do deck para esse nome, desde 2026-10-01. Não se
+    escreveu um segundo leitor: *«um caminho só, e é o que já estava testado»*.
+
+    **O alvo GLOBAL do config não serve aqui, de propósito.** Ele é *"a caixa que
+    estou a fotografar"* e vale para PREFERIR cópias no passo (0); usá-lo para
+    REESCREVER alocações fazia uma foto largada à mão em `pendentes/` mudar o
+    deck de uma carta por causa de um botão carregado ontem. A ordem dele é sobre
+    a pasta: *"o que eu colocar de fotos no deck, é daquele deck, ponto"*.
+    """
+    from . import fotos, fotosite                            # noqa: PLC0415
+    o = fotosite.origem(photo_path or "")
+    if not o:
+        return False, None
+    if o["tipo"] == "caixa" and o.get("slot"):
+        return True, o["slot"]
+    if o["tipo"] == fotos.ALVO_FORA_DOS_DECKS:
+        return True, None
+    return False, None
 
 
 def alocar_por_foto(con, copy_id: int, slot: str | None, q: int | None = None,
@@ -495,7 +549,9 @@ def progresso(con, rep: dict | None = None, dia: str | None = None) -> dict:
         for l in linhas:
             if so_validadas is not None and bool(l.get("validado_em")) != so_validadas:
                 continue
-            p = collection.preco_impressao(mapa, l.get("sid"), l.get("fin"))
+            # O `preco_impressao` devolve o PAR (preço, acabamento a que ele
+            # corresponde) — a conta única de 2026-09-24. Só o primeiro entra.
+            p, _fin = collection.preco_impressao(mapa, l.get("sid"), l.get("fin"))
             t += (p or 0) * (l.get("q") or 0)
         return round(t, 2)
 

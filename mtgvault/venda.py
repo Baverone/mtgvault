@@ -157,6 +157,17 @@ LINGUAS_ID = {"en": 1, "fr": 2, "de": 3, "es": 4, "it": 5, "zhs": 6, "ja": 7,
 # A ordem é a da página: a RL primeiro (é onde está o dinheiro), depois os
 # substitutos, as reservadas e os retidos.
 FORA = (
+    # SEM FOTO DESTA CAMPANHA (André, 2026-10-02: *"se não tiver foto, não tem
+    # carta"*). À CABEÇA de tudo, porque é a única destas seis que ele resolve
+    # com um gesto — tirar a foto — e porque é hoje a maior: com a campanha
+    # acabada de inverter, é aqui que está a lista de venda inteira. NÃO é uma
+    # protecção e não se mistura com elas: aquelas são decisões TOMADAS, esta é
+    # falta de prova.
+    ("sem_foto", "Sem foto desta campanha — ainda não contam",
+     "A foto é a verdade e a base é o registo dela (02/10/2026). Estas cópias "
+     "estão na base mas ainda não foram fotografadas nesta campanha, por isso "
+     "não se vendem: fotografa-as na pasta do deck (ou nos Extras, se não forem "
+     "de deck nenhum) e aparecem na corrida seguinte."),
     # AS QUATRO PROTECÇÕES (André, 2026-10-01). À cabeça, e não no fim: é a
     # decisão mais recente e é a que ele quer ver primeiro. Cada linha traz o
     # motivo em português e qual das quatro a apanhou (ver `mtgvault/fases.py`).

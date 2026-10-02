@@ -2288,13 +2288,24 @@ def _slot_do_pool(chave: tuple[str, str, str]) -> dict:
 def playset_maximo(s: dict) -> int | None:
     """O tecto de cópias que o GRUPO desta caixa pode ter de cada carta.
 
-    André, 2026-09-08: *"No Premodern, afinal só vou ter até playset de cada
-    carta."* Vive no `regras_por_formato` do grupo (`playset_maximo: 4`) e pode
-    abrir excepção numa caixa, como todas as outras regras de material.
-    `None`/0 = sem tecto, que é o que os outros grupos são.
+    **DESDE 2026-10-02 É SEMPRE `None`: a regra foi-se.** O André mandou
+    ESQUECER o *"no Premodern, afinal só vou ter até playset de cada carta"* de
+    2026-09-08, no mesmo dia em que inverteu o modelo para *"cada deck tem as
+    suas cartas"* e *"se não tiver foto, não tem carta"* — e as duas coisas
+    batem-se de frente: um tecto contado sobre o GRUPO INTEIRO é a última peça
+    da partilha entre caixas, e seis decks que não partilham nada não têm por
+    onde dividir quatro cópias.
+
+    O que o tecto fazia, medido na base de 2026-09-19 quando entrou: **47
+    cópias** por tapar que não se compravam (Enchantress 25, Elves 14, Oath 8).
+    A partir de hoje compram-se — ou, com a foto a mandar, fotografam-se.
+
+    Devolve `None` e não se apagou a função: um `playset_maximo: 4` esquecido
+    num config **deixa de ter efeito**, que é o mesmo que aconteceu ao
+    `dedicado: false` a 2026-09-19. Apagar a chave de todo era deixar quem a
+    tivesse escrita sem saber porque é que parou de funcionar.
     """
-    v = s.get("playset_maximo")
-    return int(v) if v else None
+    return None
 
 
 def _precisa_de(s: dict, nm: str) -> int:
@@ -3529,11 +3540,23 @@ def sell_list(con, res: dict) -> dict:
             # em PIOR ESTADO (2026-09-18): o playset que fica em casa é o NM, e
             # a EX é a que vai para o Cardmarket — antes desempatava pelo `id`,
             # e a saída de stock dizia o estado errado da cópia a listar.
-            for lot in sorted(lotes, key=lambda l: (bool(l["substituto"]), l["rl"],
-                                                    l["finish"] in FOIL_FINISHES,
-                                                    l["lang"] == "pt",
-                                                    -ordem_estado(l.get("cond")),
-                                                    l["key"])):
+            # A FOTO À FRENTE (André, 2026-10-02). A chave nova é a PRIMEIRA, e
+            # sem ela a regra «nada se vende sem foto» não funcionava: o
+            # excedente escolhia-se pelo pior estado, podia cair todo nas cópias
+            # SEM foto, e o filtro `sem_foto` punha a lista a zero — fotografar
+            # 3 de 7 Get Lost não desbloqueava uma única venda. Medido no
+            # `test_feira.caso_so_validadas`, que foi onde isto apareceu.
+            # Oferecer primeiro o que já tem prova é também o que ele pediu a
+            # 2026-09-20: *"o que eu for vender também vai com foto"*. Com a
+            # regra desligada a chave é constante e a ordem é a de sempre.
+            _sf = _conf.manda()
+            for lot in sorted(lotes, key=lambda l: (
+                    (not _conf.confirmada(l)) if _sf else False,
+                    bool(l["substituto"]), l["rl"],
+                    l["finish"] in FOIL_FINISHES,
+                    l["lang"] == "pt",
+                    -ordem_estado(l.get("cond")),
+                    l["key"])):
                 if resto <= 0:
                     break
                 take = min(lot["livre"], resto)
@@ -3722,15 +3745,35 @@ def sell_list(con, res: dict) -> dict:
     from . import fases as _fases                            # noqa: PLC0415
     venda, venda_rl, protegidas = _fases.filtrar_venda(con, res, venda, venda_rl)
 
+    # NADA SE VENDE SEM FOTO (André, 2026-10-02: *"se não tiver foto, não tem
+    # carta"*). Corre DEPOIS das protecções, de propósito: uma shockland sem foto
+    # é uma decisão TOMADA (nunca se vende) e tem de sair com esse motivo. O que
+    # cai aqui é o que IRIA à venda e ainda não tem prova — ou seja, a lista
+    # accionável: fotografa estas e aparecem na corrida seguinte.
+    #
+    # E é uma OITAVA saída, não um motivo a mais dentro de `protegidas`: ordem
+    # dele, *"separa os dois motivos na saída, que são coisas diferentes"*.
+    # «Protegida» é uma decisão TOMADA — «não vendas isto»; «sem foto» é uma
+    # decisão por TOMAR — «ainda não sei o que isto é». Somá-las dava um número
+    # que não serve para nenhuma das duas perguntas, que é exactamente a razão
+    # por que a venda tem sete saídas e não uma.
+    venda, sem_foto = _conf.filtrar_sem_foto(venda)
+    venda_rl, sem_foto_rl = _conf.filtrar_sem_foto(venda_rl)
+
     v, vrl, ret, gd = (_fecha(venda), _fecha(venda_rl), _fecha(retidos),
                        _fecha(guardar))
     rsv = _fecha(reservadas)
     prot = _fecha(protegidas)
+    sf = _fecha(sem_foto + sem_foto_rl)
     seg, semh = _fecha(rl_segurar), _fecha(rl_sem_historico)
     return {"venda": v["linhas"], "venda_rl": vrl["linhas"],
             # A saída NOVA de 2026-10-01: o que as quatro protecções seguram.
             "protegidas": prot["linhas"], "copias_protegidas": prot["copias"],
             "total_protegido": prot["total"],
+            # E a de 2026-10-02: o que ainda não tem foto desta campanha. NÃO é
+            # uma protecção — é falta de prova, e por isso tem saída própria.
+            "sem_foto": sf["linhas"], "copias_sem_foto": sf["copias"],
+            "total_sem_foto": sf["total"],
             "retidos": ret["linhas"], "guardar": gd["linhas"],
             "reservadas": rsv["linhas"], "copias_reservadas": rsv["copias"],
             "total_reservado": rsv["total"],
@@ -3915,7 +3958,16 @@ def texto_playset(m: dict, tecto: int | None = None) -> str:
     Premodern nunca passa de um playset no total. A frase tem de dizer as duas
     coisas — que não se compra, e onde estão as cópias que enchem o tecto —,
     senão "falta 1" lia-se como uma compra que a lista se esqueceu de pedir.
+
+    **SEM NADA BLOQUEADO NÃO HÁ FRASE** (2026-10-02). O tecto foi-se (ver
+    `playset_maximo`) e `playset_bloqueado` é sempre 0: sem esta guarda a função
+    passava a devolver *"0 não se compra (limite de 4 no total)"* a quem lhe
+    passasse um `tecto` à mão — uma frase a explicar uma regra que já não existe,
+    sobre zero cópias. O `nota_parcial` nunca a chamava a zero; quem a chama
+    directamente, sim.
     """
+    if not m.get("playset_bloqueado"):
+        return ""
     n = m.get("playset_bloqueado") or 0
     tecto = tecto or m.get("playset_tecto")
     onde = " · ".join(f"{q} no {caixa}" for caixa, q in
@@ -4348,6 +4400,9 @@ def registar_falta(con, res: dict, slot_id: str, nm: str, board: str = "",
     alvo = _linha_faltas(["registada", s["nome"], nm, board or "", q, edicao,
                           numero, lang, finish, "sim" if not set_code else "nao",
                           copy_id], csv_path)
+    # CADA DECK AS SUAS CARTAS (2026-10-02): a cópia acabou de nascer, mas a
+    # trava fica no caminho e não na confiança de que ela é nova.
+    _conf.exige_uma_so(con, copy_id, slot_id, q)
     con.execute("INSERT INTO copy_allocation (copy_id, slot, quantity, placed_at) "
                 "VALUES (?,?,?,datetime('now'))", (copy_id, slot_id, q))
     con.commit()
@@ -4874,6 +4929,13 @@ def registar_marcadas(con, res: dict, slot_id: str,
     # vê-se, uma cópia que entrou numa caixa sem rasto não.
     regista_entradas(con, slot_id, s["nome"], {c: q for c, q, _t in antes},
                      linhas, origem, csv_path)
+    # CADA DECK AS SUAS CARTAS (2026-10-02). É o caminho ÚNICO por onde cartas
+    # entram numa caixa à mão (o *"sleevado e na caixa"* e o *"sim, está montada
+    # assim"*, desde 09/09), e por isso é aqui que a trava vale mais: dizer
+    # «marquei esta» numa carta que está noutro deck tem de falhar alto, com a
+    # frase em português, em vez de criar a segunda alocação em silêncio.
+    _conf.exige_alocacao_unica(con, _conf.estado_final(con, slot_id,
+                                                       sorted(linhas.items())))
     con.execute("DELETE FROM copy_allocation WHERE slot = ?", (slot_id,))
     con.executemany(
         "INSERT INTO copy_allocation (copy_id, slot, quantity, placed_at) "
@@ -5098,6 +5160,11 @@ def guardar_arrumacao(con, res: dict, actualizar: set[str] | frozenset = frozens
             continue
         regista_entradas(con, s["slot"], s["nome"], antes.get(s["slot"]) or {},
                          linhas_da_caixa(s), "arrumar", csv_path)
+    # CADA DECK AS SUAS CARTAS (André, 2026-10-02): nenhuma cópia pode ficar em
+    # dois decks, e nenhum lote pode ter mais cópias alocadas do que tem cartas.
+    # Verifica-se o estado FINAL e ANTES de escrever uma única linha — validar
+    # depois obrigava a desfazer um `commit` que já tinha acontecido.
+    _conf.exige_alocacao_unica(con, manter + novas)
     con.execute("DELETE FROM copy_allocation")
     con.executemany(
         "INSERT INTO copy_allocation (copy_id, slot, quantity, placed_at) "
@@ -5122,6 +5189,12 @@ def actualizar_caixa(con, res: dict, slot_id: str,
     antes = {c: q for c, q, _t in alocacao_da_caixa(con, slot_id)}
     regista_entradas(con, slot_id, alvo["nome"], antes, linhas, "actualizar",
                      csv_path)
+    # CADA DECK AS SUAS CARTAS (2026-10-02). O estado final julga-se contra o
+    # RESTO da tabela (`estado_final`) e não contra a tabela inteira de antes:
+    # esta caixa vai ser reescrita, e compará-la consigo mesma dava-a como «já
+    # está noutro sítio».
+    _conf.exige_alocacao_unica(con, _conf.estado_final(con, slot_id,
+                                                       sorted(linhas.items())))
     con.execute("DELETE FROM copy_allocation WHERE slot = ?", (slot_id,))
     con.executemany(
         "INSERT INTO copy_allocation (copy_id, slot, quantity, placed_at) "
@@ -5316,6 +5389,21 @@ def report(con, cfg_slots: list[dict] | None = None) -> dict:
     # resto — não são faltas nem excedente: são linhas da `copy_allocation` que a
     # regra da própria caixa recusa (ver `contradiz_a_caixa`).
     res["contradicoes_total"] = sum(c["q"] for c in res["contradicoes"])
+    # A FOTO É A VERDADE (André, 2026-10-02). As DUAS METADES no topo do
+    # relatório, para nenhuma página ter de as somar por si: quantas cópias
+    # alocadas estão confirmadas por foto, quantas esperam a câmara, e a frase
+    # honesta. O `fotografar_total` é a falta que se tapa com a CÂMARA — fica à
+    # parte do `comprar_total`, que é a que se tapa com a carteira. Somá-las
+    # mandava-o comprar o que tem em casa.
+    res["tenho_conf_total"] = sum(s.get("tenho_conf", 0) for s in res["slots"])
+    res["tenho_fisico_total"] = sum(s.get("tenho_fisico", 0) for s in res["slots"])
+    res["fotografar_total"] = sum(s.get("fotografar", 0) for s in res["slots"])
+    res["foto_manda"] = _conf.manda()
+    res["cartas_metades"] = _conf.metades(res["tenho_conf_total"],
+                                          res["tenho_fisico_total"],
+                                          unidade="copias")
+    # Os CONFLITOS de alocação dupla, à vista e sem se tocar neles (ordem dele).
+    res["conflitos_alocacao"] = _conf.conflitos(con, nomes_das_caixas(cfg_slots))
     res["arrumacao"] = plano_arrumacao(res)
     # A ORDEM de montagem (v6): é a pergunta dele de 2026-09-08 — *"por onde
     # começo?"*. Vive no relatório e não na página para o CLI dar a mesma.

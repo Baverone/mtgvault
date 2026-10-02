@@ -531,7 +531,7 @@ def _import_csv(con: sqlite3.Connection, path, *, adivinhar, acertar,
                 ja_prova=None):
     """O corpo do `import_csv`. Está à parte só para o `declarar_lote` ter um
     `finally` — o lote não pode ficar declarado depois da importação."""
-    from . import encomendas, fotos, revalidacao          # noqa: PLC0415
+    from . import confirmado, encomendas, fotos, revalidacao  # noqa: PLC0415
     ok, errors = 0, []
     with open(path, newline="", encoding="utf-8-sig") as fh:
         for i, row in enumerate(csv.DictReader(fh), start=2):
@@ -682,6 +682,35 @@ def _import_csv(con: sqlite3.Connection, path, *, adivinhar, acertar,
                         sub_collection=row.get("sub_collection") or None,
                         photo_path=foto, acquired_price=preco,
                         notes=notas_nova, adivinhar=adivinhar))
+                # A FOTO MANDA NA ALOCAÇÃO (André, 2026-10-02, à letra: *"o que
+                # eu colocar de fotos no deck, é daquele deck, ponto"*). Corre
+                # DEPOIS de toda a cadeia, de propósito: só aqui se sabe que
+                # cópias a linha tocou — as que a foto revalidou (0), as que
+                # corrigiu (0b), as que acertou (i), as encomendas que fechou
+                # (ii), a que ligou (iii) e a que entrou de novo (iv). É a mesma
+                # chamada para todas, e é isso que faz o *"comprar =
+                # fotografar"* dele não ser um caminho à parte: uma carta que a
+                # base não tinha entra pelo (iv) e sai daqui **já alocada ao
+                # deck da pasta**, marcada «nova nesta campanha» com a data.
+                #
+                # E é EXCLUSIVA: o que estava registado noutro deck sai, com
+                # linha no `foto-manda.log`. Até 02/10 era o contrário — a
+                # `copy_allocation` ganhava à correcção (o ponto 5 de 09/09, *"um
+                # registo não lava uma correcção"*); hoje é a FOTO que ganha ao
+                # registo, porque é ela a verdade.
+                decide, slot_foto = (confirmado.alvo_da_pasta(foto)
+                                     if foto and confirmado.manda()
+                                     else (False, None))
+                if decide and ids:
+                    for cid in dict.fromkeys(ids):
+                        mv = confirmado.alocar_por_foto(con, cid, slot_foto)
+                        if mv["mudou"]:
+                            motivos.append(
+                                f'alocada a {slot_foto or "fora dos decks"} pela '
+                                f'pasta da foto'
+                                + (" (saiu de "
+                                   + ", ".join(s["nome"] for s in mv["saiu"])
+                                   + ")" if mv["saiu"] else ""))
                 res["copy_id"] = (ids[0] if len(ids) == 1
                                   else ",".join(str(x) for x in ids))
                 res["resultado"] = "importada"

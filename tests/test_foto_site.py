@@ -199,9 +199,18 @@ def multipart(ficheiros, fronteira="Xx1234"):
 
 
 def numeros(rep):
+    """O que este ficheiro mede: que ENVIAR uma foto não mexe em número nenhum.
+
+    As caixas vão pela metade FÍSICA (`pct_fisico`/`tenho_fisico`): desde
+    2026-10-02 o `pct`/`tenho` são a metade CONFIRMADA POR FOTO, e esse muda —
+    de propósito — quando uma foto é importada. O que aqui se tranca é o passo
+    ANTERIOR: guardar o ficheiro em `pendentes/` e pedir o processamento não
+    toca na base.
+    """
     return {"custo": rep["custo_total"], "comprar": rep["comprar_total"],
             "venda": (rep["copias"], rep["total"]), "arrumar": rep["arrumacao"]["copias"],
-            "caixas": [(s["slot"], s["pct"], s["tenho"], s["comprar"]) for s in rep["slots"]]}
+            "caixas": [(s["slot"], s["pct_fisico"], s["tenho_fisico"], s["comprar"])
+                       for s in rep["slots"]]}
 
 
 # ---------------------------------------------------------------------------
@@ -544,7 +553,7 @@ def caso_a_pagina_nos_dois_modos():
     con = base()
     a, b, c, d = mundo(con)
     # Uma 5.ª Path (excedente → venda) e uma Brainstorm que nenhum deck pede
-    # (→ Colecção, o resto): para a venda e a colecção terem o que fotografar.
+    # (→ Colecção, o resto): para a colecção ter o que fotografar.
     copia(con, "Path to Exile", "pf20", q=1)
     copia(con, "Brainstorm", "ice", q=1, finish="nonfoil")
     PEND.mkdir(parents=True)
@@ -599,7 +608,14 @@ def caso_a_pagina_nos_dois_modos():
         assert "Modern — UW Oswald" in rv and "largada à mão" in rv, rv[:1500]
         # (o ⚠ passou a ícone SVG na 2.ª passagem de 2026-09-24)
         assert "Fotos por resolver" in rv and "edicao em falta: Path to Exile" in rv and "IMG_7.jpg" in rv
-        assert ('data-foto-site="venda"' in rv) is editable
+        # O ALVO «VENDA» DEIXOU DE TER BOTÃO (2026-10-02), e é uma consequência
+        # lógica e não uma avaria: desde que *"se não tiver foto, não tem
+        # carta"*, nada entra na lista de venda sem foto desta campanha — logo o
+        # grupo «Venda» da partição nunca tem cópias POR fotografar, e o
+        # `tirarFotosHTML` só se desenha quando há. As cópias que ele vai vender
+        # fotografam-se onde ESTÃO (Caixa RL ou Colecção) e entram na venda
+        # depois. Por isso é o botão da COLECÇÃO que tem de estar lá.
+        assert 'data-foto-site="venda"' not in rv,             "o alvo «venda» não tem cópias por fotografar desde 02/10/2026"
         assert ('data-foto-site="coleccao"' in rv) is editable
         assert ("blocos de escrita (editavel=" in p.stdout), p.stdout
     # Sem ordem pendente, no 8771, há o botão «Processar agora».
