@@ -1976,7 +1976,16 @@ class Handler(BaseHTTPRequestHandler):
             raise est.EstadoInvalido("`copy_id` tem de ser um número") from None
         if not cid:
             raise est.EstadoInvalido("falta o `copy_id` da cópia a corrigir")
+        # O ESCALÃO VALIDA-SE ANTES DO BACKUP. É a regra do `_exige_venda`
+        # (2026-10-01): *«um pedido recusado não deixa um ficheiro de backup
+        # atrás dele»*. Uma página aberta ontem no telemóvel pode mandar um
+        # escalão que já não existe, e isso não pode deixar um `.db` de 96 MB em
+        # `data/backups/` por cada toque.
         grade = str(dados.get("grade") or "").strip()
+        if est.normalizar(grade) is None:
+            raise est.EstadoInvalido(
+                f"estado {grade!r} desconhecido — a escala do Cardmarket é "
+                + ", ".join(f"{c} ({est.NOMES[c]})" for c in est.ESCALA))
         migracao.backup(etiqueta="estado")
         with db.session() as con:
             r = est.corrigir(con, cid, grade,
