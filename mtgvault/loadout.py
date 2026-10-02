@@ -809,6 +809,63 @@ def basicas_edicao() -> str:
     return str(regras_basicas().get("edicao") or BASICAS_EDICAO)
 
 
+# A CONTAGEM DECLARADA (André, 2026-10-02, à letra: *"depois indico quantas
+# básicas tenho de cada"*). É a EXCEPÇÃO explícita à regra da foto de 02/10 —
+# *"se não tiver foto, não tem carta"* —, e sem ela todos os decks apareciam
+# incompletos por causa das terras e o progresso das fotos ficava errado: a pilha
+# de Unhinged é a granel, nunca foi uma linha da `copies`, e não há nada para
+# fotografar. Por isso as básicas contam SEM foto — e é por isso mesmo que não
+# podem contar como *"confirmadas por foto"*: são duas coisas diferentes e os
+# números separam-nas (ver `confirmado.metades`, que leva a terceira parcela).
+def basicas_declaradas() -> dict[str, dict[str, int]]:
+    """`{nome da básica: {acabamento: quantas}}`, do `basicas.declaradas`.
+
+    Aceita também o atalho `{"Snow-Covered Plains": 29}` — um número a seco vale
+    o acabamento `nonfoil`, que é o que uma básica é por omissão. Os nomes e os
+    acabamentos normalizam-se aqui para quem lê não ter de o fazer outra vez.
+    """
+    v = regras_basicas().get("declaradas")
+    if not isinstance(v, dict):
+        return {}
+    out: dict[str, dict[str, int]] = {}
+    for nm, val in v.items():
+        if nm not in BASICS:
+            continue                  # não é uma básica: não se inventa uma
+        por: dict[str, int] = {}
+        if isinstance(val, dict):
+            for fin, q in val.items():
+                try:
+                    n = int(q)
+                except (TypeError, ValueError):
+                    continue
+                if n > 0:
+                    por[str(fin).lower()] = por.get(str(fin).lower(), 0) + n
+        else:
+            try:
+                n = int(val)
+            except (TypeError, ValueError):
+                n = 0
+            if n > 0:
+                por["nonfoil"] = n
+        if por:
+            out[nm] = por
+    return out
+
+
+def basicas_declaradas_em() -> str:
+    """A data em que ele declarou as básicas, para a página a poder dizer.
+
+    Uma contagem sem data é uma contagem que ninguém sabe se ainda é verdade —
+    a mesma razão por que a lista padrão e a reserva levam `escolhido_em`/`em`.
+    """
+    return str(regras_basicas().get("declaradas_em") or "")
+
+
+def basicas_declaradas_de(nm: str) -> int:
+    """Quantas básicas deste nome ele declarou, somando os acabamentos."""
+    return sum(basicas_declaradas().get(nm, {}).values())
+
+
 def regras_montar() -> dict:
     """`colecao_config.json -> montar`. Sem ela valem os valores deste módulo."""
     v = sources.config().get("montar")
@@ -845,14 +902,30 @@ def montar_anular_segundos() -> int:
 
 
 def requisito_basicas(s: dict) -> str:
-    """O material que esta caixa quer nas básicas — só o ACABAMENTO.
+    """O material que esta caixa quer nas básicas — e, com a isenção ligada, o
+    acabamento é uma PREFERÊNCIA e a frase di-lo.
 
     A língua e a edição não entram de propósito (ver `basicas_isentas`): dizer
     *"PT · ≤SCG"* numa linha de Island era pedir-lhe uma coisa que ele não tem e
     que a alocação não exige.
+
+    **E o ACABAMENTO é a terceira perna da mesma isenção (02/10/2026).** Esta
+    função dizia `"non-foil"` e `"foil"` a seco — e isso passou a ser uma mentira
+    no dia em que o André mandou o Premodern para `acabamento: "nonfoil"`: a
+    linha de básicas de uma caixa de Premodern passava a exibir *"non-foil"* como
+    requisito **e a alocação aceitava a Unhinged foil na mesma** (`_serve_basica`
+    devolve sempre `True` com a isenção ligada). Era a página a pedir-lhe uma
+    coisa que o motor não exige — e, pior, a pedir-lhe que fosse trocar 24
+    terras que estão ali ao lado. Com a isenção ligada diz-se sempre *"se
+    houver"*, nos dois sentidos; com ela desligada o acabamento é mesmo um
+    requisito e as palavras voltam a ser secas.
     """
-    return {"foil": "foil", "nonfoil": "non-foil",
-            "prefere_foil": "foil se houver"}.get(s.get("acabamento") or "", "")
+    ac = s.get("acabamento") or ""
+    if not basicas_isentas():
+        return {"foil": "foil", "nonfoil": "non-foil",
+                "prefere_foil": "foil se houver"}.get(ac, "")
+    return {"foil": "foil se houver", "prefere_foil": "foil se houver",
+            "nonfoil": "non-foil se houver"}.get(ac, "")
 
 
 def linguas_rl(s: dict) -> tuple[str, ...]:
@@ -2464,7 +2537,13 @@ def _basicas_do_slot(con, s: dict) -> None:
         b = linhas.setdefault(m["nm"], {
             "nm": m["nm"], "need": 0, "da_base": 0, "granel": 0, "comprar": 0,
             "lotes": [], "req": requisito_basicas(s), "foil": foil,
-            "unit": None, "price_finish": None, "cost": 0.0})
+            "unit": None, "price_finish": None, "cost": 0.0,
+            # A ORIGEM da prova, para a página nunca lhe chamar «confirmada por
+            # foto» (André, 2026-10-02): uma básica conta pela CONTAGEM dele.
+            "origem": _conf.ORIGEM_DECLARADA,
+            "declarado": basicas_declaradas().get(m["nm"]) or {},
+            "declarado_q": basicas_declaradas_de(m["nm"]),
+            "declarado_em": basicas_declaradas_em()})
         b["need"] += m["need"]
         b["da_base"] += m["da_base"]
         b["granel"] += m["granel"]
@@ -2600,6 +2679,7 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
         have, missing, subs = [], [], []
         usadas = 0
         usadas_conf = 0                   # a metade com foto desta campanha
+        usadas_decl = 0                   # as básicas: contagem declarada, sem foto
         precisa = 0
         pediu_slot: dict[str, int] = defaultdict(int)
         levou_slot: dict[str, int] = defaultdict(int)
@@ -2615,8 +2695,18 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                 # Unhinged é a granel, nunca foi uma linha da `copies`, e não há
                 # nada para fotografar. Exigir-lhes foto punha todo o deck
                 # permanentemente incompleto por 24 Snow-Covered Plains que ele
-                # tem ali ao lado. É uma decisão minha e desfaz-se aqui.
-                usadas_conf += need
+                # tem ali ao lado.
+                #
+                # MAS NÃO CONTAM COMO «CONFIRMADAS POR FOTO» (André, 2026-10-02:
+                # *"depois indico quantas básicas tenho de cada"*). Entram por
+                # CONTAGEM DECLARADA, que é uma afirmação de outra força — tem a
+                # palavra dele por trás e não uma fotografia. Até 02/10 somavam
+                # ao `usadas_conf` e por isso o vault dizia *"95 cartas
+                # confirmadas por foto"* num dia em que não havia UMA ÚNICA foto
+                # desta campanha: o número certo a responder à pergunta errada,
+                # que é o padrão do `event_tier`. Agora vão numa parcela própria
+                # e as duas chegam juntas à página (`confirmado.metades`).
+                usadas_decl += need
                 have.append(_linha_cheia(_aloca_basica(
                     pool, s, board, nm, need, did, baldes, caixas)))
                 continue
@@ -2796,13 +2886,23 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
         # está feito. Com `foto_manda: false` as duas são iguais e nada muda.
         s["tenho_fisico"] = usadas
         s["tenho_conf"] = usadas_conf
-        s["sem_foto"] = usadas - usadas_conf
+        # A CONTAGEM DECLARADA fica numa chave PRÓPRIA (André, 2026-10-02): são
+        # as básicas, que entram pela palavra dele e não por uma foto. Somá-las
+        # ao `tenho_conf` era o vault a dizer *"95 cartas confirmadas por foto"*
+        # num dia sem uma única foto desta campanha.
+        s["tenho_decl"] = usadas_decl
+        s["sem_foto"] = usadas - usadas_conf - usadas_decl
         s["pct_fisico"] = round(100 * usadas / precisa) if precisa else 0
         s["pct_conf"] = round(100 * usadas_conf / precisa) if precisa else 0
         if _conf.manda():
-            s["tenho"] = usadas_conf
+            # «O deck está completo?» conta as duas provas — a foto e a contagem
+            # declarada —, senão as básicas voltavam a fazer todo o deck parecer
+            # incompleto, que é exactamente o que a excepção dele evita.
+            s["tenho"] = usadas_conf + usadas_decl
         s["pct"] = round(100 * s["tenho"] / precisa) if precisa else 0
-        s["cartas_metades"] = _conf.metades(usadas_conf, usadas, unidade="copias")
+        s["cartas_metades"] = _conf.metades(usadas_conf, usadas,
+                                            unidade="copias",
+                                            declarado=usadas_decl)
         _totais_do_slot(s)
         _basicas_do_slot(con, s)
         # De onde saem as cartas desta caixa. É a outra metade do "onde está a
@@ -5495,12 +5595,16 @@ def report(con, cfg_slots: list[dict] | None = None) -> dict:
     # parte do `comprar_total`, que é a que se tapa com a carteira. Somá-las
     # mandava-o comprar o que tem em casa.
     res["tenho_conf_total"] = sum(s.get("tenho_conf", 0) for s in res["slots"])
+    res["tenho_decl_total"] = sum(s.get("tenho_decl", 0) for s in res["slots"])
     res["tenho_fisico_total"] = sum(s.get("tenho_fisico", 0) for s in res["slots"])
     res["fotografar_total"] = sum(s.get("fotografar", 0) for s in res["slots"])
     res["foto_manda"] = _conf.manda()
+    res["basicas_declaradas"] = basicas_declaradas()
+    res["basicas_declaradas_em"] = basicas_declaradas_em()
     res["cartas_metades"] = _conf.metades(res["tenho_conf_total"],
                                           res["tenho_fisico_total"],
-                                          unidade="copias")
+                                          unidade="copias",
+                                          declarado=res["tenho_decl_total"])
     # Os CONFLITOS de alocação dupla, à vista e sem se tocar neles (ordem dele).
     res["conflitos_alocacao"] = _conf.conflitos(con, nomes_das_caixas(cfg_slots))
     res["arrumacao"] = plano_arrumacao(res)

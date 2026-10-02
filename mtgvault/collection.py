@@ -538,9 +538,12 @@ def import_csv(con: sqlite3.Connection, path: str | Path, *,
     # ler o ficheiro todo ANTES: saber-se-ia o total só na última linha, e as
     # primeiras já estariam escritas na base.
     cartas_por_foto = _cartas_por_foto(path) if campanha else {}
+    # EXCEPÇÃO: uma foto só de terrenos básicos não tem tecto (André,
+    # 2026-10-02) — 27 Snow-Covered Plains são uma foto e não sete.
+    isentas = _isentas_do_tecto(path) if campanha else set()
     # E diz-se ao `revalidacao` num sítio só: é o `marca_validada` que decide se
     # uma cópia ganha `validado_em`, e são QUATRO os caminhos que lá chegam.
-    revalidacao.declarar_lote(cartas_por_foto)
+    revalidacao.declarar_lote(cartas_por_foto, isentas)
     # A MESMA FOTO NÃO É PROVA DE DUAS CARTAS (2026-10-02): de que impressões é
     # que cada ficheiro de foto JÁ é prova. Lê-se UMA vez, **antes** de se
     # escrever a primeira linha — senão uma cópia criada por esta importação
@@ -552,14 +555,15 @@ def import_csv(con: sqlite3.Connection, path: str | Path, *,
         return _import_csv(con, path, adivinhar=adivinhar, acertar=acertar,
                            resultados=resultados, cache=cache,
                            campanha=campanha, alvo=alvo,
-                           cartas_por_foto=cartas_por_foto, ja_prova=ja_prova)
+                           cartas_por_foto=cartas_por_foto, ja_prova=ja_prova,
+                           isentas=isentas)
     finally:
         revalidacao.declarar_lote(None)
 
 
 def _import_csv(con: sqlite3.Connection, path, *, adivinhar, acertar,
                 resultados, cache, campanha, alvo, cartas_por_foto,
-                ja_prova=None):
+                ja_prova=None, isentas=None):
     """O corpo do `import_csv`. Está à parte só para o `declarar_lote` ter um
     `finally` — o lote não pode ficar declarado depois da importação."""
     from . import confirmado, encomendas, fotos, revalidacao  # noqa: PLC0415
@@ -582,7 +586,8 @@ def _import_csv(con: sqlite3.Connection, path, *, adivinhar, acertar,
                 nf = Path(row.get("photo_path") or "").name
                 foto_grande = bool(
                     campanha and nf
-                    and not fotos.valida(cartas_por_foto.get(nf, 0)))
+                    and not fotos.valida(cartas_por_foto.get(nf, 0),
+                                         isenta=nf in (isentas or ())))
                 qtd = int(row.get("quantity") or 1)
                 ids: list = []
                 motivos: list[str] = []
@@ -834,6 +839,27 @@ def _cartas_por_foto(path: str | Path) -> dict[str, int]:
                 q = 1
             out[nome] = out.get(nome, 0) + max(q, 0)
     return out
+
+
+def _isentas_do_tecto(path: str | Path) -> set[str]:
+    """As fotos deste CSV que são SÓ de terrenos básicos.
+
+    É a excepção de 2026-10-02 ao tecto de quatro cartas — *"para as básicas,
+    nos decks, tens que permitir tirar foto com mais cartas e não apenas 4"*.
+    Lê-se do MESMO CSV e na mesma passagem conceptual que a contagem, e quem
+    decide se um conjunto de nomes é «só básicas» é o `fotos.so_basicas`, num
+    sítio só.
+    """
+    from . import fotos as _fotos                            # noqa: PLC0415
+    por_foto: dict[str, set] = {}
+    with open(path, newline="", encoding="utf-8-sig") as fh:
+        for row in csv.DictReader(fh):
+            nome = Path((row.get("photo_path") or "").strip()).name
+            carta = (row.get("name") or "").strip()
+            if not nome or not carta:
+                continue
+            por_foto.setdefault(nome, set()).add(carta.split(" // ", 1)[0])
+    return {f for f, nomes in por_foto.items() if _fotos.so_basicas(nomes)}
 
 
 def gravar_resultado(resultados: list[dict], path: str | Path) -> Path:

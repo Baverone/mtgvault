@@ -161,7 +161,14 @@ def caso_o_bloco_existe_com_as_quantidades_certas():
     assert dc["Snow-Covered Plains"]["need"] == 23, dc
     # O material que a caixa exige é só o ACABAMENTO: a língua e a edição não
     # entram porque as básicas são isentas delas.
-    assert dc["Snow-Covered Plains"]["req"] == "foil", dc
+    # **CORRIGIDO A 2026-10-02**: esta linha esperava `"foil"` a seco, e isso
+    # era a página a pedir um REQUISITO que o motor não tem — a isenção das
+    # básicas cobre também o acabamento (`_serve_basica` devolve sempre True),
+    # e uma Island non-foil fecha o slot de uma caixa de foil. Passou a fazer
+    # falta no dia em que o Premodern ganhou `acabamento: "nonfoil"`: ali a
+    # frase seca dizia *"non-foil"* e mandava-o trocar terras que tem ao lado.
+    # Ver `test_regras_material_1002.caso_o_requisito_das_basicas_…`.
+    assert dc["Snow-Covered Plains"]["req"] == "foil se houver", dc
     assert st["Island"]["req"] == "", st["Island"]
     print("bloco de basicas: Stiflenought 17 Island, DC 23 Snow-Covered Plains foil")
 
@@ -301,7 +308,10 @@ def caso_a_pagina_leva_o_bloco():
     # As Snow-Covered do Duel Commander, na lista geral de compras de básicas.
     geral = {b["nm"]: b for b in d["basicas"]}
     assert geral["Snow-Covered Plains"]["q"] == 23, geral
-    assert geral["Snow-Covered Plains"]["req"] == "foil", geral
+    # «se houver» desde 2026-10-02 — ver a nota no
+    # `caso_o_bloco_existe_com_as_quantidades_certas`: numa linha de básicas o
+    # acabamento é PREFERÊNCIA e a frase tem de o dizer.
+    assert geral["Snow-Covered Plains"]["req"] == "foil se houver", geral
     assert d["resumo"]["basicas"] == 23, d["resumo"]
     print("o payload da Deckboxes traz o bloco e as basicas a comprar")
 
