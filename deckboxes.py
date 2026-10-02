@@ -2768,16 +2768,35 @@ function revInstrucao(g) {
    `site-<slot>-<data>-<n>[-c<copy_id>].jpg` — e é o `mtg-fotos-novas` das
    02:30 (ou o «⚡ Processar agora») que a lê e liga à cópia. Nada disto
    existe no site publicado: não há onde a mandar. */
-function fotoSiteInputHTML(tipo, slot, copy, varias) {
+function fotoSiteInputHTML(tipo, slot, copy, varias, pares) {
   return `<input type="file" accept="image/*" capture="environment"${varias ? ' multiple' : ''} `
     + `data-foto-site="${esc(tipo)}" data-slot="${esc(slot || '')}"`
     + (copy ? ` data-copy="${copy}"` : '')
-    + ` aria-label="Tirar foto${varias ? 's' : ''}" hidden>`;
+    + (pares ? ` data-pares="1"` : '')
+    + ` aria-label="Tirar foto${varias ? 's' : ''}${pares ? ' (frente e verso)' : ''}" hidden>`;
 }
 
+/* FRENTE E VERSO (André, 2026-10-03): *"verso as dos decks e as que são para
+   guardar, para já"*. Num DECK o verso é sempre, e o gesto é o dele — põe as
+   até 4 cartas, fotografa, **vira-as no sítio** sem mexer na disposição,
+   fotografa outra vez. Por isso há DOIS botões e não um:
+
+   * **📷 Frente e verso** (o primeiro, em destaque) manda os ficheiros aos
+     PARES, pela ordem de captura, e o servidor nomeia o segundo de cada par com
+     o `-v` e o mesmo `n` — o par nasce feito, sem ninguém o deduzir depois;
+   * **só a frente** fica ao lado para os Extras e para quem queira acrescentar
+     uma frente avulsa. Aí o estado fica «por verificar», e isso é a verdade.
+
+   Nos alvos que NÃO são um deck (`venda`/`rl`/`coleccao`) só aparece o segundo:
+   ali ele fotografa de uma ponta à outra sem parar para pensar, e quem precisa
+   de verso sai depois na LISTA CURTA (ver `estado.lista_curta`). */
 function tirarFotosHTML(tipo, slot, g) {
   if (!D.editable || !g || !g.por_revalidar) return '';
-  return `<label class="btn pri fstirar">📷 Tirar fotos${fotoSiteInputHTML(tipo, slot, null, true)}</label>`;
+  const so = `<label class="btn fstirar">📷 Só a frente`
+    + `${fotoSiteInputHTML(tipo, slot, null, true, false)}</label>`;
+  if (tipo !== 'caixa') return so;
+  return `<label class="btn pri fstirar">📷 Frente e verso`
+    + `${fotoSiteInputHTML(tipo, slot, null, true, true)}</label>` + so;
 }
 
 const kbs = n => n >= 1e6 ? `${(n / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
@@ -4055,16 +4074,33 @@ async function enviarFotosSite(input) {
   if (!fs.length) return;
   const tipo = input.dataset.fotoSite, slot = input.dataset.slot || '';
   const copy = input.dataset.copy || '';
+  /* FRENTE E VERSO (2026-10-03): `data-pares` diz que os ficheiros vêm aos
+     PARES, pela ordem de captura — põe as até 4 cartas, fotografa, vira-as no
+     sítio e fotografa outra vez. O servidor nomeia o segundo de cada par com o
+     `-v` e o MESMO `n` do primeiro, e por isso o par nasce feito.
+     Sem isto o botão da página mandava só frentes: uma foto tirada no site
+     **nunca ganhava verso**, e o estado dela ficava «por verificar» para sempre
+     sem um único erro — o padrão do `event_tier` outra vez. Um número ÍMPAR é
+     recusado pelo servidor (409), e a mensagem dele é a que se mostra. */
+  const pares = input.dataset.pares === '1';
   const lbl = input.closest ? input.closest('label') : null;
+  if (pares && fs.length % 2) {
+    input.value = '';
+    erro(`Frente e verso: ${cop(fs.length)} é um número ímpar. Cada frente leva `
+      + `o seu verso, na mesma ordem — volta a tirar as duas do par que ficou a meio.`);
+    return;
+  }
   if (lbl) lbl.classList.add('aenviar');
   const fd = new FormData();
   let bytes = 0;
   for (const f of fs) { fd.append('foto', f, f.name || 'foto.jpg'); bytes += f.size || 0; }
   fd._bytes = bytes;
-  toast(`A enviar ${cop(fs.length)}… (${kbs(bytes)})`, 6000);
+  toast(pares ? `A enviar ${fs.length / 2} par(es) frente+verso… (${kbs(bytes)})`
+              : `A enviar ${cop(fs.length)}… (${kbs(bytes)})`, 6000);
   try {
     const q = `tipo=${encodeURIComponent(tipo)}&slot=${encodeURIComponent(slot)}`
-      + (copy ? `&copy=${encodeURIComponent(copy)}` : '');
+      + (copy ? `&copy=${encodeURIComponent(copy)}` : '')
+      + (pares ? '&pares=1' : '');
     const r = await gravar(`api/foto?${q}`, null, fd);
     if (!r.ok && r.status !== 403 && r.status !== 409 && r.status !== 413) {
       throw new Error('HTTP ' + r.status);

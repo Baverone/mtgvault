@@ -411,6 +411,53 @@ def caso_o_endpoint_grava_com_token_e_recusa_sem():
     print("o endpoint grava com token (multipart, varias, -c<id>), recusa sem ele, regenera o esperadas.md")
 
 
+def caso_o_endpoint_nomeia_os_pares_frente_verso():
+    """FRENTE E VERSO (André, 2026-10-03): `?pares=1` no `POST /api/foto`.
+
+    É a ponta HTTP do gesto dele — *"põe as até 4 cartas, fotografa, VIRA-AS NO
+    SÍTIO sem mexer na disposição, fotografa outra vez"*: os ficheiros vêm aos
+    PARES pela ordem de captura e o segundo de cada par sai com o `-v` e o MESMO
+    `n` do primeiro, por isso **o par nasce feito** e o radical é a ligação.
+
+    Sem este caso o elo não trancado era precisamente este: o botão da página
+    punha `&pares=1` e ninguém provava que o servidor o lia — e um `pares`
+    ignorado em silêncio dava frentes sem verso, com o estado a ficar «por
+    verificar» para sempre.
+    """
+    cfg_novo()
+    con = base()
+    mundo(con)
+    ligar_base(con)
+    jpg = imagem(1400, 1000, cor=(10, 90, 40))
+    cod, j = _post("/api/foto?tipo=caixa&slot=duel-commander&pares=1",
+                   [("F1.jpg", jpg), ("V1.jpg", jpg), ("F2.jpg", jpg), ("V2.jpg", jpg)])
+    assert cod == 200 and len(j["ficheiros"]) == 4, (cod, j)
+    assert j["versos"] == 2, j
+    f1, v1, f2, v2 = j["ficheiros"]
+    assert fotosite.par_da_frente(v1) == f1, (f1, v1)
+    assert fotosite.par_da_frente(v2) == f2, (f2, v2)
+    assert not fotosite.e_verso(f1) and not fotosite.e_verso(f2), j["ficheiros"]
+    assert f1 != f2, "dois pares, dois `n`"
+    for f in j["ficheiros"]:
+        assert (PEND / f).read_bytes() == jpg, "inteira, na RAIZ de pendentes/"
+    # ÍMPAR é recusado: metade de um par não é prova de nada, e adivinhar qual
+    # faltava era inventar o emparelhamento que isto existe para não inventar.
+    n = len(list(PEND.glob("site-*")))
+    cod, j = _post("/api/foto?tipo=caixa&slot=duel-commander&pares=1",
+                   [("F3.jpg", jpg)])
+    assert cod == 409 and "par" in j["erro"].lower(), (cod, j)
+    assert len(list(PEND.glob("site-*"))) == n, "a recusa não escreveu nada"
+    # SEM `pares` nada muda — é o caminho dos Extras: frente só, e o estado fica
+    # «por verificar» até a LISTA CURTA o mandar lá voltar.
+    cod, j = _post("/api/foto?tipo=coleccao", [("E1.jpg", jpg), ("E2.jpg", jpg)])
+    assert cod == 200 and j["versos"] == 0, j
+    assert not any(fotosite.e_verso(f) for f in j["ficheiros"]), j["ficheiros"]
+    # E a `copies` não mexeu: o POST guarda o ficheiro, não cria cópias.
+    assert len(copias(con)) == 4, copias(con)
+    print("o endpoint nomeia os pares frente+verso (-v com o mesmo n), recusa impar, "
+          "e sem `pares` continua a ser frente so")
+
+
 def caso_processar_agora_escreve_a_ordem_e_limita():
     cfg_novo()
     con = base()
@@ -598,8 +645,16 @@ def caso_a_pagina_nos_dois_modos():
         # a lista das fotos desta caixa «à espera» nos dois modos.
         aba = abas["duel-commander"]
         assert ('data-foto-site="caixa" data-slot="duel-commander"' in aba) is editable, aba[:800]
-        assert ("📷 Tirar fotos" in aba) is editable
         assert ('capture="environment" multiple' in aba) is editable
+        # FRENTE E VERSO (2026-10-03): num DECK o verso é sempre, e por isso há
+        # DOIS botões — o de PARES em destaque e o «só a frente» ao lado. Era um
+        # só, «📷 Tirar fotos», e mandava sempre frentes: uma foto tirada no site
+        # nunca ganhava verso, e o estado dela ficava «por verificar» para sempre
+        # sem um único erro.
+        assert ("📷 Frente e verso" in aba) is editable, "o botão dos pares"
+        assert ("📷 Só a frente" in aba) is editable, "a frente avulsa fica"
+        assert ('data-foto-site="caixa" data-slot="duel-commander" data-pares="1"'
+                in aba) is editable, "é o que põe `&pares=1` no POST"
         assert (f'data-copy="{a}" aria-label="Tirar foto"' in aba) is editable, "o 📷 da cópia"
         assert f"site-duel-commander-20260921-101500-1-c{a}.jpg" in aba and f"cópia #{a}" in aba
         assert "Fotos enviadas, à espera" in aba and "site-modern-" not in aba, "só as desta caixa"
@@ -625,6 +680,16 @@ def caso_a_pagina_nos_dois_modos():
         # depois. Por isso é o botão da COLECÇÃO que tem de estar lá.
         assert 'data-foto-site="venda"' not in rv,             "o alvo «venda» não tem cópias por fotografar desde 02/10/2026"
         assert ('data-foto-site="coleccao"' in rv) is editable
+        # E FORA DE UM DECK É FRENTE SÓ (2026-10-03): nos Extras / na Colecção ele
+        # fotografa de uma ponta à outra sem parar para pensar — *"não o ponhas a
+        # decidir 400 vezes"* —, e quem precisa de verso sai depois na LISTA CURTA
+        # (`estado.lista_curta`). Por isso o botão dos PARES não aparece aqui.
+        # (a aba Revalidação mostra TAMBÉM o bloco de cada caixa, e essas têm o
+        # botão dos pares — por isso a pergunta é sobre o input DESTE grupo.)
+        assert 'data-foto-site="coleccao" data-slot="" data-pares="1"' not in rv, \
+            "fora de um deck não se pede o par"
+        assert ('data-foto-site="coleccao" data-slot="" aria-label' in rv) is editable, \
+            "a Colecção leva o input de frente só"
         assert ("blocos de escrita (editavel=" in p.stdout), p.stdout
     # Sem ordem pendente, no 8771, há o botão «Processar agora».
     shutil.rmtree(INBOX)
@@ -661,6 +726,7 @@ def run():
     for fn in (caso_o_nome_diz_a_origem_e_le_se_de_volta,
                caso_multipart_e_guardar_inteira_sem_reduzir,
                caso_o_endpoint_grava_com_token_e_recusa_sem,
+               caso_o_endpoint_nomeia_os_pares_frente_verso,
                caso_processar_agora_escreve_a_ordem_e_limita,
                caso_o_import_prefere_a_caixa_e_a_copia_do_nome,
                caso_as_fotos_por_resolver_saem_com_o_motivo,

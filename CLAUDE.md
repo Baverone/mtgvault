@@ -1784,10 +1784,19 @@ de que chumbam em `tests/_chumba_estado.py` (9 alvos / 14 pares medidos).
   `-v` (`fotosite.par_da_frente`/`nome_do_verso`, inversos, com teste). O `-v` vai
   depois do `-c<id>` para o radical da frente ser prefixo exacto do do verso.
   **Três escritores, e nenhum adivinha o que não sabe:**
-  1. o botão **frente e verso** da página (`POST /api/foto?pares=1`): os
+  1. o botão **📷 Frente e verso** da página (`POST /api/foto?pares=1`): os
      ficheiros vêm aos pares pela ordem de captura e o segundo herda o `n` do
-     primeiro — o par **nasce feito**. Um número ímpar é recusado (409): metade de
-     um par não é prova de nada;
+     primeiro — o par **nasce feito**. Um número ímpar é recusado (409), nos dois
+     lados (o JS trava-o antes de enviar, o servidor trava-o antes de escrever):
+     metade de um par não é prova de nada.
+     **Numa caixa são DOIS botões e não um** (`deckboxes.tirarFotosHTML`): o dos
+     pares em destaque e **📷 Só a frente** ao lado, para uma frente avulsa. Nos
+     alvos que não são deck (`venda`/`rl`/`coleccao`) só aparece o segundo — ali
+     é frente só, por decisão dele. **Isto faltava e foi apanhado na revisão
+     final:** o botão único de 21/09 mandava sempre frentes, e por isso uma foto
+     tirada no site **nunca ganhava verso** — o estado dela ficava «por
+     verificar» para sempre, sem um único erro. Tem caso de teste nas duas
+     pontas (o `data-pares` no HTML e o `?pares=1` lido pelo endpoint);
   2. a **recolha da pasta do deck** (`fotos.recolher_das_pastas`): empareilha pela
      **ordem de captura** (mtime, depois nome), que é exactamente o gesto físico.
      Três decisões que a tornam segura — o grupo é a **pasta** onde o ficheiro
