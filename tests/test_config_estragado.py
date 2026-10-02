@@ -150,12 +150,54 @@ def caso_trocar_de_ficheiro_nao_herda_o_anterior():
     print("trocar de ficheiro não herda o «último bom» do anterior")
 
 
+def caso_o_config_le_se_num_sitio_so():
+    """Ninguém abre o `colecao_config.json` à mão fora do `sources`/`configio`.
+
+    É a disciplina do `precos.sql()`, do `e_foil` e do `venda.mostrar`: a
+    segunda cópia de uma leitura discorda da primeira um dia qualquer, em
+    silêncio. Aqui já tinha acontecido DUAS vezes — o `classify._config` e o
+    `reservedlist._ignore_formats` abriam o ficheiro directamente, e com isso
+    ignoravam o `MTGVAULT_CONFIG` (os testes liam o config A SÉRIO dele) e
+    ficavam de fora da protecção contra um ficheiro ilegível, cada um com o seu
+    `except Exception` a engolir tudo.
+
+    Os DOIS donos: o `sources` lê (com cache e com o último bom) e o `configio`
+    escreve (preservando a forma que ele lê à mão). Mais ninguém.
+
+    Os testes ficam de fora de propósito: há casos que têm mesmo de ler o
+    ficheiro dele para conferir que o código concorda com ele (é o que o
+    `test_ambito.caso_as_assinaturas_do_classify_sao_as_do_config` faz).
+    """
+    import ast
+    raiz = Path(__file__).resolve().parents[1]
+    donos = {"mtgvault/sources.py", "mtgvault/configio.py"}
+    saltar = {"tests", "_revisao", "_scratch", "__pycache__", ".git", "_med"}
+    maus = []
+    for p in sorted(raiz.rglob("*.py")):
+        rel = p.relative_to(raiz).as_posix()
+        if rel in donos or set(rel.split("/")) & saltar:
+            continue
+        try:
+            arvore = ast.parse(p.read_text(encoding="utf-8"))
+        except (OSError, SyntaxError):
+            continue
+        for no in ast.walk(arvore):
+            if isinstance(no, ast.Constant) and no.value == "colecao_config.json":
+                maus.append(f"{rel}:{no.lineno}")
+    assert not maus, (
+        "estes ficheiros abrem o colecao_config.json à mão em vez de usarem o "
+        f"`sources.config()`: {maus}")
+    print("o colecao_config.json lê-se num sítio só (`sources`) e escreve-se "
+          "noutro (`configio`)")
+
+
 def run():
     for fn in (caso_um_config_estragado_nao_apaga_o_que_ja_estava_lido,
                caso_o_aviso_nao_se_repete_a_cada_leitura,
                caso_corrigir_o_ficheiro_volta_a_pegar,
                caso_um_config_ausente_continua_a_ser_vazio_e_calado,
-               caso_trocar_de_ficheiro_nao_herda_o_anterior):
+               caso_trocar_de_ficheiro_nao_herda_o_anterior,
+               caso_o_config_le_se_num_sitio_so):
         fn()
     print("\nTUDO OK")
 

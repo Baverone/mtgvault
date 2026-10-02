@@ -10,7 +10,6 @@ de que não tenho nenhuma cópia aparecem SEM COR.
 from __future__ import annotations
 
 import html
-import json
 import os
 from collections import defaultdict
 from datetime import date, timedelta
@@ -39,12 +38,18 @@ FMT_LABEL = {"legacy": "Legacy", "cedh": "cEDH", "premodern": "Premodern",
 def _ignore_formats():
     """Formatos que NÃO contam para 'joga em algum lado' (o André vai afinando).
     Uma carta da RL que só jogue em formatos ignorados fica marcada p/ vender.
-    Default: só Vintage fora. Configurável em colecao_config.json."""
-    try:
-        cfg = json.loads((ROOT / "colecao_config.json").read_text(encoding="utf-8"))
-        return set(cfg.get("reserved_vender_ignorar_formatos", ["vintage"]))
-    except Exception:  # noqa: BLE001
-        return {"vintage"}
+    Default: só Vintage fora. Configurável em colecao_config.json.
+
+    PELO `sources.config()`, que é o único leitor do config (2026-10-02). Abrir
+    o ficheiro à mão aqui era a mesma coisa que o `classify._config` fazia:
+    ignorava o `MTGVAULT_CONFIG` (logo, os testes liam o config A SÉRIO dele) e
+    ficava de fora da protecção contra um config ilegível, com um `except
+    Exception` próprio a engolir tudo. Em produção lê o mesmo ficheiro e não
+    muda um número.
+    """
+    from mtgvault import sources                              # noqa: PLC0415
+    v = sources.config().get("reserved_vender_ignorar_formatos", ["vintage"])
+    return set(v if isinstance(v, (list, tuple, set)) else ["vintage"])
 
 
 def _art(sid):

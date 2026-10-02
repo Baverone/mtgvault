@@ -1,15 +1,38 @@
 {
  "versao": 1,
- "corridas": [],
+ "corridas": [
+  {
+   "data": "2026-10-02",
+   "ramo": "revisao-codigo-1002",
+   "defeitos_corrigidos": 6,
+   "ficheiros_tocados": [
+    "mtgvault/loadout.py",
+    "mtgvault/migracao.py",
+    "webapp.py",
+    "daily.py",
+    "mtgvault/sources.py",
+    "mtgvault/schema.sql",
+    "classify.py",
+    "reservedlist.py"
+   ],
+   "testes_novos": [
+    "tests/test_estado_endpoint.py (3 casos)",
+    "tests/test_config_estragado.py (6 casos)",
+    "tests/test_venda_rl.py (+4 casos)",
+    "tests/test_ambito.py (+2 casos)"
+   ],
+   "prova_de_chumba": "14 chumbaram, 0 passaram, 1 inconclusivo (15 alvos)"
+  }
+ ],
  "ficheiros": [
   {
    "ficheiro": "mtgvault/loadout.py",
-   "linhas": 5612,
+   "linhas": 5655,
    "ordem": 10,
    "risco": "alto",
    "porque": "alocacao, venda, preco da copia",
-   "estado": "por rever",
-   "notas": ""
+   "estado": "parcial",
+   "notas": "precos, avaliar_rl, sell_list, nao-encontradas, registar: lidos. 5612 linhas, falta o resto"
   },
   {
    "ficheiro": "mtgvault/precos.py",
@@ -26,8 +49,8 @@
    "ordem": 12,
    "risco": "alto",
    "porque": "import_csv, add_copy, valor da coleccao",
-   "estado": "por rever",
-   "notas": ""
+   "estado": "parcial",
+   "notas": "valor_da_coleccao e mapa_precos lidos; import_csv por ler"
   },
   {
    "ficheiro": "mtgvault/fases.py",
@@ -35,8 +58,8 @@
    "ordem": 13,
    "risco": "alto",
    "porque": "as sete regras que decidem o que vai a venda",
-   "estado": "por rever",
-   "notas": ""
+   "estado": "parcial",
+   "notas": "reserva e consenso lidos; as sete regras por ler"
   },
   {
    "ficheiro": "mtgvault/venda.py",
@@ -44,8 +67,8 @@
    "ordem": 14,
    "risco": "alto",
    "porque": "o interruptor e a exportacao de stock",
-   "estado": "por rever",
-   "notas": ""
+   "estado": "parcial",
+   "notas": "varrido: uma consulta em ciclo, legitima"
   },
   {
    "ficheiro": "mtgvault/prices.py",
@@ -53,8 +76,8 @@
    "ordem": 15,
    "risco": "alto",
    "porque": "escreve price_latest/price_history",
-   "estado": "por rever",
-   "notas": ""
+   "estado": "parcial",
+   "notas": "varrido: timeouts presentes, ciclos legitimos"
   },
   {
    "ficheiro": "mtgvault/scryfall.py",
@@ -62,8 +85,8 @@
    "ordem": 16,
    "risco": "alto",
    "porque": "catalogo; foi aqui o LIKE que custava 57 s",
-   "estado": "por rever",
-   "notas": ""
+   "estado": "parcial",
+   "notas": "varrido: zero LIKE com padrao calculado; medido sem SCAN nos caminhos quentes"
   },
   {
    "ficheiro": "mtgvault/db.py",
@@ -76,7 +99,7 @@
   },
   {
    "ficheiro": "daily.py",
-   "linhas": 586,
+   "linhas": 615,
    "ordem": 18,
    "risco": "alto",
    "porque": "o job diario; podas que APAGAM linhas",
@@ -85,7 +108,7 @@
   },
   {
    "ficheiro": "classify.py",
-   "linhas": 433,
+   "linhas": 463,
    "ordem": 19,
    "risco": "alto",
    "porque": "decide Deck/Coleccao/Vender",
@@ -107,8 +130,8 @@
    "ordem": 21,
    "risco": "alto",
    "porque": "o factor de preco por estado",
-   "estado": "por rever",
-   "notas": ""
+   "estado": "parcial",
+   "notas": "aplicar/factor/tabela lidos"
   },
   {
    "ficheiro": "mtgvault/revalidacao.py",
@@ -116,8 +139,8 @@
    "ordem": 22,
    "risco": "alto",
    "porque": "corrige copias pela foto",
-   "estado": "por rever",
-   "notas": ""
+   "estado": "parcial",
+   "notas": "varrido"
   },
   {
    "ficheiro": "mtgvault/encomendas.py",
@@ -125,8 +148,8 @@
    "ordem": 23,
    "risco": "alto",
    "porque": "concilia pela foto e cria copias",
-   "estado": "por rever",
-   "notas": ""
+   "estado": "parcial",
+   "notas": "varrido: escritas em ciclo, N pequeno"
   },
   {
    "ficheiro": "mtgvault/analysis.py",
@@ -134,12 +157,12 @@
    "ordem": 24,
    "risco": "alto",
    "porque": "prune_leagues/prune apagam decklists",
-   "estado": "por rever",
-   "notas": ""
+   "estado": "parcial",
+   "notas": "podas e rebuild varridos"
   },
   {
    "ficheiro": "mtgvault/sources.py",
-   "linhas": 739,
+   "linhas": 790,
    "ordem": 25,
    "risco": "alto",
    "porque": "store_decklist, o filtro que decide o que conta",
@@ -157,7 +180,7 @@
   },
   {
    "ficheiro": "mtgvault/migracao.py",
-   "linhas": 171,
+   "linhas": 183,
    "ordem": 27,
    "risco": "alto",
    "porque": "migra a base e faz backup",
@@ -418,12 +441,12 @@
   },
   {
    "ficheiro": "webapp.py",
-   "linhas": 2484,
+   "linhas": 2491,
    "ordem": 60,
    "risco": "medio",
    "porque": "o modo edicao; prazos, cache, escritas",
-   "estado": "por rever",
-   "notas": ""
+   "estado": "parcial",
+   "notas": "endpoints de escrita, backups, servidor de ficheiros e _estado lidos"
   },
   {
    "ficheiro": "mtgvault/paginas.py",
@@ -481,12 +504,12 @@
   },
   {
    "ficheiro": "reservedlist.py",
-   "linhas": 438,
+   "linhas": 443,
    "ordem": 67,
    "risco": "medio",
    "porque": "a Reserved List e os precos",
-   "estado": "revisto",
-   "notas": "price_maps: mercado nas duas pontas, sem desconto de estado - correcto"
+   "estado": "corrigido",
+   "notas": "lia o config a mao; passou pelo sources"
   },
   {
    "ficheiro": "colecao_cor.py",
@@ -777,6 +800,15 @@
    "notas": ""
   },
   {
+   "ficheiro": "tests/test_venda_rl.py",
+   "linhas": 676,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "revisto",
+   "notas": "caso novo: o estado nao mexe na percentagem"
+  },
+  {
    "ficheiro": "tests/test_nao_encontrei.py",
    "linhas": 657,
    "ordem": 95,
@@ -910,15 +942,6 @@
    "porque": "",
    "estado": "por rever",
    "notas": ""
-  },
-  {
-   "ficheiro": "tests/test_venda_rl.py",
-   "linhas": 502,
-   "ordem": 95,
-   "risco": "teste",
-   "porque": "",
-   "estado": "revisto",
-   "notas": "caso novo: o estado nao mexe na percentagem"
   },
   {
    "ficheiro": "tests/test_padrao_reserva.py",
@@ -1119,6 +1142,15 @@
    "notas": ""
   },
   {
+   "ficheiro": "tests/test_ambito.py",
+   "linhas": 324,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
    "ficheiro": "tests/test_onde_fisico.py",
    "linhas": 314,
    "ordem": 95,
@@ -1155,15 +1187,6 @@
    "notas": ""
   },
   {
-   "ficheiro": "tests/test_ambito.py",
-   "linhas": 247,
-   "ordem": 95,
-   "risco": "teste",
-   "porque": "",
-   "estado": "por rever",
-   "notas": ""
-  },
-  {
    "ficheiro": "tests/test_metagame_filtro.py",
    "linhas": 215,
    "ordem": 95,
@@ -1175,6 +1198,24 @@
   {
    "ficheiro": "tests/test_caixas.py",
    "linhas": 212,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_config_estragado.py",
+   "linhas": 206,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_estado_endpoint.py",
+   "linhas": 204,
    "ordem": 95,
    "risco": "teste",
    "porque": "",
@@ -1379,5 +1420,17 @@
    "estado": "por rever",
    "notas": ""
   }
- ]
+ ],
+ "ferramentas": {
+  "_onde": "_revisao/ — FORA do Git pelo .gitignore. Se a pasta for limpa reconstroem-se; são baratas e estão descritas aqui.",
+  "plano.py": "constroi/actualiza este ficheiro; `marcar <ficheiro> <estado> [nota]` e `falta`",
+  "ciclos.py": "consultas SQL no CORPO de um ciclo (AST). O iterador do proprio ciclo nao conta — era o falso positivo",
+  "varreduras.py": "apanha o SQL que um `loadout.report` CORREU (set_trace_callback) e passa cada um pelo EXPLAIN QUERY PLAN; marca quem varre uma tabela grande",
+  "chumba_geral.py": "o padrao `_provar_chumba` aplicado aos ficheiros que nao tinham companheiro `_chumba_*`",
+  "_neutralizar_um.py": "corre a bateria de UM teste com UMA funcionalidade desligada; separa «chumbou» de «rebentou»",
+  "correr.py": "corre alguns ficheiros de teste, um processo cada",
+  "idade.py": "ordena os ficheiros de risco pela data da ultima alteracao — o que nao muda ha meses e onde um defeito velho sobrevive",
+  "medir_paginas.py": "as 11 paginas + os ficheiros de dados + o JS a serio (vem da ordem anterior)",
+  "medir_receita.py": "o custo do `precos.receita_em_vigor` num relatorio"
+ }
 }
