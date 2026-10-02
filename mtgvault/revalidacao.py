@@ -710,12 +710,20 @@ def fotos_que_nao_validam(con) -> dict[str, int]:
     com mais do que quatro (`fotos.valida`).
     """
     from . import collection                                # noqa: PLC0415
+    # PELO NOME DO FICHEIRO, como nos outros três sítios que fazem esta conta
+    # (`collection._cartas_por_foto`, `fotos.consumidas`, `valida_esta_foto`).
+    # Era pelo `photo_path` inteiro — e o `arrumar_fotos` reescreve-o com a pasta
+    # do deck à frente só para as cópias da corrida em que a foto SAI de
+    # `pendentes/`: a MESMA foto ficava com duas chaves (`X.jpg` e
+    # `fotos/<slot>/X.jpg`), a contagem partia-se entre as duas e uma foto de 6
+    # cartas lia-se como 3 + 3 — as duas dentro do tecto de 4. O detector da
+    # regra das quatro cartas dava o número errado, em silêncio.
     cartas: dict[str, int] = defaultdict(int)
     for r in con.execute(
             f"""SELECT photo_path p, quantity q FROM copies cp
                  WHERE {collection.na_estante()} AND photo_path IS NOT NULL
                    AND photo_path <> ''"""):
-        cartas[r["p"]] += r["q"]
+        cartas[Path(str(r["p"])).name] += r["q"]
     return {p: n for p, n in cartas.items() if not foto_valida(n)}
 
 

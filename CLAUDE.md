@@ -117,8 +117,16 @@ mtgvault/
                   `slot_da_pasta` (pasta → slot, DERIVADO do `caixas` do
                   config), `fotos_nas_pastas`, `recolher_das_pastas` (move para
                   `pendentes/` com o nome `site-<slot>-…`) e `escrever_planos`
-                  (os `_plano.txt`, reescritos pelo daily). Ver «UMA FOTO LEVA
-                  NO MÁXIMO QUATRO CARTAS» e «A PASTA POR DECK VALE COMO ALVO»
+                  (os `_plano.txt`, reescritos pelo daily). E, desde 2026-10-02,
+                  O QUE FAZ O CANO AGUENTAR A CAMPANHA: `alvo_da_pasta` (a
+                  pergunta «de quem é esta pasta» num sítio só — caixa, ou o
+                  `coleccao` dos `Extras (fora dos decks)`),
+                  `PASTAS_FORA_DOS_DECKS`, `consumidas`/`ja_e_prova` (a mesma
+                  foto não é prova de duas cartas), `garantir_pastas` (uma pasta
+                  por deck do config) e `TEXTO_ORFA`/`_pastas_do_slot` (o plano
+                  de uma pasta renomeada deixa de mentir). Ver «UMA FOTO LEVA
+                  NO MÁXIMO QUATRO CARTAS», «A PASTA POR DECK VALE COMO ALVO» e
+                  «O CANO DAS FOTOS AGUENTA A CAMPANHA»
   fotocaixa.py    A FOTO DA DECKBOX FÍSICA de cada caixa (2026-09-21): o
                   original em `data/deckboxes/<slot>.<ext>` (fora do Git, a
                   anterior em `anteriores/`), a reduzida em
@@ -2067,6 +2075,148 @@ chumbam sem a funcionalidade em `tests/_provar_chumba.py`
   cópias / 97 249,84 €** — os mesmos números da secção «A ARRUMAÇÃO POR FASES».
   O que mudou foi a UNIDADE da fila (411 cartas em **124 fotos**), o resolvedor,
   o arquivo e a ordem dos decks.
+
+**O CANO DAS FOTOS AGUENTA A CAMPANHA (2026-10-02).** Ele vai fotografar a
+colecção INTEIRA — 1 678 cartas em fotos de até quatro, ~500 fotos, deck a deck,
+e o que não está em deck nenhum numa pasta nova `Extras (fora dos decks)\`. São
+dias de trabalho dele, e por isso o que se fez foi **provar o cano antes de ele
+começar**, com o fluxo REAL das 02:30 (o `run.py` da tarefa `mtg-fotos-novas`)
+sobre uma cópia da base dele e com imagens fabricadas — só o `claude -p` (cujo
+único produto é o `recat.csv`) e o `gh release upload` (que publicaria a base de
+teste) ficaram em esboço. Testes em `tests/test_cano_fotos.py` (13 casos) e a
+prova de que chumbam em `tests/_chumba_cano.py` (11 alvos).
+
+- **A TAREFA NUNCA PROCESSOU UMA FOTO EM PRODUÇÃO: 202 corridas, 202 × «sem
+  fotos novas».** É o número que enquadra tudo o que segue — o cano em que ele ia
+  assentar dias de trabalho nunca levou uma foto de ponta a ponta, e por isso
+  nenhum destes defeitos tinha aparecido.
+- **A PASTA `Extras (fora dos decks)\` NÃO ESTAVA LIGADA A NADA.** Ele criou-a às
+  13:13 desse dia com um `_plano.txt` escrito à mão; o `mapa_pastas` deriva do
+  `caixas` e aquela não é uma caixa, por isso a recolha deixava-a em `ignorados`
+  — **a foto ficava lá para sempre e a tarefa dizia «sem fotos novas», VERDE**.
+  Ligou-se ao alvo **`coleccao`** que já existia desde 2026-09-21
+  (`fotosite.TIPOS`) e é exactamente isto — *"estou a fotografar a colecção, não
+  um deck"*: a foto passa a chamar-se `site-colecao-…`, e daí para a frente é o
+  caminho de sempre, sem uma linha nova. `fotos.PASTAS_FORA_DOS_DECKS`. As
+  QUATRO pastas de grupo **não** se ligaram, e é decisão: já tinham um
+  significado dele antes disto.
+- **A MESMA FOTO ERA PROVA DE DUAS CARTAS.** Uma foto cujas linhas não entraram
+  todas **fica** em `pendentes/` (regra do `arrumar_fotos`, e está certa: *"arrumá-
+  la escondia trabalho por fazer"*). Só que a corrida seguinte relê a MESMA foto,
+  com o MESMO nome: a cópia já está validada (o passo (0) não a apanha), já tem
+  `photo_path` (o (iii) também não) e cai no (iv), que **cria uma cópia nova**.
+  Medido no ensaio: duas linhas da `copies` com o mesmo `photo_path`, e **uma por
+  noite** enquanto a linha falhada não fosse resolvida. Numa campanha de 500
+  fotos basta uma edição que não se consiga fixar para a colecção inflacionar
+  sozinha. A trava é `fotos.consumidas`/`ja_e_prova`, pela identidade da FOTO (o
+  **nome** do ficheiro, que é o que sobrevive ao `arrumar_fotos` reescrever o
+  `photo_path` com a pasta do deck à frente) e **não pela carta** — travar pela
+  carta perdia a segunda cópia a sério de uma carta que ele tem duas, e tem caso
+  de teste. A linha repetida sai com resultado **`repetida`**, que não é erro:
+  não há nada para ele fazer, e pôr a tarefa a vermelho todas as noites era um
+  vermelho que se deixa de ler.
+- **O ALVO DA COLECÇÃO NÃO TINHA CÓPIAS NENHUMAS.** O alvo chama-se `coleccao` e
+  o grupo da `particao` chama-se `resto`; **três** sítios traduziam isso à mão e
+  o `revalidacao._chave` esqueceu-se, devolvendo `("coleccao",)` para um grupo
+  que nunca existe. Consequência: o passo (0) ficava sem preferência e a
+  correcção por discrepância (0b) — que EXIGE `alvo["copias"]` — **nunca
+  disparava fora dos decks**: uma carta dos Extras fotografada noutra edição
+  criava uma cópia nova em vez de corrigir a que lá está. A tradução vive agora
+  em `revalidacao.GRUPO_DO_TIPO`, e os três sítios lêem de lá.
+- **500 FOTOS NÃO CABEM NUMA CORRIDA, E A TAREFA MANDAVA-AS TODAS NUM
+  `claude -p`** com `--max-turns 80` e 25 min de tecto. **Medido nas 65 corridas
+  da tarefa irmã `mtg-fotos` (a que lê fotos de cartas com o Claude há 1 119
+  corridas): 44 s por foto de mediana, 119 s no pior caso, e o maior lote que
+  alguma vez se tentou foram 5 fotos.** Logo o tecto real era **~30 fotos**; com
+  500 o processo era morto aos 25 min, o `recat.csv` não aparecia, **não se
+  importava nada** — e repetia-se o mesmo falhanço todas as noites, sem nunca
+  progredir. Agora são **lotes de `LOTE` (10) fotos**, um `claude -p` por lote
+  (contexto fresco, que é o que o faz caber), tantos quantos couberem no
+  `ORCAMENTO_S` (1 400 s, abaixo do `timeout` de 1 800 da tarefa **e** da ordem
+  encadeada), com `--max-turns` proporcional ao lote. **A RETOMA NÃO PRECISA DE
+  FICHEIRO DE ESTADO: o progresso é a PRÓPRIA PASTA** — uma foto processada é
+  movida pelo `arrumar_fotos`, e uma que fica é porque tem trabalho por fazer
+  (o mesmo princípio do `arquetipo_fonte_de`). As TRAVADAS vão para o FIM da
+  fila: entrando sempre no primeiro lote, eram elas a comer o orçamento todas as
+  corridas e a campanha nunca avançava. Sobrando fotos **e** tendo a corrida
+  andado, pede-se outra pelo MESMO caminho do «⚡ Processar agora»
+  (`fotosite.pedir_processamento`) — sem isso, 500 fotos a 10 por corrida e uma
+  corrida por noite eram **cinquenta noites**. **Medido**: 40 fotos → 4 lotes de
+  10, 40 cópias, 0 por fazer, 67 s de trabalho Python; e com o custo real de 44 s
+  por foto, 3 lotes em 1 331 s e 10 fotos a ficar para a corrida seguinte, com o
+  `parou_por` a dizer porquê. O chão é o Claude a ler: **500 fotos são ~6 h**,
+  façam-se os lotes que se fizerem.
+- **DOIS LOTES NO MESMO MINUTO MATAVAM A TAREFA.** O CSV guardado chamava-se
+  `recat-<AAAAMMDD-HHMM>.csv` e o `Path.rename` do Windows levanta
+  `FileExistsError`: a segunda corrida do mesmo minuto rebentava **depois** de a
+  base estar escrita e as fotos arrumadas, com **stdout VAZIO** e sem publicar o
+  Release — trabalho feito e não relatado. O nome passou a ser livre, e o `main`
+  ganhou uma rede (`main_guardado`) para o JSON sair sempre.
+- **O TESTE DA TAREFA IA A VERMELHO NA PRIMEIRA NOITE EM QUE ELA FUNCIONASSE.**
+  Procurava as fotos em `pendentes/fotos processadas/` (desde 01/10 vão para
+  `data/fotos/<slot>/`) e comparava o `photo_path` com o nome CRU (o
+  `arrumar_fotos` põe-lhe a pasta do deck à frente): **dois erros falsos por
+  foto**, a dizer *«a foto perdeu-se»* e *«o import não escreveu»* sobre um
+  import que escreveu. Nunca se tinha visto porque nunca houve uma foto. Hoje
+  olha para as duas pastas e compara pelo NOME; e as asserções passaram a ser
+  sobre as fotos que a corrida **tentou** (com lotes, o `photos` é a fila
+  inteira). Tem cenário novo: se a tarefa diz que sobram fotos e a pasta está
+  vazia, a retoma perdeu-as. Os três cenários de «verde a fingir» continuam a
+  chumbar.
+- **SETE DOS 17 DECKS NÃO TINHAM PASTA, E QUATRO PASTAS DELE NÃO MAPEAVAM PARA
+  NADA.** Medido nesse dia: sem pasta a `Affinity (Luffy)`, `Elves`,
+  `Modern — Affinity`, `Bant Airbend`, `Engineer Welder Cam`, `Aluren` e
+  `Artifacts Blue` (as novas de 02/10 e as renomeadas) — e uma foto largada em
+  `Elves - Survival\`, `Pauper (Luffy)\`, `Jeskai Control\` ou `Legacy\` ficava
+  lá, calada. O `fotos.garantir_pastas` cria a pasta de cada deck do config (o
+  nome sai do `caixas`, a MESMA regra que a reconhece) com um `.gitkeep`; **não
+  se apaga nem se move nada** (a regra dele de 09/09) — o que se troca é o TEXTO
+  do `_plano.txt` das órfãs (`fotos.TEXTO_ORFA`), porque um ficheiro NOSSO a
+  dizer *«LARGA AS FOTOS NESTA PASTA»* numa pasta que o vault já não reconhece é
+  pior do que ficheiro nenhum. E uma pasta órfã **com fotos dentro** passou a ser
+  ERRO na tarefa (as de grupo continuam caladas): um lote dele perdido de vista
+  sem ninguém notar era o pior resultado possível.
+- **O `_pastas_do_slot` escreve o plano em TODAS as pastas que apontam para o
+  deck.** São duas quando o nome antigo é o próprio `slot` — o `Standard\` do
+  slot `standard`, hoje «Bant Airbend»: essa continua a valer como alvo (o mapa
+  indexa o slot), por isso não é órfã, mas o `pasta_do_deck` não a encontrava e
+  ficava com o plano congelado do dia do rename. E as pastas acabadas de criar
+  ficavam com um `.gitkeep` e mais nada: a guarda era *«só onde já existe um
+  `_plano.txt`»*.
+- **A PERGUNTA «DE QUEM É ESTA PASTA» VIVE NUM SÍTIO SÓ — e não vivia.** Escrevi
+  o `alvo_da_pasta` com a docstring a dizer isso e dupliquei a conta dentro do
+  `fotos_nas_pastas`, que é por onde passa TODA a produção (`webapp`, `daily`,
+  `cli`); a função ficava a ser chamada só pelos testes. Ligar uma pasta nova
+  mexendo nela não teria efeito nenhum — o defeito dos `Extras` recriado. Tem
+  caso que troca a função e exige que a recolha mude com ela.
+- **A CONTA DAS CARTAS POR FOTO É PELO NOME DO FICHEIRO.** O
+  `revalidacao.fotos_que_nao_validam` agrupava pelo `photo_path` inteiro, e o
+  `arrumar_fotos` só o reescreve para as cópias da corrida em que a foto SAI de
+  `pendentes/`: a mesma foto ficava com duas chaves e uma foto de 6 cartas
+  lia-se como 3 + 3 — as duas dentro do tecto de 4. Os outros três sítios que
+  fazem esta conta já usavam o nome.
+- **O `processar_fotos.py` ESCREVIA NA BASE SEM BACKUP.** É o caminho que o
+  `PROCESSAR_FOTOS.md` manda correr à mão, e o import não é só acrescentar:
+  desde 20/09 o `revalidacao.corrigir` **reescreve** a impressão de cópias que já
+  cá estavam, o `_sai_da_caixa_se_nao_cumpre` apaga linhas da `copy_allocation`,
+  e a seguir o `db_push` publica isto por cima da base do Release. A tarefa das
+  02:30 e os botões do 8771 fazem `migracao.backup` primeiro; este era o único
+  sem rede.
+- **A FILA DE «À ESPERA» TEM TECTO** (`deckboxes.MAX_FILA`, 25): com centenas de
+  fotos largadas de uma vez, uma lista de 300 `<li>` num telemóvel é uma página
+  que não se usa. O total continua no cabeçalho, e o resto é *«… e mais N na
+  fila»*. A PROGRESSÃO a sério — quantas fotos faltam, por deck — é a barra da
+  Fase 2 em `arrumacao.html`, que sai da base (validado vs. por revalidar).
+- **O QUE SE MEDIU E NÃO SE MEXEU, de propósito:** o `scryfall.find_printing` e
+  o `resolve_name` **são mesmo varredura** do catálogo (`EXPLAIN` → `SCAN cards`
+  sobre 112 754 impressões) e correm por linha de CSV — mas o caminho rápido
+  (`name = ?`, pelo `ix_cards_name`) apanha o caso normal: **5,0 ms e 1,8 ms** por
+  nome, e **38–70 ms** no pior caso (um nome que não existe, um erro de leitura).
+  2 000 linhas são 4–10 s, e 100 nomes mal lidos 4–7 s. Ao lado das ~6 h de
+  leitura não é defeito, e trocar consultas quentes na véspera da campanha dele
+  era o risco errado a correr. As consultas do passo (0)
+  (`revalidacao._sel_copias`) varrem a `copies` (737 linhas) e vão ao catálogo
+  pela chave primária: **3,7 ms**.
 
 **A PASTA POR DECK VALE COMO ALVO (André, 2026-10-01, à tarde, à letra: «o
 melhor é criar pasta»).** Ele perguntou de manhã onde é que punha as fotos, e a

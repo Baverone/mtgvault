@@ -336,6 +336,31 @@ def garantir_pastas(res: dict, raiz: Path | str | None = None) -> list[str]:
     return criadas
 
 
+def _pastas_do_slot(slot: str, nome: str, cfg: dict | None = None,
+                    raiz: Path | str | None = None) -> list[Path]:
+    """TODAS as pastas que o `mapa_pastas` manda para este slot, a do nome de
+    hoje à frente.
+
+    São normalmente uma; são duas quando o deck foi renomeado e o nome antigo é
+    o próprio `slot` — o `Standard\\` do slot `standard`, que hoje se chama «Bant
+    Airbend». Essa continua a valer como alvo (o mapa indexa o slot), e por isso
+    o plano dela também tem de estar certo: não é órfã, é a mesma caixa por outro
+    nome.
+    """
+    base = pasta_novas(raiz)
+    if not base.is_dir():
+        return []
+    mapa = mapa_pastas(cfg)
+    primeira = pasta_do_deck(nome, raiz)
+    out = [primeira] if primeira.is_dir() else []
+    for d in sorted(x for x in base.iterdir() if x.is_dir()):
+        if d.name.startswith("_") or d in out:
+            continue
+        if mapa.get(_norm(d.name)) == slot:
+            out.append(d)
+    return out
+
+
 TEXTO_ORFA = (
     "ESTA PASTA JA NAO E UM DECK\n"
     "===========================\n\n"
@@ -370,26 +395,37 @@ def escrever_planos(con, res: dict, cfg: dict | None = None,
                  "fotos": f2["barra"]["fotos"], "cartas": f2["barra"]["cartas"]}
     com_fila = set()
     for f in f2["filas"]:
-        d = pasta_do_deck(f["nome"], raiz)
-        if not d.is_dir():
+        pastas = _pastas_do_slot(f["slot"], f["nome"], cfg, raiz)
+        if not pastas:
             out["sem_pasta"].append(f["nome"])
             continue
         com_fila.add(f["nome"])
-        (d / _PLANO).write_text(
-            texto_do_plano(f["nome"], f["slot"], f["fotos"],
-                           conversao=f["conversao"], nota=f["nota"]),
-            encoding="utf-8")
+        texto = texto_do_plano(f["nome"], f["slot"], f["fotos"],
+                               conversao=f["conversao"], nota=f["nota"])
+        for d in pastas:
+            (d / _PLANO).write_text(texto, encoding="utf-8")
         out["escritos"].append({"nome": f["nome"], "slot": f["slot"],
                                 "fotos": f["barra"]["fotos"],
                                 "cartas": f["barra"]["cartas"],
-                                "ficheiro": str(d / _PLANO)})
+                                "ficheiro": str(pastas[0] / _PLANO)})
     for s in res.get("slots") or []:
         nome = s.get("nome") or s["slot"]
-        d = pasta_do_deck(nome, raiz)
-        if nome in com_fila or not (d / _PLANO).is_file():
+        if nome in com_fila:
             continue
-        (d / _PLANO).write_text(texto_sem_cartas(nome, s["slot"]),
-                                encoding="utf-8")
+        # Escreve-se em TODAS as pastas que apontam para este slot, e não só na
+        # que tem o nome de hoje. Duas razões, as duas medidas a 02/10:
+        #   * a pasta ACABADA DE CRIAR não tinha `_plano.txt` nenhum — a guarda
+        #     era `not (d/_PLANO).is_file(): continue`, e as seis caixas novas
+        #     ficavam com um `.gitkeep` e mais nada, sem uma linha a dizer que a
+        #     pasta vale como alvo;
+        #   * a pasta com o nome ANTIGO do deck, quando esse nome é o próprio
+        #     `slot` (o `Standard\` do slot `standard`, hoje «Bant Airbend»),
+        #     continua a valer como alvo pelo `mapa_pastas` — por isso não é
+        #     órfã — mas o `pasta_do_deck` não a encontra, e ficava com o plano
+        #     congelado do dia anterior ao rename.
+        for d in _pastas_do_slot(s["slot"], nome, cfg, raiz):
+            (d / _PLANO).write_text(texto_sem_cartas(nome, s["slot"]),
+                                    encoding="utf-8")
         out["vazios"].append(nome)
     # AS PASTAS ORFAS: um `_plano.txt` NOSSO a mentir é pior do que nenhum.
     # Uma pasta cujo deck foi renomeado ou dissolvido (medido a 02/10:
@@ -827,7 +863,8 @@ def slot_da_pasta(caminho: Path | str, cfg: dict | None = None) -> str | None:
     return mapa_pastas(cfg).get(_norm(resto[0]))
 
 
-def alvo_da_pasta(caminho: Path | str, cfg: dict | None = None) -> dict | None:
+def alvo_da_pasta(caminho: Path | str, cfg: dict | None = None,
+                  mapa: dict[str, str] | None = None) -> dict | None:
     """O ALVO da revalidação a que uma foto pertence, pela PASTA em que está:
 
         {"tipo": "caixa",    "slot": "cedh-blue-farm"}   uma pasta de deck
@@ -839,6 +876,10 @@ def alvo_da_pasta(caminho: Path | str, cfg: dict | None = None) -> dict | None:
     só isso (devolve `None` para os Extras, que não são caixa nenhuma). Duas
     respostas à mesma pergunta discordam um dia qualquer, em silêncio — a lição
     do `e_foil`, do `vistoId` e do `precos.sql()`.
+
+    O `mapa` é só uma optimização de quem chama em ciclo (o `fotos_nas_pastas`
+    faz esta pergunta uma vez por pasta): a REGRA continua a viver aqui, e sem
+    ele calcula-se na hora.
     """
     partes = Path(str(caminho)).parts
     base = _norm(PASTA_NOVAS)
@@ -848,7 +889,7 @@ def alvo_da_pasta(caminho: Path | str, cfg: dict | None = None) -> dict | None:
         return None                        # está na pasta-mãe: não tem alvo
     if _norm(resto[0]) in {_norm(p) for p in PASTAS_FORA_DOS_DECKS}:
         return {"tipo": ALVO_FORA_DOS_DECKS, "slot": None}
-    slot = mapa_pastas(cfg).get(_norm(resto[0]))
+    slot = (mapa if mapa is not None else mapa_pastas(cfg)).get(_norm(resto[0]))
     return {"tipo": "caixa", "slot": slot} if slot else None
 
 
@@ -875,22 +916,25 @@ def fotos_nas_pastas(cfg: dict | None = None,
     base = pasta_novas(raiz)
     if not base.is_dir():
         return []
-    mapa = mapa_pastas(cfg)
     grupos = {_norm(g) for g in PASTAS_DE_GRUPO}
-    fora = {_norm(g) for g in PASTAS_FORA_DOS_DECKS}
+    mapa = mapa_pastas(cfg)                # uma vez, não uma por pasta
     out = []
     for d in sorted(x for x in base.iterdir() if x.is_dir()):
         if d.name.startswith("_"):
             continue
-        slot = mapa.get(_norm(d.name))
-        # O TIPO de alvo da pasta: uma caixa, ou o `coleccao` dos Extras. É o que
-        # a recolha precisa de saber para dar o nome à foto.
-        tipo = (ALVO_FORA_DOS_DECKS if _norm(d.name) in fora
-                else "caixa" if slot else None)
+        # O ALVO da pasta sai do `alvo_da_pasta` e NÃO de uma segunda conta aqui.
+        # Escrevi as duas no mesmo dia e a docstring dizia «vive num sítio só» —
+        # era falso: a produção passa toda por aqui e o `alvo_da_pasta` só era
+        # chamado pelos testes. Ligar uma pasta nova mexendo na função que a
+        # documentação aponta não teria efeito nenhum, e as fotos ficavam na
+        # pasta, caladas. É o defeito dos `Extras` recriado.
+        alvo = alvo_da_pasta(d / "x.jpg", cfg, mapa)
         for f in sorted(x for x in d.rglob("*")
                         if x.is_file() and x.suffix.lower() in EXT):
-            out.append({"ficheiro": f, "pasta": d.name, "slot": slot,
-                        "tipo": tipo, "grupo": _norm(d.name) in grupos,
+            out.append({"ficheiro": f, "pasta": d.name,
+                        "slot": (alvo or {}).get("slot"),
+                        "tipo": (alvo or {}).get("tipo"),
+                        "grupo": _norm(d.name) in grupos,
                         "mtime": f.stat().st_mtime})
     return out
 

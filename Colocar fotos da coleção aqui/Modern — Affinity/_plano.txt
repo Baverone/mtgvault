@@ -1,11 +1,11 @@
-PLANO DE FOTOS -- Bant Airbend
-slot: standard
+PLANO DE FOTOS -- Modern — Affinity
+slot: modern-affinity
 
 Este deck NAO tem cartas registadas dentro da caixa, por isso
 nao ha nada para fotografar aqui ainda.
 
 Quando houver, as fotos vem para ESTA pasta: o vault reconhece
-a pasta como este deck (alvo: standard) e trata-as como se as
+a pasta como este deck (alvo: modern-affinity) e trata-as como se as
 tivesses tirado na pagina. Nada se apaga.
 A outra porta: https://editar-mtg.baverone.com/
 O plano a serio esta na pagina «Arrumacao por fases», Fase 2.

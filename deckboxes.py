@@ -2207,6 +2207,7 @@ const maisHTML = (chave, resto) => !resto ? '' :
 let grelhaN = 0;                        /* reposto a zero em cada `render()` */
 const GRELHAS_ABERTAS = new Set();
 const MAX_TILES = 60;                   /* por grelha (ou por lista de cores) */
+const MAX_FILA = 25;                    /* fotos listadas na fila de «à espera» */
 
 /* Por COR, como o binder (o passo 1, a revalidação): um cabeçalho e uma
    grelha por cor. `f` transforma cada linha num `t`. */
@@ -2749,16 +2750,27 @@ function fotosSiteHTML(fotos, comOrigem) {
   const S = (D.revalidacao || {}).site || {};
   if (!fotos || !fotos.length) return '';
   const min = Math.round((S.espera_s || 120) / 60);
+  /* O TECTO DA LISTA (2026-10-02): na campanha da colecção inteira ele larga
+     centenas de fotos de uma vez, e uma lista de 300 `<li>` num telemóvel é uma
+     página que não se usa. Mostram-se as primeiras `MAX_FILA` e diz-se quantas
+     faltam — a MESMA disciplina do `MAX_TILES` das grelhas. O número total
+     continua no cabeçalho, que é o que ele quer saber. */
+  const mostra = fotos.slice(0, MAX_FILA);
+  const sobram = fotos.length - mostra.length;
   return `<div class="fsite"><div class="flh">${ico('revalidacao')} Fotos enviadas, à espera`
     + `<span class="dim">${cop(fotos.length)}</span></div>`
     + `<p class="nota">Estão em <code>pendentes\\</code>, à espera da corrida das 02:30 `
     + `ou de <b>⚡ Processar agora</b>. A tarefa (<code>mtg-fotos-novas</code>) só pega numa `
     + `foto com mais de ${min} min; o Claude local lê-a e liga-a à cópia — demora uns minutos. `
-    + `Recarrega depois: a cópia passa a ✓ validada.</p><ul class="fsl">`
-    + fotos.map(f => `<li><code>${esc(f.nome)}</code> <span class="dim">${kbs(f.bytes)} · `
+    + `Recarrega depois: a cópia passa a ✓ validada.`
+    + (sobram > 0 ? ` A corrida leva-as por LOTES: processa as que couberem no `
+      + `tempo e as outras ficam para a corrida seguinte, sem se perderem.` : '')
+    + `</p><ul class="fsl">`
+    + mostra.map(f => `<li><code>${esc(f.nome)}</code> <span class="dim">${kbs(f.bytes)} · `
       + `${esc((f.em || '').slice(11, 16))}${comOrigem ? ' · ' + esc(origemFoto(f.origem)) : ''}`
       + `${f.origem && f.origem.copy_id ? ' · cópia #' + f.origem.copy_id : ''}`
       + `${f.pronta ? '' : ' · <i>a chegar (menos de ' + min + ' min)</i>'}</span></li>`).join('')
+    + (sobram > 0 ? `<li class="dim">… e mais ${sobram} na fila</li>` : '')
     + `</ul>` + processarHTML(S) + `</div>`;
 }
 

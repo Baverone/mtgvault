@@ -197,14 +197,20 @@ def caso_as_pastas_de_grupo_continuam_de_fora():
     mudar-lhe a rotina sem ele pedir. Fica dito, com o porquê, em vez de
     silencioso."""
     limpar_pendentes()
-    for p in ("Vender", "Premodern (geral)", "Coleção Pessoal"):
+    GRUPOS = ("Vender", "Premodern (geral)", "Coleção Pessoal")
+    # limpa o que outro caso possa ter deixado nas pastas de grupo: aqui conta-se
+    # quantas ficam de fora, e uma sobra de outro caso mudava o numero
+    for p in GRUPOS:
+        for x in pasta(p).glob("*.jpg"):
+            x.unlink()
+    for p in GRUPOS:
         f = larga(p, "y.jpg")
         assert fotos.alvo_da_pasta(f) is None, p
     r = fotos.recolher_das_pastas(raiz=SITE)
     assert not r["recolhidas"], r["recolhidas"]
     assert len(r["ignorados"]) == 3, r["ignorados"]
     assert all("grupo" in i["porque"] for i in r["ignorados"]), r["ignorados"]
-    for p in ("Vender", "Premodern (geral)", "Coleção Pessoal"):
+    for p in GRUPOS:
         (pasta(p) / "y.jpg").unlink()
 
 
@@ -229,6 +235,60 @@ def caso_todo_o_deck_do_config_ganha_pasta():
         assert (fotos.pasta_novas(SITE) / nome / ".gitkeep").is_file(), nome
     # idempotente: correr outra vez não cria nada
     assert fotos.garantir_pastas(rep, raiz=SITE) == [], "criou duas vezes"
+
+
+def caso_a_recolha_pergunta_o_alvo_num_sitio_so():
+    """O `alvo_da_pasta` tem de ser a ÚNICA resposta a «de quem é esta pasta».
+
+    Escrevi as duas no mesmo dia: a função, com a docstring a dizer «vive num
+    sítio só», e uma segunda conta inline dentro do `fotos_nas_pastas` — que é
+    por onde passa TODA a produção (`webapp`, `daily`, `cli`). A função ficava a
+    ser chamada só pelos testes. Ligar uma pasta nova mexendo nela não teria
+    efeito nenhum e as fotos ficavam na pasta, caladas: o defeito dos `Extras`
+    recriado. Aqui troca-se a função e exige-se que a recolha mude com ela."""
+    limpar_pendentes()
+    larga("Vender", "z.jpg")                       # uma pasta de GRUPO
+    r = fotos.recolher_das_pastas(raiz=SITE)
+    assert not r["recolhidas"], "a de grupo não se recolhe (como sempre)"
+    guardado = fotos.alvo_da_pasta
+    try:
+        fotos.alvo_da_pasta = (
+            lambda caminho, cfg=None, mapa=None:
+            {"tipo": "caixa", "slot": "cedh-blue-farm"}
+            if "Vender" in str(caminho) else guardado(caminho, cfg, mapa))
+        itens = fotos.fotos_nas_pastas(raiz=SITE)
+        vender = [i for i in itens if i["pasta"] == "Vender"]
+        assert vender and vender[0]["tipo"] == "caixa", \
+            "o `fotos_nas_pastas` não perguntou ao `alvo_da_pasta`"
+        r = fotos.recolher_das_pastas(raiz=SITE)
+        assert len(r["recolhidas"]) == 1, r
+        assert r["recolhidas"][0]["para"].startswith("site-cedh-blue-farm-"), r
+    finally:
+        fotos.alvo_da_pasta = guardado
+        limpar_pendentes()
+
+
+def caso_a_pasta_acabada_de_criar_diz_ao_que_vem():
+    """A pasta criada para um deck sem cartas ficava com um `.gitkeep` e mais
+    nada — nem uma linha a dizer que vale como alvo. Medido a 02/10: seis das
+    pastas novas, caladas. E a pasta com o nome ANTIGO do deck, quando esse nome
+    é o próprio `slot` (o `Standard\\` do slot `standard`, hoje «Bant Airbend»),
+    continua a valer como alvo mas ficava com o plano congelado do dia do
+    rename."""
+    con = base()
+    base_p = fotos.pasta_novas(SITE)
+    (base_p / "cedh-blue-farm").mkdir(parents=True, exist_ok=True)  # o SLOT
+    rep = {"slots": [{"slot": "cedh-blue-farm", "nome": "Blue Farm"}]}
+    r = fotos.escrever_planos(con, rep, raiz=SITE)
+    novo = base_p / "Blue Farm" / "_plano.txt"
+    assert novo.is_file(), "a pasta do deck tem de ter plano"
+    assert "Blue Farm" in novo.read_text(encoding="utf-8")
+    # a pasta com o nome do SLOT aponta para a mesma caixa: o plano e o mesmo
+    velho = base_p / "cedh-blue-farm" / "_plano.txt"
+    assert velho.is_file(), "a pasta que vale como alvo pelo slot tambem tem plano"
+    assert velho.read_text(encoding="utf-8") == novo.read_text(encoding="utf-8")
+    # e nao e orfa: e a mesma caixa por outro nome
+    assert "cedh-blue-farm" not in r["orfas"], r["orfas"]
 
 
 def caso_a_pasta_de_um_deck_que_morreu_deixa_de_mentir():
@@ -344,6 +404,25 @@ def caso_a_foto_arrumada_por_deck_continua_a_travar():
     collection.import_csv(con, p, resultados=res)
     assert res[0]["resultado"] == "repetida", res
     assert linhas_e_cartas(con) == antes, "criou cópia a partir da foto já arrumada"
+
+
+def caso_a_conta_das_cartas_por_foto_e_pelo_NOME_do_ficheiro():
+    """A regra das quatro cartas conta por FOTO. O `fotos_que_nao_validam`
+    agrupava pelo `photo_path` INTEIRO — e o `arrumar_fotos` reescreve-o com a
+    pasta do deck à frente só para as cópias da corrida em que a foto sai de
+    `pendentes/`. A mesma foto ficava com duas chaves (`X.jpg` e
+    `fotos/<slot>/X.jpg`), a contagem partia-se, e uma foto de 6 cartas lia-se
+    como 3 + 3 — as duas dentro do tecto. O detector dava o número errado."""
+    con = base()
+    # a MESMA foto, metade das cópias já arrumada e metade não — é o estado que
+    # uma foto relida deixa (ver `caso_a_foto_relida_...`)
+    copia(con, "Swords to Plowshares", "4ed", q=3, foto="X.jpg")
+    copia(con, "Birds of Paradise", "4ed", q=3,
+          foto="fotos/cedh-blue-farm/X.jpg")
+    nv = revalidacao.fotos_que_nao_validam(con)
+    assert "X.jpg" in nv, nv
+    assert nv["X.jpg"] == 6, "as 6 cartas da MESMA foto contam juntas: %s" % nv
+    assert len(nv) == 1, "nao se parte em duas chaves: %s" % nv
 
 
 def caso_duas_copias_a_serio_da_mesma_carta_continuam_a_entrar():

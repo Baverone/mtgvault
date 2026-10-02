@@ -24,20 +24,45 @@ Por isso cada teste põe também o `MTGVAULT_DB`, ao lado do `MTGVAULT_HOME`, e 
 `test_paginas.caso_a_bateria_nao_escreve_no_data_a_serio` tranca-o: um teste
 novo que se esqueça volta a apagar o ficheiro dele em silêncio.
 """
+import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 AQUI = Path(__file__).resolve().parent
-maus = []
+# TECTO POR FICHEIRO (2026-10-02). Não havia nenhum, e um teste pendurado
+# pendurava a bateria **para sempre** — sem uma linha de saída, porque o resumo
+# só se imprime no fim. Aconteceu nesse dia: vinte minutos a olhar para um
+# ficheiro de zero bytes sem saber se estava lento ou morto. Agora o ficheiro que
+# estoura o tecto é NOMEADO e a bateria continua. 600 s é generoso de propósito
+# (o mais lento mede ~55 s, e o `test_paginas_leves` levanta um servidor e corre
+# o node); afina-se com `MTGVAULT_TESTE_TECTO_S`.
+TECTO_S = int(os.environ.get("MTGVAULT_TESTE_TECTO_S", "600"))
+maus, pendurados, lentos = [], [], []
 for f in sorted(AQUI.glob("test_*.py")):
-    p = subprocess.run([sys.executable, f.name], cwd=AQUI, capture_output=True,
-                       text=True, encoding="utf-8", errors="replace")
+    t = time.perf_counter()
+    try:
+        p = subprocess.run([sys.executable, f.name], cwd=AQUI, capture_output=True,
+                           text=True, encoding="utf-8", errors="replace",
+                           timeout=TECTO_S)
+    except subprocess.TimeoutExpired:
+        pendurados.append(f.name)
+        print(f"PENDURA {f.name} (passou dos {TECTO_S}s)", flush=True)
+        continue
+    s = time.perf_counter() - t
     ok = p.returncode == 0
-    print(f"{'ok  ' if ok else 'ERRO'} {f.name}")
+    print(f"{'ok  ' if ok else 'ERRO'} {f.name}  {s:.1f}s", flush=True)
+    if s > 60:
+        lentos.append((s, f.name))
     if not ok:
         maus.append(f.name)
         print((p.stdout or "")[-1500:])
         print((p.stderr or "")[-2500:])
-print(f"\n{'TUDO OK' if not maus else 'FALHARAM: ' + ', '.join(maus)}")
-sys.exit(1 if maus else 0)
+if lentos:
+    print("\nacima de 60s: " + ", ".join("%s (%.0fs)" % (n, s)
+                                        for s, n in sorted(lentos, reverse=True)))
+if pendurados:
+    print("PENDURARAM: " + ", ".join(pendurados))
+print(f"\n{'TUDO OK' if not maus and not pendurados else 'FALHARAM: ' + ', '.join(maus + pendurados)}")
+sys.exit(1 if maus or pendurados else 0)

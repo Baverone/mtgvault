@@ -98,6 +98,18 @@ def main(csv_path):
     with db.session() as con:
         print(_ensure_catalog(con))
         norm, rows = _normalize(csv_path)
+        # BACKUP ANTES DE ESCREVER (2026-10-02). Este import não é só
+        # acrescentar: desde 20/09 o `revalidacao.corrigir` REESCREVE a impressão
+        # de cópias que já cá estavam, o `_sai_da_caixa_se_nao_cumpre` apaga
+        # linhas da `copy_allocation`, o `_partir_copia` parte lotes e o
+        # `arrumar_fotos` reescreve o `photo_path` — e a seguir o `db_push`
+        # publica isto por cima da base do Release. A tarefa das 02:30 faz cópia
+        # de segurança antes do primeiro import e os botões do 8771 também
+        # (`migracao.backup`); este caminho — o que o PROCESSAR_FOTOS.md manda
+        # correr à mão — era o único sem rede, e um CSV com vinte edições erradas
+        # não tinha como voltar atrás.
+        from mtgvault import migracao                          # noqa: PLC0415
+        print("backup:", migracao.backup(con))
         ok, errs = collection.import_csv(con, norm, resultados=resultados)
         con.commit()
         fotos = collection.arrumar_fotos(con, resultados, pendentes=PEND)

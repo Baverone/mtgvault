@@ -85,6 +85,56 @@ elif alvo == "carta":
         return False
 
     fotos.ja_e_prova = _por_carta
+elif alvo == "conta":
+    # A conta pelo `photo_path` INTEIRO, como estava.
+    from collections import defaultdict
+
+    def _inteira(con):
+        from mtgvault import collection
+        cartas = defaultdict(int)
+        for r in con.execute(
+                f"""SELECT photo_path p, quantity q FROM copies cp
+                     WHERE {collection.na_estante()} AND photo_path IS NOT NULL
+                       AND photo_path <> ''"""):
+            cartas[r["p"]] += r["q"]
+        return {p: n for p, n in cartas.items()
+                if not revalidacao.foto_valida(n)}
+
+    revalidacao.fotos_que_nao_validam = _inteira
+elif alvo == "duplicado":
+    # A segunda conta inline dentro do `fotos_nas_pastas`, que e o que estava
+    # escrito: a producao deixa de perguntar ao `alvo_da_pasta`.
+    def _inline(cfg=None, raiz=None):
+        b = fotos.pasta_novas(raiz)
+        if not b.is_dir():
+            return []
+        mapa = fotos.mapa_pastas(cfg)
+        grupos = {fotos._norm(g) for g in fotos.PASTAS_DE_GRUPO}
+        fora = {fotos._norm(g) for g in fotos.PASTAS_FORA_DOS_DECKS}
+        out = []
+        for d in sorted(x for x in b.iterdir() if x.is_dir()):
+            if d.name.startswith("_"):
+                continue
+            slot = mapa.get(fotos._norm(d.name))
+            tipo = (fotos.ALVO_FORA_DOS_DECKS if fotos._norm(d.name) in fora
+                    else "caixa" if slot else None)
+            for f in sorted(x for x in d.rglob("*")
+                            if x.is_file() and x.suffix.lower() in fotos.EXT):
+                out.append({"ficheiro": f, "pasta": d.name, "slot": slot,
+                            "tipo": tipo,
+                            "grupo": fotos._norm(d.name) in grupos,
+                            "mtime": f.stat().st_mtime})
+        return out
+
+    fotos.fotos_nas_pastas = _inline
+elif alvo == "plano-novo":
+    # O plano so se escrevia onde JA havia um `_plano.txt`, e so na pasta do
+    # nome de hoje: as pastas novas ficavam caladas e a do nome antigo do slot
+    # ficava com o plano congelado.
+    fotos._pastas_do_slot = (
+        lambda slot, nome, cfg=None, raiz=None:
+        [fotos.pasta_do_deck(nome, raiz)]
+        if (fotos.pasta_do_deck(nome, raiz) / "_plano.txt").is_file() else [])
 elif alvo == "pastas":
     fotos.garantir_pastas = lambda res, raiz=None: []
 elif alvo == "orfas":
