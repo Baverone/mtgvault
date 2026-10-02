@@ -71,12 +71,28 @@ REAL_FORMATS = ("standard", "pioneer", "modern", "legacy", "premodern",
 
 # Assinatura de cada deck de Premodern do André (carta que define o arquétipo).
 # Uma lista "é" do arquétipo se contém uma destas cartas.
+#
+# ISTO É UMA SEGUNDA CÓPIA DE `colecao_config.json → caixas[].assinatura`, que
+# desde 2026-10-02 é A IDENTIDADE de um deck (*"a identidade de um deck é uma
+# CARTA-ASSINATURA, nunca a etiqueta do clustering"*). Já tinham divergido: o
+# Elves aqui dizia `Priest of Titania` e o config diz **Wirewood Symbiote**
+# desde a ordem dos 16 decks. Medido na base de 2026-10-02, as duas assinaturas
+# escolhem HOJE as mesmas listas — consenso de 24 cartas, 29 %, e
+# deck/coleção/vender iguais (126/0/73) —, por isso alinhá-las não mexe um
+# número; o que se tira é a armadilha de amanhã, quando a janela de 30 dias
+# rodar e as duas passarem a discordar em silêncio.
+#
+# A correcção a sério é DERIVAR isto do config (`caixas` de formato `premodern`
+# com `assinatura`), como o `sources.ids_por_assinatura` já faz para o resto do
+# vault. Fica em proposta porque mexe no que conta como *completo*, que é uma
+# regra de colecção e é decisão dele. O `test_ambito` tranca que as duas listas
+# não voltam a divergir sem ninguém dar por isso.
 PREMODERN_DECKS = {
     "Stiflenought": ["Phyrexian Dreadnought"],
     "UW Replenish": ["Replenish"],
     "Enchantress": ["Argothian Enchantress", "Enchantress's Presence"],
     "Oath of Druids": ["Oath of Druids"],
-    "Elves": ["Priest of Titania"],
+    "Elves": ["Wirewood Symbiote"],
     "Ill-Gotten Gains": ["Ill-Gotten Gains"],
 }
 
@@ -88,11 +104,25 @@ BASICS = {"Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes",
 def _config():
     """Lê colecao_config.json. Devolve (spml_formatos, premodern_completos,
     decks_montados): spml_formatos = {formato: estado}; completos = tranca
-    sticky de Premodern; montados = decks assemblados que reservam as cartas."""
-    try:
-        cfg = json.loads((ROOT / "colecao_config.json").read_text(encoding="utf-8"))
-    except Exception:
-        cfg = {}
+    sticky de Premodern; montados = decks assemblados que reservam as cartas.
+
+    PELO `sources.config()`, que é o ÚNICO leitor do config (2026-10-02). Isto
+    abria o ficheiro à mão, `ROOT / "colecao_config.json"`, e com isso:
+
+      * **ignorava o `MTGVAULT_CONFIG`** — medido: com a variável a apontar para
+        outro ficheiro, o `classify` continuava a ler o do repositório. Ou seja,
+        todo o teste que fixa um config temporário estava a classificar a
+        colecção contra as decisões A SÉRIO do André, e um teste que ele faz
+        passar (ou falhar) ao editar o config dele não é um teste;
+      * não via a protecção de 2026-10-02 contra um config ilegível (o `except
+        Exception: cfg = {}` daqui era o mesmo silêncio, numa segunda cópia);
+      * pagava um `read_text` + `json.loads` fora da cache que todo o motor usa.
+
+    Em produção lê exactamente o mesmo ficheiro: o `sources._RAIZ_CFG` é esta
+    mesma raiz. Não muda um número.
+    """
+    from mtgvault import sources                              # noqa: PLC0415
+    cfg = sources.config()
     return (cfg.get("spml_formatos", {"modern": "a jogar"}),
             cfg.get("premodern_decks_completos", []),
             cfg.get("decks_montados", []))

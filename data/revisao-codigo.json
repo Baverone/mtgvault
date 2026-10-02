@@ -89,8 +89,8 @@
    "ordem": 19,
    "risco": "alto",
    "porque": "decide Deck/Coleccao/Vender",
-   "estado": "por rever",
-   "notas": ""
+   "estado": "corrigido",
+   "notas": "config pelo sources; assinatura do Elves alinhada com o config"
   },
   {
    "ficheiro": "mtgvault/confirmado.py",
@@ -98,8 +98,8 @@
    "ordem": 20,
    "risco": "alto",
    "porque": "a foto manda: reescreve alocacoes",
-   "estado": "por rever",
-   "notas": ""
+   "estado": "revisto",
+   "notas": "metades/alocacao unica lidos; sem defeito"
   },
   {
    "ficheiro": "mtgvault/estado.py",
@@ -197,8 +197,8 @@
    "ordem": 31,
    "risco": "alto",
    "porque": "a moeda de troca, em euros",
-   "estado": "por rever",
-   "notas": ""
+   "estado": "revisto",
+   "notas": "levar sai do venda.linhas_export (regua unica); docstring da L10 desactualizada"
   },
   {
    "ficheiro": "mtgvault/padrao.py",
