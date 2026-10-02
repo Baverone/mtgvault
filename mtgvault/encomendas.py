@@ -617,6 +617,39 @@ def conciliar(con, *, nm: str, set_code: str, collector_number: str | None,
 # ---------------------------------------------------------------------------
 # `pendentes/esperadas.md`: o que o Claude das fotos deve esperar
 # ---------------------------------------------------------------------------
+def _seccao_estado(con) -> list[str]:
+    """A secção do ESTADO para o `esperadas.md`: o que ler antes de avaliar, e o
+    contrato do verso e das colunas novas do CSV.
+
+    O texto do critério vem do `estado.para_avaliar` (que é também o que o
+    `cli estado criterio` imprime) — dois sítios a montá-lo davam dois critérios.
+    """
+    from . import estado                                     # noqa: PLC0415
+    return [
+        "## O ESTADO DAS CARTAS — ler antes de avaliar",
+        "",
+        "**O verso não identifica a carta** (todos os versos de Magic são "
+        "iguais): serve para ver o desgaste. Logo:",
+        "",
+        "- uma foto `…-v.<ext>` é o **VERSO** da foto com o mesmo nome sem o "
+        "`-v`. **Confirma-o**: se vires um verso, escreve `verso_ok = sim` nas "
+        "linhas da FRENTE; se vires cartas numa foto `-v`, o emparelhamento não "
+        "bateu — escreve as cartas normalmente e **não** preenchas o "
+        "`condition`;",
+        "- com o verso confirmado, escreve `condition` (MT|NM|EX|GD|LP|PL|PO) e "
+        "`condition_notes` (os motivos, com a ZONA: «branco no canto inferior "
+        "esquerdo», «risco junto à arte») nas linhas da frente;",
+        "- **sem verso não escrevas `condition`.** Sem verso o estado fica «por "
+        "verificar», e não se inventa;",
+        "- se não conseguires decidir, **di-lo** no `condition_notes` em vez de "
+        "escolheres um escalão a adivinhar («não consigo ver as bordas: flash de "
+        "frente»).",
+        "",
+        estado.para_avaliar(con),
+        "",
+    ]
+
+
 def esperadas_md(con, slots=None, rep: dict | None = None,
                  pasta: Path | str | None = None) -> str:
     """O texto: o que está pendente de foto, por caixa, com o material esperado.
@@ -642,6 +675,12 @@ def esperadas_md(con, slots=None, rep: dict | None = None,
     out = ["# Fotos esperadas (gerado pelo mtgvault — não editar)", ""]
     out += rev
     out += site
+    # O CRITÉRIO DO ESTADO (2026-10-03) vai AQUI, e não num ficheiro à parte que
+    # o leitor tenha de se lembrar de abrir: *"para ser LIDO em cada avaliação em
+    # vez de viver na cabeça de quem corre a tarefa"*. Leva o critério do
+    # Cardmarket, os erros repetidos meus e as últimas correcções DELE — é o
+    # `estado.para_avaliar`, um texto só, num sítio só.
+    out += _seccao_estado(con)
     if pend:
         out += ["## Encomendas pendentes", "",
                 "Estas cartas estão **pendentes de foto**: o André disse que as tem "

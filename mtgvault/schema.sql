@@ -62,6 +62,32 @@ CREATE TABLE IF NOT EXISTS copies (
     -- só o estado 📷/✓ que a página mostra. Ver `mtgvault.revalidacao`.
     validado_em       TEXT,
     foto_anterior     TEXT,
+    -- O ESTADO DAS CARTAS (André, 2026-10-03): *"procuras como são avaliadas as
+    -- cartas, depois com base nas minhas próprias fotos, vais melhorando o teu
+    -- critério"*. A coluna `condition` já existia e dizia **NM em todas as 737
+    -- linhas** — não era uma medição, era o valor por omissão do `add_copy` que
+    -- nunca ninguém mexeu. Estas três dizem o que lhe faltava:
+    --   `condition_origem`  foto | mao | omissao — de onde veio o juízo. É o que
+    --                       faz o `NM` de fábrica deixar de poder passar por
+    --                       medido (`estado.medido`). O valor NÃO se mudou nem
+    --                       se apagou (regra dele de 09/09): só ganhou a origem.
+    --   `condition_em`      o dia do juízo.
+    --   `condition_motivos` os motivos ESCRITOS («branco visível no canto
+    --                       inferior esquerdo») — um escalão sem motivo não se
+    --                       pode conferir nem corrigir.
+    -- O histórico (e os exemplos rotulados das correcções dele) vive na
+    -- `condition_log`, abaixo. Ver `mtgvault.estado`.
+    condition_origem  TEXT,
+    condition_em      TEXT,
+    condition_motivos TEXT,
+    -- OS VERSOS (André, 2026-10-03): *"verso as dos decks e as que são para
+    -- guardar, para já"*. A foto do VERSO desta cópia. **O verso não identifica
+    -- a carta** — todos os versos de Magic são iguais —, serve para ver o
+    -- desgaste que a frente não mostra; é de lá que sai o escalão, e sem ele o
+    -- estado fica «por verificar». O emparelhamento frente/verso faz-se pelo
+    -- NOME do ficheiro (o mesmo radical, com `-v`), nunca por ele escrever
+    -- nada — ver `mtgvault.fotosite.par_da_frente`.
+    verso_path        TEXT,
     created_at        TEXT DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS ix_copies_card    ON copies(scryfall_id);
@@ -75,7 +101,42 @@ CREATE INDEX IF NOT EXISTS ix_copies_purpose ON copies(purpose);
 -- que já traz o `purpose` e usa o `ix_copies_purpose`.) Se algum dia for
 -- preciso, tem de nascer no `_migrate`, depois do ALTER.
 -- O mesmo para o `ix_copies_validado` sobre a `validado_em` (2026-09-20): vive
--- no `db._migrate`, depois do ALTER — aqui rebentava a base dele.
+-- no `db._migrate`, depois do ALTER — aqui rebentava a base dele. E o mesmo para
+-- o `ix_copies_cond_origem` (2026-10-03).
+
+-- O HISTÓRICO DOS JUÍZOS DE ESTADO, e os EXEMPLOS ROTULADOS (2026-10-03).
+--
+-- É a metade de *"com base nas minhas próprias fotos, vais melhorando o teu
+-- critério"* que não cabe numa coluna da `copies`: a `copies` guarda o estado de
+-- HOJE, e isto guarda **como se chegou lá** e **o que me escapou**.
+--
+-- Uma linha por juízo, incluindo os que NÃO se aplicaram (`aplicado = 0`): um
+-- juízo meu sobre uma cópia que o André já tinha corrigido à mão é recusado — a
+-- correcção dele ganha sempre — e tem de ficar registado, senão a taxa de acerto
+-- (`estado.acerto`) não se podia calcular.
+--
+-- Quando o André corrige, a linha leva também o `eu_disse`/`eu_motivos` (o que
+-- eu tinha dito) e o `escapou` (a linha do que me passou ao lado). É esse trio —
+-- foto + o meu escalão + o dele + o porquê — que faz dela um EXEMPLO ROTULADO, e
+-- é o que o `estado.para_avaliar` lê antes de julgar outra vez.
+CREATE TABLE IF NOT EXISTS condition_log (
+    id           INTEGER PRIMARY KEY,
+    copy_id      INTEGER NOT NULL REFERENCES copies(id) ON DELETE CASCADE,
+    at           TEXT NOT NULL,
+    grade        TEXT NOT NULL,          -- MT|NM|EX|GD|LP|PL|PO
+    antes        TEXT,                   -- o escalão que lá estava
+    antes_origem TEXT,                   -- foto|mao|omissao
+    origem       TEXT NOT NULL,          -- foto|mao|omissao
+    autor        TEXT,                   -- claude|andre
+    photo_path   TEXT,                   -- a foto em que o juízo se baseou
+    motivos      TEXT,                   -- os motivos ESCRITOS deste juízo
+    eu_disse     TEXT,                   -- (numa correcção) o meu escalão
+    eu_motivos   TEXT,                   -- (numa correcção) os meus motivos
+    escapou      TEXT,                   -- (numa correcção) o que me escapou
+    aplicado     INTEGER NOT NULL DEFAULT 1
+);
+CREATE INDEX IF NOT EXISTS ix_cond_log_copia ON condition_log(copy_id);
+CREATE INDEX IF NOT EXISTS ix_cond_log_origem ON condition_log(origem, aplicado);
 
 -- ONDE A CÓPIA ESTÁ FISICAMENTE, quando está dentro de uma deckbox.
 --

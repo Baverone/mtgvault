@@ -199,8 +199,20 @@ def caso_csv_predefinido_uma_linha_por_copia_com_estado():
     sr = next(r for r in rows[1:] if r[0] == "Sol Ring")
     # A décima coluna, `Foto`, é da REVALIDAÇÃO (2026-09-20): sem foto desta
     # campanha diz «por revalidar» — o que ele vender vai com foto.
+    # O PREÇO JÁ LEVA O ESTADO (03/10/2026). O Sol Ring deste mundo é `EX` e vale
+    # 2,00 € em Near Mint; na lista de stock sai a **1,66 €** = 2,00 × 0,828, o
+    # factor MEDIDO nas ofertas do CardTrader para a banda 1–5 € (ver
+    # `mtgvault/estado.py`). Até aqui o CSV dizia `EX` na coluna do estado e o
+    # preço de uma impecável na coluna do preço — duas colunas a discordar na
+    # mesma linha, no ficheiro com que ele põe cartas à venda.
+    from mtgvault import estado                              # noqa: PLC0415
+    f_ex = estado.factor("EX", 2.00)["factor"]
+    assert f_ex == 0.828, f_ex
     assert sr == ["Sol Ring", "C21", "263", "English", "nonfoil", "EX", "2",
-                  "2.00", sr[8], "por revalidar"], sr
+                  f"{round(2.00 * f_ex, 2):.2f}", sr[8], "por revalidar"], sr
+    # e o Null Rod, que é NM, **não** desce: o NM é a âncora da medição
+    nr_row = next(r for r in rows[1:] if r[0] == "Null Rod")
+    assert nr_row[5] == "NM" and float(nr_row[7]) == round(nr["unit"], 2), nr_row
     assert sr[8].startswith("mtgvault #"), sr
     # E o formato diz-se NÃO confirmado — é a parte honesta do predefinido.
     f = venda.descricao_formato(None)

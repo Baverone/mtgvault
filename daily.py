@@ -522,6 +522,28 @@ def main():
                        if r["sem_pasta"] else ""))
 
         _step(con, "fotos-plano", _fotos_plano)
+
+        # O ESTADO DAS CARTAS (André, 2026-10-03). Dois gestos, e nenhum deles
+        # mexe num número: (1) marcar `omissao` qualquer cópia que tenha nascido
+        # sem juízo nenhum — o `NM` de fábrica tem de ficar DITO para não poder
+        # passar por medido; (2) reescrever a secção «Aprendido com o André» do
+        # `data/estado-criterio.md`, que é o ficheiro que o Claude das fotos lê
+        # antes de avaliar. É o gémeo do `fotos-plano`: a pasta e a página têm de
+        # dizer o mesmo, e aqui o critério e as correcções também.
+        def _estado():
+            from mtgvault import estado as _est               # noqa: PLC0415
+            n = _est.marcar_omissao(con)
+            _est.escrever_aprendido(con)
+            p = _est.progresso(con)
+            a = p["acerto"]
+            return (f"{p['frase']}"
+                    + (f"; {n} marcadas «por omissão»" if n else "")
+                    + (f"; acerto {a['aceites']}/{a['propostos']} ({a['pct']} %)"
+                       if a["propostos"] else "")
+                    + (f"; {len(p['padroes'])} erros repetidos a corrigir"
+                       if p["padroes"] else ""))
+
+        _step(con, "estado-cartas", _estado)
         # A SAÍDA DA VENDA (2026-09-18): `data/venda-stock.csv` (para carregar
         # stock no Cardmarket) + `data/venda-estante.txt` (para ir buscar as
         # cartas à estante). Fora do Git — levam preços por cópia, como o

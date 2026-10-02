@@ -960,17 +960,41 @@ def recolher_das_pastas(cfg: dict | None = None, *,
 
     Uma pasta de GRUPO ou desconhecida com imagens dentro **não se toca** e
     aparece em `ignorados` com o porquê — nunca se adivinha a caixa.
+
+    OS VERSOS (André, 2026-10-03): numa pasta de DECK as fotos vêm aos pares —
+    *"põe as até 4 cartas, fotografa, VIRA-AS NO SÍTIO sem mexer na disposição,
+    fotografa outra vez"*. Logo a recolha empareilha **pela ordem de captura**
+    (mtime, depois nome), que é exactamente esse gesto, e o segundo de cada par
+    sai com o `-v` e o MESMO `n` do primeiro. Três decisões que a tornam segura:
+
+    * **o grupo é a PASTA onde o ficheiro está** (uma subpasta `lote1` empareilha
+      sozinha): um lote é uma sessão, e misturar duas sessões desalinhava as duas;
+    * **se UMA foto do grupo ainda está no sossego, o grupo INTEIRO espera.**
+      Emparelhar metade de um lote que ainda está a ser copiado trocava os pares
+      todos a partir do ficheiro que faltava;
+    * **o nome é uma hipótese, e o leitor confere.** Todos os versos de Magic são
+      iguais, por isso «isto é um verso?» é a pergunta mais fiável que se lhe
+      pode fazer; se a leitura discordar do nome, o par não se usa e diz-se
+      (`collection`/`estado`). Nunca se grava um escalão sobre um emparelhamento
+      que não bateu — e, se um `-v` trouxer cartas, as cartas ganham.
+
+    Os `Extras (fora dos decks)` **não emparelham**: ali é frente só (decisão
+    dele), porque no momento em que os fotografa ainda não sabe o que vai guardar
+    nem o que vai vender. Quem precisa de verso fora dos decks sai depois na LISTA
+    CURTA (`estado.lista_curta`), uma cópia de cada vez.
     """
     from . import fotosite                                   # noqa: PLC0415
     agora = time.time() if agora is None else agora
     pend = fotosite.pasta_pendentes(raiz)
     out: dict = {"recolhidas": [], "ignorados": [], "a_chegar": [],
-                 "pastas": 0, "destino": str(pend)}
+                 "pastas": 0, "destino": str(pend), "pares": 0, "sem_verso": []}
     itens = fotos_nas_pastas(cfg, raiz)
     if not itens:
         return out
     out["pastas"] = len({i["pasta"] for i in itens})
     pend.mkdir(parents=True, exist_ok=True)
+    # Por PASTA FÍSICA (a subpasta de lote conta), pela ordem de captura.
+    grupos: dict[Path, list[dict]] = {}
     for it in itens:
         f = it["ficheiro"]
         if not it.get("tipo"):
@@ -981,16 +1005,45 @@ def recolher_das_pastas(cfg: dict | None = None, *,
                            f"{it['pasta']!r} não é o nome de nenhuma caixa do "
                            "config (não se adivinha o deck)")})
             continue
-        if agora - it["mtime"] < sossego_s:
-            out["a_chegar"].append({"ficheiro": f.name, "pasta": it["pasta"]})
+        grupos.setdefault(f.parent, []).append(it)
+    for pasta, lote in sorted(grupos.items()):
+        lote.sort(key=lambda i: (i["mtime"], i["ficheiro"].name))
+        novas = [i for i in lote if agora - i["mtime"] < sossego_s]
+        empareilha = lote[0]["tipo"] == "caixa"
+        if novas and empareilha:
+            # O grupo inteiro espera: emparelhar com um ficheiro a meio da cópia
+            # desalinhava todos os pares a partir dele.
+            out["a_chegar"] += [{"ficheiro": i["ficheiro"].name,
+                                 "pasta": i["pasta"]} for i in lote]
             continue
-        quando = _dt.datetime.fromtimestamp(it["mtime"]).replace(microsecond=0)
-        nome = _nome_livre(pend, it["tipo"], it["slot"], quando,
-                           f.suffix.lstrip(".").lower())
-        shutil.move(str(f), str(pend / nome))
-        out["recolhidas"].append({"de": f.name, "pasta": it["pasta"],
-                                  "slot": it["slot"], "tipo": it["tipo"],
-                                  "para": nome})
+        for k, it in enumerate(lote):
+            f = it["ficheiro"]
+            if not empareilha and agora - it["mtime"] < sossego_s:
+                out["a_chegar"].append({"ficheiro": f.name, "pasta": it["pasta"]})
+                continue
+            quando = _dt.datetime.fromtimestamp(it["mtime"]).replace(microsecond=0)
+            ext = f.suffix.lstrip(".").lower()
+            verso = bool(empareilha and k % 2)
+            if verso:
+                nome = fotosite.nome_do_verso(out["recolhidas"][-1]["para"])
+                # A frente saiu com outra extensão (JPEG + HEIC no mesmo par):
+                # o radical é o mesmo, só a extensão muda.
+                nome = str(Path(nome).with_suffix("." + ext))
+            else:
+                nome = _nome_livre(pend, it["tipo"], it["slot"], quando, ext)
+            shutil.move(str(f), str(pend / nome))
+            out["recolhidas"].append({"de": f.name, "pasta": it["pasta"],
+                                      "slot": it["slot"], "tipo": it["tipo"],
+                                      "para": nome, "verso": verso})
+            if verso:
+                out["pares"] += 1
+        if empareilha and len(lote) % 2:
+            # O último ficou sem verso. Não é um erro — pode ser mesmo o último
+            # par ainda a meio —, mas tem de ficar DITO: sem verso não há escalão.
+            out["sem_verso"].append({"ficheiro": out["recolhidas"][-1]["para"],
+                                     "pasta": lote[-1]["pasta"],
+                                     "porque": "o lote tem um número ímpar de "
+                                               "fotos — esta ficou sem verso"})
     if out["recolhidas"]:
         _CACHE.clear()
     return out

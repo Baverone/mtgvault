@@ -353,11 +353,22 @@ DEFAULT_SO_JOGADORES_VIGIADOS = ["pauper"]
 
 _CFG_CACHE: dict = {}
 
+# O caminho do config por omissão, resolvido UMA vez no import (2026-10-03).
+#
+# Era `Path(__file__).resolve().parents[1] / "colecao_config.json"` DENTRO do
+# `_config()`, e o `_config()` é chamado milhares de vezes por relatório (o
+# `precos.bloco`, o `precos.modo`, o `precos.fontes`, o `estado.factor` — todos
+# por cópia). Cada `resolve()` são duas chamadas ao `nt._getfinalpathname`:
+# **medido a 2026-10-03 com o cProfile, 23 798 chamadas e 5,7 s** no bloco do
+# estado da página das fases, com o trabalho a sério a custar menos de 1 s.
+# O `__file__` não muda a meio de um processo; o `MTGVAULT_CONFIG` continua a
+# ler-se a cada chamada, porque os testes trocam-no em memória.
+_RAIZ_CFG = Path(__file__).resolve().parents[1] / "colecao_config.json"
+
 
 def _config() -> dict:
     """colecao_config.json (na raiz do repositório, ou MTGVAULT_CONFIG)."""
-    p = Path(os.environ.get("MTGVAULT_CONFIG")
-             or Path(__file__).resolve().parents[1] / "colecao_config.json")
+    p = Path(os.environ.get("MTGVAULT_CONFIG") or _RAIZ_CFG)
     try:
         stamp = p.stat().st_mtime
     except OSError:

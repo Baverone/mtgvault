@@ -355,6 +355,9 @@ const PARTES = {};
    `<details>` que ele abriu — sem isto o re-render fechava-os todos. */
 let RESERVAS = null;
 const ABERTAS = {};
+/* A LISTA CURTA dos versos (a parte `estado`): 80 fotos, que não cabem no
+   índice pela decisão de 2026-09-15. Vem ao primeiro toque, como as reservas. */
+let LC = null, LC_ABERTA = false;
 const el = id => document.getElementById(id);
 const eur = v => (v == null ? '—' : Number(v).toLocaleString('pt-PT',
   {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' €');
@@ -554,11 +557,110 @@ function fotoVerdadeHTML() {
     + `</section>`;
 }
 
+/* ------------------------------------------------ O ESTADO E OS VERSOS */
+/* André, 2026-10-03: *"procuras como são avaliadas as cartas, depois com base
+   nas minhas próprias fotos, vais melhorando o teu critério"* e *"verso as dos
+   decks e as que são para guardar, para já"*.
+
+   O bloco diz TRÊS coisas e nenhuma delas é opcional: (1) o que se consegue
+   mesmo ver numa foto de telemóvel — para ele não contar com o que não vai ter;
+   (2) de onde vem o desconto por estado e que o PL é aproximado; (3) a LISTA
+   CURTA dos versos que faltam fora dos decks, que é o que o poupa a decidir 400
+   vezes com a carta na mão. */
+function estadoHTML() {
+  const e = D.estado;
+  if (!e) return '';
+  const g = e.grades || [];
+  const a = e.acerto || {};
+  const lc = e.lista_curta || {};
+  const lin = (x) => `<tr><td><b>${escDados(x.g)}</b> ${escDados(x.nome)}</td>`
+    + `<td class="v">${x.q}</td><td class="v">${escDados(x.valor)}</td>`
+    + `<td class="v">${x.factor}</td></tr>`;
+  return `<section class="foto"><h2>🔎 O estado das cartas `
+    + `<span class="n">${escDados(e.frase)}</span></h2>`
+    + `<p class="sub">A escala é a do <b>Cardmarket</b> — MT · NM · EX · GD · LP `
+    + `· PL · PO —, porque é lá que vendes. As <b>${e.total_cartas}</b> cartas `
+    + `estavam todas como <b>NM</b>, e isso <b>não era uma medição</b>: era o `
+    + `valor por omissão que nunca ninguém mexeu. Continuam a dizer NM — nada se `
+    + `apaga — mas marcadas <b>«por omissão, nunca verificado»</b>, e deixaram de `
+    + `poder passar por medidas.</p>`
+    + `<div class="chips">`
+    + `<span class="chip gold"><b>${e.medidas}</b> com estado medido</span>`
+    + `<span class="chip warn"><b>${e.por_verificar}</b> por verificar</span>`
+    + `<span class="chip"><b>${e.com_verso}</b> com foto do verso</span>`
+    + (a.propostos ? `<span class="chip"><b>${a.pct} %</b> de acerto `
+        + `(${a.aceites} de ${a.propostos})</span>` : '')
+    + `</div>`
+
+    + `<h3>O que eu consigo mesmo ver numa foto de telemóvel</h3>`
+    + `<p class="sub">Numa foto de telemóvel <b>vê-se</b>: vincos, `
+    + `branqueamento de bordas e cantos, riscos visíveis e desgaste de jogo — e `
+    + `dá para um escalão defensável entre <b>NM, EX, GD e LP</b> com a razão à `
+    + `frente. <b>Não se distingue NM de Mint</b>, e riscos finos de superfície `
+    + `não aparecem. <b>A luz pesa mais do que a resolução:</b> o flash de frente `
+    + `<i>esconde</i> o desgaste das bordas; luz difusa num ângulo ligeiro `
+    + `<i>mostra-o</i>. O escalão é sempre uma <b>estimativa com motivo `
+    + `escrito</b>, nunca uma classificação certificada — e podes corrigi-lo à `
+    + `mão: <b>a tua correcção ganha sempre</b> e nunca é sobreposta por uma `
+    + `avaliação minha posterior.</p>`
+
+    + `<h3>Os versos</h3>`
+    + `<p class="sub"><b>Todos os versos de Magic são iguais:</b> o verso não `
+    + `serve para identificar a carta, serve para ver o desgaste — bordas, `
+    + `cantos, vincos e manchas que a frente não mostra. Por isso o escalão sai `
+    + `do verso, e <b>sem verso o estado fica «por verificar»</b>: não se inventa `
+    + `um escalão.<br><b>Nos decks: verso sempre.</b> Põe as até `
+    + `${D.max_cartas_foto} cartas, fotografa, <b>vira-as no sítio</b> sem mexer `
+    + `na disposição e fotografa outra vez — mesma ordem, mesmas posições. O par `
+    + `faz-se por isso, não por escreveres nada.<br><b>Nos Extras: frente só.</b> `
+    + `Fotografa de uma ponta à outra sem parar para pensar; quem precisa de `
+    + `verso sai depois na lista curta aqui em baixo.</p>`
+
+    + (g.length ? `<table class="tb"><thead><tr><th>escalão</th>`
+        + `<th class="n">cartas</th><th class="n">valor</th>`
+        + `<th class="n">factor</th></tr></thead><tbody>`
+        + g.map(lin).join('') + `</tbody></table>` : '')
+    + `<p class="sub"><b>De onde vem o desconto por estado:</b> `
+    + `${escDados(e.nota_factor)}</p>`
+
+    + `<h3>📷 Lista curta — os versos que faltam fora dos decks `
+    + `<span class="n">${lc.fotos || 0} fotos · ${lc.cartas || 0} cartas · `
+    + `${escDados(lc.valor_txt || '')}</span></h3>`
+    + `<p class="sub">${escDados(lc.nota || '')}</p>`
+    + (lc.porques && lc.porques.length
+        ? `<div class="chips">` + lc.porques.map(p =>
+            `<span class="chip"><b>${p.q}</b> ${escDados(p.porque)}</span>`).join('')
+          + `</div>` : '')
+    + (lc.fotos ? `<details class="res"${LC_ABERTA ? ' open' : ''}>`
+        + `<summary data-lc-abrir="1">Ver as ${lc.fotos} fotos da lista curta`
+        + `</summary>`
+        + (LC ? fotosHTML(LC.fotos || [])
+             : `<p class="carregando">a carregar…</p>`)
+        + `</details>` : '')
+
+    + (e.padroes && e.padroes.length
+        ? `<h3>Aprendido contigo</h3><ul class="cfl">`
+          + e.padroes.map(p => `<li>${escDados(p.frase)}</li>`).join('')
+          + `</ul>` : '')
+    + (e.exemplos && e.exemplos.length
+        ? `<p class="sub">As últimas correcções: `
+          + e.exemplos.map(x => `<b>${escDados(x.carta || ('cópia ' + x.copy_id))}</b> `
+              + `eu ${escDados(x.eu_disse)} → tu ${escDados(x.ele_disse)}`).join(' · ')
+          + `</p>` : '')
+    + (e.impacto ? `<p class="sub"><b>O que está em jogo:</b> se a Reserved `
+        + `List, as duais, as shocklands e as fetchlands caíssem <b>um `
+        + `escalão</b>, a coleção passava de ${escDados(e.impacto.hoje)} para `
+        + `${escDados(e.impacto.depois)} — <b>${escDados(e.impacto.perde)} `
+        + `a menos</b> (${e.impacto.pct} %) em ${e.impacto.cartas} cartas. `
+        + `É por isso que isto não é um detalhe.</p>` : '')
+    + `</section>`;
+}
+
 function fase1() {
   const ds = D.decks || [];
   const prot = ds.filter(d => d.protege).length;
   const semass = ds.filter(d => !d.assinatura).length;
-  return fotoVerdadeHTML()
+  return fotoVerdadeHTML() + estadoHTML()
     + `<h2>Fase 1 · Os decks que ficam <span class="n">${ds.length} decks`
     + `</span></h2>`
     + `<p class="sub">A identidade de cada deck é uma <b>carta-assinatura</b>, `
@@ -903,6 +1005,15 @@ function ligar() {
     // parte `reservas` e redesenha. Guarda-se quais ele abriu para o redesenho
     // não lhe fechar o que estava aberto.
     const sm = ev.target.closest('summary');
+    if (sm && sm.dataset.lcAbrir) {
+      LC_ABERTA = !LC_ABERTA;
+      if (LC_ABERTA && !LC) {
+        parte('estado').then(p => { LC = p; render(); })
+          .catch(() => { LC = {fotos: []};
+                         toast('não consegui ir buscar a lista curta', true); });
+      }
+      return;
+    }
     if (sm && sm.dataset.resAbrir) {
       const s = sm.dataset.resAbrir;
       ABERTAS[s] = !ABERTAS[s];

@@ -224,8 +224,16 @@ def caso_o_nome_diz_a_origem_e_le_se_de_volta():
         nome = fotosite.nome_ficheiro(tipo, slot, Q, 1, "jpg", cid)
         assert nome == esperado, (nome, esperado)
         o = fotosite.origem(nome)
+        # O `verso` entrou a 03/10/2026 (os versos das cartas): uma foto sem o
+        # sufixo `-v` é uma FRENTE, e por isso `verso` é falso em todos estes.
         assert o == {"tipo": tipo, "slot": slot, "quando": "2026-09-21 10:15:00", "n": 1,
-                     "copy_id": cid}, (nome, o)
+                     "copy_id": cid, "verso": False}, (nome, o)
+        # e o VERSO do mesmo nome lê-se de volta igual, com o `verso` a True e o
+        # par a apontar para esta frente
+        nv = fotosite.nome_ficheiro(tipo, slot, Q, 1, "jpg", cid, verso=True)
+        ov = fotosite.origem(nv)
+        assert ov == {**o, "verso": True}, (nv, ov)
+        assert fotosite.par_da_frente(nv) == nome, (nv, nome)
     # Um caminho inteiro também se lê; a extensão pode variar; maiúsculas idem.
     assert fotosite.origem(r"C:\x\pendentes\site-modern-20260921-101500-3.PNG")["n"] == 3
     assert fotosite.origem("site-venda-20260921-101500-2-c5.heic")["copy_id"] == 5

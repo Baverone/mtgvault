@@ -99,6 +99,21 @@ mtgvault/
                   `exige_alocacao_unica`/`conflitos` (cada deck as suas cartas)
                   e `progresso`/`texto` (o ecrã de todos os dias). Ver «A FOTO É
                   A VERDADE»
+  estado.py       O ESTADO DAS CARTAS (2026-10-03): *"procuras como são avaliadas
+                  as cartas, depois com base nas minhas próprias fotos, vais
+                  melhorando o teu critério"*. A escala do Cardmarket
+                  (`ESCALA`/`NOMES`/`normalizar`, com a `PONTE_AMERICANA` e o
+                  `do_cardtrader` para as ofertas), a ORIGEM do juízo
+                  (`medido()` — o `NM` de fábrica é `omissao` e não passa por
+                  medido), o FACTOR de preço MEDIDO nas ofertas por estado e por
+                  BANDA de preço (`factor`/`aplicar`, no config `precos.estado`;
+                  o NM vale 1,000 e o PL é interpolado e di-lo), o VERSO (quem
+                  precisa dele, e `da_foto` — sem verso não há escalão), o ciclo
+                  que APRENDE (`registar`/`corrigir`/`exemplos`/`padroes`/
+                  `acerto`/`escrever_aprendido`/`para_avaliar`, com a correcção
+                  dele a ganhar sempre), a LISTA CURTA dos extras
+                  (`lista_curta`) e o `impacto` (quanto está em jogo). Ver «O
+                  ESTADO DAS CARTAS E OS VERSOS»
   revalidacao.py  a REVALIDAÇÃO POR FOTO de toda a colecção (2026-09-20): a
                   campanha (`revalidacao.desde`), o ALVO (a caixa que ele está
                   a fotografar), o passo (0) da conciliação (a foto nova liga-se
@@ -1666,6 +1681,207 @@ chumbam em `tests/_chumba_foto_manda.py` (9 alvos, 16 pares medidos).
   (d) o tecto de playset levou **44 cópias / 366,75 €** à lista de compras — se
   não era isso que ele queria, é uma linha no config.
 
+**O ESTADO DAS CARTAS E OS VERSOS (André, 2026-10-03, à letra).** *"procuras como
+são avaliadas as cartas, depois com base nas minhas próprias fotos, vais
+melhorando o teu critério"* e *"verso as dos decks e as que são para guardar, para
+já"*. Motor em **`mtgvault/estado.py`**; critério em **`data/estado-criterio.md`**;
+colunas `copies.condition_origem`/`condition_em`/`condition_motivos`/`verso_path`
+e tabela `condition_log`; config em `precos.estado`; passo `estado-cartas` do
+`daily`; endpoint `POST /api/estado`; bloco na `arrumacao.html`; CLI
+`py -m mtgvault.cli estado [mostrar|definir|corrigir|lista|impacto|criterio|
+factores|exemplos]`. Testes em `tests/test_estado_versos.py` (27 casos) e a prova
+de que chumbam em `tests/_chumba_estado.py` (9 alvos / 14 pares medidos).
+
+- **O BURACO: as 737 linhas diziam TODAS `NM`** — as 1 678 cartas, duais de
+  Revised de 1994 incluídas. **Não era uma medição**: era o valor por omissão do
+  `add_copy` que nunca ninguém mexeu. E era pior do que parecia, porque a cadeia
+  de preços **não tinha dimensão de estado nenhuma** (a `price_latest` tem
+  `low`/`trend`/`avg30` e mais nada): mesmo que o estado se registasse, não havia
+  onde ele entrasse no cálculo, e os **136 168,42 €** da colecção estavam somados
+  como se trinta anos de cartão estivessem impecáveis.
+- **A ESCALA É A DO CARDMARKET, porque é lá que ele vende**: `MT NM EX GD LP PL
+  PO`. As definições estão transcritas **da fonte** para o
+  `data/estado-criterio.md` — e a página oficial não as serve em texto: a tabela
+  de comparação é um **SVG** e os sete escalões vêm num **acordeão** cujo corpo
+  está no payload do Nuxt. Leram-se de lá, à letra, a 2026-10-03. Duas notas que
+  custaram a leitura: a página escreve **«Mint (M)»** e o código da API e das
+  exportações de stock é **`MT`** (aqui o canónico é o `MT`, que é o que ele pediu
+  e o que o `venda-stock.csv` escreve, e o `M` é um alias); e **a palavra
+  «Played» é dois escalões** — o `PL` do Cardmarket chama-se *Played* e o
+  americano *Played* é o `LP` deles. Por isso há **duas portas**:
+  `estado.normalizar` (ganha o nome do Cardmarket, que é a escala do vault) e
+  `estado.do_cardtrader` (a escala americana das ofertas). Tem caso de teste.
+- **O FACTOR DE PREÇO É MEDIDO, NÃO INVENTADO — e a fonte dá-o.** A ordem era
+  explícita (*"não inventes percentagens tuas: procura o que a fonte já dá por
+  estado e usa isso"*), e dá:
+  - o **CardTrader traz o estado em CADA oferta** (`properties_hash.condition`) e
+    usa a escala **americana**. Sondado a 2026-10-03 em 23 edições reais da
+    colecção dele: `Near Mint` **402 886** ofertas, `Slightly Played` 245 246,
+    `Moderately Played` 135 137, `Played` 66 647, `Poor` 15 625 (`Mint` e
+    `Heavily Played`: **zero**);
+  - o **Cardmarket publica a equivalência**, no texto de cada escalão: EX ≡
+    *Slightly Played*, GD ≡ *Moderately Played*, LP ≡ *Played*, PL ≡ *Heavily
+    Played*, PO ≡ *Poor*. **É esta a ponte**, e não um palpite meu.
+
+  Logo o factor é a **razão entre a mediana das ofertas de um escalão e a mediana
+  das ofertas Near Mint da MESMA impressão**, sobre **10 004 pares** (impressão ×
+  acabamento) e 865 541 ofertas. Está no config (`precos.estado`), com a data, a
+  amostra e a origem, e altera-se à mão.
+- **E DEPENDE DO PREÇO — foi medido, e é a parte que decide o dinheiro.** Numa
+  carta de 0,40 € um *Slightly Played* vale **0,98** do NM (há pisos de preço e
+  portes a dominar); numa de 100 € ou mais vale **0,776**. Por isso a tabela tem
+  **bandas** (<1, 1–5, 5–20, 20–100, ≥100 €): um número só errava por **20
+  pontos** exactamente onde está o dinheiro dele — a Reserved List e as duais. A
+  tabela é **monótona em todas as bandas** (um escalão pior nunca vale mais), e
+  há teste que o exige.
+
+  | | <1 € | 1–5 € | 5–20 € | 20–100 € | ≥100 € |
+  |---|---|---|---|---|---|
+  | EX | 0,983 | 0,828 | 0,837 | 0,813 | **0,776** |
+  | GD | 0,791 | 0,648 | 0,629 | 0,642 | 0,593 |
+  | LP | 0,676 | 0,559 | 0,546 | 0,524 | 0,540 |
+  | PL\* | 0,675 | 0,543 | 0,512 | 0,504 | 0,504 |
+  | PO | 0,674 | 0,527 | 0,477 | 0,484 | 0,468 |
+
+  \* **o PL é o único interpolado**, e diz-se (`estado.APROXIMADOS`, na página e
+  no relatório): o Cardmarket mapeia-o para o americano *Heavily Played* e o
+  CardTrader **não tem uma única oferta nesse estado**. Um número aproximado com
+  cara de número medido é a mentira que esta secção existe para não contar.
+- **O NEAR MINT VALE 1,000, E É ISSO QUE TORNA ISTO SEGURO.** É a âncora da
+  medição, e por isso **ligar isto não mexeu um cêntimo**: medido lado a lado com
+  o `main` e o MESMO `vault.db` (worktree em `_revisao/main-estado`) — fechar tudo
+  **15 391,58 €**, 414 a comprar, 316 a arrumar, valor **136 168,42 €** (low
+  100 721,39 €, média 118 444,90 €), 1 678 cartas, 4 sem preço, as **nove saídas
+  da venda** e as **17 caixas** iguais ao cêntimo e à percentagem. O valor só
+  muda no dia em que um escalão for mesmo atribuído.
+  - **Uma diferença de 0,29 € apareceu e foi corrigida**, em vez de explicada: o
+    `aplicar` arredondava a 2 casas mesmo com factor 1,0, e o cenário `media`
+    (que é `(low+trend)/2` e pode ter três casas) mexia em cêntimos. **Sem
+    factor, sem arredondamento.**
+- **DUAS APROXIMAÇÕES, ditas em voz alta:** (1) o preço de referência de hoje é a
+  mediana das ofertas em `Mint`/`NM`/`Slightly`/`Moderately` (o crivo
+  `precos.ESTADOS_OK`, do riftvault) e **não** um preço só de NM — tratá-lo como
+  o preço NM deixa o NM ligeiramente SUBavaliado, que é o lado conservador e é
+  melhor do que inventar uma majoração; (2) o PL, acima.
+- **«POR OMISSÃO» DEIXOU DE PODER PASSAR POR MEDIDO.** O `NM` que lá está **não
+  se apagou nem se mudou de valor** (a regra dele de 09/09): ganhou
+  `condition_origem = 'omissao'` e, com ela, a frase *«por omissão, nunca
+  verificado»*. Quem decide se um juízo conta é **`estado.medido()`, num sítio
+  só** — e há teste que varre o código à procura de quem compare a origem à mão
+  (o `db._migrate` é a única excepção declarada: é ele que a escreve).
+- **O QUE ESTÁ EM JOGO: 21 416,82 € (15,7 %).** `py -m mtgvault.cli estado
+  impacto`, na base de 2026-10-03: se a Reserved List, as duais, as shocklands e
+  as fetchlands caíssem **um escalão**, a colecção passava de 136 168,42 € para
+  **114 751,60 €** — 305 cartas em 119 linhas. As piores: Gaea's Cradle (JGP)
+  −1 276,94 €, 3 Gaea's Cradle (USG) −1 260,21 €, 4 Volcanic Island (3ED)
+  −962,52 €, 3 Mox Diamond (STH) −928,74 €, 7 Grim Monolith (ULG) −841,47 €.
+- **OS VERSOS: o emparelhamento é o NOME DO FICHEIRO, e o par é o RADICAL.** A
+  ordem dele é sobre o gesto — *"põe as até 4 cartas, fotografa, VIRA-AS NO SÍTIO
+  sem mexer na disposição, fotografa outra vez. Mesma ordem, mesmas posições. O
+  emparelhamento faz-se por isso, não por ele escrever nada"* —, e por isso o par
+  tem de ser **deduzível** e **conferível**. É
+  `site-<slot>-<data>-<n>[-c<id>]`**`-v`**`.<ext>`, e o par é a MESMA string sem o
+  `-v` (`fotosite.par_da_frente`/`nome_do_verso`, inversos, com teste). O `-v` vai
+  depois do `-c<id>` para o radical da frente ser prefixo exacto do do verso.
+  **Três escritores, e nenhum adivinha o que não sabe:**
+  1. o botão **frente e verso** da página (`POST /api/foto?pares=1`): os
+     ficheiros vêm aos pares pela ordem de captura e o segundo herda o `n` do
+     primeiro — o par **nasce feito**. Um número ímpar é recusado (409): metade de
+     um par não é prova de nada;
+  2. a **recolha da pasta do deck** (`fotos.recolher_das_pastas`): empareilha pela
+     **ordem de captura** (mtime, depois nome), que é exactamente o gesto físico.
+     Três decisões que a tornam segura — o grupo é a **pasta** onde o ficheiro
+     está (uma subpasta `lote1` empareilha sozinha); **se UMA foto do grupo ainda
+     está no sossego, o grupo INTEIRO espera** (emparelhar metade de um lote a ser
+     copiado trocava todos os pares a partir do que faltava); e um lote **ímpar**
+     deixa a última sem verso e **di-lo** (`sem_verso`), em vez de inventar um par;
+  3. **o leitor confere, e a leitura ganha ao nome.** Todos os versos de Magic são
+     iguais, por isso *«isto é um verso?»* é a pergunta mais fiável que se lhe
+     pode fazer: o CSV ganhou `verso_ok` e **sem esse `sim` não se grava escalão
+     nenhum**. E uma foto `-v` em que o leitor VIU CARTAS é um par que não bateu:
+     **as cartas entram** e o escalão não se grava. Perder cartas por causa de um
+     sufixo era o pior resultado possível. Tem caso de teste.
+- **O VERSO SERVE PARA O ESTADO, NÃO PARA IDENTIFICAR** — e isso está escrito no
+  código (`estado.PORQUE_VERSO`), no critério, no `esperadas.md` e na página:
+  *todos os versos de Magic são iguais*. **Com verso, o escalão sai de lá; sem
+  verso, o estado fica «por verificar» e não se inventa.** Uma linha que traga
+  `condition` sem verso confirmado **não é aplicada**: fica no `condition_log` com
+  `aplicado = 0` e o motivo — não se perde, e não mexe num cêntimo. E uma linha
+  que venha de uma FOTO entra com `NM` no `add_copy`, nunca com o `condition` do
+  CSV; num CSV **à mão** (sem foto) a coluna continua a valer, porque aí quem a
+  escreveu foi ele.
+- **OS EXTRAS: FRENTE SÓ, E A LISTA CURTA DEPOIS.** Decisão dele, e a razão é a
+  dele: *"ele NÃO pode decidir a verso-ou-não com a carta na mão, porque no
+  momento em que fotografa os extras ainda não sabe o que vai guardar nem o que
+  vai vender"*. Logo a pasta `Extras (fora dos decks)` **não empareilha** — cada
+  foto é uma frente — e **o sistema decide depois**: a `estado.lista_curta` marca
+  quem precisa de verso (Reserved List, as dez duais, shocklands, fetchlands, as
+  quatro listas **derivadas do catálogo** pelo `fases`) e dá-lhe uma lista para
+  voltar lá **uma vez**. Medida a 2026-10-03: **80 fotos / 255 cartas /
+  82 043,96 €**. A venda entra pelo MESMO caminho no dia em que ele a voltar a
+  ligar (`inclui_venda` segue o `venda.mostrar`, hoje `false`) — é o *"e mais
+  tarde o que for para venda"* dele, e não é uma linha nova.
+- **O CRITÉRIO APRENDE, E É O DELE.** Cada escalão fica gravado com a FOTO, o
+  escalão e os MOTIVOS escritos (com a ZONA: *«branco no canto inferior
+  esquerdo»*). Quando ele corrige, a correcção fica como **exemplo rotulado** no
+  `condition_log` — a foto, o que eu disse, o que ele disse e **o que me
+  escapou** —, **a correcção dele GANHA sempre** (um juízo meu posterior é
+  recusado e fica registado com `aplicado = 0`, que é o que torna a taxa de acerto
+  calculável), e o `data/estado-criterio.md` cresce com a secção **«Aprendido com
+  o André»**, datada, **só** com o que veio de correcções dele. O passo que avalia
+  lê `estado.para_avaliar` — o critério + os **erros repetidos** (contáveis:
+  `sentido` × `zona`, pelas palavras do Cardmarket; *«já fui corrigido 3× por
+  estar optimista com as bordas»*) + as últimas correcções —, e esse texto vai
+  dentro do `pendentes/esperadas.md`, que é o que o Claude das fotos já lê. A
+  **taxa de acerto** (`estado.acerto`) é como se sabe se está a melhorar.
+- **O FICHEIRO DO CRITÉRIO VAI NO `git add` do `daily.yml` E NO `EXTRA_COMMIT` da
+  tarefa `mtgvault-daily`**, pela razão do `arquetipos.json`: se as correcções
+  dele só existissem no PC, a corrida do GitHub avaliava com um critério de ontem.
+- **O QUE SE DIZ AO ANDRÉ, na página e no guia das fotos**, para ele não contar
+  com o que não vai ter: numa foto de telemóvel **vê-se** vincos, branqueamento de
+  bordas e cantos, riscos visíveis e desgaste de jogo — e dá para um escalão
+  defensável entre **NM, EX, GD e LP** com a razão à frente; **não se distingue NM
+  de Mint** (por isso o `MT` não se atribui por foto) e riscos finos de superfície
+  não aparecem; **a luz pesa mais do que a resolução** (o flash de frente
+  *esconde* o desgaste das bordas, a luz difusa num ângulo ligeiro *mostra-o*); e
+  o escalão é **sempre uma estimativa com motivo escrito**, nunca uma
+  classificação certificada.
+- **UM DEFEITO DE DESEMPENHO ANTERIOR A ISTO, apanhado com o cProfile e
+  corrigido:** o `sources._config()` fazia `Path(__file__).resolve()` a CADA
+  leitura do config — e o config lê-se milhares de vezes por relatório (o
+  `precos.modo`, o `precos.fontes`, o `estado.factor`, todos por cópia). Contado
+  (é determinista, ao contrário dos segundos nesta máquina): **3 111
+  `Path.resolve()` = 6 222 chamadas ao `nt._getfinalpathname` por
+  `loadout.report`**, e **zero** depois. O caminho resolve-se uma vez no import
+  (`_RAIZ_CFG`); o `MTGVAULT_CONFIG` continua a ler-se a cada chamada, porque os
+  testes trocam-no em memória. Com isto e com a cache da tabela de factores
+  (`_TABELA_CACHE`, pela identidade do bloco do config) o bloco do estado da
+  página das fases passou de **11,18 s a 1,63 s**; e o `fases.relatorio` passou a
+  aceitar a cache de fora, para o mapa de preços (86 480 linhas da
+  `price_latest`) e as listas de terras não serem construídos duas vezes na mesma
+  página.
+- **AS PÁGINAS, medidas com o `webapp.py` a correr e o JS a sério**
+  (`node tests/abrir_pagina.js` com os `fetch` a ir ao servidor): **as 11 páginas
+  e o `deckboxes.js` a 200**, **222 ficheiros de dados todos a 200**, nenhum erro
+  de dados. A parte nova (`arrumacao/estado.json`, 31 KB) responde em **14 ms**; a
+  pior de todas é o `arrumacao/candidatos.json` a frio, **12,0 s**, abaixo do
+  tecto de 25 s do `webapp.ESPERA_DADOS`. O JS desenhou nas duas páginas com JS
+  (Deckboxes 16 contentores, Arrumação 6) e o bloco do estado está lá com as
+  quatro frases que têm de estar.
+  **Nota sobre os tempos**: o `webapp.py` vivo no 8771 tem um aquecedor que
+  recalcula quando o config muda, e a medição levanta um SEGUNDO servidor — por
+  isso os segundos variam entre 1,6 s e 12 s na mesma árvore. Os números que não
+  dependem disso (as contagens de chamadas, os euros, as cópias) são os que se
+  usaram para decidir.
+- **POR DECIDIR POR ELE, e é o que vale a pena ler primeiro:** (a) **o factor
+  aplica-se ao escalão que está gravado, seja qual for a origem** — se diz EX, a
+  carta é EX e o dinheiro di-lo; a provenance mostra-se ao lado, e não se desconta
+  duas vezes pela mesma dúvida; (b) o **`MT` não se atribui por foto** (não se
+  distingue de NM numa foto de telemóvel) — só à mão, por ele; (c) as **bandas de
+  preço** são cinco e foram escolhidas por mim a partir da curva medida: se
+  preferir um número só por escalão, é uma linha no config; (d) a lista curta
+  inclui **todas as cópias** de uma carta que precise de verso, não só as caras.
+
 **OS 16 DECKS QUE FICAM, E AS REGRAS DAS CARTAS (André, 2026-10-02).** Ele
 fechou a lista dos decks que ficam e reescreveu as regras que decidem o que vai
 à venda. **Substitui, no que se cruza, a secção «A ARRUMAÇÃO POR FASES» de
@@ -2582,6 +2798,20 @@ backfill, o que o torna retomável sem ficheiro de estado — é o mesmo truque 
 `event_players` a gravar 0. O **índice `ix_dl_arquetipo` nasce no `_migrate`** e
 nunca no `schema.sql`, pela armadilha de sempre. Ver «O NOME DO ARQUÉTIPO VEM DA
 FONTE».
+
+Colunas e tabela novas de 2026-10-03 (nos três sítios): **`copies.condition_origem`**
+(`foto` | `mao` | `omissao`), **`copies.condition_em`**,
+**`copies.condition_motivos`** e **`copies.verso_path`**, mais a tabela
+**`condition_log`** (o histórico dos juízos de estado e os EXEMPLOS ROTULADOS das
+correcções dele — com `eu_disse`, `eu_motivos`, `escapou` e `aplicado`). A coluna
+`condition` já existia e dizia `NM` nas 737 linhas; o que faltava era **de onde
+veio o juízo**. O `NM` não se mudou nem se apagou: o que se escreve é a ORIGEM
+`omissao`, e é ela que o faz deixar de poder passar por medido. O índice
+`ix_copies_cond_origem` nasce no **`_migrate`**, depois do ALTER, pela armadilha de
+sempre — e o `UPDATE` que marca o `omissao` só corre **quando há linhas a marcar**
+(um `UPDATE` incondicional a cada `init` era uma escrita por pedido do
+`webapp.py`, e uma escrita muda o `_versao()` e atira a cache fora). Ver «O ESTADO
+DAS CARTAS E OS VERSOS».
 
 Já custou caro uma vez: `decklists.event_tier` foi acrescentada só ao `vault.db`
 (commit 56ffa3f, 2026-08-03), nunca ao `schema.sql` nem ao `_migrate()`, e nada

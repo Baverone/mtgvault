@@ -337,6 +337,39 @@ for alvo, casos in (
         print(f"  {'ok  ' if ok else 'FAIL'} chumba sem «{alvo}» "
               f"({caso}): {motivo[-1][:90] if motivo else ''}")
 
+# ---------------------------------------------------------------------------
+# O ESTADO DAS CARTAS E OS VERSOS (André, 2026-10-03: *"procuras como são
+# avaliadas as cartas, depois com base nas minhas próprias fotos, vais melhorando
+# o teu critério"* e *"verso as dos decks e as que são para guardar"*). Noutro
+# processo, pela razão de cima.
+# ---------------------------------------------------------------------------
+for alvo, casos in (
+    ("factor", ["caso_o_preco_muda_quando_o_estado_muda",
+                "caso_o_impacto_diz_quanto_esta_em_jogo"]),
+    ("medido", ["caso_o_estado_por_omissao_nao_passa_por_medido"]),
+    ("verso", ["caso_uma_copia_sem_verso_fica_por_verificar_e_nao_recebe_escalao",
+               "caso_um_verso_sem_confirmacao_do_leitor_nao_grava_nada"]),
+    ("par", ["caso_a_recolha_da_pasta_do_deck_empareilha_pela_ordem_de_captura",
+             "caso_um_lote_impar_num_deck_diz_que_a_ultima_ficou_sem_verso",
+             "caso_o_par_frente_verso_e_o_mesmo_radical"]),
+    ("ganha", ["caso_a_correccao_dele_ganha_ao_juizo_da_foto"]),
+    ("aprende", ["caso_a_correccao_dele_e_um_exemplo_rotulado_e_conta_a_taxa_de_acerto",
+                 "caso_o_que_se_le_antes_de_avaliar_leva_o_criterio_e_as_correccoes"]),
+    ("curta", ["caso_a_lista_curta_aparece_depois_e_so_com_quem_precisa_de_verso"]),
+    ("aproximado", ["caso_o_pl_diz_que_e_aproximado_e_de_onde_veio"]),
+    ("criterio", ["caso_o_que_se_le_antes_de_avaliar_leva_o_criterio_e_as_correccoes"]),
+):
+    for caso in casos:
+        p = subprocess.run(
+            [sys.executable, str(AQUI / "_chumba_estado.py"), alvo, caso],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            cwd=AQUI)
+        ok = p.returncode != 0
+        bom &= ok
+        motivo = (p.stdout or p.stderr or "").strip().splitlines()
+        print(f"  {'ok  ' if ok else 'FAIL'} chumba sem «{alvo}» "
+              f"({caso}): {motivo[-1][:90] if motivo else ''}")
+
 print("TODOS OS CASOS CHUMBAM SEM A FUNCIONALIDADE" if bom
       else "HA CASOS QUE PASSAM SEM A FUNCIONALIDADE")
 sys.exit(0 if bom else 1)

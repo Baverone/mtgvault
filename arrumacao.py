@@ -246,6 +246,9 @@ const PARTES = {};
    `<details>` que ele abriu — sem isto o re-render fechava-os todos. */
 let RESERVAS = null;
 const ABERTAS = {};
+/* A LISTA CURTA dos versos (a parte `estado`): 80 fotos, que não cabem no
+   índice pela decisão de 2026-09-15. Vem ao primeiro toque, como as reservas. */
+let LC = null, LC_ABERTA = false;
 const el = id => document.getElementById(id);
 const eur = v => (v == null ? '—' : Number(v).toLocaleString('pt-PT',
   {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' €');
@@ -445,11 +448,110 @@ function fotoVerdadeHTML() {
     + `</section>`;
 }
 
+/* ------------------------------------------------ O ESTADO E OS VERSOS */
+/* André, 2026-10-03: *"procuras como são avaliadas as cartas, depois com base
+   nas minhas próprias fotos, vais melhorando o teu critério"* e *"verso as dos
+   decks e as que são para guardar, para já"*.
+
+   O bloco diz TRÊS coisas e nenhuma delas é opcional: (1) o que se consegue
+   mesmo ver numa foto de telemóvel — para ele não contar com o que não vai ter;
+   (2) de onde vem o desconto por estado e que o PL é aproximado; (3) a LISTA
+   CURTA dos versos que faltam fora dos decks, que é o que o poupa a decidir 400
+   vezes com a carta na mão. */
+function estadoHTML() {
+  const e = D.estado;
+  if (!e) return '';
+  const g = e.grades || [];
+  const a = e.acerto || {};
+  const lc = e.lista_curta || {};
+  const lin = (x) => `<tr><td><b>${escDados(x.g)}</b> ${escDados(x.nome)}</td>`
+    + `<td class="v">${x.q}</td><td class="v">${escDados(x.valor)}</td>`
+    + `<td class="v">${x.factor}</td></tr>`;
+  return `<section class="foto"><h2>🔎 O estado das cartas `
+    + `<span class="n">${escDados(e.frase)}</span></h2>`
+    + `<p class="sub">A escala é a do <b>Cardmarket</b> — MT · NM · EX · GD · LP `
+    + `· PL · PO —, porque é lá que vendes. As <b>${e.total_cartas}</b> cartas `
+    + `estavam todas como <b>NM</b>, e isso <b>não era uma medição</b>: era o `
+    + `valor por omissão que nunca ninguém mexeu. Continuam a dizer NM — nada se `
+    + `apaga — mas marcadas <b>«por omissão, nunca verificado»</b>, e deixaram de `
+    + `poder passar por medidas.</p>`
+    + `<div class="chips">`
+    + `<span class="chip gold"><b>${e.medidas}</b> com estado medido</span>`
+    + `<span class="chip warn"><b>${e.por_verificar}</b> por verificar</span>`
+    + `<span class="chip"><b>${e.com_verso}</b> com foto do verso</span>`
+    + (a.propostos ? `<span class="chip"><b>${a.pct} %</b> de acerto `
+        + `(${a.aceites} de ${a.propostos})</span>` : '')
+    + `</div>`
+
+    + `<h3>O que eu consigo mesmo ver numa foto de telemóvel</h3>`
+    + `<p class="sub">Numa foto de telemóvel <b>vê-se</b>: vincos, `
+    + `branqueamento de bordas e cantos, riscos visíveis e desgaste de jogo — e `
+    + `dá para um escalão defensável entre <b>NM, EX, GD e LP</b> com a razão à `
+    + `frente. <b>Não se distingue NM de Mint</b>, e riscos finos de superfície `
+    + `não aparecem. <b>A luz pesa mais do que a resolução:</b> o flash de frente `
+    + `<i>esconde</i> o desgaste das bordas; luz difusa num ângulo ligeiro `
+    + `<i>mostra-o</i>. O escalão é sempre uma <b>estimativa com motivo `
+    + `escrito</b>, nunca uma classificação certificada — e podes corrigi-lo à `
+    + `mão: <b>a tua correcção ganha sempre</b> e nunca é sobreposta por uma `
+    + `avaliação minha posterior.</p>`
+
+    + `<h3>Os versos</h3>`
+    + `<p class="sub"><b>Todos os versos de Magic são iguais:</b> o verso não `
+    + `serve para identificar a carta, serve para ver o desgaste — bordas, `
+    + `cantos, vincos e manchas que a frente não mostra. Por isso o escalão sai `
+    + `do verso, e <b>sem verso o estado fica «por verificar»</b>: não se inventa `
+    + `um escalão.<br><b>Nos decks: verso sempre.</b> Põe as até `
+    + `${D.max_cartas_foto} cartas, fotografa, <b>vira-as no sítio</b> sem mexer `
+    + `na disposição e fotografa outra vez — mesma ordem, mesmas posições. O par `
+    + `faz-se por isso, não por escreveres nada.<br><b>Nos Extras: frente só.</b> `
+    + `Fotografa de uma ponta à outra sem parar para pensar; quem precisa de `
+    + `verso sai depois na lista curta aqui em baixo.</p>`
+
+    + (g.length ? `<table class="tb"><thead><tr><th>escalão</th>`
+        + `<th class="n">cartas</th><th class="n">valor</th>`
+        + `<th class="n">factor</th></tr></thead><tbody>`
+        + g.map(lin).join('') + `</tbody></table>` : '')
+    + `<p class="sub"><b>De onde vem o desconto por estado:</b> `
+    + `${escDados(e.nota_factor)}</p>`
+
+    + `<h3>📷 Lista curta — os versos que faltam fora dos decks `
+    + `<span class="n">${lc.fotos || 0} fotos · ${lc.cartas || 0} cartas · `
+    + `${escDados(lc.valor_txt || '')}</span></h3>`
+    + `<p class="sub">${escDados(lc.nota || '')}</p>`
+    + (lc.porques && lc.porques.length
+        ? `<div class="chips">` + lc.porques.map(p =>
+            `<span class="chip"><b>${p.q}</b> ${escDados(p.porque)}</span>`).join('')
+          + `</div>` : '')
+    + (lc.fotos ? `<details class="res"${LC_ABERTA ? ' open' : ''}>`
+        + `<summary data-lc-abrir="1">Ver as ${lc.fotos} fotos da lista curta`
+        + `</summary>`
+        + (LC ? fotosHTML(LC.fotos || [])
+             : `<p class="carregando">a carregar…</p>`)
+        + `</details>` : '')
+
+    + (e.padroes && e.padroes.length
+        ? `<h3>Aprendido contigo</h3><ul class="cfl">`
+          + e.padroes.map(p => `<li>${escDados(p.frase)}</li>`).join('')
+          + `</ul>` : '')
+    + (e.exemplos && e.exemplos.length
+        ? `<p class="sub">As últimas correcções: `
+          + e.exemplos.map(x => `<b>${escDados(x.carta || ('cópia ' + x.copy_id))}</b> `
+              + `eu ${escDados(x.eu_disse)} → tu ${escDados(x.ele_disse)}`).join(' · ')
+          + `</p>` : '')
+    + (e.impacto ? `<p class="sub"><b>O que está em jogo:</b> se a Reserved `
+        + `List, as duais, as shocklands e as fetchlands caíssem <b>um `
+        + `escalão</b>, a coleção passava de ${escDados(e.impacto.hoje)} para `
+        + `${escDados(e.impacto.depois)} — <b>${escDados(e.impacto.perde)} `
+        + `a menos</b> (${e.impacto.pct} %) em ${e.impacto.cartas} cartas. `
+        + `É por isso que isto não é um detalhe.</p>` : '')
+    + `</section>`;
+}
+
 function fase1() {
   const ds = D.decks || [];
   const prot = ds.filter(d => d.protege).length;
   const semass = ds.filter(d => !d.assinatura).length;
-  return fotoVerdadeHTML()
+  return fotoVerdadeHTML() + estadoHTML()
     + `<h2>Fase 1 · Os decks que ficam <span class="n">${ds.length} decks`
     + `</span></h2>`
     + `<p class="sub">A identidade de cada deck é uma <b>carta-assinatura</b>, `
@@ -794,6 +896,15 @@ function ligar() {
     // parte `reservas` e redesenha. Guarda-se quais ele abriu para o redesenho
     // não lhe fechar o que estava aberto.
     const sm = ev.target.closest('summary');
+    if (sm && sm.dataset.lcAbrir) {
+      LC_ABERTA = !LC_ABERTA;
+      if (LC_ABERTA && !LC) {
+        parte('estado').then(p => { LC = p; render(); })
+          .catch(() => { LC = {fotos: []};
+                         toast('não consegui ir buscar a lista curta', true); });
+      }
+      return;
+    }
     if (sm && sm.dataset.resAbrir) {
       const s = sm.dataset.resAbrir;
       ABERTAS[s] = !ABERTAS[s];
@@ -920,7 +1031,13 @@ def dados(con, rep=None, editavel: bool = False) -> tuple[dict, dict]:
     """
     from mtgvault import loadout
     rep = rep if rep is not None else loadout.report(con)
-    r = fases.relatorio(con, rep)
+    # UMA cache para a página INTEIRA (2026-10-03): o `fases.relatorio` e o bloco
+    # do ESTADO precisam do mesmo mapa de preços (86 480 linhas da
+    # `price_latest`) e das mesmas listas de terras derivadas do catálogo.
+    # Construí-los duas vezes custava 3,3 s que se somavam ao tecto de 25 s do
+    # `webapp.ESPERA_DADOS`.
+    cache: dict = {}
+    r = fases.relatorio(con, rep, cache=cache)
     # A LISTA DE CARTAS DE CADA RESERVA sai do índice para uma parte própria.
     # Sem o limiar de 2026-10-01 a reserva passou a ser tudo o que foi jogado no
     # mês: medido a 2026-10-02, 112 KB dos 167 do índice, para listas que vivem
@@ -937,9 +1054,14 @@ def dados(con, rep=None, editavel: bool = False) -> tuple[dict, dict]:
         # 71 KB dos decks no índice.
         rv["n_automatica"] = len(rv.pop("automatica", []))
         decks.append(dict(d, reserva=rv))
+    # O ESTADO DAS CARTAS (2026-10-03): o resumo vai no índice (é o ecrã da
+    # decisão) e as 80 fotos da LISTA CURTA numa parte própria — a decisão de
+    # 2026-09-15, e aqui vale o dobro: a lista curta é uma ida à estante, não é o
+    # primeiro ecrã.
+    est_idx, est_parte = _estado_idx(con, cache)
     partes = {"fase2": r["fase2"], "candidatos": _magra(r["candidatos"]),
               "fase4": r["fase4"], "inventario": r["inventario"],
-              "reservas": reservas}
+              "reservas": reservas, "estado": est_parte}
     idx = {
         "hoje": r["hoje"], "editavel": bool(editavel),
         "congelada": r["congelada"], "congelado_ate": r["congelado_ate"],
@@ -988,8 +1110,61 @@ def dados(con, rep=None, editavel: bool = False) -> tuple[dict, dict]:
         # alocação dupla vão no índice e não numa parte: são dois e ele resolve-os
         # ao fotografar esses decks, logo têm de estar no primeiro ecrã.
         "foto": _foto_idx(con, rep),
+        "estado": est_idx,
     }
     return idx, partes
+
+
+def _estado_idx(con, cache: dict | None = None) -> tuple[dict, dict]:
+    """`(resumo para o índice, parte com as fotos da lista curta)`.
+
+    Os números NÃO se somam aqui: vêm do `estado.progresso` e da
+    `estado.lista_curta`, que são os mesmos que o CLI imprime. Uma segunda
+    contagem ao lado era a lição do `event_tier` — e desta vez sobre o número que
+    diz quanto a colecção vale.
+    """
+    from mtgvault import estado, paginas                        # noqa: PLC0415
+    # A cache é a da PÁGINA (vem do `dados`, a mesma do `fases.relatorio`): o mapa
+    # de preços e as listas de terras já estão lá. Cada função a construir o seu
+    # custava 10,7 s — acima do tecto de 25 s do `webapp.ESPERA_DADOS` quando
+    # somado ao relatório, o que dava um 503 na primeira vez que ele abrisse a
+    # página. Sem cache (um teste, o CLI) continua a funcionar e a pagar.
+    cache = {} if cache is None else cache
+    p = estado.progresso(con, cache)
+    lc = estado.lista_curta(con, cache=cache)
+    imp = estado.impacto(con, cache=cache)
+    porques: dict[str, int] = {}
+    for l in lc["linhas"]:
+        for q in l["porque"]:
+            porques[q] = porques.get(q, 0) + l["q"]
+    idx = {
+        "frase": p["cartas"]["frase"],
+        "total_cartas": p["cartas"]["total"],
+        "medidas": p["cartas"]["confirmado"],
+        "por_verificar": p["cartas"]["por_confirmar"],
+        "com_verso": p["com_verso"],
+        "nota_factor": p["nota_factor"],
+        "nota_verso": p["nota_verso"],
+        "acerto": p["acerto"],
+        "padroes": p["padroes"],
+        "exemplos": estado.exemplos(con, 6),
+        "grades": [{"g": g, "nome": estado.NOMES[g], "q": v["q"],
+                    "valor": paginas.eur(v["valor"]),
+                    "factor": estado.factor(g, 50)["factor"]}
+                   for g, v in p["por_grade"].items()],
+        "lista_curta": {
+            "fotos": len(lc["fotos"]), "cartas": lc["cartas"],
+            "valor_txt": paginas.eur(lc["valor"]), "nota": lc["nota"],
+            "inclui_venda": lc["inclui_venda"],
+            "porques": [{"porque": k, "q": v}
+                        for k, v in sorted(porques.items(), key=lambda kv: -kv[1])],
+        },
+        "impacto": {"hoje": paginas.eur(imp["hoje"]),
+                    "depois": paginas.eur(imp["depois"]),
+                    "perde": paginas.eur(imp["perde"]),
+                    "pct": imp["pct"], "cartas": imp["cartas"]},
+    }
+    return idx, {"fotos": lc["fotos"], "barra": lc["barra"]}
 
 
 def _foto_idx(con, rep) -> dict:
