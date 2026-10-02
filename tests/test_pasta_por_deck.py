@@ -432,9 +432,20 @@ def caso_uma_caixa_vazia_nao_rebenta_a_geracao():
     assert "NAO tem cartas registadas" in txt, txt
     assert "foto 01" not in txt, txt
     assert "modern" in txt, "tem de dizer o alvo, para quando houver cartas"
-    # Uma pasta que não existe não se cria por iniciativa própria.
-    assert not (fotos.pasta_novas(SITE) / "Elves - Survival").exists(), \
-        "não se criam pastas"
+    # [CORRIGIDO A 2026-10-02] esta asserção era `not (...).exists()`, com o
+    # comentário «uma pasta que não existe não se cria por iniciativa própria».
+    # Era a regra certa em 01/10 e passou a estar errada no dia seguinte: medido
+    # a 02/10, **7 das 17 caixas não tinham pasta** (as quatro novas desse dia,
+    # as duas renomeadas e a `Elves`), e sem pasta o caminho que ele escolheu
+    # (*"o melhor é criar pasta"*) não existe para esse deck — e ele não tem como
+    # adivinhar o nome que o vault espera. Agora cria-se, e o nome sai do `caixas`
+    # do config, que é a MESMA regra que a reconhece (`fotos.garantir_pastas`).
+    # O que continua a NÃO se fazer é apagar ou mover: ver `TEXTO_ORFA`.
+    # (afirma-se o RESULTADO e não quem a criou: casos anteriores deste mesmo
+    # ficheiro já podem ter passado por lá, e `criadas` é só o delta da chamada.)
+    elves = fotos.pasta_novas(SITE) / "Elves - Survival"
+    assert elves.is_dir(), "a pasta de cada deck do config tem de existir"
+    assert (elves / ".gitkeep").is_file(), "a estrutura viaja no Git"
     print("uma caixa vazia nao rebenta a geracao e o plano dela nao promete fotos")
 
 

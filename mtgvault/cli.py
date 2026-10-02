@@ -1338,8 +1338,13 @@ def _fotos_cmd(con, args):
             print(f'  escrito  {x["nome"]} ({x["fotos"]} fotos, {x["cartas"]} cartas)')
         if r["vazios"]:
             print(f"  sem cartas na caixa (nota corrigida): {', '.join(r['vazios'])}")
+        if r["criadas"]:
+            print(f"  pastas CRIADAS para decks que não tinham: {', '.join(r['criadas'])}")
+        if r["orfas"]:
+            print("  pastas órfãs (o deck foi renomeado ou dissolvido; o plano "
+                  f"delas passou a avisar): {', '.join(r['orfas'])}")
         if r["sem_pasta"]:
-            print(f"  sem pasta (não se criou nenhuma): {', '.join(r['sem_pasta'])}")
+            print(f"  sem pasta: {', '.join(r['sem_pasta'])}")
         print("  o plano sai da MESMA fila da página; as fotos largam-se na "
               "pasta do deck (`fotos recolher` leva-as a `pendentes\\`)")
         return

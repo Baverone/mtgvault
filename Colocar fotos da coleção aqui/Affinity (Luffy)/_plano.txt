@@ -1,0 +1,76 @@
+PLANO DE FOTOS -- Affinity (Luffy)
+slot: pauper | 22 fotos para 74 cartas
+
+REGRA: no maximo 4 CARTAS por foto, agrupadas por TIPO.
+As copias da MESMA carta vao sempre juntas (4x Mox Opal = 1 foto).
+Cada carta tem de estar a vista e poder avaliar-se.
+
+ONDE LARGAR AS FOTOS: NESTA PASTA.
+  O vault reconhece a pasta como este deck (alvo: pauper) e trata
+  as fotos como se as tivesses tirado na pagina. Nao precisas de
+  fixar alvo nenhum. Podes fazer subpastas de lote ('lote1').
+  A foto e MOVIDA daqui para pendentes\ com o nome a dizer o deck,
+  e depois arrumada em data\fotos\pauper\. Nada se apaga.
+
+A OUTRA PORTA: https://editar-mtg.baverone.com/
+  botao «Tirar fotos» (abre a camara do telemovel) -- ai nao ha
+  pasta nenhuma, a foto guarda-se sozinha.
+
+======================================================================
+
+  CRIATURAS
+    foto 01  (4 cartas)
+         2x Krark-Clan Shaman                      MRD   foil     en
+         2x Krark-Clan Shaman                      MRD   nonfoil  en
+    foto 02  (4 cartas)
+         4x Myr Enforcer                           F09   foil     en
+    foto 03  (4 cartas)
+         4x Refurbished Familiar                   MH3   foil     en
+    foto 04  (3 cartas)
+         3x Utrom Monitor                          TMC   nonfoil  en
+  ARTEFACTOS
+    foto 05  (3 cartas)
+         3x Black Mage's Rod                       FIN   foil     en
+    foto 06  (2 cartas)
+         2x Blood Fountain                         VOW   foil     en
+    foto 07  (4 cartas)
+         4x Drossforge Bridge                      MH2   foil     en
+    foto 08  (2 cartas)
+         2x Great Furnace                          SLD   foil     en
+    foto 09  (4 cartas)
+         4x Ichor Wellspring                       BRR   foil     en
+    foto 10  (4 cartas)
+         4x Mistvault Bridge                       MH2   foil     en
+    foto 11  (4 cartas)
+         2x Nihil Spellbomb                        A25   foil     en
+         2x Seat of the Synod                      SLD   foil     en
+    foto 12  (3 cartas)
+            Sewer-veillance Cam                    TMT   foil     en
+         2x Silverbluff Bridge                     MH2   foil     en
+    foto 13  (4 cartas)
+         4x Vault of Whispers                      SLD   foil     en
+  ENCANTAMENTOS
+    foto 14  (1 carta)
+            Makeshift Munitions                    CMR   foil     en
+  INSTANTÂNEOS
+    foto 15  (2 cartas)
+         2x Blue Elemental Blast                   SS1   foil     en
+    foto 16  (4 cartas)
+         4x Galvanic Blast                         SLD   foil     en
+    foto 17  (4 cartas)
+         4x Hydroblast                             EMA   nonfoil  en
+    foto 18  (4 cartas)
+         4x Pyroblast                              SS3   foil     en
+    foto 19  (4 cartas)
+         4x Reckoner's Bargain                     NEO   nonfoil  en
+    foto 20  (4 cartas)
+            Red Elemental Blast                    A25   nonfoil  en
+            Toxin Analysis                         MKM   foil     en
+            Toxin Analysis                         MKM   foil     en
+            Unexpected Fangs                       IKO   nonfoil  en
+  FEITIÇOS
+    foto 21  (2 cartas)
+         2x Extract a Confession                   MKM   foil     en
+    foto 22  (4 cartas)
+         4x Thoughtcast                            SPG   foil     en
+

@@ -867,8 +867,11 @@ def recolher_fotos_das_pastas() -> dict | None:
         # pelo pedido seguinte, e rebentar o índice por causa disso não.
         return None
     for x in r["recolhidas"]:
+        # O alvo pode não ser uma caixa: a pasta `Extras (fora dos decks)` tem o
+        # alvo `coleccao` e `slot` a None (2026-10-02). Dizer «alvo None» era o
+        # log a mentir sobre um caminho que funciona.
         print(f"[fotos-pasta] {x['pasta']}/{x['de']} -> pendentes/{x['para']} "
-              f"(alvo {x['slot']})")
+              f"(alvo {x.get('slot') or x.get('tipo')})")
     for ig in r["ignorados"]:
         chave = f"{ig['pasta']}/{ig['ficheiro']}"
         if _PASTAS_IGNORADAS.get(chave) == ig["porque"]:
