@@ -300,6 +300,32 @@ def main(argv=None):
     pfm.add_argument("valor", nargs="?", help="on|off, para `foto manda`")
     pfm.add_argument("--json", action="store_true")
 
+    # O ESTADO DAS CARTAS (André, 2026-10-03): a escala do Cardmarket, o preço
+    # com estado, a lista curta dos versos e o ciclo que aprende com as
+    # correcções dele. É por aqui que o Claude na nuvem o lê e escreve sem o 8771.
+    es = sub.add_parser("estado",
+                        help="o estado das cartas: `estado` mostra o progresso, "
+                             "`estado definir <copia> <escalao>` grava um juízo, "
+                             "`estado corrigir <copia> <escalao>` é a correcção "
+                             "DELE (ganha sempre), `estado lista` é a lista curta "
+                             "dos versos que faltam, `estado impacto` diz quanto "
+                             "está em jogo, `estado criterio` imprime o que se lê "
+                             "antes de avaliar, `estado factores` a tabela")
+    es.add_argument("accao", nargs="?", default="mostrar",
+                    choices=["mostrar", "definir", "corrigir", "lista",
+                             "impacto", "criterio", "factores", "exemplos"])
+    es.add_argument("copia", nargs="?", help="o `copy_id`")
+    es.add_argument("escalao", nargs="?", help="MT|NM|EX|GD|LP|PL|PO")
+    es.add_argument("--motivos", default="",
+                    help="os motivos ESCRITOS («branco visível no canto inferior "
+                         "esquerdo») — um escalão sem motivo não se confere")
+    es.add_argument("--escapou", default="",
+                    help="numa correcção: o que me escapou. É esta linha que faz "
+                         "do par (foto, escalão) um exemplo que ensina")
+    es.add_argument("--descer", type=int, default=1,
+                    help="impacto: quantos escalões descer (omissão 1)")
+    es.add_argument("--json", action="store_true")
+
     pm = sub.add_parser("precos",
                         help="o modo de preço: `precos` mostra, `precos modo "
                              "<market|best|media>` troca, `precos comparar` "
@@ -737,6 +763,9 @@ def main(argv=None):
         elif args.cmd == "foto":
             return _foto(con, args)
 
+        elif args.cmd == "estado":
+            return _estado(con, args)
+
         elif args.cmd == "precos":
             _precos(con, args)
 
@@ -752,6 +781,135 @@ def main(argv=None):
             else:
                 print(f"{r['path']}: {r['caixas']} caixas escritas "
                       f"(backup em {Path(r['backup']).name})")
+
+
+def _estado(con, args):
+    """`estado [mostrar|definir|corrigir|lista|impacto|criterio|factores|exemplos]`.
+
+    É a porta do CLI para o estado das cartas (André, 2026-10-03) e é por aqui que
+    o Claude na nuvem lê e escreve sem passar pelo 8771 — a mesma razão por que o
+    `encomendas` e o `feira` a têm. O `corrigir` é a porta DELE: grava com origem
+    `mao`, e um juízo meu posterior nunca a sobrepõe.
+    """
+    from . import estado as est
+    import json as _json
+
+    accao = args.accao
+    if accao == "criterio":
+        txt = est.para_avaliar(con)
+        print(txt)
+        if not est.criterio():
+            print(f"\n  ERRO: falta o {est.ficheiro_criterio()}. Sem o critério "
+                  f"escrito não se atribui escalão nenhum.")
+            sys.exit(2)
+        return None
+
+    if accao == "factores":
+        etq = est.etiquetas_das_bandas()
+        print("FACTOR DE PREÇO POR ESTADO (1,00 = o preço de Near Mint)")
+        print(f"  {est.nota_do_factor()}\n")
+        print(f"  {'':4} " + "  ".join(f"{e:>10}" for e in etq))
+        for g in est.ESCALA:
+            linha = [est.factor(g, p)["factor"]
+                     for p in (0.5, 2, 10, 50, 500)]
+            marca = " (interpolado)" if g in est.APROXIMADOS else ""
+            print(f"  {g:4} " + "  ".join(f"{f:>10.3f}" for f in linha) + marca)
+        return None
+
+    if accao == "exemplos":
+        ex = est.exemplos(con, 50)
+        if args.json:
+            print(_json.dumps({"exemplos": ex, "padroes": est.padroes(con),
+                               "acerto": est.acerto(con)},
+                              ensure_ascii=False, indent=2))
+            return None
+        if not ex:
+            print("Ainda não há nenhuma correcção dele — o critério em vigor é "
+                  "só o do Cardmarket.")
+            return None
+        for e in ex:
+            print(f"  {e['em']}  {e['carta'] or ('cópia ' + str(e['copy_id'])):<32} "
+                  f"eu {e['eu_disse']} → ele {e['ele_disse']}"
+                  + (f"  ({e['escapou']})" if e["escapou"] else ""))
+        for d in est.padroes(con):
+            print(f"  ! {d['frase']}")
+        return None
+
+    if accao in ("definir", "corrigir"):
+        if not args.copia or not args.escalao:
+            print(f"  ERRO: `estado {accao} <copy_id> <escalao>` — faltou "
+                  f"{'o copy_id' if not args.copia else 'o escalão'}")
+            sys.exit(2)
+        try:
+            if accao == "corrigir":
+                r = est.corrigir(con, int(args.copia), args.escalao,
+                                 motivos=args.motivos, escapou=args.escapou)
+            else:
+                r = est.registar(con, int(args.copia), args.escalao,
+                                 origem=est.ORIGEM_MAO, motivos=args.motivos)
+        except (est.EstadoInvalido, LookupError) as e:
+            print(f"  ERRO: {e}")
+            sys.exit(2)
+        est.escrever_aprendido(con)
+        print(f"  cópia {args.copia}: {r['antes']} → {r['grade']}"
+              + ("" if r["aplicado"] else f"  NÃO aplicado: {r['porque']}"))
+        if not args.motivos:
+            print("  (sem motivos escritos — um escalão sem motivo não se "
+                  "confere nem ensina nada)")
+        return None
+
+    if accao == "lista":
+        lc = est.lista_curta(con)
+        if args.json:
+            print(_json.dumps(lc, ensure_ascii=False, indent=2))
+            return None
+        print("LISTA CURTA — as cópias FORA dos decks que precisam de VERSO")
+        print(f"  {lc['nota']}\n")
+        print(f"  {len(lc['fotos'])} fotos · {lc['cartas']} cartas · "
+              f"{lc['valor']:.2f} EUR"
+              + ("" if lc["inclui_venda"] else
+                 "   (a venda está fora de vista: as dela entram quando a ligares)"))
+        for f in lc["fotos"]:
+            itens = ", ".join(f"{i['q']}x {i['nm']} ({i.get('set', '')})"
+                              for i in f["itens"])
+            print(f"   foto {f['n']:03d}  {itens}")
+        porques: dict[str, int] = {}
+        for l in lc["linhas"]:
+            for p in l["porque"]:
+                porques[p] = porques.get(p, 0) + l["q"]
+        print()
+        for p, n in sorted(porques.items(), key=lambda kv: -kv[1]):
+            print(f"  {n:>4} cartas — {p}")
+        return None
+
+    if accao == "impacto":
+        imp = est.impacto(con, args.descer)
+        if args.json:
+            print(_json.dumps(imp, ensure_ascii=False, indent=2))
+            return None
+        print(f"QUANTO ESTÁ EM JOGO — a RL, as duais, as shock e as fetchlands a "
+              f"cair {imp['descer']} escalão")
+        print(f"  hoje   {imp['hoje']:>12.2f} EUR   (tudo NM, e o NM é por omissão)")
+        print(f"  depois {imp['depois']:>12.2f} EUR")
+        print(f"  perde  {imp['perde']:>12.2f} EUR   ({imp['pct']} %) em "
+              f"{imp['cartas']} cartas / {imp['linhas_afectadas']} linhas\n")
+        for l in imp["piores"]:
+            print(f"   {l['q']}x {l['nm'][:32]:<32} {l['set']:4} "
+                  f"{l['de']}->{l['para']}  -{l['perde']:>9.2f} EUR  ({l['porque']})")
+        print(f"\n  {imp['nota']}")
+        return None
+
+    if args.json:
+        import json as _j
+        print(_j.dumps(est.progresso(con), ensure_ascii=False, indent=2,
+                       default=str))
+        return None
+    print(est.texto(con))
+    lc = est.lista_curta(con)
+    print(f"\n  LISTA CURTA dos versos que faltam fora dos decks: "
+          f"{len(lc['fotos'])} fotos / {lc['cartas']} cartas "
+          f"({lc['valor']:.2f} EUR) — `estado lista`")
+    return None
 
 
 def _padrao_reserva(con, args):

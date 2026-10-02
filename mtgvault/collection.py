@@ -7,7 +7,7 @@ import shutil
 import sqlite3
 from pathlib import Path
 
-from . import precos, scryfall
+from . import estado, precos, scryfall
 
 ROOT = Path(__file__).resolve().parents[1]
 PENDENTES = ROOT / "pendentes"
@@ -112,6 +112,7 @@ def add_copy(
     adivinhar: bool = False,
     ate: str | None = None,
     finishes=None,
+    condition_origem: str | None = None,
 ) -> int:
     """Adiciona exemplares. Devolve o id da linha criada.
 
@@ -152,15 +153,22 @@ def add_copy(
     # nasce validada — a foto é desta campanha. Sem foto (CSV à mão, o «já a
     # tenho» antigo) fica por revalidar, como tudo o que já existia.
     from . import revalidacao                              # noqa: PLC0415
+    # O ESTADO (2026-10-03): uma cópia nova nasce com a ORIGEM do juízo escrita.
+    # Por omissão é `omissao` — *"por omissão, nunca verificado"* —, que é a
+    # verdade sobre o `NM` que esta função sempre escreveu. Quem tem um juízo a
+    # sério (o `estado.da_foto` pelo verso, o `estado.corrigir` dele) grava-o
+    # depois, pela porta própria, com os motivos e com linha no `condition_log`.
+    org = estado.normalizar_origem(condition_origem)
     cur = con.execute(
         """INSERT INTO copies (scryfall_id, quantity, finish, language, condition,
                                purpose, sub_collection_id, photo_path,
                                acquired_at, acquired_price, notes, balde_origem,
-                               validado_em)
-           VALUES (?,?,?,?,?,?,?,?,date('now'),?,?,?,?)""",
+                               validado_em, condition_origem, condition_em)
+           VALUES (?,?,?,?,?,?,?,?,date('now'),?,?,?,?,?,?)""",
         (card["scryfall_id"], quantity, finish, language, condition, purpose,
          sub_id, photo_path, acquired_price, notes, balde_origem,
-         revalidacao.marca_validada(photo_path)),
+         revalidacao.marca_validada(photo_path), org,
+         dt.date.today().isoformat() if org != estado.ORIGEM_OMISSAO else None),
     )
     con.commit()
     return cur.lastrowid
@@ -171,6 +179,22 @@ def add_copy(
 CSV_FIELDS = [
     "name", "set_code", "collector_number", "quantity", "finish", "language",
     "condition", "purpose", "sub_collection", "photo_path", "acquired_price", "notes",
+    # O ESTADO E O VERSO (2026-10-03). `condition` já existia e era escrito à mão
+    # (ou ficava `NM`); agora tem companhia:
+    #   `condition_notes`  os MOTIVOS escritos do escalão («branco visível no
+    #                      canto inferior esquerdo») — um escalão sem motivo não
+    #                      se confere nem se corrige, e é ele que faz do par
+    #                      (foto, escalão) um exemplo que ensina;
+    #   `verso_path`       a foto do VERSO. Normalmente não é preciso escrevê-la:
+    #                      o import deduz o nome (`fotosite.nome_do_verso`) e
+    #                      procura-a no disco. Fica para o caso de o leitor
+    #                      querer dizê-la à letra;
+    #   `verso_ok`         «sim» quando o leitor CONFIRMA que o ficheiro `-v` é
+    #                      mesmo um verso. Sem esta confirmação **não se grava
+    #                      escalão nenhum**: o `-v` do nome é a hipótese do
+    #                      emparelhamento e esta coluna é a conferência. Ver
+    #                      `estado.da_foto`.
+    "condition_notes", "verso_path", "verso_ok",
 ]
 
 
@@ -285,7 +309,14 @@ def acertar_edicao(con: sqlite3.Connection, name: str, set_code: str, *,
 _HERDA = ("scryfall_id", "finish", "language", "condition", "purpose",
           "sub_collection_id", "photo_path", "acquired_at", "acquired_price",
           "notes", "reserved_deck_id", "balde_origem", "validado_em",
-          "foto_anterior")
+          "foto_anterior",
+          # O ESTADO (2026-10-03): um lote que se parte leva o juízo consigo,
+          # com a origem, a data, os motivos e o verso. Sem isto, partir um lote
+          # de 4 em 3 + 1 fazia a parte nova nascer `NM`/`omissao` — ou seja, uma
+          # cópia que ele acabou de avaliar como EX voltava a valer o preço de
+          # Near Mint por causa de uma importação. O histórico (`condition_log`)
+          # continua a apontar para a linha ANTIGA, que é onde o juízo aconteceu.
+          "condition_origem", "condition_em", "condition_motivos", "verso_path")
 
 
 def _partir_copia(con: sqlite3.Connection, p, leva: int, *,
@@ -674,10 +705,18 @@ def _import_csv(con: sqlite3.Connection, path, *, adivinhar, acertar,
                     # marcada: é a lista do que apareceu nas fotos SEM cópia
                     # na base — a resposta a "o que escapou?".
                     notas_nova = revalidacao.nota_nova(notas_linha)
+                    # O ESTADO DE UMA LINHA QUE VEIO DE UMA FOTO É `NM` AQUI, e
+                    # não o que o CSV diz (2026-10-03): o escalão de uma foto só
+                    # se grava pelo VERSO (`estado.da_foto`, a correr no fim),
+                    # porque *"sem verso, o estado fica por verificar e não se
+                    # inventa"*. Num CSV à MÃO (sem foto) a coluna continua a
+                    # valer — aí quem a escreveu foi ele.
+                    cond_nova = ("NM" if foto else
+                                 (row.get("condition") or "NM"))
                     ids.append(add_copy(
                         con, nm, set_code=set_code, collector_number=num,
                         quantity=qtd, finish=finish, language=lang,
-                        condition=row.get("condition") or "NM",
+                        condition=cond_nova,
                         purpose=row.get("purpose") or "player",
                         sub_collection=row.get("sub_collection") or None,
                         photo_path=foto, acquired_price=preco,
@@ -711,6 +750,14 @@ def _import_csv(con: sqlite3.Connection, path, *, adivinhar, acertar,
                                 + (" (saiu de "
                                    + ", ".join(s["nome"] for s in mv["saiu"])
                                    + ")" if mv["saiu"] else ""))
+                # O ESTADO, PELO VERSO (André, 2026-10-03). Corre no fim, como o
+                # `alocar_por_foto`, e pela mesma razão: só aqui se sabe que
+                # cópias a linha tocou. O verso procura-se no disco pelo NOME
+                # (o radical da frente com `-v`) — não é o leitor que tem de
+                # dizer onde está, é o emparelhamento que o diz.
+                est = _estado_da_linha(con, row, foto, ids)
+                if est.get("nota"):
+                    motivos.append(est["nota"])
                 res["copy_id"] = (ids[0] if len(ids) == 1
                                   else ",".join(str(x) for x in ids))
                 res["resultado"] = "importada"
@@ -723,6 +770,48 @@ def _import_csv(con: sqlite3.Connection, path, *, adivinhar, acertar,
             if resultados is not None:
                 resultados.append(res)
     return ok, errors
+
+
+def _estado_da_linha(con: sqlite3.Connection, row: dict, foto: str | None,
+                     ids: list) -> dict:
+    """O ESTADO desta linha, pelo VERSO da foto. `{grade, nota, verso}`.
+
+    O verso **não vem do CSV**: deduz-se do nome da frente
+    (`fotosite.nome_do_verso`) e procura-se no disco com o `fotos.resolver`, que
+    já olha para `pendentes/`, para «fotos processadas» e para `data/fotos/`. É o
+    que torna verdade a ordem dele — *"o emparelhamento faz-se por isso, não por
+    ele escrever nada"*. O `verso_path` do CSV continua a valer se o leitor o
+    escrever à letra (ganha ao deduzido), mas não é preciso.
+
+    E HÁ UM CASO QUE SE TRATA AO CONTRÁRIO DO NOME: uma linha cuja FOTO é um
+    `-v` e que traz cartas. Aí o emparelhamento falhou (ele largou um número
+    ímpar, ou saltou um verso) e **as cartas ganham ao nome**: a foto é uma
+    frente, as cartas entram como entraram, e não se grava escalão nenhum. Perder
+    as cartas por causa de um sufixo era o pior resultado possível.
+    """
+    from . import estado as est_mod, fotos as fm, fotosite     # noqa: PLC0415
+    grade = (row.get("condition") or "").strip() or None
+    motivos = (row.get("condition_notes") or "").strip()
+    if foto and fotosite.e_verso(foto):
+        # O nome diz verso e o leitor leu cartas: o nome está errado.
+        return {"grade": None, "verso": None,
+                "nota": "a foto tem o sufixo «-v» mas o leitor viu cartas nela: "
+                        "o emparelhamento frente/verso não bateu neste lote — "
+                        "nenhum escalão foi gravado"}
+    verso = (row.get("verso_path") or "").strip() or None
+    if not verso and foto:
+        n = fotosite.nome_do_verso(foto)
+        if n and fm.resolver(n):
+            verso = n
+    r = est_mod.da_foto(con, ids, grade=grade, motivos=motivos, foto=foto,
+                        verso=verso, verso_ok=row.get("verso_ok"))
+    nota = ""
+    if r["aplicado"]:
+        nota = f"estado {r['grade']} pelo verso"
+    elif grade and r["porque"]:
+        nota = f"estado NÃO gravado ({r['grade']} proposto): {r['porque']}"
+    return {"grade": r["grade"] if r["aplicado"] else None,
+            "verso": r["verso"], "nota": nota}
 
 
 def _cartas_por_foto(path: str | Path) -> dict[str, int]:
@@ -843,6 +932,12 @@ def arrumar_fotos(con: sqlite3.Connection, resultados: list[dict], *,
             movidas.append(novo_rel)
         elif not (destino / nome).exists():
             continue                       # foto que nunca chegou ao disco
+        # O VERSO VAI COM A FRENTE (2026-10-03). Ele nunca aparece como
+        # `photo_path` de linha nenhuma do CSV — a informação dele viaja nas
+        # linhas da frente —, por isso sem isto ficava em `pendentes/` para
+        # sempre, a fazer o «⚠ fotos por resolver» crescer todas as noites com
+        # ficheiros que já tinham dado o que tinham para dar.
+        verso_rel = _arrumar_verso(nome, pend, destino, destino_rel, movidas)
         for r in linhas:
             # Uma linha pode ter tocado em MAIS do que uma cópia (2026-09-19:
             # metade fechou uma encomenda, metade entrou de novo) — vêm
@@ -854,6 +949,13 @@ def arrumar_fotos(con: sqlite3.Connection, resultados: list[dict], *,
                                   (cid,)).fetchone()
                 con.execute("UPDATE copies SET photo_path = ? WHERE id = ?",
                             (novo_rel, cid))
+                if verso_rel:
+                    # Só se a cópia TEM verso: o `estado.da_foto` só o escreve
+                    # quando o leitor confirmou o par, e reescrevê-lo aqui para
+                    # todas dava um verso a cópias cujo emparelhamento não bateu.
+                    con.execute(
+                        "UPDATE copies SET verso_path = ? "
+                        "WHERE id = ? AND verso_path IS NOT NULL", (verso_rel, cid))
                 ligacoes.append(dict(r, copy_id=cid, foto=novo_rel,
                                      foto_anterior=(ant[0] if ant else "") or ""))
             if not _ids(r.get("copy_id")):
@@ -879,6 +981,41 @@ def arrumar_fotos(con: sqlite3.Connection, resultados: list[dict], *,
     return {"movidas": len(movidas), "destino": " · ".join(sorted(destinos)),
             "destinos": sorted(destinos),
             "ligadas": len(ligacoes), "ficaram": sorted(ficaram)}
+
+
+def _arrumar_verso(nome: str, pend: Path, destino: Path, destino_rel: str,
+                   movidas: list) -> str | None:
+    """Move a foto do VERSO desta frente para o mesmo sítio. Devolve o caminho
+    relativo novo, ou `None` se não houver verso.
+
+    Vai para a MESMA pasta que a frente de propósito: a pasta é por deck, e o par
+    separado em duas pastas era perder a única coisa que os liga quando um dia
+    alguém olhar para o disco. O nome já diz qual é qual (o `-v`).
+    """
+    from . import fotosite                                   # noqa: PLC0415
+    n = fotosite.nome_do_verso(nome)
+    if not n:
+        return None
+    # A extensão pode não ser a mesma (o telemóvel pode dar HEIC numa e JPEG na
+    # outra): procura-se pelo radical.
+    radical = Path(n).stem
+    alvo_rel = None
+    for cand in sorted(pend.glob(radical + ".*")):
+        if cand.suffix.lower() not in IMG_EXT:
+            continue
+        destino.mkdir(parents=True, exist_ok=True)
+        if (destino / cand.name).exists():
+            alvo_rel = f"{destino_rel}/{cand.name}"
+            continue
+        shutil.move(str(cand), str(destino / cand.name))
+        movidas.append(f"{destino_rel}/{cand.name}")
+        alvo_rel = f"{destino_rel}/{cand.name}"
+    if alvo_rel:
+        return alvo_rel
+    for cand in sorted(destino.glob(radical + ".*")):
+        if cand.suffix.lower() in IMG_EXT:
+            return f"{destino_rel}/{cand.name}"
+    return None
 
 
 def _pasta_dados() -> Path:
@@ -1273,6 +1410,8 @@ def valor_da_coleccao(con: sqlite3.Connection, source: str | None = None) -> dic
     for r in con.execute(f"""
             SELECT cp.id, cp.scryfall_id sid, cp.finish fin, cp.quantity q,
                    cp.purpose, cp.acquired_price, COALESCE(s.name, '') bal,
+                   COALESCE(cp.condition, 'NM') cond,
+                   cp.condition_origem cond_origem, cp.verso_path verso,
                    COALESCE((SELECT SUM(a.quantity) FROM copy_allocation a
                               WHERE a.copy_id = cp.id), 0) na_caixa
               FROM copies cp
@@ -1283,6 +1422,20 @@ def valor_da_coleccao(con: sqlite3.Connection, source: str | None = None) -> dic
         pr = {c: preco_impressao(mapa, r["sid"], r["fin"], c) for c in CENARIOS}
         det = preco_impressao_detalhe(mapa, r["sid"], r["fin"], cenario)
         unit, pfin = det["preco"], det["price_finish"]
+        # O ESTADO ENTRA NA CONTA ÚNICA (2026-10-03). O valor da colecção é o
+        # sítio onde as 737 linhas a dizer `NM` custavam mais caro: 136 492 €
+        # somados como se trinta anos de cartão estivessem impecáveis. O factor
+        # sai das OFERTAS da fonte, por estado (`mtgvault.estado`), e **o Near
+        # Mint vale 1,000** — por isso hoje, com tudo em `NM`, isto não mexe um
+        # cêntimo. Aplica-se aos TRÊS cenários: um deles é o que ele vê e os
+        # outros dois são o interruptor market/best/média, e descontar só um dava
+        # dois valores para a mesma cópia conforme o modo.
+        est_org = estado.origem_de({"condition_origem": r["cond_origem"]})
+        a_cen = {c: estado.aplicar(pr[c][0], r["cond"], origem=est_org)
+                 for c in CENARIOS}
+        pr = {c: (a_cen[c]["unit"], pr[c][1]) for c in CENARIOS}
+        est = a_cen[cenario]
+        unit = est["unit"]
         por_fonte[det["fonte"] or "sem preço"] = (
             por_fonte.get(det["fonte"] or "sem preço", 0) + r["q"])
         if r["purpose"] == "collector":
@@ -1312,6 +1465,13 @@ def valor_da_coleccao(con: sqlite3.Connection, source: str | None = None) -> dic
             "q": r["q"], "purpose": r["purpose"], "balde": r["bal"],
             "parte": base, "na_caixa": dentro,
             "acquired_price": r["acquired_price"],
+            # O estado, a origem do juízo e o preço ANTES do desconto. Os três
+            # juntos, porque um número que encolheu sem dizer porquê é pior do
+            # que o número de antes.
+            "cond": estado.normalizar(r["cond"]) or estado.OMISSAO,
+            "cond_origem": est_org, "cond_medido": est["medido"],
+            "cond_factor": est["factor"], "cond_verso": bool(r["verso"]),
+            "unit_nm": est["unit_nm"],
             "unit": unit, "price_finish": pfin, "preco_fonte": det["fonte"],
             # Uma estimativa que veio do outro acabamento tem de se poder marcar
             # como estimativa — é para isso que o `price_finish` viaja.

@@ -90,7 +90,27 @@ EXTS = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"}
 
 _NOME = re.compile(
     rf"^{PREFIXO}-(?P<origem>.+?)-(?P<data>\d{{8}}-\d{{6}})-(?P<n>\d+)"
-    r"(?:-c(?P<copy>\d+))?\.(?P<ext>jpe?g|png|webp|heic|heif)$", re.IGNORECASE)
+    r"(?:-c(?P<copy>\d+))?(?P<v>-v)?\.(?P<ext>jpe?g|png|webp|heic|heif)$",
+    re.IGNORECASE)
+# A MARCA DO VERSO, e porque é que ela está no NOME e não num ficheiro ao lado.
+#
+# A ordem dele: *"põe as até 4 cartas, fotografa, VIRA-AS NO SÍTIO sem mexer na
+# disposição, fotografa outra vez. Mesma ordem, mesmas posições. O emparelhamento
+# frente/verso faz-se por isso, não por ele escrever nada."*
+#
+# Logo o par tem de ser DEDUZÍVEL e **conferível**, e o sítio mais barato para o
+# pôr é o nome: a foto do verso é a frente com `-v` antes da extensão, e o par é
+# **o mesmo radical**. Não é uma convenção de ordem alfabética nem um índice
+# guardado em lado nenhum — é a mesma string. Daí:
+#   * quem recebe as duas de uma vez (o botão da página) nomeia-as por
+#     construção, sem adivinhar nada;
+#   * quem recebe uma pasta cheia (a recolha) empareilha pela ORDEM DE CAPTURA,
+#     que é exactamente o gesto físico, e escreve a hipótese no nome;
+#   * **o leitor confere**: todos os versos de Magic são iguais, por isso «isto é
+#     um verso» é a pergunta mais fácil que se lhe pode fazer. Se a leitura
+#     discordar do nome, o par **não** se usa e diz-se — nunca se grava um
+#     escalão em cima de um emparelhamento que não bateu.
+SUFIXO_VERSO = "-v"
 _ORDEM = re.compile(rf"^{re.escape(PREFIXO_ORDEM)}(\d{{8}}-\d{{6}})(?:-\d+)?\.json$")
 
 
@@ -118,8 +138,14 @@ def pasta_inbox(raiz_aipc: Path | None = None) -> Path:
 # O nome diz a origem
 # ---------------------------------------------------------------------------
 def nome_ficheiro(tipo: str, slot: str | None, quando: _dt.datetime, n: int,
-                  ext: str, copy_id: int | None = None) -> str:
-    """`site-<slot|venda|rl|colecao>-<AAAAMMDD-HHMMSS>-<n>[-c<copy_id>].<ext>`."""
+                  ext: str, copy_id: int | None = None,
+                  verso: bool = False) -> str:
+    """`site-<slot|venda|rl|colecao>-<AAAAMMDD-HHMMSS>-<n>[-c<copy_id>][-v].<ext>`.
+
+    O `-v` vai **no fim**, depois do `-c<id>`, para o radical da frente ser um
+    prefixo exacto do radical do verso: assim `par_da_frente` é tirar quatro
+    caracteres e não fazer parse.
+    """
     if tipo not in TIPOS:
         raise FotoInvalida(f"alvo {tipo!r} desconhecido ({'/'.join(TIPOS)})")
     if tipo == "caixa":
@@ -131,12 +157,13 @@ def nome_ficheiro(tipo: str, slot: str | None, quando: _dt.datetime, n: int,
     else:
         origem = _NOME_TIPO[tipo]
     return (f"{PREFIXO}-{origem}-{quando:%Y%m%d-%H%M%S}-{n}"
-            + (f"-c{int(copy_id)}" if copy_id else "") + f".{ext}")
+            + (f"-c{int(copy_id)}" if copy_id else "")
+            + (SUFIXO_VERSO if verso else "") + f".{ext}")
 
 
 def origem(nome: str) -> dict | None:
-    """O inverso: `{tipo, slot, quando, n, copy_id}` — ou `None` para uma foto
-    que não veio do site (largada à mão em `pendentes/`)."""
+    """O inverso: `{tipo, slot, quando, n, copy_id, verso}` — ou `None` para uma
+    foto que não veio do site (largada à mão em `pendentes/`)."""
     m = _NOME.match(Path(str(nome or "")).name)
     if not m:
         return None
@@ -148,7 +175,34 @@ def origem(nome: str) -> dict | None:
         return None
     return {"tipo": tipo, "slot": o if tipo == "caixa" else None,
             "quando": quando.isoformat(sep=" "), "n": int(m.group("n")),
-            "copy_id": int(m.group("copy")) if m.group("copy") else None}
+            "copy_id": int(m.group("copy")) if m.group("copy") else None,
+            "verso": bool(m.group("v"))}
+
+
+def e_verso(nome: str) -> bool:
+    """Este ficheiro é, pelo NOME, a foto do verso de outro?"""
+    o = origem(nome)
+    return bool(o and o["verso"])
+
+
+def par_da_frente(nome: str) -> str | None:
+    """O nome da FRENTE de que este ficheiro é o verso — ou `None` se não for um
+    verso. É o mesmo nome sem o `-v`, e mais nada: o par é o radical.
+    """
+    p = Path(str(nome or ""))
+    if not e_verso(p.name):
+        return None
+    return p.with_name(p.stem[:-len(SUFIXO_VERSO)] + p.suffix).name
+
+
+def nome_do_verso(nome: str) -> str | None:
+    """O nome que o verso DESTA frente tem de ter. `None` se já for um verso."""
+    p = Path(str(nome or ""))
+    if not p.name or e_verso(p.name):
+        return None
+    if origem(p.name) is None:
+        return None            # uma foto largada à mão não tem par deduzível
+    return p.with_name(p.stem + SUFIXO_VERSO + p.suffix).name
 
 
 # ---------------------------------------------------------------------------
@@ -189,16 +243,30 @@ def _escrever(destino: Path, dados: bytes) -> None:
 
 
 def guardar(pasta: Path, tipo: str, ficheiros: list[dict], *, slot: str | None = None,
-            copy_id: int | None = None, quando: _dt.datetime | None = None) -> list[dict]:
+            copy_id: int | None = None, quando: _dt.datetime | None = None,
+            pares: bool = False) -> list[dict]:
     """Grava cada foto de `ficheiros` (`[{nome, dados}]`) em `pasta` com o nome
     de `nome_ficheiro`. Valida TUDO antes de escrever o primeiro: um pedido
     com um ficheiro que não é imagem recusa-se inteiro (409 na página), sem
-    metade das fotos já na pasta. Devolve `[{nome, bytes, ext, original}]`."""
+    metade das fotos já na pasta. Devolve `[{nome, bytes, ext, original, verso}]`.
+
+    `pares=True` é o botão **frente e verso**: os ficheiros vêm aos pares, pela
+    ordem de captura — `[frente, verso, frente, verso, …]` —, e o segundo de cada
+    par leva o `-v` com o MESMO `n` do primeiro. É o caminho exacto: o par
+    nasce feito, sem ninguém o deduzir depois. Um número ÍMPAR de ficheiros é
+    recusado — metade de um par não é prova de nada, e adivinhar qual faltava
+    era inventar o emparelhamento que isto existe para não ter de inventar.
+    """
     if not ficheiros:
         raise FotoInvalida("o pedido não trouxe nenhuma foto")
     if len(ficheiros) > MAX_FICHEIROS:
         raise FotoInvalida(f"{len(ficheiros)} fotos num pedido — o máximo é {MAX_FICHEIROS}; "
                            f"manda em duas vezes")
+    if pares and len(ficheiros) % 2:
+        raise FotoInvalida(
+            f"{len(ficheiros)} fotos em modo frente-e-verso — tem de ser um "
+            f"número par (cada frente leva o seu verso, na mesma ordem). "
+            f"Volta a tirar as duas do par que ficou a meio.")
     validas = []
     for f in ficheiros:
         dados = f.get("dados") or b""
@@ -218,15 +286,21 @@ def guardar(pasta: Path, tipo: str, ficheiros: list[dict], *, slot: str | None =
     nome_ficheiro(tipo, slot, quando, 1, "jpg", copy_id)        # valida tipo/slot antes de escrever
     existentes = {p.stem for p in pasta.glob(f"{PREFIXO}-*")} if pasta.is_dir() else set()
     out, n = [], 0
-    for nome, dados, ext in validas:
-        while True:
-            n += 1
-            novo = nome_ficheiro(tipo, slot, quando, n, ext, copy_id)
-            if Path(novo).stem not in existentes:
-                break
+    for i, (nome, dados, ext) in enumerate(validas):
+        # Em modo par, o VERSO (índice ímpar) herda o `n` da frente — é isso que
+        # faz dos dois o mesmo radical.
+        verso = bool(pares and i % 2)
+        if not verso:
+            while True:
+                n += 1
+                if Path(nome_ficheiro(tipo, slot, quando, n, ext,
+                                      copy_id)).stem not in existentes:
+                    break
+        novo = nome_ficheiro(tipo, slot, quando, n, ext, copy_id, verso=verso)
         _escrever(pasta / novo, dados)
         existentes.add(Path(novo).stem)
-        out.append({"nome": novo, "bytes": len(dados), "ext": ext, "original": nome})
+        out.append({"nome": novo, "bytes": len(dados), "ext": ext,
+                    "original": nome, "verso": verso})
     return out
 
 
@@ -408,6 +482,14 @@ def seccao_esperadas(con, pasta: Path) -> list[str]:
         else:
             onde = revalidacao.TITULO.get(o["tipo"], o["tipo"])
         linha = f"- `{e['nome']}` — {onde}"
+        if o.get("verso"):
+            # O VERSO (2026-10-03): não leva linhas próprias no CSV — não tem
+            # cartas para identificar. O que se lhe pede é a CONFERÊNCIA
+            # (`verso_ok`) e o escalão, escritos nas linhas da FRENTE.
+            frente = par_da_frente(e["nome"])
+            linha += (f" · **VERSO** de `{frente}` — não lhe escrevas linhas; "
+                      f"confirma-o com `verso_ok = sim` nas linhas dessa frente "
+                      f"e escreve lá o `condition` + `condition_notes`")
         if o["copy_id"]:
             r = con.execute(
                 """SELECT c.name, c.set_code, c.collector_number, cp.finish, cp.language, cp.quantity

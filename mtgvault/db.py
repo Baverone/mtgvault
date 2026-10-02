@@ -125,6 +125,33 @@ def _migrate(con: sqlite3.Connection) -> None:
     con.execute("CREATE INDEX IF NOT EXISTS ix_copies_validado "
                 "ON copies(validado_em)")
     con.commit()
+    # O ESTADO DAS CARTAS (André, 2026-10-03). A coluna `condition` já existia e
+    # dizia `NM` nas 737 linhas — o valor por omissão do `add_copy`, nunca
+    # verificado. Estas quatro dizem o que faltava: de onde veio o juízo, quando,
+    # com que motivos, e a foto do VERSO. **O `NM` não se muda nem se apaga**
+    # (regra dele de 09/09): o que se escreve é a ORIGEM `omissao`, que é o que o
+    # faz deixar de poder passar por medido (`estado.medido`). O índice nasce
+    # AQUI, depois do ALTER — a armadilha de 2026-09-09.
+    if "condition_origem" not in cols:
+        con.execute("ALTER TABLE copies ADD COLUMN condition_origem TEXT")
+        con.execute("ALTER TABLE copies ADD COLUMN condition_em TEXT")
+        con.execute("ALTER TABLE copies ADD COLUMN condition_motivos TEXT")
+        con.execute("ALTER TABLE copies ADD COLUMN verso_path TEXT")
+        con.commit()
+    con.execute("CREATE INDEX IF NOT EXISTS ix_copies_cond_origem "
+                "ON copies(condition_origem)")
+    con.commit()
+    # O `omissao` escreve-se aqui, mas **só quando há mesmo linhas a marcar**: um
+    # `UPDATE` incondicional a cada `init` era uma escrita por pedido do
+    # `webapp.py`, e uma escrita muda o `_versao()` e atira a cache fora — foi
+    # exactamente o que o `-wal` vazio fez a 2026-10-01. O `SELECT` entra pelo
+    # índice que acabou de nascer.
+    if con.execute("SELECT 1 FROM copies WHERE condition_origem IS NULL "
+                   "OR TRIM(condition_origem) = '' LIMIT 1").fetchone():
+        con.execute("UPDATE copies SET condition_origem = 'omissao' "
+                    "WHERE condition_origem IS NULL "
+                    "OR TRIM(condition_origem) = ''")
+        con.commit()
 
     # O MODO DE PREÇO (2026-09-25): a `receita` diz como é que o `low` e o
     # `trend` desta linha foram produzidos. As linhas que já lá estão ficam a

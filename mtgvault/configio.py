@@ -28,23 +28,37 @@ UMA_LINHA = ("caixas", "loadout", "regras_por_formato", "baldes_coleccao",
 # ninguém lê nem confere. Só aqui: as outras chaves ficam como estão escritas,
 # senão cada gravação reformatava o ficheiro inteiro.
 CARTAS_UMA_LINHA = ("listas_escolhidas",)
+# As chaves cujos DICIONÁRIOS de escalares vão também numa linha cada
+# (2026-10-03). O bloco `precos` ganhou o `estado`, que é uma tabela — sete
+# escalões × cinco bandas, mais a amostra: com `indent=2` são 25 linhas de um
+# número por linha, e uma tabela que não se vê como tabela não se confere. É o
+# mesmo princípio do `CARTAS_UMA_LINHA`, um nível acima; e sem isto o primeiro
+# `precos modo` reescrevia o bloco inteiro — a lição do commit `ac1f776`.
+BLOCO_COMPACTO = ("precos",)
 
 
-def _compacto(v, nivel: int = 0) -> str:
-    """`json.dumps(indent=2)` com as listas de escalares numa linha só."""
+def _compacto(v, nivel: int = 0, dicts: bool = False) -> str:
+    """`json.dumps(indent=2)` com as listas de escalares numa linha só.
+
+    Com `dicts=True`, um dicionário cujos valores são TODOS escalares vai também
+    numa linha — é o que faz a tabela dos factores por estado ler-se como uma
+    tabela (`"EX": [0.983, 0.828, …]`) em vez de 35 linhas.
+    """
     pad, pad1 = "  " * nivel, "  " * (nivel + 1)
     if isinstance(v, dict):
         if not v:
             return "{}"
-        itens = [f"{pad1}{json.dumps(k, ensure_ascii=False)}: {_compacto(x, nivel + 1)}"
-                 for k, x in v.items()]
+        if dicts and all(not isinstance(x, (dict, list)) for x in v.values()):
+            return json.dumps(v, ensure_ascii=False)
+        itens = [f"{pad1}{json.dumps(k, ensure_ascii=False)}: "
+                 f"{_compacto(x, nivel + 1, dicts)}" for k, x in v.items()]
         return "{\n" + ",\n".join(itens) + f"\n{pad}}}"
     if isinstance(v, list):
         if not v:
             return "[]"
         if all(not isinstance(x, (dict, list)) for x in v):
             return json.dumps(v, ensure_ascii=False)
-        itens = [f"{pad1}{_compacto(x, nivel + 1)}" for x in v]
+        itens = [f"{pad1}{_compacto(x, nivel + 1, dicts)}" for x in v]
         return "[\n" + ",\n".join(itens) + f"\n{pad}]"
     return json.dumps(v, ensure_ascii=False)
 
@@ -86,6 +100,8 @@ def escrever(cfg: dict, path: Path | str | None = None) -> None:
             corpo = f"[\n{itens}\n  ]" if v else "[]"
         elif k in CARTAS_UMA_LINHA:
             corpo = _compacto(v).replace("\n", "\n  ")
+        elif k in BLOCO_COMPACTO:
+            corpo = _compacto(v, dicts=True).replace("\n", "\n  ")
         else:
             corpo = json.dumps(v, ensure_ascii=False, indent=2)
             corpo = corpo.replace("\n", "\n  ")

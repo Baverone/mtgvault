@@ -93,7 +93,7 @@ cópia sem foto → entrada normal).
 Cabeçalho (esta ordem de colunas):
 
 ```
-name,set_code,collector_number,quantity,finish,language,condition,purpose,sub_collection,photo_path,acquired_price,notes
+name,set_code,collector_number,quantity,finish,language,condition,purpose,sub_collection,photo_path,acquired_price,notes,condition_notes,verso_path,verso_ok
 ```
 
 - **name** — nome REAL da carta impressa. Se for um *reskin* (ex.: cartas de
@@ -113,7 +113,20 @@ name,set_code,collector_number,quantity,finish,language,condition,purpose,sub_co
 - **quantity** — quantas cópias iguais (mesma edição/finish/língua) nessa foto.
 - **finish** — `nonfoil` (por omissão) ou `foil`.
 - **language** — `en` (por omissão) ou `pt` (se a carta estiver em português).
-- **condition** — `NM` por omissão.
+- **condition** — o ESTADO, na escala do **Cardmarket**: `MT` `NM` `EX` `GD`
+  `LP` `PL` `PO`. **Só o preenches se tiveres visto o VERSO** (ver a secção «O
+  estado e os versos», abaixo). Sem verso deixa-o VAZIO: o estado fica «por
+  verificar» e não se inventa. Um `condition` escrito sem verso confirmado **não
+  é aplicado** — fica registado como proposta recusada, com o motivo.
+- **condition_notes** — os MOTIVOS do escalão, com a **ZONA**: «branco no canto
+  inferior esquerdo e na borda de cima», «dois riscos junto à arte», «sem
+  vincos». Um escalão sem motivos não se confere nem se corrige, e é esta linha
+  que ensina quando o André o corrige.
+- **verso_ok** — `sim` quando **viste o verso** na foto `…-v.<ext>` desta frente.
+  É a CONFERÊNCIA do emparelhamento: o `-v` do nome é só a hipótese. Sem este
+  `sim` não se grava escalão nenhum.
+- **verso_path** — opcional. O import deduz o nome do verso da frente (o mesmo
+  nome com `-v`) e procura-o no disco; só o escreves se quiseres dizê-lo à letra.
 - **purpose** — `player` (por omissão) ou `collector` (se for de coleção, não
   para jogar — essas nunca contam para decks).
 - **sub_collection** — a GAVETA onde a carta fica. Desde o modelo de colecção
@@ -150,5 +163,69 @@ name,set_code,collector_number,quantity,finish,language,condition,purpose,sub_co
   número de **cartas** (um `4× Mox Opal` são quatro), não sobre o número de
   linhas. **Não somes cartas a mais numa linha para «caber»**: escreve o que
   vês — se a foto tem seis cartas, a resposta certa é dizer que tem seis.
+
+## O estado e os versos (André, 2026-10-03)
+
+As palavras dele: *«verso as dos decks e as que são para guardar, para já»* e
+*«procuras como são avaliadas as cartas, depois com base nas minhas próprias
+fotos, vais melhorando o teu critério»*.
+
+**Lê primeiro `data/estado-criterio.md`.** Tem as definições dos sete escalões
+transcritas **da fonte** (<https://help.cardmarket.com/en/CardCondition>), as
+regras avulsas que decidem casos concretos (clouding, riscos, planura, bordas
+pintadas) e a secção **«Aprendido com o André»**, que cresce com as correcções
+dele. O `pendentes/esperadas.md` traz-te esse texto à frente, já com os **erros
+repetidos meus** e as **últimas correcções dele** — lê-os antes de julgar.
+
+### O verso não identifica a carta
+
+**Todos os versos de Magic são iguais.** O verso serve para ver o **desgaste** —
+branqueamento das bordas e dos cantos visto do outro lado, vincos, manchas,
+danos de água. É de lá que sai o escalão.
+
+### Como reconheces um verso
+
+Uma foto `…-v.<ext>` é **o verso da foto com o mesmo nome sem o `-v`**:
+
+```
+site-cedh-blue-farm-20261003-101500-3.jpg       <- a FRENTE
+site-cedh-blue-farm-20261003-101500-3-v.jpg     <- o VERSO dela
+```
+
+O par é **o mesmo radical** e mais nada. Quem lhe pôs o `-v` foi o botão «frente
+e verso» da página (que recebe as duas de uma vez) ou a recolha da pasta do deck
+(que emparelha pela ordem de captura, que é o gesto físico: põe, fotografa,
+vira no sítio, fotografa). **O nome é uma hipótese; tu és a conferência.**
+
+### O que escreves
+
+- **vês um verso na foto `-v`** → escreve `verso_ok = sim`, o `condition` e o
+  `condition_notes` **nas linhas da FRENTE**. A foto do verso não leva linhas
+  próprias: ela não tem cartas para identificar;
+- **vês CARTAS numa foto `-v`** → o emparelhamento não bateu (ele largou um
+  número ímpar, ou saltou um verso). Escreve as cartas normalmente, com o
+  `photo_path` dessa foto, e **deixa o `condition` vazio**. As cartas ganham
+  sempre ao nome do ficheiro: perder uma carta por causa de um sufixo era o pior
+  resultado possível;
+- **não há foto `-v`** (é o caso dos Extras, onde ele fotografa só a frente) →
+  `condition` vazio. O estado fica «por verificar», e o vault dá-lhe depois uma
+  **lista curta** das que precisam de verso (Reserved List, duais, shocklands,
+  fetchlands) para ele voltar lá uma vez;
+- **não consegues decidir** → di-lo no `condition_notes` («não consigo ver as
+  bordas: flash de frente») em vez de escolheres um escalão a adivinhar.
+
+### O que se consegue ver numa foto de telemóvel
+
+- **vê-se:** vincos, branqueamento de bordas e cantos, riscos visíveis, desgaste
+  de jogo, sujidade → dá para um escalão defensável entre **NM, EX, GD e LP**;
+- **não se vê:** a diferença entre **NM e Mint** (por isso o `MT` não se atribui
+  por foto), e riscos finos de superfície;
+- **a luz pesa mais do que a resolução:** o flash de frente *esconde* o desgaste
+  das bordas; luz difusa num ângulo ligeiro *mostra-o*. Se a foto estiver com
+  flash de frente, di-lo nos motivos.
+
+O escalão é **sempre uma estimativa com motivo escrito**, nunca uma classificação
+certificada. **E a correcção do André ganha sempre:** uma cópia que ele corrigiu à
+mão não volta a ser mudada por uma avaliação tua posterior.
 
 Contexto do projeto: ver `CLAUDE.md`. Regras da coleção/decks: idem.

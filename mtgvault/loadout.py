@@ -534,8 +534,23 @@ def impressao_mais_barata(con, name: str, finish: str = "nonfoil",
 
 
 def preco_da_copia(con, sid: str | None, finish: str, nome: str,
-                   cache: dict | None = None) -> dict:
+                   cache: dict | None = None, *, lot: dict | None = None) -> dict:
     """O PREÇO DE REFERÊNCIA de uma cópia: `{unit, price_finish, fonte, origem}`.
+
+    E, DESDE 2026-10-03, o ESTADO entra na conta (`lot`). Até aqui a cadeia de
+    preços não tinha dimensão de estado nenhuma — a `price_latest` tem
+    `low`/`trend`/`avg30` e mais nada — e as 737 linhas da `copies` diziam todas
+    `NM`: uma dual de Revised de 1994 valia o preço de uma impecável. O `lot` (o
+    sub-lote do `lots()`, que já traz o `cond` e agora a origem do juízo) traz o
+    escalão, e o factor sai das OFERTAS da fonte, por estado — ver
+    `mtgvault.estado`. Com o `lot` ausente não se desconta nada: é a mesma
+    resposta de antes, para quem pergunta por uma impressão e não por uma cópia.
+
+    **Near Mint vale 1,000**, por construção da medição: hoje, com a colecção
+    inteira em `NM`, isto não mexe um cêntimo. As chaves novas (`unit_nm`,
+    `estado`, `estado_factor`, `estado_origem`, `estado_aproximado`) vão ao lado
+    do `unit` para a página poder mostrar o desconto e a razão dele — um número
+    que encolheu sem dizer porquê é pior do que o número de antes.
 
     André, 2026-09-25, à letra: *"o que tinha pedido era alterar o preço
     REFERÊNCIA para Market Price ou Best Deal, ao invés de MÍNIMO"*.
@@ -566,17 +581,39 @@ def preco_da_copia(con, sid: str | None, finish: str, nome: str,
     if sid:
         d = _col.preco_impressao_detalhe(mapa, sid, finish)
         if d["preco"] is not None:
-            return {"unit": d["preco"], "price_finish": d["price_finish"],
-                    "fonte": d["fonte"], "origem": precos.ORIGEM_IMPRESSAO}
+            return _com_estado({
+                "unit": d["preco"], "price_finish": d["price_finish"],
+                "fonte": d["fonte"], "origem": precos.ORIGEM_IMPRESSAO}, lot)
     chave = ("min", nome, finish in FOIL_FINISHES)
     if chave not in cache:
         cache[chave] = card_price(con, nome, finish)
     unit, pfin = cache[chave]
     if unit is None:
-        return {"unit": None, "price_finish": None, "fonte": None,
-                "origem": precos.ORIGEM_SEM_PRECO}
-    return {"unit": unit, "price_finish": pfin, "fonte": None,
-            "origem": precos.ORIGEM_MIN_IMPRESSOES}
+        return _com_estado({"unit": None, "price_finish": None, "fonte": None,
+                            "origem": precos.ORIGEM_SEM_PRECO}, lot)
+    return _com_estado({"unit": unit, "price_finish": pfin, "fonte": None,
+                        "origem": precos.ORIGEM_MIN_IMPRESSOES}, lot)
+
+
+def _com_estado(d: dict, lot: dict | None) -> dict:
+    """Aplica o desconto por ESTADO ao preço de uma cópia, e di-lo.
+
+    Num sítio só, porque o `preco_da_copia` tem três saídas e a primeira que se
+    esquecesse do estado punha a mesma cópia a valer dois números conforme o
+    caminho — a lição do `precos.sql()`. Sem `lot` (quem pergunta por uma
+    impressão, não por uma cópia) nada muda.
+    """
+    from . import estado as _est                            # noqa: PLC0415
+    if lot is None:
+        return d
+    a = _est.aplicar(d["unit"], lot.get("cond"),
+                     origem=_est.origem_de({"condition_origem":
+                                            lot.get("cond_origem")}))
+    return {**d, "unit": a["unit"], "unit_nm": a["unit_nm"],
+            "estado": a["grade"], "estado_factor": a["factor"],
+            "estado_origem": a["origem_estado"], "estado_medido": a["medido"],
+            "estado_aproximado": a["aproximado"], "estado_nota": a["nota"],
+            "estado_desconto": a["desconto"]}
 
 
 def card_price_em(con, name: str, dia: str, finish: str = "nonfoil",
@@ -1637,6 +1674,13 @@ def lots(con, cfg_slots: list[dict] | None = None,
                   cp.reserved_deck_id rdid, s.name sub, cp.balde_origem borigem,
                   cp.notes notas, COALESCE(cp.condition, 'NM') cond,
                   cp.validado_em validado,
+                  -- O ESTADO (2026-10-03): o `cond` já vinha e agora vem com a
+                  -- ORIGEM do juízo e o verso, porque é com eles que o
+                  -- `preco_da_copia` desconta (ou não) por estado. Sem a origem
+                  -- aqui, a linha da venda não podia dizer se o `NM` era uma
+                  -- medição ou o valor de fábrica.
+                  cp.condition_origem cond_origem, cp.condition_em cond_em,
+                  cp.condition_motivos cond_motivos, cp.verso_path verso,
                   c.name nm, c.scryfall_id sid, c.set_code, c.set_name,
                   c.released_at rel, COALESCE(c.reserved, 0) rl, c.legalities leg
              FROM copies cp
@@ -3469,7 +3513,8 @@ def sell_list(con, res: dict) -> dict:
         # isso uma Underground Sea de Revised valia aqui a reimpressão mais
         # barata que exista. O mínimo só entra quando a impressão dela não está
         # cotada em fonte nenhuma, e nesse caso a linha di-lo (`preco_origem`).
-        p = preco_da_copia(con, lot["sid"], lot["finish"], nm, precos_cache)
+        p = preco_da_copia(con, lot["sid"], lot["finish"], nm, precos_cache,
+                           lot=lot)
         unit, pfin = p["unit"], p["price_finish"]
         return {"nm": nm, "sub": lot["sub"], "local": lot["local"], "q": take,
                 # Que exemplares são, para o botão "vendida" do modo edição os
@@ -3494,6 +3539,17 @@ def sell_list(con, res: dict) -> dict:
                 # sub-lotes com o mesmo `copies.id`, e perguntar pelo id dava a
                 # resposta de um à parte do outro.
                 "validado": lot.get("validado") or "",
+                # O ESTADO (2026-10-03), e **a origem do juízo ao lado do
+                # escalão**: a lista de stock do Cardmarket leva uma coluna
+                # `Condition`, e mandar `NM` sem dizer que é o valor de fábrica
+                # era vender uma dual de 1994 como impecável. O `unit` já vem
+                # descontado; o `unit_nm` é o preço antes do desconto.
+                "cond": lot.get("cond") or "NM",
+                "cond_origem": p.get("estado_origem"),
+                "cond_medido": p.get("estado_medido"),
+                "cond_factor": p.get("estado_factor"),
+                "cond_verso": bool(lot.get("verso")),
+                "unit_nm": p.get("unit_nm"),
                 # De onde veio o preço: a fonte da cadeia e se é a impressão
                 # dela ou o mínimo entre impressões. O `avaliar_rl` lê o
                 # `preco_fonte` para não comparar dois mercados.

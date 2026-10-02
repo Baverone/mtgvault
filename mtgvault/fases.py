@@ -545,7 +545,7 @@ def plano_duais(con, res: dict, cfg: dict | None = None,
         n_fora = sum(l["q"] for l in fora)
         # A ordem da quota: valor desc, edição, copy_id. Determinista.
         fora = sorted(fora, key=lambda l: (
-            -(loadout.preco_da_copia(con, l["sid"], l["finish"], nm, pc)["unit"] or 0),
+            -(loadout.preco_da_copia(con, l["sid"], l["finish"], nm, pc, lot=l)["unit"] or 0),
             (l["set_code"] or ""), l["id"]))
         resto = DUAIS_ALVO_FORA
         n_prot = n_vend = 0
@@ -560,7 +560,7 @@ def plano_duais(con, res: dict, cfg: dict | None = None,
             n_prot += fica
             sobra = l["q"] - fica
             if sobra:
-                u = loadout.preco_da_copia(con, l["sid"], l["finish"], nm, pc)["unit"]
+                u = loadout.preco_da_copia(con, l["sid"], l["finish"], nm, pc, lot=l)["unit"]
                 n_vend += sobra
                 val_vend += (u or 0) * sobra
                 vender.append({"nm": nm, "q": sobra, "copy_id": l["id"],
@@ -1419,7 +1419,7 @@ def candidatos(con, res: dict, cfg: dict | None = None,
         for lot in lotes:
             if lot["q"] <= 0:
                 continue
-            p = loadout.preco_da_copia(con, lot["sid"], lot["finish"], nm, pc)
+            p = loadout.preco_da_copia(con, lot["sid"], lot["finish"], nm, pc, lot=lot)
             linha = {
                 "nm": nm, "copy_id": lot["id"], "q": lot["q"],
                 "sid": lot["sid"], "set": (lot["set_code"] or "").upper(),
@@ -1657,7 +1657,7 @@ def de_conversao(res: dict, cfg: dict | None = None) -> dict[str, bool]:
 
 def _linha_de_lote(con, nm: str, lot: dict, pc: dict, perdidas: dict) -> dict:
     from . import loadout                                    # noqa: PLC0415
-    p = loadout.preco_da_copia(con, lot["sid"], lot["finish"], nm, pc)
+    p = loadout.preco_da_copia(con, lot["sid"], lot["finish"], nm, pc, lot=lot)
     return {"nm": nm, "copy_id": lot["id"], "q": lot["q"],
             "set": (lot["set_code"] or "").upper(),
             "lang": (lot["lang"] or "en"), "finish": lot["finish"],
@@ -1824,6 +1824,7 @@ def fotos_perdidas(con, res: dict, cfg: dict | None = None,
         for r in con.execute(
                 f"""SELECT cp.id, cp.quantity q, cp.photo_path, cp.language lang,
                            cp.finish, COALESCE(cp.condition,'NM') cond,
+                           cp.condition_origem cond_origem, cp.verso_path verso,
                            c.name nm, c.scryfall_id sid, c.set_code,
                            c.collector_number num,
                            (SELECT slot FROM copy_allocation a WHERE a.copy_id = cp.id
@@ -1831,7 +1832,7 @@ def fotos_perdidas(con, res: dict, cfg: dict | None = None,
                       FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id
                      WHERE cp.id IN ({marks})""", sorted(perdidas)):
             nm = (r["nm"] or "").split(" // ", 1)[0]
-            p = loadout.preco_da_copia(con, r["sid"], r["finish"], nm, pc)
+            p = loadout.preco_da_copia(con, r["sid"], r["finish"], nm, pc, lot=dict(r))
             linhas.append({
                 "nm": nm, "copy_id": r["id"], "q": r["q"],
                 "set": (r["set_code"] or "").upper(), "num": r["num"] or "",
@@ -1882,7 +1883,7 @@ def decks_para_decidir(con, res: dict, cfg: dict | None = None,
             d = por_slot.setdefault(slot, {"copias": 0, "valor": 0.0,
                                            "liberta_copias": 0,
                                            "liberta_valor": 0.0})
-            p = loadout.preco_da_copia(con, lot["sid"], lot["finish"], nm, pc)
+            p = loadout.preco_da_copia(con, lot["sid"], lot["finish"], nm, pc, lot=lot)
             v = (p["unit"] or 0) * lot["q"]
             d["copias"] += lot["q"]
             d["valor"] += v
@@ -1962,9 +1963,16 @@ def _caixa_tem_estado(cfg: dict | None, slot: str) -> bool:
 
 
 def relatorio(con, res: dict, cfg: dict | None = None,
-              hoje: str | None = None, curva: bool = False) -> dict:
-    """Tudo o que a página das Fases e o `cli fases` mostram, numa chamada."""
-    cache: dict = {}
+              hoje: str | None = None, curva: bool = False,
+              cache: dict | None = None) -> dict:
+    """Tudo o que a página das Fases e o `cli fases` mostram, numa chamada.
+
+    O `cache` é o da CORRIDA e pode vir de fora (2026-10-03): o bloco do ESTADO da
+    mesma página precisa do mesmo mapa de preços e das mesmas listas de terras, e
+    construí-los outra vez custava 3,3 s — ver `estado._mapa`. Quem não o passa
+    continua a ter um fresco, como sempre.
+    """
+    cache = {} if cache is None else cache
     hoje = hoje or date.today().isoformat()
     cands = candidatos(con, res, cfg, cache)
     out = {

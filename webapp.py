@@ -1650,6 +1650,18 @@ class Handler(BaseHTTPRequestHandler):
                 # `estado` da v6, e o estado muda-se na Deckboxes, onde esse
                 # gesto já vive. Dois caminhos para o mesmo gesto discordam um
                 # dia qualquer, em silêncio.
+                if caminho == "/api/estado":
+                    # O ESTADO DE UMA CÓPIA (André, 2026-10-03): a correcção à
+                    # MÃO. **Ganha sempre** e nunca é sobreposta por uma
+                    # avaliação minha posterior (`estado.registar`), e leva com
+                    # ela os MOTIVOS e o que me escapou — é esse trio que faz do
+                    # par (foto, escalão) um exemplo que ensina.
+                    #
+                    # Escreve em `copies` (uma coluna que muda o VALOR de uma
+                    # cópia), por isso leva backup, como o «vendida» e o
+                    # «desmontar». Regenera: o valor da colecção mudou.
+                    self._json(self._estado(dados))
+                    return
                 if caminho == "/api/fase-reserva":
                     # A RESERVA («maybe») de um deck: acrescentar à mão
                     # (`caixas[].reserva`), o botão **«não é necessária»**
@@ -1917,8 +1929,14 @@ class Handler(BaseHTTPRequestHandler):
                     raise fotocaixa.FotoInvalida(f"a cópia #{copy_id} já não existe na base — "
                                                  f"recarrega a página")
             ficheiros = fotosite.ler_multipart(self.headers.get("Content-Type") or "", bruto)
+            # FRENTE E VERSO (André, 2026-10-03): `?pares=1` diz que os ficheiros
+            # vêm aos pares, pela ordem de captura. É o caminho EXACTO — o par
+            # nasce feito, com o mesmo radical e o `-v` no segundo — e por isso
+            # não há emparelhamento nenhum para deduzir depois. Um número ímpar
+            # é recusado (409): metade de um par não é prova de nada.
+            pares = (q.get("pares") or [""])[0].strip() in ("1", "sim", "true")
             guardadas = fotosite.guardar(ROOT / "pendentes", tipo, ficheiros,
-                                         slot=slot, copy_id=copy_id)
+                                         slot=slot, copy_id=copy_id, pares=pares)
         # O índice passa já a contar a foto (o mtime de `pendentes/` também o
         # faria); o `esperadas.md` e as páginas vêm a seguir, em fundo.
         _CACHE.clear()
@@ -1927,15 +1945,52 @@ class Handler(BaseHTTPRequestHandler):
                 else {"venda": "a venda", "rl": "a Caixa RL",
                       "coleccao": "a Coleção"}.get(tipo, tipo))
         n = len(guardadas)
+        versos = sum(1 for g in guardadas if g.get("verso"))
         mb = sum(g["bytes"] for g in guardadas) / 1e6
         return {"ok": True, "tipo": tipo, "slot": slot, "copy_id": copy_id,
                 "ficheiros": [g["nome"] for g in guardadas],
-                "espera_s": fotosite.ESPERA_S,
+                "versos": versos, "espera_s": fotosite.ESPERA_S,
                 "msg": (f"📷 {n} foto{'s' if n != 1 else ''} ({mb:.1f} MB) em pendentes\\ para "
                         f"{nome}" + (f" · cópia #{copy_id}" if copy_id else "")
                         + f" — entra{'m' if n != 1 else ''} na corrida das 02:30 ou com "
                         f"«⚡ Processar agora» (a foto tem de ter mais de "
                         f"{fotosite.ESPERA_S // 60} min).")}
+
+    def _estado(self, dados):
+        """`POST /api/estado`: a CORRECÇÃO À MÃO de um escalão (2026-10-03).
+
+        `{copy_id, grade, motivos, escapou}`. Grava com origem `mao`, e a partir
+        daí **nenhuma avaliação minha a sobrepõe** — é a ordem dele, à letra: *"a
+        correcção dele GANHA sempre e nunca é sobreposta por uma avaliação
+        posterior minha"*.
+
+        Leva **backup da base** porque muda uma coluna que muda o VALOR de uma
+        cópia (como o «vendida» e o «Desmontar»), e o `estado.registar` escreve a
+        linha no `data/estado.log` ANTES de mexer na base. Depois **regenera**: o
+        valor da colecção e a lista de venda mudaram.
+        """
+        from mtgvault import estado as est                   # noqa: PLC0415
+        try:
+            cid = int(dados.get("copy_id") or 0)
+        except (TypeError, ValueError):
+            raise est.EstadoInvalido("`copy_id` tem de ser um número") from None
+        if not cid:
+            raise est.EstadoInvalido("falta o `copy_id` da cópia a corrigir")
+        grade = str(dados.get("grade") or "").strip()
+        migracao.backup(etiqueta="estado")
+        with db.session() as con:
+            r = est.corrigir(con, cid, grade,
+                             motivos=str(dados.get("motivos") or ""),
+                             escapou=str(dados.get("escapou") or ""))
+            est.escrever_aprendido(con)
+            regenerar(con)
+        return {"ok": True, **r,
+                "msg": (f"cópia #{cid}: {r['antes']} → {r['grade']} "
+                        f"({est.NOMES[r['grade']]}), escrito à mão. "
+                        f"A tua correcção ganha sempre."
+                        + ("" if dados.get("motivos") else
+                           "  (sem motivos escritos — escreve o porquê, é o que "
+                           "me ensina)"))}
 
     def _revalidacao(self, dados):
         """«Fotografar esta caixa» / «Fotografar a venda…» / «parar» (2026-09-20).
