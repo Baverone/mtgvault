@@ -60,6 +60,15 @@ RE_PLAYER = re.compile(r"search\?player=([^\"'&>]+)")
 RE_DECK_OR_PLAYER = re.compile(
     r"[?&](?:amp;)?d=(\d+)&(?:amp;)?f=|search\?player=([^\"'&>]+)")
 RE_DATE = re.compile(r"(\d{2})/(\d{2})/(\d{2})")
+# O NOME DO ARQUÉTIPO (2026-10-02). A página do evento serve-o como TEXTO do link
+# de cada deck: `<a href=?e=91451&d=894542&f=PREM>Landstill</a>`. Só casa quando o
+# conteúdo do `<a>` não tem etiquetas lá dentro (`[^<]*`), e é isso que deixa de
+# fora os outros links para o mesmo deck: o da miniatura (que leva um `<img>`) e o
+# da seta do topo (que é `&rarr;`, filtrado pelo `_NAO_NOME`). Verificado contra a
+# página real do evento 91451 — a amostra está em `tests/fixtures`.
+RE_DECK_NOME = re.compile(r"[?&](?:amp;)?d=(\d+)&(?:amp;)?f=[A-Za-z]*>([^<]*)</a>")
+# O que não é nome de arquétipo: a seta do deck aberto e um link vazio.
+_NAO_NOME = {"", "&rarr;", "→", "&nbsp;"}
 
 _LAST = 0.0
 
@@ -116,6 +125,33 @@ def parse_deck_entries(html: str) -> dict[int, str]:
             atual = int(m.group(1))
         elif atual is not None and atual not in out:
             out[atual] = m.group(2).replace("+", " ").strip()
+    return out
+
+
+def parse_deck_archetypes(html: str) -> dict[int, str]:
+    """`{deck_id: nome do arquétipo}` da página de um evento.
+
+    É a correcção de 2026-10-02, e o defeito que ela fecha está escrito em dois
+    sítios: o `meta_coverage._name_for` dizia *"a fonte não nos dá o nome do
+    arquétipo — o mtgtop8 tem `.dec` de cartas e não de rótulos"*, e era falso. A
+    página do evento dá o nome ao lado de cada deck; o que não o dava era o
+    `.dec`, que é o único ficheiro que a recolha abria por deck. Por isso o nome
+    vem da página do EVENTO — uma por evento, não uma por deck.
+
+    Um nome só se aceita à PRIMEIRA vez que aparece (o mesmo deck tem vários links
+    por linha) e nunca se inventa: um link sem texto, ou com a seta do deck que
+    está aberto, não conta. Os `&amp;` do mtgtop8 estão cobertos, como no
+    `RE_DECK`.
+    """
+    import html as _html                                        # noqa: PLC0415
+    out: dict[int, str] = {}
+    for m in RE_DECK_NOME.finditer(html):
+        did, cru = int(m.group(1)), m.group(2).strip()
+        if did in out or cru in _NAO_NOME:
+            continue
+        nome = _html.unescape(cru).strip()
+        if nome and nome not in _NAO_NOME:
+            out[did] = nome
     return out
 
 
@@ -248,6 +284,10 @@ def harvest(con: sqlite3.Connection, fmt: str, max_events: int = 8,
                 and "League" not in sources.metagame_rules(fmt)["tiers"]):
             continue
         jogadores = parse_deck_entries(pagina)
+        # O NOME DO ARQUÉTIPO (2026-10-02): está nesta mesma página, que já foi
+        # pedida. Não custa um pedido a mais e é a informação que a recolha andava
+        # a deitar fora — ver `parse_deck_archetypes`.
+        arquetipos = parse_deck_archetypes(pagina)
         for pos, did in enumerate(parse_deck_ids(pagina)[:max_decks_per_event], 1):
             if con.execute("SELECT 1 FROM decklists WHERE source = 'mtgtop8' "
                            "AND source_key = ?", (str(did),)).fetchone():
@@ -268,6 +308,7 @@ def harvest(con: sqlite3.Connection, fmt: str, max_events: int = 8,
                 event_date=meta["event_date"] or date.today().isoformat(),
                 player=jogadores.get(did, ""), placement=_bracket(pos),
                 event_players=meta.get("players"), commander=comandante,
+                arquetipo=arquetipos.get(did), arquetipo_de="evento",
                 url=f"{BASE}/event?e={eid}&d={did}&f={code}",
             ):
                 novas += 1
@@ -318,6 +359,77 @@ def backfill_event_players(con: sqlite3.Connection, max_events: int = 40) -> str
         con.commit()
     return (f"{feitos} eventos vistos ({achados} com contagem), "
             f"{len(porevento) - feitos} por fazer")
+
+
+def eventos_por_recuperar(con: sqlite3.Connection) -> dict[tuple[int, str], list[int]]:
+    """`{(evento, código): [deck_id, ...]}` das listas do mtgtop8 ainda sem nome.
+
+    O que decide que uma lista está «por recuperar» é as DUAS colunas estarem a
+    NULL: logo que a página do evento for lida, cada lista fica com nome ou com
+    `arquetipo_fonte_de = 'sem-nome'`, e nunca mais entra aqui. É por isso que
+    isto é retomável sem ficheiro de progresso nenhum — o progresso é a própria
+    base, como no `backfill_event_players`, que grava `0` quando a página não
+    mostra contagem.
+    """
+    out: dict[tuple[int, str], list[int]] = {}
+    for r in con.execute(
+        """SELECT source_key, url FROM decklists
+            WHERE source = 'mtgtop8' AND url IS NOT NULL
+              AND arquetipo_fonte IS NULL AND arquetipo_fonte_de IS NULL
+            ORDER BY event_date DESC, id DESC"""):
+        m = RE_URL_EVENT.search(r["url"])
+        if m and (r["source_key"] or "").isdigit():
+            out.setdefault((int(m.group(1)), m.group(2)), []).append(int(r["source_key"]))
+    return out
+
+
+def backfill_archetype_names(con: sqlite3.Connection,
+                             max_events: int | None = None) -> str:
+    """Recupera o nome do arquétipo das listas de mtgtop8 que já estão na base.
+
+    **UMA PÁGINA POR EVENTO, nunca uma por deck.** As 2 635 listas de mtgtop8 da
+    base de 2026-10-02 vivem em 413 eventos, e a página do evento traz os nomes de
+    todos os decks dele de uma vez: 413 pedidos em vez de 2 635. Com o 1 pedido/s
+    que o `_get` já respeita, são ~7 minutos.
+
+    É IDEMPOTENTE e RETOMÁVEL: `commit` por evento, e um evento feito não volta a
+    ser pedido (ver `eventos_por_recuperar`). Um evento cuja página não responda
+    fica para a corrida seguinte — não se marca `sem-nome` a quem não foi lido.
+
+    A lista casa-se pelo `source_key`, que para o mtgtop8 **é** o `deck_id` — a
+    mesma chave que o nome traz na página. Pelo `url` dava o mesmo trabalho com
+    mais uma coisa a poder desalinhar-se.
+    """
+    porevento = eventos_por_recuperar(con)
+    if not porevento:
+        return "nada por recuperar"
+
+    alvos = list(porevento.items())
+    if max_events:
+        alvos = alvos[:max_events]
+    eventos = nomeadas = sem_nome = falhados = 0
+    for (eid, code), decks in alvos:
+        try:
+            nomes = parse_deck_archetypes(_get("/event", e=eid, f=code))
+        except requests.RequestException:
+            falhados += 1
+            continue
+        eventos += 1
+        for did in decks:
+            nome = nomes.get(did)
+            con.execute(
+                """UPDATE decklists SET arquetipo_fonte = ?, arquetipo_fonte_de = ?
+                    WHERE source = 'mtgtop8' AND source_key = ?""",
+                (nome, "recuperado" if nome else "sem-nome", str(did)))
+            if nome:
+                nomeadas += 1
+            else:
+                sem_nome += 1
+        con.commit()
+    falta = len(porevento) - eventos
+    return (f"{eventos} eventos lidos, {nomeadas} listas com nome, "
+            f"{sem_nome} sem nome na pagina, {falhados} eventos a falhar, "
+            f"{falta} por fazer")
 
 
 def archetype_decks(archetype_id: int, fmt: str = "duel-commander") -> list[int]:

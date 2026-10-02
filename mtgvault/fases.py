@@ -161,7 +161,7 @@ from datetime import date
 
 from . import caixas as _caixas
 from . import collection as _col
-from . import sources
+from . import nomes, sources
 
 # ---------------------------------------------------------------------------
 # AS REGRAS: a chave, o rótulo e a ordem por que se perguntam
@@ -809,7 +809,8 @@ def desde_de(dias: int | None = None, hoje: str | None = None) -> str:
 
 def _listas_por_assinatura(con, fmt: str, assinatura: list[str],
                            todas: bool = False,
-                           desde: str | None = None) -> list[int]:
+                           desde: str | None = None,
+                           sem: list[str] | None = None) -> list[int]:
     """Os ids das listas deste arquétipo na janela da R5.
 
     Quem escolhe é o `sources.ids_por_assinatura`, partilhado com a lista da
@@ -822,7 +823,7 @@ def _listas_por_assinatura(con, fmt: str, assinatura: list[str],
     propósito (`metagame_fontes.*.tiers = []`).
     """
     return sources.ids_por_assinatura(con, fmt, assinatura, todas=todas,
-                                      desde=desde, so_que_contam=False)
+                                      desde=desde, so_que_contam=False, sem=sem)
 
 
 # Quantas cartas distintivas entram numa assinatura derivada, e o mínimo de
@@ -872,20 +873,28 @@ def assinatura_derivada(con, s: dict, cache: dict | None = None) -> list[str]:
     return [nm for _n, nm in candidatas[:ASSINATURA_N]]
 
 
-def assinatura_do_deck(s: dict) -> tuple[list[str], bool]:
-    """`(cartas, em conjunção?)` — a CARTA-ASSINATURA escrita desta caixa.
+def assinatura_do_deck(s: dict) -> tuple[list[str], bool, list[str]]:
+    """`(cartas, em conjunção?, cartas que NÃO podem estar)` — a CARTA-ASSINATURA
+    escrita desta caixa.
 
     `reserva_assinatura` ganha ao `assinatura` de propósito: uma caixa cuja
     LISTA vem de outra fonte (a do Luffy, a lista padrão fixada, o link do
     cEDH) continua a ter identidade de arquétipo para a R5 sem lhe mexer na
     lista. É a separação que a ordem de 2026-10-02 pede: a assinatura é a
     IDENTIDADE, não a lista.
+
+    A terceira metade é a NEGAÇÃO (`assinatura_sem` / `reserva_assinatura_sem`),
+    e é o que separa o UW Replenish da Enchantress: as 124 listas dela jogam
+    todas `Replenish`. Ver `sources.ids_por_assinatura`.
     """
+    usa_reserva = bool(s.get("reserva_assinatura"))
     cartas = [str(x) for x in (s.get("reserva_assinatura")
                                or s.get("assinatura") or [])]
-    todas = bool(s.get("reserva_assinatura_todas")
-                 if s.get("reserva_assinatura") else s.get("assinatura_todas"))
-    return cartas, todas
+    todas = bool(s.get("reserva_assinatura_todas") if usa_reserva
+                 else s.get("assinatura_todas"))
+    sem = [str(x) for x in ((s.get("reserva_assinatura_sem") if usa_reserva
+                             else s.get("assinatura_sem")) or [])]
+    return cartas, todas, sem
 
 
 def _listas_do_deck(con, s: dict, cache: dict | None = None,
@@ -899,11 +908,11 @@ def _listas_do_deck(con, s: dict, cache: dict | None = None,
     está **à espera da carta-assinatura** que ele vai dizer.
     """
     fmt = (s.get("formato") or "").lower()
-    escrita, todas = assinatura_do_deck(s)
+    escrita, todas, sem = assinatura_do_deck(s)
     if escrita:
-        ids = _listas_por_assinatura(con, fmt, escrita, todas, desde)
+        ids = _listas_por_assinatura(con, fmt, escrita, todas, desde, sem)
         return (ids, f"{len(ids)} listas com "
-                     f"{sources.texto_assinatura(escrita, todas)}", "assinatura")
+                     f"{sources.texto_assinatura(escrita, todas, sem)}", "assinatura")
     derivada = assinatura_derivada(con, s, cache)
     if derivada:
         ids = _listas_por_assinatura(con, fmt, derivada, False, desde)
@@ -962,8 +971,18 @@ def consenso_do_deck(con, s: dict, cache: dict | None = None,
                "copias": max(qts[(b, nm)].items(), key=lambda x: (x[1], x[0]))[0]}
               for (b, nm), c in em.items()]
     cartas.sort(key=lambda x: (-x["pct"], x["nm"]))
+    # COMO É QUE A FONTE CHAMA A ESTE DECK (2026-10-02). A identidade continua a
+    # ser a CARTA-ASSINATURA — é a regra de ouro dele e é ela que escolheu estas
+    # listas —, mas o nome que o mtgtop8 lhes dá é a maneira de CONFERIR que a
+    # assinatura apanhou o deck certo e não dois decks a fingir que são um. Foi
+    # exactamente o que aconteceu com o «Replenish»: a assinatura apanhava 186
+    # listas, das quais 124 são Enchantress. Sai na página da arrumação.
+    votado = nomes.nome_das_listas(con, ids)
     return {"fonte": origem, "listas": n, "cartas": cartas,
-            "suficiente": n >= MIN_LISTAS_RESERVA, "nota": nota}
+            "suficiente": n >= MIN_LISTAS_RESERVA, "nota": nota,
+            "nome_fonte": (votado or {}).get("nome"),
+            "nome_votos": (votado or {}).get("votos", 0),
+            "nome_segundo": (votado or {}).get("segundo")}
 
 
 # ---------------------------------------------------------------------------
@@ -1087,6 +1106,11 @@ def reserva_do_deck(con, s: dict, _ignorado=None,
             "suficiente": c["suficiente"], "nota": nota,
             "comandante": c.get("comandante") or "",
             "assinatura": sources.texto_assinatura(*assinatura_do_deck(s)),
+            # Como é que a FONTE chama a estas listas (2026-10-02) — ver
+            # `consenso_do_deck`. É a conferência da assinatura, à vista.
+            "nome_fonte": c.get("nome_fonte"),
+            "nome_votos": c.get("nome_votos", 0),
+            "nome_segundo": c.get("nome_segundo"),
             "tem": sum(1 for x in final if x["tem"]),
             "sem": sum(1 for x in final if not x["tem"])}
 
@@ -1868,7 +1892,7 @@ def decks_para_decidir(con, res: dict, cfg: dict | None = None,
                                    "liberta_copias": 0, "liberta_valor": 0.0}
         r = reserva_do_deck(con, s, None, cache)
         e = est.get(slot, ESTADO_OMISSAO)
-        ass, todas = assinatura_do_deck(s)
+        ass, todas, sem = assinatura_do_deck(s)
         # A IDENTIDADE de um deck, e as três formas honestas de a ter. Isto é
         # apresentação, mas é apresentação que não pode mentir: dizer *"à espera
         # da carta-assinatura"* aos dois decks de cEDH (que seguem um LINK, por
@@ -1876,7 +1900,7 @@ def decks_para_decidir(con, res: dict, cfg: dict | None = None,
         # identidade é o COMANDANTE, 2026-10-01) era marcar como incompleto o que
         # está decidido. *"À espera"* é só quem não tem nenhuma das três — hoje o
         # Artifacts Blue, e é exactamente o que a ordem manda assinalar.
-        ident, tipo = sources.texto_assinatura(ass, todas), "carta"
+        ident, tipo = sources.texto_assinatura(ass, todas, sem), "carta"
         if not ident and r.get("fonte") == "comandante":
             ident, tipo = str(r.get("comandante") or ""), "comandante"
         if not ident and (s.get("fonte") or "") in ("vigiado", "escolhido"):
@@ -1890,8 +1914,14 @@ def decks_para_decidir(con, res: dict, cfg: dict | None = None,
             "fonte": s.get("fonte"), "ref": s.get("ref"),
             "identidade": ident, "identidade_tipo": tipo if ident else "",
             "sem_assinatura": not ident,
-            "assinatura": sources.texto_assinatura(ass, todas),
+            "assinatura": sources.texto_assinatura(ass, todas, sem),
             "assinatura_cartas": ass, "assinatura_todas": todas,
+            "assinatura_sem": sem,
+            # O nome que o mtgtop8 dá às listas que esta assinatura apanhou
+            # (2026-10-02): é como se confere que ela apanhou UM deck e não dois.
+            "nome_fonte": r.get("nome_fonte"),
+            "nome_votos": r.get("nome_votos", 0),
+            "nome_segundo": r.get("nome_segundo"),
             "lista": {"main": sum(q for b, _n, q in (s.get("cards") or [])
                                   if b == "main"),
                       "side": sum(q for b, _n, q in (s.get("cards") or [])

@@ -171,6 +171,17 @@ mtgvault/
                   (`filtrar_venda` → saída `protegidas`), as FILAS de fotos por
                   CÓPIA FÍSICA e a TRAVA do RC Ghent (`venda.congelado_ate`).
                   Ver «A ARRUMAÇÃO POR FASES»
+  nomes.py        O NOME DE UM ARQUÉTIPO (2026-10-02): a página do EVENTO do
+                  mtgtop8 dá o nome ao lado de cada deck e a recolha deitava-o
+                  fora (2 635 listas, nenhuma coluna) — hoje está em
+                  `decklists.arquetipo_fonte`. O nome da FONTE ganha; onde não
+                  houver, o grupo HERDA o mais votado entre as listas dele que
+                  tenham nome (é assim que as 5 173 listas de `mtgo` ficam com
+                  nome); sem nenhum dos dois, o nome gerado das cartas vai
+                  marcado PROVISÓRIO. `nome_das_listas` é a votação, e é a MESMA
+                  nos três sítios que a fazem (o cluster do `archetypes`, o
+                  cluster do `showcase`, o arquétipo de uma CAIXA). Ver «O NOME
+                  DO ARQUÉTIPO VEM DA FONTE»
   consenso.py     O CONSENSO POR COMANDANTE (2026-10-01): em Duel Commander a
                   identidade de um deck é o COMANDANTE e nunca a etiqueta do
                   clustering (870 etiquetas, 808 sem listas). O comandante de
@@ -1234,6 +1245,178 @@ vez"*. Motor em `mtgvault/consenso.py`, página `comandantes.py` →
 - **Nada da alocação, da venda ou dos preços foi tocado**: este módulo não lê a
   `copy_allocation` nem o `loadout`. A bateria inteira (63 ficheiros) ficou verde.
 
+**O NOME DO ARQUÉTIPO VEM DA FONTE (André, 2026-10-02, à tarde, à letra).**
+*"Procura no mtgtop8, lá tem os nomes, e a partir daí já tens ideia do que são as
+listas."* Tinha razão, e o nome estava a ser deitado fora **na recolha**. Motor em
+**`mtgvault/nomes.py`** (a votação, num sítio só), `mtgtop8.parse_deck_archetypes`
++ `backfill_archetype_names`, colunas `decklists.arquetipo_fonte` /
+`arquetipo_fonte_de`, passo `nomes-arquetipos` do `daily`, CLI
+`py -m mtgvault.cli nomes [estado|clusters|recuperar]`. Testes em
+`tests/test_nomes_arquetipo.py` (12 casos) e a prova de que chumbam em
+`tests/_chumba_nomes.py` (6 alvos / 9 casos).
+
+- **ONDE É QUE O NOME ESTAVA A SER DEITADO FORA.** A página do EVENTO do mtgtop8
+  traz o nome ao lado de cada deck — `<a href=?e=91451&d=894542&f=PREM>Landstill
+  </a>`, e o título diz *"#2 Landstill - Vittorio Piatti"* — e a recolha abria
+  essa página (é de lá que saem os ids dos decks, o jogador e o nº de jogadores) e
+  **só lia o `.dec`**, que tem cartas e não rótulos. Havia **2 635** listas de
+  `mtgtop8` na base e **nenhuma coluna** onde o nome estivesse. É a MESMA falha do
+  comandante, fechada no dia anterior: *a fonte dá a informação e a recolha
+  perde-a*. E estava escrita no código como se fosse um facto do mundo — o
+  `meta_coverage._name_for` dizia *"a fonte não nos dá o nome do arquétipo — o
+  mtgtop8 tem `.dec` de cartas e não de rótulos"*.
+- **O QUE HAVIA EM VEZ DISSO, medido:** o `archetypes.label`, que se chama
+  *"Solitary Confinement / Argothian Enchantress / Sterling Grove"*. São **7 499**
+  etiquetas, **6 845 sem uma única lista** (91 %), contra **684** nomes a sério
+  que a fonte dá. O agrupamento **funciona** — esse cluster de 108 listas É a
+  Enchantress — e é por isso que não se apagou: o que lhe faltava era o nome.
+- **A REGRA, em duas metades, e as duas num sítio só (`mtgvault/nomes.py`):**
+  1. **o nome da FONTE ganha sempre**;
+  2. **onde não houver, o grupo HERDA** o mais votado entre as listas dele que
+     TENHAM nome. É isto que dá nome às listas de `mtgo`, que não trazem nenhum.
+  Sem nenhuma das duas, fica o nome GERADO de sempre (cores + carta-chave) e vai
+  marcado **provisório**, com a etiqueta ao lado. Um nome inventado com o mesmo
+  aspecto de um nome verdadeiro é o que custou três erros nesta semana.
+- **A PERGUNTA É UMA VOTAÇÃO SOBRE UM CONJUNTO DE IDS** (`nomes.nome_das_listas`),
+  e é a mesma primitiva nos TRÊS sítios que a fazem: o cluster da tabela
+  `archetypes` (metagame, cobertura, sugestões, deckboxes), o cluster do
+  **showcase** (que tem agrupamento próprio) e o arquétipo de uma **CAIXA** (a
+  arrumação por fases). Dois contadores ao lado discordavam um dia qualquer, em
+  silêncio — a lição do `event_tier`, do `e_foil` e do `precos.sql()`. **O
+  desempate é ALFABÉTICO** e nunca a ordem em que as linhas saem da base: um nome
+  que muda de um dia para o outro sem nada ter mudado é o defeito que isto veio
+  corrigir (foi o que aconteceu ao *"Dimir Psychatog"*, que passou a *"Dimir
+  Polluted Delta"* na corrida seguinte). Tem teste que varre o código.
+- **O HERDADO NÃO SE GRAVA, e é deliberadamente o CONTRÁRIO do `commander`** (que
+  ele mandou gravar a 01/10). O que a fonte disse É um dado e está gravado; o
+  herdado é uma CONTA sobre esse dado, e acerta-se sozinha no dia em que entrar
+  uma lista nomeada a mais ou o agrupamento mudar. Gravá-lo era criar uma segunda
+  verdade que envelhece em silêncio.
+- **UMA PÁGINA POR EVENTO, NUNCA UMA POR DECK.** As 2 635 listas vivem em **413
+  eventos** e a página do evento traz os nomes de todos de uma vez. Medido:
+  **413 páginas em 682 s** (1 pedido/s, o `_get` de sempre), **2 617 listas com
+  nome, 18 sem** (a página do mtgtop8 não nomeou aquele deck). **O progresso é a
+  PRÓPRIA BASE e não um ficheiro:** `arquetipo_fonte_de` vale `evento` (lida na
+  recolha), `recuperado` (lida pelo backfill) ou **`sem-nome`** com o nome a NULL
+  — o mesmo truque do `event_players` a gravar 0. Daí sai a retomabilidade de
+  graça: um evento feito não volta a ser pedido, e **um evento que FALHA não se
+  marca** (perder o nome para sempre por causa de uma falha de rede de um segundo
+  era o preço de simplificar aqui). Tem dois casos de teste.
+- **A COLUNA NOVA NOS TRÊS SÍTIOS, E O ÍNDICE NO `_migrate`.** `schema.sql`,
+  `db._migrate()` e quem a escreve (`sources.store_decklist` +
+  `sources.store_manual`); o `CREATE INDEX ix_dl_arquetipo` nasce **depois do
+  ALTER** e nunca no `schema.sql` — esse corre inteiro antes do `_migrate` e numa
+  base já criada a coluna ainda não existe nesse momento. É a armadilha de
+  2026-09-09 (`ix_copies_validado`) e de 2026-10-01 (`ix_dl_commander`), que
+  rebentava o `db.init` com *"no such column"* em todas as páginas e no `daily`.
+  Tem caso que reconstrói a `decklists` sem as colunas e manda abrir.
+- **A NEGAÇÃO DA ASSINATURA (`assinatura_sem` / `reserva_assinatura_sem`), e é a
+  correcção mais cara do dia.** A ordem da manhã deu à **UW Replenish** a
+  assinatura `["Replenish"]` sozinha, com 186 listas — e **TODAS as 124 listas de
+  Enchantress jogam `Replenish`**. Eram dois decks num consenso que não é de
+  nenhum: as 124 são verde-brancas (Wild Growth, Mirri's Guile, Serra's Sanctum,
+  Sterling Grove, Solitary Confinement) e as outras **62** são o combo
+  azul-branco (Attunement, Frantic Search, Opalescence, Decree of Silence,
+  Intuition). O operador novo é o mesmo `none` que o `archetype_rules.json` já
+  usava para os separar, e pela mesma razão escrita lá: *"o `_known_name` chamava
+  «Replenish» à Enchantress E ao UW Replenish, porque bate na primeira carta que
+  encontra"*. Entra nos DOIS ramos do `ids_por_assinatura` (o `IN` e o `EXISTS` da
+  conjunção): num só, a mesma pergunta tinha duas respostas conforme o `todas`.
+- **E A FONTE CONFIRMA A SEPARAÇÃO, que é a prova que a ordem pediu.** Das 124
+  listas com Argothian Enchantress, as que têm nome dizem **Enchantress 35** (+1
+  *"Enchanters"*, variante de escrita) e **zero** dizem Replenish; das 62 sem
+  Argothian, **Replenish 30** + *"Uw Replenish"* 5, e **zero** dizem Enchantress.
+  Os números dele batem ao exemplar. Ficou `["Argothian Enchantress",
+  "Enchantress's Presence"]` na negação (as mesmas duas do `archetype_rules.json`,
+  por coerência), o que dá **61** e não 62: a lista a mais joga
+  `Enchantress's Presence` sem Argothian, ou seja é Enchantress.
+- **A ENCHANTRESS FOI REPOSTA.** A ordem da manhã mandou dissolvê-la e isso foi
+  um erro dela: ele repôs o deck. Voltou a `caixas` com `prioridade` 7 e a
+  `premodern_arquetipos_alvo`; a caixa estava **vazia** (0 cópias alocadas), por
+  isso não houve cartas a mover. Quem se dissolveu foi **só a Jeskai Control**.
+  Dois testes que afirmavam o contrário foram corrigidos
+  (`test_caixas.caso_o_config_a_serio_ja_esta_na_forma_nova`, 16 → **17 caixas**,
+  e `test_pioneer_jeskai`).
+- **O QUE O ANDRÉ VÊ, trocado em cinco superfícies.** O `_name_for` do
+  `meta_coverage` passou a ter o `_nome` à frente (que devolve
+  `{nome, origem, provisorio}`), e por aí entram a **Cobertura**, o **Metagame**,
+  as **Deckboxes** (candidatos e sugestões) e o `webapp`. O **Showcase** tinha
+  nome próprio (o par de cartas distintivas) e passa pela mesma votação. A
+  **Arrumação por fases** ganhou, ao lado da carta-assinatura de cada deck, o
+  nome que a fonte dá às listas que ela apanhou — **é a conferência da assinatura,
+  à vista**: se o mtgtop8 chama dois nomes àquelas listas, a assinatura está a
+  juntar dois decks. Os **Comandantes** não mudaram, de propósito: lá a identidade
+  é o COMANDANTE (01/10) e não há etiqueta nenhuma à vista.
+- **ANTES E DEPOIS, na Cobertura de Modern** (o mesmo `vault.db`): *"Mono-Verde
+  Soul-Guide Lantern"*, *"Izzet Lava Dart"*, *"Esper Flickerwisp"*, *"Boros
+  Wrenn's Resolve"*, *"Izzet Welding Jar"* passaram a **Broodscale Bloodchief,
+  UR Cutter Prowess, Esper Blink, Boros Ponza, Pinnacle Affinity** — cada um com
+  *"mtgtop8 · N de M listas"* por baixo, que é uma afirmação que se confere. No
+  Pioneer, *"Golgari Professor Dellian Fel"* → **The Rock**; no Standard,
+  *"4 cores Nowhere to Run"* → **4/5C Control**.
+- **COBERTURA DOS NOMES, medida:** das **7 808** listas, **2 617** têm nome da
+  fonte, **3 909 herdam-no** do grupo e **1 282** ficam sem (214 dessas não têm
+  grupo nenhum). Das **5 173 listas de `mtgo`**, que não trazem nome nenhum,
+  **3 894 passam a ter** e 1 279 não — e as que não têm concentram-se onde não há
+  mtgtop8 para as nomear: **Vintage 468** e **Pauper 137** são ZERO nomes (o
+  Pauper só guarda as listas do Luffy, do mtgo), e o resto são listas sem grupo.
+- **O MOTOR NÃO MEXEU UM NÚMERO, e foi medido lado a lado com o MESMO `vault.db`**
+  (worktree em `_revisao/main-nomes`): **o código do ramo com o config do `main`
+  dá tudo igual ao cêntimo e caixa a caixa** — fechar tudo 14 812,56 €, 348 a
+  comprar, 294 a arrumar em 159 linhas, venda 115c/1 824,28 €, `rl_sem_historico`
+  104c/25 332,29 €, `guardar` 11c/1 475,37 €, `protegidas` 157c/4 989,13 €,
+  candidatos 673c/21 053,81 €, as 16 caixas. **O que mexe é só a correcção do
+  config**, e explica-se ao cêntimo: a caixa Enchantress volta com **37 % · 22 a
+  comprar · 212,27 €**, e o *fechar tudo* passa a **15 024,83 €** = +212,27 € —
+  **as outras 16 caixas iguais ao cêntimo e à percentagem**, a UW Replenish
+  incluída (92 %, 5 a comprar, 14,10 €: a assinatura é a IDENTIDADE e não a
+  lista, e a lista dela vem do `decks`).
+- **E UMA CONSEQUÊNCIA QUE NÃO SE ESCONDE: +5 cópias na lista VENDER.** Candidatos
+  673 → **678** (21 053,81 € → 21 251,82 €). Entraram **2 Argothian Enchantress
+  (USG, 167,62 €)**, **2 Enchantress's Presence (ONS, 28,66 €)** e **2 Choke
+  (TMP, 5,16 €)**, e saiu 1 Frantic Search. Porquê: até agora eram a reserva R5 da
+  **UW Replenish** — porque a assinatura dela apanhava as listas de Enchantress —
+  e essa protecção era um ACIDENTE. Agora a Enchantress é que as devia proteger, e
+  **não as protege**, pela razão da secção a seguir. São cartas que ele
+  provavelmente quer guardar: a venda está fora de vista (`venda.mostrar: false`)
+  e congelada até 12/10, por isso há tempo para decidir.
+- **O BURACO DA RD, QUE ISTO PÔS À VISTA E NÃO CRIOU — e é o primeiro ponto da
+  próxima ordem.** A **RD** protege o que está **FISICAMENTE** na caixa
+  (`lot["caixa"]`, da `copy_allocation`), e não o que a ALOCAÇÃO lhe dá. Logo, um
+  deck que ele diz que fica mas ainda **não montou** não protege uma única cópia
+  — e cinco das caixas são novas de 02/10. Medido no `main`, **antes desta
+  ordem**: das 673 cópias da lista VENDER, **174 / 5 317,11 €** são cópias que a
+  alocação dá a um deck que FICA e que nenhuma regra protege — Cloud (DC) 71c/
+  2 432,45 €, Cloud cEDH 17c/2 016,41 €, Blue Farm 7c/1 246,21 €, Modern —
+  Affinity 30c/975,38 €, Engineer Welder Cam 17c/942,74 €, Modern 13c/748,01 €,
+  Aluren 18c/681,20 €, Bant Airbend 30c/483,60 €, Oath 18c/389,42 €. As mais
+  caras: 1 Ranger-Captain of Eos 673,14 €, 1 Urza's Saga 600,63 €, 1 Tropical
+  Island 550,64 €, 4 Engineered Explosives 396,52 €, 3 Claws of Gix 325,77 €, 1
+  Cavern of Souls 288,40 €, 24 Snow-Covered Plains 189,36 €. **No ramo são 181 /
+  5 560,97 €** — as 7 cópias / 243,86 € a mais são as da Enchantress. Não se
+  tocou: a ordem dizia para não mexer nas protecções, e a correcção (fazer a RD
+  ler a caixa que a ALOCAÇÃO dá, e não só a registada) muda a lista de venda em
+  cinco mil euros — é decisão dele.
+- **TRÊS AVISOS QUE A CONFERÊNCIA DA ASSINATURA DEU LOGO**, e são para ele ver:
+  (a) o **Modern — UW Oswald** tem a assinatura `Oswald Fiddlebender` e o mtgtop8
+  chama àquelas 13 listas **«Pinnacle Affinity»** — a assinatura está a apanhar
+  listas de Affinity e não de um deck de Oswald, logo a reserva daquela caixa sai
+  do deck errado; (b) o **Oath of Druids** tem 51 listas e o nome mais votado é
+  **«Oath Ponza» (9)** à frente de *«Oath of Druids» (7)*; (c) o **Engineer Welder
+  Cam** tem 50 listas, 9 chamadas assim, 3 *«Painter»* e 2 *«Artifacts Blue»*.
+- **E A RESPOSTA PARA O ARTIFACTS BLUE, que a ordem da manhã deixou pendente:** o
+  mtgtop8 tem **«Artifacts Blue» com 6 listas de Legacy**. A caixa continua *à
+  espera da carta-assinatura* porque isso é uma decisão dele, mas o nome existe na
+  fonte — e abre a porta a identificar uma caixa pelo NOME em vez de por uma carta
+  (`nomes` já sabe responder; falta a chave no config). Fica para a ordem seguinte.
+- **POR FAZER, e vale a pena saber:** os nomes do mtgtop8 têm variantes de escrita
+  (*«Replenish»* / *«Uw Replenish»*, *«Welder Cam»* / *«Weldercam»*) e **não se
+  normalizam** — *acredita na fonte*; a votação resolve-o na prática (o mais
+  votado ganha) e o segundo lugar vai no payload para o caso ficar à vista. E o
+  top-10 pode mostrar **o mesmo nome duas vezes** (*«UR Aggro»*, *«Boros Control»*
+  no Pioneer): é o agrupamento a ter partido um deck em dois clusters, e antes
+  isso estava escondido atrás de dois nomes inventados diferentes.
+
 **OS 16 DECKS QUE FICAM, E AS REGRAS DAS CARTAS (André, 2026-10-02).** Ele
 fechou a lista dos decks que ficam e reescreveu as regras que decidem o que vai
 à venda. **Substitui, no que se cruza, a secção «A ARRUMAÇÃO POR FASES» de
@@ -1998,6 +2181,16 @@ salta o `sync` quando o catálogo tem linhas, por isso teve de entrar também no
 **`scryfall.has_card_meta`** — é essa a pergunta que faz o catálogo recarregar,
 e foi por aí que o `reserved` e o `set_type` se preencheram. Sem ela, a coluna
 ficava a NULL para sempre e o `fases.fetchlands` levantava.
+
+Colunas novas de 2026-10-02 (à tarde, nos três sítios):
+**`decklists.arquetipo_fonte`** e **`decklists.arquetipo_fonte_de`** — o nome que
+a FONTE dá ao deck (o mtgtop8 escreve-o na página do evento) e COMO se chegou a
+ele (`evento` na recolha, `recuperado` pelo backfill, `sem-nome` quando a página
+foi lida e não trazia nome). A segunda é também o marcador de PROGRESSO do
+backfill, o que o torna retomável sem ficheiro de estado — é o mesmo truque do
+`event_players` a gravar 0. O **índice `ix_dl_arquetipo` nasce no `_migrate`** e
+nunca no `schema.sql`, pela armadilha de sempre. Ver «O NOME DO ARQUÉTIPO VEM DA
+FONTE».
 
 Já custou caro uma vez: `decklists.event_tier` foi acrescentada só ao `vault.db`
 (commit 56ffa3f, 2026-08-03), nunca ao `schema.sql` nem ao `_migrate()`, e nada

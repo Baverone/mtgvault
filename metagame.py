@@ -488,7 +488,11 @@ def candidatos(con, fmt, res, n=None):
     for r in loadout.foil_report(con, fmt, top=n, min_lists=MIN_LISTS, res=res):
         # Sem `html.escape` aqui: quem escapa é quem desenha, e escapar duas
         # vezes punha "It&#x27;ll Quench Ya!" à vista na página.
-        nome = mc._name_for(con, r["archetype_id"], df, tcache)
+        # O NOME DA FONTE GANHA (2026-10-02): o `_nome` já responde pelo mtgtop8
+        # quando o deck tem lá nome, e só compõe um das cartas quando não tem —
+        # nesse caso a página di-lo, no crachá.
+        rot = mc._nome(con, r["archetype_id"], df, tcache)
+        nome = rot["nome"]
         par = mc._distinctive_name(con, r["archetype_id"], df, tcache)
         eu = escolhido is not None and escolhido in r["ids"]
         out.append({
@@ -496,9 +500,12 @@ def candidatos(con, fmt, res, n=None):
             "archetype_id": r["archetype_id"], "n_lists": r["n_lists"],
             "formato": fmt, "slot": (slot or {}).get("slot"),
             "escolhido": eu,
+            "nome_provisorio": rot["provisorio"],
             "escolhido_em": (slot or {}).get("escolhido_em") if eu else None,
             "sub": f'{r["n_lists"]} listas que contam · {par}',
-            "badges": [("fo", "✨ só foil"), ("", "🧩 lista de consenso")]})
+            "badges": ([("fo", "✨ só foil"), ("", "🧩 lista de consenso")]
+                       + ([("", "🏷️ nome provisório")] if rot["provisorio"]
+                          else [("", "🏷️ nome do mtgtop8")]))})
     return out
 
 

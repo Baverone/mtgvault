@@ -230,14 +230,21 @@ def parse_text_decklist(text: str) -> dict[str, list[tuple[str, int]]]:
 
 
 def store_manual(con: sqlite3.Connection, text: str, fmt: str, event: str,
-                 day: str, player: str = "", key: str | None = None) -> int:
+                 day: str, player: str = "", key: str | None = None,
+                 arquetipo: str | None = None) -> int:
+    """Entrada à mão. `arquetipo` é o nome do deck, se quem a mete o souber —
+    quem escreve uma lista à mão sabe que deck é, e deitar fora essa palavra era
+    repetir aqui o defeito que o `arquetipo_fonte` veio corrigir (2026-10-02)."""
     parsed = parse_text_decklist(text)
     key = key or f"{fmt}|{event}|{player}|{day}"
     cur = con.execute(
         """INSERT OR IGNORE INTO decklists
-           (source, source_key, format, event_name, event_date, player, event_tier)
-           VALUES ('manual',?,?,?,?,?,?)""",
-        (key, fmt.lower(), event, day, player, event_tier("manual", event)),
+           (source, source_key, format, event_name, event_date, player, event_tier,
+            arquetipo_fonte, arquetipo_fonte_de)
+           VALUES ('manual',?,?,?,?,?,?,?,?)""",
+        (key, fmt.lower(), event, day, player, event_tier("manual", event),
+         (arquetipo or "").strip() or None,
+         "manual" if (arquetipo or "").strip() else None),
     )
     if not cur.rowcount:
         return 0
@@ -474,7 +481,8 @@ def counting_sql(fmt: str, alias: str = "d") -> tuple[str, list]:
 # discordavam um dia qualquer, em silêncio: é a lição do `event_tier`.
 def ids_por_assinatura(con, fmt: str, assinatura, todas: bool = False,
                        desde: str | None = None,
-                       so_que_contam: bool = True) -> list[int]:
+                       so_que_contam: bool = True,
+                       sem=None) -> list[int]:
     """Os ids das listas de `fmt` que casam com esta assinatura.
 
     `todas=False` (omissão) é **basta uma** (`IN`) — é o que serve o *"Greasefang,
@@ -483,6 +491,18 @@ def ids_por_assinatura(con, fmt: str, assinatura, todas: bool = False,
     `Goblin Welder` **e** `Sewer-veillance Cam`, porque cada uma sozinha
     apanha outros decks de Legacy (medido a 2026-10-02: Welder 50, Cam 54,
     as duas juntas 50 — a Cam traz 4 listas que não jogam Welder).
+
+    `sem` é a NEGAÇÃO: nenhuma destas cartas pode estar na lista. Entrou a
+    2026-10-02 à tarde e tem um caso real que a obriga, o mais caro desta semana:
+    **todas as 124 listas de Enchantress de Premodern jogam `Replenish`**, por isso
+    `assinatura: ["Replenish"]` apanhava 186 listas — dois decks diferentes
+    (62 são o combo azul-branco: Attunement, Frantic Search, Opalescence, Decree
+    of Silence, Intuition; as outras 124 são verde-brancas: Wild Growth, Mirri's
+    Guile, Serra's Sanctum, Sterling Grove, Solitary Confinement) — e o consenso
+    que saía dali não era de deck nenhum. É o mesmo operador `none` que o
+    `archetype_rules.json` já tinha, pela mesma razão: *"o `_known_name` chamava
+    «Replenish» à Enchantress E ao UW Replenish, porque bate na primeira carta que
+    encontra. O `none` separa-os."*
 
     `so_que_contam` decide o universo, e os dois valores servem perguntas
     diferentes:
@@ -499,35 +519,45 @@ def ids_por_assinatura(con, fmt: str, assinatura, todas: bool = False,
     ass = [str(x) for x in (assinatura or []) if str(x).strip()]
     if not ass:
         return []
+    fora = [str(x) for x in (sem or []) if str(x).strip()]
     cond, cp = ("(1=1)", []) if not so_que_contam else counting_sql(fmt, "d")
     extra, ep = ("", [])
     if desde:
         extra, ep = " AND d.event_date >= ?", [desde]
+    # A NEGAÇÃO é um NOT EXISTS por carta, do mesmo lado da conjunção: tanto o
+    # ramo do `IN` como o do `EXISTS` a levam, para os dois darem a mesma resposta
+    # à mesma pergunta.
+    nao = " ".join(
+        "AND NOT EXISTS(SELECT 1 FROM decklist_cards y WHERE y.decklist_id = d.id "
+        "AND y.card_name = ?)" for _ in fora)
     if todas:
         # Uma subconsulta EXISTS por carta: a conjunção não se faz com `IN`.
         ex = " ".join(
             "AND EXISTS(SELECT 1 FROM decklist_cards x WHERE x.decklist_id = d.id "
             "AND x.card_name = ?)" for _ in ass)
         return [r[0] for r in con.execute(
-            f"SELECT d.id FROM decklists d WHERE d.format = ? AND {cond}{extra} {ex}",
-            (fmt, *cp, *ep, *ass))]
+            f"SELECT d.id FROM decklists d WHERE d.format = ? AND {cond}{extra} "
+            f"{ex} {nao}", (fmt, *cp, *ep, *ass, *fora))]
     marcas = ",".join("?" for _ in ass)
     return [r[0] for r in con.execute(
         f"""SELECT DISTINCT d.id FROM decklists d
               JOIN decklist_cards dc ON dc.decklist_id = d.id
-             WHERE d.format = ? AND dc.card_name IN ({marcas}) AND {cond}{extra}""",
-        (fmt, *ass, *cp, *ep))]
+             WHERE d.format = ? AND dc.card_name IN ({marcas}) AND {cond}{extra}
+                   {nao}""",
+        (fmt, *ass, *cp, *ep, *fora))]
 
 
-def texto_assinatura(assinatura, todas: bool = False) -> str:
-    """Como se escreve a assinatura numa página ("A e B" / "A ou B")."""
+def texto_assinatura(assinatura, todas: bool = False, sem=None) -> str:
+    """Como se escreve a assinatura numa página ("A e B" / "A ou B" / "A sem C")."""
     ass = [str(x) for x in (assinatura or []) if str(x).strip()]
     if not ass:
         return ""
-    if len(ass) == 1:
-        return ass[0]
     liga = " e " if todas else " ou "
-    return liga.join(ass)
+    txt = ass[0] if len(ass) == 1 else liga.join(ass)
+    fora = [str(x) for x in (sem or []) if str(x).strip()]
+    if fora:
+        txt += " sem " + " nem ".join(fora)
+    return txt
 
 
 # Quanto vale cada lista no ranking do metagame. Os pesos do online são os que o
@@ -606,8 +636,14 @@ def store_decklist(con: sqlite3.Connection, *, source: str, source_key: str,
                    event_name: str = "", event_date: str = "",
                    player: str = "", placement: str = "",
                    url: str = "", event_players: int | None = None,
-                   commander: str | None = None) -> int | None:
+                   commander: str | None = None,
+                   arquetipo: str | None = None,
+                   arquetipo_de: str = "evento") -> int | None:
     """Grava uma decklist, a não ser que já lá esteja por outra via.
+
+    `arquetipo` é o nome que a FONTE dá ao deck (2026-10-02) — o mtgtop8 escreve-o
+    na página do evento. Guarda-se tal e qual, com `arquetipo_fonte_de` a dizer
+    por onde veio; ver `mtgvault/nomes.py`, que é quem decide o que o André lê.
 
     `commander` é o comandante nos formatos de comandante (2026-10-01). Quem o
     passa já o leu da FONTE — o `SB:` do .dec do mtgtop8, o `sideboard_deck` do
@@ -672,11 +708,13 @@ def store_decklist(con: sqlite3.Connection, *, source: str, source_key: str,
         """INSERT OR IGNORE INTO decklists
            (source, source_key, format, event_name, event_date, player,
             placement, url, content_hash, event_players, event_tier,
-            commander, commander_fonte)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            commander, commander_fonte, arquetipo_fonte, arquetipo_fonte_de)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (source, source_key, fmt, event_name, event_date, player, placement,
          url, h, event_players, tier,
-         commander or None, "sideboard" if commander else None),
+         commander or None, "sideboard" if commander else None,
+         (arquetipo or "").strip() or None,
+         arquetipo_de if (arquetipo or "").strip() else None),
     )
     if not cur.rowcount:
         return None

@@ -93,7 +93,11 @@ ORDEM = ("slot", "nome", "formato", "fonte", "ref", "assinatura",
          # `assinatura_todas` pede a CONJUNÇÃO (o *Engineer Welder Cam* precisa
          # de `Goblin Welder` **e** `Sewer-veillance Cam`) em vez de bastar uma,
          # que é o que serve o *"Greasefang, as várias versões"*.
-         "assinatura_todas", "cards",
+         # `assinatura_sem` é a NEGAÇÃO (2026-10-02, à tarde): nenhuma destas
+         # cartas pode estar na lista. Fez falta porque **as 124 listas de
+         # Enchantress jogam todas `Replenish`** — sem ela, a assinatura do UW
+         # Replenish apanhava os dois decks e o consenso não era de nenhum.
+         "assinatura_todas", "assinatura_sem", "cards",
          "balde", "estado", "prioridade", "variantes", "notas",
          "lingua", "acabamento", "edicoes", "baldes", "estrita", "dedicado",
          "compras_dedicadas",
@@ -110,7 +114,7 @@ ORDEM = ("slot", "nome", "formato", "fonte", "ref", "assinatura",
          # segundo campo de estado ao lado do `estado` da v6 — duas verdades
          # para a mesma pergunta. Quem decide é o `estado`.
          "reserva_fora", "comandante", "reserva_assinatura",
-         "reserva_assinatura_todas",
+         "reserva_assinatura_todas", "reserva_assinatura_sem",
          # A FOTO DA DECKBOX FÍSICA (André, 2026-09-21): `{"em", "ficheiro"}`,
          # escrita pelo `fotocaixa.guardar`. Ver `mtgvault/fotocaixa.py`.
          "foto")

@@ -186,6 +186,23 @@ CREATE TABLE IF NOT EXISTS decklists (
     -- das cartas, para as listas que já estavam na base — ver mtgvault/consenso.py).
     commander       TEXT,
     commander_fonte TEXT,
+    -- O NOME DO ARQUÉTIPO QUE A FONTE DÁ (2026-10-02). O mtgtop8 escreve-o na
+    -- página do evento, ao lado de cada deck ("#2 Landstill - Vittorio Piatti",
+    -- e o link <a ...>Landstill</a>), e a recolha deitava-o fora: havia 2 635
+    -- listas de `mtgtop8` na base e nenhuma coluna onde o nome estivesse. O que
+    -- sobrava era o `archetypes.label` do clustering — *"Solitary Confinement /
+    -- Argothian Enchantress / Sterling Grove"* —, com dezenas de etiquetas
+    -- parecidas e vazias. É a MESMA falha do `commander`, corrigida a
+    -- 2026-10-01: a fonte dá a informação e a recolha perde-a.
+    --
+    -- `arquetipo_fonte_de` diz COMO se chegou ao nome, e é também o marcador de
+    -- progresso do backfill: `evento` (lido na recolha, da página do evento),
+    -- `recuperado` (lido depois, pelo `mtgtop8.backfill_archetype_names`) ou
+    -- `sem-nome` (a página do evento foi lida e não trazia nome para este deck —
+    -- com o nome a NULL, para não se voltar a pedir a mesma página todos os dias;
+    -- é o mesmo truque do `event_players` a gravar 0).
+    arquetipo_fonte     TEXT,
+    arquetipo_fonte_de  TEXT,
     fetched_at   TEXT DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (source, source_key)
 );
@@ -196,6 +213,7 @@ CREATE INDEX IF NOT EXISTS ix_dl_fmt_date ON decklists(format, event_date);
 -- com *"no such column: commander"*, em todas as páginas e no `daily`. O
 -- `CREATE TABLE IF NOT EXISTS` é indiferente à ordem; um índice não é. É a mesma
 -- armadilha de 2026-09-09 (o `ix_copies_validado`), e está no `_migrate`.
+-- O mesmo vale para o índice do `arquetipo_fonte` (2026-10-02).
 
 CREATE TABLE IF NOT EXISTS decklist_cards (
     decklist_id INTEGER NOT NULL REFERENCES decklists(id) ON DELETE CASCADE,

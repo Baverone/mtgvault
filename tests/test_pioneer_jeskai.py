@@ -236,8 +236,13 @@ def caso_a_caixa_jeskai_foi_dissolvida_mas_a_lista_dela_nao_se_apagou():
     cfg = json.loads((RAIZ / "colecao_config.json").read_text(encoding="utf-8"))
     slots = [c["slot"] for c in cfg["caixas"]]
     assert "pioneer-jeskai" not in slots, \
-        "a caixa Jeskai devia ter saído: não está nos 16 decks de 02/10/2026"
-    assert "premodern-enchantress" not in slots, "a Enchantress também saiu"
+        "a caixa Jeskai devia ter saído: não está nos decks de 02/10/2026"
+    # A ENCHANTRESS NÃO SAIU — e esta linha dizia o contrário. A ordem da manhã
+    # mandou dissolvê-la **e isso foi um erro dela**: o André repôs o deck na
+    # lista dos que ficam, em Premodern, por consenso. Quem se dissolveu foi SÓ a
+    # Jeskai Control. Corrigido a 02/10/2026, à tarde.
+    assert "premodern-enchantress" in slots, \
+        "a Enchantress foi REPOSTA: a ordem da manhã dissolveu-a por erro"
     pioneer = [c for c in cfg["caixas"] if c["formato"] == "pioneer"]
     assert len(pioneer) == 1 and pioneer[0]["slot"] == "pioneer", pioneer
     assert pioneer[0]["reserva_assinatura"] == ["Greasefang, Okiba Boss"], pioneer[0]
