@@ -32,7 +32,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import db, loadout, paginas, precos, sources  # noqa: E402
+from mtgvault import db, loadout, nomes, paginas, precos, sources  # noqa: E402
 from mtgvault import site_shell as shell  # noqa: E402
 from mtgvault.collection import jogaveis, owned_playable  # noqa: E402
 
@@ -381,6 +381,22 @@ def emerging_decks(con):
     return out
 
 
+def _nota_do_nome(d) -> str:
+    """A linha por baixo do nome do deck: de onde ele veio (2026-10-02).
+
+    Com nome da fonte diz-se quantas listas o disseram — é uma afirmação que se
+    pode conferir no mtgtop8. Sem ele, fica a etiqueta de três cartas do
+    agrupamento, como até aqui, e **marcada como provisória**.
+    """
+    if d.get("nome_provisorio") is False:
+        return (f'<span class="lab" title="o nome vem do mtgtop8, que o escreve '
+                f'na página do evento">mtgtop8 · {d.get("nome_votos", 0)} de '
+                f'{d.get("n_lists", 0)} listas</span>')
+    return (f'<span class="lab prov" title="ninguém nomeou este deck na fonte: o '
+            f'nome é composto das cartas e a etiqueta é do agrupamento automático">'
+            f'nome provisório · {html.escape(d.get("label") or "")[:60]}</span>')
+
+
 def _label(con, aid):
     r = con.execute("SELECT label FROM archetypes WHERE id = ?", (aid,)).fetchone()
     return r["label"] if r else f"#{aid}"
@@ -518,14 +534,12 @@ def _known_name(con, aid):
     return None
 
 
-def _name_for(con, aid, df, tcache):
-    """O nome do deck: o próprio, se o conhecemos; senão **cores + carta-chave**.
+def _gerado(con, aid, df, tcache):
+    """O nome COMPOSTO a partir das cartas: o conhecido por regra, senão
+    **cores + carta-chave** (`Boros Doc Aurlock`).
 
     André, 2026-09-07 (19:00): os nomes por pares de cartas (*"Doc Aurlock /
-    Appa"*) são fracos. A fonte não nos dá o nome do arquétipo — o mtgtop8 tem
-    `.dec` de cartas e não de rótulos, e não se inventa um que não veio de lado
-    nenhum — por isso o que se gera é um nome legível e verdadeiro:
-    `Boros Doc Aurlock`. O par continua à vista, como subtítulo
+    Appa"*) são fracos. O par continua à vista, como subtítulo
     (`_distinctive_name`).
     """
     conhecido = _known_name(con, aid)
@@ -536,6 +550,32 @@ def _name_for(con, aid, df, tcache):
         return f"#{aid}"
     cores = _cores_do_nucleo(con, aid)
     return f"{cores} {chave}".strip()
+
+
+def _nome(con, aid, df, tcache):
+    """`{nome, origem, provisorio, …}` — ver `mtgvault.nomes.rotulo`.
+
+    O NOME DA FONTE GANHA (2026-10-02). Esta função dizia, em comentário, que *"a
+    fonte não nos dá o nome do arquétipo — o mtgtop8 tem `.dec` de cartas e não de
+    rótulos"*, e era falso: o mtgtop8 escreve o nome na página do EVENTO, ao lado
+    de cada deck, e a recolha deitava-o fora. Hoje está em
+    `decklists.arquetipo_fonte` e um grupo sem listas nomeadas herda-o das que
+    tem. Só quando ninguém o nomeou é que se compõe um a partir das cartas — e aí
+    vai marcado provisório.
+
+    O `tcache` é o saco de cache desta corrida da página (já serve o
+    `_type_boost`); a chave do nome leva o prefixo `#nomes:`, que nenhum nome de
+    carta tem, para as duas coisas poderem viver no mesmo sítio sem se tocarem.
+    """
+    r = con.execute("SELECT format FROM archetypes WHERE id = ?", (aid,)).fetchone()
+    return nomes.rotulo(con, aid, etiqueta=_label(con, aid),
+                        gerado=_gerado(con, aid, df, tcache),
+                        fmt=r["format"] if r else None, cache=tcache)
+
+
+def _name_for(con, aid, df, tcache):
+    """O nome do deck, numa palavra — o que as páginas põem no título."""
+    return _nome(con, aid, df, tcache)["nome"]
 
 
 def _core_rows(con, aid, board="main"):
@@ -613,8 +653,14 @@ def build_report(con):
                 score.setdefault(aid, 0)
         decks = []
         for aid in ids:
-            nm = _name_for(con, aid, df, tcache)
-            d = deck_coverage(con, aid, owned, nm)
+            rot = _nome(con, aid, df, tcache)
+            d = deck_coverage(con, aid, owned, rot["nome"])
+            # De onde veio o nome, para a página o poder dizer: *"mtgtop8 · 41 de
+            # 108 listas"* contra *"nome provisório"* com a etiqueta ao lado.
+            d["nome_origem"] = rot["origem"]
+            d["nome_provisorio"] = rot["provisorio"]
+            d["nome_votos"] = rot["votos"]
+            d["nome_nomeadas"] = rot["nomeadas"]
             d["score"] = score.get(aid, 0)
             decks.append(d)
         decks.sort(key=lambda d: -d["score"])
@@ -742,7 +788,7 @@ def build_html(rep, today, partes=None):
                        if d["missing"] else "")
             cards += (
                 f'<div class="deck"><div class="dh"><div class="dn">{html.escape(d["name"])}'
-                f'<span class="lab">{html.escape(d["label"])[:60]}</span></div>'
+                f'{_nota_do_nome(d)}</div>'
                 f'<div class="pop" title="peso por importância de torneio (últimos '
                 f'{RECENT_DAYS} dias)">⚖️ {d.get("score", 0)} · {d["n_lists"]} listas</div></div>{_bar(d["pct"])}'
                 f'<div class="cnt">{d["have"]}/{d["core_total"]} do núcleo · '
@@ -806,6 +852,10 @@ _CSS = """
  .deck{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:13px 15px}
  .dh{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
  .dn{font-weight:700} .lab{display:block;color:var(--muted);font-size:11px;font-weight:400;margin-top:1px}
+ /* O nome PROVISÓRIO (2026-10-02) distingue-se à vista do que veio da fonte: um
+    nome inventado com o mesmo aspecto de um nome verdadeiro foi o que custou
+    três erros numa semana. */
+ .lab.prov{font-style:italic}
  .pop{color:var(--muted);font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}
  .bar{position:relative;height:16px;background:#0c0f14;border:1px solid var(--line);border-radius:999px;margin:9px 0 6px;overflow:hidden}
  .bar span{position:absolute;left:0;top:0;bottom:0;border-radius:999px} .bar em{position:absolute;right:8px;top:-1px;font-size:11px;font-style:normal;font-weight:700;mix-blend-mode:difference}

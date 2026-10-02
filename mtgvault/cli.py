@@ -5,7 +5,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from . import (analysis, caixas, collection, db, fases, loadout, mtgtop8,
+from . import (analysis, caixas, collection, db, fases, loadout, mtgtop8, nomes,
                precos, prices, scryfall, sources, stock, wantlist, watchlist)
 
 
@@ -94,6 +94,13 @@ def main(argv=None):
 
     sub.add_parser("archetypes", help="listar arquétipos detetados").add_argument(
         "format", nargs="?")
+
+    nm = sub.add_parser("nomes", help="os nomes de arquétipo que a FONTE dá")
+    nm.add_argument("accao", nargs="?", default="estado",
+                    choices=["estado", "recuperar", "clusters"])
+    nm.add_argument("format", nargs="?")
+    nm.add_argument("--eventos", type=int, default=None,
+                   help="tecto de páginas de evento a ler no `recuperar`")
 
     g = sub.add_parser("gap", help="o que falta para montar um arquétipo")
     g.add_argument("archetype_id", type=int)
@@ -478,6 +485,27 @@ def main(argv=None):
             rows = [dict(r) for r in con.execute(
                 q, (args.format.lower(),) if args.format else ())]
             _p(rows, ["id", "format", "label", "lists"])
+
+        elif args.cmd == "nomes":
+            fmt = (args.format or "").lower() or None
+            if args.accao == "recuperar":
+                print(mtgtop8.backfill_archetype_names(con, max_events=args.eventos))
+            elif args.accao == "clusters":
+                vot = nomes.nomes_por_cluster(con, fmt)
+                rows = [{"aid": aid, "nome": v["nome"], "votos": v["votos"],
+                         "nomeadas": v["nomeadas"], "listas": v["listas"],
+                         "segundo": v["segundo"] or ""}
+                        for aid, v in sorted(vot.items(),
+                                             key=lambda kv: -kv[1]["listas"])]
+                _p(rows, ["aid", "nome", "votos", "nomeadas", "listas", "segundo"])
+            else:
+                c = nomes.cobertura(con, fmt)
+                print(f"listas: {c['listas']}")
+                print(f"  com nome da fonte : {c['da_fonte']}")
+                print(f"  nome herdado      : {c['herdado']}  (do grupo)")
+                print(f"  sem nome          : {c['sem_nome']}"
+                      f"  (das quais {c['sem_grupo']} sem grupo nenhum)")
+                print(f"grupos: {c['clusters']}, com nome {c['clusters_com_nome']}")
 
         elif args.cmd == "cores":
             rows = [dict(r) for r in con.execute(

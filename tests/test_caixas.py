@@ -181,16 +181,19 @@ def caso_o_config_a_serio_ja_esta_na_forma_nova():
     # «Bant Airbend» e o `legacy` deu lugar a três caixas com nome. Por isso
     # saíram de `candidata` e passaram a PROTEGER as cópias que recebam: um
     # deck que ele disse que fica não pode mandar cartas para a venda.
-    assert len(cfg["caixas"]) == 16, len(cfg["caixas"])
+    # São 17 desde 02/10/2026 à TARDE: a Enchantress voltou (a ordem da manhã
+    # mandou dissolvê-la e o André repôs o deck). Quem se dissolveu foi SÓ a
+    # Jeskai Control.
+    assert len(cfg["caixas"]) == 17, len(cfg["caixas"])
     assert "legacy" not in estados, "o slot `legacy` sem nome não devia existir"
     for slot in ("legacy-welder", "legacy-aluren", "legacy-artifacts-blue",
                  "modern-affinity"):
         assert slot in estados, f"falta a caixa {slot}"
         assert estados[slot] != "candidata", (slot, estados[slot])
     assert estados["standard"] != "candidata", estados["standard"]
-    # E as duas que ele dissolveu saíram mesmo.
-    for slot in ("premodern-enchantress", "pioneer-jeskai"):
-        assert slot not in estados, f"a caixa {slot} devia ter saído"
+    assert "pioneer-jeskai" not in estados, "a Jeskai Control devia ter saído"
+    assert estados.get("premodern-enchantress") not in (None, "candidata"), \
+        "a Enchantress foi reposta e tem de proteger as cópias que receba"
     print(f"colecao_config.json: {len(cfg['caixas'])} caixas, estados {sorted(set(estados.values()))}")
 
 

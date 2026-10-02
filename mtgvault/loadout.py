@@ -1207,7 +1207,7 @@ def _cards_from_watched(con, label: str) -> tuple[list[tuple[str, str, int]], st
 
 
 def _cards_from_consensus(con, fmt: str, assinatura: list[str],
-                          todas: bool = False
+                          todas: bool = False, sem: list[str] | None = None
                           ) -> tuple[list[tuple[str, str, int]], str]:
     """Consenso de um arquétipo identificado por carta-assinatura.
 
@@ -1219,11 +1219,14 @@ def _cards_from_consensus(con, fmt: str, assinatura: list[str],
     reserva dos 30 dias (`fases`): a pergunta *"que listas são deste deck?"* é a
     mesma nas duas, e dois selectores ao lado discordam em silêncio. `todas`
     (`caixas[].assinatura_todas`) pede a CONJUNÇÃO — o *Engineer Welder Cam* de
-    Legacy precisa das duas cartas.
+    Legacy precisa das duas cartas. `sem` (`caixas[].assinatura_sem`) é a NEGAÇÃO,
+    e é ela que separa o UW Replenish da Enchantress: **as 124 listas dela jogam
+    todas `Replenish`**, e sem a negação o consenso saía dos dois decks ao mesmo
+    tempo (2026-10-02).
     """
     if not assinatura:
         return [], "sem assinatura configurada"
-    ids = sources.ids_por_assinatura(con, fmt, assinatura, todas=todas)
+    ids = sources.ids_por_assinatura(con, fmt, assinatura, todas=todas, sem=sem)
     if len(ids) < stock_min_lists():
         return [], f"só {len(ids)} listas contam — poucas para consenso"
     ph = ",".join("?" * len(ids))
@@ -1292,7 +1295,8 @@ def _slot_cards(con, s: dict) -> tuple[list[tuple[str, str, int]], str]:
         return _cards_from_watched(con, ref)
     if fonte == "consenso":
         return _cards_from_consensus(con, s["formato"], s.get("assinatura") or [],
-                                     todas=bool(s.get("assinatura_todas")))
+                                     todas=bool(s.get("assinatura_todas")),
+                                     sem=s.get("assinatura_sem") or [])
     return [], f"fonte {fonte!r} desconhecida"
 
 

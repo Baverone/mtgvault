@@ -24,7 +24,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import paginas, sources  # noqa: E402
+from mtgvault import nomes, paginas, sources  # noqa: E402
 from mtgvault import site_shell as shell  # noqa: E402
 from mtgvault.collection import owned_playable  # noqa: E402
 
@@ -151,13 +151,29 @@ def _cluster(lists):
     return clusters, df
 
 
-def _name(cluster, df):
+def _name(con, cluster, df):
+    """O nome do arquétipo: o da FONTE primeiro (2026-10-02).
+
+    Esta página tem agrupamento próprio (por líder, `_cluster`) e tinha nome
+    próprio: a carta-assinatura do `KNOWN`, e senão **as duas cartas mais
+    distintivas** — *"Cori-Steel Cutter · Spell Pierce"*. Agora que o nome do
+    mtgtop8 está gravado em `decklists.arquetipo_fonte`, vota-se entre as listas
+    DESTE grupo (`mtgvault.nomes.nome_das_listas`, o mesmo contador do metagame e
+    da arrumação) e o par de cartas só aparece quando ninguém o nomeou.
+
+    `KNOWN` fica ATRÁS da fonte e à frente do par: é uma regra escrita à mão, boa
+    para as listas de MTGO que ninguém nomeia, mas a fonte sabe mais — e é por
+    isso que a *Jeskai Revelation* já lá estava a dizer "Jeskai Control".
+    """
+    votado = nomes.nome_das_listas(con, [m["id"] for m in cluster["members"]])
+    if votado:
+        return votado["nome"], False
     s = cluster["leader"]["set"]
     for card, name in KNOWN.items():
         if card in s:
-            return name
+            return name, True
     dist = sorted(s, key=lambda x: (df[x], x))[:2]
-    return " · ".join(dist) if dist else "?"
+    return (" · ".join(dist) if dist else "?"), True
 
 
 def decks_with_card(con, card, fmt="modern"):
@@ -179,7 +195,7 @@ def decks_with_card(con, card, fmt="modern"):
         best = min(withc, key=lambda m: (m["rank"], m["id"]))
         others = [m for m in c["members"] if m["id"] != best["id"]]
         mc = {"leader": best, "members": [best] + others}
-        res.append(((best["rank"], best["id"]), _name(c, df), mc))
+        res.append(((best["rank"], best["id"]), _name(con, c, df)[0], mc))
     res.sort(key=lambda x: x[0])
     return [(name, mc) for _k, name, mc in res]
 
@@ -200,7 +216,7 @@ def _mkcards(cards, owned_qty, sidmap, freq=None, nlists=0):
 
 
 def _archetype_html(a, name, tm, owned, owned_qty, sidmap, aberto=False,
-                    partes=False):
+                    partes=False, provisorio=False):
     """O arquétipo desenhado. Com `partes=True` devolve as duas metades —
     `{cab, corpo, aberto}` — em vez do HTML inteiro: o cabeçalho vai no JSON do
     formato e o corpo (a grelha de cartas) num ficheiro próprio, que só se vai
@@ -280,7 +296,12 @@ def _archetype_html(a, name, tm, owned, owned_qty, sidmap, aberto=False,
            f'<span class="bdg wt" title="prevalência pesada (Showcase/presencial contam mais que ligas)">⚖️ {wt:.0f}</span>'
            f'<span class="bdg">{n} lista{"s" if n > 1 else ""}</span>'
            f'<span class="bdg">{len(evset)} evento{"s" if len(evset) > 1 else ""}</span>'
-           f'<span class="bdg dim">{html.escape(_shortev(leader["event"]))}</span></div>'
+           f'<span class="bdg dim">{html.escape(_shortev(leader["event"]))}</span>'
+           # O nome PROVISÓRIO diz-se (2026-10-02): sem isto, um nome composto das
+           # duas cartas mais distintivas tem o mesmo aspecto de um nome a sério.
+           + ('<span class="bdg dim" title="ninguém nomeou este deck na fonte: o '
+              'nome vem das cartas">🏷️ nome provisório</span>' if provisorio else '')
+           + '</div>'
            f'<div class="bar"><span style="width:{cov}%;background:{col}"></span></div>')
     if partes:
         return {"nome": name, "cab": cab, "corpo": body, "aberto": bool(aberto)}
@@ -341,8 +362,10 @@ def build(con, out_path=None):
         # logo alguma coisa, e é o arquétipo com mais peso.
         arqs = []
         for i, a in enumerate(d["clusters"]):
-            p = _archetype_html(a, _name(a, d["df"]), tm, owned, owned_qty,
-                                sidmap, aberto=(i == 0), partes=True)
+            nome, prov = _name(con, a, d["df"])
+            p = _archetype_html(a, nome, tm, owned, owned_qty,
+                                sidmap, aberto=(i == 0), partes=True,
+                                provisorio=prov)
             p["parte"] = f"{fmt}-{i}"
             partes[p["parte"]] = {"corpo": p["corpo"]}
             if not p["aberto"]:

@@ -341,6 +341,16 @@ def main():
         _step(con, "jogadores-eventos",
               lambda: mtgtop8.backfill_event_players(con, max_events=40))
 
+        # O NOME DO ARQUÉTIPO QUE A FONTE DÁ (2026-10-02). As listas NOVAS já vêm
+        # nomeadas pelo `harvest` (o nome está na mesma página do evento que ele já
+        # pede); este passo é para as que ficaram para trás — 2 635 listas em 413
+        # eventos quando isto entrou. UMA PÁGINA POR EVENTO e a 1 pedido/s: 60
+        # eventos por corrida gastam ~1 min e esgotam o atraso em dias, sem
+        # martelar um site pequeno. Quando não há nada por recuperar diz-o e não
+        # faz um único pedido. Ver `mtgvault/nomes.py`.
+        _step(con, "nomes-arquetipos",
+              lambda: mtgtop8.backfill_archetype_names(con, max_events=60))
+
         # A VIGIA DE CARTAS (André, 2026-09-26): *"vai conferindo"*. Logo a
         # seguir ao `tier-eventos`/`jogadores-eventos` — precisa do tier já
         # escrito para o dizer no aviso — e ANTES do `podar-ligas`, que corre no

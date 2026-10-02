@@ -364,6 +364,16 @@ function deckHTML(d) {
     ? `<span class="chip gold">${COMO[d.identidade_tipo] || 'identidade'}: `
       + `<b>${escDados(d.identidade)}</b></span>`
     : `<span class="chip">⚠ à espera da carta-assinatura</span>`;
+  // COMO É QUE A FONTE CHAMA A ESTE DECK (2026-10-02). A identidade continua a
+  // ser a carta-assinatura; isto é a CONFERÊNCIA dela — se o mtgtop8 chama dois
+  // nomes às listas que ela apanhou, ela está a juntar dois decks (foi o que
+  // aconteceu ao «Replenish», que apanhava 186 listas, 124 delas Enchantress).
+  const nf = d.nome_fonte
+    ? `<span class="chip">mtgtop8: <b>${escDados(d.nome_fonte)}</b>`
+      + ` <span class="dm">(${escDados(d.nome_votos)} listas`
+      + (d.nome_segundo ? `, a seguir «${escDados(d.nome_segundo)}»` : '')
+      + `)</span></span>`
+    : '';
   return `<div class="deck"><div class="dh"><div>`
     + `<div class="dn">${escDados(d.nome)}</div>`
     + `<div class="dm">${escDados(d.formato || '')} · ${cop(d.na_caixa)} na caixa`
@@ -373,7 +383,7 @@ function deckHTML(d) {
     + `<br><span class="${d.protege ? 'est' : 'pordecidir'}">${escDados(d.estado)}`
     + (d.estado_explicito ? '' : ' (por omissão)') + `</span>`
     + `</div></div>`
-    + `<div class="chips" style="margin:12px 0 0">${ass}`
+    + `<div class="chips" style="margin:12px 0 0">${ass}${nf}`
     + `<span class="chip">${d.protege ? '🛡 protege' : 'não protege'}</span>`
     + `<span class="chip">${escDados(d.reserva.listas)} listas de 30 d</span></div>`
     + `<p class="lib">${lib}</p>`

@@ -251,6 +251,32 @@ for alvo, casos in (
               f"({caso}): {motivo[-1][:90] if motivo else ''}")
 
 # ---------------------------------------------------------------------------
+# O NOME DO ARQUÉTIPO VEM DA FONTE (André, 2026-10-02, à tarde). Noutro
+# processo, pela razão de cima.
+# ---------------------------------------------------------------------------
+for alvo, casos in (
+    ("parser", ["caso_o_parser_le_o_nome_da_pagina_real"]),
+    ("recolha", ["caso_a_recolha_grava_o_nome_da_fonte"]),
+    ("voto", ["caso_o_nome_da_fonte_ganha_ao_do_agrupamento",
+              "caso_uma_lista_de_mtgo_herda_o_nome_do_grupo",
+              "caso_o_mais_votado_ganha_e_o_desempate_e_pelo_nome"]),
+    ("inventa", ["caso_um_grupo_sem_nenhuma_lista_nomeada_nao_inventa_nome"]),
+    ("negacao", ["caso_enchantress_e_replenish_ficam_em_arquetipos_diferentes",
+                 "caso_a_negacao_vale_tambem_na_conjuncao"]),
+    ("marcador", ["caso_o_backfill_e_retomavel_e_nao_repete_eventos"]),
+):
+    for caso in casos:
+        p = subprocess.run(
+            [sys.executable, str(AQUI / "_chumba_nomes.py"), alvo, caso],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            cwd=AQUI)
+        ok = p.returncode != 0
+        bom &= ok
+        motivo = (p.stdout or p.stderr or "").strip().splitlines()
+        print(f"  {'ok  ' if ok else 'FAIL'} chumba sem «{alvo}» "
+              f"({caso}): {motivo[-1][:90] if motivo else ''}")
+
+# ---------------------------------------------------------------------------
 # AS FOTOS DE ATÉ 4 CARTAS (André, 2026-10-01). Noutro processo, pela razão de
 # cima — e é aqui que se prova que a regra CERTA está a ser medida, depois de
 # duas regras erradas terem passado por este ficheiro no mesmo dia.

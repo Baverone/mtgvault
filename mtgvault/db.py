@@ -165,6 +165,20 @@ def _migrate(con: sqlite3.Connection) -> None:
     con.execute("CREATE INDEX IF NOT EXISTS ix_dl_commander "
                 "ON decklists(format, commander)")
     con.commit()
+    # O NOME DO ARQUÉTIPO QUE A FONTE DÁ (2026-10-02). As duas colunas andam
+    # juntas, como as do comandante: o nome e COMO se chegou a ele (`evento` /
+    # `recuperado` / `sem-nome`). O índice nasce AQUI, depois do ALTER, e nunca
+    # no `schema.sql` — esse corre inteiro antes disto e numa base já criada a
+    # coluna ainda não existe nesse momento; é a armadilha de 2026-09-09, que
+    # rebentava o `db.init` com *"no such column"* em todas as páginas e no
+    # `daily`. Aconteceu com o `ix_copies_validado` e com o `ix_dl_commander`.
+    if "arquetipo_fonte" not in cols:
+        con.execute("ALTER TABLE decklists ADD COLUMN arquetipo_fonte TEXT")
+        con.execute("ALTER TABLE decklists ADD COLUMN arquetipo_fonte_de TEXT")
+        con.commit()
+    con.execute("CREATE INDEX IF NOT EXISTS ix_dl_arquetipo "
+                "ON decklists(format, arquetipo_fonte)")
+    con.commit()
 
     # Tabelas que existiam SÓ na vault.db do André (criadas à mão, nunca no
     # schema.sql). Numa base nova o colecao_cor rebentava com "no such table:

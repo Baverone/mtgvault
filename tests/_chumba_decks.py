@@ -37,7 +37,7 @@ from mtgvault import fases, sources                           # noqa: E402
 if alvo == "assinatura":
     # A identidade deixa de ser a carta: apanha-se tudo o que é do formato.
     def _tudo(con, fmt, assinatura, todas=False, desde=None,
-              so_que_contam=True):
+              so_que_contam=True, sem=None):
         cond, cp = (("(1=1)", []) if not so_que_contam
                     else sources.counting_sql(fmt, "d"))
         extra, ep = ("", [])
@@ -51,13 +51,13 @@ if alvo == "assinatura":
 elif alvo == "conjuncao":
     _ids = sources.ids_por_assinatura
     sources.ids_por_assinatura = (
-        lambda con, fmt, assinatura, todas=False, desde=None, so_que_contam=True:
-        _ids(con, fmt, assinatura, False, desde, so_que_contam))
+        lambda con, fmt, assinatura, todas=False, desde=None, so_que_contam=True,
+        sem=None: _ids(con, fmt, assinatura, False, desde, so_que_contam, sem))
 elif alvo == "so_que_contam":
     _ids = sources.ids_por_assinatura
     sources.ids_por_assinatura = (
-        lambda con, fmt, assinatura, todas=False, desde=None, so_que_contam=True:
-        _ids(con, fmt, assinatura, todas, desde, True))
+        lambda con, fmt, assinatura, todas=False, desde=None, so_que_contam=True,
+        sem=None: _ids(con, fmt, assinatura, todas, desde, True, sem))
 elif alvo == "fora":
     fases._retiradas = lambda s: {}
 elif alvo == "sem_assinatura":
