@@ -87,6 +87,18 @@ mtgvault/
                   DESCONTO no «a comprar» das caixas e a CONCILIAÇÃO pela foto
                   (chamada pelo `collection.import_csv`) — «só a foto cria
                   cópias»
+  confirmado.py   A FOTO É A VERDADE E A BASE É O REGISTO DELA (2026-10-02):
+                  *"se não tiver foto, não tem carta"* — `manda()` (o
+                  interruptor `revalidacao.foto_manda`), `sql()`/`confirmada()`
+                  (a pergunta *"esta cópia conta?"*, num sítio só),
+                  `metades()`/`frase()`/`euros()` (as DUAS METADES de cada
+                  número, que LEVANTAM se não somarem o total),
+                  `filtrar_sem_foto` (a oitava saída da venda),
+                  `alvo_da_pasta`/`alocar_por_foto` (a PASTA da foto decide o
+                  deck, e é exclusiva — `data/foto-manda.log`),
+                  `exige_alocacao_unica`/`conflitos` (cada deck as suas cartas)
+                  e `progresso`/`texto` (o ecrã de todos os dias). Ver «A FOTO É
+                  A VERDADE»
   revalidacao.py  a REVALIDAÇÃO POR FOTO de toda a colecção (2026-09-20): a
                   campanha (`revalidacao.desde`), o ALVO (a caixa que ele está
                   a fotografar), o passo (0) da conciliação (a foto nova liga-se
@@ -243,7 +255,7 @@ my_decks.py         segue decks-alvo (por assinatura e por jogador de MTGO) -> t
 commander_decks.py  decks de comandante por consenso EM CAMADAS: núcleo>=50% (=deck, deck_cards) / flex 25-50% / tech 15-25%; FILTRA pela cor do comandante. `tiers()` reusado pelo colecao_cor
 premodern_decks.py  consenso dos arquétipos-alvo de Premodern (`colecao_config.json`→`premodern_arquetipos_alvo`: UW Replenish, Enchantress) -> decks/deck_cards com o sufixo " (consenso)". Agrupa pelas etiquetas do `tagging` (o clustering não os separa) e usa `stock.stock_from_lists`. Mostrado nas `deckboxes` (era o `meusdecks`)
 refresh_collection.py  collection_owned p/ o index.html
-colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados, venda (a regra dos 5 % da RL, o `mostrar` de 2026-09-25 **e** o `congelado_ate` de 2026-10-01), cartas_vigiadas (a VIGIA DE CARTAS de 2026-09-26), reserva (o LIMIAR da reserva «maybe», 2026-10-01), caixas[].decisao / reserva / reserva_fora / comandante / reserva_assinatura (AS FASES, 2026-10-01)
+colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados, venda (a regra dos 5 % da RL, o `mostrar` de 2026-09-25 **e** o `congelado_ate` de 2026-10-01), cartas_vigiadas (a VIGIA DE CARTAS de 2026-09-26), reserva (o LIMIAR da reserva «maybe», 2026-10-01), caixas[].decisao / reserva / reserva_fora / comandante / reserva_assinatura (AS FASES, 2026-10-01), revalidacao.foto_manda (A FOTO É A VERDADE, 2026-10-02 — e o `playset_maximo` SAIU do `regras_por_formato` nesse dia)
 ```
 Cada `.html` gerado tem de estar na lista do `git add` do workflow (`daily.yml`,
 passo "Guardar HTML") **e na lista `HTML` da tarefa `ai-pc/tasks/mtgvault-daily`**
@@ -1424,6 +1436,235 @@ listas."* Tinha razão, e o nome estava a ser deitado fora **na recolha**. Motor
   top-10 pode mostrar **o mesmo nome duas vezes** (*«UR Aggro»*, *«Boros Control»*
   no Pioneer): é o agrupamento a ter partido um deck em dois clusters, e antes
   isso estava escondido atrás de dois nomes inventados diferentes.
+
+**A FOTO É A VERDADE, E A BASE É O REGISTO DELA (André, 2026-10-02, à letra).**
+*"cada deck tem as suas cartas"*; *"o que eu colocar de fotos no deck, é daquele
+deck, ponto"*; *"se não tiver foto, não tem carta"*; *"assim fico responsável por
+cada vez que comprar cartas, ter que tirar a foto para atualizar"*. **INVERTE o
+modelo de 2026-09-20** (a «REVALIDAÇÃO POR FOTO», que segue abaixo e fica como
+histórico): até hoje a BASE era a verdade e a foto servia para *revalidar* — o
+`validado_em` era um 📷/✓ que a página mostrava e que, por decisão explícita,
+**não mexia um único número**. A partir de hoje é ao contrário: **uma cópia só
+CONTA quando tem foto desta campanha**, e a **pasta** onde ele larga a foto
+decide a que deck a carta pertence. **No mesmo dia ele mandou ESQUECER o tecto de
+playset do Premodern** de 2026-09-08 — ver o fim desta secção.
+Motor em **`mtgvault/confirmado.py`**; interruptor em `colecao_config.json →
+revalidacao.foto_manda`; CLI `py -m mtgvault.cli foto [mostrar|conflitos|manda
+on|off]`; testes em `tests/test_foto_manda.py` (26 casos) e a prova de que
+chumbam em `tests/_chumba_foto_manda.py` (9 alvos, 16 pares medidos).
+
+- **O QUE ISTO NÃO É: apagar.** As **737 linhas / 1 678 cartas** ficam na base,
+  marcadas «sem foto». A regra dele de 2026-09-09 mantém-se — *nada se apaga* —
+  e por isso o **`collection.jogaveis()` NÃO se tocou**: uma cópia sem foto
+  continua a ser uma cópia da colecção, continua a aparecer na Galeria e nos
+  Binders e **continua a valer dinheiro no total**. *Sem foto* quer dizer *ainda
+  não conta*, nunca *não existe*. O que ela não faz é fechar um slot, descontar
+  uma compra ou ir à venda. Tem caso próprio.
+- **O PERIGO, e o que se faz contra ele.** Ligar isto a bruto punha a colecção
+  dele a valer zero até acabar de fotografar 1 678 cartas, e a app ficava inútil
+  durante os dias de trabalho. Por isso **todo o número tem DUAS METADES, lado a
+  lado** — «confirmado por foto» e «por confirmar» —, e quem as compõe é o
+  **`confirmado.metades()`, num sítio só**: duas somas ao lado davam duas
+  respostas à mesma pergunta (a lição do `event_tier`, do `e_foil` e do
+  `precos.sql()`). O `metades()` **levanta** (`MetadesQueNaoSomam`,
+  `AssertionError`) se as duas não somarem o total — uma metade perdida pelo
+  caminho é meia verdade com cara de verdade. E cada página leva a **linha
+  honesta** (`confirmado.frase`): *«0 de 1 678 cartas confirmadas por foto»*,
+  que é o que ela diz hoje.
+- **A DECISÃO é «o deck está completo?», e essa usa só o confirmado.**
+  `s["pct"]`/`s["tenho"]` passaram a ser a metade confirmada; o físico fica em
+  **`pct_fisico`/`tenho_fisico`**, e as duas vão sempre juntas ao payload. Medido
+  na base de 02/10: Stiflenought **100 % → 23 %**, Pauper 100 % → 1 %, Blue Farm
+  96 % → 0 %. É duro de propósito, e é por isso que a barra de cada caixa leva
+  *«17 de 75 confirmadas por foto · 75 na gaveta — faltam 58 fotos»* por baixo.
+- **A FALTA PARTE-SE EM DUAS, E ESTA É A DECISÃO MAIS CONSEQUENTE QUE É MINHA.**
+  `comprar` continua a ser o que ele **não tem** — tapa-se com a CARTEIRA — e a
+  metade nova é **`fotografar`**, o que ele tem na caixa e ainda não provou —
+  tapa-se com a CÂMARA. A leitura literal de *"as decisões usam só o
+  confirmado"* punha as duas no `comprar`, e a lista de compras passava a mandar
+  comprar **687 cópias que estão em casa**: 1 678 cartas por fotografar contra
+  370 compras a sério. Isso é o contrário do que ele pediu ao dizer *"ter que
+  tirar a foto para atualizar"* — a foto é o gesto que falta, não a compra.
+  Desfaz-se numa linha (`_totais_do_slot`), e fica dito.
+- **A FOTO MANDA NA ALOCAÇÃO, e é EXCLUSIVA** (`confirmado.alocar_por_foto`). A
+  pasta da foto decide o deck: `Colocar fotos da coleção aqui\<deck>\` → aquele
+  deck; `Extras (fora dos decks)\` → **sem deck** (a alocação sai). O que estava
+  registado noutro deck **sai**, com linha em **`data/foto-manda.log`**. É a
+  inversão do ponto 5 de 2026-09-09 (*"um registo não lava uma correcção"*):
+  hoje é a FOTO que ganha ao registo, e o algoritmo de alocação passa a
+  **SUGERIR** — continua a dizer onde a carta devia estar e já não decide onde
+  está. Entra no `collection._import_csv` **no fim da cadeia**, de propósito: só
+  ali se sabe que cópias a linha tocou, e por isso o *"comprar = fotografar"*
+  não é um caminho novo — é esta linha a tratar o passo (iv) como trata os
+  outros.
+- **QUEM LÊ A PASTA É O `fotosite.origem`, pelo NOME do ficheiro**
+  (`site-<slot>-…`, `site-colecao-…`) — e é o `fotos.recolher_das_pastas` de
+  01/10 que renomeia a foto da pasta do deck para esse nome. Não se escreveu um
+  segundo leitor: *um caminho só, e é o que já estava testado*. **O alvo GLOBAL
+  do config NÃO serve aqui**, de propósito: ele é *"a caixa que estou a
+  fotografar"* e vale para PREFERIR cópias no passo (0); usá-lo para REESCREVER
+  alocações fazia uma foto largada à mão em `pendentes/` mudar o deck de uma
+  carta por causa de um botão carregado ontem. Tem caso próprio.
+- **NADA SE VENDE SEM FOTO, e é uma OITAVA saída** (`sem_foto`), não um motivo a
+  mais dentro das `protegidas` — ordem dele: *"separa os dois motivos na saída,
+  que são coisas diferentes"*. «Protegida» é uma decisão **tomada** («não vendas
+  isto»); «sem foto» é uma decisão por **tomar** («ainda não sei o que isto é»).
+  Corre **depois** das protecções, para que uma shockland sem foto saia com o
+  motivo que lhe vale para sempre, e o que cai aqui é a lista accionável:
+  *fotografa estas e aparecem na corrida seguinte*. Vai à **cabeça** do «fica de
+  fora» da exportação (`venda.FORA`), porque é a única das seis que ele resolve
+  com um gesto. Medido: **114 cópias / 1 820,85 €** passam de `venda` para
+  `sem_foto` — a lista de venda fica **vazia**, ao cêntimo e sem uma cópia
+  perdida pelo caminho.
+- **CADA DECK AS SUAS CARTAS: nenhuma alocação dupla nova**
+  (`confirmado.exige_alocacao_unica`, `AlocacaoDupla(ValueError)` → 409 com a
+  frase em português, como a `VendaDesligada` e a `VendaCongelada`). São **duas
+  asserções**: (1) a mesma cópia em dois decks — só morde com a foto a mandar, e
+  **nunca** nas que já estavam assim; (2) **mais alocado do que o lote tem** —
+  morde SEMPRE, com a regra ligada ou desligada: era já hoje impossível e **nada
+  o travava**. A verificação é PRÉ-VOO, antes de uma linha ser escrita, porque
+  validar depois obrigava a desfazer um `commit` já feito. Está nos **quatro**
+  escritores (`registar_marcadas`, `guardar_arrumacao`, `actualizar_caixa`,
+  `encomendas.conciliar` + o `registar_falta`), e há caso que exige que cada um
+  PERGUNTE — sem isso o primeiro caminho novo que se esquecesse voltava a criar
+  a segunda alocação em silêncio. **Fora da trava, de propósito:** o
+  `restaurar_alocacao` (é o inverso de uma escrita de há segundos) e a
+  `migracao` (foi ela que criou as duas que existem).
+- **OS DOIS CONFLITOS DA BASE DELE FICAM À VISTA E NÃO SE TOCAM** (ordem dele).
+  Medidos e confirmados ao exemplar: **cópia 293** (2× Sewer-veillance Cam TMT EN
+  foil — Modern 1, Pauper 1) e **cópia 543** (4× Hydroblast ICE PT nonfoil — UW
+  Replenish 2, Stiflenought 2). **A premissa da ordem precisa de uma correcção,
+  e é a favor dele:** as quantidades **SOMAM** a do lote, por isso hoje **nenhuma
+  carta física está em dois sítios** — o que está em dois sítios é a LINHA da
+  `copies`, que é um **lote** e não uma carta. São **lotes partidos**, e o
+  `conflitos()` di-lo com essas palavras (e separa-os da `sobrealocada`, que
+  seria o caso a sério). Continuam a ser um conflito a resolver, e por uma razão
+  nova: a partir de hoje é a foto que diz de quem é cada carta, e um lote
+  partido precisa de **uma foto em cada pasta** para continuar como está.
+- **O PROGRESSO é o ecrã que ele abre todos os dias** (`confirmado.progresso`):
+  por deck e no total, cartas confirmadas, por confirmar, e **quanto falta em
+  valor**. **Não conta nada por si** — a contagem é a `revalidacao.progresso` de
+  20/09, que já parte a colecção por caixa/venda/RL/resto; o que se acrescentou
+  foi o EURO de cada metade, pela conta única de 24/09
+  (`collection.mapa_precos` + `preco_impressao`). Uma segunda contagem ao lado
+  era o `event_tier` outra vez. Abre a `arrumacao.html` (bloco «📷 A foto é a
+  verdade», antes da Fase 1, com os conflitos), vai no cabeçalho da Deckboxes e
+  no cartão «Cartas na coleção» do Início.
+- **AS BÁSICAS FICAM FORA DA REGRA DA FOTO**, e é uma decisão minha. É a mesma
+  isenção que já têm das regras de material (2026-09-08): a pilha de Unhinged é
+  a granel, nunca foi uma linha da `copies`, e não há nada para fotografar.
+  Exigir-lhes foto punha todo o deck permanentemente incompleto por 24
+  Snow-Covered Plains que ele tem ali ao lado. É por isso que o
+  `tenho_conf_total` de hoje é **95** e não 0: são as básicas dos sete decks que
+  as jogam. Desfaz-se numa linha no `allocate`.
+- **O INTERRUPTOR é `revalidacao.foto_manda`** (hoje `true`), na MESMA campanha
+  de 20/09 — não se inventou uma segunda. `false` devolve o vault exactamente ao
+  que era, e tem caso próprio. É o padrão do `venda.mostrar`.
+- **O TECTO DE PLAYSET DO PREMODERN FOI-SE** (ordem dele, no mesmo dia: *"esquece
+  a regra do máximo um playset em Premodern: já não vale"*). A chave
+  `playset_maximo` saiu do `colecao_config.json` e o `loadout.playset_maximo`
+  devolve **sempre `None`** — um `playset_maximo: 4` esquecido num config
+  **deixa de ter efeito**, como o `dedicado: false` desde 19/09, em vez de se
+  apagar a função e deixar quem a tivesse escrita sem saber porque é que parou.
+  Bate-se de frente com *"cada deck tem as suas cartas"*: um tecto contado sobre
+  o GRUPO INTEIRO é a última peça da partilha entre caixas, e seis decks que não
+  partilham nada não têm por onde dividir quatro cópias. **E obrigou a trocar um
+  SINAL:** o `fases.de_conversao` derivava-se desta chave (*"o tecto só existe
+  porque as caixas trocam a carta entre si"*) e sem ela responderia «nenhuma
+  caixa é de conversão», **em silêncio**, perdendo a ordem de trabalho da Fase 2.
+  Passou a ler o `prioridade_por: "pct"` do grupo — que o CLAUDE.md já dava como
+  confirmação do outro — e **apanha as mesmas 6 caixas de Premodern**, medido,
+  com caso de teste.
+- **MEDIDO LADO A LADO, o MESMO `vault.db` nos dois lados** (worktree em
+  `_revisao/foto-manda`, cópia da base pela API de backup do sqlite3;
+  `_revisao/medir_foto_manda.py`). Preço de referência: modo `market`, cadeia
+  `cardtrader → cardmarket`.
+
+  | | main | ramo, `foto_manda: false` | ramo, **a foto manda** |
+  |---|---|---|---|
+  | `loadout.report` | 1,70 s | 1,67 s | **1,70 s** |
+  | fechar tudo | 15 024,83 € | 15 391,58 € | 15 391,58 € |
+  | a comprar | 370 | 414 | 414 |
+  | a arrumar | 171 | 171 | **171** |
+  | confirmadas por foto | — | 95 | **95** (as básicas) |
+  | nas caixas (físico) | — | 782 | 782 |
+  | **a fotografar** | — | 687 | **687** |
+  | venda | 114 c / 1 820,85 € | 114 c / 1 820,85 € | **0** |
+  | **sem foto** | — | 0 | **114 c / 1 820,85 €** |
+  | protegidas | 144 c / 4 568,57 € | igual | igual |
+  | rl_sem_historico | 100 c | 100 c | 100 c |
+  | guardar | 10 c / 1 432,95 € | igual | igual |
+  | playset bloqueado | **44** | **0** | **0** |
+  | conflitos de alocação dupla | (não media) | 2 | **2** |
+
+  **AS TRÊS COLUNAS SEPARAM AS DUAS MUDANÇAS, e é isso que as torna legíveis:**
+  - **main → ramo com a regra DESLIGADA** é SÓ o tecto de playset a cair: +44 a
+    comprar e **+366,75 €**, e explica-se caixa a caixa (Enchantress +25 /
+    +312,21 €, Elves +14 / +47,91 €, Oath +4 / +4,24 €, Replenish +1 / +2,39 €).
+    **As outras 13 caixas ficam iguais ao cêntimo**, e a venda, as protegidas, a
+    RL e o `guardar` **não mexem um número**. É a prova de que o interruptor
+    desligado devolve o vault ao que era.
+  - **desligada → ligada** é SÓ a regra da foto: a venda move-se **inteira** de
+    `venda` para `sem_foto` (114 c / 1 820,85 €, ao cêntimo e sem uma cópia
+    perdida pelo caminho), e aparecem as duas metades. **A alocação não mexe** —
+    a arrumar 171 nas três colunas: a foto manda em quem CONTA, não em quem é
+    escolhido.
+- **O CUSTO DE TEMPO É PEQUENO E MEDIDO.** O `loadout.report` **não mudou**
+  (1,70 s contra 1,70 s do `main`): a regra lê o `validado_em` que o `lots()` já
+  trazia. O que custa é o PROGRESSO, e só nas duas páginas que o pedem —
+  `confirmado.progresso` **0,42 s**, dos quais 0,23 s são o
+  `revalidacao.progresso` de 20/09 que já existia; o acréscimo é **0,19 s**
+  (o `mapa_precos` e a soma por grupo). O `conflitos` é **0,00 s**.
+- **AS PÁGINAS, medidas com o `webapp.py` a correr e o JS a sério**
+  (`_revisao/medir_paginas.py`: levanta o servidor num porto livre sobre a cópia
+  da base, pede cada página e cada ficheiro de dados, e corre
+  `node tests/abrir_pagina.js` com os `fetch` a ir mesmo ao servidor):
+
+  | | código | 1.º ms | 2.º ms | bytes |
+  |---|---|---|---|---|
+  | `index.html` | 200 | 10 | 5 | 43 653 |
+  | `deckboxes.html` | 200 | 5 | 9 | 70 176 |
+  | `arrumacao.html` | 200 | 12 | 5 | 72 621 |
+  | `metagame.html` | 200 | 8 617 | 5 | 209 201 |
+  | `deckboxes.js` | 200 | 41 | 6 | 259 186 |
+
+  **31 ficheiros de dados, todos 200**, nenhum erro. A segunda passagem está
+  toda em **1–29 ms**; na primeira só duas pagam o cálculo a frio —
+  `arrumacao/candidatos.json` **9 645 ms** e `deckboxes/arrumar.json` 5 866 ms —,
+  e o `metagame.html` a frio **8,6 s**. São os mesmos pedidos que o aquecedor de
+  01/10 (`webapp.aquecer`) paga antes de ele abrir a página, e ficam abaixo do
+  tecto de 25 s do `webapp.ESPERA_DADOS`. **O JS desenhou nas quatro**, sem uma
+  única mensagem de `paginas.erroDados`: Deckboxes 16 contentores, Arrumação 6.
+  O Início e o Metagame são desenhados no servidor e por isso o harness não tem
+  contentores para contar neles — estão nos 200 com o HTML completo.
+- **DUAS COISAS DE 2026-09-20 FICARAM DEGENERADAS, e é melhor estar escrito:**
+  (a) o filtro **«📷 Só validadas»** da aba Vender e da Feira, e (b) a coluna
+  **`Foto`** do CSV de stock (`csv_validadas`, `exportar --so-validadas`).
+  Deixaram de cortar o que quer que seja — nada chega à venda sem foto, logo a
+  coluna diz sempre `validada` e o `copias_por_revalidar` é sempre 0. **Não se
+  apagaram**: são elas que mantêm o CSV honesto no dia em que o `foto_manda` for
+  desligado. Os dois casos de teste passaram a afirmar isso, com a data.
+- **E O GRUPO «VENDA» DA ABA REVALIDAÇÃO DESAPARECEU**, pela mesma lógica: nada
+  na lista de venda precisa de foto, porque sem foto não chega lá. As cópias que
+  ele vai vender fotografam-se **onde estão** (Caixa RL e Colecção, que
+  continuam na aba) e entram na venda depois. Consequência a saber: o botão
+  «Tirar fotos» do alvo `venda` — e, com ele, o plano da **Fase 4** de 01/10 que
+  «se abriria sozinho a 12/10» — não tem nada para abrir enquanto a colecção não
+  estiver fotografada. Tem dois casos de teste a dizê-lo.
+- **A VENDA OFERECE PRIMEIRO O QUE JÁ TEM PROVA, e sem isto a regra não
+  funcionava.** O excedente escolhia-se pelo pior estado e podia cair TODO nas
+  cópias sem foto: fotografar 3 de 7 Get Lost não desbloqueava uma única venda.
+  A chave nova é a PRIMEIRA do `sorted` do `sell_list`, e apareceu a medir — foi
+  o `test_feira.caso_so_validadas` a apanhá-la. É também o que ele pediu a
+  2026-09-20: *"o que eu for vender também vai com foto"*.
+- **POR DECIDIR POR ELE, e é a parte que vale a pena ler primeiro:** (a) a
+  separação `comprar` / `fotografar` é minha e é a mais consequente — com a
+  leitura literal, o `comprar` passava de 414 para ~1 100 e o *fechar tudo* para
+  dezenas de milhares de euros em cartas que ele tem em casa; (b) as **básicas**
+  isentas da foto (são os 95 «confirmados» de hoje); (c) os dois **conflitos**
+  esperam a foto dele — e são **lotes partidos**, não cartas em dois sítios;
+  (d) o tecto de playset levou **44 cópias / 366,75 €** à lista de compras — se
+  não era isso que ele queria, é uma linha no config.
 
 **OS 16 DECKS QUE FICAM, E AS REGRAS DAS CARTAS (André, 2026-10-02).** Ele
 fechou a lista dos decks que ficam e reescreveu as regras que decidem o que vai
@@ -3034,7 +3275,11 @@ ver `PAGINAS_EDITAVEIS`).
   chamar-se Jeskai.
 
 **O PREMODERN VOLTOU A PARTILHAR, COM TECTO DE PLAYSET (André, 2026-09-08, à
-letra).** **[SUPERSEDED 19/09/2026 na PARTILHA: as caixas de Premodern voltaram a
+letra).** **[O TECTO DE PLAYSET FOI-SE a 2026-10-02 — ordem
+dele: *«esquece a regra do máximo um playset em Premodern: já não vale»*. O
+`loadout.playset_maximo` devolve sempre `None`, a chave saiu do config, e o
+`fases.de_conversao` passou a derivar-se do `prioridade_por: "pct"`. O que segue
+fica como histórico; medido: +44 cópias e +366,75 € na lista de compras.]** **[SUPERSEDED 19/09/2026 na PARTILHA: as caixas de Premodern voltaram a
 ser dedicadas como todas as outras (*"cada deck deverá ter as suas próprias
 cartas dentro"*). O que FICA desta secção é o `playset_maximo: 4`, agora contado
 sobre o grupo inteiro — se ele já tem 4, a caixa de menor prioridade mostra

@@ -533,6 +533,7 @@ def conciliar(con, *, nm: str, set_code: str, collector_number: str | None,
     entra como sempre.
     """
     from . import collection, loadout                      # noqa: PLC0415
+    from . import confirmado as _conf                      # noqa: PLC0415
     oracle = scryfall.resolve_name(con, nm) or nm
     frente = _front(oracle)
     set_code = (set_code or "").lower()
@@ -592,6 +593,12 @@ def conciliar(con, *, nm: str, set_code: str, collector_number: str | None,
             (take, take, json.dumps(ja + [copy_id]), r["id"]))
         _toca(con, r["id"])
         if s is not None:
+            # CADA DECK AS SUAS CARTAS (2026-10-02). A cópia acabou de NASCER
+            # desta foto, por isso não pode estar noutro deck — mas a trava fica
+            # aqui de propósito: é o caminho por onde uma compra entra, e é o
+            # primeiro que uma mudança futura podia pôr a alocar uma cópia que
+            # já existia noutra caixa.
+            _conf.exige_uma_so(con, copy_id, r["slot"], take)
             con.execute("INSERT INTO copy_allocation (copy_id, slot, quantity, "
                         "placed_at) VALUES (?,?,?,datetime('now'))",
                         (copy_id, r["slot"], take))

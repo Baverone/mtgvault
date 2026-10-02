@@ -739,19 +739,19 @@ def caso_pagina_diz_a_ordem_automatica_e_o_limite_de_playset():
     assert perto["prioridade"] == 1 and perto["posicao_grupo"] == 1, perto
     assert perto["prioridade_por"] == "pct" and perto["pct_coleccao"] == 100, perto
     assert longe["posicao_grupo"] == 2, longe
-    # O tecto: a Longe pede 5, a Perto tem as 2 (e desde 2026-09-19 não as
-    # empresta): a Longe compra 2 (=4 no grupo) e ficam 3 por tapar, ditas com
-    # o "está 2 no PM Perto" — a frase vem inteira do Python
-    # (`loadout.texto_playset`). Até 2026-09-19 ia buscar as 2 e ficava 1.
-    assert longe["playset"] == 4 and longe["bloqueado"] == 3, longe
-    assert longe["playset_faltas"] == [{
-        "nm": "Swords to Plowshares", "board": "main", "q": 3,
-        "txt": "3 não se compra (limite de 4 no total; está 2 no PM Perto)"}], longe
+    # O TECTO FOI-SE (André, 2026-10-02: *"esquece a regra do máximo um playset
+    # em Premodern"*). A Longe pede 5, a Perto tem as 2 e não as empresta
+    # (19/09): a Longe compra as **5**, e nada fica «por tapar». Era comprar 2 e
+    # 3 bloqueadas, com a frase do `texto_playset`. O que FICA é a NOTA — *"tens
+    # 2 no PM Perto"* —, que é informação sobre onde as cópias estão e não uma
+    # regra: essa não mudou.
+    assert longe["playset"] == 0 and longe["bloqueado"] == 0, longe
+    assert longe["playset_faltas"] == [], longe["playset_faltas"]
     stp = next(c for c in longe["cartas"] if c["nm"] == "Swords to Plowshares")
-    assert stp["comprar"] == 2 and stp["bloq"] == 3, stp
+    assert stp["comprar"] == 5 and stp["bloq"] == 0, stp
     assert stp["nota"] == "tens 2 no PM Perto", stp["nota"]
     assert sum(w["q"] for w in longe["wantlist"]
-               if w["nm"] == "Swords to Plowshares") == 2, longe["wantlist"]
+               if w["nm"] == "Swords to Plowshares") == 5, longe["wantlist"]
 
     abas = _abas_desenhadas(pagina)
     if abas is None:
@@ -759,9 +759,11 @@ def caso_pagina_diz_a_ordem_automatica_e_o_limite_de_playset():
         return
     assert "#1 por % completo" in abas["pm-perto"], abas["pm-perto"][:900]
     assert "#2 por % completo" in abas["pm-longe"], abas["pm-longe"][:900]
-    assert "limite de playset" in abas["pm-longe"], abas["pm-longe"][:1500]
-    assert "3 não se compra (limite de 4 no total; está 2 no PM Perto)" \
-        in abas["pm-longe"], abas["pm-longe"][:1500]
+    # E a página deixou de falar de um limite que não existe: a frase do tecto
+    # não pode voltar a aparecer por uma chave esquecida num config.
+    assert "limite de playset" not in abas["pm-longe"], abas["pm-longe"][:1500]
+    assert "limite de 4 no total" not in abas["pm-longe"], abas["pm-longe"][:1500]
+    assert "tens 2 no PM Perto" in abas["pm-longe"], abas["pm-longe"][:1500]
     # E as caixas que não estão num grupo automático não ganham o crachá.
     outra = _abas_desenhadas(_pagina_deckboxes())
     assert "por % completo" not in outra["modern"], outra["modern"][:900]

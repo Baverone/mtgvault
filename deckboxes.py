@@ -465,6 +465,16 @@ def _caixa_payload(s, imgs, cfs, rep=None, col=None, tipos=None, cores=None,
         "reserva_nomes": list(s.get("reserva") or []),
         "pct": s["pct"], "tenho": s["tenho"], "precisa": s["precisa"],
         "comprar": s["comprar"], "noutra": s["noutra"], "faltam": s["faltam"],
+        # A FOTO É A VERDADE (André, 2026-10-02). O `pct`/`tenho` de cima são
+        # agora a metade CONFIRMADA (a decisão: *"este deck está completo?"*) e
+        # estas são a outra metade — a carta está mesmo na gaveta, só não tem
+        # prova. Vão as DUAS no payload porque mostrar só uma era, num caso,
+        # dizer-lhe que não tem nada e, no outro, dizer-lhe que está feito.
+        # O `fotografar` é a falta que se tapa com a CÂMARA, nunca somada ao
+        # `comprar`, que é a que se tapa com a carteira.
+        "pct_fisico": s.get("pct_fisico"), "tenho_fisico": s.get("tenho_fisico"),
+        "fotografar": s.get("fotografar", 0),
+        "fmanda": bool((rep or {}).get("foto_manda")),
         # As três parcelas do "destinadas a outra caixa" (André, 2026-09-08).
         # O cabeçalho da caixa mostra-as separadas: só a primeira é uma ida a
         # outra caixa, e hoje ela é ZERO em todas menos no Stiflenought.
@@ -976,7 +986,19 @@ def payload(con, rep, editable=False, token=""):
                    # confirmar*, e somá-las mexia no número por que ele decide.
                    "basicas": rep.get("basicas_comprar_total", 0),
                    "basicas_custo": rep.get("basicas_custo_total", 0.0),
+                   # A FOTO É A VERDADE (2026-10-02): as duas metades e a FRASE
+                   # honesta, feitas no Python. A página não as compõe — a
+                   # segunda soma ao lado dava outro número, que é a lição do
+                   # `event_tier` e a razão de o `confirmado.metades` existir.
+                   "fmanda": bool(rep.get("foto_manda")),
+                   "confirmadas": rep.get("tenho_conf_total", 0),
+                   "por_confirmar": rep.get("fotografar_total", 0),
+                   "frase_foto": (rep.get("cartas_metades") or {}).get("frase", ""),
+                   "conflitos": len(rep.get("conflitos_alocacao") or []),
                    "arrumar": arr["copias"]},
+        # Os conflitos de alocação dupla, à vista (ordem dele: não se resolvem
+        # por iniciativa própria — ele resolve-os ao fotografar esses decks).
+        "conflitos_alocacao": rep.get("conflitos_alocacao") or [],
         "compras": sorted(geral.values(), key=lambda g: -g["cost"]),
         # As básicas a comprar, juntas por nome+material, com a caixa que as pede.
         "basicas": _basicas_geral(rep),
@@ -1342,6 +1364,11 @@ _CSS = r"""
    overflow:hidden;margin:9px 0}
  .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:999px;
    transition:width .3s}
+ /* AS DUAS METADES (2026-10-02): a linha honesta debaixo da barra de cada
+    caixa. A metade confirmada em texto normal, a física em `dim` — a hierarquia
+    diz qual é que manda na decisão sem esconder a outra. */
+ .metades{font-size:12px;margin:-4px 0 6px;line-height:1.45}
+ .metades .mconf{font-weight:700}
  .badges{display:flex;align-items:flex-start;gap:6px;flex-wrap:wrap;margin:8px 0}
  /* `white-space:normal` de propósito: com `nowrap`, a etiqueta das fontes
     ("fontes: Colecção + Caixa RL (PT)") transbordava o cartão no desktop em vez
@@ -2306,6 +2333,19 @@ function renderResumo() {
   if (ir_) h += chip(r.nmont, 'ir buscar a outra caixa', 'var(--ob)', 'todas');
   $('#resumo').innerHTML =
     `<span class="rsl">${h}</span>`
+    /* A LINHA HONESTA (André, 2026-10-02): *«X de 1 678 cartas confirmadas por
+       foto»*, no cabeçalho, em TODAS as páginas. Vem pronta do Python
+       (`confirmado.frase`) — a página não a compõe, pela razão do `e_foil`. */
+    /* «nas caixas» à frente, e não é cosmética: este número conta as cópias que
+       a ALOCAÇÃO deu às caixas (782), e o do Início conta a colecção inteira
+       (1 678). São duas perguntas; sem o rótulo eram dois números a dizer-se a
+       mesma coisa, que é o defeito que o `metades` existe para não ter. */
+    + (r.fmanda && r.frase_foto
+       ? `<span class="dim rsd">📷 nas caixas: ${esc(r.frase_foto)}`
+         + (r.por_confirmar ? ` — faltam ${r.por_confirmar} por fotografar` : '')
+         + (r.conflitos ? ` · <b style="color:var(--warn)">${r.conflitos} `
+            + `conflito${r.conflitos === 1 ? '' : 's'} de alocação dupla</b>` : '')
+         + `</span>` : '')
     + `<span class="dim rsd">${D.caixas.length} caixas — ${r.permanentes} `
     + `permanentes, ${r.candidatos} candidatas · dados de ${esc(D.gerado)}`
     + (D.editable ? ' · <b style="color:var(--add)">modo edição</b>' : '')
@@ -2421,7 +2461,13 @@ function _filaDeAbas() {
   const daCaixa = c => [c.slot,
     `<i class="pin ${c.montado ? 'done' : c.vazio ? 'low' : pin(c.pct)}"></i>`,
     c.nome,
-    (c.vazio ? 'sem deck escolhido' : `${c.pct}% · ${c.tenho}/${c.precisa}`),
+    /* AS DUAS METADES no índice também (2026-10-02): com a foto a mandar, o
+       `pct` é o confirmado, e sem a outra metade ao lado a fila ficava a dizer
+       «0 %» em seis decks que estão montados na estante. */
+    (c.vazio ? 'sem deck escolhido'
+     : `${c.pct}% · ${c.tenho}/${c.precisa}`
+       + (c.fmanda && c.tenho_fisico != null && c.tenho_fisico !== c.tenho
+          ? ` · ${c.tenho_fisico} na gaveta` : '')),
     (c.permanente ? '' : ' cand')];
   const montadas = D.caixas.filter(c => c.montado).map(daCaixa);
   const faltam = D.caixas.filter(c => !c.montado).map(daCaixa);
@@ -4048,6 +4094,27 @@ async function processarAgora(btn) {
   } catch (e) { btn.disabled = false; erro('Não deu: ' + e.message); }
 }
 
+/* AS DUAS METADES DE UMA CAIXA (André, 2026-10-02: *"se não tiver foto, não tem
+   carta"*). A linha honesta, com a de cima a dizer o que a DECISÃO usa e a de
+   baixo o que está fisicamente na gaveta:
+
+     «17 de 75 confirmadas por foto · 75 na gaveta — faltam 58 fotos»
+
+   Com a regra desligada (`c.fmanda` falso) não se escreve nada: uma frase a
+   prometer uma regra que não está ligada é pior do que frase nenhuma, e é a
+   mesma decisão do `confirmado.frase` do lado do Python. */
+function metadesHTML(c) {
+  if (!c.fmanda) return '';
+  const f = c.fotografar || 0;
+  return `<div class="metades">`
+    + `<span class="mconf">${c.tenho} de ${c.precisa} confirmadas por foto</span>`
+    + (c.tenho_fisico == null || c.tenho_fisico === c.tenho ? ''
+       : ` <span class="dim">· ${c.tenho_fisico} na gaveta`
+         + (f ? ` — faltam ${f} ${f === 1 ? 'foto' : 'fotos'}` : '')
+         + `</span>`)
+    + `</div>`;
+}
+
 function caixaHTML(c, compacta) {
   if (c.vazio) {
     return `<div class="box"><div class="btop"><span class="btit">${fotoThumbHTML(c)}`
@@ -4065,6 +4132,11 @@ function caixaHTML(c, compacta) {
     + `<b>${esc(c.nome)}</b></span>`
     + `<span class="pct" style="color:${cor(c.pct)}">${c.pct}%</span></div>`
     + `<div class="bar"><i style="width:${Math.max(c.pct, 2)}%;background:${cor(c.pct)}"></i></div>`
+    /* A FOTO É A VERDADE (André, 2026-10-02). A percentagem passou a ser a
+       CONFIRMADA POR FOTO, e sozinha ela mente por omissão: um deck sleevado e
+       completo mostrava 0 %. Por isso a barra leva SEMPRE a outra metade ao
+       lado — nunca só uma (regra de apresentação dele). */
+    + metadesHTML(c)
     + `<div class="badges">${badges(c)}</div>`
     /* A FOTO DA DECKBOX (2026-09-21), maior, só na aba da caixa — no cartão
        compacto da fila fica a miniatura ao lado do nome. */

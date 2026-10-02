@@ -242,28 +242,35 @@ def caso_o_premodern_respeita_o_limite_de_4_no_total():
     # e quem fica com as cópias é a primeira dessa ordem.
     ordem = sorted(rep["slots"], key=lambda x: x["prioridade"])
     um, outras = ordem[0], ordem[1:]
-    assert um["nome"] == "Dois" and um["pct"] == 80, (um["nome"], um["pct"])
+    # O TECTO DE PLAYSET FOI-SE (André, 2026-10-02, à letra: *"esquece a regra do
+    # máximo um playset em Premodern: já não vale"*). Este caso afirmava o
+    # CONTRÁRIO — era ele a trancar a regra de 2026-09-08 — e por isso a asserção
+    # muda com a decisão, não com o número. O que passa a valer: as três caixas
+    # compram as suas (cada deck as suas cartas, 19/09), e nada fica
+    # «bloqueado». A `pct` é a FÍSICA porque estas cópias não têm foto desta
+    # campanha e o `pct` passou a ser o confirmado (ver a secção da foto).
+    assert um["nome"] == "Dois" and um["pct_fisico"] == 80, (um["nome"], um["pct_fisico"])
     assert um["comprar"] == 1 and um["playset_bloqueado"] == 0, um
     for c in outras:
         n = c["nome"]
         stp, bl = linha(c, "Swords to Plowshares"), linha(c, "Brushland")
-        assert stp["comprar"] == 0 and stp["playset_bloqueado"] == 4, stp
-        assert stp["playset_onde"] == {"Dois": 4}, stp["playset_onde"]
-        assert loadout.texto_playset(stp, 4) == \
-            "4 não se compra (limite de 4 no total; está 4 no Dois)", \
-            loadout.texto_playset(stp, 4)
-        assert "4 não se compra (limite de 4 no total; está 4 no Dois)" in \
-            loadout.nota_parcial(stp), loadout.nota_parcial(stp)
-        # A Brushland: o grupo tem 1, tecto 4 → a Dois compra 1, a Tres compra 1
-        # (3 no total). O tecto só corta o que passaria dos 4.
+        # Era `comprar == 0` e `playset_bloqueado == 4`: o tecto cortava as
+        # quatro. Hoje compram-se.
+        assert stp["comprar"] == 4 and stp["playset_bloqueado"] == 0, stp
+        assert stp["playset_onde"] == {}, stp["playset_onde"]
+        assert loadout.texto_playset(stp, 4) == "", loadout.texto_playset(stp, 4)
+        # Mas a NOTA de onde estão as cópias fica (2026-09-19): ele tem de saber
+        # que as tem noutra caixa, mesmo tendo de comprar as suas.
+        # TRÊS e não quatro: a nota conta as cópias que ele TEM noutra caixa. A
+        # quarta era a que o tecto mandava a «Dois» comprar — o `playset_onde`
+        # contava-a —, e sem tecto não há compra futura para contar aqui.
+        assert loadout.nota_onde(stp) == "tens 3 no Dois", loadout.nota_onde(stp)
         assert bl["comprar"] == 1 and bl["playset_bloqueado"] == 0, bl
-        assert c["comprar"] == 1 and c["playset_bloqueado"] == 4, (n, c["comprar"])
-        assert c["custo"] == 2.0, ("só a Brushland conta para o fechar", c["custo"])
-    assert rep["comprar_total"] == 3 and rep["custo_total"] == 6.0, rep["custo_total"]
-    assert rep["bloqueado_total"] == 8, rep["bloqueado_total"]
-    lim = rep["limites"]
-    assert [(g["nm"], g["bloqueado"], g["onde"]) for g in lim] == \
-        [("Swords to Plowshares", 8, {"Dois": 4})], lim
+        assert c["comprar"] == 5 and c["playset_bloqueado"] == 0, (n, c["comprar"])
+        assert c["custo"] == 10.0, ("sem tecto, as quatro contam", c["custo"])
+    assert rep["comprar_total"] == 11 and rep["custo_total"] == 22.0, rep["custo_total"]
+    assert rep["bloqueado_total"] == 0, rep["bloqueado_total"]
+    assert rep["limites"] == [], rep["limites"]
     _sem_ir_buscar(rep)
     print("Premodern: o tecto de 4 no total fica, e diz em que caixa estao as copias")
 

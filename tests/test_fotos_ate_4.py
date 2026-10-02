@@ -559,10 +559,16 @@ def caso_os_decks_de_lista_unica_vem_primeiro():
     dois de cEDH. A família de Premodern monta-se por conversão: fica para
     depois."*
 
-    A regra DERIVADA (não há coluna na base): o grupo de formato da caixa tem um
-    tecto de playset contado sobre o GRUPO INTEIRO (`playset_maximo`) e há 2+
-    caixas nesse grupo — esse tecto só existe porque as caixas trocam a carta
-    entre si. Tirar o tecto do config devolve-as à frente, e tem de devolver.
+    A regra DERIVADA (não há coluna na base): o grupo de formato da caixa ordena
+    as caixas por % completo (`prioridade_por: "pct"`) e há 2+ caixas nesse grupo
+    — ordenar pela percentagem só faz sentido quando elas competem pelas MESMAS
+    cartas. Tirar esse sinal do config devolve-as à frente, e tem de devolver.
+
+    **O SINAL MUDOU a 2026-10-02 e a resposta é a mesma.** Era o `playset_maximo`
+    do grupo (*"o tecto só existe porque as caixas trocam a carta entre si"*), e
+    nesse dia ele mandou esquecer o tecto de playset do Premodern — o que deixava
+    esta derivação a ler uma chave que já não existe e a responder «nenhuma caixa
+    é de conversão», em silêncio, perdendo a ordem de trabalho da Fase 2.
     """
     repor()
     con = base()
@@ -584,12 +590,22 @@ def caso_os_decks_de_lista_unica_vem_primeiro():
     pm = next(f for f in f2["filas"] if f["nome"] == "UW Replenish")
     assert "lista única" in bf["nota"].lower(), bf["nota"]
     assert "conversão" in pm["nota"] and "depois" in pm["nota"], pm["nota"]
-    # Sem o tecto de playset no grupo, o Premodern deixa de ser «de conversão».
+    # Sem a ordem por % no grupo, o Premodern deixa de ser «de conversão».
     cfg = json.loads(json.dumps(CFG))
     for r in cfg["regras_por_formato"]:
-        r.pop("playset_maximo", None)
+        r.pop("prioridade_por", None)
     assert set(fases.de_conversao(rep, cfg).values()) == {False}, \
-        "a regra não está a sair do tecto de playset do grupo"
+        "a regra não está a sair do `prioridade_por: pct` do grupo"
+    # E o tecto de playset JÁ NÃO é o sinal: um config com ele e sem a ordem por
+    # % não devolve nenhuma caixa «de conversão». Sem esta linha, trocar o sinal
+    # de volta passava sem ninguém dar por isso.
+    cfg2 = json.loads(json.dumps(CFG))
+    for r in cfg2["regras_por_formato"]:
+        r.pop("prioridade_por", None)
+        if r.get("grupo") == "premodern":
+            r["playset_maximo"] = 4
+    assert set(fases.de_conversao(rep, cfg2).values()) == {False}, \
+        "o tecto de playset deixou de ser o sinal de «de conversão» (02/10/2026)"
     print("os decks de lista unica vem primeiro; os de conversao no fim, com razao")
 
 

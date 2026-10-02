@@ -1622,26 +1622,35 @@ def _filas_por_lotes(fotos_: list[dict], lote: int = LOTE) -> list[dict]:
 # sobreposição, o cEDH era «de conversão» e parte do Premodern não — ao
 # contrário do que ele disse.
 NOTA_CONVERSAO = (
-    "Fica para depois: estas caixas são do mesmo grupo de formato, com tecto de "
-    "playset contado sobre o grupo — partilham o mesmo conjunto de cartas e "
-    "montam-se por conversão de uma noutra. Primeiro os decks de lista única.")
+    "Fica para depois: estas caixas são do mesmo grupo de formato e ordenam-se "
+    "por % completo — partilham o mesmo conjunto de cartas e montam-se por "
+    "conversão de uma noutra. Primeiro os decks de lista única.")
 NOTA_LISTA_UNICA = ("Lista única e cartas dedicadas: é por aqui que se começa.")
 
 
 def de_conversao(res: dict, cfg: dict | None = None) -> dict[str, bool]:
-    """`slot -> é «de conversão»?` Ver a nota acima para a regra derivada."""
+    """`slot -> é «de conversão»?` Ver a nota acima para a regra derivada.
+
+    **O SINAL MUDOU A 2026-10-02 e a resposta é a mesma.** Era o `playset_maximo`
+    do grupo (*"o tecto só existe porque as caixas trocam a carta entre si"*) — e
+    nesse dia o André mandou esquecer o tecto de playset do Premodern, o que
+    deixava esta derivação a ler uma chave que já não existe e a responder
+    «nenhuma caixa é de conversão», em silêncio. O sinal passou a ser o
+    `prioridade_por: "pct"` do mesmo grupo, que o CLAUDE.md já dava como
+    confirmação do outro: ordenar as caixas pela percentagem só faz sentido
+    quando elas competem pelas MESMAS cartas. Hoje apanha exactamente as 6
+    caixas de Premodern, como antes — medido.
+    """
     from . import loadout                                    # noqa: PLC0415
     regras = (cfg or {}).get("regras_por_formato")
     if not isinstance(regras, list) or not regras:
         regras = loadout.regras_por_formato()
-    tecto: dict[str, int] = {}
-    for r in regras:
-        if r.get("playset_maximo"):
-            tecto[r.get("grupo") or ""] = int(r["playset_maximo"])
+    partilham = {r.get("grupo") or "" for r in regras
+                 if str(r.get("prioridade_por") or "").lower() == "pct"}
     quantas: dict[str, int] = defaultdict(int)
     for s in res.get("slots") or []:
         quantas[s.get("grupo") or s.get("formato") or ""] += 1
-    return {s["slot"]: bool(tecto.get(s.get("grupo") or "")
+    return {s["slot"]: bool((s.get("grupo") or "") in partilham
                             and quantas[s.get("grupo") or ""] > 1)
             for s in res.get("slots") or []}
 
