@@ -182,22 +182,29 @@ for alvo, casos in (
               f"({caso}): {motivo[-1][:90] if motivo else ''}")
 
 # ---------------------------------------------------------------------------
-# AS QUATRO PROTECÇÕES E AS FASES (André, 2026-10-01). Noutro processo, pela
-# razão de cima.
+# AS REGRAS DA VENDA E AS FASES (André, 2026-10-01 e 2026-10-02). Noutro
+# processo, pela razão de cima.
 # ---------------------------------------------------------------------------
 for alvo, casos in (
+    ("duais", ["caso_a_quinta_dual_fora_dos_decks_vai_a_venda_e_a_quarta_nao",
+               "caso_uma_dual_dentro_de_um_deck_nao_conta_para_as_quatro_de_fora",
+               "caso_as_tres_listas_de_terras_derivam_do_catalogo"]),
+    ("duais_quota",
+     ["caso_a_quinta_dual_fora_dos_decks_vai_a_venda_e_a_quarta_nao"]),
     ("terras", ["caso_uma_shockland_extra_fora_de_qualquer_deck_nunca_e_candidata",
                 "caso_todas_as_copias_de_uma_shock_fetch_ficam_protegidas",
                 "caso_as_proteccoes_valem_tambem_no_motor_da_venda"]),
     ("rl_joga", ["caso_uma_rl_que_ele_joga_nunca_e_candidata"]),
-    ("decisoes", ["caso_uma_copia_num_deck_guardado_nunca_e_candidata",
-                  "caso_um_deck_sem_decisao_nao_manda_nada_para_a_venda"]),
+    ("estados", ["caso_uma_copia_num_deck_permanente_nunca_e_candidata",
+                 "caso_uma_caixa_sem_estado_nao_manda_nada_para_a_venda"]),
     # A OMISSÃO: é a que mais dinheiro custava se estivesse ao contrário.
-    ("omissao", ["caso_um_deck_sem_decisao_conta_como_montado",
-                 "caso_um_deck_sem_decisao_nao_manda_nada_para_a_venda"]),
-    ("reservas", ["caso_uma_carta_da_reserva_acima_do_limiar_nunca_e_candidata",
+    ("omissao", ["caso_uma_caixa_sem_estado_protege",
+                 "caso_uma_caixa_sem_estado_nao_manda_nada_para_a_venda"]),
+    ("reservas", ["caso_uma_carta_jogada_ha_vinte_dias_esta_protegida",
                   "caso_a_reserva_manual_fica_mesmo_sem_consenso"]),
-    ("limiar", ["caso_abaixo_do_limiar_a_carta_volta_a_ser_candidata"]),
+    ("janela", ["caso_uma_carta_jogada_ha_quarenta_dias_nao_esta_protegida"]),
+    ("staples",
+     ["caso_uma_staple_de_sideboard_de_premodern_acima_do_corte_esta_protegida"]),
     ("min_listas", ["caso_a_reserva_nao_se_enche_sem_amostra"]),
     ("congelado", ["caso_a_saida_de_venda_recusa_se_antes_de_doze_de_outubro"]),
     # A regra ERRADA de 2026-10-01 (uma linha por cópia física) e o tecto.
@@ -210,6 +217,31 @@ for alvo, casos in (
     for caso in casos:
         p = subprocess.run(
             [sys.executable, str(AQUI / "_chumba_fases.py"), alvo, caso],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            cwd=AQUI)
+        ok = p.returncode != 0
+        bom &= ok
+        motivo = (p.stdout or p.stderr or "").strip().splitlines()
+        print(f"  {'ok  ' if ok else 'FAIL'} chumba sem «{alvo}» "
+              f"({caso}): {motivo[-1][:90] if motivo else ''}")
+
+# ---------------------------------------------------------------------------
+# OS 16 DECKS: A IDENTIDADE É UMA CARTA-ASSINATURA (André, 2026-10-02). Noutro
+# processo, pela razão de cima.
+# ---------------------------------------------------------------------------
+for alvo, casos in (
+    ("assinatura", ["caso_um_deck_identifica_se_pela_carta_e_nao_pela_etiqueta",
+                    "caso_basta_uma_carta_para_apanhar_as_varias_versoes"]),
+    ("conjuncao", ["caso_a_conjuncao_exige_as_duas_cartas"]),
+    ("so_que_contam",
+     ["caso_a_reserva_usa_todas_as_listas_e_nao_so_as_que_contam"]),
+    ("fora", ["caso_o_nao_e_necessaria_tira_a_carta_da_reserva_com_data_e_deck",
+              "caso_o_nao_e_necessaria_sobrevive_a_uma_corrida_do_daily"]),
+    ("sem_assinatura", ["caso_um_deck_sem_assinatura_nao_recebe_consenso"]),
+):
+    for caso in casos:
+        p = subprocess.run(
+            [sys.executable, str(AQUI / "_chumba_decks.py"), alvo, caso],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
             cwd=AQUI)
         ok = p.returncode != 0

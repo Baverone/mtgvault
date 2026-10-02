@@ -1,20 +1,34 @@
-"""AS FASES DA ARRUMAÇÃO, E AS QUATRO PROTECÇÕES DA VENDA (André, 2026-10-01).
+"""AS FASES DA ARRUMAÇÃO, E AS REGRAS DA VENDA (André, 2026-10-01 e 2026-10-02).
 
-Ele vai arrumar a colecção por FASES e ditou as regras neste dia. As palavras
-dele estão aqui porque é por elas que isto se mede:
+Ele vai arrumar a colecção por FASES. A 2026-10-01 ditou quatro protecções; a
+2026-10-02 **fechou a lista dos 16 decks que ficam** e reescreveu as regras das
+cartas. As palavras dele, que é por elas que isto se mede:
 
-  P1  *"shocklands e fetchlands: **todas as cópias** ficam protegidas — todos os
-      acabamentos, todas as línguas, todas as repetidas, estejam ou não num
-      deck. Sem excepções."*
-  P2  Reserved List: protege-se *"o RL que ele joga"*, e **joga** = alocado a um
-      deck montado OU presente no consenso de um formato que ele joga. O resto
-      da RL **não** é protegido por aqui: continua a passar pela regra dos 5 %
-      de 2026-09-08, com o carimbo da régua de preço.
-  P3  *"nenhuma cópia alocada a um deck no estado «montado» ou «guardado» vai à
-      venda."*
-  P4  *"pede também, para cada deck, os maybe porque é preciso ter reserva
-      dessas cartas para não estar a vender agora e ter que comprar mais
-      tarde."*
+  R1  DUAIS   *"quer ter 4 de cada em colecção FORA dos decks; o que passar
+      disso vende-se ou troca-se."* São as dez duais originais, DERIVADAS do
+      catálogo (ver `duais`). **A R1 manda sobre a R4**: as duais são Reserved
+      List, e ele foi explícito — *"para elas manda a R1, que é mais
+      específica"*. Uma quinta dual fora dos decks vai à venda apesar de ser RL.
+  R2  SHOCKLANDS  *"todas as cópias protegidas, como já está"* — todos os
+      acabamentos, todas as línguas, todas as repetidas, dentro ou fora de um
+      deck. Sem excepções.
+  R3  FETCHLANDS  idem.
+  R4  RESERVED LIST  protege-se *"o RL que ele joga; o que não joga vai à
+      venda"*. O resto da RL continua a passar pela regra dos 5 % de 2026-09-08,
+      com o carimbo da régua de preço.
+  R5  A RESERVA  *"protege-se toda a carta que tenha sido jogada NO ÚLTIMO MÊS
+      (30 dias a rolar) nos decks acima, mesmo que esteja hoje fora da lista.
+      «Jogada no deck» = aparece numa lista do arquétipo desse deck nos últimos
+      30 dias, main ou side."* **Isto SUBSTITUIU o limiar de 20 %** de
+      2026-10-01, que foi apagado.
+  R5b STAPLES DE SIDEBOARD, SÓ PREMODERN  *"depois de a decklist fechar o
+      Premodern não mexe muito, mas convém ter no sideboard as cartas que são
+      staples."* Pela taxa de presença em sideboards de TODAS as listas de
+      Premodern dos últimos 30 dias, com o corte no config e a CURVA medida.
+  RD  O DECK  nenhuma cópia dentro de um deck cujo `estado` protege vai à venda.
+
+  *"TUDO O QUE NÃO SE ENQUADRAR NESTAS REGRAS vai para uma lista única chamada
+  VENDER."*
 
 AS LISTAS DE TERRAS DERIVAM-SE DO CATÁLOGO — É A PARTE QUE NÃO PODE SER DE
 MEMÓRIA
@@ -57,38 +71,56 @@ propósito: uma protecção vazia em silêncio manda shocklands para a venda, e 
 exactamente isso que a ordem proíbe. Quem desenha página apanha a excepção e
 di-lo em português.
 
-OS TRÊS ESTADOS DE CADA DECK — E PORQUE É QUE NÃO SÃO O `estado` DA CAIXA
+O ESTADO DA CAIXA É QUE DECIDE — E O SEGUNDO CAMPO FOI APAGADO (2026-10-02)
 -------------------------------------------------------------------------------
-A `caixas[].estado` (`candidata`/`permanente`/`montada`, v6 de 2026-09-08) é a
-escala da ALOCAÇÃO: diz quem escolhe cartas primeiro e o que está sleevado. A
-decisão desta arrumação é outro eixo — *"o que faço com este deck"* — e
-escrevê-la na mesma chave era mudar a alocação com um botão que ele carrega para
-arrumar. Por isso vive em **`caixas[].decisao`**:
+A 2026-10-01 isto tinha um campo PRÓPRIO (`caixas[].decisao`:
+`montado`/`guardado`/`dissolvido`) ao lado do `estado` que as caixas já tinham
+desde a v6 (`candidata`/`permanente`/`montada`, com `congelada` CALCULADA). Eram
+**duas verdades para a mesma pergunta** — exactamente o padrão que a v6 veio
+fechar (*"temos decks vigiados e deckbox que é a mesma coisa"*) — e ele decidiu
+ficar com a antiga. O campo `decisao` **saiu**, com tudo o que o lia: o endpoint
+`/api/fase-decisao`, o `fases decisao` do CLI e os botões da Fase 1.
 
-    montado     fica montado, cartas protegidas (P3)
-    guardado    desmonta-se, as cartas continuam protegidas e NÃO vão à venda
-    dissolvido  desmonta-se e as cartas passam a candidatas, menos as que
-                P1, P2 ou P4 apanhem
+O mapeamento é o dele, à letra:
 
-**A OMISSÃO É `montado`.** Nunca o contrário: um deck sem decisão não manda uma
-única carta para a venda, e isso tem caso de teste
-(`caso_um_deck_sem_decisao_nao_manda_nada_para_a_venda`). Um default a
-`dissolvido` punha a colecção inteira à venda no dia em que alguém
-acrescentasse uma caixa ao config.
+    montada     protege   (está sleevada na estante)
+    congelada   protege   (= montada; é calculada, ver `caixas.estado_de`)
+    permanente  protege   (é um deck que fica)
+    candidata   NÃO protege por si  (só recebe o que sobra)
 
-A RESERVA ENCHE-SE SOZINHA, COM UM LIMIAR — E O LIMIAR É DELE
+**A OMISSÃO PROTEGE**, e isso não é um acaso deste módulo: o
+`caixas.estado_de` já devolvia `permanente` a uma caixa sem a chave — *"era o
+que as catorze do loadout eram antes de a distinção existir, e um default a
+`False` esvaziava a alocação de quem não a escrevesse"*. Aqui vale o dobro:
+**um deck sem estado escrito não manda uma única carta para a venda**. Tem caso
+de teste (`caso_uma_caixa_sem_estado_protege`).
+
+Onde é que o estado se MUDA: na **Deckboxes**, que é onde esse gesto já vive
+(«Tornar permanente», «Montar», «Desmontar», «Subir/Descer») e onde ele tem a
+caixa na mão. A Fase 1 mostra-o e não o reescreve — dois caminhos para o mesmo
+gesto discordam um dia qualquer, em silêncio.
+
+A RESERVA É O QUE FOI JOGADO NOS ÚLTIMOS 30 DIAS (R5)
 -------------------------------------------------------------------------------
-A reserva não pode ser trabalho manual: sai do consenso do arquétipo (as cartas
-de banda flex e o resto do sideboard que o consenso mostra e que não estão nas
-75 de hoje), mais o que ele acrescentar à mão. Para o deck de Duel Commander é o
-**consenso por comandante** de 2026-10-01 (`mtgvault/consenso.py`).
+A reserva não pode ser trabalho manual. Sai das listas do ARQUÉTIPO de cada deck
+nos últimos `JANELA_DIAS` (30) dias — todas as cartas, main **ou** side, mesmo
+as que hoje estão fora das 75 —, mais o que ele acrescentar à mão
+(`caixas[].reserva`), menos o que ele tirar no botão *«não é necessária»*
+(`caixas[].reserva_fora`). Para o deck de Duel Commander o arquétipo é o
+**comandante** (`mtgvault/consenso.py`, 2026-10-01).
 
-**O EFEITO PERVERSO, que a ordem nomeia e que é real:** se a reserva apanhar
-tudo o que alguma vez apareceu numa lista, não sobra nada para vender. Por isso
-há `reserva.limiar_pct` (omissão **20 %**): entra na reserva o que aparece em
-pelo menos essa percentagem das listas do consenso. A CURVA (10/20/30/40/50 %)
-mede-se com `curva_do_limiar` e está no relatório — ele escolhe o número com os
-euros à frente.
+O **limiar de 20 %** que aqui esteve a 2026-10-01 foi APAGADO por ordem dele:
+*"esta substitui o limiar de 20 % que eu pus ontem — APAGA o limiar"*. A janela
+de 30 dias é o travão novo, e é um travão a sério porque a base só guarda 30
+dias de listas (`daily.prune_decklists`) — o que lá está é, por construção, o
+mês que passou.
+
+**O universo de listas da R5 é TODAS as listas da base**, e não o
+`sources.counting_sql`. É uma excepção deliberada e documentada: ver
+`sources.ids_por_assinatura`. Resumo — sub-contar aqui é vender uma carta que
+ele precisa, e no Pauper e no cEDH o filtro dá ZERO de propósito
+(`metagame_fontes.*.tiers = []`), o que deixava dois decks sem protecção
+nenhuma, em silêncio.
 
 A reserva **protege só o que ele TEM**. O que não tem não se protege: alimenta a
 lista de compras que o loadout já faz.
@@ -98,16 +130,19 @@ ONDE É QUE AS PROTECÇÕES MORDEM
 Em DOIS sítios, de propósito, e com a mesma resposta nos dois (a lição do
 `event_tier`: duas listas para a mesma pergunta divergem em silêncio):
 
-  1. `candidatos()` — a **Fase 3**: a lista do que PODE ir à venda depois das
-     quatro protecções, com o motivo e a protecção por cópia excluída. É só
+  1. `candidatos()` — a **Fase 3** e a lista **VENDER**: o que PODE ir à venda
+     depois das regras, com o motivo e a regra por cópia excluída. É só
      leitura, varre a colecção inteira e é ela que responde à pergunta dele.
   2. `filtrar_venda()` — o MOTOR. Entra no `loadout.sell_list`, no fim, como o
      filtro da reserva das caixas de 2026-09-20 já entrava: uma cópia protegida
-     sai de `venda`/`venda_rl` para a saída nova **`protegidas`**, com o motivo.
+     sai de `venda`/`venda_rl` para a saída **`protegidas`**, com o motivo.
      Uma protecção que só valesse numa página não era uma protecção.
 
-**Cada cópia excluída guarda o MOTIVO em português e qual das quatro protecções
-a apanhou.** Sem motivo não há exclusão silenciosa — é a regra dele.
+**Cada cópia excluída guarda o MOTIVO em português e qual das regras a
+apanhou.** Sem motivo não há exclusão silenciosa — é a regra dele. E a R1 obriga
+os dois a saber PARTIR uma linha: um lote de 5 duais fora dos decks tem 4 cópias
+protegidas e 1 candidata, e dar o lote inteiro a um dos lados era mentir por
+quatro ou por uma.
 
 A TRAVA: O RC GHENT É A 9-11/10
 -------------------------------------------------------------------------------
@@ -129,73 +164,98 @@ from . import collection as _col
 from . import sources
 
 # ---------------------------------------------------------------------------
-# As quatro protecções: a chave, o rótulo e a ordem por que se perguntam
+# AS REGRAS: a chave, o rótulo e a ordem por que se perguntam
 # ---------------------------------------------------------------------------
-P1, P2, P3, P4 = "p1-terras", "p2-rl-joga", "p3-deck", "p4-reserva"
-PROTECCOES = (P1, P2, P3, P4)
+# A ordem conta para o MOTIVO: a razão que se escreve na cópia é a que
+# SOBREVIVE. Uma shockland dentro de um deck montado é apanhada pela R2 e não
+# pela RD, porque a R2 protege-a *"sem excepções"* — se amanhã o deck se
+# desmontar, continua protegida, e o motivo tem de dizer isso.
+R1 = "r1-duais"
+R2 = "r2-shocklands"
+R3 = "r3-fetchlands"
+R4 = "r4-rl-joga"
+R5 = "r5-reserva-30d"
+R5B = "r5b-staples-premodern"
+RD = "rd-deck"
+PROTECCOES = (R1, R2, R3, R4, RD, R5, R5B)
 ROTULOS = {
-    P1: "P1 · shocklands e fetchlands",
-    P2: "P2 · Reserved List que ele joga",
-    P3: "P3 · deck montado ou guardado",
-    P4: "P4 · reserva («maybe») de um deck",
+    R1: "R1 · dual original (4 fora dos decks)",
+    R2: "R2 · shockland",
+    R3: "R3 · fetchland",
+    R4: "R4 · Reserved List que jogas",
+    RD: "RD · está num deck que fica",
+    R5: "R5 · jogada nos últimos 30 dias",
+    R5B: "R5b · staple de sideboard de Premodern",
 }
 
 # ---------------------------------------------------------------------------
-# OS TRÊS ESTADOS DE CADA DECK
+# O ESTADO DE CADA CAIXA É QUE DECIDE (André, 2026-10-02)
 # ---------------------------------------------------------------------------
-MONTADO, GUARDADO, DISSOLVIDO = "montado", "guardado", "dissolvido"
-DECISOES = (MONTADO, GUARDADO, DISSOLVIDO)
-# A OMISSÃO É `montado`, e nunca o contrário (ver o cabeçalho). Tem teste.
-DECISAO_OMISSAO = MONTADO
-TEXTO_DECISAO = {
-    MONTADO: "fica montado — as cartas ficam protegidas",
-    GUARDADO: "desmonta-se, mas as cartas continuam protegidas (não vão à venda)",
-    DISSOLVIDO: "desmonta-se e as cartas passam a candidatas (menos P1/P2/P4)",
+# Não há um segundo campo: é o `caixas[].estado` da v6. Ver o cabeçalho — o
+# `decisao` de 2026-10-01 foi apagado por ordem dele, com tudo o que o lia.
+#
+# A OMISSÃO PROTEGE. O `caixas.estado_de` devolve `permanente` a uma caixa sem
+# a chave, e `montada` a uma que diga `congelada`. Um deck sem estado escrito
+# não manda uma única carta para a venda.
+ESTADOS_PROTEGEM = (_caixas.PERMANENTE, _caixas.MONTADA)
+ESTADO_OMISSAO = _caixas.PERMANENTE
+TEXTO_ESTADO = {
+    _caixas.CANDIDATA: "candidata — só recebe o que sobra, e as cópias dela não "
+                       "ficam protegidas por estarem aqui",
+    _caixas.PERMANENTE: "permanente — é um deck que fica; as cópias lá dentro "
+                        "não vão à venda",
+    _caixas.MONTADA: "montada — está sleevada na estante; as cópias lá dentro "
+                     "não vão à venda",
 }
-# As decisões que PROTEGEM as cópias do deck (P3). O `dissolvido` é a única que
-# as liberta — é para isso que ele existe.
-DECISOES_PROTEGEM = (MONTADO, GUARDADO)
 
 
-def decisao_de(caixa: dict) -> str:
-    """A decisão desta caixa. Sem a chave (ou com um valor que não é dos três),
-    é `montado` — ver o cabeçalho."""
-    d = str(caixa.get("decisao") or "").strip().lower()
-    return d if d in DECISOES else DECISAO_OMISSAO
+def estado_de(caixa: dict) -> str:
+    """O estado desta caixa, pela MESMA função que o motor de alocação usa.
+
+    Não há uma segunda leitura: é o `caixas.estado_de`, que já aceita a forma v5
+    e v6 e já mapeia `congelada` em `montada`.
+    """
+    return _caixas.estado_de(caixa)
 
 
-def decisoes(cfg: dict | None = None) -> dict[str, str]:
-    """`slot -> decisão` de todas as caixas do config."""
-    return {c["slot"]: decisao_de(c) for c in _caixas.do_config(cfg)
+def protege(estado: str | None) -> bool:
+    """Se uma cópia dentro de uma caixa neste estado está protegida (RD)."""
+    return (estado or ESTADO_OMISSAO) in ESTADOS_PROTEGEM
+
+
+def estados(cfg: dict | None = None) -> dict[str, str]:
+    """`slot -> estado` de todas as caixas do config."""
+    return {c["slot"]: estado_de(c) for c in _caixas.do_config(cfg)
             if c.get("slot")}
 
 
-def gravar_decisao(slot: str, decisao: str, path=None) -> dict:
-    """Escreve `caixas[<slot>].decisao`. Devolve `{antes, decisao, nome}`.
-
-    Escreve-se com o `configio.escrever`, que preserva a forma UMA_LINHA do
-    ficheiro — um `json.dump(indent=2)` dava um diff de centenas de linhas (já
-    aconteceu: o commit `ac1f776`). **Reversível**: mudar de estado não apaga
-    nada, nem a reserva nem a lista.
-    """
-    if decisao not in DECISOES:
-        raise ValueError(f"decisão {decisao!r} não é uma de {', '.join(DECISOES)}")
-    from . import configio                                  # noqa: PLC0415
-    cfg = configio.ler(path)
-    c = _caixas.caixa_do_cfg(cfg, slot)
-    antes = decisao_de(c)
-    c["decisao"] = decisao
-    configio.escrever(cfg, path)
-    sources._CFG_CACHE.clear()
-    return {"antes": antes, "decisao": decisao, "mudou": antes != decisao,
-            "nome": c.get("nome") or slot}
-
-
 # ---------------------------------------------------------------------------
-# P1: as duas listas de terras, DERIVADAS do catálogo
+# R1/R2/R3: as TRÊS listas de terras, DERIVADAS do catálogo
 # ---------------------------------------------------------------------------
 BASICOS = ("Plains", "Island", "Swamp", "Mountain", "Forest")
-N_SHOCK = N_FETCH = 10
+N_SHOCK = N_FETCH = N_DUAL = 10
+# A R1: *"quer ter 4 de cada em colecção FORA dos decks"*.
+DUAIS_ALVO_FORA = 4
+
+# A DUAL ORIGINAL é a que tem dois sub-tipos de terra básica e **mais nada**: o
+# `oracle_text` dela é só o lembrete da habilidade de mana. Medido no catálogo de
+# 2026-10-02: das 1 059 terras em papel, **69** têm dois sub-tipos básicos (as
+# dez originais, as dez shocklands, as de BFZ, as de surveil de MKM, as de
+# cycling de AKH, as «Turbulent» de SOC…) e **só as dez** não têm uma segunda
+# linha de texto. Não se usa a EDIÇÃO nem a cor — pela mesma razão das outras
+# duas listas: uma reimpressão futura entra sozinha.
+#
+# ARMADILHA, e custou uma passagem: `oracle_text` VAZIO dá **zero**. As originais
+# trazem o lembrete `({T}: Add {U} or {B}.)` — entre parênteses, que é como a
+# Scryfall escreve texto que não é regra nova. Filtrar por «sem texto» parecia
+# óbvio e dava uma protecção vazia, em silêncio.
+RE_LEMBRETE_MANA = re.compile(r"^\(\s*\{T\}\s*:\s*Add\s*\{.\}\s*or\s*\{.\}\s*\.?\s*\)$",
+                              re.I)
+REGRA_DUAL = (
+    "type_line com DOIS sub-tipos de terra básica E um oracle_text que é SÓ o "
+    "lembrete da habilidade de mana (/^\\({T}: Add {X} or {Y}.\\)$/i) — ou seja, "
+    "sem nenhuma linha de regras a seguir: é isso que separa as dez originais "
+    "das outras 59 terras de dois sub-tipos (shocklands, BFZ, surveil, cycling)")
 
 # A shockland diz que se pode pagar 2 de vida para não entrar virada. O `it`/`~`/
 # `this land` cobre as três formas por que a Scryfall escreve o sujeito em
@@ -345,24 +405,44 @@ def fetchlands(con, cache: dict | None = None,
     return cache["_fetch"]
 
 
+def duais(con, cache: dict | None = None,
+          exigir: bool | None = None) -> dict:
+    """`{nomes, regra, n}` — as dez duais originais, derivadas. Ver `RE_LEMBRETE_MANA`."""
+    cache = {} if cache is None else cache
+    if "_duais" in cache:
+        return cache["_duais"]
+    nomes = sorted(nm for nm, d in _terras_do_catalogo(con, cache).items()
+                   if len(_subtipos_basicos(d["type_line"])) == 2
+                   and RE_LEMBRETE_MANA.match((d["oracle_text"] or "").strip()))
+    if len(nomes) != N_DUAL and _exigir(con, exigir):
+        raise TerrasNaoDerivadas("duais originais", nomes, N_DUAL, REGRA_DUAL)
+    cache["_duais"] = {"nomes": nomes, "regra": REGRA_DUAL, "n": len(nomes),
+                       "alvo_fora": DUAIS_ALVO_FORA}
+    return cache["_duais"]
+
+
 def verificar(con) -> dict:
-    """A VERIFICAÇÃO explícita das duas listas: exige as dez de cada, sempre.
+    """A VERIFICAÇÃO explícita das três listas: exige as dez de cada, sempre.
 
     É esta que o `cli fases` e a página chamam, para a conta que não dá dez ser
     um erro à vista e não um número pequeno que passa. A derivação usada em
     cada relatório é a mesma; o que muda é quem insiste.
     """
     cache: dict = {}
-    return {"shocklands": shocklands(con, cache, exigir=True),
+    return {"duais": duais(con, cache, exigir=True),
+            "shocklands": shocklands(con, cache, exigir=True),
             "fetchlands": fetchlands(con, cache, exigir=True),
             "catalogo_completo": catalogo_completo(con)}
 
 
 def terras_protegidas(con, cache: dict | None = None) -> dict[str, str]:
-    """`nome -> "shockland" | "fetchland"`. É a P1, e não tem excepções:
-    **todas** as cópias de cada um destes nomes ficam protegidas — todos os
-    acabamentos, todas as línguas, todas as repetidas, dentro ou fora de um
-    deck. Palavras dele: *"Todas as cópias"*."""
+    """`nome -> "shockland" | "fetchland"`. São a R2 e a R3, e não têm
+    excepções: **todas** as cópias de cada um destes nomes ficam protegidas —
+    todos os acabamentos, todas as línguas, todas as repetidas, dentro ou fora
+    de um deck. Palavras dele: *"Todas as cópias"*.
+
+    As DUAIS originais **não estão aqui**: a regra delas é a R1 (quota de quatro
+    fora dos decks) e vive no `plano_duais`."""
     cache = {} if cache is None else cache
     if "_terras_prot" in cache:
         return cache["_terras_prot"]
@@ -373,7 +453,158 @@ def terras_protegidas(con, cache: dict | None = None) -> dict[str, str]:
 
 
 # ---------------------------------------------------------------------------
-# P2: a Reserved List que ele JOGA
+# R1: a QUOTA das duais originais
+# ---------------------------------------------------------------------------
+# O PREÇO DE COMPRA DE UMA DUAL TEM DE SER DE UMA CARTA QUE SE POSSA JOGAR, e
+# isto apanhou dois defeitos ANTERIORES a esta ordem, os dois no
+# `loadout.card_price` (o mínimo entre impressões, que é a pergunta certa para
+# uma compra). Medido a 2026-10-02:
+#
+#   1. **a memorabilia entra**: o `card_price` não filtra `set_type` nem
+#      `digital`, por isso o mínimo pode ser de `30a` (as proxies do 30.º
+#      aniversário) ou de `ced`/`cei` (a Collectors' Edition) — cartas que não
+#      são legais em torneio nenhum. **181 nomes** mudam de preço se saírem, e
+#      as diferenças são enormes: Black Lotus 2 277,81 € → **16 000,64 €**, Mox
+#      Jet 25,00 € → **6 232,72 €**, Volcanic Island 221,19 € → 1 074,23 €;
+#   2. **há preços absurdos na Summer Magic** (`sum`, que é `core` e por isso a
+#      memorabilia não apanha): Badlands a **0,02 €** e Tundra a **0,25 €** no
+#      price guide do Cardmarket. É exactamente o caso que a decisão de
+#      2026-09-25 nomeia — *"a Tundra de Revised dele valia 0,25 €, o preço de
+#      uma impressão de Summer Magic"* —, que foi corrigido para o que ele TEM
+#      (`preco_da_copia`) e ficou de pé para a COMPRA.
+#
+# **Não se tocou no `card_price`**: ele alimenta o *"fechar tudo"* e o «a
+# comprar» de TODAS as caixas, e mudá-lo às cegas na semana do RC Ghent era
+# trocar o número por que ele decide sem o medir caixa a caixa. Aqui dá-se o
+# `unit` do site (para não haver dois números em silêncio) **e** o `unit_jogavel`
+# ao lado, com a edição de onde vem, e a página e o relatório dizem a diferença.
+# A correcção a sério é no `loadout.card_price` e fica para ele decidir.
+def _preco_jogavel(con, nm: str, cache: dict | None = None):
+    """`(preço, edição)` da impressão em PAPEL e não-memorabilia mais barata."""
+    from . import loadout, precos                            # noqa: PLC0415
+    cache = {} if cache is None else cache
+    k = f"_pjog_{nm}"
+    if k in cache:
+        return cache[k]
+    expr = precos.sql_impressao(fontes_=precos.fontes())
+    r = con.execute(
+        f"""SELECT c.set_code sc, {expr} p
+              FROM cards c JOIN {precos.sql_acabamentos(('nonfoil',))} f
+             WHERE c.name = ? AND c.digital = 0 AND c.set_type <> 'memorabilia'
+               AND {expr} IS NOT NULL
+             ORDER BY p LIMIT 1""", ("nonfoil", nm)).fetchone()
+    cache[k] = ((r["p"], (r["sc"] or "").upper()) if r else (None, ""))
+    _ = loadout  # o import serve de nota: a correcção a sério é lá
+    return cache[k]
+
+
+
+def plano_duais(con, res: dict, cfg: dict | None = None,
+                cache: dict | None = None) -> dict:
+    """A R1 resolvida: por nome, quantas tem, quantas estão em decks, quantas
+    estão FORA, quantas se protegem, quantas VENDER e quantas COMPRAR.
+
+    *"Quer ter 4 de cada em colecção FORA dos decks; o que passar disso vende-se
+    ou troca-se."* Logo: as que estão dentro de um deck que fica são da RD; das
+    que estão fora, protegem-se **quatro** e o resto é candidato — apesar de
+    serem Reserved List, porque *"para elas manda a R1, que é mais específica"*.
+
+    **Quais das quatro é que ficam:** as de MAIOR valor de referência, com a
+    edição e o `copy_id` a desempatar. Ele quer ter quatro de cada; ficar com as
+    melhores é o que um colecionador faz, e a ordem tem de ser determinista
+    senão a lista de venda troca de cópia de um dia para o outro.
+
+    Devolve também `por_sublote`: `{(copy_id, caixa) -> {prot, q}}` para cada
+    sub-lote FORA dos decks. É por aqui que a Fase 3 **e** o motor da venda dão
+    a mesma resposta e partem a mesma linha ao meio — um lote de cinco fora dos
+    decks tem quatro protegidas e uma candidata.
+
+    Guarda-se o `q` do sub-lote e não só as protegidas, e isso é preciso: o
+    motor da venda recebe uma linha que é um PEDAÇO do sub-lote (o excedente que
+    o playset já cortou), e dizer-lhe «deste sub-lote há quatro protegidas»
+    protegia a cópia que ele estava mesmo a oferecer. O que se gasta é o
+    ORÇAMENTO de cópias LIVRES — ver `contexto`/`quem_protege`.
+    """
+    from . import loadout                                    # noqa: PLC0415
+    cache = {} if cache is None else cache
+    if "_duais_plano" in cache:
+        return cache["_duais_plano"]
+    nomes = duais(con, cache)["nomes"]
+    est = estados(cfg)
+    pc: dict = cache.setdefault("_precos", {})
+    por_sublote: dict[tuple, int] = {}
+    linhas, vender, comprar = [], [], []
+    tot = {"copias": 0, "em_decks": 0, "fora": 0, "protegidas": 0,
+           "vender": 0, "comprar": 0, "valor_vender": 0.0}
+    for nm in nomes:
+        lotes = [l for l in (res.get("pool") or {}).get(nm) or [] if l["q"] > 0]
+        dentro = [l for l in lotes if l.get("caixa") and protege(est.get(
+            l["caixa"], ESTADO_OMISSAO))]
+        fora = [l for l in lotes if l not in dentro]
+        n_dentro = sum(l["q"] for l in dentro)
+        n_fora = sum(l["q"] for l in fora)
+        # A ordem da quota: valor desc, edição, copy_id. Determinista.
+        fora = sorted(fora, key=lambda l: (
+            -(loadout.preco_da_copia(con, l["sid"], l["finish"], nm, pc)["unit"] or 0),
+            (l["set_code"] or ""), l["id"]))
+        resto = DUAIS_ALVO_FORA
+        n_prot = n_vend = 0
+        val_vend = 0.0
+        for l in fora:
+            k = (l["id"], l.get("caixa") or "")
+            fica = min(resto, l["q"])
+            resto -= fica
+            v = por_sublote.setdefault(k, {"prot": 0, "q": 0})
+            v["prot"] += fica
+            v["q"] += l["q"]
+            n_prot += fica
+            sobra = l["q"] - fica
+            if sobra:
+                u = loadout.preco_da_copia(con, l["sid"], l["finish"], nm, pc)["unit"]
+                n_vend += sobra
+                val_vend += (u or 0) * sobra
+                vender.append({"nm": nm, "q": sobra, "copy_id": l["id"],
+                               "set": (l["set_code"] or "").upper(),
+                               "lang": l["lang"] or "en", "finish": l["finish"],
+                               "local": l["local"], "unit": u,
+                               "total": round((u or 0) * sobra, 2)})
+        falta = max(0, DUAIS_ALVO_FORA - n_fora)
+        if falta:
+            # O preço de COMPRA é o `card_price` — o mínimo entre impressões do
+            # mesmo nome. É a pergunta certa aqui (*"quanto custa arranjar
+            # mais uma?"*) e não o `preco_da_copia`, que responde *"quanto vale
+            # a que ele tem"*. Ver a decisão de 2026-09-25.
+            u, _fin = loadout.card_price(con, nm)
+            jog, onde = _preco_jogavel(con, nm, cache)
+            comprar.append({"nm": nm, "q": falta, "unit": u,
+                            "unit_jogavel": jog, "set_jogavel": onde})
+        linhas.append({"nm": nm, "copias": n_dentro + n_fora,
+                       "em_decks": n_dentro, "fora": n_fora,
+                       "protegidas": n_prot, "vender": n_vend,
+                       "comprar": falta, "alvo": DUAIS_ALVO_FORA})
+        tot["copias"] += n_dentro + n_fora
+        tot["em_decks"] += n_dentro
+        tot["fora"] += n_fora
+        tot["protegidas"] += n_prot
+        tot["vender"] += n_vend
+        tot["comprar"] += falta
+        tot["valor_vender"] += val_vend
+    tot["valor_vender"] = round(tot["valor_vender"], 2)
+    tot["custo_comprar"] = round(sum((c["unit"] or 0) * c["q"] for c in comprar), 2)
+    tot["custo_comprar_jogavel"] = round(
+        sum(((c["unit_jogavel"] if c["unit_jogavel"] is not None else c["unit"])
+             or 0) * c["q"] for c in comprar), 2)
+    vender.sort(key=lambda x: (-(x["total"] or 0), x["nm"]))
+    comprar.sort(key=lambda x: (-x["q"], x["nm"]))
+    cache["_duais_plano"] = {
+        "nomes": nomes, "regra": REGRA_DUAL, "alvo_fora": DUAIS_ALVO_FORA,
+        "linhas": linhas, "vender": vender, "comprar": comprar,
+        "por_sublote": por_sublote, "totais": tot}
+    return cache["_duais_plano"]
+
+
+# ---------------------------------------------------------------------------
+# R4: a Reserved List que ele JOGA
 # ---------------------------------------------------------------------------
 # Os formatos que ele joga, nas palavras dele. Vive no config para não ser uma
 # lista de código a discordar das caixas que ele tem.
@@ -398,35 +629,44 @@ def formatos_que_joga(cfg: dict | None = None) -> tuple[str, ...]:
     return das_caixas or FORMATOS_QUE_JOGA
 
 
-def rl_que_joga(con, res: dict, cfg: dict | None = None) -> dict[str, str]:
-    """`nome -> porque é que ele joga esta carta de RL`.
+def rl_que_joga(con, res: dict, cfg: dict | None = None,
+                cache: dict | None = None) -> dict[str, str]:
+    """`nome -> porque é que ele joga esta carta de RL`. É a R4.
 
-    *"«joga» é alocado a um deck montado OU presente no consenso de um formato
-    que ele joga"*. São quatro caminhos, e cada nome guarda o PRIMEIRO que o
-    apanhou — é o que aparece no motivo da exclusão:
+    *"Protege-se o RL que ele joga; o que não joga vai à venda."* São quatro
+    caminhos, e cada nome guarda o PRIMEIRO que o apanhou — é o que aparece no
+    motivo da exclusão:
 
-      (a) está dentro de um deck (`copy_allocation`) cuja decisão protege;
+      (a) está dentro de um deck (`copy_allocation`) cujo `estado` protege;
       (b) uma caixa do loadout pede-a (é a lista do deck, montado ou por montar);
-      (c) está numa lista da tabela `decks`/`deck_cards` (os consensos de
-          Premodern e o Cloud de Duel Commander escrevem-se lá);
+      (c) está numa lista da tabela `decks`/`deck_cards` que uma CAIXA DELE
+          referencia (`caixas[].ref`);
       (d) está no consenso por comandante (núcleo + flex) de um comandante que
           ele tem em caixa.
 
-    Medido a 2026-10-01: a união dá 502 nomes, e deles 26 cartas / 128 cópias
-    são RL que ele tem. Não há consenso de cEDH nem de Pauper para cruzar — o
-    cEDH não tem metagame no vault (os dois decks seguem links directos) e o
-    Pauper só guarda as listas do Luffy; as duas chegam por (b)/(c).
+    **O (c) passou a olhar só para as listas que uma caixa dele referencia
+    (2026-10-02), e isto era um defeito a sério.** Varria a tabela `decks`
+    inteira e filtrava pelo FORMATO: na base desse dia isso protegia Reserved
+    List por aparecer no *Jeskai Lessons*, no *4c Control*, no *Cori-Steel
+    Cutter*, no *Legacy (Harry1232)* ou no *Enchantress (consenso)* — listas de
+    metagame e de jogadores vigiados que **não são decks dele**. A pergunta é
+    *"o RL que ELE joga"*, e quem responde é a lista de caixas: um deck que
+    saiu do config deixa de proteger no mesmo dia, sem ninguém ter de limpar
+    uma linha da base.
     """
-    dec = decisoes(cfg)
+    cache = {} if cache is None else cache
+    if "_rl_joga" in cache:
+        return cache["_rl_joga"]
+    est = estados(cfg)
     fmts = set(formatos_que_joga(cfg))
     out: dict[str, str] = {}
 
-    # (a) dentro de um deck cuja decisão protege
+    # (a) dentro de um deck cujo estado protege
     nomes_caixa = {s["slot"]: s.get("nome") or s["slot"] for s in res["slots"]}
     for nm, lotes in (res.get("pool") or {}).items():
         for lot in lotes:
             slot = lot.get("caixa")
-            if slot and dec.get(slot, DECISAO_OMISSAO) in DECISOES_PROTEGEM:
+            if slot and protege(est.get(slot, ESTADO_OMISSAO)):
                 out.setdefault(nm, f"está no deck {nomes_caixa.get(slot, slot)}")
                 break
 
@@ -437,12 +677,17 @@ def rl_que_joga(con, res: dict, cfg: dict | None = None) -> dict[str, str]:
         for _b, nm, _q in (s.get("cards") or []):
             out.setdefault(nm, f"está na lista de {s.get('nome') or s['slot']}")
 
-    # (c) numa lista da tabela `decks`
-    for r in con.execute("""SELECT DISTINCT dc.card_name nm, d.name dn, d.format f
-                              FROM deck_cards dc JOIN decks d ON d.id = dc.deck_id"""):
-        if (r["f"] or "").lower() in fmts:
-            out.setdefault(r["nm"].split(" // ")[0],
-                           f"está no consenso de {r['dn']}")
+    # (c) numa lista da tabela `decks` QUE UMA CAIXA DELE REFERENCIA
+    refs = {str(s.get("ref")) for s in res["slots"] if s.get("ref")}
+    if refs:
+        marks = ",".join("?" for _ in refs)
+        for r in con.execute(
+                f"""SELECT DISTINCT dc.card_name nm, d.name dn, d.format f
+                      FROM deck_cards dc JOIN decks d ON d.id = dc.deck_id
+                     WHERE d.name IN ({marks})""", sorted(refs)):
+            if (r["f"] or "").lower() in fmts:
+                out.setdefault(r["nm"].split(" // ")[0],
+                               f"está no consenso de {r['dn']}")
 
     # (d) o consenso por COMANDANTE (2026-10-01). Só núcleo + flex: o `raro`
     # (<40 %) é uma carta que apareceu numa lista, e proteger por isso era a
@@ -456,11 +701,12 @@ def rl_que_joga(con, res: dict, cfg: dict | None = None) -> dict[str, str]:
             if carta["papel"] in ("nucleo", "flex"):
                 out.setdefault(carta["nm"],
                                f"está no consenso de {cmd} ({quem})")
+    cache["_rl_joga"] = out
     return out
 
 
 # ---------------------------------------------------------------------------
-# O consenso de cada deck — a matéria-prima da reserva (P4)
+# O consenso de cada deck — a matéria-prima da reserva (R5)
 # ---------------------------------------------------------------------------
 def _consenso_comandante(con, comandante: str, fmt: str | None = None) -> dict:
     from . import consenso as _cons                          # noqa: PLC0415
@@ -547,22 +793,36 @@ def _comandantes_das_caixas(con, res: dict, cfg: dict | None = None
     return out
 
 
-def _listas_por_assinatura(con, fmt: str, assinatura: list[str]) -> list[int]:
-    """Os ids das listas que CONTAM e jogam uma destas cartas.
+# A JANELA DA R5: *"30 dias a rolar"*. A base só guarda ~30 dias de listas
+# (`daily.prune_decklists`), por isso na prática a janela é tudo o que lá está —
+# mas escreve-se de propósito: no dia em que a poda mudar, a regra não muda.
+JANELA_DIAS = 30
 
-    A consulta é a mesma do `loadout._cards_from_consensus` — o mesmo universo
-    de listas de todo o site (`sources.counting_sql`). Um segundo filtro ao lado
-    discorda do primeiro em silêncio, que é a lição do `event_tier`.
+
+def desde_de(dias: int | None = None, hoje: str | None = None) -> str:
+    """A data a partir da qual uma lista conta para a R5 (`AAAA-MM-DD`)."""
+    from datetime import timedelta                           # noqa: PLC0415
+    d = JANELA_DIAS if dias is None else int(dias)
+    base = date.fromisoformat(hoje) if hoje else date.today()
+    return (base - timedelta(days=d)).isoformat()
+
+
+def _listas_por_assinatura(con, fmt: str, assinatura: list[str],
+                           todas: bool = False,
+                           desde: str | None = None) -> list[int]:
+    """Os ids das listas deste arquétipo na janela da R5.
+
+    Quem escolhe é o `sources.ids_por_assinatura`, partilhado com a lista da
+    caixa (`loadout._cards_from_consensus`) — a pergunta *"que listas são deste
+    deck?"* é a mesma, e dois selectores ao lado discordam em silêncio.
+
+    **`so_que_contam=False`**, e é uma excepção deliberada ao filtro do site:
+    ver o cabeçalho e o `sources.ids_por_assinatura`. Aqui sub-contar é vender
+    uma carta que ele precisa, e no Pauper e no cEDH o filtro dá ZERO de
+    propósito (`metagame_fontes.*.tiers = []`).
     """
-    if not assinatura:
-        return []
-    conta, cp = sources.counting_sql(fmt, "d")
-    marks = ",".join("?" * len(assinatura))
-    return [r[0] for r in con.execute(
-        f"""SELECT DISTINCT d.id FROM decklists d
-              JOIN decklist_cards dc ON dc.decklist_id = d.id
-             WHERE d.format = ? AND dc.card_name IN ({marks}) AND {conta}""",
-        (fmt, *assinatura, *cp))]
+    return sources.ids_por_assinatura(con, fmt, assinatura, todas=todas,
+                                      desde=desde, so_que_contam=False)
 
 
 # Quantas cartas distintivas entram numa assinatura derivada, e o mínimo de
@@ -612,43 +872,64 @@ def assinatura_derivada(con, s: dict, cache: dict | None = None) -> list[str]:
     return [nm for _n, nm in candidatas[:ASSINATURA_N]]
 
 
-def _listas_do_deck(con, s: dict, cache: dict | None = None
-                    ) -> tuple[list[int], str, str]:
+def assinatura_do_deck(s: dict) -> tuple[list[str], bool]:
+    """`(cartas, em conjunção?)` — a CARTA-ASSINATURA escrita desta caixa.
+
+    `reserva_assinatura` ganha ao `assinatura` de propósito: uma caixa cuja
+    LISTA vem de outra fonte (a do Luffy, a lista padrão fixada, o link do
+    cEDH) continua a ter identidade de arquétipo para a R5 sem lhe mexer na
+    lista. É a separação que a ordem de 2026-10-02 pede: a assinatura é a
+    IDENTIDADE, não a lista.
+    """
+    cartas = [str(x) for x in (s.get("reserva_assinatura")
+                               or s.get("assinatura") or [])]
+    todas = bool(s.get("reserva_assinatura_todas")
+                 if s.get("reserva_assinatura") else s.get("assinatura_todas"))
+    return cartas, todas
+
+
+def _listas_do_deck(con, s: dict, cache: dict | None = None,
+                    desde: str | None = None) -> tuple[list[int], str, str]:
     """`(ids, nota, origem)` — as listas que formam o consenso DESTA caixa.
 
-    Dois caminhos, por esta ordem: a assinatura ESCRITA (a excepção explícita,
-    `reserva_assinatura` ou o `assinatura` que a caixa de consenso já tem) e,
-    não havendo, a DERIVADA da própria lista. Quando nem isso dá, diz-se que não
-    há consenso em vez de se inventar um.
+    Dois caminhos, por esta ordem: a CARTA-ASSINATURA escrita (a identidade do
+    deck — `reserva_assinatura` ou o `assinatura` da caixa de consenso) e, não
+    havendo, a DERIVADA da própria lista. Quando nem isso dá, diz-se que não há
+    consenso em vez de se inventar um — é o caso do *Artifacts Blue*, que ainda
+    está **à espera da carta-assinatura** que ele vai dizer.
     """
     fmt = (s.get("formato") or "").lower()
-    escrita = [str(x) for x in (s.get("reserva_assinatura")
-                                or s.get("assinatura") or [])]
+    escrita, todas = assinatura_do_deck(s)
     if escrita:
-        ids = _listas_por_assinatura(con, fmt, escrita)
-        return (ids, f"{len(ids)} listas por assinatura ({', '.join(escrita)})",
-                "assinatura")
+        ids = _listas_por_assinatura(con, fmt, escrita, todas, desde)
+        return (ids, f"{len(ids)} listas com "
+                     f"{sources.texto_assinatura(escrita, todas)}", "assinatura")
     derivada = assinatura_derivada(con, s, cache)
     if derivada:
-        ids = _listas_por_assinatura(con, fmt, derivada)
+        ids = _listas_por_assinatura(con, fmt, derivada, False, desde)
         return (ids, f"{len(ids)} listas pelas cartas mais distintivas da lista "
                      f"({', '.join(derivada)})", "derivada")
-    return [], "sem assinatura nem comandante — a reserva fica só manual", ""
+    return [], ("à espera da carta-assinatura — sem ela não há consenso e a "
+                "reserva fica só manual"), ""
 
 
-def consenso_do_deck(con, s: dict, cache: dict | None = None) -> dict:
+def consenso_do_deck(con, s: dict, cache: dict | None = None,
+                     desde: str | None = None) -> dict:
     """`{fonte, listas, cartas: [{nm, pct, copias, board}], nota}` para uma caixa.
 
     Duas fontes, e a primeira é a que a ordem manda para o Duel Commander:
 
       * **por COMANDANTE** (`mtgvault/consenso.py`, 2026-10-01) quando a caixa
         tem um comandante derivável — é o deck de Duel Commander dele;
-      * **por ASSINATURA** (as mesmas listas do `loadout._cards_from_consensus`)
-        para as caixas de consenso, com a percentagem por carta em vez da lista
-        padrão.
+      * **por CARTA-ASSINATURA** para as outras, com a percentagem por carta.
 
     Sem nenhuma das duas devolve-se `cartas: []` e a nota a dizer porquê. É uma
     resposta: a reserva daquele deck passa a ser só o que ele escrever à mão.
+
+    `desde` é a janela da R5 (30 dias). O caminho do COMANDANTE não a aplica: o
+    `consenso.consenso` tem o seu próprio universo (o `counting_sql` do Duel
+    Commander, que já conta ligas e presenciais sem mínimo) e é a página de
+    consenso por comandante que manda nele — *"fica como está"*, ordem dele.
     """
     cache = {} if cache is None else cache
     cmd = comandante_do_deck(con, s, cache)
@@ -661,7 +942,7 @@ def consenso_do_deck(con, s: dict, cache: dict | None = None) -> dict:
                 "suficiente": c["suficiente"],
                 "nota": (f"consenso de {c['listas']} listas de {cmd}"
                          if c["listas"] else f"{cmd}: ainda sem listas")}
-    ids, nota, origem = _listas_do_deck(con, s, cache)
+    ids, nota, origem = _listas_do_deck(con, s, cache, desde)
     if not ids:
         return {"fonte": None, "listas": 0, "cartas": [], "suficiente": False,
                 "nota": nota}
@@ -686,67 +967,93 @@ def consenso_do_deck(con, s: dict, cache: dict | None = None) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# P4: a reserva («maybe») de cada deck
+# R5: a reserva («maybe») de cada deck — o que foi JOGADO nos últimos 30 dias
 # ---------------------------------------------------------------------------
-LIMIAR_OMISSAO = 20
+# O LIMIAR DE 20 % FOI APAGADO (André, 2026-10-02, à letra: *"esta substitui o
+# limiar de 20 % que eu pus ontem — APAGA o limiar"*). O travão passou a ser a
+# JANELA: só conta o que foi jogado no último mês. Se voltar a fazer falta um
+# limiar, o sítio é este — mas não se deixa uma chave morta no config a dizer
+# que existe uma regra que não existe (é o padrão do `event_tier`).
 CURVA_OMISSAO = (10, 20, 30, 40, 50)
-# ABAIXO DISTO NÃO SE CHAMA CONSENSO A NADA, e não é um requinte: medido a
-# 2026-10-01, a caixa *Ill-Gotten Gains* (que nem tem lista — 0/0) casava 3
-# listas pela assinatura, e com 3 listas uma carta que aparece numa só vale
-# 33 %. Passava folgadamente o limiar de 20 % e a reserva dela sozinha segurava
-# **52 cópias / 6 879 €** — 96 % de tudo o que a P4 protegia. É exactamente o
-# efeito perverso que a ordem nomeia, por outra porta: não é o limiar que está
-# mal, é a amostra. É o mesmo mínimo do `consenso.MIN_LISTAS`.
+# ABAIXO DISTO NÃO SE CHAMA CONSENSO A NADA, e não é um requinte: é a ordem
+# dele sobre o *Ill-Gotten Gains* — *"SÓ 3 listas, abaixo do mínimo de 8. Marca-o
+# como SEM CONSENSO SUFICIENTE e deixa a lista manual; não inventes consenso com
+# 3 listas."* Medido a 2026-10-01, com 3 listas uma carta que aparece numa só
+# vale 33 %, e a reserva dessa caixa sozinha segurava 52 cópias / 6 879 €. É o
+# mesmo mínimo do `consenso.MIN_LISTAS`.
 MIN_LISTAS_RESERVA = 8
+NOTA_SEM_CONSENSO = "SEM CONSENSO SUFICIENTE"
 
 
 def regras_reserva(cfg: dict | None = None) -> dict:
     """`colecao_config.json → reserva`, com as omissões."""
     v = (sources.config() if cfg is None else cfg).get("reserva") or {}
-    r = {"limiar_pct": LIMIAR_OMISSAO, "curva": list(CURVA_OMISSAO)}
+    r = {"janela_dias": JANELA_DIAS, "curva": list(CURVA_OMISSAO),
+         "staples_premodern_pct": STAPLES_CORTE_OMISSAO}
     r.update({k: x for k, x in v.items() if not str(k).startswith("_")})
     return r
 
 
-def limiar_pct(cfg: dict | None = None) -> int:
-    return int(regras_reserva(cfg)["limiar_pct"])
+def janela_dias(cfg: dict | None = None) -> int:
+    return int(regras_reserva(cfg)["janela_dias"])
 
 
-def reserva_do_deck(con, s: dict, limiar: int | None = None,
-                    cache: dict | None = None) -> dict:
-    """A reserva («maybe») de uma caixa: o que o consenso mostra e não está nas 75.
+def _retiradas(s: dict) -> dict[str, str]:
+    """`carta -> data em que ele carregou em «não é necessária»`.
 
-    `{automatica, manual, retiradas, final, nota, listas, fonte, limiar}` —
-    cada carta com `pct` e quantas ele TEM. A reserva protege **só o que ele
-    tem**; o que não tem fica marcado `tem: 0` e alimenta a lista de compras que
-    o loadout já faz, como a ordem diz.
+    `caixas[].reserva_fora` aceita as DUAS formas: a lista de nomes de
+    2026-10-01 e a lista de objectos `{nm, em}` de 2026-10-02 (que leva a DATA,
+    como ele pediu). A antiga continua a valer sem data — um ficheiro escrito
+    ontem não pode perder a recusa por causa de um campo novo.
+    """
+    out: dict[str, str] = {}
+    for x in s.get("reserva_fora") or []:
+        if isinstance(x, dict):
+            if x.get("nm"):
+                out[str(x["nm"])] = str(x.get("em") or "")
+        elif str(x).strip():
+            out[str(x)] = ""
+    return out
+
+
+def reserva_do_deck(con, s: dict, _ignorado=None,
+                    cache: dict | None = None,
+                    desde: str | None = None) -> dict:
+    """A reserva («maybe») de uma caixa: o que foi JOGADO no último mês e não
+    está nas 75 de hoje.
+
+    `{automatica, manual, retiradas, final, nota, listas, fonte, desde}` — cada
+    carta com `pct` (em quantas listas da janela apareceu) e quantas ele TEM. A
+    reserva protege **só o que ele tem**; o que não tem fica marcado `tem: 0` e
+    alimenta a lista de compras que o loadout já faz, como a ordem diz.
 
     Três partes, e as três se vêem na página:
-      * `automatica` — do consenso, acima do limiar, e que NÃO está na lista de
-        hoje (as 75). É a banda flex e o resto do sideboard;
+      * `automatica` — TODA a carta que apareceu numa lista do arquétipo nos
+        últimos 30 dias (main **ou** side) e que não está na lista de hoje.
+        *"Mesmo que esteja hoje fora da lista"* — é a ordem dele, e é por isso
+        que não há limiar nenhum;
       * `manual` — `caixas[].reserva`, o que ele acrescentou à mão (a chave já
         existia desde 2026-09-20 e continua a querer dizer o mesmo);
-      * `retiradas` — `caixas[].reserva_fora`: o que ele TIROU da automática.
-        Guarda-se o que ele tirou, e não a lista final, para a reserva continuar
-        a crescer com o consenso sem lhe devolver o que ele já recusou.
+      * `retiradas` — `caixas[].reserva_fora`: o que ele tirou no botão **«não é
+        necessária»**, com a DATA. Guarda-se o que ele tirou, e não a lista
+        final, para a reserva continuar a crescer com as listas novas sem lhe
+        devolver o que ele já recusou.
     """
     cache = {} if cache is None else cache
-    lim = limiar_pct() if limiar is None else int(limiar)
-    c = consenso_do_deck(con, s, cache)
+    desde = desde or desde_de(janela_dias())
+    c = consenso_do_deck(con, s, cache, desde)
     nas_75 = {nm for _b, nm, _q in (s.get("cards") or [])}
-    fora = {str(x) for x in (s.get("reserva_fora") or [])}
+    fora = _retiradas(s)
     manual = [str(x) for x in (s.get("reserva") or [])]
-    # SEM AMOSTRA NÃO HÁ RESERVA AUTOMÁTICA (ver `MIN_LISTAS_RESERVA`). Com 3
-    # listas, uma carta que apareça numa só vale 33 % e passa qualquer limiar —
-    # a percentagem está certa e não quer dizer nada. O que ele escreveu à mão
-    # fica: isso é uma decisão dele, não uma inferência.
+    # SEM AMOSTRA NÃO HÁ RESERVA AUTOMÁTICA (ver `MIN_LISTAS_RESERVA`). O que
+    # ele escreveu à mão fica: isso é uma decisão dele, não uma inferência.
     # As BÁSICAS ficam fora da reserva: nunca vão à venda (o `sell_list` salta-as
     # à cabeça), por isso protegê-las não protege nada e só enchia a lista que ele
     # tem de ler — o consenso do Modern punha lá *"Plains, 27,8 %"*.
     from . import loadout                                    # noqa: PLC0415
     automatica = ([x for x in c["cartas"]
-                   if x["pct"] >= lim and x["nm"] not in nas_75
-                   and x["nm"] not in fora and x["nm"] not in loadout.BASICS]
+                   if x["nm"] not in nas_75 and x["nm"] not in fora
+                   and x["nm"] not in loadout.BASICS]
                   if c["suficiente"] else [])
     pct = {x["nm"]: x["pct"] for x in c["cartas"]}
     posse = _posse(con, cache)
@@ -756,15 +1063,30 @@ def reserva_do_deck(con, s: dict, limiar: int | None = None,
               "manual": nm in manual, "tem": posse.get(nm, 0)}
              for nm in nomes_finais]
     final.sort(key=lambda x: (-(x["pct"] or 0), x["nm"]))
+    nota = c["nota"]
+    # *"À espera da carta-assinatura"* só se ele não tiver dado NENHUMA
+    # identidade. Uma caixa que segue um LINK (os dois de cEDH, ordem dele:
+    # *"como já está, não mudes"*) não está à espera de nada — o que lhe falta é
+    # metagame no vault, e isso é uma decisão de 2026-09-07
+    # (`metagame_fontes.cedh.tiers = []`), não um campo em branco. Dizer-lhe o
+    # contrário era marcar como incompleto o que está decidido.
+    if not c["listas"] and not assinatura_do_deck(s)[0] and \
+            (s.get("fonte") or "") in ("vigiado", "escolhido"):
+        nota = (f"a lista vem de fora ({s.get('fonte')}: {s.get('ref') or '—'}) "
+                f"e o formato {s.get('formato')} não tem metagame no vault — a "
+                f"reserva fica só o que escreveres à mão.")
+    if c["listas"] and not c["suficiente"]:
+        nota = (f"{NOTA_SEM_CONSENSO}: {c['nota']} — são menos de "
+                f"{MIN_LISTAS_RESERVA}, por isso a reserva automática desta "
+                f"caixa está vazia e fica só o que escreveres à mão.")
     return {"slot": s.get("slot"), "nome": s.get("nome") or s.get("slot"),
             "automatica": automatica, "manual": manual,
-            "retiradas": sorted(fora), "final": final,
-            "limiar": lim, "listas": c["listas"], "fonte": c["fonte"],
-            "suficiente": c["suficiente"],
-            "nota": (c["nota"] if c["suficiente"] or not c["listas"] else
-                     f"{c['nota']} — poucas para consenso (precisa de "
-                     f"{MIN_LISTAS_RESERVA}), por isso a reserva automática "
-                     f"desta caixa está vazia"),
+            "retiradas": [{"nm": nm, "em": em} for nm, em in sorted(fora.items())],
+            "final": final, "desde": desde, "janela_dias": janela_dias(),
+            "listas": c["listas"], "fonte": c["fonte"],
+            "suficiente": c["suficiente"], "nota": nota,
+            "comandante": c.get("comandante") or "",
+            "assinatura": sources.texto_assinatura(*assinatura_do_deck(s)),
             "tem": sum(1 for x in final if x["tem"]),
             "sem": sum(1 for x in final if not x["tem"])}
 
@@ -777,156 +1099,294 @@ def _posse(con, cache: dict | None = None) -> dict[str, int]:
     return cache["_posse"]
 
 
-def reservas(con, res: dict, limiar: int | None = None,
+def reservas(con, res: dict, _ignorado=None,
              cache: dict | None = None) -> dict[str, list[str]]:
-    """`nome de carta -> [caixas que a reservam]`. É a P4, pronta a proteger.
+    """`nome de carta -> [caixas que a reservam]`. É a R5, pronta a proteger.
 
     Só os nomes que ele TEM entram: a reserva protege o que está na estante, e
     uma carta que ele não tem não precisa de protecção nenhuma.
     """
     cache = {} if cache is None else cache
+    if "_reservas" in cache:
+        return cache["_reservas"]
     posse = _posse(con, cache)
     out: dict[str, list[str]] = defaultdict(list)
     for s in res["slots"]:
-        r = reserva_do_deck(con, s, limiar, cache)
+        r = reserva_do_deck(con, s, None, cache)
         for x in r["final"]:
             if posse.get(x["nm"]):
                 out[x["nm"]].append(r["nome"])
-    return dict(out)
+    cache["_reservas"] = dict(out)
+    return cache["_reservas"]
 
 
-def curva_do_limiar(con, res: dict, limiares=None,
-                    cache: dict | None = None) -> list[dict]:
-    """A CURVA que ele pediu: para cada limiar, quantas cópias e quanto valor é
-    que a reserva protege — no total e deck a deck.
+# ---------------------------------------------------------------------------
+# R5b: as STAPLES DE SIDEBOARD do Premodern (só deste formato)
+# ---------------------------------------------------------------------------
+# Palavras dele: *"SÓ PARA PREMODERN: além disso, protege as STAPLES DE
+# SIDEBOARD DO FORMATO — depois de a decklist fechar o Premodern não mexe muito,
+# mas convém ter no sideboard as cartas que são staples. Define-as pela taxa de
+# presença em sideboards de TODAS as listas de Premodern dos últimos 30 dias,
+# põe o corte num sítio configurável, e MEDE A CURVA."*
+#
+# O CORTE É PROVISÓRIO ATÉ ELE ESCOLHER. A ordem é explícita — *"não fixes o
+# corte sem lhe mostrar a curva"* —, por isso o valor que aqui está é o que
+# PROTEGE MAIS (o mais baixo da curva) e a página/relatório dizem-no. Medido a
+# 2026-10-02 sobre as 987 listas de Premodern da janela (todas com sideboard):
+# corte 10 % -> 25 cartas, 20 % -> 7, 30 % -> 1 (Tormod's Crypt), 50 % -> 0.
+# Acima dos 20 % isto deixa de proteger coisa nenhuma, e um corte que não
+# protege nada é uma regra a fingir.
+STAPLES_CORTE_OMISSAO = 10
+STAPLES_FORMATO = "premodern"
 
-    *"MEDE A CURVA e põe no relatório: para os limiares 10, 20, 30, 40 e 50 %,
-    quantas cópias e quanto valor é que a reserva protege em cada deck. Ele
-    escolhe o limiar com os números à frente."*
 
-    Conta **só o que a reserva protege a MAIS**: uma cópia que P1, P2 ou P3 já
-    seguram não é mérito do limiar, e somá-la fazia a curva parecer plana.
+def staples_corte(cfg: dict | None = None) -> float:
+    return float(regras_reserva(cfg)["staples_premodern_pct"])
+
+
+def staples_sideboard(con, fmt: str = STAPLES_FORMATO, corte: float | None = None,
+                      desde: str | None = None, cache: dict | None = None) -> dict:
+    """`{nomes: {carta: pct}, corte, listas, todas: [(pct, nm)], …}`.
+
+    A taxa é sobre as listas do formato **que têm sideboard** na janela, e não
+    sobre todas: dividir por listas sem sideboard dava uma percentagem a doer
+    por um dado que não existe. Na base de 2026-10-02 as 987 listas de Premodern
+    têm todas sideboard, por isso hoje dá o mesmo — mas a conta tem de estar
+    certa no dia em que não der.
     """
     cache = {} if cache is None else cache
-    limiares = list(limiares or regras_reserva()["curva"])
-    base = _protegidas_sem_p4(con, res, cache)
-    valores = _valor_por_nome(con, res, cache)
+    corte = staples_corte() if corte is None else float(corte)
+    desde = desde or desde_de(janela_dias())
+    k = f"_staples_{fmt}_{desde}"
+    if k not in cache:
+        ids = [r[0] for r in con.execute(
+            "SELECT id FROM decklists WHERE format = ? AND event_date >= ?",
+            (fmt, desde))]
+        com_side: set[int] = set()
+        cnt: dict[str, int] = defaultdict(int)
+        for i in range(0, len(ids), 400):
+            ch = ids[i:i + 400]
+            ph = ",".join("?" for _ in ch)
+            for r in con.execute(
+                    f"""SELECT decklist_id d, card_name nm FROM decklist_cards
+                         WHERE decklist_id IN ({ph}) AND board = 'side'""", ch):
+                com_side.add(r["d"])
+                cnt[r["nm"].split(" // ")[0]] += 1
+        n = len(com_side)
+        todas = sorted(((round(100.0 * c / n, 1), nm) for nm, c in cnt.items()
+                        ), reverse=True) if n else []
+        cache[k] = {"listas": len(ids), "com_sideboard": n, "todas": todas}
+    base = cache[k]
+    nomes = {nm: pct for pct, nm in base["todas"] if pct >= corte}
+    return {"formato": fmt, "corte": corte, "desde": desde,
+            "listas": base["listas"], "com_sideboard": base["com_sideboard"],
+            "todas": base["todas"], "nomes": nomes, "n": len(nomes),
+            "provisorio": corte == STAPLES_CORTE_OMISSAO,
+            "regra": (f"presença em sideboards de TODAS as listas de {fmt} desde "
+                      f"{desde} (denominador: as que têm sideboard), corte em "
+                      f"{corte:g} % — `reserva.staples_premodern_pct`")}
+
+
+def curva_staples(con, res: dict, cortes=None,
+                  cache: dict | None = None) -> list[dict]:
+    """A CURVA que ele pediu para o corte das staples de Premodern.
+
+    *"MEDE A CURVA (10/20/30/40/50 %) em cópias e valor para ele escolher com
+    números à frente."*
+
+    Dá DOIS números por corte, e os dois são precisos para ele escolher:
+
+      * **`a_mais`** — o que a R5b protege por cima de tudo o resto. É o efeito
+        REAL de mexer no corte hoje, e medido a 2026-10-02 é quase zero (3
+        cópias / 2,64 €): a R5 (jogada nos últimos 30 dias) já apanha
+        praticamente todas as staples de sideboard do formato, porque uma staple
+        de sideboard é, por definição, uma carta que apareceu numa lista.
+      * **`sozinha`** — o que o corte protegeria se a R5 não existisse. É o que
+        diz quanto a regra VALE, e é por isso que não se mostra só o primeiro
+        número: uma curva plana podia ser lida como *"as staples não importam"*,
+        quando o que se passa é que outra regra chegou lá primeiro.
+
+    Em cada um sai também `so_premodern`: as cópias **PT da era** (o material
+    que as caixas de Premodern dele aceitam) — é o sub-conjunto que serve mesmo
+    para pôr num sideboard de Premodern.
+    """
+    cache = {} if cache is None else cache
+    cortes = list(cortes or regras_reserva()["curva"])
+    base = candidatos(con, res, cache=cache, com_r5b=False)
+    so = candidatos(con, res, cache=cache, com_r5=False, com_r5b=False)
+
+    def _idx(c):
+        d: dict[str, list[dict]] = defaultdict(list)
+        for l in c["linhas"]:
+            d[l["nm"]].append(l)
+        return d
+
+    livres, livres_so = _idx(base), _idx(so)
+
+    def _conta(nomes, idx):
+        cop = val = cop_pm = val_pm = 0
+        cartas = 0
+        for nm in nomes:
+            ls = idx.get(nm) or []
+            if ls:
+                cartas += 1
+            for l in ls:
+                cop += l["q"]
+                val += l["total"] or 0
+                if l["lang"] == "pt" and l.get("era_premodern"):
+                    cop_pm += l["q"]
+                    val_pm += l["total"] or 0
+        return {"cartas": cartas, "copias": cop, "valor": round(val, 2),
+                "so_premodern": {"copias": cop_pm, "valor": round(val_pm, 2)}}
+
     out = []
-    for lim in limiares:
-        por_deck: dict[str, dict] = {}
-        tot_c = tot_v = 0
-        for s in res["slots"]:
-            r = reserva_do_deck(con, s, lim, cache)
-            cop = val = 0
-            for x in r["final"]:
-                v = valores.get(x["nm"])
-                if not v:
-                    continue
-                cop += v["copias_livres"]
-                val += v["valor_livre"]
-            por_deck[r["nome"]] = {"cartas": len(r["final"]), "copias": cop,
-                                   "valor": round(val, 2)}
-            tot_c += cop
-            tot_v += val
-        out.append({"limiar": lim, "copias": tot_c, "valor": round(tot_v, 2),
-                    "decks": por_deck, "ja_protegidas": base["copias"]})
+    for corte in cortes:
+        st = staples_sideboard(con, corte=corte, cache=cache)
+        out.append({"corte": corte, "cartas_staple": st["n"],
+                    "a_mais": _conta(st["nomes"], livres),
+                    "sozinha": _conta(st["nomes"], livres_so),
+                    "candidatos_antes": base["copias"],
+                    "valor_antes": base["valor"]})
     return out
 
 
-def _protegidas_sem_p4(con, res: dict, cache: dict | None = None) -> dict:
-    """Quantas cópias as três primeiras protecções já seguram (para a curva)."""
-    cache = {} if cache is None else cache
-    if "_sem_p4" not in cache:
-        c = candidatos(con, res, cache=cache, com_p4=False)
-        cache["_sem_p4"] = {"copias": c["protegidas_copias"]}
-    return cache["_sem_p4"]
-
-
-def _valor_por_nome(con, res: dict, cache: dict | None = None) -> dict[str, dict]:
-    """`nome -> {copias_livres, valor_livre}`: as cópias que NÃO estão dentro de
-    um deck protegido, com o preço de referência de cada uma.
-
-    É isto que a reserva «protege a mais»: uma cópia que está sleevada já está
-    segura pela P3.
-    """
-    cache = {} if cache is None else cache
-    if "_valnm" in cache:
-        return cache["_valnm"]
-    from . import loadout                                    # noqa: PLC0415
-    dec = decisoes()
-    pc: dict = cache.setdefault("_precos", {})
-    out: dict[str, dict] = defaultdict(lambda: {"copias_livres": 0,
-                                                "valor_livre": 0.0})
-    for nm, lotes in (res.get("pool") or {}).items():
-        for lot in lotes:
-            slot = lot.get("caixa")
-            if slot and dec.get(slot, DECISAO_OMISSAO) in DECISOES_PROTEGEM:
-                continue
-            p = loadout.preco_da_copia(con, lot["sid"], lot["finish"], nm, pc)
-            out[nm]["copias_livres"] += lot["q"]
-            out[nm]["valor_livre"] += (p["unit"] or 0) * lot["q"]
-    cache["_valnm"] = dict(out)
-    return cache["_valnm"]
-
-
 # ---------------------------------------------------------------------------
-# AS QUATRO PROTECÇÕES APLICADAS: a Fase 3 (lista de candidatos)
+# AS REGRAS APLICADAS: a Fase 3 e a lista VENDER
 # ---------------------------------------------------------------------------
 def _motivo(prot: str, detalhe: str) -> str:
-    """O motivo em português, com a protecção à frente. Sem isto havia exclusão
+    """O motivo em português, com a regra à frente. Sem isto havia exclusão
     silenciosa — e a regra dele é explícita: *"cada cópia excluída da venda
-    guarda o MOTIVO em português, e qual das quatro protecções a apanhou"*."""
+    guarda o MOTIVO em português, e qual das regras a apanhou"*."""
     return f"{ROTULOS[prot]}: {detalhe}"
 
 
-def quem_protege(con, res: dict, nm: str, lot: dict, ctx: dict) -> tuple | None:
-    """`(protecção, motivo)` se esta cópia está protegida, senão `None`.
+def contexto(con, res: dict, cfg: dict | None = None,
+             cache: dict | None = None, com_r5: bool = True,
+             com_r5b: bool = True) -> dict:
+    """Tudo o que o `quem_protege` precisa de saber, calculado UMA vez.
 
-    A ORDEM é a das quatro protecções dele, e conta para o motivo: uma
-    shockland que está num deck montado é apanhada pela P1, porque é a P1 que a
-    protege *"sem excepções"* — se amanhã o deck se dissolver, continua
-    protegida, e o motivo tem de dizer a razão que SOBREVIVE.
+    É o mesmo dicionário para a Fase 3 e para o motor da venda: duas montagens
+    ao lado davam duas respostas à mesma pergunta, que é o defeito que as duas
+    moradas desta regra existem para não ter.
     """
+    cache = {} if cache is None else cache
+    dp = plano_duais(con, res, cfg, cache)
+    return {
+        "duais": set(dp["nomes"]),
+        "duais_sublote": dp["por_sublote"],
+        # O ORÇAMENTO de cópias LIVRES por sub-lote, FRESCO a cada chamada: o
+        # `quem_protege` gasta-o à medida que as linhas passam, e partilhá-lo
+        # entre a Fase 3 e o motor da venda deixava o segundo a ver o orçamento
+        # já gasto pelo primeiro.
+        "duais_livre": {k: v["q"] - v["prot"] for k, v in dp["por_sublote"].items()},
+        "duais_alvo": dp["alvo_fora"],
+        "terras": terras_protegidas(con, cache),
+        "rl_joga": rl_que_joga(con, res, cfg, cache),
+        "estados": estados(cfg),
+        "nomes": {s["slot"]: s.get("nome") or s["slot"] for s in res["slots"]},
+        "reservas": reservas(con, res, None, cache) if com_r5 else {},
+        "staples": (staples_sideboard(con, cache=cache)["nomes"]
+                    if com_r5b else {}),
+        "fmt_staples": {s["slot"]: (s.get("formato") or "").lower()
+                        for s in res["slots"]},
+    }
+
+
+def quem_protege(con, res: dict, nm: str, lot: dict, ctx: dict) -> tuple | None:
+    """`(regra, motivo, quantas cópias)` se esta cópia está protegida, senão
+    `None`. O terceiro valor é quantas das `lot["q"]` ficam protegidas — só a R1
+    devolve menos do que todas.
+
+    A ORDEM conta para o motivo: a razão que se escreve é a que SOBREVIVE. Uma
+    shockland dentro de um deck montado é apanhada pela R2, porque é a R2 que a
+    protege *"sem excepções"* — se amanhã o deck se desmontar, continua
+    protegida.
+
+    **A R1 é a primeira e é exclusiva** para as dez duais: ele disse *"para elas
+    manda a R1, que é mais específica"*. Logo, numa dual, só a RD (está num
+    deck) e a R1 (está dentro das quatro de fora) protegem — a R4 não a salva
+    por ser Reserved List, e é esse o ponto da regra.
+    """
+    q = int(lot.get("q") or 0)
+    if nm in ctx["duais"]:
+        slot = lot.get("caixa")
+        if slot and protege(ctx["estados"].get(slot, ESTADO_OMISSAO)):
+            return RD, _motivo(RD, f"dual original dentro do deck "
+                                   f"{ctx['nomes'].get(slot, slot)}"), q
+        # O ORÇAMENTO: desta linha ficam à venda, no máximo, as cópias livres que
+        # ainda sobram do sub-lote; o resto está dentro das quatro e protege-se.
+        k = (lot.get("id"), slot or "")
+        if k not in ctx["duais_sublote"]:
+            return None
+        livre = ctx["duais_livre"].get(k, 0)
+        n = max(0, q - livre)
+        ctx["duais_livre"][k] = max(0, livre - (q - n))
+        if n <= 0:
+            return None
+        return R1, _motivo(R1, f"queres ter {ctx['duais_alvo']} de cada fora dos "
+                               f"decks — esta está dentro dessas "
+                               f"{ctx['duais_alvo']}"), n
     terra = ctx["terras"].get(nm)
     if terra:
-        return P1, _motivo(P1, f"{terra} — todas as cópias ficam protegidas")
+        regra = R2 if terra == "shockland" else R3
+        return regra, _motivo(regra, f"{terra} — todas as cópias ficam "
+                                     f"protegidas, sem excepções"), q
     if lot.get("rl") and nm in ctx["rl_joga"]:
-        return P2, _motivo(P2, f"Reserved List que jogas — {ctx['rl_joga'][nm]}")
+        return R4, _motivo(R4, f"Reserved List que jogas — {ctx['rl_joga'][nm]}"), q
     slot = lot.get("caixa")
     if slot:
-        d = ctx["decisoes"].get(slot, DECISAO_OMISSAO)
-        if d in DECISOES_PROTEGEM:
+        e = ctx["estados"].get(slot, ESTADO_OMISSAO)
+        if protege(e):
             nome = ctx["nomes"].get(slot, slot)
-            return P3, _motivo(P3, f"está no deck {nome}, que decidiste "
-                                   f"{'manter montado' if d == MONTADO else 'guardar'}")
+            return RD, _motivo(RD, f"está no deck {nome}, que está {e}"), q
     if ctx.get("reservas") and nm in ctx["reservas"]:
         quem = ", ".join(ctx["reservas"][nm])
-        return P4, _motivo(P4, f"está na reserva de {quem} — podes precisar dela "
-                               f"a seguir")
+        return R5, _motivo(R5, f"jogada nos últimos {janela_dias()} dias em "
+                               f"{quem} — podes precisar dela a seguir"), q
+    pct = (ctx.get("staples") or {}).get(nm)
+    if pct is not None:
+        return R5B, _motivo(R5B, f"staple de sideboard de Premodern — está em "
+                                 f"{pct:g} % dos sideboards do último mês"), q
     return None
 
 
+def _partir(linha: dict, n: int) -> tuple[dict, dict | None]:
+    """A linha com `n` cópias e o que sobra. É o que a R1 obriga a saber fazer:
+    um lote de cinco duais fora dos decks tem quatro protegidas e uma candidata,
+    e dar o lote inteiro a um dos lados era mentir por quatro ou por uma.
+
+    O `copias` (os `copy_id` que o botão «vendida» usa) parte-se com a
+    quantidade; o `total` recalcula-se do `unit`, nunca por regra de três.
+    """
+    def com(q):
+        d = dict(linha, q=q)
+        if "total" in linha:
+            d["total"] = round((linha.get("unit") or 0) * q, 2)
+        if isinstance(linha.get("copias"), list):
+            d["copias"] = [[linha["copias"][0][0], q]] if linha["copias"] else []
+        return d
+    q = int(linha.get("q") or 0)
+    if n >= q:
+        return com(q), None
+    return com(n), com(q - n)
+
+
 def candidatos(con, res: dict, cfg: dict | None = None,
-               cache: dict | None = None, limiar: int | None = None,
-               com_p4: bool = True) -> dict:
-    """A FASE 3: o que sobra para venda depois das quatro protecções.
+               cache: dict | None = None, _ignorado=None,
+               com_r5: bool = True, com_r5b: bool = True) -> dict:
+    """A FASE 3 e a lista **VENDER**: o que sobra depois das regras.
 
     Varre a colecção INTEIRA (o `pool` do relatório, uma linha por sub-lote) e
     devolve `{linhas, protegidas, por_proteccao, copias, valor, …}`. Cada linha
     é uma cópia física com o preço de referência; cada exclusão traz
-    `proteccao` e `motivo`.
+    `proteccao` e `motivo`. *"Tudo o que não se enquadrar nestas regras vai para
+    uma lista única chamada VENDER."*
 
     **Só leitura**: não toca na base, nas alocações nem no config.
     """
     from . import loadout                                    # noqa: PLC0415
     cache = {} if cache is None else cache
-    ctx = {
-        "terras": terras_protegidas(con, cache),
-        "rl_joga": rl_que_joga(con, res, cfg),
-        "decisoes": decisoes(cfg),
-        "nomes": {s["slot"]: s.get("nome") or s["slot"] for s in res["slots"]},
-        "reservas": reservas(con, res, limiar, cache) if com_p4 else {},
-    }
+    ctx = contexto(con, res, cfg, cache, com_r5=com_r5, com_r5b=com_r5b)
     pc: dict = cache.setdefault("_precos", {})
     linhas, protegidas = [], []
     por: dict[str, dict] = {p: {"copias": 0, "valor": 0.0, "cartas": set()}
@@ -944,6 +1404,10 @@ def candidatos(con, res: dict, cfg: dict | None = None,
                 "cond": lot.get("cond") or "NM", "rl": bool(lot["rl"]),
                 "local": lot["local"], "caixa": lot.get("caixa"),
                 "validado": lot.get("validado") or "",
+                # Serve a curva da R5b: uma staple só entra num sideboard de
+                # Premodern se for PT e da era. O `era_pm` vem do `lots()` — não
+                # se recalcula aqui a data do Scourge, que é a mesma pergunta.
+                "era_premodern": bool(lot.get("era_pm")),
                 "unit": p["unit"], "preco_fonte": p["fonte"],
                 "preco_origem": p["origem"],
                 "total": round((p["unit"] or 0) * lot["q"], 2),
@@ -952,11 +1416,14 @@ def candidatos(con, res: dict, cfg: dict | None = None,
             if qp is None:
                 linhas.append(linha)
                 continue
-            prot, motivo = qp
-            protegidas.append(dict(linha, proteccao=prot, motivo=motivo))
-            por[prot]["copias"] += lot["q"]
-            por[prot]["valor"] += linha["total"]
+            prot, motivo, n = qp
+            prote, resto = _partir(linha, n)
+            protegidas.append(dict(prote, proteccao=prot, motivo=motivo))
+            por[prot]["copias"] += prote["q"]
+            por[prot]["valor"] += prote["total"]
             por[prot]["cartas"].add(nm)
+            if resto:
+                linhas.append(resto)
     linhas.sort(key=lambda l: (-(l["total"] or 0), l["nm"], l["copy_id"]))
     protegidas.sort(key=lambda l: (-(l["total"] or 0), l["nm"], l["copy_id"]))
     return {
@@ -973,15 +1440,16 @@ def candidatos(con, res: dict, cfg: dict | None = None,
                               "cartas": len(v["cartas"]),
                               "rotulo": ROTULOS[p]}
                           for p, v in por.items()},
-        "limiar": limiar_pct(cfg) if limiar is None else int(limiar),
-        "com_p4": com_p4,
+        "janela_dias": janela_dias(cfg),
+        "staples_corte": staples_corte(cfg),
+        "com_r5": com_r5, "com_r5b": com_r5b,
     }
 
 
 def filtrar_venda(con, res: dict, venda: list[dict], venda_rl: list[dict],
                   cfg: dict | None = None, cache: dict | None = None
                   ) -> tuple[list[dict], list[dict], list[dict]]:
-    """O MOTOR: tira de `venda`/`venda_rl` o que as quatro protecções seguram.
+    """O MOTOR: tira de `venda`/`venda_rl` o que as regras seguram.
 
     Devolve `(venda, venda_rl, protegidas)`. Entra no `loadout.sell_list` no
     fim, como o filtro da reserva das caixas de 2026-09-20 — e pela mesma razão
@@ -990,16 +1458,12 @@ def filtrar_venda(con, res: dict, venda: list[dict], venda_rl: list[dict],
     protecção: a aba Vender e a exportação continuariam a oferecer a carta.
 
     Aqui não se varre a colecção: trabalha-se sobre as linhas já formadas, e
-    cada linha traz as `copias` (os `copy_id`) de que é feita.
+    cada linha traz as `copias` (os `copy_id`) de que é feita. A R1 pode PARTIR
+    uma linha — quatro cópias protegidas, as outras à venda —, e é por isso que
+    o `quem_protege` devolve uma quantidade e não um sim/não.
     """
     cache = {} if cache is None else cache
-    ctx = {
-        "terras": terras_protegidas(con, cache),
-        "rl_joga": rl_que_joga(con, res, cfg),
-        "decisoes": decisoes(cfg),
-        "nomes": {s["slot"]: s.get("nome") or s["slot"] for s in res["slots"]},
-        "reservas": reservas(con, res, None, cache),
-    }
+    ctx = contexto(con, res, cfg, cache)
     protegidas: list[dict] = []
 
     def passa(rows):
@@ -1008,17 +1472,21 @@ def filtrar_venda(con, res: dict, venda: list[dict], venda_rl: list[dict],
             # A caixa vem da LINHA (`linha_de` carimba-a do sub-lote). Não se
             # procura pelo `copy_id`: um lote de 4 com 3 na caixa e 1 na gaveta
             # são dois sub-lotes com o mesmo `copies.id`, e pelo id a parte da
-            # gaveta ficava protegida pela P3 — uma cópia a desaparecer da venda
+            # gaveta ficava protegida pela RD — uma cópia a desaparecer da venda
             # sem motivo. Apanhado pelo `test_paginas_loadout`.
-            qp = quem_protege(con, res, r["nm"],
-                              {"rl": r.get("rl"), "caixa": r.get("caixa")}, ctx)
+            lot = {"rl": r.get("rl"), "caixa": r.get("caixa"), "q": r.get("q"),
+                   "id": (r["copias"][0][0] if r.get("copias") else None)}
+            qp = quem_protege(con, res, r["nm"], lot, ctx)
             if qp is None:
                 ficam.append(r)
                 continue
-            prot, motivo = qp
-            protegidas.append(dict(r, proteccao=prot, motivo=motivo,
+            prot, motivo, n = qp
+            prote, resto = _partir(r, n)
+            protegidas.append(dict(prote, proteccao=prot, motivo=motivo,
                                    porque_venderia=r.get("reason") or "",
                                    reason=motivo))
+            if resto:
+                ficam.append(resto)
         return ficam
 
     return passa(venda), passa(venda_rl), protegidas
@@ -1183,14 +1651,18 @@ def fila_decks(con, res: dict, cfg: dict | None = None,
     """
     from . import fotos as fotos_mod, paginas                # noqa: PLC0415
     cache = {} if cache is None else cache
-    dec = decisoes(cfg)
+    est = estados(cfg)
     pc: dict = cache.setdefault("_precos", {})
     perdidas = _perdidas(con, cache)
     por_slot: dict[str, list[dict]] = defaultdict(list)
     for nm, lotes in (res.get("pool") or {}).items():
         for lot in lotes:
             slot = lot.get("caixa")
-            if not slot or dec.get(slot, DECISAO_OMISSAO) != MONTADO:
+            # As caixas cujo ESTADO protege (`permanente`/`montada`/`congelada`)
+            # — são os decks que ficam, e é deles que ele tem de confirmar o
+            # conteúdo antes de Ghent. Uma `candidata` não entra: não é um deck
+            # que ele vá levar.
+            if not slot or not protege(est.get(slot, ESTADO_OMISSAO)):
                 continue
             por_slot[slot].append(_linha_de_lote(con, nm, lot, pc, perdidas))
     nomes = {s["slot"]: s.get("nome") or s["slot"] for s in res["slots"]}
@@ -1349,18 +1821,23 @@ def fotos_perdidas(con, res: dict, cfg: dict | None = None,
 # ---------------------------------------------------------------------------
 def decks_para_decidir(con, res: dict, cfg: dict | None = None,
                        cache: dict | None = None) -> list[dict]:
-    """A FASE 1: cada deck, a decisão de hoje, e o que cada decisão LIBERTA.
+    """A FASE 1: os 16 decks que ficam, o ESTADO de cada um, a CARTA-ASSINATURA
+    por que se identifica, e o que se libertava se ele o passasse a candidato.
 
-    `liberta` é quantas cópias e quanto valor passariam a candidatas se ele
-    dissolvesse este deck — contado com as outras três protecções a valer, que é
-    a única conta honesta: uma shockland dentro do deck continua protegida pela
-    P1 e não se liberta ao dissolvê-lo.
+    `liberta` é quantas cópias e quanto valor deixariam de estar protegidas pela
+    RD — contado com as outras regras a valer, que é a única conta honesta: uma
+    shockland dentro do deck continua protegida pela R2 e não se liberta.
+
+    **Não há botões aqui** (2026-10-02): o estado muda-se na Deckboxes, que é
+    onde esse gesto já vive e onde ele tem a caixa na mão. Dois caminhos para o
+    mesmo gesto discordam um dia qualquer, em silêncio.
     """
     from . import loadout                                    # noqa: PLC0415
     cache = {} if cache is None else cache
-    dec = decisoes(cfg)
+    est = estados(cfg)
     terras = terras_protegidas(con, cache)
-    rl_joga = rl_que_joga(con, res, cfg)
+    duais_nm = set(duais(con, cache)["nomes"])
+    rl_joga = rl_que_joga(con, res, cfg, cache)
     pc: dict = cache.setdefault("_precos", {})
     datas = loadout.datas_de_arrumacao(con)
     por_slot: dict[str, dict] = {}
@@ -1376,8 +1853,11 @@ def decks_para_decidir(con, res: dict, cfg: dict | None = None,
             v = (p["unit"] or 0) * lot["q"]
             d["copias"] += lot["q"]
             d["valor"] += v
-            # O que SE LIBERTA: o que as outras protecções não seguram.
-            if nm in terras or (lot["rl"] and nm in rl_joga):
+            # O que SE LIBERTA: o que as outras regras não seguram. As duais
+            # ficam de fora da conta porque a regra delas é a quota de quatro
+            # FORA dos decks — tirá-las do deck não as põe à venda, põe-nas na
+            # fila da quota.
+            if nm in terras or nm in duais_nm or (lot["rl"] and nm in rl_joga):
                 continue
             d["liberta_copias"] += lot["q"]
             d["liberta_valor"] += v
@@ -1387,11 +1867,36 @@ def decks_para_decidir(con, res: dict, cfg: dict | None = None,
         d = por_slot.get(slot) or {"copias": 0, "valor": 0.0,
                                    "liberta_copias": 0, "liberta_valor": 0.0}
         r = reserva_do_deck(con, s, None, cache)
+        e = est.get(slot, ESTADO_OMISSAO)
+        ass, todas = assinatura_do_deck(s)
+        # A IDENTIDADE de um deck, e as três formas honestas de a ter. Isto é
+        # apresentação, mas é apresentação que não pode mentir: dizer *"à espera
+        # da carta-assinatura"* aos dois decks de cEDH (que seguem um LINK, por
+        # ordem dele — *"como já está, não mudes"*) e ao de Duel Commander (cuja
+        # identidade é o COMANDANTE, 2026-10-01) era marcar como incompleto o que
+        # está decidido. *"À espera"* é só quem não tem nenhuma das três — hoje o
+        # Artifacts Blue, e é exactamente o que a ordem manda assinalar.
+        ident, tipo = sources.texto_assinatura(ass, todas), "carta"
+        if not ident and r.get("fonte") == "comandante":
+            ident, tipo = str(r.get("comandante") or ""), "comandante"
+        if not ident and (s.get("fonte") or "") in ("vigiado", "escolhido"):
+            ident = f"lista fixa ({s.get('fonte')}: {s.get('ref') or '—'})"
+            tipo = "lista"
         out.append({
             "slot": slot, "nome": s.get("nome") or slot,
-            "formato": s.get("formato"), "estado": s.get("estado"),
-            "decisao": dec.get(slot, DECISAO_OMISSAO),
-            "decisao_explicita": bool(_caixa_tem_decisao(cfg, slot)),
+            "formato": s.get("formato"), "estado": e,
+            "estado_explicito": bool(_caixa_tem_estado(cfg, slot)),
+            "protege": protege(e), "texto_estado": TEXTO_ESTADO.get(e, ""),
+            "fonte": s.get("fonte"), "ref": s.get("ref"),
+            "identidade": ident, "identidade_tipo": tipo if ident else "",
+            "sem_assinatura": not ident,
+            "assinatura": sources.texto_assinatura(ass, todas),
+            "assinatura_cartas": ass, "assinatura_todas": todas,
+            "lista": {"main": sum(q for b, _n, q in (s.get("cards") or [])
+                                  if b == "main"),
+                      "side": sum(q for b, _n, q in (s.get("cards") or [])
+                                  if b == "side"),
+                      "nota": s.get("nota_lista") or s.get("lista_nota") or ""},
             "pct": s.get("pct"), "tem": s.get("tem"), "pede": s.get("pede"),
             "na_caixa": d["copias"],
             "valor": round(d["valor"], 2),
@@ -1404,16 +1909,16 @@ def decks_para_decidir(con, res: dict, cfg: dict | None = None,
     return out
 
 
-def _caixa_tem_decisao(cfg: dict | None, slot: str) -> bool:
-    """Se a decisão está ESCRITA no config (e não só assumida).
+def _caixa_tem_estado(cfg: dict | None, slot: str) -> bool:
+    """Se o `estado` está ESCRITO no config (e não só assumido).
 
-    A página mostra a diferença: *«por decidir (conta como montado)»* não é o
-    mesmo que ele ter carregado em «montado», e esconder isso era dar por
-    tomada uma decisão que ninguém tomou.
+    A página mostra a diferença: *«sem estado escrito (vale permanente, e por
+    isso protege)»* não é o mesmo que ele ter escolhido — e esconder isso era
+    dar por tomada uma decisão que ninguém tomou.
     """
     for c in _caixas.do_config(cfg):
         if c.get("slot") == slot:
-            return str(c.get("decisao") or "").strip().lower() in DECISOES
+            return str(c.get("estado") or "").strip().lower() in _caixas.ESTADOS
     return False
 
 
@@ -1429,9 +1934,13 @@ def relatorio(con, res: dict, cfg: dict | None = None,
         "congelada": venda_congelada(cfg, hoje),
         "motivo_congelado": (motivo_congelado(congelado_ate(cfg), hoje)
                              if venda_congelada(cfg, hoje) else ""),
-        "limiar": limiar_pct(cfg),
-        "terras": {"shocklands": shocklands(con, cache),
+        "janela_dias": janela_dias(cfg),
+        "desde": desde_de(janela_dias(cfg), hoje),
+        "terras": {"duais": duais(con, cache),
+                   "shocklands": shocklands(con, cache),
                    "fetchlands": fetchlands(con, cache)},
+        "duais": plano_duais(con, res, cfg, cache),
+        "staples": staples_sideboard(con, cache=cache),
         "decks": decks_para_decidir(con, res, cfg, cache),
         "fase2": fila_decks(con, res, cfg, cache),
         "candidatos": cands,
@@ -1440,9 +1949,11 @@ def relatorio(con, res: dict, cfg: dict | None = None,
         # As únicas cópias sem prova nenhuma: vêm à cabeça de tudo.
         "perdidas": fotos_perdidas(con, res, cfg, cache),
         "max_cartas_foto": _fotos_mod().MAX_CARTAS,
-        "decisoes": {"valores": list(DECISOES), "omissao": DECISAO_OMISSAO,
-                     "texto": dict(TEXTO_DECISAO)},
+        "estados": {"valores": list(_caixas.ESTADOS),
+                    "protegem": list(ESTADOS_PROTEGEM),
+                    "omissao": ESTADO_OMISSAO, "texto": dict(TEXTO_ESTADO)},
+        "regras": {k: ROTULOS[k] for k in PROTECCOES},
     }
     if curva:
-        out["curva"] = curva_do_limiar(con, res, None, cache)
+        out["curva_staples"] = curva_staples(con, res, None, cache)
     return out

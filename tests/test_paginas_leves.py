@@ -285,9 +285,13 @@ def caso_ponta_a_ponta_servida_por_http():
         # se tranca é que ela desenha e que a barra das fases tem as cinco.
         dom = _abrir(f"{url}/arrumacao.html")
         vista, fasebar = dom["#vista"], dom["#fasebar"]
-        assert "Fase 1" in vista and "Fechar os decks" in vista, vista[:400]
-        assert "carregando" not in vista and "erro-dados" not in vista, vista[:400]
-        assert "conta como montado" in vista, "a página tem de dizer a omissão"
+        assert "Fase 1" in vista and "Os decks que ficam" in vista, vista[:400]
+        assert "erro-dados" not in vista, vista[:400]
+        # A omissão do `estado` PROTEGE, e a página tem de o dizer (2026-10-02;
+        # era *"conta como montado"*, do campo `decisao` que foi apagado).
+        assert "vale permanente" in vista, "a página tem de dizer a omissão"
+        # E as duas listas das duais, que é o que a R1 produz.
+        assert "duais originais" in vista and "COMPRAR" in vista, vista[:600]
         assert fasebar.count("<button") == 5, fasebar[:400]
         print("ponta a ponta: as cinco paginas desenham a seccao principal depois do fetch")
 

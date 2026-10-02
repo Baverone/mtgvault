@@ -1206,23 +1206,24 @@ def _cards_from_watched(con, label: str) -> tuple[list[tuple[str, str, int]], st
             f"lista vigiada de {row['taken_at']}")
 
 
-def _cards_from_consensus(con, fmt: str, assinatura: list[str]
+def _cards_from_consensus(con, fmt: str, assinatura: list[str],
+                          todas: bool = False
                           ) -> tuple[list[tuple[str, str, int]], str]:
     """Consenso de um arquétipo identificado por carta-assinatura.
 
     Só listas que CONTAM (`sources.counting_sql`) e o mesmo cálculo de lista
     padrão de toda a gente (`stock.stock_from_lists`) — não se inventa aqui um
     segundo consenso que discordasse do resto do vault em silêncio.
+
+    Quem escolhe as listas é o `sources.ids_por_assinatura`, partilhado com a
+    reserva dos 30 dias (`fases`): a pergunta *"que listas são deste deck?"* é a
+    mesma nas duas, e dois selectores ao lado discordam em silêncio. `todas`
+    (`caixas[].assinatura_todas`) pede a CONJUNÇÃO — o *Engineer Welder Cam* de
+    Legacy precisa das duas cartas.
     """
     if not assinatura:
         return [], "sem assinatura configurada"
-    conta, cp = sources.counting_sql(fmt, "d")
-    marks = ",".join("?" * len(assinatura))
-    ids = [r[0] for r in con.execute(
-        f"""SELECT DISTINCT d.id FROM decklists d
-              JOIN decklist_cards dc ON dc.decklist_id = d.id
-             WHERE d.format = ? AND dc.card_name IN ({marks}) AND {conta}""",
-        (fmt, *assinatura, *cp))]
+    ids = sources.ids_por_assinatura(con, fmt, assinatura, todas=todas)
     if len(ids) < stock_min_lists():
         return [], f"só {len(ids)} listas contam — poucas para consenso"
     ph = ",".join("?" * len(ids))
@@ -1290,7 +1291,8 @@ def _slot_cards(con, s: dict) -> tuple[list[tuple[str, str, int]], str]:
     if fonte == "vigiado":
         return _cards_from_watched(con, ref)
     if fonte == "consenso":
-        return _cards_from_consensus(con, s["formato"], s.get("assinatura") or [])
+        return _cards_from_consensus(con, s["formato"], s.get("assinatura") or [],
+                                     todas=bool(s.get("assinatura_todas")))
     return [], f"fonte {fonte!r} desconhecida"
 
 

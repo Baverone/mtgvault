@@ -1,37 +1,45 @@
-"""Gera arrumacao.html — A ARRUMAÇÃO POR FASES (André, 2026-10-01).
+"""Gera arrumacao.html — A ARRUMAÇÃO POR FASES (André, 2026-10-01 e 2026-10-02).
 
 Ele vai arrumar a colecção por fases e pediu *"organização"* e **um sítio que
 diga sempre onde está e o que vem a seguir**. O motor está em
-`mtgvault/fases.py` (é lá que estão as quatro protecções, os três estados de
-cada deck, o limiar da reserva e a trava do RC Ghent). Esta página é a vista.
+`mtgvault/fases.py` (é lá que estão as regras R1–R5b, a leitura do `estado` de
+cada caixa e a trava do RC Ghent). Esta página é a vista.
 
 O ALVO É O TELEMÓVEL, pela rede de casa: é com o telemóvel na mão e as cartas
 na mesa que ele trabalha. Por isso segue as decisões que já estavam tomadas:
 
 * a **casca** vai no HTML e os **dados à parte** (2026-09-15) — o índice leva a
-  Fase 1 inteira (é o primeiro ecrã: não pode esperar por nada) e as filas de
-  fotos, que são grandes, vão numa parte cada, idas buscar quando ele abre a
-  fase;
+  Fase 1 (é o primeiro ecrã: não pode esperar por nada) e as filas de fotos, que
+  são grandes, vão numa parte cada, idas buscar quando ele abre a fase. **A
+  LISTA DE CARTAS de cada reserva saiu do índice a 2026-10-02**: sem o limiar, as
+  16 reservas somavam 112 KB dos 167 — e vivem dentro de um `<details>`
+  FECHADO. O resumo (quantas, quantas tens, quantas dispensaste) fica no índice,
+  que é o que se lê de fora; a lista chega ao primeiro toque;
 * um `fetch` que falhe **diz-lho em português** (`paginas.erroDados`), nunca um
   ecrã vazio;
 * os botões só existem no **modo edição** (porto 8771) — no site publicado não
   há endpoint que grave, e um botão que não grava é pior do que botão nenhum;
-* **nada aqui mexe em alocações nem na base**: lê a colecção e escreve o estado
-  do deck e a reserva no `colecao_config.json` (com o `configio.escrever`, que
-  preserva a forma do ficheiro).
+* **nada aqui mexe em alocações nem na base**: lê a colecção e escreve só a
+  reserva no `colecao_config.json` (com o `configio.escrever`, que preserva a
+  forma do ficheiro). **O ESTADO da caixa muda-se na Deckboxes** (2026-10-02),
+  que é onde esse gesto já vive e onde ele tem a caixa na mão: dois caminhos
+  para o mesmo gesto discordam um dia qualquer, em silêncio.
 
 AS QUATRO FASES, e a via paralela:
 
-    Fase 1  FECHAR OS DECKS      decidir montado/guardado/dissolvido, e ver o
-                                 que cada decisão liberta + a RESERVA proposta
+    Fase 1  OS DECKS QUE FICAM   os 16 decks, a CARTA-ASSINATURA de cada um, o
+                                 ESTADO da caixa (que é quem decide se as
+                                 cópias estão protegidas), a RESERVA dos 30
+                                 dias com o botão «não é necessária», e as duas
+                                 listas das duais (vender / comprar)
     Fase 2  FOTOS DOS DECKS      antes de Ghent: confirmar que cada deck que
                                  fica montado está fisicamente completo. O
                                  BOTÃO DO ALVO DA REVALIDAÇÃO está aqui
                                  (2026-10-01): a fila estava nesta página e o
                                  botão só na Deckboxes, e ele perguntou onde é
                                  que punha as fotos — ver `alvo_actual`
-    Fase 3  CANDIDATOS           sai sozinha da Fase 1, com as quatro
-                                 protecções aplicadas e o motivo à vista
+    Fase 3  VENDER               sai sozinha da Fase 1, com as regras aplicadas
+                                 e o motivo de cada exclusão à vista
     Fase 4  FOTOS DOS CANDIDATOS depois de Ghent: fila POR CARTA, da mais cara
                                  para a mais barata, em lotes de 50
     paralela INVENTÁRIO          fotos da RL, das shocklands e das fetchlands —
@@ -77,6 +85,7 @@ _CSS = """
  .lib{color:var(--muted);font-size:12.5px;margin:10px 0 0;line-height:1.6}
  .lib b{color:var(--ink)}
  .pordecidir{color:var(--warn);font-size:12px;font-weight:600}
+ .est{color:var(--accent);font-size:12px;font-weight:600}
  .bar{height:7px;border-radius:999px;background:var(--card);overflow:hidden;margin:10px 0 6px}
  .bar i{display:block;height:100%;background:var(--accent)}
  .barl{color:var(--muted);font-size:12px}
@@ -131,35 +140,55 @@ _CSS = """
  }
 """
 
-_LEAD = ("Onde estás na arrumação da coleção e o que vem a seguir. As quatro "
-         "regras de 1 de outubro de 2026 valem em todas as fases, e cada cópia "
-         "que fica de fora da venda diz por que regra ficou.")
+_LEAD = ("Onde estás na arrumação da coleção e o que vem a seguir. As regras de "
+         "2 de outubro de 2026 valem em todas as fases, e cada cópia que fica "
+         "de fora da venda diz por que regra ficou.")
 
 _RODAPE = (
-    "<p><b>As quatro proteções.</b> <b>P1</b> — todas as cópias das shocklands "
-    "e das fetchlands ficam protegidas: todos os acabamentos, todas as línguas, "
-    "todas as repetidas, estejam ou não num deck. As duas listas são "
-    "<b>derivadas do catálogo</b> pelo texto da carta e pelos tipos, nunca "
-    "escritas à mão, e a conta tem de dar dez de cada — se não der, a página "
-    "diz e para. <b>P2</b> — a Reserved List que jogas (alocada a um deck ou no "
-    "consenso de um formato que jogas); o resto da Reserved List continua a "
-    "passar pela regra dos 5 % de 8 de setembro. <b>P3</b> — nada do que está "
-    "num deck que decidiste manter montado ou guardar. <b>P4</b> — a reserva de "
-    "cada deck.</p>"
-    "<p><b>A reserva («maybe»).</b> Enche-se sozinha a partir do consenso do "
-    "arquétipo — a banda flex e o resto do sideboard que não estão nas 75 de "
-    "hoje — mais o que acrescentares à mão. Tem um <b>limiar</b>: só entra o que "
-    "aparece em pelo menos essa percentagem das listas. Sem limiar não sobrava "
-    "nada para vender, porque um arquétipo tem dezenas de cartas distintas "
-    "entre o main e o sideboard. Abaixo de oito listas não se chama consenso a "
-    "nada e a reserva automática fica vazia. A reserva protege só o que tens; o "
-    "que não tens alimenta a lista de compras.</p>"
-    "<p><b>Os três estados.</b> <i>Montado</i> fica montado e as cartas ficam "
-    "protegidas; <i>guardado</i> desmonta-se e as cartas continuam protegidas; "
-    "<i>dissolvido</i> desmonta-se e as cartas passam a candidatas, menos as que "
-    "P1, P2 ou P4 apanhem. <b>Um deck sem decisão conta como montado</b> — nunca "
-    "o contrário: um deck novo não manda uma única carta para a venda. Mudar de "
-    "estado é reversível e não apaga nada.</p>"
+    "<p><b>A identidade de um deck é uma carta-assinatura.</b> Nunca a etiqueta "
+    "do clustering: essas chamam-se «Rotlung Reanimator / Priest of Gix / Oath "
+    "of Druids», mudam de corrida para corrida e há dezenas vazias com o mesmo "
+    "nome. Uma carta só apanha todas as variantes do deck — é o que serve o "
+    "«Greasefang, as várias versões» —, e quando uma carta sozinha apanha "
+    "decks diferentes exigem-se duas <b>em conjunção</b>, como no Engineer "
+    "Welder Cam de Legacy. Um deck a quem ainda não disseste a carta fica "
+    "marcado <b>à espera da carta-assinatura</b> e não recebe consenso nenhum: "
+    "não se inventa a identidade de um deck.</p>"
+    "<p><b>As regras das cartas.</b> <b>R1</b> — as dez <b>duais originais</b>: "
+    "queres ter quatro de cada <i>fora</i> dos decks, e o que passar disso "
+    "vende-se ou troca-se. As duais são Reserved List e <b>aqui manda a R1</b>, "
+    "que é mais específica: a quinta cópia vai à venda apesar de ser RL. "
+    "<b>R2</b> e <b>R3</b> — todas as cópias das <b>shocklands</b> e das "
+    "<b>fetchlands</b> ficam protegidas: todos os acabamentos, todas as "
+    "línguas, todas as repetidas, estejam ou não num deck. <b>R4</b> — a "
+    "Reserved List que <i>jogas</i> (está num deck que fica, na lista de uma "
+    "caixa, ou no consenso de um deck teu); o resto da Reserved List continua a "
+    "passar pela regra dos 5 % de 8 de setembro. <b>R5</b> — tudo o que foi "
+    "<b>jogado no último mês</b> no arquétipo de um destes decks, main ou side, "
+    "mesmo que hoje esteja fora da lista. <b>R5b</b>, só no Premodern — as "
+    "<b>staples de sideboard</b> do formato, pela presença nos sideboards do "
+    "último mês, com o corte no config. E tudo o que não se enquadrar nestas "
+    "regras vai para uma lista única: <b>VENDER</b>.</p>"
+    "<p><b>As três listas de terras são derivadas do catálogo</b>, pelo texto da "
+    "carta e pelos tipos, nunca escritas à mão — e a conta tem de dar dez de "
+    "cada. Se não der, a página diz e para: uma proteção que fica vazia em "
+    "silêncio manda shocklands para a venda sem um único erro.</p>"
+    "<p><b>A reserva («maybe»).</b> Enche-se sozinha com tudo o que foi jogado "
+    "no arquétipo nos últimos 30 dias, mais o que acrescentares à mão. "
+    "<b>Não há limiar</b> — o travão é a janela, e a base só guarda um mês de "
+    "listas. Abaixo de oito listas não se chama consenso a nada e a reserva "
+    "automática fica vazia (é o caso do Ill-Gotten Gains, com três). A reserva "
+    "protege só o que tens; o que não tens alimenta a lista de compras. Cada "
+    "carta tem o botão <b>«não é necessária»</b>: sai da reserva daquele deck e "
+    "passa a candidata a venda, fica <b>gravado com a data</b> (sobrevive à "
+    "corrida da noite) e desfaz-se no <b>«voltar a pôr»</b>.</p>"
+    "<p><b>Quem decide é o estado da caixa.</b> <i>Montada</i>, <i>congelada</i> "
+    "e <i>permanente</i> protegem as cópias lá dentro; <i>candidata</i> não "
+    "protege por si. <b>Um deck sem estado escrito vale permanente — e por isso "
+    "protege</b>: nunca o contrário, porque um deck novo não pode mandar uma "
+    "única carta para a venda. O estado muda-se na <b>Deckboxes</b>, que é onde "
+    "tens a caixa na mão; aqui só se lê, para não haver dois caminhos para o "
+    "mesmo gesto.</p>"
     "<p><b>Uma foto leva no máximo quatro cartas.</b> As tuas palavras: "
     "<i>«organiza o Blue farm e CDEH por tipo de carta e até 4 cartas por "
     "foto»</i> e <i>«se são 4 fotos, é 1 foto com as 4 cartas»</i>. As cópias da "
@@ -203,16 +232,18 @@ _JS = r"""
 %JS_DADOS%
 let D = null, ABA = 'f1';
 const PARTES = {};
+/* As listas de cartas das reservas (a parte `reservas`), e quais os
+   `<details>` que ele abriu — sem isto o re-render fechava-os todos. */
+let RESERVAS = null;
+const ABERTAS = {};
 const el = id => document.getElementById(id);
 const eur = v => (v == null ? '—' : Number(v).toLocaleString('pt-PT',
   {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' €');
 const cop = n => n + (n === 1 ? ' cópia' : ' cópias');
-const ESTADOS = [['montado', 'Montado'], ['guardado', 'Guardado'],
-                 ['dissolvido', 'Dissolvido']];
 const ABAS = [
-  ['f1', 'Fase 1 · Fechar os decks'],
+  ['f1', 'Fase 1 · Os decks que ficam'],
   ['f2', 'Fase 2 · Fotos dos decks'],
-  ['f3', 'Fase 3 · Candidatos'],
+  ['f3', 'Fase 3 · VENDER'],
   ['f4', 'Fase 4 · Fotos dos candidatos'],
   ['inv', 'Inventário (paralelo)'],
 ];
@@ -248,6 +279,9 @@ async function recarrega() {
   try {
     D = await carregaDados('arrumacao.json');
     for (const k of Object.keys(PARTES)) delete PARTES[k];
+    // As reservas também: um «não é necessária» muda-as, e servir a lista de
+    // antes do clique era a página a discordar do que ele acabou de fazer.
+    if (RESERVAS) { RESERVAS = await parte('reservas'); }
     render();
   } catch (e) { erroDados(el('vista'), e); }
 }
@@ -263,64 +297,148 @@ function toast(msg, erro) {
 }
 
 /* ------------------------------------------------------------- FASE 1 */
+/* O BOTÃO «NÃO É NECESSÁRIA» (André, 2026-10-02): tira a carta da reserva
+   daquele deck e passa-a a candidata a venda. Escreve `caixas[].reserva_fora`
+   no config com a DATA (logo sobrevive à corrida do daily) e tem o inverso ao
+   lado («voltar a pôr»), que é o `devolver` do mesmo endpoint. */
 function reservaHTML(d) {
   const r = d.reserva || {};
-  const ls = r.final || [];
-  let corpo = ls.length
+  /* A LISTA DE CARTAS vive numa PARTE (`arrumacao/reservas.json`) e não no
+     índice: sem limiar, as 16 reservas somavam 112 KB dos 167 do índice, e o
+     índice é o primeiro ecrã no telemóvel (decisão de 2026-09-15). O resumo —
+     quantas, quantas tens, quantas dispensaste — vai no índice, que é o que se
+     lê com o `<details>` fechado; a lista chega ao primeiro toque. */
+  const carregada = RESERVAS && RESERVAS[d.slot];
+  const ls = carregada || [];
+  let corpo = !carregada
+    ? `<p class="carregando">a carregar a lista…</p>`
+    : ls.length
     ? `<ul class="rl">` + ls.map(x =>
         `<li><span class="pc">${x.pct == null ? '—' : x.pct + ' %'}</span>`
         + `<span class="tm">${x.tem ? 'tens ' + x.tem : 'não tens'}</span>`
         + `<span style="flex:1">${escDados(x.nm)}</span>`
         + (x.manual ? `<span class="mn">à mão</span>` : '')
         + (D.editavel ? `<button type="button" data-res-fora="${escDados(d.slot)}"`
-            + ` data-carta="${escDados(x.nm)}" title="tirar da reserva">✕</button>` : '')
+            + ` data-carta="${escDados(x.nm)}"`
+            + ` title="não é necessária — sai da reserva e passa a candidata a venda"`
+            + `>não é necessária</button>` : '')
         + `</li>`).join('') + `</ul>`
     : `<p class="vazio">Sem reserva. ${escDados(r.nota || '')}</p>`;
+  const fora = r.retiradas || [];
+  if (fora.length) {
+    corpo += `<p class="sub" style="margin:12px 0 4px"><b>Disseste que não são `
+      + `necessárias</b> (${fora.length}) — ficam de fora mesmo que as listas as `
+      + `voltem a mostrar:</p><ul class="rl">`
+      + fora.map(x =>
+          `<li><span class="tm">${escDados(x.em || 'sem data')}</span>`
+          + `<span style="flex:1">${escDados(x.nm)}</span>`
+          + (D.editavel ? `<button type="button" data-res-volta="${escDados(d.slot)}"`
+              + ` data-carta="${escDados(x.nm)}" title="voltar a pôr na reserva"`
+              + `>voltar a pôr</button>` : '')
+          + `</li>`).join('') + `</ul>`;
+  }
   if (D.editavel) {
     corpo += `<div class="addres"><input type="text" id="novares-${escDados(d.slot)}"`
       + ` placeholder="acrescentar uma carta à mão (nome em inglês)">`
       + `<button type="button" data-res-add="${escDados(d.slot)}">acrescentar</button></div>`;
   }
-  return `<details class="res"><summary>Reserva («maybe»): `
-    + `<b>${ls.length}</b> cartas · ${r.tem || 0} que tens`
-    + `, ${r.sem || 0} que não tens · limiar ${r.limiar} %</summary>`
+  return `<details class="res"${ABERTAS[d.slot] ? ' open' : ''}>`
+    + `<summary data-res-abrir="${escDados(d.slot)}">Reserva («maybe»): `
+    + `<b>${r.n_final}</b> cartas · ${r.tem || 0} que tens`
+    + `, ${r.sem || 0} que não tens`
+    + (fora.length ? ` · ${fora.length} que dispensaste` : '') + `</summary>`
     + `<p class="sub" style="margin:8px 0 0">${escDados(r.nota || '')}</p>`
     + corpo + `</details>`;
 }
 function deckHTML(d) {
-  const seg = ESTADOS.map(([k, rot]) =>
-    `<button type="button" class="${d.decisao === k ? 'on' : ''}${D.editavel ? '' : ' ro'}"`
-    + (D.editavel ? ` data-dec="${escDados(d.slot)}" data-valor="${k}"` : '')
-    + `>${rot}</button>`).join('');
-  const lib = d.decisao === 'dissolvido'
-    ? `Dissolvido: <b>${cop(d.liberta.copias)}</b> · <b>${eur(d.liberta.valor)}</b> já estão a contar como candidatas.`
-    : `Dissolver este deck libertava <b>${cop(d.liberta.copias)}</b> · <b>${eur(d.liberta.valor)}</b>`
-      + ` (o resto fica protegido por P1 ou P2).`;
+  const lib = d.protege
+    ? `As cópias deste deck estão protegidas. Passá-lo a <i>candidata</i> na `
+      + `Deckboxes libertava <b>${cop(d.liberta.copias)}</b> · `
+      + `<b>${eur(d.liberta.valor)}</b> (o resto fica protegido pelas regras das `
+      + `terras e da Reserved List).`
+    : `É <b>candidata</b>: as cópias que lhe forem alocadas <b>não</b> ficam `
+      + `protegidas por estarem aqui.`;
+  const COMO = {carta: 'carta-assinatura', comandante: 'comandante',
+                lista: 'lista fixa'};
+  const ass = d.identidade
+    ? `<span class="chip gold">${COMO[d.identidade_tipo] || 'identidade'}: `
+      + `<b>${escDados(d.identidade)}</b></span>`
+    : `<span class="chip">⚠ à espera da carta-assinatura</span>`;
   return `<div class="deck"><div class="dh"><div>`
     + `<div class="dn">${escDados(d.nome)}</div>`
     + `<div class="dm">${escDados(d.formato || '')} · ${cop(d.na_caixa)} na caixa`
     + (d.montada_em ? ` · montada em ${escDados(d.montada_em)}` : '')
+    + ` · lista ${d.lista.main}+${d.lista.side}`
     + `</div></div><div class="dm" style="text-align:right">${eur(d.valor)}`
-    + (d.decisao_explicita ? '' : `<br><span class="pordecidir">por decidir`
-        + ` (conta como montado)</span>`)
+    + `<br><span class="${d.protege ? 'est' : 'pordecidir'}">${escDados(d.estado)}`
+    + (d.estado_explicito ? '' : ' (por omissão)') + `</span>`
     + `</div></div>`
-    + `<div class="seg">${seg}</div>`
+    + `<div class="chips" style="margin:12px 0 0">${ass}`
+    + `<span class="chip">${d.protege ? '🛡 protege' : 'não protege'}</span>`
+    + `<span class="chip">${escDados(d.reserva.listas)} listas de 30 d</span></div>`
     + `<p class="lib">${lib}</p>`
+    + `<p class="lib"><span class="dm">${escDados(d.texto_estado || '')}</span></p>`
     + reservaHTML(d) + `</div>`;
 }
 function fase1() {
   const ds = D.decks || [];
-  const n = {montado: 0, guardado: 0, dissolvido: 0};
-  for (const d of ds) n[d.decisao]++;
-  return `<h2>Fase 1 · Fechar os decks <span class="n">${ds.length} decks</span></h2>`
-    + `<p class="sub">Para cada deck: fica montado, guarda-se (desmonta-se mas as `
-    + `cartas continuam protegidas) ou dissolve-se. <b>Um deck sem decisão conta `
-    + `como montado.</b> Mudar de estado é reversível e não apaga nada.</p>`
-    + `<div class="chips"><span class="chip gold"><b>${n.montado}</b> montados</span>`
-    + `<span class="chip"><b>${n.guardado}</b> guardados</span>`
-    + `<span class="chip"><b>${n.dissolvido}</b> dissolvidos</span>`
-    + `<span class="chip"><b>${D.por_decidir}</b> por decidir</span></div>`
+  const prot = ds.filter(d => d.protege).length;
+  const semass = ds.filter(d => !d.assinatura).length;
+  return `<h2>Fase 1 · Os decks que ficam <span class="n">${ds.length} decks`
+    + `</span></h2>`
+    + `<p class="sub">A identidade de cada deck é uma <b>carta-assinatura</b>, `
+    + `nunca a etiqueta do clustering — é por ela que saem as listas do último `
+    + `mês que enchem a reserva. Quem decide se as cópias de um deck estão `
+    + `protegidas é o <b>estado da caixa</b>: <i>montada</i>, <i>congelada</i> e `
+    + `<i>permanente</i> protegem, <i>candidata</i> não. <b>Um deck sem estado `
+    + `escrito vale permanente — e por isso protege.</b> O estado muda-se na `
+    + `<a href="deckboxes.html">Deckboxes</a>, que é onde tens a caixa na mão; `
+    + `aqui só se lê, para não haver dois caminhos para o mesmo gesto.</p>`
+    + `<div class="chips"><span class="chip gold"><b>${prot}</b> protegem</span>`
+    + `<span class="chip"><b>${ds.length - prot}</b> candidatas</span>`
+    + `<span class="chip"><b>${D.sem_estado}</b> sem estado escrito</span>`
+    + (semass ? `<span class="chip"><b>${semass}</b> sem carta-assinatura</span>` : '')
+    + `</div>`
+    + duaisHTML()
     + ds.map(deckHTML).join('');
+}
+
+/* ------------------------------------------- R1: AS DUAIS, AS DUAS LISTAS */
+/* *"Quer ter 4 de cada em colecção FORA dos decks; o que passar disso vende-se
+   ou troca-se."* As duais são Reserved List, e a R1 manda sobre a R4 — é mais
+   específica. Daí saírem DUAS listas, e as duas vão à vista: o que sobra e o
+   que falta. */
+function duaisHTML() {
+  const d = D.duais;
+  if (!d) return '';
+  const t = d.totais;
+  const linhas = (d.linhas || []).map(x =>
+    `<tr><td>${escDados(x.nm)}</td><td class="v">${x.copias}</td>`
+    + `<td class="v">${x.em_decks}</td><td class="v">${x.fora}</td>`
+    + `<td class="v">${x.protegidas}</td>`
+    + `<td class="v">${x.vender ? '<b>' + x.vender + '</b>' : '—'}</td>`
+    + `<td class="v">${x.comprar ? '<b>' + x.comprar + '</b>' : '—'}</td></tr>`
+    ).join('');
+  return `<details class="lote" open><summary>`
+    + `<span>R1 · as ${(d.nomes || []).length} duais originais — `
+    + `${d.alvo_fora} de cada fora dos decks</span>`
+    + `<span class="lm">vender ${t.vender} (${eur(t.valor_vender)}) · `
+    + `comprar ${t.comprar} (${eur(t.custo_comprar)})</span></summary>`
+    + `<div class="lb"><p class="sub">Derivadas do catálogo, não de uma lista `
+    + `escrita à mão: ${escDados(d.regra)}. As duais são Reserved List, e aqui `
+    + `<b>manda a R1</b> — é mais específica: a quinta cópia fora dos decks vai `
+    + `à venda apesar de ser RL.</p>`
+    + `<table class="cd"><thead><tr><th>Dual</th><th class="v">Tens</th>`
+    + `<th class="v">Em decks</th><th class="v">Fora</th>`
+    + `<th class="v">Protegidas</th><th class="v">VENDER</th>`
+    + `<th class="v">COMPRAR</th></tr></thead><tbody>${linhas}</tbody></table>`
+    + `<p class="sub" style="margin-top:12px"><b>Vender:</b> `
+    + ((d.vender || []).map(x => `${x.q}× ${escDados(x.nm)} (${escDados(x.set)}, `
+        + `${escDados(x.local)}) ${eur(x.total)}`).join(' · ') || '—') + `</p>`
+    + `<p class="sub"><b>Comprar:</b> `
+    + ((d.comprar || []).map(x => `${x.q}× ${escDados(x.nm)} `
+        + `(${eur((x.unit || 0) * x.q)})`).join(' · ') || '—') + `</p>`
+    + `</div></details>`;
 }
 
 /* ------------------------------------------------- O ALVO DA REVALIDAÇÃO */
@@ -533,14 +651,20 @@ function fase3(p) {
     + `${l.foil ? ' ✨' : ''}</td>`
     + `<td class="mot">${escDados(l.motivo)}</td>`
     + `<td class="v">${l.q}</td><td class="v">${eur(l.total)}</td></tr>`).join('');
-  const porp = Object.entries(c.por_proteccao).map(([, v]) =>
-    `<span class="chip"><b>${v.copias}</b> ${escDados(v.rotulo)} · ${eur(v.valor)}</span>`
+  const porp = Object.entries(c.por_proteccao)
+    .filter(([, v]) => v.copias)
+    .map(([, v]) =>
+      `<span class="chip"><b>${v.copias}</b> ${escDados(v.rotulo)} · ${eur(v.valor)}</span>`
     ).join('');
-  return `<h2>Fase 3 · Candidatos <span class="n">${c.copias} cópias, `
+  return `<h2>Fase 3 · VENDER <span class="n">${c.copias} cópias, `
     + `${c.cartas} cartas</span></h2>`
-    + `<p class="sub">Sai sozinha das decisões da Fase 1, com as quatro `
-    + `proteções aplicadas. <b>Só leitura</b> — aqui não se vende nada.</p>`
-    + `<div class="chips"><span class="chip gold"><b>${eur(c.valor)}</b> candidato`
+    + `<p class="sub"><b>Tudo o que não se enquadrou nas regras.</b> Sai sozinha `
+    + `dos estados da Fase 1 e das regras das cartas: duais (4 fora dos decks), `
+    + `shocklands, fetchlands, Reserved List que jogas, o que foi jogado nos `
+    + `últimos ${c.janela_dias} dias, e as staples de sideboard de Premodern `
+    + `acima de ${c.staples_corte} %. <b>Só leitura</b> — aqui não se vende nada, `
+    + `e a saída continua congelada.</p>`
+    + `<div class="chips"><span class="chip gold"><b>${eur(c.valor)}</b> em VENDER`
     + `</span>${porp}</div>`
     + `<table class="cd"><thead><tr><th>Carta</th><th>Versão</th><th>Onde está`
     + `</th><th class="v">Cóp.</th><th class="v">Valor</th></tr></thead>`
@@ -548,7 +672,7 @@ function fase3(p) {
     + `</tbody></table>`
     + `<h2>Protegidas <span class="n">${c.protegidas_copias} cópias · `
     + `${eur(c.protegidas_valor)}</span></h2>`
-    + `<p class="sub">Cada linha diz <b>qual</b> das quatro regras a apanhou e `
+    + `<p class="sub">Cada linha diz <b>qual</b> das regras a apanhou e `
     + `<b>porquê</b>. Sem motivo não há exclusão silenciosa.</p>`
     + `<table class="cd"><thead><tr><th>Carta</th><th>Versão</th><th>Porque está `
     + `protegida</th><th class="v">Cóp.</th><th class="v">Valor</th></tr></thead>`
@@ -600,14 +724,22 @@ function ligar() {
   // página rebentava no arranque e o teste de ponta a ponta nunca via a Fase 1.
   if (typeof document.addEventListener !== 'function') return;
   document.addEventListener('click', ev => {
+    // A LISTA DA RESERVA vem a pedido: o primeiro toque num `<details>` traz a
+    // parte `reservas` e redesenha. Guarda-se quais ele abriu para o redesenho
+    // não lhe fechar o que estava aberto.
+    const sm = ev.target.closest('summary');
+    if (sm && sm.dataset.resAbrir) {
+      const s = sm.dataset.resAbrir;
+      ABERTAS[s] = !ABERTAS[s];
+      if (ABERTAS[s] && !RESERVAS) {
+        parte('reservas').then(p => { RESERVAS = p; render(); })
+          .catch(() => { RESERVAS = {}; toast('não consegui ir buscar as reservas', true); });
+      }
+      return;
+    }
     const b = ev.target.closest('button');
     if (!b) return;
     if (b.dataset.aba) { ABA = b.dataset.aba; render(); return; }
-    if (b.dataset.dec) {
-      grava({url: '/api/fase-decisao',
-             dados: {slot: b.dataset.dec, decisao: b.dataset.valor}}, b);
-      return;
-    }
     if (b.dataset.alvoTipo) {
       // O MESMO endpoint do botão «Fotografar esta caixa» da Deckboxes: fixa
       // `revalidacao.alvo` no config e reescreve o `pendentes/esperadas.md`.
@@ -623,6 +755,12 @@ function ligar() {
     if (b.dataset.resFora) {
       grava({url: '/api/fase-reserva',
              dados: {slot: b.dataset.resFora, act: 'remover',
+                     carta: b.dataset.carta}}, b);
+      return;
+    }
+    if (b.dataset.resVolta) {
+      grava({url: '/api/fase-reserva',
+             dados: {slot: b.dataset.resVolta, act: 'devolver',
                      carta: b.dataset.carta}}, b);
       return;
     }
@@ -709,29 +847,52 @@ def alvo_actual(con, rep) -> dict:
 def dados(con, rep=None, editavel: bool = False) -> tuple[dict, dict]:
     """`(índice, partes)` — a forma que o `paginas.escrever_dados` leva ao disco.
 
-    **A Fase 1 vai INTEIRA no índice**, de propósito: é o primeiro ecrã e é a
-    única fase em que ele decide — fazê-la esperar por um segundo pedido era
-    pôr a decisão atrás de uma barra de progresso. As filas de fotos e a lista
-    de candidatos, que são as grandes, vão numa parte cada.
+    **A Fase 1 vai no índice**, de propósito: é o primeiro ecrã — fazê-la
+    esperar por um segundo pedido era pôr a decisão atrás de uma barra de
+    progresso. As filas de fotos, a lista VENDER e a lista de cartas das
+    reservas, que são as grandes, vão numa parte cada.
     """
     from mtgvault import loadout
     rep = rep if rep is not None else loadout.report(con)
     r = fases.relatorio(con, rep)
+    # A LISTA DE CARTAS DE CADA RESERVA sai do índice para uma parte própria.
+    # Sem o limiar de 2026-10-01 a reserva passou a ser tudo o que foi jogado no
+    # mês: medido a 2026-10-02, 112 KB dos 167 do índice, para listas que vivem
+    # dentro de um `<details>` FECHADO. O resumo (quantas, quantas tens, quantas
+    # dispensaste) fica no índice, que é o que se lê de fora.
+    reservas = {}
+    decks = []
+    for d in r["decks"]:
+        rv = dict(d["reserva"])
+        reservas[d["slot"]] = rv.pop("final")
+        rv["n_final"] = len(reservas[d["slot"]])
+        # A `automatica` é a matéria-prima (o consenso cru, com board e cópias)
+        # e a página NÃO a desenha — quem ela desenha é a `final`. Eram 50 dos
+        # 71 KB dos decks no índice.
+        rv["n_automatica"] = len(rv.pop("automatica", []))
+        decks.append(dict(d, reserva=rv))
     partes = {"fase2": r["fase2"], "candidatos": _magra(r["candidatos"]),
-              "fase4": r["fase4"], "inventario": r["inventario"]}
+              "fase4": r["fase4"], "inventario": r["inventario"],
+              "reservas": reservas}
     idx = {
         "hoje": r["hoje"], "editavel": bool(editavel),
         "congelada": r["congelada"], "congelado_ate": r["congelado_ate"],
         "motivo_congelado": r["motivo_congelado"],
-        "limiar": r["limiar"],
+        "janela_dias": r["janela_dias"], "desde": r["desde"],
         "terras": {k: {"n": v["n"], "nomes": v["nomes"], "regra": v["regra"]}
                    for k, v in r["terras"].items()},
-        "decisoes": r["decisoes"],
+        # A R1 vai no ÍNDICE: são as duas listas (vender / comprar) que ele
+        # pediu, dez linhas, e abrem a Fase 1. O `por_sublote` fica de fora —
+        # é o mapa interno da quota, não se desenha (e tem chaves em tuplo, que
+        # não são JSON).
+        "duais": {k: v for k, v in r["duais"].items() if k != "por_sublote"},
+        "staples": {k: v for k, v in r["staples"].items() if k != "todas"},
+        "estados": r["estados"], "regras": r["regras"],
         # O alvo da revalidação (2026-10-01): a Fase 2 é a fila das fotos e o
         # botão que fixa o alvo estava noutra página. Ver `alvo_actual`.
         "revalidacao": alvo_actual(con, rep),
-        "decks": r["decks"],
-        "por_decidir": sum(1 for d in r["decks"] if not d["decisao_explicita"]),
+        "decks": decks,
+        "sem_estado": sum(1 for d in r["decks"] if not d["estado_explicito"]),
         # AS FOTOS PERDIDAS (2026-10-01) vão no ÍNDICE e não numa parte: são 33
         # fotos e abrem a Fase 2 — fazê-las esperar por um segundo pedido era
         # esconder a única coisa que não tem prova nenhuma.

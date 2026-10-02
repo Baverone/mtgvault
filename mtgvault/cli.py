@@ -267,19 +267,17 @@ def main(argv=None):
     # medição que se perde: é por aqui que ele (e o Claude na nuvem) vê as
     # quatro protecções e ESCOLHE o limiar da reserva com os euros à frente.
     pf = sub.add_parser("fases",
-                        help="as quatro protecções, os candidatos e as filas de "
-                             "fotos; `fases decisao <slot> <montado|guardado|"
-                             "dissolvido>` decide, `fases --curva` mede o limiar "
-                             "da reserva, `fases terras` verifica as duas listas")
+                        help="as regras da venda, a lista VENDER e as filas de "
+                             "fotos; `fases --curva` mede o corte das staples de "
+                             "Premodern, `fases terras` verifica as três listas "
+                             "derivadas (duais, shock, fetch), `fases duais` dá "
+                             "as duas listas da R1 (vender / comprar)")
     pf.add_argument("accao", nargs="?", default="mostrar",
-                    choices=["mostrar", "decisao", "terras"])
+                    choices=["mostrar", "terras", "duais", "staples"])
     pf.add_argument("slot", nargs="?")
-    pf.add_argument("decisao", nargs="?")
     pf.add_argument("--curva", action="store_true",
-                    help="a curva do limiar da reserva (10/20/30/40/50 %%), em "
-                         "cópias e valor por deck")
-    pf.add_argument("--limiar", type=int,
-                    help="medir com este limiar em vez do do config")
+                    help="a curva do corte das staples de Premodern "
+                         "(10/20/30/40/50 %%), em cópias e valor")
     pf.add_argument("--json", action="store_true")
 
     pm = sub.add_parser("precos",
@@ -855,12 +853,17 @@ def comparar_modos(con) -> dict:
 
 
 def _fases(con, args):
-    """`fases` — AS QUATRO PROTECÇÕES E AS FASES DA ARRUMAÇÃO (2026-10-01).
+    """`fases` — AS REGRAS DA VENDA E AS FASES DA ARRUMAÇÃO (2026-10-01/02).
 
-    `fases` mostra tudo; `fases --curva` acrescenta a curva do limiar da
-    reserva; `fases terras` verifica as duas listas derivadas (e **levanta** se
-    não der dez de cada, que é o que a ordem manda); `fases decisao <slot>
-    <montado|guardado|dissolvido>` decide um deck.
+    `fases` mostra tudo; `fases --curva` acrescenta a curva do corte das staples
+    de sideboard de Premodern; `fases terras` verifica as TRÊS listas derivadas
+    do catálogo (duais, shocklands, fetchlands) e **levanta** se não der dez de
+    cada, que é o que a ordem manda; `fases duais` dá as duas listas da R1
+    (vender / comprar); `fases staples` dá a lista das staples com a
+    percentagem.
+
+    O `fases decisao` SAIU a 2026-10-02: o `caixas[].decisao` era um segundo
+    campo de estado, e quem decide é o `estado` da caixa — muda-se na Deckboxes.
     """
     import json as _json                                     # noqa: PLC0415
 
@@ -870,7 +873,7 @@ def _fases(con, args):
         except fases.TerrasNaoDerivadas as e:
             print(f"ERRO: {e}")
             return 2
-        for qual in ("shocklands", "fetchlands"):
+        for qual in ("duais", "shocklands", "fetchlands"):
             d = v[qual]
             print(f"{qual}: {d['n']}")
             print(f"  regra: {d['regra']}")
@@ -878,19 +881,51 @@ def _fases(con, args):
                 print(f"    {nm}")
         return 0
 
-    if args.accao == "decisao":
-        if not args.slot or not args.decisao:
-            print("falta o slot e/ou a decisão "
-                  f"({'|'.join(fases.DECISOES)})")
-            return 2
-        try:
-            r = fases.gravar_decisao(args.slot, args.decisao)
-        except (KeyError, ValueError) as e:
-            print(f"ERRO: {e}")
-            return 2
-        print(f"{r['nome']}: {r['antes']} -> {r['decisao']}"
-              + ("" if r["mudou"] else " (já estava)"))
-        print(f"  {fases.TEXTO_DECISAO[r['decisao']]}")
+    if args.accao == "staples":
+        st = fases.staples_sideboard(con)
+        if args.json:
+            print(_json.dumps(st, ensure_ascii=False, indent=2, default=str))
+            return 0
+        print(f"STAPLES DE SIDEBOARD DE {st['formato'].upper()} — corte "
+              f"{st['corte']:g} %"
+              + ("  (PROVISÓRIO: é o valor por omissão, à espera da escolha dele)"
+                 if st["provisorio"] else ""))
+        print(f"  regra: {st['regra']}")
+        print(f"  {st['listas']} listas na janela, {st['com_sideboard']} com "
+              f"sideboard · {st['n']} cartas acima do corte")
+        for pct, nm in st["todas"][:60]:
+            marca = "*" if pct >= st["corte"] else " "
+            print(f"   {marca} {pct:5.1f} %  {nm}")
+        return 0
+
+    if args.accao == "duais":
+        rep = loadout.report(con)
+        d = fases.plano_duais(con, rep)
+        if args.json:
+            print(_json.dumps(d, ensure_ascii=False, indent=2, default=str))
+            return 0
+        t = d["totais"]
+        print(f"R1 — AS {len(d['nomes'])} DUAIS ORIGINAIS (alvo: "
+              f"{d['alvo_fora']} de cada FORA dos decks)")
+        print(f"  regra: {d['regra']}")
+        _p([{"carta": x["nm"], "total": x["copias"], "em decks": x["em_decks"],
+             "fora": x["fora"], "protegidas": x["protegidas"],
+             "VENDER": x["vender"] or "", "COMPRAR": x["comprar"] or ""}
+            for x in d["linhas"]],
+           ["carta", "total", "em decks", "fora", "protegidas", "VENDER",
+            "COMPRAR"])
+        print(f"  TOTAL {t['copias']} cópias · {t['em_decks']} em decks · "
+              f"{t['fora']} fora · {t['protegidas']} protegidas")
+        print(f"\n  VENDER {t['vender']} cópias ({t['valor_vender']:.2f} €)")
+        for x in d["vender"]:
+            print(f"    {x['q']}x {x['nm']:18s} {x['set']:5s} "
+                  f"{(x['lang'] or '').upper():2s} {x['local']:22s} "
+                  f"{x['total']:>10.2f} €")
+        print(f"\n  COMPRAR {t['comprar']} cópias ({t['custo_comprar']:.2f} € "
+              f"ao preço mínimo)")
+        for x in d["comprar"]:
+            u = "—" if x["unit"] is None else f"{x['unit']:.2f} €"
+            print(f"    {x['q']}x {x['nm']:18s} {u:>12s}")
         return 0
 
     rep = loadout.report(con)
@@ -906,31 +941,49 @@ def _fases(con, args):
     if r["congelada"]:
         print(f"\n  *** {r['motivo_congelado']}")
     t = r["terras"]
-    print(f"\nTERRAS DERIVADAS DO CATÁLOGO: shocklands {t['shocklands']['n']} · "
-          f"fetchlands {t['fetchlands']['n']}")
+    print(f"\nTERRAS DERIVADAS DO CATÁLOGO: duais {t['duais']['n']} · "
+          f"shocklands {t['shocklands']['n']} · fetchlands {t['fetchlands']['n']}")
+    dt = r["duais"]["totais"]
+    print(f"R1 (duais, alvo {r['duais']['alvo_fora']} fora dos decks): "
+          f"{dt['copias']} cópias · {dt['em_decks']} em decks · {dt['fora']} fora "
+          f"→ VENDER {dt['vender']} ({eur(dt['valor_vender'])}) · "
+          f"COMPRAR {dt['comprar']} ({eur(dt['custo_comprar'])}).  "
+          f"`fases duais` dá as duas listas.")
+    st = r["staples"]
+    print(f"R5b (staples de sideboard de Premodern): corte {st['corte']:g} % → "
+          f"{st['n']} cartas, de {st['com_sideboard']} listas com sideboard"
+          + ("  [corte PROVISÓRIO: ver `fases --curva`]" if st["provisorio"]
+             else ""))
 
-    print(f"\nFASE 1 — FECHAR OS DECKS ({len(r['decks'])} decks; a omissão é "
-          f"«{fases.DECISAO_OMISSAO}»)")
-    _p([{"deck": d["nome"], "formato": d["formato"], "decisão": d["decisao"],
-         "escrita": "sim" if d["decisao_explicita"] else "NÃO",
+    print(f"\nFASE 1 — OS DECKS QUE FICAM ({len(r['decks'])} caixas; quem decide "
+          f"é o ESTADO da caixa, e a omissão «{fases.ESTADO_OMISSAO}» PROTEGE)")
+    _p([{"deck": d["nome"], "formato": d["formato"], "estado": d["estado"],
+         "protege": "sim" if d["protege"] else "NÃO",
+         "escrito": "sim" if d["estado_explicito"] else "omissão",
+         "identidade": (d["identidade"] or "— À ESPERA DA CARTA"),
+         "por": d["identidade_tipo"],
          "na caixa": d["na_caixa"], "valor": eur(d["valor"]),
-         "liberta": d["liberta"]["copias"],
-         "liberta €": eur(d["liberta"]["valor"]),
-         "reserva": f'{len(d["reserva"]["final"])} ({d["reserva"]["fonte"]}, '
-                    f'{d["reserva"]["listas"]} listas)'}
+         "reserva": f'{len(d["reserva"]["final"])} ({d["reserva"]["listas"]} '
+                    f'listas de 30 d)'}
         for d in r["decks"]],
-       ["deck", "formato", "decisão", "escrita", "na caixa", "valor",
-        "liberta", "liberta €", "reserva"])
+       ["deck", "formato", "estado", "protege", "escrito", "identidade",
+        "por", "na caixa", "valor", "reserva"])
+    for d in r["decks"]:
+        if fases.NOTA_SEM_CONSENSO in (d["reserva"]["nota"] or ""):
+            print(f"  ! {d['nome']}: {d['reserva']['nota']}")
+        elif d["sem_assinatura"]:
+            print(f"  ! {d['nome']}: à espera da carta-assinatura — sem ela não "
+                  f"se lhe atribui consenso nenhum.")
 
     c = r["candidatos"]
-    print(f"\nAS QUATRO PROTECÇÕES")
+    print(f"\nAS REGRAS (janela da R5: {c['janela_dias']} dias)")
     for p in fases.PROTECCOES:
         v = c["por_proteccao"][p]
-        print(f"  {v['rotulo']:40s} {v['copias']:5d} cópias "
+        print(f"  {v['rotulo']:42s} {v['copias']:5d} cópias "
               f"{v['cartas']:4d} cartas {eur(v['valor']):>14s}")
-    print(f"  {'PROTEGIDAS (total)':40s} {c['protegidas_copias']:5d} cópias "
+    print(f"  {'PROTEGIDAS (total)':42s} {c['protegidas_copias']:5d} cópias "
           f"{' ':9s} {eur(c['protegidas_valor']):>14s}")
-    print(f"  {'FASE 3 — CANDIDATO A VENDA':40s} {c['copias']:5d} cópias "
+    print(f"  {'VENDER (tudo o que não se enquadrou)':42s} {c['copias']:5d} cópias "
           f"{c['cartas']:4d} cartas {eur(c['valor']):>14s}")
 
     f2, f4, inv, perd = (r["fase2"], r["fase4"], r["inventario"], r["perdidas"])
@@ -956,17 +1009,19 @@ def _fases(con, args):
           f"{eur(perd['valor'])} — sem prova nenhuma, são as primeiras")
 
     if args.curva:
-        print(f"\nA CURVA DO LIMIAR DA RESERVA (o do config é {r['limiar']} %)")
-        _p([{"limiar": f'{x["limiar"]} %', "cópias": x["copias"],
-             "valor": eur(x["valor"])} for x in r["curva"]],
-           ["limiar", "cópias", "valor"])
-        nomes = sorted({n for x in r["curva"] for n in x["decks"]})
-        print("\n  por deck (cópias / €):")
-        for n in nomes:
-            partes = " · ".join(
-                f'{x["limiar"]}%: {x["decks"][n]["copias"]}/'
-                f'{x["decks"][n]["valor"]:.0f}' for x in r["curva"])
-            print(f"    {n[:28]:30s} {partes}")
+        print(f"\nA CURVA DO CORTE DAS STAPLES DE SIDEBOARD DE PREMODERN (R5b; "
+              f"o do config é {r['staples']['corte']:g} %)")
+        print("  «a mais» = o que o corte protege POR CIMA de tudo o resto; "
+              "«sozinha» = o que protegeria se a R5 não existisse.")
+        _p([{"corte": f'{x["corte"]} %', "cartas staple": x["cartas_staple"],
+             "a mais (cóp.)": x["a_mais"]["copias"],
+             "a mais (€)": eur(x["a_mais"]["valor"]),
+             "sozinha (cóp.)": x["sozinha"]["copias"],
+             "sozinha (€)": eur(x["sozinha"]["valor"]),
+             "só PT/era (cóp.)": x["sozinha"]["so_premodern"]["copias"]}
+            for x in r["curva_staples"]],
+           ["corte", "cartas staple", "a mais (cóp.)", "a mais (€)",
+            "sozinha (cóp.)", "sozinha (€)", "só PT/era (cóp.)"])
     return 0
 
 

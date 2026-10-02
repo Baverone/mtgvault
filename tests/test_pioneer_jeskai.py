@@ -2,6 +2,16 @@
 *"Pioneer apenas Greasefang e jeskai control
 https://mtgtop8.com/event?e=90797&d=889461&f=PI"*.
 
+**SUPERSEDED a 2026-10-02 na CAIXA:** ele fechou a lista dos 16 decks que ficam
+e a Jeskai Control não está nela — a caixa saiu do config (estava vazia, não
+libertou carta nenhuma) e o Pioneer ficou só com o Greasefang. O ficheiro FICA,
+e por duas razões: o MECANISMO que ele exercita — a lista padrão fixa com data e
+origem, o side separado, o `formatos_decididos` a tirar o top-N a um formato —
+continua inteiro e é usado por outras caixas; e o
+`caso_a_caixa_jeskai_foi_dissolvida_mas_a_lista_dela_nao_se_apagou` tranca que a
+caixa saiu mesmo **e** que a lista dela não se apagou. Os outros casos correm
+sobre um config PRÓPRIO, por isso não dependem de a caixa existir no repositório.
+
 O que aqui se tranca:
 
   1. **a segunda caixa de Pioneer existe no config a sério** (`pioneer-jeskai`,
@@ -203,34 +213,44 @@ def caso_a_segunda_caixa_de_pioneer_tem_a_lista_fixa_e_o_side():
     print("a segunda caixa de Pioneer tem a lista fixa, o side separado, e o daily nao a pisa")
 
 
-def caso_o_config_a_serio_tem_a_caixa_e_o_pioneer_decidido():
-    """O que o André pediu está ESCRITO no `colecao_config.json` do repositório:
-    a caixa `pioneer-jeskai` com a lista do McWinSauce (60 main + 15 side, a
-    origem é o URL dele), a seguir ao Greasefang, a reserva com as nonfoil, e o
-    `pioneer` em `formatos_decididos`. Um config que perdesse isto num merge
-    não dava erro: dava a página de ontem."""
+def caso_a_caixa_jeskai_foi_dissolvida_mas_a_lista_dela_nao_se_apagou():
+    """SUPERSEDED a 2026-10-02: ele fechou a lista dos 16 decks que ficam e a
+    **Jeskai Control não está nela**. A caixa saiu do config — estava vazia (0
+    cópias alocadas), por isso não libertou carta nenhuma.
+
+    O que este caso tranca agora são duas coisas:
+
+      * a caixa saiu MESMO, e o Pioneer ficou só com o Greasefang (que é o
+        *"Greasefang, as várias versões"* da ordem nova);
+      * a **lista padrão dela NÃO se apagou** (`listas_escolhidas`): é o registo
+        de uma decisão que ele tomou a 2026-09-21, com a origem (o URL do
+        mtgtop8) e a data. Nada a lê sem a caixa, e apagá-la por iniciativa
+        própria era perder a prova de onde veio aquela lista — a mesma razão por
+        que as fotos se arquivam em vez de se apagarem (09/09 e 01/10). O dia em
+        que ele quiser a caixa de volta, a lista está lá.
+
+    O mecanismo que esta caixa exercitava — a lista padrão fixa, o side
+    separado, o `formatos_decididos` — continua trancado pelos outros casos
+    deste ficheiro, que correm sobre um config PRÓPRIO.
+    """
     cfg = json.loads((RAIZ / "colecao_config.json").read_text(encoding="utf-8"))
     slots = [c["slot"] for c in cfg["caixas"]]
-    assert slots.index("pioneer") + 1 == slots.index("pioneer-jeskai"), slots
-    s = next(c for c in cfg["caixas"] if c["slot"] == "pioneer-jeskai")
-    assert s["formato"] == "pioneer" and s["fonte"] == "escolhido" and s["ref"] == "pioneer-jeskai"
-    assert s["estado"] == "permanente" and s["nome"] == "Jeskai Control"
-    g = next(c for c in cfg["caixas"] if c["slot"] == "pioneer")
-    assert s["prioridade"] > g["prioridade"], "Greasefang primeiro"
+    assert "pioneer-jeskai" not in slots, \
+        "a caixa Jeskai devia ter saído: não está nos 16 decks de 02/10/2026"
+    assert "premodern-enchantress" not in slots, "a Enchantress também saiu"
+    pioneer = [c for c in cfg["caixas"] if c["formato"] == "pioneer"]
+    assert len(pioneer) == 1 and pioneer[0]["slot"] == "pioneer", pioneer
+    assert pioneer[0]["reserva_assinatura"] == ["Greasefang, Okiba Boss"], pioneer[0]
+    # O Pioneer continua DECIDIDO (não tem candidatos do top-N): isso não mudou.
+    assert cfg["formatos_decididos"] == ["pioneer"], cfg.get("formatos_decididos")
+    # E a lista ficou, com a data e a origem.
     rec = cfg["listas_escolhidas"]["pioneer-jeskai"]
     assert rec["padrao"] is True and rec["escolhido_em"] == "2026-09-21"
     assert "mtgtop8.com/event?e=90797&d=889461&f=PI" in rec["origem"], rec["origem"]
     main = sum(q for b, _n, q in rec["cards"] if b == "main")
     side = sum(q for b, _n, q in rec["cards"] if b == "side")
     assert (main, side) == (60, 15), (main, side)
-    assert len(rec["cards"]) == 37, len(rec["cards"])
-    assert ["main", "Thor, God of Thunder", 2] in rec["cards"]
-    assert ["side", "Negate", 1] in rec["cards"]
-    for nm in ("Thor, God of Thunder", "Jeskai Revelation", "Tablet of Discovery",
-               "Great Hall of the Biblioplex", "Combustion Technique", "It'll Quench Ya!"):
-        assert nm in s["reserva"], (nm, s["reserva"])
-    assert cfg["formatos_decididos"] == ["pioneer"], cfg.get("formatos_decididos")
-    print("o config a serio tem a caixa Jeskai (60+15, origem = o URL dele) e o pioneer decidido")
+    print("a caixa Jeskai saiu dos 16 decks; a lista padrao dela ficou guardada")
 
 
 class Pedido(webapp.Handler):
@@ -430,7 +450,7 @@ def caso_a_reserva_da_jeskai_fica_fora_da_venda():
 
 def run():
     for fn in (caso_a_segunda_caixa_de_pioneer_tem_a_lista_fixa_e_o_side,
-               caso_o_config_a_serio_tem_a_caixa_e_o_pioneer_decidido,
+               caso_a_caixa_jeskai_foi_dissolvida_mas_a_lista_dela_nao_se_apagou,
                caso_o_pioneer_nao_tem_candidatos_e_o_standard_tem,
                caso_sem_a_chave_o_pioneer_volta_a_ter_candidatos,
                caso_a_reserva_da_jeskai_fica_fora_da_venda):

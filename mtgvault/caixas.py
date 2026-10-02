@@ -88,22 +88,29 @@ ESTADOS = (CANDIDATA, PERMANENTE, MONTADA, CONGELADA)
 FONTES = ("vigiado", "deck", "consenso", "escolhido", "manual")
 
 # A ordem por que as chaves se escrevem no config — é um ficheiro para se ler.
-ORDEM = ("slot", "nome", "formato", "fonte", "ref", "assinatura", "cards",
+ORDEM = ("slot", "nome", "formato", "fonte", "ref", "assinatura",
+         # A IDENTIDADE DE UM DECK É UMA CARTA-ASSINATURA (André, 2026-10-02).
+         # `assinatura_todas` pede a CONJUNÇÃO (o *Engineer Welder Cam* precisa
+         # de `Goblin Welder` **e** `Sewer-veillance Cam`) em vez de bastar uma,
+         # que é o que serve o *"Greasefang, as várias versões"*.
+         "assinatura_todas", "cards",
          "balde", "estado", "prioridade", "variantes", "notas",
          "lingua", "acabamento", "edicoes", "baldes", "estrita", "dedicado",
          "compras_dedicadas",
          # A RESERVA (André, 2026-09-20): as cartas *"que poderão entrar"* —
          # ficam fora da venda. Ver `mtgvault/padrao.py`.
          "reserva",
-         # A ARRUMAÇÃO POR FASES (André, 2026-10-01). `decisao` é o que ele
-         # decidiu FAZER com este deck (`montado`/`guardado`/`dissolvido`,
-         # omissão `montado`) e vive numa chave PRÓPRIA, nunca no `estado`: o
-         # `estado` é a escala da ALOCAÇÃO, e escrever a decisão lá era mudar
-         # quem escolhe cartas primeiro com um botão que ele carrega para
-         # arrumar. `reserva_fora` é o que ele TIROU da reserva automática e
-         # `comandante`/`reserva_assinatura` são as excepções explícitas de onde
-         # vem o consenso dela. Ver `mtgvault/fases.py`.
-         "decisao", "reserva_fora", "comandante", "reserva_assinatura",
+         # A ARRUMAÇÃO POR FASES (2026-10-01) e as REGRAS DOS 16 DECKS
+         # (2026-10-02). `reserva_fora` é o que ele tirou no botão *«não é
+         # necessária»*, com a DATA; `comandante`/`reserva_assinatura` são a
+         # identidade do arquétipo para a reserva, quando a LISTA da caixa vem
+         # de outra fonte. Ver `mtgvault/fases.py`.
+         #
+         # **A chave `decisao` saiu a 2026-10-02**, por ordem dele: era um
+         # segundo campo de estado ao lado do `estado` da v6 — duas verdades
+         # para a mesma pergunta. Quem decide é o `estado`.
+         "reserva_fora", "comandante", "reserva_assinatura",
+         "reserva_assinatura_todas",
          # A FOTO DA DECKBOX FÍSICA (André, 2026-09-21): `{"em", "ficheiro"}`,
          # escrita pelo `fotocaixa.guardar`. Ver `mtgvault/fotocaixa.py`.
          "foto")
@@ -211,7 +218,14 @@ AJUDA = (
     "a exportação (saída `guardar`, motivo 'reserva da caixa <nome>'); uma LISTA "
     "PADRÃO (fixa, com data e origem, em vez da que a fonte recalcula) escreve-se "
     "em `listas_escolhidas[slot]` com 'padrao': true — `py -m mtgvault.cli padrao` "
-    "e `reserva`. 'foto' (2026-09-21) = a data da FOTO DA DECKBOX FÍSICA desta "
+    "e `reserva`. A IDENTIDADE de um deck é uma CARTA-ASSINATURA e nunca a "
+    "etiqueta do clustering (2026-10-02): 'assinatura' (com 'assinatura_todas': "
+    "true para as exigir TODAS em conjunção) manda na lista de uma caixa de "
+    "consenso, e 'reserva_assinatura' dá a mesma identidade a uma caixa cuja "
+    "lista vem de outra fonte. O ESTADO é o único campo de decisão — a chave "
+    "'decisao' de 01/10/2026 foi apagada a 02/10, porque eram duas verdades "
+    "para a mesma pergunta. "
+    "'foto' (2026-09-21) = a data da FOTO DA DECKBOX FÍSICA desta "
     "caixa ({em, ficheiro}); o original fica em data/deckboxes/<slot>.<ext> e a "
     "versão do site em assets/deckboxes/<slot>.jpg — escreve-a o botão «Foto da "
     "deckbox» do 8771 ou um ficheiro em pendentes/deckboxes/<slot>.jpg. Marca-se "
