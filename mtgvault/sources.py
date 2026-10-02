@@ -24,6 +24,7 @@ import json
 import os
 import re
 import sqlite3
+import sys
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -366,18 +367,68 @@ _CFG_CACHE: dict = {}
 _RAIZ_CFG = Path(__file__).resolve().parents[1] / "colecao_config.json"
 
 
+# O QUE CORREU MAL NA ÚLTIMA LEITURA DO CONFIG (2026-10-02), para quem o queira
+# dizer em português. `{}` quer dizer que está bom — ver `config_estragado`.
+_CFG_ERRO: dict = {}
+
+
+def config_estragado() -> dict:
+    """`{caminho, erro}` se o `colecao_config.json` não faz parse, senão `{}`.
+
+    Existe para a avaria poder ser DITA. Ver o porquê em `_config`.
+    """
+    return dict(_CFG_ERRO)
+
+
 def _config() -> dict:
-    """colecao_config.json (na raiz do repositório, ou MTGVAULT_CONFIG)."""
+    """colecao_config.json (na raiz do repositório, ou MTGVAULT_CONFIG).
+
+    UM CONFIG ILEGÍVEL NÃO É UM CONFIG VAZIO (2026-10-02). Isto apanhava o
+    `JSONDecodeError` e devolvia `{}`, calado. E este é o ficheiro que o André
+    **edita à mão** — o CLAUDE.md di-lo: *"é um ficheiro para ser LIDO por uma
+    pessoa"*. Medido no config a sério com uma vírgula a mais no fim:
+
+        caixas            17  ->  0      (o loadout inteiro desaparece)
+        venda congelada   até 12/10 -> NÃO   (a trava do RC Ghent levanta-se)
+        cadeia de preços  cardtrader->cardmarket  ->  só cardmarket
+        revalidacao.foto_manda  True -> None
+
+    Sem um erro, sem um passo vermelho, sem uma palavra numa página. É o padrão
+    do `event_tier` sobre o ficheiro que guarda todas as decisões dele.
+
+    Duas coisas mudam, e nenhuma delas com o ficheiro bom:
+
+      1. **o último bom FICA**. Enquanto o processo viver, um ficheiro que se
+         partiu a meio não apaga o que já estava lido — o `webapp.py` está de pé
+         o dia todo e não pode ficar sem caixas porque ele estava a editar o
+         JSON. Só vale para o MESMO caminho: trocar de ficheiro não herda nada;
+      2. **diz-se**, uma vez por alteração (o `_config` é chamado milhares de
+         vezes por relatório; um aviso por chamada era um log que se deixa de
+         ler) e com o erro do JSON, que traz a linha e a coluna.
+
+    Um ficheiro AUSENTE continua a ser `{}` e calado: isso não é uma avaria, é
+    um vault sem config (um checkout limpo, metade dos testes).
+    """
     p = Path(os.environ.get("MTGVAULT_CONFIG") or _RAIZ_CFG)
     try:
         stamp = p.stat().st_mtime
     except OSError:
+        _CFG_ERRO.clear()
         return {}
     if _CFG_CACHE.get("path") != str(p) or _CFG_CACHE.get("stamp") != stamp:
+        mesmo = _CFG_CACHE.get("path") == str(p)
         try:
             data = json.loads(p.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            data = {}
+        except (OSError, json.JSONDecodeError) as e:
+            _CFG_ERRO.update(caminho=str(p), erro=str(e))
+            print(f"[mtgvault] o {p.name} não faz parse e FICOU O ÚLTIMO QUE "
+                  f"deu certo: {e}\n           ficheiro: {p}", file=sys.stderr)
+            # Marca-se o `stamp` para não voltar a avisar a cada leitura, e
+            # NÃO se toca no `data`: o último bom é o que vale até ele corrigir.
+            _CFG_CACHE.update(path=str(p), stamp=stamp,
+                              data=(_CFG_CACHE.get("data") if mesmo else None))
+            return _CFG_CACHE.get("data") or {}
+        _CFG_ERRO.clear()
         _CFG_CACHE.update(path=str(p), stamp=stamp, data=data)
     return _CFG_CACHE.get("data") or {}
 

@@ -482,6 +482,176 @@ def caso_a_pagina_separa_o_que_se_vende_do_que_se_segura():
           "valorizou")
 
 
+def caso_a_receita_pergunta_se_uma_vez_por_lista_e_nao_por_carta():
+    """A receita em vigor não muda a meio de uma lista de venda.
+
+    O `_historico` ia buscá-la sozinho a cada chamada e o `receita_em_vigor`
+    AGREGA a `price_latest` da fonte. A chave primária é `(scryfall_id, source,
+    finish)`, por isso o `source` não é prefixo de índice nenhum e aquilo era um
+    `SCAN` da tabela inteira — por carta.
+
+    MEDIDO na base do André a 2026-10-02 (86 782 linhas na `price_latest`):
+    **46 chamadas por `loadout.report`, 0,87 s dos 1,68 s — 52 % do relatório**,
+    ~4 milhões de linhas lidas para responder 46 vezes à mesma pergunta. Com o
+    índice `ix_price_latest_fonte` e esta memória, 1 chamada e **0,83 s** — e os
+    nove resultados da venda, as 17 caixas e o «fechar tudo» iguais ao cêntimo.
+
+    Aqui conta-se o que é determinista (as CHAMADAS), nunca os segundos.
+    """
+    from mtgvault import precos
+    cfg()
+    con = base()
+    deck_vazio(con)
+    # Três cartas da Reserved List em excedente: três idas ao histórico.
+    for nm in ("Gilded Drake", "Null Rod", "Grim Monolith"):
+        add(con, nm, 6)
+        cota(con, nm, dia(95), 10.0)
+        cota(con, nm, HOJE.isoformat(), 11.0)
+
+    n = {"chamadas": 0}
+    orig = precos.receita_em_vigor
+
+    def contado(c, qual_fonte=None):
+        n["chamadas"] += 1
+        return orig(c, qual_fonte)
+
+    precos.receita_em_vigor = contado
+    try:
+        rep = loadout.report(con, [slot_legacy()])
+    finally:
+        precos.receita_em_vigor = orig
+
+    rl = len({r["nm"] for r in rep["venda_rl"] + rep["rl_segurar"]
+              + rep["rl_sem_historico"]})
+    assert rl >= 3, rep["venda_rl"]
+    assert n["chamadas"] <= 2, (
+        f"{n['chamadas']} perguntas pela receita em vigor para {rl} cartas de "
+        "RL — é uma varredura da `price_latest` por carta")
+    print(f"a receita em vigor pergunta-se {n['chamadas']}x para {rl} cartas "
+          "de RL, e não uma vez por carta")
+
+
+def caso_a_receita_em_vigor_nao_varre_a_price_latest():
+    """`EXPLAIN QUERY PLAN` sem `SCAN price_latest`.
+
+    A mesma trava do `precos.sql_impressao` e do `scryfall.frente_de_dupla_face`:
+    um plano que se degrada não dá erro nenhum, dá um relatório que demora o
+    dobro. Quem o garante é o índice `ix_price_latest_fonte(source, date)`.
+    """
+    con = base()
+    plano = [r[3] for r in con.execute(
+        "EXPLAIN QUERY PLAN "
+        "SELECT receita, COUNT(*) n FROM price_latest WHERE source = ? "
+        "AND date = (SELECT MAX(date) FROM price_latest WHERE source = ?) "
+        "GROUP BY receita ORDER BY n DESC LIMIT 1", ("cardmarket", "cardmarket"))]
+    assert not any(p.startswith("SCAN price_latest") for p in plano), plano
+    assert any("ix_price_latest_fonte" in p for p in plano), plano
+    print("a receita em vigor entra pelo índice:",
+          next(p for p in plano if "ix_price_latest_fonte" in p))
+
+
+def caso_a_poda_nao_corre_com_o_catalogo_por_sincronizar():
+    """Sem catálogo não se poda NADA — apagar histórico não se desfaz.
+
+    A excepção da Reserved List é `NOT EXISTS (… AND c.reserved = 1)`, e com o
+    `catalog.cards` VAZIO esse `NOT EXISTS` é verdadeiro para toda a gente: a
+    poda levava o histórico inteiro da RL com mais de 30 dias e a regra dos 5 %
+    ficava sem memória, **para sempre**.
+
+    E não é hipotético. O `catalogo` é o primeiro passo do `daily`, o `_step`
+    **engole** o que ele levante (é o desenho: *"é preferível ficar sem uma peça
+    do que perder o resto da recolha"*) e a poda corre na mesma, 260 linhas
+    abaixo. Na cloud o `catalog.db` não vem no clone e reconstrói-se do bulk de
+    77 MB a cada corrida — uma falha de rede nesse download era isto.
+
+    A guarda é a mesma distinção do `fases.verificar`: um catálogo PEQUENO (os
+    trinta cartões de um teste) não é o mesmo que um catálogo por sincronizar,
+    e quem os separa é o TAMANHO.
+    """
+    import daily
+    cfg(rl_janela_dias=90, rl_tolerancia_dias=10)
+    con = base()
+    cota(con, "Gilded Drake", dia(95), 10.0)
+    cota(con, "Sol Ring", dia(95), 10.0)
+    antes = con.execute("SELECT COUNT(*) n FROM price_history").fetchone()["n"]
+    con.execute("DELETE FROM catalog.cards")          # o catálogo não carregou
+    con.commit()
+
+    detalhe = daily._prune_prices(con, 30)
+    depois = con.execute("SELECT COUNT(*) n FROM price_history").fetchone()["n"]
+    assert depois == antes, (
+        f"a poda apagou {antes - depois} linhas com o catálogo vazio — entre "
+        "elas o histórico da Reserved List, que não se reconstrói")
+    assert "catálogo" in detalhe, detalhe
+    print("com o catálogo por sincronizar a poda não apaga nada, e diz porquê")
+
+
+def estado_das_copias(con, nm, grade):
+    """Põe todas as cópias desta carta num escalão, como se ele as tivesse
+    avaliado pela foto. É o que o `estado.registar` faz à cópia."""
+    con.execute(
+        """UPDATE copies SET condition = ?, condition_origem = 'foto'
+            WHERE scryfall_id = (SELECT scryfall_id FROM catalog.cards
+                                  WHERE name = ?)""", (grade, nm))
+    con.commit()
+
+
+def caso_o_estado_da_copia_nao_pode_fazer_a_rl_parecer_que_desceu():
+    """O desconto por ESTADO entra nas DUAS pontas da percentagem, ou em nenhuma.
+
+    É a armadilha das «duas réguas», sobre a decisão menos reversível do vault.
+    Desde 2026-10-03 o preço de uma cópia vem DESCONTADO pelo estado
+    (`loadout._com_estado` → `estado.aplicar`), mas o `price_history` não tem
+    dimensão de estado nenhuma: tem `low`/`trend`/`avg30` por impressão e mais
+    nada. O `avaliar_rl` comparava o preço de HOJE já descontado com o de há 90
+    dias por descontar — ou seja, media a diferença entre a cópia dele e o
+    mercado, e chamava-lhe variação de preço.
+
+    Hoje não morde porque as 737 linhas dizem `NM` e o Near Mint vale 1,000.
+    Morde no dia em que ele avaliar a primeira carta pela foto, que é
+    exactamente o que a campanha dos versos existe para fazer: um `EX` numa
+    carta acima de 100 € vale 0,776, logo **−22,4 pontos** na percentagem. O
+    limiar são 5 %. Resultado: a Tolarian Academy que SUBIU 10 % passa a
+    *"não subiu"* e vai para a lista de venda — sem um único erro, que é o
+    padrão do `event_tier` aplicado ao dinheiro que não volta.
+
+    A comparação tem de ser do MERCADO contra o MERCADO: o `unit_nm`, que é o
+    preço da impressão antes do desconto, e que já viajava na linha.
+    """
+    cfg()
+    con = mundo("Tolarian Academy", antes=100.0, agora=110.0)   # +10 %: segura
+    estado_das_copias(con, "Tolarian Academy", "EX")
+    rep = loadout.report(con, [slot_legacy()])
+
+    # A cópia continua a VALER menos: o estado desconta o preço, e isso está
+    # certo. O que não pode é mexer na percentagem.
+    todas = (linhas(rep, "venda_rl", "Tolarian Academy")
+             + linhas(rep, "rl_segurar", "Tolarian Academy"))
+    assert todas, rep["venda_rl"] or rep["rl_segurar"]
+    assert todas[0]["cond"] == "EX", todas[0]
+    assert todas[0]["unit"] < todas[0]["unit_nm"], todas[0]
+    assert abs(todas[0]["unit_nm"] - 110.0) < 0.01, todas[0]
+
+    assert not linhas(rep, "venda_rl", "Tolarian Academy"), (
+        "uma RL que subiu 10 % foi para a venda só porque está EX: o desconto "
+        "por estado entrou numa ponta da percentagem e não na outra")
+    seg = linhas(rep, "rl_segurar", "Tolarian Academy")
+    assert sum(r["q"] for r in seg) == 2, seg          # 6 cópias, playset 4
+    assert "+10.0 % em 88 d" in seg[0]["reason"], seg[0]["reason"]
+    print("o estado da cópia desconta o PREÇO e não a percentagem: a RL que "
+          "subiu 10 % em EX continua a segurar-se")
+
+    # E o outro lado, para a correcção não virar «segura sempre»: uma que não
+    # subiu vende-se na mesma, esteja em que estado estiver.
+    con2 = mundo("Null Rod", antes=100.0, agora=101.0)
+    estado_das_copias(con2, "Null Rod", "GD")
+    rep2 = loadout.report(con2, [slot_legacy()])
+    assert sum(r["q"] for r in linhas(rep2, "venda_rl", "Null Rod")) == 2, \
+        rep2["rl_segurar"]
+    assert not rep2["rl_segurar"], rep2["rl_segurar"]
+    print("e a que subiu 1 % vende-se na mesma, mesmo estando GD")
+
+
 def run():
     for fn in (caso_rl_que_subiu_5_por_cento_fica,
                caso_rl_que_subiu_4_por_cento_vende_se,
@@ -493,6 +663,10 @@ def run():
                caso_os_dois_numeros_sao_do_config,
                caso_nada_sai_da_base_e_nada_se_conta_duas_vezes,
                caso_a_poda_diaria_nao_pode_matar_a_regra,
+               caso_a_receita_pergunta_se_uma_vez_por_lista_e_nao_por_carta,
+               caso_a_receita_em_vigor_nao_varre_a_price_latest,
+               caso_a_poda_nao_corre_com_o_catalogo_por_sincronizar,
+               caso_o_estado_da_copia_nao_pode_fazer_a_rl_parecer_que_desceu,
                caso_a_pagina_separa_o_que_se_vende_do_que_se_segura):
         fn()
     print("\nTUDO OK")

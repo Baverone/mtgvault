@@ -235,11 +235,88 @@ def caso_consenso_de_premodern_ponta_a_ponta():
     print("premodern: consenso ponta a ponta grava dois decks separados")
 
 
+def caso_as_assinaturas_do_classify_sao_as_do_config():
+    """O `classify.PREMODERN_DECKS` não pode discordar do `caixas[].assinatura`.
+
+    Desde 2026-10-02 a IDENTIDADE de um deck é a carta-assinatura do config
+    (*"a identidade de um deck é uma CARTA-ASSINATURA, nunca a etiqueta do
+    clustering"*). O `classify` tem uma SEGUNDA cópia dessa lista, escrita à
+    mão — e as duas já tinham divergido: o Elves dizia aqui `Priest of Titania`
+    e no config `Wirewood Symbiote`, desde a ordem dos 16 decks.
+
+    Hoje escolhiam as mesmas listas (medido: consenso de 24 cartas e
+    deck/coleção/vender iguais, 126/0/73), por isso ninguém deu por isso. A
+    janela do metagame são 30 dias: na primeira rotação em que as duas cartas
+    deixem de andar juntas, a página dos Binders passa a chamar «Elves» a outro
+    conjunto de listas — e a dizer «completo» sobre outro deck.
+
+    Lê-se o config A SÉRIO de propósito: a pergunta é se o código concorda com
+    o ficheiro DELE, e um config de teste não responde a isso. É o mesmo
+    princípio do `test_arquetipos.caso_as_regras_do_codigo_estao_TAMBEM_no_config`.
+    """
+    import classify
+    real = json.loads((Path(__file__).resolve().parents[1]
+                       / "colecao_config.json").read_text(encoding="utf-8"))
+    do_cfg = {}
+    for c in real.get("caixas") or []:
+        if (c.get("formato") or "").lower() != "premodern":
+            continue
+        ass = c.get("assinatura") or c.get("reserva_assinatura")
+        if ass:
+            do_cfg[c["nome"]] = sorted(ass)
+
+    divergentes = {nome: (sorted(sig), do_cfg[nome])
+                   for nome, sig in classify.PREMODERN_DECKS.items()
+                   if nome in do_cfg and sorted(sig) != do_cfg[nome]}
+    assert not divergentes, (
+        "o classify e o config dão assinaturas diferentes ao mesmo deck "
+        f"(código vs config): {divergentes}")
+
+    faltam = sorted(set(do_cfg) - set(classify.PREMODERN_DECKS))
+    assert not faltam, (
+        f"decks de Premodern no config que o classify não conhece: {faltam}")
+    print(f"as assinaturas do classify são as do config "
+          f"({len(do_cfg)} decks de Premodern)")
+
+
+def caso_o_classify_le_o_config_pelo_sources():
+    """Uma leitura do config num sítio só.
+
+    O `classify._config` abria o `colecao_config.json` à mão, e por isso
+    **ignorava o `MTGVAULT_CONFIG`**: todo o teste que fixa um config
+    temporário estava a classificar contra as decisões a sério do André. Um
+    teste que ele faz passar ou falhar ao editar o config dele não é um teste.
+    """
+    import classify
+    from mtgvault import sources
+    outro = Path(tempfile.mkdtemp()) / "cfg.json"
+    outro.write_text(json.dumps({"spml_formatos": {"vintage": "a jogar"}}),
+                     encoding="utf-8")
+    antes = os.environ.get("MTGVAULT_CONFIG")
+    os.environ["MTGVAULT_CONFIG"] = str(outro)
+    sources._CFG_CACHE.clear()
+    try:
+        spml, _, _ = classify._config()
+        assert spml == {"vintage": "a jogar"}, (
+            "o classify ignorou o MTGVAULT_CONFIG e leu o config do "
+            f"repositório: {spml}")
+    finally:
+        if antes is None:
+            os.environ.pop("MTGVAULT_CONFIG", None)
+        else:
+            os.environ["MTGVAULT_CONFIG"] = antes
+        sources._CFG_CACHE.clear()
+    print("o classify lê o config pelo `sources.config()` e respeita o "
+          "MTGVAULT_CONFIG")
+
+
 CASOS = [caso_pauper_sem_metagame, caso_so_o_jogador_vigiado_e_guardado,
          caso_regra_none_separa_replenish_de_enchantress,
          caso_alvos_de_premodern_do_config, caso_formatos_do_metagame_saem_do_config,
          caso_lista_padrao_de_listas_em_memoria,
-         caso_consenso_de_premodern_ponta_a_ponta]
+         caso_consenso_de_premodern_ponta_a_ponta,
+         caso_as_assinaturas_do_classify_sao_as_do_config,
+         caso_o_classify_le_o_config_pelo_sources]
 
 if __name__ == "__main__":
     for c in CASOS:

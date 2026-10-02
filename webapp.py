@@ -1986,8 +1986,15 @@ class Handler(BaseHTTPRequestHandler):
             raise est.EstadoInvalido(
                 f"estado {grade!r} desconhecido — a escala do Cardmarket é "
                 + ", ".join(f"{c} ({est.NOMES[c]})" for c in est.ESCALA))
-        migracao.backup(etiqueta="estado")
+        # O BACKUP VAI DENTRO DA SESSÃO, e com a ligação (2026-10-02). Estava
+        # `migracao.backup(etiqueta="estado")` — sem o `con`, que é obrigatório,
+        # e com um `etiqueta` que a função não tinha: **todos os pedidos
+        # VÁLIDOS davam 500** e a correcção dele nunca chegava à base. As cinco
+        # medições de 03/10 eram todas de RECUSAS, e essas voltam para trás
+        # antes desta linha — o caminho feliz nunca passou por HTTP. Tem caso
+        # próprio em `tests/test_estado_endpoint.py`.
         with db.session() as con:
+            migracao.backup(con, etiqueta="estado")
             r = est.corrigir(con, cid, grade,
                              motivos=str(dados.get("motivos") or ""),
                              escapou=str(dados.get("escapou") or ""))

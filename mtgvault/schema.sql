@@ -429,6 +429,25 @@ CREATE TABLE IF NOT EXISTS price_latest (
     receita     TEXT,                    -- ver price_history e mtgvault/precos.py
     PRIMARY KEY (scryfall_id, source, finish)
 );
+-- A RECEITA EM VIGOR DE UMA FONTE, SEM VARRER A TABELA (2026-10-02).
+-- A chave primária acima é `(scryfall_id, source, finish)`, e por isso o
+-- `source` não é prefixo de índice nenhum: o `precos.receita_em_vigor` —
+-- *"com que receita foram escritos os preços de hoje desta fonte"* — fazia um
+-- `SCAN price_latest` por chamada. Medido na base do André a 2026-10-02
+-- (86 782 linhas): **46 chamadas por `loadout.report`, 0,87 s dos 1,68 s — 52 %
+-- do relatório**, ~4 milhões de linhas lidas para responder 46 vezes à mesma
+-- pergunta. Com o índice e a memória por relatório (`loadout.avaliar_rl`):
+-- 1 chamada e 0,83 s, com os nove resultados da venda iguais ao cêntimo.
+--
+-- É um índice e não uma cache de propósito: uma cache precisava de ser
+-- invalidada quando o `write_prices` muda a receita, e este repositório tem
+-- três cicatrizes dessa família (o `-wal` vazio no `_versao`, o `foil_cache`
+-- das duas passagens, o `_TABELA_CACHE` do estado). Um índice não se invalida.
+--
+-- E fica AQUI, depois do `CREATE TABLE`: o `schema.sql` corre de cima a baixo
+-- e um índice escrito antes da tabela rebenta o `db.init` com *"no such table"*
+-- — é a irmã da armadilha de 2026-09-09, e aconteceu ao escrever isto.
+CREATE INDEX IF NOT EXISTS ix_price_latest_fonte ON price_latest(source, date);
 
 -- Impressão digital do conteúdo da lista, para apanhar a MESMA decklist
 -- vinda de fontes diferentes (ver sources.store_decklist).

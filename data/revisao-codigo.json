@@ -1,0 +1,1436 @@
+{
+ "versao": 1,
+ "corridas": [
+  {
+   "data": "2026-10-02",
+   "ramo": "revisao-codigo-1002",
+   "defeitos_corrigidos": 6,
+   "ficheiros_tocados": [
+    "mtgvault/loadout.py",
+    "mtgvault/migracao.py",
+    "webapp.py",
+    "daily.py",
+    "mtgvault/sources.py",
+    "mtgvault/schema.sql",
+    "classify.py",
+    "reservedlist.py"
+   ],
+   "testes_novos": [
+    "tests/test_estado_endpoint.py (3 casos)",
+    "tests/test_config_estragado.py (6 casos)",
+    "tests/test_venda_rl.py (+4 casos)",
+    "tests/test_ambito.py (+2 casos)"
+   ],
+   "prova_de_chumba": "14 chumbaram, 0 passaram, 1 inconclusivo (15 alvos)"
+  }
+ ],
+ "ficheiros": [
+  {
+   "ficheiro": "mtgvault/loadout.py",
+   "linhas": 5655,
+   "ordem": 10,
+   "risco": "alto",
+   "porque": "alocacao, venda, preco da copia",
+   "estado": "parcial",
+   "notas": "precos, avaliar_rl, sell_list, nao-encontradas, registar: lidos. 5612 linhas, falta o resto"
+  },
+  {
+   "ficheiro": "mtgvault/precos.py",
+   "linhas": 507,
+   "ordem": 11,
+   "risco": "alto",
+   "porque": "a expressao do preco, a cadeia de fontes, a regua da RL",
+   "estado": "revisto",
+   "notas": "lido inteiro; sem defeito"
+  },
+  {
+   "ficheiro": "mtgvault/collection.py",
+   "linhas": 1562,
+   "ordem": 12,
+   "risco": "alto",
+   "porque": "import_csv, add_copy, valor da coleccao",
+   "estado": "parcial",
+   "notas": "valor_da_coleccao e mapa_precos lidos; import_csv por ler"
+  },
+  {
+   "ficheiro": "mtgvault/fases.py",
+   "linhas": 2006,
+   "ordem": 13,
+   "risco": "alto",
+   "porque": "as sete regras que decidem o que vai a venda",
+   "estado": "parcial",
+   "notas": "reserva e consenso lidos; as sete regras por ler"
+  },
+  {
+   "ficheiro": "mtgvault/venda.py",
+   "linhas": 651,
+   "ordem": 14,
+   "risco": "alto",
+   "porque": "o interruptor e a exportacao de stock",
+   "estado": "parcial",
+   "notas": "varrido: uma consulta em ciclo, legitima"
+  },
+  {
+   "ficheiro": "mtgvault/prices.py",
+   "linhas": 439,
+   "ordem": 15,
+   "risco": "alto",
+   "porque": "escreve price_latest/price_history",
+   "estado": "parcial",
+   "notas": "varrido: timeouts presentes, ciclos legitimos"
+  },
+  {
+   "ficheiro": "mtgvault/scryfall.py",
+   "linhas": 463,
+   "ordem": 16,
+   "risco": "alto",
+   "porque": "catalogo; foi aqui o LIKE que custava 57 s",
+   "estado": "parcial",
+   "notas": "varrido: zero LIKE com padrao calculado; medido sem SCAN nos caminhos quentes"
+  },
+  {
+   "ficheiro": "mtgvault/db.py",
+   "linhas": 282,
+   "ordem": 17,
+   "risco": "alto",
+   "porque": "ligacao, ATTACH, migracoes, busy_timeout",
+   "estado": "revisto",
+   "notas": "lido inteiro; o loop vazio da encomendas (L233) e codigo morto assinalado"
+  },
+  {
+   "ficheiro": "daily.py",
+   "linhas": 615,
+   "ordem": 18,
+   "risco": "alto",
+   "porque": "o job diario; podas que APAGAM linhas",
+   "estado": "revisto",
+   "notas": "a poda corrigida; _step engole por desenho e regista em job_runs"
+  },
+  {
+   "ficheiro": "classify.py",
+   "linhas": 463,
+   "ordem": 19,
+   "risco": "alto",
+   "porque": "decide Deck/Coleccao/Vender",
+   "estado": "corrigido",
+   "notas": "config pelo sources; assinatura do Elves alinhada com o config"
+  },
+  {
+   "ficheiro": "mtgvault/confirmado.py",
+   "linhas": 616,
+   "ordem": 20,
+   "risco": "alto",
+   "porque": "a foto manda: reescreve alocacoes",
+   "estado": "revisto",
+   "notas": "metades/alocacao unica lidos; sem defeito"
+  },
+  {
+   "ficheiro": "mtgvault/estado.py",
+   "linhas": 1226,
+   "ordem": 21,
+   "risco": "alto",
+   "porque": "o factor de preco por estado",
+   "estado": "parcial",
+   "notas": "aplicar/factor/tabela lidos"
+  },
+  {
+   "ficheiro": "mtgvault/revalidacao.py",
+   "linhas": 797,
+   "ordem": 22,
+   "risco": "alto",
+   "porque": "corrige copias pela foto",
+   "estado": "parcial",
+   "notas": "varrido"
+  },
+  {
+   "ficheiro": "mtgvault/encomendas.py",
+   "linhas": 736,
+   "ordem": 23,
+   "risco": "alto",
+   "porque": "concilia pela foto e cria copias",
+   "estado": "parcial",
+   "notas": "varrido: escritas em ciclo, N pequeno"
+  },
+  {
+   "ficheiro": "mtgvault/analysis.py",
+   "linhas": 361,
+   "ordem": 24,
+   "risco": "alto",
+   "porque": "prune_leagues/prune apagam decklists",
+   "estado": "parcial",
+   "notas": "podas e rebuild varridos"
+  },
+  {
+   "ficheiro": "mtgvault/sources.py",
+   "linhas": 790,
+   "ordem": 25,
+   "risco": "alto",
+   "porque": "store_decklist, o filtro que decide o que conta",
+   "estado": "revisto",
+   "notas": "config ilegivel deixou de ser silencioso; store_decklist e o filtro lidos"
+  },
+  {
+   "ficheiro": "mtgvault/cli.py",
+   "linhas": 2290,
+   "ordem": 26,
+   "risco": "alto",
+   "porque": "todas as escritas pela linha de comandos",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "mtgvault/migracao.py",
+   "linhas": 183,
+   "ordem": 27,
+   "risco": "alto",
+   "porque": "migra a base e faz backup",
+   "estado": "revisto",
+   "notas": "backup ganhou etiqueta; lido inteiro"
+  },
+  {
+   "ficheiro": "mtgvault/configio.py",
+   "linhas": 112,
+   "ordem": 28,
+   "risco": "alto",
+   "porque": "escreve o colecao_config.json sem o estragar",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "mtgvault/fotos.py",
+   "linhas": 1049,
+   "ordem": 29,
+   "risco": "alto",
+   "porque": "move as fotos do Andre",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "mtgvault/premodern.py",
+   "linhas": 723,
+   "ordem": 30,
+   "risco": "alto",
+   "porque": "reserva copias que nao vao a venda",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "mtgvault/feira.py",
+   "linhas": 651,
+   "ordem": 31,
+   "risco": "alto",
+   "porque": "a moeda de troca, em euros",
+   "estado": "revisto",
+   "notas": "levar sai do venda.linhas_export (regua unica); docstring da L10 desactualizada"
+  },
+  {
+   "ficheiro": "mtgvault/padrao.py",
+   "linhas": 282,
+   "ordem": 32,
+   "risco": "alto",
+   "porque": "escreve a lista padrao e a reserva no config",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "mtgvault/caixas.py",
+   "linhas": 296,
+   "ordem": 33,
+   "risco": "alto",
+   "porque": "a unica nocao de deck; migra v5->v6",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "mtgvault/arquetipos.py",
+   "linhas": 291,
+   "ordem": 34,
+   "risco": "alto",
+   "porque": "escreve data/arquetipos.json (atomico)",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "mtgvault/wantlist.py",
+   "linhas": 135,
+   "ordem": 35,
+   "risco": "alto",
+   "porque": "o que falta e quanto custa",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "mtgvault/stock.py",
+   "linhas": 228,
+   "ordem": 36,
+   "risco": "alto",
+   "porque": "listas padrao e cobertura",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "mtgvault/consenso.py",
+   "linhas": 279,
+   "ordem": 37,
+   "risco": "alto",
+   "porque": "o consenso por comandante",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "mtgvault/nomes.py",
+   "linhas": 211,
+   "ordem": 38,
+   "risco": "alto",
+   "porque": "a votacao do nome, nos tres sitios",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "mtgvault/vigia.py",
+   "linhas": 526,
+   "ordem": 39,
+   "risco": "alto",
+   "porque": "abre o filtro de tier e escreve estado",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "mtgvault/fotocaixa.py",
+   "linhas": 293,
+   "ordem": 40,
+   "risco": "alto",
+   "porque": "recebe e move imagens",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "mtgvault/fotosite.py",
+   "linhas": 502,
+   "ordem": 41,
+   "risco": "alto",
+   "porque": "recebe fotos por HTTP e escreve em pendentes/",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "processar_fotos.py",
+   "linhas": 144,
+   "ordem": 42,
+   "risco": "alto",
+   "porque": "escreve na base a mao, sem backup",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "mtgvault/watchlist.py",
+   "linhas": 157,
+   "ordem": 43,
+   "risco": "alto",
+   "porque": "snapshots e diffs dos decks vigiados",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "mtgvault/mtgtop8.py",
+   "linhas": 438,
+   "ordem": 44,
+   "risco": "alto",
+   "porque": "recolhe e escreve decklists",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "mtgvault/moxfield.py",
+   "linhas": 92,
+   "ordem": 45,
+   "risco": "alto",
+   "porque": "recolhe e escreve decklists",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "mtgvault/mtgdecks.py",
+   "linhas": 86,
+   "ordem": 46,
+   "risco": "alto",
+   "porque": "recolhe indices de torneios",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "my_decks.py",
+   "linhas": 161,
+   "ordem": 47,
+   "risco": "alto",
+   "porque": "escreve decks/deck_cards",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "commander_decks.py",
+   "linhas": 127,
+   "ordem": 48,
+   "risco": "alto",
+   "porque": "escreve decks/deck_cards",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "premodern_decks.py",
+   "linhas": 114,
+   "ordem": 49,
+   "risco": "alto",
+   "porque": "escreve decks/deck_cards",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "core_decks.py",
+   "linhas": 394,
+   "ordem": 50,
+   "risco": "alto",
+   "porque": "card_price/posse; corre no daily",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "refresh_collection.py",
+   "linhas": 142,
+   "ordem": 51,
+   "risco": "alto",
+   "porque": "collection_owned",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "import_owned.py",
+   "linhas": 95,
+   "ordem": 52,
+   "risco": "alto",
+   "porque": "importa a coleccao",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "mtgvault/tagging.py",
+   "linhas": 90,
+   "ordem": 53,
+   "risco": "alto",
+   "porque": "as regras que separam arquetipos",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "mtgvault/qr.py",
+   "linhas": 382,
+   "ordem": 54,
+   "risco": "alto",
+   "porque": "desenhador; ja nao e chamado por ninguem",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "mtgvault/aviso.py",
+   "linhas": 96,
+   "ordem": 55,
+   "risco": "alto",
+   "porque": "o toast; nunca pode levantar",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "webapp.py",
+   "linhas": 2491,
+   "ordem": 60,
+   "risco": "medio",
+   "porque": "o modo edicao; prazos, cache, escritas",
+   "estado": "parcial",
+   "notas": "endpoints de escrita, backups, servidor de ficheiros e _estado lidos"
+  },
+  {
+   "ficheiro": "mtgvault/paginas.py",
+   "linhas": 385,
+   "ordem": 61,
+   "risco": "medio",
+   "porque": "os ajudantes partilhados e os dados a parte",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "mtgvault/site_shell.py",
+   "linhas": 756,
+   "ordem": 62,
+   "risco": "medio",
+   "porque": "a casca de todo o site",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "deckboxes.py",
+   "linhas": 6568,
+   "ordem": 63,
+   "risco": "medio",
+   "porque": "a pagina dos decks e todo o JavaScript",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "arrumacao.py",
+   "linhas": 1230,
+   "ordem": 64,
+   "risco": "medio",
+   "porque": "a arrumacao por fases",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "metagame.py",
+   "linhas": 875,
+   "ordem": 65,
+   "risco": "medio",
+   "porque": "o top-N e as caixas",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "meta_coverage.py",
+   "linhas": 1029,
+   "ordem": 66,
+   "risco": "medio",
+   "porque": "a cobertura do metagame",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "reservedlist.py",
+   "linhas": 443,
+   "ordem": 67,
+   "risco": "medio",
+   "porque": "a Reserved List e os precos",
+   "estado": "corrigido",
+   "notas": "lia o config a mao; passou pelo sources"
+  },
+  {
+   "ficheiro": "colecao_cor.py",
+   "linhas": 611,
+   "ordem": 68,
+   "risco": "medio",
+   "porque": "os binders por cor",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "showcase.py",
+   "linhas": 536,
+   "ordem": 69,
+   "risco": "medio",
+   "porque": "os decks showcase",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "inicio.py",
+   "linhas": 370,
+   "ordem": 70,
+   "risco": "medio",
+   "porque": "a porta de entrada, com os numeros do dia",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "collection_gallery.py",
+   "linhas": 321,
+   "ordem": 71,
+   "risco": "medio",
+   "porque": "a galeria e o historico de valor",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "caixarl.py",
+   "linhas": 220,
+   "ordem": 72,
+   "risco": "medio",
+   "porque": "a caixa Reserved List",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "comandantes.py",
+   "linhas": 270,
+   "ordem": 73,
+   "risco": "medio",
+   "porque": "o consenso por comandante",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "buildable.py",
+   "linhas": 115,
+   "ordem": 74,
+   "risco": "medio",
+   "porque": "o que da para montar",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "_reiniciar_webapp.py",
+   "linhas": 65,
+   "ordem": 75,
+   "risco": "medio",
+   "porque": "mata o 8771 pelo porto",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "meusdecks.py",
+   "linhas": 57,
+   "ordem": 76,
+   "risco": "medio",
+   "porque": "so um reencaminhamento",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "decks_faziveis.py",
+   "linhas": 32,
+   "ordem": 77,
+   "risco": "medio",
+   "porque": "lapide: levanta RuntimeError",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "mtgvault/__init__.py",
+   "linhas": 0,
+   "ordem": 80,
+   "risco": "baixo",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/_provar_chumba.py",
+   "linhas": 375,
+   "ordem": 90,
+   "risco": "teste",
+   "porque": "prova que os testes chumbam sem a funcionalidade",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/_chumba_prazo.py",
+   "linhas": 159,
+   "ordem": 90,
+   "risco": "teste",
+   "porque": "prova que os testes chumbam sem a funcionalidade",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/_chumba_cano.py",
+   "linhas": 155,
+   "ordem": 90,
+   "risco": "teste",
+   "porque": "prova que os testes chumbam sem a funcionalidade",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/_chumba_estado.py",
+   "linhas": 142,
+   "ordem": 90,
+   "risco": "teste",
+   "porque": "prova que os testes chumbam sem a funcionalidade",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/_chumba_fases.py",
+   "linhas": 129,
+   "ordem": 90,
+   "risco": "teste",
+   "porque": "prova que os testes chumbam sem a funcionalidade",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/_chumba_pasta.py",
+   "linhas": 129,
+   "ordem": 90,
+   "risco": "teste",
+   "porque": "prova que os testes chumbam sem a funcionalidade",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/_chumba_foto_manda.py",
+   "linhas": 118,
+   "ordem": 90,
+   "risco": "teste",
+   "porque": "prova que os testes chumbam sem a funcionalidade",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/_chumba_fotos.py",
+   "linhas": 109,
+   "ordem": 90,
+   "risco": "teste",
+   "porque": "prova que os testes chumbam sem a funcionalidade",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/_chumba_nomes.py",
+   "linhas": 103,
+   "ordem": 90,
+   "risco": "teste",
+   "porque": "prova que os testes chumbam sem a funcionalidade",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/_chumba_decks.py",
+   "linhas": 83,
+   "ordem": 90,
+   "risco": "teste",
+   "porque": "prova que os testes chumbam sem a funcionalidade",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/_chumba_preco_ref.py",
+   "linhas": 75,
+   "ordem": 90,
+   "risco": "teste",
+   "porque": "prova que os testes chumbam sem a funcionalidade",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/_chumba_vigia.py",
+   "linhas": 40,
+   "ordem": 90,
+   "risco": "teste",
+   "porque": "prova que os testes chumbam sem a funcionalidade",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/_chumba_venda.py",
+   "linhas": 31,
+   "ordem": 90,
+   "risco": "teste",
+   "porque": "prova que os testes chumbam sem a funcionalidade",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_loadout.py",
+   "linhas": 1630,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_fases.py",
+   "linhas": 1003,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_estado_versos.py",
+   "linhas": 825,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_encomendas.py",
+   "linhas": 810,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_paginas_loadout.py",
+   "linhas": 792,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_revalidacao.py",
+   "linhas": 748,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_foto_site.py",
+   "linhas": 740,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_foto_manda.py",
+   "linhas": 688,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_venda_rl.py",
+   "linhas": 676,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "revisto",
+   "notas": "caso novo: o estado nao mexe na percentagem"
+  },
+  {
+   "ficheiro": "tests/test_nao_encontrei.py",
+   "linhas": 657,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_arquetipos.py",
+   "linhas": 644,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_fotos_ate_4.py",
+   "linhas": 633,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_feira.py",
+   "linhas": 627,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_premodern_sugestoes.py",
+   "linhas": 606,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_visual.py",
+   "linhas": 574,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_venda_interruptor.py",
+   "linhas": 567,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_venda_export.py",
+   "linhas": 562,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_webapp_prazo.py",
+   "linhas": 542,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_montar_barra.py",
+   "linhas": 533,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_faltas_check.py",
+   "linhas": 529,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_decks_finais.py",
+   "linhas": 526,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_pasta_por_deck.py",
+   "linhas": 524,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_consenso_comandante.py",
+   "linhas": 510,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_telemovel.py",
+   "linhas": 507,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_padrao_reserva.py",
+   "linhas": 488,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_preco_modo.py",
+   "linhas": 484,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_cano_fotos.py",
+   "linhas": 473,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_pioneer_jeskai.py",
+   "linhas": 467,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_preco_referencia.py",
+   "linhas": 463,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_nomes_arquetipo.py",
+   "linhas": 453,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_fases_fotos.py",
+   "linhas": 448,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_foto_caixa.py",
+   "linhas": 447,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_montar_vender.py",
+   "linhas": 412,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_foil_existe.py",
+   "linhas": 386,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_valor_unificado.py",
+   "linhas": 379,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_caixas_dedicadas.py",
+   "linhas": 375,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_webapp.py",
+   "linhas": 372,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_registo_marcadas.py",
+   "linhas": 357,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_legacy_rl.py",
+   "linhas": 350,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_vigia_cartas.py",
+   "linhas": 345,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_paginas.py",
+   "linhas": 344,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_basicas.py",
+   "linhas": 335,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_casca.py",
+   "linhas": 332,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_paginas_leves.py",
+   "linhas": 330,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_montados.py",
+   "linhas": 327,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_montada_alocacao.py",
+   "linhas": 325,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_ambito.py",
+   "linhas": 324,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_onde_fisico.py",
+   "linhas": 314,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_incompletos.py",
+   "linhas": 311,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_migracao.py",
+   "linhas": 292,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_sideboard.py",
+   "linhas": 275,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_metagame_filtro.py",
+   "linhas": 215,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_caixas.py",
+   "linhas": 212,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_config_estragado.py",
+   "linhas": 206,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_estado_endpoint.py",
+   "linhas": 204,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_showcase_dobrado.py",
+   "linhas": 201,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_qr.py",
+   "linhas": 189,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_metagame_boards.py",
+   "linhas": 175,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_prices.py",
+   "linhas": 172,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_integration.py",
+   "linhas": 158,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_dedupe.py",
+   "linhas": 142,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_schema_completo.py",
+   "linhas": 141,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_fotos_arrumadas.py",
+   "linhas": 139,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_sem_prazo.py",
+   "linhas": 127,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_watchlist.py",
+   "linhas": 125,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_lookup_edicao.py",
+   "linhas": 121,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/medir_layout.py",
+   "linhas": 113,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_sources.py",
+   "linhas": 107,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_reiniciar_webapp.py",
+   "linhas": 106,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_event_tier.py",
+   "linhas": 79,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_reserve.py",
+   "linhas": 76,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_cli_deck.py",
+   "linhas": 75,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_movers.py",
+   "linhas": 73,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_analysis.py",
+   "linhas": 72,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/_bateria.py",
+   "linhas": 68,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_watch_revert.py",
+   "linhas": 58,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  },
+  {
+   "ficheiro": "tests/test_mtgtop8_meta.py",
+   "linhas": 46,
+   "ordem": 95,
+   "risco": "teste",
+   "porque": "",
+   "estado": "por rever",
+   "notas": ""
+  }
+ ],
+ "ferramentas": {
+  "_onde": "_revisao/ — FORA do Git pelo .gitignore. Se a pasta for limpa reconstroem-se; são baratas e estão descritas aqui.",
+  "plano.py": "constroi/actualiza este ficheiro; `marcar <ficheiro> <estado> [nota]` e `falta`",
+  "ciclos.py": "consultas SQL no CORPO de um ciclo (AST). O iterador do proprio ciclo nao conta — era o falso positivo",
+  "varreduras.py": "apanha o SQL que um `loadout.report` CORREU (set_trace_callback) e passa cada um pelo EXPLAIN QUERY PLAN; marca quem varre uma tabela grande",
+  "chumba_geral.py": "o padrao `_provar_chumba` aplicado aos ficheiros que nao tinham companheiro `_chumba_*`",
+  "_neutralizar_um.py": "corre a bateria de UM teste com UMA funcionalidade desligada; separa «chumbou» de «rebentou»",
+  "correr.py": "corre alguns ficheiros de teste, um processo cada",
+  "idade.py": "ordena os ficheiros de risco pela data da ultima alteracao — o que nao muda ha meses e onde um defeito velho sobrevive",
+  "medir_paginas.py": "as 11 paginas + os ficheiros de dados + o JS a serio (vem da ordem anterior)",
+  "medir_receita.py": "o custo do `precos.receita_em_vigor` num relatorio"
+ }
+}
