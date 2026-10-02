@@ -71,19 +71,31 @@ def _slot_por_balde(cfg_slots: list[dict] | None = None) -> dict[str, dict]:
             if s.get("balde") and s["balde"] not in coleccao}
 
 
-def backup(con, pasta: Path | None = None) -> Path | None:
+def backup(con, pasta: Path | None = None, *,
+           etiqueta: str | None = None) -> Path | None:
     """Cópia da `vault.db` antes de mexer. Uma vez por dia, nunca por cima.
 
     Fica ao lado da própria base (`<vault.db>/../backups`), não ao lado do
     código: quem corre isto com `MTGVAULT_DB` a apontar para outro sítio quer o
     backup lá, não na pasta do repositório.
+
+    A `etiqueta` diz PORQUE é que o backup foi feito, e dá-lhe um nome próprio
+    (`vault-<data>-<etiqueta>.db`) — é a convenção que o `loadout` já usa no
+    *Desmontar* e no *«não encontrei estas»*. Sem ela o nome é o de sempre
+    (`vault-antes-coleccao-unica-<data>.db`), para não mudar o que já existe.
+
+    Continua a ser **um por dia e por etiqueta**: dois cliques no mesmo dia
+    partilham o ficheiro, que é o que torna barato chamar isto antes de cada
+    escrita.
     """
     if pasta is None:
         alvo_db = next((r[2] for r in con.execute("PRAGMA database_list")
                         if r[1] == "main" and r[2]), None)
         base = Path(alvo_db).resolve().parent if alvo_db else Path.cwd()
         pasta = base / "backups"
-    alvo = pasta / f"vault-antes-coleccao-unica-{date.today().isoformat()}.db"
+    nome = (f"vault-{date.today().isoformat()}-{etiqueta}.db" if etiqueta
+            else f"vault-antes-coleccao-unica-{date.today().isoformat()}.db")
+    alvo = pasta / nome
     if alvo.exists():
         return alvo
     pasta.mkdir(parents=True, exist_ok=True)

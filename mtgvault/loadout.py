@@ -3299,6 +3299,35 @@ def _texto_janela(subida: float, janela: int) -> str:
     return txt
 
 
+def preco_de_mercado(linha: dict) -> float | None:
+    """O preço de HOJE desta carta no MERCADO — sem o desconto por estado.
+
+    AS DUAS PONTAS DE UMA PERCENTAGEM TÊM DE MEDIR A MESMA COISA (2026-10-02).
+    Desde 2026-10-03 o `unit` de uma linha vem descontado pelo ESTADO da cópia
+    (`_com_estado` → `estado.aplicar`), e o `price_history` **não tem dimensão de
+    estado nenhuma**: tem `low`/`trend`/`avg30` por impressão e mais nada. Quem
+    comparasse o `unit` de hoje com uma cotação de há 90 dias media a diferença
+    entre a CÓPIA DELE e o MERCADO, e chamava-lhe variação de preço — um `EX`
+    acima de 100 € vale 0,776, logo **−22,4 pontos** numa regra cujo limiar são
+    5 %. Uma Reserved List que subiu 10 % saía como *"não subiu"*, sem um único
+    erro: o padrão do `event_tier` sobre a decisão que não se desfaz.
+
+    Hoje está adormecido porque as 737 linhas dizem `NM` e o Near Mint vale
+    1,000; acorda na primeira carta que ele avaliar pela foto.
+
+    O `unit_nm` é o preço antes do desconto e já viajava na linha. **Com factor
+    1,0 devolve-se o `unit` tal e qual** — os dois são o mesmo número, e o
+    `unit_nm` está arredondado a 2 casas enquanto o cenário `media` pode ter
+    três: trocá-los sem necessidade mexia em cêntimos por nada (a lição do
+    `estado.aplicar`, que por isso não arredonda quando não desconta).
+    """
+    f = linha.get("cond_factor")
+    nm = linha.get("unit_nm")
+    if f is not None and f != 1.0 and nm is not None:
+        return nm
+    return linha.get("unit")
+
+
 def avaliar_rl(con, linha: dict, hoje: str | None = None,
                cache: dict | None = None,
                detalhe: dict | None = None) -> tuple[str, str]:
@@ -3379,7 +3408,10 @@ def avaliar_rl(con, linha: dict, hoje: str | None = None,
     alvo = (d0 - timedelta(days=janela)).isoformat()
     limite = (d0 - timedelta(days=max(janela - tol, 0))).isoformat()
     antes, _quando = _cotacao_em(rows, alvo, limite)
-    agora = linha.get("unit")
+    # O MERCADO CONTRA O MERCADO, nunca a cópia dele contra o mercado — ver
+    # `preco_de_mercado`. O `unit` da linha vem descontado pelo estado e o
+    # `price_history` não sabe o que é um estado.
+    agora = preco_de_mercado(linha)
     if antes is None or antes <= 0 or agora is None:
         return "sem_historico", (f"{RAZAO_RL_SEM_HISTORICO} "
                                  f"(desde {desde}: sem cotação a {janela} d)")
