@@ -1837,6 +1837,14 @@ de que chumbam em `tests/_chumba_estado.py` (9 alvos / 14 pares medidos).
 - **O FICHEIRO DO CRITÉRIO VAI NO `git add` do `daily.yml` E NO `EXTRA_COMMIT` da
   tarefa `mtgvault-daily`**, pela razão do `arquetipos.json`: se as correcções
   dele só existissem no PC, a corrida do GitHub avaliava com um critério de ontem.
+- **O ESCALÃO VALIDA-SE ANTES DO BACKUP** (`webapp._estado`), e é a regra do
+  `_exige_venda` de 01/10: *«um pedido recusado não deixa um ficheiro de backup
+  atrás dele»*. Um `.db` deste vault são **96 MB**, e uma página aberta ontem no
+  telemóvel pode mandar um escalão que já não existe — um por toque enchia o
+  `data/backups/`. **Medido contra o 8771 a sério** (e não assumido,
+  `_revisao/provar_409_sem_backup.py`): cinco pedidos recusados — `Mint+`, `9.5`,
+  vazio, texto livre e um sem `copy_id` — dão **409 com a frase em português** (a
+  escala inteira por extenso) e deixam **zero** backups novos.
 - **O QUE SE DIZ AO ANDRÉ, na página e no guia das fotos**, para ele não contar
   com o que não vai ter: numa foto de telemóvel **vê-se** vincos, branqueamento de
   bordas e cantos, riscos visíveis e desgaste de jogo — e dá para um escalão
