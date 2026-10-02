@@ -233,19 +233,31 @@ def caso_quatro_cartas_diferentes_na_mesma_foto_agrupadas_por_tipo():
 
 
 def caso_nenhuma_foto_passa_de_quatro_cartas():
-    """E a linha que SOZINHA passa das quatro (as 29 Snow-Covered Plains) enche
-    fotos inteiras só dela — e a foto di-lo (`partida`), em vez de o esconder."""
-    linhas = [{"nm": "Snow-Covered Plains", "copy_id": 1, "q": 29, "unit": 1.0},
-              {"nm": "Ancient Tomb", "copy_id": 2, "q": 2, "unit": 50.0}]
-    fs = fotos.agrupar(linhas, tipos={"Snow-Covered Plains": "Land",
-                                      "Ancient Tomb": "Land"})
+    """E a linha que SOZINHA passa das quatro enche fotos inteiras só dela — e a
+    foto di-lo (`partida`), em vez de o esconder.
+
+    **CORRIGIDO A 2026-10-02**: este caso era escrito com as 29 **Snow-Covered
+    Plains** e exigia 8 fotos partidas. Deixou de valer para elas: *"para as
+    basicas, nos decks, tens que permitir tirar foto com mais cartas e nao
+    apenas 4"* — uma pilha de 29 terras iguais é UMA foto, e o tecto de quatro
+    existe para cada carta ficar à vista e avaliável, o que numa pilha de terras
+    idênticas não quer dizer nada. A regra geral NÃO mudou e continua aqui
+    trancada, agora com uma carta que não é básica (um lote de 29 Ancient Tomb);
+    a metade nova está no
+    `test_regras_material_1002.caso_vinte_basicas_iguais_cabem_numa_foto`.
+    """
+    linhas = [{"nm": "Ancient Tomb", "copy_id": 1, "q": 29, "unit": 50.0},
+              {"nm": "Wasteland", "copy_id": 2, "q": 2, "unit": 50.0}]
+    fs = fotos.agrupar(linhas, tipos={"Ancient Tomb": "Land",
+                                      "Wasteland": "Land"})
     assert all(f["cartas"] <= 4 for f in fs), [f["cartas"] for f in fs]
-    sc = [f for f in fs if any(i["nm"] == "Snow-Covered Plains" for i in f["itens"])]
+    sc = [f for f in fs if any(i["nm"] == "Ancient Tomb" for i in f["itens"])]
     assert len(sc) == 8 and sum(f["cartas"] for f in sc) == 29, \
         [f["cartas"] for f in sc]
     assert all(f["partida"] and f["linhas"] == 1 for f in sc)
+    assert not any(f["isenta"] for f in fs), "nada disto e basica"
     # A linha de 2 não se juntou ao resto da partida: fica na sua foto.
-    at = [f for f in fs if any(i["nm"] == "Ancient Tomb" for i in f["itens"])]
+    at = [f for f in fs if any(i["nm"] == "Wasteland" for i in f["itens"])]
     assert len(at) == 1 and at[0]["cartas"] == 2 and not at[0]["partida"]
     # Uma linha de 4 e outra de 1 do mesmo tipo são DUAS fotos: 4 + 1 > 4.
     # (Dentro do tipo a ordem é por NOME, logo a Ancient Den vem primeiro.)

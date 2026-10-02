@@ -133,7 +133,9 @@ mtgvault/
                   telemóvel. Só config (`feira`); CLI `feira`, `/api/feira`
   fotos.py        AS FOTOS: a regra das QUATRO CARTAS (2026-10-01) e o «onde
                   está a foto», num sítio só — `MAX_CARTAS`/`valida` (o tecto,
-                  que vale para a fila e para a trava do import), `agrupar`
+                  que vale para a fila e para a trava do import, e que desde
+                  2026-10-02 NÃO vale para uma foto só de básicas —
+                  `so_basicas`/`valida(isenta=)`), `agrupar`
                   (as fotos de até 4 cartas, por TIPO), `barra` (o progresso em
                   FOTOS, com as cartas e as linhas ao lado), `resolver` (procura
                   na pasta de trabalho E no arquivo, a de trabalho a ganhar),
@@ -270,7 +272,7 @@ my_decks.py         segue decks-alvo (por assinatura e por jogador de MTGO) -> t
 commander_decks.py  decks de comandante por consenso EM CAMADAS: núcleo>=50% (=deck, deck_cards) / flex 25-50% / tech 15-25%; FILTRA pela cor do comandante. `tiers()` reusado pelo colecao_cor
 premodern_decks.py  consenso dos arquétipos-alvo de Premodern (`colecao_config.json`→`premodern_arquetipos_alvo`: UW Replenish, Enchantress) -> decks/deck_cards com o sufixo " (consenso)". Agrupa pelas etiquetas do `tagging` (o clustering não os separa) e usa `stock.stock_from_lists`. Mostrado nas `deckboxes` (era o `meusdecks`)
 refresh_collection.py  collection_owned p/ o index.html
-colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados, venda (a regra dos 5 % da RL, o `mostrar` de 2026-09-25 **e** o `congelado_ate` de 2026-10-01), cartas_vigiadas (a VIGIA DE CARTAS de 2026-09-26), reserva (o LIMIAR da reserva «maybe», 2026-10-01), caixas[].decisao / reserva / reserva_fora / comandante / reserva_assinatura (AS FASES, 2026-10-01), revalidacao.foto_manda (A FOTO É A VERDADE, 2026-10-02 — e o `playset_maximo` SAIU do `regras_por_formato` nesse dia)
+colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados, venda (a regra dos 5 % da RL, o `mostrar` de 2026-09-25 **e** o `congelado_ate` de 2026-10-01), cartas_vigiadas (a VIGIA DE CARTAS de 2026-09-26), reserva (o LIMIAR da reserva «maybe», 2026-10-01), caixas[].decisao / reserva / reserva_fora / comandante / reserva_assinatura (AS FASES, 2026-10-01), revalidacao.foto_manda (A FOTO É A VERDADE, 2026-10-02 — e o `playset_maximo` SAIU do `regras_por_formato` nesse dia), regras_por_formato: lingua/acabamento dos TRÊS grupos trocados a 2026-10-02 (`_regras_2026_10_02`: duel-commander e pauper `en` + `prefere_foil`, premodern `nonfoil`), basicas.declaradas / declaradas_em (A CONTAGEM DECLARADA, 2026-10-02)
 ```
 Cada `.html` gerado tem de estar na lista do `git add` do workflow (`daily.yml`,
 passo "Guardar HTML") **e na lista `HTML` da tarefa `ai-pc/tasks/mtgvault-daily`**
@@ -1572,6 +1574,13 @@ chumbam em `tests/_chumba_foto_manda.py` (9 alvos, 16 pares medidos).
   Snow-Covered Plains que ele tem ali ao lado. É por isso que o
   `tenho_conf_total` de hoje é **95** e não 0: são as básicas dos sete decks que
   as jogam. Desfaz-se numa linha no `allocate`.
+  **[CORRIGIDO A 2026-10-02, à tarde]** essas 95 somavam ao `tenho_conf_total`, e
+  isso punha o vault a dizer *«95 cartas confirmadas por foto»* num dia em que
+  não há **uma única** foto desta campanha — o número certo a responder à
+  pergunta errada. Hoje vão numa **terceira parcela** (`tenho_decl`, *contagem
+  declarada*) e o `tenho_conf_total` é **0**, que é a verdade; o deck continua a
+  fechar, porque o `tenho` soma as duas. Ver «AS REGRAS DE MATERIAL DOS TRÊS
+  GRUPOS, E AS DUAS EXCEPÇÕES DAS BÁSICAS».
 - **O INTERRUPTOR é `revalidacao.foto_manda`** (hoje `true`), na MESMA campanha
   de 20/09 — não se inventou uma segunda. `false` devolve o vault exactamente ao
   que era, e tem caso próprio. É o padrão do `venda.mostrar`.
@@ -1898,6 +1907,153 @@ de que chumbam em `tests/_chumba_estado.py` (9 alvos / 14 pares medidos).
   preço** são cinco e foram escolhidas por mim a partir da curva medida: se
   preferir um número só por escalão, é uma linha no config; (d) a lista curta
   inclui **todas as cópias** de uma carta que precise de verso, não só as caras.
+
+**AS REGRAS DE MATERIAL DOS TRÊS GRUPOS, E AS DUAS EXCEPÇÕES DAS BÁSICAS
+(André, 2026-10-02, à letra).** *"Duel Commander, so ingles, e so Foil (se nao
+houver, pode ser non-foil)"*; *"pauper so ingles tambem Foil (se nao houver,
+pode ser non-foil)"*; *"o premodern e apenas portugues, non-foil, nas edicoes
+indicadas"*; *"para as basicas, nos decks, tens que permitir tirar foto com mais
+cartas e nao apenas 4"*; *"depois indico quantas basicas tenho de cada"*; *"em
+todos os decks, as basicas sao todas de Unhinged"*. Recorta as regras de
+2026-09-07 em três grupos; o cEDH e o SPML ficam como estavam. Config em
+`regras_por_formato` + `basicas.declaradas`/`declaradas_em`, motor em
+`loadout.requisito_basicas`/`basicas_declaradas`, `confirmado.metades`,
+`fotos.so_basicas`/`valida`/`agrupar`, `revalidacao.declarar_lote`,
+`collection._isentas_do_tecto` e `estado.e_basica`; textos em
+`colecao_config.json → _regras_2026_10_02` e `_basicas`. Testes em
+`tests/test_regras_material_1002.py` (10 casos) e a prova de que chumbam em
+`tests/_chumba_regras_1002.py` (9 alvos / 10 pares, **10 de 10 chumbam**).
+
+- **O SENTIDO NÃO É O MESMO NOS TRÊS, e é a armadilha desta ordem.** O **Duel
+  Commander** APERTA a língua (ganhou `lingua: "en"`, que não tinha) e **AFROUXA
+  o acabamento** (`foil` obrigatório → `prefere_foil`); o **Pauper** só aperta a
+  língua (o `prefere_foil` já lá estava); o **Premodern** APERTA o acabamento,
+  que **nunca tinha tido chave nenhuma** — o foil nunca estava proibido e agora
+  está (`acabamento: "nonfoil"`). Quem lesse «três regras novas, todas mais
+  apertadas» punha o Duel Commander em `foil` + `en` e tirava-lhe três cartas.
+- **MEDIDO LADO A LADO, o MESMO `vault.db` dos dois lados** (worktree em
+  `_revisao/regras-material`, cópia da base pela API de backup do sqlite3;
+  `_revisao/medir_regras.py` + `comparar.py`). Preço de referência: modo
+  `market`, cadeia `cardtrader → cardmarket`.
+
+  | | antes | depois |
+  |---|---|---|
+  | fechar tudo | 15 391,58 € | **14 695,25 €** |
+  | a comprar | 414 | **412** |
+  | premodern (6 caixas) | 219 c · 118 · 2 097,00 € | **218 c** · 119 · 2 097,12 € |
+  | duel-commander (1) | 78 c · 21 · 792,52 € | **81 c · 18 · 96,07 €** |
+  | pauper (1) | 72 c · 0 · 0,00 € | **igual** |
+  | cedh (2) | 161 c · 32 · 5 966,27 € | **igual** |
+  | spml (7) | 193 c · 243 · 6 535,79 € | **igual** |
+
+  **As 13 caixas que ele não mandou tocar ficam IGUAIS ao cêntimo**, e o delta do
+  *fechar tudo* explica-se à vírgula: **−696,45 €** no Cloud **+0,12 €** no Elves.
+- **UMA SÓ CÓPIA É DESALOJADA em todo o vault, e tem nome: a Nantuko Vigilante
+  (LGN) PT FOIL, cópia #578**, que a alocação dava ao **Elves** e que o
+  acabamento novo recusa. A premissa da ordem precisa de uma correcção de
+  vocabulário, e é a favor dela: *"nenhuma está alocada"* é verdade no sentido
+  FÍSICO (a `copy_allocation` não tem uma única linha de PT foil) e falso no
+  sentido da ALOCAÇÃO, que é a que as páginas mostram — é a distinção de
+  2026-09-08 («onde a carta ESTÁ ≠ a quem está destinada»). A conclusão dela
+  estava certa: é a única carta que esta regra tira. A outra PT foil da colecção
+  — **Phyrexian Arena (CN2)** — já estava fora pela regra das edições. Medido: só
+  existem **2 cópias PT foil** em 1 678 (824 EN foil, 515 PT nonfoil, 334 EN
+  nonfoil, 3 EN etched — os números dele batem todos).
+- **E TRÊS CÓPIAS PASSAM A SERVIR, que é o outro lado do `prefere_foil`:**
+  **Parallax Wave (NEM)**, **Reverent Mantra (MMQ)** e **Talon Gates of Madara
+  (M3C)**, todas EN non-foil, que ele já tem. O Cloud deixa de comprar três
+  cartas: **21 → 18** a comprar e **792,52 € → 96,07 €** (a Parallax Wave foil
+  sozinha valia 388,96 € na medição de 20/09). A Parallax Wave sai de `guardar`
+  — já não é um substituto a proteger, é uma carta alocada.
+- **A LÍNGUA NÃO DESALOJA NADA, e isso é a medição e não um palpite:** as 78
+  cópias do Duel Commander e as 72 do Pauper **já eram todas inglesas**. A conta
+  dele para o Pauper era «59 EN foil e 15 EN nonfoil»; na base são **59 foil +
+  13 nonfoil = 72** — 13 e não 15.
+- **A `estrita` FICOU A `false` nos dois grupos, e é uma decisão por ele.** Com
+  ela a `true` — como no Premodern — uma cópia na língua errada fica **fora de
+  vista**: aparece como falta a comprar em vez de *"tenho mas não serve"*. **Hoje
+  não mudava um único número**, porque não há uma única cópia não-inglesa
+  alocável a estes dois grupos; o que muda é o dia em que houver. Fica para ele.
+- **AS NOVE SAÍDAS DA VENDA quase não mexem:** `guardar` 10 c/1 432,95 € →
+  **9 c/1 390,53 €** (a Parallax Wave, que passou a servir) e `sem_foto` 114
+  c/1 820,85 € → **115 c/1 871,42 €** (a Nantuko Vigilante, que ficou livre).
+  `venda` e `venda_rl` continuam a **zero**, `protegidas` 144 c/4 568,57 €,
+  `rl_sem_historico` 100 c e `reservadas`/`retidos`/`rl_segurar` a zero —
+  **iguais**. A cópia desalojada **não vai à venda**: cai em `sem_foto`, e a
+  venda está fora de vista (`venda.mostrar: false`) e congelada até 12/10.
+- **A ISENÇÃO DAS BÁSICAS TINHA DUAS PERNAS E PRECISAVA DE TRÊS.** O texto da
+  isenção dizia *"escapam às regras de língua e edição"* e **não falava de
+  acabamento** — e o `_serve_basica` já era generoso (com a isenção ligada
+  devolve sempre `True`), por isso o MOTOR estava certo. O que estava errado era
+  o **`requisito_basicas`**, que devolvia `"non-foil"` e `"foil"` a seco: a
+  partir do dia em que o Premodern ganhou `acabamento: "nonfoil"`, a linha de
+  básicas dessas caixas passava a **exibir «non-foil» como requisito** enquanto a
+  alocação aceitava a Unhinged foil — a página a pedir-lhe que fosse trocar 24
+  terras que tem ali ao lado. Hoje diz *"non-foil se houver"* / *"foil se
+  houver"* enquanto a isenção estiver ligada, e volta às palavras secas se
+  alguém a desligar. Tem caso por grupo: uma Unhinged **EN foil** serve uma caixa
+  de Premodern `nonfoil`, e uma Unhinged serve o Duel Commander e o Pauper.
+- **ZERO BÁSICAS APARECEM COMO COMPRA**, antes e depois — e as alocadas são as
+  mesmas, à cópia: 24 Snow-Covered Plains **MH1 EN foil** no Duel Commander
+  (`prefere_foil`), 3 Plains ODY EN nonfoil no Cloud cEDH, e as 9 Plains ODY EN
+  nonfoil espalhadas pelas quatro caixas de Premodern — as **5 do UW Replenish**
+  que a ordem nomeou incluídas. Confirmado que continuam a servir.
+- **UMA FOTO DE BÁSICAS NÃO TEM TECTO** (`fotos.so_basicas` + `valida(…,
+  isenta=)`). A regra das quatro cartas de 01/10 existe para cada carta ficar **à
+  vista e avaliável**, e numa pilha de 27 terras idênticas isso não quer dizer
+  nada — por isso 27 Snow-Covered Plains são **1 foto** e não sete. A excepção é
+  **só para fotos que sejam SÓ de básicas**: uma que misture básicas com outra
+  carta volta a ter tecto, e uma carta normal de 29 cópias continua a partir-se
+  em 8 fotos `partida`. A pergunta *"isto é só básicas?"* vive **num sítio só** e
+  a lista de básicas é a do `loadout.BASICS` (já havia cinco cópias dela pelo
+  repositório; não se fez a sexta). Morde nos **quatro** sítios que aplicavam o
+  tecto — `fotos.agrupar`, a trava do `collection.import_csv`
+  (`_isentas_do_tecto`), o `revalidacao.valida_esta_foto` (pelo lote declarado) e
+  o `revalidacao.fotos_que_nao_validam` (que lê a base e passou a ler também os
+  NOMES das cartas de cada foto). O `test_fotos_ate_4.caso_nenhuma_foto_passa_de_
+  quatro_cartas` estava escrito com as Snow-Covered Plains e **foi reescrito com
+  uma carta não-básica**: a regra geral continua trancada, com a razão no
+  docstring.
+- **AS BÁSICAS ENTRAM POR CONTAGEM DECLARADA, E ISSO NÃO É «CONFIRMADO POR
+  FOTO».** `basicas.declaradas` = `{nome: {acabamento: quantas}}` (um número a
+  seco vale `nonfoil`), com `declaradas_em` a datar a contagem. É a excepção
+  EXPLÍCITA à regra da foto do mesmo dia — sem ela todos os decks apareciam
+  incompletos por causa das terras — e já era o comportamento (as básicas contam
+  como tidas desde 08/09). **O que mudou é o NÚMERO que ele vê:** até hoje as
+  básicas somavam ao `usadas_conf` e o vault dizia **«95 cartas confirmadas por
+  foto»** num dia em que não há **uma única** foto desta campanha. Era o padrão
+  do `event_tier` outra vez: o número certo a responder à pergunta errada. Agora
+  há uma **terceira parcela** (`loadout` → `tenho_decl`/`tenho_decl_total`,
+  `confirmado.metades(…, declarado=)`) e as três somam o total por construção —
+  o `MetadesQueNaoSomam` continua a levantar se não somarem. Medido na base:
+  **0 de 784 cópias confirmadas por foto · 95 por contagem declarada (básicas)**,
+  e 689 por confirmar; antes dizia 95 confirmadas. O `declarado` é **0 por
+  omissão**, por isso nenhum dos outros chamadores do `metades` mudou.
+- **A chave `declaradas` entra VAZIA, de propósito.** A pilha de Unhinged **nunca
+  foi uma linha da `copies`** e ninguém a contou — preenchê-la de memória era
+  inventar dados, que é a regra dele. Vazia, nada muda: as básicas continuam a
+  contar como tidas, marcadas `contagem declarada`. **E a declaração NÃO é um
+  tecto** (decisão minha, e é a que vale a pena rever): se ele declarar 29
+  Snow-Covered Plains e os decks pedirem 31, as 31 continuam a contar e o vault
+  não se queixa. Fazê-la morder era pôr decks incompletos por causa de terras,
+  que é o contrário do que esta excepção existe para evitar; mas é uma linha no
+  `_aloca_basica` no dia em que ele quiser o aviso.
+- **UMA BÁSICA NÃO LEVA ESCALÃO DE ESTADO NEM VERSO** (`estado.e_basica` →
+  `estado.registar` levanta `EstadoInvalido`). Entram por contagem e nunca por
+  foto, logo não há foto de onde tirar um escalão; e recusar em **silêncio**
+  parecia a regra da correcção dele (`aplicado = 0`), que é outra coisa. A
+  `estado.lista_curta` já não as podia apanhar (uma básica nunca é Reserved List,
+  dual, shockland nem fetchland) — foi **verificado e não assumido**.
+- **O DIFF DO CONFIG SÃO 8 INSERÇÕES E 5 REMOÇÕES** (3 linhas de regras + 2
+  chaves de básicas + 3 textos de ajuda), e o ficheiro está na forma canónica: um
+  round-trip pelo **`configio.escrever`** devolve-o **igual byte a byte**
+  (`_revisao/provar_configio.py`), o que é a prova de que uma escrita futura por
+  código não o reformata — a lição do commit `ac1f776`.
+- **POR DECIDIR POR ELE:** (a) a **`estrita`** dos dois grupos, que hoje não
+  mudava um número; (b) a **`declaradas`** por preencher, e se quer que a
+  contagem seja um tecto; (c) a declaração não cobre as básicas **registadas na
+  `copies`** (as 24 Snow-Covered MH1 e as 12 Plains ODY) — essas continuam a
+  contar pela base, como qualquer cópia, e a declaração é para a pilha a granel.
 
 **OS 16 DECKS QUE FICAM, E AS REGRAS DAS CARTAS (André, 2026-10-02).** Ele
 fechou a lista dos decks que ficam e reescreveu as regras que decidem o que vai
@@ -2398,6 +2554,14 @@ chumbam sem a funcionalidade em `tests/_provar_chumba.py`
   29 Snow-Covered Plains): essa enche fotos inteiras só dela, marcadas
   `partida`, porque não há outra forma de respeitar o tecto — e fica dito em vez
   de resolvido em silêncio.
+  **[CORRIGIDO A 2026-10-02]** o ponto (3) deixou de valer para os TERRENOS
+  BÁSICOS — *"para as basicas, nos decks, tens que permitir tirar foto com mais
+  cartas e nao apenas 4"*: as 29 Snow-Covered Plains são **uma** foto (marcada
+  `isenta`) e não oito, porque o tecto existe para cada carta ficar à vista e
+  avaliável e numa pilha de terras idênticas isso não quer dizer nada. A
+  excepção é só para fotos que sejam **só** de básicas (`fotos.so_basicas`);
+  uma carta normal de 29 cópias continua a dar 8 fotos `partida`. Ver «AS
+  REGRAS DE MATERIAL DOS TRÊS GRUPOS, E AS DUAS EXCEPÇÕES DAS BÁSICAS».
 - **A ORDEM é a dele e é DELIBERADAMENTE outra que a do `paginas.TIPOS`**
   (Creature primeiro, pedido dele de 2026-08-31, que é a ordem por que se LÊ uma
   decklist). O que **não** se duplicou foi a PRECEDÊNCIA: em que tipo cai uma
@@ -3080,10 +3244,13 @@ outra vez: nenhum passo dá erro, e a folha que ele leva para a estante está a
 menos 17 cartas. Motor em `loadout._aloca_basica`/`_basicas_do_slot`/
 `plano_basicas`, config em `colecao_config.json → basicas`.
 - **As básicas são ISENTAS das regras de material** (`basicas.isentas_de_regras`,
-  default `true`): a pilha dele é toda Unhinged EN, e trancar o Premodern ao PT
-  mandava comprar 17 Island que estão ali ao lado. Nas caixas de foil a foil vai
-  à frente (`_ordem_basica`), mas é **preferência e não requisito** — uma Island
-  non-foil fecha o slot na mesma. O que NÃO é material continua a valer: cópia
+  default `true`) — **língua, edição E acabamento**: a pilha dele é toda Unhinged
+  EN, e trancar o Premodern ao PT mandava comprar 17 Island que estão ali ao
+  lado. Nas caixas de foil a foil vai à frente (`_ordem_basica`), mas é
+  **preferência e não requisito** — uma Island non-foil fecha o slot na mesma, e
+  desde 2026-10-02 uma Island **foil** fecha o slot de uma caixa de Premodern,
+  que passou a `acabamento: "nonfoil"`. O `requisito_basicas` diz *"se houver"*
+  por isso mesmo — ver a secção das regras de material de 02/10. O que NÃO é material continua a valer: cópia
   livre, não reservada a outro deck, e nunca uma que esteja sleevada noutra caixa.
 - **As cópias registadas alocam-se como qualquer carta**: têm `lotes`, dizem de
   que gaveta sair e entram na arrumação (na base de 2026-09-08 são 12 Plains ODY

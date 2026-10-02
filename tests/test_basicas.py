@@ -308,7 +308,10 @@ def caso_a_pagina_leva_o_bloco():
     # As Snow-Covered do Duel Commander, na lista geral de compras de básicas.
     geral = {b["nm"]: b for b in d["basicas"]}
     assert geral["Snow-Covered Plains"]["q"] == 23, geral
-    assert geral["Snow-Covered Plains"]["req"] == "foil", geral
+    # «se houver» desde 2026-10-02 — ver a nota no
+    # `caso_o_bloco_existe_com_as_quantidades_certas`: numa linha de básicas o
+    # acabamento é PREFERÊNCIA e a frase tem de o dizer.
+    assert geral["Snow-Covered Plains"]["req"] == "foil se houver", geral
     assert d["resumo"]["basicas"] == 23, d["resumo"]
     print("o payload da Deckboxes traz o bloco e as basicas a comprar")
 
