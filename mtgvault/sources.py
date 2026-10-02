@@ -459,6 +459,77 @@ def counting_sql(fmt: str, alias: str = "d") -> tuple[str, list]:
     return f"({a}source = 'manual' OR ({sql}))", params
 
 
+# ---------------------------------------------------------------------------
+# A IDENTIDADE DE UM DECK É UMA CARTA-ASSINATURA (André, 2026-10-02)
+# ---------------------------------------------------------------------------
+# Palavras dele: *"a identidade de um deck é uma CARTA-ASSINATURA, NUNCA a
+# etiqueta do clustering"* — e já se provou duas vezes nesta semana: os clusters
+# chamam-se *"Rotlung Reanimator / Priest of Gix / Oath of Druids"* e há dezenas
+# vazios com o mesmo nome (medido no `consenso.py` para o Duel Commander: 870
+# etiquetas, 808 sem uma única lista).
+#
+# A pergunta *"que listas são deste deck?"* é feita em DOIS sítios — a lista da
+# caixa (`loadout._cards_from_consensus`) e a reserva dos últimos 30 dias
+# (`fases`) — e por isso vive aqui, numa função só. Dois selectores ao lado
+# discordavam um dia qualquer, em silêncio: é a lição do `event_tier`.
+def ids_por_assinatura(con, fmt: str, assinatura, todas: bool = False,
+                       desde: str | None = None,
+                       so_que_contam: bool = True) -> list[int]:
+    """Os ids das listas de `fmt` que casam com esta assinatura.
+
+    `todas=False` (omissão) é **basta uma** (`IN`) — é o que serve o *"Greasefang,
+    as várias versões"* dele: uma carta só apanha todas as variantes do deck.
+    `todas=True` é **em conjunção**: o *Engineer Welder Cam* precisa de
+    `Goblin Welder` **e** `Sewer-veillance Cam`, porque cada uma sozinha
+    apanha outros decks de Legacy (medido a 2026-10-02: Welder 50, Cam 54,
+    as duas juntas 50 — a Cam traz 4 listas que não jogam Welder).
+
+    `so_que_contam` decide o universo, e os dois valores servem perguntas
+    diferentes:
+      * **True** (o `counting_sql` de sempre) para a LISTA do deck — é o filtro
+        de todo o site e não se abre uma excepção para uma página;
+      * **False** (todas as listas da base) para a PROTECÇÃO dos últimos 30
+        dias. Aqui sub-contar é vender uma carta que ele precisa, e há formatos
+        em que o filtro dá ZERO de propósito (`metagame_fontes.pauper.tiers =
+        []`, porque ele só segue o Luffy): uma protecção vazia em silêncio é o
+        padrão do `event_tier` aplicado a dinheiro. É a mesma razão por que a
+        VIGIA DE CARTAS de 2026-09-26 abriu o filtro de tier — *"a primeira
+        aparição de um combo novo É um 5-0 de league"*.
+    """
+    ass = [str(x) for x in (assinatura or []) if str(x).strip()]
+    if not ass:
+        return []
+    cond, cp = ("(1=1)", []) if not so_que_contam else counting_sql(fmt, "d")
+    extra, ep = ("", [])
+    if desde:
+        extra, ep = " AND d.event_date >= ?", [desde]
+    if todas:
+        # Uma subconsulta EXISTS por carta: a conjunção não se faz com `IN`.
+        ex = " ".join(
+            "AND EXISTS(SELECT 1 FROM decklist_cards x WHERE x.decklist_id = d.id "
+            "AND x.card_name = ?)" for _ in ass)
+        return [r[0] for r in con.execute(
+            f"SELECT d.id FROM decklists d WHERE d.format = ? AND {cond}{extra} {ex}",
+            (fmt, *cp, *ep, *ass))]
+    marcas = ",".join("?" for _ in ass)
+    return [r[0] for r in con.execute(
+        f"""SELECT DISTINCT d.id FROM decklists d
+              JOIN decklist_cards dc ON dc.decklist_id = d.id
+             WHERE d.format = ? AND dc.card_name IN ({marcas}) AND {cond}{extra}""",
+        (fmt, *ass, *cp, *ep))]
+
+
+def texto_assinatura(assinatura, todas: bool = False) -> str:
+    """Como se escreve a assinatura numa página ("A e B" / "A ou B")."""
+    ass = [str(x) for x in (assinatura or []) if str(x).strip()]
+    if not ass:
+        return ""
+    if len(ass) == 1:
+        return ass[0]
+    liga = " e " if todas else " ou "
+    return liga.join(ass)
+
+
 # Quanto vale cada lista no ranking do metagame. Os pesos do online são os que o
 # André confirmou em 2026-08-14 (Showcase 3, Challenge 1); o presencial entrou em
 # 2026-09-07 e vale pela dimensão — um torneio de 128+ jogadores pesa mais que um

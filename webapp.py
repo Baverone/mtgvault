@@ -1642,20 +1642,18 @@ class Handler(BaseHTTPRequestHandler):
                     _CACHE.clear()
                     self._json({"ok": True, **r})
                     return
-                if caminho == "/api/fase-decisao":
-                    # A ARRUMAÇÃO POR FASES (2026-10-01): os três estados de cada
-                    # deck. Escreve `caixas[].decisao` no config (com o
-                    # `configio.escrever`, que preserva a forma do ficheiro) e
-                    # **não toca na base nem nas alocações** — é o que a ordem
-                    # dele exige. Reversível: mudar de estado não apaga nada.
-                    self._json(self._fase_decisao(dados))
-                    return
+                # O `/api/fase-decisao` SAIU a 2026-10-02, por ordem dele: o
+                # `caixas[].decisao` era um segundo campo de estado ao lado do
+                # `estado` da v6, e o estado muda-se na Deckboxes, onde esse
+                # gesto já vive. Dois caminhos para o mesmo gesto discordam um
+                # dia qualquer, em silêncio.
                 if caminho == "/api/fase-reserva":
                     # A RESERVA («maybe») de um deck: acrescentar à mão
-                    # (`caixas[].reserva`) ou tirar da automática
-                    # (`caixas[].reserva_fora`). Guarda-se o que ele TIROU e não
-                    # a lista final, para a reserva continuar a crescer com o
-                    # consenso sem lhe devolver o que ele já recusou.
+                    # (`caixas[].reserva`), o botão **«não é necessária»**
+                    # (`caixas[].reserva_fora`, com a DATA) e o «voltar a pôr».
+                    # Guarda-se o que ele TIROU e não a lista final, para a
+                    # reserva continuar a crescer com as listas novas sem lhe
+                    # devolver o que ele já recusou.
                     self._json(self._fase_reserva(dados))
                     return
                 if caminho == "/api/venda-export":
@@ -1976,46 +1974,27 @@ class Handler(BaseHTTPRequestHandler):
                         f"em pendentes\\) — entram na corrida das 02:30 ou com «⚡ Processar "
                         f"agora»; o esperadas.md já diz o que esperar.")}
 
-    def _fase_decisao(self, dados):
-        """A DECISÃO de um deck (André, 2026-10-01): montado | guardado |
-        dissolvido.
-
-        Escreve `caixas[].decisao` no config e **mais nada**: não toca na
-        `copies`, na `copy_allocation` nem na alocação — é a ordem dele, à
-        letra (*"a página de decisão não mexe em alocações nem na base"*). Um
-        valor fora dos três é 409 (`ValueError`), como a `vista` e o modo de
-        preço.
-
-        Não REGENERA as páginas: a decisão muda o que a venda pode oferecer, e
-        isso recalcula-se no pedido seguinte (a `em_cache` já invalida pelo
-        mtime do config). Regenerar aqui punha um toque num botão a esperar
-        pelo `loadout.report` inteiro, que é o que a decisão de 2026-09-21 veio
-        tirar do caminho.
-        """
-        slot = dados.get("slot")
-        decisao = (dados.get("decisao") or "").strip().lower()
-        cfg = ler_config()
-        caixas.caixa_do_cfg(cfg, slot)                     # KeyError → 409
-        if decisao not in fases.DECISOES:
-            raise ValueError(
-                f"decisão {decisao!r} desconhecida — tem de ser uma de "
-                f"{', '.join(fases.DECISOES)}")
-        r = fases.gravar_decisao(slot, decisao, configio.caminho())
-        _CACHE.clear()
-        return {"ok": True, **r,
-                "msg": (f"{r['nome']}: {decisao} — "
-                        f"{fases.TEXTO_DECISAO[decisao]}."
-                        if r["mudou"] else
-                        f"{r['nome']} já estava {decisao}.")}
-
     def _fase_reserva(self, dados):
-        """A RESERVA («maybe») de um deck: acrescentar à mão, ou tirar.
+        """A RESERVA («maybe») de um deck: acrescentar à mão, tirar, ou voltar.
 
-        `act: "add"` escreve em `caixas[].reserva` (a chave de 2026-09-20, que
-        já quer dizer exactamente isto); `act: "remover"` tira de lá e, se a
-        carta vier da reserva AUTOMÁTICA, escreve-a em `caixas[].reserva_fora`.
+        Três acções, e são o botão **«não é necessária»** que ele pediu a
+        2026-10-02 (*"ao carregar, a carta sai da reserva daquele deck e passa a
+        candidata a venda. Tem de ser PERSISTENTE, REVERSÍVEL, e com a DATA e o
+        deck a que se refere"*):
+
+          * `add` escreve em `caixas[].reserva` (a chave de 2026-09-20, que já
+            quer dizer exactamente isto);
+          * `remover` — o **«não é necessária»**: tira de `reserva` e escreve a
+            carta em `caixas[].reserva_fora` **com a data**, `{nm, em}`. É
+            PERSISTENTE porque está no config (o `daily` não lhe toca) e o deck
+            está implícito: a chave vive DENTRO da caixa;
+          * `devolver` — o **«voltar a pôr»**: tira de `reserva_fora` e a carta
+            volta à reserva automática se as listas a voltarem a mostrar. É o
+            inverso exacto, e não um `add` disfarçado: um `add` punha-a na lista
+            MANUAL, que é outra coisa (fica lá mesmo que ninguém a jogue).
+
         Guarda-se o que ele TIROU e não a lista final, para a reserva continuar
-        a crescer com o consenso sem lhe devolver o que ele já recusou.
+        a crescer com as listas novas sem lhe devolver o que ele já recusou.
 
         O nome VALIDA-SE no catálogo antes de se escrever (`padrao.nome_no_catalogo`,
         o mesmo da lista padrão): um nome mal escrito na reserva era uma
@@ -2026,8 +2005,8 @@ class Handler(BaseHTTPRequestHandler):
         carta = (dados.get("carta") or "").strip()
         cfg = ler_config()
         c = caixas.caixa_do_cfg(cfg, slot)                 # KeyError → 409
-        if act not in ("add", "remover"):
-            raise ValueError(f"ação {act!r} desconhecida (add|remover)")
+        if act not in ("add", "remover", "devolver"):
+            raise ValueError(f"ação {act!r} desconhecida (add|remover|devolver)")
         if not carta:
             raise ValueError("falta o nome da carta")
         with db.session() as con:
@@ -2037,7 +2016,11 @@ class Handler(BaseHTTPRequestHandler):
                              f"nome em inglês (é o nome oracle, a frente nas de "
                              f"duas faces)")
         reserva = [str(x) for x in (c.get("reserva") or [])]
-        fora = [str(x) for x in (c.get("reserva_fora") or [])]
+        # `reserva_fora` aceita as DUAS formas: a lista de nomes de 2026-10-01 e
+        # a de objectos `{nm, em}` de 2026-10-02. Lê-se pela mesma função que o
+        # motor usa (`fases._retiradas`), para não haver duas leituras.
+        fora = dict(fases._retiradas(c))
+        hoje = date.today().isoformat()
         if act == "add":
             if nome in reserva:
                 return {"ok": True, "mudou": False,
@@ -2045,17 +2028,26 @@ class Handler(BaseHTTPRequestHandler):
             reserva.append(nome)
             # Acrescentar à mão o que ele tinha tirado desfaz a recusa — senão a
             # carta ficava nas duas listas e a de «fora» ganhava em silêncio.
-            fora = [x for x in fora if x != nome]
+            fora.pop(nome, None)
             msg = f"{nome} entrou na reserva de {c.get('nome')}."
+        elif act == "devolver":
+            if nome not in fora:
+                return {"ok": True, "mudou": False,
+                        "msg": (f"{nome} não estava na lista de «não é "
+                                f"necessária» de {c.get('nome')}.")}
+            fora.pop(nome, None)
+            msg = (f"{nome} voltou à reserva de {c.get('nome')} — se as listas "
+                   f"do último mês a mostrarem, volta a estar protegida.")
         else:
             reserva = [x for x in reserva if x != nome]
-            if nome not in fora:
-                fora.append(nome)
-            msg = (f"{nome} saiu da reserva de {c.get('nome')} — e fica de fora "
-                   f"mesmo que o consenso a volte a propor.")
+            fora.setdefault(nome, hoje)
+            msg = (f"{nome} saiu da reserva de {c.get('nome')} em {hoje} — passa "
+                   f"a candidata a venda e fica de fora mesmo que as listas a "
+                   f"voltem a mostrar. Dá-se a volta no «voltar a pôr».")
         c["reserva"] = sorted(reserva)
         if fora:
-            c["reserva_fora"] = sorted(fora)
+            c["reserva_fora"] = [{"nm": nm, "em": em}
+                                 for nm, em in sorted(fora.items())]
         else:
             c.pop("reserva_fora", None)
         if not c["reserva"]:
@@ -2063,7 +2055,8 @@ class Handler(BaseHTTPRequestHandler):
         escrever_config(cfg)
         sources._CFG_CACHE.clear()
         _CACHE.clear()
-        return {"ok": True, "mudou": True, "carta": nome, "act": act, "msg": msg}
+        return {"ok": True, "mudou": True, "carta": nome, "act": act,
+                "em": hoje if act == "remover" else "", "msg": msg}
 
     def _padrao(self, dados):
         """LISTA PADRÃO e RESERVA de uma caixa (André, 2026-09-20).

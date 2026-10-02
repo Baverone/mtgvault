@@ -1234,13 +1234,249 @@ vez"*. Motor em `mtgvault/consenso.py`, página `comandantes.py` →
 - **Nada da alocação, da venda ou dos preços foi tocado**: este módulo não lê a
   `copy_allocation` nem o `loadout`. A bateria inteira (63 ficheiros) ficou verde.
 
+**OS 16 DECKS QUE FICAM, E AS REGRAS DAS CARTAS (André, 2026-10-02).** Ele
+fechou a lista dos decks que ficam e reescreveu as regras que decidem o que vai
+à venda. **Substitui, no que se cruza, a secção «A ARRUMAÇÃO POR FASES» de
+2026-10-01** (que segue abaixo e fica como histórico): as quatro protecções
+P1–P4 passaram a sete regras R1–R5b + RD, o campo `caixas[].decisao` foi
+APAGADO e o limiar de 20 % da reserva foi APAGADO. Motor em
+`mtgvault/fases.py` e `mtgvault/sources.py` (`ids_por_assinatura`); página
+`arrumacao.py`; CLI `py -m mtgvault.cli fases [--curva] | fases terras | fases
+duais | fases staples`; endpoint `/api/fase-reserva` (com a acção `devolver`
+nova); config em `caixas[].assinatura`/`assinatura_todas`/`reserva_assinatura`/
+`reserva_fora` e `reserva.janela_dias`/`staples_premodern_pct`. Testes em
+`tests/test_decks_finais.py` (11 casos) e `tests/test_fases.py` (33, reescritos),
+com a prova de que chumbam em `tests/_chumba_decks.py` (5 alvos) e
+`tests/_chumba_fases.py` (13).
+
+- **A REGRA DE OURO: a identidade de um deck é uma CARTA-ASSINATURA, nunca a
+  etiqueta do clustering.** Palavras dele, e já se provou duas vezes nesta
+  semana: as etiquetas chamam-se *"Rotlung Reanimator / Priest of Gix / Oath of
+  Druids"* e há dezenas vazias com o mesmo nome (medido no `consenso.py`: 870
+  etiquetas de `duel-commander`, 808 sem uma única lista). Quem escolhe as
+  listas é **`sources.ids_por_assinatura`, num sítio só**, partilhado pela LISTA
+  da caixa (`loadout._cards_from_consensus`) e pela RESERVA (`fases`) — dois
+  selectores ao lado discordavam um dia qualquer, em silêncio.
+  `assinatura_todas: true` pede a **conjunção** (o *Engineer Welder Cam* precisa
+  de `Goblin Welder` **e** `Sewer-veillance Cam`); a omissão é *basta uma*, que é
+  o que serve o *"Greasefang, as várias versões"*. Uma caixa cuja LISTA vem de
+  outra fonte (a do Luffy, um link, uma lista padrão fixada) escreve a identidade
+  em `reserva_assinatura`: **a assinatura é a identidade, não a lista.**
+- **OS NÚMEROS DELE BATEM TODOS — e sobre TODAS as listas, não sobre as que
+  contam.** Verificadas as 13 contagens uma a uma na base de 2026-10-02:
+  Stiflenought 114, UW Replenish 186, Oath 51, Elves (Wirewood Symbiote) 28, IGG
+  3, Pauper (Myr Enforcer) 23, Modern Affinity (Weapons Manufacturing) 88, Oswald
+  13, Greasefang 37, Bant Airbend 9, Goblin Welder 50, Sewer-veillance Cam 54,
+  Aluren 46. Com o `sources.counting_sql` do site davam 85/144/29/23/3/**0**/85/
+  13/26/6/35/39/30 — e o Pauper dava **zero**, porque `metagame_fontes.pauper.
+  tiers = []` (ele só segue o Luffy). **Welder E Cam em conjunção: 50 listas** —
+  a Cam traz 4 que não jogam Welder, e é por isso que ele mandou usar as duas.
+- **O UNIVERSO DE LISTAS DA R5 É TODAS AS LISTAS**, e é uma excepção deliberada
+  ao filtro do site (`so_que_contam=False`). Sub-contar aqui é VENDER uma carta
+  que ele precisa; e no Pauper e no cEDH o filtro dá zero de propósito, o que
+  deixava dois dos 16 decks sem protecção nenhuma, em silêncio — o padrão do
+  `event_tier`. É a mesma razão por que a VIGIA DE CARTAS de 2026-09-26 abriu o
+  filtro de tier (*"a primeira aparição de um combo novo É um 5-0 de league"*).
+  A LISTA da caixa continua com o `counting_sql` de sempre: são duas perguntas.
+- **O CAMPO `decisao` FOI APAGADO, com tudo o que o lia.** Ordem dele: *"ontem
+  acrescentei um segundo campo de estado ao lado do que as caixas já tinham. São
+  duas verdades para a mesma pergunta e eu concordo em ficar com a antiga."*
+  Saíram o `caixas[].decisao`, o `fases.decisao_de`/`decisoes`/`gravar_decisao`/
+  `DECISOES`/`TEXTO_DECISAO`, o endpoint **`/api/fase-decisao`**, o `fases
+  decisao` do CLI e os botões da Fase 1. Quem decide é o `estado` da v6:
+  `montada`/`congelada`/`permanente` **protegem**, `candidata` não protege por
+  si, e **a OMISSÃO (sem a chave) vale `permanente` e por isso PROTEGE** — o
+  `caixas.estado_de` já o fazia desde 2026-09-08, e aqui vale o dobro: um deck
+  sem estado escrito não manda uma única carta para a venda. Tem dois casos de
+  teste e dois alvos no `_chumba_fases`. **O estado muda-se na Deckboxes**, que é
+  onde esse gesto já vive («Tornar permanente», «Montar», «Desmontar») e onde ele
+  tem a caixa na mão; a Fase 1 mostra-o e não o reescreve. Há um caso que tranca
+  que o campo não volta: um `decisao: dissolvido` escrito à mão no config **não**
+  liberta carta nenhuma.
+- **R1 — AS DEZ DUAIS ORIGINAIS: quatro de cada FORA dos decks.** *"O que passar
+  disso vende-se ou troca-se."* Derivadas do catálogo como as outras duas listas,
+  e a regra custou uma passagem: *dois sub-tipos de terra básica* dá **69** nomes
+  e *`oracle_text` vazio* dá **ZERO** — as originais trazem o lembrete
+  `({T}: Add {U} or {B}.)`, entre parênteses, que é como a Scryfall escreve texto
+  que não é regra nova. A regra que dá dez é **dois sub-tipos básicos E um
+  `oracle_text` que é SÓ esse lembrete**. **A R1 MANDA SOBRE A R4**, e é o ponto
+  da regra: uma dual é Reserved List, e se a R4 a salvasse a R1 nunca mordia —
+  *"para elas manda a R1, que é mais específica"*. Logo, numa dual só a RD (está
+  num deck) e a R1 (está dentro das quatro de fora) protegem.
+  **AS CONTAS DELE BATEM AO EXEMPLAR**: 45 cópias, 6 em decks (as seis do Blue
+  Farm), 39 fora → **vender 6** (Taiga 2, Bayou 1, Scrubland 1, Tropical Island
+  1, Tundra 1 — 3 001,26 €) e **faltam 7** (Savannah 3, Badlands 2, Plateau 1,
+  Underground Sea 1 — 822,62 € ao preço mínimo). **Ficam as QUATRO DE MAIOR
+  VALOR** e vende-se o resto (edição e `copy_id` a desempatar): ele quer ter
+  quatro de cada, e ficar com as melhores é o que um colecionador faz — e a ordem
+  tem de ser determinista, senão a lista de venda troca de cópia de um dia para o
+  outro.
+- **A R1 OBRIGA A PARTIR UMA LINHA, e isso é desenho e não detalhe.** Um lote de
+  cinco duais fora dos decks tem **quatro** protegidas e **uma** candidata, e dar
+  o lote inteiro a um dos lados era mentir por quatro ou por uma. Por isso o
+  `quem_protege` devolve uma QUANTIDADE (não um sim/não) e os dois consumidores
+  — a Fase 3 e o `loadout.sell_list` — partem a linha com o mesmo `_partir`. E o
+  que se gasta é um **orçamento de cópias LIVRES por sub-lote**, fresco a cada
+  chamada: o motor da venda recebe uma linha que é um PEDAÇO do sub-lote (o
+  excedente que o playset já cortou), e dizer-lhe *"deste sub-lote há quatro
+  protegidas"* protegia exactamente a cópia que ele estava a oferecer.
+- **R5 — A RESERVA É O QUE FOI JOGADO NOS ÚLTIMOS 30 DIAS, e o limiar de 20 %
+  foi APAGADO.** *"Protege-se toda a carta que tenha sido jogada no último mês
+  nos decks acima, mesmo que esteja hoje fora da lista — main ou side."* O travão
+  passou a ser a JANELA, e é um travão a sério porque a base só guarda 30 dias de
+  listas (`daily.prune_decklists`): o que lá está é, por construção, o mês que
+  passou. Não se deixou uma chave morta no config a dizer que existe um limiar
+  que não existe. **Abaixo de oito listas não se chama consenso a nada**
+  (`MIN_LISTAS_RESERVA`, o mesmo do `consenso.MIN_LISTAS`): é a ordem dele sobre
+  o *Ill-Gotten Gains* — *"só 3 listas, abaixo do mínimo de 8; marca-o como SEM
+  CONSENSO SUFICIENTE e não inventes consenso com 3 listas"*.
+- **R5b — AS STAPLES DE SIDEBOARD DO PREMODERN, e a curva é que decide o corte.**
+  Pela presença em sideboards de TODAS as listas de Premodern da janela, com o
+  denominador a ser as listas que TÊM sideboard (hoje são as 987, mas a conta tem
+  de estar certa no dia em que não forem). O corte está em
+  `reserva.staples_premodern_pct` = **10 %, PROVISÓRIO** — a ordem é explícita
+  (*"não fixes o corte sem lhe mostrar a curva"*), por isso o valor é o que
+  protege MAIS e a página e o CLI dizem que é provisório. A curva, medida:
+
+  | corte | cartas staple | a mais (cóp./€) | sozinha (cóp./€) | só PT da era |
+  |---|---|---|---|---|
+  | 10 % | 25 | 4 / 6,60 € | 41 / 458,35 € | 37 cóp. |
+  | 20 % | 7 | 1 / 3,96 € | 11 / 61,75 € | 8 cóp. |
+  | 30 % | 1 | 0 / 0,00 € | 3 / 5,40 € | 0 |
+  | 40 % | 1 | 0 / 0,00 € | 3 / 5,40 € | 0 |
+  | 50 % | 0 | 0 / 0,00 € | 0 / 0,00 € | 0 |
+
+  **A CURVA DÁ DOIS NÚMEROS, e sem o segundo era ilegível.** «A mais» é o efeito
+  real de mexer no corte hoje — e é quase zero, porque a **R5 já apanha
+  praticamente todas as staples**: uma staple de sideboard é, por definição, uma
+  carta que apareceu numa lista do mês. «Sozinha» é o que o corte protegeria se a
+  R5 não existisse, e é isso que diz quanto a regra VALE. Com uma coluna só, uma
+  curva plana lia-se como *"as staples não importam"*, quando o que se passa é
+  que outra regra chegou lá primeiro. As 25 cartas a 10 %: Tormod's Crypt 46,2 %,
+  Hydroblast 27,4 %, Naturalize 25,1 %, Annul 23,9 %, Red Elemental Blast 22,3 %,
+  Aura of Silence 22,0 %, Pyroblast 21,2 %, Blue Elemental Blast, Tsabo's Web,
+  Engineered Plague, Tranquil Domain, Gaea's Blessing, Xantid Swarm, Warmth,
+  Pyroclasm, Ray of Revelation, Overload, Brain Freeze, Meddling Mage, Seal of
+  Cleansing, Sacred Ground, Cursed Totem, Essence Flare, Exalted Angel, Circle of
+  Protection: Red.
+- **A R4 DEIXOU DE PROTEGER O QUE NÃO É DECK DELE, e era um defeito a sério.**
+  O caminho (c) varria a tabela `decks` INTEIRA e filtrava pelo FORMATO: na base
+  de 2026-10-02 isso protegia Reserved List por aparecer no *Jeskai Lessons*, no
+  *4c Control*, no *Cori-Steel Cutter*, no *Legacy (Harry1232)*, no *Stiflenought
+  (Spock)* ou no *Enchantress (consenso)* — listas de metagame e de jogadores
+  vigiados que **não são decks dele**. A pergunta é *"o RL que ELE joga"*, e quem
+  responde é a lista de caixas (`caixas[].ref`): um deck que saiu do config deixa
+  de proteger no mesmo dia, sem ninguém ter de limpar uma linha da base. Medido:
+  a R4 passou de **89 cópias / 17 cartas** para **85 / 17**, 47 933,60 € →
+  45 039,07 €.
+- **O BOTÃO «NÃO É NECESSÁRIA»**, em cada carta da reserva: tira-a da reserva
+  daquele deck e passa-a a candidata a venda. **PERSISTENTE** —
+  `caixas[].reserva_fora`, no config, que o `daily` não reescreve —, **com a
+  DATA e o deck** (`{nm, em}`; a forma antiga, a lista de nomes de 2026-10-01,
+  continua a valer sem data) e **REVERSÍVEL** no *«voltar a pôr»*. O inverso é a
+  acção **`devolver`** do `/api/fase-reserva` e **não um `add` disfarçado**: um
+  `add` punha a carta na lista MANUAL, que fica lá mesmo que ninguém a jogue.
+  Guarda-se o que ele TIROU e não a lista final, para a reserva continuar a
+  crescer com as listas novas sem lhe devolver o que ele já recusou — tem caso
+  que corre uma «corrida do daily» por cima. Escreve-se com o
+  `configio.escrever`, e o teste mede que o ficheiro **não cresce** (a lição do
+  commit `ac1f776`, 861 inserções por um `indent=2`).
+- **AS 16 CAIXAS, e o que mudou em cada uma.** Dissolvidas: **Enchantress**
+  (`premodern-enchantress`) e **Jeskai Control** (`pioneer-jeskai`) — as duas
+  estavam VAZIAS (0 cópias alocadas), por isso não libertaram carta nenhuma. A
+  lista padrão da Jeskai **não se apagou** (`listas_escolhidas`): é o registo de
+  uma decisão dele, com data e origem, e nada a lê sem a caixa. O
+  `premodern_arquetipos_alvo` perdeu a Enchantress. Caixas NOVAS: **Modern —
+  Affinity** (`Weapons Manufacturing`), **Engineer Welder Cam** (`Goblin Welder`
+  **e** `Sewer-veillance Cam`, no slot `legacy` que estava vazio e sem nome, hoje
+  `legacy-welder`), **Aluren** e **Artifacts Blue**. O `standard` passou a
+  chamar-se **Bant Airbend**.
+- **TRÊS DECISÕES QUE SÃO MINHAS E SE DESFAZEM NUMA LINHA**, e é melhor estarem
+  escritas do que descobertas daqui a um mês:
+  1. **as caixas novas e as duas promovidas (`standard`, `legacy-welder`) ficaram
+     `permanente` e não `candidata`.** São decks que ele disse que ficam, e um
+     `candidata` não protege as cópias que receba — deixá-las candidatas era
+     contradizer a regra da omissão. O custo é a alocação: quatro caixas
+     permanentes novas competem por cartas;
+  2. **a LISTA de três caixas NÃO se trocou pelo consenso da assinatura, só a
+     identidade.** O `modern` (UW Oswald) tem hoje *"maindeck dele por foto +
+     sideboard das 28 listas de MTGO"* e é **o deck do RC Ghent de 9-11/10**;
+     trocá-lo por um consenso de 13 listas na véspera do torneio era estragar
+     trabalho dele por uma regra que serve outra pergunta. O mesmo no
+     `premodern-stiflenought` (a lista do Luffy, que ele mandou manter), no
+     `premodern-replenish` e no `pioneer`. Para passar qualquer uma a consenso
+     basta trocar `reserva_assinatura` por `assinatura` e `fonte` por
+     `"consenso"`;
+  3. **a R5b protege TODAS as cópias de uma staple, não só as PT da era.** A
+     ordem não qualifica, e sobre-proteger só adia uma venda enquanto
+     sub-proteger perde uma carta. A curva dá a coluna «só PT da era» ao lado
+     para ele ver a diferença (37 das 41 cópias, a 10 %).
+- **MEDIDO na base de 2026-10-02** (`py -m mtgvault.cli fases --curva`; o mesmo
+  `vault.db` dos dois lados, backup em
+  `data/backups/vault-2026-10-02-decks-finais.db`). Preço de referência: modo
+  `market`, cadeia `cardtrader → cardmarket`.
+
+  | regra | cópias | cartas | valor |
+  |---|---|---|---|
+  | R1 duais (4 fora dos decks) | 33 | 10 | 21 913,64 € |
+  | R2 shocklands | 40 | 10 | 2 726,00 € |
+  | R3 fetchlands | 66 | 10 | 11 235,15 € |
+  | R4 RL que ele joga | 85 | 17 | 45 039,07 € |
+  | RD está num deck que fica | 367 | 195 | 20 287,44 € |
+  | R5 jogada nos últimos 30 dias | 402 | 154 | 13 835,42 € |
+  | R5b staple de sideboard de Premodern | 4 | 2 | 6,60 € |
+  | **protegidas (sem sobreposição)** | **997** | | **115 043,32 €** |
+  | **VENDER** | **681** | **257** | **21 126,51 €** |
+
+  Comparado com 2026-10-01 (quando eram quatro protecções e um limiar de 20 %):
+  protegidas 649 → **997**, candidatos 1 029 c/31 150,15 € → **681 c/
+  21 126,51 €**. A diferença é a R5 sem limiar (402 cópias, contra as 54 da
+  reserva de ontem) e a R1 a proteger 33 duais que antes caíam na RL.
+  Filas: Fase 2 **124 fotos / 411 cartas** em 6 decks (iguais), Fase 4 **207
+  fotos / 681 cartas**, inventário 93 fotos / 305 cópias / 96 914,19 €, fotos
+  perdidas 33 / 165 cópias / 12 637,94 €.
+- **A ALOCAÇÃO MEXEU, e era inevitável:** ele acrescentou quatro decks e
+  dissolveu dois. Medido lado a lado (um worktree em `_revisao/main-1002`, o
+  MESMO `vault.db` dos dois lados, `_scratch/comparar.py`):
+
+  | | main (15 caixas) | ramo (16 caixas) |
+  |---|---|---|
+  | `loadout.report` | 2,32 s | **1,96 s** |
+  | fechar tudo | 8 944,98 € | **14 812,56 €** |
+  | a comprar | 246 | **348** |
+  | venda (motor) | 249 c / 4 525,62 € | 115 c / 1 824,28 € |
+  | protegidas (motor) | 23 c / 2 921,62 € | 157 c / 4 989,13 € |
+  | rl_sem_historico | 101 c / 23 590,82 € | 104 c / 25 332,29 € |
+  | guardar | 2 c / 47,01 € | 11 c / 1 475,37 € |
+
+  **O DELTA DO «FECHAR TUDO» EXPLICA-SE AO CÊNTIMO**, e isso é o que faz dele uma
+  consequência e não um acidente: +5 867,58 € = as quatro caixas novas (Aluren
+  1 819,13 € · Engineer Welder Cam 2 599,71 € · Modern — Affinity 1 577,53 € ·
+  Bant Airbend 166,78 €) **menos** as duas dissolvidas (Jeskai 113,14 € ·
+  Enchantress 212,27 €) **mais** 29,84 € que o Pioneer passou a precisar. **As
+  dez caixas que ele não mandou tocar ficam IGUAIS ao cêntimo e à percentagem.**
+- **E UMA CONSEQUÊNCIA A SABER: o Pioneer — Greasefang piorou, de 17 % para
+  12 %** (62 → 66 a comprar). Não é a Jeskai a sair: é o **Bant Airbend**, que
+  tem `prioridade` 11 e por isso aloca **antes** do Greasefang (13) dentro do
+  mesmo grupo SPML, e leva foil EN que antes sobrava para ele. É o custo de ter
+  quatro decks novos no mesmo grupo; desfaz-se trocando as `prioridade`, que é
+  uma linha no config e uma decisão dele.
+- **POR FAZER, e é uma linha cada:** o **Artifacts Blue** espera a
+  carta-assinatura dele (escreve-se em `caixas[].assinatura` + `fonte:
+  "consenso"`); o **corte das staples** espera a escolha dele na curva; o
+  **Ill-Gotten Gains** e os dois de **cEDH** ficam com a reserva só manual (o
+  primeiro por ter 3 listas, os dois últimos porque o cEDH não tem metagame no
+  vault, por decisão dele de 2026-09-07).
+
 **A ARRUMAÇÃO POR FASES, E AS QUATRO PROTECÇÕES DA VENDA (André, 2026-10-01).**
+**[Os ESTADOS e o LIMIAR desta secção foram SUPERSEDED a 2026-10-02 — ver a
+secção de cima. O que fica inteiro é a estrutura das quatro fases, as filas de
+fotos, a trava do RC Ghent e a derivação das shock/fetchlands.]**
 Ele vai arrumar a colecção por FASES e ditou as regras neste dia. Motor em
 `mtgvault/fases.py`, página `arrumacao.py` → `arrumacao.html`, passo `arrumacao`
-do `daily`, CLI `py -m mtgvault.cli fases [--curva] | fases terras | fases
-decisao <slot> <montado|guardado|dissolvido>`, endpoints `/api/fase-decisao` e
+do `daily`, CLI `py -m mtgvault.cli fases [--curva] | fases terras`, endpoint
 `/api/fase-reserva`; config em `venda.congelado_ate`, `reserva` e
-`caixas[].decisao`/`reserva`/`reserva_fora`/`comandante`/`reserva_assinatura`.
+`caixas[].reserva`/`reserva_fora`/`comandante`/`reserva_assinatura`.
 Testes em `tests/test_fases.py` (24 casos) e a prova de que chumbam sem a
 funcionalidade em `tests/_provar_chumba.py` (+ `tests/_chumba_fases.py`, 10
 alvos / 16 casos). As palavras dele:

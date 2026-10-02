@@ -8,20 +8,27 @@ partilhá-los com outro teste era pôr um a mexer no ambiente do outro.
 
 Cada `alvo` é o mtgvault de ONTEM numa peça só:
 
-  terras       — a P1 desaparece: as shocklands e as fetchlands voltam a ser
+  duais        — a R1 desaparece: as duais originais voltam a ser Reserved List
+                 como as outras, e a quota das quatro fora dos decks não morde;
+  duais_quota  — a quota passa a infinita: nunca sobra uma dual para vender,
+                 que é o contrário do *"o que passar disso vende-se"*;
+  terras       — a R2/R3 desaparece: as shocklands e as fetchlands voltam a ser
                  cartas como as outras e o excedente delas vai à venda;
-  rl_joga      — a P2 desaparece: a Reserved List que ele joga deixa de estar
+  rl_joga      — a R4 desaparece: a Reserved List que ele joga deixa de estar
                  protegida e volta a depender só da regra dos 5 %;
-  decisoes     — a P3 desaparece: a decisão de cada deck deixa de ser lida
-                 (tudo conta como `dissolvido`), que é o mtgvault antes de os
-                 três estados existirem;
-  omissao      — a OMISSÃO passa a `dissolvido`. É o erro que mais dinheiro
-                 custava: um deck novo, sem decisão, punha o conteúdo à venda;
-  reservas     — a P4 desaparece: a reserva («maybe») deixa de proteger;
-  limiar       — o limiar desce a zero: a reserva apanha tudo o que alguma vez
-                 apareceu numa lista, e é o efeito perverso que a ordem nomeia;
+  estados      — a RD desaparece: o estado de cada caixa deixa de ser lido e
+                 nada do que está num deck fica protegido;
+  omissao      — a OMISSÃO deixa de proteger (uma caixa sem `estado` passa a
+                 `candidata`). É o erro que mais dinheiro custava: um deck novo
+                 punha o conteúdo à venda;
+  reservas     — a R5 desaparece: a reserva («maybe») deixa de proteger;
+  janela       — a janela da R5 passa a infinita: a reserva apanha tudo o que
+                 alguma vez apareceu numa lista, e é o efeito perverso que a
+                 ordem nomeia por outra porta;
+  staples      — a R5b desaparece: as staples de sideboard de Premodern deixam
+                 de estar protegidas;
   min_listas   — o mínimo de listas desaparece: um «consenso» de 3 listas volta
-                 a encher a reserva (33 % numa lista só passa qualquer limiar);
+                 a encher a reserva (é o Ill-Gotten Gains, que ele nomeou);
   congelado    — a trava do RC Ghent desaparece e a exportação volta a correr;
   ate4         — o tecto das 4 cartas por foto desaparece: uma foto volta a
                  levar o que lhe caia, que é o monte de 33 cartas das antigas;
@@ -42,25 +49,39 @@ alvo, caso = sys.argv[1], sys.argv[2]
 import test_fases as T                                       # noqa: E402
 from mtgvault import fases                                   # noqa: E402
 
-if alvo == "terras":
+if alvo == "duais":
+    # A R1 desaparece e as duais voltam a ser RL como as outras.
+    fases.duais = lambda con, cache=None, exigir=None: {
+        "nomes": [], "regra": "(desligada)", "n": 0,
+        "alvo_fora": fases.DUAIS_ALVO_FORA}
+elif alvo == "duais_quota":
+    fases.DUAIS_ALVO_FORA = 10 ** 6
+elif alvo == "terras":
     fases.terras_protegidas = lambda con, cache=None: {}
 elif alvo == "rl_joga":
-    fases.rl_que_joga = lambda con, res, cfg=None: {}
-elif alvo == "decisoes":
-    fases.decisoes = lambda cfg=None: {}
-    fases.DECISAO_OMISSAO = fases.DISSOLVIDO
+    fases.rl_que_joga = lambda con, res, cfg=None, cache=None: {}
+elif alvo == "estados":
+    fases.estados = lambda cfg=None: {}
+    fases.ESTADO_OMISSAO = "candidata"
 elif alvo == "omissao":
-    fases.DECISAO_OMISSAO = fases.DISSOLVIDO
-    _de = fases.decisao_de
-    fases.decisao_de = lambda c: _de(c) if c.get("decisao") else fases.DISSOLVIDO
-    fases.decisoes = lambda cfg=None: {
-        c["slot"]: fases.decisao_de(c)
-        for c in __import__("mtgvault.caixas", fromlist=["x"]).do_config(cfg)
+    # A omissão deixa de proteger: uma caixa sem `estado` passa a candidata.
+    fases.ESTADO_OMISSAO = "candidata"
+    _ca = __import__("mtgvault.caixas", fromlist=["x"])
+    fases.estado_de = lambda c: (_ca.estado_de(c) if c.get("estado")
+                                 else "candidata")
+    fases.estados = lambda cfg=None: {
+        c["slot"]: fases.estado_de(c) for c in _ca.do_config(cfg)
         if c.get("slot")}
 elif alvo == "reservas":
-    fases.reservas = lambda con, res, limiar=None, cache=None: {}
-elif alvo == "limiar":
-    fases.limiar_pct = lambda cfg=None: 0
+    fases.reservas = lambda con, res, _i=None, cache=None: {}
+elif alvo == "janela":
+    fases.janela_dias = lambda cfg=None: 10 ** 5
+elif alvo == "staples":
+    fases.staples_sideboard = lambda con, fmt=fases.STAPLES_FORMATO, corte=None, \
+        desde=None, cache=None: {"formato": fmt, "corte": 100.0, "desde": "",
+                                 "listas": 0, "com_sideboard": 0, "todas": [],
+                                 "nomes": {}, "n": 0, "provisorio": False,
+                                 "regra": "(desligada)"}
 elif alvo == "min_listas":
     fases.MIN_LISTAS_RESERVA = 1
 elif alvo == "congelado":
@@ -92,7 +113,7 @@ elif alvo == "explode":
 elif alvo == "ordem_fila":
     _fc = fases.fila_candidatos
 
-    def _sem_ordem(con, res, cfg=None, cache=None, cands=None):
+    def _sem_ordem(con, res, cfg=None, cache=None, cands=None):  # noqa: ANN001
         r = _fc(con, res, cfg, cache, cands)
         # A ordem de ontem: pelo nome, que é o que uma lista "arrumada" daria.
         r["fotos"] = sorted(r["fotos"],

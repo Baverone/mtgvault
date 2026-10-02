@@ -173,10 +173,24 @@ def caso_o_config_a_serio_ja_esta_na_forma_nova():
     assert "loadout" not in cfg
     estados = {c["slot"]: c["estado"] for c in cfg["caixas"]}
     assert set(estados.values()) <= set(caixas.ESTADOS), estados
-    assert estados["standard"] == "candidata" and estados["legacy"] == "candidata"
     # O estado fisico muda com o tempo (08/09: so o Stiflenought esta montado);
     # o que se tranca e a forma, nao o dia.
     assert estados["pauper"] in ("permanente", "montada"), estados["pauper"]
+    # OS 16 DECKS QUE FICAM (André, 02/10/2026): o `standard` e o `legacy`
+    # deixaram de ser caixas vazias à espera de deck — o Standard é agora o
+    # «Bant Airbend» e o `legacy` deu lugar a três caixas com nome. Por isso
+    # saíram de `candidata` e passaram a PROTEGER as cópias que recebam: um
+    # deck que ele disse que fica não pode mandar cartas para a venda.
+    assert len(cfg["caixas"]) == 16, len(cfg["caixas"])
+    assert "legacy" not in estados, "o slot `legacy` sem nome não devia existir"
+    for slot in ("legacy-welder", "legacy-aluren", "legacy-artifacts-blue",
+                 "modern-affinity"):
+        assert slot in estados, f"falta a caixa {slot}"
+        assert estados[slot] != "candidata", (slot, estados[slot])
+    assert estados["standard"] != "candidata", estados["standard"]
+    # E as duas que ele dissolveu saíram mesmo.
+    for slot in ("premodern-enchantress", "pioneer-jeskai"):
+        assert slot not in estados, f"a caixa {slot} devia ter saído"
     print(f"colecao_config.json: {len(cfg['caixas'])} caixas, estados {sorted(set(estados.values()))}")
 
 

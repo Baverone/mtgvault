@@ -15,9 +15,19 @@ import json
 import os
 import sys
 import tempfile
+from datetime import date, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+# A DATA DOS EVENTOS É RELATIVA A HOJE, e não `2026-09-01` escrito à mão
+# (CORRIGIDO a 2026-10-02). O `analysis.rebuild_archetypes` só olha para uma
+# JANELA de dias (`_fetch_lists`), por isso uma data fixa funciona enquanto
+# estiver dentro dela e **chumba no dia em que sai**: a 2026-10-02 o
+# `caso_analise_so_ve_o_que_conta` ficou vermelho sem ninguém lhe tocar, porque
+# 01/09 passou a ter 31 dias. Era rot de teste, não um defeito do motor — mas um
+# teste que apodrece por calendário é um teste que se deixa de ler.
+DIA = (date.today() - timedelta(days=3)).isoformat()
 
 # O config tem de estar em vigor ANTES de o sources ser importado a valer — é
 # ele que decide a regra. Escreve-se um igual ao que vai no repositório, para o
@@ -112,24 +122,24 @@ def caso_base_de_dados():
         # --- ligas nem se guardam (menos no Duel Commander) -----------------
         assert sources.store_decklist(
             con, source="mtgo", source_key="l1", fmt="modern", cards=BOLT,
-            event_name="Modern League 2026-09-01", event_date="2026-09-01",
+            event_name=f"Modern League {DIA}", event_date=DIA,
             player="a") is None, "liga de modern não se guarda"
         dc = sources.store_decklist(
             con, source="mtgo", source_key="l2", fmt="duel-commander",
             cards=[("main", "Sol Ring", 1)], event_name="Duel Commander League",
-            event_date="2026-09-01", player="b")
+            event_date=DIA, player="b")
         assert dc is not None, "liga de duel-commander guarda-se"
 
         ch = sources.store_decklist(
             con, source="mtgo", source_key="c1", fmt="modern", cards=BOLT,
-            event_name="Modern Challenge 64", event_date="2026-09-01", player="c")
+            event_name="Modern Challenge 64", event_date=DIA, player="c")
         pres_s = sources.store_decklist(
             con, source="mtgtop8", source_key="p1", fmt="modern", cards=BOLT,
-            event_name="Modern event - Torneio da Terra", event_date="2026-09-01",
+            event_name="Modern event - Torneio da Terra", event_date=DIA,
             player="d")
         pres_n = sources.store_decklist(
             con, source="mtgtop8", source_key="p2", fmt="modern", cards=BOLT,
-            event_name="Modern event - Outro Torneio", event_date="2026-09-02",
+            event_name="Modern event - Outro Torneio", event_date=DIA,
             player="e", event_players=200)
         assert _conta_por_sql(con, "modern", ch)
         assert not _conta_por_sql(con, "modern", pres_s), "presencial sem contagem"
@@ -141,7 +151,8 @@ def caso_base_de_dados():
         con.execute("""INSERT INTO decklists (source, source_key, format, event_name,
                                               event_date, player, event_tier)
                        VALUES ('mtgtop8','velha','premodern',
-                               'Premodern event - MTGO League','2026-09-01','f','Presencial')""")
+                               'Premodern event - MTGO League',?,'f','Presencial')""",
+                    (DIA,))
         con.commit()
         assert sources.backfill_event_tiers(con) == 1
         assert sources.backfill_event_tiers(con) == 0, "idempotente"
@@ -167,13 +178,14 @@ def caso_analise_so_ve_o_que_conta():
                 con, source="mtgo", source_key=f"ch{i}", fmt="modern",
                 cards=[("main", "Lightning Bolt", 4), ("main", "Lava Spike", 4),
                        ("main", "Mountain", 20)],
-                event_name="Modern Challenge 64", event_date="2026-09-01",
+                event_name="Modern Challenge 64", event_date=DIA,
                 player=f"j{i}")
         # Uma lista de liga metida à mão (a recolha já não a guardaria) com um
         # deck completamente diferente: se contasse, aparecia um 2.º arquétipo.
         con.execute("""INSERT INTO decklists (source, source_key, format, event_name,
                                               event_date, player, event_tier)
-                       VALUES ('mtgo','liga','modern','Modern League','2026-09-01','z','League')""")
+                       VALUES ('mtgo','liga','modern','Modern League',?,'z','League')""",
+                    (DIA,))
         did = con.execute("SELECT id FROM decklists WHERE source_key='liga'").fetchone()["id"]
         con.executemany("INSERT INTO decklist_cards (decklist_id, card_name, quantity, board) "
                         "VALUES (?,?,?,'main')",
