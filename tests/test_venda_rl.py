@@ -482,6 +482,74 @@ def caso_a_pagina_separa_o_que_se_vende_do_que_se_segura():
           "valorizou")
 
 
+def caso_a_receita_pergunta_se_uma_vez_por_lista_e_nao_por_carta():
+    """A receita em vigor não muda a meio de uma lista de venda.
+
+    O `_historico` ia buscá-la sozinho a cada chamada e o `receita_em_vigor`
+    AGREGA a `price_latest` da fonte. A chave primária é `(scryfall_id, source,
+    finish)`, por isso o `source` não é prefixo de índice nenhum e aquilo era um
+    `SCAN` da tabela inteira — por carta.
+
+    MEDIDO na base do André a 2026-10-02 (86 782 linhas na `price_latest`):
+    **46 chamadas por `loadout.report`, 0,87 s dos 1,68 s — 52 % do relatório**,
+    ~4 milhões de linhas lidas para responder 46 vezes à mesma pergunta. Com o
+    índice `ix_price_latest_fonte` e esta memória, 1 chamada e **0,83 s** — e os
+    nove resultados da venda, as 17 caixas e o «fechar tudo» iguais ao cêntimo.
+
+    Aqui conta-se o que é determinista (as CHAMADAS), nunca os segundos.
+    """
+    from mtgvault import precos
+    cfg()
+    con = base()
+    deck_vazio(con)
+    # Três cartas da Reserved List em excedente: três idas ao histórico.
+    for nm in ("Gilded Drake", "Null Rod", "Grim Monolith"):
+        add(con, nm, 6)
+        cota(con, nm, dia(95), 10.0)
+        cota(con, nm, HOJE.isoformat(), 11.0)
+
+    n = {"chamadas": 0}
+    orig = precos.receita_em_vigor
+
+    def contado(c, qual_fonte=None):
+        n["chamadas"] += 1
+        return orig(c, qual_fonte)
+
+    precos.receita_em_vigor = contado
+    try:
+        rep = loadout.report(con, [slot_legacy()])
+    finally:
+        precos.receita_em_vigor = orig
+
+    rl = len({r["nm"] for r in rep["venda_rl"] + rep["rl_segurar"]
+              + rep["rl_sem_historico"]})
+    assert rl >= 3, rep["venda_rl"]
+    assert n["chamadas"] <= 2, (
+        f"{n['chamadas']} perguntas pela receita em vigor para {rl} cartas de "
+        "RL — é uma varredura da `price_latest` por carta")
+    print(f"a receita em vigor pergunta-se {n['chamadas']}x para {rl} cartas "
+          "de RL, e não uma vez por carta")
+
+
+def caso_a_receita_em_vigor_nao_varre_a_price_latest():
+    """`EXPLAIN QUERY PLAN` sem `SCAN price_latest`.
+
+    A mesma trava do `precos.sql_impressao` e do `scryfall.frente_de_dupla_face`:
+    um plano que se degrada não dá erro nenhum, dá um relatório que demora o
+    dobro. Quem o garante é o índice `ix_price_latest_fonte(source, date)`.
+    """
+    con = base()
+    plano = [r[3] for r in con.execute(
+        "EXPLAIN QUERY PLAN "
+        "SELECT receita, COUNT(*) n FROM price_latest WHERE source = ? "
+        "AND date = (SELECT MAX(date) FROM price_latest WHERE source = ?) "
+        "GROUP BY receita ORDER BY n DESC LIMIT 1", ("cardmarket", "cardmarket"))]
+    assert not any(p.startswith("SCAN price_latest") for p in plano), plano
+    assert any("ix_price_latest_fonte" in p for p in plano), plano
+    print("a receita em vigor entra pelo índice:",
+          next(p for p in plano if "ix_price_latest_fonte" in p))
+
+
 def caso_a_poda_nao_corre_com_o_catalogo_por_sincronizar():
     """Sem catálogo não se poda NADA — apagar histórico não se desfaz.
 
@@ -595,6 +663,8 @@ def run():
                caso_os_dois_numeros_sao_do_config,
                caso_nada_sai_da_base_e_nada_se_conta_duas_vezes,
                caso_a_poda_diaria_nao_pode_matar_a_regra,
+               caso_a_receita_pergunta_se_uma_vez_por_lista_e_nao_por_carta,
+               caso_a_receita_em_vigor_nao_varre_a_price_latest,
                caso_a_poda_nao_corre_com_o_catalogo_por_sincronizar,
                caso_o_estado_da_copia_nao_pode_fazer_a_rl_parecer_que_desceu,
                caso_a_pagina_separa_o_que_se_vende_do_que_se_segura):

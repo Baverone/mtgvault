@@ -80,8 +80,8 @@
    "ordem": 18,
    "risco": "alto",
    "porque": "o job diario; podas que APAGAM linhas",
-   "estado": "por rever",
-   "notas": ""
+   "estado": "revisto",
+   "notas": "a poda corrigida; _step engole por desenho e regista em job_runs"
   },
   {
    "ficheiro": "classify.py",
@@ -143,8 +143,8 @@
    "ordem": 25,
    "risco": "alto",
    "porque": "store_decklist, o filtro que decide o que conta",
-   "estado": "por rever",
-   "notas": ""
+   "estado": "revisto",
+   "notas": "config ilegivel deixou de ser silencioso; store_decklist e o filtro lidos"
   },
   {
    "ficheiro": "mtgvault/cli.py",

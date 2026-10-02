@@ -3360,8 +3360,19 @@ def avaliar_rl(con, linha: dict, hoje: str | None = None,
     fin = linha.get("price_finish") or linha["finish"]
     chave = (linha["nm"], "foil" if e_foil(fin) else "nonfoil")
     cache = {} if cache is None else cache
+    # A RECEITA EM VIGOR PERGUNTA-SE UMA VEZ POR LISTA, não uma por carta.
+    # O `_historico` ia buscá-la sozinho a cada chamada, e o `receita_em_vigor`
+    # agrega a `price_latest` da fonte: medido na base dele a 2026-10-02, **46
+    # chamadas por `loadout.report` e 0,87 s dos 1,68 s — 52 % do relatório**,
+    # para responder 46 vezes a uma pergunta cuja resposta não pode mudar a
+    # meio de uma lista de venda. Vive no `cache` que já atravessa o
+    # `sell_list` (o mesmo padrão do `foil_cache`), e por isso não há cache
+    # nenhuma para invalidar: morre com o relatório.
+    if "_receita" not in cache:
+        cache["_receita"] = precos.receita_em_vigor(con, precos.fonte())
     if chave not in cache:
-        cache[chave] = _historico(con, linha["nm"], fin)
+        cache[chave] = _historico(con, linha["nm"], fin,
+                                  receita=cache["_receita"])
     rows = cache[chave]
     # AS DUAS PONTAS TÊM DE MEDIR A MESMA COISA. O preço de hoje passou a ser o
     # da IMPRESSÃO dela (2026-09-25); o `_cotacao_em` faz `min` sobre as
