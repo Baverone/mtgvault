@@ -245,20 +245,45 @@ def _prune_prices(con, keep_days: int = 30):
     """
     fundo = max(keep_days,
                 loadout.rl_janela_dias() + loadout.rl_tolerancia_dias() + 7)
+    # NÃO SE DECIDE SOBRE UMA CARTA QUE O CATÁLOGO NÃO CONHECE (2026-10-02).
+    # A excepção da RL é um `NOT EXISTS (… reserved = 1)`, e num catálogo VAZIO
+    # esse `NOT EXISTS` é verdadeiro para toda a gente: a poda levava o histórico
+    # inteiro da Reserved List e a regra dos 5 % ficava sem memória, para sempre
+    # e sem um único erro. Não é hipotético — o `catalogo` é o primeiro passo do
+    # `daily`, o `_step` ENGOLE o que ele levante (de propósito: *"é preferível
+    # ficar sem uma peça do que perder o resto da recolha"*) e isto corre na
+    # mesma, 260 linhas abaixo; na cloud o `catalog.db` reconstrói-se de um bulk
+    # de 77 MB a cada corrida, e uma falha de rede nesse download era isto.
+    #
+    # O guarda NÃO é «o catálogo é grande» — uma base de teste tem trinta cartas
+    # e é um catálogo legítimo. É o `EXISTS` ao lado: só se apaga uma linha por
+    # «não é RL» quando o catálogo CONHECE a carta e diz que não é. O que ele
+    # não conhece fica, e di-lo. (O ramo do `fundo` não mexe: passados
+    # `fundo` dias apaga-se na mesma, RL incluída — é o desenho de 2026-09-08.)
+    conhecida = ("EXISTS (SELECT 1 FROM cards c "
+                 "WHERE c.scryfall_id = price_history.scryfall_id)")
+    guardadas = con.execute(
+        f"""SELECT COUNT(*) n FROM price_history
+             WHERE date < date('now', ?) AND date >= date('now', ?)
+               AND NOT {conhecida}""",
+        (f"-{keep_days} days", f"-{fundo} days")).fetchone()["n"]
     n = con.execute(
-        """DELETE FROM price_history
+        f"""DELETE FROM price_history
             WHERE date < date('now', ?)
               AND (date < date('now', ?)
-                   OR NOT EXISTS (SELECT 1 FROM cards c
-                                   WHERE c.scryfall_id = price_history.scryfall_id
-                                     AND c.reserved = 1))""",
+                   OR ({conhecida}
+                       AND NOT EXISTS (SELECT 1 FROM cards c
+                                        WHERE c.scryfall_id = price_history.scryfall_id
+                                          AND c.reserved = 1)))""",
         (f"-{keep_days} days", f"-{fundo} days")).rowcount
     m = _prune_marketplace(con)
     con.commit()
     return (f"{n} preços >{keep_days}d apagados "
             f"(Reserved List guarda-se {fundo}d, p/ a regra dos "
             f"{loadout.rl_subida_minima():.0f}%)"
-            + (f"; {m} do marketplace sem consumidor" if m else ""))
+            + (f"; {m} do marketplace sem consumidor" if m else "")
+            + (f"; {guardadas} guardadas por o catálogo não conhecer a carta "
+               f"(catálogo por sincronizar?)" if guardadas else ""))
 
 
 def _prune_marketplace(con) -> int:
@@ -276,11 +301,15 @@ def _prune_marketplace(con) -> int:
     que fica inteiro; o histórico só serve a regra dos 5 % da RL e as colunas
     *há 1 mês* de cartas dele. Guardam-se essas, apagam-se as outras.
     """
+    # O mesmo `EXISTS` do `_prune_prices`, e pela mesma razão: com o catálogo
+    # por carregar, «não é Reserved List» é verdade sobre toda a gente.
     return con.execute(
         """DELETE FROM price_history
             WHERE receita = ?
               AND NOT EXISTS (SELECT 1 FROM copies cp
                                WHERE cp.scryfall_id = price_history.scryfall_id)
+              AND EXISTS (SELECT 1 FROM cards c
+                           WHERE c.scryfall_id = price_history.scryfall_id)
               AND NOT EXISTS (SELECT 1 FROM cards c
                                WHERE c.scryfall_id = price_history.scryfall_id
                                  AND c.reserved = 1)""",

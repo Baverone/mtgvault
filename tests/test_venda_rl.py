@@ -482,6 +482,42 @@ def caso_a_pagina_separa_o_que_se_vende_do_que_se_segura():
           "valorizou")
 
 
+def caso_a_poda_nao_corre_com_o_catalogo_por_sincronizar():
+    """Sem catálogo não se poda NADA — apagar histórico não se desfaz.
+
+    A excepção da Reserved List é `NOT EXISTS (… AND c.reserved = 1)`, e com o
+    `catalog.cards` VAZIO esse `NOT EXISTS` é verdadeiro para toda a gente: a
+    poda levava o histórico inteiro da RL com mais de 30 dias e a regra dos 5 %
+    ficava sem memória, **para sempre**.
+
+    E não é hipotético. O `catalogo` é o primeiro passo do `daily`, o `_step`
+    **engole** o que ele levante (é o desenho: *"é preferível ficar sem uma peça
+    do que perder o resto da recolha"*) e a poda corre na mesma, 260 linhas
+    abaixo. Na cloud o `catalog.db` não vem no clone e reconstrói-se do bulk de
+    77 MB a cada corrida — uma falha de rede nesse download era isto.
+
+    A guarda é a mesma distinção do `fases.verificar`: um catálogo PEQUENO (os
+    trinta cartões de um teste) não é o mesmo que um catálogo por sincronizar,
+    e quem os separa é o TAMANHO.
+    """
+    import daily
+    cfg(rl_janela_dias=90, rl_tolerancia_dias=10)
+    con = base()
+    cota(con, "Gilded Drake", dia(95), 10.0)
+    cota(con, "Sol Ring", dia(95), 10.0)
+    antes = con.execute("SELECT COUNT(*) n FROM price_history").fetchone()["n"]
+    con.execute("DELETE FROM catalog.cards")          # o catálogo não carregou
+    con.commit()
+
+    detalhe = daily._prune_prices(con, 30)
+    depois = con.execute("SELECT COUNT(*) n FROM price_history").fetchone()["n"]
+    assert depois == antes, (
+        f"a poda apagou {antes - depois} linhas com o catálogo vazio — entre "
+        "elas o histórico da Reserved List, que não se reconstrói")
+    assert "catálogo" in detalhe, detalhe
+    print("com o catálogo por sincronizar a poda não apaga nada, e diz porquê")
+
+
 def estado_das_copias(con, nm, grade):
     """Põe todas as cópias desta carta num escalão, como se ele as tivesse
     avaliado pela foto. É o que o `estado.registar` faz à cópia."""
@@ -559,6 +595,7 @@ def run():
                caso_os_dois_numeros_sao_do_config,
                caso_nada_sai_da_base_e_nada_se_conta_duas_vezes,
                caso_a_poda_diaria_nao_pode_matar_a_regra,
+               caso_a_poda_nao_corre_com_o_catalogo_por_sincronizar,
                caso_o_estado_da_copia_nao_pode_fazer_a_rl_parecer_que_desceu,
                caso_a_pagina_separa_o_que_se_vende_do_que_se_segura):
         fn()

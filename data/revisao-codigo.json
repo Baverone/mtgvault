@@ -917,8 +917,8 @@
    "ordem": 95,
    "risco": "teste",
    "porque": "",
-   "estado": "por rever",
-   "notas": ""
+   "estado": "revisto",
+   "notas": "caso novo: o estado nao mexe na percentagem"
   },
   {
    "ficheiro": "tests/test_padrao_reserva.py",
