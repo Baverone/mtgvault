@@ -217,6 +217,7 @@ const maisHTML = (chave, resto) => !resto ? '' :
 let grelhaN = 0;                        /* reposto a zero em cada `render()` */
 const GRELHAS_ABERTAS = new Set();
 const MAX_TILES = 60;                   /* por grelha (ou por lista de cores) */
+const MAX_FILA = 25;                    /* fotos listadas na fila de «à espera» */
 
 /* Por COR, como o binder (o passo 1, a revalidação): um cabeçalho e uma
    grelha por cor. `f` transforma cada linha num `t`. */
@@ -315,6 +316,19 @@ function renderResumo() {
   if (ir_) h += chip(r.nmont, 'ir buscar a outra caixa', 'var(--ob)', 'todas');
   $('#resumo').innerHTML =
     `<span class="rsl">${h}</span>`
+    /* A LINHA HONESTA (André, 2026-10-02): *«X de 1 678 cartas confirmadas por
+       foto»*, no cabeçalho, em TODAS as páginas. Vem pronta do Python
+       (`confirmado.frase`) — a página não a compõe, pela razão do `e_foil`. */
+    /* «nas caixas» à frente, e não é cosmética: este número conta as cópias que
+       a ALOCAÇÃO deu às caixas (782), e o do Início conta a colecção inteira
+       (1 678). São duas perguntas; sem o rótulo eram dois números a dizer-se a
+       mesma coisa, que é o defeito que o `metades` existe para não ter. */
+    + (r.fmanda && r.frase_foto
+       ? `<span class="dim rsd">📷 nas caixas: ${esc(r.frase_foto)}`
+         + (r.por_confirmar ? ` — faltam ${r.por_confirmar} por fotografar` : '')
+         + (r.conflitos ? ` · <b style="color:var(--warn)">${r.conflitos} `
+            + `conflito${r.conflitos === 1 ? '' : 's'} de alocação dupla</b>` : '')
+         + `</span>` : '')
     + `<span class="dim rsd">${D.caixas.length} caixas — ${r.permanentes} `
     + `permanentes, ${r.candidatos} candidatas · dados de ${esc(D.gerado)}`
     + (D.editable ? ' · <b style="color:var(--add)">modo edição</b>' : '')
@@ -430,7 +444,13 @@ function _filaDeAbas() {
   const daCaixa = c => [c.slot,
     `<i class="pin ${c.montado ? 'done' : c.vazio ? 'low' : pin(c.pct)}"></i>`,
     c.nome,
-    (c.vazio ? 'sem deck escolhido' : `${c.pct}% · ${c.tenho}/${c.precisa}`),
+    /* AS DUAS METADES no índice também (2026-10-02): com a foto a mandar, o
+       `pct` é o confirmado, e sem a outra metade ao lado a fila ficava a dizer
+       «0 %» em seis decks que estão montados na estante. */
+    (c.vazio ? 'sem deck escolhido'
+     : `${c.pct}% · ${c.tenho}/${c.precisa}`
+       + (c.fmanda && c.tenho_fisico != null && c.tenho_fisico !== c.tenho
+          ? ` · ${c.tenho_fisico} na gaveta` : '')),
     (c.permanente ? '' : ' cand')];
   const montadas = D.caixas.filter(c => c.montado).map(daCaixa);
   const faltam = D.caixas.filter(c => !c.montado).map(daCaixa);
@@ -759,16 +779,27 @@ function fotosSiteHTML(fotos, comOrigem) {
   const S = (D.revalidacao || {}).site || {};
   if (!fotos || !fotos.length) return '';
   const min = Math.round((S.espera_s || 120) / 60);
+  /* O TECTO DA LISTA (2026-10-02): na campanha da colecção inteira ele larga
+     centenas de fotos de uma vez, e uma lista de 300 `<li>` num telemóvel é uma
+     página que não se usa. Mostram-se as primeiras `MAX_FILA` e diz-se quantas
+     faltam — a MESMA disciplina do `MAX_TILES` das grelhas. O número total
+     continua no cabeçalho, que é o que ele quer saber. */
+  const mostra = fotos.slice(0, MAX_FILA);
+  const sobram = fotos.length - mostra.length;
   return `<div class="fsite"><div class="flh">${ico('revalidacao')} Fotos enviadas, à espera`
     + `<span class="dim">${cop(fotos.length)}</span></div>`
     + `<p class="nota">Estão em <code>pendentes\\</code>, à espera da corrida das 02:30 `
     + `ou de <b>⚡ Processar agora</b>. A tarefa (<code>mtg-fotos-novas</code>) só pega numa `
     + `foto com mais de ${min} min; o Claude local lê-a e liga-a à cópia — demora uns minutos. `
-    + `Recarrega depois: a cópia passa a ✓ validada.</p><ul class="fsl">`
-    + fotos.map(f => `<li><code>${esc(f.nome)}</code> <span class="dim">${kbs(f.bytes)} · `
+    + `Recarrega depois: a cópia passa a ✓ validada.`
+    + (sobram > 0 ? ` A corrida leva-as por LOTES: processa as que couberem no `
+      + `tempo e as outras ficam para a corrida seguinte, sem se perderem.` : '')
+    + `</p><ul class="fsl">`
+    + mostra.map(f => `<li><code>${esc(f.nome)}</code> <span class="dim">${kbs(f.bytes)} · `
       + `${esc((f.em || '').slice(11, 16))}${comOrigem ? ' · ' + esc(origemFoto(f.origem)) : ''}`
       + `${f.origem && f.origem.copy_id ? ' · cópia #' + f.origem.copy_id : ''}`
       + `${f.pronta ? '' : ' · <i>a chegar (menos de ' + min + ' min)</i>'}</span></li>`).join('')
+    + (sobram > 0 ? `<li class="dim">… e mais ${sobram} na fila</li>` : '')
     + `</ul>` + processarHTML(S) + `</div>`;
 }
 
@@ -2046,6 +2077,27 @@ async function processarAgora(btn) {
   } catch (e) { btn.disabled = false; erro('Não deu: ' + e.message); }
 }
 
+/* AS DUAS METADES DE UMA CAIXA (André, 2026-10-02: *"se não tiver foto, não tem
+   carta"*). A linha honesta, com a de cima a dizer o que a DECISÃO usa e a de
+   baixo o que está fisicamente na gaveta:
+
+     «17 de 75 confirmadas por foto · 75 na gaveta — faltam 58 fotos»
+
+   Com a regra desligada (`c.fmanda` falso) não se escreve nada: uma frase a
+   prometer uma regra que não está ligada é pior do que frase nenhuma, e é a
+   mesma decisão do `confirmado.frase` do lado do Python. */
+function metadesHTML(c) {
+  if (!c.fmanda) return '';
+  const f = c.fotografar || 0;
+  return `<div class="metades">`
+    + `<span class="mconf">${c.tenho} de ${c.precisa} confirmadas por foto</span>`
+    + (c.tenho_fisico == null || c.tenho_fisico === c.tenho ? ''
+       : ` <span class="dim">· ${c.tenho_fisico} na gaveta`
+         + (f ? ` — faltam ${f} ${f === 1 ? 'foto' : 'fotos'}` : '')
+         + `</span>`)
+    + `</div>`;
+}
+
 function caixaHTML(c, compacta) {
   if (c.vazio) {
     return `<div class="box"><div class="btop"><span class="btit">${fotoThumbHTML(c)}`
@@ -2063,6 +2115,11 @@ function caixaHTML(c, compacta) {
     + `<b>${esc(c.nome)}</b></span>`
     + `<span class="pct" style="color:${cor(c.pct)}">${c.pct}%</span></div>`
     + `<div class="bar"><i style="width:${Math.max(c.pct, 2)}%;background:${cor(c.pct)}"></i></div>`
+    /* A FOTO É A VERDADE (André, 2026-10-02). A percentagem passou a ser a
+       CONFIRMADA POR FOTO, e sozinha ela mente por omissão: um deck sleevado e
+       completo mostrava 0 %. Por isso a barra leva SEMPRE a outra metade ao
+       lado — nunca só uma (regra de apresentação dele). */
+    + metadesHTML(c)
     + `<div class="badges">${badges(c)}</div>`
     /* A FOTO DA DECKBOX (2026-09-21), maior, só na aba da caixa — no cartão
        compacto da fila fica a miniatura ao lado do nome. */

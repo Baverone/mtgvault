@@ -19,6 +19,16 @@
  .chip{background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:12px;color:var(--muted)}
  .chip b{color:var(--ink)}
  .chip.gold{border-color:var(--accent-line);background:var(--accent-soft);color:var(--accent)}
+ /* A FOTO É A VERDADE (2026-10-02): o bloco que abre a página. */
+ .chip.warn{border-color:var(--warn);color:var(--warn)}
+ section.foto{border:1px solid var(--accent-line);background:var(--card2);border-radius:var(--r);padding:2px 15px 14px;margin:0 0 20px}
+ section.foto h2{margin-top:16px}
+ .tb{width:100%;border-collapse:collapse;font-size:12.5px;margin:0 0 6px}
+ .tb th{text-align:left;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding:4px 8px 6px 0;border-bottom:1px solid var(--line)}
+ .tb td{padding:5px 8px 5px 0;border-bottom:1px solid var(--line)}
+ .tb .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+ .cfl{list-style:none;padding:0;margin:8px 0 0;display:grid;gap:10px}
+ .cfl li{font-size:12.5px;line-height:1.6;border-left:3px solid var(--warn);padding:2px 0 2px 10px}
  h2{font-size:15px;margin:24px 0 4px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
  h2 .n{color:var(--muted);font-size:12px;font-weight:500}
  .sub{color:var(--muted);font-size:12.5px;line-height:1.6;margin:0 0 14px}
@@ -499,11 +509,57 @@ function deckHTML(d) {
     + `<p class="lib"><span class="dm">${escDados(d.texto_estado || '')}</span></p>`
     + reservaHTML(d) + `</div>`;
 }
+/* A FOTO É A VERDADE (André, 2026-10-02). O bloco que abre a página: a linha
+   honesta, as duas metades por deck e em euros, e os conflitos de alocação
+   dupla. É o que ele vai olhar todos os dias enquanto fotografa — e por isso
+   vem ANTES da Fase 1, não dentro de um `<details>`. */
+function fotoVerdadeHTML() {
+  const f = D.foto;
+  if (!f || !f.manda) return '';
+  const t = f.total, c = f.conflitos || [];
+  const lin = (g) => `<tr><td>${escDados(g.nome)}</td>`
+    + `<td class="n"><b>${g.cartas.confirmado}</b> de ${g.cartas.total}</td>`
+    + `<td class="n">${g.cartas.pct} %</td>`
+    + `<td class="n dim">${escDados(g.valor.texto_por_confirmar)}</td></tr>`;
+  return `<section class="foto"><h2>📷 A foto é a verdade `
+    + `<span class="n">${escDados(t.cartas.frase)}</span></h2>`
+    + `<p class="sub">Desde <b>2 de outubro de 2026</b>: <b>se não tiver foto, `
+    + `não tem carta</b>. Uma cópia só conta para as decisões — o que falta a um `
+    + `deck, o que há para comprar, o que vai para venda — quando tem foto desta `
+    + `campanha, e a <b>pasta onde largas a foto decide a que deck a carta `
+    + `pertence</b>. <b>Nada se apaga:</b> as cópias sem foto continuam na base e `
+    + `continuam a valer — «sem foto» quer dizer «ainda não conta», nunca «não `
+    + `existe».</p>`
+    + `<div class="chips">`
+    + `<span class="chip gold"><b>${t.cartas.confirmado}</b> confirmadas `
+    + `(${escDados(t.valor.texto_confirmado)})</span>`
+    + `<span class="chip warn"><b>${t.cartas.por_confirmar}</b> por confirmar `
+    + `(${escDados(t.valor.texto_por_confirmar)})</span>`
+    + `<span class="chip"><b>${t.cartas.pct} %</b> do total</span></div>`
+    + `<table class="tb"><thead><tr><th>onde</th><th class="n">confirmadas`
+    + `</th><th class="n">%</th><th class="n">falta em valor</th></tr></thead>`
+    + `<tbody>${(f.grupos || []).map(lin).join('')}</tbody></table>`
+    + (c.length ? `<h3>⚠ ${c.length} conflito${c.length === 1 ? '' : 's'} de `
+        + `alocação dupla</h3>`
+        + `<p class="sub">A mesma linha da coleção está em dois decks. `
+        + `<b>Não se resolvem por iniciativa própria</b> — resolve-os ao `
+        + `fotografar esses decks: a foto de cada pasta diz de quem é cada `
+        + `carta.</p><ul class="cfl">`
+        + c.map(x => `<li><b>${escDados(x.nm)}</b> <span class="dim">(${escDados(x.set)} `
+            + `${escDados(x.lang)} ${escDados(x.finish)}, cópia ${x.copy_id}, ${x.q}×)`
+            + `</span><br>${x.decks.map((d, i) => escDados(d) + ' = '
+                + Object.values(x.quantidades)[i]).join(' · ')}`
+            + `<br><span class="dim">${escDados(x.motivo)}</span></li>`).join('')
+        + `</ul>` : '')
+    + `</section>`;
+}
+
 function fase1() {
   const ds = D.decks || [];
   const prot = ds.filter(d => d.protege).length;
   const semass = ds.filter(d => !d.assinatura).length;
-  return `<h2>Fase 1 · Os decks que ficam <span class="n">${ds.length} decks`
+  return fotoVerdadeHTML()
+    + `<h2>Fase 1 · Os decks que ficam <span class="n">${ds.length} decks`
     + `</span></h2>`
     + `<p class="sub">A identidade de cada deck é uma <b>carta-assinatura</b>, `
     + `nunca a etiqueta do clustering — é por ela que saem as listas do último `

@@ -87,6 +87,11 @@
    overflow:hidden;margin:9px 0}
  .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:999px;
    transition:width .3s}
+ /* AS DUAS METADES (2026-10-02): a linha honesta debaixo da barra de cada
+    caixa. A metade confirmada em texto normal, a física em `dim` — a hierarquia
+    diz qual é que manda na decisão sem esconder a outra. */
+ .metades{font-size:12px;margin:-4px 0 6px;line-height:1.45}
+ .metades .mconf{font-weight:700}
  .badges{display:flex;align-items:flex-start;gap:6px;flex-wrap:wrap;margin:8px 0}
  /* `white-space:normal` de propósito: com `nowrap`, a etiqueta das fontes
     ("fontes: Colecção + Caixa RL (PT)") transbordava o cartão no desktop em vez
@@ -948,7 +953,7 @@ botões, corre <code>python webapp.py</code> no PC (porto 8771) — e aí a aba
 <b>Plano</b> dá-te um QR para abrires isto no telemóvel, à frente da estante.
 Atualiza diariamente.</div></details></div></footer></div></div>
 
-<script src="deckboxes.js?v=d95250681be9"></script><script>
+<script src="deckboxes.js?v=6682f725d418"></script><script>
 (function(){
   var b = document.body, side = document.getElementById('side'),
       bt = document.getElementById('menub'), veu = document.getElementById('veu');
