@@ -6,7 +6,7 @@ As copias da MESMA carta vao sempre juntas (4x Mox Opal = 1 foto).
 Cada carta tem de estar a vista e poder avaliar-se.
 
 *** ESTE DECK FICA PARA DEPOIS ***
-Fica para depois: estas caixas são do mesmo grupo de formato, com tecto de playset contado sobre o grupo — partilham o mesmo conjunto de cartas e montam-se por conversão de uma noutra. Primeiro os decks de lista única.
+Fica para depois: estas caixas são do mesmo grupo de formato e ordenam-se por % completo — partilham o mesmo conjunto de cartas e montam-se por conversão de uma noutra. Primeiro os decks de lista única.
 
 ONDE LARGAR AS FOTOS: NESTA PASTA.
   O vault reconhece a pasta como este deck (alvo: premodern-stiflenought) e trata
