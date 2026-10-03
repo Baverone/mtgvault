@@ -819,6 +819,9 @@ def _tmpl() -> str:
     rodape = _RODAPE.replace(
         "%SOBRA%", ", e é o que não for reservado por uma sugestão que vai "
                    "para a venda" if venda.mostrar() else "")
+    # A JANELA DO CONSENSO (2026-10-03) vem do config por uma função partilhada —
+    # ver `sources.frase_janela_rodape`. Vazia, não acrescenta nada.
+    rodape += sources.frase_janela_rodape()
     return ("""<!doctype html><html lang="pt-PT"><head>"""
             + shell.head("Metagame", _CSS) + """</head><body>"""
             + shell.abrir("metagame.html", "Metagame", _LEAD) + """

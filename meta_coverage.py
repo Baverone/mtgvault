@@ -829,7 +829,7 @@ def build_html(rep, today, partes=None):
     # Com os dados à parte, `PRINT`/`WANT` ficam a `null` e o JavaScript vai
     # buscá-los a `data/paginas/cobertura/{prints,want}.json`.
     a_parte = partes is not None
-    return (_TMPL
+    return (_tmpl()
             .replace("%TEMA_DADOS%", paginas.CSS_DADOS)
             .replace("%JS_DADOS%", paginas.JS_DADOS)
             .replace("%IDX%", idx)
@@ -900,9 +900,17 @@ _RODAPE = ("<b>% completo</b> = cartas do núcleo (mainboard + sideboard de "
            "baixo). «Específicas» de um deck = as que mais nenhum deck mostrado "
            "precisa; as partilhadas estão nos staples do topo. Podes escolher a "
            "edição de cada carta no seletor — a escolha fica guardada neste "
-           "dispositivo.")
+           "dispositivo.%JANELA%")
 
-_TMPL = ("""<!doctype html><html lang="pt-PT"><head>"""
+def _tmpl() -> str:
+    """O molde é uma FUNÇÃO e não uma constante de módulo (a decisão de
+    2026-09-25, aplicada aqui a 2026-10-03): o rodapé passou a dizer a JANELA DO
+    CONSENSO, que sai do config, e uma constante ficava com a resposta que o
+    config deu a quem importasse o ficheiro primeiro."""
+    return _TMPL_BASE.replace("%JANELA%", sources.frase_janela_rodape())
+
+
+_TMPL_BASE = ("""<!doctype html><html lang="pt-PT"><head>"""
          + shell.head("Cobertura do metagame", _CSS) + """</head><body>"""
          + shell.abrir("cobertura.html", "Cobertura do metagame", _LEAD) + """
 <div class="wrap">

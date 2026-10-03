@@ -1342,7 +1342,12 @@ def _cards_from_consensus(con, fmt: str, assinatura: list[str],
         return [], "sem assinatura configurada"
     ids = sources.ids_por_assinatura(con, fmt, assinatura, todas=todas, sem=sem)
     if len(ids) < stock_min_lists():
-        return [], f"só {len(ids)} listas contam — poucas para consenso"
+        # «Amostra insuficiente», nas MESMAS palavras do resto do vault
+        # (`sources.texto_amostra`, 2026-10-03) e com a janela do consenso ao
+        # lado quando há uma: desde que a janela entrou, a razão mais provável
+        # para uma caixa ter poucas listas é o corte, e dizer só *"só 2 listas
+        # contam"* mandava-o procurar o porquê.
+        return [], sources.texto_amostra(len(ids), stock_min_lists(), fmt)
     ph = ",".join("?" * len(ids))
     main: dict[int, dict[str, int]] = defaultdict(dict)
     side: dict[int, dict[str, int]] = defaultdict(dict)

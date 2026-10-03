@@ -370,6 +370,22 @@ for alvo, casos in (
         print(f"  {'ok  ' if ok else 'FAIL'} chumba sem «{alvo}» "
               f"({caso}): {motivo[-1][:90] if motivo else ''}")
 
+# ---------------------------------------------------------------------------
+# A JANELA DO CONSENSO (André, 2026-10-03: *"faz a pesquisa de decks só a partir
+# do dia que reality fracture ficou disponível"*). Tem o seu próprio provador,
+# porque são 16 pares e cada um precisa de um processo — ver `_provar_janela.py`.
+# ---------------------------------------------------------------------------
+p = subprocess.run([sys.executable, str(AQUI / "_provar_janela.py")],
+                   capture_output=True, text=True, encoding="utf-8",
+                   errors="replace", cwd=AQUI)
+bom &= p.returncode == 0
+for linha in (p.stdout or "").strip().splitlines():
+    if linha.strip().startswith("[MAU") or linha.strip().startswith("[bom"):
+        print("  " + linha.strip().replace("[bom ]", "ok  chumba sem")
+                                  .replace("[MAU ]", "FAIL passou sem"))
+print(f"  {'ok  ' if p.returncode == 0 else 'FAIL'} janela do consenso: "
+      f"{(p.stdout or '').strip().splitlines()[-1] if p.stdout else p.stderr}")
+
 print("TODOS OS CASOS CHUMBAM SEM A FUNCIONALIDADE" if bom
       else "HA CASOS QUE PASSAM SEM A FUNCIONALIDADE")
 sys.exit(0 if bom else 1)

@@ -383,7 +383,7 @@ def build(con, out_path=None):
                    f'<p class="carregando">A carregar {html.escape(lbl)}…</p></section>')
 
     paginas.escrever_dados(out, "showcase", indice, partes)
-    out.write_text(_TMPL
+    out.write_text(_tmpl()
                    .replace("%TEMA_DADOS%", paginas.CSS_DADOS)
                    .replace("%JS_DADOS%", paginas.JS_DADOS)
                    .replace("%TABS%", tabs)
@@ -458,9 +458,19 @@ _LEAD = ("Os eventos competitivos recentes de cada formato — <b>🌐 Showcase 
 
 _RODAPE = ("Agrupamento por Jaccard ≥ 0.5 das cartas não-básicas do main. "
            "Presencial 🏆 tem classificação real (fica líder); o MTGO 🌐 não dá "
-           "placement (fica atrás). Janela de 21 dias. Atualiza diariamente.")
+           "placement (fica atrás). Janela de 21 dias. Atualiza diariamente."
+           "%JANELA%")
 
-_TMPL = ("""<!doctype html><html lang="pt-PT"><head>"""
+
+def _tmpl() -> str:
+    """O molde é uma FUNÇÃO (a decisão de 2026-09-25, aplicada aqui a
+    2026-10-03): o rodapé passou a dizer a JANELA DO CONSENSO, que vem do
+    config, e uma constante de módulo ficava com a resposta que o config deu a
+    quem importasse o ficheiro primeiro."""
+    return _TMPL_BASE.replace("%JANELA%", sources.frase_janela_rodape())
+
+
+_TMPL_BASE = ("""<!doctype html><html lang="pt-PT"><head>"""
          + shell.head("Showcase Challenger", _CSS) + """</head><body>"""
          + shell.abrir("showcase.html", "Showcase Challenger", _LEAD,
                        '<div class="seg" role="tablist" '

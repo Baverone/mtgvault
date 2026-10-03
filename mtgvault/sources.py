@@ -487,16 +487,27 @@ def _campo(row, chave):
         return None
 
 
-def lista_conta(row, fmt: str | None = None) -> bool:
+def lista_conta(row, fmt: str | None = None, consenso: bool = True) -> bool:
     """Esta decklist conta para o metagame? `row` precisa de `event_tier` e
     `event_players` (e de `format`/`source` se não vierem por argumento).
 
     As listas `manual` contam sempre: foi o André que as meteu à mão, e é por aí
     que entram os formatos que os scrapers não cobrem.
+
+    `consenso=True` (omissão) aplica também o corte da JANELA DO CONSENSO — a
+    mesma resposta que o `counting_sql` dá em SQL. Precisa do `event_date`; sem
+    essa coluna não se inventa um corte, deixa-se passar (é o que faz um `row`
+    de uma recolha, que ainda não tem data gravada).
     """
+    fmt_efectivo = fmt if fmt is not None else _campo(row, "format")
+    if consenso:
+        desde = consenso_desde(fmt_efectivo)
+        data = _campo(row, "event_date")
+        if desde and data and str(data) < desde:
+            return False
     if _campo(row, "source") == "manual":
         return True
-    r = metagame_rules(fmt if fmt is not None else _campo(row, "format"))
+    r = metagame_rules(fmt_efectivo)
     tier = _campo(row, "event_tier")
     if tier not in r["tiers"]:
         return False
@@ -509,14 +520,23 @@ def lista_conta(row, fmt: str | None = None) -> bool:
     return True
 
 
-def counting_sql(fmt: str, alias: str = "d") -> tuple[str, list]:
+def counting_sql(fmt: str, alias: str = "d",
+                 consenso: bool = True) -> tuple[str, list]:
     """A mesma regra que `lista_conta`, como pedaço de SQL para pôr num WHERE.
-    Devolve (condição, parâmetros) — a condição já vem entre parênteses."""
+    Devolve (condição, parâmetros) — a condição já vem entre parênteses.
+
+    `consenso=True` (omissão) acrescenta o CORTE DA JANELA DO CONSENSO
+    (`consenso_desde`, 2026-10-03). A omissão é o corte de propósito: quem
+    escrever uma consulta nova de consenso e não pensar nisto fica com a janela
+    certa. Os dois sítios que NÃO são consenso passam `consenso=False` e dizem
+    porquê — ver `consenso_desde`.
+    """
     r = metagame_rules(fmt)
     a = f"{alias}." if alias else ""
+    janela, jp = (consenso_sql(fmt, alias) if consenso else ("", []))
     tiers = r["tiers"]
     if not tiers:
-        return f"({a}source = 'manual')", []
+        return f"({a}source = 'manual'{janela})", list(jp)
     marcas = ",".join("?" for _ in tiers)
     sql = f"{a}event_tier IN ({marcas})"
     params = list(tiers)
@@ -525,7 +545,154 @@ def counting_sql(fmt: str, alias: str = "d") -> tuple[str, list]:
         sql += (f" AND ({a}event_tier <> 'Presencial' OR ({a}event_players IS NOT NULL "
                 f"AND {a}event_players >= ?))")
         params.append(minimo)
-    return f"({a}source = 'manual' OR ({sql}))", params
+    # O corte da janela fica FORA do `source = 'manual'`: uma lista manual conta
+    # sempre (é ele que a meteu), mas não pode ser mais antiga do que a janela —
+    # senão a excepção das manuais era um buraco por onde entrava Setembro.
+    return (f"(({a}source = 'manual' OR ({sql})){janela})",
+            params + list(jp))
+
+
+# ---------------------------------------------------------------------------
+# A JANELA DO CONSENSO (André, 2026-10-03)
+# ---------------------------------------------------------------------------
+# À letra: *"faz a pesquisa de decks só a partir do dia que reality fracture
+# ficou disponível"*. A data é **2026-09-29** — a terça em que o Reality Fracture
+# entrou na loja do Magic Online (10:00 PT / 17:00 UTC), e não a data de papel
+# (02/10): o metagame que o vault recolhe é quase todo de MTGO. Confirmado nos
+# dados dele: em Modern, 0 % das listas até 28/09 jogam uma carta que estreia no
+# `fra`, 5,0 % a 29/09 (só os eventos depois daquela hora) e 21,1 % a 30/09.
+#
+# ESTA É A PERGUNTA *"a partir de quando é que uma lista conta para o
+# consenso?"*, e vive NUM SÍTIO SÓ, pela razão de sempre: o corte escrito à mão
+# numa segunda consulta discordava do primeiro num dia qualquer, em silêncio.
+# Quem quiser o corte em SQL usa o `consenso_sql`; quem tem a linha na mão usa o
+# `lista_conta`. Há um teste que varre o código à procura de quem leia a chave
+# `consenso.desde` por fora daqui.
+#
+# DUAS COISAS QUE O CORTE **NÃO** APANHA, e as duas são decisões com medida:
+#
+#   1. **A RESERVA DA R5 continua nos 30 dias dela** (`reserva.janela_dias`).
+#      São duas janelas e servem duas perguntas: o consenso pergunta *"como é
+#      que este deck se joga agora"* e a reserva pergunta *"que carta é que eu
+#      joguei no último mês e por isso não devo vender"*. A segunda é sobre o
+#      PASSADO dele e encurtá-la a cinco dias desprotegia carta que ele usou há
+#      duas semanas. Medido a 2026-10-03 — ver o relatório: com o corte a
+#      reserva deixaria de proteger centenas de cópias. A R5 não passa por aqui
+#      por construção (`ids_por_assinatura(so_que_contam=False)` nem chama o
+#      `counting_sql`), e há teste que o tranca.
+#   2. **Seguir UMA lista não é consenso** (`my_decks`): ali já se pede *"a mais
+#      recente"*, e o corte não a torna mais recente — só pode fazê-la
+#      desaparecer e deixar a caixa sem lista. `consenso=False`, com o porquê
+#      escrito lá.
+CONSENSO_DESDE = ""        # sem chave no config = sem corte (bases novas, testes)
+
+
+def regras_consenso(cfg: dict | None = None) -> dict:
+    """`colecao_config.json → consenso`, com os valores por omissão."""
+    c = _sem_comentarios((cfg if cfg is not None else _config()).get("consenso"))
+    r = {"desde": CONSENSO_DESDE, "excepcoes": [], "motivo": "", "fonte": ""}
+    r.update(c)
+    return r
+
+
+def consenso_desde(fmt: str | None = None, cfg: dict | None = None) -> str:
+    """A data (`AAAA-MM-DD`) a partir da qual uma lista conta para o consenso.
+
+    `""` quer dizer *sem corte* — é o que vale num config sem a chave.
+
+    `excepcoes` são os formatos que o corte NÃO apanha, e hoje é o **premodern**:
+    o Reality Fracture não é legal lá (o formato acaba no Scourge, 2003) e o
+    corte não responderia a pergunta nenhuma — só apagava o consenso. Medido na
+    base de 2026-10-03: das **978** listas de premodern, **zero** jogam uma
+    única carta do set, contra 21 % em Modern no dia seguinte ao lançamento. Sem
+    a excepção, três caixas de Premodern dele ficavam sem lista (Elves 23→0
+    listas, Oath 30→4, Ill-Gotten Gains 3→0) na véspera do RC de Ghent. É uma
+    linha no config a tirar, se ele preferir o corte cego.
+    """
+    r = regras_consenso(cfg)
+    desde = str(r.get("desde") or "").strip()
+    if not desde:
+        return ""
+    f = (fmt or "").lower()
+    excepcoes = {str(x).lower() for x in (r.get("excepcoes") or [])}
+    return "" if f and f in excepcoes else desde
+
+
+def consenso_sql(fmt: str, alias: str = "d") -> tuple[str, list]:
+    """O corte da janela do consenso como pedaço de SQL (` AND ...`, params).
+
+    Vem com o ` AND` à cabeça e vazio quando não há corte, para quem o
+    concatena não ter de testar nada.
+    """
+    desde = consenso_desde(fmt)
+    if not desde:
+        return "", []
+    a = f"{alias}." if alias else ""
+    return f" AND {a}event_date >= ?", [desde]
+
+
+def frase_janela_rodape() -> str:
+    """A frase da JANELA para o rodapé de uma página, em HTML. `""` sem corte.
+
+    Escrita num sítio só e composta do config: duas páginas a escreverem a data
+    à mão discordavam no dia em que ele a mudasse, e uma página que diz uma data
+    diferente da que o motor usou é pior do que página nenhuma.
+    """
+    r = regras_consenso()
+    desde = str(r.get("desde") or "").strip()
+    if not desde:
+        return ""
+    motivo = str(r.get("motivo") or "").strip()
+    excepcoes = [str(x) for x in (r.get("excepcoes") or [])]
+    txt = (f" <b>A janela:</b> conta-se <b>só o que foi jogado de {desde} em "
+           f"diante</b>"
+           + (f" — {motivo}" if motivo else "")
+           + ". Foi o pedido dele a 3 de outubro de 2026: <i>«faz a pesquisa de "
+             "decks só a partir do dia que reality fracture ficou "
+             "disponível»</i>; por isso há muito menos listas por deck do que "
+             "no mês inteiro, e quem ficar abaixo do mínimo aparece como "
+             "<b>amostra insuficiente</b> em vez de dar percentagens.")
+    if excepcoes:
+        txt += (" Fora do corte: <b>" + ", ".join(excepcoes) + "</b> — o set "
+                "não é legal lá, por isso o corte só apagava o consenso.")
+    return txt + (" Muda-se em <code>colecao_config.json → consenso.desde</code>.")
+
+
+AMOSTRA_INSUFICIENTE = "amostra insuficiente"
+
+
+def texto_amostra(listas: int, minimo: int, fmt: str | None = None) -> str:
+    """*"Não dá para dizer"*, em português e NUM SÍTIO SÓ (2026-10-03).
+
+    Ordem dele, à letra: *"escreve isso em letra grande em vez de me dares
+    percentagens de uma amostra de duas — com 2 listas uma carta aparece a 50 %
+    ou a 100 % sem isso querer dizer nada. Prefiro «não dá para dizer» a um
+    número bonito e falso."*
+
+    Devolve `""` quando a amostra chega — é o que torna isto um `if` só.
+    """
+    if listas >= minimo:
+        return ""
+    quantas = "nenhuma lista" if not listas else (
+        "1 lista" if listas == 1 else f"{listas} listas")
+    janela = texto_janela_consenso(fmt)
+    txt = (f"{AMOSTRA_INSUFICIENTE}: {quantas} (o mínimo para se chamar "
+           f"consenso a isto é {minimo})")
+    return f"{txt} — {janela}" if janela else txt
+
+
+def texto_janela_consenso(fmt: str | None = None) -> str:
+    """O que a PÁGINA diz sobre a janela, em português. `""` sem corte.
+
+    Uma janela que a página não diz é uma página a mentir em silêncio: o número
+    de listas cai para um quinto e quem olha não tem como saber porquê.
+    """
+    desde = consenso_desde(fmt)
+    if not desde:
+        return ""
+    motivo = str(regras_consenso().get("motivo") or "").strip()
+    txt = f"só listas de {desde} em diante"
+    return f"{txt} — {motivo}" if motivo else txt
 
 
 # ---------------------------------------------------------------------------

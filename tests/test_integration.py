@@ -8,7 +8,34 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+# A JANELA DO CONSENSO FICA DE FORA DESTE TESTE (2026-10-03).
+#
+# Este caso é de ponta a ponta sobre o MOTOR (agrupamento, core/flex/tech,
+# preços, wantlist) e as decklists que ele semeia espalham-se por 20 dias de
+# propósito, para exercitar a janela de 30 dias do `rebuild_archetypes`. Com o
+# `consenso.desde` do config a sério (29/09/2026, o dia em que o Reality
+# Fracture entrou no MTGO) só as listas dos últimos dias contavam: as 35
+# passavam a 10, os dois arquétipos trocavam de ordem e o `Lightning Bolt`
+# desaparecia do núcleo.
+#
+# Neutraliza-se **só a janela**, e não o config inteiro: o resto continua a ser
+# o dele, que é o que este teste sempre leu. Quem tranca a janela é o
+# `test_janela_consenso.py`.
+import json  # noqa: E402  (já importado acima; fica explícito para o leitor)
+import os  # noqa: E402
+
+_RAIZ = Path(__file__).resolve().parents[1]
+_cfg = json.loads((_RAIZ / "colecao_config.json").read_text(encoding="utf-8"))
+_cfg.pop("consenso", None)
+_p = Path(tempfile.mkdtemp()) / "cfg-sem-janela.json"
+_p.write_text(json.dumps(_cfg, ensure_ascii=False), encoding="utf-8")
+os.environ["MTGVAULT_CONFIG"] = str(_p)
+
 from mtgvault import analysis, collection, db, prices, sources, wantlist  # noqa: E402
+
+sources._CFG_CACHE.clear()
+assert sources.consenso_desde("modern") == "", \
+    "este teste corre SEM a janela do consenso — ver o comentário acima"
 
 BURN = {"Lightning Bolt": 4, "Monastery Swiftspear": 4, "Lava Spike": 4,
         "Boros Charm": 4, "Skewer the Critics": 4, "Eidolon of the Great Revel": 4,

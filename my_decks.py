@@ -54,8 +54,21 @@ MIN_MAIN = 55  # ignora listas truncadas/incompletas
 def _conta(fmt):
     """Só se segue uma lista que CONTE para o metagame (regra do André,
     2026-09-07): não faz sentido copiar para `deck_cards` um 5-0 de liga que o
-    top-10 e a cobertura não reconhecem. Devolve (SQL, params) para o WHERE."""
-    return sources.counting_sql(fmt, "dl")
+    top-10 e a cobertura não reconhecem. Devolve (SQL, params) para o WHERE.
+
+    **`consenso=False`: SEGUIR UMA LISTA NÃO É UM CONSENSO** (2026-10-03). A
+    janela do consenso (`sources.consenso_desde`) existe para *"como é que este
+    arquétipo se joga agora"*, e aqui já se pede a lista MAIS RECENTE — o corte
+    não a torna mais recente, só pode fazê-la desaparecer. Medido no dia em que
+    a janela entrou: com o corte a 29/09, o *Grinding Station* (lista de 28/09) e
+    o *Jeskai Lessons* (27/09) ficavam sem lista nenhuma, e o `refresh` dizia
+    *"sem lista"* deixando a de ontem na base — ou seja, o corte não trazia um
+    número novo e tirava a resposta a duas perguntas. Os decks que ALIMENTAM
+    caixas sobrevivem aos dois lados (Greasefang 01/10, Stiflenought do Luffy
+    01/10), por isso isto não é o que protege as caixas: é só honestidade sobre
+    o que esta função faz.
+    """
+    return sources.counting_sql(fmt, "dl", consenso=False)
 
 
 def _latest(con: sqlite3.Connection, fmt: str, cards: list[str]):

@@ -185,7 +185,14 @@ def derivar(con: sqlite3.Connection, fmt: str | None = None) -> dict:
 # Os comandantes e o consenso de cada um
 # ---------------------------------------------------------------------------
 def _listas(con, fmt: str):
-    """`(ids por comandante, janela de datas)` — só as listas que CONTAM."""
+    """`(ids por comandante, janela de datas)` — só as listas que CONTAM.
+
+    O `counting_sql` traz, desde 2026-10-03, o CORTE DA JANELA DO CONSENSO
+    (`sources.consenso_desde`, hoje 29/09/2026 — o dia em que o Reality Fracture
+    entrou no MTGO). Não se escreve aqui um segundo corte: a pergunta *"a partir
+    de quando conta"* vive num sítio só, pela mesma razão por que o filtro de
+    eventos também vive lá.
+    """
     conta, cp = sources.counting_sql(fmt, "dl")
     por: dict[str, list[int]] = defaultdict(list)
     de = ate = ""
@@ -234,11 +241,18 @@ def consenso(con: sqlite3.Connection, comandante: str,
     fmt = (fmt or r["formato"]).lower()
     por, janela = _listas(con, fmt)
     ids = por.get(comandante) or []
+    suficiente = len(ids) >= r["min_listas"]
     out = {"comandante": comandante, "formato": fmt, "listas": len(ids),
            "janela": list(janela), "cartas": [], "papeis": {p: 0 for p in PAPEIS},
            "min_listas": r["min_listas"], "nucleo_pct": r["nucleo_pct"],
            "flex_pct": r["flex_pct"],
-           "suficiente": len(ids) >= r["min_listas"]}
+           "suficiente": suficiente,
+           "desde": sources.consenso_desde(fmt),
+           "janela_texto": sources.texto_janela_consenso(fmt),
+           # *"Não dá para dizer"* em vez de um número bonito e falso: abaixo do
+           # mínimo a percentagem NÃO viaja (ver `pct` mais abaixo), e esta é a
+           # frase que a página mostra em vez dela.
+           "amostra": sources.texto_amostra(len(ids), r["min_listas"], fmt)}
     if not ids:
         return out
     em = Counter()
@@ -257,13 +271,21 @@ def consenso(con: sqlite3.Connection, comandante: str,
         if nm == comandante:
             continue
         pct = round(100 * c / n, 1)
-        cartas.append({"nm": nm, "listas": c, "pct": pct,
+        cartas.append({"nm": nm, "listas": c,
+                       # ABAIXO DO MÍNIMO A PERCENTAGEM NÃO SAI DAQUI
+                       # (2026-10-03). Com 7 listas, uma carta que apareça numa
+                       # só «aparece em 14,3 %» e nada disso quer dizer nada; o
+                       # NÚMERO DE LISTAS fica, porque é um facto. Quem escreve
+                       # a frase é o `sources.texto_amostra`, e é a mesma em
+                       # todas as superfícies.
+                       "pct": pct if suficiente else None,
                        "copias": qts[nm].most_common(1)[0][0],
-                       "papel": papel(pct, r)})
-    cartas.sort(key=lambda x: (-x["pct"], x["nm"]))
+                       "papel": papel(pct, r) if suficiente else ""})
+    cartas.sort(key=lambda x: (-x["listas"], x["nm"]))
     out["cartas"] = cartas
     for c in cartas:
-        out["papeis"][c["papel"]] += 1
+        if c["papel"]:
+            out["papeis"][c["papel"]] += 1
     return out
 
 

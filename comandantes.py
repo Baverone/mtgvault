@@ -24,7 +24,7 @@ import html
 import json
 from pathlib import Path
 
-from mtgvault import consenso, paginas
+from mtgvault import consenso, paginas, sources
 from mtgvault import site_shell as shell
 
 ROOT = Path(__file__).resolve().parent
@@ -39,6 +39,11 @@ _CSS = """
  .chip b{color:var(--ink)}
  .chip.gold{border-color:var(--accent-line);background:var(--accent-soft);color:var(--accent)}
  .aviso{background:var(--card2);border:1px solid var(--accent-line);color:var(--accent);border-radius:var(--r);padding:11px 15px;font-size:13px;margin:0 0 18px}
+ /* "em letra grande" é literal: a ordem de 2026-10-03 pede que isto NÃO se leia
+    como uma nota de pé de página ao lado de percentagens bonitas. */
+ .aviso.grande{font-family:var(--font-hd);font-size:16px;line-height:1.5;padding:16px 18px}
+ .aviso.grande b{color:var(--ink)}
+ .aviso.grande .pq{display:block;margin-top:6px;font-family:var(--font);font-size:12.5px;color:var(--muted)}
  h2{font-size:15px;margin:26px 0 4px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
  h2 .n{color:var(--muted);font-size:12px;font-weight:500}
  .papelsub{color:var(--muted);font-size:12px;margin:0 0 12px}
@@ -81,8 +86,35 @@ _RODAPE = (
     "o número de cópias é quase sempre 1 — o que separa uma carta obrigatória de "
     "uma opção é a percentagem, não a quantidade.</p>"
     "<p><b>O que ele tem</b> é a coleção inteira (sem contar o que já está "
-    "dentro de uma deck box), a mesma conta da posse das outras páginas. A janela "
-    "é a das listas guardadas, que são cerca de um mês.</p>")
+    "dentro de uma deck box), a mesma conta da posse das outras páginas.</p>"
+    "%JANELA%")
+
+# A janela do consenso, se houver (`colecao_config.json → consenso.desde`). Vai
+# no rodapé por substituição e não escrita à mão: a data vive no config, e uma
+# página que diga uma data diferente da que o motor usou é uma página a mentir.
+_RODAPE_JANELA = (
+    "<p><b>A janela.</b> Esta página conta <b>só as listas de %DESDE% em "
+    "diante</b> — %MOTIVO%. Foi o pedido dele a 3 de outubro de 2026: <i>«faz a "
+    "pesquisa de decks só a partir do dia que reality fracture ficou "
+    "disponível»</i>. Por isso o número de listas é muito menor do que o do mês "
+    "inteiro, e um comandante com menos do que o mínimo aparece com o número de "
+    "listas em vez de percentagens. Muda-se em "
+    "<code>colecao_config.json → consenso.desde</code>; apagar a data devolve a "
+    "janela ao mês inteiro.</p>")
+_RODAPE_SEM_JANELA = (
+    "<p><b>A janela</b> é a das listas guardadas, que são cerca de um mês.</p>")
+
+
+def _rodape() -> str:
+    """O rodapé com a janela já escrita — a data sai do config, nunca da mão."""
+    desde = sources.consenso_desde(consenso.regras()["formato"])
+    if not desde:
+        return _RODAPE.replace("%JANELA%", _RODAPE_SEM_JANELA)
+    motivo = (str(sources.regras_consenso().get("motivo") or "").strip()
+              or "ver o colecao_config.json")
+    return _RODAPE.replace(
+        "%JANELA%", _RODAPE_JANELA.replace("%DESDE%", desde)
+                                  .replace("%MOTIVO%", motivo))
 
 _JS = r"""
 %JS_DADOS%
@@ -103,9 +135,16 @@ function tile(c) {
     ? `<span class="ps falta">falta ${c.falta}</span>`
     : `<span class="ps ok">tens ${c.tenho}</span>`;
   const q = c.copias > 1 ? `${c.copias}× · ` : '';
-  return `<div class="c" title="${escDados(c.nm)} — em ${c.pct} % das listas (${c.listas})`
+  // `pct` vem a NULL quando a amostra não chega ao mínimo (consenso.consenso):
+  // mostra-se o número de listas, que é um facto, e nunca uma percentagem de
+  // uma amostra de duas. Ver `sources.texto_amostra`.
+  const temPct = c.pct !== null && c.pct !== undefined;
+  const chip = temPct ? `${c.pct} %` : `${c.listas}×`;
+  const ond = temPct ? `em ${c.pct} % das listas (${c.listas})`
+                     : `em ${c.listas} listas (amostra insuficiente: sem percentagem)`;
+  return `<div class="c" title="${escDados(c.nm)} — ${ond}`
     + ` · tens ${c.tenho}"><div style="position:relative">${img}`
-    + `<span class="pc">${c.pct} %</span>${posse}</div>`
+    + `<span class="pc">${chip}</span>${posse}</div>`
     + `<div class="lg"><b>${escDados(c.nm)}</b><span>${q}${c.listas} listas</span></div></div>`;
 }
 function desenha(d) {
@@ -121,10 +160,23 @@ function desenha(d) {
     + `<br>núcleo <b>${d.papeis.nucleo}</b> · flex <b>${d.papeis.flex}</b> · raro <b>${d.papeis.raro}</b>`
     + `<br>tens <b>${d.tenho_cmd}</b> ${d.tenho_cmd === 1 ? 'cópia' : 'cópias'} do comandante`
     + `</p></div></div>`;
+  // AMOSTRA INSUFICIENTE: não dá para dizer, e diz-se em letra grande em vez de
+  // se darem percentagens de duas listas (ordem dele, 2026-10-03). A frase vem
+  // do Python (`sources.texto_amostra`), para ser a mesma em todo o vault.
   const pouco = d.suficiente ? '' :
-    `<div class="aviso">São só <b>${d.listas}</b> listas (o mínimo para se chamar consenso a isto é`
-    + ` ${d.min_listas}). Fica à vista, mas lê-se com cuidado.</div>`;
+    `<div class="aviso grande">Não dá para dizer — ${escDados(d.amostra || '')}.`
+    + `<span class="pq">As cartas ficam à vista com o <b>número de listas</b> em que`
+    + ` apareceram, e sem percentagem: com ${d.listas} listas uma carta aparece a`
+    + ` 50 % ou a 100 % sem isso querer dizer nada.</span></div>`;
   let corpo = '';
+  if (!d.suficiente) {
+    // Sem papéis: núcleo/flex/raro são cortes por percentagem, e sem
+    // percentagem fiável não há papel nenhum para atribuir.
+    corpo = `<h2>As cartas que apareceram <span class="n">${d.cartas.length} cartas,`
+      + ` por nº de listas</span></h2>`
+      + `<div class="grid">${d.cartas.map(tile).join('')}</div>`;
+    return cab + pouco + corpo;
+  }
   for (const [k, rot, nota] of PAPEIS) {
     const cs = d.cartas.filter(c => c.papel === k);
     if (!cs.length) continue;
@@ -160,6 +212,7 @@ async function arranca() {
       `<span class="chip gold"><b>${IDX.comandantes.length}</b> comandantes</span>`
       + `<span class="chip"><b>${IDX.listas}</b> listas que contam</span>`
       + (IDX.janela[0] ? `<span class="chip">${escDados(IDX.janela[0])} a ${escDados(IDX.janela[1])}</span>` : '')
+      + (IDX.desde ? `<span class="chip gold">desde <b>${escDados(IDX.desde)}</b></span>` : '')
       + `<span class="chip">comandante lido do sideboard em <b>${IDX.fontes.sideboard}</b>`
       + ` · derivado em <b>${IDX.fontes.ordem}</b></span>`;
   }
@@ -183,7 +236,7 @@ def _tmpl() -> str:
           '<select id="cmd" aria-label="Escolher o comandante"></select></div>'
           '<div class="chips" id="chips"></div>'
           '<div id="vista"><p class="carregando">a carregar…</p></div>'
-        + shell.fechar(_RODAPE, scripts="<script>%JS%</script>")
+        + shell.fechar(_rodape(), scripts="<script>%JS%</script>")
         + "</body></html>")
 
 
@@ -236,6 +289,10 @@ def dados(con) -> tuple[dict, dict[str, object]]:
                    if nomes else ["", ""]),
         "fontes": consenso.fontes(con, fmt),
         "min_listas": r["min_listas"],
+        # A janela do consenso viaja no payload: a página não a reconstrói nem
+        # a escreve à mão (é a lição do `e_foil` e do `precos.sql()`).
+        "desde": sources.consenso_desde(fmt),
+        "janela_texto": sources.texto_janela_consenso(fmt),
         # Só o que abre vem embutido — as outras vão-se buscar ao toque.
         "partes": {abre: partes[paginas.slug(abre)]},
     }

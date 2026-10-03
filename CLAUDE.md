@@ -219,6 +219,12 @@ mtgvault/
                   nos três sítios que a fazem (o cluster do `archetypes`, o
                   cluster do `showcase`, o arquétipo de uma CAIXA). Ver «O NOME
                   DO ARQUÉTIPO VEM DA FONTE»
+  sources.py      … e, desde 2026-10-03, A JANELA DO CONSENSO: `consenso_desde`/
+                  `consenso_sql`/`regras_consenso` (`colecao_config.json →
+                  consenso.desde`, hoje 2026-09-29 — o dia em que o Reality
+                  Fracture entrou no MTGO), que o `counting_sql`/`lista_conta`
+                  levam POR OMISSÃO, mais o `texto_amostra` («não dá para
+                  dizer») e o `frase_janela_rodape`. Ver «A JANELA DO CONSENSO»
   consenso.py     O CONSENSO POR COMANDANTE (2026-10-01): em Duel Commander a
                   identidade de um deck é o COMANDANTE e nunca a etiqueta do
                   clustering (870 etiquetas, 808 sem listas). O comandante de
@@ -1907,6 +1913,146 @@ de que chumbam em `tests/_chumba_estado.py` (9 alvos / 14 pares medidos).
   preço** são cinco e foram escolhidas por mim a partir da curva medida: se
   preferir um número só por escalão, é uma linha no config; (d) a lista curta
   inclui **todas as cópias** de uma carta que precise de verso, não só as caras.
+
+**A JANELA DO CONSENSO: A PESQUISA DE DECKS COMEÇA NO DIA DO SET (André,
+2026-10-03, à letra).** *"faz a pesquisa de decks só a partir do dia que reality
+fracture ficou disponível"*. Motor em **`mtgvault/sources.py`**
+(`regras_consenso`/`consenso_desde`/`consenso_sql`/`texto_amostra`/
+`frase_janela_rodape`, e o `counting_sql`/`lista_conta` a levarem o corte **por
+omissão**); config em `colecao_config.json → consenso`; passo `janela-consenso`
+do `daily`. Testes em `tests/test_janela_consenso.py` (15 casos) e a prova de que
+chumbam em `tests/_provar_janela.py` (**16 de 16 pares**, um processo por par);
+relatório em `ai-pc/work/saidas/decks-desde-fra-2026-10-03.txt`.
+
+- **A DATA É A DO MTGO E NÃO A DO PAPEL: 2026-09-29.** O Reality Fracture entrou
+  na loja do Magic Online nessa terça (10:00 PT / 17:00 UTC,
+  <https://www.mtgo.com/news/mtgo092226>); em papel só saiu a **02/10**. O
+  metagame que o vault recolhe é quase todo de MTGO, e os dados dele confirmam a
+  régua: em Modern, **0 %** das listas até 28/09 jogam uma carta que estreia no
+  `fra`, **5,0 %** a 29/09 (só os eventos depois daquela hora) e **21,1 %** a
+  30/09.
+- **AS LISTAS DE 26 E 27/09 NÃO SÃO FALSOS POSITIVOS DA DETECÇÃO — SÃO PAPEL.**
+  Três listas de Modern (1 a 26/09, 2 a 27/09) trazem cartas do set: *Seasoned
+  Cryomancer*, *Roiling Canopy*, *Ajani's Anguish*. Verificado impressão a
+  impressão: as três **estreiam mesmo** no `fra` e não existem em nenhum set
+  anterior. São do fim-de-semana de **pré-lançamento**, e dois eventos desse
+  fim-de-semana dizem-no no nome — *"Legacy event - SideEvent FRA Prerelease"*
+  (26/09) e *"Duel Commander event - Watermelon Cup Win a FRA box!"* (27/09). As
+  **37** listas anteriores ao corte com carta do set são **todas** `mtgtop8` /
+  `Presencial`. O corte deixa essas três de fora, e é o preço de a regra ser uma
+  data que se lê e se confere em vez de *"depende da fonte"*.
+- **A PERGUNTA VIVE NUM SÍTIO SÓ, e a omissão é o corte.** `counting_sql(fmt,
+  alias, consenso=True)` — a omissão é `True` de propósito: a primeira consulta
+  nova de consenso que não pense nisto fica com a janela certa. Por aí passam, sem
+  uma linha nova em cada um, o agrupamento de Modern (`analysis._fetch_lists` →
+  `rebuild_archetypes`/`rebuild_roles`), o consenso por comandante, a lista de
+  cada caixa de `fonte: consenso`, o top-N do Metagame, a Cobertura, o Showcase e
+  os nomes. Tem teste que varre o código à procura de quem volte a ler a chave
+  `consenso` por fora do `sources`.
+- **A EXCEPÇÃO DO PREMODERN É UMA DECISÃO MINHA, com a medida por trás.** O
+  Reality Fracture **não é legal em Premodern** (o formato acaba no Scourge,
+  2003): das **978** listas de premodern da base, **ZERO** jogam uma única carta
+  do set, contra 21 % em Modern no dia seguinte ao lançamento. Sem a excepção o
+  corte não respondia a pergunta nenhuma e **três caixas dele ficavam sem lista**
+  na véspera do RC de Ghent — Elves 23→0 listas, Oath of Druids 30→4,
+  Ill-Gotten Gains 3→0. Tirar `premodern` do `consenso.excepcoes` é o corte cego.
+- **A RESERVA DA VENDA FICOU NA JANELA DELA (30 dias), e o conflito mediu-se em
+  vez de se resolver** (ordem dele: *"deixa a reserva como está e assinala o
+  conflito"*). São duas perguntas: o consenso pergunta *"como é que este deck se
+  joga agora"* e a reserva *"que carta é que EU joguei no último mês e por isso
+  não devo vender"* — a segunda é sobre o PASSADO dele. **Medido** com a mesma
+  base e `reserva.janela_dias` = 4: a lista VENDER crescia **+426 cópias /
+  +11 796,69 €** e a R5 sozinha caía de 487c/13 059,78 € para **27c/816,30 €**. A
+  R5 não passa pelo corte **por construção** (`ids_por_assinatura(so_que_contam=
+  False)` nem chama o `counting_sql`), e a `fases.assinatura_derivada` leva
+  `consenso=False` explícito — com o corte, as frequências caíam abaixo do
+  `ASSINATURA_MIN` (3) e a assinatura derivada de uma caixa desaparecia em
+  silêncio. Dois casos de teste e dois alvos no `_chumba_janela`.
+- **SEGUIR UMA LISTA NÃO É CONSENSO**: o `my_decks._conta` leva `consenso=False`,
+  com o porquê escrito. Ali já se pede *"a mais recente"*, e o corte não a torna
+  mais recente — só pode fazê-la desaparecer. Medido: com o corte, o *Grinding
+  Station* (28/09) e o *Jeskai Lessons* (27/09) ficavam sem lista nenhuma, sem um
+  número novo a trocar. Os decks que ALIMENTAM caixas sobrevivem aos dois lados
+  (Greasefang 01/10, Stiflenought do Luffy 01/10).
+- **«NÃO DÁ PARA DIZER» EM VEZ DE UM NÚMERO BONITO E FALSO** (ordem dele, à
+  letra). Abaixo do mínimo de listas a **percentagem não sai do motor**
+  (`consenso.consenso` põe `pct: None` e `papel: ""`): fica o NÚMERO DE LISTAS,
+  que é um facto, e a frase do `sources.texto_amostra` — a mesma em todas as
+  superfícies. A página dos Comandantes mostra-a em **letra grande**
+  (`.aviso.grande`), desenha as cartas por nº de listas e **não atribui papéis**
+  (núcleo/flex/raro são cortes por percentagem, e sem percentagem fiável não há
+  papel). O `loadout._cards_from_consensus` passou a usar as mesmas palavras.
+- **A JANELA APARECE ONDE ELE A LÊ**: chip *«desde 2026-09-29»* no cabeçalho dos
+  Comandantes, parágrafo no rodapé dos Comandantes, da Cobertura e do Showcase
+  (uma função só, `sources.frase_janela_rodape`, para duas páginas não
+  discordarem da data), e o passo `janela-consenso` no `daily` — um log de um dia
+  com corte era igual ao de um dia sem. **O `_TMPL` da Cobertura e do Showcase
+  passou a FUNÇÃO** (`_tmpl()`), pela razão de 2026-09-25: uma constante de módulo
+  ficava com a resposta que o config deu a quem importasse primeiro.
+- **MEDIDO LADO A LADO, o MESMO `vault.db` em quatro passagens** (A: sem janela =
+  o `main`; B: com a janela; C: com a janela também na reserva; D: sem janela e
+  sem as três caixas que ficam sem lista — para separar as causas):
+
+  | | A: sem janela | B: com a janela |
+  |---|---|---|
+  | fechar tudo | 14 714,05 € | **10 004,12 €** |
+  | a comprar | 412 | **272** |
+  | a arrumar | 318 c / 173 linhas | **238 c / 134 linhas** |
+  | protegidas | 1 000 c / 115 580,17 € | **1 086 c / 117 829,76 €** |
+  | VENDER | 678 c / 21 307,38 € | **592 c / 19 057,79 €** |
+
+  **TRÊS CAIXAS FICAM SEM LISTA**, e é o corte a dizer a verdade (ainda não há
+  consenso pós-set delas): **Bant Airbend** (6→0 listas), **Engineer Welder Cam**
+  (35→2) e **Aluren** (29→0). O **Modern — Affinity** fica com 14 listas em vez
+  de 89 e a lista com uma carta a menos (32→31). **As outras 13 caixas ficam
+  iguais ao cêntimo e à percentagem**, as cinco de Premodern incluídas.
+  **O delta explica-se ao cêntimo**: −4 695,14 € são as três caixas a ficarem sem
+  lista e −14,79 € o consenso do Weapons a encurtar. E o **Pioneer passa de 66 a
+  62 a comprar (−29,84 €) e NÃO é a janela** — é a Bant Airbend a deixar de
+  alocar primeiro dentro do grupo SPML: provado na passagem D, onde o Pioneer dá
+  exactamente os mesmos números que em B.
+  **A lista de venda ENCOLHE** (as cartas das três caixas passam de *"está na
+  lista"* para *"está na reserva"*: a R5 sobe de 400c para 487c). A **única**
+  protecção que o corte reduz é a do Cloud (Duel Commander), por via do consenso
+  por comandante ficar em 7 listas: a reserva automática dessa caixa cai de 106
+  para 13 cartas — **12 cópias / 115,08 €** —, e a página di-lo.
+- **O QUE ISTO RESPONDE PARA GHENT (9-11/10):** o **Weapons NÃO mudou com o
+  set** — **zero** cartas do Reality Fracture nas 89 listas e zero nas 14 de
+  29/09 em diante; o maindeck de consenso é **idêntico** nas duas janelas e mexem
+  quatro lugares de sideboard (sai 1 Cursed Totem; Blood Moon 1→2, Galvanic Blast
+  3→2, Mystical Dispute 1→2). O nome da fonte muda de *"Pinnacle Affinity"* para
+  **"Affinity"**. O **Oswald fica com ZERO listas** (tinha 12) e o **Cloud com 7**
+  (tinha 41): nos dois a resposta é *«não dá para dizer»*. Em Modern, quem subiu
+  foi o **Ruby Storm** (+4,0 pontos, 4,1 % → 8,0 %, 25 listas), o único dos que
+  subiram que joga carta nova — o **Twinned Vision**, a carta do set mais jogada
+  no formato (15 das 311 listas, até 4 cópias); a seguir Boros Aggro +1,9, Amulet
+  Titan +1,9 (Roiling Canopy) e 4/5c Aggro +1,9. Desceram o Broodscale
+  Bloodchief −4,9 (continua o nº 1, 17,1 % → 12,2 %), UR Cutter Prowess −3,9,
+  Eldrazi Ramp −2,9, Boros Ponza −2,7, UrzaTron −2,6 e Pinnacle Affinity −2,2.
+  **Ressalva honesta:** das 311 listas de Modern desde o corte, **82 ainda não
+  têm nome** (61 porque o agrupamento, que corre no daily, ainda não as apanhou;
+  21 porque o grupo delas não tem uma única lista nomeada pela fonte) — a linha
+  *«(sem nome)»* da tabela é isso e não um arquétipo.
+- **A VIGIA continua a ZERO e NÃO foi aberta ao Duel Commander:** «Kasmina,
+  Enigma Sage» tem **0** listas em Modern ou Pioneer — e 0 na base inteira, sem
+  filtro; «Jace's Machinations» tem **0** nesses dois formatos e 3 avistamentos,
+  todos em `duel-commander` (30/09, 01/10, 02/10) e nunca com a Kasmina. O
+  `cartas_vigiadas` continua `["modern", "pioneer"]`.
+- **UM TESTE ANTIGO TEVE DE SER CORRIGIDO, e não mascarado.** O
+  `test_integration.py` lia o config **a sério** e semeia decklists espalhadas por
+  20 dias de propósito (para exercitar a janela de 30 dias do agrupamento): com o
+  corte, as 35 listas passavam a 10, os dois arquétipos trocavam de ordem e o
+  `Lightning Bolt` desaparecia do núcleo. Passou a correr com a janela
+  **desligada**, com o porquê escrito lá — quem tranca a janela é o
+  `test_janela_consenso`.
+- **POR DECIDIR POR ELE:** (a) as **duas janelas** — juntá-las punha +426 cópias
+  e +11 796,69 € na venda, e é `reserva.janela_dias`; (b) a **excepção do
+  Premodern**, que é minha; (c) as **três caixas sem lista** — se preferir que uma
+  caixa sem amostra fique com a lista da janela longa em vez de ficar vazia, é uma
+  decisão dele e não se tomou; (d) o **Oswald com zero listas** é o deck de
+  Ghent, e a assinatura dele continua a apanhar listas que o mtgtop8 chama
+  *"Pinnacle Affinity"* (o aviso de 02/10, ainda de pé); (e) o **`my_decks`** fora
+  do corte.
 
 **AS REGRAS DE MATERIAL DOS TRÊS GRUPOS, E AS DUAS EXCEPÇÕES DAS BÁSICAS
 (André, 2026-10-02, à letra).** *"Duel Commander, so ingles, e so Foil (se nao

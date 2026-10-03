@@ -856,7 +856,16 @@ def assinatura_derivada(con, s: dict, cache: dict | None = None) -> list[str]:
         return []
     k = f"_freq_{fmt}"
     if k not in cache:
-        conta, cp = sources.counting_sql(fmt, "d")
+        # `consenso=False`: ESTA FREQUÊNCIA SERVE A RESERVA, que tem a janela
+        # dela (2026-10-03). A pergunta aqui é *"quão rara é esta carta no
+        # formato"*, e é com ela que se deriva a assinatura de uma caixa que não
+        # tem uma escrita. Com o corte do consenso (cinco dias) as contagens
+        # caíam abaixo do `ASSINATURA_MIN` (3) e a assinatura derivada
+        # desaparecia — a caixa ficava com a reserva só manual, sem um único
+        # erro e sem ninguém mexer na R5. É o mesmo princípio do
+        # `so_que_contam=False` do `_listas_por_assinatura`: sub-contar aqui é
+        # vender uma carta que ele precisa.
+        conta, cp = sources.counting_sql(fmt, "d", consenso=False)
         freq: dict[str, int] = {}
         for r in con.execute(
                 f"""SELECT dc.card_name nm, COUNT(DISTINCT d.id) n

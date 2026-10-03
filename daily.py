@@ -222,7 +222,29 @@ def _watch(con):
 def _analyse(con, fmt):
     k = analysis.rebuild_archetypes(con, fmt)
     n = analysis.rebuild_roles(con, fmt)
-    return f"{k} arquétipos, {n} cartas"
+    # A JANELA DO CONSENSO vai na linha do log (2026-10-03): o nº de arquétipos
+    # cai para uma fracção quando o corte está ligado, e um log que não diz a
+    # janela faz isso parecer uma avaria da recolha.
+    desde = sources.consenso_desde(fmt)
+    janela = f", desde {desde}" if desde else ""
+    return f"{k} arquétipos, {n} cartas{janela}"
+
+
+def _janela_consenso():
+    """Diz, UMA vez por corrida, a janela com que todo o consenso foi calculado.
+
+    Não calcula nada — é uma linha no `job_runs` e no log. Existe porque a
+    janela muda todos os números das páginas de consenso ao mesmo tempo, e sem
+    ela o log de um dia com corte é igual ao de um dia sem.
+    """
+    r = sources.regras_consenso()
+    desde = str(r.get("desde") or "").strip()
+    if not desde:
+        return "sem corte (consenso.desde vazio) — conta tudo o que está na base"
+    exc = [str(x) for x in (r.get("excepcoes") or [])]
+    fora = f"; fora do corte: {', '.join(exc)}" if exc else ""
+    return (f"consenso só desde {desde}{fora} — "
+            f"{r.get('motivo') or 'ver colecao_config.json → consenso'}")
 
 
 def _prune_prices(con, keep_days: int = 30):
@@ -397,6 +419,9 @@ def main():
         # O que interessa para a vigilância dos decks (Moxfield, jogadores MTGO).
         _step(con, "watch-check", lambda: _watch(con))
 
+        # A JANELA DO CONSENSO, antes de tudo o que a usa (2026-10-03).
+        _step(con, "janela-consenso", _janela_consenso)
+
         for fmt in ANALYSE_FORMATS:
             _step(con, f"analyse:{fmt}", lambda fmt=fmt: _analyse(con, fmt))
 
@@ -433,8 +458,10 @@ def main():
             d = consenso.derivar(con)
             out = comandantes.build(con, ROOT / "comandantes.html")
             n = len(consenso.comandantes(con))
+            desde = sources.consenso_desde(consenso.regras()["formato"])
+            janela = f", desde {desde}" if desde else ""
             return (f"{d['derivadas']} comandantes derivados, {n} comandantes "
-                    f"com listas que contam -> {out}")
+                    f"com listas que contam{janela} -> {out}")
 
         _step(con, "consenso-comandante", _consenso_comandante)
 
