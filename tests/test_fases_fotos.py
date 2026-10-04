@@ -375,6 +375,30 @@ def caso_definir_o_alvo_nao_e_travado_pela_trava_da_venda():
     print("a trava recusa a saida de venda e deixa passar o alvo e a fila da Fase 2")
 
 
+def caso_a_data_antiga_nao_trava_nem_destranca():
+    """Pelo ENDPOINT: a chave velha não decide nada, nos dois sentidos.
+
+    O `test_fases` prova-o no motor; aqui prova-se onde ele carrega no botão —
+    uma página aberta no telemóvel manda o mesmo POST, e se a data de 12/10
+    voltasse a mandar, a saída destrancava-se sozinha no dia 12 outra vez.
+    """
+    # 1. A data no FUTURO, sem o interruptor: NÃO trava — o 200 é a prova.
+    repor(congelado=None, data_antiga=FUTURO)
+    con = mundo()
+    assert fases.congelada() is False
+    cod, j = _post("/api/venda-export", {})
+    assert cod == 200, (cod, j, "a data sozinha não pode travar")
+    # 2. A data PASSADA, com o interruptor posto: trava — o 409 é a prova.
+    repor(congelado=True, data_antiga=ONTEM)
+    assert fases.congelada() is True
+    cod, j = _post("/api/venda-export", {})
+    assert cod == 409 and "CONGELADA" in j["erro"], \
+        (cod, j, "uma data passada não pode destrancar o que ele travou")
+    assert "--congelada off" in j["erro"], j["erro"]
+    repor()
+    print("a data antiga nao trava nem destranca, e o 409 diz como se abre")
+
+
 # ===========================================================================
 # 5. A FILA MEDE FOTOS DE ATÉ 4 CARTAS
 # ===========================================================================

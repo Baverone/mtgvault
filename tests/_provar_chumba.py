@@ -206,7 +206,10 @@ for alvo, casos in (
     ("staples",
      ["caso_uma_staple_de_sideboard_de_premodern_acima_do_corte_esta_protegida"]),
     ("min_listas", ["caso_a_reserva_nao_se_enche_sem_amostra"]),
-    ("congelado", ["caso_a_saida_de_venda_recusa_se_antes_de_doze_de_outubro"]),
+    # A trava passou a MANUAL a 2026-10-04: o caso mudou de nome com ela, e o
+    # segundo prova que levantar/baixar o interruptor manda nos dois sentidos.
+    ("congelado", ["caso_a_saida_de_venda_recusa_se_com_a_trava_posta",
+                   "caso_levantar_o_interruptor_destranca_e_baixar_volta_a_travar"]),
     # A regra ERRADA de 2026-10-01 (uma linha por cópia física) e o tecto.
     ("explode", ["caso_um_playset_e_UMA_foto_e_nunca_quatro",
                  "caso_a_fila_dos_decks_conta_fotos_cartas_e_valor"]),

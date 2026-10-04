@@ -29,7 +29,8 @@ Cada `alvo` é o mtgvault de ONTEM numa peça só:
                  de estar protegidas;
   min_listas   — o mínimo de listas desaparece: um «consenso» de 3 listas volta
                  a encher a reserva (é o Ill-Gotten Gains, que ele nomeou);
-  congelado    — a trava do RC Ghent desaparece e a exportação volta a correr;
+  congelado    — a trava da venda desaparece (o interruptor desligado, desde
+                 2026-10-04 — era a data) e a exportação volta a correr;
   ate4         — o tecto das 4 cartas por foto desaparece: uma foto volta a
                  levar o que lhe caia, que é o monte de 33 cartas das antigas;
   por_tipo     — a fila deixa de se agrupar por tipo de carta, que é
@@ -85,7 +86,11 @@ elif alvo == "staples":
 elif alvo == "min_listas":
     fases.MIN_LISTAS_RESERVA = 1
 elif alvo == "congelado":
-    fases.congelado_ate = lambda cfg=None: ""
+    # A TRAVA NEUTRALIZADA. Era `congelado_ate = ""` (a data, até 2026-10-04);
+    # hoje quem decide é o interruptor, e desligá-lo é o que faz a saída de
+    # venda correr com a trava posta — que é o que os casos têm de apanhar.
+    fases.congelada = lambda cfg=None: False
+    fases.CONGELADA_OMISSAO = False
 elif alvo == "ate4":
     # Sem tecto: uma foto leva tudo o que lhe caia (o monte das antigas).
     from mtgvault import fotos as _ft                        # noqa: E402

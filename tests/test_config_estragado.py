@@ -8,7 +8,7 @@ apanhava-o e devolvia `{}`, **sem uma linha de aviso em lado nenhum**.
 MEDIDO no config a sério a 2026-10-02, com uma vírgula a mais no fim:
 
     caixas            17  ->  0        (o loadout inteiro desaparece)
-    venda congelada   até 12/10 -> NÃO (a trava do RC Ghent levanta-se)
+    venda congelada   SIM -> NÃO       (a trava da saída de venda levanta-se)
     cadeia de preços  cardtrader->cardmarket  ->  só cardmarket
     revalidacao.foto_manda  True -> None      («se não tiver foto, não tem carta» desliga)
 
@@ -47,7 +47,10 @@ os.environ["MTGVAULT_CONFIG"] = str(P)
 from mtgvault import sources  # noqa: E402
 
 BOM = {"caixas": [{"slot": "a", "nome": "A", "formato": "legacy"}],
-       "venda": {"congelado_ate": "2026-10-12"},
+       # A trava da venda é `congelada` desde 2026-10-04 (era `congelado_ate`),
+       # e continua a ser uma das coisas que um config estragado faria
+       # DESAPARECER: a omissão é «destravado», logo a saída de venda abria-se.
+       "venda": {"congelada": True},
        "precos": {"fonte": "cardtrader", "fonte_recurso": ["cardmarket"]}}
 
 
@@ -81,7 +84,7 @@ def caso_um_config_estragado_nao_apaga_o_que_ja_estava_lido():
     assert len(cfg.get("caixas") or []) == 1, (
         "o config estragado apagou as caixas: 17 decks, a trava da venda e a "
         "cadeia de preços desapareciam por causa de uma vírgula")
-    assert (cfg.get("venda") or {}).get("congelado_ate") == "2026-10-12", cfg
+    assert (cfg.get("venda") or {}).get("congelada") is True, cfg
     print("um config que deixou de fazer parse não apaga o que já estava lido")
 
     # 2. E DIZ-SE, com o caminho e o erro do JSON.
