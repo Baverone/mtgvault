@@ -31,6 +31,8 @@ PARES = [
     ("vault_db_publicavel", "test_publicar",
      "caso_o_vault_db_nao_entra_nos_publicaveis"),
     ("sem_a_mais", "test_publicar", "caso_as_partes_que_sobram_sao_denunciadas"),
+    ("prints_nao_ordenado", "test_publicar",
+     "caso_as_paginas_sao_iguais_em_dois_processos"),
     # --- os tokens ----------------------------------------------------------
     ("token_fora_do_tema", "test_tokens",
      "caso_os_tokens_de_estado_vivem_na_casca"),
@@ -96,6 +98,20 @@ elif alvo == "falta_uma_pagina":
 
 elif alvo == "vault_db_publicavel":
     publicar.PUBLICAVEIS = [*publicar.PUBLICAVEIS, "data/vault.db"]
+
+elif alvo == "prints_nao_ordenado":
+    # O `names` de volta a ser um `set` sem ordem. Tem de se mexer no FICHEIRO
+    # (e nao com um monkeypatch): o caso corre a geracao em SUBPROCESSOS, que e
+    # precisamente o que o torna capaz de apanhar isto.
+    import atexit
+    import pathlib
+    _mc = pathlib.Path(__file__).resolve().parent.parent / "meta_coverage.py"
+    _antes = _mc.read_text(encoding="utf-8")
+    _mc.write_text(_antes.replace(
+        'names = sorted({m["name"] for d in all_decks for m in d["missing"]})',
+        'names = {m["name"] for d in all_decks for m in d["missing"]}'),
+        encoding="utf-8")
+    atexit.register(lambda: _mc.write_text(_antes, encoding="utf-8"))
 
 elif alvo == "sem_a_mais":
     # A comparacao a nao dar pelas partes que deixaram de existir: uma caixa

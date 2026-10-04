@@ -73,6 +73,36 @@ def caso_duas_passagens_seguidas_nao_dao_mudanca():
     print("duas geracoes seguidas da mesma base nao dao diferenca nenhuma")
 
 
+def caso_as_paginas_sao_iguais_em_dois_processos():
+    """A geração tem de ser igual em DOIS PROCESSOS, não só duas vezes seguidas.
+
+    É a asserção que o `caso_duas_passagens_seguidas` **não** apanha, e custou
+    uma correcção a sério: o Python aleatoriza o hash das strings a cada
+    arranque, por isso a ordem de iteração de um `set` muda de processo para
+    processo. O `cobertura/prints.json` saía com as MESMAS chaves e o MESMO
+    conteúdo noutra ordem (medido: 77 854 bytes nas duas passagens, iguais com
+    `sort_keys`, ordem diferente) — e dentro do mesmo processo era estável, que
+    é precisamente por que nunca se notou. Com o `publicar` de 30 em 30 minutos
+    a decidir «há algo para commitar?» por essa diferença, eram **48 commits e
+    48 builds do Pages por dia, para sempre**.
+
+    Corre em subprocessos de propósito: no mesmo processo isto passava sempre.
+    """
+    import subprocess                                          # noqa: PLC0415
+    # DENTRO de `tests/`, nunca num scratch: uma ferramenta fora do
+    # repositório fazia este caso saltar em todas as máquinas menos nesta.
+    guiao = Path(__file__).resolve().parent / "medir_determinismo.py"
+    assert guiao.exists(), f"falta o {guiao.name} — este caso ficava a nao medir nada"
+    r = subprocess.run([sys.executable, str(guiao)], cwd=str(RAIZ),
+                       capture_output=True, text=True, encoding="utf-8",
+                       errors="replace", timeout=1800)
+    saida = (r.stdout or "") + (r.stderr or "")
+    assert r.returncode == 0, (
+        "a geracao nao e igual em dois processos — a tarefa vai commitar para "
+        "sempre:\n" + saida[-1200:])
+    print(saida.strip().splitlines()[-1])
+
+
 def caso_publicar_nao_escreve_na_coleccao():
     """A Galeria era o ÚNICO dos treze geradores a escrever (o ponto do dia no
     `value_history`). O `publicar` chama-a com `historico=False`.

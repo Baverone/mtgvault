@@ -716,7 +716,19 @@ def build_report(con):
         d["spec_cost"] = round(sum(m["cost"] or 0 for m in d["specific"]), 2)
 
     # opções de edição por carta (para o seletor de compra no cliente)
-    names = {m["name"] for d in all_decks for m in d["missing"]}
+    #
+    # ORDENADO, e isso não é arrumação (corrigido a 2026-10-04): o `names` é um
+    # `set`, e o Python aleatoriza o hash das strings **a cada arranque** — a
+    # ordem de iteração muda de PROCESSO para processo. O
+    # `data/paginas/cobertura/prints.json` saía com as MESMAS chaves e o MESMO
+    # conteúdo noutra ordem (medido: 77 854 bytes nas duas passagens,
+    # `sort_keys` igual, ordem diferente), e por isso o `git` dava-o como
+    # alterado em cada corrida sem um único dado ter mudado. Dentro do mesmo
+    # processo era estável, e foi por isso que nunca se notou — até o
+    # `mtgvault.publicar` de 30 em 30 minutos passar a decidir «há algo para
+    # commitar?» por esta diferença: eram **48 commits e 48 builds do Pages por
+    # dia, para sempre**. Ver `_revisao/medir_prints_processos.py`.
+    names = sorted({m["name"] for d in all_decks for m in d["missing"]})
     prints = {nm: _prints_for(con, nm, owned) for nm in names}
     # wantlist completa de cada deck (com staples partilhados) para exportar
     want = {d["id"]: [[m["name"], m["missing"]] for m in d["missing"]] for d in all_decks}
