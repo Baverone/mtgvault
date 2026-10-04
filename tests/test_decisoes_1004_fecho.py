@@ -301,10 +301,20 @@ def caso_a_excepcao_do_whipflare_esta_decidida_e_nao_pendente():
     assert "nonfoil" in (mp.get("decidido_por") or "").lower(), mp.get("decidido_por")
     # Os dois preços ficam à vista, e a ressalva da régua também.
     assert mp["precos"]["foil"] == 20.2 and mp["precos"]["nonfoil"] == 0.21, mp
-    assert "cardtrader" in mp["precos"]["fonte"], \
+    assert "cardtrader" in mp["precos"]["_fonte"], \
         "a ressalva de que a régua em vigor não cota esta carta tem de ficar"
     # E a troca está vigiada, não depende de ele se lembrar.
-    assert "preco_impressao" in (mp.get("trocar_por_foil") or ""), mp
+    assert "preco_impressao" in (mp.get("_trocar_por_foil") or ""), mp
+
+    # A PROSA NÃO VIAJA PARA A PÁGINA. As chaves `_` são para quem lê o config;
+    # levá-las ao payload trouxe o nome de uma loja de volta aos dados de duas
+    # páginas (`caso_os_dados_a_parte_tambem_nao_dizem_cardmarket`), e são ~2 KB
+    # de prosa por carta em falta.
+    limpo = loadout._sem_prosa(mp)
+    assert "_fonte" not in limpo["precos"] and "_trocar_por_foil" not in limpo
+    assert limpo["precos"]["foil"] == 20.2, "os números ficam"
+    assert limpo["provisoria"] == "trocar por foil", "e a marca que a página mostra"
+    assert "cardmarket" not in json.dumps(limpo, ensure_ascii=False).lower()
     print("config: excepcao DECIDIDA e aplicada, marcada provisoria, com vigia")
 
 

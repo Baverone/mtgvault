@@ -173,6 +173,34 @@ function tileHTML(t) {
     + `</${tag}>`;
 }
 
+/* A DATA-LIMITE de uma compra (2026-10-04), como chip. A ficha vem do Python
+   (`loadout.urgencia_da_compra`): os DIAS são calculados lá e não aqui — um
+   "faltam 5 dias" escrito no browser de quem deixou a página aberta de um dia
+   para o outro mente, e a conta tem de ser a MESMA que o CLI e o daily usam.
+   Uma data-limite que PASSOU diz-se (nunca desaparece calada), e a excepção de
+   material pendente leva o seu próprio aviso: enquanto ele não decidir, a
+   compra sugerida é a nonfoil e a caixa continua a exigir o material do grupo. */
+function chipUrg(u) {
+  if (!u) return '';
+  const d = u.dias;
+  const quando = u.passou ? `passou há ${Math.abs(d)} d`
+    : (d === null || d === undefined) ? u.ate
+      : d === 0 ? 'é hoje' : `faltam ${d} d`;
+  const cls = u.passou || (d !== null && d !== undefined && d <= 2) ? ' ja' : '';
+  const mp = u.material_pendente || {};
+  return `<span class="urg${cls}" title="${esc(u.porque || '')}">`
+    + `⏳ até ${esc(u.ate)} · ${esc(quando)}</span>`
+    + (u.pendente ? `<span class="urg pend" title="${esc(mp.porque || '')}">`
+      + `material por decidir</span>` : '')
+    // A EXCEPÇÃO DECIDIDA, mas PROVISÓRIA (2026-10-04): ele comprou o nonfoil
+    // para jogar e quer trocar por foil quando baixar. Sem este chip a linha
+    // ficava igual a uma compra definitiva e a troca caía no esquecimento — e é
+    // precisamente para ela não cair que a vigia de preço existe.
+    + (!u.pendente && mp.provisoria
+      ? `<span class="urg prov" title="${esc(mp.decidido_por || mp.porque || '')}">`
+        + `🔄 provisória · ${esc(mp.provisoria)}</span>` : '');
+}
+
 /* A mesma informação numa LINHA (o modo «Lista» das secções que antes de
    20/09 já eram imagem: a grelha da caixa, as Encomendas, as Sugestões). */
 function linhaHTML(t) {
@@ -1849,6 +1877,7 @@ function wantlistHTML(itens, marca, id, detalhe, basicas, edicao, slot) {
         pz: m.q > 0 ? eur(m.cost) + (m.unit && m.q > 1 ? ` (${eur(m.unit)}/un)` : '') : '',
         chips: (m.board === 'side' ? `<span class="sb">SB</span>` : '')
           + (cara ? `<span class="cara">💶 cara</span>` : '')
+          + chipUrg(m.urg)
           + (m.partilhada ? `<span class="part">🔁 ${m.partilhada} caixas</span>` : ''),
         nota: [m.nota ? esc(m.nota) : '',
                detalhe && compra.length ? 'para: ' + esc(compra.map(p => `${p.caixa} ${p.q}×`).join(' · ')) : '',

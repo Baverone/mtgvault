@@ -242,6 +242,17 @@
    flex:0 0 auto}
  .cara{font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;
    background:#3a1f1f;color:#ff9f8f;margin-left:5px;white-space:nowrap}
+ /* A DATA-LIMITE de uma compra (2026-10-04). Âmbar porque é um PRAZO e não um
+    erro; a dois dias ou menos — e depois de passar — fica vermelho: é a única
+    coisa nesta lista que tem hora marcada. O lilás é o material por decidir. */
+ .urg{font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;
+   background:#3a2f16;color:#f5c451;margin-left:5px;white-space:nowrap}
+ .urg.ja{background:#3a1f1f;color:#ff9f8f}
+ .urg.pend{background:#241f3a;color:#b9a8ff}
+ /* DECIDIDA mas PROVISÓRIA: comprou o nonfoil para jogar e troca por foil
+    quando baixar. Verde-azulado para não se confundir com o roxo do «por
+    decidir» — são estados diferentes e um deles já não precisa dele. */
+ .urg.prov{background:#13302c;color:#7fdfc4}
  .part{font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;
    background:#101c2e;color:#7fa8ff;margin-left:5px;white-space:nowrap}
  .chosen{font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;
@@ -953,7 +964,7 @@ botões, corre <code>python webapp.py</code> no PC (porto 8771) — e aí a aba
 <b>Plano</b> dá-te um QR para abrires isto no telemóvel, à frente da estante.
 Atualiza diariamente.</div></details></div></footer></div></div>
 
-<script src="deckboxes.js?v=f486512bc0af"></script><script>
+<script src="deckboxes.js?v=4e96847f45e7"></script><script>
 (function(){
   var b = document.body, side = document.getElementById('side'),
       bt = document.getElementById('menub'), veu = document.getElementById('veu');

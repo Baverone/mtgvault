@@ -1022,6 +1022,33 @@ def compras_urgentes(cfg: dict | None = None) -> dict[tuple[str, str], dict]:
     return out
 
 
+def _sem_prosa(x):
+    """Deita fora as chaves `_`-prefixadas, recursivamente.
+
+    O `colecao_config.json` é um ficheiro para ser LIDO por uma pessoa: cada
+    regra tem a explicação em português ao lado. Essa explicação é para quem
+    abre o ficheiro — **não é para o payload de uma página**, e levá-la para lá
+    tem dois custos, um deles medido:
+
+      * o `caso_os_dados_a_parte_tambem_nao_dizem_cardmarket` (2026-10-04)
+        chumbou por causa disto: a ressalva escrita ao lado dos preços do
+        Whipflare nomeia a loja, e os nomes de loja saíram das legendas de preço
+        nessa manhã. O texto estava certo no config e errado em
+        `data/paginas/deckboxes/compras.json`;
+      * e são ~2 KB de prosa por carta em falta, repetidos em cada parte.
+
+    O `_` é a convenção que o projecto já usa para *"o motor não vê"* (`_antes`,
+    `_mostrar`, `_venda`, `config_slots`). Aqui vale também para *"a página não
+    vê"*.
+    """
+    if isinstance(x, dict):
+        return {k: _sem_prosa(v) for k, v in x.items()
+                if not str(k).startswith("_")}
+    if isinstance(x, list):
+        return [_sem_prosa(v) for v in x]
+    return x
+
+
 def urgencia_da_compra(s: dict, nm: str, cfg: dict | None = None,
                        hoje: str | None = None,
                        urgentes: dict | None = None) -> dict | None:
@@ -1030,6 +1057,9 @@ def urgencia_da_compra(s: dict, nm: str, cfg: dict | None = None,
     `dias` conta-se de hoje para a data-limite e pode ser NEGATIVO — uma
     data-limite que passou continua a dizer-se (`passou: True`), em vez de
     desaparecer calada no dia em que mais importava.
+
+    O `material_pendente` vai **sem as chaves `_`** (ver `_sem_prosa`): a
+    explicação ao lado da regra é para quem lê o config, não para a página.
     """
     mapa = compras_urgentes(cfg) if urgentes is None else urgentes
     x = mapa.get((s.get("slot") or "", (nm or "").split(" // ")[0].lower()))
@@ -1043,7 +1073,7 @@ def urgencia_da_compra(s: dict, nm: str, cfg: dict | None = None,
             dias = (date.fromisoformat(ate) - d0).days
         except ValueError:
             dias = None
-    mp = x.get("material_pendente") or {}
+    mp = _sem_prosa(x.get("material_pendente") or {})
     return {"ate": ate, "dias": dias, "passou": dias is not None and dias < 0,
             "porque": str(x.get("porque") or ""),
             "prioridade": str(x.get("prioridade") or "alta"),

@@ -241,7 +241,8 @@ mtgvault/
                   (`reserva.limiar_pct`, 20 %) e a `curva_do_limiar`, a lista de
                   CANDIDATOS (`candidatos`) e o filtro que entra no motor
                   (`filtrar_venda` → saída `protegidas`), as FILAS de fotos por
-                  CÓPIA FÍSICA e a TRAVA do RC Ghent (`venda.congelado_ate`).
+                  CÓPIA FÍSICA e a TRAVA da venda (`venda.congelada`, MANUAL
+                  desde 2026-10-04 — era a data `congelado_ate`, do RC Ghent).
                   Ver «A ARRUMAÇÃO POR FASES»
   nomes.py        O NOME DE UM ARQUÉTIPO (2026-10-02): a página do EVENTO do
                   mtgtop8 dá o nome ao lado de cada deck e a recolha deitava-o
@@ -314,7 +315,7 @@ my_decks.py         segue decks-alvo (por assinatura e por jogador de MTGO) -> t
 commander_decks.py  decks de comandante por consenso EM CAMADAS: núcleo>=50% (=deck, deck_cards) / flex 25-50% / tech 15-25%; FILTRA pela cor do comandante. `tiers()` reusado pelo colecao_cor
 premodern_decks.py  consenso dos arquétipos-alvo de Premodern (`colecao_config.json`→`premodern_arquetipos_alvo`: UW Replenish, Enchantress) -> decks/deck_cards com o sufixo " (consenso)". Agrupa pelas etiquetas do `tagging` (o clustering não os separa) e usa `stock.stock_from_lists`. Mostrado nas `deckboxes` (era o `meusdecks`)
 refresh_collection.py  collection_owned p/ o index.html
-colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados, venda (a regra dos 5 % da RL, o `mostrar` de 2026-09-25 **e** o `congelado_ate` de 2026-10-01), cartas_vigiadas (a VIGIA DE CARTAS de 2026-09-26), reserva (o LIMIAR da reserva «maybe», 2026-10-01), caixas[].decisao / reserva / reserva_fora / comandante / reserva_assinatura (AS FASES, 2026-10-01), revalidacao.foto_manda (A FOTO É A VERDADE, 2026-10-02 — e o `playset_maximo` SAIU do `regras_por_formato` nesse dia; **a `false` e com `desde: null` desde 2026-10-04**, o dia em que as fotos foram apagadas), regras_por_formato: lingua/acabamento dos TRÊS grupos trocados a 2026-10-02 (`_regras_2026_10_02`: duel-commander e pauper `en` + `prefere_foil`, premodern `nonfoil`), basicas.declaradas / declaradas_em (A CONTAGEM DECLARADA, 2026-10-02), mtgtop8 (A RECOLHA e o NUNCA PERDER UM TORNEIO DE PAPEL GRANDE, 2026-10-04: `paginas_indice`, `revisitas_por_corrida` e `grandes.padroes`/`listas_por_evento`/`min_jogadores`), e as TRÊS DECISÕES de 2026-10-04 à tarde: a 14.ª terra da lista de qualificação (`listas_escolhidas.modern` com 1 Island, sem `por_confirmar`) + a `proposta_sideboard` NÃO APLICADA ao lado dela, e a caixa `modern-affinity` DESACTIVADA (`estado: candidata`, sem `assinatura`, o antigo em `_antes`)
+colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados, venda (a regra dos 5 % da RL, o `mostrar` de 2026-09-25 **e** a TRAVA — `congelado_ate` a 2026-10-01, hoje `congelada`, MANUAL desde 2026-10-04, com a data antiga arquivada em `_congelado_ate_historico`; mais o `_reservar_rl_formatos`, a razão por que o duel-commander fica fora), cartas_vigiadas (a VIGIA DE CARTAS de 2026-09-26), reserva (o LIMIAR da reserva «maybe», 2026-10-01), caixas[].decisao / reserva / reserva_fora / comandante / reserva_assinatura (AS FASES, 2026-10-01), revalidacao.foto_manda (A FOTO É A VERDADE, 2026-10-02 — e o `playset_maximo` SAIU do `regras_por_formato` nesse dia; **a `false` e com `desde: null` desde 2026-10-04**, o dia em que as fotos foram apagadas), regras_por_formato: lingua/acabamento dos TRÊS grupos trocados a 2026-10-02 (`_regras_2026_10_02`: duel-commander e pauper `en` + `prefere_foil`, premodern `nonfoil`), basicas.declaradas / declaradas_em (A CONTAGEM DECLARADA, 2026-10-02), mtgtop8 (A RECOLHA e o NUNCA PERDER UM TORNEIO DE PAPEL GRANDE, 2026-10-04: `paginas_indice`, `revisitas_por_corrida` e `grandes.padroes`/`listas_por_evento`/`min_jogadores`), e as TRÊS DECISÕES de 2026-10-04 à tarde: a 14.ª terra da lista de qualificação (`listas_escolhidas.modern` com 1 Island, sem `por_confirmar`) + a `proposta_sideboard` NÃO APLICADA ao lado dela, e a caixa `modern-affinity` DESACTIVADA (`estado: candidata`, sem `assinatura`, o antigo em `_antes`)
 ```
 Cada `.html` gerado tem de estar na lista do `git add` do workflow (`daily.yml`,
 passo "Guardar HTML") **e na lista `HTML` da tarefa `ai-pc/tasks/mtgvault-daily`**
@@ -1105,7 +1106,7 @@ processo por par); relatório em
   2. **A saída de stock da venda** — o CSV leva o `idProduct` do Cardmarket e o
      formato aprende-se de `data/cardmarket-stock-exemplo.csv`. Chamar-lhe
      CardTrader era inventar uma integração que não existe. Está atrás do
-     `venda.mostrar` (hoje `false`) e da trava de 12/10, **por isso não se vê**
+     `venda.mostrar` (hoje `false`) e da trava manual, **por isso não se vê**
      — são as 3 ocorrências que restam no `deckboxes.js`, e o teste chumba se
      aparecer uma quarta que não seja dali.
 - **A RECOLHA DO CARDMARKET NÃO SE DESLIGOU**, e isso é uma decisão. É grátis,
@@ -1580,7 +1581,7 @@ listas."* Tinha razão, e o nome estava a ser deitado fora **na recolha**. Motor
   e essa protecção era um ACIDENTE. Agora a Enchantress é que as devia proteger, e
   **não as protege**, pela razão da secção a seguir. São cartas que ele
   provavelmente quer guardar: a venda está fora de vista (`venda.mostrar: false`)
-  e congelada até 12/10, por isso há tempo para decidir.
+  e congelada (trava manual), por isso há tempo para decidir.
 - **O BURACO DA RD, QUE ISTO PÔS À VISTA E NÃO CRIOU — e é o primeiro ponto da
   próxima ordem.** A **RD** protege o que está **FISICAMENTE** na caixa
   (`lot["caixa"]`, da `copy_allocation`), e não o que a ALOCAÇÃO lhe dá. Logo, um
@@ -2169,7 +2170,7 @@ Backup em `data/backups/vault-2026-10-04-tres-decisoes.db` (98,7 MB,
   definição, uma carta que apareceu numa lista do mês»*). Na venda vê-se o espelho
   disto: `venda` **113 → 116 c** (1 588,89 € → 1 591,62 €) e `protegidas`
   **162 → 159 c**. A **alocação não mexe** e a venda continua **escondida**
-  (`venda.mostrar: false`) e **congelada** até 12/10 — medir não é destrancar.
+  (`venda.mostrar: false`) e **congelada** (trava manual) — medir não é destrancar.
   - **A RAZÃO ESTÁ ESCRITA NO CONFIG** (`reserva._staples_premodern_pct`), com os
     números, porque daqui a um mês ninguém se lembra porque é que 10 virou 20:
     com `cartas_partilhadas: rotativas` as cartas que entram em vários decks
@@ -2279,6 +2280,152 @@ Backup em `data/backups/vault-2026-10-04-tres-decisoes.db` (98,7 MB,
   `decks_vista.partilha_do_formato` e **não mexe no motor da venda nem no limiar
   da reserva**: o 20 % fica como está, e a sua razão passa de pressuposto a
   facto escrito no config.
+  **[A (a) FECHOU-SE no mesmo dia, ao fim do dia]**: ele decidiu o **nonfoil
+  agora, foil depois** — ver a secção a seguir.
+
+**A TRAVA DA VENDA DEIXA DE TER DATA, A RL DE DUEL COMMANDER FICA VENDÁVEL, E O
+WHIPFLARE É NONFOIL PROVISÓRIO (André, 2026-10-04, ao fim do dia).** Três
+decisões pequenas que FECHAM as três que a ordem anterior deixou abertas. Motor
+em `mtgvault/fases.py` (`congelada`/`gravar_congelada`/`COMO_DESTRANCAR`/
+`data_sem_efeito`) e `mtgvault/watchlist.py` (`check_preco_impressao`/
+`vigiar_preco`/`chave_preco`), config em `venda.congelada` +
+`venda._reservar_rl_formatos` + `compras_urgentes[].material_pendente`, kind novo
+`preco_impressao` na `watched`. Testes em `tests/test_decisoes_1004_fecho.py`
+(11 casos) e a prova de que chumbam em `tests/_chumba_decisoes_fecho.py`
+(**20 de 20 alvos**, um processo por par). Backup em
+`data/backups/vault-2026-10-04-decisoes-noite.db` (103,5 MB, `integrity ok`).
+
+- **1) A TRAVA É MANUAL E JÁ NÃO SE LEVANTA SOZINHA.** Era
+  `venda.congelado_ate: "2026-10-12"` — uma DATA, que caía no dia 12 por si. Ele
+  decidiu que não: *"a venda passa a destrancar só quando eu disser"*, porque o
+  **estado das cartas está por avaliar** (a escala entrou a 03/10 e as 737 linhas
+  da `copies` continuam todas com o `NM` de omissão, `condition_origem =
+  'omissao'`). Hoje é `venda.congelada: true`.
+  **O COMPORTAMENTO NÃO MUDOU** — o `venda.exportar`, o passo `venda-export` do
+  `daily` e os dois endpoints de escrita do 8771 continuam a levantar
+  `fases.VendaCongelada` e o `webapp` continua a traduzi-la num **409** com a
+  frase em português. O que mudou é a CONDIÇÃO.
+  - **COMO SE DESTRANCA, e é a pergunta que ele vai fazer dentro de um mês:**
+    **`py -m mtgvault.cli vender --congelada off`** (ou `venda.congelada: false`
+    no config). A frase vive **num sítio só** (`fases.COMO_DESTRANCAR`) e sai nos
+    TRÊS lados onde ele bate: a mensagem do 409, a linha do `daily`/CLI e a
+    **Fase 4 da `arrumacao.html`**, num bloco destacado. Escrita em cada
+    superfície, a segunda ficava desactualizada.
+  - **A OMISSÃO É «DESTRAVADO»** (`CONGELADA_OMISSAO = False`), que é o que a
+    ausência da chave já valia — por isso uma base nova e os testes continuam a
+    poder exportar. Quem trava é a chave escrita.
+  - **A CHAVE ANTIGA NÃO SE APAGOU: foi para o histórico**
+    (`venda._congelado_ate_historico`), com a data, o `substituida_em`, a razão
+    e o **texto explicativo original** — é memória do projecto. E **deixou de ter
+    efeito**, como o `playset_maximo` e o `dedicado: false`: se alguém a voltar a
+    escrever no bloco `venda`, o `fases.data_sem_efeito()` **avisa-o** em vez de
+    a deixar mentir em silêncio. Tem caso de teste nos dois sentidos — uma data
+    no futuro não trava, uma data passada não destranca.
+  - **O `venda.mostrar` não se tocou** (continua `false`): são duas chaves
+    diferentes e ele não pediu para voltar a ver a venda.
+  - **A `arrumacao.html` TEVE DE SER REGERADA, e é a parte que quase passou.** O
+    código estava certo e o HTML em disco **mentia**: continuava a prometer
+    *«A partir de 2026-10-12 aparece aqui o mesmo botão da Fase 2»*, que a partir
+    de hoje é falso. É o padrão do `event_tier` na porta de entrada, e é o mesmo
+    que aconteceu ao `index.html` quando as fotos foram desligadas nesta manhã.
+- **2) A RL QUE SÓ JOGA EM DUEL COMMANDER: a razão passou a estar ESCRITA.**
+  Isto **já funcionava** — `venda.reservar_rl_formatos` é `["legacy"]` e o
+  duel-commander nunca lá esteve —, mas funcionava **por acidente de
+  configuração**. O que entrou foi o `_reservar_rl_formatos`: *«RL que jogue» são
+  as que ELE joga nos decks DELE, e não as que o formato joga*. Acrescentar
+  `duel-commander` àquela lista punha o vault a segurar Reserved List por causa
+  de decks que ele não joga.
+  - **CONFERIDO ao exemplar**, e é a premissa da decisão: os **7 nomes** de RL
+    que só aparecem em listas de `duel-commander` — Memory Jar, Metalworker,
+    Rofellos Llanowar Emissary, Time Spiral, Treachery, Yavimaya Hollow,
+    Yawgmoth's Bargain — e **NENHUM deles entra na lista do deck de Duel
+    Commander que ele escolheu** (o `decklist 22794`, a lista do Liwei Luo, 80
+    nomes). Os 7 são `reserved = 1` e nenhum aparece numa lista de outro formato.
+  - **UMA CORRECÇÃO AO APURAMENTO, e é a favor dele: são SEIS e não sete.** O
+    **Metalworker** continua protegido — mas pela **R4** e por outra razão: *está
+    na lista do Cloud cEDH*, que é um deck dele. Os outros seis estão na lista de
+    candidatas: **9 cópias / 640,98 €** (e não 453,26 €, que é o número da ordem
+    — a diferença é a régua só-CardTrader de 04/10).
+  - **E o «Radiant Archangel» dos outros seis não existe: é «Radiant,
+    Archangel»**, com vírgula (ULG #20, `reserved = 1`). Com o nome certo, os
+    seis que não aparecem em lista meta nenhuma são **11 cópias / 470,04 €** —
+    todos na lista de candidatas, como a ordem esperava.
+- **3) O WHIPFLARE: NONFOIL AGORA, FOIL DEPOIS.** A excepção ao `acabamento:
+  foil` do grupo `spml` passou de **PENDENTE** a **DECIDIDA e `aplicado: true`**,
+  com a data, as palavras dele e os dois preços. A caixa `modern` passa a
+  ACEITAR o nonfoil nesta carta: quando a cópia entrar **fecha o slot** em vez de
+  ficar substituto, e a lista de compras fica satisfeita. A linha de compra
+  deixou de dizer *«decisão do material PENDENTE»* e passou a dizer só
+  *«EN · nonfoil»*.
+  - **E FICA MARCADA PROVISÓRIA** (`material_pendente.provisoria: "trocar por
+    foil"`): chip **«🔄 provisória · trocar por foil»** na wantlist da caixa e na
+    aba Comprar. Sem ele a linha ficava igual a uma compra definitiva e a troca
+    caía no esquecimento — que é precisamente o que a vigia existe para impedir.
+  - **A VIGIA DO FOIL REAPROVEITA A `watched`**, com o kind novo
+    `preco_impressao` — a mecânica de vigiar (inscrever, snapshot, «mudou?», o
+    `watch-check` do daily, o toast) já vivia lá, e escrever uma segunda era ter
+    duas respostas para *"o que é que eu estou a vigiar"*. **Não vai à rede**:
+    lê a `price_latest` que o `daily` já preenche. Inscrita na base dele, **id 7**
+    (`Whipflare (NPH #102) foil`), e verificada: 20,20 €, 2.ª corrida
+    `changed: False` (sem sinal falso), e a descer a 9,50 € **avisa**.
+  - **O LIMIAR SÃO 10,00 €, e a razão é MEDIDA.** (1) É o **p90 das compras foil
+    dele**: das 33 linhas de compra em foil com preço, a mediana é **1,10 €**, a
+    média 3,28 € e o p90 **10,10 €** — abaixo de 10 € o Whipflare deixa de ser um
+    outlier (hoje é a 2.ª mais cara de todas, só atrás do Overlord of the
+    Balemurk a 22,61 €) e passa a ser uma compra foil como as outras 90 %. (2) É
+    **metade** do preço de hoje (20,20 €), logo uma descida inequívoca e não
+    ruído de cotação. (3) É um valor **ABSOLUTO e não uma percentagem**, porque o
+    histórico do foil de NPH tem **UM ÚNICO PONTO** (20,20 € a 2026-09-29): uma
+    percentagem sobre um ponto não é medição nenhuma e não se finge que é.
+  - **A FONTE DA VIGIA É FIXA NA INSCRIÇÃO (`cardmarket`), e sem isso ela não
+    vigiava nada.** A cadeia em vigor é só `cardtrader`, que **não cota uma única
+    impressão de Whipflare** — pela cadeia, esta vigia nunca teria preço e nunca
+    avisaria. E uma vigia que trocasse de fonte entre corridas comparava duas
+    escalas de preço (a lição da `precos.receita`): um salto de fonte parecia uma
+    descida e disparava um aviso falso. Logo mede-se sempre na mesma régua, e sem
+    cotação a resposta é *"sem preço"* — **nunca 0 €**, que seria o aviso mais
+    alto possível por falta de dado. Tem caso de teste para cada uma das três.
+  - **O `_migrate` PASSOU A PERGUNTAR «FALTA ALGUM KIND?»** e não «falta o último
+    que eu acrescentei» (era `"mtgtop8_archetype" not in sql`). Na base dele, que
+    já tinha esse kind desde esta mesma noite, a reconstrução não corria e o
+    `preco_impressao` ficava **fora do CHECK** — `IntegrityError` no
+    `watchlist.add`, a vigia a não se inscrever. A lista vive num sítio
+    (`db.KINDS_VIGIA`), o CHECK da tabela reconstruída sai dela, e há teste que
+    exige que o `schema.sql` diga o mesmo. **Medido na base dele: 7 vigias e 17
+    snapshots, nada perdido, `foreign_key_check` limpo.**
+  - **O teste deste ponto tinha um PONTO CEGO que o `_chumba` mostrou:** só
+    construía a tabela de *antes* de 04/10, e por isso passava com o defeito
+    posto. Hoje mede os **dois** pontos de partida, e o segundo é o da base dele.
+- **AS OUTRAS CARTAS NO MESMO CASO: só há uma, e é esta.** Medido nas **34**
+  linhas de compra das caixas que pedem foil: **1 de 34** tem o foil a ≥10× o
+  nonfoil — o Whipflare, a **96,2×**. A segunda pior é o **Thoughtcast a 8,4×**
+  (4,97 € contra 0,59 €), e depois Witherbloom Command 6,1×, Parhelion II 4,3× e
+  Greasefang 4,1×. **Não se repete em dez cartas: a regra do grupo não está mal**
+  — é esta carta que é um caso isolado, e por isso abre-se excepção a ela e não
+  se mexe na regra.
+  - **O primeiro medidor disto respondeu «0 linhas» e não media nada**, e vale
+    registá-lo: exigia preço na cadeia em vigor (só CardTrader, que deixa 18 das
+    154 compras sem preço) e lia o acabamento da STRING `req_compra` — que, por
+    causa da excepção, já dizia *«nonfoil»*. Excluía o próprio Whipflare, o caso
+    conhecido. O medidor certo lê o **acabamento da regra do grupo** e o preço da
+    fonte **que cota**, e usa o Whipflare como controlo positivo: se ele não
+    aparecer, o medidor está mal, não a regra.
+- **MEDIDO LADO A LADO, o MESMO `vault.db` dos dois lados** (worktree em
+  `_revisao/main-0410c-noite`): **fechar tudo 5 895,14 € nos dois**, 245 a
+  comprar, 21 sem preço, candidatas **611 c / 17 888,30 €**, protegidas
+  **1 067 c / 126 575,57 €**, as nove saídas da venda, a arrumação e **as 17
+  caixas iguais à percentagem e ao cêntimo**. As **14** diferenças do payload são
+  todas desta ordem: a data que saiu do bloco `venda`, e o `material_pendente` do
+  Whipflare (`aplicado` false→true, `estado` PENDENTE→DECIDIDA, a `provisoria`, e
+  o `req_compra` que deixou de dizer «PENDENTE»). **A alocação não mexeu um
+  número.**
+- **POR DECIDIR POR ELE:** (a) o **Whipflare continua sem preço na régua em
+  vigor** e entra na lista de compras a 0,00 € (conta em `sem_preco`) — se quiser
+  o preço de volta é `precos fonte cardtrader --recurso cardmarket`; (b) o
+  **limiar de 10 €** é escolha minha a partir da curva medida, e muda-se no
+  `watched.notes`; (c) o **Metalworker** fica protegido pela R4 enquanto estiver
+  na lista do Cloud cEDH — se ele o quiser vender, é tirá-lo dessa lista; (d) o
+  **Cursed Totem** continua fora da lista, como ajuste não decidido.
 
 **AS FOTOS FORAM APAGADAS E A CAMPANHA ESTÁ DESLIGADA (André, 2026-10-04, à
 letra).** *"podes apagar todas as fotos, A MINHA RESPONSABILIDADE, se for para
@@ -2584,8 +2731,9 @@ chumbam em `tests/_chumba_foto_manda.py` (9 alvos, 16 pares medidos).
   ele vai vender fotografam-se **onde estão** (Caixa RL e Colecção, que
   continuam na aba) e entram na venda depois. Consequência a saber: o botão
   «Tirar fotos» do alvo `venda` — e, com ele, o plano da **Fase 4** de 01/10 que
-  «se abriria sozinho a 12/10» — não tem nada para abrir enquanto a colecção não
-  estiver fotografada. Tem dois casos de teste a dizê-lo.
+  «se abriria sozinho a 12/10» (hoje só abre quando ele destrancar a trava à
+  mão) — não tem nada para abrir enquanto a colecção não estiver fotografada.
+  Tem dois casos de teste a dizê-lo.
 - **A VENDA OFERECE PRIMEIRO O QUE JÁ TEM PROVA, e sem isto a regra não
   funcionava.** O excedente escolhia-se pelo pior estado e podia cair TODO nas
   cópias sem foto: fotografar 3 de 7 Get Lost não desbloqueava uma única venda.
@@ -3031,7 +3179,7 @@ todos os decks, as basicas sao todas de Unhinged"*. Recorta as regras de
   `venda` e `venda_rl` continuam a **zero**, `protegidas` 144 c/4 568,57 €,
   `rl_sem_historico` 100 c e `reservadas`/`retidos`/`rl_segurar` a zero —
   **iguais**. A cópia desalojada **não vai à venda**: cai em `sem_foto`, e a
-  venda está fora de vista (`venda.mostrar: false`) e congelada até 12/10.
+  venda está fora de vista (`venda.mostrar: false`) e congelada (trava manual).
 - **A ISENÇÃO DAS BÁSICAS TINHA DUAS PERNAS E PRECISAVA DE TRÊS.** O texto da
   isenção dizia *"escapam às regras de língua e edição"* e **não falava de
   acabamento** — e o `_serve_basica` já era generoso (com a isenção ligada
@@ -3347,8 +3495,8 @@ fotos, a trava do RC Ghent e a derivação das shock/fetchlands.]**
 Ele vai arrumar a colecção por FASES e ditou as regras neste dia. Motor em
 `mtgvault/fases.py`, página `arrumacao.py` → `arrumacao.html`, passo `arrumacao`
 do `daily`, CLI `py -m mtgvault.cli fases [--curva] | fases terras`, endpoint
-`/api/fase-reserva`; config em `venda.congelado_ate`, `reserva` e
-`caixas[].reserva`/`reserva_fora`/`comandante`/`reserva_assinatura`.
+`/api/fase-reserva`; config em `venda.congelada` (era `congelado_ate`), `reserva`
+e `caixas[].reserva`/`reserva_fora`/`comandante`/`reserva_assinatura`.
 Testes em `tests/test_fases.py` (24 casos) e a prova de que chumbam sem a
 funcionalidade em `tests/_provar_chumba.py` (+ `tests/_chumba_fases.py`, 10
 alvos / 16 casos). As palavras dele:
@@ -3471,7 +3619,11 @@ alvos / 16 casos). As palavras dele:
     mesmo `copies.id`, e perguntar pelo id protegia a parte que está na gaveta —
     uma cópia a desaparecer da venda sem motivo. O `linha_de` carimba a caixa na
     linha. Apanhado pelo `test_paginas_loadout`.
-- **A TRAVA: `venda.congelado_ate` = 2026-10-12.** Ele joga o RC Ghent de Modern
+- **A TRAVA: `venda.congelado_ate` = 2026-10-12.**
+  **[SUPERSEDED a 2026-10-04 ao fim do dia: a trava passou a MANUAL
+  (`venda.congelada`) e já NÃO tem data — ver «A TRAVA DA VENDA DEIXA DE TER
+  DATA». O que segue fica como histórico; o mecanismo é o mesmo, muda a
+  condição.]** Ele joga o RC Ghent de Modern
   a 9-11/10. Qualquer geração de saída de venda ou exportação **recusa-se** antes
   dessa data (`fases.VendaCongelada`, subclasse de `ValueError` como a
   `webapp.VendaDesligada`, por isso o `do_POST` traduz num 409 com a frase em
@@ -3567,7 +3719,7 @@ página e leitura.
   `pendentes\` com o alvo no botão; `pendentes\deckboxes\` **nunca** é para
   cartas (é a foto da caixa de plástico, ponto 13); e estas cópias já estão no
   inventário — o que a foto faz é **ligar-se à cópia que já existe**.
-- **A TRAVA DE 12/10 NÃO APANHA AS FOTOS, e foi verificado em vez de assumido.**
+- **A TRAVA DA VENDA NÃO APANHA AS FOTOS, e foi verificado em vez de assumido.**
   `fases.exige_descongelado` vive em três sítios e só nesses — `venda.exportar`,
   `webapp._exige_venda` (as duas portas de escrita da venda) e
   `daily.venda_export`. Nem o `/api/revalidacao`, nem o `fila_decks`, nem a
@@ -3575,9 +3727,12 @@ página e leitura.
   Estava certo: **não havia nada a corrigir**. Tem caso de teste que o tranca com
   a trava LIGADA, no mesmo pedido: a exportação é 409 e o alvo é 200.
 - **A FASE 4 É A MESMA MECÂNICA, com o alvo `venda`** — o caminho está feito e
-  **abre-se sozinho na data da trava**, sem ninguém mexer no código: até lá a
-  página mostra o que vai aparecer e porque é que ainda não aparece. Abrir o
-  botão antes de 12/10 era começar o passo que a trava existe para adiar.
+  abre-se quando a trava se levantar, sem ninguém mexer no código: até lá a
+  página mostra o que vai aparecer e porque é que ainda não aparece. Abri-lo com
+  a trava posta era começar o passo que a trava existe para adiar.
+  **[2026-10-04, ao fim do dia: a trava deixou de ter data, por isso a página
+  deixou de dizer «a partir de 12/10» — que passaria a ser uma promessa falsa —
+  e passou a dizer COMO se destranca.]**
 
 **UMA FOTO LEVA NO MÁXIMO QUATRO CARTAS, E AS ANTIGAS ARQUIVAM-SE (André,
 2026-10-01, à letra).** *"organiza o Blue farm e CDEH por tipo de carta e ate 4
