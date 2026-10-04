@@ -78,6 +78,30 @@ def todas(con, cfg_slots=None, foil_cache=None):
 loadout.resolve_slots = todas
 T.caso_a_excepcao_do_foil_fica_pendente_e_nao_decidida()
 """),
+    ("pagina_nao_leva_a_urgencia",
+     "o payload nao leva a ficha: o motor sabe a data-limite e a pagina cala-se",
+     """
+import deckboxes
+_real = deckboxes.payload
+def sem_urg(con, rep, editable=False, token=""):
+    p = _real(con, rep, editable, token)
+    for c in p["caixas"]:
+        for w in c.get("wantlist") or []:
+            w.pop("urg", None)
+    for g in p.get("compras") or []:
+        g["urg"] = None
+    return p
+deckboxes.payload = sem_urg
+T.caso_a_pagina_mostra_a_data_limite()
+"""),
+    ("chip_definido_e_nao_chamado",
+     "o `chipUrg` existe no JS e ninguem o chama (o mesmo que nao existir)",
+     """
+import deckboxes
+_real = deckboxes.js_texto
+deckboxes.js_texto = lambda *a, **k: _real(*a, **k).replace('+ chipUrg(m.urg)', '')
+T.caso_a_pagina_mostra_a_data_limite()
+"""),
     # O defeito MEU de 04/10: `in ("foil","prefere_foil")` em vez de `== "foil"`.
     ("prefere_foil_orcamenta_a_foil",
      "o preco da compra segue o `prefere_foil` e orcamenta a FOIL (+40,38 EUR)",

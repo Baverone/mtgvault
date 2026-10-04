@@ -313,6 +313,47 @@ def caso_a_excepcao_do_foil_fica_pendente_e_nao_decidida():
           "não fecha o slot; com `aplicado` fecha")
 
 
+def caso_a_pagina_mostra_a_data_limite():
+    """O motor saber não basta: ele lê a data-limite NA PÁGINA.
+
+    Apanhado a medir contra o 8771 com o código final: a linha de falta trazia a
+    ficha de urgência e **o payload não a levava** — a página mostrava o
+    requisito («nonfoil — decisão do material PENDENTE») e não dizia uma palavra
+    sobre 09/10. O motor sabia, a página calava. Tranca-se nas duas listas que a
+    ordem nomeia (as FALTAS da caixa e as COMPRAS) e a chamada no JS: a função
+    `chipUrg` definida e não chamada era o mesmo que não existir.
+    """
+    import deckboxes                                            # noqa: PLC0415
+    escrever_cfg(BASE_CFG)
+    con = base()
+    res = loadout.report(con)
+    pay = deckboxes.payload(con, res, editable=False)
+
+    cx = [c for c in pay["caixas"] if c["slot"] == "modern"][0]
+    w = [x for x in cx["wantlist"] if x["nm"] == "Whipflare"]
+    assert w, "o Whipflare tem de estar na wantlist da caixa"
+    u = w[0].get("urg")
+    assert u, "a linha da wantlist tem de levar a ficha de urgência ao browser"
+    assert u["ate"] == "2026-10-09" and u["prioridade"] == "alta", u
+    assert u["pendente"] is True, "e tem de dizer que o material está por decidir"
+
+    cp = [x for x in pay["compras"] if x["nm"] == "Whipflare"]
+    assert cp and cp[0].get("urg"), "a aba Comprar também (é a lista que ele copia)"
+    assert cp[0]["urg"]["ate"] == "2026-10-09", cp[0]["urg"]
+
+    # Uma carta SEM data-limite não ganha ficha nenhuma — nem na página.
+    outra = [x for x in pay["compras"] if x["nm"] != "Whipflare"]
+    assert all(not x.get("urg") for x in outra), "só a carta escrita no config"
+
+    js = deckboxes.js_texto()
+    assert "function chipUrg" in js, "falta o chip no JavaScript"
+    assert js.count("chipUrg(") >= 2, \
+        "o `chipUrg` está definido e NÃO é chamado: é o mesmo que não existir"
+    assert ".urg{" in js or ".urg{" in deckboxes.html_page(con, res), \
+        "o chip precisa de CSS, senão não se distingue do texto"
+    print("página: o chip ⏳ até 2026-10-09 na wantlist da caixa e na aba Comprar")
+
+
 def caso_uma_caixa_prefere_foil_orcamenta_o_nonfoil():
     """Um defeito MEU, medido a 2026-10-04 e corrigido antes de ir ao `main`.
 
@@ -559,6 +600,7 @@ def run():
     caso_o_sideboard_do_modern_tem_3_consign_1_whipflare_e_soma_15()
     caso_o_whipflare_aparece_nas_faltas_com_a_data_limite()
     caso_a_excepcao_do_foil_fica_pendente_e_nao_decidida()
+    caso_a_pagina_mostra_a_data_limite()
     caso_uma_caixa_prefere_foil_orcamenta_o_nonfoil()
     caso_o_limiar_da_reserva_e_20()
     caso_a_lista_de_candidatas_muda_com_o_limiar()

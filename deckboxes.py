@@ -514,6 +514,8 @@ def _caixa_payload(s, imgs, cfs, rep=None, col=None, tipos=None, cores=None,
                              # foil" em vez do `req` da caixa.
                              "req": m.get("req_compra") or "",
                              "sfoil": not m.get("foil_existe", True),
+                             # A DATA-LIMITE desta compra (2026-10-04), se tiver.
+                             "urg": m.get("urgencia"),
                              "nota": loadout.nota_onde(m),
                              "acam": m.get("a_caminho", 0),
                              "pfoto": m.get("pendente_foto", 0),
@@ -801,7 +803,15 @@ def payload(con, rep, editable=False, token=""):
                                            "nota": "",
                                            # A imagem: a impressão mais barata
                                            # no acabamento da compra (2026-09-20).
-                                           "sid": _sid_da_falta(con, m, imgs, baratas)})
+                                           "sid": _sid_da_falta(con, m, imgs, baratas),
+                                           # A DATA-LIMITE (2026-10-04): a ficha
+                                           # de `loadout.urgencia_da_compra`. Sem
+                                           # ela aqui, o motor sabia que o
+                                           # Whipflare é para 09/10 e a PÁGINA —
+                                           # que é onde ele olha — não o dizia.
+                                           "urg": None})
+            if m.get("urgencia") and not g["urg"]:
+                g["urg"] = m["urgencia"]
             g["q"] += m["comprar"]
             if loadout.nota_onde(m) and loadout.nota_onde(m) not in g["nota"]:
                 g["nota"] = (g["nota"] + " · " if g["nota"] else "") + loadout.nota_onde(m)
@@ -1519,6 +1529,13 @@ _CSS = r"""
    flex:0 0 auto}
  .cara{font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;
    background:#3a1f1f;color:#ff9f8f;margin-left:5px;white-space:nowrap}
+ /* A DATA-LIMITE de uma compra (2026-10-04). Âmbar porque é um PRAZO e não um
+    erro; a dois dias ou menos — e depois de passar — fica vermelho: é a única
+    coisa nesta lista que tem hora marcada. O lilás é o material por decidir. */
+ .urg{font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;
+   background:#3a2f16;color:#f5c451;margin-left:5px;white-space:nowrap}
+ .urg.ja{background:#3a1f1f;color:#ff9f8f}
+ .urg.pend{background:#241f3a;color:#b9a8ff}
  .part{font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;
    background:#101c2e;color:#7fa8ff;margin-left:5px;white-space:nowrap}
  .chosen{font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;
@@ -2188,6 +2205,26 @@ function tileHTML(t) {
        + (t.pz ? `<b>${esc(t.pz)}</b>` : '') + `</span>` : '')
     + (t.acts ? `<span class="tla">${t.acts}</span>` : '')
     + `</${tag}>`;
+}
+
+/* A DATA-LIMITE de uma compra (2026-10-04), como chip. A ficha vem do Python
+   (`loadout.urgencia_da_compra`): os DIAS são calculados lá e não aqui — um
+   "faltam 5 dias" escrito no browser de quem deixou a página aberta de um dia
+   para o outro mente, e a conta tem de ser a MESMA que o CLI e o daily usam.
+   Uma data-limite que PASSOU diz-se (nunca desaparece calada), e a excepção de
+   material pendente leva o seu próprio aviso: enquanto ele não decidir, a
+   compra sugerida é a nonfoil e a caixa continua a exigir o material do grupo. */
+function chipUrg(u) {
+  if (!u) return '';
+  const d = u.dias;
+  const quando = u.passou ? `passou há ${Math.abs(d)} d`
+    : (d === null || d === undefined) ? u.ate
+      : d === 0 ? 'é hoje' : `faltam ${d} d`;
+  const cls = u.passou || (d !== null && d !== undefined && d <= 2) ? ' ja' : '';
+  return `<span class="urg${cls}" title="${esc(u.porque || '')}">`
+    + `⏳ até ${esc(u.ate)} · ${esc(quando)}</span>`
+    + (u.pendente ? `<span class="urg pend" title="${esc((u.material_pendente || {}).porque || '')}">`
+      + `material por decidir</span>` : '');
 }
 
 /* A mesma informação numa LINHA (o modo «Lista» das secções que antes de
@@ -3866,6 +3903,7 @@ function wantlistHTML(itens, marca, id, detalhe, basicas, edicao, slot) {
         pz: m.q > 0 ? eur(m.cost) + (m.unit && m.q > 1 ? ` (${eur(m.unit)}/un)` : '') : '',
         chips: (m.board === 'side' ? `<span class="sb">SB</span>` : '')
           + (cara ? `<span class="cara">💶 cara</span>` : '')
+          + chipUrg(m.urg)
           + (m.partilhada ? `<span class="part">🔁 ${m.partilhada} caixas</span>` : ''),
         nota: [m.nota ? esc(m.nota) : '',
                detalhe && compra.length ? 'para: ' + esc(compra.map(p => `${p.caixa} ${p.q}×`).join(' · ')) : '',
