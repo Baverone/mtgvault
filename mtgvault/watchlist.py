@@ -1,8 +1,14 @@
-"""Vigiar fontes específicas: jogadores do MTGO e decks do Moxfield.
+"""Vigiar fontes específicas: jogadores do MTGO, decks do Moxfield, arquétipos
+do mtgtop8 — e o PREÇO de uma impressão.
 
 A diferença face à recolha geral: aqui não queremos agregados do metagame,
 queremos ESTE baralho, e queremos saber **o que mudou** desde a última vez.
 Cada versão fica guardada em `watched_snapshots`, o que permite `diff`.
+
+O `preco_impressao` (2026-10-04) é o mais novo e o único que **não vai à rede**:
+lê a `price_latest` que o `daily` já preenche e avisa quando o preço desce a um
+alvo. Entrou nesta tabela em vez de numa estrutura própria porque a mecânica de
+vigiar já vive aqui — ver `check_preco_impressao`.
 """
 from __future__ import annotations
 
@@ -32,6 +38,59 @@ def add(con: sqlite3.Connection, kind: str, key: str, label: str, fmt: str,
         "SELECT id FROM watched WHERE kind=? AND key=? AND format=?",
         (kind, key, fmt.lower()),
     ).fetchone()["id"]
+
+
+def chave_preco(scryfall_id: str, finish: str = "nonfoil") -> str:
+    """A `key` de uma vigia de preço: a impressão EXACTA e o acabamento.
+
+    É a impressão e não o nome porque é uma impressão que ele quer comprar — o
+    foil de New Phyrexia, que é a única que existe em foil. Pelo nome, a vigia
+    media a mais barata de qualquer edição e avisava por uma carta que não serve.
+    """
+    return f"{scryfall_id}|{finish}"
+
+
+def vigiar_preco(con: sqlite3.Connection, nome: str, set_code: str,
+                 finish: str, alvo_eur: float, fmt: str,
+                 fonte: str = "cardmarket", porque: str = "",
+                 collector_number: str | None = None) -> dict:
+    """Inscreve (ou actualiza) a vigia de preço de uma impressão. `{id, …}`.
+
+    Resolve o `scryfall_id` pela edição — e **levanta** se não encontrar, em vez
+    de inscrever uma vigia sobre uma impressão que não existe: essa nunca teria
+    preço e ficaria inscrita a não vigiar nada.
+    """
+    q = ("SELECT scryfall_id, name, set_code, collector_number FROM cards "
+         "WHERE name = ? AND set_code = ?")
+    p: list = [nome, set_code.lower()]
+    if collector_number:
+        q += " AND collector_number = ?"
+        p.append(str(collector_number))
+    # Uma impressão que não tenha aquele acabamento não se vigia: o `finishes` é
+    # um JSON (`["nonfoil","foil"]`) e é a própria fonte a dizer o que existe.
+    linhas = [r for r in con.execute(q + " ORDER BY collector_number", p)
+              if finish in (json.loads(
+                  con.execute("SELECT finishes FROM cards WHERE scryfall_id = ?",
+                              (r["scryfall_id"],)).fetchone()["finishes"] or "[]"))]
+    if not linhas:
+        raise LookupError(
+            f"não há impressão de '{nome}' em {set_code.upper()} com acabamento "
+            f"'{finish}' — uma vigia sobre uma impressão que não existe nunca "
+            f"avisaria")
+    r = linhas[0]
+    rot = (f"{r['name']} ({(r['set_code'] or '').upper()} "
+           f"#{r['collector_number']}) {finish}")
+    notas = json.dumps({"alvo_eur": float(alvo_eur), "fonte": fonte,
+                        "porque": porque}, ensure_ascii=False)
+    wid = add(con, "preco_impressao", chave_preco(r["scryfall_id"], finish),
+              rot, fmt, notas)
+    # O `add` é `INSERT OR IGNORE`: numa vigia que já exista o alvo não entrava.
+    # Actualiza-se — mudar o alvo é o gesto normal, não um caso de bordo.
+    con.execute("UPDATE watched SET label = ?, notes = ? WHERE id = ?",
+                (rot, notas, wid))
+    con.commit()
+    return {"id": wid, "scryfall_id": r["scryfall_id"], "rotulo": rot,
+            "alvo_eur": float(alvo_eur), "fonte": fonte}
 
 
 def _save_snapshot(con, wid: int, cards, url: str = "") -> bool:
@@ -196,12 +255,111 @@ def _melhor_do_snapshot(cards: list[tuple[str, str, int]]) -> str | None:
     return sorted(uteis, key=lambda c: c[2])[0][1] if uteis else None
 
 
+# ---------------------------------------------------------------------------
+# A VIGIA DE PREÇO DE UMA IMPRESSÃO (André, 2026-10-04)
+# ---------------------------------------------------------------------------
+# Nasceu para o **foil de New Phyrexia do Whipflare**: ele decidiu comprar o
+# nonfoil (0,21 €) para jogar a 9/10 e *"trocar por foil quando aparecer mais
+# barato"* — e isso não pode depender de ele se lembrar de ir ver.
+#
+# REAPROVEITA ESTA TABELA, de propósito. A mecânica de vigiar — inscrever,
+# guardar o estado, responder «mudou?», aparecer no `watch-check` do daily — já
+# vive aqui; escrever uma segunda era ter duas respostas para *"o que é que eu
+# estou a vigiar"*, que é o defeito que o `check_all` fechou neste mesmo dia.
+#
+# **Não vai à rede.** Lê a `price_latest`, que o `daily` já preenche todos os
+# dias — ao contrário do `check_mtgtop8_archetype`, que faz um pedido. Uma vigia
+# de preço que fosse à rede duplicava a recolha de preços que já existe.
+ALVO_OMISSAO_EUR = 0.0
+
+
+def _vigia_preco_notas(w) -> dict:
+    """O alvo e a fonte, lidos das `notes` (JSON). Sem notas, `{}`."""
+    try:
+        d = json.loads(w["notes"] or "{}")
+        return d if isinstance(d, dict) else {}
+    except (ValueError, TypeError):
+        return {}
+
+
+def check_preco_impressao(con: sqlite3.Connection, wid: int) -> dict:
+    """O preço de UMA impressão, e o aviso quando desce ao alvo.
+
+    A `key` é `"<scryfall_id>|<finish>"` — a impressão exacta e o acabamento,
+    que é o que ele quer trocar. As `notes` trazem `{alvo_eur, fonte, porque}`.
+
+    **A FONTE É FIXA NA INSCRIÇÃO, e é a decisão que mais importa aqui.** Não se
+    lê pela cadeia em vigor (`precos.fontes`) por duas razões medidas:
+
+      * a cadeia é hoje só `cardtrader`, e o CardTrader **não cota uma única
+        impressão de Whipflare** — pela cadeia, esta vigia nunca teria preço e
+        nunca avisaria. Seria uma vigia que não vigia, que é exactamente o que
+        ele mandou não fazer;
+      * e uma vigia que trocasse de fonte entre corridas comparava duas escalas
+        de preço diferentes — a lição da `precos.receita`. Um salto de fonte
+        parecia uma descida e disparava um aviso falso.
+
+    Logo: mede-se sempre na MESMA régua, a que foi escolhida ao inscrever, e se
+    ela deixar de cotar a impressão a resposta é *"sem preço"* — nunca um aviso.
+
+    Duas perguntas, e são diferentes: `changed` (o preço mexeu desde a última
+    corrida) e **`avisar`** (chegou ao alvo). É o `avisar` que vale o toast.
+    """
+    from . import precos                                     # noqa: PLC0415
+    w = con.execute("SELECT * FROM watched WHERE id = ?", (wid,)).fetchone()
+    sid, _, fin = str(w["key"] or "").partition("|")
+    fin = fin or "nonfoil"
+    notas = _vigia_preco_notas(w)
+    alvo = float(notas.get("alvo_eur") or ALVO_OMISSAO_EUR)
+    fonte = str(notas.get("fonte") or (precos.fontes() or ("cardmarket",))[0])
+
+    carta = con.execute(
+        """SELECT name, set_code, collector_number FROM cards
+            WHERE scryfall_id = ?""", (sid,)).fetchone()
+    nome = carta["name"] if carta else sid
+    rotulo = (f"{nome} ({(carta['set_code'] or '').upper()} "
+              f"#{carta['collector_number']}) {fin}" if carta else f"{sid} {fin}")
+
+    linha = con.execute(
+        f"""SELECT {precos.sql(alias='p')} AS preco, p.date, p.receita
+              FROM price_latest p
+             WHERE p.scryfall_id = ? AND p.finish = ? AND p.source = ?""",
+        (sid, fin, fonte)).fetchone()
+    preco = linha["preco"] if linha else None
+
+    anterior = None
+    for c in latest_cards(con, wid):
+        if c[2] is not None:
+            anterior = c[2] / 100.0
+            break
+
+    if preco is None:
+        # Sem preço NÃO se grava snapshot: um `None` vira 0 cêntimos e um 0 é
+        # «desceu a zero», que dispararia o aviso mais alto possível por falta
+        # de dado. É o `sem_preco` da cadeia — nunca 0 €.
+        return {"watched": dict(w), "found": False, "changed": False,
+                "avisar": False, "preco": None, "preco_antes": anterior,
+                "alvo": alvo, "fonte": fonte, "rotulo": rotulo,
+                "error": f"a fonte '{fonte}' não cota {rotulo} — a vigia está "
+                         f"INSCRITA e não tem preço para comparar"}
+
+    cards = [("preco", rotulo, int(round(float(preco) * 100)))]
+    changed = _save_snapshot(con, wid, cards, notas.get("url") or "")
+    return {"watched": dict(w), "found": True, "changed": changed,
+            "avisar": float(preco) <= alvo,
+            "preco": round(float(preco), 2), "preco_antes": anterior,
+            "alvo": alvo, "fonte": fonte, "receita": linha["receita"],
+            "date": linha["date"], "rotulo": rotulo,
+            "porque": notas.get("porque") or "", "cards": cards}
+
+
 # Que função trata cada `kind`. É um mapa e não uma cadeia de `elif` porque o
 # `check_all` passou a EXIGIR que todo o kind activo tenha quem o trate — ver lá.
 VERIFICADORES = {
     "mtgo_player": check_mtgo_player,
     "moxfield": check_moxfield,
     "mtgtop8_archetype": check_mtgtop8_archetype,
+    "preco_impressao": check_preco_impressao,
 }
 
 

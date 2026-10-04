@@ -144,13 +144,20 @@ os dois a saber PARTIR uma linha: um lote de 5 duais fora dos decks tem 4 cópia
 protegidas e 1 candidata, e dar o lote inteiro a um dos lados era mentir por
 quatro ou por uma.
 
-A TRAVA: O RC GHENT É A 9-11/10
+A TRAVA: MANUAL, E JÁ NÃO TEM DATA
 -------------------------------------------------------------------------------
-`venda.congelado_ate` (**2026-10-12**). Qualquer geração de saída de venda ou
-exportação RECUSA-SE a correr antes dessa data, com a razão escrita
+`venda.congelada` (**hoje `true`**). Qualquer geração de saída de venda ou
+exportação RECUSA-SE a correr enquanto estiver posta, com a razão escrita
 (`VendaCongelada`, subclasse de `ValueError` como a `webapp.VendaDesligada`, para
-o `do_POST` a traduzir em 409). Ele joga Modern em Ghent a 9-11/10 e não pode
-dar-se o caso de uma carta do deck sair numa lista de stock na véspera.
+o `do_POST` a traduzir em 409).
+
+Nasceu a 2026-10-01 como `venda.congelado_ate: "2026-10-12"`, por causa do RC
+Ghent de Modern (9-11/10) — e levantava-se sozinha no dia 12. A 2026-10-04, ao
+fim do dia, ele decidiu que não: a venda destranca **só quando ele disser**,
+porque o estado das cartas está por avaliar. A chave antiga não foi apagada mas
+**deixou de ter efeito** (`CHAVE_ANTIGA`, `data_sem_efeito`), e quem manda é o
+interruptor. Destranca-se com `py -m mtgvault.cli vender --congelada off` —
+`COMO_DESTRANCAR`, que é a frase que o site, o CLI e o 409 dizem.
 """
 from __future__ import annotations
 
@@ -1526,55 +1533,133 @@ def filtrar_venda(con, res: dict, venda: list[dict], venda_rl: list[dict],
 
 
 # ---------------------------------------------------------------------------
-# A TRAVA: o RC Ghent é a 9-11/10 (André, 2026-10-01)
+# A TRAVA: MANUAL, e já não tem data (André, 2026-10-04, ao fim do dia)
 # ---------------------------------------------------------------------------
-CONGELADO_ATE_OMISSAO = "2026-10-12"
+# Era `venda.congelado_ate: "2026-10-12"` — o RC Ghent é a 9-11/10 e a trava
+# levantava-se SOZINHA no dia 12. Ele decidiu que não: a venda passa a destrancar
+# só quando ELE disser, porque o ESTADO das cartas ainda está por avaliar e uma
+# data no calendário não sabe nada sobre isso.
+#
+# O que NÃO mudou: o `venda.exportar` (logo o passo `venda-export` do `daily` e o
+# `cli vender --exportar`) e os dois endpoints de escrita do 8771 continuam a
+# levantar `VendaCongelada`, que o `webapp` traduz num 409 com a frase em
+# português. O que mudou é só a CONDIÇÃO: em vez de `hoje < 2026-10-12`, é um
+# interruptor que só ele levanta.
+#
+# A OMISSÃO É `False` (destravado), e é deliberado: é o que a ausência da chave
+# já valia (um `congelado_ate` vazio era "sem trava"), e por isso uma base nova e
+# os testes continuam a poder exportar. Quem trava é a chave escrita no config —
+# que está lá, a `true`.
+CONGELADA_OMISSAO = False
+
+# A chave antiga, que DEIXOU DE TER EFEITO. Fica nomeada aqui — e não apagada —
+# pela razão do `loadout.playset_maximo` e do `dedicado: false`: quem a tivesse
+# escrita tem de poder descobrir porque é que parou de travar, em vez de ficar
+# sem saber. O `congelado_ate()` continua a lê-la, só para a poder DIZER.
+CHAVE_ANTIGA = "congelado_ate"
+
+# COMO SE DESTRANCA. Uma frase, num sítio só, porque é a pergunta que ele vai
+# fazer dentro de um mês — e a resposta tem de estar à vista no site, no CLI e na
+# mensagem do 409, sem cada superfície a reescrever por palavras suas.
+COMO_DESTRANCAR = ("para destrancar: `py -m mtgvault.cli vender --congelada off` "
+                   "(ou `venda.congelada: false` no colecao_config.json)")
 
 
 class VendaCongelada(ValueError):
-    """Pediu-se uma saída de venda antes de `venda.congelado_ate`.
+    """Pediu-se uma saída de venda com a trava manual posta.
 
     É `ValueError` como a `webapp.VendaDesligada`, para o `do_POST` a traduzir
     num 409 com a frase em português — e para quem já apanhava `ValueError` não
     mudar de comportamento.
     """
 
-    def __init__(self, ate: str, hoje: str):
+    def __init__(self, ate: str = "", hoje: str = ""):
+        # O `ate`/`hoje` ficam na assinatura (e no objecto) para não quebrar quem
+        # os passava; a mensagem já não depende deles.
         self.ate, self.hoje = ate, hoje
         super().__init__(motivo_congelado(ate, hoje))
 
 
-def congelado_ate(cfg: dict | None = None) -> str:
-    """`colecao_config.json → venda.congelado_ate`. Vazio/ausente = sem trava."""
+def congelada(cfg: dict | None = None) -> bool:
+    """A venda está travada? `colecao_config.json → venda.congelada`.
+
+    A pergunta vive AQUI e num sítio só, como o `venda.mostrar()`: são o
+    `exportar`, o `daily`, os dois endpoints do 8771, a página das Fases e o CLI
+    a fazê-la, e a segunda superfície que a respondesse por si própria deixava um
+    botão a prometer uma exportação que o servidor recusa.
+    """
     from . import loadout                                    # noqa: PLC0415
     b = loadout.regras_venda() if cfg is None else (cfg.get("venda") or {})
-    v = b.get("congelado_ate") if isinstance(b, dict) else None
+    v = b.get("congelada") if isinstance(b, dict) else None
+    return CONGELADA_OMISSAO if v is None else bool(v)
+
+
+def congelado_ate(cfg: dict | None = None) -> str:
+    """A chave ANTIGA, que já não trava nada. Devolve-se só para se poder dizer.
+
+    **Não é a condição.** Quem decide é o `congelada()`. Isto existe para o
+    `data_sem_efeito()` poder avisar quem a tenha escrita a pensar que trava —
+    uma chave que ninguém lê é o padrão do `event_tier`.
+    """
+    from . import loadout                                    # noqa: PLC0415
+    b = loadout.regras_venda() if cfg is None else (cfg.get("venda") or {})
+    v = b.get(CHAVE_ANTIGA) if isinstance(b, dict) else None
     return "" if v in (None, "", False) else str(v)
 
 
-def motivo_congelado(ate: str, hoje: str) -> str:
-    return (f"a venda está CONGELADA até {ate} (colecao_config.json → "
-            f"venda.congelado_ate; hoje é {hoje}). Ele joga o RC Ghent de "
-            "Modern a 9-11/10 e nenhuma carta pode sair numa lista de stock "
-            "antes disso. Nada se perdeu: a lista volta a gerar-se sozinha a "
-            f"partir de {ate}.")
+def data_sem_efeito(cfg: dict | None = None) -> str:
+    """O aviso, se alguém tiver escrito a chave antiga. Vazio quando está limpo."""
+    ate = congelado_ate(cfg)
+    if not ate:
+        return ""
+    estado = "travada" if congelada(cfg) else "destravada"
+    return (f"`venda.{CHAVE_ANTIGA}: {ate}` está escrita no config e JÁ NÃO TEM "
+            f"EFEITO — a trava passou a ser MANUAL a 2026-10-04. Quem manda é "
+            f"`venda.congelada` (hoje: {estado}).")
+
+
+def motivo_congelado(ate: str = "", hoje: str = "") -> str:
+    """A frase do 409 e do log: o que está travado, porquê, e COMO se abre."""
+    return ("a venda está CONGELADA (colecao_config.json → venda.congelada: "
+            "true). A trava é MANUAL desde 2026-10-04, por decisão dele — já não "
+            "tem data e não se levanta sozinha, porque o estado das cartas está "
+            "por avaliar. Nada se perdeu: a lista continua a calcular-se e a "
+            "saída volta a gerar-se no primeiro pedido depois de destrancares. "
+            f"{COMO_DESTRANCAR}.")
 
 
 def venda_congelada(cfg: dict | None = None, hoje: str | None = None) -> bool:
-    ate = congelado_ate(cfg)
-    if not ate:
-        return False
-    return (hoje or date.today().isoformat()) < ate
+    """A trava está posta? O `hoje` fica na assinatura e já NÃO é usado — era a
+    data que decidia; hoje decide o interruptor."""
+    return congelada(cfg)
 
 
 def exige_descongelado(cfg: dict | None = None, hoje: str | None = None) -> None:
-    """Levanta `VendaCongelada` se ainda não chegou a data. Chamam-na as DUAS
-    portas de saída: o `venda.exportar` (logo o `daily` e o CLI) e os endpoints
-    de escrita do `webapp.py`."""
-    ate = congelado_ate(cfg)
-    hoje = hoje or date.today().isoformat()
-    if ate and hoje < ate:
-        raise VendaCongelada(ate, hoje)
+    """Levanta `VendaCongelada` se a trava manual estiver posta. Chamam-na as
+    DUAS portas de saída: o `venda.exportar` (logo o `daily` e o CLI) e os
+    endpoints de escrita do `webapp.py`."""
+    if congelada(cfg):
+        raise VendaCongelada(congelado_ate(cfg), hoje or date.today().isoformat())
+
+
+def gravar_congelada(travar: bool, path=None) -> dict:
+    """Escreve `venda.congelada` no config e esquece a cache. `{antes, congelada}`.
+
+    É o caminho do CLI (`vender --congelada on|off`), gémeo do
+    `venda.gravar_mostrar`. Escreve-se pelo `configio.escrever`, que preserva a
+    forma do ficheiro — um `json.dump(indent=2)` aqui reescrevia as 657 linhas e
+    matava a revisão (o commit `ac1f776`).
+    """
+    from . import configio, sources                          # noqa: PLC0415
+    cfg = configio.ler(path)
+    antes = congelada(cfg)
+    b = cfg.get("venda")
+    if not isinstance(b, dict):
+        b = cfg["venda"] = {}
+    b["congelada"] = bool(travar)
+    configio.escrever(cfg, path)
+    sources._CFG_CACHE.clear()
+    return {"antes": antes, "congelada": bool(travar)}
 
 
 # ---------------------------------------------------------------------------
@@ -1986,10 +2071,15 @@ def relatorio(con, res: dict, cfg: dict | None = None,
     cands = candidatos(con, res, cfg, cache)
     out = {
         "hoje": hoje,
+        # A TRAVA É MANUAL desde 2026-10-04: já não há data para a página
+        # mostrar, e por isso o que ela mostra é COMO se destranca. O
+        # `congelado_ate` fica no payload só porque a chave antiga pode estar
+        # escrita num config qualquer — e aí o `data_sem_efeito` di-lo.
         "congelado_ate": congelado_ate(cfg),
-        "congelada": venda_congelada(cfg, hoje),
-        "motivo_congelado": (motivo_congelado(congelado_ate(cfg), hoje)
-                             if venda_congelada(cfg, hoje) else ""),
+        "congelada": congelada(cfg),
+        "como_destrancar": COMO_DESTRANCAR,
+        "data_sem_efeito": data_sem_efeito(cfg),
+        "motivo_congelado": motivo_congelado() if congelada(cfg) else "",
         "janela_dias": janela_dias(cfg),
         "desde": desde_de(janela_dias(cfg), hoje),
         "terras": {"duais": duais(con, cache),

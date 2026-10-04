@@ -1536,6 +1536,10 @@ _CSS = r"""
    background:#3a2f16;color:#f5c451;margin-left:5px;white-space:nowrap}
  .urg.ja{background:#3a1f1f;color:#ff9f8f}
  .urg.pend{background:#241f3a;color:#b9a8ff}
+ /* DECIDIDA mas PROVISÓRIA: comprou o nonfoil para jogar e troca por foil
+    quando baixar. Verde-azulado para não se confundir com o roxo do «por
+    decidir» — são estados diferentes e um deles já não precisa dele. */
+ .urg.prov{background:#13302c;color:#7fdfc4}
  .part{font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;
    background:#101c2e;color:#7fa8ff;margin-left:5px;white-space:nowrap}
  .chosen{font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;
@@ -2221,10 +2225,18 @@ function chipUrg(u) {
     : (d === null || d === undefined) ? u.ate
       : d === 0 ? 'é hoje' : `faltam ${d} d`;
   const cls = u.passou || (d !== null && d !== undefined && d <= 2) ? ' ja' : '';
+  const mp = u.material_pendente || {};
   return `<span class="urg${cls}" title="${esc(u.porque || '')}">`
     + `⏳ até ${esc(u.ate)} · ${esc(quando)}</span>`
-    + (u.pendente ? `<span class="urg pend" title="${esc((u.material_pendente || {}).porque || '')}">`
-      + `material por decidir</span>` : '');
+    + (u.pendente ? `<span class="urg pend" title="${esc(mp.porque || '')}">`
+      + `material por decidir</span>` : '')
+    // A EXCEPÇÃO DECIDIDA, mas PROVISÓRIA (2026-10-04): ele comprou o nonfoil
+    // para jogar e quer trocar por foil quando baixar. Sem este chip a linha
+    // ficava igual a uma compra definitiva e a troca caía no esquecimento — e é
+    // precisamente para ela não cair que a vigia de preço existe.
+    + (!u.pendente && mp.provisoria
+      ? `<span class="urg prov" title="${esc(mp.decidido_por || mp.porque || '')}">`
+        + `🔄 provisória · ${esc(mp.provisoria)}</span>` : '');
 }
 
 /* A mesma informação numa LINHA (o modo «Lista» das secções que antes de

@@ -15,13 +15,15 @@ funcionalidade for retirada:
   3. a página diz ONDE largar as fotos: soltas na raiz de `pendentes\\`, nunca em
      `pendentes\\deckboxes\\` (a foto da caixa física) nem em «Colocar fotos da
      coleção aqui» (cartas NOVAS — estas cópias já estão no inventário);
-  4. **definir o alvo e ver a fila NÃO são travados pelo `venda.congelado_ate`**:
-     a trava de 12/10 é para a SAÍDA de venda, e as fotos dos decks são de ANTES
-     de Ghent. A mesma chamada que recusa a exportação deixa passar o alvo;
+  4. **definir o alvo e ver a fila NÃO são travados pela trava da venda**
+     (`venda.congelada`): ela é para a SAÍDA de venda, e as fotos dos decks são
+     de ANTES de Ghent. A mesma chamada que recusa a exportação deixa passar o
+     alvo;
   5. a fila mede **FOTOS de até 4 cartas**: um playset é **uma** foto (corrigido
      a 2026-10-01 — esteve aqui a regra errada, «um playset dá quatro linhas»);
   6. o caminho da Fase 4 está preparado (o mesmo botão, com alvo `venda`) e **não
-     se abre antes da data da trava**.
+     se abre com a trava posta** — desde 2026-10-04 a trava é manual e já não tem
+     data, por isso o que a página mostra é COMO se destranca.
 
 Não abre socket para fora nem toca na `vault.db` a sério. Fixa `MTGVAULT_HOME`
 **e** `MTGVAULT_DB` (ver `tests/_bateria.py`: os ficheiros que acompanham a base
@@ -41,12 +43,16 @@ RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
 
 _TMP = Path(tempfile.mkdtemp())
+# As duas datas que a trava usava antes de 2026-10-04 (hoje é um interruptor):
+# ficam nomeadas só para o `caso_a_data_antiga_nao_trava_nem_destranca` as poder
+# escrever no config e provar que já não decidem nada.
 ONTEM, FUTURO = "2026-01-01", "2099-01-01"
 
 CFG = {
     # A venda LIGADA: é a única forma de o teste da trava chegar à trava (com o
     # interruptor desligado o `_exige_venda` recusa antes, por outra razão).
-    "venda": {"mostrar": True, "congelado_ate": FUTURO},
+    # A trava passou a MANUAL a 2026-10-04 (era `congelado_ate: FUTURO`).
+    "venda": {"mostrar": True, "congelada": True},
     "regras_colecao": {},
     "baldes_coleccao": ["Colecção", "Caixa Reserved List"],
     "decks_vigiados": [],
@@ -148,12 +154,20 @@ def mundo():
     return con
 
 
-def repor(alvo=None, congelado=FUTURO, campanha=True):
+def repor(alvo=None, congelado=True, campanha=True, data_antiga=None):
+    """O `congelado` é o INTERRUPTOR (`venda.congelada`) desde 2026-10-04 — era
+    uma data (`congelado_ate`), e `FUTURO` queria dizer «travada».
+
+    O `data_antiga` escreve a chave VELHA, para se poder provar que ela já não
+    trava nem destranca nada.
+    """
     cfg = json.loads(json.dumps(CFG))
     if congelado is None:
-        cfg["venda"].pop("congelado_ate", None)
+        cfg["venda"].pop("congelada", None)
     else:
-        cfg["venda"]["congelado_ate"] = congelado
+        cfg["venda"]["congelada"] = bool(congelado)
+    if data_antiga:
+        cfg["venda"]["congelado_ate"] = data_antiga
     if not campanha:
         cfg.pop("revalidacao")
     elif alvo:
@@ -328,17 +342,18 @@ def caso_o_rodape_tambem_diz_onde_e_onde_nao():
 
 
 # ===========================================================================
-# 4. A TRAVA DE 12/10 É PARA A VENDA, NÃO PARA AS FOTOS
+# 4. A TRAVA DA VENDA NÃO É PARA AS FOTOS
 # ===========================================================================
-def caso_definir_o_alvo_nao_e_travado_pela_data():
-    """A trava (`venda.congelado_ate`) existe para a SAÍDA de venda — ele joga o
-    RC Ghent a 9-11/10. As fotos dos decks são de ANTES de Ghent: travá-las era
+def caso_definir_o_alvo_nao_e_travado_pela_trava_da_venda():
+    """A trava (`venda.congelada`) existe para a SAÍDA de venda — ele joga o RC
+    Ghent a 9-11/10. As fotos dos decks são de ANTES de Ghent: travá-las era
     travar exactamente o passo que a Fase 2 existe para fazer agora.
 
     Mede-se com a trava LIGADA e no mesmo pedido: a exportação recusa-se (409) e
-    o alvo passa (200).
+    o alvo passa (200). (Chamava-se `…_pela_data` até 2026-10-04, quando a trava
+    deixou de ser uma data e passou a ser um interruptor.)
     """
-    repor(congelado=FUTURO)
+    repor(congelado=True)
     con = mundo()
     assert fases.venda_congelada(), "o fixture tem de estar com a trava ligada"
     cod, j = _post("/api/venda-export", {})
@@ -395,33 +410,42 @@ def caso_a_fila_da_fase2_mede_fotos_de_ate_quatro_cartas():
 
 
 # ===========================================================================
-# 6. O CAMINHO DA FASE 4 ESTÁ PREPARADO E NÃO SE ABRE ANTES DA DATA
+# 6. O CAMINHO DA FASE 4 ESTÁ PREPARADO E NÃO SE ABRE COM A TRAVA POSTA
 # ===========================================================================
-def caso_a_fase4_usa_a_mesma_mecanica_e_nao_abre_antes_da_data():
+def caso_a_fase4_usa_a_mesma_mecanica_e_nao_abre_com_a_trava_posta():
     """A Fase 4 é a MESMA mecânica com o alvo `venda`. O caminho fica feito e
-    abre-se sozinho na data da trava — abri-lo antes era começar o passo que a
-    trava existe para adiar."""
+    abre-se quando ele destrancar — abri-lo antes era começar o passo que a trava
+    existe para adiar.
+
+    CORRIGIDO a 2026-10-04: dizia *"abre-se sozinho na data da trava"* e exigia
+    a frase *«A partir de <data>»* na página. Já não há data, e prometer uma era
+    mentir — o que a página tem de dizer agora é COMO se destranca.
+    """
     if not shutil.which("node"):
         print("sem node: salto o desenho da pagina")
         return
-    repor(congelado=FUTURO)
+    repor(congelado=True)
     con = mundo()
     v = desenha(con, "f4")
-    assert 'data-alvo-tipo="venda"' not in v, "não se abre antes da data"
-    assert f"A partir de <b>{FUTURO}</b>" in v, v[:900]
+    assert 'data-alvo-tipo="venda"' not in v, "não se abre com a trava posta"
+    assert "A partir de <b>" not in v, \
+        "já não há data: a página não pode prometer um dia"
+    assert "travada à mão" in v, v[:900]
+    assert "--congelada off" in v, "a página tem de dizer COMO se destranca"
+    assert "estado das cartas" in v, "e porque é que ele decidiu esperar"
     assert "mesmo botão da Fase 2" in v and "venda" in v, v[:900]
     assert "pendentes\\</code></b>" in v, "mesmo fechada, diz onde as fotos vão"
-    # Passada a data, o botão aparece — sem ninguém mexer no código.
-    repor(congelado=ONTEM)
+    # Destrancada, o botão aparece — sem ninguém mexer no código.
+    repor(congelado=False)
     v = desenha(con, "f4")
     assert 'data-alvo-tipo="venda"' in v, v[:900]
-    assert "A partir de" not in v, v[:900]
+    assert "--congelada off" not in v, "destrancada não se explica como destrancar"
     # E o alvo `venda` é um alvo válido do mesmo endpoint.
     cod, j = _post("/api/revalidacao", {"act": "alvo", "tipo": "venda"})
     assert cod == 200 and j["nome"] == "Venda", (cod, j)
     _post("/api/revalidacao", {"act": "parar"})
     repor()
-    print("a Fase 4 reusa o alvo `venda` e so abre a partir da data da trava")
+    print("a Fase 4 reusa o alvo `venda` e so abre quando ele destranca")
 
 
 # ===========================================================================

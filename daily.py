@@ -85,13 +85,13 @@ def venda_export(con, rep=None) -> str:
         return (f"saltado: {venda.MOTIVO_DESLIGADO} Os ficheiros "
                 f"{venda.FICHEIRO_STOCK} / {venda.FICHEIRO_ESTANTE} que já "
                 f"existam ficam como estão — não se apagam nem se reescrevem.")
-    # A TRAVA DE 2026-10-01 (`venda.congelado_ate`): o RC Ghent é a 9-11/10.
-    # Diz-se que se saltou e PORQUÊ, como no interruptor — deixar a excepção
-    # subir punha o passo a vermelho todos os dias por uma decisão que foi
-    # tomada, e um passo vermelho que é normal deixa de se ler.
-    if fases.venda_congelada():
-        return ("saltado: " + fases.motivo_congelado(
-            fases.congelado_ate(), date.today().isoformat()))
+    # A TRAVA (`venda.congelada`, MANUAL desde 2026-10-04 — era uma data que se
+    # levantava sozinha a 12/10). Diz-se que se saltou e PORQUÊ, como no
+    # interruptor: deixar a excepção subir punha o passo a vermelho todos os dias
+    # por uma decisão que foi tomada, e um passo vermelho que é normal deixa de
+    # se ler. A frase já traz o comando que a destranca.
+    if fases.congelada():
+        return "saltado: " + fases.motivo_congelado()
     return venda.exportar(con, rep)["resumo"]
 
 
@@ -228,13 +228,55 @@ def _cardtrader(con):
             f"({len(sets)} edições)")
 
 
+def _vigia_preco_linha(lbl: str, r: dict, avisar=None) -> None:
+    """Uma linha por vigia de PREÇO, e o TOAST quando chega ao alvo.
+
+    O aviso tem de o encontrar sem ele ir procurar — é a razão de ser desta
+    vigia (*"trocar por foil quando aparecer mais barato"*). Por isso são dois
+    caminhos, como na vigia de cartas de 2026-09-26: a linha no log e o toast do
+    Windows. O `avisar` é injectável para o teste poder prová-lo sem abrir
+    janelas.
+    """
+    if r.get("preco") is None:
+        print(f"    [sem preço] {lbl}: {r.get('error') or 'a fonte não cota'}")
+        return
+    antes = r.get("preco_antes")
+    delta = (f"  (era {antes:.2f} €)" if antes is not None
+             and abs(antes - r["preco"]) >= 0.005 else "")
+    if r.get("avisar"):
+        print(f"    [ALVO!] {lbl}: {r['preco']:.2f} € — chegou ao alvo de "
+              f"{r['alvo']:.2f} €{delta}  [{r.get('fonte')}]")
+        if r.get("porque"):
+            print(f"            {r['porque']}")
+        fn = avisar if avisar is not None else _toast_preco
+        print(f"            {fn(lbl, r)}")
+    else:
+        marca = "[MUDOU]" if r.get("changed") else "[igual]"
+        print(f"    {marca} {lbl}: {r['preco']:.2f} € — alvo "
+              f"{r['alvo']:.2f} €{delta}  [{r.get('fonte')}]")
+
+
+def _toast_preco(lbl: str, r: dict) -> str:
+    from mtgvault import aviso                               # noqa: PLC0415
+    return aviso.toast(
+        "mtgvault · preço no alvo",
+        f"{lbl} está a {r['preco']:.2f} € (alvo {r['alvo']:.2f} €). "
+        f"É agora que trocas.")
+
+
 def _watch(con):
     """Verifica os vigiados e, quando algo muda, imprime o que entrou e saiu."""
     res = watchlist.check_all(con)
     for r in res:
         w = r["watched"]
         lbl = w["label"]
-        if r.get("error"):
+        if w["kind"] == "preco_impressao":
+            # A VIGIA DE PREÇO (2026-10-04) não tem listas nem diff de cartas: o
+            # que interessa é o preço, o alvo e se já chegou lá. Vem ANTES do
+            # ramo do `error` porque «a fonte não cota» é a mensagem desta vigia
+            # e tem de sair com o preço ao lado, não como um erro genérico.
+            _vigia_preco_linha(lbl, r)
+        elif r.get("error"):
             print(f"    [erro]  {lbl}: {r['error']}")
         elif not r.get("found"):
             print(f"    [--]    {lbl}: sem listas ainda")

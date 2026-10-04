@@ -136,7 +136,9 @@ CFG_BASE = {
          "fonte": "deck", "ref": "Deck Dois", "balde": "Colecção",
          "estado": "permanente", "prioridade": 2},
     ],
-    "venda": {"mostrar": True, "congelado_ate": "2026-10-12"},
+    # A TRAVA passou a MANUAL a 2026-10-04 (era `congelado_ate: "2026-10-12"`,
+    # que se levantava sozinha no dia 12). Ver a secção 7.
+    "venda": {"mostrar": True, "congelada": True},
     # Sem limiar (foi apagado a 2026-10-02) e com o corte das staples no máximo
     # da curva, para a R5b não morder nos casos que medem outras regras.
     "reserva": {"janela_dias": 30, "staples_premodern_pct": 90},
@@ -161,7 +163,13 @@ def escreve_cfg(**muda):
                     c.pop("estado", None)
         elif k == "staples_pct":
             cfg["reserva"]["staples_premodern_pct"] = v
+        elif k == "congelada":
+            if v is None:
+                cfg["venda"].pop("congelada", None)
+            else:
+                cfg["venda"]["congelada"] = v
         elif k == "congelado_ate":
+            # A chave ANTIGA, para os casos que provam que já não tem efeito.
             if v is None:
                 cfg["venda"].pop("congelado_ate", None)
             else:
@@ -722,20 +730,33 @@ def caso_a_reserva_manual_fica_mesmo_sem_consenso():
 
 
 # ===========================================================================
-# 7. A TRAVA de 2026-10-12
+# 7. A TRAVA, MANUAL desde 2026-10-04
 # ===========================================================================
-def caso_a_saida_de_venda_recusa_se_antes_de_doze_de_outubro():
+# CORRIGIDO a 2026-10-04 ao fim do dia, e não mascarado: estes dois casos
+# chamavam-se *"…antes de doze de outubro"* / *"…a partir de doze de outubro"* e
+# afirmavam que a trava era uma DATA que *"passa sozinha"*. Ele decidiu o
+# contrário — a venda destranca só quando ELE disser —, por isso o que se
+# corrige é a ASSERÇÃO: já não há data, há interruptor.
+def caso_a_saida_de_venda_recusa_se_com_a_trava_posta():
     con = base()
     add(con, "Dark Ritual", 6)
     escreve_cfg()
+    # A DATA DE HOJE É IRRELEVANTE: era ela que decidia, e hoje não decide nada.
     assert fases.venda_congelada(hoje="2026-10-01") is True
     assert fases.venda_congelada(hoje="2026-10-11") is True
+    assert fases.venda_congelada(hoje="2026-10-12") is True, \
+        "o dia 12 era o dia em que a trava caía sozinha — já não cai"
+    assert fases.venda_congelada(hoje="2027-01-01") is True, \
+        "nem daqui a três meses: a trava é manual"
     pasta = Path(tempfile.mkdtemp())
     try:
         venda.exportar(con, pasta=pasta)
     except fases.VendaCongelada as e:
-        assert "2026-10-12" in str(e), str(e)
-        assert "Ghent" in str(e), "a razão tem de dizer porquê"
+        assert "congelada" in str(e).lower(), str(e)
+        # A FRASE TEM DE DIZER COMO SE DESTRANCA — é a pergunta que ele faz
+        # dentro de um mês, e sem isto mandava-o procurar.
+        assert "--congelada off" in str(e), str(e)
+        assert "venda.congelada" in str(e), str(e)
         assert isinstance(e, ValueError)          # o do_POST traduz em 409
     else:
         raise AssertionError("a exportação correu com a venda congelada")
@@ -743,21 +764,64 @@ def caso_a_saida_de_venda_recusa_se_antes_de_doze_de_outubro():
     assert not list(pasta.glob("*")), list(pasta.glob("*"))
 
 
-def caso_a_saida_corre_a_partir_de_doze_de_outubro():
-    """A trava é uma data, não um interruptor: passa sozinha."""
-    assert fases.venda_congelada(hoje="2026-10-12") is False
-    assert fases.venda_congelada(hoje="2026-11-01") is False
-    escreve_cfg(congelado_ate=None)
-    assert fases.venda_congelada(hoje="2026-10-01") is False, \
-        "sem a chave não há trava"
-    escreve_cfg()
+def caso_levantar_o_interruptor_destranca_e_baixar_volta_a_travar():
+    """O interruptor manda nos dois sentidos, e a data antiga não manda em nada."""
     con = base()
     add(con, "Dark Ritual", 6)
+
+    # DESTRANCADO: a saída corre.
+    escreve_cfg(congelada=False)
+    assert fases.congelada() is False
+    assert fases.venda_congelada(hoje="2026-10-01") is False
+    fases.exige_descongelado()                       # não levanta
     pasta = Path(tempfile.mkdtemp())
-    fases.exige_descongelado(hoje="2026-10-12")      # não levanta
-    r = venda.relatorio(con, loadout.report(con))
-    assert r["linhas"], "sem a trava a lista continua a sair"
-    assert not list(pasta.glob("*"))
+    venda.exportar(con, pasta=pasta)
+    assert list(pasta.glob("*")), "destrancada, a exportação escreve"
+
+    # SEM A CHAVE vale destrancado — é o que a ausência já valia antes.
+    escreve_cfg(congelada=None)
+    assert fases.congelada() is False, "sem a chave não há trava"
+    assert fases.CONGELADA_OMISSAO is False
+
+    # TRAVAR OUTRA VEZ volta a recusar.
+    escreve_cfg(congelada=True)
+    assert fases.congelada() is True
+    pasta2 = Path(tempfile.mkdtemp())
+    try:
+        venda.exportar(con, pasta=pasta2)
+    except fases.VendaCongelada:
+        pass
+    else:
+        raise AssertionError("baixar o interruptor tem de voltar a travar")
+    assert not list(pasta2.glob("*"))
+
+
+def caso_a_data_antiga_no_config_deixou_de_travar_e_di_lo():
+    """A chave antiga não se apagou — mas já não decide, e isso diz-se.
+
+    Uma chave que ninguém lê é o padrão do `event_tier`: quem a escrevesse a
+    pensar que trava ficava sem saber porque é que parou.
+    """
+    # A data SOZINHA, no futuro, já não trava.
+    escreve_cfg(congelada=None, congelado_ate="2099-01-01")
+    assert fases.congelada() is False, \
+        "a data no futuro não pode travar: quem manda é o interruptor"
+    assert fases.congelado_ate() == "2099-01-01", "lê-se, só para se poder dizer"
+    aviso = fases.data_sem_efeito()
+    assert "JÁ NÃO TEM EFEITO" in aviso, aviso
+    assert "venda.congelada" in aviso, aviso
+    assert "destravada" in aviso, aviso
+
+    # E com as duas escritas, quem ganha é o interruptor.
+    escreve_cfg(congelada=True, congelado_ate="2020-01-01")
+    assert fases.congelada() is True, \
+        "uma data PASSADA não pode destrancar o que o interruptor travou"
+    assert "travada" in fases.data_sem_efeito()
+
+    # Sem a chave antiga não há aviso nenhum (é o estado do config dele).
+    escreve_cfg(congelada=True)
+    assert fases.data_sem_efeito() == "", fases.data_sem_efeito()
+    print("trava: manual; a data antiga não trava nem destranca, e di-lo")
 
 
 # ===========================================================================

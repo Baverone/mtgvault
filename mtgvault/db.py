@@ -32,6 +32,18 @@ DEFAULT_DB = Path(os.environ.get("MTGVAULT_DB", ROOT / "vault.db"))
 BUSY_TIMEOUT_MS = int(os.environ.get("MTGVAULT_BUSY_TIMEOUT_MS") or 15000)
 DEFAULT_CATALOG = Path(os.environ.get("MTGVAULT_CATALOG", ROOT / "catalog.db"))
 
+# OS KINDS DA `watched`, num sítio só. É a lista que o CHECK da tabela aceita, e
+# é por ela que o `_migrate` decide se tem de reconstruir a tabela numa base
+# antiga. O `schema.sql` tem de dizer o MESMO — há teste que o exige, porque um
+# kind que exista aqui e não lá (ou ao contrário) dá `IntegrityError` no
+# `watchlist.add` numa das duas bases e não na outra.
+#
+# `archetype` é o mais antigo e NUNCA foi implementado: não se apaga (nada se
+# apaga), e quem o denuncia é o `watchlist.check_all`, que falha alto em qualquer
+# kind sem verificador.
+KINDS_VIGIA = ("mtgo_player", "moxfield", "archetype", "mtgtop8_archetype",
+               "preco_impressao")
+
 
 def pasta_dados() -> Path:
     """A pasta AO LADO DA BASE, onde vivem os ficheiros que a acompanham
@@ -302,18 +314,32 @@ def _migrate(con: sqlite3.Connection) -> None:
     #
     # A contagem é conferida antes e depois: uma migração que perca uma linha
     # levanta aqui, em vez de deixar o André sem a lista que vigiava.
+    #
+    # A CONDIÇÃO É «FALTA ALGUM DOS KINDS», e não «falta o último que eu
+    # acrescentei» (2026-10-04, ao acrescentar o `preco_impressao`): era
+    # `"mtgtop8_archetype" not in sql`, e numa base que já tivesse esse kind a
+    # reconstrução não corria — o kind novo ficava fora do CHECK e o
+    # `watchlist.add` dava `IntegrityError` outra vez. Com a lista, acrescentar um
+    # kind é acrescentar uma palavra aqui e no `schema.sql`, e as bases antigas
+    # apanham-no sozinhas.
     sql_watched = con.execute(
         "SELECT sql FROM sqlite_master WHERE type='table' AND name='watched'"
     ).fetchone()
-    if sql_watched and "mtgtop8_archetype" not in (sql_watched["sql"] or ""):
+    if sql_watched and any(k not in (sql_watched["sql"] or "")
+                           for k in KINDS_VIGIA):
         antes = con.execute("SELECT COUNT(*) c FROM watched").fetchone()["c"]
         snaps = con.execute("SELECT COUNT(*) c FROM watched_snapshots").fetchone()["c"]
         con.commit()                       # o PRAGMA não vale em transacção
         con.execute("PRAGMA foreign_keys = OFF")
-        con.executescript("""
+        # O CHECK sai do `KINDS_VIGIA` e não está escrito à mão: escrito duas
+        # vezes, a tabela reconstruída podia ficar com uma lista diferente da que
+        # a condição acima testa — e a reconstrução correria em todas as corridas,
+        # para sempre. São literais do código, não entrada de ninguém.
+        aceites = ",".join(f"'{k}'" for k in KINDS_VIGIA)
+        con.executescript(f"""
             CREATE TABLE watched_nova (
                 id           INTEGER PRIMARY KEY,
-                kind         TEXT NOT NULL CHECK (kind IN ('mtgo_player','moxfield','archetype','mtgtop8_archetype')),
+                kind         TEXT NOT NULL CHECK (kind IN ({aceites})),
                 key          TEXT NOT NULL,
                 label        TEXT NOT NULL,
                 format       TEXT NOT NULL,

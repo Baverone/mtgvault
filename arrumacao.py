@@ -140,6 +140,10 @@ _CSS = """
  .alvo .on{color:var(--accent);font-weight:600}
  .alvo .off{color:var(--warn);font-weight:600}
  .alvo .onde{color:var(--muted);font-size:12.5px}
+ /* COMO SE DESTRANCA A VENDA: a trava é manual desde 04/10 e não tem data, por
+    isso esta é a linha que responde «e agora como abro isto?» — vai destacada
+    de propósito, que foi o que ele pediu («deixa óbvio no site»). */
+ .alvo .como{background:var(--accent-soft);border:1px solid var(--accent-line);border-radius:8px;padding:8px 10px;color:var(--text)}
  .alvo code{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:1px 5px;font-size:11.5px}
  .alvo button{min-height:40px;padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--muted);font:inherit;font-size:13px;font-weight:600;cursor:pointer;margin:4px 6px 0 0}
  .alvob{min-height:40px;padding:8px 14px;border-radius:10px;border:1px solid var(--accent-line);background:var(--accent-soft);color:var(--accent);font:inherit;font-size:13px;font-weight:700;cursor:pointer;margin:10px 0 0}
@@ -782,15 +786,20 @@ function fase2(p) {
 }
 function fase4(p) {
   // A Fase 4 usa a MESMA mecânica da Fase 2, com o alvo `venda` em vez de uma
-  // caixa — o caminho está feito e abre-se SOZINHO na data da trava. Antes dela
-  // não se mostra o botão: fotografar para vender antes de Ghent era começar o
-  // passo que a trava existe para adiar.
+  // caixa — o caminho está feito. Desde 2026-10-04 a trava é MANUAL e já não tem
+  // data: por isso o que se diz aqui não é «a partir de <data>» (que seria uma
+  // promessa falsa) mas COMO se destranca.
   const pronto = !D.congelada
     ? alvoHTML() + alvoBotao('venda', null, 'Fotografar a venda')
-    : `<div class="alvo"><p>A partir de <b>${escDados(D.congelado_ate)}</b> aparece `
-      + `aqui o <b>mesmo botão da Fase 2</b>, com o alvo <b>venda</b>: a mecânica `
-      + `das fotos é a mesma e o caminho já está feito. Até lá não se abre — antes `
-      + `de Ghent não sai nada para venda.</p><p class="onde">${ONDE}</p></div>`;
+    : `<div class="alvo"><p>A venda está <b>travada à mão</b> e não se destranca `
+      + `sozinha — decidiste a 04/10/2026 esperar, porque o <b>estado das cartas `
+      + `está por avaliar</b>. Quando destrancares aparece aqui o <b>mesmo botão `
+      + `da Fase 2</b>, com o alvo <b>venda</b>.</p>`
+      + `<p class="como"><b>Destrancar:</b> <code>py -m mtgvault.cli vender `
+      + `--congelada off</code> — ou <code>venda.congelada: false</code> no `
+      + `<code>colecao_config.json</code>.</p>`
+      + (D.data_sem_efeito ? `<p class="sub">${escDados(D.data_sem_efeito)}</p>` : '')
+      + `<p class="onde">${ONDE}</p></div>`;
   return `<h2>Fase 4 · Fotos dos candidatos <span class="n">`
     + `${p.barra.fotos} fotos (${p.barra.cartas} cartas) em ${p.lotes.length} `
     + `lotes</span></h2>`
@@ -1018,8 +1027,8 @@ def alvo_actual(con, rep) -> dict:
     coisa discordam um dia em silêncio. Só se calcula **quando há alvo**: sem
     alvo não há número para mostrar, e o progresso percorre a colecção inteira.
 
-    Nada aqui é travado pelo `venda.congelado_ate`: a trava é para a SAÍDA de
-    venda, e as fotos dos decks são de ANTES de Ghent.
+    Nada aqui é travado pela trava da venda (`venda.congelada`): ela é para a
+    SAÍDA de venda, e as fotos dos decks são de ANTES de Ghent.
     """
     from mtgvault import revalidacao
     base = {"desde": revalidacao.desde(), "activa": revalidacao.activa(),
@@ -1076,6 +1085,11 @@ def dados(con, rep=None, editavel: bool = False) -> tuple[dict, dict]:
         "hoje": r["hoje"], "editavel": bool(editavel),
         "congelada": r["congelada"], "congelado_ate": r["congelado_ate"],
         "motivo_congelado": r["motivo_congelado"],
+        # A trava é MANUAL desde 2026-10-04: o que a página mostra já não é uma
+        # data (não há) mas COMO se destranca — a frase vem do `fases`, num
+        # sítio só, para a página e o CLI não a escreverem cada um à sua maneira.
+        "como_destrancar": r["como_destrancar"],
+        "data_sem_efeito": r["data_sem_efeito"],
         "janela_dias": r["janela_dias"], "desde": r["desde"],
         "terras": {k: {"n": v["n"], "nomes": v["nomes"], "regra": v["regra"]}
                    for k, v in r["terras"].items()},

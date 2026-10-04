@@ -613,12 +613,14 @@ def exportar(con, rep: dict | None = None, pasta: Path | None = None,
     `so_validadas` (2026-09-20): só as cópias com foto desta campanha — o
     botão «só validadas» da página e o `vender --exportar --so-validadas`.
 
-    A TRAVA DE 2026-10-01: antes de `venda.congelado_ate` (**2026-10-12**) isto
-    **recusa-se**, com `fases.VendaCongelada`. Ele joga o RC Ghent de Modern a
-    9-11/10, e uma carta do deck numa lista de stock na véspera é o erro que não
-    se desfaz. A pergunta vem ANTES de se escrever o primeiro ficheiro — uma
-    chamada recusada não deixa um CSV meio feito atrás dela, pela mesma razão
-    por que o `_exige_venda()` corre antes do `migracao.backup`.
+    A TRAVA: com `venda.congelada` posta isto **recusa-se**, com
+    `fases.VendaCongelada`. Nasceu a 2026-10-01 como uma DATA (até 2026-10-12 —
+    ele joga o RC Ghent de Modern a 9-11/10, e uma carta do deck numa lista de
+    stock na véspera é o erro que não se desfaz) e a 2026-10-04 passou a MANUAL:
+    não se levanta sozinha, destranca-se com `vender --congelada off`. A pergunta
+    vem ANTES de se escrever o primeiro ficheiro — uma chamada recusada não deixa
+    um CSV meio feito atrás dela, pela mesma razão por que o `_exige_venda()`
+    corre antes do `migracao.backup`.
     """
     from . import fases                                      # noqa: PLC0415
     fases.exige_descongelado()

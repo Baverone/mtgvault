@@ -168,6 +168,13 @@ def main(argv=None):
                     help="pôr a venda à vista no site, ou tirá-la "
                          "(venda.mostrar). O motor calcula-a na mesma — isto "
                          "só decide o que se vê")
+    # A TRAVA (André, 2026-10-04, ao fim do dia): era uma DATA que se levantava
+    # sozinha a 12/10; passou a ser MANUAL. São duas chaves diferentes — o
+    # `--mostrar` tira a venda da VISTA, este impede a SAÍDA.
+    vd.add_argument("--congelada", choices=["on", "off"], default=None,
+                    help="travar ou DESTRANCAR a saída de venda "
+                         "(venda.congelada). `off` destranca — é o único "
+                         "caminho: já não há data e não se levanta sozinha")
 
     # REVALIDAÇÃO POR FOTO (André, 2026-09-20): o progresso, e o alvo (a caixa
     # que ele está a fotografar) sem precisar do 8771.
@@ -701,6 +708,23 @@ def main(argv=None):
                           "reiniciado, e o site republica-se na corrida "
                           "seguinte do daily.")
                 return
+            # A TRAVA MANUAL (2026-10-04): também é só config, e também não
+            # corre o relatório. É aqui que ele a destranca.
+            if args.congelada is not None:
+                from . import fases as _f           # noqa: PLC0415
+                r = _f.gravar_congelada(args.congelada == "on")
+                mudou = r["antes"] != r["congelada"]
+                print(f"saída de venda {'CONGELADA' if r['congelada'] else 'DESTRANCADA'}"
+                      f" (venda.congelada: {str(r['congelada']).lower()})"
+                      + ("" if mudou else " — já estava assim"))
+                if r["congelada"]:
+                    print(f"  {_f.COMO_DESTRANCAR}.")
+                else:
+                    print("  a saída volta a gerar-se no primeiro `vender "
+                          "--exportar` ou na corrida seguinte do daily.")
+                if _f.data_sem_efeito():
+                    print(f"  AVISO: {_f.data_sem_efeito()}")
+                return
             rep = loadout.report(con)
             # O CLI continua a imprimir a lista com a venda desligada, de
             # propósito: é por aqui que o Claude na nuvem e ele próprio vêem o
@@ -708,9 +732,23 @@ def main(argv=None):
             # para ninguém a procurar lá.
             if not venda.mostrar():
                 print(f"  NOTA: {venda.MOTIVO_DESLIGADO}\n")
+            # A TRAVA diz-se SEMPRE, e não só quando ele tenta exportar: a lista
+            # imprime-se na mesma (é o que o motor decide) e ele tem de saber que
+            # nada sai daqui enquanto não destrancar — com o comando à frente.
+            from . import fases as _ftrava          # noqa: PLC0415
+            if _ftrava.congelada():
+                print(f"  NOTA: {_ftrava.motivo_congelado()}\n")
+            if _ftrava.data_sem_efeito():
+                print(f"  AVISO: {_ftrava.data_sem_efeito()}\n")
             if args.exportar:
                 # A SAÍDA (2026-09-18): os mesmos ficheiros que o daily escreve.
-                r = venda.exportar(con, rep, so_validadas=args.so_validadas)
+                # Com a trava posta isto RECUSA-SE (fases.VendaCongelada) — e a
+                # recusa é uma frase, não um traceback.
+                try:
+                    r = venda.exportar(con, rep, so_validadas=args.so_validadas)
+                except _ftrava.VendaCongelada as e:
+                    print(f"recusado: {e}")
+                    return 2
                 print(f"escrito: {r['csv']}\n         {r['estante']}\n  "
                       f"{r['resumo']}")
                 if r["formato"] == "predefinido":

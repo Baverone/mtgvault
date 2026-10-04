@@ -435,11 +435,17 @@ CREATE TABLE IF NOT EXISTS job_runs (
 -- não o conhece): não se apaga — nada se apaga —, mas uma vigia inscrita nele
 -- nunca correria, e por isso o `check_all` passou a FALHAR ALTO em qualquer
 -- kind que não saiba tratar, em vez de o saltar calado.
+-- O `preco_impressao` (2026-10-04) é a VIGIA DE PREÇO de UMA impressão: nasceu
+-- para o foil de New Phyrexia do Whipflare, que ele quer trocar «quando aparecer
+-- mais barato». Reaproveita esta tabela de propósito — a mecânica de vigiar
+-- (inscrever, snapshot, «mudou?», aviso) já está aqui e escrever uma segunda era
+-- ter duas respostas para «o que é que estou a vigiar». O que muda é o
+-- verificador (`watchlist.check_preco_impressao`).
 CREATE TABLE IF NOT EXISTS watched (
     id           INTEGER PRIMARY KEY,
-    kind         TEXT NOT NULL CHECK (kind IN ('mtgo_player','moxfield','archetype','mtgtop8_archetype')),
-    key          TEXT NOT NULL,      -- login MTGO | publicId Moxfield | archetype_id | id do arquetipo no mtgtop8
-    label        TEXT NOT NULL,      -- nome que dou ao baralho
+    kind         TEXT NOT NULL CHECK (kind IN ('mtgo_player','moxfield','archetype','mtgtop8_archetype','preco_impressao')),
+    key          TEXT NOT NULL,      -- login MTGO | publicId Moxfield | archetype_id | id do arquetipo no mtgtop8 | '<scryfall_id>|<finish>'
+    label        TEXT NOT NULL,      -- nome que dou ao baralho (ou à impressão vigiada)
     format       TEXT NOT NULL,
     active       INTEGER NOT NULL DEFAULT 1,
     last_checked TEXT,

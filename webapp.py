@@ -591,8 +591,11 @@ def _exige_venda() -> None:
     São DUAS trancas e são independentes, de propósito:
 
       * o INTERRUPTOR de 2026-09-25 (`venda.mostrar`) tira a venda da VISTA;
-      * a TRAVA de 2026-10-01 (`venda.congelado_ate`, **2026-10-12**) impede a
-        SAÍDA, porque ele joga o RC Ghent de Modern a 9-11/10.
+      * a TRAVA (`venda.congelada`) impede a SAÍDA. Nasceu a 2026-10-01 como uma
+        DATA (`congelado_ate: 2026-10-12`, o RC Ghent de Modern é a 9-11/10) e a
+        2026-10-04 passou a MANUAL, por decisão dele: já não se levanta sozinha,
+        porque o estado das cartas está por avaliar. A frase do 409 diz o comando
+        que a destranca (`fases.COMO_DESTRANCAR`).
 
     As duas vivem aqui, num sítio só, e por isso valem para os dois endpoints de
     escrita — o `/api/vender`, que **apaga cópias da base**, e o
