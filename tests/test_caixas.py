@@ -186,15 +186,64 @@ def caso_o_config_a_serio_ja_esta_na_forma_nova():
     # Jeskai Control.
     assert len(cfg["caixas"]) == 17, len(cfg["caixas"])
     assert "legacy" not in estados, "o slot `legacy` sem nome não devia existir"
-    for slot in ("legacy-welder", "legacy-aluren", "legacy-artifacts-blue",
-                 "modern-affinity"):
+    for slot in ("legacy-welder", "legacy-aluren", "legacy-artifacts-blue"):
         assert slot in estados, f"falta a caixa {slot}"
         assert estados[slot] != "candidata", (slot, estados[slot])
+    # A `modern-affinity` SAIU desta lista a 2026-10-04: o André desactivou-a
+    # («a lista de qualificação está na caixa modern; esta é uma segunda cópia
+    # do mesmo deck»). Continua no config — não se apaga —, e o que se tranca
+    # é a forma da desactivação: `candidata`, SEM assinatura (é isso, e não o
+    # estado, que lhe tira a lista de consenso e as 57 cópias / 1 985,44 € da
+    # lista de compras) e com o que lá estava guardado em `_antes`, para se
+    # poder repor. A razão da asserção de 02/10 não se perdeu: uma caixa
+    # `candidata` não protege o que tem dentro, e esta não tem nada dentro —
+    # zero linhas na `copy_allocation`.
+    ma = next(c for c in cfg["caixas"] if c["slot"] == "modern-affinity")
+    assert ma["estado"] == "candidata", ma["estado"]
+    assert not ma.get("assinatura"), "desactivada tem de ficar sem assinatura"
+    assert ma.get("_antes", {}).get("assinatura") == ["Weapons Manufacturing"], \
+        "o que lá estava tem de ficar em `_antes`"
     assert estados["standard"] != "candidata", estados["standard"]
     assert "pioneer-jeskai" not in estados, "a Jeskai Control devia ter saído"
     assert estados.get("premodern-enchantress") not in (None, "candidata"), \
         "a Enchantress foi reposta e tem de proteger as cópias que receba"
     print(f"colecao_config.json: {len(cfg['caixas'])} caixas, estados {sorted(set(estados.values()))}")
+
+
+def caso_a_lista_de_qualificacao_fecha_em_60():
+    """A 14.ª terra (André, 2026-10-04): 1 Island, e o main fecha em 60.
+
+    A lista foi gravada de manhã com 59 cartas e a 14.ª terra marcada
+    `por_confirmar` — não se leu na imagem e não se inventou. À tarde ele
+    decidiu. O que se tranca é o que custa dinheiro se partir: 60 + 15, a
+    Island lá dentro, e as duas marcas fora. E que a PROPOSTA de sideboard
+    ficou registada **sem ser aplicada** — uma proposta minha não entra numa
+    lista com que ele se qualificou para o RC Ghent.
+    """
+    cfg = json.loads((RAIZ / "colecao_config.json").read_text(encoding="utf-8"))
+    lista = cfg["listas_escolhidas"]["modern"]
+    main = [c for c in lista["cards"] if c[0] == "main"]
+    side = [c for c in lista["cards"] if c[0] == "side"]
+    assert sum(c[2] for c in main) == 60, sum(c[2] for c in main)
+    assert sum(c[2] for c in side) == 15, sum(c[2] for c in side)
+    assert ["main", "Island", 1] in lista["cards"], "falta a 14.ª terra"
+    assert lista["main_cartas"] == 60 and lista["side_cartas"] == 15
+    for marca in ("main_incompleto", "por_confirmar"):
+        assert marca not in lista, f"a marca `{marca}` já não se aplica"
+    terras = {c[1]: c[2] for c in main if c[1] in (
+        "Fiery Islet", "Spirebluff Canal", "Urza's Saga", "Steam Vents", "Island")}
+    assert terras == {"Fiery Islet": 4, "Spirebluff Canal": 4, "Urza's Saga": 4,
+                      "Steam Vents": 1, "Island": 1}, terras
+    p = lista["proposta_sideboard"]
+    assert p["estado"] == "PROPOSTA NÃO APLICADA", p["estado"]
+    assert p["tirar"] == ["side", "Consign to Memory", 1]
+    assert p["meter"] == ["side", "Whipflare", 1]
+    # e a prova de que NÃO foi aplicada: a lista continua com 4 Consign e sem
+    # um único Whipflare.
+    assert ["side", "Consign to Memory", 4] in lista["cards"]
+    assert not any(c[1] == "Whipflare" for c in lista["cards"]), \
+        "a proposta foi aplicada e não devia"
+    print("lista de qualificação: main 60 · side 15 · proposta registada e não aplicada")
 
 
 def run():
@@ -203,7 +252,8 @@ def run():
                caso_o_motor_aceita_as_duas_formas, caso_a_escala_de_estados,
                caso_por_confirmar_deixa_de_ser_uma_chave,
                caso_migrar_o_ficheiro_faz_backup,
-               caso_o_config_a_serio_ja_esta_na_forma_nova):
+               caso_o_config_a_serio_ja_esta_na_forma_nova,
+               caso_a_lista_de_qualificacao_fecha_em_60):
         fn()
     print("\nTUDO OK")
 

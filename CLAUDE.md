@@ -289,7 +289,7 @@ my_decks.py         segue decks-alvo (por assinatura e por jogador de MTGO) -> t
 commander_decks.py  decks de comandante por consenso EM CAMADAS: núcleo>=50% (=deck, deck_cards) / flex 25-50% / tech 15-25%; FILTRA pela cor do comandante. `tiers()` reusado pelo colecao_cor
 premodern_decks.py  consenso dos arquétipos-alvo de Premodern (`colecao_config.json`→`premodern_arquetipos_alvo`: UW Replenish, Enchantress) -> decks/deck_cards com o sufixo " (consenso)". Agrupa pelas etiquetas do `tagging` (o clustering não os separa) e usa `stock.stock_from_lists`. Mostrado nas `deckboxes` (era o `meusdecks`)
 refresh_collection.py  collection_owned p/ o index.html
-colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados, venda (a regra dos 5 % da RL, o `mostrar` de 2026-09-25 **e** o `congelado_ate` de 2026-10-01), cartas_vigiadas (a VIGIA DE CARTAS de 2026-09-26), reserva (o LIMIAR da reserva «maybe», 2026-10-01), caixas[].decisao / reserva / reserva_fora / comandante / reserva_assinatura (AS FASES, 2026-10-01), revalidacao.foto_manda (A FOTO É A VERDADE, 2026-10-02 — e o `playset_maximo` SAIU do `regras_por_formato` nesse dia; **a `false` e com `desde: null` desde 2026-10-04**, o dia em que as fotos foram apagadas), regras_por_formato: lingua/acabamento dos TRÊS grupos trocados a 2026-10-02 (`_regras_2026_10_02`: duel-commander e pauper `en` + `prefere_foil`, premodern `nonfoil`), basicas.declaradas / declaradas_em (A CONTAGEM DECLARADA, 2026-10-02), mtgtop8 (A RECOLHA e o NUNCA PERDER UM TORNEIO DE PAPEL GRANDE, 2026-10-04: `paginas_indice`, `revisitas_por_corrida` e `grandes.padroes`/`listas_por_evento`/`min_jogadores`)
+colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados, venda (a regra dos 5 % da RL, o `mostrar` de 2026-09-25 **e** o `congelado_ate` de 2026-10-01), cartas_vigiadas (a VIGIA DE CARTAS de 2026-09-26), reserva (o LIMIAR da reserva «maybe», 2026-10-01), caixas[].decisao / reserva / reserva_fora / comandante / reserva_assinatura (AS FASES, 2026-10-01), revalidacao.foto_manda (A FOTO É A VERDADE, 2026-10-02 — e o `playset_maximo` SAIU do `regras_por_formato` nesse dia; **a `false` e com `desde: null` desde 2026-10-04**, o dia em que as fotos foram apagadas), regras_por_formato: lingua/acabamento dos TRÊS grupos trocados a 2026-10-02 (`_regras_2026_10_02`: duel-commander e pauper `en` + `prefere_foil`, premodern `nonfoil`), basicas.declaradas / declaradas_em (A CONTAGEM DECLARADA, 2026-10-02), mtgtop8 (A RECOLHA e o NUNCA PERDER UM TORNEIO DE PAPEL GRANDE, 2026-10-04: `paginas_indice`, `revisitas_por_corrida` e `grandes.padroes`/`listas_por_evento`/`min_jogadores`), e as TRÊS DECISÕES de 2026-10-04 à tarde: a 14.ª terra da lista de qualificação (`listas_escolhidas.modern` com 1 Island, sem `por_confirmar`) + a `proposta_sideboard` NÃO APLICADA ao lado dela, e a caixa `modern-affinity` DESACTIVADA (`estado: candidata`, sem `assinatura`, o antigo em `_antes`)
 ```
 Cada `.html` gerado tem de estar na lista do `git add` do workflow (`daily.yml`,
 passo "Guardar HTML") **e na lista `HTML` da tarefa `ai-pc/tasks/mtgvault-daily`**
@@ -1665,6 +1665,70 @@ módulo não lê a `copy_allocation` nem o `loadout`.
   pedido/s e o site é pequeno. **Tudo o que está aqui medido foi medido contra
   páginas reais**; o que falta é ver a recolha nova a correr de ponta a ponta, e é
   o primeiro passo da próxima vez que o site responder.
+
+**A 14.ª TERRA, A SEGUNDA CAIXA DE AFFINITY E OS DEDICADOS (André, 2026-10-04,
+à tarde).** Três decisões pequenas sobre o deck do RC Ghent. Só config — **o
+motor não mudou uma linha**; medido com o mesmo `vault.db` dos dois lados
+(`_revisao/medir_decisoes.py`, `diff_protegidas.py`, `provar_desactivar.py`).
+
+- **A 14.ª terra é 1 ISLAND.** A lista de qualificação de 04/10 ficou gravada
+  com **59** cartas no main e a 14.ª terra marcada `por_confirmar` — não se leu
+  na imagem e não se inventou. Ele decidiu: entra **1 Island** (que era, aliás,
+  a pista que a base dava: as duas únicas listas com exactamente as 13 terras
+  dele jogam 1 Island como 14.ª). O main fecha em **60** e o side em **15**; as
+  marcas `main_incompleto` e `por_confirmar` saíram. A manabase é 4 Fiery Islet,
+  4 Spirebluff Canal, 4 Urza's Saga, 1 Steam Vents, 1 Island. **Não custa um
+  cêntimo**: a Island vem da pilha de básicas, que são isentas das regras de
+  material e entram por contagem declarada — a caixa `modern` passa de 69 para
+  **70** cópias e continua a comprar as mesmas 5 (24,32 €), a 93 %.
+- **A PROPOSTA DE SIDEBOARD FICOU REGISTADA E NÃO APLICADA**, que é a parte que
+  interessa: `listas_escolhidas.modern.proposta_sideboard`, com
+  `estado: "PROPOSTA NÃO APLICADA"`, a data e a razão (ele joga 4 Consign to
+  Memory e o consenso de 90 listas joga 3; não tem um único Whipflare contra
+  76 % das listas do consenso). **A lista que vale continua a ser a de
+  qualificação, tal e qual** — o `cards` não se tocou, e o que está gravado é o
+  par `tirar`/`meter` para ele aplicar quando quiser. Uma proposta minha não
+  entra numa lista com que ele se qualificou.
+- **A SEGUNDA CAIXA DE AFFINITY FICOU DESACTIVADA, E O ESTADO SOZINHO NÃO
+  CHEGAVA.** A `modern-affinity` (criada a 02/10, antes de ele dar a lista)
+  pedia **57 cópias / 1 985,44 €** — 4 Mox Opal a 300,12 € — para montar uma
+  segunda cópia do mesmo deck que está na caixa `modern`. **Conferido primeiro
+  que não estavam trocadas**: a lista de qualificação está mesmo na `modern`
+  (`listas_escolhidas.modern`, `padrao: true`, origem «lista de qualificacao,
+  dada pelo André a 04/10/2026»), e a `modern-affinity` era consenso por
+  assinatura. **Medido: pôr-lhe `estado: "candidata"` não tira um único euro** —
+  fechar tudo 10 281,35 € e as mesmas 57 cópias, porque desde 2026-09-19 cada
+  caixa compra as suas e o `permanente`/`candidata` só manda na ORDEM da
+  alocação dentro do grupo (`loadout.py:1658`). Quem tira é a **FONTE DA
+  LISTA**: sem `assinatura`, uma caixa de `fonte: "consenso"` não tem lista
+  nenhuma — é o que o `_caixas` já dizia e o que a `legacy-artifacts-blue` faz.
+  Ficou com as duas coisas (`candidata` + sem assinatura) e **nada se apagou**:
+  a `fonte`, o `ref`, a `assinatura` e o `estado` antigos estão em
+  `caixas[].\_antes`, a chave que o motor não vê (`config_slots`) — o mesmo
+  padrão do «já não vou montar este». Repor é devolver o `_antes`.
+  - **Medido:** fechar tudo **10 281,35 € → 8 295,91 €** (**−1 985,44 €**), a
+    comprar **294 → 237** (**−57**). **As outras 15 caixas ficam iguais ao
+    cêntimo e à percentagem**; só a `modern` sobe uma cópia (a Island).
+  - **Não libertou cópia nenhuma para a venda, e isso foi verificado linha a
+    linha**: a caixa estava **VAZIA** (zero linhas na `copy_allocation`). A
+    saída `venda` fica nas mesmas **113** cópias; o que muda é `protegidas`
+    **158 → 162**, porque as 4 cópias que a caixa desactivada já não aloca
+    (1 Urza's Saga e +3 Consign to Memory) passam a ser apanhadas pela **R5**
+    (jogada nos últimos 30 dias). Nenhuma saída nova, nenhuma cópia perdida.
+- **OS DEDICADOS JÁ ESTAVAM, e diz-se em vez de se fingir uma mudança.** A
+  ordem era *"no `regras_por_formato`, os grupos `duel-commander` e `spml`
+  ficam com `dedicado`: true, como já estão o premodern, o cedh e o pauper"*.
+  **Os cinco grupos já tinham a chave desde 2026-09-19** (*"cada deck deverá ter
+  as suas próprias cartas dentro"*) e o `loadout.resolve_slots` força
+  `dedicado = True` em toda a caixa de qualquer modo. Medido: **«ir buscar a
+  outra caixa» é ZERO nas 17 caixas**, antes e depois; e escrever
+  `dedicado: false` nos dois grupos dá **exactamente os mesmos números** (8
+  295,91 €, 237 a comprar, as 17 caixas iguais) — é o código a mandar, não o
+  ficheiro. Logo **zero cópias passaram de «ir buscar» a COMPRA e zero euros de
+  diferença**, em todas as caixas. O que se fez foi registar a confirmação dele,
+  com a data e as palavras, no `_regras_por_formato`.
+- **O diff do config são 14 inserções e 7 remoções**, escrito com o
+  `configio.escrever` — a lição do commit `ac1f776`.
 
 **AS FOTOS FORAM APAGADAS E A CAMPANHA ESTÁ DESLIGADA (André, 2026-10-04, à
 letra).** *"podes apagar todas as fotos, A MINHA RESPONSABILIDADE, se for para
