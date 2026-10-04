@@ -71,6 +71,12 @@
  .tname{font-size:11.5px;line-height:1.35;color:var(--ink2);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
  .orig{font-size:10px;color:var(--dim)}
  .orig.mk{color:var(--accent)}
+ /* A carta que o catalogo nao conhece: a dizer PROBLEMA, nunca «nao tenho». */
+ .orig.unkt{color:var(--warn);font-weight:700}
+ .unk{position:absolute;right:4px;bottom:4px;font-size:11px;font-weight:700;
+   background:var(--warn);color:var(--accent-ink);border-radius:999px;
+   width:17px;height:17px;line-height:17px;text-align:center}
+ .chip.warn{border-color:var(--warn);color:var(--warn)}
  .steppers{display:flex;gap:6px}
  .step{flex:1;min-height:40px;background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:9px;font:inherit;font-size:18px;font-weight:700;line-height:1;cursor:pointer;touch-action:manipulation}
  .step:active{background:var(--accent);color:var(--accent-ink);transform:scale(.96)}
@@ -473,10 +479,13 @@ function tileHTML(c, rot) {
       <span class="need">${c.q}&times;</span>
       <span class="badge ${falta ? (c.tenho ? '' : 'no') : 'ok'}">${c.tenho}/${c.q}</span>
       ${rot && c.partilhada ? '<span class="sh">proxy</span>' : ''}
+      ${c.desconhecida ? '<span class="unk">?</span>' : ''}
     </div>
     <div class="tname" title="${esc(c.nm)}">${esc(c.nm)}</div>
-    <div class="orig${marcado ? ' mk' : ''}">${marcado
-      ? 'marcaste tu' + (c.em ? ' · ' + esc(c.em) : '') : 'do inventário'}</div>
+    <div class="orig${marcado ? ' mk' : c.desconhecida ? ' unkt' : ''}">${
+      c.desconhecida ? 'DESCONHECIDA — o catálogo não tem esta carta'
+      : marcado ? 'marcaste tu' + (c.em ? ' · ' + esc(c.em) : '')
+      : 'do inventário'}</div>
     <div class="steppers">
       <button class="step minus" data-mais="-1" data-carta="${esc(c.nm)}"
         aria-label="menos uma de ${esc(c.nm)}"${c.tenho <= 0 ? ' disabled' : ''}>&minus;</button>
@@ -498,6 +507,11 @@ function nivelDeck(p, fmt) {
     <button data-f="${esc(fmt)}">◀ ${esc(fmt)}</button>
     <span><b>${esc(p.nome)}</b></span></div>`;
   const chips = [`<span class="chip">tens <b>${c.tem}</b> de <b>${c.total}</b> — <b>${c.pct}%</b></span>`];
+  /* Uma carta que o catálogo não conhece não pode passar por «não tenho»: o
+     número di-lo, senão ela ia para a lista de compras sem ninguém saber. */
+  if (c.desconhecidas) chips.push(`<span class="chip warn">`
+    + `<b>${c.desconhecidas}</b> desconhecida${c.desconhecidas > 1 ? 's' : ''}`
+    + ` — o catálogo não tem o nome</span>`);
   if (c.side.total) chips.push(`<span class="chip">main ${c.main.tem}/${c.main.total} · `
     + `side ${c.side.tem}/${c.side.total}</span>`);
   if (p.comandante) chips.push(`<span class="chip gold">comandante: ${esc(p.comandante)}</span>`);

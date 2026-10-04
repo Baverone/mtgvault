@@ -250,8 +250,8 @@ def copias_por_confirmar(con: sqlite3.Connection,
              WHERE cp.notes LIKE ? AND {na_estante()}""")
     args: list = [f"%{MARCA_POR_CONFIRMAR}%"]
     if name:
-        q += " AND (c.name = ? OR c.name LIKE ? || ' //%')"
-        args += [name, name]
+        q += f" AND {scryfall.sql_nome('c.name')}"
+        args += list(scryfall.params_nome(name))
     return con.execute(q + " ORDER BY cp.id", args).fetchall()
 
 
@@ -407,8 +407,8 @@ def copias_sem_foto(con: sqlite3.Connection, name: str | None = None
                      OR cp.notes LIKE ?)""")
     args: list = [f"%{MARCA_POR_CONFIRMAR}%"]
     if name:
-        q += " AND (c.name = ? OR c.name LIKE ? || ' //%')"
-        args += [name, name]
+        q += f" AND {scryfall.sql_nome('c.name')}"
+        args += list(scryfall.params_nome(name))
     out = []
     for r in con.execute(q + " ORDER BY c.name, cp.id", args):
         d = dict(r)
@@ -439,7 +439,7 @@ def ligar_foto(con: sqlite3.Connection, name: str, set_code: str, *,
     if not photo_path:
         return None
     q = (f"""SELECT cp.* FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id
-              WHERE (c.name = ? OR c.name LIKE ? || ' //%')
+              WHERE {scryfall.sql_nome("c.name")}
                 AND lower(c.set_code) = lower(?)
                 AND (? = '' OR c.collector_number = ?)
                 AND cp.language = ? AND cp.finish = ?
@@ -447,7 +447,8 @@ def ligar_foto(con: sqlite3.Connection, name: str, set_code: str, *,
                 AND {na_estante()}
                 AND (cp.notes IS NULL OR cp.notes NOT LIKE ?)""")
     num = collector_number or ""
-    rows = con.execute(q, (name, name, set_code, num, num, language, finish,
+    rows = con.execute(q, (*scryfall.params_nome(name), set_code, num, num,
+                           language, finish,
                            f"%{MARCA_POR_CONFIRMAR}%")).fetchall()
     if not rows:
         return None
@@ -1147,18 +1148,19 @@ def reserve_for_deck(con: sqlite3.Connection, deck_id: int) -> dict:
     reservado: dict[str, int] = {}
     for name, qty in need.items():
         falta = qty - (con.execute(
-            """SELECT COALESCE(SUM(cp.quantity),0) q FROM copies cp
+            f"""SELECT COALESCE(SUM(cp.quantity),0) q FROM copies cp
                  JOIN cards c ON c.scryfall_id = cp.scryfall_id
-                WHERE c.name = ? AND cp.reserved_deck_id = ?""",
-            (name, deck_id)).fetchone()["q"])
+                WHERE {scryfall.sql_nome("c.name")} AND cp.reserved_deck_id = ?""",
+            (*scryfall.params_nome(name), deck_id)).fetchone()["q"])
         if falta <= 0:
             continue
         livres = con.execute(
             f"""SELECT cp.id, cp.quantity FROM copies cp
                  JOIN cards c ON c.scryfall_id = cp.scryfall_id
-                WHERE c.name = ? AND {jogaveis()}
+                WHERE {scryfall.sql_nome("c.name")} AND {jogaveis()}
                   AND cp.reserved_deck_id IS NULL
-                ORDER BY cp.quantity ASC""", (name,)).fetchall()
+                ORDER BY cp.quantity ASC""",
+            scryfall.params_nome(name)).fetchall()
         for lote in livres:
             if falta <= 0:
                 break
@@ -1193,10 +1195,10 @@ def reserve_for_deck(con: sqlite3.Connection, deck_id: int) -> dict:
     em_falta = {}
     for n, q in need.items():
         ja = con.execute(
-            """SELECT COALESCE(SUM(cp.quantity),0) q FROM copies cp
+            f"""SELECT COALESCE(SUM(cp.quantity),0) q FROM copies cp
                  JOIN cards c ON c.scryfall_id = cp.scryfall_id
-                WHERE c.name = ? AND cp.reserved_deck_id = ?""",
-            (n, deck_id)).fetchone()["q"]
+                WHERE {scryfall.sql_nome("c.name")} AND cp.reserved_deck_id = ?""",
+            (*scryfall.params_nome(n), deck_id)).fetchone()["q"]
         if q > ja:
             em_falta[n] = q - ja
     return {"reserved": reservado, "still_missing": em_falta}

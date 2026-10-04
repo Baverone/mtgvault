@@ -23,7 +23,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import db, precos  # noqa: E402
+from mtgvault import db, precos, scryfall  # noqa: E402
 
 BASICS = {"Island", "Plains", "Swamp", "Mountain", "Forest",
           "Snow-Covered Island", "Snow-Covered Plains", "Snow-Covered Swamp",
@@ -79,8 +79,13 @@ def _prices(con):
     """Mapa nome->EUR. card_price (em vault.db) manda; o catalogo (price_latest,
     via ATTACH) preenche buracos MAS pode nao existir (ex.: GitHub Actions nao tem
     catalog.db) — por isso e opcional e nunca rebenta."""
-    price = {r["card_name"]: r["eur"] for r in con.execute("SELECT card_name, eur FROM card_price")
-             if r["eur"] is not None}
+    # `MapaDeCartas`: as chaves vêm do catálogo (`X // Y`) e quem procura usa o
+    # nome da lista (só a frente). Num `dict` cru, nenhuma carta de duas faces
+    # tinha preço aqui.
+    price = scryfall.MapaDeCartas(
+        {r["card_name"]: r["eur"]
+         for r in con.execute("SELECT card_name, eur FROM card_price")
+         if r["eur"] is not None})
     try:
         for r in con.execute(
             f"""SELECT c.name n, MIN({precos.sql(alias="p")}) e

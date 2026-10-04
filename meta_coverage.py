@@ -32,7 +32,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import db, loadout, nomes, paginas, precos, sources  # noqa: E402
+from mtgvault import db, loadout, nomes, paginas, precos, scryfall, sources  # noqa: E402
 from mtgvault import site_shell as shell  # noqa: E402
 from mtgvault.collection import jogaveis, owned_playable  # noqa: E402
 
@@ -89,7 +89,8 @@ def _committed_to_watched(con):
                  JOIN decks d ON d.id = dc.deck_id
                 WHERE d.format = 'premodern' AND d.name IN ({ph})
                 GROUP BY dc.card_name""", vig):
-        comm[r["nm"].split(" // ")[0]] = (comm.get(r["nm"].split(" // ")[0], 0) + (r["q"] or 0))
+        comm[scryfall.chave(r["nm"])] = (comm.get(scryfall.chave(r["nm"]), 0)
+                                 + (r["q"] or 0))
     return comm
 
 
@@ -221,6 +222,14 @@ def _visual(con, name, owned_qty):
     # `p.trend` escrito à mão em quatro consultas desta página — com o modo
     # `best` ligado, a Cobertura somava `trend` e a aba Comprar somava `low`.
     pr, fonte = precos.sql(alias="p"), precos.fonte()
+    # O NOME RESOLVE-SE UMA VEZ e entra por igualdade nas três consultas
+    # (2026-10-04). A do meio junta a `price_latest`, que é grande: com o
+    # `scryfall.sql_nome` o `MULTI-INDEX OR` tira à `cards` o papel de condutor
+    # e o SQLite passa a percorrer a `price_latest` pelo `source`. Medido: a
+    # `meta_coverage.build` inteira passou de **0,3 s para 135,8 s** (227
+    # chamadas a 0,59 s cada). É a mesma armadilha do `loadout._historico` e do
+    # `wantlist.cheapest_price` — ver o `scryfall.sql_nome`.
+    nm = scryfall.resolver(con, name) or name
     if owned_qty > 0:
         r = con.execute(
             f"""SELECT c.set_code, c.set_name, c.image_uri, cp.finish,
@@ -231,7 +240,7 @@ def _visual(con, name, owned_qty):
                  FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id
                 WHERE c.name = ? AND {jogaveis()}
                 GROUP BY c.scryfall_id ORDER BY q DESC LIMIT 1""",
-            (fonte, name)).fetchone()
+            (fonte, nm)).fetchone()
         if r:
             return {"img": _thumb(r["image_uri"]), "set_code": r["set_code"],
                     "set_name": r["set_name"], "unit": r["trend"], "mine": True}
@@ -239,9 +248,10 @@ def _visual(con, name, owned_qty):
     r = con.execute(
         f"""SELECT c.set_code, c.set_name, c.image_uri, {pr} trend
               FROM cards c JOIN price_latest p ON p.scryfall_id = c.scryfall_id
-             WHERE c.name = ? AND p.source = ? AND p.finish = 'nonfoil'
+             WHERE c.name = ? AND p.source = ?
+               AND p.finish = 'nonfoil'
                AND c.lang = 'en' {_NOT_PLAYABLE}
-             ORDER BY {pr} ASC LIMIT 1""", (name, fonte)).fetchone()
+             ORDER BY {pr} ASC LIMIT 1""", (nm, fonte)).fetchone()
     if r:
         return {"img": _thumb(r["image_uri"]), "set_code": r["set_code"],
                 "set_name": r["set_name"], "unit": r["trend"], "mine": False}
@@ -249,7 +259,7 @@ def _visual(con, name, owned_qty):
     r = con.execute(
         f"""SELECT set_code, set_name, image_uri FROM cards c
              WHERE c.name = ? AND c.lang = 'en' {_NOT_PLAYABLE}
-             ORDER BY released_at DESC LIMIT 1""", (name,)).fetchone()
+             ORDER BY released_at DESC LIMIT 1""", (nm,)).fetchone()
     if r:
         return {"img": _thumb(r["image_uri"]), "set_code": r["set_code"],
                 "set_name": r["set_name"], "unit": None, "mine": False}
@@ -260,8 +270,10 @@ def _owned_sid(con, name):
     """A impressão que o André mais possui desta carta (para ser a opção por omissão)."""
     r = con.execute(
         "SELECT c.scryfall_id sid FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id "
-        "WHERE c.name = ? AND " + jogaveis() + " GROUP BY c.scryfall_id "
-        "ORDER BY SUM(cp.quantity) DESC LIMIT 1", (name,)).fetchone()
+        "WHERE " + scryfall.sql_nome("c.name") + " AND " + jogaveis()
+        + " GROUP BY c.scryfall_id "
+        "ORDER BY SUM(cp.quantity) DESC LIMIT 1",
+        scryfall.params_nome(name)).fetchone()
     return r["sid"] if r else None
 
 
@@ -274,8 +286,9 @@ def _playable_printings(con, name, limit=14):
                    (SELECT {precos.sql(alias="p")} FROM price_latest p
                      WHERE p.scryfall_id = c.scryfall_id
                        AND p.source = ? AND p.finish = 'nonfoil') price
-              FROM cards c WHERE c.name = ? AND c.lang = 'en' {_NOT_PLAYABLE}""",
-        (precos.fonte(), name)).fetchall()
+              FROM cards c WHERE {scryfall.sql_nome("c.name")}
+               AND c.lang = 'en' {_NOT_PLAYABLE}""",
+        (precos.fonte(), *scryfall.params_nome(name))).fetchall()
     out = [{"s": r["sid"], "n": r["set_name"], "p": r["price"]} for r in rows]
     out.sort(key=lambda p: (p["p"] is None, p["p"] or 0))
     return out[:limit]
@@ -433,7 +446,9 @@ def _type_boost(con, name, cache):
     não do removal. Dá peso a esses tipos na escolha do nome."""
     t = cache.get(name)
     if t is None:
-        row = con.execute("SELECT type_line FROM cards WHERE name = ? LIMIT 1", (name,)).fetchone()
+        row = con.execute(
+            f"SELECT type_line FROM cards WHERE {scryfall.sql_nome('name')} LIMIT 1",
+            scryfall.params_nome(name)).fetchone()
         t = (row["type_line"] or "") if row else ""
         cache[name] = t
     if "Planeswalker" in t:
@@ -501,15 +516,29 @@ def _cores_do_nucleo(con, aid) -> str:
     if not nomes:
         return ""
     conta = dict.fromkeys(_ORDEM_CORES, 0)
+    vistos = set()
     for i in range(0, len(nomes), 300):
         ch = nomes[i:i + 300]
         ph = ",".join("?" for _ in ch)
         for r in con.execute(
                 f"""SELECT name, MAX(color_identity) ci FROM cards
                      WHERE name IN ({ph}) GROUP BY name""", ch):
+            vistos.add(scryfall.chave(r["name"]))
             for c in set(r["ci"] or ""):
                 if c in conta:
                     conta[c] += 1
+    # As de DUAS FACES não entram no `IN` (a lista escreve a frente e o catálogo
+    # o nome inteiro): sem isto a cor do arquétipo saía de metade das cartas.
+    for n in nomes:
+        if scryfall.chave(n) in vistos:
+            continue
+        r = con.execute(
+            f"SELECT MAX(color_identity) ci FROM cards "
+            f"WHERE {scryfall.sql_nome('name')}",
+            scryfall.params_nome(n)).fetchone()
+        for c in set((r["ci"] if r else "") or ""):
+            if c in conta:
+                conta[c] += 1
     cores = "".join(c for c in _ORDEM_CORES if conta[c] >= MIN_CARTAS_POR_COR)
     if not cores:
         return "Incolor"
@@ -522,7 +551,7 @@ def _carta_chave(con, aid, df, tcache) -> str:
     top = _distinctivas(con, aid, df, tcache)
     if not top:
         return ""
-    return top[0].split(" // ")[0].split(",")[0].strip()
+    return scryfall.chave(top[0]).split(",")[0].strip()
 
 
 def _known_name(con, aid):

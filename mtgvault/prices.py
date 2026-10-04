@@ -189,6 +189,19 @@ def cards_of_interest(con: sqlite3.Connection) -> set[str]:
         ids |= {r["scryfall_id"] for r in con.execute(
             f"SELECT scryfall_id FROM cards WHERE digital = 0 AND name IN ({marks})",
             tuple(names))}
+        # As de DUAS FACES não entram no `IN` (os nomes vêm das listas, com a
+        # frente só) e por isso NUNCA tinham preço recolhido — era a raiz do
+        # «sem preço» de 185 cartas. Uma consulta por nome que sobre; são poucos.
+        from . import scryfall                             # noqa: PLC0415
+        vistos = {r["nm"] for r in con.execute(
+            f"SELECT name nm FROM cards WHERE digital = 0 AND name IN ({marks})",
+            tuple(names))}
+        for n in names:
+            if n in vistos:
+                continue
+            ids |= {r["scryfall_id"] for r in con.execute(
+                f"SELECT scryfall_id FROM cards WHERE digital = 0 "
+                f"AND {scryfall.sql_nome('name')}", scryfall.params_nome(n))}
     return ids
 
 

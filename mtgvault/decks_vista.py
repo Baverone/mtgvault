@@ -65,7 +65,7 @@ import re
 import sqlite3
 from collections import defaultdict
 
-from . import caixas, loadout, marcas, nomes, padrao, sources, stock
+from . import caixas, loadout, marcas, nomes, padrao, scryfall, sources, stock
 
 # ---------------------------------------------------------------------------
 # Os tipos de carta: DUAS listas, e são duas perguntas diferentes
@@ -280,7 +280,7 @@ def _consenso_das_listas(con, fmt: str, ids: list[int]) -> list[tuple[str, str, 
             f"""SELECT decklist_id i, card_name nm, quantity q, board b
                   FROM decklist_cards WHERE decklist_id IN ({ph})""", ids):
         alvo = side if r["b"] == "side" else main
-        alvo[r["i"]][r["nm"].split(" // ")[0]] = r["q"]
+        alvo[r["i"]][scryfall.chave(r["nm"])] = r["q"]
     sl = stock.stock_from_lists(fmt, [main[i] for i in ids if main.get(i)],
                                 [side[i] for i in ids if side.get(i)])
     return ([("main", c["card_name"], c["quantity"]) for c in sl["main"]]
@@ -411,7 +411,8 @@ def _cartas_do_deck(d: dict) -> list[tuple[str, str, int]]:
     return d.get("cards") or []
 
 
-def conta_do_deck(d: dict, pos: dict[str, dict]) -> dict:
+def conta_do_deck(d: dict, pos: dict[str, dict],
+                  desc: dict[str, bool] | None = None) -> dict:
     """`{total, tem, pct, main, side}` — o *"tens X de Y — Z %"*.
 
     Conta CÓPIAS e não nomes, e a posse de cada carta trava no que o deck pede
@@ -422,15 +423,24 @@ def conta_do_deck(d: dict, pos: dict[str, dict]) -> dict:
     **Não há alocação aqui, de propósito.** Esta página responde *"quanto deste
     deck é que eu tenho"*; quem reparte a colecção entre caixas montadas é o
     `loadout`, e refazer essa conta aqui era abrir uma segunda opinião.
+
+    O `desc` (`nome -> é desconhecida`) conta à parte, em `desconhecidas`: uma
+    carta que o catálogo não conhece **continua a contar no total** (o deck
+    pede-a) e nunca entra em `tem`, mas o número tem de dizer quantas são, senão
+    o *"faltam-te 13"* mistura cartas a comprar com nomes que não existem.
     """
     out = {"main": {"total": 0, "tem": 0}, "side": {"total": 0, "tem": 0}}
+    desc = desc or {}
+    ndesc = 0
     for board, nm, q in _cartas_do_deck(d):
         k = "side" if board == "side" else "main"
         out[k]["total"] += q
         out[k]["tem"] += min(q, pos.get(nm, {}).get("q", 0))
+        if desc.get(nm):
+            ndesc += q
     total = out["main"]["total"] + out["side"]["total"]
     tem = out["main"]["tem"] + out["side"]["tem"]
-    return {"total": total, "tem": tem,
+    return {"total": total, "tem": tem, "desconhecidas": ndesc,
             "pct": round(100 * tem / total) if total else 0, **out}
 
 
@@ -619,7 +629,7 @@ def cache_nova() -> dict:
     varreduras da `copies` por página: a maior parte dos 15,2 s que a aba media
     a frio a 2026-10-04.
     """
-    return {"tl": {}, "img": {}}
+    return {"tl": {}, "img": {}, "desc": {}}
 
 
 def deck_para_pagina(con: sqlite3.Connection, d: dict, pos: dict[str, dict],
@@ -634,9 +644,16 @@ def deck_para_pagina(con: sqlite3.Connection, d: dict, pos: dict[str, dict],
     from . import paginas
     cards = _cartas_do_deck(d)
     nms = [nm for _b, nm, _q in cards]
+    # AS DESCONHECIDAS, À VISTA (2026-10-04). Uma carta que o catálogo não
+    # conhece não pode passar por *"não tenho"*: assim ia para a lista de
+    # compras ao lado de cartas a sério, e um nome que não casa é um PROBLEMA, e
+    # dito. Hoje é uma nos decks dele — a `Ademi of the Silkchutes` do Cloud —, e
+    # nem o catálogo nem a própria Scryfall a têm (sondado a 04/10: 404).
     if cache is None:
         tl = paginas._meta_cartas(con, nms)                    # noqa: SLF001
         imgs = paginas.img_map(con, nms)
+        desc = {n: a is None
+                for n, a in scryfall.resolver_muitos(con, nms).items()}
     else:
         faltam = [n for n in dict.fromkeys(nms) if n not in cache["tl"]]
         if faltam:
@@ -650,8 +667,14 @@ def deck_para_pagina(con: sqlite3.Connection, d: dict, pos: dict[str, dict],
             cache["img"].update(paginas.img_map(con, faltam))
             for n in faltam:
                 cache["img"].setdefault(n, "")
+        faltam = [n for n in dict.fromkeys(nms) if n not in cache["desc"]]
+        if faltam:
+            cache["desc"].update(
+                {n: a is None
+                 for n, a in scryfall.resolver_muitos(con, faltam).items()})
         tl = cache["tl"]
         imgs = cache["img"]
+        desc = cache["desc"]
     p = proprias_e_partilhadas(d, rep) if modo == ROTATIVAS else None
     partilhadas = {nm for _b, nm, _q in (p["partilhadas"] if p else [])}
 
@@ -669,6 +692,7 @@ def deck_para_pagina(con: sqlite3.Connection, d: dict, pos: dict[str, dict],
             "sid": imgs.get(nm) or "",
             "partilhada": nm in partilhadas,
             "com": (p["com_quem"].get(nm, []) if p else []),
+            "desconhecida": bool(desc.get(nm)),
         })
 
     def ordena(b):
@@ -676,7 +700,7 @@ def deck_para_pagina(con: sqlite3.Connection, d: dict, pos: dict[str, dict],
                  "cartas": sorted(b[t], key=lambda c: c["nm"])}
                 for t in ordenar_grupos(b)]
 
-    conta = conta_do_deck(d, pos)
+    conta = conta_do_deck(d, pos, desc)
     out = {
         "id": d["id"], "nome": d["nome"], "formato": d["formato"],
         "fonte": d["fonte"], "origem": d.get("origem"),

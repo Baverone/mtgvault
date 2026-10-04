@@ -64,7 +64,7 @@ import os
 from datetime import date
 from pathlib import Path
 
-from mtgvault import aviso, db, sources
+from mtgvault import aviso, db, scryfall, sources
 
 CHAVE = "cartas_vigiadas"
 FICHEIRO = "vigia-cartas.json"
@@ -161,8 +161,12 @@ def formatos_vigiados(cfg=None) -> list[str]:
 
 
 def _frente(nome: str) -> str:
-    """O nome da frente. As listas trazem `A // B` nas cartas de duas faces."""
-    return str(nome or "").split(" // ")[0].strip()
+    """O nome da frente. As listas trazem `A // B` nas cartas de duas faces.
+
+    É o `scryfall.chave` e não um `split` próprio: assim a vigia também
+    reconhece o separador escrito de outra maneira (`Wear/Tear`), que é como 33
+    nomes chegam das fontes."""
+    return scryfall.chave(str(nome or "").strip())
 
 
 def nomes_na_lista(fmt: str | None, cards) -> list[str]:
@@ -263,8 +267,26 @@ def achados(con) -> list[dict]:
     out = []
     for e in cartas():
         nome = e["carta"]
-        onde = ["(lower(dc.card_name) = ? OR lower(dc.card_name) LIKE ?)"]
-        params: list = [nome.lower(), nome.lower() + " // %"]
+        # O cruzamento é o do `scryfall`, aplicado ao nome da LISTA (aqui o
+        # sentido é o inverso do habitual: a carta vigiada é que procura a
+        # decklist). Em minúsculas dos dois lados — a carta vigiada vem do
+        # config, escrita à mão por ele —, e é por isso que são os primitivos
+        # `frente_de_dupla_face`/`limites_dupla_face` e não o `sql_nome`.
+        #
+        # OS RAMOS DO CANONIZADO SÓ ENTRAM SE O NOME TIVER BARRA. Um
+        # `lower(dc.card_name)` nunca entra em índice nenhum: esta consulta
+        # VARRE as 274 720 linhas da `decklist_cards`, e medi que os dois ramos
+        # a mais a punham de **51 ms em 110 ms**. Nenhuma carta vigiada tem
+        # barra no nome, por isso o caminho normal fica exactamente como estava.
+        _lo = nome.lower()
+        _can = scryfall.canonizar(_lo)
+        _frente = scryfall.frente_de_dupla_face("lower(dc.card_name)")
+        _ramos = ["lower(dc.card_name) = ?", _frente]
+        params: list = [_lo, *scryfall.limites_dupla_face(_lo)]
+        if _can != _lo:
+            _ramos += ["lower(dc.card_name) = ?", _frente]
+            params += [_can, *scryfall.limites_dupla_face(_can)]
+        onde = ["(%s)" % " OR ".join(_ramos)]
         if e["formatos"]:
             onde.append("lower(d.format) IN (%s)"
                         % ",".join("?" * len(e["formatos"])))

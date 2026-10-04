@@ -24,7 +24,7 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 import classify  # noqa: E402
 import commander_decks  # noqa: E402  (decks de consenso em camadas núcleo/flex/tech)
-from mtgvault import db, loadout, paginas, precos  # noqa: E402
+from mtgvault import db, loadout, paginas, precos, scryfall  # noqa: E402
 from mtgvault import site_shell as shell  # noqa: E402
 from mtgvault import collection as col  # noqa: E402
 from mtgvault.collection import jogaveis, owned_playable, valor_da_coleccao  # noqa: E402
@@ -239,10 +239,10 @@ def _watched_deck_pools(con):
         if wid:
             r = con.execute("SELECT cards FROM watched_snapshots WHERE watched_id = ? "
                             "ORDER BY taken_at DESC LIMIT 1", (wid,)).fetchone()
-            return ({c[1].split(" // ")[0] for c in json.loads(r["cards"])}
+            return ({scryfall.chave(c[1]) for c in json.loads(r["cards"])}
                     if r else set())
         # Cloud (Duel Commander): consenso.
-        return {r["nm"].split(" // ")[0] for r in con.execute(
+        return {scryfall.chave(r["nm"]) for r in con.execute(
             "SELECT card_name nm FROM deck_cards dc JOIN decks d ON d.id = dc.deck_id "
             "WHERE d.name = 'Cloud (Duel Commander)'")}
 
@@ -252,7 +252,7 @@ def _watched_deck_pools(con):
         deck_rows, extra_rows = [], []
         for r in _copias_na_caixa(con, res, balde):
             row = dict(r)
-            front = r["nm"].split(" // ")[0]
+            front = scryfall.chave(r["nm"])
             if front in cur:
                 deck_rows.append(row)
             else:
@@ -277,21 +277,33 @@ def _consensus_tiers_html(con):
         t, n = commander_decks.tiers(con, fmt, commander)
         if not t:
             continue
-        names = [nm.split(" // ")[0] for k in ("core", "flex", "tech") for nm, _ in t[k]]
-        osid, cat = {}, {}
+        names = [scryfall.chave(nm) for k in ("core", "flex", "tech")
+                 for nm, _ in t[k]]
+        # Os dois mapas canonizam a chave: o `cat` era indexado pelo nome
+        # INTEIRO do catálogo e consultado pela FRENTE, por isso nenhuma carta
+        # de duas faces chegava a ter imagem aqui.
+        osid, cat = scryfall.MapaDeCartas(), scryfall.MapaDeCartas()
         for r in con.execute("SELECT c.name nm, cp.scryfall_id sid FROM copies cp "
                              "JOIN cards c ON c.scryfall_id = cp.scryfall_id "
                              "WHERE " + jogaveis()):
-            osid.setdefault(r["nm"].split(" // ")[0], r["sid"])
+            osid.setdefault(r["nm"], r["sid"])
         for i in range(0, len(names), 300):
             ch = names[i:i + 300]
             ph = ",".join("?" for _ in ch)
             for r in con.execute(f"SELECT name nm, scryfall_id sid FROM cards "
                                  f"WHERE name IN ({ph}) AND digital=0 GROUP BY name", ch):
                 cat.setdefault(r["nm"], r["sid"])
+        for n in names:
+            if n not in cat:
+                r = con.execute(
+                    f"SELECT scryfall_id sid FROM cards "
+                    f"WHERE {scryfall.sql_nome('name')} AND digital=0 LIMIT 1",
+                    scryfall.params_nome(n)).fetchone()
+                if r:
+                    cat[n] = r["sid"]
 
         def tcard(nm, pct):
-            front = nm.split(" // ")[0]
+            front = scryfall.chave(nm)
             have = front in owned
             sid = osid.get(front) or cat.get(front)
             img = (f'<img loading="lazy" src="{_img(sid)}" '
@@ -302,7 +314,7 @@ def _consensus_tiers_html(con):
                     f'<span class="q pctb">{pct}%</span></div>')
 
         def own(lst):
-            return sum(1 for nm, _ in lst if nm.split(" // ")[0] in owned)
+            return sum(1 for nm, _ in lst if scryfall.chave(nm) in owned)
         ico = CI_ICON.get(t["ci"], "🌈") if len(t["ci"]) == 1 else ("⚙️" if not t["ci"] else "🌈")
         out += (f'<h3>{shell.icone("nuvem")} {html.escape(name)} {ico} <span class="n">núcleo {len(t["core"])} '
                 f'(tens {own(t["core"])}) · flex {len(t["flex"])} (tens {own(t["flex"])}) · '

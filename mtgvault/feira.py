@@ -69,7 +69,7 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import date
 
-from . import loadout, paginas, venda
+from . import loadout, paginas, scryfall, venda
 
 # As omissões. As taxas são ESTIMATIVAS (ver o cabeçalho): quem as afina é ele.
 TAXA_DINHEIRO = 0.55
@@ -266,7 +266,7 @@ def levar(con, rep: dict, cfg: dict | None = None) -> dict:
 # Trazer
 # ---------------------------------------------------------------------------
 def _front(nome: str) -> str:
-    return (nome or "").split(" // ")[0].strip()
+    return scryfall.chave(nome or "").strip()
 
 
 def _k(nome: str, slot) -> tuple[str, str]:

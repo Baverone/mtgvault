@@ -20,7 +20,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import sources  # noqa: E402
+from mtgvault import scryfall, sources  # noqa: E402
 
 # (nome do deck, formato, comandante)
 # O Cloud (Duel Commander) deixou de ser gerado por consenso: o André escolheu a
@@ -56,8 +56,12 @@ def _inclusion(con, fmt, commander):
 
 
 def _color_map(con, names):
-    """nome -> conjunto de cores da identidade (WUBRG)."""
-    out = {}
+    """nome -> conjunto de cores da identidade (WUBRG).
+
+    `MapaDeCartas`: as cartas de DUAS FACES têm o nome inteiro no catálogo e só
+    a frente na lista, e sem o cruzamento canónico o `legal()` lá abaixo dava-as
+    por incolores — ou seja, deixava passar off-colors e barrava as certas."""
+    out = scryfall.MapaDeCartas()
     names = list(names)
     for i in range(0, len(names), 400):
         ch = names[i:i + 400]
@@ -65,6 +69,14 @@ def _color_map(con, names):
         for r in con.execute(f"SELECT name nm, color_identity ci FROM cards "
                              f"WHERE name IN ({ph}) AND digital = 0 GROUP BY name", ch):
             out[r["nm"]] = set(r["ci"] or "")
+    for n in names:
+        if n not in out:
+            r = con.execute(
+                f"SELECT color_identity ci FROM cards "
+                f"WHERE {scryfall.sql_nome('name')} AND digital = 0 LIMIT 1",
+                scryfall.params_nome(n)).fetchone()
+            if r:
+                out[n] = set(r["ci"] or "")
     return out
 
 
@@ -76,13 +88,14 @@ def tiers(con, fmt, commander):
     inc, n = _inclusion(con, fmt, commander)
     if not inc:
         return None, n
-    row = con.execute("SELECT color_identity ci FROM cards WHERE name = ? AND digital = 0 "
-                      "LIMIT 1", (commander,)).fetchone()
+    row = con.execute(
+        f"SELECT color_identity ci FROM cards WHERE {scryfall.sql_nome('name')} "
+        f"AND digital = 0 LIMIT 1", scryfall.params_nome(commander)).fetchone()
     cci = set(row["ci"] or "") if row else set()
     cmap = _color_map(con, inc)
 
     def legal(nm):
-        return cmap.get(nm.split(" // ")[0], set()) <= cci
+        return cmap.get(nm, set()) <= cci
 
     def band(lo, hi):
         return sorted(((nm, round(100 * c / n)) for nm, c in inc.items()

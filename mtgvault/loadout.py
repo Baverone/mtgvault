@@ -259,6 +259,11 @@ from pathlib import Path
 
 from . import caixas as _caixas
 from . import precos, sources, stock
+# O CRUZAMENTO NOME-DE-LISTA ↔ CATÁLOGO vive num sítio só (2026-10-04): as
+# listas trazem a frente de uma carta de duas faces (`Witch Enchanter`) e o
+# catálogo guarda o nome inteiro. Ao nível do módulo, e não dentro de cada
+# função, porque o `card_price` corre milhares de vezes por relatório.
+from . import scryfall as _scry
 # A marca das cópias que entraram pelo *"já a tenho"* e ainda esperam que uma
 # foto lhes diga a edição. Vive na `collection` porque é lá que a foto a apaga —
 # escrever o mesmo texto nos dois módulos era pedir que um deles ficasse para
@@ -423,7 +428,7 @@ CHAVES_REGRA = ("lingua", "acabamento", "edicoes", "baldes", "estrita", "dedicad
 
 def _front(name: str) -> str:
     """Nome da frente de uma carta de dupla face — é assim que as listas a escrevem."""
-    return (name or "").split(" // ")[0]
+    return _scry.chave(name or "")
 
 
 def balde_local(lot: dict) -> str:
@@ -480,7 +485,8 @@ def card_price(con, name: str, finish: str = "nonfoil",
     row = con.execute(
         f"""SELECT MIN({expr}) preco
               FROM cards c JOIN {precos.sql_acabamentos(fins)} f
-             WHERE c.name = ?""", (*fins, name)).fetchone()
+             WHERE {_scry.sql_nome("c.name")}""",
+        (*fins, *_scry.params_nome(name))).fetchone()
     if row and row["preco"] is not None:
         return row["preco"], fins[0]
     if fins[0] == "nonfoil":
@@ -488,7 +494,8 @@ def card_price(con, name: str, finish: str = "nonfoil",
     row = con.execute(
         f"""SELECT MIN({expr}) preco
               FROM cards c JOIN {precos.sql_acabamentos(("nonfoil",))} f
-             WHERE c.name = ?""", ("nonfoil", name)).fetchone()
+             WHERE {_scry.sql_nome("c.name")}""",
+        ("nonfoil", *_scry.params_nome(name))).fetchone()
     return ((row["preco"], "nonfoil") if row and row["preco"] is not None
             else (None, None))
 
@@ -517,16 +524,16 @@ def impressao_mais_barata(con, name: str, finish: str = "nonfoil",
     row = con.execute(
         f"""SELECT c.scryfall_id sid, {expr} preco
               FROM cards c JOIN {precos.sql_acabamentos(fins)} f
-             WHERE c.name = ? AND {expr} IS NOT NULL
+             WHERE {_scry.sql_nome("c.name")} AND {expr} IS NOT NULL
              ORDER BY preco, c.released_at DESC LIMIT 1""",
-        (*fins, name)).fetchone()
+        (*fins, *_scry.params_nome(name))).fetchone()
     if row is None and fins[0] != "nonfoil":
         row = con.execute(
             f"""SELECT c.scryfall_id sid, {expr} preco
                   FROM cards c JOIN {precos.sql_acabamentos(("nonfoil",))} f
-                 WHERE c.name = ? AND {expr} IS NOT NULL
+                 WHERE {_scry.sql_nome("c.name")} AND {expr} IS NOT NULL
                  ORDER BY preco, c.released_at DESC LIMIT 1""",
-            ("nonfoil", name)).fetchone()
+            ("nonfoil", *_scry.params_nome(name))).fetchone()
     sid = row["sid"] if row else None
     if cache is not None:
         cache[chave] = sid
@@ -673,14 +680,23 @@ def _historico(con, name: str, finish: str, source: str | None = None,
     expr = precos.sql(alias="h")
     fins = FOIL_FINISHES if finish in FOIL_FINISHES else ("nonfoil",)
     marks = ",".join("?" * len(fins))
+    # AQUI O NOME RESOLVE-SE ANTES, e não entra como predicado (2026-10-04).
+    # O filtro do nome está do lado LONGE de um JOIN com a `price_history`, que
+    # é a tabela grande: com o `scryfall.sql_nome` o `EXPLAIN QUERY PLAN` troca
+    # `SEARCH c USING INDEX ix_cards_name` por **`SCAN h USING INDEX
+    # ix_price_date`** e a consulta passa de **0,1 ms para 21,7 ms** — medido, e
+    # com 47 chamadas por relatório punha o `report` em 12,9 s. Resolver custa
+    # uma consulta indexada e devolve o plano ao que era.
+    nm = _scry.resolver(con, name) or name
     return con.execute(
         f"""SELECT h.scryfall_id sid, h.finish fin, h.date d, {expr} t
               FROM price_history h JOIN cards c ON c.scryfall_id = h.scryfall_id
-             WHERE c.name = ? AND h.source = ? AND h.finish IN ({marks})
+             WHERE c.name = ? AND h.source = ?
+                   AND h.finish IN ({marks})
                    AND COALESCE(h.receita, ?) = ?
                    AND {expr} IS NOT NULL
              ORDER BY h.date""",
-        (name, source, *fins, precos.RECEITA_UNICA, receita)).fetchall()
+        (nm, source, *fins, precos.RECEITA_UNICA, receita)).fetchall()
 
 
 def _cotacao_em(rows, alvo: str, limite: str) -> tuple[float | None, str | None]:
@@ -1032,7 +1048,7 @@ def urgencia_da_compra(s: dict, nm: str, cfg: dict | None = None,
     desaparecer calada no dia em que mais importava.
     """
     mapa = compras_urgentes(cfg) if urgentes is None else urgentes
-    x = mapa.get((s.get("slot") or "", (nm or "").split(" // ")[0].lower()))
+    x = mapa.get((s.get("slot") or "", _scry.chave(nm or "").lower()))
     if not x:
         return None
     ate = str(x.get("ate") or "")
@@ -1044,10 +1060,29 @@ def urgencia_da_compra(s: dict, nm: str, cfg: dict | None = None,
         except ValueError:
             dias = None
     mp = x.get("material_pendente") or {}
+    # A RESSALVA DA MEDIÇÃO FICA NO CONFIG E NÃO VAI NO PAYLOAD (2026-10-04).
+    # O `material_pendente.precos.fonte` do Whipflare é um parágrafo escrito
+    # para quem LÊ o `colecao_config.json`: diz que os 20,20 €/0,21 € vêm do
+    # price guide e não da régua em vigor (que é só `cardtrader` e não cota esta
+    # carta). Isso é documentação do ficheiro — e punha o nome de uma loja no
+    # texto dos dados de duas páginas, que o `test_so_cardtrader` proíbe com
+    # razão: ali a regra é *"as legendas de preço não têm nomes de loja"*, e uma
+    # ressalva sobre a MEDIÇÃO não é uma legenda. Tudo o mais passa (a página usa
+    # o `pendente` e o `porque`; o teste de 04/10 usa o `estado`, os dois preços
+    # e o `regra_do_grupo`).
+    #
+    # Ficou verde até hoje por acidente: a chave entrou no config esta tarde e
+    # as páginas em disco eram de antes dela. Quem as regerou fui eu.
+    mp_payload = None
+    if mp:
+        mp_payload = {k: v for k, v in mp.items() if k != "precos"}
+        if isinstance(mp.get("precos"), dict):
+            mp_payload["precos"] = {k: v for k, v in mp["precos"].items()
+                                    if k != "fonte"}
     return {"ate": ate, "dias": dias, "passou": dias is not None and dias < 0,
             "porque": str(x.get("porque") or ""),
             "prioridade": str(x.get("prioridade") or "alta"),
-            "material_pendente": mp or None,
+            "material_pendente": mp_payload,
             # Enquanto `aplicado` for falso a excepção é só uma SUGESTÃO de
             # compra; a caixa continua a exigir o material do grupo.
             "pendente": bool(mp) and not mp.get("aplicado"),
@@ -2038,7 +2073,7 @@ def _porque_nao(lot: dict, s: dict, baldes_de_deck: set[str],
     # `_porque_nao` corre por cópia e por caixa, e ler o config aí era o defeito
     # do `Path.resolve()` de 03/10 outra vez.
     exc = (s.get("excepcoes_material") or {}).get(
-        lot["nm"].split(" // ")[0].lower()) if s.get("excepcoes_material") else None
+        _scry.chave(lot["nm"]).lower()) if s.get("excepcoes_material") else None
     ac = exc or acabamento_efectivo(s, lot.get("foil_existe", True))
     if ac == "foil" and lot["finish"] not in FOIL_FINISHES and not lot["rl"]:
         return razao_nao_foil(lot.get("foil_edicoes"))

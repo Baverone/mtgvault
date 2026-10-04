@@ -24,7 +24,7 @@ import html
 import json
 from pathlib import Path
 
-from mtgvault import consenso, paginas, sources
+from mtgvault import consenso, paginas, scryfall, sources
 from mtgvault import site_shell as shell
 
 ROOT = Path(__file__).resolve().parent
@@ -242,10 +242,10 @@ def _tmpl() -> str:
 
 def _carta(nm, posse, sids, dados) -> dict:
     d = dict(dados)
-    tenho = int(posse.get(nm.split(" // ")[0], 0))
+    tenho = int(posse.get(scryfall.chave(nm), 0))
     d["tenho"] = tenho
     d["falta"] = max(0, int(d.get("copias") or 1) - tenho)
-    d["sid"] = sids.get(nm.split(" // ")[0])
+    d["sid"] = sids.get(scryfall.chave(nm))
     return d
 
 
@@ -276,8 +276,8 @@ def dados(con) -> tuple[dict, dict[str, object]]:
         precisa = [x["nm"] for x in c["cartas"]] + [nome]
         sids = paginas.img_map(con, precisa)
         c["cartas"] = [_carta(x["nm"], posse, sids, x) for x in c["cartas"]]
-        c["sid"] = sids.get(nome.split(" // ")[0])
-        c["tenho_cmd"] = int(posse.get(nome.split(" // ")[0], 0))
+        c["sid"] = sids.get(scryfall.chave(nome))
+        c["tenho_cmd"] = int(posse.get(scryfall.chave(nome), 0))
         ficheiros[nome] = paginas.slug(nome)
         partes[paginas.slug(nome)] = c
 

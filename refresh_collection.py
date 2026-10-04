@@ -37,7 +37,7 @@ sys.path.insert(0, str(ROOT))
 # acima — três camadas, com overrides à mão — **não é** a conta do valor da
 # coleção e não se pode comparar com ela: a dela vive na
 # `collection.valor_da_coleccao` e é uma só.
-from mtgvault import precos  # noqa: E402
+from mtgvault import precos, scryfall  # noqa: E402
 from mtgvault.collection import na_estante  # noqa: E402
 OVERRIDES = ROOT / "price_overrides.csv"
 
@@ -47,7 +47,7 @@ PREMIUM_SUBS = {"Cloud", "Blue Farm", "Cloud cEDH"}
 
 
 def _front(n: str) -> str:
-    return n.split(" // ")[0].strip().lower()
+    return scryfall.chave(n).strip().lower()
 
 
 def refresh(con) -> str:

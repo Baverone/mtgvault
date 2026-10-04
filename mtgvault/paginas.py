@@ -32,6 +32,11 @@ from . import collection as _col
 # A CASCA. O import é só neste sentido: o `site_shell` não importa nada do
 # pacote, de propósito — ao contrário seria um ciclo.
 from . import site_shell as _shell
+# O CRUZAMENTO NOME-DE-LISTA ↔ CATÁLOGO, num sítio só (2026-10-04). Os mapas
+# desta página (posse, tipos, cores, imagens) são todos `MapaDeCartas`: é o
+# próprio mapa que canoniza a chave, e por isso nenhum dos vinte sítios que
+# fazem `mapa.get(nm)` tem de se lembrar de o fazer.
+from . import scryfall as _scry
 
 META = _shell.META
 TEMA = _shell.TEMA
@@ -56,12 +61,12 @@ def img_map(con, names, da_coleccao: bool = True) -> dict[str, str]:
     As de dupla face casam-se pela FRENTE (o catálogo guarda `frente // verso`),
     senão ficavam sem imagem — um quadrado preto na grelha.
     """
-    out: dict[str, str] = {}
+    out = _scry.MapaDeCartas()
     if da_coleccao:
         for r in con.execute(f"""SELECT c.name nm, cp.scryfall_id sid FROM copies cp
                                   JOIN cards c ON c.scryfall_id = cp.scryfall_id
                                  WHERE {_col.jogaveis()}"""):
-            out.setdefault(r["nm"].split(" // ")[0], r["sid"])
+            out.setdefault(r["nm"], r["sid"])
     falta = [n for n in names if n not in out]
     for i in range(0, len(falta), 300):
         ch = falta[i:i + 300]
@@ -69,11 +74,12 @@ def img_map(con, names, da_coleccao: bool = True) -> dict[str, str]:
         for r in con.execute(f"""SELECT name nm, scryfall_id sid FROM cards
                                   WHERE name IN ({ph}) AND digital = 0
                                   GROUP BY name""", ch):
-            out.setdefault(r["nm"].split(" // ")[0], r["sid"])
+            out.setdefault(r["nm"], r["sid"])
     for n in [x for x in falta if x not in out]:
-        r = con.execute("SELECT scryfall_id sid FROM catalog.cards "
-                        "WHERE (name = ? OR name LIKE ?) AND digital = 0 LIMIT 1",
-                        (n, n + " // %")).fetchone()
+        r = con.execute(
+            f"SELECT scryfall_id sid FROM catalog.cards "
+            f"WHERE {_scry.sql_nome('name')} AND digital = 0 LIMIT 1",
+            _scry.params_nome(n)).fetchone()
         if r:
             out[n] = r["sid"]
     return out
@@ -135,7 +141,7 @@ def _meta_cartas(con, names) -> dict[str, tuple[str, str]]:
     Uma consulta por lote de 300 e um fallback por LIKE para as de dupla face — o
     catálogo guarda `frente // verso` e as listas escrevem só a frente.
     """
-    out: dict[str, tuple[str, str]] = {}
+    out = _scry.MapaDeCartas()
     names = [n for n in dict.fromkeys(names) if n]
     for i in range(0, len(names), 300):
         ch = names[i:i + 300]
@@ -143,11 +149,12 @@ def _meta_cartas(con, names) -> dict[str, tuple[str, str]]:
         for r in con.execute(f"""SELECT name nm, type_line tl, color_identity ci
                                    FROM cards WHERE name IN ({ph}) AND digital = 0
                                   GROUP BY name""", ch):
-            out.setdefault(r["nm"].split(" // ")[0], (r["tl"], r["ci"]))
+            out.setdefault(r["nm"], (r["tl"], r["ci"]))
     for n in [x for x in names if x not in out]:
-        r = con.execute("SELECT type_line tl, color_identity ci FROM catalog.cards "
-                        "WHERE (name = ? OR name LIKE ?) AND digital = 0 LIMIT 1",
-                        (n, n + " // %")).fetchone()
+        r = con.execute(
+            f"SELECT type_line tl, color_identity ci FROM catalog.cards "
+            f"WHERE {_scry.sql_nome('name')} AND digital = 0 LIMIT 1",
+            _scry.params_nome(n)).fetchone()
         if r:
             out[n] = (r["tl"], r["ci"])
     return out
@@ -155,12 +162,14 @@ def _meta_cartas(con, names) -> dict[str, tuple[str, str]]:
 
 def cores(con, names) -> dict[str, str]:
     """`nome -> gaveta de cor`. Usa-a o painel Montar para ordenar a lista."""
-    return {n: cor_de(tl, ci) for n, (tl, ci) in _meta_cartas(con, names).items()}
+    return _scry.MapaDeCartas(
+        {n: cor_de(tl, ci) for n, (tl, ci) in _meta_cartas(con, names).items()})
 
 
 def tipos(con, names) -> dict[str, str]:
     """`nome -> tipo principal`. Era o `meusdecks._type_map`."""
-    return {n: tipo_de(tl) for n, (tl, _ci) in _meta_cartas(con, names).items()}
+    return _scry.MapaDeCartas(
+        {n: tipo_de(tl) for n, (tl, _ci) in _meta_cartas(con, names).items()})
 
 
 def posse_total(con) -> dict[str, int]:
@@ -171,12 +180,12 @@ def posse_total(con) -> dict[str, int]:
     informação **secundária** de cada carta — o número que manda é o da alocação
     (é a mesma pergunta, e duas respostas era o defeito a corrigir).
     """
-    out: dict[str, int] = defaultdict(int)
+    out = _scry.MapaDeCartas()
     for r in con.execute(f"""SELECT c.name nm, SUM(cp.quantity) q FROM copies cp
                               JOIN cards c ON c.scryfall_id = cp.scryfall_id
                              WHERE {_col.jogaveis()} GROUP BY c.name"""):
-        out[r["nm"].split(" // ")[0]] += r["q"]
-    return dict(out)
+        out[r["nm"]] = out.get(r["nm"], 0) + r["q"]
+    return out
 
 
 def grupos_por_tipo(cards, tm, render) -> str:
@@ -187,7 +196,7 @@ def grupos_por_tipo(cards, tm, render) -> str:
     """
     buckets = defaultdict(list)
     for c in cards:
-        buckets[c.get("_type") or tm.get(c["nm"].split(" // ")[0], "Other")].append(c)
+        buckets[c.get("_type") or tm.get(_scry.chave(c["nm"]), "Other")].append(c)
     out = ""
     for t in TIPOS + ["Other"]:
         b = buckets.get(t)
@@ -209,7 +218,7 @@ def faltas_de(cards, basicas=frozenset()) -> dict[str, int]:
     for c in cards:
         m = c.get("comprar", c["qty"] - c["hq"])
         if m > 0 and c["nm"] not in basicas:
-            out[c["nm"].split(" // ")[0]] += m
+            out[_scry.chave(c["nm"])] += m
     return dict(out)
 
 

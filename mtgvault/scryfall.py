@@ -11,6 +11,7 @@ streaming, descomprimindo com gzip (ver download_bulk/load_bulk).
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 import time
 from pathlib import Path
@@ -329,6 +330,219 @@ def limites_dupla_face(name: str) -> tuple[str, str]:
     return (f"{name} // ", f"{name} // {_ALTO}")
 
 
+# ---------------------------------------------------------------------------
+# O CRUZAMENTO NOME-DE-LISTA ↔ CATÁLOGO, NUM SÍTIO SÓ (2026-10-04)
+# ---------------------------------------------------------------------------
+# A AVARIA que isto fecha: o cruzamento era IGUALDADE DE NOME, e o catálogo
+# guarda as cartas de duas faces com o nome inteiro (`Witch Enchanter //
+# Witch-Blessed Meadow`) enquanto as listas trazem só a frente (`Witch
+# Enchanter`). Quando o cruzamento falha, a carta fica SEM TIPO, SEM PREÇO e
+# CONTADA COMO NÃO TIDA — ou seja, a aplicação mandava COMPRAR cartas que ele
+# já tem. Medido na base dele a 2026-10-04: **240 nomes distintos** de
+# `decklist_cards` não casavam, em **7 983 linhas** e **4 258 das 7 724 listas
+# (55 %)**.
+#
+# São DUAS vias, e por isso o predicado tem quatro ramos:
+#   (a) a FRENTE de uma carta de duas faces — 181 nomes, 7 034 linhas;
+#   (b) o SEPARADOR escrito de outra maneira (`Wear/Tear`, `Bedeck / Bedazzle`,
+#       `Breaking/Entering`) — 33 nomes, 701 linhas. O catálogo usa sempre
+#       ` // `.
+#
+# **A ORDEM DOS RAMOS É UMA DECISÃO DE SEGURANÇA, não estética.** O nome TAL E
+# QUAL vem primeiro porque há cartas a sério com barras no nome que NÃO são
+# separador: `SP//dr, Piloted by Peni` e `Summon: Choco/Mog`. Canonizar às
+# cegas partia-as em duas faces que não existem. Verificado no catálogo inteiro
+# (112 755 impressões, 974 nomes com ` // `): **zero** nomes reais cuja
+# canonização seja outro nome real, e as duas armadilhas canonizam para algo
+# que não existe — por isso os ramos (b) não lhes podem roubar a resposta.
+#
+# **E É TODO PELO ÍNDICE**, que é o que partiu o site a 2026-10-01: o
+# `EXPLAIN QUERY PLAN` dá `MULTI-INDEX OR` com os quatro ramos em
+# `SEARCH cards USING INDEX ix_cards_name`. Um `name LIKE ? || ' // %'` dá
+# `SCAN cards` — e era isso que estava escrito no `collection`, no `marcas`, no
+# `paginas` e no `import_owned`, por isso esta correcção torna-os mais
+# RÁPIDOS. Medido nos 4 721 nomes reais de lista: `name = ?` sozinho 0,0077 ms
+# por nome, o predicado dos quatro ramos **0,0097 ms** (36,2 → 45,6 ms ao
+# todo), e os nomes que casam passam de 4 481 para **4 695**.
+SEPARADOR = " // "
+
+
+_BARRAS = re.compile(r"\s*/{1,2}\s*")
+
+
+def canonizar(nome: str) -> str:
+    """O nome com o SEPARADOR do catálogo: `Wear/Tear` → `Wear // Tear`.
+
+    Normaliza uma ou duas barras com ou sem espaços à volta. Um nome sem barra
+    nenhuma sai igual, e é por isso que esta função **nunca se usa sozinha**:
+    quem decide é o `sql_nome`/`resolver`, onde o nome tal e qual é tentado
+    primeiro (o `SP//dr, Piloted by Peni` é uma carta a sério).
+
+    **O `"/" not in nome` à cabeça não é um requinte.** Isto corre uma vez por
+    consulta a um `MapaDeCartas`, e esses são consultados milhares de vezes por
+    página — na primeira versão desta correcção o `loadout.report` passou de
+    0,7 s para **10,1 s** só por causa do regex. Dos 4 721 nomes de lista da
+    base dele, **33** têm barra: a saída antecipada trata os outros 4 688.
+    """
+    nome = nome or ""
+    if "/" not in nome:
+        return nome
+    partes = [p.strip() for p in _BARRAS.split(nome) if p.strip()]
+    return SEPARADOR.join(partes) if len(partes) > 1 else nome
+
+
+def chave(nome: str) -> str:
+    """A CHAVE de cruzamento de um nome de carta: a FRENTE, canonizada.
+
+    `Wear/Tear` → `Wear`; `Witch Enchanter // Witch-Blessed Meadow` → `Witch
+    Enchanter`; `Swords to Plowshares` → igual. É esta a chave de todo o
+    dicionário que case o que uma LISTA pede com o que a COLECÇÃO tem — e tem
+    de ser a mesma função nos dois lados, senão a `posse_total` guarda `Wear`
+    (do catálogo) e a lista procura `Wear/Tear`, que é exactamente como as 2
+    cópias de `Wear // Tear` dele contavam como zero.
+
+    Caminho rápido pela mesma razão do `canonizar`: a esmagadora maioria dos
+    nomes não tem barra nenhuma e sai sem tocar no regex nem no `split`.
+    """
+    nome = nome or ""
+    if "/" not in nome:
+        return nome
+    return canonizar(nome).split(SEPARADOR)[0].strip()
+
+
+class MapaDeCartas(dict):
+    """Um `dict` indexado por NOME DE CARTA que aplica o `chave()` sozinho.
+
+    **É isto que torna «uma função só» verdade do lado dos dicionários.** A
+    posse, os tipos, as cores e as imagens são mapas `nome -> coisa`, e há mais
+    de vinte sítios a fazer `mapa.get(nm)` com o nome que a LISTA deu. Pedir a
+    cada um deles que se lembre de canonizar era deixar o primeiro que se
+    esquecesse a responder *"não tenho"* — que é exactamente como as 2 cópias
+    de `Wear // Tear` dele contavam zero contra uma lista que pede `Wear/Tear`.
+    Aqui a regra vive no próprio mapa: quem guarda e quem procura passam os dois
+    pela mesma porta, e nenhum sítio tem de saber disto.
+
+    As chaves GUARDADAS são sempre canónicas, por isso iterar, `items()` e o
+    `json.dump` não mudam de forma.
+    """
+
+    def __init__(self, inicial=None):
+        super().__init__()
+        if inicial:
+            for k, v in dict(inicial).items():
+                self[k] = v
+
+    def __setitem__(self, k, v):
+        super().__setitem__(chave(k), v)
+
+    def __getitem__(self, k):
+        return super().__getitem__(chave(k))
+
+    def __contains__(self, k):
+        return super().__contains__(chave(k))
+
+    def get(self, k, omissao=None):
+        return super().get(chave(k), omissao)
+
+    def setdefault(self, k, omissao=None):
+        return super().setdefault(chave(k), omissao)
+
+
+def sql_nome(coluna: str = "name") -> str:
+    """O PREDICADO do cruzamento, pelo índice. Dá-lhe os `params_nome(nome)`.
+
+    Quatro ramos, nesta ordem: o nome tal e qual, a frente de uma dupla face,
+    o nome canonizado, e a frente dele. Ver o comentário da secção.
+
+    **QUANDO É QUE ISTO NÃO SE USA — e custou 12 s a descobrir.** O predicado
+    serve a consulta em que a `cards` é a tabela que MANDA (o `card_price`, o
+    `impressao_mais_barata`): aí os quatro ramos entram pelo `ix_cards_name` e
+    o custo é 0,0077 → 0,0097 ms por nome. Numa consulta em que o nome está do
+    lado LONGE de um JOIN com uma tabela grande, o `MULTI-INDEX OR` tira à
+    `cards` o papel de condutor e o SQLite passa a varrer a outra: no
+    `loadout._historico` (que junta a `price_history`) a consulta foi de
+    **0,1 ms para 21,7 ms** e o `loadout.report` de 0,7 s para **12,9 s**. Nesse
+    caso resolve-se o nome ANTES, com o `resolver()`, e compara-se por
+    igualdade. A regra: **se o `EXPLAIN QUERY PLAN` deixar de dizer
+    `SEARCH … USING INDEX ix_cards_name`, usa o `resolver()`.**
+    """
+    return (f"({coluna} = ? OR ({coluna} >= ? AND {coluna} < ?)"
+            f" OR {coluna} = ? OR ({coluna} >= ? AND {coluna} < ?))")
+
+
+def params_nome(nome: str) -> tuple[str, str, str, str, str, str]:
+    """Os seis parâmetros do `sql_nome`, por esta ordem.
+
+    Quando o nome não tem barras, o canonizado é igual e os dois últimos ramos
+    repetem os dois primeiros — é inofensivo (continua `MULTI-INDEX OR`) e
+    mantém o SQL com uma forma só, que é o que deixa o SQLite guardar o plano.
+    """
+    nm = nome or ""
+    c = canonizar(nm)
+    return (nm, *limites_dupla_face(nm), c, *limites_dupla_face(c))
+
+
+def resolver(con: sqlite3.Connection, nome: str) -> str | None:
+    """O nome do CATÁLOGO para um nome de lista, ou `None` se não existir.
+
+    `None` quer dizer **DESCONHECIDA** e nunca *"não tenho"*: uma carta que não
+    casa é um problema a mostrar, com o nome à vista, e não uma falta a
+    comprar. Quem o diz ao André é o `desconhecidas()`.
+
+    O nome tal e qual GANHA sempre, pela razão do `SP//dr`.
+    """
+    for arg in (nome, canonizar(nome)):
+        if not arg:
+            continue
+        r = con.execute("SELECT name FROM cards WHERE name = ? LIMIT 1",
+                        (arg,)).fetchone()
+        if r:
+            return r["name"]
+        r = con.execute(
+            f"SELECT name FROM cards WHERE {frente_de_dupla_face()} LIMIT 1",
+            limites_dupla_face(arg)).fetchone()
+        if r:
+            return r["name"]
+    return None
+
+
+def resolver_muitos(con: sqlite3.Connection,
+                    nomes) -> dict[str, str | None]:
+    """`nome de lista -> nome do catálogo (ou None)`, num lote.
+
+    Os que casam pelo nome exacto saem numa consulta por 300; os outros —
+    poucos, 240 em 4 721 na base dele — pagam o `resolver`. É o padrão do
+    `impressoes_foil`: o caminho rápido primeiro, o tolerante só para quem
+    sobrar.
+    """
+    nomes = [n for n in dict.fromkeys(nomes) if n]
+    out: dict[str, str | None] = {}
+    for i in range(0, len(nomes), 300):
+        ch = nomes[i:i + 300]
+        ph = ",".join("?" for _ in ch)
+        achados = {r["name"] for r in con.execute(
+            f"SELECT name FROM cards WHERE name IN ({ph})", ch)}
+        for n in ch:
+            if n in achados:
+                out[n] = n
+    for n in nomes:
+        if n not in out:
+            out[n] = resolver(con, n)
+    return out
+
+
+def desconhecidas(con: sqlite3.Connection, nomes) -> list[str]:
+    """Os nomes que o catálogo NÃO conhece, por ordem. Para os mostrar.
+
+    Na base dele a 2026-10-04 são **25** e nenhum é um catálogo atrasado: o
+    bulk estava sincronizado (de hoje) e a própria Scryfall responde 404 a
+    `Ademi of the Silkchutes` e a `Zora, Spider Fancier`. Não se inventa a
+    carta — fica desconhecida e dita pelo nome.
+    """
+    mapa = resolver_muitos(con, nomes)
+    return sorted(n for n, a in mapa.items() if a is None)
+
+
 def impressoes_foil(con: sqlite3.Connection, name: str) -> list[sqlite3.Row]:
     """As impressões desta carta que EXISTEM em foil (ou etched), por data.
 
@@ -446,13 +660,21 @@ def resolve_name(con: sqlite3.Connection, name: str) -> str | None:
     de cartas duplas ("Fable of the Mirror-Breaker" -> nome completo).
     """
     name = name.strip()
+    # O caminho INDEXADO primeiro (`resolver`): trata o nome exacto, a frente de
+    # uma dupla face e o separador escrito de outra maneira sem varrer nada. O
+    # `lower()` e o apóstrofo curvo ficam como recurso — esses varrem mesmo o
+    # catálogo, e é por isso que não podem ser a primeira tentativa.
+    achado = resolver(con, name)
+    if achado:
+        return achado
     row = con.execute(
         "SELECT name FROM cards WHERE lower(name) = lower(?) LIMIT 1", (name,)
     ).fetchone()
     if row:
         return row["name"]
     row = con.execute(
-        "SELECT name FROM cards WHERE name LIKE ? || ' //%' LIMIT 1", (name,)
+        f"SELECT name FROM cards WHERE {frente_de_dupla_face('lower(name)')} LIMIT 1",
+        limites_dupla_face(name.lower())
     ).fetchone()
     if row:
         return row["name"]

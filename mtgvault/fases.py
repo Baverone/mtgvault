@@ -161,7 +161,7 @@ from datetime import date
 
 from . import caixas as _caixas
 from . import collection as _col
-from . import nomes, sources
+from . import nomes, scryfall, sources
 
 # ---------------------------------------------------------------------------
 # AS REGRAS: a chave, o rótulo e a ordem por que se perguntam
@@ -490,9 +490,11 @@ def _preco_jogavel(con, nm: str, cache: dict | None = None):
     r = con.execute(
         f"""SELECT c.set_code sc, {expr} p
               FROM cards c JOIN {precos.sql_acabamentos(('nonfoil',))} f
-             WHERE c.name = ? AND c.digital = 0 AND c.set_type <> 'memorabilia'
+             WHERE {scryfall.sql_nome("c.name")} AND c.digital = 0
+               AND c.set_type <> 'memorabilia'
                AND {expr} IS NOT NULL
-             ORDER BY p LIMIT 1""", ("nonfoil", nm)).fetchone()
+             ORDER BY p LIMIT 1""",
+        ("nonfoil", *scryfall.params_nome(nm))).fetchone()
     cache[k] = ((r["p"], (r["sc"] or "").upper()) if r else (None, ""))
     _ = loadout  # o import serve de nota: a correcção a sério é lá
     return cache[k]
@@ -686,7 +688,7 @@ def rl_que_joga(con, res: dict, cfg: dict | None = None,
                       FROM deck_cards dc JOIN decks d ON d.id = dc.deck_id
                      WHERE d.name IN ({marks})""", sorted(refs)):
             if (r["f"] or "").lower() in fmts:
-                out.setdefault(r["nm"].split(" // ")[0],
+                out.setdefault(scryfall.chave(r["nm"]),
                                f"está no consenso de {r['dn']}")
 
     # (d) o consenso por COMANDANTE (2026-10-01). Só núcleo + flex: o `raro`
@@ -873,7 +875,7 @@ def assinatura_derivada(con, s: dict, cache: dict | None = None) -> list[str]:
                         ON dc.decklist_id = d.id
                      WHERE d.format = ? AND {conta} GROUP BY dc.card_name""",
                 (fmt, *cp)):
-            freq[r["nm"].split(" // ")[0]] = r["n"]
+            freq[scryfall.chave(r["nm"])] = r["n"]
         cache[k] = freq
     freq = cache[k]
     candidatas = [(freq.get(nm, 0), nm) for nm in nomes
@@ -972,7 +974,7 @@ def consenso_do_deck(con, s: dict, cache: dict | None = None,
         for r in con.execute(
                 f"""SELECT card_name nm, quantity q, board b
                       FROM decklist_cards WHERE decklist_id IN ({ph})""", ch):
-            k = ("side" if r["b"] == "side" else "main", r["nm"].split(" // ")[0])
+            k = ("side" if r["b"] == "side" else "main", scryfall.chave(r["nm"]))
             em[k] += 1
             qts[k][r["q"]] += 1
     n = len(ids)
@@ -1204,7 +1206,7 @@ def staples_sideboard(con, fmt: str = STAPLES_FORMATO, corte: float | None = Non
                     f"""SELECT decklist_id d, card_name nm FROM decklist_cards
                          WHERE decklist_id IN ({ph}) AND board = 'side'""", ch):
                 com_side.add(r["d"])
-                cnt[r["nm"].split(" // ")[0]] += 1
+                cnt[scryfall.chave(r["nm"])] += 1
         n = len(com_side)
         todas = sorted(((round(100.0 * c / n, 1), nm) for nm, c in cnt.items()
                         ), reverse=True) if n else []

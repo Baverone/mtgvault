@@ -48,7 +48,7 @@ from __future__ import annotations
 import re
 from datetime import date
 
-from . import caixas
+from . import caixas, scryfall
 
 # As chaves da caixa que uma escolha (ou uma lista padrão) substitui, e que o
 # desfazer repõe. Vivem aqui porque o `webapp.py` e este módulo fazem o mesmo
@@ -72,7 +72,7 @@ def tem_padrao(cfg: dict, slot_id: str) -> bool:
 
 
 def _front(nome: str) -> str:
-    return nome.split(" // ")[0].strip()
+    return scryfall.chave(nome).strip()
 
 
 def parse_lista(texto: str) -> list[list]:
@@ -263,15 +263,33 @@ def reserva_tirar(cfg: dict, slot_id: str, nome: str) -> list[str]:
 # ---------------------------------------------------------------------------
 def nome_no_catalogo(con, nome: str) -> str | None:
     """O nome ORACLE (a frente, em inglês) desta carta, ou None se o catálogo
-    não a conhece. Tenta `name = ?` primeiro (usa o `ix_cards_name`; o
-    `lower()` varre as ~500 mil impressões — é o recurso, não a regra)."""
+    não a conhece.
+
+    **A resolução é a do `scryfall.resolver`, num sítio só** (2026-10-04): esta
+    função tinha quatro tentativas próprias — `name = ?`, `name LIKE ? || ' //
+    %'`, e as duas com `lower()` — e as três últimas **varrem** as 112 755
+    impressões. Era também um segundo caminho a responder à mesma pergunta que o
+    `impressoes_foil` e o `conhecida` já faziam de outra maneira, e o
+    `Wear/Tear` não passava por nenhuma delas. O `lower()` fica como RECURSO
+    (é ele que aceita um nome que o André escreva em minúsculas no telemóvel),
+    depois de o caminho indexado falhar.
+    """
     nome = (nome or "").strip()
     if not nome:
         return None
-    for sql, arg in (("name = ?", nome), ("name LIKE ?", nome + " // %"),
-                     ("lower(name) = lower(?)", nome),
-                     ("lower(name) LIKE lower(?)", nome + " // %")):
-        r = con.execute(f"SELECT name FROM cards WHERE {sql} LIMIT 1", (arg,)).fetchone()
+    achado = scryfall.resolver(con, nome)
+    if achado is not None:
+        return _front(achado)
+    for sql, args in (
+            ("lower(name) = lower(?)", (nome,)),
+            ("lower(name) = lower(?)", (scryfall.canonizar(nome),)),
+            # A frente de uma dupla face, em minúsculas. É um INTERVALO e não um
+            # `LIKE … || ' // %'`: um `lower(name)` nunca entra no
+            # `ix_cards_name`, mas a forma da regra vive num sítio só.
+            (scryfall.frente_de_dupla_face("lower(name)"),
+             scryfall.limites_dupla_face(nome.lower()))):
+        r = con.execute(f"SELECT name FROM cards WHERE {sql} LIMIT 1",
+                        args).fetchone()
         if r is not None:
             return _front(r[0])
     return None

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import sqlite3
 
-from . import precos
+from . import precos, scryfall
 from .collection import owned_playable
 
 
@@ -14,12 +14,17 @@ def cheapest_price(con, card_name: str, source: str | None = None) -> float | No
     a somar `low` ao lado de uma página a somar `trend` era o defeito que o
     `precos.sql` veio fechar.
     """
+    # O NOME RESOLVE-SE ANTES e entra por igualdade (2026-10-04). Com o
+    # `scryfall.sql_nome` aqui, o `MULTI-INDEX OR` tira à `cards` o papel de
+    # condutor e o SQLite passa a percorrer a `price_latest` pelo `source`:
+    # medido, **0,2 ms → 204 ms**. É a mesma armadilha do `loadout._historico`.
+    nm = scryfall.resolver(con, card_name) or card_name
     row = con.execute(
         f"""SELECT MIN({precos.sql(alias="p")}) AS price
              FROM cards c
              JOIN price_latest p ON p.scryfall_id = c.scryfall_id
             WHERE c.name = ? AND p.source = ? AND p.finish = 'nonfoil'""",
-        (card_name, source or precos.fonte()),
+        (nm, source or precos.fonte()),
     ).fetchone()
     return row["price"] if row else None
 
