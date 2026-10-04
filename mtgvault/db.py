@@ -224,6 +224,31 @@ def _migrate(con: sqlite3.Connection) -> None:
     )""")
     con.commit()
 
+    # A MEMÓRIA DOS EVENTOS DO MTGTOP8 (2026-10-04). O `schema.sql` cria-a numa
+    # base nova; isto é para a base dele, que já existe. As duas definições têm de
+    # ser iguais — é a regra do `deck_collection`.
+    con.execute("""CREATE TABLE IF NOT EXISTS mtgtop8_eventos (
+        event_id   INTEGER NOT NULL,
+        format     TEXT NOT NULL,
+        event_name TEXT,
+        event_date TEXT,
+        grande     INTEGER NOT NULL DEFAULT 0,
+        players    INTEGER,
+        na_pagina  INTEGER,
+        tecto      INTEGER NOT NULL DEFAULT 0,
+        completo   INTEGER NOT NULL DEFAULT 0,
+        visto_em   TEXT,
+        PRIMARY KEY (event_id, format)
+    )""")
+    con.execute("CREATE INDEX IF NOT EXISTS ix_mt8_grande "
+                "ON mtgtop8_eventos(grande, visto_em)")
+    con.commit()
+    # Quem a SEMEIA a partir das listas que já cá estão é o
+    # `mtgtop8.semear_memoria`, e não este ficheiro: a semente precisa do
+    # `e_grande` e do `TECTO_ANTIGO`, e importar o `mtgtop8` aqui fechava um ciclo
+    # (`mtgtop8` → `sources`/`consenso` → `db`). O `_migrate` trata do esquema; a
+    # recolha trata do que a recolha sabe.
+
     # ENCOMENDAS (2026-09-19). O `schema.sql` cria a tabela numa base nova e
     # numa antiga (é `IF NOT EXISTS`); isto é para as colunas que lhe venham a
     # ser acrescentadas DEPOIS de existir na base dele — a mesma regra de

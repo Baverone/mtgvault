@@ -276,6 +276,40 @@ CREATE INDEX IF NOT EXISTS ix_dl_fmt_date ON decklists(format, event_date);
 -- armadilha de 2026-09-09 (o `ix_copies_validado`), e está no `_migrate`.
 -- O mesmo vale para o índice do `arquetipo_fonte` (2026-10-02).
 
+-- A MEMÓRIA DOS EVENTOS DO MTGTOP8 (2026-10-04). Nasceu com o «nunca perder um
+-- torneio de papel grande»: a recolha passou a ler VÁRIAS páginas do índice
+-- (`?f=MO&cp=2`, 58 eventos em Modern contra 20), e sem memória descer no índice
+-- custava um pedido por evento já feito, todas as noites.
+--
+-- O progresso de um evento NÃO podia ser a tabela `decklists`, como no
+-- `arquetipo_fonte_de`: um evento cujas listas foram todas deduplicadas contra o
+-- mtgo.com não deixa lá uma única linha, e é precisamente esse que se voltaria a
+-- pedir sempre.
+--
+-- `tecto` é o nº máximo de listas que se leu deste evento, e é o que torna isto
+-- auto-corrigível: um evento visto com o tecto antigo (16) e que hoje é
+-- reconhecido como grande (64) volta a ser visitado **uma vez** e fica completo.
+-- Sem essa coluna, as 48 listas que faltam ao RC que já está na base precisavam
+-- de um passo à mão.
+CREATE TABLE IF NOT EXISTS mtgtop8_eventos (
+    event_id   INTEGER NOT NULL,
+    format     TEXT NOT NULL,
+    event_name TEXT,
+    event_date TEXT,
+    -- 1 = o nome casou um padrão de torneio de papel grande (mtgtop8.e_grande).
+    grande     INTEGER NOT NULL DEFAULT 0,
+    players    INTEGER,
+    -- Quantos links de deck a página tinha, e quantos se leram (o tecto aplicado).
+    na_pagina  INTEGER,
+    tecto      INTEGER NOT NULL DEFAULT 0,
+    -- 1 = a página não tinha mais decks do que o tecto, logo não falta nada.
+    completo   INTEGER NOT NULL DEFAULT 0,
+    visto_em   TEXT,
+    PRIMARY KEY (event_id, format)
+);
+CREATE INDEX IF NOT EXISTS ix_mt8_grande
+    ON mtgtop8_eventos(grande, visto_em);
+
 CREATE TABLE IF NOT EXISTS decklist_cards (
     decklist_id INTEGER NOT NULL REFERENCES decklists(id) ON DELETE CASCADE,
     card_name   TEXT NOT NULL,

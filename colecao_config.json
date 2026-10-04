@@ -345,6 +345,29 @@
     "pauper"
   ],
   "_so_jogadores_vigiados": "Formatos SEM metagame que se seguem só por jogador. Nestes, a recolha continua a LER as páginas dos eventos (é de lá que sai a lista vigiada) mas só GUARDA as listas dos jogadores em `watched` (kind='mtgo_player') desse formato. Sem isto, tirar o Pauper do harvest matava em silêncio a vigilância do Luffy — o watchlist não vai à rede, lê o que o harvest trouxe. As listas 'manual' passam sempre.",
+  "mtgtop8": {
+    "paginas_indice": 3,
+    "revisitas_por_corrida": 1,
+    "grandes": {
+      "padroes": [
+        "championship",
+        "\\bnationals?\\b",
+        "champions cup",
+        "pro tour",
+        "\\bworlds?\\b",
+        "magic spotlight",
+        "grand prix",
+        "eternal weekend",
+        "qualifier",
+        "\\brecq\\b",
+        "\\brcq?\\b",
+        "last sun"
+      ],
+      "listas_por_evento": 64,
+      "min_jogadores": 64
+    }
+  },
+  "_mtgtop8": "A RECOLHA NO MTGTOP8, e o «nunca perder um torneio de papel grande» (André, 2026-10-04): ele joga o RC Ghent de Modern a 9-11/10 e o que lhe falta são os torneios de PAPEL grandes — 'o mtgtop8 acaba por publicar esses torneios'. Publica, e o problema era a recolha: lia os 8 primeiros ids do índice e nunca voltava atrás, e em Modern entram várias ligas e challenges de MTGO por dia, por isso um RC publicado hoje ficava fora PARA SEMPRE se oito eventos mais novos aparecessem nas horas seguintes. 'paginas_indice' = quantas páginas do índice se lêem (a paginação do mtgtop8 é ?f=MO&cp=2; 3 páginas dão 58 eventos em Modern contra os 20 da primeira, e custam +2 pedidos por formato). 'revisitas_por_corrida' = quantos eventos JÁ VISTOS se voltam a abrir por corrida e por formato, quando o tecto de listas deles subiu. É um travão por respeito e está medido: semeada a base a 04/10 (401 eventos de mtgtop8), são 11 os que valem uma revisita — o RC de Modern (1 486 jogadores, 16 das suas 64 listas na base), o Magic Spotlight (921), o ReCQ (344), o MTGO RC Qualifier (221), a European Championship de Premodern (218), o RC Super Qualifier de Pioneer (212), as Czech Nationals (191), a Champions Cup (168) e mais três — e fazê-los todos de uma vez eram até 564 pedidos .dec numa noite. A 1 por formato, o backlog esgota-se em quatro noites e vai PELA ORDEM DO Nº DE JOGADORES, por isso o RC entra na primeira — que é o que interessa para Ghent. Os eventos NOVOS não levam travão: esses são o trabalho de sempre. 'grandes.padroes' são REGEX (case-insensitive) procurados por dentro do nome do evento: um nome que case é recolhido SEMPRE, esteja em que lugar estiver no índice. São regex e não texto simples por causa dos curtos — 'rc' como texto casava em «Arc» e «Circuit». 'grandes.listas_por_evento' = 64: não é um número à sorte, é o que a página serve — medido a 04/10 nas páginas reais, o 'Modern event - Regional Championship' de 1 486 jogadores tem 64 links de deck e a base tinha 16 listas dele, e o 'Magic Spotlight: The Hobbit' de 921 jogadores o mesmo; eram 48 listas do maior torneio de papel de Modern a ficar de fora por causa do tecto. 'grandes.min_jogadores' = 64: o tecto alto só se aplica quando a página do evento confirma que ele é mesmo grande — pendurado só no nome punha 64 pedidos num «Store Championship» de 25 jogadores, cujas listas nem contam para o metagame (ver metagame_fontes). O nº de jogadores vem da página do evento, que já foi pedida antes do primeiro .dec, por isso a decisão não custa um pedido. Os mesmos valores estão no código (mtgvault/mtgtop8.py: PADROES_GRANDES, LISTAS_GRANDES, MIN_JOGADORES_GRANDE, PAGINAS_INDICE), para os testes e uma base nova funcionarem sem ficheiro; este bloco ganha. Esvaziar 'padroes' devolve a recolha ao que era, sem tecto alto e sem eventos fora de ordem.",
   "_metagame_fontes": "QUE LISTAS CONTAM para o metagame (decisão do André, 2026-09-07: 'no mtgvault não quero listas de league; quero challenge, showcase, e presenciais com 64 ou mais jogadores — menos Duel Commander, que pode ter menos jogadores e pode ser ligas'). Vale para TUDO: metagame, cobertura, decks fazíveis, showcase, o cálculo do core e os decks seguidos. 'tiers' = valores de decklists.event_tier que entram (Challenge | Showcase | Presencial | Qualifier | Preliminary | League | outro). 'min_jogadores_presencial' = nº mínimo de jogadores de um torneio PRESENCIAL; 0 = sem mínimo. Um presencial SEM contagem de jogadores nunca conta (não se assume o mínimo). 'ligas' = true acrescenta League aos tiers. '_default' aplica-se a todos os formatos; uma chave com nome de formato só a esse. As listas 'manual' (metidas por ti) contam sempre. Para dar uma exceção ao Premodern (que com esta regra fica sem listas — não tem presenciais de 64+ e as ligas do MTGO saem), acrescenta aqui: \"premodern\": { \"min_jogadores_presencial\": 0, \"ligas\": true }. O mesmo serve para o cEDH, que só tem presenciais pequenos.",
   "decks_vigiados": [
     "UW Oswald",

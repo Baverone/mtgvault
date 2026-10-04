@@ -89,6 +89,25 @@ PAGINA_SEM_NOME = """
 
 DEC = "// comentario\n4 [AVR] Griselbrand\n2 [] Force of Will\nSB: 1 [all] Swan Song\n"
 
+# O ÍNDICE do formato, na forma REAL (`mtgtop8.com/format?f=PREM`). Era
+# `"<a href=event?e=91451>x</a>"` e deixou de servir a 2026-10-04, quando a
+# recolha passou a LER o índice em vez de lhe extrair ids: uma linha do índice é
+# uma `<tr class=hover_tr>` com o nome do evento e a data ao lado, e é de lá que
+# sai o nome por que uma liga se salta sem se pedir a página (ver
+# `tests/test_papel_grande.py`). A asserção deste caso não mudou — o fixture é
+# que tinha uma forma que a página nunca teve.
+INDICE = """
+	<div class=w_title align=center>LAST 20 EVENTS</div>
+	<table border=0 class=Stable>
+	<tr class=hover_tr>
+	  <td width=5% align=center><img src=/graph/online/paper.png height=17 title="Paper"></td>
+	  <td width=70% class=S14><a href=event?e=91451&f=PREM>Crab Cup</a></td>
+	  <td width=13% align=center><img src=/graph/star.png></td>
+	  <td align=right width=12% class=S12>30/09/26</td>
+	</tr>
+	</table>
+"""
+
 
 def base():
     d = Path(tempfile.mkdtemp())
@@ -139,8 +158,7 @@ def caso_a_recolha_grava_o_nome_da_fonte(monkey=True):
     """O `harvest` do mtgtop8 guarda o nome NA RECOLHA — é o passo que o deitava
     fora. Sem rede: trocam-se os pedidos por páginas de mentira."""
     con = base()
-    paginas = {"/format": "<a href=event?e=91451>x</a>",
-               "/event": PAGINA, "/dec": DEC}
+    paginas = {"/format": INDICE, "/event": PAGINA, "/dec": DEC}
     antes = mtgtop8._get
     mtgtop8._get = lambda path, **kw: paginas[path]
     try:

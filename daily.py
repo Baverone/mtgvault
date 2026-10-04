@@ -111,6 +111,39 @@ def _vigia_cartas(con) -> str:
     return res["resumo"]
 
 
+def _papel_grande(con, *, toast=None, hoje=None) -> str:
+    """O passo `papel-grande` — e o AVISO de que entrou um torneio de papel grande.
+
+    Vive numa função (e não num `lambda`) pela razão do `_vigia_cartas`: para um
+    teste o poder chamar com o toast injectado, e porque IMPRIME — uma linha por
+    torneio, com os jogadores e quantas listas entraram. O `_step` só guarda o
+    resumo de uma linha.
+
+    Corre DEPOIS dos seis `harvest` e lê a BASE (`mtgtop8_eventos`), nunca uma
+    variável que atravesse os passos: o aviso é **um por dia** e não um por
+    formato. Não se criou tarefa agendada nenhuma — ele pediu a 15/09 menos
+    vigilância, e o caminho do aviso já existia (`mtgvault/aviso.py`, 2026-09-26).
+    """
+    from mtgvault import aviso                                  # noqa: PLC0415
+    dia = hoje or date.today().isoformat()
+    novos = mtgtop8.grandes_de_hoje(con, dia)
+    if not novos:
+        return "nenhum torneio de papel grande novo hoje"
+    linhas = []
+    for e in novos:
+        linhas.append(f"  [PAPEL GRANDE] {e['event_name']} — {e['players']} jogadores, "
+                      f"{e['event_date']}, {e['na_pagina']} listas na pagina "
+                      f"(tecto {e['tecto']})")
+    for li in linhas:
+        print(li)
+    curto = "; ".join(f"{e['event_name']} ({e['players']}j)" for e in novos[:3])
+    estado = (toast or aviso.toast)(
+        f"mtgvault: {len(novos)} torneio(s) de papel grande",
+        f"{curto} — ja estao na base, com ate "
+        f"{max(e['tecto'] for e in novos)} listas cada.")
+    return f"{len(novos)} novos: {curto} | {estado}"
+
+
 def _step(con, nome, fn):
     """Corre um passo, regista o resultado, e nunca deixa rebentar o resto."""
     try:
@@ -376,6 +409,12 @@ def main():
         for fmt in MTGTOP8_PAPER:
             _step(con, f"harvest-papel:{fmt}",
                   lambda fmt=fmt: f"{mtgtop8.harvest(con, fmt, max_events=6)} novas")
+
+        # NUNCA PERDER UM TORNEIO DE PAPEL GRANDE (André, 2026-10-04). Logo a
+        # seguir aos harvest, que é quem escreve a `mtgtop8_eventos`, e antes do
+        # `tier-eventos`: o aviso não depende do tier (o nome e o nº de jogadores
+        # vêm da própria página do evento, lidos na recolha).
+        _step(con, "papel-grande", lambda: _papel_grande(con))
 
         # Classifica os eventos por importância (Showcase/Challenge/League/...).
         # Tem de correr DEPOIS da recolha: é esta coluna que decide que listas

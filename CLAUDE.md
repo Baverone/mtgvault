@@ -188,7 +188,18 @@ mtgvault/
   analysis.py     clustering de arquétipos + core/flex/tech + prune
   stock.py        listas padrão e cobertura
   sources.py      mtgo.com + parser de texto + store_decklist (deduplicação)
-  mtgtop8.py      duel-commander, premodern, cedh, e papel
+  mtgtop8.py      duel-commander, premodern, cedh, e papel. E, desde 2026-10-04,
+                  NUNCA PERDER UM TORNEIO DE PAPEL GRANDE: o índice passou a dar
+                  NOME e DATA (`parse_event_rows`/`parse_paginas_indice` — a
+                  página de Modern tem 375 `event?e=` e só 20 são eventos), a
+                  LIGA salta-se pelo nome ANTES de se pedir a página do evento
+                  (`candidatos_do_indice`), um torneio grande entra esteja onde
+                  estiver no índice e com o tecto de 64 listas que a página serve
+                  (`regras_grandes`/`e_grande`/`tecto_do_evento`, config
+                  `mtgtop8`), e a MEMÓRIA (`mtgtop8_eventos`,
+                  `semear_memoria`/`memoria_dos_eventos`/`por_fazer`) é o que
+                  torna barato descer no índice. `grandes_de_hoje` alimenta o
+                  aviso. Ver «NUNCA PERDER UM TORNEIO DE PAPEL GRANDE»
   moxfield.py     decks do Moxfield
   watchlist.py    vigiar jogadores e decks, snapshots e diffs
   vigia.py        A VIGIA DE CARTAS (2026-09-26): «vai conferindo» — que cartas
@@ -278,7 +289,7 @@ my_decks.py         segue decks-alvo (por assinatura e por jogador de MTGO) -> t
 commander_decks.py  decks de comandante por consenso EM CAMADAS: núcleo>=50% (=deck, deck_cards) / flex 25-50% / tech 15-25%; FILTRA pela cor do comandante. `tiers()` reusado pelo colecao_cor
 premodern_decks.py  consenso dos arquétipos-alvo de Premodern (`colecao_config.json`→`premodern_arquetipos_alvo`: UW Replenish, Enchantress) -> decks/deck_cards com o sufixo " (consenso)". Agrupa pelas etiquetas do `tagging` (o clustering não os separa) e usa `stock.stock_from_lists`. Mostrado nas `deckboxes` (era o `meusdecks`)
 refresh_collection.py  collection_owned p/ o index.html
-colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados, venda (a regra dos 5 % da RL, o `mostrar` de 2026-09-25 **e** o `congelado_ate` de 2026-10-01), cartas_vigiadas (a VIGIA DE CARTAS de 2026-09-26), reserva (o LIMIAR da reserva «maybe», 2026-10-01), caixas[].decisao / reserva / reserva_fora / comandante / reserva_assinatura (AS FASES, 2026-10-01), revalidacao.foto_manda (A FOTO É A VERDADE, 2026-10-02 — e o `playset_maximo` SAIU do `regras_por_formato` nesse dia; **a `false` e com `desde: null` desde 2026-10-04**, o dia em que as fotos foram apagadas), regras_por_formato: lingua/acabamento dos TRÊS grupos trocados a 2026-10-02 (`_regras_2026_10_02`: duel-commander e pauper `en` + `prefere_foil`, premodern `nonfoil`), basicas.declaradas / declaradas_em (A CONTAGEM DECLARADA, 2026-10-02)
+colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados, venda (a regra dos 5 % da RL, o `mostrar` de 2026-09-25 **e** o `congelado_ate` de 2026-10-01), cartas_vigiadas (a VIGIA DE CARTAS de 2026-09-26), reserva (o LIMIAR da reserva «maybe», 2026-10-01), caixas[].decisao / reserva / reserva_fora / comandante / reserva_assinatura (AS FASES, 2026-10-01), revalidacao.foto_manda (A FOTO É A VERDADE, 2026-10-02 — e o `playset_maximo` SAIU do `regras_por_formato` nesse dia; **a `false` e com `desde: null` desde 2026-10-04**, o dia em que as fotos foram apagadas), regras_por_formato: lingua/acabamento dos TRÊS grupos trocados a 2026-10-02 (`_regras_2026_10_02`: duel-commander e pauper `en` + `prefere_foil`, premodern `nonfoil`), basicas.declaradas / declaradas_em (A CONTAGEM DECLARADA, 2026-10-02), mtgtop8 (A RECOLHA e o NUNCA PERDER UM TORNEIO DE PAPEL GRANDE, 2026-10-04: `paginas_indice`, `revisitas_por_corrida` e `grandes.padroes`/`listas_por_evento`/`min_jogadores`)
 ```
 Cada `.html` gerado tem de estar na lista do `git add` do workflow (`daily.yml`,
 passo "Guardar HTML") **e na lista `HTML` da tarefa `ai-pc/tasks/mtgvault-daily`**
@@ -1459,6 +1470,169 @@ listas."* Tinha razão, e o nome estava a ser deitado fora **na recolha**. Motor
   top-10 pode mostrar **o mesmo nome duas vezes** (*«UR Aggro»*, *«Boros Control»*
   no Pioneer): é o agrupamento a ter partido um deck em dois clusters, e antes
   isso estava escondido atrás de dois nomes inventados diferentes.
+
+**NUNCA PERDER UM TORNEIO DE PAPEL GRANDE (André, 2026-10-04, à letra).** *"o
+mtgtop8 acaba por publicar esses torneios"* — e tinha razão: publica. O que não os
+apanhava era a RECOLHA. Ele joga o RC Ghent de Modern a 9-11/10 e o dado que lhe
+falta são os torneios de papel grandes. Motor em **`mtgvault/mtgtop8.py`**
+(`parse_event_rows`/`parse_paginas_indice`, `regras_grandes`/`e_grande`/
+`tecto_do_evento`, `candidatos_do_indice`, `semear_memoria`/`memoria_dos_eventos`/
+`por_fazer`/`_registar_evento`, `grandes_de_hoje`), tabela
+**`mtgtop8_eventos`**, passo **`papel-grande`** do `daily`, config em
+`colecao_config.json → mtgtop8`. Testes em `tests/test_papel_grande.py` (19
+casos) e a prova de que chumbam em `tests/_chumba_papel.py` (**17 de 17 pares**,
+um processo por par). **A alocação, a venda e os preços não foram tocados**: este
+módulo não lê a `copy_allocation` nem o `loadout`.
+
+- **O DEFEITO: o índice nunca voltava atrás.** `harvest` fazia
+  `parse_event_ids(_get("/format"))[:max_events]` com `max_events` 8 (6 nos
+  formatos de papel) e mais nada. Em Modern entram várias ligas e challenges de
+  MTGO por dia: um RC publicado hoje ficava **fora para sempre** se oito eventos
+  mais novos aparecessem nas horas seguintes. Não havia segunda oportunidade.
+- **O QUE O ÍNDICE JÁ DAVA E A RECOLHA DEITAVA FORA.** Cada linha da tabela «LAST
+  20 EVENTS» traz o **nome** (`<a href=event?e=91582&f=MO>Win-A-Box</a>`), a
+  **loja**, a **data** (`class=S12>03/10/26`), o ícone de **papel vs. MTGO**
+  (`title="Paper"` / `"MTG Online"`) e a **classificação em estrelas** do próprio
+  mtgtop8 (1 a 2 nas duas semanas medidas). O `parse_event_ids` extraía só os ids
+  — é o mesmo padrão do comandante (01/10) e do nome do arquétipo (02/10): *a
+  fonte dá a informação e a recolha perde-a*. **E o `parse_event_ids` é pior do
+  que parecia:** numa página de Modern devolve **375 ids** de que só **20** são
+  eventos do índice (os outros vêm do «METAGAME BREAKDOWN» e dos «RELATED
+  LINKS»). Com `[:8]` isso nunca se notou, e era exactamente o que tornava
+  perigoso ir mais fundo. O `parse_event_rows` exige as DUAS coisas que um evento
+  do índice tem — link de evento **e** data — e dá 20. O `parse_event_ids` **fica
+  como estava**, para quem o chama.
+- **FILTRAR ANTES DE PEDIR, e é isto que paga a mudança.** A liga era saltada
+  **depois** de se pedir a página do evento (`if sources.event_tier(...) ==
+  "League"`), por isso cada liga gastava um dos lugares **e** um pedido. Com o
+  nome vindo do índice custa **zero**. Medido nas 3 páginas reais de Modern de
+  04/10: **58 eventos, 11 ligas** — e, dos 6 primeiros que a recolha via, **3
+  eram ligas**. O tier lê-se do nome do índice e dá sempre o mesmo que o `<title>`
+  da página (o prefixo «Modern event - » não contém nenhuma palavra-chave); tem
+  caso de teste, e um «3City League (FRA) #1» de papel continua `Presencial`.
+- **A PAGINAÇÃO DO ÍNDICE É REAL** (`?f=MO&cp=2`, `cp=3`): 58 eventos em Modern
+  contra os 20 da primeira página, e o `meta=54` que o mtgtop8 põe no link **não
+  é preciso** (verificado: `cp=2` com e sem ele devolve a mesma página). Lêem-se
+  `paginas_indice` (3) e **nunca mais do que a página 1 declara** — e isso custou
+  um defeito: com um `for pag in range(1, n+1)`, encurtar o `n` lá dentro não
+  encurta o `range` já criado, e pediam-se páginas que não existem. É um `while`.
+- **OS PADRÕES DO «TORNEIO GRANDE» SAEM DA BASE DELE, NÃO DA MINHA MEMÓRIA.**
+  Medidos a 04/10 nos presenciais de mtgtop8 com 64+ jogadores: *Regional
+  Championship* (1 486 j), *Magic Spotlight: The Hobbit* (921), *$uper $unday
+  ReCQ* (344), *MTGO RC Qualifier* (221), *European Championship 2026* (218),
+  *RC Super Qualifier* (212), *Czech Nationals 2026* (191), *Champions Cup
+  Premium Qualifier* (168), *RC Hangzhou Side Event* (70). São **regex** e não
+  texto simples por causa dos curtos — `rc` como substring casa em «Arc»,
+  «Circuit» e «Marché», e há caso de teste com os três. Um padrão que não compile
+  **não mata a recolha**: vale como texto literal e fica em
+  `padroes_estragados`. **Um evento que case entra esteja onde estiver no
+  índice** — e à FRENTE dos outros: um RC de há dez dias vale mais do que um
+  torneio de loja de ontem.
+- **O TECTO DE 64 NÃO É UM NÚMERO À SORTE: É O QUE A PÁGINA SERVE.** Medido nas
+  páginas reais — o **RC de Modern (1 486 jogadores) tem 64 links de deck e a
+  base dele tinha 16 listas**; o Magic Spotlight (921 j) o mesmo; o ReCQ (344 j)
+  tem 31 e tinha 16. Eram **48 listas do maior torneio de papel de Modern** a
+  ficar de fora por causa de `max_decks_per_event=16`. E 64 é o fim da escala que
+  o `_bracket` já conhecia («33-64»).
+- **MAS SÓ COM A PÁGINA A CONFIRMAR O TAMANHO** (`grandes.min_jogadores`, 64). O
+  tecto alto pendurado só no NOME punha 64 pedidos `.dec` num «Store
+  Championship» de 25 jogadores — e um presencial com menos de 64 jogadores **não
+  conta para o metagame** (regra de 2026-09-07), por isso essas listas não
+  alimentavam página nenhuma. O nº de jogadores vem da página do evento, que já
+  foi pedida ANTES do primeiro `.dec`: a decisão não custa um pedido. Medido no
+  índice real, dos 3 «grandes» pelo nome os três eram pequenos (Qualifiers do
+  Japão e um Nacional português de 16 jogadores) e ficaram com o tecto de 16.
+- **A MEMÓRIA É UMA TABELA E NÃO A `decklists`, e a razão é precisa.** Descer no
+  índice sem memória custava um pedido por evento já feito, **todas as noites**
+  (58 em vez de 8). O progresso não podia ser a `decklists`, como no
+  `arquetipo_fonte_de` (02/10): o mtgtop8 re-hospeda o mtgo.com e um evento cujas
+  listas são **todas deduplicadas** não deixa lá uma única linha — e é
+  precisamente esse o que se voltaria a pedir sempre. Tem caso próprio.
+  `mtgtop8_eventos` nos **três sítios** (`schema.sql`, `db._migrate()`, quem a
+  escreve), com o índice `ix_mt8_grande` no `_migrate` pela armadilha de sempre.
+- **O `tecto` GRAVADO É O QUE TORNA ISTO AUTO-CORRIGÍVEL.** Um evento visto com o
+  tecto antigo (16) que hoje é reconhecido como grande (64) volta a ser visitado
+  **uma vez** e fica completo — é assim que as 48 listas que faltam ao RC entram
+  **sem um único passo à mão**. Quem semeia é o `semear_memoria` (uma vez, a
+  partir das listas que já cá estão), com `tecto = TECTO_ANTIGO` e `completo = 0`:
+  a verdade é que não se sabe quantos decks a página tinha.
+- **TRÊS DEFEITOS MEUS APANHADOS PELOS TESTES, e é melhor estarem escritos:**
+  1. **o `por_fazer` decidia com um tecto OPTIMISTA.** Usava 64 porque o nome era
+     grande, e gravava 16 porque os jogadores eram poucos: `16 < 64` e o «Store
+     Championship» de 25 era pedido **todas as noites, para sempre**. Decide-se
+     com os jogadores **lembrados** (a coluna `players`, que o
+     `backfill_event_players` também preenche), e a conta é a mesma dos dois
+     lados;
+  2. **o evento era marcado ANTES de se lerem os `.dec`** — uma regressão face ao
+     código antigo, que não lembrava nada e por isso voltava a pedir os `.dec` que
+     faltassem. Com a marca à cabeça, um `.dec` que falhasse deixava a lista a
+     faltar **para sempre**. Um evento meio lido **não se marca**, como o evento
+     cuja página falha;
+  3. **a guarda da semente não podia ser «a tabela está vazia»**: um evento que
+     não se marcou (por (2)) era deduzido das listas que deixou e marcado na
+     corrida seguinte — a semente **tapava a repetição** que a não-marcação existe
+     para garantir. A marca é explícita (`MARCA_SEMEADO`, uma linha
+     `event_id = 0` num formato que não existe; o `memoria_dos_eventos` filtra por
+     formato e nunca a vê).
+- **AS REVISITAS TÊM TRAVÃO, por respeito e com o número medido.** Semeada a base
+  dele (**401 eventos** de mtgtop8: duel-commander 105, legacy 76, premodern 71,
+  standard 64, modern 61, pioneer 24), são **11** os que valem uma revisita — e
+  fazê-los de uma vez eram **até 564 pedidos `.dec` numa noite**, o que num site
+  pequeno e gratuito não se faz. `revisitas_por_corrida` = **1 por formato**,
+  **pela ordem do nº de jogadores**: o RC entra na primeira noite (que é o que
+  interessa para Ghent) e o backlog esgota-se em quatro. Os eventos **novos** não
+  levam travão — esses são o trabalho de sempre. É a disciplina do
+  `backfill_event_players(max_events=40)` e do `backfill_archetype_names(60)`.
+- **O AVISO É UM POR DIA E LÊ-SE DA BASE** (`grandes_de_hoje` + o passo
+  `papel-grande`, logo depois dos seis `harvest`). **Não se criou tarefa agendada
+  nenhuma** — ele pediu a 15/09 menos vigilância — e o caminho já existia: o toast
+  do `mtgvault/aviso.py` (2026-09-26) e a linha do resumo diário, mais uma linha
+  por torneio no stdout do passo. Lê-se da tabela e nunca de uma variável a
+  atravessar seis passos: um aviso por formato eram seis toasts na mesma noite. Só
+  conta quem passa o `min_jogadores` — um «Store Championship» de 25 não é
+  notícia. É injectável, que é como o teste prova que dispara uma vez.
+- **O ORÇAMENTO DE PEDIDOS DESCE, e o número está medido** (as 3 páginas reais do
+  índice de Modern de 04/10 contra a base a sério, `_scratch/medir_offline.py`):
+
+  | | /format | /event | total |
+  |---|---|---|---|
+  | **antes** (1 página, `max_events=6`) | 1 | **6** | **7** |
+  | **depois** (3 páginas, memória semeada) | 3 | **3** | **6** |
+
+  **E os pedidos mudam de natureza, que é o que interessa:** dos 6 de antes, **3
+  eram ligas** (desperdício puro) e os outros 3 eram eventos que a base já tinha
+  por inteiro — **zero listas novas**. Os 3 de depois são **3 eventos que a
+  recolha nunca tinha visto**, dois deles invisíveis ao código antigo (estão nas
+  posições **34, 47 e 50** do índice). Em regime, com nada de novo, a corrida
+  passa a **3 pedidos** (só as páginas do índice) contra os 7 de sempre.
+  **Honestamente: só o Modern foi medido assim.** O que se sabe dos seis formatos
+  do `daily` é a parte determinista — **+2 pedidos de índice por formato** (+12 na
+  corrida), menos um pedido por cada liga que estivesse nos primeiros `max_events`
+  (3 de 6 em Modern), menos um por cada evento já lembrado. Mais os `.dec` dos
+  eventos novos, que são listas novas e não desperdício, e a revisita (1 por
+  formato) enquanto o backlog dos 11 não esgotar.
+- **UM TESTE DE 02/10 TEVE DE SER CORRIGIDO, e não mascarado.** O
+  `test_nomes_arquetipo.caso_a_recolha_grava_o_nome_da_fonte` usava
+  `"<a href=event?e=91451>x</a>"` como índice de mentira — uma forma que a página
+  **nunca teve**. A asserção não mudou (2 listas, os nomes gravados); o que se
+  corrigiu foi o fixture, que passou a ter a `<tr class=hover_tr>` com nome e data
+  do índice real.
+- **O QUE FICOU POR FAZER, e vale a pena saber:** (a) as **estrelas** do mtgtop8
+  guardam-se (`parse_event_rows → estrelas`) e **nada decide por elas** — quem
+  manda no peso continua a ser o `event_tier` + `event_players`; se um dia
+  servirem, estão lá; (b) **não houve corrida ao vivo contra o mtgtop8** nesta
+  ordem — ver o ponto a seguir; (c) o padrão `qualifier` é o mais largo dos doze
+  e traz 3 eventos pequenos do índice de hoje: custam 1 pedido cada, **uma vez**
+  (a memória fecha-os), e o tecto deles fica em 16.
+- **A CORRIDA AO VIVO NÃO SE CONSEGUIU FAZER, e não se inventou um resultado.** O
+  mtgtop8 **deixou de responder a meio da ordem** (`ConnectTimeout` e depois
+  `ReadTimeout` de 51 s), enquanto `scryfall.com` e `github.com` ligavam em 0,0 s
+  — logo não é a rede do PC. Antes disso o site respondeu a **~18 pedidos** a
+  1/s, de onde saíram as medições todas desta secção (as 3 páginas do índice e as
+  8 páginas de evento dos torneios grandes). Não se insistiu: o ritmo é 1
+  pedido/s e o site é pequeno. **Tudo o que está aqui medido foi medido contra
+  páginas reais**; o que falta é ver a recolha nova a correr de ponta a ponta, e é
+  o primeiro passo da próxima vez que o site responder.
 
 **AS FOTOS FORAM APAGADAS E A CAMPANHA ESTÁ DESLIGADA (André, 2026-10-04, à
 letra).** *"podes apagar todas as fotos, A MINHA RESPONSABILIDADE, se for para
@@ -3213,6 +3387,21 @@ sempre — e o `UPDATE` que marca o `omissao` só corre **quando há linhas a ma
 (um `UPDATE` incondicional a cada `init` era uma escrita por pedido do
 `webapp.py`, e uma escrita muda o `_versao()` e atira a cache fora). Ver «O ESTADO
 DAS CARTAS E OS VERSOS».
+
+Tabela nova de 2026-10-04 (nos três sítios): **`mtgtop8_eventos`** — a MEMÓRIA dos
+eventos do mtgtop8 que a recolha já processou, por formato, com o `tecto` de listas
+que se lhes aplicou e se ficaram `completo`s. Nasceu com o «nunca perder um torneio
+de papel grande»: a recolha passou a ler **três páginas** do índice (58 eventos em
+Modern contra 20) e, sem memória, descer no índice custava um pedido por evento já
+feito **todas as noites**. **O progresso não podia ser a `decklists`**, como no
+`arquetipo_fonte_de`: um evento cujas listas foram todas deduplicadas contra o
+mtgo.com não deixa lá uma única linha, e era precisamente esse que se voltaria a
+pedir sempre. O `tecto` gravado é o que torna isto auto-corrigível — um evento visto
+com o tecto antigo (16) que hoje é grande (64) revisita-se **uma vez**. O índice
+`ix_mt8_grande` nasce no **`_migrate`**, e quem a SEMEIA é o
+`mtgtop8.semear_memoria` e não o `db` (a semente precisa do `e_grande` e do
+`TECTO_ANTIGO`, e importar o `mtgtop8` no `db` fechava um ciclo). Ver «NUNCA PERDER
+UM TORNEIO DE PAPEL GRANDE».
 
 Já custou caro uma vez: `decklists.event_tier` foi acrescentada só ao `vault.db`
 (commit 56ffa3f, 2026-08-03), nunca ao `schema.sql` nem ao `_migrate()`, e nada
