@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import csv
 import json
+import logging
 import os
 import sqlite3
 import time
@@ -27,7 +28,12 @@ import requests
 
 from . import precos
 
+log = logging.getLogger(__name__)
+
 CT_BASE = "https://api.cardtrader.com/api/v2"
+# O CardTrader serve TODOS os jogos na mesma rota `/expansions`, e o `game_id`
+# do Magic é o 1. Ver `expansoes_mtg`, que existe por causa disso.
+GAME_ID_MTG = 1
 CM_EXPORTS = "https://www.cardmarket.com/en/Magic/Data/File-Exports"
 # O price guide de Magic (idCategory 1) está PÚBLICO no S3 do Cardmarket, sem
 # sessão — validado a 2026-09-18: 26 MB, 127 216 produtos, `createdAt` de hoje
@@ -273,6 +279,54 @@ class CardTrader:
         return self.get("/marketplace/products", expansion_id=expansion_id)
 
 
+def expansoes_mtg(ct: CardTrader) -> dict[str, int]:
+    """`{código: id}` SÓ das expansões de Magic — num sítio só (2026-10-04).
+
+    **OS CÓDIGOS DE EDIÇÃO DO CARDTRADER NÃO SÃO ÚNICOS ENTRE JOGOS, e era
+    isto que estava a tirar o preço às cartas mais caras dele.** O
+    `/expansions` devolve **3 876** expansões de 24 jogos (medido a
+    2026-10-04), e **142** códigos aparecem em mais do que um. Os dois sítios
+    que o liam faziam `{e["code"].lower(): e["id"] for e in ct.expansions()}`
+    — um `dict`, logo **o último ganha** —, e em **26** desses códigos o
+    último é de outro jogo:
+
+        'exp' → 1991 «ADV Expansion Pack» (Pokémon) em vez de 83 Zendikar
+                Expeditions
+        'sld' → 3202 «Sword & Shield Starter Set Darkrai VSTAR» em vez de
+                990 Secret Lair Drop Series
+        'mrd' → 1049 «Metal Raiders» (Yu-Gi-Oh!) em vez de 303 Mirrodin
+
+    Pedia-se depois os blueprints e o marketplace do id errado: o mapa
+    enchia-se de nada (zero correspondências com o catálogo de Magic) e a
+    carta ficava **sem preço do CardTrader**, sem um único erro — o padrão do
+    `event_tier` outra vez, desta vez sobre as 23 Expeditions dele.
+
+    **Dentro do Magic os códigos são únicos hoje** (793 expansões, 0 repetidos
+    — verificado, não assumido), por isso o desempate abaixo nunca dispara;
+    fica porque um código repetido que aparecesse amanhã voltava a ser decidido
+    pela ordem em que a API os serve, que não é ordem nenhuma. Fica o **id mais
+    baixo** (a expansão mais antiga, que é a que tem catálogo feito) e **diz-se
+    no log** — escolher em silêncio é como isto começou.
+    """
+    exps: dict[str, int] = {}
+    for e in ct.expansions():
+        if e.get("game_id") != GAME_ID_MTG:
+            continue
+        code = (e.get("code") or "").lower()
+        if not code:
+            continue
+        anterior = exps.get(code)
+        if anterior is None:
+            exps[code] = e["id"]
+            continue
+        fica = min(anterior, e["id"])
+        exps[code] = fica
+        log.warning(
+            "CardTrader: o código %r repete dentro do Magic (ids %s e %s); "
+            "fica o %s", code, anterior, e["id"], fica)
+    return exps
+
+
 def sync_cardtrader_map(con: sqlite3.Connection, ct: CardTrader,
                         set_codes: list[str] | None = None) -> int:
     """Constrói o mapa scryfall_id -> blueprint_id.
@@ -280,7 +334,7 @@ def sync_cardtrader_map(con: sqlite3.Connection, ct: CardTrader,
     Os blueprints do CardTrader trazem `scryfall_id` quando disponível; quando
     não trazem, cai para correspondência por (nome, código de edição).
     """
-    exps = {e["code"].lower(): e["id"] for e in ct.expansions() if e.get("code")}
+    exps = expansoes_mtg(ct)
     codes = [c.lower() for c in (set_codes or exps)]
     n = 0
     for code in codes:
@@ -347,7 +401,7 @@ def fetch_cardtrader_prices(con: sqlite3.Connection, ct: CardTrader,
     """
     day = date.today().isoformat()
     aceites = precos.linguas()
-    exps = {e["code"].lower(): e["id"] for e in ct.expansions() if e.get("code")}
+    exps = expansoes_mtg(ct)
     bp_to_sid = {
         r["blueprint_id"]: r["scryfall_id"]
         for r in con.execute("SELECT blueprint_id, scryfall_id FROM cardtrader_map")
