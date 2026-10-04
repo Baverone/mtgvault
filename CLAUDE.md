@@ -2126,7 +2126,10 @@ Backup em `data/backups/vault-2026-10-04-tres-decisoes.db` (98,7 MB,
   `modern` está no grupo `spml` (`acabamento: foil`) e o **Whipflare só existe em
   foil em New Phyrexia**: **20,20 €** contra **0,21 €** do nonfoil mais barato
   (C14) — 96× por uma carta de sideboard em cópia única. Fica
-  `material_pendente.estado: "PENDENTE DE DECISÃO DO ANDRÉ"`, com os dois preços
+  `material_pendente.estado: "PENDENTE DE DECISÃO DO ANDRÉ"`
+  **[DECIDIDO ao fim do mesmo dia: hoje é `DECIDIDA` + `aplicado: true` +
+  `provisoria: "trocar por foil"`, e o `se_comprar_o_nonfoil` passou a
+  `_aplicada_quer_dizer` — ver a secção do fecho]**, com os dois preços
   à vista, e **entretanto a lista de compras sugere o nonfoil**
   (`loadout.EXCEPCAO_PENDENTE`, irmão do `SEM_FOIL` de 19/09: vale como *«nonfoil,
   e diz-se porquê»* — a linha mostra *«EN · nonfoil — decisão do material
