@@ -55,21 +55,25 @@ def caso_o_carimbo_sozinho_nao_e_uma_diferenca():
 def caso_duas_passagens_seguidas_nao_dao_mudanca():
     """Ponta a ponta na base a sério: gerar duas vezes não produz diferença.
 
-    É a asserção que impede o commit por relógio. Corre o `estado()` duas vezes
-    seguidas sobre a mesma base; a segunda tem de dizer «nada mudou», porque a
-    primeira acabou de pôr o site em dia.
+    É a asserção que impede o commit por relógio.
+
+    **Gera para DUAS pastas temporárias e compara-as uma com a outra**, em vez
+    de comparar com o site em disco e pôr o site em dia quando difere — que era
+    como isto estava escrito e **escrevia no `data/paginas` a sério**. A regra do
+    projecto é explícita (`test_paginas.caso_a_bateria_nao_escreve_no_data_a_serio`):
+    um teste da bateria não toca nos ficheiros dele. E a asserção fica mais
+    forte, não mais fraca: o que se mede é a geração contra ela própria, sem
+    depender de o site em disco estar em dia.
     """
-    with db.session() as con:
-        rep = None
-        primeiro = publicar.estado(con, RAIZ, rep=rep)
-        if primeiro["mudou"]:
-            # o site estava atrasado: põe-se em dia primeiro (é o que a tarefa
-            # faz) e mede-se a seguir
-            publicar.publicar(con, RAIZ, se_mudou=False)
-        segundo = publicar.estado(con, RAIZ)
-    assert not segundo["mudou"], (
+    with tempfile.TemporaryDirectory() as tmp:
+        a, b = Path(tmp) / "a", Path(tmp) / "b"
+        with db.session() as con:
+            publicar.gerar(con, a)
+            publicar.gerar(con, b)
+        d = publicar.comparar(a, b)
+    assert not (d["mudaram"] or d["novos"]), (
         "duas passagens seguidas deram diferenca — a tarefa de 30 em 30 min "
-        "vai commitar para sempre", segundo["mudaram"][:8], segundo["novos"][:8])
+        "vai commitar para sempre", d["mudaram"][:8], d["novos"][:8])
     print("duas geracoes seguidas da mesma base nao dao diferenca nenhuma")
 
 
@@ -204,9 +208,13 @@ def caso_as_partes_que_sobram_sao_denunciadas():
 
 def caso_o_json_da_tarefa_tem_o_que_ela_precisa():
     """O `run.py` do ai-pc lê a lista de publicáveis DESTE módulo, para não
-    haver uma terceira lista escrita à mão numa tarefa."""
-    with db.session() as con:
-        r = publicar.publicar(con, RAIZ, se_mudou=True)
+    haver uma terceira lista escrita à mão numa tarefa.
+
+    Corre numa raiz TEMPORÁRIA: numa raiz vazia tudo é «novo», o `publicar`
+    escreve lá e o site dele não é tocado.
+    """
+    with tempfile.TemporaryDirectory() as tmp, db.session() as con:
+        r = publicar.publicar(con, Path(tmp), se_mudou=True)
     for k in ("escreveu", "mudaram", "novos", "a_mais", "paginas", "publicaveis"):
         assert k in r, (k, sorted(r))
     assert r["paginas"] == len(publicar.PAGINAS)
