@@ -61,7 +61,18 @@ mtgvault/
   db.py           ligação, ATTACH do catálogo, migrações
   schema.sql      vault.db (coleção, decks, decklists, preços, watchlist, copy_allocation)
   catalog_schema.sql   catalog.db (só a tabela cards)
-  scryfall.py     catálogo via bulk data
+  scryfall.py     catálogo via bulk data. E, desde 2026-10-04 ao fim do dia, O
+                  CRUZAMENTO NOME-DE-LISTA ↔ CATÁLOGO NUM SÍTIO SÓ: as listas
+                  trazem a FRENTE de uma carta de duas faces (`Witch Enchanter`)
+                  e o catálogo o nome inteiro — `canonizar`/`chave` (a chave dos
+                  dicionários, que normaliza também o separador `Wear/Tear`),
+                  `MapaDeCartas` (o `dict` que canoniza a chave sozinho, para
+                  nenhum dos vinte `mapa.get(nm)` se esquecer), `sql_nome`/
+                  `params_nome` (o predicado de quatro ramos, `MULTI-INDEX OR`
+                  pelo `ix_cards_name`), `resolver`/`resolver_muitos` (quando o
+                  nome está do lado longe de um JOIN grande) e `desconhecidas`
+                  (o que o catálogo não tem fica DITO, nunca «não tenho»). Ver
+                  «O CRUZAMENTO NOME-DE-LISTA ↔ CATÁLOGO VIVE NUMA FUNÇÃO SÓ»
   site_shell.py   A CASCA DE TODO O SITE (2026-09-24): a paleta (`TEMA`), os
                   tipos de letra, os ÍCONES (`_SVG`/`icone`/`js_icones` — um
                   conjunto só, partilhado com o JavaScript da Deckboxes), a
@@ -4230,19 +4241,127 @@ retry de rede não contar a dobrar. Os índices podem viver no `schema.sql` porq
 as tabelas nascem lá inteiras (a regra de 2026-09-09 é para índices sobre COLUNAS
 NOVAS de tabelas que já existem). Ver «A ABA DECKS».
 
-**UM FURO NA CADEIA DE PREÇOS, APURADO E NÃO EMENDADO (2026-10-04).** O
-`loadout.card_price` procura `WHERE c.name = ?` — um casamento EXACTO — e o
+**O CRUZAMENTO NOME-DE-LISTA ↔ CATÁLOGO VIVE NUMA FUNÇÃO SÓ (André, 2026-10-04,
+ao fim do dia).** Fecha o furo da secção a seguir, que estava apurado e não
+emendado. Motor em **`mtgvault/scryfall.py`** (`canonizar`/`chave`/`MapaDeCartas`
+/`sql_nome`/`params_nome`/`resolver`/`resolver_muitos`/`desconhecidas`); CLI
+`py -m mtgvault.cli cartas-desconhecidas [--onde todas|decks|listas]`. Testes em
+`tests/test_nomes_duas_faces.py` (20 casos) e a prova de que chumbam em
+`tests/_chumba_nomes_duas_faces.py` (**9 de 9 alvos**, um processo por alvo).
+
+- **O TAMANHO, reproduzido ao exemplar antes de se tocar em código:** dos nomes
+  de `decklist_cards`, **240** não casavam com o catálogo, em **7 983 linhas** e
+  **4 258 das 7 724 listas (55 %)**. Por VIA: **181 nomes / 7 034 linhas** são a
+  FRENTE de uma dupla face; **33 / 701** são o SEPARADOR escrito de outra
+  maneira (`Wear/Tear`, `Bedeck / Bedazzle`, `Breaking/Entering` — o catálogo usa
+  sempre ` // `); e **26** ficam desconhecidos. Depois: **4 695 de 4 721** nomes
+  resolvem (**+214**), e os 26 são **1** variante de pontuação
+  (`With Great Power...` ↔ `With Great Power . . .`) e **25 que nem a Scryfall
+  tem** — sondada a 04/10, responde **404** a `Ademi of the Silkchutes` e a
+  `Zora, Spider Fancier`. O catálogo **não está atrasado** (tem o `spm` de 2025 e
+  o bulk do próprio dia); por isso não se inventou a carta.
+- **A PREMISSA DA ORDEM ESTAVA MEIO ERRADA, e vale a pena saber qual metade.** A
+  ordem dizia que a carta fica *«CONTADA COMO NÃO TIDA»* e que a aplicação mandava
+  comprar cartas que ele já tem *«em pelo menos seis decks»*. **A posse já estava
+  certa**: o `paginas.posse_total` indexa pela frente (`.split(" // ")[0]`) desde
+  sempre. Verificadas as sete afirmações dele uma a uma — Sink into Stupor 5,
+  Tamiyo 4 (em quatro decks), Witch Enchanter 5 — **todas já contavam bem**; o
+  único mal contado era o **`Wear/Tear` do Grinding Station** (0 → 1), pela via
+  (b). E **zero linhas saíram da lista de compras**: ele não estava a ser mandado
+  comprar nada que tivesse.
+- **O QUE ESTAVA MESMO AVARIADO ERA O PREÇO, O TIPO E A IMAGEM.** O
+  `loadout.card_price` devolvia `(None, None)` a **toda** a carta de dupla face.
+  Medido: nomes de lista sem preço **843 → 661** (+182 com preço); as cópias sem
+  preço da lista de compras **21 → 18**; e **3 linhas** passaram de 0,00 € a ter
+  preço — Agadeem's Awakening 33,56 €, Jennifer Walters 15,21 €, Razorgrass
+  Ambush 0,45 € —, o que explica ao cêntimo o *fechar tudo* **5 895,14 € →
+  5 974,04 € (+78,90 €)**.
+- **A REGRA TEM QUATRO RAMOS E A ORDEM DELES É SEGURANÇA, não estética.** O nome
+  TAL E QUAL vem primeiro porque há cartas a sério com barras no nome que **não**
+  são separador: **`SP//dr, Piloted by Peni`** e **`Summon: Choco/Mog`**.
+  Canonizar às cegas partia-as em faces que não existem. Verificado no catálogo
+  inteiro: **zero** nomes reais cuja canonização seja outro nome real, e as duas
+  armadilhas canonizam para algo inexistente. O teste tranca a ordem com um par
+  SINTÉTICO (e dito que é sintético), senão a regra não era falsificável.
+- **O `MapaDeCartas` é o que torna «uma função só» verdade do lado dos
+  dicionários.** A posse, os tipos, as cores e as imagens são mapas
+  `nome -> coisa` e há **mais de vinte sítios** a fazer `mapa.get(nm)` com o nome
+  que a LISTA deu. Pedir a cada um que se lembrasse de canonizar era deixar o
+  primeiro que se esquecesse a responder *"não tenho"*. A regra vive no próprio
+  mapa. **E 25 `.split(" // ")[0]` escritos à mão passaram ao `scryfall.chave`**;
+  ficam **exactamente três**, e são `type_line` (`Instant // Land` → `Instant`),
+  que não é um nome de carta — o teste exige esse número e chumba se subir.
+- **O PREDICADO É UM INTERVALO DE PREFIXO E NUNCA UM `LIKE`.** `EXPLAIN QUERY
+  PLAN` dá `MULTI-INDEX OR` com os quatro ramos em `SEARCH cards USING INDEX
+  ix_cards_name`; medido nos 4 721 nomes reais, **0,0077 → 0,0097 ms** por nome.
+  O `LIKE ? || ' // %'` dá `SCAN cards` — e **estava escrito no `collection`, no
+  `marcas`, no `paginas`, no `import_owned`, no `revalidacao` e no `padrao`**, por
+  isso esta correcção torna esses seis mais RÁPIDOS.
+- **QUANDO É QUE O PREDICADO NÃO SE USA — e custou 135 s a descobrir.** Serve a
+  consulta em que a `cards` é a tabela que MANDA. Quando o nome está do lado
+  LONGE de um JOIN com uma tabela grande, o `MULTI-INDEX OR` tira à `cards` o
+  papel de condutor e o SQLite varre a outra. Mordeu em **três** sítios, os três
+  medidos e corrigidos com o `resolver()` antes da consulta: o
+  `loadout._historico` (0,1 → **21,7 ms**, e o `report` de 0,7 → **12,9 s**), o
+  `wantlist.cheapest_price` e — o pior — o `meta_coverage._visual`, que pôs a
+  `meta_coverage.build` em **0,3 s → 135,8 s** (227 chamadas a 0,59 s). **A regra
+  está escrita no `scryfall.sql_nome`: se o `EXPLAIN QUERY PLAN` deixar de dizer
+  `SEARCH … USING INDEX ix_cards_name`, usa o `resolver()`.** Há um auditor
+  (`_revisao/auditar_planos.py`) que mede as onze consultas que levam o predicado
+  e chumba acima de 60 ms.
+- **UMA CARTA DESCONHECIDA É UM PROBLEMA À VISTA, NUNCA UM «NÃO TENHO».** Hoje há
+  **uma** nos decks dele — a `Ademi of the Silkchutes` do **Cloud (Duel
+  Commander)** — e passou a levar chip `?` vermelho no tile, a linha *«DESCONHECIDA
+  — o catálogo não tem esta carta»* e um chip no cabeçalho do deck
+  (`conta.desconhecidas`). **Conta no total** (o deck pede-a) e **nunca em
+  `tem`**: sem o número à parte, o *«faltam-te N»* misturava compras a sério com
+  nomes que não existem. Nas listas do metagame são 26 nomes / 248 linhas, e o
+  `cartas-desconhecidas` do CLI lista-as com o sítio.
+- **MEDIDO LADO A LADO, o MESMO `vault.db` dos dois lados** (worktree em
+  `_revisao/main-nomes`): **as 17 caixas ficam IGUAIS à percentagem e à cópia**, a
+  **venda não mexe uma cópia** (116 c / 1 591,62 €, `protegidas` 157,
+  `rl_sem_historico` 103, `guardar` 1), o **valor da colecção não mexe**
+  (133 354,51 €, 1 678 cartas, 390 sem preço — essa conta é por `scryfall_id`) e
+  **a comprar continua em 245**. Mexem só os três números de cima. O `tens X de
+  Y` dos 13 decks da tabela `decks` é igual em doze e **59 → 60** no Grinding
+  Station.
+- **TEMPOS, e nenhuma página ficou mais lenta.** `loadout.report` **700 → 719 ms**
+  (+2,7 %: são os 47 `resolver` do histórico e os quatro ramos do `card_price`),
+  `valor_da_coleccao` 241 → 244 ms, `meta_coverage.build` 0,3 s nos dois lados. As
+  **14 páginas e os 246 ficheiros de dados respondem 200**, zero erros; as duas
+  que o webapp CALCULA ficaram mais rápidas a frio (`arrumacao.json` 4 194 →
+  **1 031 ms**, `deckboxes.json` 4 071 → **894 ms**). Os 31 ficheiros que a
+  primeira passagem deu como «mais lentos» são **ruído de I/O** e está provado:
+  numa segunda corrida do MESMO código só 6 aparecem e **1** nas duas, e a soma
+  dos estáticos cai 7 369 → 5 448 → 3 036 ms à medida que a cache do SO aquece.
+- **O `vigia.achados` VARRE a `decklist_cards` (274 720 linhas) e isso é anterior
+  a esta ordem** — compara em `lower()`, que não entra em índice nenhum. Os dois
+  ramos a mais punham-no de 51 em 110 ms, por isso **os ramos do canonizado só
+  entram se o nome tiver barra**: nenhuma carta vigiada tem, logo o caminho normal
+  ficou exactamente como estava (48–50 ms).
+- **O `wantlist.cheapest_price` custa 200 ms com QUALQUER nome, e não fui eu.**
+  Medido com `c.name = ?` simples: o SQLite conduz pela `price_latest` filtrada
+  só pelo `source`. É pré-existente e **não se tocou** (está fora do âmbito desta
+  ordem); fica dito para quem lá chegar.
+- **UMA SOBREPOSIÇÃO COM O `main`, resolvida a favor do `main`.** Enquanto isto
+  corria, o commit `5de6032` tirou a prosa do config do payload com uma função
+  própria (`loadout._sem_prosa`) — eu tinha escrito o mesmo corte à mão. **Ficou o
+  dele**: tem nome, tem testes (`test_decisoes_1004_fecho`) e já estava publicado.
+
+**UM FURO NA CADEIA DE PREÇOS, APURADO E NÃO EMENDADO (2026-10-04).**
+**[FECHADO ao fim do mesmo dia — ver a secção de cima. O que segue é o
+apuramento que levou lá, e fica porque os números dele continuam a valer.]** O
+`loadout.card_price` procurava `WHERE c.name = ?` — um casamento EXACTO — e o
 catálogo guarda as cartas de dupla face como **`"frente // verso"`**, enquanto as
 decklists guardam só a frente (`_front`). Logo **toda a carta de dupla face numa
-lista não tem preço em todo o vault**, e a cadeia TEM o preço: medido na base
+lista não tinha preço em todo o vault**, e a cadeia TEM o preço: medido na base
 dele, dos **4 721** nomes distintos que aparecem em listas, **185 são de dupla
-face e os 185 estão sem preço** — Bonecrusher Giant, Brazen Borrower, as
+face e os 185 estavam sem preço** — Bonecrusher Giant, Brazen Borrower, as
 Pathway, Agadeem's Awakening, Birgi… — e perguntados pelo nome COMPLETO somam
-**741,88 €** numa cópia de cada. Não se emendou: a correcção certa é o INTERVALO
+**741,88 €** numa cópia de cada. A correcção certa era o INTERVALO
 DE PREFIXO de 2026-10-01 (`scryfall.frente_de_dupla_face`/`limites_dupla_face`,
-que já existe) e **nunca um `LIKE ? || ' // %'`** — esse é o `SCAN cards` que deu
+que já existia) e **nunca um `LIKE ? || ' // %'`** — esse é o `SCAN cards` que deu
 o 502 no telemóvel, e o `card_price` é chamado milhares de vezes por relatório.
-Mexer nele muda o dinheiro em todas as páginas, e isso é decisão dele.
 **As três cartas que ele nomeou têm TRÊS causas diferentes**, e vale a pena não
 as confundir: **Razorgrass Ambush** e **Witch Enchanter** são `X // Y` do MH3 —
 é este furo, e o CardTrader cota-as (0,45 € e 5,90 € nonfoil); **Shining Shoal**
