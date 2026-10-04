@@ -17,7 +17,7 @@
     "Wasteland"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-03"
+   "ultima": "2026-10-04"
   },
   "109d2b9883": {
    "formato": "premodern",
@@ -36,7 +36,7 @@
     "Wooded Foothills"
    ],
    "primeira": "2026-10-02",
-   "ultima": "2026-10-03"
+   "ultima": "2026-10-04"
   },
   "13eb5a8587": {
    "formato": "premodern",
@@ -90,7 +90,7 @@
     "Yavimaya Coast"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-03"
+   "ultima": "2026-10-04"
   },
   "2811f9a69f": {
    "formato": "premodern",
@@ -110,7 +110,7 @@
     "Withered Wretch"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-03"
+   "ultima": "2026-10-04"
   },
   "3885b4666a": {
    "formato": "premodern",
@@ -130,7 +130,7 @@
     "Skycloud Expanse"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-03"
+   "ultima": "2026-10-04"
   },
   "415270d83c": {
    "formato": "premodern",
@@ -150,7 +150,7 @@
     "Windswept Heath"
    ],
    "primeira": "2026-10-02",
-   "ultima": "2026-10-03"
+   "ultima": "2026-10-04"
   },
   "4841da6e7f": {
    "formato": "premodern",
@@ -169,39 +169,39 @@
    "nucleo": [
     "Deranged Hermit",
     "Fyndhorn Elves",
+    "Gaea's Cradle",
     "Llanowar Elves",
     "Masticore",
     "Monk Realist",
-    "Multani's Acolyte",
     "Nantuko Vigilante",
     "Priest of Titania",
     "Quirion Ranger",
+    "Squee, Goblin Nabob",
     "Thornscape Battlemage",
-    "Wirewood Symbiote",
-    "Yavimaya Granger"
+    "Wirewood Symbiote"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-03"
+   "ultima": "2026-10-04"
   },
   "72740aba9b": {
    "formato": "premodern",
    "nome": "Orzhov Exalted Angel",
    "nucleo": [
-    "Barren Moor",
     "Caves of Koilos",
+    "Decree of Justice",
+    "Duress",
+    "Dust Bowl",
     "Eternal Dragon",
     "Exalted Angel",
     "Gerrard's Verdict",
-    "Haunting Echoes",
     "Kor Haven",
     "Phyrexian Furnace",
-    "Secluded Steppe",
     "Skeletal Scrying",
     "Vindicate",
     "Wrath of God"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-03"
+   "ultima": "2026-10-04"
   },
   "7fbd22f4da": {
    "formato": "legacy",
@@ -231,7 +231,7 @@
     "Wrath of God"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-03"
+   "ultima": "2026-10-04"
   },
   "8a1f5ac7b3": {
    "formato": "premodern",
@@ -251,7 +251,7 @@
     "Words of Wisdom"
    ],
    "primeira": "2026-09-30",
-   "ultima": "2026-10-03"
+   "ultima": "2026-10-04"
   },
   "95a99aa40d": {
    "formato": "premodern",
@@ -301,13 +301,28 @@
    "primeira": "2026-09-09",
    "ultima": "2026-09-22"
   },
+  "a81c510adf": {
+   "formato": "premodern",
+   "nome": "Mono-Preto Graveborn Muse",
+   "nucleo": [
+    "Cabal Therapy",
+    "Dark Ritual",
+    "Diabolic Edict",
+    "Duress",
+    "Hypnotic Specter",
+    "Mishra's Factory",
+    "Smother",
+    "Wasteland",
+    "Withered Wretch"
+   ],
+   "primeira": "2026-10-04",
+   "ultima": "2026-10-04"
+  },
   "a8af1e18df": {
    "formato": "premodern",
    "nome": "Pyrostatic Pillar",
    "nucleo": [
-    "Cursed Scroll",
     "Fireblast",
-    "Goblin Vandal",
     "Grim Lavamancer",
     "Incinerate",
     "Jackal Pup",
@@ -318,7 +333,7 @@
     "Wooded Foothills"
    ],
    "primeira": "2026-09-23",
-   "ultima": "2026-10-02"
+   "ultima": "2026-10-04"
   },
   "aa210fdd32": {
    "formato": "premodern",
@@ -338,7 +353,7 @@
     "Vindicate"
    ],
    "primeira": "2026-09-21",
-   "ultima": "2026-10-03"
+   "ultima": "2026-10-04"
   },
   "b38b17cddb": {
    "formato": "premodern",
@@ -357,7 +372,7 @@
     "Thwart"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-03"
+   "ultima": "2026-10-04"
   },
   "b4dcbc5dbb": {
    "formato": "premodern",
@@ -377,7 +392,7 @@
     "Vision Charm"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-03"
+   "ultima": "2026-10-04"
   },
   "b827ca4ad1": {
    "formato": "premodern",
@@ -416,7 +431,7 @@
     "Wild Growth"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-03"
+   "ultima": "2026-10-04"
   },
   "c6998a9b7d": {
    "formato": "premodern",
@@ -436,7 +451,7 @@
     "Winter's Grasp"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-03"
+   "ultima": "2026-10-04"
   },
   "c8d54b483e": {
    "formato": "premodern",
@@ -455,7 +470,7 @@
     "Wooded Foothills"
    ],
    "primeira": "2026-09-20",
-   "ultima": "2026-10-03"
+   "ultima": "2026-10-04"
   },
   "cc47c1209f": {
    "formato": "premodern",
@@ -505,7 +520,7 @@
     "Wall of Blossoms"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-03"
+   "ultima": "2026-10-04"
   },
   "e8c086499f": {
    "formato": "premodern",
@@ -529,15 +544,15 @@
     "Jackal Pup",
     "Karplusan Forest",
     "Lava Dart",
+    "Lightning Bolt",
     "Mogg Fanatic",
     "Naturalize",
     "Quirion Dryad",
-    "Rancor",
     "Sylvan Library",
-    "Treetop Village"
+    "Wooded Foothills"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-03"
+   "ultima": "2026-10-04"
   },
   "f102883ccf": {
    "formato": "premodern",
@@ -585,7 +600,7 @@
     "Smother"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-03"
+   "ultima": "2026-10-04"
   }
  },
  "versao": 1

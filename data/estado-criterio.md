@@ -179,6 +179,6 @@ está com flash de frente»* — em vez de escolher um escalão a adivinhar.
 
 ## Aprendido com o André
 
-*Gerado de 0 correcções dele, em 2026-10-03. Só entra aqui o que veio de uma correcção — nunca um palpite meu.*
+*Gerado de 0 correcções dele, em 2026-10-04. Só entra aqui o que veio de uma correcção — nunca um palpite meu.*
 
 Ainda não há nenhuma correcção dele. O critério em vigor é o do Cardmarket, acima, e mais nada.
