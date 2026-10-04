@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
 from mtgvault import collection as col  # noqa: E402
-from mtgvault import db, paginas  # noqa: E402
+from mtgvault import db, paginas, precos  # noqa: E402
 from mtgvault import site_shell as shell  # noqa: E402
 from mtgvault.collection import na_estante  # noqa: E402
 
@@ -241,7 +241,7 @@ _CSS = """
 """
 
 _LEAD = ("<b>%TOTQ%</b> exemplares · valor ~<b style=\"color:var(--gold)\">%TOTV%</b>"
-         " · imagens e preços via Scryfall/Cardmarket · dados até <b>%TODAY%</b>")
+         " · imagens via Scryfall · preços %FONTES% · dados até <b>%TODAY%</b>")
 
 _RODAPE = ("Cada imagem é a impressão exata da carta (edição + número). Clica para "
            "abrir em grande. O valor é a mesma conta dos "
@@ -308,6 +308,9 @@ def _write_html(out_path, groups, total_qty, total_val, today, history):
             .replace("%TOTQ%", str(total_qty))
             .replace("%TOTV%", eur)
             .replace("%TODAY%", today)
+            # A CADEIA em vigor, e não um nome de loja escrito à mão: dizia
+            # «Scryfall/Cardmarket» muito depois de o CardTrader ser a fonte.
+            .replace("%FONTES%", " → ".join(precos.fontes()))
             .replace("%EVO%", _evo_block(history)))
     Path(out_path).write_text(html, encoding="utf-8")
 

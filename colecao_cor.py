@@ -319,8 +319,8 @@ def _consensus_tiers_html(con):
 
 def _value(con):
     """Valor de TUDO o que o André tem na estante, em DOIS cenários:
-      'min'   = preço mais BAIXO à venda (Cardmarket `low`)
-      'trend' = preço de TENDÊNCIA (Cardmarket `trend`)
+      'min'   = preço mais BAIXO à venda (a coluna `low` da fonte em vigor)
+      'trend' = o cenário do MODO em vigor (market / best / média)
     Cada um repartido em [coleção, decks, caixa RL, colecionador].
 
     A CONTA NÃO VIVE AQUI (2026-09-24): é a `collection.valor_da_coleccao`, a
@@ -342,13 +342,16 @@ def _value(con):
 
 
 def _fontes_html(val):
-    """*"1 072 cópias pelo cardtrader · 602 pelo cardmarket · 4 sem preço"*.
+    """*"1 288 cópias pelo cardtrader · 390 sem preço"*.
 
-    A FONTE é uma cadeia desde 2026-09-25, e por isso este total é medido com
-    mais do que uma régua. Dizer só a primeira — ou nem isso — era deixar um
+    A FONTE é uma cadeia desde 2026-09-25, e por isso este total pode ser medido
+    com mais do que uma régua. Dizer só a primeira — ou nem isso — era deixar um
     número grande sem a informação que o explica: no dia em que o CardTrader
     passar a cotar mais cartas, o total sobe sem ninguém mexer numa carta, e é
-    esta linha que o mostra.
+    esta linha que o mostra. **Desde 2026-10-04 a cadeia é só o CardTrader** e
+    esta linha é o que diz quantas cópias ficaram SEM PREÇO por causa disso —
+    390 das 1 678, medidas nesse dia. Sem ela, o total descia 12 212,64 € e a
+    página não explicava porquê.
     """
     pf = (val.get("por_fonte") or {})
     if len(pf) < 2:

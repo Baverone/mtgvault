@@ -358,7 +358,9 @@ def caso_wantlist_manual_e_automatica_sem_duplicar():
     cfg_escrever(cfg)
     tz = feira.trazer(con, rep, cfg)
     assert next(l for l in tz["linhas"] if l["nm"] == "Mother of Runes")["vendors"] == ["Banca A"]
-    assert tz["vendors"][0]["nome"] == "Banca A" and tz["vendors"][0]["cardmarket"] == "bancaA"
+    # O campo chamava-se `cardmarket` até 2026-10-04 e passou a `loja`: é o
+    # utilizador do VENDOR na loja dele, não a fonte de preço do vault.
+    assert tz["vendors"][0]["nome"] == "Banca A" and tz["vendors"][0]["loja"] == "bancaA"
     assert feira.pode_ter(cfg, "mother of runes", "Banca A", sim=False) == []
     assert "pode_ter" not in cfg["feira"]
     feira.pode_ter(cfg, "Path to Exile", "Banca A")
@@ -395,8 +397,8 @@ def caso_o_saldo():
     # O Duel Commander não exige língua: o material é só «foil» (o Modern é EN foil).
     assert "2× Mother of Runes [foil] · 6.00 €/un · máx 4.50 €" in p["texto_trazer"], p["texto_trazer"]
     assert "2× Path to Exile [EN foil] · 9.00 €/un" in p["texto_trazer"]
-    assert p["texto_cardmarket"] == ("// Cloud (Duel Commander)\n2 Mother of Runes\n"
-                                     "// Modern — UW Oswald\n2 Path to Exile"), p["texto_cardmarket"]
+    assert p["texto_lista"] == ("// Cloud (Duel Commander)\n2 Mother of Runes\n"
+                                "// Modern — UW Oswald\n2 Path to Exile"), p["texto_lista"]
     # A alocação e a venda NÃO mexem com a feira: os números do relatório são
     # os mesmos com e sem o bloco `feira` no config.
     cfg_novo()
@@ -495,6 +497,7 @@ def caso_a_cli():
     assert p.returncode == 2 and "não existe" in p.stdout, p.stdout
     p = cli("feira", "wantlist", "listar")
     assert "3× Winter Moon" in p.stdout and "para Cloud (Duel Commander)" in p.stdout, p.stdout
+    # `--cardmarket` continua a ser aceite como alias de `--loja` (2026-10-04).
     p = cli("feira", "vendor", "add", "Banca A", "--cardmarket", "bancaA")
     assert p.returncode == 0, p.stdout + p.stderr
     p = cli("feira", "pode-ter", "Mother of Runes", "Banca A")
@@ -597,8 +600,10 @@ def caso_o_endpoint_do_8771():
     assert {"nome": "Mother of Runes", "q": 2, "slot": "duel-commander"} in cfg_ler()["feira"]["wantlist"]
     cod, j = _post({"act": "wl-tirar", "nome": "Mother of Runes", "slot": "duel-commander"})
     assert cod == 200 and len(cfg_ler()["feira"]["wantlist"]) == 1, (cod, j)
-    cod, j = _post({"act": "vendor-add", "nome": "Banca A", "cardmarket": "bancaA"})
-    assert cod == 200 and cfg_ler()["feira"]["vendors"] == [{"nome": "Banca A", "cardmarket": "bancaA"}], (cod, j)
+    # O corpo manda `loja` desde 2026-10-04; o `cardmarket` de uma página velha
+    # continua a ser aceite (tem caso próprio no `test_so_cardtrader`).
+    cod, j = _post({"act": "vendor-add", "nome": "Banca A", "loja": "bancaA"})
+    assert cod == 200 and cfg_ler()["feira"]["vendors"] == [{"nome": "Banca A", "loja": "bancaA"}], (cod, j)
     cod, j = _post({"act": "pode-ter", "nome": "Winter Moon", "vendor": "Banca A"})
     assert cod == 200 and cfg_ler()["feira"]["pode_ter"] == {"Winter Moon": ["Banca A"]}, (cod, j)
     cod, j = _post({"act": "pode-ter", "nome": "Winter Moon", "vendor": "Banca Z"})
