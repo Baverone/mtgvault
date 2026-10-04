@@ -500,11 +500,10 @@ def semear_memoria(con: sqlite3.Connection) -> int:
     (tecto 64) revisita-se **uma vez** e completa-se. É por aqui que as 48 listas
     que faltam ao `Modern event - Regional Championship` entram sozinhas.
 
-    O `grande` semeia-se a 0 e **isso não afecta a revisita**: quem decide é o
-    `e_grande` sobre o nome que vem do ÍNDICE, não esta coluna. A coluna serve o
-    AVISO, e um evento semeado não é notícia (o `visto_em` dele é a data do
-    evento); quando for revisitado, o `_registar_evento` escreve-lhe o `grande` e o
-    `visto_em` de hoje — e aí é notícia, porque as listas que faltavam entraram.
+    O `grande` semeia-se com o `e_grande` do NOME GRAVADO, e isso é essencial: as
+    revisitas saem da MEMÓRIA e não do índice (ver `revisitas_pendentes`), por isso
+    é esta coluna que decide se se volta lá. Um ensaio de ponta a ponta apanhou-o —
+    com o `grande` a 0 o RC nunca era revisitado e as 48 listas não vinham.
     """
     if con.execute("SELECT 1 FROM mtgtop8_eventos WHERE event_id = ? AND format = ?",
                    MARCA_SEMEADO).fetchone():
@@ -530,9 +529,9 @@ def semear_memoria(con: sqlite3.Connection) -> int:
             (event_id, format, event_name, event_date, grande, players,
              na_pagina, tecto, completo, visto_em)
             VALUES (?,?,?,?,?,?,NULL,?,0,?)""",
-        [(eid, fmt, d["nome"], d["data"], int(e_grande(d["nome"] or "")),
+        [(eid, f, d["nome"], d["data"], int(e_grande(d["nome"] or "")),
           d["players"], TECTO_ANTIGO, d["data"])
-         for (eid, fmt), d in vistos.items()])
+         for (eid, f), d in vistos.items()])
     con.commit()
     return len(vistos)
 
@@ -540,7 +539,29 @@ def semear_memoria(con: sqlite3.Connection) -> int:
 def memoria_dos_eventos(con: sqlite3.Connection, fmt: str) -> dict[int, dict]:
     """`{event_id: linha}` do que já se processou naquele formato."""
     return {r["event_id"]: dict(r) for r in con.execute(
-        "SELECT * FROM mtgtop8_eventos WHERE format = ?", (fmt,))}
+        "SELECT * FROM mtgtop8_eventos WHERE format = ? AND event_id > 0", (fmt,))}
+
+
+def revisitas_pendentes(con: sqlite3.Connection, fmt: str, tecto_normal: int,
+                        cfg: dict | None = None) -> list[dict]:
+    """Os eventos GRANDES a que falta voltar, **lidos da MEMÓRIA e não do índice**.
+
+    Um ensaio de ponta a ponta sobre o índice real apanhou o defeito que esta
+    função corrige: o `Modern event - Regional Championship` é de **12/09** e o
+    índice de hoje cobre **20/09 a 03/10** — ou seja, o evento que mais interessa
+    recuperar **já não está no índice**, e uma revisita escolhida entre os
+    candidatos do índice nunca lhe chegava. As 48 listas que faltam não vinham.
+
+    Daqui saem só os `grande = 1` (um evento normal não teve o tecto mudado, logo
+    não há nada a recuperar) e pela ordem do nº de jogadores — o RC de 1 486 vem
+    primeiro. O travão é do chamador.
+    """
+    out = [dict(r) for r in con.execute(
+        "SELECT * FROM mtgtop8_eventos WHERE format = ? AND event_id > 0 "
+        "AND grande = 1 AND completo = 0", (fmt,))]
+    out = [r for r in out if por_fazer(r, True, tecto_normal, cfg)]
+    out.sort(key=lambda r: -(r.get("players") or 0))
+    return out
 
 
 def por_fazer(linha: dict | None, grande: bool, tecto_normal: int,
@@ -669,19 +690,24 @@ def harvest(con: sqlite3.Connection, fmt: str, max_events: int = 8,
 
     candidatos, _ligas = candidatos_do_indice(linhas, fmt, max_events, cfg)
     memoria = memoria_dos_eventos(con, fmt)
-    # Os candidatos partem-se em dois, e só o segundo grupo leva travão: os NOVOS
-    # (sem linha na memória) fazem-se todos — é o trabalho de sempre —, e as
-    # REVISITAS (eventos já vistos cujo tecto subiu) são até
-    # `revisitas_por_corrida`, pela ordem do nº de jogadores. Sem o travão, a
-    # primeira corrida pedia até 564 `.dec` de uma vez na base dele.
-    novos, revisitas = [], []
-    for li in candidatos:
-        linha_mem = memoria.get(li["id"])
-        if not por_fazer(linha_mem, li["grande"], max_decks_per_event, cfg):
-            continue
-        (novos if linha_mem is None else revisitas).append(li)
-    revisitas.sort(key=lambda li: -(memoria[li["id"]].get("players") or 0))
-    por_abrir = novos + revisitas[:max(0, regras["revisitas_por_corrida"])]
+    # O QUE SE ABRE VEM DE DUAS FONTES DIFERENTES, e isso é o desenho:
+    #  - os NOVOS saem do ÍNDICE (é lá que está o que apareceu hoje) e fazem-se
+    #    todos — é o trabalho de sempre;
+    #  - as REVISITAS saem da MEMÓRIA e **não do índice**, porque o evento que mais
+    #    interessa recuperar já não está lá: o RC de Modern é de 12/09 e o índice
+    #    de hoje começa a 20/09. Levam travão (`revisitas_por_corrida`), pela ordem
+    #    do nº de jogadores — sem ele a primeira corrida pedia até 564 `.dec`.
+    por_abrir = [li for li in candidatos if li["id"] not in memoria]
+    # Um evento do índice que JÁ esteja na memória e precise de revisita entra
+    # também por aqui — é uma lista só, com um travão só. O nome do índice ganha
+    # quando existe (é mais curto e mais fresco do que o `<title>` gravado).
+    do_indice = {li["id"]: li for li in candidatos}
+    for r in revisitas_pendentes(con, fmt, max_decks_per_event,
+                                 cfg)[:max(0, regras["revisitas_por_corrida"])]:
+        li = do_indice.get(r["event_id"])
+        por_abrir.append({"id": r["event_id"], "grande": True,
+                          "nome": (li or {}).get("nome") or r["event_name"] or "",
+                          "data": (li or {}).get("data") or r["event_date"]})
 
     novas = 0
     for li in por_abrir:

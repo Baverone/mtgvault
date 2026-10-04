@@ -1556,6 +1556,16 @@ módulo não lê a `copy_allocation` nem o `loadout`.
   **sem um único passo à mão**. Quem semeia é o `semear_memoria` (uma vez, a
   partir das listas que já cá estão), com `tecto = TECTO_ANTIGO` e `completo = 0`:
   a verdade é que não se sabe quantos decks a página tinha.
+- **AS REVISITAS SAEM DA MEMÓRIA E NÃO DO ÍNDICE, e isto foi o defeito mais
+  consequente da ordem — apanhado por um ENSAIO de ponta a ponta, não por
+  raciocínio.** A primeira versão escolhia as revisitas entre os candidatos do
+  índice, e o ensaio sobre o índice real mostrou que o RC **não entrava**: ele é de
+  **12/09** e as três páginas do índice cobrem **20/09 a 03/10**. O evento que mais
+  interessa recuperar **já não está no índice**, e a secção estava escrita como se
+  as 48 listas viessem. Hoje é o `revisitas_pendentes` a lê-las da tabela
+  (`grande = 1 AND completo = 0`, pela ordem do nº de jogadores) e o RC entra na
+  primeira noite. **Consequência:** o `grande` da semente tem de ser calculado (é
+  ele que decide), e não 0 como a primeira versão escrevia.
 - **TRÊS DEFEITOS MEUS APANHADOS PELOS TESTES, e é melhor estarem escritos:**
   1. **o `por_fazer` decidia com um tecto OPTIMISTA.** Usava 64 porque o nome era
      grande, e gravava 16 porque os jogadores eram poucos: `16 < 64` e o «Store
@@ -1617,6 +1627,28 @@ módulo não lê a `copy_allocation` nem o `loadout`.
   **nunca teve**. A asserção não mudou (2 listas, os nomes gravados); o que se
   corrigiu foi o fixture, que passou a ter a `<tr class=hover_tr>` com nome e data
   do índice real.
+- **O ENSAIO DE PONTA A PONTA, e é o que mede a RECUPERAÇÃO**
+  (`_scratch/ensaio_real.py` e `ensaio_drenar.py`: o índice REAL de Modern + uma
+  cópia da base a sério, com as páginas dos eventos fabricadas com o nº de decks e
+  de jogadores MEDIDOS a 04/10 nos que se chegou a pedir). A semente lembra os
+  **401** eventos; a recolha de Modern abre **3 eventos novos** (os que estão nas
+  posições 34, 47 e 50) e **24 listas novas** entram; o RC entra na mesma noite
+  com as **64** e o aviso dispara só por ele. Drenando os seis formatos do `daily`
+  noite a noite:
+
+  | noite | pedidos | eventos abertos | listas novas | por recuperar |
+  |---|---|---|---|---|
+  | 1 | 160 | 8 | 144 | 6 |
+  | 2 | 110 | 4 | 98 | 2 |
+  | 3 | 40 | 1 | 31 | 1 |
+  | 4 | 25 | 1 | 16 | 0 |
+
+  **4 noites, ~335 pedidos, 289 listas novas de 11 torneios de papel grandes** — e
+  **todos os `.dec` pedidos produziram uma lista**, nenhum foi desperdício. A
+  partir da 5.ª noite a recolha de um formato sem nada de novo são **as páginas do
+  índice e mais nada**. (Nota honesta: o `/format` do ensaio dá 8 e não 18 porque
+  cinco dos formatos levaram um índice VAZIO de propósito — o que ali se queria
+  medir era a recuperação, que vem da memória. Em produção são até 3 por formato.)
 - **O QUE FICOU POR FAZER, e vale a pena saber:** (a) as **estrelas** do mtgtop8
   guardam-se (`parse_event_rows → estrelas`) e **nada decide por elas** — quem
   manda no peso continua a ser o `event_tier` + `event_players`; se um dia

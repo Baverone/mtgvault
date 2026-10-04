@@ -140,6 +140,24 @@ elif alvo == "semente_vazia":
     mtgtop8.semear_memoria = _semear_vazia
 elif alvo == "semente":
     mtgtop8.semear_memoria = lambda con: 0
+elif alvo == "revisita_do_indice":
+    # A primeira versão: as revisitas escolhiam-se entre os candidatos do ÍNDICE.
+    # O RC de 12/09 não está no índice de hoje (20/09-03/10) e nunca era
+    # recuperado — as 48 listas não vinham.
+    _pend = mtgtop8.revisitas_pendentes
+    mtgtop8.revisitas_pendentes = lambda con, fmt, tecto, cfg=None: []
+elif alvo == "grande_na_semente":
+    # O `grande` da semente a 0, como a primeira versão escrevia: com as revisitas
+    # a lerem-se da memória, isso é o mesmo que não haver recuperação nenhuma.
+    _sem = mtgtop8.semear_memoria
+
+    def _sem_sem_grande(con):
+        n = _sem(con)
+        con.execute("UPDATE mtgtop8_eventos SET grande = 0 WHERE event_id > 0")
+        con.commit()
+        return n
+
+    mtgtop8.semear_memoria = _sem_sem_grande
 elif alvo == "jogadores":
     # O defeito da primeira versão: decidir com o tecto OPTIMISTA (o nome é
     # grande) e gravar o real (os jogadores são poucos) — revisita para sempre.

@@ -611,6 +611,49 @@ def caso_um_grande_pequeno_nao_se_revisita_para_sempre():
     print("um «grande» pequeno não se revisita; um grande a sério revisita uma vez")
 
 
+def caso_um_grande_fora_do_indice_e_recuperado():
+    """O defeito que o ENSAIO de ponta a ponta apanhou, e o mais consequente.
+
+    O `Modern event - Regional Championship` é de **12/09** e o índice de hoje
+    cobre **20/09 a 03/10**: o evento que mais interessa recuperar **já não está no
+    índice**. Com as revisitas escolhidas entre os candidatos do índice, as 48
+    listas que lhe faltam nunca vinham — a primeira versão tinha-o escrito como se
+    viessem. As revisitas lêem-se da MEMÓRIA.
+    """
+    con = base()
+    # Semeado pela SEMENTE a sério: um RC de 12/09 com 2 das suas 64 listas na
+    # base, como a recolha antiga as deixou.
+    for d in (1, 2):
+        sources.store_decklist(
+            con, source="mtgtop8", source_key=str(90762_00 + d), fmt="modern",
+            cards=[("main", f"Carta {d}", 1)],
+            event_name="Modern event - Regional Championship",
+            event_date="2026-09-12", player=f"j{d}", event_players=1486,
+            url=f"{mtgtop8.BASE}/event?e=90762&d={90762_00 + d}&f=MO")
+    assert mtgtop8.semear_memoria(con) == 1
+    # O índice de HOJE não o traz — só eventos de Outubro.
+    linhas = [_linha(91582, "Win-A-Box", "03/10/26", loja="L")]
+    eventos = {91582: _pagina_evento(91582, 70, 2),
+               90762: _pagina_evento(90762, 1486, 64,
+                                     nome="Modern event - Regional Championship")}
+    assert 90762 not in [li["id"] for li in
+                         mtgtop8.parse_event_rows(_indice(linhas))]
+    pend = mtgtop8.revisitas_pendentes(con, "modern", 16)
+    assert [r["event_id"] for r in pend] == [90762], pend
+    rede = Rede({1: _indice(linhas)}, eventos)
+    _com_rede(rede, lambda: mtgtop8.harvest(
+        con, "modern", max_events=6, max_decks_per_event=16, paginas=1))
+    assert 90762 in rede.eventos_pedidos(), rede.eventos_pedidos()
+    assert con.execute(
+        "SELECT COUNT(*) c FROM decklists WHERE event_name LIKE '%Regional%'"
+    ).fetchone()["c"] == 66, "as 2 que ja ca estavam + as 64 da pagina"
+    # Fica completo e não se volta lá.
+    linha = [r for r in _linhas_mem(con) if r["event_id"] == 90762][0]
+    assert linha["tecto"] == 64 and linha["completo"] == 1, linha
+    assert mtgtop8.revisitas_pendentes(con, "modern", 16) == []
+    print("um torneio grande FORA do índice é recuperado pela memória")
+
+
 def caso_as_revisitas_tem_travao_por_corrida():
     """Semeada a base dele (401 eventos de mtgtop8), são **11** os que valem uma
     revisita — e fazê-los de uma vez eram **até 564 pedidos `.dec` numa noite**,
