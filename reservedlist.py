@@ -341,12 +341,12 @@ _CSS = """
  h2{font-size:15px;margin:26px 0 9px;border-bottom:1px solid var(--line);padding-bottom:6px;scroll-margin-top:calc(var(--sticky) + 12px)} .dim{color:var(--muted);font-size:12px;font-weight:400}
  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:9px}
  .c{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:9px;display:grid;grid-template-columns:38px 1fr;grid-template-areas:"img nm" "img own" "play play" "val ev" "mon mon";gap:2px 8px;align-items:center}
- .c img{grid-area:img;width:38px;height:53px;border-radius:4px;display:block;background:#0c0f14}
+ .c img{grid-area:img;width:38px;height:53px;border-radius:4px;display:block;background:var(--sunken)}
  .c .nm{grid-area:nm;font-weight:600;font-size:12.5px;line-height:1.15;align-self:end}
  .c .own{grid-area:own;font-size:11px;align-self:start} .c .own span{margin-right:5px;font-weight:700}
  .c .plays{grid-area:play;font-size:9.5px;color:#6f7b8a;line-height:1.2}
- .c.sell{border-color:#7a3030} .c.sell .plays.vd{color:var(--warn);font-weight:700}
- .sellbadge{background:#5a1f1f;color:#ff9b8a;font-size:8px;font-weight:800;padding:1px 4px;border-radius:5px;vertical-align:middle}
+ .c.sell{border-color:var(--bad-line)} .c.sell .plays.vd{color:var(--warn);font-weight:700}
+ .sellbadge{background:#5a1f1f;color:var(--bad);font-size:8px;font-weight:800;padding:1px 4px;border-radius:5px;vertical-align:middle}
  .c .own .en{color:var(--add)} .c .own .pt{color:var(--pt)} .c .own .no{color:var(--dim);font-weight:400}
  /* `nowrap`: o separador de milhares é um espaço fino, e `1 078€` partia-se em
     duas linhas («1» e «078€») no meio da grelha. */
@@ -356,8 +356,8 @@ _CSS = """
  /* SEM COR quando não tenho nenhuma cópia */
  .c.miss{opacity:.62} .c.miss img{filter:grayscale(1) brightness(.7)} .c.miss .val{color:var(--muted)}
  body.only .c.miss{display:none}
- .sellbox{background:#2a1618;border:1px solid #7a3030;border-radius:var(--r);padding:12px 14px;margin:0 0 14px;font-size:12.5px;color:#f0d0c8}
- .sellbox b{color:#ff9b8a}
+ .sellbox{background:var(--bad-soft);border:1px solid var(--bad-line);border-radius:var(--r);padding:12px 14px;margin:0 0 14px;font-size:12.5px;color:#f0d0c8}
+ .sellbox b{color:var(--bad)}
  .sellnote{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:11px 14px;margin:0 0 14px;font-size:12.5px;color:var(--muted)}
  .fine{color:var(--dim);font-size:11px}
  .edidx{margin:0 0 18px} .edidx .seg{max-width:100%}

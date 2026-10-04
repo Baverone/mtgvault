@@ -429,12 +429,12 @@ _CSS = """
  details.dk[open]>summary .dtop b::before{content:"▾ "}
  details.dk>summary:hover .dtop b{color:var(--accent)}
  .dtop{display:flex;justify-content:space-between;align-items:baseline;gap:8px} .dtop b{font-size:16px} .pct{font-weight:800;font-size:16px}
- .badges{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:7px 0} .bdg{font-size:11px;padding:2px 8px;border-radius:20px;background:#1e2531;color:var(--muted)} .bdg.seal{background:#2a2410;color:var(--gold);font-weight:700} .bdg.wt{background:#101c2e;color:#7fa8ff;font-weight:700} .bdg.dim{color:#5a6472}
+ .badges{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:7px 0} .bdg{font-size:11px;padding:2px 8px;border-radius:20px;background:var(--line);color:var(--muted)} .bdg.seal{background:var(--warn-soft);color:var(--gold);font-weight:700} .bdg.wt{background:var(--info-soft);color:var(--ob);font-weight:700} .bdg.dim{color:#5a6472}
  .bar{position:relative;height:8px;background:#0b0e14;border-radius:999px;overflow:hidden;margin:5px 0 2px} .bar span{position:absolute;left:0;top:0;bottom:0;border-radius:999px}
- .cardshdr{margin-top:11px;font-size:12px;color:var(--accent)} .cardshdr .dim{color:var(--muted)} .cardshdr.sb{color:var(--gold)} .cardshdr.op-h{color:#7fa8ff}
+ .cardshdr{margin-top:11px;font-size:12px;color:var(--accent)} .cardshdr .dim{color:var(--muted)} .cardshdr.sb{color:var(--gold)} .cardshdr.op-h{color:var(--ob)}
  .typehdr{margin:8px 0 1px;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em} .typehdr .dim{color:#4a5666} .typehdr+.cards{margin-top:3px}
  .cards{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
- .cd{position:relative;width:52px} .cd img,.cd .noimg{width:52px;height:73px;border-radius:4px;display:block;background:#0c0f14}
+ .cd{position:relative;width:52px} .cd img,.cd .noimg{width:52px;height:73px;border-radius:4px;display:block;background:var(--sunken)}
  /* Como se lê o `alt` (o nome da carta) quando a imagem não carrega. */
  .cd img{overflow:hidden;font-size:8.5px;line-height:1.15;color:var(--dim);padding:2px}
  .cd.have{box-shadow:0 0 0 2px var(--add)} .cd.part{box-shadow:0 0 0 2px var(--gold)} .cd.part img{filter:brightness(.82)}
@@ -444,7 +444,7 @@ _CSS = """
  .cd .cs.opt{background:rgba(91,140,255,.95)}
  .faltas.dk{margin-top:2px} .flh{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;font-weight:700;color:#e2795b} .flh .dim{color:var(--muted);font-weight:400}
  .faltas ul.fl{list-style:none;margin:6px 0 0;padding:0;column-width:200px;column-gap:18px;font-size:12px} .faltas ul.fl li{padding:1.5px 0;break-inside:avoid} .faltas ul.fl b{color:var(--gold);font-variant-numeric:tabular-nums;margin-right:2px}
- .cpbtn{font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;border:1px solid var(--line2);background:var(--card3);color:var(--muted);cursor:pointer} .cpbtn:hover{border-color:var(--accent);color:var(--ink)} .cpbtn.done{background:#0f2a1c;border-color:#2f6a45;color:var(--add)} .flh .cpbtn{margin-left:auto}
+ .cpbtn{font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;border:1px solid var(--line2);background:var(--card3);color:var(--muted);cursor:pointer} .cpbtn:hover{border-color:var(--accent);color:var(--ink)} .cpbtn.done{background:var(--ok-soft);border-color:var(--ok-line);color:var(--add)} .flh .cpbtn{margin-left:auto}
  .cmk{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
 %TEMA_DADOS%
 """

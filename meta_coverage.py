@@ -886,14 +886,14 @@ _CSS = """
     três erros numa semana. */
  .lab.prov{font-style:italic}
  .pop{color:var(--muted);font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}
- .bar{position:relative;height:16px;background:#0c0f14;border:1px solid var(--line);border-radius:999px;margin:9px 0 6px;overflow:hidden}
+ .bar{position:relative;height:16px;background:var(--sunken);border:1px solid var(--line);border-radius:999px;margin:9px 0 6px;overflow:hidden}
  .bar span{position:absolute;left:0;top:0;bottom:0;border-radius:999px} .bar em{position:absolute;right:8px;top:-1px;font-size:11px;font-style:normal;font-weight:700;mix-blend-mode:difference}
  .cnt{color:var(--muted);font-size:12px;margin-bottom:6px}
  details summary{cursor:pointer;color:var(--accent);font-size:13px} .ok{color:var(--add);font-size:13px}
  ul.ml,ul.gl{list-style:none;margin:8px 0 0;padding:0;font-size:13px}
  ul.ml li,ul.gl li{display:flex;align-items:center;gap:8px;padding:4px 0;border-top:1px solid var(--line)}
  ul.gl li:first-child{border-top:0}
- ul.ml img,ul.gl img,.noimg{border-radius:4px;flex:none;background:#0c0f14} .noimg{width:42px;height:59px;border:1px dashed var(--line)}
+ ul.ml img,ul.gl img,.noimg{border-radius:4px;flex:none;background:var(--sunken)} .noimg{width:42px;height:59px;border:1px dashed var(--line)}
  .ci{min-width:0;flex:1} .cn{white-space:normal} .cn b{color:var(--ink)}
  .ed{display:block;font-size:11px;color:var(--muted)} .ed.mine{color:var(--add)}
  .nd{display:inline-block;font-size:11px;color:var(--ob);background:var(--info-soft);padding:0 6px;border-radius:999px}

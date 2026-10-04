@@ -89,14 +89,14 @@ _CSS = """
  .fcard .fm{font-size:11px;color:var(--dim);margin-top:auto}
  .modo{display:inline-block;border-radius:999px;padding:2px 9px;font-size:10.5px;font-weight:700;letter-spacing:.3px;border:1px solid var(--line2);color:var(--muted)}
  .modo.rot{border-color:var(--accent-line);background:var(--accent-soft);color:var(--accent)}
- .modo.ded{border-color:#2f4a7a;background:var(--info-soft);color:var(--ob)}
+ .modo.ded{border-color:var(--info-line);background:var(--info-soft);color:var(--ob)}
  .migalha{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 16px;font-size:13px;color:var(--muted)}
  .migalha button{min-height:36px;padding:6px 13px;border-radius:999px;border:1px solid var(--line);background:var(--card2);color:var(--ink2);font:inherit;font-size:12.5px;cursor:pointer}
  .chips{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px}
  .chip{background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:12px;color:var(--muted)}
  .chip b{color:var(--ink)}
  .chip.gold{border-color:var(--accent-line);background:var(--accent-soft);color:var(--accent)}
- .chip.inv{border-color:#2f4a7a;background:var(--info-soft);color:var(--ob)}
+ .chip.inv{border-color:var(--info-line);background:var(--info-soft);color:var(--ob)}
  /* OS DOIS NÚMEROS LADO A LADO: é a diferença entre eles que diz o que custa. */
  .duo{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 16px}
  .duo .n{flex:1 1 180px;background:var(--card2);border:1px solid var(--line);border-radius:var(--r);padding:11px 14px}
@@ -152,7 +152,7 @@ _CSS = """
  .art img{width:100%;height:100%;object-fit:cover;display:block;transition:filter .2s}
  /* Sem nenhuma: dessaturada e escurecida — o padrão do riftvault. */
  .tile.none .art img{filter:grayscale(1) brightness(.42)}
- .tile.none .art{border-color:#5a2b2b}
+ .tile.none .art{border-color:var(--bad-line)}
  .tile.done .art{border-color:rgba(79,208,138,.55)}
  .tile.parte .art{border-color:var(--accent-line)}
  .tile .nm{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:6px;font-size:10.5px;line-height:1.3;text-align:center;color:var(--muted)}
