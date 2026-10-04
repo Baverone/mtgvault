@@ -968,6 +968,108 @@ RAZAO_NAO_FOIL = "não é foil"
 # Quantas edições em foil a mensagem nomeia. *"As 3–4 primeiras por data, EN"*.
 FOIL_EDICOES_MAX = 4
 
+# ---------------------------------------------------------------------------
+# COMPRAS URGENTES E EXCEPÇÕES DE MATERIAL PENDENTES (André, 2026-10-04, à noite)
+# ---------------------------------------------------------------------------
+# O caso que as obrigou a existir: ao aplicar o sideboard do Modern entrou **1
+# Whipflare**, que ele não tem, e ele joga o RC Ghent a **9-11/10**. Duas coisas
+# que a linha de falta não sabia dizer:
+#
+#   1. **quando é que isto é preciso.** Uma falta não tinha campo de urgência
+#      nem de data — todas as 237 compras valiam o mesmo, e a que tem de estar
+#      na mão em cinco dias ficava a meio de uma lista por nome. `ate` é a
+#      data-limite e `dias` quantos faltam (calculados, nunca escritos à mão:
+#      uma data-limite escrita como «faltam 5 dias» mente no dia seguinte).
+#
+#   2. **que o material certo pode não ser o material que a regra manda.** A
+#      caixa `modern` está no grupo `spml`, que exige `foil`; o Whipflare **só
+#      existe em foil em New Phyrexia** e custa 20,20 € contra 0,21 € do
+#      nonfoil — 96× por uma carta de sideboard em cópia única. Essa é uma
+#      decisão DELE e não se toma aqui: fica `PENDENTE`, com os dois preços à
+#      vista, e entretanto a lista de compras **sugere o nonfoil** (é o que ele
+#      compraria hoje se tivesse de comprar agora).
+#
+# A excepção pendente vale para a **SUGESTÃO DE COMPRA** e NÃO para a alocação,
+# e a diferença é deliberada: mexer no `_porque_nao` era decidir a excepção —
+# um Whipflare nonfoil passava a fechar o slot de uma caixa que pede foil, sem
+# ele ter dito nada. Enquanto estiver pendente, a compra sugerida é nonfoil e a
+# caixa continua a querer foil; a ficha di-lo com estas palavras, porque a
+# alternativa (descobri-lo quando a carta chega e o slot não fecha) é pior.
+# Quando ele decidir, `aplicado: true` passa a valer também na alocação.
+EXCEPCAO_PENDENTE = "excepcao_pendente"
+# O que a página e o texto copiado dizem de uma compra assim.
+RAZAO_EXCEPCAO_PENDENTE = "decisão do material PENDENTE"
+
+
+def compras_urgentes(cfg: dict | None = None) -> dict[tuple[str, str], dict]:
+    """`(slot, carta em minúsculas) -> a ficha da urgência`, de `compras_urgentes`.
+
+    Num sítio só, pela razão do `e_foil` e do `precos.sql()`: a data-limite é
+    lida pela linha de falta, pelo requisito de material, pelo preço sugerido e
+    pela validação das encomendas — quatro leituras da mesma chave eram quatro
+    oportunidades de discordarem sobre o que está pendente.
+
+    Uma entrada sem `carta` ou sem `caixa` ignora-se em silêncio: a chave é
+    escrita à mão e meia linha não pode rebentar o relatório inteiro.
+    """
+    out: dict[tuple[str, str], dict] = {}
+    for x in (sources.config() if cfg is None else cfg).get("compras_urgentes") or []:
+        if not isinstance(x, dict):
+            continue
+        carta, caixa = str(x.get("carta") or "").strip(), str(x.get("caixa") or "").strip()
+        if carta and caixa:
+            out[(caixa, carta.lower())] = x
+    return out
+
+
+def urgencia_da_compra(s: dict, nm: str, cfg: dict | None = None,
+                       hoje: str | None = None,
+                       urgentes: dict | None = None) -> dict | None:
+    """A ficha de urgência desta carta nesta caixa, ou `None`.
+
+    `dias` conta-se de hoje para a data-limite e pode ser NEGATIVO — uma
+    data-limite que passou continua a dizer-se (`passou: True`), em vez de
+    desaparecer calada no dia em que mais importava.
+    """
+    mapa = compras_urgentes(cfg) if urgentes is None else urgentes
+    x = mapa.get((s.get("slot") or "", (nm or "").split(" // ")[0].lower()))
+    if not x:
+        return None
+    ate = str(x.get("ate") or "")
+    dias = None
+    if ate:
+        try:
+            d0 = date.fromisoformat(hoje) if hoje else date.today()
+            dias = (date.fromisoformat(ate) - d0).days
+        except ValueError:
+            dias = None
+    mp = x.get("material_pendente") or {}
+    return {"ate": ate, "dias": dias, "passou": dias is not None and dias < 0,
+            "porque": str(x.get("porque") or ""),
+            "prioridade": str(x.get("prioridade") or "alta"),
+            "material_pendente": mp or None,
+            # Enquanto `aplicado` for falso a excepção é só uma SUGESTÃO de
+            # compra; a caixa continua a exigir o material do grupo.
+            "pendente": bool(mp) and not mp.get("aplicado"),
+            "acabamento_sugerido": (str(mp.get("sugerido_entretanto") or "")
+                                    if mp else "")}
+
+
+def _excepcao_de_material(s: dict, nm: str, cfg: dict | None = None,
+                          urgentes: dict | None = None) -> str | None:
+    """O acabamento que a COMPRA desta carta sugere, quando há excepção escrita.
+
+    Devolve `EXCEPCAO_PENDENTE` enquanto a decisão é dele (nonfoil sugerido, a
+    dizer que está pendente) e o acabamento a seco quando ele já a aplicou.
+    """
+    u = urgencia_da_compra(s, nm, cfg, urgentes=urgentes)
+    if not u or not u["material_pendente"]:
+        return None
+    sug = u["acabamento_sugerido"]
+    if not sug:
+        return None
+    return sug if not u["pendente"] else EXCEPCAO_PENDENTE
+
 
 def acabamento_efectivo(s: dict, foil_existe: bool = True) -> str | None:
     """O acabamento que a regra desta caixa exige PARA ESTA CARTA.
@@ -983,14 +1085,23 @@ def acabamento_efectivo(s: dict, foil_existe: bool = True) -> str | None:
     return ac
 
 
-def regra_da_carta(con, s: dict, nm: str, cache: dict | None = None) -> dict:
+def regra_da_carta(con, s: dict, nm: str, cache: dict | None = None,
+                   urgentes: dict | None = None) -> dict:
     """O slot com o acabamento que vale para ESTA carta (ver `acabamento_efectivo`).
 
     Para quem tem a ligação e o nome e não um lote já anotado: o selector de
     edições do *"já a tenho"*, as encomendas, o material esperado de uma foto.
     Devolve o próprio `s` quando nada muda, para não copiar catorze chaves à toa.
+
+    E, desde 2026-10-04, a EXCEPÇÃO DE MATERIAL escrita no config
+    (`compras_urgentes[].material_pendente`) ganha ao acabamento do grupo —
+    porque a pergunta aqui é *"o que é que eu compro desta carta"*, e é essa a
+    única que a excepção responde. A alocação (`_porque_nao`) não passa por
+    aqui, de propósito: enquanto a decisão estiver pendente, a caixa continua a
+    exigir o material do grupo. Ver `EXCEPCAO_PENDENTE`.
     """
-    ac = acabamento_efectivo(s, foil_info(con, nm, cache)["existe"])
+    exc = _excepcao_de_material(s, nm, urgentes=urgentes)
+    ac = exc or acabamento_efectivo(s, foil_info(con, nm, cache)["existe"])
     return s if ac == s.get("acabamento") else {**s, "acabamento": ac}
 
 
@@ -1229,6 +1340,8 @@ def requisito_material(s: dict) -> str:
         partes.append("foil (ou nonfoil)")
     elif ac == SEM_FOIL:
         partes.append("nonfoil — nunca saiu em foil")
+    elif ac == EXCEPCAO_PENDENTE:
+        partes.append(f"nonfoil — {RAZAO_EXCEPCAO_PENDENTE}")
     if s.get("edicoes") == "premodern":
         partes.append("≤SCG")
     return " · ".join(partes)
@@ -1264,7 +1377,7 @@ def marca_compra(s: dict) -> str:
     ac = s.get("acabamento")
     if ac == "foil":
         partes.append("foil")
-    elif ac in ("nonfoil", SEM_FOIL):
+    elif ac in ("nonfoil", SEM_FOIL, EXCEPCAO_PENDENTE):
         partes.append("nonfoil")
     elif ac == "prefere_foil":
         partes.append("foil ou nonfoil")
@@ -1555,6 +1668,7 @@ def resolve_slots(con, cfg_slots: list[dict] | None = None,
     arrumadas = caixas_arrumadas(con)
     datas = datas_de_arrumacao(con)
     vigiados = set(sources.config().get("decks_vigiados") or [])
+    _urg_cfg = compras_urgentes()           # uma leitura para todas as caixas
     for s in (cfg_slots if cfg_slots is not None else config_slots()):
         # Aceita as duas formas — a caixa da v6 e a linha do `loadout` da v5 —
         # e devolve sempre a interna. Uma função só, e idempotente.
@@ -1638,6 +1752,16 @@ def resolve_slots(con, cfg_slots: list[dict] | None = None,
         # A RESERVA (2026-09-20): os nomes das cartas «que poderão entrar».
         # Normalizados à frente (`_front`), como as listas.
         s["reserva"] = [_front(str(n)) for n in (s.get("reserva") or [])]
+        # AS EXCEPÇÕES DE MATERIAL JÁ APLICADAS (2026-10-04): `carta -> acabamento`,
+        # só as que ele DECIDIU (`material_pendente.aplicado`). As pendentes NÃO
+        # entram aqui de propósito — valem para a sugestão de compra e não para a
+        # alocação (ver `EXCEPCAO_PENDENTE`). Anota-se no slot para o
+        # `_porque_nao`, que corre por cópia, não ter de ler o config.
+        s["excepcoes_material"] = {
+            c: a for c, a in
+            ((k[1], (x.get("material_pendente") or {}).get("sugerido_entretanto"))
+             for k, x in _urg_cfg.items() if k[0] == s.get("slot")
+             and (x.get("material_pendente") or {}).get("aplicado")) if a}
         s.setdefault("prioridade", 99)
         s.setdefault("nome", s.get("ref") or s.get("slot"))
         out.append(s)
@@ -1906,7 +2030,16 @@ def _porque_nao(lot: dict, s: dict, baldes_de_deck: set[str],
     # acabamento que se exige a esta cópia é o EFECTIVO para esta carta: numa
     # que nunca saiu em foil é `SEM_FOIL`, e a nonfoil serve. Quando existe, a
     # recusa diz em que edições — é a única resposta útil a "não é foil".
-    ac = acabamento_efectivo(s, lot.get("foil_existe", True))
+    # A EXCEPÇÃO DE MATERIAL QUE ELE JÁ APLICOU (2026-10-04) ganha ao acabamento
+    # do grupo, e só ela: enquanto a decisão está PENDENTE isto não se lê — a
+    # caixa continua a exigir foil, e é o que impede que uma sugestão de compra
+    # decida a excepção por ele. A lista está ANOTADA no slot pelo
+    # `resolve_slots` (`excepcoes_material`), e não lida do config aqui: o
+    # `_porque_nao` corre por cópia e por caixa, e ler o config aí era o defeito
+    # do `Path.resolve()` de 03/10 outra vez.
+    exc = (s.get("excepcoes_material") or {}).get(
+        lot["nm"].split(" // ")[0].lower()) if s.get("excepcoes_material") else None
+    ac = exc or acabamento_efectivo(s, lot.get("foil_existe", True))
     if ac == "foil" and lot["finish"] not in FOIL_FINISHES and not lot["rl"]:
         return razao_nao_foil(lot.get("foil_edicoes"))
     if ac == "nonfoil" and lot["finish"] in FOIL_FINISHES:
@@ -2665,6 +2798,11 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
     # e corria-o sem cache nenhuma: o catálogo respondia duas vezes à mesma
     # pergunta sobre os mesmos nomes.
     foil_cache: dict = {}
+    # As compras urgentes e as excepções de material pendentes, UMA leitura por
+    # relatório (2026-10-04). O config lê-se milhares de vezes por corrida — foi
+    # o defeito do `Path.resolve()` de 03/10 — e esta chave é a mesma para as
+    # 237 linhas em falta.
+    urgentes = compras_urgentes()
     slots = resolve_slots(con, cfg_slots, foil_cache)
     pool = lots(con, slots, foil_cache)
     dids = _deck_ids(con, slots)
@@ -2824,10 +2962,28 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                 # desta LINHA é o da caixa para esta carta — numa que nunca saiu
                 # em foil pede-se nonfoil e diz-se porquê, e o preço é o nonfoil
                 # (o foil não existe para o pedir).
-                regra = regra_da_carta(con, s, nm, foil_cache)
-                unit, pfin = card_price(con, nm, "foil" if foil and fi["existe"]
-                                        else "nonfoil")
+                # URGENTE, E COM O MATERIAL QUE A COMPRA SUGERE (2026-10-04). O
+                # `regra` já traz a excepção pendente quando ela está escrita, e
+                # o PREÇO tem de vir do mesmo acabamento que a linha pede —
+                # pedir nonfoil e orçamentar foil era mandá-lo ao Cardmarket com
+                # 20,20 € na cabeça para uma carta de 0,21 €.
+                urg = urgencia_da_compra(s, nm, urgentes=urgentes)
+                regra = regra_da_carta(con, s, nm, foil_cache, urgentes=urgentes)
+                # O PREÇO É DO ACABAMENTO QUE A LINHA PEDE, e o teste é
+                # `== "foil"` e não `in ("foil", "prefere_foil")`: numa caixa
+                # `prefere_foil` (Duel Commander, Pauper) a compra pode ser
+                # nonfoil, e é essa a mais barata que serve — orçamentar a foil
+                # subia o «fechar tudo» do Cloud em 40,38 € sem uma única carta
+                # mudar de lado. Medido a 2026-10-04 (foi assim que o defeito
+                # apareceu). O que muda face ao `s` é só a EXCEPÇÃO pendente,
+                # que é nonfoil e por isso cai no mesmo ramo.
+                unit, pfin = card_price(
+                    con, nm,
+                    "foil" if regra.get("acabamento") == "foil" and fi["existe"]
+                    else "nonfoil")
                 comprar = falta
+                if urg:
+                    linha["urgencia"] = urg
                 linha.update(missing=falta, comprar=comprar,
                              noutra={}, noutra_q=0,
                              noutra_montada={}, noutra_reservada={},
@@ -4419,12 +4575,15 @@ def finishes_aceites(s: dict) -> tuple[str, ...]:
     Vazio = qualquer um. O `prefere_foil` aceita os dois (é o Pauper: *"tudo foil
     se houver disponível, senão pode ser non-foil"*), e por isso não filtra nada.
     Para UMA carta passa-se o slot de `regra_da_carta`: numa que nunca saiu em
-    foil (`SEM_FOIL`, 2026-09-19) só há nonfoil para oferecer.
+    foil (`SEM_FOIL`, 2026-09-19) só há nonfoil para oferecer, e numa com a
+    excepção de material pendente (`EXCEPCAO_PENDENTE`, 2026-10-04) oferece-se o
+    que a compra sugere — deixar cair no `()` («qualquer um») punha o selector a
+    oferecer a foil de 20,20 € ao lado da nonfoil de 0,21 € sem dizer nada.
     """
     ac = s.get("acabamento")
     if ac == "foil":
         return FOIL_FINISHES
-    if ac in ("nonfoil", SEM_FOIL):
+    if ac in ("nonfoil", SEM_FOIL, EXCEPCAO_PENDENTE):
         return ("nonfoil",)
     return ()
 

@@ -260,6 +260,64 @@ def _migrate(con: sqlite3.Connection) -> None:
             con.execute(f"ALTER TABLE encomendas ADD COLUMN {coluna} {tipo}")
             con.commit()
 
+    # A VIGIA DE UM ARQUÉTIPO DO MTGTOP8 (André, 2026-10-04): o `kind`
+    # `mtgtop8_archetype`. É a PRIMEIRA reconstrução de tabela deste ficheiro, e
+    # é por uma razão que não tem outra saída: o que muda é um **CHECK**, e o
+    # SQLite não tem `ALTER TABLE ... ALTER CONSTRAINT`. Um `kind` novo sem isto
+    # dava `IntegrityError: CHECK constraint failed` no `watchlist.add` — a vigia
+    # não se inscrevia, e inscrever-se a meio era pior (ver o `check_all`).
+    #
+    # DUAS ARMADILHAS, e as duas mordem:
+    #   1. **as FK estão LIGADAS** (`connect` faz `PRAGMA foreign_keys = ON`) e a
+    #      `watched_snapshots` referencia a `watched` com **ON DELETE CASCADE**:
+    #      um `DROP TABLE watched` apagava o histórico todo das listas vigiadas
+    #      (15 snapshots na base dele). Desliga-se durante a troca e volta-se a
+    #      ligar no fim, com `foreign_key_check` a confirmar.
+    #   2. **o PRAGMA é um no-op dentro de uma transacção** — por isso o `commit`
+    #      antes. Sem ele o `PRAGMA` passava sem efeito e o CASCADE disparava.
+    #
+    # A contagem é conferida antes e depois: uma migração que perca uma linha
+    # levanta aqui, em vez de deixar o André sem a lista que vigiava.
+    sql_watched = con.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='watched'"
+    ).fetchone()
+    if sql_watched and "mtgtop8_archetype" not in (sql_watched["sql"] or ""):
+        antes = con.execute("SELECT COUNT(*) c FROM watched").fetchone()["c"]
+        snaps = con.execute("SELECT COUNT(*) c FROM watched_snapshots").fetchone()["c"]
+        con.commit()                       # o PRAGMA não vale em transacção
+        con.execute("PRAGMA foreign_keys = OFF")
+        con.executescript("""
+            CREATE TABLE watched_nova (
+                id           INTEGER PRIMARY KEY,
+                kind         TEXT NOT NULL CHECK (kind IN ('mtgo_player','moxfield','archetype','mtgtop8_archetype')),
+                key          TEXT NOT NULL,
+                label        TEXT NOT NULL,
+                format       TEXT NOT NULL,
+                active       INTEGER NOT NULL DEFAULT 1,
+                last_checked TEXT,
+                last_hash    TEXT,
+                notes        TEXT,
+                UNIQUE (kind, key, format)
+            );
+            INSERT INTO watched_nova (id, kind, key, label, format, active,
+                                      last_checked, last_hash, notes)
+                SELECT id, kind, key, label, format, active,
+                       last_checked, last_hash, notes FROM watched;
+            DROP TABLE watched;
+            ALTER TABLE watched_nova RENAME TO watched;
+        """)
+        con.commit()
+        con.execute("PRAGMA foreign_keys = ON")
+        depois = con.execute("SELECT COUNT(*) c FROM watched").fetchone()["c"]
+        snaps2 = con.execute("SELECT COUNT(*) c FROM watched_snapshots").fetchone()["c"]
+        if (antes, snaps) != (depois, snaps2):
+            raise RuntimeError(
+                f"migração da `watched` perdeu linhas: {antes}->{depois} vigias, "
+                f"{snaps}->{snaps2} snapshots — a base está no backup")
+        orfaos = list(con.execute("PRAGMA foreign_key_check"))
+        if orfaos:
+            raise RuntimeError(f"migração da `watched` deixou órfãos: {orfaos[:3]}")
+
     # Catálogo (BD anexada): a flag reserved da Reserved List. Em catálogos já
     # criados a coluna não existe — acrescenta-se aqui a 0 (o preenchimento vem
     # do bulk, via scryfall.load_bulk/backfill_reserved).

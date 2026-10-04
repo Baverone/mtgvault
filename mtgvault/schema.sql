@@ -396,10 +396,19 @@ CREATE TABLE IF NOT EXISTS job_runs (
 -- ---------------------------------------------------------------
 -- WATCHLIST: fontes específicas a vigiar
 -- ---------------------------------------------------------------
+-- O `mtgtop8_archetype` entrou a 2026-10-04 (André: *"quero o deck de Duel
+-- Commander seguido todos os dias"*, archetype?a=2629). Numa base já criada o
+-- CHECK não se altera com um ALTER: a tabela reconstrói-se no `db._migrate()`,
+-- e é lá que está a explicação.
+--
+-- O `archetype` é mais antigo e NUNCA foi implementado (o `watchlist.check_all`
+-- não o conhece): não se apaga — nada se apaga —, mas uma vigia inscrita nele
+-- nunca correria, e por isso o `check_all` passou a FALHAR ALTO em qualquer
+-- kind que não saiba tratar, em vez de o saltar calado.
 CREATE TABLE IF NOT EXISTS watched (
     id           INTEGER PRIMARY KEY,
-    kind         TEXT NOT NULL CHECK (kind IN ('mtgo_player','moxfield','archetype')),
-    key          TEXT NOT NULL,      -- login MTGO | publicId Moxfield | archetype_id
+    kind         TEXT NOT NULL CHECK (kind IN ('mtgo_player','moxfield','archetype','mtgtop8_archetype')),
+    key          TEXT NOT NULL,      -- login MTGO | publicId Moxfield | archetype_id | id do arquetipo no mtgtop8
     label        TEXT NOT NULL,      -- nome que dou ao baralho
     format       TEXT NOT NULL,
     active       INTEGER NOT NULL DEFAULT 1,

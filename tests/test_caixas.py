@@ -216,9 +216,15 @@ def caso_a_lista_de_qualificacao_fecha_em_60():
     A lista foi gravada de manhã com 59 cartas e a 14.ª terra marcada
     `por_confirmar` — não se leu na imagem e não se inventou. À tarde ele
     decidiu. O que se tranca é o que custa dinheiro se partir: 60 + 15, a
-    Island lá dentro, e as duas marcas fora. E que a PROPOSTA de sideboard
-    ficou registada **sem ser aplicada** — uma proposta minha não entra numa
-    lista com que ele se qualificou para o RC Ghent.
+    Island lá dentro, e as duas marcas fora.
+
+    **A segunda metade deste caso mudou ao FIM DO DIA de 04/10**, e a asserção
+    foi corrigida em vez de mascarada: às 14h a `proposta_sideboard` estava
+    *PROPOSTA NÃO APLICADA* (uma proposta minha não entra numa lista com que ele
+    se qualificou) e **ao fim do dia ele mandou aplicá-la** — -1 Consign to
+    Memory, +1 Whipflare. O que se tranca agora é o estado NOVO, o histórico da
+    proposta a ficar no sítio (ele pode voltar atrás antes de 9/10) e o side a
+    continuar em 15. Quem tranca o resto é o `test_decisoes_1004_noite`.
     """
     cfg = json.loads((RAIZ / "colecao_config.json").read_text(encoding="utf-8"))
     lista = cfg["listas_escolhidas"]["modern"]
@@ -235,15 +241,16 @@ def caso_a_lista_de_qualificacao_fecha_em_60():
     assert terras == {"Fiery Islet": 4, "Spirebluff Canal": 4, "Urza's Saga": 4,
                       "Steam Vents": 1, "Island": 1}, terras
     p = lista["proposta_sideboard"]
-    assert p["estado"] == "PROPOSTA NÃO APLICADA", p["estado"]
+    assert p["estado"] == "APLICADA", p["estado"]
+    assert p["estado_anterior"] == "PROPOSTA NÃO APLICADA", \
+        "o estado de onde se veio fica escrito: é por ele que se volta atrás"
+    # O REGISTO DA PROPOSTA FICA INTEIRO — nada se apaga.
     assert p["tirar"] == ["side", "Consign to Memory", 1]
     assert p["meter"] == ["side", "Whipflare", 1]
-    # e a prova de que NÃO foi aplicada: a lista continua com 4 Consign e sem
-    # um único Whipflare.
-    assert ["side", "Consign to Memory", 4] in lista["cards"]
-    assert not any(c[1] == "Whipflare" for c in lista["cards"]), \
-        "a proposta foi aplicada e não devia"
-    print("lista de qualificação: main 60 · side 15 · proposta registada e não aplicada")
+    # e a prova de que FOI aplicada: 3 Consign e 1 Whipflare, com o side em 15.
+    assert ["side", "Consign to Memory", 3] in lista["cards"]
+    assert ["side", "Whipflare", 1] in lista["cards"], "a proposta foi aplicada"
+    print("lista de qualificação: main 60 · side 15 · proposta APLICADA ao fim do dia")
 
 
 def run():

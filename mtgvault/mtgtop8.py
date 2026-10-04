@@ -906,3 +906,61 @@ def archetype_decks(archetype_id: int, fmt: str = "duel-commander") -> list[int]
     """Ids das listas de um arquétipo específico (ex.: Cloud = 2629)."""
     code = FORMAT_CODES[fmt.lower()]
     return parse_deck_ids(_get("/archetype", a=archetype_id, f=code))
+
+
+# A COLOCAÇÃO de uma linha da página de arquétipo. É o penúltimo `<td>` da linha
+# (o último é a data) e vem como `1`, `3-4`, `5-8`: o mtgtop8 serve o bracket tal
+# e qual, e é assim que fica — `_bracket` é para o caminho inverso.
+RE_LINHA_TD = re.compile(r"<td[^>]*>(.*?)</td>", re.S)
+
+
+def parse_archetype_rows(html: str) -> list[dict]:
+    """As LINHAS da página de um arquétipo: deck, jogador, evento, posição, data.
+
+    A VIGIA DO ARQUÉTIPO (André, 2026-10-04): *"quero o deck de Duel Commander
+    seguido todos os dias"* — a página `archetype?a=2629` é a lista cronológica
+    de tudo o que foi registado com aquele comandante.
+
+    Não há parser novo por baixo disto: a página usa a MESMA `<tr class=hover_tr>`
+    do índice de eventos, e as peças são as que já existiam — `RE_LINHA_INDICE`
+    (a linha), `RE_DECK` (o id do deck, cujo comentário já dizia *"continua a
+    valer para as páginas de arquétipo"*), `RE_PLAYER` (o jogador),
+    `RE_LINHA_EVENTO` (o nome do evento) e `RE_DATE` (a data). O que isto
+    acrescenta é a COLOCAÇÃO, que nenhum parser lia e que é precisamente o que
+    decide qual é a «melhor lista».
+
+    Uma linha SEM deck e SEM data não é uma lista: a mesma página traz os links
+    do «METAGAME BREAKDOWN», e é a dupla exigência que os deixa de fora — o
+    mesmo princípio do `parse_event_rows`.
+    """
+    import html as _html                                        # noqa: PLC0415
+    out: list[dict] = []
+    for bruto in RE_LINHA_INDICE.findall(html):
+        md = RE_DECK.search(bruto)
+        mdata = RE_DATE.search(bruto)
+        if not md or not mdata:
+            continue
+        dd, mm, aa = mdata.groups()
+        tds = [re.sub(r"<[^>]+>", "", t).strip() for t in RE_LINHA_TD.findall(bruto)]
+        # A posição é o penúltimo `<td>`; a data é o último. Numa linha com menos
+        # colunas do que o esperado fica vazia em vez de se adivinhar.
+        pos = _html.unescape(tds[-2]) if len(tds) >= 2 else ""
+        mp = RE_PLAYER.search(bruto)
+        me = RE_LINHA_EVENTO.search(bruto)
+        out.append({
+            "deck_id": int(md.group(1)),
+            "jogador": (_html.unescape(mp.group(1)).replace("+", " ").strip()
+                        if mp else ""),
+            "evento": _html.unescape(me.group(2)).strip() if me else "",
+            "event_id": int(me.group(1)) if me else None,
+            "posicao": pos,
+            "data": f"20{aa}-{mm}-{dd}",
+            "estrelas": bruto.count("star.png"),
+        })
+    return out
+
+
+def archetype_listas(archetype_id: int, fmt: str = "duel-commander") -> list[dict]:
+    """As listas de um arquétipo, com jogador/evento/posição/data. UM pedido."""
+    code = FORMAT_CODES[fmt.lower()]
+    return parse_archetype_rows(_get("/archetype", a=archetype_id, f=code))
