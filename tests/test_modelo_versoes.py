@@ -451,6 +451,32 @@ def caso_mudar_a_versao_recalcula_as_proprias_e_as_partilhadas():
     assert info2["partilhadas"] == [], info2["partilhadas"]
 
 
+def caso_a_pagina_nao_recalcula_os_escolhidos_por_si():
+    """A repartição da PÁGINA sai da mesma lista que o cabeçalho
+    (`ids_escolhidos`), e não de um segundo cálculo pelas marcas à mão.
+
+    Sem isto, num formato do modelo o `decks.dados` lia o `decks_montar` de
+    ontem e a página desenhava próprias/partilhadas de decks que já não são a
+    escolha — dois contadores ao lado, nenhum erro, e a página a discordar de
+    si própria. É o padrão do `event_tier`.
+    """
+    # uma marca à mão NUM DECK QUE NÃO É A VERSÃO ESCOLHIDA
+    escreve_cfg(decks_montar={"versao:modern:beta": "2026-10-04"})
+    con = base()
+    rep = dv.relatorio(con, sources.config())
+    f = fmt_de(rep, "modern")
+    assert f["ids_escolhidos"] == ["caixa:mod"], f["ids_escolhidos"]
+
+    import decks                                              # noqa: PLC0415
+    idx, _partes = decks.dados(con, sources.config())
+    fx = next(x for x in idx["formatos"] if x["formato"] == "modern")
+    assert fx["ids_escolhidos"] == ["caixa:mod"], fx["ids_escolhidos"]
+    # e o Premodern, que está FORA do modelo, continua a obedecer à marca
+    escreve_cfg(decks_montar={"caixa:pm-a": "2026-10-04"})
+    rep = dv.relatorio(con, sources.config())
+    assert fmt_de(rep, "premodern")["ids_escolhidos"] == ["caixa:pm-a"]
+
+
 def caso_todas_as_versoes_continuam_protegidas():
     """A escolha muda o que ele MONTA, não o que ele GUARDA: as outras versões
     são opções do mesmo deck, e vendê-las por ele ter hoje a alfa escolhida era

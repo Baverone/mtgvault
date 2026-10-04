@@ -916,6 +916,14 @@ def relatorio(con: sqlite3.Connection, cfg: dict | None = None) -> dict:
             "decks": linhas, "n_decks": len(linhas) - n_desact,
             "n_desactivadas": n_desact,
             "n_marcados": len(escolhidos),
+            # QUEM CONTA COMO ESCOLHIDO, DITO UMA VEZ. O `decks.dados`
+            # recalculava-o das marcas à mão (`decks_montar`) e, num formato do
+            # modelo de versões, isso dava-lhe OUTRA resposta — a repartição das
+            # próprias/partilhadas da página saía dos dez decks antigos enquanto
+            # o cabeçalho já falava de uma versão. É o defeito do `event_tier`:
+            # dois contadores ao lado, nenhum erro, e a página a discordar de si
+            # própria. Agora há uma lista só, e ela sai daqui.
+            "ids_escolhidos": [d["id"] for d in escolhidos],
             "meta_fora": (0 if modo == ROTATIVAS
                           else len(arquetipos_meta(con, fmt, so_contar=True))),
             "necessidade": tot,

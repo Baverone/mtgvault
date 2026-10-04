@@ -802,7 +802,6 @@ def dados(con, cfg=None, editavel: bool = False) -> tuple[dict, dict]:
     as cartas; uma parte por deck leva a lista (decisão de 2026-09-15)."""
     rep = dv.relatorio(con, cfg)
     pos = rep["pos"]
-    mks = dv.marcados(cfg)
     partes: dict[str, object] = {}
     # A cache PARTILHADA pelos 83 decks: sem ela cada um pagava uma varredura da
     # `copies` inteira no `img_map` (ver `decks_vista.cache_nova`).
@@ -810,7 +809,11 @@ def dados(con, cfg=None, editavel: bool = False) -> tuple[dict, dict]:
     for fx in rep["formatos"]:
         fmt = fx["formato"]
         modo = fx["modo"]
-        escolhidos = [rep["decks"][l["id"]] for l in fx["decks"] if l["id"] in mks]
+        # A MESMA lista que o `relatorio` usou (`ids_escolhidos`), e não um
+        # segundo cálculo pelas marcas à mão: num formato do modelo de versões
+        # quem escolhe é a VERSÃO, e recalcular aqui dava à página uma
+        # repartição que discordava do seu próprio cabeçalho.
+        escolhidos = [rep["decks"][i] for i in fx.get("ids_escolhidos", ())]
         reparte = dv.reparticao(escolhidos) if modo == dv.ROTATIVAS else {}
         for linha in fx["decks"]:
             d = rep["decks"][linha["id"]]
