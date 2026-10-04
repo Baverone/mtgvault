@@ -216,7 +216,16 @@ mtgvault/
                   torna barato descer no índice. `grandes_de_hoje` alimenta o
                   aviso. Ver «NUNCA PERDER UM TORNEIO DE PAPEL GRANDE»
   moxfield.py     decks do Moxfield
-  watchlist.py    vigiar jogadores e decks, snapshots e diffs
+  watchlist.py    vigiar jogadores e decks, snapshots e diffs. E, desde
+                  2026-10-04 ao fim do dia, A VIGIA DE UM ARQUÉTIPO DO MTGTOP8:
+                  `check_mtgtop8_archetype` (lista NOVA e troca da MELHOR
+                  classificada, um pedido por corrida — o snapshot é o ÍNDICE da
+                  página e não as cartas), `_melhor` (menor posição, a mais
+                  recente a desempatar) e o mapa `VERIFICADORES`, que fez o
+                  `check_all` FALHAR ALTO num kind que não sabe tratar — o
+                  `archetype` estava no CHECK desde sempre e nunca teve
+                  implementação: era saltado sem erro. Ver «O SIDEBOARD
+                  APLICADO, A RESERVA A 20 % E A VIGIA DO ARQUÉTIPO»
   vigia.py        A VIGIA DE CARTAS (2026-09-26): «vai conferindo» — que cartas
                   ele espera ver numa decklist (`cartas_vigiadas`), e o aviso no
                   dia em que aparecem. Abre o filtro de tier SÓ para essas listas
@@ -2081,6 +2090,192 @@ gesto certo é um toque no telemóvel à frente da estante. Motor em
     estes**: a diferença no euro é a cadeia só-CardTrader de 04/10 (cinco das 19
     não têm preço nenhum, ver o furo abaixo) e no nome é uma unidade.
 
+**O SIDEBOARD APLICADO, A RESERVA A 20 % E A VIGIA DO ARQUÉTIPO (André,
+2026-10-04, ao fim do dia).** Três decisões pequenas. Motor: `loadout`
+(`compras_urgentes`/`urgencia_da_compra`/`EXCEPCAO_PENDENTE`), `mtgtop8`
+(`parse_archetype_rows`/`archetype_listas`), `watchlist`
+(`check_mtgtop8_archetype`/`VERIFICADORES`), config `compras_urgentes` +
+`reserva.staples_premodern_pct`. Testes em
+`tests/test_decisoes_1004_noite.py` (10 casos) e a prova de que chumbam em
+`tests/_chumba_decisoes_noite.py` (**17 de 17 pares**, um processo por par).
+Backup em `data/backups/vault-2026-10-04-tres-decisoes.db` (98,7 MB,
+`integrity_check ok`).
+
+- **1) O SIDEBOARD DO MODERN FOI APLICADO:** −1 Consign to Memory (fica em **3**)
+  e +1 **Whipflare** (entra; não tinha nenhum). O side continua em **15** e o
+  main em 60. O `proposta_sideboard` passou de `PROPOSTA NÃO APLICADA` a
+  **`APLICADA`** e **o registo da proposta fica inteiro** — `tirar`/`meter`/
+  `razao`/`em`/`quem`, mais `estado_anterior` e `como_voltar_atras`: ele pode
+  querer voltar atrás antes de 9/10, e o caminho de volta está escrito em vez de
+  ter de ser reconstruído. O **`test_caixas.caso_a_lista_de_qualificacao_fecha_em_60`**
+  (escrito às 14h do mesmo dia, a afirmar que a proposta NÃO estava aplicada)
+  teve a asserção **corrigida e não mascarada**, com as duas datas no docstring.
+- **A FALTA PASSOU A PODER DIZER *QUANDO*, e não havia campo nenhum.** As 237
+  compras valiam todas o mesmo e a que tem de estar na mão em cinco dias ficava a
+  meio de uma lista por nome. A chave nova é **`compras_urgentes`** (uma entrada
+  por carta × caixa: `prioridade`, `ate`, `porque`), lida **num sítio só**
+  (`loadout.compras_urgentes`, UMA vez por relatório — o config lê-se milhares de
+  vezes por corrida, é o defeito do `Path.resolve()` de 03/10), e a linha de falta
+  ganha `urgencia`. O **`dias` é CALCULADO** de hoje para o `ate` e nunca escrito:
+  uma data-limite gravada como «faltam 5 dias» mente no dia seguinte. **Uma
+  data-limite que PASSOU continua a dizer-se** (`passou: True`) em vez de
+  desaparecer calada no dia em que mais importava. Hoje: Whipflare, caixa
+  `modern`, prioridade **alta**, até **2026-10-09** (o primeiro dia do RC Ghent).
+- **A EXCEPÇÃO AO FOIL FICOU PENDENTE, E NÃO SE DECIDIU POR ELE.** A caixa
+  `modern` está no grupo `spml` (`acabamento: foil`) e o **Whipflare só existe em
+  foil em New Phyrexia**: **20,20 €** contra **0,21 €** do nonfoil mais barato
+  (C14) — 96× por uma carta de sideboard em cópia única. Fica
+  `material_pendente.estado: "PENDENTE DE DECISÃO DO ANDRÉ"`, com os dois preços
+  à vista, e **entretanto a lista de compras sugere o nonfoil**
+  (`loadout.EXCEPCAO_PENDENTE`, irmão do `SEM_FOIL` de 19/09: vale como *«nonfoil,
+  e diz-se porquê»* — a linha mostra *«EN · nonfoil — decisão do material
+  PENDENTE»*).
+  - **A excepção pendente vale para a SUGESTÃO DE COMPRA e NÃO para a alocação**,
+    e a diferença é deliberada: mexer no `_porque_nao` era decidir a excepção —
+    um Whipflare nonfoil passava a fechar o slot sem ele ter dito nada. Enquanto
+    estiver pendente a caixa continua a exigir foil, **e a ficha di-lo**
+    (`se_comprar_o_nonfoil`): se ele comprar o nonfoil, a cópia entra como
+    substituto e o slot só fecha quando ele puser `aplicado: true` — que é uma
+    linha no config e aí vale **também** na alocação (`resolve_slots` anota as
+    APLICADAS em `s["excepcoes_material"]`; as pendentes não entram lá). Dizê-lo
+    agora é melhor do que ele descobrir quando a carta chegar.
+  - **A RESSALVA QUE IMPORTA, e é medida:** os 20,20 €/0,21 € são do **price guide
+    do Cardmarket**, que saiu da cadeia a 04/10 de manhã. Na régua em vigor
+    (`cardtrader` sozinho) o **Whipflare não tem preço nenhum** — `card_price`
+    devolve `None` nos dois acabamentos —, por isso entra na lista de compras a
+    **0,00 €** e conta em `sem_preco` (**16 → 17** cópias). O «fechar tudo» não
+    sobe um cêntimo por causa dela, e é por isso que esse número é hoje um
+    **mínimo**.
+- **O CURSED TOTEM FOI CONFERIDO E NÃO ENTROU NA LISTA** (era um ajuste
+  condicional, não decidido): **não está no sideboard** — tem caso de teste a
+  exigi-lo — e ele não tem nenhuma cópia (0 na base, verificado). Dois números da
+  ordem precisam de correcção, e são a favor dele: em Modern a caixa pede **foil**,
+  logo o Cursed Totem custaria o foil de MH2 (**6,83 €** no Cardmarket, **9,09 €**
+  no CardTrader) e não os 1,16 € do nonfoil; e a 20 % **deixa de ser staple de
+  sideboard de Premodern** (era uma das 25 a 10 %), o que não muda nada hoje
+  porque ele não tem cópias para proteger.
+- **2) A RESERVA PASSOU A 20 %, e os números são estes** (medidos na base dele com
+  dois configs temporários, só a chave trocada, `_scratch/medir_staples.py`):
+
+  | | corte 10 % | corte 20 % |
+  |---|---|---|
+  | cartas staple | 25 | **7** |
+  | candidatas a venda | 606 c / 17 917,10 € | **609 c / 17 919,83 €** |
+
+  **ENTRAM +3 cópias / +2,73 €** — as **3 Essence Flare (PT)** — e **saem zero**.
+  **18 cartas deixam de ser staple** e só uma muda de lado: as outras 17 já
+  estavam protegidas pela **R5** (jogadas nos últimos 30 dias), que é a razão
+  escrita na `curva_staples` desde 02/10 (*«uma staple de sideboard é, por
+  definição, uma carta que apareceu numa lista do mês»*). Na venda vê-se o espelho
+  disto: `venda` **113 → 116 c** (1 588,89 € → 1 591,62 €) e `protegidas`
+  **162 → 159 c**. A **alocação não mexe** e a venda continua **escondida**
+  (`venda.mostrar: false`) e **congelada** até 12/10 — medir não é destrancar.
+  - **A RAZÃO ESTÁ ESCRITA NO CONFIG** (`reserva._staples_premodern_pct`), com os
+    números, porque daqui a um mês ninguém se lembra porque é que 10 virou 20:
+    com `cartas_partilhadas: rotativas` as cartas que entram em vários decks
+    marcados ficam guardadas por definição, o limiar passa a cobrir só as staples
+    que não estão em deck nenhum, e por isso pode ser mais largo. **NOTA HONESTA,
+    e está lá: a chave `cartas_partilhadas` AINDA NÃO EXISTE** no
+    `colecao_config.json` — vem da ordem `mtg-decks-estrutura`, que a 04/10 ainda
+    não tinha corrido (estava na inbox). O limiar está a 20 % por decisão dele; a
+    razão fica à espera da regra que a sustenta.
+- **3) A VIGIA DO ARQUÉTIPO DO CLOUD CORRE A SÉRIO** (`archetype?a=2629`), e não
+  ficou pendente. `watched` `kind = 'mtgtop8_archetype'`, `key = 2629`,
+  `format = duel-commander` — **id 6, inscrita e verificada contra o site**: 16
+  listas, melhor = **Liwei Luo, 1.º @ Watermelon Champion Cup Nights (29/09, deck
+  894185)**, que é exactamente o contexto que a ordem deu. A 2.ª corrida dá
+  `changed: False` — não há sinal falso.
+  - **O `kind` NOVO OBRIGOU À PRIMEIRA RECONSTRUÇÃO DE TABELA do `db._migrate`**,
+    e não havia outra saída: o que muda é um **CHECK** e o SQLite não tem
+    `ALTER TABLE … ALTER CONSTRAINT` — sem isto o `watchlist.add` dava
+    `IntegrityError` e a vigia não se inscrevia. **Duas armadilhas, e as duas
+    mordem:** as FK estão **LIGADAS** (`connect` faz `PRAGMA foreign_keys = ON`) e
+    a `watched_snapshots` referencia a `watched` com **ON DELETE CASCADE** — um
+    `DROP TABLE` apagava o histórico todo das listas vigiadas (15 snapshots na
+    base dele); e **o PRAGMA é um no-op dentro de uma transacção**, por isso o
+    `commit` antes. A contagem é conferida antes e depois e **levanta** se perder
+    uma linha. Medido na base dele: **5 vigias e 15 snapshots preservados**,
+    `foreign_key_check` limpo, e correr outra vez é um no-op. Dois casos de teste
+    e dois alvos no `_chumba`.
+  - **O PARSER REAPROVEITA O QUE JÁ HAVIA**, como a ordem mandou: a página do
+    arquétipo usa a MESMA `<tr class=hover_tr>` do índice de eventos, e as peças
+    são o `RE_LINHA_INDICE`, o `RE_DECK` (cujo comentário já dizia *«continua a
+    valer para as páginas de arquétipo»*), o `RE_PLAYER`, o `RE_LINHA_EVENTO` e o
+    `RE_DATE`. O que o `parse_archetype_rows` acrescenta é a **COLOCAÇÃO** — que
+    nenhum parser lia e é precisamente o que decide qual é «a melhor lista». Uma
+    linha **sem deck e sem data** não é uma lista (é o «METAGAME BREAKDOWN»), o
+    mesmo crivo do `parse_event_rows`. Validado contra a página REAL de 04/10, que
+    ficou como fixture no teste.
+  - **UM PEDIDO POR CORRIDA, e o snapshot é o ÍNDICE da página** — uma linha por
+    lista, não as cartas de cada deck: as cartas custariam um `.dec` por lista (16
+    pedidos na primeira corrida) e **nenhum deles responde à pergunta «mudou?»**.
+    Quem guarda cartas na base é a recolha (`harvest`), não a vigia. O
+    `list_hash`/`diff` de sempre continuam a funcionar porque a linha entra na
+    forma `(board, nome, qty)` que eles já usam, com a **posição** como `qty` — e
+    é isso que faz uma lista que SOBE de 3-4 para 1 contar como mudança.
+  - **A «MELHOR» CALCULA-SE** (`_melhor`): menor posição, e entre iguais a mais
+    recente. A página é cronológica e não ordenada por resultado; sem isto «a
+    melhor» era «a última».
+  - **E O `check_all` PASSOU A FALHAR ALTO EM QUEM NÃO SABE TRATAR.** Isto não
+    estava na ordem e apareceu a ler o código: o CHECK da `watched` aceita
+    **`archetype`** desde o primeiro dia e **nunca teve implementação** — era
+    saltado **sem uma linha de saída e sem erro**, o padrão do `event_tier`
+    aplicado a uma vigia. Era exactamente o risco que ele nomeou (*«uma vigia que
+    não vigia é pior do que nenhuma, porque ele fica a pensar que está
+    coberta»*), já materializado. Os verificadores passaram a um **mapa**
+    (`VERIFICADORES`) e um kind sem verificador sai com `nao_implementado` e a
+    frase *«esta vigia está INSCRITA e NÃO corre»*. **Nada se apagou**: o
+    `archetype` fica no CHECK.
+  - **O `_watch` do daily ganhou saída própria para este kind**: lista NOVA com
+    `[NOVA]` e a troca da melhor com `[MELHOR MUDOU]` + a anterior. O `diff`
+    genérico imprimia as listas como se fossem cartas (`deck +1 894562 ambroiseb1
+    @ MTGO League (0->5)`), que não diz nada a ninguém.
+  - **O DECK NÃO SE REGISTOU**, de propósito: isso é da ordem
+    `mtg-decks-estrutura`, que a 04/10 ainda **não tinha corrido** (confirmado na
+    inbox do runner). Aqui só a vigia.
+- **UM DEFEITO MEU, MEDIDO E CORRIGIDO ANTES DE IR AO `main`** — e é a razão
+  para medir caixa a caixa em vez de olhar só para o total. Ao fazer o preço da
+  linha seguir o acabamento da REGRA escrevi
+  `in ("foil", "prefere_foil")`; numa caixa **`prefere_foil`** (Duel Commander,
+  Pauper) a compra pode ser **nonfoil**, que é a mais barata que serve, e o
+  «fechar tudo» do Cloud subia de **188,61 € para 228,99 €** (**+40,38 €**) **sem
+  uma única carta mudar de lado**. O total batia com o delta e parecia uma
+  consequência das decisões; era um `in`. Hoje o teste é `== "foil"` e há caso
+  próprio (`caso_uma_caixa_prefere_foil_orcamenta_o_nonfoil`) e alvo no `_chumba`.
+- **MEDIDO LADO A LADO, o MESMO `vault.db` dos dois lados** (worktree em
+  `_revisao/main-0410b`; `_scratch/medir_efeito.py` nas duas árvores):
+
+  | | main | ramo |
+  |---|---|---|
+  | fechar tudo | 5 802,47 € | **5 802,47 €** |
+  | a comprar | 237 | **238** |
+  | sem preço | 16 | **17** |
+  | caixa `modern` | 93 % · 70/75 · comprar 5 · 28,44 € | **92 % · 69/75 · comprar 6 · 28,44 €** |
+  | venda | 113 c / 1 588,89 € | **116 c / 1 591,62 €** |
+  | protegidas | 162 c / 6 940,22 € | **159 c / 6 937,49 €** |
+  | candidatas | 606 c / 17 917,10 € | **609 c / 17 919,83 €** |
+  | `rl_sem_historico` / `guardar` | 103 c / 1 c | **iguais** |
+
+  **O «fechar tudo» fica IGUAL ao cêntimo** e **as 16 caixas que ele não mandou
+  tocar ficam iguais à percentagem e ao cêntimo**. Só a `modern` muda, e
+  explica-se à carta: −1 Consign to Memory (uma cópia que ele TEM deixa de ser
+  pedida: `tenho` 70 → 69) e +1 Whipflare a comprar, **a zero euros porque o
+  CardTrader não o cota**. As 3 cópias que passam de `protegidas` a `venda` são as
+  3 Essence Flare do limiar novo, ao cêntimo e sem uma cópia perdida pelo caminho.
+- **POR DECIDIR POR ELE:** (a) **a excepção ao foil do Whipflare** — 20,20 € foil
+  contra 0,21 € nonfoil, hoje PENDENTE e com o nonfoil sugerido; aplicar é
+  `material_pendente.aplicado: true`; (b) o Whipflare **sem preço na régua em
+  vigor**, o que faz a compra entrar a 0,00 € (se quiser o preço do Cardmarket de
+  volta, é `precos fonte cardtrader --recurso cardmarket`); (c) o **Cursed Totem**
+  continua fora da lista, como ajuste não decidido; (d) a razão do 20 % **pressupõe
+  a regra `cartas_partilhadas`**, que ainda não existe no config.
+  **[A (d) FECHOU-SE no mesmo dia, mais tarde]**: o `cartas_partilhadas` entrou
+  no `regras_por_formato` com a aba Decks (`rotativas` no premodern e no spml,
+  `dedicadas` nos outros três) — ver «A ABA DECKS». A chave é lida pelo
+  `decks_vista.partilha_do_formato` e **não mexe no motor da venda nem no limiar
+  da reserva**: o 20 % fica como está, e a sua razão passa de pressuposto a
+  facto escrito no config.
+
 **AS FOTOS FORAM APAGADAS E A CAMPANHA ESTÁ DESLIGADA (André, 2026-10-04, à
 letra).** *"podes apagar todas as fotos, A MINHA RESPONSABILIDADE, se for para
 ter fotos, vou tirar as fotos todas novamente"*.
@@ -3894,6 +4089,19 @@ de 2005, fora das 173 edições que a recolha do CardTrader cobre, e o price gui
 também nunca a teve); e **Kíli the Resourceful**, **Mistveil Plains** e **Surge
 of Salvation** têm preço só do `cardmarket` e a cadeia é `cardtrader` desde
 04/10 — essas são a **régua**, não um defeito.
+
+Alteração de 2026-10-04 ao fim do dia (nos dois sítios — `schema.sql` e
+`db._migrate()`): o CHECK da **`watched`** passou a aceitar
+**`mtgtop8_archetype`**, e isso obrigou à **PRIMEIRA RECONSTRUÇÃO DE TABELA**
+deste ficheiro — um CHECK não se altera com `ALTER TABLE`. Duas armadilhas, as
+duas medidas: as FK estão **ligadas** (`connect` faz `PRAGMA foreign_keys = ON`)
+e a `watched_snapshots` tem **ON DELETE CASCADE**, por isso um `DROP TABLE
+watched` apagava o histórico das listas vigiadas; e o `PRAGMA` é um **no-op
+dentro de uma transacção**, por isso há um `commit` antes. A contagem confere-se
+antes e depois e **levanta** se perder uma linha, e o `foreign_key_check` corre
+no fim. O kind antigo `archetype` **fica** no CHECK (nada se apaga) mas não tem
+verificador — quem o denuncia é o `watchlist.check_all`, que passou a falhar
+alto. Ver «O SIDEBOARD APLICADO, A RESERVA A 20 % E A VIGIA DO ARQUÉTIPO».
 
 Já custou caro uma vez: `decklists.event_tier` foi acrescentada só ao `vault.db`
 (commit 56ffa3f, 2026-08-03), nunca ao `schema.sql` nem ao `_migrate()`, e nada

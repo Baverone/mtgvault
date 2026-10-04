@@ -238,6 +238,29 @@ def _watch(con):
             print(f"    [erro]  {lbl}: {r['error']}")
         elif not r.get("found"):
             print(f"    [--]    {lbl}: sem listas ainda")
+        elif w["kind"] == "mtgtop8_archetype":
+            # A VIGIA DE UM ARQUÉTIPO (2026-10-04) tem duas perguntas próprias, e
+            # o `diff` genérico não servia: as "cartas" do snapshot são LISTAS, e
+            # imprimi-las como cartas dava `deck +1 894562 ambroiseb1 @ MTGO
+            # League (0->5)`, que não diz nada a ninguém.
+            marca = "[MUDOU]" if r["changed"] else "[igual]"
+            print(f"    {marca} {lbl}: {r['listas']} listas")
+            if r.get("primeira_vez"):
+                print("            (primeira corrida — fica a linha de partida)")
+            for x in r.get("novas") or []:
+                print(f"            [NOVA]  {x['data']}  {x['posicao']:>4}  "
+                      f"{x['jogador']} @ {x['evento']}  "
+                      f"(deck {x['deck_id']})")
+            if r.get("melhor_mudou"):
+                m = r["melhor"]
+                print(f"            [MELHOR MUDOU] agora {m['posicao']} de "
+                      f"{m['jogador']} @ {m['evento']} ({m['data']}, "
+                      f"deck {m['deck_id']})")
+                print(f"            era: {r['melhor_antes']}")
+            elif r.get("melhor"):
+                m = r["melhor"]
+                print(f"            melhor: {m['posicao']} {m['jogador']} @ "
+                      f"{m['evento']} ({m['data']})")
         elif r["changed"]:
             print(f"    [MUDOU] {lbl}")
             d = watchlist.diff(con, w["id"])
