@@ -248,7 +248,10 @@ class CTFalso:
         self.ofertas = ofertas
 
     def expansions(self):
-        return [{"id": 324, "code": "usg", "name_en": "Urza's Saga"}]
+        # o `game_id` faltava e a API a sério manda-o sempre (0 de 3 876 sem
+        # ele, medido a 2026-10-04) — ver `prices.expansoes_mtg`
+        return [{"id": 324, "code": "usg", "game_id": 1,
+                 "name": "Urza's Saga"}]
 
     def marketplace(self, expansion_id):
         return {"27930": self.ofertas}
