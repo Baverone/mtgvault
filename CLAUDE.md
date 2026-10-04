@@ -278,7 +278,7 @@ my_decks.py         segue decks-alvo (por assinatura e por jogador de MTGO) -> t
 commander_decks.py  decks de comandante por consenso EM CAMADAS: núcleo>=50% (=deck, deck_cards) / flex 25-50% / tech 15-25%; FILTRA pela cor do comandante. `tiers()` reusado pelo colecao_cor
 premodern_decks.py  consenso dos arquétipos-alvo de Premodern (`colecao_config.json`→`premodern_arquetipos_alvo`: UW Replenish, Enchantress) -> decks/deck_cards com o sufixo " (consenso)". Agrupa pelas etiquetas do `tagging` (o clustering não os separa) e usa `stock.stock_from_lists`. Mostrado nas `deckboxes` (era o `meusdecks`)
 refresh_collection.py  collection_owned p/ o index.html
-colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados, venda (a regra dos 5 % da RL, o `mostrar` de 2026-09-25 **e** o `congelado_ate` de 2026-10-01), cartas_vigiadas (a VIGIA DE CARTAS de 2026-09-26), reserva (o LIMIAR da reserva «maybe», 2026-10-01), caixas[].decisao / reserva / reserva_fora / comandante / reserva_assinatura (AS FASES, 2026-10-01), revalidacao.foto_manda (A FOTO É A VERDADE, 2026-10-02 — e o `playset_maximo` SAIU do `regras_por_formato` nesse dia), regras_por_formato: lingua/acabamento dos TRÊS grupos trocados a 2026-10-02 (`_regras_2026_10_02`: duel-commander e pauper `en` + `prefere_foil`, premodern `nonfoil`), basicas.declaradas / declaradas_em (A CONTAGEM DECLARADA, 2026-10-02)
+colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados, venda (a regra dos 5 % da RL, o `mostrar` de 2026-09-25 **e** o `congelado_ate` de 2026-10-01), cartas_vigiadas (a VIGIA DE CARTAS de 2026-09-26), reserva (o LIMIAR da reserva «maybe», 2026-10-01), caixas[].decisao / reserva / reserva_fora / comandante / reserva_assinatura (AS FASES, 2026-10-01), revalidacao.foto_manda (A FOTO É A VERDADE, 2026-10-02 — e o `playset_maximo` SAIU do `regras_por_formato` nesse dia; **a `false` e com `desde: null` desde 2026-10-04**, o dia em que as fotos foram apagadas), regras_por_formato: lingua/acabamento dos TRÊS grupos trocados a 2026-10-02 (`_regras_2026_10_02`: duel-commander e pauper `en` + `prefere_foil`, premodern `nonfoil`), basicas.declaradas / declaradas_em (A CONTAGEM DECLARADA, 2026-10-02)
 ```
 Cada `.html` gerado tem de estar na lista do `git add` do workflow (`daily.yml`,
 passo "Guardar HTML") **e na lista `HTML` da tarefa `ai-pc/tasks/mtgvault-daily`**
@@ -1460,6 +1460,79 @@ listas."* Tinha razão, e o nome estava a ser deitado fora **na recolha**. Motor
   no Pioneer): é o agrupamento a ter partido um deck em dois clusters, e antes
   isso estava escondido atrás de dois nomes inventados diferentes.
 
+**AS FOTOS FORAM APAGADAS E A CAMPANHA ESTÁ DESLIGADA (André, 2026-10-04, à
+letra).** *"podes apagar todas as fotos, A MINHA RESPONSABILIDADE, se for para
+ter fotos, vou tirar as fotos todas novamente"*. **A secção a seguir (02/10)
+continua a descrever o motor, que não se tocou — mas o INTERRUPTOR está hoje a
+`false` e a campanha a `null`.** Testes em `tests/test_fotos_apagadas.py` (16
+casos) e a prova de que chumbam em `tests/_chumba_fotos_apagadas.py` (4 alvos).
+
+- **O QUE SE APAGOU, e só isto:** as **322 imagens** de
+  `data/fotos/anteriores/` (**96,4 MB**) e os **723 `photo_path`** da `copies`.
+  É um levantamento **PONTUAL** da regra de 09/09 (*nada se apaga*), dado por
+  ele, **só para as fotos de cartas**. A regra continua inteira para tudo o
+  resto: as **737 linhas / 1 678 cartas** da `copies` ficam todas, a base, o
+  config e os registos ficam.
+- **A ORDEM DOS PASSOS É O QUE TORNA ISTO REVERSÍVEL NO QUE PODE SER:** backup
+  (`data/backups/vault-2026-10-04-antes-de-apagar-fotos.db`, 90,7 MB,
+  `integrity_check ok`) → **registo** → só depois o disco. O registo é
+  **`data/fotos-apagadas-2026-10-04.csv`** (723 linhas: `copy_id`, carta,
+  edição, número, acabamento, língua, quantidade e o `photo_path` que tinha) e
+  **vai no Git** — é a única memória do que cada cópia tinha, e um registo que
+  só existisse neste PC não era registo. **Não se apaga.**
+- **APAGAR AS FOTOS NÃO MEXEU UM ÚNICO NÚMERO, e foi medido lado a lado** com o
+  mesmo código e as duas bases (`_revisao/apagar_fotos_5_comparar.py`): fechar
+  tudo **10 281,35 €**, 294 a comprar, valor **136 379,11 €**, 1 678 cartas, as
+  nove saídas da venda e as 17 caixas **iguais**. A razão está na base: as 723
+  fotos eram **todas anteriores a 20/09** e o `validado_em` estava a **NULL nas
+  737 linhas** — nenhuma delas era prova desta campanha. O `foto_anterior`, o
+  `verso_path`, o `condition_em`/`condition_motivos` e a tabela `condition_log`
+  estavam **vazios**: não se perdeu um juízo de estado nem um verso.
+- **A CAMPANHA FICOU DESLIGADA, e isso não é cosmética.** Com `foto_manda: true`
+  e zero fotos, a regra *"se não tiver foto, não tem carta"* recusava a colecção
+  INTEIRA: o Início dizia *«0 de 1 678 cartas confirmadas por foto»*, o Blue Farm
+  **0 %** com 96 % na gaveta, o Oswald 0 % com 93 %, e as 113 cópias da venda
+  caíam todas em `sem_foto`. A regra existe para o obrigar a fotografar, não para
+  lhe esconder a colecção enquanto não o faz. `revalidacao.desde: null` +
+  `foto_manda: false` devolvem o vault ao que era — Stiflenought 100 %, Blue Farm
+  96 %, Affinity (Luffy) 100 %, Oswald 93 %.
+- **O `index.html` E O `arrumacao.html` TIVERAM DE SER REGERADOS, e é a parte que
+  quase passou.** O `inicio.py` e o `arrumacao.py` já liam o interruptor
+  (`if confirmado.manda() else None`) — **o código estava certo**. O que mentia
+  era o **HTML em disco**, escrito pelo `daily` das 03:30 com a regra ainda
+  ligada: o Início continuava a afirmar *«uma cópia só conta para as decisões
+  quando tem foto desta campanha»*, que a partir de hoje é **falso**. Um
+  interruptor que se desliga sem regerar as páginas é o padrão do `event_tier`
+  na porta de entrada do site. Verificado no texto **VISÍVEL** das páginas
+  (`_revisao/apagar_fotos_7_frases.py`, que descarta os `<script>`: a frase do
+  bloco «📷 A foto é a verdade» vive num template string do JavaScript da
+  Arrumação e **está sempre no ficheiro**, desenhe-se ou não — quem decide é o
+  payload, e ele diz `foto: {manda: false}`).
+- **O CAMINHO DAS FOTOS NÃO SE APAGOU**, e é a metade que interessa quando ele
+  voltar a fotografar: `fotosite.py`, `revalidacao.py`, `fotocaixa.py`,
+  `fotos.py` e `confirmado.py` estão intactos, a **pasta** `data/fotos/anteriores/`
+  fica (vazia — é o destino do `fotos.arquivar`), e há caso de teste que põe
+  `foto_manda: true` outra vez e exige que a regra volte a morder (0 % com a
+  caixa cheia). Voltar a ligar são duas linhas no config.
+- **O QUE FICA A SABER, e é para a ordem seguinte:** (a) o `fotografar` (589) e o
+  `collection.copias_sem_foto` (737) **continuam a contar**, com o interruptor
+  ligado ou desligado — é a metade informativa (`got - got_conf`), sempre foi
+  assim, e as DECISÕES ignoram-na; o `esperadas.md` passa a listar as 737 como
+  *«na base, sem foto»*; (b) o item **«Revalidação por foto»** da barra lateral
+  (`site_shell.SECCOES`) continua a apontar para `deckboxes.html#revalidacao`,
+  uma aba que com a campanha desligada **não existe** — é a única ponta solta, e
+  não se mexeu nela porque tirar um item da barra muda as onze páginas;
+  (c) `fases.fotos_perdidas` passou de **33 fotos / 165 cópias / 12 639 €** para
+  **zero**, e é o certo: «foto perdida» é `photo_path` cheio **e** ficheiro fora,
+  e já não há promessa de foto nenhuma.
+- **ENCONTRARAM-SE 106 IMAGENS NOUTRO SÍTIO E NÃO SE TOCOU NELAS:**
+  `scratchpad_crops/` (64,4 MB, PNG, todas de **25/08/2026 entre as 19:47 e as
+  23:51** — `p1_volrath`, `pm17_bayou_full`, `p21c_harm_text`). São recortes de
+  trabalho de uma sessão de leitura, não fotos da colecção, e a ordem mandava
+  listá-las em vez de as apagar. As pastas `pendentes/`, `Colocar fotos da
+  coleção aqui/` e `assets/deckboxes/` tinham **zero** imagens (só `_plano.txt`,
+  `.gitkeep` e `LEIA-ME`).
+
 **A FOTO É A VERDADE, E A BASE É O REGISTO DELA (André, 2026-10-02, à letra).**
 *"cada deck tem as suas cartas"*; *"o que eu colocar de fotos no deck, é daquele
 deck, ponto"*; *"se não tiver foto, não tem carta"*; *"assim fico responsável por
@@ -1587,7 +1660,8 @@ chumbam em `tests/_chumba_foto_manda.py` (9 alvos, 16 pares medidos).
   declarada*) e o `tenho_conf_total` é **0**, que é a verdade; o deck continua a
   fechar, porque o `tenho` soma as duas. Ver «AS REGRAS DE MATERIAL DOS TRÊS
   GRUPOS, E AS DUAS EXCEPÇÕES DAS BÁSICAS».
-- **O INTERRUPTOR é `revalidacao.foto_manda`** (hoje `true`), na MESMA campanha
+- **O INTERRUPTOR é `revalidacao.foto_manda`** (**hoje `false`, desde
+  2026-10-04** — ver a secção «AS FOTOS FORAM APAGADAS»), na MESMA campanha
   de 20/09 — não se inventou uma segunda. `false` devolve o vault exactamente ao
   que era, e tem caso próprio. É o padrão do `venda.mostrar`.
 - **O TECTO DE PLAYSET DO PREMODERN FOI-SE** (ordem dele, no mesmo dia: *"esquece

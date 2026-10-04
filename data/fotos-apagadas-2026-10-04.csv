@@ -1,0 +1,724 @@
+copy_id,carta,edicao,numero,acabamento,lingua,quantidade,photo_path,foto_anterior,validado_em,verso_path,balde
+1,Ad Nauseam,ala,63,nonfoil,en,1,841012f7-260c-4967-9901-f99d8e693004.jpg,,,,Colecção
+2,An Offer You Can't Refuse,fdn,311,nonfoil,en,1,841012f7-260c-4967-9901-f99d8e693004.jpg,,,,Colecção
+3,Ancient Tomb,ltc,357,nonfoil,en,1,89a5b2dd-97a4-4a4f-a754-6e95026097d7.jpg,,,,Colecção
+4,Arcane Signet,cmm,653,nonfoil,en,1,8b940d79-d957-4fdf-b815-631efbc0942a.jpg,,,,Colecção
+5,Arid Mesa,spg,109,nonfoil,en,1,8f44e248-de70-4411-8fa3-726f1c89ef1b.jpg,,,,Colecção
+6,Badlands,3ed,282,nonfoil,en,1,7877f86c-2351-4de4-bd9d-9d7bbec2c3f6.jpg,,,,Colecção
+8,"Birgi, God of Storytelling // Harnfel, Horn of Bounty",khm,311,nonfoil,en,1,4e791d0f-be43-4518-90df-61ed61c3f564.jpg,,,,Colecção
+9,Bloodstained Mire,mh3,352,nonfoil,en,1,9b4a8e37-6eb9-4e24-ab73-aeda94f6e9e6.jpg,,,,Colecção
+10,Borne Upon a Wind,sld,2228,nonfoil,en,1,841012f7-260c-4967-9901-f99d8e693004.jpg,,,,Colecção
+11,Brain Freeze,sld,410,nonfoil,en,1,841012f7-260c-4967-9901-f99d8e693004.jpg,,,,Colecção
+12,Cabal Ritual,sld,2199,nonfoil,en,1,a10b5ff2-a6fe-4b3d-a814-a8991d2c0aaa.jpg,,,,Colecção
+13,Cavern of Souls,ltc,362,nonfoil,en,1,89a5b2dd-97a4-4a4f-a754-6e95026097d7.jpg,,,,Colecção
+14,Chain of Vapor,ons,73,nonfoil,en,1,a10b5ff2-a6fe-4b3d-a814-a8991d2c0aaa.jpg,,,,Colecção
+15,Chrome Mox,spg,92,foil,en,1,8b940d79-d957-4fdf-b815-631efbc0942a.jpg,,,,Colecção
+16,City of Brass,sch,41,foil,en,1,8f44e248-de70-4411-8fa3-726f1c89ef1b.jpg,,,,Colecção
+17,Command Tower,sld,1697,nonfoil,en,1,9b4a8e37-6eb9-4e24-ab73-aeda94f6e9e6.jpg,,,,Colecção
+18,Culling the Weak,sld,1818,nonfoil,en,1,a10b5ff2-a6fe-4b3d-a814-a8991d2c0aaa.jpg,,,,Colecção
+19,Dark Ritual,fca,8,nonfoil,en,1,a10b5ff2-a6fe-4b3d-a814-a8991d2c0aaa.jpg,,,,Colecção
+20,Deflecting Swat,tle,311,nonfoil,en,1,a10b5ff2-a6fe-4b3d-a814-a8991d2c0aaa.jpg,,,,Colecção
+21,Demonic Consultation,ice,121,nonfoil,en,1,a10b5ff2-a6fe-4b3d-a814-a8991d2c0aaa.jpg,,,,Colecção
+22,Demonic Tutor,cmm,696,nonfoil,en,1,a33cc9eb-6c0c-47fa-a284-2b7cb3279e19.jpg,,,,Colecção
+23,Diabolic Intent,fca,34,nonfoil,en,1,a33cc9eb-6c0c-47fa-a284-2b7cb3279e19.jpg,,,,Colecção
+24,Dragon's Rage Channeler,sld,2048,nonfoil,en,1,4e791d0f-be43-4518-90df-61ed61c3f564.jpg,,,,Colecção
+25,Enlightened Tutor,tle,305,nonfoil,en,1,19bf41be-c163-4212-9d1c-baedc8b54e2b.jpg,,,,Colecção
+26,Esper Sentinel,mh2,12,nonfoil,en,1,49fdc2d7-940b-4c1d-9b52-8d3d9117b74f.jpg,,,,Colecção
+27,Exotic Orchard,sld,1231,nonfoil,en,1,9b4a8e37-6eb9-4e24-ab73-aeda94f6e9e6.jpg,,,,Colecção
+28,Fellwar Stone,5ed,369,nonfoil,en,1,8b940d79-d957-4fdf-b815-631efbc0942a.jpg,,,,Colecção
+29,Fierce Guardianship,cmm,694,nonfoil,en,1,a10b5ff2-a6fe-4b3d-a814-a8991d2c0aaa.jpg,,,,Colecção
+30,Final Fortune,sld,1956,nonfoil,en,1,718e8259-9af4-4302-9116-b9a8871d6667.jpg,,,,Colecção
+31,Flare of Duplication,mh3,333,nonfoil,en,1,718e8259-9af4-4302-9116-b9a8871d6667.jpg,,,,Colecção
+32,Flooded Strand,mh3,353,nonfoil,en,1,9b4a8e37-6eb9-4e24-ab73-aeda94f6e9e6.jpg,,,,Colecção
+33,Flusterstorm,cmd,46,nonfoil,en,1,718e8259-9af4-4302-9116-b9a8871d6667.jpg,,,,Colecção
+34,Force of Negation,2x2,346,nonfoil,en,1,718e8259-9af4-4302-9116-b9a8871d6667.jpg,,,,Colecção
+35,Force of Will,2xm,340,nonfoil,en,1,718e8259-9af4-4302-9116-b9a8871d6667.jpg,,,,Colecção
+36,Gamble,tle,312,nonfoil,en,1,a33cc9eb-6c0c-47fa-a284-2b7cb3279e19.jpg,,,,Colecção
+37,Gemstone Caverns,ltc,364,nonfoil,en,1,7850f873-4534-49bc-803d-2305b566f040.jpg,,,,Colecção
+38,Grand Abolisher,big,32,nonfoil,en,1,49fdc2d7-940b-4c1d-9b52-8d3d9117b74f.jpg,,,,Colecção
+39,Hexing Squelcher,ecl,317,nonfoil,en,1,4e791d0f-be43-4518-90df-61ed61c3f564.jpg,,,,Colecção
+40,Imperial Seal,2x2,354,nonfoil,en,1,df1b24b1-f95e-4566-993c-93535568aa44.jpg,,,,Colecção
+41,Into the Flood Maw,blb,52,nonfoil,en,1,718e8259-9af4-4302-9116-b9a8871d6667.jpg,,,,Colecção
+42,Intuition,tmp,70,nonfoil,en,1,718e8259-9af4-4302-9116-b9a8871d6667.jpg,,,,Colecção
+43,Jeska's Will,sld,1744,nonfoil,en,1,df1b24b1-f95e-4566-993c-93535568aa44.jpg,,,,Colecção
+44,"Kraum, Ludevic's Opus",fca,56,nonfoil,en,1,e2010544-89bb-4417-8998-9e50b0cc5bb9.jpg,,,,Colecção
+45,Last Chance,dmr,435,nonfoil,en,1,df1b24b1-f95e-4566-993c-93535568aa44.jpg,,,,Colecção
+46,"Lotho, Corrupt Shirriff",ltr,213,nonfoil,en,1,7be039b6-baf1-42ce-a78a-d2393821ca22.jpg,,,,Colecção
+47,Lotus Petal,tmp,294,nonfoil,pt,1,2409a85f-cb15-41ed-9132-7ca9d51430ae.jpg,,,,Colecção
+48,Mana Confluence,eos,25,nonfoil,en,1,9b4a8e37-6eb9-4e24-ab73-aeda94f6e9e6.jpg,,,,Colecção
+49,Mana Vault,2x2,394,nonfoil,en,1,2409a85f-cb15-41ed-9132-7ca9d51430ae.jpg,,,,Colecção
+50,Marsh Flats,spg,110,nonfoil,en,1,9b4a8e37-6eb9-4e24-ab73-aeda94f6e9e6.jpg,,,,Colecção
+51,Mental Misstep,sld,1179,nonfoil,en,1,39d59533-f79d-4d26-9a63-fa55b6093936.jpg,,,,Colecção
+52,Misty Rainforest,spg,111,nonfoil,en,1,85f66a0a-c2e3-4a8d-a08a-172e6e29d2ef.jpg,,,,Colecção
+53,Mnemonic Betrayal,grn,189,nonfoil,en,1,df1b24b1-f95e-4566-993c-93535568aa44.jpg,,,,Colecção
+54,Mockingbird,blb,305,nonfoil,en,1,7be039b6-baf1-42ce-a78a-d2393821ca22.jpg,,,,Colecção
+55,Mox Amber,dom,224,nonfoil,en,1,2409a85f-cb15-41ed-9132-7ca9d51430ae.jpg,,,,Colecção
+56,Mox Diamond,sth,138,nonfoil,en,1,e7e4491e-11a3-48b5-b534-5b7559dad64d.jpg,,,,Colecção
+57,Mox Opal,2xm,362,nonfoil,en,1,2409a85f-cb15-41ed-9132-7ca9d51430ae.jpg,,,,Colecção
+58,Mystic Remora,tle,16,nonfoil,en,1,c8650842-339c-4026-b67a-6d1262b8bff0.jpg,,,,Colecção
+59,Mystical Tutor,tle,308,nonfoil,en,1,39d59533-f79d-4d26-9a63-fa55b6093936.jpg,,,,Colecção
+60,Necropotence,wot,74,nonfoil,en,1,c8650842-339c-4026-b67a-6d1262b8bff0.jpg,,,,Colecção
+61,"Otawara, Soaring City",neo,414,nonfoil,en,1,85f66a0a-c2e3-4a8d-a08a-172e6e29d2ef.jpg,,,,Colecção
+62,Pact of Negation,ltc,523,nonfoil,en,1,39d59533-f79d-4d26-9a63-fa55b6093936.jpg,,,,Colecção
+63,Plateau,3ed,284,nonfoil,en,1,85f66a0a-c2e3-4a8d-a08a-172e6e29d2ef.jpg,,,,Colecção
+64,Polluted Delta,mh3,224,nonfoil,en,1,85f66a0a-c2e3-4a8d-a08a-172e6e29d2ef.jpg,,,,Colecção
+65,"Ragavan, Nimble Pilferer",fca,43,nonfoil,en,1,7be039b6-baf1-42ce-a78a-d2393821ca22.jpg,,,,Colecção
+66,Rain of Filth,sld,1547,nonfoil,en,1,39d59533-f79d-4d26-9a63-fa55b6093936.jpg,,,,Colecção
+67,Ranger-Captain of Eos,fca,2,nonfoil,en,1,4e791d0f-be43-4518-90df-61ed61c3f564.jpg,,,,Colecção
+68,Red Elemental Blast,3ed,171,nonfoil,en,1,39d59533-f79d-4d26-9a63-fa55b6093936.jpg,,,,Colecção
+69,Rhystic Study,fca,31,nonfoil,en,1,c8650842-339c-4026-b67a-6d1262b8bff0.jpg,,,,Colecção
+70,Rite of Flame,sld,2209,nonfoil,en,1,df1b24b1-f95e-4566-993c-93535568aa44.jpg,,,,Colecção
+71,"Rograkh, Son of Rohgahh",cmr,197,foil,en,1,4e791d0f-be43-4518-90df-61ed61c3f564.jpg,,,,Colecção
+72,Scalding Tarn,spg,112,nonfoil,en,1,85f66a0a-c2e3-4a8d-a08a-172e6e29d2ef.jpg,,,,Colecção
+73,Scrubland,3ed,286,nonfoil,en,1,85f66a0a-c2e3-4a8d-a08a-172e6e29d2ef.jpg,,,,Colecção
+74,Sevinne's Reclamation,mh3,267,nonfoil,en,1,19bf41be-c163-4212-9d1c-baedc8b54e2b.jpg,,,,Colecção
+75,Silence,sld,1445,nonfoil,en,1,39d59533-f79d-4d26-9a63-fa55b6093936.jpg,,,,Colecção
+76,Simian Spirit Guide,sld,1548,nonfoil,en,1,7be039b6-baf1-42ce-a78a-d2393821ca22.jpg,,,,Colecção
+77,Smothering Tithe,2x2,342,nonfoil,en,1,c8650842-339c-4026-b67a-6d1262b8bff0.jpg,,,,Colecção
+78,Snapback,tsr,87,nonfoil,en,1,39d59533-f79d-4d26-9a63-fa55b6093936.jpg,,,,Colecção
+79,Sol Ring,sld,1993,nonfoil,en,1,4ee38f90-361e-43b8-8450-5e8a9a4d8344.jpg,,,,Colecção
+80,Spire of Industry,aer,184,nonfoil,en,1,85f66a0a-c2e3-4a8d-a08a-172e6e29d2ef.jpg,,,,Colecção
+81,Swan Song,sld,1591,nonfoil,en,1,39d59533-f79d-4d26-9a63-fa55b6093936.jpg,,,,Colecção
+82,Tainted Pact,sta,33,nonfoil,en,1,8b940d79-d957-4fdf-b815-631efbc0942a.jpg,,,,Colecção
+83,Tarnished Citadel,ody,329,nonfoil,pt,1,85f66a0a-c2e3-4a8d-a08a-172e6e29d2ef.jpg,,,,Colecção
+84,Tataru Taru,fic,30,nonfoil,en,1,7be039b6-baf1-42ce-a78a-d2393821ca22.jpg,,,,Colecção
+85,Thassa's Oracle,sld,1280,nonfoil,en,1,7be039b6-baf1-42ce-a78a-d2393821ca22.jpg,,,,Colecção
+86,Tundra,3ed,289,nonfoil,en,1,7877f86c-2351-4de4-bd9d-9d7bbec2c3f6.jpg,,,,Colecção
+87,Tymna the Weaver,fca,18,nonfoil,en,1,e2010544-89bb-4417-8998-9e50b0cc5bb9.jpg,,,,Colecção
+88,Underworld Breach,spg,9,nonfoil,en,1,8f44e248-de70-4411-8fa3-726f1c89ef1b.jpg,,,,Colecção
+89,Valley Floodcaller,blb,308,nonfoil,en,1,7be039b6-baf1-42ce-a78a-d2393821ca22.jpg,,,,Colecção
+90,Vampiric Tutor,dmr,430,nonfoil,en,1,8b940d79-d957-4fdf-b815-631efbc0942a.jpg,,,,Colecção
+91,Verdant Catacombs,mh2,440,nonfoil,en,1,7877f86c-2351-4de4-bd9d-9d7bbec2c3f6.jpg,,,,Colecção
+92,Voice of Victory,tdm,331,nonfoil,en,1,7be039b6-baf1-42ce-a78a-d2393821ca22.jpg,,,,Colecção
+93,Volcanic Island,3ed,291,nonfoil,en,1,7877f86c-2351-4de4-bd9d-9d7bbec2c3f6.jpg,,,,Colecção
+94,Wheel of Fortune,3ed,185,nonfoil,en,1,df1b24b1-f95e-4566-993c-93535568aa44.jpg,,,,Colecção
+95,Windswept Heath,mh3,235,nonfoil,en,1,7877f86c-2351-4de4-bd9d-9d7bbec2c3f6.jpg,,,,Colecção
+96,Wishclaw Talisman,eld,110,nonfoil,en,1,e7e4491e-11a3-48b5-b534-5b7559dad64d.jpg,,,,Colecção
+97,Abolish,pcy,1,nonfoil,en,1,19bf41be-c163-4212-9d1c-baedc8b54e2b.jpg,,,,Colecção
+98,Ancient Den,sld,300,nonfoil,en,1,89a5b2dd-97a4-4a4f-a754-6e95026097d7.jpg,,,,Colecção
+99,Ancient Tomb,ltc,357,nonfoil,en,1,8f44e248-de70-4411-8fa3-726f1c89ef1b.jpg,,,,Colecção
+100,Arcane Signet,eld,331,nonfoil,en,1,d65d5889-8512-41f1-8374-2ce968c88abd.jpg,,,,Colecção
+101,Ashnod's Altar,sld,1679,nonfoil,en,1,d65d5889-8512-41f1-8374-2ce968c88abd.jpg,,,,Colecção
+102,Auriok Salvagers,mma,5,nonfoil,en,1,a24a96a5-01d2-442d-a242-d8890a8facd4.jpg,,,,Colecção
+103,Auriok Steelshaper,mrd,4,nonfoil,pt,1,a24a96a5-01d2-442d-a242-d8890a8facd4.jpg,,,,Colecção
+104,"Boromir, Warden of the Tower",ltr,4,nonfoil,en,1,a24a96a5-01d2-442d-a242-d8890a8facd4.jpg,,,,Colecção
+105,Cavern of Souls,2x2,402,nonfoil,en,1,9b4a8e37-6eb9-4e24-ab73-aeda94f6e9e6.jpg,,,,Colecção
+106,Chrome Mox,2xm,358,nonfoil,en,1,efbb5068-a56f-4f07-95d8-3ba18cca4c2a.jpg,,,,Colecção
+107,City of Traitors,exo,143,nonfoil,en,1,89a5b2dd-97a4-4a4f-a754-6e95026097d7.jpg,,,,Colecção
+108,"Cloud, Midgar Mercenary",fin,375,nonfoil,en,1,15a1cad2-b26c-4c22-a4f3-3bc52ed59d48.jpg,,,,Colecção
+109,Curious Farm Animals,tla,14,nonfoil,en,1,49fdc2d7-940b-4c1d-9b52-8d3d9117b74f.jpg,,,,Colecção
+110,Enlightened Tutor,tle,305,nonfoil,en,1,a10b5ff2-a6fe-4b3d-a814-a8991d2c0aaa.jpg,,,,Colecção
+111,Gemstone Caverns,ltc,364,nonfoil,en,1,9b4a8e37-6eb9-4e24-ab73-aeda94f6e9e6.jpg,,,,Colecção
+112,Glaring Fleshraker,mh3,7,foil,en,1,49fdc2d7-940b-4c1d-9b52-8d3d9117b74f.jpg,,,,Colecção
+113,Grim Monolith,ulg,126,nonfoil,en,1,efbb5068-a56f-4f07-95d8-3ba18cca4c2a.jpg,,,,Colecção
+114,Helping Hand,lci,17,nonfoil,en,1,8dab1d71-b9e2-48e7-a87e-121210b2793b.jpg,,,,Colecção
+115,Jolted Awake,mh3,33,nonfoil,en,1,8dab1d71-b9e2-48e7-a87e-121210b2793b.jpg,,,,Colecção
+116,Krark-Clan Ironworks,slc,11,nonfoil,en,1,efbb5068-a56f-4f07-95d8-3ba18cca4c2a.jpg,,,,Colecção
+117,Lotus Petal,mb2,226,nonfoil,en,1,8b940d79-d957-4fdf-b815-631efbc0942a.jpg,,,,Colecção
+118,Mana Vault,2x2,394,nonfoil,en,1,e7e4491e-11a3-48b5-b534-5b7559dad64d.jpg,,,,Colecção
+119,Memnite,som,174,nonfoil,en,1,808195b8-4795-4b40-92fe-eefdc35de966.jpg,,,,Colecção
+120,Moonsilver Key,mid,255,nonfoil,en,1,2409a85f-cb15-41ed-9132-7ca9d51430ae.jpg,,,,Colecção
+121,Mox Amber,dom,224,nonfoil,en,1,e7e4491e-11a3-48b5-b534-5b7559dad64d.jpg,,,,Colecção
+122,Mox Opal,2xm,362,nonfoil,en,1,e7e4491e-11a3-48b5-b534-5b7559dad64d.jpg,,,,Colecção
+123,Myr Moonvessel,dst,133,nonfoil,en,1,808195b8-4795-4b40-92fe-eefdc35de966.jpg,,,,Colecção
+124,Myr Retriever,2xm,277,nonfoil,en,1,808195b8-4795-4b40-92fe-eefdc35de966.jpg,,,,Colecção
+125,Oketra's Monument,akh,233,nonfoil,en,1,4ee38f90-361e-43b8-8450-5e8a9a4d8344.jpg,,,,Colecção
+126,Orim's Chant,mh3,323,nonfoil,en,1,19bf41be-c163-4212-9d1c-baedc8b54e2b.jpg,,,,Colecção
+127,Ornithopter,10e,336,nonfoil,en,1,808195b8-4795-4b40-92fe-eefdc35de966.jpg,,,,Colecção
+128,Paradise Mantle,sld,1236,nonfoil,en,1,4ee38f90-361e-43b8-8450-5e8a9a4d8344.jpg,,,,Colecção
+129,Patrician's Scorn,fut,29,nonfoil,en,1,19bf41be-c163-4212-9d1c-baedc8b54e2b.jpg,,,,Colecção
+130,Phoenix Down,fin,29,nonfoil,en,1,4ee38f90-361e-43b8-8450-5e8a9a4d8344.jpg,,,,Colecção
+131,Phyrexian Altar,2x2,396,nonfoil,en,1,4ee38f90-361e-43b8-8450-5e8a9a4d8344.jpg,,,,Colecção
+132,Plains,ody,331,nonfoil,en,5,7850f873-4534-49bc-803d-2305b566f040.jpg,,,,Colecção
+133,Plains,ody,331,nonfoil,en,7,3ad3ce53-aaa7-4dbc-82be-55ac8e041620.jpg,,,,Colecção
+134,Pre-War Formalwear,pip,21,nonfoil,en,1,4ee38f90-361e-43b8-8450-5e8a9a4d8344.jpg,,,,Colecção
+135,Puresteel Paladin,sld,1352,nonfoil,en,1,f9b48c5b-6233-4d99-b850-c86021a26a53.jpg,,,,Colecção
+136,Ranger-Captain of Eos,fca,2,nonfoil,en,1,f9b48c5b-6233-4d99-b850-c86021a26a53.jpg,,,,Colecção
+137,Recruiter of the Guard,mh3,266,nonfoil,en,1,f9b48c5b-6233-4d99-b850-c86021a26a53.jpg,,,,Colecção
+138,Return to the Ranks,m15,29,nonfoil,en,1,19bf41be-c163-4212-9d1c-baedc8b54e2b.jpg,,,,Colecção
+139,Salvage Scout,som,19,nonfoil,en,1,f9b48c5b-6233-4d99-b850-c86021a26a53.jpg,,,,Colecção
+140,Scrap Trawler,aer,175,nonfoil,en,1,f9b48c5b-6233-4d99-b850-c86021a26a53.jpg,,,,Colecção
+141,Sevinne's Reclamation,mh3,267,nonfoil,en,1,df1b24b1-f95e-4566-993c-93535568aa44.jpg,,,,Colecção
+142,Silence,sld,1816,nonfoil,en,1,d65d5889-8512-41f1-8374-2ce968c88abd.jpg,,,,Colecção
+143,Skullclamp,sld,1112,nonfoil,en,1,4ee38f90-361e-43b8-8450-5e8a9a4d8344.jpg,,,,Colecção
+144,Sol Ring,3ed,274,nonfoil,en,1,e7e4491e-11a3-48b5-b534-5b7559dad64d.jpg,,,,Colecção
+145,Solitude,mh2,307,nonfoil,en,1,f9b48c5b-6233-4d99-b850-c86021a26a53.jpg,,,,Colecção
+146,Springleaf Drum,slp,22,nonfoil,en,1,1bd733c0-b28a-405b-89df-416274dade60.jpg,,,,Colecção
+147,Starfield Shepherd,eoe,37,nonfoil,en,1,f9b48c5b-6233-4d99-b850-c86021a26a53.jpg,,,,Colecção
+148,"Teshar, Ancestor's Apostle",dom,36,nonfoil,en,1,b8d0c2b9-b494-403e-9bcd-a16d15aad2c1.jpg,,,,Colecção
+149,"Tezzeret, Cruel Captain",eoe,287,nonfoil,en,1,a24a96a5-01d2-442d-a242-d8890a8facd4.jpg,,,,Colecção
+150,Tormod's Crypt,mb2,235,nonfoil,en,1,1bd733c0-b28a-405b-89df-416274dade60.jpg,,,,Colecção
+151,Touch the Spirit Realm,gdy,4,nonfoil,en,1,1bd733c0-b28a-405b-89df-416274dade60.jpg,,,,Colecção
+152,Urza's Saga,sch,29,foil,en,1,8be79fa4-3a4e-4347-a1fd-3e85a9da9b1e.jpg,,,,Colecção
+153,Voice of Victory,tdm,331,nonfoil,en,1,b8d0c2b9-b494-403e-9bcd-a16d15aad2c1.jpg,,,,Colecção
+154,Walking Ballista,mb2,238,nonfoil,en,1,b8d0c2b9-b494-403e-9bcd-a16d15aad2c1.jpg,,,,Colecção
+155,Witch Enchanter // Witch-Blessed Meadow,mh3,239,nonfoil,en,1,b8d0c2b9-b494-403e-9bcd-a16d15aad2c1.jpg,,,,Colecção
+156,"Éowyn, Lady of Rohan",ltr,10,nonfoil,en,1,49fdc2d7-940b-4c1d-9b52-8d3d9117b74f.jpg,,,,Colecção
+157,Thoughtseize,mp2,45,foil,en,3,027f9679-4944-4c9e-b246-4e8c44515b3b.jpg,,,,Colecção
+158,Cabal Therapy,jud,62,foil,en,4,027f9679-4944-4c9e-b246-4e8c44515b3b.jpg,,,,Colecção
+159,Black Mage's Rod,fin,90,foil,en,4,05a6b2b6-76fb-4f30-85d6-07884e171b95.jpg,,,,Colecção
+160,Orcish Bowmasters,ltr,433,foil,en,3,05a6b2b6-76fb-4f30-85d6-07884e171b95.jpg,,,,Colecção
+161,Spell Pierce,slp,18,foil,en,4,08aed9ef-3934-42f2-aea9-572cb168a6c0.jpg,,,,Colecção
+162,Spell Snare,ecl,71,foil,en,3,08aed9ef-3934-42f2-aea9-572cb168a6c0.jpg,,,,Colecção
+163,Burrenton Forge-Tender,ima,14,foil,en,1,0cb4a4dd-759e-488b-86ad-ba6af120afb6.jpg,,,,Colecção
+164,Lay Down Arms,bro,11,foil,en,1,0cb4a4dd-759e-488b-86ad-ba6af120afb6.jpg,,,,Colecção
+165,Thundertrap Trainer,blb,307,foil,en,4,0fa163fa-770f-4fc6-a9da-63168d0f7ae3.jpg,,,,Colecção
+166,Daze,sld,1934,foil,en,1,0fa163fa-770f-4fc6-a9da-63168d0f7ae3.jpg,,,,Colecção
+167,Flusterstorm,soa,18,foil,en,2,10715d49-915d-4d05-98ce-d1077faf3ea5.jpg,,,,Colecção
+168,Brainstorm,2xm,338,foil,en,2,10715d49-915d-4d05-98ce-d1077faf3ea5.jpg,,,,Colecção
+169,Aven Interrupter,otj,4,foil,en,1,1110efd8-795d-494e-8324-71ad1ac319d0.jpg,,,,Colecção
+170,Get Lost,lci,333,foil,en,2,1110efd8-795d-494e-8324-71ad1ac319d0.jpg,,,,Colecção
+171,Ocelot Pride,sch,47,foil,en,4,15855d20-f4c6-4d19-9ba8-a6297f9c8537.jpg,,,,Colecção
+172,Witch Enchanter // Witch-Blessed Meadow,mh3,239,foil,en,4,161b8d78-d0c0-44c6-b9a4-e83bcd97f360.jpg,,,,Colecção
+173,Avatar's Wrath,tla,12,foil,en,2,161b8d78-d0c0-44c6-b9a4-e83bcd97f360.jpg,,,,Colecção
+174,Lightning Bolt,pf19,1,foil,en,4,169c6419-73e4-4735-8835-aa09709c736d.jpg,,,,Colecção
+175,Fire Magic,fin,136,foil,en,2,169c6419-73e4-4735-8835-aa09709c736d.jpg,,,,Colecção
+176,Archon of Cruelty,dsc,371,foil,en,4,21b17cd2-6a92-4850-91ff-df5e6a0ad137.jpg,,,,Colecção
+177,Strix Serenade,mh3,327,foil,en,1,250ca40b-997e-4178-8d48-dba168be2c10.jpg,,,,Colecção
+178,Swan Song,ths,65,foil,en,1,250ca40b-997e-4178-8d48-dba168be2c10.jpg,,,,Colecção
+179,Counterspell,sta,15,foil,en,4,2a73f2b3-2976-480c-805e-efd67c3b3ab1.jpg,,,,Colecção
+180,Consult the Star Charts,peoe,51p,foil,en,1,2a73f2b3-2976-480c-805e-efd67c3b3ab1.jpg,,,,Colecção
+181,Prismatic Ending,sld,1868,foil,en,4,2ed23bc2-6020-48d3-b236-02a6128e44a4.jpg,,,,Colecção
+182,Deafening Silence,eld,10,foil,en,1,2ed23bc2-6020-48d3-b236-02a6128e44a4.jpg,,,,Colecção
+183,Consign to Memory,mh3,54,foil,en,4,2f703b4d-d88a-427f-9881-47b721d970c8.jpg,,,,Colecção
+184,Ponder,sld,245,foil,en,3,3083b7a9-1b6a-474e-8dad-5d5827ee10ab.jpg,,,,Colecção
+185,Preordain,sld,2301,foil,en,4,3083b7a9-1b6a-474e-8dad-5d5827ee10ab.jpg,,,,Colecção
+186,Artist's Talent,blb,124,foil,en,4,3b5f7c2f-1970-4b3e-8a24-56b8917eb9f8.jpg,,,,Colecção
+187,Ravenous Robots,tmt,106,foil,en,2,3b5f7c2f-1970-4b3e-8a24-56b8917eb9f8.jpg,,,,Colecção
+188,Cori-Steel Cutter,tdm,343,foil,en,4,3c6a8520-198b-49b4-9cac-f5b9d97d7c72.jpg,,,,Colecção
+189,Weapons Manufacturing,eoe,311,foil,en,4,3c6a8520-198b-49b4-9cac-f5b9d97d7c72.jpg,,,,Colecção
+190,Obsidian Charmaw,mh2,137,foil,en,4,3fbf14de-25ce-4cbd-a1fd-6675ae80a0fb.jpg,,,,Colecção
+191,Splinter Twin,mm2,129,foil,en,4,3fbf14de-25ce-4cbd-a1fd-6675ae80a0fb.jpg,,,,Colecção
+192,Ephemerate,sld,1990,foil,en,4,3fc1350b-83ac-4ffb-b6bc-081211685027.jpg,,,,Colecção
+193,Seam Rip,eoe,34,foil,en,4,3fc1350b-83ac-4ffb-b6bc-081211685027.jpg,,,,Colecção
+194,Spider-Sense,spm,284,foil,en,3,4458060f-b500-4542-b8d1-ad2284429891.jpg,,,,Colecção
+195,Snapcaster Mage,isd,78,foil,en,4,4458060f-b500-4542-b8d1-ad2284429891.jpg,,,,Colecção
+196,"Wan Shi Tong, Librarian",tla,320,foil,en,4,489b91cc-5497-4bf4-beda-2d12bf73508a.jpg,,,,Colecção
+197,Repeal,gpt,32,nonfoil,pt,1,489b91cc-5497-4bf4-beda-2d12bf73508a.jpg,,,,Colecção
+198,Combustion Technique,tla,301,foil,en,2,52eac8bd-348c-48a9-8e2e-0a0206946704.jpg,,,,Colecção
+199,Iroh's Demonstration,tla,141,foil,en,2,52eac8bd-348c-48a9-8e2e-0a0206946704.jpg,,,,Colecção
+200,Collector Ouphe,sld,1077,foil,en,1,53f90ecf-1d82-4c68-a211-e06871ad7fde.jpg,,,,Colecção
+201,Malevolent Rumble,mh3,161,foil,en,4,53f90ecf-1d82-4c68-a211-e06871ad7fde.jpg,,,,Colecção
+202,Helitrooper,fic,22,foil,en,1,540b0d32-94e7-44a1-8059-23f79725d7e2.jpg,,,,Colecção
+203,Ethersworn Canonist,sld,2102,foil,en,1,540b0d32-94e7-44a1-8059-23f79725d7e2.jpg,,,,Colecção
+204,Metallic Rebuke,2xm,59,foil,en,4,5718cabb-37bd-4002-a78e-acc6c30f92e0.jpg,,,,Colecção
+205,Sink into Stupor // Soporific Springs,mh3,241,foil,en,1,5718cabb-37bd-4002-a78e-acc6c30f92e0.jpg,,,,Colecção
+206,March of Otherworldly Light,neo,369,foil,en,2,5c3e330c-24fe-4444-8954-13df3daddcae.jpg,,,,Colecção
+207,Flashback,sos,333,foil,en,1,5cb5d709-4389-4283-9c6d-eb81318f21c5.jpg,,,,Colecção
+208,"Thalia, Heretic Cathar",slc,2016,foil,en,1,60ba7be8-d8a7-4d72-b594-3c8d33ef89bf.jpg,,,,Colecção
+209,Wrath of the Skies,mh3,325,foil,en,4,65bffdd8-4653-4a75-9921-bf4903f89df7.jpg,,,,Colecção
+210,Seasoned Pyromancer,2x2,363,foil,en,4,66a053f3-457d-4aad-bc5f-f34a2313244c.jpg,,,,Colecção
+211,Fatal Push,2xm,343,foil,en,4,66c45482-b57b-420a-9477-e3ce52e62461.jpg,,,,Colecção
+212,Toxin Analysis,mkm,107,foil,en,1,66c45482-b57b-420a-9477-e3ce52e62461.jpg,,,,Colecção
+213,Bramble Familiar // Fetch Quest,woe,283,foil,en,4,6e36649c-3d40-4bda-9027-11144d83d9a3.jpg,,,,Colecção
+214,Badgermole Cub,tla,326,foil,en,4,6e36649c-3d40-4bda-9027-11144d83d9a3.jpg,,,,Colecção
+215,Solitude,mh2,307,foil,en,4,6fe5c2bd-df81-4f75-ad18-b0b6692132f5.jpg,,,,Colecção
+216,Restoration Angel,avr,32,nonfoil,pt,1,6fe5c2bd-df81-4f75-ad18-b0b6692132f5.jpg,,,,Colecção
+217,Murktide Regent,sld,1878,foil,en,2,70cd85a0-e49f-40f5-abfc-3d3e4eb01a05.jpg,,,,Colecção
+218,Orcish Bowmasters,ltr,433,foil,en,4,7285d724-6549-4dbe-9bda-50db8fa9e384.jpg,,,,Colecção
+219,Emperor of Bones,mh3,90,foil,en,4,7285d724-6549-4dbe-9bda-50db8fa9e384.jpg,,,,Colecção
+220,Veil of Summer,soa,60,foil,en,1,74140df8-6690-4a4c-acde-7195e823398a.jpg,,,,Colecção
+221,Firebending Lesson,tla,138,foil,en,4,7685a272-c886-45b3-8ad6-fd22943f9c82.jpg,,,,Colecção
+222,Unholy Heat,slp,4,foil,en,2,7685a272-c886-45b3-8ad6-fd22943f9c82.jpg,,,,Colecção
+223,Damnation,plc,85,foil,en,2,7ac52cee-dc90-4460-864a-82e93c7ced2a.jpg,,,,Colecção
+224,Snuff Out,sld,1792,foil,en,1,7ac52cee-dc90-4460-864a-82e93c7ced2a.jpg,,,,Colecção
+225,Fatal Push,2xm,343,foil,en,4,7c66a331-75d3-4860-9adb-aa2db2d49ecd.jpg,,,,Colecção
+226,Galvanic Discharge,mh3,122,foil,en,4,7e6828b0-f8ff-4019-a9ed-adfa213c24d2.jpg,,,,Colecção
+227,"Ragavan, Nimble Pilferer",mh2,315,foil,en,4,7e6828b0-f8ff-4019-a9ed-adfa213c24d2.jpg,,,,Colecção
+228,Meltdown,sld,2296,foil,en,4,81695313-36e3-4791-8eb4-50bdab51d43b.jpg,,,,Colecção
+229,Disdainful Stroke,soa,17,foil,en,1,8499ba77-7d3d-4b17-ad39-cb4324c043d6.jpg,,,,Colecção
+230,Accumulate Wisdom,tla,44,foil,en,4,8499ba77-7d3d-4b17-ad39-cb4324c043d6.jpg,,,,Colecção
+231,Airbender Ascension,tla,6,foil,en,1,87c8c344-0454-4154-b1d5-a7dc96ef9ad1.jpg,,,,Colecção
+232,Airbender Ascension,tla,364,foil,en,2,87c8c344-0454-4154-b1d5-a7dc96ef9ad1.jpg,,,,Colecção
+233,"Phelia, Exuberant Shepherd",mh3,364,foil,en,4,87c8c344-0454-4154-b1d5-a7dc96ef9ad1.jpg,,,,Colecção
+234,High Noon,otj,15,foil,en,4,88c0ae8e-d598-41a5-bb8a-ae47f114fb0e.jpg,,,,Colecção
+235,Unholy Heat,slp,4,foil,en,4,8b31cd55-ef22-4ec2-b917-873ad726b48d.jpg,,,,Colecção
+236,Lightning Bolt,tle,32,foil,en,1,8b31cd55-ef22-4ec2-b917-873ad726b48d.jpg,,,,Colecção
+237,Boomerang Basics,tla,46,foil,en,4,8ce43dcb-e7a5-48a1-a0cc-7a01896328be.jpg,,,,Colecção
+238,Gran-Gran,tla,54,foil,en,4,8ce43dcb-e7a5-48a1-a0cc-7a01896328be.jpg,,,,Colecção
+239,Archon of Emeria,znr,4,foil,en,1,979a4404-d9e8-4448-bc8f-e7fb30817982.jpg,,,,Colecção
+240,Sheoldred's Edict,one,279,foil,en,4,9a45f42e-5a62-4c28-8f7f-bcc70b6dc6d4.jpg,,,,Colecção
+241,Goryo's Vengeance,dsc,372,foil,en,4,9a45f42e-5a62-4c28-8f7f-bcc70b6dc6d4.jpg,,,,Colecção
+242,"Krang, Master Mind",tmt,230,foil,en,4,9aeb99f6-81dd-4326-896b-9ef74dd2b192.jpg,,,,Colecção
+243,Kappa Cannoneer,mh3,270,foil,en,4,9aeb99f6-81dd-4326-896b-9ef74dd2b192.jpg,,,,Colecção
+244,Quantum Riddler,eoe,305,foil,en,4,9d8eb2e1-31af-46c3-9ddd-a76a9439d8c7.jpg,,,,Colecção
+245,Lórien Revealed,ltr,60,foil,en,4,9d8eb2e1-31af-46c3-9ddd-a76a9439d8c7.jpg,,,,Colecção
+246,Amped Raptor,mh3,114,foil,en,4,9e85a31b-62c9-431c-a801-1960145f16db.jpg,,,,Colecção
+247,Makeshift Munitions,cmr,191,foil,en,1,9e85a31b-62c9-431c-a801-1960145f16db.jpg,,,,Colecção
+248,"Ajani, Nacatl Pariah // Ajani, Nacatl Avenger",mh3,442,foil,en,4,a562c615-faff-4bf4-a694-7b583edc71c4.jpg,,,,Colecção
+249,Containment Priest,m21,314,foil,en,1,a562c615-faff-4bf4-a694-7b583edc71c4.jpg,,,,Colecção
+250,Remorseful Cleric,m19,33,foil,en,1,a92c2dbc-a379-4efa-af47-334e038ec912.jpg,,,,Colecção
+251,Spell Snare,ecl,71,foil,en,4,aff75f8a-c486-4cf7-bcab-108bac297b50.jpg,,,,Colecção
+252,Stern Scolding,ltr,71,foil,en,1,aff75f8a-c486-4cf7-bcab-108bac297b50.jpg,,,,Colecção
+253,"Appa, Steadfast Guardian",tla,316,foil,en,4,b276a061-8b6e-4874-be15-4b912742a41f.jpg,,,,Colecção
+254,Wrath of the Skies,mh3,325,foil,en,4,b77d1742-6aec-4b7a-bec4-298897dd0f82.jpg,,,,Colecção
+255,Orim's Chant,mh3,323,foil,en,4,b8b2f162-afac-4b03-b4f5-3b6eea95bab1.jpg,,,,Colecção
+256,Guide of Souls,sch,46,foil,en,3,b8b2f162-afac-4b03-b4f5-3b6eea95bab1.jpg,,,,Colecção
+257,Force of Will,soa,19,foil,en,1,bf0bacbd-fbbe-4e60-805d-4ca203222356.jpg,,,,Colecção
+258,Subtlety,mh2,309,foil,en,4,bf0bacbd-fbbe-4e60-805d-4ca203222356.jpg,,,,Colecção
+259,Cling to Dust,thb,87,nonfoil,en,4,c0686c9d-3f04-4d48-a9f4-39e209ec0927.jpg,,,,Colecção
+260,Surgical Extraction,sld,2003,foil,en,1,c0686c9d-3f04-4d48-a9f4-39e209ec0927.jpg,,,,Colecção
+261,Surgical Extraction,sld,2022,nonfoil,en,1,c0686c9d-3f04-4d48-a9f4-39e209ec0927.jpg,,,,Colecção
+262,Logic Knot,fut,52,foil,en,4,c82c4be4-1ed3-4cf3-bf6f-3b4580c4ee0f.jpg,,,,Colecção
+263,"Emry, Lurker of the Loch",slc,2019,foil,en,4,c8df86c2-8103-494b-9f1b-bfe41ca86798.jpg,,,,Colecção
+264,Stock Up,dft,67,foil,en,4,c8df86c2-8103-494b-9f1b-bfe41ca86798.jpg,,,,Colecção
+265,Harbinger of the Seas,mh3,63,foil,en,4,c900e529-9876-459f-b685-52679332963b.jpg,,,,Colecção
+266,Flare of Denial,mh3,326,foil,en,4,c900e529-9876-459f-b685-52679332963b.jpg,,,,Colecção
+267,Consult the Star Charts,eoe,51,foil,en,4,cc32ba17-10e4-4f4e-a142-23237d027fcf.jpg,,,,Colecção
+268,Flow State,sos,49,foil,en,3,cc32ba17-10e4-4f4e-a142-23237d027fcf.jpg,,,,Colecção
+269,Flickerwisp,2x2,339,foil,en,4,cc376c07-211c-4fa4-9017-f1bc463e7a08.jpg,,,,Colecção
+270,Elite Spellbinder,slc,2021,foil,en,1,cc376c07-211c-4fa4-9017-f1bc463e7a08.jpg,,,,Colecção
+271,Consign to Memory,mh3,54,foil,en,6,cef230a8-8d64-4830-9df8-fcb2d65b2671.jpg,,,,Colecção
+272,Sink into Stupor // Soporific Springs,mh3,241,foil,en,4,d5aa80cb-92fb-4940-853d-a0d097d00eb9.jpg,,,,Colecção
+273,Force of Negation,tle,13,foil,en,3,d5aa80cb-92fb-4940-853d-a0d097d00eb9.jpg,,,,Colecção
+274,Abhorrent Oculus,sch,50,foil,en,2,da768373-af7a-4153-b008-0daa63410453.jpg,,,,Colecção
+275,Mystical Dispute,pr23,1,foil,en,4,da768373-af7a-4153-b008-0daa63410453.jpg,,,,Colecção
+276,Improvisation Capstone,sos,294,foil,en,1,dfbf5acb-e957-4c8e-9d21-7b9cf06e6ecb.jpg,,,,Colecção
+277,It'll Quench Ya!,tla,58,nonfoil,en,1,e258f798-d6e4-4191-8bf3-e1f01b11131a.jpg,,,,Colecção
+278,It'll Quench Ya!,tla,58,foil,en,1,e258f798-d6e4-4191-8bf3-e1f01b11131a.jpg,,,,Colecção
+279,"Loki, God of Mischief",msh,343,foil,en,4,e258f798-d6e4-4191-8bf3-e1f01b11131a.jpg,,,,Colecção
+280,Barrowgoyf,m3c,50,foil,en,1,e2e5f894-630a-415f-b20c-cdfe81da75df.jpg,,,,Colecção
+281,Break the Ice,mh2,77,foil,en,4,e2e5f894-630a-415f-b20c-cdfe81da75df.jpg,,,,Colecção
+282,Celestial Purge,mm2,11,foil,en,1,e3e36c85-07be-411b-a313-d45bd03f3925.jpg,,,,Colecção
+283,Blood Moon,sld,366,etched,en,3,e5e85937-ae87-4100-8845-2cb781938472.jpg,,,,Colecção
+284,The Legend of Roku // Avatar Roku,tla,357,foil,en,1,e5e85937-ae87-4100-8845-2cb781938472.jpg,,,,Colecção
+285,The Legend of Roku // Avatar Roku,tla,357,nonfoil,en,1,e5e85937-ae87-4100-8845-2cb781938472.jpg,,,,Colecção
+286,Toxic Deluge,sld,1860,foil,en,2,e7485586-ef6f-48e4-b87f-a945728128d2.jpg,,,,Colecção
+287,Toxic Deluge,sld,1860,nonfoil,en,2,e7485586-ef6f-48e4-b87f-a945728128d2.jpg,,,,Colecção
+288,Boggart Trawler // Boggart Bog,mh3,243,foil,en,1,e7485586-ef6f-48e4-b87f-a945728128d2.jpg,,,,Colecção
+289,"Elesh Norn, Mother of Machines",one,416,foil,en,1,e9ba1309-097a-4699-8342-03086b2967f1.jpg,,,,Colecção
+290,Solitude,spg,44,foil,en,1,e9ba1309-097a-4699-8342-03086b2967f1.jpg,,,,Colecção
+291,"Casey Jones, Vigilante",tmt,88,foil,en,4,edef364b-f5c2-456d-93c5-7ab10cb56ff3.jpg,,,,Colecção
+292,Fable of the Mirror-Breaker // Reflection of Kiki-Jiki,sch,44,foil,en,2,edef364b-f5c2-456d-93c5-7ab10cb56ff3.jpg,,,,Colecção
+293,Sewer-veillance Cam,tmt,53,foil,en,2,f6958f26-5e07-48ac-b838-b28fadd0d305.jpg,,,,Colecção
+294,Sewer-veillance Cam,tmt,53,nonfoil,en,2,f6958f26-5e07-48ac-b838-b28fadd0d305.jpg,,,,Colecção
+295,"Tamiyo, Inquisitive Student // Tamiyo, Seasoned Scholar",mh3,443,foil,en,4,f6958f26-5e07-48ac-b838-b28fadd0d305.jpg,,,,Colecção
+296,Phyrexian Arena,cn2,144,foil,pt,1,f74a172a-59f5-4f9d-9ceb-6a36c58087de.jpg,,,,Colecção
+297,Dismember,spg,41,foil,en,3,f74a172a-59f5-4f9d-9ceb-6a36c58087de.jpg,,,,Colecção
+298,Six,sld,2660,foil,en,2,fc97cb55-5f54-4723-887c-472f9c308b96.jpg,,,,Colecção
+299,Formidable Speaker,ecl,176,foil,en,1,fc97cb55-5f54-4723-887c-472f9c308b96.jpg,,,,Colecção
+300,Birds of Paradise,fic,483,foil,en,4,fe7dd74d-31a3-4acb-b9a3-ea993306fab3.jpg,,,,Colecção
+301,Clarion Conqueror,tdm,400,foil,en,1,649ced68-a41c-42c8-a76e-c0386c205c20.jpg,,,,Colecção
+302,Ancient Den,sld,300,foil,en,1,9c6de2b6-4c38-43e8-84ed-0b6d885f166a.jpg,,,,Colecção
+303,Anointed Peacekeeper,dmu,383,foil,en,1,b534d05e-ce13-47b1-9c22-310daedd39b2.jpg,,,,Colecção
+304,Benevolent Bodyguard,ema,4,foil,en,1,b534d05e-ce13-47b1-9c22-310daedd39b2.jpg,,,,Colecção
+305,Cathar Commando,fdn,139,foil,en,1,b534d05e-ce13-47b1-9c22-310daedd39b2.jpg,,,,Colecção
+306,"Cid, Freeflier Pilot",fic,13,foil,en,1,b534d05e-ce13-47b1-9c22-310daedd39b2.jpg,,,,Colecção
+307,City of Traitors,exo,143,nonfoil,en,1,9c6de2b6-4c38-43e8-84ed-0b6d885f166a.jpg,,,,Colecção
+308,"Cloud, Midgar Mercenary",fin,564,foil,en,1,30cd3816-0815-4464-9f3b-8afe6dd42864.jpg,,,,Colecção
+309,Crystal Vein,mir,325,nonfoil,en,1,27d641a1-726c-45c5-9d52-3044712311e6.jpg,,,,Colecção
+310,Drannith Magistrate,tle,2,foil,en,1,b32a1fb1-5eb2-4434-84c0-1ef8606ec3ba.jpg,,,,Colecção
+311,Dust Bowl,exp,37,foil,en,1,27d641a1-726c-45c5-9d52-3044712311e6.jpg,,,,Colecção
+312,"Eiganjo, Seat of the Empire",neo,413,foil,en,1,27d641a1-726c-45c5-9d52-3044712311e6.jpg,,,,Colecção
+313,Esper Sentinel,mh2,12,foil,en,1,b32a1fb1-5eb2-4434-84c0-1ef8606ec3ba.jpg,,,,Colecção
+314,Extraction Specialist,snc,12,foil,en,1,b32a1fb1-5eb2-4434-84c0-1ef8606ec3ba.jpg,,,,Colecção
+315,Gemstone Caverns,ltc,364,foil,en,1,27d641a1-726c-45c5-9d52-3044712311e6.jpg,,,,Colecção
+316,Giver of Runes,sld,1463★,foil,en,1,b32a1fb1-5eb2-4434-84c0-1ef8606ec3ba.jpg,,,,Colecção
+317,Glimmer Lens,onc,6,nonfoil,en,1,f7affa88-f1ff-4681-960c-b67152d7fa96.jpg,,,,Colecção
+318,Guide of Souls,mh3,29,foil,en,1,b32a1fb1-5eb2-4434-84c0-1ef8606ec3ba.jpg,,,,Colecção
+319,Jolted Awake,mh3,33,foil,en,1,e0425876-9314-419c-8a2f-142afc529fdb.jpg,,,,Colecção
+320,Lion Sash,neo,368,foil,en,1,b32a1fb1-5eb2-4434-84c0-1ef8606ec3ba.jpg,,,,Colecção
+321,Masterwork of Ingenuity,sld,863,foil,en,1,285db682-6031-4773-9afb-7c66e9e80d23.jpg,,,,Colecção
+322,Mirrex,one,254,foil,en,1,27d641a1-726c-45c5-9d52-3044712311e6.jpg,,,,Colecção
+323,Mother of Runes,sld,296,foil,en,1,b32a1fb1-5eb2-4434-84c0-1ef8606ec3ba.jpg,,,,Colecção
+324,Ocelot Pride,sch,47,foil,en,1,b32a1fb1-5eb2-4434-84c0-1ef8606ec3ba.jpg,,,,Colecção
+325,On Thin Ice,mh1,20,foil,en,1,eb30672d-4fed-4c80-8328-e9122bcbf3ae.jpg,,,,Colecção
+326,Oust,roe,40,foil,en,1,e0425876-9314-419c-8a2f-142afc529fdb.jpg,,,,Colecção
+327,Parallax Wave,nem,17,nonfoil,en,1,eb30672d-4fed-4c80-8328-e9122bcbf3ae.jpg,,,,Colecção
+328,Path to Exile,pf20,1,foil,en,1,3f9ff49e-fb4a-465a-a598-fe5d37169e08.jpg,,,,Colecção
+329,Portable Hole,afr,33,foil,en,1,285db682-6031-4773-9afb-7c66e9e80d23.jpg,,,,Colecção
+330,Pre-War Formalwear,pip,897,foil,en,1,285db682-6031-4773-9afb-7c66e9e80d23.jpg,,,,Colecção
+331,Puresteel Paladin,sld,1352,foil,en,1,11856212-2d98-406e-aadd-ba3efac42270.jpg,,,,Colecção
+332,Ranger-Captain of Eos,fca,2,foil,en,1,11856212-2d98-406e-aadd-ba3efac42270.jpg,,,,Colecção
+333,Recruiter of the Guard,cn2,22,foil,en,1,11856212-2d98-406e-aadd-ba3efac42270.jpg,,,,Colecção
+334,Reverent Mantra,mmq,44,nonfoil,en,1,3f9ff49e-fb4a-465a-a598-fe5d37169e08.jpg,,,,Colecção
+335,Sanctifier en-Vec,mh2,27,foil,en,1,11856212-2d98-406e-aadd-ba3efac42270.jpg,,,,Colecção
+336,Sigarda's Aid,sld,1727,foil,en,1,eb30672d-4fed-4c80-8328-e9122bcbf3ae.jpg,,,,Colecção
+337,"Skrelv, Defector Mite",sld,1926,foil,en,1,11856212-2d98-406e-aadd-ba3efac42270.jpg,,,,Colecção
+338,Skullclamp,sld,1112,foil,en,1,285db682-6031-4773-9afb-7c66e9e80d23.jpg,,,,Colecção
+339,Skyclave Apparition,gdy,2,foil,en,1,11856212-2d98-406e-aadd-ba3efac42270.jpg,,,,Colecção
+340,Snow-Covered Plains,mh1,250,foil,en,29,33d848be-5a57-4ac6-a816-56eb4e1b3d70.jpg,,,,Colecção
+341,Solitude,mh2,307,foil,en,1,11856212-2d98-406e-aadd-ba3efac42270.jpg,,,,Colecção
+342,Spectacular Spider-Man,spm,14,foil,en,1,b72eb183-09de-4ab1-8c57-7435c161d47e.jpg,,,,Colecção
+343,Stoneforge Mystic,2xm,337,foil,en,1,b72eb183-09de-4ab1-8c57-7435c161d47e.jpg,,,,Colecção
+344,Sunpearl Kirin,tdm,29,foil,en,1,b72eb183-09de-4ab1-8c57-7435c161d47e.jpg,,,,Colecção
+345,Swift Reconfiguration,nec,10,nonfoil,en,1,450a3a54-f62a-4148-a48d-58c9d17e4ebf.jpg,,,,Colecção
+346,Swords to Plowshares,sta,10,foil,en,1,3f9ff49e-fb4a-465a-a598-fe5d37169e08.jpg,,,,Colecção
+347,Tithe Taker,rna,27,foil,en,1,b72eb183-09de-4ab1-8c57-7435c161d47e.jpg,,,,Colecção
+348,Umezawa's Jitte,sld,1865,foil,en,1,285db682-6031-4773-9afb-7c66e9e80d23.jpg,,,,Colecção
+349,Urza's Saga,mh2,380,foil,en,1,450a3a54-f62a-4148-a48d-58c9d17e4ebf.jpg,,,,Colecção
+350,Voice of Victory,tdm,331,foil,en,1,b72eb183-09de-4ab1-8c57-7435c161d47e.jpg,,,,Colecção
+352,"Thalia, Guardian of Thraben",vow,331,foil,en,1,b72eb183-09de-4ab1-8c57-7435c161d47e.jpg,,,,Colecção
+353,Blood Fountain,vow,95,foil,en,2,90094cd4-6b61-4b52-87aa-b3471654cb04.jpg,,,,Colecção
+354,Blue Elemental Blast,ss1,2,foil,en,3,829535df-6a4f-4f52-909d-435b9c66b72b.jpg,,,,Colecção
+355,Drossforge Bridge,mh2,246,foil,en,4,4ef1303d-b283-4ce8-8399-37c95356fe98.jpg,,,,Colecção
+356,Extract a Confession,mkm,84,foil,en,2,6e661a3a-f7b0-45db-a5cd-12056c39dab8.jpg,,,,Colecção
+357,Galvanic Blast,sld,1732,foil,en,4,ae8e77c2-f930-4e8d-8455-2834f10bfa37.jpg,,,,Colecção
+358,Great Furnace,sld,303,foil,en,2,5b4f9ee2-42b4-4ccc-a70b-b1b393ceadb4.jpg,,,,Colecção
+359,Ichor Wellspring,brr,21,foil,en,4,fb13b3de-3355-4b73-a11c-906da5fb8b5a.jpg,,,,Colecção
+360,Krark-Clan Shaman,mrd,98,foil,en,2,ae8e77c2-f930-4e8d-8455-2834f10bfa37.jpg,,,,Colecção
+361,Mistvault Bridge,mh2,249,foil,en,4,5b4f9ee2-42b4-4ccc-a70b-b1b393ceadb4.jpg,,,,Colecção
+362,Myr Enforcer,f09,2,foil,en,4,829535df-6a4f-4f52-909d-435b9c66b72b.jpg,,,,Colecção
+363,Nihil Spellbomb,a25,226,foil,en,2,4cabd5aa-dd98-40d1-87b6-a29b3aae386f.jpg,,,,Colecção
+364,Pyroblast,ss3,5,foil,en,4,4ef1303d-b283-4ce8-8399-37c95356fe98.jpg,,,,Colecção
+365,Refurbished Familiar,mh3,105,foil,en,4,146fe4ff-e395-459a-84df-26a886fe1748.jpg,,,,Colecção
+366,Seat of the Synod,sld,301,foil,en,2,5b4f9ee2-42b4-4ccc-a70b-b1b393ceadb4.jpg,,,,Colecção
+367,Silverbluff Bridge,mh2,255,foil,en,2,4cabd5aa-dd98-40d1-87b6-a29b3aae386f.jpg,,,,Colecção
+368,Thoughtcast,spg,85,foil,en,4,d035119d-c98d-4409-8915-0989da44edcd.jpg,,,,Colecção
+369,Toxin Analysis,mkm,107,foil,en,2,90094cd4-6b61-4b52-87aa-b3471654cb04.jpg,,,,Colecção
+370,Vault of Whispers,sld,302,foil,en,4,7c2efb90-8c2c-4376-a4af-6da44e2ce14b.jpg,,,,Colecção
+371,"Aang, Swift Savior // Aang and La, Ocean's Fury",tla,298,foil,en,4,b205e7d9-e970-45de-8a97-1146c6bf8bcf.jpg,,,,Colecção
+372,"Aang, at the Crossroads // Aang, Destined Savior",tla,304,foil,en,4,f1019197-d3f3-421c-9f3f-f893d362a730.jpg,,,,Colecção
+373,Abandon Attachments,tla,205,foil,en,3,23553081-4c1a-4fc1-992a-eadfb1ff36c8.jpg,,,,Colecção
+374,Aether Spellbomb,mma,196,foil,en,1,e8e0ce83-ba90-45ae-9ee0-a74bb71086af.jpg,,,,Colecção
+375,Agna Qel'a,tla,264,foil,en,1,f1e13ebe-1912-49cb-8cbf-c8c1e06cacd2.jpg,,,,Colecção
+376,Arcbound Ravager,mps,31,foil,en,4,3254cb56-8e4c-477c-857f-d4133e263164.jpg,,,,Colecção
+377,Arena of Glory,mh3,351,foil,en,4,5f2e7ffa-3c94-4414-b78d-fc8f7529bf30.jpg,,,,Colecção
+378,"Ashiok, Dream Render",sld,399,foil,en,1,49a676ff-cf78-4927-a79a-5d340e1fdeaf.jpg,,,,Colecção
+379,Basim Ibn Ishaq,acr,141,foil,en,4,49ea09f6-599b-4e6f-8489-c6b5feaa1b03.jpg,,,,Colecção
+380,Bojuka Bog,ltc,358,foil,en,1,fc23be2a-f9fc-41fc-b571-a12b7239f54e.jpg,,,,Colecção
+381,"Boseiju, Who Endures",neo,412,foil,en,1,1d6fb9e8-b871-48f8-b287-c906658bd6fc.jpg,,,,Colecção
+382,Cavern of Souls,ltc,362,foil,en,3,786a93c1-3287-484f-86e3-40d69e079a80.jpg,,,,Colecção
+383,Cavern of Souls,ltc,392,foil,en,1,ea4dcece-36d6-41cf-807b-bd52049ceaa1.jpg,,,,Colecção
+384,Chalice of the Void,lcc,105,foil,en,1,c44a232d-6cf3-41df-8f15-9465664b4df2.jpg,,,,Colecção
+385,Claws of Gix,tsb,107,foil,en,3,613b8470-7a40-43d2-a47c-8c70fdf63325.jpg,,,,Colecção
+386,Dalkovan Encampment,tdm,394,foil,en,1,c6a59042-a4b2-4687-a18b-c57fbbcd87ca.jpg,,,,Colecção
+387,Damping Sphere,dmr,219,foil,en,4,e9c7ead6-05a4-4e54-afd1-7b8d3e1a1b8d.jpg,,,,Colecção
+388,Deepway Navigator,ecl,214,foil,en,4,22530cb4-5626-47b0-b145-fc002b8041f1.jpg,,,,Colecção
+389,"Doc Aurlock, Grizzled Genius",otj,201,foil,en,4,94993d5d-1dd3-4be5-8f9c-5620c8e6efe6.jpg,,,,Colecção
+390,Eiganjo Castle,sld,2230,foil,en,1,34a669c7-979b-43d4-ad4b-d82f2dcacbbb.jpg,,,,Colecção
+391,"Eiganjo, Seat of the Empire",neo,413,foil,en,1,34a669c7-979b-43d4-ad4b-d82f2dcacbbb.jpg,,,,Colecção
+392,Elegant Parlor,mkm,325,foil,en,1,570fbcd8-6d7a-4a01-a185-353400fdd5f5.jpg,,,,Colecção
+393,Engineered Explosives,mps,36,foil,en,4,c44a232d-6cf3-41df-8f15-9465664b4df2.jpg,,,,Colecção
+394,Field of Ruin,thb,242,foil,en,4,6c7cda8b-1ea2-467a-a036-d95493533879.jpg,,,,Colecção
+395,Fiery Islet,acr,112,foil,en,4,fc23be2a-f9fc-41fc-b571-a12b7239f54e.jpg,,,,Colecção
+396,Firespout,v14,6,foil,en,2,3edb3ac6-27ec-46c9-bd09-4e6d4b5f0bd1.jpg,,,,Colecção
+397,Flame of Anor,ltr,406,foil,en,4,3edb3ac6-27ec-46c9-bd09-4e6d4b5f0bd1.jpg,,,,Colecção
+398,Floodfarm Verge,dsk,330,foil,en,3,890604ef-fad8-4559-8a1c-146875ac75ad.jpg,,,,Colecção
+399,Geier Reach Sanitarium,sld,1408,foil,en,1,786a93c1-3287-484f-86e3-40d69e079a80.jpg,,,,Colecção
+400,Ghost Vacuum,dsk,326,foil,en,2,8af1bcae-3740-4f71-bc48-af939b3d4bf8.jpg,,,,Colecção
+401,Glaring Fleshraker,mh3,7,foil,en,4,ac649e11-f53e-418d-9096-403a925d1c34.jpg,,,,Colecção
+402,Grafdigger's Cage,m20,227,foil,en,1,7ead0e0e-1450-419e-8f51-b1d707e502c4.jpg,,,,Colecção
+403,Grinding Station,5dn,127,foil,en,3,3254cb56-8e4c-477c-857f-d4133e263164.jpg,,,,Colecção
+404,Hardened Academic,sos,194,foil,en,1,3626b528-308e-4bae-830f-2817d1caac5b.jpg,,,,Colecção
+405,Helm of Kaldra,p5dn,131★,foil,en,1,cb9afc68-7703-4c92-8ba1-2f10995b6ae1.jpg,,,,Colecção
+406,Hushwood Verge,dsk,332,foil,en,4,1d6fb9e8-b871-48f8-b287-c906658bd6fc.jpg,,,,Colecção
+407,Interdimensional Web Watch,spm,165,foil,en,2,c1405e94-1f48-475d-9b76-882f626580c8.jpg,,,,Colecção
+408,Interdimensional Web Watch,spm,278,foil,en,2,c1405e94-1f48-475d-9b76-882f626580c8.jpg,,,,Colecção
+409,"Kaito, Bane of Nightmares",dsk,328,foil,en,2,b205e7d9-e970-45de-8a97-1146c6bf8bcf.jpg,,,,Colecção
+410,Karakas,ltc,367,foil,en,1,c6a59042-a4b2-4687-a18b-c57fbbcd87ca.jpg,,,,Colecção
+411,Lavaspur Boots,otj,243,foil,en,1,7ead0e0e-1450-419e-8f51-b1d707e502c4.jpg,,,,Colecção
+412,Memnite,som,174,foil,en,4,e276ec09-2a03-4dc9-a722-f6603b30edd7.jpg,,,,Colecção
+413,Meticulous Archive,mkm,328,foil,en,4,b22d7862-fa4f-44c2-a1dc-e96312b220c3.jpg,,,,Colecção
+414,Mishra's Bauble,sld,2041,foil,en,4,bbd65b14-00ab-4a5a-bc04-a25cd8c58f07.jpg,,,,Colecção
+415,Monument to Endurance,dft,237,foil,en,1,cb9afc68-7703-4c92-8ba1-2f10995b6ae1.jpg,,,,Colecção
+416,Monument to Endurance,dft,394,foil,en,1,cb9afc68-7703-4c92-8ba1-2f10995b6ae1.jpg,,,,Colecção
+417,Monument to Endurance,dft,499,foil,en,2,cb9afc68-7703-4c92-8ba1-2f10995b6ae1.jpg,,,,Colecção
+418,Mox Amber,dom,224,foil,en,3,bbd65b14-00ab-4a5a-bc04-a25cd8c58f07.jpg,,,,Colecção
+419,Mox Opal,mps,19,foil,en,4,613b8470-7a40-43d2-a47c-8c70fdf63325.jpg,,,,Colecção
+420,Nihil Spellbomb,a25,226,foil,en,4,8dc4d75a-a0d3-4cd2-af3e-520114d524b5.jpg,,,,Colecção
+421,"Omnath, Locus of Creation",sch,6,foil,en,1,d29067a8-132f-4a7b-b84b-f80da00676a1.jpg,,,,Colecção
+422,"Otawara, Soaring City",neo,414,foil,en,1,d35b9c58-b5ab-43dd-8d79-aede5a86d0e3.jpg,,,,Colecção
+423,Petrified Hamlet,sos,362,foil,en,1,8a8fa92b-d465-4b8e-9ea6-a4a5cb846f91.jpg,,,,Colecção
+424,"Phlage, Titan of Fire's Fury",mh3,379,foil,en,4,f1019197-d3f3-421c-9f3f-f893d362a730.jpg,,,,Colecção
+425,Pinnacle Emissary,eoe,223,foil,en,4,23553081-4c1a-4fc1-992a-eadfb1ff36c8.jpg,,,,Colecção
+426,Pithing Needle,mps,44,foil,en,1,d886a8ff-5391-4246-9cb3-2f7518be659a.jpg,,,,Colecção
+427,Psychic Frog,mh3,344,foil,en,4,49a676ff-cf78-4927-a79a-5d340e1fdeaf.jpg,,,,Colecção
+428,Raucous Theater,mkm,329,foil,en,1,570fbcd8-6d7a-4a01-a185-353400fdd5f5.jpg,,,,Colecção
+429,Riverpyre Verge,dft,372,foil,en,4,5f2e7ffa-3c94-4414-b78d-fc8f7529bf30.jpg,,,,Colecção
+430,Seat of the Synod,sld,301,foil,en,2,d35b9c58-b5ab-43dd-8d79-aede5a86d0e3.jpg,,,,Colecção
+431,Shadowspear,pza,17,foil,en,1,8dc4d75a-a0d3-4cd2-af3e-520114d524b5.jpg,,,,Colecção
+432,Shadowspear,sld,1505,foil,en,1,348f9c14-40bc-4a36-b006-146799b15d18.jpg,,,,Colecção
+433,Shadowy Backstreet,mkm,330,foil,en,3,0815cc66-e9fe-40af-8cd3-1a58c36145fe.jpg,,,,Colecção
+434,Shield of Kaldra,pdst,139★,foil,en,1,4e97dafb-4aa0-48b2-a42b-e7cd0bb2d466.jpg,,,,Colecção
+435,Shifting Woodland,mh3,357,foil,en,1,0bac3e60-7530-469d-8bbf-8525c72351da.jpg,,,,Colecção
+436,Shivan Reef,dmu,380,foil,en,1,8a8fa92b-d465-4b8e-9ea6-a4a5cb846f91.jpg,,,,Colecção
+437,Skateboard,tmt,178,foil,en,1,348f9c14-40bc-4a36-b006-146799b15d18.jpg,,,,Colecção
+438,Spirebluff Canal,sld,1373,foil,en,4,f1e13ebe-1912-49cb-8cbf-c8c1e06cacd2.jpg,,,,Colecção
+439,Springleaf Drum,slp,22,foil,en,2,e8e0ce83-ba90-45ae-9ee0-a74bb71086af.jpg,,,,Colecção
+440,Starting Town,fin,289,foil,en,4,b2cad8c6-729d-4ae5-a9f5-6097bf7114f7.jpg,,,,Colecção
+441,Sword of Kaldra,pmrd,251★,foil,en,1,c1405e94-1f48-475d-9b76-882f626580c8.jpg,,,,Colecção
+442,Talon Gates of Madara,m3c,134,nonfoil,en,1,6c7cda8b-1ea2-467a-a036-d95493533879.jpg,,,,Colecção
+443,Tectonic Edge,exp,44,foil,en,1,ea4dcece-36d6-41cf-807b-bd52049ceaa1.jpg,,,,Colecção
+444,"Teferi, Time Raveler",sld,526,foil,en,4,22530cb4-5626-47b0-b145-fc002b8041f1.jpg,,,,Colecção
+445,Thundering Falls,mkm,331,foil,en,3,eb400412-a885-45e5-9ad2-14d1a1d31b72.jpg,,,,Colecção
+446,Tormod's Crypt,m21,241,foil,en,4,13e547ff-6c88-4d59-bdf6-01c79816e443.jpg,,,,Colecção
+447,Torpor Orb,big,27,foil,en,2,e9c7ead6-05a4-4e54-afd1-7b8d3e1a1b8d.jpg,,,,Colecção
+448,Traumatic Critique,sos,239,foil,en,1,5ad702e6-d469-4258-8e50-c9d40dcf778a.jpg,,,,Colecção
+449,Tree of Tales,sld,304,foil,en,1,0bac3e60-7530-469d-8bbf-8525c72351da.jpg,,,,Colecção
+450,Trinisphere,dst,154,foil,en,2,ac649e11-f53e-418d-9096-403a925d1c34.jpg,,,,Colecção
+451,Undercity Sewers,mkm,332,foil,en,4,b22d7862-fa4f-44c2-a1dc-e96312b220c3.jpg,,,,Colecção
+452,Underground Mortuary,mkm,333,foil,en,2,0815cc66-e9fe-40af-8cd3-1a58c36145fe.jpg,,,,Colecção
+453,Urza's Saga,sch,29,foil,en,4,eb400412-a885-45e5-9ad2-14d1a1d31b72.jpg,,,,Colecção
+454,Vexing Bauble,mh3,212,foil,en,2,8af1bcae-3740-4f71-bc48-af939b3d4bf8.jpg,,,,Colecção
+455,Walking Ballista,sld,1265,foil,en,1,d886a8ff-5391-4246-9cb3-2f7518be659a.jpg,,,,Colecção
+456,Wasteland,exp,45,foil,en,1,b2cad8c6-729d-4ae5-a9f5-6097bf7114f7.jpg,,,,Colecção
+457,Wear // Tear,dgm,135,foil,en,1,3626b528-308e-4bae-830f-2817d1caac5b.jpg,,,,Colecção
+458,Wear // Tear,dgm,135,nonfoil,en,1,3626b528-308e-4bae-830f-2817d1caac5b.jpg,,,,Colecção
+459,Welding Jar,2xm,307,foil,en,1,13e547ff-6c88-4d59-bdf6-01c79816e443.jpg,,,,Colecção
+460,Wistfulness,ecl,296,foil,en,2,5ad702e6-d469-4258-8e50-c9d40dcf778a.jpg,,,,Colecção
+461,Abeyance,wth,1,nonfoil,pt,1,8bdd78fa-67ec-4d60-8204-034066db1a11.jpg,,,,Caixa Reserved List
+462,Academy Rector,uds,1,nonfoil,pt,4,1c2442e2-44d7-440d-802a-54848067cbcf.jpg,,,,Caixa Reserved List
+463,Adarkar Wastes,5ed,410,nonfoil,pt,4,7d506ab2-30a8-42bc-b18e-d88d5830328a.jpg,,,,Colecção
+464,"Akroma, Angel of Wrath",lgn,1,nonfoil,pt,1,d7824ddd-677a-4b41-901b-af4615ed765d.jpg,,,,Colecção
+465,Aluren,tmp,213,nonfoil,pt,1,fb3d4f3b-425c-4007-a279-cb820525f099.jpg,,,,Caixa Reserved List
+466,Ancient Tomb,tmp,315,nonfoil,pt,4,52000b45-3988-4ca4-b3d8-5a10094630a1.jpg,,,,Colecção
+467,Animate Dead,4bb,118,nonfoil,pt,2,0658c1bf-c046-4101-a215-437562ea692b.jpg,,,,Colecção
+468,Annul,usg,59,nonfoil,pt,4,5cb96343-5da0-4260-957a-a4726e4856d4.jpg,,,,Colecção
+469,Arcane Denial,all,22a,nonfoil,pt,3,f5bfc7bd-283b-40a2-b0d1-752d2b2b8a4f.jpg,,,,Colecção
+470,Argothian Enchantress,usg,234,nonfoil,pt,2,1bd9a8f0-49a6-4b80-8135-5819ffeec496.jpg,,,,Colecção
+471,Arid Mesa,exp,24,foil,en,4,da184343-5b5a-4b87-b415-662b7646e49e.jpg,,,,Colecção
+472,Armageddon,4bb,5,nonfoil,pt,1,07e71486-35d0-46a8-b0fb-251c55a332da.jpg,,,,Colecção
+473,Arrogant Wurm,tor,120,nonfoil,pt,2,2925b113-203d-43b3-a51b-11a147830f98.jpg,,,,Colecção
+474,Attunement,usg,61,nonfoil,pt,4,ff2b425e-0c5a-41b8-bbfb-7b92053d0a82.jpg,,,,Colecção
+475,Aura of Silence,wth,7,nonfoil,pt,1,8d83298e-49e8-46c5-aeac-1f8a62b0b9bf.jpg,,,,Colecção
+476,Back to Basics,usg,62,nonfoil,pt,2,cf31f25c-0b5d-47ee-b9b0-cf5e18089d42.jpg,,,,Colecção
+477,Badlands,3ed,282,nonfoil,en,2,31ef6f45-81ff-49d2-81e6-aab223111dff.jpg,,,,Caixa Reserved List
+478,Ball Lightning,5ed,210,nonfoil,pt,1,fd561eeb-0751-4ade-b7f6-f2e49b525d35.jpg,,,,Colecção
+479,Bayou,3ed,283,nonfoil,en,5,cd093b15-90e1-4c6c-97a9-096adc0e3b01.jpg,,,,Caixa Reserved List
+480,Blood Crypt,exp,8,foil,en,4,4f061c05-0fd6-48af-80c7-e713778dca6d.jpg,,,,Colecção
+481,Bloodstained Mire,exp,18,foil,en,4,91ecc937-6dfb-480d-85b5-256f5fadb10d.jpg,,,,Colecção
+482,Bloodstained Mire,ons,313,nonfoil,pt,4,965ab8f4-8a97-4a50-b4a9-a40f474b0b5e.jpg,,,,Colecção
+483,Blue Elemental Blast,4bb,63,nonfoil,pt,8,15edd817-80f4-4487-908f-fd1a0e71fe8e.jpg,,,,Colecção
+484,Brain Freeze,scg,29,nonfoil,pt,2,540ba23e-d159-423a-bf7b-cd30b76dbec0.jpg,,,,Colecção
+485,Breeding Pool,exp,15,foil,en,4,9792ebf8-2baa-4aa4-8f5f-c0cf2af8cbc4.jpg,,,,Colecção
+486,Brushland,5ed,412,nonfoil,pt,1,33cbac9b-19e4-41be-9ba3-0f5679365911.jpg,,,,Colecção
+487,Cabal Therapy,jud,62,nonfoil,pt,2,7476f605-dfed-47a2-a612-24dc63234c71.jpg,,,,Colecção
+488,Call of the Herd,ody,231,nonfoil,pt,1,9eebe7fd-c814-4734-955d-af95329311c7.jpg,,,,Colecção
+489,Carnophage,exo,53,nonfoil,pt,4,9ad7a870-67a7-476d-aa80-eec41643bbec.jpg,,,,Colecção
+490,Carpet of Flowers,usg,240,nonfoil,pt,4,ecd526db-0ab8-4118-bddb-77200850aecb.jpg,,,,Colecção
+491,Cataclysm,exo,3,nonfoil,pt,1,1c2442e2-44d7-440d-802a-54848067cbcf.jpg,,,,Colecção
+492,Cavern Harpy,pls,97,nonfoil,pt,2,09514af9-1577-4677-bb13-9c92d68f18b9.jpg,,,,Colecção
+493,Chain of Vapor,ons,73,nonfoil,pt,2,89ff48d3-7f19-4fad-9a56-3f9b2be3f6a6.jpg,,,,Colecção
+494,Choke,tmp,219,nonfoil,pt,2,6c80f2fb-afd1-40bf-80c4-ca6010ac1494.jpg,,,,Colecção
+495,City of Solitude,vis,102,nonfoil,en,1,61c34926-cf29-46a7-8798-da283d3ad677.jpg,,,,Caixa Reserved List
+496,City of Solitude,vis,102,nonfoil,pt,2,61c34926-cf29-46a7-8798-da283d3ad677.jpg,,,,Caixa Reserved List
+497,City of Traitors,exo,143,nonfoil,en,2,b3a3b057-9af4-4a03-8ab0-561cc1d075fb.jpg,,,,Caixa Reserved List
+498,City of Traitors,exo,143,nonfoil,pt,2,1c0eb1d0-3afa-4856-bb65-426318a43ca3.jpg,,,,Caixa Reserved List
+499,Constant Mists,sth,104,nonfoil,pt,2,1bd9a8f0-49a6-4b80-8135-5819ffeec496.jpg,,,,Colecção
+500,Counterspell,5ed,77,nonfoil,pt,4,efb554a6-cdf1-4818-9dec-d17aa327169f.jpg,,,,Colecção
+501,Cunning Wish,jud,37,nonfoil,pt,1,cf31f25c-0b5d-47ee-b9b0-cf5e18089d42.jpg,,,,Colecção
+502,Dark Ritual,4bb,129,nonfoil,pt,1,39be35ad-239e-409c-aad6-d7545d06230e.jpg,,,,Colecção
+503,Daze,nem,30,nonfoil,pt,4,89ff48d3-7f19-4fad-9a56-3f9b2be3f6a6.jpg,,,,Colecção
+504,Decree of Justice,scg,8,nonfoil,pt,6,c9a04ec3-5024-428d-8ba7-8446d41b8d26.jpg,,,,Colecção
+505,Decree of Silence,scg,32,nonfoil,pt,1,7a0ee117-d3e7-40f8-9f77-1796fe43d1ee.jpg,,,,Colecção
+506,Defense Grid,ulg,125,nonfoil,pt,2,c0eea9df-d2cb-4fc8-bc02-6b1443aed018.jpg,,,,Colecção
+507,Deranged Hermit,ulg,101,nonfoil,pt,6,2925b113-203d-43b3-a51b-11a147830f98.jpg,,,,Caixa Reserved List
+508,Diabolic Edict,tmp,128,nonfoil,pt,4,ac58dfce-8933-4111-8e86-f1f3aaf105dd.jpg,,,,Colecção
+510,Dust Bowl,mmq,316,nonfoil,pt,1,50045ea7-e58e-41ed-b5cb-ea14e5ca0925.jpg,,,,Colecção
+511,"Eladamri, Lord of Leaves",tmp,224,nonfoil,pt,1,37190435-e9ea-44c3-9880-00496be2ed28.jpg,,,,Caixa Reserved List
+512,Enchantress's Presence,ons,261,nonfoil,pt,2,61c34926-cf29-46a7-8798-da283d3ad677.jpg,,,,Colecção
+513,Engineered Plague,ulg,51,nonfoil,pt,1,df78f030-32c7-4e17-840c-17856169d2da.jpg,,,,Colecção
+514,Entomb,ody,132,nonfoil,pt,1,5e8f4dc0-2e59-4791-b6b2-48fa93efc290.jpg,,,,Colecção
+515,Essence Flare,ice,69,nonfoil,pt,6,8ca78b11-7ac9-480c-a1e2-820429b57404.jpg,,,,Colecção
+516,Eternal Dragon,scg,12,nonfoil,pt,4,897ed18c-86fb-4aae-905b-327f69d4763d.jpg,,,,Colecção
+517,Exalted Angel,ons,28,nonfoil,pt,4,4247674f-3031-4814-8c05-7f1747b68324.jpg,,,,Colecção
+518,Exhume,usg,134,nonfoil,pt,2,147e010f-0790-493f-9a7b-089e8bbb3ece.jpg,,,,Colecção
+519,Fact or Fiction,inv,57,nonfoil,pt,2,16e94d15-66bb-4385-8a4c-9cbd2826f878.jpg,,,,Colecção
+520,Faerie Conclave,ulg,139,nonfoil,pt,3,4b1407fd-c5aa-43d5-99db-c47f52ba17eb.jpg,,,,Colecção
+521,Flash of Insight,jud,40,nonfoil,pt,4,64a4f589-7b56-4513-bf77-7eb0ff2aa2f8.jpg,,,,Colecção
+522,Fling,sth,82,nonfoil,en,4,ecb50c00-7a6d-4baa-93ce-1e5bd5933a20.jpg,,,,Colecção
+523,Flooded Strand,exp,16,foil,en,4,744e0d52-ab36-4f87-a16a-626b131792e2.jpg,,,,Colecção
+524,Flooded Strand,ons,316,nonfoil,pt,4,b81a7211-6d5c-4a55-baf9-c107f1af3e23.jpg,,,,Colecção
+525,Foil,pcy,34,nonfoil,pt,4,16e94d15-66bb-4385-8a4c-9cbd2826f878.jpg,,,,Colecção
+526,Frantic Search,ulg,32,nonfoil,pt,4,ff2b425e-0c5a-41b8-bbfb-7b92053d0a82.jpg,,,,Colecção
+527,Fyndhorn Elves,ice,244,nonfoil,pt,1,fda47633-b256-4256-9f19-f06381316cf0.jpg,,,,Colecção
+528,Gaea's Cradle,usg,321,nonfoil,en,1,4e18ec95-4c6a-4d81-8891-42b2f1d51d74.jpg,,,,Caixa Reserved List
+529,Gaea's Cradle,usg,321,nonfoil,pt,3,50045ea7-e58e-41ed-b5cb-ea14e5ca0925.jpg,,,,Caixa Reserved List
+530,Gemstone Mine,wth,164,nonfoil,pt,4,ea1c99ba-96a3-4305-aef6-9eb5069f77e3.jpg,,,,Colecção
+531,Gilded Drake,usg,76,nonfoil,en,1,69ea0d37-ea68-44ed-bf96-1d30a59356e0.jpg,,,,Caixa Reserved List
+532,Gilded Drake,usg,76,nonfoil,pt,3,051727bb-100d-4605-b426-961c42bb8151.jpg,,,,Caixa Reserved List
+533,Goblin Bombardment,tmp,179,nonfoil,pt,2,657c334b-6198-4765-8e7e-a133f507ed06.jpg,,,,Colecção
+534,Goblin Sharpshooter,ons,207,nonfoil,pt,1,ecb50c00-7a6d-4baa-93ce-1e5bd5933a20.jpg,,,,Colecção
+535,Godless Shrine,exp,11,foil,en,4,6863f460-ad55-474b-ae99-1a2b75630b6f.jpg,,,,Colecção
+536,Grim Lavamancer,tor,100,nonfoil,pt,3,c85eb8ed-68ad-4837-9812-e2c99010f317.jpg,,,,Colecção
+537,Grim Monolith,ulg,126,nonfoil,pt,7,105de8c3-583d-4693-b18d-5c9a64f01ed0.jpg,,,,Caixa Reserved List
+538,Gush,mmq,82,nonfoil,pt,4,a1dd619f-0cf9-437d-a50a-98370784e44b.jpg,,,,Colecção
+539,Hallowed Fountain,exp,6,foil,en,4,a7a652fa-68e6-43c4-ad4e-9ab057c8bc8a.jpg,,,,Colecção
+540,Hermit Druid,sth,108,nonfoil,pt,5,be9027be-c001-4322-a749-cb2922233ff6.jpg,,,,Colecção
+541,High Market,mmq,320,nonfoil,pt,1,33cbac9b-19e4-41be-9ba3-0f5679365911.jpg,,,,Colecção
+542,Humility,tmp,24,nonfoil,en,1,e47e2b77-ff86-4228-8eca-a4d9c23394c0.jpg,,,,Caixa Reserved List
+543,Hydroblast,ice,72,nonfoil,pt,4,8ca78b11-7ac9-480c-a1e2-820429b57404.jpg,,,,Colecção
+544,Hypnotic Specter,4bb,142,nonfoil,pt,5,a686fcb2-6a66-42f2-86dd-8740ea85d4e7.jpg,,,,Colecção
+545,Impulse,vis,34,nonfoil,pt,2,540ba23e-d159-423a-bf7b-cd30b76dbec0.jpg,,,,Colecção
+546,Intuition,tmp,70,nonfoil,en,4,32c78389-4b27-4444-94e9-5e5dfb658381.jpg,,,,Caixa Reserved List
+547,Intuition,tmp,70,nonfoil,pt,4,7b6aae41-16e5-4703-9320-3f04c7f5d06e.jpg,,,,Caixa Reserved List
+548,Jackal Pup,tmp,183,nonfoil,pt,5,8aa70bb1-9880-4db6-9a2a-e74490a3788e.jpg,,,,Colecção
+549,Jeweled Amulet,ice,326,nonfoil,en,1,8f383eea-6cbf-4d85-b44c-a10fed20ee6f.jpg,,,,Colecção
+550,"Karn, Silver Golem",usg,298,nonfoil,pt,1,43d7770f-2e34-439c-9d4c-ee0da5b5f569.jpg,,,,Caixa Reserved List
+551,Knight of Stromgald,ice,138,nonfoil,pt,2,0658c1bf-c046-4101-a215-437562ea692b.jpg,,,,Colecção
+552,Lifeline,usg,299,nonfoil,en,2,6d999fad-7e4b-44ad-a8f9-894e7369c1a7.jpg,,,,Caixa Reserved List
+553,Lifeline,usg,299,nonfoil,pt,2,0de17504-2f46-48a7-9f95-f1296cb8e7a3.jpg,,,,Caixa Reserved List
+554,Lightning Bolt,4bb,208,nonfoil,pt,4,657c334b-6198-4765-8e7e-a133f507ed06.jpg,,,,Colecção
+555,Lion's Eye Diamond,mir,307,nonfoil,pt,2,0b134d89-ca03-42b8-9999-fce6b9dae0ff.jpg,,,,Caixa Reserved List
+556,Living Death,tmp,142,nonfoil,pt,1,fa708d07-8b97-41a4-836a-928e9bec009d.jpg,,,,Colecção
+557,Llanowar Elves,4bb,261,nonfoil,pt,4,30d24ddc-cd3b-48d3-b570-18e5581bbaf6.jpg,,,,Colecção
+558,Lotus Petal,tmp,294,nonfoil,pt,5,8f383eea-6cbf-4d85-b44c-a10fed20ee6f.jpg,,,,Colecção
+559,Lotus Vale,wth,165,nonfoil,en,1,52000b45-3988-4ca4-b3d8-5a10094630a1.jpg,,,,Caixa Reserved List
+560,Lotus Vale,wth,165,nonfoil,pt,2,52000b45-3988-4ca4-b3d8-5a10094630a1.jpg,,,,Caixa Reserved List
+561,Mana Leak,sth,36,nonfoil,pt,2,64a4f589-7b56-4513-bf77-7eb0ff2aa2f8.jpg,,,,Colecção
+562,Mana Web,wth,152,nonfoil,pt,2,48b5dc26-8198-4f92-8879-e44887ffb796.jpg,,,,Caixa Reserved List
+563,Marsh Flats,exp,21,foil,en,4,e3d398b0-72d7-4282-84dd-1e943a28c325.jpg,,,,Colecção
+564,Masticore,uds,134,nonfoil,pt,1,c6db5004-a110-4321-965e-294077f829dd.jpg,,,,Caixa Reserved List
+565,Memory Jar,ulg,129,nonfoil,pt,1,43d7770f-2e34-439c-9d4c-ee0da5b5f569.jpg,,,,Caixa Reserved List
+566,Metalworker,uds,135,nonfoil,pt,1,48b5dc26-8198-4f92-8879-e44887ffb796.jpg,,,,Caixa Reserved List
+567,Millstone,4bb,336,nonfoil,pt,1,3684a583-fa47-45d3-96d6-c86a0fa7edc8.jpg,,,,Colecção
+568,Mind Over Matter,exo,40,nonfoil,pt,1,7a0ee117-d3e7-40f8-9f77-1796fe43d1ee.jpg,,,,Caixa Reserved List
+569,Mirri's Guile,tmp,236,nonfoil,pt,6,92a9bfe8-beb6-4b31-a543-32071b7dd0b4.jpg,,,,Colecção
+570,Misdirection,mmq,87,nonfoil,pt,1,909a653f-aa8f-406e-b32c-0e16466244d3.jpg,,,,Colecção
+571,Mishra's Factory,4bb,361,nonfoil,pt,3,1c0eb1d0-3afa-4856-bb65-426318a43ca3.jpg,,,,Colecção
+572,Misty Rainforest,exp,25,foil,en,4,432f8fe9-110c-4604-887e-b525d82f1cf6.jpg,,,,Colecção
+573,Mox Diamond,sth,138,nonfoil,en,3,986b31dc-1fb7-49b4-ad60-712723f405d2.jpg,,,,Caixa Reserved List
+574,Mox Diamond,sth,138,nonfoil,pt,3,0b134d89-ca03-42b8-9999-fce6b9dae0ff.jpg,,,,Caixa Reserved List
+575,Multani's Acolyte,ulg,108,nonfoil,pt,1,34e0bb02-7445-42df-a79a-ff42b4e3d89f.jpg,,,,Colecção
+576,"Multani, Maro-Sorcerer",ulg,107,nonfoil,pt,1,c88b6e7b-f618-43b8-a0fb-3c29ab0d2ed1.jpg,,,,Caixa Reserved List
+577,Nantuko Shade,tor,74,nonfoil,pt,3,54b86e3d-7a30-4a7e-a885-73ce14e71d4e.jpg,,,,Colecção
+578,Nantuko Vigilante,lgn,132,foil,pt,1,af601668-bc4c-44d0-8c1d-8d2bbd89bdb2.jpg,,,,Colecção
+579,Naturalize,ons,275,nonfoil,pt,4,37190435-e9ea-44c3-9880-00496be2ed28.jpg,,,,Colecção
+580,Null Rod,wth,154,nonfoil,pt,5,2a9d96a3-c172-45b9-bde6-15800eb8bac6.jpg,,,,Caixa Reserved List
+581,Oath of Druids,exo,115,nonfoil,pt,4,cbd896b0-c9ba-4c3f-a263-8d6dcff2633b.jpg,,,,Colecção
+582,Opalescence,uds,13,nonfoil,en,4,8224428b-d9a1-4c66-96af-79109bd086b7.jpg,,,,Caixa Reserved List
+583,Opalescence,uds,13,nonfoil,pt,1,bd0353e4-6ef6-4692-9f71-578a2629d619.jpg,,,,Caixa Reserved List
+584,Opt,inv,64,nonfoil,pt,4,98d8d7af-813a-495f-8698-f82f507234ff.jpg,,,,Colecção
+585,Overgrown Tomb,exp,13,foil,en,4,db331074-994a-4c97-9108-5dc00fb522e3.jpg,,,,Colecção
+587,Parallax Wave,nem,17,nonfoil,pt,5,675ca901-4d4d-4993-8753-1301b69375ab.jpg,,,,Colecção
+588,Peek,ody,91,nonfoil,pt,4,98d8d7af-813a-495f-8698-f82f507234ff.jpg,,,,Colecção
+589,Phantom Nishoba,jud,140,nonfoil,pt,1,b5aad2a8-669f-4e1f-87a5-f37ea03ea846.jpg,,,,Colecção
+590,Phyrexian Devourer,all,125,nonfoil,en,1,d88ddaa3-45a4-444e-a334-1350b6fef548.jpg,,,,Caixa Reserved List
+591,Phyrexian Devourer,all,125,nonfoil,pt,1,0de17504-2f46-48a7-9f95-f1296cb8e7a3.jpg,,,,Caixa Reserved List
+592,Phyrexian Dreadnought,mir,315,nonfoil,pt,5,a243f6c5-6395-4ec3-bc2a-fface1e7619b.jpg,,,,Caixa Reserved List
+593,Phyrexian Furnace,wth,155,nonfoil,pt,1,5b5329af-b4ea-4592-8c35-ebe7e886153b.jpg,,,,Colecção
+594,Phyrexian Negator,uds,65,nonfoil,pt,5,691b48ac-dd02-4a24-826e-e8d76676bfaa.jpg,,,,Caixa Reserved List
+595,Plaguebearer,exo,71,nonfoil,pt,4,147e010f-0790-493f-9a7b-089e8bbb3ece.jpg,,,,Colecção
+596,Plateau,3ed,284,nonfoil,en,3,23136d27-fc57-447d-9d81-ecb4a11b661e.jpg,,,,Caixa Reserved List
+597,Polluted Delta,exp,17,foil,en,4,178448b3-5ef6-4ebb-9833-b9b734b95d21.jpg,,,,Colecção
+598,Polluted Delta,ons,321,nonfoil,pt,3,3f518ad5-3889-4522-b6f1-0f8beabddd6b.jpg,,,,Colecção
+599,Portent,5ed,110,nonfoil,pt,8,c26350ea-8cc2-4974-8e0e-f9dc56e30cb6.jpg,,,,Colecção
+600,Powder Keg,p04,1,foil,en,5,1810b648-740c-48a6-a7f1-80af64176e58.jpg,,,,Caixa Reserved List
+601,Powder Keg,uds,136,nonfoil,en,2,4230bcfc-2e08-4e50-ab25-14d2fe2fa141.jpg,,,,Caixa Reserved List
+602,Powder Keg,uds,136,nonfoil,pt,3,c2510fbb-60bb-4dd4-8c6e-c1f1a26012b8.jpg,,,,Caixa Reserved List
+603,Psychatog,ody,292,nonfoil,pt,4,e0e1d052-e28e-472f-b69f-d75240a2fab9.jpg,,,,Colecção
+604,Pyroblast,ice,213,nonfoil,pt,2,550637d0-9fba-40a1-9def-07088760a0e3.jpg,,,,Colecção
+605,Quirion Dryad,pls,89,nonfoil,pt,1,92a9bfe8-beb6-4b31-a543-32071b7dd0b4.jpg,,,,Colecção
+606,Quirion Ranger,vis,117,nonfoil,pt,3,e0704159-1f98-4ac5-859d-c5b84051f01c.jpg,,,,Colecção
+607,"Radiant, Archangel",ulg,20,nonfoil,pt,1,eb8f384d-5cec-4f50-890f-5bb0acb8cae8.jpg,,,,Caixa Reserved List
+608,Rancor,ulg,110,nonfoil,pt,4,fda47633-b256-4256-9f19-f06381316cf0.jpg,,,,Colecção
+609,Reanimate,tmp,151,nonfoil,pt,1,5e8f4dc0-2e59-4791-b6b2-48fa93efc290.jpg,,,,Colecção
+610,Recurring Nightmare,exo,72,nonfoil,pt,5,56b280ce-9552-41ba-8f15-e69b2519b3cd.jpg,,,,Caixa Reserved List
+611,Replenish,uds,15,nonfoil,en,1,7bf410a7-4fc3-4599-a9cb-5b89f937cffb.jpg,,,,Caixa Reserved List
+612,Replenish,uds,15,nonfoil,pt,4,8bb46d2f-fb19-4894-95bf-e9199f53f081.jpg,,,,Caixa Reserved List
+613,Rishadan Port,mmq,324,nonfoil,pt,2,965ab8f4-8a97-4a50-b4a9-a40f474b0b5e.jpg,,,,Colecção
+614,"Rofellos, Llanowar Emissary",uds,118,nonfoil,pt,2,cbd896b0-c9ba-4c3f-a263-8d6dcff2633b.jpg,,,,Caixa Reserved List
+615,Sacred Foundry,exp,14,foil,en,4,02f9dbad-c6d9-463b-928f-42e9bbdff5c5.jpg,,,,Colecção
+616,Sacred Ground,sth,12,nonfoil,pt,1,8d83298e-49e8-46c5-aeac-1f8a62b0b9bf.jpg,,,,Colecção
+617,Savannah,3ed,285,nonfoil,en,1,48b8e8fa-57a5-4acb-bdab-4346aa898d58.jpg,,,,Caixa Reserved List
+618,Scalding Tarn,exp,22,foil,en,4,c16c0cff-36b5-4cd4-8a28-16538bf285b8.jpg,,,,Colecção
+619,Scrubland,3ed,286,nonfoil,en,5,e453a226-2330-4d88-8224-e1b844aea2d7.jpg,,,,Caixa Reserved List
+620,Seal of Cleansing,nem,18,nonfoil,pt,4,5f73b8db-8eb2-489d-96e4-5338742f8995.jpg,,,,Colecção
+621,Serra's Sanctum,usg,325,nonfoil,pt,5,984b77e9-9819-4df1-8eb7-8887823a4d1d.jpg,,,,Caixa Reserved List
+622,Silver Knight,scg,23,nonfoil,pt,3,46098867-74e1-4db4-a62c-780dc14b78be.jpg,,,,Colecção
+623,Skeletal Scrying,ody,161,nonfoil,pt,1,39be35ad-239e-409c-aad6-d7545d06230e.jpg,,,,Colecção
+624,Skycloud Expanse,ody,327,nonfoil,pt,4,7d506ab2-30a8-42bc-b18e-d88d5830328a.jpg,,,,Colecção
+625,Smother,ons,170,nonfoil,pt,6,0468e9d1-f851-44a2-b2d2-750a6e63ee89.jpg,,,,Colecção
+626,Snuff Out,mmq,162,nonfoil,pt,2,07fa5f11-aaed-4821-ad2c-e430cba5af46.jpg,,,,Colecção
+627,Spellbane Centaur,ody,271,nonfoil,pt,1,64d1d4e3-d92f-44e8-94f5-0754659fd1dd.jpg,,,,Colecção
+628,Sphere of Resistance,exo,139,nonfoil,pt,4,c2510fbb-60bb-4dd4-8c6e-c1f1a26012b8.jpg,,,,Colecção
+629,Standstill,ody,102,nonfoil,pt,2,64a4f589-7b56-4513-bf77-7eb0ff2aa2f8.jpg,,,,Colecção
+630,Stasis,4bb,104,nonfoil,pt,2,051727bb-100d-4605-b426-961c42bb8151.jpg,,,,Colecção
+631,Stasis,5ed,127,nonfoil,pt,4,efb554a6-cdf1-4818-9dec-d17aa327169f.jpg,,,,Colecção
+632,Steam Vents,exp,12,foil,en,4,c81007c0-73ba-4b04-bb99-469bf4d006ba.jpg,,,,Colecção
+633,Stifle,scg,52,nonfoil,pt,7,15edd817-80f4-4487-908f-fd1a0e71fe8e.jpg,,,,Colecção
+634,Stomping Ground,exp,9,foil,en,4,f7127941-aa24-4e72-b57f-97f027006e1c.jpg,,,,Colecção
+635,Submerge,nem,48,nonfoil,pt,2,76b13f9f-11b9-4ee2-86a8-e20002c57945.jpg,,,,Colecção
+636,Sulfuric Vortex,scg,106,nonfoil,pt,2,fd561eeb-0751-4ade-b7f6-f2e49b525d35.jpg,,,,Colecção
+637,Survival of the Fittest,exo,129,nonfoil,en,1,d7a30112-3583-41e5-8a5a-5987c6443a04.jpg,,,,Caixa Reserved List
+638,Survival of the Fittest,exo,129,nonfoil,pt,5,109be760-2100-4e15-a986-2a0946a0ee1c.jpg,,,,Caixa Reserved List
+639,Swords to Plowshares,4bb,52,nonfoil,pt,2,7bac2187-ff84-413a-bd8d-7b4dd3a30dac.jpg,,,,Colecção
+640,Sylvan Library,4bb,273,nonfoil,pt,4,9eebe7fd-c814-4734-955d-af95329311c7.jpg,,,,Colecção
+641,Taiga,3ed,287,nonfoil,en,5,db9b216a-1f0a-45b9-943f-504f1fe9c180.jpg,,,,Caixa Reserved List
+642,Tangle Wire,nem,139,nonfoil,pt,2,43fa528a-c8f8-451c-a9ee-9088e40f4470.jpg,,,,Colecção
+643,Temple Garden,exp,10,foil,en,4,d8567659-9abd-4db9-94c3-ce3f3dba5ee9.jpg,,,,Colecção
+644,Terravore,ody,278,nonfoil,pt,1,766a23a2-48e7-4970-8da3-ff9f70ad266d.jpg,,,,Colecção
+645,The One Ring,ltr,451,foil,en,5,3ec75948-7479-45f8-9c34-c01c4602dad5.jpg,,,,Colecção
+646,The Rack,4bb,352,nonfoil,pt,2,3740a90e-3f66-4287-a4de-0c62bb552ae1.jpg,,,,Colecção
+647,Thermokarst,ice,268,nonfoil,pt,2,766a23a2-48e7-4970-8da3-ff9f70ad266d.jpg,,,,Colecção
+648,Thwart,mmq,108,nonfoil,pt,3,92ae0713-3718-4573-8344-1b9d43054f63.jpg,,,,Colecção
+649,Time Spiral,usg,103,nonfoil,pt,3,76b13f9f-11b9-4ee2-86a8-e20002c57945.jpg,,,,Caixa Reserved List
+650,Tolarian Academy,usg,330,nonfoil,en,4,836fa69d-310e-43df-afbc-93c5bb9f2d15.jpg,,,,Caixa Reserved List
+651,Tolarian Academy,usg,330,nonfoil,pt,3,b3c9e6d3-f178-41e2-85a8-81f2a28079aa.jpg,,,,Caixa Reserved List
+652,Tranquil Domain,mir,245,nonfoil,pt,4,34e0bb02-7445-42df-a79a-ff42b4e3d89f.jpg,,,,Colecção
+653,Treachery,uds,50,nonfoil,pt,1,a1dd619f-0cf9-437d-a50a-98370784e44b.jpg,,,,Caixa Reserved List
+654,Treetop Village,ulg,143,nonfoil,pt,4,ea1c99ba-96a3-4305-aef6-9eb5069f77e3.jpg,,,,Colecção
+655,Tropical Island,2ed,284,nonfoil,en,1,f934461f-d7af-4d45-abe1-42b3802a1f2b.jpg,,,,Caixa Reserved List
+656,Tropical Island,3ed,288,nonfoil,en,4,f934461f-d7af-4d45-abe1-42b3802a1f2b.jpg,,,,Caixa Reserved List
+657,Tsabo's Web,inv,317,nonfoil,pt,5,3684a583-fa47-45d3-96d6-c86a0fa7edc8.jpg,,,,Colecção
+658,Tundra,3ed,289,nonfoil,en,5,dd72bcf3-3874-4de1-a468-b8c587a09d00.jpg,,,,Caixa Reserved List
+659,Underground River,5ed,426,nonfoil,pt,3,3f518ad5-3889-4522-b6f1-0f8beabddd6b.jpg,,,,Colecção
+660,Underground Sea,3ed,290,nonfoil,en,3,f9ed9072-ded4-41b4-b38f-ad643666858c.jpg,,,,Caixa Reserved List
+661,Unearth,ulg,72,nonfoil,pt,4,9ad7a870-67a7-476d-aa80-eec41643bbec.jpg,,,,Colecção
+662,Urza's Mine,2xm,370,foil,en,4,34bf9175-c343-44fd-aa21-a6d77aeb66a0.jpg,,,,Colecção
+663,Urza's Power Plant,2xm,371,foil,en,4,a8a38289-f8ff-4500-945b-9d5b74bcbac9.jpg,,,,Colecção
+664,Urza's Tower,2xm,372,foil,en,4,0a1ae728-16a5-48cd-b1c4-fce3ca891a93.jpg,,,,Colecção
+665,Verdant Catacombs,exp,23,foil,en,4,4962893a-d5c8-4e58-b37c-10b081f337ba.jpg,,,,Colecção
+666,Vindicate,apc,126,nonfoil,pt,1,e0e1d052-e28e-472f-b69f-d75240a2fab9.jpg,,,,Colecção
+667,Vision Charm,vis,49,nonfoil,pt,4,f18704aa-24c6-4918-b5f3-630aaa1c0ec3.jpg,,,,Colecção
+668,Volcanic Island,3ed,291,nonfoil,en,4,51b88605-0479-4cde-b34f-f85797e7879f.jpg,,,,Caixa Reserved List
+669,Volrath's Stronghold,sth,143,nonfoil,pt,2,b3c9e6d3-f178-41e2-85a8-81f2a28079aa.jpg,,,,Caixa Reserved List
+670,Wall of Blossoms,sth,125,nonfoil,pt,7,f7ca4a74-7eca-466c-9333-57e732d78857.jpg,,,,Colecção
+671,Warmth,tmp,51,nonfoil,pt,4,46098867-74e1-4db4-a62c-780dc14b78be.jpg,,,,Colecção
+672,Wasteland,tmp,330,nonfoil,pt,4,4b1407fd-c5aa-43d5-99db-c47f52ba17eb.jpg,,,,Colecção
+673,Watery Grave,exp,7,foil,en,4,5e4f5b41-8f2e-4452-9355-c898bca8a1b4.jpg,,,,Colecção
+674,Winding Canyons,wth,167,nonfoil,pt,2,325841bf-d119-40fc-8715-57ea3abd10c9.jpg,,,,Caixa Reserved List
+675,Winds of Rath,tmp,52,nonfoil,pt,1,4247674f-3031-4814-8c05-7f1747b68324.jpg,,,,Colecção
+676,Windswept Heath,exp,20,foil,en,4,de1b3aba-20d7-4bf7-b6b6-e56b4c41d20c.jpg,,,,Colecção
+677,Windswept Heath,ons,328,nonfoil,pt,4,36afebd0-625b-4b48-a93f-9cbcb32c215b.jpg,,,,Colecção
+678,Wooded Foothills,exp,19,foil,en,4,9a97d6e4-2997-4968-b9b3-af0936416a5e.jpg,,,,Colecção
+679,Wooded Foothills,ons,330,nonfoil,pt,2,b81a7211-6d5c-4a55-baf9-c107f1af3e23.jpg,,,,Colecção
+680,Worship,usg,57,nonfoil,pt,2,07e71486-35d0-46a8-b0fb-251c55a332da.jpg,,,,Colecção
+681,Xantid Swarm,scg,135,nonfoil,pt,1,30d24ddc-cd3b-48d3-b570-18e5581bbaf6.jpg,,,,Colecção
+682,Yavimaya Granger,ulg,118,nonfoil,pt,3,6c80f2fb-afd1-40bf-80c4-ca6010ac1494.jpg,,,,Colecção
+683,Yavimaya Hollow,uds,143,nonfoil,pt,1,36afebd0-625b-4b48-a93f-9cbcb32c215b.jpg,,,,Caixa Reserved List
+684,Yawgmoth's Bargain,uds,75,nonfoil,pt,1,6fea5950-8ca8-4e68-bb25-d2e099f9dde5.jpg,,,,Caixa Reserved List
+685,Yawgmoth's Will,usg,171,nonfoil,pt,1,ac58dfce-8933-4111-8e86-f1f3aaf105dd.jpg,,,,Caixa Reserved List
+686,Gaea's Cradle,jgp,3,foil,en,1,4e18ec95-4c6a-4d81-8891-42b2f1d51d74.jpg,,,,Caixa Reserved List
+687,Taiga,2ed,283,nonfoil,en,1,db9b216a-1f0a-45b9-943f-504f1fe9c180.jpg,,,,Caixa Reserved List
+689,Hydroblast,ema,55,nonfoil,en,4,00f9109d-8c97-4eee-8286-fab57140dc61.jpg,,,,Colecção
+690,Reckoner's Bargain,neo,120,nonfoil,en,4,00f9109d-8c97-4eee-8286-fab57140dc61.jpg,,,,Colecção
+691,Utrom Monitor,tmc,113,nonfoil,en,4,00f9109d-8c97-4eee-8286-fab57140dc61.jpg,,,,Colecção
+692,Kenku Artificer,clb,80,nonfoil,en,4,00f9109d-8c97-4eee-8286-fab57140dc61.jpg,,,,Colecção
+693,Unexpected Fangs,iko,102,nonfoil,en,2,00f9109d-8c97-4eee-8286-fab57140dc61.jpg,,,,Colecção
+694,Chromatic Star,2xm,239,foil,en,1,00f9109d-8c97-4eee-8286-fab57140dc61.jpg,,,,Colecção
+695,Red Elemental Blast,a25,147,nonfoil,en,1,00f9109d-8c97-4eee-8286-fab57140dc61.jpg,,,,Colecção
+696,Krark-Clan Shaman,mrd,98,nonfoil,en,2,00f9109d-8c97-4eee-8286-fab57140dc61.jpg,,,,Colecção
+697,Mistrise Village,tdm,397,nonfoil,en,1,28f96c23-f370-4464-bb47-c55df7a1399a.jpg,,,,Colecção
+698,Sundown Pass,sos,305,nonfoil,en,2,28f96c23-f370-4464-bb47-c55df7a1399a.jpg,,,,Colecção
+699,Three Steps Ahead,mar,62,nonfoil,en,2,28f96c23-f370-4464-bb47-c55df7a1399a.jpg,,,,Colecção
+700,Strix Serenade,mh3,327,nonfoil,en,2,28f96c23-f370-4464-bb47-c55df7a1399a.jpg,,,,Colecção
+701,Swan Song,sld,1591,nonfoil,en,2,28f96c23-f370-4464-bb47-c55df7a1399a.jpg,,,,Colecção
+702,Nature's Claim,sld,2297,nonfoil,en,2,28f96c23-f370-4464-bb47-c55df7a1399a.jpg,,,,Colecção
+703,Soul-Guide Lantern,sld,871,nonfoil,en,2,28f96c23-f370-4464-bb47-c55df7a1399a.jpg,,,,Colecção
+704,Combustion Technique,tla,301,nonfoil,en,2,28f96c23-f370-4464-bb47-c55df7a1399a.jpg,,,,Colecção
+705,"Thor, God of Thunder",msh,338,nonfoil,en,3,28f96c23-f370-4464-bb47-c55df7a1399a.jpg,,,,Colecção
+706,"Ral, Crackling Wit",blb,341,nonfoil,en,2,28f96c23-f370-4464-bb47-c55df7a1399a.jpg,,,,Colecção
+707,Swords to Plowshares,4ed,52,nonfoil,pt,1,51412a4f-e559-4304-8871-d6ef6ecb0efe.jpg,,,,Colecção
+708,Ill-Gotten Gains,usg,138,nonfoil,pt,4,51412a4f-e559-4304-8871-d6ef6ecb0efe.jpg,,,,Colecção
+709,Decree of Silence,scg,32,nonfoil,pt,2,51412a4f-e559-4304-8871-d6ef6ecb0efe.jpg,,,,Colecção
+710,Meddling Mage,pls,116,nonfoil,pt,2,51412a4f-e559-4304-8871-d6ef6ecb0efe.jpg,,,,Colecção
+711,Cabal Therapy,jud,62,nonfoil,pt,1,51412a4f-e559-4304-8871-d6ef6ecb0efe.jpg,,,,Colecção
+712,Abeyance,wth,1,nonfoil,pt,3,51412a4f-e559-4304-8871-d6ef6ecb0efe.jpg,,,,Colecção
+713,Opalescence,uds,13,nonfoil,pt,3,51412a4f-e559-4304-8871-d6ef6ecb0efe.jpg,,,,Colecção
+714,Unmask,mmq,168,nonfoil,pt,3,51412a4f-e559-4304-8871-d6ef6ecb0efe.jpg,,,,Colecção
+715,Winter's Grasp,tmp,265,nonfoil,pt,4,51412a4f-e559-4304-8871-d6ef6ecb0efe.jpg,,,,Colecção
+716,Xantid Swarm,scg,135,nonfoil,pt,4,51412a4f-e559-4304-8871-d6ef6ecb0efe.jpg,,,,Colecção
+717,Llanowar Elves,dom,168,nonfoil,en,4,4229936d-2854-4a99-9b9a-e576e45a9010.jpg,,,,Colecção
+718,Price of Freedom,tla,149,nonfoil,en,4,4229936d-2854-4a99-9b9a-e576e45a9010.jpg,,,,Colecção
+719,Legion Extruder,big,42,nonfoil,en,1,4229936d-2854-4a99-9b9a-e576e45a9010.jpg,,,,Colecção
+720,The Filigree Sylex,one,227,nonfoil,en,1,4229936d-2854-4a99-9b9a-e576e45a9010.jpg,,,,Colecção
+721,Phyrexian Dragon Engine,bro,163,nonfoil,en,1,4229936d-2854-4a99-9b9a-e576e45a9010.jpg,,,,Colecção
+722,Agatha's Soul Cauldron,woe,242,nonfoil,en,1,4229936d-2854-4a99-9b9a-e576e45a9010.jpg,,,,Colecção
+723,Hedge Maze,mkm,326,nonfoil,en,1,4229936d-2854-4a99-9b9a-e576e45a9010.jpg,,,,Colecção
+724,Goblin Welder,sld,1617,nonfoil,en,4,4229936d-2854-4a99-9b9a-e576e45a9010.jpg,,,,Colecção
+725,Goblin Engineer,sld,2103,nonfoil,en,4,4229936d-2854-4a99-9b9a-e576e45a9010.jpg,,,,Colecção
+726,Jeskai Revelation,tdm,361,nonfoil,en,4,4229936d-2854-4a99-9b9a-e576e45a9010.jpg,,,,Colecção
+727,Tablet of Discovery,sos,132,nonfoil,en,4,4229936d-2854-4a99-9b9a-e576e45a9010.jpg,,,,Colecção
+728,Great Hall of the Biblioplex,sos,257,nonfoil,en,4,4229936d-2854-4a99-9b9a-e576e45a9010.jpg,,,,Colecção
