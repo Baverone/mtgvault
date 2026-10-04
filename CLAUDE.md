@@ -92,6 +92,20 @@ mtgvault/
                   SLEEVES, as DUAS listas de tipos (`ORDEM_TIPOS` de
                   apresentação ≠ `PRECEDENCIA` de classificação) e o
                   «quero montar este» (`decks_montar`). Ver «A ABA DECKS»
+  eventos.py      A LISTA DE UM DECK É UMA LISTA QUE ALGUÉM JOGOU (2026-10-04,
+                  ao fim do dia): *"as outras quero que esquecas as decklists e
+                  vamos focar nas decklists baseadas em eventos reais"*. A
+                  pergunta «qual é a melhor lista REAL deste deck?» num sítio só
+                  — a REGRA de escolha (que vive no config, `listas_de_evento.
+                  regra`, com a razão de cada critério: a `janela` como filtro, o
+                  `tier`, o `campo`, a `repetida`, a `classificacao`, a `data` e
+                  o `jogador`), a PROVENIÊNCIA (`proveniencia`/`texto_prov` —
+                  jogador, evento, data, jogadores, classificação, URL), as
+                  `candidatas`, o `escolher` (com a ALTERNATIVA fora da janela) e
+                  o `fixar`, que GRAVA as cartas e a ficha no config porque o
+                  `prune_decklists(30)` apaga as decklists ao fim de um mês. O
+                  motor do consenso NÃO se apaga: o meta fica para consulta e
+                  di-lo. Ver «A LISTA DE UM DECK É UMA LISTA QUE ALGUÉM JOGOU»
   marcas.py       A POSSE QUE ELE MARCA À MÃO (2026-10-04): o `+` e o `−`.
                   O inventário PRÉ-PREENCHE (`posse_marcada` nasce vazia) e a
                   marca dele GANHA, com data; `inventario`/`marcado` são dois
@@ -326,7 +340,7 @@ my_decks.py         segue decks-alvo (por assinatura e por jogador de MTGO) -> t
 commander_decks.py  decks de comandante por consenso EM CAMADAS: núcleo>=50% (=deck, deck_cards) / flex 25-50% / tech 15-25%; FILTRA pela cor do comandante. `tiers()` reusado pelo colecao_cor
 premodern_decks.py  consenso dos arquétipos-alvo de Premodern (`colecao_config.json`→`premodern_arquetipos_alvo`: UW Replenish, Enchantress) -> decks/deck_cards com o sufixo " (consenso)". Agrupa pelas etiquetas do `tagging` (o clustering não os separa) e usa `stock.stock_from_lists`. Mostrado nas `deckboxes` (era o `meusdecks`)
 refresh_collection.py  collection_owned p/ o index.html
-colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados, venda (a regra dos 5 % da RL, o `mostrar` de 2026-09-25 **e** a TRAVA — `congelado_ate` a 2026-10-01, hoje `congelada`, MANUAL desde 2026-10-04, com a data antiga arquivada em `_congelado_ate_historico`; mais o `_reservar_rl_formatos`, a razão por que o duel-commander fica fora), cartas_vigiadas (a VIGIA DE CARTAS de 2026-09-26), reserva (o LIMIAR da reserva «maybe», 2026-10-01), caixas[].decisao / reserva / reserva_fora / comandante / reserva_assinatura (AS FASES, 2026-10-01), revalidacao.foto_manda (A FOTO É A VERDADE, 2026-10-02 — e o `playset_maximo` SAIU do `regras_por_formato` nesse dia; **a `false` e com `desde: null` desde 2026-10-04**, o dia em que as fotos foram apagadas), regras_por_formato: lingua/acabamento dos TRÊS grupos trocados a 2026-10-02 (`_regras_2026_10_02`: duel-commander e pauper `en` + `prefere_foil`, premodern `nonfoil`), basicas.declaradas / declaradas_em (A CONTAGEM DECLARADA, 2026-10-02), mtgtop8 (A RECOLHA e o NUNCA PERDER UM TORNEIO DE PAPEL GRANDE, 2026-10-04: `paginas_indice`, `revisitas_por_corrida` e `grandes.padroes`/`listas_por_evento`/`min_jogadores`), e as TRÊS DECISÕES de 2026-10-04 à tarde: a 14.ª terra da lista de qualificação (`listas_escolhidas.modern` com 1 Island, sem `por_confirmar`) + a `proposta_sideboard` NÃO APLICADA ao lado dela, e a caixa `modern-affinity` DESACTIVADA (`estado: candidata`, sem `assinatura`, o antigo em `_antes`)
+colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados, venda (a regra dos 5 % da RL, o `mostrar` de 2026-09-25 **e** a TRAVA — `congelado_ate` a 2026-10-01, hoje `congelada`, MANUAL desde 2026-10-04, com a data antiga arquivada em `_congelado_ate_historico`; mais o `_reservar_rl_formatos`, a razão por que o duel-commander fica fora), cartas_vigiadas (a VIGIA DE CARTAS de 2026-09-26), reserva (o LIMIAR da reserva «maybe», 2026-10-01), caixas[].decisao / reserva / reserva_fora / comandante / reserva_assinatura (AS FASES, 2026-10-01), revalidacao.foto_manda (A FOTO É A VERDADE, 2026-10-02 — e o `playset_maximo` SAIU do `regras_por_formato` nesse dia; **a `false` e com `desde: null` desde 2026-10-04**, o dia em que as fotos foram apagadas), regras_por_formato: lingua/acabamento dos TRÊS grupos trocados a 2026-10-02 (`_regras_2026_10_02`: duel-commander e pauper `en` + `prefere_foil`, premodern `nonfoil`), basicas.declaradas / declaradas_em (A CONTAGEM DECLARADA, 2026-10-02), mtgtop8 (A RECOLHA e o NUNCA PERDER UM TORNEIO DE PAPEL GRANDE, 2026-10-04: `paginas_indice`, `revisitas_por_corrida` e `grandes.padroes`/`listas_por_evento`/`min_jogadores`), e as TRÊS DECISÕES de 2026-10-04 à tarde: a 14.ª terra da lista de qualificação (`listas_escolhidas.modern` com 1 Island, sem `por_confirmar`) + a `proposta_sideboard` NÃO APLICADA ao lado dela, e a caixa `modern-affinity` DESACTIVADA (`estado: candidata`, sem `assinatura`, o antigo em `_antes`). E, ao FIM do dia de 2026-10-04: **`listas_de_evento`** (a REGRA de escolha da lista real, com a razão de cada critério e a data — ver «A LISTA DE UM DECK É UMA LISTA QUE ALGUÉM JOGOU»), **`decks_de_evento`** (os 11 decks dele que não são caixa: 10 de Modern e o Flow State `por_confirmar`, uma linha por deck), `listas_escolhidas[<id>].evento` (a PROVENIÊNCIA gravada — jogador, evento, data, jogadores, classificação, URL) + `.alternativa`/`.porque`/`.escolhida_por`/`.regra_diria`/`._consenso_anterior` (a média que a caixa mostrava, que NÃO se apaga), `decks_montar` com os **17 marcados**, e `caixas[]._ambito` no standard e nas três de legacy (as palavras dele a pô-los fora da prioridade)
 ```
 Cada `.html` gerado tem de estar na lista do `git add` do workflow (`daily.yml`,
 passo "Guardar HTML") **e na lista `HTML` da tarefa `ai-pc/tasks/mtgvault-daily`**
@@ -2640,6 +2654,180 @@ Testes em `tests/test_decklists_no_site.py` (9 casos) e a prova de que chumbam e
   3–16 listas; (d) a aba Decks mostra as staples **por formato**; uma carta que
   seja staple em DOIS formatos (as Swords to Plowshares são-no em Premodern e em
   Legacy) aparece nas duas listas e não há uma vista que as junte.
+
+**A LISTA DE UM DECK É UMA LISTA QUE ALGUÉM JOGOU (André, 2026-10-04, ao fim do
+dia, à letra).** *"as listas especificas e que quero fixas"* e *"as outras quero
+que esquecas as decklists e vamos focar nas decklists baseadas em eventos
+reais"*. **ACABA O CONSENSO COMO LISTA DE DECK:** uma média de muitas listas é um
+deck que ninguém jogou. O caso que o provou foi o do Cloud, no mesmo dia — as 40
+listas que a assinatura apanhava eram **dois decks diferentes** e a média dava um
+terceiro que não fazia nenhuma das duas coisas; ele generalizou a lição. **O
+motor do consenso NÃO se apaga** (regra dele de 09/09): continua a medir o
+metagame, a dar os nomes e a alimentar a reserva da venda — o que muda é QUAL a
+lista que a caixa mostra. Motor em **`mtgvault/eventos.py`**, config em
+`listas_de_evento` (a regra) + `decks_de_evento` (os decks dele) +
+`listas_escolhidas[<id>].evento` (a proveniência gravada); testes em
+`tests/test_listas_de_eventos.py` (19 casos) e a prova de que chumbam em
+`tests/_chumba_listas_eventos.py` (**13 de 13 alvos**, um processo por alvo).
+Backup em `data/backups/vault-2026-10-04-listas-de-eventos.db` (99,5 MB,
+`integrity ok`). **A VENDA NÃO SE TOCOU** (ordem dele) — ver a ressalva no fim.
+
+- **A PROVENIÊNCIA GRAVA-SE, e é a decisão que torna o resto possível.** O
+  `daily.prune_decklists(30)` apaga as decklists ao fim de um mês: uma caixa que
+  fosse um PONTEIRO para um `decklist_id` ficava **vazia em Novembro**, sem um
+  único passo a falhar — o padrão do `event_tier` aplicado à lista por que ele vai
+  sleevar. Por isso as cartas **e** a proveniência (jogador, evento, data,
+  jogadores, classificação, URL, `content_hash`, repetições) são lidas da base no
+  momento de fixar e gravadas no config. **Reutiliza o `listas_escolhidas` + a
+  `fonte: "escolhido"`** da LISTA PADRÃO de 20/09 e não um quinto `fonte` ao lado:
+  esse caminho já é lido pelo motor, pela página e pelo CLI. O `decklist_id` fica
+  guardado para se poder **conferir**, nunca para ler a lista em tempo de página.
+  Tem caso próprio, que apaga a decklist à mão e exige que a caixa continue com as
+  cartas E com a ficha.
+- **A REGRA DE ESCOLHA VIVE NO CONFIG** (`listas_de_evento.regra`), com os
+  critérios pela ordem e **a razão de cada um em português** — está lá e não no
+  código para não ser *a minha opinião de hoje*. Por esta ordem: a **janela** (um
+  FILTRO, primeiro), o **tier**, o **campo**, a **repetida**, a **classificação**,
+  a **data** e o **jogador** (alfabético, o desempate determinista de 02/10).
+- **A JANELA FILTRA PRIMEIRO, e isso foi o caso do Greasefang a obrigar.** A
+  melhor presencial dele é de **22/09** (Sakamoto, 3-4 de 65) e a janela começa a
+  29/09: sem o filtro à cabeça, o vault escolhia a lista **pré-Reality Fracture** e
+  contradizia a escolha dele (a Challenge de 01/10). A melhor presencial que a
+  janela corta **não se esconde**: fica ao lado, com a data à vista e a frase a
+  dizer que é anterior ao set — é a regra 5 dele, à letra.
+- **O TIER ENTROU PORQUE A FONTE ESTAVA A DECIDIR, e o número é este:** o `Modern
+  RC Super Qualifier` de 03/10 vem do **mtgo.com** e tem **31 listas, ZERO
+  classificações e ZERO contagens de jogadores**; a mesma Challenge re-hospedada
+  pelo mtgtop8 traz `100 jogadores` e `3-4`. Sem o critério do tier a regra
+  preferia a Challenge — por uma razão de DADOS e não de mérito. Com ele, acerta o
+  **evento em 9 de 9** dos decks de Modern que ele nomeou. **É UM critério e não
+  dois:** o «presenciais antes de online» dele é o primeiro degrau do tier
+  (`Presencial` 0 < `Qualifier` 1 < `Challenge` 2 < `League` 4), e houve uma
+  passagem com os dois separados em que o «presencial» **nunca mudava nada** — a
+  armadilha do `playset_maximo`. Foi o `_chumba` que a apanhou, a tentar prová-la.
+- **«GANHAR» É VENCER, e a distinção vale uma escolha.** A regra da lista repetida
+  conta só as aparições com **1.º lugar** (`_vitorias`), não os resultados
+  (`_repeticoes`, que a ficha mostra). Medido: com resultados, **três 9-16 do mesmo
+  jogador ganhavam a um 5-8** e o Esper Blink afastava-se da escolha dele; o caso
+  que originou a regra são os **três primeiros lugares** do Cloud. E a contagem é
+  na BASE e não só entre as candidatas — duas contagens da mesma coisa punham o
+  desempate a dizer «1» e a ficha ao lado «3», no mesmo ecrã.
+- **A REGRA REPRODUZ AS ESCOLHAS DELE: 7/7 nas caixas.** Stiflenought (Simone
+  Fierro, **1.º de 218**), UW Replenish (Kuznetsov, 5-8 de 218), Enchantress
+  (Schnurr, 3-4 de 218), Elves (Deschamps, 2.º de 125), Oath (Shroomboy, **1.º de
+  125**), Ill-Gotten Gains (Vlalutscher, Challenge 16 de 03/10) e Greasefang
+  (Martin_Dominguez, Challenge 32 de 01/10). **O 1.º lugar do European Championship
+  já estava colhido** (id 16900) — a página morta do evento não escondia nada, e a
+  revisita dos eventos grandes da ordem anterior não acrescentou nenhuma escolha.
+- **ONDE A REGRA NÃO CHEGA, O JOGADOR QUE ELE NOMEOU GANHA.** Dentro do RC Super
+  Qualifier não há classificação nem campo: entre cinco listas do mesmo arquétipo
+  **não existe critério objectivo**, e o desempate alfabético dava outra pessoa em
+  5 de 10. Ele nomeou-a; eu não a derivo. O registo guarda `escolhida_por` e, onde
+  divergem, o `regra_diria` — é a hierarquia do resto do vault (a correcção dele
+  ganha sempre). **As percentagens confirmam que são as listas certas**: Esper
+  Blink 89 %, Goryo's 85 %, Rakdos Moonshadow 48 %, Devoted Combo 35 % — exactas;
+  as outras a 1–4 pontos; e as seis de Premodern batem todas (78/89/60/60/68/68).
+- **OS DECKS DELE NÃO SÃO CAIXAS NEM META** (`decks_de_evento`, 11 entradas): não
+  têm deckbox e já não são o meta. E **tinham de ser um tipo próprio**: o meta
+  agrupa pelo NOME DA FONTE e **três dos dez não têm nome nenhum** (o
+  `arquetipo_fonte` daquelas listas está a NULL, porque vêm do mtgo.com) — o UR
+  Prowess, o Goryo's Reanimator e o Hammer Time nunca apareciam lá; e em quatro
+  outros o nome que ele usa não é o da fonte (*"Boros Energy"* contra *"Boros
+  Aggro"*). **A identidade é o slug escrito no config**, nunca o `archetype_id` (o
+  cluster é refeito a cada corrida) nem o nome votado; o `archetype_id` fica como
+  a pista de onde a escolha veio. O arquétipo meta com o mesmo nome marca-se
+  `ja_e_caixa` e não aparece a dobrar.
+- **O CONSENSO QUE SAI DE CADA CAIXA FICA GUARDADO** (`_consenso_anterior`: as
+  cartas, a data, a razão e a nota), *nada se apaga* — e **custou duas passagens
+  acertar**: o `padrao.fixar` substitui o registo inteiro por um dicionário novo,
+  por isso o bloco desaparecia e a segunda corrida gravava lá a lista de evento que
+  a primeira acabara de fixar. A média que ele quer poder comparar ficava
+  substituída por uma cópia dela. Hoje o `fixar` lê o bloco ANTES e repõe-no, e
+  `consenso_antes = []` (não havia consenso) grava-se como tal — senão a passagem
+  seguinte lia-o como ausente. **O script é idempotente, provado em três
+  passagens** (sha igual).
+- **A `premodern-igg` DESTRANCOU.** Estava com **4 listas** e o mínimo para se
+  chamar consenso a algo é 5: ficava sem lista nenhuma. Com a regra nova não
+  precisa de 5 — precisa de **UMA lista real**. Passou de 0 % a **33 %**, com 32
+  cartas. A razão por que estava trancada fica no `_consenso_anterior`.
+- **A `legacy-artifacts-blue` CONTINUA VAZIA e a pedir a carta-assinatura dele**
+  (nunca disse qual é, e não se adivinha a partir do nome), e a `modern-affinity`
+  continua desactivada. As duas têm caso de teste.
+- **O STANDARD E O LEGACY FICAM COMO ESTAVAM, por ordem dele** (*"Standard nao
+  preciso preocupar me ate Janeiro, ja estou qualificado para jogar em Fevereiro"*
+  e *"esquecemos legacy para ja tambem"*): não receberam lista de evento, ficaram
+  com a nota de âmbito (`caixas[]._ambito`, com as palavras e a data) e **não se
+  apagaram nem se desactivaram**. Consequência a saber: as três estão hoje **sem
+  lista**, porque o consenso delas tem 1, 2 e 3 listas contra um mínimo de 5 —
+  trocá-las para evento real resolvia (as listas estão apuradas: Gones Fire 2026,
+  94 jogadores), e é decisão dele.
+- **UM CONSENSO DIZ QUE É UM CONSENSO.** O meta fica para CONSULTA (*"ficam no
+  meta para consulta"*) e continua a mostrar a média — o que não pode é ter a
+  mesma cara de uma lista real na página por onde ele vai sleevar: leva
+  `e_consenso` e o rótulo *«consenso de várias listas — ninguém jogou esta lista
+  assim»*. Tem caso de teste.
+- **OS PROXIES PASSARAM A SER CONTADOS COMO ELE OS CONTA**, e isto mediu-se contra
+  o papel dele: por **aparições** (um proxy por carta diferente em cada deck) dá
+  **147** em Modern e **69** em Premodern, contra os **149** e **63** que ele
+  trouxe; por CÓPIAS dava 334 e 201. Ele imprime um proxy por carta diferente —
+  serve de marcador de *"esta vem da pilha"* — e não quatro de um playset. As
+  cópias ficam ao lado com etiqueta (a regra dos «dois números» de 04/10 à tarde).
+  **O «79 verdadeiras» dele bate ao exemplar** com os nomes próprios do maindeck de
+  Premodern. **Ressalva honesta: os ficheiros que ele tem na mão NÃO estão neste
+  PC** (o mais recente em `ai-pc/work/saidas/` é de 03/10) — não há como reconciliar
+  ao exemplar, e as staples dão 55 contra os 50 dele.
+- **O HAMMER TIME LEVA O AVISO, e não escondido num rodapé** (`amostra_fina`, num
+  bloco antes da lista): **1 lista** em toda a colheita contra 53 do Broodscale, 32
+  do Ruby Storm e 20 do Affinity; o Colossus Hammer aparece em 3 listas de Modern
+  e duas são do mesmo jogador; os três arquétipos são DIFERENTES entre si. O deck
+  entra porque ele o pediu e o peso dele fica dito — aparecer com o mesmo peso dos
+  outros nove era mentir-lhe por omissão.
+- **O FLOW STATE FICA À ESPERA DO OK DELE** (`por_confirmar`, com a carta-chave à
+  vista e a frase a dizer o que falta), e **não** marcado como deck a montar — ele
+  disse *"poe-no a espera"*. Em **Pioneer não há staples nem proxies**: medido, o
+  Greasefang e o Flow State não partilham uma única carta, e a página **di-lo** em
+  vez de mostrar uma tabela vazia (*"uma tabela vazia parece uma avaria"*).
+- **A VENDA: não se tocou no motor, e MEXEU por consequência — o número é 43,65 €.**
+  Não se mexeu no `venda.py`, nas candidatas nem nos preços. Mas trocar a lista de
+  uma caixa muda o que ela ALOCA, e o que está alocado não vai à venda: medido lado
+  a lado com o MESMO `vault.db`, **entraram 10 cópias / 43,65 €** na lista de venda
+  (4 Fatal Push 8,32 €, 5 Wall of Blossoms 30,65 €, 1 Quirion Ranger 4,68 €, todas
+  por a lista nova não as jogar) e **saíram 12**, 8 delas alocadas às caixas (4
+  Ill-Gotten Gains, 3 Arcane Denial, 1 Cunning Wish). O total das saídas desceu de
+  **376 para 358 cópias**; `venda` 116 c/1 591,62 € → **114 c/1 563,32 €**. A venda
+  está **fora de vista** (`venda.mostrar: false`) e **congelada** (trava manual),
+  por isso nada sai — e há tempo para ele decidir.
+- **MEDIDO LADO A LADO, o MESMO `vault.db` dos dois lados:** fechar tudo
+  **5 972,79 € → 11 122,58 €** e a comprar **245 → 295**. **As dez caixas que ele
+  não mandou tocar ficam IGUAIS à percentagem** (as cinco fixas, as três de legacy,
+  o standard e a `modern-affinity`); as sete que trocaram mudam porque a lista é
+  outra — Stiflenought 100→99 %, UW Replenish 92→93 %, Elves 40→53 %, Oath 71→53 %,
+  Enchantress 37→36 %, **IGG 0→33 %**, Pioneer 17→23 %. O salto do *fechar tudo* é
+  sobretudo a `premodern-igg` a passar a pedir 75 cartas que antes não pedia.
+  **E as cinco caixas fixas estão byte a byte iguais** — a caixa e a lista —,
+  comparadas com o HEAD do git num caso de teste.
+- **MEDIDO COM O SERVIDOR A CORRER E O JS A SÉRIO:** 12 páginas a 200, **259
+  ficheiros de dados a 200, zero falhas**, a aba Decks percorrida até ao **nível do
+  deck nas 17 caixas e nos 11 decks dele** — **96 partes, 0 falhas, a mais lenta 3
+  ms**; a casca em **62 151 bytes** (tecto 80 KB) e o índice em 114 KB. A 1440 e a
+  390 px, **nenhuma página com scroll horizontal**.
+- **UM TESTE DE 04/10 À TARDE TEVE A ASSERÇÃO CORRIGIDA, e não mascarada**
+  (`test_decks_vista.caso_os_sleeves_contam_as_verdadeiras_e_os_proxies`): afirmava
+  `proxies == 8` (cópias) e hoje são **2** a imprimir e 8 cópias, com as duas datas
+  no docstring. E o `test_nomes_arquetipo.caso_a_pergunta_do_nome_vive_num_sitio_so`
+  **apanhou-me** a ler o `arquetipo_fonte` à mão no `eventos.py`: a coluna tem um
+  leitor só (a votação do `nomes`), e o nome que a fonte dá a UMA lista ao lado do
+  deck era um segundo nome a discordar do votado. Saiu da proveniência.
+- **POR DECIDIR POR ELE, e é o que vale a pena ler primeiro:** (a) as **5 listas
+  de Modern** em que o jogador dele difere do que a regra escolheria (`regra_diria`
+  no config) — se preferir as da regra, é uma linha; (b) o **Flow State** espera o
+  OK dele, e com ele o Pioneer passa a 2 decks marcados; (c) o **standard e o
+  legacy** estão sem lista por falta de amostra, e a troca para evento real
+  resolvia; (d) as **10 cópias / 43,65 €** que entraram na lista de venda; (e) o
+  **7614 (Affinity)** entrou com a lista do Tree42o e a caixa `modern` ficou
+  intacta e NÃO marcada — é a única leitura que dá os **10 decks** que ele mediu,
+  e é interpretação minha; (f) as **staples** dão 55 contra os 50 dele, e os
+  ficheiros dele não estão neste PC para reconciliar.
 
 **AS FOTOS FORAM APAGADAS E A CAMPANHA ESTÁ DESLIGADA (André, 2026-10-04, à
 letra).** *"podes apagar todas as fotos, A MINHA RESPONSABILIDADE, se for para
