@@ -2873,6 +2873,19 @@ par). Etiqueta de recuo: **`antes-redesenho-2026-10-04`**.
   mesma base dão **todo o HTML byte a byte igual** e **7 índices diferentes — só
   no `_gerado_em`**. Sem a normalização, a tarefa dava um commit e uma build do
   Pages **a cada meia hora, para sempre**. Tem caso próprio e alvo no `_chumba`.
+- **UM `set` PELO MEIO IA DAR 48 COMMITS POR DIA, PARA SEMPRE — e só se vê em
+  DOIS PROCESSOS.** O `data/paginas/cobertura/prints.json` saía com as **mesmas
+  chaves e o mesmo conteúdo noutra ORDEM** a cada corrida: o
+  `meta_coverage.build` fazia `names = {…}` (um `set`) e o Python **aleatoriza o
+  hash das strings a cada arranque**. Dentro do mesmo processo era estável — que
+  é precisamente por que ninguém deu por isso enquanto só o `daily` o escrevia
+  uma vez por dia. Com o `publicar` de 30 em 30 minutos a decidir «há algo para
+  commitar?» por essa diferença, eram **48 commits e 48 builds do Pages por dia,
+  em 77 854 bytes que não mudaram**. Hoje é `sorted(...)`, e quem o tranca é o
+  `tests/medir_determinismo.py` — que corre a geração em **subprocessos**, e
+  vive em `tests/` e não num scratch pela razão do `medir_layout.py`: uma
+  ferramenta fora do repositório fazia o caso **saltar em todas as outras
+  máquinas**. Varridos os **273 ficheiros**, era o único.
 - **PUBLICAR NÃO ESCREVE NA COLECÇÃO, e isto quase passou.** Dos treze
   geradores, **um** escrevia: a Galeria grava o ponto do dia no `value_history`
   (`INSERT OR REPLACE`, **8 272 bytes no `-wal`**, medido). Como o SOSSEGO da
