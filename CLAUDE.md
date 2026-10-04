@@ -2174,11 +2174,15 @@ Backup em `data/backups/vault-2026-10-04-tres-decisoes.db` (98,7 MB,
     números, porque daqui a um mês ninguém se lembra porque é que 10 virou 20:
     com `cartas_partilhadas: rotativas` as cartas que entram em vários decks
     marcados ficam guardadas por definição, o limiar passa a cobrir só as staples
-    que não estão em deck nenhum, e por isso pode ser mais largo. **NOTA HONESTA,
-    e está lá: a chave `cartas_partilhadas` AINDA NÃO EXISTE** no
-    `colecao_config.json` — vem da ordem `mtg-decks-estrutura`, que a 04/10 ainda
-    não tinha corrido (estava na inbox). O limiar está a 20 % por decisão dele; a
-    razão fica à espera da regra que a sustenta.
+    que não estão em deck nenhum, e por isso pode ser mais largo. **A regra que
+    sustenta isto entrou no MESMO DIA, depois disto.** Quando a razão foi
+    escrita a chave `cartas_partilhadas` não existia no config e ficou dito;
+    horas depois a ordem das abas de decks fundiu no `main` e pôs-lhe
+    `cartas_partilhadas: "rotativas"` no **premodern** e no **spml** (e
+    `dedicadas` no cEDH, Duel Commander e Pauper) — exactamente o pressuposto da
+    subida. **A nota foi corrigida nos dois sítios** (config e aqui) em vez de
+    ficar a dizer que a regra não existe: uma nota que mente é pior do que nota
+    nenhuma, e esta ia passar a mentir no dia seguinte.
 - **3) A VIGIA DO ARQUÉTIPO DO CLOUD CORRE A SÉRIO** (`archetype?a=2629`), e não
   ficou pendente. `watched` `kind = 'mtgtop8_archetype'`, `key = 2629`,
   `format = duel-commander` — **id 6, inscrita e verificada contra o site**: 16
