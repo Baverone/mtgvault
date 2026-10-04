@@ -102,6 +102,12 @@ def main(argv=None):
     nm.add_argument("--eventos", type=int, default=None,
                    help="tecto de páginas de evento a ler no `recuperar`")
 
+    cd = sub.add_parser("cartas-desconhecidas",
+                        help="os nomes de carta que o catálogo NÃO conhece")
+    cd.add_argument("--onde", default="todas",
+                    choices=["todas", "decks", "listas"],
+                    help="decks = a tabela `decks`; listas = o metagame")
+
     g = sub.add_parser("gap", help="o que falta para montar um arquétipo")
     g.add_argument("archetype_id", type=int)
     g.add_argument("--flex", action="store_true")
@@ -533,6 +539,36 @@ def main(argv=None):
             rows = [dict(r) for r in con.execute(
                 q, (args.format.lower(),) if args.format else ())]
             _p(rows, ["id", "format", "label", "lists"])
+
+        elif args.cmd == "cartas-desconhecidas":
+            # O catálogo não conhece o nome: NÃO é «não tenho» e não se inventa
+            # a carta. Fica dita, com o nome e onde aparece.
+            fontes = {
+                "decks": ("SELECT DISTINCT card_name n FROM deck_cards", "decks"),
+                "listas": ("SELECT DISTINCT card_name n FROM decklist_cards",
+                           "listas do metagame"),
+            }
+            alvos = (list(fontes) if args.onde == "todas" else [args.onde])
+            for a in alvos:
+                q, rot = fontes[a]
+                nomes_ = [r["n"] for r in con.execute(q)]
+                maus = scryfall.desconhecidas(con, nomes_)
+                print(f"\n{rot}: {len(maus)} de {len(nomes_)} nomes desconhecidos")
+                for n in maus:
+                    if a == "decks":
+                        onde = ", ".join(
+                            f"{r['name']} ({r['board']} {r['quantity']})"
+                            for r in con.execute(
+                                "SELECT d.name, dc.board, dc.quantity FROM deck_cards dc "
+                                "JOIN decks d ON d.id = dc.deck_id "
+                                "WHERE dc.card_name = ?", (n,)))
+                    else:
+                        onde = "%d linhas" % con.execute(
+                            "SELECT COUNT(*) c FROM decklist_cards WHERE card_name = ?",
+                            (n,)).fetchone()["c"]
+                    print(f"  {n:<40s} {onde}")
+            if not alvos:
+                print("nada a ver")
 
         elif args.cmd == "nomes":
             fmt = (args.format or "").lower() or None

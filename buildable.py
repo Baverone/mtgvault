@@ -24,14 +24,14 @@ ROOT = Path(__file__).resolve().parent
 HOME = Path(os.environ.get("MTGVAULT_HOME", ROOT / "data"))
 DB = HOME / "vault.db"
 
-from mtgvault import sources  # noqa: E402
+from mtgvault import scryfall, sources  # noqa: E402
 
 MIN_LISTS = 5          # arquétipos com menos listas que contem do que isto são ignorados
 DEFAULT_THRESHOLD = 0.75
 
 
 def front(n: str) -> str:
-    return n.split(" // ")[0].strip().lower()
+    return scryfall.chave(n).strip().lower()
 
 
 def consensus_main(con: sqlite3.Connection, ids: list[int]) -> dict[str, int]:

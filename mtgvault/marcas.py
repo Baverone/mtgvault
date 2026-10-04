@@ -40,7 +40,7 @@ from __future__ import annotations
 import sqlite3
 from datetime import date, datetime
 
-from . import paginas, padrao
+from . import paginas, padrao, scryfall
 
 #: Os dois estados de um número, e são visíveis e distintos no ecrã.
 INVENTARIO = "inventario"
@@ -94,8 +94,13 @@ def posse(con: sqlite3.Connection, inv: dict[str, int] | None = None,
     """
     inv = inventario(con) if inv is None else inv
     mks = marcadas(con) if mks is None else mks
-    out = {nm: {"q": q, "origem": INVENTARIO, "em": None}
-           for nm, q in inv.items()}
+    # `MapaDeCartas` e não um `dict`: é a ele que o `conta_do_deck` pergunta
+    # `pos.get(nm)` com o nome que a LISTA deu, e é o mapa que canoniza a chave.
+    # Num `dict` cru, uma lista que pede `Wear/Tear` não achava as 2 cópias de
+    # `Wear // Tear` e o deck aparecia a faltar uma carta que ele tem.
+    out = scryfall.MapaDeCartas(
+        {nm: {"q": q, "origem": INVENTARIO, "em": None}
+         for nm, q in inv.items()})
     for nm, m in mks.items():
         out[nm] = {"q": m["q"], "origem": MARCADO, "em": m["em"]}
     return out
@@ -111,13 +116,17 @@ def de(con: sqlite3.Connection, nome: str) -> dict:
     q = con.execute(
         f"""SELECT COALESCE(SUM(cp.quantity), 0) q FROM copies cp
               JOIN cards c ON c.scryfall_id = cp.scryfall_id
-             WHERE {_jogaveis()} AND (c.name = ? OR c.name LIKE ?)""",
-        (nm, nm + " // %")).fetchone()["q"]
+             WHERE {_jogaveis()} AND {scryfall.sql_nome("c.name")}""",
+        scryfall.params_nome(nm)).fetchone()["q"]
     return {"q": q, "origem": INVENTARIO, "em": None}
 
 
 def _front(nome: str) -> str:
-    return (nome or "").split(" // ")[0].strip()
+    """A frente do nome. É o `scryfall.chave` e nunca um `split` próprio: o
+    `posse_marcada.card_name` tem de ser a MESMA chave que a `posse_total`
+    guarda, senão um `+` escrito sobre `Wear/Tear` cria uma linha que a lista
+    nunca mais encontra."""
+    return scryfall.chave(nome)
 
 
 def _jogaveis() -> str:

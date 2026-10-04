@@ -247,8 +247,8 @@ def copias_por_revalidar(con, name: str | None = None) -> list[sqlite3.Row]:
     """As cópias na estante sem foto desta campanha (as «edição por confirmar»
     ficam de fora: são do `acertar_edicao`, que também as valida)."""
     if name:
-        return _sel_copias(con, "(c.name = ? OR c.name LIKE ? || ' //%')",
-                           (name, name))
+        return _sel_copias(con, scryfall.sql_nome("c.name"),
+                           scryfall.params_nome(name))
     return _sel_copias(con, "1=1", ())
 
 
@@ -266,9 +266,9 @@ def revalidaria(con, name: str, set_code: str | None, *,
         return False
     num = collector_number or ""
     return bool(_sel_copias(
-        con, "(c.name = ? OR c.name LIKE ? || ' //%') AND lower(c.set_code) = lower(?)"
+        con, scryfall.sql_nome("c.name") + " AND lower(c.set_code) = lower(?)"
              " AND (? = '' OR c.collector_number = ?) AND cp.language = ? AND cp.finish = ?",
-        (name, name, set_code, num, num, language, finish)))
+        (*scryfall.params_nome(name), set_code, num, num, language, finish)))
 
 
 def _ordem(preferir, qtd, primeiro=None):
@@ -298,9 +298,9 @@ def revalidar(con, name: str, set_code: str, *, collector_number: str | None = N
     from . import collection                               # noqa: PLC0415
     num = collector_number or ""
     rows = _sel_copias(
-        con, "(c.name = ? OR c.name LIKE ? || ' //%') AND lower(c.set_code) = lower(?)"
+        con, scryfall.sql_nome("c.name") + " AND lower(c.set_code) = lower(?)"
              " AND (? = '' OR c.collector_number = ?) AND cp.language = ? AND cp.finish = ?",
-        (name, name, set_code, num, num, language, finish))
+        (*scryfall.params_nome(name), set_code, num, num, language, finish))
     if not rows:
         return None
     qtd = max(int(quantity), 0)
@@ -359,8 +359,8 @@ def corrigir(con, name: str, set_code: str, *, collector_number: str | None = No
         return None                        # o catálogo decide: entra como sempre
     marks = ",".join("?" * len(ids))
     rows = _sel_copias(
-        con, f"(c.name = ? OR c.name LIKE ? || ' //%') AND cp.id IN ({marks})",
-        (name, name, *ids))
+        con, scryfall.sql_nome("c.name") + f" AND cp.id IN ({marks})",
+        (*scryfall.params_nome(name), *ids))
     # Só as que NÃO são a impressão da foto: essas eram do passo (0).
     rows = [r for r in rows
             if not (r["scryfall_id"] == card["scryfall_id"]

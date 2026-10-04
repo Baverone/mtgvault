@@ -24,7 +24,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import nomes, paginas, sources  # noqa: E402
+from mtgvault import nomes, paginas, scryfall, sources  # noqa: E402
 from mtgvault import site_shell as shell  # noqa: E402
 from mtgvault.collection import owned_playable  # noqa: E402
 
@@ -111,7 +111,7 @@ def _lists(con, fmt):
         ph = ",".join("?" * len(chunk))
         for c in con.execute(f"SELECT decklist_id did, card_name nm, board b, quantity q "
                              f"FROM decklist_cards WHERE decklist_id IN ({ph})", chunk):
-            f = c["nm"].split(" // ")[0]
+            f = scryfall.chave(c["nm"])
             d = sides[c["did"]] if c["b"] == "side" else mains[c["did"]]
             d[f] = d.get(f, 0) + c["q"]
     out, events = [], {}

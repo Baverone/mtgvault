@@ -40,20 +40,20 @@ def resolve(con: sqlite3.Connection, name: str) -> str | None:
     `find_printing` sem `set_code`: para um nome sem preço no catálogo dava a
     primeira impressão da carta — para as básicas, Alpha.
     """
-    like = name + " // %"
-    from mtgvault import precos                            # noqa: PLC0415
+    from mtgvault import precos, scryfall                  # noqa: PLC0415
     expr = precos.sql(alias="p")
+    pn = scryfall.params_nome(name)
     r = con.execute(
         f"""SELECT c.scryfall_id FROM catalog.cards c
              JOIN price_latest p ON p.scryfall_id = c.scryfall_id AND p.finish = 'nonfoil'
-            WHERE (c.name = ? OR c.name LIKE ?) AND {expr} IS NOT NULL
-            ORDER BY {expr} ASC LIMIT 1""", (name, like)).fetchone()
+            WHERE {scryfall.sql_nome("c.name")} AND {expr} IS NOT NULL
+            ORDER BY {expr} ASC LIMIT 1""", pn).fetchone()
     if r:
         return r[0]
     r = con.execute(
-        """SELECT scryfall_id FROM catalog.cards
-            WHERE (name = ? OR name LIKE ?) AND lang = 'en'
-            ORDER BY released_at DESC LIMIT 1""", (name, like)).fetchone()
+        f"""SELECT scryfall_id FROM catalog.cards
+            WHERE {scryfall.sql_nome("name")} AND lang = 'en'
+            ORDER BY released_at DESC LIMIT 1""", pn).fetchone()
     return r[0] if r else None
 
 

@@ -81,7 +81,7 @@ from __future__ import annotations
 import sqlite3
 from collections import Counter, defaultdict
 
-from . import sources
+from . import scryfall, sources
 
 # O formato por omissão e o comandante que a página abre. Os dois estão no
 # config (`consenso_comandante`), porque são escolhas dele e não regras.
@@ -140,15 +140,28 @@ def nome_do_comandante(con, nomes) -> str | None:
     nomes = [n for n in (nomes or []) if n]
     if not nomes:
         return None
+    # O cruzamento com o catálogo passa pelo `scryfall.chave`: um comandante de
+    # DUAS FACES (e o formato joga muitos) tem o nome inteiro no catálogo e só a
+    # frente na lista, e com `name IN (...)` cru nunca era reconhecido como
+    # lendário — a derivação escolhia a última linha qualquer que fosse.
     marcas = ",".join("?" for _ in nomes)
-    cmd = {r["nm"] for r in con.execute(
+    cmd = {scryfall.chave(r["nm"]) for r in con.execute(
         f"""SELECT name nm FROM cards WHERE name IN ({marcas}) AND digital = 0
              AND type_line LIKE '%Legendary%'
              AND (type_line LIKE '%Creature%' OR type_line LIKE '%Planeswalker%')
             GROUP BY name""", nomes)}
     for n in nomes:
-        if n in cmd:
+        if scryfall.chave(n) in cmd:
             return n
+    for n in nomes:                     # ... e as de duas faces, uma a uma
+        achado = scryfall.resolver(con, n)
+        if achado and scryfall.chave(achado) != scryfall.chave(n):
+            r = con.execute(
+                "SELECT 1 FROM cards WHERE name = ? AND digital = 0 "
+                "AND type_line LIKE '%Legendary%' AND (type_line LIKE '%Creature%'"
+                " OR type_line LIKE '%Planeswalker%') LIMIT 1", (achado,)).fetchone()
+            if r:
+                return n
     return nomes[0]
 
 
