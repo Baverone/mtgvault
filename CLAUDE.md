@@ -2845,6 +2845,148 @@ Backup em `data/backups/vault-2026-10-04-listas-de-eventos.db` (99,5 MB,
   e é interpretação minha; (f) as **staples** dão 55 contra os 50 dele, e os
   ficheiros dele não estão neste PC para reconciliar.
 
+**UM DECK POR FORMATO, COM VERSÕES POR DENTRO (André, 2026-10-04, à noite, à
+letra).** *"vamos fazer uma coisa diferente, a ver como fica"*; *"quero apenas
+manter decks que usem Mox Opal, tudo o resto e para vender (em modern)"*;
+*"quero ficar com 1 deck e versoes do deck (como opcoes)"*; *"De Modern quero
+apenas decks de Mox Opal / De Pioneer quero Apenas decks de Greasefang / de
+Standard apenas decks de Bant Airbend / Legacy ainda nao sei"*. **SUBSTITUI O
+MODELO DE 18 DECKS** da mesma tarde. Motor em **`mtgvault/versoes.py`**, as duas
+regras novas em `mtgvault/fases.py` (`RE`/`RLG`), o registo e o `deck_unico` em
+`mtgvault/decks_vista.py`, a página em `decks.py`, o endpoint `POST /api/versao`,
+config em `colecao_config.json → decks_por_formato`. Testes em
+`tests/test_modelo_versoes.py` (15 casos) e a prova de que chumbam em
+`tests/_chumba_versoes.py` (**11 de 11 alvos**, um processo por alvo).
+
+- **A ESTRUTURA:** `modern` → UM deck «Affinity (Mox Opal)» com **4 versões**;
+  `pioneer` → UM deck «Greasefang» com **3**; `standard` → «Bant Airbend»
+  (ele revê em Janeiro); `legacy` → **POR DECIDIR**, e nada se escolheu nem se
+  libertou; **`premodern` fica como está, 6 decks** — ele não lhe tocou, e por
+  isso nem aparece no bloco. Um formato que não esteja no `decks_por_formato`
+  continua exactamente como estava: é o interruptor, e tem caso de teste.
+- **UMA VERSÃO É UM CLUSTER MAIS UMA LISTA QUE ALGUÉM JOGOU, nunca um consenso.**
+  É a decisão dele de 04/10 ao fim do dia (*"vamos focar nas decklists baseadas
+  em eventos reais"*), e fazer o consenso de cada cluster era ressuscitar a média
+  que ele acabava de enterrar nessa mesma noite. Onde a lista já existia,
+  **aponta-se para ela** (`deck`) em vez de a duplicar: a versão `izzet-pinnacle`
+  **é** a caixa `modern` (a lista de qualificação dele) e a `broodwagon` **é** a
+  caixa `pioneer` (Martin_Dominguez, Challenge 32 de 01/10 — conferido: a lista
+  dessa caixa é mesmo a `decklist 23333`, do cluster 7583). As outras cinco
+  ganharam lista pelo `eventos.escolher`/`fixar`, com a proveniência gravada.
+- **AS VERSÕES, medidas** (listas que contam, a 2026-10-04):
+
+  | formato | versão | cluster | listas | lista real |
+  |---|---|---|---|---|
+  | modern | **Izzet Pinnacle** ← escolhida | 7614 | 20 (20 na janela) | a tua, de qualificação |
+  | modern | Weapons Manufacturing | 4380 | 88 (0) | Benny Zeoli · 9-16 · RC · 12/09 · 1 486 j |
+  | modern | Cranial Plating | 7525 | 5 (0) | Arcbound_Papi · 5-8 · Challenge 32 · 27/09 |
+  | modern | Seachrome | 7527 | 3 (0) | Chris Nguyen · 5-8 · ReCQ · 13/09 · 344 j |
+  | pioneer | **Broodwagon** ← escolhida | 7583 | 2 (2) | Martin_Dominguez · Challenge 32 · 01/10 |
+  | pioneer | Parhelion | 7309 | 15 (0) | Sakamoto Masaaki · 3-4 · 22/09 · 65 j |
+  | pioneer | Mycosynth Gardens | 6482 | 6 (0) | LaceiSuaEsposa · Challenge 32 · 26/09 |
+
+  Escolheu-se a que está **dentro da janela do consenso** nos dois formatos — e
+  nos dois ela é a lista que ele já tinha na caixa. O **4380 e o 7614 são a mesma
+  deck partida pelo bug dos arquétipos** que a ordem `mtg-top8-por-edicao` vai
+  corrigir (88 listas com 0 na janela contra 20 com 20): quando a identidade
+  estável existir, as duas versões colapsam numa.
+- **O CRITÉRIO DA ORDEM DÁ SETE VERSÕES E NÃO QUATRO — medido, e dito.** *"Nem
+  todo o deck que joga Mox Opal é uma versão da Affinity"* está certo e o teste
+  (Kappa Cannoneer + Pinnacle Emissary) está certo; o que a ordem não viu é que
+  ele passa em **sete** clusters e não em quatro. Medido na base: **20 clusters**
+  de Modern jogam Mox Opal (164 listas, mais 17 sem cluster), e passam o teste os
+  quatro que ele nomeou **e mais 7400 (2 listas), 7010 (2) e 6491 (1)**, os três
+  com Kappa e Pinnacle em **100 %** das listas. Ficaram **fora da escolha e à
+  vista**, marcados `passa_criterio`: a leitura dele é que manda, e três clusters
+  de uma a duas listas não se metem num deck dele por iniciativa própria.
+  Os cinco que a ordem nomeou como «não ficam» confirmam-se todos — o 7394 tem
+  Kappa em 1 de 9 listas e Pinnacle em **zero**.
+- **E DUAS CORRECÇÕES À PREMISSA, as duas a favor dele:** (a) *"25 listas, 6,9 %
+  do formato, repartidas por NOVE arquétipos"* mistura dois universos — **na
+  janela são 24 listas** (6,9 % de 350, a percentagem bate) **em 4 clusters**; os
+  nove só aparecem olhando para **todas** as listas que contam; (b) dos sete
+  nomes que a ordem dá como libertados e perigosos, **quatro já estavam
+  protegidos pela R5** (Undercity Sewers, Thundering Falls, Quantum Riddler,
+  Meticulous Archive — jogados no último mês) e um pela RD (Solitude). As
+  percentagens de Legacy da ordem são da **janela do consenso** (135 listas), e
+  é esse o universo que se usou — Wrath of the Skies 16,3 %, Thundering Falls
+  12,6 %, Quantum Riddler 11,1 % batem ao décimo.
+- **«OUTROS DECKS QUE JOGAM MOX OPAL» É DERIVADO DA BASE, nunca escrito à mão**
+  (`versoes.outros_que_jogam`). *"NAO decidas por ele incluir nem excluir
+  definitivamente"*: a lista sai a cada corrida, cada entrada diz quantas listas
+  tem e a percentagem de cada carta do critério, e as que passam ficam à cabeça.
+  Escrita à mão ficava desactualizada no dia em que aparecesse um deck novo — e é
+  precisamente o deck novo que interessa ver. Tem caso de teste que semeia um
+  cluster novo e exige que ele apareça sozinho.
+- **NADA SE APAGA.** Os nove decks de Modern que saem e o UR Aggro de Pioneer
+  ficam no config com `_saiu` (data + razão), aparecem no registo com o rótulo
+  **«meta, não escolhido»** e **mantêm a lista, a proveniência e as cartas**.
+  Repor é tirar-lhes o `_saiu`. Tem caso próprio, que exige que o deck continue
+  a contar `tens X de Y` depois de sair.
+- **AS DUAS REGRAS NOVAS DA VENDA, e porque é que eram precisas.** Os dez decks
+  de Modern de 04/10 à tarde **não protegiam uma única cópia**: não são caixas,
+  não têm `copy_allocation`, e por isso a RD nunca os via. Sem mecanismo, *"quero
+  apenas manter decks que usem Mox Opal"* não queria dizer nada.
+  - **RE · está num deck que escolheste** — o nome está na lista de um deck que
+    o modelo guarda. **Todas as versões protegem, não só a escolhida**: são
+    opções do mesmo deck, e vendê-las por ele ter hoje a versão B escolhida era
+    desfazer a opção. O que a escolha muda é o que ele MONTA (a necessidade, as
+    compras, as próprias) — e isso é outra pergunta.
+  - **RLG · formato por decidir** — enquanto o Legacy estiver `por_decidir`, uma
+    carta que se jogue em ≥ 5 % das listas da janela desse formato **não vai à
+    venda**. *"Tudo o resto é para vender"* não pode querer dizer vender as
+    staples de Legacy antes de ele escolher o deck de Legacy. **É GLOBAL e não só
+    sobre o que este modelo liberta**, e é uma decisão: uma regra que só valesse
+    para «os nomes que estavam no modelo de 18 decks» precisava desse conjunto
+    congelado no config para sempre, e um conjunto congelado é o que apodrece.
+    Assim é sem estado, retém mais, e **desliga-se sozinha** no dia em que ele
+    decidir — tem caso de teste nos dois sentidos.
+  - **A RLG é a ÚLTIMA de todas as regras, e isso é deliberado.** Posta à frente
+    da R5 ficava com o crédito de **203 cópias** que a R5 já segurava de qualquer
+    maneira (medido), e o número que ele lê — *"isto fica retido só porque não
+    decidi o Legacy"* — vinha inflacionado três vezes. No fim, diz exactamente o
+    que se desbloqueia quando ele decidir: **96 cópias / 3 159,19 €**.
+- **MEDIDO LADO A LADO, o MESMO `vault.db` dos dois lados** (`main` contra o
+  ramo, `_revisao/medir/comparar.py`, um processo por árvore):
+
+  | | main | ramo |
+  |---|---|---|
+  | fechar tudo | 11 122,58 € | **11 122,58 €** |
+  | a comprar | 295 | **295** |
+  | valor da colecção / cartas | 133 354,51 € / 1 678 | **iguais** |
+  | as 17 caixas | — | **iguais à percentagem e ao cêntimo** |
+  | VENDER | 625 c / 17 963,58 € | **477 c / 13 426,09 €** |
+  | protegidas | 1 053 c / 126 804,62 € | **1 201 c / 131 342,11 €** |
+  | R5 (30 dias) | 458 c / 11 884,75 € | 381 c / 9 703,84 € |
+  | **RE** | — | **129 c / 3 559,21 € / 40 cartas** |
+  | **RLG** | — | **96 c / 3 159,19 € / 28 cartas** |
+
+  **A alocação não mexe um número** — o modelo não toca nas `caixas`. Da lista
+  VENDER **saem 148 cópias e não entra nenhuma**; a R5 desce 77 porque a RE e a
+  RLG apanham essas cópias primeiro (129 + 96 − 77 = 148, ao exemplar).
+- **O QUE O MODELO LIBERTA, e a divisão que ele pediu.** O modelo de 18 decks
+  cobria **370 nomes**; as 14 versões (8 do modelo + as 6 caixas de Premodern,
+  que ele não mexeu) cobrem **233**. Dos 176 nomes que saem, **48 têm cópias
+  livres hoje** — 158 cópias. Divididas:
+  - **A) joga em Legacy (≥ 5 % da janela) — 13 nomes / 50 cópias — RETIDO** até
+    ele decidir o Legacy. Os piores: Orcish Bowmasters 23,0 % (7 cópias), Flow
+    State 18,5 % (3), Wrath of the Skies 16,3 % (8), Ocelot Pride 11,1 % (5),
+    Guide of Souls, Phelia e Ajani 11,1 % (4 cada).
+  - **B) não joga em Legacy — 35 nomes / 108 cópias — candidata sem dúvida.**
+
+  (Os números da ordem — 365/266 nomes, 73 libertados, 26 em Legacy — **não
+  reproduzem**: o conjunto dos 18 decks dá 370 e o das versões 233, e 4 dos 7
+  nomes que ela nomeia já estavam protegidos pela R5. Os medidos são estes.)
+- **A VENDA CONTINUA TRAVADA E ESCONDIDA** (`venda.mostrar: false`, trava
+  manual): isto prepara a lista, não a destranca. Nada saiu da base.
+- **POR DECIDIR POR ELE:** (a) os **três clusters que passam o critério** (7400,
+  7010, 6491) e ficaram fora — incluir é uma linha em `versoes`; (b) o **Standard
+  continua sem lista** (o consenso tem 1 lista contra um mínimo de 5) e ele revê
+  em Janeiro — trocar para uma lista de evento real resolvia; (c) o corte da
+  **RLG** são 5 % e é escolha minha a partir das 135 listas da janela
+  (`decks_por_formato._corte_pct`); (d) as **50 cópias de A** ficam retidas até
+  ele escolher o deck de Legacy.
+
 **PUBLICAR SEM ESPERAR PELAS 03:30, E A BARRA PELOS QUATRO TRABALHOS (André,
 2026-10-04, à noite, à letra).** *"podes refazer novamente a seccao do MTG
 completamente com estas novas regras?"* e *"Organiza tudo de forma profissional

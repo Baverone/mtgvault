@@ -66,7 +66,7 @@ import sqlite3
 from collections import defaultdict
 
 from . import (caixas, eventos, loadout, marcas, nomes, padrao, scryfall,
-               sources, stock)
+               sources, stock, versoes)
 
 # ---------------------------------------------------------------------------
 # Os tipos de carta: DUAS listas, e são duas perguntas diferentes
@@ -487,6 +487,14 @@ def registo(con: sqlite3.Connection, cfg: dict | None = None) -> dict[str, list[
     # poder reconhecer neles (`ja_e_caixa`) e não oferecer o mesmo deck duas vezes.
     for d in decks_de_evento(con, cfg):
         por_fmt[d["formato"]].append(d)
+    # AS VERSÕES QUE TÊM LISTA PRÓPRIA (2026-10-04, à noite). Uma versão cuja
+    # lista já vive noutro deck aponta para lá (`deck`) e não se duplica; as
+    # outras têm a lista de evento em `listas_escolhidas[<id da versão>]` e são
+    # um deck por direito, para a página poder mostrar as cartas e o `tem/total`.
+    ja_ha = {d["id"] for ds in por_fmt.values() for d in ds}
+    for d in decks_de_versoes(con, cfg):
+        if d["id"] not in ja_ha:
+            por_fmt[d["formato"]].append(d)
     for fmt in list(por_fmt):
         if not e_rotativo(fmt):
             continue
@@ -499,6 +507,17 @@ def registo(con: sqlite3.Connection, cfg: dict | None = None) -> dict[str, list[
             if m["nome"].strip().lower() in ja:
                 m = dict(m, ja_e_caixa=True)
             por_fmt[fmt].append(m)
+    # QUEM SAIU DA ESCOLHA CONTINUA AQUI (2026-10-04, à noite). O modelo de um
+    # deck por formato deixou nove decks de Modern e o UR Aggro de Pioneer fora
+    # da escolha — e **nada se apaga**: ficam no registo, consultáveis, com a
+    # lista e a proveniência, marcados `saiu`. Tirá-los daqui era perdê-los sem
+    # ninguém decidir isso.
+    for fmt in por_fmt:
+        for i, d in enumerate(por_fmt[fmt]):
+            s = versoes.saiu(d["id"], cfg)
+            if s:
+                por_fmt[fmt][i] = dict(d, saiu=s,
+                                       rotulo_estado=versoes.TEXTO_SAIU)
     return dict(por_fmt)
 
 
@@ -544,6 +563,42 @@ def decks_de_evento(con: sqlite3.Connection,
         if n.get("amostra_fina"):
             d["amostra_fina"] = n["amostra_fina"]
         out.append(_com_proveniencia(d, cfg, chave))
+    return out
+
+
+def decks_de_versoes(con: sqlite3.Connection,
+                     cfg: dict | None = None) -> list[dict]:
+    """As versões cuja lista NÃO vive já noutro deck, como decks do registo.
+
+    A lista é uma lista de evento REAL, fixada em `listas_escolhidas[<id>]` pelo
+    `eventos.fixar` — a mesma mecânica dos `decks_de_evento`, e pela mesma razão
+    de 2026-10-04 ao fim do dia: *"vamos focar nas decklists baseadas em eventos
+    reais"*. Não é o consenso do cluster: isso era ressuscitar a média que ele
+    acabava de enterrar.
+    """
+    cfg = sources.config() if cfg is None else cfg
+    out = []
+    for fmt in versoes.formatos(cfg):
+        nome_fmt = (versoes.do_formato(fmt, cfg) or {}).get("nome") or fmt
+        for v in versoes.versoes(fmt, cfg):
+            chave = versoes.deck_da_versao(v)
+            if chave != v.get("id"):
+                continue                      # a lista vive noutro deck
+            rec = (cfg.get("listas_escolhidas") or {}).get(chave) or {}
+            cards = [(("side" if b == "side" else "main"), scryfall.chave(c), int(q))
+                     for b, c, q in (rec.get("cards") or [])]
+            d = {
+                "id": chave, "slot": None,
+                "nome": f"{nome_fmt} · {v.get('nome') or chave}",
+                "formato": fmt, "fonte": "versao", "origem": "evento",
+                "nota": _nota_do_evento(rec),
+                "link": (rec.get("evento") or {}).get("url") or "",
+                "estado": None, "cards": cards, "listas": v.get("listas"),
+                "arquetipo_id": v.get("arquetipo_id"),
+                "desactivada": False, "rotulo_estado": "",
+                "versao_de": fmt,
+            }
+            out.append(_com_proveniencia(d, cfg, chave))
     return out
 
 
@@ -789,7 +844,24 @@ def relatorio(con: sqlite3.Connection, cfg: dict | None = None) -> dict:
             loadout.regra_do_formato(f)[0], f)):
         modo = partilha_do_formato(fmt)
         decks = reg[fmt]
-        escolhidos = [d for d in decks if d["id"] in mks]
+        # QUEM CONTA COMO «ESCOLHIDO» NESTE FORMATO.
+        #
+        # Nos formatos do modelo de versões (2026-10-04, à noite) é a **versão
+        # escolhida e só ela** — ele sleeva UMA. As outras versões continuam
+        # PROTEGIDAS da venda (a regra RE do `fases` guarda todas: são opções do
+        # mesmo deck, e vendê-las por ele ter hoje a versão B escolhida era
+        # desfazer a opção), mas não entram na necessidade nem nas compras: isso
+        # é quanto ele tem de comprar para montar, e ele monta uma.
+        #
+        # Nos outros formatos é o que ele marcou à mão, como desde 04/10 à tarde.
+        unico = versoes.do_formato(fmt, cfg)
+        if unico:
+            dos = set(versoes.decks_das_versoes(fmt, cfg))
+            vd = versoes.deck_da_versao(versoes.versao(fmt, cfg=cfg) or {})
+            escolhidos = [d for d in decks if d["id"] == vd]
+        else:
+            dos = set()
+            escolhidos = [d for d in decks if d["id"] in mks]
         rep = reparticao(escolhidos) if modo == ROTATIVAS else {}
         nec = necessidade(escolhidos, pos)
         tot = totais_da_necessidade(nec, pos)
@@ -801,7 +873,15 @@ def relatorio(con: sqlite3.Connection, cfg: dict | None = None) -> dict:
                 "origem": d.get("origem"), "nota": d.get("nota") or "",
                 "link": d.get("link") or "", "estado": d.get("estado"),
                 "listas": d.get("listas"), "ja_e_caixa": d.get("ja_e_caixa", False),
-                "quero": d["id"] in mks, "marcado_em": mks.get(d["id"]),
+                # Num formato do modelo quem decide é a VERSÃO ESCOLHIDA — UMA —
+                # e não a marca à mão: duas respostas a *"vou montar este?"* no
+                # mesmo ecrã era o defeito que o modelo veio fechar. As outras
+                # versões dizem-no pelo `e_versao` (e continuam protegidas da
+                # venda), mas ele monta uma.
+                "quero": (d["id"] == vd if unico else d["id"] in mks),
+                "marcado_em": mks.get(d["id"]),
+                "e_versao": d["id"] in dos,
+                "saiu": d.get("saiu"),
                 "tem": c["tem"], "total": c["total"], "pct": c["pct"],
                 "main": c["main"], "side": c["side"],
                 "sem_lista": not d.get("cards"),
@@ -846,11 +926,59 @@ def relatorio(con: sqlite3.Connection, cfg: dict | None = None) -> dict:
             # nenhuma, e uma lista vazia com título era prometer o que não há.
             "staples": (staples_do_formato(escolhidos, rep, pos)
                         if modo == ROTATIVAS and escolhidos else []),
+            # UM DECK POR FORMATO, COM VERSÕES (2026-10-04, à noite). `None`
+            # nos formatos que ele não mexeu — o Premodern fica com os seus
+            # seis decks e com a pergunta «queres montar este?» de sempre.
+            "deck_unico": deck_unico(con, fmt, decks, pos, cfg),
         })
     return {"formatos": fmts, "decks": por_deck,
             "marcas": marcas.resumo(con),
             "frase_marcas": marcas.frase(con),
             "pos": pos}
+
+
+def deck_unico(con: sqlite3.Connection, fmt: str, decks: list[dict],
+               pos: dict[str, dict], cfg: dict | None = None) -> dict | None:
+    """O deck ÚNICO deste formato com as versões por dentro, ou `None`.
+
+    `None` quer dizer *"este formato fica como estava"* — o Premodern, que ele
+    não mexeu, e todos os que não nomeou.
+
+    Cada versão traz o que ele já tem dela (`tem`/`total`/`pct`), para a escolha
+    ser informada: a pergunta a seguir à de qual versão jogar é sempre *"e qual
+    é a que estou mais perto de fechar"*.
+    """
+    cfg = sources.config() if cfg is None else cfg
+    d = versoes.do_formato(fmt, cfg)
+    if not d:
+        return None
+    por_id = {x["id"]: x for x in decks}
+    esc = versoes.versao_escolhida(fmt, cfg)
+    vs = []
+    for v in versoes.versoes(fmt, cfg):
+        did = versoes.deck_da_versao(v)
+        alvo = por_id.get(did) or {}
+        c = conta_do_deck(alvo, pos) if alvo else {"tem": 0, "total": 0, "pct": 0}
+        vs.append({
+            "id": v.get("id"), "nome": v.get("nome") or v.get("id"),
+            "arquetipo_id": v.get("arquetipo_id"), "listas": v.get("listas"),
+            "deck": did, "escolhida": v.get("id") == esc,
+            "tem": c["tem"], "total": c["total"], "pct": c["pct"],
+            "sem_lista": not (alvo.get("cards") if alvo else None),
+            "nota": (alvo.get("nota") or "") if alvo else "",
+            "evento": alvo.get("evento") if alvo else None,
+        })
+    return {
+        "formato": fmt, "nome": d.get("nome") or fmt,
+        "porque": d.get("porque") or "", "em": d.get("em") or "",
+        "nota": d.get("_nota") or "",
+        "por_decidir": bool(d.get("por_decidir")),
+        "versao": esc, "versoes": vs,
+        "carta_chave": versoes.carta_chave(fmt, cfg),
+        "outros": versoes.outros_que_jogam(con, fmt, cfg),
+        "saidos": [{"id": i, **s} for i, s in sorted(versoes.saidos(cfg).items())
+                   if (por_id.get(i) or {}).get("formato") == fmt],
+    }
 
 
 def cache_nova() -> dict:

@@ -86,7 +86,7 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 from mtgvault import (caixas, configio, db, decks_vista, encomendas,  # noqa: E402
                       fases, feira, fotocaixa, fotos as fotos_mod, fotosite,
                       loadout, marcas, migracao, precos, site_shell, sources,
-                      venda)
+                      venda, versoes)
 from mtgvault import padrao as padrao_mod  # noqa: E402
 
 import arrumacao  # noqa: E402
@@ -1740,6 +1740,12 @@ class Handler(BaseHTTPRequestHandler):
                     # deck — logo quais levam proxy.
                     self._json(self._deck_montar(dados))
                     return
+                if caminho == "/api/versao":
+                    # A VERSÃO do deck de um formato (2026-10-04, à noite). O
+                    # gesto novo: *"quero ficar com 1 deck e versoes do deck
+                    # (como opcoes)"*. Regenera, como o «quero montar».
+                    self._json(self._versao(dados))
+                    return
                 if caminho == "/api/fase-reserva":
                     # A RESERVA («maybe») de um deck: acrescentar à mão
                     # (`caixas[].reserva`), o botão **«não é necessária»**
@@ -1845,6 +1851,30 @@ class Handler(BaseHTTPRequestHandler):
         nm = nomes_[deck_id]
         return {"ok": True, "id": deck_id, "quero": quero,
                 "msg": (f"{nm}: {'quero montar' if quero else 'já não quero montar'}")}
+
+    def _versao(self, dados):
+        """A VERSÃO que ele escolheu para o deck de um formato (2026-10-04, à
+        noite). Só config, e **regenera**: muda o que ele monta, logo a
+        necessidade do formato, as compras e quem é própria/partilhada.
+
+        **Uma versão que o formato não tem é 409 e não 500** — uma página aberta
+        ontem no telemóvel ainda manda a lista de versões de ontem. É a regra da
+        `VendaDesligada` e da `AlocacaoDupla`: a `VersaoDesconhecida` é
+        subclasse de `ValueError`, por isso o `do_POST` já a traduz.
+        """
+        fmt = str(dados.get("formato") or "").strip().lower()
+        vid = str(dados.get("versao") or "").strip()
+        if not fmt or not vid:
+            raise SemLista("sem formato ou sem versão: o pedido tem de dizer os dois.")
+        cfg = ler_config()
+        versoes.escolher(cfg, fmt, vid)
+        nome = (versoes.versao(fmt, vid, cfg) or {}).get("nome") or vid
+        deck = (versoes.do_formato(fmt, cfg) or {}).get("nome") or fmt
+        escrever_config(cfg)
+        with db.session() as con:
+            regenerar(con)
+        return {"ok": True, "formato": fmt, "versao": vid,
+                "msg": f"{deck}: passas a montar a versão {nome}"}
 
     def _caixa(self, dados):
         act, slot_id = dados.get("act"), dados.get("slot")

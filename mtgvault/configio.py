@@ -31,6 +31,12 @@ UMA_LINHA = ("caixas", "loadout", "regras_por_formato", "baldes_coleccao",
 # ninguém lê nem confere. Só aqui: as outras chaves ficam como estão escritas,
 # senão cada gravação reformatava o ficheiro inteiro.
 CARTAS_UMA_LINHA = ("listas_escolhidas",
+                    # UM DECK POR FORMATO, COM VERSÕES (2026-10-04, à noite): o
+                    # `criterio.exige` é uma lista de duas cartas e cada versão
+                    # é um objecto curto. Sem isto, o primeiro clique no
+                    # selector de versão reescrevia o bloco inteiro em cem
+                    # linhas — é a lição do commit `ac1f776`.
+                    "decks_por_formato",
                     # A REGRA DE ESCOLHA da lista de evento (2026-10-04, ao fim
                     # do dia): cada critério é um par `["chave", "a razão"]` e
                     # vai numa linha — é uma regra para ser LIDA, e com

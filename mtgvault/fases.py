@@ -168,7 +168,7 @@ from datetime import date
 
 from . import caixas as _caixas
 from . import collection as _col
-from . import nomes, scryfall, sources
+from . import nomes, scryfall, sources, versoes
 
 # ---------------------------------------------------------------------------
 # AS REGRAS: a chave, o rótulo e a ordem por que se perguntam
@@ -184,13 +184,35 @@ R4 = "r4-rl-joga"
 R5 = "r5-reserva-30d"
 R5B = "r5b-staples-premodern"
 RD = "rd-deck"
-PROTECCOES = (R1, R2, R3, R4, RD, R5, R5B)
+# AS DUAS REGRAS DO MODELO DE VERSÕES (André, 2026-10-04, à noite) — ver
+# `mtgvault/versoes.py`.
+#
+# RE  — *"quero apenas manter decks que usem Mox Opal"*. Uma carta que está num
+#       deck que ele ESCOLHEU não vai à venda. Sem ela a ordem não tinha
+#       mecanismo nenhum: as versões não são caixas, não têm `copy_allocation`,
+#       e por isso a RD nunca as via — os dez decks de Modern de 04/10 à tarde
+#       protegiam **zero** cópias, medido.
+# RLG — *"Legacy ainda nao sei"*. Enquanto um formato estiver por decidir, uma
+#       staple desse formato fica RETIDA. *"Tudo o resto é para vender"* não
+#       pode querer dizer vender as staples de Legacy antes de ele escolher o
+#       deck de Legacy: isso era obedecer à letra e desobedecer à intenção.
+RE = "re-deck-escolhido"
+RLG = "rlg-formato-por-decidir"
+# A ORDEM: a RLG é a ÚLTIMA de todas, e isso é deliberado. Posta à frente da R5
+# ficava com o crédito de 203 cópias que a R5 já segurava de qualquer maneira
+# (medido), e o número que ele lê — *"isto fica retido só porque não decidi o
+# Legacy"* — passava a estar inflacionado três vezes. No fim, a RLG mostra
+# exactamente o que se desbloqueia no dia em que ele escolher o deck de Legacy,
+# que é a pergunta que ela existe para responder.
+PROTECCOES = (R1, R2, R3, R4, RD, RE, R5, R5B, RLG)
 ROTULOS = {
     R1: "R1 · dual original (4 fora dos decks)",
     R2: "R2 · shockland",
     R3: "R3 · fetchland",
     R4: "R4 · Reserved List que jogas",
     RD: "RD · está num deck que fica",
+    RE: "RE · está num deck que escolheste",
+    RLG: "RLG · formato por decidir",
     R5: "R5 · jogada nos últimos 30 dias",
     R5B: "R5b · staple de sideboard de Premodern",
 }
@@ -1313,8 +1335,27 @@ def contexto(con, res: dict, cfg: dict | None = None,
     """
     cache = {} if cache is None else cache
     dp = plano_duais(con, res, cfg, cache)
+    # AS DUAS REGRAS DO MODELO DE VERSÕES. Calculam-se UMA vez, aqui, como tudo
+    # o resto: o `quem_protege` corre uma vez por sub-lote e uma consulta por
+    # cópia punha a Fase 3 em minutos. A `retidos` só percorre os nomes que
+    # CHEGAM à venda — perguntar pela colecção inteira era pagar 1 678 consultas
+    # para responder sobre 236 nomes.
+    escolhidos = versoes.nomes_que_ficam(res, cfg)
+    por_decidir = versoes.formatos_por_decidir(cfg)
+    retidos: dict = {}
+    if por_decidir:
+        candidatos_nm = [nm for nm in (res.get("pool") or {})
+                         if nm not in escolhidos]
+        retidos = versoes.retidos(con, candidatos_nm, cfg)
     return {
         "duais": set(dp["nomes"]),
+        "escolhidos": escolhidos,
+        # O nome por extenso de cada deck que fica, uma vez — o `quem_protege`
+        # corre por sub-lote e procurá-lo lá dentro varria as versões todas por
+        # cada cópia protegida.
+        "escolhidos_nomes": {d: versoes.nome_do_deck(d, cfg)
+                             for ds in escolhidos.values() for d in ds},
+        "retidos": retidos,
         "duais_sublote": dp["por_sublote"],
         # O ORÇAMENTO de cópias LIVRES por sub-lote, FRESCO a cada chamada: o
         # `quem_protege` gasta-o à medida que as linhas passam, e partilhá-lo
@@ -1381,6 +1422,11 @@ def quem_protege(con, res: dict, nm: str, lot: dict, ctx: dict) -> tuple | None:
         if protege(e):
             nome = ctx["nomes"].get(slot, slot)
             return RD, _motivo(RD, f"está no deck {nome}, que está {e}"), q
+    quem = (ctx.get("escolhidos") or {}).get(nm)
+    if quem:
+        rot = ctx.get("escolhidos_nomes") or {}
+        onde = ", ".join(sorted(rot.get(d, d) for d in quem)[:3])
+        return RE, _motivo(RE, f"está num deck que escolheste — {onde}"), q
     if ctx.get("reservas") and nm in ctx["reservas"]:
         quem = ", ".join(ctx["reservas"][nm])
         return R5, _motivo(R5, f"jogada nos últimos {janela_dias()} dias em "
@@ -1389,6 +1435,10 @@ def quem_protege(con, res: dict, nm: str, lot: dict, ctx: dict) -> tuple | None:
     if pct is not None:
         return R5B, _motivo(R5B, f"staple de sideboard de Premodern — está em "
                                  f"{pct:g} % dos sideboards do último mês"), q
+    ret = (ctx.get("retidos") or {}).get(nm)
+    if ret:
+        f, p = ret
+        return RLG, _motivo(RLG, versoes.TEXTO_RETIDO.format(formato=f, pct=p)), q
     return None
 
 

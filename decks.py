@@ -118,6 +118,22 @@ _CSS = """
  .bar i.ok{background:var(--add)}
  .qm{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);cursor:pointer;min-height:40px;padding:0 4px}
  .qm input{width:20px;height:20px;accent-color:var(--accent)}
+ /* UM DECK POR FORMATO, COM VERSÕES (2026-10-04, à noite). O selector é de
+    VERSÃO: 44 px de alvo, porque o uso real é o telemóvel à frente da estante. */
+ .unico{background:var(--card);border:1px solid var(--accent-line);
+   border-radius:var(--r);padding:12px 15px;margin:0 0 12px}
+ .uh{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+ .uh h3{margin:0;font-family:var(--font-hd);font-size:16px}
+ .vsel{margin:10px 0 0;display:flex;flex-direction:column;gap:5px}
+ .vt{font-size:11.5px;color:var(--muted);margin-bottom:2px}
+ .vrow{display:flex;gap:10px;align-items:center;padding:7px 9px;min-height:44px;
+   border:1px solid var(--line);border-radius:var(--r);background:var(--sunken)}
+ .vrow.sel{border-color:var(--accent-line);background:var(--accent-soft)}
+ .vq{display:flex;align-items:center;min-width:24px}
+ .vq input{width:18px;height:18px;accent-color:var(--accent)}
+ .vn{flex:1;min-width:0}
+ .vnome{font-weight:600;font-size:13.5px}
+ @media (max-width:640px){ .vrow{flex-wrap:wrap} .vn{flex-basis:100%;order:3} }
  /* A SEQUÊNCIA e as STAPLES (2026-10-04 ao fim do dia). */
  .passos{background:var(--card);border:1px solid var(--accent-line);border-radius:var(--r);
    padding:11px 15px;margin:0 0 12px;font-size:12.5px;color:var(--dim)}
@@ -284,11 +300,84 @@ function nivelFormatos() {
 }
 
 /* --------------------------------------------------------------- nível 2 */
+/* UM DECK POR FORMATO, COM VERSÕES POR DENTRO (2026-10-04, à noite).
+   *"quero ficar com 1 deck e versoes do deck (como opcoes)"*. O selector é de
+   VERSÃO e não de deck: as versões são opções do mesmo deck, e por isso todas
+   ficam protegidas da venda — o que a escolha muda é qual delas ele monta. */
+function deckUnicoHTML(u) {
+  if (!u) return '';
+  let out = `<div class="unico"><div class="uh"><h3>${esc(u.nome)}</h3>`
+    + `<span class="chip gold">o deck deste formato</span></div>`;
+  if (u.porque) out += `<p class="pq">${esc(u.porque)}</p>`;
+  if (u.por_decidir) {
+    out += `<div class="ficha media"><h4>Por decidir</h4><p class="pq">Ainda não`
+      + ` escolheste o deck deste formato, e por isso <b>não se libertou nada</b>`
+      + ` dele para venda: uma carta que se jogue aqui fica retida (regra RLG).`
+      + `</p></div>`;
+  }
+  if (u.versoes && u.versoes.length) {
+    out += `<div class="vsel"><div class="vt">Versões — escolhe a que vais montar</div>`;
+    out += u.versoes.map(v => {
+      const cl = v.pct >= 95 ? 'ok' : v.pct >= 50 ? 'mid' : 'lo';
+      return `<div class="vrow${v.escolhida ? ' sel' : ''}">
+        <label class="vq"><input type="radio" name="versao-${esc(u.formato)}"
+          data-versao="${esc(u.formato)}|${esc(v.id)}"${v.escolhida ? ' checked' : ''}${
+          EDIT() ? '' : ' disabled'}></label>
+        <div class="vn"><div class="vnome">${esc(v.nome)}${
+          v.escolhida ? ' <span class="tag">a montar</span>' : ''}</div>
+          <div class="dsub">${v.sem_lista ? 'sem lista'
+            : `tens <b>${v.tem}</b> de <b>${v.total}</b>`}${
+            v.listas ? ` · ${v.listas} lista${v.listas === 1 ? '' : 's'} no meta` : ''}${
+            v.nota ? ' · ' + esc(v.nota) : ''}</div>
+          <div class="bar"><i class="${cl === 'ok' ? 'ok' : ''}" style="width:${v.pct}%"></i></div>
+        </div>
+        <div class="dpct ${cl}">${v.sem_lista ? '—' : v.pct + '%'}</div>
+        ${v.deck ? `<button class="verd" data-d="${esc(v.deck)}">ver ▶</button>` : ''}
+      </div>`;
+    }).join('') + '</div>';
+  }
+  if (u.nota) out += `<p class="pq">${esc(u.nota)}</p>`;
+  /* OS OUTROS QUE JOGAM A CARTA-CHAVE — derivados da base a cada corrida, nunca
+     escritos à mão. *"NAO decidas por ele incluir nem excluir definitivamente"*:
+     ficam à vista, com o teste do critério ao lado, para ele poder incluir um. */
+  const o = (u.outros || []).filter(z => !z.sem_cluster);
+  const sc = (u.outros || []).find(z => z.sem_cluster);
+  if (o.length || sc) {
+    const passam = o.filter(z => z.passa_criterio).length;
+    out += `<details class="stp"><summary><b>Outros decks que jogam ${
+      esc(u.carta_chave)}</b> — ${o.length}${passam ? `, ${passam} que passam o critério` : ''}`
+      + `</summary><p class="stpn">Não são versões deste deck: jogam a carta e são`
+      + ` outros decks. Ficam aqui para decidires — nenhum entrou nem saiu`
+      + ` definitivamente.</p><div class="stpl">`
+      + o.map(z => `<div class="stpr">
+          <span class="sq">${z.listas}</span>
+          <span class="snm">${esc(z.nome || z.label || ('arquétipo ' + z.arquetipo_id))}</span>
+          <span class="sd">${(z.exige || []).map(e =>
+            `${esc(e.carta)} ${e.pct.toFixed(0)}%`).join(' · ')}</span>
+          <span class="st${z.passa_criterio ? '' : ' falta'}">${
+            z.passa_criterio ? 'passa o critério' : 'não é versão'}</span>
+        </div>`).join('')
+      + (sc ? `<div class="stpr"><span class="sq">${sc.listas}</span>
+          <span class="snm">listas sem arquétipo</span>
+          <span class="sd">o agrupamento ainda não lhes deu identidade</span>
+          <span class="st falta">não é versão</span></div>` : '')
+      + '</div></details>';
+  }
+  if (u.saidos && u.saidos.length) {
+    out += `<details class="stp"><summary><b>Decks que saíram da escolha</b> — ${
+      u.saidos.length}</summary><p class="stpn">Não se apagaram: continuam com a`
+      + ` lista e a proveniência, aqui em baixo, marcados «${esc('meta, não escolhido')}».`
+      + `</p></details>`;
+  }
+  return out + '</div>';
+}
+
 function nivelDecks(x) {
   const n = x.necessidade || {}, rot = x.modo === 'rotativas';
   const manda = k => (rot ? k === 'rodar' : k === 'somar') ? ' manda' : '';
   let out = `<div class="migalha"><button data-f="">◀ formatos</button>
     <span><b>${esc(x.formato)}</b> — ${esc(x.texto_modo)}</span></div>`;
+  out += deckUnicoHTML(x.deck_unico);
   out += `<div class="duo">
     <div class="n${manda('somar')}"><span class="et">a somar</span>
       <div class="v">${n.soma || 0}</div>
@@ -301,7 +390,10 @@ function nivelDecks(x) {
      *"falta escolher decks, falta depois eu organizar os decks, guardar as que
      sao staples"*. Num formato rotativo sem nada marcado, a página dizia os dois
      números a zero e mais nada — não dizia que o primeiro passo é marcar. */
-  if (rot && !x.n_marcados) {
+  /* Num formato do modelo de versões não há nada a marcar: a escolha é a VERSÃO,
+     logo acima. Mostrar-lhe «marca os decks que vais montar» era mandá-lo fazer
+     um gesto que já não existe. */
+  if (rot && !x.n_marcados && !x.deck_unico) {
     out += `<div class="passos"><b>Por onde começar</b><ol>`
       + `<li>marca <b>«quero montar»</b> nos decks que vais montar, aqui em baixo`
       + ` (estão ordenados pelos que já tens mais completos);</li>`
@@ -374,7 +466,10 @@ function nivelDecks(x) {
       sub.push(t.join(' · '));
     } else if (d.nota) sub.push(d.nota);
     if (d.ja_e_caixa) sub.push('já é uma caixa tua');
-    if (d.marcado_em) sub.push('marcado em ' + d.marcado_em);
+    if (d.marcado_em && !x.deck_unico) sub.push('marcado em ' + d.marcado_em);
+    /* QUEM SAIU DA ESCOLHA diz quando e porquê, e não desaparece. */
+    if (d.saiu) sub.push(`saiu em ${d.saiu.em} — ${d.saiu.porque}`);
+    if (d.e_versao) sub.push('é uma versão do deck deste formato');
     /* UMA CAIXA DESACTIVADA NÃO É UM DECK DE 0 % (2026-10-04 ao fim do dia).
        Fica na lista — no fim, e com o rótulo à vista — em vez de desaparecer:
        o `caixas[].\_antes` do config repõe-na, e uma caixa que sumisse da página
@@ -392,6 +487,8 @@ function nivelDecks(x) {
       </div>
       <div class="dpct ${cl}">${d.sem_lista ? '—' : d.pct + '%'}</div>
       ${d.desactivada ? '<span class="qm off">desactivada</span>'
+        : x.deck_unico ? `<span class="qm off">${d.e_versao ? 'versão deste deck'
+            : d.saiu ? 'não escolhido' : 'meta'}</span>`
         : `<label class="qm"><input type="checkbox" data-quero="${esc(d.id)}"${
         d.quero ? ' checked' : ''}${EDIT() ? '' : ' disabled'}> quero montar</label>`}
       <button class="verd" data-d="${esc(d.id)}">ver ▶</button>
@@ -633,6 +730,28 @@ async function quero(id, on, cx) {
   } catch (e) { cx.checked = !on; toast('não sei se gravou: ' + e.message, true); }
 }
 
+/* ESCOLHER A VERSÃO. Muda o que ele monta, logo a necessidade do formato e as
+   próprias/partilhadas: o índice e as partes vêm de novo, como no «quero
+   montar». O que NÃO muda é a protecção — as outras versões continuam
+   guardadas, porque são opções do mesmo deck. */
+async function escolheVersao(chave, radio) {
+  if (!EDIT()) { toast('esta página é só de leitura — abre o modo de edição', true); return; }
+  const i = chave.indexOf('|');
+  const fmt = chave.slice(0, i), vid = chave.slice(i + 1);
+  try {
+    const r = await fetch('/api/versao' + (TOKEN_URL ? '?t=' + encodeURIComponent(TOKEN_URL) : ''), {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({formato: fmt, versao: vid}),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.erro || ('HTTP ' + r.status));
+    toast(j.msg || 'gravado');
+    PARTES = {};
+    D = await carregaDados('decks.json');
+    await render();
+  } catch (e) { toast('não sei se gravou: ' + e.message, true); }
+}
+
 function ligar() {
   /* O harness de node (`tests/abrir_pagina.js`) desenha num DOM mínimo sem
      `addEventListener` — e ali o que se mede é o que o `render()` escreveu. */
@@ -647,7 +766,9 @@ function ligar() {
   });
   document.addEventListener('change', ev => {
     const c = ev.target.closest('[data-quero]');
-    if (c) quero(c.dataset.quero, c.checked, c);
+    if (c) { quero(c.dataset.quero, c.checked, c); return; }
+    const v = ev.target.closest('[data-versao]');
+    if (v) escolheVersao(v.dataset.versao, v);
   });
   window.addEventListener('hashchange', () => { doHash(); render(); });
 }
