@@ -19,7 +19,7 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
 
-from mtgvault import paginas  # noqa: E402
+from mtgvault import paginas, publicar  # noqa: E402
 from mtgvault import site_shell as shell  # noqa: E402
 
 
@@ -67,17 +67,29 @@ def caso_o_menu_tem_todas_as_paginas():
 
 
 def caso_as_seccoes_do_menu_sao_as_que_ele_pediu():
-    """A arquitetura de informação de 2026-09-24, à letra: *Início*, *Decks*,
-    *Coleção*, *Metagame*, *Compras e venda*. Fica trancada porque é a decisão
-    dele, não uma escolha de quem mexeu no ficheiro a seguir."""
+    """As secções são os QUATRO TRABALHOS dele (2026-10-04), e ficam trancadas
+    porque são a decisão dele e não uma escolha de quem mexer no ficheiro a
+    seguir.
+
+    **2026-09-24** foram *Início*, *Decks*, *Coleção*, *Metagame*, *Compras e
+    venda* — nomeadas pelo que o CÓDIGO tinha. **2026-10-04** ele pediu
+    *"reagrupa pelo que ele FAZ, nao pelo que o codigo tem"* e nomeou os
+    trabalhos: montar decks, ver a colecção, seguir o metagame, arrumar e
+    decidir o que vender. A asserção foi CORRIGIDA para a estrutura nova (não
+    mascarada): o que mudou foi o pedido dele, com data.
+    """
     secs = [s for s, _itens in shell.SECCOES]
-    assert secs == ["", "Decks", "Coleção", "Metagame", "Compras e venda"], secs
+    assert secs == ["", "Montar decks", "Ver a coleção", "Seguir o metagame",
+                    "Arrumar e vender"], secs
+    # O «Decks» é a espinha do montar desde 2026-10-04: fica à cabeça da secção.
+    montar = dict(shell.SECCOES)["Montar decks"]
+    assert montar[0][0] == "decks.html", montar[0]
     # Nenhuma secção vazia, e nenhum item sem rótulo.
     for sec, itens in shell.SECCOES:
         assert itens, sec
         for f, _a, ic, rot, _n in itens:
             assert f.endswith(".html") and ic and rot, (sec, f)
-    print("as seccoes sao as cinco que ele pediu, pela ordem dele")
+    print("as seccoes sao os quatro trabalhos dele, pela ordem dele")
 
 
 def caso_todas_as_paginas_do_menu_sao_publicadas():
@@ -126,14 +138,24 @@ def caso_a_pagina_fundida_saiu_do_menu_mas_continua_publicada():
     print("a pagina fundida saiu do menu e continua a ser publicada")
 
 
-# As páginas que o site GERA e publica. (O `alertas.py` e o `buildability.py`
-# foram apagados a 2026-09-15 por decisão do André — ver
-# `caso_as_paginas_orfas_foram_mesmo_apagadas`.)
-GERADORES = ["inicio.py", "deckboxes.py", "metagame.py", "meta_coverage.py",
-             "showcase.py", "colecao_cor.py", "caixarl.py", "reservedlist.py",
-             "collection_gallery.py",
-             # 2026-10-01: o CONSENSO POR COMANDANTE (Duel Commander).
-             "comandantes.py"]
+# As páginas que o site GERA e publica. **DERIVADA, e não escrita à mão**
+# (corrigido a 2026-10-04). Era uma lista de dez nomes acrescentados a mão, e
+# tinha exactamente o defeito que o `caso_todas_as_paginas_definem_as_variaveis`
+# descreve no seu próprio docstring — *"antes isto só olhava para as páginas que
+# pedem o `%TEMA%`, e por isso a Galeria escapou"*. Repetiu-se com as duas
+# páginas nascidas depois: a **`arrumacao.py`** (2026-10-01) e a **`decks.py`**
+# (2026-10-04) nunca entraram aqui, e por isso um `color:var(--text)` — um token
+# que NUNCA existiu — viveu na Arrumação sem ninguém dar por ele: a linha que
+# ele mandou deixar óbvia («e agora como destranco a venda?») era desenhada na
+# cor que herdasse. Um `var()` por um token inexistente não dá erro no CSS.
+#
+# Agora sai do `mtgvault.publicar.PAGINAS`, que é a lista que o site publica —
+# a mesma do `git add` do `daily.yml`, com teste a exigir que batam. Uma página
+# nova entra aqui no dia em que entra no site, sem ninguém se lembrar.
+# (O `alertas.py` e o `buildability.py` foram apagados a 2026-09-15 por decisão
+# do André — ver `caso_as_paginas_orfas_foram_mesmo_apagadas`.)
+GERADORES = [f"{mod}.py" for mod, _ficheiro, _rep in publicar.PAGINAS
+             if mod != "meusdecks"]          # o reencaminhamento não tem CSS
 
 # Apagadas a 2026-09-15 (decisão do André): estavam fora do menu, não corriam no
 # daily e ninguém as importava desde a v6. Uma página órfã não dá erro — só

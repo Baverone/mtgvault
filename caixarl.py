@@ -143,8 +143,7 @@ def _as(items, qfield):
 def _table(items):
     body = ""
     for e in sorted(items, key=lambda x: (-x["unit"], x["nm"])):
-        img = (f'<img src="{html.escape(e["img"])}" loading="lazy" alt="">'
-               if e["img"] else "")
+        img = paginas.img_carta(e["img"], e["nm"]) if e["img"] else ""
         foil = ' <span class="st">(foil)</span>' if e["fin"] == "foil" else ""
         qcls = "q hi" if e["q"] >= 5 else "q"
         flag = '<span class="flag">⚠️</span>' if e["q"] >= 5 else ""

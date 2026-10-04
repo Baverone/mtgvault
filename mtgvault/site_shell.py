@@ -177,7 +177,32 @@ def js_icones() -> str:
 # página inteira; com âncora, é uma SUB-VISTA da página (a Deckboxes lê o
 # `location.hash` e abre a aba certa — ver `deckboxes.JS`, `abaDoHash`).
 #
-# A ordem é a do pedido dele: Início, Decks, Coleção, Metagame, Compras e venda.
+# AS SECÇÕES SÃO OS QUATRO TRABALHOS DELE (2026-10-04, à letra: *"reagrupa pelo
+# que ele FAZ, nao pelo que o codigo tem"*). Eram cinco secções nomeadas pelo
+# que o código tinha — «Decks», «Coleção», «Metagame», «Compras e venda» —, e a
+# de «Decks» juntava SETE itens, cinco deles a mesma página (`deckboxes.html`)
+# com âncoras diferentes: era a fila de botões de 2026-09-24 outra vez, movida
+# para dentro da barra. Agora cada secção é uma coisa que ele faz:
+#
+#   MONTAR decks · VER a colecção · SEGUIR o metagame · ARRUMAR e vender
+#
+# Três notas sobre o que NÃO se mexeu, e porquê:
+#
+#   * o **«Decks montados»** e o **«Decks para montar»** ficam. É um pedido
+#     dele à letra, de 2026-09-08 — *"quero decks montados num botão
+#     específico, e um botão a dizer «decks para montar», para poder separar as
+#     coisas"*. Encurtar um menu não é razão para tirar uma vista que ele pediu
+#     pelo nome;
+#   * a **«Arrumação por fases»** continua no topo, fora de secção. É a decisão
+#     de 2026-10-01 (*"a pergunta que atravessa tudo"*) e é o ecrã que ele abre
+#     todos os dias: enterrá-la dentro de um grupo era escondê-la para fazer um
+#     número ficar mais pequeno;
+#   * **nenhuma página saiu do menu**, e por isso o número de itens não desce.
+#     Cada entrada é uma página ou uma vista que ele pediu; o que muda é
+#     estarem agrupadas pela pergunta que respondem em vez de pelo ficheiro que
+#     as serve. O `decks.html` fica à cabeça do «Montar decks» — é a espinha
+#     desse trabalho desde 2026-10-04 — e o `deckboxes.html` ao lado, dito pelo
+#     que é: as caixas FÍSICAS e a alocação.
 #
 # **Os rótulos dizem o que é à primeira leitura** (2.ª passagem, 2026-09-24), e a
 # nota só existe quando ACRESCENTA: *"Por cor · os binders"* eram duas palavras
@@ -200,42 +225,45 @@ SECCOES: list[tuple[str, list[tuple[str, str, str, str, str]]]] = [
         ("arrumacao.html", "", "plano", "Arrumação por fases",
          "onde estás e o que vem a seguir"),
     ]),
-    ("Decks", [
+    ("Montar decks", [
         # A ABA DECKS (André, 2026-10-04): *"fazes uma aba ou botao para
         # decks"*, como no riftvault. Fica à CABEÇA da secção, antes das caixas:
         # a pergunta dela é *"que decks existem e quais quero montar"*, que vem
-        # antes de *"o que está dentro de cada caixa"*. Reusa o ícone do
-        # `livro` — um conjunto só de ícones, pela razão do `e_foil`.
+        # antes de *"o que está dentro de cada caixa"*.
         ("decks.html", "", "todas", "Decks", "formato → deck → cartas"),
-        ("deckboxes.html", "", "caixas", "Deck boxes", "todas as caixas"),
+        ("deckboxes.html", "", "caixas", "Deck boxes", "as caixas físicas"),
         ("deckboxes.html", "montados", "montado", "Decks montados", ""),
         ("deckboxes.html", "pormontar", "montar", "Decks para montar", ""),
         ("deckboxes.html", "plano", "plano", "Plano de montagem", ""),
-        ("deckboxes.html", "arrumar", "arrumar", "Arrumar cartas", ""),
-        # 2026-10-01: o consenso por COMANDANTE (Duel Commander). Fica em «Decks»
-        # e não em «Metagame» porque a pergunta é *"o que é que este deck meu
-        # leva"* e não *"o que é que o formato está a jogar"*.
+        # 2026-10-01: o consenso por COMANDANTE (Duel Commander). Fica aqui e
+        # não em «Seguir o metagame» porque a pergunta é *"o que é que este deck
+        # meu leva"* e não *"o que é que o formato está a jogar"*.
         ("comandantes.html", "", "livro", "Consenso por comandante",
          "Duel Commander"),
     ]),
-    ("Coleção", [
+    ("Ver a coleção", [
         ("colecao_cor.html", "", "binders", "Binders por cor", ""),
         ("colecao.html", "", "galeria", "Galeria de cartas", ""),
         ("caixarl.html", "", "caixarl", "Reserved List · caixa", ""),
         ("reservedlist.html", "", "precos", "Reserved List · preços", ""),
     ]),
-    ("Metagame", [
+    ("Seguir o metagame", [
         ("metagame.html", "", "metagame", "Metagame", "o que estás perto de fechar"),
         ("cobertura.html", "", "cobertura", "Cobertura do metagame", ""),
         ("showcase.html", "", "showcase", "Showcase Challenger",
          "decks de eventos recentes"),
     ]),
-    ("Compras e venda", [
+    # O quarto trabalho: arrumar o que está em casa e decidir o que sai. São
+    # todas sub-vistas da Deckboxes — a página da LOGÍSTICA —, e é por isso que
+    # estavam espalhadas por duas secções antigas («Decks» tinha o «Arrumar
+    # cartas», «Compras e venda» tinha o resto).
+    ("Arrumar e vender", [
+        ("deckboxes.html", "arrumar", "arrumar", "Arrumar cartas", ""),
+        ("deckboxes.html", "revalidacao", "revalidacao", "Revalidação por foto", ""),
         ("deckboxes.html", "comprar", "comprar", "Comprar", ""),
         ("deckboxes.html", "encomendas", "encomendas", "Encomendas", ""),
         ("deckboxes.html", "vender", "vender", "Vender", ""),
         ("deckboxes.html", "feira", "feira", "Feira", ""),
-        ("deckboxes.html", "revalidacao", "revalidacao", "Revalidação por foto", ""),
     ]),
 ]
 
@@ -260,8 +288,8 @@ URL_EDICAO = "https://editar-mtg.baverone.com/"
 # vista que já não existe, que é o mesmo defeito do item órfão que isto veio
 # tirar. A arquitectura de 2026-09-24 não mudou: `SECCOES` continua a ser a
 # lista inteira, e é o que o teste dela lê.
-SECCAO_VENDA = "Compras e venda"
-SECCAO_SEM_VENDA = "Compras"
+SECCAO_VENDA = "Arrumar e vender"
+SECCAO_SEM_VENDA = "Arrumar e comprar"
 
 # As páginas que o site GERA, para quem precise da lista (testes, `daily`).
 # Sai de `SECCOES` e não de `seccoes()`: o interruptor tira uma SUB-VISTA (uma
@@ -348,13 +376,46 @@ FONTES = (
 #     coisa nesta página — *"a carta está noutra caixa"* — e trocá-lo por
 #     dourado punha dois significados na mesma cor. Quem escreve texto por cima
 #     do dourado usa `--accent-ink` (escuro): branco sobre `#f5c451` é 1,9:1.
+# OS TRIOS DE ESTADO (2026-10-04). Cada estado — tens / está noutra caixa /
+# atenção / falta — precisa de TRÊS valores: o fundo tingido, a linha e o texto.
+# Existiam os três do `accent` e meio do `info`, e o resto estava escrito à mão
+# em cada página: medidos nesse dia, **297 valores de cor em 9 ficheiros, 136
+# deles distintos** — quatro cinzentos de painel quase iguais, três laranjas de
+# aviso, dois azuis de «está noutra caixa». É a deriva que ele vê de página para
+# página. Os nomes dizem o PAPEL (`-soft` fundo, `-line` borda, o nome sozinho é
+# o texto), que é o que torna possível trocá-los todos de uma vez.
+#
+# **Porque é que os 297 não foram todos convertidos de uma vez** (medido antes
+# de se decidir, em `_revisao/tokens_mapa.py`): uma troca automática por matiz e
+# luminância tem quatro modos de falhar aqui, e os quatro mordem —
+#   (a) `#000d`, `#0009`, `#000b` são hex com ALFA (sombras e véus); trocá-los
+#       por um token opaco tapava a página;
+#   (b) a matiz de uma cor quase negra é instável: o `#0c0f14`, que é uma
+#       superfície neutra, classifica-se como azul e arrastava 24 valores com
+#       ele para um tom de «informação»;
+#   (c) o dominante de uma célula redefinia tokens que já existem (`--line2`
+#       passava de `#2c3243` a `#5a6472` e mudava todas as bordas do site);
+#   (d) a banda «texto» vai do `#fff` ao `#79c9c4` — o branco caía em `--ink2`.
+# Por isso o que se converteu foi uma lista EXPLÍCITA e conferida (os estados de
+# erro/vazio/carregamento e os quase-duplicados dos tokens que já existiam), e o
+# resto fica com tecto: ver `test_tokens.py`, que impede a deriva de crescer.
 TEMA = (
     " :root{--bg:#07080d;--card:#12151f;--card2:#0e1018;--card3:#171b28;"
+    # `--sunken`: o fundo METIDO PARA DENTRO (uma `textarea`, um `<pre>`, o
+    # poço de uma lista). Estava escrito `#0a0d13` e `#0c0f14` em oito sítios.
+    "--sunken:#0a0d13;"
     "--ink:#eef0f6;--ink2:#c8cede;--muted:#949cb0;--dim:#838b9e;"
     "--line:#1d2130;--line2:#2c3243;"
     "--accent:#f5c451;--accent-ink:#0b0d14;--accent-soft:#2a2210;"
     "--accent-line:#5a4a1c;"
-    "--info:#6f9bff;--info-soft:#131c31;"
+    "--info:#6f9bff;--info-soft:#131c31;--info-line:#25406b;"
+    # OK (verde): «tens esta carta», «está montado».
+    "--ok:#4fd08a;--ok-soft:#0f2a1c;--ok-line:#1e4a33;"
+    # AVISO (âmbar): «parcial», «confirma», «provisória».
+    "--warn-soft:#241a10;--warn-line:#6a4f2f;--warn-forte:#e2a15b;"
+    # FALTA / ERRO (vermelho): «não tens», «o fetch falhou».
+    "--bad:#ff9b8a;--bad-soft:#2a1618;--bad-line:#7a3030;--bad-ink:#f0d0c8;"
+    "--bad-dim:#b08a86;"
     "--gold:#f5c451;--add:#4fd08a;--warn:#f0805a;--ob:#8ab0ff;"
     "--pt:#8ab0ff;--rem:#ff7b7b;"
     "--font:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;"

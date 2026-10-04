@@ -91,6 +91,37 @@ def art(sid) -> str:
             if sid else "")
 
 
+# O tamanho `small` do Scryfall, em píxeis. É escrito em cada `<img>` para o
+# browser RESERVAR o espaço antes de a imagem chegar.
+IMG_W, IMG_H = 146, 204
+
+
+def img_carta(src: str, alt: str = "", *, cls: str = "", extra: str = "") -> str:
+    """Uma `<img>` de carta com as QUATRO coisas que a fazem comportar-se.
+
+    `loading="lazy"` (não se descarrega o que está fora do ecrã),
+    `decoding="async"` (não bloqueia a pintura), e `width`/`height` (o browser
+    reserva o espaço e **a página não salta** quando as imagens chegam).
+
+    Existe porque estavam escritas à mão em quatro sítios — `colecao_cor` (×2),
+    `metagame` e `caixarl` — e as quatro tinham o `lazy` e **nenhuma** tinha o
+    tamanho: medido a 2026-10-04, eram **1 288 imagens** em três páginas a fazer
+    o conteúdo saltar por baixo do dedo dele enquanto carregavam (743 nos
+    Binders, 474 no Metagame, 71 na Caixa RL). As que já passavam pelo tile do
+    `deckboxes.js` e pela aba Decks tinham-no desde 2026-09-20; estas ficaram
+    para trás porque são desenhadas no servidor. É a lição do `e_foil` e do
+    `precos.sql()`: a quinta a ser escrita à mão esquecia-se outra vez.
+    """
+    if not src:
+        return ""
+    import html as _h                                          # noqa: PLC0415
+    c = f' class="{_h.escape(cls)}"' if cls else ""
+    e = f" {extra}" if extra else ""
+    return (f'<img{c} src="{_h.escape(src)}" alt="{_h.escape(alt)}" '
+            f'loading="lazy" decoding="async" '
+            f'width="{IMG_W}" height="{IMG_H}"{e}>')
+
+
 # ---------------------------------------------------------------------------
 # Cartas: cor, tipo e quantas ele tem
 # ---------------------------------------------------------------------------
@@ -341,13 +372,23 @@ def ler_dados(out_html: Path, pagina: str) -> tuple[dict, dict]:
 
 
 # O CSS da mensagem de erro e do "a carregar", partilhado.
+# O ESTADO DE ERRO E O DE CARREGAMENTO, pelos tokens da casca (2026-10-04).
+# Eram seis valores de cor escritos aqui à mão — e são precisamente os estados
+# que o site tem de desenhar bem: *"estados vazios, de carregamento e de erro
+# desenhados, não improvisados"*. O vermelho de erro vive agora em
+# `--bad`/`--bad-soft`/`--bad-line`/`--bad-ink`, no `site_shell.TEMA`, e é o
+# mesmo em todas as páginas. O `--r` do raio também era um `12px` à mão.
 CSS_DADOS = (
-    " .erro-dados{margin:18px 0;padding:14px 16px;border:1px solid #7a3030;"
-    "border-radius:12px;background:#2a1618;color:#f0d0c8;font-size:13.5px;line-height:1.55}"
-    " .erro-dados b{color:#ff9b8a} .erro-dados .fine{display:block;color:#b08a86;"
+    " .erro-dados{margin:18px 0;padding:14px 16px;border:1px solid var(--bad-line);"
+    "border-radius:var(--r);background:var(--bad-soft);color:var(--bad-ink);"
+    "font-size:13.5px;line-height:1.55}"
+    " .erro-dados b{color:var(--bad)} .erro-dados .fine{display:block;"
+    "color:var(--bad-dim);"
     "font-size:12px;margin-top:6px} .erro-dados button{margin-top:8px;padding:6px 14px;"
-    "border-radius:20px;border:1px solid #7a3030;background:#3a2022;color:#fff;"
+    "border-radius:20px;border:1px solid var(--bad-line);background:var(--bad-soft);"
+    "color:var(--ink);"
     "font-weight:700;cursor:pointer}"
+    " .erro-dados button:hover{border-color:var(--bad);color:var(--ink)}"
     " .carregando{color:var(--muted);font-size:13px;padding:18px 0}"
     " .carregando::before{content:'';display:inline-block;width:12px;height:12px;"
     "margin-right:8px;border-radius:50%;border:2px solid var(--muted);"

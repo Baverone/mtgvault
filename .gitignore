@@ -124,3 +124,8 @@ data/*.log
 # Recortes de fotos feitos à mão durante a catalogação. São imagens, e as imagens
 # nunca vão para o repo.
 scratchpad_crops/
+# A pasta de PROVA do `mtgvault.publicar` (2026-10-04): o site gerado para se
+# comparar com o que está em disco, antes de se decidir se há algo a commitar.
+# É transitória — o `publicar()` apaga-a — mas o `--ver` e os testes deixam-na
+# para se poder olhar para o diff. Nunca vai para o repo.
+_prova-publicar/

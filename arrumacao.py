@@ -143,7 +143,15 @@ _CSS = """
  /* COMO SE DESTRANCA A VENDA: a trava é manual desde 04/10 e não tem data, por
     isso esta é a linha que responde «e agora como abro isto?» — vai destacada
     de propósito, que foi o que ele pediu («deixa óbvio no site»). */
- .alvo .como{background:var(--accent-soft);border:1px solid var(--accent-line);border-radius:8px;padding:8px 10px;color:var(--text)}
+ /* `--text` NÃO EXISTE, e nunca existiu (apanhado a 2026-10-04 pelo
+    `test_tokens.caso_todo_o_var_usado_esta_definido`). Um `var()` por um token
+    que não está definido não dá erro no CSS: a propriedade é ignorada e a cor
+    vem do que estiver por trás — aqui, o `--muted` do `.alvo`. Ou seja a linha
+    que ele mandou deixar ÓBVIA («e agora como abro isto?») estava a ser
+    desenhada em cinzento de nota de pé de página. O token certo é o `--ink`: o
+    dourado desta caixa é o fundo e a borda, o texto por cima tem de ser o de
+    maior contraste. É o padrão do `event_tier` aplicado à cor. */
+ .alvo .como{background:var(--accent-soft);border:1px solid var(--accent-line);border-radius:8px;padding:8px 10px;color:var(--ink)}
  .alvo code{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:1px 5px;font-size:11.5px}
  .alvo button{min-height:40px;padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--muted);font:inherit;font-size:13px;font-weight:600;cursor:pointer;margin:4px 6px 0 0}
  .alvob{min-height:40px;padding:8px 14px;border-radius:10px;border:1px solid var(--accent-line);background:var(--accent-soft);color:var(--accent);font:inherit;font-size:13px;font-weight:700;cursor:pointer;margin:10px 0 0}

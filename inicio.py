@@ -89,6 +89,11 @@ _CSS = """
  .at>span:last-child{min-width:0}
  .at b{display:block;font-size:13.5px;font-weight:600}
  .at small{display:block;color:var(--dim);font-size:11.5px;line-height:1.35}
+ /* A nota que distingue as duas listas das «Últimas atualizações» (2026-10-04):
+    o que o vault vai buscar vs. o que ele confirmou à mão. Cor pelos tokens
+    (`--dim`), nunca um hex escrito aqui. */
+ .painel .fine{margin:10px 0 0;color:var(--dim);font-size:11.5px;line-height:1.5}
+ .painel .fine b{color:var(--muted)}
  .fontes{list-style:none;margin:0;padding:0;font-size:12.5px}
  .fontes li{display:flex;gap:10px;padding:6px 0;border-top:1px solid var(--line);color:var(--muted);flex-wrap:wrap}
  .fontes li:first-child{border-top:0}
@@ -183,11 +188,24 @@ def _valor_coleccao(con) -> tuple[int, float]:
     return int(v["q"]), float(v["total"][v["cenario"]])
 
 
-def _fontes(con) -> list[tuple[str, str, str]]:
-    """(o quê, quando, quanto) — as últimas atualizações dos dados.
+def _fontes(con) -> list[tuple[str, str, str, str]]:
+    """(o quê, quando, quanto, nota) — as últimas atualizações dos dados.
 
     São as datas por que se percebe se uma página está a mentir por estar velha.
     Cada uma sai da tabela que a alimenta; nenhuma é `hoje` escrito à mão.
+
+    **DUAS COISAS DIFERENTES NA MESMA LISTA (corrigido a 2026-10-04).** Quatro
+    destas linhas são ALIMENTADAS pelo `daily` — preços, decklists, arquétipos,
+    decks vigiados — e por isso uma data velha nelas é uma avaria. A quinta,
+    *«cartas dentro das caixas»*, não é um dado que o vault vá buscar: é a
+    última vez que **ele** disse o que está fisicamente dentro de uma deckbox
+    (`copy_allocation.placed_at`). Debaixo de um título que diz *«Últimas
+    atualizações dos dados»*, os **2026-09-09** dessa linha liam-se como um
+    carimbo que deixou de ser alimentado — e não é: medido nesse dia, são 260
+    linhas / 411 cópias, a última às 12:30 de 09/09, e desde então ele não
+    arrumou mais nenhuma caixa. A data está CERTA; o que estava errado era o
+    sítio onde ela aparecia. Por isso a lista parte-se em duas e cada linha diz
+    de que tipo é.
     """
     def um(sql, *a):
         try:
@@ -207,17 +225,19 @@ def _fontes(con) -> list[tuple[str, str, str]]:
     marcas = ", ".join("?" * len(fs))
     d, n = um(f"SELECT MAX(date), COUNT(*) FROM price_latest "
               f"WHERE source IN ({marcas})", *fs)
-    linhas.append((f"Preços ({' → '.join(fs)})", d, f"{n or 0} impressões"))
+    linhas.append((f"Preços ({' → '.join(fs)})", d, f"{n or 0} impressões", "vault"))
     d, n = um("SELECT MAX(event_date), COUNT(*) FROM decklists")
-    linhas.append(("Decklists de torneio", d, f"{n or 0} listas"))
+    linhas.append(("Decklists de torneio", d, f"{n or 0} listas", "vault"))
     d, n = um("SELECT MAX(window_end), COUNT(DISTINCT archetype_id) FROM card_roles")
-    linhas.append(("Arquétipos (clustering)", d, f"{n or 0} arquétipos"))
-    d, n = um("SELECT MAX(placed_at), SUM(quantity) FROM copy_allocation")
-    linhas.append(("Cartas dentro das caixas", (d or "")[:10] or None,
-                   f"{n or 0} cópias"))
+    linhas.append(("Arquétipos (clustering)", d, f"{n or 0} arquétipos", "vault"))
     d, n = um("SELECT MAX(taken_at), COUNT(*) FROM watched_snapshots")
-    linhas.append(("Decks vigiados", (d or "")[:10] or None, f"{n or 0} fotografias"))
-    return [(t, dt or "—", q) for t, dt, q in linhas]
+    linhas.append(("Decks vigiados", (d or "")[:10] or None,
+                   f"{n or 0} fotografias", "vault"))
+    # A LINHA DELE, e não do vault — ver a nota no topo desta função.
+    d, n = um("SELECT MAX(placed_at), SUM(quantity) FROM copy_allocation")
+    linhas.append(("Arrumação confirmada por ti", (d or "")[:10] or None,
+                   f"{n or 0} cópias em caixas", "dele"))
+    return [(t, dt or "—", q, k) for t, dt, q, k in linhas]
 
 
 def build(con, out_path=None, rep=None):
@@ -356,12 +376,32 @@ def build(con, out_path=None, rep=None):
                        f"{len(por_montar)} caixas · pela ordem do Plano")
                + "</div>")
 
-    linhas = "".join(f'<li><b>{html.escape(t)}</b>'
-                     f'<span class="d">{html.escape(d)}</span>'
-                     f'<span class="q">{html.escape(q)}</span></li>'
-                     for t, d, q in _fontes(con))
+    # DUAS LISTAS, porque são duas coisas (2026-10-04): o que o vault VAI
+    # BUSCAR todos os dias — onde uma data velha é uma avaria — e o que ELE
+    # confirmou, onde uma data velha só quer dizer que não voltou a arrumar.
+    # Juntas debaixo de «Últimas atualizações dos dados», o 2026-09-09 da
+    # arrumação lia-se como um carimbo morto; ver `_fontes`.
+    def _lista(kind):
+        return "".join(f'<li><b>{html.escape(t)}</b>'
+                       f'<span class="d">{html.escape(d)}</span>'
+                       f'<span class="q">{html.escape(q)}</span></li>'
+                       for t, d, q, k in fontes if k == kind)
+
+    fontes = _fontes(con)
     paineis += ('<h2 class="sh">Últimas atualizações dos dados</h2>'
-                f'<div class="painel"><ul class="fontes">{linhas}</ul></div>')
+                '<div class="duas">'
+                '<div class="painel"><h3>O que o vault vai buscar'
+                '<span class="n">todos os dias</span></h3>'
+                f'<ul class="fontes">{_lista("vault")}</ul>'
+                '<p class="fine">Uma data velha aqui é uma avaria: quer dizer '
+                'que a recolha não correu.</p></div>'
+                '<div class="painel"><h3>O que confirmaste à mão'
+                '<span class="n">quando arrumas</span></h3>'
+                f'<ul class="fontes">{_lista("dele")}</ul>'
+                '<p class="fine">Esta data não é uma recolha — é a última vez '
+                'que <b>tu</b> disseste o que está dentro de uma deckbox. '
+                'Fica parada até voltares a arrumar, e isso está certo.</p>'
+                '</div></div>')
 
     out.write_text(_tmpl().replace("%LEAD%", lead).replace("%KPIS%", kpis)
                    .replace("%ATALHOS%", atalhos).replace("%PAINEIS%", paineis),

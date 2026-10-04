@@ -105,6 +105,15 @@ def _record_value(con, total_eur, cards, day):
     con.commit()
 
 
+def _tem_value(con) -> bool:
+    """A tabela já existe? Sem `historico` não se chama o `_ensure_value` (que
+    é um `CREATE TABLE` e portanto uma ESCRITA), por isso numa base nova a
+    tabela pode não existir — e o gráfico vazio é a resposta certa, não uma
+    excepção."""
+    return bool(con.execute("SELECT 1 FROM sqlite_master WHERE type='table' "
+                            "AND name='value_history'").fetchone())
+
+
 def _value_history(con):
     return [(r["date"], r["total_eur"]) for r in
             con.execute("SELECT date, total_eur FROM value_history ORDER BY date")]
@@ -173,7 +182,23 @@ def _evo_block(history):
             f'{nota}</div>')
 
 
-def build(con, out_path):
+def build(con, out_path, *, historico=True):
+    """A galeria. Com `historico=False` **não escreve na base**.
+
+    O ponto do `value_history` é UM POR DIA e é o `daily` que o grava; quem
+    publica o site de 30 em 30 minutos (`mtgvault.publicar`) só precisa de
+    desenhar a página. A distinção não é higiene: era medida — o `build` era o
+    ÚNICO dos treze geradores a escrever (8 272 bytes no `-wal`, medido a
+    2026-10-04 em `_revisao/medir_quem_escreve.py`), e isso fazia a tarefa de
+    publicar mexer no mtime do `vault.db`. Como o sossego dela é precisamente
+    *"o `vault.db` foi escrito há menos de 10 min?"*, a tarefa envenenava-se a
+    si própria: publicava uma vez e depois dizia «ele está a editar» para
+    sempre, sem ninguém ter tocado numa carta. É o padrão do `-wal` vazio no
+    `webapp._versao()`, pelo outro lado.
+
+    O histórico de hoje não se perde por isto: o `daily` das 03:30 continua a
+    gravá-lo, e a página desenha o que estiver na tabela.
+    """
     rows = _cards(con)
     # Agrupa por sub-coleção; ordena os grupos por valor descendente.
     groups: dict[str, list] = {}
@@ -192,9 +217,10 @@ def build(con, out_path):
     total_qty = sum(c["qty"] for c in rows)
     total_val = round(sum((c["eur"] or 0) * c["qty"] for c in rows), 2)
     today = _dt.date.today().isoformat()
-    _ensure_value(con)
-    _record_value(con, total_val, total_qty, today)
-    history = _value_history(con)
+    if historico:
+        _ensure_value(con)
+        _record_value(con, total_val, total_qty, today)
+    history = _value_history(con) if _tem_value(con) else []
     _write_html(out_path, ordered, total_qty, total_val, today, history)
     return f"{total_qty} exemplares em {len(ordered)} coleções ({out_path.name})"
 
@@ -232,7 +258,7 @@ _CSS = """
  .c img{width:100%;height:100%;object-fit:cover;display:block}
  .c .noimg{width:100%;height:100%;display:flex;align-items:center;justify-content:center;text-align:center;padding:8px;font-size:12px;color:var(--muted)}
  .c .qty{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.78);color:#fff;font-weight:700;font-size:12px;padding:1px 7px;border-radius:999px}
- .c .foil{position:absolute;top:6px;left:6px;font-size:12px;background:linear-gradient(135deg,#8ae,#e8a,#8ea);color:#111;font-weight:700;padding:1px 6px;border-radius:999px}
+ .c .foil{position:absolute;top:6px;left:6px;font-size:12px;background:linear-gradient(135deg,var(--ob),#e8a,#8ea);color:#111;font-weight:700;padding:1px 6px;border-radius:999px}
  .c .meta{padding:7px 9px} .c .nm{font-weight:600;font-size:12.5px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
  .c .ed{color:var(--muted);font-size:11px;margin-top:1px} .c .pr{color:var(--gold);font-size:12px;font-weight:600;margin-top:2px;font-variant-numeric:tabular-nums}
  .c .pr .est{color:var(--muted);font-weight:400;cursor:help}

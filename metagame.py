@@ -171,8 +171,8 @@ def _card(nm, sid, estado, etiq="", titulo=""):
     # decoração. Numa rede fraca — que é onde ele está, à frente da estante — a
     # grelha virava uma parede de quadrados sem nada, e o nome só aparecia ao
     # parar o dedo em cima (o `title`). É o que a `deckboxes` já fazia.
-    img = (f'<img loading="lazy" src="{_art(sid)}" alt="{html.escape(nm)}">'
-           if sid else '<div class="noimg"></div>')
+    img = (paginas.img_carta(_art(sid), nm) if sid
+           else '<div class="noimg"></div>')
     q = f'<span class="cq">{etiq}</span>' if etiq else ""
     return (f'<div class="cd {estado}" title="{html.escape(titulo or nm)}">'
             f'{img}{q}</div>')
@@ -749,17 +749,17 @@ _CSS = """
     de texto. */
  .src{color:var(--muted);font-size:11px;margin-left:auto;text-align:right;
    min-width:0;overflow-wrap:anywhere}
- .cov{font-size:12px;font-weight:700;padding:1px 9px;border-radius:20px;background:#1e2531;flex:none;white-space:nowrap}
+ .cov{font-size:12px;font-weight:700;padding:1px 9px;border-radius:20px;background:var(--line);flex:none;white-space:nowrap}
  .bar{position:relative;height:8px;background:#0b0e14;border-radius:999px;overflow:hidden;margin:8px 0}
  .bar span{position:absolute;left:0;top:0;bottom:0;border-radius:999px} .bar span.ob{background:#26406f}
  .badges{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:6px 0}
- .bdg{font-size:11px;padding:2px 8px;border-radius:20px;background:#1e2531;color:var(--muted)}
- .bdg.ok{background:#123020;color:var(--add)} .bdg.pt{background:#101c2e;color:var(--ob)} .bdg.fo{background:#2a2410;color:var(--gold)}
+ .bdg{font-size:11px;padding:2px 8px;border-radius:20px;background:var(--line);color:var(--muted)}
+ .bdg.ok{background:var(--ok-soft);color:var(--add)} .bdg.pt{background:var(--info-soft);color:var(--ob)} .bdg.fo{background:var(--warn-soft);color:var(--gold)}
  .meta{display:flex;flex-wrap:wrap;gap:4px 12px;color:var(--muted);font-size:11.5px;margin:4px 0} .meta b{color:var(--ink)}
  .semp{font-style:normal;color:var(--dim);margin-left:5px}
  .meta .ob,.meta .ob b{color:var(--ob)}
  .cards{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
- .cd{position:relative;width:56px;border-radius:5px} .cd img,.cd .noimg{width:56px;height:78px;border-radius:4px;display:block;background:#0c0f14}
+ .cd{position:relative;width:56px;border-radius:5px} .cd img,.cd .noimg{width:56px;height:78px;border-radius:4px;display:block;background:var(--sunken)}
  /* O `alt` passou a trazer o nome da carta; isto é como ele se lê quando a
     imagem não carrega — pequeno e dentro do quadrado, em vez de rebentar a
     grelha. */
@@ -769,16 +769,16 @@ _CSS = """
  .cd.noutra::after{content:"\\1F4E6";position:absolute;top:1px;right:1px;font-size:10px;line-height:12px;background:#0e1620;border-radius:4px;padding:0 1px}
  .cd.miss{box-shadow:0 0 0 2px var(--warn)} .cd.miss img{filter:grayscale(.75) brightness(.55)}
  .cd .cq{position:absolute;bottom:1px;left:1px;background:#000c;color:#fff;font-size:9px;font-weight:700;padding:0 3px;border-radius:5px}
- .onde{margin-top:9px;background:#0e1620;border:1px solid #25415e;border-radius:10px;padding:8px 10px;font-size:11.5px;color:var(--muted)}
+ .onde{margin-top:9px;background:#0e1620;border:1px solid var(--info-line);border-radius:10px;padding:8px 10px;font-size:11.5px;color:var(--muted)}
  .onde>b{color:var(--ob);display:block;margin-bottom:4px;font-size:11px}
  .onde ul{margin:0;padding-left:16px} .onde li{padding:1px 0} .onde li b{color:var(--ob)} .onde .dim{color:#5a6472}
  .ok{color:var(--add);font-size:12px;margin-top:9px}
  .faltas{margin-top:10px}
  .flh{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#e2795b} .flh .dim{color:var(--muted);font-weight:400} .flh .cpbtn{margin-left:auto}
- .mrk{font-size:10px;font-weight:800;padding:1px 6px;border-radius:5px;background:#2a2410;color:var(--gold)}
+ .mrk{font-size:10px;font-weight:800;padding:1px 6px;border-radius:5px;background:var(--warn-soft);color:var(--gold)}
  .faltas ul.fl{list-style:none;margin:6px 0 0;padding:0;font-size:12px;column-width:250px;column-gap:22px} .faltas ul.fl li{display:flex;gap:6px;padding:1.5px 0;break-inside:avoid} .faltas ul.fl b{color:var(--gold);font-variant-numeric:tabular-nums}
  .faltas ul.fl .pz{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums}
- .cpbtn{font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;border:1px solid var(--line2);background:var(--card3);color:var(--muted);cursor:pointer} .cpbtn:hover{border-color:var(--accent);color:var(--ink)} .cpbtn.done{background:#0f2a1c;border-color:#2f6a45;color:var(--add)}
+ .cpbtn{font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;border:1px solid var(--line2);background:var(--card3);color:var(--muted);cursor:pointer} .cpbtn:hover{border-color:var(--accent);color:var(--ink)} .cpbtn.done{background:var(--ok-soft);border-color:var(--ok-line);color:var(--add)}
  .acts{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px;border-top:1px solid var(--line);padding-top:12px}
  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;z-index:60;background:var(--card3);border:1px solid var(--accent);color:var(--ink);font-size:13px;padding:11px 17px;border-radius:22px;box-shadow:var(--sombra)}
  .cmk{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}

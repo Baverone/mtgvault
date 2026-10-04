@@ -75,8 +75,9 @@ def _card(x, badge_cls="q"):
     # binder inteiro em quadrados vazios — e é esta a página com que ele enche
     # os binders. Ver a mesma nota no `metagame._card`.
     return (f'<div class="{cls}"{data} title="{tip}">'
-            f'<img loading="lazy" src="{_img(x["sid"])}" '
-            f'alt="{html.escape(x["nm"] or "")}">'
+            # Pelo `paginas.img_carta`: `lazy` + `decoding=async` + tamanho
+            # reservado, para a página não saltar com 743 imagens a chegar.
+            f'{paginas.img_carta(_img(x["sid"]), x["nm"] or "")}'
             f'<span class="{badge_cls}">{x["q"]}</span>{fo}{pt}{tag}</div>')
 
 
@@ -306,8 +307,7 @@ def _consensus_tiers_html(con):
             front = scryfall.chave(nm)
             have = front in owned
             sid = osid.get(front) or cat.get(front)
-            img = (f'<img loading="lazy" src="{_img(sid)}" '
-                   f'alt="{html.escape(front)}">' if sid
+            img = (paginas.img_carta(_img(sid), front) if sid
                    else '<div class="noimg"></div>')
             return (f'<div class="c {"" if have else "miss"}" '
                     f'title="{html.escape(nm)} · {pct}% das listas">{img}'
@@ -544,30 +544,30 @@ _CSS = """
  h4{color:var(--muted);font-size:12px;margin:10px 0 4px;text-transform:uppercase;letter-spacing:.04em}
  .n{color:var(--muted);font-size:12px;font-weight:400}
  .grid{display:flex;flex-wrap:wrap;gap:6px}
- .c{position:relative;width:74px} .c img{width:74px;border-radius:5px;display:block;background:#0c0f14}
+ .c{position:relative;width:74px} .c img{width:74px;border-radius:5px;display:block;background:var(--sunken)}
  /* Como se lê o `alt` (o nome da carta) quando a imagem não carrega — é esta a
     página com que ele enche os binders, e uma parede de quadrados vazios não
     serve para nada. */
  .c img{min-height:103px;overflow:hidden;font-size:9px;line-height:1.15;color:var(--muted);padding:2px}
  .c .q{position:absolute;top:2px;left:2px;background:#000b;color:#fff;font-weight:700;font-size:11px;padding:0 5px;border-radius:7px}
- .c .q.sell{background:#7a1d1d}
+ .c .q.sell{background:var(--bad-line)}
  .c .use{display:none;position:absolute;bottom:0;left:0;right:0;background:#000e;color:#c7d0da;font-size:8px;line-height:1.3;padding:1px 3px;border-radius:0 0 5px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
  body.deckmode .c[data-used] img{filter:grayscale(1) brightness(.42)}
- body.deckmode .c[data-used] .q{background:#000d;color:#9aa6b2}
+ body.deckmode .c[data-used] .q{background:#000d;color:var(--muted)}
  body.deckmode .c[data-used] .use{display:block}
  .c.extra img{filter:brightness(.82) sepia(.35) saturate(1.3) hue-rotate(-15deg)}
- .c .ex{position:absolute;bottom:0;left:0;right:0;background:#5a4a1f;color:#f4e0a0;font-size:8.5px;font-weight:700;line-height:1.35;padding:1px 3px;border-radius:0 0 5px 5px;text-align:center}
- .c.fora img{box-shadow:0 0 0 2px #7fa8ff}
- .c .fora{position:absolute;bottom:0;left:0;right:0;background:#1b2c4d;color:#bcd4ff;font-size:8.5px;font-weight:700;line-height:1.35;padding:1px 3px;border-radius:0 0 5px 5px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .c .ex{position:absolute;bottom:0;left:0;right:0;background:var(--warn-line);color:#f4e0a0;font-size:8.5px;font-weight:700;line-height:1.35;padding:1px 3px;border-radius:0 0 5px 5px;text-align:center}
+ .c.fora img{box-shadow:0 0 0 2px var(--ob)}
+ .c .fora{position:absolute;bottom:0;left:0;right:0;background:var(--info-soft);color:#bcd4ff;font-size:8.5px;font-weight:700;line-height:1.35;padding:1px 3px;border-radius:0 0 5px 5px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
  .c.miss{opacity:.72} .c.miss img{filter:grayscale(1) brightness(.5)}
- .c .noimg{width:74px;height:103px;border-radius:5px;background:#0c0f14}
- .c .q.pctb{background:#1c2c4a;color:#9cc2ff}
+ .c .noimg{width:74px;height:103px;border-radius:5px;background:var(--sunken)}
+ .c .q.pctb{background:#1c2c4a;color:var(--ob)}
  .tiersep{margin:14px 0 7px;padding:6px 11px;border-radius:9px;background:var(--card);border:1px dashed var(--line2);color:var(--muted);font-size:12px;text-align:center;font-weight:600}
  .mk{position:absolute;bottom:3px;right:3px;font-size:10px;font-weight:700}
  .mk.foil{color:var(--gold);text-shadow:0 0 3px #000} .mk.pt{background:#12351f;color:var(--add);border-radius:4px;padding:0 3px;font-size:9px}
  .tally{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
  .tally b{display:inline-block;padding:4px 11px;border-radius:999px;font-size:12px;font-weight:700}
- .t-col{background:var(--info-soft);color:var(--ob)} .t-deck{background:#0f2a1c;color:var(--add)} .t-sell{background:#3a1516;color:#f0a0a0}
+ .t-col{background:var(--info-soft);color:var(--ob)} .t-deck{background:var(--ok-soft);color:var(--add)} .t-sell{background:#3a1516;color:#f0a0a0}
  .hint{color:var(--muted);font-size:12px;margin:4px 0 10px}
  .cfg{font-size:12.5px;margin:0 0 14px;padding:10px 13px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);color:var(--ink2)}
  .cfg .muted{color:var(--muted)}
