@@ -4309,14 +4309,21 @@ emendado. Motor em **`mtgvault/scryfall.py`** (`canonizar`/`chave`/`MapaDeCartas
   `SEARCH … USING INDEX ix_cards_name`, usa o `resolver()`.** Há um auditor
   (`_revisao/auditar_planos.py`) que mede as onze consultas que levam o predicado
   e chumba acima de 60 ms.
-- **UMA CARTA DESCONHECIDA É UM PROBLEMA À VISTA, NUNCA UM «NÃO TENHO».** Hoje há
-  **uma** nos decks dele — a `Ademi of the Silkchutes` do **Cloud (Duel
-  Commander)** — e passou a levar chip `?` vermelho no tile, a linha *«DESCONHECIDA
-  — o catálogo não tem esta carta»* e um chip no cabeçalho do deck
-  (`conta.desconhecidas`). **Conta no total** (o deck pede-a) e **nunca em
-  `tem`**: sem o número à parte, o *«faltam-te N»* misturava compras a sério com
-  nomes que não existem. Nas listas do metagame são 26 nomes / 248 linhas, e o
-  `cartas-desconhecidas` do CLI lista-as com o sítio.
+- **UMA CARTA DESCONHECIDA É UM PROBLEMA À VISTA, NUNCA UM «NÃO TENHO».** A carta
+  leva chip `?` no tile, a linha *«DESCONHECIDA — o catálogo não tem esta carta»*
+  e um chip no cabeçalho do deck (`conta.desconhecidas`). **Conta no total** (o
+  deck pede-a) e **nunca em `tem`**: sem o número à parte, o *«faltam-te N»*
+  misturava compras a sério com nomes que não existem.
+  **E HOJE NÃO MARCA NADA NO SITE, o que é melhor dizer do que deixar
+  descobrir.** A única desconhecida nos decks dele é a `Ademi of the Silkchutes`,
+  e ela vive na linha **`decks[4]` da tabela `decks`** («Cloud (Duel
+  Commander)»); a aba Decks desenha a **CAIXA** com esse nome, cuja lista vem do
+  `listas_escolhidas` (a do Liwei Luo, fixada a 04/10) e **não** tem a carta.
+  Medido: **0 de 393** nomes das caixas são desconhecidos. Onde ele as vê hoje é
+  no CLI — `py -m mtgvault.cli cartas-desconhecidas` —, com o deck ou o número de
+  linhas ao lado: **1 de 298** em `deck_cards` e **26 de 4 721** nas listas do
+  metagame (248 linhas). A marca fica para o dia em que uma entre numa lista que
+  a página desenhe, e tem caso de teste a provar que entra.
 - **MEDIDO LADO A LADO, o MESMO `vault.db` dos dois lados** (worktree em
   `_revisao/main-nomes`): **as 17 caixas ficam IGUAIS à percentagem e à cópia**, a
   **venda não mexe uma cópia** (116 c / 1 591,62 €, `protegidas` 157,
