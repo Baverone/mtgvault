@@ -375,21 +375,37 @@ def caso_a_pergunta_do_torneio_grande_vive_num_sitio_so():
 
 def caso_sem_padroes_a_recolha_volta_ao_que_era():
     """Esvaziar `grandes.padroes` é o interruptor — como o `venda.mostrar` e o
-    `cartas_vigiadas`. Sem padrões, nenhum evento salta a fila e o tecto é o de
-    sempre."""
+    `cartas_vigiadas`. Sem padrões, nenhum evento salta a fila no índice.
+
+    ACTUALIZADO A 2026-10-04 AO FIM DO DIA: desde que o tecto passou a depender
+    também do TAMANHO DO CAMPO (`mtgtop8.ESCALA_TECTO`), são **duas** regras e
+    **dois** interruptores — e é melhor que o teste o diga do que esconder-se numa
+    asserção que já não vale. Esvaziar os padrões desliga a fila do índice e o ramo
+    do nome; para o tecto voltar aos 16 fixos é preciso esvaziar também a
+    `escala_jogadores`. É o que o `_mtgtop8_escala` do config explica."""
     cfg = {"mtgtop8": {"paginas_indice": 1, "grandes": {"padroes": []}}}
     linhas = [_linha(1, "MTGO Challenge 64", "03/10/26", online=True),
               _linha(2, "Regional Championship", "12/09/26", loja="X")]
     cand, _ = mtgtop8.candidatos_do_indice(
         mtgtop8.parse_event_rows(_indice(linhas)), "modern", 1, cfg)
     assert [li["id"] for li in cand] == [1], cand
-    # E o tecto volta ao normal, porque o `grande` passa a ser falso na origem.
     nome = "Modern event - Regional Championship"
     assert mtgtop8.e_grande(nome, cfg) is False
-    assert mtgtop8.tecto_do_evento(mtgtop8.e_grande(nome, cfg), 5000, 16, cfg) == 16
+    # Sem padrões, o ramo do NOME desliga-se — mas a escala pelo campo fica.
+    assert mtgtop8.tecto_do_evento(False, 5000, 16, cfg, nome=nome) == 64
+    # Com as DUAS chaves vazias, o tecto é o de sempre: 16, aconteça o que
+    # acontecer. É este o interruptor completo.
+    cfg0 = {"mtgtop8": {"paginas_indice": 1,
+                        "grandes": {"padroes": [], "escala_jogadores": {}}}}
+    assert mtgtop8.escala_do_tecto(5000, nome, cfg0) == 0
+    # O `grande` sai sempre do `e_grande` (nunca se passa à mão), e com os padrões
+    # vazios ele é falso — é por aí que o ramo do nome se desliga.
+    assert mtgtop8.e_grande(nome, cfg0) is False
+    assert mtgtop8.tecto_do_evento(
+        mtgtop8.e_grande(nome, cfg0), 5000, 16, cfg0, nome=nome) == 16
     # Com os padrões de sempre, o mesmo nome dá 64 — é esta a diferença.
     assert mtgtop8.tecto_do_evento(mtgtop8.e_grande(nome), 5000, 16) == 64
-    print("sem padrões, a recolha volta exactamente ao que era")
+    print("sem padrões o nome desliga-se; com as duas chaves vazias o tecto é o de sempre")
 
 
 # ===========================================================================
@@ -481,10 +497,18 @@ def caso_um_dec_que_falha_nao_marca_o_evento_como_feito():
     `.dec` que faltassem (o crivo é por deck, contra a `decklists`). Registar o
     evento ANTES do ciclo dos `.dec` fazia com que uma falha de rede num único
     `.dec` deixasse essa lista a faltar **para sempre**. Um evento meio lido não
-    se marca."""
+    se marca.
+
+    O EVENTO TEM 30 JOGADORES DE PROPÓSITO (mudado de 70 a 2026-10-04 ao fim do
+    dia). Com 70 passou a haver DOIS mecanismos a recuperá-lo — a não-marcação,
+    que é o que este caso tranca, e a escala pelo tamanho do campo, que desde esse
+    dia dá 32 de tecto a um evento de 64+ jogadores e o põe na fila de revisitas.
+    Com dois caminhos, o caso passava mesmo com a não-marcação desligada e deixava
+    de trancar nada (apanhado pelo `_chumba_papel semente_vazia`). Abaixo dos 64 a
+    escala não se aplica, e o caso volta a medir uma coisa só."""
     import requests
     linhas = [_linha(7, "Win-A-Box", "03/10/26", loja="L")]
-    eventos = {7: _pagina_evento(7, 70, 3)}
+    eventos = {7: _pagina_evento(7, 30, 3)}
 
     class SoUmDec(Rede):
         def __init__(self, *a, mau):
@@ -567,12 +591,25 @@ def caso_o_tecto_alto_exige_que_a_pagina_confirme_o_tamanho():
     """O tecto pendurado só no NOME punha 64 pedidos `.dec` num «Store
     Championship» de 25 jogadores — e um presencial com menos de 64 jogadores nem
     conta para o metagame. O nº de jogadores vem da página do evento, que já foi
-    pedida ANTES do primeiro `.dec`: a decisão não custa um pedido."""
+    pedida ANTES do primeiro `.dec`: a decisão não custa um pedido.
+
+    ASSERÇÃO CORRIGIDA A 2026-10-04 AO FIM DO DIA, e não mascarada. Escrita de
+    manhã, esta função afirmava que um evento que o NOME não reconhece fica com 16
+    listas, mesmo com 1 486 jogadores — e era isso que estava mal: dos 9 eventos
+    truncados da base com 64+ jogadores, 4 têm nomes que nenhum padrão reconhece.
+    Hoje o tecto é o MÁXIMO do tecto normal, da escala pelo tamanho do campo e do
+    ramo do nome (ver `mtgtop8.ESCALA_TECTO`). O que esta função continua a
+    trancar, e é o que ela existe para trancar, é a outra metade: **um nome grande
+    com o campo pequeno não sobe de tecto**."""
     assert mtgtop8.tecto_do_evento(True, 1486, 16) == 64
     assert mtgtop8.tecto_do_evento(True, 64, 16) == 64
     assert mtgtop8.tecto_do_evento(True, 25, 16) == 16, "um store de 25 nao e grande"
     assert mtgtop8.tecto_do_evento(True, None, 16) == 16, "sem contagem nao se assume"
-    assert mtgtop8.tecto_do_evento(False, 1486, 16) == 16
+    # Sem nome reconhecido, manda o TAMANHO DO CAMPO (regra de 04/10 ao fim do
+    # dia): 1 486 jogadores valem 64 listas, 70 valem 32, 25 ficam nos 16.
+    assert mtgtop8.tecto_do_evento(False, 1486, 16) == 64
+    assert mtgtop8.tecto_do_evento(False, 70, 16) == 32
+    assert mtgtop8.tecto_do_evento(False, 25, 16) == 16
     # Pela rede, com um evento de nome grande e 25 jogadores: 16 listas.
     linhas = [_linha(1, "Store Championship", "12/09/26", loja="Loja")]
     rede = Rede({1: _indice(linhas)},

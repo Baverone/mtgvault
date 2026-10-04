@@ -1471,7 +1471,7 @@ def _cards_from_deck(con, name: str) -> tuple[list[tuple[str, str, int]], str]:
 
 def _cards_from_watched(con, label: str) -> tuple[list[tuple[str, str, int]], str]:
     row = con.execute(
-        """SELECT ws.cards, ws.taken_at FROM watched w
+        """SELECT ws.cards, ws.taken_at, w.last_checked FROM watched w
              JOIN watched_snapshots ws ON ws.watched_id = w.id
             WHERE w.label = ? ORDER BY ws.taken_at DESC LIMIT 1""", (label,)).fetchone()
     if row is None:
@@ -1479,8 +1479,19 @@ def _cards_from_watched(con, label: str) -> tuple[list[tuple[str, str, int]], st
     agg: dict[tuple[str, str], int] = defaultdict(int)
     for board, nm, q in json.loads(row["cards"]):
         agg[("side" if board == "side" else "main", _front(nm))] += q
-    return ([(b, n, q) for (b, n), q in agg.items()],
-            f"lista vigiada de {row['taken_at']}")
+    # DUAS DATAS, E AS DUAS IMPORTAM (2026-10-04 ao fim do dia). O `taken_at` é o
+    # dia em que a lista MUDOU — o snapshot só se grava num diff —, e dizer só
+    # isso faz uma lista conferida hoje parecer informação de há um mês: o Blue
+    # Farm mostrava *"lista vigiada de 2026-09-04"* num dia em que a vigia a tinha
+    # lido de manhã e confirmado que não mudou. Para quem vai SLEEVAR, «a lista é
+    # desta data e foi conferida naquela» é a diferença entre confiar e não
+    # confiar. O `last_checked` é escrito pelo `watchlist.check_all`.
+    nota = f"lista vigiada de {row['taken_at']}"
+    if row["last_checked"]:
+        nota += (" — sem mudar desde então, conferida a "
+                 f"{row['last_checked']}" if row["last_checked"] != row["taken_at"]
+                 else f" (conferida a {row['last_checked']})")
+    return [(b, n, q) for (b, n), q in agg.items()], nota
 
 
 def _cards_from_consensus(con, fmt: str, assinatura: list[str],
@@ -1522,7 +1533,30 @@ def _cards_from_consensus(con, fmt: str, assinatura: list[str],
                                 [side[i] for i in ids if side.get(i)])
     cards = [("main", c["card_name"], c["quantity"]) for c in sl["main"]]
     cards += [("side", c["card_name"], c["quantity"]) for c in sl["side"]]
-    return cards, f"consenso de {len(ids)} listas"
+    # A NOTA DIZ DE QUE JANELA SAI O CONSENSO (2026-10-04 ao fim do dia). Dizia só
+    # *"consenso de N listas"*, e ele vai SLEEVAR a partir disto: um consenso de 30
+    # listas de há três meses e um de 30 listas desta semana são decks diferentes, e
+    # a página não dava por onde distinguir. A data do corte é a do
+    # `consenso.desde` (a janela de 2026-10-03) e as pontas são as datas REAIS das
+    # listas que entraram, que é o que se pode afirmar.
+    de, ate = _datas_das_listas(con, ids)
+    nota = f"consenso de {len(ids)} listas"
+    if de and ate:
+        nota += f" de {de} a {ate}" if de != ate else f" de {de}"
+    desde = sources.consenso_desde(fmt)
+    if desde:
+        nota += f" (janela do consenso: desde {desde})"
+    return cards, nota
+
+
+def _datas_das_listas(con, ids: list[int]) -> tuple[str | None, str | None]:
+    """A primeira e a última data de evento de um conjunto de listas."""
+    if not ids:
+        return None, None
+    ph = ",".join("?" * len(ids))
+    r = con.execute(f"SELECT MIN(event_date) a, MAX(event_date) b FROM decklists "
+                    f"WHERE id IN ({ph})", ids).fetchone()
+    return (r["a"], r["b"]) if r else (None, None)
 
 
 def listas_escolhidas() -> dict[str, dict]:

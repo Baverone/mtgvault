@@ -239,6 +239,33 @@ def _link_do_escolhido(slot: str) -> str:
     return m.group(0).rstrip(".,;") if m else ""
 
 
+def sem_lista_porque(s: dict) -> tuple[str, str]:
+    """`(tipo, rótulo)` para uma caixa que não tem lista. `("", "")` se tem.
+
+    São TRÊS situações diferentes, e misturá-las era o defeito (2026-10-04 ao fim
+    do dia): a `Modern — Affinity`, que ele mandou DESACTIVAR nesse dia, aparecia
+    na lista de Modern como um deck de 0 % ao lado dos que ele vai montar, com o
+    estado `candidata` — que é um estado normal da escala e não quer dizer
+    «desactivada».
+
+    - **desactivada**: uma caixa de `fonte: consenso` **sem `assinatura`** não tem
+      como ter lista, hoje nem nunca — é exactamente o gesto do «já não vou montar
+      este» (o que ela tinha fica em `caixas[].\\_antes`, que o motor não vê). Não
+      se esconde da lista: ele tem lá o `_antes` para a repor, e uma caixa que
+      desaparecesse da página deixava-o sem por onde a reaver.
+    - **por escolher**: nunca teve lista e ainda não tem fonte — a
+      `legacy-artifacts-blue`, que espera a carta-assinatura dele.
+    - o resto fica com a nota que o `loadout._slot_cards` já dá (amostra
+      insuficiente, deck sem snapshot, …), que é uma resposta e não um buraco.
+    """
+    fonte = (s.get("fonte") or "").lower()
+    if fonte == "consenso" and not (s.get("assinatura") or []):
+        return "desactivada", "desactivada — sem carta-assinatura"
+    if not s.get("ref") and fonte != "consenso":
+        return "por_escolher", "por escolher — ainda sem lista"
+    return "", ""
+
+
 def decks_das_caixas(con: sqlite3.Connection, cfg: dict | None = None) -> list[dict]:
     """Um deck por CAIXA do config — os decks que são dele.
 
@@ -254,12 +281,14 @@ def decks_das_caixas(con: sqlite3.Connection, cfg: dict | None = None) -> list[d
         slot = s.get("slot")
         cards, nota = loadout._slot_cards(con, s)              # noqa: SLF001
         link = _link_da_caixa(con, s) or _link_do_escolhido(slot)
+        tipo, rotulo = sem_lista_porque(s)
         out.append({
             "id": id_da_caixa(slot), "slot": slot,
             "nome": s.get("nome") or slot, "formato": s.get("formato"),
             "fonte": "caixa", "origem": s.get("fonte"), "nota": nota,
             "link": link, "estado": s.get("estado"), "cards": cards,
             "listas": None,
+            "desactivada": tipo == "desactivada", "rotulo_estado": rotulo,
         })
     return out
 
@@ -544,6 +573,41 @@ def proxies_do_deck(d: dict, rep: dict[str, set[str]]) -> list[dict]:
             for nm, q in sorted(agg.items())]
 
 
+def staples_do_formato(decks: list[dict], rep: dict[str, set[str]],
+                       pos: dict[str, dict] | None = None) -> list[dict]:
+    """AS CARTAS QUE ENTRAM EM 2+ DECKS MARCADOS, agregadas e por nome.
+
+    É a resposta a *"guardar as que sao staples"* (André, 2026-10-04 ao fim do
+    dia) — e não é uma conta nova: é o MESMO `rep` que decide própria vs
+    partilhada em cada deck (`proprias_e_partilhadas`), visto pelo formato em vez
+    de deck a deck. Deck a deck ele já as via; o que lhe faltava era a lista
+    agregada, que é a pilha que vai guardar à parte e de que imprime os proxies.
+
+    `precisa` é o MÁXIMO entre os decks e não a soma: num formato rotativo uma
+    cópia serve todos — é essa a regra do formato (`cartas_partilhadas`).
+    """
+    por_nome: dict[str, dict] = {}
+    for d in decks:
+        pedido: dict[str, int] = defaultdict(int)
+        for _b, nm, q in _cartas_do_deck(d):
+            pedido[nm] += q
+        for nm, q in pedido.items():
+            if not e_partilhada(nm, rep):
+                continue
+            x = por_nome.setdefault(nm, {"nm": nm, "precisa": 0, "decks": []})
+            x["precisa"] = max(x["precisa"], q)
+            x["decks"].append({"id": d["id"], "nome": d["nome"], "q": q})
+    out = list(por_nome.values())
+    for x in out:
+        x["n_decks"] = len(x["decks"])
+        if pos is not None:
+            x["tenho"] = pos.get(x["nm"], {}).get("q", 0)
+            x["falta"] = max(0, x["precisa"] - x["tenho"])
+    # Em mais decks primeiro: é a que mais vale a pena ter sleevada à parte.
+    out.sort(key=lambda x: (-x["n_decks"], -x["precisa"], x["nm"]))
+    return out
+
+
 def sleeves_do_formato(decks: list[dict], rep: dict[str, set[str]]) -> dict:
     """Quantas cartas ficam SLEEVADAS no formato, e quantos proxies.
 
@@ -599,21 +663,35 @@ def relatorio(con: sqlite3.Connection, cfg: dict | None = None) -> dict:
                 "tem": c["tem"], "total": c["total"], "pct": c["pct"],
                 "main": c["main"], "side": c["side"],
                 "sem_lista": not d.get("cards"),
+                "desactivada": d.get("desactivada", False),
+                "rotulo_estado": d.get("rotulo_estado") or "",
             })
             por_deck[d["id"]] = d
         # «depois de escolher, ordenamos»: a percentagem que ele JÁ tem, maior
         # primeiro — é a resposta a *"qual é o mais barato de fechar"*. Os sem
-        # lista vão para o fim (não há nada a ordenar neles).
-        linhas.sort(key=lambda r: (r["sem_lista"], -r["pct"], -r["tem"], r["nome"]))
+        # lista vão para o fim (não há nada a ordenar neles), e as DESACTIVADAS
+        # depois deles: são decisões tomadas, não trabalho por fazer.
+        linhas.sort(key=lambda r: (r["desactivada"], r["sem_lista"],
+                                   -r["pct"], -r["tem"], r["nome"]))
+        n_desact = sum(1 for r in linhas if r["desactivada"])
         fmts.append({
             "formato": fmt, "modo": modo, "texto_modo": TEXTO_PARTILHA[modo],
-            "decks": linhas, "n_decks": len(linhas),
+            # `n_decks` conta os que CONTAM: uma caixa desactivada não é um deck
+            # deste formato, e somá-la fazia o cartão dizer «21 decks» a quem tem
+            # 20 para escolher.
+            "decks": linhas, "n_decks": len(linhas) - n_desact,
+            "n_desactivadas": n_desact,
             "n_marcados": len(escolhidos),
             "meta_fora": (0 if modo == ROTATIVAS
                           else len(arquetipos_meta(con, fmt, so_contar=True))),
             "necessidade": tot,
             "sleeves": (sleeves_do_formato(escolhidos, rep)
                         if modo == ROTATIVAS else None),
+            # AS STAPLES do formato (as partilhadas, agregadas). Só nos rotativos
+            # e só depois de ele marcar: sem decks marcados não há partilha
+            # nenhuma, e uma lista vazia com título era prometer o que não há.
+            "staples": (staples_do_formato(escolhidos, rep, pos)
+                        if modo == ROTATIVAS and escolhidos else []),
         })
     return {"formatos": fmts, "decks": por_deck,
             "marcas": marcas.resumo(con),

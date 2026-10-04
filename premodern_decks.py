@@ -21,6 +21,7 @@ from __future__ import annotations
 import os
 import sqlite3
 from collections import defaultdict
+from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -94,10 +95,16 @@ def refresh(con: sqlite3.Connection) -> str:
             for c in sl[board]:
                 con.execute("INSERT INTO deck_cards (deck_id, card_name, quantity, board) "
                             "VALUES (?,?,?,?)", (did, c["card_name"], c["quantity"], board))
+        # A DATA DO RECÁLCULO VAI NA NOTA (2026-10-04 ao fim do dia): esta nota é o
+        # que a aba Decks mostra por baixo do nome da caixa, e ele vai SLEEVAR a
+        # partir dela. Sem data, *"consenso de 33 listas"* não diz se é de hoje ou
+        # de Setembro — e este deck é reescrito a cada corrida do daily, por isso a
+        # data é um facto e não um palpite.
         con.execute("UPDATE decks SET notes = ? WHERE id = ?",
                     (f"consenso de {sl['n']} listas ({sl['players']} jogadores) "
                      f"— main {sl['main_count']}/{sl['main_target']}, "
-                     f"side {sl['side_count']}/{sl['side_target']}", did))
+                     f"side {sl['side_count']}/{sl['side_target']}"
+                     f"; recalculado a {date.today().isoformat()}", did))
         out.append(f"{name}: {sl['main_count']}+{sl['side_count']} cartas "
                    f"de {sl['n']} listas ({sl['players']} jogadores)")
     con.commit()

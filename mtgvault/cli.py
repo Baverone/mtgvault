@@ -85,6 +85,17 @@ def main(argv=None):
     h8.add_argument("format")
     h8.add_argument("--events", type=int, default=8)
 
+    rv = sub.add_parser("revisitar",
+                        help="forçar a revisita de eventos do mtgtop8 já lidos")
+    rv.add_argument("format", nargs="?",
+                    help="um formato; sem ele, todos os que a memória conhece")
+    rv.add_argument("--evento", type=int, action="append", dest="eventos",
+                    help="id de evento (repetível); sem ele, a fila por fazer")
+    rv.add_argument("--limite", type=int, default=None,
+                    help="tecto de eventos por formato")
+    rv.add_argument("--fila", action="store_true",
+                    help="só mostrar a fila, sem pedir nada ao site")
+
     an = sub.add_parser("analyse", help="recalcular arquétipos e core/tech")
     an.add_argument("format")
     an.add_argument("--window", type=int, default=30)
@@ -525,6 +536,46 @@ def main(argv=None):
         elif args.cmd == "harvest-mtgtop8":
             n = mtgtop8.harvest(con, args.format, args.events)
             print(f"{n} decklists novas de {args.format}.")
+
+        elif args.cmd == "revisitar":
+            # A SEMENTE PRIMEIRO: sem ela a memória está vazia e não há fila
+            # nenhuma para revisitar. É idempotente (`MARCA_SEMEADO`).
+            s = mtgtop8.semear_memoria(con)
+            if s:
+                print(f"memória semeada com {s} eventos já processados.")
+            fmts = ([args.format.lower()] if args.format else sorted(
+                {r["format"] for r in con.execute(
+                    "SELECT DISTINCT format FROM mtgtop8_eventos WHERE event_id > 0")}))
+            if args.fila:
+                for f in fmts:
+                    fila = mtgtop8.revisitas_pendentes(con, f, mtgtop8.TECTO_ANTIGO)
+                    print(f"\n{f}: {len(fila)} por revisitar")
+                    for r in fila[:40]:
+                        print("  e=%-7d %5s jogadores  tecto gravado %-3s  %s"
+                              % (r["event_id"], r.get("players") or "?",
+                                 r.get("tecto"), (r.get("event_name") or "")[:60]))
+            else:
+                res = mtgtop8.revisitar(con, args.format, args.eventos, args.limite)
+                if not res:
+                    print("nada a revisitar.")
+                tot = 0
+                for r in res:
+                    tot += r["novas"]
+                    if not r["marcou"]:
+                        print("e=%-7d %-14s %5s jogadores · NAO MARCADO (a página"
+                              " do evento não respondeu ou já não é dele) · fica na"
+                              " fila  %s"
+                              % (r["evento"], r["formato"], r["players"] or "?",
+                                 (r["nome"] or "")[:40]))
+                        continue
+                    print("e=%-7d %-14s %5s jogadores · na página %-3s · tecto %s→%s"
+                          " · listas %d→%d (+%d)%s  %s"
+                          % (r["evento"], r["formato"], r["players"] or "?",
+                             r["na_pagina"], r["tecto_antes"], r["tecto"],
+                             r["antes"], r["antes"] + r["novas"], r["novas"],
+                             " · completo" if r["completo"] else "",
+                             (r["nome"] or "")[:40]))
+                print(f"\n{len(res)} eventos revisitados, {tot} listas novas.")
 
         elif args.cmd == "analyse":
             k = analysis.rebuild_archetypes(con, args.format.lower(), args.window)

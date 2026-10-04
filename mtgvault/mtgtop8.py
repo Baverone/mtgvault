@@ -181,13 +181,36 @@ def parse_paginas_indice(html: str) -> int:
 
 
 def parse_deck_ids(html: str) -> list[int]:
+    """Ids de deck da página de um evento, por ordem de classificação.
+
+    **`d=0` não é um deck** (2026-10-04): a página de um evento que o mtgtop8 já
+    não tem devolve a página genérica *"MTG Decks Database"*, e lá dentro há
+    `d=0` nos links do menu. Sem este filtro, revisitar o evento 90532 (a
+    European Championship de Premodern, que desapareceu do site) pedia o `.dec`
+    do deck 0 e dava o evento por **completo com uma lista** — ou seja, fechava
+    para sempre um evento de 218 jogadores com base numa página que não é dele.
+    """
     vistos, out = set(), []
     for m in RE_DECK.finditer(html):
         did = int(m.group(1))
-        if did not in vistos:
+        if did > 0 and did not in vistos:
             vistos.add(did)
             out.append(did)
     return out
+
+
+def e_pagina_de_evento(meta: dict, ids: list[int]) -> bool:
+    """«Isto é mesmo a página de um evento?» (2026-10-04)
+
+    O mtgtop8 responde **200** com a página genérica a um evento que já não tem
+    (medido no 90532: 12 KB, `<title>MTG Decks Database</title>`, zero datas,
+    zero jogadores, zero decks). Um `RequestException` já era tratado — *um
+    evento que falha não se marca* —, mas um 200 com a página errada passava
+    pela rede toda e era pior do que uma falha: marcava o evento como visto.
+
+    O crivo é o mesmo do `parse_event_rows`: sem DATA e sem DECK não é um evento.
+    """
+    return bool(ids) and bool(meta.get("event_date"))
 
 
 def parse_deck_entries(html: str) -> dict[int, str]:
@@ -344,6 +367,33 @@ LISTAS_GRANDES = 64
 # de jogadores vem da página do evento, que já foi pedida ANTES do primeiro
 # `.dec`: a decisão não custa um pedido.
 MIN_JOGADORES_GRANDE = 64
+# O TECTO PELO TAMANHO DO CAMPO (André, 2026-10-04 ao fim do dia: *"vi que nao
+# leste o RC Qualifier nas decklists"*). O tecto deixou de depender SÓ do nome e
+# passa a depender dos JOGADORES, que é um dado da página e não um palpite.
+#
+# A REGRA: **metade do campo, na escala de classificação que o próprio mtgtop8
+# usa** (`_bracket`: …, 9-16, 17-32, 33-64), com 64 no topo. Metade do campo
+# porque é a proporção que o vault já pratica no online — uma Challenge 64 do
+# MTGO traz 32 listas de 64 jogadores —, e aplicá-la ao papel põe os dois na
+# mesma régua: até hoje um RC de 1 486 jogadores contribuía 16 listas e uma
+# Challenge contribuía 32.
+#
+# PORQUE O NOME NÃO SERVE PARA ISTO, medido na base dele a 2026-10-04: dos **9**
+# eventos truncados nos 16 com 64+ jogadores, **4 têm nomes que nenhum padrão
+# reconhece** — e um deles é precisamente o que tinha listas a mais para dar (o
+# «Buckeye Brawl II - Retromancers», 125 jogadores, 32 listas na página). O nome
+# continua a decidir se se DESCE no índice para apanhar o evento (essa decisão
+# toma-se antes de haver página, e aí só há o nome); o tecto decide-se depois,
+# com os jogadores à mão.
+#
+# PORQUE 64 NO TOPO: é o que a página serve. Medido nas duas páginas de 921 e
+# 1 486 jogadores — **64 links de deck, exactamente**. Um tecto acima disso não
+# traz uma única lista a mais e pede páginas que não existem.
+#
+# Lê-se «128 jogadores ou mais → 64 listas». No config é um dicionário
+# (`escala_jogadores`), e a ORDEM é imposta aqui — do campo maior para o menor —
+# em vez de se confiar na ordem em que as chaves estão escritas no ficheiro.
+ESCALA_TECTO = {128: 64, 64: 32}
 # Quantas páginas do índice se lêem. A paginação existe (`?f=MO&cp=2`, `cp=3`) e
 # dá 58 eventos em Modern, contra os 20 da primeira. São +2 pedidos por formato e
 # por corrida, e é o que torna possível apanhar um RC que já não está no topo.
@@ -399,7 +449,40 @@ def regras_grandes(cfg: dict | None = None) -> dict:
         "padroes": list(_ou("padroes", PADROES_GRANDES, grandes)),
         "listas_por_evento": int(_ou("listas_por_evento", LISTAS_GRANDES, grandes)),
         "min_jogadores": int(_ou("min_jogadores", MIN_JOGADORES_GRANDE, grandes)),
+        # Pares `(jogadores, tecto)` ORDENADOS do maior campo para o menor — a
+        # ordem é imposta aqui e não herdada do ficheiro. Esvaziar a chave no
+        # config devolve o tecto ao que era antes de 2026-10-04 (só o ramo do
+        # nome) — é o interruptor, como no `padroes`.
+        "escala": sorted(((int(a), int(b)) for a, b in
+                          dict(_ou("escala_jogadores", ESCALA_TECTO,
+                                   grandes)).items()), reverse=True),
     }
+
+
+def escala_do_tecto(players: int | None, nome: str = "",
+                    cfg: dict | None = None) -> int:
+    """Quantas listas vale um campo deste tamanho. 0 = a escala não se aplica.
+
+    Metade do campo, na escala de classificação do mtgtop8 — ver `ESCALA_TECTO`,
+    onde está a medição que escolheu os cortes.
+
+    **SÓ PARA O PAPEL, e isto foi medido antes de se escolher.** O mtgtop8
+    re-hospeda o MTGO, e uma «MTGO Challenge 64» tem 128 jogadores: pela escala
+    passava a pedir 64 `.dec`. Semeada a memória a 2026-10-04, a fila de revisitas
+    dava **54 eventos e 28 deles eram Challenges de MTGO de Modern** — cujas listas
+    o vault já tem pela fonte directa (`sources.harvest_mtgo` lê a página do
+    mtgo.com com todas) e que a deduplicação descarta à entrada. Eram ~28 noites
+    de pedidos a produzir zero listas. A regra existe para os torneios de PAPEL
+    grandes, que é o que ele pediu; quem decide é o `sources.event_tier`, que é
+    quem já responde a *"isto é papel ou online?"* em todo o vault.
+    """
+    if sources.event_tier("mtgtop8", nome or "") != "Presencial":
+        return 0
+    p = players or 0
+    for corte, tecto in regras_grandes(cfg)["escala"]:
+        if p >= corte:
+            return tecto
+    return 0
 
 
 def _compilar(padroes) -> list[re.Pattern]:
@@ -426,12 +509,25 @@ def e_grande(nome: str, cfg: dict | None = None) -> bool:
 
 
 def tecto_do_evento(grande: bool, players: int | None, tecto_normal: int,
-                    cfg: dict | None = None) -> int:
-    """Quantas listas se lêem deste evento. `players` vem da página do evento."""
+                    cfg: dict | None = None, nome: str = "") -> int:
+    """Quantas listas se lêem deste evento. `players` vem da página do evento.
+
+    É o MÁXIMO de três coisas, e a ordem não importa porque nunca baixa nenhuma:
+    o tecto normal, a escala pelo tamanho do campo (`ESCALA_TECTO`, desde
+    2026-10-04) e o ramo do NOME que já existia. O ramo do nome **fica** de
+    propósito: o «RC Hangzhou Side Event» tem 70 jogadores e nome reconhecido, e
+    com a escala sozinha descia de 64 para 32 — acrescentar uma regra não pode
+    tirar listas que já entravam.
+
+    O `nome` serve a escala (que é só para o papel — ver `escala_do_tecto`); sem
+    ele, a escala aplica-se, que é o que um nome vazio já queria dizer no
+    `sources.event_tier`.
+    """
     r = regras_grandes(cfg)
+    tecto = max(tecto_normal, escala_do_tecto(players, nome, cfg))
     if grande and (players or 0) >= r["min_jogadores"]:
-        return max(tecto_normal, r["listas_por_evento"])
-    return tecto_normal
+        tecto = max(tecto, r["listas_por_evento"])
+    return tecto
 
 
 # ---------------------------------------------------------------------------
@@ -552,14 +648,22 @@ def revisitas_pendentes(con: sqlite3.Connection, fmt: str, tecto_normal: int,
     recuperar **já não está no índice**, e uma revisita escolhida entre os
     candidatos do índice nunca lhe chegava. As 48 listas que faltam não vinham.
 
-    Daqui saem só os `grande = 1` (um evento normal não teve o tecto mudado, logo
-    não há nada a recuperar) e pela ordem do nº de jogadores — o RC de 1 486 vem
-    primeiro. O travão é do chamador.
+    Vêm pela ordem do nº de jogadores — o RC de 1 486 vem primeiro. O travão é do
+    chamador.
+
+    **DEIXOU DE EXIGIR `grande = 1` (2026-10-04 ao fim do dia), e sem isso a
+    regra nova não valia nada.** A coluna `grande` é o `e_grande` do NOME, e desde
+    que o tecto passou a depender dos JOGADORES (`ESCALA_TECTO`) é o `por_fazer`
+    quem sabe responder — ele compara o tecto gravado com o de hoje, que é a
+    pergunta certa. Com o filtro no SQL, os **4** eventos truncados cujo nome
+    nenhum padrão reconhece ficavam fora da fila para sempre, e um deles tinha 16
+    listas a mais para dar. Quem filtra é o `por_fazer`, e é barato: a tabela é
+    local e tem 401 linhas.
     """
     out = [dict(r) for r in con.execute(
         "SELECT * FROM mtgtop8_eventos WHERE format = ? AND event_id > 0 "
-        "AND grande = 1 AND completo = 0", (fmt,))]
-    out = [r for r in out if por_fazer(r, True, tecto_normal, cfg)]
+        "AND completo = 0", (fmt,))]
+    out = [r for r in out if por_fazer(r, bool(r.get("grande")), tecto_normal, cfg)]
     out.sort(key=lambda r: -(r.get("players") or 0))
     return out
 
@@ -584,7 +688,12 @@ def por_fazer(linha: dict | None, grande: bool, tecto_normal: int,
         return True
     if linha.get("completo"):
         return False
-    tecto_hoje = tecto_do_evento(grande, linha.get("players"), tecto_normal, cfg)
+    # O NOME entra na conta desde 2026-10-04 ao fim do dia, porque a escala pelo
+    # tamanho do campo é só para o papel. Sem ele aqui, uma «MTGO Challenge 64»
+    # ficava eternamente «por fazer»: o `por_fazer` esperava 64 e o processamento
+    # gravava 16.
+    tecto_hoje = tecto_do_evento(grande, linha.get("players"), tecto_normal, cfg,
+                                 nome=linha.get("event_name") or "")
     return int(linha.get("tecto") or 0) < tecto_hoje
 
 
@@ -698,76 +807,197 @@ def harvest(con: sqlite3.Connection, fmt: str, max_events: int = 8,
     #    de hoje começa a 20/09. Levam travão (`revisitas_por_corrida`), pela ordem
     #    do nº de jogadores — sem ele a primeira corrida pedia até 564 `.dec`.
     por_abrir = [li for li in candidatos if li["id"] not in memoria]
-    # Um evento do índice que JÁ esteja na memória e precise de revisita entra
-    # também por aqui — é uma lista só, com um travão só. O nome do índice ganha
-    # quando existe (é mais curto e mais fresco do que o `<title>` gravado).
     do_indice = {li["id"]: li for li in candidatos}
-    for r in revisitas_pendentes(con, fmt, max_decks_per_event,
-                                 cfg)[:max(0, regras["revisitas_por_corrida"])]:
-        li = do_indice.get(r["event_id"])
-        por_abrir.append({"id": r["event_id"], "grande": True,
-                          "nome": (li or {}).get("nome") or r["event_name"] or "",
-                          "data": (li or {}).get("data") or r["event_date"]})
 
     novas = 0
     for li in por_abrir:
-        eid = li["id"]
-        try:
-            pagina = _get("/event", e=eid, f=code)
-        except requests.RequestException:
-            # Um evento que falha NÃO se marca — perder um RC para sempre por uma
-            # falha de rede de um segundo era o preço de simplificar aqui (é a
-            # regra do `backfill_archetype_names`).
-            continue
-        meta = parse_event_meta(pagina)
-        players = meta.get("players")
-        tecto = tecto_do_evento(li["grande"], players, max_decks_per_event, cfg)
-        jogadores = parse_deck_entries(pagina)
-        # O NOME DO ARQUÉTIPO (2026-10-02): está nesta mesma página, que já foi
-        # pedida. Não custa um pedido a mais e é a informação que a recolha andava
-        # a deitar fora — ver `parse_deck_archetypes`.
-        arquetipos = parse_deck_archetypes(pagina)
-        todos = parse_deck_ids(pagina)
-        falhou_um_dec = False
-        for pos, did in enumerate(todos[:tecto], 1):
-            if con.execute("SELECT 1 FROM decklists WHERE source = 'mtgtop8' "
-                           "AND source_key = ?", (str(did),)).fetchone():
-                continue
-            try:
-                cartas, do_sb = fetch_deck(did, is_cmd)
-            except requests.RequestException:
-                falhou_um_dec = True
-                continue
-            # O comandante, nos formatos de comandante: o `SB:` do .dec. Vai para
-            # a coluna `decklists.commander` ANTES de se perder no main.
-            comandante = (consenso.nome_do_comandante(con, do_sb) if is_cmd else None)
-            # store_decklist descarta se esta lista já cá estiver vinda do
-            # mtgo.com — o mtgtop8 re-hospeda muitos eventos de MTGO. O placement
-            # vem da posição (a página lista por classificação).
-            if sources.store_decklist(
-                con, source="mtgtop8", source_key=str(did), fmt=fmt,
-                cards=cartas, event_name=meta["event_name"] or "",
-                event_date=meta["event_date"] or date.today().isoformat(),
-                player=jogadores.get(did, ""), placement=_bracket(pos),
-                event_players=players, commander=comandante,
-                arquetipo=arquetipos.get(did), arquetipo_de="evento",
-                url=f"{BASE}/event?e={eid}&d={did}&f={code}",
-            ):
-                novas += 1
-        # O REGISTO VEM NO FIM, E SÓ SE NENHUM `.dec` FALHOU. Registá-lo antes do
-        # ciclo era uma regressão face ao código antigo: esse não tinha memória e
-        # por isso voltava a pedir os `.dec` que faltassem na corrida seguinte (o
-        # crivo é por deck, contra a `decklists`). Com a memória escrita à cabeça,
-        # um `.dec` que falhasse deixava a lista a faltar **para sempre**. Um
-        # evento meio lido não se marca — é a mesma regra do evento cuja página
-        # falha, e do `backfill_archetype_names`.
-        if not falhou_um_dec:
-            _registar_evento(con, eid, fmt, nome=meta["event_name"] or li["nome"],
-                             data=meta["event_date"] or li["data"],
-                             grande=li["grande"], players=players,
-                             na_pagina=len(todos), tecto=tecto)
-        con.commit()
+        n, _ = _abrir_evento(con, li, fmt=fmt, code=code, is_cmd=is_cmd,
+                             tecto_normal=max_decks_per_event, cfg=cfg)
+        novas += n
+
+    # AS REVISITAS, com o travão a contar VEZES GASTAS e não tentativas
+    # (2026-10-04 ao fim do dia). A fila vem ordenada pelo nº de jogadores, e o
+    # primeiro dela pode ser um evento cuja página o mtgtop8 já não tem — o
+    # `Premodern event - European Championship 2026`, 218 jogadores, é exactamente
+    # esse caso. Esse evento não se marca (de propósito: uma falha não pode perder
+    # um RC), por isso com um travão de tentativas ele ficava à cabeça da fila
+    # TODAS AS NOITES e os outros 5 de Premodern nunca chegavam a ser vistos — a
+    # fila entupia pela cabeça. Agora uma tentativa que não marca nada não gasta a
+    # vez, com um tecto de tentativas para a noite não ficar presa numa cauda de
+    # páginas mortas.
+    limite = max(0, regras["revisitas_por_corrida"])
+    tentativas = 2 * limite + 2
+    gastas = 0
+    for r in revisitas_pendentes(con, fmt, max_decks_per_event, cfg):
+        if gastas >= limite or tentativas <= 0:
+            break
+        tentativas -= 1
+        li = do_indice.get(r["event_id"])
+        n, marcou = _abrir_evento(
+            con, {"id": r["event_id"], "grande": bool(r.get("grande")),
+                  # O nome do índice ganha quando existe (é mais curto e mais
+                  # fresco do que o `<title>` gravado).
+                  "nome": (li or {}).get("nome") or r["event_name"] or "",
+                  "data": (li or {}).get("data") or r["event_date"]},
+            fmt=fmt, code=code, is_cmd=is_cmd,
+            tecto_normal=max_decks_per_event, cfg=cfg,
+            # O que a memória sabe do campo. Ver `_abrir_evento`: há páginas
+            # antigas que já não dizem a contagem.
+            players_lembrado=r.get("players"))
+        novas += n
+        gastas += int(marcou)
     return novas
+
+
+def revisitar(con: sqlite3.Connection, fmt: str | None = None,
+              eventos: list[int] | None = None, limite: int | None = None,
+              tecto_normal: int = TECTO_ANTIGO,
+              cfg: dict | None = None) -> list[dict]:
+    """FORÇA a revisita de eventos já processados. Devolve uma linha por evento.
+
+    O `harvest` revisita **1 por formato e por corrida** (`revisitas_por_corrida`),
+    o que é o ritmo certo para todas as noites e é lento demais quando se acabou
+    de mudar a regra do tecto: a 2026-10-04 havia 9 eventos truncados nos 16 com
+    64+ jogadores, e o maior — o `Modern event - Regional Championship`, 1 486
+    jogadores e 16 das 64 listas — demorava uma noite a entrar e os outros até
+    quatro. Esta função é o *"tens de a usar nestes"*: faz a fila inteira de uma
+    vez, ou os `eventos` que lhe derem.
+
+    **Não baixa o tecto de ninguém e não repete trabalho**: cada evento passa pelo
+    `_abrir_evento` de sempre, que salta os `.dec` que a base já tem (o crivo é por
+    deck), não marca um evento meio lido e não marca uma página que já não é do
+    evento. Corre a 1 pedido/s, como todo o resto deste módulo.
+
+    `eventos` sem `fmt` procura o evento em qualquer formato da memória — é mais
+    cómodo para quem tem o id à mão e não se lembra do formato.
+    """
+    fmts = [fmt.lower()] if fmt else sorted(
+        {r["format"] for r in con.execute(
+            "SELECT DISTINCT format FROM mtgtop8_eventos WHERE event_id > 0")})
+    out: list[dict] = []
+    for f in fmts:
+        code = FORMAT_CODES.get(f)
+        if not code:
+            continue
+        is_cmd = f in COMMANDER_FORMATS
+        memoria = memoria_dos_eventos(con, f)
+        if eventos:
+            fila = [memoria[e] for e in eventos if e in memoria]
+        else:
+            fila = revisitas_pendentes(con, f, tecto_normal, cfg)
+        if limite is not None:
+            fila = fila[:max(0, limite)]
+        for r in fila:
+            antes = con.execute(
+                "SELECT COUNT(*) FROM decklists WHERE source='mtgtop8' "
+                "AND url LIKE ?", (f"%/event?e={r['event_id']}&%",)).fetchone()[0]
+            novas, marcou = _abrir_evento(
+                con, {"id": r["event_id"], "grande": bool(r.get("grande")),
+                      "nome": r.get("event_name") or "", "data": r.get("event_date")},
+                fmt=f, code=code, is_cmd=is_cmd, tecto_normal=tecto_normal,
+                cfg=cfg, players_lembrado=r.get("players"))
+            depois = dict(con.execute(
+                "SELECT na_pagina, tecto, completo, players FROM mtgtop8_eventos "
+                "WHERE event_id = ? AND format = ?",
+                (r["event_id"], f)).fetchone() or {})
+            out.append({"evento": r["event_id"], "formato": f,
+                        "nome": r.get("event_name") or "",
+                        "players": depois.get("players") or r.get("players"),
+                        "antes": antes, "novas": novas, "marcou": marcou,
+                        "na_pagina": depois.get("na_pagina"),
+                        "tecto": depois.get("tecto"),
+                        "completo": bool(depois.get("completo")),
+                        "tecto_antes": r.get("tecto")})
+    return out
+
+
+def _abrir_evento(con: sqlite3.Connection, li: dict, *, fmt: str, code: str,
+                  is_cmd: bool, tecto_normal: int, cfg: dict | None = None,
+                  players_lembrado: int | None = None) -> tuple[int, bool]:
+    """Pede a página de UM evento e lê as listas. `(novas, marcou)`.
+
+    Vive numa função porque **dois caminhos a precisam**: o `harvest` (de todas as
+    noites) e a revisita FORÇADA (`revisitar`, 2026-10-04 ao fim do dia). Escrita
+    duas vezes, a segunda esquecia-se de uma das três regras que aqui estão — a
+    página morta, o `.dec` que falha, e o evento meio lido que não se marca.
+
+    O `marcou` é o que diz ao chamador se a vez foi GASTA: um evento que não se
+    marca continua na fila, e sem esta distinção ele ficava à cabeça dela para
+    sempre — ver `harvest`.
+    """
+    eid = li["id"]
+    try:
+        pagina = _get("/event", e=eid, f=code)
+    except requests.RequestException:
+        # Um evento que falha NÃO se marca — perder um RC para sempre por uma
+        # falha de rede de um segundo era o preço de simplificar aqui (é a
+        # regra do `backfill_archetype_names`).
+        return 0, False
+    meta = parse_event_meta(pagina)
+    todos = parse_deck_ids(pagina)
+    if not e_pagina_de_evento(meta, todos):
+        # 200 com a página genérica: o evento já não está no site. Não se marca,
+        # pela mesma razão de uma falha de rede — e sobretudo não se dá por
+        # COMPLETO um evento de 218 jogadores por causa de uma página que não é
+        # dele. Ver `e_pagina_de_evento`.
+        return 0, False
+    # O Nº DE JOGADORES É O MÁXIMO ENTRE A PÁGINA E O LEMBRADO, e isto é o que
+    # impede a revisita eterna: há páginas antigas que já não dizem a contagem, e
+    # com `players = None` o tecto caía para 16 — o `por_fazer` continuava a dizer
+    # «vale a pena» (decide com a coluna `players`, que tem 218) e o evento era
+    # pedido todas as noites, para sempre. É o defeito de 2026-10-04 de manhã (o
+    # tecto optimista) pelo outro lado.
+    players = meta.get("players")
+    if players_lembrado and (players or 0) < players_lembrado:
+        players = players_lembrado
+    nome = meta["event_name"] or li.get("nome") or ""
+    tecto = tecto_do_evento(li["grande"], players, tecto_normal, cfg, nome=nome)
+    jogadores = parse_deck_entries(pagina)
+    novas = 0
+    # O NOME DO ARQUÉTIPO (2026-10-02): está nesta mesma página, que já foi
+    # pedida. Não custa um pedido a mais e é a informação que a recolha andava
+    # a deitar fora — ver `parse_deck_archetypes`.
+    arquetipos = parse_deck_archetypes(pagina)
+    falhou_um_dec = False
+    for pos, did in enumerate(todos[:tecto], 1):
+        if con.execute("SELECT 1 FROM decklists WHERE source = 'mtgtop8' "
+                       "AND source_key = ?", (str(did),)).fetchone():
+            continue
+        try:
+            cartas, do_sb = fetch_deck(did, is_cmd)
+        except requests.RequestException:
+            falhou_um_dec = True
+            continue
+        # O comandante, nos formatos de comandante: o `SB:` do .dec. Vai para
+        # a coluna `decklists.commander` ANTES de se perder no main.
+        comandante = (consenso.nome_do_comandante(con, do_sb) if is_cmd else None)
+        # store_decklist descarta se esta lista já cá estiver vinda do
+        # mtgo.com — o mtgtop8 re-hospeda muitos eventos de MTGO. O placement
+        # vem da posição (a página lista por classificação).
+        if sources.store_decklist(
+            con, source="mtgtop8", source_key=str(did), fmt=fmt,
+            cards=cartas, event_name=meta["event_name"] or "",
+            event_date=meta["event_date"] or date.today().isoformat(),
+            player=jogadores.get(did, ""), placement=_bracket(pos),
+            event_players=players, commander=comandante,
+            arquetipo=arquetipos.get(did), arquetipo_de="evento",
+            url=f"{BASE}/event?e={eid}&d={did}&f={code}",
+        ):
+            novas += 1
+    # O REGISTO VEM NO FIM, E SÓ SE NENHUM `.dec` FALHOU. Registá-lo antes do
+    # ciclo era uma regressão face ao código antigo: esse não tinha memória e
+    # por isso voltava a pedir os `.dec` que faltassem na corrida seguinte (o
+    # crivo é por deck, contra a `decklists`). Com a memória escrita à cabeça,
+    # um `.dec` que falhasse deixava a lista a faltar **para sempre**. Um
+    # evento meio lido não se marca — é a mesma regra do evento cuja página
+    # falha, e do `backfill_archetype_names`.
+    if not falhou_um_dec:
+        _registar_evento(con, eid, fmt, nome=meta["event_name"] or li["nome"],
+                         data=meta["event_date"] or li["data"],
+                         grande=li["grande"], players=players,
+                         na_pagina=len(todos), tecto=tecto)
+    con.commit()
+    return novas, not falhou_um_dec
 
 
 def grandes_de_hoje(con: sqlite3.Connection, dia: str | None = None) -> list[dict]:

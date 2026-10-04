@@ -118,6 +118,29 @@ _CSS = """
  .bar i.ok{background:var(--add)}
  .qm{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);cursor:pointer;min-height:40px;padding:0 4px}
  .qm input{width:20px;height:20px;accent-color:var(--accent)}
+ /* A SEQUÊNCIA e as STAPLES (2026-10-04 ao fim do dia). */
+ .passos{background:var(--card);border:1px solid var(--accent-line);border-radius:var(--r);
+   padding:11px 15px;margin:0 0 12px;font-size:12.5px;color:var(--dim)}
+ .passos b{color:var(--ink)}
+ .passos ol{margin:6px 0 0;padding-left:20px} .passos li{margin:3px 0;line-height:1.55}
+ .stp{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+   padding:9px 13px;margin:0 0 12px}
+ .stp summary{cursor:pointer;font-size:12.5px;color:var(--dim)}
+ .stp summary b{color:var(--ink)}
+ .stpn{font-size:11.5px;color:var(--muted);margin:7px 0 9px}
+ .stpl{display:flex;flex-direction:column;gap:4px}
+ .stpr{display:flex;gap:9px;align-items:baseline;font-size:12.5px;flex-wrap:wrap}
+ .stpr .sq{font-family:var(--font-hd);font-weight:700;color:var(--accent);min-width:26px}
+ .stpr .snm{flex:1;min-width:140px}
+ .stpr .sd{font-size:11px;color:var(--muted)}
+ .stpr .st{font-size:11px;color:var(--add)} .stpr .st.falta{color:var(--accent)}
+ /* Uma caixa DESACTIVADA (2026-10-04): fica na lista, no fim, apagada e com o
+    rótulo à vista — não é um deck de 0 % ao lado dos que ele vai montar. */
+ .drow.off{opacity:.62;border-style:dashed}
+ .qm.off{cursor:default;font-style:italic}
+ .tag{font-family:var(--font-hd);font-size:10px;font-weight:700;text-transform:uppercase;
+   letter-spacing:.04em;color:var(--muted);border:1px solid var(--line);border-radius:999px;
+   padding:1px 7px;margin-left:6px;vertical-align:1px;white-space:nowrap}
  .verd{min-height:40px;padding:7px 14px;border-radius:999px;border:1px solid var(--line);background:var(--card2);color:var(--ink2);font:inherit;font-size:12.5px;cursor:pointer}
  /* --- A GRELHA DE CARTAS: o tile do riftvault (web/app.js + web/style.css) --- */
  .typehdr{display:flex;align-items:baseline;gap:8px;margin:20px 0 9px;font-family:var(--font-hd);font-size:14px;font-weight:700;color:var(--ink)}
@@ -229,7 +252,9 @@ function nivelFormatos() {
       <span class="modo ${x.modo === 'rotativas' ? 'rot' : 'ded'}">${
         x.modo === 'rotativas' ? 'cartas rodam' : 'cartas dedicadas'}</span>
       <span class="fl"><b>${x.n_decks}</b> deck${x.n_decks === 1 ? '' : 's'} registado${
-        x.n_decks === 1 ? '' : 's'} · <b>${x.n_marcados}</b> que queres montar</span>
+        x.n_decks === 1 ? '' : 's'} · <b>${x.n_marcados}</b> que queres montar${
+        x.n_desactivadas ? ` · ${x.n_desactivadas} desactivada${
+          x.n_desactivadas === 1 ? '' : 's'}` : ''}</span>
       <span class="fl">a somar <b>${n.soma || 0}</b> · a rodar <b>${n.maximo || 0}</b>${
         n.cartas ? ` · ${n.cartas} cartas distintas` : ''}</span>
       <span class="fm">${esc(x.texto_modo)}</span>
@@ -251,11 +276,40 @@ function nivelDecks(x) {
       <div class="v">${n.maximo || 0}</div>
       <div class="sub">uma cópia serve todos · faltam ${n.faltam_a_rodar || 0}</div></div>
   </div>`;
+  /* A SEQUÊNCIA DELE, pela ordem que ele deu (2026-10-04 ao fim do dia):
+     *"falta escolher decks, falta depois eu organizar os decks, guardar as que
+     sao staples"*. Num formato rotativo sem nada marcado, a página dizia os dois
+     números a zero e mais nada — não dizia que o primeiro passo é marcar. */
+  if (rot && !x.n_marcados) {
+    out += `<div class="passos"><b>Por onde começar</b><ol>`
+      + `<li>marca <b>«quero montar»</b> nos decks que vais montar, aqui em baixo`
+      + ` (estão ordenados pelos que já tens mais completos);</li>`
+      + `<li>aparecem aqui as cartas <b>próprias</b> de cada deck e as`
+      + ` <b>partilhadas</b>;</li>`
+      + `<li>as partilhadas são as <b>staples</b>: ficam de fora dos decks,`
+      + ` guardadas juntas, e cada deck leva um proxy.</li></ol></div>`;
+  }
   if (x.sleeves && x.sleeves.decks) {
     const s = x.sleeves;
     out += `<div class="chips"><span class="chip">sleeves: <b>${s.total}</b> cartas nos ${
       s.decks} decks marcados</span><span class="chip">verdadeiras <b>${s.reais}</b></span>`
       + `<span class="chip gold">proxies <b>${s.proxies}</b></span></div>`;
+  }
+  /* AS STAPLES DO FORMATO: as partilhadas, agregadas. Deck a deck ele já as via
+     (no nível 3); isto é a PILHA que ele guarda à parte. */
+  if (x.staples && x.staples.length) {
+    out += `<details class="stp" open><summary><b>Staples a guardar à parte</b>`
+      + ` — ${x.staples.length} carta${x.staples.length === 1 ? '' : 's'} em 2 ou`
+      + ` mais dos decks marcados</summary>`
+      + `<p class="stpn">Ficam fora dos decks, numa pilha só. Cada deck leva um`
+      + ` proxy; a verdadeira entra à hora de jogar.</p><div class="stpl">`
+      + x.staples.map(s => `<div class="stpr">
+          <span class="sq">${s.precisa}&times;</span>
+          <span class="snm">${esc(s.nm)}</span>
+          <span class="sd">em ${s.n_decks} decks</span>
+          <span class="st${s.falta ? ' falta' : ''}">${
+            s.falta ? `tens ${s.tenho} — faltam ${s.falta}` : `tens ${s.tenho}`}</span>
+        </div>`).join('') + '</div></details>';
   }
   if (x.meta_fora) {
     out += `<div class="chips"><span class="chip">o mtgtop8 tem <b>${x.meta_fora}</b>`
@@ -270,9 +324,15 @@ function nivelDecks(x) {
     if (d.nota) sub.push(d.nota);
     if (d.ja_e_caixa) sub.push('já é uma caixa tua');
     if (d.marcado_em) sub.push('marcado em ' + d.marcado_em);
-    return `<div class="drow${d.quero ? ' quero' : ''}">
+    /* UMA CAIXA DESACTIVADA NÃO É UM DECK DE 0 % (2026-10-04 ao fim do dia).
+       Fica na lista — no fim, e com o rótulo à vista — em vez de desaparecer:
+       o `caixas[].\_antes` do config repõe-na, e uma caixa que sumisse da página
+       deixava-o sem por onde a reaver. O que ela não tem é a caixa «quero
+       montar»: marcar um deck sem lista não quer dizer nada. */
+    return `<div class="drow${d.quero ? ' quero' : ''}${d.desactivada ? ' off' : ''}">
       <div class="dn">
-        <div class="dnome">${esc(d.nome)}</div>
+        <div class="dnome">${esc(d.nome)}${d.rotulo_estado
+          ? ` <span class="tag">${esc(d.rotulo_estado)}</span>` : ''}</div>
         <div class="dsub">${d.sem_lista ? 'sem lista — nada para contar'
           : `tens <b>${d.tem}</b> de <b>${d.total}</b> cartas` +
             (d.side && d.side.total ? ` (main ${d.main.tem}/${d.main.total} · side ${d.side.tem}/${d.side.total})` : '')}
@@ -280,8 +340,9 @@ function nivelDecks(x) {
         <div class="bar"><i class="${cl === 'ok' ? 'ok' : ''}" style="width:${d.pct}%"></i></div>
       </div>
       <div class="dpct ${cl}">${d.sem_lista ? '—' : d.pct + '%'}</div>
-      <label class="qm"><input type="checkbox" data-quero="${esc(d.id)}"${
-        d.quero ? ' checked' : ''}${EDIT() ? '' : ' disabled'}> quero montar</label>
+      ${d.desactivada ? '<span class="qm off">desactivada</span>'
+        : `<label class="qm"><input type="checkbox" data-quero="${esc(d.id)}"${
+        d.quero ? ' checked' : ''}${EDIT() ? '' : ' disabled'}> quero montar</label>`}
       <button class="verd" data-d="${esc(d.id)}">ver ▶</button>
     </div>`;
   }).join('') + '</div>';

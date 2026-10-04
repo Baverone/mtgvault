@@ -80,8 +80,14 @@ function el(nome) {
     // O `fetch` a sério, com os caminhos relativos resolvidos como o browser faz.
     fetch: (u, o) => fetch(new URL(u, base).href, o),
     localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
-    navigator: {}, window: { scrollTo() {} },
-    location: { search: base.search, protocol: base.protocol, reload() {} },
+    navigator: {}, window: { scrollTo() {}, addEventListener() {} },
+    // O `hash` entrou a 2026-10-04 (ao fim do dia): a aba Decks tem TRÊS níveis
+    // e cada um é um hash (`#f=modern`, `#f=modern&d=caixa:modern`). Sem ele,
+    // abrir `decks.html#f=modern` dava sempre o nível 1 e a verificação de ponta
+    // a ponta nunca chegava às cartas de um deck.
+    location: { search: base.search, protocol: base.protocol, hash: base.hash,
+                reload() {} },
+    history: { replaceState() {}, pushState() {} },
     URL: { createObjectURL: () => 'blob:', revokeObjectURL() {} },
     Blob: function () {}, confirm: () => false,
     document: {

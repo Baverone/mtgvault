@@ -32,9 +32,15 @@ CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 NODE = shutil.which("node") or r"C:\Program Files\nodejs\node.exe"
 PORTO, CDP = 8806, 9334
 VISTAS = {1440: "desktop", 390: "telemovel"}
+#: As TRÊS últimas entraram a 2026-10-04 ao fim do dia, e faltavam: a lista era a
+#: de 2026-09-24 e as páginas nascidas depois (a Arrumação e os Comandantes, de
+#: 01/10) ou nesse dia (a aba Decks) nunca tinham sido medidas a 390 px — que é a
+#: largura em que ele as usa. A `decks.html` é precisamente a que ele abre no
+#: telemóvel à frente da estante para sleevar.
 PAGINAS = ["index.html", "deckboxes.html", "metagame.html", "showcase.html",
            "colecao_cor.html", "caixarl.html", "cobertura.html",
-           "reservedlist.html", "colecao.html"]
+           "reservedlist.html", "colecao.html",
+           "decks.html", "arrumacao.html", "comandantes.html"]
 
 
 class Silencioso(http.server.SimpleHTTPRequestHandler):
