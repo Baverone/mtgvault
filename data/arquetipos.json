@@ -97,7 +97,6 @@
    "nome": "Mono-Preto Graveborn Muse",
    "nucleo": [
     "Cabal Therapy",
-    "Cursed Scroll",
     "Dark Ritual",
     "Diabolic Edict",
     "Duress",
@@ -107,6 +106,7 @@
     "Ravenous Rats",
     "Smother",
     "Snuff Out",
+    "Wasteland",
     "Withered Wretch"
    ],
    "primeira": "2026-09-09",
@@ -145,7 +145,7 @@
     "Rishadan Port",
     "Sylvan Library",
     "Terravore",
-    "Treetop Village",
+    "Wasteland",
     "Weathered Wayfarer",
     "Windswept Heath"
    ],
@@ -221,11 +221,11 @@
     "Coastal Tower",
     "Decree of Justice",
     "Disenchant",
-    "Dust Bowl",
     "Fact or Fiction",
-    "Faerie Conclave",
+    "Flooded Strand",
     "Impulse",
     "Mana Leak",
+    "Mishra's Factory",
     "Powder Keg",
     "Standstill",
     "Wrath of God"
@@ -339,9 +339,9 @@
    "formato": "premodern",
    "nome": "Esper Exalted Angel",
    "nucleo": [
+    "Adarkar Wastes",
     "Caves of Koilos",
     "Decree of Justice",
-    "Diabolic Edict",
     "Disenchant",
     "Exalted Angel",
     "Fact or Fiction",

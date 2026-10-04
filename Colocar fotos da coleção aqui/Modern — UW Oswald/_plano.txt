@@ -1,69 +1,12 @@
-PLANO DE FOTOS -- Modern — UW Oswald
-slot: modern | 16 fotos para 52 cartas
+ESTA PASTA JA NAO E UM DECK
+===========================
 
-REGRA: no maximo 4 CARTAS por foto, agrupadas por TIPO.
-As copias da MESMA carta vao sempre juntas (4x Mox Opal = 1 foto).
-Cada carta tem de estar a vista e poder avaliar-se.
+O deck que tinha este nome foi renomeado ou dissolvido, por isso o vault
+JA NAO RECONHECE esta pasta: uma foto largada aqui fica aqui e nao e
+catalogada.
 
-ONDE LARGAR AS FOTOS: NESTA PASTA.
-  O vault reconhece a pasta como este deck (alvo: modern) e trata
-  as fotos como se as tivesses tirado na pagina. Nao precisas de
-  fixar alvo nenhum. Podes fazer subpastas de lote ('lote1').
-  A foto e MOVIDA daqui para pendentes\ com o nome a dizer o deck,
-  e depois arrumada em data\fotos\modern\. Nada se apaga.
+Larga as fotos na pasta com o nome ACTUAL do deck (estao todas em
+«Colocar fotos da colecao aqui\», uma por deck), ou usa o botao
+«Tirar fotos» no modo de edicao.
 
-A OUTRA PORTA: https://editar-mtg.baverone.com/
-  botao «Tirar fotos» (abre a camara do telemovel) -- ai nao ha
-  pasta nenhuma, a foto guarda-se sozinha.
-
-======================================================================
-
-  PLANESWALKERS
-    foto 01  (2 cartas)
-         2x Teferi, Time Raveler                   SLD   foil     en
-  CRIATURAS
-    foto 02  (4 cartas)
-         4x Emry, Lurker of the Loch               SLC   foil     en
-    foto 03  (3 cartas)
-         3x Loki, God of Mischief                  MSH   foil     en
-    foto 04  (4 cartas)
-         4x Tamiyo, Inquisitive Student            MH3   foil     en
-  ARTEFACTOS
-    foto 05  (3 cartas)
-            Aether Spellbomb                       MMA   foil     en
-            Damping Sphere                         DMR   foil     en
-            Grinding Station                       5DN   foil     en
-    foto 06  (4 cartas)
-         4x Mishra's Bauble                        SLD   foil     en
-    foto 07  (3 cartas)
-         3x Mox Amber                              DOM   foil     en
-    foto 08  (4 cartas)
-         4x Mox Opal                               MPS   foil     en
-    foto 09  (4 cartas)
-            Pithing Needle                         MPS   foil     en
-            Sewer-veillance Cam                    TMT   foil     en
-            Shadowspear                            PZA   foil     en
-            Shadowspear                            SLD   foil     en
-    foto 10  (3 cartas)
-            Skateboard                             TMT   foil     en
-            Tormod's Crypt                         M21   foil     en
-            Vexing Bauble                          MH3   foil     en
-  ENCANTAMENTOS
-    foto 11  (4 cartas)
-            Urza's Saga                            SCH   foil     en   [a foto antiga desapareceu]
-         3x Urza's Saga                            SCH   foil     en
-  INSTANTÂNEOS
-    foto 12  (3 cartas)
-         3x Consign to Memory                      MH3   foil     en
-    foto 13  (4 cartas)
-         3x Force of Negation                      TLE   foil     en
-            Metallic Rebuke                        2XM   foil     en
-  TERRAS
-    foto 14  (1 carta)
-            Flooded Strand                         EXP   foil     en
-    foto 15  (4 cartas)
-         4x Hallowed Fountain                      EXP   foil     en
-    foto 16  (2 cartas)
-            Otawara, Soaring City                  NEO   foil     en
-            Scalding Tarn                          EXP   foil     en
-
+Nada se apagou. Podes apagar esta pasta a mao quando quiseres.

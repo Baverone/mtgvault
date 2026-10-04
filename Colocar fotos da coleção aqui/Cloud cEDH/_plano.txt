@@ -20,91 +20,91 @@ A OUTRA PORTA: https://editar-mtg.baverone.com/
 
   PLANESWALKERS
     foto 01  (1 carta)
-            Tezzeret, Cruel Captain                EOE   nonfoil  en   [a foto antiga desapareceu]
+            Tezzeret, Cruel Captain                EOE   nonfoil  en
   CRIATURAS
     foto 02  (4 cartas)
-            Auriok Salvagers                       MMA   nonfoil  en   [a foto antiga desapareceu]
+            Auriok Salvagers                       MMA   nonfoil  en
             Auriok Steelshaper                     MRD   nonfoil  en
-            Boromir, Warden of the Tower           LTR   nonfoil  en   [a foto antiga desapareceu]
-            Cloud, Midgar Mercenary                FIN   nonfoil  en   [a foto antiga desapareceu]
+            Boromir, Warden of the Tower           LTR   nonfoil  en
+            Cloud, Midgar Mercenary                FIN   nonfoil  en
     foto 03  (4 cartas)
-            Curious Farm Animals                   TLA   nonfoil  en   [a foto antiga desapareceu]
+            Curious Farm Animals                   TLA   nonfoil  en
             Esper Sentinel                         H2R   nonfoil  en
             Glaring Fleshraker                     MH3   nonfoil  en
             Grand Abolisher                        PBIG  nonfoil  en
     foto 04  (4 cartas)
-            Memnite                                SOM   nonfoil  en   [a foto antiga desapareceu]
-            Myr Moonvessel                         DST   nonfoil  en   [a foto antiga desapareceu]
-            Myr Retriever                          2XM   nonfoil  en   [a foto antiga desapareceu]
-            Ornithopter                            10E   nonfoil  en   [a foto antiga desapareceu]
+            Memnite                                SOM   nonfoil  en
+            Myr Moonvessel                         DST   nonfoil  en
+            Myr Retriever                          2XM   nonfoil  en
+            Ornithopter                            10E   nonfoil  en
     foto 05  (4 cartas)
-            Puresteel Paladin                      SLD   nonfoil  en   [a foto antiga desapareceu]
-            Ranger-Captain of Eos                  FCA   nonfoil  en   [a foto antiga desapareceu]
-            Recruiter of the Guard                 MH3   nonfoil  en   [a foto antiga desapareceu]
-            Salvage Scout                          SOM   nonfoil  en   [a foto antiga desapareceu]
+            Puresteel Paladin                      SLD   nonfoil  en
+            Ranger-Captain of Eos                  FCA   nonfoil  en
+            Recruiter of the Guard                 MH3   nonfoil  en
+            Salvage Scout                          SOM   nonfoil  en
     foto 06  (4 cartas)
-            Scrap Trawler                          AER   nonfoil  en   [a foto antiga desapareceu]
-            Solitude                               MH2   nonfoil  en   [a foto antiga desapareceu]
-            Starfield Shepherd                     EOE   nonfoil  en   [a foto antiga desapareceu]
-            Teshar, Ancestor's Apostle             DOM   nonfoil  en   [a foto antiga desapareceu]
+            Scrap Trawler                          AER   nonfoil  en
+            Solitude                               MH2   nonfoil  en
+            Starfield Shepherd                     EOE   nonfoil  en
+            Teshar, Ancestor's Apostle             DOM   nonfoil  en
     foto 07  (4 cartas)
-            Voice of Victory                       TDM   nonfoil  en   [a foto antiga desapareceu]
-            Walking Ballista                       MB2   nonfoil  en   [a foto antiga desapareceu]
-            Witch Enchanter                        MH3   nonfoil  en   [a foto antiga desapareceu]
-            Éowyn, Lady of Rohan                   LTR   nonfoil  en   [a foto antiga desapareceu]
+            Voice of Victory                       TDM   nonfoil  en
+            Walking Ballista                       MB2   nonfoil  en
+            Witch Enchanter                        MH3   nonfoil  en
+            Éowyn, Lady of Rohan                   LTR   nonfoil  en
   ARTEFACTOS
     foto 08  (4 cartas)
-            Ancient Den                            SLD   nonfoil  en   [a foto antiga desapareceu]
-            Arcane Signet                          ELD   nonfoil  en   [a foto antiga desapareceu]
-            Ashnod's Altar                         SLD   nonfoil  en   [a foto antiga desapareceu]
+            Ancient Den                            SLD   nonfoil  en
+            Arcane Signet                          ELD   nonfoil  en
+            Ashnod's Altar                         SLD   nonfoil  en
             Chrome Mox                             SPG   nonfoil  en
     foto 09  (4 cartas)
-            Grim Monolith                          ULG   nonfoil  en   [a foto antiga desapareceu]
-            Krark-Clan Ironworks                   SLC   nonfoil  en   [a foto antiga desapareceu]
+            Grim Monolith                          ULG   nonfoil  en
+            Krark-Clan Ironworks                   SLC   nonfoil  en
             Lotus Petal                            MB2   nonfoil  en
-            Mana Vault                             2X2   nonfoil  en   [a foto antiga desapareceu]
+            Mana Vault                             2X2   nonfoil  en
     foto 10  (4 cartas)
-            Moonsilver Key                         MID   nonfoil  en   [a foto antiga desapareceu]
-            Mox Amber                              DOM   nonfoil  en   [a foto antiga desapareceu]
+            Moonsilver Key                         MID   nonfoil  en
+            Mox Amber                              DOM   nonfoil  en
             Mox Diamond                            STH   nonfoil  en
-            Mox Opal                               2XM   nonfoil  en   [a foto antiga desapareceu]
+            Mox Opal                               2XM   nonfoil  en
     foto 11  (4 cartas)
-            Oketra's Monument                      AKH   nonfoil  en   [a foto antiga desapareceu]
-            Paradise Mantle                        SLD   nonfoil  en   [a foto antiga desapareceu]
-            Phoenix Down                           FIN   nonfoil  en   [a foto antiga desapareceu]
-            Phyrexian Altar                        2X2   nonfoil  en   [a foto antiga desapareceu]
+            Oketra's Monument                      AKH   nonfoil  en
+            Paradise Mantle                        SLD   nonfoil  en
+            Phoenix Down                           FIN   nonfoil  en
+            Phyrexian Altar                        2X2   nonfoil  en
     foto 12  (4 cartas)
-            Pre-War Formalwear                     PIP   nonfoil  en   [a foto antiga desapareceu]
-            Skullclamp                             SLD   nonfoil  en   [a foto antiga desapareceu]
-            Sol Ring                               SLD   nonfoil  en   [a foto antiga desapareceu]
-            Springleaf Drum                        SLP   nonfoil  en   [a foto antiga desapareceu]
+            Pre-War Formalwear                     PIP   nonfoil  en
+            Skullclamp                             SLD   nonfoil  en
+            Sol Ring                               SLD   nonfoil  en
+            Springleaf Drum                        SLP   nonfoil  en
     foto 13  (1 carta)
-            Tormod's Crypt                         MB2   nonfoil  en   [a foto antiga desapareceu]
+            Tormod's Crypt                         MB2   nonfoil  en
   ENCANTAMENTOS
     foto 14  (2 cartas)
-            Touch the Spirit Realm                 GDY   nonfoil  en   [a foto antiga desapareceu]
+            Touch the Spirit Realm                 GDY   nonfoil  en
             Urza's Saga                            SLC   nonfoil  en
   INSTANTÂNEOS
     foto 15  (4 cartas)
-            Abolish                                PCY   nonfoil  en   [a foto antiga desapareceu]
-            Enlightened Tutor                      TLE   nonfoil  en   [a foto antiga desapareceu]
-            Orim's Chant                           MH3   nonfoil  en   [a foto antiga desapareceu]
-            Patrician's Scorn                      FUT   nonfoil  en   [a foto antiga desapareceu]
+            Abolish                                PCY   nonfoil  en
+            Enlightened Tutor                      TLE   nonfoil  en
+            Orim's Chant                           MH3   nonfoil  en
+            Patrician's Scorn                      FUT   nonfoil  en
     foto 16  (1 carta)
-            Silence                                SLD   nonfoil  en   [a foto antiga desapareceu]
+            Silence                                SLD   nonfoil  en
   FEITIÇOS
     foto 17  (4 cartas)
-            Helping Hand                           LCI   nonfoil  en   [a foto antiga desapareceu]
-            Jolted Awake                           MH3   nonfoil  en   [a foto antiga desapareceu]
-            Return to the Ranks                    M15   nonfoil  en   [a foto antiga desapareceu]
-            Sevinne's Reclamation                  MH3   nonfoil  en   [a foto antiga desapareceu]
+            Helping Hand                           LCI   nonfoil  en
+            Jolted Awake                           MH3   nonfoil  en
+            Return to the Ranks                    M15   nonfoil  en
+            Sevinne's Reclamation                  MH3   nonfoil  en
   TERRAS
     foto 18  (4 cartas)
-            Ancient Tomb                           LTC   nonfoil  en   [a foto antiga desapareceu]
-            Cavern of Souls                        LTC   nonfoil  en   [a foto antiga desapareceu]
-            City of Traitors                       EXO   nonfoil  en   [a foto antiga desapareceu]
+            Ancient Tomb                           LTC   nonfoil  en
+            Cavern of Souls                        LTC   nonfoil  en
+            City of Traitors                       EXO   nonfoil  en
             Crystal Vein                           MIR   nonfoil  en
     foto 19  (4 cartas)
-            Gemstone Caverns                       LTC   nonfoil  en   [a foto antiga desapareceu]
-         3x Plains                                 ODY   nonfoil  en   [a foto antiga desapareceu]
+            Gemstone Caverns                       LTC   nonfoil  en
+         3x Plains                                 ODY   nonfoil  en
 

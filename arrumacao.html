@@ -96,6 +96,15 @@
  .alvo button{min-height:40px;padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--muted);font:inherit;font-size:13px;font-weight:600;cursor:pointer;margin:4px 6px 0 0}
  .alvob{min-height:40px;padding:8px 14px;border-radius:10px;border:1px solid var(--accent-line);background:var(--accent-soft);color:var(--accent);font:inherit;font-size:13px;font-weight:700;cursor:pointer;margin:10px 0 0}
  .alvob.ja{border-color:var(--line);background:var(--card);color:var(--muted);cursor:default}
+ /* A TABELA ROLA DENTRO DELA PRÓPRIA, e a PÁGINA não ganha scroll horizontal
+    (2026-10-04 ao fim do dia). A tabela das duais tem SETE colunas de números e a
+    390 px punha o corpo em 453 px — scroll horizontal em toda a página, que é o
+    que o pedido dele de 24/09 proibiu. Nunca se tinha visto porque esta página é
+    de 01/10 e não estava na lista do `tests/medir_layout.py` (que era a de 24/09):
+    as três páginas nascidas depois entraram lá no mesmo dia. Esconder colunas a
+    mais era esconder informação; o `overflow-x` no contentor deixa a tabela
+    inteira à mão de um arrasto e mantém o resto da página quieto. */
+ .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
  @media (max-width:640px){
    table.cd th:nth-child(3),table.cd td:nth-child(3){display:none}
    .deck{padding:12px}
@@ -719,10 +728,10 @@ function duaisHTML() {
     + `escrita à mão: ${escDados(d.regra)}. As duais são Reserved List, e aqui `
     + `<b>manda a R1</b> — é mais específica: a quinta cópia fora dos decks vai `
     + `à venda apesar de ser RL.</p>`
-    + `<table class="cd"><thead><tr><th>Dual</th><th class="v">Tens</th>`
+    + `<div class="tw"><table class="cd"><thead><tr><th>Dual</th><th class="v">Tens</th>`
     + `<th class="v">Em decks</th><th class="v">Fora</th>`
     + `<th class="v">Protegidas</th><th class="v">VENDER</th>`
-    + `<th class="v">COMPRAR</th></tr></thead><tbody>${linhas}</tbody></table>`
+    + `<th class="v">COMPRAR</th></tr></thead><tbody>${linhas}</tbody></table></div>`
     + `<p class="sub" style="margin-top:12px"><b>Vender:</b> `
     + ((d.vender || []).map(x => `${x.q}× ${escDados(x.nm)} (${escDados(x.set)}, `
         + `${escDados(x.local)}) ${eur(x.total)}`).join(' · ') || '—') + `</p>`
@@ -962,17 +971,17 @@ function fase3(p) {
     + `e a saída continua congelada.</p>`
     + `<div class="chips"><span class="chip gold"><b>${eur(c.valor)}</b> em VENDER`
     + `</span>${porp}</div>`
-    + `<table class="cd"><thead><tr><th>Carta</th><th>Versão</th><th>Onde está`
+    + `<div class="tw"><table class="cd"><thead><tr><th>Carta</th><th>Versão</th><th>Onde está`
     + `</th><th class="v">Cóp.</th><th class="v">Valor</th></tr></thead>`
     + `<tbody>${linhas || '<tr><td colspan=5 class="vazio">Nada candidato.</td></tr>'}`
-    + `</tbody></table>`
+    + `</tbody></table></div>`
     + `<h2>Protegidas <span class="n">${c.protegidas_copias} cópias · `
     + `${eur(c.protegidas_valor)}</span></h2>`
     + `<p class="sub">Cada linha diz <b>qual</b> das regras a apanhou e `
     + `<b>porquê</b>. Sem motivo não há exclusão silenciosa.</p>`
-    + `<table class="cd"><thead><tr><th>Carta</th><th>Versão</th><th>Porque está `
+    + `<div class="tw"><table class="cd"><thead><tr><th>Carta</th><th>Versão</th><th>Porque está `
     + `protegida</th><th class="v">Cóp.</th><th class="v">Valor</th></tr></thead>`
-    + `<tbody>${prot}</tbody></table>`;
+    + `<tbody>${prot}</tbody></table></div>`;
 }
 
 /* ---------------------------------------------------------------- render */

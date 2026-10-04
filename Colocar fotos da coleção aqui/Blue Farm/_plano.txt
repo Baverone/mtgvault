@@ -20,132 +20,132 @@ A OUTRA PORTA: https://editar-mtg.baverone.com/
 
   CRIATURAS
     foto 01  (4 cartas)
-            Birgi, God of Storytelling             KHM   nonfoil  en   [a foto antiga desapareceu]
-            Dragon's Rage Channeler                SLD   nonfoil  en   [a foto antiga desapareceu]
-            Esper Sentinel                         MH2   nonfoil  en   [a foto antiga desapareceu]
-            Grand Abolisher                        BIG   nonfoil  en   [a foto antiga desapareceu]
+            Birgi, God of Storytelling             KHM   nonfoil  en
+            Dragon's Rage Channeler                SLD   nonfoil  en
+            Esper Sentinel                         MH2   nonfoil  en
+            Grand Abolisher                        BIG   nonfoil  en
     foto 02  (4 cartas)
-            Hexing Squelcher                       ECL   nonfoil  en   [a foto antiga desapareceu]
-            Kraum, Ludevic's Opus                  FCA   nonfoil  en   [a foto antiga desapareceu]
-            Lotho, Corrupt Shirriff                LTR   nonfoil  en   [a foto antiga desapareceu]
-            Mockingbird                            BLB   nonfoil  en   [a foto antiga desapareceu]
+            Hexing Squelcher                       ECL   nonfoil  en
+            Kraum, Ludevic's Opus                  FCA   nonfoil  en
+            Lotho, Corrupt Shirriff                LTR   nonfoil  en
+            Mockingbird                            BLB   nonfoil  en
     foto 03  (4 cartas)
-            Ragavan, Nimble Pilferer               FCA   nonfoil  en   [a foto antiga desapareceu]
-            Ranger-Captain of Eos                  FCA   nonfoil  en   [a foto antiga desapareceu]
+            Ragavan, Nimble Pilferer               FCA   nonfoil  en
+            Ranger-Captain of Eos                  FCA   nonfoil  en
             Rograkh, Son of Rohgahh                SLD   nonfoil  en
-            Simian Spirit Guide                    SLD   nonfoil  en   [a foto antiga desapareceu]
+            Simian Spirit Guide                    SLD   nonfoil  en
     foto 04  (4 cartas)
-            Tataru Taru                            FIC   nonfoil  en   [a foto antiga desapareceu]
-            Thassa's Oracle                        SLD   nonfoil  en   [a foto antiga desapareceu]
-            Tymna the Weaver                       FCA   nonfoil  en   [a foto antiga desapareceu]
-            Valley Floodcaller                     BLB   nonfoil  en   [a foto antiga desapareceu]
+            Tataru Taru                            FIC   nonfoil  en
+            Thassa's Oracle                        SLD   nonfoil  en
+            Tymna the Weaver                       FCA   nonfoil  en
+            Valley Floodcaller                     BLB   nonfoil  en
     foto 05  (1 carta)
-            Voice of Victory                       TDM   nonfoil  en   [a foto antiga desapareceu]
+            Voice of Victory                       TDM   nonfoil  en
   ARTEFACTOS
     foto 06  (4 cartas)
-            Arcane Signet                          CMM   nonfoil  en   [a foto antiga desapareceu]
-            Chrome Mox                             2XM   nonfoil  en   [a foto antiga desapareceu]
-            Fellwar Stone                          5ED   nonfoil  en   [a foto antiga desapareceu]
-            Lotus Petal                            MB2   nonfoil  en   [a foto antiga desapareceu]
+            Arcane Signet                          CMM   nonfoil  en
+            Chrome Mox                             2XM   nonfoil  en
+            Fellwar Stone                          5ED   nonfoil  en
+            Lotus Petal                            MB2   nonfoil  en
     foto 07  (4 cartas)
-            Mana Vault                             2X2   nonfoil  en   [a foto antiga desapareceu]
-            Mox Amber                              DOM   nonfoil  en   [a foto antiga desapareceu]
-            Mox Diamond                            STH   nonfoil  en   [a foto antiga desapareceu]
-            Mox Opal                               2XM   nonfoil  en   [a foto antiga desapareceu]
+            Mana Vault                             2X2   nonfoil  en
+            Mox Amber                              DOM   nonfoil  en
+            Mox Diamond                            STH   nonfoil  en
+            Mox Opal                               2XM   nonfoil  en
     foto 08  (2 cartas)
-            Sol Ring                               3ED   nonfoil  en   [a foto antiga desapareceu]
-            Wishclaw Talisman                      ELD   nonfoil  en   [a foto antiga desapareceu]
+            Sol Ring                               3ED   nonfoil  en
+            Wishclaw Talisman                      ELD   nonfoil  en
   ENCANTAMENTOS
     foto 09  (4 cartas)
-            Mystic Remora                          TLE   nonfoil  en   [a foto antiga desapareceu]
-            Necropotence                           WOT   nonfoil  en   [a foto antiga desapareceu]
-            Rhystic Study                          FCA   nonfoil  en   [a foto antiga desapareceu]
-            Smothering Tithe                       2X2   nonfoil  en   [a foto antiga desapareceu]
+            Mystic Remora                          TLE   nonfoil  en
+            Necropotence                           WOT   nonfoil  en
+            Rhystic Study                          FCA   nonfoil  en
+            Smothering Tithe                       2X2   nonfoil  en
     foto 10  (1 carta)
-            Underworld Breach                      SPG   nonfoil  en   [a foto antiga desapareceu]
+            Underworld Breach                      SPG   nonfoil  en
   INSTANTÂNEOS
     foto 11  (4 cartas)
-            Ad Nauseam                             ALA   nonfoil  en   [a foto antiga desapareceu]
-            An Offer You Can't Refuse              FDN   nonfoil  en   [a foto antiga desapareceu]
-            Borne Upon a Wind                      SLD   nonfoil  en   [a foto antiga desapareceu]
-            Brain Freeze                           SLD   nonfoil  en   [a foto antiga desapareceu]
+            Ad Nauseam                             ALA   nonfoil  en
+            An Offer You Can't Refuse              FDN   nonfoil  en
+            Borne Upon a Wind                      SLD   nonfoil  en
+            Brain Freeze                           SLD   nonfoil  en
     foto 12  (4 cartas)
-            Cabal Ritual                           SLD   nonfoil  en   [a foto antiga desapareceu]
-            Chain of Vapor                         ONS   nonfoil  en   [a foto antiga desapareceu]
-            Culling the Weak                       SLD   nonfoil  en   [a foto antiga desapareceu]
-            Dark Ritual                            FCA   nonfoil  en   [a foto antiga desapareceu]
+            Cabal Ritual                           SLD   nonfoil  en
+            Chain of Vapor                         ONS   nonfoil  en
+            Culling the Weak                       SLD   nonfoil  en
+            Dark Ritual                            FCA   nonfoil  en
     foto 13  (4 cartas)
-            Deflecting Swat                        TLE   nonfoil  en   [a foto antiga desapareceu]
-            Demonic Consultation                   ICE   nonfoil  en   [a foto antiga desapareceu]
-            Enlightened Tutor                      TLE   nonfoil  en   [a foto antiga desapareceu]
-            Fierce Guardianship                    CMM   nonfoil  en   [a foto antiga desapareceu]
+            Deflecting Swat                        TLE   nonfoil  en
+            Demonic Consultation                   ICE   nonfoil  en
+            Enlightened Tutor                      TLE   nonfoil  en
+            Fierce Guardianship                    CMM   nonfoil  en
     foto 14  (4 cartas)
-            Final Fortune                          SLD   nonfoil  en   [a foto antiga desapareceu]
-            Flare of Duplication                   MH3   nonfoil  en   [a foto antiga desapareceu]
-            Flusterstorm                           CMD   nonfoil  en   [a foto antiga desapareceu]
-            Force of Negation                      2X2   nonfoil  en   [a foto antiga desapareceu]
+            Final Fortune                          SLD   nonfoil  en
+            Flare of Duplication                   MH3   nonfoil  en
+            Flusterstorm                           CMD   nonfoil  en
+            Force of Negation                      2X2   nonfoil  en
     foto 15  (4 cartas)
-            Force of Will                          2XM   nonfoil  en   [a foto antiga desapareceu]
-            Into the Flood Maw                     BLB   nonfoil  en   [a foto antiga desapareceu]
-            Intuition                              TMP   nonfoil  en   [a foto antiga desapareceu]
-            Mental Misstep                         SLD   nonfoil  en   [a foto antiga desapareceu]
+            Force of Will                          2XM   nonfoil  en
+            Into the Flood Maw                     BLB   nonfoil  en
+            Intuition                              TMP   nonfoil  en
+            Mental Misstep                         SLD   nonfoil  en
     foto 16  (4 cartas)
-            Mystical Tutor                         TLE   nonfoil  en   [a foto antiga desapareceu]
-            Pact of Negation                       LTC   nonfoil  en   [a foto antiga desapareceu]
-            Rain of Filth                          SLD   nonfoil  en   [a foto antiga desapareceu]
-            Red Elemental Blast                    3ED   nonfoil  en   [a foto antiga desapareceu]
+            Mystical Tutor                         TLE   nonfoil  en
+            Pact of Negation                       LTC   nonfoil  en
+            Rain of Filth                          SLD   nonfoil  en
+            Red Elemental Blast                    3ED   nonfoil  en
     foto 17  (4 cartas)
-            Silence                                SLD   nonfoil  en   [a foto antiga desapareceu]
-            Snapback                               TSR   nonfoil  en   [a foto antiga desapareceu]
-            Swan Song                              SLD   nonfoil  en   [a foto antiga desapareceu]
-            Tainted Pact                           STA   nonfoil  en   [a foto antiga desapareceu]
+            Silence                                SLD   nonfoil  en
+            Snapback                               TSR   nonfoil  en
+            Swan Song                              SLD   nonfoil  en
+            Tainted Pact                           STA   nonfoil  en
     foto 18  (1 carta)
-            Vampiric Tutor                         DMR   nonfoil  en   [a foto antiga desapareceu]
+            Vampiric Tutor                         DMR   nonfoil  en
   FEITIÇOS
     foto 19  (4 cartas)
-            Demonic Tutor                          CMM   nonfoil  en   [a foto antiga desapareceu]
-            Diabolic Intent                        FCA   nonfoil  en   [a foto antiga desapareceu]
-            Gamble                                 TLE   nonfoil  en   [a foto antiga desapareceu]
-            Imperial Seal                          2X2   nonfoil  en   [a foto antiga desapareceu]
+            Demonic Tutor                          CMM   nonfoil  en
+            Diabolic Intent                        FCA   nonfoil  en
+            Gamble                                 TLE   nonfoil  en
+            Imperial Seal                          2X2   nonfoil  en
     foto 20  (4 cartas)
-            Jeska's Will                           SLD   nonfoil  en   [a foto antiga desapareceu]
-            Last Chance                            DMR   nonfoil  en   [a foto antiga desapareceu]
-            Mnemonic Betrayal                      GRN   nonfoil  en   [a foto antiga desapareceu]
-            Rite of Flame                          SLD   nonfoil  en   [a foto antiga desapareceu]
+            Jeska's Will                           SLD   nonfoil  en
+            Last Chance                            DMR   nonfoil  en
+            Mnemonic Betrayal                      GRN   nonfoil  en
+            Rite of Flame                          SLD   nonfoil  en
     foto 21  (2 cartas)
-            Sevinne's Reclamation                  MH3   nonfoil  en   [a foto antiga desapareceu]
-            Wheel of Fortune                       3ED   nonfoil  en   [a foto antiga desapareceu]
+            Sevinne's Reclamation                  MH3   nonfoil  en
+            Wheel of Fortune                       3ED   nonfoil  en
   TERRAS
     foto 22  (4 cartas)
-            Ancient Tomb                           LTC   nonfoil  en   [a foto antiga desapareceu]
-            Arid Mesa                              SPG   nonfoil  en   [a foto antiga desapareceu]
-            Badlands                               3ED   nonfoil  en   [a foto antiga desapareceu]
-            Bloodstained Mire                      MH3   nonfoil  en   [a foto antiga desapareceu]
+            Ancient Tomb                           LTC   nonfoil  en
+            Arid Mesa                              SPG   nonfoil  en
+            Badlands                               3ED   nonfoil  en
+            Bloodstained Mire                      MH3   nonfoil  en
     foto 23  (4 cartas)
-            Cavern of Souls                        2X2   nonfoil  en   [a foto antiga desapareceu]
+            Cavern of Souls                        2X2   nonfoil  en
             City of Brass                          MB2   nonfoil  en
-            Command Tower                          SLD   nonfoil  en   [a foto antiga desapareceu]
-            Exotic Orchard                         SLD   nonfoil  en   [a foto antiga desapareceu]
+            Command Tower                          SLD   nonfoil  en
+            Exotic Orchard                         SLD   nonfoil  en
     foto 24  (4 cartas)
-            Flooded Strand                         MH3   nonfoil  en   [a foto antiga desapareceu]
-            Gemstone Caverns                       LTC   nonfoil  en   [a foto antiga desapareceu]
-            Mana Confluence                        EOS   nonfoil  en   [a foto antiga desapareceu]
-            Marsh Flats                            SPG   nonfoil  en   [a foto antiga desapareceu]
+            Flooded Strand                         MH3   nonfoil  en
+            Gemstone Caverns                       LTC   nonfoil  en
+            Mana Confluence                        EOS   nonfoil  en
+            Marsh Flats                            SPG   nonfoil  en
     foto 25  (4 cartas)
-            Misty Rainforest                       SPG   nonfoil  en   [a foto antiga desapareceu]
-            Otawara, Soaring City                  NEO   nonfoil  en   [a foto antiga desapareceu]
-            Plateau                                3ED   nonfoil  en   [a foto antiga desapareceu]
-            Polluted Delta                         MH3   nonfoil  en   [a foto antiga desapareceu]
+            Misty Rainforest                       SPG   nonfoil  en
+            Otawara, Soaring City                  NEO   nonfoil  en
+            Plateau                                3ED   nonfoil  en
+            Polluted Delta                         MH3   nonfoil  en
     foto 26  (4 cartas)
-            Scalding Tarn                          SPG   nonfoil  en   [a foto antiga desapareceu]
-            Scrubland                              3ED   nonfoil  en   [a foto antiga desapareceu]
-            Spire of Industry                      AER   nonfoil  en   [a foto antiga desapareceu]
+            Scalding Tarn                          SPG   nonfoil  en
+            Scrubland                              3ED   nonfoil  en
+            Spire of Industry                      AER   nonfoil  en
             Tarnished Citadel                      ODY   nonfoil  en
     foto 27  (4 cartas)
-            Tundra                                 3ED   nonfoil  en   [a foto antiga desapareceu]
+            Tundra                                 3ED   nonfoil  en
             Underground Sea                        3ED   nonfoil  en
-            Verdant Catacombs                      MH2   nonfoil  en   [a foto antiga desapareceu]
-            Volcanic Island                        3ED   nonfoil  en   [a foto antiga desapareceu]
+            Verdant Catacombs                      MH2   nonfoil  en
+            Volcanic Island                        3ED   nonfoil  en
     foto 28  (1 carta)
-            Windswept Heath                        MH3   nonfoil  en   [a foto antiga desapareceu]
+            Windswept Heath                        MH3   nonfoil  en
 
