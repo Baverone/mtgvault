@@ -243,6 +243,30 @@ def _migrate(con: sqlite3.Connection) -> None:
     con.execute("CREATE INDEX IF NOT EXISTS ix_mt8_grande "
                 "ON mtgtop8_eventos(grande, visto_em)")
     con.commit()
+
+    # A POSSE MARCADA À MÃO (2026-10-04, o `+`/`−` da aba Decks). O `schema.sql`
+    # cria-a numa base nova; isto é para a base dele, que já existe. As duas
+    # definições têm de ser iguais — é a regra do `deck_collection`. Nascem
+    # VAZIAS: é o inventário que responde até ele tocar numa carta.
+    con.execute("""CREATE TABLE IF NOT EXISTS posse_marcada (
+        card_name  TEXT PRIMARY KEY,
+        qty        INTEGER NOT NULL,
+        marcado_em TEXT NOT NULL
+    )""")
+    con.execute("""CREATE TABLE IF NOT EXISTS posse_marcada_log (
+        id         INTEGER PRIMARY KEY,
+        at         TEXT NOT NULL,
+        card_name  TEXT NOT NULL,
+        delta      INTEGER NOT NULL,
+        qty_antes  INTEGER NOT NULL,
+        qty_depois INTEGER NOT NULL,
+        base       TEXT NOT NULL,
+        origem     TEXT,
+        request_id TEXT UNIQUE
+    )""")
+    con.execute("CREATE INDEX IF NOT EXISTS ix_posse_log_carta "
+                "ON posse_marcada_log(card_name)")
+    con.commit()
     # Quem a SEMEIA a partir das listas que já cá estão é o
     # `mtgtop8.semear_memoria`, e não este ficheiro: a semente precisa do
     # `e_grande` e do `TECTO_ANTIGO`, e importar o `mtgtop8` aqui fechava um ciclo

@@ -72,6 +72,21 @@ mtgvault/
   paginas.py      os ajudantes que as páginas partilham e NÃO são casca (cor,
                   tipo, posse total, faltas, euros em português) + os DADOS À
                   PARTE. O `TEMA`/`META` reencaminham para o `site_shell`
+  decks_vista.py  A ABA DECKS (2026-10-04): formato → deck → cartas. O REGISTO
+                  (as caixas dele + os arquétipos meta pelo NOME DA FONTE), a
+                  regra `cartas_partilhadas` (`rotativas` = MÁXIMO vs
+                  `dedicadas` = SOMA, do config — é a contradição de 02/10 vs
+                  04/10 resolvida FORA do código), as PRÓPRIAS e as PARTILHADAS
+                  (que dependem de quais decks ele marcou), os PROXIES e os
+                  SLEEVES, as DUAS listas de tipos (`ORDEM_TIPOS` de
+                  apresentação ≠ `PRECEDENCIA` de classificação) e o
+                  «quero montar este» (`decks_montar`). Ver «A ABA DECKS»
+  marcas.py       A POSSE QUE ELE MARCA À MÃO (2026-10-04): o `+` e o `−`.
+                  O inventário PRÉ-PREENCHE (`posse_marcada` nasce vazia) e a
+                  marca dele GANHA, com data; `inventario`/`marcado` são dois
+                  estados visíveis e distintos. Deltas com `request_id`, como no
+                  riftvault. Substitui o `confirmado` como resposta a «tenho
+                  esta carta?»
   caixas.py       AS CAIXAS: a única noção de deck (v6, 2026-09-08) — lê/migra o
                   `colecao_config.json → caixas`, e `para_slot` dá a forma
                   interna que o loadout consome (aceita a v5 e a v6)
@@ -270,6 +285,7 @@ meta_coverage.py    cobertura.html — top-10 ponderado + staples + emergentes. 
 decks_faziveis.py   RETIRADO 2026-09-07 — fundido no `metagame.py`, que faz a mesma pergunta com as regras de material e o "onde está a carta". O módulo ficou como lápide (levanta RuntimeError), o `decksfaziveis.html` reencaminha para o metagame, saiu do `daily.py` e do `git add` do workflow. Podem ser apagados os dois
 buildability.py     APAGADO 2026-09-15 (decisão do André), com o `buildability.html`. Era o "Montar" (dormente desde a v6: fora do menu, fora do daily, sem um único import). O que respondia — que deck montar a seguir e o que lhe falta — passou para o **Metagame** (`metagame.py`, o top-N mais perto de fechar) e para a aba de cada caixa da Deckboxes. O `test_paginas.caso_as_paginas_orfas_foram_mesmo_apagadas` tranca que não voltam nem ficam referidas
 arrumacao.py        arrumacao.html — "Arrumação por fases" (2026-10-01): o sítio que diz SEMPRE onde ele está e o que vem a seguir. Casca + dados à parte; a **Fase 1 vai INTEIRA no índice** (é o ecrã da decisão: não pode esperar por um segundo pedido) e cada fase pesada é uma parte (`fase2`, `candidatos`, `fase4`, `inventario`). Botões só no 8771 (`/api/fase-decisao`, `/api/fase-reserva` e — desde 2026-10-01 — o `/api/revalidacao` do ALVO das fotos, ver «A FILA DA FASE 2 E O BOTÃO DO ALVO»); no site publicado é a mesma informação, só de leitura. Motor em `mtgvault/fases.py`
+decks.py            decks.html — "Decks" (2026-10-04): a aba de TRÊS NÍVEIS com URL própria cada (`decks.html`, `#f=<formato>`, `#f=<formato>&d=<id>`), as cartas com imagem e `+`/`−`, agrupadas pelos tipos NA ORDEM DELE (o comandante à cabeça, o sideboard em bloco separado), os dois números «a somar»/«a rodar» lado a lado e, nos formatos rotativos, as próprias vs partilhadas com a lista de proxies. Casca de 50 KB + uma parte por deck (83). Motor em `mtgvault/decks_vista.py` + `mtgvault/marcas.py`
 comandantes.py      comandantes.html — "Consenso por comandante" (2026-10-01): o consenso de Duel Commander por COMANDANTE, abrindo no Cloud. Casca + dados à parte (`data/paginas/comandantes.json` + uma parte por comandante, 40); cada carta diz a percentagem de listas, a moda de cópias, o papel (núcleo ≥90 % / flex 40–90 % / raro <40 %) e quantas ele TEM / FALTAM (`paginas.posse_total`). Motor em `mtgvault/consenso.py`
 classify.py         classificação Deck/Coleção/Vender (alimenta colecao_cor.html)
 colecao_cor.py      colecao_cor.html — "Binders": coleção INTEIRA por cor→CMC; cartas em uso a escuro + rótulo (classify rep["deck"]/used_by); + secção "Decks vigiados" (Blue Farm/Cloud cEDH/Cloud/Pauper): o deck por inteiro + cartas "extra" que saíram da lista (guardadas SEM PRAZO desde 2026-09-15 — `_watched_deck_pools`; era "até 6 meses da última utilização"). NB (2026-09-07): `_de_outro_balde` acrescenta as cartas que o LOADOUT dá a essa caixa mas que estão arrumadas noutro balde, marcadas "de &lt;balde&gt;" (era aqui que os Utrom Monitor do SPML desapareciam do Pauper)
@@ -1852,9 +1868,233 @@ motor não mudou uma linha**; medido com o mesmo `vault.db` dos dois lados
 - **O diff do config são 14 inserções e 7 remoções**, escrito com o
   `configio.escrever` — a lição do commit `ac1f776`.
 
+**A ABA DECKS: FORMATO → DECK → CARTAS, COM O `+` E O `−` (André, 2026-10-04, à
+tarde, à letra).** *"Fazemos como no riftvault, fazes uma aba ou botao para
+decks: Dentro dos decks, formato, Dentro do formato, o nome do deck, ordena por
+tipo de carta"*; *"CDEH, sao 2 decks, ambos tem link, cada deck tem as suas
+proprias cartas, fazes a imagem de cada carta, com + e - para eu marcar se tenho
+a carta"*; *"Premodern, vou sleevar os decks tudo com sleeves iguais, nos decks
+ficam apenas as cartas que sao proprias do deck e cartas usadas em varios decks
+ficam de fora, vou imprimir proxie, e so meto as verdadeiras no deck quando for
+jogar com esse deck"*; *"SPML a mesma coisa de Premodern"*; *"para Premodern e
+SPML, quero que me perguntes para cada formato se eu quero montar ou nao o deck,
+depois de escolher, ordenamos"*.
+**SUBSTITUI A CAMPANHA DAS FOTOS como resposta a *"tenho esta carta?"*** — ver a
+secção a seguir: a precisão da foto servia para VENDER, e para MONTAR decks o
+gesto certo é um toque no telemóvel à frente da estante. Motor em
+`mtgvault/decks_vista.py` e `mtgvault/marcas.py`, página `decks.py` →
+`decks.html`, passo `decks` do `daily`, endpoints `POST /api/marca` e
+`POST /api/deck-montar`, config em `regras_por_formato[].cartas_partilhadas` e
+`decks_montar`, tabelas `posse_marcada`/`posse_marcada_log`. Testes em
+`tests/test_decks_vista.py` (30 casos) e a prova de que chumbam em
+`tests/_chumba_decks_vista.py` (**14 de 14 alvos**, um processo por alvo).
+
+- **A CONTRADIÇÃO QUE ISTO RESOLVE, e é o ponto todo.** A 02/10 ele fixou *"cada
+  deck tem as suas próprias cartas, ponto"* — daí a SOMA (três decks que pedem 4
+  Swords pedem 12). A 04/10 à tarde disse o CONTRÁRIO para Premodern e SPML: a
+  carta usada em vários decks **fica de fora**, leva proxy, e a verdadeira entra
+  só à hora de jogar. Nesses dois formatos uma cópia serve TODOS os decks e a
+  necessidade é o **MÁXIMO**. As duas regras estão certas, cada uma no seu
+  formato — por isso **não se escolheu uma delas no código**: a resposta é
+  `regras_por_formato[].cartas_partilhadas` (`rotativas` = máximo, `dedicadas` =
+  soma), e o código lê o config. Hoje: premodern e spml `rotativas`; cedh,
+  duel-commander e pauper `dedicadas`. Sem a chave vale **`dedicadas`**, que é o
+  lado conservador (pedir a mais faz uma lista grande; pedir a menos faz-lhe
+  faltar a carta à hora de jogar).
+- **É UM EIXO NOVO E NÃO O `dedicado` QUE JÁ LÁ ESTAVA**, e isso foi verificado
+  em vez de assumido: o `dedicado` dos cinco grupos responde a *"esta CAIXA
+  empresta cópias a outra caixa?"* e desde 2026-09-19 vale `True` à força no
+  `loadout.resolve_slots` (um `dedicado: false` escrito no config não tem
+  efeito). O `cartas_partilhadas` responde a *"os DECKS dentro deste formato
+  repartem cópias entre si?"*. **Onde é que a decisão soma-vs-máximo vivia
+  antes:** no `loadout.partilhar_compras`, e não no `dedicado` — essa função é
+  hoje um **no-op** (devolve sempre `[]` desde 19/09, e o
+  `loadout.playset_maximo` devolve sempre `None` desde 02/10). Ou seja o motor
+  da alocação já só sabia somar, e não havia nenhum sítio a ler o `dedicado`
+  para esta pergunta: a chave nova não tirou trabalho a ninguém. **O
+  `loadout` não se tocou** — a aba Decks não lê a alocação.
+- **OS DOIS NÚMEROS MOSTRAM-SE SEMPRE OS DOIS**, com etiqueta — *«a somar»* /
+  *«a rodar»*, e o que a regra usa fica em dourado. É a diferença entre eles que
+  lhe diz quanto custa a decisão, e esconder o outro era responder-lhe sem lhe
+  dar a conta. Tem caso de teste (`caso_os_dois_numeros_mostram_se_sempre_os_dois`).
+- **PRÓPRIAS E PARTILHADAS NÃO SÃO UMA ETIQUETA DA CARTA: dependem de QUAIS
+  decks ele marcou.** Num formato rotativo, as cartas de cada deck partem-se em
+  duas listas contadas à parte — **própria** (entra só neste deck, fica sleevada
+  para sempre) e **partilhada** (entra em 2+, fica de fora, o deck leva proxy).
+  Marcar mais um deck pode passar uma carta de própria a partilhada, e desmarcar
+  faz o caminho de volta; tem teste nas duas direcções. Daí saem de graça duas
+  listas que ele vai ter em cima da mesa e não pediu: os **proxies a imprimir**
+  de cada deck (= exactamente as partilhadas desse deck, com teste a exigir a
+  igualdade) e quantas cartas ficam **sleevadas** no formato (verdadeiras +
+  proxies).
+- **A POSSE: O INVENTÁRIO PRÉ-PREENCHE AS MARCAS, E NÃO SE ESCREVEM 737 LINHAS
+  PARA ISSO.** A tabela `posse_marcada` nasce VAZIA e guarda só o que ele TOCOU;
+  quem não tem linha responde com a contagem da `copies` (`paginas.posse_total`,
+  a conta única de sempre). Daí os **dois estados**, visíveis e distintos no
+  ecrã: *«do inventário»* e *«marcaste tu»* (com a data), e **a marca dele ganha
+  sempre**. A marca é ABSOLUTA e não um delta sobre o inventário, de propósito:
+  uma cópia que entre por foto ou por CSV não pode mexer num número que ele já
+  confirmou com a carta na mão. E **nada se apaga** — a `copies` não se toca, e o
+  `esquecer` devolve a carta ao inventário.
+- **AS ESCRITAS SÃO DELTAS COM `request_id`**, copiado do riftvault
+  (`riftvault/collection.py`, `adjust`): o cliente nunca manda um valor
+  absoluto, o servidor soma dentro de uma transacção e trava no zero e em
+  `MAX_POR_CARTA` (99). É isso que dá as duas coisas ao mesmo tempo — cliques
+  rápidos seguidos não se perdem (não há debounce onde dois colapsem num) e um
+  retry de rede não conta a dobrar. Tem caso próprio.
+- **AS MARCAS SOBREVIVEM AO DAILY** porque vivem na BASE e não numa página: o
+  `daily` reescreve o HTML e os `data/paginas/**` e nunca toca nesta tabela. O
+  `POST /api/marca` **não passa pelo `regenerar`** (um toque num `+` é um gesto
+  por carta, e recalcular o `loadout.report` inteiro punha dois segundos entre o
+  dedo e o número): limpa a cache, e o `_versao()` já apanha o `vault.db`. O
+  «quero montar este» **regenera**, porque muda a necessidade do formato e quem
+  leva proxy.
+- **O QUE SE REAPROVEITOU DO RIFTVAULT** (`Desktop\Riftbound\riftvault` — e o
+  caminho da ordem, `C:\Users\Catarina\riftvault`, **não existe**): o **tile** de
+  `web/app.js: tileHTML` (`.art` com `aspect-ratio`, a `<img>` com
+  `loading=lazy`/`decoding=async`, os crachás por cima e os dois botões por
+  baixo com 40 px de altura mínima, `web/style.css: .step`); a **cor a dizer se
+  ele tem** (`filter: grayscale(1) brightness(.42)` — a mesma foto, sem uma
+  segunda imagem e sem um segundo pedido ao CDN); o **optimismo com contador em
+  voo** (`app.js: adjust` + `state.pending`: o ecrã anda já e só a última
+  resposta manda, senão uma resposta atrasada punha o contador para trás); **um
+  só `addEventListener` delegado**; e o `body.readonly` a esconder os controlos
+  no site publicado. **O que NÃO se copiou, e é decisão:** no riftvault o tile de
+  DECK **não tem** `+`/`−` (revogados a 2026-10-01, *"no deck nao precisa + e -
+  / ele ja indica se tem ou nao tem"*). Aqui tem, porque é o que ele pediu em
+  palavras para o mtgvault e porque aqui o `+`/`−` é a ÚNICA porta da posse.
+- **TRÊS NÍVEIS, CADA UM COM URL PRÓPRIA**, para ele guardar qualquer um nos
+  favoritos do telemóvel: `decks.html` (os formatos) · `decks.html#f=premodern`
+  (os decks desse formato) · `decks.html#f=premodern&d=caixa:premodern-oath` (as
+  cartas). `replaceState` e não um salto, pela razão da Deckboxes de 24/09.
+- **TRÊS CORRECÇÕES MINHAS, aplicadas e ditas:** (1) o **COMANDANTE** vem num
+  grupo próprio **acima dos Creature** nos formatos de comandante — é a carta que
+  identifica o deck, e enterrada no meio dos Creature não se encontra; qual é ela
+  sai do config/`listas_escolhidas` ou, num arquétipo de Duel Commander, do
+  próprio nome da fonte, e **nunca se adivinha pelas cartas** (medido a 01/10: o
+  crivo pela identidade de cor deixava 0 ou mais do que um candidato em 409 das
+  652 listas). (2) **O TIPO SAI DO `type_line` PELO MAIS ESPECÍFICO** — e por
+  isso há **DUAS listas**: a `ORDEM_TIPOS` de apresentação é a dele à letra
+  (Commander, Creature, Sorcery, Instant, Artifact, Enchantment, Planeswalker,
+  Land, Outras) e a `PRECEDENCIA` de classificação é outra (Creature,
+  Planeswalker, **Land**, Artifact, Enchantment, Instant, Sorcery). A diferença
+  morde: pela ordem de apresentação o `Artifact` vem antes do `Land` e uma
+  Ancient Den caía em Artifact, que é o que ele mandou corrigir. **O
+  `paginas.tipo_de` NÃO se tocou** (continua a responder `Artifact` à Ancient
+  Den), senão mudava o agrupamento da Deckboxes e do Showcase sem ninguém pedir —
+  e há caso de teste a trancar a divergência nos dois sentidos, com cartas DA
+  BASE (Memnite → Creature, Ancient Den → Land, Urza's Saga → Land). Dryad Arbor
+  (Land Creature) cai em **Creature**, e fica dito. (3) O **SIDEBOARD** é um
+  bloco separado depois do main, com os mesmos grupos por dentro, e conta à parte
+  no *«tens X de Y»* — as duas metades somam sempre o total.
+- **A PERGUNTA «QUERO MONTAR ESTE?» FAZ-SE PELO SÍTIO, não por um diálogo.** Em
+  Premodern são mais de vinte decks e vinte caixas de diálogo não são uma
+  pergunta, são um interrogatório: a lista do formato leva **uma caixa por
+  deck**, ordenada pela percentagem que ele já tem (maior primeiro — é o *"depois
+  de escolher, ordenamos"* dele e a resposta a *"qual é o mais barato de
+  fechar"*), para a resposta ser um toque por deck. É interpretação minha e está
+  dita.
+- **O REGISTO: O META É PELO NOME DA FONTE, E SÓ SE OFERECE ONDE ELE O PEDIU.**
+  Os arquétipos saem de `decklists.arquetipo_fonte` (o nome que a página do
+  evento do mtgtop8 escreve, gravado desde 02/10) e **nunca da etiqueta do
+  clustering** — é o único id estável, e uma marca dele tem de sobreviver às
+  corridas. **Quem agrupa pela coluna é o `mtgvault.nomes`** e não este módulo:
+  `nomes.listas_por_nome` é a pergunta inversa do `nome_das_listas`, e vive no
+  mesmo sítio porque é a mesma coluna — o
+  `test_nomes_arquetipo.caso_a_pergunta_do_nome_vive_num_sitio_so` varre o código
+  à procura de um segundo leitor e **apanhou-me** a lê-la à mão no
+  `decks_vista`. O meta **só se oferece nos formatos `rotativas`**: a pergunta
+  *"queres montar este?"* foi pedida para o Premodern e o SPML, e nos outros três
+  ele ENUMEROU os decks (*"CDEH, sao 2 decks"*, *"Duel Commander, 1 deck"*) —
+  oferecer-lhe doze comandantes de Duel Commander era contradizê-lo. Os meta dos
+  formatos dedicados **contam-se e dizem-se** (`meta_fora`), para a decisão ficar
+  à vista.
+- **DOIS FILTROS, PORQUE SÃO DUAS PERGUNTAS, e isto mediu-se antes de se
+  escolher.** O REGISTO (*"que decks existem no meta"*) vê **todas** as listas
+  que contam; a LISTA de cada um (*"como é que se joga agora"*) vê a **janela do
+  consenso** de 03/10. Juntá-las esvaziava a página: com a janela aplicada ao
+  registo o SPML ficava com **modern 2, standard 0, pioneer 0, legacy 0**
+  arquétipos. É a mesma separação que a reserva da venda já tinha. Um arquétipo
+  cuja janela não chega ao mínimo fica com a lista de todas as suas e **di-lo**,
+  nas palavras de sempre (`sources.texto_amostra`).
+- **ARQUÉTIPOS META, MEDIDOS na base de 2026-10-04** (nome da fonte, ≥5 listas
+  que contam): **modern 19** (Broodscale Bloodchief 73, Devoted Combo 30, Esper
+  Blink 29, Pinnacle Affinity 25, Ruby Storm 25), **standard 18** (Izzet
+  Spellementals 45, Dimir Aggro 31, Jund Sacrifice 20), **legacy 10** (Boros
+  Aggro 14, Doomsday 12, Dimir Tempo 10), **premodern 10** (Enchantress 20,
+  Terrageddon 15, Psychatog 12, Landstill 11, Sligh (RDW) 10), **pioneer 9** (The
+  Rock 26, UR Aggro 22, Boros Control 12), **duel-commander 20** (contados, não
+  oferecidos), **vintage 0, pauper 0, cedh 0** — os dois últimos por construção
+  (o Pauper só segue o Luffy, `tiers: []`, e o cEDH não tem uma única decklist na
+  base: as listas dos dois decks vêm do `watched_snapshots`, do Moxfield).
+  Com as 17 caixas dele, **83 decks** no total.
+- **OS DOIS LINKS DE cEDH saem da tabela `watched`**, que é de onde a vigia já
+  traz a lista — não se escreveu nenhum à mão: `cedh-blue-farm` → Blue Farm
+  (watched 1, `https://moxfield.com/decks/7O1sCuIti0igU6Us_Jhadg`) e `cedh-cloud`
+  → Cloud cEDH (watched 4,
+  `https://moxfield.com/decks/k6f2yED7oUGPtK2_rN_xwg`). O link mostra-se na
+  página do deck.
+- **O PESO, medido**: casca **50 293 bytes** (tecto **80 KB**, justificado no
+  `decks.TECTO_CASCA`), índice 50 588 bytes, **83 partes / 440 KB** (a maior
+  15 299 bytes, ida buscar ao toque). **Zero imagens embutidas**: as artes são
+  remotas (`cards.scryfall.io`, pelo `paginas.art`), com `loading="lazy"`,
+  `decoding="async"`, `width`/`height` escritos e `aspect-ratio` na moldura — e
+  há caso de teste para cada uma dessas quatro coisas.
+- **15,2 s → 1,8 s a frio, e as duas causas eram minhas.** (a) o `meta_fora` dos
+  formatos dedicados construía a lista de consenso dos 56 arquétipos **só para
+  os contar** (`arquetipos_meta(so_contar=True)`); (b) cada um dos 83 decks pagava
+  um `paginas.img_map`, e esse começa por varrer a `copies` INTEIRA para preferir
+  a impressão que ele tem — 83 varreduras por página (`decks_vista.cache_nova`,
+  partilhada pela passagem). A aba entrou também no **aquecedor**
+  (`webapp._AQUECER`), pela razão das outras duas.
+- **O DECK DE DUEL COMMANDER PASSOU A SER O DO LIWEI LUO** (ordem dele: a melhor
+  classificada em challenges ou presenciais). As **100 cartas saíram da base**
+  (`decklist_cards` do `decklist_id` **22794**) e nunca de memória, e a premissa
+  confirma-se ao exemplar: o Liwei Luo ganhou **TRÊS** presenciais com a MESMA
+  lista — 08/09 (16 jogadores), 22/09 (21) e 29/09 (18), Watermelon Champion Cup
+  Nights — e o `content_hash` é **o mesmo nos três** (`d3ec9a051f72e1e4`), ou
+  seja não mudou uma vírgula. Fixou-se pelo mecanismo que já existia (a LISTA
+  PADRÃO de 20/09, `padrao.fixar` → `listas_escolhidas["duel-commander"]`), com a
+  origem, o link e a nota dos três primeiros lugares.
+  - **A lista de 20/09 NÃO se perdeu**: o `padrao.fixar` só guarda o `_antes` na
+    primeira vez, e por isso ela foi para `_lista_anterior` à mão — nada se apaga
+    (regra de 09/09), e o motor não lê chaves com `_`.
+  - **MEDIDO lado a lado, o mesmo `vault.db` dos dois lados**: fechar tudo
+    **5 802,47 € → 5 895,14 €** (+92,67 €), a comprar **237 → 244** (+7), e **só
+    a caixa do Cloud mexe** — 82 % → **75 %**, a comprar 18 → 25, 188,61 € →
+    281,28 €, 81 → 75 cópias, 99 → 100 pedidas. **As outras 16 caixas ficam
+    iguais ao cêntimo e à percentagem**, e a **venda não mexe uma cópia**
+    (113 c / 1 588,89 €).
+  - **`protegidas` 162 → 160 cópias (−728,71 €), e NADA foi para a venda**: as
+    duas que saíram são **1 Flooded Strand e 1 Windswept Heath**, que a lista
+    nova ALOCA ao Cloud (ela joga fetchlands e a de 20/09 não) — passaram de
+    «candidata protegida pela R3» a «dentro de um deck». As outras cópias dessas
+    duas cartas continuam protegidas pela R3.
+  - **E a lista nova corrige um defeito conhecido**: a padrão de 20/09 **não
+    incluía o próprio comandante** (a Cloud aparecia como carta de reserva, a
+    89 % — está escrito na secção «LISTA PADRÃO E RESERVA POR CAIXA»); a do Liwei
+    Luo inclui-o, e por isso a caixa passa a pedir 100 cartas e não 99.
+  - **A FICHA, medida com a cadeia e o modo em vigor** (`cardtrader`, `market`):
+    ele tem **81 das 100** cópias (**81 %**) e faltam **19 nomes / 19 cópias** —
+    **171,43 €** em nonfoil ou **206,77 €** com foil onde existe foil. **A ordem
+    dizia «80 das 100, faltam 20 nomes, ~104 € / ~181 €» e os números medidos são
+    estes**: a diferença no euro é a cadeia só-CardTrader de 04/10 (cinco das 19
+    não têm preço nenhum, ver o furo abaixo) e no nome é uma unidade.
+
 **AS FOTOS FORAM APAGADAS E A CAMPANHA ESTÁ DESLIGADA (André, 2026-10-04, à
 letra).** *"podes apagar todas as fotos, A MINHA RESPONSABILIDADE, se for para
-ter fotos, vou tirar as fotos todas novamente"*. **A secção a seguir (02/10)
+ter fotos, vou tirar as fotos todas novamente"*.
+**[E A REGRA FOI SUBSTITUÍDA, não só desligada (04/10, à tarde).]** O *"se não
+tiver foto, não tem carta"* de 02/10 era a resposta a *"tenho esta carta?"*; a
+partir de hoje a resposta é o `+`/`−` da **aba Decks** (ver a secção de cima).
+A razão, nas palavras dele: *"SEM FOTOS DAS CARTAS! mais facil para mim e para
+ti!"* — e a razão técnica: a precisão de uma foto serve para **vender** (é dela
+que sai o escalão de estado, 03/10), não para **montar** um deck, e com o
+interruptor ligado e zero fotos a colecção inteira lia-se como vazia. O
+interruptor continua a ser `revalidacao.foto_manda` (**`false`**, com `desde:
+null`), **o código das fotos fica todo no sítio**, e há caso de teste que o volta
+a ligar e exige que a regra morda outra vez
+(`test_decks_vista.caso_o_codigo_das_fotos_continua_todo_no_sitio`). **A secção a seguir (02/10)
 continua a descrever o motor, que não se tocou — mas o INTERRUPTOR está hoje a
 `false` e a campanha a `null`.** Testes em `tests/test_fotos_apagadas.py` (16
 casos) e a prova de que chumbam em `tests/_chumba_fotos_apagadas.py` (4 alvos).
@@ -3620,6 +3860,40 @@ com o tecto antigo (16) que hoje é grande (64) revisita-se **uma vez**. O índi
 `mtgtop8.semear_memoria` e não o `db` (a semente precisa do `e_grande` e do
 `TECTO_ANTIGO`, e importar o `mtgtop8` no `db` fechava um ciclo). Ver «NUNCA PERDER
 UM TORNEIO DE PAPEL GRANDE».
+
+Tabelas novas de 2026-10-04 à TARDE (nos dois sítios — `schema.sql` e
+`db._migrate()`): **`posse_marcada`** e **`posse_marcada_log`**, a POSSE que ele
+marca à mão com o `+` e o `−` da aba Decks. **Nascem VAZIAS de propósito**, e é
+isso que faz o inventário PRÉ-PREENCHER as marcas sem escrever 737 linhas: quem
+não tem linha responde com a contagem da `copies` (`paginas.posse_total`); com
+linha, ela GANHA. O `qty` é ABSOLUTO e não um delta sobre o inventário — uma
+cópia nova que entre por foto ou por CSV não pode mexer num número que ele já
+confirmou com a carta na mão. O `request_id` do log é **ÚNICO**: é ele que faz um
+retry de rede não contar a dobrar. Os índices podem viver no `schema.sql` porque
+as tabelas nascem lá inteiras (a regra de 2026-09-09 é para índices sobre COLUNAS
+NOVAS de tabelas que já existem). Ver «A ABA DECKS».
+
+**UM FURO NA CADEIA DE PREÇOS, APURADO E NÃO EMENDADO (2026-10-04).** O
+`loadout.card_price` procura `WHERE c.name = ?` — um casamento EXACTO — e o
+catálogo guarda as cartas de dupla face como **`"frente // verso"`**, enquanto as
+decklists guardam só a frente (`_front`). Logo **toda a carta de dupla face numa
+lista não tem preço em todo o vault**, e a cadeia TEM o preço: medido na base
+dele, dos **4 721** nomes distintos que aparecem em listas, **185 são de dupla
+face e os 185 estão sem preço** — Bonecrusher Giant, Brazen Borrower, as
+Pathway, Agadeem's Awakening, Birgi… — e perguntados pelo nome COMPLETO somam
+**741,88 €** numa cópia de cada. Não se emendou: a correcção certa é o INTERVALO
+DE PREFIXO de 2026-10-01 (`scryfall.frente_de_dupla_face`/`limites_dupla_face`,
+que já existe) e **nunca um `LIKE ? || ' // %'`** — esse é o `SCAN cards` que deu
+o 502 no telemóvel, e o `card_price` é chamado milhares de vezes por relatório.
+Mexer nele muda o dinheiro em todas as páginas, e isso é decisão dele.
+**As três cartas que ele nomeou têm TRÊS causas diferentes**, e vale a pena não
+as confundir: **Razorgrass Ambush** e **Witch Enchanter** são `X // Y` do MH3 —
+é este furo, e o CardTrader cota-as (0,45 € e 5,90 € nonfoil); **Shining Shoal**
+não tem uma única linha de preço em sítio nenhum (a sua única impressão é `bok`,
+de 2005, fora das 173 edições que a recolha do CardTrader cobre, e o price guide
+também nunca a teve); e **Kíli the Resourceful**, **Mistveil Plains** e **Surge
+of Salvation** têm preço só do `cardmarket` e a cadeia é `cardtrader` desde
+04/10 — essas são a **régua**, não um defeito.
 
 Já custou caro uma vez: `decklists.event_tier` foi acrescentada só ao `vault.db`
 (commit 56ffa3f, 2026-08-03), nunca ao `schema.sql` nem ao `_migrate()`, e nada

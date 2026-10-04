@@ -201,6 +201,12 @@ SECCOES: list[tuple[str, list[tuple[str, str, str, str, str]]]] = [
          "onde estás e o que vem a seguir"),
     ]),
     ("Decks", [
+        # A ABA DECKS (André, 2026-10-04): *"fazes uma aba ou botao para
+        # decks"*, como no riftvault. Fica à CABEÇA da secção, antes das caixas:
+        # a pergunta dela é *"que decks existem e quais quero montar"*, que vem
+        # antes de *"o que está dentro de cada caixa"*. Reusa o ícone do
+        # `livro` — um conjunto só de ícones, pela razão do `e_foil`.
+        ("decks.html", "", "todas", "Decks", "formato → deck → cartas"),
         ("deckboxes.html", "", "caixas", "Deck boxes", "todas as caixas"),
         ("deckboxes.html", "montados", "montado", "Decks montados", ""),
         ("deckboxes.html", "pormontar", "montar", "Decks para montar", ""),

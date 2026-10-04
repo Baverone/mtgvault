@@ -83,13 +83,15 @@ from urllib.parse import parse_qs, urlparse
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import (caixas, configio, db, encomendas, fases, feira,  # noqa: E402
-                      fotocaixa, fotos as fotos_mod, fotosite, loadout,
-                      migracao, precos, site_shell, sources, venda)
+from mtgvault import (caixas, configio, db, decks_vista, encomendas,  # noqa: E402
+                      fases, feira, fotocaixa, fotos as fotos_mod, fotosite,
+                      loadout, marcas, migracao, precos, site_shell, sources,
+                      venda)
 from mtgvault import padrao as padrao_mod  # noqa: E402
 
 import arrumacao  # noqa: E402
 import deckboxes  # noqa: E402
+import decks as decks_pag  # noqa: E402
 import metagame  # noqa: E402
 
 PORT = 8771          # o 8770 é do riftvault — ver o cabeçalho
@@ -150,6 +152,10 @@ _LINK_HTML = re.compile(r'href="([a-z_]+\.html)(#[a-z0-9-]+)?"')
 _DADOS_DECKBOXES = re.compile(r"^/data/paginas/deckboxes(?:/([A-Za-z0-9_-]+))?\.json$")
 # Os dados da ARRUMAÇÃO POR FASES (2026-10-01), pelo mesmo caminho.
 _DADOS_ARRUMACAO = re.compile(r"^/data/paginas/arrumacao(?:/([A-Za-z0-9_-]+))?\.json$")
+# Os dados da ABA DECKS (2026-10-04): o índice e uma parte por deck. O nome da
+# parte sai do `decks.parte_do_deck`, que troca o `:` do id por `-` exactamente
+# para caber neste `[A-Za-z0-9_-]+`.
+_DADOS_DECKS = re.compile(r"^/data/paginas/decks(?:/([A-Za-z0-9_-]+))?\.json$")
 # A versão reduzida da foto de cada deckbox (2026-09-21, `mtgvault.fotocaixa`).
 _FOTO_CAIXA = re.compile(r"^/assets/deckboxes/([A-Za-z0-9_-]+)\.jpg$")
 
@@ -900,6 +906,9 @@ def regenerar(con) -> None:
     rep = loadout.report(con)
     deckboxes.build(con, ROOT / "deckboxes.html", rep=rep)
     metagame.build(con, ROOT / "metagame.html")
+    # A ABA DECKS (2026-10-04): o «quero montar este» muda a necessidade do
+    # formato e quem leva proxy, e isso tem de aparecer no site publicado.
+    decks_pag.build(con, ROOT / "decks.html")
     # O que está pendente de foto, para o Claude que cataloga as fotos
     # (2026-09-19). Ao lado das fotos, e apaga-se quando não há nada.
     encomendas.escrever_esperadas(con, ROOT / "pendentes", rep=rep)
@@ -1196,6 +1205,20 @@ def dados_arrumacao(editavel: bool) -> tuple[dict, dict]:
                     "os dados da Arrumação por fases")
 
 
+def dados_decks(editavel: bool) -> tuple[dict, dict]:
+    """`(indice, partes)` da ABA DECKS (2026-10-04), da cache.
+
+    Na MESMA cache das outras duas (`em_cache`/`_versao`), e por isso um `+` numa
+    carta — que limpa a cache — faz o índice sair de novo no pedido seguinte.
+    **NÃO lê o `loadout.report`**: esta página não pergunta nada sobre alocação,
+    e por isso é barata de calcular.
+    """
+    def calcular():
+        with db.session() as con:
+            return decks_pag.dados(con, editavel=editavel)
+    return em_cache(("decks", editavel), calcular, "os dados dos Decks")
+
+
 def dados_deckboxes(editavel: bool, tok: str) -> tuple[dict, dict]:
     """`(indice, partes)` da Deckboxes para este modo, da cache."""
     def calcular():
@@ -1245,6 +1268,11 @@ INTERVALO_AQUECER = 30.0
 # página que o modo edição ainda GERA inteira a pedido (as outras são casca).
 _AQUECER = [("deckboxes", lambda: dados_deckboxes(True, token())),
             ("arrumacao", lambda: dados_arrumacao(True)),
+            # A ABA DECKS (2026-10-04) entra aqui pela mesma razão que as outras
+            # duas: mediu **15,2 s a frio** (o consenso dos ~56 arquétipos meta
+            # mais os 83 decks), e sem aquecedor era ele a pagá-los no primeiro
+            # toque do dia. Com aquecedor sai em milissegundos.
+            ("decks", lambda: dados_decks(True)),
             ("metagame.html", lambda: pagina_editavel("/metagame.html", True))]
 
 
@@ -1413,6 +1441,12 @@ class Handler(BaseHTTPRequestHandler):
             self._envia(com_token(arrumacao.casca(),
                                   token() if self._pode_escrever() else ""))
             return
+        if caminho == "/decks.html":
+            # A ABA DECKS (2026-10-04): a CASCA, estática e imediata. Os dados
+            # vêm por `fetch` de `/data/paginas/decks.json` + uma parte por deck.
+            self._envia(com_token(decks_pag.casca(),
+                                  token() if self._pode_escrever() else ""))
+            return
         modulo = PAGINAS_EDITAVEIS.get(caminho)
         if modulo is not None:
             # A página só leva o token DENTRO dela quando o pedido já o trazia —
@@ -1446,6 +1480,24 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 self._json({"erro": f"não há parte {parte!r} na Arrumação de "
                                     f"hoje — recarrega a página"}, 404)
+            return
+        md = _DADOS_DECKS.match(caminho)
+        if md:
+            # Os DADOS da ABA DECKS (2026-10-04). O `?t=` deste pedido é o que
+            # decide se o índice leva `editavel` — e logo se os `+`/`−` e as
+            # caixas «quero montar» aparecem.
+            editavel = self._pode_escrever()
+            idx, partes = dados_decks(editavel)
+            parte = md.group(1)
+            if parte is None:
+                self._json({**idx,
+                            "_gerado_em": datetime.now().isoformat(timespec="seconds"),
+                            "_partes": sorted(partes)})
+            elif parte in partes:
+                self._json(partes[parte])
+            else:
+                self._json({"erro": f"não há parte {parte!r} nos Decks de hoje "
+                                    f"— recarrega a página"}, 404)
             return
         m = _DADOS_DECKBOXES.match(caminho)
         if m:
@@ -1662,6 +1714,29 @@ class Handler(BaseHTTPRequestHandler):
                     # «desmontar». Regenera: o valor da colecção mudou.
                     self._json(self._estado(dados))
                     return
+                if caminho == "/api/marca":
+                    # A POSSE QUE ELE MARCA À MÃO (André, 2026-10-04): o `+` e o
+                    # `−` da aba Decks. **Não passa pelo `regenerar`**, e isso é
+                    # a decisão: um toque num `+` é um gesto por carta, e
+                    # recalcular o `loadout.report` inteiro a cada toque punha
+                    # dois segundos entre o dedo e o número (ele vai dar centenas
+                    # de toques seguidos). O que se faz é limpar a cache — o
+                    # `_versao()` já apanha o `vault.db`, por isso o índice da
+                    # aba Decks sai de novo no pedido seguinte.
+                    #
+                    # **Sem backup**, pela razão do «anular registo»: isto não
+                    # apaga nada. A `copies` não se toca — a marca fica POR CIMA
+                    # do inventário, numa tabela própria, e o `esquecer`
+                    # devolve-a ao que era.
+                    self._json(self._marca(dados))
+                    return
+                if caminho == "/api/deck-montar":
+                    # «QUERO MONTAR ESTE» (André, 2026-10-04). Só config
+                    # (`decks_montar`), e **regenera**: a marca muda a
+                    # necessidade do formato E quem é própria/partilhada em cada
+                    # deck — logo quais levam proxy.
+                    self._json(self._deck_montar(dados))
+                    return
                 if caminho == "/api/fase-reserva":
                     # A RESERVA («maybe») de um deck: acrescentar à mão
                     # (`caixas[].reserva`), o botão **«não é necessária»**
@@ -1715,6 +1790,58 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"erro": f"{type(e).__name__}: {e}"}, 500)
                 return
         self._json({"erro": "endpoint desconhecido"}, 404)
+
+    def _marca(self, dados):
+        """`+`/`−`/esquecer a posse de uma carta. Delta, nunca um absoluto.
+
+        O VALOR NUNCA VEM DO CLIENTE (o padrão do `riftvault.collection.adjust`):
+        o cliente manda um DELTA e um `request_id`, e o servidor soma dentro de
+        uma transacção. É isso que faz cliques rápidos seguidos não se perderem
+        **e** um retry de rede não contar a dobrar.
+        """
+        nome = str(dados.get("nome") or "").strip()
+        if not nome:
+            raise SemLista("sem carta: o pedido tem de dizer qual.")
+        rid = dados.get("request_id")
+        with db.session() as con:
+            if dados.get("act") == "esquecer":
+                r = marcas.esquecer(con, nome, origem="8771")
+                msg = (f"{r['nome']}: esqueci a tua marca — volta a valer o "
+                       f"inventário ({r['q']})")
+            else:
+                try:
+                    delta = int(dados.get("delta", 0))
+                except (TypeError, ValueError):
+                    raise SemLista("o `delta` tem de ser um número inteiro.") from None
+                if delta == 0:
+                    raise SemLista("o `delta` não pode ser zero.")
+                r = marcas.ajustar(con, nome, delta, request_id=rid, origem="8771")
+                msg = (f"{r['nome']}: {r['q']} cópia"
+                       f"{'' if r['q'] == 1 else 's'}"
+                       + (" (vinha do inventário)" if r["base"] == marcas.INVENTARIO
+                          else ""))
+            _CACHE.clear()
+        return {"ok": True, **r, "msg": msg}
+
+    def _deck_montar(self, dados):
+        """«Quero montar este» — a marca por deck, no config. Reversível."""
+        deck_id = str(dados.get("id") or "").strip()
+        if not deck_id:
+            raise SemLista("sem deck: o pedido tem de dizer qual.")
+        quero = bool(dados.get("quero"))
+        cfg = ler_config()
+        with db.session() as con:
+            nomes_ = {d["id"]: d["nome"]
+                      for ds in decks_vista.registo(con, cfg).values() for d in ds}
+            if deck_id not in nomes_:
+                raise ValueError(f"o deck {deck_id!r} já não está no registo — "
+                                 f"recarrega a página")
+            decks_vista.marcar(cfg, deck_id, quero)
+            escrever_config(cfg)
+            regenerar(con)
+        nm = nomes_[deck_id]
+        return {"ok": True, "id": deck_id, "quero": quero,
+                "msg": (f"{nm}: {'quero montar' if quero else 'já não quero montar'}")}
 
     def _caixa(self, dados):
         act, slot_id = dados.get("act"), dados.get("slot")

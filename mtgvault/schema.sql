@@ -310,6 +310,36 @@ CREATE TABLE IF NOT EXISTS mtgtop8_eventos (
 CREATE INDEX IF NOT EXISTS ix_mt8_grande
     ON mtgtop8_eventos(grande, visto_em);
 
+-- A POSSE QUE ELE MARCA À MÃO, com o `+` e o `−` (André, 2026-10-04).
+--
+-- NASCE VAZIA de propósito, e é isso que faz o inventário PRÉ-PREENCHER as
+-- marcas sem escrever 737 linhas: quem não tem linha aqui responde com a
+-- contagem da `copies` (`paginas.posse_total`). Com linha, ela GANHA — é a
+-- carta na mão dele contra o registo. Ver `mtgvault/marcas.py`.
+--
+-- O `qty` é ABSOLUTO e não um delta sobre o inventário: uma cópia nova que entre
+-- por foto ou por CSV não pode mexer num número que ele já confirmou.
+CREATE TABLE IF NOT EXISTS posse_marcada (
+    card_name  TEXT PRIMARY KEY,       -- nome oracle, a FRENTE (como as listas)
+    qty        INTEGER NOT NULL,
+    marcado_em TEXT NOT NULL
+);
+
+-- O rasto de cada toque. O `request_id` é ÚNICO: é ele que faz um retry de rede
+-- não contar a dobrar (o padrão do `riftvault/collection.adjust`).
+CREATE TABLE IF NOT EXISTS posse_marcada_log (
+    id         INTEGER PRIMARY KEY,
+    at         TEXT NOT NULL,
+    card_name  TEXT NOT NULL,
+    delta      INTEGER NOT NULL,
+    qty_antes  INTEGER NOT NULL,
+    qty_depois INTEGER NOT NULL,
+    base       TEXT NOT NULL,          -- inventario | marcado: de onde partiu
+    origem     TEXT,                   -- 8771 | cli
+    request_id TEXT UNIQUE
+);
+CREATE INDEX IF NOT EXISTS ix_posse_log_carta ON posse_marcada_log(card_name);
+
 CREATE TABLE IF NOT EXISTS decklist_cards (
     decklist_id INTEGER NOT NULL REFERENCES decklists(id) ON DELETE CASCADE,
     card_name   TEXT NOT NULL,

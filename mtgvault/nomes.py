@@ -88,6 +88,38 @@ def nome_das_listas(con: sqlite3.Connection, ids) -> dict | None:
             "segundo": ordenados[1][0] if len(ordenados) > 1 else None}
 
 
+def listas_por_nome(con: sqlite3.Connection, fmt: str,
+                    filtro: str = "", params=()) -> dict[str, list[int]]:
+    """A pergunta INVERSA do `nome_das_listas`: `nome da fonte -> [ids]`.
+
+    O `nome_das_listas` pergunta *"como se chama este conjunto de listas"*; isto
+    pergunta *"que listas é que a fonte chamou X"*, e é o que faz o REGISTO de
+    arquétipos da aba Decks (2026-10-04). São duas perguntas sobre a MESMA
+    coluna, e por isso vivem no mesmo módulo: o `test_nomes_arquetipo.
+    caso_a_pergunta_do_nome_vive_num_sitio_so` varre o código à procura de quem
+    volte a ler o `arquetipo_fonte` por fora daqui — e tem razão, porque um
+    segundo leitor ao lado agrupa de outra maneira num dia qualquer, em silêncio.
+
+    `filtro`/`params` é a cláusula que decide QUE listas contam
+    (`sources.counting_sql`, com o alias `d`): quem chama decide se quer todas as
+    que contam ou só as da janela do consenso — são duas respostas legítimas e
+    não é este módulo que escolhe.
+
+    Nomes vazios ou só com espaços não contam: um nome em branco não é um
+    arquétipo.
+    """
+    from collections import defaultdict                    # noqa: PLC0415
+    out: dict[str, list[int]] = defaultdict(list)
+    onde = f" AND {filtro}" if filtro else ""
+    for r in con.execute(
+            f"""SELECT d.id, d.arquetipo_fonte nm FROM decklists d
+                 WHERE d.format = ? AND d.arquetipo_fonte IS NOT NULL
+                   AND TRIM(d.arquetipo_fonte) <> ''{onde}""",
+            [fmt, *params]):
+        out[r["nm"].strip()].append(r["id"])
+    return dict(out)
+
+
 def nomes_por_cluster(con: sqlite3.Connection, fmt: str | None = None) -> dict[int, dict]:
     """`{archetype_id: {nome, votos, nomeadas, listas, segundo}}` de um formato.
 

@@ -39,6 +39,7 @@ import colecao_cor  # noqa: E402  (gera colecao_cor.html — coleção por cor +
 import meta_coverage  # noqa: E402  (gera cobertura.html — top decks + % que tenho + o que falta)
 import meusdecks  # noqa: E402  (gera meusdecks.html — reencaminhamento p/ deckboxes.html, v6)
 import deckboxes  # noqa: E402  (gera deckboxes.html — o loadout: decks montados em simultâneo + venda)
+import decks  # noqa: E402  (gera decks.html — a aba Decks: formato -> deck -> cartas, com + e -)
 import metagame  # noqa: E402  (gera metagame.html — o top-N que está mais perto de concluir)
 # (decks_faziveis RETIRADO 2026-09-07: fundido no metagame.py, que responde à
 #  mesma pergunta com as regras de material e o "onde está a carta". Ver a
@@ -595,6 +596,19 @@ def main():
         _step(con, "arrumacao",
               lambda: str(arrumacao.build(con, ROOT / "arrumacao.html",
                                           rep=_rep.get("v"))))
+
+        # A ABA DECKS (André, 2026-10-04): formato -> deck -> cartas, com o `+`
+        # e o `−` da posse. NÃO usa o `loadout.report` — esta página não
+        # pergunta nada sobre alocação —, e por isso corre depressa. As MARCAS
+        # dele vivem na base (`posse_marcada`) e este passo nunca as toca: o que
+        # reescreve é a casca e os dados, e é isso que o teste tranca.
+        def _decks():
+            p = decks.build(con, ROOT / "decks.html")
+            idx, partes = decks.dados(con)
+            return (f"{p.name}: {p.stat().st_size:,} bytes, "
+                    f"{len(idx['formatos'])} formatos, {len(partes)} decks")
+
+        _step(con, "decks", _decks)
 
         # O `_plano.txt` DE CADA PASTA DE DECK (André, 2026-10-01): reescreve-se
         # todas as noites, das MESMAS fotos da Fase 2 que a página acabou de
