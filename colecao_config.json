@@ -22,7 +22,7 @@
     {"slot": "premodern-elves", "nome": "Elves", "formato": "premodern", "fonte": "consenso", "assinatura": ["Wirewood Symbiote"], "balde": "Premodern (geral)", "estado": "permanente", "prioridade": 8, "notas": "André, 02/10/2026: identidade = «Wirewood Symbiote» (28 listas). Era «Priest of Titania» (21)."},
     {"slot": "premodern-oath", "nome": "Oath of Druids", "formato": "premodern", "fonte": "consenso", "assinatura": ["Oath of Druids"], "balde": "Premodern (geral)", "estado": "permanente", "prioridade": 9, "notas": "André, 02/10/2026: identidade = «Oath of Druids» (51 listas)."},
     {"slot": "premodern-igg", "nome": "Ill-Gotten Gains", "formato": "premodern", "fonte": "consenso", "assinatura": ["Ill-Gotten Gains"], "balde": "Premodern (geral)", "estado": "permanente", "prioridade": 10, "notas": "SEM CONSENSO SUFICIENTE: «Ill-Gotten Gains» só tem 3 listas (mínimo 8). Ordem dele de 02/10/2026: não se inventa consenso com 3 listas — a lista e a reserva ficam MANUAIS."},
-    {"slot": "modern", "nome": "Modern — UW Oswald", "formato": "modern", "fonte": "deck", "ref": "UW Oswald", "reserva_assinatura": ["Oswald Fiddlebender"], "balde": "SPML", "estado": "permanente", "prioridade": 12, "variantes": [], "notas": "André, 02/10/2026: identidade = «Oswald Fiddlebender» (13 listas). A LISTA fica a que está (maindeck dele por foto + sideboard das listas de MTGO): é o deck do RC Ghent de 9-11/10 e não se troca por um consenso de 13 listas na véspera."},
+    {"slot": "modern", "nome": "Modern — UW Oswald", "formato": "modern", "fonte": "escolhido", "ref": "modern", "reserva_assinatura": ["Oswald Fiddlebender"], "balde": "SPML", "estado": "permanente", "prioridade": 12, "variantes": [], "notas": "André, 02/10/2026: identidade = «Oswald Fiddlebender» (13 listas). A LISTA fica a que está (maindeck dele por foto + sideboard das listas de MTGO): é o deck do RC Ghent de 9-11/10 e não se troca por um consenso de 13 listas na véspera.", "_antes": {"fonte": "deck", "ref": "UW Oswald", "nome": "Modern — UW Oswald", "estado": "permanente"}},
     {"slot": "modern-affinity", "nome": "Modern — Affinity", "formato": "modern", "fonte": "consenso", "assinatura": ["Weapons Manufacturing"], "balde": "SPML", "estado": "permanente", "prioridade": 16, "notas": "CAIXA NOVA (André, 02/10/2026): «Affinity (kappa/weapons)». Identidade = «Weapons Manufacturing» (88 listas)."},
     {"slot": "standard", "nome": "Bant Airbend", "formato": "standard", "fonte": "consenso", "ref": null, "assinatura": ["Airbender Ascension"], "balde": "SPML", "estado": "permanente", "prioridade": 11, "notas": "André, 02/10/2026: a caixa «Standard» passou a chamar-se «Bant Airbend». Identidade = «Airbender Ascension» (9 listas, 6 das que contam) — amostra fina, e por isso a lista do consenso é a mais frágil das 16."},
     {"slot": "pioneer", "nome": "Pioneer — Greasefang", "formato": "pioneer", "fonte": "deck", "ref": "Greasefang", "reserva_assinatura": ["Greasefang, Okiba Boss"], "balde": "SPML", "estado": "permanente", "prioridade": 13, "notas": "André, 02/10/2026: «Greasefang, as várias versões» — identidade = «Greasefang, Okiba Boss» (37 listas), uma carta só, sem restringir variante."},
@@ -301,10 +301,12 @@
       "tiers": [
         "Challenge",
         "Showcase",
-        "Presencial"
+        "Presencial",
+        "Qualifier"
       ],
       "min_jogadores_presencial": 64,
-      "ligas": false
+      "ligas": false,
+      "_nota": "Andre 2026-10-04: 'Qualifier' entrou. A regra de 2026-09-07 nomeia challenge, showcase e presenciais de 64+ e NAO nomeia os Qualifier — era omissao, nao exclusao: um 'Modern RC Super Qualifier' do MTGO e o evento mais forte que ha no MTGO, acima de uma Challenge 16. Entrou no _default e nao so no modern de proposito: um Qualifier de Pioneer a nao contar enquanto um de Modern conta sao duas regras ao lado que discordam em silencio."
     },
     "duel-commander": {
       "tiers": [
@@ -551,6 +553,49 @@
         ["side", "Soul-Guide Lantern", 1],
         ["side", "Teachings of the Archaics", 1]
       ]
+    },
+    "modern": {
+      "nome": "Modern — UW Oswald",
+      "padrao": true,
+      "origem": "lista de qualificacao, dada pelo Andre a 04/10/2026 (imagem no chat) — e o deck com que se qualificou para o RC Ghent de 9-11/10/2026. NAO e o consenso: tem 2 Arcbound Ravager, 1 Thoughtcast, 3 Sink into Stupor e 4 Fiery Islet, e NAO tem Preordain nenhum.",
+      "formato": "modern",
+      "escolhido_em": "2026-10-04",
+      "cards": [
+        ["main", "Arcbound Ravager", 2],
+        ["main", "Claws of Gix", 3],
+        ["main", "Emry, Lurker of the Loch", 2],
+        ["main", "Engineered Explosives", 4],
+        ["main", "Fiery Islet", 4],
+        ["main", "Kappa Cannoneer", 4],
+        ["main", "Metallic Rebuke", 3],
+        ["main", "Mishra's Bauble", 4],
+        ["main", "Mox Opal", 4],
+        ["main", "Pinnacle Emissary", 4],
+        ["main", "Pithing Needle", 1],
+        ["main", "Shadowspear", 1],
+        ["main", "Sink into Stupor", 3],
+        ["main", "Skateboard", 1],
+        ["main", "Spirebluff Canal", 4],
+        ["main", "Steam Vents", 1],
+        ["main", "Thoughtcast", 1],
+        ["main", "Tormod's Crypt", 4],
+        ["main", "Urza's Saga", 4],
+        ["main", "Weapons Manufacturing", 4],
+        ["main", "Welding Jar", 1],
+        ["side", "Blood Moon", 1],
+        ["side", "Consign to Memory", 4],
+        ["side", "Damping Sphere", 2],
+        ["side", "Disruptor Flute", 2],
+        ["side", "Galvanic Blast", 2],
+        ["side", "Mystical Dispute", 2],
+        ["side", "Swan Song", 1],
+        ["side", "Vexing Bauble", 1]
+      ],
+      "main_incompleto": true,
+      "por_confirmar": ["1 TERRA do maindeck POR CONFIRMAR: o main tem 59 cartas (46 nao-terras + 13 terras) e faltam 14 terras. A 14a nao se conseguiu ler na imagem e NAO se inventou. Procurada na base a 04/10/2026 e nao esta lah: nenhuma das 91 listas de Modern com Weapons Manufacturing bate com as 46 nao-terras dele (a mais parecida da 42/46), o deck 'Izzet Affinity (Kappa Cannoneer)' da tabela decks e a lista automatica do MTGO (PocketAces888, 03/10) e o deck 'UW Oswald' dele e outro deck. PISTA, nao resposta: as 91 listas jogam Island (91/91) e Shivan Reef (78/91), e as duas unicas listas da base com exactamente as 13 terras dele e 14 no total (sidisi, 08/09 e 09/09) tem 1 Island como 14a."],
+      "nota": "lista de qualificacao, dada pelo Andre a 04/10/2026",
+      "main_cartas": 59,
+      "side_cartas": 15
     }
   },
   "precos": {
