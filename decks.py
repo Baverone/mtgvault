@@ -181,6 +181,27 @@ _CSS = """
  .px{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 6px}
  .px span{background:var(--card2);border:1px solid var(--accent-line);color:var(--accent);border-radius:7px;padding:3px 9px;font-size:11.5px}
  .vazio{color:var(--muted);font-size:13px;padding:14px 0}
+ /* A FICHA DA LISTA (2026-10-04, ao fim do dia): de onde veio a lista por que
+    ele vai sleevar. Fica em destaque e acima das cartas — é a primeira coisa
+    que se confere, não uma nota de pé de página. */
+ .ficha{background:var(--card2);border:1px solid var(--accent-line);border-left:3px solid var(--accent);
+   border-radius:11px;padding:12px 14px;margin:0 0 16px}
+ .ficha h4{font-family:var(--font-hd);font-size:12px;text-transform:uppercase;letter-spacing:.06em;
+   color:var(--accent);margin:0 0 8px}
+ .ficha dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0;font-size:12.5px}
+ .ficha dt{color:var(--muted)}
+ .ficha dd{margin:0;color:var(--ink)}
+ .ficha .pq{font-size:11.5px;color:var(--muted);line-height:1.6;margin:9px 0 0}
+ .ficha a{color:var(--accent)}
+ @media(max-width:640px){.ficha dl{grid-template-columns:1fr;gap:0 0}
+   .ficha dt{margin-top:7px;font-size:11px}}
+ /* Um CONSENSO e uma AMOSTRA FINA não podem ter a mesma cara de uma lista que
+    alguém jogou — é isso que ele mandou acabar. */
+ .ficha.media{border-color:var(--line2);border-left-color:var(--muted)}
+ .ficha.media h4{color:var(--muted)}
+ .aviso{background:var(--card2);border:1px solid var(--warn);border-left:3px solid var(--warn);
+   border-radius:11px;padding:12px 14px;margin:0 0 16px;font-size:12.5px;line-height:1.65}
+ .aviso b{color:var(--warn)}
  #toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;max-width:92vw;background:var(--card3);border:1px solid var(--line2);color:var(--ink);border-radius:999px;padding:10px 18px;font-size:13px;box-shadow:var(--sombra)}
  #toast.err{border-color:var(--warn);color:var(--warn)}
 """
@@ -293,7 +314,25 @@ function nivelDecks(x) {
     const s = x.sleeves;
     out += `<div class="chips"><span class="chip">sleeves: <b>${s.total}</b> cartas nos ${
       s.decks} decks marcados</span><span class="chip">verdadeiras <b>${s.reais}</b></span>`
-      + `<span class="chip gold">proxies <b>${s.proxies}</b></span></div>`;
+      /* PROXIES A IMPRIMIR = um por carta diferente em cada deck, que é a conta
+         DELE (medida: 147 em Modern contra os 149 do papel dele; por cópias
+         dava 334). As cópias vão ao lado com etiqueta — são o que de facto sai
+         dos decks —, pela regra dos «dois números» de 2026-10-04 à tarde. */
+      + `<span class="chip gold">proxies a imprimir <b>${s.proxies}</b></span>`
+      + (s.proxies_copias != null && s.proxies_copias !== s.proxies
+          ? `<span class="chip">${s.proxies_copias} cópias saem dos decks</span>` : '')
+      + '</div>';
+  }
+  /* PIONEER NÃO TEM STAPLES, E ISSO DIZ-SE (ordem dele: *"Mostra isso
+     explicitamente em vez de uma tabela vazia, que uma tabela vazia parece uma
+     avaria"*). Medido: o Greasefang e o Flow State não partilham uma única
+     carta. */
+  if (rot && x.n_marcados && !(x.staples || []).length) {
+    out += `<div class="ficha media"><h4>Sem staples neste formato</h4>`
+      + `<p class="pq">Os ${x.n_marcados} decks marcados <b>não partilham uma`
+      + ` única carta</b>: não há nada para guardar à parte e não há proxies para`
+      + ` imprimir. Ficam os dois inteiramente sleevados com cartas verdadeiras.`
+      + `</p></div>`;
   }
   /* AS STAPLES DO FORMATO: as partilhadas, agregadas. Deck a deck ele já as via
      (no nível 3); isto é a PILHA que ele guarda à parte. */
@@ -320,8 +359,20 @@ function nivelDecks(x) {
     const cl = d.pct >= 95 ? 'ok' : d.pct >= 50 ? 'mid' : 'lo';
     const sub = [];
     if (d.fonte === 'caixa') sub.push('deck teu' + (d.estado ? ` · ${d.estado}` : ''));
+    else if (d.fonte === 'dele') sub.push('deck teu');
     else sub.push('meta');
-    if (d.nota) sub.push(d.nota);
+    /* COM LISTA DE EVENTO, o subtítulo é QUEM a jogou e ONDE — é o que ele lê
+       para decidir por onde começa, sem ter de abrir os onze decks. Sem ela fica
+       a nota de sempre. */
+    if (d.evento) {
+      const e = d.evento, t = [];
+      if (e.jogador) t.push(e.jogador);
+      if (e.classificacao) t.push(/^\d+$/.test(e.classificacao)
+        ? e.classificacao + '.º' : e.classificacao);
+      if (e.jogadores) t.push('de ' + e.jogadores);
+      if (e.data) t.push(e.data);
+      sub.push(t.join(' · '));
+    } else if (d.nota) sub.push(d.nota);
     if (d.ja_e_caixa) sub.push('já é uma caixa tua');
     if (d.marcado_em) sub.push('marcado em ' + d.marcado_em);
     /* UMA CAIXA DESACTIVADA NÃO É UM DECK DE 0 % (2026-10-04 ao fim do dia).
@@ -385,6 +436,71 @@ function blocos(gs, rot) {
     + '<div class="grid">' + g.cartas.map(c => tileHTML(c, rot)).join('') + '</div>').join('');
 }
 
+/* A FICHA DA LISTA: de onde veio a lista por que ele vai sleevar.
+   André, 2026-10-04 ao fim do dia: *"as outras quero que esquecas as decklists e
+   vamos focar nas decklists baseadas em eventos reais"* — e, por isso mesmo,
+   *"na pagina de cada deck fica SEMPRE, a vista: jogador, evento, data, numero
+   de jogadores, classificacao e o URL da fonte"*. Uma lista errada custa-lhe uma
+   tarde de sleeves; esta ficha é o que lhe permite conferir antes de começar. */
+function linhaProv(e) {
+  const L = [];
+  if (e.jogador) L.push(['jogador', esc(e.jogador)]);
+  if (e.classificacao) L.push(['classificação',
+    /^\d+$/.test(e.classificacao) ? esc(e.classificacao) + '.º lugar' : esc(e.classificacao)]);
+  if (e.evento) L.push(['evento', esc(e.evento)]);
+  if (e.data) L.push(['data', esc(e.data)]);
+  /* Um evento sem contagem de jogadores DIZ que não a tem, em vez de deixar a
+     linha de fora: as listas do mtgo.com não trazem `event_players`, e uma ficha
+     em que a linha desaparece parece uma ficha incompleta por acidente. */
+  L.push(['jogadores', e.jogadores ? '<b>' + e.jogadores + '</b>'
+    : '<span class="pq">a fonte não publica a contagem</span>']);
+  if (e.tier) L.push(['tipo de evento', esc(e.tier)]);
+  if (e.repetida > 1) L.push(['a mesma lista',
+    '<b>' + e.repetida + ' resultados</b> — sem mudar uma carta']);
+  if (e.url) L.push(['fonte', `<a href="${esc(e.url)}" target="_blank" rel="noopener">`
+    + esc(e.url.replace(/^https?:\/\//, '').slice(0, 54)) + ' ↗</a>']);
+  return L.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+}
+
+function fichaHTML(p) {
+  let out = '';
+  /* A AMOSTRA FINA vem ANTES da lista e não escondida num rodapé: o Hammer Time
+     entra porque ele o pediu, mas não pode aparecer com o mesmo peso dos outros
+     nove — isso era mentir-lhe por omissão. */
+  if (p.amostra_fina) {
+    out += `<div class="aviso"><b>Atenção à amostra.</b> ${esc(p.amostra_fina)}</div>`;
+  }
+  if (p.por_confirmar) {
+    out += '<div class="aviso"><b>Falta o teu OK.</b> Este é o melhor candidato ao '
+      + 'deck que pediste'
+      + (p.carta_chave ? `, pela carta <b>${esc(p.carta_chave)}</b>` : '')
+      + (p.arquetipo_fonte ? ` (o mtgtop8 chama-lhe «${esc(p.arquetipo_fonte)}»)` : '')
+      + '. Não foi marcado como deck a montar: confirma que é este e marca-o.</div>';
+  }
+  if (p.evento) {
+    out += '<div class="ficha"><h4>A lista é esta, e foi jogada aqui</h4><dl>'
+      + linhaProv(p.evento) + '</dl>'
+      + (p.porque ? `<p class="pq">${esc(p.porque)}</p>` : '')
+      + (p.escolhida_por ? `<p class="pq">escolhida por: ${esc(p.escolhida_por)}</p>` : '')
+      + '</div>';
+    /* A ALTERNATIVA fora da janela (regra 5 dele, à letra): *"NÃO a escondas e
+       NÃO a descartes: mostra-a com a data bem visível e uma frase a dizer que é
+       anterior ao Reality Fracture, e põe ao lado a melhor lista DENTRO da
+       janela, para ele escolher."* Mostrar as duas é honesto. */
+    if (p.alternativa) {
+      out += '<div class="ficha media"><h4>A outra lista que podes querer ver</h4><dl>'
+        + linhaProv(p.alternativa) + '</dl>'
+        + `<p class="pq">${esc(p.alternativa.porque || '')}</p></div>`;
+    }
+  } else if (p.e_consenso) {
+    out += '<div class="ficha media"><h4>Isto é um consenso, não uma lista jogada</h4>'
+      + '<p class="pq">É a <b>média</b> de várias listas: ninguém jogou este deck '
+      + 'exactamente assim. Serve para consulta e para comparar — não para sleevar. '
+      + (p.nota ? esc(p.nota) : '') + '</p></div>';
+  }
+  return out;
+}
+
 function nivelDeck(p, fmt) {
   const rot = p.modo === 'rotativas', c = p.conta;
   let out = `<div class="migalha"><button data-f="">◀ formatos</button>
@@ -402,7 +518,8 @@ function nivelDeck(p, fmt) {
   if (p.reparticao) chips.push(`<span class="chip">próprias <b>${p.reparticao.n_proprias}</b></span>`,
     `<span class="chip gold">partilhadas <b>${p.reparticao.n_partilhadas}</b> (levam proxy)</span>`);
   out += '<div class="chips">' + chips.join('') + '</div>';
-  if (p.nota || p.link) {
+  out += fichaHTML(p);
+  if (!p.evento && (p.nota || p.link)) {
     out += '<div class="chips">'
       + (p.nota ? `<span class="chip">${esc(p.nota)}</span>` : '')
       + (p.link ? `<a class="chip" href="${esc(p.link)}" target="_blank" rel="noopener">`

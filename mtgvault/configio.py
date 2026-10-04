@@ -21,13 +21,21 @@ UMA_LINHA = ("caixas", "loadout", "regras_por_formato", "baldes_coleccao",
              # A VIGIA DE CARTAS (2026-09-26): uma linha por carta vigiada. Sem
              # isto, o primeiro clique no modo edição reescrevia as duas linhas
              # em doze — e é uma lista que ele lê e edita à mão.
-             "cartas_vigiadas")
+             "cartas_vigiadas",
+             # OS DECKS DELE que não são caixa (2026-10-04, ao fim do dia): os
+             # dez de Modern e o de Pioneer, um por linha, como as `caixas`.
+             "decks_de_evento")
 # As chaves cujas LISTAS DE ESCALARES vão numa linha cada (2026-09-20): as
 # `listas_escolhidas` levam uma lista de 75 cartas, e com `indent=2` cada
 # `["main", "Solitude", 1]` ocupava cinco linhas — 380 linhas por caixa, que
 # ninguém lê nem confere. Só aqui: as outras chaves ficam como estão escritas,
 # senão cada gravação reformatava o ficheiro inteiro.
-CARTAS_UMA_LINHA = ("listas_escolhidas",)
+CARTAS_UMA_LINHA = ("listas_escolhidas",
+                    # A REGRA DE ESCOLHA da lista de evento (2026-10-04, ao fim
+                    # do dia): cada critério é um par `["chave", "a razão"]` e
+                    # vai numa linha — é uma regra para ser LIDA, e com
+                    # `indent=2` cada critério ocupava quatro linhas.
+                    "listas_de_evento")
 # As chaves cujos DICIONÁRIOS de escalares vão também numa linha cada
 # (2026-10-03). O bloco `precos` ganhou o `estado`, que é uma tabela — sete
 # escalões × cinco bandas, mais a amostra: com `indent=2` são 25 linhas de um

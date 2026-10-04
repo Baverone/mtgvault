@@ -412,6 +412,21 @@ def caso_a_lista_de_proxies_e_igual_as_partilhadas():
 
 
 def caso_os_sleeves_contam_as_verdadeiras_e_os_proxies():
+    """ESCRITO a 2026-10-04 à tarde; a asserção dos `proxies` CORRIGIDA ao fim do
+    mesmo dia, e não mascarada.
+
+    Até ao fim do dia o `proxies` eram CÓPIAS — 4 Swords em cada um dos dois
+    decks davam 8. Ao fim do dia mediu-se a conta que o André trouxe da mesa
+    (*"149 PROXIES"* em Modern, *"63"* em Premodern) e ela é por **carta
+    diferente em cada deck**: por aparições dão 147 e 69, por cópias davam 334 e
+    201. Ou seja ele imprime um proxy por carta diferente — serve de marcador de
+    *"esta vem da pilha"* — e não quatro proxies de um playset.
+
+    Portanto `proxies` é o que ele IMPRIME (2: um Swords em cada um dos dois
+    decks) e `proxies_copias` é o que SAI dos decks (8). O que não mudou é que as
+    duas metades têm de somar o total — uma cópia perdida pelo caminho é meia
+    verdade com cara de verdade.
+    """
     escreve_cfg(decks_montar={"caixa:pm-a": "2026-10-04",
                               "caixa:pm-b": "2026-10-04"})
     con = base()
@@ -422,8 +437,10 @@ def caso_os_sleeves_contam_as_verdadeiras_e_os_proxies():
     esperado = sum(sum(q for _b, _n, q in dv.proprias_e_partilhadas(d, rp)[k])
                    for d in ds for k in ("proprias", "partilhadas"))
     assert s["total"] == esperado, (s, esperado)
-    assert s["reais"] + s["proxies"] == s["total"], s
-    assert s["proxies"] == 8, s      # 4 Swords em cada um dos dois decks
+    assert s["reais"] + s["proxies_copias"] == s["total"], s
+    assert s["proxies_copias"] == 8, s   # 4 Swords em cada um dos dois decks
+    assert s["proxies"] == 2, s          # um proxy de Swords por deck
+    assert s["proxies_nomes"] == 1, s    # e é uma carta diferente só
     # Num formato DEDICADO não há sleeves/proxies: não há nada a rodar.
     assert fmt_de(rep, "cedh")["sleeves"] is None
 

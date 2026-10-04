@@ -65,7 +65,8 @@ import re
 import sqlite3
 from collections import defaultdict
 
-from . import caixas, loadout, marcas, nomes, padrao, scryfall, sources, stock
+from . import (caixas, eventos, loadout, marcas, nomes, padrao, scryfall,
+               sources, stock)
 
 # ---------------------------------------------------------------------------
 # Os tipos de carta: DUAS listas, e são duas perguntas diferentes
@@ -176,6 +177,14 @@ TEXTO_PARTILHA = {
 #: contrário: é um FACTO sobre a estante e vive na base.
 CHAVE_MARCAR = "decks_montar"
 
+#: O rótulo de um deck cuja lista é um CONSENSO e não uma lista que alguém jogou.
+#: André, 2026-10-04 ao fim do dia: *"as outras quero que esquecas as decklists e
+#: vamos focar nas decklists baseadas em eventos reais"*. O consenso continua a
+#: existir — mede o metagame, dá os nomes, alimenta a reserva da venda — e por
+#: isso o meta fica para CONSULTA; o que não pode é ter a mesma cara de uma lista
+#: real na página por onde ele vai sleevar.
+TEXTO_CONSENSO = "consenso de várias listas — ninguém jogou esta lista assim"
+
 
 def marcados(cfg: dict | None = None) -> dict[str, str]:
     cfg = sources.config() if cfg is None else cfg
@@ -211,6 +220,25 @@ def id_da_caixa(slot: str) -> str:
 
 def id_meta(fmt: str, nome: str) -> str:
     return f"meta:{fmt}:{_slug(nome)}"
+
+
+def id_deck(fmt: str, slug: str) -> str:
+    """O id de um DECK DELE que não é caixa (2026-10-04, ao fim do dia).
+
+    São os decks que ele nomeou em Modern e Pioneer: não têm deckbox (não são
+    `caixa:`) e já não são o meta (não são `meta:`), porque a lista deles está
+    FIXADA numa lista de evento real e o nome é o DELE.
+
+    **A identidade é o slug escrito no config, nunca o `archetype_id` nem o nome
+    da fonte.** Os dois mudam: o cluster é refeito a cada corrida do
+    `rebuild_archetypes` (medido a 02/10: 7 499 etiquetas, 91 % sem uma única
+    lista) e três dos dez decks que ele escolheu **não têm nome da fonte
+    nenhum** — o `arquetipo_fonte` daquelas listas está a NULL, por isso nunca
+    apareceriam no `arquetipos_meta`. Uma marca dele tem de sobreviver às
+    corridas; o `archetype_id` fica guardado ao lado como a PISTA de onde a
+    escolha veio, não como identidade.
+    """
+    return f"deck:{fmt}:{_slug(slug)}"
 
 
 def _link_da_caixa(con, s: dict) -> str:
@@ -282,15 +310,47 @@ def decks_das_caixas(con: sqlite3.Connection, cfg: dict | None = None) -> list[d
         cards, nota = loadout._slot_cards(con, s)              # noqa: SLF001
         link = _link_da_caixa(con, s) or _link_do_escolhido(slot)
         tipo, rotulo = sem_lista_porque(s)
-        out.append({
+        d = {
             "id": id_da_caixa(slot), "slot": slot,
             "nome": s.get("nome") or slot, "formato": s.get("formato"),
             "fonte": "caixa", "origem": s.get("fonte"), "nota": nota,
             "link": link, "estado": s.get("estado"), "cards": cards,
             "listas": None,
             "desactivada": tipo == "desactivada", "rotulo_estado": rotulo,
-        })
+        }
+        # Uma caixa que AINDA mostre consenso di-lo. Hoje são a `standard` e as
+        # duas de `legacy`, que ele mandou deixar como estavam («esquecemos
+        # legacy para já», «Standard não preciso preocupar-me até Janeiro») — e
+        # as três estão sem amostra, por isso não mostram lista nenhuma. No dia
+        # em que tiverem, a página tem de dizer que é uma média.
+        if (s.get("fonte") or "").lower() == "consenso" and cards:
+            d["e_consenso"] = True
+            d["rotulo_estado"] = rotulo or TEXTO_CONSENSO
+        out.append(_com_proveniencia(d, cfg, slot))
     return out
+
+
+def _com_proveniencia(d: dict, cfg: dict, chave: str) -> dict:
+    """Mete no deck a PROVENIÊNCIA da lista de evento, quando ela existe.
+
+    *"Na página de cada deck fica SEMPRE, à vista: jogador, evento, data, número
+    de jogadores, classificação e o URL da fonte"* (André, 2026-10-04 ao fim do
+    dia) — ele vai sleevar a partir disto e tem de poder ver de onde veio.
+
+    Sai do registo gravado (`listas_escolhidas[<chave>].evento`) e **nunca de uma
+    consulta à base**: o `prune_decklists(30)` apaga as decklists ao fim de um
+    mês e a página tem de continuar a dizer de onde a lista veio.
+    """
+    rec = eventos.registo_de_evento(cfg, chave) or {}
+    if not rec:
+        return d
+    d["evento"] = rec.get("evento")
+    d["link"] = d.get("link") or (rec["evento"] or {}).get("url") or ""
+    for k in ("alternativa", "porque", "escolhida_por", "regra_diria",
+              "amostra_fina"):
+        if rec.get(k):
+            d[k] = rec[k]
+    return d
 
 
 def _consenso_das_listas(con, fmt: str, ids: list[int]) -> list[tuple[str, str, int]]:
@@ -384,6 +444,14 @@ def arquetipos_meta(con: sqlite3.Connection, fmt: str,
                     "nota": nota, "link": "", "estado": None,
                     "listas": len(ids), "listas_janela": len(jan),
                     "fora_da_janela": fora,
+                    # UM CONSENSO DIZ QUE É UM CONSENSO (2026-10-04, ao fim do
+                    # dia). Ele acabou com o consenso como lista de DECK — *"uma
+                    # media de muitas listas: ninguem jogou aquele deck"* —, e o
+                    # meta fica só para CONSULTA. Sem esta marca a página
+                    # desenhava a média com a mesma cara de uma lista que alguém
+                    # jogou, que é exactamente o que ele mandou acabar.
+                    "e_consenso": True,
+                    "rotulo_estado": TEXTO_CONSENSO,
                     "cards": _consenso_das_listas(con, fmt, usadas)})
     out.sort(key=lambda d: (-(d["listas"] or 0), d["nome"]))
     return out
@@ -414,16 +482,77 @@ def registo(con: sqlite3.Connection, cfg: dict | None = None) -> dict[str, list[
     por_fmt: dict[str, list[dict]] = defaultdict(list)
     for d in decks_das_caixas(con, cfg):
         por_fmt[d["formato"]].append(d)
+    # OS DECKS DELE QUE NÃO SÃO CAIXA (2026-10-04, ao fim do dia): os dez de
+    # Modern e o de Pioneer que ele nomeou. Entram ANTES do meta, para o meta se
+    # poder reconhecer neles (`ja_e_caixa`) e não oferecer o mesmo deck duas vezes.
+    for d in decks_de_evento(con, cfg):
+        por_fmt[d["formato"]].append(d)
     for fmt in list(por_fmt):
         if not e_rotativo(fmt):
             continue
         ja = {(d["nome"] or "").strip().lower() for d in por_fmt[fmt]}
         ja |= {_nome_do_consenso(d).lower() for d in por_fmt[fmt]}
+        ja |= {str(d.get("arquetipo_fonte") or "").strip().lower()
+               for d in por_fmt[fmt]}
+        ja.discard("")
         for m in arquetipos_meta(con, fmt):
             if m["nome"].strip().lower() in ja:
                 m = dict(m, ja_e_caixa=True)
             por_fmt[fmt].append(m)
     return dict(por_fmt)
+
+
+def decks_de_evento(con: sqlite3.Connection,
+                    cfg: dict | None = None) -> list[dict]:
+    """Os decks DELE que não são caixa — `colecao_config.json -> decks_de_evento`.
+
+    *"as listas especificas e que quero fixas"* (André, 2026-10-04, ao fim do
+    dia). São os dez de Modern e o de Pioneer que ele nomeou: não têm deckbox e a
+    lista deles está FIXADA numa lista de evento real, gravada em
+    `listas_escolhidas[<id>]` com a proveniência.
+
+    **Porque é que não são arquétipos meta:** o meta agrupa pelo NOME DA FONTE
+    (`decklists.arquetipo_fonte`) e **três dos dez não têm nome nenhum** — o
+    `arquetipo_fonte` daquelas listas está a NULL, por isso o UR Prowess, o
+    Goryo's Reanimator e o Hammer Time nunca apareciam lá. E em quatro outros o
+    nome que ele usa não é o da fonte (ele diz *"Boros Energy"*, a fonte diz
+    *"Boros Aggro"*). O nome é o DELE.
+    """
+    cfg = sources.config() if cfg is None else cfg
+    v = cfg.get("decks_de_evento")
+    out = []
+    for n in (v if isinstance(v, list) else []):
+        chave = n.get("id") or id_deck(n.get("formato") or "", n.get("slug") or "")
+        rec = (cfg.get("listas_escolhidas") or {}).get(chave) or {}
+        cards = [(("side" if b == "side" else "main"), scryfall.chave(c), int(q))
+                 for b, c, q in (rec.get("cards") or [])]
+        d = {
+            "id": chave, "slot": None,
+            "nome": n.get("nome") or chave, "formato": n.get("formato"),
+            "fonte": "dele", "origem": "evento",
+            "nota": _nota_do_evento(rec),
+            "link": (rec.get("evento") or {}).get("url") or "",
+            "estado": None, "cards": cards, "listas": None,
+            "arquetipo_id": n.get("arquetipo_id"),
+            "arquetipo_fonte": n.get("arquetipo_fonte"),
+            "desactivada": False, "rotulo_estado": "",
+        }
+        if n.get("por_confirmar"):
+            d["por_confirmar"] = True
+            d["carta_chave"] = n.get("carta_chave")
+            d["rotulo_estado"] = "à espera do teu OK"
+        if n.get("amostra_fina"):
+            d["amostra_fina"] = n["amostra_fina"]
+        out.append(_com_proveniencia(d, cfg, chave))
+    return out
+
+
+def _nota_do_evento(rec: dict) -> str:
+    """A nota de um deck com lista de evento: quem a jogou e onde, numa linha."""
+    prov = rec.get("evento") or {}
+    if not prov:
+        return "sem lista de evento fixada"
+    return "lista de evento real · " + eventos.texto_prov(prov)
 
 
 def _nome_do_consenso(d: dict) -> str:
@@ -615,12 +744,25 @@ def sleeves_do_formato(decks: list[dict], rep: dict[str, set[str]]) -> dict:
     com um proxy por cada partilhada — o `total` é o que ele enfia em sleeves ao
     todo, e as duas metades dizem com o quê.
     """
-    reais = proxies = 0
+    reais = copias = imprimir = 0
+    nomes_proxy: set[str] = set()
     for d in decks:
         p = proprias_e_partilhadas(d, rep)
         reais += p["n_proprias"]
-        proxies += p["n_partilhadas"]
-    return {"reais": reais, "proxies": proxies, "total": reais + proxies,
+        copias += p["n_partilhadas"]
+        deste = {nm for _b, nm, _q in p["partilhadas"]}
+        # UM PROXY POR CARTA DIFERENTE, EM CADA DECK — e este número é o DELE.
+        # Medido a 2026-10-04 contra a conta que ele trouxe da mesa: por
+        # aparições dá 147 em Modern e 69 em Premodern, contra os 149 e 63 que
+        # ele mediu; por CÓPIAS dava 334 e 201. Ou seja ele imprime um proxy por
+        # carta diferente (serve de marcador de *"esta vem da pilha"*) e não
+        # quatro proxies de um playset. A pergunta que o número responde é
+        # *"quantos proxies imprimo"*, e a resposta é esta; as cópias ficam ao
+        # lado porque são o que de facto sai dos decks.
+        imprimir += len(deste)
+        nomes_proxy.update(deste)
+    return {"reais": reais, "proxies": imprimir, "proxies_copias": copias,
+            "total": reais + copias, "proxies_nomes": len(nomes_proxy),
             "decks": len(decks)}
 
 
@@ -665,6 +807,18 @@ def relatorio(con: sqlite3.Connection, cfg: dict | None = None) -> dict:
                 "sem_lista": not d.get("cards"),
                 "desactivada": d.get("desactivada", False),
                 "rotulo_estado": d.get("rotulo_estado") or "",
+                # A PROVENIÊNCIA vai no índice e não só na parte do deck: é o que
+                # ele lê ANTES de abrir um deck para decidir por onde começa, e
+                # pô-la só lá dentro obrigava-o a abrir os onze para comparar.
+                "evento": d.get("evento"),
+                "alternativa": d.get("alternativa"),
+                "porque": d.get("porque") or "",
+                "escolhida_por": d.get("escolhida_por") or "",
+                "e_consenso": d.get("e_consenso", False),
+                "por_confirmar": d.get("por_confirmar", False),
+                "carta_chave": d.get("carta_chave") or "",
+                "amostra_fina": d.get("amostra_fina") or "",
+                "arquetipo_fonte": d.get("arquetipo_fonte") or "",
             })
             por_deck[d["id"]] = d
         # «depois de escolher, ordenamos»: a percentagem que ele JÁ tem, maior
@@ -788,6 +942,18 @@ def deck_para_pagina(con: sqlite3.Connection, d: dict, pos: dict[str, dict],
         "modo": modo, "texto_modo": TEXTO_PARTILHA[modo],
         "conta": conta,
         "main": ordena(blocos["main"]), "side": ordena(blocos["side"]),
+        # A FICHA DA LISTA — *"na página de cada deck fica SEMPRE, à vista:
+        # jogador, evento, data, número de jogadores, classificação e o URL da
+        # fonte"* (André, 2026-10-04 ao fim do dia).
+        "evento": d.get("evento"),
+        "alternativa": d.get("alternativa"),
+        "porque": d.get("porque") or "",
+        "escolhida_por": d.get("escolhida_por") or "",
+        "e_consenso": d.get("e_consenso", False),
+        "por_confirmar": d.get("por_confirmar", False),
+        "carta_chave": d.get("carta_chave") or "",
+        "amostra_fina": d.get("amostra_fina") or "",
+        "arquetipo_fonte": d.get("arquetipo_fonte") or "",
     }
     if p is not None:
         out["reparticao"] = {
