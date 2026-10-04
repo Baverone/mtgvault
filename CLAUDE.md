@@ -2441,6 +2441,206 @@ em `mtgvault/fases.py` (`congelada`/`gravar_congelada`/`COMO_DESTRANCAR`/
   na lista do Cloud cEDH — se ele o quiser vender, é tirá-lo dessa lista; (d) o
   **Cursed Totem** continua fora da lista, como ajuste não decidido.
 
+**AS DECKLISTS NO SITE, PARA ELE SLEEVAR (André, 2026-10-04, ao fim do dia, à
+letra).** *"Quero que atualizes as decklists no site, para eu aceder e comecar a
+sleevar as coisas"*; *"falta escolher decks, falta depois eu organizar os decks,
+guardar as que sao staples"*; *"vi que nao leste o RC Qualifier nas decklists"*;
+*"esquece venda, eu trato da venda"*. **Uma lista errada custa-lhe uma tarde de
+sleeves**, e é essa a régua desta ordem. Motor em `mtgvault/mtgtop8.py`
+(`ESCALA_TECTO`/`escala_do_tecto`, `e_pagina_de_evento`, `_abrir_evento`,
+`revisitar`), `mtgvault/loadout.py` (as notas de `_cards_from_consensus` e
+`_cards_from_watched`), `mtgvault/decks_vista.py` (`sem_lista_porque`,
+`staples_do_formato`), `decks.py` e `premodern_decks.py`; CLI
+`py -m mtgvault.cli revisitar [formato] [--evento N] [--limite N] [--fila]`.
+Testes em `tests/test_decklists_no_site.py` (9 casos) e a prova de que chumbam em
+`tests/_provar_decklists.py` (**14 de 14 pares**, um processo por par). Backup em
+`data/backups/vault-2026-10-04-decklists-no-site.db` (98,2 MB, `integrity ok`).
+**A VENDA NÃO SE TOCOU**, por ordem dele.
+
+- **O RC QUALIFIER ESTAVA LÁ; o que estava truncado era o REGIONAL
+  CHAMPIONSHIP.** O `Modern RC Super Qualifier` de 03/10 tinha as suas 31 listas
+  e as 31 classificadas — isso estava bem e não se mexeu. O que estava mal: o
+  `Modern event - Regional Championship` de 12/09, **1 486 jogadores e 16 listas
+  na base**, porque o `max_decks_per_event` cortava em 16 e a página serve 64.
+  O maior torneio de papel de Modern contribuía **metade** de uma Challenge 64.
+- **O TECTO PASSOU A DEPENDER DO TAMANHO DO CAMPO, não do nome** (`ESCALA_TECTO`,
+  config `mtgtop8.grandes.escala_jogadores`). A regra: **metade do campo, na
+  escala de classificação que o próprio mtgtop8 usa** (`_bracket`: 9-16, 17-32,
+  33-64) — **128+ jogadores → 64 listas, 64-127 → 32, abaixo de 64 fica o tecto
+  normal de 16**. Metade do campo porque é a proporção que o vault já pratica no
+  online (uma Challenge 64 traz 32 de 64 jogadores) e aplicá-la ao papel põe os
+  dois na mesma régua. O topo é 64 porque **é o que a página serve**: medido nas
+  duas páginas de 921 e 1 486 jogadores, **64 links de deck exactamente**.
+  - **PORQUE O NOME NÃO SERVE, medido:** dos **9** eventos da base truncados nos
+    16 com 64+ jogadores, **4 têm nomes que nenhum padrão reconhece** — e um
+    deles era precisamente o que tinha listas a mais para dar (o «Buckeye Brawl
+    II - Retromancers», 125 jogadores, 32 na página). O ramo do NOME **fica como
+    piso** (o tecto é o `max` dos três): o «RC Hangzhou Side Event» tem 70
+    jogadores e nome reconhecido, e com a escala sozinha descia de 64 para 32.
+  - **A ESCALA É SÓ PARA O PAPEL** (`sources.event_tier`), e sem isso não valia
+    nada: semeada a memória, a fila de revisitas dava **54 eventos e 28 eram
+    Challenges de MTGO de Modern** — listas que o vault já tem pela fonte directa
+    e que a deduplicação descarta. Eram ~28 noites de pedidos a produzir zero.
+    Com o crivo, a fila são **22**.
+  - **O GANHO HONESTO SÃO +16 LISTAS, não as 127.** A regra de 04/10 de manhã já
+    recuperava **111** das 127; a escala acrescenta **16**, que são o Buckeye
+    Brawl II. Dizer que a regra nova trouxe 127 era dar-lhe crédito pelo trabalho
+    da ordem anterior.
+- **A MEMÓRIA ESTAVA VAZIA — a recuperação nunca tinha arrancado.** A
+  `mtgtop8_eventos` tinha **0 linhas**: o `semear_memoria` corre dentro do
+  `harvest`, e o `harvest` não corria desde que o código entrou (08:37 contra o
+  `daily` das 03:30). Ou seja o diagnóstico de que «a memória impede a revisita»
+  era ao contrário: **sem semente não havia fila nenhuma**. Semeada: **401
+  eventos**.
+- **FORÇAR A REVISITA: `py -m mtgvault.cli revisitar`** (semeia primeiro, é
+  idempotente). Sem travão, por id (`--evento`, repetível) ou a fila inteira, com
+  `--fila` para ver sem pedir nada. **Resultado medido**, 21 eventos revisitados e
+  **127 listas novas**, todas com nome da fonte:
+
+  | evento | jogad. | na página | listas | ganho |
+  |---|---|---|---|---|
+  | Regional Championship (MO) | 1 486 | 64 | 16 → **64** | **+48** |
+  | Magic Spotlight: The Hobbit (MO) | 921 | 64 | 16 → **64** | **+48** |
+  | $uper $unday ReCQ (MO) | 344 | 31 | 16 → **31** | **+15** |
+  | Buckeye Brawl II (PREM) | 125 | 32 | 16 → **32** | **+16** ← só a regra nova |
+  | European Championship (PREM) | 218 | — | 16 | página morta |
+  | Czech Nationals (PREM) | 191 | 8 | 8 | +0 (não estava truncado) |
+  | Bogardan War II (PREM) | 139 | 16 | 16 | +0 (idem) |
+  | + 14 outros | | | | +0 |
+
+  **Duas correcções à premissa, e as duas a favor dele:** as Czech Nationals e a
+  Bogardan War II **não estavam truncadas** — as páginas delas só servem 8 e 16
+  listas; revisitá-las custa 1 pedido e fecha-as. Efeito no registo: Modern
+  **19 → 21** arquétipos (Broodscale 73 → 87, Esper Blink 29 → 41, Pinnacle
+  Affinity 25 → 35), Premodern 10 (Enchantress 21, Landstill 13, Sligh 13).
+  **São de 05/09 a 27/09, logo FORA da janela do consenso (29/09)** — entram no
+  registo e na escolha de decks, e a janela não se tocou.
+- **PEDIDOS AO MTGTOP8: 161 nesta ordem**, todos a 1/s pelo `_get` de sempre (1
+  ao `robots.txt`, 9 a medir páginas de evento, 24 páginas de evento nas
+  revisitas, 127 `.dec`). **O `robots.txt` do mtgtop8 responde 404** — não existe,
+  por isso não há regra a respeitar além do ritmo.
+- **UMA PÁGINA DE EVENTO QUE JÁ NÃO EXISTE RESPONDE 200**, e isso era um buraco:
+  o 90532 devolve a página genérica (*«MTG Decks Database»*, 12 KB, zero datas) com
+  **`d=0`** nos links do menu. Sem crivo, revisitá-lo pedia o `.dec` do deck 0 e
+  dava um evento de 218 jogadores por **COMPLETO com uma lista**. Hoje o
+  `parse_deck_ids` descarta `d <= 0` e o `e_pagina_de_evento` exige DATA e DECK —
+  e o evento **não se marca**, como uma falha de rede.
+- **E ISSO ENTUPIA A FILA PELA CABEÇA.** A fila ordena por nº de jogadores e o
+  evento morto (218) era o primeiro de Premodern: não se marca, logo ficava lá
+  **todas as noites** e os outros 5 nunca eram vistos. O travão das revisitas
+  passou a contar **vezes GASTAS** e não tentativas (`_abrir_evento` devolve
+  `(novas, marcou)`), com um tecto de tentativas (`2×limite+2`) para a noite não
+  ficar presa numa cauda de páginas mortas. Tem caso próprio.
+- **O `players` DA REVISITA É O MÁXIMO ENTRE A PÁGINA E O LEMBRADO.** Há páginas
+  antigas que já não dizem a contagem; com `players = None` o tecto caía para 16,
+  o `por_fazer` continuava a dizer «vale a pena» (decide com a coluna `players`)
+  e o evento era pedido para sempre. É o defeito do tecto optimista de 04/10 de
+  manhã pelo outro lado.
+- **O NOME DA CAIXA `modern` ESTAVA ERRADO, e ele ia sleevar por ele.**
+  Chamava-se **«Modern — UW Oswald»** e a lista lá dentro é a de QUALIFICAÇÃO
+  dele, que é **Izzet Affinity**: 4 Kappa Cannoneer, 4 Pinnacle Emissary, 4
+  Weapons Manufacturing, 2 Arcbound Ravager, 4 Mox Opal — **zero cartas brancas e
+  zero Oswald Fiddlebender**. Passou a **«Modern — Pinnacle Affinity»**, que é o
+  nome que a FONTE dá a estas listas (mtgtop8: 17 votos de 19 nomeadas em 94
+  listas; segundo lugar «Affinity»), pela regra de 02/10. **A lista não se
+  tocou** — é dele e é a certa.
+  - **HAVIA DOIS DECKS A DISPUTAR A CAIXA, e nenhum se apagou:** o **deck 12 «UW
+    Oswald»** da tabela `decks` (34 linhas, 4 Oswald Fiddlebender, Hallowed
+    Fountain, Portable Hole — um deck a sério, com o nome certo) era o ANTERIOR
+    desta caixa, e a lista de qualificação é a que ficou (`fonte: escolhido`,
+    `ref: modern`). O `_antes` repõe o antigo.
+  - **O `listas_escolhidas.modern` ganhou `arquetipo: "Pinnacle Affinity"`**, e é
+    isso que faz o meta com o mesmo nome dizer *«já é uma caixa tua»* em vez de
+    aparecer como um segundo deck — o mecanismo (`_nome_do_consenso`) já existia e
+    faltava-lhe a chave.
+  - **A PASTA DE FOTOS tratou-se sozinha**: nasceu `Colocar fotos da coleção
+    aqui\Modern — Pinnacle Affinity\` com o plano (16 fotos, 52 cartas) e a antiga
+    ficou com o `fotos.TEXTO_ORFA`. **Zero imagens em qualquer das duas** (as
+    fotos foram apagadas nesta manhã), por isso não se perdeu nada.
+  - **POR DECIDIR POR ELE, e NÃO se tocou:** a `reserva_assinatura` continua
+    `["Oswald Fiddlebender"]` — o deck que ele já não monta. Mexer nisso muda a
+    reserva, que é a lista de candidatas à venda, e **a venda está fora desta
+    ordem**. Fica mais VISÍVEL do que estava: a Arrumação mostra «Modern —
+    Pinnacle Affinity … 12 listas com Oswald Fiddlebender», que é a conferência
+    da assinatura à vista. O mesmo para o **deck 12 em `decks_vigiados`**, que
+    continua a reservar as suas cópias na cobertura.
+- **UMA CAIXA DESACTIVADA DEIXOU DE SER UM DECK DE 0 %.** A `modern-affinity`,
+  que ele mandou desactivar nesse dia, aparecia na lista de Modern ao lado dos
+  decks que vai montar, com o estado `candidata` — que é um estado normal da
+  escala e não quer dizer «desactivada». A pergunta vive num sítio
+  (`decks_vista.sem_lista_porque`) e distingue **três** coisas: **desactivada**
+  (`fonte: consenso` sem `assinatura` — é o gesto do «já não vou montar este»),
+  **por escolher** (a `legacy-artifacts-blue`, que espera a carta-assinatura dele)
+  e **sem amostra** (a nota do `_slot_cards` já o dizia). **Escolheu-se MARCAR e
+  não esconder**: ele tem o `_antes` no config para a repor, e uma caixa que
+  desaparecesse da página deixava-o sem por onde a reaver. Fica no **fim** da
+  lista, apagada, com o rótulo, sem a caixa «quero montar», e fora do
+  `n_decks` (o cartão do formato diz «… · 1 desactivada»).
+- **CADA UMA DAS 17 CAIXAS DIZ A LISTA, A FONTE E A DATA.** Faltava a DATA em
+  nove: as de `consenso` diziam só *«consenso de N listas»* e as de `deck`-com-
+  consenso não diziam nada. Hoje: o consenso leva **as datas das listas que
+  entraram e a janela** (*«consenso de 32 listas de 2026-09-04 a 2026-10-03»*), o
+  `premodern_decks` escreve *«recalculado a …»*, e a **lista vigiada diz as DUAS
+  datas** — *«lista vigiada de 2026-09-04 — sem mudar desde então, conferida a
+  2026-10-04»*. Essa última era a pior: o Blue Farm parecia informação de há um
+  mês, quando a vigia o tinha lido de manhã e confirmado que não mudou. A coluna
+  `watched.last_checked` já existia e ninguém a mostrava.
+- **UMA CORRECÇÃO À PREMISSA: o mínimo de listas é 5, não 8.** A `premodern-igg`
+  tem 4 listas e a página **já dizia** *«amostra insuficiente: 4 listas (o mínimo
+  para se chamar consenso a isto é 5)»* — o `stock_min_lists()` é 5; o 8 é o
+  `consenso.MIN_LISTAS` dos comandantes. Não havia nada a corrigir, e há caso de
+  teste a trancá-lo.
+- **A SEQUÊNCIA DELE, no sítio onde ela acontece.** Num formato rotativo sem nada
+  marcado a página mostrava dois zeros e mais nada; hoje mostra **«Por onde
+  começar»** com os três passos (marcar → ver próprias e partilhadas → as
+  partilhadas são as staples). E, depois de ele marcar, **as STAPLES DO FORMATO
+  agregadas** (`staples_do_formato`) — a pilha que ele guarda à parte, com em
+  quantos decks cada carta entra, quantas precisa (o MÁXIMO, que é a regra
+  rotativa) e quantas tem. **Não é uma conta nova**: é o mesmo `rep` que decide
+  própria vs partilhada em cada deck, visto pelo formato. Medido com 3 decks de
+  Premodern marcados: necessidade 225 a somar / **199 a rodar**, sleeves 168
+  reais + 57 proxies, e **8 staples** (5 Plains e 4 Swords to Plowshares em 3
+  decks; 6 Forest, 4 Brushland, 4 Windswept Heath, 3 Naturalize, 3 Warmth, 2
+  Glowrider em 2).
+- **MARCAR RECALCULA — foi medido, não assumido.** 0 marcados → tudo a zero; 3
+  marcados → os números acima; desmarcar um devolve as staples a zero. As
+  partilhadas de cada deck **são** exactamente os proxies dele, nos três.
+- **DOIS DEFEITOS DE LAYOUT QUE NUNCA TINHAM SIDO MEDIDOS.** A lista do
+  `tests/medir_layout.py` era a de 24/09 e **três páginas nascidas depois nunca
+  foram medidas a 390 px** — a `decks.html`, a `arrumacao.html` e a
+  `comandantes.html`. Entraram lá. A `decks.html` e a `comandantes.html` estavam
+  bem; a **`arrumacao.html` tinha scroll horizontal** (corpo a **453 px** numa
+  janela de 390), por causa da tabela de sete colunas das duais. As tabelas `.cd`
+  passaram para um `.tw{overflow-x:auto}`: a tabela rola dentro dela e a página
+  fica quieta. Esconder mais colunas era esconder informação.
+- **UM TESTE DE 04/10 DE MANHÃ TEVE DE SER CORRIGIDO, e não mascarado.** O
+  `test_papel_grande.caso_o_tecto_alto_exige_que_a_pagina_confirme_o_tamanho`
+  afirmava que um evento que o nome não reconhece fica com 16 listas mesmo com
+  1 486 jogadores — e é isso que esta ordem muda. A asserção passou a afirmar a
+  regra nova, com as duas datas no docstring, e o que a função continua a trancar
+  é a outra metade (um nome grande com o campo pequeno **não** sobe de tecto). E
+  o `caso_um_dec_que_falha_nao_marca_o_evento_como_feito` passou de 70 para **30
+  jogadores**: com 70 havia dois mecanismos a recuperar o evento (a não-marcação e
+  a escala) e o caso deixava de isolar o primeiro — apanhado pelo
+  `_chumba_papel semente_vazia`, que tinha deixado de trancar. **Os 11 alvos do
+  `_chumba_papel` continuam todos a trancar**, verificado um a um.
+- **MEDIDO COM O SERVIDOR A CORRER E O JS A SÉRIO** (o `webapp.py` relançado com
+  o código final): as **13 páginas a 200**, os **248 ficheiros de dados a 200**,
+  **zero** mensagens de erro de dados, e a aba Decks percorrida até ao **nível do
+  deck em três formatos** (Premodern 23 tiles, cEDH 100, Duel Commander 80). A
+  segunda passagem de cada página em **1–27 ms**; a mais lenta das 248 partes,
+  27 ms. A 1440 e a 390 px, **nenhuma página com scroll horizontal**.
+- **POR FAZER, e vale a pena saber:** (a) o **European Championship de Premodern
+  (218 jogadores)** continua na fila — a página dele desapareceu do mtgtop8, e por
+  isso custa **1 pedido por noite** até voltar (ou até alguém decidir marcá-lo à
+  mão); não se marcou de propósito, pela regra de nunca perder um evento por uma
+  falha; (b) a `reserva_assinatura` da caixa `modern` e o deck 12 em
+  `decks_vigiados`, acima; (c) os restantes **14 eventos** da fila foram todos
+  drenados nesta ordem e deram **0 listas novas** — as páginas deles só servem
+  3–16 listas; (d) a aba Decks mostra as staples **por formato**; uma carta que
+  seja staple em DOIS formatos (as Swords to Plowshares são-no em Premodern e em
+  Legacy) aparece nas duas listas e não há uma vista que as junte.
+
 **AS FOTOS FORAM APAGADAS E A CAMPANHA ESTÁ DESLIGADA (André, 2026-10-04, à
 letra).** *"podes apagar todas as fotos, A MINHA RESPONSABILIDADE, se for para
 ter fotos, vou tirar as fotos todas novamente"*.
