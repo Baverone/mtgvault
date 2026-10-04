@@ -4,7 +4,7 @@ Mostra a Reserved List da Wizards (a flag `reserved` da Scryfall — não é
 inventada) separada por EDIÇÃO, da mais recente para a mais antiga, só edições
 reais (core/expansion — sem 30th Anniversary, World Championship, Collectors'
 Edition, promos nem oversized). Por cada carta: quantas tenho em Inglês e em
-Português, o valor (Cardmarket, via bulk grátis) e a evolução de preço. Cartas
+Português, o valor (pela cadeia e modo em vigor) e a evolução de preço. Cartas
 de que não tenho nenhuma cópia aparecem SEM COR.
 """
 from __future__ import annotations
@@ -91,10 +91,14 @@ def price_maps(con):
     histórica) — sempre o MÍNIMO entre fontes. Partilhado pela Reserved List e
     pelo Valor da coleção.
 
-    Hoje = o mais barato à venda (Cardmarket `low`; a Scryfall grátis entra como
-    trend enquanto não há cookie). Há ~1 mês = o valor exato reconstruído da
-    nossa história (o último ponto até há 30 dias É o preço nesse dia) ou, na
-    falta dela, o avg30 do Cardmarket.
+    Hoje = o preço da fonte da SÉRIE, no modo em vigor. Há ~1 mês = o valor
+    exato reconstruído da nossa história (o último ponto até há 30 dias É o
+    preço nesse dia) ou, na falta dela, o `avg30` — que só o price guide
+    escrevia e que hoje está a zero em toda a base.
+
+    **Com a série no CardTrader (2026-10-04) o «há ~1 mês» é ZERO**, porque a
+    história dessa fonte começa a 2026-09-25. Quem o diz à página é a
+    `frase_serie`: a coluna vazia tem de vir com a razão ao lado.
     """
     # O MODO DE PREÇO (2026-09-25) manda também aqui, e a FONTE deixou de ser
     # todas: era `MIN(COALESCE(low, trend))` sobre a `price_latest` inteira —
@@ -311,7 +315,7 @@ def build(con, out_path=None):
                     f'{html.escape(e["nome"])} '
                     f'<span class="dim">{e["tens"]}/{e["n"]}</span></a>'
                     for e in edicoes)
-    out.write_text(_tmpl()
+    out.write_text(_tmpl(con)
                    .replace("%TEMA_DADOS%", paginas.CSS_DADOS)
                    .replace("%JS_DADOS%", paginas.JS_DADOS)
                    .replace("%SECS%", secs).replace("%EDIDX%", edidx)
@@ -365,9 +369,8 @@ _RODAPE = ("A Reserved List da Wizards (cartas que nunca serão reimpressas), pe
            "mais antiga, só edições reais (core/expansion; sem 30th Anniversary, "
            "World Championship, Collectors' Edition, promos ou oversized). Por "
            "carta: cópias em Inglês (verde) e Português (azul), o <b>preço mínimo "
-           "de hoje</b> (o <i>low</i> do Cardmarket) e o de <b>há ~1 mês</b> (média "
-           "de 30 dias do Cardmarket, ou o valor exato quando a nossa própria "
-           "história tiver 30 dias), com a variação. Nas que tens, mostra <b>em que "
+           "de hoje</b> e o de <b>há ~1 mês</b> (o valor exato reconstruído da "
+           "nossa própria história), com a variação. %SERIE% Nas que tens, mostra <b>em que "
            "formatos joga</b> (das listas de torneio que seguimos). Uma carta tua "
            "que <b>não jogue em formato nenhum</b> que conte fica marcada"
            "%VENDER% — os formatos que não contam afinam-se em "
@@ -382,11 +385,45 @@ _RODAPE = ("A Reserved List da Wizards (cartas que nunca serão reimpressas), pe
 _ACCOES = ('<button class="btn" id="tgl" type="button" onclick="toggle()">'
            'Mostrar só as que tenho</button>')
 
-def _tmpl() -> str:
+def frase_serie(con) -> str:
+    """De que fonte é a SÉRIE e desde quando — e, se ela for mais nova do que
+    um mês, dizê-lo em voz alta.
+
+    Sem isto, a troca da série para o CardTrader (2026-10-04) deixava a coluna
+    *há ~1 mês* e a variação VAZIAS em todas as cartas, sem uma palavra a
+    explicar porquê: a história dessa fonte começa a 2026-09-25. Medido nesse
+    dia: *hoje* cobre 32 370 impressões (contra 20 084 do price guide) e
+    *há ~1 mês* cobre **zero**. Um branco não é uma resposta — «ainda não sei»
+    é, e é a mesma regra do `rl_sem_historico` da venda.
+    """
+    f = precos.fonte_serie()
+    try:
+        r = con.execute("SELECT MIN(date) a FROM price_history WHERE source = ?",
+                        (f,)).fetchone()
+        desde = r["a"] if r else None
+    except Exception:                                      # noqa: BLE001
+        desde = None
+    if not desde:
+        return (f"A série de preços é do <b>{html.escape(f)}</b> e ainda não "
+                f"tem um único ponto: a coluna <i>há ~1 mês</i> fica vazia.")
+    dias = (date.today() - date.fromisoformat(desde)).days
+    base = (f"A série de preços é do <b>{html.escape(f)}</b>, desde "
+            f"<b>{desde}</b>")
+    if dias < 30:
+        return (base + f" — {dias} dias. <b>Ainda não chega para comparar com "
+                f"há um mês</b>, por isso a coluna <i>há ~1 mês</i> e a "
+                f"variação ficam vazias até lá. Não é uma avaria: é a régua "
+                f"a ser nova.")
+    return base + "."
+
+
+def _tmpl(con=None) -> str:
     """O molde. FUNÇÃO desde 2026-09-25 (ver o `deckboxes`): a barra lateral e o
-    rodapé seguem o `venda.mostrar`."""
+    rodapé seguem o `venda.mostrar` — e, desde 2026-10-04, o rodapé diz a FONTE
+    da série e se ela já é velha que chegue para a comparação."""
     rodape = _RODAPE.replace(
-        "%VENDER%", " <b>VENDER</b>" if venda.mostrar() else " a vermelho")
+        "%VENDER%", " <b>VENDER</b>" if venda.mostrar() else " a vermelho"
+    ).replace("%SERIE%", frase_serie(con) if con is not None else "")
     return ("""<!doctype html><html lang="pt-PT"><head>"""
             + shell.head("Reserved List · preços", _CSS) + """</head><body>"""
             + shell.abrir("reservedlist.html", "Reserved List · preços", "%HEAD%", _ACCOES) + """

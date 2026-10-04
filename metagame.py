@@ -237,7 +237,8 @@ def _onde_html(linhas):
 
 
 def _wantlist(linhas, marca=""):
-    """Só o que é MESMO compra (`comprar`), no formato que o Cardmarket aceita."""
+    """Só o que é MESMO compra (`comprar`), em `N Nome` — o formato que uma
+    caixa de importação de loja aceita."""
     ordem = sorted((m for m in linhas if m["comprar"] > 0), key=lambda m: m["nm"])
     if not ordem:
         return '<div class="ok">nada a comprar ✓</div>'

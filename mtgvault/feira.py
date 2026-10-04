@@ -7,8 +7,8 @@ preços das cartas no market, e avaliamos; será sobretudo cartas que eu preciso
 para completar decks."*
 
 Três perguntas, e as três respondem-se com o que a base JÁ sabe — nem uma
-consulta ao Cardmarket a partir daqui (os preços são os do `card_price`, o
-mesmo `price_latest.trend` de todas as páginas):
+consulta a um marketplace parte daqui (os preços são os do `card_price`, a
+mesma `price_latest` de todas as páginas, na cadeia e no modo em vigor):
 
 LEVAR (a moeda de troca)
 ------------------------
@@ -44,7 +44,7 @@ TRAZER (o que quero)
       duas linhas para a mesma compra): a quantidade é o máximo das duas, e o
       preço máximo, as notas e os vendors vêm da manual. Uma manual sem caixa
       é uma compra para a colecção e fica na sua linha;
-  (c) **vendors** — `feira.vendors` (nome, notas, utilizador Cardmarket, site)
+  (c) **vendors** — `feira.vendors` (nome, notas, utilizador da loja, site)
       e, por CARTA, a marca *"o vendor X pode ter"* (`feira.pode_ter`:
       `{nome da carta: [vendor, …]}`). É manual: só ele sabe quem vai estar.
 
@@ -357,23 +357,32 @@ def wantlist_remover(cfg: dict, nome: str, slot: str | None = None) -> int:
 
 
 def vendors(cfg: dict | None = None) -> list[dict]:
+    """Os vendors da feira, com o utilizador da LOJA de cada um.
+
+    O campo chamava-se `cardmarket` até 2026-10-04 — *"faz a tua pesquisa dos
+    precos apenas no cardtrader, esquece o cardmarket"*. Hoje é `loja`, que é o
+    que ele sempre foi: o utilizador do vendor na loja onde ele vai ver os
+    preços DELE antes de ir à feira. **A forma antiga continua a ler-se**: um
+    config escrito antes de hoje não pode perder o que lá está.
+    """
     out = []
     for v in bloco(cfg)["vendors"]:
         if isinstance(v, dict) and (v.get("nome") or "").strip():
             out.append({"nome": v["nome"].strip(), "notas": v.get("notas") or "",
-                        "cardmarket": v.get("cardmarket") or "", "site": v.get("site") or ""})
+                        "loja": v.get("loja") or v.get("cardmarket") or "",
+                        "site": v.get("site") or ""})
         elif isinstance(v, str) and v.strip():
-            out.append({"nome": v.strip(), "notas": "", "cardmarket": "", "site": ""})
+            out.append({"nome": v.strip(), "notas": "", "loja": "", "site": ""})
     return out
 
 
-def vendor_add(cfg: dict, nome: str, notas: str = "", cardmarket: str = "",
+def vendor_add(cfg: dict, nome: str, notas: str = "", loja: str = "",
                site: str = "") -> dict:
     nome = (nome or "").strip()
     if not nome:
         raise ValueError("sem nome de vendor")
     v = {"nome": nome}
-    for k, val in (("notas", notas), ("cardmarket", cardmarket), ("site", site)):
+    for k, val in (("notas", notas), ("loja", loja), ("site", site)):
         if (val or "").strip():
             v[k] = val.strip()
     f = cfg.setdefault("feira", {})
@@ -555,7 +564,7 @@ def projeccao(con, rep: dict, cfg: dict | None = None, hoje: str | None = None) 
          "taxa_dinheiro": lv["taxa_dinheiro"], "taxa_troca": lv["taxa_troca"]}
     p["texto_levar"] = texto_levar(p)
     p["texto_trazer"] = texto_trazer(p)
-    p["texto_cardmarket"] = texto_cardmarket(p)
+    p["texto_lista"] = texto_lista(p)
     return p
 
 
@@ -625,9 +634,13 @@ def texto_trazer(p: dict) -> str:
     return "\n".join(out).rstrip() + "\n"
 
 
-def texto_cardmarket(p: dict) -> str:
-    """A wantlist inteira em `N Nome`, para colar no Cardmarket (só o que se
-    compra; `// caixa` entre blocos, que o site ignora)."""
+def texto_lista(p: dict) -> str:
+    """A wantlist inteira em `N Nome`, para colar numa caixa de importação de
+    loja (só o que se compra; `// caixa` entre blocos, que elas ignoram).
+
+    Chamava-se `texto_cardmarket` até 2026-10-04: o formato é o mesmo, o que
+    saiu foi o nome da loja (*"esquece o cardmarket"*).
+    """
     out = []
     for c in p["trazer"]["por_caixa"]:
         out.append(f"// {c['caixa']}")

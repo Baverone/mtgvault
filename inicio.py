@@ -36,7 +36,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 
-from mtgvault import collection, confirmado, loadout, paginas, venda  # noqa: E402
+from mtgvault import collection, confirmado, loadout, paginas, precos, venda  # noqa: E402
 from mtgvault import site_shell as shell  # noqa: E402
 
 _CSS = """
@@ -161,7 +161,7 @@ def _linha_caixa(c: dict, out_dir: Path) -> str:
 
 
 def _valor_coleccao(con) -> tuple[int, float]:
-    """(exemplares na estante, valor total a preço Cardmarket).
+    """(exemplares na estante, valor total pela cadeia e modo em vigor).
 
     OS DOIS NÚMEROS SAEM DA MESMA CHAMADA — `collection.valor_da_coleccao`, a
     conta única do valor (2026-09-24). Escrevi uma primeira versão própria e ela
@@ -197,8 +197,17 @@ def _fontes(con) -> list[tuple[str, str, str]]:
             return (None, None)
 
     linhas = []
-    d, n = um("SELECT MAX(date), COUNT(*) FROM price_latest")
-    linhas.append(("Preços (Cardmarket/Scryfall)", d, f"{n or 0} impressões"))
+    # SÓ A CADEIA EM VIGOR (2026-10-04). Era `COUNT(*)` sobre a `price_latest`
+    # inteira, com o rótulo «Preços (Cardmarket/Scryfall)» escrito à mão: desde
+    # que a cadeia passou a ser só o CardTrader, isso dizia um nome que o site
+    # já não usa E contava 86 818 impressões de fontes que não alimentam um
+    # único número da página. O rótulo e a conta saem agora da MESMA cadeia que
+    # os euros — se ele voltar a ligar o Cardmarket, esta linha di-lo sozinha.
+    fs = list(precos.fontes())
+    marcas = ", ".join("?" * len(fs))
+    d, n = um(f"SELECT MAX(date), COUNT(*) FROM price_latest "
+              f"WHERE source IN ({marcas})", *fs)
+    linhas.append((f"Preços ({' → '.join(fs)})", d, f"{n or 0} impressões"))
     d, n = um("SELECT MAX(event_date), COUNT(*) FROM decklists")
     linhas.append(("Decklists de torneio", d, f"{n or 0} listas"))
     d, n = um("SELECT MAX(window_end), COUNT(DISTINCT archetype_id) FROM card_roles")

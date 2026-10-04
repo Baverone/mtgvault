@@ -469,8 +469,18 @@ function estadoHTML() {
     + `<td class="v">${x.factor}</td></tr>`;
   return `<section class="foto"><h2>🔎 O estado das cartas `
     + `<span class="n">${escDados(e.frase)}</span></h2>`
-    + `<p class="sub">A escala é a do <b>Cardmarket</b> — MT · NM · EX · GD · LP `
-    + `· PL · PO —, porque é lá que vendes. As <b>${e.total_cartas}</b> cartas `
+    /* A ESCALA fica com o nome da fonte de onde foi transcrita, e isso NÃO é
+       uma excepção esquecida à ordem de 2026-10-04 («esquece o cardmarket»):
+       essa ordem é sobre os PREÇOS, e isto é o vocabulário com que se diz o
+       ESTADO de uma carta. As definições de cada escalão estão copiadas à letra
+       de help.cardmarket.com/en/CardCondition (lida a 2026-10-03) para o
+       `data/estado-criterio.md`, que é o ficheiro que o passo que avalia LÊ.
+       Tirar-lhe o nome era deixar a página sem poder dizer de onde vem a régua
+       — e os FACTORES de preço, esses, são medidos nas ofertas do CardTrader,
+       pela equivalência que o próprio Cardmarket publica. */
+    + `<p class="sub">A escala do estado é a do <b>Cardmarket</b> — MT · NM · EX · GD · LP `
+    + `· PL · PO —, transcrita da fonte; os <b>factores de preço</b> por escalão `
+    + `são medidos nas ofertas do <b>CardTrader</b>. As <b>${e.total_cartas}</b> cartas `
     + `estavam todas como <b>NM</b>, e isso <b>não era uma medição</b>: era o `
     + `valor por omissão que nunca ninguém mexeu. Continuam a dizer NM — nada se `
     + `apaga — mas marcadas <b>«por omissão, nunca verificado»</b>, e deixaram de `

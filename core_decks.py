@@ -332,7 +332,7 @@ _TMPL = """<!doctype html>
  footer{margin-top:34px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class="wrap">
 <header><h1>Core Decks — decks que sigo</h1>
-<div class="sub">Consenso premier + listas de jogador · preços Cardmarket · dados até %UPTO% ·
+<div class="sub">Consenso premier + listas de jogador · preços da fonte em vigor · dados até %UPTO% ·
 <a href="index.html">← coleção</a> · <a href="cobertura.html">cobertura do metagame →</a></div></header>
 <div id="app"></div>
 <footer>🔔 = o padrão/lista mudou desde a última recolha (mostra o que entrou/saiu) · ✓ = estável · atualiza sozinho todos os dias. Custo = comprar a lista completa na versão mais barata (algumas cartas muito recentes ainda sem preço).</footer>

@@ -2217,7 +2217,7 @@ class Handler(BaseHTTPRequestHandler):
         (so_validadas), `levo`/`nao-levo` (chave da impressão), `wl-add`
         (nome, q, slot, lang, finish, max, notas), `wl-tirar` (nome, slot),
         `max` (nome, slot, q, max — fixa o preço máximo: cria/actualiza a
-        entrada manual dessa carta e caixa), `vendor-add` (nome, cardmarket,
+        entrada manual dessa carta e caixa), `vendor-add` (nome, loja,
         site, notas), `vendor-tirar` (vendor), `pode-ter`/`pode-ter-nao`
         (nome, vendor). Os nomes de carta VALIDAM-SE no catálogo, como na
         lista padrão; erros de regra → 409.
@@ -2279,8 +2279,11 @@ class Handler(BaseHTTPRequestHandler):
                 n = feira.wantlist_remover(cfg, dados.get("nome") or "", dados.get("slot") or None)
                 msg = f"{dados.get('nome')} fora da wantlist ({n} entradas)"
             elif act == "vendor-add":
+                # `loja` desde 2026-10-04; o `cardmarket` fica aceite porque uma
+                # página aberta ontem no telemóvel ainda manda o nome antigo.
                 v = feira.vendor_add(cfg, dados.get("nome") or "", dados.get("notas") or "",
-                                     dados.get("cardmarket") or "", dados.get("site") or "")
+                                     dados.get("loja") or dados.get("cardmarket") or "",
+                                     dados.get("site") or "")
                 msg = f"vendor {v['nome']} acrescentado"
             elif act == "vendor-tirar":
                 n = feira.vendor_remover(cfg, dados.get("vendor") or "")

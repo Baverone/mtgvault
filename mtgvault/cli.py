@@ -359,7 +359,9 @@ def main(argv=None):
     fe.add_argument("--finish", help="wantlist add: foil|nonfoil (omissão: o da caixa)")
     fe.add_argument("--max", dest="maximo", help="wantlist add: preço máximo por cópia")
     fe.add_argument("--notas", help="wantlist add / vendor add: notas")
-    fe.add_argument("--cardmarket", help="vendor add: o utilizador Cardmarket")
+    fe.add_argument("--loja", "--cardmarket", dest="loja",
+                    help="vendor add: o utilizador do vendor na loja "
+                         "(--cardmarket era o nome até 2026-10-04)")
     fe.add_argument("--site", help="vendor add: o site")
     fe.add_argument("--dinheiro", help="taxas: a taxa em dinheiro (0.55 ou 55)")
     fe.add_argument("--troca", help="taxas: a taxa em troca (0.70 ou 70)")
@@ -1426,7 +1428,7 @@ def _feira(con, args):
                 print(f"  {len(vs)} vendor(es)")
                 for v in vs:
                     print(f"    {v['nome']}"
-                          + (f" · Cardmarket: {v['cardmarket']}" if v["cardmarket"] else "")
+                          + (f" · loja: {v['loja']}" if v["loja"] else "")
                           + (f" · {v['site']}" if v["site"] else "")
                           + (f" · {v['notas']}" if v["notas"] else ""))
                 return
@@ -1434,7 +1436,7 @@ def _feira(con, args):
                 print("  ERRO: diz o nome do vendor")
                 sys.exit(2)
             if args.sub == "add":
-                v = feira.vendor_add(cfg, args.nome, args.notas or "", args.cardmarket or "",
+                v = feira.vendor_add(cfg, args.nome, args.notas or "", args.loja or "",
                                      args.site or "")
                 print(f"  vendor {v['nome']} acrescentado")
             elif args.sub == "remover":

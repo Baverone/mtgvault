@@ -894,8 +894,8 @@ _RODAPE = ("<b>% completo</b> = cartas do núcleo (mainboard + sideboard de "
            "arquétipo — o que as decklists reais levam quase sempre; cartas "
            "<span class=\"sb\">SB</span> são de sideboard. Cada carta em falta "
            "mostra a imagem da edição a comprar: a que já tens (verde) se tiveres "
-           "algumas, senão a impressão jogável mais barata. Preços: tendência "
-           "Cardmarket (sem gold-border/digitais). O nome do deck vem das cartas "
+           "algumas, senão a impressão jogável mais barata. Preços: %FONTES% "
+           "(sem gold-border/digitais). O nome do deck vem das cartas "
            "mais distintivas do arquétipo (a label crua do clustering fica por "
            "baixo). «Específicas» de um deck = as que mais nenhum deck mostrado "
            "precisa; as partilhadas estão nos staples do topo. Podes escolher a "
@@ -906,8 +906,13 @@ def _tmpl() -> str:
     """O molde é uma FUNÇÃO e não uma constante de módulo (a decisão de
     2026-09-25, aplicada aqui a 2026-10-03): o rodapé passou a dizer a JANELA DO
     CONSENSO, que sai do config, e uma constante ficava com a resposta que o
-    config deu a quem importasse o ficheiro primeiro."""
-    return _TMPL_BASE.replace("%JANELA%", sources.frase_janela_rodape())
+    config deu a quem importasse o ficheiro primeiro.
+
+    Desde 2026-10-04 o rodapé também diz a CADEIA de fontes, pela mesma razão:
+    dizia «tendência Cardmarket» escrito à mão muito depois de a fonte ser o
+    CardTrader."""
+    return (_TMPL_BASE.replace("%JANELA%", sources.frase_janela_rodape())
+            .replace("%FONTES%", " → ".join(precos.fontes())))
 
 
 _TMPL_BASE = ("""<!doctype html><html lang="pt-PT"><head>"""
@@ -917,7 +922,7 @@ _TMPL_BASE = ("""<!doctype html><html lang="pt-PT"><head>"""
 <div class="fidx"><div class="seg">%IDX%</div></div>
 %EMERGING%
 <div class="general"><h2>""" + shell.icone("comprar") + """ Staples que te faltam <span class="dim">(servem vários dos decks abaixo · mostrados <b id="gen-shown">%GENSHOWN%</b> de %GENCOST%)</span></h2>
-<div><button id="copyall" class="cp">📋 Copiar wantlist completa (Cardmarket)</button></div>
+<div><button id="copyall" class="cp">📋 Copiar wantlist completa</button></div>
 <ul class="gl" data-sum="gen-shown">%GEN%</ul>%GENMORE%</div>
 %SECS%
 </div>""" + shell.fechar(_RODAPE, """
@@ -966,7 +971,7 @@ root.querySelectorAll('li[data-card]').forEach(function(li){
 });
 crecompute();
 }
-// --- exportar wantlist (formato Cardmarket: "<qtd> <nome>") ---
+// --- exportar wantlist (formato de lista: "<qtd> <nome>") ---
 function wlLines(pairs){var m={};pairs.forEach(function(p){var n=p[0],q=p[1];if(!(n in m)||q>m[n])m[n]=q;});
   return Object.keys(m).sort().map(function(n){return m[n]+' '+n;}).join('\\n');}
 function copyWL(text,btn){var o=btn.textContent;

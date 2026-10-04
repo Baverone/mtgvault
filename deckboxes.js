@@ -359,10 +359,12 @@ function precoModoHTML() {
     + `</span><small class="dim">${esc(fontesTxt())}</small></span>`;
 }
 
-/* A FONTE é uma CADEIA desde 2026-09-25 (`precos.fontes`): «cardtrader →
-   cardmarket» quer dizer *"o preço é o do CardTrader; o que ele não tem à venda
-   vem do Cardmarket"*. Dizer só a primeira era esconder que um terço das cópias
-   foi avaliado com outra régua. */
+/* A FONTE é uma CADEIA desde 2026-09-25 (`precos.fontes`) e a página tem de a
+   dizer INTEIRA: com duas fontes, dizer só a primeira era esconder que um terço
+   das cópias foi avaliado com outra régua. Desde 2026-10-04 a cadeia é UMA SÓ
+   («cardtrader», ordem dele: *"faz a tua pesquisa dos precos apenas no
+   cardtrader"*) e isto escreve um nome só — o mecanismo fica, porque é o config
+   que manda e não o código. */
 function fontesTxt() {
   return ((D.preco && D.preco.fontes) || [D.preco.fonte]).join(' → ');
 }
@@ -1660,8 +1662,8 @@ function basicasHTML(M) {
   return h + `</ul></div>`;
 }
 
-/* O bloco de básicas no TEXTO copiado. Vai comentado com `//`, que o Cardmarket
-   ignora: são terras que ele já tem e que não se compram — mandá-las para o
+/* O bloco de básicas no TEXTO copiado. Vai comentado com `//`, que as caixas de
+   importação ignoram: são terras que ele já tem e que não se compram — mandá-las para o
    carrinho como linhas a sério era comprar 17 Island por engano. O que é MESMO
    compra (as Snow-Covered, que não existem em Unhinged) vai em linha normal. */
 function basicasTexto(bs, edicao) {
@@ -1870,10 +1872,11 @@ function wantlistHTML(itens, marca, id, detalhe, basicas, edicao, slot) {
       + `</span><span class="pz">${eur(m.cost)}</span></li>`;
   }).join('');
   /* DOIS formatos, porque servem dois sítios (André, 2026-09-08):
-       · «Cardmarket» — só `N Nome`, que é o que a caixa de importação dele
+       · «lista» — só `N Nome`, que é o que uma caixa de importação de loja
          aceita. Quando a mesma carta se compra em dois materiais, vai UMA LINHA
          POR VERSÃO: somar as duas dava uma quantidade que nenhuma das versões
-         precisa;
+         precisa. (Chamava-se «p/ Cardmarket» até 2026-10-04; o formato é o
+         mesmo — o que saiu foi o nome da loja, não a lista.);
        · «com material» — `N Nome [PT]`, para conferir a oferta antes de pagar.
          Comprar a versão errada é comprar duas vezes. */
   const porVersao = [];
@@ -1892,8 +1895,8 @@ function wantlistHTML(itens, marca, id, detalhe, basicas, edicao, slot) {
                       board: m.board });
     }
   }
-  /* O SIDEBOARD separa-se também no texto copiado, com `// Sideboard` — que o
-     Cardmarket ignora sem dar erro. Sem separador, a lista colada era 75 linhas
+  /* O SIDEBOARD separa-se também no texto copiado, com `// Sideboard` — que as
+     caixas de importação ignoram sem dar erro. Sem separador, a lista era 75 linhas
      seguidas e ele voltava a ter de descobrir onde acabava o main. Só aparece
      quando a lista TEM sideboard: um cabeçalho para um bloco vazio é ruído.
      (A aba Comprar junta as compras de várias caixas: aí a linha não tem bloco
@@ -1915,7 +1918,7 @@ function wantlistHTML(itens, marca, id, detalhe, basicas, edicao, slot) {
     + (marca ? ` <span class="mrk">${esc(marca)}</span>` : '')
     + `<span class="dim">${car(nComp)}${nEnc ? ` · ${nEnc} encomendada${pl(nEnc)}` : ''}</span>`
     + `<button class="cpbtn" onclick="copiar(this,'cm')" aria-label="Copiar as `
-    + `${car(nComp)} no formato do Cardmarket">copiar p/ Cardmarket`
+    + `${car(nComp)} como «N Nome», uma por linha">copiar lista`
     + `</button>`
     + `<button class="cpbtn" onclick="copiar(this,'mat')" aria-label="Copiar as `
     + `${car(nComp)} com o material de cada uma">copiar com material`
@@ -2976,7 +2979,7 @@ function basicasComprarHTML(sel) {
     + `<span class="dim">${cop(bs.reduce((s, b) => s + b.q, 0))} · `
     + `${eur(bs.reduce((s, b) => s + (b.cost || 0), 0))}</span>`
     + `<button class="cpbtn" onclick="copiar(this,'cm')" aria-label="Copiar as `
-    + `básicas a comprar">copiar p/ Cardmarket</button></div>`
+    + `básicas a comprar">copiar lista</button></div>`
     + `<p class="nota">As tuas básicas são todas de <b>${esc(D.basicas_edicao)}</b>, `
     + `e essas nunca se compram. Estas não existem lá — <b>não somam</b> ao total `
     + `de compras acima nem à percentagem de nenhuma caixa.</p>`
@@ -3097,7 +3100,7 @@ function vistaVender() {
      CSV e a estante da saída trocam para a versão «validadas» (por cópia). */
   const filtra = b => !rev || !soValidadas ? b
     : { ...b, linhas: b.linhas.filter(r => r.foto && r.foto.ok > 0) };
-  /* Duas listas para copiar, porque servem duas coisas: a do Cardmarket é só
+  /* Duas listas para copiar, porque servem duas coisas: a simples é só
      `N Nome`, e a de conferir leva a edição, a língua e o acabamento — vender a
      versão errada é anunciar uma carta que não se tem. */
   const so = l => ordena(l).map(r => `${r.q} ${r.nm}`).join('\n');
@@ -3138,7 +3141,7 @@ function vistaVender() {
     + (rev ? ` · 📷 ${b0.validadas || 0}/${(b0.validadas || 0) + (b0.por_revalidar || 0)} validadas` : '')
     + `</span></summary><p class="lead">${lead}</p>`
     + `<div class="flh"><button class="cpbtn" onclick="copiar(this,'cm')" `
-    + `aria-label="Copiar a lista: ${esc(rotulo)}">copiar lista Cardmarket`
+    + `aria-label="Copiar a lista: ${esc(rotulo)}">copiar lista`
     + `</button><button class="cpbtn" onclick="copiar(this,'mat')" `
     + `aria-label="Copiar a lista com edição, língua e acabamento: ${esc(rotulo)}">`
     + `copiar com edição/língua/acabamento</button></div>`
@@ -3629,13 +3632,13 @@ function feiraTrazerHTML(F) {
     + `mínimo de hoje e o material que a caixa exige. <b>Manual:</b> o que acrescentares aqui `
     + `(<code>feira.wantlist</code>) — com preço máximo, notas e para que caixa; uma entrada `
     + `para a mesma carta e a mesma caixa <b>funde-se</b> na linha automática, não a duplica. `
-    + `Os preços são os da base (Trend do Cardmarket via Scryfall): <b>nenhuma consulta ao `
-    + `Cardmarket</b> parte daqui.</p>`
+    + `Os preços são os da base (${esc(fontesTxt())}, ${esc(D.preco ? D.preco.rotulo : '')}): `
+    + `<b>nenhuma consulta a um marketplace</b> parte daqui.</p>`
     + `<div class="flh"><button class="cpbtn" onclick="copiar(this,'tz')" aria-label="Copiar a lista `
     + `Trazer">copiar lista Trazer</button><button class="cpbtn" onclick="copiar(this,'tcm')" `
-    + `aria-label="Copiar a wantlist para o Cardmarket">copiar p/ Cardmarket</button></div>`
+    + `aria-label="Copiar a wantlist como «N Nome», uma por linha">copiar lista simples</button></div>`
     + `<textarea class="cmk" data-cmk="tz" readonly>${esc(F.texto_trazer || '')}</textarea>`
-    + `<textarea class="cmk" data-cmk="tcm" readonly>${esc(F.texto_cardmarket || '')}</textarea>`;
+    + `<textarea class="cmk" data-cmk="tcm" readonly>${esc(F.texto_lista || '')}</textarea>`;
   if (D.editable) {
     const caixas = D.caixas.map(c => `<option value="${esc(c.slot)}">${esc(c.nome)}</option>`).join('');
     h += `<div class="pform" role="group" aria-label="Acrescentar à wantlist">`
@@ -3723,20 +3726,20 @@ function feiraVendorsHTML(F) {
   const vends = (F.trazer && F.trazer.vendors) || [];
   let h = `<details class="vblk" id="f-vendors"${vends.length ? ' open' : ''}><summary><span>3. Vendors — quem lá vai estar</span>`
     + `<span class="vtot">${vends.length}</span></summary>`
-    + `<p class="lead">Os que achas que lá estarão, com o utilizador do Cardmarket ou o site, para `
+    + `<p class="lead">Os que achas que lá estarão, com o utilizador da loja ou o site, para `
     + `veres os preços deles <b>tu</b> antes de ir — o vault não os consulta. Em cada carta de `
     + `<b>Trazer</b> podes marcar «o vendor X pode ter».</p>`;
   if (D.editable) {
     h += `<div class="pform" role="group" aria-label="Acrescentar um vendor">`
       + `<input class="nm" id="feira-v-nome" placeholder="nome do vendor" autocomplete="off">`
-      + `<input class="nm" id="feira-v-cm" placeholder="utilizador Cardmarket" autocomplete="off">`
+      + `<input class="nm" id="feira-v-cm" placeholder="utilizador da loja" autocomplete="off">`
       + `<input class="nm" id="feira-v-site" placeholder="site" autocomplete="off">`
       + `<input class="nm" id="feira-v-notas" placeholder="notas" autocomplete="off">`
       + `<button class="btn sm" data-feira="vendor-add">+ vendor</button></div>`;
   }
   if (!vends.length) return h + `<p class="empty">Ainda sem vendors.</p></details>`;
   h += `<ul class="vendors fl">` + vends.map(v => `<li><b>${esc(v.nome)}</b>`
-    + (v.cardmarket ? `<small>Cardmarket: ${esc(v.cardmarket)}</small>` : '')
+    + (v.loja ? `<small>loja: ${esc(v.loja)}</small>` : '')
     + (v.site ? `<small>${esc(v.site)}</small>` : '')
     + (v.notas ? `<small>${esc(v.notas)}</small>` : '')
     + (D.editable ? `<button class="btn sm" data-feira="vendor-tirar" data-vendor="${esc(v.nome)}" `
@@ -3832,7 +3835,7 @@ async function feiraAccao(btn) {
     corpo.nome = btn.dataset.nome; corpo.slot = btn.dataset.slot || null;
     corpo.q = Number(btn.dataset.q || 1); corpo.max = String(v).trim() || null;
   } else if (act === 'vendor-add') {
-    corpo.nome = campo('feira-v-nome'); corpo.cardmarket = campo('feira-v-cm');
+    corpo.nome = campo('feira-v-nome'); corpo.loja = campo('feira-v-cm');
     corpo.site = campo('feira-v-site'); corpo.notas = campo('feira-v-notas');
     if (!corpo.nome) { erro('Escreve o nome do vendor.'); return; }
   } else if (act === 'vendor-tirar') {

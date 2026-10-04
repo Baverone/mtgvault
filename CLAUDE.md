@@ -998,6 +998,128 @@ relatório em `ai-pc/work/revisao/mtgvault-preco-referencia-0925.md`.
     (1 566,55 € → 6 033,90 € só pela correcção do mínimo, e 7 491,44 € com o
     CardTrader em `market`).
 
+**SÓ CARDTRADER: A CADEIA PASSOU A UMA FONTE (André, 2026-10-04, à letra).**
+*"faz a tua pesquisa dos precos apenas no cardtrader, esquece o cardmarket"* e
+*"refaz o meu site com essas alteracoes"*. Fecha a dúvida que 25/09 deixou em
+aberto (*"ligar o `cardtrader` hoje era trocar 32 % de valor por 36 % da
+colecção sem cotação"*): ele escolheu o CardTrader e aceita o buraco. Só config
+e texto de página — **o motor de preços não mudou uma linha**: a cadeia já
+sabia ter um elemento só. Testes em `tests/test_so_cardtrader.py` (12 casos) e
+a prova de que chumbam em `tests/_chumba_so_cardtrader.py` (9 de 9 pares, um
+processo por par); relatório em
+`ai-pc/work/revisao/mtgvault-so-cardtrader-1004.md`.
+
+- **`precos.fonte_recurso` ficou VAZIA e `precos.fonte_serie` passou a
+  `cardtrader`**, com `fonte_desde: 2026-10-04`. O **modo não se tocou**
+  (`market`). O `fonte_serie` escreve-se à mão mesmo sendo hoje redundante (a
+  omissão é a ÚLTIMA da cadeia, que agora é a única): no dia em que alguém
+  acrescentar uma fonte de recurso, a série não pode mudar de sítio sozinha.
+- **«Sem preço» passou de 1 cópia para 390, e isso não é uma carta a
+  desvalorizar — é o Cardmarket a sair como recurso.** Medido na cópia da base
+  de 2026-10-04, o mesmo `vault.db` dos dois lados
+  (`_revisao/medir_cadeia.py`, um processo por cenário):
+
+  | | cardtrader → cardmarket | **só cardtrader** |
+  |---|---|---|
+  | colecção (market) | 145 567,15 € | **133 354,51 €** |
+  | colecção (best) | 102 492,18 € | **90 240,06 €** |
+  | cópias sem preço | **1** de 1 678 | **390** de 1 678 |
+  | por fonte | 1 282 ct + 395 cm | **1 288 ct** |
+  | fechar tudo | 8 300,03 € | **5 802,47 €** |
+  | a comprar | 237 | **237** |
+  | venda / protegidas / guardar | 113c · 162c · 1c | **iguais** |
+  | `rl_sem_historico` | 103 c | **103 c** |
+
+  Das 395 cópias que o Cardmarket avaliava, **6** passaram a ser estimadas pelo
+  CardTrader (o mínimo entre impressões, marcado `min-impressoes` e DITO) e
+  **389** ficaram sem preço. **Nenhuma cópia muda de lado**: a alocação não
+  mexe e as nove saídas da venda têm exactamente as mesmas cópias. Os preços do
+  Cardmarket continuam todos na base — o que mudou foi a RÉGUA.
+- **O «fechar tudo» caiu 2 497,56 € e quase tudo é UMA carta: a Mishra's
+  Workshop** do `cedh-cloud`, que o CardTrader não cota. As compras sem preço
+  passaram de **3 para 16 cópias** (13 linhas). **Isto já era assim antes desta
+  ordem** — uma falta sem preço entra no total a zero, e o `loadout` conta-a em
+  `sem_preco` para a página poder dizer *"no mínimo — N sem preço"*. O que esta
+  ordem faz é tornar esse número grande: o *fechar tudo* é hoje um **mínimo** e
+  não a conta toda. Se um dia deixar de o dizer, é aqui que se olha.
+- **A SÉRIE DA RESERVED LIST FICOU SEM O «HÁ ~1 MÊS», E A PÁGINA DI-LO.**
+  Medido (`_revisao/medir_rl_serie.py`): o price guide tem história de
+  **2026-08-10** (203 910 linhas) e dá *hoje* 20 084 impressões e *há ~1 mês*
+  **8 788**; o CardTrader tem história de **2026-09-25** (14 487 linhas) e dá
+  *hoje* **32 370** — mais — e *há ~1 mês* **ZERO**. O `avg30`, que era o
+  recurso, está a **0 nas duas fontes**: ninguém o escreve. Logo a coluna e a
+  variação ficam vazias em TODAS as cartas durante 21 dias. Um branco sem razão
+  ao lado é o defeito que isto fecha: `reservedlist.frase_serie` põe no rodapé
+  *«A série de preços é do cardtrader, desde 2026-09-25 — 9 dias. Ainda não
+  chega para comparar com há um mês … Não é uma avaria: é a régua a ser
+  nova.»*, e a frase **calcula-se** (não se escreve com uma data à mão), por
+  isso desaparece sozinha quando a série fizer 30 dias.
+- **AS LEGENDAS DE PREÇO DEIXARAM DE TER NOMES DE LOJA ESCRITOS À MÃO.** Eram
+  **28** ocorrências visíveis de «Cardmarket» (inventário em
+  `_revisao/ver_visivel.py`: o texto visível das 11 páginas, sem `<script>`,
+  mais os `data/paginas/**.json` e o código vivo do `deckboxes.js`); ficaram
+  **3**. Onde havia um nome escrito, passou a sair da **cadeia em vigor** — se
+  ele voltar a ligar o Cardmarket, as páginas dizem-no sozinhas: o **Início**
+  (que ainda por cima contava a `price_latest` INTEIRA, 86 818 impressões de
+  fontes que não alimentam número nenhum — passou a contar só as da cadeia), a
+  **Galeria**, os **Binders**, a **Cobertura**, a **Reserved List** e a
+  **Feira**. Os botões *«copiar p/ Cardmarket»* / *«copiar lista Cardmarket»*
+  ficaram **«copiar lista»**: o formato não mudou (`N Nome`, com `// Sideboard`
+  e `// Basicas`) — o que saiu foi o nome da loja.
+- **DUAS EXCEPÇÕES DELIBERADAS, e as duas têm caso de teste** (é o padrão da
+  maçaneta do `venda.mostrar`):
+  1. **A escala do estado** (MT · NM · EX · GD · LP · PL · PO) continua a dizer
+     que é a do Cardmarket, na Arrumação. **Não é um preço**: é o vocabulário
+     com que se diz o ESTADO de uma carta, transcrito à letra de
+     `help.cardmarket.com/en/CardCondition` para o `data/estado-criterio.md` —
+     que é o ficheiro que o passo que avalia LÊ. Tirar-lhe o nome era deixar a
+     página sem poder dizer de onde vem a régua. A frase foi reescrita para
+     separar as duas coisas (*"a escala … transcrita da fonte; os factores de
+     preço por escalão são medidos nas ofertas do CardTrader"*) e saiu-lhe o
+     *«porque é lá que vendes»*.
+  2. **A saída de stock da venda** — o CSV leva o `idProduct` do Cardmarket e o
+     formato aprende-se de `data/cardmarket-stock-exemplo.csv`. Chamar-lhe
+     CardTrader era inventar uma integração que não existe. Está atrás do
+     `venda.mostrar` (hoje `false`) e da trava de 12/10, **por isso não se vê**
+     — são as 3 ocorrências que restam no `deckboxes.js`, e o teste chumba se
+     aparecer uma quarta que não seja dali.
+- **A RECOLHA DO CARDMARKET NÃO SE DESLIGOU**, e isso é uma decisão. É grátis,
+  não se vê, e é o único histórico longo que existe. Há caso de teste a exigir
+  que o `load_cardmarket_file` e o passo do `daily` continuem de pé: quem os
+  apagar por limpeza tem de decidir em vez de descobrir daqui a um mês que não
+  há com que comparar. Voltar atrás é uma linha:
+  `py -m mtgvault.cli precos fonte cardtrader --recurso cardmarket`.
+- **O `--recurso` VAZIO já funcionava** (`nargs="*"`), e `gravar_fonte` carimba
+  a régua na mesma — tem caso próprio, mais o de que repetir é um **no-op** (não
+  se reinicia a janela da RL por um clique sem efeito). O que se acrescentou foi
+  a prova: o par `recurso_ignorado` do `_chumba` mostra que um
+  `if recurso:` em vez de `if recurso is not None:` deixava a cadeia como estava.
+- **O campo do vendor da Feira passou de `cardmarket` a `loja`** (é o utilizador
+  do VENDOR na loja dele, não a fonte de preço do vault), e **a forma antiga
+  continua a ler-se** no config e no endpoint — uma página aberta ontem no
+  telemóvel ainda manda o nome velho. O `--cardmarket` do CLI ficou como alias.
+  O `feira.texto_cardmarket` passou a `texto_lista`.
+- **OS LINKS «VER NO CARDMARKET» NÃO EXISTIAM, e por isso não se converteu
+  nada.** Verificado por varrimento de todos os `.py`/`.js` e do HTML gerado:
+  **zero** `href` para o cardmarket.com em todo o site; o `cardmarket_id` só se
+  usa na ponte do price guide e na coluna `idProduct` do CSV de stock. Não se
+  inventaram nove superfícies de links novas. O que ficou apurado, para o dia em
+  que ele os queira: o `cardtrader_map` tem **33 833** linhas
+  (`scryfall_id → blueprint_id`, de hoje) e
+  `https://www.cardtrader.com/en/cards/<blueprint_id>` **responde 200** (sondado
+  a 04/10: redirige para `/en-EU/cards/21889-forest-383-tenth-edition`) — mas o
+  URL de PESQUISA por nome que parecia óbvio,
+  `https://www.cardtrader.com/en/magic/cards?name=…`, dá **404**, e não se
+  escreveu um recurso a adivinhar outro formato.
+- **UMA ARMADILHA QUE ISTO REPETIU, para não a repetir outra vez:** o
+  `_chumba_so_cardtrader.py` escrevia o `colecao_config.json` de volta com
+  `json.dumps` e o ficheiro ficou **numa linha só** — 1 inserção, 657 remoções.
+  O conteúdo estava certo e a forma morreu: é o commit `ac1f776` outra vez,
+  disparado pela ferramenta que devia ser inofensiva. Hoje guarda e repõe o
+  **TEXTO** (byte a byte) e escreve a versão alterada com o `configio.escrever`.
+  O diff final do config são **4 inserções e 3 remoções**, e um round-trip pelo
+  `configio.escrever` devolve-o igual byte a byte.
+
 **«PARA JÁ TIRA O VENDER»: UM INTERRUPTOR, NÃO UMA AMPUTAÇÃO (André,
 2026-09-25, à letra).** *"para já tira o «vender»"*. O **«para já» é literal** —
 por isso não se apagou uma linha de código: é `colecao_config.json →
