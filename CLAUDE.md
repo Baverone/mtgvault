@@ -82,7 +82,23 @@ mtgvault/
                   numa lista. Ver «Uma casca só para o site inteiro»
   paginas.py      os ajudantes que as páginas partilham e NÃO são casca (cor,
                   tipo, posse total, faltas, euros em português) + os DADOS À
-                  PARTE. O `TEMA`/`META` reencaminham para o `site_shell`
+                  PARTE. O `TEMA`/`META` reencaminham para o `site_shell`.
+                  E, desde 2026-10-04 à noite, a `<img>` DE UMA CARTA NUM SÍTIO
+                  SÓ (`img_carta`/`IMG_W`/`IMG_H`): `loading=lazy`,
+                  `decoding=async` e o tamanho ESCRITO, para o ecrã não saltar.
+                  Estava à mão em quatro sítios e nenhum tinha o tamanho — 1 288
+                  imagens a mover o conteúdo por baixo do dedo dele
+  publicar.py     PUBLICAR O SITE SEM ESPERAR PELAS 03:30 (2026-10-04, à noite):
+                  gera as 13 páginas (`PAGINAS`, a MESMA lista do `git add` do
+                  `daily.yml`) para uma pasta de PROVA, compara com o disco
+                  IGNORANDO o `_gerado_em` (`normalizar`/`comparar`) e só escreve
+                  se mudou — sem isso o relógio sozinho dava um commit a cada
+                  meia hora, para sempre. **Não escreve na colecção**
+                  (`SO_LEITURA`: a Galeria é o único gerador que escrevia, o
+                  ponto do dia no `value_history`), porque o sossego da tarefa é
+                  o mtime do `vault.db` e ela envenenava-se a si própria. Quem
+                  commita e faz o push é a tarefa `ai-pc/tasks/mtgvault-publicar`
+                  (30 min). Ver «PUBLICAR SEM ESPERAR PELAS 03:30»
   decks_vista.py  A ABA DECKS (2026-10-04): formato → deck → cartas. O REGISTO
                   (as caixas dele + os arquétipos meta pelo NOME DA FONTE), a
                   regra `cartas_partilhadas` (`rotativas` = MÁXIMO vs
@@ -2828,6 +2844,150 @@ Backup em `data/backups/vault-2026-10-04-listas-de-eventos.db` (99,5 MB,
   intacta e NÃO marcada — é a única leitura que dá os **10 decks** que ele mediu,
   e é interpretação minha; (f) as **staples** dão 55 contra os 50 dele, e os
   ficheiros dele não estão neste PC para reconciliar.
+
+**PUBLICAR SEM ESPERAR PELAS 03:30, E A BARRA PELOS QUATRO TRABALHOS (André,
+2026-10-04, à noite, à letra).** *"podes refazer novamente a seccao do MTG
+completamente com estas novas regras?"* e *"Organiza tudo de forma profissional
+e clara"*. Motor em **`mtgvault/publicar.py`** + a tarefa
+**`ai-pc/tasks/mtgvault-publicar`**; a barra em `site_shell.SECCOES`; os tokens
+em `site_shell.TEMA`; a `<img>` em `paginas.img_carta`. Testes em
+`tests/test_publicar.py` (8 casos) e `tests/test_tokens.py` (5), com a prova de
+que chumbam em `tests/_chumba_redesenho.py` (**14 de 14 pares**, um processo por
+par). Etiqueta de recuo: **`antes-redesenho-2026-10-04`**.
+
+- **O FURO QUE ISTO FECHA, e não era teórico: o site publicado podia estar um
+  DIA atrasado.** O `webapp.regenerar` reescreve as páginas em disco no instante
+  em que ele carrega num botão do modo edição — e **ninguém as commitava** até à
+  corrida das 03:30. A 04/10 havia `riftvault-publicar` e `baiakvault-publicar`
+  de 30 em 30 minutos e **nenhuma `mtgvault-publicar`**: é a avaria de
+  08/09/2026 no riftvault (*"129 alterações ficaram no PC o dia inteiro"*), que
+  lá foi fechada e **aqui nunca tinha sido**.
+  **Medido nesse dia, com a árvore LIMPA:** o `index.html`, o `deckboxes.html` e
+  o `metagame.html` em disco eram de **20:14** e o `colecao_config.json` de
+  **21:10** — a ordem anterior trocou a lista de sete caixas e regenerou **só** o
+  `decks.html`. O site publicado estava a dizer números diferentes em páginas
+  diferentes, e foi assim que isto se descobriu.
+- **O RELÓGIO SOZINHO NÃO É UM COMMIT.** `publicar.estado()` gera as 13 páginas
+  para uma pasta de PROVA e compara com o disco **sem o carimbo de geração**.
+  Medido (`_revisao/medir_estabilidade.py`): duas passagens seguidas sobre a
+  mesma base dão **todo o HTML byte a byte igual** e **7 índices diferentes — só
+  no `_gerado_em`**. Sem a normalização, a tarefa dava um commit e uma build do
+  Pages **a cada meia hora, para sempre**. Tem caso próprio e alvo no `_chumba`.
+- **PUBLICAR NÃO ESCREVE NA COLECÇÃO, e isto quase passou.** Dos treze
+  geradores, **um** escrevia: a Galeria grava o ponto do dia no `value_history`
+  (`INSERT OR REPLACE`, **8 272 bytes no `-wal`**, medido). Como o SOSSEGO da
+  tarefa é *«o `vault.db` foi escrito há menos de 10 min?»*, ela
+  **envenenava-se a si própria**: publicava uma vez e dizia «ele está a editar»
+  para sempre, sem uma única carta ter mudado. Hoje o `publicar` chama-a com
+  `historico=False` (`publicar.SO_LEITURA`) e o `daily` continua a gravar o
+  ponto — há caso de teste para **cada um dos dois lados**.
+  **A primeira medição disto deu «ninguém escreve» e era FALSA**: segurava uma
+  ligação aberta durante os treze builds, e em WAL a escrita só chega ao
+  ficheiro principal quando a última ligação fecha. O que denuncia a escrita é o
+  **`-wal` a crescer**.
+- **DUAS DIFERENÇAS FACE AO RIFTVAULT, e as duas são deliberadas:** (a) o
+  **`data/vault.db` NÃO se commita** — está no `.gitignore` desde 2026-08 e vive
+  no Release `data` (**99,5 MB** medidos; commitá-lo de 30 em 30 min era ~5 GB
+  por dia). O que faz o site mostrar as marcas dele são as PÁGINAS, e são essas
+  que vão; quem republica a base é o `mtgvault-daily`. (b) o **sossego não se
+  pendura no `git status`** (lá a base está no Git; aqui o status nunca a vê):
+  é o **mtime do `vault.db`**, e **nunca o do `-wal`**, que aparece e desaparece
+  ao ritmo do aquecedor do 8771 e está a zero bytes — a lição do
+  `webapp._versao()`. Medido: uma LEITURA não lhe toca no mtime.
+- **«OUTRO RAMO» NÃO É UMA AVARIA, É UM «AINDA NÃO».** A tarefa recusa publicar
+  de um ramo que não seja o `main` — mas com `exit 0` e estado próprio, não
+  vermelho: uma ordem do Claude deixa o repositório num ramo durante HORAS, e
+  com `falhar()` esta tarefa ficava vermelha de 30 em 30 minutos todo esse tempo
+  — e um vermelho que é normal deixa de se ler (é a distinção 503/500 do
+  `webapp`). O teste confirma **por fora** que o ramo é mesmo outro, senão era a
+  desculpa perfeita para nunca publicar.
+- **A BARRA PASSOU A SER OS QUATRO TRABALHOS DELE** (*"reagrupa pelo que ele
+  FAZ, nao pelo que o codigo tem"*): **Montar decks · Ver a colecção · Seguir o
+  metagame · Arrumar e vender**. Eram cinco secções nomeadas pelo que o código
+  tinha, e a de «Decks» juntava SETE itens, cinco deles a mesma página
+  (`deckboxes.html`) com âncoras diferentes — a fila de botões de 2026-09-24
+  outra vez, movida para dentro da barra. **Três coisas NÃO mudaram, e são
+  decisões:** o «Decks montados» e o «Decks para montar» FICAM (pedido dele à
+  letra, 2026-09-08 — encurtar um menu não é razão para tirar uma vista que ele
+  pediu pelo nome); a «Arrumação por fases» continua no topo, fora de secção (a
+  decisão de 01/10, e é o ecrã que ele abre todos os dias); e **nenhuma página
+  saiu do menu**, por isso o número de itens **não desce** — o que muda é
+  estarem agrupadas pela pergunta que respondem.
+  **Duas premissas da ordem precisavam de correcção:** o `meusdecks` e o
+  `decksfaziveis` **já não estavam no menu** (são reencaminhamentos desde a v6 e
+  2026-09-07), por isso «a aba nova ao lado das quatro antigas» eram duas, não
+  quatro; e **a casca partilhada já existia** desde 2026-09-24 — o que faltava
+  era o conjunto de tokens estar COMPLETO.
+- **OS TOKENS DE ESTADO, e porque é que o tecto não é zero.** Medidos a 04/10:
+  **297 valores de cor escritos à mão** em 9 ficheiros, **136 distintos** —
+  quatro cinzentos de painel quase iguais, três laranjas de aviso, dois azuis de
+  «está noutra caixa». Entraram no `TEMA` os trios de estado (`-soft` fundo,
+  `-line` borda, o nome sozinho é o texto) para `ok`/`info`/`warn`/`bad`, mais o
+  `--sunken`, e converteram-se **142 ocorrências (41 valores) em 14 tokens**,
+  por uma lista **explícita e conferida** — ficam **155**, com tecto no
+  `test_tokens`.
+  **A troca automática do resto foi MEDIDA e REJEITADA** (`_revisao/tokens_mapa.py`),
+  e os quatro modos de falhar ficam escritos porque qualquer um deles estragava
+  o site em silêncio: (a) `#000d`/`#0009`/`#000b` são hex com **ALFA** (sombras,
+  véus) e um token opaco tapava a página; (b) a **matiz de uma cor quase negra é
+  instável** — o `#0c0f14`, uma superfície neutra, classifica-se como azul e
+  arrastava 24 valores para um tom de «informação»; (c) o dominante de uma
+  família **redefinia tokens que já existem** (o `--line2` passava de `#2c3243`
+  a `#5a6472` e mudava todas as bordas do site); (d) a banda de «texto» vai do
+  `#fff` ao `#79c9c4` e o branco caía em `--ink2`.
+- **UM `var()` POR UM TOKEN QUE NÃO EXISTE NÃO DÁ ERRO, e havia um.** O
+  `test_tokens.caso_todo_o_var_usado_esta_definido` apanhou `color:var(--text)`
+  na **Arrumação** — um token que **nunca existiu**. A propriedade é ignorada em
+  silêncio e a cor vem do que estiver por trás: ou seja a linha que ele mandou
+  deixar ÓBVIA (*«e agora como destranco a venda?»*) estava a ser desenhada no
+  cinzento de nota de pé de página. Hoje é `--ink`.
+  **E o que o deixou passar foi uma lista escrita à mão**: o `GERADORES` do
+  `test_paginas` tinha **dez** nomes acrescentados a mão e faltavam-lhe a
+  `arrumacao.py` (01/10) e a `decks.py` (04/10) — exactamente o defeito que o
+  docstring desse caso descreve (*"por isso a Galeria escapou"*), repetido com
+  as duas páginas nascidas depois. Passou a ser **DERIVADO** do
+  `publicar.PAGINAS`, que é a lista que o site publica.
+- **1 288 IMAGENS DEIXARAM DE FAZER A PÁGINA SALTAR.** A `<img>` estava escrita
+  à mão em quatro sítios — `colecao_cor` (×2), `metagame` e `caixarl` — e as
+  quatro tinham o `loading="lazy"` e **nenhuma** tinha o tamanho: 743 imagens
+  nos Binders, 474 no Metagame e 71 na Caixa RL a mover o conteúdo por baixo do
+  dedo dele enquanto carregavam. Hoje saem do `paginas.img_carta`, com
+  `decoding="async"` e `width`/`height`. **Custa 30 KB em disco e ~2 KB na rede**
+  (medido: o `colecao_cor.html` vai a 239,8 KB em disco e **43,3 KB em gzip**,
+  5,5×, que é o que o telemóvel dele descarrega).
+- **O «2026-09-09» DO INÍCIO ESTAVA CERTO — o que estava errado era o sítio.**
+  A linha é *«Cartas dentro das caixas»* e sai de `MAX(copy_allocation.placed_at)`:
+  conferido na base, **260 linhas / 411 cópias, a última às 12:30 de 09/09**, e
+  desde então ele não arrumou mais nenhuma caixa. Não é um carimbo que deixou de
+  ser alimentado. O defeito era estar debaixo de *«Últimas atualizações dos
+  dados»*, ao lado de quatro linhas que o `daily` ALIMENTA — onde uma data velha
+  é uma avaria. Partiu-se em duas listas: **«O que o vault vai buscar»** (preços,
+  decklists, arquétipos, decks vigiados) e **«O que confirmaste à mão»**, cada
+  uma com a sua frase a dizer o que uma data velha quer dizer ali.
+- **MEDIDO, com o servidor a correr e o JS a sério:** as **14 páginas a 200** e
+  os **259 ficheiros de dados a 200, zero erros**; a 1440 e a 390 px **nenhuma
+  página com scroll horizontal**; nenhuma página acima dos **250 KB** de casca
+  (a maior é 239,8 KB em disco / 44,9 KB em gzip). A aba Decks percorrida de
+  ponta a ponta — **8 formatos, 96 partes, 96/96 a 200** —, com o `+` a escrever
+  na `posse_marcada`, a marca a **sobreviver ao recarregamento** (está na base,
+  não no browser), um retry do mesmo `request_id` a **não contar a dobrar** e o
+  `−` a travar no zero. **Dois pedidos passam dos 2 s do orçamento e são
+  anteriores a esta ordem**: o `deckboxes.json` a frio (4,4 s) e o
+  `arrumacao.json` (1,1 s) — é o `webapp` a CALCULAR, abaixo do tecto de 25 s do
+  `ESPERA_DADOS` e pago pelo aquecedor antes de ele abrir a página.
+- **POR FAZER, e é o que vale a pena ler primeiro:** (a) o **modo claro** não se
+  fez — o site é escuro e ele usa-o no escuro; os tokens já estão num sítio, por
+  isso é um segundo `:root` e não uma reescrita, mas é uma ordem própria com
+  capturas dos dois lados; (b) as **155 cores** que ficam, pelas quatro razões
+  acima; (c) a **fusão do `deckboxes.html` na aba Decks** não se fez e **é uma
+  decisão**: são 6 621 linhas com oito sub-vistas e todos os botões do modo
+  edição, e fundi-las na véspera do RC de Ghent era arriscar o ecrã que ele usa
+  todos os dias — as duas respondem a perguntas diferentes (o deck vs. a
+  logística da caixa) e hoje dizem-no; (d) o Release `data` só é republicado
+  pelo `mtgvault-daily` das 03:30, por isso um `workflow_dispatch` manual do
+  `daily.yml` entre uma edição dele e as 03:30 regeneraria as páginas a partir
+  de uma base sem as marcas desse dia — hoje é manual e não tem horário, mas
+  está dito.
 
 **AS FOTOS FORAM APAGADAS E A CAMPANHA ESTÁ DESLIGADA (André, 2026-10-04, à
 letra).** *"podes apagar todas as fotos, A MINHA RESPONSABILIDADE, se for para
