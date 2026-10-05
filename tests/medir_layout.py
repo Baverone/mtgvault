@@ -32,15 +32,18 @@ CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 NODE = shutil.which("node") or r"C:\Program Files\nodejs\node.exe"
 PORTO, CDP = 8806, 9334
 VISTAS = {1440: "desktop", 390: "telemovel"}
-#: As TRÊS últimas entraram a 2026-10-04 ao fim do dia, e faltavam: a lista era a
-#: de 2026-09-24 e as páginas nascidas depois (a Arrumação e os Comandantes, de
-#: 01/10) ou nesse dia (a aba Decks) nunca tinham sido medidas a 390 px — que é a
-#: largura em que ele as usa. A `decks.html` é precisamente a que ele abre no
-#: telemóvel à frente da estante para sleevar.
-PAGINAS = ["index.html", "deckboxes.html", "metagame.html", "showcase.html",
-           "colecao_cor.html", "caixarl.html", "cobertura.html",
-           "reservedlist.html", "colecao.html",
-           "decks.html", "arrumacao.html", "comandantes.html"]
+#: **DERIVADA do `publicar.PAGINAS`** desde 2026-10-05. Era uma lista à mão, e a
+#: 2026-10-04 já tinha sido preciso acrescentar-lhe TRÊS páginas que nunca tinham
+#: sido medidas a 390 px — a Arrumação e os Comandantes (01/10) e a aba Decks. A
+#: `faltas.html` de 05/10 ia ficar fora pela mesma razão, e é a página que ele vai
+#: abrir num PAVILHÃO: medi-la a 390 px é o ponto todo dela. O `meusdecks.html` é
+#: um reencaminhamento e não tem layout para medir.
+import sys as _sys                                             # noqa: E402
+
+_sys.path.insert(0, str(AQUI.parent))
+from mtgvault import publicar as _pub                          # noqa: E402
+
+PAGINAS = [f for _m, f, _r in _pub.PAGINAS if _m != "meusdecks"]
 
 
 class Silencioso(http.server.SimpleHTTPRequestHandler):

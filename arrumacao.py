@@ -175,8 +175,19 @@ _CSS = """
     mais era esconder informação; o `overflow-x` no contentor deixa a tabela
     inteira à mão de um arrasto e mantém o resto da página quieto. */
  .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
+ /* A MINIATURA da carta nas duas listas da Fase 3 (2026-10-05). Largura fixa e
+    `aspect-ratio` no `.ca`: a linha não muda de altura quando a imagem chega. */
+ table.cd td.mini{width:40px;padding:6px 0 6px 8px}
+ table.cd td.mini .ca{width:40px}
  @media (max-width:640px){
-   table.cd th:nth-child(3),table.cd td:nth-child(3){display:none}
+   /* O `table.cd th:nth-child(3){display:none}` que aqui estava SAIU a
+      2026-10-05, e não por causa da coluna nova: escondia, no telemóvel, a
+      coluna «Porque está protegida» da lista de NÃO VENDER — que é a razão de
+      ser dessa tabela (*"sem motivo não há exclusão silenciosa"*). Contradizia
+      a própria decisão de 04/10 escrita acima — *"esconder colunas a mais era
+      esconder informação; o `overflow-x` no contentor deixa a tabela inteira à
+      mão de um arrasto"* —, e ficou cá por ser uma regra cega sobre TODAS as
+      `.cd`. Hoje quem trata da largura é o `.tw`, e está medido. */
    .deck{padding:12px}
  }
 """
@@ -271,6 +282,7 @@ _RODAPE = (
 
 _JS = r"""
 %JS_DADOS%
+%JS_IMAGENS%
 let D = null, ABA = 'f1';
 const PARTES = {};
 /* As listas de cartas das reservas (a parte `reservas`), e quais os
@@ -926,19 +938,47 @@ function moxHTML(m) {
         + `</p>` : '')
     + fatia('Protegidas só por listas de Legacy', m.so_legacy)
     + fatia('Protegidas só por listas de Modern', m.so_modern)
-    + fatia('Protegidas pelos dois formatos', m.ambos);
+    + fatia('Protegidas pelos dois formatos', m.ambos)
+    /* A CURVA DO LIMIAR estava a ser CALCULADA e deitada fora (2026-10-05): o
+       `curva` era composto acima e nunca entrava no `return`. O relatório dessa
+       ordem diz *"a página mostra a curva com os dois números"* e a página não a
+       mostrava — e é a decisão que ele tem para tomar (1 cumpre a letra do que
+       pediu; 2 liberta cópias para venda). Vai no FIM, depois das fatias: é uma
+       decisão, não um número do dia. */
+    + curva;
 }
 
+/* AS DUAS LISTAS COM A CARTA À VISTA (André, 2026-10-05: *"com imagem das cartas
+   para eu me organizar"*). Cada lista tem o SEU orçamento de imagens
+   (`contaArtes`): são 574 linhas de «não vender» e 271 de «seguro vender», e
+   pedir 845 imagens de uma vez era o que esta página passou o mês a evitar. O
+   resto entra ao rolar, pelo `observaArtes`. */
 function fase3(p) {
-  const c = p.candidatos;
+  /* A PARTE **É** O CANDIDATOS, e não um objecto com uma chave `candidatos`
+     dentro. Isto esteve `p.candidatos` desde o dia em que a página nasceu
+     (39d83d7, 2026-10-01) e por isso a FASE 3 — a lista VENDER e a lista
+     Protegidas, as duas que ele mandou pôr com imagem — **nunca desenhou nada**:
+     `c.linhas` rebentava, o `catch` do `render` chamava o `erroDados` e o que ele
+     via naquele separador era *«não consegui carregar os dados desta secção»*.
+     O `dados()` sempre escreveu `partes["candidatos"] = _magra(...)` — a lista
+     directa — e nenhum teste lia o HTML desta aba: a página respondia 200, os
+     ficheiros de dados respondiam 200, e o separador estava vazio. É o padrão do
+     `event_tier` do lado do browser. O bloco do Mox Opal de 2026-10-05 entrou
+     para dentro desta função e também nunca apareceu.
+     Apanhado a 2026-10-05 a contar as imagens com o `tests/avaliar_js.js`; tem
+     caso próprio (`test_faltas_imagens.caso_a_fase_3_desenha_as_duas_listas`). */
+  const c = p;
+  const imgSV = contaArtes(), imgNV = contaArtes();
   const linhas = c.linhas.map(l =>
-    `<tr><td>${escDados(l.nm)}${l.rl ? ' <span class="prot">RL</span>' : ''}</td>`
+    `<tr><td class="mini">${arteHTML(l.sid, l.nm, imgSV())}</td>`
+    + `<td>${escDados(l.nm)}${l.rl ? ' <span class="prot">RL</span>' : ''}</td>`
     + `<td class="mot">${escDados(l.set)} ${escDados((l.lang || '').toUpperCase())}`
     + `${l.foil ? ' ✨' : ''} · ${escDados(l.cond || '')}</td>`
     + `<td class="mot">${escDados(l.local || '')}</td>`
     + `<td class="v">${l.q}</td><td class="v">${eur(l.total)}</td></tr>`).join('');
   const prot = c.protegidas.map(l =>
-    `<tr><td>${escDados(l.nm)}</td>`
+    `<tr><td class="mini">${arteHTML(l.sid, l.nm, imgNV())}</td>`
+    + `<td>${escDados(l.nm)}</td>`
     + `<td class="mot">${escDados(l.set)} ${escDados((l.lang || '').toUpperCase())}`
     + `${l.foil ? ' ✨' : ''}</td>`
     + `<td class="mot">${escDados(l.motivo)}</td>`
@@ -959,17 +999,17 @@ function fase3(p) {
     + `e a saída continua congelada.</p>`
     + `<div class="chips"><span class="chip gold"><b>${eur(c.valor)}</b> em VENDER`
     + `</span>${porp}</div>`
-    + `<div class="tw"><table class="cd"><thead><tr><th>Carta</th><th>Versão</th><th>Onde está`
-    + `</th><th class="v">Cóp.</th><th class="v">Valor</th></tr></thead>`
-    + `<tbody>${linhas || '<tr><td colspan=5 class="vazio">Nada candidato.</td></tr>'}`
+    + `<div class="tw"><table class="cd"><thead><tr><th></th><th>Carta</th><th>Versão</th>`
+    + `<th>Onde está</th><th class="v">Cóp.</th><th class="v">Valor</th></tr></thead>`
+    + `<tbody>${linhas || '<tr><td colspan=6 class="vazio">Nada candidato.</td></tr>'}`
     + `</tbody></table></div>`
     + `<h2>Protegidas <span class="n">${c.protegidas_copias} cópias · `
     + `${eur(c.protegidas_valor)}</span></h2>`
     + `<p class="sub">Cada linha diz <b>qual</b> das regras a apanhou e `
     + `<b>porquê</b>. Sem motivo não há exclusão silenciosa.</p>`
-    + `<div class="tw"><table class="cd"><thead><tr><th>Carta</th><th>Versão</th><th>Porque está `
-    + `protegida</th><th class="v">Cóp.</th><th class="v">Valor</th></tr></thead>`
-    + `<tbody>${prot}</tbody></table></div>`;
+    + `<div class="tw"><table class="cd"><thead><tr><th></th><th>Carta</th><th>Versão</th>`
+    + `<th>Porque está protegida</th><th class="v">Cóp.</th><th class="v">Valor</th>`
+    + `</tr></thead><tbody>${prot}</tbody></table></div>`;
 }
 
 /* ---------------------------------------------------------------- render */
@@ -1008,6 +1048,10 @@ async function render() {
       else v.innerHTML = inventario(await parte('inventario'));
     }
   } catch (e) { erroDados(v, e); return; }
+  // As molduras que nasceram vazias (acima do lote de imagens) passam a pedir a
+  // arte quando se aproximam do ecrã. Vive no `paginas.JS_IMAGENS`, partilhado
+  // com a lista de faltas: duas cópias discordavam no dia em que uma mudasse.
+  observaArtes(v);
   try { history.replaceState(null, '', '#' + ABA); } catch (e) { /* file:// */ }
 }
 function ligar() {
@@ -1094,7 +1138,7 @@ def _tmpl() -> str:
     titulo = shell.titulo_de(PAGINA) or TITULO
     return (
         "<!doctype html><html lang=pt><head>"
-        + shell.head(titulo, _CSS + paginas.CSS_DADOS)
+        + shell.head(titulo, _CSS + paginas.CSS_DADOS + paginas.CSS_IMAGENS)
         + "</head><body>"
         + shell.abrir(PAGINA, titulo, _LEAD)
         + '<div class="trava" id="trava" hidden></div>'
@@ -1106,11 +1150,17 @@ def _tmpl() -> str:
 
 
 # Os campos que a TABELA da Fase 3 mostra, e só esses. A linha de candidato traz
-# o `set_name`, o `sid`, a fonte e a origem do preço e a caixa — nada disso se
+# também o `set_name`, a fonte e a origem do preço e a caixa — nada disso se
 # desenha, e com eles a parte saía em 293 KB para uma página que é para abrir no
 # telemóvel. É a disciplina dos dados à parte de 2026-09-15.
+#
+# O `sid` ENTROU a 2026-10-05 (*"com imagem das cartas para eu me organizar"*): é
+# a impressão EXACTA da cópia, e é dela que sai a arte. Custa ~38 KB nas 845
+# linhas das duas listas — medido —, e é o preço de ele poder reconhecer a carta
+# sem ler o nome. As imagens é que não vêm todas: o primeiro ecrã de cada lista
+# pede `paginas.IMG_LOTE` e as outras entram ao rolar.
 _CAMPOS_TABELA = ("nm", "set", "lang", "foil", "cond", "local", "q", "total",
-                  "rl", "proteccao", "motivo")
+                  "rl", "proteccao", "motivo", "sid")
 
 
 def _magra(c: dict) -> dict:
@@ -1334,15 +1384,26 @@ def casca() -> str:
     `loadout.report` inteiro demorava segundos, e a sonda da `mtgvault-serve`
     fazia-o de 5 em 5 minutos.
     """
-    return _tmpl().replace("%JS%", _JS.replace("%JS_DADOS%", paginas.JS_DADOS))
+    return _tmpl().replace("%JS%", _js())
+
+
+def _js() -> str:
+    """O JavaScript da página, com as peças partilhadas já metidas.
+
+    Era a MESMA substituição escrita em três sítios (`casca`, `build`,
+    `html_page`), e a peça das imagens de 2026-10-05 ia ser a segunda a entrar nos
+    três — a primeira que se esquecesse dava uma página que desenha molduras
+    vazias e nunca lhes põe a arte, sem um único erro.
+    """
+    return (_JS.replace("%JS_DADOS%", paginas.JS_DADOS)
+            .replace("%JS_IMAGENS%", paginas.js_imagens()))
 
 
 def build(con, out_path=None, rep=None):
     out = Path(out_path) if out_path else (ROOT / PAGINA)
     idx, partes = dados(con, rep)
     paginas.escrever_dados(out, "arrumacao", idx, partes)
-    js = _JS.replace("%JS_DADOS%", paginas.JS_DADOS)
-    out.write_text(_tmpl().replace("%JS%", js), encoding="utf-8")
+    out.write_text(_tmpl().replace("%JS%", _js()), encoding="utf-8")
     return out
 
 
@@ -1351,9 +1412,8 @@ def html_page(con, rep=None, editavel: bool = False) -> str:
     solto (a mesma saída do `deckboxes.html_page`)."""
     idx, partes = dados(con, rep, editavel)
     idx = dict(idx, partes=partes)
-    js = (_JS.replace("%JS_DADOS%", paginas.JS_DADOS)
-          .replace("D = await carregaDados('arrumacao.json')",
-                   "D = " + json.dumps(idx, ensure_ascii=False)))
+    js = _js().replace("D = await carregaDados('arrumacao.json')",
+                       "D = " + json.dumps(idx, ensure_ascii=False))
     return _tmpl().replace("%JS%", js)
 
 

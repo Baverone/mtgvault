@@ -68,6 +68,11 @@ PAGINAS: list[tuple[str, str, bool]] = [
     ("decks", "decks.html", False),
     ("deckboxes", "deckboxes.html", True),
     ("arrumacao", "arrumacao.html", True),
+    # A LISTA DE FALTAS (2026-10-05): *"preciso tambem da lista de faltas desses
+    # decks para poder procurar em Ghent"*. Leva o `rep` pela razão das outras
+    # três: as faltas são o `comprar` da alocação, e um segundo relatório dava um
+    # número diferente do que a aba Comprar mostra.
+    ("faltas", "faltas.html", True),
     ("meusdecks", "meusdecks.html", False),
     ("caixarl", "caixarl.html", False),
     ("showcase", "showcase.html", False),

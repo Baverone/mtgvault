@@ -35,11 +35,19 @@ sys.path.insert(0, str(RAIZ))
 from mtgvault import paginas  # noqa: E402
 from mtgvault import site_shell as shell  # noqa: E402
 
-# As páginas que geram HTML e têm CSS próprio.
-GERADORES = ["inicio.py", "decks.py", "deckboxes.py", "arrumacao.py",
-             "comandantes.py", "colecao_cor.py", "collection_gallery.py",
-             "caixarl.py", "reservedlist.py", "meta_coverage.py",
-             "metagame.py", "showcase.py", "mtgvault/paginas.py"]
+from mtgvault import publicar  # noqa: E402
+
+# As páginas que geram HTML e têm CSS próprio. **DERIVADA do `publicar.PAGINAS`**
+# desde 2026-10-05, e não escrita à mão: era uma lista de doze nomes e a
+# `faltas.py` nasceu fora dela — exactamente o defeito que o
+# `test_paginas.GERADORES` corrigiu a 2026-10-04 (*"faltavam-lhe a `arrumacao.py`
+# e a `decks.py`, e por isso um `color:var(--text)` — um token que NUNCA existiu —
+# viveu na Arrumação sem ninguém dar por ele"*). Repetido numa segunda lista, o
+# mesmo defeito voltava na primeira página nova.
+# O `meusdecks` é só um reencaminhamento (não tem CSS); o `paginas.py` entra à
+# mão porque é a casca partilhada e não uma página.
+GERADORES = [f"{mod}.py" for mod, _f, _r in publicar.PAGINAS
+             if mod != "meusdecks"] + ["mtgvault/paginas.py"]
 
 RX_COR = re.compile(r"#[0-9a-fA-F]{3,8}\b")
 RX_VAR = re.compile(r"var\(\s*(--[a-z0-9-]+)\s*\)")

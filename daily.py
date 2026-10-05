@@ -32,6 +32,7 @@ from mtgvault import (analysis, consenso, db, fases, loadout, mtgtop8,  # noqa: 
                       watchlist)
 
 import arrumacao  # noqa: E402  (gera arrumacao.html — as fases e as quatro protecções)
+import faltas  # noqa: E402  (gera faltas.html — o que comprar, por deck, para Ghent)
 import comandantes  # noqa: E402  (gera comandantes.html — consenso por COMANDANTE, Duel Commander)
 import core_decks  # noqa: E402  (gera coredecks.html + tracking de alteracoes)
 import collection_gallery  # noqa: E402  (gera colecao.html — galeria com imagens)
@@ -661,6 +662,22 @@ def main():
         _step(con, "arrumacao",
               lambda: str(arrumacao.build(con, ROOT / "arrumacao.html",
                                           rep=_rep.get("v"))))
+
+        # A LISTA DE FALTAS (André, 2026-10-05): o que comprar, por deck, com o
+        # subtotal de cada um — para ele procurar nas bancas do RC Ghent. Corre
+        # com o MESMO `loadout.report` das três de cima, pela razão de sempre:
+        # as faltas são o `comprar` da alocação, e um segundo relatório punha
+        # esta página a discordar da aba Comprar.
+        def _faltas():
+            p = faltas.build(con, ROOT / "faltas.html", rep=_rep.get("v"))
+            idx, _ = faltas.dados(con, _rep.get("v"))
+            t = idx["totais"]
+            return (f"{p.name}: {t['decks']} decks, {t['cartas']} cartas, "
+                    f"{t['copias']} cópias, {t['valor']:.2f} EUR"
+                    + (f", {t['avisos']} linhas com o preço fora da regra"
+                       if t["avisos"] else ""))
+
+        _step(con, "faltas", _faltas)
 
         # A ABA DECKS (André, 2026-10-04): formato -> deck -> cartas, com o `+`
         # e o `−` da posse. NÃO usa o `loadout.report` — esta página não

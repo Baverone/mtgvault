@@ -312,9 +312,22 @@ def caso_a_base_a_serio_nao_tem_uma_unica_referencia_a_foto():
     finally:
         con.close()
     assert n == 0, f"{n} cópias ainda referem uma foto"
-    # NADA SE APAGOU na base: a regra de 09/09 continua inteira para as cópias
-    assert total == 737, f"a `copies` tem {total} linhas, esperavam-se 737"
-    assert cartas == 1678, f"{cartas} cartas, esperavam-se 1 678"
+    # NADA SE APAGOU na base: a regra de 09/09 continua inteira para as cópias.
+    # «Nada se apagou» é um PISO e não uma igualdade — e isto era uma igualdade
+    # (`total == 737 and cartas == 1678`, o estado de 2026-10-04). A colecção é
+    # uma tabela VIVA: a 2026-10-05 tinha **800 linhas / 1 930 cartas** (ele
+    # continuou a meter cartas) e o caso ficou vermelho a dizer que faltavam
+    # linhas quando o que havia eram mais. Um teste que chumba por a colecção
+    # crescer deixa de se ler — e era o único vermelho a tapar os outros.
+    # O que se tranca é o que a frase quer dizer: **nunca menos** do que o que
+    # havia no dia em que as fotos se apagaram.
+    PISO_LINHAS, PISO_CARTAS = 737, 1678
+    assert total >= PISO_LINHAS, (
+        f"a `copies` tem {total} linhas e no dia em que as fotos se apagaram "
+        f"(2026-10-04) tinha {PISO_LINHAS}: alguma coisa se apagou")
+    assert cartas >= PISO_CARTAS, (
+        f"{cartas} cartas contra as {PISO_CARTAS} de 2026-10-04: "
+        f"alguma coisa se apagou")
 
 
 def caso_a_pasta_do_arquivo_ficou_vazia_mas_existe():

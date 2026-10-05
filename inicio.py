@@ -335,9 +335,16 @@ def build(con, out_path=None, rep=None):
     # Seis atalhos, e a grelha é 3×2 (2.ª passagem, 2026-09-24). Sem a venda
     # ficam cinco — e é a Feira que passa a fechar a linha, para a grelha não
     # ficar com um buraco.
+    # A LISTA DE FALTAS (2026-10-05) entra como SÉTIMO atalho, ao lado do
+    # «Comprar»: são a mesma pergunta vista de dois sítios (ali por caixa, aqui a
+    # lista inteira com o subtotal de cada deck, para o telemóvel num pavilhão).
+    # Não desfaz a grelha: a dos ATALHOS é `auto-fit` com mínimo de 168 px — o
+    # 3×2 de 2026-09-24 é o dos CARTÕES, que têm mínimo de 262 px.
     _atalhos = [("deckboxes.html#plano", "plano", "Plano", "por onde começar"),
                 ("deckboxes.html#comprar", "comprar", "Comprar",
-                 "a wantlist de todas")]
+                 "a wantlist de todas"),
+                ("faltas.html", "procurar", "Faltas",
+                 "para procurar nas bancas")]
     if mostra_venda:
         _atalhos.append(("deckboxes.html#vender", "vender", "Vender",
                          "o excedente, a confirmar"))

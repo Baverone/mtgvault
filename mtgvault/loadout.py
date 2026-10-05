@@ -540,6 +540,136 @@ def impressao_mais_barata(con, name: str, finish: str = "nonfoil",
     return sid
 
 
+# ---------------------------------------------------------------------------
+# O PREÇO DE UMA FALTA É DE UMA IMPRESSÃO QUE A CAIXA PODE NÃO ACEITAR
+# (André, 2026-10-05: *"quando o preco mostrado nao e da lingua ou do acabamento
+# que a regra pede, a PAGINA TEM DE O DIZER NA LINHA"*).
+#
+# O `card_price` é um MÍNIMO ENTRE IMPRESSÕES do mesmo nome, e **não filtra pela
+# regra da caixa**: nem pela edição, nem pela língua. Para o SPML isso é
+# inofensivo (não há limite de edição); para o **Premodern**, que é *"apenas
+# português, non-foil, nas edições indicadas"*, é um número que ele não pode
+# praticar. Medido na base a 2026-10-05, nas 74 faltas distintas das seis caixas
+# de Premodern: **43** mostram o preço de uma reimpressão POSTERIOR ao Scourge, e
+# sempre **mais barata** do que a impressão legal — a Polluted Delta mostra
+# 26,41 € (MH3, 2024) e a mais barata que serve são **156,84 €** (ONS). Somadas,
+# as faltas de Premodern passam de 8 080 € para 13 071 €: o *fechar tudo* dessas
+# caixas estava **5 000 € abaixo** do que ele vai pagar em Ghent.
+#
+# E A LÍNGUA NÃO SE PODE VERIFICAR, o que é pior do que estar errada: a
+# `price_latest` **não tem coluna de língua** (a chave é `(scryfall_id, source,
+# finish)`) e o catálogo é o bulk `default_cards` — 110 148 impressões `en`
+# contra **3** `pt` em 112 758. Logo o vault não sabe, nem pode saber daqui, se
+# uma carta existe em português. O que o preço do CardTrader é, de verdade, é a
+# mediana das ofertas em `precos.linguas` (hoje {pt, en}) daquela impressão — ou
+# seja, **pode ser uma oferta inglesa**. Não se inventa: diz-se.
+#
+# Por isso a resposta vive AQUI, ao lado do defeito, e não em cada página: são
+# duas superfícies a fazer a mesma pergunta (a lista de faltas e a aba Comprar),
+# e a segunda a respondê-la por si discordava um dia em silêncio.
+# ---------------------------------------------------------------------------
+#: Os motivos por que o preço de uma falta não é o do material pedido.
+PRECO_FORA_EDICAO = "edicao"
+PRECO_SEM_LINGUA = "lingua"
+
+
+def mais_barata_que_serve(con, s: dict, nm: str, finish: str = "nonfoil",
+                          cache: dict | None = None) -> dict:
+    """A impressão mais barata COM PREÇO que ESTA caixa aceita.
+
+    É o `card_price` com os filtros da caixa postos: a data-limite das edições
+    (`edicao_limite`) e os acabamentos (`finishes_aceites`). A LÍNGUA não entra —
+    não há como: ver o bloco acima. Devolve `{unit, set, sid, n_servem}`, com
+    `unit=None` quando nenhuma impressão que serve tem preço (hoje é um caso: o
+    Tormod's Crypt, cujas três impressões ≤SCG não estão cotadas).
+    """
+    ate = edicao_limite(s)
+    fins = finishes_aceites(s) or (
+        FOIL_FINISHES if finish in FOIL_FINISHES else ("nonfoil",))
+    chave = ("mbqs", nm, ate, fins, precos.fontes(), precos.modo())
+    if cache is not None and chave in cache:
+        return cache[chave]
+    expr = precos.sql_impressao(fontes_=precos.fontes())
+    onde = f"{_scry.sql_nome('c.name')} AND c.digital = 0"
+    par: list = [*fins, *_scry.params_nome(nm)]
+    if ate:
+        onde += " AND c.released_at <= ?"
+        par.append(ate)
+    row = con.execute(
+        f"""SELECT c.scryfall_id sid, c.set_code sc, {expr} p
+              FROM cards c JOIN {precos.sql_acabamentos(fins)} f
+             WHERE {onde} AND {expr} IS NOT NULL
+             ORDER BY p, c.released_at DESC LIMIT 1""", par).fetchone()
+    n = con.execute(f"SELECT COUNT(*) n FROM cards c WHERE {onde}",
+                    par[len(fins):]).fetchone()["n"]
+    out = {"unit": row["p"] if row else None,
+           "set": (row["sc"] or "").upper() if row else None,
+           "sid": row["sid"] if row else None, "n_servem": n}
+    if cache is not None:
+        cache[chave] = out
+    return out
+
+
+def preco_fora_da_regra(con, s: dict, nm: str, unit: float | None,
+                        price_finish: str | None,
+                        cache: dict | None = None) -> dict | None:
+    """`None` se o preço é do material pedido; senão o que está errado e quanto.
+
+    `{"motivos": [...], "set": "MH3", "ano": "2024", "pede": "PT · nonfoil · ≤SCG",
+      "legal_unit": 156.84, "legal_set": "ONS", "frase": "..."}`
+    """
+    if unit is None:                       # «sem preço» já se diz noutro sítio
+        return None
+    ate = edicao_limite(s)
+    lingua = (s.get("lingua") or "").lower()
+    motivos, sc, ano = [], None, None
+    sid = impressao_mais_barata(con, nm, price_finish or "nonfoil", cache=cache)
+    if sid:
+        r = con.execute("SELECT set_code sc, released_at ra FROM cards "
+                        "WHERE scryfall_id = ?", (sid,)).fetchone()
+        if r:
+            sc, ano = (r["sc"] or "").upper(), (r["ra"] or "")[:4]
+            if ate and (r["ra"] or "") > ate:
+                motivos.append(PRECO_FORA_EDICAO)
+    # A língua: pede-se uma e o preço não tem nenhuma. Vale para toda a caixa com
+    # regra de língua — o `en` também, porque uma oferta portuguesa pode ser a
+    # que fez o preço. O que muda é só o quanto isso importa, e isso lê-se no
+    # `legal_unit` ao lado.
+    if lingua:
+        motivos.append(PRECO_SEM_LINGUA)
+    if not motivos:
+        return None
+    # O euro escreve-se em português por UM formatador (`paginas.eur`, 2026-09-24)
+    # e o import é tardio de propósito: o `paginas` não importa o `loadout`, mas
+    # pô-lo no topo fechava esse caminho para sempre.
+    from . import paginas as _pag                             # noqa: PLC0415
+    legal = mais_barata_que_serve(con, s, nm, price_finish or "nonfoil", cache)
+    fs = []
+    if PRECO_FORA_EDICAO in motivos:
+        fs.append(f"o preço é de {sc} ({ano}), uma edição que esta caixa não aceita")
+    if PRECO_SEM_LINGUA in motivos:
+        fs.append(f"a caixa pede {lingua.upper()} e o preço não tem língua "
+                  f"(é a melhor oferta {' ou '.join(sorted(x.upper() for x in precos.linguas()))} "
+                  f"dessa impressão)")
+    if legal["unit"] is not None and PRECO_FORA_EDICAO in motivos:
+        fs.append(f"a mais barata que serve custa "
+                  f"{_pag.eur(legal['unit'])} ({legal['set']})")
+    elif legal["unit"] is None:
+        fs.append(f"nenhuma das {legal['n_servem']} impressões que servem está cotada")
+    # DOIS GRAUS, e a diferença é o que torna isto utilizável num pavilhão.
+    # «aviso» é um número DEMONSTRAVELMENTE errado e tenho o certo ao lado (a
+    # edição que a caixa recusa, ou nenhuma impressão que serve estar cotada);
+    # «nota» é o que não se pode verificar (a língua). Com um grau só, 173 das
+    # 186 linhas ficavam a piscar e ele deixava de olhar para as 43 que importam —
+    # é o mesmo princípio do 503-contra-500 do `webapp`: *«ainda não sei»* não é
+    # uma avaria. A regra dele cumpre-se nas duas: a linha di-lo sempre.
+    grave = PRECO_FORA_EDICAO in motivos or legal["unit"] is None
+    return {"motivos": motivos, "grau": "aviso" if grave else "nota",
+            "set": sc, "ano": ano, "pede": requisito_material(s),
+            "legal_unit": legal["unit"], "legal_set": legal["set"],
+            "n_servem": legal["n_servem"], "frase": "; ".join(fs)}
+
+
 def preco_da_copia(con, sid: str | None, finish: str, nome: str,
                    cache: dict | None = None, *, lot: dict | None = None) -> dict:
     """O PREÇO DE REFERÊNCIA de uma cópia: `{unit, price_finish, fonte, origem}`.
@@ -3068,6 +3198,14 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                 comprar = falta
                 if urg:
                     linha["urgencia"] = urg
+                # O PREÇO MOSTRADO É DO MATERIAL QUE A REGRA PEDE? (2026-10-05)
+                # A linha leva a resposta porque a linha é o que a página desenha
+                # — a lista de faltas e a aba Comprar lêem as duas daqui. Custa
+                # duas consultas por carta com restrição (hoje as 74 de
+                # Premodern) e zero nas outras: o `preco_fora_da_regra` sai cedo
+                # quando a caixa não tem limite de edição nem regra de língua.
+                linha["preco_aviso"] = preco_fora_da_regra(
+                    con, regra, nm, unit, pfin, foil_cache)
                 linha.update(missing=falta, comprar=comprar,
                              noutra={}, noutra_q=0,
                              noutra_montada={}, noutra_reservada={},

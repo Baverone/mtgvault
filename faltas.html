@@ -185,6 +185,11 @@
  .chip.ok{background:#0f2a1c;color:var(--add);border-color:#1e4a33}
  .chip.gold{background:var(--accent-soft);color:var(--accent);border-color:var(--accent-line)}
  .chip.info{background:var(--info-soft);color:var(--ob);border-color:#25406b}
+ /* 2026-10-05: o chip de AVISO. Vive aqui porque os chips são da casca — havia
+    `ok`, `gold` e `info`, e o quarto escrito na página era o quinto conjunto de
+    chips do site. Usa-o a lista de faltas para o segundo total (o preço da
+    impressão que a caixa aceita). */
+ .chip.warn{background:var(--warn-soft);color:var(--warn);border-color:var(--warn-line)}
  .vazio{color:var(--muted);font-size:13px;background:var(--card2);
    border:1px dashed var(--line2);border-radius:var(--r);padding:16px 18px}
  .vazio code{background:var(--bg);padding:1px 5px;border-radius:5px;font-size:12px}
@@ -404,9 +409,17 @@ function chipsHTML() {
   const t = {cartas: new Set(ls.map(l => l.nm)).size,
              copias: ls.reduce((s, l) => s + l.q, 0),
              valor: ls.reduce((s, l) => s + l.total, 0),
+             serve: ls.reduce((s, l) => s + l.total_serve, 0),
              sp: ls.reduce((s, l) => s + (l.unit == null ? l.q : 0), 0),
              av: ls.filter(l => l.aviso && l.aviso.grau === 'aviso').length};
+  /* OS DOIS TOTAIS LADO A LADO. O primeiro é o do motor (o mínimo entre
+     impressões); o segundo usa a impressão que cada caixa ACEITA, e é o que ele
+     vai pagar na banca. Com um só, o subtotal que decide onde ele vai caçar
+     estava abaixo do real — medido: 67 das 121 cartas de Premodern. */
   return `<span class="chip gold"><b>${eur(t.valor)}</b> a comprar</span>`
+    + (Math.round(t.serve * 100) !== Math.round(t.valor * 100)
+      ? `<span class="chip warn"><b>${eur(t.serve)}</b> com a impressão que serve`
+        + `</span>` : '')
     + `<span class="chip"><b>${t.cartas}</b> cartas · ${t.copias} cóp.</span>`
     + (t.sp ? `<span class="chip"><b>${t.sp}</b> cóp. sem preço</span>` : '')
     + (t.av ? `<span class="chip"><b>${t.av}</b> com o preço fora da regra</span>` : '');
@@ -454,7 +467,10 @@ function vistaHTML() {
         + `<span class="fmt">${escDados(d.formato)}</span>`
         + `<span class="tot">${eur(d.valor)}</span>`
         + `<p class="sub">${d.cartas} cartas · ${d.copias} cóp. · ${escDados(d.req)}`
-        + `${d.sem_preco ? ' · ' + d.sem_preco + ' sem preço' : ''}</p></div>`
+        + `${d.sem_preco ? ' · ' + d.sem_preco + ' sem preço' : ''}`
+        + (Math.round(d.valor_serve * 100) !== Math.round(d.valor * 100)
+          ? ` · <b>${eur(d.valor_serve)}</b> com a impressão que esta caixa aceita`
+          : '') + `</p></div>`
         + `<ul class="fl">${mine.map(l => linhaHTML(l, img(), false)).join('')}</ul>`
         + `</div>`;
     }

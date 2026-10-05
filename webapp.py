@@ -92,6 +92,7 @@ from mtgvault import padrao as padrao_mod  # noqa: E402
 import arrumacao  # noqa: E402
 import deckboxes  # noqa: E402
 import decks as decks_pag  # noqa: E402
+import faltas as faltas_pag  # noqa: E402
 import metagame  # noqa: E402
 
 PORT = 8771          # o 8770 é do riftvault — ver o cabeçalho
@@ -156,6 +157,9 @@ _DADOS_ARRUMACAO = re.compile(r"^/data/paginas/arrumacao(?:/([A-Za-z0-9_-]+))?\.
 # parte sai do `decks.parte_do_deck`, que troca o `:` do id por `-` exactamente
 # para caber neste `[A-Za-z0-9_-]+`.
 _DADOS_DECKS = re.compile(r"^/data/paginas/decks(?:/([A-Za-z0-9_-]+))?\.json$")
+# A LISTA DE FALTAS (2026-10-05): índice só, sem partes — a página ordena e filtra
+# do lado do browser e por isso precisa da lista inteira (ver `faltas.dados`).
+_DADOS_FALTAS = re.compile(r"^/data/paginas/faltas\.json$")
 # A versão reduzida da foto de cada deckbox (2026-09-21, `mtgvault.fotocaixa`).
 _FOTO_CAIXA = re.compile(r"^/assets/deckboxes/([A-Za-z0-9_-]+)\.jpg$")
 
@@ -1208,6 +1212,22 @@ def dados_arrumacao(editavel: bool) -> tuple[dict, dict]:
                     "os dados da Arrumação por fases")
 
 
+def dados_faltas() -> tuple[dict, dict]:
+    """`(indice, partes)` da LISTA DE FALTAS (2026-10-05), da cache.
+
+    Na MESMA cache das outras (`em_cache`/`_versao`), e com o MESMO
+    `relatorio()`: as faltas são o `comprar` da alocação, e um `+` na aba Decks ou
+    um «já a tenho» muda-as — a cache cai sozinha quando a base muda.
+
+    **Não leva `editavel`**: esta página não tem um único botão que grave. O que
+    muda de uma vista para a outra é só o token nos `fetch`, e isso é do pedido.
+    """
+    def calcular():
+        with db.session() as con:
+            return faltas_pag.dados(con, relatorio())
+    return em_cache(("faltas",), calcular, "os dados da lista de faltas")
+
+
 def dados_decks(editavel: bool) -> tuple[dict, dict]:
     """`(indice, partes)` da ABA DECKS (2026-10-04), da cache.
 
@@ -1276,6 +1296,11 @@ _AQUECER = [("deckboxes", lambda: dados_deckboxes(True, token())),
             # mais os 83 decks), e sem aquecedor era ele a pagá-los no primeiro
             # toque do dia. Com aquecedor sai em milissegundos.
             ("decks", lambda: dados_decks(True)),
+            # A LISTA DE FALTAS (2026-10-05): entra no aquecedor pela razão das
+            # outras. É barata depois do relatório (que já está quente por causa
+            # da Deckboxes), mas a frio paga-o — e quem a vai abrir está num
+            # pavilhão, com a rede do pavilhão, a olhar para um ecrã branco.
+            ("faltas", dados_faltas),
             ("metagame.html", lambda: pagina_editavel("/metagame.html", True))]
 
 
@@ -1450,6 +1475,12 @@ class Handler(BaseHTTPRequestHandler):
             self._envia(com_token(decks_pag.casca(),
                                   token() if self._pode_escrever() else ""))
             return
+        if caminho == "/faltas.html":
+            # A LISTA DE FALTAS (2026-10-05): a CASCA, estática e imediata. Os
+            # dados vêm por `fetch` de `/data/paginas/faltas.json`.
+            self._envia(com_token(faltas_pag.casca(),
+                                  token() if self._pode_escrever() else ""))
+            return
         modulo = PAGINAS_EDITAVEIS.get(caminho)
         if modulo is not None:
             # A página só leva o token DENTRO dela quando o pedido já o trazia —
@@ -1483,6 +1514,15 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 self._json({"erro": f"não há parte {parte!r} na Arrumação de "
                                     f"hoje — recarrega a página"}, 404)
+            return
+        if _DADOS_FALTAS.match(caminho):
+            # Os DADOS da LISTA DE FALTAS (2026-10-05). Índice só: a página
+            # ordena e filtra em memória, e um toque no filtro não pode ficar à
+            # espera de um `fetch` — ele vai usá-la num pavilhão.
+            idx, partes = dados_faltas()
+            self._json({**idx,
+                        "_gerado_em": datetime.now().isoformat(timespec="seconds"),
+                        "_partes": sorted(partes)})
             return
         md = _DADOS_DECKS.match(caminho)
         if md:

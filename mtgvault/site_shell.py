@@ -261,6 +261,13 @@ SECCOES: list[tuple[str, list[tuple[str, str, str, str, str]]]] = [
         ("deckboxes.html", "arrumar", "arrumar", "Arrumar cartas", ""),
         ("deckboxes.html", "revalidacao", "revalidacao", "Revalidação por foto", ""),
         ("deckboxes.html", "comprar", "comprar", "Comprar", ""),
+        # A LISTA DE FALTAS (André, 2026-10-05): *"preciso tambem da lista de
+        # faltas desses decks para poder procurar em Ghent"*. Fica ao lado do
+        # «Comprar» porque é a mesma pergunta vista de outro sítio — ali é o que
+        # cada CAIXA precisa, aqui é a lista inteira com o subtotal de cada deck,
+        # desenhada para ele usar de pé num pavilhão.
+        ("faltas.html", "", "procurar", "Faltas para procurar",
+         "o que comprar, por deck"),
         ("deckboxes.html", "encomendas", "encomendas", "Encomendas", ""),
         ("deckboxes.html", "vender", "vender", "Vender", ""),
         ("deckboxes.html", "feira", "feira", "Feira", ""),
@@ -567,6 +574,11 @@ CSS = r"""
  .chip.ok{background:#0f2a1c;color:var(--add);border-color:#1e4a33}
  .chip.gold{background:var(--accent-soft);color:var(--accent);border-color:var(--accent-line)}
  .chip.info{background:var(--info-soft);color:var(--ob);border-color:#25406b}
+ /* 2026-10-05: o chip de AVISO. Vive aqui porque os chips são da casca — havia
+    `ok`, `gold` e `info`, e o quarto escrito na página era o quinto conjunto de
+    chips do site. Usa-o a lista de faltas para o segundo total (o preço da
+    impressão que a caixa aceita). */
+ .chip.warn{background:var(--warn-soft);color:var(--warn);border-color:var(--warn-line)}
  .vazio{color:var(--muted);font-size:13px;background:var(--card2);
    border:1px dashed var(--line2);border-radius:var(--r);padding:16px 18px}
  .vazio code{background:var(--bg);padding:1px 5px;border-radius:5px;font-size:12px}

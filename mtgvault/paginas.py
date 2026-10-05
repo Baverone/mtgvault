@@ -396,6 +396,95 @@ CSS_DADOS = (
     " @keyframes gira{to{transform:rotate(360deg)}}"
 )
 
+# ---------------------------------------------------------------------------
+# A IMAGEM DE UMA CARTA NUMA LISTA DESENHADA POR JAVASCRIPT (2026-10-05)
+#
+# André: *"quero as coisas publicadas no mtgvault, com imagem das cartas para eu
+# me organizar"* — e não só na aba Decks: também na lista de NÃO VENDER, na de
+# SEGURO VENDER e na de FALTAS. São listas de **centenas** de linhas (845 na
+# Fase 3, 186 nas faltas), e pedir uma imagem por linha era mandar o telemóvel
+# dele descarregar 845 ficheiros de uma vez numa rede de pavilhão.
+#
+# Por isso o primeiro ecrã de cada lista pede no máximo `IMG_LOTE` imagens e as
+# outras entram ao rolar. **Não é só o `loading="lazy"`**: as linhas acima do lote
+# nascem com o lugar RESERVADO (o `aspect-ratio` do CSS) e SEM `<img>` nenhuma, e
+# um `IntersectionObserver` põe a imagem quando a moldura se aproxima. A
+# diferença importa por duas razões: o `lazy` é uma sugestão que cada browser
+# cumpre como quer (o Safari descarrega mais cedo), e um número que é nosso
+# consegue-se TRANCAR num teste — o do browser não.
+#
+# Vive aqui, e não em cada página, pela razão do `e_foil` e do `precos.sql()`:
+# são duas páginas a fazer o mesmo e a segunda a escrevê-lo esquecia-se de uma
+# das quatro coisas que fazem uma `<img>` comportar-se (é exactamente o que
+# aconteceu às 1 288 imagens desenhadas no servidor, em 2026-10-04).
+# ---------------------------------------------------------------------------
+#: Quantas imagens o primeiro ecrã de uma lista pede.
+IMG_LOTE = 40
+
+CSS_IMAGENS = (
+    " .ca{display:block;width:100%;aspect-ratio:.716;border-radius:6px;"
+    "overflow:hidden;background:var(--sunken);border:1px solid var(--line)}"
+    " .ca img{width:100%;height:100%;object-fit:cover;display:block}"
+)
+
+JS_IMAGENS = r"""
+const IMG_LOTE = %IMG_LOTE%;
+const ART = sid => `https://cards.scryfall.io/small/front/${sid[0]}/${sid[1]}/${sid}.jpg`;
+
+/* Um contador por VISTA: o primeiro ecrã de cada lista tem o seu lote. Devolve
+   `true` enquanto houver orçamento — é isso que o `arteHTML` recebe. */
+function contaArtes(limite) {
+  let n = 0;
+  const tecto = (limite == null ? IMG_LOTE : limite);
+  const f = () => (n++ < tecto);
+  f.pedidas = () => n;
+  return f;
+}
+
+/* A moldura. Com orçamento, leva a `<img>` com as quatro coisas que a fazem
+   comportar-se (`lazy`, `async`, e o tamanho ESCRITO, para a página não saltar).
+   Sem orçamento, nasce vazia e com o `data-sid` à espera do observador. */
+function arteHTML(sid, nm, com, cls) {
+  const c = 'ca' + (cls ? ' ' + cls : '');
+  if (!sid) return `<span class="${c}" aria-hidden="true"></span>`;
+  if (!com) return `<span class="${c}" data-sid="${escDados(sid)}"`
+    + ` data-nm="${escDados(nm || '')}"></span>`;
+  return `<span class="${c}"><img src="${escDados(ART(sid))}"`
+    + ` alt="${escDados(nm || '')}" width="146" height="204"`
+    + ` loading="lazy" decoding="async" onerror="this.remove()"></span>`;
+}
+
+/* As molduras vazias pedem a imagem quando se aproximam do ecrã. Sem
+   `IntersectionObserver` (um harness de node, um browser velho) não acontece
+   nada e a lista continua a ler-se — nestas listas o NOME é que manda. */
+let _OBS = null;
+function observaArtes(raiz) {
+  if (typeof IntersectionObserver !== 'function') return 0;
+  if (!_OBS) _OBS = new IntersectionObserver(es => {
+    for (const e of es) {
+      if (!e.isIntersecting) continue;
+      const d = e.target, sid = d.dataset && d.dataset.sid;
+      _OBS.unobserve(d);
+      if (!sid) continue;
+      d.removeAttribute('data-sid');
+      d.innerHTML = `<img src="${escDados(ART(sid))}"`
+        + ` alt="${escDados((d.dataset && d.dataset.nm) || '')}"`
+        + ` width="146" height="204" decoding="async" onerror="this.remove()">`;
+    }
+  }, {rootMargin: '300px'});
+  if (!raiz || typeof raiz.querySelectorAll !== 'function') return 0;
+  const ds = raiz.querySelectorAll('.ca[data-sid]');
+  for (const d of ds) _OBS.observe(d);
+  return ds.length;
+}
+"""
+
+
+def js_imagens() -> str:
+    """O `JS_IMAGENS` com o lote já escrito — uma só verdade sobre o número."""
+    return JS_IMAGENS.replace("%IMG_LOTE%", str(IMG_LOTE))
+
+
 # O JavaScript que vai buscar os dados. `carregaDados('x/y.json')` devolve o
 # objecto; `erroDados(el, e)` escreve a mensagem em português. O `?t=` (o token
 # do modo edição) segue nos pedidos, porque é por ele que o servidor decide se
