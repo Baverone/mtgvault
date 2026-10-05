@@ -89,6 +89,10 @@ PAGINAS: list[tuple[str, str, bool]] = [
 # para o `main`.
 PUBLICAVEIS: list[str] = [f for _m, f, _r in PAGINAS] + [
     "deckboxes.js",
+    # O JavaScript da aba Decks saiu da casca a 2026-10-05, pelo mesmo caminho
+    # do `deckboxes.js` (ver `decks.NOME_JS`). Sem ele aqui, a casca publicada
+    # aponta para um ficheiro que o commit não leva e a página abre vazia.
+    "decks.js",
     "data/paginas",
 ]
 

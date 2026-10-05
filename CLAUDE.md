@@ -319,7 +319,17 @@ mtgvault/
                   consenso.desde`, hoje 2026-09-29 — o dia em que o Reality
                   Fracture entrou no MTGO), que o `counting_sql`/`lista_conta`
                   levam POR OMISSÃO, mais o `texto_amostra` («não dá para
-                  dizer») e o `frase_janela_rodape`. Ver «A JANELA DO CONSENSO»
+                  dizer») e o `frase_janela_rodape`. Ver «A JANELA DO CONSENSO».
+                  E, desde 2026-10-05 ao fim do dia, AS LIGAS EM MODERN:
+                  `TIER_LIGA`/`sql_sem_ligas`/`conta_ligas` (a pergunta «isto é
+                  uma liga?» num sítio só, para a percentagem do formato se
+                  poder dizer COM e SEM elas — uma liga é um 5-0 sem
+                  classificação e sem campo, e medido ela DILUI: 5,7 % contra
+                  6,9 %), o `PAUSA_MTGO`/`_get_mtgo` (o mtgo.com era o único
+                  scraper sem ritmo, e não tem `robots.txt` — 404; segunda
+                  tentativa só a erro de REDE) e o `harvest_mtgo(...,
+                  incluir_hoje=)`, opt-in, porque a página de liga publica os
+                  5-0 ao longo do dia. Ver «TODOS OS TORNEIOS EM MODERN»
   consenso.py     O CONSENSO POR COMANDANTE (2026-10-01): em Duel Commander a
                   identidade de um deck é o COMANDANTE e nunca a etiqueta do
                   clustering (870 etiquetas, 808 sem listas). O comandante de
@@ -375,7 +385,7 @@ my_decks.py         segue decks-alvo (por assinatura e por jogador de MTGO) -> t
 commander_decks.py  decks de comandante por consenso EM CAMADAS: núcleo>=50% (=deck, deck_cards) / flex 25-50% / tech 15-25%; FILTRA pela cor do comandante. `tiers()` reusado pelo colecao_cor
 premodern_decks.py  consenso dos arquétipos-alvo de Premodern (`colecao_config.json`→`premodern_arquetipos_alvo`: UW Replenish, Enchantress) -> decks/deck_cards com o sufixo " (consenso)". Agrupa pelas etiquetas do `tagging` (o clustering não os separa) e usa `stock.stock_from_lists`. Mostrado nas `deckboxes` (era o `meusdecks`)
 refresh_collection.py  collection_owned p/ o index.html
-colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados, venda (a regra dos 5 % da RL, o `mostrar` de 2026-09-25 **e** a TRAVA — `congelado_ate` a 2026-10-01, hoje `congelada`, MANUAL desde 2026-10-04, com a data antiga arquivada em `_congelado_ate_historico`; mais o `_reservar_rl_formatos`, a razão por que o duel-commander fica fora), cartas_vigiadas (a VIGIA DE CARTAS de 2026-09-26), reserva (o LIMIAR da reserva «maybe», 2026-10-01), caixas[].decisao / reserva / reserva_fora / comandante / reserva_assinatura (AS FASES, 2026-10-01), revalidacao.foto_manda (A FOTO É A VERDADE, 2026-10-02 — e o `playset_maximo` SAIU do `regras_por_formato` nesse dia; **a `false` e com `desde: null` desde 2026-10-04**, o dia em que as fotos foram apagadas), regras_por_formato: lingua/acabamento dos TRÊS grupos trocados a 2026-10-02 (`_regras_2026_10_02`: duel-commander e pauper `en` + `prefere_foil`, premodern `nonfoil`), basicas.declaradas / declaradas_em (A CONTAGEM DECLARADA, 2026-10-02), mtgtop8 (A RECOLHA e o NUNCA PERDER UM TORNEIO DE PAPEL GRANDE, 2026-10-04: `paginas_indice`, `revisitas_por_corrida` e `grandes.padroes`/`listas_por_evento`/`min_jogadores`), e as TRÊS DECISÕES de 2026-10-04 à tarde: a 14.ª terra da lista de qualificação (`listas_escolhidas.modern` com 1 Island, sem `por_confirmar`) + a `proposta_sideboard` NÃO APLICADA ao lado dela, e a caixa `modern-affinity` DESACTIVADA (`estado: candidata`, sem `assinatura`, o antigo em `_antes`). E, ao FIM do dia de 2026-10-04: **`listas_de_evento`** (a REGRA de escolha da lista real, com a razão de cada critério e a data — ver «A LISTA DE UM DECK É UMA LISTA QUE ALGUÉM JOGOU»), **`decks_de_evento`** (os 11 decks dele que não são caixa: 10 de Modern e o Flow State `por_confirmar`, uma linha por deck), `listas_escolhidas[<id>].evento` (a PROVENIÊNCIA gravada — jogador, evento, data, jogadores, classificação, URL) + `.alternativa`/`.porque`/`.escolhida_por`/`.regra_diria`/`._consenso_anterior` (a média que a caixa mostrava, que NÃO se apaga), `decks_montar` com os **17 marcados**, e `caixas[]._ambito` no standard e nas três de legacy (as palavras dele a pô-los fora da prioridade). E, a **2026-10-05**: `caixas[].principal` + `principal_em` nas **12 caixas que têm lista** (os decks que ficam SEMPRE MONTADOS, com proxy no que falta), a razão e a interpretação em `_sempre_montado`, o `caixas[].sempre_montado` como eixo por caixa (existe e não está escrito em nenhuma), a caixa `premodern-stiflenought` de volta a `fonte: vigiado` / `ref: "Luffy — Premodern"` (com o `_antes_1004`) e a lista do Simone Fierro arquivada em `listas_escolhidas._premodern-stiflenought-anterior`
+colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados, venda (a regra dos 5 % da RL, o `mostrar` de 2026-09-25 **e** a TRAVA — `congelado_ate` a 2026-10-01, hoje `congelada`, MANUAL desde 2026-10-04, com a data antiga arquivada em `_congelado_ate_historico`; mais o `_reservar_rl_formatos`, a razão por que o duel-commander fica fora), cartas_vigiadas (a VIGIA DE CARTAS de 2026-09-26), reserva (o LIMIAR da reserva «maybe», 2026-10-01), caixas[].decisao / reserva / reserva_fora / comandante / reserva_assinatura (AS FASES, 2026-10-01), revalidacao.foto_manda (A FOTO É A VERDADE, 2026-10-02 — e o `playset_maximo` SAIU do `regras_por_formato` nesse dia; **a `false` e com `desde: null` desde 2026-10-04**, o dia em que as fotos foram apagadas), regras_por_formato: lingua/acabamento dos TRÊS grupos trocados a 2026-10-02 (`_regras_2026_10_02`: duel-commander e pauper `en` + `prefere_foil`, premodern `nonfoil`), basicas.declaradas / declaradas_em (A CONTAGEM DECLARADA, 2026-10-02), mtgtop8 (A RECOLHA e o NUNCA PERDER UM TORNEIO DE PAPEL GRANDE, 2026-10-04: `paginas_indice`, `revisitas_por_corrida` e `grandes.padroes`/`listas_por_evento`/`min_jogadores`), e as TRÊS DECISÕES de 2026-10-04 à tarde: a 14.ª terra da lista de qualificação (`listas_escolhidas.modern` com 1 Island, sem `por_confirmar`) + a `proposta_sideboard` NÃO APLICADA ao lado dela, e a caixa `modern-affinity` DESACTIVADA (`estado: candidata`, sem `assinatura`, o antigo em `_antes`). E, ao FIM do dia de 2026-10-04: **`listas_de_evento`** (a REGRA de escolha da lista real, com a razão de cada critério e a data — ver «A LISTA DE UM DECK É UMA LISTA QUE ALGUÉM JOGOU»), **`decks_de_evento`** (os 11 decks dele que não são caixa: 10 de Modern e o Flow State `por_confirmar`, uma linha por deck), `listas_escolhidas[<id>].evento` (a PROVENIÊNCIA gravada — jogador, evento, data, jogadores, classificação, URL) + `.alternativa`/`.porque`/`.escolhida_por`/`.regra_diria`/`._consenso_anterior` (a média que a caixa mostrava, que NÃO se apaga), `decks_montar` com os **17 marcados**, e `caixas[]._ambito` no standard e nas três de legacy (as palavras dele a pô-los fora da prioridade). E, a **2026-10-05**: `caixas[].principal` + `principal_em` nas **12 caixas que têm lista** (os decks que ficam SEMPRE MONTADOS, com proxy no que falta), a razão e a interpretação em `_sempre_montado`, o `caixas[].sempre_montado` como eixo por caixa (existe e não está escrito em nenhuma), a caixa `premodern-stiflenought` de volta a `fonte: vigiado` / `ref: "Luffy — Premodern"` (com o `_antes_1004`) e a lista do Simone Fierro arquivada em `listas_escolhidas._premodern-stiflenought-anterior`. E, ao FIM de 2026-10-05: **`metagame_fontes.modern`** (`ligas: true` + `min_jogadores_presencial: 0`, com a razão e a data ao lado — SÓ o modern, e SEM repetir a lista de `tiers`, que herda do `_default`: é o interruptor que abre as quatro portas das ligas, ver «TODOS OS TORNEIOS EM MODERN») e `decks_por_formato.modern.versoes[izzet-pinnacle].arquetipo_id` **7614 → 5100** com o antigo em `_arquetipo_id_antes` (as ligas fundiram a divisão do cluster e a anotação do deck principal tinha de a acompanhar)
 ```
 Cada `.html` gerado tem de estar na lista do `git add` do workflow (`daily.yml`,
 passo "Guardar HTML") **e na lista `HTML` da tarefa `ai-pc/tasks/mtgvault-daily`**
@@ -3473,6 +3483,202 @@ alvo). **A venda não se tocou.**
   Station fica sem lista fixada** (a mais recente é de um dia antes da janela);
   (d) as três versões da janela **mostram a etiqueta** porque a fonte não lhes
   dá nome — se quiser nomeá-las, é o `nome` da anotação.
+
+**TODOS OS TORNEIOS EM MODERN: AS LIGAS E OS PRESENCIAIS PEQUENOS (André,
+2026-10-05, ao fim do dia, à letra).** *"para modern, apenas os decks de Mox
+Opal, procura todos os torneios ! incluindo ligas, torneios presenciais"*. A
+primeira metade é a secção de cima; esta é a SEGUNDA — abrir as FONTES de
+Modern. Motor em `mtgvault/sources.py` (`PAUSA_MTGO`/`_get_mtgo`,
+`harvest_mtgo(..., incluir_hoje=)`, `TIER_LIGA`/`sql_sem_ligas`/`conta_ligas`),
+`mtgvault/versoes.py` (`listas_do_formato` com `sem_ligas`/`ligas`, e
+`_orfas`/`anotacoes_orfas`), config em `metagame_fontes.modern`; CLI
+`py -m mtgvault.cli harvest --days N --format modern [--hoje]`. Testes em
+`tests/test_ligas_modern.py` (19 casos) e a prova de que chumbam em
+`tests/_chumba_ligas.py` (**12 de 12 alvos**, um processo por alvo). Backup em
+`data/backups/vault-2026-10-05-ligas-modern.db` (96,6 MB, `integrity ok`).
+**A venda continua escondida e travada.**
+
+- **AS LIGAS NÃO EXISTIAM DE TODO EM MODERN**, e por isso isto não se resolvia a
+  consultar a base: **zero** listas com tier `League` em toda a história, contra
+  **125** em `duel-commander` — o único formato cujo config as contava. A
+  colheita **salta a página de liga ANTES de a pedir** (`harvest_mtgo`, a
+  alteração de 04/10: *«a liga salta sem pedido»*), logo tinha de se **ligar e
+  colher**. Os presenciais, ao contrário, estavam lá e eram **excluídos**: na
+  janela havia **14** listas de presenciais de Modern, **todas** de eventos com
+  menos de 64 jogadores (12 e 17) e **uma** delas joga Mox Opal (Thiago
+  Meneghin, 2.º de 17, 4.ª Etapa CLM, 01/10).
+- **O INTERRUPTOR É UM SÓ E ABRE QUATRO PORTAS**, porque as quatro lêem o mesmo
+  `sources.metagame_rules()["tiers"]`: a **colheita** deixa de saltar a página
+  (`harvest_mtgo`), o **`store_decklist`** guarda-a, o
+  **`lista_conta`/`counting_sql`** conta-a e o **`analysis.prune_leagues`**
+  deixa de a apagar. A quarta é a que mais faltava: sem ela a liga entrava às
+  03:30 e a poda apagava-a na **mesma corrida**, minutos depois. Um caso de
+  teste por porta.
+- **SÓ O MODERN MUDOU, e a secção dele NÃO repete a lista de tiers.** Sem a
+  chave `tiers`, `metagame_fontes.modern` herda-a do `_default` (Challenge,
+  Showcase, Presencial, Qualifier) e o `ligas: true` acrescenta-lhe `League` —
+  uma segunda cópia da lista divergia da primeira no dia em que ele mexesse numa
+  delas. O `_default` e os outros formatos ficaram intactos: a regra de
+  2026-09-07 (sem ligas, presencial com 64+) continua inteira onde ele não lhe
+  tocou, e há caso de teste a varrer os cinco. **Uma armadilha que o teste me
+  apanhou:** o `_default` do **config** ganha ao
+  `sources.DEFAULT_METAGAME_BY_FORMAT` do **código** — é mais específico que os
+  valores de arranque e menos que a secção do formato. Por isso o
+  `duel-commander` precisa da secção dele no config (tem-na) e o fixture do
+  teste também.
+- **A PERCENTAGEM DESCEU, não subiu — e era este o aviso.** Uma liga é um **5-0
+  publicado sem classificação e sem tamanho de campo**: somada a uma Challenge,
+  a percentagem do formato passa a medir duas coisas ao mesmo tempo. Medido:
+
+  | Mox Opal em Modern | listas | de | % |
+  |---|---|---|---|
+  | **antes** | 30 | 412 | **7,3 %** |
+  | **depois, com ligas** | 54 | 842 | **6,4 %** |
+  | **depois, sem ligas** | 33 | 476 | **6,9 %** |
+  | **só as ligas** | 21 | 366 | **5,7 %** |
+
+  As ligas **diluem**: jogam Mox Opal menos do que os torneios. Por isso a
+  página mostra **as duas contas lado a lado** (`listas_do_formato` →
+  `sem_ligas`/`ligas`, e o `ligasHTML` da `decks.py`), com a frase a dizer em
+  que SENTIDO elas mexeram — é a disciplina dos «dois números» de 04/10 (*«a
+  somar»* vs *«a rodar»*) e da `curva_staples`. Sem isso ele olhava para um
+  número que pode ter mexido só porque a fonte mudou. **A soma fecha sempre**
+  (33 + 21 = 54, 476 + 366 = 842), como no `confirmado.metades`. Num formato que
+  não conte ligas as duas contas são **iguais** e não se desenha nada — é assim
+  que isto não muda nada no Legacy.
+- **O «sem ligas» também subiu (30/412 → 33/476), e não é da regra:** a colheita
+  foi **8 dias** atrás e o `daily` só faz 3 (`MTGO_DAYS`), por isso entraram
+  **64 Challenges** de Modern que faltavam. São duas mudanças no mesmo número e
+  ficam separadas de propósito.
+- **O GRINDING STATION VOLTOU — 3 listas, todas de liga, todas com Mox Opal**
+  (04/10 ×2 e 05/10). Era o caso que a ordem mandava verificar: ele deu-o como
+  exemplo e tinha **zero** listas desde 29/09. **MAS o agrupamento pô-las em
+  dois clusters NOVOS** (7722 com 2, 7727 com 1) e **não** no 7394, que é o
+  anotado e continua com zero na janela — e a fonte **não lhes dá nome**. Por
+  isso **não se re-apontou a anotação**: a ordem de 04/10 foi explícita (*«não o
+  inventes como actual»*), e dois clusters de uma e duas listas não são o deck
+  dele. Fica dito; a decisão é dele.
+- **AS LIGAS FUNDIRAM UMA DIVISÃO, E ISSO QUASE PÔS O DECK DE GHENT A APARECER
+  MORTO.** O `archetype_id` é refeito **todas as noites** e é estável **só
+  enquanto a etiqueta do cluster for** (`rebuild_archetypes` faz
+  `ON CONFLICT(format, label)`); as anotações do config são por `arquetipo_id`.
+  Com as 430 listas novas, o cluster **7614** — nascido a 04/10, 25 listas —
+  ficou com **ZERO** e a Affinity passou para o **5100**, que é de **03/09** e
+  tem **41**. A anotação do deck **principal**, a que aponta para a caixa com a
+  lista de qualificação dele, ficava a apontar para o cluster vazio: a página
+  mostrava-o no grupo das *«conhecidas, sem listas na janela»* e a Affinity a
+  sério aparecia por baixo como uma versão nova, sem nome e sem a marca.
+  **Nada dava erro** — é o padrão do `event_tier` sobre a página por onde ele
+  vai sleevar.
+  - **Não é um remendo: é a fusão que a ordem anterior tinha previsto à letra**
+    (*«o 4380 e o 7614 são a mesma deck partida pelo bug dos arquétipos —
+    quando a identidade estável existir, as duas versões colapsam numa»*).
+  - **CONFERIDO antes de se mexer:** as 41 listas do 5100 jogam **todas** Mox
+    Opal, a fonte chama-lhe **«Pinnacle Affinity»** (4 votos de 5 nomeadas,
+    segundo «Affinity») — que é o nome que a caixa dele tem desde 04/10 — e as
+    22 cartas do maindeck da lista de qualificação aparecem em **85 %** das 41
+    listas, **8 delas em 41/41** (Engineered Explosives, Fiery Islet, Island,
+    Kappa Cannoneer, Mishra's Bauble, Mox Opal, Pinnacle Emissary, Spirebluff
+    Canal). O `arquetipo_id` passou a 5100 e o **7614 não se apagou**: ficou em
+    `_arquetipo_id_antes`, com a data, a razão e como se repõe.
+  - **E PASSOU A DIZER-SE, em vez de voltar a acontecer em silêncio**
+    (`versoes._orfas`/`anotacoes_orfas` → o bloco `ficha aviso` da `decks.py`):
+    uma versão que esteja marcada **principal** ou **escolhida** e tenha zero
+    listas na janela leva aviso em DESTAQUE, com o **candidato** ao lado (o
+    maior cluster sem anotação, que é quase sempre para onde o deck foi). **O
+    crivo é estreito de propósito** — as quatro conhecidas (Weapons, Cranial,
+    Seachrome, Grinding Station) têm legitimamente zero e marcá-las era um aviso
+    permanente a piscar, que é um aviso que se deixa de ler. A correcção de
+    fundo é a identidade estável por NÚCLEO que o `mtgvault/arquetipos.py` já
+    faz para as sugestões de Premodern, aplicada à tabela `archetypes` — é a
+    ordem `mtg-top8-por-edicao`.
+- **O VOLUME, medido antes de se escrever na base** (`_revisao/medir_ligas.py`,
+  sem gravar nada): as páginas de liga de Modern servem **45 a 58 listas cada**,
+  uma por dia. **Pedidos desta ordem: 24 em duas sondagens** (o `robots.txt`, 7
+  dias de índice e a medição das 8 páginas de liga, 2 das quais deram *read
+  timeout*) **+ ~37 na colheita** (8 páginas de índice e as 29 páginas de evento
+  de Modern/Premodern desses 8 dias). **Resultado: 540 listas novas** em **13
+  páginas** — 423 de liga de Modern (9 páginas), 64 de Challenge de Modern (2) e
+  53 de Premodern (2). A base passou de **7 761 para 8 295** listas e o
+  `vault.db` de **96,6 para 100,1 MB**. Em regime são ~50 listas novas por
+  noite, que o `prune_decklists(30)` limita a ~1 500.
+- **ENTRARAM LISTAS DE PREMODERN, e a razão é uma substring.** O filtro de URL
+  do `harvest_mtgo` é `any(f in url.lower() for f in formats)` e
+  **`"modern" in "premodern-challenge-…"`** — por isso pedir `modern` abre
+  também as páginas de Premodern. Não é defeito novo nem faz mal (quem
+  classifica é o `_guess_format`, que ordena por comprimento decrescente
+  exactamente por isto, e o `daily` colhe Premodern todas as noites de qualquer
+  maneira): entraram **53 listas de Challenge**, e **zero ligas de Premodern** —
+  o `store_decklist` recusa-as, porque esse formato não as conta. Corri-lhe o
+  agrupamento também, para o estado publicado ficar coerente.
+- **O MTGO.COM PASSOU A TER RITMO** (`PAUSA_MTGO`, 1 s). O mtgtop8 sempre teve 1
+  pedido/s (`mtgtop8._get`) e o mtgo.com **não tinha nenhum** — um descuido que
+  passava despercebido enquanto a recolha pedia poucas páginas por formato, e
+  que esta ordem torna relevante (a página de liga publica-se todos os dias). O
+  **`robots.txt` do mtgo.com responde 404** (sondado nesse dia): não existe,
+  logo não há regra escrita a respeitar além do ritmo. E o `_get_mtgo` dá uma
+  **segunda tentativa a um erro de REDE** e só a esse — uma página de liga
+  perdida por um timeout de um segundo ficava perdida **para sempre** (a recolha
+  só volta 3 dias atrás); um 404 não se repete, porque não é azar, é a página.
+- **`harvest --hoje`**: a página de liga publica os 5-0 **ao longo do dia**, e a
+  recolha começava sempre em ONTEM. A omissão **não mudou** — o `daily` corre às
+  03:30, quando a página de hoje está vazia, e pedi-la era um pedido por formato
+  a não trazer nada. Com `incluir_hoje=True` acrescenta-se um dia à frente, e é
+  isso que fechou o buraco de um dia na janela.
+- **O JAVASCRIPT DA ABA DECKS SAIU DA CASCA**, e isto não foi escolha: era a
+  instrução que a ordem de 04/10 deixou escrita no `TECTO_CASCA` (*«a próxima
+  ordem que acrescente JavaScript aqui tira-o para um `decks.js` … Subi-lo três
+  vezes é não ter tecto»*). Com as duas contas e o aviso da órfã a casca ia a
+  **89 393** de 90 112 bytes — **719** de folga. Medido depois: casca
+  **89 393 → 42 762** bytes (**12 257** em gzip, era ~27 700) e **`decks.js`
+  46 661** bytes (15 506 em gzip), cacheável `immutable` — o telemóvel dele
+  baixa-o **uma vez** em vez de o rebaixar a cada toque no menu. O tecto
+  **desceu de 88 para 48 KB**: agora que o JavaScript está fora, ele mede HTML e
+  CSS, que é o que um tecto de casca deve medir. O caminho é o do
+  `deckboxes.js` de 18/09, com as **três coisas que andam com ele**: o `build`
+  escreve o `.js` **antes** da casca, o `webapp.py` serve-o **da memória**
+  (`/decks.js`, nunca do disco), e vai no **`git add` do `daily.yml`**, no
+  **`EXTRA_COMMIT` da tarefa `mtgvault-daily`** e no **`publicar.PUBLICAVEIS`**
+  — sem ele nas três, o site abre a casca e **não desenha nada**.
+- **O MOTOR NÃO MEXEU UM NÚMERO**: fechar tudo **11 043,88 €** nos dois lados,
+  **293** a comprar, as **17 caixas iguais à percentagem, à cópia e ao
+  cêntimo**, `guardar` 1 c, `rl_sem_historico` 98 c, `reservadas`/`retidos`/
+  `rl_segurar`/`sem_foto` a zero.
+- **E MEXEU POR CONSEQUÊNCIA, 3 cópias para o lado SEGURO:** a RP passou a
+  proteger **252 → 278 nomes** (as ligas trazem mais variedade às listas de Mox
+  Opal), e por isso **3 cópias / 6,18 €** saíram de `venda` (366 → 363) para
+  `protegidas` (148 → 151). Hoje a RP segura 9 linhas / 23 cópias: 3 Cabal
+  Therapy, 4 Carpet of Flowers, 5 Lightning Bolt, 2 Lotus Petal, 3 Orcish
+  Bowmasters, 3 Spell Snare, 1 The One Ring, 2 Unholy Heat. **Nada sai**: a
+  venda está escondida (`venda.mostrar: false`) e travada à mão.
+- **AS VERSÕES DE MODERN: 8 → 12.** Entraram o **5100** (41 listas, a Affinity),
+  o 7724 (3), o 7748 (2), o 7722 (2), o 7763 (1), o 7726 (*«Song of Creation»*,
+  o único com nome da fonte) e o 7727 (1); saíram o 7614 (para o 5100), o 7622 e
+  o 7697 (fundidos). As listas **sem cluster** passaram de 1 a **0**.
+- **Medido com as páginas servidas por HTTP e o JavaScript a sério**: as **14
+  páginas, o `decks.js` e o `deckboxes.js` a 200**, os **280 ficheiros de dados
+  a 200**, **zero** mensagens de erro de dados, e a aba Decks percorrida nos
+  quatro formatos com os blocos novos conferidos no HTML **desenhado** (*«Com as
+  ligas e sem elas: sem ligas 33 de 476 (6,9 %) · só as ligas 21 de 366
+  (5,7 %) … Aqui as ligas diluem a percentagem»*). A 1440 e a 390 px **nenhuma
+  página com rolamento horizontal**. Imagens: **1 321** no total (eram 1 288),
+  todas com `loading="lazy"` e o tamanho escrito; nenhuma página passa dos
+  250 KB. Bateria toda verde (92 ficheiros).
+- **UM TESTE DE 04/10 TEVE A ASSERÇÃO CORRIGIDA, e não mascarada**
+  (`test_decks_vista.caso_a_pagina_nao_embebe_imagens_e_cabe_no_tecto`):
+  procurava o CDN das artes **na casca**, e o JavaScript que desenha as `<img>`
+  mudou de ficheiro. A intenção não mudou — o tecto mede a CASCA e as imagens
+  medem-se na **página inteira** (casca + `.js`), que é o que o browser acaba
+  por ter. Mascará-lo era deixar de verificar as imagens no dia em que elas
+  mudaram de sítio.
+- **POR DECIDIR POR ELE:** (a) o **Grinding Station** voltou à janela mas em
+  dois clusters novos e sem nome da fonte — re-apontar a anotação (hoje no
+  7394, que tem zero) é decisão dele, e **muda o que ele monta**; (b) as **3
+  cópias / 6,18 €** que saíram da lista de venda para protegidas; (c) os
+  presenciais pequenos passaram a contar em Modern e **só em Modern** — se
+  quiser o mesmo no Legacy ou no Premodern, é uma secção no `metagame_fontes`;
+  (d) as **ligas de Modern passam a entrar todas as noites** (~50 listas), e
+  desligá-las é `ligas: false` nessa secção.
 
 **A LISTA DE FALTAS PARA GHENT, E AS IMAGENS NAS LISTAS DE CARTAS (André,
 2026-10-05, à letra).** *"quero as coisas publicadas no mtgvault, com imagem das

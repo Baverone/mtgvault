@@ -113,7 +113,11 @@ jobs:
           # Ghent. Sem ela aqui, a página existia no repo e o site publicado
           # nunca a teria: é o que aconteceu ao `deckboxes.html`, semanas só numa
           # das duas listas.
-          git add index.html colecao.html cobertura.html colecao_cor.html meusdecks.html metagame.html reservedlist.html caixarl.html showcase.html deckboxes.html comandantes.html arrumacao.html decks.html faltas.html deckboxes.js data/arquetipos.json data/estado-criterio.md data/paginas assets/deckboxes "Colocar fotos da coleção aqui"
+          # E `decks.js` (2026-10-05): o JavaScript da aba Decks saiu da casca
+          # para um ficheiro cacheável, pelo mesmo caminho do `deckboxes.js` — a
+          # casca aponta-lhe pelo hash do conteúdo. Sem ele aqui, o site abre a
+          # casca da aba Decks e **não desenha nada**.
+          git add index.html colecao.html cobertura.html colecao_cor.html meusdecks.html metagame.html reservedlist.html caixarl.html showcase.html deckboxes.html comandantes.html arrumacao.html decks.html faltas.html deckboxes.js decks.js data/arquetipos.json data/estado-criterio.md data/paginas assets/deckboxes "Colocar fotos da coleção aqui"
           # `data/vigia-cartas.json` (2026-09-26): o estado da VIGIA DE CARTAS —
           # que listas com carta vigiada já foram vistas. É o que impede o aviso
           # de se repetir todos os dias, e pela razão do `arquetipos.json` tem de

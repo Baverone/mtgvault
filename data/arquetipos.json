@@ -77,17 +77,17 @@
    "nome": "Full English Breakfast",
    "nucleo": [
     "Akroma, Angel of Wrath",
+    "Animate Dead",
     "Battlefield Scrounger",
     "Elvish Spirit Guide",
-    "Hermit Druid",
     "Karmic Guide",
     "Palinchron",
     "Phyrexian Devourer",
+    "Squee, Goblin Nabob",
     "Triskelion",
     "Undiscovered Paradise",
     "Unearth",
-    "Volrath's Shapeshifter",
-    "Yavimaya Coast"
+    "Volrath's Shapeshifter"
    ],
    "primeira": "2026-09-09",
    "ultima": "2026-10-05"
@@ -105,7 +105,6 @@
     "Mishra's Factory",
     "Ravenous Rats",
     "Smother",
-    "Snuff Out",
     "Wasteland",
     "Withered Wretch"
    ],
@@ -172,12 +171,12 @@
     "Gaea's Cradle",
     "Llanowar Elves",
     "Masticore",
-    "Monk Realist",
     "Nantuko Vigilante",
     "Priest of Titania",
     "Quirion Ranger",
     "Squee, Goblin Nabob",
     "Thornscape Battlemage",
+    "Wall of Roots",
     "Wirewood Symbiote"
    ],
    "primeira": "2026-09-09",
@@ -239,16 +238,13 @@
    "nucleo": [
     "Brain Freeze",
     "Cloud of Faeries",
-    "Flash of Insight",
     "Frantic Search",
     "Helm of Awakening",
-    "Lotus Petal",
     "Meditate",
     "Merchant Scroll",
     "Sapphire Medallion",
     "Snap",
-    "Teferi's Isle",
-    "Words of Wisdom"
+    "Teferi's Isle"
    ],
    "primeira": "2026-09-30",
    "ultima": "2026-10-05"
@@ -339,9 +335,9 @@
    "formato": "premodern",
    "nome": "Esper Exalted Angel",
    "nucleo": [
+    "Adarkar Wastes",
     "Caves of Koilos",
     "Decree of Justice",
-    "Diabolic Edict",
     "Disenchant",
     "Exalted Angel",
     "Fact or Fiction",
@@ -492,6 +488,26 @@
    "primeira": "2026-09-13",
    "ultima": "2026-09-15"
   },
+  "d72486c52f": {
+   "formato": "premodern",
+   "nome": "The Rack",
+   "nucleo": [
+    "Bottomless Pit",
+    "Cabal Therapy",
+    "Cursed Scroll",
+    "Funeral Charm",
+    "Mishra's Factory",
+    "Phyrexian Furnace",
+    "Pox",
+    "Ravenous Rats",
+    "Skittering Skirge",
+    "Smother",
+    "The Rack",
+    "Wasteland"
+   ],
+   "primeira": "2026-10-05",
+   "ultima": "2026-10-05"
+  },
   "e62ac61340": {
    "formato": "premodern",
    "nome": "Stasis",
@@ -509,15 +525,15 @@
    "nucleo": [
     "Cabal Therapy",
     "Diabolic Edict",
+    "Duress",
     "Dust Bowl",
     "Graveborn Muse",
     "Krosan Tusker",
     "Llanowar Wastes",
     "Pernicious Deed",
     "Ravenous Baloth",
-    "Ravenous Rats",
-    "Recurring Nightmare",
     "Smother",
+    "Treetop Village",
     "Wall of Blossoms"
    ],
    "primeira": "2026-09-09",
@@ -572,7 +588,6 @@
    "nucleo": [
     "Armageddon",
     "Call of the Herd",
-    "Gemstone Mine",
     "Mox Diamond",
     "Naturalize",
     "Rishadan Port",
@@ -581,10 +596,11 @@
     "Sylvan Library",
     "Terravore",
     "Tranquil Thicket",
-    "Weathered Wayfarer"
+    "Weathered Wayfarer",
+    "Werebear"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-02"
+   "ultima": "2026-10-05"
   },
   "f886821817": {
    "formato": "premodern",

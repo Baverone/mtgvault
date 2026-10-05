@@ -1374,6 +1374,11 @@ def deck_unico(con: sqlite3.Connection, fmt: str, decks: list[dict],
         "principal": versoes.principal(fmt, cfg),
         "derivado": der["derivado"], "sem_cluster": der["sem_cluster"],
         "sem_cluster_nomes": der.get("sem_cluster_nomes") or [],
+        # A anotação que perdeu o cluster (2026-10-05). Vai no payload e não só
+        # num log: o que isto apanha é o deck PRINCIPAL a aparecer morto, e um
+        # aviso que só existe no stdout do daily não chega a quem está a
+        # sleevar. Ver `versoes._orfas`.
+        "orfas": der.get("orfas") or [],
         "fora_da_janela": der["fora_da_janela"], "desde": der.get("desde") or "",
         "carta_chave": versoes.carta_chave(fmt, cfg),
         "protege": prot, "limiar": versoes.limiar_listas(cfg),

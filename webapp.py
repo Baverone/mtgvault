@@ -1463,6 +1463,12 @@ class Handler(BaseHTTPRequestHandler):
             self._envia(deckboxes.js_texto(), tipo="text/javascript; charset=utf-8",
                         cache="v=" in urlparse(self.path).query)
             return
+        if caminho == "/" + decks_pag.NOME_JS:
+            # O JavaScript da aba Decks (2026-10-05), pela MESMA razão e pelo
+            # mesmo caminho da Deckboxes: da memória, nunca do disco.
+            self._envia(decks_pag.js_texto(), tipo="text/javascript; charset=utf-8",
+                        cache="v=" in urlparse(self.path).query)
+            return
         if caminho == "/arrumacao.html":
             # A ARRUMAÇÃO POR FASES (2026-10-01): a CASCA, estática e imediata.
             # Os dados vêm por `fetch` de `/data/paginas/arrumacao.json`.

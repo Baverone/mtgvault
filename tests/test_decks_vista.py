@@ -607,6 +607,17 @@ def caso_as_marcas_sobrevivem_ao_daily():
 # 11. A PÁGINA: SEM IMAGENS EMBUTIDAS E DENTRO DO TECTO
 # ===========================================================================
 def caso_a_pagina_nao_embebe_imagens_e_cabe_no_tecto():
+    """CORRIGIDO A 2026-10-05: o JavaScript saiu da casca para o `decks.js`.
+
+    A asserção não mudou de intenção — a página continua a não poder embeber
+    imagens e tem de apontar ao CDN com as quatro coisas que impedem o ecrã de
+    saltar. O que mudou é ONDE isso está escrito: as `<img>` são desenhadas pelo
+    JavaScript, e esse passou a ser um ficheiro à parte (a casca ia a 89 393 de
+    90 112 bytes; ver `decks.TECTO_CASCA`). Por isso o tecto mede a CASCA e as
+    imagens medem-se na PÁGINA INTEIRA — casca + `.js` —, que é o que o browser
+    acaba por ter. Mascarar isto era deixar de verificar as imagens no dia em
+    que elas mudaram de ficheiro.
+    """
     import decks as decks_pag                                # noqa: PLC0415
     escreve_cfg()
     con = base()
@@ -614,14 +625,20 @@ def caso_a_pagina_nao_embebe_imagens_e_cabe_no_tecto():
     n = len(casca.encode("utf-8"))
     assert n <= decks_pag.TECTO_CASCA, \
         f"a casca tem {n} bytes e o tecto é {decks_pag.TECTO_CASCA}"
-    assert "data:image" not in casca, "a casca embebeu uma imagem"
-    assert "base64" not in casca, "a casca embebeu algo em base64"
+    js = decks_pag.js_texto()
+    # A CASCA tem de apontar para o `.js`, senão a página abre e não desenha.
+    assert f'src="{decks_pag.NOME_JS}?v=' in casca, (
+        "a casca tem de apontar para o `decks.js` com o hash do conteúdo")
+    pagina = casca + js
+    for onde, txt in (("casca", casca), ("decks.js", js)):
+        assert "data:image" not in txt, f"a {onde} embebeu uma imagem"
+        assert "base64" not in txt, f"a {onde} embebeu algo em base64"
     # as imagens são REMOTAS, do catálogo
-    assert "cards.scryfall.io" in casca, "a página não aponta ao CDN das artes"
+    assert "cards.scryfall.io" in pagina, "a página não aponta ao CDN das artes"
     # e cada uma leva o que impede o ecrã de saltar e de carregar tudo de uma vez
-    assert 'loading="lazy"' in casca and 'decoding="async"' in casca
-    assert 'width="146" height="204"' in casca, "faltam as dimensões na <img>"
-    assert "aspect-ratio" in casca, "falta o aspect-ratio da moldura"
+    assert 'loading="lazy"' in pagina and 'decoding="async"' in pagina
+    assert 'width="146" height="204"' in pagina, "faltam as dimensões na <img>"
+    assert "aspect-ratio" in pagina, "falta o aspect-ratio da moldura"
 
 
 def caso_cada_deck_vai_numa_parte_e_o_indice_nao_leva_cartas():
