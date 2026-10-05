@@ -25,6 +25,7 @@ import os
 import re
 import sqlite3
 import sys
+import time
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -32,6 +33,18 @@ import requests
 
 MTGO_BASE = "https://www.mtgo.com/decklists"
 UA = {"User-Agent": "Mozilla/5.0 (compatible; mtgvault/0.1)"}
+
+#: Pausa entre pedidos ao mtgo.com, em segundos. O mtgtop8 sempre teve o ritmo de
+#: 1 pedido/s (`mtgtop8._get`) e o mtgo.com **não tinha nenhum** — era um
+#: descuido que passou despercebido enquanto a recolha pedia poucas páginas por
+#: formato. Passou a contar a 2026-10-05, quando as ligas entraram no Modern: a
+#: página de liga publica-se todos os dias e tem 45 a 58 listas, por isso a
+#: recolha passou a abrir mais páginas por noite. O mtgo.com **não tem
+#: `robots.txt`** (404, sondado nesse dia), logo não há regra escrita a respeitar
+#: além do ritmo — e ele já deu dois `read timeout` numa sondagem de 15 pedidos
+#: seguidos, o que diz que não gosta de pressa. Zero desliga a pausa (é o que os
+#: testes fazem: sem rede não há a quem ser mal-educado).
+PAUSA_MTGO = 1.0
 
 # Confirmado no filtro de formatos do mtgo.com: além dos habituais, há
 # Duel CMDR e Premodern. Só o cEDH é que não existe em MTGO — esse vem
@@ -50,6 +63,27 @@ _BLOB = re.compile(
 )
 
 
+def _get_mtgo(url: str, tentativas: int = 2) -> requests.Response:
+    """Um pedido ao mtgo.com, com a pausa de `PAUSA_MTGO` à frente.
+
+    Dá **uma segunda tentativa** a um erro de rede, e só a esse: o mtgo.com
+    responde entre 1 e 31 s e deu `read timeout` em 2 de 15 pedidos na sondagem
+    de 2026-10-05. Uma página de liga perdida por um timeout de um segundo
+    ficava perdida **para sempre** — a recolha só volta 3 dias atrás
+    (`daily.MTGO_DAYS`), e ao quarto dia aquele dia já não se pede. Um erro de
+    HTTP (404, 500) não se repete: não é azar, é a página.
+    """
+    ultimo: requests.RequestException | None = None
+    for n in range(max(1, tentativas)):
+        if PAUSA_MTGO:
+            time.sleep(PAUSA_MTGO * (1 + n))      # a 2.ª espera mais
+        try:
+            return requests.get(url, headers=UA, timeout=30)
+        except requests.RequestException as e:
+            ultimo = e
+    raise ultimo                                   # type: ignore[misc]
+
+
 def fetch_mtgo_index(day: date) -> list[str]:
     """URLs dos eventos publicados num dia.
 
@@ -63,7 +97,7 @@ def fetch_mtgo_index(day: date) -> list[str]:
     candidatos = [f"{MTGO_BASE}/{day:%Y/%m}", f"{MTGO_BASE}?year={day:%Y}&month={day:%m}"]
     for url in candidatos:
         try:
-            r = requests.get(url, headers=UA, timeout=30)
+            r = _get_mtgo(url)
             r.raise_for_status()
         except requests.RequestException:
             continue
@@ -165,12 +199,26 @@ def _guess_format(url: str) -> str:
 
 
 def harvest_mtgo(con: sqlite3.Connection, days_back: int = 1,
-                 formats: set[str] | None = None) -> int:
-    """Recolhe as decklists dos últimos N dias. Isto é o trabalho diário."""
+                 formats: set[str] | None = None,
+                 incluir_hoje: bool = False) -> int:
+    """Recolhe as decklists dos últimos N dias. Isto é o trabalho diário.
+
+    `incluir_hoje=False` (omissão) é o comportamento de sempre: começa em
+    ONTEM. É a omissão de propósito — o `daily` corre às 03:30, quando a página
+    de hoje ainda não tem nada, e mudá-la punha um pedido a mais por formato
+    todas as noites a não trazer nada.
+
+    `incluir_hoje=True` acrescenta o dia de HOJE à frente, e serve a recolha
+    pedida à mão: a página de liga do mtgo.com publica os 5-0 ao longo do dia,
+    por isso a de hoje já tem listas às 23h e esperar pela corrida da madrugada
+    deixava um buraco de um dia na janela. Não é um segundo caminho — é o mesmo
+    ciclo, com um dia a mais na lista.
+    """
     formats = {f.lower() for f in (formats or MTGO_FORMATS)} & MTGO_FORMATS
     total = 0
-    for delta in range(days_back):
-        day = date.today() - timedelta(days=delta + 1)
+    dias = ([date.today()] if incluir_hoje else []) + [
+        date.today() - timedelta(days=d + 1) for d in range(days_back)]
+    for day in dias:
         try:
             urls = fetch_mtgo_index(day)
         except requests.RequestException:
@@ -194,7 +242,7 @@ def harvest_mtgo(con: sqlite3.Connection, days_back: int = 1,
                     and not _vigia().ha_vigia(fmt_url)):
                 continue
             try:
-                html = requests.get(url, headers=UA, timeout=30).text
+                html = _get_mtgo(url).text
             except requests.RequestException:
                 continue
             blob = parse_mtgo_page(html)
@@ -550,6 +598,49 @@ def counting_sql(fmt: str, alias: str = "d",
     # senão a excepção das manuais era um buraco por onde entrava Setembro.
     return (f"(({a}source = 'manual' OR ({sql})){janela})",
             params + list(jp))
+
+
+# ---------------------------------------------------------------------------
+# AS LIGAS CONTAM-SE À PARTE (André, 2026-10-05)
+# ---------------------------------------------------------------------------
+# À letra: *"para modern, apenas os decks de Mox Opal, procura todos os torneios !
+# incluindo ligas, torneios presenciais"*. As ligas entraram no Modern — e uma
+# liga **não é um torneio como os outros**: é um 5-0 publicado sem classificação
+# e sem tamanho de campo. Misturada no mesmo bolo de uma Challenge, a
+# percentagem do formato passa a somar duas coisas diferentes e o número fica
+# PIOR, não melhor.
+#
+# Por isso a percentagem mostra-se SEMPRE nas duas contas, lado a lado — é a
+# disciplina dos «dois números» de 2026-10-04 (*«a somar»* vs *«a rodar»*) e da
+# `curva_staples`: quem lê tem de poder ver se o número subiu por o deck se
+# jogar mais ou só por a fonte ter mudado. Medido no dia em que isto entrou: as
+# ligas trazem 5,1 % de Mox Opal contra 7,3 % no resto, ou seja a percentagem do
+# formato **DESCE** com elas — exactamente o contrário do que se esperava, e a
+# razão para o número não andar sozinho.
+#
+# A PERGUNTA VIVE AQUI, num sítio só, pela razão de sempre: o `event_tier =
+# 'League'` escrito à mão numa segunda consulta discordava desta num dia
+# qualquer, em silêncio (é a lição do `e_foil`, do `precos.sql()` e do
+# `venda.mostrar`).
+TIER_LIGA = "League"
+
+
+def sql_sem_ligas(alias: str = "d") -> tuple[str, list]:
+    """O predicado *«esta lista NÃO é de uma liga»*, para pôr num WHERE.
+
+    `event_tier` pode ser NULL numa lista antiga (a coluna andou anos a ser lida
+    sem ser escrita — ver `backfill_event_tiers`), e `NULL <> 'League'` em SQL
+    não é verdadeiro: é NULL, e a linha caía fora da conta dos dois lados. Daí o
+    `IS NULL OR`.
+    """
+    a = f"{alias}." if alias else ""
+    return f"({a}event_tier IS NULL OR {a}event_tier <> ?)", [TIER_LIGA]
+
+
+def conta_ligas(fmt: str | None) -> bool:
+    """Este formato conta ligas? É o mesmo interruptor que abre as quatro portas
+    (a colheita, o `store_decklist`, o `counting_sql` e o `prune_leagues`)."""
+    return TIER_LIGA in metagame_rules(fmt)["tiers"]
 
 
 # ---------------------------------------------------------------------------

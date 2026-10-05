@@ -330,6 +330,11 @@
       "ligas": false,
       "_nota": "Andre 2026-10-04: 'Qualifier' entrou. A regra de 2026-09-07 nomeia challenge, showcase e presenciais de 64+ e NAO nomeia os Qualifier — era omissao, nao exclusao: um 'Modern RC Super Qualifier' do MTGO e o evento mais forte que ha no MTGO, acima de uma Challenge 16. Entrou no _default e nao so no modern de proposito: um Qualifier de Pioneer a nao contar enquanto um de Modern conta sao duas regras ao lado que discordam em silencio."
     },
+    "modern": {
+      "min_jogadores_presencial": 0,
+      "ligas": true,
+      "_nota": "Andre 2026-10-05, a letra: 'para modern, apenas os decks de Mox Opal, procura todos os torneios ! incluindo ligas, torneios presenciais'. SO O MODERN mudou: a regra de 2026-09-07 (sem ligas, presencial com 64+ jogadores) continua inteira no _default e nos outros formatos, porque ele nao lhes tocou. NAO SE REPETE AQUI A LISTA DE TIERS de proposito: sem a chave 'tiers' esta secçao herda-a do _default (Challenge, Showcase, Presencial, Qualifier) e o 'ligas': true acrescenta-lhe 'League' — uma segunda copia da lista divergia da primeira no dia em que ele mexesse numa delas. O 'min_jogadores_presencial': 0 e o que faz entrar os presenciais pequenos: na janela havia 14 listas de presenciais de Modern, TODAS de eventos com menos de 64 jogadores (12 e 17), e uma delas joga Mox Opal (Thiago Meneghin, 2.o de 17, 4a Etapa CLM, 01/10). ESTE INTERRUPTOR ABRE AS QUATRO PORTAS AO MESMO TEMPO, porque as quatro leem o mesmo metagame_rules()['tiers']: a colheita deixa de saltar as paginas de liga (sources.harvest_mtgo), o sources.store_decklist guarda-as, o lista_conta/counting_sql conta-as e o analysis.prune_leagues deixa de as apagar. O CUSTO, medido a 05/10: as 8 paginas de liga de Modern da janela servem ~330 listas (45 a 58 por pagina, uma por dia) contra as 412 que o formato tinha — quase o dobro — e em regime sao ~50 listas novas por noite, que o prune_decklists(30) limita a ~1500. E O AVISO, tambem medido: uma liga e um 5-0 sem classificacao e sem tamanho de campo, por isso a percentagem do formato passa a misturar duas coisas; as paginas que mostram a percentagem dizem-na COM e SEM ligas lado a lado (sources.conta_com_e_sem_ligas)."
+    },
     "duel-commander": {
       "tiers": [
         "Challenge",
@@ -2491,12 +2496,19 @@
       "versoes": [
         {
           "id": "versao:modern:izzet-pinnacle",
-          "arquetipo_id": 7614,
+          "arquetipo_id": 5100,
           "nome": "Izzet Pinnacle",
-          "listas": 25,
+          "listas": 41,
           "deck": "caixa:modern",
           "principal": true,
-          "_porque": "o deck PRINCIPAL (\"o deck principal e Affinity sem duvida\", Andre, 04/10/2026) e a lista de qualificacao dele. 25 das 30 listas de Mox Opal da janela sao deste cluster, e e o unico dos quatro conhecidos de 04/10 com listas dentro da janela."
+          "_porque": "o deck PRINCIPAL (\"o deck principal e Affinity sem duvida\", Andre, 04/10/2026) e a lista de qualificacao dele.",
+          "_arquetipo_id_antes": {
+            "arquetipo_id": 7614,
+            "listas": 25,
+            "ate": "2026-10-05",
+            "porque": "AS LIGAS FUNDIRAM UMA DIVISAO, e esta anotacao tinha de a acompanhar. O `archetype_id` e estavel SO enquanto a etiqueta do agrupamento for (o rebuild_archetypes faz ON CONFLICT(format,label)), e as 430 listas que as ligas trouxeram a janela de Modern a 05/10 re-reparticaram os clusters: o 7614 -- nascido a 04/10, com 25 listas, etiqueta 'Welding Jar / Pinnacle Emissary / Kappa Cannoneer' -- ficou com ZERO listas e a Affinity passou para o 5100, que e de 2026-09-03 e tem 41 listas. NAO e um remendo: e a fusao que a ordem anterior tinha previsto a letra ('o 4380 e o 7614 sao a mesma deck partida pelo bug dos arquetipos -- quando a identidade estavel existir, as duas versoes colapsam numa'). CONFERIDO antes de se mexer: as 41 listas do 5100 jogam TODAS Mox Opal, a fonte chama-lhe 'Pinnacle Affinity' (4 votos de 5 nomeadas, segundo 'Affinity') -- que e o nome que a caixa dele tem desde 04/10 -- e as 22 cartas do maindeck da lista de qualificacao dele aparecem em 85 % das 41 listas, 8 delas em 41/41 (Engineered Explosives, Fiery Islet, Island, Kappa Cannoneer, Mishra's Bauble, Mox Opal, Pinnacle Emissary, Spirebluff Canal). Sem este re-apontar, a pagina mostrava o deck com que ele vai a Ghent no grupo das 'conhecidas, sem listas na janela' e a Affinity a serio aparecia por baixo como uma versao nova sem nome e sem a marca `principal`. Repor e devolver o 7614.",
+            "o_que_isto_vai_repetir": "o `archetype_id` e refeito todas as noites e volta a mudar no dia em que a composicao de um cluster mudar. A correccao de fundo e a identidade estavel por NUCLEO que o mtgvault/arquetipos.py ja faz para as sugestoes de Premodern (id do nucleo, herdado acima de 70 %), aplicada a tabela `archetypes` -- e a ordem mtg-top8-por-edicao. Entretanto, o `versoes.anotacoes_orfas` passou a DIZE-LO na pagina em vez de deixar o deck principal aparecer morto em silencio."
+          }
         },
         {
           "id": "versao:modern:weapons",

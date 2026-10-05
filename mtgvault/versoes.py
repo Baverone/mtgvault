@@ -544,7 +544,67 @@ def versoes_derivadas(con: sqlite3.Connection, fmt: str,
         "sem_cluster": sem_cluster, "sem_cluster_nomes": sem_nomes,
         "desde": desde,
         "fora_da_janela": {"clusters": len(fora), "listas": sum(fora.values())},
+        "orfas": _orfas(vs),
     }
+
+
+# ---------------------------------------------------------------------------
+# A ANOTAÇÃO QUE PERDEU O CLUSTER (2026-10-05)
+# ---------------------------------------------------------------------------
+# O `archetype_id` é refeito **todas as noites** (`analysis.rebuild_archetypes`)
+# e é estável só enquanto a ETIQUETA do cluster for — a tabela faz
+# `ON CONFLICT(format, label)`, por isso um cluster que mude de composição muda
+# de etiqueta e **ganha um id novo**. As anotações do config são por
+# `arquetipo_id`.
+#
+# Aconteceu no dia em que isto foi escrito, e é por isso que existe: as 430
+# listas que as ligas trouxeram à janela de Modern fundiram o cluster 7614 (25
+# listas, nascido no dia anterior) no 5100 (41 listas, de 03/09). A anotação do
+# deck **principal** — o deck com que ele vai ao RC de Ghent — ficou a apontar
+# para um cluster com ZERO listas, e a página mostrava-o no grupo das
+# *«conhecidas, sem listas na janela»* enquanto a Affinity a sério aparecia por
+# baixo como uma versão nova, sem nome e sem a marca. **Nada dava erro.** É o
+# padrão do `event_tier` outra vez, sobre a página por onde ele vai sleevar.
+#
+# A correcção de fundo é a identidade estável por NÚCLEO que o
+# `mtgvault/arquetipos.py` já faz para as sugestões de Premodern (id do núcleo,
+# herdado acima de 70 %), aplicada à tabela `archetypes` — é a ordem
+# `mtg-top8-por-edicao`. Até lá, isto **diz-o** em vez de o deixar passar: a
+# alternativa a um aviso não é um vault certo, é um vault errado em silêncio.
+#
+# O CRIVO É ESTREITO DE PROPÓSITO: só a versão **principal** ou a **escolhida**.
+# As outras quatro conhecidas (Weapons, Cranial, Seachrome, Grinding Station)
+# têm legitimamente zero listas na janela — é o estado que a ordem de 04/10
+# escolheu mostrar — e marcá-las era pôr um aviso permanente a piscar, que é um
+# aviso que se deixa de ler.
+def _orfas(vs: list[dict]) -> list[dict]:
+    """As versões que CLAMAM ser o deck e não têm uma lista na janela.
+
+    `candidato` é a maior versão sem anotação: é quase sempre o cluster para
+    onde o deck foi, e é o que se põe no `arquetipo_id` da anotação.
+    """
+    candidatos = [v for v in vs if v["na_janela"] and not v["anotada"]]
+    cand = max(candidatos, key=lambda d: d["listas"], default=None)
+    out = []
+    for v in vs:
+        if v["listas"] or not (v["principal"] or v["escolhida"]):
+            continue
+        out.append({
+            "id": v["id"], "nome": v["nome"],
+            "arquetipo_id": v["arquetipo_id"],
+            "principal": v["principal"], "escolhida": v["escolhida"],
+            "candidato": ({"arquetipo_id": cand["arquetipo_id"],
+                           "nome": cand["nome"], "listas": cand["listas"]}
+                          if cand else None),
+        })
+    return out
+
+
+def anotacoes_orfas(con: sqlite3.Connection, fmt: str,
+                    cfg: dict | None = None, cache: dict | None = None
+                    ) -> list[dict]:
+    """O mesmo que `versoes_derivadas(...)["orfas"]`, para quem só quer isto."""
+    return versoes_derivadas(con, fmt, cfg, cache).get("orfas") or []
 
 
 def outros_que_jogam(con: sqlite3.Connection, fmt: str,
@@ -785,19 +845,55 @@ def listas_do_formato(con: sqlite3.Connection, cfg: dict | None = None
 
     Para a página poder dizer *«23 de 171 listas de Legacy, 13,5 %»* sem
     recontar — e para a conta ficar conferível contra o site.
+
+    **E, desde 2026-10-05, a MESMA conta SEM as ligas ao lado** (`sem_ligas`,
+    mais `ligas` com a fatia delas). É a decisão da secção «AS LIGAS CONTAM-SE À
+    PARTE» do `sources`: uma liga é um 5-0 sem classificação e sem tamanho de
+    campo, e somada a uma Challenge faz a percentagem do formato medir duas
+    coisas ao mesmo tempo. As duas contas vão sempre as duas, nunca uma —
+    esconder a de baixo deixava-o a olhar para um número que pode ter subido só
+    porque a fonte mudou. Num formato que não conte ligas as duas são **iguais**
+    (não há nenhuma para tirar), e é isso que faz isto não mudar nada no Legacy.
     """
     cfg = sources.config() if cfg is None else cfg
     desde = sources.consenso_desde()
+    sem_liga, par_liga = sources.sql_sem_ligas("d")
     out: dict[str, dict] = {}
     for fmt in formatos_inclusivos(cfg):
         carta = carta_chave(fmt, cfg)
         n = len(listas_da_carta(con, fmt, carta, desde))
         tot = con.execute(
-            "SELECT COUNT(*) c FROM decklists WHERE format = ? AND event_date >= ?",
-            [fmt, desde]).fetchone()["c"]
-        out[fmt] = {"carta": carta, "listas": n, "total": tot,
-                    "pct": round(100.0 * n / tot, 1) if tot else 0.0,
-                    "desde": desde}
+            "SELECT COUNT(*) c FROM decklists d WHERE d.format = ? "
+            "AND d.event_date >= ?", [fmt, desde]).fetchone()["c"]
+        n_sem = con.execute(
+            f"""SELECT COUNT(*) c FROM decklists d
+                 WHERE d.format = ? AND d.event_date >= ? AND {sem_liga}
+                   AND EXISTS (SELECT 1 FROM decklist_cards k
+                                WHERE k.decklist_id = d.id
+                                  AND {scryfall.sql_nome('k.card_name')})""",
+            [fmt, desde] + list(par_liga)
+            + list(scryfall.params_nome(carta))).fetchone()["c"]
+        tot_sem = con.execute(
+            f"""SELECT COUNT(*) c FROM decklists d
+                 WHERE d.format = ? AND d.event_date >= ? AND {sem_liga}""",
+            [fmt, desde] + list(par_liga)).fetchone()["c"]
+
+        def _p(a, b):
+            return round(100.0 * a / b, 1) if b else 0.0
+
+        out[fmt] = {
+            "carta": carta, "listas": n, "total": tot, "pct": _p(n, tot),
+            "desde": desde,
+            # Esta é a conta de ANTES de as ligas entrarem: é com ela que se
+            # compara, e é ela que diz se o número andou por mérito do deck.
+            "sem_ligas": {"listas": n_sem, "total": tot_sem,
+                          "pct": _p(n_sem, tot_sem)},
+            "ligas": {"listas": n - n_sem, "total": tot - tot_sem,
+                      "pct": _p(n - n_sem, tot - tot_sem),
+                      # `conta` é o interruptor do config, não «há ligas na
+                      # base»: um formato pode ter ligas antigas por apagar.
+                      "conta": sources.conta_ligas(fmt)},
+        }
     return out
 
 

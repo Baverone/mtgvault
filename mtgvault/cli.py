@@ -80,6 +80,10 @@ def main(argv=None):
     h = sub.add_parser("harvest", help="recolher decklists do MTGO")
     h.add_argument("--days", type=int, default=1)
     h.add_argument("--format", action="append")
+    h.add_argument("--hoje", action="store_true",
+                   help="recolher TAMBÉM o dia de hoje (a página de liga do "
+                        "mtgo.com publica os 5-0 ao longo do dia; o daily das "
+                        "03:30 começa em ontem, de propósito)")
 
     h8 = sub.add_parser("harvest-mtgtop8", help="recolher decklists do mtgtop8")
     h8.add_argument("format")
@@ -530,7 +534,8 @@ def main(argv=None):
 
         elif args.cmd == "harvest":
             n = sources.harvest_mtgo(con, args.days,
-                                     set(args.format) if args.format else None)
+                                     set(args.format) if args.format else None,
+                                     incluir_hoje=args.hoje)
             print(f"{n} decklists novas.")
 
         elif args.cmd == "harvest-mtgtop8":
