@@ -203,9 +203,50 @@ def formatos_por_decidir(cfg: dict | None = None) -> list[str]:
 
 
 def versoes(fmt: str, cfg: dict | None = None) -> list[dict]:
+    """As versões ESCRITAS no config — as anotadas, e só essas.
+
+    Num formato de versões derivadas (`versoes_todas`) esta lista deixou de ser
+    o conjunto: é o conjunto das **anotações** (nome, `deck`, `principal`) e das
+    versões CONHECIDAS que hoje não têm listas na janela. Quem responde «quais
+    são as versões» nesse caso é o `versoes_derivadas`, que precisa da base.
+
+    Continua a ser esta a lista que o motor da venda vê (`ids_que_ficam` →
+    `nomes_que_ficam`, a regra RE) e a que o registo da página transforma em
+    decks — as duas perguntam por versões **com lista fixada**, e uma versão
+    derivada não tem nenhuma. Ver a nota em `versoes_derivadas`.
+    """
     d = do_formato(fmt, cfg) or {}
     v = d.get("versoes")
     return [x for x in (v if isinstance(v, list) else []) if isinstance(x, dict)]
+
+
+def versoes_todas(fmt: str, cfg: dict | None = None) -> bool:
+    """As versões deste formato DERIVAM do critério, em vez de ser lista fixa?
+
+    *"no Modern, a unica coisa e que quero os decks que joguem Mox Opal, seja
+    affinity, seja grinding station, seja outra coisa qualquer"* (André,
+    2026-10-05). Em Modern a escolha passou a ser a MESMA pergunta que a
+    protecção — um critério só, *joga Mox Opal* —, e por isso o conjunto não
+    pode ser uma lista de `archetype_id` escrita à mão: daqui a uma semana havia
+    um deck de Mox Opal de fora e ninguém reparava.
+
+    **É chave PRÓPRIA e não o `protege_todas`**, de propósito: o Legacy é
+    inclusivo para a protecção e tem `versoes: []` porque ele disse *"NADA se
+    escolheu para MONTAR em Legacy"*. Pendurar isto no `protege_todas` dava-lhe
+    oito versões que ele não pediu.
+    """
+    c = (do_formato(fmt, cfg) or {}).get("criterio") or {}
+    return bool(c.get("versoes_todas"))
+
+
+def id_derivado(fmt: str, aid: int) -> str:
+    """O id de uma versão que a base trouxe e o config não anota.
+
+    Sai do `archetype_id`, que é a única identidade estável que há (o
+    `mtgvault.arquetipos` herda o id acima de 70 % de núcleo em comum) — nunca
+    do nome, que muda de corrida para corrida.
+    """
+    return f"versao:{fmt}:a{int(aid)}"
 
 
 def versao_escolhida(fmt: str, cfg: dict | None = None) -> str:
@@ -236,19 +277,28 @@ class VersaoDesconhecida(ValueError):
     pedido de uma página aberta ontem no telemóvel."""
 
 
-def escolher(cfg: dict, fmt: str, vid: str, hoje: str | None = None) -> dict:
+def escolher(cfg: dict, fmt: str, vid: str, hoje: str | None = None,
+             validas=None) -> dict:
     """Grava a versão escolhida. Devolve o `cfg` (que é alterado no sítio).
 
     **Trocar para a que já lá está é um no-op** e não reescreve a data: um
     clique sem efeito não pode parecer uma decisão nova no histórico, que é a
     mesma regra do `precos.gravar_fonte` e do `fases.gravar_congelada`.
+
+    `validas` são os ids que a página ofereceu, e serve as versões DERIVADAS:
+    num formato `versoes_todas` a maior parte delas não está escrita no config,
+    e validar só contra o config recusava um clique numa versão que a página
+    acabou de desenhar. Quem o passa é quem tem ligação à base (o `webapp`);
+    sem ele vale o config, que é o que os formatos de lista fixa querem.
     """
     fmt = (fmt or "").lower()
     d = (cfg.get(CHAVE) or {}).get(fmt)
     if not isinstance(d, dict):
         raise VersaoDesconhecida(f"o formato {fmt} não tem deck único neste modelo")
-    if not any(v.get("id") == vid for v in versoes(fmt, cfg)):
-        tem = ", ".join(str(v.get("id")) for v in versoes(fmt, cfg)) or "nenhuma"
+    ids = ([str(x) for x in validas] if validas is not None
+           else [str(v.get("id")) for v in versoes(fmt, cfg)])
+    if vid not in ids:
+        tem = ", ".join(ids) or "nenhuma"
         raise VersaoDesconhecida(
             f"«{vid}» não é uma versão de {fmt}. As que há: {tem}")
     if d.get("versao") == vid:
@@ -339,6 +389,164 @@ def _pct_no_cluster(con, aid: int, nm: str) -> float:
     return 100.0 * n / tot
 
 
+def clusters_da_carta(con: sqlite3.Connection, fmt: str, carta: str,
+                      desde: str | None = None) -> dict:
+    """`archetype_id -> nº de listas` do formato que jogam a carta.
+
+    `desde=None` é a história toda; com data é a janela. A chave `None` são as
+    listas a que o agrupamento ainda não deu identidade — **contam-se e
+    dizem-se, nunca viram versão**: uma versão precisa de um id estável, e uma
+    lista sem cluster não tem nenhum.
+
+    **Sem o filtro de tier do `sources.counting_sql`**, e é o mesmo universo —
+    e a mesma razão — da RP: *"em Modern a escolha e a mesma coisa que a
+    proteccao -- um criterio so"*. Dois universos para o mesmo critério davam
+    um deck protegido que não era versão de nada.
+    """
+    cond = "AND d.event_date >= ?" if desde else ""
+    par = [fmt] + ([desde] if desde else []) + list(scryfall.params_nome(carta))
+    return {r["aid"]: r["n"] for r in con.execute(
+        f"""SELECT d.archetype_id aid, COUNT(DISTINCT d.id) n FROM decklists d
+             WHERE d.format = ? {cond}
+               AND EXISTS (SELECT 1 FROM decklist_cards k
+                            WHERE k.decklist_id = d.id
+                              AND {scryfall.sql_nome('k.card_name')})
+             GROUP BY d.archetype_id""", par)}
+
+
+def principal(fmt: str, cfg: dict | None = None) -> str:
+    """O `id` da versão que é o deck PRINCIPAL, ou vazio.
+
+    *"o deck principal e Affinity sem duvida"* (André, 2026-10-04). Não é a
+    versão ESCOLHIDA nem o mesmo eixo: a escolhida é a que ele vai montar
+    agora e muda com um toque; a principal é a identidade do deck e está
+    escrita no config. Hoje coincidem, e podem deixar de coincidir.
+    """
+    for v in versoes(fmt, cfg):
+        if v.get("principal"):
+            return str(v.get("id") or "")
+    return ""
+
+
+def versoes_derivadas(con: sqlite3.Connection, fmt: str,
+                      cfg: dict | None = None, cache: dict | None = None
+                      ) -> dict:
+    """As versões como a BASE as diz, mais as ANOTAÇÕES do config.
+
+    O conjunto é **derivado** (`versoes_todas`) e por isso um arquétipo novo
+    com a carta-chave entra sozinho na corrida em que aparecer — era isso que
+    uma lista de `archetype_id` a martelo não fazia.
+
+    Três grupos, e cada versão diz em qual está:
+
+    * **`na_janela`** — joga a carta-chave na janela do consenso: é um deck que
+      se está a jogar agora. Entram todos, anotados ou não.
+    * **conhecida, `listas = 0`** — está anotada no config e hoje não tem
+      listas na janela. **Não desaparece e não se inventa como actual**: é o
+      caso do Grinding Station, que ele deu como exemplo e que tem zero listas
+      desde 29/09 em qualquer formato. Esconder era mentir-lhe por omissão;
+      mostrá-la ao lado das outras era mentir-lhe por igualdade.
+    * o resto fica em `fora_da_janela` — **contado e dito, não listado**:
+      quinze clusters de uma lista cada, de antes da janela, não são quinze
+      versões do deck dele. Um que volte a aparecer entra pelo primeiro grupo.
+
+    O NOME sai, por esta ordem: do config (é dele), do `mtgvault.nomes` (o nome
+    que a FONTE dá às listas do cluster, a votação de 2026-10-02) e, em último,
+    da etiqueta do agrupamento — marcada `etiqueta`, porque um nome gerado com
+    a cara de um nome verdadeiro já custou três erros.
+    """
+    cfg = sources.config() if cfg is None else cfg
+    cache = {} if cache is None else cache
+    carta = carta_chave(fmt, cfg)
+    anot = {str(v.get("arquetipo_id")): v for v in versoes(fmt, cfg)
+            if v.get("arquetipo_id") is not None}
+    esc = versao_escolhida(fmt, cfg)
+    prin = principal(fmt, cfg)
+    if not (versoes_todas(fmt, cfg) and carta):
+        return {"derivado": False, "versoes": [], "sem_cluster": 0,
+                "fora_da_janela": {"clusters": 0, "listas": 0}, "carta": carta}
+
+    desde = sources.consenso_desde()
+    jan = clusters_da_carta(con, fmt, carta, desde)
+    tod = clusters_da_carta(con, fmt, carta)
+    sem_cluster = int(jan.get(None, 0) or 0)
+    # Uma lista sem cluster não é uma versão — mas a FONTE pode dar-lhe nome, e
+    # «1 lista sem arquétipo» sem o nome ao lado é informação a menos sobre uma
+    # lista que existe mesmo.
+    #
+    # QUEM RESPONDE É O `mtgvault.nomes`, e nunca uma leitura do
+    # `arquetipo_fonte` aqui: essa coluna tem UM leitor só, e o
+    # `test_nomes_arquetipo.caso_a_pergunta_do_nome_vive_num_sitio_so`
+    # apanhou-me a lê-la à mão — com razão, porque um segundo leitor vota de
+    # outra maneira num dia qualquer, em silêncio. Aqui a pergunta é a do
+    # `nome_das_listas` (*"como se chama este conjunto de listas"*) aplicada a
+    # cada lista sozinha, porque é isso que elas são: avulsas.
+    sem_nomes: list[str] = []
+    if sem_cluster:
+        ids = [r["id"] for r in con.execute(
+            f"""SELECT d.id FROM decklists d
+                 WHERE d.format = ? AND d.event_date >= ?
+                   AND d.archetype_id IS NULL
+                   AND EXISTS (SELECT 1 FROM decklist_cards k
+                                WHERE k.decklist_id = d.id
+                                  AND {scryfall.sql_nome('k.card_name')})
+                 ORDER BY d.id""",
+            [fmt, desde] + list(scryfall.params_nome(carta)))]
+        for i in ids:
+            rot = _nomes.nome_das_listas(con, [i])
+            nm = (rot or {}).get("nome")
+            if nm and nm not in sem_nomes:
+                sem_nomes.append(nm)
+        sem_nomes.sort()
+
+    def _nome(aid: int, v: dict | None) -> tuple[str, str]:
+        if v and v.get("nome"):
+            return str(v["nome"]), "config"
+        rot = _nomes.nome_do_cluster(con, aid, fmt, cache=cache) or {}
+        if rot.get("nome"):
+            return str(rot["nome"]), str(rot.get("origem") or "fonte")
+        r = con.execute("SELECT label FROM archetypes WHERE id=?", [aid]).fetchone()
+        return ((r["label"] if r else "") or f"arquétipo {aid}"), "etiqueta"
+
+    vs = []
+    vistos = set()
+    # (1) o que se joga AGORA, e (2) as conhecidas sem listas na janela.
+    alvos = [(a, True) for a in jan if a is not None]
+    alvos += [(int(a), False) for a in anot
+              if int(a) not in jan and int(a) in tod]
+    # Uma anotada que o agrupamento já não conhece de todo não se deita fora:
+    # o cluster pode ter sido refeito, e a anotação é uma decisão dele.
+    alvos += [(int(a), False) for a in anot if int(a) not in tod]
+    for aid, na_janela in alvos:
+        if aid in vistos:
+            continue
+        vistos.add(aid)
+        v = anot.get(str(aid)) or {}
+        nm, origem = _nome(aid, v)
+        vid = str(v.get("id") or id_derivado(fmt, aid))
+        vs.append({
+            "id": vid, "arquetipo_id": aid, "nome": nm, "origem_nome": origem,
+            "deck": deck_da_versao(v) if v.get("deck") or v.get("id") else "",
+            "listas": int(jan.get(aid, 0) or 0),
+            "listas_total": int(tod.get(aid, 0) or 0),
+            "na_janela": bool(na_janela),
+            "anotada": bool(v),
+            "principal": vid == prin,
+            "escolhida": vid == esc,
+            "porque": str(v.get("_porque") or ""),
+        })
+    vs.sort(key=lambda d: (not d["na_janela"], -d["listas"], -d["listas_total"],
+                           d["nome"]))
+    fora = {a: n for a, n in tod.items()
+            if a is not None and a not in jan and a not in vistos}
+    return {
+        "derivado": True, "carta": carta, "versoes": vs,
+        "sem_cluster": sem_cluster, "sem_cluster_nomes": sem_nomes,
+        "desde": desde,
+        "fora_da_janela": {"clusters": len(fora), "listas": sum(fora.values())},
+    }
+
+
 def outros_que_jogam(con: sqlite3.Connection, fmt: str,
                      cfg: dict | None = None,
                      min_listas: int = 1) -> list[dict]:
@@ -348,9 +556,15 @@ def outros_que_jogam(con: sqlite3.Connection, fmt: str,
     critério (`passa_criterio`) e porquê — para ele poder incluir um com um
     toque, que é exactamente o que a ordem pede (*"NAO decidas por ele incluir
     nem excluir definitivamente"*).
+
+    **Vazio num formato de versões derivadas** (2026-10-05): ali não há
+    «outros» — quem joga a carta-chave É uma versão, e era precisamente esta
+    caixa que guardava os cinco arquétipos *«de fora, à espera de
+    confirmação»* que ele respondeu. Fica inteira para o Pioneer, onde ele
+    nomeou as três versões à mão.
     """
     carta, exige, pct_min = _criterio(fmt, cfg)
-    if not carta:
+    if not carta or versoes_todas(fmt, cfg):
         return []
     ja = {v.get("arquetipo_id") for v in versoes(fmt, cfg)
           if v.get("arquetipo_id") is not None}

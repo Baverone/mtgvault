@@ -76,7 +76,25 @@ _LEAD = ("formato → deck → cartas. O `+` e o `−` de cada carta são a tua 
 #: Se passar daqui, o passo seguinte é tirá-lo para um `decks.js` com hash no
 #: `?v=`, como a Deckboxes fez a 2026-09-18 — com o custo de mais uma entrada
 #: nas duas listas de `git add` e de o site ficar sem comportamento se faltar lá.
-TECTO_CASCA = 80 * 1024
+#:
+#: **SUBIU A 88 KB a 2026-10-05**, e é a primeira vez — a folga de 60 % de 04/10
+#: durou um dia e meio. Medido nessa data, o mesmo gerador dos dois lados:
+#:
+#:   * `main` (depois dos «sempre montados»)  **80 186** bytes · 24 422 em gzip
+#:   * com as versões derivadas do Mox Opal   **84 379** bytes · 25 829 em gzip
+#:
+#: São **+4 193 bytes em disco e +1 407 em gzip** — e é o gzip que mede o que o
+#: telemóvel dele descarrega mesmo (o Pages serve comprimido; o `webapp` do
+#: 8771 é rede local). **1,4 KB** pela aba passar a dizer, dos dois grupos de
+#: versões, qual se joga agora e qual tem zero listas na janela.
+#:
+#: O número: 88 KB fica **acima** da medida com ~6 KB de folga e continua
+#: **abaixo** dos 74 KB do `test_telemovel` mais o `deckboxes.js`, que é a régua
+#: de sempre — esta página continua mais leve do que a Deckboxes de ponta a
+#: ponta. A folga encolheu de 60 % para 7 %, e isso é o aviso: **a próxima ordem
+#: que acrescente JavaScript aqui tira-o para um `decks.js`** em vez de subir o
+#: tecto outra vez. Subi-lo três vezes é não ter tecto.
+TECTO_CASCA = 88 * 1024
 
 _CSS = """
  .fmts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:stretch}
@@ -133,6 +151,15 @@ _CSS = """
  .vq input{width:18px;height:18px;accent-color:var(--accent)}
  .vn{flex:1;min-width:0}
  .vnome{font-weight:600;font-size:13.5px}
+ /* OS DOIS GRUPOS DE VERSOES (2026-10-05): o que se joga agora e o que e
+    conhecido e hoje nao tem listas na janela. A segunda fica mais apagada mas
+    NAO escondida -- e o Grinding Station que ele deu como exemplo. */
+ .vgt{font-size:11px;letter-spacing:.04em;text-transform:uppercase;
+   color:var(--muted);margin:8px 0 1px}
+ .vrow.fora{opacity:.72;border-style:dashed}
+ .vrow.fora.sel{opacity:1}
+ .zero{color:var(--warn)}
+ .tag.q{background:var(--sunken);border-color:var(--line);color:var(--muted)}
  @media (max-width:640px){ .vrow{flex-wrap:wrap} .vn{flex-basis:100%;order:3} }
  /* A SEQUÊNCIA e as STAPLES (2026-10-04 ao fim do dia). */
  .passos{background:var(--card);border:1px solid var(--accent-line);border-radius:var(--r);
@@ -341,35 +368,96 @@ function deckUnicoHTML(u) {
      As duas perguntas lado a lado, porque confundi-las custa caro nos dois
      sentidos: ou monta decks que não quer, ou vende cartas que quer. */
   if (u.protege) {
-    out += `<div class="ficha media"><h4>Proteger ≠ montar</h4><p class="pq">`
-      + `<b>Montar:</b> a versão que escolheres, aqui em baixo. `
-      + `<b>Proteger:</b> todas as <b>${u.protege.listas}</b> listas deste formato `
-      + `que jogam ${esc(u.protege.carta)} — ${u.protege.listas} de `
-      + `${u.protege.total} na janela (<b>${u.protege.pct} %</b>), de qualquer `
-      + `arquétipo. Uma carta que apareça em ${u.limiar} ou mais dessas listas `
-      + `<b>não vai à venda</b> (regra RP). Os «outros decks» aqui em baixo `
-      + `<b>também protegem</b>, mesmo não sendo versões.</p></div>`;
+    /* Num formato DERIVADO (o Modern, desde 05/10) o critério é UM SÓ: quem
+       joga a carta-chave é versão e está protegido. O que continua a ser
+       distinto é o gesto — montar é escolher UMA; proteger são todas. */
+    out += `<div class="ficha media"><h4>${u.derivado
+        ? 'Um critério só: joga ' + esc(u.protege.carta)
+        : 'Proteger ≠ montar'}</h4><p class="pq">`
+      + (u.derivado
+        ? `<b>${u.protege.listas}</b> das <b>${u.protege.total}</b> listas deste `
+          + `formato na janela jogam ${esc(u.protege.carta)} `
+          + `(<b>${u.protege.pct} %</b>), de qualquer arquétipo — e <b>todas</b> `
+          + `contam, para as duas coisas: são elas as versões deste deck aqui em `
+          + `baixo, e uma carta que apareça em ${u.limiar} ou mais delas <b>não `
+          + `vai à venda</b> (regra RP). Montar continua a ser escolher <b>uma</b> `
+          + `versão; proteger são <b>todas</b>.`
+        : `<b>Montar:</b> a versão que escolheres, aqui em baixo. `
+          + `<b>Proteger:</b> todas as <b>${u.protege.listas}</b> listas deste `
+          + `formato que jogam ${esc(u.protege.carta)} — ${u.protege.listas} de `
+          + `${u.protege.total} na janela (<b>${u.protege.pct} %</b>), de qualquer `
+          + `arquétipo. Uma carta que apareça em ${u.limiar} ou mais dessas listas `
+          + `<b>não vai à venda</b> (regra RP). Os «outros decks» aqui em baixo `
+          + `<b>também protegem</b>, mesmo não sendo versões.`)
+      + `</p></div>`;
   }
   if (u.versoes && u.versoes.length) {
-    out += `<div class="vsel"><div class="vt">Versões — escolhe a que vais montar</div>`;
-    out += u.versoes.map(v => {
+    /* O CONJUNTO DAS VERSÕES VEM DA BASE (2026-10-05, à letra: *"no Modern, a
+       unica coisa e que quero os decks que joguem Mox Opal, seja affinity, seja
+       grinding station, seja outra coisa qualquer"*). Dois grupos, e a
+       diferença entre eles é toda a honestidade desta lista: o que se joga
+       AGORA, e o que é conhecido e hoje não tem listas na janela. O Grinding
+       Station é do segundo grupo — não se inventa como actual nem se esconde. */
+    const vrow = v => {
       const cl = v.pct >= 95 ? 'ok' : v.pct >= 50 ? 'mid' : 'lo';
-      return `<div class="vrow${v.escolhida ? ' sel' : ''}">
+      return `<div class="vrow${v.escolhida ? ' sel' : ''}${v.na_janela ? '' : ' fora'}">
         <label class="vq"><input type="radio" name="versao-${esc(u.formato)}"
           data-versao="${esc(u.formato)}|${esc(v.id)}"${v.escolhida ? ' checked' : ''}${
           EDIT() ? '' : ' disabled'}></label>
         <div class="vn"><div class="vnome">${esc(v.nome)}${
-          v.escolhida ? ' <span class="tag">a montar</span>' : ''}</div>
+          v.principal ? ' <span class="chip gold">principal</span>' : ''}${
+          v.escolhida ? ' <span class="tag">a montar</span>' : ''}${
+          v.origem_nome === 'etiqueta'
+            ? ' <span class="tag q" title="a fonte ainda não dá nome a este deck'
+              + ' — isto é a etiqueta das cartas distintivas">etiqueta</span>' : ''}</div>
           <div class="dsub">${v.sem_lista ? 'sem lista'
             : `tens <b>${v.tem}</b> de <b>${v.total}</b>`}${
-            v.listas ? ` · ${v.listas} lista${v.listas === 1 ? '' : 's'} no meta` : ''}${
+            v.na_janela
+              ? ` · <b>${v.listas}</b> lista${v.listas === 1 ? '' : 's'} na janela`
+              : ` · <b class="zero">zero listas na janela</b>${
+                  v.listas_total ? ` · ${v.listas_total} antes dela` : ''}`}${
             v.nota ? ' · ' + esc(v.nota) : ''}</div>
           <div class="bar"><i class="${cl === 'ok' ? 'ok' : ''}" style="width:${v.pct}%"></i></div>
         </div>
         <div class="dpct ${cl}">${v.sem_lista ? '—' : v.pct + '%'}</div>
         ${v.deck ? `<button class="verd" data-d="${esc(v.deck)}">ver ▶</button>` : ''}
       </div>`;
-    }).join('') + '</div>';
+    };
+    const agora = u.versoes.filter(v => v.na_janela);
+    const fora = u.versoes.filter(v => !v.na_janela);
+    out += `<div class="vsel"><div class="vt">Versões — escolhe a que vais montar`
+      + `${u.derivado ? ` <span class="tag">todas as que jogam ${
+        esc(u.carta_chave)}</span>` : ''}</div>`;
+    if (u.derivado) {
+      out += `<p class="stpn">O conjunto sai da <b>base</b>, não de uma lista`
+        + ` escrita à mão: é versão todo o arquétipo que jogue`
+        + ` <b>${esc(u.carta_chave)}</b>${u.desde ? `, desde ${esc(u.desde)}` : ''}`
+        + ` — Affinity ou não. Um arquétipo novo com a carta <b>entra`
+        + ` sozinho</b>.</p>`;
+    }
+    out += (u.derivado && fora.length
+      ? `<div class="vgt">A jogar-se agora — ${agora.length}</div>` : '')
+      + agora.map(vrow).join('');
+    if (fora.length) {
+      out += `<div class="vgt">Conhecidas, sem listas na janela — ${fora.length}</div>`
+        + `<p class="stpn">Não aparecem em listas desde`
+        + `${u.desde ? ' ' + esc(u.desde) : ' o início da janela'}. Ficam à vista`
+        + ` com o zero dito: nem se escondem, nem contam como atuais.</p>`
+        + fora.map(vrow).join('');
+    }
+    out += '</div>';
+    if (u.derivado) {
+      const sc = u.sem_cluster, fj = u.fora_da_janela || {}, nms = u.sem_cluster_nomes || [];
+      const p = [];
+      if (sc) p.push(`<b>${sc}</b> lista${sc === 1 ? '' : 's'} que o agrupamento`
+        + ` ainda não identificou${nms.length ? ` (a fonte: «${
+          nms.map(esc).join('», «')}»)` : ''} — não viram versão, porque uma`
+        + ` versão precisa de identidade estável`);
+      if (fj.clusters) p.push(`<b>${fj.clusters}</b> arquétipos (${fj.listas}`
+        + ` listas) jogaram ${esc(u.carta_chave)} <b>antes</b> da janela — um que`
+        + ` volte a aparecer entra sozinho`);
+      if (p.length) out += `<p class="pq">Mais: ${p.join('; ')}.</p>`;
+    }
   }
   if (u.nota) out += `<p class="pq">${esc(u.nota)}</p>`;
   /* OS OUTROS QUE JOGAM A CARTA-CHAVE — derivados da base a cada corrida, nunca

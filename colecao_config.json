@@ -2477,42 +2477,60 @@
       "criterio": {
         "carta": "Mox Opal",
         "protege_todas": true,
-        "exige": ["Kappa Cannoneer", "Pinnacle Emissary"],
-        "pct_minima": 50,
-        "porque": "ATENCAO: o `exige` decide o que ele MONTA, nunca o que fica protegido. Nem todo o deck que joga Mox Opal e uma versao da Affinity: medido a 04/10, 20 clusters de Modern jogam a carta e so 7 jogam tambem Kappa Cannoneer e Pinnacle Emissary em metade ou mais das listas. Para MONTAR valem esses (\"o deck principal e Affinity sem duvida\"); os outros ficam A VISTA em «outros decks que jogam Mox Opal», derivados da base.",
-        "protege_todas_porque": "PROTEGER e outra pergunta (Andre, 05/10/2026): \"assim ficamos com uma lista de cartas que eu gostaria de nao vender, tudo o resto e «seguro» vender\". Aqui o criterio e INCLUSIVO — entram TODAS as 25 listas de Modern que jogam Mox Opal na janela, de qualquer arquetipo, e os cinco que ficaram de fora das versoes a 04/10 (Scrabbling Claws, Jace/Song of Creation, Flame of Anor, Hammer Time, Erayo) VOLTAM a contar para a proteccao. E a regra RP."
+        "porque": "O criterio e UM SO e e INCLUSIVO desde 05/10/2026: joga Mox Opal. Medido na base nesse dia, na janela do consenso (desde 29/09) e sem filtro de tier -- o mesmo universo da RP: 30 das 412 listas de Modern jogam Mox Opal (7,3 %), em 4 clusters (7614 com 25, 7697 com 2, 7622 com 1, 7456 com 1) mais 1 lista a que o agrupamento ainda nao deu identidade. Os quatro sao versoes; a lista sem cluster conta-se e diz-se e NUNCA vira versao, porque uma versao precisa de um id estavel. Fora da janela ha mais 15 clusters / 119 listas, contados e ditos na pagina: quinze clusters de uma lista cada, de antes do Reality Fracture, nao sao quinze versoes do deck dele.",
+        "protege_todas_porque": "PROTEGER e outra pergunta (Andre, 05/10/2026): \"assim ficamos com uma lista de cartas que eu gostaria de nao vender, tudo o resto e «seguro» vender\". Aqui o criterio e INCLUSIVO — entram TODAS as 25 listas de Modern que jogam Mox Opal na janela, de qualquer arquetipo, e os cinco que ficaram de fora das versoes a 04/10 (Scrabbling Claws, Jace/Song of Creation, Flame of Anor, Hammer Time, Erayo) VOLTAM a contar para a proteccao. E a regra RP.",
+        "versoes_todas": true,
+        "versoes_todas_porque": "O MODERN SAO TODOS OS DECKS DE MOX OPAL (Andre, 05/10/2026, a letra): \"no Modern, a unica coisa e que quero os decks que joguem Mox Opal, seja affinity, seja grinding station, seja outra coisa qualquer\". FECHA a duvida que ficou aberta a 04/10, em que o `exige` (Kappa Cannoneer + Pinnacle Emissary) escolhia quais os clusters que eram versoes e cinco arquetipos ficaram «de fora, a espera de confirmacao» -- ele confirmou o CONTRARIO do que lhe foi proposto. Em Modern a escolha passou a ser a MESMA pergunta que a proteccao: um criterio so, `joga Mox Opal`. Por isso o conjunto e DERIVADO da base a cada corrida (`versoes.versoes_derivadas`) e NAO uma lista de `archetype_id` a martelo: um arquetipo novo com Mox Opal entra sozinho na corrida em que aparecer. E chave PROPRIA e nao o `protege_todas` de proposito -- o legacy e inclusivo para a proteccao e tem `versoes: []` porque ele disse que NADA se escolheu para montar em Legacy; pendurar isto no `protege_todas` dava-lhe oito versoes que nao pediu.",
+        "_exige_antes": {
+          "exige": ["Kappa Cannoneer", "Pinnacle Emissary"],
+          "pct_minima": 50,
+          "ate": "2026-10-05",
+          "porque": "era o teste que decidia quais os clusters que eram VERSOES (Kappa Cannoneer + Pinnacle Emissary em metade ou mais das listas do cluster). Deixou de decidir a 05/10/2026, quando ele disse que entram todos os decks de Mox Opal e nao so os de Affinity. NAO se apagou: repor e devolver estas chaves ao `criterio` e tirar o `versoes_todas`. O que ficou dele foi a nocao de deck PRINCIPAL, que passou a ser uma marca explicita na versao (`principal`) em vez de um teste sobre as cartas."
+        }
       },
       "versoes": [
         {
           "id": "versao:modern:izzet-pinnacle",
           "arquetipo_id": 7614,
           "nome": "Izzet Pinnacle",
-          "listas": 20,
-          "deck": "caixa:modern"
+          "listas": 25,
+          "deck": "caixa:modern",
+          "principal": true,
+          "_porque": "o deck PRINCIPAL (\"o deck principal e Affinity sem duvida\", Andre, 04/10/2026) e a lista de qualificacao dele. 25 das 30 listas de Mox Opal da janela sao deste cluster, e e o unico dos quatro conhecidos de 04/10 com listas dentro da janela."
         },
         {
           "id": "versao:modern:weapons",
           "arquetipo_id": 4380,
           "nome": "Weapons Manufacturing",
-          "listas": 88
+          "listas": 88,
+          "_porque": "VERSAO CONHECIDA, ZERO LISTAS NA JANELA (medido a 05/10/2026): 85 listas no total, nenhuma desde 29/09. Fica a vista com o zero dito -- nao se esconde (a lista dela esta fixada e e dele) nem se mostra ao lado das actuais como se fosse uma delas. Volta sozinha ao primeiro grupo no dia em que aparecer uma lista na janela."
         },
         {
           "id": "versao:modern:cranial",
           "arquetipo_id": 7525,
           "nome": "Cranial Plating",
-          "listas": 5
+          "listas": 5,
+          "_porque": "VERSAO CONHECIDA, ZERO LISTAS NA JANELA (medido a 05/10/2026): 5 listas no total, nenhuma desde 29/09. Fica a vista com o zero dito -- nao se esconde (a lista dela esta fixada e e dele) nem se mostra ao lado das actuais como se fosse uma delas. Volta sozinha ao primeiro grupo no dia em que aparecer uma lista na janela."
         },
         {
           "id": "versao:modern:seachrome",
           "arquetipo_id": 7527,
           "nome": "Seachrome",
-          "listas": 3
+          "listas": 3,
+          "_porque": "VERSAO CONHECIDA, ZERO LISTAS NA JANELA (medido a 05/10/2026): 3 listas no total, nenhuma desde 29/09. Fica a vista com o zero dito -- nao se esconde (a lista dela esta fixada e e dele) nem se mostra ao lado das actuais como se fosse uma delas. Volta sozinha ao primeiro grupo no dia em que aparecer uma lista na janela. E e ESTA que tem o deck registado do Grinding Station: a lista do Tree42o de 28/09 (`decklists` 22659, o `decks` 2 \"auto: mtgo Tree42o 2026-09-28\") cai neste cluster, com mais uma do Chris Nguyen de 13/09 -- 2 das 14 listas de Grinding Station. O nome \"Seachrome\" vem da etiqueta do agrupamento e nao diz isso; nao se renomeou por iniciativa propria."
+        },
+        {
+          "id": "versao:modern:grinding-station",
+          "arquetipo_id": 7394,
+          "nome": "Grinding Station",
+          "listas": 9,
+          "_porque": "ELE DEU-O COMO EXEMPLO (\"seja grinding station\", 05/10/2026) e TEM ZERO LISTAS DESDE 29/09, em qualquer formato -- medido nesse dia. Entra como versao CONHECIDA e nao como actual. O nome e o DELE e confere-se na base: as 9 listas deste cluster jogam todas Grinding Station (100 %), e e o maior dos tres clusters que a carta tem (7394 com 9, 7527 com 2, 7341 com 1, mais 2 listas sem cluster que o mtgtop8 chama \"Emry Grinding Cam\") -- as 14 listas de Grinding Station de Modern jogam TODAS Mox Opal. ERA UM DOS CINCO QUE A LEITURA DE 04/10 PUNHA DE FORA (a etiqueta dele e \"Scrabbling Claws / Minamo / Sewer-veillance Cam\"): a correccao dele esta certa e prova-se. NAO tem lista fixada de proposito -- fixar-lhe uma de antes do Reality Fracture era apresentar como deck a montar uma lista que o formato de hoje ja nao viu."
         }
       ],
       "versao": "versao:modern:izzet-pinnacle",
       "versao_em": "2026-10-04",
-      "_versao_porque": "e a lista de qualificacao dele, e e a unica das quatro com listas dentro da janela do consenso (20 de 20).",
-      "_fora_da_escolha": "os clusters 7400, 7010 e 6491 PASSAM o criterio (Kappa + Pinnacle em 100 % das listas) e NAO entraram nas versoes: tem 2, 2 e 1 listas e nao estavam na leitura dele. Aparecem em «outros decks que jogam Mox Opal» marcados como passando o criterio, para ele os poder incluir com um toque."
+      "_versao_porque": "e a lista de qualificacao dele e o cluster com 25 das 30 listas de Mox Opal da janela -- o unico dos conhecidos de 04/10 com listas dentro dela. E tambem a versao PRINCIPAL (`principal: true`), que e outro eixo: a escolhida muda com um toque, a principal e a identidade do deck.",
+      "_versoes_porque": "A LISTA AQUI SAO AS ANOTACOES, NAO O CONJUNTO (desde 05/10/2026). Quem diz quais sao as versoes e a BASE (`versoes.versoes_derivadas`): todo o cluster que jogue Mox Opal na janela e versao, esteja ou nao escrito aqui. O que estas entradas dao e o NOME, o ponteiro para o deck que guarda a lista (`deck`), a marca `principal` e a memoria das versoes conhecidas que hoje nao tem listas na janela. Os clusters 7697, 7622 e 7456 -- as outras tres da janela -- NAO estao anotados de proposito: nao tem nome da fonte nenhum (zero votos no `arquetipo_fonte`), e dar-lhes um nome meu era inventar um nome com a cara de um nome verdadeiro. A pagina mostra-lhes a etiqueta do agrupamento, marcada como etiqueta. O `listas` de cada anotacao e o numero do dia em que ela foi registada; a contagem VIVA vem sempre da base."
     },
     "pioneer": {
       "nome": "Greasefang",
