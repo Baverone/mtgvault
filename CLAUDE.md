@@ -107,7 +107,15 @@ mtgvault/
                   (que dependem de quais decks ele marcou), os PROXIES e os
                   SLEEVES, as DUAS listas de tipos (`ORDEM_TIPOS` de
                   apresentação ≠ `PRECEDENCIA` de classificação) e o
-                  «quero montar este» (`decks_montar`). Ver «A ABA DECKS»
+                  «quero montar este» (`decks_montar`). Ver «A ABA DECKS».
+                  E, desde 2026-10-05, OS DECKS PRINCIPAIS FICAM SEMPRE MONTADOS:
+                  `principal`/`sempre_montado` (o eixo por CAIXA, que GANHA ao
+                  `cartas_partilhadas` do grupo), `reparte_verdadeiras` (quem
+                  fica com a cópia a sério e quem leva proxy, pela `prioridade`),
+                  `disputadas`, `proxies_das_faltas` (os proxies passam a ser
+                  TUDO o que falta) e `da_pilha`/`tenho_para` (a pilha de básicas
+                  nunca é proxy — eram 44 das 272 cópias). Ver «SEMPRE MONTADOS,
+                  MESMO COM PROXIES»
   eventos.py      A LISTA DE UM DECK É UMA LISTA QUE ALGUÉM JOGOU (2026-10-04,
                   ao fim do dia): *"as outras quero que esquecas as decklists e
                   vamos focar nas decklists baseadas em eventos reais"*. A
@@ -367,7 +375,7 @@ my_decks.py         segue decks-alvo (por assinatura e por jogador de MTGO) -> t
 commander_decks.py  decks de comandante por consenso EM CAMADAS: núcleo>=50% (=deck, deck_cards) / flex 25-50% / tech 15-25%; FILTRA pela cor do comandante. `tiers()` reusado pelo colecao_cor
 premodern_decks.py  consenso dos arquétipos-alvo de Premodern (`colecao_config.json`→`premodern_arquetipos_alvo`: UW Replenish, Enchantress) -> decks/deck_cards com o sufixo " (consenso)". Agrupa pelas etiquetas do `tagging` (o clustering não os separa) e usa `stock.stock_from_lists`. Mostrado nas `deckboxes` (era o `meusdecks`)
 refresh_collection.py  collection_owned p/ o index.html
-colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados, venda (a regra dos 5 % da RL, o `mostrar` de 2026-09-25 **e** a TRAVA — `congelado_ate` a 2026-10-01, hoje `congelada`, MANUAL desde 2026-10-04, com a data antiga arquivada em `_congelado_ate_historico`; mais o `_reservar_rl_formatos`, a razão por que o duel-commander fica fora), cartas_vigiadas (a VIGIA DE CARTAS de 2026-09-26), reserva (o LIMIAR da reserva «maybe», 2026-10-01), caixas[].decisao / reserva / reserva_fora / comandante / reserva_assinatura (AS FASES, 2026-10-01), revalidacao.foto_manda (A FOTO É A VERDADE, 2026-10-02 — e o `playset_maximo` SAIU do `regras_por_formato` nesse dia; **a `false` e com `desde: null` desde 2026-10-04**, o dia em que as fotos foram apagadas), regras_por_formato: lingua/acabamento dos TRÊS grupos trocados a 2026-10-02 (`_regras_2026_10_02`: duel-commander e pauper `en` + `prefere_foil`, premodern `nonfoil`), basicas.declaradas / declaradas_em (A CONTAGEM DECLARADA, 2026-10-02), mtgtop8 (A RECOLHA e o NUNCA PERDER UM TORNEIO DE PAPEL GRANDE, 2026-10-04: `paginas_indice`, `revisitas_por_corrida` e `grandes.padroes`/`listas_por_evento`/`min_jogadores`), e as TRÊS DECISÕES de 2026-10-04 à tarde: a 14.ª terra da lista de qualificação (`listas_escolhidas.modern` com 1 Island, sem `por_confirmar`) + a `proposta_sideboard` NÃO APLICADA ao lado dela, e a caixa `modern-affinity` DESACTIVADA (`estado: candidata`, sem `assinatura`, o antigo em `_antes`). E, ao FIM do dia de 2026-10-04: **`listas_de_evento`** (a REGRA de escolha da lista real, com a razão de cada critério e a data — ver «A LISTA DE UM DECK É UMA LISTA QUE ALGUÉM JOGOU»), **`decks_de_evento`** (os 11 decks dele que não são caixa: 10 de Modern e o Flow State `por_confirmar`, uma linha por deck), `listas_escolhidas[<id>].evento` (a PROVENIÊNCIA gravada — jogador, evento, data, jogadores, classificação, URL) + `.alternativa`/`.porque`/`.escolhida_por`/`.regra_diria`/`._consenso_anterior` (a média que a caixa mostrava, que NÃO se apaga), `decks_montar` com os **17 marcados**, e `caixas[]._ambito` no standard e nas três de legacy (as palavras dele a pô-los fora da prioridade)
+colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados, venda (a regra dos 5 % da RL, o `mostrar` de 2026-09-25 **e** a TRAVA — `congelado_ate` a 2026-10-01, hoje `congelada`, MANUAL desde 2026-10-04, com a data antiga arquivada em `_congelado_ate_historico`; mais o `_reservar_rl_formatos`, a razão por que o duel-commander fica fora), cartas_vigiadas (a VIGIA DE CARTAS de 2026-09-26), reserva (o LIMIAR da reserva «maybe», 2026-10-01), caixas[].decisao / reserva / reserva_fora / comandante / reserva_assinatura (AS FASES, 2026-10-01), revalidacao.foto_manda (A FOTO É A VERDADE, 2026-10-02 — e o `playset_maximo` SAIU do `regras_por_formato` nesse dia; **a `false` e com `desde: null` desde 2026-10-04**, o dia em que as fotos foram apagadas), regras_por_formato: lingua/acabamento dos TRÊS grupos trocados a 2026-10-02 (`_regras_2026_10_02`: duel-commander e pauper `en` + `prefere_foil`, premodern `nonfoil`), basicas.declaradas / declaradas_em (A CONTAGEM DECLARADA, 2026-10-02), mtgtop8 (A RECOLHA e o NUNCA PERDER UM TORNEIO DE PAPEL GRANDE, 2026-10-04: `paginas_indice`, `revisitas_por_corrida` e `grandes.padroes`/`listas_por_evento`/`min_jogadores`), e as TRÊS DECISÕES de 2026-10-04 à tarde: a 14.ª terra da lista de qualificação (`listas_escolhidas.modern` com 1 Island, sem `por_confirmar`) + a `proposta_sideboard` NÃO APLICADA ao lado dela, e a caixa `modern-affinity` DESACTIVADA (`estado: candidata`, sem `assinatura`, o antigo em `_antes`). E, ao FIM do dia de 2026-10-04: **`listas_de_evento`** (a REGRA de escolha da lista real, com a razão de cada critério e a data — ver «A LISTA DE UM DECK É UMA LISTA QUE ALGUÉM JOGOU»), **`decks_de_evento`** (os 11 decks dele que não são caixa: 10 de Modern e o Flow State `por_confirmar`, uma linha por deck), `listas_escolhidas[<id>].evento` (a PROVENIÊNCIA gravada — jogador, evento, data, jogadores, classificação, URL) + `.alternativa`/`.porque`/`.escolhida_por`/`.regra_diria`/`._consenso_anterior` (a média que a caixa mostrava, que NÃO se apaga), `decks_montar` com os **17 marcados**, e `caixas[]._ambito` no standard e nas três de legacy (as palavras dele a pô-los fora da prioridade). E, a **2026-10-05**: `caixas[].principal` + `principal_em` nas **12 caixas que têm lista** (os decks que ficam SEMPRE MONTADOS, com proxy no que falta), a razão e a interpretação em `_sempre_montado`, o `caixas[].sempre_montado` como eixo por caixa (existe e não está escrito em nenhuma), a caixa `premodern-stiflenought` de volta a `fonte: vigiado` / `ref: "Luffy — Premodern"` (com o `_antes_1004`) e a lista do Simone Fierro arquivada em `listas_escolhidas._premodern-stiflenought-anterior`
 ```
 Cada `.html` gerado tem de estar na lista do `git add` do workflow (`daily.yml`,
 passo "Guardar HTML") **e na lista `HTML` da tarefa `ai-pc/tasks/mtgvault-daily`**
@@ -1941,6 +1949,12 @@ ficam de fora, vou imprimir proxie, e so meto as verdadeiras no deck quando for
 jogar com esse deck"*; *"SPML a mesma coisa de Premodern"*; *"para Premodern e
 SPML, quero que me perguntes para cada formato se eu quero montar ou nao o deck,
 depois de escolher, ordenamos"*.
+**[A PARTE ROTATIVA FOI SUBSTITUÍDA a 2026-10-05 para os DECKS PRINCIPAIS:
+*"esses quero ter sempre montados, mesmo que com proxies"* — a carta partilhada
+já não fica de fora à espera da hora de jogar, cada deck principal está montado
+em permanência e os proxies passam a ser TODAS as faltas. O `cartas_partilhadas`
+continua inteiro e vale para quem não for principal; ver «SEMPRE MONTADOS, MESMO
+COM PROXIES».]**
 **SUBSTITUI A CAMPANHA DAS FOTOS como resposta a *"tenho esta carta?"*** — ver a
 secção a seguir: a precisão da foto servia para VENDER, e para MONTAR decks o
 gesto certo é um toque no telemóvel à frente da estante. Motor em
@@ -2997,6 +3011,189 @@ config em `colecao_config.json → decks_por_formato`. Testes em
   **RLG** são 5 % e é escolha minha a partir das 135 listas da janela
   (`decks_por_formato._corte_pct`); (d) as **50 cópias de A** ficam retidas até
   ele escolher o deck de Legacy.
+
+**SEMPRE MONTADOS, MESMO COM PROXIES — E O STIFLENOUGHT VOLTA AO LUFFY (André,
+2026-10-05, à letra).** *"no Premodern, o Stiflenought e lista do Luffy tambem, o
+UW Replenish e que e para procurar"* e *"Esses sao os meus decks principais,
+esses quero ter sempre montados, mesmo que com proxies"*. **DESFAZ a parte
+rotativa do modelo de 2026-10-04 à tarde para os decks principais** (ver «A ABA
+DECKS»): a carta partilhada já não fica FORA do deck à espera da hora de jogar —
+cada deck principal está montado em permanência e o que falta leva PROXY. Motor
+em `mtgvault/decks_vista.py` (`e_principal`/`sempre_montado`/`marcar_principal`,
+`da_pilha`/`tenho_para`, `modo_do_deck`/`modo_efectivo`,
+`ordem_das_verdadeiras`/`reparte_verdadeiras`/`disputadas`/`proxies_das_faltas`),
+página `decks.py`, endpoint `POST /api/deck-principal`, config em
+`caixas[].principal`/`sempre_montado` + `_sempre_montado`. Testes em
+`tests/test_sempre_montado.py` (18 casos) e a prova de que chumbam em
+`tests/_chumba_sempre_montado.py` (**16 de 16 alvos**, um processo por alvo).
+Backup em `data/backups/colecao_config-20261005-2018-antes-sempre-montados.json`
+(o `vault.db` não se escreve nesta ordem — a cópia de hoje é a das 06:35 da
+ordem anterior). **A venda continua escondida e travada.**
+
+- **O STIFLENOUGHT ERA UM ERRO MEU, E A LISTA DO LUFFY É A MESMA QUE A VIGIA JÁ
+  TINHA.** A ordem `mtg-listas-de-eventos` de 04/10 trocou a lista do Luffy pela
+  do **Simone Fierro** (1.º do European Championship, 218 jogadores) porque eu
+  mandei a regra preferir presenciais com campo grande — e o Stiflenought dele
+  vem do jogador que ele SEGUE. A caixa voltou a **`fonte: vigiado`**, `ref:
+  "Luffy — Premodern"`, o MESMO caminho do pauper, por isso **acompanha sozinha**
+  quando ele mudar a lista.
+  - **Conferido antes de usar, e é melhor do que a ordem pedia:** o Luffy tem
+    **13 listas** de Premodern na base, **todas com Phyrexian Dreadnought** e
+    **todas com o mesmo `content_hash` `ad229680848eaf0e`** — não mudou uma carta
+    desde 2026-09-08. A mais recente é mesmo a **23605** (Premodern Challenge 16
+    de 2026-10-03), e o **snapshot da vigia (2026-08-02) é IDÊNTICO a ela: zero
+    diferenças**. Ou seja o `fonte: vigiado` dá exactamente a decklist que a ordem
+    nomeou, e a nota da caixa di-lo com as DUAS datas (*«lista vigiada de
+    2026-08-02 — sem mudar desde então, conferida a 2026-10-05»*).
+  - **A lista do Fierro não se apagou — e TEVE de mudar de chave.** Ficou em
+    `listas_escolhidas._premodern-stiflenought-anterior`, com `_substituida_em`,
+    `_substituida_por`, `_razao` e as 10 linhas em que as duas diferem. Deixá-la
+    na chave do SLOT era pior do que apagá-la: o `decks_vista._com_proveniencia`
+    lê `listas_escolhidas[<slot>].evento` **independentemente da `fonte`**, e a
+    ficha da página mostrava *«Simone Fierro · 1.º · 218 jogadores»* por cima das
+    cartas do Luffy — a página a mentir sobre a lista por que ele vai sleevar, que
+    é o pior resultado possível. Uma chave com `_` nunca é um `ref` de caixa. Tem
+    caso próprio e dois alvos no `_chumba`.
+  - O **`premodern-replenish` fica a procurar lista pelo meta**, como ele mandou:
+    continua com a do **Alexey Kuznetsov** (5-8 de 218, European Championship,
+    05/09), escolhida pela regra entre 64 candidatas, e é ainda a melhor.
+- **A REGRA NOVA, e as três consequências.** `caixas[].principal` quer dizer
+  *"fica sempre montado"*: (a) os proxies de um deck deixam de ser as partilhadas
+  e passam a ser **tudo o que falta**; (b) a **cópia verdadeira já não roda** —
+  dois decks que pedem 4 Swords com 4 em casa dão um deck com as verdadeiras e
+  outro com 4 proxies, e a página diz **qual é qual**; (c) a necessidade destes
+  decks é a **SOMA**, porque têm de estar completos ao mesmo tempo.
+- **O `cartas_partilhadas` NÃO se apagou, nem o código das próprias e
+  partilhadas** (ordem dele). O eixo novo é por CAIXA e **ganha ao modo do
+  grupo**; tirar a marca `principal` devolve o formato ao modelo de 04/10, e a
+  página **diz qual era o modo do grupo** e que a regra não se perdeu — senão
+  parecia o config a ter mudado. Tem caso de teste nas duas direcções.
+- **QUEM DECIDE É UMA CHAVE SÓ: `principal`.** O `sempre_montado` existe por
+  caixa e, escrito, ganha — mas **não se escreveu em caixa nenhuma**: sem ele,
+  vale o que o `principal` disser. Duas chaves com o mesmo valor em doze caixas
+  eram duas verdades para a mesma pergunta, que é exactamente o campo `decisao`
+  que ele mandou apagar a 02/10 (*"São duas verdades para a mesma pergunta"*). A
+  razão fica escrita no config (`_sempre_montado`), que é um ficheiro para ser
+  lido por uma pessoa.
+- **QUAIS SÃO OS PRINCIPAIS É INTERPRETAÇÃO MINHA, E ESTÁ DITO.** Ele disse
+  *"esses"* depois de eu lhe listar as **12 caixas que TÊM LISTA**; ficaram de
+  fora as quatro a 0 % (`standard`, `legacy-aluren`, `legacy-welder`,
+  `legacy-artifacts-blue`) e a `modern-affinity` desactivada. Por isso a marca é
+  **EDITÁVEL na página** (um visto por caixa, `POST /api/deck-principal`, só no
+  8771) e a interpretação está escrita no `_sempre_montado` — se estiver errada,
+  vê-se de onde veio e corrige-se num toque. Uma caixa **desactivada** ou **sem
+  lista** não entra como escolhida mesmo que a marca lá esteja: não há nada para
+  montar nem para imprimir.
+- **UM DECK PRINCIPAL CONTA COMO ESCOLHIDO, mesmo sem o «quero montar este».** As
+  quatro caixas que ele tem **fisicamente montadas** — os dois de cEDH, o Duel
+  Commander e o Pauper — nunca foram marcadas em `decks_montar` (ele marcou as de
+  Premodern e o Pioneer a 04/10), e a página dizia *«0 decks que queres montar»*
+  sobre decks sleevados na estante. `principal: true` é uma afirmação mais forte
+  do que aquela marca; a lista de escolhidos é **uma só** e sai do `relatorio`.
+  Consequência: o cEDH, o Duel Commander e o Pauper **passam a ter sleeves e
+  proxies**, que nunca tinham tido (`sleeves` era `None` nos formatos de cartas
+  dedicadas).
+- **44 DAS 272 CÓPIAS EM PROXY ERAM TERRENOS BÁSICOS, e isto é o achado do dia.**
+  A pilha de Unhinged **nunca foi uma linha da `copies`** — entra por contagem
+  declarada (02/10) — e por isso a `marcas.posse` responde **zero** a um Island.
+  Enquanto isso só alimentava uma percentagem era inofensivo; no momento em que
+  os proxies passam a ser as FALTAS, mandava-o imprimir **17 Island** para o
+  Stiflenought, que o `loadout` dá a **100 %** exactamente por esta isenção. A
+  pergunta responde-se com a **MESMA função do motor**
+  (`loadout.basicas_a_granel`, via `decks_vista.da_pilha`) e não com uma lista
+  nova: as **Snow-Covered** não existem em Unhinged, logo essas continuam a ser
+  falta a sério e levam proxy. Depois: **zero proxies de básicas**. E a aba Decks
+  deixou de contradizer o motor — Stiflenought **79 % → 100 %** e Pauper **→
+  100 %**, que é o que o `loadout` já dizia. A posse desta página vive agora numa
+  primitiva só (`tenho_para`), usada pela conta do deck, pelas faltas, pelas
+  staples e pela repartição: a quarta era a que se esquecia das básicas. O tile de
+  uma básica diz **«da pilha de básicas»** e **não tem `+`/`−`** — ali o botão não
+  mudava número nenhum, e um botão que não faz nada é pior do que botão nenhum.
+- **QUEM FICA COM AS VERDADEIRAS: a `prioridade` da caixa**, que é a ordem que ele
+  já escreveu no config (critério dele; muda-se lá, não no código), com o nome e o
+  id a desempatar — determinista, pela razão do desempate alfabético dos nomes de
+  02/10: a lista que ele imprime não pode trocar de deck de um dia para o outro
+  sem nada ter mudado. **Não é a alocação do `loadout`**, e a diferença é
+  deliberada: aqui reparte-se por NOME sobre a posse que ele marcou, sem regras de
+  material, para responder a *"qual destes decks fica com a carta a sério"*; o
+  `loadout` reparte cópias FÍSICAS por caixas com regras de língua, acabamento e
+  edição, para dizer o que **comprar**. As **staples a guardar à parte** deram
+  lugar às **cartas disputadas** nos formatos sempre montados: a pilha à parte
+  deixou de existir (cada deck tem a carta dentro), mas *"em quantos decks entra"*
+  continua a valer e é ali que ele vê o custo em papel.
+- **OS PROXIES POR DECK, ANTES E DEPOIS** (medido na base de 2026-10-05, o mesmo
+  `vault.db`; «cartas a imprimir / cópias»):
+
+  | deck | antes (rotativo) | depois (sempre montado) | % |
+  |---|---|---|---|
+  | Pioneer — Greasefang | 0 / 0 | **27 / 56** | 24 → 25 % |
+  | Cloud cEDH | — | **20 / 20** | 83 % |
+  | Cloud (Duel Commander) | — | **19 / 19** | 81 % |
+  | Ill-Gotten Gains | 13 / 33 | **18 / 35** | 68 → 73 % |
+  | Oath of Druids | 14 / 30 | **18 / 33** | 68 → 71 % |
+  | Enchantress | 14 / 35 | **16 / 33** | 60 → 67 % |
+  | Elves | 5 / 19 | **12 / 23** | 60 → 71 % |
+  | Blue Farm | — | **3 / 3** | 97 % |
+  | Modern — Pinnacle Affinity | 0 / 0 | **2 / 3** | 95 → 96 % |
+  | UW Replenish | 14 / 52 | **2 / 3** | 89 → 96 % |
+  | Stiflenought | 9 / 32 | **0 / 0** | 79 → **100 %** |
+  | Affinity (Luffy) | — | **0 / 0** | **100 %** |
+  | **TOTAL** | **69 / 201** | **137 / 228** | |
+
+  **São +68 cartas a imprimir e +27 cópias** — o número de FOLHAS quase duplica, e
+  é isso que a decisão custa. Os quatro decks que não tinham conta nenhuma (os
+  dois de cEDH, o Duel Commander e o Pauper) são 42 das 68. Em sentido contrário,
+  o **UW Replenish cai de 14 para 2** e o **Stiflenought de 9 para 0**: no modelo
+  rotativo uma carta partilhada levava proxy mesmo quando ele a tinha, e agora só
+  leva o que falta mesmo.
+- **MEDIDO LADO A LADO, em QUATRO passagens, para separar as duas metades da
+  mudança** (o mesmo `vault.db` em todas; `_revisao/_rev_medir.py`,
+  `_rev_isolar.py`):
+  - **A (main) → B (código novo, config intacto): IDÊNTICO**, byte a byte no JSON
+    de medição — fechar tudo 11 075,43 €, 295 a comprar, as 17 caixas. O
+    interruptor está **desligado por omissão**: sem uma marca `principal`, nada
+    muda.
+  - **A → D (as marcas `principal`, a lista ANTIGA): IDÊNTICO ao cêntimo e caixa
+    a caixa.** É a prova de que a marca **não toca no motor** — nem o `loadout`
+    nem o `fases` lêem `principal` ou `decks_montar`.
+  - **A → C (o depois a sério):** fechar tudo **11 075,43 € → 11 043,88 €**
+    (**−31,55 €**), a comprar **295 → 293**, e **só DUAS caixas mexem** —
+    `premodern-stiflenought` (99 % → **100 %**, comprar 1 → 0, 20,35 € → 0) e
+    `premodern-enchantress` (36 % → **37 %**, comprar 48 → 47, 1 037,39 € →
+    1 026,19 €). **As outras 15 ficam iguais ao cêntimo e à percentagem.** Tudo
+    isto é a troca da LISTA do Stiflenought (as duas diferem em 10 linhas) e não
+    a regra dos proxies — e o salto da Enchantress é o `prioridade_por: "pct"` do
+    grupo de Premodern a reordenar a alocação, porque a percentagem da caixa
+    mudou.
+- **MEDIDO COM O SERVIDOR A CORRER E O JS A SÉRIO** (`publicar.gerar` para uma
+  pasta de prova — que chama a Galeria com `historico=False` e por isso **não
+  escreve na colecção** —, servida por HTTP, com `tests/abrir_pagina.js` a fazer
+  os `fetch` ao servidor): as **14 páginas a 200**, os **273 ficheiros de dados a
+  200**, o `deckboxes.js` a 200, **zero** mensagens de erro de dados; a aba Decks
+  percorrida **formato a formato e até ao nível do deck nos oito formatos**, com
+  os blocos novos conferidos no HTML que o JS desenhou (*«Sempre montados»*,
+  *«Cartas em mais do que um deck»*, *«Proxies a imprimir»*, *«★ principal»*, *«da
+  pilha de básicas»*); e a 1440 e a 390 px **nenhuma página com rolamento
+  horizontal**. Ler o HTML desenhado é a única forma de ver isto — a Fase 3 esteve
+  quatro dias a dizer *«não consegui carregar os dados»* com a página a responder
+  200.
+- **DOIS TESTES DE 04/10 TIVERAM A ASSERÇÃO CORRIGIDA, e não mascarada**
+  (`test_listas_de_eventos`): o `caso_as_cinco_caixas_fixas_ficaram_intactas`
+  comparava a caixa INTEIRA, chave a chave, com o HEAD do git — e por isso
+  chumbava no dia em que uma caixa fixa ganhasse uma marca que **não mexe na
+  lista**; passou a trancar o que a ordem de 04/10 queria proteger (`fonte`,
+  `ref`, `assinatura`, `balde` e a lista, essa byte a byte). E o
+  `caso_as_caixas_trocadas_tem_todas_proveniencia_completa` passou de **sete para
+  seis** caixas, porque o Stiflenought saiu desse conjunto — com uma asserção
+  nova a exigir que ele esteja mesmo a seguir o Luffy, senão a correcção deixava
+  de trancar nada. As duas datas ficaram nos docstrings.
+- **POR DECIDIR POR ELE:** (a) **quais são os principais** — são as 12 com lista,
+  por interpretação minha, e corrige-se com um visto; (b) o **Pioneer passa a 27
+  cartas / 56 cópias em proxy** (está a 25 %), que é mais de metade do deck em
+  papel — se preferir esperar pelas compras, é tirar-lhe a marca; (c) as **quatro
+  caixas a 0 %** não são principais e por isso continuam sem proxies e sem
+  sleeves; (d) o **`sempre_montado`** por caixa existe e não está escrito em
+  nenhuma — é a porta para um deck principal que ainda rode.
 
 **MONTAR E PROTEGER SÃO DUAS PERGUNTAS: O CRITÉRIO DO MOX OPAL É INCLUSIVO
 (André, 2026-10-05, à letra).** *"quando digo as decklists que jogam Mox Opal, e

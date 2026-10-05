@@ -57,6 +57,44 @@ Daí saem, de graça, duas listas que ele vai ter em cima da mesa e não pediu: 
 **proxies a imprimir** de cada deck (= as partilhadas desse deck) e quantas
 cartas ficam **sleevadas a sério** no formato (= as próprias de todos os decks
 marcados).
+
+SEMPRE MONTADOS, MESMO COM PROXIES (André, 2026-10-05, à letra)
+===============================================================
+    *"Esses sao os meus decks principais, esses quero ter sempre montados,
+      mesmo que com proxies"*
+
+Isto **desfaz a parte rotativa do modelo para os decks principais**, e é uma
+decisão sobre o que fica em cima da mesa e não sobre o que ele compra. No modelo
+de 04/10 a carta partilhada ficava FORA dos decks, numa pilha, e a cópia
+verdadeira entrava à hora de jogar; a partir de hoje cada deck principal está
+**montado em permanência** e o que ele não tem é **proxy**.
+
+As três consequências, e nenhuma delas é cosmética:
+
+  - **os proxies de um deck deixam de ser as partilhadas e passam a ser TUDO O
+    QUE FALTA** — cada carta que ele não tem, em cada deck onde ela entra. Um
+    deck a 60 % leva ~30 proxies e não 8.
+  - **a «cópia verdadeira que roda» deixa de existir.** Se dois decks pedem 4
+    Swords e ele tem 4, um leva as verdadeiras e o outro leva 4 proxies — e a
+    página DIZ qual é qual (`reparte_verdadeiras`/`disputadas`). A ordem é a
+    `prioridade` da caixa, que é a ordem que ele já escreveu no config; é dele, e
+    muda-se lá.
+  - **a necessidade destes decks é a SOMA**, porque cada um tem de estar
+    completo ao mesmo tempo. O `cartas_partilhadas` do grupo continua a valer
+    para quem não for sempre montado.
+
+**O EIXO É POR CAIXA E GANHA AO MODO DO FORMATO** (`caixas[].sempre_montado`), e
+o `cartas_partilhadas` **não se apagou** — nem a chave nem o código das próprias
+e partilhadas: desmarcar devolve o formato ao modelo de 04/10, e tem teste nas
+duas direcções.
+
+**QUEM DECIDE É UMA CHAVE SÓ: `caixas[].principal`.** Sem `sempre_montado`
+escrito, um deck principal é sempre montado — e é só o `principal` que ele toca
+(um visto na página). Duas chaves com o mesmo valor em doze caixas eram duas
+verdades para a mesma pergunta, que é exactamente o campo `decisao` que ele
+mandou apagar a 02/10 (*"São duas verdades para a mesma pergunta"*). O
+`sempre_montado` existe para o dia em que ele quiser um deck principal que ainda
+rode, ou um deck que não é principal e fica montado — e aí é ele que ganha.
 """
 
 from __future__ import annotations
@@ -164,6 +202,112 @@ TEXTO_PARTILHA = {
     DEDICADAS: ("cada deck tem as suas próprias cartas: a mesma carta em dois "
                 "decks pede duas cópias — a necessidade do formato é a SOMA"),
 }
+
+
+# ---------------------------------------------------------------------------
+# «Sempre montados, mesmo com proxies» — o eixo por CAIXA (2026-10-05)
+# ---------------------------------------------------------------------------
+#: `caixas[].principal`: *"esses sao os meus decks principais"*. É a ÚNICA chave
+#: que ele toca (um visto na página), e é editável de propósito — a escolha de
+#: quais são os principais foi interpretação minha a partir da lista das 12 caixas
+#: que tinham lista, e tem de se poder corrigir num toque.
+CHAVE_PRINCIPAL = "principal"
+
+#: `caixas[].sempre_montado`: o eixo da REGRA, que ganha ao `cartas_partilhadas`
+#: do grupo. **Omisso vale o que `principal` disser** — ver o cabeçalho do módulo.
+CHAVE_SEMPRE = "sempre_montado"
+
+TEXTO_SEMPRE = ("sempre montado: o deck fica completo em permanência e o que "
+                "falta leva PROXY — a necessidade dele é a SOMA, e a cópia "
+                "verdadeira já não roda entre decks")
+
+
+def e_principal(s: dict) -> bool:
+    """«É um dos decks principais dele?» — a caixa, ou o deck de uma caixa."""
+    return bool(s.get(CHAVE_PRINCIPAL))
+
+
+def sempre_montado(s: dict) -> bool:
+    """«Este deck fica montado em permanência, com proxy no que falta?»
+
+    A chave explícita ganha; sem ela, vale o `principal`. É isso que mantém UMA
+    verdade para a pergunta e deixa a porta aberta para a desencostar um dia.
+    """
+    v = s.get(CHAVE_SEMPRE)
+    return e_principal(s) if v is None else bool(v)
+
+
+def marcar_principal(cfg: dict, slot: str, principal: bool,
+                     quando: str | None = None) -> bool:
+    """Põe/tira o `principal` de uma CAIXA, no config. Devolve o valor novo.
+
+    Escreve-se a chave quando é `true` e **apaga-se** quando é `false`: um
+    `principal: false` escrito em doze caixas era ruído num ficheiro que é para
+    ser lido por uma pessoa. A data fica em `principal_em`, pela regra de sempre
+    (uma decisão sem data não se consegue rever).
+    """
+    for c in cfg.get("caixas") or []:
+        if c.get("slot") != slot:
+            continue
+        if principal:
+            from datetime import date
+            c[CHAVE_PRINCIPAL] = True
+            c["principal_em"] = quando or date.today().isoformat()
+        else:
+            c.pop(CHAVE_PRINCIPAL, None)
+            c.pop("principal_em", None)
+        return principal
+    raise ValueError(f"a caixa {slot!r} não está no config")
+
+
+def modo_do_deck(d: dict, modo_fmt: str) -> str:
+    """O modo que vale para ESTE deck: `sempre_montado` força a SOMA."""
+    return DEDICADAS if sempre_montado(d) else modo_fmt
+
+
+def da_pilha(nm: str) -> bool:
+    """Esta básica vem da PILHA A GRANEL dele? (logo nunca é falta nem proxy)
+
+    *"em todos os decks, as basicas sao todas de Unhinged"* (André, 2026-09-08). A
+    pilha nunca foi uma linha da `copies` — entra por **contagem declarada**
+    (2026-10-02) — e por isso a `marcas.posse` responde **zero** a um Island.
+    Enquanto isso só alimentava uma percentagem era inofensivo; a partir do
+    momento em que os proxies passam a ser as FALTAS (2026-10-05), passava a
+    mandá-lo imprimir **17 Island** para o Stiflenought, que o `loadout` dá a
+    100 % exactamente por esta isenção. 44 das 272 cópias em proxy eram básicas.
+
+    A pergunta responde-se com a MESMA função do motor
+    (`loadout.basicas_a_granel`) e não com uma lista nova: as **Snow-Covered** não
+    existem em Unhinged, por isso essas são falta a sério — e uma segunda resposta
+    ao lado discordava da primeira num dia qualquer.
+    """
+    return nm in loadout.BASICS and loadout.basicas_a_granel(nm)
+
+
+def tenho_para(nm: str, pede: int, pos: dict[str, dict]) -> int:
+    """Quantas DESTA carta é que ele tem, para o que este deck pede.
+
+    Trava no que o deck pede (ter 8 Swords não faz um deck que pede 4 ficar a
+    200 %) e trata a pilha de básicas como coberta. É a primitiva única da posse
+    nesta página: a conta do deck, as faltas, as staples e a repartição das
+    verdadeiras passam todas por aqui, senão a quarta esquecia-se das básicas.
+    """
+    if da_pilha(nm):
+        return pede
+    return min(pede, pos.get(nm, {}).get("q", 0))
+
+
+def modo_efectivo(modo_fmt: str, escolhidos: list[dict]) -> str:
+    """O modo que vale para o FORMATO, visto os decks que ele vai montar.
+
+    Com um único deck sempre montado o formato inteiro conta pela SOMA. Num
+    formato misto (uns sempre montados, outros a rodar) escolhe-se a SOMA, que é
+    o lado conservador — é a razão escrita no `PARTILHA_OMISSAO`: pedir a mais faz
+    uma lista grande, pedir a menos faz-lhe faltar a carta à hora de jogar. Hoje
+    não há formatos mistos; o dia em que houver, o número não lhe mente a menos.
+    """
+    return (DEDICADAS if any(sempre_montado(d) for d in escolhidos)
+            else modo_fmt)
 
 
 # ---------------------------------------------------------------------------
@@ -317,6 +461,13 @@ def decks_das_caixas(con: sqlite3.Connection, cfg: dict | None = None) -> list[d
             "link": link, "estado": s.get("estado"), "cards": cards,
             "listas": None,
             "desactivada": tipo == "desactivada", "rotulo_estado": rotulo,
+            # «SEMPRE MONTADOS» (2026-10-05): o eixo é da CAIXA, e por isso viaja
+            # com o deck dela — a `prioridade` vem com ele porque é ela que decide
+            # quem fica com as cópias verdadeiras quando dois decks pedem a mesma.
+            CHAVE_PRINCIPAL: e_principal(s),
+            CHAVE_SEMPRE: sempre_montado(s),
+            "principal_em": s.get("principal_em") or "",
+            "prioridade": s.get("prioridade"),
         }
         # Uma caixa que AINDA mostre consenso di-lo. Hoje são a `standard` e as
         # duas de `legacy`, que ele mandou deixar como estavam («esquecemos
@@ -648,7 +799,7 @@ def conta_do_deck(d: dict, pos: dict[str, dict],
     for board, nm, q in _cartas_do_deck(d):
         k = "side" if board == "side" else "main"
         out[k]["total"] += q
-        out[k]["tem"] += min(q, pos.get(nm, {}).get("q", 0))
+        out[k]["tem"] += tenho_para(nm, q, pos)
         if desc.get(nm):
             ndesc += q
     total = out["main"]["total"] + out["side"]["total"]
@@ -689,7 +840,7 @@ def faltas(nec: dict, pos: dict[str, dict], modo: str) -> dict[str, int]:
     chave = "maximo" if modo == ROTATIVAS else "soma"
     out = {}
     for nm, x in nec.items():
-        f = x[chave] - pos.get(nm, {}).get("q", 0)
+        f = x[chave] - tenho_para(nm, x[chave], pos)
         if f > 0:
             out[nm] = f
     return out
@@ -698,7 +849,7 @@ def faltas(nec: dict, pos: dict[str, dict], modo: str) -> dict[str, int]:
 def totais_da_necessidade(nec: dict, pos: dict[str, dict]) -> dict:
     """Os dois totais lado a lado, com as faltas de cada um."""
     def falta(chave):
-        return sum(max(0, x[chave] - pos.get(nm, {}).get("q", 0))
+        return sum(max(0, x[chave] - tenho_para(nm, x[chave], pos))
                    for nm, x in nec.items())
     return {"soma": sum(x["soma"] for x in nec.values()),
             "maximo": sum(x["maximo"] for x in nec.values()),
@@ -743,12 +894,149 @@ def proprias_e_partilhadas(d: dict, rep: dict[str, set[str]]) -> dict:
             "com_quem": com}
 
 
-def proxies_do_deck(d: dict, rep: dict[str, set[str]]) -> list[dict]:
-    """A LISTA DE PROXIES A IMPRIMIR deste deck = exactamente as partilhadas.
+# ---------------------------------------------------------------------------
+# Quem fica com as cópias VERDADEIRAS (os decks sempre montados)
+# ---------------------------------------------------------------------------
+#: A prioridade de um deck que não é caixa — vai para o fim da fila das
+#: verdadeiras. Um número e não `None` para a ordenação não ter de o tratar.
+SEM_PRIORIDADE = 10 ** 6
 
-    Sai de graça depois do cálculo feito, e é o que ele vai ter na mão: *"vou
-    imprimir proxie, e só meto as verdadeiras no deck quando for jogar"*.
+
+def ordem_das_verdadeiras(decks: list[dict]) -> list[dict]:
+    """Os decks pela ordem em que reclamam as cópias verdadeiras.
+
+    É a `prioridade` da CAIXA — a ordem que ele já escreveu no config e por que a
+    alocação do `loadout` se rege —, com o nome e o id a desempatar. O critério é
+    DELE: a ordem muda-se no config, não aqui. Determinista de propósito: a lista
+    de proxies que ele imprime não pode trocar de deck de um dia para o outro sem
+    nada ter mudado (é a lição do desempate alfabético dos nomes, 2026-10-02).
     """
+    def chave(d):
+        p = d.get("prioridade")
+        return (p if isinstance(p, int) else SEM_PRIORIDADE,
+                str(d.get("nome") or ""), str(d.get("id") or ""))
+    return sorted(decks, key=chave)
+
+
+def reparte_verdadeiras(decks: list[dict],
+                        pos: dict[str, dict]) -> dict[str, dict[str, dict]]:
+    """Reparte as cópias que ele TEM pelos decks sempre montados.
+
+    `{id do deck: {nm: {q, verdadeiras, proxies}}}`.
+
+    *"se dois decks pedem 4 Swords e ele tem 4, um leva as verdadeiras e o outro
+    leva 4 proxies"* (André, 2026-10-05). Quem reclama primeiro é a
+    `ordem_das_verdadeiras`; o que sobrar a cada deck é PROXY.
+
+    **ISTO NÃO É A ALOCAÇÃO DO `loadout`, e a diferença é deliberada.** Aqui
+    reparte-se por NOME, sobre a posse que ele marcou (`marcas.posse`), sem regras
+    de material — é a pergunta *"qual destes decks fica com a carta a sério"*. O
+    `loadout` reparte CÓPIAS FÍSICAS por caixas com regras de língua, acabamento e
+    edição, para dizer o que **comprar**. São duas perguntas e os dois números
+    vivem lado a lado; juntá-las era pôr a aba Decks a dar uma segunda opinião
+    sobre as compras.
+
+    Só entram os decks sempre montados: um deck que ainda RODE não reclama uma
+    cópia para si — ele tira-a da pilha à hora de jogar, que é o que `rotativas`
+    quer dizer.
+    """
+    sobra: dict[str, int] = {}
+    out: dict[str, dict[str, dict]] = {}
+    for d in ordem_das_verdadeiras([x for x in decks if sempre_montado(x)]):
+        pedido: dict[str, int] = defaultdict(int)
+        for _b, nm, q in _cartas_do_deck(d):
+            pedido[nm] += q
+        linha: dict[str, dict] = {}
+        for nm, q in pedido.items():
+            # A PILHA A GRANEL SERVE TODOS OS DECKS e não se reparte: um Island
+            # não é uma cópia disputada, e dar-lhe proxy era mandá-lo imprimir
+            # terras que tem ali ao lado (ver `da_pilha`).
+            if da_pilha(nm):
+                linha[nm] = {"q": q, "verdadeiras": q, "proxies": 0,
+                             "pilha": True}
+                continue
+            if nm not in sobra:
+                sobra[nm] = pos.get(nm, {}).get("q", 0)
+            v = min(q, sobra[nm])
+            sobra[nm] -= v
+            linha[nm] = {"q": q, "verdadeiras": v, "proxies": q - v,
+                         "pilha": False}
+        out[d["id"]] = linha
+    return out
+
+
+def disputadas(decks: list[dict], repartido: dict[str, dict[str, dict]],
+               pos: dict[str, dict] | None = None) -> list[dict]:
+    """As cartas que 2+ decks sempre montados pedem: quem leva as verdadeiras.
+
+    É a resposta a *"mostra QUAL deck fica com as verdadeiras"*, e substitui as
+    **staples** nos formatos sempre montados: a pilha à parte deixou de existir —
+    cada deck tem a carta dentro, verdadeira num e proxy nos outros —, mas a
+    pergunta *"em quantos decks é que esta carta entra"* continua a valer e é
+    precisamente aqui que ele vê o custo em papel.
+
+    **As básicas da pilha ficam de fora**: entram em quase todos os decks e não
+    são disputa nenhuma — a pilha serve-os todos (`da_pilha`). Listá-las era
+    encher a tabela com cinco linhas que não pedem decisão.
+    """
+    nomes_: dict[str, list] = defaultdict(list)
+    por_id = {d["id"]: d for d in decks}
+    for did in repartido:
+        for nm, x in repartido[did].items():
+            if x.get("pilha"):
+                continue
+            nomes_[nm].append((did, x))
+    out = []
+    for nm, linhas in nomes_.items():
+        if len(linhas) < 2:
+            continue
+        ordenadas = [(did, x) for did, x in linhas]
+        ordenadas.sort(key=lambda p: (-p[1]["verdadeiras"],
+                                      str(por_id.get(p[0], {}).get("nome") or "")))
+        out.append({
+            "nm": nm,
+            "tenho": (pos or {}).get(nm, {}).get("q", 0),
+            "n_decks": len(linhas),
+            "pede": sum(x["q"] for _d, x in linhas),
+            "verdadeiras": sum(x["verdadeiras"] for _d, x in linhas),
+            "proxies": sum(x["proxies"] for _d, x in linhas),
+            "decks": [{"id": did, "nome": por_id.get(did, {}).get("nome") or did,
+                       "q": x["q"], "verdadeiras": x["verdadeiras"],
+                       "proxies": x["proxies"]}
+                      for did, x in ordenadas],
+        })
+    # Mais decks primeiro, depois mais proxies: é por essa ordem que o papel pesa.
+    out.sort(key=lambda x: (-x["n_decks"], -x["proxies"], x["nm"]))
+    return out
+
+
+def proxies_das_faltas(d: dict, repartido: dict[str, dict[str, dict]]) -> list[dict]:
+    """A LISTA DE PROXIES A IMPRIMIR de um deck SEMPRE MONTADO = as faltas dele.
+
+    *"a lista de PROXIES A IMPRIMIR por deck passa a ser a lista de faltas desse
+    deck. E isso que ele vai imprimir"* (André, 2026-10-05).
+    """
+    linha = repartido.get(d["id"]) or {}
+    return [{"nm": nm, "q": x["proxies"], "tenho": x["verdadeiras"],
+             "pede": x["q"], "com": []}
+            for nm, x in sorted(linha.items()) if x["proxies"] > 0]
+
+
+def proxies_do_deck(d: dict, rep: dict[str, set[str]],
+                    repartido: dict[str, dict[str, dict]] | None = None
+                    ) -> list[dict]:
+    """A LISTA DE PROXIES A IMPRIMIR deste deck. DUAS regras, num sítio só.
+
+    - **sempre montado**: tudo o que falta (2026-10-05) — o deck está completo em
+      permanência e o proxy tapa o buraco.
+    - **a rodar**: exactamente as partilhadas (2026-10-04) — a carta fica de fora
+      e a verdadeira entra à hora de jogar.
+
+    A pergunta é a mesma (*"o que imprimo para este deck?"*) e por isso a resposta
+    sai de uma função só: duas, e a página escolhia a errada num dia qualquer.
+    """
+    if repartido is not None and d["id"] in repartido:
+        return proxies_das_faltas(d, repartido)
     p = proprias_e_partilhadas(d, rep)
     agg: dict[str, int] = defaultdict(int)
     for _b, nm, q in p["partilhadas"]:
@@ -785,23 +1073,36 @@ def staples_do_formato(decks: list[dict], rep: dict[str, set[str]],
     for x in out:
         x["n_decks"] = len(x["decks"])
         if pos is not None:
-            x["tenho"] = pos.get(x["nm"], {}).get("q", 0)
+            x["tenho"] = tenho_para(x["nm"], x["precisa"], pos)
             x["falta"] = max(0, x["precisa"] - x["tenho"])
     # Em mais decks primeiro: é a que mais vale a pena ter sleevada à parte.
     out.sort(key=lambda x: (-x["n_decks"], -x["precisa"], x["nm"]))
     return out
 
 
-def sleeves_do_formato(decks: list[dict], rep: dict[str, set[str]]) -> dict:
+def sleeves_do_formato(decks: list[dict], rep: dict[str, set[str]],
+                       repartido: dict[str, dict[str, dict]] | None = None) -> dict:
     """Quantas cartas ficam SLEEVADAS no formato, e quantos proxies.
 
     Nos formatos rotativos o deck fica sleevado com as PRÓPRIAS (verdadeiras) e
     com um proxy por cada partilhada — o `total` é o que ele enfia em sleeves ao
     todo, e as duas metades dizem com o quê.
+
+    Num deck SEMPRE MONTADO (2026-10-05) a conta é outra e vem do `repartido`: as
+    verdadeiras são as cópias que lhe couberam e os proxies são as faltas dele.
+    O `total` continua a ser o deck inteiro — é o que está dentro das sleeves.
     """
     reais = copias = imprimir = 0
     nomes_proxy: set[str] = set()
     for d in decks:
+        if repartido is not None and d["id"] in repartido:
+            linha = repartido[d["id"]]
+            reais += sum(x["verdadeiras"] for x in linha.values())
+            copias += sum(x["proxies"] for x in linha.values())
+            deste = {nm for nm, x in linha.items() if x["proxies"] > 0}
+            imprimir += len(deste)
+            nomes_proxy.update(deste)
+            continue
         p = proprias_e_partilhadas(d, rep)
         reais += p["n_proprias"]
         copias += p["n_partilhadas"]
@@ -862,7 +1163,24 @@ def relatorio(con: sqlite3.Connection, cfg: dict | None = None) -> dict:
         else:
             dos = set()
             escolhidos = [d for d in decks if d["id"] in mks]
+        # UM DECK PRINCIPAL CONTA COMO ESCOLHIDO, MESMO SEM A MARCA À MÃO
+        # (2026-10-05). `principal: true` quer dizer *"quero ter sempre montado"*,
+        # que é mais forte do que o «quero montar este» de 04/10 — as quatro caixas
+        # que ele tem FISICAMENTE montadas (os dois de cEDH, o Duel Commander e o
+        # Pauper) nunca foram marcadas e a página dizia «0 que queres montar» sobre
+        # decks sleevados na estante. Uma lista só, e sai daqui.
+        ja = {d["id"] for d in escolhidos}
+        escolhidos += [d for d in decks
+                       if d["id"] not in ja and sempre_montado(d)
+                       and d.get("cards") and not d.get("desactivada")]
+        modo_fmt, modo = modo, modo_efectivo(modo, escolhidos)
         rep = reparticao(escolhidos) if modo == ROTATIVAS else {}
+        # A REPARTIÇÃO DAS VERDADEIRAS só existe havendo decks sempre montados.
+        # `None` (e não `{}`) quando não há, para o `proxies_do_deck` saber que não
+        # é este o regime e não ter de adivinhar por um dicionário vazio.
+        repartido = (reparte_verdadeiras(escolhidos, pos)
+                     if any(sempre_montado(d) for d in escolhidos) else None)
+        ids_esc = {d["id"] for d in escolhidos}
         nec = necessidade(escolhidos, pos)
         tot = totais_da_necessidade(nec, pos)
         linhas = []
@@ -878,9 +1196,19 @@ def relatorio(con: sqlite3.Connection, cfg: dict | None = None) -> dict:
                 # mesmo ecrã era o defeito que o modelo veio fechar. As outras
                 # versões dizem-no pelo `e_versao` (e continuam protegidas da
                 # venda), mas ele monta uma.
-                "quero": (d["id"] == vd if unico else d["id"] in mks),
+                "quero": (d["id"] in ids_esc),
                 "marcado_em": mks.get(d["id"]),
                 "e_versao": d["id"] in dos,
+                # A MARCA «principal», e EDITÁVEL na página: quais são os
+                # principais foi interpretação minha (as 12 caixas com lista), e
+                # tem de se poder corrigir num toque.
+                CHAVE_PRINCIPAL: bool(d.get(CHAVE_PRINCIPAL)),
+                CHAVE_SEMPRE: sempre_montado(d),
+                "principal_em": d.get("principal_em") or "",
+                "e_caixa": bool(d.get("slot")),
+                "slot": d.get("slot") or "",
+                "proxies": len(proxies_do_deck(d, rep, repartido)
+                               ) if d["id"] in ids_esc else 0,
                 "saiu": d.get("saiu"),
                 "tem": c["tem"], "total": c["total"], "pct": c["pct"],
                 "main": c["main"], "side": c["side"],
@@ -908,8 +1236,22 @@ def relatorio(con: sqlite3.Connection, cfg: dict | None = None) -> dict:
         linhas.sort(key=lambda r: (r["desactivada"], r["sem_lista"],
                                    -r["pct"], -r["tem"], r["nome"]))
         n_desact = sum(1 for r in linhas if r["desactivada"])
+        n_sempre = sum(1 for d in escolhidos if sempre_montado(d))
         fmts.append({
             "formato": fmt, "modo": modo, "texto_modo": TEXTO_PARTILHA[modo],
+            # O MODO DO FORMATO E O QUE VALE, OS DOIS (2026-10-05). O
+            # `cartas_partilhadas` do grupo não se apagou: quando os decks
+            # principais o anulam, a página tem de poder dizer **qual era** e
+            # **porque é que já não é** — senão parece que o config mudou.
+            "modo_formato": modo_fmt,
+            "modo_trocado": modo != modo_fmt,
+            "texto_sempre": TEXTO_SEMPRE if n_sempre else "",
+            "n_sempre": n_sempre,
+            # AS CARTAS DISPUTADAS: quem fica com as verdadeiras e quem leva
+            # proxy. Substitui as «staples a guardar à parte» num formato sempre
+            # montado — a pilha à parte deixou de existir, a pergunta não.
+            "disputadas": (disputadas(escolhidos, repartido, pos)
+                           if repartido else []),
             # `n_decks` conta os que CONTAM: uma caixa desactivada não é um deck
             # deste formato, e somá-la fazia o cartão dizer «21 decks» a quem tem
             # 20 para escolher.
@@ -924,11 +1266,18 @@ def relatorio(con: sqlite3.Connection, cfg: dict | None = None) -> dict:
             # dois contadores ao lado, nenhum erro, e a página a discordar de si
             # própria. Agora há uma lista só, e ela sai daqui.
             "ids_escolhidos": [d["id"] for d in escolhidos],
-            "meta_fora": (0 if modo == ROTATIVAS
+            # O `meta_fora` continua a seguir o modo DO FORMATO e não o efectivo:
+            # a pergunta dele é *"ofereces-me os arquétipos do mtgtop8 neste
+            # formato?"*, e isso ele decidiu a 04/10 pelo formato (só nos
+            # rotativos). Um deck principal não muda o que se lhe OFERECE.
+            "meta_fora": (0 if modo_fmt == ROTATIVAS
                           else len(arquetipos_meta(con, fmt, so_contar=True))),
             "necessidade": tot,
-            "sleeves": (sleeves_do_formato(escolhidos, rep)
-                        if modo == ROTATIVAS else None),
+            # OS SLEEVES passaram a existir também num formato de cartas
+            # dedicadas: um deck sempre montado tem sleeves e tem proxies, e o
+            # cEDH/Duel Commander/Pauper nunca tinham tido esta conta.
+            "sleeves": (sleeves_do_formato(escolhidos, rep, repartido)
+                        if (modo == ROTATIVAS or repartido) else None),
             # AS STAPLES do formato (as partilhadas, agregadas). Só nos rotativos
             # e só depois de ele marcar: sem decks marcados não há partilha
             # nenhuma, e uma lista vazia com título era prometer o que não há.
@@ -1009,7 +1358,8 @@ def cache_nova() -> dict:
 
 def deck_para_pagina(con: sqlite3.Connection, d: dict, pos: dict[str, dict],
                      modo: str, rep: dict[str, set[str]],
-                     cmdr: str | None = None, cache: dict | None = None) -> dict:
+                     cmdr: str | None = None, cache: dict | None = None,
+                     repartido: dict[str, dict[str, dict]] | None = None) -> dict:
     """Um deck pronto a desenhar: as cartas por tipo, main e side à parte.
 
     Cada carta leva o `sid` da impressão (para a imagem), quantas o deck pede,
@@ -1050,8 +1400,14 @@ def deck_para_pagina(con: sqlite3.Connection, d: dict, pos: dict[str, dict],
         tl = cache["tl"]
         imgs = cache["img"]
         desc = cache["desc"]
-    p = proprias_e_partilhadas(d, rep) if modo == ROTATIVAS else None
+    # SEMPRE MONTADO vs A RODAR (2026-10-05): num deck sempre montado não há
+    # «partilhadas» — há cartas verdadeiras e cartas em proxy, e é o `repartido`
+    # que diz quais. O `sm` é o que faz o tile mostrar «proxy» na carta certa.
+    sm = repartido is not None and d["id"] in repartido
+    p = proprias_e_partilhadas(d, rep) if (modo == ROTATIVAS and not sm) else None
     partilhadas = {nm for _b, nm, _q in (p["partilhadas"] if p else [])}
+    em_proxy = ({nm for nm, x in repartido[d["id"]].items() if x["proxies"] > 0}
+                if sm else set())
 
     blocos: dict[str, dict[str, list]] = {"main": defaultdict(list),
                                           "side": defaultdict(list)}
@@ -1060,14 +1416,27 @@ def deck_para_pagina(con: sqlite3.Connection, d: dict, pos: dict[str, dict],
         e_cmdr = bool(cmdr) and nm == cmdr and k == "main"
         grupo = tipo_da_carta((tl.get(nm) or ("", ""))[0], comandante=e_cmdr)
         tenho = pos.get(nm, {})
+        # UMA BÁSICA DA PILHA DIZ QUE VEM DA PILHA (2026-10-05). A `copies` não a
+        # tem (é a granel) e o tile dizia «0 de 17 · do inventário» sobre terras
+        # que estão na caixa — e, com os proxies a serem as faltas, ao lado de um
+        # deck que não lhe pede proxy nenhum. As duas coisas têm de concordar.
+        pilha = da_pilha(nm)
         blocos[k][grupo].append({
-            "nm": nm, "q": q, "tenho": tenho.get("q", 0),
-            "origem": tenho.get("origem", marcas.INVENTARIO),
+            "nm": nm, "q": q, "tenho": tenho_para(nm, q, pos),
+            "origem": ("pilha" if pilha
+                       else tenho.get("origem", marcas.INVENTARIO)),
+            "pilha": pilha, "na_base": tenho.get("q", 0),
             "em": tenho.get("em"),
             "sid": imgs.get(nm) or "",
             "partilhada": nm in partilhadas,
             "com": (p["com_quem"].get(nm, []) if p else []),
             "desconhecida": bool(desc.get(nm)),
+            # Quantas DESTE deck vão em proxy (só nos sempre montados). É por
+            # carta e não um sim/não: num playset de 4 com 1 cópia a sério são
+            # 1 verdadeira + 3 proxies, e dizer «proxy» a seco mentia nas duas.
+            "proxies": (repartido[d["id"]].get(nm, {}).get("proxies", 0)
+                        if sm else 0),
+            "em_proxy": nm in em_proxy,
         })
 
     def ordena(b):
@@ -1098,9 +1467,28 @@ def deck_para_pagina(con: sqlite3.Connection, d: dict, pos: dict[str, dict],
         "amostra_fina": d.get("amostra_fina") or "",
         "arquetipo_fonte": d.get("arquetipo_fonte") or "",
     }
-    if p is not None:
+    out[CHAVE_SEMPRE] = sm
+    out[CHAVE_PRINCIPAL] = bool(d.get(CHAVE_PRINCIPAL))
+    if sm:
+        linha = repartido[d["id"]]
+        px = proxies_do_deck(d, rep, repartido)
         out["reparticao"] = {
+            "sempre_montado": True,
+            "texto": TEXTO_SEMPRE,
+            # VERDADEIRAS e PROXIES, as duas metades, e somam sempre o total do
+            # deck — é a disciplina do `confirmado.metades`: uma metade perdida
+            # pelo caminho é meia verdade com cara de verdade.
+            "n_verdadeiras": sum(x["verdadeiras"] for x in linha.values()),
+            "n_proxies": sum(x["proxies"] for x in linha.values()),
+            "proxies_imprimir": len(px),
+            "proxies": px,
+        }
+    elif p is not None:
+        out["reparticao"] = {
+            "sempre_montado": False,
+            "texto": TEXTO_PARTILHA[ROTATIVAS],
             "n_proprias": p["n_proprias"], "n_partilhadas": p["n_partilhadas"],
+            "proxies_imprimir": len(proxies_do_deck(d, rep)),
             "proxies": proxies_do_deck(d, rep),
         }
     return out

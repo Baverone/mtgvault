@@ -1780,6 +1780,17 @@ class Handler(BaseHTTPRequestHandler):
                     # deck — logo quais levam proxy.
                     self._json(self._deck_montar(dados))
                     return
+                if caminho == "/api/deck-principal":
+                    # A MARCA «principal» de uma CAIXA (André, 2026-10-05):
+                    # *"esses sao os meus decks principais, esses quero ter
+                    # sempre montados, mesmo que com proxies"*. Quais são os
+                    # principais foi INTERPRETAÇÃO minha (as 12 caixas que
+                    # tinham lista), e por isso tem de ser editável num toque.
+                    # Só config, e **regenera**: a marca muda a regra do deck —
+                    # a necessidade passa a soma e os proxies passam a ser as
+                    # faltas —, logo muda os números da página inteira.
+                    self._json(self._deck_principal(dados))
+                    return
                 if caminho == "/api/versao":
                     # A VERSÃO do deck de um formato (2026-10-04, à noite). O
                     # gesto novo: *"quero ficar com 1 deck e versoes do deck
@@ -1891,6 +1902,33 @@ class Handler(BaseHTTPRequestHandler):
         nm = nomes_[deck_id]
         return {"ok": True, "id": deck_id, "quero": quero,
                 "msg": (f"{nm}: {'quero montar' if quero else 'já não quero montar'}")}
+
+    def _deck_principal(self, dados):
+        """«É um dos meus decks principais» — a marca por CAIXA, no config.
+
+        Reversível e datada, como o «quero montar este». **Uma caixa que o config
+        não tem é 409 e não 500** — uma página aberta ontem no telemóvel ainda
+        manda a lista de caixas de ontem; é a regra da `VendaDesligada` e da
+        `VersaoDesconhecida` (o `ValueError` que o `do_POST` traduz).
+        """
+        slot = str(dados.get("slot") or "").strip()
+        if not slot:
+            raise SemLista("sem caixa: o pedido tem de dizer qual.")
+        quero = bool(dados.get("principal"))
+        cfg = ler_config()
+        nomes_ = {c.get("slot"): (c.get("nome") or c.get("slot"))
+                  for c in (cfg.get("caixas") or [])}
+        if slot not in nomes_:
+            raise ValueError(f"a caixa {slot!r} já não está no config — "
+                             f"recarrega a página")
+        with db.session() as con:
+            decks_vista.marcar_principal(cfg, slot, quero)
+            escrever_config(cfg)
+            regenerar(con)
+        estado = ("é um deck principal — fica sempre montado" if quero
+                  else "já não é um deck principal")
+        return {"ok": True, "slot": slot, "principal": quero,
+                "msg": f"{nomes_[slot]}: {estado}"}
 
     def _versao(self, dados):
         """A VERSÃO que ele escolheu para o deck de um formato (2026-10-04, à

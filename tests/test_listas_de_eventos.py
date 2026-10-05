@@ -614,7 +614,17 @@ def caso_as_cinco_caixas_fixas_ficaram_intactas():
     eventos na base, por ordem dele de 2026-09-07, logo não há evento real para
     pôr no lugar).
 
-    Compara-se com o que está no HEAD do git: byte a byte, a caixa e a lista.
+    O que ele mandou não tocar é a **LISTA** e a FONTE de onde ela vem, e é isso
+    que se compara com o HEAD do git, byte a byte.
+
+    **[ASSERÇÃO CORRIGIDA a 2026-10-05]** comparava a caixa INTEIRA, chave a
+    chave, e por isso chumbava no dia em que uma caixa fixa ganhasse uma marca
+    que não mexe na lista — foi o que aconteceu com o `principal` dos decks
+    sempre montados (*"esses quero ter sempre montados, mesmo que com
+    proxies"*). Marcar uma caixa como principal não é tocar-lhe na lista;
+    comparar tudo fazia deste caso uma proibição de qualquer decisão futura
+    sobre estas cinco. Tranca-se o que a ordem de 04/10 queria proteger — a
+    fonte, a referência, a assinatura e a lista —, e isso continua byte a byte.
     """
     fixas = ("modern", "duel-commander", "pauper", "cedh-blue-farm", "cedh-cloud")
     r = subprocess.run(["git", "-C", str(RAIZ), "show", "HEAD:colecao_config.json"],
@@ -627,9 +637,10 @@ def caso_as_cinco_caixas_fixas_ficaram_intactas():
     cn = {c["slot"]: c for c in novo["caixas"]}
     for slot in fixas:
         assert slot in cn, slot
-        a = json.dumps(cv[slot], ensure_ascii=False, sort_keys=True)
-        b = json.dumps(cn[slot], ensure_ascii=False, sort_keys=True)
-        assert a == b, f"a caixa {slot} mudou e ele mandou não lhe tocar"
+        for campo in ("formato", "fonte", "ref", "assinatura",
+                      "assinatura_todas", "assinatura_sem", "balde"):
+            assert cv[slot].get(campo) == cn[slot].get(campo), \
+                f"a caixa {slot} mudou de {campo} e ele mandou não lhe tocar"
         la = json.dumps(velho.get("listas_escolhidas", {}).get(slot),
                         ensure_ascii=False, sort_keys=True)
         lb = json.dumps(novo.get("listas_escolhidas", {}).get(slot),
@@ -638,13 +649,23 @@ def caso_as_cinco_caixas_fixas_ficaram_intactas():
 
 
 def caso_as_caixas_trocadas_tem_todas_proveniencia_completa():
-    """As sete que trocaram de consenso para evento real têm, no config a sério,
-    as seis coisas que a página mostra. Um campo em falta é uma ficha incompleta
-    na página por onde ele vai sleevar."""
+    """As que trocaram de consenso para evento real têm, no config a sério, as
+    seis coisas que a página mostra. Um campo em falta é uma ficha incompleta na
+    página por onde ele vai sleevar.
+
+    **[ASSERÇÃO CORRIGIDA a 2026-10-05]** eram SETE e são SEIS: o
+    `premodern-stiflenought` saiu, porque ele disse *"no Premodern, o
+    Stiflenought e lista do Luffy tambem"* e a caixa voltou a `fonte: vigiado`.
+    A escolha de 04/10 (a lista do Simone Fierro, 1.º do European Championship)
+    foi um erro meu — a regra `listas_de_evento.regra` manda preferir
+    presenciais com campo grande, e o Stiflenought dele vem do jogador que ele
+    SEGUE. A lista do Fierro não se apagou (fica em
+    `listas_escolhidas._premodern-stiflenought-anterior`) e o caso novo está no
+    `test_sempre_montado.caso_o_stiflenought_serve_a_lista_do_luffy_e_segue_o_jogador`.
+    """
     novo = _cfg_a_serio()
-    trocadas = ("premodern-stiflenought", "premodern-replenish",
-                "premodern-enchantress", "premodern-elves", "premodern-oath",
-                "premodern-igg", "pioneer")
+    trocadas = ("premodern-replenish", "premodern-enchantress",
+                "premodern-elves", "premodern-oath", "premodern-igg", "pioneer")
     for slot in trocadas:
         rec = (novo.get("listas_escolhidas") or {}).get(slot)
         assert rec, f"{slot} ficou sem lista"
@@ -659,6 +680,13 @@ def caso_as_caixas_trocadas_tem_todas_proveniencia_completa():
         # E o que a caixa tinha antes fica guardado — nada se apaga.
         assert "_consenso_anterior" in rec, f"{slot}: perdeu-se o consenso antigo"
         assert "_antes" in caixa, f"{slot}: perdeu-se a fonte antiga"
+    # O STIFLENOUGHT SAIU DESTE CONJUNTO (2026-10-05) e tem de ter saído MESMO:
+    # sem esta asserção, a correcção do caso acima deixava de trancar nada e um
+    # dia qualquer a caixa voltava ao Fierro sem ninguém dar por isso.
+    stf = next(c for c in novo["caixas"] if c["slot"] == "premodern-stiflenought")
+    assert stf.get("fonte") == "vigiado", stf
+    assert stf.get("ref") == "Luffy — Premodern", stf
+    assert "premodern-stiflenought" not in (novo.get("listas_escolhidas") or {})
 
 
 def caso_a_regra_de_escolha_esta_escrita_no_config():
