@@ -315,6 +315,20 @@ function deckUnicoHTML(u) {
       + ` dele para venda: uma carta que se jogue aqui fica retida (regra RLG).`
       + `</p></div>`;
   }
+  /* MONTAR vs PROTEGER (2026-10-05, à letra: *"assim ficamos com uma lista de
+     cartas que eu gostaria de nao vender, tudo o resto e «seguro» vender"*).
+     As duas perguntas lado a lado, porque confundi-las custa caro nos dois
+     sentidos: ou monta decks que não quer, ou vende cartas que quer. */
+  if (u.protege) {
+    out += `<div class="ficha media"><h4>Proteger ≠ montar</h4><p class="pq">`
+      + `<b>Montar:</b> a versão que escolheres, aqui em baixo. `
+      + `<b>Proteger:</b> todas as <b>${u.protege.listas}</b> listas deste formato `
+      + `que jogam ${esc(u.protege.carta)} — ${u.protege.listas} de `
+      + `${u.protege.total} na janela (<b>${u.protege.pct} %</b>), de qualquer `
+      + `arquétipo. Uma carta que apareça em ${u.limiar} ou mais dessas listas `
+      + `<b>não vai à venda</b> (regra RP). Os «outros decks» aqui em baixo `
+      + `<b>também protegem</b>, mesmo não sendo versões.</p></div>`;
+  }
   if (u.versoes && u.versoes.length) {
     out += `<div class="vsel"><div class="vt">Versões — escolhe a que vais montar</div>`;
     out += u.versoes.map(v => {
@@ -348,14 +362,17 @@ function deckUnicoHTML(u) {
       esc(u.carta_chave)}</b> — ${o.length}${passam ? `, ${passam} que passam o critério` : ''}`
       + `</summary><p class="stpn">Não são versões deste deck: jogam a carta e são`
       + ` outros decks. Ficam aqui para decidires — nenhum entrou nem saiu`
-      + ` definitivamente.</p><div class="stpl">`
+      + ` definitivamente.${u.protege ? ' <b>As cartas deles estão protegidas da'
+        + ' venda na mesma</b>: proteger é todas as listas que jogam a carta,'
+        + ' montar é só a versão que escolheres.' : ''}</p><div class="stpl">`
       + o.map(z => `<div class="stpr">
           <span class="sq">${z.listas}</span>
           <span class="snm">${esc(z.nome || z.label || ('arquétipo ' + z.arquetipo_id))}</span>
           <span class="sd">${(z.exige || []).map(e =>
             `${esc(e.carta)} ${e.pct.toFixed(0)}%`).join(' · ')}</span>
           <span class="st${z.passa_criterio ? '' : ' falta'}">${
-            z.passa_criterio ? 'passa o critério' : 'não é versão'}</span>
+            z.passa_criterio ? 'passa o critério' : 'não é versão'}${
+            u.protege ? ' · protege' : ''}</span>
         </div>`).join('')
       + (sc ? `<div class="stpr"><span class="sq">${sc.listas}</span>
           <span class="snm">listas sem arquétipo</span>

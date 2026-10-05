@@ -115,6 +115,16 @@ _CSS = """
  table.cd td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
  table.cd td.v{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
  table.cd tr:hover td{background:var(--card2)}
+ table.cd tr.cur td{background:var(--accent-soft)}
+ .moxf{margin:0 0 14px;padding:0 0 0 18px;color:var(--muted);font-size:13px;line-height:1.7}
+ .stp{border:1px solid var(--line);border-radius:var(--r);background:var(--card2);margin:0 0 10px}
+ .stp>summary{cursor:pointer;padding:11px 14px;font-size:13px;font-weight:600}
+ .stpl{padding:0 14px 12px;display:flex;flex-direction:column;gap:2px}
+ .stpr{display:flex;gap:10px;align-items:baseline;padding:5px 0;border-top:1px solid var(--line);font-size:12.5px}
+ .stpr .sq{min-width:28px;text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+ .stpr .snm{flex:1 1 auto;font-weight:600}
+ .stpr .sd{color:var(--dim);font-size:11.5px}
+ .stpr .st{color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
  .mot{color:var(--dim);font-size:11.5px;line-height:1.5}
  .prot{display:inline-block;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:1px 8px;font-size:10.5px;color:var(--muted);white-space:nowrap}
  .lote{border:1px solid var(--line);border-radius:var(--r);background:var(--card2);margin:0 0 12px}
@@ -841,6 +851,84 @@ function inventario(p) {
 }
 
 /* ------------------------------------------------------------- FASE 3 */
+/* MONTAR E PROTEGER SÃO DUAS PERGUNTAS (André, 2026-10-05).
+   *"assim ficamos com uma lista de cartas que eu gostaria de nao vender, tudo
+   o resto e «seguro» vender"*. Os DOIS totais lado a lado — é o que a regra
+   faz, e sem os dois juntos não se vê. Mais a curva do limiar, que é uma
+   decisão DELE, e o que o Legacy arrastou, que é a consequência que ele
+   talvez não tenha visto. */
+function moxHTML(m) {
+  if (!m || !m.formatos) return '';
+  const fs = Object.entries(m.formatos).map(([f, d]) =>
+    `<li><b>${escDados(f)}</b> — ${d.listas} de ${d.total} listas da janela `
+    + `(<b>${d.pct} %</b>) jogam ${escDados(d.carta)}</li>`).join('');
+  const nv = m.nao_vender, sv = m.seguro_vender;
+  const c1 = (m.curva || []).find(x => x.limiar === 1) || null;
+  const c2 = (m.curva || []).find(x => x.limiar === 2) || null;
+  let curva = '';
+  if (c1 && c2) {
+    const dC = c1.a_mais.copias - c2.a_mais.copias;
+    const dV = c1.a_mais.valor - c2.a_mais.valor;
+    curva = `<h4>O limiar é uma decisão tua</h4>`
+      + `<p class="sub">Em quantas das ${m.cartas_criterio ? '' : ''}listas de `
+      + `Mox Opal uma carta tem de aparecer para <b>não</b> ir à venda. Está em `
+      + `<b>${m.limiar}</b>, que é a letra do que pediste — todas as listas contam.</p>`
+      + `<div class="tw"><table class="cd"><thead><tr><th>Limiar</th>`
+      + `<th class="v">Cartas no critério</th><th class="v">Protege a mais</th>`
+      + `<th class="v">Valor</th><th class="v">Protegeria sozinha</th></tr></thead><tbody>`
+      + (m.curva || []).map(x =>
+        `<tr${x.limiar === m.limiar ? ' class="cur"' : ''}><td><b>${x.limiar}</b> lista`
+        + `${x.limiar === 1 ? '' : 's'}${x.limiar === m.limiar ? ' · em vigor' : ''}</td>`
+        + `<td class="v">${x.cartas_criterio}</td>`
+        + `<td class="v">${x.a_mais.copias} cóp.</td>`
+        + `<td class="v">${eur(x.a_mais.valor)}</td>`
+        + `<td class="v">${x.sozinha.copias} cóp. · ${eur(x.sozinha.valor)}</td></tr>`).join('')
+      + `</tbody></table></div>`
+      + `<p class="sub">Passar de <b>1</b> para <b>2</b> listas liberta `
+      + `<b>${dC} cópias</b> (${eur(dV)}) para venda: são as que estão protegidas `
+      + `por aparecerem numa <b>única</b> lista — hoje ${m.uma_lista.linhas} linhas, `
+      + `${m.uma_lista.copias} cópias, ${eur(m.uma_lista.valor)}. `
+      + `<b>Não se escolheu por ti</b>: muda-se em `
+      + `<code>decks_por_formato._limiar_listas</code>.</p>`;
+  }
+  const fatia = (t, d) => !d || !d.cartas ? '' :
+    `<details class="stp"><summary><b>${t}</b> — ${d.cartas} cartas, ${d.copias} `
+    + `cópias, ${eur(d.valor)}</summary><div class="stpl">`
+    + (d.piores || []).map(x =>
+      `<div class="stpr"><span class="sq">${x.copias}</span>`
+      + `<span class="snm">${escDados(x.nm)}</span>`
+      + `<span class="sd">${Object.entries(x.listas || {}).map(([f, n]) =>
+        `${escDados(f)} ${n}`).join(' · ')}</span>`
+      + `<span class="st">${eur(x.valor)}</span></div>`).join('')
+    + `</div></details>`;
+  return `<h2>Não vender · seguro vender</h2>`
+    + `<p class="sub">As cartas que se jogam num deck de <b>Mox Opal</b> não vão `
+    + `à venda — <b>todas</b> as listas que o jogam, de qualquer arquétipo. É a `
+    + `regra <b>RP</b>. Isto é <b>proteger</b>, e é outra pergunta que <b>montar</b>: `
+    + `o deck que montas em Modern continua a ser a versão da Affinity que `
+    + `escolheste, na aba Decks.</p>`
+    + `<ul class="moxf">${fs}</ul>`
+    + `<div class="chips">`
+    + `<span class="chip gold"><b>${eur(nv.valor)}</b> NÃO VENDER · ${nv.copias} cóp.`
+    + ` em ${nv.linhas} linhas</span>`
+    + `<span class="chip"><b>${eur(sv.valor)}</b> seguro vender · ${sv.copias} cóp.`
+    + ` em ${sv.linhas} linhas</span>`
+    + (m.rp && m.rp.copias ? `<span class="chip"><b>${m.rp.copias}</b> cóp. `
+      + `só pela RP · ${eur(m.rp.valor)}</span>` : '')
+    + `</div>`
+    + (m.so_legacy && m.so_legacy.cartas
+      ? `<p class="sub"><b>O que o Legacy arrastou.</b> Pôr o Legacy no mesmo `
+        + `critério protege <b>${m.so_legacy.cartas} cartas</b> `
+        + `(${m.so_legacy.copias} cóp., ${eur(m.so_legacy.valor)}) que <b>só</b> `
+        + `aparecem em listas de Legacy. As duais e a Reserved List que os decks `
+        + `de artefactos de Legacy jogam já estavam protegidas pelas regras R1 e `
+        + `R4, que vêm à frente — por isso aparecem com esse motivo e não com este.`
+        + `</p>` : '')
+    + fatia('Protegidas só por listas de Legacy', m.so_legacy)
+    + fatia('Protegidas só por listas de Modern', m.so_modern)
+    + fatia('Protegidas pelos dois formatos', m.ambos);
+}
+
 function fase3(p) {
   const c = p.candidatos;
   const linhas = c.linhas.map(l =>
@@ -860,7 +948,8 @@ function fase3(p) {
     .map(([, v]) =>
       `<span class="chip"><b>${v.copias}</b> ${escDados(v.rotulo)} · ${eur(v.valor)}</span>`
     ).join('');
-  return `<h2>Fase 3 · VENDER <span class="n">${c.copias} cópias, `
+  return moxHTML(c.mox)
+    + `<h2>Fase 3 · VENDER <span class="n">${c.copias} cópias, `
     + `${c.cartas} cartas</span></h2>`
     + `<p class="sub"><b>Tudo o que não se enquadrou nas regras.</b> Sai sozinha `
     + `dos estados da Fase 1 e das regras das cartas: duais (4 fora dos decks), `
@@ -1095,7 +1184,10 @@ def dados(con, rep=None, editavel: bool = False) -> tuple[dict, dict]:
     # 2026-09-15, e aqui vale o dobro: a lista curta é uma ida à estante, não é o
     # primeiro ecrã.
     est_idx, est_parte = _estado_idx(con, cache)
-    partes = {"fase2": r["fase2"], "candidatos": _magra(r["candidatos"]),
+    # O bloco da RP (2026-10-05) vai na parte da Fase 3 e não no índice: é onde
+    # a decisão se lê, e são listas de cartas — o índice é o primeiro ecrã.
+    partes = {"fase2": r["fase2"],
+              "candidatos": dict(_magra(r["candidatos"]), mox=r.get("mox") or {}),
               "fase4": r["fase4"], "inventario": r["inventario"],
               "reservas": reservas, "estado": est_parte}
     idx = {

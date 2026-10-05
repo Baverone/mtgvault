@@ -976,6 +976,12 @@ def deck_unico(con: sqlite3.Connection, fmt: str, decks: list[dict],
             "nota": (alvo.get("nota") or "") if alvo else "",
             "evento": alvo.get("evento") if alvo else None,
         })
+    # MONTAR vs PROTEGER (2026-10-05). São duas perguntas e a página tem de as
+    # separar: se as juntar, ou ele monta decks que não quer, ou vende cartas
+    # que quer. `versoes` é o que ele MONTA; `protege` é o critério inclusivo.
+    prot = None
+    if versoes.protege_todas(fmt, cfg):
+        prot = (versoes.listas_do_formato(con, cfg) or {}).get(fmt)
     return {
         "formato": fmt, "nome": d.get("nome") or fmt,
         "porque": d.get("porque") or "", "em": d.get("em") or "",
@@ -983,6 +989,7 @@ def deck_unico(con: sqlite3.Connection, fmt: str, decks: list[dict],
         "por_decidir": bool(d.get("por_decidir")),
         "versao": esc, "versoes": vs,
         "carta_chave": versoes.carta_chave(fmt, cfg),
+        "protege": prot, "limiar": versoes.limiar_listas(cfg),
         "outros": versoes.outros_que_jogam(con, fmt, cfg),
         "saidos": [{"id": i, **s} for i, s in sorted(versoes.saidos(cfg).items())
                    if (por_id.get(i) or {}).get("formato") == fmt],

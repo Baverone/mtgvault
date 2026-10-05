@@ -2462,16 +2462,20 @@
   "decks_por_formato": {
     "_porque": "UM DECK POR FORMATO, COM VERSOES POR DENTRO (Andre, 04/10/2026, a noite): \"vamos fazer uma coisa diferente, a ver como fica / quero apenas manter decks que usem Mox Opal, tudo o resto e para vender (em modern) / quero ficar com 1 deck e versoes do deck (como opcoes)\". SUBSTITUI o modelo de 18 decks desta mesma tarde. O Premodern NAO entra: ele nao lhe tocou e fica com os seus 6 decks. Esvaziar este bloco devolve o vault ao modelo anterior — e um formato que nao esteja aqui fica como estava.",
     "_corte_pct": 5.0,
-    "_corte_pct_porque": "a percentagem das listas da janela de um formato POR DECIDIR acima da qual uma carta fica retida (regra RLG). 5 % das 135 listas de Legacy da janela sao 7 listas: abaixo disso e uma carta avulsa, nao uma staple do formato. A regra desliga-se SOZINHA no dia em que o formato deixar de estar por decidir.",
+    "_corte_pct_porque": "a percentagem das listas da janela de um formato POR DECIDIR acima da qual uma carta fica retida (regra RLG). 5 % das 135 listas de Legacy da janela sao 7 listas: abaixo disso e uma carta avulsa, nao uma staple do formato. A regra desliga-se SOZINHA no dia em que o formato deixar de estar por decidir. DESDE 05/10/2026 NAO HA NENHUM FORMATO POR DECIDIR (o legacy entrou com criterio proprio), por isso a RLG nao dispara — fica para o proximo formato que ele nao tenha decidido.",
+    "_limiar_listas": 1,
+    "_limiar_listas_porque": "MONTAR E PROTEGER SAO DUAS PERGUNTAS (Andre, 05/10/2026): \"quando digo as decklists que jogam Mox Opal, e porque assim ficamos com uma lista de cartas que eu gostaria de nao vender, tudo o resto e «seguro» vender\". Este e o limiar da regra RP: em quantas das listas da carta-chave uma carta tem de aparecer para NAO ir a venda. 1 e a letra do que ele pediu (todas as listas contam). A 1 ha 34 linhas protegidas por aparecerem numa UNICA lista, e a pior sao 5 Bayou por uma lista so; a 2 isso cai. A pagina mostra a curva entre 1 e 2 — a escolha e DELE e nao se decidiu por ele.",
     "modern": {
       "nome": "Affinity (Mox Opal)",
       "porque": "\"De Modern quero apenas decks de Mox Opal\" (Andre, 04/10/2026)",
       "em": "2026-10-04",
       "criterio": {
         "carta": "Mox Opal",
+        "protege_todas": true,
         "exige": ["Kappa Cannoneer", "Pinnacle Emissary"],
         "pct_minima": 50,
-        "porque": "nem todo o deck que joga Mox Opal e uma versao da Affinity: medido a 04/10, 20 clusters de Modern jogam a carta e so 7 jogam tambem Kappa Cannoneer e Pinnacle Emissary em metade ou mais das listas. Os outros sao decks diferentes que por acaso jogam o Mox. Os que nao sao versao ficam A VISTA em «outros decks que jogam Mox Opal», derivados da base."
+        "porque": "ATENCAO: o `exige` decide o que ele MONTA, nunca o que fica protegido. Nem todo o deck que joga Mox Opal e uma versao da Affinity: medido a 04/10, 20 clusters de Modern jogam a carta e so 7 jogam tambem Kappa Cannoneer e Pinnacle Emissary em metade ou mais das listas. Para MONTAR valem esses (\"o deck principal e Affinity sem duvida\"); os outros ficam A VISTA em «outros decks que jogam Mox Opal», derivados da base.",
+        "protege_todas_porque": "PROTEGER e outra pergunta (Andre, 05/10/2026): \"assim ficamos com uma lista de cartas que eu gostaria de nao vender, tudo o resto e «seguro» vender\". Aqui o criterio e INCLUSIVO — entram TODAS as 25 listas de Modern que jogam Mox Opal na janela, de qualquer arquetipo, e os cinco que ficaram de fora das versoes a 04/10 (Scrabbling Claws, Jace/Song of Creation, Flame of Anor, Hammer Time, Erayo) VOLTAM a contar para a proteccao. E a regra RP."
       },
       "versoes": [
         {
@@ -2556,12 +2560,21 @@
       "_nota": "a caixa esta SEM LISTA: o consenso dela tem 1 lista na janela contra um minimo de 5, e ele revê o Standard em Janeiro (esta qualificado para Fevereiro). Nao se escolheu lista nenhuma por ele — trocar para uma lista de evento real resolvia, e e decisao dele."
     },
     "legacy": {
-      "nome": "(por decidir)",
-      "porque": "\"Legacy ainda nao sei\" (Andre, 04/10/2026)",
-      "em": "2026-10-04",
-      "por_decidir": true,
+      "nome": "Decks de Mox Opal",
+      "porque": "\"aplica o mesmo para Legacy, assim jogo Mox Opal nos 2 formatos\" (Andre, 05/10/2026)",
+      "em": "2026-10-05",
+      "criterio": {
+        "carta": "Mox Opal",
+        "protege_todas": true,
+        "porque": "o mesmo criterio do Modern, por ordem dele. Em Legacy sao 23 das 171 listas da janela (13,5 %) — o DOBRO da percentagem do Modern (6,9 %). NAO tem `exige`: nao ha versoes para montar em Legacy, so proteccao."
+      },
       "versoes": [],
-      "_nota": "NADA se escolheu e NADA se libertou de legacy. Enquanto isto estiver `por_decidir`, uma carta que se jogue em >= `_corte_pct` das listas de Legacy da janela fica RETIDA e nao vai a venda (regra RLG). As tres caixas de legacy ficam como estao."
+      "_por_decidir_antes": {
+        "valor": true,
+        "ate": "2026-10-05",
+        "porque": "\"Legacy ainda nao sei\" (04/10). Deixou de estar por decidir no dia em que ele lhe deu o criterio do Mox Opal; com isso a regra RLG deixou de disparar — era exactamente para isto que ela se desligava sozinha. Repor e voltar a por `por_decidir: true` e tirar o `criterio`."
+      },
+      "_nota": "NADA se escolheu para MONTAR em Legacy e nenhuma caixa se tocou: `versoes` esta vazio de proposito. O que mudou a 05/10 foi a PROTECCAO — as cartas das 23 listas de Mox Opal de Legacy deixam de ser candidatas a venda (regra RP). CONSEQUENCIA QUE ELE TEM DE VER: isso arrasta as duais caras da Reserved List, porque os decks de artefactos de Legacy jogam-nas (Volcanic Island, Underground Sea, Taiga, Plateau, Badlands, Bayou, City of Traitors, Grim Monolith, Lion's Eye Diamond). A pagina di-lo."
     }
   }
 }

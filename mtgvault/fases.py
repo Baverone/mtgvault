@@ -196,15 +196,29 @@ RD = "rd-deck"
 #       staple desse formato fica RETIDA. *"Tudo o resto é para vender"* não
 #       pode querer dizer vender as staples de Legacy antes de ele escolher o
 #       deck de Legacy: isso era obedecer à letra e desobedecer à intenção.
+# RP  — *"assim ficamos com uma lista de cartas que eu gostaria de nao vender,
+#       tudo o resto e «seguro» vender"* (05/10). O critério INCLUSIVO: toda a
+#       carta que se jogue numa lista da carta-chave (Mox Opal, em Modern e em
+#       Legacy) fica protegida, seja de que arquétipo for. É a correcção da
+#       leitura de 04/10, que só protegia as quatro versões da Affinity porque
+#       as tomou por um conjunto a MONTAR.
 RE = "re-deck-escolhido"
+RP = "rp-deck-da-carta"
 RLG = "rlg-formato-por-decidir"
-# A ORDEM: a RLG é a ÚLTIMA de todas, e isso é deliberado. Posta à frente da R5
-# ficava com o crédito de 203 cópias que a R5 já segurava de qualquer maneira
-# (medido), e o número que ele lê — *"isto fica retido só porque não decidi o
-# Legacy"* — passava a estar inflacionado três vezes. No fim, a RLG mostra
-# exactamente o que se desbloqueia no dia em que ele escolher o deck de Legacy,
-# que é a pergunta que ela existe para responder.
-PROTECCOES = (R1, R2, R3, R4, RD, RE, R5, R5B, RLG)
+# A ORDEM, e as duas decisões que ela carrega:
+#
+# * **A RP vem DEPOIS da R2 e da R3**, por ordem dele: *"as ShockLands e
+#   FetchLands continuam fora por regra e nao por este criterio"*. Uma fetchland
+#   que apareça numa lista de Mox Opal continua a dizer «R3 · fetchland» — se
+#   amanhã o critério mudar, ela continua protegida, e é esse o ponto.
+# * **A RP vem ANTES da R5**, ao contrário da RLG. A RLG está no fim para o
+#   número dela não vir inflacionado com o que a R5 já segurava; aqui é o
+#   oposto do que serve, porque a RP é o critério que ele acabou de definir e o
+#   que ele quer ler é *"o que é que a regra do Mox Opal protege"*. Para a
+#   inflação não ficar escondida, a página mostra as DUAS colunas — o que a RP
+#   apanha e o que ela apanha **sozinha** (que nenhuma outra regra protegia) —,
+#   que é o padrão já usado na `curva_staples`.
+PROTECCOES = (R1, R2, R3, R4, RD, RE, RP, R5, R5B, RLG)
 ROTULOS = {
     R1: "R1 · dual original (4 fora dos decks)",
     R2: "R2 · shockland",
@@ -212,6 +226,7 @@ ROTULOS = {
     R4: "R4 · Reserved List que jogas",
     RD: "RD · está num deck que fica",
     RE: "RE · está num deck que escolheste",
+    RP: "RP · joga-se num deck que guardas",
     RLG: "RLG · formato por decidir",
     R5: "R5 · jogada nos últimos 30 dias",
     R5B: "R5b · staple de sideboard de Premodern",
@@ -1314,6 +1329,126 @@ def curva_staples(con, res: dict, cortes=None,
     return out
 
 
+def resumo_mox(con, res: dict, cands: dict, cfg: dict | None = None,
+               cache: dict | None = None) -> dict:
+    """O bloco da RP para a página: os DOIS totais, a curva e o que o Legacy
+    arrastou.
+
+    *"Mostra os dois totais lado a lado para ele ver o que a regra faz."* E
+    *"diz-lhe isto na pagina, porque e a consequencia que ele talvez nao tenha
+    visto"* — o critério inclusivo em Legacy puxa as duais caras da Reserved
+    List, porque os decks de artefactos de Legacy jogam-nas.
+    """
+    cache = {} if cache is None else cache
+    cfg = sources.config() if cfg is None else cfg
+    fmts = versoes.listas_do_formato(con, cfg)
+    if not fmts:
+        return {}
+    conta = versoes.contagem_por_carta(con, cfg, cache)
+    curva, uma = curva_limiar(con, res, (1, 2), cfg, cache)
+    # O que a RP apanhou, carta a carta, para se poder dizer o que veio de
+    # onde. Só as linhas que ELA protegeu: uma carta que a R1 ou a R3 já
+    # seguravam não é mérito deste critério, e contá-la era inflacioná-lo.
+    por_nm: dict[str, dict] = {}
+    for l in cands.get("protegidas") or []:
+        if l.get("proteccao") != RP:
+            continue
+        k = scryfall.chave(l["nm"])
+        d = por_nm.setdefault(k, {"nm": l["nm"], "copias": 0, "valor": 0.0})
+        d["copias"] += l["q"]
+        d["valor"] += l["total"] or 0
+    for k, d in por_nm.items():
+        d["valor"] = round(d["valor"], 2)
+        d["listas"] = (conta.get(k) or {}).get("formatos") or {}
+    def _fatia(teste):
+        xs = sorted((d for k, d in por_nm.items()
+                     if teste(set((conta.get(k) or {}).get("formatos") or {}))),
+                    key=lambda d: -d["valor"])
+        return {"cartas": len(xs),
+                "copias": sum(d["copias"] for d in xs),
+                "valor": round(sum(d["valor"] for d in xs), 2),
+                "piores": xs[:12]}
+    return {
+        "formatos": fmts, "limiar": versoes.limiar_listas(cfg),
+        "cartas_criterio": len(conta),
+        "nao_vender": {"linhas": len(cands["protegidas"]),
+                       "copias": cands["protegidas_copias"],
+                       "valor": cands["protegidas_valor"]},
+        "seguro_vender": {"linhas": len(cands["linhas"]),
+                          "copias": cands["copias"], "valor": cands["valor"]},
+        "rp": cands["por_proteccao"].get(RP) or {},
+        "curva": curva, "uma_lista": uma,
+        "so_legacy": _fatia(lambda f: f == {"legacy"}),
+        "so_modern": _fatia(lambda f: f == {"modern"}),
+        "ambos": _fatia(lambda f: len(f) > 1),
+    }
+
+
+def curva_limiar(con, res: dict, limiares=(1, 2, 3),
+                 cfg: dict | None = None, cache: dict | None = None) -> list[dict]:
+    """A CURVA do limiar de listas da RP — *"NAO escolhas por ele"*.
+
+    A 1 (a letra do que ele pediu) há linhas protegidas por aparecerem numa
+    **única** lista da carta-chave, e uma delas sozinha vale mais de mil euros.
+    A 2 isso cai. A escolha é dele, e esta função é o que lha põe à frente com
+    números em vez de adjectivos.
+
+    Dá os mesmos DOIS números da `curva_staples`, pela mesma razão:
+
+      * **`a_mais`** — o que a RP protege POR CIMA de tudo o resto. É o efeito
+        real de mexer no limiar hoje.
+      * **`sozinha`** — o que protegeria se a R5 e a R5b não existissem. É o que
+        diz quanto a regra VALE, e sem ele uma curva plana lia-se como *"o
+        limiar não importa"* quando o que se passa é que outra regra chegou
+        primeiro.
+
+    `uma_lista` conta o que está protegido por **exactamente uma** lista: é a
+    pergunta dele (*"34 linhas … e valem 2 771,16 EUR"*) respondida da base.
+    """
+    cache = {} if cache is None else cache
+    cfg = sources.config() if cfg is None else cfg
+    base = candidatos(con, res, cfg, cache=cache, com_rp=False)
+    so = candidatos(con, res, cfg, cache=cache, com_rp=False,
+                    com_r5=False, com_r5b=False)
+
+    def _idx(c):
+        d: dict[str, list[dict]] = defaultdict(list)
+        for l in c["linhas"]:
+            d[scryfall.chave(l["nm"])].append(l)
+        return d
+
+    livres, livres_so = _idx(base), _idx(so)
+
+    def _conta(nomes, idx):
+        lin = cop = 0
+        val = 0.0
+        cartas = 0
+        for nm in nomes:
+            ls = idx.get(nm) or []
+            if ls:
+                cartas += 1
+            for l in ls:
+                lin += 1
+                cop += l["q"]
+                val += l["total"] or 0
+        return {"cartas": cartas, "linhas": lin, "copias": cop,
+                "valor": round(val, 2)}
+
+    conta = versoes.contagem_por_carta(con, cfg, cache)
+    out = []
+    for lim in limiares:
+        nomes = {k for k, v in conta.items() if v["listas"] >= lim}
+        out.append({
+            "limiar": lim, "cartas_criterio": len(nomes),
+            "a_mais": _conta(nomes, livres),
+            "sozinha": _conta(nomes, livres_so),
+            "vender_sem_rp": base["copias"], "valor_sem_rp": base["valor"],
+        })
+    # O que está protegido por EXACTAMENTE uma lista — a pergunta dele.
+    uma = {k for k, v in conta.items() if v["listas"] == 1}
+    return out, _conta(uma, livres)
+
+
 # ---------------------------------------------------------------------------
 # AS REGRAS APLICADAS: a Fase 3 e a lista VENDER
 # ---------------------------------------------------------------------------
@@ -1326,7 +1461,8 @@ def _motivo(prot: str, detalhe: str) -> str:
 
 def contexto(con, res: dict, cfg: dict | None = None,
              cache: dict | None = None, com_r5: bool = True,
-             com_r5b: bool = True) -> dict:
+             com_r5b: bool = True, com_rp: bool = True,
+             limiar: int | None = None) -> dict:
     """Tudo o que o `quem_protege` precisa de saber, calculado UMA vez.
 
     É o mesmo dicionário para a Fase 3 e para o motor da venda: duas montagens
@@ -1341,6 +1477,11 @@ def contexto(con, res: dict, cfg: dict | None = None,
     # CHEGAM à venda — perguntar pela colecção inteira era pagar 1 678 consultas
     # para responder sobre 236 nomes.
     escolhidos = versoes.nomes_que_ficam(res, cfg)
+    # A RP (05/10): o conjunto INCLUSIVO, todas as listas da carta-chave. Uma
+    # consulta por formato inclusivo, guardada na cache da passagem — a página
+    # volta a pedi-la para a curva do limiar.
+    protegidos = (versoes.nomes_protegidos(con, cfg, limiar, cache=cache)
+                  if com_rp else {})
     por_decidir = versoes.formatos_por_decidir(cfg)
     retidos: dict = {}
     if por_decidir:
@@ -1350,6 +1491,7 @@ def contexto(con, res: dict, cfg: dict | None = None,
     return {
         "duais": set(dp["nomes"]),
         "escolhidos": escolhidos,
+        "protegidos": protegidos,
         # O nome por extenso de cada deck que fica, uma vez — o `quem_protege`
         # corre por sub-lote e procurá-lo lá dentro varria as versões todas por
         # cada cópia protegida.
@@ -1427,6 +1569,13 @@ def quem_protege(con, res: dict, nm: str, lot: dict, ctx: dict) -> tuple | None:
         rot = ctx.get("escolhidos_nomes") or {}
         onde = ", ".join(sorted(rot.get(d, d) for d in quem)[:3])
         return RE, _motivo(RE, f"está num deck que escolheste — {onde}"), q
+    # A RP lê pela CHAVE canónica e não pelo nome cru: o conjunto vem do
+    # `decklist_cards`, onde uma carta de duas faces aparece pela FRENTE
+    # (`Witch Enchanter`), e o `pool` traz o nome inteiro do catálogo. Sem a
+    # `chave` as cartas de duas faces ficavam todas de fora, em silêncio.
+    rp = (ctx.get("protegidos") or {}).get(scryfall.chave(nm))
+    if rp:
+        return RP, _motivo(RP, versoes.texto_rp(rp)), q
     if ctx.get("reservas") and nm in ctx["reservas"]:
         quem = ", ".join(ctx["reservas"][nm])
         return R5, _motivo(R5, f"jogada nos últimos {janela_dias()} dias em "
@@ -1465,7 +1614,8 @@ def _partir(linha: dict, n: int) -> tuple[dict, dict | None]:
 
 def candidatos(con, res: dict, cfg: dict | None = None,
                cache: dict | None = None, _ignorado=None,
-               com_r5: bool = True, com_r5b: bool = True) -> dict:
+               com_r5: bool = True, com_r5b: bool = True,
+               com_rp: bool = True, limiar: int | None = None) -> dict:
     """A FASE 3 e a lista **VENDER**: o que sobra depois das regras.
 
     Varre a colecção INTEIRA (o `pool` do relatório, uma linha por sub-lote) e
@@ -1478,7 +1628,8 @@ def candidatos(con, res: dict, cfg: dict | None = None,
     """
     from . import loadout                                    # noqa: PLC0415
     cache = {} if cache is None else cache
-    ctx = contexto(con, res, cfg, cache, com_r5=com_r5, com_r5b=com_r5b)
+    ctx = contexto(con, res, cfg, cache, com_r5=com_r5, com_r5b=com_r5b,
+                   com_rp=com_rp, limiar=limiar)
     pc: dict = cache.setdefault("_precos", {})
     linhas, protegidas = [], []
     por: dict[str, dict] = {p: {"copias": 0, "valor": 0.0, "cartas": set()}
@@ -1534,7 +1685,8 @@ def candidatos(con, res: dict, cfg: dict | None = None,
                           for p, v in por.items()},
         "janela_dias": janela_dias(cfg),
         "staples_corte": staples_corte(cfg),
-        "com_r5": com_r5, "com_r5b": com_r5b,
+        "com_r5": com_r5, "com_r5b": com_r5b, "com_rp": com_rp,
+        "limiar": versoes.limiar_listas(cfg) if limiar is None else limiar,
     }
 
 
@@ -2151,6 +2303,10 @@ def relatorio(con, res: dict, cfg: dict | None = None,
                     "protegem": list(ESTADOS_PROTEGEM),
                     "omissao": ESTADO_OMISSAO, "texto": dict(TEXTO_ESTADO)},
         "regras": {k: ROTULOS[k] for k in PROTECCOES},
+        # O bloco da RP (2026-10-05): os dois totais lado a lado, a curva do
+        # limiar e o que o Legacy arrastou. Vazio quando nenhum formato é
+        # inclusivo — e aí a Fase 3 fica exactamente como estava.
+        "mox": resumo_mox(con, res, cands, cfg, cache),
     }
     if curva:
         out["curva_staples"] = curva_staples(con, res, None, cache)

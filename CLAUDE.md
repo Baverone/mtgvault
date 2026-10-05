@@ -2987,6 +2987,126 @@ config em `colecao_config.json → decks_por_formato`. Testes em
   (`decks_por_formato._corte_pct`); (d) as **50 cópias de A** ficam retidas até
   ele escolher o deck de Legacy.
 
+**MONTAR E PROTEGER SÃO DUAS PERGUNTAS: O CRITÉRIO DO MOX OPAL É INCLUSIVO
+(André, 2026-10-05, à letra).** *"quando digo as decklists que jogam Mox Opal, e
+porque assim ficamos com uma lista de cartas que eu gostaria de nao vender, tudo
+o resto e «seguro» vender"* e *"aplica o mesmo para Legacy, assim jogo Mox Opal
+nos 2 formatos"*. **CORRIGE A LEITURA DE 04/10 À NOITE**, que escolheu as quatro
+versões da Affinity a assumir que a lista de decks de Mox Opal era um conjunto a
+**MONTAR**. É para **PROTEGER**, e isso inverte o critério: passa a ser
+**INCLUSIVO e não selectivo**. Motor em `mtgvault/versoes.py`
+(`limiar_listas`/`protege_todas`/`formatos_inclusivos`/`listas_da_carta`/
+`contagem_por_carta`/`nomes_protegidos`/`listas_do_formato`/`texto_rp`) e a
+regra **RP** em `mtgvault/fases.py` (`curva_limiar`/`resumo_mox`); config em
+`decks_por_formato` (`_limiar_listas` + `criterio.protege_todas`). Testes em
+`tests/test_mox_proteger.py` (12 casos) e a prova de que chumbam em
+`tests/_chumba_mox.py` (**10 de 10 alvos**, um processo por alvo). Backup em
+`data/backups/vault-2026-10-05-mox-proteger.db` (104,3 MB, `integrity ok`).
+**A VENDA CONTINUA ESCONDIDA E TRAVADA** — isto prepara a lista, não a destranca.
+
+- **AS DUAS PERGUNTAS, e nunca se juntam.** **MONTAR** é a versão escolhida (em
+  Modern continuam a ser as quatro da Affinity: *"o deck principal é Affinity
+  sem dúvida"*), e quem decide quais os clusters que são versões é o
+  `criterio.exige` (Kappa Cannoneer + Pinnacle Emissary). **PROTEGER** é
+  **todas** as listas que jogam a carta-chave, de qualquer arquétipo. Juntá-las
+  custa caro nos dois sentidos — ou monta decks que não quer, ou vende cartas
+  que quer —, por isso são dois conjuntos distintos **e dizem-no no ecrã**: a
+  aba Decks leva o bloco *«Proteger ≠ montar»* e os «outros decks que jogam Mox
+  Opal» passaram a dizer *«· protege»* ao lado do *«não é versão»*.
+- **Os cinco que tinham ficado de fora VOLTAM a contar** (Scrabbling Claws,
+  Jace/Song of Creation, Flame of Anor, Hammer Time, Erayo) — para a protecção,
+  não para a montagem. Tem caso de teste nos dois sentidos.
+- **O LEGACY ENTRA e DEIXOU DE ESTAR `por_decidir`**, com o mesmo critério. A
+  consequência directa é que a **RLG deixou de disparar** — e isso não é uma
+  perda: era exactamente para isto que ela foi escrita para se desligar sozinha.
+  Fica no código e volta no dia em que houver outro formato por decidir (tem
+  caso de teste nos dois sentidos). O `por_decidir` antigo ficou arquivado em
+  `legacy._por_decidir_antes`, com a data e como se repõe.
+- **O UNIVERSO DAS LISTAS É O MAIS LARGO: a janela do consenso, SEM o filtro de
+  tier.** É a mesma excepção — e a mesma razão — da R5: *sub-contar numa regra
+  de protecção é VENDER uma carta que ele precisa*; um 5-0 de league que jogue
+  Mox Opal é precisamente o sinal que interessa. **E é o universo em que os
+  números que ele mediu batem ao exemplar**: **modern 25 de 364 (6,9 %)**,
+  **legacy 23 de 171 (13,5 %)**, **vintage 18 de 64 (28,1 %)**. Com o filtro de
+  tier dariam 24 e 17 — foi assim que se descobriu qual era o universo dele.
+  Tem caso de teste (uma liga que joga a carta-chave tem de contar).
+- **O LIMIAR É DELE E NÃO MEU** (`_limiar_listas`, hoje **1**, que é a letra do
+  que ele pediu). A página mostra a curva entre 1 e 2 com os DOIS números da
+  `curva_staples` — `a_mais` (o que a RP protege por cima de tudo o resto) e
+  `sozinha` (o que protegeria se a R5 e a R5b não existissem) —, porque uma
+  coluna só lia-se como *"o limiar não importa"* quando o que se passa é que
+  outra regra chegou primeiro. **Medido:** passar de 1 para 2 liberta **37
+  cópias / 1 820,63 €**, que são exactamente as protegidas por **uma única**
+  lista (15 linhas). Não se escolheu por ele.
+- **O limiar conta a SOMA entre formatos e não o máximo**: as 25 de Modern e as
+  23 de Legacy são 48 listas de Mox Opal, e uma carta que esteja numa de cada
+  está em duas delas. É a leitura literal de *"em quantas listas"* e é a mais
+  conservadora. **Este caso não existia e foi o `_chumba` que o apanhou** — eu
+  afirmava a regra na docstring e não havia teste que a trancasse.
+- **A ORDEM DA RP, e as duas decisões que ela carrega.** Vem **depois da R2 e da
+  R3**, por ordem dele (*"as ShockLands e FetchLands continuam fora por regra e
+  nao por este criterio"*): uma fetchland que apareça numa lista de Mox Opal
+  continua a dizer «R3 · fetchland», e se amanhã o critério mudar ela continua
+  protegida. Vem **antes da R5**, ao contrário da RLG — ali o fim existia para o
+  número não vir inflacionado, aqui é o oposto do que serve, porque é o critério
+  que ele acabou de definir e o que ele quer ler é *«o que é que a regra do Mox
+  Opal protege»*. A inflação não fica escondida: a página mostra as duas
+  colunas. **Consequência a saber: as 5 Bayou que ele deu como «protegidas por
+  uma lista só» não aparecem na RP** — as duais saem pela **R1**, que é a
+  primeira e é exclusiva, e era isso que a ordem dele pedia.
+- **O QUE O LEGACY ARRASTOU, medido:** **36 cartas / 102 cópias / 4 555,25 €**
+  protegidas **só** por listas de Legacy — Cabal Therapy 1 374,66 €, The One
+  Ring 804,25 €, Orcish Bowmasters 420,56 €, Chrome Mox, Lotus Petal, Seat of
+  the Synod. **As duais e a Reserved List caras que os decks de artefactos de
+  Legacy jogam já estavam protegidas pela R1 e pela R4**, que vêm à frente — por
+  isso aparecem com esse motivo e não com este, e o número da RP é mais pequeno
+  do que a ordem previa. A página di-lo, em vez de o deixar parecer uma omissão.
+- **O VINTAGE NÃO ENTROU, e é decisão dele.** Tem **18 das 64 listas da janela
+  (28,1 %)** a jogar Mox Opal — a percentagem mais alta dos três formatos — e
+  ele não o pediu. Não está no `decks_por_formato`, logo não protege nada;
+  acrescentá-lo é uma entrada no config.
+- **MEDIDO LADO A LADO, o MESMO `vault.db` dos dois lados** (worktree em
+  `_revisao/main-1005`):
+
+  | | main | ramo |
+  |---|---|---|
+  | fechar tudo · a comprar | 11 122,58 € · 295 | **iguais** |
+  | as 17 caixas | — | **iguais à percentagem e ao cêntimo** |
+  | VENDER | 209 l / 477 c / 13 426,09 € | **217 l / 507 c / 13 911,99 €** |
+  | NÃO VENDER | 573 l / 1 201 c / 131 342,11 € | **565 l / 1 171 c / 130 856,21 €** |
+  | R5 (30 dias) | 381 c / 9 703,84 € | 271 c / 6 243,72 € |
+  | RLG | 96 c / 3 159,19 € | **0 — desligou-se sozinha** |
+  | **RP** | — | **176 c / 6 133,41 € / 63 cartas** |
+  | R1 · R2 · R3 · R4 · RD · RE · R5b | — | **iguais** |
+
+  **A alocação não mexe um número.** O delta explica-se à cópia e ao cêntimo: a
+  RLG (96 c) e a R5 (110 c) libertam 206 cópias, a RP apanha 176, e as **30**
+  que sobram são exactamente o que a lista VENDER cresce (+485,90 €, que é
+  6 619,31 − 6 133,41). **Correcção à previsão da ordem:** ela dizia que isto
+  *«NÃO libertou mais para vender, trocou o que está protegido»* — trocou quase
+  tudo, e libertou 30 cópias / 485,90 € líquidos.
+- **OS NÚMEROS DE CÓPIAS E EUROS DA ORDEM NÃO REPRODUZEM, e as contagens de
+  listas reproduzem.** As três contagens de listas batem ao exemplar (25 / 23 ·
+  13,5 % / 18 · 28,1 %); os totais — *«regra 87 c / 11 317,46 €»*, *«não vender
+  222 l / 568 c / 40 869,17 €»*, *«seguro vender 270 l / 579 c / 14 019,45 €»* —
+  não saem de nenhum recorte do motor. Procurou-se: o **87** é exactamente as
+  cópias de shock/fetchlands **fora das caixas**, o que diz que o universo era
+  esse, mas nenhuma régua de preço (nem `preco_da_copia`, nem `card_price`) dá
+  11 317,46 € para essas 87, e nenhuma partição dá 568/579. Os do motor são os
+  da tabela acima, e o *seguro vender* fica a **107,46 €** do que ela previa.
+- **Medido com o servidor a correr e o JS a sério:** as **14 páginas** e os
+  **264 ficheiros de dados a 200**, zero erros de dados; o JS desenhou nas três
+  páginas com JS (Arrumação 6 contentores, Decks 4, Deckboxes 16); a 1440 e a
+  390 px **nenhuma página com scroll horizontal**. Bateria toda verde (91
+  ficheiros). O round-trip do config pelo `configio.escrever` devolve-o **igual
+  byte a byte** — e apanhou uma linha minha escrita à mão fora da forma canónica.
+- **POR DECIDIR POR ELE:** (a) o **limiar** — a 1 cumpre-se a letra, a 2
+  libertam-se 37 cópias / 1 820,63 €; (b) o **Vintage**, que tem a percentagem
+  mais alta e ficou fora; (c) os **três clusters** que passam o critério de
+  montagem e ficaram fora das versões (7400, 7010, 6491) — continuam a
+  **proteger** na mesma, que era a dúvida que esta ordem fechou; (d) o
+  **Standard continua sem lista** (consenso com 1 lista contra um mínimo de 5).
+
 **PUBLICAR SEM ESPERAR PELAS 03:30, E A BARRA PELOS QUATRO TRABALHOS (André,
 2026-10-04, à noite, à letra).** *"podes refazer novamente a seccao do MTG
 completamente com estas novas regras?"* e *"Organiza tudo de forma profissional

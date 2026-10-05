@@ -82,6 +82,51 @@ precisava desse conjunto congelado no config para sempre, e um conjunto
 congelado é exactamente o que apodrece. Assim é sem estado, mais conservadora
 (retém mais, vende menos) e desliga-se sozinha no dia em que ele escolher o
 deck de Legacy.
+
+MONTAR E PROTEGER SÃO DUAS PERGUNTAS (André, 2026-10-05, à letra)
+-----------------------------------------------------------------
+    *"quando digo as decklists que jogam Mox Opal, e porque assim ficamos com
+    uma lista de cartas que eu gostaria de nao vender, tudo o resto e «seguro»
+    vender"*
+    *"aplica o mesmo para Legacy, assim jogo Mox Opal nos 2 formatos"*
+
+**CORRIGE A LEITURA DE 04/10 À NOITE.** As quatro versões da Affinity foram
+escolhidas a assumir que a lista de decks de Mox Opal era para **MONTAR**; é
+para **PROTEGER**. Isso inverte o critério — passa a ser **INCLUSIVO e não
+selectivo**:
+
+* **MONTAR** continua a ser a versão escolhida (*"o deck principal é Affinity
+  sem dúvida"*): é o `versoes`/`versao`, e é o `criterio.exige` (Kappa Cannoneer
+  + Pinnacle Emissary) que decide quais os clusters que são versões.
+* **PROTEGER** passa a ser **todas as listas que jogam a carta-chave**, sejam
+  de que arquétipo forem — a regra **RP** do `fases`. Os cinco arquétipos que
+  tinham ficado de fora (Scrabbling Claws, Jace/Song of Creation, Flame of Anor,
+  Hammer Time, Erayo) **voltam a contar para a protecção**, e continuam fora das
+  versões.
+
+Juntar as duas ou ele montava decks que não quer, ou vendia cartas que quer —
+por isso são dois conjuntos distintos e **dizem-no no ecrã**.
+
+**O LEGACY ENTRA, com o mesmo critério**, e por isso **deixou de estar
+`por_decidir`**: a consequência directa é que a RLG se desliga sozinha (é o que
+ela foi escrita para fazer). Quem decide que um formato é inclusivo é
+`criterio.protege_todas` no config — o Pioneer tem carta-chave e **não** o é, de
+propósito: ali ele nomeou as três versões.
+
+O UNIVERSO DE LISTAS É O MAIS LARGO, E ISSO É DELIBERADO
+---------------------------------------------------------
+As listas da carta-chave contam-se na **janela do consenso** e **SEM o filtro de
+tier** do `sources.counting_sql`. É a mesma excepção — e a mesma razão — da R5:
+*sub-contar aqui é VENDER uma carta que ele precisa*. É também o universo em que
+os números que ele mediu batem ao exemplar: **modern 25 de 364 (6,9 %)**,
+**legacy 23 de 171 (13,5 %)**. Com o filtro de tier dava 24 e 17.
+
+O LIMIAR É DELE E NÃO MEU
+--------------------------
+`_limiar_listas` (omissão **1**, que é a letra do que ele pediu): em quantas das
+listas da carta-chave uma carta tem de aparecer para ficar protegida. A **1**,
+34 linhas ficam protegidas por aparecerem numa **única** lista. A página mostra
+a curva entre 1 e 2 — a escolha é dele.
 """
 from __future__ import annotations
 
@@ -102,7 +147,17 @@ CORTE_PCT = 5.0
 #: Que fracção das listas de um cluster tem de jogar cada carta de
 #: `criterio.exige` para o cluster ser uma versão. Metade: num cluster de duas
 #: listas uma carta que apareça numa só não é a identidade do deck.
+#:
+#: **Serve o MONTAR e nunca o PROTEGER** (2026-10-05): é isto que decide quais
+#: os clusters que são versões do deck que ele monta. A protecção é inclusiva e
+#: não passa por aqui.
 PCT_CRITERIO = 50.0
+
+#: Em quantas listas da carta-chave uma carta tem de aparecer para ficar
+#: protegida pela **RP**. Um é a letra do que ele pediu (*"as decklists que
+#: jogam Mox Opal"*, sem qualificação); a página mostra a curva e a escolha
+#: é dele.
+LIMIAR_LISTAS = 1
 
 TEXTO_SAIU = "meta, não escolhido"
 TEXTO_RETIDO = ("não vai à venda enquanto não escolheres o deck de "
@@ -391,6 +446,145 @@ def nome_do_deck(deck_id: str, cfg: dict | None = None) -> str:
             if deck_da_versao(v) == deck_id:
                 return f"{d.get('nome') or f} · {v.get('nome') or v.get('id')}"
     return deck_id
+
+
+# ---------------------------------------------------------------------------
+# A PROTECÇÃO INCLUSIVA: todas as listas que jogam a carta-chave
+# ---------------------------------------------------------------------------
+def limiar_listas(cfg: dict | None = None) -> int:
+    """Em quantas listas da carta-chave uma carta tem de estar para proteger.
+
+    **Nunca abaixo de 1**: zero protegia a colecção inteira (uma carta em zero
+    listas passaria o teste), que é o contrário do que o limiar existe para
+    fazer.
+    """
+    cfg = sources.config() if cfg is None else cfg
+    b = cfg.get(CHAVE)
+    v = b.get("_limiar_listas") if isinstance(b, dict) else None
+    try:
+        return max(1, int(v))
+    except (TypeError, ValueError):
+        return LIMIAR_LISTAS
+
+
+def protege_todas(fmt: str, cfg: dict | None = None) -> bool:
+    """O formato protege **todas** as listas da carta-chave, ou só as versões?
+
+    *"Entram TODAS as listas que jogam Mox Opal, nao so as da Affinity"* — mas
+    só onde ele o disse. O Pioneer tem carta-chave e fica de fora: ali ele
+    nomeou as três versões, e alargá-lo por simetria era decidir por ele.
+    """
+    c = (do_formato(fmt, cfg) or {}).get("criterio") or {}
+    return bool(c.get("protege_todas"))
+
+
+def formatos_inclusivos(cfg: dict | None = None) -> list[str]:
+    return [f for f in formatos(cfg)
+            if protege_todas(f, cfg) and carta_chave(f, cfg)]
+
+
+def listas_da_carta(con: sqlite3.Connection, fmt: str, carta: str,
+                    desde: str | None = None) -> list[int]:
+    """Os ids das listas do formato, **na janela**, que jogam a carta.
+
+    **Sem o filtro de tier** (`sources.counting_sql`), e isso é deliberado: é a
+    mesma excepção da R5, pela mesma razão — sub-contar numa regra de protecção
+    é vender uma carta que ele precisa. Um 5-0 de league que jogue Mox Opal é
+    exactamente o sinal que interessa aqui.
+    """
+    desde = desde or sources.consenso_desde()
+    return [r["id"] for r in con.execute(
+        f"""SELECT d.id FROM decklists d
+             WHERE d.format = ? AND d.event_date >= ?
+               AND EXISTS (SELECT 1 FROM decklist_cards k
+                            WHERE k.decklist_id = d.id
+                              AND {scryfall.sql_nome('k.card_name')})""",
+        [fmt, desde] + list(scryfall.params_nome(carta)))]
+
+
+def contagem_por_carta(con: sqlite3.Connection, cfg: dict | None = None,
+                       cache: dict | None = None) -> dict[str, dict]:
+    """`chave do nome -> {listas, formatos: {fmt: n}, cartas_chave: {fmt: carta}}`.
+
+    Conta, para cada carta, em quantas das listas da carta-chave ela aparece.
+    O total é a **SOMA** entre formatos e não o máximo: as 25 de Modern e as 23
+    de Legacy são 48 listas de Mox Opal, e uma carta que esteja numa de cada
+    está em duas delas. É a leitura literal de *"em quantas listas"*.
+
+    Independente do limiar — é ele que corta, depois. Guardada na cache da
+    passagem: o `contexto` corre uma vez por relatório, mas a página pede-lhe a
+    curva para vários limiares e seria a mesma consulta três vezes.
+    """
+    cache = {} if cache is None else cache
+    if "_rp_conta" in cache:
+        return cache["_rp_conta"]
+    cfg = sources.config() if cfg is None else cfg
+    out: dict[str, dict] = {}
+    for fmt in formatos_inclusivos(cfg):
+        carta = carta_chave(fmt, cfg)
+        ids = listas_da_carta(con, fmt, carta)
+        if not ids:
+            continue
+        ph = ",".join("?" * len(ids))
+        for r in con.execute(
+                f"""SELECT card_name nm, COUNT(DISTINCT decklist_id) n
+                      FROM decklist_cards WHERE decklist_id IN ({ph})
+                     GROUP BY card_name""", ids):
+            d = out.setdefault(scryfall.chave(r["nm"]),
+                               {"listas": 0, "formatos": {}, "cartas_chave": {}})
+            d["listas"] += r["n"]
+            d["formatos"][fmt] = d["formatos"].get(fmt, 0) + r["n"]
+            d["cartas_chave"][fmt] = carta
+    cache["_rp_conta"] = out
+    return out
+
+
+def nomes_protegidos(con: sqlite3.Connection, cfg: dict | None = None,
+                     limiar: int | None = None,
+                     cache: dict | None = None) -> dict[str, dict]:
+    """O conjunto da **RP**: as cartas que não vão à venda por se jogarem num
+    deck da carta-chave.
+
+    Vazio quando nenhum formato é inclusivo — e é assim que isto se desliga,
+    como o `venda.mostrar` e o `cartas_vigiadas`.
+    """
+    cfg = sources.config() if cfg is None else cfg
+    lim = limiar_listas(cfg) if limiar is None else max(1, int(limiar))
+    return {k: v for k, v in contagem_por_carta(con, cfg, cache).items()
+            if v["listas"] >= lim}
+
+
+def texto_rp(info: dict) -> str:
+    """O motivo em português de uma cópia apanhada pela RP."""
+    fs = info.get("formatos") or {}
+    cartas = sorted({c for c in (info.get("cartas_chave") or {}).values()})
+    onde = ", ".join(f"{f} {n}" for f, n in sorted(fs.items()))
+    n = info.get("listas") or 0
+    return (f"joga-se em {n} lista{'' if n == 1 else 's'} de "
+            f"{' / '.join(cartas) or 'deck que guardas'} ({onde}) — "
+            f"é uma carta que não queres vender")
+
+
+def listas_do_formato(con: sqlite3.Connection, cfg: dict | None = None
+                      ) -> dict[str, dict]:
+    """Quantas listas da carta-chave há por formato, e de quantas no total.
+
+    Para a página poder dizer *«23 de 171 listas de Legacy, 13,5 %»* sem
+    recontar — e para a conta ficar conferível contra o site.
+    """
+    cfg = sources.config() if cfg is None else cfg
+    desde = sources.consenso_desde()
+    out: dict[str, dict] = {}
+    for fmt in formatos_inclusivos(cfg):
+        carta = carta_chave(fmt, cfg)
+        n = len(listas_da_carta(con, fmt, carta, desde))
+        tot = con.execute(
+            "SELECT COUNT(*) c FROM decklists WHERE format = ? AND event_date >= ?",
+            [fmt, desde]).fetchone()["c"]
+        out[fmt] = {"carta": carta, "listas": n, "total": tot,
+                    "pct": round(100.0 * n / tot, 1) if tot else 0.0,
+                    "desde": desde}
+    return out
 
 
 # ---------------------------------------------------------------------------
