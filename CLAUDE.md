@@ -122,6 +122,16 @@ mtgvault/
                   `prune_decklists(30)` apaga as decklists ao fim de um mês. O
                   motor do consenso NÃO se apaga: o meta fica para consulta e
                   di-lo. Ver «A LISTA DE UM DECK É UMA LISTA QUE ALGUÉM JOGOU»
+  faltas_vista.py A LISTA DE FALTAS, PARA PROCURAR EM GHENT (2026-10-05): *"a
+                  lista de faltas desses decks para poder procurar em Ghent"*.
+                  Uma linha por carta com o SUBTOTAL POR DECK, saída do `comprar`
+                  da alocação (nunca do `missing`: já desconta o que ele tem, o
+                  que está noutra caixa e o que encomendou), os DOIS preços lado
+                  a lado (`unit` do motor vs `unit_serve` da impressão que a caixa
+                  aceita) e o formato sem deck escolhido à parte, FORA do total
+                  (`sem_deck_escolhido`, derivado do modelo «um deck por
+                  formato»). A VISTA é o `faltas.py` da raiz. Ver «A LISTA DE
+                  FALTAS PARA GHENT»
   marcas.py       A POSSE QUE ELE MARCA À MÃO (2026-10-04): o `+` e o `−`.
                   O inventário PRÉ-PREENCHE (`posse_marcada` nasce vazia) e a
                   marca dele GANHA, com data; `inventario`/`marcado` são dois
@@ -337,6 +347,7 @@ decks_faziveis.py   RETIRADO 2026-09-07 — fundido no `metagame.py`, que faz a 
 buildability.py     APAGADO 2026-09-15 (decisão do André), com o `buildability.html`. Era o "Montar" (dormente desde a v6: fora do menu, fora do daily, sem um único import). O que respondia — que deck montar a seguir e o que lhe falta — passou para o **Metagame** (`metagame.py`, o top-N mais perto de fechar) e para a aba de cada caixa da Deckboxes. O `test_paginas.caso_as_paginas_orfas_foram_mesmo_apagadas` tranca que não voltam nem ficam referidas
 arrumacao.py        arrumacao.html — "Arrumação por fases" (2026-10-01): o sítio que diz SEMPRE onde ele está e o que vem a seguir. Casca + dados à parte; a **Fase 1 vai INTEIRA no índice** (é o ecrã da decisão: não pode esperar por um segundo pedido) e cada fase pesada é uma parte (`fase2`, `candidatos`, `fase4`, `inventario`). Botões só no 8771 (`/api/fase-decisao`, `/api/fase-reserva` e — desde 2026-10-01 — o `/api/revalidacao` do ALVO das fotos, ver «A FILA DA FASE 2 E O BOTÃO DO ALVO»); no site publicado é a mesma informação, só de leitura. Motor em `mtgvault/fases.py`
 decks.py            decks.html — "Decks" (2026-10-04): a aba de TRÊS NÍVEIS com URL própria cada (`decks.html`, `#f=<formato>`, `#f=<formato>&d=<id>`), as cartas com imagem e `+`/`−`, agrupadas pelos tipos NA ORDEM DELE (o comandante à cabeça, o sideboard em bloco separado), os dois números «a somar»/«a rodar» lado a lado e, nos formatos rotativos, as próprias vs partilhadas com a lista de proxies. Casca de 50 KB + uma parte por deck (83). Motor em `mtgvault/decks_vista.py` + `mtgvault/marcas.py`
+faltas.py           faltas.html — "Faltas para procurar" (2026-10-05): o que comprar, por deck, com o SUBTOTAL de cada um, para ele procurar nas bancas do RC Ghent. Desenhada para o telemóvel **de pé num pavilhão**: o NOME manda (17 px, nunca cortado) e a imagem é um APOIO — é o contrário da aba Decks, e as duas estão certas. Ordenável por valor ou por deck, filtrável por formato, alvos de 44 px, zero rolamento horizontal. 40 imagens no primeiro ecrã e o resto ao rolar (`paginas.IMG_LOTE` + `IntersectionObserver`). Os dados vão TODOS no índice (84 KB): ordenar e filtrar do lado do browser não pode ficar à espera de um `fetch`. Motor em `mtgvault/faltas_vista.py`
 comandantes.py      comandantes.html — "Consenso por comandante" (2026-10-01): o consenso de Duel Commander por COMANDANTE, abrindo no Cloud. Casca + dados à parte (`data/paginas/comandantes.json` + uma parte por comandante, 40); cada carta diz a percentagem de listas, a moda de cópias, o papel (núcleo ≥90 % / flex 40–90 % / raro <40 %) e quantas ele TEM / FALTAM (`paginas.posse_total`). Motor em `mtgvault/consenso.py`
 classify.py         classificação Deck/Coleção/Vender (alimenta colecao_cor.html)
 colecao_cor.py      colecao_cor.html — "Binders": coleção INTEIRA por cor→CMC; cartas em uso a escuro + rótulo (classify rep["deck"]/used_by); + secção "Decks vigiados" (Blue Farm/Cloud cEDH/Cloud/Pauper): o deck por inteiro + cartas "extra" que saíram da lista (guardadas SEM PRAZO desde 2026-09-15 — `_watched_deck_pools`; era "até 6 meses da última utilização"). NB (2026-09-07): `_de_outro_balde` acrescenta as cartas que o LOADOUT dá a essa caixa mas que estão arrumadas noutro balde, marcadas "de &lt;balde&gt;" (era aqui que os Utrom Monitor do SPML desapareciam do Pauper)
@@ -3106,6 +3117,151 @@ regra **RP** em `mtgvault/fases.py` (`curva_limiar`/`resumo_mox`); config em
   montagem e ficaram fora das versões (7400, 7010, 6491) — continuam a
   **proteger** na mesma, que era a dúvida que esta ordem fechou; (d) o
   **Standard continua sem lista** (consenso com 1 lista contra um mínimo de 5).
+
+**A LISTA DE FALTAS PARA GHENT, E AS IMAGENS NAS LISTAS DE CARTAS (André,
+2026-10-05, à letra).** *"quero as coisas publicadas no mtgvault, com imagem das
+cartas para eu me organizar"* e *"preciso tambem da lista de faltas desses decks
+para poder procurar em Ghent"*. Ele joga o RC Ghent a 9-11/10. Motor em
+**`mtgvault/faltas_vista.py`**, página **`faltas.py` → `faltas.html`**, a imagem
+partilhada em `paginas.IMG_LOTE`/`CSS_IMAGENS`/`js_imagens`, a pergunta do preço
+em `loadout.preco_fora_da_regra`/`mais_barata_que_serve`, passo `faltas` do
+`daily`, CLI `py -m mtgvault.faltas_vista [--json]`. Testes em
+`tests/test_faltas_imagens.py` (7 casos) e a prova de que chumbam em
+`tests/_chumba_faltas.py` (**8 de 8 alvos**, um processo por alvo). Backup em
+`data/backups/vault-2026-10-05-faltas-ghent.db` (92,2 MB, `integrity ok`). **A
+venda continua escondida e travada** — nada aqui a destranca.
+
+- **A FASE 3 DA ARRUMAÇÃO NUNCA DESENHOU NADA, e foi isto o achado do dia.** As
+  duas listas que ele mandou pôr com imagem — a de **NÃO VENDER** (as protegidas)
+  e a de **SEGURO VENDER** (os candidatos) — mostravam *«não consegui carregar os
+  dados desta secção»* **desde 2026-10-01**, o dia em que a página nasceu
+  (`39d83d7`): o `fase3(p)` lia `p.candidatos` e a parte **é** o candidatos (o
+  `dados()` sempre escreveu `partes["candidatos"] = _magra(...)`). O `c.linhas`
+  rebentava, o `catch` do `render` chamava o `erroDados`, e **nada dava erro**: a
+  página respondia 200, os 273 ficheiros de dados respondiam 200, e **nenhum teste
+  lia o HTML daquela aba**. É o padrão do `event_tier` do lado do browser. O bloco
+  do Mox Opal de 04-05/10 entrou para DENTRO dessa função e também nunca apareceu
+  — e a **CURVA DO LIMIAR** era composta num `curva` e **deitada fora no
+  `return`**, por isso o relatório de 05/10 (*"a página mostra a curva com os dois
+  números"*) estava a descrever uma coisa que não se via. As duas corrigidas, com
+  caso próprio: foi a contar as imagens com o `tests/avaliar_js.js` que isto
+  apareceu — ler o HTML que o JavaScript desenhou é a única forma de o ver.
+- **O NOME MANDA E A IMAGEM É UM APOIO**, e é a decisão que distingue esta página
+  da aba Decks. Ali a arte é o conteúdo (ele está sentado a ordenar cartas); aqui
+  ele está **de pé, num pavilhão, com o telemóvel numa mão** e a outra a segurar
+  cartas, e o que diz ao vendedor é o NOME: 17 px, a negrito, e **nunca cortado**
+  (`overflow-wrap:anywhere`) — uma «Swords to Plow…» ao balcão não é um nome.
+- **40 IMAGENS NO PRIMEIRO ECRÃ, e não é o `loading=lazy`.** As linhas acima do
+  lote nascem com o lugar RESERVADO (`aspect-ratio`) e **sem `<img>`**, e um
+  `IntersectionObserver` (`rootMargin: 300px`) põe a arte quando a moldura se
+  aproxima. Duas razões para o número ser nosso: o `lazy` é uma sugestão que cada
+  browser cumpre como quer, e **um número nosso TRANCA-SE num teste**. Medido na
+  base dele: a lista de faltas são **186 linhas** e a Fase 3 **845** (574 não
+  vender + 271 seguro vender) — pedir tudo era mandar o pavilhão descarregar 845
+  imagens por uma rede partilhada por mil pessoas. Medido **no site publicado**,
+  num Chrome a sério a 390 px: **43 imagens em 187 linhas** nas faltas e **83 em
+  847** na Fase 3 (40 e 80 do lote, mais as três que o observador alcança).
+- **A peça da imagem vive no `paginas`** (`IMG_LOTE`, `CSS_IMAGENS`,
+  `js_imagens()` com `contaArtes`/`arteHTML`/`observaArtes`), partilhada pelas
+  duas páginas. Escrita duas vezes, a segunda esquecia-se de uma das quatro coisas
+  que fazem uma `<img>` comportar-se — é exactamente o que aconteceu às 1 288
+  imagens desenhadas no servidor a 2026-10-04. E o `_JS` da Arrumação era montado
+  em TRÊS sítios (`casca`, `build`, `html_page`): passou a `_js()`, senão a peça
+  nova entrava em dois e a terceira desenhava molduras que nunca ganhavam arte.
+- **O `sid` ENTROU nas linhas da Fase 3** (`_CAMPOS_TABELA`): é a impressão
+  EXACTA da cópia. Custa ~38 KB nas 845 linhas (a parte `candidatos.json` passou
+  de 189 para 227 KB), que é a escala das que já lá estão (`fase4` 177 KB,
+  `encomendas` 234 KB).
+- **A VISTA DE FALTAS É UMA LINHA POR CARTA, com SUBTOTAL POR DECK**, ordenável
+  por valor ou por deck, filtrável por formato, alvos de 44 px, zero rolamento
+  horizontal (não há tabela: é uma lista, e cada linha é uma grelha que encolhe).
+  **O que ele já tem não aparece**, por construção: a falta é o `comprar` da
+  alocação, que já desconta o que ele tem, o que está noutra caixa e **o que já
+  encomendou** (2026-09-19) — tem caso de teste com uma encomenda, que é o que
+  separa o `comprar` do `missing`. E as **CARTAS contam-se por NOME sem repetir
+  entre decks**: a mesma carta a faltar em três caixas é UMA carta para procurar e
+  TRÊS cópias para comprar; somar os `cartas` de cada deck dava o nº de linhas.
+- **MEDIDO na base de 2026-10-05**: **11 decks · 157 cartas · 295 cópias ·
+  11 075,43 €**, 17 cópias sem preço, **60 linhas com o preço fora da regra**. O
+  `loadout.report` passou de **0,71 s para 0,74 s** (+4 %) e **não mexeu um
+  número** — fechar tudo 11 075,43 €, 295 a comprar.
+- **O FORMATO SEM DECK ESCOLHIDO FICA À PARTE E FORA DO TOTAL** (ordem dele). Quem
+  decide não é uma lista de nomes: é o `faltas_vista.sem_deck_escolhido` — o
+  formato está no modelo «um deck por formato» e **não tem versão nenhuma**. Hoje é
+  só o `legacy`, e no dia em que ele escolher o deck a secção desaparece sozinha
+  (tem caso de teste nos dois sentidos). **Não se pergunta pelo `por_decidir`**:
+  essa chave foi arquivada a 05/10 de manhã, quando o Legacy entrou no critério do
+  Mox Opal — deixou de estar «por decidir» para a PROTECÇÃO e continua sem deck
+  escolhido para MONTAR. São duas perguntas. (Hoje as três caixas de Legacy têm
+  **zero** faltas, por isso a secção está vazia na prática.)
+
+**O PREÇO DE UMA FALTA PODE NÃO SER DO MATERIAL QUE A REGRA PEDE, E A LINHA
+DI-LO (André, 2026-10-05).** *"quando o preco mostrado nao e da lingua ou do
+acabamento que a regra pede, a PAGINA TEM DE O DIZER NA LINHA. Um preco de outra
+lingua apresentado como se fosse o certo e o mesmo erro das duas verdades."*
+Motor em `loadout.preco_fora_da_regra` + `mais_barata_que_serve`, ao lado do
+defeito; a linha de falta leva `preco_aviso`, por isso a vista de faltas **e** a
+aba Comprar lêem a mesma resposta.
+
+- **A PREMISSA DA ORDEM NÃO SE PODE VERIFICAR NOS TERMOS DELA, e isso é o
+  primeiro facto.** Ela diz *"46 cartas de Premodern não têm preço em PORTUGUÊS na
+  base"* — e **não há dimensão de língua nenhuma nos preços**: a chave da
+  `price_latest` é `(scryfall_id, source, finish)` e mais nada. O que o preço do
+  CardTrader é, de verdade, é a **mediana das ofertas em `precos.linguas`** (hoje
+  {pt, en}) **daquela impressão** — pode ser uma oferta inglesa, e a base não
+  guarda qual foi. E a pergunta *"esta carta existe em português?"* **não se
+  responde do catálogo**, ao contrário do que a ordem supõe: o `catalog.db` é o
+  bulk `default_cards` e tem **110 148 impressões `en` contra 3 `pt`** em 112 758
+  (o Scryfall só traz as outras línguas no `all_cards`, que o vault não
+  descarrega, por decisão de 2026-09-18). Não se inventou: diz-se.
+- **O QUE A BASE SABE RESPONDER, e é pior do que a ordem previa — no sentido
+  CONTRÁRIO.** O `card_price` é um MÍNIMO ENTRE IMPRESSÕES e **não filtra pela
+  regra da caixa**: nem pela língua, nem pela EDIÇÃO. Para o SPML é inofensivo
+  (não há limite de edição); para o **Premodern**, que é *"apenas português,
+  non-foil, nas edições indicadas"*, o preço vem de uma reimpressão que a caixa
+  recusa — e é sempre **mais barata** do que a legal. Das **121 cartas distintas**
+  das seis caixas de Premodern:
+
+  | | cartas |
+  |---|---|
+  | (a) sem nenhuma impressão ≤SCG no catálogo | **0** |
+  | (b) com impressões ≤SCG mas **nenhuma cotada** | **1** (Tormod's Crypt, 3 impressões) |
+  | (c) o preço mostrado vem de **fora** do limite | **67** |
+  | o preço mostrado já é de uma impressão que serve | 53 |
+
+  A causa (a) da ordem **não existe aqui** — e faz sentido: um deck de Premodern
+  só joga cartas Premodern-legais. A (b) é um furo na recolha, e é **uma** carta.
+  A (c) é a grande, e é a que custa dinheiro: a **Polluted Delta** mostra 26,41 €
+  (MH3, 2024) e a mais barata que serve são **156,84 €** (ONS); a Flooded Strand
+  20,35 € → 129,17 €; o Squee 0,55 € → 38,28 €. Das 14 cartas que a ordem nomeia,
+  **8 estão na (c)** (Exploration, Sterling Grove, Brushland, Deep Analysis,
+  Cursed Totem, Anger, Call of the Herd, Defense Grid) e **6 já tinham o preço
+  certo** (Argothian Enchantress, Cabal Ritual, Dark Ritual, Cataclysm, Caller of
+  the Claw, Crumble).
+- **OS DOIS PREÇOS VÃO LADO A LADO**, que é a disciplina de 2026-10-04 («a somar»
+  vs «a rodar»): `unit`/`total` do motor e `unit_serve`/`total_serve` da impressão
+  que **esta caixa aceita**. Medido: as faltas passam de **11 075,43 € para
+  12 898,32 € (+1 822,89 €)**, todo em Premodern — IGG 3 450,35→3 729,66,
+  Elves 2 110,46→2 420,74, Oath 1 430,95→1 832,10, Enchantress 1 037,39→1 666,75,
+  UW Replenish 30,71→124,68, **Stiflenought 20,35→129,17** (6×). Esconder o
+  segundo número era deixá-lo escolher onde caçar por uma conta errada.
+- **DOIS GRAUS, e é o que torna isto utilizável num pavilhão.** «**aviso**» é um
+  número demonstravelmente errado e com o certo ao lado (a edição que a caixa
+  recusa, ou nenhuma impressão que serve estar cotada); «**nota**» é o que não se
+  pode verificar (a língua). Com um grau só, **173 das 186 linhas** ficavam a
+  piscar — toda a caixa com regra de língua — e ele deixava de olhar para as **60**
+  que importam. É o princípio do 503-contra-500 do `webapp`: *«ainda não sei»* não
+  é uma avaria. A regra dele cumpre-se nas duas: a linha di-lo sempre.
+- **A REGRA DO PREMODERN NÃO SE TOCOU** (ordem dele). O que mudou é o que a página
+  DIZ, e o `loadout.report` não mexeu um número.
+- **POR DECIDIR POR ELE:** (a) a regra `lingua: pt` + `estrita: true` do Premodern
+  — hoje não há como confirmar que um preço é de uma oferta portuguesa, e saber-lo
+  exigia o bulk `all_cards` do Scryfall (~2 GB, que o vault recusa desde 18/09);
+  (b) o **Tormod's Crypt**, cujas três impressões ≤SCG não estão cotadas — é um
+  furo na recolha do CardTrader, não uma carta sem preço;
+  (c) se quiser que o *fechar tudo* e a aba Comprar passem a usar o preço da
+  impressão que a caixa aceita (e não só a lista de faltas a dizê-lo), é uma
+  decisão dele: muda o número que ele vê todos os dias em **+1 822,89 €**.
 
 **PUBLICAR SEM ESPERAR PELAS 03:30, E A BARRA PELOS QUATRO TRABALHOS (André,
 2026-10-04, à noite, à letra).** *"podes refazer novamente a seccao do MTG
