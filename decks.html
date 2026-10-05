@@ -80,6 +80,23 @@
  .stpr .snm{flex:1;min-width:140px}
  .stpr .sd{font-size:11px;color:var(--muted)}
  .stpr .st{font-size:11px;color:var(--add)} .stpr .st.falta{color:var(--accent)}
+ /* SEMPRE MONTADOS (2026-10-05): a marca «principal», o selo de proxy com a
+    quantidade, e a linha das cartas disputadas. */
+ .modo.sm{border-color:var(--accent-line);background:var(--accent);color:var(--accent-ink)}
+ .pr{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);
+   cursor:pointer;min-height:40px;padding:0 4px;white-space:nowrap}
+ .pr.on{color:var(--accent);font-weight:600}
+ .pr input{width:20px;height:20px;accent-color:var(--accent)}
+ .sh.spx{background:var(--accent);color:var(--accent-ink);font-weight:700}
+ .stpr.dsp{align-items:center}
+ .dspq{flex-basis:100%;display:flex;flex-wrap:wrap;gap:5px;margin-top:2px}
+ .dspq span{font-size:10.5px;border-radius:999px;padding:1px 8px;border:1px solid var(--line2);
+   color:var(--muted)}
+ .dspq .vd{border-color:var(--ok-line);background:var(--ok-soft);color:var(--ok)}
+ .dspq .pxc{border-color:var(--accent-line);background:var(--accent-soft);color:var(--accent)}
+ .cpl{margin:8px 0 0}
+ .cp{min-height:40px;padding:0 14px;border-radius:var(--r);border:1px solid var(--accent-line);
+   background:var(--accent-soft);color:var(--accent);font-weight:600;font-size:12.5px;cursor:pointer}
  /* Uma caixa DESACTIVADA (2026-10-04): fica na lista, no fim, apagada e com o
     rótulo à vista — não é um deck de 0 % ao lado dos que ele vai montar. */
  .drow.off{opacity:.62;border-style:dashed}
@@ -112,6 +129,7 @@
  .orig.mk{color:var(--accent)}
  /* A carta que o catalogo nao conhece: a dizer PROBLEMA, nunca «nao tenho». */
  .orig.unkt{color:var(--warn);font-weight:700}
+ .orig.pl{color:var(--ob)}
  .unk{position:absolute;right:4px;bottom:4px;font-size:11px;font-weight:700;
    background:var(--warn);color:var(--accent-ink);border-radius:999px;
    width:17px;height:17px;line-height:17px;text-align:center}
@@ -468,15 +486,18 @@ function nivelFormatos() {
     const n = x.necessidade || {};
     return `<button class="fcard" data-f="${esc(x.formato)}">
       <span class="fn">${esc(x.formato)}</span>
-      <span class="modo ${x.modo === 'rotativas' ? 'rot' : 'ded'}">${
-        x.modo === 'rotativas' ? 'cartas rodam' : 'cartas dedicadas'}</span>
+      <span class="modo ${x.n_sempre ? 'sm' : x.modo === 'rotativas' ? 'rot' : 'ded'}">${
+        x.n_sempre ? 'sempre montados'
+        : x.modo === 'rotativas' ? 'cartas rodam' : 'cartas dedicadas'}</span>
       <span class="fl"><b>${x.n_decks}</b> deck${x.n_decks === 1 ? '' : 's'} registado${
         x.n_decks === 1 ? '' : 's'} · <b>${x.n_marcados}</b> que queres montar${
         x.n_desactivadas ? ` · ${x.n_desactivadas} desactivada${
           x.n_desactivadas === 1 ? '' : 's'}` : ''}</span>
       <span class="fl">a somar <b>${n.soma || 0}</b> · a rodar <b>${n.maximo || 0}</b>${
-        n.cartas ? ` · ${n.cartas} cartas distintas` : ''}</span>
-      <span class="fm">${esc(x.texto_modo)}</span>
+        n.cartas ? ` · ${n.cartas} cartas distintas` : ''}${
+        x.sleeves && x.sleeves.proxies
+          ? ` · <b>${x.sleeves.proxies}</b> proxies a imprimir` : ''}</span>
+      <span class="fm">${esc(x.n_sempre ? x.texto_sempre : x.texto_modo)}</span>
     </button>`;
   }).join('') + '</div>';
 }
@@ -573,9 +594,24 @@ function deckUnicoHTML(u) {
 
 function nivelDecks(x) {
   const n = x.necessidade || {}, rot = x.modo === 'rotativas';
+  const sm = !!x.n_sempre;
   const manda = k => (rot ? k === 'rodar' : k === 'somar') ? ' manda' : '';
   let out = `<div class="migalha"><button data-f="">◀ formatos</button>
-    <span><b>${esc(x.formato)}</b> — ${esc(x.texto_modo)}</span></div>`;
+    <span><b>${esc(x.formato)}</b> — ${esc(sm ? x.texto_sempre : x.texto_modo)}</span></div>`;
+  /* O MODO DO FORMATO NÃO SE APAGOU, E A PÁGINA DIZ QUAL ERA (2026-10-05).
+     Ele pode voltar atrás: desmarcar «principal» devolve o formato ao
+     `cartas_partilhadas` do grupo. Sem esta linha, um Premodern que o config diz
+     `rotativas` e que a página conta pela SOMA parecia o config a ter mudado. */
+  if (x.modo_trocado) {
+    out += `<div class="ficha media"><h4>Sempre montados</h4><p class="pq">`
+      + `<b>${x.n_sempre}</b> dos decks que vais montar são <b>principais</b>:`
+      + ` ficam montados em permanência e o que falta leva <b>proxy</b>. Por isso`
+      + ` a necessidade deste formato conta pela <b>soma</b> e já não pelo`
+      + ` <b>${esc(x.modo_formato === 'rotativas' ? 'máximo' : 'soma')}</b> que a`
+      + ` regra do grupo pede (<code>cartas_partilhadas:`
+      + ` ${esc(x.modo_formato)}</code>). A regra do grupo não se apagou — tira a`
+      + ` marca «principal» a um deck e ele volta a rodar.</p></div>`;
+  }
   out += deckUnicoHTML(x.deck_unico);
   out += `<div class="duo">
     <div class="n${manda('somar')}"><span class="et">a somar</span>
@@ -604,26 +640,61 @@ function nivelDecks(x) {
   if (x.sleeves && x.sleeves.decks) {
     const s = x.sleeves;
     out += `<div class="chips"><span class="chip">sleeves: <b>${s.total}</b> cartas nos ${
-      s.decks} decks marcados</span><span class="chip">verdadeiras <b>${s.reais}</b></span>`
+      s.decks} decks ${sm ? 'montados' : 'marcados'}</span>`
+      + `<span class="chip">verdadeiras <b>${s.reais}</b></span>`
       /* PROXIES A IMPRIMIR = um por carta diferente em cada deck, que é a conta
          DELE (medida: 147 em Modern contra os 149 do papel dele; por cópias
-         dava 334). As cópias vão ao lado com etiqueta — são o que de facto sai
-         dos decks —, pela regra dos «dois números» de 2026-10-04 à tarde. */
+         dava 334). As cópias vão ao lado com etiqueta — são o que de facto vai
+         em proxy —, pela regra dos «dois números» de 2026-10-04 à tarde. */
       + `<span class="chip gold">proxies a imprimir <b>${s.proxies}</b></span>`
       + (s.proxies_copias != null && s.proxies_copias !== s.proxies
-          ? `<span class="chip">${s.proxies_copias} cópias saem dos decks</span>` : '')
+          ? `<span class="chip">${s.proxies_copias} cópias ${
+              sm ? 'vão em proxy' : 'saem dos decks'}</span>` : '')
       + '</div>';
   }
   /* PIONEER NÃO TEM STAPLES, E ISSO DIZ-SE (ordem dele: *"Mostra isso
      explicitamente em vez de uma tabela vazia, que uma tabela vazia parece uma
      avaria"*). Medido: o Greasefang e o Flow State não partilham uma única
      carta. */
-  if (rot && x.n_marcados && !(x.staples || []).length) {
+  if (rot && !sm && x.n_marcados && !(x.staples || []).length) {
     out += `<div class="ficha media"><h4>Sem staples neste formato</h4>`
       + `<p class="pq">Os ${x.n_marcados} decks marcados <b>não partilham uma`
       + ` única carta</b>: não há nada para guardar à parte e não há proxies para`
       + ` imprimir. Ficam os dois inteiramente sleevados com cartas verdadeiras.`
       + `</p></div>`;
+  }
+  /* AS CARTAS DISPUTADAS: num formato SEMPRE MONTADO não há pilha à parte — cada
+     deck tem a carta dentro, verdadeira num e proxy nos outros. A pergunta «em
+     quantos decks entra esta carta» continua a valer, e é aqui que ele vê QUAL
+     deck fica com as verdadeiras (ordem dele: 2026-10-05). */
+  if (sm && (x.disputadas || []).length) {
+    out += `<details class="stp" open><summary><b>Cartas em mais do que um deck</b>`
+      + ` — ${x.disputadas.length} carta${x.disputadas.length === 1 ? '' : 's'}`
+      + `</summary>`
+      + `<p class="stpn">Cada deck fica com a carta <b>dentro</b>. Quem leva as`
+      + ` verdadeiras é o deck de maior prioridade; os outros levam proxy.</p>`
+      + '<div class="stpl">'
+      + x.disputadas.map(s => `<div class="stpr dsp">
+          <span class="sq">${s.pede}&times;</span>
+          <span class="snm">${esc(s.nm)}</span>
+          <span class="sd">em ${s.n_decks} decks · tens ${s.tenho}</span>
+          <span class="st${s.proxies ? ' falta' : ''}">${
+            s.proxies ? `${s.verdadeiras} verdadeira${s.verdadeiras === 1 ? '' : 's'}`
+                        + ` · ${s.proxies} proxy${s.proxies === 1 ? '' : 's'}`
+                      : 'todas verdadeiras'}</span>
+          <span class="dspq">${s.decks.map(k =>
+            `<span class="${k.proxies ? 'pxc' : 'vd'}">${esc(k.nome)}: ${
+              k.verdadeiras ? k.verdadeiras + ' real' + (k.verdadeiras === 1 ? '' : 'is') : ''
+            }${k.verdadeiras && k.proxies ? ' + ' : ''}${
+              k.proxies ? k.proxies + ' proxy' + (k.proxies === 1 ? '' : 's') : ''
+            }</span>`).join('')}</span>
+        </div>`).join('') + '</div></details>';
+  }
+  if (sm && x.n_sempre && !(x.disputadas || []).length) {
+    out += `<div class="ficha media"><h4>Nenhuma carta em dois decks</h4>`
+      + `<p class="pq">Os ${x.n_sempre} decks sempre montados <b>não partilham`
+      + ` uma única carta</b>: nenhuma cópia verdadeira está a ser disputada.</p>`
+      + `</div>`;
   }
   /* AS STAPLES DO FORMATO: as partilhadas, agregadas. Deck a deck ele já as via
      (no nível 3); isto é a PILHA que ele guarda à parte. */
@@ -688,12 +759,33 @@ function nivelDecks(x) {
       ${d.desactivada ? '<span class="qm off">desactivada</span>'
         : x.deck_unico ? `<span class="qm off">${d.e_versao ? 'versão deste deck'
             : d.saiu ? 'não escolhido' : 'meta'}</span>`
+        : d.sempre_montado ? `<span class="qm off" title="é um deck principal: fica sempre montado">sempre montado</span>`
         : `<label class="qm"><input type="checkbox" data-quero="${esc(d.id)}"${
         d.quero ? ' checked' : ''}${EDIT() ? '' : ' disabled'}> quero montar</label>`}
+      ${principalHTML(d)}
       <button class="verd" data-d="${esc(d.id)}">ver ▶</button>
     </div>`;
   }).join('') + '</div>';
   return out;
+}
+
+/* A MARCA «principal», EDITÁVEL (2026-10-05). Quais são os decks principais foi
+   INTERPRETAÇÃO minha — ele disse *"esses"* depois de eu lhe listar as 12 caixas
+   com lista —, e por isso tem de se poder corrigir num toque em vez de esperar
+   por uma ordem. Só nas CAIXAS: `principal` é uma chave de `caixas[]`, e um
+   arquétipo do meta ou uma versão não tem onde a guardar. */
+function principalHTML(d) {
+  if (!d.e_caixa || d.desactivada) return '';
+  if (!EDIT()) {
+    return d.principal
+      ? `<span class="pr on" title="deck principal — sempre montado">★ principal</span>`
+      : '';
+  }
+  return `<label class="pr${d.principal ? ' on' : ''}" title="${
+    d.principal ? 'deck principal: fica sempre montado, com proxy no que falta'
+                : 'marcar como deck principal (fica sempre montado)'}">`
+    + `<input type="checkbox" data-principal="${esc(d.slot)}"${
+        d.principal ? ' checked' : ''}> ★ principal</label>`;
 }
 
 /* --------------------------------------------------------------- nível 3 */
@@ -709,20 +801,29 @@ function tileHTML(c, rot) {
         : `<span class="nm">${esc(c.nm)}</span>`}
       <span class="need">${c.q}&times;</span>
       <span class="badge ${falta ? (c.tenho ? '' : 'no') : 'ok'}">${c.tenho}/${c.q}</span>
-      ${rot && c.partilhada ? '<span class="sh">proxy</span>' : ''}
+      ${/* NUM DECK SEMPRE MONTADO o selo diz QUANTAS vão em proxy e não só
+            «proxy»: num playset de 4 com 1 cópia a sério são 1 verdadeira + 3
+            proxies, e um selo a seco mentia nas duas. */
+        c.em_proxy ? `<span class="sh spx">${c.proxies}&times; proxy</span>`
+        : rot && c.partilhada ? '<span class="sh">proxy</span>' : ''}
       ${c.desconhecida ? '<span class="unk">?</span>' : ''}
     </div>
     <div class="tname" title="${esc(c.nm)}">${esc(c.nm)}</div>
-    <div class="orig${marcado ? ' mk' : c.desconhecida ? ' unkt' : ''}">${
+    <div class="orig${marcado ? ' mk' : c.desconhecida ? ' unkt' : c.pilha ? ' pl' : ''}">${
       c.desconhecida ? 'DESCONHECIDA — o catálogo não tem esta carta'
+      /* UMA BÁSICA VEM DA PILHA DE UNHINGED e nunca de uma linha da `copies`:
+         conta por contagem declarada (2026-10-02), não é falta e não leva
+         proxy. Dizer «do inventário» num Island que a base não tem era a
+         página a contradizer-se a si própria. */
+      : c.pilha ? 'da pilha de básicas' + (c.na_base ? ` · ${c.na_base} na base` : '')
       : marcado ? 'marcaste tu' + (c.em ? ' · ' + esc(c.em) : '')
       : 'do inventário'}</div>
-    <div class="steppers">
+    ${c.pilha ? '' : `<div class="steppers">
       <button class="step minus" data-mais="-1" data-carta="${esc(c.nm)}"
         aria-label="menos uma de ${esc(c.nm)}"${c.tenho <= 0 ? ' disabled' : ''}>&minus;</button>
       <button class="step plus" data-mais="1" data-carta="${esc(c.nm)}"
         aria-label="mais uma de ${esc(c.nm)}">+</button>
-    </div>
+    </div>`}
   </div>`;
 }
 const ART = sid => `https://cards.scryfall.io/small/front/${sid[0]}/${sid[1]}/${sid}.jpg`;
@@ -811,8 +912,17 @@ function nivelDeck(p, fmt) {
   if (c.side.total) chips.push(`<span class="chip">main ${c.main.tem}/${c.main.total} · `
     + `side ${c.side.tem}/${c.side.total}</span>`);
   if (p.comandante) chips.push(`<span class="chip gold">comandante: ${esc(p.comandante)}</span>`);
-  if (p.reparticao) chips.push(`<span class="chip">próprias <b>${p.reparticao.n_proprias}</b></span>`,
-    `<span class="chip gold">partilhadas <b>${p.reparticao.n_partilhadas}</b> (levam proxy)</span>`);
+  if (p.principal) chips.push(`<span class="chip gold">★ deck principal</span>`);
+  /* AS DUAS METADES, SEMPRE AS DUAS, e somam o total do deck — num deck sempre
+     montado são «verdadeiras» e «em proxy»; num deck a rodar são «próprias» e
+     «partilhadas». A disciplina é a do `confirmado.metades`. */
+  if (p.reparticao && p.reparticao.sempre_montado) {
+    chips.push(`<span class="chip">verdadeiras <b>${p.reparticao.n_verdadeiras}</b></span>`,
+      `<span class="chip gold">em proxy <b>${p.reparticao.n_proxies}</b></span>`);
+  } else if (p.reparticao) {
+    chips.push(`<span class="chip">próprias <b>${p.reparticao.n_proprias}</b></span>`,
+      `<span class="chip gold">partilhadas <b>${p.reparticao.n_partilhadas}</b> (levam proxy)</span>`);
+  }
   out += '<div class="chips">' + chips.join('') + '</div>';
   out += fichaHTML(p);
   if (!p.evento && (p.nota || p.link)) {
@@ -831,12 +941,28 @@ function nivelDeck(p, fmt) {
     out += `<div class="sec"><h3>Sideboard</h3><p>${c.side.tem} de ${c.side.total} cartas`
       + ' — conta à parte do main.</p></div>' + blocos(p.side, rot);
   }
+  /* A LISTA DE PROXIES A IMPRIMIR — é isto que ele manda para a impressora.
+     Num deck SEMPRE MONTADO é a lista de FALTAS dele (2026-10-05); num deck a
+     rodar são as partilhadas (2026-10-04). Quem decide é o Python
+     (`decks_vista.proxies_do_deck`): a página não refaz a conta. */
   if (p.reparticao && p.reparticao.proxies.length) {
-    out += `<div class="sec"><h3>Proxies a imprimir (${p.reparticao.n_partilhadas})</h3>`
-      + '<p>São exactamente as cartas partilhadas deste deck: ficam de fora, o deck leva'
-      + ' o proxy, e a verdadeira entra à hora de jogar.</p><div class="px">'
-      + p.reparticao.proxies.map(x => `<span>${x.q}&times; ${esc(x.nm)}</span>`).join('')
-      + '</div></div>';
+    const r = p.reparticao, smd = !!r.sempre_montado;
+    out += `<div class="sec"><h3>Proxies a imprimir (${
+        smd ? r.proxies_imprimir + ' cartas · ' + r.n_proxies + ' cópias'
+            : r.n_partilhadas})</h3>`
+      + '<p>' + (smd
+        ? 'É a lista de <b>faltas</b> deste deck: o deck fica montado em'
+          + ' permanência, e cada carta que não tens entra em proxy.'
+        : 'São exactamente as cartas partilhadas deste deck: ficam de fora, o deck'
+          + ' leva o proxy, e a verdadeira entra à hora de jogar.')
+      + '</p><div class="px">'
+      + r.proxies.map(x => `<span>${x.q}&times; ${esc(x.nm)}${
+          smd && x.tenho ? ` <i>(tens ${x.tenho} de ${x.pede})</i>` : ''}</span>`).join('')
+      + '</div>'
+      + (smd ? `<div class="cpl"><button class="cp" data-cp="px">copiar a lista`
+          + `</button></div><textarea id="pxtxt" hidden>`
+          + r.proxies.map(x => `${x.q} ${x.nm}`).join('\n') + `</textarea>` : '')
+      + '</div>';
   }
   return out;
 }
@@ -929,6 +1055,25 @@ async function quero(id, on, cx) {
   } catch (e) { cx.checked = !on; toast('não sei se gravou: ' + e.message, true); }
 }
 
+/* A MARCA «principal» (2026-10-05). Muda a REGRA do deck — passa a sempre
+   montado, a necessidade dele passa a soma e os proxies passam a ser as faltas —,
+   por isso o índice e as partes vêm de novo, como no «quero montar». */
+async function principal(slot, on, cx) {
+  if (!EDIT()) { cx.checked = !on; return; }
+  try {
+    const r = await fetch('/api/deck-principal' + (TOKEN_URL ? '?t=' + encodeURIComponent(TOKEN_URL) : ''), {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({slot: slot, principal: on}),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.erro || ('HTTP ' + r.status));
+    toast(j.msg || 'gravado');
+    PARTES = {};
+    D = await carregaDados('decks.json');
+    await render();
+  } catch (e) { cx.checked = !on; toast('não sei se gravou: ' + e.message, true); }
+}
+
 /* ESCOLHER A VERSÃO. Muda o que ele monta, logo a necessidade do formato e as
    próprias/partilhadas: o índice e as partes vêm de novo, como no «quero
    montar». O que NÃO muda é a protecção — as outras versões continuam
@@ -951,6 +1096,23 @@ async function escolheVersao(chave, radio) {
   } catch (e) { toast('não sei se gravou: ' + e.message, true); }
 }
 
+/* COPIAR A LISTA DE PROXIES. O `textarea` já tem o texto escrito pelo Python —
+   a página não o volta a compor —, e o `select()`+`execCommand` é o caminho que
+   funciona no browser do telemóvel dele sem pedir permissões. */
+function copia(qual, bt) {
+  const t = el(qual === 'px' ? 'pxtxt' : qual);
+  if (!t) return;
+  t.hidden = false; t.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+  if (!ok && navigator.clipboard) {
+    navigator.clipboard.writeText(t.value).then(() => toast('copiado'),
+      () => toast('não consegui copiar', true));
+  } else { toast(ok ? 'copiado' : 'não consegui copiar', !ok); }
+  t.hidden = true;
+  if (bt) bt.blur();
+}
+
 function ligar() {
   /* O harness de node (`tests/abrir_pagina.js`) desenha num DOM mínimo sem
      `addEventListener` — e ali o que se mede é o que o `render()` escreveu. */
@@ -962,10 +1124,14 @@ function ligar() {
     if (d) { DECK = d.dataset.d; render(); return; }
     const s = ev.target.closest('.step');
     if (s) { mais(s.dataset.carta, Number(s.dataset.mais), s.closest('.tile')); return; }
+    const cp = ev.target.closest('[data-cp]');
+    if (cp) { copia(cp.dataset.cp, cp); return; }
   });
   document.addEventListener('change', ev => {
     const c = ev.target.closest('[data-quero]');
     if (c) { quero(c.dataset.quero, c.checked, c); return; }
+    const pr = ev.target.closest('[data-principal]');
+    if (pr) { principal(pr.dataset.principal, pr.checked, pr); return; }
     const v = ev.target.closest('[data-versao]');
     if (v) escolheVersao(v.dataset.versao, v);
   });
