@@ -738,6 +738,14 @@ def decks_de_versoes(con: sqlite3.Connection,
             rec = (cfg.get("listas_escolhidas") or {}).get(chave) or {}
             cards = [(("side" if b == "side" else "main"), scryfall.chave(c), int(q))
                      for b, c, q in (rec.get("cards") or [])]
+            # UMA VERSÃO SEM LISTA FIXADA NÃO É UM DECK DE 0 % (2026-10-05). É a
+            # lição da `modern-affinity` de 04/10: um deck a zero ao lado dos
+            # que ele vai montar lê-se como um deck que lhe falta tudo, quando o
+            # que se passa é que não há lista nenhuma para montar. Ela aparece no
+            # selector de versões, que é onde a decisão se toma. O caso é o do
+            # Grinding Station, que não tem — e de propósito.
+            if not cards:
+                continue
             d = {
                 "id": chave, "slot": None,
                 "nome": f"{nome_fmt} · {v.get('nome') or chave}",
@@ -1311,18 +1319,44 @@ def deck_unico(con: sqlite3.Connection, fmt: str, decks: list[dict],
         return None
     por_id = {x["id"]: x for x in decks}
     esc = versoes.versao_escolhida(fmt, cfg)
+    # O CONJUNTO DAS VERSOES VEM DA BASE num formato de critério derivado
+    # (2026-10-05): *"seja affinity, seja grinding station, seja outra coisa
+    # qualquer"*. O config dá-lhes o nome e a marca `principal`; quem diz
+    # quais existem é o `versoes_derivadas`. Nos formatos de lista fixa (o
+    # Pioneer, onde ele nomeou as três) o caminho é o de sempre.
+    der = versoes.versoes_derivadas(con, fmt, cfg)
+    base = der["versoes"] if der["derivado"] else [
+        {"id": v.get("id"), "nome": v.get("nome") or v.get("id"),
+         "arquetipo_id": v.get("arquetipo_id"), "listas": v.get("listas"),
+         "listas_total": v.get("listas"), "na_janela": True, "anotada": True,
+         "origem_nome": "config", "deck": versoes.deck_da_versao(v),
+         "principal": bool(v.get("principal")),
+         "escolhida": v.get("id") == esc, "porque": str(v.get("_porque") or "")}
+        for v in versoes.versoes(fmt, cfg)]
     vs = []
-    for v in versoes.versoes(fmt, cfg):
-        did = versoes.deck_da_versao(v)
+    for v in base:
+        did = v.get("deck") or ""
         alvo = por_id.get(did) or {}
         c = conta_do_deck(alvo, pos) if alvo else {"tem": 0, "total": 0, "pct": 0}
         vs.append({
-            "id": v.get("id"), "nome": v.get("nome") or v.get("id"),
+            "id": v["id"], "nome": v["nome"],
             "arquetipo_id": v.get("arquetipo_id"), "listas": v.get("listas"),
-            "deck": did, "escolhida": v.get("id") == esc,
+            "listas_total": v.get("listas_total"),
+            "na_janela": bool(v.get("na_janela")),
+            "anotada": bool(v.get("anotada")),
+            "origem_nome": v.get("origem_nome") or "config",
+            "principal": bool(v.get("principal")),
+            # O `deck` só sai se o registo o TIVER. Uma versão conhecida sem
+            # lista fixada (o Grinding Station) tem id de deck e não tem deck:
+            # o «ver ▶» levava a uma página que não existe. É o irmão do
+            # «uma versão sem lista não é um deck de 0 %» — ali não se inventa
+            # o deck, aqui não se inventa o caminho para ele.
+            "deck": did if alvo else "",
+            "escolhida": v["id"] == esc,
             "tem": c["tem"], "total": c["total"], "pct": c["pct"],
             "sem_lista": not (alvo.get("cards") if alvo else None),
             "nota": (alvo.get("nota") or "") if alvo else "",
+            "porque": v.get("porque") or "",
             "evento": alvo.get("evento") if alvo else None,
         })
     # MONTAR vs PROTEGER (2026-10-05). São duas perguntas e a página tem de as
@@ -1337,6 +1371,10 @@ def deck_unico(con: sqlite3.Connection, fmt: str, decks: list[dict],
         "nota": d.get("_nota") or "",
         "por_decidir": bool(d.get("por_decidir")),
         "versao": esc, "versoes": vs,
+        "principal": versoes.principal(fmt, cfg),
+        "derivado": der["derivado"], "sem_cluster": der["sem_cluster"],
+        "sem_cluster_nomes": der.get("sem_cluster_nomes") or [],
+        "fora_da_janela": der["fora_da_janela"], "desde": der.get("desde") or "",
         "carta_chave": versoes.carta_chave(fmt, cfg),
         "protege": prot, "limiar": versoes.limiar_listas(cfg),
         "outros": versoes.outros_que_jogam(con, fmt, cfg),

@@ -1945,8 +1945,18 @@ class Handler(BaseHTTPRequestHandler):
         if not fmt or not vid:
             raise SemLista("sem formato ou sem versão: o pedido tem de dizer os dois.")
         cfg = ler_config()
-        versoes.escolher(cfg, fmt, vid)
-        nome = (versoes.versao(fmt, vid, cfg) or {}).get("nome") or vid
+        # AS VERSÕES DERIVADAS TAMBÉM SE PODEM ESCOLHER (2026-10-05). Num
+        # formato `versoes_todas` a maior parte delas não está escrita no
+        # config — validar só contra o config recusava, com 409, um clique numa
+        # versão que a página acabou de desenhar. Quem sabe quais são é a base.
+        validas = nome = None
+        with db.session() as con:
+            der = versoes.versoes_derivadas(con, fmt, cfg)
+        if der["derivado"]:
+            validas = [v["id"] for v in der["versoes"]]
+            nome = next((v["nome"] for v in der["versoes"] if v["id"] == vid), None)
+        versoes.escolher(cfg, fmt, vid, validas=validas)
+        nome = nome or (versoes.versao(fmt, vid, cfg) or {}).get("nome") or vid
         deck = (versoes.do_formato(fmt, cfg) or {}).get("nome") or fmt
         escrever_config(cfg)
         with db.session() as con:

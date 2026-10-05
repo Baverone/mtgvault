@@ -94,17 +94,14 @@ def ler(path: Path | str | None = None) -> dict:
     return json.loads(caminho(path).read_text(encoding="utf-8"))
 
 
-def escrever(cfg: dict, path: Path | str | None = None) -> None:
-    """Grava o config mantendo a forma com que está escrito à mão.
+def texto(cfg: dict) -> str:
+    """O config NA FORMA CANÓNICA, como texto — sem tocar no disco.
 
-    Um `json.dump(indent=2)` cru rebentava as catorze linhas das caixas em
-    duzentas.
-
-    Escreve-se **atomicamente** (ficheiro temporário ao lado + `os.replace`):
-    o `write_text` normal trunca o ficheiro antes de escrever, e um erro a meio
-    — ou dois pedidos ao mesmo tempo, que o `ThreadingHTTPServer` permite — dava
-    um `colecao_config.json` truncado. Perder esse ficheiro é perder as caixas,
-    as regras de material e as listas escolhidas de uma vez.
+    Está à parte do `escrever` para a forma se poder CONFERIR: um teste
+    compara `texto(ler())` com os bytes do ficheiro e apanha uma linha escrita
+    à mão fora desta forma **antes** de o próximo clique no modo edição a
+    reescrever inteira. É a lição do commit `ac1f776` (861 inserções por um
+    `indent=2`) pelo lado da prevenção.
     """
     partes = []
     for k, v in cfg.items():
@@ -120,7 +117,22 @@ def escrever(cfg: dict, path: Path | str | None = None) -> None:
             corpo = json.dumps(v, ensure_ascii=False, indent=2)
             corpo = corpo.replace("\n", "\n  ")
         partes.append(f"  {chave}: {corpo}")
+    return "{\n" + ",\n".join(partes) + "\n}\n"
+
+
+def escrever(cfg: dict, path: Path | str | None = None) -> None:
+    """Grava o config mantendo a forma com que está escrito à mão.
+
+    Um `json.dump(indent=2)` cru rebentava as catorze linhas das caixas em
+    duzentas.
+
+    Escreve-se **atomicamente** (ficheiro temporário ao lado + `os.replace`):
+    o `write_text` normal trunca o ficheiro antes de escrever, e um erro a meio
+    — ou dois pedidos ao mesmo tempo, que o `ThreadingHTTPServer` permite — dava
+    um `colecao_config.json` truncado. Perder esse ficheiro é perder as caixas,
+    as regras de material e as listas escolhidas de uma vez.
+    """
     destino = caminho(path)
     tmp = destino.with_name(destino.name + ".tmp")
-    tmp.write_text("{\n" + ",\n".join(partes) + "\n}\n", encoding="utf-8")
+    tmp.write_text(texto(cfg), encoding="utf-8")
     os.replace(tmp, destino)

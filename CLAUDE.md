@@ -3314,6 +3314,165 @@ regra **RP** em `mtgvault/fases.py` (`curva_limiar`/`resumo_mox`); config em
   montagem e ficaram fora das versões (7400, 7010, 6491) — continuam a
   **proteger** na mesma, que era a dúvida que esta ordem fechou; (d) o
   **Standard continua sem lista** (consenso com 1 lista contra um mínimo de 5).
+  **[A (c) FECHOU-SE a 2026-10-05, ao fim do dia: ele respondeu que entram
+  TODOS, e o conjunto deixou de ser uma lista de ids — ver a secção a
+  seguir.]**
+
+**O MODERN SÃO TODOS OS DECKS DE MOX OPAL, E O CRITÉRIO É PERMANENTE (André,
+2026-10-05, ao fim do dia, à letra).** *"no Modern, a unica coisa e que quero os
+decks que joguem Mox Opal, seja affinity, seja grinding station, seja outra
+coisa qualquer"*. **FECHA a dúvida que eu tinha deixado aberta** na ordem de
+05/10 de manhã, onde separei quatro versões da Affinity pelo `criterio.exige`
+(Kappa Cannoneer + Pinnacle Emissary) e pus cinco arquétipos *«de fora, à
+espera de confirmação»*: **ele confirmou o CONTRÁRIO do que lhe propus.** Em
+Modern a escolha passou a ser a MESMA pergunta que a protecção — um critério
+só, *joga Mox Opal*. Motor em `mtgvault/versoes.py`
+(`versoes_todas`/`versoes_derivadas`/`clusters_da_carta`/`principal`/
+`id_derivado`, o `escolher(..., validas=)` e o `outros_que_jogam` vazio num
+formato derivado), vista em `decks_vista.deck_unico`, página em `decks.py`,
+endpoint `POST /api/versao`; config em `decks_por_formato.modern.criterio.
+versoes_todas`. Testes em `tests/test_opal_todos.py` (13 casos) e a prova de que
+chumbam em `tests/_chumba_opal_todos.py` (**12 de 12 alvos**, um processo por
+alvo). **A venda não se tocou.**
+
+- **O CONJUNTO DEIXOU DE SER UMA LISTA DE `archetype_id` A MARTELO**, e era este
+  o defeito que a ordem nomeia: *"se o criterio estiver implementado como uma
+  lista de archetype_id a martelo, muda-o para a condicao «tem Mox Opal na
+  lista», senao daqui a uma semana ha um deck de Mox Opal de fora e ninguem
+  repara."* Estava mesmo assim — as quatro versões eram quatro ids escritos no
+  config. Hoje o conjunto sai da BASE (`versoes_derivadas`): é versão **todo** o
+  cluster que jogue a carta-chave na janela, e um arquétipo novo **entra sozinho
+  na corrida em que aparecer**. O config ficou com as **anotações** — o nome, o
+  ponteiro para o deck que guarda a lista, a marca `principal` e a memória das
+  conhecidas. Tem caso próprio, que semeia um cluster novo e exige que ele
+  apareça sem se tocar no config.
+- **OS NÚMEROS DELE REPRODUZEM AO EXEMPLAR**, medidos na base com a janela de
+  29/09 e **sem o filtro de tier** (o mesmo universo da RP — é o *"um critério
+  só"* dele à letra): **30 das 412 listas de Modern jogam Mox Opal (7,3 %)**,
+  em **7614 com 25** (a Affinity dele), **7697 com 2**, **7622 com 1**, **7456
+  com 1** e **1 lista sem arquétipo**. Uma correcção de vocabulário, e importa:
+  ele diz *"em 5 arquetipos"* e são **4 clusters e uma lista que o agrupamento
+  ainda não identificou** — essa conta-se e diz-se e **nunca vira versão**,
+  porque uma versão precisa de um id estável. A fonte dá-lhe nome
+  (*«Song of Creation»*, mtgtop8, Thiago Meneghin, 01/10) e a página mostra-o.
+- **A `exige` NÃO SE APAGOU: foi para `_exige_antes`**, com a data e a razão (a
+  regra de 09/09). Deixou de decidir quem é versão e **não se deixou lá uma
+  chave a mentir** — repor é devolvê-la ao `criterio` e tirar o `versoes_todas`.
+  O que ficou dela foi a noção de deck **PRINCIPAL**, que passou a ser uma
+  **marca explícita** (`versoes[].principal`, na Affinity: *"o deck principal e
+  Affinity sem duvida"*) em vez de um teste sobre as cartas. **É um eixo
+  distinto da versão ESCOLHIDA** — a escolhida muda com um toque, a principal é
+  a identidade do deck — e tem caso de teste a exigir que trocar uma não troque
+  a outra.
+- **O `versoes_todas` É CHAVE PRÓPRIA E NÃO O `protege_todas`**, e isso é
+  deliberado: o **Legacy** é inclusivo para a protecção e tem `versoes: []`
+  porque ele disse que *nada se escolheu para MONTAR em Legacy*. Pendurar isto
+  no `protege_todas` dava-lhe **oito** versões que não pediu. Verificado na
+  página: o Legacy e o Pioneer ficaram exactamente como estavam, a caixa dos
+  «outros» incluída. Tem caso de teste nos dois sentidos.
+- **A CAIXA DOS «OUTROS DECKS QUE JOGAM MOX OPAL» DESAPARECEU do Modern** — era
+  ela que guardava os cinco «à espera de confirmação», e num formato derivado
+  não há «outros»: quem joga a carta É uma versão. **Fica inteira para o
+  Pioneer**, onde ele nomeou as três à mão. Deixá-la nos dois punha o mesmo
+  arquétipo a aparecer como versão **e** como *«não é versão»*, no mesmo ecrã.
+- **O GRINDING STATION: ele deu-o como exemplo e TEM ZERO LISTAS desde 29/09**,
+  em qualquer formato (medido). Entra como **versão CONHECIDA** e não como
+  actual: a página tem **dois grupos** — *«A jogar-se agora — 4»* e
+  *«Conhecidas, sem listas na janela — 4»* —, e a linha dele diz **«zero listas
+  na janela · 9 antes dela»** a amarelo. Nem se esconde (era mentir por
+  omissão), nem aparece ao lado das actuais (era mentir por igualdade). **E os
+  dois grupos não são um remendo para ele**: as **três** versões que já lá
+  estavam (Weapons 85 listas, Cranial 5, Seachrome 3) estão na MESMA situação —
+  zero na janela — e isso nunca tinha sido dito.
+- **O NOME «Grinding Station» É DELE E CONFERE-SE NA BASE.** As 14 listas de
+  Modern com Grinding Station jogam **todas** Mox Opal, e repartem-se por
+  **7394 (9), 7527 (2), 7341 (1)** e 2 sem cluster (que o mtgtop8 chama *«Emry
+  Grinding Cam»*). O maior é o **7394**, e **era um dos cinco que a minha
+  leitura de 04/10 punha de fora** (a etiqueta dele é *«Scrabbling Claws /
+  Minamo / Sewer-veillance Cam»*): as 9 listas dele jogam a carta a **100 %**.
+  A correcção dele está certa e prova-se. **E há uma coisa que vale a pena
+  saber: o deck registado que ele lembra** (`decks` 2, *«auto: mtgo Tree42o
+  2026-09-28»*) é a lista **22659**, que cai no **7527** — ou seja o Grinding
+  Station **já era meia versão**, debaixo do nome *«Seachrome»*, que não diz
+  isso. Não se renomeou por iniciativa própria; ficou dito no config.
+- **NÃO SE FIXOU LISTA AO GRINDING STATION, de propósito**: a mais recente é de
+  28/09, **um dia antes** da janela. Fixá-la era apresentar como deck a montar
+  uma lista que o formato de hoje já não viu — e é o oposto do que ele mandou
+  (*"nao o inventes como actual"*).
+- **AS TRÊS VERSÕES NOVAS DA JANELA NÃO LEVARAM NOME INVENTADO.** O 7697, o
+  7622 e o 7456 **não têm nome da fonte nenhum** (zero votos no
+  `arquetipo_fonte`): mostram a **etiqueta do agrupamento**, com um chip
+  *«etiqueta»* ao lado a dizer o que é. *"Um nome inventado com o mesmo aspecto
+  de um nome verdadeiro"* é o que custou três erros na semana de 02/10. Tem
+  caso de teste: o nome do config ganha, depois o da fonte, e a etiqueta é a
+  última e di-lo.
+- **QUEM RESPONDE PELO NOME CONTINUA A SER O `mtgvault.nomes`, e foi um teste
+  que me apanhou.** Escrevi a consulta do nome das listas sem cluster a ler o
+  `decklists.arquetipo_fonte` à mão, e o
+  `test_nomes_arquetipo.caso_a_pergunta_do_nome_vive_num_sitio_so` chumbou com
+  `versoes.py:477` — exactamente como apanhou o `eventos.py` a 04/10. Hoje a
+  pergunta passa pelo `nomes.nome_das_listas`, que é a votação de 02/10.
+- **O `escolher` PASSOU A ACEITAR AS VERSÕES DERIVADAS** (`validas=`), e sem
+  isso a funcionalidade não servia de nada: a maior parte delas não está escrita
+  no config, e validar só contra o config recusava com **409** um clique numa
+  versão que a página acabou de desenhar. Quem passa a lista é o `webapp` (que
+  tem ligação à base); **sem ela vale o config**, que é o que os formatos de
+  lista fixa querem — e há caso de teste para as duas pontas, mais uma versão
+  inventada que continua a ser recusada.
+- **O MOTOR NÃO MEXEU UM NÚMERO, e foi medido lado a lado com o MESMO
+  `vault.db`** (worktree em `_revisao/main-opal`): fechar tudo **11 043,88 €**,
+  **293** a comprar, as **17 caixas** iguais à percentagem e ao cêntimo, as nove
+  saídas da venda iguais (venda 366 c, protegidas 148 c, `rl_sem_historico`
+  98 c, `guardar` 1 c), candidatos e protegidas iguais, **RE e RP com os mesmos
+  nomes**. A **única** diferença no relatório inteiro é o `ids_que_ficam` a
+  ganhar `versao:modern:grinding-station` — e esse id **não tem lista fixada**,
+  por isso não acrescenta um único nome à RE. Tem caso de teste a trancá-lo:
+  *uma versão derivada não entra na RE*; quem a protege em Modern é a RP.
+- **DOIS DEFEITOS APANHADOS A LER O HTML QUE O JS DESENHOU**, e não a
+  raciocinar — é a lição da Fase 3, que esteve quatro dias a dizer *«não
+  consegui carregar os dados»* com tudo a responder 200: (a) o Grinding Station
+  vinha com o botão **«ver ▶»** a apontar para um deck que **não existe** no
+  registo (não tem lista), e um botão que não leva a nada é pior do que botão
+  nenhum — o `deck` só sai quando o registo o tem; (b) uma versão sem lista
+  fixada aparecia no registo como **deck de 0 %**, que é a lição da
+  `modern-affinity` de 04/10 (lê-se como um deck que lhe falta tudo, quando o
+  que se passa é que não há lista nenhuma). Aparece no selector de versões, que
+  é onde a decisão se toma.
+- **O TECTO DA CASCA SUBIU DE 80 PARA 88 KB, com a medida escrita** — e é a
+  primeira vez, porque a folga de 60 % de 04/10 durou um dia e meio. Medido com
+  o mesmo gerador dos dois lados: **80 186 → 84 379 bytes** em disco e
+  **24 422 → 25 829 em gzip**, ou seja **+1,4 KB no telemóvel dele** (é o gzip
+  que mede o que ele descarrega; o Pages serve comprimido). Apertou-se o texto
+  primeiro (268 bytes), e o resto é o que a ordem pede. **A folga encolheu de
+  60 % para 7 %, e isso é o aviso que ficou escrito no `decks.TECTO_CASCA`: a
+  próxima ordem que acrescente JavaScript aqui tira-o para um `decks.js` com
+  hash no `?v=`**, como a Deckboxes fez a 18/09, em vez de subir o tecto outra
+  vez. Subi-lo três vezes é não ter tecto.
+- **O `configio` ganhou um `texto(cfg)`**, extraído do `escrever`, para a forma
+  do `colecao_config.json` se poder **conferir** sem tocar no disco — e o caso
+  novo compara-o com o ficheiro, byte a byte, pelo próprio `escrever` (é ele que
+  faz a tradução de fim de linha do Windows; comparar com o `texto` cru dava
+  vermelho em todas as linhas por causa do `\r`). O diff do config são **29
+  inserções e 11 remoções**.
+- **Medido com as páginas servidas por HTTP e o JS a sério** (`publicar.gerar`
+  para uma pasta de prova, que chama a Galeria com `historico=False` e por isso
+  **não escreve na colecção**): as **14 páginas** geradas, **zero** mensagens de
+  erro de dados, e a aba Decks percorrida até ao nível do formato em Modern,
+  Pioneer e Legacy com os blocos novos conferidos no HTML desenhado — *«Um
+  critério só: joga Mox Opal»*, *«A jogar-se agora — 4»*, *«Conhecidas, sem
+  listas na janela — 4»*, quatro *«zero listas na janela»*, o chip **principal**,
+  três chips **etiqueta** e a linha *«Mais: 1 lista que o agrupamento ainda não
+  identificou (a fonte: «Song of Creation») … 11 arquétipos (17 listas) jogaram
+  Mox Opal antes da janela»*. Bateria toda verde.
+- **POR DECIDIR POR ELE:** (a) os **11 arquétipos / 17 listas** que jogaram Mox
+  Opal **antes** da janela ficam contados e **não listados** — quinze clusters
+  de uma lista cada, de antes do Reality Fracture, não são quinze versões do
+  deck dele; um que volte a aparecer entra sozinho, e se quiser vê-los é uma
+  linha; (b) o **7527 continua a chamar-se «Seachrome»** e é ele que tem o deck
+  registado do Grinding Station — renomeá-lo é decisão dele; (c) o **Grinding
+  Station fica sem lista fixada** (a mais recente é de um dia antes da janela);
+  (d) as três versões da janela **mostram a etiqueta** porque a fonte não lhes
+  dá nome — se quiser nomeá-las, é o `nome` da anotação.
 
 **A LISTA DE FALTAS PARA GHENT, E AS IMAGENS NAS LISTAS DE CARTAS (André,
 2026-10-05, à letra).** *"quero as coisas publicadas no mtgvault, com imagem das
