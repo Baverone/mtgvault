@@ -123,11 +123,22 @@
     mais era esconder informação; o `overflow-x` no contentor deixa a tabela
     inteira à mão de um arrasto e mantém o resto da página quieto. */
  .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
+ /* A MINIATURA da carta nas duas listas da Fase 3 (2026-10-05). Largura fixa e
+    `aspect-ratio` no `.ca`: a linha não muda de altura quando a imagem chega. */
+ table.cd td.mini{width:40px;padding:6px 0 6px 8px}
+ table.cd td.mini .ca{width:40px}
  @media (max-width:640px){
-   table.cd th:nth-child(3),table.cd td:nth-child(3){display:none}
+   /* O `table.cd th:nth-child(3){display:none}` que aqui estava SAIU a
+      2026-10-05, e não por causa da coluna nova: escondia, no telemóvel, a
+      coluna «Porque está protegida» da lista de NÃO VENDER — que é a razão de
+      ser dessa tabela (*"sem motivo não há exclusão silenciosa"*). Contradizia
+      a própria decisão de 04/10 escrita acima — *"esconder colunas a mais era
+      esconder informação; o `overflow-x` no contentor deixa a tabela inteira à
+      mão de um arrasto"* —, e ficou cá por ser uma regra cega sobre TODAS as
+      `.cd`. Hoje quem trata da largura é o `.tw`, e está medido. */
    .deck{padding:12px}
  }
- .erro-dados{margin:18px 0;padding:14px 16px;border:1px solid var(--bad-line);border-radius:var(--r);background:var(--bad-soft);color:var(--bad-ink);font-size:13.5px;line-height:1.55} .erro-dados b{color:var(--bad)} .erro-dados .fine{display:block;color:var(--bad-dim);font-size:12px;margin-top:6px} .erro-dados button{margin-top:8px;padding:6px 14px;border-radius:20px;border:1px solid var(--bad-line);background:var(--bad-soft);color:var(--ink);font-weight:700;cursor:pointer} .erro-dados button:hover{border-color:var(--bad);color:var(--ink)} .carregando{color:var(--muted);font-size:13px;padding:18px 0} .carregando::before{content:'';display:inline-block;width:12px;height:12px;margin-right:8px;border-radius:50%;border:2px solid var(--muted);border-top-color:transparent;animation:gira .8s linear infinite;vertical-align:-2px} @keyframes gira{to{transform:rotate(360deg)}}
+ .erro-dados{margin:18px 0;padding:14px 16px;border:1px solid var(--bad-line);border-radius:var(--r);background:var(--bad-soft);color:var(--bad-ink);font-size:13.5px;line-height:1.55} .erro-dados b{color:var(--bad)} .erro-dados .fine{display:block;color:var(--bad-dim);font-size:12px;margin-top:6px} .erro-dados button{margin-top:8px;padding:6px 14px;border-radius:20px;border:1px solid var(--bad-line);background:var(--bad-soft);color:var(--ink);font-weight:700;cursor:pointer} .erro-dados button:hover{border-color:var(--bad);color:var(--ink)} .carregando{color:var(--muted);font-size:13px;padding:18px 0} .carregando::before{content:'';display:inline-block;width:12px;height:12px;margin-right:8px;border-radius:50%;border:2px solid var(--muted);border-top-color:transparent;animation:gira .8s linear infinite;vertical-align:-2px} @keyframes gira{to{transform:rotate(360deg)}} .ca{display:block;width:100%;aspect-ratio:.716;border-radius:6px;overflow:hidden;background:var(--sunken);border:1px solid var(--line)} .ca img{width:100%;height:100%;object-fit:cover;display:block}
 
  *{box-sizing:border-box}
  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 var(--font);
@@ -378,6 +389,57 @@ function erroDados(el, e) {
     + `<span class="fine">Verifica a ligação e tenta outra vez. Se estás no modo edição, `
     + `confirma que o servidor (porto 8771) está de pé.</span>`
     + `<button type="button" onclick="location.reload()">recarregar</button></div>`;
+}
+
+
+const IMG_LOTE = 40;
+const ART = sid => `https://cards.scryfall.io/small/front/${sid[0]}/${sid[1]}/${sid}.jpg`;
+
+/* Um contador por VISTA: o primeiro ecrã de cada lista tem o seu lote. Devolve
+   `true` enquanto houver orçamento — é isso que o `arteHTML` recebe. */
+function contaArtes(limite) {
+  let n = 0;
+  const tecto = (limite == null ? IMG_LOTE : limite);
+  const f = () => (n++ < tecto);
+  f.pedidas = () => n;
+  return f;
+}
+
+/* A moldura. Com orçamento, leva a `<img>` com as quatro coisas que a fazem
+   comportar-se (`lazy`, `async`, e o tamanho ESCRITO, para a página não saltar).
+   Sem orçamento, nasce vazia e com o `data-sid` à espera do observador. */
+function arteHTML(sid, nm, com, cls) {
+  const c = 'ca' + (cls ? ' ' + cls : '');
+  if (!sid) return `<span class="${c}" aria-hidden="true"></span>`;
+  if (!com) return `<span class="${c}" data-sid="${escDados(sid)}"`
+    + ` data-nm="${escDados(nm || '')}"></span>`;
+  return `<span class="${c}"><img src="${escDados(ART(sid))}"`
+    + ` alt="${escDados(nm || '')}" width="146" height="204"`
+    + ` loading="lazy" decoding="async" onerror="this.remove()"></span>`;
+}
+
+/* As molduras vazias pedem a imagem quando se aproximam do ecrã. Sem
+   `IntersectionObserver` (um harness de node, um browser velho) não acontece
+   nada e a lista continua a ler-se — nestas listas o NOME é que manda. */
+let _OBS = null;
+function observaArtes(raiz) {
+  if (typeof IntersectionObserver !== 'function') return 0;
+  if (!_OBS) _OBS = new IntersectionObserver(es => {
+    for (const e of es) {
+      if (!e.isIntersecting) continue;
+      const d = e.target, sid = d.dataset && d.dataset.sid;
+      _OBS.unobserve(d);
+      if (!sid) continue;
+      d.removeAttribute('data-sid');
+      d.innerHTML = `<img src="${escDados(ART(sid))}"`
+        + ` alt="${escDados((d.dataset && d.dataset.nm) || '')}"`
+        + ` width="146" height="204" decoding="async" onerror="this.remove()">`;
+    }
+  }, {rootMargin: '300px'});
+  if (!raiz || typeof raiz.querySelectorAll !== 'function') return 0;
+  const ds = raiz.querySelectorAll('.ca[data-sid]');
+  for (const d of ds) _OBS.observe(d);
+  return ds.length;
 }
 
 let D = null, ABA = 'f1';
@@ -1035,19 +1097,47 @@ function moxHTML(m) {
         + `</p>` : '')
     + fatia('Protegidas só por listas de Legacy', m.so_legacy)
     + fatia('Protegidas só por listas de Modern', m.so_modern)
-    + fatia('Protegidas pelos dois formatos', m.ambos);
+    + fatia('Protegidas pelos dois formatos', m.ambos)
+    /* A CURVA DO LIMIAR estava a ser CALCULADA e deitada fora (2026-10-05): o
+       `curva` era composto acima e nunca entrava no `return`. O relatório dessa
+       ordem diz *"a página mostra a curva com os dois números"* e a página não a
+       mostrava — e é a decisão que ele tem para tomar (1 cumpre a letra do que
+       pediu; 2 liberta cópias para venda). Vai no FIM, depois das fatias: é uma
+       decisão, não um número do dia. */
+    + curva;
 }
 
+/* AS DUAS LISTAS COM A CARTA À VISTA (André, 2026-10-05: *"com imagem das cartas
+   para eu me organizar"*). Cada lista tem o SEU orçamento de imagens
+   (`contaArtes`): são 574 linhas de «não vender» e 271 de «seguro vender», e
+   pedir 845 imagens de uma vez era o que esta página passou o mês a evitar. O
+   resto entra ao rolar, pelo `observaArtes`. */
 function fase3(p) {
-  const c = p.candidatos;
+  /* A PARTE **É** O CANDIDATOS, e não um objecto com uma chave `candidatos`
+     dentro. Isto esteve `p.candidatos` desde o dia em que a página nasceu
+     (39d83d7, 2026-10-01) e por isso a FASE 3 — a lista VENDER e a lista
+     Protegidas, as duas que ele mandou pôr com imagem — **nunca desenhou nada**:
+     `c.linhas` rebentava, o `catch` do `render` chamava o `erroDados` e o que ele
+     via naquele separador era *«não consegui carregar os dados desta secção»*.
+     O `dados()` sempre escreveu `partes["candidatos"] = _magra(...)` — a lista
+     directa — e nenhum teste lia o HTML desta aba: a página respondia 200, os
+     ficheiros de dados respondiam 200, e o separador estava vazio. É o padrão do
+     `event_tier` do lado do browser. O bloco do Mox Opal de 2026-10-05 entrou
+     para dentro desta função e também nunca apareceu.
+     Apanhado a 2026-10-05 a contar as imagens com o `tests/avaliar_js.js`; tem
+     caso próprio (`test_faltas_imagens.caso_a_fase_3_desenha_as_duas_listas`). */
+  const c = p;
+  const imgSV = contaArtes(), imgNV = contaArtes();
   const linhas = c.linhas.map(l =>
-    `<tr><td>${escDados(l.nm)}${l.rl ? ' <span class="prot">RL</span>' : ''}</td>`
+    `<tr><td class="mini">${arteHTML(l.sid, l.nm, imgSV())}</td>`
+    + `<td>${escDados(l.nm)}${l.rl ? ' <span class="prot">RL</span>' : ''}</td>`
     + `<td class="mot">${escDados(l.set)} ${escDados((l.lang || '').toUpperCase())}`
     + `${l.foil ? ' ✨' : ''} · ${escDados(l.cond || '')}</td>`
     + `<td class="mot">${escDados(l.local || '')}</td>`
     + `<td class="v">${l.q}</td><td class="v">${eur(l.total)}</td></tr>`).join('');
   const prot = c.protegidas.map(l =>
-    `<tr><td>${escDados(l.nm)}</td>`
+    `<tr><td class="mini">${arteHTML(l.sid, l.nm, imgNV())}</td>`
+    + `<td>${escDados(l.nm)}</td>`
     + `<td class="mot">${escDados(l.set)} ${escDados((l.lang || '').toUpperCase())}`
     + `${l.foil ? ' ✨' : ''}</td>`
     + `<td class="mot">${escDados(l.motivo)}</td>`
@@ -1068,17 +1158,17 @@ function fase3(p) {
     + `e a saída continua congelada.</p>`
     + `<div class="chips"><span class="chip gold"><b>${eur(c.valor)}</b> em VENDER`
     + `</span>${porp}</div>`
-    + `<div class="tw"><table class="cd"><thead><tr><th>Carta</th><th>Versão</th><th>Onde está`
-    + `</th><th class="v">Cóp.</th><th class="v">Valor</th></tr></thead>`
-    + `<tbody>${linhas || '<tr><td colspan=5 class="vazio">Nada candidato.</td></tr>'}`
+    + `<div class="tw"><table class="cd"><thead><tr><th></th><th>Carta</th><th>Versão</th>`
+    + `<th>Onde está</th><th class="v">Cóp.</th><th class="v">Valor</th></tr></thead>`
+    + `<tbody>${linhas || '<tr><td colspan=6 class="vazio">Nada candidato.</td></tr>'}`
     + `</tbody></table></div>`
     + `<h2>Protegidas <span class="n">${c.protegidas_copias} cópias · `
     + `${eur(c.protegidas_valor)}</span></h2>`
     + `<p class="sub">Cada linha diz <b>qual</b> das regras a apanhou e `
     + `<b>porquê</b>. Sem motivo não há exclusão silenciosa.</p>`
-    + `<div class="tw"><table class="cd"><thead><tr><th>Carta</th><th>Versão</th><th>Porque está `
-    + `protegida</th><th class="v">Cóp.</th><th class="v">Valor</th></tr></thead>`
-    + `<tbody>${prot}</tbody></table></div>`;
+    + `<div class="tw"><table class="cd"><thead><tr><th></th><th>Carta</th><th>Versão</th>`
+    + `<th>Porque está protegida</th><th class="v">Cóp.</th><th class="v">Valor</th>`
+    + `</tr></thead><tbody>${prot}</tbody></table></div>`;
 }
 
 /* ---------------------------------------------------------------- render */
@@ -1117,6 +1207,10 @@ async function render() {
       else v.innerHTML = inventario(await parte('inventario'));
     }
   } catch (e) { erroDados(v, e); return; }
+  // As molduras que nasceram vazias (acima do lote de imagens) passam a pedir a
+  // arte quando se aproximam do ecrã. Vive no `paginas.JS_IMAGENS`, partilhado
+  // com a lista de faltas: duas cópias discordavam no dia em que uma mudasse.
+  observaArtes(v);
   try { history.replaceState(null, '', '#' + ABA); } catch (e) { /* file:// */ }
 }
 function ligar() {
