@@ -99,6 +99,18 @@
  .flr .flnm{flex:1;min-width:150px;overflow-wrap:anywhere}
  .flr .flp{white-space:nowrap}
  .flr .flt{font-size:11px;color:var(--muted);white-space:nowrap}
+ .flr .flnm .dsub{display:block;font-size:11px;color:var(--muted)}
+ .flr b.ok{color:var(--add)}
+ /* O NUCLEO COMUM as versoes (2026-10-06, ao fim do dia): o bloco que diz o que
+    ele sleeva UMA vez e serve as tres. Dourado por cima, porque e o argumento
+    da correspondencia papel/MTGO e nao um pormenor. */
+ .fjg.nuc{border-left:3px solid var(--accent)}
+ /* AS ALTERNATIVAS de uma versao: recolhidas, debaixo da linha dela. */
+ .valt{margin:-4px 0 10px 34px;padding:0 11px;background:var(--card);
+   border:1px solid var(--line);border-radius:var(--r)}
+ .valt summary{cursor:pointer;font-size:11.5px;color:var(--muted);padding:6px 0}
+ .valt[open] summary{color:var(--dim)}
+ @media(max-width:640px){ .valt{margin-left:0} }
  /* A SEQUÊNCIA e as STAPLES (2026-10-04 ao fim do dia). */
  .passos{background:var(--card);border:1px solid var(--accent-line);border-radius:var(--r);
    padding:11px 15px;margin:0 0 12px;font-size:12.5px;color:var(--dim)}
@@ -469,7 +481,7 @@ a cada deck na página do evento, e nunca pela etiqueta do agrupamento. Quem
 decide que listas contam é a regra de cada formato
 (<code>metagame_fontes</code>); o registo vê todas as que contam e a lista de
 cada um vem da janela do consenso — são duas perguntas.
-</div></details></div></footer></div></div><script src="decks.js?v=5620655c8a0d"></script><script>
+</div></details></div></footer></div></div><script src="decks.js?v=d569b3c02262"></script><script>
 (function(){
   var b = document.body, side = document.getElementById('side'),
       bt = document.getElementById('menub'), veu = document.getElementById('veu');

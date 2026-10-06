@@ -513,7 +513,22 @@ def caso_uma_versao_legitimamente_adormecida_nao_leva_aviso():
 
 
 def caso_o_config_a_serio_re_aponta_a_affinity_e_guarda_o_id_antigo():
-    """Nada se apaga: o 7614 ficou arquivado com a data e a razão."""
+    """Nada se apaga: o 7614 ficou arquivado com a data e a razão.
+
+    **ASSERÇÃO CORRIGIDA A 2026-10-06, ao fim do dia, e não mascarada.** Até aí
+    este caso ia buscar a entrada `versao:modern:izzet-pinnacle` à lista
+    `versoes` e exigia-lhe `arquetipo_id == 5100`, a marca `principal` e o
+    `deck: caixa:modern`. No dia em que ele fechou o Modern em **três versões
+    nomeadas** essa entrada saiu da lista e foi ARQUIVADA
+    (`_versao_izzet_pinnacle_antes`), porque a caixa `modern` passou a ser a
+    **alternativa «a tua lista»** da versão da Affinity — e o mesmo deck não
+    pode estar nos dois sítios no mesmo ecrã.
+
+    O que esta função continua a trancar é o que ela foi escrita para proteger,
+    e que **não** mudou: (a) o histórico do 7614 não se apagou, (b) o ponteiro
+    para a caixa com a lista de qualificação **não se perdeu** — só mudou de
+    sítio —, e (c) a forma canónica do ficheiro.
+    """
     from mtgvault import configio                            # noqa: PLC0415
     cfg = json.loads(io.open(RAIZ / "colecao_config.json",
                              encoding="utf-8").read())
@@ -532,8 +547,12 @@ def caso_o_config_a_serio_re_aponta_a_affinity_e_guarda_o_id_antigo():
     assert mf["modern"].get("_nota"), (
         "a regra nova leva a razão e a data ao lado, como as outras dele")
     m = cfg["decks_por_formato"]["modern"]
-    v = next(x for x in m["versoes"]
-             if x["id"] == "versao:modern:izzet-pinnacle")
+    # A entrada está ARQUIVADA desde 06/10 (ver o docstring) e continua a trazer
+    # o re-apontar de 05/10 inteiro, que é o que esta função protege.
+    v = (m.get("_versao_izzet_pinnacle_antes") or {}).get("entrada") or next(
+        (x for x in m["versoes"] if x["id"] == "versao:modern:izzet-pinnacle"),
+        None)
+    assert v, "a entrada da Affinity de 05/10 não pode desaparecer sem rasto"
     assert v["arquetipo_id"] == 5100, (
         "a Affinity passou para o cluster 5100 quando as ligas fundiram a "
         f"divisão do 7614; deu {v['arquetipo_id']}")
@@ -542,8 +561,17 @@ def caso_o_config_a_serio_re_aponta_a_affinity_e_guarda_o_id_antigo():
         "o id antigo não se apaga — fica arquivado para se poder repor")
     assert antes.get("ate") == "2026-10-05" and antes.get("porque"), antes
     assert v.get("principal") is True, "a marca `principal` não se perdeu"
-    assert v.get("deck") == "caixa:modern", (
-        "o ponteiro para a caixa com a lista de qualificação não se perdeu")
+    # O PONTEIRO PARA A CAIXA COM A LISTA DE QUALIFICAÇÃO NÃO SE PERDEU. Até
+    # 06/10 estava no `deck` desta versão; hoje está na ALTERNATIVA da versão da
+    # Affinity — e é por estar lá que a lista do RC de Ghent continua protegida
+    # pela RE (ver `versoes.decks_das_versoes`).
+    assert v.get("deck") == "caixa:modern", v
+    alvos = {str(a.get("deck")) for x in m["versoes"]
+             for a in (x.get("alternativas") or [])}
+    alvos |= {str(x.get("deck")) for x in m["versoes"]}
+    assert "caixa:modern" in alvos, (
+        "a caixa com a lista de qualificação tem de continuar apontada por "
+        f"alguma versão — ou perde a RE: {sorted(alvos)}")
     # A FORMA do ficheiro: round-trip pelo `configio.escrever`, byte a byte.
     alvo = _TMP / "rt.json"
     configio.escrever(cfg, alvo)
