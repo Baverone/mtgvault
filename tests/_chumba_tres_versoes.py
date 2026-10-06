@@ -268,6 +268,73 @@ ALVOS = [
      "    return 'lista de evento real - ' + eventos.texto_prov(prov)\n"
      "dv._nota_do_evento = _n",
      ["caso_uma_lista_que_nao_e_de_evento_diz_a_origem"]),
+    # ---- 14) «para ja» e literal: a versao que ele tirou fica inteira ------
+    # (2026-10-06, ao fim do dia: "entao apagamos para ja essa versao")
+    #
+    # NOTA: o `{raiz}` NAO se substitui dentro de um `preparo` -- o `.format` do
+    # GUIAO troca o `{preparo}` pelo valor e nao volta a formatar o valor. O
+    # guiao ja fez `import test_tres_versoes as T`, por isso o caminho vem de
+    # `T.RAIZ`; e redireccionar `T.RAIZ` para uma copia e o que faz os casos do
+    # «config a serio» lerem um config estragado sem tocar no a serio.
+    ("o `_saiu` da versao do Cori-Steel desaparece do config (volta a ser versao)",
+     "import json, pathlib, tempfile\n"
+     "from mtgvault import configio\n"
+     "_c = json.loads((T.RAIZ / 'colecao_config.json').read_text('utf-8'))\n"
+     "for _v in _c['decks_por_formato']['modern']['versoes']:\n"
+     "    if _v['id'] == 'versao:modern:cori-steel':\n"
+     "        _v.pop('_saiu', None)\n"
+     "_p = pathlib.Path(tempfile.mkdtemp()) / 'colecao_config.json'\n"
+     "configio.escrever(_c, _p)\n"
+     "T.RAIZ = _p.parent",
+     ["caso_a_versao_que_ele_tirou_fica_inteira",
+      "caso_o_config_a_serio_tem_as_duas_versoes",
+      "caso_o_nucleo_com_duas_versoes_sobe_e_o_em_duas_desaparece"]),
+    ("a LISTA do Kody Lyons e apagada com a versao (so ficava a marca)",
+     "import json, pathlib, tempfile\n"
+     "from mtgvault import configio\n"
+     "_c = json.loads((T.RAIZ / 'colecao_config.json').read_text('utf-8'))\n"
+     "_c['listas_escolhidas'].pop('versao:modern:cori-steel', None)\n"
+     "_p = pathlib.Path(tempfile.mkdtemp()) / 'colecao_config.json'\n"
+     "configio.escrever(_c, _p)\n"
+     "T.RAIZ = _p.parent",
+     ["caso_a_versao_que_ele_tirou_fica_inteira"]),
+    ("a nota da AMBIGUIDADE e apagada (perde-se a razao por que ele a tirou)",
+     "import json, pathlib, tempfile\n"
+     "from mtgvault import configio\n"
+     "_c = json.loads((T.RAIZ / 'colecao_config.json').read_text('utf-8'))\n"
+     "for _v in _c['decks_por_formato']['modern']['versoes']:\n"
+     "    if _v['id'] == 'versao:modern:cori-steel':\n"
+     "        _v['meta'].pop('ambiguidade', None)\n"
+     "_p = pathlib.Path(tempfile.mkdtemp()) / 'colecao_config.json'\n"
+     "configio.escrever(_c, _p)\n"
+     "T.RAIZ = _p.parent",
+     ["caso_a_versao_que_ele_tirou_fica_inteira"]),
+    # ---- 15) o nucleo com duas versoes -------------------------------------
+    ("o `em_duas` deixa de ser «mais do que uma mas nao todas» (entra no nucleo)",
+     "from mtgvault import decks_vista as dv\n"
+     "_n = dv.nucleo_das_versoes\n"
+     "def _x(alvos, pos):\n"
+     "    r = _n(alvos, pos)\n"
+     "    r['nucleo'] = [l for l in r['nucleo'] if l['em'] == r['versoes']\n"
+     "                   and l['nm'] not in ('Damping Sphere', 'Vexing Bauble')]\n"
+     "    r['cartas'] = len(r['nucleo'])\n"
+     "    r['copias'] = sum(l['pede'] for l in r['nucleo'])\n"
+     "    return r\n"
+     "dv.nucleo_das_versoes = _x",
+     ["caso_o_nucleo_com_duas_versoes_sobe_e_o_em_duas_desaparece"]),
+    ("a quantidade do nucleo volta a ser a SOMA e nao o maximo",
+     "from mtgvault import decks_vista as dv\n"
+     "_p = dv._pede_por_versao\n"
+     "_n = dv.nucleo_das_versoes\n"
+     "def _x(alvos, pos):\n"
+     "    r = _n(alvos, pos)\n"
+     "    pede = _p(alvos)\n"
+     "    for l in r['nucleo']:\n"
+     "        l['pede'] = sum(pede[l['nm']].values())\n"
+     "    r['copias'] = sum(l['pede'] for l in r['nucleo'])\n"
+     "    return r\n"
+     "dv.nucleo_das_versoes = _x",
+     ["caso_o_nucleo_com_duas_versoes_sobe_e_o_em_duas_desaparece"]),
 ]
 
 if __name__ == "__main__":

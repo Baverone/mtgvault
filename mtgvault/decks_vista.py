@@ -1454,12 +1454,23 @@ def nucleo_das_versoes(alvos: list[tuple[dict, dict]],
 
     `nucleo` são as cartas que estão em **todas** as versões e `em_duas` as que
     estão em mais do que uma mas não em todas — as duas listas, porque uma carta
-    em dois dos três decks ainda se sleeva uma vez para dois. A quantidade é o
+    em dois de três decks ainda se sleeva uma vez para dois. A quantidade é o
     **MÁXIMO** entre as versões: é o que ele tem de ter para a carta servir
     qualquer uma delas.
 
-    Uma básica fica na lista e vai **marcada** `da_pilha`: ela está mesmo nos
-    três decks, mas sai da pilha de Unhinged a granel e não é uma carta que ele
+    **TIRAR UMA VERSÃO PODE FAZER O NÚCLEO CRESCER**, e isso não é um defeito: é
+    o que a definição diz, e vale a pena estar escrito porque o primeiro instinto
+    é esperar o contrário. Medido no Modern a 2026-10-06, no dia em que ele tirou
+    a versão do Cori-Steel das três que tinha nomeado horas antes — **11 cartas /
+    34 cópias passaram a 13 / 36**: duas das «em duas das três» (Damping Sphere,
+    Vexing Bauble) estavam nas duas que ficaram e SOBEM ao núcleo, e a Consign to
+    Memory desce de 4 para 3 cópias, porque a quantidade é o MÁXIMO e era a versão
+    que saiu que pedia 4. Com DUAS versões o `em_duas` vem **vazio por
+    construção** (`1 < len(pv) < 2` é impossível): ali uma carta ou está nas duas
+    ou é só de uma.
+
+    Uma básica fica na lista e vai **marcada** `da_pilha`: ela está mesmo em todos
+    os decks, mas sai da pilha de Unhinged a granel e não é uma carta que ele
     sleeve do binder. Tirá-la em silêncio era a conta a fechar por outro número;
     deixá-la sem marca era mandá-lo procurar uma Island que está ali ao lado.
     """

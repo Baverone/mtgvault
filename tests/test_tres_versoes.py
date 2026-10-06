@@ -32,14 +32,26 @@ vermelho:
  10. as **FAMÍLIAS não se perderam**: mudaram para o bloco da protecção;
  11. uma lista que **não é de evento** diz a origem dela e não «sem lista»;
  12. o `_saiu` é o **interruptor**: tirar a marca devolve a versão à escolha;
- 13. o **config A SÉRIO** tem as três versões, a escolhida, as seis saídas e a
-     forma canónica.
+ 13. o **config A SÉRIO** tem as **DUAS** versões, a escolhida, as sete saídas e
+     a forma canónica;
+ 14. a versão que ele **tirou** fica INTEIRA — lista, `meta`, ambiguidade — e o
+     arquétipo dela continua na base;
+ 15. com duas versões o núcleo são **13 cartas / 36 cópias** e o bloco «em duas
+     das três» desaparece por construção.
+
+**O NOME DO FICHEIRO NÃO MENTE**: o fixture sintético (A/B/C) tem mesmo TRÊS
+versões, de propósito — é com três que se exercita o `em_duas`, a partilha entre
+sacos e o `versoes - 1`. O que passou a duas foi o **config a sério** do Modern,
+nos casos 13 a 15, quando ele tirou a versão do Cori-Steel no fim do dia
+(*"entao apagamos para ja essa versao"*). Um motor que só soubesse contar até
+duas era um motor pior.
 
 Não abre socket para fora nem toca na `vault.db` a sério. Fixa `MTGVAULT_HOME`
 **e** `MTGVAULT_DB` (ver `tests/_bateria.py`).
 """
 import json
 import os
+import sqlite3
 import sys
 import tempfile
 from pathlib import Path
@@ -613,12 +625,20 @@ def caso_o_saiu_e_o_interruptor():
     assert len(u["versoes"]) == 4 and u["saidas"] == [], u["saidas"]
 
 
-def caso_o_config_a_serio_tem_as_tres_versoes():
-    """13. O CONFIG A SÉRIO (2026-10-06, ao fim do dia).
+def caso_o_config_a_serio_tem_as_duas_versoes():
+    """13. O CONFIG A SÉRIO.
 
-    As TRÊS versões nomeadas, a escolhida, as seis que saíram com a razão, o
-    `versoes_todas` arquivado e **não apagado**, o `protege_todas` inteiro, e a
-    FORMA canónica do ficheiro (a lição do commit `ac1f776`).
+    **ASSERÇÃO CORRIGIDA A 2026-10-06, ao fim do dia, e não mascarada.** Esta
+    função nasceu nessa mesma tarde a exigir **TRÊS** versões — era o que ele
+    tinha dito (*"entao modern sera o Izzet Affinity (Weapons) + Oswald + Versao
+    com Cori-Steel Cutter"*) — e horas depois ele tirou a terceira: *"entao
+    apagamos para ja essa versao"*. Passou a exigir **DUAS**, com a do Cori-Steel
+    entre as saídas. O que continua a trancar é o que NÃO mudou: o universo de
+    cada versão sai das CARTAS e não do `archetype_id`, a lista dele fica como
+    ALTERNATIVA e não em vez, e o `izzet-pinnacle` continua arquivado.
+
+    A do Cori-Steel tem caso próprio, porque o que importa dela agora é outra
+    coisa — que **nada se apagou** (ver `caso_a_versao_que_ele_tirou_fica_inteira`).
     """
     from mtgvault import configio                            # noqa: PLC0415
     cfg = json.loads((RAIZ / "colecao_config.json").read_text(encoding="utf-8"))
@@ -626,13 +646,12 @@ def caso_o_config_a_serio_tem_as_tres_versoes():
     fica = [v for v in m["versoes"] if not v.get("_saiu")]
     sai = [v for v in m["versoes"] if v.get("_saiu")]
     assert [v["nome"] for v in fica] == [
-        "Izzet Affinity (Weapons)", "Oswald", "Cori-Steel Cutter"], (
-        [v["nome"] for v in fica])
-    assert len(sai) == 6, [v["id"] for v in sai]
+        "Izzet Affinity (Weapons)", "Oswald"], [v["nome"] for v in fica]
+    assert len(sai) == 7, [v["id"] for v in sai]
     for v in sai:
         assert v["_saiu"]["em"] == "2026-10-06" and v["_saiu"]["porque"], v
     assert m["versao"] == "versao:modern:izzet-affinity-weapons", m["versao"]
-    # O UNIVERSO DE CADA UMA SAI DAS CARTAS — nenhuma das três tem cluster.
+    # O UNIVERSO DE CADA UMA SAI DAS CARTAS — nenhuma das duas tem cluster.
     for v in fica:
         assert v.get("arquetipo_id") is None, (
             f"uma versão ancorada em cartas não tem `arquetipo_id`: {v['id']}")
@@ -641,9 +660,6 @@ def caso_o_config_a_serio_tem_as_tres_versoes():
     assert por["versao:modern:izzet-affinity-weapons"]["meta"]["cartas"] == [
         "Weapons Manufacturing", "Mox Opal"]
     assert por["versao:modern:oswald"]["meta"]["cartas"] == ["Oswald Fiddlebender"]
-    cs = por["versao:modern:cori-steel"]["meta"]
-    assert cs["cartas"] == ["Cori-Steel Cutter", "Mox Opal"]
-    assert cs["ambiguidade"]["carta"] == "Cori-Steel Cutter", cs
     # A LISTA DELE fica ao lado e não em vez: a caixa `modern` é a alternativa.
     alt = por["versao:modern:izzet-affinity-weapons"]["alternativas"]
     assert [a["deck"] for a in alt] == ["caixa:modern"], alt
@@ -652,10 +668,6 @@ def caso_o_config_a_serio_tem_as_tres_versoes():
     osw = cfg["listas_escolhidas"]["versao:modern:oswald"]
     assert osw["fonte_deck"] == 12 and len(osw["cards"]) == 34, len(osw["cards"])
     assert "evento" not in osw, "a lista dele não é de evento nenhum"
-    # A do Cori-Steel é a presencial do Kody Lyons.
-    csl = cfg["listas_escolhidas"]["versao:modern:cori-steel"]
-    assert csl["evento"]["decklist_id"] == 25051, csl["evento"]
-    assert csl["evento"]["jogadores"] == 449, csl["evento"]
     # A versão `izzet-pinnacle` foi ARQUIVADA e não apagada.
     assert m["_versao_izzet_pinnacle_antes"]["entrada"]["id"] == \
         "versao:modern:izzet-pinnacle"
@@ -664,6 +676,129 @@ def caso_o_config_a_serio_tem_as_tres_versoes():
     configio.escrever(cfg, alvo)
     assert alvo.read_bytes() == (RAIZ / "colecao_config.json").read_bytes(), (
         "o `colecao_config.json` saiu da forma canónica do `configio.escrever`")
+
+
+def caso_a_versao_que_ele_tirou_fica_inteira():
+    """14. «PARA JÁ» É LITERAL: nada se apagou (2026-10-06, ao fim do dia).
+
+        *"entao apagamos para ja essa versao"*
+        *"NAO APAGUES o arquetipo 'Mox Amber / Flame of Anor / Aether
+        Spellbomb' da base"*
+
+    Ele tirou a versão do Cori-Steel das três que tinha nomeado horas antes, e
+    disse **«para já»** — por isso o que se escreveu foi UMA marca `_saiu` e mais
+    nada. Este caso tranca as quatro coisas que têm de continuar lá para repor ser
+    uma linha: a **lista** do Kody Lyons, a `meta.cartas`, a nota da
+    **ambiguidade** (que é a razão por que ele a tirou) e o **arquétipo na base**.
+
+    O arquétipo confere-se na `vault.db` A SÉRIO, em só-leitura, porque é lá que
+    ele vive — e é o único sítio onde um apagar acidental não deixaria rasto no
+    Git. É o padrão do `test_cesarmerjan`.
+    """
+    cfg = json.loads((RAIZ / "colecao_config.json").read_text(encoding="utf-8"))
+    m = cfg["decks_por_formato"]["modern"]
+    cs = next(v for v in m["versoes"] if v["id"] == "versao:modern:cori-steel")
+    s = cs["_saiu"]
+    assert s["em"] == "2026-10-06", s
+    assert "para ja essa versao" in s["porque"], (
+        "a razão tem de levar as palavras DELE: foi ele que a tirou")
+    assert "7697" in s["razao"] and "nao se apagou" in s["razao"].lower(), s
+    # A `meta` e a AMBIGUIDADE ficam intactas — é a razão por que ele a tirou.
+    assert cs["meta"]["cartas"] == ["Cori-Steel Cutter", "Mox Opal"], cs["meta"]
+    amb = cs["meta"]["ambiguidade"]
+    assert amb["carta"] == "Cori-Steel Cutter", amb
+    assert "104 listas" in amb["_porque"] and "UR Prowess" in amb["_porque"], amb
+    # A LISTA do Kody Lyons continua gravada (o prune apaga a decklist ao mês).
+    csl = cfg["listas_escolhidas"]["versao:modern:cori-steel"]
+    assert csl["evento"]["decklist_id"] == 25051, csl["evento"]
+    assert csl["evento"]["jogadores"] == 449, csl["evento"]
+    assert len(csl["cards"]) >= 30, (
+        f"as cartas têm de ficar GRAVADAS: {len(csl['cards'])}")
+    # Fora da escolha, dentro das saídas — e já não protege pela RE. O `cfg` é o
+    # de disco e passa-se EXPLÍCITO: o `MTGVAULT_CONFIG` deste ficheiro aponta
+    # para o fixture, e `sources.config()` devolveria as versões A/B/C.
+    assert "versao:modern:cori-steel" not in [
+        v["id"] for v in versoes.versoes("modern", cfg)]
+    assert "versao:modern:cori-steel" in [
+        v["id"] for v in versoes.versoes_saidas("modern", cfg)]
+    assert "versao:modern:cori-steel" not in versoes.decks_das_versoes(
+        "modern", cfg), (
+        "uma versão que saiu deixa a RE — quem protege as cartas dela em Modern "
+        "passa a ser a RP, o critério «joga Mox Opal»")
+    # O ARQUÉTIPO NA BASE A SÉRIO, em só-leitura.
+    bd = RAIZ / "data" / "vault.db"
+    if not bd.exists():                        # a bateria pode correr sem ela
+        return
+    c = sqlite3.connect(f"file:{bd}?mode=ro", uri=True)
+    c.row_factory = sqlite3.Row
+    r = c.execute("SELECT * FROM archetypes WHERE id = 7697").fetchone()
+    assert r is not None, (
+        "o arquétipo 7697 desapareceu da base. Ele disse à letra «NAO APAGUES o "
+        "arquetipo 'Mox Amber / Flame of Anor / Aether Spellbomb' da base» — "
+        "tirar a VERSÃO é config, e esta ordem não escreve uma linha na "
+        "`vault.db`. Se isto chumbar, alguém apagou o que ele mandou guardar")
+    assert r["format"] == "modern", dict(r)
+    assert "Flame of Anor" in r["label"], dict(r)
+    n = c.execute("SELECT COUNT(*) FROM decklists WHERE archetype_id = 7697"
+                  ).fetchone()[0]
+    assert n >= 1, (
+        f"o arquétipo 7697 ficou sem listas ({n}) — a 06/10 tinha as 4 do "
+        "Cori-Steel com Mox Opal. O `archetype_id` é refeito todas as noites e "
+        "pode mudar de composição; zero listas aqui quer dizer que o cluster se "
+        "re-reparticionou, não que alguém apagou. Confere com "
+        "`py -m mtgvault.cli nomes clusters` antes de mexer")
+
+
+def caso_o_nucleo_com_duas_versoes_sobe_e_o_em_duas_desaparece():
+    """15. COM DUAS VERSÕES O NÚCLEO É MAIOR, e o «em duas das três» acaba.
+
+    O primeiro instinto é esperar que tirar uma versão encolha o núcleo. É o
+    contrário: o núcleo é a INTERSECÇÃO, e tirar um conjunto só pode alargá-la.
+    Medido no config a sério a 2026-10-06 — 11 cartas / 34 cópias com três
+    versões, **13 / 36** com duas.
+
+    As cartas e as cópias saem das listas GRAVADAS no config e por isso são
+    estáveis. **Não se usa a base nem o `relatorio`**, de propósito: o `tem` e o
+    `falta` dependem do que ele marcou, e um caso que exigisse «tens todas»
+    chumbava no dia em que ele vendesse uma cópia — por uma razão legítima. Com
+    `pos` vazio, o que se mede é só a geometria das duas listas.
+    """
+    cfg = json.loads((RAIZ / "colecao_config.json").read_text(encoding="utf-8"))
+    vs = [v for v in cfg["decks_por_formato"]["modern"]["versoes"]
+          if not v.get("_saiu")]
+    alvos = []
+    for v in vs:
+        did = versoes.deck_da_versao(v)
+        alvos.append((v, {"id": did,
+                          "cards": cfg["listas_escolhidas"][did]["cards"]}))
+    assert len(alvos) == 2, [v.get("nome") for v, _ in alvos]
+    n = dv.nucleo_das_versoes(alvos, {})
+    assert n["versoes"] == 2 and n["cartas"] == 13 and n["copias"] == 36, n
+    assert n["basicas"] == 1, (
+        "a Island está nas duas listas e vem da pilha de básicas — fica na "
+        "lista MARCADA, nunca escondida")
+    assert n["em_duas"] == [] and n["em_duas_n"] == 0, (
+        "com DUAS versões o «em duas das três» é impossível por construção: uma "
+        "carta ou está nas duas ou é só de uma")
+    nms = {l["nm"] for l in n["nucleo"]}
+    assert {"Damping Sphere", "Vexing Bauble"} <= nms, (
+        "a Damping Sphere e a Vexing Bauble estavam «em duas das três» e sobem "
+        "ao núcleo quando a terceira sai")
+    cm = next(l for l in n["nucleo"] if l["nm"] == "Consign to Memory")
+    assert cm["pede"] == 3, (
+        f"a quantidade do núcleo é o MÁXIMO entre as versões que FICAM: a "
+        f"Consign desce de 4 para 3 porque era a versão que saiu que pedia 4, "
+        f"e não {cm['pede']}")
+    # E A TERCEIRA, reposta, DEVOLVE o núcleo a 11/34: é o `_saiu` a ser mesmo o
+    # interruptor, medido no config a sério e não no fixture.
+    cs = next(v for v in cfg["decks_por_formato"]["modern"]["versoes"]
+              if v["id"] == "versao:modern:cori-steel")
+    did = versoes.deck_da_versao(cs)
+    com3 = dv.nucleo_das_versoes(
+        [*alvos, (cs, {"id": did,
+                       "cards": cfg["listas_escolhidas"][did]["cards"]})], {})
+    assert com3["cartas"] == 11 and com3["copias"] == 34, com3
+    assert com3["em_duas_n"] == 13, com3["em_duas_n"]
 
 
 CASOS = [v for k, v in sorted(globals().items()) if k.startswith("caso_")]
