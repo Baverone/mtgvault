@@ -119,7 +119,7 @@ def escreve_cfg(_substitui=(), **mudancas):
         else:
             d[k] = v
     CAMINHO.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
-    sources._CONFIG_CACHE = None
+    sources.esquecer_config()
     return d
 
 

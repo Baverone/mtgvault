@@ -89,7 +89,7 @@ def escreve_cfg(**mudancas):
         else:
             d[k] = v
     CAMINHO.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
-    sources._CONFIG_CACHE = None
+    sources.esquecer_config()
     return d
 
 
@@ -101,7 +101,7 @@ def principais(cfg, *slots, **extra):
             c.update(extra.get(c["slot"], {}))
     CAMINHO.write_text(json.dumps(cfg, ensure_ascii=False), encoding="utf-8")
     from mtgvault import sources                             # noqa: PLC0415
-    sources._CONFIG_CACHE = None
+    sources.esquecer_config()
     return cfg
 
 
@@ -750,7 +750,7 @@ def caso_o_endpoint_grava_a_marca_e_recusa_uma_caixa_que_nao_existe():
     # ... e tira-se da mesma maneira.
     CAMINHO.write_text(json.dumps(gravados[-1], ensure_ascii=False),
                        encoding="utf-8")
-    sources._CONFIG_CACHE = None
+    sources.esquecer_config()
     r = f._deck_principal({"slot": "pm-a", "principal": False})
     assert r["principal"] is False, r
     c = next(x for x in gravados[-1]["caixas"] if x["slot"] == "pm-a")

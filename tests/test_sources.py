@@ -100,7 +100,66 @@ def run():
         "https://www.mtgo.com/decklist/duel-commander-league-2026-08-0110931") == "duel-commander"
     print("_guess_format distingue premodern de modern (determinístico)")
 
+    cache_do_config()
+
     print("\nTUDO OK")
+
+
+def cache_do_config():
+    """A CACHE DO CONFIG ESQUECE-SE PELO NOME CERTO (2026-10-06).
+
+    Treze ficheiros de teste reescrevem o config para exercitar um INTERRUPTOR e
+    os treze tinham `sources._CONFIG_CACHE = None` copiado à mão — um nome que
+    **não existe**. Não limpava nada: o que os fazia passar era o `_config()`
+    comparar o `st_mtime`, e duas escritas no MESMO tique do relógio do sistema
+    de ficheiros devolviam o config ANTERIOR. Apanhado na bateria de 06/10 pelo
+    `test_foto_manda.caso_a_frase_honesta_diz_x_de_y` — vermelho uma vez, verde
+    **10 de 10** corrido sozinho.
+
+    Mede as duas pontas: o `esquecer_config` esquece mesmo **com o mtime
+    empatado** (é aí que a cache era a única coisa a decidir), e nenhum ficheiro
+    de teste volta a usar o nome morto.
+    """
+    import json                                               # noqa: PLC0415
+    import os                                                 # noqa: PLC0415
+
+    p = Path(tempfile.mkdtemp()) / "colecao_config.json"
+    antes = os.environ.get("MTGVAULT_CONFIG")
+    os.environ["MTGVAULT_CONFIG"] = str(p)
+    try:
+        p.write_text(json.dumps({"marca": "antes"}), encoding="utf-8")
+        sources.esquecer_config()
+        assert sources.config()["marca"] == "antes"
+        mt = p.stat().st_mtime
+        # A segunda escrita com o mtime EMPATADO: sem esquecer a cache, o
+        # `_config()` não tem como saber que o ficheiro mudou.
+        p.write_text(json.dumps({"marca": "depois"}), encoding="utf-8")
+        os.utime(p, (mt, mt))
+        assert sources.config()["marca"] == "antes", (
+            "sem esquecer, a cache responde com o config anterior — é este o "
+            "empate que torna os treze testes do interruptor intermitentes")
+        sources.esquecer_config()
+        assert sources.config()["marca"] == "depois", (
+            "o `esquecer_config` tem de limpar a cache a sério (`_CFG_CACHE`)")
+    finally:
+        if antes is None:
+            os.environ.pop("MTGVAULT_CONFIG", None)
+        else:
+            os.environ["MTGVAULT_CONFIG"] = antes
+        sources.esquecer_config()
+
+    # E NINGUÉM volta a usar o nome morto. A ÚNICA excepção declarada é este
+    # ficheiro, que é o que explica a regra e por isso tem de nomear o nome
+    # errado — é o padrão do `estado.medido`, onde o `db._migrate` é a excepção.
+    maus = [f.name for f in sorted((Path(__file__).parent).glob("*.py"))
+            if f.name != Path(__file__).name
+            and "_CONFIG_CACHE" in f.read_text(encoding="utf-8")]
+    assert not maus, (
+        f"estes ficheiros limpam a cache do config por um nome que não existe "
+        f"({maus}) — a cache é a `sources._CFG_CACHE` e quem a esquece é o "
+        f"`sources.esquecer_config()`. Uma linha que parece limpar e não limpa "
+        f"deixa o teste do interruptor a depender do relógio do disco")
+    print("a cache do config esquece-se num sítio só, e com o mtime empatado")
 
 
 if __name__ == "__main__":

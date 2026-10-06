@@ -103,7 +103,7 @@ def escreve_cfg(**mudancas):
         else:
             d[k] = v
     CAMINHO.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
-    sources._CONFIG_CACHE = None
+    sources.esquecer_config()
     return d
 
 
@@ -352,7 +352,7 @@ def caso_a_proveniencia_grava_se_e_sobrevive_a_poda():
     eventos.fixar(cfg, con, "pm-oath", did, nome="Oath of Druids",
                   formato="premodern", quando="2026-10-04")
     CAMINHO.write_text(json.dumps(cfg, ensure_ascii=False), encoding="utf-8")
-    sources._CONFIG_CACHE = None
+    sources.esquecer_config()
 
     # A PODA: a decklist desaparece da base, como daqui a um mês.
     con.execute("DELETE FROM decklist_cards WHERE decklist_id = ?", (did,))
@@ -386,7 +386,7 @@ def caso_a_caixa_trocada_mostra_as_seis_coisas():
     eventos.fixar(cfg, con, "pm-oath", did, nome="Oath of Druids",
                   formato="premodern", quando="2026-10-04")
     CAMINHO.write_text(json.dumps(cfg, ensure_ascii=False), encoding="utf-8")
-    sources._CONFIG_CACHE = None
+    sources.esquecer_config()
 
     rep = dv.relatorio(con, sources.config())
     linha = next(d for f in rep["formatos"] for d in f["decks"]
@@ -490,7 +490,7 @@ def caso_um_deck_sem_amostra_destranca_com_uma_lista_real():
                   nome="Ill-Gotten Gains", formato="premodern",
                   consenso_antes=antes, consenso_nota=nota, quando="2026-10-04")
     CAMINHO.write_text(json.dumps(cfg, ensure_ascii=False), encoding="utf-8")
-    sources._CONFIG_CACHE = None
+    sources.esquecer_config()
     s = next(x for x in cx.slots(sources.config()) if x["slot"] == "pm-igg")
     depois, nota2 = loadout._slot_cards(con, s)
     assert sum(q for _b, _n, q in depois) == 4, depois
@@ -537,7 +537,7 @@ def caso_os_decks_dele_entram_mesmo_sem_nome_da_fonte():
     eventos.fixar(cfg, con, chave, did, nome="UR Prowess", formato="modern",
                   quando="2026-10-04", caixa=False)
     CAMINHO.write_text(json.dumps(cfg, ensure_ascii=False), encoding="utf-8")
-    sources._CONFIG_CACHE = None
+    sources.esquecer_config()
     rep = dv.relatorio(con, sources.config())
     linha = next(d for f in rep["formatos"] for d in f["decks"] if d["id"] == chave)
     assert linha["nome"] == "UR Prowess", linha
@@ -565,7 +565,7 @@ def caso_o_deck_por_confirmar_nao_fica_marcado():
     eventos.fixar(cfg, con, chave, did, nome="UR Aggro (Flow State)",
                   formato="pioneer", quando="2026-10-04", caixa=False)
     CAMINHO.write_text(json.dumps(cfg, ensure_ascii=False), encoding="utf-8")
-    sources._CONFIG_CACHE = None
+    sources.esquecer_config()
     rep = dv.relatorio(con, sources.config())
     linha = next(d for f in rep["formatos"] for d in f["decks"] if d["id"] == chave)
     assert linha["por_confirmar"], linha
@@ -591,7 +591,7 @@ def caso_a_amostra_fina_vai_para_a_pagina():
     eventos.fixar(cfg, con, chave, did, nome="Hammer Time", formato="modern",
                   quando="2026-10-04", caixa=False)
     CAMINHO.write_text(json.dumps(cfg, ensure_ascii=False), encoding="utf-8")
-    sources._CONFIG_CACHE = None
+    sources.esquecer_config()
     rep = dv.relatorio(con, sources.config())
     linha = next(d for f in rep["formatos"] for d in f["decks"] if d["id"] == chave)
     assert linha["amostra_fina"] == aviso, linha

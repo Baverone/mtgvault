@@ -380,7 +380,7 @@ def caso_voltar_a_ligar_a_regra_volta_a_morder():
     d = json.loads(json.dumps(CFG))
     d["revalidacao"] = {"desde": "2026-10-04", "alvo": None, "foto_manda": True}
     CAMINHO.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
-    sources._CONFIG_CACHE = None
+    sources.esquecer_config()
     try:
         assert confirmado.manda() is True
         con = base()
@@ -391,7 +391,7 @@ def caso_voltar_a_ligar_a_regra_volta_a_morder():
         assert slot["pct_fisico"] == 100, slot["pct_fisico"]
     finally:
         CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
-        sources._CONFIG_CACHE = None
+        sources.esquecer_config()
 
 
 CASOS = [v for k, v in sorted(globals().items()) if k.startswith("caso_")]

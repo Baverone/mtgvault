@@ -72,12 +72,7 @@ def escreve_cfg(**mudancas):
         else:
             d[k] = v
     CAMINHO.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
-    sources._CONFIG_CACHE = None
-    if hasattr(sources, "config"):
-        try:
-            sources.config.cache_clear()                     # type: ignore[attr-defined]
-        except AttributeError:
-            pass
+    sources.esquecer_config()
     return d
 
 

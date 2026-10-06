@@ -488,6 +488,34 @@ def config() -> dict:
     return _config()
 
 
+def esquecer_config() -> None:
+    """Esquece o config em cache — quem o REESCREVEU tem de chamar isto.
+
+    **A LIMPEZA DA CACHE VIVE NUM SÍTIO SÓ (2026-10-06).** Treze ficheiros de
+    teste exercitam um INTERRUPTOR do config reescrevendo o ficheiro, e os treze
+    tinham a mesma linha copiada à mão: `sources._CONFIG_CACHE = None` — um nome
+    que **não existe** (a cache é a `_CFG_CACHE`, acima). A linha criava um
+    atributo que ninguém lê e não limpava nada; o `escreve_cfg` de cada um
+    prometia-o na docstring. É o padrão do `event_tier` dentro de um helper de
+    teste: uma linha com a cara de fazer uma coisa, a não fazer nada.
+
+    O que os fazia passar quase sempre era o OUTRO mecanismo — o `_config()`
+    compara o `st_mtime`. Quando duas escritas caem no **mesmo tique** do relógio
+    do sistema de ficheiros, a cache responde com o config ANTERIOR e o
+    interruptor deixa de morder. Apanhado na bateria de 2026-10-06 pelo
+    `test_foto_manda.caso_a_frase_honesta_diz_x_de_y`, que ficou vermelho uma vez
+    e passou **10 de 10** vezes corrido sozinho — a definição de uma mina.
+    Reproduz-se sempre empatando o mtime com `os.utime`.
+
+    **Não é só dos testes.** Quem escrever o config em código e quiser ler o novo
+    valor na mesma passagem (o `webapp` depois de um POST, uma ordem do CLI que
+    grave e confirme) passa por aqui. Com o mtime a mudar não é preciso; o ponto
+    é que não se pode CONTAR com ele.
+    """
+    _CFG_CACHE.clear()
+    _CFG_ERRO.clear()
+
+
 def _sem_comentarios(d) -> dict:
     """As chaves "_xxx" do colecao_config.json são ajuda para o André, não regra."""
     return {k: v for k, v in (d or {}).items() if not str(k).startswith("_")}

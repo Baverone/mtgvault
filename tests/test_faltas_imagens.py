@@ -391,14 +391,14 @@ def caso_as_faltas_de_legacy_ficam_fora_do_total():
         {"id": "versao:legacy:a", "nome": "A", "deck": "caixa:leg"}]
     CAMINHO.write_text(json.dumps(cfg, ensure_ascii=False), encoding="utf-8")
     from mtgvault import sources                               # noqa: PLC0415
-    sources._CONFIG_CACHE = None
+    sources.esquecer_config()
     try:
         v2 = vista(con)
         assert not v2["proposta"], "escolhido o deck, continuou na proposta"
         assert any(d["formato"] == "legacy" for d in v2["decks"])
     finally:
         CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
-        sources._CONFIG_CACHE = None
+        sources.esquecer_config()
     print("as faltas de um formato sem deck escolhido ficam fora do total")
 
 

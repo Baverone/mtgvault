@@ -112,7 +112,7 @@ def escreve_cfg(_substitui=(), **mudancas):
         else:
             d[k] = v
     CAMINHO.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
-    sources._CONFIG_CACHE = None
+    sources.esquecer_config()
     return d
 
 
@@ -550,7 +550,7 @@ def caso_sem_escolha_escrita_vale_a_primeira():
     cfg = escreve_cfg()
     del cfg["decks_por_formato"]["modern"]["versao"]
     CAMINHO.write_text(json.dumps(cfg, ensure_ascii=False), encoding="utf-8")
-    sources._CONFIG_CACHE = None
+    sources.esquecer_config()
     assert versoes.versao_escolhida("modern") == "versao:modern:alfa"
 
 

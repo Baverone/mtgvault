@@ -168,7 +168,7 @@ def escreve_cfg(_substitui=(), **mudancas):
         else:
             d[k] = v
     CAMINHO.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
-    sources._CONFIG_CACHE = None
+    sources.esquecer_config()
     return d
 
 
@@ -439,7 +439,7 @@ def caso_uma_versao_fixa_nunca_e_orfa():
     cfg = escreve_cfg()
     cfg["decks_por_formato"]["modern"]["versao"] = "versao:modern:cesar-song"
     CAMINHO.write_text(json.dumps(cfg, ensure_ascii=False), encoding="utf-8")
-    sources._CONFIG_CACHE = None
+    sources.esquecer_config()
     d = ders(con)
     esc = [v for v in d["versoes"] if v["escolhida"]]
     assert esc and esc[0]["id"] == "versao:modern:cesar-song", esc
@@ -528,7 +528,7 @@ def caso_a_familia_de_um_cluster_vazio_sai_da_lista_do_deck():
         "cards": [["main", "Mox Opal", 4], ["main", "Kappa Cannoneer", 4],
                   ["main", "Pinnacle Emissary", 4]]}
     CAMINHO.write_text(json.dumps(cfg, ensure_ascii=False), encoding="utf-8")
-    sources._CONFIG_CACHE = None
+    sources.esquecer_config()
     con.execute("DELETE FROM decklist_cards WHERE decklist_id IN "
                 "(SELECT id FROM decklists WHERE archetype_id = 1)")
     con.execute("DELETE FROM decklists WHERE archetype_id = 1")
@@ -613,7 +613,7 @@ def caso_as_familias_sao_o_interruptor():
     assert ders(con)["familias"], "com a chave, há famílias"
     del cfg["decks_por_formato"]["modern"]["criterio"]["familias"]
     CAMINHO.write_text(json.dumps(cfg, ensure_ascii=False), encoding="utf-8")
-    sources._CONFIG_CACHE = None
+    sources.esquecer_config()
     d = ders(con)
     assert d["familias"] == [], d["familias"]
     assert all(v["familia"] == "" for v in d["versoes"]), (
