@@ -665,7 +665,12 @@ def caso_o_config_e_a_base_a_serio_tem_a_vigia_e_as_duas_versoes():
                   "lower(key)='cesarmerjan'").fetchone()
     assert r is not None, (
         "o CesarMerjan não está inscrito na `watched` da base a sério — a "
-        "funcionalidade existe e o vault dele não o segue")
+        "funcionalidade existe e o vault dele não o segue. A vigia foi "
+        "inscrita a 2026-10-06 e a `watched` vive na `vault.db`, que NÃO vai "
+        "no Git (está no Release `data`, republicado pelo `mtgvault-daily` das "
+        "03:30). Numa base descarregada de um Release ANTERIOR a essa corrida "
+        "isto chumba com razão: a correcção é correr o daily (ou "
+        "`py -m mtgvault.cli` + `watchlist.add`), nunca mascarar o caso")
     assert r["format"] == "modern" and r["active"] == 1, dict(r)
 
 
