@@ -133,8 +133,22 @@ from __future__ import annotations
 import sqlite3
 from datetime import date
 
+from . import eventos
 from . import nomes as _nomes
 from . import scryfall, sources
+
+#: Quantas alternativas do meta se desenham por versão. A da Affinity tem 45
+#: listas na janela: uma parede de 45 linhas onde ele procura uma alternativa é
+#: o contrário de a mostrar. O TOTAL diz-se sempre ao lado.
+ALT_MAX = 6
+
+
+def _data_inversa(d) -> str:
+    """Para ordenar por data DESCENDENTE numa chave crescente (o mesmo truque do
+    `eventos._data_inversa`, que é privado àquele módulo)."""
+    s = str(d or "")
+    return "".join(chr(ord("9") - (ord(c) - ord("0"))) if c.isdigit() else c
+                   for c in s)
 
 #: `colecao_config.json -> decks_por_formato`.
 CHAVE = "decks_por_formato"
@@ -202,8 +216,14 @@ def formatos_por_decidir(cfg: dict | None = None) -> list[str]:
     return [f for f in formatos(cfg) if por_decidir(f, cfg)]
 
 
+def _versoes_escritas(fmt: str, cfg: dict | None = None) -> list[dict]:
+    d = do_formato(fmt, cfg) or {}
+    v = d.get("versoes")
+    return [x for x in (v if isinstance(v, list) else []) if isinstance(x, dict)]
+
+
 def versoes(fmt: str, cfg: dict | None = None) -> list[dict]:
-    """As versões ESCRITAS no config — as anotadas, e só essas.
+    """As versões ESCRITAS no config que continuam na escolha.
 
     Num formato de versões derivadas (`versoes_todas`) esta lista deixou de ser
     o conjunto: é o conjunto das **anotações** (nome, `deck`, `principal`) e das
@@ -214,10 +234,24 @@ def versoes(fmt: str, cfg: dict | None = None) -> list[dict]:
     `nomes_que_ficam`, a regra RE) e a que o registo da página transforma em
     decks — as duas perguntam por versões **com lista fixada**, e uma versão
     derivada não tem nenhuma. Ver a nota em `versoes_derivadas`.
+
+    **As que têm `_saiu` ficam de FORA** (2026-10-06): uma versão que saiu da
+    escolha continua no config com a lista e a proveniência — *nada se apaga* —
+    e é consultável pelo `versoes_saidas`, mas já não é um deck para montar. A
+    marca tem a mesma forma do `_saiu` de um deck (`decks_de_evento`), de
+    propósito: duas formas de dizer *«isto saiu»* discordavam no dia em que
+    alguém repusesse uma só num dos sítios.
     """
-    d = do_formato(fmt, cfg) or {}
-    v = d.get("versoes")
-    return [x for x in (v if isinstance(v, list) else []) if isinstance(x, dict)]
+    return [x for x in _versoes_escritas(fmt, cfg) if not x.get("_saiu")]
+
+
+def versoes_saidas(fmt: str, cfg: dict | None = None) -> list[dict]:
+    """As versões que SAÍRAM da escolha, com a lista e a razão intactas.
+
+    *"as versoes que saem da escolha … ficam consultaveis como «meta, nao
+    escolhido»"* (André, 2026-10-06). Repor uma é tirar-lhe o `_saiu`.
+    """
+    return [x for x in _versoes_escritas(fmt, cfg) if x.get("_saiu")]
 
 
 def versoes_todas(fmt: str, cfg: dict | None = None) -> bool:
@@ -323,7 +357,27 @@ def deck_da_versao(v: dict) -> str:
 
 
 def decks_das_versoes(fmt: str, cfg: dict | None = None) -> list[str]:
-    return [deck_da_versao(v) for v in versoes(fmt, cfg) if deck_da_versao(v)]
+    """Os decks das versões DESTE formato: o de cada versão e os das alternativas.
+
+    **AS ALTERNATIVAS CONTAM** (2026-10-06), e isto não é um detalhe: a lista de
+    qualificação dele — o deck do RC de Ghent, a caixa `modern` — passou a ser a
+    alternativa *«a tua lista»* da versão da Affinity, e sem esta linha perdia a
+    protecção **RE** três dias antes do torneio. É a mesma razão por que *todas
+    as versões protegem* (ver o cabeçalho): uma alternativa é uma lista para a
+    qual ele pode trocar, e vender-lhe as cartas dela era desfazer a opção.
+
+    Só as alternativas que apontam para um DECK; as do meta são listas de outras
+    pessoas e não têm deck nenhum para guardar.
+    """
+    out = []
+    for v in versoes(fmt, cfg):
+        d = deck_da_versao(v)
+        if d:
+            out.append(d)
+        for a in (v.get("alternativas") or []):
+            if isinstance(a, dict) and str(a.get("deck") or "").strip():
+                out.append(str(a["deck"]))
+    return out
 
 
 def ids_que_ficam(cfg: dict | None = None) -> set[str]:
@@ -589,6 +643,41 @@ def contagem_de_familias(vs: list[dict], fams: list[dict]) -> list[dict]:
     return [cont[n] for n in ordem if n in cont]
 
 
+def familias_que_protegem(con: sqlite3.Connection, fmt: str,
+                          cfg: dict | None = None,
+                          desde: str | None = None) -> list[dict]:
+    """As famílias do universo que a **RP** protege: `[{nome, listas, porque}]`.
+
+    AS FAMÍLIAS MUDARAM DE SÍTIO E NÃO SE PERDERAM (2026-10-06). Nasceram a
+    06/10 de manhã para tornar legível a lista de **versões** derivadas (oito
+    clusters de Mox Opal numa lista plana não se lê). Com o Modern a fechar em
+    três versões nomeadas ao fim do dia, as versões deixaram de precisar de
+    agrupamento — mas o universo da PROTECÇÃO continua a ter as mesmas seis
+    famílias, e é lá que a informação vale agora: é a resposta a *«o que é que
+    o critério do Mox Opal me está a guardar»*.
+
+    Deixá-las cair com o `versoes_todas` era apagar em silêncio um bloco que ele
+    viu ontem — o padrão que este vault passa o tempo a evitar. Conta LISTAS (e
+    não versões, que já não as há aqui): é o número que diz o peso de cada
+    família no formato.
+    """
+    cfg = sources.config() if cfg is None else cfg
+    fams = familias(fmt, cfg)
+    carta = carta_chave(fmt, cfg)
+    if not (fams and carta and protege_todas(fmt, cfg)):
+        return []
+    desde = desde or sources.consenso_desde()
+    ids = listas_da_carta(con, fmt, carta, desde)
+    cont: dict[str, int] = {}
+    for nms in _cartas_das_listas(con, ids).values():
+        f = familia_das_cartas(nms, fams)
+        cont[f] = cont.get(f, 0) + 1
+    ordem = {f["nome"]: (i, f.get("porque") or "") for i, f in enumerate(fams)}
+    ordem[FAMILIA_OUTRA] = (len(fams), "")
+    return [{"nome": n, "listas": cont[n], "porque": ordem.get(n, (99, ""))[1]}
+            for n in sorted(cont, key=lambda x: ordem.get(x, (99, ""))[0])]
+
+
 # ---------------------------------------------------------------------------
 # UMA VERSÃO PODE ESTAR ANCORADA NUMA LISTA, E NÃO NUM CLUSTER (2026-10-06)
 # ---------------------------------------------------------------------------
@@ -639,6 +728,186 @@ def principal(fmt: str, cfg: dict | None = None) -> str:
         if v.get("principal"):
             return str(v.get("id") or "")
     return ""
+
+
+# ---------------------------------------------------------------------------
+# O UNIVERSO DE UMA VERSÃO SAI DAS CARTAS, NUNCA DO CLUSTER (2026-10-06)
+# ---------------------------------------------------------------------------
+# *"vou tentar ter correspondencia de decks em papel com os decks no MTGO …
+# entao modern sera o Izzet Affinity (Weapons) + Oswald + Versao com Cori-Steel
+# Cutter"*. O Modern fechou em TRÊS versões nomeadas, e cada uma tem de saber
+# dizer quantas listas do meta são dela — para ele ver quais têm dados e quais
+# são uma aposta.
+#
+# PORQUE É PELA CARTA E NÃO PELO `archetype_id`: o cluster é refeito todas as
+# noites e muda. Medido nos três dias seguidos antes desta ordem, as anotações
+# de `arquetipo_id` deste bloco ficaram com ZERO listas na janela — a 05/10 o
+# 7614 do deck de Ghent fundiu-se no 5100, a 06/10 o 5100 passou a 7844. Uma
+# carta como *Weapons Manufacturing* não muda.
+#
+# E O NÚMERO DELE SÓ FECHA ASSIM: a ordem diz *"45 listas desde 29/09"* para a
+# Affinity e o cluster 7844 tem **53**. As 45 são exactamente as listas que
+# jogam **Weapons Manufacturing** — as outras 8 do cluster não a jogam. O
+# universo da carta é o que ele mediu, e é o estável.
+#
+# CONSEQUÊNCIA BOA: uma versão sem `arquetipo_id` **nunca é órfã** (não há
+# cluster para perder), e por isso o aviso de 05/10 deixa de poder disparar
+# falso no deck principal. O `_orfas` continua de pé para quem use clusters.
+def cartas_do_meta(v: dict) -> list[str]:
+    """As cartas que identificam as listas do meta desta versão. `[]` = nenhuma.
+
+    `versoes[].meta.cartas`, e são **todas exigidas** (conjunção): o Cori-Steel
+    Cutter com Mox Opal são 4 listas e o Cori-Steel sozinho 104 — e a diferença
+    é precisamente a decisão que ele tem de tomar.
+    """
+    m = v.get("meta") if isinstance(v.get("meta"), dict) else {}
+    return [str(x) for x in (m.get("cartas") or []) if str(x).strip()]
+
+
+def _sql_tem_cartas(cartas: list[str], alias: str = "d") -> tuple[str, list]:
+    cond, par = [], []
+    for i, c in enumerate(cartas):
+        cond.append(f"""EXISTS (SELECT 1 FROM decklist_cards km{i}
+                                 WHERE km{i}.decklist_id = {alias}.id
+                                   AND {scryfall.sql_nome(f'km{i}.card_name')})""")
+        par += list(scryfall.params_nome(c))
+    return (" AND ".join(cond) or "1=1"), par
+
+
+def listas_do_meta(con: sqlite3.Connection, fmt: str, cartas: list[str],
+                   desde: str | None = None) -> list[dict]:
+    """As listas da janela que jogam TODAS as `cartas`, com a proveniência.
+
+    **Sem o filtro de tier**, pela razão de sempre neste bloco (a RP, a R5): o
+    Oswald só volta a existir no meta porque as ligas entraram a 05/10 — as
+    duas listas dele são 5-0 de liga, e com o filtro não havia alternativa
+    nenhuma para lhe mostrar.
+    """
+    if not cartas:
+        return []
+    desde = desde or sources.consenso_desde()
+    cond, par = _sql_tem_cartas(cartas)
+    return [dict(r) for r in con.execute(
+        f"""SELECT d.id, d.player, d.event_name, d.event_date, d.event_tier,
+                   d.event_players, d.placement, d.source, d.archetype_id
+              FROM decklists d
+             WHERE d.format = ? AND d.event_date >= ? AND {cond}
+             ORDER BY d.event_date DESC, d.id""", [fmt, desde] + par)]
+
+
+def ambiguidade_da_versao(con: sqlite3.Connection, fmt: str, v: dict,
+                          cfg: dict | None = None,
+                          desde: str | None = None) -> dict | None:
+    """«Esta carta tem outro deck muito mais jogado» — com os DOIS números.
+
+    *"CUIDADO COM A AMBIGUIDADE, e diz-lha no relatorio: ha 104 listas de Modern
+    com Cori-Steel Cutter desde 29/09, mas SO 4 com Mox Opal. As outras 100 sao
+    UR Prowess … Poe a alternativa a vista com os dois numeros (4 contra 100) e
+    deixa-o decidir -- NAO escolhas por ele."*
+
+    Os dois números saem da BASE e nunca do config — escritos à mão, ficavam
+    desactualizados no dia seguinte, que é precisamente o dia em que a decisão
+    dele dependeria deles. O config só diz QUAL é a carta ambígua e porquê.
+
+    `None` quando a versão não declara ambiguidade nenhuma.
+    """
+    cfg = sources.config() if cfg is None else cfg
+    m = v.get("meta") if isinstance(v.get("meta"), dict) else {}
+    amb = m.get("ambiguidade") if isinstance(m.get("ambiguidade"), dict) else None
+    carta = str((amb or {}).get("carta") or "").strip()
+    cartas = cartas_do_meta(v)
+    if not (carta and cartas):
+        return None
+    desde = desde or sources.consenso_desde()
+    minhas = {r["id"] for r in listas_do_meta(con, fmt, cartas, desde)}
+    todas = listas_do_meta(con, fmt, [carta], desde)
+    outras = [r for r in todas if r["id"] not in minhas]
+    # O OUTRO DECK sai do agrupamento das listas que ficam de fora, e o nome do
+    # `mtgvault.nomes` (a votação de 2026-10-02) com a etiqueta como recurso —
+    # nunca de um nome escrito à mão nesta ordem.
+    cont: dict = {}
+    for r in outras:
+        cont[r["archetype_id"]] = cont.get(r["archetype_id"], 0) + 1
+    maior = max(cont.items(), key=lambda kv: (kv[1], kv[0] or 0), default=None)
+    outro = None
+    if maior and maior[0] is not None:
+        aid = maior[0]
+        rot = _nomes.nome_do_cluster(con, aid, fmt) or {}
+        lab = con.execute("SELECT label FROM archetypes WHERE id=?",
+                          [aid]).fetchone()
+        outro = {"arquetipo_id": aid, "listas": maior[1],
+                 "nome": (rot.get("nome") or ""),
+                 "label": ((lab["label"] if lab else "") or "")}
+    return {
+        "carta": carta, "cartas": cartas,
+        "com": len(minhas), "so_a_carta": len(todas), "outras": len(outras),
+        "outro": outro, "porque": str((amb or {}).get("_porque") or ""),
+        "desde": desde,
+    }
+
+
+def alternativas_da_versao(con: sqlite3.Connection, fmt: str, v: dict,
+                           cfg: dict | None = None,
+                           desde: str | None = None) -> list[dict]:
+    """As listas que ele pode querer VER ao lado da desta versão.
+
+    Duas origens, e cada uma diz de onde vem:
+
+    * **`alternativas` do config** — um DECK do registo (a lista dele, p.ex.):
+      *"Mostra-as como alternativas ao lado da dele, nao em vez dela"*;
+    * **o META** — as listas da janela que jogam as `meta.cartas`, menos a que
+      esta versão já usa. Derivadas da base: uma lista nova aparece sozinha.
+
+    Cada alternativa do meta traz o que ela tem **a mais** do que a lista desta
+    versão — é a pergunta dele à letra (*"A do jinavie tem o combo Thopter
+    Foundry + Sword of the Meek + Urza Lord High Artificer, que a dele nao tem:
+    vale a pena ele ver"*). Sem isso, duas listas do mesmo arquétipo lêem-se
+    como a mesma coisa.
+    """
+    cfg = sources.config() if cfg is None else cfg
+    desde = desde or sources.consenso_desde()
+    out: list[dict] = []
+    for a in (v.get("alternativas") or []):
+        if not isinstance(a, dict) or not str(a.get("deck") or "").strip():
+            continue
+        out.append({"origem": "deck", "deck": str(a["deck"]),
+                    "rotulo": str(a.get("rotulo") or ""),
+                    "porque": str(a.get("_porque") or "")})
+    cartas = cartas_do_meta(v)
+    if not cartas:
+        return out
+    minha = cartas_fixadas(deck_da_versao(v), cfg)
+    tenho_nm = {scryfall.chave(n) for n in minha}
+    meu_dl = ((cfg.get("listas_escolhidas") or {})
+              .get(deck_da_versao(v)) or {}).get("fonte_decklist")
+    rs = [r for r in listas_do_meta(con, fmt, cartas, desde)
+          if not (meu_dl and int(r["id"]) == int(meu_dl))]
+    # AS MELHORES PRIMEIRO, E UM TECTO. A versão da Affinity tem **45** listas na
+    # janela: desenhá-las todas era uma parede de 45 linhas onde ele procura uma
+    # alternativa — o contrário de a mostrar. A ordem é a mesma régua do
+    # `mtgvault.eventos` (presencial antes de online, campo maior, melhor
+    # classificação, mais recente), por isso as que ficam à vista são as que
+    # valem; o TOTAL vai ao lado, para o tecto não esconder que há mais.
+    rs.sort(key=lambda r: (eventos.peso_tier(r["event_tier"]),
+                           -int(r["event_players"] or 0),
+                           eventos.valor_classificacao(r["placement"]),
+                           _data_inversa(r["event_date"]), r["id"]))
+    for r in rs[:ALT_MAX]:
+        nms = [x["card_name"] for x in con.execute(
+            "SELECT DISTINCT card_name FROM decklist_cards WHERE decklist_id=?",
+            [r["id"]])]
+        extra = sorted({n for n in nms if scryfall.chave(n) not in tenho_nm})
+        out.append({
+            "origem": "meta", "decklist_id": r["id"],
+            "jogador": r["player"] or "", "evento": r["event_name"] or "",
+            "data": r["event_date"] or "", "tier": r["event_tier"] or "",
+            "jogadores": r["event_players"], "classificacao": r["placement"] or "",
+            "fonte": r["source"] or "", "extra": extra,
+            "extra_n": len(extra),
+        })
+    if len(rs) > ALT_MAX:
+        out.append({"origem": "mais", "n": len(rs) - ALT_MAX, "total": len(rs)})
+    return out
 
 
 def versoes_derivadas(con: sqlite3.Connection, fmt: str,
@@ -886,8 +1155,22 @@ def outros_que_jogam(con: sqlite3.Connection, fmt: str,
     carta, exige, pct_min = _criterio(fmt, cfg)
     if not carta or versoes_todas(fmt, cfg):
         return []
-    ja = {v.get("arquetipo_id") for v in versoes(fmt, cfg)
+    # As SAÍDAS também não são «outros»: têm bloco próprio («meta, não
+    # escolhido»), e aparecer nos dois lugares dava o mesmo deck duas vezes no
+    # mesmo ecrã — foi o que a caixa dos «outros» fez ao Grinding Station a
+    # 05/10, e por isso ela desaparecia nos formatos derivados.
+    ja = {v.get("arquetipo_id")
+          for v in versoes(fmt, cfg) + versoes_saidas(fmt, cfg)
           if v.get("arquetipo_id") is not None}
+    # UM CLUSTER QUE JÁ É UMA VERSÃO NÃO É UM «OUTRO» (2026-10-06). Com as
+    # versões ancoradas em CARTAS e não em `archetype_id`, a Affinity dele —
+    # 53 listas — aparecia ao mesmo tempo como versão 1 e como «outro deck que
+    # joga Mox Opal», no mesmo ecrã. Quem decide é a MAIORIA das listas do
+    # cluster: um cluster cuja maior parte das listas cai no universo de uma
+    # versão É essa versão. A maioria e não «uma lista basta», senão um deck
+    # diferente que partilhasse uma lista desaparecia da caixa dos outros, que
+    # é precisamente a caixa onde ele decide incluí-lo.
+    das_versoes = _ids_das_versoes(con, fmt, cfg)
     sql, par = sources.counting_sql(fmt, "d", consenso=False)
     rows = con.execute(
         f"""SELECT d.archetype_id aid, COUNT(DISTINCT d.id) n
@@ -900,6 +1183,7 @@ def outros_que_jogam(con: sqlite3.Connection, fmt: str,
         [fmt] + list(par) + list(scryfall.params_nome(carta))).fetchall()
     out = []
     sem_cluster = 0
+    ja_versao = 0
     cache_nomes: dict = {}
     for r in rows:
         aid = r["aid"]
@@ -907,6 +1191,9 @@ def outros_que_jogam(con: sqlite3.Connection, fmt: str,
             sem_cluster += r["n"]
             continue
         if aid in ja or r["n"] < min_listas:
+            continue
+        if das_versoes and _e_de_uma_versao(con, fmt, aid, das_versoes):
+            ja_versao += 1
             continue
         pcts = {c: _pct_no_cluster(con, aid, c) for c in exige}
         passa = bool(exige) and all(p >= pct_min for p in pcts.values())
@@ -928,7 +1215,33 @@ def outros_que_jogam(con: sqlite3.Connection, fmt: str,
     if sem_cluster:
         out.append({"arquetipo_id": None, "listas": sem_cluster, "label": "",
                     "passa_criterio": False, "exige": [], "sem_cluster": True})
+    if ja_versao:
+        out.append({"arquetipo_id": None, "listas": 0, "label": "",
+                    "passa_criterio": False, "exige": [],
+                    "ja_e_versao": ja_versao})
     return out
+
+
+def _ids_das_versoes(con: sqlite3.Connection, fmt: str,
+                     cfg: dict | None = None) -> set[int]:
+    """Os ids de decklist que caem no universo (por CARTAS) de alguma versão."""
+    desde = sources.consenso_desde()
+    out: set[int] = set()
+    for v in versoes(fmt, cfg):
+        cs = cartas_do_meta(v)
+        if cs:
+            out |= {int(r["id"]) for r in listas_do_meta(con, fmt, cs, desde)}
+    return out
+
+
+def _e_de_uma_versao(con: sqlite3.Connection, fmt: str, aid: int,
+                     das_versoes: set[int]) -> bool:
+    ids = [r["id"] for r in con.execute(
+        "SELECT id FROM decklists WHERE format=? AND archetype_id=? "
+        "AND event_date >= ?", [fmt, int(aid), sources.consenso_desde()])]
+    if not ids:
+        return False
+    return sum(1 for i in ids if int(i) in das_versoes) * 2 >= len(ids)
 
 
 # ---------------------------------------------------------------------------

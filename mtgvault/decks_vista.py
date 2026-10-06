@@ -731,7 +731,14 @@ def decks_de_versoes(con: sqlite3.Connection,
     out = []
     for fmt in versoes.formatos(cfg):
         nome_fmt = (versoes.do_formato(fmt, cfg) or {}).get("nome") or fmt
-        for v in versoes.versoes(fmt, cfg):
+        # AS SAÍDAS CONTINUAM A SER DECKS DO REGISTO (2026-10-06): *"as versoes
+        # que saem da escolha … ficam consultaveis como «meta, nao escolhido»"*.
+        # Sem elas aqui, a página mostrava o nome no bloco das saídas e o «ver ▶»
+        # não levava a nada — é o defeito da `modern-affinity` de 04/10 pelo
+        # outro lado: ali um deck sem lista, aqui uma lista sem deck. Entram
+        # marcadas e NÃO entram na necessidade do formato (essa conta só os
+        # escolhidos).
+        for v in (versoes.versoes(fmt, cfg) + versoes.versoes_saidas(fmt, cfg)):
             chave = versoes.deck_da_versao(v)
             if chave != v.get("id"):
                 continue                      # a lista vive noutro deck
@@ -746,6 +753,7 @@ def decks_de_versoes(con: sqlite3.Connection,
             # Grinding Station, que não tem — e de propósito.
             if not cards:
                 continue
+            saiu = v.get("_saiu") if isinstance(v.get("_saiu"), dict) else None
             d = {
                 "id": chave, "slot": None,
                 "nome": f"{nome_fmt} · {v.get('nome') or chave}",
@@ -754,19 +762,29 @@ def decks_de_versoes(con: sqlite3.Connection,
                 "link": (rec.get("evento") or {}).get("url") or "",
                 "estado": None, "cards": cards, "listas": v.get("listas"),
                 "arquetipo_id": v.get("arquetipo_id"),
-                "desactivada": False, "rotulo_estado": "",
-                "versao_de": fmt,
+                "desactivada": False,
+                "rotulo_estado": versoes.TEXTO_SAIU if saiu else "",
+                "saiu": saiu, "versao_de": fmt,
             }
             out.append(_com_proveniencia(d, cfg, chave))
     return out
 
 
 def _nota_do_evento(rec: dict) -> str:
-    """A nota de um deck com lista de evento: quem a jogou e onde, numa linha."""
+    """A nota de um deck com lista de evento: quem a jogou e onde, numa linha.
+
+    **Uma lista que NÃO é de evento diz a origem dela e não «sem lista»**
+    (2026-10-06): a versão do Oswald é a lista DELE (o maindeck que ele deu por
+    foto mais o sideboard do consenso) e a página dizia *«sem lista de evento
+    fixada»* ao lado de 74 cartas. Era verdade à letra e falso ao que ele lê:
+    *«sem lista»*. Só quando não há cartas nenhumas é que não há lista.
+    """
     prov = rec.get("evento") or {}
-    if not prov:
-        return "sem lista de evento fixada"
-    return "lista de evento real · " + eventos.texto_prov(prov)
+    if prov:
+        return "lista de evento real · " + eventos.texto_prov(prov)
+    if rec.get("cards"):
+        return str(rec.get("origem") or "lista fixada, sem proveniência de evento")
+    return "sem lista de evento fixada"
 
 
 def _nome_do_consenso(d: dict) -> str:
@@ -1330,6 +1348,167 @@ def relatorio(con: sqlite3.Connection, cfg: dict | None = None) -> dict:
 # caixas** e nenhuma regra os obriga ao foil. Medido a 06/10 a diferença são
 # 58,59 € em 16 cópias — é uma decisão dele, não um detalhe, e esconder uma das
 # contas era decidir por ele.
+def _soma_faltas(ls: list[dict]) -> dict:
+    return {
+        "cartas": len(ls), "copias": sum(l["falta"] for l in ls),
+        "eur": round(sum((l["unit"] or 0) * l["falta"] for l in ls), 2),
+        "eur_nonfoil": round(
+            sum((l["unit_nonfoil"] or 0) * l["falta"] for l in ls), 2),
+        "sem_preco": sum(1 for l in ls if l["unit"] is None),
+    }
+
+
+def _pede_por_versao(alvos: list[tuple[dict, dict]]) -> dict[str, dict[str, int]]:
+    """`nome -> {id da versão: quantas pede}`, main e side somados.
+
+    Main + side vão juntos porque é a mesma ida à gaveta — é a mesma decisão do
+    bloco de básicas de 2026-09-08.
+    """
+    pede: dict[str, dict[str, int]] = {}
+    for v, d in alvos:
+        vid = str(v.get("id"))
+        for _board, nm, q in (d.get("cards") or []):
+            por_v = pede.setdefault(scryfall.chave(nm), {})
+            por_v[vid] = por_v.get(vid, 0) + int(q)
+    return pede
+
+
+def _linhas_de_falta(con: sqlite3.Connection, pede: dict[str, dict[str, int]],
+                     pos: dict[str, dict], cache: dict) -> list[dict]:
+    """As faltas de um conjunto de versões, uma linha por NOME.
+
+    A quantidade é o **MÁXIMO** entre as versões e nunca a soma: ele monta um
+    deck de cada vez e as cartas comuns servem os três. É isto que faz o total
+    *«não repetir o núcleo»* — a carta que está nas três conta UMA vez.
+    """
+    linhas: list[dict] = []
+    for nm, por_v in sorted(pede.items()):
+        maior = max(por_v.values())
+        tem = tenho_para(nm, maior, pos)
+        if tem >= maior:
+            continue
+        pf, fin = loadout.card_price(con, nm, "foil")
+        pn, _ = loadout.card_price(con, nm, "nonfoil")
+        # `fin` diz a que acabamento o preço corresponde: o `card_price`
+        # devolve o nonfoil quando não há foil **e di-lo** (regra de 19/09),
+        # e uma linha marcada como foil que é nonfoil é uma estimativa a
+        # passar por preço.
+        linhas.append({
+            "nm": nm, "pede": maior, "tem": tem, "falta": maior - tem,
+            "versoes": sorted(por_v),
+            "unit": pf, "unit_nonfoil": pn, "price_finish": fin,
+            "foil_existe": loadout.foil_info(con, nm, cache)["existe"],
+            "da_pilha": da_pilha(nm),
+        })
+    return linhas
+
+
+def _saco_por_versao(con: sqlite3.Connection, alvos: list[tuple[dict, dict]],
+                     pos: dict[str, dict], cache: dict) -> dict:
+    """Os TRÊS SACOS: o que é só de cada versão, o partilhado, e os totais.
+
+    *"as faltas por versao somam o total sem repetir o nucleo"*. `totais` é a
+    soma das linhas, e cada linha já é o máximo por nome — por isso a carta que
+    serve duas versões entra uma vez, e `só desta` + `partilhadas` fecham
+    sempre o total (a disciplina do `confirmado.metades`).
+    """
+    pede = _pede_por_versao(alvos)
+    linhas = _linhas_de_falta(con, pede, pos, cache)
+    part = [l for l in linhas if len(l["versoes"]) > 1]
+    vv = []
+    for v, d in alvos:
+        vid = str(v.get("id"))
+        so = [l for l in linhas if l["versoes"] == [vid]]
+        c = conta_do_deck(d, pos)
+        vv.append({
+            "id": vid, "deck": d["id"], "nome": str(v.get("nome") or vid),
+            "tem": c["tem"], "total": c["total"], "pct": c["pct"],
+            "nota": d.get("nota") or "",
+            "so": _soma_faltas(so), "linhas": so,
+            # O que custa se ele montar SÓ este: o que é só dele mais as
+            # partilhadas, que ele precisa de qualquer maneira.
+            "so_este": _soma_faltas(so + part),
+        })
+    return {"versoes": vv, "partilhadas": {**_soma_faltas(part), "linhas": part},
+            "totais": _soma_faltas(linhas)}
+
+
+def _alvos_das_versoes(fmt: str, decks: list[dict], cfg: dict,
+                       vers: list[dict] | None = None) -> list[tuple[dict, dict]]:
+    """Os pares (versão, deck do registo) das versões que TÊM lista."""
+    por_id = {d["id"]: d for d in decks}
+    out = []
+    for v in (versoes.versoes(fmt, cfg) if vers is None else vers):
+        d = por_id.get(versoes.deck_da_versao(v))
+        if d and d.get("cards"):
+            out.append((v, d))
+    return out
+
+
+def nucleo_das_versoes(alvos: list[tuple[dict, dict]],
+                       pos: dict[str, dict]) -> dict:
+    """O NÚCLEO COMUM: o que ele sleeva UMA vez e serve todas as versões.
+
+    *"Mostra o nucleo em separado na pagina: e o que ele sleeva uma vez e serve
+    as tres, e e o argumento inteiro da correspondencia"* (André, 2026-10-06).
+
+    `nucleo` são as cartas que estão em **todas** as versões e `em_duas` as que
+    estão em mais do que uma mas não em todas — as duas listas, porque uma carta
+    em dois dos três decks ainda se sleeva uma vez para dois. A quantidade é o
+    **MÁXIMO** entre as versões: é o que ele tem de ter para a carta servir
+    qualquer uma delas.
+
+    Uma básica fica na lista e vai **marcada** `da_pilha`: ela está mesmo nos
+    três decks, mas sai da pilha de Unhinged a granel e não é uma carta que ele
+    sleeve do binder. Tirá-la em silêncio era a conta a fechar por outro número;
+    deixá-la sem marca era mandá-lo procurar uma Island que está ali ao lado.
+    """
+    if len(alvos) < 2:
+        return {"versoes": len(alvos), "nucleo": [], "em_duas": [],
+                "cartas": 0, "copias": 0, "tem": 0, "falta": 0,
+                "basicas": 0, "em_duas_n": 0, "em_duas_copias": 0}
+    pede = _pede_por_versao(alvos)
+    n = len(alvos)
+
+    def _linha(nm, por_v):
+        q = max(por_v.values())
+        tem = tenho_para(nm, q, pos)
+        return {"nm": nm, "pede": q, "tem": tem, "falta": max(0, q - tem),
+                "em": len(por_v), "da_pilha": da_pilha(nm)}
+
+    nucleo = [_linha(nm, pv) for nm, pv in sorted(pede.items())
+              if len(pv) == n]
+    duas = [_linha(nm, pv) for nm, pv in sorted(pede.items())
+            if 1 < len(pv) < n]
+    return {
+        "versoes": n, "nucleo": nucleo, "em_duas": duas,
+        "cartas": len(nucleo), "copias": sum(l["pede"] for l in nucleo),
+        "tem": sum(l["tem"] for l in nucleo),
+        "falta": sum(l["falta"] for l in nucleo),
+        "basicas": sum(1 for l in nucleo if l["da_pilha"]),
+        "em_duas_n": len(duas),
+        "em_duas_copias": sum(l["pede"] for l in duas),
+        "em_duas_falta": sum(l["falta"] for l in duas),
+    }
+
+
+def faltas_das_versoes(con: sqlite3.Connection, fmt: str, decks: list[dict],
+                       pos: dict[str, dict], cfg: dict | None = None,
+                       cache: dict | None = None) -> dict | None:
+    """As faltas das versões ESCOLHIDAS deste formato, nos três sacos.
+
+    `None` com menos de duas versões com lista: com uma só, «o que é partilhado»
+    e «o que é só desta» são a mesma coisa, e dois números iguais lado a lado
+    lêem-se como um erro (a regra do `faltas_de_jogador`).
+    """
+    cfg = sources.config() if cfg is None else cfg
+    cache = {} if cache is None else cache
+    alvos = _alvos_das_versoes(fmt, decks, cfg)
+    if len(alvos) < 2:
+        return None
+    return {"formato": fmt, **_saco_por_versao(con, alvos, pos, cache)}
+
+
 def faltas_de_jogador(con: sqlite3.Connection, fmt: str, decks: list[dict],
                       pos: dict[str, dict], cfg: dict | None = None,
                       cache: dict | None = None) -> list[dict]:
@@ -1337,84 +1516,26 @@ def faltas_de_jogador(con: sqlite3.Connection, fmt: str, decks: list[dict],
 
     `[{jogador, versoes: [...], partilhadas: {...}, totais: {...}}]`, vazio
     quando nenhuma versão tem `jogador` — e é assim que isto se desliga.
+
+    **É o mesmo motor das faltas das versões** (`_saco_por_versao`) com outro
+    recorte: era a mesma conta escrita duas vezes, e a segunda discordava da
+    primeira no dia em que uma delas mudasse de regra.
     """
     cfg = sources.config() if cfg is None else cfg
     cache = {} if cache is None else cache
     jogs = versoes.jogadores(fmt, cfg)
     if not jogs:
         return []
-    por_id = {d["id"]: d for d in decks}
     out = []
     for jog in jogs:
         vers = [v for v in versoes.versoes(fmt, cfg)
                 if str(v.get("jogador") or "").strip() == jog]
-        alvos = []
-        for v in vers:
-            d = por_id.get(versoes.deck_da_versao(v))
-            if d and d.get("cards"):
-                alvos.append((v, d))
+        alvos = _alvos_das_versoes(fmt, decks, cfg, vers)
         if not alvos:
             continue
-        # O que cada deck PEDE de cada nome (main + side somados: é a mesma ida
-        # à gaveta) e o que falta, pela posse de sempre — o `tenho_para`, que
-        # sabe das básicas a granel (2026-10-05) e por isso não manda imprimir
-        # 2 Island que estão na pilha de Unhinged.
-        pede: dict[str, dict[str, int]] = {}
-        for v, d in alvos:
-            vid = str(v.get("id"))
-            for _board, nm, q in (d.get("cards") or []):
-                por_v = pede.setdefault(scryfall.chave(nm), {})
-                por_v[vid] = por_v.get(vid, 0) + int(q)
-        linhas: list[dict] = []
-        for nm, por_v in sorted(pede.items()):
-            maior = max(por_v.values())
-            tem = tenho_para(nm, maior, pos)
-            if tem >= maior:
-                continue
-            pf, fin = loadout.card_price(con, nm, "foil")
-            pn, _ = loadout.card_price(con, nm, "nonfoil")
-            # `fin` diz a que acabamento o preço corresponde: o `card_price`
-            # devolve o nonfoil quando não há foil **e di-lo** (regra de 19/09),
-            # e uma linha marcada como foil que é nonfoil é uma estimativa a
-            # passar por preço.
-            linhas.append({
-                "nm": nm, "pede": maior, "tem": tem, "falta": maior - tem,
-                "versoes": sorted(por_v),
-                "unit": pf, "unit_nonfoil": pn, "price_finish": fin,
-                "foil_existe": loadout.foil_info(con, nm, cache)["existe"],
-                "da_pilha": da_pilha(nm),
-            })
-
-        def _soma(ls):
-            return {
-                "cartas": len(ls), "copias": sum(l["falta"] for l in ls),
-                "eur": round(sum((l["unit"] or 0) * l["falta"] for l in ls), 2),
-                "eur_nonfoil": round(
-                    sum((l["unit_nonfoil"] or 0) * l["falta"] for l in ls), 2),
-                "sem_preco": sum(1 for l in ls if l["unit"] is None),
-            }
-
-        part = [l for l in linhas if len(l["versoes"]) > 1]
-        vv = []
-        for v, d in alvos:
-            vid = str(v.get("id"))
-            so = [l for l in linhas if l["versoes"] == [vid]]
-            c = conta_do_deck(d, pos)
-            vv.append({
-                "id": vid, "deck": d["id"], "nome": str(v.get("nome") or vid),
-                "tem": c["tem"], "total": c["total"], "pct": c["pct"],
-                "nota": d.get("nota") or "",
-                "so": _soma(so), "linhas": so,
-                # O que custa se ele montar SÓ este: o que é só dele mais as
-                # partilhadas, que ele precisa de qualquer maneira.
-                "so_este": _soma(so + part),
-            })
-        vv.sort(key=lambda x: -x["so_este"]["eur"])
-        out.append({
-            "jogador": jog, "formato": fmt, "versoes": vv,
-            "partilhadas": {**_soma(part), "linhas": part},
-            "totais": _soma(linhas),
-        })
+        saco = _saco_por_versao(con, alvos, pos, cache)
+        saco["versoes"].sort(key=lambda x: -x["so_este"]["eur"])
+        out.append({"jogador": jog, "formato": fmt, **saco})
     return out
 
 
@@ -1451,12 +1572,29 @@ def deck_unico(con: sqlite3.Connection, fmt: str, decks: list[dict],
          "familia": "", "fixa": v.get("arquetipo_id") is None,
          "jogador": str(v.get("jogador") or "")}
         for v in versoes.versoes(fmt, cfg)]
+    desde_j = sources.consenso_desde()
+    escritas = {str(x.get("id")): x for x in versoes.versoes(fmt, cfg)}
     vs = []
     for v in base:
         did = v.get("deck") or ""
         alvo = por_id.get(did) or {}
         c = conta_do_deck(alvo, pos) if alvo else {"tem": 0, "total": 0, "pct": 0}
+        # O UNIVERSO DE UMA VERSÃO SAI DAS CARTAS (2026-10-06): quantas listas do
+        # meta são DESTA versão, mais as alternativas e a ambiguidade. Derivado
+        # da base e nunca do `archetype_id`, que muda todas as noites — ver
+        # `versoes.cartas_do_meta`.
+        esc_v = escritas.get(str(v["id"])) or {}
+        meta_c = versoes.cartas_do_meta(esc_v)
+        n_meta = alt = amb = None
+        if meta_c:
+            n_meta = len(versoes.listas_do_meta(con, fmt, meta_c, desde_j))
+            alt = versoes.alternativas_da_versao(con, fmt, esc_v, cfg, desde_j)
+            amb = versoes.ambiguidade_da_versao(con, fmt, esc_v, cfg, desde_j)
+        elif esc_v.get("alternativas"):
+            alt = versoes.alternativas_da_versao(con, fmt, esc_v, cfg, desde_j)
         vs.append({
+            "meta_cartas": meta_c, "listas_meta": n_meta,
+            "alternativas": alt or [], "ambiguidade": amb,
             "id": v["id"], "nome": v["nome"],
             "arquetipo_id": v.get("arquetipo_id"), "listas": v.get("listas"),
             "listas_total": v.get("listas_total"),
@@ -1488,8 +1626,38 @@ def deck_unico(con: sqlite3.Connection, fmt: str, decks: list[dict],
     # separar: se as juntar, ou ele monta decks que não quer, ou vende cartas
     # que quer. `versoes` é o que ele MONTA; `protege` é o critério inclusivo.
     prot = None
+    fams_prot = []
     if versoes.protege_todas(fmt, cfg):
         prot = (versoes.listas_do_formato(con, cfg) or {}).get(fmt)
+        # AS FAMÍLIAS MUDARAM DE SÍTIO (2026-10-06, ao fim do dia): descrevem
+        # agora o universo da PROTECÇÃO e não a lista de versões, que passou a
+        # ser três nomeadas. Ver `versoes.familias_que_protegem`.
+        fams_prot = versoes.familias_que_protegem(con, fmt, cfg, desde_j)
+    # AS SAÍDAS e as alternativas em DECK precisam do nome e da conta do registo:
+    # um bloco «meta, não escolhido» com um id e mais nada não se consulta.
+    def _ficha(did: str) -> dict:
+        a = por_id.get(did) or {}
+        if not a:
+            return {}
+        cc = conta_do_deck(a, pos)
+        return {"deck": did, "nome": a.get("nome") or did,
+                "nota": a.get("nota") or "", "link": a.get("link") or "",
+                "tem": cc["tem"], "total": cc["total"], "pct": cc["pct"],
+                "evento": a.get("evento")}
+
+    for x in vs:
+        for a in x["alternativas"]:
+            if a.get("origem") == "deck":
+                a.update(_ficha(str(a.get("deck") or "")))
+    saidas = []
+    for v in versoes.versoes_saidas(fmt, cfg):
+        s = v.get("_saiu") if isinstance(v.get("_saiu"), dict) else {}
+        saidas.append({
+            "id": str(v.get("id") or ""), "nome": str(v.get("nome") or ""),
+            "jogador": str(v.get("jogador") or ""),
+            "em": str(s.get("em") or ""), "porque": str(s.get("porque") or ""),
+            **_ficha(versoes.deck_da_versao(v)),
+        })
     return {
         "formato": fmt, "nome": d.get("nome") or fmt,
         "porque": d.get("porque") or "", "em": d.get("em") or "",
@@ -1501,8 +1669,16 @@ def deck_unico(con: sqlite3.Connection, fmt: str, decks: list[dict],
         # seguido (2026-10-06). As duas listas vazias quando o config não as
         # pede — é o interruptor.
         "familias": der.get("familias") or [],
+        "familias_protege": fams_prot,
         "jogadores": der.get("jogadores") or [],
         "faltas_jogador": faltas_de_jogador(con, fmt, decks, pos, cfg),
+        # O NÚCLEO COMUM e as FALTAS POR VERSÃO (2026-10-06, ao fim do dia): o
+        # que ele sleeva uma vez e serve as três, e o que falta a cada uma sem
+        # repetir o que é comum. As duas `None`/vazias com menos de duas versões
+        # com lista — é o interruptor.
+        "nucleo": nucleo_das_versoes(_alvos_das_versoes(fmt, decks, cfg), pos),
+        "faltas_versoes": faltas_das_versoes(con, fmt, decks, pos, cfg),
+        "saidas": saidas,
         "derivado": der["derivado"], "sem_cluster": der["sem_cluster"],
         "sem_cluster_nomes": der.get("sem_cluster_nomes") or [],
         # A anotação que perdeu o cluster (2026-10-05). Vai no payload e não só

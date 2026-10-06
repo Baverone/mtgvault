@@ -203,6 +203,18 @@ _CSS = """
  .flr .flnm{flex:1;min-width:150px;overflow-wrap:anywhere}
  .flr .flp{white-space:nowrap}
  .flr .flt{font-size:11px;color:var(--muted);white-space:nowrap}
+ .flr .flnm .dsub{display:block;font-size:11px;color:var(--muted)}
+ .flr b.ok{color:var(--add)}
+ /* O NUCLEO COMUM as versoes (2026-10-06, ao fim do dia): o bloco que diz o que
+    ele sleeva UMA vez e serve as tres. Dourado por cima, porque e o argumento
+    da correspondencia papel/MTGO e nao um pormenor. */
+ .fjg.nuc{border-left:3px solid var(--accent)}
+ /* AS ALTERNATIVAS de uma versao: recolhidas, debaixo da linha dela. */
+ .valt{margin:-4px 0 10px 34px;padding:0 11px;background:var(--card);
+   border:1px solid var(--line);border-radius:var(--r)}
+ .valt summary{cursor:pointer;font-size:11.5px;color:var(--muted);padding:6px 0}
+ .valt[open] summary{color:var(--dim)}
+ @media(max-width:640px){ .valt{margin-left:0} }
  /* A SEQUÊNCIA e as STAPLES (2026-10-04 ao fim do dia). */
  .passos{background:var(--card);border:1px solid var(--accent-line);border-radius:var(--r);
    padding:11px 15px;margin:0 0 12px;font-size:12.5px;color:var(--dim)}
@@ -501,6 +513,237 @@ function faltasJogadorHTML(u) {
   return out;
 }
 
+/* AS FAMÍLIAS MUDARAM DE SÍTIO E NÃO SE PERDERAM (2026-10-06, ao fim do dia).
+   Nasceram de manhã para tornar legível a lista de VERSÕES derivadas (oito
+   clusters de Mox Opal numa lista plana não se lê). Com o formato fechado em
+   três versões nomeadas, as versões deixaram de precisar de agrupamento — mas o
+   universo da PROTECÇÃO continua a ter as mesmas famílias, e é aqui que a
+   informação vale agora: é a resposta a *«o que é que o critério do Mox Opal me
+   está a guardar»*. Deixá-las cair com o `versoes_todas` era apagar em silêncio
+   um bloco que ele viu de manhã. */
+function familiasProtegeHTML(u) {
+  const fs = u.familias_protege || [];
+  if (!fs.length) return '';
+  return `<p class="pq"><b>E guarda seis famílias de deck, não uma:</b> `
+    + fs.map(f => `<span class="n2">${esc(f.nome)} <b>${f.listas}</b></span>`)
+        .join(' ')
+    + ` — a família sai das <b>cartas</b> de cada lista e não do agrupamento,`
+    + ` que é refeito todas as noites. Montar é só uma destas; guardar é todas.`
+    + `</p>`;
+}
+
+/* O NÚCLEO COMUM ÀS VERSÕES (2026-10-06, ao fim do dia, à letra: *"Mostra o
+   nucleo em separado na pagina: e o que ele sleeva uma vez e serve as tres, e e
+   o argumento inteiro da correspondencia"*).
+
+   Vai EM SEPARADO e em destaque, antes das versões: é a resposta a *«quanto é
+   que a correspondência papel/MTGO me custa»* — e a resposta é «quase nada»,
+   porque ele tem as 11 cartas todas. Um núcleo diluído no meio das listas de
+   cada versão não respondia a nada.
+
+   A básica fica na lista e vai MARCADA: ela está mesmo nos três decks, mas sai
+   da pilha de Unhinged a granel. Tirá-la era a conta a fechar por outro número;
+   deixá-la sem marca era mandá-lo procurar uma Island que está ali ao lado. */
+function nucleoHTML(u) {
+  const n = u.nucleo;
+  if (!n || n.versoes < 2 || !n.cartas) return '';
+  const linha = l => `<div class="flr">
+      <span class="flq">${l.pede}×</span>
+      <span class="flnm">${esc(l.nm)}${l.da_pilha
+        ? ' <span class="tag q" title="vem da pilha de básicas de Unhinged, a'
+          + ' granel — não é uma carta que sleeves do binder">da pilha de'
+          + ' básicas</span>' : ''}</span>
+      <span class="flp">${l.falta
+        ? `<b class="zero">faltam ${l.falta}</b>`
+        : `<b class="ok">tens</b>`}</span>
+    </div>`;
+  return `<div class="fjg nuc"><div class="fjh"><b>O núcleo comum às `
+    + `${n.versoes} versões</b><span class="fq">${n.cartas} cartas · `
+    + `${n.copias} cópias · ${n.falta ? `faltam ${n.falta}` : 'tens todas'}`
+    + `</span></div>`
+    + `<p class="stpn">Estas cartas entram <b>nas ${n.versoes} versões</b>: `
+    + `sleevas-as <b>uma vez</b> e servem todas. É este o argumento de ter os `
+    + `decks de papel a corresponder aos do MTGO — e `
+    + (n.falta ? `faltam-te <b>${n.falta}</b> cópias delas.`
+       : `<b>tens as ${n.copias} cópias todas</b>.`)
+    + (n.basicas ? ` ${n.basicas === 1 ? 'Uma delas é uma básica' :
+        n.basicas + ' delas são básicas'} e vem da pilha, marcada como tal.` : '')
+    + `</p>` + n.nucleo.map(linha).join('')
+    + (n.em_duas_n
+       ? `<div class="fjd"><div class="fjh"><b>Em ${n.versoes - 1} das `
+         + `${n.versoes}</b><span class="fq">${n.em_duas_n} cartas · `
+         + `${n.em_duas_copias} cópias · ${n.em_duas_falta
+             ? `faltam ${n.em_duas_falta}` : 'tens todas'}</span></div>`
+         + `<p class="stpn">Não entram em todas, mas uma cópia ainda serve mais`
+         + ` do que um deck.</p>`
+         + n.em_duas.map(linha).join('') + `</div>`
+       : '')
+    + `</div>`;
+}
+
+/* AS ALTERNATIVAS DE UMA VERSÃO (2026-10-06, à letra, sobre o Oswald:
+   *"Mostra-as como alternativas ao lado da dele, nao em vez dela"*).
+
+   Duas origens e as duas dizem de onde vêm: um DECK dele (a lista de
+   qualificação do RC de Ghent, ao lado da do Qualifier) e as listas do META que
+   jogam as mesmas cartas. Cada uma do meta diz o que tem **a mais** do que a
+   lista desta versão — sem isso, duas listas do mesmo arquétipo lêem-se como a
+   mesma coisa, e era precisamente o combo que a do jinavie tem a mais (Thopter
+   Foundry + Sword of the Meek + Urza) que ele tinha de poder ver. */
+function altsHTML(u, v) {
+  const as = v.alternativas || [];
+  if (!as.length) return '';
+  const decks = as.filter(a => a.origem === 'deck');
+  const meta = as.filter(a => a.origem === 'meta');
+  const mais = as.find(a => a.origem === 'mais');
+  let out = `<details class="valt"><summary>Alternativas a esta versão — `
+    + `${decks.length ? `${decks.length} tua${decks.length === 1 ? '' : 's'}` : ''}`
+    + `${decks.length && meta.length ? ' · ' : ''}`
+    + `${meta.length ? `${mais ? mais.total : meta.length} do meta` : ''}`
+    + `</summary>`;
+  decks.forEach(a => {
+    out += `<div class="fjd"><div class="fjh"><b>${esc(a.rotulo || a.nome || a.deck)}</b>`
+      + `<span class="fq">${a.total ? `tens ${a.tem} de ${a.total} · ${a.pct} %`
+          : 'sem lista'}</span></div>`
+      + `<p class="stpn">${esc(a.nome || '')}${a.nota ? ' — ' + esc(a.nota) : ''}`
+      + ` <b>Fica ao lado e não em vez da desta versão</b>: é uma lista para a`
+      + ` qual podes trocar, e por isso as cartas dela continuam protegidas da`
+      + ` venda.</p>`
+      + (a.deck ? `<button class="btn sm" data-d="${esc(a.deck)}">ver a lista ▶`
+                  + `</button>` : '')
+      + `</div>`;
+  });
+  if (meta.length) {
+    out += `<div class="fjd"><div class="fjh"><b>Do meta</b><span class="fq">`
+      + `${mais ? mais.total : meta.length} lista`
+      + `${(mais ? mais.total : meta.length) === 1 ? '' : 's'} na janela`
+      + `${mais ? ` · as ${meta.length} melhores` : ''}</span></div>`
+      + `<p class="stpn">Listas que outras pessoas jogaram e que jogam as mesmas`
+      + ` cartas que esta versão. A coluna da direita é o que cada uma tem`
+      + ` <b>a mais</b> do que a tua — é por aí que se vê se vale a pena`
+      + ` olhar.</p>`;
+    meta.forEach(a => {
+      out += `<div class="flr">
+        <span class="flnm"><b>${esc(a.jogador || '?')}</b>
+          <span class="dsub">${esc(a.data)}${a.tier ? ' · ' + esc(a.tier) : ''}${
+            a.jogadores ? ` · ${a.jogadores} jogadores` : ''}${
+            a.classificacao ? ' · ' + esc(a.classificacao) : ''}</span></span>
+        <span class="flt">${a.extra_n
+          /* AS CARTAS A MAIS VÃO TODAS, e isto foi apanhado a ler o HTML
+             desenhado: cortadas nas 4 primeiras (por ordem alfabética), a do
+             jinavie mostrava «Aang, Crystal Barricade, Grafdigger's Cage,
+             March of Otherworldly Light…» e escondia exactamente o que ele
+             tinha de ver — o combo Thopter Foundry + Sword of the Meek + Urza.
+             Treze nomes são uma linha de texto; esconder o que importa para
+             poupar meia linha é o contrário de mostrar. */
+          ? `${a.extra_n} a mais: ${a.extra.map(esc).join(', ')}`
+          : 'nada a mais'}</span>
+      </div>`;
+    });
+    if (mais) {
+      out += `<p class="stpn">… e mais <b>${mais.n}</b> lista`
+        + `${mais.n === 1 ? '' : 's'} na janela, de <b>${mais.total}</b> no`
+        + ` total. Ficam de fora desta caixa por serem as menos informativas`
+        + ` (sem classificação, campo menor): as que estão à vista são as`
+        + ` melhores pela régua de sempre — presencial antes de online, campo`
+        + ` maior, melhor classificação.</p>`;
+    }
+    out += `</div>`;
+  }
+  return out + `</details>`;
+}
+
+/* A CARTA QUE TEM DOIS DECKS (2026-10-06, à letra: *"CUIDADO COM A AMBIGUIDADE …
+   Poe a alternativa a vista com os dois numeros (4 contra 100) e deixa-o decidir
+   -- NAO escolhas por ele"*).
+
+   OS DOIS NÚMEROS, e os dois saem da base. Escrever «4» sem o «104» ao lado era
+   esconder que a carta tem um segundo deck **vinte e cinco vezes** mais jogado —
+   e a escolha entre os dois é dele, não minha. */
+function ambiguidadeHTML(v) {
+  const a = v.ambiguidade;
+  if (!a || !a.outras) return '';
+  const o = a.outro;
+  return `<div class="ficha aviso"><h4>⚠ ${esc(a.carta)} tem dois decks</h4>`
+    + `<p class="pq">Na janela há <b>${a.so_a_carta}</b> listas de Modern que`
+    + ` jogam <b>${esc(a.carta)}</b> e só <b>${a.com}</b> jogam também`
+    + ` <b>${esc((a.cartas || []).filter(c => c !== a.carta).join(' + ')) ||
+        'a carta-chave deste deck'}</b> — que são estas, as desta versão.`
+    + ` As outras <b>${a.outras}</b>`
+    + (o ? ` são sobretudo <b>${esc(o.nome || o.label)}</b> (${o.listas} listas)`
+         : ` são de outros arquétipos`)
+    + `, que <b>não</b> joga ${esc((a.cartas || []).filter(
+        c => c !== a.carta).join(' / ')) || 'a carta-chave'}.</p>`
+    + `<p class="pq">Escolheu-se a versão <b>com ${esc((a.cartas || []).filter(
+        c => c !== a.carta).join(' + ')) || 'a carta-chave'}</b> porque é a que`
+    + ` encaixa no que pediste. <b>Se o deck que querias era o outro, é outro`
+    + ` deck</b> — e muito mais jogado: ${a.outras} listas contra ${a.com}.`
+    + ` A decisão fica contigo; nada se escolheu por ti.</p></div>`;
+}
+
+/* AS FALTAS POR VERSÃO, E O TOTAL SEM REPETIR O NÚCLEO (2026-10-06).
+   Cada linha é o MÁXIMO que as versões pedem daquela carta, por isso a carta
+   comum conta UMA vez e `só desta` + `partilhadas` fecham sempre o total — a
+   disciplina do `confirmado.metades`. Quando nada partilhado falta, diz-se:
+   um bloco «falta aos dois» vazio parece uma avaria. */
+function faltasVersoesHTML(u) {
+  const f = u.faltas_versoes;
+  if (!f) return '';
+  const t = f.totais, p = f.partilhadas;
+  const linha = l => `<div class="flr">
+      <span class="flq">${l.falta}×</span>
+      <span class="flnm">${esc(l.nm)}</span>
+      <span class="flp">${l.unit == null
+        ? '<b class="zero">sem preço</b>'
+        : `<b>${eur(l.unit * l.falta)}</b>`}${
+        l.unit != null && l.price_finish !== 'foil'
+          ? ` <span class="tag q" title="o CardTrader não cota esta carta em foil`
+            + ` — este preço é do nonfoil">nonfoil</span>` : ''}</span>
+      <span class="flt">${l.tem ? `tens ${l.tem} de ${l.pede}` : ''}</span>
+    </div>`;
+  let out = `<details class="fjg" open><summary><b>O que falta às `
+    + `${f.versoes.length} versões</b> — ${t.cartas} cartas, ${t.copias} cópias, `
+    + `${eur(t.eur)}${t.sem_preco ? ` (${t.sem_preco} sem preço)` : ''}`
+    + `</summary>`
+    + `<p class="stpn">O total <b>não repete o núcleo</b>: cada carta conta`
+    + ` pelo <b>máximo</b> que as versões pedem, por isso uma carta que sirva`
+    + ` duas delas entra uma vez. É <b>${t.copias}</b> cópias para as`
+    + ` ${f.versoes.length} e não a soma dos três sacos.`
+    + ` A falta é <b>o que a lista pede menos o que tens</b> — não é o`
+    + ` «a comprar» da alocação da <a href="faltas.html">lista para Ghent</a>,`
+    + ` que desconta o que está noutra caixa e o que já encomendaste: estas`
+    + ` versões não são caixas e não passam pela alocação. O preço é`
+    + ` <b>foil</b>, que é o que o grupo desta caixa pede, e o <b>nonfoil ao`
+    + ` lado</b> porque estas versões não são caixas e nada as obriga ao foil:`
+    + ` <b>${eur(t.eur)}</b> em foil contra <b>${eur(t.eur_nonfoil)}</b> em`
+    + ` nonfoil.</p>`;
+  f.versoes.forEach(v => {
+    out += `<div class="fjd"><div class="fjh"><b>${esc(v.nome)}</b>`
+      + `<span class="fq">tens ${v.tem} de ${v.total} · ${v.pct} %</span></div>`
+      + `<p class="pq dois"><span class="n2">só desta versão: `
+      + `<b>${v.so.cartas}</b> cartas · <b>${v.so.copias}</b> cópias · `
+      + `<b>${eur(v.so.eur)}</b>${v.so.sem_preco
+          ? ` <span class="tag q">${v.so.sem_preco} sem preço</span>` : ''}`
+      + `</span>${p.cartas ? `<span class="n2">se montares só esta: `
+      + `<b>${v.so_este.copias}</b> cópias · <b>${eur(v.so_este.eur)}</b>`
+      + `</span>` : ''}</p>`
+      + (v.linhas.length ? v.linhas.map(linha).join('')
+         : `<p class="stpn">Não falta nada que seja só desta versão.</p>`)
+      + `</div>`;
+  });
+  out += p.cartas
+    ? `<div class="fjd part"><div class="fjh"><b>Falta a mais do que uma</b>`
+      + `<span class="fq">${p.cartas} cartas · ${p.copias} cópias · `
+      + `${eur(p.eur)}</span></div>`
+      + `<p class="stpn">Precisas destas <b>seja qual for a versão que`
+      + ` escolheres</b> — é por isso que não estão somadas a nenhuma.</p>`
+      + p.linhas.map(linha).join('')
+    : `<p class="stpn"><b>Não falta uma única carta do que é comum às`
+      + ` versões.</b> Tudo o que falta é só de uma delas — e é isso que faz a`
+      + ` correspondência sair barata.</p>`;
+  return out + `</details>`;
+}
+
 /* --------------------------------------------------------------- nível 2 */
 /* UM DECK POR FORMATO, COM VERSÕES POR DENTRO (2026-10-04, à noite).
    *"quero ficar com 1 deck e versoes do deck (como opcoes)"*. O selector é de
@@ -543,7 +786,7 @@ function deckUnicoHTML(u) {
           + `arquétipo. Uma carta que apareça em ${u.limiar} ou mais dessas listas `
           + `<b>não vai à venda</b> (regra RP). Os «outros decks» aqui em baixo `
           + `<b>também protegem</b>, mesmo não sendo versões.`)
-      + `</p>${ligasHTML(u.protege)}</div>`;
+      + `</p>${ligasHTML(u.protege)}${familiasProtegeHTML(u)}</div>`;
   }
   /* A ANOTAÇÃO QUE PERDEU O CLUSTER (2026-10-05). Vai em DESTAQUE e não num
      rodapé: o que isto apanha é o deck PRINCIPAL a aparecer morto, e foi o que
@@ -567,6 +810,7 @@ function deckUnicoHTML(u) {
       + ` Enquanto isto estiver aqui, o nome e a marca desta versão podem estar`
       + ` a descrever um deck que já não se joga.</p></div>`;
   });
+  out += nucleoHTML(u);
   if (u.versoes && u.versoes.length) {
     /* O CONJUNTO DAS VERSÕES VEM DA BASE (2026-10-05, à letra: *"no Modern, a
        unica coisa e que quero os decks que joguem Mox Opal, seja affinity, seja
@@ -593,24 +837,33 @@ function deckUnicoHTML(u) {
               + ' — isto é a etiqueta das cartas distintivas">etiqueta</span>' : ''}</div>
           <div class="dsub">${v.sem_lista ? 'sem lista'
             : `tens <b>${v.tem}</b> de <b>${v.total}</b>`}${
+            /* O UNIVERSO DE UMA VERSÃO SAI DAS CARTAS (2026-10-06): «N listas na
+               janela» é agora a contagem das listas que jogam as `meta.cartas`
+               desta versão — estável, porque uma carta não muda de noite para
+               noite como o `archetype_id`. É o número que diz quais destas três
+               têm dados e quais são uma aposta. */
+            v.listas_meta != null
+              ? ` · <b>${v.listas_meta}</b> lista${v.listas_meta === 1 ? '' : 's'}`
+                + ` no meta${v.meta_cartas && v.meta_cartas.length
+                    ? ` com ${v.meta_cartas.map(esc).join(' + ')}` : ''}`
             /* UMA VERSÃO FIXA NÃO TEM «N listas na janela», e dizer-lhe «zero»
                era mentir por vocabulário: ela É uma lista, jogada num dia. O
                que se diz é a data — e, estando antes da janela, que está. */
-            v.fixa
-              ? (v.data
-                  ? ` · lista de <b>${esc(v.data)}</b>${v.na_janela ? ''
-                      : ' <b class="zero">(antes da janela)</b>'}`
-                  : '')
-              : v.na_janela
-                ? ` · <b>${v.listas}</b> lista${v.listas === 1 ? '' : 's'} na janela`
-                : ` · <b class="zero">zero listas na janela</b>${
-                    v.listas_total ? ` · ${v.listas_total} antes dela` : ''}`}${
+              : v.fixa
+                ? (v.data
+                    ? ` · lista de <b>${esc(v.data)}</b>${v.na_janela ? ''
+                        : ' <b class="zero">(antes da janela)</b>'}`
+                    : '')
+                : v.na_janela
+                  ? ` · <b>${v.listas}</b> lista${v.listas === 1 ? '' : 's'} na janela`
+                  : ` · <b class="zero">zero listas na janela</b>${
+                      v.listas_total ? ` · ${v.listas_total} antes dela` : ''}`}${
             v.nota ? ' · ' + esc(v.nota) : ''}</div>
           <div class="bar"><i class="${cl === 'ok' ? 'ok' : ''}" style="width:${v.pct}%"></i></div>
         </div>
         <div class="dpct ${cl}">${v.sem_lista ? '—' : v.pct + '%'}</div>
         ${v.deck ? `<button class="verd" data-d="${esc(v.deck)}">ver ▶</button>` : ''}
-      </div>`;
+      </div>` + ambiguidadeHTML(v) + altsHTML(u, v);
     };
     const agora = u.versoes.filter(v => v.na_janela);
     const fora = u.versoes.filter(v => !v.na_janela);
@@ -681,13 +934,19 @@ function deckUnicoHTML(u) {
       if (p.length) out += `<p class="pq">Mais: ${p.join('; ')}.</p>`;
     }
   }
+  out += faltasVersoesHTML(u);
   out += faltasJogadorHTML(u);
   if (u.nota) out += `<p class="pq">${esc(u.nota)}</p>`;
   /* OS OUTROS QUE JOGAM A CARTA-CHAVE — derivados da base a cada corrida, nunca
      escritos à mão. *"NAO decidas por ele incluir nem excluir definitivamente"*:
      ficam à vista, com o teste do critério ao lado, para ele poder incluir um. */
-  const o = (u.outros || []).filter(z => !z.sem_cluster);
+  const o = (u.outros || []).filter(z => !z.sem_cluster && !z.ja_e_versao);
   const sc = (u.outros || []).find(z => z.sem_cluster);
+  /* UM ARQUÉTIPO QUE JÁ É UMA VERSÃO NÃO É UM «OUTRO» (2026-10-06): com as
+     versões ancoradas em cartas, a Affinity dele — 53 listas — aparecia ao
+     mesmo tempo como versão 1 e como «outro deck que joga Mox Opal». Conta-se
+     e diz-se, em vez de desaparecer sem explicação. */
+  const jv = (u.outros || []).find(z => z.ja_e_versao);
   if (o.length || sc) {
     const passam = o.filter(z => z.passa_criterio).length;
     out += `<details class="stp"><summary><b>Outros decks que jogam ${
@@ -696,7 +955,12 @@ function deckUnicoHTML(u) {
       + ` outros decks. Ficam aqui para decidires — nenhum entrou nem saiu`
       + ` definitivamente.${u.protege ? ' <b>As cartas deles estão protegidas da'
         + ' venda na mesma</b>: proteger é todas as listas que jogam a carta,'
-        + ' montar é só a versão que escolheres.' : ''}</p><div class="stpl">`
+        + ' montar é só a versão que escolheres.' : ''}${jv
+        ? ` Mais <b>${jv.ja_e_versao}</b> arquétipo${
+            jv.ja_e_versao === 1 ? '' : 's'} não está${
+            jv.ja_e_versao === 1 ? '' : 'ão'} nesta lista porque a maior parte`
+          + ` das listas dele${jv.ja_e_versao === 1 ? '' : 's'} <b>já é uma das`
+          + ` versões</b> aqui em cima.` : ''}</p><div class="stpl">`
       + o.map(z => `<div class="stpr">
           <span class="sq">${z.listas}</span>
           <span class="snm">${esc(z.nome || z.label || ('arquétipo ' + z.arquetipo_id))}</span>
@@ -712,11 +976,35 @@ function deckUnicoHTML(u) {
           <span class="st falta">não é versão</span></div>` : '')
       + '</div></details>';
   }
-  if (u.saidos && u.saidos.length) {
-    out += `<details class="stp"><summary><b>Decks que saíram da escolha</b> — ${
-      u.saidos.length}</summary><p class="stpn">Não se apagaram: continuam com a`
-      + ` lista e a proveniência, aqui em baixo, marcados «${esc('meta, não escolhido')}».`
-      + `</p></details>`;
+  /* AS VERSÕES E OS DECKS QUE SAÍRAM DA ESCOLHA (2026-10-06, à letra: *"Nada se
+     apaga -- as versoes que saem da escolha … ficam consultaveis como «meta, nao
+     escolhido»"*). CONSULTÁVEIS quer dizer com a ficha E com o caminho para a
+     lista: até aqui este bloco tinha um resumo e uma nota e **corpo nenhum** —
+     prometia «aqui em baixo» e não havia baixo nenhum. */
+  const sai = (u.saidas || []).concat(
+    (u.saidos || []).map(s => ({id: s.id, nome: s.nome || s.id, em: s.em,
+                                porque: s.porque})));
+  if (sai.length) {
+    out += `<details class="stp"><summary><b>Saíram da escolha</b> — ${
+      sai.length}, marcad${sai.length === 1 ? 'a' : 'as'} «${
+      esc('meta, não escolhido')}»</summary>`
+      + `<p class="stpn">Não se apagaram: continuam com a lista, a proveniência`
+      + ` e as cartas, e as cartas delas <b>continuam protegidas da venda</b>`
+      + ` pelo critério${u.carta_chave ? ' do ' + esc(u.carta_chave) : ''} — sair`
+      + ` da escolha é sair do que se <b>monta</b>, não do que se guarda. Repor`
+      + ` uma é tirar-lhe a marca no config.</p><div class="stpl">`
+      + sai.map(s => `<div class="stpr">
+          <span class="snm"><b>${esc(s.nome)}</b>${s.jogador
+            ? ` <span class="chip jog">do ${esc(s.jogador)}</span>` : ''}
+            <span class="dsub">${s.total
+              ? `tens ${s.tem} de ${s.total} · ${s.pct} %`
+              : 'sem lista fixada'}${s.em ? ` · saiu em ${esc(s.em)}` : ''}</span>
+          </span>
+          <span class="sd">${esc(s.porque || '')}</span>
+          ${s.deck && s.total ? `<button class="btn sm" data-d="${
+            esc(s.deck)}">ver ▶</button>` : ''}
+        </div>`).join('')
+      + `</div></details>`;
   }
   return out + '</div>';
 }

@@ -2505,6 +2505,111 @@
       },
       "fonte_decklist": 24603,
       "nota": "versao do deck de Modern, da lista de um jogador que ele segue (CesarMerjan). As cartas e a proveniencia ficam gravadas porque o prune_decklists(30) apaga a decklist ao fim de um mes."
+    },
+    "versao:modern:oswald": {
+      "nome": "Oswald",
+      "padrao": true,
+      "origem": "a lista DELE: o deck 12 da tabela `decks`, \"UW Oswald\" -- manual: maindeck do André (foto) + sideboard das 28 listas MTGO. NAO e uma lista do meta.",
+      "formato": "modern",
+      "escolhido_em": "2026-10-06",
+      "cards": [
+        ["side", "Consign to Memory", 3],
+        ["side", "Damping Sphere", 1],
+        ["side", "Disruptor Flute", 1],
+        ["side", "Force of Negation", 3],
+        ["side", "Mystical Dispute", 1],
+        ["side", "Shadowspear", 1],
+        ["side", "Teferi, Time Raveler", 2],
+        ["side", "Tormod's Crypt", 1],
+        ["side", "Vexing Bauble", 1],
+        ["main", "Aether Spellbomb", 1],
+        ["main", "Agatha's Soul Cauldron", 2],
+        ["main", "Dusk Rose Reliquary", 1],
+        ["main", "Emry, Lurker of the Loch", 4],
+        ["main", "Flooded Strand", 1],
+        ["main", "Grinding Station", 1],
+        ["main", "Hallowed Fountain", 4],
+        ["main", "Island", 2],
+        ["main", "Loki, God of Mischief", 3],
+        ["main", "Metallic Rebuke", 1],
+        ["main", "Minamo, School at Water's Edge", 1],
+        ["main", "Mishra's Bauble", 4],
+        ["main", "Mox Amber", 3],
+        ["main", "Mox Opal", 4],
+        ["main", "Oswald Fiddlebender", 4],
+        ["main", "Otawara, Soaring City", 1],
+        ["main", "Pithing Needle", 1],
+        ["main", "Portable Hole", 4],
+        ["main", "Scalding Tarn", 1],
+        ["main", "Seachrome Coast", 4],
+        ["main", "Sewer-veillance Cam", 3],
+        ["main", "Shadowspear", 1],
+        ["main", "Skateboard", 1],
+        ["main", "Tamiyo, Inquisitive Student", 4],
+        ["main", "Urza's Saga", 4]
+      ],
+      "fonte_deck": 12,
+      "nota": "A LISTA E DELE E NAO SE SUBSTITUI (ordem de 06/10/2026, a letra: \"NAO o substituas por uma lista do meta: e a lista dele\"). O maindeck foi dado por ele e o sideboard saiu do consenso de 28 listas. Esta copiada aqui do deck 12 para sobreviver ao prune_decklists(30) e a qualquer reescrita da tabela `decks`; o deck 12 continua lá, intacto, e continua em `decks_vigiados`. As DUAS listas do meta com Oswald Fiddlebender aparecem ao LADO desta como alternativas, nunca em vez dela."
+    },
+    "versao:modern:cori-steel": {
+      "nome": "Cori-Steel Cutter",
+      "padrao": true,
+      "origem": "Kody Lyons · 17-32 · Modern event - Ottawa 2026-27 Round 1 Regional Championship - F2FTour · 2026-10-03 · 449 jogadores · https://mtgtop8.com/event?e=91677&d=896278&f=MO",
+      "formato": "modern",
+      "escolhido_em": "2026-10-06",
+      "cards": [
+        ["main", "Aether Spellbomb", 1],
+        ["main", "Boomerang Basics", 1],
+        ["main", "Breeding Pool", 1],
+        ["main", "Cori-Steel Cutter", 4],
+        ["main", "Emry, Lurker of the Loch", 4],
+        ["main", "Flame of Anor", 1],
+        ["main", "Haywire Mite", 1],
+        ["main", "Island", 2],
+        ["main", "Lightning Bolt", 3],
+        ["main", "Metallic Rebuke", 4],
+        ["main", "Mishra's Bauble", 4],
+        ["main", "Mountain", 1],
+        ["main", "Mox Amber", 3],
+        ["main", "Mox Opal", 4],
+        ["main", "Otawara, Soaring City", 1],
+        ["main", "Quantum Riddler", 3],
+        ["main", "Scalding Tarn", 4],
+        ["main", "Skateboard", 1],
+        ["main", "Spirebluff Canal", 2],
+        ["main", "Steam Vents", 2],
+        ["main", "Tamiyo, Inquisitive Student", 4],
+        ["main", "Thundering Falls", 1],
+        ["main", "Tormod's Crypt", 1],
+        ["main", "Unholy Heat", 3],
+        ["main", "Urza's Saga", 4],
+        ["side", "Ashiok, Dream Render", 1],
+        ["side", "Blood Moon", 2],
+        ["side", "Consign to Memory", 4],
+        ["side", "Engineered Explosives", 1],
+        ["side", "Force of Negation", 2],
+        ["side", "Mystical Dispute", 2],
+        ["side", "Pithing Needle", 1],
+        ["side", "Pyroclasm", 1],
+        ["side", "Shadowspear", 1]
+      ],
+      "evento": {
+        "decklist_id": 25051,
+        "jogador": "Kody Lyons",
+        "evento": "Modern event - Ottawa 2026-27 Round 1 Regional Championship - F2FTour",
+        "data": "2026-10-03",
+        "jogadores": 449,
+        "tier": "Presencial",
+        "classificacao": "17-32",
+        "url": "https://mtgtop8.com/event?e=91677&d=896278&f=MO",
+        "fonte": "mtgtop8",
+        "content_hash": "24d3cc50bccd04ba",
+        "repetida": 1,
+        "vitorias": 0
+      },
+      "fonte_decklist": 25051,
+      "porque": "a melhor das 4 listas da janela que jogam Cori-Steel Cutter E Mox Opal: a unica PRESENCIAL, e a de maior campo (449 jogadores). As outras tres sao 2 Challenge 96 (02/10) e 1 liga (05/10).",
+      "nota": "CUIDADO COM A AMBIGUIDADE, e esta a vista na pagina: ha 104 listas de Modern que jogam Cori-Steel Cutter desde 29/09 e SO 4 jogam tambem Mox Opal. As outras 100 sao UR Prowess (99 no arquetipo \"Mutagenic Growth / Slickshot Show-Off / Lava Dart\" e 1 num de Murktide), que NAO joga Mox Opal. Escolheu-se a versao com Mox Opal porque e a que encaixa no que ele pediu -- se ele queria o UR Prowess, e OUTRO deck e muito mais jogado. A pagina poe os dois numeros (4 contra 100) e a decisao e dele."
     }
   },
   "precos": {
@@ -2609,8 +2714,6 @@
         "protege_todas": true,
         "porque": "O criterio e UM SO e e INCLUSIVO desde 05/10/2026: joga Mox Opal. Medido na base nesse dia, na janela do consenso (desde 29/09) e sem filtro de tier -- o mesmo universo da RP: 30 das 412 listas de Modern jogam Mox Opal (7,3 %), em 4 clusters (7614 com 25, 7697 com 2, 7622 com 1, 7456 com 1) mais 1 lista a que o agrupamento ainda nao deu identidade. Os quatro sao versoes; a lista sem cluster conta-se e diz-se e NUNCA vira versao, porque uma versao precisa de um id estavel. Fora da janela ha mais 15 clusters / 119 listas, contados e ditos na pagina: quinze clusters de uma lista cada, de antes do Reality Fracture, nao sao quinze versoes do deck dele.",
         "protege_todas_porque": "PROTEGER e outra pergunta (Andre, 05/10/2026): \"assim ficamos com uma lista de cartas que eu gostaria de nao vender, tudo o resto e «seguro» vender\". Aqui o criterio e INCLUSIVO — entram TODAS as 25 listas de Modern que jogam Mox Opal na janela, de qualquer arquetipo, e os cinco que ficaram de fora das versoes a 04/10 (Scrabbling Claws, Jace/Song of Creation, Flame of Anor, Hammer Time, Erayo) VOLTAM a contar para a proteccao. E a regra RP.",
-        "versoes_todas": true,
-        "versoes_todas_porque": "O MODERN SAO TODOS OS DECKS DE MOX OPAL (Andre, 05/10/2026, a letra): \"no Modern, a unica coisa e que quero os decks que joguem Mox Opal, seja affinity, seja grinding station, seja outra coisa qualquer\". FECHA a duvida que ficou aberta a 04/10, em que o `exige` (Kappa Cannoneer + Pinnacle Emissary) escolhia quais os clusters que eram versoes e cinco arquetipos ficaram «de fora, a espera de confirmacao» -- ele confirmou o CONTRARIO do que lhe foi proposto. Em Modern a escolha passou a ser a MESMA pergunta que a proteccao: um criterio so, `joga Mox Opal`. Por isso o conjunto e DERIVADO da base a cada corrida (`versoes.versoes_derivadas`) e NAO uma lista de `archetype_id` a martelo: um arquetipo novo com Mox Opal entra sozinho na corrida em que aparecer. E chave PROPRIA e nao o `protege_todas` de proposito -- o legacy e inclusivo para a proteccao e tem `versoes: []` porque ele disse que NADA se escolheu para montar em Legacy; pendurar isto no `protege_todas` dava-lhe oito versoes que nao pediu.",
         "_exige_antes": {
           "exige": ["Kappa Cannoneer", "Pinnacle Emissary"],
           "pct_minima": 50,
@@ -2649,10 +2752,139 @@
             "_porque": "a casca grande, que e o deck de qualificacao dele. ULTIMA da lista porque estas duas cartas cabem em quase todo o deck de Mox Opal: e a familia de omissao."
           }
         ],
-        "familias_porque": "AS SEIS FAMILIAS DO MOX OPAL (Andre, 2026-10-06, a letra: \"O MOX OPAL DE MODERN TEM SEIS FAMILIAS, nao uma. Mostra-as\"). Com o criterio inclusivo de 05/10 a lista de versoes passou a ser tudo o que joga a carta-chave, e medido a 06/10 isso sao OITO clusters de arquetipos que nao tem nada a ver uns com os outros -- uma lista plana com nomes como \"Loki, God of Mischief / Waterlogged Grove / Sewer-veillance Cam\" nao diz qual e qual. A FAMILIA DERIVA-SE DAS CARTAS E NUNCA DO CLUSTER: o archetype_id e refeito todas as noites e muda -- medido a 06/10, as CINCO anotacoes de arquetipo_id deste bloco ficaram com ZERO listas na janela, o segundo dia seguido em que isso acontece. Uma carta distintiva (Grinding Station, Colossus Hammer, Song of Creation) e estavel porque e ela que faz o deck ser aquele deck. A ORDEM da lista manda: a primeira familia que casa ganha. Contagens medidas a 06/10 nas 22 listas de liga da janela: Kappa/Pinnacle 14, Grinding Station 3, Cranial Plating 2, Hammer 2, Flame of Anor 1; nas 67 da janela toda: Kappa/Pinnacle 50, Cranial 5, Flame of Anor 4, Grinding Station 3, Hammer 3, Song of Creation 1, Outra 1. Sem esta chave nao ha agrupamento e a lista fica plana -- e o interruptor."
+        "familias_porque": "AS SEIS FAMILIAS DO MOX OPAL (Andre, 2026-10-06, de manha, a letra: \"O MOX OPAL DE MODERN TEM SEIS FAMILIAS, nao uma. Mostra-as\"). MUDARAM DE SITIO AO FIM DO MESMO DIA e nao se perderam: nasceram para tornar legivel a lista de VERSOES derivadas (oito clusters numa lista plana nao se le) e, com o formato fechado em tres versoes nomeadas, as versoes deixaram de precisar de agrupamento -- mas o universo da PROTECCAO continua a ter as mesmas familias, e e lá que a informacao vale agora: e a resposta a \"o que e que o criterio do Mox Opal me esta a guardar\". Quem as mostra e o `versoes.familias_que_protegem`, no bloco da proteccao. A FAMILIA DERIVA-SE DAS CARTAS E NUNCA DO CLUSTER: o archetype_id e refeito todas as noites e muda -- em tres dias seguidos (04, 05 e 06/10) as anotacoes de arquetipo_id deste bloco ficaram com ZERO listas na janela. Uma carta como Grinding Station nao muda. A ORDEM da lista manda: a primeira familia que casa ganha. Contagens medidas a 06/10 nas 67 listas de Mox Opal da janela: Kappa/Pinnacle 50, Cranial 5, Flame of Anor 4, Grinding Station 3, Hammer 3, Song of Creation 1, Outra 1. Sem esta chave nao ha agrupamento -- e o interruptor.",
+        "_versoes_todas_antes": {
+          "versoes_todas": true,
+          "ate": "2026-10-06",
+          "porque": "entre 05/10 e 06/10 as versoes de Modern eram DERIVADAS da base: era versao todo o arquetipo que jogasse Mox Opal (oito clusters a 06/10, agrupados em seis familias). Deixou de ser a 06/10 ao fim do dia, quando ele fechou o formato em TRES versoes nomeadas: \"vou tentar ter correspondencia de decks em papel com os decks no MTGO / entao modern sera o Izzet Affinity (Weapons) + Oswald + Versao com Cori-Steel Cutter\" (Andre, 2026-10-06). O criterio inclusivo NAO se apagou -- continua inteiro no `protege_todas`, que e a regra RP: ele mantem a lista de cartas que nao quer vender. O que mudou foi so o que se MONTA.",
+          "como_repor": "devolver `versoes_todas: true` ao `criterio` e tirar as tres versoes nomeadas (ou marca-las `_saiu`)."
+        }
       },
       "versoes": [
         {
+          "id": "versao:modern:izzet-affinity-weapons",
+          "nome": "Izzet Affinity (Weapons)",
+          "deck": "deck:modern:affinity-pinnacle",
+          "principal": true,
+          "meta": {
+            "cartas": ["Weapons Manufacturing", "Mox Opal"],
+            "_porque": "o universo desta versao sai das CARTAS e nunca do archetype_id, que e refeito todas as noites: medido a 06/10 sao 45 listas na janela com Weapons Manufacturing, TODAS com Mox Opal -- e e exactamente o numero que ele mediu. O cluster que as contem (7844 a 06/10) tem 53 listas, 8 das quais nao jogam a carta."
+          },
+          "alternativas": [
+            {
+              "deck": "caixa:modern",
+              "rotulo": "a tua lista — o deck do RC Ghent",
+              "_porque": "a lista de qualificacao com que ele se qualificou para o RC Ghent de 9-11/10/2026, dada por ele a 04/10. NAO se tocou e NAO saiu de vista: fica aqui ao lado da do Qualifier, para ele comparar e trocar num toque. E, por estar nas alternativas, continua protegida da venda pela regra RE -- ver `versoes.decks_das_versoes`."
+            }
+          ],
+          "_porque": "o deck PRINCIPAL (\"o deck principal e Affinity sem duvida\", Andre, 04/10/2026) e a versao com mais dados: 45 listas na janela. A lista e a do Qualifier que ele escolheu -- Tree42o, Modern RC Super Qualifier de 03/10/2026 --, que vive em `listas_escolhidas[\"deck:modern:affinity-pinnacle\"]`.",
+          "_arquetipo_id_antes": {
+            "valor": 5100,
+            "ate": "2026-10-06",
+            "porque": "esta versao deixou de ter `arquetipo_id`: o universo dela passou a sair das CARTAS (`meta.cartas`). Em tres dias seguidos o cluster da Affinity mudou de id -- 7614 (04/10) -> 5100 (05/10) -> 7844 (06/10) -- e de cada vez a anotacao ficava a apontar para um cluster com zero listas, com o aviso da orfa a disparar sobre o deck do RC Ghent. Sem `arquetipo_id` nao ha cluster para perder e o aviso nao pode dar falso. A correccao de fundo (identidade estavel por NUCLEO na tabela `archetypes`) continua a ser a ordem mtg-top8-por-edicao."
+          }
+        },
+        {
+          "id": "versao:modern:oswald",
+          "nome": "Oswald",
+          "meta": {
+            "cartas": ["Oswald Fiddlebender"],
+            "_porque": "medido a 06/10: 2 listas na janela jogam Oswald Fiddlebender, as duas tambem com Mox Opal (por isso o Mox Opal nao precisa de estar aqui -- nao corta nada e uma condicao que nao corta e uma condicao a mentir que corta). As DUAS vem de LIGAS, de 04/10: era por isso que o Oswald nunca aparecia no meta antes de as ligas entrarem a 05/10."
+          },
+          "_porque": "o deck DELE: o deck 12 da tabela `decks`, maindeck dado por ele mais o sideboard do consenso de 28 listas. A lista NAO se substitui por uma do meta -- as duas do meta aparecem como alternativas ao lado. A do jinavie (#24243) joga o combo Thopter Foundry + Sword of the Meek + Urza, Lord High Artificer, que a dele nao tem: vale a pena ele ver."
+        },
+        {
+          "id": "versao:modern:cori-steel",
+          "nome": "Cori-Steel Cutter",
+          "meta": {
+            "cartas": ["Cori-Steel Cutter", "Mox Opal"],
+            "ambiguidade": {
+              "carta": "Cori-Steel Cutter",
+              "_porque": "A CARTA TEM DOIS DECKS, e o outro e muito mais jogado. Medido a 06/10 na janela: 104 listas de Modern jogam Cori-Steel Cutter e SO 4 jogam tambem Mox Opal. As outras 100 sao UR Prowess (\"Mutagenic Growth / Slickshot Show-Off / Lava Dart\", 99 listas) e uma de Murktide. Escolheu-se a versao com Mox Opal porque e a que encaixa no que ele pediu; se ele queria o UR Prowess, e OUTRO deck. A pagina mostra os DOIS numeros e a decisao e dele -- nao se escolheu por ele."
+            },
+            "_porque": "as 4 listas da janela que jogam as duas cartas sao um deck coerente e nao coincidencia: as quatro jogam 3-4 Cori-Steel Cutter, Emry, Flame of Anor, Mox Amber, Mox Opal e 4 Urza's Saga."
+          },
+          "_porque": "a melhor das 4: a presencial do Kody Lyons (RC de Ottawa, 03/10, 449 jogadores, 17-32). As outras tres sao duas Challenge 96 de 02/10 e uma liga de 05/10."
+        },
+        {
+          "id": "versao:modern:weapons",
+          "arquetipo_id": 4380,
+          "nome": "Weapons Manufacturing",
+          "listas": 88,
+          "_porque": "VERSAO CONHECIDA, ZERO LISTAS NA JANELA (medido a 05/10/2026): 85 listas no total, nenhuma desde 29/09. Fica a vista com o zero dito -- nao se esconde (a lista dela esta fixada e e dele) nem se mostra ao lado das actuais como se fosse uma delas. Volta sozinha ao primeiro grupo no dia em que aparecer uma lista na janela.",
+          "_saiu": {
+            "em": "2026-10-06",
+            "porque": "a lista do Benny Zeoli (RC de 12/09, 9-16 de 1486) e do mesmo arquetipo que a versao «Izzet Affinity (Weapons)», que ficou com a lista do Qualifier (Tree42o) que ele escolheu. Fica consultavel.",
+            "razao": "O MODERN FECHOU EM TRES VERSOES NOMEADAS a 06/10/2026: \"vou tentar ter correspondencia de decks em papel com os decks no MTGO / entao modern sera o Izzet Affinity (Weapons) + Oswald + Versao com Cori-Steel Cutter\" (Andre, 2026-10-06). Esta versao NAO se apagou -- continua com a lista, a proveniencia e as cartas, e ve-se no bloco «meta, nao escolhido» da aba Decks. Repor e tirar-lhe o `_saiu`. O criterio «joga Mox Opal» continua a PROTEGER as cartas dela da venda (regra RP): sair da escolha e sair do que se MONTA, nao do que se guarda."
+          }
+        },
+        {
+          "id": "versao:modern:cranial",
+          "arquetipo_id": 7525,
+          "nome": "Cranial Plating",
+          "listas": 5,
+          "_porque": "VERSAO CONHECIDA, ZERO LISTAS NA JANELA (medido a 05/10/2026): 5 listas no total, nenhuma desde 29/09. Fica a vista com o zero dito -- nao se esconde (a lista dela esta fixada e e dele) nem se mostra ao lado das actuais como se fosse uma delas. Volta sozinha ao primeiro grupo no dia em que aparecer uma lista na janela.",
+          "_saiu": {
+            "em": "2026-10-06",
+            "porque": "a Affinity preta (Cranial Plating) nao e uma das tres que ele nomeou. Tinha 5 listas no total e zero na janela desde 29/09.",
+            "razao": "O MODERN FECHOU EM TRES VERSOES NOMEADAS a 06/10/2026: \"vou tentar ter correspondencia de decks em papel com os decks no MTGO / entao modern sera o Izzet Affinity (Weapons) + Oswald + Versao com Cori-Steel Cutter\" (Andre, 2026-10-06). Esta versao NAO se apagou -- continua com a lista, a proveniencia e as cartas, e ve-se no bloco «meta, nao escolhido» da aba Decks. Repor e tirar-lhe o `_saiu`. O criterio «joga Mox Opal» continua a PROTEGER as cartas dela da venda (regra RP): sair da escolha e sair do que se MONTA, nao do que se guarda."
+          }
+        },
+        {
+          "id": "versao:modern:seachrome",
+          "arquetipo_id": 7527,
+          "nome": "Seachrome",
+          "listas": 3,
+          "_porque": "VERSAO CONHECIDA, ZERO LISTAS NA JANELA (medido a 05/10/2026): 3 listas no total, nenhuma desde 29/09. Fica a vista com o zero dito -- nao se esconde (a lista dela esta fixada e e dele) nem se mostra ao lado das actuais como se fosse uma delas. Volta sozinha ao primeiro grupo no dia em que aparecer uma lista na janela. E e ESTA que tem o deck registado do Grinding Station: a lista do Tree42o de 28/09 (`decklists` 22659, o `decks` 2 \"auto: mtgo Tree42o 2026-09-28\") cai neste cluster, com mais uma do Chris Nguyen de 13/09 -- 2 das 14 listas de Grinding Station. O nome \"Seachrome\" vem da etiqueta do agrupamento e nao diz isso; nao se renomeou por iniciativa propria.",
+          "_saiu": {
+            "em": "2026-10-06",
+            "porque": "o «Seachrome» nao e uma das tres que ele nomeou. E ele que tem o deck registado do Grinding Station (a lista do Tree42o de 28/09).",
+            "razao": "O MODERN FECHOU EM TRES VERSOES NOMEADAS a 06/10/2026: \"vou tentar ter correspondencia de decks em papel com os decks no MTGO / entao modern sera o Izzet Affinity (Weapons) + Oswald + Versao com Cori-Steel Cutter\" (Andre, 2026-10-06). Esta versao NAO se apagou -- continua com a lista, a proveniencia e as cartas, e ve-se no bloco «meta, nao escolhido» da aba Decks. Repor e tirar-lhe o `_saiu`. O criterio «joga Mox Opal» continua a PROTEGER as cartas dela da venda (regra RP): sair da escolha e sair do que se MONTA, nao do que se guarda."
+          }
+        },
+        {
+          "id": "versao:modern:grinding-station",
+          "arquetipo_id": 7394,
+          "nome": "Grinding Station",
+          "listas": 9,
+          "_porque": "ELE DEU-O COMO EXEMPLO (\"seja grinding station\", 05/10/2026) e TEM ZERO LISTAS DESDE 29/09, em qualquer formato -- medido nesse dia. Entra como versao CONHECIDA e nao como actual. O nome e o DELE e confere-se na base: as 9 listas deste cluster jogam todas Grinding Station (100 %), e e o maior dos tres clusters que a carta tem (7394 com 9, 7527 com 2, 7341 com 1, mais 2 listas sem cluster que o mtgtop8 chama \"Emry Grinding Cam\") -- as 14 listas de Grinding Station de Modern jogam TODAS Mox Opal. ERA UM DOS CINCO QUE A LEITURA DE 04/10 PUNHA DE FORA (a etiqueta dele e \"Scrabbling Claws / Minamo / Sewer-veillance Cam\"): a correccao dele esta certa e prova-se. NAO tem lista fixada de proposito -- fixar-lhe uma de antes do Reality Fracture era apresentar como deck a montar uma lista que o formato de hoje ja nao viu.",
+          "_saiu": {
+            "em": "2026-10-06",
+            "porque": "o Grinding Station nao e uma das tres que ele nomeou. Nunca teve lista fixada, de proposito, e voltou a janela a 06/10 em dois clusters NOVOS (7838, 7722) e nao no 7394 que esta anotado aqui.",
+            "razao": "O MODERN FECHOU EM TRES VERSOES NOMEADAS a 06/10/2026: \"vou tentar ter correspondencia de decks em papel com os decks no MTGO / entao modern sera o Izzet Affinity (Weapons) + Oswald + Versao com Cori-Steel Cutter\" (Andre, 2026-10-06). Esta versao NAO se apagou -- continua com a lista, a proveniencia e as cartas, e ve-se no bloco «meta, nao escolhido» da aba Decks. Repor e tirar-lhe o `_saiu`. O criterio «joga Mox Opal» continua a PROTEGER as cartas dela da venda (regra RP): sair da escolha e sair do que se MONTA, nao do que se guarda."
+          }
+        },
+        {
+          "id": "versao:modern:cesar-grinding-station",
+          "nome": "Grinding Station / Loki",
+          "jogador": "CesarMerjan",
+          "_porque": "a lista do CesarMerjan de 2026-10-05, de LIGA. Ancorada na LISTA e nao num cluster: o arquetipo dela (7838 a 06/10) nasceu nesse dia e o archetype_id e refeito todas as noites. A lista fica GRAVADA aqui porque o prune_decklists(30) a apaga por volta de 2026-11-04.",
+          "fonte_decklist": 24182,
+          "_saiu": {
+            "em": "2026-10-06",
+            "porque": "a lista de Grinding Station do CesarMerjan (05/10, liga). O jogador CONTINUA VIGIADO (`watched` id 8) e as listas novas dele continuam a entrar -- o que saiu foi o deck da escolha, nao a vigia.",
+            "razao": "O MODERN FECHOU EM TRES VERSOES NOMEADAS a 06/10/2026: \"vou tentar ter correspondencia de decks em papel com os decks no MTGO / entao modern sera o Izzet Affinity (Weapons) + Oswald + Versao com Cori-Steel Cutter\" (Andre, 2026-10-06). Esta versao NAO se apagou -- continua com a lista, a proveniencia e as cartas, e ve-se no bloco «meta, nao escolhido» da aba Decks. Repor e tirar-lhe o `_saiu`. O criterio «joga Mox Opal» continua a PROTEGER as cartas dela da venda (regra RP): sair da escolha e sair do que se MONTA, nao do que se guarda."
+          }
+        },
+        {
+          "id": "versao:modern:cesar-song-of-creation",
+          "nome": "Song of Creation / Jace",
+          "jogador": "CesarMerjan",
+          "_porque": "a lista do CesarMerjan de 2026-09-28, de LIGA. Esta e de UM DIA ANTES da janela do consenso (29/09) e nao tem cluster nenhum (archetype_id a NULL) -- por isso nao podia ser uma versao derivada, e por isso a pagina diz que ela e anterior a janela em vez de a por entre as que se jogam agora. E o caso do Greasefang de 04/10. O prune apaga-a por volta de 2026-10-28; as cartas ficam gravadas.",
+          "fonte_decklist": 24603,
+          "_saiu": {
+            "em": "2026-10-06",
+            "porque": "a lista de Song of Creation do CesarMerjan (28/09, liga, um dia antes da janela). O jogador CONTINUA VIGIADO (`watched` id 8).",
+            "razao": "O MODERN FECHOU EM TRES VERSOES NOMEADAS a 06/10/2026: \"vou tentar ter correspondencia de decks em papel com os decks no MTGO / entao modern sera o Izzet Affinity (Weapons) + Oswald + Versao com Cori-Steel Cutter\" (Andre, 2026-10-06). Esta versao NAO se apagou -- continua com a lista, a proveniencia e as cartas, e ve-se no bloco «meta, nao escolhido» da aba Decks. Repor e tirar-lhe o `_saiu`. O criterio «joga Mox Opal» continua a PROTEGER as cartas dela da venda (regra RP): sair da escolha e sair do que se MONTA, nao do que se guarda."
+          }
+        }
+      ],
+      "versao": "versao:modern:izzet-affinity-weapons",
+      "versao_em": "2026-10-06",
+      "_versao_porque": "e o deck PRINCIPAL e a versao com mais dados (45 listas na janela com Weapons Manufacturing, todas com Mox Opal). A escolhida e a principal sao dois eixos: a escolhida muda com um toque, a principal e a identidade do deck.",
+      "_versoes_porque": "O MODERN FECHA EM TRES VERSOES (Andre, 2026-10-06, a letra): \"vou tentar ter correspondencia de decks em papel com os decks no MTGO / entao modern sera o Izzet Affinity (Weapons) + Oswald + Versao com Cori-Steel Cutter\" (Andre, 2026-10-06). ESTREITA o criterio de 05/10 (\"qualquer deck com Mox Opal\", que dava oito clusters em seis familias): agora as versoes sao TRES, NOMEADAS, e o conjunto esta ESCRITO aqui -- ja nao e derivado. O criterio \"joga Mox Opal\" continua INTEIRO para a PROTECCAO (`criterio.protege_todas`, a regra RP): para montar sao estas tres e so estas, para guardar sao todas. O UNIVERSO DE CADA VERSAO SAI DAS CARTAS (`meta.cartas`) e nao do `archetype_id`, que e refeito todas as noites: em tres dias seguidos as anotacoes deste bloco ficaram com zero listas na janela. Com `meta.cartas` nao ha cluster para perder, e por isso nenhuma destas tres pode aparecer orfa. AS TRES PARTILHAM 11 CARTAS (10 sem contar a Island da pilha de basicas), que ele TEM todas, e mais 13 em duas das tres, tambem todas na mao dele -- e esse o argumento da correspondencia papel/MTGO, e a pagina mostra-o em separado. Nada se apagou: as cinco versoes que sairam da escolha ficam com `_saiu` e consultaveis.",
+      "_versao_izzet_pinnacle_antes": {
+        "entrada": {
           "id": "versao:modern:izzet-pinnacle",
           "arquetipo_id": 5100,
           "nome": "Izzet Pinnacle",
@@ -2668,53 +2900,10 @@
             "o_que_isto_vai_repetir": "o `archetype_id` e refeito todas as noites e volta a mudar no dia em que a composicao de um cluster mudar. A correccao de fundo e a identidade estavel por NUCLEO que o mtgvault/arquetipos.py ja faz para as sugestoes de Premodern (id do nucleo, herdado acima de 70 %), aplicada a tabela `archetypes` -- e a ordem mtg-top8-por-edicao. Entretanto, o `versoes.anotacoes_orfas` passou a DIZE-LO na pagina em vez de deixar o deck principal aparecer morto em silencio."
           }
         },
-        {
-          "id": "versao:modern:weapons",
-          "arquetipo_id": 4380,
-          "nome": "Weapons Manufacturing",
-          "listas": 88,
-          "_porque": "VERSAO CONHECIDA, ZERO LISTAS NA JANELA (medido a 05/10/2026): 85 listas no total, nenhuma desde 29/09. Fica a vista com o zero dito -- nao se esconde (a lista dela esta fixada e e dele) nem se mostra ao lado das actuais como se fosse uma delas. Volta sozinha ao primeiro grupo no dia em que aparecer uma lista na janela."
-        },
-        {
-          "id": "versao:modern:cranial",
-          "arquetipo_id": 7525,
-          "nome": "Cranial Plating",
-          "listas": 5,
-          "_porque": "VERSAO CONHECIDA, ZERO LISTAS NA JANELA (medido a 05/10/2026): 5 listas no total, nenhuma desde 29/09. Fica a vista com o zero dito -- nao se esconde (a lista dela esta fixada e e dele) nem se mostra ao lado das actuais como se fosse uma delas. Volta sozinha ao primeiro grupo no dia em que aparecer uma lista na janela."
-        },
-        {
-          "id": "versao:modern:seachrome",
-          "arquetipo_id": 7527,
-          "nome": "Seachrome",
-          "listas": 3,
-          "_porque": "VERSAO CONHECIDA, ZERO LISTAS NA JANELA (medido a 05/10/2026): 3 listas no total, nenhuma desde 29/09. Fica a vista com o zero dito -- nao se esconde (a lista dela esta fixada e e dele) nem se mostra ao lado das actuais como se fosse uma delas. Volta sozinha ao primeiro grupo no dia em que aparecer uma lista na janela. E e ESTA que tem o deck registado do Grinding Station: a lista do Tree42o de 28/09 (`decklists` 22659, o `decks` 2 \"auto: mtgo Tree42o 2026-09-28\") cai neste cluster, com mais uma do Chris Nguyen de 13/09 -- 2 das 14 listas de Grinding Station. O nome \"Seachrome\" vem da etiqueta do agrupamento e nao diz isso; nao se renomeou por iniciativa propria."
-        },
-        {
-          "id": "versao:modern:grinding-station",
-          "arquetipo_id": 7394,
-          "nome": "Grinding Station",
-          "listas": 9,
-          "_porque": "ELE DEU-O COMO EXEMPLO (\"seja grinding station\", 05/10/2026) e TEM ZERO LISTAS DESDE 29/09, em qualquer formato -- medido nesse dia. Entra como versao CONHECIDA e nao como actual. O nome e o DELE e confere-se na base: as 9 listas deste cluster jogam todas Grinding Station (100 %), e e o maior dos tres clusters que a carta tem (7394 com 9, 7527 com 2, 7341 com 1, mais 2 listas sem cluster que o mtgtop8 chama \"Emry Grinding Cam\") -- as 14 listas de Grinding Station de Modern jogam TODAS Mox Opal. ERA UM DOS CINCO QUE A LEITURA DE 04/10 PUNHA DE FORA (a etiqueta dele e \"Scrabbling Claws / Minamo / Sewer-veillance Cam\"): a correccao dele esta certa e prova-se. NAO tem lista fixada de proposito -- fixar-lhe uma de antes do Reality Fracture era apresentar como deck a montar uma lista que o formato de hoje ja nao viu."
-        },
-        {
-          "id": "versao:modern:cesar-grinding-station",
-          "nome": "Grinding Station / Loki",
-          "jogador": "CesarMerjan",
-          "_porque": "a lista do CesarMerjan de 2026-10-05, de LIGA. Ancorada na LISTA e nao num cluster: o arquetipo dela (7838 a 06/10) nasceu nesse dia e o archetype_id e refeito todas as noites. A lista fica GRAVADA aqui porque o prune_decklists(30) a apaga por volta de 2026-11-04.",
-          "fonte_decklist": 24182
-        },
-        {
-          "id": "versao:modern:cesar-song-of-creation",
-          "nome": "Song of Creation / Jace",
-          "jogador": "CesarMerjan",
-          "_porque": "a lista do CesarMerjan de 2026-09-28, de LIGA. Esta e de UM DIA ANTES da janela do consenso (29/09) e nao tem cluster nenhum (archetype_id a NULL) -- por isso nao podia ser uma versao derivada, e por isso a pagina diz que ela e anterior a janela em vez de a por entre as que se jogam agora. E o caso do Greasefang de 04/10. O prune apaga-a por volta de 2026-10-28; as cartas ficam gravadas.",
-          "fonte_decklist": 24603
-        }
-      ],
-      "versao": "versao:modern:izzet-pinnacle",
-      "versao_em": "2026-10-04",
-      "_versao_porque": "e a lista de qualificacao dele e o cluster com 25 das 30 listas de Mox Opal da janela -- o unico dos conhecidos de 04/10 com listas dentro dela. E tambem a versao PRINCIPAL (`principal: true`), que e outro eixo: a escolhida muda com um toque, a principal e a identidade do deck.",
-      "_versoes_porque": "A LISTA AQUI SAO AS ANOTACOES, NAO O CONJUNTO (desde 05/10/2026). Quem diz quais sao as versoes e a BASE (`versoes.versoes_derivadas`): todo o cluster que jogue Mox Opal na janela e versao, esteja ou nao escrito aqui. O que estas entradas dao e o NOME, o ponteiro para o deck que guarda a lista (`deck`), a marca `principal` e a memoria das versoes conhecidas que hoje nao tem listas na janela. Os clusters 7697, 7622 e 7456 -- as outras tres da janela -- NAO estao anotados de proposito: nao tem nome da fonte nenhum (zero votos no `arquetipo_fonte`), e dar-lhes um nome meu era inventar um nome com a cara de um nome verdadeiro. A pagina mostra-lhes a etiqueta do agrupamento, marcada como etiqueta. O `listas` de cada anotacao e o numero do dia em que ela foi registada; a contagem VIVA vem sempre da base."
+        "ate": "2026-10-06",
+        "porque": "era a versao que apontava para a `caixa:modern` (a lista de qualificacao dele) e era `principal`. A 06/10 a versao da Affinity passou a ser «Izzet Affinity (Weapons)», com a lista do Qualifier (Tree42o), e a caixa `modern` passou a ser a ALTERNATIVA «a tua lista» dessa versao -- onde continua a vista, a um toque, e continua protegida da venda pela RE. Nao ficou marcada `_saiu` porque o mesmo deck apareceria no bloco das saidas E ao lado da versao 1, no mesmo ecra.",
+        "como_repor": "devolver esta entrada a lista `versoes` e tirar a alternativa `caixa:modern` da versao `versao:modern:izzet-affinity-weapons`."
+      }
     },
     "pioneer": {
       "nome": "Greasefang",

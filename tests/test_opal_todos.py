@@ -489,18 +489,30 @@ def caso_a_vista_separa_os_dois_grupos_e_conta_o_resto():
 
 
 def caso_o_config_a_serio_fechou_a_duvida():
-    """13. O CONFIG A SÉRIO (2026-10-05).
+    """13. O CONFIG A SÉRIO.
 
-    Lê o `colecao_config.json` do repositório: o Modern derivado, a Affinity
-    principal, o Grinding Station como versão conhecida, e **a nota dos cinco
-    «de fora, à espera de confirmação» apagada** — é essa a dúvida que ele
-    fechou. Mais o `exige` arquivado em vez de apagado (a regra de 09/09).
+    **ASSERÇÃO CORRIGIDA A 2026-10-06, ao fim do dia, e não mascarada.** Até aí
+    este caso exigia `versoes_todas is True` e a Affinity em
+    `versao:modern:izzet-pinnacle` — e os dois deixaram de ser verdade no dia em
+    que ele fechou o Modern em **três versões nomeadas** (*"entao modern sera o
+    Izzet Affinity (Weapons) + Oswald + Versao com Cori-Steel Cutter"*). O que
+    esta função continua a trancar é o que a ordem de **05/10** quis proteger e
+    que **não** mudou: o `exige` fica arquivado e não apagado, a nota dos cinco
+    «à espera de confirmação» continua fora, o critério continua a ser *joga Mox
+    Opal* **para a protecção**, e o Legacy e o Pioneer não foram arrastados. O
+    que a ordem de 06/10 trancou vive em `test_tres_versoes.py`.
     """
     from mtgvault import configio                            # noqa: PLC0415
     cfg = json.loads((RAIZ / "colecao_config.json").read_text(encoding="utf-8"))
     m = cfg["decks_por_formato"]["modern"]
-    assert m["criterio"]["versoes_todas"] is True, m["criterio"]
     assert m["criterio"]["carta"] == "Mox Opal"
+    # O INCLUSIVO FICA, mas só do lado da PROTECÇÃO (06/10): o `versoes_todas`
+    # saiu e está arquivado; o `protege_todas` continua ligado.
+    assert m["criterio"]["protege_todas"] is True, m["criterio"]
+    assert "versoes_todas" not in m["criterio"], (
+        "a 06/10 as versões passaram a ser três NOMEADAS: o derivado saiu")
+    assert m["criterio"]["_versoes_todas_antes"]["versoes_todas"] is True, (
+        "e NÃO se apagou: ficou arquivado com a data e a razão (regra de 09/09)")
     assert "exige" not in m["criterio"], (
         "o `exige` deixou de decidir quais os clusters que são versões")
     assert m["criterio"]["_exige_antes"]["exige"] == [
@@ -510,8 +522,10 @@ def caso_o_config_a_serio_fechou_a_duvida():
         "a nota que dizia que cinco arquétipos ficavam «de fora, à espera de "
         "confirmação» tem de SAIR: ele respondeu, e entram todos")
     por_id = {v["id"]: v for v in m["versoes"]}
-    assert por_id["versao:modern:izzet-pinnacle"]["principal"] is True
-    assert sum(1 for v in m["versoes"] if v.get("principal")) == 1
+    assert sum(1 for v in m["versoes"]
+               if v.get("principal") and not v.get("_saiu")) == 1
+    # O GRINDING STATION continua no config com a razão dele — saiu da ESCOLHA a
+    # 06/10 e continua consultável, que é a regra de «nada se apaga».
     gs = por_id["versao:modern:grinding-station"]
     assert gs["arquetipo_id"] == 7394 and gs["nome"] == "Grinding Station", gs
     assert "zero listas" in gs["_porque"].lower(), gs["_porque"]
