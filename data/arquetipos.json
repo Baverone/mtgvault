@@ -17,7 +17,7 @@
     "Wasteland"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-05"
+   "ultima": "2026-10-06"
   },
   "109d2b9883": {
    "formato": "premodern",
@@ -90,7 +90,7 @@
     "Volrath's Shapeshifter"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-05"
+   "ultima": "2026-10-06"
   },
   "2811f9a69f": {
    "formato": "premodern",
@@ -109,7 +109,7 @@
     "Withered Wretch"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-05"
+   "ultima": "2026-10-06"
   },
   "3885b4666a": {
    "formato": "premodern",
@@ -129,7 +129,7 @@
     "Skycloud Expanse"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-05"
+   "ultima": "2026-10-06"
   },
   "415270d83c": {
    "formato": "premodern",
@@ -180,7 +180,7 @@
     "Wirewood Symbiote"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-05"
+   "ultima": "2026-10-06"
   },
   "72740aba9b": {
    "formato": "premodern",
@@ -193,14 +193,14 @@
     "Eternal Dragon",
     "Exalted Angel",
     "Gerrard's Verdict",
-    "Kor Haven",
     "Phyrexian Furnace",
     "Skeletal Scrying",
+    "Swords to Plowshares",
     "Vindicate",
     "Wrath of God"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-05"
+   "ultima": "2026-10-06"
   },
   "7fbd22f4da": {
    "formato": "legacy",
@@ -230,7 +230,7 @@
     "Wrath of God"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-05"
+   "ultima": "2026-10-06"
   },
   "8a1f5ac7b3": {
    "formato": "premodern",
@@ -247,7 +247,7 @@
     "Teferi's Isle"
    ],
    "primeira": "2026-09-30",
-   "ultima": "2026-10-05"
+   "ultima": "2026-10-06"
   },
   "95a99aa40d": {
    "formato": "premodern",
@@ -329,15 +329,15 @@
     "Wooded Foothills"
    ],
    "primeira": "2026-09-23",
-   "ultima": "2026-10-05"
+   "ultima": "2026-10-06"
   },
   "aa210fdd32": {
    "formato": "premodern",
    "nome": "Esper Exalted Angel",
    "nucleo": [
-    "Adarkar Wastes",
     "Caves of Koilos",
     "Decree of Justice",
+    "Diabolic Edict",
     "Disenchant",
     "Exalted Angel",
     "Fact or Fiction",
@@ -349,7 +349,7 @@
     "Vindicate"
    ],
    "primeira": "2026-09-21",
-   "ultima": "2026-10-05"
+   "ultima": "2026-10-06"
   },
   "b38b17cddb": {
    "formato": "premodern",
@@ -368,7 +368,7 @@
     "Thwart"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-05"
+   "ultima": "2026-10-06"
   },
   "b4dcbc5dbb": {
    "formato": "premodern",
@@ -388,7 +388,7 @@
     "Vision Charm"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-05"
+   "ultima": "2026-10-06"
   },
   "b827ca4ad1": {
    "formato": "premodern",
@@ -427,7 +427,7 @@
     "Wild Growth"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-05"
+   "ultima": "2026-10-06"
   },
   "c6998a9b7d": {
    "formato": "premodern",
@@ -447,7 +447,7 @@
     "Winter's Grasp"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-05"
+   "ultima": "2026-10-06"
   },
   "c8d54b483e": {
    "formato": "premodern",
@@ -467,7 +467,7 @@
     "Wooded Foothills"
    ],
    "primeira": "2026-09-20",
-   "ultima": "2026-10-05"
+   "ultima": "2026-10-06"
   },
   "cc47c1209f": {
    "formato": "premodern",
@@ -506,7 +506,7 @@
     "Wasteland"
    ],
    "primeira": "2026-10-05",
-   "ultima": "2026-10-05"
+   "ultima": "2026-10-06"
   },
   "e62ac61340": {
    "formato": "premodern",
@@ -537,7 +537,7 @@
     "Wall of Blossoms"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-05"
+   "ultima": "2026-10-06"
   },
   "e8c086499f": {
    "formato": "premodern",
@@ -569,7 +569,7 @@
     "Wooded Foothills"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-05"
+   "ultima": "2026-10-06"
   },
   "f102883ccf": {
    "formato": "premodern",
@@ -600,7 +600,7 @@
     "Werebear"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-05"
+   "ultima": "2026-10-06"
   },
   "f886821817": {
    "formato": "premodern",
@@ -617,7 +617,7 @@
     "Smother"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-05"
+   "ultima": "2026-10-06"
   }
  },
  "versao": 1
