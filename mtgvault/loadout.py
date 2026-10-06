@@ -481,11 +481,25 @@ def card_price(con, name: str, finish: str = "nonfoil",
     """
     fontes = (source,) if source else precos.fontes()
     expr = precos.sql_impressao(fontes_=fontes)
+    # OS SETS QUE NÃO SÃO PREÇO (André, 2026-10-06) — `scryfall.sql_impressao_a_serio`.
+    # Este `MIN` não filtrava nada: entravam a **memorabilia** (os decks do World
+    # Championship, de borda dourada) e a **Summer Magic**, e era de lá que vinha
+    # o número. Medido no `cardmarket` com as 580 cartas da colecção: **87** dos
+    # mínimos vinham de um desses sets — Tundra **0,25 €** (sum) contra 374,34 €
+    # da impressão legal, Badlands **0,02 €** (sum), Gaea's Cradle 272,71 €
+    # (wc99) contra 1 085,40 €, Grim Monolith 22,15 € (wc99) contra 294,87 €. Era
+    # o defeito que o `fases._preco_jogavel` nomeou a 2026-10-02 e deixou de pé
+    # ("a correcção a sério é no `loadout.card_price` e fica para ele decidir").
+    # Com a cadeia de hoje (só `cardtrader`) **não muda um número**: o CardTrader
+    # não cota memorabilia nem Summer Magic — medido, **zero** dos 580. O que isto
+    # fecha é a armadilha do dia em que o Cardmarket voltar à cadeia, que é uma
+    # linha de config.
+    a_serio = _scry.sql_impressao_a_serio("c")
     fins = FOIL_FINISHES if finish in FOIL_FINISHES else ("nonfoil",)
     row = con.execute(
         f"""SELECT MIN({expr}) preco
               FROM cards c JOIN {precos.sql_acabamentos(fins)} f
-             WHERE {_scry.sql_nome("c.name")}""",
+             WHERE {_scry.sql_nome("c.name")} AND {a_serio}""",
         (*fins, *_scry.params_nome(name))).fetchone()
     if row and row["preco"] is not None:
         return row["preco"], fins[0]
@@ -494,7 +508,7 @@ def card_price(con, name: str, finish: str = "nonfoil",
     row = con.execute(
         f"""SELECT MIN({expr}) preco
               FROM cards c JOIN {precos.sql_acabamentos(("nonfoil",))} f
-             WHERE {_scry.sql_nome("c.name")}""",
+             WHERE {_scry.sql_nome("c.name")} AND {a_serio}""",
         ("nonfoil", *_scry.params_nome(name))).fetchone()
     return ((row["preco"], "nonfoil") if row and row["preco"] is not None
             else (None, None))
@@ -521,17 +535,24 @@ def impressao_mais_barata(con, name: str, finish: str = "nonfoil",
     if cache is not None and chave in cache:
         return cache[chave]
     fins = FOIL_FINISHES if finish in FOIL_FINISHES else ("nonfoil",)
+    # O MESMO crivo do `card_price` (2026-10-06): o preço e a imagem têm de ser
+    # da MESMA impressão, por isso o `sql_impressao_a_serio` entra nos dois ou em
+    # nenhum — senão a linha mostrava o preço de uma Tundra de Revised com a arte
+    # da Summer Magic.
+    a_serio = _scry.sql_impressao_a_serio("c")
     row = con.execute(
         f"""SELECT c.scryfall_id sid, {expr} preco
               FROM cards c JOIN {precos.sql_acabamentos(fins)} f
-             WHERE {_scry.sql_nome("c.name")} AND {expr} IS NOT NULL
+             WHERE {_scry.sql_nome("c.name")} AND {a_serio}
+               AND {expr} IS NOT NULL
              ORDER BY preco, c.released_at DESC LIMIT 1""",
         (*fins, *_scry.params_nome(name))).fetchone()
     if row is None and fins[0] != "nonfoil":
         row = con.execute(
             f"""SELECT c.scryfall_id sid, {expr} preco
                   FROM cards c JOIN {precos.sql_acabamentos(("nonfoil",))} f
-                 WHERE {_scry.sql_nome("c.name")} AND {expr} IS NOT NULL
+                 WHERE {_scry.sql_nome("c.name")} AND {a_serio}
+                   AND {expr} IS NOT NULL
                  ORDER BY preco, c.released_at DESC LIMIT 1""",
             ("nonfoil", *_scry.params_nome(name))).fetchone()
     sid = row["sid"] if row else None
@@ -590,7 +611,10 @@ def mais_barata_que_serve(con, s: dict, nm: str, finish: str = "nonfoil",
     if cache is not None and chave in cache:
         return cache[chave]
     expr = precos.sql_impressao(fontes_=precos.fontes())
-    onde = f"{_scry.sql_nome('c.name')} AND c.digital = 0"
+    # Era só `c.digital = 0`; passou ao crivo partilhado (2026-10-06) — a
+    # «mais barata que SERVE» não pode ser uma carta de borda dourada do World
+    # Championship nem uma Summer Magic.
+    onde = f"{_scry.sql_nome('c.name')} AND {_scry.sql_impressao_a_serio('c')}"
     par: list = [*fins, *_scry.params_nome(nm)]
     if ate:
         onde += " AND c.released_at <= ?"
@@ -696,40 +720,98 @@ def preco_da_copia(con, sid: str | None, finish: str, nome: str,
     IMPRESSÕES do mesmo nome**. Para o que falta comprar está certo — compra-se
     a mais barata. Para uma cópia que ele TEM na estante é avaliar a Underground
     Sea de Revised pela reimpressão mais barata que exista, e o número mudava
-    por causa de uma carta que não é a dele. A ordem, agora:
+    por causa de uma carta que não é a dele.
 
-      1. o preço da IMPRESSÃO DELA, na cadeia de fontes (a mesma conta única do
-         valor da colecção — `collection.preco_impressao_detalhe`, 2026-09-24 —,
-         com a tolerância de acabamento: foil ↔ etched primeiro, nonfoil depois);
-      2. só se NENHUMA fonte cotar aquela impressão, o mínimo entre impressões
-         (`card_price`), marcado `origem = min-impressoes`. É uma ESTIMATIVA, e
-         é dita: sem a marca, um preço de outra carta somava-se calado a preços
-         a sério;
-      3. nem isso: `unit = None` — *"sem preço"*, nunca 0 €.
+    ESTRITA DESDE 2026-10-06 (André, à letra): *"uma linha de VENDA (ou qualquer
+    valor que ele possa usar para decidir vender ou para pedir um preco) usa o
+    preco do scryfall_id EXACTO da copia e do finish EXACTO dela. Se nao houver
+    preco para essa impressao, a linha sai com 'sem preco' e entra numa lista de
+    pendentes — NUNCA cai para o preco de outra impressao."* A ordem passou a ser
+    de dois ramos, e caíram DOIS recursos que existiam:
 
-    O `cache` guarda o mapa de preços da corrida (uma consulta a
-    `price_latest`), porque isto é chamado por cópia.
+      1. o preço da IMPRESSÃO DELA, no ACABAMENTO DELA, na régua de VENDA
+         (`precos.fontes_venda`/`modo_venda`) — e mais nada;
+      2. `unit = None` — *"sem preço"*, nunca 0 € e nunca o preço de outra
+         carta. Quem o recolhe é a saída `sem_preco` do `sell_list`.
+
+    O QUE CAIU, e o que cada um custava, medido na base de 2026-10-06:
+
+      - **o mínimo entre impressões** (`card_price`, `origem = min-impressoes`).
+        Estava marcado e dito, e ainda assim era um preço de outra carta dentro
+        de uma linha de venda: com a cadeia em `cardtrader` apanhava **176 das
+        737 linhas** — o Powder Keg a 450,63 € de uma promo que ele não tem, a
+        Ancient Tomb de `ltc` a 140,64 €. E não era sequer «sistematicamente a
+        menos»: por este caminho tanto subia como descia.
+      - **a tolerância de acabamento** (foil ↔ etched ↔ nonfoil). Eram **3
+        linhas / 178,39 €**, e uma delas é o retrato do problema: 4 **Goblin
+        Engineer nonfoil** avaliadas ao preço do FOIL, 19,74 € cada. Para somar
+        um inventário é uma estimativa aceitável e vai marcada com `~` (é o que
+        o `collection.preco_impressao` continua a fazer, 2026-09-24); para pedir
+        um preço a alguém é um número a mais.
+
+    Fica `sem_preco_motivo` a dizer QUAL dos dois faltou, porque *«não há preço
+    desta impressão»* e *«não há preço deste acabamento»* resolvem-se de maneiras
+    diferentes.
+
+    André, 2026-09-25, à letra: *"o que tinha pedido era alterar o preço
+    REFERÊNCIA para Market Price ou Best Deal, ao invés de MÍNIMO"*.
+
+    O `cache` guarda os mapas de preços da corrida (uma consulta a
+    `price_latest` por régua), porque isto é chamado por cópia.
     """
     from . import collection as _col                        # noqa: PLC0415
     cache = {} if cache is None else cache
-    mapa = cache.get("_mapa")
+    # O MAPA DA RÉGUA DE VENDA, à parte do mapa do valor da colecção. As duas
+    # chaves convivem no mesmo `cache` de propósito: o `fases.relatorio` e o
+    # `sell_list` partilham-no, e uma chave só punha a primeira pergunta a
+    # responder pela segunda.
+    mapa = cache.get("_mapa_venda")
     if mapa is None:
-        mapa = cache["_mapa"] = _col.mapa_precos(con)
+        mapa = cache["_mapa_venda"] = _col.mapa_precos(
+            con, fontes_=precos.fontes_venda())
+    cen = _col.cenario_de(precos.modo_venda())
     if sid:
-        d = _col.preco_impressao_detalhe(mapa, sid, finish)
+        d = _col.preco_impressao_detalhe(mapa, sid, finish, cen, exacto=True)
         if d["preco"] is not None:
             return _com_estado({
                 "unit": d["preco"], "price_finish": d["price_finish"],
-                "fonte": d["fonte"], "origem": precos.ORIGEM_IMPRESSAO}, lot)
-    chave = ("min", nome, finish in FOIL_FINISHES)
-    if chave not in cache:
-        cache[chave] = card_price(con, nome, finish)
-    unit, pfin = cache[chave]
-    if unit is None:
-        return _com_estado({"unit": None, "price_finish": None, "fonte": None,
-                            "origem": precos.ORIGEM_SEM_PRECO}, lot)
-    return _com_estado({"unit": unit, "price_finish": pfin, "fonte": None,
-                        "origem": precos.ORIGEM_MIN_IMPRESSOES}, lot)
+                "fonte": d["fonte"], "origem": precos.ORIGEM_IMPRESSAO,
+                "divergencia": _divergencia_da_copia(con, sid, finish, cen,
+                                                     d["preco"], cache)}, lot)
+        # Distingue «esta impressão não está cotada» de «está, mas não neste
+        # acabamento»: são duas pendências diferentes, e a segunda resolve-se a
+        # olhar para a carta (é foil ou não?).
+        solta = _col.preco_impressao_detalhe(mapa, sid, finish, cen)
+        motivo = ("acabamento" if solta["preco"] is not None else "impressao")
+    else:
+        motivo = "sem-impressao"
+    return _com_estado({"unit": None, "price_finish": None, "fonte": None,
+                        "origem": precos.ORIGEM_SEM_PRECO,
+                        "sem_preco_motivo": motivo, "divergencia": None}, lot)
+
+
+def _divergencia_da_copia(con, sid: str, finish: str, cen: str, unit: float,
+                          cache: dict) -> dict | None:
+    """A outra fonte concorda com a régua? (`precos.divergencia`).
+
+    O que se compara é a régua (hoje o Trend do Cardmarket) com a **oferta mais
+    barata** do CardTrader — os dois números que medem o nível a que se
+    transacciona. Ver o bloco em `precos.DIVERGENCIA_PCT`. Fora das fontes da
+    régua não há com que comparar, e aí a resposta é `None`: um aviso que não se
+    possa justificar é pior do que aviso nenhum.
+    """
+    from . import collection as _col                        # noqa: PLC0415
+    outras = tuple(f for f in precos.fontes() if f not in precos.fontes_venda())
+    if not outras:
+        return None
+    mapa = cache.get("_mapa_outra")
+    if mapa is None:
+        mapa = cache["_mapa_outra"] = _col.mapa_precos(con, fontes_=outras)
+    # `low` = a oferta mais barata da outra fonte, e nunca a mediana dos pedidos.
+    d = _col.preco_impressao_detalhe(mapa, sid, finish, "low", exacto=True)
+    _ = cen
+    out = precos.divergencia(unit, d["preco"])
+    return {**out, "fonte": d["fonte"]} if out else None
 
 
 def _com_estado(d: dict, lot: dict | None) -> dict:
@@ -798,14 +880,24 @@ def _historico(con, name: str, finish: str, source: str | None = None,
 
     Uma linha antiga tem `receita` a NULL e vale `unico`, que é o que ela é.
 
-    E **só da fonte PRINCIPAL**, nunca da cadeia (2026-09-25). A cadeia serve
-    para dizer quanto vale hoje uma impressão que a fonte principal não cota; um
+    E **só de UMA fonte**, nunca da cadeia (2026-09-25). A cadeia serve para
+    dizer quanto vale hoje uma impressão que a fonte principal não cota; um
     histórico que saltasse do CardTrader para o Cardmarket a meio media a
     diferença entre dois mercados e chamava-lhe subida. Quando o preço de HOJE
-    veio da fonte de recurso, quem responde é o `avaliar_rl`, com
-    `rl_sem_historico` — ver lá.
+    veio de outra fonte, quem responde é o `avaliar_rl`, com `rl_sem_historico`
+    — ver lá.
+
+    **E essa fonte é a da RÉGUA DE VENDA (2026-10-06), não a do valor.** Quem
+    chama isto é a regra dos 5 % da Reserved List, e o número que ela compara com
+    o passado é o preço da LINHA DE VENDA (`preco_da_copia`), que desde hoje sai
+    de `precos.fontes_venda()`. Mantê-lo na fonte do valor era pôr as duas pontas
+    da percentagem em mercados diferentes — exactamente o que este parágrafo
+    existe para impedir, só que pelo lado novo. O carimbo do
+    `precos.regua_desde()` (que passou a incluir o `precos.venda.desde`) é o que
+    garante que isto não começa a decidir hoje: a janela é 0 dias e a resposta
+    continua a ser `rl_sem_historico`.
     """
-    source = source or precos.fonte()
+    source = source or precos.fontes_venda()[0]
     receita = receita or precos.receita_em_vigor(con, source)
     expr = precos.sql(alias="h")
     fins = FOIL_FINISHES if finish in FOIL_FINISHES else ("nonfoil",)
@@ -818,10 +910,16 @@ def _historico(con, name: str, finish: str, source: str | None = None,
     # com 47 chamadas por relatório punha o `report` em 12,9 s. Resolver custa
     # uma consulta indexada e devolve o plano ao que era.
     nm = _scry.resolver(con, name) or name
+    # E O CRIVO DOS SETS QUE NÃO SÃO PREÇO, NAS DUAS PONTAS (2026-10-06). O
+    # `_cotacao_em` faz `min` sobre as impressões do nome, e o preço de HOJE já
+    # passa pelo crivo (`card_price`): sem ele aqui, a ponta de há 90 dias podia
+    # ser uma Summer Magic a 0,25 € e a percentagem decidia a venda de uma
+    # Reserved List sobre uma carta que não é a dele.
     return con.execute(
         f"""SELECT h.scryfall_id sid, h.finish fin, h.date d, {expr} t
               FROM price_history h JOIN cards c ON c.scryfall_id = h.scryfall_id
              WHERE c.name = ? AND h.source = ?
+                   AND {_scry.sql_impressao_a_serio("c")}
                    AND h.finish IN ({marks})
                    AND COALESCE(h.receita, ?) = ?
                    AND {expr} IS NOT NULL
@@ -3704,6 +3802,38 @@ RL_FOLGA_DIAS = 2
 RAZAO_RL_SEGURAR = "RL em valorização"
 RAZAO_RL_SEM_HISTORICO = "RL sem histórico suficiente"
 
+# SEM PREÇO DA IMPRESSÃO DELA (André, 2026-10-06). A décima saída da venda.
+RAZAO_SEM_PRECO = "sem preço desta impressão"
+MOTIVOS_SEM_PRECO = {
+    "impressao": "a régua de venda não cota esta impressão — vê o preço à mão "
+                 "e mete-o no `acquired_price`, ou liga a outra fonte",
+    "acabamento": "a impressão está cotada NOUTRO acabamento, não neste — "
+                  "confirma se a cópia é foil",
+    "sem-impressao": "o catálogo não conhece esta impressão",
+}
+
+
+def _sem_preco(linhas: list[dict]) -> tuple[list[dict], list[dict]]:
+    """Parte uma lista de venda em `(as que têm preço, as que não têm)`.
+
+    O gémeo do `confirmado.filtrar_sem_foto`, e pela mesma razão: uma linha sem
+    número não se oferece a ninguém, e misturá-la com as que têm dava um total
+    que conta cópias a 0 €. O motivo vem do `preco_da_copia`
+    (`sem_preco_motivo`), porque *«não há preço desta impressão»* e *«não há
+    preço deste acabamento»* resolvem-se de maneiras diferentes.
+    """
+    ficam, sem = [], []
+    for r in linhas:
+        if r.get("unit") is not None:
+            ficam.append(r)
+        else:
+            motivo = MOTIVOS_SEM_PRECO.get(r.get("preco_sem_motivo") or "",
+                                           MOTIVOS_SEM_PRECO["impressao"])
+            sem.append(dict(r, motivo=motivo,
+                            porque_venderia=r.get("reason") or "",
+                            reason=f"{RAZAO_SEM_PRECO}: {motivo}"))
+    return ficam, sem
+
 
 def regras_venda() -> dict:
     """`colecao_config.json -> venda`. Sem ela valem os valores deste módulo."""
@@ -3852,7 +3982,11 @@ def avaliar_rl(con, linha: dict, hoje: str | None = None,
     # `sell_list` (o mesmo padrão do `foil_cache`), e por isso não há cache
     # nenhuma para invalidar: morre com o relatório.
     if "_receita" not in cache:
-        cache["_receita"] = precos.receita_em_vigor(con, precos.fonte())
+        # A RECEITA É A DA FONTE QUE FAZ O PREÇO DESTA LINHA (2026-10-06): a da
+        # régua de VENDA. Com a do valor, a receita e o histórico vinham de
+        # mercados diferentes — e é a receita que impede comparar duas escalas.
+        cache["_receita"] = precos.receita_em_vigor(
+            con, precos.fontes_venda()[0])
     if chave not in cache:
         cache[chave] = _historico(con, linha["nm"], fin,
                                   receita=cache["_receita"])
@@ -3872,11 +4006,14 @@ def avaliar_rl(con, linha: dict, hoje: str | None = None,
     # porque o CardTrader não tem a carta à venda — e o histórico é do
     # CardTrader. Comparar os dois é medir a diferença entre dois mercados e
     # chamar-lhe subida, sobre a decisão de venda que vale mais dinheiro.
+    # A fonte de comparação é a da RÉGUA DE VENDA (2026-10-06), que é quem faz o
+    # preço de hoje desta linha — ver o `_historico`.
+    fonte_regua = precos.fontes_venda()[0]
     veio_de = linha.get("preco_fonte")
-    if veio_de and veio_de != precos.fonte():
+    if veio_de and veio_de != fonte_regua:
         return "sem_historico", (
             f"{RAZAO_RL_SEM_HISTORICO} (o preço de hoje veio do {veio_de} e o "
-            f"histórico é do {precos.fonte()})")
+            f"histórico é do {fonte_regua})")
     # A RÉGUA trava a janela (André, 2026-09-25, ponto 3 da ordem, alargado à
     # fonte no mesmo dia). O `_historico` já só traz pontos da MESMA receita e
     # da MESMA fonte; falta o outro lado — trocar de modo ou de fonte troca o
@@ -4034,15 +4171,22 @@ def sell_list(con, res: dict) -> dict:
     # ao ciclo era uma linha de venda com o nome da carta anterior no dia em que
     # alguém mudasse a ordem das passagens.
     def linha_de(nm, lot, take, razao, grupo=""):
-        # O PREÇO DE REFERÊNCIA DE UMA CÓPIA É O DA IMPRESSÃO DELA (2026-09-25).
-        # Era o `card_price` — o mínimo entre impressões do mesmo nome —, e por
-        # isso uma Underground Sea de Revised valia aqui a reimpressão mais
-        # barata que exista. O mínimo só entra quando a impressão dela não está
-        # cotada em fonte nenhuma, e nesse caso a linha di-lo (`preco_origem`).
+        # O PREÇO DE REFERÊNCIA DE UMA CÓPIA É O DA IMPRESSÃO DELA (2026-09-25),
+        # e desde 2026-10-06 **só** dela e só no acabamento dela: sem preço a
+        # linha sai com `unit = None` e vai para a saída `sem_preco`, nunca com o
+        # preço de outra impressão. Era o `card_price` — o mínimo entre impressões
+        # do mesmo nome —, e por isso uma Underground Sea de Revised valia aqui a
+        # reimpressão mais barata que exista.
         p = preco_da_copia(con, lot["sid"], lot["finish"], nm, precos_cache,
                            lot=lot)
         unit, pfin = p["unit"], p["price_finish"]
         return {"nm": nm, "sub": lot["sub"], "local": lot["local"], "q": take,
+                # Porque é que não há preço (`impressao` / `acabamento` /
+                # `sem-impressao`) e se a OUTRA fonte discorda da régua. Os dois
+                # viajam na linha porque é lá que ele os lê — a divergência «em
+                # vez de um número só» é a ordem dele de 2026-10-06.
+                "preco_sem_motivo": p.get("sem_preco_motivo"),
+                "preco_divergencia": p.get("divergencia"),
                 # Que exemplares são, para o botão "vendida" do modo edição os
                 # poder tirar da base. Sem isto a linha era só texto e a única
                 # maneira de registar uma venda era editar a `copies` à mão.
@@ -4342,13 +4486,32 @@ def sell_list(con, res: dict) -> dict:
     venda, sem_foto = _conf.filtrar_sem_foto(venda)
     venda_rl, sem_foto_rl = _conf.filtrar_sem_foto(venda_rl)
 
+    # E NADA SE VENDE SEM PREÇO DA IMPRESSÃO DELA (André, 2026-10-06): *"a linha
+    # sai com 'sem preco' e entra numa lista de pendentes — NUNCA cai para o
+    # preco de outra impressao."* É a DÉCIMA saída, pela mesma razão por que a
+    # `sem_foto` é a oitava: *«não sei quanto isto vale»* não é *«não vendas
+    # isto»*. Corre DEPOIS da foto porque a ordem dos gestos dele é essa —
+    # primeiro a prova de que a carta existe, depois o preço.
+    #
+    # Uma linha sem preço NÃO pode ir para o CSV de stock (não há coluna
+    # `Price` para escrever) nem para a lista da estante: entra no «fica de
+    # fora» da exportação, com o motivo (`venda.FORA`).
+    venda, sem_preco = _sem_preco(venda)
+    venda_rl, sem_preco_rl = _sem_preco(venda_rl)
+
     v, vrl, ret, gd = (_fecha(venda), _fecha(venda_rl), _fecha(retidos),
                        _fecha(guardar))
     rsv = _fecha(reservadas)
     prot = _fecha(protegidas)
     sf = _fecha(sem_foto + sem_foto_rl)
+    sp = _fecha(sem_preco + sem_preco_rl)
     seg, semh = _fecha(rl_segurar), _fecha(rl_sem_historico)
     return {"venda": v["linhas"], "venda_rl": vrl["linhas"],
+            # A saída de 2026-10-06: a impressão dela não está cotada na régua de
+            # venda, e por isso não há número para pedir. `total_sem_preco` é
+            # sempre 0 € por construção — o que conta é `copias_sem_preco`.
+            "sem_preco": sp["linhas"], "copias_sem_preco": sp["copias"],
+            "total_sem_preco": sp["total"],
             # A saída NOVA de 2026-10-01: o que as quatro protecções seguram.
             "protegidas": prot["linhas"], "copias_protegidas": prot["copias"],
             "total_protegido": prot["total"],

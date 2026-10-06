@@ -531,11 +531,17 @@ def _preco_jogavel(con, nm: str, cache: dict | None = None):
     if k in cache:
         return cache[k]
     expr = precos.sql_impressao(fontes_=precos.fontes())
+    # O crivo passou a ser o PARTILHADO (2026-10-06, ordem dele). Era
+    # `digital = 0 AND set_type <> 'memorabilia'` escrito aqui, e o comentário
+    # acima já dizia que a **Summer Magic** lhe escapava (é `core`). Hoje é o
+    # `scryfall.sql_impressao_a_serio`, com o `sum` lá dentro — e o
+    # `loadout.card_price` passou a usar o mesmo, por isso o `unit` e o
+    # `unit_jogavel` já não podem discordar por causa deste crivo.
     r = con.execute(
         f"""SELECT c.set_code sc, {expr} p
               FROM cards c JOIN {precos.sql_acabamentos(('nonfoil',))} f
-             WHERE {scryfall.sql_nome("c.name")} AND c.digital = 0
-               AND c.set_type <> 'memorabilia'
+             WHERE {scryfall.sql_nome("c.name")}
+               AND {scryfall.sql_impressao_a_serio("c")}
                AND {expr} IS NOT NULL
              ORDER BY p LIMIT 1""",
         ("nonfoil", *scryfall.params_nome(nm))).fetchone()

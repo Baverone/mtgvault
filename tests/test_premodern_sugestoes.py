@@ -138,6 +138,16 @@ def base():
              json.dumps(["nonfoil", "foil"]), rel,
              json.dumps({"premodern": "legal", "legacy": "legal",
                          "duel-commander": "legal", "commander": "legal"})))
+        # UM PREÇO PARA CADA IMPRESSÃO (2026-10-06) — ver a mesma nota no
+        # `test_legacy_rl.base`. Desde hoje uma linha sem preço não entra na
+        # lista de venda (vai para a saída `sem_preco`), e o
+        # `caso_recusa_liberta_as_cartas_para_a_venda` media uma lista vazia.
+        for fin in ("nonfoil", "foil"):
+            con.execute(
+                "INSERT OR REPLACE INTO price_latest (scryfall_id, source, "
+                "finish, date, low, trend, currency) "
+                "VALUES (?, 'cardmarket', ?, '2026-09-07', ?, ?, 'EUR')",
+                (f"id-{i}", fin, 10.0 + i, 10.0 + i))
     con.commit()
     return con
 

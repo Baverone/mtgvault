@@ -198,13 +198,23 @@ KNOWN = [
 ]
 
 # impressões que NÃO se jogam em torneio — fora dos preços e das sugestões de compra
-_NOT_PLAYABLE = (
-    "AND c.digital = 0 "
-    "AND c.set_name NOT LIKE '%World Championship%' "
-    "AND c.set_name NOT LIKE '%Collector%Edition%' "
-    "AND c.set_name NOT LIKE '%International Edition%' "
-    "AND c.set_name NOT LIKE '%Oversized%' "
-)
+#
+# PASSOU AO CRIVO PARTILHADO (2026-10-06): era esta lista de `set_name LIKE`,
+# escrita à mão, e era a TERCEIRA variante da mesma pergunta (as outras no
+# `scryfall.impressoes`, no `fases._preco_jogavel` e no
+# `loadout.mais_barata_que_serve`). Media-se o que cada uma deixava passar e
+# **nenhuma estava certa**: esta apanhava os decks do World Championship pelo
+# nome e deixava passar a **Summer Magic** e a **30th Anniversary Edition** —
+# 900 impressões cujo preço no Cardmarket é lixo (Badlands a 0,02 €).
+#
+# Medido no catálogo de 2026-10-06, as duas versões lado a lado: o crivo novo
+# aceita **100 006** impressões contra 101 681, e a diferença é toda a favor —
+# recusa a mais `30a` (594), `ptc` (307), `sum` (306) e as cartas-de-capa dos
+# Jumpstart; e aceita a mais exactamente **2** cartas, `pwor` #1 e #2
+# (Balduvian Horde de 1999 e o Crucible of Worlds de 2019, 42,48 €), que são
+# PROMOS de papel a sério — o `set_name LIKE '%World Championship%'` apanhava-as
+# por acidente, ao mirar os decks de borda dourada, que são `memorabilia`.
+_NOT_PLAYABLE = " AND " + scryfall.sql_impressao_a_serio("c") + " "
 
 
 def _thumb(uri):

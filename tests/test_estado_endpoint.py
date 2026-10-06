@@ -48,6 +48,14 @@ CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
 os.environ["MTGVAULT_CONFIG"] = str(CAMINHO)
 os.environ["MTGVAULT_HOME"] = str(_TMP)
 os.environ["MTGVAULT_DB"] = str(_TMP / "vault.db")   # ver tests/_bateria.py
+# E O CATÁLOGO (2026-10-06). Faltava, e era este ficheiro o escritor do `sid-0`
+# — um **Tundra de Revised FALSO** — dentro do `data/catalog.db` do André, uma
+# linha em CADA corrida da bateria (medido: `cards` 112 754 → 112 755). O
+# `MTGVAULT_HOME` não salva: a omissão do `db.DEFAULT_CATALOG` é `ROOT/catalog.db`
+# mas neste PC o `MTGVAULT_CATALOG` está no AMBIENTE, e o ambiente ganha. A
+# `base()` aqui abaixo escreve em `catalog.cards`, por isso as duas variáveis
+# andam juntas — e ANTES do import, que é onde o `db` as lê.
+os.environ["MTGVAULT_CATALOG"] = str(_TMP / "catalog.db")
 
 from mtgvault import db, estado  # noqa: E402
 

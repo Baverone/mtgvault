@@ -220,6 +220,124 @@ def fontes(cfg: dict | None = None) -> tuple[str, ...]:
     return tuple(fora) or ("cardmarket",)
 
 
+# ---------------------------------------------------------------------------
+# A RÉGUA DAS LINHAS DE VENDA (André, 2026-10-06)
+# ---------------------------------------------------------------------------
+# *"Decide UMA regua para as linhas de venda, escreve qual e porque no
+# colecao_config.json … Nao escolhas a mais alta por ser mais alta: diz-me qual
+# e a que ele consegue mesmo receber e porque."*
+#
+# ESCOLHIDA: **`cardmarket`, modo `market`** (o Trend). E é a MAIS BAIXA das
+# duas — 96 856 € contra 133 164 € nas 1 678 cópias dele. As razões, medidas na
+# base a 2026-10-06 (`_revisao/chao/d3_regua.py`, 552 impressões que as duas
+# fontes cotam no acabamento exacto):
+#
+#   1. **o `market` do CardTrader é a MEDIANA DOS PEDIDOS, não um preço que se
+#      recebe.** Está **+58,5 % acima** do Trend do Cardmarket na mediana
+#      (média +70,6 %) e acima em **544 das 552** impressões. Uma oferta que
+#      nunca vende fica na mediana para sempre.
+#   2. **a corroboração, e é o número que decide:** a oferta MAIS BARATA do
+#      CardTrader (`low`) cai **sobre** o Trend do Cardmarket — mediana
+#      **−1,3 %**, metade do meio entre −16 % e +14,2 %, 265 acima contra 284
+#      abaixo. Dois mercados independentes a dar o mesmo número é o nível a que
+#      se TRANSACCIONA; a mediana dos pedidos é o nível a que se PEDE.
+#   3. **é o mercado onde ele lista.** O CSV de stock leva o `idProduct` do
+#      Cardmarket e não existe exportação para o CardTrader (2026-10-04:
+#      *"chamar-lhe CardTrader era inventar uma integração que não existe"*).
+#   4. **cobre a colecção dele.** No acabamento e na impressão exactos o
+#      Cardmarket cota **732 das 737** linhas e o CardTrader **555**. Com a
+#      regra estrita de hoje isso é a diferença entre **7 exemplares** à espera
+#      de preço à mão e **399** — entre uma lista que ele fecha em cinco minutos
+#      e uma que não serve.
+#   5. **as taxas da feira são dele e são contra o Trend** (`feira.taxa_dinheiro`
+#      0,55 e `taxa_troca` 0,70).
+#
+# O VALOR DA COLECÇÃO **não** muda de régua por aqui: fica na cadeia que ele
+# escolheu a 2026-10-04 (*"faz a tua pesquisa dos precos apenas no cardtrader"*),
+# porque a ordem de hoje é sobre *as linhas de venda*. São duas perguntas, e o
+# precedente é o `fonte_serie`. Unificá-las é decisão dele e custa −36 307 €
+# no total da colecção.
+VENDA_MODO_OMISSAO = MARKET
+VENDA_FONTE_OMISSAO = "cardmarket"
+
+
+def _bloco_venda(cfg: dict | None = None) -> dict:
+    b = bloco(cfg).get("venda")
+    return b if isinstance(b, dict) else {}
+
+
+def fontes_venda(cfg: dict | None = None) -> tuple[str, ...]:
+    """A cadeia de fontes das LINHAS DE VENDA — ver o bloco acima.
+
+    Sem o `precos.venda` no config vale a cadeia normal, para uma base de testes
+    (e o config de ontem) se comportarem exactamente como antes. É o padrão do
+    `venda.mostrar`: a chave que não existe não muda nada.
+    """
+    b = _bloco_venda(cfg)
+    if not b:
+        return fontes(cfg)
+    rec = b.get("fonte_recurso")
+    if isinstance(rec, str):
+        rec = [rec]
+    elif not isinstance(rec, list):
+        rec = []
+    fora: list[str] = []
+    for f in [b.get("fonte") or VENDA_FONTE_OMISSAO, *rec]:
+        limpa = _fonte_limpa(f)
+        if limpa and limpa not in fora:
+            fora.append(limpa)
+    return tuple(fora) or fontes(cfg)
+
+
+def modo_venda(cfg: dict | None = None) -> str:
+    """O modo das LINHAS DE VENDA. Sem o bloco, o modo normal."""
+    b = _bloco_venda(cfg)
+    if not b:
+        return modo(cfg)
+    v = str(b.get("modo") or "").strip().lower()
+    return v if v in MODOS else VENDA_MODO_OMISSAO
+
+
+# A DIVERGÊNCIA ENTRE AS DUAS FONTES, e porque é que o limiar é 40 % E 2 €.
+#
+# Compara-se o que a régua diz (`cardmarket` Trend) com a **oferta mais barata**
+# do CardTrader — os dois números que medem o nível a que se transacciona. NÃO
+# se compara com a mediana dos pedidos: essa está estruturalmente +58 % acima, e
+# um limiar sobre ela marcava as linhas todas e não dizia nada.
+#
+# O limiar vem da curva medida nas 552 impressões (`d4_divergencia.py`): a
+# metade do meio concorda dentro de ±16 %, três quartos dentro de ±30 %,
+# p90 = 29,4 % e p95 = 47,1 %. **40 % fica entre o p90 e o p95**: marca a cauda
+# e não o corpo. Abaixo disso deixa de se ler — a 25 % são 174 linhas (31 %), a
+# 10 % são 364 (66 %), e um aviso em dois terços das linhas é um aviso que ele
+# deixa de ver (o mesmo princípio dos DOIS GRAUS do `preco_fora_da_regra` de
+# 05/10 e do 503-contra-500 do `webapp`).
+#
+# E LEVA UM CHÃO EM EUROS, que é o que o torna utilizável: o CardTrader tem um
+# PISO de oferta de ~0,11 €, e por isso as maiores percentagens são todas de
+# cartas de cêntimos — Phoenix Down +266 % são 8 cêntimos, e 11 das 20 piores
+# estão abaixo de 3 €. Sem o chão, as 364 linhas de aviso eram quase todas
+# ruído e a do Grinding Station foil (41,46 € contra 151,57 €, **3 cópias**)
+# passava no meio delas.
+DIVERGENCIA_PCT = 40.0
+DIVERGENCIA_EUR = 2.00
+
+
+def divergencia(unit, outra) -> dict | None:
+    """`None` se as duas fontes concordam; senão o par e de quanto se afastam.
+
+    `unit` é o número da régua de venda e `outra` o da outra fonte (a oferta mais
+    barata). Devolve `{pct, eur, aviso, outra}` — e o `aviso` só é verdadeiro
+    quando os DOIS limiares são passados, pela razão escrita acima.
+    """
+    if unit is None or outra is None or unit <= 0:
+        return None
+    pct = (outra - unit) / unit * 100
+    eur = outra - unit
+    return {"pct": round(pct, 1), "eur": round(eur, 2), "outra": outra,
+            "aviso": abs(pct) > DIVERGENCIA_PCT and abs(eur) >= DIVERGENCIA_EUR}
+
+
 def modo_desde(cfg: dict | None = None) -> str | None:
     """A data (ISO) em que o modo passou a ser este. Escrita por quem o troca."""
     v = bloco(cfg).get("modo_desde")
@@ -259,9 +377,19 @@ def regua_desde(cfg: dict | None = None) -> str | None:
     dos 5 % da Reserved List encurta a janela até aqui, e enquanto não houver
     `venda.rl_janela_minima_dias` dias medidos assim a resposta é
     `rl_sem_historico`, nunca *"não subiu"*. Uma RL vendida não volta.
+
+    **E A RÉGUA DE VENDA CONTA (2026-10-06)**, porque é ELA que faz o preço de
+    hoje de uma linha de venda — e é esse preço que a regra dos 5 % compara com
+    o de há 90 dias. Sem o `precos.venda.desde` aqui, trocar a régua de venda
+    punha a regra a decidir, no dia seguinte, com uma escala nova em cima: era o
+    furo que o carimbo existe para tapar, aberto por uma chave nova. Medido: com
+    o `desde` de hoje, a janela efectiva é 0 dias, logo a resposta continua a ser
+    `rl_sem_historico` — as 97 cópias de RL não mudam de lado, e voltam a
+    decidir-se quando houver 25 dias medidos nesta régua.
     """
-    datas = [d for d in (modo_desde(cfg), fonte_desde(cfg)) if d]
-    return max(datas) if datas else None
+    datas = [d for d in (modo_desde(cfg), fonte_desde(cfg),
+                         _bloco_venda(cfg).get("desde")) if d]
+    return max(str(d) for d in datas) if datas else None
 
 
 def linguas(cfg: dict | None = None) -> frozenset[str]:

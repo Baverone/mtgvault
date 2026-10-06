@@ -43,17 +43,30 @@ def resolve(con: sqlite3.Connection, name: str) -> str | None:
     from mtgvault import precos, scryfall                  # noqa: PLC0415
     expr = precos.sql(alias="p")
     pn = scryfall.params_nome(name)
+    # DUAS CORRECÇÕES DE 2026-10-06, as duas da mesma família:
+    #   - **a fonte não era filtrada**: este `MIN` corria por cima da
+    #     `price_latest` INTEIRA, somando escalas de fontes diferentes — é o
+    #     defeito que a conta única do valor fechou nas páginas a 2026-09-24 e
+    #     que aqui ficou. Passa a ser a cadeia em vigor (`precos.fonte()`);
+    #   - **os sets que não são preço** entravam (`scryfall.sql_impressao_a_serio`):
+    #     a impressão «mais barata» podia ser uma Summer Magic ou um deck do
+    #     World Championship.
+    # Alimenta a `collection_owned`, que hoje não alimenta página nenhuma — mas
+    # um número errado à espera de ser lido é o padrão do `event_tier`.
     r = con.execute(
         f"""SELECT c.scryfall_id FROM catalog.cards c
              JOIN price_latest p ON p.scryfall_id = c.scryfall_id AND p.finish = 'nonfoil'
-            WHERE {scryfall.sql_nome("c.name")} AND {expr} IS NOT NULL
-            ORDER BY {expr} ASC LIMIT 1""", pn).fetchone()
+            WHERE {scryfall.sql_nome("c.name")} AND p.source = ?
+              AND {scryfall.sql_impressao_a_serio("c")} AND {expr} IS NOT NULL
+            ORDER BY {expr} ASC LIMIT 1""",
+        (*pn, precos.fonte())).fetchone()
     if r:
         return r[0]
     r = con.execute(
-        f"""SELECT scryfall_id FROM catalog.cards
-            WHERE {scryfall.sql_nome("name")} AND lang = 'en'
-            ORDER BY released_at DESC LIMIT 1""", pn).fetchone()
+        f"""SELECT scryfall_id FROM catalog.cards c
+            WHERE {scryfall.sql_nome("c.name")} AND c.lang = 'en'
+              AND {scryfall.sql_impressao_a_serio("c")}
+            ORDER BY c.released_at DESC LIMIT 1""", pn).fetchone()
     return r[0] if r else None
 
 

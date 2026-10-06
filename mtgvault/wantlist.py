@@ -19,11 +19,16 @@ def cheapest_price(con, card_name: str, source: str | None = None) -> float | No
     # condutor e o SQLite passa a percorrer a `price_latest` pelo `source`:
     # medido, **0,2 ms → 204 ms**. É a mesma armadilha do `loadout._historico`.
     nm = scryfall.resolver(con, card_name) or card_name
+    # OS SETS QUE NÃO SÃO PREÇO (2026-10-06): este `MIN` é entre impressões do
+    # mesmo nome, e por isso não pode ir buscar o número a uma carta de borda
+    # dourada do World Championship nem à Summer Magic. Crivo partilhado —
+    # `scryfall.sql_impressao_a_serio`.
     row = con.execute(
         f"""SELECT MIN({precos.sql(alias="p")}) AS price
              FROM cards c
              JOIN price_latest p ON p.scryfall_id = c.scryfall_id
-            WHERE c.name = ? AND p.source = ? AND p.finish = 'nonfoil'""",
+            WHERE c.name = ? AND p.source = ? AND p.finish = 'nonfoil'
+              AND {scryfall.sql_impressao_a_serio("c")}""",
         (nm, source or precos.fonte()),
     ).fetchone()
     return row["price"] if row else None

@@ -168,6 +168,18 @@ FORA = (
      "estão na base mas ainda não foram fotografadas nesta campanha, por isso "
      "não se vendem: fotografa-as na pasta do deck (ou nos Extras, se não forem "
      "de deck nenhum) e aparecem na corrida seguinte."),
+    # SEM PREÇO DESTA IMPRESSÃO (André, 2026-10-06: *"a linha sai com 'sem
+    # preco' e entra numa lista de pendentes — NUNCA cai para o preco de outra
+    # impressao"*). Logo depois da foto, e pela mesma razão: as duas são FALTA DE
+    # DADO e não decisões tomadas, e as duas se resolvem com um gesto dele — ali
+    # tirar a foto, aqui ver o preço. Uma linha sem número não pode ir para o CSV
+    # de stock (não há `Price` para escrever) nem para a lista da estante.
+    ("sem_preco", "Sem preço desta impressão — a confirmar à mão",
+     "A régua de venda é o Trend do Cardmarket (ver `precos.venda` no config) e "
+     "a linha usa o preço da IMPRESSÃO EXACTA da cópia, no acabamento dela. "
+     "Quando essa impressão não está cotada, o vault não inventa: não cai para o "
+     "preço de outra impressão nem do outro acabamento. O motivo de cada linha "
+     "diz o que falta — e quase sempre resolve-se a ver o preço à mão."),
     # AS QUATRO PROTECÇÕES (André, 2026-10-01). À cabeça, e não no fim: é a
     # decisão mais recente e é a que ele quer ver primeiro. Cada linha traz o
     # motivo em português e qual das quatro a apanhou (ver `mtgvault/fases.py`).
@@ -526,7 +538,11 @@ def texto_estante(estante: dict, hoje: str | None = None) -> str:
 # O que fica de fora, e porquê
 # ---------------------------------------------------------------------------
 def fora_da_exportacao(rep: dict) -> list[dict]:
-    """As cinco saídas que NÃO entram no CSV, cada uma com o motivo por linha.
+    """As saídas que NÃO entram no CSV, cada uma com o motivo por linha.
+
+    São as do `FORA` — não se escreve aqui o número, que já esteve errado: eram
+    cinco quando isto foi escrito, sete depois das protecções e da foto, e oito
+    desde que a `sem_preco` entrou (2026-10-06).
 
     Nas RL retidas o motivo traz a percentagem e a janela (`rl_nota`, ex.:
     *"+4.9 % em 27 d ≈ +16.3 %/90 d"*) e o motivo por que iriam à venda

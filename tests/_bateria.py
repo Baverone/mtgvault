@@ -31,6 +31,29 @@ import time
 from pathlib import Path
 
 AQUI = Path(__file__).resolve().parent
+sys.path.insert(0, str(AQUI.parent))
+from mtgvault import db as _db  # noqa: E402
+
+# A TRAVA: AS BASES DO ANDRÉ FICAM PROIBIDAS AOS FILHOS (2026-10-06).
+# A regra de 2026-09-09 (acima) não chegou. A 2026-10-06 apareceram **fixtures
+# dentro das bases a sério** — 63 linhas / 252 exemplares em `copies`, quatro
+# cartas inventadas no catálogo (uma delas um Tundra de Revised FALSO) e três
+# preços a 10,00 €: a colecção dizia 1 930 cópias em vez de 1 678 e a carta «Tem
+# Esta» abria a lista do que há para vender, já publicada no site. Nenhum teste
+# falhava.
+#
+# Medido nesse dia, a correr cada um dos 97 ficheiros num processo novo e a
+# comparar as bases antes e depois: **um** deles escrevia no `catalog.db` a
+# sério (o `test_estado_endpoint`, que fixava o `MTGVAULT_DB` e esquecia o
+# `MTGVAULT_CATALOG`), e o `s-tem` veio de um rascunho que fixava as quatro
+# variáveis **depois** de importar o `mtgvault.db` — onde não têm efeito.
+#
+# Por isso os caminhos reais vão PROIBIDOS para cada filho, e quem os abrir
+# rebenta com o nome do ficheiro em vez de deixar a linha lá. Os dois: foi o
+# CATÁLOGO que levou o `sid-0`, e ele não está no `MTGVAULT_DB`.
+AMBIENTE = dict(os.environ)
+AMBIENTE[_db.VAR_PROIBIDAS] = os.pathsep.join(
+    str(Path(p).resolve()) for p in (_db.DEFAULT_DB, _db.DEFAULT_CATALOG))
 # TECTO POR FICHEIRO (2026-10-02). Não havia nenhum, e um teste pendurado
 # pendurava a bateria **para sempre** — sem uma linha de saída, porque o resumo
 # só se imprime no fim. Aconteceu nesse dia: vinte minutos a olhar para um
@@ -45,7 +68,7 @@ for f in sorted(AQUI.glob("test_*.py")):
     try:
         p = subprocess.run([sys.executable, f.name], cwd=AQUI, capture_output=True,
                            text=True, encoding="utf-8", errors="replace",
-                           timeout=TECTO_S)
+                           timeout=TECTO_S, env=AMBIENTE)
     except subprocess.TimeoutExpired:
         pendurados.append(f.name)
         print(f"PENDURA {f.name} (passou dos {TECTO_S}s)", flush=True)

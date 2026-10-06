@@ -241,6 +241,62 @@ def _clausula_finish(finishes) -> tuple[str, list]:
             [f'%"{f}"%' for f in finishes])
 
 
+# ---------------------------------------------------------------------------
+# OS SETS QUE NÃO SÃO PREÇO (André, 2026-10-06, à letra)
+# ---------------------------------------------------------------------------
+# *"Summer Magic / Edgar (sum), 30th Anniversary Edition (30a), Collectors'
+# Edition (ced), Intl. Collectors' Edition (cei). Os tres ultimos nao sao cartas
+# legais e o primeiro quase nao transacciona — os precos do cardmarket para ele
+# sao lixo (0,02 EUR num Badlands). Nenhum destes pode emprestar preco a outra
+# impressao, em sitio nenhum do app. Se ele TIVER uma copia de um destes sets, o
+# preco dessa copia e o do set dela e esta certo; o que esta proibido e usa-lo
+# para outra copia."*
+#
+# A LISTA DELE ESTAVA INCOMPLETA, e a medição di-lo: dos **87** mínimos por nome
+# que hoje vêm de um set destes (fonte `cardmarket`, as 580 cartas da colecção),
+# só ~10 são `sum`/`30a`/`ced`/`cei` — **a maioria são os decks do World
+# Championship** (`wc97`…`wc04`, `ptc`, `olep`, `olgc`, `ocm1`), que são cartas
+# de borda dourada, não legais, e `set_type = 'memorabilia'`. E são eles que
+# fazem três dos sete exemplos que ele deu: **Gaea's Cradle 272,71 €** (wc99),
+# **Grim Monolith 22,15 €** (wc99) e **Flooded Strand 11,64 €** (wc04). Com a
+# lista dos quatro sozinha, os piores casos dele ficavam por corrigir.
+#
+# Daí a regra ser: papel, não-memorabilia, e os quatro sets pelo nome. O `sum` é
+# o único dos quatro que PRECISA de estar escrito — os outros três já são
+# `memorabilia` (conferido no catálogo); a Summer Magic é `core` e escapa a tudo.
+#
+# E ISTO ESTAVA ESCRITO QUATRO VEZES, nenhuma delas completa — o padrão do
+# `e_foil`, do `vistoId` e do `precos.sql()`: o `scryfall.impressoes`
+# (`digital = 0 AND set_type <> 'memorabilia'`), o `fases._preco_jogavel` (igual,
+# com a nota a dizer que o `sum` lhe escapa), o `meta_coverage._NOT_PLAYABLE`
+# (por `set_name LIKE`, que apanha o World Championship e não o `sum` nem o
+# `30a`) e o `loadout.mais_barata_que_serve` (só `digital = 0`). Agora é uma, e
+# as quatro lêem de cá.
+SETS_SEM_PRECO = ("sum", "30a", "ced", "cei")
+
+
+def sql_impressao_a_serio(alias: str = "c") -> str:
+    """O predicado: esta impressão pode EMPRESTAR o preço (e a identidade) a outra?
+
+    Papel (`digital = 0`), não memorabilia, e fora dos `SETS_SEM_PRECO`. Vale
+    para as duas perguntas que são a mesma: *«qual é a impressão mais barata
+    desta carta?»* (o preço de uma COMPRA) e *«que impressão é esta cópia?»* (o
+    palpite de edição). Uma impressão de um destes sets continua a ter o SEU
+    preço — o que ela não faz é responder pelas outras.
+
+    Os `COALESCE` são precisos: num catálogo antigo o `digital` e o `set_type`
+    nascem a NULL (entraram por `ALTER TABLE`), e `NULL <> 'memorabilia'` é NULL,
+    que em SQL não é verdadeiro — sem eles o predicado deitava fora o catálogo
+    inteiro em vez de o filtrar. Os literais vêm de uma tupla do código, nunca de
+    entrada de ninguém.
+    """
+    a = f"{alias}." if alias else ""
+    sets = ", ".join(f"'{s}'" for s in SETS_SEM_PRECO)
+    return (f"COALESCE({a}digital, 0) = 0 "
+            f"AND COALESCE({a}set_type, '') <> 'memorabilia' "
+            f"AND lower(COALESCE({a}set_code, '')) NOT IN ({sets})")
+
+
 def impressoes(con: sqlite3.Connection, name: str, *, ate: str | None = None,
                finishes=None, limite: int = 12) -> list[sqlite3.Row]:
     """As impressões candidatas de uma carta, a MELHOR PRIMEIRA.
@@ -264,8 +320,11 @@ def impressoes(con: sqlite3.Connection, name: str, *, ate: str | None = None,
     # chama isto uma vez por carta em falta (~150), e pela via lenta eram 10
     # segundos por cada regeneração do modo edição — que corre a cada clique.
     # O caminho tolerante fica como recurso, para os nomes escritos à mão.
-    q = ("SELECT * FROM cards WHERE name = ? AND digital = 0 "
-         "AND COALESCE(set_type,'') != 'memorabilia'")
+    # O predicado vive num sítio só (`sql_impressao_a_serio`): era `digital = 0
+    # AND set_type <> 'memorabilia'` escrito aqui, e deixava passar a **Summer
+    # Magic** — que é `core`. Um palpite de edição para um Tundra podia cair numa
+    # impressão de 1994 que nunca se transaccionou.
+    q = f"SELECT * FROM cards WHERE name = ? AND {sql_impressao_a_serio('')}"
     args: list = [name]
     if ate:
         q += " AND released_at <= ?"

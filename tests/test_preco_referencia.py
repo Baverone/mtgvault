@@ -222,9 +222,21 @@ def caso_a_regra_da_rl_compara_a_impressao_dela_nas_duas_pontas():
 def caso_o_preco_de_uma_copia_e_o_da_impressao_dela():
     """O caso que a ordem nomeia, e o que chumba sem esta tarefa.
 
-    Ele tem a Underground Sea de **Revised** (900 €). Existe uma reimpressão a
-    30 €. O `card_price` — que é *"quanto custa comprar uma"* — continua a dar
-    30 €, e está certo. O preço de REFERÊNCIA da cópia dele é 900 €.
+    Ele tem a Underground Sea de **Revised** (900 €). O preço de REFERÊNCIA da
+    cópia dele é 900 €, e o `card_price` — *"quanto custa comprar uma"* —
+    continua a ser o MÍNIMO entre impressões.
+
+    **ASSERÇÃO CORRIGIDA A 2026-10-06, e não mascarada.** Até aqui o par era
+    `sea-3ed` (900 €) contra `sea-ced` (30 €) e exigia-se `compra == 30`. O
+    `ced` é a **Collectors' Edition** — uma das quatro edições que ele mandou
+    pôr fora dos preços nesse dia (*"nao sao cartas legais … nenhum destes pode
+    emprestar preco a outra impressao"*): a escolha de fixture era realista (a
+    Collectors' Edition TEM a Underground Sea) e era precisamente o defeito, a
+    ponto de o próprio teste o ter escrito como se fosse uma reimpressão normal.
+    Hoje o `card_price` da Underground Sea é **900 €**, porque a única outra
+    impressão dela na base de brincar é a proibida. Quem continua a trancar o
+    *"compra = mínimo entre impressões"* é o par **legítimo** do Lightning Bolt
+    (`lea` → `m10`), aqui abaixo.
     """
     con = base()
     cfg(precos={"modo": "market", "fonte": "cardmarket"})
@@ -232,8 +244,17 @@ def caso_o_preco_de_uma_copia_e_o_da_impressao_dela():
     cota(con, "sea-ced", HOJE.isoformat(), 25.0, 30.0)
     add(con, "sea-3ed")
 
-    compra, _ = loadout.card_price(con, "Underground Sea", "nonfoil")
-    assert compra == 30.0, f"o preço de COMPRA é o mínimo entre impressões: {compra}"
+    # (a) o par LEGÍTIMO: a compra é o mínimo entre impressões a sério.
+    cota(con, "bolt-lea", HOJE.isoformat(), 400.0, 500.0)
+    cota(con, "bolt-m10", HOJE.isoformat(), 1.0, 2.0)
+    compra, _ = loadout.card_price(con, "Lightning Bolt", "nonfoil")
+    assert compra == 2.0, f"o preço de COMPRA é o mínimo entre impressões: {compra}"
+
+    # (b) e a Collectors' Edition NÃO empresta o preço dela à de Revised.
+    compra_sea, _ = loadout.card_price(con, "Underground Sea", "nonfoil")
+    assert compra_sea == 900.0, (
+        "o `ced` voltou a emprestar o preço: era isto que punha a Tundra de "
+        f"Revised a 0,25 € (ver scryfall.SETS_SEM_PRECO) — {compra_sea}")
 
     p = loadout.preco_da_copia(con, "sea-3ed", "nonfoil", "Underground Sea")
     assert p["unit"] == 900.0, f"a cópia dele vale a impressão dela: {p}"
@@ -241,20 +262,38 @@ def caso_o_preco_de_uma_copia_e_o_da_impressao_dela():
     assert p["fonte"] == "cardmarket"
 
 
-def caso_sem_cotacao_da_impressao_cai_no_minimo_e_diz_que_e_estimativa():
-    """Último recurso, e DITO.
+def caso_sem_cotacao_da_impressao_nao_cai_no_minimo():
+    """**ASSERÇÃO INVERTIDA A 2026-10-06, e não mascarada.**
 
-    A impressão dela não está cotada em fonte nenhuma. O número que se mostra é
-    o de outra carta impressa — é uma estimativa, e uma estimativa que se soma
-    calada a preços a sério é a mentira que a `origem` existe para impedir.
+    Até aqui este caso exigia o CONTRÁRIO: sem cotação da impressão dela, o
+    `preco_da_copia` caía no mínimo entre impressões e marcava-o
+    `min-impressoes` — *"uma estimativa, e dita"*. Era a decisão de 2026-09-25, e
+    a de hoje revoga-a para as linhas de venda, nas palavras dele: *"Se nao
+    houver preco para essa impressao, a linha sai com 'sem preco' e entra numa
+    lista de pendentes — NUNCA cai para o preco de outra impressao."*
+
+    Porque é que a marca não bastava: ela existia, ia no payload, e o número
+    entrava no total da venda e no CSV de stock de qualquer maneira. Medido na
+    base dele a 2026-10-06, com a cadeia em `cardtrader`: **176 das 737 linhas**
+    vinham por este caminho — o Powder Keg a 450,63 € de uma promo que ele não
+    tem. E nem era *"sistematicamente a menos"*: por aqui tanto subia como
+    descia.
+
+    O `precos.ORIGEM_MIN_IMPRESSOES` **não se apagou** (nada se apaga): fica como
+    o nome de um caminho que o `preco_da_copia` já não toma, e o `card_price`
+    continua a ser o mínimo entre impressões — para a COMPRA, que é outra
+    pergunta.
     """
     con = base()
     cfg(precos={"modo": "market", "fonte": "cardmarket"})
     cota(con, "bolt-m10", HOJE.isoformat(), 1.0, 2.0)        # só a reimpressão
     p = loadout.preco_da_copia(con, "bolt-lea", "nonfoil", "Lightning Bolt")
-    assert p["unit"] == 2.0, p
-    assert p["origem"] == precos.ORIGEM_MIN_IMPRESSOES, p
-    assert "estimativa" in precos.ROTULOS_ORIGEM[p["origem"]]
+    assert p["unit"] is None, ("caiu no mínimo entre impressões", p)
+    assert p["origem"] == precos.ORIGEM_SEM_PRECO, p
+    assert p["sem_preco_motivo"] == "impressao", p
+    # a COMPRA não mudou: continua a ser o mínimo entre impressões
+    assert loadout.card_price(con, "Lightning Bolt", "nonfoil")[0] == 2.0
+    assert "estimativa" in precos.ROTULOS_ORIGEM[precos.ORIGEM_MIN_IMPRESSOES]
 
 
 def caso_sem_preco_em_fonte_nenhuma_nao_e_zero_euros():

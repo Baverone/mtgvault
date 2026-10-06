@@ -58,7 +58,14 @@ descobrir o núcleo de cada arquétipo, e acompanha preços.
 
 ```
 mtgvault/
-  db.py           ligação, ATTACH do catálogo, migrações
+  db.py           ligação, ATTACH do catálogo, migrações. E, desde 2026-10-06, A
+                  TRAVA: um teste NÃO abre a base nem o catálogo do André
+                  (`VAR_PROIBIDAS`/`BaseALaSerio`/`connect(..., a_serio=)`),
+                  armada pelo `tests/_bateria.py`. Fecha a classe de avaria que
+                  pôs 63 linhas de fixture na `copies` e um Tundra de Revised
+                  FALSO no catálogo — e a mensagem nomeia as DUAS formas (faltou
+                  o `MTGVAULT_CATALOG`; a variável foi posta depois do import, e
+                  aí não tem efeito). Ver «O CHÃO DO AVALIADOR DE PREÇO»
   schema.sql      vault.db (coleção, decks, decklists, preços, watchlist, copy_allocation)
   catalog_schema.sql   catalog.db (só a tabela cards)
   scryfall.py     catálogo via bulk data. E, desde 2026-10-04 ao fim do dia, O
@@ -71,8 +78,15 @@ mtgvault/
                   `params_nome` (o predicado de quatro ramos, `MULTI-INDEX OR`
                   pelo `ix_cards_name`), `resolver`/`resolver_muitos` (quando o
                   nome está do lado longe de um JOIN grande) e `desconhecidas`
-                  (o que o catálogo não tem fica DITO, nunca «não tenho»). Ver
-                  «O CRUZAMENTO NOME-DE-LISTA ↔ CATÁLOGO VIVE NUMA FUNÇÃO SÓ»
+                  (o que o catálogo não tem fica DITO, nunca «não tenho»). E,
+                  desde 2026-10-06, OS SETS QUE NÃO SÃO PREÇO, também num sítio
+                  só (`SETS_SEM_PRECO`/`sql_impressao_a_serio`): Summer Magic,
+                  30th Anniversary, Collectors' e Intl. Collectors', mais a
+                  memorabilia (os decks do World Championship) e o digital —
+                  nenhuma empresta o preço a OUTRA impressão. Estava escrito em
+                  QUATRO variantes e nenhuma delas incluía o `sum`. Ver
+                  «O CRUZAMENTO NOME-DE-LISTA ↔ CATÁLOGO VIVE NUMA FUNÇÃO SÓ» e
+                  «O CHÃO DO AVALIADOR DE PREÇO»
   site_shell.py   A CASCA DE TODO O SITE (2026-09-24): a paleta (`TEMA`), os
                   tipos de letra, os ÍCONES (`_SVG`/`icone`/`js_icones` — um
                   conjunto só, partilhado com o JavaScript da Deckboxes), a
@@ -341,6 +355,15 @@ mtgvault/
   aviso.py        o TOAST do Windows (BurntToast se existir, senão o balão do
                   NotifyIcon), por `-EncodedCommand`; nunca levanta e diz sempre
                   o que aconteceu
+  precos.py       E, desde 2026-10-06, A RÉGUA DAS LINHAS DE VENDA, que é PRÓPRIA
+                  (`fontes_venda`/`modo_venda`, config `precos.venda`): hoje o
+                  Trend do **cardmarket**, que é a mais BAIXA das duas — o
+                  `market` do CardTrader é a MEDIANA DOS PEDIDOS e está +58,5 %
+                  acima, enquanto a oferta mais BARATA dele cai sobre o Trend
+                  (mediana −1,3 %). Mais a `divergencia` (40 % **e** 2,00 €, da
+                  curva medida) e o `regua_desde` a incluir o `venda.desde`, que
+                  é o que impede a regra dos 5 % da RL de decidir com uma escala
+                  de um dia. Ver «O CHÃO DO AVALIADOR DE PREÇO»
   precos.py       O MODO DE PREÇO (2026-09-25): `market` (o que o mercado pede)
                   / `best` (a oferta mais barata) / `media`, em
                   `colecao_config.json → precos`. `sql()` é a EXPRESSÃO do preço
@@ -385,7 +408,7 @@ my_decks.py         segue decks-alvo (por assinatura e por jogador de MTGO) -> t
 commander_decks.py  decks de comandante por consenso EM CAMADAS: núcleo>=50% (=deck, deck_cards) / flex 25-50% / tech 15-25%; FILTRA pela cor do comandante. `tiers()` reusado pelo colecao_cor
 premodern_decks.py  consenso dos arquétipos-alvo de Premodern (`colecao_config.json`→`premodern_arquetipos_alvo`: UW Replenish, Enchantress) -> decks/deck_cards com o sufixo " (consenso)". Agrupa pelas etiquetas do `tagging` (o clustering não os separa) e usa `stock.stock_from_lists`. Mostrado nas `deckboxes` (era o `meusdecks`)
 refresh_collection.py  collection_owned p/ o index.html
-colecao_config.json    config: spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados, venda (a regra dos 5 % da RL, o `mostrar` de 2026-09-25 **e** a TRAVA — `congelado_ate` a 2026-10-01, hoje `congelada`, MANUAL desde 2026-10-04, com a data antiga arquivada em `_congelado_ate_historico`; mais o `_reservar_rl_formatos`, a razão por que o duel-commander fica fora), cartas_vigiadas (a VIGIA DE CARTAS de 2026-09-26), reserva (o LIMIAR da reserva «maybe», 2026-10-01), caixas[].decisao / reserva / reserva_fora / comandante / reserva_assinatura (AS FASES, 2026-10-01), revalidacao.foto_manda (A FOTO É A VERDADE, 2026-10-02 — e o `playset_maximo` SAIU do `regras_por_formato` nesse dia; **a `false` e com `desde: null` desde 2026-10-04**, o dia em que as fotos foram apagadas), regras_por_formato: lingua/acabamento dos TRÊS grupos trocados a 2026-10-02 (`_regras_2026_10_02`: duel-commander e pauper `en` + `prefere_foil`, premodern `nonfoil`), basicas.declaradas / declaradas_em (A CONTAGEM DECLARADA, 2026-10-02), mtgtop8 (A RECOLHA e o NUNCA PERDER UM TORNEIO DE PAPEL GRANDE, 2026-10-04: `paginas_indice`, `revisitas_por_corrida` e `grandes.padroes`/`listas_por_evento`/`min_jogadores`), e as TRÊS DECISÕES de 2026-10-04 à tarde: a 14.ª terra da lista de qualificação (`listas_escolhidas.modern` com 1 Island, sem `por_confirmar`) + a `proposta_sideboard` NÃO APLICADA ao lado dela, e a caixa `modern-affinity` DESACTIVADA (`estado: candidata`, sem `assinatura`, o antigo em `_antes`). E, ao FIM do dia de 2026-10-04: **`listas_de_evento`** (a REGRA de escolha da lista real, com a razão de cada critério e a data — ver «A LISTA DE UM DECK É UMA LISTA QUE ALGUÉM JOGOU»), **`decks_de_evento`** (os 11 decks dele que não são caixa: 10 de Modern e o Flow State `por_confirmar`, uma linha por deck), `listas_escolhidas[<id>].evento` (a PROVENIÊNCIA gravada — jogador, evento, data, jogadores, classificação, URL) + `.alternativa`/`.porque`/`.escolhida_por`/`.regra_diria`/`._consenso_anterior` (a média que a caixa mostrava, que NÃO se apaga), `decks_montar` com os **17 marcados**, e `caixas[]._ambito` no standard e nas três de legacy (as palavras dele a pô-los fora da prioridade). E, a **2026-10-05**: `caixas[].principal` + `principal_em` nas **12 caixas que têm lista** (os decks que ficam SEMPRE MONTADOS, com proxy no que falta), a razão e a interpretação em `_sempre_montado`, o `caixas[].sempre_montado` como eixo por caixa (existe e não está escrito em nenhuma), a caixa `premodern-stiflenought` de volta a `fonte: vigiado` / `ref: "Luffy — Premodern"` (com o `_antes_1004`) e a lista do Simone Fierro arquivada em `listas_escolhidas._premodern-stiflenought-anterior`. E, ao FIM de 2026-10-05: **`metagame_fontes.modern`** (`ligas: true` + `min_jogadores_presencial: 0`, com a razão e a data ao lado — SÓ o modern, e SEM repetir a lista de `tiers`, que herda do `_default`: é o interruptor que abre as quatro portas das ligas, ver «TODOS OS TORNEIOS EM MODERN») e `decks_por_formato.modern.versoes[izzet-pinnacle].arquetipo_id` **7614 → 5100** com o antigo em `_arquetipo_id_antes` (as ligas fundiram a divisão do cluster e a anotação do deck principal tinha de a acompanhar)
+colecao_config.json    config: **`precos.venda`** (A RÉGUA DAS LINHAS DE VENDA, 2026-10-06: `cardmarket`/`market`, com a razão medida e a data ao lado — ver «O CHÃO DO AVALIADOR DE PREÇO»; o `fonte`/`modo` do bloco `precos` continuam a ser a régua do VALOR, que é a escolha dele de 04/10), spml_formatos, premodern_decks_completos, banimentos_manuais, regras_colecao, loadout, regras_por_formato, metagame_fontes, formatos_metagame, premodern_arquetipos_alvo, so_jogadores_vigiados, venda (a regra dos 5 % da RL, o `mostrar` de 2026-09-25 **e** a TRAVA — `congelado_ate` a 2026-10-01, hoje `congelada`, MANUAL desde 2026-10-04, com a data antiga arquivada em `_congelado_ate_historico`; mais o `_reservar_rl_formatos`, a razão por que o duel-commander fica fora), cartas_vigiadas (a VIGIA DE CARTAS de 2026-09-26), reserva (o LIMIAR da reserva «maybe», 2026-10-01), caixas[].decisao / reserva / reserva_fora / comandante / reserva_assinatura (AS FASES, 2026-10-01), revalidacao.foto_manda (A FOTO É A VERDADE, 2026-10-02 — e o `playset_maximo` SAIU do `regras_por_formato` nesse dia; **a `false` e com `desde: null` desde 2026-10-04**, o dia em que as fotos foram apagadas), regras_por_formato: lingua/acabamento dos TRÊS grupos trocados a 2026-10-02 (`_regras_2026_10_02`: duel-commander e pauper `en` + `prefere_foil`, premodern `nonfoil`), basicas.declaradas / declaradas_em (A CONTAGEM DECLARADA, 2026-10-02), mtgtop8 (A RECOLHA e o NUNCA PERDER UM TORNEIO DE PAPEL GRANDE, 2026-10-04: `paginas_indice`, `revisitas_por_corrida` e `grandes.padroes`/`listas_por_evento`/`min_jogadores`), e as TRÊS DECISÕES de 2026-10-04 à tarde: a 14.ª terra da lista de qualificação (`listas_escolhidas.modern` com 1 Island, sem `por_confirmar`) + a `proposta_sideboard` NÃO APLICADA ao lado dela, e a caixa `modern-affinity` DESACTIVADA (`estado: candidata`, sem `assinatura`, o antigo em `_antes`). E, ao FIM do dia de 2026-10-04: **`listas_de_evento`** (a REGRA de escolha da lista real, com a razão de cada critério e a data — ver «A LISTA DE UM DECK É UMA LISTA QUE ALGUÉM JOGOU»), **`decks_de_evento`** (os 11 decks dele que não são caixa: 10 de Modern e o Flow State `por_confirmar`, uma linha por deck), `listas_escolhidas[<id>].evento` (a PROVENIÊNCIA gravada — jogador, evento, data, jogadores, classificação, URL) + `.alternativa`/`.porque`/`.escolhida_por`/`.regra_diria`/`._consenso_anterior` (a média que a caixa mostrava, que NÃO se apaga), `decks_montar` com os **17 marcados**, e `caixas[]._ambito` no standard e nas três de legacy (as palavras dele a pô-los fora da prioridade). E, a **2026-10-05**: `caixas[].principal` + `principal_em` nas **12 caixas que têm lista** (os decks que ficam SEMPRE MONTADOS, com proxy no que falta), a razão e a interpretação em `_sempre_montado`, o `caixas[].sempre_montado` como eixo por caixa (existe e não está escrito em nenhuma), a caixa `premodern-stiflenought` de volta a `fonte: vigiado` / `ref: "Luffy — Premodern"` (com o `_antes_1004`) e a lista do Simone Fierro arquivada em `listas_escolhidas._premodern-stiflenought-anterior`. E, ao FIM de 2026-10-05: **`metagame_fontes.modern`** (`ligas: true` + `min_jogadores_presencial: 0`, com a razão e a data ao lado — SÓ o modern, e SEM repetir a lista de `tiers`, que herda do `_default`: é o interruptor que abre as quatro portas das ligas, ver «TODOS OS TORNEIOS EM MODERN») e `decks_por_formato.modern.versoes[izzet-pinnacle].arquetipo_id` **7614 → 5100** com o antigo em `_arquetipo_id_antes` (as ligas fundiram a divisão do cluster e a anotação do deck principal tinha de a acompanhar)
 ```
 Cada `.html` gerado tem de estar na lista do `git add` do workflow (`daily.yml`,
 passo "Guardar HTML") **e na lista `HTML` da tarefa `ai-pc/tasks/mtgvault-daily`**
@@ -1215,6 +1238,235 @@ processo por par); relatório em
   **TEXTO** (byte a byte) e escreve a versão alterada com o `configio.escrever`.
   O diff final do config são **4 inserções e 3 remoções**, e um round-trip pelo
   `configio.escrever` devolve-o igual byte a byte.
+
+**O CHÃO DO AVALIADOR DE PREÇO: FIXTURES DENTRO DAS BASES, E O PREÇO DE OUTRA
+IMPRESSÃO DENTRO DE UMA LINHA DE VENDA (André, 2026-10-06).** *"Ele esta a dias
+de vender e os precos que o app devolve estao errados de duas maneiras
+diferentes. Eu descobri as duas de fora e confirmei-as com SQL."* As duas
+confirmadas, e **as duas estavam certas**. Motor em `mtgvault/db.py` (a trava),
+`mtgvault/scryfall.py` (`SETS_SEM_PRECO`/`sql_impressao_a_serio`),
+`mtgvault/precos.py` (`fontes_venda`/`modo_venda`/`divergencia`),
+`mtgvault/loadout.py` (`preco_da_copia` estrita + a saída `sem_preco`) e
+`mtgvault/collection.py` (`cenario_de`, `preco_impressao_detalhe(exacto=)`);
+config em `precos.venda`. Testes em `tests/test_bases_a_serio.py` (7 casos) e
+`tests/test_preco_venda.py` (10). Arquivo em
+`data/backups/fixtures-nas-bases-2026-10-06.json`; backup da base em
+`data/backups/vault-2026-10-06-antes-de-limpar-fixtures.db` (97,1 MB,
+`integrity ok`). **A venda não se destrancou**: continua escondida
+(`venda.mostrar: false`) e travada à mão.
+
+- **PROBLEMA 1 — FIXTURES DE TESTE DENTRO DAS BASES A SÉRIO, e os números dele
+  batem ao cêntimo.** Quatro linhas em `catalog.cards` com um `scryfall_id` que
+  não é uuid (`s-falta`, `s-leg`, `s-tem` e um **`sid-0` que era um Tundra de
+  Revised FALSO**, `reserved = 1`, sem preço), **63 linhas / 252 exemplares** em
+  `copies` e **TRÊS** linhas em `price_latest` a 10,00 € (ele disse uma: são
+  três, `s-tem`, `s-falta` e `s-leg`). Medido com o «antes» reconstruído fiel (o
+  backup do vault + as 4 cartas repostas numa cópia do catálogo, código do
+  `main`): a colecção dizia **1 930 cartas** em vez de 1 678 e valia
+  **135 862,20 €** em vez de 133 342,20 € — **+2 520,00 € exactos** —, e a lista
+  de venda abria com **`Tem Esta`, 252 cópias, 2 520,00 €**, à frente de tudo. Já
+  estava publicado (`colecao.html`, `colecao_cor.html` e quatro ficheiros de
+  `data/paginas/`). **A alocação não era tocada** (fechar tudo 11 053,98 € e 293
+  a comprar, iguais): as fixtures viviam na `Colecção`, fora das deckboxes.
+- **ARQUIVOU-SE ANTES DE SE APAGAR** (regra dele de 09/09), e o arquivo leva
+  também tudo o que as referenciasse. Apagou-se **só por `scryfall_id`**: o
+  `sid-0` chama-se **Tundra**, que é uma carta a sério com **477 linhas** em
+  `decklist_cards`, 1 em `deck_cards` e 1 em `card_price` — apagar por NOME
+  levava-as. Conferido: zero linhas com os nomes de fixture nessas tabelas.
+  Depois: 737 linhas / **1 678** exemplares, catálogo em **112 754**,
+  `foreign_key_check` limpo, zero ids não-uuid.
+- **O ESCRITOR: DOIS, E A CAUSA É UMA SÓ — `mtgvault/db.py`.** Correram-se os
+  **97 ficheiros da bateria, um processo novo cada**, com uma impressão digital
+  das bases antes e depois (`_revisao/chao/p1_prova_dinamica.py`): **97/97
+  passavam** e **exactamente um** escrevia — `tests/test_estado_endpoint.py`,
+  `cards` 112 754 → 112 755, **uma linha em cada corrida**. As outras 63 vieram
+  de `_revisao/ghent/tests/test_faltas_ghent.py`, um rascunho de uma ordem
+  anterior nunca commitado com esse nome. E as duas formas são a mesma avaria:
+  1. **faltou o `MTGVAULT_CATALOG`.** Um teste que fixa o `MTGVAULT_HOME` e o
+     `MTGVAULT_DB` cumpre a regra de 2026-09-09 **à letra** e continua a abrir o
+     catálogo a sério: neste PC o `MTGVAULT_CATALOG` está no AMBIENTE, e o
+     `ROOT/catalog.db` da omissão nunca chega a valer.
+  2. **a variável foi posta TARDE.** O `DEFAULT_DB`/`DEFAULT_CATALOG` são lidos
+     UMA vez, no `import mtgvault.db`. O `test_faltas_ghent` fixava as QUATRO
+     variáveis **no `setUp`**, depois do import — **sem efeito nenhum** —, e
+     escreveu 63 linhas na base dele convencido de que estava numa temporária.
+     **E havia uma terceira instância, na árvore:** o
+     `test_montar_vender.caso_ler_sem_token_da_pagina_so_de_leitura` tinha o
+     comentário *"aponta-se as variáveis de ambiente para esta base para o teste
+     não ir à do André"* **ao lado da linha que o não cumpria**. Hoje troca as
+     constantes, que é o que funciona.
+- **A DEFESA NÃO É UMA CONVENÇÃO A MAIS: É UMA TRAVA QUE RECUSA ALTO**
+  (`db.VAR_PROIBIDAS` / `db.BaseALaSerio`). O `tests/_bateria.py` passa a cada
+  filho os DOIS caminhos reais proibidos — os dois, porque foi o CATÁLOGO que
+  levou o `sid-0` e ele não está no `MTGVAULT_DB` — e quem os abrir rebenta com o
+  **nome do ficheiro** e com a mensagem a nomear as duas formas (*"se fixaste a
+  variável depois do import, ela não teve efeito"*). **Desligada em produção**:
+  sem a variável, o `connect` é exactamente o que era (tem caso). Quem precisa
+  mesmo da base real pede-a pelo nome — `db.connect(..., a_serio=True)` — e a
+  lista de quem o faz está à vista em `tests/test_bases_a_serio.PODEM_A_SERIO`:
+  hoje são **dois**, o `test_publicar` e o `medir_determinismo`, que medem o
+  determinismo das 14 páginas sobre a colecção dele (numa base de brincar com
+  três cartas um `set` pelo meio parece determinista) e **só lêem**.
+  **A trava apanhou um segundo infractor na primeira corrida**: o
+  `test_montar_vender`, cujo `webapp.calcular` abria o `data/catalog.db` a sério.
+- **A regra de 2026-09-09 não some: ESTENDE-SE AO CATÁLOGO.** Quem chama
+  `db.connect()`/`db.session()` **sem caminho** tem de fixar as DUAS variáveis, e
+  há caso que o varre. O varrimento olha para quem chama sem caminho e não para
+  quem escreve em `cards`: dos 97 ficheiros, **74** escrevem em `catalog.cards` e
+  a grande maioria passa caminhos temporários explícitos — um varrimento estático
+  cego dava 74 falsos positivos.
+
+- **PROBLEMA 2 — O PREÇO VINHA DE OUTRA IMPRESSÃO, E A PREMISSA DELE PRECISA DE
+  TRÊS CORRECÇÕES.** Confirmado que o mínimo entre impressões subavalia: medido
+  por cópia com a fonte `cardmarket`, **522 linhas** mudam de preço e o total
+  passa de **43 884,05 € para 96 867,21 €** (**+52 983,16 €**) — ele mediu 424
+  linhas e +56 015 € sobre 99 050 €, a mesma ordem de grandeza e o mesmo sentido;
+  a diferença é o método (aqui a comparação é `collection.preco_impressao` contra
+  `loadout.card_price`, com a tolerância de acabamento). **Mas:**
+  1. **O Tundra a 0,25 € NÃO era um número vivo.** Vem da Summer Magic no
+     **Cardmarket**, e a cadeia é `cardtrader` desde 2026-10-04 — lá o mínimo já
+     era **647,21 €** (3ED). O 0,25 € volta a ser vivo no dia em que o Cardmarket
+     voltar à cadeia, que é **uma linha de config**.
+  2. **O preço de uma cópia já era o da impressão dela desde 2026-09-25**
+     (`preco_da_copia`). O que ainda caía para outra impressão era o **último
+     recurso** (`min-impressoes`), e esse apanhava **176 das 737 linhas**.
+  3. **E não era «sistematicamente a menos».** Por esse caminho ia nos dois
+     sentidos, e os dois casos são de cópias que ele TEM:
+     - **Hypnotic Specter 4BB ×5** — a impressão dele vale **49,69 €** no
+       Cardmarket e o CardTrader **não a cota**; a linha de venda dava-lhe
+       **5,69 €**, o preço do 10E nonfoil, uma reimpressão de 2007. **28,45 €
+       contra 248,45 €**: ele estava a três dias de vender cinco cartas por um
+       nono do que valem.
+     - **Powder Keg P04 foil ×5** — vale **58,28 €**; a linha dava-lhe
+       **450,63 €**, o foil de UDS (que ele também tem, mas é outra cópia).
+       **Sobreavaliado 8×.**
+- **A REGRA: a linha de venda usa o `scryfall_id` E o acabamento EXACTOS, e mais
+  nada.** `preco_da_copia` passou de três ramos a dois, e caíram DOIS recursos:
+  o **mínimo entre impressões** (176 linhas) e a **tolerância de acabamento**
+  (3 linhas / 178,39 €, uma delas **4 Goblin Engineer nonfoil avaliadas ao preço
+  do FOIL**). Sem preço, a linha sai com `unit = None`, leva o motivo
+  (`impressao` / `acabamento` / `sem-impressao` — resolvem-se de maneiras
+  diferentes) e vai para a **DÉCIMA saída, `sem_preco`**, que é a «lista de
+  pendentes» dele: fica fora do CSV de stock (não há `Price` para escrever) e
+  fora da estante, com a razão, no `venda.FORA`. **Para somar o INVENTÁRIO a
+  tolerância de acabamento FICA** e continua marcada com `~` (a decisão de
+  2026-09-24): ali uma estimativa dita é melhor do que uma cópia a valer zero;
+  para PEDIR um preço a alguém é o preço de outra carta.
+- **OS SETS QUE NÃO SÃO PREÇO, e a lista dele estava incompleta.** `sum`, `30a`,
+  `ced` e `cei` não emprestam preço a outra impressão — **mais a memorabilia
+  inteira e o digital**, que é onde estão os piores exemplos DELE: dos **87**
+  mínimos por nome que vinham de um set destes (fonte `cardmarket`, as 579 cartas
+  da colecção), só ~10 são os quatro que ele nomeou; a maioria são os **decks do
+  World Championship** (`wc97`…`wc04`, `ptc`, `olep`), de borda dourada, e são
+  eles que fazem a **Gaea's Cradle 272,71 €** (wc99, contra 1 085,40 €), o **Grim
+  Monolith 22,15 €** (wc99, contra 294,87 €) e a **Flooded Strand 11,64 €**
+  (wc04). Com a lista dos quatro sozinha, três dos sete exemplos dele ficavam por
+  corrigir. O `sum` é o único dos quatro que PRECISA de estar escrito: os outros
+  três já são `memorabilia`, e a Summer Magic é `core` e escapa a tudo.
+- **E O CRIVO ESTAVA ESCRITO QUATRO VEZES, NENHUMA CERTA** — o padrão do
+  `e_foil`, do `vistoId` e do `precos.sql()`: `scryfall.impressoes`
+  (`digital = 0 AND set_type <> 'memorabilia'`), `fases._preco_jogavel` (igual, e
+  com a nota a dizer que o `sum` lhe escapava), `meta_coverage._NOT_PLAYABLE` (por
+  `set_name LIKE`, que apanha o World Championship e não o `sum` nem o `30a`) e
+  `loadout.mais_barata_que_serve` (só `digital = 0`). Hoje é **um**:
+  `scryfall.sql_impressao_a_serio`, e as quatro lêem de cá — mais o
+  `loadout.card_price`, o `impressao_mais_barata`, o `_historico`, o
+  `wantlist.cheapest_price`, o `core_decks._prices` e o `import_owned`. Tem caso
+  que varre o código à procura de quem o volte a escrever à mão. Medido no
+  catálogo: o crivo novo aceita **100 006** impressões contra 101 681 do antigo, e
+  a diferença é toda a favor — recusa a mais `30a` (594), `ptc` (307), `sum` (306)
+  e as cartas-de-capa dos Jumpstart, e aceita a mais **2** (`pwor` #1 e #2, o
+  Balduvian Horde de 1999 e o Crucible of Worlds de 2019 a 42,48 €), que são
+  promos de papel a sério — o `set_name LIKE '%World Championship%'` apanhava-as
+  por acidente.
+- **EFEITO DO CRIVO, MEDIDO NAS DUAS FONTES: `cardtrader` ZERO, `cardmarket` 70.**
+  Nos 579 nomes da colecção, com a cadeia em vigor **não muda um número** — o
+  CardTrader não cota memorabilia nem Summer Magic. O que isto fecha é a armadilha
+  do dia em que o Cardmarket voltar: lá, Tundra 0,25 → **374,34 €**, Badlands 0,02
+  → **326,42 €**, Black Lotus 2 277,81 → **13 760,80 €**, Gaea's Cradle 272,71 →
+  **1 085,40 €**. Era o defeito que o `fases._preco_jogavel` nomeou a 2026-10-02 e
+  deixou de pé (*"a correcção a sério é no `loadout.card_price` e fica para ele
+  decidir"*).
+
+- **A RÉGUA DAS LINHAS DE VENDA: `cardmarket` / `market` — E É A MAIS BAIXA DAS
+  DUAS** (`precos.venda` no config, com a razão escrita lá). *"Nao escolhas a mais
+  alta por ser mais alta: diz-me qual e a que ele consegue mesmo receber e
+  porque."* São **96 856 €** contra 133 164 € nas 1 678 cópias. Medido nas **552
+  impressões** que as duas fontes cotam no acabamento exacto:
+  1. **o `market` do CardTrader é a MEDIANA DOS PEDIDOS, não um preço que se
+     recebe**: **+58,5 %** acima do Trend na mediana (média +70,6 %) e acima em
+     **544 das 552**. Uma oferta que nunca vende fica na mediana para sempre.
+  2. **a corroboração, e é o número que decide:** a oferta **mais barata** do
+     CardTrader cai **sobre** o Trend do Cardmarket — mediana **−1,3 %**, metade
+     do meio entre −16 % e +14,2 %, 265 acima contra 284 abaixo. Dois mercados
+     independentes a dar o mesmo número é o nível a que se TRANSACCIONA.
+  3. **é o mercado onde ele lista**: o CSV de stock leva o `idProduct` do
+     Cardmarket e não existe exportação para o CardTrader (04/10).
+  4. **cobre a colecção dele**: no acabamento e na impressão exactos o Cardmarket
+     cota **732 das 737** linhas e o CardTrader **555** — com a regra estrita, a
+     diferença entre **zero** cópias à espera de preço à mão e **17**.
+  5. as taxas da feira (0,55 dinheiro / 0,70 troca) são dele e são contra o Trend.
+- **O VALOR DA COLECÇÃO FICA NA CADEIA DELE DE 04/10** (`cardtrader`), porque a
+  ordem de hoje é sobre *as linhas de venda*. São duas perguntas — *"quanto vale o
+  que tenho"* e *"quanto recebo se vender"* — e o precedente é o `fonte_serie`.
+  **Unificá-las é decisão dele e custa −36 307 € no total da colecção.**
+  Consequência a saber: a página da Arrumação mostra as protecções na régua de
+  VENDA e o `estado.impacto` na do valor.
+- **A DIVERGÊNCIA: 40 % *E* 2,00 € por cópia** (`precos.DIVERGENCIA_PCT`/`_EUR`).
+  O 40 % sai da curva: p90 = 29,4 % e p95 = 47,1 %, logo marca a cauda e não o
+  corpo — a 25 % eram 174 linhas (31 %) e a 10 % eram 364 (66 %), e um aviso em
+  dois terços das linhas é um aviso que se deixa de ler (o princípio dos DOIS
+  GRAUS do `preco_fora_da_regra` e do 503-contra-500 do `webapp`). O chão em
+  euros existe porque o CardTrader tem um **piso de oferta de ~0,11 €** e as
+  maiores percentagens são todas de cartas de cêntimos (Phoenix Down +266 % são
+  **8 cêntimos**; 11 das 20 piores estão abaixo de 3 €) — sem ele, o Grinding
+  Station foil (41,46 € contra 151,57 €, **3 cópias**) passava no meio do ruído.
+  **E o que se compara é a régua contra a oferta MAIS BARATA da outra fonte**,
+  nunca contra a mediana dos pedidos: sobre essa a divergência é estrutural
+  (+58 %) e marcava tudo. Hoje avisa em **5 das 47 linhas** — Nantuko Vigilante
+  foil (20,91 contra 29,73), Living Death (11,39 contra 5,11), Nantuko Shade,
+  Stasis e Ball Lightning.
+- **A REGRA DOS 5 % DA RL SEGUIU A RÉGUA, e isso foi uma coerência que esta
+  própria mudança abriu.** O preço de hoje de uma linha de venda passou a sair do
+  Cardmarket e o `_historico` lia o CardTrader: as duas pontas da percentagem em
+  mercados diferentes — exactamente o que o parágrafo do `_historico` existe para
+  impedir, pelo lado novo. Hoje o `_historico`, a `receita` e o `avaliar_rl` lêem
+  a fonte da régua de VENDA, e o **`precos.regua_desde()` passou a incluir o
+  `precos.venda.desde`**: a janela efectiva é 0 dias, a resposta continua a ser
+  `rl_sem_historico` nas mesmas **97 cópias**, e volta a decidir-se quando houver
+  25 dias medidos nesta régua. Sem o carimbo, trocar a régua de venda punha a
+  regra a decidir amanhã com uma escala nova em cima.
+- **MEDIDO LADO A LADO, em TRÊS passagens, com o MESMO `vault.db` já limpo**
+  (worktree em `_revisao/main-chao`; `_revisao/chao/medir.py` e
+  `d8_linhas_que_mudam.py`, um processo por árvore):
+
+  | | A: main | B: código novo, config do main | C: código e régua novos |
+  |---|---|---|---|
+  | fechar tudo · a comprar | 11 053,98 € · 293 | **iguais** | **iguais** |
+  | valor da colecção (trend) | 133 342,20 € | **igual** | **igual** |
+  | as 17 caixas | — | **iguais à percentagem** | **iguais à percentagem** |
+  | venda | 47 l / 106 c / 1 189,18 € | 39 l / 89 c / 979,28 € | **47 l / 106 c / 1 273,16 €** |
+  | **sem_preco** | — | **7 l / 17 c** | **0** |
+  | protegidas | 66 l / 156 c / 7 632,58 € | 66 l / 156 c / 7 190,05 € | 66 l / 156 c / 5 451,73 € |
+  | rl_sem_historico | 49 l / 97 c / 22 356,16 € | igual em linhas / 21 454,90 € | igual em linhas / 13 564,65 € |
+  | `report` | 1,05 s | 0,78 s | 0,89 s |
+
+  **A alocação não mexe um número em nenhuma das três**, e o valor da colecção
+  também não. **A→B** é a regra estrita com a régua antiga: 17 cópias saem da
+  venda para `sem_preco` (106 − 89 = 17, ao exemplar, nada perdido). **B→C** é a
+  régua: a lista volta às **mesmas 47 linhas / 106 cópias** do `main` e o
+  `sem_preco` fica a **zero** — a escolha da régua é o que torna a regra estrita
+  de graça. **Nenhuma cópia muda de lado**: das **159 linhas** que mudam, mudam
+  todas só de EURO, e quase todas para baixo (o Tundra de 647,21 para **374,34 €**
+  é o número dele). As duas que sobem são as da correcção: Hypnotic Specter
+  28,45 → **248,45 €** e, do outro lado, Powder Keg 901,26 → **116,56 €**.
+- **POR DECIDIR POR ELE:** (a) **unificar as duas réguas** — o valor da colecção
+  passaria de 133 342 € para ~96 856 € (−36 307 €), e é a sua decisão de 04/10
+  que está do outro lado; (b) o **limiar da divergência** (40 % e 2 €) é escolha
+  minha a partir da curva; (c) a `arrumacao.html` mostra as protecções na régua de
+  venda e o `estado.impacto` na do valor — duas réguas na mesma página; (d) o
+  arquivo das fixtures está em `data/backups/`, que o `.gitignore` apanha (fica
+  coberto pelo `backup-offsite` do ai-pc); se o quiser versionado é um `git add -f`.
 
 **«PARA JÁ TIRA O VENDER»: UM INTERRUPTOR, NÃO UMA AMPUTAÇÃO (André,
 2026-09-25, à letra).** *"para já tira o «vender»"*. O **«para já» é literal** —
@@ -5715,6 +5967,16 @@ isso `SELECT ... FROM cards` funciona na mesma.
 
 **Migrações:** `CREATE TABLE IF NOT EXISTS` não acrescenta colunas a tabelas já
 criadas. Toda a coluna nova tem de entrar também em `db._migrate()`.
+
+**E UM TESTE NÃO ABRE NENHUMA DAS DUAS (2026-10-06).** O `MTGVAULT_DB` sozinho
+manda a base para uma temporária e **deixa o catálogo a sério** — neste PC o
+`MTGVAULT_CATALOG` está no ambiente e ganha ao `ROOT/catalog.db` da omissão. Foi
+assim que um `sid-0` («Tundra» de Revised FALSO) entrou no `data/catalog.db` a
+cada corrida da bateria. E as duas constantes são lidas **no import**: fixar as
+variáveis no `setUp` não tem efeito nenhum, e foi assim que 63 linhas de fixture
+entraram na `copies`. A trava está no `db.connect` (`VAR_PROIBIDAS`), armada pelo
+`tests/_bateria.py`, e quem precisa mesmo da base real pede `a_serio=True` —
+ver «O CHÃO DO AVALIADOR DE PREÇO» e `tests/test_bases_a_serio.py`.
 
 Colunas/tabelas novas de 2026-09-07 (todas nos três sítios): `copies.balde_origem`
 (o balde de ONDE a cópia veio, escrito pela `migracao`) e a tabela

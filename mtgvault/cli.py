@@ -1147,11 +1147,24 @@ def comparar_modos(con) -> dict:
     RL, o que é «cara») e recalculá-la é a única forma honesta de dizer
     quantas cartas mudam de lado.
 
-    «Mudar de lado» é sair de uma das SETE saídas da venda para outra —
-    incluindo entrar ou sair da venda por causa da regra da Reserved List.
+    «Mudar de lado» é sair de uma saída da venda para outra — incluindo entrar
+    ou sair da venda por causa da regra da Reserved List.
+
+    **A LISTA DAS SAÍDAS FICOU ATRÁS, e isso contava mal (corrigido a
+    2026-10-06).** Dizia «as SETE» e faltavam-lhe as `protegidas` (2026-10-01),
+    a `sem_foto` (02/10) e a `sem_preco` (06/10): uma cópia que passasse de
+    `venda` para `protegidas` aparecia como tendo DESAPARECIDO (`-> (fora)`) em
+    vez de ter mudado de lado, e a contagem com que ele escolhe o modo vinha
+    errada. A lista não se escreve com um número ao lado por isso mesmo.
+
+    E as saídas da venda **não mexem com o modo** desde 2026-10-06: a régua das
+    linhas de venda é a sua (`precos.venda`, hoje o Trend do Cardmarket) e o
+    `forcar` só troca o modo do VALOR. É o esperado, não uma avaria — o que o
+    interruptor market/best/média move hoje é o valor da colecção.
     """
     SAIDAS = ("venda", "venda_rl", "rl_segurar", "rl_sem_historico",
-              "retidos", "reservadas", "guardar")
+              "retidos", "reservadas", "guardar", "protegidas", "sem_foto",
+              "sem_preco")
     out, lados = {}, {}
     for m in precos.MODOS:
         with precos.forcar(m):
@@ -2359,7 +2372,19 @@ def _vender(rep, csv_out=False, tudo=False):
                    # Os extras dos decks vigiados ficam guardados SEM PRAZO
                    # (André, 2026-09-15): só saem com o «vendida», carta a carta.
                    ("RETIDOS — extras dos decks vigiados, guardados sem prazo",
-                    rep["retidos"])]
+                    rep["retidos"]),
+                   # AS TRÊS QUE FALTAVAM AQUI (2026-10-06). Com o
+                   # `venda.mostrar: false` o CLI é a ÚNICA superfície do que o
+                   # motor decide (*"é por aí que ele e o Claude na nuvem vêem"*),
+                   # e estas três não estavam: as `protegidas` desde 01/10, a
+                   # `sem_foto` desde 02/10 e a `sem_preco` desde hoje. A última
+                   # é a LISTA DE PENDENTES que a ordem pede — uma lista sem
+                   # superfície nenhuma é o padrão do `event_tier`.
+                   ("PROTEGIDAS — pelas regras de 01/10", rep["protegidas"]),
+                   ("SEM FOTO desta campanha — ainda não contam",
+                    rep["sem_foto"]),
+                   ("SEM PREÇO desta impressão — a confirmar à mão (PENDENTES)",
+                    rep["sem_preco"])]
     if csv_out:
         print("bloco,quantidade,carta,balde,edicao,acabamento,lingua,"
               "preco_unitario,total,reserved_list,motivo")

@@ -44,6 +44,93 @@ DEFAULT_CATALOG = Path(os.environ.get("MTGVAULT_CATALOG", ROOT / "catalog.db"))
 KINDS_VIGIA = ("mtgo_player", "moxfield", "archetype", "mtgtop8_archetype",
                "preco_impressao")
 
+# ---------------------------------------------------------------------------
+# A TRAVA: UM TESTE NÃO ABRE A BASE NEM O CATÁLOGO DO ANDRÉ (2026-10-06)
+# ---------------------------------------------------------------------------
+# A 2026-10-06 o André encontrou, de fora e com SQL, **fixtures de teste dentro
+# das bases a sério**: quatro linhas em `catalog.cards` com um `scryfall_id` que
+# não é um uuid (`s-falta`, `s-leg`, `s-tem` e um `sid-0` que era um **Tundra de
+# Revised falso**), 63 linhas / 252 exemplares em `copies` e três linhas em
+# `price_latest`. A colecção dizia 1 930 cópias em vez de 1 678, valia ~2 520 €
+# a mais, e a carta «Tem Esta» estava em PRIMEIRO lugar na lista do que há para
+# vender — já publicada no site. Nenhum teste falhava: o padrão do `event_tier`.
+#
+# A CAUSA ERA UMA SÓ, EM DUAS FORMAS, E AS DUAS SÃO DESTE FICHEIRO:
+#   1. **faltou o `MTGVAULT_CATALOG`.** Um teste que fixa o `MTGVAULT_HOME` e o
+#      `MTGVAULT_DB` cumpre a regra de 2026-09-09 à letra e **continua a abrir o
+#      catálogo a sério**: neste PC o `MTGVAULT_CATALOG` está no ambiente, e o
+#      `ROOT/catalog.db` da omissão nunca chega a valer.
+#   2. **a variável foi posta TARDE.** O `DEFAULT_DB`/`DEFAULT_CATALOG` são
+#      lidos no IMPORT; um `os.environ[...] = tmp` no `setUp`, depois de alguém
+#      ter importado este módulo, **não tem efeito nenhum** — e o teste escreve
+#      na base do André convencido de que está numa temporária. Foi assim que
+#      entraram as 252 cartas.
+#
+# Por isso a defesa não é uma convenção a mais: é uma trava que RECUSA ALTO.
+# A bateria arma-a (`tests/_bateria.py` passa os dois caminhos reais nesta
+# variável); em produção ela não existe e o `connect` é exactamente o que era.
+# Quem precisa mesmo da base real — o `test_publicar`, que mede o determinismo
+# das páginas sobre a colecção dele — pede-a pelo nome (`a_serio=True`), e a
+# lista de quem o faz está à vista no `tests/test_bases_a_serio.py`.
+VAR_PROIBIDAS = "MTGVAULT_BASES_PROIBIDAS"
+
+
+class BaseALaSerio(RuntimeError):
+    """Pediu-se a base (ou o catálogo) do André com a trava da bateria armada.
+
+    É `RuntimeError` e não `ValueError` de propósito: isto não é entrada inválida
+    de ninguém — é um teste a fazer uma coisa que não pode fazer, e tem de
+    rebentar o ficheiro inteiro em vez de ser apanhado por um `except ValueError`
+    que ande por aí.
+    """
+
+
+def _proibidas() -> set[Path]:
+    """Os caminhos que a trava recusa, resolvidos. Vazio = trava desligada."""
+    out: set[Path] = set()
+    for p in (os.environ.get(VAR_PROIBIDAS) or "").split(os.pathsep):
+        p = p.strip()
+        if not p:
+            continue
+        try:
+            out.add(Path(p).resolve())
+        except OSError:                 # um caminho impossível não trava nada
+            continue
+    return out
+
+
+def _exige_temporarias(path, catalog) -> None:
+    """Levanta se a base ou o catálogo pedidos estiverem na lista de proibidos."""
+    proibidas = _proibidas()
+    if not proibidas:
+        return
+    for rotulo, pedido, constante, var in (
+            ("a base", path, DEFAULT_DB, "MTGVAULT_DB"),
+            ("o catálogo", catalog, DEFAULT_CATALOG, "MTGVAULT_CATALOG")):
+        try:
+            resolvido = Path(pedido).resolve()
+        except OSError:
+            continue
+        if resolvido not in proibidas:
+            continue
+        # A mensagem nomeia o ficheiro E as duas formas de se chegar aqui: quem
+        # a ler tem de saber se se esqueceu da variável ou se a pôs tarde.
+        tarde = ""
+        if Path(pedido).resolve() == Path(constante).resolve():
+            atual = os.environ.get(var)
+            if atual and Path(atual).resolve() != Path(constante).resolve():
+                tarde = (f" O ambiente diz hoje {var}={atual}, mas o valor que "
+                         f"este módulo leu no IMPORT foi {constante} — ou seja "
+                         f"a variável foi posta DEPOIS do `import mtgvault.db` "
+                         f"e não teve efeito. Fixa-a antes do import.")
+        raise BaseALaSerio(
+            f"{rotulo} que pediste é a do André ({resolvido.name}), e a trava da "
+            f"bateria está armada. Fixa o MTGVAULT_DB **e** o MTGVAULT_CATALOG "
+            f"numa pasta temporária ANTES de importares o mtgvault.db, ou passa "
+            f"os caminhos ao `db.connect(base, catalogo)`. Se precisas mesmo da "
+            f"base real (só leitura), pede `a_serio=True` e inscreve-te no "
+            f"tests/test_bases_a_serio.PODEM_A_SERIO.{tarde}")
+
 
 def pasta_dados() -> Path:
     """A pasta AO LADO DA BASE, onde vivem os ficheiros que a acompanham
@@ -63,9 +150,13 @@ def pasta_dados() -> Path:
     return Path(DEFAULT_DB).parent
 
 
-def connect(path=None, catalog=None) -> sqlite3.Connection:
+def connect(path=None, catalog=None, *, a_serio: bool = False) -> sqlite3.Connection:
     path = Path(path) if path else DEFAULT_DB
     catalog = Path(catalog) if catalog else DEFAULT_CATALOG
+    # A TRAVA DA BATERIA (2026-10-06) — ver `VAR_PROIBIDAS` acima. Corre ANTES
+    # do `mkdir`: um pedido recusado não deixa pastas atrás dele.
+    if not a_serio:
+        _exige_temporarias(path, catalog)
     path.parent.mkdir(parents=True, exist_ok=True)
     catalog.parent.mkdir(parents=True, exist_ok=True)
 
@@ -396,8 +487,8 @@ def catalog_size(con: sqlite3.Connection) -> int:
 
 
 @contextmanager
-def session(path=None, catalog=None):
-    con = connect(path, catalog)
+def session(path=None, catalog=None, *, a_serio: bool = False):
+    con = connect(path, catalog, a_serio=a_serio)
     try:
         init(con)
         yield con

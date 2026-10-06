@@ -96,6 +96,11 @@ def base():
             (f"id-{i}", f"or-{i}", nm, sc, str(i), json.dumps(["nonfoil", "foil"]),
              rel, json.dumps({"pauper": "legal", "modern": "legal",
                               "legacy": "legal", "commander": "legal"})))
+    # ESTA BASE NÃO COTA NADA, de propósito: o
+    # `caso_foil_report_ve_as_outras_caixas` exige que **só a Thoughtcast** tenha
+    # preço (`custo == 20,00`). Quem precisa de preço cota-o no seu caso — e,
+    # desde 2026-10-06, um caso que meça `rep["venda"]` TEM de o fazer: uma linha
+    # sem preço vai para a saída `sem_preco`.
     # O `deck_collection` só existe no vault.db do André — não está no schema.sql
     # nem no db._migrate() (ver CLAUDE.md). Numa base nova cria-se aqui.
     con.execute("""CREATE TABLE IF NOT EXISTS deck_collection (
@@ -280,7 +285,10 @@ def caso_foil_report_ve_as_outras_caixas():
                     (f"liga{i}", aid))
     sid = con.execute("SELECT scryfall_id FROM catalog.cards WHERE name='Thoughtcast'"
                       ).fetchone()["scryfall_id"]
-    con.execute("""INSERT INTO price_latest (scryfall_id, source, finish, date, trend)
+    # `OR REPLACE`: o `base()` já cota todas as impressões (2026-10-06); aqui
+    # SOBREPÕE-SE o preço de uma delas.
+    con.execute("""INSERT OR REPLACE INTO price_latest
+                   (scryfall_id, source, finish, date, trend)
                    VALUES (?, 'cardmarket', 'foil', '2026-09-07', 5.0)""", (sid,))
     con.commit()
 
@@ -460,6 +468,18 @@ def _base_deckboxes():
     # NONFOIL a mais (o playset são 4) e 1 Chromatic Star FOIL a mais.
     add(con, "Utrom Monitor", 2, sub="SPML")
     add(con, "Chromatic Star", 5, finish="foil", sub="SPML")
+    # O PREÇO DAS DUAS QUE SOBRAM (2026-10-06): sem ele, o excedente sai da lista
+    # de venda para a saída `sem_preco` e a aba Vender deste caso ficava vazia.
+    # Só estas duas — a base não cota nada, e há um caso que conta com isso.
+    for nm, fin in (("Utrom Monitor", "nonfoil"), ("Chromatic Star", "foil")):
+        sid = con.execute("SELECT scryfall_id FROM catalog.cards WHERE name = ?",
+                          (nm,)).fetchone()["scryfall_id"]
+        con.execute(
+            "INSERT OR REPLACE INTO price_latest (scryfall_id, source, finish, "
+            "date, low, trend, currency) "
+            "VALUES (?, 'cardmarket', ?, '2026-09-07', 3.0, 3.0, 'EUR')",
+            (sid, fin))
+    con.commit()
     return con
 
 

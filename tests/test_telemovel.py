@@ -91,6 +91,16 @@ def base():
                VALUES (?,?,?,?,'S',?,'en','rare',?,2,'W',?,'2004-11-19',?,0,0)""",
             (f"id-{i}", f"or-{i}", nm, sc, str(i), tl, json.dumps(["nonfoil"]),
              json.dumps({"legacy": "legal"})))
+        # UM PREÇO PARA CADA IMPRESSÃO (2026-10-06) — ver a nota no
+        # `test_legacy_rl.base`. Esta base não tinha nenhum, e desde hoje uma
+        # linha sem preço sai da lista de venda para a saída `sem_preco`: sem
+        # isto, o `caso_vendida_pede_dois_toques_com_o_nome` não tinha nenhum
+        # botão «vendida» para encontrar.
+        con.execute(
+            "INSERT OR REPLACE INTO price_latest (scryfall_id, source, finish, "
+            "date, low, trend, currency) "
+            "VALUES (?, 'cardmarket', 'nonfoil', '2026-09-07', ?, ?, 'EUR')",
+            (f"id-{i}", 10.0 + i, 10.0 + i))
     con.execute("""CREATE TABLE IF NOT EXISTS deck_collection (
                      watched_id INTEGER, sub_collection TEXT)""")
     con.execute("INSERT INTO decks (name, format) VALUES ('A', 'legacy')")

@@ -124,6 +124,13 @@ data/*.log
 # Recortes de fotos feitos à mão durante a catalogação. São imagens, e as imagens
 # nunca vão para o repo.
 scratchpad_crops/
+# Os ficheiros que o FUSE deixa atrás quando se apaga (ou substitui) um ficheiro
+# que ainda está aberto — `data/.fuse_hidden<hex>` (2026-10-06). Nascem às dezenas
+# nos dias em que se abre e fecha a base muitas vezes (uma ordem de medição), são
+# restos do mount e não ficheiros nossos. Vinham como `??` permanentes, que é o
+# ruído que o bloco acima existe para tirar: 27 linhas de `??` fazem com que se
+# deixe de olhar para o `git status`, e é lá que uma alteração a sério se vê.
+data/.fuse_hidden*
 # A pasta de PROVA do `mtgvault.publicar` (2026-10-04): o site gerado para se
 # comparar com o que está em disco, antes de se decidir se há algo a commitar.
 # É transitória — o `publicar()` apaga-a — mas o `--ver` e os testes deixam-na

@@ -90,7 +90,9 @@ def _prices(con):
         for r in con.execute(
             f"""SELECT c.name n, MIN({precos.sql(alias="p")}) e
                   FROM cards c JOIN price_latest p ON p.scryfall_id=c.scryfall_id
-                 WHERE p.source = ? AND p.finish='nonfoil' GROUP BY c.name""",
+                 WHERE p.source = ? AND p.finish='nonfoil'
+                   AND {scryfall.sql_impressao_a_serio("c")}
+                 GROUP BY c.name""",
                 (precos.fonte(),)):
             if r["e"] is not None and r["n"] not in price:
                 price[r["n"]] = r["e"]

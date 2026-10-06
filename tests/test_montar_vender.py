@@ -47,6 +47,11 @@ CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
 os.environ["MTGVAULT_CONFIG"] = str(CAMINHO)
 os.environ["MTGVAULT_HOME"] = str(_TMP)
 os.environ["MTGVAULT_DB"] = str(_TMP / "vault.db")   # ver tests/_bateria.py
+# E O CATÁLOGO (2026-10-06). Faltava, e o `webapp.calcular` abre a SUA ligação
+# com `db.session()`: ficava com a base temporária (esta linha de cima, que corre
+# ANTES do import) e com o `data/catalog.db` do André. Foi a trava do
+# `tests/_bateria.py` que o apanhou.
+os.environ["MTGVAULT_CATALOG"] = str(_TMP / "catalog.db")
 
 from mtgvault import caixas, db, loadout, sources  # noqa: E402
 
@@ -325,12 +330,22 @@ def caso_ler_sem_token_da_pagina_so_de_leitura():
     repor()
     con = base()
     t = webapp.token()
-    # O `do_GET` das páginas geradas abre a sua própria ligação; aponta-se as
-    # variáveis de ambiente para esta base para o teste não ir à do André.
-    os.environ["MTGVAULT_DB"] = str(Path(con.execute(
-        "PRAGMA database_list").fetchall()[0]["file"]))
-    os.environ["MTGVAULT_CATALOG"] = str(Path(con.execute(
-        "PRAGMA database_list").fetchall()[1]["file"]))
+    # O `do_GET` das páginas geradas abre a sua PRÓPRIA ligação, e tem de abrir
+    # a base DESTE caso (a `base()` faz uma pasta temporária nova a cada chamada).
+    #
+    # ERA FEITO COM `os.environ[...]` E NÃO FUNCIONAVA (corrigido a 2026-10-06).
+    # O comentário aqui dizia *"aponta-se as variáveis de ambiente para esta base
+    # para o teste não ir à do André"* — e as variáveis não têm efeito nenhum
+    # depois do import: o `db.DEFAULT_DB`/`DEFAULT_CATALOG` são lidos UMA vez, no
+    # `import mtgvault.db`, que já aconteceu no topo deste ficheiro. O resultado
+    # era o `webapp` a abrir o `data/catalog.db` do André. É a MESMA armadilha que
+    # pôs 63 linhas de fixture na base dele (ver `tests/test_bases_a_serio.py`),
+    # com a intenção escrita ao lado da linha que a não cumpria.
+    #
+    # O que funciona é trocar as CONSTANTES, como os outros testes fazem.
+    linhas = con.execute("PRAGMA database_list").fetchall()
+    db.DEFAULT_DB = Path(linhas[0]["file"])
+    db.DEFAULT_CATALOG = Path(linhas[1]["file"])
 
     # O que decide os botões é o payload (`editable`), não o HTML: o JavaScript
     # que os desenha está sempre lá, e é o `D.editable` que o cala. Que a página

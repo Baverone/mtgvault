@@ -30,8 +30,13 @@ sys.path.insert(0, str(RAIZ))
 
 
 def _gerar(dest: Path) -> None:
+    # `a_serio=True` (2026-10-06): esta ferramenta mede o determinismo sobre a
+    # colecção REAL — é a única forma de a pergunta valer algo (numa base de
+    # brincar com três cartas, um `set` pelo meio parece determinista). Só LÊ. É
+    # o mesmo pedido explícito que o `test_publicar` faz, e a razão está inscrita
+    # no `tests/test_bases_a_serio.PODEM_A_SERIO`.
     from mtgvault import db, publicar                          # noqa: PLC0415
-    with db.session() as con:
+    with db.session(a_serio=True) as con:
         publicar.gerar(con, dest)
 
 

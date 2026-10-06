@@ -108,6 +108,20 @@ def base():
              json.dumps(["nonfoil", "foil"]), rel,
              json.dumps({"legacy": "legal", "premodern": "legal",
                          "cedh": "legal", "commander": "legal"}), rl))
+        # UM PREÇO PARA CADA IMPRESSÃO (2026-10-06). Esta base não tinha nenhum,
+        # e a partir de hoje **uma linha sem preço não entra na lista de venda**:
+        # vai para a saída `sem_preco` (*"NUNCA cai para o preco de outra
+        # impressao"*). Sem isto, os casos que medem «o excedente vai à venda»
+        # mediam uma lista vazia e passavam por outra razão. Na colecção a sério
+        # toda a cópia tem preço, por isso isto aproxima o fixture da realidade.
+        # O `price_history` continua VAZIO de propósito — é o que faz a regra dos
+        # 5 % responder `rl_sem_historico`, que é o que o `a_venda_rl` conta.
+        for fin in ("nonfoil", "foil"):
+            con.execute(
+                "INSERT OR REPLACE INTO price_latest (scryfall_id, source, "
+                "finish, date, low, trend, currency) "
+                "VALUES (?, 'cardmarket', ?, '2026-09-07', ?, ?, 'EUR')",
+                (f"id-{i}", fin, 10.0 + i, 10.0 + i))
     con.commit()
     return con
 

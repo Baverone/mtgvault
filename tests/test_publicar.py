@@ -32,6 +32,16 @@ sys.path.insert(0, str(RAIZ))
 
 from mtgvault import db, publicar  # noqa: E402
 
+# ESTE FICHEIRO ABRE A COLECÇÃO A SÉRIO, E DIZ-LHE O NOME (2026-10-06).
+# É o único da bateria que o faz, e tem de o fazer: o que ele mede é que duas
+# passagens das 14 páginas sobre a **base do André** dão o mesmo byte — numa base
+# de brincar com três cartas, um `set` pelo meio parecia determinista e a tarefa
+# de 30 em 30 min dava 48 commits por dia (foi exactamente o defeito do
+# `cobertura/prints.json`). Só LÊ: o `publicar.SO_LEITURA` tira o `historico` à
+# Galeria e o `caso_publicar_nao_escreve_na_coleccao` exige que o `-wal` não
+# cresça. O `a_serio=True` desarma a trava do `tests/_bateria.py`, e a razão está
+# inscrita no `tests/test_bases_a_serio.PODEM_A_SERIO`.
+
 
 def caso_o_carimbo_sozinho_nao_e_uma_diferenca():
     """Duas gerações seguidas da MESMA base só diferem no `_gerado_em`.
@@ -67,7 +77,7 @@ def caso_duas_passagens_seguidas_nao_dao_mudanca():
     """
     with tempfile.TemporaryDirectory() as tmp:
         a, b = Path(tmp) / "a", Path(tmp) / "b"
-        with db.session() as con:
+        with db.session(a_serio=True) as con:
             publicar.gerar(con, a)
             publicar.gerar(con, b)
         d = publicar.comparar(a, b)
@@ -127,7 +137,7 @@ def caso_publicar_nao_escreve_na_coleccao():
             return 0
 
     with tempfile.TemporaryDirectory() as tmp:
-        with db.session() as con:
+        with db.session(a_serio=True) as con:
             antes = tam()
             publicar.gerar(con, Path(tmp))
             depois = tam()
@@ -213,7 +223,7 @@ def caso_o_json_da_tarefa_tem_o_que_ela_precisa():
     Corre numa raiz TEMPORÁRIA: numa raiz vazia tudo é «novo», o `publicar`
     escreve lá e o site dele não é tocado.
     """
-    with tempfile.TemporaryDirectory() as tmp, db.session() as con:
+    with tempfile.TemporaryDirectory() as tmp, db.session(a_serio=True) as con:
         r = publicar.publicar(con, Path(tmp), se_mudou=True)
     for k in ("escreveu", "mudaram", "novos", "a_mais", "paginas", "publicaveis"):
         assert k in r, (k, sorted(r))

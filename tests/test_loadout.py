@@ -110,6 +110,13 @@ def base():
             (f"id-{i}", f"or-{i}", nm, sc, str(i), json.dumps(["nonfoil", "foil"]),
              rel, json.dumps({"legacy": "legal", "commander": "legal",
                               "premodern": "legal", "modern": "legal"}), rl))
+    # ESTA BASE NÃO COTA NADA, de propósito: há casos aqui que medem o que
+    # acontece a uma carta SEM preço (o `caso_preco_foil` exige
+    # `card_price("Sol Ring", "foil") == (None, None)`). Quem precisa de preço
+    # pede-o com o `preco()` — e, desde 2026-10-06, um caso que meça
+    # `rep["venda"]` TEM de o pedir: uma linha sem preço já não entra na lista
+    # de venda, vai para a saída `sem_preco` (*"NUNCA cai para o preco de outra
+    # impressao"*).
     con.commit()
     return con
 
@@ -196,7 +203,10 @@ def caso_uma_copia_uma_caixa():
 def preco(con, nm, finish, trend):
     sid = con.execute("SELECT scryfall_id FROM catalog.cards WHERE name = ?",
                       (nm,)).fetchone()["scryfall_id"]
-    con.execute("""INSERT INTO price_latest (scryfall_id, source, finish, date, trend)
+    # `OR REPLACE`: desde 2026-10-06 o `base()` já cota todas as impressões (ver
+    # lá), e este ajudante é para SOBREPOR o preço de uma delas num caso.
+    con.execute("""INSERT OR REPLACE INTO price_latest
+                   (scryfall_id, source, finish, date, trend)
                    VALUES (?, 'cardmarket', ?, '2026-09-07', ?)""", (sid, finish, trend))
     con.commit()
 
@@ -727,6 +737,11 @@ def caso_backup_e_venda():
     Básicas nunca se vendem."""
     con = base()
     deck(con, "EDH", "cedh", [("Sol Ring", 1)])
+    # O PREÇO DA THOUGHTCAST (2026-10-06): sem ele, as 4 cópias de excedente
+    # saem da lista de venda para a saída `sem_preco` e este caso media uma
+    # lista vazia. Só esta carta leva preço — o `caso_preco_foil` precisa que a
+    # Sol Ring continue sem nenhum.
+    preco(con, "Thoughtcast", "foil", 10.0)
     # 4 no SPML + 4 na Caixa RL = 8 cópias da mesma carta: o playset são 4.
     add(con, "Thoughtcast", 4, finish="foil", sub="SPML")
     add(con, "Thoughtcast", 4, finish="foil", sub="Caixa Reserved List")
@@ -1051,6 +1066,10 @@ def caso_nonfoil_nunca_e_foil():
     assert not loadout.e_foil(None) and not loadout.e_foil("")
     # E a lista de venda de uma cópia nonfoil sai marcada como não-foil.
     con = base()
+    # O preço só no NONFOIL (2026-10-06): a linha precisa dele para entrar na
+    # lista de venda (sem preço vai para a saída `sem_preco`), e o foil tem de
+    # continuar sem nenhum — é o que o `caso_preco_foil` exige.
+    preco(con, "Sol Ring", "nonfoil", 1.5)
     add(con, "Sol Ring", 5, finish="nonfoil", sub="Colecção")
     rep = loadout.report(con, [])
     linha = next(r for r in rep["venda"] if r["nm"] == "Sol Ring")

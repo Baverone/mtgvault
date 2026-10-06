@@ -1299,13 +1299,25 @@ def deck_extras(con: sqlite3.Connection) -> list[dict]:
 CENARIOS = ("trend", "low", "media")
 
 
+def cenario_de(modo: str) -> str:
+    """O cenário (coluna) que corresponde a um modo de preço.
+
+    Está à parte do `cenario_em_vigor` desde 2026-10-06, porque há DUAS réguas:
+    a do valor da colecção (`precos.modo`) e a das linhas de venda
+    (`precos.modo_venda`). A tradução modo → coluna é uma só.
+    """
+    return {precos.MARKET: "trend", precos.BEST: "low",
+            precos.MEDIA: "media"}.get(modo, "trend")
+
+
 def cenario_em_vigor() -> str:
     """O cenário que corresponde ao modo de preço escolhido no config."""
-    return {precos.MARKET: "trend", precos.BEST: "low",
-            precos.MEDIA: "media"}[precos.modo()]
+    return cenario_de(precos.modo())
 
 
-def mapa_precos(con: sqlite3.Connection, source: str | None = None) -> dict:
+def mapa_precos(con: sqlite3.Connection, source: str | None = None,
+                fontes_: tuple[str, ...] | None = None,
+                cenario: str | None = None) -> dict:
     """`{"trend": {(sid, acabamento): €}, "low": {...}, "media": {...}}` — o
     mais barato por impressão e acabamento.
 
@@ -1326,10 +1338,15 @@ def mapa_precos(con: sqlite3.Connection, source: str | None = None) -> dict:
     Uma `source` explícita (o `precos comparar`, os testes) continua a valer —
     aí a cadeia é só ela.
     """
-    fontes = (source,) if source else precos.fontes()
+    # `fontes_` e `cenario` entraram a 2026-10-06 para a RÉGUA DE VENDA poder
+    # pedir o mesmo mapa com a sua cadeia e o seu modo (`precos.fontes_venda`),
+    # sem uma segunda função a varrer a `price_latest` com outras regras — era
+    # isso que punha duas contas para o mesmo dinheiro. Sem elas, nada muda.
+    fontes = (source,) if source else (tuple(fontes_) if fontes_
+                                       else precos.fontes())
     out: dict[str, dict] = {c: {} for c in CENARIOS}
     out["_fonte"] = {}
-    alvo = cenario_em_vigor()
+    alvo = cenario or cenario_em_vigor()
     # De trás para a frente: a última a escrever fica, e a última a escrever é a
     # de MAIOR prioridade. É isto que faz *"a primeira da cadeia ganha"*.
     for f in reversed(fontes):
@@ -1368,7 +1385,8 @@ def _familias(finish: str | None) -> tuple[tuple[str, ...], tuple[str, ...]]:
 
 
 def preco_impressao_detalhe(mapa: dict, sid: str, finish: str | None,
-                            cenario: str | None = None) -> dict:
+                            cenario: str | None = None, *,
+                            exacto: bool = False) -> dict:
     """`{preco, price_finish, fonte, receita}` desta impressão — ou tudo a `None`.
 
     Sem `cenario`, o do MODO DE PREÇO em vigor. Uma impressão que nenhuma fonte
@@ -1377,10 +1395,22 @@ def preco_impressao_detalhe(mapa: dict, sid: str, finish: str | None,
     A `fonte` viaja porque desde 2026-09-25 ela pode não ser a principal: com o
     CardTrader à frente e o Cardmarket atrás, uma página que só mostre o número
     não deixa ver que um terço das cópias veio da segunda.
+
+    **`exacto=True` tira as duas tolerâncias** (2026-10-06): só o acabamento
+    pedido e só o cenário pedido. É o que as LINHAS DE VENDA usam — *"o preco do
+    scryfall_id EXACTO da copia e do finish EXACTO dela"*. Para somar o
+    INVENTÁRIO a tolerância fica (a Galeria marca essas com `~` desde
+    2026-09-24): ali uma estimativa marcada é melhor do que uma cópia a valer
+    zero. Medido: são 3 linhas / 178,39 €, e uma delas são 4 Goblin Engineer
+    **nonfoil** avaliadas ao preço do foil — pedir 19,74 € por elas a alguém era
+    pedir o preço de outra carta.
     """
     cenario = cenario or cenario_em_vigor()
     fam, outra = _familias(finish)
-    ordem = [cenario] + [c for c in CENARIOS if c != cenario]
+    if exacto:
+        fam, outra = ((finish,) if finish else ()), ()
+    ordem = [cenario] if exacto else (
+        [cenario] + [c for c in CENARIOS if c != cenario])
     for c in ordem:
         tabela = mapa.get(c) or {}
         for f in (*fam, *outra):

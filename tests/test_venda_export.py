@@ -332,10 +332,16 @@ def caso_o_que_nao_se_vende_fica_de_fora_e_diz_porque():
     # (`revalidacao.desde`), e por isso a lista de venda deste teste não mexeu um
     # cêntimo — é a prova de que a saída nova não muda o motor onde a regra não
     # está ligada.
-    assert set(fora) == {"sem_foto", "protegidas", "rl_segurar",
+    # `sem_preco` entrou a 2026-10-06 (*"a linha sai com 'sem preco' e entra numa
+    # lista de pendentes — NUNCA cai para o preco de outra impressao"*). Está
+    # vazia neste mundo porque o fixture cota todas as impressões que ele tem, e
+    # é por isso que a lista de venda deste teste continua a não mexer um
+    # cêntimo — a mesma prova que as duas saídas anteriores trazem.
+    assert set(fora) == {"sem_foto", "sem_preco", "protegidas", "rl_segurar",
                          "rl_sem_historico", "guardar", "reservadas",
                          "retidos"}, set(fora)
     assert fora["sem_foto"]["copias"] == 0, fora["sem_foto"]
+    assert fora["sem_preco"]["copias"] == 0, fora["sem_preco"]
     assert fora["protegidas"]["copias"] == 0, fora["protegidas"]
     seg = fora["rl_segurar"]
     assert seg["copias"] == 2 and seg["linhas"][0]["nm"] == "Gilded Drake", seg
@@ -469,9 +475,10 @@ def caso_a_aba_vender_leva_a_saida_e_o_modo_edicao_grava():
     assert s["copias"] == 5 and s["formato"]["origem"] == "predefinido", s
     assert s["csv"].startswith("Name,Set,Number") and "Null Rod" in s["csv"]
     assert [g["local"] for g in s["estante"]["grupos"]] == ["Colecção", "Caixa RL (EN)"]
-    # `sem_foto` entrou a 2026-10-02, à cabeça (ver `venda.FORA`).
-    assert {f["chave"] for f in s["fora"]} == {"sem_foto", "protegidas",
-                                               "rl_segurar",
+    # `sem_foto` entrou a 2026-10-02 e `sem_preco` a 2026-10-06, as duas à
+    # cabeça (ver `venda.FORA`): são falta de DADO, não decisões tomadas.
+    assert {f["chave"] for f in s["fora"]} == {"sem_foto", "sem_preco",
+                                               "protegidas", "rl_segurar",
                                                "rl_sem_historico", "guardar",
                                                "reservadas", "retidos"}
     # A parte pesada da venda leva a saída (é lá que a aba a vai buscar).
