@@ -203,12 +203,20 @@ function familiasProtegeHTML(u) {
 
    Vai EM SEPARADO e em destaque, antes das versões: é a resposta a *«quanto é
    que a correspondência papel/MTGO me custa»* — e a resposta é «quase nada»,
-   porque ele tem as 11 cartas todas. Um núcleo diluído no meio das listas de
-   cada versão não respondia a nada.
+   porque ele tem o núcleo todo. Um núcleo diluído no meio das listas de cada
+   versão não respondia a nada.
 
-   A básica fica na lista e vai MARCADA: ela está mesmo nos três decks, mas sai
-   da pilha de Unhinged a granel. Tirá-la era a conta a fechar por outro número;
-   deixá-la sem marca era mandá-lo procurar uma Island que está ali ao lado. */
+   **O NÚMERO DE VERSÕES NÃO SE ESCREVE AQUI**, e isso provou-se no mesmo dia:
+   ele tirou a versão do Cori-Steel horas depois (*"entao apagamos para ja essa
+   versao"*) e o bloco passou de «as três, 11 cartas / 34 cópias» para «as duas,
+   13 / 36» sem uma linha de JavaScript mudar. Tudo sai do `nucleo.versoes`.
+
+   A básica fica na lista e vai MARCADA: ela está mesmo em todos os decks, mas
+   sai da pilha de Unhinged a granel. Tirá-la era a conta a fechar por outro
+   número; deixá-la sem marca era mandá-lo procurar uma Island que está ao lado.
+
+   O bloco «em N-1 das N» desaparece sozinho com DUAS versões: ali uma carta ou
+   está nas duas ou é só de uma, e `em_duas` vem vazio por construção. */
 function nucleoHTML(u) {
   const n = u.nucleo;
   if (!n || n.versoes < 2 || !n.cartas) return '';
@@ -373,7 +381,7 @@ function faltasVersoesHTML(u) {
     + `<p class="stpn">O total <b>não repete o núcleo</b>: cada carta conta`
     + ` pelo <b>máximo</b> que as versões pedem, por isso uma carta que sirva`
     + ` duas delas entra uma vez. É <b>${t.copias}</b> cópias para as`
-    + ` ${f.versoes.length} e não a soma dos três sacos.`
+    + ` ${f.versoes.length} e não a soma dos ${f.versoes.length} sacos isolados.`
     + ` A falta é <b>o que a lista pede menos o que tens</b> — não é o`
     + ` «a comprar» da alocação da <a href="faltas.html">lista para Ghent</a>,`
     + ` que desconta o que está noutra caixa e o que já encomendaste: estas`
