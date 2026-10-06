@@ -148,10 +148,13 @@ def cache_do_config():
             os.environ["MTGVAULT_CONFIG"] = antes
         sources.esquecer_config()
 
-    # E NINGUÉM volta a usar o nome morto. A ÚNICA excepção declarada é este
-    # ficheiro, que é o que explica a regra e por isso tem de nomear o nome
-    # errado — é o padrão do `estado.medido`, onde o `db._migrate` é a excepção.
-    maus = [f.name for f in sorted((Path(__file__).parent).glob("*.py"))
+    # E NENHUM FICHEIRO DE TESTE volta a usar o nome morto. Varre-se `test_*.py`
+    # e não `*.py` de propósito: quem reescreve o config para exercitar um
+    # interruptor é um teste, e as bancadas de prova (`_chumba_*.py`) TÊM de
+    # escrever o nome errado — é com ele que provam que este caso chumba. Este
+    # ficheiro é a excepção declarada, porque é o que explica a regra; é o padrão
+    # do `estado.medido`, onde o `db._migrate` é a excepção.
+    maus = [f.name for f in sorted((Path(__file__).parent).glob("test_*.py"))
             if f.name != Path(__file__).name
             and "_CONFIG_CACHE" in f.read_text(encoding="utf-8")]
     assert not maus, (
