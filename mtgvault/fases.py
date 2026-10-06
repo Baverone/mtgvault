@@ -180,6 +180,25 @@ from . import nomes, scryfall, sources, versoes
 R1 = "r1-duais"
 R2 = "r2-shocklands"
 R3 = "r3-fetchlands"
+# R4 — O RESERVED LIST NÃO TEM EXCEDENTE (André, 2026-10-06, à letra: *"RL nao ha
+# copias a mais, e investimento, se a carta joga, e provavel que suba"*).
+#
+# Era *"o RL que ELE joga"* (`rl_que_joga`, o consenso dos formatos dele) e
+# protegia o LOTE todo — mas só os 16 nomes que passavam esse crivo. Hoje
+# protege **toda** a cópia de Reserved List, e isso muda duas coisas:
+#
+#   1. **a R1 deixa de mandar o excedente das duais à venda.** As dez duais ABUR
+#      são todas Reserved List, e o orçamento de *"quatro de cada fora dos
+#      decks"* (02/10) punha a 5.ª e a 6.ª cópia na lista — 6 cópias / 1 763,35 €
+#      medidos. O orçamento FICA, porque continua a responder à outra pergunta
+#      («quantas faltam COMPRAR para ter quatro de cada»), mas já não vende nada;
+#   2. **os nomes que o `rl_que_joga` não apanhava passam a ficar.** Eram 50
+#      cópias / 3 966,98 € na lista de venda, com a Tolarian Academy ×7 (860,93 €)
+#      à cabeça.
+#
+# A ÚNICA parte que fica por decidir é o *«que joga»*: há 6 nomes que não
+# aparecem em lista NENHUMA das colhidas (`guardar.rl_sem_lista`, hoje
+# `por_decidir` — e por decidir quer dizer PROTEGIDO).
 R4 = "r4-rl-joga"
 R5 = "r5-reserva-30d"
 R5B = "r5b-staples-premodern"
