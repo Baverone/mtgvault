@@ -1302,6 +1302,122 @@ def relatorio(con: sqlite3.Connection, cfg: dict | None = None) -> dict:
             "pos": pos}
 
 
+# ---------------------------------------------------------------------------
+# AS FALTAS DOS DECKS DE UM JOGADOR QUE ELE SEGUE (2026-10-06)
+# ---------------------------------------------------------------------------
+# *"A LISTA DE FALTAS DELE … Separa na pagina o que e so do Grinding Station do
+# que e so do Song of Creation, porque ele pode querer um e nao o outro."*
+#
+# TRÊS SACOS E NÃO DOIS, e essa é a correcção que importa: há cartas que faltam
+# aos DOIS decks (medido a 06/10: 2 Endurance e 1 Haywire Mite, 36,33 €).
+# Atribuí-las a um dos lados — como a ordem fazia, somando 56,21 + 57,66 =
+# 113,87 — responde mal à pergunta dele: se ele quiser **só** o Song of
+# Creation, continua a precisar das Endurance. Por isso cada deck leva o que é
+# **só dele**, as partilhadas vão num saco próprio, e cada deck diz também
+# quanto custa **se for o único que ele montar** (só dele + partilhadas).
+#
+# PORQUE É QUE ISTO NÃO VAI NA `faltas.html`: essa página é o `comprar` da
+# ALOCAÇÃO — já desconta o que ele tem, o que está noutra caixa e o que
+# encomendou (regra de 2026-10-05, *«nunca do missing»*) — e estes decks não são
+# caixas, não têm `copy_allocation` e não passam pela alocação. Pô-los lá era
+# meter duas noções de «falta» na mesma tabela, que é a mesma avaria das duas
+# verdades que 24/09 fechou. Aqui a falta é *«o que a lista pede menos o que
+# tenho»*, e a página di-lo.
+#
+# OS DOIS PREÇOS, lado a lado (a disciplina do «a somar» vs «a rodar» de 04/10 e
+# do «com ligas e sem elas» de 05/10): o grupo `spml`, onde a caixa de Modern
+# vive, pede **EN foil**, e é esse o número de cima; mas estes decks **não são
+# caixas** e nenhuma regra os obriga ao foil. Medido a 06/10 a diferença são
+# 58,59 € em 16 cópias — é uma decisão dele, não um detalhe, e esconder uma das
+# contas era decidir por ele.
+def faltas_de_jogador(con: sqlite3.Connection, fmt: str, decks: list[dict],
+                      pos: dict[str, dict], cfg: dict | None = None,
+                      cache: dict | None = None) -> list[dict]:
+    """As faltas dos decks de cada jogador seguido neste formato.
+
+    `[{jogador, versoes: [...], partilhadas: {...}, totais: {...}}]`, vazio
+    quando nenhuma versão tem `jogador` — e é assim que isto se desliga.
+    """
+    cfg = sources.config() if cfg is None else cfg
+    cache = {} if cache is None else cache
+    jogs = versoes.jogadores(fmt, cfg)
+    if not jogs:
+        return []
+    por_id = {d["id"]: d for d in decks}
+    out = []
+    for jog in jogs:
+        vers = [v for v in versoes.versoes(fmt, cfg)
+                if str(v.get("jogador") or "").strip() == jog]
+        alvos = []
+        for v in vers:
+            d = por_id.get(versoes.deck_da_versao(v))
+            if d and d.get("cards"):
+                alvos.append((v, d))
+        if not alvos:
+            continue
+        # O que cada deck PEDE de cada nome (main + side somados: é a mesma ida
+        # à gaveta) e o que falta, pela posse de sempre — o `tenho_para`, que
+        # sabe das básicas a granel (2026-10-05) e por isso não manda imprimir
+        # 2 Island que estão na pilha de Unhinged.
+        pede: dict[str, dict[str, int]] = {}
+        for v, d in alvos:
+            vid = str(v.get("id"))
+            for _board, nm, q in (d.get("cards") or []):
+                por_v = pede.setdefault(scryfall.chave(nm), {})
+                por_v[vid] = por_v.get(vid, 0) + int(q)
+        linhas: list[dict] = []
+        for nm, por_v in sorted(pede.items()):
+            maior = max(por_v.values())
+            tem = tenho_para(nm, maior, pos)
+            if tem >= maior:
+                continue
+            pf, fin = loadout.card_price(con, nm, "foil")
+            pn, _ = loadout.card_price(con, nm, "nonfoil")
+            # `fin` diz a que acabamento o preço corresponde: o `card_price`
+            # devolve o nonfoil quando não há foil **e di-lo** (regra de 19/09),
+            # e uma linha marcada como foil que é nonfoil é uma estimativa a
+            # passar por preço.
+            linhas.append({
+                "nm": nm, "pede": maior, "tem": tem, "falta": maior - tem,
+                "versoes": sorted(por_v),
+                "unit": pf, "unit_nonfoil": pn, "price_finish": fin,
+                "foil_existe": loadout.foil_info(con, nm, cache)["existe"],
+                "da_pilha": da_pilha(nm),
+            })
+
+        def _soma(ls):
+            return {
+                "cartas": len(ls), "copias": sum(l["falta"] for l in ls),
+                "eur": round(sum((l["unit"] or 0) * l["falta"] for l in ls), 2),
+                "eur_nonfoil": round(
+                    sum((l["unit_nonfoil"] or 0) * l["falta"] for l in ls), 2),
+                "sem_preco": sum(1 for l in ls if l["unit"] is None),
+            }
+
+        part = [l for l in linhas if len(l["versoes"]) > 1]
+        vv = []
+        for v, d in alvos:
+            vid = str(v.get("id"))
+            so = [l for l in linhas if l["versoes"] == [vid]]
+            c = conta_do_deck(d, pos)
+            vv.append({
+                "id": vid, "deck": d["id"], "nome": str(v.get("nome") or vid),
+                "tem": c["tem"], "total": c["total"], "pct": c["pct"],
+                "nota": d.get("nota") or "",
+                "so": _soma(so), "linhas": so,
+                # O que custa se ele montar SÓ este: o que é só dele mais as
+                # partilhadas, que ele precisa de qualquer maneira.
+                "so_este": _soma(so + part),
+            })
+        vv.sort(key=lambda x: -x["so_este"]["eur"])
+        out.append({
+            "jogador": jog, "formato": fmt, "versoes": vv,
+            "partilhadas": {**_soma(part), "linhas": part},
+            "totais": _soma(linhas),
+        })
+    return out
+
+
 def deck_unico(con: sqlite3.Connection, fmt: str, decks: list[dict],
                pos: dict[str, dict], cfg: dict | None = None) -> dict | None:
     """O deck ÚNICO deste formato com as versões por dentro, ou `None`.
@@ -1331,7 +1447,9 @@ def deck_unico(con: sqlite3.Connection, fmt: str, decks: list[dict],
          "listas_total": v.get("listas"), "na_janela": True, "anotada": True,
          "origem_nome": "config", "deck": versoes.deck_da_versao(v),
          "principal": bool(v.get("principal")),
-         "escolhida": v.get("id") == esc, "porque": str(v.get("_porque") or "")}
+         "escolhida": v.get("id") == esc, "porque": str(v.get("_porque") or ""),
+         "familia": "", "fixa": v.get("arquetipo_id") is None,
+         "jogador": str(v.get("jogador") or "")}
         for v in versoes.versoes(fmt, cfg)]
     vs = []
     for v in base:
@@ -1345,6 +1463,13 @@ def deck_unico(con: sqlite3.Connection, fmt: str, decks: list[dict],
             "na_janela": bool(v.get("na_janela")),
             "anotada": bool(v.get("anotada")),
             "origem_nome": v.get("origem_nome") or "config",
+            # A FAMÍLIA e a marca do JOGADOR (2026-10-06): seis famílias de Mox
+            # Opal numa lista plana não se lêem, e uma lista que vem de um
+            # jogador que ele segue tem de o dizer ao lado do nome.
+            "familia": v.get("familia") or "",
+            "fixa": bool(v.get("fixa")),
+            "jogador": v.get("jogador") or "",
+            "data": v.get("data") or "",
             "principal": bool(v.get("principal")),
             # O `deck` só sai se o registo o TIVER. Uma versão conhecida sem
             # lista fixada (o Grinding Station) tem id de deck e não tem deck:
@@ -1372,6 +1497,12 @@ def deck_unico(con: sqlite3.Connection, fmt: str, decks: list[dict],
         "por_decidir": bool(d.get("por_decidir")),
         "versao": esc, "versoes": vs,
         "principal": versoes.principal(fmt, cfg),
+        # AS FAMÍLIAS com a contagem, e as FALTAS dos decks de cada jogador
+        # seguido (2026-10-06). As duas listas vazias quando o config não as
+        # pede — é o interruptor.
+        "familias": der.get("familias") or [],
+        "jogadores": der.get("jogadores") or [],
+        "faltas_jogador": faltas_de_jogador(con, fmt, decks, pos, cfg),
         "derivado": der["derivado"], "sem_cluster": der["sem_cluster"],
         "sem_cluster_nomes": der.get("sem_cluster_nomes") or [],
         # A anotação que perdeu o cluster (2026-10-05). Vai no payload e não só

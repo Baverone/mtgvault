@@ -2380,6 +2380,131 @@
       "fonte_decklist": 22165,
       "porque": "escolhida por: o online mais importante (Challenge) — sem presencial elegível, a mais recente (as Challenges não trazem classificação) — 0 de 6 candidatas desde 2026-09-29",
       "aviso": "nenhuma lista desde 2026-09-29 (a janela do consenso) — a escolha é da história toda"
+    },
+    "versao:modern:cesar-grinding-station": {
+      "nome": "Grinding Station / Loki",
+      "padrao": true,
+      "origem": "CesarMerjan · Modern League · 2026-10-05 · https://www.mtgo.com/decklist/modern-league-2026-10-0511161",
+      "formato": "modern",
+      "escolhido_em": "2026-10-06",
+      "cards": [
+        ["main", "Aether Spellbomb", 1],
+        ["main", "Boseiju, Who Endures", 1],
+        ["main", "Breeding Pool", 2],
+        ["main", "Emry, Lurker of the Loch", 4],
+        ["main", "Grinding Station", 3],
+        ["main", "Haywire Mite", 1],
+        ["main", "Hedge Maze", 1],
+        ["main", "Island", 2],
+        ["main", "Lavaspur Boots", 1],
+        ["main", "Loki, God of Mischief", 2],
+        ["main", "Malevolent Rumble", 4],
+        ["main", "Metallic Rebuke", 4],
+        ["main", "Minamo, School at Water's Edge", 1],
+        ["main", "Mishra's Bauble", 4],
+        ["main", "Misty Rainforest", 4],
+        ["main", "Mox Amber", 3],
+        ["main", "Mox Opal", 4],
+        ["main", "Otawara, Soaring City", 1],
+        ["main", "Pithing Needle", 1],
+        ["main", "Sewer-veillance Cam", 4],
+        ["main", "Sink into Stupor", 1],
+        ["main", "Skateboard", 1],
+        ["main", "Tamiyo, Inquisitive Student", 4],
+        ["main", "Tormod's Crypt", 1],
+        ["main", "Urza's Saga", 4],
+        ["main", "Waterlogged Grove", 1],
+        ["side", "Brazen Borrower", 1],
+        ["side", "Consign to Memory", 3],
+        ["side", "Dismember", 2],
+        ["side", "Endurance", 1],
+        ["side", "Harbinger of the Seas", 2],
+        ["side", "Nature's Claim", 1],
+        ["side", "Soul-Guide Lantern", 1],
+        ["side", "Spell Snare", 1],
+        ["side", "Strix Serenade", 1],
+        ["side", "Swan Song", 1],
+        ["side", "Vexing Bauble", 1]
+      ],
+      "evento": {
+        "decklist_id": 24182,
+        "jogador": "CesarMerjan",
+        "evento": "Modern League",
+        "data": "2026-10-05",
+        "jogadores": null,
+        "tier": "League",
+        "classificacao": null,
+        "url": "https://www.mtgo.com/decklist/modern-league-2026-10-0511161",
+        "fonte": "mtgo",
+        "content_hash": "e6672c54f3fa7421",
+        "repetida": 0,
+        "vitorias": 0
+      },
+      "fonte_decklist": 24182,
+      "nota": "versao do deck de Modern, da lista de um jogador que ele segue (CesarMerjan). As cartas e a proveniencia ficam gravadas porque o prune_decklists(30) apaga a decklist ao fim de um mes."
+    },
+    "versao:modern:cesar-song-of-creation": {
+      "nome": "Song of Creation / Jace",
+      "padrao": true,
+      "origem": "CesarMerjan · Modern League · 2026-09-28 · https://www.mtgo.com/decklist/modern-league-2026-09-2810983",
+      "formato": "modern",
+      "escolhido_em": "2026-10-06",
+      "cards": [
+        ["main", "Boomerang Basics", 2],
+        ["main", "Breeding Pool", 2],
+        ["main", "Emry, Lurker of the Loch", 3],
+        ["main", "Endurance", 2],
+        ["main", "Engineered Explosives", 2],
+        ["main", "Forest", 1],
+        ["main", "Grapeshot", 1],
+        ["main", "Hedge Maze", 1],
+        ["main", "Island", 1],
+        ["main", "Jace, Wielder of Mysteries", 1],
+        ["main", "Malevolent Rumble", 4],
+        ["main", "Mishra's Bauble", 4],
+        ["main", "Misty Rainforest", 4],
+        ["main", "Mox Amber", 3],
+        ["main", "Mox Opal", 4],
+        ["main", "Otawara, Soaring City", 1],
+        ["main", "Preordain", 2],
+        ["main", "Repeal", 3],
+        ["main", "Scalding Tarn", 2],
+        ["main", "Shifting Woodland", 2],
+        ["main", "Song of Creation", 4],
+        ["main", "Spire of Industry", 1],
+        ["main", "Steam Vents", 1],
+        ["main", "Stomping Ground", 1],
+        ["main", "Tamiyo, Inquisitive Student", 4],
+        ["main", "Thundering Falls", 1],
+        ["main", "Tormod's Crypt", 1],
+        ["main", "Urza's Saga", 2],
+        ["side", "Boseiju, Who Endures", 1],
+        ["side", "Consign to Memory", 2],
+        ["side", "Cori-Steel Cutter", 3],
+        ["side", "Fire Magic", 1],
+        ["side", "Haywire Mite", 1],
+        ["side", "Nature's Claim", 1],
+        ["side", "Pact of Negation", 2],
+        ["side", "Pithing Needle", 1],
+        ["side", "Swan Song", 1],
+        ["side", "Unholy Heat", 2]
+      ],
+      "evento": {
+        "decklist_id": 24603,
+        "jogador": "CesarMerjan",
+        "evento": "Modern League",
+        "data": "2026-09-28",
+        "jogadores": null,
+        "tier": "League",
+        "classificacao": null,
+        "url": "https://www.mtgo.com/decklist/modern-league-2026-09-2810983",
+        "fonte": "mtgo",
+        "content_hash": "f5c4b8152e44fffb",
+        "repetida": 0,
+        "vitorias": 0
+      },
+      "fonte_decklist": 24603,
+      "nota": "versao do deck de Modern, da lista de um jogador que ele segue (CesarMerjan). As cartas e a proveniencia ficam gravadas porque o prune_decklists(30) apaga a decklist ao fim de um mes."
     }
   },
   "precos": {
@@ -2491,7 +2616,40 @@
           "pct_minima": 50,
           "ate": "2026-10-05",
           "porque": "era o teste que decidia quais os clusters que eram VERSOES (Kappa Cannoneer + Pinnacle Emissary em metade ou mais das listas do cluster). Deixou de decidir a 05/10/2026, quando ele disse que entram todos os decks de Mox Opal e nao so os de Affinity. NAO se apagou: repor e devolver estas chaves ao `criterio` e tirar o `versoes_todas`. O que ficou dele foi a nocao de deck PRINCIPAL, que passou a ser uma marca explicita na versao (`principal`) em vez de um teste sobre as cartas."
-        }
+        },
+        "familias": [
+          {
+            "nome": "Grinding Station",
+            "cartas": ["Grinding Station"],
+            "_porque": "o motor do deck: sacrificar artefactos com a Emry/Loki. 3 listas na janela a 06/10, TODAS de liga -- e por isso que ele parecia ter zero."
+          },
+          {
+            "nome": "Hammer",
+            "cartas": ["Colossus Hammer"],
+            "_porque": "equipar o martelo de graca com a Puresteel/Stoneforge. Joga Mox Opal mas nao e Affinity."
+          },
+          {
+            "nome": "Song of Creation",
+            "cartas": ["Song of Creation"],
+            "_porque": "o combo de desenhar o baralho e ganhar com o Jace. E o segundo deck do CesarMerjan."
+          },
+          {
+            "nome": "Flame of Anor",
+            "cartas": ["Flame of Anor"],
+            "_porque": "o motor de Mox Amber com magos; nada a ver com artefactos a serio."
+          },
+          {
+            "nome": "Affinity preta (Cranial Plating)",
+            "cartas": ["Cranial Plating"],
+            "_porque": "a Affinity que ganha pela Plating e nao pelo Kappa. Testa-se ANTES da generica, senao caia la dentro e desaparecia."
+          },
+          {
+            "nome": "Affinity (Kappa/Pinnacle)",
+            "cartas": ["Kappa Cannoneer", "Pinnacle Emissary"],
+            "_porque": "a casca grande, que e o deck de qualificacao dele. ULTIMA da lista porque estas duas cartas cabem em quase todo o deck de Mox Opal: e a familia de omissao."
+          }
+        ],
+        "familias_porque": "AS SEIS FAMILIAS DO MOX OPAL (Andre, 2026-10-06, a letra: \"O MOX OPAL DE MODERN TEM SEIS FAMILIAS, nao uma. Mostra-as\"). Com o criterio inclusivo de 05/10 a lista de versoes passou a ser tudo o que joga a carta-chave, e medido a 06/10 isso sao OITO clusters de arquetipos que nao tem nada a ver uns com os outros -- uma lista plana com nomes como \"Loki, God of Mischief / Waterlogged Grove / Sewer-veillance Cam\" nao diz qual e qual. A FAMILIA DERIVA-SE DAS CARTAS E NUNCA DO CLUSTER: o archetype_id e refeito todas as noites e muda -- medido a 06/10, as CINCO anotacoes de arquetipo_id deste bloco ficaram com ZERO listas na janela, o segundo dia seguido em que isso acontece. Uma carta distintiva (Grinding Station, Colossus Hammer, Song of Creation) e estavel porque e ela que faz o deck ser aquele deck. A ORDEM da lista manda: a primeira familia que casa ganha. Contagens medidas a 06/10 nas 22 listas de liga da janela: Kappa/Pinnacle 14, Grinding Station 3, Cranial Plating 2, Hammer 2, Flame of Anor 1; nas 67 da janela toda: Kappa/Pinnacle 50, Cranial 5, Flame of Anor 4, Grinding Station 3, Hammer 3, Song of Creation 1, Outra 1. Sem esta chave nao ha agrupamento e a lista fica plana -- e o interruptor."
       },
       "versoes": [
         {
@@ -2537,6 +2695,20 @@
           "nome": "Grinding Station",
           "listas": 9,
           "_porque": "ELE DEU-O COMO EXEMPLO (\"seja grinding station\", 05/10/2026) e TEM ZERO LISTAS DESDE 29/09, em qualquer formato -- medido nesse dia. Entra como versao CONHECIDA e nao como actual. O nome e o DELE e confere-se na base: as 9 listas deste cluster jogam todas Grinding Station (100 %), e e o maior dos tres clusters que a carta tem (7394 com 9, 7527 com 2, 7341 com 1, mais 2 listas sem cluster que o mtgtop8 chama \"Emry Grinding Cam\") -- as 14 listas de Grinding Station de Modern jogam TODAS Mox Opal. ERA UM DOS CINCO QUE A LEITURA DE 04/10 PUNHA DE FORA (a etiqueta dele e \"Scrabbling Claws / Minamo / Sewer-veillance Cam\"): a correccao dele esta certa e prova-se. NAO tem lista fixada de proposito -- fixar-lhe uma de antes do Reality Fracture era apresentar como deck a montar uma lista que o formato de hoje ja nao viu."
+        },
+        {
+          "id": "versao:modern:cesar-grinding-station",
+          "nome": "Grinding Station / Loki",
+          "jogador": "CesarMerjan",
+          "_porque": "a lista do CesarMerjan de 2026-10-05, de LIGA. Ancorada na LISTA e nao num cluster: o arquetipo dela (7838 a 06/10) nasceu nesse dia e o archetype_id e refeito todas as noites. A lista fica GRAVADA aqui porque o prune_decklists(30) a apaga por volta de 2026-11-04.",
+          "fonte_decklist": 24182
+        },
+        {
+          "id": "versao:modern:cesar-song-of-creation",
+          "nome": "Song of Creation / Jace",
+          "jogador": "CesarMerjan",
+          "_porque": "a lista do CesarMerjan de 2026-09-28, de LIGA. Esta e de UM DIA ANTES da janela do consenso (29/09) e nao tem cluster nenhum (archetype_id a NULL) -- por isso nao podia ser uma versao derivada, e por isso a pagina diz que ela e anterior a janela em vez de a por entre as que se jogam agora. E o caso do Greasefang de 04/10. O prune apaga-a por volta de 2026-10-28; as cartas ficam gravadas.",
+          "fonte_decklist": 24603
         }
       ],
       "versao": "versao:modern:izzet-pinnacle",

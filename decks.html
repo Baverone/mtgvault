@@ -73,6 +73,32 @@
  .zero{color:var(--warn)}
  .tag.q{background:var(--sunken);border-color:var(--line);color:var(--muted)}
  @media (max-width:640px){ .vrow{flex-wrap:wrap} .vn{flex-basis:100%;order:3} }
+ /* AS FAMILIAS (2026-10-06): o cabecalho de cada grupo dentro das versoes, com
+    a contagem a direita. Fica mais discreto que o .vgt (que separa os DOIS
+    grupos grandes) para a hierarquia se ler: grupo > familia > versao. */
+ .fgt{display:flex;justify-content:space-between;align-items:baseline;gap:8px;
+   margin:9px 0 2px;padding:0 2px;font-size:12.5px;color:var(--ink);
+   border-bottom:1px solid var(--line)}
+ .fgt .fq{font-size:11px;color:var(--muted);white-space:nowrap}
+ .chip.jog{border-color:var(--info-line);background:var(--info-soft);color:var(--ob)}
+ /* AS FALTAS DOS DECKS DE UM JOGADOR (2026-10-06). Uma linha por carta, com o
+    nome a mandar (ele le isto no telemovel) e o preco a direita. */
+ .fjg{background:var(--card);border:1px solid var(--accent-line);
+   border-radius:var(--r);padding:9px 13px;margin:0 0 12px}
+ .fjg summary{cursor:pointer;font-size:12.5px;color:var(--dim)}
+ .fjg summary b{color:var(--ink)}
+ .fjd{margin:10px 0 0;padding:8px 0 0;border-top:1px solid var(--line)}
+ .fjd.part{border-top-style:dashed}
+ .fjh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;
+   font-size:13px;color:var(--ink)}
+ .fjh .fq{font-size:11px;color:var(--muted);white-space:nowrap}
+ .flr{display:flex;gap:9px;align-items:baseline;font-size:13px;padding:3px 0;
+   flex-wrap:wrap}
+ .flr .flq{font-family:var(--font-hd);font-weight:700;color:var(--accent);
+   min-width:28px}
+ .flr .flnm{flex:1;min-width:150px;overflow-wrap:anywhere}
+ .flr .flp{white-space:nowrap}
+ .flr .flt{font-size:11px;color:var(--muted);white-space:nowrap}
  /* A SEQUÊNCIA e as STAPLES (2026-10-04 ao fim do dia). */
  .passos{background:var(--card);border:1px solid var(--accent-line);border-radius:var(--r);
    padding:11px 15px;margin:0 0 12px;font-size:12.5px;color:var(--dim)}
@@ -443,7 +469,7 @@ a cada deck na página do evento, e nunca pela etiqueta do agrupamento. Quem
 decide que listas contam é a regra de cada formato
 (<code>metagame_fontes</code>); o registo vê todas as que contam e a lista de
 cada um vem da janela do consenso — são duas perguntas.
-</div></details></div></footer></div></div><script src="decks.js?v=53c6d21c21d2"></script><script>
+</div></details></div></footer></div></div><script src="decks.js?v=5620655c8a0d"></script><script>
 (function(){
   var b = document.body, side = document.getElementById('side'),
       bt = document.getElementById('menub'), veu = document.getElementById('veu');

@@ -129,21 +129,90 @@ def _save_snapshot(con, wid: int, cards, url: str = "") -> bool:
 # ---------------------------------------------------------------------------
 # Verificação
 # ---------------------------------------------------------------------------
+def apanha_ligas(con: sqlite3.Connection, wid: int) -> dict:
+    """Esta vigia de jogador apanha as listas de LIGA dele? E porquê.
+
+    A VIGIA DO CesarMerjan (André, 2026-10-06, à letra: *"o jogar mtgo
+    CesarMerjan costuma jogar decks de Mox Opal, combos, como eu gosto, procura
+    as decklists dele"*). Ele joga em **ligas**, e as duas listas que a base tem
+    dele são as duas de liga — por isso a pergunta não é retórica.
+
+    **O `check_mtgo_player` não filtra tier nenhum**, e é isso que o faz
+    apanhá-las: pergunta pela última lista daquele jogador naquele formato, seja
+    ela de uma Challenge ou de um 5-0. Se um dia alguém lhe acrescentar um filtro
+    de tier, esta vigia cega-se — e há caso de teste a trancá-lo.
+
+    **O QUE DECIDE MESMO É SE A LISTA CHEGA À BASE**, e isso não se decide aqui:
+    decide-se nas QUATRO PORTAS do `metagame_fontes[<fmt>].ligas`, que lêem todas
+    o mesmo `sources.metagame_rules()["tiers"]` — a colheita
+    (`sources.harvest_mtgo` salta a página de liga antes de a pedir), o
+    `sources.store_decklist` (recusa-a à entrada), o `counting_sql` e o
+    `analysis.prune_leagues` (apaga-a **na mesma corrida** em que entrou).
+    Em Modern estão abertas desde 2026-10-05; nos outros formatos, fechadas.
+
+    Daí esta função: **uma vigia que não vigia é pior do que nenhuma**, porque ele
+    fica a pensar que está coberta (a lição do `check_all`, 2026-10-04). Pôr
+    `ligas: false` no Modern mataria esta vigia **em silêncio** — nenhum passo
+    daria erro, o jogador simplesmente deixava de ter listas novas. Agora
+    di-lo, no resultado da vigia e no log do `watch-check`.
+
+    Não se abriu o filtro por iniciativa própria para os formatos que não contam
+    ligas, ao contrário do que a VIGIA DE CARTAS de 2026-09-26 faz: ali a ordem
+    dele era *"avisa-me no dia em que aparecerem"* e o 5-0 é o sinal; aqui as
+    portas do Modern já estão abertas e alargá-las a outro formato custava as
+    páginas de liga desse formato por corrida. Fica dito, para ele decidir.
+    """
+    from . import sources                                     # noqa: PLC0415
+    w = con.execute("SELECT * FROM watched WHERE id = ?", (wid,)).fetchone()
+    if w is None:
+        raise LookupError(f"não há vigia com o id {wid}")
+    fmt = w["format"]
+    conta = sources.conta_ligas(fmt)
+    n = con.execute(
+        """SELECT COUNT(*) c FROM decklists
+            WHERE lower(player) = lower(?) AND format = ? AND event_tier = ?""",
+        (w["key"], fmt, sources.TIER_LIGA)).fetchone()["c"]
+    ultima = con.execute(
+        """SELECT event_date FROM decklists
+            WHERE lower(player) = lower(?) AND format = ? AND event_tier = ?
+            ORDER BY event_date DESC LIMIT 1""",
+        (w["key"], fmt, sources.TIER_LIGA)).fetchone()
+    porque = (
+        f"o {fmt} conta ligas (`metagame_fontes.{fmt}.ligas`), por isso as "
+        f"páginas de liga são colhidas, guardadas e não são podadas — e a vigia "
+        f"não filtra tier nenhum. Pôr essa chave a `false` cega esta vigia."
+        if conta else
+        f"o {fmt} NÃO conta ligas: a colheita salta as páginas de liga, o "
+        f"`store_decklist` recusa-as e o `prune_leagues` apaga as que escaparem. "
+        f"Esta vigia só vê deste jogador o que vier de torneios. Para a abrir é "
+        f"`metagame_fontes.{fmt}.ligas: true` — e isso traz as ligas TODAS do "
+        f"formato, não só as dele.")
+    return {"apanha": conta, "formato": fmt, "porque": porque,
+            "ligas_na_base": n,
+            "ultima_liga": ultima["event_date"] if ultima else None}
+
+
 def check_mtgo_player(con: sqlite3.Connection, wid: int) -> dict:
     """Última lista publicada por um jogador, das decklists já recolhidas.
 
     Não vai à rede: aproveita o que `harvest_mtgo` já trouxe. Basta correr o
     harvest primeiro (é o que o daily.py faz).
+
+    **NÃO FILTRA TIER, de propósito**: a última lista é a última, venha de uma
+    Challenge ou de um 5-0 de liga. É isso que faz esta vigia servir um jogador
+    de ligas — ver `apanha_ligas`, que vai no resultado para a resposta não
+    depender de quem a lê saber disto.
     """
     w = con.execute("SELECT * FROM watched WHERE id = ?", (wid,)).fetchone()
     row = con.execute(
-        """SELECT id, event_date, event_name, url FROM decklists
+        """SELECT id, event_date, event_name, url, event_tier FROM decklists
             WHERE lower(player) = lower(?) AND format = ?
             ORDER BY event_date DESC, id DESC LIMIT 1""",
         (w["key"], w["format"]),
     ).fetchone()
+    ligas = apanha_ligas(con, wid)
     if row is None:
-        return {"watched": dict(w), "found": False}
+        return {"watched": dict(w), "found": False, "ligas": ligas}
 
     cards = [
         (r["board"], r["card_name"], r["quantity"])
@@ -154,7 +223,9 @@ def check_mtgo_player(con: sqlite3.Connection, wid: int) -> dict:
     ]
     changed = _save_snapshot(con, wid, cards, row["url"] or "")
     return {"watched": dict(w), "found": True, "changed": changed,
-            "event": row["event_name"], "date": row["event_date"], "cards": cards}
+            "event": row["event_name"], "date": row["event_date"],
+            "tier": row["event_tier"], "decklist_id": row["id"],
+            "ligas": ligas, "cards": cards}
 
 
 def check_moxfield(con: sqlite3.Connection, wid: int) -> dict:

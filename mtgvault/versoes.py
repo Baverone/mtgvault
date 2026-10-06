@@ -414,6 +414,219 @@ def clusters_da_carta(con: sqlite3.Connection, fmt: str, carta: str,
              GROUP BY d.archetype_id""", par)}
 
 
+# ---------------------------------------------------------------------------
+# AS FAMÍLIAS: SEIS DECKS DE MOX OPAL NÃO SE LEEM NUMA LISTA PLANA (2026-10-06)
+# ---------------------------------------------------------------------------
+# *"O MOX OPAL DE MODERN TEM SEIS FAMILIAS, nao uma. Mostra-as."* Com o critério
+# inclusivo de 05/10 (*"seja affinity, seja grinding station, seja outra coisa
+# qualquer"*) a lista de versões passou a ser tudo o que joga a carta-chave — e
+# medido na base a 06/10 isso é **oito clusters** em Modern, de arquétipos que
+# não têm nada a ver uns com os outros. Uma lista plana de oito linhas com nomes
+# como *«Loki, God of Mischief / Waterlogged Grove / Sewer-veillance Cam»* não
+# diz qual é qual.
+#
+# A FAMÍLIA DERIVA-SE DAS CARTAS, nunca do cluster — e essa é a decisão toda.
+# O `archetype_id` é refeito todas as noites e **muda**: medido a 06/10, as
+# CINCO anotações de `arquetipo_id` do config ficaram com zero listas na janela
+# (ver o relatório desta ordem), o segundo dia seguido em que isso acontece. Uma
+# família ancorada no cluster herdava essa instabilidade; ancorada numa carta
+# distintiva (*Grinding Station*, *Colossus Hammer*, *Song of Creation*) é
+# estável porque é a carta que faz o deck ser aquele deck.
+#
+# As famílias vivem no CONFIG, não aqui: são a leitura dele sobre o formato dele,
+# e cada uma leva a razão ao lado. Sem a chave, **não há agrupamento** e a lista
+# fica plana como estava — é o interruptor, como o `venda.mostrar`.
+FAMILIA_OUTRA = "Outra"
+
+
+def familias(fmt: str, cfg: dict | None = None) -> list[dict]:
+    """As famílias deste deck único, pela ordem do config. Vazio = sem agrupar.
+
+    Cada uma é `{nome, cartas, porque}`: as `cartas` são as DISTINTIVAS, e basta
+    uma delas para a lista cair na família. A ORDEM manda — a primeira que casa
+    ganha —, porque há listas que jogam cartas de duas famílias (um Grinding
+    Station com Cranial Plating), e sem uma ordem a mesma lista caía numa
+    família ou noutra conforme a passagem.
+    """
+    c = (do_formato(fmt, cfg) or {}).get("criterio") or {}
+    fs = c.get("familias")
+    out = []
+    for f in (fs if isinstance(fs, list) else []):
+        if not isinstance(f, dict) or not str(f.get("nome") or "").strip():
+            continue
+        cs = [str(x) for x in (f.get("cartas") or []) if str(x).strip()]
+        if cs:
+            out.append({"nome": str(f["nome"]).strip(), "cartas": cs,
+                        "porque": str(f.get("_porque") or "")})
+    return out
+
+
+def familia_das_cartas(nms, fams: list[dict]) -> str:
+    """A família de UMA lista, pelas cartas que ela joga.
+
+    `nms` são os nomes da lista (já canonizados ou não — canoniza-se aqui, que é
+    a regra de 2026-10-04: a lista traz a frente de uma dupla face e o catálogo
+    o nome inteiro). Sem família que case, `FAMILIA_OUTRA` — dito e não
+    escondido numa das outras.
+    """
+    tem = {scryfall.chave(n) for n in nms}
+    for f in fams:
+        if any(scryfall.chave(c) in tem for c in f["cartas"]):
+            return f["nome"]
+    return FAMILIA_OUTRA
+
+
+def _cartas_das_listas(con: sqlite3.Connection, ids) -> dict[int, list[str]]:
+    ids = [int(i) for i in ids]
+    if not ids:
+        return {}
+    ph = ",".join("?" * len(ids))
+    out: dict[int, list[str]] = {}
+    for r in con.execute(
+            f"SELECT decklist_id d, card_name nm FROM decklist_cards "
+            f"WHERE decklist_id IN ({ph})", ids):
+        out.setdefault(r["d"], []).append(r["nm"])
+    return out
+
+
+def cartas_fixadas(deck_id: str, cfg: dict | None = None) -> list[str]:
+    """Os nomes da lista FIXADA de um deck, do `listas_escolhidas`. `[]` sem ela.
+
+    **Uma CAIXA está lá pelo SLOT e não pelo id do deck**, e isto custou uma
+    passagem: a versão `izzet-pinnacle` aponta para `caixa:modern` e a lista de
+    qualificação vive em `listas_escolhidas["modern"]`, porque é o
+    `padrao.fixar` que a escreve e ele indexa pelo slot. Sem os dois nomes, a
+    família do deck principal saía *«Outra»* com a lista dele ali ao lado.
+    """
+    cfg = sources.config() if cfg is None else cfg
+    le = cfg.get("listas_escolhidas") or {}
+    chaves = [deck_id]
+    if deck_id.startswith("caixa:"):
+        chaves.append(deck_id.split(":", 1)[1])
+    for k in chaves:
+        cs = (le.get(k) or {}).get("cards") or []
+        if cs:
+            return [c[1] for c in cs if len(c) >= 2]
+    return []
+
+
+def familia_do_cluster(con: sqlite3.Connection, fmt: str, aid: int,
+                       cfg: dict | None = None, desde: str | None = None,
+                       cache: dict | None = None) -> dict:
+    """A família de um cluster: `{nome, n, de}` — a da MAIORIA das listas dele.
+
+    A pluralidade e não uma regra de percentagem mínima: com um mínimo de 50 %
+    um cluster que não chegasse lá caía em *«Outra»* e perdia-se a informação
+    que ele pediu. Empate desfaz-se pela ORDEM do config, que é determinista —
+    a lição do desempate alfabético dos nomes de 2026-10-02: uma família que
+    mude de um dia para o outro sem nada ter mudado é o defeito, não o dado.
+
+    Conta as listas da JANELA; um cluster que hoje não tenha nenhuma (as versões
+    *conhecidas*) conta a história toda, senão ficava sem família nenhuma por
+    não se jogar esta semana.
+    """
+    cfg = sources.config() if cfg is None else cfg
+    cache = {} if cache is None else cache
+    fams = familias(fmt, cfg)
+    if not fams:
+        return {"nome": "", "n": 0, "de": 0}
+    chave = ("_fam", fmt, int(aid))
+    if chave in cache:
+        return cache[chave]
+    desde = sources.consenso_desde() if desde is None else desde
+    ids = [r["id"] for r in con.execute(
+        "SELECT id FROM decklists WHERE format = ? AND archetype_id = ? "
+        "AND event_date >= ?", [fmt, int(aid), desde])]
+    if not ids:
+        ids = [r["id"] for r in con.execute(
+            "SELECT id FROM decklists WHERE format = ? AND archetype_id = ?",
+            [fmt, int(aid)])]
+    cont: dict[str, int] = {}
+    for nms in _cartas_das_listas(con, ids).values():
+        f = familia_das_cartas(nms, fams)
+        cont[f] = cont.get(f, 0) + 1
+    ordem = {f["nome"]: i for i, f in enumerate(fams)}
+    ordem[FAMILIA_OUTRA] = len(fams)
+    melhor = min(cont.items(), key=lambda kv: (-kv[1], ordem.get(kv[0], 99)),
+                 default=(FAMILIA_OUTRA, 0))
+    out = {"nome": melhor[0], "n": melhor[1], "de": len(ids)}
+    cache[chave] = out
+    return out
+
+
+def _familia_da_versao(con: sqlite3.Connection, fmt: str, aid: int, v: dict,
+                       cfg: dict | None, desde: str | None,
+                       cache: dict | None) -> str:
+    """A família de uma versão de CLUSTER, com a lista do deck como recurso.
+
+    A ordem é: o agrupamento (é ele que sabe o que se joga) e, só quando o
+    cluster não tem uma única lista, as cartas da lista FIXADA do deck que a
+    versão aponta. Nunca ao contrário: a lista fixada é de um dia, o cluster é o
+    deck a jogar-se.
+    """
+    f = familia_do_cluster(con, fmt, aid, cfg, desde, cache)
+    if f["de"]:
+        return f["nome"]
+    nms = cartas_fixadas(deck_da_versao(v), cfg) if v else []
+    return familia_das_cartas(nms, familias(fmt, cfg)) if nms else f["nome"]
+
+
+def contagem_de_familias(vs: list[dict], fams: list[dict]) -> list[dict]:
+    """`[{nome, versoes, listas}]` pela ordem do config, só as que têm versões.
+
+    É a CONTAGEM que ele pediu ao lado de cada família. `versoes` é quantas
+    versões caem lá e `listas` quantas listas da janela elas somam — os dois,
+    porque uma família com uma versão de 53 listas e outra com três de uma lista
+    cada não são a mesma coisa, e um número só escondia isso.
+    """
+    ordem = [f["nome"] for f in fams] + [FAMILIA_OUTRA]
+    cont: dict[str, dict] = {}
+    for v in vs:
+        nm = v.get("familia") or FAMILIA_OUTRA
+        d = cont.setdefault(nm, {"nome": nm, "versoes": 0, "listas": 0})
+        d["versoes"] += 1
+        d["listas"] += int(v.get("listas") or 0)
+    return [cont[n] for n in ordem if n in cont]
+
+
+# ---------------------------------------------------------------------------
+# UMA VERSÃO PODE ESTAR ANCORADA NUMA LISTA, E NÃO NUM CLUSTER (2026-10-06)
+# ---------------------------------------------------------------------------
+# As duas listas do CesarMerjan não podiam ser versões derivadas, e a razão é
+# medida: a do Grinding Station (05/10) está num cluster que nasceu ontem e a do
+# Song of Creation (28/09) **não tem cluster nenhum** (`archetype_id` a NULL) e
+# é de um dia ANTES da janela do consenso. Pela regra de 05/10 — *"uma lista sem
+# cluster conta-se e diz-se e NUNCA vira versão, porque uma versão precisa de um
+# id estável"* — nenhuma delas entrava.
+#
+# A saída é a que o resto do vault já usa para os decks DELE desde 2026-10-04:
+# a identidade é a **LISTA FIXADA** (`listas_escolhidas[<id>]`, com as cartas e a
+# proveniência gravadas pelo `eventos.fixar`), e o id é o do config. Isso dá-lhe
+# duas coisas que um ponteiro para o cluster não dava: sobrevive ao
+# `rebuild_archetypes` de cada noite **e** ao `prune_decklists(30)`, que apaga a
+# decklist #24603 por volta de 28/10.
+#
+# Uma versão fixa tem `arquetipo_id` a `None` — é por aí que se distingue — e
+# **nunca é órfã**: não tem cluster para perder.
+def versoes_fixas(fmt: str, cfg: dict | None = None) -> list[dict]:
+    """As versões ancoradas numa LISTA FIXADA e não num cluster do agrupamento."""
+    return [v for v in versoes(fmt, cfg) if v.get("arquetipo_id") is None]
+
+
+def jogadores(fmt: str, cfg: dict | None = None) -> list[str]:
+    """Os jogadores cujas listas são versões deste deck, por ordem alfabética.
+
+    *"Marca-os como «do CesarMerjan» para ele os distinguir dos outros"* (André,
+    2026-10-06). A marca é do CONFIG (`versoes[].jogador`) e não derivada da
+    proveniência da lista: é ele que diz que segue aquele jogador, e a
+    proveniência diz só quem jogou aquela lista — são duas coisas, e a segunda
+    não implica a primeira (metade das listas do meta têm jogador e nenhum é
+    seguido).
+    """
+    return sorted({str(v["jogador"]).strip() for v in versoes(fmt, cfg)
+                   if str(v.get("jogador") or "").strip()})
+
+
 def principal(fmt: str, cfg: dict | None = None) -> str:
     """O `id` da versão que é o deck PRINCIPAL, ou vazio.
 
@@ -508,6 +721,7 @@ def versoes_derivadas(con: sqlite3.Connection, fmt: str,
         r = con.execute("SELECT label FROM archetypes WHERE id=?", [aid]).fetchone()
         return ((r["label"] if r else "") or f"arquétipo {aid}"), "etiqueta"
 
+    fams = familias(fmt, cfg)
     vs = []
     vistos = set()
     # (1) o que se joga AGORA, e (2) as conhecidas sem listas na janela.
@@ -531,8 +745,45 @@ def versoes_derivadas(con: sqlite3.Connection, fmt: str,
             "listas_total": int(tod.get(aid, 0) or 0),
             "na_janela": bool(na_janela),
             "anotada": bool(v),
+            "fixa": False, "jogador": str(v.get("jogador") or ""),
+            # A FAMÍLIA DE UM CLUSTER VAZIO SAI DA LISTA DO PRÓPRIO DECK, e isto
+            # não é um caso de bordo: medido a 06/10, o cluster do deck
+            # PRINCIPAL (a lista de qualificação do RC de Ghent) ficou com zero
+            # listas e a família dele saía *«Outra»* — o deck dele, sem família,
+            # na página por onde ele vai sleevar. Quando o agrupamento não tem
+            # cartas para dar, a lista fixada da caixa tem.
+            "familia": (_familia_da_versao(con, fmt, aid, v, cfg, desde, cache)
+                        if fams else ""),
             "principal": vid == prin,
             "escolhida": vid == esc,
+            "porque": str(v.get("_porque") or ""),
+        })
+    # (3) AS VERSÕES ANCORADAS NUMA LISTA FIXADA. Entram sempre, anotadas ou
+    # não — são decks DELE, não um achado do agrupamento —, e a família sai das
+    # cartas da própria lista. `na_janela` é a DATA da lista contra a janela do
+    # consenso: a do Song of Creation é de 28/09, um dia antes de ela abrir, e
+    # isso tem de ser DITO (é o caso do Greasefang de 04/10) em vez de a pôr
+    # entre as que se jogam agora.
+    le = cfg.get("listas_escolhidas") or {}
+    for v in versoes_fixas(fmt, cfg):
+        vid = str(v.get("id") or "")
+        if not vid:
+            continue
+        rec = le.get(deck_da_versao(v)) or {}
+        prov = rec.get("evento") or {}
+        data = str(prov.get("data") or "")
+        cs = [c[1] for c in (rec.get("cards") or []) if len(c) >= 2]
+        vs.append({
+            "id": vid, "arquetipo_id": None,
+            "nome": str(v.get("nome") or vid), "origem_nome": "config",
+            "deck": deck_da_versao(v),
+            "listas": 0, "listas_total": 0,
+            "na_janela": bool(data and data >= desde),
+            "anotada": True, "fixa": True,
+            "jogador": str(v.get("jogador") or ""),
+            "data": data, "evento": str(prov.get("evento") or ""),
+            "familia": familia_das_cartas(cs, fams) if fams and cs else "",
+            "principal": vid == prin, "escolhida": vid == esc,
             "porque": str(v.get("_porque") or ""),
         })
     vs.sort(key=lambda d: (not d["na_janela"], -d["listas"], -d["listas_total"],
@@ -543,6 +794,8 @@ def versoes_derivadas(con: sqlite3.Connection, fmt: str,
         "derivado": True, "carta": carta, "versoes": vs,
         "sem_cluster": sem_cluster, "sem_cluster_nomes": sem_nomes,
         "desde": desde,
+        "familias": contagem_de_familias(vs, fams) if fams else [],
+        "jogadores": jogadores(fmt, cfg),
         "fora_da_janela": {"clusters": len(fora), "listas": sum(fora.values())},
         "orfas": _orfas(vs),
     }
@@ -588,6 +841,13 @@ def _orfas(vs: list[dict]) -> list[dict]:
     out = []
     for v in vs:
         if v["listas"] or not (v["principal"] or v["escolhida"]):
+            continue
+        # UMA VERSÃO FIXA NUNCA É ÓRFÃ (2026-10-06): a identidade dela é a lista
+        # gravada, não um cluster, por isso não há cluster para perder. Sem esta
+        # guarda, a versão do CesarMerjan que ele escolhesse aparecia todos os
+        # dias com o aviso de «o agrupamento mudou de baixo dela» — um aviso
+        # permanente a piscar, que é um aviso que se deixa de ler.
+        if v.get("fixa"):
             continue
         out.append({
             "id": v["id"], "nome": v["nome"],

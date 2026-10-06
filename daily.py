@@ -316,6 +316,22 @@ def _watch(con):
                           f"({c['before']}->{c['after']})")
         else:
             print(f"    [igual] {lbl}")
+        # A VIGIA DE UM JOGADOR DE LIGAS (2026-10-06). Uma vigia cega não dá
+        # erro: o jogador simplesmente deixa de ter listas novas, e ele fica a
+        # pensar que está coberta. Por isso a linha sai SEMPRE que o formato não
+        # conta ligas, e com o tier da última lista ao lado quando conta — é
+        # assim que se vê que é mesmo de ligas que ele vive. Ver
+        # `watchlist.apanha_ligas`.
+        lig = r.get("ligas")
+        if w["kind"] == "mtgo_player" and lig:
+            if not lig["apanha"]:
+                print(f"            [ATENÇÃO] esta vigia NÃO apanha ligas: "
+                      f"{lig['porque']}")
+            elif lig["ligas_na_base"]:
+                print(f"            ligas: {lig['ligas_na_base']} na base "
+                      f"(última {lig['ultima_liga']})"
+                      + (f" · a última lista é de {r['tier']}"
+                         if r.get("tier") else ""))
     return f"{len(res)} vigiados"
 
 

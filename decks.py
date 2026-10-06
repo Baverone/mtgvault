@@ -177,6 +177,32 @@ _CSS = """
  .zero{color:var(--warn)}
  .tag.q{background:var(--sunken);border-color:var(--line);color:var(--muted)}
  @media (max-width:640px){ .vrow{flex-wrap:wrap} .vn{flex-basis:100%;order:3} }
+ /* AS FAMILIAS (2026-10-06): o cabecalho de cada grupo dentro das versoes, com
+    a contagem a direita. Fica mais discreto que o .vgt (que separa os DOIS
+    grupos grandes) para a hierarquia se ler: grupo > familia > versao. */
+ .fgt{display:flex;justify-content:space-between;align-items:baseline;gap:8px;
+   margin:9px 0 2px;padding:0 2px;font-size:12.5px;color:var(--ink);
+   border-bottom:1px solid var(--line)}
+ .fgt .fq{font-size:11px;color:var(--muted);white-space:nowrap}
+ .chip.jog{border-color:var(--info-line);background:var(--info-soft);color:var(--ob)}
+ /* AS FALTAS DOS DECKS DE UM JOGADOR (2026-10-06). Uma linha por carta, com o
+    nome a mandar (ele le isto no telemovel) e o preco a direita. */
+ .fjg{background:var(--card);border:1px solid var(--accent-line);
+   border-radius:var(--r);padding:9px 13px;margin:0 0 12px}
+ .fjg summary{cursor:pointer;font-size:12.5px;color:var(--dim)}
+ .fjg summary b{color:var(--ink)}
+ .fjd{margin:10px 0 0;padding:8px 0 0;border-top:1px solid var(--line)}
+ .fjd.part{border-top-style:dashed}
+ .fjh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;
+   font-size:13px;color:var(--ink)}
+ .fjh .fq{font-size:11px;color:var(--muted);white-space:nowrap}
+ .flr{display:flex;gap:9px;align-items:baseline;font-size:13px;padding:3px 0;
+   flex-wrap:wrap}
+ .flr .flq{font-family:var(--font-hd);font-weight:700;color:var(--accent);
+   min-width:28px}
+ .flr .flnm{flex:1;min-width:150px;overflow-wrap:anywhere}
+ .flr .flp{white-space:nowrap}
+ .flr .flt{font-size:11px;color:var(--muted);white-space:nowrap}
  /* A SEQUÊNCIA e as STAPLES (2026-10-04 ao fim do dia). */
  .passos{background:var(--card);border:1px solid var(--accent-line);border-radius:var(--r);
    padding:11px 15px;margin:0 0 12px;font-size:12.5px;color:var(--dim)}
@@ -334,6 +360,11 @@ function toast(t, erro) {
   toast._t = setTimeout(() => { z.hidden = true; }, erro ? 7000 : 3000);
 }
 const EDIT = () => !!(D && D.editavel);
+/* Os euros em português, a MESMA forma da `faltas.html` e da `paginas.euros`:
+   `1 234,56 €`. Escrito à mão com `toFixed(2)` dava `1234.56`, que é o ponto
+   decimal de outra língua na página dele. */
+const eur = v => (v == null ? '—' : Number(v).toLocaleString('pt-PT',
+  {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' €');
 /* O nome da parte de um deck: o id sem os caracteres que a rota do 8771 não
    deixa passar (`[A-Za-z0-9_-]+`). Um `slot` nunca tem `:`, por isso trocar
    `:` por `-` não junta dois decks diferentes. A MESMA conta no Python
@@ -396,6 +427,78 @@ function ligasHTML(p) {
       : `Aqui as ligas <b>diluem</b> a percentagem — jogam este deck`
         + ` <b>menos</b> do que os torneios, por isso o número de cima é mais`
         + ` baixo do que o de antes delas entrarem.`}</p>`;
+}
+
+/* AS FALTAS DOS DECKS DE UM JOGADOR QUE ELE SEGUE (2026-10-06, à letra:
+   *"Separa na pagina o que e so do Grinding Station … do que e so do Song of
+   Creation, porque ele pode querer um e nao o outro"*).
+
+   TRÊS SACOS E NÃO DOIS: há cartas que faltam aos dois decks (2 Endurance e 1
+   Haywire Mite, medido a 06/10). Metê-las num dos lados respondia mal à
+   pergunta dele — se quiser só o Song of Creation, continua a precisar delas.
+   Por isso cada deck leva o que é só dele, as partilhadas vão à parte, e cada
+   um diz quanto custa **se for o único que ele montar**.
+
+   OS DOIS PREÇOS lado a lado (a disciplina do «a somar» vs «a rodar»): o grupo
+   `spml`, onde a caixa de Modern vive, pede EN foil — mas estes decks não são
+   caixas e nada os obriga ao foil. São 58,59 € de diferença em 16 cópias; é
+   decisão dele e esconder uma das contas era decidir por ele. */
+function faltasJogadorHTML(u) {
+  const js = u.faltas_jogador || [];
+  if (!js.length) return '';
+  const linha = l => `<div class="flr">
+      <span class="flq">${l.falta}×</span>
+      <span class="flnm">${esc(l.nm)}</span>
+      <span class="flp">${l.unit == null
+        ? '<b class="zero">sem preço</b>'
+        : `<b>${eur(l.unit * l.falta)}</b>`}${
+        l.unit != null && l.price_finish !== 'foil'
+          ? ` <span class="tag q" title="o CardTrader não cota esta carta em foil`
+            + ` — este preço é do nonfoil">nonfoil</span>` : ''}</span>
+      <span class="flt">${l.tem ? `tens ${l.tem} de ${l.pede}` : ''}</span>
+    </div>`;
+  const soma = (s, rot) => `<span class="n2">${rot} <b>${s.cartas}</b> cartas · `
+    + `<b>${s.copias}</b> cópias · <b>${eur(s.eur)}</b>${
+      s.sem_preco ? ` <span class="tag q">${s.sem_preco} sem preço</span>` : ''}`
+    + `</span>`;
+  let out = '';
+  js.forEach(j => {
+    const t = j.totais, p = j.partilhadas;
+    out += `<details class="fjg" open><summary><b>Faltas dos decks do `
+      + `${esc(j.jogador)}</b> — ${t.cartas} cartas, ${t.copias} cópias, `
+      + `${eur(t.eur)}${t.sem_preco ? ` (${t.sem_preco} sem preço)` : ''}`
+      + `</summary>`
+      + `<p class="stpn">A falta é <b>o que a lista pede menos o que tens</b> —`
+      + ` não é o «a comprar» da alocação da <a href="faltas.html">lista para`
+      + ` Ghent</a>, que desconta o que está noutra caixa e o que já`
+      + ` encomendaste: estes decks não são caixas e não passam pela alocação.`
+      + ` O preço é <b>foil</b>, que é o que o grupo desta caixa pede, e o`
+      + ` <b>nonfoil ao lado</b> porque estes decks não são caixas e nada os`
+      + ` obriga ao foil: <b>${eur(t.eur)}</b> em foil contra`
+      + ` <b>${eur(t.eur_nonfoil)}</b> em nonfoil.</p>`;
+    j.versoes.forEach(v => {
+      out += `<div class="fjd"><div class="fjh"><b>${esc(v.nome)}</b>`
+        + `<span class="fq">tens ${v.tem} de ${v.total} · ${v.pct} %</span></div>`
+        /* O segundo número só sai HAVENDO partilhadas: sem elas é igual ao
+           primeiro, e dois números iguais lado a lado leem-se como um erro. */
+        + `<p class="pq dois">${soma(v.so, 'só deste deck:')}`
+        + `${p.cartas ? soma(v.so_este, 'se montares só este:') : ''}</p>`
+        + (v.linhas.length ? v.linhas.map(linha).join('')
+           : `<p class="stpn">Não falta nada que seja só deste deck.</p>`)
+        + `</div>`;
+    });
+    if (p.cartas) {
+      out += `<div class="fjd part"><div class="fjh"><b>Falta aos dois</b>`
+        + `<span class="fq">${p.cartas} cartas · ${p.copias} cópias · `
+        + `${eur(p.eur)}</span></div>`
+        + `<p class="stpn">Precisas destas <b>seja qual for o deck que`
+        + ` escolheres</b> — é por isso que não estão somadas a nenhum dos`
+        + ` dois.</p>`
+        + p.linhas.map(linha).join('') + `</div>`;
+    }
+    out += `</details>`;
+  });
+  return out;
 }
 
 /* --------------------------------------------------------------- nível 2 */
@@ -480,15 +583,28 @@ function deckUnicoHTML(u) {
         <div class="vn"><div class="vnome">${esc(v.nome)}${
           v.principal ? ' <span class="chip gold">principal</span>' : ''}${
           v.escolhida ? ' <span class="tag">a montar</span>' : ''}${
+          /* A MARCA DO JOGADOR (2026-10-06, à letra: *"Marca-os como «do
+             CesarMerjan» para ele os distinguir dos outros"*). Vai no NOME e
+             não no subtítulo: é por ela que ele distingue as duas listas de um
+             jogador que segue das oito que o agrupamento trouxe. */
+          v.jogador ? ` <span class="chip jog">do ${esc(v.jogador)}</span>` : ''}${
           v.origem_nome === 'etiqueta'
             ? ' <span class="tag q" title="a fonte ainda não dá nome a este deck'
               + ' — isto é a etiqueta das cartas distintivas">etiqueta</span>' : ''}</div>
           <div class="dsub">${v.sem_lista ? 'sem lista'
             : `tens <b>${v.tem}</b> de <b>${v.total}</b>`}${
-            v.na_janela
-              ? ` · <b>${v.listas}</b> lista${v.listas === 1 ? '' : 's'} na janela`
-              : ` · <b class="zero">zero listas na janela</b>${
-                  v.listas_total ? ` · ${v.listas_total} antes dela` : ''}`}${
+            /* UMA VERSÃO FIXA NÃO TEM «N listas na janela», e dizer-lhe «zero»
+               era mentir por vocabulário: ela É uma lista, jogada num dia. O
+               que se diz é a data — e, estando antes da janela, que está. */
+            v.fixa
+              ? (v.data
+                  ? ` · lista de <b>${esc(v.data)}</b>${v.na_janela ? ''
+                      : ' <b class="zero">(antes da janela)</b>'}`
+                  : '')
+              : v.na_janela
+                ? ` · <b>${v.listas}</b> lista${v.listas === 1 ? '' : 's'} na janela`
+                : ` · <b class="zero">zero listas na janela</b>${
+                    v.listas_total ? ` · ${v.listas_total} antes dela` : ''}`}${
             v.nota ? ' · ' + esc(v.nota) : ''}</div>
           <div class="bar"><i class="${cl === 'ok' ? 'ok' : ''}" style="width:${v.pct}%"></i></div>
         </div>
@@ -508,9 +624,42 @@ function deckUnicoHTML(u) {
         + ` — Affinity ou não. Um arquétipo novo com a carta <b>entra`
         + ` sozinho</b>.</p>`;
     }
-    out += (u.derivado && fora.length
-      ? `<div class="vgt">A jogar-se agora — ${agora.length}</div>` : '')
-      + agora.map(vrow).join('');
+    /* AS SEIS FAMÍLIAS (2026-10-06, à letra: *"O MOX OPAL DE MODERN TEM SEIS
+       FAMILIAS, nao uma. Mostra-as … Seis familias numa lista plana nao se
+       le"*). Agrupa-se o que se joga AGORA pela família, com a contagem de cada
+       uma ao lado; sem `familias` no config a lista fica plana como estava. A
+       família sai das CARTAS e nunca do cluster — ver `versoes.familias`. */
+    const fams = u.familias || [];
+    if (u.derivado && fams.length && agora.length) {
+      out += `<div class="vgt">A jogar-se agora — ${agora.length}, em `
+        + `${fams.length} famílias</div>`
+        + `<p class="stpn">A família sai das <b>cartas</b> de cada lista e não do`
+        + ` agrupamento: o <code>archetype_id</code> é refeito todas as noites e`
+        + ` muda, uma carta como <b>${esc(fams[0].nome)}</b> não. É por isso que`
+        + ` este agrupamento não se desfaz de um dia para o outro.</p>`;
+      fams.forEach(f => {
+        const dela = agora.filter(v => (v.familia || 'Outra') === f.nome);
+        if (!dela.length) return;
+        out += `<div class="fgt"><b>${esc(f.nome)}</b>`
+          + `<span class="fq">${dela.length} ${
+            dela.length === 1 ? 'versão' : 'versões'}`
+          + `${f.listas ? ` · ${f.listas} lista${f.listas === 1 ? '' : 's'}` : ''}`
+          + `</span></div>` + dela.map(vrow).join('');
+      });
+      /* Uma versão cuja família o config não cobre não desaparece: cai em
+         «Outra» e diz-se. Esconder era perder um deck de Mox Opal — que é
+         exactamente o que o critério inclusivo de 05/10 veio impedir. */
+      const soltas = agora.filter(v => !fams.some(f => f.nome === (v.familia || 'Outra')));
+      if (soltas.length) {
+        out += `<div class="fgt"><b>Outra</b><span class="fq">${soltas.length}`
+          + ` — joga ${esc(u.carta_chave)} e não cai em nenhuma das famílias`
+          + `</span></div>` + soltas.map(vrow).join('');
+      }
+    } else {
+      out += (u.derivado && fora.length
+        ? `<div class="vgt">A jogar-se agora — ${agora.length}</div>` : '')
+        + agora.map(vrow).join('');
+    }
     if (fora.length) {
       out += `<div class="vgt">Conhecidas, sem listas na janela — ${fora.length}</div>`
         + `<p class="stpn">Não aparecem em listas desde`
@@ -532,6 +681,7 @@ function deckUnicoHTML(u) {
       if (p.length) out += `<p class="pq">Mais: ${p.join('; ')}.</p>`;
     }
   }
+  out += faltasJogadorHTML(u);
   if (u.nota) out += `<p class="pq">${esc(u.nota)}</p>`;
   /* OS OUTROS QUE JOGAM A CARTA-CHAVE — derivados da base a cada corrida, nunca
      escritos à mão. *"NAO decidas por ele incluir nem excluir definitivamente"*:
