@@ -19,12 +19,234 @@
         "pioneer"
       ],
       "nota": "combo Jace/Kasmina — Reality Fracture no MTGO 29/09/2026, em papel 02/10/2026; Pioneer acrescentado a pedido do Andre 30/09",
-      "achados": 0,
-      "primeira": null,
-      "ultima": null
+      "achados": 1,
+      "primeira": "2026-10-10",
+      "ultima": "2026-10-10"
     }
   },
-  "achados": {},
-  "verificado_em": "2026-10-07",
+  "achados": {
+    "pioneer|jace's machinations|2026-10-10|luzur|Pioneer League": {
+      "carta": "Jace's Machinations",
+      "nota": "combo Jace/Kasmina — Reality Fracture no MTGO 29/09/2026, em papel 02/10/2026; Pioneer acrescentado a pedido do Andre 30/09",
+      "formato": "pioneer",
+      "decklist_id": 25910,
+      "evento": "Pioneer League",
+      "data": "2026-10-10",
+      "jogador": "Luzur",
+      "colocacao": "",
+      "link": "https://www.mtgo.com/decklist/pioneer-league-2026-10-1011137",
+      "tier": "League",
+      "fonte": "mtgo",
+      "jogadores": null,
+      "copias": 3,
+      "board": "main",
+      "visto_em": "2026-10-12",
+      "avisado": true,
+      "lista": [
+        [
+          "side",
+          "Beza, the Bounding Spring",
+          2
+        ],
+        [
+          "side",
+          "Dovin's Veto",
+          1
+        ],
+        [
+          "side",
+          "Emeritus of Ideation",
+          1
+        ],
+        [
+          "side",
+          "Ghost Vacuum",
+          1
+        ],
+        [
+          "side",
+          "High Noon",
+          2
+        ],
+        [
+          "side",
+          "Knockout Blow",
+          1
+        ],
+        [
+          "side",
+          "Kutzil's Flanker",
+          2
+        ],
+        [
+          "side",
+          "Mystical Dispute",
+          1
+        ],
+        [
+          "side",
+          "Rest in Peace",
+          1
+        ],
+        [
+          "side",
+          "Spell Pierce",
+          1
+        ],
+        [
+          "side",
+          "Temporary Lockdown",
+          1
+        ],
+        [
+          "side",
+          "The Unagi of Kyoshi Island",
+          1
+        ],
+        [
+          "main",
+          "Beza, the Bounding Spring",
+          1
+        ],
+        [
+          "main",
+          "Chandra, Chill of Compliance",
+          1
+        ],
+        [
+          "main",
+          "Change the Equation",
+          1
+        ],
+        [
+          "main",
+          "Consult the Star Charts",
+          3
+        ],
+        [
+          "main",
+          "Deserted Beach",
+          3
+        ],
+        [
+          "main",
+          "Dovin's Veto",
+          2
+        ],
+        [
+          "main",
+          "Eiganjo, Seat of the Empire",
+          1
+        ],
+        [
+          "main",
+          "Field of Ruin",
+          1
+        ],
+        [
+          "main",
+          "Floodfarm Verge",
+          4
+        ],
+        [
+          "main",
+          "Get Lost",
+          4
+        ],
+        [
+          "main",
+          "Hall of Storm Giants",
+          1
+        ],
+        [
+          "main",
+          "Hallowed Fountain",
+          4
+        ],
+        [
+          "main",
+          "Island",
+          2
+        ],
+        [
+          "main",
+          "Jace's Machinations",
+          3
+        ],
+        [
+          "main",
+          "Jace, Wielder of Mysteries",
+          1
+        ],
+        [
+          "main",
+          "March of Otherworldly Light",
+          4
+        ],
+        [
+          "main",
+          "Meticulous Archive",
+          2
+        ],
+        [
+          "main",
+          "No More Lies",
+          3
+        ],
+        [
+          "main",
+          "Otawara, Soaring City",
+          1
+        ],
+        [
+          "main",
+          "Petrified Hamlet",
+          1
+        ],
+        [
+          "main",
+          "Plains",
+          1
+        ],
+        [
+          "main",
+          "Restless Anchorage",
+          1
+        ],
+        [
+          "main",
+          "Supreme Verdict",
+          2
+        ],
+        [
+          "main",
+          "Teferi, Hero of Dominaria",
+          2
+        ],
+        [
+          "main",
+          "Temporary Lockdown",
+          3
+        ],
+        [
+          "main",
+          "The Theorist, Jace Beleren",
+          3
+        ],
+        [
+          "main",
+          "The Wandering Emperor",
+          1
+        ],
+        [
+          "main",
+          "Theorist's Sanctum",
+          1
+        ]
+      ],
+      "aviso": "toast (balloon)"
+    }
+  },
+  "verificado_em": "2026-10-12",
   "desde": "2026-09-26"
 }
