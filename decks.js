@@ -967,6 +967,14 @@ function fichaHTML(p) {
   if (p.decisao_pendente) {
     out += `<div class="aviso"><b>Falta a tua decisão.</b> ${esc(p.decisao_pendente)}</div>`;
   }
+  /* UM BREW diz-se em cima e com as trocas à vista (2026-10-13): é uma lista
+     MONTADA a partir da tua, não uma lista que alguém jogou. */
+  if (p.brew) {
+    out += `<div class="aviso"><b>Brew teu — ninguém jogou esta lista.</b> ${esc(p.brew)}`
+      + ((p.substituicoes || []).length ? '<ul>' + p.substituicoes.map(s =>
+        `<li>${esc(String(s[1]))}× ${esc(s[0])} → ${esc(String(s[3]))}× ${esc(s[2])}: ${esc(s[4] || '')}</li>`).join('') + '</ul>' : '')
+      + '</div>';
+  }
   if (p.por_confirmar) {
     out += '<div class="aviso"><b>Falta o teu OK.</b> Este é o melhor candidato ao '
       + 'deck que pediste'
