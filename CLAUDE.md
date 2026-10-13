@@ -6012,7 +6012,11 @@ cartas … criasses uma pasta para esses decks todos juntos"*. Motor em
   `site-familia-<id>-…`, emparelha frente/verso, o passo (0) prefere as cópias
   de qualquer caixa da família, e o `confirmado.alvo_da_pasta` diz «não decide»
   — a alocação fica com o `loadout`. As caixas da família não ganham pasta
-  própria; a família tem `_plano.txt` com os planos das caixas dela.
+  própria; a família tem `_plano.txt` com os planos das caixas dela. São
+  quatro: `modern`, `legacy-artifacts-blue`, `legacy-welder` **e a
+  `modern-affinity`** (desactivada desde 04/10) — sem ela o `garantir_pastas`
+  recriava todas as noites a pasta `Modern — Affinity` que estava arquivada.
+  O Oswald não tem caixa (é uma versão), por isso não está nas `slots`.
 - **UMA FOTO NUNCA FICA SEM ALVO EM SILÊNCIO**: uma família sem caixas vivas e
   as pastas `_…` (o `_nomes antigos\`, para onde foram as pastas das caixas da
   família e a do Bant Airbend) aparecem em `ignorados` com «caixa do config», o

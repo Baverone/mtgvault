@@ -3286,7 +3286,7 @@
   },
   "_familias_fotos": "UMA PASTA PARA OS DECKS QUE PARTILHAM CARTAS (Andre, 13/10/2026: \"os decks de modern partilham muitas cartas, sugeria que pegasses nos decks que partilham muitas cartas e criasses uma pasta para esses decks todos juntos\"). Uma linha por familia: `id`, a `pasta` em «Colocar fotos da colecao aqui\\» e as `slots` das caixas. A foto da pasta da familia PROVA a carta e nao decide o deck: qual das caixas fica com ela e a alocacao que diz (nunca se tira uma carta de uma caixa de Legacy para a de Modern por causa da foto). As caixas de uma familia deixam de ter pasta propria. Medido a 13/10: os quatro decks (Izzet Affinity, Oswald, Artifacts Blue, Engineer Welder Cam) somam 75 nomes, 33 em pelo menos dois e 13 em pelo menos tres. O Oswald nao tem caixa (e uma versao, a lista dele) -- por isso nao aparece em `slots`, mas as cartas dele estao na pasta.",
   "familias_fotos": [
-    {"id": "mox-opal", "pasta": "Mox Opal (Modern + Legacy)", "slots": ["modern", "legacy-artifacts-blue", "legacy-welder"]}
+    {"id": "mox-opal", "pasta": "Mox Opal (Modern + Legacy)", "slots": ["modern", "legacy-artifacts-blue", "legacy-welder", "modern-affinity"]}
   ],
   "_br_2026_10_12": "BANNED AND RESTRICTED DE 12/10/2026: segundo o supervisor (13/10), NAO mexeu em Standard, Pioneer, Modern, Legacy, Vintage nem Pauper -- so em Competitive Brawl. NAO CONFIRMADO pela ordem de 13/10: a pesquisa na web estava negada nessa sessao. Por isso `banimentos_manuais` nao se tocou."
 }
