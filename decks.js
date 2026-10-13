@@ -90,6 +90,13 @@ function nivelFormatos() {
    para uma percentagem que pode ter mexido só porque a fonte mudou. */
 function ligasHTML(p) {
   const l = p && p.ligas, s = p && p.sem_ligas;
+  /* LIGA DE BUSCA (2026-10-13): não conta, e a percentagem de cima já é a sem
+     ligas — diz-se o que lá está guardado e para quê. */
+  if (l && l.busca && !l.conta) return l.listas
+    ? `<p class="pq dois"><b>As ligas não contam aqui:</b> servem só para`
+      + ` procurar (decks novos, ou um deck teu com poucas listas). Na base há`
+      + ` <b>${l.listas}</b> de liga com esta carta, fora da percentagem.</p>`
+    : '';
   if (!l || !s || !l.conta) return '';            /* formato sem ligas: nada */
   const sobe = l.pct > s.pct;
   return `<p class="pq dois"><b>Com as ligas e sem elas:</b>`
