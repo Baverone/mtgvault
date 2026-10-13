@@ -93,7 +93,8 @@ jobs:
           # E `comandantes.html` (2026-10-01): o CONSENSO POR COMANDANTE (Duel
           # Commander). Os dados vão em `data/paginas/comandantes/`, que a pasta
           # já apanha.
-          # A pasta "Colocar fotos da coleção aqui" leva o `_plano.txt` de cada
+          # A pasta "Decks Por Processar" (era "Colocar fotos da coleção aqui"
+          # até 13/10/2026) leva o `_plano.txt` de cada
           # deck, reescrito pelo passo `fotos-plano` (01/10/2026: a pasta por
           # deck vale como alvo). Só os `.txt` — as IMAGENS estão no .gitignore.
           # E `data/estado-criterio.md` (2026-10-03): o CRITÉRIO de avaliação do
@@ -117,7 +118,7 @@ jobs:
           # para um ficheiro cacheável, pelo mesmo caminho do `deckboxes.js` — a
           # casca aponta-lhe pelo hash do conteúdo. Sem ele aqui, o site abre a
           # casca da aba Decks e **não desenha nada**.
-          git add index.html colecao.html cobertura.html colecao_cor.html meusdecks.html metagame.html reservedlist.html caixarl.html showcase.html deckboxes.html comandantes.html arrumacao.html decks.html faltas.html deckboxes.js decks.js data/arquetipos.json data/estado-criterio.md data/paginas assets/deckboxes "Colocar fotos da coleção aqui"
+          git add index.html colecao.html cobertura.html colecao_cor.html meusdecks.html metagame.html reservedlist.html caixarl.html showcase.html deckboxes.html comandantes.html arrumacao.html decks.html faltas.html deckboxes.js decks.js data/arquetipos.json data/estado-criterio.md data/paginas assets/deckboxes "Decks Por Processar"
           # `data/vigia-cartas.json` (2026-09-26): o estado da VIGIA DE CARTAS —
           # que listas com carta vigiada já foram vistas. É o que impede o aviso
           # de se repetir todos os dias, e pela razão do `arquetipos.json` tem de

@@ -88,6 +88,19 @@ Colocar fotos da coleção aqui/**/*.gif
 # passasse por lá (01/10/2026).
 Colocar fotos da coleção aqui/**/*.heif
 pendentes/**/*.heif
+# AS DUAS ÁRVORES (2026-10-13): «Decks Por Processar» substitui a pasta de
+# cima (a estrutura e os `_plano.txt` viajam, as imagens nunca) e «Decks
+# Processados» substitui o `data/fotos/<slot>/` — é só imagens e fica TODA fora
+# do Git, como ficava o `data/fotos/`; quem a guarda é o `backup-offsite`.
+Decks Por Processar/**/*.jpg
+Decks Por Processar/**/*.jpeg
+Decks Por Processar/**/*.png
+Decks Por Processar/**/*.heic
+Decks Por Processar/**/*.heif
+Decks Por Processar/**/*.webp
+Decks Por Processar/**/*.gif
+Decks Processados/
+pendentes/_origens.json
 Fotos processadas da coleção/**/*.jpg
 Fotos processadas da coleção/**/*.jpeg
 Fotos processadas da coleção/**/*.png

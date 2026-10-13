@@ -922,11 +922,25 @@ def arrumar_fotos(con: sqlite3.Connection, resultados: list[dict], *,
 
     Uma foto cujas linhas **não** entraram todas fica onde está: a linha ainda
     está por catalogar, e arrumá-la escondia trabalho por fazer.
+
+    AS DUAS ÁRVORES (André, 2026-10-13). Desde este dia o destino é
+    `Decks Processados/` (ao lado da pasta `pendentes/`, não em `data/fotos/`)
+    e o `photo_path` fica relativo à raiz do repositório
+    (`Decks Processados/<deck>/<carta (N)>/<foto>`). Uma foto que veio de uma
+    pasta de carta (o `pendentes/_origens.json` do `recolher_das_pastas`):
+      * ENTROU → vai para a MESMA pasta relativa em «Decks Processados», e a
+        pasta da carta em «Decks Por Processar» APAGA-SE se ficou vazia e não
+        há outra foto dela à espera (`fotos.apagar_pasta_feita`);
+      * PAROU (uma linha com motivo) → VOLTA à pasta da carta, com o mesmo
+        nome e um `_porque_parou.txt` ao lado. A pasta fica, com a foto lá
+        dentro — que é o que diz que aquela carta ainda está por fazer.
     """
     from . import fotos as fotos_mod, revalidacao            # noqa: PLC0415
     pend = Path(pendentes) if pendentes else PENDENTES
-    raiz_dados = _pasta_dados()
+    raiz_rep = pend.parent
     alvo_cfg = revalidacao.alvo()
+    origens = fotos_mod.ler_origens(pend)
+    base_novas = raiz_rep / fotos_mod.PASTA_NOVAS
 
     por_foto: dict[str, list[dict]] = {}
     for r in resultados:
@@ -934,8 +948,9 @@ def arrumar_fotos(con: sqlite3.Connection, resultados: list[dict], *,
         if nome:
             por_foto.setdefault(nome, []).append(r)
 
-    movidas, ficaram, ligacoes = [], [], []
+    movidas, ficaram, ligacoes, devolvidas, apagadas = [], [], [], [], []
     destinos: set[str] = set()
+    feitas_rel: set[str] = set()
     for nome, linhas in por_foto.items():
         # `repetida` conta como resolvida: a foto JÁ é prova daquelas cartas, e
         # deixá-la em `pendentes/` punha a corrida seguinte a lê-la outra vez
@@ -943,10 +958,19 @@ def arrumar_fotos(con: sqlite3.Connection, resultados: list[dict], *,
         # que tem trabalho por fazer.
         if any(r["resultado"] not in ("importada", "repetida") for r in linhas):
             ficaram.append(nome)
+            o = origens.get(nome)
+            if o and _devolver_a_pasta(nome, o, linhas, pend, base_novas):
+                devolvidas.append(f"{o['rel']}/{nome}")
+                origens.pop(nome, None)
+                origens.pop(fotos_mod_verso(nome), None)
             continue
         origem = pend / nome
-        destino = _destino_da_foto(nome, alvo_cfg, raiz_dados, fotos_mod)
-        destino_rel = destino.relative_to(raiz_dados).as_posix()
+        o = origens.get(nome)
+        if o and o.get("rel"):
+            destino = raiz_rep / fotos_mod.PASTA_PROCESSADAS / o["rel"]
+        else:
+            destino = _destino_da_foto(nome, alvo_cfg, raiz_rep, fotos_mod)
+        destino_rel = destino.relative_to(raiz_rep).as_posix()
         destinos.add(destino_rel)
         novo_rel = f"{destino_rel}/{nome}"
         if origem.suffix.lower() in IMG_EXT and origem.exists():
@@ -987,7 +1011,22 @@ def arrumar_fotos(con: sqlite3.Connection, resultados: list[dict], *,
                                      foto_anterior=(ant[0] if ant else "") or ""))
             if not _ids(r.get("copy_id")):
                 ligacoes.append(dict(r, foto=novo_rel, foto_anterior=""))
+        if o:
+            feitas_rel.add(str(o.get("rel") or ""))
+            origens.pop(nome, None)
+            origens.pop(fotos_mod_verso(nome), None)
     con.commit()
+
+    # A PASTA DA CARTA APAGA-SE QUANDO A FOTO DELA ENTROU (2026-10-13) — só a
+    # pasta de uma CARTA (`<deck>/<carta>`, nunca a do deck), só vazia, e só se
+    # nenhuma outra foto que de lá saiu ainda estiver à espera em `pendentes/`.
+    a_espera = {str(v.get("rel") or "") for v in origens.values()}
+    for rel in sorted(feitas_rel):
+        if rel.count("/") != 1 or rel in a_espera:
+            continue
+        if fotos_mod.apagar_pasta_feita(base_novas / rel, base_novas):
+            apagadas.append(rel)
+    fotos_mod.gravar_origens(pend, origens)
 
     if ligacoes:
         agora = dt.datetime.now().replace(microsecond=0).isoformat(sep=" ")
@@ -1007,7 +1046,47 @@ def arrumar_fotos(con: sqlite3.Connection, resultados: list[dict], *,
                             "foto_anterior": r.get("foto_anterior", "")})
     return {"movidas": len(movidas), "destino": " · ".join(sorted(destinos)),
             "destinos": sorted(destinos),
-            "ligadas": len(ligacoes), "ficaram": sorted(ficaram)}
+            "ligadas": len(ligacoes), "ficaram": sorted(ficaram),
+            "devolvidas": devolvidas, "pastas_apagadas": apagadas}
+
+
+def fotos_mod_verso(nome: str) -> str:
+    """O nome do verso de uma frente (ou '' se não tiver)."""
+    from . import fotosite                                   # noqa: PLC0415
+    return fotosite.nome_do_verso(nome) or ""
+
+
+def _devolver_a_pasta(nome: str, o: dict, linhas: list[dict], pend: Path,
+                      base_novas: Path) -> bool:
+    """Uma foto que PAROU volta à pasta da carta de onde veio, com o mesmo
+    nome e o verso dela, e um `_porque_parou.txt` com os motivos. A pasta fica
+    — é ela que lhe diz que a carta ainda está por fazer. Devolve se devolveu
+    (uma pasta de destino com um ficheiro do mesmo nome não se pisa: fica em
+    `pendentes/`, como até aqui)."""
+    from . import fotos as fotos_mod                         # noqa: PLC0415
+    rel = str(o.get("rel") or "")
+    if not rel:
+        return False
+    destino = base_novas / rel
+    frente = pend / nome
+    if not frente.is_file() or (destino / nome).exists():
+        return False
+    destino.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(frente), str(destino / nome))
+    v = fotos_mod_verso(nome)
+    if v:
+        for cand in sorted(pend.glob(Path(v).stem + ".*")):
+            if cand.suffix.lower() in IMG_EXT and not (destino / cand.name).exists():
+                shutil.move(str(cand), str(destino / cand.name))
+    motivos = [f"{r.get('name') or '?'}: {r.get('motivo') or r.get('resultado')}"
+               for r in linhas if r.get("resultado") not in ("importada", "repetida")]
+    texto = (f"{nome}: {'; '.join(motivos) or 'parou na leitura'}\n\n"
+             "Esta foto foi lida e uma das linhas NAO entrou. Ficou aqui, com o\n"
+             "mesmo nome, e nao volta a ser lida enquanto este ficheiro existir\n"
+             "(e for mais recente do que ela). Para tentar outra vez: tira uma\n"
+             "foto nova para esta pasta, ou apaga este ficheiro.\n")
+    (destino / fotos_mod.MOTIVO_PAROU).write_text(texto, encoding="utf-8")
+    return True
 
 
 def _arrumar_verso(nome: str, pend: Path, destino: Path, destino_rel: str,
@@ -1065,12 +1144,10 @@ def _destino_da_foto(nome: str, alvo_cfg: dict | None, raiz: Path,
     o = fotosite.origem(nome)
     alvo = ({"tipo": o["tipo"], "slot": o["slot"], "familia": o.get("familia")}
             if o else alvo_cfg)
-    p = fotos_mod.pasta_do_alvo(alvo)
+    p = fotos_mod.pasta_do_alvo(alvo, raiz)
     if p.name == fotos_mod.SEM_ALVO:
         p = p / f"{dt.date.today():%Y-%m}"
-    # A `pasta_do_alvo` já é absoluta e debaixo de `raiz`; o argumento existe
-    # para o chamador não ter de a recalcular.
-    return p if p.is_absolute() else raiz / p
+    return p
 
 
 # ---------------------------------------------------------------------------

@@ -268,8 +268,11 @@ _RODAPE = (
     "(a) <b>Pela página</b>, no botão «Tirar fotos» (abre a câmara do "
     "telemóvel): a foto guarda-se sozinha, não há pasta nenhuma. (b) <b>Com a "
     "app da câmara</b>, largando-as na <b>pasta do deck</b> — "
-    "<code>Colocar fotos da coleção aqui\\&lt;nome do deck&gt;\\</code> —, onde o "
-    "<code>_plano.txt</code> diz o que tirar; o vault reconhece a pasta como o "
+    "<code>Decks Por Processar\\&lt;nome do deck&gt;\\&lt;carta (N)&gt;\\</code> —, "
+    "onde o <code>_plano.txt</code> diz o que tirar. Quando a foto de uma carta "
+    "entra, a pasta dela é <b>apagada</b> e a foto passa para "
+    "<code>Decks Processados\\</code>: o que resta em «Por Processar» é o que "
+    "falta fotografar. O vault reconhece a pasta como o "
     "deck (é o mesmo alvo do botão «Fotografar») e trata-as como se tivessem "
     "sido tiradas aqui. Subpastas de lote (<code>lote1</code>) contam para o "
     "mesmo deck. O que não é de um deck (a venda, o inventário) vai solto na "
@@ -671,8 +674,9 @@ function duaisHTML() {
    discordava do primeiro um dia qualquer, em silêncio. */
 const ONDE = 'Duas portas: <b>«Tirar fotos»</b> aqui na página (a foto '
   + 'guarda-se sozinha, não há pasta), ou a app da câmara e largá-las na '
-  + '<b>pasta do deck</b> — <code>Colocar fotos da coleção aqui\\&lt;nome do '
-  + 'deck&gt;\\</code>, onde está o <code>_plano.txt</code>. A pasta <b>vale '
+  + '<b>pasta da carta</b> — <code>Decks Por Processar\\&lt;deck&gt;\\&lt;carta '
+  + '(N)&gt;\\</code>; o <code>_plano.txt</code> está na pasta do deck. Quando a '
+  + 'foto entra, a pasta da carta apaga-se. A pasta <b>vale '
   + 'como alvo</b>: o vault reconhece-a pelo nome do deck. O que não é de um '
   + 'deck (a venda, o inventário) vai <b>solto na raiz de '
   + '<code>pendentes\\</code></b>, com o alvo fixado no botão. Nunca para '

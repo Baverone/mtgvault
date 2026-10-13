@@ -510,15 +510,19 @@ def caso_as_fotos_novas_arrumam_se_por_deck():
         [("Mox Opal", "mbs", 4, 1, "nonfoil", "en", f)], _TMP / "deck.csv"),
         resultados=res)
     r = collection.arrumar_fotos(con, res, pendentes=PEND)
-    assert r["destinos"] == ["fotos/cedh-a"], r
-    assert (fotos.pasta_fotos() / "cedh-a" / f).is_file(), r
+    # [CORRIGIDO A 2026-10-13] era `fotos/cedh-a` (em `data/fotos/<slot>/`);
+    # desde as duas árvores o destino é `Decks Processados/<pasta do deck>/`,
+    # com o NOME da pasta do deck (o mesmo que ele vê em «Por Processar»).
+    rel_dir = f"{fotos.PASTA_PROCESSADAS}/{fotos.nome_da_pasta_do_slot('cedh-a')}"
+    assert r["destinos"] == [rel_dir], r
+    assert (PEND.parent / rel_dir / f).is_file(), r
     pp = con.execute("SELECT photo_path p FROM copies").fetchone()["p"]
-    assert pp == f"fotos/cedh-a/{f}", pp
-    assert fotos.resolver(pp) is not None, "o caminho novo não se resolve"
+    assert pp == f"{rel_dir}/{f}", pp
+    assert fotos.resolver(str(PEND.parent / pp)) is not None, "o caminho novo não se resolve"
     # O TIPO do alvo, quando não é uma caixa.
     assert fotos.pasta_do_alvo({"tipo": "venda"}).name == "venda"
     assert fotos.pasta_do_alvo({"tipo": "rl"}).name == "rl"
-    assert fotos.pasta_do_alvo({"tipo": "coleccao"}).name == "coleccao"
+    assert fotos.pasta_do_alvo({"tipo": "coleccao"}).name == fotos.PASTAS_FORA_DOS_DECKS[0]
     # SEM alvo não se adivinha o deck: vai para `sem-alvo/`, à vista.
     assert fotos.pasta_do_alvo(None).name == fotos.SEM_ALVO
     repor()

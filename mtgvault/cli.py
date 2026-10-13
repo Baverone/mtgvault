@@ -1742,7 +1742,7 @@ def _fotos_cmd(con, args):
         return
     if args.accao in ("recolher", "pastas"):
         # A PASTA POR DECK VALE COMO ALVO (2026-10-01): as fotos que ele largou
-        # em `Colocar fotos da coleção aqui/<deck>/` vão para a raiz de
+        # em `Decks Por Processar/<deck>/` vão para a raiz de
         # `pendentes/` com o nome `site-<slot>-…`, que é o mesmo nome que o
         # botão «Tirar fotos» escreve — daí para a frente é o caminho de
         # 2026-09-21 sem uma linha nova. `pastas` só mostra o que lá está.
@@ -1775,6 +1775,9 @@ def _fotos_cmd(con, args):
             print(f"  a chegar (ainda a ser copiada): {x['pasta']}/{x['ficheiro']}")
         for x in r["ignorados"]:
             print(f"  deixado em {x['pasta']}/{x['ficheiro']}: {x['porque']}")
+        for x in r.get("paradas") or []:
+            print(f"  parada (já foi lida e uma linha não entrou): "
+                  f"{x['pasta']}/{x['ficheiro']}: {x['porque']}")
         print(f"  {len(r['recolhidas'])} fotos recolhidas de {r['pastas']} "
               "pastas; nada se apagou")
         return
@@ -1799,6 +1802,10 @@ def _fotos_cmd(con, args):
                   f"delas passou a avisar): {', '.join(r['orfas'])}")
         if r["sem_pasta"]:
             print(f"  sem pasta: {', '.join(r['sem_pasta'])}")
+        cp = r.get("cartas_pastas") or {}
+        print(f"  pastas de carta: {len(cp.get('criadas') or [])} criadas, "
+              f"{len(cp.get('apagadas') or [])} apagadas (já provadas), "
+              f"{cp.get('por_pedir', 0)} cartas ainda por fotografar")
         print("  o plano sai da MESMA fila da página; as fotos largam-se na "
               "pasta do deck (`fotos recolher` leva-as a `pendentes\\`)")
         return

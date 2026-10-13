@@ -444,7 +444,10 @@ def caso_uma_caixa_vazia_nao_rebenta_a_geracao():
     assert r["escritos"] == [], r          # nenhuma caixa tem fila
     assert "Modern — UW Oswald" in r["vazios"], r
     txt = (d / "_plano.txt").read_text(encoding="utf-8")
-    assert "NAO tem cartas registadas" in txt, txt
+    # [CORRIGIDO A 2026-10-13] dizia «NAO tem cartas registadas … nada para
+    # fotografar»; com a colecção esvaziada isso passou a ser falso — o plano
+    # manda-o às pastas das cartas, que dizem o que falta.
+    assert "nao tem cartas registadas" in txt and "pasta dela" in txt, txt
     assert "foto 01" not in txt, txt
     assert "modern" in txt, "tem de dizer o alvo, para quando houver cartas"
     # [CORRIGIDO A 2026-10-02] esta asserção era `not (...).exists()`, com o
@@ -476,9 +479,12 @@ def caso_o_plano_manda_largar_as_fotos_NESTA_pasta():
     fotos.escrever_planos(con, rep, raiz=SITE)
     txt = (fotos.pasta_novas(SITE) / "Blue Farm" / "_plano.txt").read_text(
         encoding="utf-8")
-    assert "NESTA PASTA" in txt, txt[:1200]
+    # [CORRIGIDO A 2026-10-13] era «NESTA PASTA» + «lote1»: com as duas árvores
+    # a foto larga-se na pasta da CARTA dentro da do deck, e a pasta apaga-se
+    # quando a foto entra — é isso que o plano tem de dizer.
+    assert "NA PASTA DA CARTA" in txt, txt[:1200]
     assert "cedh-blue-farm" in txt, txt[:1200]
-    assert "lote1" in txt, "as subpastas de lote continuam a valer"
+    assert "Decks Processados" in txt and "APAGADA" in txt, txt[:1200]
     assert "https://editar-mtg.baverone.com/" in txt, txt[:1200]
     # E NÃO pode voltar a dizer que esta pasta não serve.
     assert "NADA a processa" not in txt, txt[:1200]

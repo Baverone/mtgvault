@@ -87,14 +87,15 @@ def run():
         fotos = collection.arrumar_fotos(con, resultados, pendentes=pend)
 
         mes = f"{dt.date.today():%Y-%m}"
-        # SEM ALVO não se adivinha o deck: a foto vai para `fotos/sem-alvo/<mês>`
-        # (com alvo iria para `fotos/<slot>/` — ver `test_fotos_ate_4`).
-        rel_dir = f"fotos/{fotos_mod.SEM_ALVO}/{mes}"
-        destino = db.pasta_dados() / rel_dir / "IMG_0001.jpg"
+        # SEM ALVO não se adivinha o deck: a foto vai para `sem-alvo/<mês>`.
+        # [CORRIGIDO A 2026-10-13] era `data/fotos/sem-alvo/…`; desde as duas
+        # árvores é `Decks Processados/sem-alvo/…`, ao lado de `pendentes/`, e o
+        # `photo_path` é relativo à raiz (a pasta-mãe de `pendentes/`).
+        rel_dir = f"{fotos_mod.PASTA_PROCESSADAS}/{fotos_mod.SEM_ALVO}/{mes}"
+        destino = tmp / rel_dir / "IMG_0001.jpg"
 
         # 1. a foto está no sítio certo, com o nome original, e não se apagou
-        assert destino.exists(), sorted(
-            str(p) for p in db.pasta_dados().rglob("*"))
+        assert destino.exists(), sorted(str(p) for p in tmp.rglob("*"))
         assert destino.read_bytes() == b"\xff\xd8foto1"
         assert not boa.exists(), "a foto ficou duplicada em pendentes/"
         assert fotos["movidas"] == 1 and fotos["destinos"] == [rel_dir], fotos
@@ -105,7 +106,9 @@ def run():
         ligadas = [dict(r) for r in con.execute(
             "SELECT id, photo_path FROM copies WHERE photo_path = ? ORDER BY id", (rel,))]
         assert len(ligadas) == 2, ligadas
-        assert fotos_mod.resolver(rel) == destino, fotos_mod.resolver(rel)
+        # (o resolvedor procura na raiz do REPOSITÓRIO; aqui a raiz é a
+        # temporária, por isso confere-se pelo caminho absoluto)
+        assert fotos_mod.resolver(str(tmp / rel)) == destino
         print("copies.photo_path aponta para a foto arrumada:", rel)
 
         # 3. e no aplicado.csv, ao lado das fotos
@@ -119,7 +122,7 @@ def run():
         # 4. a foto do lote incompleto FICA em pendentes/, por catalogar
         assert mista.exists(), "arrumou uma foto com linhas por resolver"
         assert fotos["ficaram"] == ["IMG_0002.jpg"], fotos["ficaram"]
-        assert not (db.pasta_dados() / rel_dir / "IMG_0002.jpg").exists()
+        assert not (tmp / rel_dir / "IMG_0002.jpg").exists()
         # e a cópia que ENTROU dessa foto não fica a apontar para um sítio errado
         pendente = con.execute(
             "SELECT photo_path FROM copies WHERE photo_path = 'IMG_0002.jpg'").fetchall()

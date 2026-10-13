@@ -22,7 +22,7 @@ mais barata que serve.
 Se uma carta nao tiver pasta aqui, mantem-se a regra normal: a mais
 barata que e legal nesse formato e que cumpre a lingua e o acabamento.
 
-PORQUE E QUE ISTO NAO ESTA DENTRO DE "Colocar fotos da coleccao aqui"
+PORQUE E QUE ISTO NAO ESTA DENTRO DE "Decks Por Processar"
 ---------------------------------------------------------------------
 Porque la dentro seria catalogado como carta TUA.
 
@@ -31,5 +31,5 @@ QUALQUER imagem a qualquer profundidade debaixo de uma pasta de deck e
 recolhida e tratada como foto de uma carta que tens. Uma art posta la
 dentro viraria uma copia fantasma na coleccao.
 
-Esta pasta e irma de "Colocar fotos da coleccao aqui", nunca filha.
+Esta pasta e irma de "Decks Por Processar", nunca filha.
 Nada daqui entra na coleccao.

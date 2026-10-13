@@ -185,7 +185,10 @@ def caso_a_recolha_da_familia_emparelha_e_nao_decide_o_deck():
     # a foto prova a carta e NÃO decide o deck — a alocação não se toca
     assert confirmado.alvo_da_pasta(frente["para"]) == (False, None)
     # arruma-se numa pasta da família, nunca em `sem-alvo` nem na de uma caixa
-    assert fotos.pasta_do_alvo(dict(o)).name == "familia-mox-opal"
+    # [CORRIGIDO A 2026-10-13] era `familia-mox-opal` (em `data/fotos/`); desde
+    # as duas árvores a foto processada vai para a MESMA pasta da família em
+    # «Decks Processados» — o nome da pasta onde ele a largou.
+    assert fotos.pasta_do_alvo(dict(o)).name == fotos.familia("mox-opal")["pasta"]
     limpar()
     print("a recolha da familia emparelha frente/verso e nao decide o deck")
 

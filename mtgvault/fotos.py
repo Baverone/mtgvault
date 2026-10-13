@@ -75,6 +75,8 @@ tivesse carregado em «Fotografar este deck» e tirado a foto na página.
 from __future__ import annotations
 
 import datetime as _dt
+import json
+import os
 import re
 import shutil
 import time
@@ -302,12 +304,13 @@ def texto_do_plano(nome: str, slot: str, fotos_: list[dict], *,
            ""]
     if conversao:
         out += ["*** ESTE DECK FICA PARA DEPOIS ***", nota or NOTA_CONVERSAO_TXT, ""]
-    out += ["ONDE LARGAR AS FOTOS: NESTA PASTA.",
+    out += ["ONDE LARGAR AS FOTOS: NA PASTA DA CARTA, DENTRO DESTA.",
             f"  O vault reconhece a pasta como este deck (alvo: {slot}) e trata",
             "  as fotos como se as tivesses tirado na pagina. Nao precisas de",
-            "  fixar alvo nenhum. Podes fazer subpastas de lote ('lote1').",
-            "  A foto e MOVIDA daqui para pendentes\\ com o nome a dizer o deck,",
-            "  e depois arrumada em data\\fotos\\" + slot + "\\. Nada se apaga.",
+            "  fixar alvo nenhum.",
+            "  A foto e MOVIDA para pendentes\\, lida, e arrumada na MESMA pasta",
+            "  dentro de «Decks Processados\\». Quando entra, a pasta da carta",
+            "  AQUI e APAGADA: o que fica em «Decks Por Processar» e o que falta.",
             "",
             "A OUTRA PORTA: " + URL_EDICAO,
             "  botao «Tirar fotos» (abre a camara do telemovel) -- ai nao ha",
@@ -430,7 +433,7 @@ TEXTO_ORFA = (
     "JA NAO RECONHECE esta pasta: uma foto largada aqui fica aqui e nao e\n"
     "catalogada.\n\n"
     "Larga as fotos na pasta com o nome ACTUAL do deck (estao todas em\n"
-    "«Colocar fotos da colecao aqui\\», uma por deck), ou usa o botao\n"
+    "«Decks Por Processar\\», uma por deck), ou usa o botao\n"
     "«Tirar fotos» no modo de edicao.\n\n"
     "Nada se apagou. Podes apagar esta pasta a mao quando quiseres.\n")
 
@@ -455,6 +458,9 @@ def escrever_planos(con, res: dict, cfg: dict | None = None,
     out: dict = {"escritos": [], "sem_pasta": [], "vazios": [], "orfas": [],
                  "criadas": garantir_pastas(res, raiz),
                  "fotos": f2["barra"]["fotos"], "cartas": f2["barra"]["cartas"]}
+    # As pastas de CARTA dentro de cada deck (2026-10-13): é aqui, todas as
+    # noites, que a pasta de uma carta volta quando precisa de foto outra vez.
+    out["cartas_pastas"] = sincronizar_pastas_de_cartas(con, res, cfg, raiz)
     com_fila = set()
     # O plano de uma FAMÍLIA é o das caixas dela, um a seguir ao outro, na
     # pasta comum (2026-10-13) — escrito do MESMO `fila_decks`, para a pasta e
@@ -557,13 +563,16 @@ def texto_familia(fam: dict, planos: list[str]) -> str:
 
 def texto_sem_cartas(nome: str, slot: str) -> str:
     return (f"PLANO DE FOTOS -- {nome}\nslot: {slot}\n\n"
-            "Este deck NAO tem cartas registadas dentro da caixa, por isso\n"
-            "nao ha nada para fotografar aqui ainda.\n\n"
-            "Quando houver, as fotos vem para ESTA pasta: o vault reconhece\n"
-            f"a pasta como este deck (alvo: {slot}) e trata-as como se as\n"
-            "tivesses tirado na pagina. Nada se apaga.\n"
-            f"A outra porta: {URL_EDICAO}\n"
-            "O plano a serio esta na pagina «Arrumacao por fases», Fase 2.\n")
+            "O vault ainda nao tem cartas registadas neste deck (a colecao foi\n"
+            "esvaziada a 13/10/2026 e reconstroi-se pelas fotos).\n\n"
+            "O QUE FOTOGRAFAR: cada subpasta «<carta> (N)» desta pasta e uma\n"
+            "carta do deck que ainda nao tem foto. Larga a foto da carta na\n"
+            "pasta dela. Quando a foto entrar, a pasta da carta e APAGADA e a\n"
+            "foto vai para a mesma pasta em «Decks Processados\\». O que ficar\n"
+            "aqui e exactamente o que falta. Se a foto parar (uma linha nao\n"
+            "entrou), volta para a pasta da carta com um «_porque_parou.txt».\n\n"
+            f"O vault reconhece a pasta como este deck (alvo: {slot}).\n"
+            f"A outra porta: {URL_EDICAO}\n")
 
 
 def barra(fotos: list[dict]) -> dict:
@@ -612,23 +621,43 @@ def pasta_arquivo() -> Path:
     return pasta_fotos() / ANTERIORES
 
 
-def pasta_do_alvo(alvo: dict | None) -> Path:
-    """Onde uma foto NOVA se arruma: `data/fotos/<slot>/` quando há um alvo de
-    caixa, `data/fotos/venda|rl|coleccao/` nos outros tipos, e
-    `data/fotos/sem-alvo/` quando não há alvo nenhum.
+def pasta_do_alvo(alvo: dict | None, raiz: Path | str | None = None) -> Path:
+    """Onde se arruma uma foto que NÃO veio de uma pasta de carta (o botão
+    «Tirar fotos» da página, ou uma foto largada à mão em `pendentes/`):
+    `Decks Processados/<pasta do deck>/` — a MESMA pasta que o deck tem em
+    «Por Processar», para as duas árvores se lerem lado a lado.
 
-    *"O slot vem do alvo da revalidação, não de adivinhar."* Sem alvo não se
-    inventa um deck: a foto fica em `sem-alvo/`, à vista.
+    Desde 2026-10-13 (era `data/fotos/<slot>/`). Uma caixa de uma FAMÍLIA vai
+    para a pasta da família (é lá que ele larga as fotos dela); a colecção vai
+    para `Extras (fora dos decks)`; a venda e a RL para `venda`/`rl`; e sem alvo
+    para `sem-alvo/`, à vista. *"O slot vem do alvo, não de adivinhar."*
     """
+    base = pasta_processados(raiz)
     if not alvo or not alvo.get("tipo"):
-        return pasta_fotos() / SEM_ALVO
+        return base / SEM_ALVO
     if alvo["tipo"] == "caixa":
         slot = str(alvo.get("slot") or "").strip()
-        return pasta_fotos() / (slot or SEM_ALVO)
+        return base / (nome_da_pasta_do_slot(slot) if slot else SEM_ALVO)
     if alvo["tipo"] == ALVO_FAMILIA:
-        fam = str(alvo.get("familia") or "").strip()
-        return pasta_fotos() / (f"{ALVO_FAMILIA}-{fam}" if fam else SEM_ALVO)
-    return pasta_fotos() / str(alvo["tipo"])
+        f = familia(str(alvo.get("familia") or "").strip() or None)
+        return base / (f["pasta"] if f else SEM_ALVO)
+    if alvo["tipo"] == ALVO_FORA_DOS_DECKS:
+        return base / PASTAS_FORA_DOS_DECKS[0]
+    return base / str(alvo["tipo"])
+
+
+def nome_da_pasta_do_slot(slot: str, cfg: dict | None = None) -> str:
+    """O nome da pasta de um deck nas duas árvores: a da família, se a caixa
+    pertencer a uma, senão o nome da caixa como pasta (`nome_de_pasta`). É a
+    mesma regra do `garantir_pastas`, por isso a pasta onde a foto processada
+    vai parar tem o nome da pasta onde ele a largou."""
+    from . import caixas                                     # noqa: PLC0415
+    f = familia_do_slot(slot, cfg)
+    if f:
+        return f["pasta"]
+    nome = next((s.get("nome") for s in caixas.slots(cfg)
+                 if s.get("slot") == slot), None)
+    return nome_de_pasta(nome or slot)
 
 
 def _pastas_de_busca() -> list[Path]:
@@ -639,7 +668,8 @@ def _pastas_de_busca() -> list[Path]:
     com o mesmo nome, e é essa que se serve.
     """
     from . import collection                                # noqa: PLC0415
-    return [collection.PENDENTES, collection.FOTOS_PROCESSADAS, pasta_fotos()]
+    return [collection.PENDENTES, collection.FOTOS_PROCESSADAS, pasta_fotos(),
+            pasta_processados()]
 
 
 _CACHE: dict[tuple, dict[str, Path]] = {}
@@ -871,7 +901,22 @@ def arquivar(pendentes: str | Path | None = None,
 # A PASTA POR DECK VALE COMO ALVO (André, 2026-10-01, à letra: «o melhor é
 # criar pasta»)
 # ---------------------------------------------------------------------------
-PASTA_NOVAS = "Colocar fotos da coleção aqui"
+PASTA_NOVAS = "Decks Por Processar"
+# AS DUAS ÁRVORES (André, 2026-10-13, à letra: *"o melhor e esvaziar tudo!"* e
+# *"nao podes esquecer-te de apagar as pastas de onde as fotos foram movidas,
+# para me dar a entender que ja nao as estas a pedir"*). Ele larga as fotos em
+# `Decks Por Processar\<deck>\<carta (N)>\`; o `arrumar_fotos` MOVE-AS para a
+# MESMA pasta relativa dentro de `Decks Processados\`, e é lá que o
+# `photo_path` da base aponta. Substitui o `data/fotos/<slot>/` de 01/10: a foto
+# fica num sítio só, ao lado da árvore onde ele a largou, e não se duplica.
+# Quando uma foto é processada com sucesso, a pasta da carta em «Por Processar»
+# é APAGADA (só se estiver vazia — ver `apagar_pasta_feita`): o que resta lá é
+# exactamente o que falta fotografar.
+PASTA_PROCESSADAS = "Decks Processados"
+# O nome antigo da pasta-mãe. Já não se lê; mas uma foto largada lá por hábito
+# (ou numa cópia antiga da pasta) NÃO pode ficar calada — o `fotos_nas_pastas`
+# devolve-a em `ignorados` com a frase que a tarefa das 02:30 trata como ERRO.
+PASTA_NOVAS_ANTIGA = "Colocar fotos da coleção aqui"
 # As pastas de GRUPO que já lá estavam. Não mapeiam para slot nenhum e ficam
 # com o comportamento de sempre — ninguém as processa automaticamente. Estão
 # aqui NOMEADAS só para a recolha poder dizer *porquê* é que não lhes mexe, em
@@ -942,6 +987,11 @@ def _norm(s: str) -> str:
 def pasta_novas(raiz: Path | str | None = None) -> Path:
     from . import fotocaixa                                  # noqa: PLC0415
     return Path(raiz or fotocaixa.RAIZ) / PASTA_NOVAS
+
+
+def pasta_processados(raiz: Path | str | None = None) -> Path:
+    from . import fotocaixa                                  # noqa: PLC0415
+    return Path(raiz or fotocaixa.RAIZ) / PASTA_PROCESSADAS
 
 
 def nome_de_pasta(nome: str) -> str:
@@ -1078,11 +1128,30 @@ def fotos_nas_pastas(cfg: dict | None = None,
     supervisor criou) ficam de fora, e o `_plano.txt` também (não é imagem).
     """
     base = pasta_novas(raiz)
+    out = []
+    # A PASTA-MÃE ANTIGA (2026-10-13). Se ela ainda existir com fotos dentro —
+    # uma cópia antiga, um atalho no telemóvel que ainda aponta para lá —,
+    # nenhuma delas se processa (já não é a pasta) e TODAS se dizem.
+    antiga = base.parent / PASTA_NOVAS_ANTIGA
+    if antiga.is_dir():
+        for f in sorted(x for x in antiga.rglob("*")
+                        if x.is_file() and x.suffix.lower() in EXT):
+            out.append({"ficheiro": f, "pasta": PASTA_NOVAS_ANTIGA + "/"
+                        + "/".join(f.relative_to(antiga).parts[:1]),
+                        "slot": None, "tipo": None, "grupo": False,
+                        "arquivada": True, "antiga": True,
+                        "mtime": f.stat().st_mtime})
     if not base.is_dir():
-        return []
+        return out
+    # UMA FOTO SOLTA NA PASTA-MÃE NÃO TEM DECK — e até 13/10 nem se dizia (o
+    # ciclo de baixo só olha para subpastas). Fica onde está e entra na lista.
+    for f in sorted(x for x in base.iterdir()
+                    if x.is_file() and x.suffix.lower() in EXT):
+        out.append({"ficheiro": f, "pasta": "(pasta-mãe)", "slot": None,
+                    "tipo": None, "grupo": False, "arquivada": True,
+                    "solta": True, "mtime": f.stat().st_mtime})
     grupos = {_norm(g) for g in PASTAS_DE_GRUPO}
     mapa = mapa_pastas(cfg)                # uma vez, não uma por pasta
-    out = []
     for d in sorted(x for x in base.iterdir() if x.is_dir()):
         if d.name.startswith("_"):
             # UMA FOTO NUMA PASTA ARQUIVADA NÃO FICA CALADA (2026-10-13). O
@@ -1176,7 +1245,15 @@ def recolher_das_pastas(cfg: dict | None = None, *,
     for it in itens:
         f = it["ficheiro"]
         if not it.get("tipo"):
-            if it.get("arquivada"):
+            if it.get("antiga"):
+                porque = (f"está na pasta antiga «{PASTA_NOVAS_ANTIGA}», que já "
+                          "não se lê — não é o nome de nenhuma caixa do config; "
+                          f"move a foto para «{PASTA_NOVAS}\\<deck>\\<carta>»")
+            elif it.get("solta"):
+                porque = ("está solta na pasta-mãe, fora de qualquer deck — não "
+                          "é o nome de nenhuma caixa do config; move-a para a "
+                          "pasta do deck (e da carta)")
+            elif it.get("arquivada"):
                 porque = (f"{it['pasta']!r} é uma pasta ARQUIVADA, não é o nome de "
                           "nenhuma caixa do config — move a foto para a pasta do "
                           "deck (ou da família) com o nome actual")
@@ -1190,7 +1267,29 @@ def recolher_das_pastas(cfg: dict | None = None, *,
                                      "porque": porque})
             continue
         grupos.setdefault(f.parent, []).append(it)
+    base = pasta_novas(raiz)
+    origens = ler_origens(pend)
     for pasta, lote in sorted(grupos.items()):
+        # UMA FOTO QUE JÁ PAROU NÃO SE RELÊ TODAS AS NOITES (2026-10-13). Quando
+        # uma linha não entra, o `arrumar_fotos` devolve a foto à pasta da carta
+        # com um `_porque_parou.txt` — e a recolha seguinte apanhava-a outra
+        # vez e pagava a mesma leitura para dar o mesmo motivo, para sempre. As
+        # fotos mais VELHAS do que o motivo ficam; uma foto nova que ele lá
+        # largue (mais recente) segue, e apagar o ficheiro do motivo é o «tenta
+        # outra vez». Ficam DITAS em `paradas`, nunca caladas.
+        marca = pasta / MOTIVO_PAROU
+        if marca.is_file():
+            t = marca.stat().st_mtime
+            presas = [i for i in lote if i["mtime"] <= t]
+            if presas:
+                motivo = marca.read_text(encoding="utf-8", errors="replace")
+                out.setdefault("paradas", []).extend(
+                    {"ficheiro": i["ficheiro"].name, "pasta": i["pasta"],
+                     "porque": motivo.strip().splitlines()[0] if motivo.strip()
+                     else "parou na leitura anterior"} for i in presas)
+            lote = [i for i in lote if i["mtime"] > t]
+            if not lote:
+                continue
         lote.sort(key=lambda i: (i["mtime"], i["ficheiro"].name))
         novas = [i for i in lote if agora - i["mtime"] < sossego_s]
         # A família são cartas de DECK (os versos contam), por isso emparelha
@@ -1215,11 +1314,27 @@ def recolher_das_pastas(cfg: dict | None = None, *,
                 # A frente saiu com outra extensão (JPEG + HEIC no mesmo par):
                 # o radical é o mesmo, só a extensão muda.
                 nome = str(Path(nome).with_suffix("." + ext))
+            elif (fotosite.origem(f.name) and not fotosite.e_verso(f.name)
+                  and not (pend / f.name).exists()):
+                # Uma foto que JÁ tem nome de site é uma que voltou (parou numa
+                # leitura anterior e foi devolvida à pasta da carta). Mantém o
+                # nome: é pelo NOME que o `ja_e_prova` reconhece as linhas que
+                # já tinham entrado — com um nome novo eram criadas outra vez.
+                nome = f.name
             else:
                 nome = _nome_livre(pend, it["tipo"],
                                    it.get("familia") if it["tipo"] == ALVO_FAMILIA
                                    else it["slot"], quando, ext)
             shutil.move(str(f), str(pend / nome))
+            # DE ONDE VEIO (2026-10-13): o `arrumar_fotos` precisa disto para a
+            # pôr na MESMA pasta em «Decks Processados» e para apagar a pasta
+            # da carta em «Por Processar» quando ela entrar — ou para a devolver
+            # lá se uma linha parar. O nome novo não guarda a carta, por isso
+            # guarda-se aqui.
+            rel = f.parent.relative_to(base).as_posix()
+            origens[nome] = {"rel": rel, "de": f.name,
+                             "em": _dt.datetime.now().replace(
+                                 microsecond=0).isoformat(sep=" ")}
             out["recolhidas"].append({"de": f.name, "pasta": it["pasta"],
                                       "slot": it["slot"], "tipo": it["tipo"],
                                       "para": nome, "verso": verso})
@@ -1233,5 +1348,192 @@ def recolher_das_pastas(cfg: dict | None = None, *,
                                      "porque": "o lote tem um número ímpar de "
                                                "fotos — esta ficou sem verso"})
     if out["recolhidas"]:
+        gravar_origens(pend, origens)
         _CACHE.clear()
+    return out
+
+
+# ---------------------------------------------------------------------------
+# AS DUAS ÁRVORES: DE ONDE VEIO CADA FOTO, E O APAGAR DAS PASTAS FEITAS
+# (André, 2026-10-13)
+# ---------------------------------------------------------------------------
+ORIGENS = "_origens.json"
+MOTIVO_PAROU = "_porque_parou.txt"
+# O que pode estar numa pasta de carta sem a impedir de ser apagada: os nossos
+# ficheiros e o lixo que o Windows/macOS deixam. TUDO o resto — e, acima de
+# tudo, qualquer imagem — faz a pasta FICAR.
+LIXO_PERMITIDO = {".gitkeep", MOTIVO_PAROU.lower(), "desktop.ini", "thumbs.db",
+                  ".ds_store"}
+
+
+def ler_origens(pend: Path | str) -> dict:
+    """`pendentes/_origens.json`: `nome em pendentes -> {rel, de, em}`, onde
+    `rel` é a pasta (relativa a «Decks Por Processar») de onde a foto saiu."""
+    p = Path(pend) / ORIGENS
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+        return d if isinstance(d, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def gravar_origens(pend: Path | str, d: dict) -> None:
+    p = Path(pend) / ORIGENS
+    if not d:
+        p.unlink(missing_ok=True)
+        return
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp = p.with_name(p.name + ".tmp")
+    tmp.write_text(json.dumps(d, ensure_ascii=False, indent=1, sort_keys=True),
+                   encoding="utf-8")
+    os.replace(tmp, p)
+
+
+def tem_imagens(pasta: Path) -> bool:
+    return pasta.is_dir() and any(
+        x.is_file() and x.suffix.lower() in EXT for x in pasta.rglob("*"))
+
+
+def apagar_pasta_feita(pasta: Path | str, base: Path | str) -> bool:
+    """Apaga a pasta de UMA CARTA em «Decks Por Processar» — e só se estiver
+    vazia. Devolve se apagou.
+
+    É a única função que apaga uma pasta de fotos, e as guardas são todas
+    precisas: (1) tem de ser exactamente `<base>/<deck>/<carta>` — nunca a
+    pasta-mãe, nunca a pasta de um deck, nunca uma subpasta mais funda; (2)
+    **NUNCA com uma imagem lá dentro**, a qualquer profundidade, com qualquer
+    caixa de extensão; (3) nem com uma subpasta, nem com um ficheiro que não
+    seja nosso (`LIXO_PERMITIDO`) — um ficheiro dele que não conhecemos é
+    motivo para ficar, não para apagar. Tem teste que falha se uma pasta com
+    imagens puder ir-se.
+    """
+    pasta, base = Path(pasta), Path(base)
+    try:
+        rel = pasta.resolve().relative_to(base.resolve())
+    except (OSError, ValueError):
+        return False
+    if len(rel.parts) != 2 or not pasta.is_dir():
+        return False
+    filhos = list(pasta.iterdir())
+    for x in filhos:
+        if x.is_dir():
+            return False
+        if x.suffix.lower() in EXT or x.name.lower() not in LIXO_PERMITIDO:
+            return False
+    if tem_imagens(pasta):                 # redundante de propósito
+        return False
+    for x in filhos:
+        x.unlink()
+    pasta.rmdir()
+    return True
+
+
+RE_PASTA_CARTA = re.compile(r"^(?P<nm>.+) \((?P<q>\d+)\)$")
+_SEGURO = str.maketrans({c: "-" for c in '<>:"/\\|?*'})
+
+
+def nome_de_pasta_de_carta(nm: str, q: int) -> str:
+    """`<carta> (N)`, com os caracteres que o Windows recusa trocados por `-`
+    (a regra das 650 pastas que lá estavam a 13/10)."""
+    return f"{str(nm).translate(_SEGURO)} ({int(q)})"
+
+
+def precisa_por_pasta(res: dict, cfg: dict | None = None) -> dict[str, dict]:
+    """`pasta do deck -> {carta: quantas}` — o que cada pasta de deck pede,
+    saído das LISTAS das caixas (main + side somados por carta; numa família, o
+    máximo entre as caixas dela). As caixas sem lista não pedem nada."""
+    fam_de = {s: f for f in familias(cfg) for s in f["slots"]}
+    out: dict[str, dict] = {}
+    for s in res.get("slots") or []:
+        f = fam_de.get(s["slot"])
+        pasta = f["pasta"] if f else nome_de_pasta(s.get("nome") or s["slot"])
+        tot: dict[str, int] = {}
+        for m in list(s.get("have") or []) + list(s.get("missing") or []):
+            tot[m["nm"]] = tot.get(m["nm"], 0) + int(m.get("need") or 0)
+        d = out.setdefault(pasta, {})
+        for nm, q in tot.items():
+            if q > 0:
+                d[nm] = max(d.get(nm, 0), q)
+    return out
+
+
+def provadas_por_pasta(con) -> dict[tuple[str, str], int]:
+    """`(pasta do deck, chave da carta) -> cópias com foto lá dentro`: o que a
+    BASE diz que já foi fotografado e processado em cada deck. É pela base e não
+    pelo disco de propósito — a base viaja (o Release), as imagens não, e é ela
+    que diz se uma cópia corrigida, vendida ou dada como não encontrada ainda
+    conta."""
+    from . import collection, scryfall                      # noqa: PLC0415
+    pre = PASTA_PROCESSADAS + "/"
+    out: dict[tuple[str, str], int] = {}
+    for r in con.execute(
+            f"""SELECT c.name, cp.quantity, cp.photo_path
+                  FROM copies cp JOIN cards c ON c.scryfall_id = cp.scryfall_id
+                 WHERE {collection.jogaveis()} AND cp.photo_path LIKE ?""",
+            (pre + "%",)):
+        partes = str(r["photo_path"]).replace("\\", "/").split("/")
+        if len(partes) < 3:
+            continue
+        k = (partes[1], scryfall.chave(r["name"]))
+        out[k] = out.get(k, 0) + int(r["quantity"] or 0)
+    return out
+
+
+def sincronizar_pastas_de_cartas(con, res: dict, cfg: dict | None = None,
+                                 raiz: Path | str | None = None,
+                                 pendentes: Path | str | None = None) -> dict:
+    """As pastas `<carta (N)>` de cada deck em «Decks Por Processar»,
+    IDEMPOTENTE (André, 2026-10-13).
+
+    * **cria** a pasta de uma carta que o deck pede e que a base ainda não tem
+      fotografada naquele deck (`provadas < pedidas`) — é assim que a pasta
+      VOLTA quando a carta precisa de foto outra vez: uma correcção que tirou a
+      cópia, uma lista que passou a pedir mais, uma carta que entrou no deck;
+    * **não ressuscita** a de uma carta já provada: as provadas não se criam;
+    * **apaga** a pasta (vazia!) de uma carta já provada — a que ficou por
+      apagar porque a foto entrou por outro caminho (o botão da página);
+    * **não toca** em nada do que não sabe: uma pasta de carta que a lista de
+      hoje não pede (as versões que não são caixa, o Oswald, o Orzhov) fica, e
+      um nome que não lê fica.
+
+    Nada com imagens se apaga (`apagar_pasta_feita`), nem uma pasta cuja foto
+    ainda está à espera em `pendentes/` (`_origens.json`).
+    """
+    from . import fotosite, scryfall                         # noqa: PLC0415
+    base = pasta_novas(raiz)
+    out = {"criadas": [], "apagadas": [], "ficam_com_fotos": [], "por_pedir": 0}
+    if not base.is_dir():
+        return out
+    pend = Path(pendentes) if pendentes else fotosite.pasta_pendentes(raiz)
+    em_espera = {str(v.get("rel") or "") for v in ler_origens(pend).values()}
+    provadas = provadas_por_pasta(con)
+    for pasta, pede in sorted(precisa_por_pasta(res, cfg).items()):
+        d = base / pasta
+        if not d.is_dir():
+            continue
+        existentes: dict[str, list[tuple[Path, int]]] = {}
+        for x in d.iterdir():
+            m = RE_PASTA_CARTA.match(x.name) if x.is_dir() else None
+            if m:
+                existentes.setdefault(m["nm"].casefold(), []).append(
+                    (x, int(m["q"])))
+        for nm, q in sorted(pede.items()):
+            seguro = str(nm).translate(_SEGURO).casefold()
+            tem = provadas.get((pasta, scryfall.chave(nm)), 0)
+            ja = existentes.get(seguro, [])
+            if tem < q:
+                out["por_pedir"] += 1
+                if not ja:
+                    nova = d / nome_de_pasta_de_carta(nm, q)
+                    nova.mkdir(parents=True, exist_ok=True)
+                    out["criadas"].append(f"{pasta}/{nova.name}")
+                continue
+            for x, qx in ja:
+                rel = f"{pasta}/{x.name}"
+                if tem < qx or rel in em_espera:
+                    continue
+                if apagar_pasta_feita(x, base):
+                    out["apagadas"].append(rel)
+                elif tem_imagens(x):
+                    out["ficam_com_fotos"].append(rel)
     return out

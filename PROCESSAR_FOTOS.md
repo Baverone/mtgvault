@@ -15,15 +15,18 @@ sem o André estar ao PC.
    py processar_fotos.py pendentes/recat.csv
    ```
    O script garante o catálogo, importa para `data/vault.db`, **arruma as
-   fotos** para **`data/fotos/<slot>/`** — uma pasta POR DECK, pelo alvo da
-   revalidação; sem alvo vão para `data/fotos/sem-alvo/<AAAA-MM>/` — e **nunca
-   as apaga**. Depois publica a BD. O site atualiza-se sozinho.
-   (Até 2026-10-01 o destino era `pendentes/fotos processadas/<AAAA-MM>/`; as
-   antigas estão arquivadas em `data/fotos/anteriores/`.)
+   fotos** para **`Decks Processados/<deck>/<carta (N)>/`** — a MESMA pasta de
+   onde ele as largou em `Decks Por Processar/`, cuja pasta da carta se APAGA
+   quando a foto entra; uma foto sem pasta de origem vai para
+   `Decks Processados/<deck do alvo>/` (sem alvo, `sem-alvo/<AAAA-MM>/`) — e
+   **nunca as apaga**. Depois publica a BD. O site atualiza-se sozinho.
+   (As duas árvores são de 2026-10-13; até aí o destino era `data/fotos/<slot>/`
+   e, antes de 2026-10-01, `pendentes/fotos processadas/<AAAA-MM>/`.)
 
    Ao lado do teu CSV fica um `<nome>-resultado.csv` com o que aconteceu a cada
    linha. **As linhas que pararam vêm lá com o motivo** — a foto delas fica em
-   `pendentes/` à espera de ser recatalogada.
+   `pendentes/` à espera de ser recatalogada (ou, se veio de uma pasta de
+   carta, VOLTA a essa pasta com o mesmo nome e um `_porque_parou.txt`).
 
 O reconhecimento (passo 2) és sempre **tu a olhar para as fotos** — o script só
 faz a parte mecânica.
@@ -41,12 +44,13 @@ fotografar (`site-duel-commander-…`, `site-modern-…`); `site-venda-…`,
 `site-rl-…` e `site-colecao-…` são a lista de venda, a Caixa Reserved List e o
 resto da Colecção; e `…-c<copy_id>.jpg` diz a CÓPIA esperada nessa foto (o
 André carregou no 📷 dessa carta). **Desde 2026-10-01 um nome `site-<slot>-…`
-pode também vir da PASTA DO DECK** — ele larga as fotos em `Colocar fotos da
-coleção aqui/<nome do deck>/` e o `mtgvault.fotos.recolher_das_pastas` move-as
+pode também vir da PASTA DO DECK** — ele larga as fotos em `Decks Por
+Processar/<nome do deck>/<carta (N)>/` (até 13/10 a pasta chamava-se «Colocar
+fotos da coleção aqui») e o `mtgvault.fotos.recolher_das_pastas` move-as
 para a raiz de `pendentes/` com este mesmo nome, de propósito: para ti e para o
 import são a mesma coisa, e por isso não há nada de diferente a fazer com elas.
-**E desde 2026-10-02 um `site-colecao-…` pode vir da pasta `Colocar fotos da
-coleção aqui/Extras (fora dos decks)/`** — é a pasta do que NÃO está em deck
+**E desde 2026-10-02 um `site-colecao-…` pode vir da pasta `Decks Por
+Processar/Extras (fora dos decks)/`** — é a pasta do que NÃO está em deck
 nenhum (repetidas, cartas soltas, o que sobra das caixas), e o alvo dela é o
 resto da Colecção: nada do que vier de lá fica alocado a um deck.
 **É uma pista, não uma resposta**: escreve o

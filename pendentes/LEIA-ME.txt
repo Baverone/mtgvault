@@ -13,7 +13,8 @@ O botao «Processar agora» da pagina pede ao runner do ai-pc que corra o
 mtg-fotos-novas sem esperar pelas 02:30.
 
 E desde 2026-10-01 entram aqui TAMBEM as fotos que ele larga na PASTA DO DECK
-(«Colocar fotos da colecao aqui\<nome do deck>\»): o vault reconhece a pasta
+(«Decks Por Processar\<nome do deck>\<carta (N)>\» -- ate 13/10/2026 chamava-se
+«Colocar fotos da colecao aqui»): o vault reconhece a pasta
 pelo nome do deck e MOVE a foto para ca com o mesmo nome site-<slot>-... --
 daqui para a frente e o caminho de cima, sem diferenca nenhuma. Quem o faz e o
 `fotos.recolher_das_pastas` (CLI: `py -m mtgvault.cli fotos recolher`), chamado
@@ -45,10 +46,13 @@ Uma foto com mais de 4 cartas NAO valida nada: a pagina «Arrumacao por fases»
 
 ONDE FICAM AS FOTOS DEPOIS DE ENTRAREM
 --------------------------------------
-Em data\fotos\<slot>\ — uma pasta POR DECK, pelo alvo da revalidacao (o botao
-«Fotografar este deck»). Sem alvo vao para data\fotos\sem-alvo\<AAAA-MM>\. As
-antigas estao arquivadas em data\fotos\anteriores\ (eram
-pendentes\fotos processadas\). Nada se apaga.
+Em «Decks Processados\<deck>\<carta (N)>\» -- a MESMA pasta de onde a foto
+saiu em «Decks Por Processar», cuja pasta da carta e APAGADA quando a foto
+entra (o que fica em «Por Processar» e o que falta fotografar). Uma foto que
+nao veio de uma pasta de carta vai para «Decks Processados\<deck do alvo>\»;
+sem alvo, «Decks Processados\sem-alvo\<AAAA-MM>\». Uma foto que PAROU (uma
+linha nao entrou) volta a pasta da carta, com um «_porque_parou.txt». As
+antigas estao arquivadas em data\fotos\anteriores\. Nenhuma foto se apaga.
 
 Regras de reconhecimento: ver PROCESSAR_FOTOS.md.
 

@@ -317,7 +317,8 @@ def caso_a_pagina_mostra_o_alvo_actual_e_onde_largar_as_fotos():
     # para cartas NOVAS. Agora a PASTA DO DECK é uma porta a sério — ver
     # `test_pasta_por_deck.py` — e o que tem de continuar escrito é a outra
     # pasta que nunca é para cartas.
-    assert "Colocar fotos da coleção aqui" in v, v[:1500]
+    # 2026-10-13: a pasta-mãe passou a chamar-se «Decks Por Processar».
+    assert "Decks Por Processar" in v, v[:1500]
     assert "pasta do deck" in v and "vale" in v, v[:1500]
     assert "pendentes\\deckboxes\\" in v and "caixa de plástico" in v, v[:1500]
     assert "liga cada foto à" in v, "tem de dizer que a foto se LIGA à cópia"
@@ -333,7 +334,7 @@ def caso_o_rodape_tambem_diz_onde_e_onde_nao():
     para cartas (`pendentes\\deckboxes\\`).
     """
     rod = arrumacao._RODAPE
-    assert "Colocar fotos da coleção aqui" in rod, rod[-900:]
+    assert "Decks Por Processar" in rod, rod[-900:]
     assert "pasta do deck" in rod and "_plano.txt" in rod, rod[-900:]
     assert "Tirar fotos" in rod, "a outra porta é a página"
     assert "pendentes\\deckboxes\\" in rod and "caixa de plástico" in rod

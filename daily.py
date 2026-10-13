@@ -634,8 +634,9 @@ def main():
         _step(con, "fotos-caixas", _fotos_caixas)
 
         # A PASTA POR DECK VALE COMO ALVO (André, 2026-10-01, à letra: «o melhor
-        # é criar pasta»): as fotos largadas em `Colocar fotos da coleção aqui/
-        # <nome do deck>/` passam para a raiz de `pendentes/` com o nome
+        # é criar pasta»): as fotos largadas em `Decks Por Processar/<nome do
+        # deck>/<carta (N)>/` (era «Colocar fotos da coleção aqui» até 13/10)
+        # passam para a raiz de `pendentes/` com o nome
         # `site-<slot>-…` — o mesmo que o botão «Tirar fotos» escreve. Aqui é a
         # REDE DE SEGURANÇA: quem as recolhe primeiro é o `mtg-fotos-novas` das
         # 02:30 e o modo de edição a cada pedido; mas se uma foto ficar para
@@ -726,7 +727,13 @@ def main():
                     + ("; órfãs: " + ", ".join(r["orfas"][:6])
                        if r["orfas"] else "")
                     + ("; sem pasta: " + ", ".join(r["sem_pasta"][:6])
-                       if r["sem_pasta"] else ""))
+                       if r["sem_pasta"] else "")
+                    # As pastas de CARTA (2026-10-13): quantas faltam fotografar,
+                    # e as que voltaram ou se apagaram nesta corrida.
+                    + "; pastas de carta: %d por fotografar, %d criadas, %d apagadas"
+                    % (r["cartas_pastas"]["por_pedir"],
+                       len(r["cartas_pastas"]["criadas"]),
+                       len(r["cartas_pastas"]["apagadas"])))
 
         _step(con, "fotos-plano", _fotos_plano)
 
