@@ -746,9 +746,15 @@ def _import_csv(con: sqlite3.Connection, path, *, adivinhar, acertar,
                 decide, slot_foto = (confirmado.alvo_da_pasta(foto)
                                      if foto and confirmado.manda()
                                      else (False, None))
+                # O `(N)` É O QUE O DECK PEDE, A QUANTIDADE É A DA FOTO (André,
+                # 2026-10-13): o deck leva o que a lista pede e o resto do lote
+                # fica cópia sem deck (`confirmado.quantas_leva_o_deck`).
                 if decide and ids:
                     for cid in dict.fromkeys(ids):
-                        mv = confirmado.alocar_por_foto(con, cid, slot_foto)
+                        leva = (confirmado.quantas_leva_o_deck(con, cid, slot_foto,
+                                                               cache)
+                                if slot_foto else None)
+                        mv = confirmado.alocar_por_foto(con, cid, slot_foto, leva)
                         if mv["mudou"]:
                             motivos.append(
                                 f'alocada a {slot_foto or "fora dos decks"} pela '

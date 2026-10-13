@@ -99,7 +99,9 @@ Decks Por Processar/**/*.heic
 Decks Por Processar/**/*.heif
 Decks Por Processar/**/*.webp
 Decks Por Processar/**/*.gif
-Decks Processados/
+# O LEIA-ME é a excepção (2026-10-13): é lá que ele lê as regras da foto.
+Decks Processados/*
+!Decks Processados/LEIA-ME.txt
 pendentes/_origens.json
 Fotos processadas da coleção/**/*.jpg
 Fotos processadas da coleção/**/*.jpeg

@@ -545,6 +545,23 @@ def escrever_planos(con, res: dict, cfg: dict | None = None,
     return out
 
 
+# AS QUATRO REGRAS DA FOTOGRAFIA (André, 2026-10-13, à letra). Vai no
+# `_plano.txt` de cada pasta (é o que ele lê à frente da estante) e no LEIA-ME
+# das duas árvores — o texto num sítio só, para os dois não se desencontrarem.
+TEXTO_N_E_O_QUE_PEDE = (
+    "O (N) DO NOME DA PASTA E O QUE O DECK PEDE, NAO O QUE TENS (13/10/2026).\n"
+    "Fotografas o que TENS, ate ao playset -- as tuas palavras:\n"
+    "  \"vou sempre fotografar as cartas ate ao playset\"\n"
+    "  \"caso peca apenas 2x e eu tenho playset, eu vou fotografar playset\"\n"
+    "  \"caso peca playset e eu so fotografar 2x, e porque so tenho 2x\"\n"
+    "  \"caso varios decks pecam a mesma carta, e eu coloque em diferentes\n"
+    "   pastas a mesma carta, e porque tenho multiplos da carta\"\n"
+    "Pasta (2) e foto com 4 -> entram 4: o deck leva 2, as outras 2 ficam sem\n"
+    "deck. Pasta (4) e foto com 2 -> entram 2 e o deck fica a dever 2. A pasta\n"
+    "apaga-se quando a foto ENTRA, nao quando a conta bate com o (N). A mesma\n"
+    "carta em duas pastas de deck sao copias diferentes, nunca a mesma.\n")
+
+
 def texto_familia(fam: dict, planos: list[str]) -> str:
     from . import loadout                                    # noqa: PLC0415
     nomes = loadout.nomes_das_caixas()
@@ -556,7 +573,8 @@ def texto_familia(fam: dict, planos: list[str]) -> str:
            "decide-o a alocacao (o vault), nunca a pasta -- uma carta que serve\n"
            "duas caixas nao e tirada de uma para ir para a outra por causa da\n"
            "foto. As subpastas por carta sao so para arrumar: contam todas\n"
-           "para a familia. Nada se apaga.\n"
+           "para a familia. Nada se apaga.\n\n"
+           + TEXTO_N_E_O_QUE_PEDE + "\n"
            f"A outra porta: {URL_EDICAO}\n")
     return cab + "".join("\n" + "=" * 60 + "\n" + p for p in planos)
 
@@ -571,6 +589,7 @@ def texto_sem_cartas(nome: str, slot: str) -> str:
             "foto vai para a mesma pasta em «Decks Processados\\». O que ficar\n"
             "aqui e exactamente o que falta. Se a foto parar (uma linha nao\n"
             "entrou), volta para a pasta da carta com um «_porque_parou.txt».\n\n"
+            + TEXTO_N_E_O_QUE_PEDE + "\n"
             f"O vault reconhece a pasta como este deck (alvo: {slot}).\n"
             f"A outra porta: {URL_EDICAO}\n")
 
@@ -1479,6 +1498,15 @@ def provadas_por_pasta(con) -> dict[tuple[str, str], int]:
     return out
 
 
+def carta_feita(provadas: int, pede: int) -> bool:
+    """A pasta `<carta (N)>` de um deck está FEITA? Sim, desde que haja UMA
+    cópia com foto daquele deck — o `pede` (o `(N)`) não entra na conta, de
+    propósito (André, 2026-10-13: *"caso peça playset e eu so fotografar 2x, é
+    porque só tenho 2x"*). Num sítio só, para o gerador e o teste dizerem o
+    mesmo."""
+    return int(provadas or 0) > 0
+
+
 def sincronizar_pastas_de_cartas(con, res: dict, cfg: dict | None = None,
                                  raiz: Path | str | None = None,
                                  pendentes: Path | str | None = None) -> dict:
@@ -1486,9 +1514,12 @@ def sincronizar_pastas_de_cartas(con, res: dict, cfg: dict | None = None,
     IDEMPOTENTE (André, 2026-10-13).
 
     * **cria** a pasta de uma carta que o deck pede e que a base ainda não tem
-      fotografada naquele deck (`provadas < pedidas`) — é assim que a pasta
-      VOLTA quando a carta precisa de foto outra vez: uma correcção que tirou a
-      cópia, uma lista que passou a pedir mais, uma carta que entrou no deck;
+      fotografada naquele deck (`provadas == 0`) — é assim que a pasta VOLTA
+      quando a carta precisa de foto outra vez: uma correcção que tirou a
+      cópia, uma carta que entrou no deck. **Não volta por a quantidade não
+      bater com o `(N)`** (2026-10-13: o `(N)` é o que o deck pede, a foto é o
+      que ele tem — *"caso peça playset e eu so fotografar 2x, é porque só
+      tenho 2x"*);
     * **não ressuscita** a de uma carta já provada: as provadas não se criam;
     * **apaga** a pasta (vazia!) de uma carta já provada — a que ficou por
       apagar porque a foto entrou por outro caminho (o botão da página);
@@ -1521,16 +1552,24 @@ def sincronizar_pastas_de_cartas(con, res: dict, cfg: dict | None = None,
             seguro = str(nm).translate(_SEGURO).casefold()
             tem = provadas.get((pasta, scryfall.chave(nm)), 0)
             ja = existentes.get(seguro, [])
-            if tem < q:
+            # A CARTA ESTÁ FEITA QUANDO TEM FOTO NESTE DECK, SEJA QUAL FOR A
+            # QUANTIDADE (André, 2026-10-13, à letra: *"caso peça playset e eu so
+            # fotografar 2x, é porque só tenho 2x"*). O `(N)` é o que o deck
+            # PEDE; a foto diz o que ele TEM. Comparar `tem < q` punha a pasta
+            # `Mox Opal (4)` a renascer todas as noites depois de ele ter
+            # fotografado as duas que tem — a pedir-lhe uma foto que não existe.
+            # A falta (2) fica dita no deck, que é onde se compra; a pasta não
+            # volta. Volta, sim, quando a prova cai a ZERO (uma correcção).
+            if not carta_feita(tem, q):
                 out["por_pedir"] += 1
                 if not ja:
                     nova = d / nome_de_pasta_de_carta(nm, q)
                     nova.mkdir(parents=True, exist_ok=True)
                     out["criadas"].append(f"{pasta}/{nova.name}")
                 continue
-            for x, qx in ja:
+            for x, _qx in ja:
                 rel = f"{pasta}/{x.name}"
-                if tem < qx or rel in em_espera:
+                if rel in em_espera:
                     continue
                 if apagar_pasta_feita(x, base):
                     out["apagadas"].append(rel)

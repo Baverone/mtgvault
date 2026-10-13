@@ -488,6 +488,65 @@ def alvo_da_pasta(photo_path: str | None) -> tuple[bool, str | None]:
     return False, None
 
 
+def pedido_do_deck(con, slot: str, nm: str, cache: dict | None = None) -> int:
+    """Quantas cópias desta carta a LISTA da caixa pede (main + side somados) —
+    é o `(N)` da pasta `<carta (N)>`. Zero quando a caixa não tem lista ou não
+    pede a carta. A lista lê-se UMA vez por caixa e por importação (`cache`)."""
+    from . import loadout, scryfall                          # noqa: PLC0415
+    cache = {} if cache is None else cache
+    chave = ("pedido_do_deck", slot)
+    if chave not in cache:
+        tot: dict[str, int] = {}
+        s = next((x for x in loadout.config_slots() if x.get("slot") == slot), None)
+        if s is not None:
+            cartas, _nota = loadout._slot_cards(con, s)
+            for _board, n, q in cartas:
+                k = scryfall.chave(n)
+                tot[k] = tot.get(k, 0) + int(q or 0)
+        cache[chave] = tot
+    return cache[chave].get(scryfall.chave(nm), 0)
+
+
+def quantas_leva_o_deck(con, copy_id: int, slot: str,
+                        cache: dict | None = None) -> int | None:
+    """O que a foto põe DENTRO do deck: o que a lista pede, menos o que outras
+    cópias da mesma carta já lá têm — e nunca mais do que o lote.
+
+    AS QUATRO REGRAS DA FOTOGRAFIA (André, 2026-10-13, à letra): *"vou sempre
+    fotografar as cartas até ao playset / caso peça apenas 2x e eu tenho playset,
+    eu vou fotografar playset / caso peça playset e eu so fotografar 2x, é porque
+    só tenho 2x"*. O `(N)` da pasta é o que o DECK PEDE; a quantidade é a da
+    FOTO. Numa pasta `(2)` com uma foto de 4, as quatro entram na base, o deck
+    leva DUAS e as outras duas ficam cópias sem deck (excedente, que passa pela
+    regra guardar/vender como qualquer outra). Até aqui a `alocar_por_foto` metia
+    o lote INTEIRO no deck — e era o `(N)` a ser desmentido pela alocação.
+
+    `None` quando a lista não pede a carta (ou a caixa não tem lista): aí não há
+    `(N)` que mande, e vale a regra de 02/10 tal e qual — *"o que eu colocar de
+    fotos no deck, é daquele deck, ponto"* — com o lote inteiro.
+    """
+    from . import scryfall                                   # noqa: PLC0415
+    cid = int(copy_id)
+    r = con.execute("SELECT c.name FROM copies cp JOIN cards c "
+                    "ON c.scryfall_id = cp.scryfall_id WHERE cp.id = ?",
+                    (cid,)).fetchone()
+    if r is None:
+        return None
+    pede = pedido_do_deck(con, slot, r[0], cache)
+    if pede <= 0:
+        return None
+    k = scryfall.chave(r[0])
+    ja = 0
+    for x in con.execute(
+            "SELECT ca.copy_id, ca.quantity, c.name FROM copy_allocation ca "
+            "JOIN copies cp ON cp.id = ca.copy_id "
+            "JOIN cards c ON c.scryfall_id = cp.scryfall_id "
+            "WHERE ca.slot = ? AND ca.copy_id <> ?", (slot, cid)):
+        if scryfall.chave(x[2]) == k:
+            ja += int(x[1] or 0)
+    return max(0, min(pede - ja, quantidades(con, [cid]).get(cid, 0)))
+
+
 def alocar_por_foto(con, copy_id: int, slot: str | None, q: int | None = None,
                     *, dia: str | None = None, nomes: dict | None = None,
                     log_path: Path | None = None) -> dict:

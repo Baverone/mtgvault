@@ -24,6 +24,30 @@ Reconstroi-se do zero pelas fotos. Por isso:
     a pasta dela VOLTA sozinha na corrida da noite;
   - uma pasta com fotos dentro NUNCA e apagada.
 
+O (N) E O QUE O DECK PEDE -- TU FOTOGRAFAS O QUE TENS (13/10/2026)
+-----------------------------------------------------------------
+As tuas palavras, a letra:
+
+  "vou sempre fotografar as cartas ate ao playset
+   caso peca apenas 2x e eu tenho playset, eu vou fotografar playset
+   caso peca playset e eu so fotografar 2x, e porque so tenho 2x
+   caso varios decks pecam a mesma carta, e eu coloque em diferentes pastas
+   a mesma carta, e porque tenho multiplos da carta"
+
+Por isso:
+  - «Mox Opal (2)» quer dizer que o DECK pede 2. Nao e quantas tens;
+  - pasta (2), foto com 4  -> entram as 4. O deck leva 2; as outras 2 ficam
+    copias tuas sem deck (nada vai para venda por isso -- a venda esta
+    congelada, e o RL, as fetch, as shock, as duais e a reserva de cada
+    deck continuam protegidos como sempre);
+  - pasta (4), foto com 2  -> entram as 2. O deck fica a dever 2 (aparece como
+    falta no deck) e a pasta NAO volta a pedir-te a foto;
+  - a mesma carta em pastas de decks diferentes -> sao copias DIFERENTES, uma
+    foto em cada pasta, e o vault nunca as junta numa so;
+  - nunca mais de 4 da mesma carta na mesma pasta (o playset), o que cabe
+    sempre numa foto de ate 4 cartas. As basicas sao a excepcao de sempre.
+A pasta da carta apaga-se quando a foto ENTRA, seja qual for a quantidade.
+
 Nota: o resto deste ficheiro e o historico das regras; onde diz
 «data\fotos\...» le-se agora «Decks Processados\...».
 
@@ -133,8 +157,9 @@ agora UMA PASTA POR CARTA, com a quantidade entre parentesis.
 
 Dentro de cada uma larga DUAS fotos:
 
-  1. a FRENTE, com as cartas todas dessa pasta no mesmo enquadramento
-     (se diz (4), as 4 na foto);
+  1. a FRENTE, com as cartas que TENS dessa carta no mesmo enquadramento,
+     ate ao playset (o (N) e o que o deck pede, nao o que tens -- ver
+     «O (N) E O QUE O DECK PEDE», no topo);
   2. o VERSO das mesmas, VIRADAS NO SITIO.
 
 VIRAR NO SITIO E A REGRA QUE NAO PODE FALHAR. Se virares o grupo como quem

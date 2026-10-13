@@ -167,6 +167,35 @@ name,set_code,collector_number,quantity,finish,language,condition,purpose,sub_co
   número de **cartas** (um `4× Mox Opal` são quatro), não sobre o número de
   linhas. **Não somes cartas a mais numa linha para «caber»**: escreve o que
   vês — se a foto tem seis cartas, a resposta certa é dizer que tem seis.
+- **O `(N)` DA PASTA É O QUE O DECK PEDE; A `quantity` É A DA FOTO** (André,
+  2026-10-13, à letra):
+  > *"vou sempre fotografar as cartas até ao playset / caso peça apenas 2x e eu
+  > tenho playset, eu vou fotografar playset / caso peça playset e eu so
+  > fotografar 2x, é porque só tenho 2x / caso vários decks peçam a mesma
+  > carta, e eu coloque em diferentes pastas a mesma carta, é porque tenho
+  > multiplos da carta"*
+
+  É a «foto manda» de 02/10 estendida à QUANTIDADE. Na prática, para ti:
+  1. pasta `Mox Opal (2)` e foto com **4** → escreves `quantity = 4`. Não é um
+     erro, não se recusa, e não «corriges» para 2: entram quatro cópias, o deck
+     leva as duas que pede e as outras duas ficam cópias sem deck (excedente,
+     que passa pela regra guardar/vender como qualquer outra — a venda está
+     congelada);
+  2. pasta `Mox Opal (4)` e foto com **2** → `quantity = 2`. O deck fica a
+     dever 2, e nada presume as outras duas. Nunca é motivo para deixar a linha
+     de fora nem para deixar a foto em `pendentes/`;
+  3. a **mesma carta em pastas de decks diferentes** são cópias DIFERENTES:
+     uma linha por foto, cada uma com o seu `photo_path`. Nunca as juntes numa
+     linha só nem escrevas o `photo_path` de uma na outra — o import cria uma
+     cópia por foto, e é a foto (o nome dela) que impede que a mesma prova
+     conte duas vezes;
+  4. **até ao playset**: ele nunca põe mais de 4 da mesma carta na mesma pasta,
+     por isso uma pasta de carta cabe sempre numa foto de até 4 cartas (os
+     terrenos básicos continuam isentos do tecto).
+
+  A pasta da carta em `Decks Por Processar/` apaga-se quando a foto **entra**,
+  não quando a quantidade bate com o `(N)`; e só volta quando a carta deixar de
+  ter foto nenhuma naquele deck (uma correcção).
 
 ## O estado e os versos (André, 2026-10-03)
 

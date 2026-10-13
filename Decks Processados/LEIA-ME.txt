@@ -1,0 +1,32 @@
+DECKS PROCESSADOS -- AS FOTOS QUE JA ENTRARAM
+=============================================
+
+Esta pasta e o espelho de «Decks Por Processar». Nao largas aqui nada: e o
+vault que MOVE para aqui a foto de uma carta quando ela entra na colecao,
+para a mesma pasta <deck>\<carta (N)>\ de onde ela saiu. A foto nunca se
+apaga -- e a prova da copia, e e para aqui que a copia aponta.
+
+As imagens nao vao para o Git (ficam so neste PC e no backup); este ficheiro
+vai.
+
+
+O (N) E O QUE O DECK PEDE -- A FOTO E O QUE TENS (13/10/2026)
+-------------------------------------------------------------
+As tuas palavras, a letra:
+
+  "vou sempre fotografar as cartas ate ao playset
+   caso peca apenas 2x e eu tenho playset, eu vou fotografar playset
+   caso peca playset e eu so fotografar 2x, e porque so tenho 2x
+   caso varios decks pecam a mesma carta, e eu coloque em diferentes pastas
+   a mesma carta, e porque tenho multiplos da carta"
+
+Por isso uma pasta aqui com o nome «Mox Opal (2)» pode ter uma foto de 4
+Mox Opal: o deck pediu 2 e tu tinhas 4. As 4 entraram; o deck leva 2 e as
+outras 2 sao copias tuas sem deck. E «Mox Opal (4)» com uma foto de 2 quer
+dizer que so tens 2 -- o deck fica a dever 2, e a pasta em «Decks Por
+Processar» nao volta a pedir-ta. A mesma carta em duas pastas de deck sao
+copias diferentes.
+
+Uma pasta de carta so volta a aparecer em «Decks Por Processar» quando a
+carta deixa de ter foto nenhuma naquele deck (uma correccao: a copia nao
+estava la, foi vendida, ou ficou dada como nao encontrada).
