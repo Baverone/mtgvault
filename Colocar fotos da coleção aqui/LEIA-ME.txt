@@ -79,3 +79,39 @@ pendentes\deckboxes\   e SO para a foto da DECKBOX DE PLASTICO de cada deck
 
 Nota: as IMAGENS nao vao para o Git (ficam so no PC); as PASTAS e os _plano.txt
 sim, para teres a mesma estrutura em qualquer PC.
+
+
+(c) UMA PASTA POR CARTA  ->  A PARTIR DE 2026-10-13
+----------------------------------------------------
+Decisao dele a 13/10, depois das trocas de Ghent: dentro da pasta do deck ha
+agora UMA PASTA POR CARTA, com a quantidade entre parentesis.
+
+  Modern - Pinnacle Affinity\
+    Mox Opal (4)\
+    Urza's Saga (4)\
+    Welding Jar (1)\
+
+Dentro de cada uma larga DUAS fotos:
+
+  1. a FRENTE, com as cartas todas dessa pasta no mesmo enquadramento
+     (se diz (4), as 4 na foto);
+  2. o VERSO das mesmas, VIRADAS NO SITIO.
+
+VIRAR NO SITIO E A REGRA QUE NAO PODE FALHAR. Se virares o grupo como quem
+vira uma pagina, a ordem espelha: a carta 1 passa a estar onde estava a 4, e o
+emparelhamento sai trocado sem ninguem dar por isso. Vira CADA carta onde ela
+esta, sem mexer na disposicao.
+
+Porque e que uma pasta por carta: o `recolher_das_pastas` empareilha pela
+PASTA onde o ficheiro esta -- uma subpasta e um lote que empareilha sozinho.
+Assim um engano numa pasta nao desalinha as outras.
+
+O resto e trabalho do Claude: recorta cada carta do enquadramento (no ficheiro
+original, a resolucao toda), identifica, emparelha frente com verso e propoe o
+escalao. O original fica sempre ao lado dos recortes.
+
+A LUZ PESA MAIS DO QUE A RESOLUCAO: o flash de frente ESCONDE o desgaste das
+bordas; luz difusa num angulo ligeiro MOSTRA-O. Fundo escuro e mate, sem
+sleeve, a carta a encher o enquadramento.
+
+Os `Extras (fora dos decks)` continuam so de frente, sem subpastas.
