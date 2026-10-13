@@ -1,110 +1,15 @@
 PLANO DE FOTOS -- Cloud cEDH
-slot: cedh-cloud | 19 fotos para 65 cartas
+slot: cedh-cloud
 
-REGRA: no maximo 4 CARTAS por foto, agrupadas por TIPO.
-As copias da MESMA carta vao sempre juntas (4x Mox Opal = 1 foto).
-Cada carta tem de estar a vista e poder avaliar-se.
+O vault ainda nao tem cartas registadas neste deck (a colecao foi
+esvaziada a 13/10/2026 e reconstroi-se pelas fotos).
 
-ONDE LARGAR AS FOTOS: NESTA PASTA.
-  O vault reconhece a pasta como este deck (alvo: cedh-cloud) e trata
-  as fotos como se as tivesses tirado na pagina. Nao precisas de
-  fixar alvo nenhum. Podes fazer subpastas de lote ('lote1').
-  A foto e MOVIDA daqui para pendentes\ com o nome a dizer o deck,
-  e depois arrumada em data\fotos\cedh-cloud\. Nada se apaga.
+O QUE FOTOGRAFAR: cada subpasta «<carta> (N)» desta pasta e uma
+carta do deck que ainda nao tem foto. Larga a foto da carta na
+pasta dela. Quando a foto entrar, a pasta da carta e APAGADA e a
+foto vai para a mesma pasta em «Decks Processados\». O que ficar
+aqui e exactamente o que falta. Se a foto parar (uma linha nao
+entrou), volta para a pasta da carta com um «_porque_parou.txt».
 
-A OUTRA PORTA: https://editar-mtg.baverone.com/
-  botao «Tirar fotos» (abre a camara do telemovel) -- ai nao ha
-  pasta nenhuma, a foto guarda-se sozinha.
-
-======================================================================
-
-  PLANESWALKERS
-    foto 01  (1 carta)
-            Tezzeret, Cruel Captain                EOE   nonfoil  en
-  CRIATURAS
-    foto 02  (4 cartas)
-            Auriok Salvagers                       MMA   nonfoil  en
-            Auriok Steelshaper                     MRD   nonfoil  en
-            Boromir, Warden of the Tower           LTR   nonfoil  en
-            Cloud, Midgar Mercenary                FIN   nonfoil  en
-    foto 03  (4 cartas)
-            Curious Farm Animals                   TLA   nonfoil  en
-            Esper Sentinel                         H2R   nonfoil  en
-            Glaring Fleshraker                     MH3   nonfoil  en
-            Grand Abolisher                        PBIG  nonfoil  en
-    foto 04  (4 cartas)
-            Memnite                                SOM   nonfoil  en
-            Myr Moonvessel                         DST   nonfoil  en
-            Myr Retriever                          2XM   nonfoil  en
-            Ornithopter                            10E   nonfoil  en
-    foto 05  (4 cartas)
-            Puresteel Paladin                      SLD   nonfoil  en
-            Ranger-Captain of Eos                  FCA   nonfoil  en
-            Recruiter of the Guard                 MH3   nonfoil  en
-            Salvage Scout                          SOM   nonfoil  en
-    foto 06  (4 cartas)
-            Scrap Trawler                          AER   nonfoil  en
-            Solitude                               MH2   nonfoil  en
-            Starfield Shepherd                     EOE   nonfoil  en
-            Teshar, Ancestor's Apostle             DOM   nonfoil  en
-    foto 07  (4 cartas)
-            Voice of Victory                       TDM   nonfoil  en
-            Walking Ballista                       MB2   nonfoil  en
-            Witch Enchanter                        MH3   nonfoil  en
-            Éowyn, Lady of Rohan                   LTR   nonfoil  en
-  ARTEFACTOS
-    foto 08  (4 cartas)
-            Ancient Den                            SLD   nonfoil  en
-            Arcane Signet                          ELD   nonfoil  en
-            Ashnod's Altar                         SLD   nonfoil  en
-            Chrome Mox                             SPG   nonfoil  en
-    foto 09  (4 cartas)
-            Grim Monolith                          ULG   nonfoil  en
-            Krark-Clan Ironworks                   SLC   nonfoil  en
-            Lotus Petal                            MB2   nonfoil  en
-            Mana Vault                             2X2   nonfoil  en
-    foto 10  (4 cartas)
-            Moonsilver Key                         MID   nonfoil  en
-            Mox Amber                              DOM   nonfoil  en
-            Mox Diamond                            STH   nonfoil  en
-            Mox Opal                               2XM   nonfoil  en
-    foto 11  (4 cartas)
-            Oketra's Monument                      AKH   nonfoil  en
-            Paradise Mantle                        SLD   nonfoil  en
-            Phoenix Down                           FIN   nonfoil  en
-            Phyrexian Altar                        2X2   nonfoil  en
-    foto 12  (4 cartas)
-            Pre-War Formalwear                     PIP   nonfoil  en
-            Skullclamp                             SLD   nonfoil  en
-            Sol Ring                               SLD   nonfoil  en
-            Springleaf Drum                        SLP   nonfoil  en
-    foto 13  (1 carta)
-            Tormod's Crypt                         MB2   nonfoil  en
-  ENCANTAMENTOS
-    foto 14  (2 cartas)
-            Touch the Spirit Realm                 GDY   nonfoil  en
-            Urza's Saga                            SLC   nonfoil  en
-  INSTANTÂNEOS
-    foto 15  (4 cartas)
-            Abolish                                PCY   nonfoil  en
-            Enlightened Tutor                      TLE   nonfoil  en
-            Orim's Chant                           MH3   nonfoil  en
-            Patrician's Scorn                      FUT   nonfoil  en
-    foto 16  (1 carta)
-            Silence                                SLD   nonfoil  en
-  FEITIÇOS
-    foto 17  (4 cartas)
-            Helping Hand                           LCI   nonfoil  en
-            Jolted Awake                           MH3   nonfoil  en
-            Return to the Ranks                    M15   nonfoil  en
-            Sevinne's Reclamation                  MH3   nonfoil  en
-  TERRAS
-    foto 18  (4 cartas)
-            Ancient Tomb                           LTC   nonfoil  en
-            Cavern of Souls                        LTC   nonfoil  en
-            City of Traitors                       EXO   nonfoil  en
-            Crystal Vein                           MIR   nonfoil  en
-    foto 19  (4 cartas)
-            Gemstone Caverns                       LTC   nonfoil  en
-         3x Plains                                 ODY   nonfoil  en
-
+O vault reconhece a pasta como este deck (alvo: cedh-cloud).
+A outra porta: https://editar-mtg.baverone.com/

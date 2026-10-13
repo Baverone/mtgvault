@@ -303,10 +303,15 @@ def caso_a_base_a_serio_nao_tem_uma_unica_referencia_a_foto():
         return
     con = sqlite3.connect(f"file:{vault}?mode=ro", uri=True)
     try:
+        # [CORRIGIDO A 2026-10-13] as fotos NOVAS (as duas árvores) vivem em
+        # `Decks Processados/` e são legítimas; o que se tranca é que nenhuma
+        # cópia volte a referir uma das fotos APAGADAS a 04/10.
         n = con.execute(
-            "SELECT COUNT(*) FROM copies WHERE photo_path IS NOT NULL "
+            "SELECT COUNT(*) FROM copies WHERE "
+            "(photo_path IS NOT NULL AND photo_path NOT LIKE 'Decks Processados/%') "
             "OR foto_anterior IS NOT NULL OR validado_em IS NOT NULL "
-            "OR verso_path IS NOT NULL").fetchone()[0]
+            "OR (verso_path IS NOT NULL AND verso_path NOT LIKE 'Decks Processados/%')"
+            ).fetchone()[0]
         total = con.execute("SELECT COUNT(*) FROM copies").fetchone()[0]
         cartas = con.execute("SELECT SUM(quantity) FROM copies").fetchone()[0]
     finally:
@@ -322,6 +327,17 @@ def caso_a_base_a_serio_nao_tem_uma_unica_referencia_a_foto():
     # O que se tranca é o que a frase quer dizer: **nunca menos** do que o que
     # havia no dia em que as fotos se apagaram.
     PISO_LINHAS, PISO_CARTAS = 737, 1678
+    # [CORRIGIDO A 2026-10-13] ele mandou ESVAZIAR a `copies` («o melhor e
+    # esvaziar tudo!»), DEPOIS de ela ser arquivada inteira. O piso passa a
+    # valer para a base OU para o arquivo desse dia: «nada se apagou» quer dizer
+    # que as 737 linhas estão num dos dois sítios.
+    arq = RAIZ / "data" / "copies-esvaziada-2026-10-13.csv"
+    if total < PISO_LINHAS and arq.exists():
+        import csv as _csv
+        with arq.open(encoding="utf-8", newline="") as fh:
+            linhas = list(_csv.DictReader(fh))
+        total = max(total, len(linhas))
+        cartas = max(cartas or 0, sum(int(x["quantity"]) for x in linhas))
     assert total >= PISO_LINHAS, (
         f"a `copies` tem {total} linhas e no dia em que as fotos se apagaram "
         f"(2026-10-04) tinha {PISO_LINHAS}: alguma coisa se apagou")

@@ -1,6 +1,32 @@
 COMO TIRAR E ONDE LARGAR AS FOTOS DAS CARTAS
 ============================================
 
+AS DUAS ARVORES (13/10/2026) -- LE ISTO PRIMEIRO
+------------------------------------------------
+Esta pasta chama-se agora «Decks Por Processar» (era «Colocar fotos da
+coleccao aqui»). Ao lado dela ha «Decks Processados».
+
+  Decks Por Processar\<deck>\<carta (N)>\   <- AQUI largas as fotos
+  Decks Processados\<deck>\<carta (N)>\     <- o vault move-as para la
+
+A colecao do vault foi ESVAZIADA a 13/10 (depois das trocas de Ghent ja nao
+era a tua colecao; o arquivo esta em data\copies-esvaziada-2026-10-13.csv).
+Reconstroi-se do zero pelas fotos. Por isso:
+
+  - cada pasta «<carta> (N)» e uma carta que ainda NAO tem foto;
+  - quando a foto dela ENTRA, a pasta da carta e APAGADA aqui e a foto fica
+    na mesma pasta em «Decks Processados»;
+  - o que resta aqui e exactamente o que falta fotografar; vazio = acabou;
+  - se a foto PARAR (uma linha nao entrou), ela VOLTA para a pasta da carta
+    com um «_porque_parou.txt». Nao e relida ate tirares uma foto nova para
+    la ou apagares esse ficheiro;
+  - se uma carta precisar de foto outra vez (uma correccao, a lista mudou),
+    a pasta dela VOLTA sozinha na corrida da noite;
+  - uma pasta com fotos dentro NUNCA e apagada.
+
+Nota: o resto deste ficheiro e o historico das regras; onde diz
+«data\fotos\...» le-se agora «Decks Processados\...».
+
 Ha DUAS portas, e as duas dao ao mesmo sitio. Escolhe a que te der mais jeito.
 
 

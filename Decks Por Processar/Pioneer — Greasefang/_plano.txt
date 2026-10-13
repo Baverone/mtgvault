@@ -1,11 +1,15 @@
 PLANO DE FOTOS -- Pioneer — Greasefang
 slot: pioneer
 
-Este deck NAO tem cartas registadas dentro da caixa, por isso
-nao ha nada para fotografar aqui ainda.
+O vault ainda nao tem cartas registadas neste deck (a colecao foi
+esvaziada a 13/10/2026 e reconstroi-se pelas fotos).
 
-Quando houver, as fotos vem para ESTA pasta: o vault reconhece
-a pasta como este deck (alvo: pioneer) e trata-as como se as
-tivesses tirado na pagina. Nada se apaga.
+O QUE FOTOGRAFAR: cada subpasta «<carta> (N)» desta pasta e uma
+carta do deck que ainda nao tem foto. Larga a foto da carta na
+pasta dela. Quando a foto entrar, a pasta da carta e APAGADA e a
+foto vai para a mesma pasta em «Decks Processados\». O que ficar
+aqui e exactamente o que falta. Se a foto parar (uma linha nao
+entrou), volta para a pasta da carta com um «_porque_parou.txt».
+
+O vault reconhece a pasta como este deck (alvo: pioneer).
 A outra porta: https://editar-mtg.baverone.com/
-O plano a serio esta na pagina «Arrumacao por fases», Fase 2.
