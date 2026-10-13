@@ -122,10 +122,12 @@ name,set_code,collector_number,quantity,finish,language,condition,purpose,sub_co
   estado e os versos», abaixo). Sem verso deixa-o VAZIO: o estado fica «por
   verificar» e não se inventa. Um `condition` escrito sem verso confirmado **não
   é aplicado** — fica registado como proposta recusada, com o motivo.
-- **condition_notes** — os MOTIVOS do escalão, com a **ZONA**: «branco no canto
-  inferior esquerdo e na borda de cima», «dois riscos junto à arte», «sem
-  vincos». Um escalão sem motivos não se confere nem se corrige, e é esta linha
-  que ensina quando o André o corrige.
+- **condition_notes** — os MOTIVOS do escalão, **um sub-juízo por critério, com
+  a ZONA** (desde 2026-10-13, vocabulário fixo): `cantos: … | bordas: … |
+  superfície: …` — «cantos: inferior esquerdo com ponta branca | bordas: branco
+  na de cima | superfície: limpa, sem vincos». A **centragem não conta** (é
+  fabrico, não desgaste). Um escalão sem motivos não se confere nem se corrige,
+  e é esta linha que ensina quando o André o corrige.
 - **verso_ok** — `sim` quando **viste o verso** na foto `…-v.<ext>` desta frente.
   É a CONFERÊNCIA do emparelhamento: o `-v` do nome é só a hipótese. Sem este
   `sim` não se grava escalão nenhum.
@@ -204,9 +206,11 @@ As palavras dele: *«verso as dos decks e as que são para guardar, para já»* 
 fotos, vais melhorando o teu critério»*.
 
 **Lê primeiro `data/estado-criterio.md`.** Tem as definições dos sete escalões
-transcritas **da fonte** (<https://help.cardmarket.com/en/CardCondition>), as
-regras avulsas que decidem casos concretos (clouding, riscos, planura, bordas
-pintadas) e a secção **«Aprendido com o André»**, que cresce com as correcções
+transcritas **da fonte** (<https://help.cardmarket.com/en/CardCondition>), o
+**método** de 2026-10-13 — três critérios (**cantos, bordas, superfície**; a
+centragem fica de fora), os limiares, o tapete preto como requisito, e as duas
+verificações próprias da colecção dele (clouding nos foils da era Urza's/7.ª e
+linhas de rolo nas duais de Revised) — e a secção **«Aprendido com o André»**, que cresce com as correcções
 dele. O `pendentes/esperadas.md` traz-te esse texto à frente, já com os **erros
 repetidos meus** e as **últimas correcções dele** — lê-os antes de julgar.
 

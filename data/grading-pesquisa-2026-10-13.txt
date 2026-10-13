@@ -1,0 +1,139 @@
+COMO SE ATRIBUI GRADE A UMA CARTA
+pesquisa, 13 de Outubro de 2026
+================================================================
+
+O QUE EXISTE LA FORA, E QUAL DELES E O TEU
+------------------------------------------
+Ha duas familias de escalas, e nao se misturam:
+
+PROFISSIONAL (PSA, BGS, CGC) -- escala 1 a 10, para cartas que vao
+para uma caixa selada. Julga a carta como OBJECTO, incluindo defeitos
+de FABRICO.
+
+COMERCIAL (Cardmarket) -- sete escaloes MT / NM / EX / GD / LP / PL /
+PO, para vender. Julga o DESGASTE, nao o fabrico.
+
+O TEU e o do Cardmarket. Ja o tens transcrito da fonte no
+`data/estado-criterio.md`. O que faltava era o METODO -- como se chega
+la a partir de uma foto -- e e isso que esta pesquisa traz.
+
+
+O METODO PROFISSIONAL, E O QUE DELE TE SERVE
+--------------------------------------------
+PSA e BGS decompoem o juizo em QUATRO criterios. E esta decomposicao
+que vale a pena roubar, porque transforma "parece EX" num juizo com
+razoes que se podem conferir:
+
+  1. CENTRAGEM   -- as margens estao iguais?
+  2. CANTOS      -- pontas brancas, fiadas, dobradas, redondas?
+  3. BORDAS      -- branqueamento, lascas, mossas ao longo dos quatro lados
+  4. SUPERFICIE  -- riscos, vincos, manchas, perda de brilho, defeitos de impressao
+
+ATENCAO, E O PONTO MAIS IMPORTANTE DESTA PESQUISA:
+A CENTRAGEM NAO ENTRA NO TEU CASO. E uma propriedade de fabrico, nao
+de desgaste. Uma carta mal centrada de origem continua NM no
+Cardmarket. O PSA mede-a com tolerancias (10 exige 55/45 a frente,
+9 exige 65/35, 8 exige 70/30); o Cardmarket ignora-a.
+Logo: para ti sao TRES criterios -- cantos, bordas, superficie.
+A centragem so interessa se algum dia mandares selar uma carta.
+
+
+AS REGRAS CONCRETAS QUE SE PODEM APLICAR
+----------------------------------------
+Estas sao as que trazem numero ou limiar, e as que o sistema pode usar:
+
+BORDAS
+  "Se consegues ver branco na borda a vista desarmada, e PSA 8 no
+  maximo." Traduzido para a tua escala: branqueamento visivel a olho
+  = JA NAO E NM.
+
+CANTOS
+  Um unico canto amolecido chega para descer de NM para LP.
+  Varias bordas branqueadas empurram para MP (o GD/LP teu).
+
+DISTANCIA -- o teste mais util de todos
+  Se o desgaste e obvio a DOIS METROS, e HP (o teu PL/PO).
+  Se tens de aproximar-te para o encontrar, e MP (o teu GD/LP).
+
+VINCO DE BARALHAR
+  Marca em forma de unha, na borda de cima, de baralhar riffle.
+  Nao tem conserto. No PSA e 6 automatico; na tua escala puxa para
+  LP/PL conforme a profundidade.
+
+NA DUVIDA
+  Desce um escalao. Quem compra fica contente por receber melhor do
+  que esperava; o contrario gera disputa.
+
+CARTAS JOGADAS
+  Uma carta que andou num deck sem sleeve praticamente nunca e NM.
+
+
+O QUE E ESPECIFICO DO MAGIC -- E DA TUA COLECCAO
+-------------------------------------------------
+BORDA PRETA NAO ESCONDE NADA. Qualquer branco salta. Por isso a
+inspeccao faz-se sobre TAPETE PRETO, nunca branco. E ha um segundo
+motivo que eu nao sabia: contra preto distingue-se uma borda LASCADA
+(branco a mostra) de uma borda PINTADA (alguem passou marcador por
+cima do branco). Isso e deteccao de fraude, e vale para o que
+compras.
+
+CLOUDING NOS FOILS ANTIGOS. Veu leitoso nos foils da era Urza's e da
+7a edicao, de humidade ao longo de ~20 anos. As vezes sai com
+microfibra. ISTO INTERESSA-TE DIRECTAMENTE: e exactamente a era do
+teu Premodern.
+
+LINHAS DE IMPRESSAO NAS DUALS DE REVISED. Linhas verticais de
+rolo, comuns nas duals de Revised, e o PSA passou a penaliza-las
+mais do que penalizava em 2020. TENS 45 DUALS, quase todas Revised.
+
+ERA CONTRA ERA. Julga-se carta antiga contra carta da mesma era, nao
+contra impressao moderna. O cartao velho e outro material.
+
+
+COMO SE OLHA, NA PRATICA
+------------------------
+Limpa com microfibra primeiro -- po confunde-se com desgaste.
+Luz forte e UNIFORME. Luz fraca esconde e faz sobre-avaliar.
+Luz natural de janela serve bem.
+Depois, por esta ordem:
+  1. bordas e cantos (e onde esta a maioria do desgaste, e e o que
+     separa NM de LP)
+  2. superficie, inclinando a carta contra a luz -- os riscos so
+     aparecem em certos angulos; os foils precisam de mais atencao
+  3. planura: olhar ao longo da carta a procura de vincos e empeno.
+     Uma curva ligeira de humidade e normal; um vinco que QUEBRA a
+     superficie e grave.
+
+Erros comuns: luz fraca ou desigual; confundir po e dedadas com
+dano; chamar NM a carta que andou em deck; nao ver riscos em foil;
+aplicar criterios diferentes ao longo da mesma coleccao.
+
+
+O QUE ISTO MUDA NO TEU SISTEMA
+------------------------------
+1. O escalao passa a ter TRES sub-juizos nomeados (cantos, bordas,
+   superficie) em vez de um palpite unico. Cada um com a sua zona.
+   E o que o `condition_notes` ja pedia -- "motivos com a ZONA" --
+   mas agora com um vocabulario fixo.
+2. A centragem sai do caminho: nao se mede, nao se menciona.
+3. O teste dos dois metros e implementavel: e uma pergunta sobre o
+   recorte a tamanho reduzido contra o recorte ampliado.
+4. O tapete preto passa a ser requisito das fotos, nao sugestao.
+5. As duals de Revised e os foils de Premodern levam uma verificacao
+   propria -- linhas de rolo e clouding -- porque sao o grosso do
+   valor da tua coleccao.
+
+O LIMITE HONESTO, que nao muda: de foto de telemovel defende-se
+NM / EX / GD / LP com razao escrita. Nao se distingue MT de NM, nem
+se veem riscos finos de superficie. E uma estimativa com motivo,
+nunca uma classificacao certificada -- e a tua correccao ganha
+sempre.
+
+
+FONTES
+------
+cardgrading.app/psa-grading-standards
+cardgrading.app/bgs-grading-standards
+pregradecards.com/blog/grading-magic
+scanyourmtg.com/how-to/grade-mtg-card-condition
+help.cardmarket.com/en/CardCondition (ja na fonte do teu criterio)

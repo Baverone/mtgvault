@@ -637,8 +637,13 @@ def _seccao_estado(con) -> list[str]:
         "bateu — escreve as cartas normalmente e **não** preenchas o "
         "`condition`;",
         "- com o verso confirmado, escreve `condition` (MT|NM|EX|GD|LP|PL|PO) e "
-        "`condition_notes` (os motivos, com a ZONA: «branco no canto inferior "
-        "esquerdo», «risco junto à arte») nas linhas da frente;",
+        "`condition_notes` nas linhas da frente;",
+        f"- **TRÊS CRITÉRIOS, sempre os três, cada um com a ZONA** (2026-10-13): "
+        f"**{estado.CRITERIOS[0]}**, **{estado.CRITERIOS[1]}** e "
+        f"**{estado.CRITERIOS[2]}** — o `condition_notes` escreve-se "
+        f"`{estado.FORMA_MOTIVOS}`, e o escalão sai do pior dos três. "
+        f"{estado.SEM_CENTRAGEM[0].upper()}{estado.SEM_CENTRAGEM[1:]}. Tapete "
+        f"PRETO é requisito da foto; os limiares estão no critério, abaixo;",
         "- **sem verso não escrevas `condition`.** Sem verso o estado fica «por "
         "verificar», e não se inventa;",
         "- se não conseguires decidir, **di-lo** no `condition_notes` em vez de "

@@ -864,6 +864,16 @@ def acerto(con) -> dict:
 CRITERIO = "estado-criterio.md"
 MARCA_APRENDIDO = "## Aprendido com o André"
 
+# OS TRÊS CRITÉRIOS NOMEADOS (pesquisa de 2026-10-13, `data/grading-pesquisa-
+# 2026-10-13.txt`): o juízo parte-se em cantos, bordas e superfície, cada um com
+# a sua zona, no `condition_notes`. A CENTRAGEM, o quarto critério do PSA/BGS,
+# fica de fora de propósito — é fabrico, não desgaste, e o Cardmarket ignora-a.
+# O método por extenso vive no `data/estado-criterio.md`; isto é o vocabulário.
+CRITERIOS = ("cantos", "bordas", "superfície")
+FORMA_MOTIVOS = " | ".join(f"{c}: <o que se vê e onde>" for c in CRITERIOS)
+SEM_CENTRAGEM = ("a CENTRAGEM não conta: é fabrico, não desgaste — uma carta mal "
+                 "centrada de origem continua NM no Cardmarket")
+
 
 def ficheiro_criterio() -> Path:
     return db.pasta_dados() / CRITERIO
