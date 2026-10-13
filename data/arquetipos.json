@@ -18,7 +18,7 @@
     "Wasteland"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-12"
+   "ultima": "2026-10-13"
   },
   "109d2b9883": {
    "formato": "premodern",
@@ -91,7 +91,7 @@
     "Volrath's Shapeshifter"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-12"
+   "ultima": "2026-10-13"
   },
   "2811f9a69f": {
    "formato": "premodern",
@@ -110,7 +110,7 @@
     "Withered Wretch"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-12"
+   "ultima": "2026-10-13"
   },
   "3885b4666a": {
    "formato": "premodern",
@@ -130,7 +130,7 @@
     "Skycloud Expanse"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-12"
+   "ultima": "2026-10-13"
   },
   "415270d83c": {
    "formato": "premodern",
@@ -150,7 +150,7 @@
     "Windswept Heath"
    ],
    "primeira": "2026-10-02",
-   "ultima": "2026-10-12"
+   "ultima": "2026-10-13"
   },
   "4841da6e7f": {
    "formato": "premodern",
@@ -167,11 +167,11 @@
    "formato": "premodern",
    "nome": "Elves / Survival",
    "nucleo": [
-    "Deranged Hermit",
     "Fyndhorn Elves",
     "Gaea's Cradle",
     "Llanowar Elves",
     "Masticore",
+    "Monk Realist",
     "Nantuko Vigilante",
     "Priest of Titania",
     "Quirion Ranger",
@@ -181,7 +181,7 @@
     "Wirewood Symbiote"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-12"
+   "ultima": "2026-10-13"
   },
   "72740aba9b": {
    "formato": "premodern",
@@ -201,7 +201,7 @@
     "Wrath of God"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-12"
+   "ultima": "2026-10-13"
   },
   "7fbd22f4da": {
    "formato": "legacy",
@@ -218,6 +218,7 @@
    "nome": "Landstill",
    "nucleo": [
     "Adarkar Wastes",
+    "Counterspell",
     "Decree of Justice",
     "Disenchant",
     "Dust Bowl",
@@ -225,13 +226,12 @@
     "Flooded Strand",
     "Impulse",
     "Mana Leak",
-    "Mishra's Factory",
     "Powder Keg",
     "Standstill",
     "Wrath of God"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-12"
+   "ultima": "2026-10-13"
   },
   "8a1f5ac7b3": {
    "formato": "premodern",
@@ -248,7 +248,7 @@
     "Teferi's Isle"
    ],
    "primeira": "2026-09-30",
-   "ultima": "2026-10-12"
+   "ultima": "2026-10-13"
   },
   "95a99aa40d": {
    "formato": "premodern",
@@ -297,7 +297,7 @@
     "Sulfuric Vortex"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-12"
+   "ultima": "2026-10-13"
   },
   "a81c510adf": {
    "formato": "premodern",
@@ -370,7 +370,7 @@
     "Thwart"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-12"
+   "ultima": "2026-10-13"
   },
   "b4dcbc5dbb": {
    "formato": "premodern",
@@ -390,7 +390,7 @@
     "Vision Charm"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-12"
+   "ultima": "2026-10-13"
   },
   "b827ca4ad1": {
    "formato": "premodern",
@@ -429,17 +429,17 @@
     "Wild Growth"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-12"
+   "ultima": "2026-10-13"
   },
   "c6998a9b7d": {
    "formato": "premodern",
    "nome": "Oath of Druids",
    "nucleo": [
-    "Mishra's Factory",
+    "Mox Diamond",
+    "Naturalize",
     "Oath of Druids",
     "Rishadan Port",
     "Sphere of Resistance",
-    "Swords to Plowshares",
     "Sylvan Library",
     "Terravore",
     "Thermokarst",
@@ -449,11 +449,11 @@
     "Winter's Grasp"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-12"
+   "ultima": "2026-10-13"
   },
   "c8d54b483e": {
    "formato": "premodern",
-   "nome": "Sligh",
+   "nome": "Pyrostatic Pillar",
    "nucleo": [
     "Barbarian Ring",
     "Bloodstained Mire",
@@ -468,7 +468,7 @@
     "Wooded Foothills"
    ],
    "primeira": "2026-09-20",
-   "ultima": "2026-10-12"
+   "ultima": "2026-10-13"
   },
   "cc47c1209f": {
    "formato": "premodern",
@@ -496,7 +496,6 @@
     "Bottomless Pit",
     "Cabal Therapy",
     "Cursed Scroll",
-    "Duress",
     "Funeral Charm",
     "Mishra's Factory",
     "Phyrexian Furnace",
@@ -504,10 +503,11 @@
     "Ravenous Rats",
     "Skittering Skirge",
     "Smother",
-    "The Rack"
+    "The Rack",
+    "Wasteland"
    ],
    "primeira": "2026-10-05",
-   "ultima": "2026-10-12"
+   "ultima": "2026-10-13"
   },
   "e62ac61340": {
    "formato": "premodern",
@@ -524,6 +524,7 @@
    "formato": "premodern",
    "nome": "Golgari Graveborn Muse",
    "nucleo": [
+    "Deranged Hermit",
     "Diabolic Edict",
     "Dust Bowl",
     "Graveborn Muse",
@@ -533,12 +534,11 @@
     "Ravenous Baloth",
     "Ravenous Rats",
     "Recurring Nightmare",
-    "Smother",
     "Treetop Village",
     "Wall of Blossoms"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-12"
+   "ultima": "2026-10-13"
   },
   "e8c086499f": {
    "formato": "premodern",
@@ -562,7 +562,7 @@
     "Jackal Pup",
     "Karplusan Forest",
     "Lava Dart",
-    "Mogg Fanatic",
+    "Lightning Bolt",
     "Naturalize",
     "Quirion Dryad",
     "Rancor",
@@ -570,7 +570,7 @@
     "Wooded Foothills"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-12"
+   "ultima": "2026-10-13"
   },
   "f102883ccf": {
    "formato": "premodern",
@@ -588,20 +588,20 @@
    "nome": "Terrageddon",
    "nucleo": [
     "Armageddon",
-    "Battlefield Forge",
     "Call of the Herd",
+    "Gemstone Mine",
     "Mox Diamond",
     "Naturalize",
+    "Rishadan Port",
     "Rith's Grove",
     "Secluded Steppe",
     "Sylvan Library",
     "Terravore",
     "Tranquil Thicket",
-    "Weathered Wayfarer",
-    "Werebear"
+    "Weathered Wayfarer"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-12"
+   "ultima": "2026-10-13"
   },
   "f886821817": {
    "formato": "premodern",
@@ -618,7 +618,7 @@
     "Smother"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-12"
+   "ultima": "2026-10-13"
   }
  },
  "versao": 1
