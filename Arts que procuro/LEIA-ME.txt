@@ -1,0 +1,35 @@
+ARTS QUE PROCURO
+================
+
+Andre, 13/10/2026: "quero colocar a Art da carta que quero, assim quando te
+pedir o que me faz falta, sabes exatamente a Art da Carta que eu procuro".
+
+COMO SE USA
+-----------
+Uma pasta por carta, com o nome da carta. Dentro, a imagem da art que
+queres daquela carta.
+
+  Arts que procuro/
+    Mox Opal/
+    Urza's Saga/
+    Underground Sea/
+
+O Claude olha para a imagem, identifica a EDICAO e o NUMERO, e regista-a
+como a impressao que tu queres daquela carta. A partir dai a lista de
+faltas e o PRECO passam a ser os dessa impressao, e nao os da impressao
+mais barata que serve.
+
+Se uma carta nao tiver pasta aqui, mantem-se a regra normal: a mais
+barata que e legal nesse formato e que cumpre a lingua e o acabamento.
+
+PORQUE E QUE ISTO NAO ESTA DENTRO DE "Colocar fotos da coleccao aqui"
+---------------------------------------------------------------------
+Porque la dentro seria catalogado como carta TUA.
+
+O `recolher_das_pastas` varre as pastas de deck com rglob, ou seja
+QUALQUER imagem a qualquer profundidade debaixo de uma pasta de deck e
+recolhida e tratada como foto de uma carta que tens. Uma art posta la
+dentro viraria uma copia fantasma na coleccao.
+
+Esta pasta e irma de "Colocar fotos da coleccao aqui", nunca filha.
+Nada daqui entra na coleccao.
