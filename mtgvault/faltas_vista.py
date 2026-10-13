@@ -37,7 +37,7 @@ desse ficheiro. Aqui só se desenha o que ele respondeu.
 """
 from __future__ import annotations
 
-from . import loadout, scryfall as _scry, versoes
+from . import arts, loadout, scryfall as _scry, versoes
 
 
 def sem_deck_escolhido(fmt: str, cfg: dict | None = None) -> bool:
@@ -75,10 +75,34 @@ def _linha(con, s: dict, m: dict, cache: dict) -> dict:
     # subtotal estava sistematicamente ABAIXO do que ele vai pagar. Esconder o
     # segundo número era deixá-lo escolher onde caçar por uma conta errada.
     legal = serve["unit"] if serve["unit"] is not None else unit
+    # A ART QUE ELE PROCURA (André, 2026-10-13): *"se for de uma carta que eu ja
+    # tenho, a Art tem que ser a mesma"*. O preço de REFERÊNCIA da linha passa a
+    # ser o da impressão que ele quer — a que escolheu em `Arts que procuro/`, ou
+    # a que já tem — e só sem nenhuma das duas fica a regra genérica (a mais
+    # barata que serve a caixa). A linha DIZ de qual veio (`origem_preco`): um
+    # preço de outra art apresentado como se fosse o dele era o erro das duas
+    # verdades. Quem decide é o `arts.preferida`, num sítio só.
+    pref = arts.preferida(con, nm, cache)
+    fin = m.get("price_finish") or "nonfoil"
+    p_arte = arts.preco(con, pref, fin, cache)
+    if pref["origem"] in ("escolhida", "a_que_tens") and p_arte is not None:
+        origem, ref, sid = pref["origem"], p_arte, pref["sid"]
+    else:
+        origem, ref = "regra", legal
     return {
         "nm": nm, "q": q, "unit": unit,
         "total": round((unit or 0) * q, 2),
         "unit_serve": serve["unit"], "total_serve": round((legal or 0) * q, 2),
+        "unit_ref": ref, "total_ref": round((ref or 0) * q, 2),
+        "origem_preco": origem,
+        "arte": {"origem": pref["origem"], "set": pref["set"], "num": pref["num"],
+                 # A art que ele quer mas que não está cotada neste acabamento:
+                 # cai na regra e a linha di-lo, em vez de somar o preço de outra.
+                 "sem_preco": (pref["origem"] in ("escolhida", "a_que_tens")
+                               and p_arte is None),
+                 "opcoes": [f"{o['set'].upper()} #{o['num']}"
+                            for o in pref["opcoes"]]
+                 if pref["origem"] == "ambigua" else []},
         "sid": sid,
         "board": m.get("board") or "main",
         "req": m.get("req_compra") or loadout.requisito_material(s),
@@ -102,7 +126,7 @@ def vista(con, rep: dict, cfg: dict | None = None) -> dict:
         if not ms:
             continue
         linhas = [_linha(con, s, m, cache) for m in ms]
-        linhas.sort(key=lambda l: (-l["total"], l["nm"]))
+        linhas.sort(key=lambda l: (-l["total_ref"], l["nm"]))
         fmt = s.get("formato") or ""
         d = {
             "slot": s["slot"], "nome": s["nome"], "formato": fmt,
@@ -111,6 +135,7 @@ def vista(con, rep: dict, cfg: dict | None = None) -> dict:
             "copias": sum(l["q"] for l in linhas),
             "valor": round(sum(l["total"] for l in linhas), 2),
             "valor_serve": round(sum(l["total_serve"] for l in linhas), 2),
+            "valor_ref": round(sum(l["total_ref"] for l in linhas), 2),
             "sem_preco": sum(l["q"] for l in linhas if l["unit"] is None),
             "avisos": sum(1 for l in linhas
                           if (l["aviso"] or {}).get("grau") == "aviso"),
@@ -118,8 +143,8 @@ def vista(con, rep: dict, cfg: dict | None = None) -> dict:
             "linhas": linhas,
         }
         (proposta if d["proposta"] else decks).append(d)
-    decks.sort(key=lambda d: -d["valor"])
-    proposta.sort(key=lambda d: -d["valor"])
+    decks.sort(key=lambda d: -d["valor_ref"])
+    proposta.sort(key=lambda d: -d["valor_ref"])
 
     def soma(ds):
         # As CARTAS contam-se por NOME e sem repetir entre decks: a mesma Swords
@@ -132,12 +157,21 @@ def vista(con, rep: dict, cfg: dict | None = None) -> dict:
                 "copias": sum(d["copias"] for d in ds),
                 "valor": round(sum(d["valor"] for d in ds), 2),
                 "valor_serve": round(sum(d["valor_serve"] for d in ds), 2),
+                "valor_ref": round(sum(d["valor_ref"] for d in ds), 2),
                 "sem_preco": sum(d["sem_preco"] for d in ds),
-                "avisos": sum(d["avisos"] for d in ds)}
+                "avisos": sum(d["avisos"] for d in ds),
+                "por_origem": {o: sum(1 for d in ds for l in d["linhas"]
+                                      if l["origem_preco"] == o)
+                               for o in ("escolhida", "a_que_tens", "regra")}}
 
     fmts = sorted({d["formato"] for d in decks if d["formato"]})
     return {"decks": decks, "proposta": proposta, "formatos": fmts,
-            "totais": soma(decks), "totais_proposta": soma(proposta)}
+            "totais": soma(decks), "totais_proposta": soma(proposta),
+            # A LISTA DAS ARTS POR ESCOLHER (2026-10-13): *"pede-me sempre que
+            # faltar as arts das cartas"*. Vive nesta página porque é a página das
+            # compras, e uma art só importa a quem a vai comprar.
+            "arts": arts.relatorio(con, cfg, cache, a_comprar={
+                l["nm"] for d in decks + proposta for l in d["linhas"]})}
 
 
 def texto(v: dict) -> str:

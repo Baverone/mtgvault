@@ -100,6 +100,8 @@ def _entradas(cfg=None) -> list[dict]:
             if nome:
                 out.append({"carta": nome, "formatos": [], "nota": ""})
             continue
+        if item.get("combo"):
+            continue                  # um combo não é uma carta solta (`combos`)
         nome = str(item.get("carta") or item.get("nome") or "").strip()
         if not nome:
             continue
@@ -137,20 +139,71 @@ def cartas(cfg=None) -> list[dict]:
     return [por_nome[k] for k in ordem]
 
 
-def nomes_vigiados(fmt: str | None = None, cfg=None) -> set[str]:
-    """Os nomes vigiados (em minúsculas) — num formato, ou em todos."""
+def combos(cfg=None) -> list[dict]:
+    """OS COMBOS VIGIADOS (André, 2026-10-13): *"continua sempre a procurar se
+    aparece esse deck ou nao"* — o trio Kasmina, Enigma Sage + Jace's
+    Machinations + Avatar of Burgeoning Echoes, em todos os formatos.
+
+    Uma linha do config com `combo: [cartas]` e `minimo` (quantas delas têm de
+    estar na MESMA lista; omissão: todas). Isto existe porque vigiar as três
+    cartas soltas em todos os formatos não era vigiar o deck: medido a
+    2026-10-13, o Jace's Machinations sozinho já está em **33** listas (21 de
+    Standard, 11 de Duel Commander, 1 de Pioneer) e o Avatar em **18** (Standard,
+    Legacy, Modern, Vintage) — e em NENHUMA delas estão duas das três juntas. Com
+    as soltas, o primeiro dia dava cinquenta avisos falsos; o combo é zero, e o
+    primeiro aviso é o deck. O `nome` é o que o avistamento leva no lugar da
+    carta (e é a chave do estado).
+    """
+    cfg = sources.config() if cfg is None else cfg
+    out = []
+    for item in (cfg.get(CHAVE) if isinstance(cfg.get(CHAVE), list) else []):
+        if not isinstance(item, dict) or not isinstance(item.get("combo"), list):
+            continue
+        cs = [str(c).strip() for c in item["combo"] if str(c).strip()]
+        if len(cs) < 2:
+            continue
+        fmts = item.get("formatos", item.get("formato")) or []
+        if isinstance(fmts, str):
+            fmts = [fmts]
+        try:
+            minimo = int(item.get("minimo") or len(cs))
+        except (TypeError, ValueError):
+            minimo = len(cs)
+        out.append({
+            "carta": str(item.get("nome") or " + ".join(cs)).strip(),
+            "combo": cs, "minimo": max(2, min(minimo, len(cs))),
+            "formatos": sorted({str(f).strip().lower() for f in fmts if str(f).strip()}),
+            "nota": str(item.get("nota") or "").strip()})
+    return out
+
+
+def vigiados(cfg=None) -> list[dict]:
+    """As cartas soltas e os combos, numa lista só — é o que a verificação, o
+    estado e a página percorrem. Um combo leva `combo` e `minimo`."""
+    return cartas(cfg) + combos(cfg)
+
+
+def _no_formato(e: dict, fmt: str | None) -> bool:
     f = (fmt or "").strip().lower()
-    return {e["carta"].lower() for e in cartas(cfg)
-            if not f or not e["formatos"] or f in e["formatos"]}
+    return not f or not e["formatos"] or f in e["formatos"]
+
+
+def nomes_vigiados(fmt: str | None = None, cfg=None) -> set[str]:
+    """Os nomes vigiados (em minúsculas) — num formato, ou em todos.
+
+    Só as cartas SOLTAS: as cartas de um combo não são vigiadas uma a uma (é a
+    razão de o combo existir — ver `combos`)."""
+    return {e["carta"].lower() for e in cartas(cfg) if _no_formato(e, fmt)}
 
 
 def ha_vigia(fmt: str | None = None, cfg=None) -> bool:
-    """Há alguma carta vigiada (neste formato, ou em qualquer um)?
+    """Há alguma carta ou combo vigiado (neste formato, ou em qualquer um)?
 
     É esta pergunta que o `harvest_mtgo` faz antes de saltar uma página de liga:
-    sem cartas vigiadas o daily fica **exactamente** como estava.
+    sem nada vigiado o daily fica **exactamente** como estava.
     """
-    return bool(nomes_vigiados(fmt, cfg))
+    return bool(nomes_vigiados(fmt, cfg)) or any(
+        _no_formato(c, fmt) for c in combos(cfg))
 
 
 def formatos_vigiados(cfg=None) -> list[str]:
@@ -178,13 +231,21 @@ def nomes_na_lista(fmt: str | None, cards) -> list[str]:
     a lista que a primeira acabou de guardar.
     """
     alvo = nomes_vigiados(fmt)
-    if not alvo:
+    cbs = [c for c in combos() if _no_formato(c, fmt)]
+    if not alvo and not cbs:
         return []
     achou: dict[str, str] = {}
+    na_lista = {_frente(c[1] if len(c) >= 2 else "").lower() for c in cards or []}
     for c in cards or []:
         nome = _frente(c[1] if len(c) >= 2 else "")
         if nome.lower() in alvo:
             achou[nome.lower()] = nome
+    # Um combo abre as portas quando a lista tem o MÍNIMO de peças dele juntas —
+    # uma peça sozinha não é o deck (ver `combos`), e guardar todas as ligas com
+    # um Jace's Machinations era encher a base de listas que não são o combo.
+    for cb in cbs:
+        if sum(1 for x in cb["combo"] if x.lower() in na_lista) >= cb["minimo"]:
+            achou[cb["carta"].lower()] = cb["carta"]
     return [achou[k] for k in sorted(achou)]
 
 
@@ -308,6 +369,43 @@ def achados(con) -> list[dict]:
                 "link": r["url"] or "", "tier": r["tier"] or "",
                 "fonte": r["fonte"] or "", "jogadores": r["jogadores"],
                 "copias": r["q"], "board": r["board"] or "main"})
+    out += _achados_combos(con)
+    return out
+
+
+def _achados_combos(con) -> list[dict]:
+    """As listas que têm o MÍNIMO de peças de um combo juntas. Uma consulta por
+    combo, que varre a `decklist_cards` uma vez (como a das cartas soltas)."""
+    out = []
+    for cb in combos():
+        nomes = [x.lower() for x in cb["combo"]]
+        onde = ["lower(dc.card_name) IN (%s)" % ",".join("?" * len(nomes))]
+        params: list = list(nomes)
+        if cb["formatos"]:
+            onde.append("lower(d.format) IN (%s)" % ",".join("?" * len(cb["formatos"])))
+            params += cb["formatos"]
+        params.append(cb["minimo"])
+        for r in con.execute(
+                f"""SELECT d.id did, d.format fmt, d.event_name ev, d.event_date dia,
+                           d.player jog, d.placement pos, d.url url,
+                           d.event_tier tier, d.source fonte,
+                           d.event_players jogadores,
+                           group_concat(DISTINCT dc.card_name) pecas,
+                           sum(dc.quantity) q
+                      FROM decklists d
+                      JOIN decklist_cards dc ON dc.decklist_id = d.id
+                     WHERE {" AND ".join(onde)}
+                     GROUP BY d.id
+                    HAVING count(DISTINCT lower(dc.card_name)) >= ?
+                     ORDER BY d.event_date DESC, d.id DESC""", params):
+            out.append({
+                "carta": cb["carta"], "nota": cb["nota"], "formato": r["fmt"],
+                "decklist_id": r["did"], "evento": r["ev"], "data": r["dia"],
+                "jogador": r["jog"] or "", "colocacao": r["pos"] or "",
+                "link": r["url"] or "", "tier": r["tier"] or "",
+                "fonte": r["fonte"] or "", "jogadores": r["jogadores"],
+                "copias": r["q"], "board": "main",
+                "pecas": sorted((r["pecas"] or "").split(","))})
     return out
 
 
@@ -378,7 +476,7 @@ def verificar(con, *, escrever: bool = True, avisar: bool = True,
     `toast` é injectável para o teste poder provar que o segundo dia não volta a
     avisar sem abrir uma janela no PC dele.
     """
-    vig = cartas()
+    vig = vigiados()
     if not vig:
         # SEM CARTAS VIGIADAS NÃO SE ESCREVE NADA. É o que garante que ligar isto
         # não muda um único ficheiro no dia em que ele não estiver a vigiar carta
@@ -399,7 +497,9 @@ def verificar(con, *, escrever: bool = True, avisar: bool = True,
     estado["cartas"] = {
         e["carta"].lower(): {"carta": e["carta"], "formatos": e["formatos"],
                              "nota": e["nota"], "achados": 0,
-                             "primeira": None, "ultima": None}
+                             "primeira": None, "ultima": None,
+                             **({"combo": e["combo"], "minimo": e["minimo"]}
+                                if e.get("combo") else {})}
         for e in vig}
 
     novos = []
@@ -418,7 +518,7 @@ def verificar(con, *, escrever: bool = True, avisar: bool = True,
             # muda com a deduplicação, o link e a contagem de jogadores chegam
             # depois pelo `backfill`) — mas nunca o `visto_em` nem o `avisado`.
             for campo in ("decklist_id", "link", "tier", "fonte", "jogadores",
-                          "colocacao", "copias", "board", "nota"):
+                          "colocacao", "copias", "board", "nota", "pecas"):
                 if a.get(campo) not in (None, ""):
                     antigo[campo] = a[campo]
             if not antigo.get("lista"):
@@ -478,6 +578,8 @@ def linhas_para_o_log(con, vig, novos, todos) -> list[str]:
     out = []
     for e in vig:
         onde = ", ".join(e["formatos"]) or "todos os formatos"
+        if e.get("combo"):
+            onde += f"; combo: {e['minimo']} de {' + '.join(e['combo'])} na mesma lista"
         n = sum(1 for a in todos if a.get("carta") == e["carta"])
         out.append(f"    [{' !! ' if n else 'nada'}] {e['carta']} ({onde})"
                    + (f": {n} lista(s)" if n else ": ainda sem listas")
@@ -508,7 +610,7 @@ def painel(con, *, pasta=None) -> dict:
     Junta os dois lados: o estado (que sobrevive ao `prune_decklists`) e a base
     (que traz o que apareceu hoje, antes de o passo correr).
     """
-    vig = cartas()
+    vig = vigiados()
     if not vig:
         return {"vigiadas": [], "achados": [], "total": 0, "nota": NOTA_FALTAS}
     estado = ler_estado(pasta)

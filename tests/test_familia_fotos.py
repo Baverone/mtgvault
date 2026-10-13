@@ -304,7 +304,11 @@ def caso_o_config_a_serio_tem_as_decisoes_de_13_10():
     assert sum(q for b, _n, q in k["cards"] if b == "side") == 15
     dk = next(d for d in real["decks_de_evento"]
               if d["id"] == "deck:modern:jaces-machinations-combo")
-    assert dk.get("decisao_pendente") and not dk.get("_saiu"), dk
+    # 13/10 de manhã a decisão estava PENDENTE; à tarde ele decidiu («vai para
+    # Pioneer com lista nova»): a de Modern SAI (não se apaga) e a pergunta fica
+    # arquivada em `_decisao_1013`. Ver test_kasmina_arts.
+    assert dk.get("_saiu") and dk.get("_decisao_1013") \
+        and not dk.get("decisao_pendente"), dk
     # nao e uma versao do Mox Opal, logo nao entra na proteccao RE
     assert "deck:modern:jaces-machinations-combo" not in versoes.ids_que_ficam(real)
     vp = {v["id"]: v for v in real["decks_por_formato"]["pioneer"]["versoes"]}

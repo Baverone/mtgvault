@@ -6114,6 +6114,62 @@ em `tests/test_busca_ligas.py` (8 casos) e a prova de que chumbam em
   nos três (Modern pelo Oswald e o CesarMerjan, Pioneer e Legacy pelos decks
   baixos) — uma página por dia e formato, como a vigia de cartas.
 
+**A KASMINA VAI PARA PIONEER (BREW), A VIGIA DO TRIO E AS ARTS QUE ELE PROCURA
+(André, 2026-10-13, à tarde, à letra).** *"vai para Pioneer com lista nova, para
+modern ja tenho os outros 2 decks, mas continua sempre a procurar se aparece esse
+deck ou nao"* e *"as wantlists sao validas quando ja sabes as arts que procuro,
+pede-me sempre que faltar as arts das cartas, se for de uma carta que eu ja
+tenho, a Art tem que ser a mesma"*. Motor em **`mtgvault/arts.py`** (novo),
+`mtgvault/vigia.py` (`combos`/`vigiados`), `faltas_vista` (`origem_preco`/
+`unit_ref`/`arts`), `decks_vista` (`brew`); config em `cartas_vigiadas`,
+`decks_de_evento`, `listas_escolhidas["deck:pioneer:kasmina-brew"]` e
+**`arts_procuradas`** (no `configio.BLOCO_COMPACTO`, uma carta por linha); CLI
+`py -m mtgvault.cli arts [listar|registar|esquecer|ler-pasta|por-identificar]`.
+Testes em `tests/test_kasmina_arts.py` (7 casos).
+
+- **A KASMINA DE MODERN SAIU (`_saiu`, nada se apagou)** e a pergunta que estava
+  pendente foi para `_decisao_1013`. **Pioneer ganhou um BREW** — `brew` no
+  `decks_de_evento` e `brew: true` + `substituicoes` (`[sai, q, entra, q,
+  porquê]`, uma por linha) no `listas_escolhidas`. Um brew vive SÓ no config:
+  nunca é uma linha da `decklists`, por isso nenhuma percentagem o vê, e nunca
+  leva ficha de evento. A aba Decks diz *«Brew teu — ninguém jogou esta
+  lista»* com as trocas à vista. Medido: em 593 listas de Pioneer não há uma com
+  a Kasmina; a lista de Modern tem **14** nomes / 44 cópias ilegais em Pioneer
+  (não 13 — o Orim's Chant também), três deles banidos. O brew são 60+15, todas
+  conferidas `pioneer = legal` no catálogo, e **28** das cópias ele já tem.
+- **A VIGIA DO COMBO** (`cartas_vigiadas[]` com `combo` + `minimo`): avisa a
+  primeira lista com 2 das 3 peças (Kasmina, Jace's Machinations, Avatar of
+  Burgeoning Echoes) em QUALQUER formato, e a Kasmina sozinha passou a todos os
+  formatos. **As peças soltas não serviam**: o Jace sozinho já está em 33 listas
+  e o Avatar em 18, e em nenhuma estão duas juntas — vigiá-las soltas em todos os
+  formatos eram ~50 avisos falsos no primeiro dia. Abre as três portas da liga
+  (é o caso (a) da busca por ligas) só para listas com o mínimo de peças. **Uma
+  linha de combo não é uma carta solta** — trazia `nome` e o `_entradas` lia-o
+  como carta; tem caso de teste.
+- **A REGRA DAS ARTS VIVE NUM SÍTIO SÓ (`arts.preferida`)**: básica → nunca se
+  pede; `arts_procuradas` → a escolhida (ganha a tudo); uma impressão (edição +
+  número) na colecção → a que tem; duas ou mais → pergunta-se; nenhuma → pede-se.
+  **A fonte da página é o CONFIG e não a pasta** `Arts que procuro/`: as imagens
+  não estão no Git, e o site do PC e o do GitHub tinham de dizer o mesmo. A
+  imagem regista-se com `arts registar <carta> --set X --num N` (depois de olhar
+  para ela) ou `arts ler-pasta` (nomes de ficheiro como `MH2 197.jpg`), sempre
+  conferido no catálogo (uma impressão de outra carta é recusada).
+- **NAS FALTAS O PREÇO É O DA ART** (exacto no acabamento da linha;
+  `collection.preco_impressao_detalhe(exacto=True)`), e cada linha diz se veio da
+  escolhida, da que ele tem ou da regra genérica (a mais barata que serve). A
+  `faltas.html` mostra três totais (pela art · a mais barata que serve · mínimo
+  do motor) e a secção **«Arts por escolher»**, por valor. **A ambiguidade só se
+  pergunta onde há compra**: ele tem 53 cartas destes decks em várias impressões
+  e a 33 não falta nada.
+- **MEDIDO na base de 13/10** (19 decks que ficam — caixas, decks dele e versões,
+  sem saídas nem desactivadas): **472** nomes não-básicos (+7 básicas): **301**
+  completos, **33** com algumas, **138** sem nenhuma (= por escolher). Ambíguas a
+  perguntar **20**: as 3 em que falta na colecção inteira (Brain Freeze, Dark
+  Ritual, Force of Will) e 17 que uma caixa tem de comprar apesar de ele as ter
+  noutra (regra de 19/09). Faltas: 255 linhas, **80** já com a art dele;
+  valor pela art **23 144,02 €** contra 22 128,49 € (a mais barata que serve) e
+  20 508,44 € (motor, = «fechar tudo»). O motor da alocação não mexeu.
+
 ### Duas bases de dados
 
 `catalog.db` (Scryfall, centenas de MB) é ATTACHed como schema `catalog`.

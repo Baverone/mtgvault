@@ -123,6 +123,16 @@ def main(argv=None):
                     choices=["todas", "decks", "listas"],
                     help="decks = a tabela `decks`; listas = o metagame")
 
+    ar = sub.add_parser("arts", help="as arts que ele procura (13/10): a "
+                        "impressão que quer de cada carta")
+    ar.add_argument("accao", nargs="?", default="listar",
+                    choices=["listar", "registar", "esquecer", "ler-pasta",
+                             "por-identificar"])
+    ar.add_argument("carta", nargs="?")
+    ar.add_argument("--set", dest="set_code")
+    ar.add_argument("--num")
+    ar.add_argument("--imagem", default="")
+
     psn = sub.add_parser("presenciais-sem-numero",
                          help="presenciais que não contam por falta do nº de jogadores")
     psn.add_argument("format", nargs="?")
@@ -602,6 +612,49 @@ def main(argv=None):
             rows = [dict(r) for r in con.execute(
                 q, (args.format.lower(),) if args.format else ())]
             _p(rows, ["id", "format", "label", "lists"])
+
+        elif args.cmd == "arts":
+            from mtgvault import arts                          # noqa: PLC0415
+            if args.accao == "registar":
+                if not (args.carta and args.set_code and args.num):
+                    print("uso: arts registar \"<carta>\" --set X --num N")
+                    return 2
+                try:
+                    r = arts.registar(con, args.carta, args.set_code, args.num,
+                                      imagem=args.imagem)
+                except ValueError as e:
+                    print(e)
+                    return 2
+                print(f"registada: {r['carta']} = {r['set'].upper()} #{r['num']}")
+            elif args.accao == "esquecer":
+                print("esquecida" if arts.esquecer(args.carta or "")
+                      else "não havia escolha para essa carta")
+            elif args.accao == "ler-pasta":
+                r = arts.ler_pasta(con)
+                for x in r["registadas"]:
+                    print(f"registada pelo nome do ficheiro: {x['carta']} = "
+                          f"{x['set'].upper()} #{x['num']}")
+                for x in r["por_identificar"]:
+                    print(f"por identificar (olhar para a imagem): {x['carta']} — "
+                          f"{', '.join(x['imagens'])}")
+            elif args.accao == "por-identificar":
+                for x in arts.por_identificar():
+                    print(f"{x['carta']}: {', '.join(x['imagens'])}")
+            else:
+                rel = arts.relatorio(con)
+                c = rel["contagens"]
+                print(f"{c['decks']} decks · {c['nomes']} nomes (+{c['basicas']} básicas, "
+                      f"sem art): {c['completos']} completos, {c['alguns']} com algumas, "
+                      f"{c['zero']} sem nenhuma")
+                print(f"escolhidas {c['escolhidas']} · ambíguas a perguntar "
+                      f"{c['ambiguas']} (+{c['ambiguas_sem_compra']} sem compra) · "
+                      f"por escolher {c['por_escolher']}")
+                for x in rel["ambiguas"]:
+                    print(f"  ? {x['nm']}: " + " · ".join(
+                        f"{o['set'].upper()} #{o['num']} ({o['q']}×)" for o in x["opcoes"]))
+                for x in rel["por_escolher"]:
+                    pr = "sem preço" if x["unit"] is None else f"desde {x['unit']:.2f} €"
+                    print(f"  - {x['nm']} ×{x['q']} · {pr} · {', '.join(x['decks'])}")
 
         elif args.cmd == "cartas-desconhecidas":
             # O catálogo não conhece o nome: NÃO é «não tenho» e não se inventa

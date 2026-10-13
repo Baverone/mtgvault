@@ -315,10 +315,13 @@
   "_formatos_decididos": "Os formatos em que o André já DECIDIU os decks (2026-09-21, à letra: 'Pioneer apenas Greasefang e jeskai control'). Nestes o metagame.html deixa de mostrar o top-N que ele está mais perto de concluir e a aba da caixa deixa de ter os candidatos e o «vou montar este» — mostram só as caixas dele, como o Modern. A decisão de 2026-09-07 (ver o top-3 para escolher) continua a valer para os formatos que NÃO estão aqui (Standard, Legacy). O código do top-N fica: tirar um formato desta lista devolve-lhe os candidatos. 13/10/2026: legacy entrou -- os dois decks (Artifacts Blue e Engineer Welder Cam) foram decididos por ele, por isso deixa de ter top-N e botao.",
   "_metagame_top_n": "Quantos decks por formato mostra o metagame.html. André, 2026-09-07, à letra: 'Para os decks metagame, em vez de me dares todas as listas, dás-me só o top-3 decks que estou mais perto de concluir para os formatos Standard, Pioneer, Legacy'. Vale só para as secções de TOP (Standard/Pioneer/Legacy — as caixas do loadout que ainda estão por escolher); o Modern mostra o deck já escolhido e o Premodern os alvos de premodern_arquetipos_alvo. A % que ordena é a das cartas que ele TEM (livres + as que estão noutra caixa, que se vão buscar), com a regra de material do loadout (foil menos Reserved List) e sem contar terras básicas. Sobe para 5 se quiseres mais opções por onde escolher. (Substituiu o decks_faziveis_min_pct: a página 'Decks fazíveis' foi retirada em 2026-09-07 — fazia a mesma pergunta e respondia pior.)",
   "cartas_vigiadas": [
-    {"carta": "Kasmina, Enigma Sage", "formatos": ["modern", "pioneer"], "nota": "combo Jace/Kasmina — Reality Fracture no MTGO 29/09/2026, em papel 02/10/2026; Pioneer acrescentado a pedido do Andre 30/09"},
-    {"carta": "Jace's Machinations", "formatos": ["modern", "pioneer"], "nota": "combo Jace/Kasmina — Reality Fracture no MTGO 29/09/2026, em papel 02/10/2026; Pioneer acrescentado a pedido do Andre 30/09"}
+    {"carta": "Kasmina, Enigma Sage", "formatos": [], "nota": "Andre 13/10: 'continua sempre a procurar se aparece esse deck ou nao' — em TODOS os formatos e para sempre (nada a desliga sozinha). Era modern+pioneer desde 30/09. A 13/10: 0 listas em toda a base."},
+    {"carta": "Jace's Machinations", "formatos": ["modern", "pioneer"], "nota": "combo Jace/Kasmina — Reality Fracture no MTGO 29/09/2026, em papel 02/10/2026; Pioneer acrescentado a pedido do Andre 30/09"},
+    {"combo": ["Kasmina, Enigma Sage", "Jace's Machinations", "Avatar of Burgeoning Echoes"], "minimo": 2, "nome": "Combo Kasmina (Kasmina + Jace's Machinations + Avatar)", "formatos": [], "nota": "Andre 13/10: o deck da Kasmina em qualquer formato. Avisa na PRIMEIRA lista com 2 das 3 juntas. Soltas nao serviam: o Jace's Machinations ja esta em 33 listas e o Avatar em 18, e em nenhuma estao duas das tres. A 13/10: 0 listas."}
   ],
   "_cartas_vigiadas": "A VIGIA DE CARTAS (André, 2026-09-26): ele comprou 4x «Kasmina, Enigma Sage» e 2x «Enter the Infinite» por causa de um combo novo e quer saber quando aparecerem decklists com ele — 'vai conferindo'. A segunda peça é «Jace's Machinations», do Reality Fracture, que só sai a 02/10/2026: hoje não pode existir uma única lista com o combo, e é por isso que isto existe — o valor é ser avisado no DIA em que a primeira aparecer. Cada linha é {'carta': o nome oracle em inglês (a frente, nas de duas faces), 'formatos': os formatos que interessam (uma lista vazia ou sem a chave = todos), 'nota': texto livre que aparece na página e no log}. Motor em mtgvault/vigia.py; passo 'vigia-cartas' do daily; bloco no topo do metagame.html; estado em data/vigia-cartas.json (vai no Git, como o arquetipos.json). O QUE ISTO ABRE, e é a parte que de outra forma estragava tudo: para as listas que TÊM uma carta vigiada, a recolha IGNORA o filtro de tier de metagame_fontes — a primeira aparição de um combo novo é um 5-0 de league ou um torneio pequeno, exactamente o que a regra de 2026-09-07 deita fora. São três portas (sources.harvest_mtgo não salta as páginas de liga dos formatos vigiados, sources.store_decklist guarda a lista com carta vigiada, analysis.prune_leagues não a apaga) e SÓ para essas listas: o metagame, a cobertura, o clustering e o showcase não vêem uma lista a mais. Esvaziar esta lista põe o daily exactamente como estava — nem estado se escreve. O aviso é um toast do Windows, uma vez por lista nova (mtgvault/aviso.py).",
+  "arts_procuradas": {},
+  "_arts_procuradas": "AS ARTS QUE ELE PROCURA (Andre, 13/10/2026, a letra): 'as wantlists sao validas quando ja sabes as arts que procuro, pede-me sempre que faltar as arts das cartas, se for de uma carta que eu ja tenho, a Art tem que ser a mesma e ai nao me pedes qual e a Art, assumes como a que eu ja tenho'. Uma linha por carta: {'set': codigo da edicao, 'num': numero de coleccionador, 'em': data, 'imagem': a imagem de onde veio}. Quem escreve e o 'py -m mtgvault.cli arts registar <carta> --set X --num N' (ou 'arts ler-pasta', que regista as imagens cujo nome ja diz a impressao, p.ex. 'MH2 197.jpg'), depois de olhar para a imagem em 'Arts que procuro/<carta>/'. A regra, por esta ordem (mtgvault/arts.py, preferida): basica -> nunca se pede; escolhida aqui -> e essa; tem a carta numa impressao so -> e a que tem; tem em duas ou mais -> pergunta-se qual; nao tem nenhuma -> pede-se a art (a lista esta na faltas.html, por valor). As faltas e o preco usam esta impressao, e cada linha diz se o preco vem da escolhida, da que ele tem ou da regra generica. As imagens NAO sao a fonte da pagina: nao estao no Git, e o site do PC e o do GitHub tinham de dizer o mesmo.",
   "metagame_fontes": {
     "_default": {
       "tiers": [
@@ -2885,6 +2888,75 @@
         ["side", "Surgical Extraction", 2],
         ["side", "Wrath of the Skies", 2]
       ]
+    },
+    "deck:pioneer:kasmina-brew": {
+      "nome": "Kasmina (brew)",
+      "brew": true,
+      "formato": "pioneer",
+      "origem": "BREW do Andre (13/10/2026): a lista dele de Modern passada a Pioneer, carta a carta — so cartas legais em Pioneer (conferidas no catalogo), a partir do que ele tem. NAO e lista de evento: em Pioneer nao ha nenhuma com a Kasmina.",
+      "escolhido_em": "2026-10-13",
+      "lista_de_partida": "deck:modern:jaces-machinations-combo",
+      "cards": [
+        ["main", "Kasmina, Enigma Sage", 4],
+        ["main", "Jace's Machinations", 4],
+        ["main", "Avatar of Burgeoning Echoes", 4],
+        ["main", "Enter the Infinite", 2],
+        ["main", "Thassa's Oracle", 1],
+        ["main", "Llanowar Elves", 4],
+        ["main", "Mox Amber", 4],
+        ["main", "Opt", 4],
+        ["main", "Consider", 1],
+        ["main", "Spell Pierce", 4],
+        ["main", "Tam's Resistance", 3],
+        ["main", "Fading Hope", 2],
+        ["main", "Pick Your Poison", 2],
+        ["main", "Breeding Pool", 4],
+        ["main", "Botanical Sanctum", 4],
+        ["main", "Hinterland Harbor", 4],
+        ["main", "Cavern of Souls", 2],
+        ["main", "Hedge Maze", 1],
+        ["main", "Theorist's Sanctum", 1],
+        ["main", "Island", 3],
+        ["main", "Forest", 2],
+        ["side", "Mystical Dispute", 4],
+        ["side", "Tishana's Tidebinder", 4],
+        ["side", "Negate", 3],
+        ["side", "Unlicensed Hearse", 2],
+        ["side", "Pick Your Poison", 2]
+      ],
+      "substituicoes": [
+        ["Kasmina, Enigma Sage", 4, "Kasmina, Enigma Sage", 4, "fica: legal em Pioneer, e o motor do combo"],
+        ["Jace's Machinations", 4, "Jace's Machinations", 4, "fica: legal, e o Jace de 8 a velocidade de instantaneo"],
+        ["Avatar of Burgeoning Echoes", 4, "Avatar of Burgeoning Echoes", 4, "fica: legal, e a segunda via para o Jace chegar a 8"],
+        ["Enter the Infinite", 2, "Enter the Infinite", 2, "fica: e a carta que o -8 vai buscar"],
+        ["Thassa's Oracle", 1, "Thassa's Oracle", 1, "fica: a vitoria (tens 1)"],
+        ["Utopia Sprawl", 4, "Llanowar Elves", 4, "Sprawl nao e legal; o Elves faz o mesmo papel (mana no turno 1, Kasmina no 2) e tens 8"],
+        ["Mox Amber", 3, "Mox Amber", 4, "sobe a 4: com a Kasmina (planeswalker lendaria) em jogo da G ou U, e tens 5; a 4.a sai de um Brainsurge"],
+        ["Preordain", 4, "Opt", 4, "Preordain nao e legal; Opt e o cantrip de 1 mana a instantaneo de Pioneer, e tens 4"],
+        ["Brainsurge", 2, "Consider", 1, "Brainsurge nao e legal; o outro lugar foi para a 4.a Mox Amber"],
+        ["Orim's Chant", 4, "Spell Pierce", 4, "Orim's Chant nao e legal e nao ha silencio de 1 mana em Pioneer; a protecao passa a ser contrariar a resposta (Spell Pierce, tens 4)"],
+        ["Teferi, Time Raveler", 3, "Tam's Resistance", 3, "Teferi e banido e nada em Simic de Pioneer protege o combo assim; em vez de proteger, uma segunda via: Jace +4 por 2 mana, com o Avatar chega a 8 sem o Machinations"],
+        ["Prismatic Ending", 4, "Fading Hope", 2, "Ending nao e legal; Fading Hope (1 mana) responde a criaturas"],
+        ["Prismatic Ending", 0, "Pick Your Poison", 2, "e Pick Your Poison (1 mana) responde a artefactos e encantamentos que travam o combo"],
+        ["Flooded Strand", 3, "Island", 2, "fetch banida; basicos (a pilha)"],
+        ["Flooded Strand", 0, "Cavern of Souls", 1, "a 3.a Strand vira Cavern (nomeia Merfolk: o Oracle nao se contraria; tens 6)"],
+        ["Plains", 1, "Cavern of Souls", 1, "o branco sai com o Teferi, o Ending e o Chant; 2.a Cavern"],
+        ["Misty Rainforest", 4, "Botanical Sanctum", 4, "fetch nao legal; terreno G/U que entra desvirado nos primeiros turnos"],
+        ["Windswept Heath", 4, "Hinterland Harbor", 4, "fetch banida; terreno G/U que entra desvirado com Forest ou Island"],
+        ["Hallowed Fountain", 1, "Breeding Pool", 1, "sem branco nao serve; Breeding Pool (tens 4)"],
+        ["Temple Garden", 2, "Breeding Pool", 2, "sem branco nao serve; Breeding Pool"],
+        ["Breeding Pool", 1, "Breeding Pool", 1, "fica"],
+        ["Hedge Maze", 1, "Hedge Maze", 1, "fica (tens 1)"],
+        ["Theorist's Sanctum", 1, "Theorist's Sanctum", 1, "fica: +2 no Jace"],
+        ["Island", 1, "Island", 1, "fica"],
+        ["Forest", 2, "Forest", 2, "ficam"],
+        ["Consign to Memory", 4, "Tishana's Tidebinder", 4, "side: Consign nao e legal; o Tidebinder contraria habilidades activadas e desencadeadas"],
+        ["Force of Negation", 3, "Negate", 3, "side: FoN nao e legal; Negate contraria o nao-criatura"],
+        ["Mystical Dispute", 3, "Mystical Dispute", 4, "side: legal, tens 4; a 4.a entra no lugar do Isochron Scepter"],
+        ["Isochron Scepter", 1, "Mystical Dispute", 0, "side: Isochron nao e legal (ver a linha de cima)"],
+        ["Surgical Extraction", 2, "Unlicensed Hearse", 2, "side: Surgical nao e legal; o Hearse e o odio a cemiterio de Pioneer"],
+        ["Wrath of the Skies", 2, "Pick Your Poison", 2, "side: Wrath nao e legal; mais 2 Pick Your Poison"]
+      ]
     }
   },
   "precos": {
@@ -2974,7 +3046,8 @@
     {"id": "deck:modern:rakdos-moonshadow", "slug": "rakdos-moonshadow", "nome": "Rakdos Moonshadow", "formato": "modern", "arquetipo_id": 7687, "arquetipo_fonte": "Rakdos Aggro", "_saiu": {"em": "2026-10-04", "porque": "nao joga Mox Opal", "razao": "o modelo passou a ser UM deck por formato com versoes por dentro (04/10/2026, a noite). Este deck NAO se apagou: continua com a lista, a proveniencia e as cartas, e ve-se em «meta, nao escolhido». Repor e tirar-lhe o `_saiu`."}},
     {"id": "deck:modern:hammer-time", "slug": "hammer-time", "nome": "Hammer Time", "formato": "modern", "arquetipo_id": 7456, "amostra_fina": "AMOSTRA DE UMA LISTA SO. Medido a 2026-10-04 em toda a colheita: o Colossus Hammer aparece em 3 listas de Modern (1 desde 29/09) e duas das tres sao do MESMO jogador; o Sigarda's Aid aparece em 1. Nenhuma das tres tem classificacao registada, e os tres arquetipos sao DIFERENTES entre si (um com Puresteel Paladin, um com Leyline Axe, um com Sigarda's Aid) -- nao e um deck com variantes, sao tres tentativas do mesmo tema. Para comparar: Broodscale 53 listas, Ruby Storm 32, Affinity 20, Hammer Time 1. O deck entra porque ele o pediu, e o peso dele fica dito.", "_saiu": {"em": "2026-10-04", "porque": "nao joga Mox Opal", "razao": "o modelo passou a ser UM deck por formato com versoes por dentro (04/10/2026, a noite). Este deck NAO se apagou: continua com a lista, a proveniencia e as cartas, e ve-se em «meta, nao escolhido». Repor e tirar-lhe o `_saiu`."}},
     {"id": "deck:pioneer:flow-state", "slug": "flow-state", "nome": "UR Aggro (Flow State)", "formato": "pioneer", "arquetipo_id": 7589, "arquetipo_fonte": "UR Aggro", "por_confirmar": true, "carta_chave": "Flow State", "_saiu": {"em": "2026-10-04", "porque": "nao e Greasefang", "razao": "o modelo passou a ser UM deck por formato com versoes por dentro (04/10/2026, a noite). Este deck NAO se apagou: continua com a lista, a proveniencia e as cartas, e ve-se em «meta, nao escolhido». Repor e tirar-lhe o `_saiu`."}},
-    {"id": "deck:modern:jaces-machinations-combo", "slug": "jaces-machinations-combo", "nome": "Jace's Machinations combo", "formato": "modern", "carta_chave": "Jace's Machinations", "decisao_pendente": "Pediste este deck para PIONEER, mas em Pioneer ele nao existe: em 593 listas de Pioneer colhidas (13/09 a 11/10) ha 1 com Jace's Machinations, 1 com Theorist's Sanctum e 0 com a Kasmina; e a tua lista, tal como esta, nao e legal em Pioneer -- 14 dos 29 nomes (44 das 75 copias) nao entram la (Teferi, Flooded Strand e Windswept Heath sao banidas; Preordain, Prismatic Ending, Orim's Chant, Utopia Sprawl, Misty Rainforest e o sideboard quase todo nao sao legais). Em Modern a lista e legal, mas tambem nao ha resultados: 0 listas com a Kasmina e 0 com Jace's Machinations em 2 871 de Modern. Tres saidas, decides tu: (a) fica em MODERN, onde a desenhaste; (b) fica em PIONEER a espera, e a lista tem de ser refeita; (c) fica so como deck de consulta, sem caixa. Ate decidires: esta registada em Modern, NAO e uma versao do deck de Mox Opal e as cartas dela NAO ficam protegidas da venda (a venda esta travada a mao, por isso nada sai).", "registado_em": "2026-10-13"}
+    {"id": "deck:modern:jaces-machinations-combo", "slug": "jaces-machinations-combo", "nome": "Jace's Machinations combo", "formato": "modern", "carta_chave": "Jace's Machinations", "registado_em": "2026-10-13", "_decisao_1013": "RESOLVIDA a 13/10 pelo Andre, a letra: 'vai para Pioneer com lista nova, para modern ja tenho os outros 2 decks, mas continua sempre a procurar se aparece esse deck ou nao'. Texto da pergunta, que fica: Pediste este deck para PIONEER, mas em Pioneer ele nao existe: em 593 listas de Pioneer colhidas (13/09 a 11/10) ha 1 com Jace's Machinations, 1 com Theorist's Sanctum e 0 com a Kasmina; e a tua lista, tal como esta, nao e legal em Pioneer -- 14 dos 29 nomes (44 das 75 copias) nao entram la (Teferi, Flooded Strand e Windswept Heath sao banidas; Preordain, Prismatic Ending, Orim's Chant, Utopia Sprawl, Misty Rainforest e o sideboard quase todo nao sao legais). Em Modern a lista e legal, mas tambem nao ha resultados: 0 listas com a Kasmina e 0 com Jace's Machinations em 2 871 de Modern. Tres saidas, decides tu: (a) fica em MODERN, onde a desenhaste; (b) fica em PIONEER a espera, e a lista tem de ser refeita; (c) fica so como deck de consulta, sem caixa. Ate decidires: esta registada em Modern, NAO e uma versao do deck de Mox Opal e as cartas dela NAO ficam protegidas da venda (a venda esta travada a mao, por isso nada sai).", "_saiu": {"em": "2026-10-13", "porque": "passou para Pioneer com lista nova", "razao": "Andre 13/10: 'vai para Pioneer com lista nova, para modern ja tenho os outros 2 decks'. Modern fica com o Izzet Affinity (Kappa) e o Oswald. Este deck NAO se apagou: a tua lista de Modern continua aqui e e a lista de partida do brew de Pioneer. Repor e tirar o _saiu."}},
+    {"id": "deck:pioneer:kasmina-brew", "slug": "kasmina-brew", "nome": "Kasmina (brew)", "formato": "pioneer", "carta_chave": "Kasmina, Enigma Sage", "brew": "Montado a 13/10/2026 a partir da TUA lista de Modern, a pedido teu ('vai para Pioneer com lista nova'). Em Pioneer nao ha uma unica lista real para copiar (593 listas colhidas: 1 com Jace's Machinations, 1 com Theorist's Sanctum, 0 com a Kasmina). O combo e o mesmo e e todo legal em Pioneer: a Kasmina da a cada outro planeswalker as habilidades dela; o Jace's Machinations cria um Jace com 8 de lealdade e deixa activa-lo a velocidade de instantaneo; o -8 da Kasmina, nesse Jace, vai buscar o Enter the Infinite (azul) e lanca-o de graca; com a biblioteca a 1 carta, o Thassa's Oracle ganha. Segunda via, que em Modern nao havia: o Avatar (cada terreno +2 no Jace) e o Tam's Resistance (+4) levam o Jace a 8 sem o Machinations. NAO e lista de evento e nunca entra em percentagens: vive so aqui. 14 dos 29 nomes da tua lista nao sao legais em Pioneer (Teferi, Flooded Strand e Windswept Heath banidos) — 44 das 75 copias.", "registado_em": "2026-10-13"}
   ],
   "decks_por_formato": {
     "_porque": "UM DECK POR FORMATO, COM VERSOES POR DENTRO (Andre, 04/10/2026, a noite): \"vamos fazer uma coisa diferente, a ver como fica / quero apenas manter decks que usem Mox Opal, tudo o resto e para vender (em modern) / quero ficar com 1 deck e versoes do deck (como opcoes)\". SUBSTITUI o modelo de 18 decks desta mesma tarde. O Premodern NAO entra: ele nao lhe tocou e fica com os seus 6 decks. Esvaziar este bloco devolve o vault ao modelo anterior — e um formato que nao esteja aqui fica como estava.",

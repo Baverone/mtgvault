@@ -78,6 +78,14 @@ _CSS = """
  .prop h2{margin:0 0 6px;font-size:16px;color:var(--accent)}
  .prop .sub{margin:0 0 4px;font-size:13px;line-height:1.6;color:var(--muted)}
  .vazio{color:var(--dim);font-size:13px;padding:20px 0}
+ .og{display:inline-block;margin-top:3px;font-size:12px;line-height:1.4}
+ .og.esc,.og.tens{color:var(--ok)}
+ .og.reg{color:var(--dim)}
+ .og b{color:var(--warn)}
+ .arts h3{margin:14px 0 6px;font-size:14px;color:var(--ink)}
+ .al{margin:0;padding-left:22px;font-size:14px;line-height:1.7;overflow-wrap:anywhere}
+ .al .pt{color:var(--dim);font-size:12px}
+ button.chip{cursor:pointer;font:inherit;min-height:36px}
  .cpw{display:flex;gap:8px;align-items:center;margin:0 0 16px}
  .cpw button{min-height:44px;padding:10px 16px;border-radius:999px;border:1px solid var(--line);background:var(--card2);color:var(--muted);font:inherit;font-weight:600;cursor:pointer}
  .cpw textarea{position:absolute;left:-9999px;width:1px;height:1px}
@@ -95,6 +103,9 @@ _RODAPE = (
     "não aparece, porque a falta é o «comprar» da alocação e esse já desconta o "
     "que tens, o que está noutra caixa e o que já encomendaste. O subtotal de "
     "cada deck é o que te diz onde vale a pena a volta ao pavilhão. "
+    "<b>O preço é o da ART que procuras</b>: a que escolheste em «Arts que "
+    "procuro», ou a que já tens dessa carta; sem nenhuma das duas, a regra "
+    "genérica (a mais barata que serve a caixa) — e cada linha diz qual. "
     "<b>O preço é de referência, não é uma cotação.</b> Onde a linha leva um "
     "aviso, o preço vem de uma impressão que aquela caixa não aceita (uma "
     "reimpressão posterior, no Premodern) e ao lado está o da mais barata que "
@@ -144,23 +155,42 @@ function visiveis() {
     if (FMT && d.formato !== FMT) continue;
     for (const l of d.linhas) out.push({...l, deck: d.nome, formato: d.formato});
   }
-  if (ORD === 'valor') out.sort((a, b) => b.total - a.total || a.nm.localeCompare(b.nm, 'pt'));
+  if (ORD === 'valor') out.sort((a, b) => b.total_ref - a.total_ref || a.nm.localeCompare(b.nm, 'pt'));
   else out.sort((a, b) => a.deck.localeCompare(b.deck, 'pt')
-                          || b.total - a.total || a.nm.localeCompare(b.nm, 'pt'));
+                          || b.total_ref - a.total_ref || a.nm.localeCompare(b.nm, 'pt'));
   return out;
+}
+
+/* DE ONDE VEM O PREÇO DESTA LINHA (André, 2026-10-13): *"pede-me sempre que
+   faltar as arts das cartas … se for de uma carta que eu ja tenho, a Art tem que
+   ser a mesma"*. A linha diz SEMPRE de que impressão é o preço — a que ele
+   escolheu, a que ele já tem, ou a regra genérica. Quem decide é o
+   `arts.preferida`; aqui só se desenha. */
+function origemHTML(l) {
+  const a = l.arte || {};
+  const imp = a.set ? `${escDados(String(a.set).toUpperCase())} #${escDados(a.num)}` : '';
+  if (l.origem_preco === 'escolhida') return `<span class="og esc">🎨 a art que escolheste · ${imp}</span>`;
+  if (l.origem_preco === 'a_que_tens') return `<span class="og tens">🎨 a art que já tens · ${imp}</span>`;
+  let t = '<span class="og reg">regra genérica: a mais barata que serve';
+  if (a.origem === 'por_escolher') t += ' — <b>diz-me a art</b>';
+  if (a.origem === 'ambigua') t += ` — tens ${a.opcoes.length} arts (${a.opcoes.map(escDados).join(', ')}): <b>diz qual</b>`;
+  if (a.sem_preco) t += ` — a art ${imp} não tem preço neste acabamento`;
+  return t + '</span>';
 }
 
 function linhaHTML(l, comImagem, comDeck) {
   const a = l.aviso;
+  const u = l.unit_ref != null ? l.unit_ref : l.unit;
+  const tot = l.unit_ref != null ? l.total_ref : l.total;
   return `<li class="fr">`
     + arteHTML(l.sid, l.nm, comImagem)
     + `<div class="nm"><span class="q">${l.q}&times;</span>${escDados(l.nm)}</div>`
-    + `<div class="pr"><b${l.unit == null ? ' class="sp"' : ''}>`
-    + `${l.unit == null ? 'sem preço' : eur(l.total)}</b>`
-    + `<span>${l.unit == null ? '' : eur(l.unit) + '/cóp.'}</span></div>`
+    + `<div class="pr"><b${u == null ? ' class="sp"' : ''}>`
+    + `${u == null ? 'sem preço' : eur(tot)}</b>`
+    + `<span>${u == null ? '' : eur(u) + '/cóp.'}</span></div>`
     + `<div class="meta">${comDeck ? `<b>${escDados(l.deck)}</b> · ` : ''}`
     + `<span class="pt">${escDados(l.req)}</span>`
-    + `${l.board === 'side' ? ' · sideboard' : ''}</div>`
+    + `${l.board === 'side' ? ' · sideboard' : ''}<br>${origemHTML(l)}</div>`
     + (l.urgencia ? `<p class="urg">⏳ ${escDados(l.urgencia.porque || '')}`
         + `${l.urgencia.ate ? ' — até ' + escDados(l.urgencia.ate) : ''}</p>` : '')
     + (a ? `<p class="av ${a.grau === 'aviso' ? 'aviso' : 'nota'}">`
@@ -176,19 +206,59 @@ function chipsHTML() {
              copias: ls.reduce((s, l) => s + l.q, 0),
              valor: ls.reduce((s, l) => s + l.total, 0),
              serve: ls.reduce((s, l) => s + l.total_serve, 0),
+             ref: ls.reduce((s, l) => s + l.total_ref, 0),
+             art: ls.filter(l => l.origem_preco !== 'regra').length,
              sp: ls.reduce((s, l) => s + (l.unit == null ? l.q : 0), 0),
              av: ls.filter(l => l.aviso && l.aviso.grau === 'aviso').length};
-  /* OS DOIS TOTAIS LADO A LADO. O primeiro é o do motor (o mínimo entre
-     impressões); o segundo usa a impressão que cada caixa ACEITA, e é o que ele
-     vai pagar na banca. Com um só, o subtotal que decide onde ele vai caçar
-     estava abaixo do real — medido: 67 das 121 cartas de Premodern. */
-  return `<span class="chip gold"><b>${eur(t.valor)}</b> a comprar</span>`
-    + (Math.round(t.serve * 100) !== Math.round(t.valor * 100)
-      ? `<span class="chip warn"><b>${eur(t.serve)}</b> com a impressão que serve`
-        + `</span>` : '')
+  const ar = (D.arts || {}).contagens || {};
+  /* TRÊS TOTAIS, e o primeiro é o que ele vai pagar: a ART que ele quer (a que
+     escolheu, ou a que já tem) e, sem ela, a impressão mais barata que a caixa
+     ACEITA (2026-10-13). O do motor (o mínimo entre impressões) fica ao lado:
+     é o «fechar tudo» da Deckboxes, e esconder a diferença era escolher por ele
+     a conta. */
+  return `<span class="chip gold"><b>${eur(t.ref)}</b> a comprar, pela art certa</span>`
+    + (Math.round(t.serve * 100) !== Math.round(t.ref * 100)
+      ? `<span class="chip"><b>${eur(t.serve)}</b> com a mais barata que serve</span>` : '')
+    + (Math.round(t.valor * 100) !== Math.round(t.ref * 100)
+      ? `<span class="chip"><b>${eur(t.valor)}</b> mínimo do motor</span>` : '')
     + `<span class="chip"><b>${t.cartas}</b> cartas · ${t.copias} cóp.</span>`
+    + `<span class="chip"><b>${t.art}</b> de ${ls.length} linhas com a art dele</span>`
+    + (ar.por_escolher ? `<button type="button" class="chip warn" id="iraarts">`
+      + `<b>${ar.por_escolher}</b> arts por escolher${ar.ambiguas ? ' · ' + ar.ambiguas + ' a confirmar' : ''} ⬇</button>` : '')
     + (t.sp ? `<span class="chip"><b>${t.sp}</b> cóp. sem preço</span>` : '')
     + (t.av ? `<span class="chip"><b>${t.av}</b> com o preço fora da regra</span>` : '');
+}
+
+/* AS ARTS POR ESCOLHER (André, 2026-10-13): *"pede-me sempre que faltar as arts
+   das cartas"*. São as cartas que os decks que ele guarda pedem e de que ele não
+   tem NENHUMA cópia — por valor, que é por onde ele começa. As que ele tem numa
+   impressão só não aparecem (a art é a dele); as que tem em DUAS ou mais vêm à
+   parte, com as que tem, para ele dizer qual. */
+function artsHTML() {
+  const A = D.arts;
+  if (!A) return '';
+  const c = A.contagens;
+  let out = `<div class="prop arts" id="arts"><h2>Arts por escolher — ${c.por_escolher}</h2>`
+    + `<p class="sub">Dos <b>${c.nomes}</b> nomes que os teus ${c.decks} decks pedem `
+    + `(sem contar ${c.basicas} básicas, de que nunca se pede art): <b>${c.completos}</b> `
+    + `já tens todos, <b>${c.alguns}</b> tens alguns e <b>${c.zero}</b> não tens nenhum. `
+    + `Onde já tens a carta, a art é a tua e não se pergunta. `
+    + `Põe a imagem da art em <code>Arts que procuro/&lt;nome da carta&gt;/</code>: `
+    + `a partir daí a falta e o preço passam a ser os dessa impressão.`
+    + (c.escolhidas ? ` Já escolheste ${c.escolhidas}.` : '') + `</p>`;
+  if (A.ambiguas.length) {
+    out += `<h3>Tens em mais do que uma art — diz qual queres (${A.ambiguas.length})</h3><ul class="al">`
+      + A.ambiguas.map(x => `<li><b>${escDados(x.nm)}</b> — `
+        + x.opcoes.map(o => `${escDados(String(o.set).toUpperCase())} #${escDados(o.num)}`
+          + ` (${o.q}× ${escDados((o.linguas || []).join('/'))} ${escDados((o.acabamentos || []).join('/'))})`).join(' · ')
+        + `</li>`).join('') + `</ul>`;
+  }
+  out += `<h3>Não tens nenhuma — por valor</h3><ol class="al">`
+    + A.por_escolher.map(x => `<li><b>${escDados(x.nm)}</b> · ${x.q}× · `
+      + `${x.unit == null ? 'sem preço' : 'desde ' + eur(x.unit) + '/cóp.'}`
+      + ` <span class="pt">— ${escDados(x.decks.join(', '))}</span></li>`).join('')
+    + `</ol></div>`;
+  return out;
 }
 
 function barraHTML() {
@@ -221,7 +291,7 @@ function propostaHTML() {
 function vistaHTML() {
   const ls = visiveis();
   if (!ls.length) return `<p class="vazio">Nada a comprar neste filtro.</p>`
-    + propostaHTML();
+    + propostaHTML() + artsHTML();
   const img = contaArtes(MOSTRA);  /* o orçamento de imagens desta vista */
   let out = '';
   if (ORD === 'deck') {
@@ -231,12 +301,11 @@ function vistaHTML() {
       if (!mine.length) continue;
       out += `<div class="dsec"><div class="dhd"><h2>${escDados(d.nome)}</h2>`
         + `<span class="fmt">${escDados(d.formato)}</span>`
-        + `<span class="tot">${eur(d.valor)}</span>`
+        + `<span class="tot">${eur(d.valor_ref)}</span>`
         + `<p class="sub">${d.cartas} cartas · ${d.copias} cóp. · ${escDados(d.req)}`
         + `${d.sem_preco ? ' · ' + d.sem_preco + ' sem preço' : ''}`
-        + (Math.round(d.valor_serve * 100) !== Math.round(d.valor * 100)
-          ? ` · <b>${eur(d.valor_serve)}</b> com a impressão que esta caixa aceita`
-          : '') + `</p></div>`
+        + (Math.round(d.valor * 100) !== Math.round(d.valor_ref * 100)
+          ? ` · mínimo do motor ${eur(d.valor)}` : '') + `</p></div>`
         + `<ul class="fl">${mine.map(l => linhaHTML(l, img(), false)).join('')}</ul>`
         + `</div>`;
     }
@@ -246,7 +315,7 @@ function vistaHTML() {
   const faltam = img.pedidas() - MOSTRA;
   if (faltam > 0) out += `<button type="button" class="maisimg" id="maisimg">`
     + `⬇ mostrar as imagens das outras ${faltam} linhas</button>`;
-  return out + propostaHTML();
+  return out + propostaHTML() + artsHTML();
 }
 
 function render() {
@@ -266,6 +335,7 @@ function ligar() {
     const b = ev.target.closest('button');
     if (!b) return;
     if (b.id === 'maisimg') { MOSTRA += IMG_LOTE * 4; render(); return; }
+    if (b.id === 'iraarts') { const a = el('arts'); if (a && a.scrollIntoView) a.scrollIntoView(); return; }
     if (b.id === 'copiar') {
       const t = el('cmk');
       try { t.select(); document.execCommand('copy'); b.textContent = 'copiado ✓'; }

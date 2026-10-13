@@ -721,6 +721,17 @@ def decks_de_evento(con: sqlite3.Connection,
         if n.get("decisao_pendente"):
             d["decisao_pendente"] = str(n["decisao_pendente"])
             d["rotulo_estado"] = "à espera da tua decisão"
+        # UM BREW É UM BREW (André, 2026-10-13: a Kasmina passou para Pioneer
+        # «com lista nova», e em Pioneer não há uma única lista real para copiar).
+        # A lista foi MONTADA, não jogada: diz-se em cima, com as substituições ao
+        # lado, e nunca leva a ficha de evento (`_com_proveniencia` só a põe com
+        # um bloco `evento`, que um brew não tem). E vive só no config: nunca é
+        # uma linha da `decklists`, por isso nenhuma percentagem a vê.
+        if n.get("brew"):
+            d["brew"] = str(n["brew"])
+            d["substituicoes"] = [list(x) for x in (rec.get("substituicoes") or [])
+                                  if isinstance(x, list)]
+            d["rotulo_estado"] = "brew teu — ninguém jogou esta lista"
         out.append(_com_proveniencia(d, cfg, chave))
     return out
 
@@ -1261,6 +1272,7 @@ def relatorio(con: sqlite3.Connection, cfg: dict | None = None) -> dict:
                 "carta_chave": d.get("carta_chave") or "",
                 "amostra_fina": d.get("amostra_fina") or "",
                 "decisao_pendente": d.get("decisao_pendente") or "",
+                "brew": d.get("brew") or "",
                 "arquetipo_fonte": d.get("arquetipo_fonte") or "",
             })
             por_deck[d["id"]] = d
@@ -1836,6 +1848,8 @@ def deck_para_pagina(con: sqlite3.Connection, d: dict, pos: dict[str, dict],
         "carta_chave": d.get("carta_chave") or "",
         "amostra_fina": d.get("amostra_fina") or "",
         "decisao_pendente": d.get("decisao_pendente") or "",
+        "brew": d.get("brew") or "",
+        "substituicoes": d.get("substituicoes") or [],
         "arquetipo_fonte": d.get("arquetipo_fonte") or "",
     }
     out[CHAVE_SEMPRE] = sm

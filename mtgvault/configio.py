@@ -50,7 +50,11 @@ CARTAS_UMA_LINHA = ("listas_escolhidas",
 # número por linha, e uma tabela que não se vê como tabela não se confere. É o
 # mesmo princípio do `CARTAS_UMA_LINHA`, um nível acima; e sem isto o primeiro
 # `precos modo` reescrevia o bloco inteiro — a lição do commit `ac1f776`.
-BLOCO_COMPACTO = ("precos",)
+BLOCO_COMPACTO = ("precos",
+                  # AS ARTS QUE ELE PROCURA (2026-10-13): uma carta por linha
+                  # (`"Mox Opal": {"set": …, "num": …, "em": …}`), e é ele que as
+                  # lê. Sem isto cada escolha ocupava cinco linhas.
+                  "arts_procuradas")
 
 
 def _compacto(v, nivel: int = 0, dicts: bool = False) -> str:
