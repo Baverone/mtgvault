@@ -167,7 +167,12 @@ def apanha_ligas(con: sqlite3.Connection, wid: int) -> dict:
     if w is None:
         raise LookupError(f"não há vigia com o id {wid}")
     fmt = w["format"]
+    from . import busca_ligas                                # noqa: PLC0415
     conta = sources.conta_ligas(fmt)
+    # A BUSCA (2026-10-13): num formato de busca as ligas não contam, mas um
+    # jogador vigiado É um alvo nomeado — a lista dele de liga colhe-se e
+    # guarda-se (`busca_ligas.alvos_na_lista`). A vigia continua a ver.
+    busca = busca_ligas.e_busca(fmt)
     n = con.execute(
         """SELECT COUNT(*) c FROM decklists
             WHERE lower(player) = lower(?) AND format = ? AND event_tier = ?""",
@@ -178,6 +183,10 @@ def apanha_ligas(con: sqlite3.Connection, wid: int) -> dict:
             ORDER BY event_date DESC LIMIT 1""",
         (w["key"], fmt, sources.TIER_LIGA)).fetchone()
     porque = (
+        f"o {fmt} usa as ligas só para BUSCA (`metagame_fontes.{fmt}.ligas: "
+        f"\"busca\"`): não contam para a percentagem, mas as páginas de liga "
+        f"colhem-se e a lista de um jogador vigiado guarda-se — esta vigia vê-as."
+        if busca and not conta else
         f"o {fmt} conta ligas (`metagame_fontes.{fmt}.ligas`), por isso as "
         f"páginas de liga são colhidas, guardadas e não são podadas — e a vigia "
         f"não filtra tier nenhum. Pôr essa chave a `false` cega esta vigia."
@@ -187,7 +196,7 @@ def apanha_ligas(con: sqlite3.Connection, wid: int) -> dict:
         f"Esta vigia só vê deste jogador o que vier de torneios. Para a abrir é "
         f"`metagame_fontes.{fmt}.ligas: true` — e isso traz as ligas TODAS do "
         f"formato, não só as dele.")
-    return {"apanha": conta, "formato": fmt, "porque": porque,
+    return {"apanha": conta or busca, "formato": fmt, "porque": porque,
             "ligas_na_base": n,
             "ultima_liga": ultima["event_date"] if ultima else None}
 

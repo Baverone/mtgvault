@@ -306,8 +306,16 @@ def prune_leagues(con: sqlite3.Connection) -> int:
     """
     formatos = [r["format"] for r in con.execute(
         "SELECT DISTINCT format FROM decklists WHERE event_tier = 'League'")]
+    # UM FORMATO DE BUSCA NÃO SE PODA (2026-10-13): lá a liga já não conta, mas
+    # o que se guardou foi guardado DE PROPÓSITO, para um alvo nomeado (um deck
+    # com amostra baixa, um jogador vigiado) — e as ~500 ligas de Modern que já
+    # lá estavam desde 05/10 são material de busca. Quem as envelhece é o
+    # `prune_decklists(30)`, como a tudo. Apagá-las no dia em que a regra
+    # entrou era o contrário de «nada se apaga».
+    from . import busca_ligas                                # noqa: PLC0415
     fora = [f for f in formatos
-            if "League" not in sources.metagame_rules(f)["tiers"]]
+            if "League" not in sources.metagame_rules(f)["tiers"]
+            and not busca_ligas.e_busca(f)]
     if not fora:
         return 0
     marcas = ",".join("?" for _ in fora)

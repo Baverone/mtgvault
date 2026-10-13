@@ -123,6 +123,13 @@ def main(argv=None):
                     choices=["todas", "decks", "listas"],
                     help="decks = a tabela `decks`; listas = o metagame")
 
+    psn = sub.add_parser("presenciais-sem-numero",
+                         help="presenciais que não contam por falta do nº de jogadores")
+    psn.add_argument("format", nargs="?")
+    bl = sub.add_parser("busca-ligas",
+                        help="o que a busca por ligas está a procurar (13/10)")
+    bl.add_argument("format", nargs="?")
+
     g = sub.add_parser("gap", help="o que falta para montar um arquétipo")
     g.add_argument("archetype_id", type=int)
     g.add_argument("--flex", action="store_true")
@@ -625,6 +632,31 @@ def main(argv=None):
                     print(f"  {n:<40s} {onde}")
             if not alvos:
                 print("nada a ver")
+
+        elif args.cmd == "presenciais-sem-numero":
+            # O que não se sabe não conta — mas diz-se (2026-10-13).
+            rows = sources.presenciais_sem_numero(con, args.format)
+            for r in rows:
+                pista = (f"  · o mesmo evento tem {r['gemeo_jogadores']} jogadores "
+                         f"noutra publicação ({r['gemeo_url']})"
+                         if r["gemeo_jogadores"] else "")
+                print(f"{r['formato']:<10s} {r['data']}  {r['listas']:>3d} listas  "
+                      f"{r['evento']}  [{r['fonte']}]{pista}")
+            if not rows:
+                print("nenhum presencial fica de fora por falta do nº de jogadores")
+
+        elif args.cmd == "busca-ligas":
+            from mtgvault import busca_ligas
+            fmts = ([args.format.lower()] if args.format else
+                    [f for f in ("modern", "pioneer", "legacy", "premodern",
+                                 "standard", "vintage", "duel-commander")])
+            for f in fmts:
+                a = busca_ligas.alvos(con, f, fresco=True)
+                print(busca_ligas.texto(con, f))
+                for d in a["decks"]:
+                    print(f"   {'BAIXA' if d['baixa'] else '     '} {d['listas']:>4d}  "
+                          f"{d['nome']}  [{d['origem']}: "
+                          f"{sources.texto_assinatura(d['cartas'], d['todas'], d['sem'])}]")
 
         elif args.cmd == "nomes":
             fmt = (args.format or "").lower() or None

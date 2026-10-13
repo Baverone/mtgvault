@@ -344,6 +344,14 @@ mtgvault/
                   tentativa só a erro de REDE) e o `harvest_mtgo(...,
                   incluir_hoje=)`, opt-in, porque a página de liga publica os
                   5-0 ao longo do dia. Ver «TODOS OS TORNEIOS EM MODERN»
+  busca_ligas.py  A LIGA É FONTE DE BUSCA, NUNCA DE CONTAGEM (2026-10-13): o
+                  `metagame_fontes.<fmt>.ligas` ganhou um terceiro valor,
+                  `"busca"` — a liga não conta para nada (percentagem, consenso,
+                  agrupamento) e só se colhe/guarda para um ALVO NOMEADO: um deck
+                  SEGUIDO com amostra baixa (`seguidos`/`alvos`/`alvos_na_lista`,
+                  limiar `ligas_busca.amostra_baixa_max`), um jogador vigiado ou
+                  uma carta vigiada (a vigia de sempre). Ver «PIONEER E LEGACY:
+                  31+, E A LIGA COMO BUSCA»
   consenso.py     O CONSENSO POR COMANDANTE (2026-10-01): em Duel Commander a
                   identidade de um deck é o COMANDANTE e nunca a etiqueta do
                   clustering (870 etiquetas, 808 sem listas). O comandante de
@@ -6031,6 +6039,80 @@ cartas … criasses uma pasta para esses decks todos juntos"*. Motor em
   1 328,99 € igual; `guardar` 5 → 3 c, protegidas 139 → 138.
 - **O B&R de 12/10 NÃO foi confirmado**: a web estava negada nesta ordem. Fica
   em `_br_2026_10_12` como afirmação do supervisor; `banimentos_manuais` intacto.
+
+**PIONEER E LEGACY: EVENTOS DO MTGO OU PRESENCIAIS COM MAIS DE 30, E A LIGA COMO
+BUSCA (André, 2026-10-13, à letra).** *"para Pioneer apenas quero registos do
+MTGO ou torneios presenciais com mais de 30 pessoas"*, *"para Legacy igual"* e
+*"as ligas servem apenas para procurar listas de decks novos, como a Kasmina, ou
+se a amostra de decks que procuramos e baixa"*. Motor em
+**`mtgvault/busca_ligas.py`** + as quatro portas de sempre (`sources.harvest_mtgo`,
+`sources.store_decklist`, `metagame_rules`/`counting_sql`,
+`analysis.prune_leagues`), `sources.presenciais_sem_numero`,
+`versoes.listas_do_formato` e `watchlist.apanha_ligas`; config em
+`metagame_fontes.{pioneer,legacy,modern}` + `ligas_busca`; CLI
+`py -m mtgvault.cli busca-ligas [fmt]` e `presenciais-sem-numero [fmt]`. Testes
+em `tests/test_busca_ligas.py` (8 casos) e a prova de que chumbam em
+`tests/_chumba_busca_ligas.py` (**6 de 6 alvos**, um processo por alvo).
+
+- **«Registos do MTGO» são os EVENTOS e não a FONTE.** O mesmo Challenge entra
+  pelo mtgo.com e pelo mtgtop8 (em Pioneer 424 + 101 listas de Challenge/
+  Showcase/Qualifier): filtrar por `source='mtgo'` deitava fora 101 listas
+  verdadeiras. A regra é pelo `event_tier`. «Mais de 30» = **31**. As secções
+  `pioneer`/`legacy` **não repetem os tiers** (herdam do `_default`).
+- **Medido (o mesmo `vault.db`, `_revisao/1013b`), os números do supervisor
+  batem ao exemplar**: Pioneer 593 listas, 525 de eventos MTGO, 67 presenciais
+  (27 com 31+, 3 com 64+) → contam **528 → 552**; Legacy 1 163, 817, 346 (88 /
+  32) → **849 → 905**. Na janela do consenso: Pioneer 187 → 195, Legacy 365 →
+  397. É mais LARGA: só baixa a porta de 64 para 31.
+- **UM PRESENCIAL SEM NÚMERO NÃO CONTA, e deixou de cair em silêncio.** O que não
+  se sabe não conta (regra de 2026-09-07, intacta); o `presenciais_sem_numero` lista-o
+  por evento e, se o mesmo nome+data tiver número noutra publicação, di-lo. **As 8
+  de Legacy são a «Law League #2» de 04/10 publicada DUAS vezes no mtgtop8**
+  (91608 com 35 jogadores, 91650 sem contagem; os mesmos 8 jogadores e
+  classificações, e o `content_hash` difere porque a primeira traz um
+  `Bedeck / Bedazzle` a mais em cada lista — por isso a deduplicação não as
+  juntou). Com a regra nova a 91608 conta e a 91650 não, que é o certo. Não se
+  copiou número nenhum nem se apagou nada.
+- **A LIGA É BUSCA, NUNCA CONTAGEM (`"ligas": "busca"`).** Nunca entra na
+  percentagem do formato, no consenso, no agrupamento nem no top-N (o `League`
+  não entra nos tiers — e o `metagame_rules` passou a exigir `ligas is True`,
+  porque `"busca"` é uma string verdadeira). Colhe-se e guarda-se **só** para um
+  alvo nomeado: (a) carta nova vigiada (a vigia de 26/09; a Kasmina é isto);
+  (b) **deck seguido com amostra baixa**: ≤ `ligas_busca.amostra_baixa_max` (10)
+  listas que CONTAM na janela; (c) jogador vigiado (`watched mtgo_player` — o
+  CesarMerjan joga em ligas e a vigia dele não podia cegar). O universo da RP
+  (protecção) continua sem filtro de tier: as ligas guardadas continuam a
+  proteger cartas. **A poda não apaga as ligas de um formato de busca** (nada se
+  apaga; envelhecem pelo `prune_decklists(30)`).
+- **O LIMIAR É POR DECK SEGUIDO, nunca pelo universo**: a mediana de um
+  arquétipo é 2 listas em todos os formatos, e um limiar sobre o universo
+  disparava sempre. Seguidos = versões vivas do `decks_por_formato`
+  (`meta.cartas`), caixas vivas (`assinatura`/`reserva_assinatura`) e a
+  carta-chave do `criterio`, deduplicados pela identidade (a versão ganha o
+  nome). **Hoje (janela, fora das ligas)**: Modern — Affinity/Weapons 53, «joga
+  Mox Opal» 73, **Oswald 0 → BAIXA**; Pioneer — Greasefang 3, Abzan 2, Orzhov 1
+  → **todos BAIXOS**; Legacy — EWC (caixa, sem Kappa) 9, Aluren 10, Artifacts
+  Blue 10 → BAIXOS, EWC (versão) 13, «joga Mox Opal» 57. Em toda a história: Mox
+  Opal de Modern 159 fora das ligas, Grinding Station 7 — os números dele.
+- **MODERN, antes → depois (o `main` contra o ramo, agrupamento recalculado):**
+  contam **2 871 → 2 295** (−576 ligas, 20 %), na janela **1 537 → 1 018**. Mox
+  Opal **6,8 % (105/1 537) → 7,2 % (73/1 018)** — as ligas diluíam. Top da
+  janela: Broodscale 13,6 → **16,6 %**, UR Cutter Prowess 8,7 → 8,3, Pinnacle
+  Affinity 5,1 → **5,8**, Ruby Storm 4,6 → 5,8, Boros Aggro 5,2 → 4,8.
+- **O QUE MUDOU DE LISTA: só a caixa `legacy-aluren`** (consenso por assinatura),
+  de 6 para 10 listas — **só o sideboard**: Faerie Macabre 2 → 3, Force of
+  Negation 2 → 1; fechar tudo 20 568,60 → 20 508,44 € (−60,16 €, só ela); as
+  outras 16 caixas e as dez saídas da venda iguais. A REGRA de escolha
+  (`eventos.escolher` sobre o que conta) passou a dar, em Legacy, **exactamente
+  as listas fixadas nessa manhã** (Francesco Costa no EWC, Daniel Gómez no
+  Artifacts Blue) — com a porta a 64 dava Challenges (demmers). As listas
+  fixadas não se tocaram.
+- **AVISO HONESTO: para a Kasmina a busca não resolve nada** — «Kasmina, Enigma
+  Sage» e «Jace's Machinations» têm **zero** listas de Modern, dentro e fora das
+  ligas. A busca não inventa o que não existe.
+- **CUSTO**: um formato de busca só abre a página de liga com alvo; hoje há alvo
+  nos três (Modern pelo Oswald e o CesarMerjan, Pioneer e Legacy pelos decks
+  baixos) — uma página por dia e formato, como a vigia de cartas.
 
 ### Duas bases de dados
 

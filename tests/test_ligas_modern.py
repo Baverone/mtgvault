@@ -426,8 +426,10 @@ def caso_num_formato_sem_ligas_as_duas_contas_sao_iguais():
     assert d["sem_ligas"]["listas"] == d["listas"], d
     assert d["sem_ligas"]["total"] == d["total"], d
     assert d["sem_ligas"]["pct"] == d["pct"], d
-    assert d["ligas"] == {"listas": 0, "total": 0, "pct": 0.0, "conta": False}, (
-        d["ligas"])
+    # Desde 2026-10-13 o bloco leva também `busca` (a liga como fonte de
+    # busca); neste fixture o legacy tem `ligas: false`, por isso é False.
+    assert d["ligas"] == {"listas": 0, "total": 0, "pct": 0.0, "conta": False,
+                          "busca": False}, d["ligas"]
 
 
 def caso_a_pagina_desenha_as_duas_contas():
@@ -533,7 +535,13 @@ def caso_o_config_a_serio_re_aponta_a_affinity_e_guarda_o_id_antigo():
     cfg = json.loads(io.open(RAIZ / "colecao_config.json",
                              encoding="utf-8").read())
     mf = cfg["metagame_fontes"]
-    assert mf["modern"]["ligas"] is True
+    # ASSERÇÃO CORRIGIDA A 2026-10-13, e não mascarada: *"as ligas servem
+    # apenas para procurar listas de decks novos … ou se a amostra … e baixa"*.
+    # De 05/10 a 13/10 o modern CONTAVA ligas (`true`); desde 13/10 é `"busca"`
+    # — guardam-se para alvos nomeados e nunca contam. O resto do que este caso
+    # tranca (tiers herdados, o `_default` intacto, o duel-commander a contar,
+    # a razão escrita) não mudou. Ver `test_busca_ligas.py`.
+    assert mf["modern"]["ligas"] == "busca"
     assert mf["modern"]["min_jogadores_presencial"] == 0
     assert "tiers" not in mf["modern"], (
         "a secção do modern herda os tiers do `_default` — uma segunda cópia "

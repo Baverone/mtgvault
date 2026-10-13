@@ -333,8 +333,19 @@
     },
     "modern": {
       "min_jogadores_presencial": 0,
-      "ligas": true,
+      "ligas": "busca",
+      "_ligas_1013": "Andre 2026-10-13, a letra: 'as ligas servem apenas para procurar listas de decks novos, como a Kasmina, ou se a amostra de decks que procuramos e baixa'. O 'ligas' passou de true a 'busca': a liga deixa de CONTAR (percentagem do formato, consenso, agrupamento, top8s) e passa a colher-se e guardar-se so quando ha um ALVO NOMEADO - uma carta vigiada (cartas_vigiadas), um deck seguido com amostra baixa fora das ligas (ligas_busca.amostra_baixa_max) ou um jogador vigiado (o CesarMerjan). Nao contraria a decisao de 05/10: ele abriu as ligas para procurar decks de Mox Opal, que e o caso da amostra baixa - o que muda e que passa a ter nome e limite em vez de ser um interruptor sempre ligado. As ligas que ja estavam na base NAO se apagam (o analysis.prune_leagues nao poda um formato de busca); envelhecem pelo prune_decklists(30). Ver mtgvault/busca_ligas.py. Repor o antigo e 'ligas': true.",
       "_nota": "Andre 2026-10-05, a letra: 'para modern, apenas os decks de Mox Opal, procura todos os torneios ! incluindo ligas, torneios presenciais'. SO O MODERN mudou: a regra de 2026-09-07 (sem ligas, presencial com 64+ jogadores) continua inteira no _default e nos outros formatos, porque ele nao lhes tocou. NAO SE REPETE AQUI A LISTA DE TIERS de proposito: sem a chave 'tiers' esta secçao herda-a do _default (Challenge, Showcase, Presencial, Qualifier) e o 'ligas': true acrescenta-lhe 'League' — uma segunda copia da lista divergia da primeira no dia em que ele mexesse numa delas. O 'min_jogadores_presencial': 0 e o que faz entrar os presenciais pequenos: na janela havia 14 listas de presenciais de Modern, TODAS de eventos com menos de 64 jogadores (12 e 17), e uma delas joga Mox Opal (Thiago Meneghin, 2.o de 17, 4a Etapa CLM, 01/10). ESTE INTERRUPTOR ABRE AS QUATRO PORTAS AO MESMO TEMPO, porque as quatro leem o mesmo metagame_rules()['tiers']: a colheita deixa de saltar as paginas de liga (sources.harvest_mtgo), o sources.store_decklist guarda-as, o lista_conta/counting_sql conta-as e o analysis.prune_leagues deixa de as apagar. O CUSTO, medido a 05/10: as 8 paginas de liga de Modern da janela servem ~330 listas (45 a 58 por pagina, uma por dia) contra as 412 que o formato tinha — quase o dobro — e em regime sao ~50 listas novas por noite, que o prune_decklists(30) limita a ~1500. E O AVISO, tambem medido: uma liga e um 5-0 sem classificacao e sem tamanho de campo, por isso a percentagem do formato passa a misturar duas coisas; as paginas que mostram a percentagem dizem-na COM e SEM ligas lado a lado (sources.conta_com_e_sem_ligas)."
+    },
+    "pioneer": {
+      "min_jogadores_presencial": 31,
+      "ligas": "busca",
+      "_nota": "Andre 2026-10-13, a letra: 'para Pioneer apenas quero registos do MTGO ou torneios presenciais com mais de 30 pessoas'. 'Registos do MTGO' sao os EVENTOS do MTGO (Challenge, Showcase, Qualifier), venham do mtgo.com ou re-hospedados pelo mtgtop8 - por isso a regra e pelo event_tier e nao pela fonte. 'Mais de 30' = 31 ou mais. NAO se repete a lista de tiers: herda a do _default (a licao da nota do modern). A regra e MAIS LARGA do que a de antes: so baixa a porta dos presenciais de 64 para 31. Um presencial SEM numero de jogadores (event_players NULL ou 0) continua a NAO contar - o que nao se sabe nao conta - e fica a vista no CLI 'presenciais-sem-numero'. As ligas sao so de busca, como no modern (ver ligas_busca)."
+    },
+    "legacy": {
+      "min_jogadores_presencial": 31,
+      "ligas": "busca",
+      "_nota": "Andre 2026-10-13, a letra: 'para Legacy igual' (ao Pioneer: eventos do MTGO, ou presenciais com mais de 30 pessoas). Mesma regra, mesmas razoes; ver a nota do pioneer. Os tiers herdam do _default."
     },
     "duel-commander": {
       "tiers": [
@@ -357,6 +368,10 @@
       "ligas": false,
       "_nota": "Andre 2026-09-07: 'Pauper tambem nao precisa, pois so sigo a lista Pauper do jogador especifico (Luffy)'. Nada conta; so se guardam as listas dele (ver so_jogadores_vigiados)."
     }
+  },
+  "ligas_busca": {
+    "amostra_baixa_max": 10,
+    "_porque": "Andre 2026-10-13: a liga e fonte de BUSCA, nunca de contagem. Colhe-se quando ha um alvo nomeado: (a) uma carta nova vigiada (cartas_vigiadas - a Kasmina); (b) um deck que ele SEGUE com amostra BAIXA fora das ligas, na janela do consenso: 10 listas ou menos; (c) um jogador vigiado (watched mtgo_player). O limiar e POR DECK SEGUIDO (caixas, versoes do decks_por_formato e a carta-chave do criterio) e NUNCA sobre todos os arquetipos: a mediana do tamanho de um arquetipo e 2 listas em todos os formatos (modern 183 arquetipos / 2151 listas, pioneer 84/485, legacy 121/849, premodern 81/549), por isso um limiar sobre o universo disparava para quase todos e nao discriminava nada. 10 e a proposta do supervisor e confere com a curva dos decks seguidos (ver mtgvault/busca_ligas.py e o relatorio de 13/10). So vale nos formatos com metagame_fontes.<fmt>.ligas = 'busca'."
   },
   "formatos_metagame": [
     "standard",

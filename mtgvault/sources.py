@@ -236,10 +236,16 @@ def harvest_mtgo(con: sqlite3.Connection, days_back: int = 1,
             # `store_decklist`, que só guarda as listas COM carta vigiada — a base
             # não cresce com as outras. Sem cartas vigiadas salta como sempre
             # saltou, e é isso que faz ligar isto não mudar nada no daily.
+            #
+            # E A BUSCA (André, 2026-10-13): num formato com `ligas: "busca"` a
+            # página também se descarrega quando há um ALVO NOMEADO que a
+            # justifique — um deck seguido com amostra baixa, ou um jogador
+            # vigiado. Sem alvo, salta como as outras. Ver `busca_ligas`.
             fmt_url = _guess_format(url)
             if ("league" in url.lower()
                     and "League" not in metagame_rules(fmt_url)["tiers"]
-                    and not _vigia().ha_vigia(fmt_url)):
+                    and not _vigia().ha_vigia(fmt_url)
+                    and not _busca().ha_alvo(con, fmt_url)):
                 continue
             try:
                 html = _get_mtgo(url).text
@@ -532,6 +538,13 @@ def _vigia():
     return vigia
 
 
+def _busca():
+    """A BUSCA POR LIGAS (2026-10-13), importada tarde pela razão do `_vigia`:
+    o `busca_ligas` lê o config e as caixas por aqui."""
+    from mtgvault import busca_ligas                         # noqa: PLC0415
+    return busca_ligas
+
+
 def _consenso():
     """O módulo do CONSENSO POR COMANDANTE, importado TARDE — ele lê o config por
     aqui (`sources.config()`), e um `import` no topo fechava um ciclo. É o mesmo
@@ -549,7 +562,11 @@ def metagame_rules(fmt: str | None) -> dict:
     r.update(_sem_comentarios(sec.get("_default")))
     r.update(_sem_comentarios(sec.get(fmt)))
     tiers = list(r.get("tiers") or [])
-    if r.get("ligas") and "League" not in tiers:
+    # `is True` e não «truthy» (2026-10-13): o `"ligas": "busca"` é uma string,
+    # e uma string não vazia é verdadeira — a liga de busca entrava na contagem
+    # pela porta que existe precisamente para a manter fora. Ver
+    # `mtgvault.busca_ligas`.
+    if r.get("ligas") is True and "League" not in tiers:
         tiers.append("League")
     r["tiers"] = tiers
     return r
@@ -594,6 +611,51 @@ def lista_conta(row, fmt: str | None = None, consenso: bool = True) -> bool:
             jogadores = _campo(row, "event_players")
             return jogadores is not None and jogadores >= minimo
     return True
+
+
+def presenciais_sem_numero(con: sqlite3.Connection,
+                           fmt: str | None = None) -> list[dict]:
+    """Os presenciais que NÃO CONTAM só porque não se sabe quantos jogadores
+    tiveram — num formato que exige um mínimo (2026-10-13).
+
+    A REGRA NÃO MUDOU: *o que não se sabe não conta* (o `lista_conta` e o
+    `counting_sql` recusam `event_players` NULL ou 0 desde 2026-09-07). O que
+    mudou é que deixaram de cair EM SILÊNCIO: com a porta a 31 jogadores no
+    Pioneer e no Legacy, um presencial de 40 sem número ficava de fora sem uma
+    linha a dizê-lo. Esta é essa linha, por evento, com o nº de listas e — se
+    houver um evento com o MESMO nome e a MESMA data que tenha número — a pista
+    de que é uma re-publicação (medido a 13/10: as 8 listas de Legacy sem
+    número são a «Law League #2» de 04/10 publicada DUAS vezes no mtgtop8, a
+    91608 com 35 jogadores e a 91650 sem contagem). Não se copia o número de
+    um para o outro: é ele que decide.
+    """
+    formatos = [fmt.lower()] if fmt else [r[0] for r in con.execute(
+        "SELECT DISTINCT format FROM decklists WHERE event_tier = 'Presencial'")]
+    out = []
+    for f in formatos:
+        if int(metagame_rules(f).get("min_jogadores_presencial") or 0) <= 0:
+            continue
+        if "Presencial" not in metagame_rules(f)["tiers"]:
+            continue
+        for r in con.execute(
+                """SELECT event_name, event_date, source, COUNT(*) n,
+                          MIN(url) url
+                     FROM decklists
+                    WHERE format = ? AND event_tier = 'Presencial'
+                      AND COALESCE(event_players, 0) = 0
+                    GROUP BY event_name, event_date, source
+                    ORDER BY event_date DESC, event_name""", (f,)):
+            gemeo = con.execute(
+                """SELECT MAX(event_players) p, MIN(url) url FROM decklists
+                    WHERE format = ? AND event_name = ? AND event_date = ?
+                      AND event_tier = 'Presencial' AND event_players > 0""",
+                (f, r["event_name"], r["event_date"])).fetchone()
+            out.append({"formato": f, "evento": r["event_name"],
+                        "data": r["event_date"], "fonte": r["source"],
+                        "listas": r["n"], "url": r["url"],
+                        "gemeo_jogadores": gemeo["p"] if gemeo else None,
+                        "gemeo_url": gemeo["url"] if gemeo else None})
+    return out
 
 
 def counting_sql(fmt: str, alias: str = "d",
@@ -1026,8 +1088,13 @@ def store_decklist(con: sqlite3.Connection, *, source: str, source_key: str,
     # Ligas fora (regra 2026-09-07): nem se guardam, para o vault.db não crescer
     # com listas que nenhuma página conta. O Duel Commander é a exceção — lá as
     # ligas contam (colecao_config.json -> metagame_fontes["duel-commander"]).
+    # A BUSCA (2026-10-13): num formato de busca, a liga guarda-se se servir um
+    # alvo NOMEADO (um deck seguido com amostra baixa, um jogador vigiado) — e
+    # continua a NÃO contar, porque o `League` não entra nos tiers. Só se
+    # pergunta quando é mesmo uma liga que ia ser recusada.
     if (tier == "League" and "League" not in metagame_rules(fmt)["tiers"]
-            and not vigiadas):
+            and not vigiadas
+            and not _busca().alvos_na_lista(con, fmt, cards, player)):
         return None
     # Formato sem metagame, seguido só por jogador (Pauper): guarda-se a lista de
     # quem está vigiado e mais nada. As `manual` passam sempre.

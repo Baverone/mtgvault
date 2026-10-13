@@ -135,6 +135,7 @@ from datetime import date
 
 from . import eventos
 from . import nomes as _nomes
+from . import busca_ligas as _busca
 from . import scryfall, sources
 
 #: Quantas alternativas do meta se desenham por versão. A da Affinity tem 45
@@ -1454,6 +1455,14 @@ def listas_do_formato(con: sqlite3.Connection, cfg: dict | None = None
         def _p(a, b):
             return round(100.0 * a / b, 1) if b else 0.0
 
+        # A LIGA DE BUSCA NÃO ENTRA NA PERCENTAGEM (André, 2026-10-13: *"as
+        # ligas servem apenas para procurar"*). Num formato em que as ligas não
+        # CONTAM, o número de cabeça é o «sem ligas»; as ligas que estão na base
+        # (guardadas para a busca) continuam ditas ao lado, com `busca`.
+        conta = sources.conta_ligas(fmt)
+        n_com, tot_com = n, tot
+        if not conta:
+            n, tot = n_sem, tot_sem
         out[fmt] = {
             "carta": carta, "listas": n, "total": tot, "pct": _p(n, tot),
             "desde": desde,
@@ -1461,11 +1470,14 @@ def listas_do_formato(con: sqlite3.Connection, cfg: dict | None = None
             # compara, e é ela que diz se o número andou por mérito do deck.
             "sem_ligas": {"listas": n_sem, "total": tot_sem,
                           "pct": _p(n_sem, tot_sem)},
-            "ligas": {"listas": n - n_sem, "total": tot - tot_sem,
-                      "pct": _p(n - n_sem, tot - tot_sem),
+            "ligas": {"listas": n_com - n_sem, "total": tot_com - tot_sem,
+                      "pct": _p(n_com - n_sem, tot_com - tot_sem),
                       # `conta` é o interruptor do config, não «há ligas na
                       # base»: um formato pode ter ligas antigas por apagar.
-                      "conta": sources.conta_ligas(fmt)},
+                      "conta": conta,
+                      # `busca` (2026-10-13): as ligas estão na base para
+                      # PROCURAR e não contam — a página di-lo.
+                      "busca": _busca.e_busca(fmt)},
         }
     return out
 
