@@ -585,6 +585,16 @@ def alvo_da_foto(con, photo_path: str | None, cache: dict | None,
     a = {"tipo": o["tipo"], "slot": o["slot"], "em": None}
     if a["tipo"] == "caixa" and a["slot"] not in loadout.nomes_das_caixas():
         return alvo_global, primeiro       # uma caixa que já não existe: só a cópia
+    fam_slots: list[str] = []
+    if a["tipo"] == "familia":
+        # A FAMÍLIA (2026-10-13): prefere as cópias de QUALQUER caixa dela. Uma
+        # família que já não existe no config fica como uma foto sem prefixo.
+        from . import fotos                                # noqa: PLC0415
+        fam = fotos.familia(o.get("familia"))
+        if not fam:
+            return alvo_global, primeiro
+        a["familia"] = fam["id"]
+        fam_slots = list(fam["slots"])
     if alvo_global and alvo_global.get("tipo") == a["tipo"] and alvo_global.get("slot") == a["slot"]:
         return alvo_global, primeiro       # é o mesmo alvo — não se recalcula
     cache = cache if cache is not None else {}
@@ -598,9 +608,9 @@ def alvo_da_foto(con, photo_path: str | None, cache: dict | None,
                 rep = None
             cache["rep"] = rep
         cache["particao"] = particao(con, rep)
-    chave = _chave(a)
+    chaves = ({("caixa", s) for s in fam_slots} if fam_slots else {_chave(a)})
     a["copias"] = {cid for cid, partes in cache["particao"].items()
-                   if any(g == chave for g, _q in partes)}
+                   if any(g in chaves for g, _q in partes)}
     a["nome"] = titulo(a)
     return a, primeiro
 
@@ -609,6 +619,8 @@ def titulo(alvo_: dict) -> str:
     from . import loadout                                  # noqa: PLC0415
     if alvo_["tipo"] == "caixa":
         return "Caixa " + (loadout.nomes_das_caixas().get(alvo_["slot"]) or alvo_["slot"])
+    if alvo_["tipo"] == "familia":
+        return "Família " + str(alvo_.get("familia") or "")
     return TITULO.get(alvo_["tipo"], alvo_["tipo"])
 
 

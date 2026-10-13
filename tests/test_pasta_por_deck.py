@@ -355,14 +355,29 @@ def caso_as_pastas_de_grupo_nao_valem_como_alvo():
 def caso_a_pasta_de_nomes_antigos_fica_de_fora():
     """O supervisor mudou duas pastas com nomes antigos para `_nomes antigos\\`
     em vez de as apagar (a regra dele de 09/09). Uma pasta que começa por `_`
-    não é um deck — e o `_plano.txt` também não é uma imagem."""
+    não é um deck — e o `_plano.txt` também não é uma imagem.
+
+    **Corrigido a 2026-10-13, não mascarado:** até aqui o caso exigia que a
+    foto da pasta arquivada fosse INVISÍVEL. Continua a não ser processada
+    (não se adivinha o deck), mas passou a ser DITA — `arquivada`, sem alvo,
+    em `ignorados` com «caixa do config» no porquê, que é o que põe a tarefa
+    das 02:30 a vermelho. A 13/10 as pastas das caixas que entraram na
+    família Mox Opal foram para lá, e uma foto largada por hábito numa delas
+    ficava calada para sempre."""
     repor()
-    larga("_nomes antigos", "velha.jpg", "Pauper Affinity")
+    limpar_pendentes()
+    f = larga("_nomes antigos", "velha.jpg", "Pauper Affinity")
     (pasta("Blue Farm") / "_plano.txt").write_text("x", encoding="utf-8")
     itens = fotos.fotos_nas_pastas(raiz=SITE)
-    assert not [i for i in itens if "nomes antigos" in str(i["ficheiro"])], itens
+    arq = [i for i in itens if "nomes antigos" in str(i["ficheiro"])]
+    assert len(arq) == 1 and arq[0]["tipo"] is None and arq[0]["arquivada"], itens
     assert not [i for i in itens if i["ficheiro"].name == "_plano.txt"], itens
-    print("a pasta _nomes antigos e o _plano.txt ficam fora da recolha")
+    r = fotos.recolher_das_pastas(raiz=SITE)
+    assert f.exists() and not r["recolhidas"], r
+    ig = [x for x in r["ignorados"] if x["ficheiro"] == "velha.jpg"]
+    assert ig and "caixa do config" in ig[0]["porque"], r["ignorados"]
+    f.unlink()
+    print("a pasta _nomes antigos nao se processa, mas uma foto la dentro e DITA")
 
 
 # ===========================================================================

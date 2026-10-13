@@ -24,7 +24,9 @@ UMA_LINHA = ("caixas", "loadout", "regras_por_formato", "baldes_coleccao",
              "cartas_vigiadas",
              # OS DECKS DELE que não são caixa (2026-10-04, ao fim do dia): os
              # dez de Modern e o de Pioneer, um por linha, como as `caixas`.
-             "decks_de_evento")
+             "decks_de_evento",
+             # A PASTA DE UMA FAMÍLIA DE DECKS (2026-10-13), uma por linha.
+             "familias_fotos")
 # As chaves cujas LISTAS DE ESCALARES vão numa linha cada (2026-09-20): as
 # `listas_escolhidas` levam uma lista de 75 cartas, e com `indent=2` cada
 # `["main", "Solitude", 1]` ocupava cinco linhas — 380 linhas por caixa, que

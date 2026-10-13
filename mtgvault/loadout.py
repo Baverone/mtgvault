@@ -1982,6 +1982,11 @@ def resolve_slots(con, cfg_slots: list[dict] | None = None,
     vigiados = set(sources.config().get("decks_vigiados") or [])
     _urg_cfg = compras_urgentes()           # uma leitura para todas as caixas
     for s in (cfg_slots if cfg_slots is not None else config_slots()):
+        # Uma caixa que SAIU (`_saiu`, 2026-10-13) não entra, mesmo que quem
+        # chama passe a lista crua do config (o `para_slot` tira as chaves com
+        # `_` e a marca perdia-se a seguir).
+        if _caixas.saiu(s):
+            continue
         # Aceita as duas formas — a caixa da v6 e a linha do `loadout` da v5 —
         # e devolve sempre a interna. Uma função só, e idempotente.
         s = _caixas.para_slot(s)

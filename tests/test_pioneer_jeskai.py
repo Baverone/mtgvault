@@ -247,7 +247,9 @@ def caso_a_caixa_jeskai_foi_dissolvida_mas_a_lista_dela_nao_se_apagou():
     assert len(pioneer) == 1 and pioneer[0]["slot"] == "pioneer", pioneer
     assert pioneer[0]["reserva_assinatura"] == ["Greasefang, Okiba Boss"], pioneer[0]
     # O Pioneer continua DECIDIDO (não tem candidatos do top-N): isso não mudou.
-    assert cfg["formatos_decididos"] == ["pioneer"], cfg.get("formatos_decididos")
+    # (Corrigido a 2026-10-13: o Legacy entrou na lista nesse dia, com os dois
+    # decks dele; o que este caso tranca é que o PIONEER lá continua.)
+    assert "pioneer" in cfg["formatos_decididos"], cfg.get("formatos_decididos")
     # E a lista ficou, com a data e a origem.
     rec = cfg["listas_escolhidas"]["pioneer-jeskai"]
     assert rec["padrao"] is True and rec["escolhido_em"] == "2026-09-21"

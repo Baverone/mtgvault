@@ -957,6 +957,9 @@ function fichaHTML(p) {
   if (p.amostra_fina) {
     out += `<div class="aviso"><b>Atenção à amostra.</b> ${esc(p.amostra_fina)}</div>`;
   }
+  if (p.decisao_pendente) {
+    out += `<div class="aviso"><b>Falta a tua decisão.</b> ${esc(p.decisao_pendente)}</div>`;
+  }
   if (p.por_confirmar) {
     out += '<div class="aviso"><b>Falta o teu OK.</b> Este é o melhor candidato ao '
       + 'deck que pediste'

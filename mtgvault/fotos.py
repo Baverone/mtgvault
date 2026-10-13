@@ -371,7 +371,21 @@ def garantir_pastas(res: dict, raiz: Path | str | None = None) -> list[str]:
     if not base.is_dir():
         return []
     criadas = []
+    # A PASTA DE UMA FAMÍLIA substitui as das caixas dela (2026-10-13): criar
+    # também a pasta de cada caixa era voltar a dar-lhe quatro sítios para a
+    # mesma carta, que é exactamente o que ele pediu para deixar de ter.
+    em_familia = set()
+    for f in familias():
+        em_familia |= set(f["slots"])
+        d = base / f["pasta"]
+        if not d.is_dir():
+            d.mkdir(parents=True, exist_ok=True)
+            criadas.append(f["pasta"])
+        if not (d / ".gitkeep").exists():
+            (d / ".gitkeep").write_text("", encoding="ascii")
     for s in res.get("slots") or []:
+        if s["slot"] in em_familia:
+            continue
         nome = nome_de_pasta(s.get("nome") or s["slot"])
         d = pasta_do_deck(s.get("nome") or s["slot"], raiz)
         if d.is_dir():
@@ -442,7 +456,23 @@ def escrever_planos(con, res: dict, cfg: dict | None = None,
                  "criadas": garantir_pastas(res, raiz),
                  "fotos": f2["barra"]["fotos"], "cartas": f2["barra"]["cartas"]}
     com_fila = set()
+    # O plano de uma FAMÍLIA é o das caixas dela, um a seguir ao outro, na
+    # pasta comum (2026-10-13) — escrito do MESMO `fila_decks`, para a pasta e
+    # a página continuarem a dizer o mesmo número.
+    fams = familias(cfg)
+    fam_de = {s: f["id"] for f in fams for s in f["slots"]}
+    fam_txt: dict[str, list[str]] = {f["id"]: [] for f in fams}
     for f in f2["filas"]:
+        if f["slot"] in fam_de:
+            com_fila.add(f["nome"])
+            fam_txt[fam_de[f["slot"]]].append(texto_do_plano(
+                f["nome"], f["slot"], f["fotos"],
+                conversao=f["conversao"], nota=f["nota"]))
+            out["escritos"].append({"nome": f["nome"], "slot": f["slot"],
+                                    "fotos": f["barra"]["fotos"],
+                                    "cartas": f["barra"]["cartas"],
+                                    "familia": fam_de[f["slot"]]})
+            continue
         pastas = _pastas_do_slot(f["slot"], f["nome"], cfg, raiz)
         if not pastas:
             out["sem_pasta"].append(f["nome"])
@@ -459,6 +489,10 @@ def escrever_planos(con, res: dict, cfg: dict | None = None,
     for s in res.get("slots") or []:
         nome = s.get("nome") or s["slot"]
         if nome in com_fila:
+            continue
+        if s["slot"] in fam_de:
+            fam_txt[fam_de[s["slot"]]].append(texto_sem_cartas(nome, s["slot"]))
+            out["vazios"].append(nome)
             continue
         # Escreve-se em TODAS as pastas que apontam para este slot, e não só na
         # que tem o nome de hoje. Duas razões, as duas medidas a 02/10:
@@ -483,10 +517,17 @@ def escrever_planos(con, res: dict, cfg: dict | None = None,
     # TEXTO; não se apaga nem se move a pasta (a regra dele de 09/09), e só se
     # toca onde já existe um `_plano.txt`, que é um ficheiro escrito por nós.
     base = pasta_novas(raiz)
+    for f in fams:
+        d = base / f["pasta"]
+        if d.is_dir():
+            (d / _PLANO).write_text(texto_familia(f, fam_txt[f["id"]]),
+                                    encoding="utf-8")
+            out.setdefault("familias", []).append(f["pasta"])
     if base.is_dir():
         mapa = mapa_pastas(cfg)
         conhecidas = ({_norm(g) for g in PASTAS_DE_GRUPO}
-                      | {_norm(g) for g in PASTAS_FORA_DOS_DECKS})
+                      | {_norm(g) for g in PASTAS_FORA_DOS_DECKS}
+                      | {_norm(f["pasta"]) for f in fams})
         for d in sorted(x for x in base.iterdir() if x.is_dir()):
             if d.name.startswith("_") or _norm(d.name) in conhecidas:
                 continue
@@ -496,6 +537,22 @@ def escrever_planos(con, res: dict, cfg: dict | None = None,
                 (d / _PLANO).write_text(TEXTO_ORFA, encoding="utf-8")
             out["orfas"].append(d.name)
     return out
+
+
+def texto_familia(fam: dict, planos: list[str]) -> str:
+    from . import loadout                                    # noqa: PLC0415
+    nomes = loadout.nomes_das_caixas()
+    caixas_ = ", ".join(nomes.get(s) or s for s in fam["slots"])
+    cab = (f"PASTA DA FAMILIA -- {fam['pasta']}\nfamilia: {fam['id']}\n"
+           f"caixas: {caixas_}\n\n"
+           "Estes decks partilham muitas cartas, por isso as fotos vem TODAS\n"
+           "para esta pasta. A foto prova a carta; QUAL das caixas fica com ela\n"
+           "decide-o a alocacao (o vault), nunca a pasta -- uma carta que serve\n"
+           "duas caixas nao e tirada de uma para ir para a outra por causa da\n"
+           "foto. As subpastas por carta sao so para arrumar: contam todas\n"
+           "para a familia. Nada se apaga.\n"
+           f"A outra porta: {URL_EDICAO}\n")
+    return cab + "".join("\n" + "=" * 60 + "\n" + p for p in planos)
 
 
 def texto_sem_cartas(nome: str, slot: str) -> str:
@@ -568,6 +625,9 @@ def pasta_do_alvo(alvo: dict | None) -> Path:
     if alvo["tipo"] == "caixa":
         slot = str(alvo.get("slot") or "").strip()
         return pasta_fotos() / (slot or SEM_ALVO)
+    if alvo["tipo"] == ALVO_FAMILIA:
+        fam = str(alvo.get("familia") or "").strip()
+        return pasta_fotos() / (f"{ALVO_FAMILIA}-{fam}" if fam else SEM_ALVO)
     return pasta_fotos() / str(alvo["tipo"])
 
 
@@ -838,6 +898,25 @@ PASTAS_DE_GRUPO = ("Premodern (geral)", "SPML (Standard Pioneer Modern Legacy)",
 # a rotina sem ele pedir. Ligar qualquer uma é acrescentar uma linha aqui.
 PASTAS_FORA_DOS_DECKS = ("Extras (fora dos decks)",)
 ALVO_FORA_DOS_DECKS = "coleccao"
+# A PASTA DE UMA FAMÍLIA DE DECKS (André, 2026-10-13, à letra: *"os decks de
+# modern partilham muitas cartas, sugeria que pegasses nos decks que partilham
+# muitas cartas e criasses uma pasta para esses decks todos juntos"*).
+#
+# Uma pasta de deck vale como alvo de UMA caixa (`mapa_pastas`), e com a regra
+# «a foto manda» (02/10) essa pasta decide o deck de forma EXCLUSIVA — o que
+# estava registado noutra caixa sai. Por isso a família NÃO é um alias de uma
+# caixa: ligar `Mox Opal (Modern + Legacy)` ao slot `modern` punha, no dia em
+# que a foto voltasse a mandar, todas as cartas de Legacy fotografadas ali
+# dentro da caixa de Modern, e tirava-as das caixas de Legacy em silêncio.
+#
+# A família é um ALVO PRÓPRIO (`familia`): a foto chama-se
+# `site-familia-<id>-…`, prova a carta, o passo (0) da revalidação prefere as
+# cópias de QUALQUER caixa da família, e a ALOCAÇÃO não se toca (é o `loadout`
+# que diz qual das caixas fica com cada cópia — `confirmado.alvo_da_pasta`
+# responde «não decide»). Vive em `colecao_config.json → familias_fotos`, uma
+# linha por família: `{id, pasta, slots}`. Uma caixa de uma família deixa de
+# ganhar pasta própria no `garantir_pastas` — a dela é a da família.
+ALVO_FAMILIA = "familia"
 # Quanto tempo uma foto tem de estar quieta antes de se mexer nela. Uma foto
 # que ainda está a ser copiada (do telemóvel, da app do GitHub) movia-se a
 # meio. O `mtg-fotos-novas` tem a sua própria regra de 2 min sobre o mtime, e o
@@ -895,6 +974,37 @@ def mapa_pastas(cfg: dict | None = None) -> dict[str, str]:
     return out
 
 
+def familias(cfg: dict | None = None) -> list[dict]:
+    """As famílias de decks com pasta comum (`familias_fotos`), já limpas:
+    `[{id, pasta, slots}]`, com os `slots` reduzidos às caixas que EXISTEM.
+
+    Uma família sem nenhuma caixa viva não entra — a pasta dela passa a ser
+    desconhecida, e uma foto lá dentro diz-se (é ERRO na tarefa das 02:30),
+    em vez de ir para um alvo que não aponta para caixa nenhuma.
+    """
+    from . import caixas, sources                            # noqa: PLC0415
+    cfg = cfg if cfg is not None else sources.config()
+    vivos = {s["slot"] for s in caixas.slots(cfg) if s.get("slot")}
+    out = []
+    for f in cfg.get("familias_fotos") or []:
+        if not isinstance(f, dict) or not f.get("id") or not f.get("pasta"):
+            continue
+        slots = [s for s in (f.get("slots") or []) if s in vivos]
+        if slots:
+            out.append({"id": str(f["id"]), "pasta": str(f["pasta"]),
+                        "slots": slots})
+    return out
+
+
+def familia(fid: str | None, cfg: dict | None = None) -> dict | None:
+    return next((f for f in familias(cfg) if f["id"] == fid), None)
+
+
+def familia_do_slot(slot: str, cfg: dict | None = None) -> dict | None:
+    """A família a que esta caixa pertence (a primeira), ou `None`."""
+    return next((f for f in familias(cfg) if slot in f["slots"]), None)
+
+
 def slot_da_pasta(caminho: Path | str, cfg: dict | None = None) -> str | None:
     """O slot da caixa a que uma foto pertence, pela PASTA em que está — ou
     `None` (pasta de grupo, pasta desconhecida, ou foto à solta na pasta-mãe).
@@ -917,6 +1027,8 @@ def alvo_da_pasta(caminho: Path | str, cfg: dict | None = None,
 
         {"tipo": "caixa",    "slot": "cedh-blue-farm"}   uma pasta de deck
         {"tipo": "coleccao", "slot": None}               `Extras (fora dos decks)`
+        {"tipo": "familia", "slot": None,                a pasta de uma FAMÍLIA
+         "familia": "mox-opal", "slots": [...]}          (`familias_fotos`)
         None                                             grupo/desconhecida/raiz
 
     É a pergunta de que a recolha precisa, e vive **num sítio só**: o
@@ -937,6 +1049,10 @@ def alvo_da_pasta(caminho: Path | str, cfg: dict | None = None,
         return None                        # está na pasta-mãe: não tem alvo
     if _norm(resto[0]) in {_norm(p) for p in PASTAS_FORA_DOS_DECKS}:
         return {"tipo": ALVO_FORA_DOS_DECKS, "slot": None}
+    for f in familias(cfg):
+        if _norm(resto[0]) == _norm(f["pasta"]):
+            return {"tipo": ALVO_FAMILIA, "slot": None, "familia": f["id"],
+                    "slots": list(f["slots"])}
     slot = (mapa if mapa is not None else mapa_pastas(cfg)).get(_norm(resto[0]))
     return {"tipo": "caixa", "slot": slot} if slot else None
 
@@ -969,6 +1085,19 @@ def fotos_nas_pastas(cfg: dict | None = None,
     out = []
     for d in sorted(x for x in base.iterdir() if x.is_dir()):
         if d.name.startswith("_"):
+            # UMA FOTO NUMA PASTA ARQUIVADA NÃO FICA CALADA (2026-10-13). O
+            # `_nomes antigos\` guarda as pastas dos decks renomeados, e a 13/10
+            # passou a guardar também as das caixas que entraram numa família:
+            # são nomes que ele conhece de cor, e uma foto largada lá por hábito
+            # ficava ali para sempre com a tarefa a dizer «sem fotos novas». Não
+            # se processa (não se adivinha o deck), mas entra na lista com o
+            # porquê — e a tarefa das 02:30 trata-a como uma pasta órfã.
+            for f in sorted(x for x in d.rglob("*")
+                            if x.is_file() and x.suffix.lower() in EXT):
+                out.append({"ficheiro": f,
+                            "pasta": "/".join(f.relative_to(base).parts[:2]),
+                            "slot": None, "tipo": None, "grupo": False,
+                            "arquivada": True, "mtime": f.stat().st_mtime})
             continue
         # O ALVO da pasta sai do `alvo_da_pasta` e NÃO de uma segunda conta aqui.
         # Escrevi as duas no mesmo dia e a docstring dizia «vive num sítio só» —
@@ -982,6 +1111,7 @@ def fotos_nas_pastas(cfg: dict | None = None,
             out.append({"ficheiro": f, "pasta": d.name,
                         "slot": (alvo or {}).get("slot"),
                         "tipo": (alvo or {}).get("tipo"),
+                        "familia": (alvo or {}).get("familia"),
                         "grupo": _norm(d.name) in grupos,
                         "mtime": f.stat().st_mtime})
     return out
@@ -1046,18 +1176,26 @@ def recolher_das_pastas(cfg: dict | None = None, *,
     for it in itens:
         f = it["ficheiro"]
         if not it.get("tipo"):
-            out["ignorados"].append({
-                "ficheiro": f.name, "pasta": it["pasta"],
-                "porque": ("é uma pasta de grupo — ninguém a processa "
-                           "automaticamente, como sempre" if it["grupo"] else
-                           f"{it['pasta']!r} não é o nome de nenhuma caixa do "
-                           "config (não se adivinha o deck)")})
+            if it.get("arquivada"):
+                porque = (f"{it['pasta']!r} é uma pasta ARQUIVADA, não é o nome de "
+                          "nenhuma caixa do config — move a foto para a pasta do "
+                          "deck (ou da família) com o nome actual")
+            elif it["grupo"]:
+                porque = ("é uma pasta de grupo — ninguém a processa "
+                          "automaticamente, como sempre")
+            else:
+                porque = (f"{it['pasta']!r} não é o nome de nenhuma caixa do "
+                          "config (não se adivinha o deck)")
+            out["ignorados"].append({"ficheiro": f.name, "pasta": it["pasta"],
+                                     "porque": porque})
             continue
         grupos.setdefault(f.parent, []).append(it)
     for pasta, lote in sorted(grupos.items()):
         lote.sort(key=lambda i: (i["mtime"], i["ficheiro"].name))
         novas = [i for i in lote if agora - i["mtime"] < sossego_s]
-        empareilha = lote[0]["tipo"] == "caixa"
+        # A família são cartas de DECK (os versos contam), por isso emparelha
+        # como uma pasta de caixa; só os Extras ficam de frente só.
+        empareilha = lote[0]["tipo"] in ("caixa", ALVO_FAMILIA)
         if novas and empareilha:
             # O grupo inteiro espera: emparelhar com um ficheiro a meio da cópia
             # desalinhava todos os pares a partir dele.
@@ -1078,7 +1216,9 @@ def recolher_das_pastas(cfg: dict | None = None, *,
                 # o radical é o mesmo, só a extensão muda.
                 nome = str(Path(nome).with_suffix("." + ext))
             else:
-                nome = _nome_livre(pend, it["tipo"], it["slot"], quando, ext)
+                nome = _nome_livre(pend, it["tipo"],
+                                   it.get("familia") if it["tipo"] == ALVO_FAMILIA
+                                   else it["slot"], quando, ext)
             shutil.move(str(f), str(pend / nome))
             out["recolhidas"].append({"de": f.name, "pasta": it["pasta"],
                                       "slot": it["slot"], "tipo": it["tipo"],

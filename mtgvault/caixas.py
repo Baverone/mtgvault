@@ -238,12 +238,38 @@ AJUDA = (
 )
 
 
+def saiu(c: dict) -> dict | None:
+    """`{em, porque}` se esta CAIXA saiu do que se monta, senão `None`.
+
+    UMA CAIXA TAMBÉM PODE SAIR (André, 2026-10-13: *"Standard vou ficar sem
+    deck … podemos eliminar esse deck"*). *Eliminar* é a palavra dele e a regra
+    dele de 09/09 é *nada se apaga*: a caixa fica no config inteira — nome,
+    assinatura, notas, o `_ambito` — com a marca `_saiu`, que é a MESMA forma
+    do `_saiu` de uma versão e de um deck do registo (`versoes.saiu`). Repor é
+    tirar-lhe a marca. Começa por `_`, por isso nenhum leitor das chaves da
+    caixa a vê; quem a lê é só isto.
+    """
+    s = (c or {}).get("_saiu")
+    return dict(s) if isinstance(s, dict) else None
+
+
+def saidas(cfg: dict | None = None) -> list[dict]:
+    """As caixas que SAÍRAM (`_saiu`), tal como estão no config."""
+    cfg = cfg if cfg is not None else sources.config()
+    return [dict(c) for c in (cfg.get("caixas") or []) if saiu(c)]
+
+
 def do_config(cfg: dict | None = None) -> list[dict]:
-    """As caixas do config, já na forma v6 (migra em memória se for preciso)."""
+    """As caixas do config, já na forma v6 (migra em memória se for preciso).
+
+    As que têm `_saiu` ficam de FORA (2026-10-13): é por aqui que passam o
+    `loadout`, as fases, as pastas de fotos e a aba Decks, e uma caixa que saiu
+    não pede cartas, não protege cópias e não tem pasta que valha como alvo.
+    """
     cfg = cfg if cfg is not None else sources.config()
     if cfg.get("caixas"):
         return [{k: c[k] for k in c if not str(k).startswith("_")}
-                for c in cfg["caixas"]]
+                for c in cfg["caixas"] if not saiu(c)]
     return [de_slot_v5(s) for s in (cfg.get("loadout") or [])]
 
 

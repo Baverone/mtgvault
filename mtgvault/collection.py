@@ -1063,7 +1063,8 @@ def _destino_da_foto(nome: str, alvo_cfg: dict | None, raiz: Path,
     """
     from . import fotosite                                   # noqa: PLC0415
     o = fotosite.origem(nome)
-    alvo = ({"tipo": o["tipo"], "slot": o["slot"]} if o else alvo_cfg)
+    alvo = ({"tipo": o["tipo"], "slot": o["slot"], "familia": o.get("familia")}
+            if o else alvo_cfg)
     p = fotos_mod.pasta_do_alvo(alvo)
     if p.name == fotos_mod.SEM_ALVO:
         p = p / f"{dt.date.today():%Y-%m}"

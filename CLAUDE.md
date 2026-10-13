@@ -5954,6 +5954,80 @@ mudou uma linha** — isto é pasta, nome de ficheiro e texto.
   `alvo_da_foto` deu as cópias do `cedh-blue-farm` (a foto de prova foi apagada
   — era minha, de mentira, e não é prova de nada).
 
+**STANDARD SAI, LEGACY GANHA OS DOIS ESPELHOS, E A PASTA DA FAMÍLIA MOX OPAL
+(André, 2026-10-13, à letra).** *"para ja modern ficara apenas com o Izzet
+Affinity (kappa) e o deck de Oswald"*; *"Standard vou ficar sem deck … podemos
+eliminar esse deck"*; *"De Legacy, quero que procures decks que sejam parecidos
+ao Affinity de Modern ou ao Oswald"*; *"os decks de modern partilham muitas
+cartas … criasses uma pasta para esses decks todos juntos"*. Motor em
+`mtgvault/caixas.py` (`saiu`/`saidas`), `mtgvault/fotos.py`
+(`familias`/`familia`/`familia_do_slot`, `ALVO_FAMILIA`, `texto_familia`),
+`fotosite` (tipo `familia`), `revalidacao.alvo_da_foto`,
+`confirmado.alvo_da_pasta`; config em `familias_fotos` + `_familias_fotos`,
+`caixas[standard]._saiu`, `decks_por_formato.{legacy,pioneer}`,
+`decks_de_evento[jaces-machinations-combo]`. Testes em
+`tests/test_familia_fotos.py` (8 casos). Scripts em `_revisao/1013/`.
+
+- **O 2384bca** (wip salvo pelo runner a 06/10, ordem `mtg-guardar-vender` que
+  chumbou por OAuth) era **só um comentário** de 19 linhas no `fases.py` a
+  descrever uma R4 «todo o RL protegido» que **nunca foi implementada** — o
+  `rl_que_joga` continua igual. Estava no `main` e publicado: foi **revertido**
+  (`e7e61aa`) e o original vive no ramo `wip/mtg-guardar-vender-1006`.
+- **Modern já estava assim** desde 06/10 (Izzet Affinity/Weapons principal +
+  Oswald; Cori-Steel com `_saiu`): nada mudou.
+- **UMA CAIXA TAMBÉM PODE SAIR (`caixas[]._saiu`)**, a mesma forma do `_saiu`
+  das versões e dos decks. O `caixas.do_config` e o `loadout.resolve_slots`
+  saltam-na (este também quando lhe passam a lista CRUA). Nada se apaga; repor é
+  tirar a marca. Hoje só o **`standard`** (e a versão dele). A caixa não tinha
+  cartas nem lista. **O Greasefang fica** (ele voltou atrás a 13/10).
+- **LEGACY: dois decks nas caixas que já existiam, com lista de evento pela
+  REGRA** (não as da ordem): **Engineer Welder Cam** (`legacy-welder`,
+  identidade Welder + Cam **sem Kappa**, 40 listas, nome da fonte EWC 9/20) →
+  **Francesco Costa, 3-4, Blue Dojo 2a Tappa, 04/10, 48 j** (#25469); e
+  **Artifacts Blue** (`legacy-artifacts-blue`, Kappa + Pinnacle, 30 listas —
+  «Artifacts Blue» é o nome que a FONTE dá, 4/10, segundo «Affinity») →
+  **Daniel Gómez, 5-8, Catalan League October, 10/10, 40 j** (#26582). As
+  listas da ordem (#22069 OIegBaranov e #22733 DNSolver) são Challenges e a
+  regra põe presenciais à frente; o Molteni (1.º, 35 j) perde no campo para o
+  Costa (48 j). **As duas identidades sobrepõem-se**: as 11 listas do arquétipo
+  6616 (o «Affinity» da ordem) jogam TODAS Welder + Cam — por isso o EWC exclui
+  o Kappa (`assinatura_sem`/`reserva_assinatura_sem`). Versões em
+  `decks_por_formato.legacy` (escolhida a Affinity, espelho do principal).
+- **PIONEER: os dois Greasefang com nomes da fonte**: **Abzan Greasefang**
+  (Greasefang + Thundering Broodwagon, 13 listas, a lista da caixa #23333, que é
+  a da regra) e **Orzhov Monument** (Greasefang + Monument to Endurance, 9 das
+  10 listas sem Broodwagon) → **rarakkyo, Challenge 16, 10/10** (#25904); a de
+  26/09 ficou em `_lista_antes_1013`. A fonte chama «Greasefang Parhelion» às
+  Orzhov, mas também a uma verde: não separa. A versão «Parhelion» (cluster
+  7309) **era o Abzan** (as 9 listas jogam Broodwagon) e saiu com `_saiu`.
+- **KASMINA registado em Modern** (`decks_de_evento`, lista DELE, 60+15, 29
+  nomes) com `decisao_pendente` à vista na aba Decks. NÃO é versão do Mox Opal,
+  NÃO protege cartas. Medido: Kasmina 0 listas em todos os formatos; Jace's
+  Machinations 21 standard / 11 DC / 1 pioneer / 0 modern; nunca juntas; e
+  **14 dos 29 nomes (44 das 75 cópias) da lista dele não são legais em
+  Pioneer** (Teferi, Flooded Strand e Windswept Heath banidas).
+- **A FAMÍLIA É UM ALVO PRÓPRIO, NUNCA UM ALIAS DE CAIXA.** Ligar a pasta comum
+  ao slot `modern` punha, com «a foto manda», as cartas de Legacy na caixa de
+  Modern e tirava-as das de Legacy em silêncio. A foto chama-se
+  `site-familia-<id>-…`, emparelha frente/verso, o passo (0) prefere as cópias
+  de qualquer caixa da família, e o `confirmado.alvo_da_pasta` diz «não decide»
+  — a alocação fica com o `loadout`. As caixas da família não ganham pasta
+  própria; a família tem `_plano.txt` com os planos das caixas dela.
+- **UMA FOTO NUNCA FICA SEM ALVO EM SILÊNCIO**: uma família sem caixas vivas e
+  as pastas `_…` (o `_nomes antigos\`, para onde foram as pastas das caixas da
+  família e a do Bant Airbend) aparecem em `ignorados` com «caixa do config», o
+  que a tarefa `mtg-fotos-novas` trata como ERRO. Antes, uma foto numa pasta
+  `_…` era invisível.
+- **As 648 pastas de carta ficaram 650**: as 104 das caixas da família → 87
+  movidas + 17 fundidas (a mesma carta em Modern e no EWC, fica o nº maior) + 19
+  novas das listas de Legacy = 106 em `Mox Opal (Modern + Legacy)\`.
+- **Medido, a mesma base, config do `main` vs ramo**: fechar tudo **17 459,67 €
+  → 20 568,60 €** (+3 108,93 € = Artifacts Blue +3 676,13, EWC −483,72, Aluren
+  −83,48), a comprar 394 → 454; **as outras 13 caixas iguais**; venda 114 c /
+  1 328,99 € igual; `guardar` 5 → 3 c, protegidas 139 → 138.
+- **O B&R de 12/10 NÃO foi confirmado**: a web estava negada nesta ordem. Fica
+  em `_br_2026_10_12` como afirmação do supervisor; `banimentos_manuais` intacto.
+
 ### Duas bases de dados
 
 `catalog.db` (Scryfall, centenas de MB) é ATTACHed como schema `catalog`.

@@ -24,11 +24,11 @@
     {"slot": "premodern-igg", "nome": "Ill-Gotten Gains", "formato": "premodern", "fonte": "escolhido", "assinatura": ["Ill-Gotten Gains"], "balde": "Premodern (geral)", "estado": "permanente", "prioridade": 10, "notas": "SEM CONSENSO SUFICIENTE: «Ill-Gotten Gains» só tem 3 listas (mínimo 8). Ordem dele de 02/10/2026: não se inventa consenso com 3 listas — a lista e a reserva ficam MANUAIS.", "_antes": {"fonte": "consenso", "nome": "Ill-Gotten Gains", "estado": "permanente"}, "ref": "premodern-igg", "principal": true, "principal_em": "2026-10-05"},
     {"slot": "modern", "nome": "Modern — Pinnacle Affinity", "formato": "modern", "fonte": "escolhido", "ref": "modern", "reserva_assinatura": ["Oswald Fiddlebender"], "balde": "SPML", "estado": "permanente", "prioridade": 12, "variantes": [], "notas": "NOME CORRIGIDO a 04/10/2026 ao fim do dia: chamava-se «Modern — UW Oswald» e a lista que tem dentro é a de QUALIFICACAO dele, que é Izzet Affinity — 4 Kappa Cannoneer, 4 Pinnacle Emissary, 4 Weapons Manufacturing, 2 Arcbound Ravager, 4 Mox Opal, zero cartas brancas e zero Oswald Fiddlebender. O nome passou a ser o que a FONTE da às listas com estas cartas (mtgtop8: «Pinnacle Affinity», 17 votos de 19 nomeadas em 94 listas; segundo lugar «Affinity»), que é a regra de 02/10. A LISTA nao se tocou — é dele e é a certa. O «UW Oswald» era o deck ANTERIOR desta caixa e continua inteiro na tabela `decks` (id 12, 4 Oswald Fiddlebender, Hallowed Fountain, Portable Hole): nada se apaga, e o `_antes` repõe-no. ATENCAO, por decidir por ele: a `reserva_assinatura` continua «Oswald Fiddlebender», que é o deck que ele já não monta — nao se tocou porque a reserva entra na lista de candidatas à venda, e a venda está fora desta ordem.", "_antes": {"fonte": "deck", "ref": "UW Oswald", "nome": "Modern — UW Oswald", "estado": "permanente"}, "principal": true, "principal_em": "2026-10-05"},
     {"slot": "modern-affinity", "nome": "Modern — Affinity", "formato": "modern", "fonte": "consenso", "balde": "SPML", "estado": "candidata", "prioridade": 16, "notas": "DESACTIVADA pelo André a 2026-10-04: «a lista de qualificação está na caixa modern; esta é uma segunda cópia do mesmo deck». A caixa NÃO se apagou — ficou sem assinatura (logo sem lista de consenso) e em 'candidata'. Medido nesse dia, com o mesmo vault.db: deixa de pedir 57 cópias / 1 985,44 € (4 Mox Opal a 300,12 €) e o «fechar tudo» passa de 10 281,35 € para 8 295,91 €. Não libertou cópia nenhuma: a caixa estava VAZIA (zero linhas na copy_allocation). O ESTADO sozinho não chegava — medido: com 'candidata' e a assinatura lá, pedia as mesmas 57 cópias, porque desde 2026-09-19 cada caixa compra as suas e o 'permanente' só manda na ORDEM da alocação. Repor é devolver o '_antes'.", "_antes": {"fonte": "consenso", "ref": null, "assinatura": ["Weapons Manufacturing"], "estado": "permanente"}},
-    {"slot": "standard", "nome": "Bant Airbend", "formato": "standard", "fonte": "consenso", "ref": null, "assinatura": ["Airbender Ascension"], "balde": "SPML", "estado": "permanente", "prioridade": 11, "notas": "André, 02/10/2026: a caixa «Standard» passou a chamar-se «Bant Airbend». Identidade = «Airbender Ascension» (9 listas, 6 das que contam) — amostra fina, e por isso a lista do consenso é a mais frágil das 16.", "_ambito": {"em": "2026-10-04", "palavras": "\"Standard nao preciso preocupar me ate Janeiro, ja estou qualificado para jogar em Fevereiro\" e \"Vamos focar nos em pioneer e modern, esquecemos legacy para ja tambem\"", "decisao": "Esta caixa NAO recebeu lista de evento real e fica como estava (consenso, com a amostra que tiver). Ele reve-a em Janeiro. Nao se apagou nem se desactivou."}},
+    {"slot": "standard", "nome": "Bant Airbend", "formato": "standard", "fonte": "consenso", "ref": null, "assinatura": ["Airbender Ascension"], "balde": "SPML", "estado": "permanente", "prioridade": 11, "notas": "André, 02/10/2026: a caixa «Standard» passou a chamar-se «Bant Airbend». Identidade = «Airbender Ascension» (9 listas, 6 das que contam) — amostra fina, e por isso a lista do consenso é a mais frágil das 16.", "_ambito": {"em": "2026-10-04", "palavras": "\"Standard nao preciso preocupar me ate Janeiro, ja estou qualificado para jogar em Fevereiro\" e \"Vamos focar nos em pioneer e modern, esquecemos legacy para ja tambem\"", "decisao": "Esta caixa NAO recebeu lista de evento real e fica como estava (consenso, com a amostra que tiver). Ele reve-a em Janeiro. Nao se apagou nem se desactivou."}, "_saiu": {"em": "2026-10-13", "porque": "\"Standard vou ficar sem deck, pois em Janeiro ha rotacao no formato e ha cartas do deck de Bant Airbend que vao sair do formato, logo podemos eliminar esse deck\" (Andre, 13/10/2026)", "como_repor": "tirar esta chave `_saiu` (e a da versao `versao:standard:caixa` em decks_por_formato). Nada se apagou: a caixa, a assinatura e as notas ficam aqui; a caixa nao tinha cartas registadas nem lista (o consenso tinha 1 lista contra um minimo de 5)."}},
     {"slot": "pioneer", "nome": "Pioneer — Greasefang", "formato": "pioneer", "fonte": "escolhido", "ref": "pioneer", "reserva_assinatura": ["Greasefang, Okiba Boss"], "balde": "SPML", "estado": "permanente", "prioridade": 13, "notas": "André, 02/10/2026: «Greasefang, as várias versões» — identidade = «Greasefang, Okiba Boss» (37 listas), uma carta só, sem restringir variante.", "_antes": {"fonte": "deck", "ref": "Greasefang", "nome": "Pioneer — Greasefang", "estado": "permanente"}, "principal": true, "principal_em": "2026-10-05"},
-    {"slot": "legacy-welder", "nome": "Engineer Welder Cam", "formato": "legacy", "fonte": "consenso", "assinatura": ["Goblin Welder", "Sewer-veillance Cam"], "assinatura_todas": true, "balde": "SPML", "estado": "permanente", "prioridade": 15, "notas": "CAIXA NOVA (André, 02/10/2026): identidade = «Goblin Welder» E «Sewer-veillance Cam» EM CONJUNÇÃO (50 e 54 listas cada; as duas juntas, 50). Era o slot «legacy» sem nome, que estava vazio.", "_ambito": {"em": "2026-10-04", "palavras": "\"Vamos focar nos em pioneer e modern, esquecemos legacy para ja tambem\"", "decisao": "As caixas de legacy ficam INTACTAS: nao se escolheu lista de evento nenhuma. A legacy-artifacts-blue continua a espera da carta-assinatura dele."}},
+    {"slot": "legacy-welder", "nome": "Engineer Welder Cam", "formato": "legacy", "fonte": "escolhido", "assinatura": ["Goblin Welder", "Sewer-veillance Cam"], "assinatura_todas": true, "balde": "SPML", "estado": "permanente", "prioridade": 15, "notas": "LISTA DE EVENTO desde 13/10/2026 (era consenso). Confirmado que e mesmo o Engineer Welder Cam: Goblin Welder + Sewer-veillance Cam, 58 listas de Legacy colhidas, TODAS com Mox Opal; o nome da fonte e «Engineer Welder Cam» (9 votos de 20 nomeadas, segundo «Painter»). As 18 listas que juntam Kappa Cannoneer ficam com a Artifacts Blue, que e a Affinity.", "assinatura_sem": ["Kappa Cannoneer"], "reserva_assinatura": ["Goblin Welder", "Sewer-veillance Cam"], "reserva_assinatura_todas": true, "reserva_assinatura_sem": ["Kappa Cannoneer"], "_ambito_antes": {"em": "2026-10-04", "palavras": "\"Vamos focar nos em pioneer e modern, esquecemos legacy para ja tambem\"", "decisao": "As caixas de legacy ficam INTACTAS: nao se escolheu lista de evento nenhuma. A legacy-artifacts-blue continua a espera da carta-assinatura dele."}, "_antes": {"fonte": "consenso", "nome": "Engineer Welder Cam", "estado": "permanente"}, "ref": "legacy-welder"},
     {"slot": "legacy-aluren", "nome": "Aluren", "formato": "legacy", "fonte": "consenso", "assinatura": ["Aluren"], "balde": "SPML", "estado": "permanente", "prioridade": 17, "notas": "CAIXA NOVA (André, 02/10/2026): identidade = «Aluren» (46 listas).", "_ambito": {"em": "2026-10-04", "palavras": "\"Vamos focar nos em pioneer e modern, esquecemos legacy para ja tambem\"", "decisao": "As caixas de legacy ficam INTACTAS: nao se escolheu lista de evento nenhuma. A legacy-artifacts-blue continua a espera da carta-assinatura dele."}},
-    {"slot": "legacy-artifacts-blue", "nome": "Artifacts Blue", "formato": "legacy", "fonte": "manual", "ref": null, "balde": "SPML", "estado": "permanente", "prioridade": 18, "notas": "À ESPERA DA CARTA-ASSINATURA (André, 02/10/2026): a caixa existe porque o deck fica, mas ele ainda não disse qual é a carta que o define. Sem assinatura NÃO se lhe atribui consenso nenhum — a lista e a reserva ficam vazias até ele dizer a carta. Escreve-se em `assinatura` (e `fonte: consenso`) quando souber.", "_ambito": {"em": "2026-10-04", "palavras": "\"Vamos focar nos em pioneer e modern, esquecemos legacy para ja tambem\"", "decisao": "As caixas de legacy ficam INTACTAS: nao se escolheu lista de evento nenhuma. A legacy-artifacts-blue continua a espera da carta-assinatura dele."}}
+    {"slot": "legacy-artifacts-blue", "nome": "Artifacts Blue", "formato": "legacy", "fonte": "escolhido", "ref": "legacy-artifacts-blue", "balde": "SPML", "estado": "permanente", "prioridade": 18, "notas": "LISTA DE EVENTO desde 13/10/2026: e o AFFINITY de Legacy, o espelho do Izzet Affinity dele em Modern (Kappa Cannoneer + Pinnacle Emissary, 30 listas). «Artifacts Blue» e o nome que a FONTE da a estas listas (mtgtop8: 4 votos de 10 nomeadas; segundo «Affinity»), por isso a caixa ficou com o nome que ja tinha. Antes estava a espera da carta-assinatura dele (02/10).", "reserva_assinatura": ["Kappa Cannoneer", "Pinnacle Emissary"], "reserva_assinatura_todas": true, "_ambito_antes": {"em": "2026-10-04", "palavras": "\"Vamos focar nos em pioneer e modern, esquecemos legacy para ja tambem\"", "decisao": "As caixas de legacy ficam INTACTAS: nao se escolheu lista de evento nenhuma. A legacy-artifacts-blue continua a espera da carta-assinatura dele."}, "_antes": {"fonte": "manual", "ref": null, "nome": "Artifacts Blue", "estado": "permanente"}}
   ],
   "_sempre_montado": "SEMPRE MONTADOS, MESMO COM PROXIES (Andre, 2026-10-05, a letra): \"Esses sao os meus decks principais, esses quero ter sempre montados, mesmo que com proxies\". Uma caixa com `principal: true` fica montada EM PERMANENCIA e o que ele nao tem leva PROXY — logo a necessidade dela e a SOMA e a copia verdadeira JA NAO RODA entre decks: se dois decks principais pedem 4 Swords e ele tem 4, o de maior `prioridade` leva as verdadeiras e o outro leva 4 proxies (a pagina diz qual e qual). Isto GANHA ao `cartas_partilhadas` do grupo em `regras_por_formato`, que NAO se apagou nem perdeu o codigo: tirar a marca `principal` a uma caixa devolve-a ao modelo de 04/10 (a carta partilhada fica fora do deck e a verdadeira entra a hora de jogar). Quem decide e UMA chave so — `principal` —, e e ela que ele toca com um visto na aba Decks; a chave `sempre_montado` existe por caixa para o dia em que ele quiser um deck principal que ainda rode (ou um nao-principal sempre montado) e, escrita, ganha ao `principal`. Duas chaves com o mesmo valor em doze caixas eram duas verdades para a mesma pergunta, que e o campo `decisao` que ele mandou apagar a 02/10. QUAIS sao as principais foi INTERPRETACAO minha: ele disse \"esses\" depois de eu lhe listar as 12 caixas que TEM LISTA, e ficaram de fora as quatro a 0 % (standard, legacy-aluren, legacy-welder, legacy-artifacts-blue) e a modern-affinity desactivada. Se estiver errado, corrige-se com um visto na pagina.",
   "_caixas": "AS CAIXAS: a única noção de deck do vault (André, 2026-09-08: 'temos decks vigiados e deckbox que é a mesma coisa'). Substitui o `loadout` da v5 e a lista `decks_vigiados` como definição de deck. Um deck é uma caixa. Campos: 'slot' = o id (não mudar, é a chave da copy_allocation); 'nome' = como aparece nas páginas; 'formato' = decide as regras de material e a ordem da alocação (regras_por_formato); 'fonte' = de onde vem a lista — 'vigiado' (etiqueta da tabela `watched`, o jogador/URL que o watch-check segue), 'deck' (nome na tabela `decks`), 'consenso' (calculado das listas que contam, identificado por 'assinatura'), 'escolhido' (o «vou montar este»: lista congelada e datada em `listas_escolhidas`) ou 'manual' (lista escrita à mão em 'cards'); 'ref' = o nome nessa fonte (null = caixa por escolher, fica vazia de propósito — não se escolhe por ele); 'balde' = a gaveta de onde as cartas saem; 'estado' = candidata | permanente | montada | congelada (escala: montada implica permanente; congelada = montada + dedicada e é CALCULADA, escrevê-la vale montada); 'prioridade' = desempate DENTRO do grupo de formato; 'variantes' = outros decks que partilham a caixa; 'notas' = texto livre mostrado no cartão. As regras de material ('lingua', 'acabamento', 'edicoes', 'baldes', 'estrita', 'dedicado', 'compras_dedicadas') herdam-se do grupo de formato e só se escrevem aqui para abrir excepção. A IDENTIDADE DE UM DECK É UMA CARTA-ASSINATURA, NUNCA A ETIQUETA DO CLUSTERING (André, 02/10/2026): 'assinatura' é a(s) carta(s) que definem o arquétipo, e com 'assinatura_todas': true exigem-se TODAS em conjunção (o Engineer Welder Cam precisa de Goblin Welder E Sewer-veillance Cam) em vez de bastar uma (que é o que serve o «Greasefang, as várias versões»). Uma caixa cuja LISTA vem de outra fonte (a do Luffy, um link, uma lista padrão fixada) escreve a identidade em 'reserva_assinatura' — é a mesma carta-assinatura, só não manda na lista. E 'assinatura_sem' / 'reserva_assinatura_sem' é a NEGAÇÃO (02/10/2026, à tarde): nenhuma destas cartas pode estar na lista. Fez falta porque TODAS as 124 listas de Enchantress jogam 'Replenish' — com a assinatura «Replenish» sozinha o UW Replenish apanhava 186 listas, ou seja os dois decks, e o consenso não era de nenhum. É o mesmo operador 'none' que o archetype_rules.json já usava para os separar. Sem assinatura nenhuma não se atribui consenso (é o caso do Artifacts Blue, à espera da carta). O ESTADO é o ÚNICO campo de decisão (o 'decisao' de 01/10/2026 foi apagado a 02/10: eram duas verdades para a mesma pergunta): 'montada'/'congelada'/'permanente' PROTEGEM as cópias lá dentro da venda, 'candidata' não protege por si, e a OMISSÃO (sem a chave) vale 'permanente' e por isso protege — um deck sem estado escrito não manda uma carta para a venda. Muda-se no MODO EDIÇÃO (python webapp.py, porto 8771), na Deckboxes.",
@@ -309,9 +309,10 @@
   },
   "_consenso_comandante": "CONSENSO POR COMANDANTE (André, 2026-10-01): o consenso de Duel Commander do deck dele (o comandante CLOUD) sempre atualizado, como já tinha para os arquétipos de Modern. Página comandantes.html, motor em mtgvault/consenso.py, passo 'consenso-comandante' do daily das 03:30. A IDENTIDADE DE UM DECK AQUI É O COMANDANTE e nunca a etiqueta do agrupamento automático: na base de 01/10 havia 870 etiquetas de duel-commander e 808 delas sem uma única lista, e as que tinham chamavam-se 'Aragorn, King of Gondor / Sulfur Falls / Stormcarved Coast'. 'comandante' é o que a página abre; 'formato' é o formato de onde saem as listas; 'min_listas' é o mínimo abaixo do qual a página diz que são poucas listas em vez de calar; 'nucleo_pct' e 'flex_pct' são os papéis por percentagem de listas (>=90 núcleo, 40-90 flex, <40 raro — o formato é singleton, por isso o que separa uma carta obrigatória de uma opção é a percentagem e não o número de cópias); 'max_comandantes' é quantos entram no selector. O FILTRO DE EVENTOS NÃO ESTÁ AQUI de propósito: é o de sempre (metagame_fontes -> duel-commander, hoje ligas incluídas e presenciais de qualquer dimensão), porque um segundo filtro a viver ao lado do primeiro discorda dele em silêncio. Medido a 01/10 sobre as 652 listas do formato: com essa regra ficam 652 listas e 41 do Cloud; a regra do Modern (sem ligas, presencial com 64+ jogadores) deixava 48 listas no formato inteiro e ZERO do Cloud. O comandante de cada lista fica GRAVADO em decklists.commander (não se recalcula): as listas novas trazem-no da FONTE (o 'SB:' do .dec do mtgtop8 e o sideboard_deck do mtgo.com, lidos antes de serem fundidos no mainboard) e as que já cá estavam foram derivadas pela ordem de inserção das cartas — a coluna decklists.commander_fonte diz qual dos dois caminhos foi.",
   "formatos_decididos": [
-    "pioneer"
+    "pioneer",
+    "legacy"
   ],
-  "_formatos_decididos": "Os formatos em que o André já DECIDIU os decks (2026-09-21, à letra: 'Pioneer apenas Greasefang e jeskai control'). Nestes o metagame.html deixa de mostrar o top-N que ele está mais perto de concluir e a aba da caixa deixa de ter os candidatos e o «vou montar este» — mostram só as caixas dele, como o Modern. A decisão de 2026-09-07 (ver o top-3 para escolher) continua a valer para os formatos que NÃO estão aqui (Standard, Legacy). O código do top-N fica: tirar um formato desta lista devolve-lhe os candidatos.",
+  "_formatos_decididos": "Os formatos em que o André já DECIDIU os decks (2026-09-21, à letra: 'Pioneer apenas Greasefang e jeskai control'). Nestes o metagame.html deixa de mostrar o top-N que ele está mais perto de concluir e a aba da caixa deixa de ter os candidatos e o «vou montar este» — mostram só as caixas dele, como o Modern. A decisão de 2026-09-07 (ver o top-3 para escolher) continua a valer para os formatos que NÃO estão aqui (Standard, Legacy). O código do top-N fica: tirar um formato desta lista devolve-lhe os candidatos. 13/10/2026: legacy entrou -- os dois decks (Artifacts Blue e Engineer Welder Cam) foram decididos por ele, por isso deixa de ter top-N e botao.",
   "_metagame_top_n": "Quantos decks por formato mostra o metagame.html. André, 2026-09-07, à letra: 'Para os decks metagame, em vez de me dares todas as listas, dás-me só o top-3 decks que estou mais perto de concluir para os formatos Standard, Pioneer, Legacy'. Vale só para as secções de TOP (Standard/Pioneer/Legacy — as caixas do loadout que ainda estão por escolher); o Modern mostra o deck já escolhido e o Premodern os alvos de premodern_arquetipos_alvo. A % que ordena é a das cartas que ele TEM (livres + as que estão noutra caixa, que se vão buscar), com a regra de material do loadout (foil menos Reserved List) e sem contar terras básicas. Sobe para 5 se quiseres mais opções por onde escolher. (Substituiu o decks_faziveis_min_pct: a página 'Decks fazíveis' foi retirada em 2026-09-07 — fazia a mesma pergunta e respondia pior.)",
   "cartas_vigiadas": [
     {"carta": "Kasmina, Enigma Sage", "formatos": ["modern", "pioneer"], "nota": "combo Jace/Kasmina — Reality Fracture no MTGO 29/09/2026, em papel 02/10/2026; Pioneer acrescentado a pedido do Andre 30/09"},
@@ -2333,14 +2334,14 @@
       "aviso": "nenhuma lista desde 2026-09-29 (a janela do consenso) — a escolha é da história toda"
     },
     "versao:pioneer:mycosynth": {
-      "nome": "Mycosynth Gardens",
+      "nome": "Orzhov Monument",
       "padrao": true,
-      "origem": "LaceiSuaEsposa · Pioneer Challenge 32 · 2026-09-26 · https://www.mtgo.com/decklist/pioneer-challenge-32-2026-09-2612854926",
+      "origem": "rarakkyo · Pioneer Challenge 16 · 2026-10-10 · https://www.mtgo.com/decklist/pioneer-challenge-16-2026-10-1012856171",
       "formato": "pioneer",
-      "escolhido_em": "2026-10-04",
+      "escolhido_em": "2026-10-13",
       "cards": [
+        ["main", "Bleachbone Verge", 2],
         ["main", "Brightclimb Pathway", 4],
-        ["main", "Caves of Koilos", 4],
         ["main", "Concealed Courtyard", 4],
         ["main", "Fatal Push", 4],
         ["main", "Fleeting Spirit", 4],
@@ -2348,38 +2349,104 @@
         ["main", "Greasefang, Okiba Boss", 4],
         ["main", "Guardian of New Benalia", 4],
         ["main", "Iron-Shield Elf", 4],
+        ["main", "Lively Dirge", 1],
         ["main", "Monument to Endurance", 4],
         ["main", "Parhelion II", 4],
         ["main", "Plains", 2],
         ["main", "Sheltered by Ghosts", 4],
         ["main", "Swamp", 1],
+        ["main", "Takenuma, Abandoned Mire", 1],
         ["main", "The Mycosynth Gardens", 4],
         ["main", "Thoughtseize", 4],
         ["main", "Urborg, Tomb of Yawgmoth", 1],
-        ["side", "Bitter Triumph", 2],
-        ["side", "Doorkeeper Thrull", 3],
-        ["side", "Loran of the Third Path", 2],
+        ["side", "Doorkeeper Thrull", 4],
         ["side", "Pest Control", 3],
-        ["side", "Soul-Guide Lantern", 2],
-        ["side", "Vanishing Verse", 3]
+        ["side", "Soul-Guide Lantern", 4],
+        ["side", "Vanishing Verse", 4]
       ],
       "evento": {
-        "decklist_id": 22165,
-        "jogador": "LaceiSuaEsposa",
-        "evento": "Pioneer Challenge 32",
-        "data": "2026-09-26",
+        "decklist_id": 25904,
+        "jogador": "rarakkyo",
+        "evento": "Pioneer Challenge 16",
+        "data": "2026-10-10",
         "jogadores": null,
         "tier": "Challenge",
         "classificacao": null,
-        "url": "https://www.mtgo.com/decklist/pioneer-challenge-32-2026-09-2612854926",
+        "url": "https://www.mtgo.com/decklist/pioneer-challenge-16-2026-10-1012856171",
         "fonte": "mtgo",
-        "content_hash": "4dc188673c5fb917",
+        "content_hash": "a870b2cc70d2bdc3",
         "repetida": 0,
         "vitorias": 0
       },
-      "fonte_decklist": 22165,
-      "porque": "escolhida por: o online mais importante (Challenge) — sem presencial elegível, a mais recente (as Challenges não trazem classificação) — 0 de 6 candidatas desde 2026-09-29",
-      "aviso": "nenhuma lista desde 2026-09-29 (a janela do consenso) — a escolha é da história toda"
+      "fonte_decklist": 25904,
+      "arquetipo": "Orzhov Monument",
+      "porque": "escolhida por: o online mais importante (Challenge) — sem presencial elegível, a mais recente (as Challenges não trazem classificação) — 1 de 9 candidatas desde 2026-09-29",
+      "alternativa": {
+        "decklist_id": 22486,
+        "jogador": "Eduardo Temporal",
+        "evento": "Pioneer event - 4º Etapa - Liga Praia 2026.2",
+        "data": "2026-09-23",
+        "jogadores": 22,
+        "tier": "Presencial",
+        "classificacao": "5-8",
+        "url": "https://mtgtop8.com/event?e=91356&d=893837&f=PI",
+        "fonte": "mtgtop8",
+        "content_hash": "fa340a31295789b3",
+        "repetida": 1,
+        "vitorias": 0,
+        "porque": "é a melhor lista do deck em papel, mas é de 2026-09-23 — ANTERIOR ao Reality Fracture (a janela começa em 2026-09-29). Fica ao lado para ele escolher: a escolhida é a melhor DENTRO da janela."
+      },
+      "_lista_antes_1013": {
+        "nome": "Mycosynth Gardens",
+        "padrao": true,
+        "origem": "LaceiSuaEsposa · Pioneer Challenge 32 · 2026-09-26 · https://www.mtgo.com/decklist/pioneer-challenge-32-2026-09-2612854926",
+        "formato": "pioneer",
+        "escolhido_em": "2026-10-04",
+        "cards": [
+          ["main", "Brightclimb Pathway", 4],
+          ["main", "Caves of Koilos", 4],
+          ["main", "Concealed Courtyard", 4],
+          ["main", "Fatal Push", 4],
+          ["main", "Fleeting Spirit", 4],
+          ["main", "Godless Shrine", 4],
+          ["main", "Greasefang, Okiba Boss", 4],
+          ["main", "Guardian of New Benalia", 4],
+          ["main", "Iron-Shield Elf", 4],
+          ["main", "Monument to Endurance", 4],
+          ["main", "Parhelion II", 4],
+          ["main", "Plains", 2],
+          ["main", "Sheltered by Ghosts", 4],
+          ["main", "Swamp", 1],
+          ["main", "The Mycosynth Gardens", 4],
+          ["main", "Thoughtseize", 4],
+          ["main", "Urborg, Tomb of Yawgmoth", 1],
+          ["side", "Bitter Triumph", 2],
+          ["side", "Doorkeeper Thrull", 3],
+          ["side", "Loran of the Third Path", 2],
+          ["side", "Pest Control", 3],
+          ["side", "Soul-Guide Lantern", 2],
+          ["side", "Vanishing Verse", 3]
+        ],
+        "evento": {
+          "decklist_id": 22165,
+          "jogador": "LaceiSuaEsposa",
+          "evento": "Pioneer Challenge 32",
+          "data": "2026-09-26",
+          "jogadores": null,
+          "tier": "Challenge",
+          "classificacao": null,
+          "url": "https://www.mtgo.com/decklist/pioneer-challenge-32-2026-09-2612854926",
+          "fonte": "mtgo",
+          "content_hash": "4dc188673c5fb917",
+          "repetida": 0,
+          "vitorias": 0
+        },
+        "fonte_decklist": 22165,
+        "porque": "escolhida por: o online mais importante (Challenge) — sem presencial elegível, a mais recente (as Challenges não trazem classificação) — 0 de 6 candidatas desde 2026-09-29",
+        "aviso": "nenhuma lista desde 2026-09-29 (a janela do consenso) — a escolha é da história toda",
+        "_substituida_em": "2026-10-13",
+        "_razao": "a versao passou a chamar-se «Orzhov Monument» e a ser identificada por Greasefang + Monument to Endurance; a regra das listas de evento escolheu a do rarakkyo (Challenge 16, 10/10), dentro da janela. Esta era de 26/09 e foi escolhida quando nao havia nenhuma lista na janela."
+      }
     },
     "versao:modern:cesar-grinding-station": {
       "nome": "Grinding Station / Loki",
@@ -2610,6 +2677,199 @@
       "fonte_decklist": 25051,
       "porque": "a melhor das 4 listas da janela que jogam Cori-Steel Cutter E Mox Opal: a unica PRESENCIAL, e a de maior campo (449 jogadores). As outras tres sao 2 Challenge 96 (02/10) e 1 liga (05/10).",
       "nota": "CUIDADO COM A AMBIGUIDADE, e esta a vista na pagina: ha 104 listas de Modern que jogam Cori-Steel Cutter desde 29/09 e SO 4 jogam tambem Mox Opal. As outras 100 sao UR Prowess (99 no arquetipo \"Mutagenic Growth / Slickshot Show-Off / Lava Dart\" e 1 num de Murktide), que NAO joga Mox Opal. Escolheu-se a versao com Mox Opal porque e a que encaixa no que ele pediu -- se ele queria o UR Prowess, e OUTRO deck e muito mais jogado. A pagina poe os dois numeros (4 contra 100) e a decisao e dele."
+    },
+    "legacy-welder": {
+      "nome": "Engineer Welder Cam",
+      "padrao": true,
+      "origem": "Francesco Costa · 3-4 · Legacy event - Blue Dojo 2a Tappa · 2026-10-04 · 48 jogadores · https://mtgtop8.com/event?e=91701&d=896530&f=LE",
+      "formato": "legacy",
+      "escolhido_em": "2026-10-13",
+      "cards": [
+        ["main", "Agatha's Soul Cauldron", 1],
+        ["main", "Ancient Tomb", 4],
+        ["main", "Arena of Glory", 1],
+        ["main", "Chaos Defiler", 1],
+        ["main", "Chromatic Star", 1],
+        ["main", "City of Traitors", 2],
+        ["main", "Ensnaring Bridge", 1],
+        ["main", "Fable of the Mirror-Breaker", 4],
+        ["main", "Goblin Engineer", 4],
+        ["main", "Goblin Welder", 4],
+        ["main", "Great Furnace", 2],
+        ["main", "Grindstone", 2],
+        ["main", "Legion Extruder", 1],
+        ["main", "Lightning Bolt", 2],
+        ["main", "Lotus Petal", 1],
+        ["main", "Mishra's Research Desk", 1],
+        ["main", "Mountain", 8],
+        ["main", "Mox Opal", 1],
+        ["main", "Painter's Servant", 4],
+        ["main", "Phyrexian Dragon Engine", 1],
+        ["main", "Pyroblast", 4],
+        ["main", "Red Elemental Blast", 2],
+        ["main", "Sewer-veillance Cam", 1],
+        ["main", "Simian Spirit Guide", 2],
+        ["main", "Skateboard", 1],
+        ["main", "Urza's Saga", 4],
+        ["side", "Blood Moon", 3],
+        ["side", "Damping Sphere", 3],
+        ["side", "Disruptor Flute", 1],
+        ["side", "Fury", 4],
+        ["side", "Leyline of the Void", 3],
+        ["side", "Pithing Needle", 1]
+      ],
+      "evento": {
+        "decklist_id": 25469,
+        "jogador": "Francesco Costa",
+        "evento": "Legacy event - Blue Dojo 2a Tappa",
+        "data": "2026-10-04",
+        "jogadores": 48,
+        "tier": "Presencial",
+        "classificacao": "3-4",
+        "url": "https://mtgtop8.com/event?e=91701&d=896530&f=LE",
+        "fonte": "mtgtop8",
+        "content_hash": "2b2c39d7f87615a8",
+        "repetida": 1,
+        "vitorias": 0
+      },
+      "fonte_decklist": 25469,
+      "arquetipo": "Engineer Welder Cam",
+      "porque": "escolhida por: presencial, o maior campo (48 jogadores), a melhor classificação (3-4) — 13 de 40 candidatas desde 2026-09-29 · identidade: Goblin Welder E Sewer-veillance Cam, sem Kappa Cannoneer (as listas com Kappa sao a Affinity)",
+      "alternativa": {
+        "decklist_id": 20904,
+        "jogador": "Alessandro Amort",
+        "evento": "Legacy event - Gones Fire 2026",
+        "data": "2026-09-19",
+        "jogadores": 94,
+        "tier": "Presencial",
+        "classificacao": "9-16",
+        "url": "https://mtgtop8.com/event?e=91085&d=891771&f=LE",
+        "fonte": "mtgtop8",
+        "content_hash": "65bbd84d483d2dcd",
+        "repetida": 1,
+        "vitorias": 0,
+        "porque": "é a melhor lista do deck em papel, mas é de 2026-09-19 — ANTERIOR ao Reality Fracture (a janela começa em 2026-09-29). Fica ao lado para ele escolher: a escolhida é a melhor DENTRO da janela."
+      },
+      "_consenso_anterior": {
+        "em": "2026-10-13",
+        "razao": "a lista desta caixa era o CONSENSO de muitas listas. O André decidiu a 2026-10-04 ao fim do dia: *\"as outras quero que esquecas as decklists e vamos focar nas decklists baseadas em eventos reais\"*. Fica aqui para ele poder comparar a lista real com a media — nada se apaga.",
+        "cards": [],
+        "nota": "caixa de consenso por assinatura; a 13/10 passou a lista de evento real"
+      }
+    },
+    "legacy-artifacts-blue": {
+      "nome": "Artifacts Blue",
+      "padrao": true,
+      "origem": "Daniel G%F3mez · 5-8 · Legacy event - Catalan League October 2026 · 2026-10-10 · 40 jogadores · https://mtgtop8.com/event?e=92096&d=899507&f=LE",
+      "formato": "legacy",
+      "escolhido_em": "2026-10-13",
+      "cards": [
+        ["main", "Chromatic Star", 1],
+        ["main", "Emry, Lurker of the Loch", 4],
+        ["main", "Force of Will", 4],
+        ["main", "Goblin Welder", 4],
+        ["main", "Kappa Cannoneer", 2],
+        ["main", "Loki, God of Mischief", 3],
+        ["main", "Lotus Petal", 4],
+        ["main", "Mishra's Bauble", 4],
+        ["main", "Mox Opal", 4],
+        ["main", "Pinnacle Emissary", 4],
+        ["main", "Seat of the Synod", 4],
+        ["main", "Sewer-veillance Cam", 4],
+        ["main", "Sink into Stupor", 4],
+        ["main", "Skateboard", 1],
+        ["main", "Snow-Covered Island", 1],
+        ["main", "Urza's Bauble", 4],
+        ["main", "Urza's Saga", 4],
+        ["main", "Volcanic Island", 4],
+        ["side", "Abrade", 1],
+        ["side", "Aether Spellbomb", 1],
+        ["side", "Commandeer", 2],
+        ["side", "Consign to Memory", 2],
+        ["side", "Flusterstorm", 2],
+        ["side", "Haywire Mite", 1],
+        ["side", "Legion Extruder", 1],
+        ["side", "Pithing Needle", 1],
+        ["side", "Swan Song", 2],
+        ["side", "Tormod's Crypt", 1],
+        ["side", "Twinshot Sniper", 1]
+      ],
+      "evento": {
+        "decklist_id": 26582,
+        "jogador": "Daniel G%F3mez",
+        "evento": "Legacy event - Catalan League October 2026",
+        "data": "2026-10-10",
+        "jogadores": 40,
+        "tier": "Presencial",
+        "classificacao": "5-8",
+        "url": "https://mtgtop8.com/event?e=92096&d=899507&f=LE",
+        "fonte": "mtgtop8",
+        "content_hash": "937a6c6a32f28747",
+        "repetida": 1,
+        "vitorias": 0
+      },
+      "fonte_decklist": 26582,
+      "arquetipo": "Artifacts Blue",
+      "porque": "escolhida por: presencial, o maior campo (40 jogadores), a melhor classificação (5-8) — 13 de 30 candidatas desde 2026-09-29 · identidade: Kappa Cannoneer E Pinnacle Emissary",
+      "alternativa": {
+        "decklist_id": 20894,
+        "jogador": "Samuel Brochet",
+        "evento": "Legacy event - Gones Fire 2026",
+        "data": "2026-09-19",
+        "jogadores": 94,
+        "tier": "Presencial",
+        "classificacao": "3-4",
+        "url": "https://mtgtop8.com/event?e=91085&d=891764&f=LE",
+        "fonte": "mtgtop8",
+        "content_hash": "5290ea03284acca5",
+        "repetida": 1,
+        "vitorias": 0,
+        "porque": "é a melhor lista do deck em papel, mas é de 2026-09-19 — ANTERIOR ao Reality Fracture (a janela começa em 2026-09-29). Fica ao lado para ele escolher: a escolhida é a melhor DENTRO da janela."
+      },
+      "_consenso_anterior": {
+        "em": "2026-10-13",
+        "razao": "a lista desta caixa era o CONSENSO de muitas listas. O André decidiu a 2026-10-04 ao fim do dia: *\"as outras quero que esquecas as decklists e vamos focar nas decklists baseadas em eventos reais\"*. Fica aqui para ele poder comparar a lista real com a media — nada se apaga.",
+        "cards": [],
+        "nota": "caixa de consenso por assinatura; a 13/10 passou a lista de evento real"
+      }
+    },
+    "deck:modern:jaces-machinations-combo": {
+      "nome": "Jace's Machinations combo",
+      "padrao": true,
+      "formato": "modern",
+      "origem": "lista DELE: imagem no chat de 06/10/2026, transcrita pelo supervisor e conferida nome a nome contra o catalogo (as 29 cartas sao modern=legal). Registada a 13/10/2026; NAO se substitui por consenso nenhum.",
+      "escolhido_em": "2026-10-13",
+      "cards": [
+        ["main", "Kasmina, Enigma Sage", 4],
+        ["main", "Teferi, Time Raveler", 3],
+        ["main", "Avatar of Burgeoning Echoes", 4],
+        ["main", "Thassa's Oracle", 1],
+        ["main", "Enter the Infinite", 2],
+        ["main", "Preordain", 4],
+        ["main", "Prismatic Ending", 4],
+        ["main", "Brainsurge", 2],
+        ["main", "Jace's Machinations", 4],
+        ["main", "Orim's Chant", 4],
+        ["main", "Mox Amber", 3],
+        ["main", "Utopia Sprawl", 4],
+        ["main", "Breeding Pool", 1],
+        ["main", "Flooded Strand", 3],
+        ["main", "Forest", 2],
+        ["main", "Hallowed Fountain", 1],
+        ["main", "Hedge Maze", 1],
+        ["main", "Island", 1],
+        ["main", "Misty Rainforest", 4],
+        ["main", "Plains", 1],
+        ["main", "Temple Garden", 2],
+        ["main", "Theorist's Sanctum", 1],
+        ["main", "Windswept Heath", 4],
+        ["side", "Consign to Memory", 4],
+        ["side", "Force of Negation", 3],
+        ["side", "Isochron Scepter", 1],
+        ["side", "Mystical Dispute", 3],
+        ["side", "Surgical Extraction", 2],
+        ["side", "Wrath of the Skies", 2]
+      ]
     }
   },
   "precos": {
@@ -2698,7 +2958,8 @@
     {"id": "deck:modern:affinity-pinnacle", "slug": "affinity-pinnacle", "nome": "Affinity (Pinnacle)", "formato": "modern", "arquetipo_id": 7614, "arquetipo_fonte": "Pinnacle Affinity"},
     {"id": "deck:modern:rakdos-moonshadow", "slug": "rakdos-moonshadow", "nome": "Rakdos Moonshadow", "formato": "modern", "arquetipo_id": 7687, "arquetipo_fonte": "Rakdos Aggro", "_saiu": {"em": "2026-10-04", "porque": "nao joga Mox Opal", "razao": "o modelo passou a ser UM deck por formato com versoes por dentro (04/10/2026, a noite). Este deck NAO se apagou: continua com a lista, a proveniencia e as cartas, e ve-se em «meta, nao escolhido». Repor e tirar-lhe o `_saiu`."}},
     {"id": "deck:modern:hammer-time", "slug": "hammer-time", "nome": "Hammer Time", "formato": "modern", "arquetipo_id": 7456, "amostra_fina": "AMOSTRA DE UMA LISTA SO. Medido a 2026-10-04 em toda a colheita: o Colossus Hammer aparece em 3 listas de Modern (1 desde 29/09) e duas das tres sao do MESMO jogador; o Sigarda's Aid aparece em 1. Nenhuma das tres tem classificacao registada, e os tres arquetipos sao DIFERENTES entre si (um com Puresteel Paladin, um com Leyline Axe, um com Sigarda's Aid) -- nao e um deck com variantes, sao tres tentativas do mesmo tema. Para comparar: Broodscale 53 listas, Ruby Storm 32, Affinity 20, Hammer Time 1. O deck entra porque ele o pediu, e o peso dele fica dito.", "_saiu": {"em": "2026-10-04", "porque": "nao joga Mox Opal", "razao": "o modelo passou a ser UM deck por formato com versoes por dentro (04/10/2026, a noite). Este deck NAO se apagou: continua com a lista, a proveniencia e as cartas, e ve-se em «meta, nao escolhido». Repor e tirar-lhe o `_saiu`."}},
-    {"id": "deck:pioneer:flow-state", "slug": "flow-state", "nome": "UR Aggro (Flow State)", "formato": "pioneer", "arquetipo_id": 7589, "arquetipo_fonte": "UR Aggro", "por_confirmar": true, "carta_chave": "Flow State", "_saiu": {"em": "2026-10-04", "porque": "nao e Greasefang", "razao": "o modelo passou a ser UM deck por formato com versoes por dentro (04/10/2026, a noite). Este deck NAO se apagou: continua com a lista, a proveniencia e as cartas, e ve-se em «meta, nao escolhido». Repor e tirar-lhe o `_saiu`."}}
+    {"id": "deck:pioneer:flow-state", "slug": "flow-state", "nome": "UR Aggro (Flow State)", "formato": "pioneer", "arquetipo_id": 7589, "arquetipo_fonte": "UR Aggro", "por_confirmar": true, "carta_chave": "Flow State", "_saiu": {"em": "2026-10-04", "porque": "nao e Greasefang", "razao": "o modelo passou a ser UM deck por formato com versoes por dentro (04/10/2026, a noite). Este deck NAO se apagou: continua com a lista, a proveniencia e as cartas, e ve-se em «meta, nao escolhido». Repor e tirar-lhe o `_saiu`."}},
+    {"id": "deck:modern:jaces-machinations-combo", "slug": "jaces-machinations-combo", "nome": "Jace's Machinations combo", "formato": "modern", "carta_chave": "Jace's Machinations", "decisao_pendente": "Pediste este deck para PIONEER, mas em Pioneer ele nao existe: em 593 listas de Pioneer colhidas (13/09 a 11/10) ha 1 com Jace's Machinations, 1 com Theorist's Sanctum e 0 com a Kasmina; e a tua lista, tal como esta, nao e legal em Pioneer -- 14 dos 29 nomes (44 das 75 copias) nao entram la (Teferi, Flooded Strand e Windswept Heath sao banidas; Preordain, Prismatic Ending, Orim's Chant, Utopia Sprawl, Misty Rainforest e o sideboard quase todo nao sao legais). Em Modern a lista e legal, mas tambem nao ha resultados: 0 listas com a Kasmina e 0 com Jace's Machinations em 2 871 de Modern. Tres saidas, decides tu: (a) fica em MODERN, onde a desenhaste; (b) fica em PIONEER a espera, e a lista tem de ser refeita; (c) fica so como deck de consulta, sem caixa. Ate decidires: esta registada em Modern, NAO e uma versao do deck de Mox Opal e as cartas dela NAO ficam protegidas da venda (a venda esta travada a mao, por isso nada sai).", "registado_em": "2026-10-13"}
   ],
   "decks_por_formato": {
     "_porque": "UM DECK POR FORMATO, COM VERSOES POR DENTRO (Andre, 04/10/2026, a noite): \"vamos fazer uma coisa diferente, a ver como fica / quero apenas manter decks que usem Mox Opal, tudo o resto e para vender (em modern) / quero ficar com 1 deck e versoes do deck (como opcoes)\". SUBSTITUI o modelo de 18 decks desta mesma tarde. O Premodern NAO entra: ele nao lhe tocou e fica com os seus 6 decks. Esvaziar este bloco devolve o vault ao modelo anterior — e um formato que nao esteja aqui fica como estava.",
@@ -2924,22 +3185,40 @@
       "versoes": [
         {
           "id": "versao:pioneer:broodwagon",
-          "arquetipo_id": 7583,
-          "nome": "Broodwagon",
-          "listas": 2,
-          "deck": "caixa:pioneer"
+          "nome": "Abzan Greasefang",
+          "deck": "caixa:pioneer",
+          "_antes_1013": {
+            "nome": "Broodwagon",
+            "arquetipo_id": 7583,
+            "listas": 2
+          },
+          "meta": {
+            "cartas": ["Greasefang, Okiba Boss", "Thundering Broodwagon"]
+          },
+          "_porque": "o Greasefang VERDE/BRANCO/PRETO: 13 das 23 listas de Pioneer com Greasefang, todas com Thundering Broodwagon, Professor of Symbology, Cache Grab, Esika's Chariot, Overlord of the Balemurk e Abrupt Decay. «Abzan Greasefang» e o nome que a FONTE da (mtgtop8). Medido a 13/10/2026."
         },
         {
           "id": "versao:pioneer:parhelion",
           "arquetipo_id": 7309,
           "nome": "Parhelion",
-          "listas": 15
+          "listas": 15,
+          "_saiu": {
+            "em": "2026-10-13",
+            "porque": "NAO ERA OUTRO DECK: as 9 listas do cluster 7309 jogam todas Thundering Broodwagon -- e a Abzan Greasefang. Chamar-lhe «Parhelion» estava errado: as 23 listas jogam Parhelion II, das duas familias. A lista dela (Sakamoto, 22/09) e a ALTERNATIVA anterior a janela da Abzan."
+          }
         },
         {
           "id": "versao:pioneer:mycosynth",
-          "arquetipo_id": 6482,
-          "nome": "Mycosynth Gardens",
-          "listas": 6
+          "nome": "Orzhov Monument",
+          "_antes_1013": {
+            "nome": "Mycosynth Gardens",
+            "arquetipo_id": 6482,
+            "listas": 6
+          },
+          "meta": {
+            "cartas": ["Greasefang, Okiba Boss", "Monument to Endurance"]
+          },
+          "_porque": "o Greasefang ORZHOV: 10 das 23 listas, sem Broodwagon; 9 delas jogam Monument to Endurance, The Mycosynth Gardens, Fleeting Spirit e Guardian of New Benalia. A fonte chama-lhe «Greasefang Parhelion» (2 de 3 nomeadas) -- mas esse nome tambem aparece numa lista verde e nao separa os dois decks; «Orzhov Monument» e o outro nome que a FONTE lhe da, e esse e so deste. Medido a 13/10/2026."
         }
       ],
       "versao": "versao:pioneer:broodwagon",
@@ -2955,7 +3234,11 @@
           "id": "versao:standard:caixa",
           "nome": "Bant Airbend",
           "deck": "caixa:standard",
-          "listas": null
+          "listas": null,
+          "_saiu": {
+            "em": "2026-10-13",
+            "porque": "\"Standard vou ficar sem deck, pois em Janeiro ha rotacao no formato e ha cartas do deck de Bant Airbend que vao sair do formato, logo podemos eliminar esse deck\" (Andre, 13/10/2026)"
+          }
         }
       ],
       "versao": "versao:standard:caixa",
@@ -2970,13 +3253,40 @@
         "protege_todas": true,
         "porque": "o mesmo criterio do Modern, por ordem dele. Em Legacy sao 23 das 171 listas da janela (13,5 %) — o DOBRO da percentagem do Modern (6,9 %). NAO tem `exige`: nao ha versoes para montar em Legacy, so proteccao."
       },
-      "versoes": [],
+      "versoes": [
+        {
+          "id": "versao:legacy:affinity",
+          "nome": "Artifacts Blue (Affinity)",
+          "deck": "caixa:legacy-artifacts-blue",
+          "meta": {
+            "cartas": ["Kappa Cannoneer", "Pinnacle Emissary"]
+          },
+          "_porque": "o espelho em Legacy do Izzet Affinity dele (13/10/2026)."
+        },
+        {
+          "id": "versao:legacy:ewc",
+          "nome": "Engineer Welder Cam",
+          "deck": "caixa:legacy-welder",
+          "meta": {
+            "cartas": ["Goblin Welder", "Sewer-veillance Cam"]
+          },
+          "_porque": "o espelho em Legacy do Oswald dele: Emry, Urza's Saga, Agatha's Soul Cauldron, Loki e a Cam (13/10/2026)."
+        }
+      ],
       "_por_decidir_antes": {
         "valor": true,
         "ate": "2026-10-05",
         "porque": "\"Legacy ainda nao sei\" (04/10). Deixou de estar por decidir no dia em que ele lhe deu o criterio do Mox Opal; com isso a regra RLG deixou de disparar — era exactamente para isto que ela se desligava sozinha. Repor e voltar a por `por_decidir: true` e tirar o `criterio`."
       },
-      "_nota": "NADA se escolheu para MONTAR em Legacy e nenhuma caixa se tocou: `versoes` esta vazio de proposito. O que mudou a 05/10 foi a PROTECCAO — as cartas das 23 listas de Mox Opal de Legacy deixam de ser candidatas a venda (regra RP). CONSEQUENCIA QUE ELE TEM DE VER: isso arrasta as duais caras da Reserved List, porque os decks de artefactos de Legacy jogam-nas (Volcanic Island, Underground Sea, Taiga, Plateau, Badlands, Bayou, City of Traitors, Grim Monolith, Lion's Eye Diamond). A pagina di-lo."
+      "_nota_antes": "NADA se escolheu para MONTAR em Legacy e nenhuma caixa se tocou: `versoes` esta vazio de proposito. O que mudou a 05/10 foi a PROTECCAO — as cartas das 23 listas de Mox Opal de Legacy deixam de ser candidatas a venda (regra RP). CONSEQUENCIA QUE ELE TEM DE VER: isso arrasta as duais caras da Reserved List, porque os decks de artefactos de Legacy jogam-nas (Volcanic Island, Underground Sea, Taiga, Plateau, Badlands, Bayou, City of Traitors, Grim Monolith, Lion's Eye Diamond). A pagina di-lo.",
+      "versao": "versao:legacy:affinity",
+      "versao_em": "2026-10-13",
+      "_versoes_porque": "\"De Legacy, quero que procures decks que sejam parecidos ao Affinity de Modern ou ao Oswald\" (Andre, 13/10/2026). Os dois decks vivem nas caixas que ja existiam; a escolhida por omissao e a Affinity, o espelho do deck principal dele em Modern -- troca-se no selector."
     }
-  }
+  },
+  "_familias_fotos": "UMA PASTA PARA OS DECKS QUE PARTILHAM CARTAS (Andre, 13/10/2026: \"os decks de modern partilham muitas cartas, sugeria que pegasses nos decks que partilham muitas cartas e criasses uma pasta para esses decks todos juntos\"). Uma linha por familia: `id`, a `pasta` em «Colocar fotos da colecao aqui\\» e as `slots` das caixas. A foto da pasta da familia PROVA a carta e nao decide o deck: qual das caixas fica com ela e a alocacao que diz (nunca se tira uma carta de uma caixa de Legacy para a de Modern por causa da foto). As caixas de uma familia deixam de ter pasta propria. Medido a 13/10: os quatro decks (Izzet Affinity, Oswald, Artifacts Blue, Engineer Welder Cam) somam 75 nomes, 33 em pelo menos dois e 13 em pelo menos tres. O Oswald nao tem caixa (e uma versao, a lista dele) -- por isso nao aparece em `slots`, mas as cartas dele estao na pasta.",
+  "familias_fotos": [
+    {"id": "mox-opal", "pasta": "Mox Opal (Modern + Legacy)", "slots": ["modern", "legacy-artifacts-blue", "legacy-welder"]}
+  ],
+  "_br_2026_10_12": "BANNED AND RESTRICTED DE 12/10/2026: segundo o supervisor (13/10), NAO mexeu em Standard, Pioneer, Modern, Legacy, Vintage nem Pauper -- so em Competitive Brawl. NAO CONFIRMADO pela ordem de 13/10: a pesquisa na web estava negada nessa sessao. Por isso `banimentos_manuais` nao se tocou."
 }

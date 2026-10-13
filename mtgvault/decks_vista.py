@@ -713,6 +713,14 @@ def decks_de_evento(con: sqlite3.Connection,
             d["rotulo_estado"] = "à espera do teu OK"
         if n.get("amostra_fina"):
             d["amostra_fina"] = n["amostra_fina"]
+        # UMA DECISÃO QUE É DELE, À VISTA NA PÁGINA (2026-10-13): o deck da
+        # Kasmina entrou com a lista dele e com a pergunta «Modern, Pioneer à
+        # espera, ou só meta?» por responder. O `por_confirmar` não serve — a
+        # frase dele é «este é o melhor candidato ao deck que pediste», e aqui
+        # não há candidato nenhum: a lista é dele e o que falta é o formato.
+        if n.get("decisao_pendente"):
+            d["decisao_pendente"] = str(n["decisao_pendente"])
+            d["rotulo_estado"] = "à espera da tua decisão"
         out.append(_com_proveniencia(d, cfg, chave))
     return out
 
@@ -1252,6 +1260,7 @@ def relatorio(con: sqlite3.Connection, cfg: dict | None = None) -> dict:
                 "por_confirmar": d.get("por_confirmar", False),
                 "carta_chave": d.get("carta_chave") or "",
                 "amostra_fina": d.get("amostra_fina") or "",
+                "decisao_pendente": d.get("decisao_pendente") or "",
                 "arquetipo_fonte": d.get("arquetipo_fonte") or "",
             })
             por_deck[d["id"]] = d
@@ -1826,6 +1835,7 @@ def deck_para_pagina(con: sqlite3.Connection, d: dict, pos: dict[str, dict],
         "por_confirmar": d.get("por_confirmar", False),
         "carta_chave": d.get("carta_chave") or "",
         "amostra_fina": d.get("amostra_fina") or "",
+        "decisao_pendente": d.get("decisao_pendente") or "",
         "arquetipo_fonte": d.get("arquetipo_fonte") or "",
     }
     out[CHAVE_SEMPRE] = sm

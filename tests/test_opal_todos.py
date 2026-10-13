@@ -532,8 +532,13 @@ def caso_o_config_a_serio_fechou_a_duvida():
     # O Legacy e o Pioneer NÃO foram arrastados: o `versoes_todas` é por formato.
     assert not cfg["decks_por_formato"]["legacy"]["criterio"].get("versoes_todas")
     assert not cfg["decks_por_formato"]["pioneer"]["criterio"].get("versoes_todas")
-    assert cfg["decks_por_formato"]["legacy"]["versoes"] == [], (
-        "em Legacy nada se escolheu para MONTAR, e isso não mudou")
+    # CORRIGIDO A 2026-10-13, e não mascarado: a 05/10 o Legacy não tinha nada
+    # para MONTAR (`versoes: []`); a 13/10 ele registou lá os dois espelhos dos
+    # decks de Modern dele. O que este caso tranca continua de pé: as versões de
+    # Legacy são LISTA FIXA (nomeadas, com deck), não derivadas do critério.
+    leg = cfg["decks_por_formato"]["legacy"]["versoes"]
+    assert [v["id"] for v in leg] == ["versao:legacy:affinity", "versao:legacy:ewc"], leg
+    assert all(v.get("deck", "").startswith("caixa:") for v in leg), leg
     # A FORMA do ficheiro: um round-trip pelo `configio.escrever` devolve-o
     # igual BYTE A BYTE. É a lição do commit ac1f776 — um diff ilegível neste
     # ficheiro é a revisão a deixar de existir. Compara-se pelo `escrever` e

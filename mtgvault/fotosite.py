@@ -68,7 +68,11 @@ from . import fotocaixa
 from .fotocaixa import FotoInvalida, MAX_BYTES, tipo_da_imagem
 
 PREFIXO = "site"
-TIPOS = ("caixa", "venda", "rl", "coleccao")
+# `familia` (2026-10-13): a pasta de uma FAMÍLIA de decks que partilham cartas
+# (`fotos.familias`) — o nome leva `familia-<id>` e não um slot, porque a foto
+# prova a carta e não diz qual das caixas da família fica com ela.
+TIPOS = ("caixa", "venda", "rl", "coleccao", "familia")
+FAMILIA = "familia"
 # O que vai no nome para cada alvo que não é caixa (uma caixa vai pelo slot).
 _NOME_TIPO = {"venda": "venda", "rl": "rl", "coleccao": "colecao"}
 _TIPO_NOME = {v: k for k, v in _NOME_TIPO.items()}
@@ -151,9 +155,14 @@ def nome_ficheiro(tipo: str, slot: str | None, quando: _dt.datetime, n: int,
     if tipo == "caixa":
         if not slot or not re.fullmatch(r"[A-Za-z0-9_-]+", slot):
             raise FotoInvalida("uma foto de caixa precisa do slot")
-        if slot in _TIPO_NOME:
+        if slot in _TIPO_NOME or slot.startswith(FAMILIA + "-"):
             raise FotoInvalida(f"o slot {slot!r} confunde-se com um alvo da revalidação")
         origem = slot
+    elif tipo == FAMILIA:
+        # Aqui o `slot` é o ID da família (`mox-opal`), não o de uma caixa.
+        if not slot or not re.fullmatch(r"[A-Za-z0-9_-]+", slot):
+            raise FotoInvalida("uma foto de família precisa do id da família")
+        origem = f"{FAMILIA}-{slot}"
     else:
         origem = _NOME_TIPO[tipo]
     return (f"{PREFIXO}-{origem}-{quando:%Y%m%d-%H%M%S}-{n}"
@@ -168,12 +177,16 @@ def origem(nome: str) -> dict | None:
     if not m:
         return None
     o = m.group("origem")
-    tipo = _TIPO_NOME.get(o, "caixa")
+    familia = o[len(FAMILIA) + 1:] if o.startswith(FAMILIA + "-") else None
+    tipo = FAMILIA if familia else _TIPO_NOME.get(o, "caixa")
     try:
         quando = _dt.datetime.strptime(m.group("data"), "%Y%m%d-%H%M%S")
     except ValueError:
         return None
+    # `familia` só existe nas fotos de família: as outras mantêm a forma de
+    # sempre (há quem compare o dicionário inteiro).
     return {"tipo": tipo, "slot": o if tipo == "caixa" else None,
+            **({"familia": familia} if familia else {}),
             "quando": quando.isoformat(sep=" "), "n": int(m.group("n")),
             "copy_id": int(m.group("copy")) if m.group("copy") else None,
             "verso": bool(m.group("v"))}
@@ -479,6 +492,13 @@ def seccao_esperadas(con, pasta: Path) -> list[str]:
         o = e["origem"]
         if o["tipo"] == "caixa":
             onde = "caixa " + (nomes.get(o["slot"]) or o["slot"])
+        elif o["tipo"] == FAMILIA:
+            from . import fotos as _fotos                   # noqa: PLC0415
+            fam = _fotos.familia(o.get("familia")) or {}
+            onde = ("família " + (fam.get("pasta") or o.get("familia") or "?")
+                    + " — uma das caixas " + ", ".join(
+                        nomes.get(s) or s for s in fam.get("slots") or [])
+                    + " (a alocação decide qual)")
         else:
             onde = revalidacao.TITULO.get(o["tipo"], o["tipo"])
         linha = f"- `{e['nome']}` — {onde}"

@@ -19,9 +19,23 @@ Uma pasta por deck, aqui dentro. O nome da pasta e o nome do deck:
 
   Blue Farm\              Cloud cEDH\             Cloud (Duel Commander)\
   Stiflenought\           UW Replenish\           Enchantress\
-  Oath of Druids\         Elves - Survival\       Ill-Gotten Gains\
-  Modern - UW Oswald\     Pioneer - Greasefang\   Jeskai Control\
-  Pauper (Luffy)\         Standard\               Legacy\
+  Oath of Druids\         Elves\                  Ill-Gotten Gains\
+  Affinity (Luffy)\       Pioneer - Greasefang\   Aluren\
+  Mox Opal (Modern + Legacy)\   <- a FAMILIA, ver abaixo
+
+A FAMILIA MOX OPAL (13/10/2026): os decks de Mox Opal partilham muitas cartas,
+por isso tem UMA pasta so -- `Mox Opal (Modern + Legacy)\` -- para o Izzet
+Affinity e o Oswald de Modern e a Artifacts Blue (Affinity) e o Engineer Welder
+Cam de Legacy. A foto PROVA a carta; QUAL das caixas fica com ela decide-o o
+vault (a alocacao), nunca a pasta: uma carta nao sai de uma caixa de Legacy
+para a de Modern por ter sido fotografada aqui. As pastas antigas dessas caixas
+(`Modern — Pinnacle Affinity`, `Engineer Welder Cam`, `Artifacts Blue`) foram
+para `_nomes antigos\` com as pastas de carta todas movidas para a familia.
+Uma foto largada numa pasta de `_nomes antigos\` NAO se processa, mas e DITA
+(a tarefa das 02:30 da erro) -- nunca fica calada.
+
+O `Bant Airbend` (Standard) saiu a 13/10 e a pasta dele tambem foi para
+`_nomes antigos\`.
 
 E, para o que NAO esta em deck nenhum (02/10/2026):
 

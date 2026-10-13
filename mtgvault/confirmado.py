@@ -479,6 +479,12 @@ def alvo_da_pasta(photo_path: str | None) -> tuple[bool, str | None]:
         return True, o["slot"]
     if o["tipo"] == fotos.ALVO_FORA_DOS_DECKS:
         return True, None
+    # A PASTA DE UMA FAMÍLIA NÃO DECIDE O DECK (2026-10-13): a foto prova a
+    # carta e mais nada — qual das caixas da família fica com ela é a alocação
+    # que diz. Decidir aqui era tirar uma carta de uma caixa de Legacy para a
+    # pôr na de Modern só porque foi fotografada na pasta comum.
+    if o["tipo"] == fotos.ALVO_FAMILIA:
+        return False, None
     return False, None
 
 
