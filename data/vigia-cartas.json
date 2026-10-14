@@ -3,11 +3,8 @@
   "cartas": {
     "kasmina, enigma sage": {
       "carta": "Kasmina, Enigma Sage",
-      "formatos": [
-        "modern",
-        "pioneer"
-      ],
-      "nota": "combo Jace/Kasmina — Reality Fracture no MTGO 29/09/2026, em papel 02/10/2026; Pioneer acrescentado a pedido do Andre 30/09",
+      "formatos": [],
+      "nota": "Andre 13/10: 'continua sempre a procurar se aparece esse deck ou nao' — em TODOS os formatos e para sempre (nada a desliga sozinha). Era modern+pioneer desde 30/09. A 13/10: 0 listas em toda a base.",
       "achados": 0,
       "primeira": null,
       "ultima": null
@@ -22,6 +19,20 @@
       "achados": 1,
       "primeira": "2026-10-10",
       "ultima": "2026-10-10"
+    },
+    "combo kasmina (kasmina + jace's machinations + avatar)": {
+      "carta": "Combo Kasmina (Kasmina + Jace's Machinations + Avatar)",
+      "formatos": [],
+      "nota": "Andre 13/10: o deck da Kasmina em qualquer formato. Avisa na PRIMEIRA lista com 2 das 3 juntas. Soltas nao serviam: o Jace's Machinations ja esta em 33 listas e o Avatar em 18, e em nenhuma estao duas das tres. A 13/10: 0 listas.",
+      "achados": 0,
+      "primeira": null,
+      "ultima": null,
+      "combo": [
+        "Kasmina, Enigma Sage",
+        "Jace's Machinations",
+        "Avatar of Burgeoning Echoes"
+      ],
+      "minimo": 2
     }
   },
   "achados": {
@@ -247,6 +258,6 @@
       "aviso": "toast (balloon)"
     }
   },
-  "verificado_em": "2026-10-13",
+  "verificado_em": "2026-10-14",
   "desde": "2026-09-26"
 }

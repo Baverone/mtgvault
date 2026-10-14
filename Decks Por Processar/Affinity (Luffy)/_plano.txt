@@ -11,5 +11,17 @@ foto vai para a mesma pasta em «Decks Processados\». O que ficar
 aqui e exactamente o que falta. Se a foto parar (uma linha nao
 entrou), volta para a pasta da carta com um «_porque_parou.txt».
 
+O (N) DO NOME DA PASTA E O QUE O DECK PEDE, NAO O QUE TENS (13/10/2026).
+Fotografas o que TENS, ate ao playset -- as tuas palavras:
+  "vou sempre fotografar as cartas ate ao playset"
+  "caso peca apenas 2x e eu tenho playset, eu vou fotografar playset"
+  "caso peca playset e eu so fotografar 2x, e porque so tenho 2x"
+  "caso varios decks pecam a mesma carta, e eu coloque em diferentes
+   pastas a mesma carta, e porque tenho multiplos da carta"
+Pasta (2) e foto com 4 -> entram 4: o deck leva 2, as outras 2 ficam sem
+deck. Pasta (4) e foto com 2 -> entram 2 e o deck fica a dever 2. A pasta
+apaga-se quando a foto ENTRA, nao quando a conta bate com o (N). A mesma
+carta em duas pastas de deck sao copias diferentes, nunca a mesma.
+
 O vault reconhece a pasta como este deck (alvo: pauper).
 A outra porta: https://editar-mtg.baverone.com/
