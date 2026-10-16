@@ -217,6 +217,11 @@ def caso_um_presencial_sem_numero_nao_conta_e_fica_dito():
     # Num formato sem mínimo não há nada a dizer.
     lista(con, "modern", "Presencial", None, chave="mod-sem")
     assert sources.presenciais_sem_numero(con, "modern") == []
+    # E O DAILY DI-LO (2026-10-16): até aqui só o CLI o mostrava.
+    t = sources.texto_sem_numero(con)
+    assert "legacy 1 ev/2 listas (1 com gémeo numerado)" in t, t
+    assert "modern" not in t, t
+    assert "texto_sem_numero" in (RAIZ / "daily.py").read_text(encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------

@@ -511,8 +511,12 @@ def main():
         # Nº de jogadores dos presenciais do mtgtop8. Sem ele um presencial não
         # conta (a regra pede 64+), e dois terços das listas estavam a NULL.
         # Poucos eventos por corrida e a 1 pedido/s — o mtgtop8 é pequeno.
+        # E DIZ O QUE FICA DE FORA (2026-10-16): um presencial sem número não
+        # conta onde há mínimo (Pioneer e Legacy 31, o resto 64), e isso estava
+        # só no CLI. A linha passa a dizer quantos, por formato.
         _step(con, "jogadores-eventos",
-              lambda: mtgtop8.backfill_event_players(con, max_events=40))
+              lambda: mtgtop8.backfill_event_players(con, max_events=40)
+              + " | " + sources.texto_sem_numero(con))
 
         # O NOME DO ARQUÉTIPO QUE A FONTE DÁ (2026-10-02). As listas NOVAS já vêm
         # nomeadas pelo `harvest` (o nome está na mesma página do evento que ele já
@@ -688,11 +692,10 @@ def main():
         def _faltas():
             p = faltas.build(con, ROOT / "faltas.html", rep=_rep.get("v"))
             idx, _ = faltas.dados(con, _rep.get("v"))
-            t = idx["totais"]
-            return (f"{p.name}: {t['decks']} decks, {t['cartas']} cartas, "
-                    f"{t['copias']} cópias, {t['valor']:.2f} EUR"
-                    + (f", {t['avisos']} linhas com o preço fora da regra"
-                       if t["avisos"] else ""))
+            # A frase vive no `faltas_vista.texto_totais` (2026-10-16): à cabeça
+            # o preço da impressão que serve, e o mínimo do motor ao lado.
+            from mtgvault import faltas_vista as _fv          # noqa: PLC0415
+            return f"{p.name}: " + _fv.texto_totais(idx["totais"])
 
         _step(con, "faltas", _faltas)
 
@@ -718,6 +721,13 @@ def main():
             from mtgvault import fotos as _fotos            # noqa: PLC0415
             rep = _rep.get("v") or loadout.report(con)
             r = _fotos.escrever_planos(con, rep)
+            cp = r["cartas_pastas"]
+            # AS DUAS CONTAS (2026-10-16): o plano e o disco, com a diferença
+            # dita. Uma pasta de carta que nenhuma caixa nem versão pede põe o
+            # passo a VERMELHO — é uma foto a mais que ele tiraria à mão, e a
+            # 16/10 eram 31 sem que nada o dissesse.
+            contas = _fotos.exige_contas_explicadas(r["contas_pastas"],
+                                                    cp["por_pedir"])
             return (f"{len(r['escritos'])} planos ({r['fotos']} fotos, "
                     f"{r['cartas']} cartas)"
                     + (f"; {len(r['vazios'])} sem cartas na caixa"
@@ -730,10 +740,8 @@ def main():
                        if r["sem_pasta"] else "")
                     # As pastas de CARTA (2026-10-13): quantas faltam fotografar,
                     # e as que voltaram ou se apagaram nesta corrida.
-                    + "; pastas de carta: %d por fotografar, %d criadas, %d apagadas"
-                    % (r["cartas_pastas"]["por_pedir"],
-                       len(r["cartas_pastas"]["criadas"]),
-                       len(r["cartas_pastas"]["apagadas"])))
+                    + "; pastas de carta: %s; %d criadas, %d apagadas"
+                    % (contas, len(cp["criadas"]), len(cp["apagadas"])))
 
         _step(con, "fotos-plano", _fotos_plano)
 

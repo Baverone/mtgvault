@@ -174,6 +174,29 @@ def vista(con, rep: dict, cfg: dict | None = None) -> dict:
                 l["nm"] for d in decks + proposta for l in d["linhas"]})}
 
 
+def texto_totais(t: dict) -> str:
+    """A linha dos totais, a MESMA no daily e no CLI (2026-10-16).
+
+    O número à cabeça é o `valor_ref` — o preço da impressão que ele vai mesmo
+    procurar (a art dele, ou a mais barata que a caixa ACEITA). Até 16/10 era o
+    `valor`, o `card_price` do motor: o mínimo entre impressões, sem o crivo de
+    edição da caixa. Medido nesse dia: 70 210,89 € contra 74 362,66 € — as 100
+    linhas com aviso (99 de Premodern, a mostrar reimpressões de 2020-2024 que a
+    caixa recusa) valiam 1 791,23 € no motor e 5 943,00 € a sério. A página já
+    usava o `valor_ref`; era a linha do daily que ele lia que estava 4 151,77 €
+    abaixo. O mínimo do motor fica ao lado, com o nome que tem.
+    """
+    s = (f"{t['decks']} decks, {t['cartas']} cartas, {t['copias']} cópias, "
+         f"{t['valor_ref']:.2f} EUR pela impressão que serve "
+         f"(mínimo do motor, sem o crivo de edição: {t['valor']:.2f})")
+    if t.get("sem_preco"):
+        s += f", {t['sem_preco']} cóp. sem preço"
+    if t.get("avisos"):
+        s += (f", {t['avisos']} linhas com o preço do motor fora da regra "
+              f"(+{t['valor_serve'] - t['valor']:.2f} EUR)")
+    return s
+
+
 def texto(v: dict) -> str:
     """A mesma lista em texto, para o CLI e para o telemóvel dele copiar.
 
@@ -213,11 +236,7 @@ def main(argv=None) -> int:
         print(json.dumps(v, ensure_ascii=False, indent=1))
         return 0
     print(texto(v))
-    t = v["totais"]
-    print(f"\n{t['decks']} decks · {t['cartas']} cartas · {t['copias']} cópias · "
-          f"{paginas.eur(t['valor'])}"
-          + (f" · {t['sem_preco']} cóp. sem preço" if t["sem_preco"] else "")
-          + (f" · {t['avisos']} linhas com o preço fora da regra" if t["avisos"] else ""))
+    print("\n" + texto_totais(v["totais"]))
     if v["proposta"]:
         p = v["totais_proposta"]
         print(f"PROPOSTA (fora do total): {p['cartas']} cartas, {p['copias']} cóp., "

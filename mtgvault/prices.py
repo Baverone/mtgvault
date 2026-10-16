@@ -384,11 +384,26 @@ def edicoes_da_coleccao(con: sqlite3.Connection) -> list[str]:
     primeira carta dela entrar, e nenhuma cópia fica sem preço por causa de uma
     lista que ninguém se lembrou de actualizar. As não encontradas e as de
     colecionador contam — continuam a ser avaliadas.
+
+    E AS EDIÇÕES QUE O CARDTRADER JÁ COTAVA FICAM (2026-10-16). A colecção foi
+    esvaziada a 13/10 (reconstrói-se pelas fotos) e esta lista passou a vir
+    VAZIA: o passo `precos-cardtrader` disse «colecção sem edições conhecidas —
+    saltado», verde, a 14, 15 e 16/10, e a fonte de que saem o valor da
+    colecção e o preço de todas as faltas ficou parada no dia 13. Era o padrão
+    do `event_tier` outra vez. Uma lista que só cresce com a colecção não pode
+    encolher quando a colecção encolhe: as edições que já têm preço do
+    CardTrader continuam a ser pedidas, e por isso a lista nunca fica mais
+    curta do que o que a base já cota.
     """
     return [r[0] for r in con.execute(
-        "SELECT DISTINCT lower(c.set_code) FROM copies cp "
+        "SELECT lower(c.set_code) FROM copies cp "
         "JOIN cards c ON c.scryfall_id = cp.scryfall_id "
-        "WHERE c.set_code IS NOT NULL AND c.set_code <> '' ORDER BY 1")]
+        "WHERE c.set_code IS NOT NULL AND c.set_code <> '' "
+        "UNION "
+        "SELECT lower(c.set_code) FROM price_latest p "
+        "JOIN cards c ON c.scryfall_id = p.scryfall_id "
+        "WHERE p.source = 'cardtrader' AND c.set_code IS NOT NULL "
+        "AND c.set_code <> '' ORDER BY 1")]
 
 
 def fetch_cardtrader_prices(con: sqlite3.Connection, ct: CardTrader,

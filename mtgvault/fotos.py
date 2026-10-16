@@ -461,6 +461,7 @@ def escrever_planos(con, res: dict, cfg: dict | None = None,
     # As pastas de CARTA dentro de cada deck (2026-10-13): é aqui, todas as
     # noites, que a pasta de uma carta volta quando precisa de foto outra vez.
     out["cartas_pastas"] = sincronizar_pastas_de_cartas(con, res, cfg, raiz)
+    out["contas_pastas"] = contas_das_pastas(res, cfg, raiz)
     com_fila = set()
     # O plano de uma FAMÍLIA é o das caixas dela, um a seguir ao outro, na
     # pasta comum (2026-10-13) — escrito do MESMO `fila_decks`, para a pasta e
@@ -1528,7 +1529,9 @@ def sincronizar_pastas_de_cartas(con, res: dict, cfg: dict | None = None,
       um nome que não lê fica.
 
     Nada com imagens se apaga (`apagar_pasta_feita`), nem uma pasta cuja foto
-    ainda está à espera em `pendentes/` (`_origens.json`).
+    ainda está à espera em `pendentes/` (`_origens.json`). As pastas que esta
+    função não toca contam-se no `contas_das_pastas`, para a diferença entre o
+    disco e o plano ficar dita.
     """
     from . import fotosite, scryfall                         # noqa: PLC0415
     base = pasta_novas(raiz)
@@ -1576,3 +1579,121 @@ def sincronizar_pastas_de_cartas(con, res: dict, cfg: dict | None = None,
                 elif tem_imagens(x):
                     out["ficam_com_fotos"].append(rel)
     return out
+
+
+# Onde vão parar as pastas de carta que já não pertencem a lista nenhuma
+# (2026-10-16). Começa por `_` para o walker das fotos não a tratar como deck.
+PASTA_FORA_DO_PLANO = "_fora do plano"
+
+
+def cartas_das_versoes(cfg: dict | None = None) -> dict[str, dict[str, set]]:
+    """`formato -> {nome da versão: {carta em forma de pasta, casefold}}` — as
+    VERSÕES vivas do `decks_por_formato` que têm lista própria no
+    `listas_escolhidas` (o Oswald, o Orzhov Monument). Não são caixa, por isso o
+    plano não as conta; mas são decks dele, e as pastas delas ficam."""
+    from . import sources                                    # noqa: PLC0415
+    cfg = cfg if cfg is not None else sources.config()
+    le = cfg.get("listas_escolhidas") or {}
+    out: dict[str, dict[str, set]] = {}
+    for fmt, b in (cfg.get("decks_por_formato") or {}).items():
+        if not isinstance(b, dict):
+            continue
+        for v in b.get("versoes") or []:
+            if not isinstance(v, dict) or v.get("_saiu") or not v.get("id"):
+                continue
+            reg = le.get(v["id"])
+            if not isinstance(reg, dict):
+                continue
+            nomes = {str(c[1]).translate(_SEGURO).casefold()
+                     for c in (reg.get("cards") or [])
+                     if isinstance(c, (list, tuple)) and len(c) >= 3}
+            if nomes:
+                out.setdefault(fmt, {})[str(v.get("nome") or v["id"])] = nomes
+    return out
+
+
+def contas_das_pastas(res: dict, cfg: dict | None = None,
+                      raiz: Path | str | None = None) -> dict:
+    """AS DUAS CONTAS (André, 2026-10-16): o que o plano pede e o que está no
+    disco. A 16/10 eram 595 contra 650 e a diferença não aparecia em sítio
+    nenhum. Cada pasta de carta no disco cai num de três grupos:
+
+    * `no_plano` — uma carta que a caixa (ou a família) pede;
+    * `de_versoes` — uma carta de uma VERSÃO viva do formato que não é caixa
+      (`cartas_das_versoes`): ele quer-a, e o plano não a conta por desenho;
+    * `por_explicar` — nem uma coisa nem outra: resto de uma lista que mudou.
+      É isto que o passo do daily põe a vermelho, porque é uma pasta a pedir-lhe
+      uma foto que nenhum deck quer.
+    """
+    out = {"no_disco": 0, "no_plano": 0, "de_versoes": [], "por_explicar": []}
+    base = pasta_novas(raiz)
+    if not base.is_dir():
+        return out
+    pede = precisa_por_pasta(res, cfg)
+    fam_de = {s: f for f in familias(cfg) for s in f["slots"]}
+    fmts: dict[str, set] = {}
+    for s in res.get("slots") or []:
+        f = fam_de.get(s["slot"])
+        pasta = f["pasta"] if f else nome_de_pasta(s.get("nome") or s["slot"])
+        if s.get("formato"):
+            fmts.setdefault(pasta, set()).add(s["formato"])
+    versoes = cartas_das_versoes(cfg)
+    for d in sorted(x for x in base.iterdir() if x.is_dir()):
+        if d.name.startswith("_"):
+            continue
+        quer = {str(nm).translate(_SEGURO).casefold() for nm in pede.get(d.name, {})}
+        for x in sorted(y for y in d.iterdir() if y.is_dir()):
+            m = RE_PASTA_CARTA.match(x.name)
+            if not m:
+                continue                   # um lote ou um nome que não lê: não é pasta de carta
+            out["no_disco"] += 1
+            nm = m["nm"].casefold()
+            if nm in quer:
+                out["no_plano"] += 1
+                continue
+            de = sorted(nome for fmt in fmts.get(d.name, ())
+                        for nome, cartas in versoes.get(fmt, {}).items()
+                        if nm in cartas)
+            item = {"deck": d.name, "pasta": x.name}
+            if de:
+                out["de_versoes"].append({**item, "versoes": de})
+            else:
+                out["por_explicar"].append(item)
+    return out
+
+
+class PastasPorExplicar(RuntimeError):
+    """Há pastas de carta no disco que nenhuma caixa nem versão pede."""
+
+
+def exige_contas_explicadas(c: dict, por_pedir: int) -> str:
+    """Devolve a frase das duas contas, ou LEVANTA se a diferença entre o disco
+    e o plano não for toda explicada por pastas de versão. É o que põe o passo
+    `fotos-plano` a vermelho: uma pasta por explicar é uma foto a mais que ele
+    tiraria à mão."""
+    t = texto_das_contas(c, por_pedir)
+    sobra = c.get("por_explicar") or []
+    if sobra:
+        raise PastasPorExplicar(
+            f"{len(sobra)} pastas de carta que nenhuma lista pede ("
+            + ", ".join(x["deck"] + "/" + x["pasta"] for x in sobra[:6])
+            + (" …" if len(sobra) > 6 else "")
+            + f"); {t}. Move-as para «{PASTA_NOVAS}/{PASTA_FORA_DO_PLANO}/»")
+    return t
+
+
+def texto_das_contas(c: dict, por_pedir: int) -> str:
+    """A frase das duas contas, a mesma no daily e no CLI."""
+    from collections import Counter                          # noqa: PLC0415
+    vers = Counter(v for x in c["de_versoes"] for v in x["versoes"][:1])
+    t = (f"{por_pedir} por fotografar (plano), {c['no_disco']} pastas no disco"
+         f" — diferença {c['no_disco'] - por_pedir}: "
+         f"{len(c['de_versoes'])} de versões que não são caixa")
+    if vers:
+        t += " (" + ", ".join(f"{n} {q}" for n, q in sorted(vers.items())) + ")"
+    t += f", {len(c['por_explicar'])} por explicar"
+    if c["no_plano"] != por_pedir:
+        # uma carta do plano sem pasta (o deck não tem pasta) ou uma pasta de
+        # carta já provada que não se apagou (tem fotos): diz-se o número.
+        t += f" (pastas do plano no disco: {c['no_plano']})"
+    return t

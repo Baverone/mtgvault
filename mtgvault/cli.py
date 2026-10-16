@@ -1806,6 +1806,11 @@ def _fotos_cmd(con, args):
         print(f"  pastas de carta: {len(cp.get('criadas') or [])} criadas, "
               f"{len(cp.get('apagadas') or [])} apagadas (já provadas), "
               f"{cp.get('por_pedir', 0)} cartas ainda por fotografar")
+        if r.get("contas_pastas"):
+            c = r["contas_pastas"]
+            print("  " + fotos_mod.texto_das_contas(c, cp.get("por_pedir", 0)))
+            for x in c["por_explicar"]:
+                print(f"    por explicar: {x['deck']}/{x['pasta']}")
         print("  o plano sai da MESMA fila da página; as fotos largam-se na "
               "pasta do deck (`fotos recolher` leva-as a `pendentes\\`)")
         return

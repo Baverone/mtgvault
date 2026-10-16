@@ -394,6 +394,20 @@ def caso_as_edicoes_do_cardtrader_saem_da_coleccao():
     assert prices.edicoes_da_coleccao(con) == ["3ed", "m10"]
 
 
+def caso_a_colecao_vazia_nao_desliga_o_cardtrader():
+    """2026-10-16: a colecção foi esvaziada a 13/10 e a lista de edições veio
+    VAZIA — o `precos-cardtrader` saltou, verde, três noites, e a única fonte do
+    valor e das faltas parou. As edições que o CardTrader já cota ficam."""
+    con = base()
+    cota(con, "ring-usg", HOJE.isoformat(), 1.0, 2.0, fonte="cardtrader",
+         receita=precos.RECEITA_CT_OFERTAS)
+    cota(con, "sea-3ed", HOJE.isoformat(), 1.0, 2.0)      # cardmarket: não conta
+    assert con.execute("SELECT COUNT(*) c FROM copies").fetchone()["c"] == 0
+    assert prices.edicoes_da_coleccao(con) == ["usg"], prices.edicoes_da_coleccao(con)
+    add(con, "bolt-m10")
+    assert prices.edicoes_da_coleccao(con) == ["m10", "usg"]
+
+
 def caso_o_historico_do_marketplace_sem_consumidor_e_podado():
     """O CardTrader escreveu 53 113 linhas de histórico na primeira corrida (27
     MB) e só 1 025 eram de cartas dele ou da Reserved List. As outras não

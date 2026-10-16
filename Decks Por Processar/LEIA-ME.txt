@@ -48,6 +48,16 @@ Por isso:
     sempre numa foto de ate 4 cartas. As basicas sao a excepcao de sempre.
 A pasta da carta apaga-se quando a foto ENTRA, seja qual for a quantidade.
 
+PASTAS QUE O NUMERO DO SITE NAO CONTA (16/10/2026)
+-------------------------------------------------
+O site diz quantas cartas faltam fotografar pelas CAIXAS. Nas pastas
+«Mox Opal (Modern + Legacy)» e «Pioneer - Greasefang» ha a mais as cartas
+das VERSOES que nao sao caixa (o Oswald; o Orzhov Monument): sao decks teus e
+as pastas ficam -- por isso ves mais pastas do que o numero do site (a 16/10:
+595 no site, 619 pastas). O job diario diz as duas contas e a diferenca.
+O que nao era de deck nenhum (restos de listas que mudaram) foi para
+`_fora do plano\`, com um LEIA-ME a dizer porque.
+
 Nota: o resto deste ficheiro e o historico das regras; onde diz
 «data\fotos\...» le-se agora «Decks Processados\...».
 
@@ -134,6 +144,8 @@ sozinho. Para elas, diz-me "processa as fotos novas" e eu leio-as.
 
   _nomes antigos\   duas pastas vazias com nomes que mudaram. Nao se apagou
                     nada; podes apagar a pasta a mao se quiseres.
+  _fora do plano\   pastas de carta que nenhum deck pede (16/10/2026). Nao
+                    se processa nada daqui.
 
 
 O QUE NAO E PARA AQUI

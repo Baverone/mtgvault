@@ -658,6 +658,26 @@ def presenciais_sem_numero(con: sqlite3.Connection,
     return out
 
 
+def texto_sem_numero(con: sqlite3.Connection) -> str:
+    """Uma linha para o daily (2026-10-16): os presenciais que não contam por
+    falta de número, por formato, com a pista do gémeo. Até aqui a lista só
+    saía do CLI (`presenciais-sem-numero`), e o passo `jogadores-eventos` dizia
+    «1 eventos vistos (0 com contagem)» sem dizer que essas eram ligas do MTGO
+    (que nunca trazem contagem) nem quantos presenciais ficavam de fora."""
+    rows = presenciais_sem_numero(con)
+    if not rows:
+        return "nenhum presencial fica de fora por falta de número"
+    por: dict[str, list] = {}
+    for x in rows:
+        por.setdefault(x["formato"], []).append(x)
+    partes = []
+    for f, xs in sorted(por.items()):
+        gem = sum(1 for x in xs if x["gemeo_jogadores"])
+        partes.append(f"{f} {len(xs)} ev/{sum(x['listas'] for x in xs)} listas"
+                      + (f" ({gem} com gémeo numerado)" if gem else ""))
+    return "presenciais que NÃO contam por falta de número: " + "; ".join(partes)
+
+
 def counting_sql(fmt: str, alias: str = "d",
                  consenso: bool = True) -> tuple[str, list]:
     """A mesma regra que `lista_conta`, como pedaço de SQL para pôr num WHERE.

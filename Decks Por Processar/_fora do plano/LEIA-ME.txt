@@ -1,0 +1,51 @@
+PASTAS DE CARTA FORA DO PLANO (2026-10-16)
+============================================
+
+Estas pastas estavam em «Decks Por Processar» a pedir-te uma foto, e nenhum
+deck teu as pede hoje: nem uma caixa, nem uma versão que não é caixa (o
+Oswald, o Orzhov Monument). Eram RESTOS de listas que mudaram depois de as
+pastas nascerem a 13/10. Não se apagou nada: vieram para aqui, vazias como
+estavam (nenhuma tinha fotos). A pasta começa por «_», por isso o vault não
+a lê nem processa nada daqui.
+
+Se uma destas cartas voltar a entrar num deck, a pasta dela volta sozinha à
+pasta do deck na corrida da noite. Podes apagar esta pasta à mão quando
+quiseres.
+
+Movidas a 2026-10-16: 31
+
+
+Mox Opal (Modern + Legacy)\
+  Avatar of Burgeoning Echoes (4) — da lista do Kasmina / Jace's Machinations, registada em Modern a 13/10 de manhã; à tarde saiu de Modern e passou a brew de Pioneer (que não tem pasta)
+  Brainsurge (2) — da lista do Kasmina / Jace's Machinations, registada em Modern a 13/10 de manhã; à tarde saiu de Modern e passou a brew de Pioneer (que não tem pasta)
+  Breeding Pool (1) — de decks/versões de Modern que já saíram (deck:modern:goryos-reanimator, versao:modern:cesar-grinding-station, versao:modern:cesar-song-of-creation, versao:modern:cori-steel); nenhuma lista viva da família Mox Opal a pede hoje
+  Enter the Infinite (2) — da lista do Kasmina / Jace's Machinations, registada em Modern a 13/10 de manhã; à tarde saiu de Modern e passou a brew de Pioneer (que não tem pasta)
+  Forest (2) — de decks/versões de Modern que já saíram (deck:modern:broodscale-bloodchief, deck:modern:devoted-combo, versao:modern:cesar-song-of-creation); nenhuma lista viva da família Mox Opal a pede hoje
+  Hedge Maze (1) — de decks/versões de Modern que já saíram (versao:modern:cesar-grinding-station, versao:modern:cesar-song-of-creation); nenhuma lista viva da família Mox Opal a pede hoje
+  Isochron Scepter (1) — da lista do Kasmina / Jace's Machinations, registada em Modern a 13/10 de manhã; à tarde saiu de Modern e passou a brew de Pioneer (que não tem pasta)
+  Jace's Machinations (4) — da lista do Kasmina / Jace's Machinations, registada em Modern a 13/10 de manhã; à tarde saiu de Modern e passou a brew de Pioneer (que não tem pasta)
+  Kasmina, Enigma Sage (4) — da lista do Kasmina / Jace's Machinations, registada em Modern a 13/10 de manhã; à tarde saiu de Modern e passou a brew de Pioneer (que não tem pasta)
+  Misty Rainforest (4) — de decks/versões de Modern que já saíram (deck:modern:devoted-combo, versao:modern:cesar-grinding-station, versao:modern:cesar-song-of-creation); nenhuma lista viva da família Mox Opal a pede hoje
+  Orim's Chant (4) — de decks/versões de Modern que já saíram (deck:modern:ruby-storm); nenhuma lista viva da família Mox Opal a pede hoje
+  Plains (1) — de decks/versões de Modern que já saíram (deck:modern:boros-energy, deck:modern:esper-blink, deck:modern:goryos-reanimator, deck:modern:hammer-time); nenhuma lista viva da família Mox Opal a pede hoje
+  Preordain (4) — de decks/versões de Modern que já saíram (deck:modern:ur-prowess, versao:modern:cesar-song-of-creation, versao:modern:weapons); nenhuma lista viva da família Mox Opal a pede hoje
+  Prismatic Ending (4) — de decks/versões de Modern que já saíram (deck:modern:boros-energy, deck:modern:goryos-reanimator, deck:modern:ruby-storm); nenhuma lista viva da família Mox Opal a pede hoje
+  Rip Apart (1) — não está em nenhuma lista do colecao_config.json, nem hoje nem a 13/10 — o mais provável é o consenso calculado das caixas de Legacy antes de terem lista de evento (13/10); não confirmado
+  Spell Pierce (1) — de decks/versões de Modern que já saíram (deck:modern:ur-prowess); nenhuma lista viva da família Mox Opal a pede hoje
+  Surgical Extraction (2) — de decks/versões de Modern que já saíram (deck:modern:rakdos-moonshadow, deck:modern:ur-prowess); nenhuma lista viva da família Mox Opal a pede hoje
+  Temple Garden (2) — de decks/versões de Modern que já saíram (deck:modern:devoted-combo); nenhuma lista viva da família Mox Opal a pede hoje
+  Thassa's Oracle (1) — da lista do Kasmina / Jace's Machinations, registada em Modern a 13/10 de manhã; à tarde saiu de Modern e passou a brew de Pioneer (que não tem pasta)
+  Theorist's Sanctum (1) — da lista do Kasmina / Jace's Machinations, registada em Modern a 13/10 de manhã; à tarde saiu de Modern e passou a brew de Pioneer (que não tem pasta)
+  Torpor Orb (1) — não está em nenhuma lista do colecao_config.json, nem hoje nem a 13/10 — o mais provável é o consenso calculado das caixas de Legacy antes de terem lista de evento (13/10); não confirmado
+  Utopia Sprawl (4) — da lista do Kasmina / Jace's Machinations, registada em Modern a 13/10 de manhã; à tarde saiu de Modern e passou a brew de Pioneer (que não tem pasta)
+  Windswept Heath (4) — de decks/versões de Modern que já saíram (deck:modern:boros-energy, deck:modern:devoted-combo); nenhuma lista viva da família Mox Opal a pede hoje
+  Wrath of the Skies (2) — de decks/versões de Modern que já saíram (deck:modern:boros-energy, deck:modern:esper-blink, deck:modern:goryos-reanimator); nenhuma lista viva da família Mox Opal a pede hoje
+
+Pioneer — Greasefang\
+  Ashiok, Dream Render (2) — da versão Parhelion do Greasefang, que saiu a 13/10 (era o Abzan com outro nome)
+  Caves of Koilos (4) — da lista ANTIGA do Orzhov Monument (26/09); a 13/10 passou a ser a do rarakkyo, que já não joga esta carta
+  Collective Brutality (2) — da versão Parhelion do Greasefang, que saiu a 13/10 (era o Abzan com outro nome)
+  Loran of the Third Path (2) — da lista ANTIGA do Orzhov Monument (26/09); a 13/10 passou a ser a do rarakkyo, que já não joga esta carta
+  Professor Dellian Fel (1) — da versão Parhelion do Greasefang, que saiu a 13/10 (era o Abzan com outro nome)
+  Razorverge Thicket (3) — da versão Parhelion do Greasefang, que saiu a 13/10 (era o Abzan com outro nome)
+  Starting Town (1) — da versão Parhelion do Greasefang, que saiu a 13/10 (era o Abzan com outro nome)
