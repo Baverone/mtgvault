@@ -1,0 +1,58 @@
+[
+ {
+  "id": "000",
+  "gravidade": "alta",
+  "deck": "Grinding Station",
+  "aviso": "82 cartas trocadas de uma vez",
+  "detalhe": "de Cachorrowo 12/10 para howa 15/10: nao e a lista a evoluir, e outro deck — o emparelhador trocou de arquetipo. Ver se a assinatura ainda separa o deck."
+ },
+ {
+  "id": "001",
+  "gravidade": "media",
+  "deck": "Cloud (Duel Commander)",
+  "aviso": "97 cartas, nao 100",
+  "detalhe": "a lista de referencia foi lida incompleta."
+ },
+ {
+  "id": "002",
+  "gravidade": "media",
+  "deck": "Cloud (Duel Commander)",
+  "aviso": "sem lista de McWinSauce com ['Cloud, Midgar Mercenary']",
+  "detalhe": "nenhuma lista que conte serve hoje este deck; fica a de McWinSauce 31/08. Se se repetir todos os dias, a assinatura ou o jogador já não existem no metagame."
+ },
+ {
+  "id": "003",
+  "gravidade": "media",
+  "deck": "Grinding Station",
+  "aviso": "Grinding Station: 4 -> 2",
+  "detalhe": "a carta que da nome ao deck desceu de copias nesta troca."
+ },
+ {
+  "id": "004",
+  "gravidade": "baixa",
+  "deck": "Cloud (Duel Commander)",
+  "aviso": "lista de referencia com 46 dias",
+  "detalhe": "a mais recente que serve este deck e de McWinSauce 31/08."
+ },
+ {
+  "id": "005",
+  "gravidade": "baixa",
+  "deck": "Cori-Steel Cutter",
+  "aviso": "lista relida: +1 cartas",
+  "detalhe": "a mesma lista, relida da fonte — a leitura antiga perdia as copias de uma carta partida em varias entradas: Island +1"
+ },
+ {
+  "id": "006",
+  "gravidade": "baixa",
+  "deck": "Grinding Station",
+  "aviso": "lista relida: +6 cartas",
+  "detalhe": "a mesma lista, relida da fonte — a leitura antiga perdia as copias de uma carta partida em varias entradas: Tamiyo, Inquisitive Student +3, Consign to Memory +3"
+ },
+ {
+  "id": "007",
+  "gravidade": "baixa",
+  "deck": "Izzet Affinity (Kappa Cannoneer)",
+  "aviso": "lista relida: +3 cartas",
+  "detalhe": "a mesma lista, relida da fonte — a leitura antiga perdia as copias de uma carta partida em varias entradas: Island +1, Tormod's Crypt +2"
+ }
+]

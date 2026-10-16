@@ -1,0 +1,72 @@
+[
+ {
+  "deck": "Izzet Affinity (Kappa Cannoneer)",
+  "formato": "modern",
+  "lista": "DJK3V1N 15/10",
+  "anterior": "wild88plk 13/10",
+  "mudou": "sim",
+  "cartas_trocadas": 26,
+  "main": 60,
+  "sideboard": 15
+ },
+ {
+  "deck": "Grinding Station",
+  "formato": "modern",
+  "lista": "howa 15/10",
+  "anterior": "Cachorrowo 12/10",
+  "mudou": "sim",
+  "cartas_trocadas": 82,
+  "main": 60,
+  "sideboard": 15
+ },
+ {
+  "deck": "Cori-Steel Cutter",
+  "formato": "modern",
+  "lista": "Rapgod 06/10",
+  "anterior": "Rapgod 06/10",
+  "mudou": "nao",
+  "cartas_trocadas": 0,
+  "main": 60,
+  "sideboard": 15
+ },
+ {
+  "deck": "Greasefang",
+  "formato": "pioneer",
+  "lista": "rarakkyo 10/10",
+  "anterior": "rarakkyo 10/10",
+  "mudou": "nao",
+  "cartas_trocadas": 0,
+  "main": 60,
+  "sideboard": 15
+ },
+ {
+  "deck": "Stiflenought (Luffy)",
+  "formato": "premodern",
+  "lista": "LuffyDoChapeuDePalha 13/10",
+  "anterior": "LuffyDoChapeuDePalha 13/10",
+  "mudou": "nao",
+  "cartas_trocadas": 0,
+  "main": 60,
+  "sideboard": 15
+ },
+ {
+  "deck": "Stiflenought (Spock)",
+  "formato": "premodern",
+  "lista": "SpockVidaLoka 02/10",
+  "anterior": "SpockVidaLoka 02/10",
+  "mudou": "nao",
+  "cartas_trocadas": 0,
+  "main": 60,
+  "sideboard": 15
+ },
+ {
+  "deck": "Cloud (Duel Commander)",
+  "formato": "duel-commander",
+  "lista": "McWinSauce 31/08",
+  "anterior": "McWinSauce 31/08",
+  "mudou": "nao",
+  "cartas_trocadas": 0,
+  "main": 97,
+  "sideboard": 0
+ }
+]
