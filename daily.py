@@ -28,7 +28,7 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 os.environ.setdefault("MOXFIELD_USER_AGENT", "mtgvault/0.1 (coleccao pessoal)")
 
 from mtgvault import (analysis, consenso, db, fases, loadout, mtgtop8,  # noqa: E402
-                      precos, prices, scryfall, sources, tagging, venda,
+                      painel, precos, prices, scryfall, sources, tagging, venda,
                       watchlist)
 
 import arrumacao  # noqa: E402  (gera arrumacao.html — as fases e as quatro protecções)
@@ -565,6 +565,12 @@ def main():
         # coladas à versão mais recente do metagame, para a % e a wantlist estarem
         # sempre atualizadas.
         _step(con, "meus-decks", lambda: my_decks.refresh(con))
+        # O PAINEL DAS ALTERAÇÕES NOS DECKS (André, 2026-10-16: "todos os dias
+        # quero que mostres aqui ao lado as alterações ocorridas nos decks").
+        # Logo a seguir ao `meus-decks`, que é quem grava cada troca em
+        # `deck_lista_trocas`; escreve `data/painel/` (três ficheiros do dia +
+        # `historico/<hoje>.json`). Lê só a base — correr duas vezes dá o mesmo.
+        _step(con, "painel", lambda: painel.texto(painel.escrever(con)))
         # Decks de comandante seguidos por consenso (ex.: Cloud, Midgar Mercenary
         # em Duel Commander). Reconstrói a lista de referência do metagame.
         _step(con, "decks-comandante", lambda: commander_decks.refresh(con))

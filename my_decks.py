@@ -6,30 +6,55 @@ guardada em `deck_cards`. Assim a % que ele já tem e a wantlist acompanham
 sempre a versão atual do deck. NÃO inventa nada: usa só as decklists reais que
 o harvest já recolheu (mtgo/mtgtop8).
 
-Só reescreve quando a decklist de origem muda (compara o id na nota), para não
-sujar o `vault.db` com diffs todos os dias sem necessidade.
+Só reescreve quando a decklist de origem muda (compara o id na nota) ou quando
+a MESMA lista foi relida com outro conteúdo, para não sujar o `vault.db` com
+diffs todos os dias sem necessidade.
+
+**Cada troca fica gravada em `deck_lista_trocas` (2026-10-16)**, com as duas
+listas inteiras: *"todos os dias quero que mostres aqui ao lado as alterações
+ocorridas nos decks"* (André). Até aí as `deck_cards` eram substituídas e o que
+entrou e saiu perdia-se — o `job_runs` só dizia *"atualizado -> <data>
+<jogador>"*. Quem lê o histórico é o `mtgvault/painel.py`.
 """
 from __future__ import annotations
 
+import json
+import re
 import sqlite3
+from datetime import date
 
 from mtgvault import sources
 
 # (nome do deck, formato, cartas-assinatura que a lista TEM de conter)
 FOLLOWED = [
     ("Izzet Affinity (Kappa Cannoneer)", "modern", ["Mox Opal", "Kappa Cannoneer"]),
-    ("Grinding Station", "modern", ["Mox Opal", "Grinding Station"]),
+    # Grinding Station: Mox Opal + Grinding Station apanha DOIS decks (medido a
+    # 2026-10-16, listas de Modern desde 01/10 com as duas cartas): o de Emry +
+    # Sewer-veillance Cam (10 listas — CesarMerjan 05/10, Comrac 11/10,
+    # bbotonline 12/10, howa 15/10) e uma variante com Kethis, Malevolent Rumble
+    # e Starting Town (3). A 14/10 a mais recente era a do Kethis (Cachorrowo,
+    # 12/10) e a lista de referência saltou de deck; a 16/10 voltou — 84 cartas
+    # trocadas de cada vez. O "!" fixa o deck que ele seguia; tirá-lo é uma linha.
+    ("Grinding Station", "modern", ["Mox Opal", "Grinding Station", "!Kethis, the Hidden Hand"]),
     ("Cori-Steel Cutter", "modern", ["Mox Opal", "Cori-Steel Cutter"]),
-    # Standard. Jeskai Lessons = "Lesson" + a revelação branca que o separa do
-    # Izzet Lessons. (4c Control ainda não sai limpo do harvest — segue-se por
-    # lista de referência quando o André der uma, ou quando houver mais dados.)
-    # Jeskai Lessons = WUR (Lessons+Revelation, SEM preto); 4c Control = WUBR
-    # (mesmo shell + Blood Crypt). O "!" exclui, para não se confundirem.
-    ("Jeskai Lessons", "standard", ["Firebending Lesson", "Jeskai Revelation", "!Blood Crypt"]),
-    ("4c Control", "standard", ["Jeskai Revelation", "Blood Crypt"]),
     # Pioneer: o André segue o arquétipo Greasefang (não um jogador).
     ("Greasefang", "pioneer", ["Greasefang, Okiba Boss"]),
 ]
+
+# Decks que DEIXARAM de se seguir. Não se apagam: as linhas na `decks` ficam
+# (com a última lista e a nota), só não voltam a ser atualizadas nem aparecem no
+# painel. Repor é devolver a entrada ao `FOLLOWED`.
+SAIU = {
+    # Standard (André, 13/10/2026): "Standard vou ficar sem deck, pois em Janeiro
+    # ha rotacao no formato ... logo podemos eliminar esse deck". A ordem desse
+    # dia tirou a caixa `standard` (Bant Airbend) e esqueceu estes dois, que
+    # continuaram a ser seguidos até 16/10 (Jeskai Lessons = WUR com Lessons e
+    # Revelation, SEM preto; 4c Control = o mesmo shell com Blood Crypt).
+    "Jeskai Lessons": ("standard", ["Firebending Lesson", "Jeskai Revelation", "!Blood Crypt"],
+                       "2026-10-16", "Standard eliminado a 13/10 (rotacao de Janeiro)"),
+    "4c Control": ("standard", ["Jeskai Revelation", "Blood Crypt"],
+                   "2026-10-16", "Standard eliminado a 13/10 (rotacao de Janeiro)"),
+}
 
 # Decks seguidos por JOGADOR + COMANDANTE: a lista mais recente desse jogador no
 # formato que CONTÉM aquele comandante. Ex.: Cloud DC = a lista de Cloud mais
@@ -49,6 +74,10 @@ FOLLOWED_PLAYERS = [
 ]
 
 MIN_MAIN = 55  # ignora listas truncadas/incompletas
+
+# A nota que o `_store` escreve na `decks`: "auto: <fonte> <jogador> <data> (#id)".
+# O jogador pode ter espaços (o mtgtop8 traz nomes reais).
+RE_NOTA = re.compile(r"^auto: (\S+) (.*) (\d{4}-\d{2}-\d{2}) \(#(\d+)\)$")
 
 
 def _conta(fmt):
@@ -122,45 +151,99 @@ def _latest_player_deck(con: sqlite3.Connection, fmt: str, player: str, cards: l
         [fmt, player] + cp + cards + [len(cards)]).fetchone()
 
 
-def _store(con: sqlite3.Connection, name: str, fmt: str, dl, out: list):
-    """Grava/atualiza a decklist `dl` como deck `name`, só se a origem mudou."""
+def seguidos() -> list[dict]:
+    """Os decks seguidos, numa lista só: nome, formato, como se escolhe a lista
+    e as cartas que lhe dão o nome (a assinatura sem as exclusões). É o que o
+    `refresh` percorre e o que o painel mostra — uma lista só, para os dois não
+    discordarem sobre quem é seguido."""
+    out = []
+    for name, fmt, cards in FOLLOWED:
+        out.append({"deck": name, "formato": fmt, "como": "assinatura",
+                    "assinatura": [c for c in cards if not c.startswith("!")],
+                    "procura": lambda con, f=fmt, c=cards: _latest(con, f, c),
+                    "falta": "sem lista"})
+    for name, fmt, player in FOLLOWED_PLAYERS:
+        out.append({"deck": name, "formato": fmt, "como": "jogador", "assinatura": [],
+                    "procura": lambda con, f=fmt, p=player: _latest_player(con, f, p),
+                    "falta": f"sem lista de {player}"})
+    for name, fmt, player, cards in FOLLOWED_PLAYER_DECK:
+        out.append({"deck": name, "formato": fmt, "como": "jogador+cartas",
+                    "assinatura": list(cards),
+                    "procura": lambda con, f=fmt, p=player, c=cards: _latest_player_deck(con, f, p, c),
+                    "falta": f"sem lista de {player} com {cards}"})
+    return out
+
+
+def ler_nota(nota: str | None) -> dict:
+    """{fonte, jogador, data, decklist_id} da nota de um deck, ou {} se não for
+    uma nota do `_store`."""
+    m = RE_NOTA.match(nota or "")
+    if not m:
+        return {}
+    return {"fonte": m.group(1), "jogador": m.group(2), "data": m.group(3),
+            "decklist_id": int(m.group(4))}
+
+
+def _cartas_do_deck(con, did) -> list[list]:
+    return [[r["board"], r["card_name"], r["quantity"]] for r in con.execute(
+        "SELECT board, card_name, quantity FROM deck_cards WHERE deck_id = ? "
+        "ORDER BY board, card_name", (did,))]
+
+
+def _cartas_da_lista(con, lid) -> list[list]:
+    return [[r["board"], r["card_name"], r["quantity"]] for r in con.execute(
+        "SELECT board, card_name, quantity FROM decklist_cards WHERE decklist_id = ? "
+        "ORDER BY board, card_name", (lid,))]
+
+
+def _store(con: sqlite3.Connection, name: str, fmt: str, dl, out: list,
+           hoje: str | None = None):
+    """Grava/atualiza a decklist `dl` como deck `name`, só se a origem mudou ou
+    se a mesma origem foi relida com outro conteúdo (`sources.reler_mtgo`). Em
+    qualquer dos dois casos, a troca fica em `deck_lista_trocas` ANTES de as
+    `deck_cards` serem substituídas — é a lista de ontem que se perderia."""
     con.execute("INSERT OR IGNORE INTO decks (name, format) VALUES (?, ?)", (name, fmt))
     did = con.execute("SELECT id FROM decks WHERE name = ? AND format = ?",
                       (name, fmt)).fetchone()["id"]
     note = f"auto: {dl['source']} {dl['player'] or '?'} {dl['event_date']} (#{dl['id']})"
     cur = con.execute("SELECT notes FROM decks WHERE id = ?", (did,)).fetchone()["notes"]
-    if cur == note:
+    antes = _cartas_do_deck(con, did)
+    depois = _cartas_da_lista(con, dl["id"])
+    if cur == note and antes == depois:
         out.append(f"{name}: já atual ({dl['event_date']})")
         return
+    motivo = "releitura" if cur == note else "troca"
+    de = ler_nota(cur)
+    if antes or de:
+        con.execute(
+            """INSERT INTO deck_lista_trocas
+                 (deck_id, deck, formato, corrida, motivo,
+                  de_decklist_id, de_jogador, de_data, de_cartas,
+                  para_decklist_id, para_jogador, para_data, para_cartas)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (did, name, fmt, hoje or date.today().isoformat(), motivo,
+             de.get("decklist_id"), de.get("jogador"), de.get("data"),
+             json.dumps(antes, ensure_ascii=False),
+             dl["id"], dl["player"] or "?", dl["event_date"],
+             json.dumps(depois, ensure_ascii=False)))
     con.execute("DELETE FROM deck_cards WHERE deck_id = ?", (did,))
-    for r in con.execute("SELECT card_name, quantity, board FROM decklist_cards "
-                         "WHERE decklist_id = ?", (dl["id"],)):
-        con.execute("INSERT INTO deck_cards (deck_id, card_name, quantity, board) "
-                    "VALUES (?, ?, ?, ?)", (did, r["card_name"], r["quantity"], r["board"]))
+    con.executemany("INSERT INTO deck_cards (deck_id, card_name, quantity, board) "
+                    "VALUES (?, ?, ?, ?)", [(did, n, q, b) for b, n, q in depois])
     con.execute("UPDATE decks SET notes = ? WHERE id = ?", (note, did))
-    out.append(f"{name}: atualizado -> {dl['event_date']} {dl['player'] or '?'}")
+    if motivo == "releitura":
+        out.append(f"{name}: relida ({dl['event_date']} {dl['player'] or '?'})")
+    else:
+        out.append(f"{name}: atualizado -> {dl['event_date']} {dl['player'] or '?'}")
 
 
-def refresh(con: sqlite3.Connection) -> str:
+def refresh(con: sqlite3.Connection, hoje: str | None = None) -> str:
     out = []
-    for name, fmt, cards in FOLLOWED:
-        dl = _latest(con, fmt, cards)
+    for s in seguidos():
+        dl = s["procura"](con)
         if dl:
-            _store(con, name, fmt, dl, out)
+            _store(con, s["deck"], s["formato"], dl, out, hoje)
         else:
-            out.append(f"{name}: sem lista")
-    for name, fmt, player in FOLLOWED_PLAYERS:
-        dl = _latest_player(con, fmt, player)
-        if dl:
-            _store(con, name, fmt, dl, out)
-        else:
-            out.append(f"{name}: sem lista de {player}")
-    for name, fmt, player, cards in FOLLOWED_PLAYER_DECK:
-        dl = _latest_player_deck(con, fmt, player, cards)
-        if dl:
-            _store(con, name, fmt, dl, out)
-        else:
-            out.append(f"{name}: sem lista de {player} com {cards}")
+            out.append(f"{s['deck']}: {s['falta']}")
     con.commit()
     return "; ".join(out)
 

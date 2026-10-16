@@ -352,6 +352,13 @@ mtgvault/
                   limiar `ligas_busca.amostra_baixa_max`), um jogador vigiado ou
                   uma carta vigiada (a vigia de sempre). Ver «PIONEER E LEGACY:
                   31+, E A LIGA COMO BUSCA»
+  painel.py       O PAINEL DAS ALTERAÇÕES NOS DECKS (2026-10-16): o passo
+                  `painel` do daily escreve `data/painel/` — `alteracoes.json`,
+                  `estado-decks.json`, `avisos.json` e `historico/<dia>.json`
+                  (o `valencia.json` é dele e não se toca) — a partir da tabela
+                  `deck_lista_trocas`, que o `my_decks._store` passou a escrever a
+                  cada troca de lista de referência, com as DUAS listas inteiras.
+                  Ver «O PAINEL DAS ALTERAÇÕES NOS DECKS»
   consenso.py     O CONSENSO POR COMANDANTE (2026-10-01): em Duel Commander a
                   identidade de um deck é o COMANDANTE e nunca a etiqueta do
                   clustering (870 etiquetas, 808 sem listas). O comandante de
@@ -6169,6 +6176,65 @@ Testes em `tests/test_kasmina_arts.py` (7 casos).
   noutra (regra de 19/09). Faltas: 255 linhas, **80** já com a art dele;
   valor pela art **23 144,02 €** contra 22 128,49 € (a mais barata que serve) e
   20 508,44 € (motor, = «fechar tudo»). O motor da alocação não mexeu.
+
+**O PAINEL DAS ALTERAÇÕES NOS DECKS, E A LEITURA DO MTGO QUE PERDIA CÓPIAS
+(André, 2026-10-16, à letra).** *"todos os dias quero que mostres aqui ao lado as
+alterações ocorridas nos decks"*. Motor em **`mtgvault/painel.py`**, tabela
+**`deck_lista_trocas`** (nos dois sítios), escrita pelo `my_decks._store`; passo
+`painel` do `daily`, logo a seguir ao `meus-decks`; CLI `py -m mtgvault.cli
+painel [--hoje]` e `reler-mtgo [--limite] [--sem-backup]`. Testes em
+`tests/test_painel_decks.py` (4 casos, com um trecho REAL da página do mtgo.com) e
+a prova de que chumbam em `tests/_chumba_painel.py` (2 de 2).
+
+- **A «`deck_target`» é a `decks` + `deck_cards`** (não há tabela com esse nome).
+  O `my_decks` substituía as `deck_cards` e o que mudou perdia-se. Agora cada troca
+  grava-se ANTES da substituição, com as **duas listas inteiras em JSON**
+  (`de_cartas`/`para_cartas`): os `decklist_id` ficam para conferir, mas a poda de
+  30 dias apaga as `decklists` e o histórico tem de sobreviver a ela. `motivo` =
+  `troca` (outra lista) | `releitura` (a MESMA lista com outro conteúdo — o `_store`
+  passou a comparar também as cartas, não só a nota). Só cresce.
+- **Os ficheiros** (`data/painel/`, pelo `db.pasta_dados()`): `alteracoes.json`
+  (as cartas das trocas de HOJE — `data, deck, formato, carta, board
+  (main/sideboard), delta, de, para, id, sinal, abs`), `estado-decks.json` (um por
+  deck seguido — `deck, formato, lista, anterior, mudou, cartas_trocadas, main,
+  sideboard`), `avisos.json` (`id, gravidade, deck, aviso, detalhe`, por
+  gravidade) e `historico/<dia>.json` (as alterações desse dia; nunca se apagam).
+  **O `valencia.json` é dele e não se escreve.** Tudo sai da base: correr duas
+  vezes dá o mesmo. Vai no `git add` do `daily.yml` e no `EXTRA_COMMIT` da tarefa
+  `mtgvault-daily`.
+- **Os avisos**: ALTA = troca com mais de 60 cartas (é outro deck) e a lista que
+  deixa de jogar a carta que dá nome ao deck; MEDIA = main < 60 / sideboard < 15
+  (comandante ≠ 100), deck sem lista hoje, a carta-nome a descer de cópias, e a
+  OSCILAÇÃO (a lista nova é ≥ 80 % igual a uma que o deck deixou nos últimos 14
+  dias); BAIXA = lista de referência com mais de 14 dias e as releituras.
+- **O ACHADO GRAVE: o `store_decklist` gravava com `INSERT OR REPLACE` e o
+  mtgo.com parte a mesma carta em várias entradas** (uma por impressão). A última
+  apagava as outras, sem erro: a 16/10 eram **2 050 das 5 060 listas do MTGO com
+  o main abaixo de 60** (e 21 de 104 de Duel Commander abaixo de 100; o mtgtop8,
+  zero). Confirmado contra a página: howa 60 → 57 (Tamiyo 3+1), DJK3V1N 60 → 57
+  (Island 1+1, Tormod's Crypt 2+2), MCScards 60 → 59 (Blood Crypt 1+3). Hoje
+  `sources.somar_cartas` soma antes do hash e da gravação, e o
+  **`sources.reler_mtgo`** releu a base: **2 435 listas acertadas (+9 699
+  cópias), 554 re-hospedagens do mtgtop8 fundidas** (com o hash certo passavam a
+  ser a mesma lista — dupla contagem que existia sem se ver; o nome do arquétipo,
+  os jogadores e a classificação delas passam para a do mtgo antes de saírem).
+  Ficaram 40 sideboards entre 1 e 14 que a própria página publica assim (o ruin000
+  tem 13) e 1 página que não respondeu. Backup em
+  `data/backups/vault-2026-10-16-reler-mtgo.db`. **O motor da alocação não mexeu**
+  (fechar tudo 70 210,89 €, 1 099 a comprar, as 16 caixas iguais — medido antes e
+  depois em cópias), e as listas da base passaram de 8 131 a 7 577.
+- **O Grinding Station não perdeu a carta**: a lista de 15/10 (howa) tem 2, a de
+  12/10 (Cachorrowo) tinha 4. O que aconteceu é que **Mox Opal + Grinding Station
+  apanha dois decks**: o de Emry + Sewer-veillance Cam (10 listas desde 01/10) e
+  uma variante com Kethis (3). A 14/10 a mais recente era a do Kethis e a
+  referência saltou; a 16/10 voltou — 82 cartas de cada vez. Ficou
+  `!Kethis, the Hidden Hand` na assinatura (tirá-lo é uma linha).
+- **O Jeskai Lessons e o 4c Control são Standard e ficaram esquecidos** a 13/10
+  (a ordem desse dia tirou a caixa `standard` e não o `my_decks.FOLLOWED`).
+  Passaram ao `my_decks.SAIU`: as linhas na `decks` ficam, deixam de se atualizar.
+  **Por decidir por ele:** o `spml_formatos.standard` continua `"a jogar"` (o
+  `classify` reserva-lhes cartas nos Binders), e o Cori-Steel Cutter e o Grinding
+  Station continuam seguidos apesar de terem saído das versões de Modern a 06/10.
 
 ### Duas bases de dados
 

@@ -430,9 +430,32 @@ def main(argv=None):
     mig.add_argument("--sem-backup", action="store_true",
                      help="não fazer a cópia de segurança (não recomendado)")
 
+    rl = sub.add_parser("reler-mtgo",
+                        help="relê do mtgo.com as listas que a gravação antiga encurtou "
+                             "(a mesma carta em várias entradas)")
+    rl.add_argument("--limite", type=int, default=None, help="máximo de páginas")
+    rl.add_argument("--sem-backup", action="store_true",
+                    help="não fazer a cópia de segurança (não recomendado)")
+
+    pn = sub.add_parser("painel", help="escreve data/painel/ (as alterações nos decks)")
+    pn.add_argument("--hoje", default=None, help="AAAA-MM-DD (omissão: hoje)")
+
     args = ap.parse_args(argv)
 
     with db.session(args.db, args.catalog) as con:
+        if args.cmd == "reler-mtgo":
+            from mtgvault import migracao  # noqa: PLC0415
+            if not args.sem_backup:
+                print(f"backup: {migracao.backup(con, etiqueta='reler-mtgo')}")
+            r = sources.reler_mtgo(con, limite=args.limite)
+            print(f"{r['paginas']} paginas lidas ({r['falhadas']} falharam); "
+                  f"{r['acertadas']} listas acertadas (+{r['copias']} copias); "
+                  f"{r['fundidas']} duplicadas do mtgtop8 fundidas")
+            return 0
+        if args.cmd == "painel":
+            from mtgvault import painel  # noqa: PLC0415
+            print(painel.texto(painel.escrever(con, hoje=args.hoje)))
+            return 0
         if args.cmd == "init":
             print("Base de dados pronta.")
 
