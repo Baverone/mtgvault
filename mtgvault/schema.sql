@@ -221,7 +221,9 @@ CREATE TABLE IF NOT EXISTS deck_cards (
 -- mudou perdia-se. Cada troca fica aqui com as DUAS listas inteiras (JSON de
 -- [board, carta, qty]): os `decklist_id` são só para conferir — a poda de 30
 -- dias apaga as `decklists`, e o histórico tem de sobreviver a ela. Só cresce.
--- `motivo` = 'troca' (outra lista) | 'releitura' (a mesma lista, relida). O
+-- `motivo` = 'troca' (outra lista) | 'releitura' (a mesma lista, relida) |
+-- 'recusada' (outra lista que o `my_decks.avaliar_troca` não deixou entrar — o
+-- deck ficou com a de `de_*` até ele a `aceitar`; 2026-10-16). O
 -- índice nasce no `db._migrate` (a regra de 2026-09-09 não o exige aqui, mas
 -- fica num sítio só).
 CREATE TABLE IF NOT EXISTS deck_lista_trocas (

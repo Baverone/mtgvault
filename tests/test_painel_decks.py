@@ -26,17 +26,26 @@ BLOB = {"description": "Modern Challenge 64", "starttime": "2026-10-15T08:00:00"
 PAGINA = ("<script>window.MTGO.decklists.data = " + json.dumps(BLOB)
           + ";</script>")
 
-# Uma lista do Grinding Station «de Emry» anterior (sintética, 60 + 15): 4 Grinding
-# Station, para a troca para a do howa (2) dar o aviso da carta-nome.
-ANTES = ([("main", "Grinding Station", 4), ("main", "Mox Opal", 4),
-          ("main", "Emry, Lurker of the Loch", 4), ("main", "Sewer-veillance Cam", 3),
-          ("main", "Urza's Saga", 4), ("main", "Mishra's Bauble", 4),
-          ("main", "Mox Amber", 4), ("main", "Island", 9), ("main", "Thoughtcast", 4),
-          ("main", "Frogmite", 4), ("main", "Myr Enforcer", 4), ("main", "Darkslick Shores", 4),
-          ("main", "Spellstutter Sprite", 4), ("main", "Ornithopter", 4)]
-         + [("side", "Consign to Memory", 4), ("side", "Force of Negation", 3),
-            ("side", "Dismember", 2), ("side", "Pithing Needle", 2),
-            ("side", "Spell Snare", 4)])
+# Uma lista do Grinding Station «de Emry» anterior (sintética, 60 + 15): a do howa
+# com 4 Grinding Station em vez de 2, sem Sink into Stupor e com Thoughtcast em vez
+# de Loki — 12 cartas de diferença, para a troca para a do howa dar o aviso da
+# carta-nome (4 -> 2) e ser a lista a EVOLUIR. (Até 2026-10-16 à tarde era uma
+# lista inventada a 76 cartas da do howa; com a recusa acima de 60 deixava de
+# entrar, e este caso é sobre uma troca que entra.)
+def _howa(board_key):
+    tot = {}
+    for e in HOWA[board_key]:
+        n = e["card_attributes"]["card_name"]
+        tot[n] = tot.get(n, 0) + int(e["qty"])
+    return tot
+
+
+_MAIN = _howa("main_deck")
+_MAIN.update({"Grinding Station": 4, "Thoughtcast": 4})
+_MAIN.pop("Sink into Stupor")
+_MAIN.pop("Loki, God of Mischief")
+ANTES = ([("main", n, q) for n, q in _MAIN.items()]
+         + [("side", n, q) for n, q in _howa("sideboard_deck").items()])
 
 # Outro deck que também joga Mox Opal + Grinding Station: a troca para ele passa
 # das 60 cartas — é o emparelhador a trocar de arquétipo.
@@ -194,29 +203,50 @@ def caso_a_troca_fica_no_historico_e_o_painel_escreve_os_ficheiros(con, raiz):
 
 
 def caso_troca_de_arquetipo_e_oscilacao(con, raiz):
-    """Mais de 60 cartas trocadas é ALTA; voltar no dia seguinte a uma lista que
-    já se deixou é a oscilação, e diz-se."""
+    """Mais de 60 cartas é outro deck: desde 2026-10-16 (à tarde) a troca é
+    RECUSADA — o deck fica com a lista anterior e o painel avisa (alta) até ele
+    a `aceitar`. Aceite, os mais de 60 são ALTA no painel; e voltar no dia
+    seguinte a uma lista que já se deixou é a oscilação, e diz-se."""
+    howa = con.execute("SELECT id FROM decklists WHERE player = 'howa'").fetchone()[0]
     _guardar(con, "outro", OUTRO, "2026-10-17", "Cachorrowo")
     con.commit()
     my_decks.refresh(con, hoje="2026-10-17")
+    my_decks.refresh(con, hoje="2026-10-17")
+    nota = con.execute("SELECT notes FROM decks WHERE name = 'Grinding Station'").fetchone()[0]
+    assert nota.endswith(f"(#{howa})"), f"a troca recusada não pode mexer no deck: {nota}"
+    rec = con.execute("SELECT * FROM deck_lista_trocas WHERE motivo = 'recusada'").fetchall()
+    assert len(rec) == 1, "a recusa grava-se UMA vez, por muitas corridas que haja"
     painel.escrever(con, raiz=raiz, hoje="2026-10-17")
     av = _ler(raiz, "avisos.json")
-    assert any(a["gravidade"] == "alta" and "cartas trocadas" in a["aviso"]
+    assert any(a["gravidade"] == "alta" and a["aviso"].startswith("troca recusada:")
+               and "cartas trocadas" in a["aviso"] and a["deck"] == "Grinding Station"
+               for a in av), av
+    assert not _ler(raiz, "alteracoes.json"), "uma troca recusada não é uma alteração do deck"
+
+    # ele decide: aceita a lista nova
+    print(my_decks.aceitar(con, "Grinding Station", hoje="2026-10-17"))
+    painel.escrever(con, raiz=raiz, hoje="2026-10-17")
+    av = _ler(raiz, "avisos.json")
+    assert not any(a["aviso"].startswith("troca recusada") for a in av), \
+        "aceite, a recusa deixa de se avisar"
+    assert any(a["gravidade"] == "alta" and "cartas trocadas de uma vez" in a["aviso"]
                and a["deck"] == "Grinding Station" for a in av), av
     assert av[0]["gravidade"] == "alta", "os avisos vêm por gravidade"
     assert any(a["deck"] == "Grinding Station" and a["aviso"] == "main com 56 cartas, nao 60"
                for a in av), av
-    # volta a uma lista quase igual à do howa
+    # volta a uma lista quase igual à do howa: também passa das 60, é recusada, e
+    # aceite outra vez é a oscilação
     volta = [(r["board"], r["card_name"], r["quantity"]) for r in con.execute(
-        "SELECT * FROM decklist_cards WHERE decklist_id = (SELECT id FROM decklists "
-        "WHERE player = 'howa')")]
+        "SELECT * FROM decklist_cards WHERE decklist_id = ?", (howa,))]
     volta = [(b, n, q) for b, n, q in volta if n != "Haywire Mite"] + [("main", "Ornithopter", 1)]
     _guardar(con, "volta", volta, "2026-10-18", "bbotonline")
     con.commit()
-    my_decks.refresh(con, hoje="2026-10-18")
+    assert "RECUSADA" in my_decks.refresh(con, hoje="2026-10-18")
+    my_decks.aceitar(con, "Grinding Station", hoje="2026-10-18")
     painel.escrever(con, raiz=raiz, hoje="2026-10-18")
     av = _ler(raiz, "avisos.json")
-    assert any(a["deck"] == "Grinding Station" and "voltou a uma lista como a de howa"
+    # o ANTES é a do howa a 12 cartas, por isso a primeira que bate é a do Comrac
+    assert any(a["deck"] == "Grinding Station" and "voltou a uma lista como a de"
                in a["aviso"] for a in av), av
     assert sorted(p.name for p in (raiz / "historico").iterdir()) == \
         ["2026-10-16.json", "2026-10-17.json", "2026-10-18.json"], "o histórico não se apaga"
