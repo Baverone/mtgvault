@@ -41,6 +41,11 @@ CAMPOS = {
 # Uma troca com mais cartas do que isto não é a lista a evoluir: é outro deck.
 # 60 é a regra dele (16/10). Como cada carta conta nos dois sentidos (sai uma,
 # entra outra), 60 cartas são ~30 trocas de lugar — metade de um main.
+# **E desde 2026-10-16 (à tarde) é também a régua da RECUSA** (`my_decks.
+# avaliar_troca`): uma troca acima disto não entra e o deck fica com a lista
+# anterior até ele dizer. Medido nas 64 trocas reconstruídas do `job_runs`
+# (18/09 a 16/10): as de dentro do mesmo deck vão até 50 cartas e as que mudam
+# de variante começam nas 62 — não há nenhuma entre 51 e 61, e o 60 cai no buraco.
 TROCA_DE_ARQUETIPO = 60
 # A lista para a qual se trocou é quase igual a uma que já se deixou nos últimos
 # DIAS_OSCILA dias: o emparelhador anda a saltar entre dois decks.
@@ -123,7 +128,7 @@ def _cartas_do_deck(con, nome, fmt) -> tuple[dict | None, dict]:
         "SELECT board, card_name, quantity FROM deck_cards WHERE deck_id = ?", (deck["id"],))])
 
 
-def _cartas_do_nome(deck: str, assinatura: list[str]) -> list[str]:
+def cartas_do_nome(deck: str, assinatura: list[str]) -> list[str]:
     """As cartas da assinatura que dão nome ao deck: «Grinding Station» no
     Grinding Station, «Kappa Cannoneer» no Izzet Affinity (Kappa Cannoneer),
     «Greasefang, Okiba Boss» no Greasefang (pela parte antes da vírgula)."""
@@ -218,11 +223,29 @@ def construir(con, hoje: str | None = None, raiz: Path | None = None) -> dict:
                        "cartas_trocadas": n_troc, "main": main, "sideboard": side})
 
         # --- sem lista hoje -------------------------------------------------
-        if s["procura"](con) is None:
+        cand = s["procura"](con)
+        if cand is None:
             tem = f"; fica a de {lista}" if lista else ""
             avisar("media", nome, s["falta"],
                    f"nenhuma lista que conte serve hoje este deck{tem}. Se se repetir "
                    "todos os dias, a assinatura ou o jogador já não existem no metagame.")
+        # --- troca recusada, à espera dele -----------------------------------
+        # Diz-se TODOS os dias enquanto a lista mais recente for a recusada e o
+        # deck continuar na anterior: uma recusa dita uma vez e esquecida era o
+        # deck parado sem ninguém saber porquê.
+        elif deck and nota.get("decklist_id") != cand["id"]:
+            rec = con.execute(
+                "SELECT * FROM deck_lista_trocas WHERE deck = ? AND formato = ? "
+                "AND motivo = 'recusada' AND para_decklist_id = ? ORDER BY id DESC LIMIT 1",
+                (nome, fmt, cand["id"])).fetchone()
+            if rec:
+                porque = my_decks.avaliar_troca(json.loads(rec["de_cartas"] or "[]"),
+                                                json.loads(rec["para_cartas"] or "[]"),
+                                                cartas_do_nome(nome, s["assinatura"]))
+                avisar("alta", nome, f"troca recusada: {porque or 'recusada'}",
+                       f"a lista mais recente ({rotulo(rec['para_jogador'], rec['para_data'])}, "
+                       f"#{rec['para_decklist_id']}) nao entrou e o deck fica com a de {lista}. "
+                       f"Se for mesmo a evolucao do deck: py my_decks.py aceitar \"{nome}\"")
         # --- troca de arquétipo ---------------------------------------------
         if n_troc > TROCA_DE_ARQUETIPO:
             avisar("alta", nome, f"{n_troc} cartas trocadas de uma vez",
@@ -243,7 +266,7 @@ def construir(con, hoje: str | None = None, raiz: Path | None = None) -> dict:
                     break
         # --- a carta que lhe dá o nome --------------------------------------
         if cartas:
-            for c in _cartas_do_nome(nome, s["assinatura"]):
+            for c in cartas_do_nome(nome, s["assinatura"]):
                 agora = sum(q for (_b, n), q in cartas.items() if n == c)
                 if agora == 0:
                     avisar("alta", nome, f"a lista deixou de jogar {c}",

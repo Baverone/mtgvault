@@ -15,6 +15,17 @@ listas inteiras: *"todos os dias quero que mostres aqui ao lado as alterações
 ocorridas nos decks"* (André). Até aí as `deck_cards` eram substituídas e o que
 entrou e saiu perdia-se — o `job_runs` só dizia *"atualizado -> <data>
 <jogador>"*. Quem lê o histórico é o `mtgvault/painel.py`.
+
+**UMA TROCA GRANDE NÃO ENTRA EM SILÊNCIO (2026-10-16, à tarde).** A escolha é
+*"a lista mais recente que tem as cartas-assinatura"* — não olha para o
+`archetype_id` nem para o nome da fonte —, e quando dois decks partilham a
+assinatura a referência salta entre eles: o Grinding Station passou de Emry +
+Cam para Kethis a 14/10 (84 cartas) e de volta a 16/10 (82). Agora uma troca de
+mais de `painel.TROCA_DE_ARQUETIPO` cartas, ou para uma lista que deixe de
+jogar a carta que dá nome ao deck, é RECUSADA (`avaliar_troca`): fica em
+`deck_lista_trocas` com `motivo = 'recusada'`, o deck mantém a lista anterior,
+o painel avisa (alta) todos os dias, e só entra com `aceitar` — que é ele a
+decidir: `py my_decks.py aceitar "<deck>" [decklist_id]`.
 """
 from __future__ import annotations
 
@@ -24,6 +35,7 @@ import sqlite3
 from datetime import date
 
 from mtgvault import sources
+from mtgvault.painel import TROCA_DE_ARQUETIPO, cartas_do_nome, diferencas
 
 # (nome do deck, formato, cartas-assinatura que a lista TEM de conter)
 FOLLOWED = [
@@ -196,12 +208,55 @@ def _cartas_da_lista(con, lid) -> list[list]:
         "ORDER BY board, card_name", (lid,))]
 
 
+def avaliar_troca(antes: list, depois: list, nome: list[str]) -> str | None:
+    """`None` se a troca de `antes` para `depois` pode entrar sozinha; senão o
+    motivo da recusa, em português. Duas regras, por esta ordem:
+
+    1. a lista nova deixa de jogar uma carta que dá nome ao deck
+       (`painel.cartas_do_nome`) — recusa-se SEMPRE, seja qual for o tamanho:
+       um deck chamado Grinding Station sem Grinding Station não é o deck;
+    2. mudam mais de `painel.TROCA_DE_ARQUETIPO` cartas (cada carta conta nos
+       dois sentidos, a mesma conta do painel) — não é a lista a evoluir, é o
+       emparelhador a agarrar outro deck que partilha a assinatura.
+
+    Numa procura por assinatura a regra 1 é quase sempre redundante (a lista só
+    é candidata se tiver as cartas), e é de propósito: é a rede para o dia em
+    que a assinatura deixar de incluir a carta do nome."""
+    for c in nome:
+        if not any(n == c and int(q) > 0 for _b, n, q in depois):
+            return f"a lista nova nao joga {c}"
+    n = sum(abs(d) for _b, _n, d in diferencas(antes, depois))
+    if n > TROCA_DE_ARQUETIPO:
+        return f"{n} cartas trocadas (mais de {TROCA_DE_ARQUETIPO})"
+    return None
+
+
+def _gravar_troca(con, did, name, fmt, hoje, motivo, de, antes, dl, depois):
+    con.execute(
+        """INSERT INTO deck_lista_trocas
+             (deck_id, deck, formato, corrida, motivo,
+              de_decklist_id, de_jogador, de_data, de_cartas,
+              para_decklist_id, para_jogador, para_data, para_cartas)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (did, name, fmt, hoje or date.today().isoformat(), motivo,
+         de.get("decklist_id"), de.get("jogador"), de.get("data"),
+         json.dumps(antes, ensure_ascii=False),
+         dl["id"], dl["player"] or "?", dl["event_date"],
+         json.dumps(depois, ensure_ascii=False)))
+
+
 def _store(con: sqlite3.Connection, name: str, fmt: str, dl, out: list,
-           hoje: str | None = None):
+           hoje: str | None = None, assinatura: list[str] | None = None,
+           forcar: bool = False):
     """Grava/atualiza a decklist `dl` como deck `name`, só se a origem mudou ou
     se a mesma origem foi relida com outro conteúdo (`sources.reler_mtgo`). Em
     qualquer dos dois casos, a troca fica em `deck_lista_trocas` ANTES de as
-    `deck_cards` serem substituídas — é a lista de ontem que se perderia."""
+    `deck_cards` serem substituídas — é a lista de ontem que se perderia.
+
+    Uma troca para OUTRA lista passa primeiro pelo `avaliar_troca` (salvo
+    `forcar`, que é o `aceitar` dele); recusada, grava-se UMA vez como
+    `motivo = 'recusada'` e o deck não mexe. A releitura (a mesma lista, relida)
+    não se avalia: é a leitura a ser corrigida, não o deck a mudar."""
     con.execute("INSERT OR IGNORE INTO decks (name, format) VALUES (?, ?)", (name, fmt))
     did = con.execute("SELECT id FROM decks WHERE name = ? AND format = ?",
                       (name, fmt)).fetchone()["id"]
@@ -214,18 +269,21 @@ def _store(con: sqlite3.Connection, name: str, fmt: str, dl, out: list,
         return
     motivo = "releitura" if cur == note else "troca"
     de = ler_nota(cur)
+    if motivo == "troca" and antes and not forcar:
+        porque = avaliar_troca(antes, depois, cartas_do_nome(name, assinatura or []))
+        if porque:
+            ja = con.execute(
+                "SELECT 1 FROM deck_lista_trocas WHERE deck = ? AND formato = ? "
+                "AND motivo = 'recusada' AND para_decklist_id = ? AND de_decklist_id IS ?",
+                (name, fmt, dl["id"], de.get("decklist_id"))).fetchone()
+            if not ja:
+                _gravar_troca(con, did, name, fmt, hoje, "recusada", de, antes, dl, depois)
+            fica = f"{de.get('data')} {de.get('jogador')}" if de else "a anterior"
+            out.append(f"{name}: troca RECUSADA -> {dl['event_date']} {dl['player'] or '?'} "
+                       f"({porque}); fica {fica}")
+            return
     if antes or de:
-        con.execute(
-            """INSERT INTO deck_lista_trocas
-                 (deck_id, deck, formato, corrida, motivo,
-                  de_decklist_id, de_jogador, de_data, de_cartas,
-                  para_decklist_id, para_jogador, para_data, para_cartas)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (did, name, fmt, hoje or date.today().isoformat(), motivo,
-             de.get("decklist_id"), de.get("jogador"), de.get("data"),
-             json.dumps(antes, ensure_ascii=False),
-             dl["id"], dl["player"] or "?", dl["event_date"],
-             json.dumps(depois, ensure_ascii=False)))
+        _gravar_troca(con, did, name, fmt, hoje, motivo, de, antes, dl, depois)
     con.execute("DELETE FROM deck_cards WHERE deck_id = ?", (did,))
     con.executemany("INSERT INTO deck_cards (deck_id, card_name, quantity, board) "
                     "VALUES (?, ?, ?, ?)", [(did, n, q, b) for b, n, q in depois])
@@ -241,7 +299,7 @@ def refresh(con: sqlite3.Connection, hoje: str | None = None) -> str:
     for s in seguidos():
         dl = s["procura"](con)
         if dl:
-            _store(con, s["deck"], s["formato"], dl, out, hoje)
+            _store(con, s["deck"], s["formato"], dl, out, hoje, s["assinatura"])
         else:
             # DIZ QUE LISTA FICA (2026-10-16). "Cloud (Duel Commander): sem lista
             # de McWinSauce" aparecia todos os dias desde 12/10 e lia-se como uma
@@ -258,10 +316,40 @@ def refresh(con: sqlite3.Connection, hoje: str | None = None) -> str:
     return "; ".join(out)
 
 
+def aceitar(con: sqlite3.Connection, deck: str, decklist_id: int | None = None,
+            hoje: str | None = None) -> str:
+    """Ele decide: a lista `decklist_id` (por omissão a mais recente que a
+    procura do deck devolve — a recusada) passa a ser a referência, sem passar
+    pelo `avaliar_troca`. Fica gravada como troca normal; a linha `recusada`
+    fica no histórico."""
+    s = next((x for x in seguidos() if x["deck"] == deck), None)
+    if s is None:
+        raise ValueError(f"deck nao seguido: {deck!r}")
+    if decklist_id is None:
+        dl = s["procura"](con)
+        if dl is None:
+            raise ValueError(f"{deck}: {s['falta']}")
+    else:
+        dl = con.execute("SELECT id, source, player, event_date, format FROM decklists "
+                         "WHERE id = ?", (decklist_id,)).fetchone()
+        if dl is None:
+            raise ValueError(f"decklist #{decklist_id} nao existe")
+        if dl["format"] != s["formato"]:
+            raise ValueError(f"decklist #{decklist_id} e de {dl['format']}, nao {s['formato']}")
+    out: list = []
+    _store(con, deck, s["formato"], dl, out, hoje, s["assinatura"], forcar=True)
+    con.commit()
+    return "; ".join(out)
+
+
 if __name__ == "__main__":
     import os
+    import sys
     from pathlib import Path
     os.environ.setdefault("MTGVAULT_HOME", str(Path(__file__).resolve().parent / "data"))
     from mtgvault import db
     with db.session() as con:
-        print(refresh(con))
+        if len(sys.argv) >= 3 and sys.argv[1] == "aceitar":
+            print(aceitar(con, sys.argv[2], int(sys.argv[3]) if len(sys.argv) > 3 else None))
+        else:
+            print(refresh(con))
