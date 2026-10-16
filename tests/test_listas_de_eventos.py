@@ -662,10 +662,17 @@ def caso_as_caixas_trocadas_tem_todas_proveniencia_completa():
     SEGUE. A lista do Fierro não se apagou (fica em
     `listas_escolhidas._premodern-stiflenought-anterior`) e o caso novo está no
     `test_sempre_montado.caso_o_stiflenought_serve_a_lista_do_luffy_e_segue_o_jogador`.
+
+    **[ASSERÇÃO CORRIGIDA a 2026-10-16]** quatro das seis voltaram ao consenso:
+    *"em premodern todos são consensos menos o Stiflenought que é a lista do
+    Luffy"*. A lista de evento delas continua GUARDADA com a ficha inteira (nada
+    se apaga) e a caixa lê `"<nome> (consenso)"`, com o caminho de volta em
+    `_antes_1016`. O IGG fica na lista de evento (o consenso dele tem 1 lista).
     """
     novo = _cfg_a_serio()
-    trocadas = ("premodern-replenish", "premodern-enchantress",
-                "premodern-elves", "premodern-oath", "premodern-igg", "pioneer")
+    consenso = {"premodern-replenish": "UW Replenish", "premodern-enchantress": "Enchantress",
+                "premodern-elves": "Elves", "premodern-oath": "Oath of Druids"}
+    trocadas = tuple(consenso) + ("premodern-igg", "pioneer")
     for slot in trocadas:
         rec = (novo.get("listas_escolhidas") or {}).get(slot)
         assert rec, f"{slot} ficou sem lista"
@@ -676,7 +683,14 @@ def caso_as_caixas_trocadas_tem_todas_proveniencia_completa():
             assert e.get(campo), f"{slot}: falta o campo {campo}"
         # A caixa tem de estar a ler de lá.
         caixa = next(c for c in novo["caixas"] if c["slot"] == slot)
-        assert caixa.get("fonte") == "escolhido" and caixa.get("ref") == slot, caixa
+        if slot in consenso:
+            assert caixa.get("fonte") == "deck", caixa
+            assert caixa.get("ref") == consenso[slot] + " (consenso)", caixa
+            volta = caixa["_antes_1016"]
+            assert volta["fonte"] == "escolhido" and volta["ref"] == slot, volta
+            assert consenso[slot] in novo["premodern_arquetipos_alvo"]
+        else:
+            assert caixa.get("fonte") == "escolhido" and caixa.get("ref") == slot, caixa
         # E o que a caixa tinha antes fica guardado — nada se apaga.
         assert "_consenso_anterior" in rec, f"{slot}: perdeu-se o consenso antigo"
         assert "_antes" in caixa, f"{slot}: perdeu-se a fonte antiga"

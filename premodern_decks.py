@@ -6,6 +6,10 @@ arquétipos concretos — "Preciso de consenso para lista de alguns decks de
 Premodern: Replenish, Enchantress". O Stiflenought fica de fora de propósito:
 esse segue a lista do Luffy (`my_decks.FOLLOWED_PLAYERS`).
 
+Desde 2026-10-16 são os cinco: *"em premodern todos são consensos menos o
+Stiflenought que é a lista do Luffy"*. A lista vive no config; o
+`ALVOS_DEFAULT` só vale sem a chave.
+
 Como se agrupa: NÃO pelo clustering (`analysis.rebuild_archetypes`), que junta o
 que se parece — e em Premodern a Enchantress joga 96% de Replenish, por isso o
 clustering colava os dois. Agrupa-se pelas regras de `archetype_rules.json`

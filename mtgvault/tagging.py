@@ -9,7 +9,8 @@ híbridos (ex.: um deck que é ao mesmo tempo "Oswald Toolbox" e "Jeskai Ascenda
 
 As regras vivem em `archetype_rules.json` (na raiz do projeto), editáveis à mão
 sem tocar em código. Cada regra: `all` (tem de ter todas as cartas), `any`
-(basta uma) e `none` (não pode ter nenhuma). Sobrevive ao `analyse` diário: chama-se `tag_all()` no daily.py
+(basta uma) e `none` (não pode ter nenhuma); `so_main: true` olha só para o
+maindeck. Sobrevive ao `analyse` diário: chama-se `tag_all()` no daily.py
 DEPOIS do rebuild, e as etiquetas são reescritas a partir das regras — o
 clustering automático nunca as desfaz.
 """
@@ -64,10 +65,16 @@ def tag_format(con: sqlite3.Connection, fmt: str) -> int:
         return 0
     n = 0
     for d in con.execute("SELECT id FROM decklists WHERE format = ?", (fmt,)).fetchall():
-        cards = {r["card_name"] for r in con.execute(
-            "SELECT card_name FROM decklist_cards WHERE decklist_id = ?", (d["id"],))}
+        rows = con.execute("SELECT card_name, board FROM decklist_cards WHERE decklist_id = ?",
+                           (d["id"],)).fetchall()
+        cards = {r["card_name"] for r in rows}
+        main = {r["card_name"] for r in rows if r["board"] == "main"}
         for rule in rules:
-            if _matches(cards, rule):
+            # `so_main` (2026-10-16): a carta que dá identidade ao deck tem de
+            # estar no MAINDECK. Medido em Premodern: das 19 listas com Oath of
+            # Druids que contam, 2 jogam-no só no sideboard — uma delas é um
+            # Reanimator de Valencia — e entravam no consenso do Oath.
+            if _matches(main if rule.get("so_main") else cards, rule):
                 con.execute("INSERT OR IGNORE INTO decklist_tags (decklist_id, name) "
                             "VALUES (?, ?)", (d["id"], rule["name"]))
                 n += 1
