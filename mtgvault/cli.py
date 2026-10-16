@@ -1828,7 +1828,9 @@ def _fotos_cmd(con, args):
         cp = r.get("cartas_pastas") or {}
         print(f"  pastas de carta: {len(cp.get('criadas') or [])} criadas, "
               f"{len(cp.get('apagadas') or [])} apagadas (já provadas), "
-              f"{cp.get('por_pedir', 0)} cartas ainda por fotografar")
+              f"{len(cp.get('apagadas_fora') or [])} vazias apagadas (nenhuma "
+              f"lista as pede), {len(cp.get('renomeadas') or [])} com o (N) "
+              f"acertado, {cp.get('por_pedir', 0)} cartas ainda por fotografar")
         if r.get("contas_pastas"):
             c = r["contas_pastas"]
             print("  " + fotos_mod.texto_das_contas(c, cp.get("por_pedir", 0)))

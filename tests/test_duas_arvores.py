@@ -288,6 +288,59 @@ def caso_o_gerador_nao_apaga_uma_pasta_provada_com_fotos_dentro():
     print("uma pasta provada com fotos dentro fica")
 
 
+def caso_o_gerador_apaga_as_vazias_fora_da_lista_e_nunca_as_com_fotos():
+    """André, 2026-10-16, à letra: *"como ainda nao fotografei nada, altera as
+    pastas que tens que alterar"*. Uma pasta de carta VAZIA que nenhuma lista
+    pede apaga-se, e a do `(N)` velho passa ao de hoje — sem corredor de espera
+    (o `_fora do plano\\` de 16/10 de manhã). Mas a partir da primeira foto
+    nada lhe toca: é a tranca disso, com imagens à vista, numa subpasta e em
+    maiúsculas, nos dois ramos (fora da lista e com o `(N)` errado)."""
+    limpar()
+    con = base()
+    rep = loadout.report(con)
+    POR.mkdir(parents=True, exist_ok=True)
+    fotos.garantir_pastas(rep, SITE)
+    bf = POR / "Blue Farm"
+    (bf / "Lotus Petal (2)").mkdir(parents=True)                 # vazia, fora
+    (bf / "Lotus Petal (2)" / ".gitkeep").write_text("")
+    (bf / "Birds of Paradise (3)").mkdir()                       # (N) velho
+    foto(bf / "Mox Diamond (1)" / "IMG_1.jpg")                   # fora, COM foto
+    foto(bf / "Chrome Mox (1)" / "lote" / "IMG_2.JPG")           # fora, foto funda
+    foto(bf / "Swords to Plowshares (2)" / "IMG_3.heic")         # (N) velho, COM foto
+    (bf / "lote1").mkdir()                                       # não é pasta de carta
+    r = fotos.sincronizar_pastas_de_cartas(con, rep, raiz=SITE)
+    assert r["apagadas_fora"] == ["Blue Farm/Lotus Petal (2)"], r
+    assert r["renomeadas"] == ["Blue Farm/Birds of Paradise (3) -> "
+                               "Birds of Paradise (1)"], r
+    assert not (bf / "Lotus Petal (2)").exists()
+    assert (bf / "Birds of Paradise (1)").is_dir()
+    for p in ("Mox Diamond (1)/IMG_1.jpg", "Chrome Mox (1)/lote/IMG_2.JPG",
+              "Swords to Plowshares (2)/IMG_3.heic"):
+        assert (bf / p).is_file(), p
+    assert sorted(r["ficam_com_fotos"]) == [
+        "Blue Farm/Chrome Mox (1)", "Blue Farm/Mox Diamond (1)",
+        "Blue Farm/Swords to Plowshares (2)"], r
+    assert (bf / "lote1").is_dir()
+    # A da Swords com o (N) velho tem a foto à espera: não nasce uma segunda
+    # pasta a pedir a mesma carta ao lado dela.
+    assert not (bf / CARTA).exists()
+    # Idempotente: a segunda passagem não mexe em nada.
+    r2 = fotos.sincronizar_pastas_de_cartas(con, rep, raiz=SITE)
+    assert r2["apagadas_fora"] == [] and r2["renomeadas"] == [] \
+        and r2["criadas"] == [], r2
+    print("as vazias fora da lista apagam-se, o (N) acerta-se, as com fotos ficam")
+
+
+def caso_so_o_apagar_pasta_feita_apaga_pastas():
+    """A única porta para apagar uma pasta de fotos é o `apagar_pasta_feita`
+    (que recusa imagens). Um `rmtree` no `fotos.py` era uma segunda porta sem
+    a guarda — e a regra de 16/10 só vale para pastas vazias."""
+    txt = (Path(fotos.__file__)).read_text(encoding="utf-8")
+    assert "rmtree" not in txt, "o fotos.py ganhou um rmtree"
+    assert txt.count(".rmdir(") == 2, "um rmdir novo no fotos.py: passa pela guarda?"
+    print("só o apagar_pasta_feita apaga pastas de carta")
+
+
 # ===========================================================================
 # 5. NENHUMA FOTO FICA SEM ALVO EM SILÊNCIO
 # ===========================================================================
@@ -315,6 +368,8 @@ CASOS = (caso_uma_pasta_com_imagens_nunca_se_apaga,
          caso_uma_foto_nova_ao_lado_da_parada_segue,
          caso_o_gerador_cria_nao_ressuscita_e_devolve_numa_correccao,
          caso_o_gerador_nao_apaga_uma_pasta_provada_com_fotos_dentro,
+         caso_o_gerador_apaga_as_vazias_fora_da_lista_e_nunca_as_com_fotos,
+         caso_so_o_apagar_pasta_feita_apaga_pastas,
          caso_a_foto_solta_e_a_da_pasta_antiga_dizem_se)
 
 

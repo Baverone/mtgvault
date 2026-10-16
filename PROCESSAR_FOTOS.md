@@ -153,6 +153,14 @@ name,set_code,collector_number,quantity,finish,language,condition,purpose,sub_co
 
 ## Regras que não podem partir
 
+- **UMA PASTA DE CARTA VAZIA ALTERA-SE; COM UMA IMAGEM, NADA LHE TOCA** (André,
+  2026-10-16, à letra: *"como ainda nao fotografei nada, altera as pastas que
+  tens que alterar"*). Enquanto uma pasta `<carta (N)>` em `Decks Por
+  Processar\` estiver vazia, o vault apaga-a, renomeia-a ou move-a sem pedir e
+  sem corredor de espera: é um pedido de foto, regenerável pela base. **No
+  momento em que tem uma imagem dentro, não se apaga, não se move e não se
+  renomeia** — é a metade da regra de 09/09 que continua inteira. Quem apaga é
+  só o `fotos.apagar_pasta_feita`, que recusa uma pasta com imagens.
 - **Não inventes.** Se não consegues ler uma carta ou a edição, deixa o campo
   vazio e regista em `notes`; não adivinhes uma edição ao calhar.
 - **set_code em minúsculas** (o script trata disto, mas se editares à mão, mete

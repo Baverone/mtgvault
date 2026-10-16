@@ -746,8 +746,10 @@ def main():
                        if r["sem_pasta"] else "")
                     # As pastas de CARTA (2026-10-13): quantas faltam fotografar,
                     # e as que voltaram ou se apagaram nesta corrida.
-                    + "; pastas de carta: %s; %d criadas, %d apagadas"
-                    % (contas, len(cp["criadas"]), len(cp["apagadas"])))
+                    + "; pastas de carta: %s; %d criadas, %d apagadas, "
+                    "%d vazias fora das listas apagadas, %d com o (N) acertado"
+                    % (contas, len(cp["criadas"]), len(cp["apagadas"]),
+                       len(cp["apagadas_fora"]), len(cp["renomeadas"])))
 
         _step(con, "fotos-plano", _fotos_plano)
 

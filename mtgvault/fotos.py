@@ -1524,9 +1524,10 @@ def sincronizar_pastas_de_cartas(con, res: dict, cfg: dict | None = None,
     * **não ressuscita** a de uma carta já provada: as provadas não se criam;
     * **apaga** a pasta (vazia!) de uma carta já provada — a que ficou por
       apagar porque a foto entrou por outro caminho (o botão da página);
-    * **não toca** em nada do que não sabe: uma pasta de carta que a lista de
-      hoje não pede (as versões que não são caixa, o Oswald, o Orzhov) fica, e
-      um nome que não lê fica.
+    * **acerta as VAZIAS** (2026-10-16, `_acertar_vazias`): uma pasta de carta
+      vazia que nenhuma lista pede apaga-se, e uma com o `(N)` velho passa ao
+      de hoje — as das versões vivas que não são caixa (o Oswald, o Orzhov)
+      ficam, e um nome que não lê fica.
 
     Nada com imagens se apaga (`apagar_pasta_feita`), nem uma pasta cuja foto
     ainda está à espera em `pendentes/` (`_origens.json`). As pastas que esta
@@ -1535,12 +1536,14 @@ def sincronizar_pastas_de_cartas(con, res: dict, cfg: dict | None = None,
     """
     from . import fotosite, scryfall                         # noqa: PLC0415
     base = pasta_novas(raiz)
-    out = {"criadas": [], "apagadas": [], "ficam_com_fotos": [], "por_pedir": 0}
+    out = {"criadas": [], "apagadas": [], "ficam_com_fotos": [], "por_pedir": 0,
+           "apagadas_fora": [], "renomeadas": []}
     if not base.is_dir():
         return out
     pend = Path(pendentes) if pendentes else fotosite.pasta_pendentes(raiz)
     em_espera = {str(v.get("rel") or "") for v in ler_origens(pend).values()}
     provadas = provadas_por_pasta(con)
+    versoes = _versoes_por_pasta(res, cfg)
     for pasta, pede in sorted(precisa_por_pasta(res, cfg).items()):
         d = base / pasta
         if not d.is_dir():
@@ -1578,12 +1581,83 @@ def sincronizar_pastas_de_cartas(con, res: dict, cfg: dict | None = None,
                     out["apagadas"].append(rel)
                 elif tem_imagens(x):
                     out["ficam_com_fotos"].append(rel)
+        _acertar_vazias(d, pasta, pede, provadas, versoes.get(pasta, set()),
+                        em_espera, base, out)
     return out
 
 
-# Onde vão parar as pastas de carta que já não pertencem a lista nenhuma
-# (2026-10-16). Começa por `_` para o walker das fotos não a tratar como deck.
-PASTA_FORA_DO_PLANO = "_fora do plano"
+def _acertar_vazias(d: Path, pasta: str, pede: dict[str, int],
+                    provadas: dict, de_versoes: set, em_espera: set,
+                    base: Path, out: dict) -> None:
+    """A PASTA DE CARTA VAZIA ALTERA-SE À VONTADE (André, 2026-10-16, à letra:
+    *"como ainda nao fotografei nada, altera as pastas que tens que alterar"*).
+
+    Depois do ciclo de cima, o deck fica exactamente com o que a lista de hoje
+    pede: uma pasta de carta que nenhuma lista pede (nem a caixa, nem uma
+    versão viva do formato) **apaga-se**; uma com o `(N)` velho dá lugar à do
+    `(N)` de hoje. Sem corredor de espera — era o `_fora do plano\\` de 16/10 de
+    manhã, que ele dispensou no mesmo dia.
+
+    **Só pastas VAZIAS**: quem apaga é o `apagar_pasta_feita`, que recusa uma
+    pasta com uma imagem (a qualquer profundidade), com uma subpasta ou com um
+    ficheiro que não é nosso. A partir da primeira foto, essa pasta não se toca —
+    é a metade da regra de 09/09 que continua inteira.
+    """
+    from . import scryfall                                   # noqa: PLC0415
+    quer = {str(nm).translate(_SEGURO).casefold(): (nm, q) for nm, q in pede.items()}
+    for x in sorted(y for y in d.iterdir() if y.is_dir()):
+        m = RE_PASTA_CARTA.match(x.name)
+        if not m:
+            continue                       # um lote ou um nome que não lê: fica
+        rel = f"{pasta}/{x.name}"
+        if rel in em_espera:
+            continue
+        nm_cf = m["nm"].casefold()
+        if nm_cf in quer:
+            nm, q = quer[nm_cf]
+            if (int(m["q"]) == int(q)
+                    or carta_feita(provadas.get((pasta, scryfall.chave(nm)), 0), q)):
+                continue                   # é a de hoje, ou o ciclo de cima já tratou
+            nova = d / nome_de_pasta_de_carta(nm, q)
+            ja_ha = nova.exists()
+            if apagar_pasta_feita(x, base):
+                if ja_ha:
+                    out["apagadas_fora"].append(rel)
+                else:
+                    nova.mkdir(parents=True, exist_ok=True)
+                    out["renomeadas"].append(f"{rel} -> {nova.name}")
+            elif tem_imagens(x):
+                out["ficam_com_fotos"].append(rel)
+            continue
+        if nm_cf in de_versoes:
+            continue                       # uma versão viva do formato: fica
+        if apagar_pasta_feita(x, base):
+            out["apagadas_fora"].append(rel)
+        elif tem_imagens(x):
+            out["ficam_com_fotos"].append(rel)
+
+
+def _versoes_por_pasta(res: dict, cfg: dict | None = None) -> dict[str, set]:
+    """`pasta do deck -> {carta das VERSÕES vivas do formato dela}` (em forma de
+    pasta, casefold) — o que o plano não conta por desenho e ele quer (o
+    Oswald, o Orzhov Monument). A mesma conta para quem apaga e quem conta."""
+    fam_de = {s: f for f in familias(cfg) for s in f["slots"]}
+    fmts: dict[str, set] = {}
+    for s in res.get("slots") or []:
+        f = fam_de.get(s["slot"])
+        pasta = f["pasta"] if f else nome_de_pasta(s.get("nome") or s["slot"])
+        if s.get("formato"):
+            fmts.setdefault(pasta, set()).add(s["formato"])
+    versoes = cartas_das_versoes(cfg)
+    return {pasta: {c for fmt in fs for cartas in versoes.get(fmt, {}).values()
+                    for c in cartas}
+            for pasta, fs in fmts.items()}
+
+
+# O `_fora do plano\` (16/10 de manhã) — o corredor de espera das pastas de
+# carta que nenhuma lista pedia — deixou de existir no MESMO DIA, a pedido dele:
+# *"como ainda nao fotografei nada, altera as pastas que tens que alterar"*. Uma
+# pasta de carta vazia que nenhuma lista pede apaga-se (`_acertar_vazias`).
 
 
 def cartas_das_versoes(cfg: dict | None = None) -> dict[str, dict[str, set]]:
@@ -1638,6 +1712,8 @@ def contas_das_pastas(res: dict, cfg: dict | None = None,
         if s.get("formato"):
             fmts.setdefault(pasta, set()).add(s["formato"])
     versoes = cartas_das_versoes(cfg)
+    # `_versoes_por_pasta` é a mesma conta, achatada, para quem apaga; aqui
+    # quer-se o NOME da versão, para a frase das contas.
     for d in sorted(x for x in base.iterdir() if x.is_dir()):
         if d.name.startswith("_"):
             continue
@@ -1670,15 +1746,21 @@ def exige_contas_explicadas(c: dict, por_pedir: int) -> str:
     """Devolve a frase das duas contas, ou LEVANTA se a diferença entre o disco
     e o plano não for toda explicada por pastas de versão. É o que põe o passo
     `fotos-plano` a vermelho: uma pasta por explicar é uma foto a mais que ele
-    tiraria à mão."""
+    tiraria à mão.
+
+    Desde 2026-10-16 o `sincronizar_pastas_de_cartas` apaga sozinho as VAZIAS
+    que nenhuma lista pede; as que sobram aqui são as que ele não pode apagar —
+    com uma imagem ou um ficheiro que não é nosso. Essas não se tocam: decide-se
+    à mão."""
     t = texto_das_contas(c, por_pedir)
     sobra = c.get("por_explicar") or []
     if sobra:
         raise PastasPorExplicar(
-            f"{len(sobra)} pastas de carta que nenhuma lista pede ("
+            f"{len(sobra)} pastas de carta que nenhuma lista pede e que não se "
+            "apagaram por terem fotos ou ficheiros que não são do vault ("
             + ", ".join(x["deck"] + "/" + x["pasta"] for x in sobra[:6])
             + (" …" if len(sobra) > 6 else "")
-            + f"); {t}. Move-as para «{PASTA_NOVAS}/{PASTA_FORA_DO_PLANO}/»")
+            + f"); {t}. Não se tocam: vê o que lá está e decide à mão")
     return t
 
 

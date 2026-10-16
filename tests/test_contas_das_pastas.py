@@ -10,7 +10,7 @@ sítio nenhum. Trancado aqui:
   2. uma versão que saiu (`_saiu`) não explica pasta nenhuma;
   3. com pastas por explicar o passo fica VERMELHO (`exige_contas_explicadas`
      levanta) e a frase diz as duas contas;
-  4. as pastas `_…` (`_fora do plano`, `_nomes antigos`) não contam.
+  4. as pastas `_…` não contam.
 
 Não abre base nenhuma: a conta só precisa do relatório, do config e do disco.
 """
@@ -48,7 +48,9 @@ def _arvore(*pastas):
     deck = fotos.pasta_novas(raiz) / "Pioneer — Greasefang"
     for p in pastas:
         (deck / p).mkdir(parents=True)
-    (fotos.pasta_novas(raiz) / fotos.PASTA_FORA_DO_PLANO / "Pioneer — Greasefang"
+    # uma pasta `_…` (era o `_fora do plano`, que deixou de existir a 16/10)
+    # não conta para nada
+    (fotos.pasta_novas(raiz) / "_arquivo" / "Pioneer — Greasefang"
      / "Caves of Koilos (4)").mkdir(parents=True)
     return raiz
 
@@ -85,7 +87,7 @@ def caso_pastas_por_explicar_poem_o_passo_a_vermelho():
         assert "2 pastas de carta que nenhuma lista pede" in msg, msg
         assert "Rip Apart (1)" in msg and "Starting Town (1)" in msg, msg
         assert "1 por fotografar (plano), 3 pastas no disco — diferença 2" in msg, msg
-        assert fotos.PASTA_FORA_DO_PLANO in msg, msg
+        assert "decide à mão" in msg, msg     # 16/10: já não há corredor de espera
     else:
         raise AssertionError("duas pastas por explicar e o passo ficava verde")
 

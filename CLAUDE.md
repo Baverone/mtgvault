@@ -6304,6 +6304,36 @@ diamond"* — o shell todo, sabendo que só ~1 em 5 dessas listas joga Oath.
   sobe **+561,78 €** no motor (68 327,34 → 68 889,12) e **+231,80 €** pela
   impressão que serve (72 560,57 → 72 792,37); as outras 16 caixas iguais.
 
+**UMA PASTA DE CARTA VAZIA ALTERA-SE; COM UMA IMAGEM, NADA LHE TOCA (André,
+2026-10-16, ao fim do dia, à letra).** *"como ainda nao fotografei nada, altera
+as pastas que tens que alterar"*. Substitui, só para pastas de carta VAZIAS em
+`Decks Por Processar\`, o «nada se apaga» de 09/09; as fotos continuam
+intocáveis. Motor em `fotos._acertar_vazias` (chamado pelo
+`sincronizar_pastas_de_cartas`, logo todas as noites no `fotos-plano`) e
+`fotos._versoes_por_pasta`; testes em `test_duas_arvores` (dois casos novos: as
+vazias fora da lista apagam-se e o `(N)` acerta-se, as com imagem — à vista,
+numa subpasta, em maiúsculas, HEIC — ficam; e o `fotos.py` não ganha um
+`rmtree` nem um `rmdir` fora da guarda).
+- **Quem apaga continua a ser só o `apagar_pasta_feita`** (recusa imagens,
+  subpastas e ficheiros que não são nossos). Uma pasta de carta vazia que
+  nenhuma lista pede (nem a caixa, nem uma versão viva) apaga-se; uma com o
+  `(N)` velho dá lugar à do `(N)` de hoje; as das versões (Oswald, Orzhov)
+  ficam. O `exige_contas_explicadas` só fica vermelho com o que sobra — pastas
+  com fotos ou ficheiros dele — e diz *«decide à mão»*.
+- **O `_fora do plano\` foi apagado** (69 pastas de carta, as 31 da manhã + as
+  do Oath; verificado antes que **nenhuma** era pedida hoje por caixa ou versão
+  — se voltar a ser, a pasta nasce no deck na corrida da noite). A constante
+  `PASTA_FORA_DO_PLANO` saiu.
+- **O `_nomes antigos\` também** (18 pastas de deck/grupo, só `.gitkeep` e
+  `_plano.txt`): **nunca serviu para reconhecer nomes** — o `mapa_pastas` sai só
+  do `caixas` do config (nome nas duas formas + slot) e as pastas `_…` são
+  saltadas pela recolha (uma foto lá dentro é dita como erro, não processada).
+- **O gerador de ponta a ponta, sobre a árvore sem uma imagem**: 0 criadas, 0
+  apagadas, **41 com o `(N)` acertado** às listas de hoje (os consensos de
+  Premodern, o Legacy novo, o Pioneer); **618 pastas de carta**, 595 no plano +
+  23 de versões, 0 por explicar. Fica o `_teste da camara\` (a calibração da
+  câmara, outra ordem).
+
 ### Duas bases de dados
 
 `catalog.db` (Scryfall, centenas de MB) é ATTACHed como schema `catalog`.

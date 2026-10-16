@@ -24,6 +24,16 @@ Reconstroi-se do zero pelas fotos. Por isso:
     a pasta dela VOLTA sozinha na corrida da noite;
   - uma pasta com fotos dentro NUNCA e apagada.
 
+PASTA VAZIA ALTERA-SE; PASTA COM FOTO NAO SE TOCA (16/10/2026)
+--------------------------------------------------------------
+As tuas palavras, a letra: "como ainda nao fotografei nada, altera as pastas
+que tens que alterar". Enquanto uma pasta de carta estiver VAZIA, o vault
+apaga-a, renomeia-a ou move-a quando as listas mudam, sem perguntar e sem
+corredor de espera: uma carta que saiu de um deck perde a pasta, uma que
+entrou ganha-a, e o (N) acompanha a lista de hoje. No momento em que uma pasta
+tem uma imagem dentro, NADA lhe toca -- nao se apaga, nao se move, nao se
+renomeia. A permissao e sobre pastas vazias, nunca sobre fotos.
+
 O (N) E O QUE O DECK PEDE -- TU FOTOGRAFAS O QUE TENS (13/10/2026)
 -----------------------------------------------------------------
 As tuas palavras, a letra:
@@ -54,9 +64,10 @@ O site diz quantas cartas faltam fotografar pelas CAIXAS. Nas pastas
 «Mox Opal (Modern + Legacy)» e «Pioneer - Greasefang» ha a mais as cartas
 das VERSOES que nao sao caixa (o Oswald; o Orzhov Monument): sao decks teus e
 as pastas ficam -- por isso ves mais pastas do que o numero do site (a 16/10:
-595 no site, 619 pastas). O job diario diz as duas contas e a diferenca.
-O que nao era de deck nenhum (restos de listas que mudaram) foi para
-`_fora do plano\`, com um LEIA-ME a dizer porque.
+595 no site, 618 pastas). O job diario diz as duas contas e a diferenca.
+O que nao e de deck nenhum (restos de listas que mudaram) e APAGADO, se a
+pasta estiver vazia (16/10/2026; o `_fora do plano\` desse dia de manha ja
+nao existe).
 
 Nota: o resto deste ficheiro e o historico das regras; onde diz
 «data\fotos\...» le-se agora «Decks Processados\...».
@@ -89,13 +100,11 @@ Affinity e o Oswald de Modern e a Artifacts Blue (Affinity) e o Engineer Welder
 Cam de Legacy. A foto PROVA a carta; QUAL das caixas fica com ela decide-o o
 vault (a alocacao), nunca a pasta: uma carta nao sai de uma caixa de Legacy
 para a de Modern por ter sido fotografada aqui. As pastas antigas dessas caixas
-(`Modern — Pinnacle Affinity`, `Engineer Welder Cam`, `Artifacts Blue`) foram
-para `_nomes antigos\` com as pastas de carta todas movidas para a familia.
-Uma foto largada numa pasta de `_nomes antigos\` NAO se processa, mas e DITA
-(a tarefa das 02:30 da erro) -- nunca fica calada.
-
-O `Bant Airbend` (Standard) saiu a 13/10 e a pasta dele tambem foi para
-`_nomes antigos\`.
+(`Modern — Pinnacle Affinity`, `Engineer Welder Cam`, `Artifacts Blue`) e a do
+`Bant Airbend` (Standard, saiu a 13/10) estiveram em `_nomes antigos\`, vazias;
+a 16/10 foram APAGADAS (nunca serviram para reconhecer nomes: o vault so
+reconhece o nome do deck que esta hoje no config). Uma foto largada numa pasta
+que comece por «_» NAO se processa, mas e DITA (a tarefa das 02:30 da erro).
 
 E, para o que NAO esta em deck nenhum (02/10/2026):
 
@@ -142,10 +151,10 @@ AS PASTAS DE GRUPO (ficam como sempre foram)
 Estas NAO sao um deck e por isso nao valem como alvo: ninguem as processa
 sozinho. Para elas, diz-me "processa as fotos novas" e eu leio-as.
 
-  _nomes antigos\   duas pastas vazias com nomes que mudaram. Nao se apagou
-                    nada; podes apagar a pasta a mao se quiseres.
-  _fora do plano\   pastas de carta que nenhum deck pede (16/10/2026). Nao
-                    se processa nada daqui.
+  (as pastas de grupo estiveram em `_nomes antigos\`, vazias, e foram
+  apagadas a 16/10/2026 com o resto dessa pasta.)
+  _teste da camara\ as 3 fotos de teste da camara; comeca por «_», o vault
+                    nao a processa.
 
 
 O QUE NAO E PARA AQUI
