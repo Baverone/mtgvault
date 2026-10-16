@@ -236,6 +236,24 @@ def _store(con: sqlite3.Connection, name: str, fmt: str, dl, out: list,
         out.append(f"{name}: atualizado -> {dl['event_date']} {dl['player'] or '?'}")
 
 
+def _fica(con, name: str, fmt: str) -> str:
+    """O que fica na `decks` quando hoje não há lista: a última que se gravou.
+
+    Sem isto o aviso dizia só *"sem lista de McWinSauce com ['Cloud, …']"* todos
+    os dias desde 2026-10-02, e parecia uma avaria da recolha ou do agrupamento.
+    Não era: a última lista de Duel Commander do McWinSauce é de 2026-08-31 (#13957,
+    mtgo) e a poda de 30 dias apagou-a a 2026-10-02 — ele deixou de aparecer. A
+    procura é por JOGADOR + COMANDANTE e nunca pelo `archetype_id` (que no Duel
+    Commander é sempre NULL, de propósito: o formato saiu do `ANALYSE_FORMATS` a
+    2026-09-07). A data ao lado é o que diz há quanto tempo isto dura."""
+    row = con.execute("SELECT notes FROM decks WHERE name = ? AND format = ?",
+                      (name, fmt)).fetchone()
+    n = ler_nota(row[0] if row else None)
+    if not n:
+        return ""
+    return f" — fica a de {n['jogador']} {n['data']} (#{n['decklist_id']}, {n['fonte']})"
+
+
 def refresh(con: sqlite3.Connection, hoje: str | None = None) -> str:
     out = []
     for s in seguidos():
@@ -243,7 +261,7 @@ def refresh(con: sqlite3.Connection, hoje: str | None = None) -> str:
         if dl:
             _store(con, s["deck"], s["formato"], dl, out, hoje)
         else:
-            out.append(f"{s['deck']}: {s['falta']}")
+            out.append(f"{s['deck']}: {s['falta']}{_fica(con, s['deck'], s['formato'])}")
     con.commit()
     return "; ".join(out)
 
