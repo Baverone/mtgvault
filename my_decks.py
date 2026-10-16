@@ -243,7 +243,17 @@ def refresh(con: sqlite3.Connection, hoje: str | None = None) -> str:
         if dl:
             _store(con, s["deck"], s["formato"], dl, out, hoje)
         else:
-            out.append(f"{s['deck']}: {s['falta']}")
+            # DIZ QUE LISTA FICA (2026-10-16). "Cloud (Duel Commander): sem lista
+            # de McWinSauce" aparecia todos os dias desde 12/10 e lia-se como uma
+            # avaria — a causa é ele não ter publicado uma lista de Duel Commander
+            # desde 31/08, e a poda de 30 dias já a levou da `decklists`. A lista
+            # de 31/08 continua na `decks`; a linha passa a dizê-lo.
+            row = con.execute("SELECT notes FROM decks WHERE name = ? AND format = ?",
+                              (s["deck"], s["formato"])).fetchone()
+            n = ler_nota(row["notes"] if row else None)
+            fica = (f" (fica a de {n['data']}, {n['jogador']} #{n['decklist_id']})"
+                    if n else "")
+            out.append(f"{s['deck']}: {s['falta']}{fica}")
     con.commit()
     return "; ".join(out)
 
