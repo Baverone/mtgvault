@@ -1,0 +1,13 @@
+ESTA PASTA JA NAO E UM DECK (2026-10-16)
+
+Era a pasta do deck «Oath of Druids» (slot premodern-oath). A 16/10/2026
+disseste: "o oath of druids pode passar a outra lista com terravore + mox
+diamond" -- o deck passou a ser o TERRAGEDDON.
+
+NAO PONHAS FOTOS AQUI. As fotos do deck vao para:
+  Decks Por Processar\Terrageddon\<carta (N)>\
+
+As pastas de carta que o Terrageddon pede foram para la; as que deixou de
+pedir estao em «Decks Por Processar\_fora do plano\Oath of Druids\».
+A pasta comeca por «_» (esta dentro de «_nomes antigos»), por isso o vault
+nao a le.

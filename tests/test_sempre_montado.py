@@ -506,7 +506,13 @@ def caso_as_caixas_a_zero_por_cento_nao_sao_principais():
     for slot in dentro:
         assert por_slot[slot].get("principal") is True, slot
         assert por_slot[slot].get("principal_em") == "2026-10-05", slot
-    assert sum(1 for c in cfg_real["caixas"] if c.get("principal")) == 12
+    # [2026-10-16] o premodern-oath SAIU (`_saiu`) e o Terrageddon entrou no
+    # lugar dele, principal desde esse dia: continuam 12 principais VIVAS.
+    assert por_slot["premodern-oath"].get("_saiu"), "o Oath saiu a 16/10"
+    assert por_slot["premodern-terrageddon"].get("principal") is True
+    assert por_slot["premodern-terrageddon"].get("principal_em") == "2026-10-16"
+    assert sum(1 for c in cfg_real["caixas"]
+               if c.get("principal") and not c.get("_saiu")) == 12
     # E a razão da interpretação está ESCRITA no ficheiro.
     assert "INTERPRETACAO" in (cfg_real.get("_sempre_montado") or "")
 

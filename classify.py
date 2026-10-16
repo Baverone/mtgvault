@@ -91,10 +91,14 @@ PREMODERN_DECKS = {
     "Stiflenought": ["Phyrexian Dreadnought"],
     "UW Replenish": ["Replenish"],
     "Enchantress": ["Argothian Enchantress", "Enchantress's Presence"],
-    "Oath of Druids": ["Oath of Druids"],
+    "Terrageddon": ["Terravore", "Mox Diamond"],
     "Elves": ["Wirewood Symbiote"],
     "Ill-Gotten Gains": ["Ill-Gotten Gains"],
 }
+# Os decks cuja assinatura é uma CONJUNÇÃO (`assinatura_todas` no config):
+# 2026-10-16, o Oath of Druids deu lugar ao Terrageddon, que é Terravore E Mox
+# Diamond — com «basta uma» o Mox Diamond sozinho puxava listas de outros decks.
+PREMODERN_DECKS_TODAS = {"Terrageddon"}
 
 BASICS = {"Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes",
           "Snow-Covered Plains", "Snow-Covered Island", "Snow-Covered Swamp",
@@ -193,10 +197,13 @@ def _premodern_deck_lists(con):
     lists = {}
     for deck, sigs in PREMODERN_DECKS.items():
         marks = ",".join("?" for _ in sigs)
+        precisa = len(set(sigs)) if deck in PREMODERN_DECKS_TODAS else 1
         ids = [r[0] for r in con.execute(
-            f"""SELECT DISTINCT dl.id FROM decklists dl
+            f"""SELECT dl.id FROM decklists dl
                   JOIN decklist_cards dc ON dc.decklist_id = dl.id
-                 WHERE dl.format = 'premodern' AND dc.card_name IN ({marks})""", sigs)]
+                 WHERE dl.format = 'premodern' AND dc.card_name IN ({marks})
+                 GROUP BY dl.id HAVING COUNT(DISTINCT dc.card_name) >= ?""",
+            (*sigs, precisa))]
         if not ids:
             lists[deck] = {}
             continue

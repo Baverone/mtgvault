@@ -126,6 +126,11 @@ COMBO_DEFAULT = [
      "any": ["Argothian Enchantress", "Enchantress's Presence"]},
     {"nome": "Stiflenought", "grau": "puro", "all": ["Phyrexian Dreadnought"]},
     {"nome": "Ill-Gotten Gains", "grau": "puro", "all": ["Ill-Gotten Gains"]},
+    # Terrageddon ANTES do Oath (2026-10-16): o deck dele passou a ser o shell
+    # Terravore + Mox Diamond, e o ramo desse shell que joga Oath of Druids (13 das
+    # 61 listas que contam) é Terrageddon. Era `Terravore + Armageddon`, escrito
+    # depois do Oath — e um Terrageddon com Oath chamava-se Oath of Druids.
+    {"nome": "Terrageddon", "grau": "hibrido", "all": ["Terravore", "Mox Diamond"]},
     {"nome": "Oath of Druids", "grau": "puro", "all": ["Oath of Druids"]},
     {"nome": "Stasis", "grau": "prisao", "all": ["Stasis"]},
     {"nome": "Dream Halls", "grau": "puro", "all": ["Dream Halls"]},
@@ -137,7 +142,6 @@ COMBO_DEFAULT = [
     {"nome": "Tinker / Academy", "grau": "puro",
      "any": ["Tinker", "Tolarian Academy"]},
     {"nome": "Reanimator", "grau": "puro", "any": ["Exhume", "Reanimate"]},
-    {"nome": "Terrageddon", "grau": "hibrido", "all": ["Terravore", "Armageddon"]},
     {"nome": "Elves / Survival", "grau": "hibrido",
      "all": ["Survival of the Fittest"]},
     # SÓ PARA NOMEAR (`combo: false`) — os clássicos do formato que o ranking já

@@ -261,6 +261,8 @@ def caso_as_assinaturas_do_classify_sao_as_do_config():
     for c in real.get("caixas") or []:
         if (c.get("formato") or "").lower() != "premodern":
             continue
+        if c.get("_saiu"):
+            continue       # 2026-10-16: o Oath saiu; uma caixa que saiu não é deck
         ass = c.get("assinatura") or c.get("reserva_assinatura")
         if ass:
             do_cfg[c["nome"]] = sorted(ass)

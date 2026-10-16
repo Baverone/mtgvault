@@ -184,7 +184,12 @@ def caso_o_config_a_serio_ja_esta_na_forma_nova():
     # São 17 desde 02/10/2026 à TARDE: a Enchantress voltou (a ordem da manhã
     # mandou dissolvê-la e o André repôs o deck). Quem se dissolveu foi SÓ a
     # Jeskai Control.
-    assert len(cfg["caixas"]) == 17, len(cfg["caixas"])
+    # [2026-10-16] 18 no ficheiro: o Terrageddon entrou e o Oath of Druids
+    # ficou com `_saiu` (nada se apaga). VIVAS continuam 16 + o standard que saiu
+    # a 13/10 — o que se tranca é o total no ficheiro e as vivas.
+    assert len(cfg["caixas"]) == 18, len(cfg["caixas"])
+    assert sum(1 for c in cfg["caixas"] if not c.get("_saiu")) == 16
+    assert estados["premodern-terrageddon"] == "permanente"
     assert "legacy" not in estados, "o slot `legacy` sem nome não devia existir"
     for slot in ("legacy-welder", "legacy-aluren", "legacy-artifacts-blue"):
         assert slot in estados, f"falta a caixa {slot}"

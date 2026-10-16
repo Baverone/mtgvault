@@ -1,6 +1,6 @@
 {
   "_comentario": "Arquétipos por REGRA (carta definidora), com etiqueta dupla — um deck pode ter vários nomes. Edita à mão para afinar a tua maneira. 'all' = tem de ter todas; 'any' = basta uma; 'none' = não pode ter nenhuma. Os nomes das cartas têm de bater certo com o catálogo (nome oracle).",
-  "_premodern": "Os nomes 'UW Replenish', 'Enchantress', 'Elves', 'Oath of Druids' e 'Ill-Gotten Gains' são os alvos de colecao_config.json -> premodern_arquetipos_alvo: é por eles que o premodern_decks.py monta a lista de consenso. NÃO lhes mudes o nome sem mudar lá também. O 'none' é indispensável: 96% das listas de Enchantress jogam Replenish, por isso sem ele os dois arquétipos eram o mesmo. Os três de 2026-10-16 usam a carta-assinatura da CAIXA (02/10: Wirewood Symbiote, Oath of Druids, Ill-Gotten Gains) e 'so_main': o Elves NÃO é o 'Elves / Survival' do combo_arquetipos (o Survival apanha também o Full English Breakfast), e 2 das 19 listas com Oath jogam-no só no sideboard.",
+  "_premodern": "Os nomes 'UW Replenish', 'Enchantress', 'Elves', 'Oath of Druids' e 'Ill-Gotten Gains' são os alvos de colecao_config.json -> premodern_arquetipos_alvo: é por eles que o premodern_decks.py monta a lista de consenso. NÃO lhes mudes o nome sem mudar lá também. O 'none' é indispensável: 96% das listas de Enchantress jogam Replenish, por isso sem ele os dois arquétipos eram o mesmo. Os três de 2026-10-16 usam a carta-assinatura da CAIXA (02/10: Wirewood Symbiote, Oath of Druids, Ill-Gotten Gains) e 'so_main': o Elves NÃO é o 'Elves / Survival' do combo_arquetipos (o Survival apanha também o Full English Breakfast), e 2 das 19 listas com Oath jogam-no só no sideboard. A 2026-10-16 (mais tarde) o alvo 'Oath of Druids' deu lugar ao 'Terrageddon' (decisão dele: o shell Terravore + Mox Diamond inteiro): a identidade é pelas CARTAS, as duas no main, porque 45 das 61 listas que contam não têm nome de arquétipo. A regra 'Oath of Druids' fica — um deck pode ter as duas etiquetas, e é a que dá o ramo do shell que joga Oath.",
   "premodern": [
     { "name": "UW Replenish",                     "all": ["Replenish", "Opalescence"], "none": ["Argothian Enchantress", "Enchantress's Presence"] },
     { "name": "Enchantress",                      "any": ["Argothian Enchantress", "Enchantress's Presence"] },
@@ -9,6 +9,7 @@
     { "name": "Stiflenought",                     "all": ["Phyrexian Dreadnought"] },
     { "name": "Elves",                            "all": ["Wirewood Symbiote"], "so_main": true },
     { "name": "Oath of Druids",                   "all": ["Oath of Druids"], "so_main": true },
+    { "name": "Terrageddon",                      "all": ["Terravore", "Mox Diamond"], "so_main": true },
     { "name": "Ill-Gotten Gains",                 "all": ["Ill-Gotten Gains"], "so_main": true }
   ],
   "modern": [

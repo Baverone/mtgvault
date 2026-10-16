@@ -6276,6 +6276,34 @@ Championship de 15/10 passa a referência do deck de Legacy dele.
   tem que ver com isto — ele não publica Duel Commander desde 31/08 — e passou
   a dizer que lista fica.
 
+**O OATH OF DRUIDS PASSA A TERRAGEDDON (André, 2026-10-16, ao fim do dia, à
+letra).** *"o oath of druids pode passar a outra lista com terravore + mox
+diamond"* — o shell todo, sabendo que só ~1 em 5 dessas listas joga Oath.
+- **A identidade é pelas CARTAS** (Terravore **e** Mox Diamond, no main —
+  `archetype_rules.json` com `so_main`, e o `premodern.combo_arquetipos`/
+  `COMBO_DEFAULT`, onde a regra passou a vir ANTES do «Oath of Druids»: um
+  Terrageddon com Oath chamava-se Oath). Medido a 16/10 com a regra do config
+  (Premodern sem janela de 29/09, presencial 64+): **100 listas, 61 contam (53
+  Challenges + 8 presenciais), 38 jogadores, e 45 das 61 sem nome de
+  arquétipo** — uma identidade por nome perdia três quartos da família. 13 das
+  61 jogam Oath of Druids.
+- **Caixa nova `premodern-terrageddon`** (`fonte: deck`, `ref: "Terrageddon
+  (consenso)"`, principal desde 16/10); a `premodern-oath` ficou com `_saiu` e
+  a lista de evento do Shroomboy e o deck «Oath of Druids (consenso)» da tabela
+  `decks` ficam (o `premodern_decks.refresh` deixa de o reescrever).
+  **Não é «versão» do Terrageddon**: o modelo de versões é «um deck por
+  formato», e o Premodern tem seis — encaixava mal; o ramo com Oath fica dentro
+  da identidade nova (as duas etiquetas convivem no `tagging`).
+- **As pastas**: a do deck passou a `Decks Por Processar\Terrageddon\` (o nome
+  sai do `caixas[].nome`); a antiga foi para `_nomes antigos\Oath of Druids\`.
+  Das 24 pastas de carta, **12 mantêm-se**, **12 foram para `_fora do plano\
+  Oath of Druids\`**, **9 voltaram de lá** e **14 nasceram** (35 no plano);
+  nenhuma tinha fotos.
+- **Faltas**: o Terrageddon pede **71 cópias além das 4 básicas da pilha** —
+  as mesmas 71 do Oath —, por isso o total de cópias não muda (1 100) e o valor
+  sobe **+561,78 €** no motor (68 327,34 → 68 889,12) e **+231,80 €** pela
+  impressão que serve (72 560,57 → 72 792,37); as outras 16 caixas iguais.
+
 ### Duas bases de dados
 
 `catalog.db` (Scryfall, centenas de MB) é ATTACHed como schema `catalog`.

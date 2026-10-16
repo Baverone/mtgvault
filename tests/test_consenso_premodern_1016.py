@@ -78,8 +78,12 @@ def caso_so_main_nao_apanha_o_sideboard():
 def caso_os_alvos_tem_regra_e_o_stiflenought_fica_fora():
     cfg = json.loads((RAIZ / "colecao_config.json").read_text(encoding="utf-8"))
     alvos = cfg["premodern_arquetipos_alvo"]
-    assert alvos == ["UW Replenish", "Enchantress", "Elves", "Oath of Druids",
+    # [2026-10-16, mais tarde] o «Oath of Druids» deu lugar ao «Terrageddon»
+    # (decisão dele: o shell Terravore + Mox Diamond inteiro).
+    assert alvos == ["UW Replenish", "Enchantress", "Elves", "Terrageddon",
                      "Ill-Gotten Gains"], alvos
+    terra = next(r for r in tagging.load_rules()["premodern"] if r["name"] == "Terrageddon")
+    assert sorted(terra["all"]) == ["Mox Diamond", "Terravore"] and terra.get("so_main"), terra
     assert "Stiflenought" not in alvos
     assert "2026-10-16" in cfg["_premodern_arquetipos_alvo"]
     regras = {r["name"] for r in tagging.load_rules()["premodern"]}

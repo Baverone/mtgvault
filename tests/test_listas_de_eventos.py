@@ -688,7 +688,14 @@ def caso_as_caixas_trocadas_tem_todas_proveniencia_completa():
             assert caixa.get("ref") == consenso[slot] + " (consenso)", caixa
             volta = caixa["_antes_1016"]
             assert volta["fonte"] == "escolhido" and volta["ref"] == slot, volta
-            assert consenso[slot] in novo["premodern_arquetipos_alvo"]
+            if caixa.get("_saiu"):
+                # 2026-10-16, mais tarde: o Oath deu lugar ao Terrageddon. A caixa
+                # fica (com a lista de evento e o caminho de volta), mas o alvo
+                # deixou de ser ela.
+                assert consenso[slot] not in novo["premodern_arquetipos_alvo"]
+                assert "Terrageddon" in novo["premodern_arquetipos_alvo"]
+            else:
+                assert consenso[slot] in novo["premodern_arquetipos_alvo"]
         else:
             assert caixa.get("fonte") == "escolhido" and caixa.get("ref") == slot, caixa
         # E o que a caixa tinha antes fica guardado — nada se apaga.
