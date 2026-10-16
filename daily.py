@@ -51,7 +51,7 @@ import showcase  # noqa: E402  (gera showcase.html — Decks Showcase Challenger
 import inicio  # noqa: E402  (gera index.html — o painel de Início, com os números de hoje)
 import my_decks  # noqa: E402  (mantém atualizadas as listas dos decks que o André segue)
 import commander_decks  # noqa: E402  (decks de comandante seguidos por consenso, ex.: Cloud DC)
-import premodern_decks  # noqa: E402  (consenso dos arquétipos-alvo de Premodern: UW Replenish, Enchantress)
+import premodern_decks  # noqa: E402  (consenso dos arquétipos-alvo de Premodern: todos menos o Stiflenought, 16/10)
 import refresh_collection  # noqa: E402  (reconstroi collection_owned p/ o index.html)
 
 MTGO_DAYS = 3

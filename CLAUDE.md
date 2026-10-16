@@ -6236,6 +6236,46 @@ a prova de que chumbam em `tests/_chumba_painel.py` (2 de 2).
   `classify` reserva-lhes cartas nos Binders), e o Cori-Steel Cutter e o Grinding
   Station continuam seguidos apesar de terem saído das versões de Modern a 06/10.
 
+**PREMODERN EM CONSENSO MENOS O STIFLENOUGHT, E O LEGACY NA LISTA DO
+CHAMPIONSHIP (André, 2026-10-16, à letra).** *"em premodern todos são consensos
+menos o Stiflenought que é a lista do Luffy"*, e a lista vencedora do Legacy
+Championship de 15/10 passa a referência do deck de Legacy dele.
+- **O `premodern_arquetipos_alvo` passou de 2 a 5** (UW Replenish, Enchantress,
+  Elves, Oath of Druids, Ill-Gotten Gains) **E as quatro caixas que têm consenso
+  passaram a lê-lo** (`fonte: deck`, `ref: "<nome> (consenso)"`). Só a chave não
+  bastava: desde 04/10 as caixas liam a lista de EVENTO (`fonte: escolhido`) e o
+  consenso ia para uma linha da `decks` que nenhuma caixa lia. As listas de
+  evento ficam em `listas_escolhidas[<slot>]` e o caminho de volta em
+  `caixas[]._antes_1016`. O **Ill-Gotten Gains** está no alvo e NÃO tem consenso
+  (1 lista na base contra um mínimo de 5): a caixa continua na lista de evento.
+- **As regras do `archetype_rules.json` ganharam os três** pela carta-assinatura
+  da caixa (02/10) e com **`so_main`** (novo no `tagging`): a carta que dá
+  identidade tem de estar no maindeck — 2 das 19 listas com Oath of Druids
+  jogavam-no só no side (uma é um Reanimator de Valencia). O **Elves NÃO é o
+  `Elves / Survival`** do `combo_arquetipos`: o Survival apanha o Full English
+  Breakfast.
+- **Medido a 16/10** (o universo é o `counting_sql` do Premodern: Challenges +
+  presenciais 64+, sem a janela de 29/09): UW Replenish **23 listas / 11
+  jogadores**, Enchantress **68 / 34**, Elves **13 / 8**, Oath **17 / 12**, IGG
+  **1** (sem consenso). As **37 listas de Valencia (11/10) contam todas**; entram
+  10 nos cinco consensos (Replenish 4, Enchantress 3, Elves 3) — as outras são
+  Stiflenought (5) e arquétipos que ele não joga. A lista do Luffy de 13/10 fica
+  a 3–6 cartas de main das cinco Stiflenought de Valencia (três jogam 4
+  Accumulated Knowledge, que ele não joga).
+- **O Legacy: a `legacy-artifacts-blue` passou à lista do Nakamura Yuya** (1.º,
+  Championship, 220 jogadores, decklist 27748; a do Daniel Gómez fica em
+  `listas_escolhidas._legacy-artifacts-blue-anterior`). O modelo de 13/10 já era
+  «Artifacts Blue = o deck, EWC = versão» (`decks_por_formato.legacy`); a
+  `deck_meta` **não é lida por ninguém** e não se tocou. As duas listas diferem
+  em 5 cartas.
+- **O «100 % das listas de Duel Commander sem `archetype_id`» não é defeito**:
+  o formato saiu do `ANALYSE_FORMATS` a 07/09 (a identidade é o COMANDANTE, que
+  está gravado em 591 de 591). Os nulos dos outros formatos são as listas que
+  NÃO CONTAM (o clustering só vê o `counting_sql`): 0 das 340 de Premodern
+  contam. O aviso diário do `meus-decks` sobre o McWinSauce é verdadeiro e não
+  tem que ver com isto — ele não publica Duel Commander desde 31/08 — e passou
+  a dizer que lista fica.
+
 ### Duas bases de dados
 
 `catalog.db` (Scryfall, centenas de MB) é ATTACHed como schema `catalog`.
