@@ -1,0 +1,1456 @@
+{
+ "data": "2026-10-16",
+ "nucleo_pct": 50,
+ "alvos": [
+  {
+   "nome": "Pyrostatic Pillar",
+   "n_lists": 45,
+   "combo": false,
+   "nucleo": 16,
+   "nos_meus_decks": 1,
+   "pct_nos_meus_decks": 6,
+   "faltam": [
+    [
+     "Black Vise",
+     4
+    ],
+    [
+     "Fireblast",
+     4
+    ],
+    [
+     "Flame Rift",
+     4
+    ],
+    [
+     "Flaring Pain",
+     3
+    ],
+    [
+     "Grim Lavamancer",
+     4
+    ],
+    [
+     "Incinerate",
+     4
+    ],
+    [
+     "Lightning Bolt",
+     4
+    ],
+    [
+     "Mishra's Factory",
+     4
+    ],
+    [
+     "Mogg Fanatic",
+     4
+    ],
+    [
+     "Mogg Salvage",
+     4
+    ],
+    [
+     "Overload",
+     3
+    ],
+    [
+     "Price of Progress",
+     2
+    ],
+    [
+     "Pyrostatic Pillar",
+     4
+    ],
+    [
+     "Seal of Fire",
+     4
+    ],
+    [
+     "Sulfuric Vortex",
+     2
+    ]
+   ],
+   "pct_principal": 0,
+   "top": true,
+   "top_combo": false
+  },
+  {
+   "nome": "Mono-Preto Graveborn Muse",
+   "n_lists": 26,
+   "combo": false,
+   "nucleo": 19,
+   "nos_meus_decks": 3,
+   "pct_nos_meus_decks": 16,
+   "faltam": [
+    [
+     "Cabal Therapy",
+     4
+    ],
+    [
+     "Cursed Scroll",
+     3
+    ],
+    [
+     "Diabolic Edict",
+     2
+    ],
+    [
+     "Drain Life",
+     2
+    ],
+    [
+     "Duress",
+     4
+    ],
+    [
+     "Dystopia",
+     3
+    ],
+    [
+     "Engineered Plague",
+     4
+    ],
+    [
+     "Gloom",
+     3
+    ],
+    [
+     "Graveborn Muse",
+     2
+    ],
+    [
+     "Hypnotic Specter",
+     4
+    ],
+    [
+     "Mishra's Factory",
+     4
+    ],
+    [
+     "Nantuko Shade",
+     3
+    ],
+    [
+     "Ravenous Rats",
+     4
+    ],
+    [
+     "Smother",
+     2
+    ],
+    [
+     "Snuff Out",
+     1
+    ],
+    [
+     "Withered Wretch",
+     4
+    ]
+   ],
+   "pct_principal": 0,
+   "top": true,
+   "top_combo": false
+  },
+  {
+   "nome": "Psychatog",
+   "n_lists": 24,
+   "combo": false,
+   "nucleo": 20,
+   "nos_meus_decks": 11,
+   "pct_nos_meus_decks": 55,
+   "faltam": [
+    [
+     "Accumulated Knowledge",
+     4
+    ],
+    [
+     "Duress",
+     4
+    ],
+    [
+     "Engineered Plague",
+     2
+    ],
+    [
+     "Fact or Fiction",
+     1
+    ],
+    [
+     "Haunting Echoes",
+     1
+    ],
+    [
+     "Psychatog",
+     4
+    ],
+    [
+     "Sickening Dreams",
+     2
+    ],
+    [
+     "Smother",
+     3
+    ],
+    [
+     "Underground River",
+     3
+    ]
+   ],
+   "pct_principal": 0,
+   "top": true,
+   "top_combo": false
+  },
+  {
+   "nome": "Landstill",
+   "n_lists": 19,
+   "combo": false,
+   "nucleo": 25,
+   "nos_meus_decks": 12,
+   "pct_nos_meus_decks": 48,
+   "faltam": [
+    [
+     "Circle of Protection: Red",
+     1
+    ],
+    [
+     "Coastal Tower",
+     1
+    ],
+    [
+     "Decree of Justice",
+     3
+    ],
+    [
+     "Dust Bowl",
+     2
+    ],
+    [
+     "Fact or Fiction",
+     3
+    ],
+    [
+     "Faerie Conclave",
+     2
+    ],
+    [
+     "Mana Leak",
+     3
+    ],
+    [
+     "Mishra's Factory",
+     4
+    ],
+    [
+     "Phyrexian Furnace",
+     2
+    ],
+    [
+     "Prohibit",
+     1
+    ],
+    [
+     "Standstill",
+     3
+    ],
+    [
+     "Teferi's Response",
+     2
+    ],
+    [
+     "Wrath of God",
+     2
+    ]
+   ],
+   "pct_principal": 0,
+   "top": true,
+   "top_combo": false
+  },
+  {
+   "nome": "Goblins",
+   "n_lists": 18,
+   "combo": false,
+   "nucleo": 23,
+   "nos_meus_decks": 8,
+   "pct_nos_meus_decks": 35,
+   "faltam": [
+    [
+     "Gempalm Incinerator",
+     4
+    ],
+    [
+     "Goblin Goon",
+     2
+    ],
+    [
+     "Goblin Lackey",
+     4
+    ],
+    [
+     "Goblin Matron",
+     4
+    ],
+    [
+     "Goblin Piledriver",
+     4
+    ],
+    [
+     "Goblin Ringleader",
+     4
+    ],
+    [
+     "Goblin Sharpshooter",
+     1
+    ],
+    [
+     "Goblin Tinkerer",
+     1
+    ],
+    [
+     "Goblin Warchief",
+     4
+    ],
+    [
+     "Mogg Fanatic",
+     4
+    ],
+    [
+     "Overload",
+     2
+    ],
+    [
+     "Pyrokinesis",
+     3
+    ],
+    [
+     "Siege-Gang Commander",
+     3
+    ],
+    [
+     "Skirk Prospector",
+     1
+    ],
+    [
+     "Tranquil Domain",
+     4
+    ]
+   ],
+   "pct_principal": 0,
+   "top": true,
+   "top_combo": false
+  },
+  {
+   "nome": "Full English Breakfast",
+   "n_lists": 16,
+   "combo": true,
+   "nucleo": 38,
+   "nos_meus_decks": 13,
+   "pct_nos_meus_decks": 34,
+   "faltam": [
+    [
+     "Akroma, Angel of Wrath",
+     1
+    ],
+    [
+     "Animate Dead",
+     1
+    ],
+    [
+     "Battlefield Scrounger",
+     1
+    ],
+    [
+     "Cabal Therapy",
+     4
+    ],
+    [
+     "Duress",
+     2
+    ],
+    [
+     "Eladamri's Vineyard",
+     2
+    ],
+    [
+     "Elvish Spirit Guide",
+     2
+    ],
+    [
+     "Enlightened Tutor",
+     1
+    ],
+    [
+     "Ghitu Slinger",
+     1
+    ],
+    [
+     "Hermit Druid",
+     4
+    ],
+    [
+     "Karmic Guide",
+     1
+    ],
+    [
+     "Krosan Reclamation",
+     1
+    ],
+    [
+     "Llanowar Wastes",
+     4
+    ],
+    [
+     "Palinchron",
+     1
+    ],
+    [
+     "Phyrexian Devourer",
+     1
+    ],
+    [
+     "Psychatog",
+     1
+    ],
+    [
+     "Reflecting Pool",
+     3
+    ],
+    [
+     "Treva's Ruins",
+     1
+    ],
+    [
+     "Triskelion",
+     1
+    ],
+    [
+     "Uktabi Orangutan",
+     1
+    ],
+    [
+     "Underground River",
+     1
+    ],
+    [
+     "Undiscovered Paradise",
+     1
+    ],
+    [
+     "Unearth",
+     4
+    ],
+    [
+     "Volrath's Shapeshifter",
+     2
+    ],
+    [
+     "Yavimaya Coast",
+     4
+    ]
+   ],
+   "pct_principal": 0,
+   "top": true,
+   "top_combo": true
+  }
+ ],
+ "cartas": [
+  {
+   "carta": "Accumulated Knowledge",
+   "q": 4,
+   "arquetipos": [
+    "Psychatog"
+   ],
+   "pct": 79,
+   "unit": 2.18,
+   "set": "NEM",
+   "sid": "ab061406-38f4-40e7-a9ea-e3cbcaabc127",
+   "rl": false
+  },
+  {
+   "carta": "Akroma, Angel of Wrath",
+   "q": 1,
+   "arquetipos": [
+    "Full English Breakfast"
+   ],
+   "pct": 100,
+   "unit": 31.0,
+   "set": "LGN",
+   "sid": "814245de-6105-43ef-acbf-d12d304b6331",
+   "rl": false
+  },
+  {
+   "carta": "Animate Dead",
+   "q": 1,
+   "arquetipos": [
+    "Full English Breakfast"
+   ],
+   "pct": 100,
+   "unit": 9.49,
+   "set": "3ED",
+   "sid": "eed73f84-ad08-44f8-a4fe-cd324ec1da92",
+   "rl": false
+  },
+  {
+   "carta": "Battlefield Scrounger",
+   "q": 1,
+   "arquetipos": [
+    "Full English Breakfast"
+   ],
+   "pct": 100,
+   "unit": 0.42,
+   "set": "JUD",
+   "sid": "f5ac74bc-1198-4a9a-bcde-668cca08b274",
+   "rl": false
+  },
+  {
+   "carta": "Black Vise",
+   "q": 4,
+   "arquetipos": [
+    "Pyrostatic Pillar"
+   ],
+   "pct": 64,
+   "unit": 4.93,
+   "set": "3ED",
+   "sid": "1bae1867-d5bb-4204-9fb1-59d6663bc161",
+   "rl": false
+  },
+  {
+   "carta": "Cabal Therapy",
+   "q": 4,
+   "arquetipos": [
+    "Mono-Preto Graveborn Muse",
+    "Full English Breakfast"
+   ],
+   "pct": 100,
+   "unit": 26.4,
+   "set": "JUD",
+   "sid": "0a5df970-c6ba-4824-b8ba-67244aec2b82",
+   "rl": false
+  },
+  {
+   "carta": "Circle of Protection: Red",
+   "q": 1,
+   "arquetipos": [
+    "Landstill"
+   ],
+   "pct": 79,
+   "unit": 0.43,
+   "set": "ICE",
+   "sid": "5790ce22-a94f-402e-bcc7-b98f71af9fe5",
+   "rl": false
+  },
+  {
+   "carta": "Coastal Tower",
+   "q": 1,
+   "arquetipos": [
+    "Landstill"
+   ],
+   "pct": 84,
+   "unit": 3.08,
+   "set": "INV",
+   "sid": "d115dbff-e35b-495f-a1e3-19651895927e",
+   "rl": false
+  },
+  {
+   "carta": "Cursed Scroll",
+   "q": 3,
+   "arquetipos": [
+    "Mono-Preto Graveborn Muse"
+   ],
+   "pct": 77,
+   "unit": 106.27,
+   "set": "TMP",
+   "sid": "31415b9b-fb30-4132-a9a3-795b4573a901",
+   "rl": true
+  },
+  {
+   "carta": "Decree of Justice",
+   "q": 3,
+   "arquetipos": [
+    "Landstill"
+   ],
+   "pct": 100,
+   "unit": 22.51,
+   "set": "SCG",
+   "sid": "5e8a7e5c-f252-4de8-94d7-e7327210bf26",
+   "rl": false
+  },
+  {
+   "carta": "Diabolic Edict",
+   "q": 2,
+   "arquetipos": [
+    "Mono-Preto Graveborn Muse"
+   ],
+   "pct": 96,
+   "unit": 0.9,
+   "set": "TMP",
+   "sid": "a2ecf2ee-1e2d-4ab2-8b2c-717c794b09b2",
+   "rl": false
+  },
+  {
+   "carta": "Drain Life",
+   "q": 2,
+   "arquetipos": [
+    "Mono-Preto Graveborn Muse"
+   ],
+   "pct": 73,
+   "unit": 0.4,
+   "set": "4ED",
+   "sid": "b9d10677-36f0-4339-a2c3-213e8ee1c51d",
+   "rl": false
+  },
+  {
+   "carta": "Duress",
+   "q": 4,
+   "arquetipos": [
+    "Mono-Preto Graveborn Muse",
+    "Psychatog",
+    "Full English Breakfast"
+   ],
+   "pct": 100,
+   "unit": 4.59,
+   "set": "USG",
+   "sid": "ca367f49-0f4a-4b7f-8104-851893fbcd8a",
+   "rl": false
+  },
+  {
+   "carta": "Dust Bowl",
+   "q": 2,
+   "arquetipos": [
+    "Landstill"
+   ],
+   "pct": 100,
+   "unit": 43.54,
+   "set": "MMQ",
+   "sid": "75b03c30-c2b8-4207-b675-26c59c40a7e5",
+   "rl": false
+  },
+  {
+   "carta": "Dystopia",
+   "q": 3,
+   "arquetipos": [
+    "Mono-Preto Graveborn Muse"
+   ],
+   "pct": 100,
+   "unit": 82.8,
+   "set": "ALL",
+   "sid": "5f8bb451-706d-44ff-bbad-9ddc6f9f786a",
+   "rl": true
+  },
+  {
+   "carta": "Eladamri's Vineyard",
+   "q": 2,
+   "arquetipos": [
+    "Full English Breakfast"
+   ],
+   "pct": 62,
+   "unit": 6.64,
+   "set": "TMP",
+   "sid": "d8531643-5657-44b6-89d1-9cdf67ed09c4",
+   "rl": false
+  },
+  {
+   "carta": "Elvish Spirit Guide",
+   "q": 2,
+   "arquetipos": [
+    "Full English Breakfast"
+   ],
+   "pct": 100,
+   "unit": 7.6,
+   "set": "ALL",
+   "sid": "5b94f37f-ebdf-4b79-a615-58331d27cf4e",
+   "rl": false
+  },
+  {
+   "carta": "Engineered Plague",
+   "q": 4,
+   "arquetipos": [
+    "Mono-Preto Graveborn Muse",
+    "Psychatog"
+   ],
+   "pct": 100,
+   "unit": 8.97,
+   "set": "ULG",
+   "sid": "27e158d5-efb2-4f90-8898-60ede98f7d29",
+   "rl": false
+  },
+  {
+   "carta": "Enlightened Tutor",
+   "q": 1,
+   "arquetipos": [
+    "Full English Breakfast"
+   ],
+   "pct": 75,
+   "unit": 43.34,
+   "set": "MIR",
+   "sid": "cbac1d27-15e2-4e2f-82ab-625a16e096cb",
+   "rl": false
+  },
+  {
+   "carta": "Fact or Fiction",
+   "q": 3,
+   "arquetipos": [
+    "Psychatog",
+    "Landstill"
+   ],
+   "pct": 100,
+   "unit": 8.79,
+   "set": "INV",
+   "sid": "7fd4d018-dcf3-4439-8445-02d66e44f7d3",
+   "rl": false
+  },
+  {
+   "carta": "Faerie Conclave",
+   "q": 2,
+   "arquetipos": [
+    "Landstill"
+   ],
+   "pct": 89,
+   "unit": 4.59,
+   "set": "ULG",
+   "sid": "ae3ede87-b026-4781-81ab-8652664f8e41",
+   "rl": false
+  },
+  {
+   "carta": "Fireblast",
+   "q": 4,
+   "arquetipos": [
+    "Pyrostatic Pillar"
+   ],
+   "pct": 100,
+   "unit": 4.61,
+   "set": "VIS",
+   "sid": "b1eb5b2c-1f02-48a6-a287-88eb189d6780",
+   "rl": false
+  },
+  {
+   "carta": "Flame Rift",
+   "q": 4,
+   "arquetipos": [
+    "Pyrostatic Pillar"
+   ],
+   "pct": 53,
+   "unit": 1.31,
+   "set": "NEM",
+   "sid": "7717eeb9-c457-4a65-93a0-e91c7f6a1970",
+   "rl": false
+  },
+  {
+   "carta": "Flaring Pain",
+   "q": 3,
+   "arquetipos": [
+    "Pyrostatic Pillar"
+   ],
+   "pct": 60,
+   "unit": 5.09,
+   "set": "JUD",
+   "sid": "eeb5c96a-1d16-459d-9968-ced9a8f1c520",
+   "rl": false
+  },
+  {
+   "carta": "Gempalm Incinerator",
+   "q": 4,
+   "arquetipos": [
+    "Goblins"
+   ],
+   "pct": 100,
+   "unit": 2.88,
+   "set": "LGN",
+   "sid": "2687c311-fd0c-4fe0-bce8-e3f412216796",
+   "rl": false
+  },
+  {
+   "carta": "Ghitu Slinger",
+   "q": 1,
+   "arquetipos": [
+    "Full English Breakfast"
+   ],
+   "pct": 100,
+   "unit": 0.43,
+   "set": "ULG",
+   "sid": "67e4bc1d-6a4b-408a-8921-433249c960f9",
+   "rl": false
+  },
+  {
+   "carta": "Gloom",
+   "q": 3,
+   "arquetipos": [
+    "Mono-Preto Graveborn Muse"
+   ],
+   "pct": 85,
+   "unit": 3.22,
+   "set": "4ED",
+   "sid": "f5a8573d-0e2d-4a7f-a47f-7e1bc472d4fa",
+   "rl": false
+  },
+  {
+   "carta": "Goblin Goon",
+   "q": 2,
+   "arquetipos": [
+    "Goblins"
+   ],
+   "pct": 50,
+   "unit": 9.58,
+   "set": "LGN",
+   "sid": "6c77cac8-fe95-4925-a815-8c514cc41b22",
+   "rl": false
+  },
+  {
+   "carta": "Goblin Lackey",
+   "q": 4,
+   "arquetipos": [
+    "Goblins"
+   ],
+   "pct": 100,
+   "unit": 31.36,
+   "set": "USG",
+   "sid": "9b848caa-aad8-4060-8f86-304a8556de2d",
+   "rl": false
+  },
+  {
+   "carta": "Goblin Matron",
+   "q": 4,
+   "arquetipos": [
+    "Goblins"
+   ],
+   "pct": 100,
+   "unit": 1.38,
+   "set": "USG",
+   "sid": "9e9e2e5d-ad06-4378-9afb-ffb174e6a5b4",
+   "rl": false
+  },
+  {
+   "carta": "Goblin Piledriver",
+   "q": 4,
+   "arquetipos": [
+    "Goblins"
+   ],
+   "pct": 100,
+   "unit": 36.26,
+   "set": "ONS",
+   "sid": "f6c4df1f-f148-42ec-8e22-e7114216927d",
+   "rl": false
+  },
+  {
+   "carta": "Goblin Ringleader",
+   "q": 4,
+   "arquetipos": [
+    "Goblins"
+   ],
+   "pct": 100,
+   "unit": 5.07,
+   "set": "APC",
+   "sid": "b6b2cd77-9552-48b1-80cb-26966323c1ea",
+   "rl": false
+  },
+  {
+   "carta": "Goblin Sharpshooter",
+   "q": 1,
+   "arquetipos": [
+    "Goblins"
+   ],
+   "pct": 94,
+   "unit": 40.14,
+   "set": "ONS",
+   "sid": "7e689df7-b85d-4346-bee8-5e978b5cbbbc",
+   "rl": false
+  },
+  {
+   "carta": "Goblin Tinkerer",
+   "q": 1,
+   "arquetipos": [
+    "Goblins"
+   ],
+   "pct": 100,
+   "unit": 0.75,
+   "set": "MIR",
+   "sid": "e6529852-8b3e-4a70-a4a1-029e012231c6",
+   "rl": false
+  },
+  {
+   "carta": "Goblin Warchief",
+   "q": 4,
+   "arquetipos": [
+    "Goblins"
+   ],
+   "pct": 100,
+   "unit": 6.59,
+   "set": "SCG",
+   "sid": "66864a4b-8924-40ef-a337-15b12413a158",
+   "rl": false
+  },
+  {
+   "carta": "Graveborn Muse",
+   "q": 2,
+   "arquetipos": [
+    "Mono-Preto Graveborn Muse"
+   ],
+   "pct": 100,
+   "unit": 28.5,
+   "set": "LGN",
+   "sid": "aa432e4e-ff23-4ad2-8d0a-403efee86f11",
+   "rl": false
+  },
+  {
+   "carta": "Grim Lavamancer",
+   "q": 4,
+   "arquetipos": [
+    "Pyrostatic Pillar"
+   ],
+   "pct": 100,
+   "unit": 21.8,
+   "set": "TOR",
+   "sid": "5dd72697-24be-42c7-a6d9-a837bdbd4662",
+   "rl": false
+  },
+  {
+   "carta": "Haunting Echoes",
+   "q": 1,
+   "arquetipos": [
+    "Psychatog"
+   ],
+   "pct": 50,
+   "unit": 14.59,
+   "set": "ODY",
+   "sid": "aca4c571-48b8-4150-93f8-4cb5c8e797c4",
+   "rl": false
+  },
+  {
+   "carta": "Hermit Druid",
+   "q": 4,
+   "arquetipos": [
+    "Full English Breakfast"
+   ],
+   "pct": 100,
+   "unit": 19.12,
+   "set": "STH",
+   "sid": "3efc0622-ac2c-4722-ba05-961cc98c5940",
+   "rl": false
+  },
+  {
+   "carta": "Hypnotic Specter",
+   "q": 4,
+   "arquetipos": [
+    "Mono-Preto Graveborn Muse"
+   ],
+   "pct": 100,
+   "unit": 8.41,
+   "set": "4ED",
+   "sid": "b5900350-be08-4904-8f1b-cc180ed08485",
+   "rl": false
+  },
+  {
+   "carta": "Incinerate",
+   "q": 4,
+   "arquetipos": [
+    "Pyrostatic Pillar"
+   ],
+   "pct": 100,
+   "unit": 0.44,
+   "set": "5ED",
+   "sid": "aa0f7e1f-bcb5-414f-a2e9-6a158fec2ff5",
+   "rl": false
+  },
+  {
+   "carta": "Karmic Guide",
+   "q": 1,
+   "arquetipos": [
+    "Full English Breakfast"
+   ],
+   "pct": 100,
+   "unit": 7.83,
+   "set": "ULG",
+   "sid": "77d23045-905b-44cb-9af9-cc6ad717477d",
+   "rl": false
+  },
+  {
+   "carta": "Krosan Reclamation",
+   "q": 1,
+   "arquetipos": [
+    "Full English Breakfast"
+   ],
+   "pct": 100,
+   "unit": 1.6,
+   "set": "JUD",
+   "sid": "5b3c5144-7e15-46c6-b819-d729ecb30bb1",
+   "rl": false
+  },
+  {
+   "carta": "Lightning Bolt",
+   "q": 4,
+   "arquetipos": [
+    "Pyrostatic Pillar"
+   ],
+   "pct": 100,
+   "unit": 3.95,
+   "set": "4ED",
+   "sid": "9521375e-0bc1-45ef-b513-6d332a25f9d2",
+   "rl": false
+  },
+  {
+   "carta": "Llanowar Wastes",
+   "q": 4,
+   "arquetipos": [
+    "Full English Breakfast"
+   ],
+   "pct": 100,
+   "unit": 32.02,
+   "set": "APC",
+   "sid": "610b7cd5-5532-45a9-acfe-24a818034d1c",
+   "rl": false
+  },
+  {
+   "carta": "Mana Leak",
+   "q": 3,
+   "arquetipos": [
+    "Landstill"
+   ],
+   "pct": 95,
+   "unit": 1.94,
+   "set": "STH",
+   "sid": "abcaf16d-aa02-43e2-aa38-bb1835d47a05",
+   "rl": false
+  },
+  {
+   "carta": "Mishra's Factory",
+   "q": 4,
+   "arquetipos": [
+    "Pyrostatic Pillar",
+    "Mono-Preto Graveborn Muse",
+    "Landstill"
+   ],
+   "pct": 100,
+   "unit": 13.25,
+   "set": "4ED",
+   "sid": "aff8d4f1-eaad-4afb-9097-2afab133f707",
+   "rl": false
+  },
+  {
+   "carta": "Mogg Fanatic",
+   "q": 4,
+   "arquetipos": [
+    "Pyrostatic Pillar",
+    "Goblins"
+   ],
+   "pct": 100,
+   "unit": 2.12,
+   "set": "TMP",
+   "sid": "ca2ecfd4-c874-4468-8601-87aa110d5a00",
+   "rl": false
+  },
+  {
+   "carta": "Mogg Salvage",
+   "q": 4,
+   "arquetipos": [
+    "Pyrostatic Pillar"
+   ],
+   "pct": 87,
+   "unit": 4.08,
+   "set": "NEM",
+   "sid": "403aa48c-b684-4c54-8863-460958055a1f",
+   "rl": false
+  },
+  {
+   "carta": "Nantuko Shade",
+   "q": 3,
+   "arquetipos": [
+    "Mono-Preto Graveborn Muse"
+   ],
+   "pct": 77,
+   "unit": 20.89,
+   "set": "TOR",
+   "sid": "2ed9dc9c-b92b-4305-8c54-1a63f750f8d1",
+   "rl": false
+  },
+  {
+   "carta": "Overload",
+   "q": 3,
+   "arquetipos": [
+    "Pyrostatic Pillar",
+    "Goblins"
+   ],
+   "pct": 100,
+   "unit": 3.13,
+   "set": "INV",
+   "sid": "c91fca91-7296-422e-b251-d571b710ff71",
+   "rl": false
+  },
+  {
+   "carta": "Palinchron",
+   "q": 1,
+   "arquetipos": [
+    "Full English Breakfast"
+   ],
+   "pct": 100,
+   "unit": 51.27,
+   "set": "ULG",
+   "sid": "5621db3f-a9e7-4350-9c6a-0ba04a628947",
+   "rl": true
+  },
+  {
+   "carta": "Phyrexian Devourer",
+   "q": 1,
+   "arquetipos": [
+    "Full English Breakfast"
+   ],
+   "pct": 100,
+   "unit": 48.73,
+   "set": "ALL",
+   "sid": "319430fa-11e4-426e-8297-67df8474c3cc",
+   "rl": true
+  },
+  {
+   "carta": "Phyrexian Furnace",
+   "q": 2,
+   "arquetipos": [
+    "Landstill"
+   ],
+   "pct": 84,
+   "unit": 18.96,
+   "set": "WTH",
+   "sid": "e98bca31-8c05-430b-b5d7-331bdc55710a",
+   "rl": false
+  },
+  {
+   "carta": "Price of Progress",
+   "q": 2,
+   "arquetipos": [
+    "Pyrostatic Pillar"
+   ],
+   "pct": 64,
+   "unit": 10.88,
+   "set": "EXO",
+   "sid": "8e5283db-3e22-4862-9d95-56d03d09c2ae",
+   "rl": false
+  },
+  {
+   "carta": "Prohibit",
+   "q": 1,
+   "arquetipos": [
+    "Landstill"
+   ],
+   "pct": 79,
+   "unit": 1.6,
+   "set": "INV",
+   "sid": "0daa5458-2a97-40d0-b18d-2381a7a68ee1",
+   "rl": false
+  },
+  {
+   "carta": "Psychatog",
+   "q": 4,
+   "arquetipos": [
+    "Psychatog",
+    "Full English Breakfast"
+   ],
+   "pct": 100,
+   "unit": 9.41,
+   "set": "ODY",
+   "sid": "6757bf0e-489f-4be2-9e41-463b59f00dd1",
+   "rl": false
+  },
+  {
+   "carta": "Pyrokinesis",
+   "q": 3,
+   "arquetipos": [
+    "Goblins"
+   ],
+   "pct": 89,
+   "unit": 6.98,
+   "set": "ALL",
+   "sid": "db2a5e85-6cbc-43c1-9362-4056ad017ef0",
+   "rl": false
+  },
+  {
+   "carta": "Pyrostatic Pillar",
+   "q": 4,
+   "arquetipos": [
+    "Pyrostatic Pillar"
+   ],
+   "pct": 82,
+   "unit": 3.79,
+   "set": "SCG",
+   "sid": "5973cd53-f6cd-4edc-b952-f6d3eef97988",
+   "rl": false
+  },
+  {
+   "carta": "Ravenous Rats",
+   "q": 4,
+   "arquetipos": [
+    "Mono-Preto Graveborn Muse"
+   ],
+   "pct": 100,
+   "unit": 0.61,
+   "set": "INV",
+   "sid": "89e29069-add5-4099-b800-9f1e4402cc1a",
+   "rl": false
+  },
+  {
+   "carta": "Reflecting Pool",
+   "q": 3,
+   "arquetipos": [
+    "Full English Breakfast"
+   ],
+   "pct": 100,
+   "unit": 55.59,
+   "set": "TMP",
+   "sid": "7b633ac2-bf98-42bd-8c26-8737a7d8edc7",
+   "rl": false
+  },
+  {
+   "carta": "Seal of Fire",
+   "q": 4,
+   "arquetipos": [
+    "Pyrostatic Pillar"
+   ],
+   "pct": 100,
+   "unit": 2.18,
+   "set": "NEM",
+   "sid": "37eaf1f6-4bdc-4669-9a15-50b65e016ccf",
+   "rl": false
+  },
+  {
+   "carta": "Sickening Dreams",
+   "q": 2,
+   "arquetipos": [
+    "Psychatog"
+   ],
+   "pct": 100,
+   "unit": 14.62,
+   "set": "TOR",
+   "sid": "9396ac77-9f53-46bd-b126-02441a0f5594",
+   "rl": false
+  },
+  {
+   "carta": "Siege-Gang Commander",
+   "q": 3,
+   "arquetipos": [
+    "Goblins"
+   ],
+   "pct": 100,
+   "unit": 11.5,
+   "set": "SCG",
+   "sid": "92e78cec-aaf9-4fe8-887b-b7e356d63315",
+   "rl": false
+  },
+  {
+   "carta": "Skirk Prospector",
+   "q": 1,
+   "arquetipos": [
+    "Goblins"
+   ],
+   "pct": 61,
+   "unit": 0.9,
+   "set": "ONS",
+   "sid": "eb545dcd-3a7a-46a7-9c35-d28faebc6d17",
+   "rl": false
+  },
+  {
+   "carta": "Smother",
+   "q": 3,
+   "arquetipos": [
+    "Mono-Preto Graveborn Muse",
+    "Psychatog"
+   ],
+   "pct": 100,
+   "unit": 4.1,
+   "set": "ONS",
+   "sid": "9a8321af-d667-44e7-8c03-3957286604b9",
+   "rl": false
+  },
+  {
+   "carta": "Snuff Out",
+   "q": 1,
+   "arquetipos": [
+    "Mono-Preto Graveborn Muse"
+   ],
+   "pct": 85,
+   "unit": 12.19,
+   "set": "MMQ",
+   "sid": "18a3cca1-e50e-49b6-9e1a-f86640e3b177",
+   "rl": false
+  },
+  {
+   "carta": "Standstill",
+   "q": 3,
+   "arquetipos": [
+    "Landstill"
+   ],
+   "pct": 95,
+   "unit": 11.71,
+   "set": "ODY",
+   "sid": "3ede3f6f-e642-4fe4-aa37-0f01cdf4d149",
+   "rl": false
+  },
+  {
+   "carta": "Sulfuric Vortex",
+   "q": 2,
+   "arquetipos": [
+    "Pyrostatic Pillar"
+   ],
+   "pct": 93,
+   "unit": 5.91,
+   "set": "SCG",
+   "sid": "79955e27-eef7-43bd-9895-e9209ed1537f",
+   "rl": false
+  },
+  {
+   "carta": "Teferi's Response",
+   "q": 2,
+   "arquetipos": [
+    "Landstill"
+   ],
+   "pct": 74,
+   "unit": 15.08,
+   "set": "INV",
+   "sid": "f3bb2df8-c559-4a34-83b0-d48fbc694cc8",
+   "rl": false
+  },
+  {
+   "carta": "Tranquil Domain",
+   "q": 4,
+   "arquetipos": [
+    "Goblins"
+   ],
+   "pct": 50,
+   "unit": 2.85,
+   "set": "MIR",
+   "sid": "801f34a6-9f22-43c2-b1e5-194395cc7da1",
+   "rl": false
+  },
+  {
+   "carta": "Treva's Ruins",
+   "q": 1,
+   "arquetipos": [
+    "Full English Breakfast"
+   ],
+   "pct": 88,
+   "unit": 5.05,
+   "set": "PLS",
+   "sid": "8bae2458-b54f-426a-ad40-13529a73c423",
+   "rl": false
+  },
+  {
+   "carta": "Triskelion",
+   "q": 1,
+   "arquetipos": [
+    "Full English Breakfast"
+   ],
+   "pct": 100,
+   "unit": 5.06,
+   "set": "4ED",
+   "sid": "09294401-a895-4084-8302-196a946863d6",
+   "rl": false
+  },
+  {
+   "carta": "Uktabi Orangutan",
+   "q": 1,
+   "arquetipos": [
+    "Full English Breakfast"
+   ],
+   "pct": 100,
+   "unit": 3.21,
+   "set": "VIS",
+   "sid": "101c7d58-43cc-4ebd-87f1-2016fbff56dd",
+   "rl": false
+  },
+  {
+   "carta": "Underground River",
+   "q": 3,
+   "arquetipos": [
+    "Psychatog",
+    "Full English Breakfast"
+   ],
+   "pct": 83,
+   "unit": 10.84,
+   "set": "5ED",
+   "sid": "be9efd79-1b1d-4e02-8922-0154ad20e4d4",
+   "rl": false
+  },
+  {
+   "carta": "Undiscovered Paradise",
+   "q": 1,
+   "arquetipos": [
+    "Full English Breakfast"
+   ],
+   "pct": 100,
+   "unit": 39.65,
+   "set": "VIS",
+   "sid": "5f6e8830-5e62-4945-8b73-60f0628d38e7",
+   "rl": true
+  },
+  {
+   "carta": "Unearth",
+   "q": 4,
+   "arquetipos": [
+    "Full English Breakfast"
+   ],
+   "pct": 100,
+   "unit": 2.73,
+   "set": "ULG",
+   "sid": "b6cb2549-e485-44d6-9d65-7605c568909e",
+   "rl": false
+  },
+  {
+   "carta": "Volrath's Shapeshifter",
+   "q": 2,
+   "arquetipos": [
+    "Full English Breakfast"
+   ],
+   "pct": 100,
+   "unit": 19.38,
+   "set": "STH",
+   "sid": "ec89ee13-34ef-41c8-8fe4-0a6b21df2032",
+   "rl": true
+  },
+  {
+   "carta": "Withered Wretch",
+   "q": 4,
+   "arquetipos": [
+    "Mono-Preto Graveborn Muse"
+   ],
+   "pct": 100,
+   "unit": 4.94,
+   "set": "LGN",
+   "sid": "b8a82948-503f-4ad4-9e3c-c080c16afd63",
+   "rl": false
+  },
+  {
+   "carta": "Wrath of God",
+   "q": 2,
+   "arquetipos": [
+    "Landstill"
+   ],
+   "pct": 100,
+   "unit": 7.91,
+   "set": "5ED",
+   "sid": "def142a8-cc73-4bd2-a1a8-ae47a0c9c948",
+   "rl": false
+  },
+  {
+   "carta": "Yavimaya Coast",
+   "q": 4,
+   "arquetipos": [
+    "Full English Breakfast"
+   ],
+   "pct": 100,
+   "unit": 33.84,
+   "set": "APC",
+   "sid": "177ee102-d981-4fc3-9f09-9dd07755f22c",
+   "rl": false
+  }
+ ],
+ "avisos": [
+  {
+   "gravidade": "baixa",
+   "deck": "Psychatog",
+   "aviso": "55% do núcleo já está nos teus decks (11 de 20 cartas)",
+   "detalhe": "pela regra dos 50% (cópias que TENS, como principal) dá 0% hoje — a colecção reconstrói-se pelas fotos. Faltam-lhe: Accumulated Knowledge x4, Duress x4, Engineered Plague x2, Fact or Fiction x1, Haunting Echoes x1, Psychatog x4, Sickening Dreams x2, Smother x3"
+  },
+  {
+   "gravidade": "baixa",
+   "deck": "Landstill",
+   "aviso": "48% do núcleo já está nos teus decks (12 de 25 cartas)",
+   "detalhe": "pela regra dos 50% (cópias que TENS, como principal) dá 0% hoje — a colecção reconstrói-se pelas fotos. Faltam-lhe: Circle of Protection: Red x1, Coastal Tower x1, Decree of Justice x3, Dust Bowl x2, Fact or Fiction x3, Faerie Conclave x2, Mana Leak x3, Mishra's Factory x4"
+  }
+ ]
+}

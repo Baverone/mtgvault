@@ -124,6 +124,14 @@ COMBO_DEFAULT = [
      "none": ["Argothian Enchantress", "Enchantress's Presence"]},
     {"nome": "Enchantress", "grau": "prisao",
      "any": ["Argothian Enchantress", "Enchantress's Presence"]},
+    # ANTES DO STIFLENOUGHT (2026-10-16): as listas de Hermit Druid (o «Angry
+    # Ghoul» da fonte) e as de Academy Rector («Great Combo») jogam também o
+    # Dreadnought e caíam em Stiflenought — medido, 4 listas de Hermit Druid. O
+    # Aluren sobe com o Rector porque as duas listas de Aluren que contam jogam
+    # Academy Rector: com o Rector à frente passavam a chamar-se Rector.
+    {"nome": "Angry Ghoul (Hermit Druid)", "grau": "puro", "all": ["Hermit Druid"]},
+    {"nome": "Aluren", "grau": "puro", "all": ["Aluren"]},
+    {"nome": "Academy Rector", "grau": "puro", "all": ["Academy Rector"]},
     {"nome": "Stiflenought", "grau": "puro", "all": ["Phyrexian Dreadnought"]},
     {"nome": "Ill-Gotten Gains", "grau": "puro", "all": ["Ill-Gotten Gains"]},
     # Terrageddon ANTES do Oath (2026-10-16): o deck dele passou a ser o shell
@@ -134,14 +142,25 @@ COMBO_DEFAULT = [
     {"nome": "Oath of Druids", "grau": "puro", "all": ["Oath of Druids"]},
     {"nome": "Stasis", "grau": "prisao", "all": ["Stasis"]},
     {"nome": "Dream Halls", "grau": "puro", "all": ["Dream Halls"]},
-    {"nome": "Aluren", "grau": "puro", "all": ["Aluren"]},
+    # 2026-10-16: 8 listas de Frantic Search + Brain Freeze sem nome nenhum (a
+    # fonte chama «Mono Blue Storm» a duas) e 2 de Balancing Act — combos que
+    # nunca podiam entrar no top-5 por não terem regra. Vêm DEPOIS do Dream Halls,
+    # que joga as mesmas duas cartas.
+    {"nome": "Frantic Storm", "grau": "puro",
+     "all": ["Frantic Search", "Brain Freeze"]},
+    {"nome": "Balancing Tings", "grau": "prisao", "all": ["Balancing Act"]},
     {"nome": "Doomsday", "grau": "puro", "all": ["Doomsday"]},
-    {"nome": "Academy Rector", "grau": "puro", "all": ["Academy Rector"]},
+    # O en-Kor Life joga Daru Spiritualist + Worthy Cause em vez do Test of
+    # Endurance, e escapava à regra (2026-10-16).
     {"nome": "Life / Test of Endurance", "grau": "puro",
-     "any": ["Test of Endurance"]},
+     "any": ["Test of Endurance", "Daru Spiritualist"]},
     {"nome": "Tinker / Academy", "grau": "puro",
      "any": ["Tinker", "Tolarian Academy"]},
-    {"nome": "Reanimator", "grau": "puro", "any": ["Exhume", "Reanimate"]},
+    # SEM Psychatog (2026-10-16): um Psychatog com 1 Reanimate chamava-se
+    # Reanimator. Pô-lo depois do Psychatog partia a regra de as regras que só
+    # nomeiam virem no fim (test_arquetipos); o `none` dá o mesmo resultado.
+    {"nome": "Reanimator", "grau": "puro", "any": ["Exhume", "Reanimate"],
+     "none": ["Psychatog"]},
     {"nome": "Elves / Survival", "grau": "hibrido",
      "all": ["Survival of the Fittest"]},
     # SÓ PARA NOMEAR (`combo: false`) — os clássicos do formato que o ranking já
@@ -633,6 +652,183 @@ def contexto(con: sqlite3.Connection, res: dict) -> dict:
     return {"activo": True, **rank, "sugestoes": sugs,
             "reservas": reservas(sugs), "recusadas": recusadas(),
             "limiar": limiar(), "registo": len(registo.arquetipos)}
+
+
+# ---------------------------------------------------------------------------
+# «OUTROS (JOGAM PREMODERN)»: as cartas dos arquétipos que ele NÃO monta
+# (André, 2026-10-16)
+# ---------------------------------------------------------------------------
+# *"Um género de pasta «outros» com cartas que jogam premodern, estão em decks
+# que eu não estou a montar, mas caso eu tenha essas cartas coloco lá as
+# fotografias e já sabes que eu as tenho."* É a ENTRADA da regra de 08/09 deste
+# módulo: a cobertura `pct_principal` conta cópias, e sem saber que cartas de
+# Premodern ele tem fora dos seis decks a sugestão dos 50 % nunca teve dados.
+#
+# O CRITÉRIO é a união dos NÚCLEOS dos arquétipos elegíveis (top-10 de
+# representação ou top-5 de combo) que não são uma caixa dele — e os elegíveis
+# saem do `ranking` de cima, o mesmo que decide a sugestão. Um limiar de
+# popularidade por carta (5 %) foi medido e recusado: a popularidade é dominada
+# pelos decks DELE (Stiflenought, Enchantress e Terrageddon são um terço das
+# listas) e só cobria um terço do núcleo dos Goblins. E um classificador ao lado
+# do `ranking` era uma segunda resposta a «qual é o top-10» — a lição do
+# `event_tier`.
+NUCLEO_PCT = 50
+
+
+def outros_config() -> dict:
+    v = config().get("outros")
+    return v if isinstance(v, dict) else {}
+
+
+def nucleo_pct() -> int:
+    try:
+        v = outros_config().get("nucleo_pct")
+        return NUCLEO_PCT if v is None else max(1, min(100, int(v)))
+    except (TypeError, ValueError):
+        return NUCLEO_PCT
+
+
+def alvos_outros(rank: dict) -> list[dict]:
+    """Os arquétipos cujo núcleo vai para a pasta: os ELEGÍVEIS do `ranking` que
+    não são caixa, mais os que ele `incluir` à mão, menos os que `excluir` (por
+    nome, normalizado). Pela ordem do ranking."""
+    cfg = outros_config()
+    inc = {chave_nome(n) for n in cfg.get("incluir") or []}
+    exc = {chave_nome(n) for n in cfg.get("excluir") or []}
+    return [c for c in rank.get("todos") or []
+            if c.get("estado") != "caixa" and chave_nome(c["nome"]) not in exc
+            and (c.get("elegivel") or chave_nome(c["nome"]) in inc)]
+
+
+def nucleo_das_listas(listas: list[dict[str, int]], pct: int | None = None
+                      ) -> dict[str, tuple[float, int]]:
+    """`carta -> (fracção das listas, cópias)` das cartas em `pct` % ou mais das
+    listas (main + side somados em cada lista; básicas fora). As cópias são a
+    MEDIANA entre as listas que jogam a carta, arredondada para cima e com o
+    tecto do playset — é o que um deck dessas listas pede."""
+    import math                                             # noqa: PLC0415
+    import statistics                                       # noqa: PLC0415
+    pct = nucleo_pct() if pct is None else pct
+    n = len(listas)
+    if not n:
+        return {}
+    pres: dict[str, list[int]] = {}
+    for lst in listas:
+        for nm, q in lst.items():
+            if nm in loadout.BASICS or q <= 0:
+                continue
+            pres.setdefault(nm, []).append(int(q))
+    return {nm: (len(qs) / n, min(4, math.ceil(statistics.median(qs))))
+            for nm, qs in pres.items() if 100 * len(qs) >= pct * n}
+
+
+def listas_do_arquetipo(con: sqlite3.Connection, aids: list[int]
+                        ) -> list[dict[str, int]]:
+    """As listas que CONTAM destes `archetypes` (o mesmo `counting_sql` do
+    `foil_report`), cada uma como `carta -> cópias` (main + side)."""
+    if not aids:
+        return []
+    conta, cp = sources.counting_sql(FMT, "d")
+    q = ",".join("?" * len(aids))
+    out: dict[int, dict[str, int]] = {}
+    for did, nm, qt in con.execute(
+            f"""SELECT d.id, dc.card_name, dc.quantity FROM decklists d
+                  JOIN decklist_cards dc ON dc.decklist_id = d.id
+                 WHERE d.archetype_id IN ({q}) AND {conta}""", (*aids, *cp)):
+        lst = out.setdefault(did, {})
+        lst[nm] = lst.get(nm, 0) + int(qt or 0)
+    return list(out.values())
+
+
+def cartas_dos_meus_decks(res: dict) -> dict[str, str]:
+    """`chave da carta -> o deck de Premodern que a pede`: as listas das caixas
+    de Premodern e das VERSÕES vivas do formato (`decks_por_formato`)."""
+    from . import scryfall                                   # noqa: PLC0415
+    out: dict[str, str] = {}
+    for s in caixas_do_formato(res):
+        for m in list(s.get("have") or []) + list(s.get("missing") or []):
+            out.setdefault(scryfall.chave(m["nm"]), s.get("nome") or s["slot"])
+    cfg = sources.config()
+    le = cfg.get("listas_escolhidas") or {}
+    for v in ((cfg.get("decks_por_formato") or {}).get(FMT) or {}).get("versoes") or []:
+        if isinstance(v, dict) and not v.get("_saiu") and isinstance(le.get(v.get("id")), dict):
+            for c in le[v["id"]].get("cards") or []:
+                if isinstance(c, (list, tuple)) and len(c) >= 3:
+                    out.setdefault(scryfall.chave(c[1]), str(v.get("nome") or v["id"]))
+    return out
+
+
+def uniao_dos_nucleos(nucleos: list[tuple[str, dict]], dos_decks: dict[str, str]
+                      ) -> dict[str, dict]:
+    """`carta -> {q, arquetipos, pct}`: a união dos núcleos, sem o que um deck
+    dele pede. A quantidade é o MÁXIMO entre os arquétipos (são alternativas, e o
+    playset é o tecto) — a mesma regra das `reservas`."""
+    from . import scryfall                                   # noqa: PLC0415
+    out: dict[str, dict] = {}
+    for nome, nu in nucleos:
+        for nm, (fr, q) in nu.items():
+            if scryfall.chave(nm) in dos_decks:
+                continue
+            e = out.setdefault(nm, {"q": 0, "arquetipos": [], "pct": 0})
+            e["q"] = max(e["q"], q)
+            e["pct"] = max(e["pct"], round(100 * fr))
+            if nome not in e["arquetipos"]:
+                e["arquetipos"].append(nome)
+    return dict(sorted(out.items()))
+
+
+def outros(con: sqlite3.Connection, res: dict) -> dict:
+    """O que vai para a pasta «Outros (jogam Premodern)», e o porquê de cada um.
+
+    `{alvos: [{nome, n_lists, combo, nucleo, nos_meus_decks, pct_nos_meus_decks,
+    faltam, pct_principal}], cartas: {carta: {q, arquetipos, pct}}, nucleo_pct}`.
+    `pct_nos_meus_decks` é a fracção do núcleo (em CARTAS) que um deck dele já
+    pede; `pct_principal` é a regra dos 50 % a sério (cópias, como principal) —
+    as duas ficam lado a lado porque a primeira diz quão perto o deck está e a
+    segunda o que ele já TEM.
+    """
+    from . import scryfall                                   # noqa: PLC0415
+    ctx = res.get("premodern") or {}
+    rank = ctx if ctx.get("todos") else ranking(con, res)
+    pct = nucleo_pct()
+    dos_decks = cartas_dos_meus_decks(res)
+    alvos, nucleos = [], []
+    for c in alvos_outros(rank):
+        nu = nucleo_das_listas(listas_do_arquetipo(con, c.get("ids") or []), pct)
+        ja = sorted(nm for nm in nu if scryfall.chave(nm) in dos_decks)
+        alvos.append({"nome": c["nome"], "n_lists": c["n_lists"],
+                      "combo": bool(c.get("combo")), "nucleo": len(nu),
+                      "nos_meus_decks": len(ja),
+                      "pct_nos_meus_decks": round(100 * len(ja) / len(nu)) if nu else 0,
+                      "faltam": sorted((nm, q) for nm, (_f, q) in nu.items()
+                                       if nm not in ja),
+                      "pct_principal": c.get("pct_principal", 0),
+                      "top": bool(c.get("top")), "top_combo": bool(c.get("top_combo"))})
+        nucleos.append((c["nome"], nu))
+    return {"alvos": alvos, "cartas": uniao_dos_nucleos(nucleos, dos_decks),
+            "nucleo_pct": pct, "limiar": limiar()}
+
+
+def valores_outros(con: sqlite3.Connection, res: dict, o: dict,
+                   rl: set[str] | list[str] = ()) -> dict[str, dict]:
+    """`carta -> {unit, set, sid, rl}`: o preço de REFERÊNCIA de cada carta da
+    pasta, numa impressão CONCRETA (`sid`) — a mais barata que uma caixa de
+    Premodern aceita, que é a mesma régua do `unit_serve` da lista de faltas.
+
+    Não é o valor de uma cópia dele, e diz-se: ele ainda não tem nenhuma destas
+    (a colecção esvaziou-se a 13/10), e sem cópia não há impressão exacta. Quando
+    a foto entrar, o valor da cópia passa a ser o da impressão DELA, pela conta
+    de sempre (`collection.valor_da_coleccao`)."""
+    caixa = next(iter(caixas_do_formato(res)), None)
+    out: dict[str, dict] = {}
+    rl = set(rl)
+    cache: dict = {}
+    for nm in o.get("cartas") or {}:
+        v = (loadout.mais_barata_que_serve(con, caixa, nm, cache=cache)
+             if caixa else {"unit": None, "set": None, "sid": None})
+        out[nm] = {"unit": v.get("unit"), "set": v.get("set"), "sid": v.get("sid"),
+                   "rl": nm in rl}
+    return out
 
 
 # ---------------------------------------------------------------------------

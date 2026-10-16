@@ -105,6 +105,11 @@
     "sugerir_a_partir_de_pct": 50,
     "min_listas": 5,
     "sugestoes_recusadas": {},
+    "outros": {
+      "nucleo_pct": 50,
+      "incluir": [],
+      "excluir": []
+    },
     "combo_arquetipos": [
       {
         "nome": "Full English Breakfast",
@@ -131,6 +136,27 @@
         "any": [
           "Argothian Enchantress",
           "Enchantress's Presence"
+        ]
+      },
+      {
+        "nome": "Angry Ghoul (Hermit Druid)",
+        "grau": "puro",
+        "all": [
+          "Hermit Druid"
+        ]
+      },
+      {
+        "nome": "Aluren",
+        "grau": "puro",
+        "all": [
+          "Aluren"
+        ]
+      },
+      {
+        "nome": "Academy Rector",
+        "grau": "puro",
+        "all": [
+          "Academy Rector"
         ]
       },
       {
@@ -177,10 +203,18 @@
         ]
       },
       {
-        "nome": "Aluren",
+        "nome": "Frantic Storm",
         "grau": "puro",
         "all": [
-          "Aluren"
+          "Frantic Search",
+          "Brain Freeze"
+        ]
+      },
+      {
+        "nome": "Balancing Tings",
+        "grau": "prisao",
+        "all": [
+          "Balancing Act"
         ]
       },
       {
@@ -191,17 +225,11 @@
         ]
       },
       {
-        "nome": "Academy Rector",
-        "grau": "puro",
-        "all": [
-          "Academy Rector"
-        ]
-      },
-      {
         "nome": "Life / Test of Endurance",
         "grau": "puro",
         "any": [
-          "Test of Endurance"
+          "Test of Endurance",
+          "Daru Spiritualist"
         ]
       },
       {
@@ -218,6 +246,9 @@
         "any": [
           "Exhume",
           "Reanimate"
+        ],
+        "none": [
+          "Psychatog"
         ]
       },
       {
@@ -291,6 +322,7 @@
     ]
   },
   "_premodern": "PREMODERN: O QUE MONTAR A SEGUIR COM O QUE SOBRA, E VENDER O RESTO (André, 2026-09-08, à letra): 'O que não estiver a ser usado em Premodern e se encaixe na regra do Premodern deve ser sugerido para venda. Antes disso, procura decklists do formato; se o deck for top-10 de representação ou top-5 decks combo do formato, sugere a lista para montar o deck caso eu tenha pelo menos 50 % das cartas (sem contar com as básicas para a %); se não, envia para vender.' Chaves: 'top_representados' (quantos arquétipos entram pelo nº de listas que CONTAM — a regra de sempre, sources.counting_sql), 'top_combo' (quantos entram por serem combo, mesmo que não cheguem ao top-10), 'sugerir_a_partir_de_pct' (a partir de que cobertura um candidato passa a SUGESTÃO com botão «vou montar este»), 'min_listas' (abaixo disto o consenso é ruído), 'sugestoes_recusadas' (o «não quero este»: nome do arquétipo -> data; as cartas dele libertam-se para a venda no mesmo dia) e 'combo_arquetipos'. A COBERTURA mede-se sobre as cópias que a alocação NÃO deu a nenhuma caixa (nem às de Premodern nem a uma já escolhida): medi-la sobre a colecção inteira dava percentagens altas e falsas, porque as cartas estão dentro de decks montados — uma sugestão que conta com elas está a mandar desmontar um deck para montar outro. Consequência a saber: com seis caixas de Premodern a alocar primeiro sobra pouco, e é normal um candidato interessante aparecer nos 30-40%. As páginas mostram os dois números (o que sobra e o total). 'combo_arquetipos' classifica e NOMEIA por REGRA sobre a lista de consenso, com as mesmas três chaves do archetype_rules.json ('all' = tem todas, 'any' = basta uma, 'none' = não pode ter nenhuma) e o mesmo motor (tagging). A ORDEM é a prioridade — a primeira que bate ganha —, e não é decoração: o Full English Breakfast joga Survival of the Fittest e, escrito depois do Elves/Survival, chamava-se Elves/Survival. 'grau' = puro (a interacção mata no turno em que resolve) | prisao (tranca o jogo e mata depois) | hibrido (tem também um plano que ganha sozinho); o critério e a lista saíram do relatório work/revisao/premodern-combo.md, sobre 441 listas reais. A regra serve também de nome: o meta_coverage.KNOWN chamava 'Replenish' à Enchantress (que joga 96% de Replenish) e ao UW Replenish, e é o 'none' que os separa. Desde 2026-09-08 há regras que SÓ nomeiam ('combo': false — o Psychatog, o Landstill, os Goblins, o Sligh): dar nome e dizer que é combo são duas decisões diferentes, e sem essa chave o Landstill passava a disputar o top-5 de combo com o Stiflenought. Estão escritas NO FIM da lista de propósito: a primeira que bate ganha, e um deck que também é combo tem de ficar com o nome do combo (as listas de UW Replenish jogam Exalted Angel). 'cor': true põe as cores do núcleo à frente do nome ('Orzhov Exalted Angel'), para os nomes que não implicam a cor — calcula-se em vez de se escrever, senão chamava-se Orzhov a um Exalted Angel mono-branco. ATENÇÃO: esta lista SUBSTITUI a de premodern.COMBO_DEFAULT, não se soma a ela — uma regra acrescentada só ao código fica morta aqui, sem erro nenhum. O test_arquetipos.py tranca as duas.",
+  "_premodern_outros": "A PASTA «OUTROS (JOGAM PREMODERN)» (André, 2026-10-16, à letra): 'para além das cartas que jogam nos decks que estou a montar, quero que me indiques, dentro do premodern, um género de pasta «outros» com cartas que jogam premodern, estão em decks que eu não estou a montar, mas caso eu tenha essas cartas coloco lá as fotografias e já sabes que eu as tenho'. É a ENTRADA da regra de 2026-09-08 aqui ao lado ('_premodern'): sem saber que cartas de Premodern ele tem fora dos seis decks, a sugestão dos 50 % e a venda do resto nunca tiveram dados. CRITÉRIO (c): a UNIÃO DOS NÚCLEOS dos arquétipos do top-10 de representação e do top-5 de combo que NÃO são uma caixa dele — o MESMO 'premodern.ranking' que decide a sugestão, recalculado todas as noites, e não um segundo classificador ao lado. Núcleo = as cartas em 'nucleo_pct' % ou mais das listas que CONTAM desse arquétipo (main + sideboard), com a mediana das cópias (tecto 4); tiram-se as básicas e tudo o que um deck de Premodern dele já pede. 'incluir' / 'excluir' são nomes de arquétipo para ele acrescentar ou tirar à mão sem mexer no ranking (vazios de propósito). A pasta NÃO conta para 'o que falta fotografar' — é 'se tiveres', não 'falta'; uma foto lá dentro prova a carta e NUNCA mexe na alocação (alvo 'outros', diferente dos Extras); uma pasta vazia para sempre é o estado normal. Uma carta que passe a ser pedida por um deck sai daqui e ganha pasta no deck.",
   "metagame_top_n": 3,
   "consenso": {
     "desde": "2026-09-29",

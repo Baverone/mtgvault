@@ -71,10 +71,14 @@ PREFIXO = "site"
 # `familia` (2026-10-13): a pasta de uma FAMÍLIA de decks que partilham cartas
 # (`fotos.familias`) — o nome leva `familia-<id>` e não um slot, porque a foto
 # prova a carta e não diz qual das caixas da família fica com ela.
-TIPOS = ("caixa", "venda", "rl", "coleccao", "familia")
+# `outros` (2026-10-16): a pasta «Outros (jogam Premodern)» — cartas que jogam
+# Premodern em decks que ele NÃO monta. A foto prova a carta e mais nada: ao
+# contrário da `coleccao` (os Extras), não tira a cópia de deck nenhum.
+TIPOS = ("caixa", "venda", "rl", "coleccao", "familia", "outros")
 FAMILIA = "familia"
 # O que vai no nome para cada alvo que não é caixa (uma caixa vai pelo slot).
-_NOME_TIPO = {"venda": "venda", "rl": "rl", "coleccao": "colecao"}
+_NOME_TIPO = {"venda": "venda", "rl": "rl", "coleccao": "colecao",
+              "outros": "outros"}
 _TIPO_NOME = {v: k for k, v in _NOME_TIPO.items()}
 # Quantas fotos num pedido, e quanto pode pesar o pedido inteiro (o telemóvel
 # manda várias de 3–5 MB de uma vez).

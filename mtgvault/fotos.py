@@ -534,6 +534,7 @@ def escrever_planos(con, res: dict, cfg: dict | None = None,
         mapa = mapa_pastas(cfg)
         conhecidas = ({_norm(g) for g in PASTAS_DE_GRUPO}
                       | {_norm(g) for g in PASTAS_FORA_DOS_DECKS}
+                      | {_norm(PASTA_OUTROS)}
                       | {_norm(f["pasta"]) for f in fams})
         for d in sorted(x for x in base.iterdir() if x.is_dir()):
             if d.name.startswith("_") or _norm(d.name) in conhecidas:
@@ -663,6 +664,8 @@ def pasta_do_alvo(alvo: dict | None, raiz: Path | str | None = None) -> Path:
         return base / (f["pasta"] if f else SEM_ALVO)
     if alvo["tipo"] == ALVO_FORA_DOS_DECKS:
         return base / PASTAS_FORA_DOS_DECKS[0]
+    if alvo["tipo"] == ALVO_OUTROS:
+        return base / PASTA_OUTROS
     return base / str(alvo["tipo"])
 
 
@@ -982,6 +985,22 @@ ALVO_FORA_DOS_DECKS = "coleccao"
 # linha por família: `{id, pasta, slots}`. Uma caixa de uma família deixa de
 # ganhar pasta própria no `garantir_pastas` — a dela é a da família.
 ALVO_FAMILIA = "familia"
+# A PASTA «OUTROS (JOGAM PREMODERN)» (André, 2026-10-16, à letra: *"um género de
+# pasta «outros» com cartas que jogam premodern, estão em decks que eu não estou
+# a montar, mas caso eu tenha essas cartas coloco lá as fotografias e já sabes
+# que eu as tenho"*). Uma subpasta por carta, SEM `(N)` — nenhum deck as pede,
+# logo não há quantidade a pedir; ele fotografa o que tem, até ao playset.
+#
+# É um alvo PRÓPRIO (`outros`) e não os Extras, de propósito: nos Extras a foto
+# diz «está fora dos decks» e tira a alocação (`confirmado.alvo_da_pasta`); aqui
+# diz só «tenho esta carta». A cópia nasce sem deck e passa pela regra de
+# guardar/vender como qualquer outra.
+#
+# E NÃO CONTA PARA «O QUE FALTA FOTOGRAFAR»: é «se tiveres», não «falta». O
+# `contas_das_pastas` salta-a e o daily conta-a numa linha à parte
+# (`sincronizar_outros`). Uma pasta destas vazia para sempre é o estado normal.
+PASTA_OUTROS = "Outros (jogam Premodern)"
+ALVO_OUTROS = "outros"
 # Quanto tempo uma foto tem de estar quieta antes de se mexer nela. Uma foto
 # que ainda está a ser copiada (do telemóvel, da app do GitHub) movia-se a
 # meio. O `mtg-fotos-novas` tem a sua própria regra de 2 min sobre o mtime, e o
@@ -1119,6 +1138,8 @@ def alvo_da_pasta(caminho: Path | str, cfg: dict | None = None,
         return None                        # está na pasta-mãe: não tem alvo
     if _norm(resto[0]) in {_norm(p) for p in PASTAS_FORA_DOS_DECKS}:
         return {"tipo": ALVO_FORA_DOS_DECKS, "slot": None}
+    if _norm(resto[0]) == _norm(PASTA_OUTROS):
+        return {"tipo": ALVO_OUTROS, "slot": None}
     for f in familias(cfg):
         if _norm(resto[0]) == _norm(f["pasta"]):
             return {"tipo": ALVO_FAMILIA, "slot": None, "familia": f["id"],
@@ -1715,7 +1736,8 @@ def contas_das_pastas(res: dict, cfg: dict | None = None,
     # `_versoes_por_pasta` é a mesma conta, achatada, para quem apaga; aqui
     # quer-se o NOME da versão, para a frase das contas.
     for d in sorted(x for x in base.iterdir() if x.is_dir()):
-        if d.name.startswith("_"):
+        # A pasta «Outros» não é plano nenhum: conta-se à parte (2026-10-16).
+        if d.name.startswith("_") or _norm(d.name) == _norm(PASTA_OUTROS):
             continue
         quer = {str(nm).translate(_SEGURO).casefold() for nm in pede.get(d.name, {})}
         for x in sorted(y for y in d.iterdir() if y.is_dir()):
@@ -1779,3 +1801,128 @@ def texto_das_contas(c: dict, por_pedir: int) -> str:
         # carta já provada que não se apagou (tem fotos): diz-se o número.
         t += f" (pastas do plano no disco: {c['no_plano']})"
     return t
+
+
+# ---------------------------------------------------------------------------
+# A PASTA «OUTROS (JOGAM PREMODERN)» (André, 2026-10-16)
+# ---------------------------------------------------------------------------
+def reservadas(con, nomes) -> set[str]:
+    """Os nomes da lista que são Reserved List (`catalog.cards.reserved`)."""
+    nomes = sorted(set(nomes))
+    if not nomes:
+        return set()
+    q = ",".join("?" * len(nomes))
+    return {r[0] for r in con.execute(
+        f"SELECT DISTINCT name FROM cards WHERE reserved = 1 AND name IN ({q})", nomes)}
+
+
+def nomes_que_tem(con) -> set[str]:
+    """As chaves das cartas de que ele tem alguma cópia jogável — essas já estão
+    na base, e a pasta delas não volta."""
+    from . import collection, scryfall                      # noqa: PLC0415
+    return {scryfall.chave(r[0]) for r in con.execute(
+        f"""SELECT DISTINCT c.name FROM copies cp JOIN cards c
+              ON c.scryfall_id = cp.scryfall_id WHERE {collection.jogaveis()}""")}
+
+
+def texto_outros(o: dict, pedidas: dict[str, str], rl: set[str]) -> str:
+    """O `_plano.txt` da pasta «Outros»: o que é, porque não é «falta», e as
+    cartas com os arquétipos de onde vêm."""
+    linhas = [f"OUTROS (JOGAM PREMODERN) -- {len(pedidas)} cartas",
+              "=" * 60, "",
+              "As tuas palavras (16/10/2026): \"caso eu tenha essas cartas coloco la",
+              "as fotografias e ja sabes que eu as tenho\".", "",
+              "ISTO NAO E «FALTA FOTOGRAFAR». Sao cartas que jogam Premodern em",
+              "decks que NAO estas a montar. Se tiveres alguma, larga a foto na pasta",
+              "dela: entra na base SEM DECK (e posse, nao alocacao -- nao tira nada",
+              "de deck nenhum) e passa pela regra guardar/vender como qualquer",
+              "outra. Se nao tiveres, a pasta fica vazia para sempre, e esta bem.",
+              "Fotografa o que tens, ate ao playset; as pastas nao levam (N).", "",
+              "DE ONDE VEM: o nucleo (as cartas em %d %% ou mais das listas) dos" % o["nucleo_pct"],
+              "arquetipos do top-10 de representacao e do top-5 de combo que nao sao",
+              "decks teus -- recalculado todas as noites. Uma carta que passe a ser",
+              "pedida por um deck teu sai daqui e ganha pasta no deck.", ""]
+    for a in o["alvos"]:
+        linhas.append(f"  {a['nome']}: {a['n_lists']} listas, nucleo de {a['nucleo']} cartas, "
+                      f"{a['pct_nos_meus_decks']}% ja nos teus decks")
+    linhas += ["", "AS CARTAS (copias que esses decks jogam · arquetipos · % das listas)",
+               "-" * 60]
+    for nm, e in sorted(o["cartas"].items()):
+        if nm not in pedidas:
+            continue
+        linhas.append(f"  {nm} -- ate {e['q']} · {', '.join(e['arquetipos'])} · "
+                      f"{e['pct']}%" + (" [RL]" if nm in rl else ""))
+    ja = sorted(nm for nm in o["cartas"] if nm not in pedidas)
+    if ja:
+        linhas += ["", "Ja na base (a pasta nao volta): " + ", ".join(ja)]
+    return "\n".join(linhas) + "\n"
+
+
+def sincronizar_outros(con, res: dict, *, raiz: Path | str | None = None,
+                       outros: dict | None = None,
+                       pendentes: Path | str | None = None) -> dict:
+    """A pasta «Outros (jogam Premodern)» alinhada com o critério de HOJE.
+
+    * **cria** a pasta `<carta>` (sem `(N)`) de cada carta do núcleo dos alvos
+      que ele ainda não tem na base;
+    * **apaga** a VAZIA de uma carta que deixou de ser pedida aqui — passou a
+      ser de um deck dele (o Armageddon que entrou no Terrageddon), saiu do
+      top-10, ou já está na base. Só pelo `apagar_pasta_feita`: com uma imagem
+      lá dentro nada lhe toca (a permissão de 16/10 é sobre pastas vazias);
+    * escreve o `_plano.txt` com as cartas e de onde vêm.
+
+    Nada disto conta para «o que falta fotografar»: o resultado vai numa linha
+    própria do daily.
+    """
+    from . import fotosite, premodern, scryfall              # noqa: PLC0415
+    out = {"pasta": PASTA_OUTROS, "cartas": 0, "pedidas": 0, "ja_tens": 0,
+           "criadas": [], "saiu": [], "ficam_com_fotos": [], "alvos": [],
+           "rl": []}
+    base = pasta_novas(raiz)
+    if not base.is_dir():
+        return out
+    o = outros if outros is not None else premodern.outros(con, res)
+    out["alvos"] = [a["nome"] for a in o["alvos"]]
+    out["cartas"] = len(o["cartas"])
+    tem = nomes_que_tem(con)
+    pedidas = {nm: str(nm).translate(_SEGURO) for nm in o["cartas"]
+               if scryfall.chave(nm) not in tem}
+    out["pedidas"], out["ja_tens"] = len(pedidas), out["cartas"] - len(pedidas)
+    rl = reservadas(con, o["cartas"])
+    out["rl"] = sorted(rl)
+    d = base / PASTA_OUTROS
+    d.mkdir(parents=True, exist_ok=True)
+    if not (d / ".gitkeep").exists():
+        (d / ".gitkeep").write_text("", encoding="ascii")
+    feitos = pasta_processados(raiz) / PASTA_OUTROS
+    feitos.mkdir(parents=True, exist_ok=True)
+    pend = Path(pendentes) if pendentes else fotosite.pasta_pendentes(raiz)
+    em_espera = {str(v.get("rel") or "") for v in ler_origens(pend).values()}
+    quer = {p.casefold() for p in pedidas.values()}
+    for x in sorted(y for y in d.iterdir() if y.is_dir()):
+        if x.name.startswith("_") or x.name.casefold() in quer:
+            continue
+        rel = f"{PASTA_OUTROS}/{x.name}"
+        if rel in em_espera:
+            continue
+        if apagar_pasta_feita(x, base):
+            out["saiu"].append(x.name)
+        elif tem_imagens(x):
+            out["ficam_com_fotos"].append(x.name)
+    existentes = {y.name.casefold() for y in d.iterdir() if y.is_dir()}
+    for nm, p in sorted(pedidas.items()):
+        if p.casefold() not in existentes:
+            (d / p).mkdir(parents=True, exist_ok=True)
+            out["criadas"].append(p)
+    (d / _PLANO).write_text(texto_outros(o, pedidas, rl), encoding="utf-8")
+    return out
+
+
+def texto_outros_linha(r: dict) -> str:
+    """A linha do daily: À PARTE do «por fotografar» dos decks."""
+    return (f"{r['pedidas']} cartas em «{r['pasta']}» (se tiveres; NÃO contam como "
+            f"falta) de {len(r['alvos'])} arquétipos ({', '.join(r['alvos'])}); "
+            f"{r['ja_tens']} já na base; {len(r['criadas'])} pastas criadas, "
+            f"{len(r['saiu'])} saíram"
+            + (f" ({', '.join(r['saiu'][:8])})" if r["saiu"] else "")
+            + (f"; {len(r['ficam_com_fotos'])} com fotos ficam" if r["ficam_com_fotos"] else ""))

@@ -6328,11 +6328,50 @@ numa subpasta, em maiúsculas, HEIC — ficam; e o `fotos.py` não ganha um
   `_plano.txt`): **nunca serviu para reconhecer nomes** — o `mapa_pastas` sai só
   do `caixas` do config (nome nas duas formas + slot) e as pastas `_…` são
   saltadas pela recolha (uma foto lá dentro é dita como erro, não processada).
+- **A pasta «Outros (jogam Premodern)» é a excepção**: as pastas de carta dela
+  não levam `(N)` e o `contas_das_pastas` salta-a — ver a secção a seguir.
 - **O gerador de ponta a ponta, sobre a árvore sem uma imagem**: 0 criadas, 0
   apagadas, **41 com o `(N)` acertado** às listas de hoje (os consensos de
   Premodern, o Legacy novo, o Pioneer); **618 pastas de carta**, 595 no plano +
   23 de versões, 0 por explicar. Fica o `_teste da camara\` (a calibração da
   câmara, outra ordem).
+
+**A PASTA «OUTROS (JOGAM PREMODERN)»: SE TIVERES, NÃO É FALTA (André,
+2026-10-16, à letra).** *"um género de pasta «outros» com cartas que jogam
+premodern, estão em decks que eu não estou a montar, mas caso eu tenha essas
+cartas coloco lá as fotografias e já sabes que eu as tenho"*. É a ENTRADA da
+regra dos 50 % de 08/09 (`_premodern`), que nunca teve dados. Motor em
+`premodern.outros` (`alvos_outros`/`nucleo_das_listas`/`uniao_dos_nucleos`/
+`cartas_dos_meus_decks`/`valores_outros`) e `fotos.sincronizar_outros`; alvo
+novo `outros` (`fotos.ALVO_OUTROS`, `fotosite.TIPOS`); passo `outros-premodern`
+do `daily` (depois do `fotos-plano`); `data/painel/outros-premodern.json` +
+`premodern-fora-dos-decks.txt`; config `premodern.outros` + `_premodern_outros`.
+Testes em `tests/test_outros_premodern.py` (4 casos).
+- **O CRITÉRIO é a união dos NÚCLEOS** (≥ `nucleo_pct` = 50 % das listas que
+  contam, main + side, mediana das cópias, tecto 4) **dos ELEGÍVEIS do
+  `premodern.ranking`** (top-10 ou top-5 combo) que não são caixa, menos o que um
+  deck de Premodern dele pede e menos as básicas. O mesmo `ranking` que decide a
+  sugestão — não um segundo classificador: a análise de fora de 16/10 propunha
+  «cinco alvos + Sligh, sem o FEB», e o ranking do vault dá **Pyrostatic Pillar,
+  Graveborn Muse, Psychatog, Landstill, Goblins e Full English Breakfast** (o
+  FEB é 10.º e 5.º de combo; o Sligh tem 8 listas e é 15.º — as listas dele estão
+  no cluster do Pillar). `incluir`/`excluir` no config são a maçaneta, vazios.
+  Medido a 16/10: **81 cartas / 216 cópias**.
+- **NÃO CONTA COMO FALTA**: o `contas_das_pastas` salta a pasta, o daily conta-a
+  numa linha própria — «por fotografar» **595 antes e depois**. As pastas de
+  carta não levam `(N)`; não é órfã (`escrever_planos`); uma vazia de uma carta
+  que um deck passou a pedir sai (só pelo `apagar_pasta_feita`); a de uma carta
+  que ele já tem não nasce. O Armageddon, a Secluded Steppe e o Weathered
+  Wayfarer estão no Terrageddon e não aqui.
+- **A FOTO NÃO MEXE NA ALOCAÇÃO** (`confirmado.alvo_da_pasta` → `(False, None)`),
+  ao contrário dos Extras, que a tiram. Frente só, como os Extras.
+- **REGRAS DE COMBO (16/10, código e config pela mesma ordem)**: «Angry Ghoul
+  (Hermit Druid)», Aluren e Academy Rector antes do Stiflenought (o Aluren sobe
+  porque as duas listas dele jogam Rector); «Frantic Storm» (Frantic Search +
+  Brain Freeze) e «Balancing Tings» depois do Dream Halls; o Life aceita Daru
+  Spiritualist; o Reanimator leva `none: ["Psychatog"]` em vez de descer para
+  depois do Psychatog (descer partia a regra de as só-de-nome virem no fim). O
+  ranking não mexeu.
 
 ### Duas bases de dados
 

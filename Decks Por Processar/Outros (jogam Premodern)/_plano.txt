@@ -1,0 +1,108 @@
+OUTROS (JOGAM PREMODERN) -- 81 cartas
+============================================================
+
+As tuas palavras (16/10/2026): "caso eu tenha essas cartas coloco la
+as fotografias e ja sabes que eu as tenho".
+
+ISTO NAO E «FALTA FOTOGRAFAR». Sao cartas que jogam Premodern em
+decks que NAO estas a montar. Se tiveres alguma, larga a foto na pasta
+dela: entra na base SEM DECK (e posse, nao alocacao -- nao tira nada
+de deck nenhum) e passa pela regra guardar/vender como qualquer
+outra. Se nao tiveres, a pasta fica vazia para sempre, e esta bem.
+Fotografa o que tens, ate ao playset; as pastas nao levam (N).
+
+DE ONDE VEM: o nucleo (as cartas em 50 % ou mais das listas) dos
+arquetipos do top-10 de representacao e do top-5 de combo que nao sao
+decks teus -- recalculado todas as noites. Uma carta que passe a ser
+pedida por um deck teu sai daqui e ganha pasta no deck.
+
+  Pyrostatic Pillar: 45 listas, nucleo de 16 cartas, 6% ja nos teus decks
+  Mono-Preto Graveborn Muse: 26 listas, nucleo de 19 cartas, 16% ja nos teus decks
+  Psychatog: 24 listas, nucleo de 20 cartas, 55% ja nos teus decks
+  Landstill: 19 listas, nucleo de 25 cartas, 48% ja nos teus decks
+  Goblins: 18 listas, nucleo de 23 cartas, 35% ja nos teus decks
+  Full English Breakfast: 16 listas, nucleo de 38 cartas, 34% ja nos teus decks
+
+AS CARTAS (copias que esses decks jogam · arquetipos · % das listas)
+------------------------------------------------------------
+  Accumulated Knowledge -- ate 4 · Psychatog · 79%
+  Akroma, Angel of Wrath -- ate 1 · Full English Breakfast · 100%
+  Animate Dead -- ate 1 · Full English Breakfast · 100%
+  Battlefield Scrounger -- ate 1 · Full English Breakfast · 100%
+  Black Vise -- ate 4 · Pyrostatic Pillar · 64%
+  Cabal Therapy -- ate 4 · Mono-Preto Graveborn Muse, Full English Breakfast · 100%
+  Circle of Protection: Red -- ate 1 · Landstill · 79%
+  Coastal Tower -- ate 1 · Landstill · 84%
+  Cursed Scroll -- ate 3 · Mono-Preto Graveborn Muse · 77% [RL]
+  Decree of Justice -- ate 3 · Landstill · 100%
+  Diabolic Edict -- ate 2 · Mono-Preto Graveborn Muse · 96%
+  Drain Life -- ate 2 · Mono-Preto Graveborn Muse · 73%
+  Duress -- ate 4 · Mono-Preto Graveborn Muse, Psychatog, Full English Breakfast · 100%
+  Dust Bowl -- ate 2 · Landstill · 100%
+  Dystopia -- ate 3 · Mono-Preto Graveborn Muse · 100% [RL]
+  Eladamri's Vineyard -- ate 2 · Full English Breakfast · 62%
+  Elvish Spirit Guide -- ate 2 · Full English Breakfast · 100%
+  Engineered Plague -- ate 4 · Mono-Preto Graveborn Muse, Psychatog · 100%
+  Enlightened Tutor -- ate 1 · Full English Breakfast · 75%
+  Fact or Fiction -- ate 3 · Psychatog, Landstill · 100%
+  Faerie Conclave -- ate 2 · Landstill · 89%
+  Fireblast -- ate 4 · Pyrostatic Pillar · 100%
+  Flame Rift -- ate 4 · Pyrostatic Pillar · 53%
+  Flaring Pain -- ate 3 · Pyrostatic Pillar · 60%
+  Gempalm Incinerator -- ate 4 · Goblins · 100%
+  Ghitu Slinger -- ate 1 · Full English Breakfast · 100%
+  Gloom -- ate 3 · Mono-Preto Graveborn Muse · 85%
+  Goblin Goon -- ate 2 · Goblins · 50%
+  Goblin Lackey -- ate 4 · Goblins · 100%
+  Goblin Matron -- ate 4 · Goblins · 100%
+  Goblin Piledriver -- ate 4 · Goblins · 100%
+  Goblin Ringleader -- ate 4 · Goblins · 100%
+  Goblin Sharpshooter -- ate 1 · Goblins · 94%
+  Goblin Tinkerer -- ate 1 · Goblins · 100%
+  Goblin Warchief -- ate 4 · Goblins · 100%
+  Graveborn Muse -- ate 2 · Mono-Preto Graveborn Muse · 100%
+  Grim Lavamancer -- ate 4 · Pyrostatic Pillar · 100%
+  Haunting Echoes -- ate 1 · Psychatog · 50%
+  Hermit Druid -- ate 4 · Full English Breakfast · 100%
+  Hypnotic Specter -- ate 4 · Mono-Preto Graveborn Muse · 100%
+  Incinerate -- ate 4 · Pyrostatic Pillar · 100%
+  Karmic Guide -- ate 1 · Full English Breakfast · 100%
+  Krosan Reclamation -- ate 1 · Full English Breakfast · 100%
+  Lightning Bolt -- ate 4 · Pyrostatic Pillar · 100%
+  Llanowar Wastes -- ate 4 · Full English Breakfast · 100%
+  Mana Leak -- ate 3 · Landstill · 95%
+  Mishra's Factory -- ate 4 · Pyrostatic Pillar, Mono-Preto Graveborn Muse, Landstill · 100%
+  Mogg Fanatic -- ate 4 · Pyrostatic Pillar, Goblins · 100%
+  Mogg Salvage -- ate 4 · Pyrostatic Pillar · 87%
+  Nantuko Shade -- ate 3 · Mono-Preto Graveborn Muse · 77%
+  Overload -- ate 3 · Pyrostatic Pillar, Goblins · 100%
+  Palinchron -- ate 1 · Full English Breakfast · 100% [RL]
+  Phyrexian Devourer -- ate 1 · Full English Breakfast · 100% [RL]
+  Phyrexian Furnace -- ate 2 · Landstill · 84%
+  Price of Progress -- ate 2 · Pyrostatic Pillar · 64%
+  Prohibit -- ate 1 · Landstill · 79%
+  Psychatog -- ate 4 · Psychatog, Full English Breakfast · 100%
+  Pyrokinesis -- ate 3 · Goblins · 89%
+  Pyrostatic Pillar -- ate 4 · Pyrostatic Pillar · 82%
+  Ravenous Rats -- ate 4 · Mono-Preto Graveborn Muse · 100%
+  Reflecting Pool -- ate 3 · Full English Breakfast · 100%
+  Seal of Fire -- ate 4 · Pyrostatic Pillar · 100%
+  Sickening Dreams -- ate 2 · Psychatog · 100%
+  Siege-Gang Commander -- ate 3 · Goblins · 100%
+  Skirk Prospector -- ate 1 · Goblins · 61%
+  Smother -- ate 3 · Mono-Preto Graveborn Muse, Psychatog · 100%
+  Snuff Out -- ate 1 · Mono-Preto Graveborn Muse · 85%
+  Standstill -- ate 3 · Landstill · 95%
+  Sulfuric Vortex -- ate 2 · Pyrostatic Pillar · 93%
+  Teferi's Response -- ate 2 · Landstill · 74%
+  Tranquil Domain -- ate 4 · Goblins · 50%
+  Treva's Ruins -- ate 1 · Full English Breakfast · 88%
+  Triskelion -- ate 1 · Full English Breakfast · 100%
+  Uktabi Orangutan -- ate 1 · Full English Breakfast · 100%
+  Underground River -- ate 3 · Psychatog, Full English Breakfast · 83%
+  Undiscovered Paradise -- ate 1 · Full English Breakfast · 100% [RL]
+  Unearth -- ate 4 · Full English Breakfast · 100%
+  Volrath's Shapeshifter -- ate 2 · Full English Breakfast · 100% [RL]
+  Withered Wretch -- ate 4 · Mono-Preto Graveborn Muse · 100%
+  Wrath of God -- ate 2 · Landstill · 100%
+  Yavimaya Coast -- ate 4 · Full English Breakfast · 100%

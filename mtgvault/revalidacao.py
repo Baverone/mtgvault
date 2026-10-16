@@ -52,7 +52,8 @@ MARCA_SAIU = "saiu da caixa"
 TIPOS = ("caixa", "venda", "rl", "coleccao")
 BALDE_RL = "Caixa Reserved List"
 TITULO = {"venda": "Venda", "rl": "Caixa Reserved List",
-          "coleccao": "Colecção (o resto)"}
+          "coleccao": "Colecção (o resto)",
+          "outros": "Outros (jogam Premodern) — prova a carta, não mexe na alocação"}
 # O TIPO DE ALVO E O GRUPO DA PARTIÇÃO TÊM NOMES DIFERENTES, e a tradução vive
 # AQUI, num sítio só (2026-10-02). O alvo chama-lhe `coleccao` e a `particao`
 # chama-lhe `resto` — e havia TRÊS sítios a traduzir à mão (o `progresso`, a
@@ -63,7 +64,10 @@ TITULO = {"venda": "Venda", "rl": "Caixa Reserved List",
 # fora dos decks. Uma carta dos «Extras» fotografada noutra edição criava uma
 # cópia nova em vez de corrigir a que lá está. É o padrão do `event_tier`: nenhum
 # passo dá erro.
-GRUPO_DO_TIPO = {"venda": "venda", "rl": "rl", "coleccao": "resto"}
+GRUPO_DO_TIPO = {"venda": "venda", "rl": "rl", "coleccao": "resto",
+                 # Uma carta da pasta «Outros» não é de deck nenhum: o passo (0)
+                 # prefere as cópias que estão fora das caixas (2026-10-16).
+                 "outros": "resto"}
 
 
 # ---------------------------------------------------------------------------

@@ -485,6 +485,12 @@ def alvo_da_pasta(photo_path: str | None) -> tuple[bool, str | None]:
     # pôr na de Modern só porque foi fotografada na pasta comum.
     if o["tipo"] == fotos.ALVO_FAMILIA:
         return False, None
+    # A PASTA «OUTROS (JOGAM PREMODERN)» TAMBÉM NÃO DECIDE (2026-10-16). Ao
+    # contrário dos Extras — onde a foto diz «está FORA dos decks» e por isso
+    # tira a alocação —, aqui a foto só diz «tenho esta carta»: é posse, não
+    # sítio. Tratá-la como os Extras tirava de um deck uma cópia que ele lá tem.
+    if o["tipo"] == fotos.ALVO_OUTROS:
+        return False, None
     return False, None
 
 

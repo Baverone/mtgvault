@@ -753,6 +753,24 @@ def main():
 
         _step(con, "fotos-plano", _fotos_plano)
 
+        # A PASTA «OUTROS (JOGAM PREMODERN)» (André, 2026-10-16): as cartas dos
+        # arquétipos do top-10 / top-5 combo que ele não monta, para ele as
+        # fotografar se as tiver. Linha PRÓPRIA, de propósito: não é «por
+        # fotografar» — é «se tiveres». Corre depois do `meus-decks`, dos
+        # consensos e do `fotos-plano`, com o MESMO relatório: uma carta que um
+        # deck passou a pedir sai daqui na mesma noite em que ganha pasta no deck.
+        def _outros_premodern():
+            from mtgvault import fotos as _fotos            # noqa: PLC0415
+            from mtgvault import premodern as _pm           # noqa: PLC0415
+            rep = _rep.get("v") or loadout.report(con)
+            o = _pm.outros(con, rep)
+            r = _fotos.sincronizar_outros(con, rep, outros=o)
+            painel.escrever_outros(o, _pm.valores_outros(con, rep, o, r["rl"]))
+            painel.escrever(con)                       # junta os avisos de hoje
+            return _fotos.texto_outros_linha(r)
+
+        _step(con, "outros-premodern", _outros_premodern)
+
         # O ESTADO DAS CARTAS (André, 2026-10-03). Dois gestos, e nenhum deles
         # mexe num número: (1) marcar `omissao` qualquer cópia que tenha nascido
         # sem juízo nenhum — o `NM` de fábrica tem de ficar DITO para não poder

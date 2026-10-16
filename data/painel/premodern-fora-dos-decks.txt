@@ -1,0 +1,98 @@
+PREMODERN - CARTAS DOS ARQUETIPOS QUE NAO MONTAS (2026-10-16)
+Gerado todas as noites (passo outros-premodern). E a lista da pasta
+«Decks Por Processar\Outros (jogam Premodern)». Se tiveres alguma,
+fotografa-a la: entra na base sem deck. NAO e falta.
+
+Criterio: o nucleo (>= 50% das listas que contam) dos
+arquetipos do top-10 de representacao e do top-5 de combo que nao
+sao decks teus, menos o que os teus decks pedem.
+
+  Pyrostatic Pillar             45 listas  nucleo 16    6% ja nos teus decks
+  Mono-Preto Graveborn Muse     26 listas  nucleo 19   16% ja nos teus decks
+  Psychatog                     24 listas  nucleo 20   55% ja nos teus decks
+  Landstill                     19 listas  nucleo 25   48% ja nos teus decks
+  Goblins                       18 listas  nucleo 23   35% ja nos teus decks
+  Full English Breakfast        16 listas  nucleo 38   34% ja nos teus decks
+
+----------------------------------------------------------------------
+  x4  Accumulated Knowledge           79%  Psychatog  ref. 2.18 EUR (NEM)
+  x1  Akroma, Angel of Wrath         100%  Full English Breakfast  ref. 31.00 EUR (LGN)
+  x1  Animate Dead                   100%  Full English Breakfast  ref. 9.49 EUR (3ED)
+  x1  Battlefield Scrounger          100%  Full English Breakfast  ref. 0.42 EUR (JUD)
+  x4  Black Vise                      64%  Pyrostatic Pillar  ref. 4.93 EUR (3ED)
+  x4  Cabal Therapy                  100%  Mono-Preto Graveborn Muse/Full English Breakfast  ref. 26.40 EUR (JUD)
+  x1  Circle of Protection: Red       79%  Landstill  ref. 0.43 EUR (ICE)
+  x1  Coastal Tower                   84%  Landstill  ref. 3.08 EUR (INV)
+  x3  Cursed Scroll                   77%  Mono-Preto Graveborn Muse  ref. 106.27 EUR (TMP)  [RL]
+  x3  Decree of Justice              100%  Landstill  ref. 22.51 EUR (SCG)
+  x2  Diabolic Edict                  96%  Mono-Preto Graveborn Muse  ref. 0.90 EUR (TMP)
+  x2  Drain Life                      73%  Mono-Preto Graveborn Muse  ref. 0.40 EUR (4ED)
+  x4  Duress                         100%  Mono-Preto Graveborn Muse/Psychatog/Full English Breakfast  ref. 4.59 EUR (USG)
+  x2  Dust Bowl                      100%  Landstill  ref. 43.54 EUR (MMQ)
+  x3  Dystopia                       100%  Mono-Preto Graveborn Muse  ref. 82.80 EUR (ALL)  [RL]
+  x2  Eladamri's Vineyard             62%  Full English Breakfast  ref. 6.64 EUR (TMP)
+  x2  Elvish Spirit Guide            100%  Full English Breakfast  ref. 7.60 EUR (ALL)
+  x4  Engineered Plague              100%  Mono-Preto Graveborn Muse/Psychatog  ref. 8.97 EUR (ULG)
+  x1  Enlightened Tutor               75%  Full English Breakfast  ref. 43.34 EUR (MIR)
+  x3  Fact or Fiction                100%  Psychatog/Landstill  ref. 8.79 EUR (INV)
+  x2  Faerie Conclave                 89%  Landstill  ref. 4.59 EUR (ULG)
+  x4  Fireblast                      100%  Pyrostatic Pillar  ref. 4.61 EUR (VIS)
+  x4  Flame Rift                      53%  Pyrostatic Pillar  ref. 1.31 EUR (NEM)
+  x3  Flaring Pain                    60%  Pyrostatic Pillar  ref. 5.09 EUR (JUD)
+  x4  Gempalm Incinerator            100%  Goblins  ref. 2.88 EUR (LGN)
+  x1  Ghitu Slinger                  100%  Full English Breakfast  ref. 0.43 EUR (ULG)
+  x3  Gloom                           85%  Mono-Preto Graveborn Muse  ref. 3.22 EUR (4ED)
+  x2  Goblin Goon                     50%  Goblins  ref. 9.58 EUR (LGN)
+  x4  Goblin Lackey                  100%  Goblins  ref. 31.36 EUR (USG)
+  x4  Goblin Matron                  100%  Goblins  ref. 1.38 EUR (USG)
+  x4  Goblin Piledriver              100%  Goblins  ref. 36.26 EUR (ONS)
+  x4  Goblin Ringleader              100%  Goblins  ref. 5.07 EUR (APC)
+  x1  Goblin Sharpshooter             94%  Goblins  ref. 40.14 EUR (ONS)
+  x1  Goblin Tinkerer                100%  Goblins  ref. 0.75 EUR (MIR)
+  x4  Goblin Warchief                100%  Goblins  ref. 6.59 EUR (SCG)
+  x2  Graveborn Muse                 100%  Mono-Preto Graveborn Muse  ref. 28.50 EUR (LGN)
+  x4  Grim Lavamancer                100%  Pyrostatic Pillar  ref. 21.80 EUR (TOR)
+  x1  Haunting Echoes                 50%  Psychatog  ref. 14.59 EUR (ODY)
+  x4  Hermit Druid                   100%  Full English Breakfast  ref. 19.12 EUR (STH)
+  x4  Hypnotic Specter               100%  Mono-Preto Graveborn Muse  ref. 8.41 EUR (4ED)
+  x4  Incinerate                     100%  Pyrostatic Pillar  ref. 0.44 EUR (5ED)
+  x1  Karmic Guide                   100%  Full English Breakfast  ref. 7.83 EUR (ULG)
+  x1  Krosan Reclamation             100%  Full English Breakfast  ref. 1.60 EUR (JUD)
+  x4  Lightning Bolt                 100%  Pyrostatic Pillar  ref. 3.95 EUR (4ED)
+  x4  Llanowar Wastes                100%  Full English Breakfast  ref. 32.02 EUR (APC)
+  x3  Mana Leak                       95%  Landstill  ref. 1.94 EUR (STH)
+  x4  Mishra's Factory               100%  Pyrostatic Pillar/Mono-Preto Graveborn Muse/Landstill  ref. 13.25 EUR (4ED)
+  x4  Mogg Fanatic                   100%  Pyrostatic Pillar/Goblins  ref. 2.12 EUR (TMP)
+  x4  Mogg Salvage                    87%  Pyrostatic Pillar  ref. 4.08 EUR (NEM)
+  x3  Nantuko Shade                   77%  Mono-Preto Graveborn Muse  ref. 20.89 EUR (TOR)
+  x3  Overload                       100%  Pyrostatic Pillar/Goblins  ref. 3.13 EUR (INV)
+  x1  Palinchron                     100%  Full English Breakfast  ref. 51.27 EUR (ULG)  [RL]
+  x1  Phyrexian Devourer             100%  Full English Breakfast  ref. 48.73 EUR (ALL)  [RL]
+  x2  Phyrexian Furnace               84%  Landstill  ref. 18.96 EUR (WTH)
+  x2  Price of Progress               64%  Pyrostatic Pillar  ref. 10.88 EUR (EXO)
+  x1  Prohibit                        79%  Landstill  ref. 1.60 EUR (INV)
+  x4  Psychatog                      100%  Psychatog/Full English Breakfast  ref. 9.41 EUR (ODY)
+  x3  Pyrokinesis                     89%  Goblins  ref. 6.98 EUR (ALL)
+  x4  Pyrostatic Pillar               82%  Pyrostatic Pillar  ref. 3.79 EUR (SCG)
+  x4  Ravenous Rats                  100%  Mono-Preto Graveborn Muse  ref. 0.61 EUR (INV)
+  x3  Reflecting Pool                100%  Full English Breakfast  ref. 55.59 EUR (TMP)
+  x4  Seal of Fire                   100%  Pyrostatic Pillar  ref. 2.18 EUR (NEM)
+  x2  Sickening Dreams               100%  Psychatog  ref. 14.62 EUR (TOR)
+  x3  Siege-Gang Commander           100%  Goblins  ref. 11.50 EUR (SCG)
+  x1  Skirk Prospector                61%  Goblins  ref. 0.90 EUR (ONS)
+  x3  Smother                        100%  Mono-Preto Graveborn Muse/Psychatog  ref. 4.10 EUR (ONS)
+  x1  Snuff Out                       85%  Mono-Preto Graveborn Muse  ref. 12.19 EUR (MMQ)
+  x3  Standstill                      95%  Landstill  ref. 11.71 EUR (ODY)
+  x2  Sulfuric Vortex                 93%  Pyrostatic Pillar  ref. 5.91 EUR (SCG)
+  x2  Teferi's Response               74%  Landstill  ref. 15.08 EUR (INV)
+  x4  Tranquil Domain                 50%  Goblins  ref. 2.85 EUR (MIR)
+  x1  Treva's Ruins                   88%  Full English Breakfast  ref. 5.05 EUR (PLS)
+  x1  Triskelion                     100%  Full English Breakfast  ref. 5.06 EUR (4ED)
+  x1  Uktabi Orangutan               100%  Full English Breakfast  ref. 3.21 EUR (VIS)
+  x3  Underground River               83%  Psychatog/Full English Breakfast  ref. 10.84 EUR (5ED)
+  x1  Undiscovered Paradise          100%  Full English Breakfast  ref. 39.65 EUR (VIS)  [RL]
+  x4  Unearth                        100%  Full English Breakfast  ref. 2.73 EUR (ULG)
+  x2  Volrath's Shapeshifter         100%  Full English Breakfast  ref. 19.38 EUR (STH)  [RL]
+  x4  Withered Wretch                100%  Mono-Preto Graveborn Muse  ref. 4.94 EUR (LGN)
+  x2  Wrath of God                   100%  Landstill  ref. 7.91 EUR (5ED)
+  x4  Yavimaya Coast                 100%  Full English Breakfast  ref. 33.84 EUR (APC)

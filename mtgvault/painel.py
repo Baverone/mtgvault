@@ -131,7 +131,65 @@ def _cartas_do_nome(deck: str, assinatura: list[str]) -> list[str]:
     return [c for c in assinatura if c.split(",")[0].strip().lower() in low]
 
 
-def construir(con, hoje: str | None = None) -> dict:
+OUTROS = "outros-premodern.json"
+OUTROS_TXT = "premodern-fora-dos-decks.txt"
+
+
+def avisos_outros(o: dict) -> list[dict]:
+    """Os avisos da pasta «Outros (jogam Premodern)» (2026-10-16), gravidade
+    BAIXA: um arquétipo que ele não monta e de que já tem (por CÓPIAS, a regra
+    dos 50 % do `_premodern`) o bastante para ser sugestão, ou cujo núcleo já
+    está quase todo nos decks dele (por NOMES — é perto, não é posse)."""
+    out = []
+    for a in o.get("alvos") or []:
+        faltam = ", ".join(f"{nm} x{q}" for nm, q in a["faltam"][:8])
+        if a["pct_principal"] >= o.get("limiar", 50):
+            out.append({"gravidade": "baixa", "deck": a["nome"],
+                        "aviso": f"tens {a['pct_principal']}% (como principal): candidato a montar",
+                        "detalhe": f"pela regra dos {o.get('limiar', 50)}% do Premodern. Faltam: {faltam}"})
+        elif a["pct_nos_meus_decks"] >= 45:
+            out.append({"gravidade": "baixa", "deck": a["nome"],
+                        "aviso": f"{a['pct_nos_meus_decks']}% do núcleo já está nos teus decks "
+                                 f"({a['nos_meus_decks']} de {a['nucleo']} cartas)",
+                        "detalhe": f"pela regra dos {o.get('limiar', 50)}% (cópias que TENS, como "
+                                   f"principal) dá {a['pct_principal']}% hoje — a colecção "
+                                   f"reconstrói-se pelas fotos. Faltam-lhe: {faltam}"})
+    return out
+
+
+def escrever_outros(o: dict, valores: dict | None = None,
+                    raiz: Path | None = None, hoje: str | None = None) -> Path:
+    """`data/painel/outros-premodern.json` (lido pelo `construir` para os avisos)
+    e o `premodern-fora-dos-decks.txt` legível. Os dois saem do MESMO `o`
+    (`premodern.outros`) que a pasta — a pasta e o ficheiro dizem o mesmo."""
+    hoje = hoje or date.today().isoformat()
+    p = pasta(raiz)
+    valores = valores or {}
+    dados = {"data": hoje, "nucleo_pct": o["nucleo_pct"], "alvos": o["alvos"],
+             "cartas": [{"carta": nm, **e, **(valores.get(nm) or {})}
+                        for nm, e in o["cartas"].items()],
+             "avisos": avisos_outros(o)}
+    _escrever_json(p / OUTROS, dados)
+    linhas = [f"PREMODERN - CARTAS DOS ARQUETIPOS QUE NAO MONTAS ({hoje})",
+              "Gerado todas as noites (passo outros-premodern). E a lista da pasta",
+              "«Decks Por Processar\\Outros (jogam Premodern)». Se tiveres alguma,",
+              "fotografa-a la: entra na base sem deck. NAO e falta.", "",
+              f"Criterio: o nucleo (>= {o['nucleo_pct']}% das listas que contam) dos",
+              "arquetipos do top-10 de representacao e do top-5 de combo que nao",
+              "sao decks teus, menos o que os teus decks pedem.", ""]
+    for a in o["alvos"]:
+        linhas.append(f"  {a['nome']:28s} {a['n_lists']:3d} listas  nucleo {a['nucleo']:2d}  "
+                      f"{a['pct_nos_meus_decks']:3d}% ja nos teus decks")
+    linhas += ["", "-" * 70]
+    for c in dados["cartas"]:
+        v = f"  ref. {c['unit']:.2f} EUR ({c['set']})" if c.get("unit") is not None else ""
+        linhas.append(f"  x{c['q']}  {c['carta']:30s} {c['pct']:3d}%  "
+                      f"{'/'.join(c['arquetipos'])}{v}" + ("  [RL]" if c.get("rl") else ""))
+    (p / OUTROS_TXT).write_text("\n".join(linhas) + "\n", encoding="utf-8")
+    return p / OUTROS
+
+
+def construir(con, hoje: str | None = None, raiz: Path | None = None) -> dict:
     """Os três ficheiros do dia, em memória: {nome: lista}."""
     import my_decks  # noqa: PLC0415  (vive na raiz, como os outros geradores)
 
@@ -227,6 +285,14 @@ def construir(con, hoje: str | None = None) -> dict:
                    "carta partida em varias entradas: " + ", ".join(
                        f"{n} {x:+d}" for _b, n, x in d))
 
+    # Os avisos da pasta «Outros» (2026-10-16) vêm do ficheiro que o passo
+    # `outros-premodern` escreve — que corre DEPOIS deste (precisa do relatório
+    # do loadout) e volta a chamar o `escrever` para os juntar.
+    try:
+        avisos += json.loads((pasta(raiz) / OUTROS).read_text(encoding="utf-8")
+                             ).get("avisos") or []
+    except (OSError, ValueError):
+        pass
     avisos.sort(key=lambda a: (GRAVIDADES.index(a["gravidade"]), a["deck"], a["aviso"]))
     for i, a in enumerate(avisos):
         a["id"] = f"{i:03d}"
@@ -248,7 +314,7 @@ def escrever(con, raiz: Path | None = None, hoje: str | None = None) -> dict:
     contagens, para o `daily` dizer o que ficou escrito."""
     hoje = hoje or date.today().isoformat()
     p = pasta(raiz)
-    dados = construir(con, hoje)
+    dados = construir(con, hoje, raiz)
     for nome, linhas in dados.items():
         _escrever_json(p / nome, linhas)
     _escrever_json(p / "historico" / f"{hoje}.json", dados["alteracoes.json"])
