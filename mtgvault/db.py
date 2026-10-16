@@ -347,6 +347,29 @@ def _migrate(con: sqlite3.Connection) -> None:
                 "ON mtgtop8_eventos(grande, visto_em)")
     con.commit()
 
+    # O HISTÓRICO DAS LISTAS DE REFERÊNCIA (2026-10-16). Igual ao `schema.sql`,
+    # para a base dele, que já existe. Ver `mtgvault/painel.py`.
+    con.execute("""CREATE TABLE IF NOT EXISTS deck_lista_trocas (
+        id               INTEGER PRIMARY KEY,
+        deck_id          INTEGER,
+        deck             TEXT NOT NULL,
+        formato          TEXT NOT NULL,
+        corrida          TEXT NOT NULL,
+        motivo           TEXT NOT NULL DEFAULT 'troca',
+        de_decklist_id   INTEGER,
+        de_jogador       TEXT,
+        de_data          TEXT,
+        de_cartas        TEXT,
+        para_decklist_id INTEGER,
+        para_jogador     TEXT,
+        para_data        TEXT,
+        para_cartas      TEXT,
+        registado_em     TEXT DEFAULT CURRENT_TIMESTAMP
+    )""")
+    con.execute("CREATE INDEX IF NOT EXISTS ix_dlt_corrida "
+                "ON deck_lista_trocas(corrida, deck)")
+    con.commit()
+
     # A POSSE MARCADA À MÃO (2026-10-04, o `+`/`−` da aba Decks). O `schema.sql`
     # cria-a numa base nova; isto é para a base dele, que já existe. As duas
     # definições têm de ser iguais — é a regra do `deck_collection`. Nascem

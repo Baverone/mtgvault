@@ -216,6 +216,32 @@ CREATE TABLE IF NOT EXISTS deck_cards (
     PRIMARY KEY (deck_id, card_name, board)
 );
 
+-- O HISTÓRICO DAS LISTAS DE REFERÊNCIA (2026-10-16). O `my_decks` substitui as
+-- `deck_cards` de um deck seguido quando a lista mais recente muda, e o que
+-- mudou perdia-se. Cada troca fica aqui com as DUAS listas inteiras (JSON de
+-- [board, carta, qty]): os `decklist_id` são só para conferir — a poda de 30
+-- dias apaga as `decklists`, e o histórico tem de sobreviver a ela. Só cresce.
+-- `motivo` = 'troca' (outra lista) | 'releitura' (a mesma lista, relida). O
+-- índice nasce no `db._migrate` (a regra de 2026-09-09 não o exige aqui, mas
+-- fica num sítio só).
+CREATE TABLE IF NOT EXISTS deck_lista_trocas (
+    id               INTEGER PRIMARY KEY,
+    deck_id          INTEGER,
+    deck             TEXT NOT NULL,
+    formato          TEXT NOT NULL,
+    corrida          TEXT NOT NULL,               -- AAAA-MM-DD da corrida
+    motivo           TEXT NOT NULL DEFAULT 'troca',
+    de_decklist_id   INTEGER,
+    de_jogador       TEXT,
+    de_data          TEXT,
+    de_cartas        TEXT,
+    para_decklist_id INTEGER,
+    para_jogador     TEXT,
+    para_data        TEXT,
+    para_cartas      TEXT,
+    registado_em     TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
 -- ---------------------------------------------------------------
 -- DECKLISTS RECOLHIDAS (metagame)
 -- ---------------------------------------------------------------

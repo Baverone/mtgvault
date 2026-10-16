@@ -1054,6 +1054,131 @@ def _jogador_vigiado(con: sqlite3.Connection, fmt: str, player: str) -> bool:
         return True     # base sem tabela `watched`: não se filtra nada
 
 
+def somar_cartas(cards: list[tuple[str, str, int]]) -> list[tuple[str, str, int]]:
+    """Junta as entradas repetidas da mesma carta no mesmo board, SOMANDO.
+
+    **O mtgo.com parte a mesma carta em várias entradas** — uma por impressão
+    (medido a 2026-10-16 na Modern Challenge 64 de 15/10: o howa traz
+    `Tamiyo, Inquisitive Student` 3 + 1 e `Consign to Memory` 3 + 1; o DJK3V1N
+    `Island` 1 + 1 e `Tormod's Crypt` 2 + 2). A chave da `decklist_cards` é
+    (lista, carta, board) e a gravação era `INSERT OR REPLACE`: a ÚLTIMA entrada
+    apagava as outras, sem um único erro. Nesse dia eram **2 050 das 5 060
+    listas do MTGO** curtas (o mtgtop8, que escreve uma linha por carta, zero).
+    A ordem da primeira aparição fica — a do `rowid`, de que o `consenso`
+    deriva o comandante pela ÚLTIMA linha."""
+    tot: dict[tuple[str, str], int] = {}
+    for b, n, q in cards:
+        tot[(b, n)] = tot.get((b, n), 0) + int(q)
+    return [(b, n, q) for (b, n), q in tot.items() if q > 0]
+
+
+def reler_mtgo(con: sqlite3.Connection, *, limite: int | None = None,
+               urls: list[str] | None = None) -> dict:
+    """RELÊ as páginas do mtgo.com das listas que a gravação antiga encurtou
+    (ver `somar_cartas`) e acerta-as no sítio: as cartas, o `content_hash` e —
+    porque com o hash certo a lista passa a coincidir com a re-hospedagem do
+    mtgtop8 — a deduplicação de sempre (`SOURCE_PRIORITY`: fica a do mtgo, e
+    herda o nome do arquétipo, os jogadores e a classificação que a outra
+    trouxesse). Uma página que já não responde não mexe em nada.
+
+    Escolhe as páginas com pelo menos uma lista de um formato construído com o
+    main abaixo de 60 ou o sideboard entre 1 e 14, ou de comandante com menos de
+    100 cartas — um sideboard curto também pode ser a fonte (o ruin000 de 15/10
+    tem 13 na página), e é por isso que se relê e não se adivinha: uma segunda
+    corrida volta a pedir essas páginas e não muda nada. Um pedido por página,
+    com o ritmo do `_get_mtgo`."""
+    if urls is None:
+        cmd = sorted(COMMANDER_FORMATS)
+        ph = ",".join("?" * len(cmd))
+        soma = ("(SELECT COALESCE(SUM(quantity), 0) FROM decklist_cards "
+                "WHERE decklist_id = dl.id{})")
+        urls = [r[0] for r in con.execute(
+            f"""SELECT DISTINCT dl.url FROM decklists dl
+                 WHERE dl.source = 'mtgo' AND dl.url LIKE 'https://www.mtgo.com/%'
+                   AND ((dl.format IN ({ph}) AND {soma.format('')} < 100)
+                     OR (dl.format NOT IN ({ph})
+                         AND ({soma.format(" AND board = 'main'")} < 60
+                              OR {soma.format(" AND board = 'side'")} BETWEEN 1 AND 14)))
+                 ORDER BY dl.url""", cmd + cmd)]
+    if limite is not None:
+        urls = urls[:limite]
+    res = {"paginas": 0, "falhadas": 0, "acertadas": 0, "fundidas": 0,
+           "copias": 0, "ids": []}
+    for url in urls:
+        try:
+            r = _get_mtgo(url)
+            r.raise_for_status()
+            blob = parse_mtgo_page(r.text)
+        except requests.RequestException:
+            blob = None
+        if not blob:
+            res["falhadas"] += 1
+            continue
+        res["paginas"] += 1
+        for deck in blob.get("decklists") or []:
+            key = str(deck.get("loginid") or deck.get("player") or "") + "|" + url
+            row = con.execute("SELECT id, format, event_date, player, content_hash "
+                              "FROM decklists WHERE source = 'mtgo' AND source_key = ?",
+                              (key,)).fetchone()
+            if not row:
+                continue
+            if row["format"] in COMMANDER_FORMATS:
+                # o comandante vem no sideboard e vai para o main, como no
+                # `store_event` — senão o hash nunca batia com o do mtgtop8
+                cartas = somar_cartas([("main", n, q) for n, q in
+                                       _cards(deck, "main") + _cards(deck, "side")])
+            else:
+                cartas = somar_cartas([("main", n, q) for n, q in _cards(deck, "main")]
+                                      + [("side", n, q) for n, q in _cards(deck, "side")])
+            h = content_hash(row["format"], cartas)
+            if h == row["content_hash"]:
+                continue
+            antes = con.execute("SELECT COALESCE(SUM(quantity), 0) FROM decklist_cards "
+                                "WHERE decklist_id = ?", (row["id"],)).fetchone()[0]
+            con.execute("DELETE FROM decklist_cards WHERE decklist_id = ?", (row["id"],))
+            con.executemany("INSERT INTO decklist_cards (decklist_id, card_name, quantity, "
+                            "board) VALUES (?,?,?,?)",
+                            [(row["id"], n, q, b) for b, n, q in cartas])
+            con.execute("UPDATE decklists SET content_hash = ? WHERE id = ?", (h, row["id"]))
+            res["acertadas"] += 1
+            res["copias"] += sum(q for _b, _n, q in cartas) - antes
+            res["ids"].append(row["id"])
+            res["fundidas"] += _fundir_duplicada(con, row["id"], row["format"], h,
+                                                 row["event_date"], row["player"])
+        con.commit()
+    return res
+
+
+def _fundir_duplicada(con: sqlite3.Connection, did: int, fmt: str, h: str,
+                      dia: str, jogador: str) -> int:
+    """Depois de uma lista do mtgo ficar com o hash certo, a re-hospedagem do
+    mtgtop8 (prioridade mais baixa) passa a ser a mesma lista — é a regra do
+    `store_decklist`, aplicada a posteriori. O que a outra sabia e a do mtgo
+    não (o nome do arquétipo, os jogadores, a classificação) passa para esta
+    antes de ela sair."""
+    meu = (jogador or "").strip().lower()
+    n = 0
+    for o in con.execute("SELECT * FROM decklists WHERE format = ? AND content_hash = ? "
+                         "AND event_date = ? AND id <> ?", (fmt, h, dia, did)).fetchall():
+        outro = (o["player"] or "").strip().lower()
+        if meu and outro and meu != outro:
+            continue
+        if SOURCE_PRIORITY.get(o["source"], 0) >= SOURCE_PRIORITY.get("mtgo", 0):
+            continue
+        con.execute("""UPDATE decklists SET
+                         arquetipo_fonte = COALESCE(arquetipo_fonte, ?),
+                         arquetipo_fonte_de = COALESCE(arquetipo_fonte_de, ?),
+                         event_players = COALESCE(event_players, ?),
+                         placement = CASE WHEN COALESCE(placement, '') = '' THEN ?
+                                          ELSE placement END
+                       WHERE id = ?""",
+                    (o["arquetipo_fonte"], o["arquetipo_fonte_de"], o["event_players"],
+                     o["placement"], did))
+        con.execute("DELETE FROM decklists WHERE id = ?", (o["id"],))
+        n += 1
+    return n
+
+
 def content_hash(fmt: str, cards: list[tuple[str, str, int]]) -> str:
     """Impressão digital do conteúdo da lista, independente da fonte."""
     payload = fmt.lower() + "|" + "|".join(
@@ -1093,6 +1218,7 @@ def store_decklist(con: sqlite3.Connection, *, source: str, source_key: str,
 
     Devolve o id da decklist, ou None se foi descartada por duplicação.
     """
+    cards = somar_cartas(cards)
     if not cards:
         return None
     fmt = fmt.lower()
