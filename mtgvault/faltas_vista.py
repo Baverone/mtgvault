@@ -57,24 +57,27 @@ def _linha(con, s: dict, m: dict, cache: dict) -> dict:
     """Uma falta, com o que a página desenha e mais nada."""
     nm = m["nm"]
     q = m["comprar"]
+    # DESDE 2026-10-17 o `unit` da linha JÁ É o da impressão que serve: o 1.º
+    # anúncio de um vendedor profissional, na língua e no acabamento da regra
+    # (`loadout.preco_pro`). O mínimo do motor (`card_price`, entre impressões e
+    # sem o crivo da caixa) fica em `unit_motor` e é o terceiro total da página.
     unit = m.get("unit")
-    # A IMAGEM É DA IMPRESSÃO QUE ELE VAI COMPRAR, não da que fez o preço. Numa
-    # caixa de Premodern o preço pode vir de uma reimpressão de 2024 que ela
-    # recusa (ver `loadout.preco_fora_da_regra`): mostrar essa arte era pôr-lhe no
-    # ecrã uma carta que ele não pode levar. Onde nenhuma impressão que serve
-    # está cotada, fica a que fez o preço — e a linha di-lo.
+    unit_motor = m.get("unit_motor", unit)
     regra = loadout.regra_da_carta(con, s, nm, cache)
-    serve = loadout.mais_barata_que_serve(
-        con, regra, nm, m.get("price_finish") or "nonfoil", cache)
-    sid = serve["sid"] or loadout.impressao_mais_barata(
-        con, nm, m.get("price_finish") or "nonfoil", cache=cache)
-    # OS DOIS PREÇOS LADO A LADO, que é a disciplina do projecto («a somar» vs «a
-    # rodar», 2026-10-04): o que o motor mostra e o da impressão que esta caixa
-    # ACEITA. Medido a 2026-10-05, nas 121 cartas das seis caixas de Premodern,
-    # **67** mostram o preço de uma reimpressão posterior ao Scourge e por isso o
-    # subtotal estava sistematicamente ABAIXO do que ele vai pagar. Esconder o
-    # segundo número era deixá-lo escolher onde caçar por uma conta errada.
-    legal = serve["unit"] if serve["unit"] is not None else unit
+    fin = m.get("price_finish") or ("foil" if regra.get("acabamento") == "foil"
+                                     else "nonfoil")
+    pro = "sid_ref" in m          # a régua do vendedor profissional valeu
+    if pro:
+        # A IMAGEM É DA IMPRESSÃO QUE ELE VAI COMPRAR: a do anúncio que fez o
+        # preço; sem anúncio, a mais barata do motor (e a linha diz porquê).
+        sid = m.get("sid_ref") or loadout.impressao_mais_barata(con, nm, fin, cache=cache)
+        legal = unit
+    else:
+        # Base sem a régua profissional (ainda não recolhida): o caminho de
+        # 2026-10-05 — o motor ao lado da mais barata que a caixa ACEITA.
+        serve = loadout.mais_barata_que_serve(con, regra, nm, fin, cache)
+        sid = serve["sid"] or loadout.impressao_mais_barata(con, nm, fin, cache=cache)
+        legal = serve["unit"] if serve["unit"] is not None else unit
     # A ART QUE ELE PROCURA (André, 2026-10-13): *"se for de uma carta que eu ja
     # tenho, a Art tem que ser a mesma"*. O preço de REFERÊNCIA da linha passa a
     # ser o da impressão que ele quer — a que escolheu em `Arts que procuro/`, ou
@@ -83,16 +86,26 @@ def _linha(con, s: dict, m: dict, cache: dict) -> dict:
     # preço de outra art apresentado como se fosse o dele era o erro das duas
     # verdades. Quem decide é o `arts.preferida`, num sítio só.
     pref = arts.preferida(con, nm, cache)
-    fin = m.get("price_finish") or "nonfoil"
-    p_arte = arts.preco(con, pref, fin, cache)
+    # A art que ele procura também vale pelo 1.º anúncio profissional (só essa
+    # impressão, na língua da regra); sem anúncio dela, cai na regra e di-lo.
+    if not pref.get("sid"):
+        p_arte = None
+    elif pro:
+        p_arte = loadout.preco_pro(con, regra, nm, fin, cache, sid=pref["sid"])["unit"]
+    else:
+        p_arte = arts.preco(con, pref, fin, cache)
     if pref["origem"] in ("escolhida", "a_que_tens") and p_arte is not None:
         origem, ref, sid = pref["origem"], p_arte, pref["sid"]
     else:
         origem, ref = "regra", legal
     return {
         "nm": nm, "q": q, "unit": unit,
-        "total": round((unit or 0) * q, 2),
-        "unit_serve": serve["unit"], "total_serve": round((legal or 0) * q, 2),
+        # `total` é o MÍNIMO DO MOTOR (o terceiro número da página); o que se
+        # paga é o `total_serve`/`total_ref`.
+        "unit_motor": unit_motor,
+        "total": round((unit_motor or 0) * q, 2),
+        "cm_url": m.get("cm_url") or loadout.link_cardmarket(nm),
+        "unit_serve": legal, "total_serve": round((legal or 0) * q, 2),
         "unit_ref": ref, "total_ref": round((ref or 0) * q, 2),
         "origem_preco": origem,
         "arte": {"origem": pref["origem"], "set": pref["set"], "num": pref["num"],
@@ -160,6 +173,7 @@ def vista(con, rep: dict, cfg: dict | None = None) -> dict:
                 "valor_ref": round(sum(d["valor_ref"] for d in ds), 2),
                 "sem_preco": sum(d["sem_preco"] for d in ds),
                 "avisos": sum(d["avisos"] for d in ds),
+                "regua": rep.get("regua_faltas") or "motor",
                 "por_origem": {o: sum(1 for d in ds for l in d["linhas"]
                                       if l["origem_preco"] == o)
                                for o in ("escolhida", "a_que_tens", "regra")}}
@@ -211,7 +225,10 @@ def staples(con, rep: dict) -> dict:
                        "total_serve": round((u or 0) * q, 2),
                        "sid": v.get("sid"), "set": v.get("set"),
                        "arquetipos": e["arquetipos"], "pct": e["pct"],
-                       "req": "PT · ≤SCG", "board": "main", "aviso": None,
+                       "req": "PT · ≤SCG", "board": "main",
+                       "cm_url": v.get("cm_url") or loadout.link_cardmarket(nm),
+                       "aviso": ({"grau": "aviso", "motivos": ["sem_pro"],
+                                  "frase": v.get("motivo")} if u is None else None),
                        "origem_preco": "regra", "rl": bool(v.get("rl")),
                        "arte": {"origem": "regra", "set": None, "num": None,
                                 "sem_preco": False, "opcoes": []}})
@@ -236,9 +253,22 @@ def texto_totais(t: dict) -> str:
     usava o `valor_ref`; era a linha do daily que ele lia que estava 4 151,77 €
     abaixo. O mínimo do motor fica ao lado, com o nome que tem.
     """
+    if t.get("regua") == "vendedor-profissional":
+        # [2026-10-17] O preço é o 1.º anúncio de um vendedor profissional, na
+        # língua e na edição da regra; as linhas com aviso são as SEM ANÚNCIO —
+        # sem preço, não «preço errado».
+        s = (f"{t['decks']} decks, {t['cartas']} cartas, {t['copias']} cópias, "
+             f"{t['valor_ref']:.2f} EUR pelo 1.º anúncio de vendedor profissional "
+             f"(«fechar tudo» {t['valor_serve']:.2f}, a diferença é a art que "
+             f"procuras; mínimo do motor, sem o crivo: {t['valor']:.2f})")
+        if t.get("sem_preco"):
+            s += (f", {t['sem_preco']} cóp. sem preço ({t.get('avisos', 0)} linhas "
+                  f"sem anúncio profissional na língua pedida)")
+        return s
     s = (f"{t['decks']} decks, {t['cartas']} cartas, {t['copias']} cópias, "
          f"{t['valor_ref']:.2f} EUR pela impressão que serve "
-         f"(mínimo do motor, sem o crivo de edição: {t['valor']:.2f})")
+         f"(mínimo do motor, sem o crivo de edição: {t['valor']:.2f}; a régua "
+         f"do vendedor profissional ainda não foi recolhida nesta base)")
     if t.get("sem_preco"):
         s += f", {t['sem_preco']} cóp. sem preço"
     if t.get("avisos"):

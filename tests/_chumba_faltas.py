@@ -100,10 +100,16 @@ ALVOS = [
      "    return v\n"
      "faltas_vista.vista = vista",
      ["caso_o_subtotal_por_deck_soma_o_total"]),
-    ("o `preco_fora_da_regra` sempre None",
-     "from mtgvault import loadout\n"
-     "loadout.preco_fora_da_regra = lambda *a, **k: None",
-     ["caso_um_preco_fora_da_regra_aparece_marcado"]),
+    # [2026-10-17] o alvo do `preco_fora_da_regra` deu lugar ao `preco_pro` (o
+    # preço passou a ser o 1.º anúncio profissional da impressão que serve).
+    ("o `preco_pro` a ignorar a língua (aceita PT e EN em toda a regra)",
+     "from mtgvault import loadout, precos\n"
+     "loadout.linguas_da_regra = lambda s: precos.LINGUAS_PRO",
+     ["caso_o_preco_e_o_1o_anuncio_profissional_na_lingua_e_edicao_da_regra"]),
+    ("o `linhas_pro` a aceitar vendedores normais",
+     "from mtgvault import precos\n"
+     "precos.oferta_pro = lambda o: True",
+     ["caso_as_linhas_pro_saem_das_mesmas_ofertas"]),
     ("o `sem_deck_escolhido` sempre falso",
      "from mtgvault import faltas_vista\n"
      "faltas_vista.sem_deck_escolhido = lambda *a, **k: False",

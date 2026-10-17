@@ -115,6 +115,50 @@ ROTULOS = {
 RECEITA_UNICA = "unico"
 RECEITA_CM_GUIDE = "cm-guide"
 RECEITA_CT_OFERTAS = "ct-ofertas"
+#   `ct-pro`     low = trend = o anúncio MAIS BARATO de um vendedor PROFISSIONAL,
+#                numa língua só (a fonte diz qual: `cardtrader-pro-pt`/`-en`).
+RECEITA_CT_PRO = "ct-pro"
+
+# O PREÇO DE REFERÊNCIA DE UMA FALTA: O 1.º ANÚNCIO DE UM VENDEDOR PROFISSIONAL
+# (André, 2026-10-17). Ele queria «o primeiro anúncio de um Seller Profissional»
+# do Cardmarket, que não se pode ler (API fechada a pedidos novos, leitura das
+# páginas bloqueada em Setembro), e escolheu CardTrader + link do Cardmarket.
+# Na resposta REAL do `/marketplace/products` (sondada a 2026-10-17, Onslaught:
+# 70 019 ofertas) o `user.user_type` vale **`"pro"`** (41 648) ou **`"normal"`**
+# (28 371) — mais nada —, e a língua vem em `properties_hash.mtg_language`
+# (`"pt"`: 1 317 ofertas, 485 delas de vendedores profissionais).
+# Sai da MESMA resposta que já se pede todas as noites para o market/best: não
+# custa um pedido a mais. São fontes à parte (`cardtrader-pro-<língua>`), FORA da
+# cadeia do valor da colecção — o modo market/best/média de 25/09 não muda.
+USER_TYPE_PRO = "pro"
+FONTE_PRO = "cardtrader-pro"
+LINGUAS_PRO = ("pt", "en")
+
+
+def fonte_pro(lingua: str) -> str:
+    """`cardtrader-pro-pt`, `cardtrader-pro-en` — uma fonte por língua."""
+    return f"{FONTE_PRO}-{str(lingua).lower()}"
+
+
+def oferta_pro(o: dict) -> bool:
+    """Um anúncio de um vendedor PROFISSIONAL (`user.user_type == "pro"`)."""
+    return (o.get("user") or {}).get("user_type") == USER_TYPE_PRO
+
+
+def ha_pro(con: sqlite3.Connection) -> bool:
+    """A régua do vendedor profissional EXISTE nesta base? (há pelo menos uma
+    linha `cardtrader-pro-*`). Numa base onde o CardTrader ainda não foi
+    recolhido com ela — uma base nova, os testes, a base dele até à primeira
+    corrida das 03:30 depois de 17/10 — a falta fica com o preço de antes e o
+    relatório DI-LO (`res["regua_faltas"]`), em vez de pôr todas as faltas
+    «sem preço» por uma fonte que ainda não correu."""
+    try:
+        return con.execute(
+            "SELECT 1 FROM price_latest WHERE source IN (%s) LIMIT 1"
+            % ",".join("?" * len(LINGUAS_PRO)),
+            tuple(fonte_pro(x) for x in LINGUAS_PRO)).fetchone() is not None
+    except sqlite3.Error:
+        return False
 
 # O filtro de ofertas é o do riftvault (`prices._usable`), palavra por palavra:
 # uma carta assinada, alterada, graded, de um vendedor de férias ou em estado

@@ -319,53 +319,86 @@ def caso_o_subtotal_por_deck_soma_o_total():
           f"cartas, {t['copias']} copias, {t['valor']:.2f} EUR)")
 
 
-def caso_um_preco_fora_da_regra_aparece_marcado():
-    """5. *"quando o preco mostrado nao e da lingua ou do acabamento que a regra
-    pede, a PAGINA TEM DE O DIZER NA LINHA"*.
+def _pro(con):
+    """Anúncios de VENDEDOR PROFISSIONAL (`cardtrader-pro-<língua>`, 2026-10-17).
 
-    A **Exploration** mostra o preço da reimpressão de 2023 (41,49 €) e a caixa de
-    Premodern só aceita impressões até ao Scourge, onde ela custa 77,73 €. A linha
-    tem de o DIZER e trazer o preço que serve. E a caixa de cEDH, que não tem
-    regra de língua nem de edição, **não** pode levar marca nenhuma: sem esse
-    contraste a marca podia estar a aparecer em todas as linhas.
+    Exploration: PT 80,00 na impressão da era (USG), PT 30,00 na de 2023 (que a
+    caixa de Premodern recusa) e EN 70,00 (língua errada) — a referência é 80.
+    Sterling Grove: só EN — em Premodern fica «sem PT à venda».
+    Lotus Petal: PT 50 e EN 45 — o cEDH não pede língua, fica a mais barata."""
+    sid = {(nm, sc): f"id-{i}" for i, (nm, sc, _r, _p) in enumerate(CATALOGO)}
+    for nm, sc, fonte, p in (("Exploration", "usg", "cardtrader-pro-pt", 80.0),
+                             ("Exploration", "dmr", "cardtrader-pro-pt", 30.0),
+                             ("Exploration", "usg", "cardtrader-pro-en", 70.0),
+                             ("Sterling Grove", "inv", "cardtrader-pro-en", 9.0),
+                             ("Lotus Petal", "tmp", "cardtrader-pro-pt", 50.0),
+                             ("Lotus Petal", "tmp", "cardtrader-pro-en", 45.0)):
+        con.execute("INSERT OR REPLACE INTO price_latest (scryfall_id, source, "
+                    "finish, date, trend, low, receita) VALUES (?, ?, 'nonfoil', "
+                    "'2026-10-17', ?, ?, 'ct-pro')", (sid[(nm, sc)], fonte, p, p))
+    con.commit()
+
+
+def caso_o_preco_e_o_1o_anuncio_profissional_na_lingua_e_edicao_da_regra():
+    """5. [REESCRITO A 2026-10-17] O preço de referência de uma falta passou a ser
+    o 1.º anúncio de um VENDEDOR PROFISSIONAL, na língua e no acabamento que a
+    regra pede, da impressão que a caixa aceita (André: *"só PT"* em Premodern).
+
+    O caso de 2026-10-05 (*"quando o preco mostrado nao e da lingua ou do
+    acabamento que a regra pede, a PAGINA TEM DE O DIZER NA LINHA"*) deixou de
+    poder acontecer: o preço já É o da impressão que serve, na língua certa. O que
+    a linha diz agora é quando NÃO há anúncio — «sem PT à venda», sem preço,
+    nunca o de uma oferta inglesa nem 0 €.
     """
     con = base()
-    v = vista(con)
-    porc = {l["nm"]: l for d in v["decks"] for l in d["linhas"]}
-    exp = porc["Exploration"]
-    a = exp["aviso"]
-    assert a, "a Exploration não levou aviso nenhum"
-    assert loadout.PRECO_FORA_EDICAO in a["motivos"], a
-    assert loadout.PRECO_SEM_LINGUA in a["motivos"], a
-    assert a["grau"] == "aviso", a
-    assert a["legal_unit"] == 77.73, a
-    assert a["legal_set"] == "USG", a
-    assert exp["unit"] == 41.49, exp
-    assert "77,73" in a["frase"] and "DMR" in a["frase"], a["frase"]
-    # A Sterling Grove: a mais barata JÁ é da era, logo sem marca de EDIÇÃO — mas
-    # com a NOTA da língua, que é o que a caixa pede e o preço não tem.
-    sg = porc["Sterling Grove"]["aviso"]
-    assert sg and sg["motivos"] == [loadout.PRECO_SEM_LINGUA], sg
-    assert sg["grau"] == "nota", sg
-    # O CONTROLO: o cEDH não pede língua nem edição.
-    lp = porc["Lotus Petal"]
-    assert lp["aviso"] is None, (
-        f"uma caixa sem regra de língua nem de edição não pode marcar o preço: "
-        f"{lp['aviso']}")
-    # E OS DOIS TOTAIS LADO A LADO: o do motor e o da impressão que a caixa
-    # aceita. Sem o segundo, o subtotal que decide onde ele vai caçar fica abaixo
-    # do que ele vai pagar — a Exploration sozinha são 2 × (77,73 − 41,49).
-    assert exp["total_serve"] > exp["total"], exp
-    assert exp["unit_serve"] == 77.73, exp
-    prem = next(d for d in v["decks"] if d["slot"] == "prem")
-    assert prem["valor_serve"] > prem["valor"], (prem["valor"], prem["valor_serve"])
-    assert v["totais"]["valor_serve"] > v["totais"]["valor"]
-    # O CONTROLO: numa caixa sem regra de edição os dois são o MESMO número.
-    ced = next(d for d in v["decks"] if d["slot"] == "ced")
-    assert ced["valor_serve"] == ced["valor"], (ced["valor"], ced["valor_serve"])
-    print(f"o preco fora da regra aparece marcado, e so onde ha regra "
-          f"(o deck de Premodern passa de {prem['valor']:.2f} a "
-          f"{prem['valor_serve']:.2f} EUR)")
+    # Sem nenhum anúncio profissional recolhido, fica o preço de antes — e o
+    # relatório diz que régua valeu, em vez de pôr tudo «sem preço» calado.
+    antes = loadout.report(con)
+    assert antes["regua_faltas"] == "motor", antes["regua_faltas"]
+    _pro(con)
+    rep = loadout.report(con)
+    assert rep["regua_faltas"] == "vendedor-profissional", rep["regua_faltas"]
+    v = faltas_vista.vista(con, rep)
+    assert v["totais"]["regua"] == "vendedor-profissional"
+    assert "1.º anúncio de vendedor profissional" in faltas_vista.texto_totais(v["totais"])
+    porc = {(d["slot"], l["nm"]): l for d in v["decks"] for l in d["linhas"]}
+    exp = porc[("prem", "Exploration")]
+    assert exp["unit"] == 80.0, ("a referência é o PT da impressão da era, não a "
+                                 "reimpressão de 2023 (30) nem o EN (70)", exp)
+    assert exp["unit_motor"] == 41.49 and exp["aviso"] is None, exp
+    assert exp["total_serve"] == 160.0 and exp["total"] == round(2 * 41.49, 2), exp
+    assert "cardmarket.com" in exp["cm_url"] and "Exploration" in exp["cm_url"]
+    sg = porc[("prem", "Sterling Grove")]
+    assert sg["unit"] is None, ("sem PT à venda não pode ganhar o preço EN", sg)
+    assert sg["aviso"]["motivos"] == ["sem_pro"] and "sem PT" in sg["aviso"]["frase"], sg
+    assert porc[("ced", "Lotus Petal")]["unit"] == 45.0, porc[("ced", "Lotus Petal")]
+    # O «FECHAR TUDO» É ESTE PREÇO (resolve a decisão pendente de 16/10).
+    prem = next(s for s in rep["slots"] if s["slot"] == "prem")
+    assert prem["custo"] == round(sum((m["unit"] or 0) * m["comprar"]
+                                      for m in prem["missing"]), 2)
+    d = next(d for d in v["decks"] if d["slot"] == "prem")
+    assert d["valor_serve"] == prem["custo"], (d["valor_serve"], prem["custo"])
+    print("o preço é o 1.º anúncio profissional, na língua e na edição da regra")
+
+
+def caso_as_linhas_pro_saem_das_mesmas_ofertas():
+    """O `prices.linhas_pro` (2026-10-17): só `user_type == "pro"`, por língua e
+    acabamento, com o crivo de sempre (sem played, graded, férias)."""
+    from mtgvault import prices                                # noqa: PLC0415
+
+    def o(c, lang, tipo="pro", foil=False, cond="Near Mint", **k):
+        return {"price_cents": c, "price_currency": "EUR",
+                "user": {"user_type": tipo},
+                "properties_hash": {"mtg_language": lang, "mtg_foil": foil,
+                                    "condition": cond}, **k}
+    ofs = [o(500, "pt"), o(300, "pt", tipo="normal"), o(450, "pt", cond="Played"),
+           o(200, "pt", graded=True), o(700, "en"), o(650, "en", foil=True),
+           o(100, "it")]
+    r = {(x[1], x[3]): x[4] for x in prices.linhas_pro("S", ofs, "2026-10-17")}
+    assert r == {("cardtrader-pro-pt", "nonfoil"): 5.0,
+                 ("cardtrader-pro-en", "nonfoil"): 7.0,
+                 ("cardtrader-pro-en", "foil"): 6.5}, r
+    print("linhas pro: só profissionais, por língua e acabamento")
 
 
 def caso_as_faltas_de_legacy_ficam_fora_do_total():
@@ -470,7 +503,8 @@ CASOS = (caso_as_tres_listas_mostram_imagem,
          caso_o_primeiro_ecra_nao_passa_do_lote_de_imagens,
          caso_a_vista_de_faltas_nao_mostra_o_que_ele_tem,
          caso_o_subtotal_por_deck_soma_o_total,
-         caso_um_preco_fora_da_regra_aparece_marcado,
+         caso_o_preco_e_o_1o_anuncio_profissional_na_lingua_e_edicao_da_regra,
+         caso_as_linhas_pro_saem_das_mesmas_ofertas,
          caso_as_faltas_de_legacy_ficam_fora_do_total,
          caso_a_fase_3_desenha_as_duas_listas)
 

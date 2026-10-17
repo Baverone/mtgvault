@@ -171,7 +171,11 @@ function origemHTML(l) {
   const imp = a.set ? `${escDados(String(a.set).toUpperCase())} #${escDados(a.num)}` : '';
   if (l.origem_preco === 'escolhida') return `<span class="og esc">🎨 a art que escolheste · ${imp}</span>`;
   if (l.origem_preco === 'a_que_tens') return `<span class="og tens">🎨 a art que já tens · ${imp}</span>`;
-  let t = '<span class="og reg">regra genérica: a mais barata que serve';
+  /* [2026-10-17] com a régua do vendedor profissional, «a mais barata que serve»
+     é o 1.º anúncio profissional dessa impressão, na língua da regra. */
+  let t = '<span class="og reg">regra genérica: a mais barata que serve'
+    + (D.totais && D.totais.regua === 'vendedor-profissional'
+       ? ' (1.º anúncio de vendedor profissional)' : '');
   if (a.origem === 'por_escolher') t += ' — <b>diz-me a art</b>';
   if (a.origem === 'ambigua') t += ` — tens ${a.opcoes.length} arts (${a.opcoes.map(escDados).join(', ')}): <b>diz qual</b>`;
   if (a.sem_preco) t += ` — a art ${imp} não tem preço neste acabamento`;
@@ -190,12 +194,18 @@ function linhaHTML(l, comImagem, comDeck) {
     + `<span>${u == null ? '' : eur(u) + '/cóp.'}</span></div>`
     + `<div class="meta">${comDeck ? `<b>${escDados(l.deck)}</b> · ` : ''}`
     + `<span class="pt">${escDados(l.req)}</span>`
-    + `${l.board === 'side' ? ' · sideboard' : ''}<br>${origemHTML(l)}</div>`
+    + `${l.board === 'side' ? ' · sideboard' : ''}<br>${origemHTML(l)}`
+    /* O LINK PARA CONFIRMAR À MÃO (André, 2026-10-17): a pesquisa pelo nome no
+       Cardmarket, SEM filtros de língua nem de vendedor — os parâmetros do site
+       não se puderam confirmar sem ler páginas de lá. */
+    + (l.cm_url ? ` · <a class="cm" href="${escDados(l.cm_url)}" target="_blank"`
+        + ` rel="noopener">Cardmarket ↗</a>` : '') + `</div>`
     + (l.urgencia ? `<p class="urg">⏳ ${escDados(l.urgencia.porque || '')}`
         + `${l.urgencia.ate ? ' — até ' + escDados(l.urgencia.ate) : ''}</p>` : '')
     + (a ? `<p class="av ${a.grau === 'aviso' ? 'aviso' : 'nota'}">`
-        + `${a.grau === 'aviso' ? '⚠️ <b>o preço não é do material que esta caixa pede.</b> '
-                                : 'ⁱ '}`
+        + `${(a.motivos || []).indexOf('sem_pro') >= 0 ? '⚠️ <b>sem preço:</b> '
+             : a.grau === 'aviso' ? '⚠️ <b>o preço não é do material que esta caixa pede.</b> '
+             : 'ⁱ '}`
         + `${escDados(a.frase)}.</p>` : '')
     + `</li>`;
 }
@@ -216,9 +226,11 @@ function chipsHTML() {
      ACEITA (2026-10-13). O do motor (o mínimo entre impressões) fica ao lado:
      é o «fechar tudo» da Deckboxes, e esconder a diferença era escolher por ele
      a conta. */
-  return `<span class="chip gold"><b>${eur(t.ref)}</b> a comprar, pela art certa</span>`
+  /* [2026-10-17] Os preços são o 1.º anúncio de um vendedor profissional, na
+     língua e na edição que a caixa pede; o do meio é o «fechar tudo». */
+  return `<span class="chip gold"><b>${eur(t.ref)}</b> a comprar, pela art certa (1.º anúncio profissional)</span>`
     + (Math.round(t.serve * 100) !== Math.round(t.ref * 100)
-      ? `<span class="chip"><b>${eur(t.serve)}</b> com a mais barata que serve</span>` : '')
+      ? `<span class="chip"><b>${eur(t.serve)}</b> «fechar tudo» (a impressão que serve)</span>` : '')
     + (Math.round(t.valor * 100) !== Math.round(t.ref * 100)
       ? `<span class="chip"><b>${eur(t.valor)}</b> mínimo do motor</span>` : '')
     + `<span class="chip"><b>${t.cartas}</b> cartas · ${t.copias} cóp.</span>`
@@ -226,7 +238,7 @@ function chipsHTML() {
     + (ar.por_escolher ? `<button type="button" class="chip warn" id="iraarts">`
       + `<b>${ar.por_escolher}</b> arts por escolher${ar.ambiguas ? ' · ' + ar.ambiguas + ' a confirmar' : ''} ⬇</button>` : '')
     + (t.sp ? `<span class="chip"><b>${t.sp}</b> cóp. sem preço</span>` : '')
-    + (t.av ? `<span class="chip"><b>${t.av}</b> com o preço fora da regra</span>` : '');
+    + (t.av ? `<span class="chip"><b>${t.av}</b> sem anúncio profissional na língua pedida</span>` : '');
 }
 
 /* AS ARTS POR ESCOLHER (André, 2026-10-13): *"pede-me sempre que faltar as arts

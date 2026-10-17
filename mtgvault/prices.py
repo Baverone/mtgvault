@@ -456,8 +456,44 @@ def fetch_cardtrader_prices(con: sqlite3.Connection, ct: CardTrader,
                 v = precos.dois_valores(sel)
                 batch.append((sid, "cardtrader", day, finish, v["low"], v["trend"],
                               None, v["copias"], "EUR", precos.RECEITA_CT_OFERTAS))
+            batch += linhas_pro(sid, offers, day)
         n += _flush(con, batch)
     return n
+
+
+def linhas_pro(sid: str, offers: list[dict], day: str) -> list[tuple]:
+    """O 1.º ANÚNCIO DE UM VENDEDOR PROFISSIONAL, por língua e acabamento
+    (André, 2026-10-17) — das MESMAS ofertas que o market/best já leu, por isso
+    não custa um pedido. Uma linha `cardtrader-pro-<língua>` por (língua,
+    acabamento) que tenha pelo menos um anúncio `pro` utilizável nessa língua;
+    sem nenhum, não há linha — e a falta diz «sem PT à venda», nunca 0 €."""
+    out = []
+    for lingua in precos.LINGUAS_PRO:
+        so = frozenset({lingua})
+        pro = [o for o in offers
+               if precos.oferta_pro(o) and precos.oferta_utilizavel(o, so)]
+        for finish, want_foil in (("nonfoil", False), ("foil", True)):
+            sel = [o["price_cents"] for o in pro
+                   if bool((o.get("properties_hash") or {}).get("mtg_foil")) == want_foil]
+            if sel:
+                p = min(sel) / 100
+                out.append((sid, precos.fonte_pro(lingua), day, finish, p, p, None,
+                            len(sel), "EUR", precos.RECEITA_CT_PRO))
+    return out
+
+
+def edicoes_premodern(con: sqlite3.Connection) -> list[str]:
+    """As edições da ERA PREMODERN (4.ª Edição a Scourge: `core`, `expansion` e
+    `starter`) que o CardTrader tem de cotar para o preço de referência das
+    faltas e das staples de Premodern (André, 2026-10-17: *"só PT"*, *"sempre da
+    impressão que serve"*). Medido nesse dia: 35 edições, 10 delas fora do que
+    o daily pedia (6ED, 7ED, os Portal, os Starter, Homelands, a 4.ª de borda
+    preta) — sem elas uma carta reimpressa só aí ficava «sem PT à venda» por
+    não se ter perguntado, não por não haver."""
+    return [r[0] for r in con.execute(
+        "SELECT DISTINCT lower(set_code) FROM cards "
+        "WHERE released_at BETWEEN '1995-04-01' AND '2003-05-26' AND digital = 0 "
+        "AND set_type IN ('core', 'expansion', 'starter') ORDER BY 1")]
 
 
 def priceguide_publico_ligado() -> bool:

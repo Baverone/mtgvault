@@ -634,6 +634,102 @@ def mais_barata_que_serve(con, s: dict, nm: str, finish: str = "nonfoil",
     return out
 
 
+# ---------------------------------------------------------------------------
+# O PREÇO DE REFERÊNCIA DE UMA FALTA: O 1.º ANÚNCIO DE UM VENDEDOR PROFISSIONAL,
+# NA LÍNGUA E NO ACABAMENTO QUE A REGRA PEDE, DA IMPRESSÃO QUE SERVE
+# (André, 2026-10-17).
+#
+# Fecha as duas metades do bloco de cima de uma vez: a LÍNGUA passa a ser
+# verificável (o anúncio diz a dele — `precos.fonte_pro`) e a EDIÇÃO é a que a
+# caixa aceita (`edicao_limite`). Premodern: **só PT** — sem PT à venda num
+# vendedor profissional, a carta fica «sem PT à venda» e SEM PREÇO (decisão
+# dele: *"só PT"*), nunca o preço de uma oferta inglesa nem 0 €.
+#
+# É este o `unit` da linha de falta e por isso o do «fechar tudo»: resolve a
+# decisão pendente de 16/10 (o «fechar tudo» dava 4 151,77 € abaixo da lista de
+# faltas por usar outra impressão). O mínimo do motor (`card_price`) fica ao
+# lado, em `unit_motor`, com o nome que tem.
+# ---------------------------------------------------------------------------
+def linguas_da_regra(s: dict) -> tuple[str, ...]:
+    """A língua que a regra pede, ou as duas que se aceitam sem regra."""
+    lingua = str(s.get("lingua") or "").lower()
+    return (lingua,) if lingua else precos.LINGUAS_PRO
+
+
+def preco_pro(con, s: dict, nm: str, finish: str = "nonfoil",
+              cache: dict | None = None, sid: str | None = None) -> dict:
+    """`{unit, sid, set, finish, lingua, n_servem, motivo}`: o anúncio mais
+    barato de um vendedor profissional entre as impressões que ESTA regra aceita
+    (edição e acabamento), na língua dela. Com `sid`, só essa impressão (a art
+    que ele procura). `unit=None` e o `motivo` em português quando não há."""
+    ate = edicao_limite(s)
+    fins = finishes_aceites(s) or (
+        FOIL_FINISHES if finish in FOIL_FINISHES else ("nonfoil",))
+    linguas = linguas_da_regra(s)
+    fontes = tuple(precos.fonte_pro(x) for x in linguas)
+    chave = ("pro", nm, ate, fins, linguas, sid)
+    if cache is not None and chave in cache:
+        return cache[chave]
+    # DOIS PASSOS, e é desempenho medido: num JOIN só, o SQLite conduzia pela
+    # `price_latest` (o `source IN` não é prefixo de índice nenhum) e o relatório
+    # passou de 0,5 s a 79 s (17/10). As impressões saem do catálogo pelo
+    # `ix_cards_name`; os preços pela chave primária `(scryfall_id, source,
+    # finish)` — é a regra escrita no `scryfall.sql_nome`.
+    onde = f"{_scry.sql_nome('c.name')} AND {_scry.sql_impressao_a_serio('c')}"
+    par: list = [*_scry.params_nome(nm)]
+    if ate:
+        onde += " AND c.released_at <= ?"
+        par.append(ate)
+    if sid:
+        onde += " AND c.scryfall_id = ?"
+        par.append(sid)
+    imps = {r["sid"]: (r["sc"], r["ra"] or "") for r in con.execute(
+        f"SELECT c.scryfall_id sid, c.set_code sc, c.released_at ra "
+        f"FROM cards c WHERE {onde}", par)}
+    row = None
+    if imps:
+        melhor = None
+        for r in con.execute(
+                f"""SELECT scryfall_id sid, low p, finish fin, source src
+                      FROM price_latest
+                     WHERE scryfall_id IN ({','.join('?' * len(imps))})
+                       AND source IN ({','.join('?' * len(fontes))})
+                       AND finish IN ({','.join('?' * len(fins))})
+                       AND low IS NOT NULL""", (*imps, *fontes, *fins)):
+            # O mais barato; empate: a impressão mais recente (a regra do
+            # `mais_barata_que_serve`).
+            k = (r["p"], tuple(-ord(ch) for ch in imps[r["sid"]][1]))
+            if melhor is None or k < melhor[0]:
+                melhor = (k, {"sid": r["sid"], "sc": imps[r["sid"]][0], "p": r["p"],
+                              "fin": r["fin"], "src": r["src"]})
+        row = melhor[1] if melhor else None
+    lng = "/".join(x.upper() for x in linguas)
+    out = {"unit": row["p"] if row else None,
+           "sid": row["sid"] if row else None,
+           "set": (row["sc"] or "").upper() if row else None,
+           "finish": row["fin"] if row else None,
+           "lingua": (row["src"].rsplit("-", 1)[-1] if row else None),
+           "motivo": None if row else (
+               f"sem {lng} à venda num vendedor profissional do CardTrader"
+               + (" nesta impressão" if sid else
+                  f" (impressões até {ate[:4]})" if ate else ""))}
+    if cache is not None:
+        cache[chave] = out
+    return out
+
+
+def link_cardmarket(nm: str) -> str:
+    """O link para ele confirmar à mão no Cardmarket (2026-10-17). SEM filtros
+    de língua nem de tipo de vendedor, e é uma decisão: os nomes e valores dos
+    parâmetros do site não se puderam confirmar sem ler páginas do Cardmarket
+    (nada de scraping), e um filtro adivinhado que o site ignore em silêncio era
+    pior do que nenhum. É a pesquisa pelo nome — o produto e a língua escolhem-se
+    lá."""
+    from urllib.parse import quote                           # noqa: PLC0415
+    return ("https://www.cardmarket.com/en/Magic/Products/Search?searchString="
+            + quote(_scry.chave(nm)))
+
+
 def preco_fora_da_regra(con, s: dict, nm: str, unit: float | None,
                         price_finish: str | None,
                         cache: dict | None = None) -> dict | None:
@@ -3294,21 +3390,37 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                 # mudar de lado. Medido a 2026-10-04 (foi assim que o defeito
                 # apareceu). O que muda face ao `s` é só a EXCEPÇÃO pendente,
                 # que é nonfoil e por isso cai no mesmo ramo.
-                unit, pfin = card_price(
-                    con, nm,
-                    "foil" if regra.get("acabamento") == "foil" and fi["existe"]
-                    else "nonfoil")
+                fin_ped = ("foil" if regra.get("acabamento") == "foil"
+                           and fi["existe"] else "nonfoil")
+                unit_motor, _pfin_motor = card_price(con, nm, fin_ped)
                 comprar = falta
                 if urg:
                     linha["urgencia"] = urg
-                # O PREÇO MOSTRADO É DO MATERIAL QUE A REGRA PEDE? (2026-10-05)
-                # A linha leva a resposta porque a linha é o que a página desenha
-                # — a lista de faltas e a aba Comprar lêem as duas daqui. Custa
-                # duas consultas por carta com restrição (hoje as 74 de
-                # Premodern) e zero nas outras: o `preco_fora_da_regra` sai cedo
-                # quando a caixa não tem limite de edição nem regra de língua.
-                linha["preco_aviso"] = preco_fora_da_regra(
-                    con, regra, nm, unit, pfin, foil_cache)
+                # O PREÇO DE REFERÊNCIA É O 1.º ANÚNCIO DE UM VENDEDOR
+                # PROFISSIONAL (André, 2026-10-17), na língua e no acabamento da
+                # regra, da impressão que esta caixa aceita — `preco_pro`. Sem
+                # anúncio, `unit=None` («sem PT à venda»), e a linha diz porquê
+                # num aviso. O mínimo do motor fica ao lado (`unit_motor`).
+                if "ha_pro" not in foil_cache:
+                    foil_cache["ha_pro"] = precos.ha_pro(con)
+                if foil_cache["ha_pro"]:
+                    pro = preco_pro(con, regra, nm, fin_ped, foil_cache)
+                    unit, pfin = pro["unit"], pro["finish"]
+                    linha["preco_aviso"] = None if unit is not None else {
+                        "motivos": ["sem_pro"], "grau": "aviso", "set": None,
+                        "ano": None, "pede": requisito_material(regra),
+                        "legal_unit": None, "legal_set": None, "n_servem": None,
+                        "frase": pro["motivo"]}
+                    linha.update(sid_ref=pro["sid"], set_ref=pro["set"],
+                                 lingua_ref=pro["lingua"])
+                else:
+                    # A régua profissional ainda não foi recolhida nesta base:
+                    # o preço de antes (16/10), com o aviso de sempre — e o
+                    # relatório diz qual régua valeu (`regua_faltas`).
+                    unit, pfin = unit_motor, _pfin_motor
+                    linha["preco_aviso"] = preco_fora_da_regra(
+                        con, regra, nm, unit, pfin, foil_cache)
+                linha.update(unit_motor=unit_motor, cm_url=link_cardmarket(nm))
                 linha.update(missing=falta, comprar=comprar,
                              noutra={}, noutra_q=0,
                              noutra_montada={}, noutra_reservada={},
@@ -6108,6 +6220,11 @@ def report(con, cfg_slots: list[dict] | None = None) -> dict:
         s["reserva_linhas"] = reserva_da_caixa(res, s) if s.get("reserva") else []
     res["reserva_total"] = sum(r["q"] for s in res["slots"] for r in s["reserva_linhas"])
     res["custo_total"] = round(sum(s["custo"] for s in res["slots"]), 2)
+    # QUE RÉGUA VALEU NAS FALTAS (2026-10-17): o 1.º anúncio de um vendedor
+    # profissional, ou — numa base onde essa fonte ainda não foi recolhida — o
+    # preço de antes. Dito, para o «fechar tudo» não mudar de régua calado.
+    res["regua_faltas"] = ("vendedor-profissional" if precos.ha_pro(con)
+                           else "motor")
     res["comprar_total"] = sum(s["comprar"] for s in res["slots"])
     res["noutra_total"] = sum(s["noutra"] for s in res["slots"])
     # As duas metades do "ir buscar" (André, 2026-09-08). Hoje, com a

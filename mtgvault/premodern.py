@@ -887,11 +887,18 @@ def valores_outros(con: sqlite3.Connection, res: dict, o: dict,
     out: dict[str, dict] = {}
     rl = set(rl)
     cache: dict = {}
+    # Desde 2026-10-17 é o 1.º anúncio PT de um vendedor profissional na
+    # impressão ≤SCG mais barata (`loadout.preco_pro`, a mesma régua das faltas):
+    # *"só PT"* — sem anúncio PT, a staple fica sem preço e diz porquê.
+    from . import precos                                     # noqa: PLC0415
+    regua = loadout.preco_pro if precos.ha_pro(con) else (
+        lambda con_, s, nm_, fin, c: loadout.mais_barata_que_serve(con_, s, nm_, fin, c))
     for nm in o.get("cartas_todas") or o.get("cartas") or {}:
-        v = (loadout.mais_barata_que_serve(con, caixa, nm, cache=cache)
-             if caixa else {"unit": None, "set": None, "sid": None})
+        v = (regua(con, caixa, nm, "nonfoil", cache)
+             if caixa else {"unit": None, "set": None, "sid": None, "motivo": None})
         out[nm] = {"unit": v.get("unit"), "set": v.get("set"), "sid": v.get("sid"),
-                   "rl": nm in rl}
+                   "rl": nm in rl, "motivo": v.get("motivo"),
+                   "cm_url": loadout.link_cardmarket(nm)}
     return out
 
 

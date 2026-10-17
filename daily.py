@@ -223,6 +223,13 @@ def _cardtrader(con):
         sets = prices.edicoes_da_coleccao(con)
         if not sets:
             return "colecção sem edições conhecidas — saltado"
+        # A ERA PREMODERN (2026-10-17): o preço de referência das faltas e das
+        # staples de Premodern é o 1.º anúncio PT de um vendedor profissional, na
+        # impressão que serve — e é preciso ter perguntado às edições onde ela
+        # existe. Medido a 17/10: +10 edições, 9 delas no CardTrader (a 4BB não
+        # existe lá) = +18 pedidos por noite (blueprints + marketplace). O preço
+        # do vendedor profissional sai das MESMAS respostas: zero pedidos a mais.
+        sets = sorted(set(sets) | set(prices.edicoes_premodern(con)))
     ct = prices.CardTrader()
     prices.sync_cardtrader_map(con, ct, sets)
     return (f"{prices.fetch_cardtrader_prices(con, ct, sets)} preços "
@@ -441,6 +448,10 @@ def _prune_marketplace(con) -> int:
     """
     # O mesmo `EXISTS` do `_prune_prices`, e pela mesma razão: com o catálogo
     # por carregar, «não é Reserved List» é verdade sobre toda a gente.
+    # O 1.º anúncio de um vendedor profissional (2026-10-17) não tem histórico
+    # que sirva a nada (nem a regra dos 5 % da RL, que lê a régua de venda, nem
+    # as colunas «há 1 mês»): fica só no `price_latest`.
+    con.execute("DELETE FROM price_history WHERE receita = ?", (precos.RECEITA_CT_PRO,))
     return con.execute(
         """DELETE FROM price_history
             WHERE receita = ?
