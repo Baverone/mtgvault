@@ -14,7 +14,8 @@
     "Goblin Warchief",
     "Mogg Fanatic",
     "Rishadan Port",
-    "Siege-Gang Commander"
+    "Siege-Gang Commander",
+    "Wasteland"
    ],
    "primeira": "2026-09-09",
    "ultima": "2026-10-17"
@@ -217,6 +218,7 @@
    "nome": "Landstill",
    "nucleo": [
     "Adarkar Wastes",
+    "Counterspell",
     "Decree of Justice",
     "Disenchant",
     "Dust Bowl",
@@ -224,7 +226,6 @@
     "Flooded Strand",
     "Impulse",
     "Mana Leak",
-    "Mishra's Factory",
     "Powder Keg",
     "Standstill",
     "Wrath of God"
@@ -289,6 +290,7 @@
     "Grim Lavamancer",
     "Incinerate",
     "Lightning Bolt",
+    "Mishra's Factory",
     "Mogg Fanatic",
     "Pyrostatic Pillar",
     "Seal of Fire",
@@ -379,7 +381,7 @@
     "Daze",
     "Flash of Insight",
     "Foil",
-    "Gush",
+    "Impulse",
     "Opt",
     "Phyrexian Dreadnought",
     "Portent",
@@ -403,12 +405,11 @@
     "Forsaken City",
     "Gush",
     "Impulse",
-    "Powder Keg",
     "Stasis",
     "Thwart"
    ],
    "primeira": "2026-09-14",
-   "ultima": "2026-09-19"
+   "ultima": "2026-10-17"
   },
   "bfbba613c1": {
    "formato": "premodern",
@@ -435,15 +436,15 @@
    "nome": "Terrageddon",
    "nucleo": [
     "Mishra's Factory",
-    "Mox Diamond",
-    "Naturalize",
     "Oath of Druids",
     "Rishadan Port",
     "Sphere of Resistance",
+    "Swords to Plowshares",
     "Sylvan Library",
     "Terravore",
     "Thermokarst",
     "Treetop Village",
+    "Wasteland",
     "Windswept Heath",
     "Winter's Grasp"
    ],
@@ -495,6 +496,7 @@
     "Bottomless Pit",
     "Cabal Therapy",
     "Cursed Scroll",
+    "Duress",
     "Funeral Charm",
     "Mishra's Factory",
     "Phyrexian Furnace",
@@ -502,8 +504,7 @@
     "Ravenous Rats",
     "Skittering Skirge",
     "Smother",
-    "The Rack",
-    "Wasteland"
+    "The Rack"
    ],
    "primeira": "2026-10-05",
    "ultima": "2026-10-17"
@@ -523,16 +524,16 @@
    "formato": "premodern",
    "nome": "Golgari Graveborn Muse",
    "nucleo": [
-    "Deranged Hermit",
-    "Diabolic Edict",
+    "Cabal Therapy",
     "Dust Bowl",
     "Graveborn Muse",
     "Krosan Tusker",
     "Llanowar Wastes",
     "Pernicious Deed",
     "Ravenous Baloth",
-    "Ravenous Rats",
     "Recurring Nightmare",
+    "Smother",
+    "Treetop Village",
     "Volrath's Stronghold",
     "Wall of Blossoms"
    ],
@@ -617,6 +618,24 @@
     "Smother"
    ],
    "primeira": "2026-09-09",
+   "ultima": "2026-10-17"
+  },
+  "fa620a79a4": {
+   "formato": "premodern",
+   "nome": "RG Aggro",
+   "nucleo": [
+    "Bloodstained Mire",
+    "Call of the Herd",
+    "Grim Lavamancer",
+    "Karplusan Forest",
+    "Lightning Bolt",
+    "Mogg Fanatic",
+    "Naturalize",
+    "Sylvan Library",
+    "Treetop Village",
+    "Wooded Foothills"
+   ],
+   "primeira": "2026-10-17",
    "ultima": "2026-10-17"
   }
  },
