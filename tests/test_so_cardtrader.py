@@ -209,14 +209,20 @@ def caso_os_dados_a_parte_tambem_nao_dizem_cardmarket():
     """`data/paginas/**.json` — é de lá que as páginas pesadas tiram o que mostram.
 
     Sem isto, a casca ficava limpa e o `fetch` trazia a palavra de volta.
+
+    EXCEPÇÃO DECLARADA (2026-10-17): o `cm_url` das linhas de faltas — o link
+    de pesquisa pelo nome para ele CONFIRMAR à mão no Cardmarket
+    (`loadout.link_cardmarket`, ordem de 17/10). É um URL, não um nome de loja
+    no texto; e só ele: outra ocorrência chumba na mesma.
     """
     pag = RAIZ / "data" / "paginas"
     if not pag.exists():
         print("    (sem data/paginas — nada a varrer)")
         return
     maus = []
+    link = re.compile(r'"cm_url":\s*"https://www\.cardmarket\.com/[^"]*"')
     for p in sorted(pag.rglob("*.json")):
-        txt = p.read_text(encoding="utf-8", errors="replace")
+        txt = link.sub('"cm_url":""', p.read_text(encoding="utf-8", errors="replace"))
         for m in re.finditer(r"cardmarket", txt, re.I):
             a, b = max(0, m.start() - 60), min(len(txt), m.end() + 60)
             maus.append(f"{p.relative_to(RAIZ)}: …{' '.join(txt[a:b].split())}…")
