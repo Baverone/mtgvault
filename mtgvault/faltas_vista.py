@@ -298,7 +298,7 @@ def texto(v: dict) -> str:
                f"{paginas.eur(t['valor'])}")
     st = v.get("staples") or {}
     if st.get("linhas"):
-        out.append(f"// STAPLES DE PREMODERN (colecção, fora do total) — "
+        out.append(f"// STAPLES PREMODERN (colecção, fora do total) — "
                    f"{st['copias']} cóp., {paginas.eur(st['valor'])}")
         out += [f"{l['q']} {l['nm']}" for l in st["linhas"]]
     return "\n".join(out)
