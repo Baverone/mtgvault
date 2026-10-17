@@ -6370,7 +6370,7 @@ numa subpasta, em maiúsculas, HEIC — ficam; e o `fotos.py` não ganha um
   `_plano.txt`): **nunca serviu para reconhecer nomes** — o `mapa_pastas` sai só
   do `caixas` do config (nome nas duas formas + slot) e as pastas `_…` são
   saltadas pela recolha (uma foto lá dentro é dita como erro, não processada).
-- **A pasta «Outros (jogam Premodern)» é a excepção**: as pastas de carta dela
+- **A pasta «Staples Premodern» (era «Outros…» até 17/10) é a excepção**: as pastas de carta dela
   não levam `(N)` e o `contas_das_pastas` salta-a — ver a secção a seguir.
 - **O gerador de ponta a ponta, sobre a árvore sem uma imagem**: 0 criadas, 0
   apagadas, **41 com o `(N)` acertado** às listas de hoje (os consensos de
@@ -6414,6 +6414,39 @@ Testes em `tests/test_outros_premodern.py` (4 casos).
   Spiritualist; o Reanimator leva `none: ["Psychatog"]` em vez de descer para
   depois do Psychatog (descer partia a regra de as só-de-nome virem no fim). O
   ranking não mexeu.
+
+**«STAPLES PREMODERN»: CÓPIAS PRÓPRIAS, A CONTA (b) (André, 2026-10-17, à noite,
+à letra).** *"as cartas do deck servem apenas para o deck"*. Desde a tarde de
+17/10 a pasta da secção de cima é a COLECÇÃO DE STAPLES (o núcleo dos 15
+arquétipos com mais listas, caixas incluídas, `premodern.TOP_STAPLES`), e havia
+duas contas à espera da decisão dele: (a) a carta que já está no Stiflenought ou
+no UW Replenish conta como «tenho»; (b) a colecção precisa das suas cópias. **Ele
+escolheu a (b)**: staples e decks SOMAM, não partilham — a regra de 19/09 («cada
+deck tem as suas próprias cartas») aplicada à colecção. Testes em
+`tests/test_outros_premodern.py` (7 casos).
+- **`premodern.outros` → `cartas` é a união INTEIRA** (`regra: "b"`); a (a) fica
+  em `cartas_fora_dos_decks`, só para a conta ao lado (`contas_staples` → `a`,
+  `b`, `regra`). A pasta, a secção das faltas e o painel levam a (b); uma staple
+  que também está num deck leva *«também no <deck>»* (40 hoje).
+- **«Já tens» passou a ser cópias PARA LÁ das que os decks pedem**
+  (`premodern.copias_dos_decks`/`copias_para_staples`): uma Swords que vive no UW
+  Replenish não é a Swords da colecção. É o que a pasta (`sincronizar_outros`) e a
+  lista de faltas descontam. A ALOCAÇÃO não mudou — quem diz qual cópia vai para
+  que caixa continua a ser o `loadout`; a conta é sobre o número.
+- **Medido a 17/10** (o mesmo `vault.db`, backup em
+  `data/backups/vault-2026-10-17-staples-b.db`, 127,4 MB, `integrity ok`): (b)
+  **218 cartas, 596 cópias, 18 086,97 €** (116 cartas / 318 cópias sem anúncio PT
+  de vendedor profissional), contra (a) 178 / 470 / 12 096,07 €. A pasta passou de
+  178 a **218** subpastas (+40, as que estão nos dois decks). O «fechar tudo» dos
+  decks não mexe — as staples estão FORA do total.
+- **A PASTA CHAMA-SE «Staples Premodern»** (era «Outros (jogam Premodern)»):
+  `fotos.PASTA_OUTROS`; `fotos.mudar_nome_outros` MOVE-A inteira nas duas árvores
+  (corre dentro do `sincronizar_outros`; se as duas existirem não junta nada e
+  diz-o — só o `apagar_pasta_feita` apaga pastas). O nome antigo continua
+  RECONHECIDO como alvo (`PASTAS_OUTROS_ANTIGAS`, `e_pasta_outros`) para uma foto
+  largada lá não se perder. **O alvo interno continua `outros`** (`site-outros-…`
+  no nome das fotos, `data/painel/outros-premodern.json`): uma foto já tirada não
+  muda de significado por causa de um nome de pasta.
 
 ### Duas bases de dados
 
