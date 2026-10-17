@@ -359,6 +359,14 @@ mtgvault/
                   `deck_lista_trocas`, que o `my_decks._store` passou a escrever a
                   cada troca de lista de referência, com as DUAS listas inteiras.
                   Ver «O PAINEL DAS ALTERAÇÕES NOS DECKS»
+  painel_listas.py AS LISTAS E OS RESULTADOS DA SEMANA (2026-10-17): o passo
+                  `painel-listas` escreve `data/painel/listas.json` (a lista de
+                  hoje de cada deck dele) e `resultados.json` (as listas dos
+                  últimos 7 dias que casam com um deck dele, com o `conta` do
+                  `sources.lista_conta`), mais os dois no `historico/`. Os decks
+                  são os da aba Decks sem meta e sem saídas + os seguidos; o
+                  emparelhamento é a identidade do vault. Ver «AS LISTAS E OS
+                  RESULTADOS NO PAINEL»
   consenso.py     O CONSENSO POR COMANDANTE (2026-10-01): em Duel Commander a
                   identidade de um deck é o COMANDANTE e nunca a etiqueta do
                   clustering (870 etiquetas, 808 sem listas). O comandante de
@@ -6235,6 +6243,40 @@ a prova de que chumbam em `tests/_chumba_painel.py` (2 de 2).
   **Por decidir por ele:** o `spml_formatos.standard` continua `"a jogar"` (o
   `classify` reserva-lhes cartas nos Binders), e o Cori-Steel Cutter e o Grinding
   Station continuam seguidos apesar de terem saído das versões de Modern a 06/10.
+
+**AS LISTAS E OS RESULTADOS NO PAINEL (André, 2026-10-17, à letra).** *"todos
+os dias dá-me as decklists atualizadas e resultados que tiveram"*. Motor em
+`mtgvault/painel_listas.py`, passo `painel-listas` do `daily` (DEPOIS do
+`decks-premodern`, senão as caixas de consenso saíam com a lista de ontem);
+testes em `tests/test_painel_listas.py`.
+- **Os decks dele** (`decks_dele`): as caixas sem `_saiu` e com lista
+  (`decks_vista.decks_das_caixas`), as versões vivas com lista própria (uma
+  versão cuja lista vive numa caixa só lhe acrescenta identidade), os decks do
+  registo que ficam (sem `_saiu` e sem `por_confirmar` — o brew da Kasmina) e os
+  `my_decks.seguidos()`. Um seguido com o nome de uma caixa leva « (seguido)»
+  (o Cloud do McWinSauce ≠ a caixa com a lista do Liwei Luo). A 17/10: **26
+  decks**; a v1 escrita à mão tinha 19 e trazia o Jeskai Lessons e o 4c Control,
+  que saíram a 16/10, e deixava de fora o cEDH, o Pauper, a caixa do Duel
+  Commander, o Aluren, a versão Weapons e a Orzhov Monument.
+- **O emparelhamento** é a identidade do vault e um resultado é de UM deck: a
+  assinatura da caixa (`_todas`/`_sem`), as cartas do meta da versão, o
+  `FOLLOWED` com os `!`, o comandante (`decklists.commander`) e o jogador dos
+  decks seguidos por jogador, todos pelo `sources.ids_por_assinatura` ou pela
+  coluna (universo inteiro, ligas incluídas — o `conta` diz se contam). Ganha a
+  identidade mais específica; empate caixa > versão > registo > seguido. **Uma
+  identidade cujas cartas não estão na lista do próprio deck é recusada e dita**:
+  é a caixa `modern` (lista Izzet, `reserva_assinatura` Oswald), que por isso não
+  recebe resultados — as listas Izzet vão para a versão Weapons e o seguido.
+- **A 17/10: 137 resultados (92 contam)** contra os 100 da v1: a v1 casava pelo
+  nome da fonte e em qualquer formato (o «Jeskai Lessons» apanhava Challenges de
+  Modern e Legacy) e o `conta` dela usava 64 jogadores onde o config diz 0
+  (Modern, Duel Commander, onde as ligas também contam).
+- **As listas também vão para o `historico/`**: a `deck_lista_trocas` só guarda
+  as trocas dos decks SEGUIDOS; o consenso das caixas recalcula-se todas as
+  noites e não ficava escrito em lado nenhum. (A `deck_target_historico` não
+  existe; a `deck_target` é uma tabela antiga de 603 linhas que ninguém lê.)
+- O `painel` e o `painel-listas` passaram a imprimir o caminho completo e a hora
+  de cada ficheiro escrito, para a tarefa da nuvem poder conferir.
 
 **PREMODERN EM CONSENSO MENOS O STIFLENOUGHT, E O LEGACY NA LISTA DO
 CHAMPIONSHIP (André, 2026-10-16, à letra).** *"em premodern todos são consensos

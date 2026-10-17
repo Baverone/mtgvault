@@ -28,7 +28,7 @@ os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
 os.environ.setdefault("MOXFIELD_USER_AGENT", "mtgvault/0.1 (coleccao pessoal)")
 
 from mtgvault import (analysis, consenso, db, fases, loadout, mtgtop8,  # noqa: E402
-                      painel, precos, prices, scryfall, sources, tagging, venda,
+                      painel, painel_listas, precos, prices, scryfall, sources, tagging, venda,
                       watchlist)
 
 import arrumacao  # noqa: E402  (gera arrumacao.html — as fases e as quatro protecções)
@@ -579,6 +579,13 @@ def main():
         # cada arquétipo (o clustering não os separa — a Enchantress joga 96% de
         # Replenish e vinham colados).
         _step(con, "decks-premodern", lambda: premodern_decks.refresh(con))
+        # AS LISTAS DE REFERÊNCIA E OS RESULTADOS DA SEMANA (André, 2026-10-17:
+        # "todos os dias dá-me as decklists atualizadas e resultados que
+        # tiveram"). DEPOIS do `decks-premodern` e não logo a seguir ao `painel`:
+        # as caixas de consenso lêem a lista que esse passo acaba de recalcular,
+        # e antes dele o `listas.json` saía com a de ontem.
+        _step(con, "painel-listas",
+              lambda: painel_listas.texto(painel_listas.escrever(con)))
 
         # CONSENSO POR COMANDANTE (2026-10-01). Dois gestos num passo, por esta
         # ordem: derivar o `decklists.commander` das listas que ainda o não têm

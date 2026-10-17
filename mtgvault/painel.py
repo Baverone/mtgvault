@@ -23,7 +23,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from mtgvault import db, sources
@@ -338,19 +338,38 @@ def escrever(con, raiz: Path | None = None, hoje: str | None = None) -> dict:
     hoje = hoje or date.today().isoformat()
     p = pasta(raiz)
     dados = construir(con, hoje, raiz)
+    escritos = []
     for nome, linhas in dados.items():
         _escrever_json(p / nome, linhas)
+        escritos.append(p / nome)
     _escrever_json(p / "historico" / f"{hoje}.json", dados["alteracoes.json"])
+    escritos.append(p / "historico" / f"{hoje}.json")
     av = dados["avisos.json"]
-    return {"pasta": str(p), "alteracoes": len(dados["alteracoes.json"]),
+    # O CAMINHO COMPLETO E A HORA DE CADA FICHEIRO (2026-10-17): a tarefa da
+    # nuvem que actualiza o painel tem de poder conferir no log o que esta
+    # corrida escreveu e quando — a 17/10 os datasets ficaram com os de ontem e
+    # o log só dizia a pasta.
+    return {"pasta": str(p), "ficheiros": [(str(f.resolve()), hora_do_ficheiro(f))
+                                           for f in escritos],
+            "alteracoes": len(dados["alteracoes.json"]),
             "decks_alterados": len({(a["deck"], a["formato"]) for a in dados["alteracoes.json"]}),
             "decks": len(dados["estado-decks.json"]),
             "mudaram": sum(1 for e in dados["estado-decks.json"] if e["mudou"] == "sim"),
             "avisos": {g: sum(1 for a in av if a["gravidade"] == g) for g in GRAVIDADES}}
 
 
+def hora_do_ficheiro(p: Path) -> str:
+    """A hora local a que o ficheiro ficou escrito (o mtime), para o log."""
+    return datetime.fromtimestamp(Path(p).stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def texto_ficheiros(ficheiros) -> str:
+    return "; ".join(f"{f} ({h})" for f, h in ficheiros)
+
+
 def texto(r: dict) -> str:
     a = r["avisos"]
     return (f"{r['alteracoes']} linhas de alteracao em {r['decks_alterados']} decks "
             f"({r['mudaram']} dos {r['decks']} seguidos trocaram de lista); "
-            f"avisos {a['alta']} alta / {a['media']} media / {a['baixa']} baixa -> {r['pasta']}")
+            f"avisos {a['alta']} alta / {a['media']} media / {a['baixa']} baixa | escritos: "
+            + texto_ficheiros(r.get("ficheiros") or []))
