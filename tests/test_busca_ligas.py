@@ -196,6 +196,31 @@ def caso_pioneer_e_legacy_contam_presenciais_de_31_ou_mais():
         "os tiers do pioneer herdam do _default")
 
 
+def caso_premodern_com_a_seccao_a_serio_conta_presenciais_de_31():
+    """André, 2026-10-17: o Premodern passa a 31 como o Pioneer e o Legacy —
+    mas sem ligas. Usa a secção do `colecao_config.json` A SÉRIO, para o teste
+    não passar com um config de brincar e falhar com o dele."""
+    real = json.loads(io.open(RAIZ / "colecao_config.json",
+                              encoding="utf-8").read())["metagame_fontes"]
+    mf = json.loads(json.dumps(CFG["metagame_fontes"]))
+    mf["premodern"] = real["premodern"]
+    escreve_cfg(metagame_fontes=mf)
+    try:
+        con = base()
+        assert _conta(con, lista(con, "premodern", "Presencial", 31),
+                      "premodern"), "premodern: um presencial de 31 tem de contar"
+        assert not _conta(con, lista(con, "premodern", "Presencial", 30),
+                          "premodern"), "premodern: 30 não é 'mais de 30'"
+        assert not _conta(con, lista(con, "premodern", "Presencial", None),
+                          "premodern"), "sem número de jogadores não conta"
+        assert not _conta(con, lista(con, "premodern", "League", None),
+                          "premodern"), "as ligas de Premodern continuam fora"
+        assert _conta(con, lista(con, "premodern", "Challenge", None),
+                      "premodern")
+    finally:
+        escreve_cfg()
+
+
 def caso_um_presencial_sem_numero_nao_conta_e_fica_dito():
     """O que não se sabe não conta — e deixa de cair em silêncio."""
     escreve_cfg()
@@ -377,6 +402,11 @@ def caso_o_config_a_serio_tem_a_regra_e_a_forma():
         assert mf[f].get("_nota"), f"{f}: a regra leva as palavras dele ao lado"
     assert mf["modern"]["ligas"] == "busca"
     assert mf["_default"]["min_jogadores_presencial"] == 64
+    # Premodern (André, 2026-10-17): mínimo 31 como o Pioneer e o Legacy, mas
+    # SEM ligas — herda `ligas: false` e os tiers do _default.
+    assert mf["premodern"]["min_jogadores_presencial"] == 31, mf["premodern"]
+    assert "ligas" not in mf["premodern"] and "tiers" not in mf["premodern"]
+    assert mf["premodern"].get("_nota")
     assert mf["duel-commander"]["ligas"] is True, (
         "o duel-commander CONTA ligas, por decisão dele de 2026-09-07")
     assert cfg["ligas_busca"]["amostra_baixa_max"] == 10

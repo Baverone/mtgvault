@@ -384,6 +384,10 @@
       "ligas": "busca",
       "_nota": "Andre 2026-10-13, a letra: 'para Legacy igual' (ao Pioneer: eventos do MTGO, ou presenciais com mais de 30 pessoas). Mesma regra, mesmas razoes; ver a nota do pioneer. Os tiers herdam do _default."
     },
+    "premodern": {
+      "min_jogadores_presencial": 31,
+      "_nota": "Andre 2026-10-17: o minimo presencial do Premodern passa de 64 a 31, igual ao Pioneer e ao Legacy (13/10). As ligas continuam fora (herda ligas:false do _default) e os tiers herdam do _default. Medido a 17/10 sobre a base: contam 520 listas / 22 torneios com 64, 622 / 33 com 31 (os 443 Challenges iguais; presenciais 77 listas / 6 torneios -> 179 / 17)."
+    },
     "duel-commander": {
       "tiers": [
         "Challenge",
