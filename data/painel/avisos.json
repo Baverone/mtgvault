@@ -1,72 +1,51 @@
 [
  {
   "id": "000",
-  "gravidade": "alta",
-  "deck": "Grinding Station",
-  "aviso": "82 cartas trocadas de uma vez",
-  "detalhe": "de Cachorrowo 12/10 para howa 15/10: nao e a lista a evoluir, e outro deck — o emparelhador trocou de arquetipo. Ver se a assinatura ainda separa o deck."
- },
- {
-  "id": "001",
   "gravidade": "media",
   "deck": "Cloud (Duel Commander)",
   "aviso": "97 cartas, nao 100",
   "detalhe": "a lista de referencia foi lida incompleta."
  },
  {
-  "id": "002",
+  "id": "001",
   "gravidade": "media",
   "deck": "Cloud (Duel Commander)",
   "aviso": "sem lista de McWinSauce com ['Cloud, Midgar Mercenary']",
   "detalhe": "nenhuma lista que conte serve hoje este deck; fica a de McWinSauce 31/08. Se se repetir todos os dias, a assinatura ou o jogador já não existem no metagame."
  },
  {
-  "id": "003",
+  "id": "002",
   "gravidade": "media",
-  "deck": "Grinding Station",
-  "aviso": "Grinding Station: 4 -> 2",
-  "detalhe": "a carta que da nome ao deck desceu de copias nesta troca."
+  "deck": "Izzet Affinity (Kappa Cannoneer)",
+  "aviso": "voltou a uma lista como a de wild88plk 13/10",
+  "detalhe": "deixada a 16/10: o deck anda a saltar entre dois arquetipos que a assinatura nao separa."
  },
  {
-  "id": "004",
+  "id": "003",
   "gravidade": "baixa",
   "deck": "Cloud (Duel Commander)",
-  "aviso": "lista de referencia com 46 dias",
+  "aviso": "lista de referencia com 47 dias",
   "detalhe": "a mais recente que serve este deck e de McWinSauce 31/08."
  },
  {
-  "id": "005",
-  "gravidade": "baixa",
-  "deck": "Cori-Steel Cutter",
-  "aviso": "lista relida: +1 cartas",
-  "detalhe": "a mesma lista, relida da fonte — a leitura antiga perdia as copias de uma carta partida em varias entradas: Island +1"
- },
- {
-  "id": "006",
-  "gravidade": "baixa",
-  "deck": "Grinding Station",
-  "aviso": "lista relida: +6 cartas",
-  "detalhe": "a mesma lista, relida da fonte — a leitura antiga perdia as copias de uma carta partida em varias entradas: Tamiyo, Inquisitive Student +3, Consign to Memory +3"
- },
- {
-  "id": "007",
-  "gravidade": "baixa",
-  "deck": "Izzet Affinity (Kappa Cannoneer)",
-  "aviso": "lista relida: +3 cartas",
-  "detalhe": "a mesma lista, relida da fonte — a leitura antiga perdia as copias de uma carta partida em varias entradas: Island +1, Tormod's Crypt +2"
- },
- {
-  "id": "008",
+  "id": "004",
   "gravidade": "baixa",
   "deck": "Landstill",
   "aviso": "48% do núcleo já está nos teus decks (12 de 25 cartas)",
   "detalhe": "pela regra dos 50% (cópias que TENS, como principal) dá 0% hoje — a colecção reconstrói-se pelas fotos. Faltam-lhe: Circle of Protection: Red x1, Coastal Tower x1, Decree of Justice x3, Dust Bowl x2, Fact or Fiction x3, Faerie Conclave x2, Mana Leak x3, Mishra's Factory x4"
  },
  {
-  "id": "009",
+  "id": "005",
   "gravidade": "baixa",
   "deck": "Psychatog",
   "aviso": "55% do núcleo já está nos teus decks (11 de 20 cartas)",
   "detalhe": "pela regra dos 50% (cópias que TENS, como principal) dá 0% hoje — a colecção reconstrói-se pelas fotos. Faltam-lhe: Accumulated Knowledge x4, Duress x4, Engineered Plague x2, Fact or Fiction x1, Haunting Echoes x1, Psychatog x4, Sickening Dreams x2, Smother x3"
+ },
+ {
+  "id": "006",
+  "gravidade": "baixa",
+  "deck": "Stiflenought (Spock)",
+  "aviso": "lista de referencia com 15 dias",
+  "detalhe": "a mais recente que serve este deck e de SpockVidaLoka 02/10."
  }
 ]

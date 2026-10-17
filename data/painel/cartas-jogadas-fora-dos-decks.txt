@@ -1,0 +1,190 @@
+CARTAS JOGADAS QUE OS MEUS DECKS NAO PEDEM
+16 de Outubro de 2026 - se tiveres alguma destas, fotografa e entra na base
+==================================================================
+
+Como esta feita: cartas presentes em 10% ou mais das listas que CONTAM
+pela tua regra (Challenge/Showcase/Qualifier do MTGO, ou presencial com
+31+ jogadores), desde 29/09, nos quatro formatos com amostra a serio.
+Tirei as basicas e tudo o que os teus decks ja pedem.
+
+FICARAM DE FORA, e digo porque: o Duel Commander tem so 39 listas que
+contam e o Pauper tem 8 - a 10% isso sao 4 e 1 listas, e qualquer
+percentagem ali e ruido. Para o Duel Commander o sitio certo e o
+consenso pelo COMANDANTE (o Cloud, min 8 listas) que ja tens, nao uma
+percentagem do formato. O Vintage tirei-o todo: nao tens deck de
+Vintage, e so ele enchia a lista com Power 9 e Mana Crypt.
+
+As marcas: [RL-dual] [fetch] [shock] = ja estao protegidas pela tua
+regra de guardar, portanto essas nem se pensa, guardam-se.
+
+
+MODERN  -  37 cartas  (de 1339 listas que contam)
+------------------------------------------------------------------
+   35%  Grafdigger's Cage                         472 listas
+   29%  Obsidian Charmaw                          385 listas
+   26%  Thundering Falls                          344 listas
+   24%  Trinisphere                               328 listas
+   24%  Surgical Extraction                       326 listas
+   24%  High Noon                                 326 listas
+   22%  Thoughtseize                              301 listas
+   22%  Kozilek's Command                         301 listas
+   22%  Eldrazi Temple                            299 listas
+   22%  Ugin's Labyrinth                          294 listas
+   22%  Wrath of the Skies                        291 listas
+   21%  Sowing Mycospawn                          279 listas
+   20%  Devourer of Destiny                       274 listas
+   20%  Prismatic Ending                          262 listas
+   19%  Fatal Push                                261 listas
+   19%  Emrakul, the Promised End                 258 listas
+   19%  Hallowed Fountain                         250 listas [shock]
+   18%  Teferi, Time Raveler                      247 listas
+   18%  Sire of Seven Deaths                      247 listas
+   18%  Ancient Stirrings                         236 listas
+   18%  Blade of the Bloodchief                   235 listas
+   18%  Basking Broodscale                        235 listas
+   17%  Quantum Riddler                           230 listas
+   16%  Meltdown                                  214 listas
+   16%  Meticulous Archive                        209 listas
+   15%  Elegant Parlor                            199 listas
+   15%  Thought-Knot Seer                         195 listas
+   12%  Talisman of Resilience                    164 listas
+   12%  Yavimaya, Cradle of Growth                158 listas
+   11%  Thief of Existence                        146 listas
+   11%  Temple Garden                             146 listas [shock]
+   11%  Wear/Tear                                 145 listas
+   11%  Watery Grave                              145 listas [shock]
+   11%  Ashiok, Dream Render                      144 listas
+   10%  Raucous Theater                           138 listas
+   10%  Brotherhood's End                         136 listas
+   10%  Warping Wail                              135 listas
+
+LEGACY  -  31 cartas  (de 455 listas que contam)
+------------------------------------------------------------------
+   47%  Brainstorm                                212 listas
+   45%  Ponder                                    203 listas
+   34%  Thoughtseize                              155 listas
+   26%  Karakas                                   120 listas
+   21%  Surgical Extraction                        94 listas
+   20%  Murktide Regent                            89 listas
+   20%  Fatal Push                                 89 listas
+   19%  Containment Priest                         87 listas
+   19%  Orcish Bowmasters                          86 listas
+   18%  Flow State                                 82 listas
+   16%  Wrath of the Skies                         74 listas
+   15%  Kozilek's Command                          68 listas
+   15%  Barrowgoyf                                 66 listas
+   14%  Massacre                                   65 listas
+   14%  Snuff Out                                  63 listas
+   14%  Null Rod                                   62 listas
+   14%  Leyline of the Void                        62 listas
+   13%  The One Ring                               60 listas
+   13%  Thundering Falls                           59 listas
+   13%  Moonshadow                                 58 listas
+   13%  Atraxa, Grand Unifier                      58 listas
+   12%  Price of Progress                          55 listas
+   12%  Brazen Borrower                            55 listas
+   11%  Show and Tell                              50 listas
+   11%  Kaito, Bane of Nightmares                  49 listas
+   11%  Faerie Macabre                             49 listas
+   11%  Karn, the Great Creator                    48 listas
+   11%  Giant's Boulder                            48 listas
+   10%  Quantum Riddler                            47 listas
+   10%  Bojuka Bog                                 47 listas
+   10%  Nethergoyf                                 46 listas
+
+PIONEER  -  57 cartas  (de 241 listas que contam)
+------------------------------------------------------------------
+   44%  Fatal Push                                105 listas
+   42%  Thoughtseize                              102 listas
+   34%  Riverglide Pathway                         83 listas
+   31%  Takenuma, Abandoned Mire                   75 listas
+   30%  Iroh's Demonstration                       73 listas
+   30%  Boomerang Basics                           73 listas
+   30%  Stormchaser's Talent                       72 listas
+   29%  Change the Equation                        70 listas
+   28%  Academic Dispute                           67 listas
+   27%  Mutavault                                  66 listas
+   27%  Blooming Marsh                             64 listas
+   25%  Overgrown Tomb                             61 listas [shock]
+   25%  Octopus Form                               61 listas
+   25%  Abrupt Decay                               60 listas
+   24%  It'll Quench Ya!                           57 listas
+   23%  Sleight of Hand                            55 listas
+   21%  Urborg, Tomb of Yawgmoth                   50 listas
+   21%  Redcap Melee                               50 listas
+   21%  Bitter Triumph                             50 listas
+   21%  Ashiok, Dream Render                       50 listas
+   20%  Unlicensed Hearse                          48 listas
+   20%  Reckless Rage                              47 listas
+   20%  Monastery Swiftspear                       47 listas
+   19%  Sheoldred, the Apocalypse                  46 listas
+   19%  Emberheart Challenger                      46 listas
+   18%  Burst Lightning                            44 listas
+   17%  Soul-Scar Mage                             42 listas
+   17%  Quantum Riddler                            42 listas
+   17%  Badgermole Cub                             42 listas
+   17%  Culling Ritual                             40 listas
+   16%  Invoke Despair                             39 listas
+   16%  Go Blank                                   39 listas
+   16%  Restless Cottage                           38 listas
+   16%  Professor Dellian Fel                      38 listas
+   16%  Llanowar Wastes                            38 listas
+   15%  Unholy Annex // Ritual Chamber             36 listas
+   14%  Price of Freedom                           34 listas
+   14%  Flow State                                 34 listas
+   14%  Graveyard Trespasser                       33 listas
+   14%  Fiery Impulse                              33 listas
+   13%  Watery Grave                               32 listas [shock]
+   13%  The Sackville-Bagginses                    31 listas
+   13%  Proft's Eidetic Memory                     31 listas
+   13%  Deadly Dispute                             31 listas
+   13%  Blackcleave Cliffs                         31 listas
+   12%  This Town Ain't Big Enough                 30 listas
+   12%  Pompous Battlemage                         29 listas
+   12%  Scorching Shot                             28 listas
+   12%  Ral, Crackling Wit                         28 listas
+   12%  Fear of Missing Out                        28 listas
+   11%  Sokenzan, Crucible of Defiance             27 listas
+   11%  Languish                                   27 listas
+   11%  Gloomlake Verge                            27 listas
+   11%  Darkslick Shores                           26 listas
+   10%  Leyline of the Void                        25 listas
+   10%  Den of the Bugbear                         25 listas
+   10%  Abandon Attachments                        25 listas
+
+PREMODERN  -  22 cartas  (de 307 listas que contam)
+------------------------------------------------------------------
+   23%  Engineered Plague                          70 listas
+   20%  Cabal Therapy                              62 listas
+   19%  Ray of Revelation                          57 listas
+   15%  Warmth                                     45 listas
+   14%  Phyrexian Furnace                          44 listas
+   14%  Disenchant                                 44 listas
+   14%  Sphere of Law                              42 listas
+   13%  Armageddon                                 40 listas
+   12%  Sacred Ground                              37 listas
+   12%  Diabolic Edict                             37 listas
+   12%  Dystopia                                   36 listas
+   11%  Withered Wretch                            35 listas
+   11%  Karplusan Forest                           35 listas
+   11%  Secluded Steppe                            34 listas
+   11%  Ravenous Rats                              34 listas
+   11%  Mogg Fanatic                               34 listas
+   11%  Cursed Scroll                              34 listas
+   11%  Psychatog                                  33 listas
+   10%  Overload                                   32 listas
+   10%  Graveborn Muse                             32 listas
+   10%  Fact or Fiction                            32 listas
+   10%  Cursed Totem                               32 listas
+
+==================================================================
+TOTAL: 147 cartas
+
+ONDE AS FOTOGRAFAR: largas as fotos em
+  Decks Por Processar\Extras (fora dos decks)\
+Nao te fiz pasta por carta de proposito. Essas 122 pastas seriam pedidos
+de foto de cartas que tu talvez nem tenhas, e estragavam o sinal que
+tornava as duas arvores uteis: o que sobra em Por Processar e o que
+falta fotografar, e vazio quer dizer acabou. Nos Extras a carta
+identifica-se pela foto, nao precisa de pasta com o nome a espera.
+Nos Extras e so a FRENTE, como ja estava combinado.

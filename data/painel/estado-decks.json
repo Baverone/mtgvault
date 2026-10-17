@@ -2,10 +2,10 @@
  {
   "deck": "Izzet Affinity (Kappa Cannoneer)",
   "formato": "modern",
-  "lista": "DJK3V1N 15/10",
-  "anterior": "wild88plk 13/10",
+  "lista": "Juan Navarro 15/10",
+  "anterior": "DJK3V1N 15/10",
   "mudou": "sim",
-  "cartas_trocadas": 26,
+  "cartas_trocadas": 20,
   "main": 60,
   "sideboard": 15
  },
@@ -13,9 +13,9 @@
   "deck": "Grinding Station",
   "formato": "modern",
   "lista": "howa 15/10",
-  "anterior": "Cachorrowo 12/10",
-  "mudou": "sim",
-  "cartas_trocadas": 82,
+  "anterior": "howa 15/10",
+  "mudou": "nao",
+  "cartas_trocadas": 0,
   "main": 60,
   "sideboard": 15
  },
