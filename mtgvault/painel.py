@@ -187,18 +187,21 @@ def escrever_outros(o: dict, valores: dict | None = None,
              "contas": contas, "avisos": avisos_outros(o)}
     _escrever_json(p / OUTROS, dados)
     a, b = contas["a"], contas["b"]
+    regra_b = contas.get("regra") == "b"
     linhas = [f"PREMODERN - A COLECCAO DE STAPLES ({hoje})",
-              "Gerado todas as noites (passo outros-premodern). As cartas sem deck",
-              "vivem na pasta «Decks Por Processar\\Outros (jogam Premodern)»;",
-              "as que ja estao no Stiflenought ou no UW Replenish ficam la.", "",
+              "Gerado todas as noites (passo outros-premodern). As staples vivem na",
+              "pasta «Decks Por Processar\\Outros (jogam Premodern)»"
+              + (", TODAS: as copias dos" if regra_b else ";"),
+              ("decks servem so os decks (Andre, 17/10) e a coleccao tem as suas."
+               if regra_b else "as que ja estao no Stiflenought ou no UW Replenish ficam la."), "",
               f"Criterio (Andre, 17/10): o nucleo (>= {o['nucleo_pct']}% das listas que",
               f"contam, main + side) dos {o.get('top', '')} arquetipos com mais listas,",
               "com a mediana das copias (tecto 4), sem basicas, em PT e nas edicoes",
               "legais do formato.", "",
               f"(a) se o que ja esta num deck contar como tenho: {a['cartas']} cartas, "
-              f"{a['copias']} copias, {a['eur']:.2f} EUR",
+              f"{a['copias']} copias, {a['eur']:.2f} EUR" + ("" if regra_b else "  <- EM VIGOR"),
               f"(b) se a coleccao precisar das suas copias:    {b['cartas']} cartas, "
-              f"{b['copias']} copias, {b['eur']:.2f} EUR", ""]
+              f"{b['copias']} copias, {b['eur']:.2f} EUR" + ("  <- EM VIGOR" if regra_b else ""), ""]
     for al in o["alvos"]:
         linhas.append(f"  {al['nome']:28s} {al['n_lists']:3d} listas  nucleo {al['nucleo']:2d}  "
                       f"{al['pct_nos_meus_decks']:3d}% ja nos teus decks"
@@ -208,7 +211,7 @@ def escrever_outros(o: dict, valores: dict | None = None,
         v = f"  ref. {c['unit']:.2f} EUR ({c['set']})" if c.get("unit") is not None else ""
         linhas.append(f"  x{c['q']}  {c['carta']:30s} {c['pct']:3d}%  "
                       f"{'/'.join(c['arquetipos'])}{v}" + ("  [RL]" if c.get("rl") else "")
-                      + (f"  [no {c['no_deck']}]" if c.get("no_deck") else ""))
+                      + (f"  [tambem no {c['no_deck']}]" if c.get("no_deck") else ""))
     (p / OUTROS_TXT).write_text("\n".join(linhas) + "\n", encoding="utf-8")
     return p / OUTROS
 

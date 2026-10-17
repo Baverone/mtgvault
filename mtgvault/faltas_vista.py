@@ -196,22 +196,19 @@ def staples(con, rep: dict) -> dict:
     decks é o «fechar tudo», e uma colecção que se vai enchendo não é um deck
     por fechar.
 
-    Só a conta (a): uma carta que já está num dos dois decks conta como «tenho»
-    e vive nesse deck (é o que a pasta leva). A (b) vai ao lado, em números, para
-    a decisão seguinte, que é dele. Uma staple de que ele já tem cópias jogáveis
-    pede só o resto, até à quantidade do núcleo."""
-    from . import collection, premodern                       # noqa: PLC0415
+    A CONTA (b) desde 2026-10-17 à noite (*"as cartas do deck servem apenas para
+    o deck"*): todas as staples, com cópias PRÓPRIAS — uma que também está no
+    Stiflenought ou no UW Replenish entra aqui por inteiro, e o que ele tem só
+    desconta a parte que sobra depois dos decks (`copias_para_staples`). A (a)
+    fica ao lado, em números."""
+    from . import premodern                                    # noqa: PLC0415
     if not premodern.caixas_do_formato(rep):
         return {"linhas": [], "cartas": 0, "copias": 0, "valor": 0.0,
                 "sem_preco": 0, "contas": None, "alvos": []}
     o = premodern.outros(con, rep)
     valores = premodern.valores_outros(con, rep, o)
-    tem: dict[str, int] = {}
-    for nm, q in con.execute(
-            f"""SELECT c.name, SUM(cp.quantity) FROM copies cp JOIN cards c
-                  ON c.scryfall_id = cp.scryfall_id
-                 WHERE {collection.jogaveis()} GROUP BY c.name"""):
-        tem[_scry.chave(nm)] = tem.get(_scry.chave(nm), 0) + int(q or 0)
+    tem = premodern.copias_para_staples(con, rep)
+    nos = o.get("nos_decks") or {}
     linhas = []
     for nm, e in o["cartas"].items():
         q = max(0, e["q"] - tem.get(_scry.chave(nm), 0))
@@ -225,6 +222,7 @@ def staples(con, rep: dict) -> dict:
                        "total_serve": round((u or 0) * q, 2),
                        "sid": v.get("sid"), "set": v.get("set"),
                        "arquetipos": e["arquetipos"], "pct": e["pct"],
+                       "no_deck": nos.get(nm),
                        "req": "PT · ≤SCG", "board": "main",
                        "cm_url": v.get("cm_url") or loadout.link_cardmarket(nm),
                        "aviso": ({"grau": "aviso", "motivos": ["sem_pro"],
@@ -238,6 +236,7 @@ def staples(con, rep: dict) -> dict:
             "valor": round(sum(l["total_ref"] for l in linhas), 2),
             "sem_preco": sum(l["q"] for l in linhas if l["unit"] is None),
             "contas": premodern.contas_staples(o, valores),
+            "regra": o.get("regra") or "a",
             "alvos": [a["nome"] for a in o["alvos"]], "top": o.get("top")}
 
 

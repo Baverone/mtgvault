@@ -302,23 +302,31 @@ function propostaHTML() {
 
 /* A COLECÇÃO DE STAPLES DE PREMODERN (André, 2026-10-17): *"quero ter o máximo
    de staples possível"*. Secção própria, com o subtotal dela e FORA do total dos
-   decks (que é o «fechar tudo»). As que já estão no Stiflenought ou no UW
-   Replenish não aparecem aqui — vivem nesses decks (a conta (a)); a conta (b),
-   com cópias próprias para a colecção, vai em números, porque a decisão é dele. */
+   decks (que é o «fechar tudo»). Desde 17/10 à noite a regra é a conta (b) —
+   *"as cartas do deck servem apenas para o deck"*: a colecção tem as SUAS
+   cópias, e uma staple que também joga no Stiflenought ou no UW Replenish
+   aparece aqui por inteiro, com o deck ao lado. A (a) vai em números. */
 function staplesHTML() {
   const S = D.staples;
   if (!S || !S.linhas || !S.linhas.length) return '';
   if (FMT && FMT !== 'premodern') return '';
-  const a = (S.contas || {}).a, b = (S.contas || {}).b;
+  const a = (S.contas || {}).a, b = (S.contas || {}).b, rb = S.regra === 'b';
   return `<div class="prop" id="staples"><h2>Staples de Premodern — colecção (${S.cartas})</h2>`
     + `<p class="sub">O núcleo dos ${S.top || ''} arquétipos com mais listas, em PT e nas `
     + `edições legais do formato. <b>Não conta para o total</b> acima: `
     + `${S.copias} cópias, ${eur(S.valor)}${S.sem_preco ? ' (' + S.sem_preco + ' cóp. sem preço)' : ''}.`
-    + (a && b ? ` Se as que já estão no Stiflenought e no UW Replenish contarem como tuas: `
-      + `<b>${a.cartas} cartas, ${a.copias} cóp., ${eur(a.eur)}</b>; se a colecção precisar `
-      + `das suas próprias cópias: <b>${b.cartas} cartas, ${b.copias} cóp., ${eur(b.eur)}</b>.` : '')
+    + (rb ? ` <b>Cópias próprias</b>: as cartas dos decks servem só os decks, por isso `
+      + `staples e decks somam — uma carta que também está no Stiflenought ou no UW `
+      + `Replenish entra aqui por inteiro.` : '')
+    + (a && b ? (rb
+      ? ` Pela regra em vigor: <b>${b.cartas} cartas, ${b.copias} cóp., ${eur(b.eur)}</b> `
+        + `(se as dos decks contassem como tuas seriam ${a.cartas} cartas, ${a.copias} cóp., ${eur(a.eur)}).`
+      : ` Se as que já estão no Stiflenought e no UW Replenish contarem como tuas: `
+        + `<b>${a.cartas} cartas, ${a.copias} cóp., ${eur(a.eur)}</b>; se a colecção precisar `
+        + `das suas próprias cópias: <b>${b.cartas} cartas, ${b.copias} cóp., ${eur(b.eur)}</b>.`) : '')
     + `</p><ul class="fl">`
-    + S.linhas.map(l => linhaHTML(Object.assign({deck: (l.arquetipos || []).join(', ')}, l),
+    + S.linhas.map(l => linhaHTML(Object.assign({deck: (l.arquetipos || []).join(', ')
+                                      + (l.no_deck ? ' · também no ' + l.no_deck : '')}, l),
                                    false, true)).join('')
     + `</ul></div>`;
 }

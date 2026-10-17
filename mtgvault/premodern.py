@@ -701,8 +701,8 @@ def nucleo_pct() -> int:
 # primeiros por nº de listas que contam**, sejam ou não caixa. Os dois decks
 # montados ENTRAM: o núcleo deles também é staple — é isso que permite as duas
 # contas que ele pediu (a carta que já está num deck conta como «tenho», ou a
-# colecção precisa das suas próprias cópias). A PASTA continua a levar só o que
-# nenhum deck dele pede (a conta (a)), que é o comportamento de 16/10.
+# colecção precisa das suas próprias cópias). Nessa tarde a PASTA levava só o que
+# nenhum deck dele pede (a conta (a)); à noite ele escolheu a (b) — ver `outros`.
 # Medido a 17/10 com o mínimo 31 (passo 1): mediana e moda das cópias dão quase
 # o mesmo (596 contra 598 cópias), o máximo dá 704 — fica a mediana de sempre.
 TOP_STAPLES = 15
@@ -838,10 +838,15 @@ def outros(con: sqlite3.Connection, res: dict) -> dict:
                       "top": bool(c.get("top")), "top_combo": bool(c.get("top_combo"))})
         nucleos.append((c["nome"], nu))
     todas = uniao_dos_nucleos(nucleos, {})
-    return {"alvos": alvos, "cartas": uniao_dos_nucleos(nucleos, dos_decks),
-            # A união INTEIRA (2026-10-17), com o deck dele ao lado de cada carta
-            # que um deck pede — é a conta (b), a de a colecção precisar das suas
-            # próprias cópias fora dos decks. `cartas` é a (a), e é a da pasta.
+    # A REGRA É A CONTA (b) DESDE 2026-10-17 À NOITE (André, à letra: *"as cartas
+    # do deck servem apenas para o deck"*): a colecção de staples tem as SUAS
+    # cópias, fora do Stiflenought e do UW Replenish — staples e decks SOMAM, não
+    # partilham. É a regra dele de 19/09 («cada deck tem as suas próprias
+    # cartas») aplicada à colecção. Por isso `cartas` é a união INTEIRA e é ela
+    # que a pasta, a lista de faltas e o painel levam; a (a) — o que nenhum deck
+    # pede — fica em `cartas_fora_dos_decks`, só para a conta ao lado.
+    return {"alvos": alvos, "cartas": todas, "regra": "b",
+            "cartas_fora_dos_decks": uniao_dos_nucleos(nucleos, dos_decks),
             "cartas_todas": todas,
             "nos_decks": {nm: dos_decks[scryfall.chave(nm)] for nm in todas
                           if scryfall.chave(nm) in dos_decks},
@@ -869,8 +874,40 @@ def contas_staples(o: dict, valores: dict[str, dict]) -> dict:
                 eur += u * e["q"]
         return {"cartas": len(cartas), "copias": sum(e["q"] for e in cartas.values()),
                 "eur": round(eur, 2), "sem_preco": int(sem)}
-    return {"a": conta(o.get("cartas") or {}),
-            "b": conta(o.get("cartas_todas") or o.get("cartas") or {})}
+    a = o.get("cartas_fora_dos_decks")
+    return {"a": conta(o.get("cartas") or {} if a is None else a),
+            "b": conta(o.get("cartas_todas") or o.get("cartas") or {}),
+            # A que está em vigor (2026-10-17, à noite: a (b)).
+            "regra": o.get("regra") or "a"}
+
+
+def copias_dos_decks(res: dict) -> dict[str, int]:
+    """`chave da carta -> cópias que os decks de Premodern dele pedem` (main +
+    side, as caixas do formato). É o que essas cópias SERVEM: com a regra (b),
+    uma staple só está «tida» com cópias PARA LÁ destas."""
+    from . import scryfall                                   # noqa: PLC0415
+    out: dict[str, int] = {}
+    for s in caixas_do_formato(res):
+        for m in list(s.get("have") or []) + list(s.get("missing") or []):
+            k = scryfall.chave(m["nm"])
+            out[k] = out.get(k, 0) + int(m.get("need") or 0)
+    return out
+
+
+def copias_para_staples(con: sqlite3.Connection, res: dict) -> dict[str, int]:
+    """`chave -> cópias jogáveis que sobram para a colecção de staples` = as que
+    ele tem menos as que os decks de Premodern pedem (nunca abaixo de 0). A
+    conta (b): *"as cartas do deck servem apenas para o deck"*."""
+    from . import collection, scryfall                       # noqa: PLC0415
+    tem: dict[str, int] = {}
+    for nm, q in con.execute(
+            f"""SELECT c.name, SUM(cp.quantity) FROM copies cp JOIN cards c
+                  ON c.scryfall_id = cp.scryfall_id
+                 WHERE {collection.jogaveis()} GROUP BY c.name"""):
+        k = scryfall.chave(nm)
+        tem[k] = tem.get(k, 0) + int(q or 0)
+    dos = copias_dos_decks(res)
+    return {k: max(0, q - dos.get(k, 0)) for k, q in tem.items()}
 
 
 def valores_outros(con: sqlite3.Connection, res: dict, o: dict,

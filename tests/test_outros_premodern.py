@@ -262,6 +262,44 @@ def caso_as_vazias_de_uma_caixa_que_saiu_apagam_se_e_as_com_foto_ficam():
     print("caixa que saiu: as pastas de carta vazias vão-se, as com foto ficam")
 
 
+def caso_a_regra_b_staples_e_decks_somam():
+    """André, 2026-10-17 à noite: *"as cartas do deck servem apenas para o
+    deck"* — a colecção de staples tem as SUAS cópias (a conta (b)). Uma staple
+    que um deck de Premodern pede vai para a pasta na mesma, e o que ele tem só
+    conta para a staple depois de os decks levarem as deles."""
+    import shutil
+    shutil.rmtree(POR, ignore_errors=True)
+    con = base()
+    collection.add_copy(con, "Mogg Fanatic", set_code="tmp", quantity=4,
+                        sub_collection="Colecção")
+    collection.add_copy(con, "Goblin Lackey", set_code="tmp", quantity=5,
+                        sub_collection="Colecção")
+    con.commit()
+    rep = {"slots": [{"slot": "premodern-x", "nome": "Deck X", "formato": "premodern",
+                      "have": [{"nm": "Mogg Fanatic", "need": 4},
+                               {"nm": "Goblin Lackey", "need": 4}], "missing": []}]}
+    assert premodern.copias_dos_decks(rep) == {"Mogg Fanatic": 4, "Goblin Lackey": 4}
+    livres = premodern.copias_para_staples(con, rep)
+    assert livres == {"Mogg Fanatic": 0, "Goblin Lackey": 1}, livres
+    POR.mkdir(parents=True)
+    o = _o(["Mogg Fanatic", "Goblin Lackey", "Cursed Scroll"])
+    o["nos_decks"] = {"Mogg Fanatic": "Deck X", "Goblin Lackey": "Deck X"}
+    r = fotos.sincronizar_outros(con, rep, raiz=SITE, outros=o,
+                                 pendentes=SITE / "pendentes")
+    # As 4 Mogg Fanatic são do deck: a staple ainda não tem nenhuma.
+    assert sorted(r["criadas"]) == ["Cursed Scroll", "Mogg Fanatic"], r
+    assert r["ja_tens"] == 1, r          # a 5.ª Goblin Lackey é da colecção
+    plano = (OUT / "_plano.txt").read_text(encoding="utf-8")
+    assert "[tambem no Deck X]" in plano and "COPIAS PROPRIAS" in plano, plano
+    # A conta em vigor é a (b), e a (a) fica ao lado.
+    oo = {"cartas": {"Mogg Fanatic": {"q": 4}, "Pyrokinesis": {"q": 2}},
+          "cartas_todas": {"Mogg Fanatic": {"q": 4}, "Pyrokinesis": {"q": 2}},
+          "cartas_fora_dos_decks": {"Mogg Fanatic": {"q": 4}}, "regra": "b"}
+    c = premodern.contas_staples(oo, {"Mogg Fanatic": {"unit": 1.0}})
+    assert c["regra"] == "b" and c["a"]["copias"] == 4 and c["b"]["copias"] == 6, c
+    print("regra (b): staples e decks somam — as cópias do deck não contam para a colecção")
+
+
 # ===========================================================================
 # 4. AS REGRAS DE COMBO DE 16/10
 # ===========================================================================
@@ -291,6 +329,7 @@ CASOS = (caso_a_pasta_e_um_alvo_proprio_que_nao_tira_alocacao,
          caso_o_criterio_e_a_uniao_dos_nucleos_menos_os_meus_decks,
          caso_a_pasta_nao_conta_como_falta_e_alinha_se,
          caso_as_vazias_de_uma_caixa_que_saiu_apagam_se_e_as_com_foto_ficam,
+         caso_a_regra_b_staples_e_decks_somam,
          caso_as_regras_de_combo_de_16_10)
 
 

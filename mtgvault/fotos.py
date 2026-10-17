@@ -1874,8 +1874,12 @@ def texto_outros(o: dict, pedidas: dict[str, str], rl: set[str]) -> str:
               "Fotografa o que tens, ate ao playset; as pastas nao levam (N).", "",
               "DE ONDE VEM: o nucleo (as cartas em %d %% ou mais das listas que contam," % o["nucleo_pct"],
               "main + side) dos %s arquetipos de Premodern com mais listas, com a" % o.get("top", ""),
-              "mediana das copias (tecto 4) -- recalculado todas as noites. As que ja",
-              "estao no Stiflenought ou no UW Replenish ficam nesses decks e nao aqui.", ""]
+              "mediana das copias (tecto 4) -- recalculado todas as noites.", "",
+              "COPIAS PROPRIAS (17/10/2026): \"as cartas do deck servem apenas para o",
+              "deck\". Uma staple que tambem joga no Stiflenought ou no UW Replenish",
+              "tem a sua pasta aqui na mesma: as copias do deck ficam no deck, e a",
+              "coleccao precisa das dela (marcadas [tambem no <deck>]).", ""]
+    nos = o.get("nos_decks") or {}
     for a in o["alvos"]:
         linhas.append(f"  {a['nome']}: {a['n_lists']} listas, nucleo de {a['nucleo']} cartas, "
                       f"{a['pct_nos_meus_decks']}% ja nos teus decks")
@@ -1885,10 +1889,12 @@ def texto_outros(o: dict, pedidas: dict[str, str], rl: set[str]) -> str:
         if nm not in pedidas:
             continue
         linhas.append(f"  {nm} -- ate {e['q']} · {', '.join(e['arquetipos'])} · "
-                      f"{e['pct']}%" + (" [RL]" if nm in rl else ""))
+                      f"{e['pct']}%" + (" [RL]" if nm in rl else "")
+                      + (f" [tambem no {nos[nm]}]" if nos.get(nm) else ""))
     ja = sorted(nm for nm in o["cartas"] if nm not in pedidas)
     if ja:
-        linhas += ["", "Ja na base (a pasta nao volta): " + ", ".join(ja)]
+        linhas += ["", "Ja na base, para la das copias dos decks (a pasta nao volta): "
+                   + ", ".join(ja)]
     return "\n".join(linhas) + "\n"
 
 
@@ -1918,9 +1924,12 @@ def sincronizar_outros(con, res: dict, *, raiz: Path | str | None = None,
     o = outros if outros is not None else premodern.outros(con, res)
     out["alvos"] = [a["nome"] for a in o["alvos"]]
     out["cartas"] = len(o["cartas"])
-    tem = nomes_que_tem(con)
+    # Regra (b), 2026-10-17 à noite: a staple tem as SUAS cópias. «Já tens» quer
+    # dizer cópias para lá das que os decks de Premodern pedem — uma Swords que
+    # vive no UW Replenish não é a Swords da colecção.
+    livres = premodern.copias_para_staples(con, res)
     pedidas = {nm: str(nm).translate(_SEGURO) for nm in o["cartas"]
-               if scryfall.chave(nm) not in tem}
+               if not livres.get(scryfall.chave(nm))}
     out["pedidas"], out["ja_tens"] = len(pedidas), out["cartas"] - len(pedidas)
     rl = reservadas(con, o["cartas"])
     out["rl"] = sorted(rl)
