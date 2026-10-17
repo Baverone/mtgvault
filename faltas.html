@@ -542,8 +542,9 @@ function staplesHTML() {
   if (!S || !S.linhas || !S.linhas.length) return '';
   if (FMT && FMT !== 'premodern') return '';
   const a = (S.contas || {}).a, b = (S.contas || {}).b, rb = S.regra === 'b';
-  return `<div class="prop" id="staples"><h2>Staples de Premodern — colecção (${S.cartas})</h2>`
-    + `<p class="sub">O núcleo dos ${S.top || ''} arquétipos com mais listas, em PT e nas `
+  return `<div class="prop" id="staples"><h2>Staples Premodern — colecção (${S.cartas})</h2>`
+    + `<p class="sub">A pasta «Staples Premodern» em «Decks Por Processar». `
+    + `O núcleo dos ${S.top || ''} arquétipos com mais listas, em PT e nas `
     + `edições legais do formato. <b>Não conta para o total</b> acima: `
     + `${S.copias} cópias, ${eur(S.valor)}${S.sem_preco ? ' (' + S.sem_preco + ' cóp. sem preço)' : ''}.`
     + (rb ? ` <b>Cópias próprias</b>: as cartas dos decks servem só os decks, por isso `
