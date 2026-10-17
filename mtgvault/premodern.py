@@ -693,8 +693,8 @@ def nucleo_pct() -> int:
 # (consenso), o resto quero apenas ter as cartas; premodern é uma colecção que eu
 # tenho e quero manter, em português, nas edições legais do formato, então quero
 # ter o máximo de staples possível, associadas aos decks que jogam no formato"* —
-# e escolheu: staples = **núcleo dos arquétipos do top**. A pasta «Outros» de
-# 16/10 era o embrião disto e passou a ser a colecção.
+# e escolheu: staples = **núcleo dos arquétipos do top**. A pasta de 16/10
+# era o embrião disto e passou a ser a colecção («Staples Premodern» desde 17/10).
 #
 # O QUE MUDOU FACE A 16/10, e porquê: os alvos deixaram de ser «os elegíveis
 # (top-10 + top-5 combo) que não são caixa» e passaram a ser **os `top` (15)
@@ -809,7 +809,7 @@ def uniao_dos_nucleos(nucleos: list[tuple[str, dict]], dos_decks: dict[str, str]
 
 
 def outros(con: sqlite3.Connection, res: dict) -> dict:
-    """O que vai para a pasta «Outros (jogam Premodern)», e o porquê de cada um.
+    """O que vai para a pasta «Staples Premodern», e o porquê de cada um.
 
     `{alvos: [{nome, n_lists, combo, nucleo, nos_meus_decks, pct_nos_meus_decks,
     faltam, pct_principal}], cartas: {carta: {q, arquetipos, pct}}, nucleo_pct}`.

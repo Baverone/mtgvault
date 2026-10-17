@@ -71,8 +71,9 @@ PREFIXO = "site"
 # `familia` (2026-10-13): a pasta de uma FAMÍLIA de decks que partilham cartas
 # (`fotos.familias`) — o nome leva `familia-<id>` e não um slot, porque a foto
 # prova a carta e não diz qual das caixas da família fica com ela.
-# `outros` (2026-10-16): a pasta «Outros (jogam Premodern)» — cartas que jogam
-# Premodern em decks que ele NÃO monta. A foto prova a carta e mais nada: ao
+# `outros` (2026-10-16): a pasta «Staples Premodern» (era «Outros…» até 17/10;
+# o nome interno ficou, pelas fotos já tiradas) — a colecção de staples. A foto
+# prova a carta e mais nada: ao
 # contrário da `coleccao` (os Extras), não tira a cópia de deck nenhum.
 TIPOS = ("caixa", "venda", "rl", "coleccao", "familia", "outros")
 FAMILIA = "familia"

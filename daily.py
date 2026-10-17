@@ -772,9 +772,9 @@ def main():
 
         _step(con, "fotos-plano", _fotos_plano)
 
-        # A PASTA «OUTROS (JOGAM PREMODERN)» (André, 2026-10-16), que desde
-        # 2026-10-17 é a COLECÇÃO DE STAPLES: o núcleo dos 15 arquétipos com mais
-        # listas. As staples contam para o «por fotografar», numa parcela ao
+        # A PASTA «STAPLES PREMODERN» (André, 2026-10-16; o nome e a regra (b),
+        # cópias próprias, de 17/10 à noite) — a COLECÇÃO DE STAPLES: o núcleo
+        # dos 15 arquétipos com mais listas. As staples contam para o «por fotografar», numa parcela ao
         # lado da dos decks (a linha diz as duas e a soma). Corre depois do `meus-decks`, dos
         # consensos e do `fotos-plano`, com o MESMO relatório: uma carta que um
         # deck passou a pedir sai daqui na mesma noite em que ganha pasta no deck.

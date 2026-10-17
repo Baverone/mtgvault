@@ -300,6 +300,29 @@ def caso_a_regra_b_staples_e_decks_somam():
     print("regra (b): staples e decks somam — as cópias do deck não contam para a colecção")
 
 
+def caso_a_pasta_chama_se_staples_premodern_e_move_se_inteira():
+    """André, 2026-10-17 à noite: «Outros (jogam Premodern)» → «Staples
+    Premodern». A pasta move-se com o que lá estiver (imagens incluídas), nas
+    duas árvores, e o nome antigo continua a ser reconhecido como alvo."""
+    import shutil
+    assert fotos.PASTA_OUTROS == "Staples Premodern"
+    shutil.rmtree(POR, ignore_errors=True)
+    shutil.rmtree(fotos.pasta_processados(SITE), ignore_errors=True)
+    velha = POR / "Outros (jogam Premodern)"
+    img = foto(velha / "Goblin Lackey" / "IMG_7.jpg")
+    (velha / "Mogg Fanatic").mkdir(parents=True)
+    feita = foto(fotos.pasta_processados(SITE) / "Outros (jogam Premodern)" / "Gempalm" / "a.jpg")
+    assert fotos.alvo_da_pasta(img) == {"tipo": fotos.ALVO_OUTROS, "slot": None}
+    r = fotos.mudar_nome_outros(SITE)
+    assert len(r) == 2, r
+    assert not velha.exists() and (OUT / "Goblin Lackey" / "IMG_7.jpg").is_file()
+    assert (OUT / "Mogg Fanatic").is_dir()
+    assert (fotos.pasta_processados(SITE) / "Staples Premodern" / "Gempalm" / "a.jpg").is_file()
+    assert not feita.exists()
+    assert fotos.mudar_nome_outros(SITE) == [], "repetir é um no-op"
+    print("a pasta chama-se Staples Premodern e move-se inteira, com as fotos")
+
+
 # ===========================================================================
 # 4. AS REGRAS DE COMBO DE 16/10
 # ===========================================================================
@@ -330,6 +353,7 @@ CASOS = (caso_a_pasta_e_um_alvo_proprio_que_nao_tira_alocacao,
          caso_a_pasta_nao_conta_como_falta_e_alinha_se,
          caso_as_vazias_de_uma_caixa_que_saiu_apagam_se_e_as_com_foto_ficam,
          caso_a_regra_b_staples_e_decks_somam,
+         caso_a_pasta_chama_se_staples_premodern_e_move_se_inteira,
          caso_as_regras_de_combo_de_16_10)
 
 

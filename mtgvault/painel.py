@@ -141,7 +141,7 @@ OUTROS_TXT = "premodern-fora-dos-decks.txt"
 
 
 def avisos_outros(o: dict) -> list[dict]:
-    """Os avisos da pasta «Outros (jogam Premodern)» (2026-10-16), gravidade
+    """Os avisos da pasta «Staples Premodern» (2026-10-16), gravidade
     BAIXA: um arquétipo que ele não monta e de que já tem (por CÓPIAS, a regra
     dos 50 % do `_premodern`) o bastante para ser sugestão, ou cujo núcleo já
     está quase todo nos decks dele (por NOMES — é perto, não é posse)."""
@@ -190,7 +190,7 @@ def escrever_outros(o: dict, valores: dict | None = None,
     regra_b = contas.get("regra") == "b"
     linhas = [f"PREMODERN - A COLECCAO DE STAPLES ({hoje})",
               "Gerado todas as noites (passo outros-premodern). As staples vivem na",
-              "pasta «Decks Por Processar\\Outros (jogam Premodern)»"
+              "pasta «Decks Por Processar\\Staples Premodern»"
               + (", TODAS: as copias dos" if regra_b else ";"),
               ("decks servem so os decks (Andre, 17/10) e a coleccao tem as suas."
                if regra_b else "as que ja estao no Stiflenought ou no UW Replenish ficam la."), "",

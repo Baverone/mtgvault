@@ -534,7 +534,7 @@ def escrever_planos(con, res: dict, cfg: dict | None = None,
         mapa = mapa_pastas(cfg)
         conhecidas = ({_norm(g) for g in PASTAS_DE_GRUPO}
                       | {_norm(g) for g in PASTAS_FORA_DOS_DECKS}
-                      | {_norm(PASTA_OUTROS)}
+                      | {_norm(p) for p in (PASTA_OUTROS, *PASTAS_OUTROS_ANTIGAS)}
                       | {_norm(f["pasta"]) for f in fams})
         for d in sorted(x for x in base.iterdir() if x.is_dir()):
             if d.name.startswith("_") or _norm(d.name) in conhecidas:
@@ -999,8 +999,22 @@ ALVO_FAMILIA = "familia"
 # E NÃO CONTA PARA «O QUE FALTA FOTOGRAFAR»: é «se tiveres», não «falta». O
 # `contas_das_pastas` salta-a e o daily conta-a numa linha à parte
 # (`sincronizar_outros`). Uma pasta destas vazia para sempre é o estado normal.
-PASTA_OUTROS = "Outros (jogam Premodern)"
+#
+# O NOME (André, 2026-10-17 à noite): «Outros (jogam Premodern)» passou a
+# **«Staples Premodern»**, que é o que a pasta é desde essa tarde (a colecção de
+# staples, conta (b)). O alvo interno continua a chamar-se `outros` — é o que
+# vai no nome das fotos (`site-outros-…`), e uma foto já tirada não pode mudar
+# de significado por causa de um nome de pasta. O nome antigo continua a ser
+# RECONHECIDO (`PASTAS_OUTROS_ANTIGAS`) para uma foto largada lá não se perder,
+# mas nunca se cria nem se escreve.
+PASTA_OUTROS = "Staples Premodern"
+PASTAS_OUTROS_ANTIGAS = ("Outros (jogam Premodern)",)
 ALVO_OUTROS = "outros"
+
+
+def e_pasta_outros(nome: str) -> bool:
+    """A pasta das staples — o nome de hoje ou um antigo."""
+    return _norm(nome) in {_norm(p) for p in (PASTA_OUTROS, *PASTAS_OUTROS_ANTIGAS)}
 # Quanto tempo uma foto tem de estar quieta antes de se mexer nela. Uma foto
 # que ainda está a ser copiada (do telemóvel, da app do GitHub) movia-se a
 # meio. O `mtg-fotos-novas` tem a sua própria regra de 2 min sobre o mtime, e o
@@ -1138,7 +1152,7 @@ def alvo_da_pasta(caminho: Path | str, cfg: dict | None = None,
         return None                        # está na pasta-mãe: não tem alvo
     if _norm(resto[0]) in {_norm(p) for p in PASTAS_FORA_DOS_DECKS}:
         return {"tipo": ALVO_FORA_DOS_DECKS, "slot": None}
-    if _norm(resto[0]) == _norm(PASTA_OUTROS):
+    if e_pasta_outros(resto[0]):
         return {"tipo": ALVO_OUTROS, "slot": None}
     for f in familias(cfg):
         if _norm(resto[0]) == _norm(f["pasta"]):
@@ -1770,8 +1784,8 @@ def contas_das_pastas(res: dict, cfg: dict | None = None,
     # `_versoes_por_pasta` é a mesma conta, achatada, para quem apaga; aqui
     # quer-se o NOME da versão, para a frase das contas.
     for d in sorted(x for x in base.iterdir() if x.is_dir()):
-        # A pasta «Outros» não é plano nenhum: conta-se à parte (2026-10-16).
-        if d.name.startswith("_") or _norm(d.name) == _norm(PASTA_OUTROS):
+        # A pasta das staples não é plano nenhum: conta-se à parte (2026-10-16).
+        if d.name.startswith("_") or e_pasta_outros(d.name):
             continue
         quer = {str(nm).translate(_SEGURO).casefold() for nm in pede.get(d.name, {})}
         for x in sorted(y for y in d.iterdir() if y.is_dir()):
@@ -1860,14 +1874,14 @@ def nomes_que_tem(con) -> set[str]:
 
 
 def texto_outros(o: dict, pedidas: dict[str, str], rl: set[str]) -> str:
-    """O `_plano.txt` da pasta «Outros»: o que é, porque não é «falta», e as
+    """O `_plano.txt` da pasta «Staples Premodern»: o que é, porque não é «falta», e as
     cartas com os arquétipos de onde vêm."""
     linhas = [f"A COLECCAO DE STAPLES DE PREMODERN -- {len(pedidas)} cartas por fotografar",
               "=" * 60, "",
               "As tuas palavras (17/10/2026): \"premodern e uma coleccao que eu tenho",
               "e quero manter, em portugues, nas edicoes legais do formato, entao",
-              "quero ter o maximo de staples possivel\". Esta pasta era a «Outros» de",
-              "16/10 e passou a ser essa coleccao (uma pasta por carta, como estava).", "",
+              "quero ter o maximo de staples possivel\". Esta pasta e essa coleccao",
+              "(uma pasta por carta).", "",
               "Larga a foto de cada staple que tiveres na pasta dela: entra na base",
               "SEM DECK (e posse, nao alocacao -- nao tira nada de deck nenhum). As",
               "que nao tens entram na lista de faltas, na seccao das staples.",
@@ -1898,10 +1912,32 @@ def texto_outros(o: dict, pedidas: dict[str, str], rl: set[str]) -> str:
     return "\n".join(linhas) + "\n"
 
 
+def mudar_nome_outros(raiz: Path | str | None = None) -> list[str]:
+    """«Outros (jogam Premodern)» → «Staples Premodern» (André, 2026-10-17), nas
+    duas árvores. A pasta MOVE-SE inteira — subpastas, `_plano.txt`, imagens —
+    e nada se apaga. Se as duas já existirem não se junta nada: diz-se, e quem
+    decide é ele (só o `apagar_pasta_feita` apaga pastas, e esta não é uma
+    pasta de carta)."""
+    feitas = []
+    for raiz_arv in (pasta_novas(raiz), pasta_processados(raiz)):
+        nova = raiz_arv / PASTA_OUTROS
+        for antigo in PASTAS_OUTROS_ANTIGAS:
+            velha = raiz_arv / antigo
+            if not velha.is_dir():
+                continue
+            if nova.exists():
+                feitas.append(f"{raiz_arv.name}/{antigo}: existe ao lado de «{PASTA_OUTROS}» "
+                              "— não se juntou nada, decide à mão")
+                continue
+            velha.rename(nova)
+            feitas.append(f"{raiz_arv.name}/{antigo} -> {PASTA_OUTROS}")
+    return feitas
+
+
 def sincronizar_outros(con, res: dict, *, raiz: Path | str | None = None,
                        outros: dict | None = None,
                        pendentes: Path | str | None = None) -> dict:
-    """A pasta «Outros (jogam Premodern)» alinhada com o critério de HOJE.
+    """A pasta «Staples Premodern» alinhada com o critério de HOJE.
 
     * **cria** a pasta `<carta>` (sem `(N)`) de cada carta do núcleo dos alvos
       que ele ainda não tem na base;
@@ -1934,6 +1970,7 @@ def sincronizar_outros(con, res: dict, *, raiz: Path | str | None = None,
     rl = reservadas(con, o["cartas"])
     out["rl"] = sorted(rl)
     d = base / PASTA_OUTROS
+    out["renomeadas"] = mudar_nome_outros(raiz)
     d.mkdir(parents=True, exist_ok=True)
     if not (d / ".gitkeep").exists():
         (d / ".gitkeep").write_text("", encoding="ascii")
