@@ -1351,7 +1351,7 @@
    "unit": null,
    "set": null,
    "sid": null,
-   "rl": false,
+   "rl": true,
    "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
    "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Abeyance",
    "no_deck": "UW Replenish"
@@ -2860,7 +2860,7 @@
    "unit": null,
    "set": null,
    "sid": null,
-   "rl": false,
+   "rl": true,
    "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
    "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Intuition",
    "no_deck": "UW Replenish"
@@ -3285,7 +3285,7 @@
    "unit": null,
    "set": null,
    "sid": null,
-   "rl": false,
+   "rl": true,
    "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
    "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Opalescence",
    "no_deck": "UW Replenish"
@@ -3409,7 +3409,7 @@
    "unit": null,
    "set": null,
    "sid": null,
-   "rl": false,
+   "rl": true,
    "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
    "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Phyrexian%20Dreadnought",
    "no_deck": "Stiflenought"
@@ -3476,7 +3476,7 @@
    "unit": 81.27,
    "set": "UDS",
    "sid": "4d9715c2-9036-4ae2-a5b4-1b190d50c963",
-   "rl": false,
+   "rl": true,
    "motivo": null,
    "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Powder%20Keg",
    "no_deck": "Stiflenought"
@@ -3775,7 +3775,7 @@
    "unit": 168.63,
    "set": "UDS",
    "sid": "7fd2fe13-bbc0-42b7-bc42-3b51910ce118",
-   "rl": false,
+   "rl": true,
    "motivo": null,
    "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Replenish",
    "no_deck": "UW Replenish"
@@ -4765,7 +4765,8 @@
    "copias": 596,
    "eur": 18086.97,
    "sem_preco": 116
-  }
+  },
+  "regra": "b"
  },
  "avisos": [
   {

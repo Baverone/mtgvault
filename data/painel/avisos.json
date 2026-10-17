@@ -30,19 +30,12 @@
  {
   "id": "004",
   "gravidade": "baixa",
-  "deck": "Landstill",
-  "aviso": "48% do núcleo já está nos teus decks (12 de 25 cartas)",
-  "detalhe": "pela regra dos 50% (cópias que TENS, como principal) dá 0% hoje — a colecção reconstrói-se pelas fotos. Faltam-lhe: Circle of Protection: Red x1, Coastal Tower x1, Decree of Justice x3, Dust Bowl x2, Fact or Fiction x3, Faerie Conclave x2, Mana Leak x3, Mishra's Factory x4"
+  "deck": "Psychatog",
+  "aviso": "53% do núcleo já está nos teus decks (10 de 19 cartas)",
+  "detalhe": "pela regra dos 50% (cópias que TENS, como principal) dá 0% hoje — a colecção reconstrói-se pelas fotos. Faltam-lhe: Accumulated Knowledge x4, Duress x4, Engineered Plague x2, Fact or Fiction x1, Polluted Delta x4, Psychatog x4, Sickening Dreams x2, Smother x3"
  },
  {
   "id": "005",
-  "gravidade": "baixa",
-  "deck": "Psychatog",
-  "aviso": "55% do núcleo já está nos teus decks (11 de 20 cartas)",
-  "detalhe": "pela regra dos 50% (cópias que TENS, como principal) dá 0% hoje — a colecção reconstrói-se pelas fotos. Faltam-lhe: Accumulated Knowledge x4, Duress x4, Engineered Plague x2, Fact or Fiction x1, Haunting Echoes x1, Psychatog x4, Sickening Dreams x2, Smother x3"
- },
- {
-  "id": "006",
   "gravidade": "baixa",
   "deck": "Stiflenought (Spock)",
   "aviso": "lista de referencia com 15 dias",

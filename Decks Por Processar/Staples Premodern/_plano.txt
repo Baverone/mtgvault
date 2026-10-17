@@ -1,10 +1,10 @@
-A COLECCAO DE STAPLES DE PREMODERN -- 178 cartas por fotografar
+A COLECCAO DE STAPLES DE PREMODERN -- 218 cartas por fotografar
 ============================================================
 
 As tuas palavras (17/10/2026): "premodern e uma coleccao que eu tenho
 e quero manter, em portugues, nas edicoes legais do formato, entao
-quero ter o maximo de staples possivel". Esta pasta era a «Outros» de
-16/10 e passou a ser essa coleccao (uma pasta por carta, como estava).
+quero ter o maximo de staples possivel". Esta pasta e essa coleccao
+(uma pasta por carta).
 
 Larga a foto de cada staple que tiveres na pasta dela: entra na base
 SEM DECK (e posse, nao alocacao -- nao tira nada de deck nenhum). As
@@ -13,8 +13,12 @@ Fotografa o que tens, ate ao playset; as pastas nao levam (N).
 
 DE ONDE VEM: o nucleo (as cartas em 50 % ou mais das listas que contam,
 main + side) dos 15 arquetipos de Premodern com mais listas, com a
-mediana das copias (tecto 4) -- recalculado todas as noites. As que ja
-estao no Stiflenought ou no UW Replenish ficam nesses decks e nao aqui.
+mediana das copias (tecto 4) -- recalculado todas as noites.
+
+COPIAS PROPRIAS (17/10/2026): "as cartas do deck servem apenas para o
+deck". Uma staple que tambem joga no Stiflenought ou no UW Replenish
+tem a sua pasta aqui na mesma: as copias do deck ficam no deck, e a
+coleccao precisa das dela (marcadas [tambem no <deck>]).
 
   Enchantress: 68 listas, nucleo de 24 cartas, 25% ja nos teus decks
   Stiflenought: 68 listas, nucleo de 22 cartas, 100% ja nos teus decks
@@ -34,15 +38,21 @@ estao no Stiflenought ou no UW Replenish ficam nesses decks e nao aqui.
 
 AS CARTAS (copias que esses decks jogam · arquetipos · % das listas)
 ------------------------------------------------------------
+  Abeyance -- ate 3 · UW Replenish · 89% [RL] [tambem no UW Replenish]
   Accumulated Knowledge -- ate 4 · Psychatog · 69%
+  Adarkar Wastes -- ate 4 · UW Replenish, Landstill · 100% [tambem no UW Replenish]
   Akroma, Angel of Wrath -- ate 1 · Full English Breakfast · 100%
   Anarchy -- ate 2 · Goblins · 52%
+  Ancient Tomb -- ate 4 · UW Replenish · 100% [tambem no UW Replenish]
   Anger -- ate 1 · Elves / Survival · 77%
   Animate Dead -- ate 1 · Full English Breakfast · 100%
+  Annul -- ate 3 · Stiflenought, Psychatog, Landstill · 97% [tambem no Stiflenought]
   Argothian Enchantress -- ate 4 · Enchantress · 100%
   Armageddon -- ate 4 · Terrageddon, Elves / Survival · 78%
+  Attunement -- ate 4 · UW Replenish · 100% [tambem no UW Replenish]
   Aura of Silence -- ate 3 · Enchantress, Terrageddon, Orzhov Exalted Angel · 100%
   Auramancer -- ate 1 · Elves / Survival · 62%
+  Back to Basics -- ate 2 · Stiflenought · 88% [tambem no Stiflenought]
   Barbarian Ring -- ate 2 · Sligh · 50%
   Barren Moor -- ate 1 · Orzhov Exalted Angel · 78%
   Battlefield Forge -- ate 1 · Terrageddon · 62%
@@ -51,20 +61,27 @@ AS CARTAS (copias que esses decks jogam · arquetipos · % das listas)
   Black Vise -- ate 4 · Pyrostatic Pillar · 65%
   Blastoderm -- ate 1 · Golgari Graveborn Muse · 75%
   Bloodstained Mire -- ate 4 · RG Aggro, Sligh · 100%
+  Blue Elemental Blast -- ate 2 · Stiflenought, Landstill · 79% [tambem no Stiflenought]
+  Brain Freeze -- ate 2 · Stiflenought · 90% [tambem no Stiflenought]
   Brushland -- ate 4 · Enchantress, Full English Breakfast, Elves / Survival · 100%
   Cabal Therapy -- ate 4 · Mono-Preto Graveborn Muse, Full English Breakfast, Golgari Graveborn Muse · 100%
   Call of the Herd -- ate 4 · Terrageddon, RG Aggro · 100%
   Caller of the Claw -- ate 1 · Elves / Survival · 77%
   Caves of Koilos -- ate 4 · Orzhov Exalted Angel · 100%
+  Chain of Vapor -- ate 2 · Stiflenought · 91% [tambem no Stiflenought]
   Chainer's Edict -- ate 1 · Golgari Graveborn Muse · 75%
   Circle of Protection: Red -- ate 1 · Landstill, Orzhov Exalted Angel · 100%
   City of Brass -- ate 4 · Full English Breakfast · 100%
   City of Traitors -- ate 1 · Terrageddon · 50% [RL]
   Coastal Tower -- ate 1 · Landstill · 83%
+  Counterspell -- ate 4 · Stiflenought, Psychatog, Landstill · 100% [tambem no Stiflenought]
   Cursed Scroll -- ate 3 · Mono-Preto Graveborn Muse, Sligh · 80% [RL]
   Cursed Totem -- ate 2 · Terrageddon · 67%
   Dark Ritual -- ate 4 · Mono-Preto Graveborn Muse · 100%
+  Daze -- ate 2 · Stiflenought · 94% [tambem no Stiflenought]
   Decree of Justice -- ate 4 · Landstill, Orzhov Exalted Angel · 100%
+  Decree of Silence -- ate 3 · UW Replenish · 100% [tambem no UW Replenish]
+  Defense Grid -- ate 4 · UW Replenish, Orzhov Exalted Angel · 80% [tambem no UW Replenish]
   Deranged Hermit -- ate 2 · Elves / Survival, Golgari Graveborn Muse · 100% [RL]
   Diabolic Edict -- ate 2 · Mono-Preto Graveborn Muse, Golgari Graveborn Muse · 97%
   Disenchant -- ate 3 · Terrageddon, Landstill, Orzhov Exalted Angel · 96%
@@ -78,13 +95,19 @@ AS CARTAS (copias que esses decks jogam · arquetipos · % das listas)
   Enchantress's Presence -- ate 4 · Enchantress · 100%
   Engineered Plague -- ate 4 · Mono-Preto Graveborn Muse, Psychatog, Golgari Graveborn Muse, Orzhov Exalted Angel · 100%
   Enlightened Tutor -- ate 1 · Full English Breakfast, Orzhov Exalted Angel · 89%
+  Essence Flare -- ate 3 · Stiflenought · 99% [tambem no Stiflenought]
   Eternal Dragon -- ate 3 · Orzhov Exalted Angel · 100%
+  Exalted Angel -- ate 3 · UW Replenish, Landstill, Orzhov Exalted Angel · 100% [tambem no UW Replenish]
   Exploration -- ate 2 · Enchantress · 53%
   Fact or Fiction -- ate 3 · Psychatog, Landstill · 100%
   Faerie Conclave -- ate 2 · Landstill · 88%
   Fireblast -- ate 4 · Pyrostatic Pillar, Sligh · 100%
   Flame Rift -- ate 4 · Pyrostatic Pillar · 52%
   Flaring Pain -- ate 3 · Pyrostatic Pillar · 60%
+  Flash of Insight -- ate 2 · Stiflenought · 99% [tambem no Stiflenought]
+  Flooded Strand -- ate 4 · UW Replenish, Landstill · 100% [tambem no UW Replenish]
+  Foil -- ate 4 · Stiflenought, Psychatog · 100% [tambem no Stiflenought]
+  Frantic Search -- ate 3 · UW Replenish · 100% [tambem no UW Replenish]
   Fyndhorn Elves -- ate 2 · Elves / Survival · 100%
   Gaea's Blessing -- ate 1 · Enchantress, Golgari Graveborn Muse · 75%
   Gaea's Cradle -- ate 3 · Elves / Survival · 100% [RL]
@@ -105,10 +128,14 @@ AS CARTAS (copias que esses decks jogam · arquetipos · % das listas)
   Goblin Warchief -- ate 4 · Goblins · 100%
   Graveborn Muse -- ate 2 · Mono-Preto Graveborn Muse, Golgari Graveborn Muse · 97%
   Grim Lavamancer -- ate 4 · Pyrostatic Pillar, RG Aggro, Sligh · 100%
+  Gush -- ate 4 · Stiflenought, Psychatog · 100% [tambem no Stiflenought]
   Haunting Echoes -- ate 2 · Golgari Graveborn Muse, Orzhov Exalted Angel · 100%
   Hermit Druid -- ate 4 · Full English Breakfast · 100%
+  Hydroblast -- ate 3 · Stiflenought, UW Replenish, Psychatog, Landstill · 83% [tambem no Stiflenought]
   Hypnotic Specter -- ate 4 · Mono-Preto Graveborn Muse · 100%
+  Impulse -- ate 4 · Stiflenought, Psychatog, Landstill · 96% [tambem no Stiflenought]
   Incinerate -- ate 4 · Pyrostatic Pillar, RG Aggro, Sligh · 100%
+  Intuition -- ate 3 · UW Replenish · 100% [RL] [tambem no UW Replenish]
   Jackal Pup -- ate 4 · RG Aggro, Sligh · 100%
   Karmic Guide -- ate 1 · Full English Breakfast · 100%
   Karmic Justice -- ate 1 · Enchantress · 53%
@@ -122,7 +149,9 @@ AS CARTAS (copias que esses decks jogam · arquetipos · % das listas)
   Llanowar Wastes -- ate 4 · Full English Breakfast, Golgari Graveborn Muse · 100%
   Mana Leak -- ate 3 · Landstill · 96%
   Masticore -- ate 2 · Elves / Survival · 100% [RL]
+  Meddling Mage -- ate 4 · UW Replenish, Landstill · 100% [tambem no UW Replenish]
   Mirri's Guile -- ate 4 · Enchantress · 100%
+  Misdirection -- ate 1 · Stiflenought · 82% [tambem no Stiflenought]
   Mishra's Factory -- ate 4 · Pyrostatic Pillar, Mono-Preto Graveborn Muse, Landstill · 100%
   Mogg Fanatic -- ate 4 · Pyrostatic Pillar, Goblins, RG Aggro, Sligh · 100%
   Mogg Salvage -- ate 4 · Pyrostatic Pillar, Sligh · 85%
@@ -133,12 +162,19 @@ AS CARTAS (copias que esses decks jogam · arquetipos · % das listas)
   Nantuko Vigilante -- ate 2 · Elves / Survival · 100%
   Naturalize -- ate 4 · Terrageddon, Goblins, RG Aggro, Full English Breakfast, Elves / Survival, Golgari Graveborn Muse · 100%
   Nimble Mongoose -- ate 3 · Terrageddon · 52%
+  Opalescence -- ate 4 · Enchantress, UW Replenish · 100% [RL] [tambem no UW Replenish]
+  Opt -- ate 4 · Stiflenought, Psychatog · 100% [tambem no Stiflenought]
   Overload -- ate 4 · Pyrostatic Pillar, RG Aggro, Sligh · 100%
   Palinchron -- ate 1 · Full English Breakfast · 100% [RL]
+  Parallax Wave -- ate 4 · Enchantress, UW Replenish · 100% [tambem no UW Replenish]
+  Peek -- ate 1 · Stiflenought · 59% [tambem no Stiflenought]
   Pernicious Deed -- ate 4 · Golgari Graveborn Muse · 100%
   Phyrexian Devourer -- ate 1 · Full English Breakfast · 100% [RL]
+  Phyrexian Dreadnought -- ate 4 · Stiflenought · 100% [RL] [tambem no Stiflenought]
   Phyrexian Furnace -- ate 2 · Landstill, Golgari Graveborn Muse, Orzhov Exalted Angel · 100%
   Polluted Delta -- ate 4 · Psychatog · 83%
+  Portent -- ate 4 · Stiflenought, Psychatog · 100% [tambem no Stiflenought]
+  Powder Keg -- ate 2 · Stiflenought, Mono-Preto Graveborn Muse, Psychatog, Landstill, Orzhov Exalted Angel · 100% [RL] [tambem no Stiflenought]
   Presence of the Master -- ate 1 · Orzhov Exalted Angel · 78%
   Price of Progress -- ate 2 · Pyrostatic Pillar · 65%
   Priest of Titania -- ate 1 · Elves / Survival · 92%
@@ -157,10 +193,12 @@ AS CARTAS (copias que esses decks jogam · arquetipos · % das listas)
   Recurring Nightmare -- ate 1 · Golgari Graveborn Muse · 100% [RL]
   Red Elemental Blast -- ate 3 · Terrageddon, Pyrostatic Pillar, Goblins, Sligh · 85%
   Reflecting Pool -- ate 3 · Full English Breakfast · 100%
+  Replenish -- ate 4 · Enchantress, UW Replenish · 100% [RL] [tambem no UW Replenish]
   Reprisal -- ate 1 · Terrageddon · 50%
   Rishadan Port -- ate 4 · Terrageddon, Goblins · 100%
   Rith's Grove -- ate 2 · Terrageddon · 67%
   Sacred Ground -- ate 2 · Enchantress · 82%
+  Seal of Cleansing -- ate 3 · Enchantress, UW Replenish, Orzhov Exalted Angel · 100% [tambem no UW Replenish]
   Seal of Fire -- ate 4 · Pyrostatic Pillar, RG Aggro, Sligh · 100%
   Secluded Steppe -- ate 1 · Terrageddon, Orzhov Exalted Angel · 89%
   Serra's Sanctum -- ate 4 · Enchantress · 99% [RL]
@@ -169,6 +207,7 @@ AS CARTAS (copias que esses decks jogam · arquetipos · % das listas)
   Simoon -- ate 1 · RG Aggro · 82%
   Skeletal Scrying -- ate 2 · Orzhov Exalted Angel · 100%
   Skirk Prospector -- ate 1 · Goblins · 76%
+  Skycloud Expanse -- ate 4 · UW Replenish · 100% [tambem no UW Replenish]
   Smother -- ate 3 · Mono-Preto Graveborn Muse, Psychatog, Golgari Graveborn Muse · 100%
   Snuff Out -- ate 1 · Mono-Preto Graveborn Muse · 87%
   Solitary Confinement -- ate 2 · Enchantress · 100%
@@ -176,23 +215,28 @@ AS CARTAS (copias que esses decks jogam · arquetipos · % das listas)
   Squee, Goblin Nabob -- ate 1 · Full English Breakfast, Elves / Survival · 100%
   Standstill -- ate 3 · Landstill · 96%
   Sterling Grove -- ate 3 · Enchantress · 100%
+  Stifle -- ate 4 · Stiflenought · 100% [tambem no Stiflenought]
   Sulfuric Vortex -- ate 2 · Pyrostatic Pillar · 94%
   Survival of the Fittest -- ate 4 · Full English Breakfast, Elves / Survival · 100% [RL]
+  Swords to Plowshares -- ate 4 · Enchantress, Terrageddon, UW Replenish, Landstill, Full English Breakfast, Elves / Survival, Orzhov Exalted Angel · 100% [tambem no UW Replenish]
   Sylvan Library -- ate 4 · Terrageddon, RG Aggro · 100%
   Teferi's Response -- ate 2 · Landstill · 75%
   Terravore -- ate 4 · Terrageddon · 100%
   Thornscape Battlemage -- ate 1 · Elves / Survival · 85%
+  Thwart -- ate 1 · Stiflenought · 97% [tambem no Stiflenought]
   Tormod's Crypt -- ate 3 · Enchantress, Goblins, RG Aggro, Elves / Survival, Orzhov Exalted Angel · 100%
   Tranquil Domain -- ate 2 · Goblins, RG Aggro, Golgari Graveborn Muse · 100%
   Tranquil Thicket -- ate 1 · Terrageddon · 69%
   Treetop Village -- ate 3 · Terrageddon, RG Aggro, Golgari Graveborn Muse · 100%
   Treva's Ruins -- ate 1 · Full English Breakfast · 88%
   Triskelion -- ate 1 · Full English Breakfast · 100%
+  Tsabo's Web -- ate 2 · Enchantress, UW Replenish, Psychatog · 86% [tambem no UW Replenish]
   Uktabi Orangutan -- ate 1 · Full English Breakfast · 100%
   Underground River -- ate 3 · Psychatog, Full English Breakfast · 69%
   Undiscovered Paradise -- ate 1 · Full English Breakfast · 100% [RL]
   Unearth -- ate 4 · Full English Breakfast · 100%
   Vindicate -- ate 4 · Orzhov Exalted Angel · 100%
+  Vision Charm -- ate 4 · Stiflenought · 100% [tambem no Stiflenought]
   Volcanic Hammer -- ate 2 · Sligh · 70%
   Volrath's Shapeshifter -- ate 2 · Full English Breakfast · 100% [RL]
   Volrath's Stronghold -- ate 1 · Golgari Graveborn Muse · 92% [RL]
