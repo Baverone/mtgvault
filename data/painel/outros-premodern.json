@@ -1,14 +1,245 @@
 {
  "data": "2026-10-17",
  "nucleo_pct": 50,
+ "top": 15,
  "alvos": [
   {
-   "nome": "Pyrostatic Pillar",
-   "n_lists": 45,
-   "combo": false,
-   "nucleo": 16,
+   "nome": "Enchantress",
+   "n_lists": 68,
+   "caixa": false,
+   "combo": true,
+   "nucleo": 24,
+   "nos_meus_decks": 6,
+   "pct_nos_meus_decks": 25,
+   "faltam": [
+    [
+     "Argothian Enchantress",
+     4
+    ],
+    [
+     "Aura of Silence",
+     3
+    ],
+    [
+     "Brushland",
+     4
+    ],
+    [
+     "Enchantress's Presence",
+     4
+    ],
+    [
+     "Exploration",
+     2
+    ],
+    [
+     "Gaea's Blessing",
+     1
+    ],
+    [
+     "Karmic Justice",
+     1
+    ],
+    [
+     "Mirri's Guile",
+     4
+    ],
+    [
+     "Sacred Ground",
+     2
+    ],
+    [
+     "Serra's Sanctum",
+     4
+    ],
+    [
+     "Solitary Confinement",
+     2
+    ],
+    [
+     "Sterling Grove",
+     3
+    ],
+    [
+     "Tormod's Crypt",
+     2
+    ],
+    [
+     "Warmth",
+     2
+    ],
+    [
+     "Wild Growth",
+     4
+    ],
+    [
+     "Windswept Heath",
+     4
+    ],
+    [
+     "Wooded Foothills",
+     2
+    ],
+    [
+     "Xantid Swarm",
+     3
+    ]
+   ],
+   "pct_principal": 0,
+   "top": true,
+   "top_combo": true
+  },
+  {
+   "nome": "Stiflenought",
+   "n_lists": 68,
+   "caixa": true,
+   "combo": true,
+   "nucleo": 22,
+   "nos_meus_decks": 22,
+   "pct_nos_meus_decks": 100,
+   "faltam": [],
+   "pct_principal": 0,
+   "top": true,
+   "top_combo": true
+  },
+  {
+   "nome": "Terrageddon",
+   "n_lists": 64,
+   "caixa": false,
+   "combo": true,
+   "nucleo": 30,
    "nos_meus_decks": 1,
-   "pct_nos_meus_decks": 6,
+   "pct_nos_meus_decks": 3,
+   "faltam": [
+    [
+     "Armageddon",
+     4
+    ],
+    [
+     "Aura of Silence",
+     2
+    ],
+    [
+     "Battlefield Forge",
+     1
+    ],
+    [
+     "Call of the Herd",
+     3
+    ],
+    [
+     "City of Traitors",
+     1
+    ],
+    [
+     "Cursed Totem",
+     2
+    ],
+    [
+     "Disenchant",
+     1
+    ],
+    [
+     "Gemstone Mine",
+     3
+    ],
+    [
+     "Karplusan Forest",
+     1
+    ],
+    [
+     "Mox Diamond",
+     4
+    ],
+    [
+     "Naturalize",
+     2
+    ],
+    [
+     "Nimble Mongoose",
+     3
+    ],
+    [
+     "Pyroblast",
+     1
+    ],
+    [
+     "Pyroclasm",
+     3
+    ],
+    [
+     "Ray of Revelation",
+     2
+    ],
+    [
+     "Red Elemental Blast",
+     1
+    ],
+    [
+     "Reprisal",
+     1
+    ],
+    [
+     "Rishadan Port",
+     2
+    ],
+    [
+     "Rith's Grove",
+     2
+    ],
+    [
+     "Secluded Steppe",
+     1
+    ],
+    [
+     "Sylvan Library",
+     4
+    ],
+    [
+     "Terravore",
+     4
+    ],
+    [
+     "Tranquil Thicket",
+     1
+    ],
+    [
+     "Treetop Village",
+     2
+    ],
+    [
+     "Wasteland",
+     4
+    ],
+    [
+     "Weathered Wayfarer",
+     3
+    ],
+    [
+     "Werebear",
+     2
+    ],
+    [
+     "Windswept Heath",
+     4
+    ],
+    [
+     "Zuran Orb",
+     1
+    ]
+   ],
+   "pct_principal": 0,
+   "top": true,
+   "top_combo": true
+  },
+  {
+   "nome": "Pyrostatic Pillar",
+   "n_lists": 48,
+   "caixa": false,
+   "combo": false,
+   "nucleo": 17,
+   "nos_meus_decks": 0,
+   "pct_nos_meus_decks": 0,
    "faltam": [
     [
      "Black Vise",
@@ -48,7 +279,7 @@
     ],
     [
      "Mogg Salvage",
-     4
+     3
     ],
     [
      "Overload",
@@ -59,8 +290,16 @@
      2
     ],
     [
+     "Pyroblast",
+     2
+    ],
+    [
      "Pyrostatic Pillar",
      4
+    ],
+    [
+     "Red Elemental Blast",
+     3
     ],
     [
      "Seal of Fire",
@@ -76,12 +315,26 @@
    "top_combo": false
   },
   {
+   "nome": "UW Replenish",
+   "n_lists": 35,
+   "caixa": true,
+   "combo": true,
+   "nucleo": 19,
+   "nos_meus_decks": 19,
+   "pct_nos_meus_decks": 100,
+   "faltam": [],
+   "pct_principal": 0,
+   "top": true,
+   "top_combo": true
+  },
+  {
    "nome": "Mono-Preto Graveborn Muse",
-   "n_lists": 26,
+   "n_lists": 30,
+   "caixa": false,
    "combo": false,
    "nucleo": 19,
-   "nos_meus_decks": 3,
-   "pct_nos_meus_decks": 16,
+   "nos_meus_decks": 1,
+   "pct_nos_meus_decks": 5,
    "faltam": [
     [
      "Cabal Therapy",
@@ -90,6 +343,10 @@
     [
      "Cursed Scroll",
      3
+    ],
+    [
+     "Dark Ritual",
+     4
     ],
     [
      "Diabolic Edict",
@@ -113,7 +370,7 @@
     ],
     [
      "Gloom",
-     3
+     2
     ],
     [
      "Graveborn Muse",
@@ -144,6 +401,10 @@
      1
     ],
     [
+     "Wasteland",
+     3
+    ],
+    [
      "Withered Wretch",
      4
     ]
@@ -153,12 +414,119 @@
    "top_combo": false
   },
   {
-   "nome": "Psychatog",
-   "n_lists": 24,
+   "nome": "Goblins",
+   "n_lists": 29,
+   "caixa": false,
    "combo": false,
-   "nucleo": 20,
-   "nos_meus_decks": 11,
-   "pct_nos_meus_decks": 55,
+   "nucleo": 23,
+   "nos_meus_decks": 0,
+   "pct_nos_meus_decks": 0,
+   "faltam": [
+    [
+     "Anarchy",
+     2
+    ],
+    [
+     "Gempalm Incinerator",
+     4
+    ],
+    [
+     "Goblin Goon",
+     2
+    ],
+    [
+     "Goblin Lackey",
+     4
+    ],
+    [
+     "Goblin Matron",
+     4
+    ],
+    [
+     "Goblin Piledriver",
+     4
+    ],
+    [
+     "Goblin Ringleader",
+     4
+    ],
+    [
+     "Goblin Sharpshooter",
+     1
+    ],
+    [
+     "Goblin Tinkerer",
+     1
+    ],
+    [
+     "Goblin Warchief",
+     4
+    ],
+    [
+     "Karplusan Forest",
+     4
+    ],
+    [
+     "Mogg Fanatic",
+     4
+    ],
+    [
+     "Naturalize",
+     4
+    ],
+    [
+     "Pyroblast",
+     3
+    ],
+    [
+     "Pyrokinesis",
+     3
+    ],
+    [
+     "Red Elemental Blast",
+     2
+    ],
+    [
+     "Rishadan Port",
+     4
+    ],
+    [
+     "Siege-Gang Commander",
+     3
+    ],
+    [
+     "Skirk Prospector",
+     1
+    ],
+    [
+     "Tormod's Crypt",
+     3
+    ],
+    [
+     "Tranquil Domain",
+     2
+    ],
+    [
+     "Wasteland",
+     3
+    ],
+    [
+     "Wooded Foothills",
+     4
+    ]
+   ],
+   "pct_principal": 0,
+   "top": true,
+   "top_combo": false
+  },
+  {
+   "nome": "Psychatog",
+   "n_lists": 29,
+   "caixa": false,
+   "combo": false,
+   "nucleo": 19,
+   "nos_meus_decks": 10,
+   "pct_nos_meus_decks": 53,
    "faltam": [
     [
      "Accumulated Knowledge",
@@ -177,8 +545,8 @@
      1
     ],
     [
-     "Haunting Echoes",
-     1
+     "Polluted Delta",
+     4
     ],
     [
      "Psychatog",
@@ -203,11 +571,12 @@
   },
   {
    "nome": "Landstill",
-   "n_lists": 19,
+   "n_lists": 24,
+   "caixa": false,
    "combo": false,
    "nucleo": 25,
-   "nos_meus_decks": 12,
-   "pct_nos_meus_decks": 48,
+   "nos_meus_decks": 11,
+   "pct_nos_meus_decks": 44,
    "faltam": [
     [
      "Circle of Protection: Red",
@@ -219,6 +588,10 @@
     ],
     [
      "Decree of Justice",
+     3
+    ],
+    [
+     "Disenchant",
      3
     ],
     [
@@ -267,47 +640,44 @@
    "top_combo": false
   },
   {
-   "nome": "Goblins",
-   "n_lists": 18,
+   "nome": "RG Aggro",
+   "n_lists": 17,
+   "caixa": false,
    "combo": false,
-   "nucleo": 23,
-   "nos_meus_decks": 8,
-   "pct_nos_meus_decks": 35,
+   "nucleo": 22,
+   "nos_meus_decks": 0,
+   "pct_nos_meus_decks": 0,
    "faltam": [
     [
-     "Gempalm Incinerator",
+     "Bloodstained Mire",
+     3
+    ],
+    [
+     "Call of the Herd",
      4
     ],
     [
-     "Goblin Goon",
-     2
-    ],
-    [
-     "Goblin Lackey",
+     "Grim Lavamancer",
      4
     ],
     [
-     "Goblin Matron",
+     "Incinerate",
      4
     ],
     [
-     "Goblin Piledriver",
+     "Jackal Pup",
      4
     ],
     [
-     "Goblin Ringleader",
+     "Karplusan Forest",
      4
     ],
     [
-     "Goblin Sharpshooter",
-     1
+     "Lava Dart",
+     4
     ],
     [
-     "Goblin Tinkerer",
-     1
-    ],
-    [
-     "Goblin Warchief",
+     "Lightning Bolt",
      4
     ],
     [
@@ -315,23 +685,55 @@
      4
     ],
     [
+     "Naturalize",
+     4
+    ],
+    [
      "Overload",
      2
     ],
     [
-     "Pyrokinesis",
-     3
+     "Pyroblast",
+     4
     ],
     [
-     "Siege-Gang Commander",
-     3
+     "Quirion Dryad",
+     4
     ],
     [
-     "Skirk Prospector",
+     "Rancor",
      1
     ],
     [
+     "Ravenous Baloth",
+     2
+    ],
+    [
+     "Seal of Fire",
+     1
+    ],
+    [
+     "Simoon",
+     1
+    ],
+    [
+     "Sylvan Library",
+     2
+    ],
+    [
+     "Tormod's Crypt",
+     2
+    ],
+    [
      "Tranquil Domain",
+     2
+    ],
+    [
+     "Treetop Village",
+     3
+    ],
+    [
+     "Wooded Foothills",
      4
     ]
    ],
@@ -342,10 +744,11 @@
   {
    "nome": "Full English Breakfast",
    "n_lists": 16,
+   "caixa": false,
    "combo": true,
    "nucleo": 38,
-   "nos_meus_decks": 13,
-   "pct_nos_meus_decks": 34,
+   "nos_meus_decks": 1,
+   "pct_nos_meus_decks": 3,
    "faltam": [
     [
      "Akroma, Angel of Wrath",
@@ -360,7 +763,19 @@
      1
     ],
     [
+     "Birds of Paradise",
+     4
+    ],
+    [
+     "Brushland",
+     1
+    ],
+    [
      "Cabal Therapy",
+     4
+    ],
+    [
+     "City of Brass",
      4
     ],
     [
@@ -378,6 +793,10 @@
     [
      "Enlightened Tutor",
      1
+    ],
+    [
+     "Gemstone Mine",
+     4
     ],
     [
      "Ghitu Slinger",
@@ -400,6 +819,14 @@
      4
     ],
     [
+     "Monk Realist",
+     1
+    ],
+    [
+     "Naturalize",
+     2
+    ],
+    [
      "Palinchron",
      1
     ],
@@ -412,8 +839,24 @@
      1
     ],
     [
+     "Pyroclasm",
+     3
+    ],
+    [
+     "Ray of Revelation",
+     1
+    ],
+    [
      "Reflecting Pool",
      3
+    ],
+    [
+     "Squee, Goblin Nabob",
+     1
+    ],
+    [
+     "Survival of the Fittest",
+     4
     ],
     [
      "Treva's Ruins",
@@ -444,27 +887,505 @@
      2
     ],
     [
+     "Wall of Roots",
+     3
+    ],
+    [
+     "Xantid Swarm",
+     2
+    ],
+    [
      "Yavimaya Coast",
      4
     ]
    ],
    "pct_principal": 0,
-   "top": true,
+   "top": false,
    "top_combo": true
+  },
+  {
+   "nome": "Elves / Survival",
+   "n_lists": 13,
+   "caixa": false,
+   "combo": true,
+   "nucleo": 30,
+   "nos_meus_decks": 1,
+   "pct_nos_meus_decks": 3,
+   "faltam": [
+    [
+     "Anger",
+     1
+    ],
+    [
+     "Armageddon",
+     4
+    ],
+    [
+     "Auramancer",
+     1
+    ],
+    [
+     "Birds of Paradise",
+     4
+    ],
+    [
+     "Brushland",
+     4
+    ],
+    [
+     "Caller of the Claw",
+     1
+    ],
+    [
+     "Deranged Hermit",
+     2
+    ],
+    [
+     "Fyndhorn Elves",
+     2
+    ],
+    [
+     "Gaea's Cradle",
+     3
+    ],
+    [
+     "Glowrider",
+     1
+    ],
+    [
+     "Llanowar Elves",
+     2
+    ],
+    [
+     "Masticore",
+     2
+    ],
+    [
+     "Monk Realist",
+     1
+    ],
+    [
+     "Multani's Acolyte",
+     3
+    ],
+    [
+     "Nantuko Vigilante",
+     2
+    ],
+    [
+     "Naturalize",
+     3
+    ],
+    [
+     "Priest of Titania",
+     1
+    ],
+    [
+     "Quirion Ranger",
+     2
+    ],
+    [
+     "Ravenous Baloth",
+     2
+    ],
+    [
+     "Squee, Goblin Nabob",
+     1
+    ],
+    [
+     "Survival of the Fittest",
+     4
+    ],
+    [
+     "Thornscape Battlemage",
+     1
+    ],
+    [
+     "Tormod's Crypt",
+     2
+    ],
+    [
+     "Wall of Roots",
+     2
+    ],
+    [
+     "Warmth",
+     3
+    ],
+    [
+     "Windswept Heath",
+     4
+    ],
+    [
+     "Wirewood Symbiote",
+     3
+    ],
+    [
+     "Wooded Foothills",
+     1
+    ],
+    [
+     "Yavimaya Granger",
+     1
+    ]
+   ],
+   "pct_principal": 0,
+   "top": false,
+   "top_combo": false
+  },
+  {
+   "nome": "Golgari Graveborn Muse",
+   "n_lists": 12,
+   "caixa": false,
+   "combo": false,
+   "nucleo": 25,
+   "nos_meus_decks": 0,
+   "pct_nos_meus_decks": 0,
+   "faltam": [
+    [
+     "Blastoderm",
+     1
+    ],
+    [
+     "Cabal Therapy",
+     4
+    ],
+    [
+     "Chainer's Edict",
+     1
+    ],
+    [
+     "Deranged Hermit",
+     1
+    ],
+    [
+     "Diabolic Edict",
+     1
+    ],
+    [
+     "Duress",
+     4
+    ],
+    [
+     "Dust Bowl",
+     2
+    ],
+    [
+     "Engineered Plague",
+     4
+    ],
+    [
+     "Gaea's Blessing",
+     1
+    ],
+    [
+     "Graveborn Muse",
+     2
+    ],
+    [
+     "Haunting Echoes",
+     2
+    ],
+    [
+     "Krosan Tusker",
+     3
+    ],
+    [
+     "Llanowar Wastes",
+     4
+    ],
+    [
+     "Naturalize",
+     3
+    ],
+    [
+     "Pernicious Deed",
+     4
+    ],
+    [
+     "Phyrexian Furnace",
+     1
+    ],
+    [
+     "Ravenous Baloth",
+     3
+    ],
+    [
+     "Ravenous Rats",
+     4
+    ],
+    [
+     "Recurring Nightmare",
+     1
+    ],
+    [
+     "Smother",
+     2
+    ],
+    [
+     "Spike Feeder",
+     1
+    ],
+    [
+     "Tranquil Domain",
+     2
+    ],
+    [
+     "Treetop Village",
+     3
+    ],
+    [
+     "Volrath's Stronghold",
+     1
+    ],
+    [
+     "Wall of Blossoms",
+     4
+    ]
+   ],
+   "pct_principal": 0,
+   "top": false,
+   "top_combo": false
+  },
+  {
+   "nome": "Sligh",
+   "n_lists": 10,
+   "caixa": false,
+   "combo": false,
+   "nucleo": 19,
+   "nos_meus_decks": 0,
+   "pct_nos_meus_decks": 0,
+   "faltam": [
+    [
+     "Barbarian Ring",
+     2
+    ],
+    [
+     "Bloodstained Mire",
+     4
+    ],
+    [
+     "Cursed Scroll",
+     3
+    ],
+    [
+     "Earthquake",
+     3
+    ],
+    [
+     "Fireblast",
+     4
+    ],
+    [
+     "Goblin Vandal",
+     3
+    ],
+    [
+     "Grim Lavamancer",
+     4
+    ],
+    [
+     "Incinerate",
+     4
+    ],
+    [
+     "Jackal Pup",
+     4
+    ],
+    [
+     "Lightning Bolt",
+     4
+    ],
+    [
+     "Mogg Fanatic",
+     4
+    ],
+    [
+     "Mogg Salvage",
+     4
+    ],
+    [
+     "Overload",
+     4
+    ],
+    [
+     "Pyroblast",
+     2
+    ],
+    [
+     "Red Elemental Blast",
+     3
+    ],
+    [
+     "Seal of Fire",
+     4
+    ],
+    [
+     "Volcanic Hammer",
+     2
+    ],
+    [
+     "Wasteland",
+     4
+    ],
+    [
+     "Wooded Foothills",
+     4
+    ]
+   ],
+   "pct_principal": 0,
+   "top": false,
+   "top_combo": false
+  },
+  {
+   "nome": "Orzhov Exalted Angel",
+   "n_lists": 9,
+   "caixa": false,
+   "combo": false,
+   "nucleo": 27,
+   "nos_meus_decks": 5,
+   "pct_nos_meus_decks": 19,
+   "faltam": [
+    [
+     "Aura of Silence",
+     1
+    ],
+    [
+     "Barren Moor",
+     1
+    ],
+    [
+     "Caves of Koilos",
+     4
+    ],
+    [
+     "Circle of Protection: Red",
+     1
+    ],
+    [
+     "Decree of Justice",
+     4
+    ],
+    [
+     "Disenchant",
+     2
+    ],
+    [
+     "Duress",
+     4
+    ],
+    [
+     "Dust Bowl",
+     2
+    ],
+    [
+     "Engineered Plague",
+     3
+    ],
+    [
+     "Enlightened Tutor",
+     1
+    ],
+    [
+     "Eternal Dragon",
+     3
+    ],
+    [
+     "Gerrard's Verdict",
+     4
+    ],
+    [
+     "Haunting Echoes",
+     2
+    ],
+    [
+     "Kor Haven",
+     1
+    ],
+    [
+     "Phyrexian Furnace",
+     1
+    ],
+    [
+     "Presence of the Master",
+     1
+    ],
+    [
+     "Secluded Steppe",
+     1
+    ],
+    [
+     "Skeletal Scrying",
+     2
+    ],
+    [
+     "Tormod's Crypt",
+     1
+    ],
+    [
+     "Vindicate",
+     4
+    ],
+    [
+     "Warmth",
+     2
+    ],
+    [
+     "Wrath of God",
+     3
+    ]
+   ],
+   "pct_principal": 0,
+   "top": false,
+   "top_combo": false
   }
  ],
  "cartas": [
+  {
+   "carta": "Abeyance",
+   "q": 3,
+   "arquetipos": [
+    "UW Replenish"
+   ],
+   "pct": 89,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Abeyance",
+   "no_deck": "UW Replenish"
+  },
   {
    "carta": "Accumulated Knowledge",
    "q": 4,
    "arquetipos": [
     "Psychatog"
    ],
-   "pct": 79,
-   "unit": 2.2,
-   "set": "NEM",
-   "sid": "ab061406-38f4-40e7-a9ea-e3cbcaabc127",
-   "rl": false
+   "pct": 69,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Accumulated%20Knowledge",
+   "no_deck": null
+  },
+  {
+   "carta": "Adarkar Wastes",
+   "q": 4,
+   "arquetipos": [
+    "UW Replenish",
+    "Landstill"
+   ],
+   "pct": 100,
+   "unit": 95.31,
+   "set": "ICE",
+   "sid": "09dd9023-f7ee-4e99-8821-7059deb83730",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Adarkar%20Wastes",
+   "no_deck": "UW Replenish"
   },
   {
    "carta": "Akroma, Angel of Wrath",
@@ -473,10 +1394,58 @@
     "Full English Breakfast"
    ],
    "pct": 100,
-   "unit": 32.07,
-   "set": "LGN",
-   "sid": "814245de-6105-43ef-acbf-d12d304b6331",
-   "rl": false
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Akroma%2C%20Angel%20of%20Wrath",
+   "no_deck": null
+  },
+  {
+   "carta": "Anarchy",
+   "q": 2,
+   "arquetipos": [
+    "Goblins"
+   ],
+   "pct": 52,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Anarchy",
+   "no_deck": null
+  },
+  {
+   "carta": "Ancient Tomb",
+   "q": 4,
+   "arquetipos": [
+    "UW Replenish"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Ancient%20Tomb",
+   "no_deck": "UW Replenish"
+  },
+  {
+   "carta": "Anger",
+   "q": 1,
+   "arquetipos": [
+    "Elves / Survival"
+   ],
+   "pct": 77,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Anger",
+   "no_deck": null
   },
   {
    "carta": "Animate Dead",
@@ -485,10 +1454,168 @@
     "Full English Breakfast"
    ],
    "pct": 100,
-   "unit": 9.61,
-   "set": "3ED",
-   "sid": "eed73f84-ad08-44f8-a4fe-cd324ec1da92",
-   "rl": false
+   "unit": 11.29,
+   "set": "4ED",
+   "sid": "cc1dc456-1f64-4f24-a646-84c57e641b3b",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Animate%20Dead",
+   "no_deck": null
+  },
+  {
+   "carta": "Annul",
+   "q": 3,
+   "arquetipos": [
+    "Stiflenought",
+    "Psychatog",
+    "Landstill"
+   ],
+   "pct": 97,
+   "unit": 3.06,
+   "set": "USG",
+   "sid": "3f8c73ff-be92-41ca-93a7-76f9823adb38",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Annul",
+   "no_deck": "Stiflenought"
+  },
+  {
+   "carta": "Argothian Enchantress",
+   "q": 4,
+   "arquetipos": [
+    "Enchantress"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Argothian%20Enchantress",
+   "no_deck": null
+  },
+  {
+   "carta": "Armageddon",
+   "q": 4,
+   "arquetipos": [
+    "Terrageddon",
+    "Elves / Survival"
+   ],
+   "pct": 78,
+   "unit": 35.31,
+   "set": "6ED",
+   "sid": "ccf3abe6-0b86-4010-8fc6-616af77b4ace",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Armageddon",
+   "no_deck": null
+  },
+  {
+   "carta": "Attunement",
+   "q": 4,
+   "arquetipos": [
+    "UW Replenish"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Attunement",
+   "no_deck": "UW Replenish"
+  },
+  {
+   "carta": "Aura of Silence",
+   "q": 3,
+   "arquetipos": [
+    "Enchantress",
+    "Terrageddon",
+    "Orzhov Exalted Angel"
+   ],
+   "pct": 100,
+   "unit": 10.35,
+   "set": "WTH",
+   "sid": "57e6c366-b8c7-4f66-b8e1-82dc69c0081c",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Aura%20of%20Silence",
+   "no_deck": null
+  },
+  {
+   "carta": "Auramancer",
+   "q": 1,
+   "arquetipos": [
+    "Elves / Survival"
+   ],
+   "pct": 62,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Auramancer",
+   "no_deck": null
+  },
+  {
+   "carta": "Back to Basics",
+   "q": 2,
+   "arquetipos": [
+    "Stiflenought"
+   ],
+   "pct": 88,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Back%20to%20Basics",
+   "no_deck": "Stiflenought"
+  },
+  {
+   "carta": "Barbarian Ring",
+   "q": 2,
+   "arquetipos": [
+    "Sligh"
+   ],
+   "pct": 50,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Barbarian%20Ring",
+   "no_deck": null
+  },
+  {
+   "carta": "Barren Moor",
+   "q": 1,
+   "arquetipos": [
+    "Orzhov Exalted Angel"
+   ],
+   "pct": 78,
+   "unit": 4.19,
+   "set": "ONS",
+   "sid": "45be3811-a223-4c45-9b24-0317f2d53c60",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Barren%20Moor",
+   "no_deck": null
+  },
+  {
+   "carta": "Battlefield Forge",
+   "q": 1,
+   "arquetipos": [
+    "Terrageddon"
+   ],
+   "pct": 62,
+   "unit": 13.29,
+   "set": "APC",
+   "sid": "a9c25e71-0140-48fe-8b9e-33b4b50c5c12",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Battlefield%20Forge",
+   "no_deck": null
   },
   {
    "carta": "Battlefield Scrounger",
@@ -497,10 +1624,29 @@
     "Full English Breakfast"
    ],
    "pct": 100,
-   "unit": 0.43,
-   "set": "JUD",
-   "sid": "f5ac74bc-1198-4a9a-bcde-668cca08b274",
-   "rl": false
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Battlefield%20Scrounger",
+   "no_deck": null
+  },
+  {
+   "carta": "Birds of Paradise",
+   "q": 4,
+   "arquetipos": [
+    "Full English Breakfast",
+    "Elves / Survival"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Birds%20of%20Paradise",
+   "no_deck": null
   },
   {
    "carta": "Black Vise",
@@ -508,36 +1654,232 @@
    "arquetipos": [
     "Pyrostatic Pillar"
    ],
-   "pct": 64,
-   "unit": 4.99,
-   "set": "3ED",
-   "sid": "1bae1867-d5bb-4204-9fb1-59d6663bc161",
-   "rl": false
+   "pct": 65,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Black%20Vise",
+   "no_deck": null
+  },
+  {
+   "carta": "Blastoderm",
+   "q": 1,
+   "arquetipos": [
+    "Golgari Graveborn Muse"
+   ],
+   "pct": 75,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Blastoderm",
+   "no_deck": null
+  },
+  {
+   "carta": "Bloodstained Mire",
+   "q": 4,
+   "arquetipos": [
+    "RG Aggro",
+    "Sligh"
+   ],
+   "pct": 100,
+   "unit": 65.62,
+   "set": "ONS",
+   "sid": "68c72226-6f52-4322-8b14-18737293dfa0",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Bloodstained%20Mire",
+   "no_deck": null
+  },
+  {
+   "carta": "Blue Elemental Blast",
+   "q": 2,
+   "arquetipos": [
+    "Stiflenought",
+    "Landstill"
+   ],
+   "pct": 79,
+   "unit": 3.59,
+   "set": "4ED",
+   "sid": "988f7b31-24b2-45c2-89e4-ff6bd9e0c8c7",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Blue%20Elemental%20Blast",
+   "no_deck": "Stiflenought"
+  },
+  {
+   "carta": "Brain Freeze",
+   "q": 2,
+   "arquetipos": [
+    "Stiflenought"
+   ],
+   "pct": 90,
+   "unit": 9.23,
+   "set": "SCG",
+   "sid": "59a43ef5-08f0-44fc-802d-b6cfd56b7d1f",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Brain%20Freeze",
+   "no_deck": "Stiflenought"
+  },
+  {
+   "carta": "Brushland",
+   "q": 4,
+   "arquetipos": [
+    "Enchantress",
+    "Full English Breakfast",
+    "Elves / Survival"
+   ],
+   "pct": 100,
+   "unit": 17.91,
+   "set": "5ED",
+   "sid": "e6793b15-37fb-495e-b5e2-22c1df4cdc05",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Brushland",
+   "no_deck": null
   },
   {
    "carta": "Cabal Therapy",
    "q": 4,
    "arquetipos": [
     "Mono-Preto Graveborn Muse",
-    "Full English Breakfast"
+    "Full English Breakfast",
+    "Golgari Graveborn Muse"
    ],
    "pct": 100,
-   "unit": 25.88,
-   "set": "JUD",
-   "sid": "0a5df970-c6ba-4824-b8ba-67244aec2b82",
-   "rl": false
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Cabal%20Therapy",
+   "no_deck": null
+  },
+  {
+   "carta": "Call of the Herd",
+   "q": 4,
+   "arquetipos": [
+    "Terrageddon",
+    "RG Aggro"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Call%20of%20the%20Herd",
+   "no_deck": null
+  },
+  {
+   "carta": "Caller of the Claw",
+   "q": 1,
+   "arquetipos": [
+    "Elves / Survival"
+   ],
+   "pct": 77,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Caller%20of%20the%20Claw",
+   "no_deck": null
+  },
+  {
+   "carta": "Caves of Koilos",
+   "q": 4,
+   "arquetipos": [
+    "Orzhov Exalted Angel"
+   ],
+   "pct": 100,
+   "unit": 19.82,
+   "set": "APC",
+   "sid": "144dd08e-451e-4438-b572-7a138e1a15f3",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Caves%20of%20Koilos",
+   "no_deck": null
+  },
+  {
+   "carta": "Chain of Vapor",
+   "q": 2,
+   "arquetipos": [
+    "Stiflenought"
+   ],
+   "pct": 91,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Chain%20of%20Vapor",
+   "no_deck": "Stiflenought"
+  },
+  {
+   "carta": "Chainer's Edict",
+   "q": 1,
+   "arquetipos": [
+    "Golgari Graveborn Muse"
+   ],
+   "pct": 75,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Chainer%27s%20Edict",
+   "no_deck": null
   },
   {
    "carta": "Circle of Protection: Red",
    "q": 1,
    "arquetipos": [
-    "Landstill"
+    "Landstill",
+    "Orzhov Exalted Angel"
    ],
-   "pct": 79,
-   "unit": 0.43,
-   "set": "ICE",
-   "sid": "5790ce22-a94f-402e-bcc7-b98f71af9fe5",
-   "rl": false
+   "pct": 100,
+   "unit": 0.29,
+   "set": "4ED",
+   "sid": "f3575259-b019-47d0-a6d3-3fe4963294ae",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Circle%20of%20Protection%3A%20Red",
+   "no_deck": null
+  },
+  {
+   "carta": "City of Brass",
+   "q": 4,
+   "arquetipos": [
+    "Full English Breakfast"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=City%20of%20Brass",
+   "no_deck": null
+  },
+  {
+   "carta": "City of Traitors",
+   "q": 1,
+   "arquetipos": [
+    "Terrageddon"
+   ],
+   "pct": 50,
+   "unit": 475.64,
+   "set": "EXO",
+   "sid": "a7a8b6b8-b95f-4014-b17a-a6d44d965995",
+   "rl": true,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=City%20of%20Traitors",
+   "no_deck": null
   },
   {
    "carta": "Coastal Tower",
@@ -545,47 +1887,188 @@
    "arquetipos": [
     "Landstill"
    ],
-   "pct": 84,
-   "unit": 3.0,
+   "pct": 83,
+   "unit": 12.12,
    "set": "INV",
    "sid": "d115dbff-e35b-495f-a1e3-19651895927e",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Coastal%20Tower",
+   "no_deck": null
+  },
+  {
+   "carta": "Counterspell",
+   "q": 4,
+   "arquetipos": [
+    "Stiflenought",
+    "Psychatog",
+    "Landstill"
+   ],
+   "pct": 100,
+   "unit": 2.55,
+   "set": "6ED",
+   "sid": "ee0d3f5f-7790-4772-bead-5d7114a23e94",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Counterspell",
+   "no_deck": "Stiflenought"
   },
   {
    "carta": "Cursed Scroll",
    "q": 3,
    "arquetipos": [
+    "Mono-Preto Graveborn Muse",
+    "Sligh"
+   ],
+   "pct": 80,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": true,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Cursed%20Scroll",
+   "no_deck": null
+  },
+  {
+   "carta": "Cursed Totem",
+   "q": 2,
+   "arquetipos": [
+    "Terrageddon"
+   ],
+   "pct": 67,
+   "unit": 38.42,
+   "set": "MIR",
+   "sid": "cc99ee76-45b6-4f1d-b0b0-7da8775ca90c",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Cursed%20Totem",
+   "no_deck": null
+  },
+  {
+   "carta": "Dark Ritual",
+   "q": 4,
+   "arquetipos": [
     "Mono-Preto Graveborn Muse"
    ],
-   "pct": 77,
-   "unit": 107.98,
-   "set": "TMP",
-   "sid": "31415b9b-fb30-4132-a9a3-795b4573a901",
-   "rl": true
+   "pct": 100,
+   "unit": 3.16,
+   "set": "USG",
+   "sid": "3f0e9d0d-e1a3-4e0a-bf39-e9aaf4d36d67",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Dark%20Ritual",
+   "no_deck": null
+  },
+  {
+   "carta": "Daze",
+   "q": 2,
+   "arquetipos": [
+    "Stiflenought"
+   ],
+   "pct": 94,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Daze",
+   "no_deck": "Stiflenought"
   },
   {
    "carta": "Decree of Justice",
-   "q": 3,
+   "q": 4,
    "arquetipos": [
-    "Landstill"
+    "Landstill",
+    "Orzhov Exalted Angel"
    ],
    "pct": 100,
-   "unit": 22.22,
-   "set": "SCG",
-   "sid": "5e8a7e5c-f252-4de8-94d7-e7327210bf26",
-   "rl": false
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Decree%20of%20Justice",
+   "no_deck": null
+  },
+  {
+   "carta": "Decree of Silence",
+   "q": 3,
+   "arquetipos": [
+    "UW Replenish"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Decree%20of%20Silence",
+   "no_deck": "UW Replenish"
+  },
+  {
+   "carta": "Defense Grid",
+   "q": 4,
+   "arquetipos": [
+    "UW Replenish",
+    "Orzhov Exalted Angel"
+   ],
+   "pct": 80,
+   "unit": 19.04,
+   "set": "ULG",
+   "sid": "5c2592c9-7e64-40c1-a9cb-c0994094a1e0",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Defense%20Grid",
+   "no_deck": "UW Replenish"
+  },
+  {
+   "carta": "Deranged Hermit",
+   "q": 2,
+   "arquetipos": [
+    "Elves / Survival",
+    "Golgari Graveborn Muse"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": true,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Deranged%20Hermit",
+   "no_deck": null
   },
   {
    "carta": "Diabolic Edict",
    "q": 2,
    "arquetipos": [
-    "Mono-Preto Graveborn Muse"
+    "Mono-Preto Graveborn Muse",
+    "Golgari Graveborn Muse"
+   ],
+   "pct": 97,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Diabolic%20Edict",
+   "no_deck": null
+  },
+  {
+   "carta": "Disenchant",
+   "q": 3,
+   "arquetipos": [
+    "Terrageddon",
+    "Landstill",
+    "Orzhov Exalted Angel"
    ],
    "pct": 96,
-   "unit": 0.8,
-   "set": "TMP",
-   "sid": "a2ecf2ee-1e2d-4ab2-8b2c-717c794b09b2",
-   "rl": false
+   "unit": 0.12,
+   "set": "7ED",
+   "sid": "402f71fc-807c-4718-956b-7ffe66c646d4",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Disenchant",
+   "no_deck": null
   },
   {
    "carta": "Drain Life",
@@ -593,11 +2076,14 @@
    "arquetipos": [
     "Mono-Preto Graveborn Muse"
    ],
-   "pct": 73,
-   "unit": 0.41,
-   "set": "4ED",
-   "sid": "b9d10677-36f0-4339-a2c3-213e8ee1c51d",
-   "rl": false
+   "pct": 67,
+   "unit": 0.29,
+   "set": "5ED",
+   "sid": "41a9b3b2-4ac9-4e50-bcd2-8831d0739e85",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Drain%20Life",
+   "no_deck": null
   },
   {
    "carta": "Duress",
@@ -605,25 +2091,35 @@
    "arquetipos": [
     "Mono-Preto Graveborn Muse",
     "Psychatog",
-    "Full English Breakfast"
+    "Full English Breakfast",
+    "Golgari Graveborn Muse",
+    "Orzhov Exalted Angel"
    ],
    "pct": 100,
-   "unit": 4.56,
+   "unit": 2.73,
    "set": "USG",
    "sid": "ca367f49-0f4a-4b7f-8104-851893fbcd8a",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Duress",
+   "no_deck": null
   },
   {
    "carta": "Dust Bowl",
    "q": 2,
    "arquetipos": [
-    "Landstill"
+    "Landstill",
+    "Golgari Graveborn Muse",
+    "Orzhov Exalted Angel"
    ],
    "pct": 100,
-   "unit": 44.95,
+   "unit": 44.64,
    "set": "MMQ",
    "sid": "75b03c30-c2b8-4207-b675-26c59c40a7e5",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Dust%20Bowl",
+   "no_deck": null
   },
   {
    "carta": "Dystopia",
@@ -631,11 +2127,29 @@
    "arquetipos": [
     "Mono-Preto Graveborn Muse"
    ],
-   "pct": 100,
-   "unit": 82.97,
-   "set": "ALL",
-   "sid": "5f8bb451-706d-44ff-bbad-9ddc6f9f786a",
-   "rl": true
+   "pct": 97,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": true,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Dystopia",
+   "no_deck": null
+  },
+  {
+   "carta": "Earthquake",
+   "q": 3,
+   "arquetipos": [
+    "Sligh"
+   ],
+   "pct": 50,
+   "unit": 3.76,
+   "set": "5ED",
+   "sid": "01bde909-899d-4efc-aac5-57b69fa764db",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Earthquake",
+   "no_deck": null
   },
   {
    "carta": "Eladamri's Vineyard",
@@ -644,10 +2158,13 @@
     "Full English Breakfast"
    ],
    "pct": 62,
-   "unit": 7.65,
+   "unit": 5.91,
    "set": "TMP",
    "sid": "d8531643-5657-44b6-89d1-9cdf67ed09c4",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Eladamri%27s%20Vineyard",
+   "no_deck": null
   },
   {
    "carta": "Elvish Spirit Guide",
@@ -656,35 +2173,124 @@
     "Full English Breakfast"
    ],
    "pct": 100,
-   "unit": 7.01,
+   "unit": 101.26,
    "set": "ALL",
    "sid": "5b94f37f-ebdf-4b79-a615-58331d27cf4e",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Elvish%20Spirit%20Guide",
+   "no_deck": null
+  },
+  {
+   "carta": "Enchantress's Presence",
+   "q": 4,
+   "arquetipos": [
+    "Enchantress"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Enchantress%27s%20Presence",
+   "no_deck": null
   },
   {
    "carta": "Engineered Plague",
    "q": 4,
    "arquetipos": [
     "Mono-Preto Graveborn Muse",
-    "Psychatog"
+    "Psychatog",
+    "Golgari Graveborn Muse",
+    "Orzhov Exalted Angel"
    ],
    "pct": 100,
-   "unit": 9.15,
-   "set": "ULG",
-   "sid": "27e158d5-efb2-4f90-8898-60ede98f7d29",
-   "rl": false
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Engineered%20Plague",
+   "no_deck": null
   },
   {
    "carta": "Enlightened Tutor",
    "q": 1,
    "arquetipos": [
-    "Full English Breakfast"
+    "Full English Breakfast",
+    "Orzhov Exalted Angel"
    ],
-   "pct": 75,
-   "unit": 43.98,
-   "set": "MIR",
-   "sid": "cbac1d27-15e2-4e2f-82ab-625a16e096cb",
-   "rl": false
+   "pct": 89,
+   "unit": 25.4,
+   "set": "6ED",
+   "sid": "e869da95-2c47-4796-aadc-50652ebb4d03",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Enlightened%20Tutor",
+   "no_deck": null
+  },
+  {
+   "carta": "Essence Flare",
+   "q": 3,
+   "arquetipos": [
+    "Stiflenought"
+   ],
+   "pct": 99,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Essence%20Flare",
+   "no_deck": "Stiflenought"
+  },
+  {
+   "carta": "Eternal Dragon",
+   "q": 3,
+   "arquetipos": [
+    "Orzhov Exalted Angel"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Eternal%20Dragon",
+   "no_deck": null
+  },
+  {
+   "carta": "Exalted Angel",
+   "q": 3,
+   "arquetipos": [
+    "UW Replenish",
+    "Landstill",
+    "Orzhov Exalted Angel"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Exalted%20Angel",
+   "no_deck": "UW Replenish"
+  },
+  {
+   "carta": "Exploration",
+   "q": 2,
+   "arquetipos": [
+    "Enchantress"
+   ],
+   "pct": 53,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Exploration",
+   "no_deck": null
   },
   {
    "carta": "Fact or Fiction",
@@ -694,10 +2300,13 @@
     "Landstill"
    ],
    "pct": 100,
-   "unit": 8.75,
-   "set": "INV",
-   "sid": "7fd4d018-dcf3-4439-8445-02d66e44f7d3",
-   "rl": false
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Fact%20or%20Fiction",
+   "no_deck": null
   },
   {
    "carta": "Faerie Conclave",
@@ -705,23 +2314,30 @@
    "arquetipos": [
     "Landstill"
    ],
-   "pct": 89,
-   "unit": 4.58,
+   "pct": 88,
+   "unit": 6.26,
    "set": "ULG",
    "sid": "ae3ede87-b026-4781-81ab-8652664f8e41",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Faerie%20Conclave",
+   "no_deck": null
   },
   {
    "carta": "Fireblast",
    "q": 4,
    "arquetipos": [
-    "Pyrostatic Pillar"
+    "Pyrostatic Pillar",
+    "Sligh"
    ],
    "pct": 100,
-   "unit": 4.88,
+   "unit": 3.2,
    "set": "VIS",
    "sid": "b1eb5b2c-1f02-48a6-a287-88eb189d6780",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Fireblast",
+   "no_deck": null
   },
   {
    "carta": "Flame Rift",
@@ -729,11 +2345,14 @@
    "arquetipos": [
     "Pyrostatic Pillar"
    ],
-   "pct": 53,
-   "unit": 1.3,
-   "set": "NEM",
-   "sid": "7717eeb9-c457-4a65-93a0-e91c7f6a1970",
-   "rl": false
+   "pct": 52,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Flame%20Rift",
+   "no_deck": null
   },
   {
    "carta": "Flaring Pain",
@@ -742,10 +2361,121 @@
     "Pyrostatic Pillar"
    ],
    "pct": 60,
-   "unit": 5.09,
+   "unit": 5.61,
    "set": "JUD",
    "sid": "eeb5c96a-1d16-459d-9968-ced9a8f1c520",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Flaring%20Pain",
+   "no_deck": null
+  },
+  {
+   "carta": "Flash of Insight",
+   "q": 2,
+   "arquetipos": [
+    "Stiflenought"
+   ],
+   "pct": 99,
+   "unit": 4.74,
+   "set": "JUD",
+   "sid": "ffaab905-0b97-42c2-a1a3-1e72275caa82",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Flash%20of%20Insight",
+   "no_deck": "Stiflenought"
+  },
+  {
+   "carta": "Flooded Strand",
+   "q": 4,
+   "arquetipos": [
+    "UW Replenish",
+    "Landstill"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Flooded%20Strand",
+   "no_deck": "UW Replenish"
+  },
+  {
+   "carta": "Foil",
+   "q": 4,
+   "arquetipos": [
+    "Stiflenought",
+    "Psychatog"
+   ],
+   "pct": 100,
+   "unit": 31.1,
+   "set": "PCY",
+   "sid": "870fb793-3107-4cb2-ba78-34fbf5c9da2f",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Foil",
+   "no_deck": "Stiflenought"
+  },
+  {
+   "carta": "Frantic Search",
+   "q": 3,
+   "arquetipos": [
+    "UW Replenish"
+   ],
+   "pct": 100,
+   "unit": 2.18,
+   "set": "ULG",
+   "sid": "1904db14-6df7-424f-afa5-e3dfab31300a",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Frantic%20Search",
+   "no_deck": "UW Replenish"
+  },
+  {
+   "carta": "Fyndhorn Elves",
+   "q": 2,
+   "arquetipos": [
+    "Elves / Survival"
+   ],
+   "pct": 100,
+   "unit": 17.75,
+   "set": "ICE",
+   "sid": "3ba95ffa-990a-4013-98b7-5d8c0b34e9c4",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Fyndhorn%20Elves",
+   "no_deck": null
+  },
+  {
+   "carta": "Gaea's Blessing",
+   "q": 1,
+   "arquetipos": [
+    "Enchantress",
+    "Golgari Graveborn Muse"
+   ],
+   "pct": 75,
+   "unit": 6.13,
+   "set": "WTH",
+   "sid": "ee83d511-57e0-40fb-a4db-62f6c2c39888",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Gaea%27s%20Blessing",
+   "no_deck": null
+  },
+  {
+   "carta": "Gaea's Cradle",
+   "q": 3,
+   "arquetipos": [
+    "Elves / Survival"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": true,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Gaea%27s%20Cradle",
+   "no_deck": null
   },
   {
    "carta": "Gempalm Incinerator",
@@ -754,10 +2484,44 @@
     "Goblins"
    ],
    "pct": 100,
-   "unit": 2.95,
+   "unit": 2.19,
    "set": "LGN",
    "sid": "2687c311-fd0c-4fe0-bce8-e3f412216796",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Gempalm%20Incinerator",
+   "no_deck": null
+  },
+  {
+   "carta": "Gemstone Mine",
+   "q": 4,
+   "arquetipos": [
+    "Terrageddon",
+    "Full English Breakfast"
+   ],
+   "pct": 100,
+   "unit": 10.13,
+   "set": "WTH",
+   "sid": "09507f7f-c58f-4f57-b878-b39811a5b619",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Gemstone%20Mine",
+   "no_deck": null
+  },
+  {
+   "carta": "Gerrard's Verdict",
+   "q": 4,
+   "arquetipos": [
+    "Orzhov Exalted Angel"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Gerrard%27s%20Verdict",
+   "no_deck": null
   },
   {
    "carta": "Ghitu Slinger",
@@ -766,22 +2530,43 @@
     "Full English Breakfast"
    ],
    "pct": 100,
-   "unit": 0.46,
-   "set": "ULG",
-   "sid": "67e4bc1d-6a4b-408a-8921-433249c960f9",
-   "rl": false
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Ghitu%20Slinger",
+   "no_deck": null
   },
   {
    "carta": "Gloom",
-   "q": 3,
+   "q": 2,
    "arquetipos": [
     "Mono-Preto Graveborn Muse"
    ],
-   "pct": 85,
-   "unit": 3.1,
-   "set": "4ED",
-   "sid": "f5a8573d-0e2d-4a7f-a47f-7e1bc472d4fa",
-   "rl": false
+   "pct": 83,
+   "unit": 6.22,
+   "set": "5ED",
+   "sid": "6a6fff23-21c9-4519-b84a-59868a918996",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Gloom",
+   "no_deck": null
+  },
+  {
+   "carta": "Glowrider",
+   "q": 1,
+   "arquetipos": [
+    "Elves / Survival"
+   ],
+   "pct": 77,
+   "unit": 16.19,
+   "set": "LGN",
+   "sid": "9ad94e39-0aac-46bb-a7f2-bd88c537cb9c",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Glowrider",
+   "no_deck": null
   },
   {
    "carta": "Goblin Goon",
@@ -789,11 +2574,14 @@
    "arquetipos": [
     "Goblins"
    ],
-   "pct": 50,
-   "unit": 10.5,
-   "set": "LGN",
-   "sid": "6c77cac8-fe95-4925-a815-8c514cc41b22",
-   "rl": false
+   "pct": 52,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Goblin%20Goon",
+   "no_deck": null
   },
   {
    "carta": "Goblin Lackey",
@@ -802,10 +2590,13 @@
     "Goblins"
    ],
    "pct": 100,
-   "unit": 30.99,
+   "unit": 31.83,
    "set": "USG",
    "sid": "9b848caa-aad8-4060-8f86-304a8556de2d",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Goblin%20Lackey",
+   "no_deck": null
   },
   {
    "carta": "Goblin Matron",
@@ -814,10 +2605,13 @@
     "Goblins"
    ],
    "pct": 100,
-   "unit": 1.4,
+   "unit": 0.55,
    "set": "USG",
    "sid": "9e9e2e5d-ad06-4378-9afb-ffb174e6a5b4",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Goblin%20Matron",
+   "no_deck": null
   },
   {
    "carta": "Goblin Piledriver",
@@ -826,10 +2620,13 @@
     "Goblins"
    ],
    "pct": 100,
-   "unit": 36.39,
+   "unit": 24.4,
    "set": "ONS",
    "sid": "f6c4df1f-f148-42ec-8e22-e7114216927d",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Goblin%20Piledriver",
+   "no_deck": null
   },
   {
    "carta": "Goblin Ringleader",
@@ -838,10 +2635,13 @@
     "Goblins"
    ],
    "pct": 100,
-   "unit": 5.07,
-   "set": "APC",
-   "sid": "b6b2cd77-9552-48b1-80cb-26966323c1ea",
-   "rl": false
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Goblin%20Ringleader",
+   "no_deck": null
   },
   {
    "carta": "Goblin Sharpshooter",
@@ -849,11 +2649,14 @@
    "arquetipos": [
     "Goblins"
    ],
-   "pct": 94,
-   "unit": 38.97,
+   "pct": 97,
+   "unit": 37.49,
    "set": "ONS",
    "sid": "7e689df7-b85d-4346-bee8-5e978b5cbbbc",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Goblin%20Sharpshooter",
+   "no_deck": null
   },
   {
    "carta": "Goblin Tinkerer",
@@ -862,10 +2665,28 @@
     "Goblins"
    ],
    "pct": 100,
-   "unit": 0.78,
+   "unit": 0.72,
    "set": "MIR",
    "sid": "e6529852-8b3e-4a70-a4a1-029e012231c6",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Goblin%20Tinkerer",
+   "no_deck": null
+  },
+  {
+   "carta": "Goblin Vandal",
+   "q": 3,
+   "arquetipos": [
+    "Sligh"
+   ],
+   "pct": 80,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Goblin%20Vandal",
+   "no_deck": null
   },
   {
    "carta": "Goblin Warchief",
@@ -874,46 +2695,78 @@
     "Goblins"
    ],
    "pct": 100,
-   "unit": 6.55,
-   "set": "SCG",
-   "sid": "66864a4b-8924-40ef-a337-15b12413a158",
-   "rl": false
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Goblin%20Warchief",
+   "no_deck": null
   },
   {
    "carta": "Graveborn Muse",
    "q": 2,
    "arquetipos": [
-    "Mono-Preto Graveborn Muse"
+    "Mono-Preto Graveborn Muse",
+    "Golgari Graveborn Muse"
    ],
-   "pct": 100,
-   "unit": 28.41,
-   "set": "LGN",
-   "sid": "aa432e4e-ff23-4ad2-8d0a-403efee86f11",
-   "rl": false
+   "pct": 97,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Graveborn%20Muse",
+   "no_deck": null
   },
   {
    "carta": "Grim Lavamancer",
    "q": 4,
    "arquetipos": [
-    "Pyrostatic Pillar"
+    "Pyrostatic Pillar",
+    "RG Aggro",
+    "Sligh"
    ],
    "pct": 100,
-   "unit": 24.29,
-   "set": "TOR",
-   "sid": "5dd72697-24be-42c7-a6d9-a837bdbd4662",
-   "rl": false
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Grim%20Lavamancer",
+   "no_deck": null
+  },
+  {
+   "carta": "Gush",
+   "q": 4,
+   "arquetipos": [
+    "Stiflenought",
+    "Psychatog"
+   ],
+   "pct": 100,
+   "unit": 1000.64,
+   "set": "MMQ",
+   "sid": "e755bbef-bf34-49c0-ae72-d70e3599de52",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Gush",
+   "no_deck": "Stiflenought"
   },
   {
    "carta": "Haunting Echoes",
-   "q": 1,
+   "q": 2,
    "arquetipos": [
-    "Psychatog"
+    "Golgari Graveborn Muse",
+    "Orzhov Exalted Angel"
    ],
-   "pct": 50,
-   "unit": 12.21,
-   "set": "ODY",
-   "sid": "aca4c571-48b8-4150-93f8-4cb5c8e797c4",
-   "rl": false
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Haunting%20Echoes",
+   "no_deck": null
   },
   {
    "carta": "Hermit Druid",
@@ -922,10 +2775,31 @@
     "Full English Breakfast"
    ],
    "pct": 100,
-   "unit": 19.2,
-   "set": "STH",
-   "sid": "3efc0622-ac2c-4722-ba05-961cc98c5940",
-   "rl": false
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Hermit%20Druid",
+   "no_deck": null
+  },
+  {
+   "carta": "Hydroblast",
+   "q": 3,
+   "arquetipos": [
+    "Stiflenought",
+    "UW Replenish",
+    "Psychatog",
+    "Landstill"
+   ],
+   "pct": 83,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Hydroblast",
+   "no_deck": "Stiflenought"
   },
   {
    "carta": "Hypnotic Specter",
@@ -934,22 +2808,78 @@
     "Mono-Preto Graveborn Muse"
    ],
    "pct": 100,
-   "unit": 8.77,
-   "set": "4ED",
-   "sid": "b5900350-be08-4904-8f1b-cc180ed08485",
-   "rl": false
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Hypnotic%20Specter",
+   "no_deck": null
+  },
+  {
+   "carta": "Impulse",
+   "q": 4,
+   "arquetipos": [
+    "Stiflenought",
+    "Psychatog",
+    "Landstill"
+   ],
+   "pct": 96,
+   "unit": 1.79,
+   "set": "VIS",
+   "sid": "9d710a97-062f-4773-b6c6-8aeddeb3b6e8",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Impulse",
+   "no_deck": "Stiflenought"
   },
   {
    "carta": "Incinerate",
    "q": 4,
    "arquetipos": [
-    "Pyrostatic Pillar"
+    "Pyrostatic Pillar",
+    "RG Aggro",
+    "Sligh"
    ],
    "pct": 100,
-   "unit": 0.43,
+   "unit": 0.24,
    "set": "5ED",
    "sid": "aa0f7e1f-bcb5-414f-a2e9-6a158fec2ff5",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Incinerate",
+   "no_deck": null
+  },
+  {
+   "carta": "Intuition",
+   "q": 3,
+   "arquetipos": [
+    "UW Replenish"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Intuition",
+   "no_deck": "UW Replenish"
+  },
+  {
+   "carta": "Jackal Pup",
+   "q": 4,
+   "arquetipos": [
+    "RG Aggro",
+    "Sligh"
+   ],
+   "pct": 100,
+   "unit": 4.1,
+   "set": "TMP",
+   "sid": "3707ab74-9aec-4d30-86e0-ffa5f72d5b4f",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Jackal%20Pup",
+   "no_deck": null
   },
   {
    "carta": "Karmic Guide",
@@ -958,10 +2888,60 @@
     "Full English Breakfast"
    ],
    "pct": 100,
-   "unit": 7.8,
-   "set": "ULG",
-   "sid": "77d23045-905b-44cb-9af9-cc6ad717477d",
-   "rl": false
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Karmic%20Guide",
+   "no_deck": null
+  },
+  {
+   "carta": "Karmic Justice",
+   "q": 1,
+   "arquetipos": [
+    "Enchantress"
+   ],
+   "pct": 53,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Karmic%20Justice",
+   "no_deck": null
+  },
+  {
+   "carta": "Karplusan Forest",
+   "q": 4,
+   "arquetipos": [
+    "Terrageddon",
+    "Goblins",
+    "RG Aggro"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Karplusan%20Forest",
+   "no_deck": null
+  },
+  {
+   "carta": "Kor Haven",
+   "q": 1,
+   "arquetipos": [
+    "Orzhov Exalted Angel"
+   ],
+   "pct": 89,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Kor%20Haven",
+   "no_deck": null
   },
   {
    "carta": "Krosan Reclamation",
@@ -970,34 +2950,91 @@
     "Full English Breakfast"
    ],
    "pct": 100,
-   "unit": 1.59,
-   "set": "JUD",
-   "sid": "5b3c5144-7e15-46c6-b819-d729ecb30bb1",
-   "rl": false
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Krosan%20Reclamation",
+   "no_deck": null
+  },
+  {
+   "carta": "Krosan Tusker",
+   "q": 3,
+   "arquetipos": [
+    "Golgari Graveborn Muse"
+   ],
+   "pct": 92,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Krosan%20Tusker",
+   "no_deck": null
+  },
+  {
+   "carta": "Lava Dart",
+   "q": 4,
+   "arquetipos": [
+    "RG Aggro"
+   ],
+   "pct": 76,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Lava%20Dart",
+   "no_deck": null
   },
   {
    "carta": "Lightning Bolt",
    "q": 4,
    "arquetipos": [
-    "Pyrostatic Pillar"
+    "Pyrostatic Pillar",
+    "RG Aggro",
+    "Sligh"
    ],
    "pct": 100,
-   "unit": 4.09,
-   "set": "4ED",
-   "sid": "9521375e-0bc1-45ef-b513-6d332a25f9d2",
-   "rl": false
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Lightning%20Bolt",
+   "no_deck": null
+  },
+  {
+   "carta": "Llanowar Elves",
+   "q": 2,
+   "arquetipos": [
+    "Elves / Survival"
+   ],
+   "pct": 100,
+   "unit": 1.65,
+   "set": "5ED",
+   "sid": "632b9428-45c6-4b81-a701-f1c7d7e8d2f0",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Llanowar%20Elves",
+   "no_deck": null
   },
   {
    "carta": "Llanowar Wastes",
    "q": 4,
    "arquetipos": [
-    "Full English Breakfast"
+    "Full English Breakfast",
+    "Golgari Graveborn Muse"
    ],
    "pct": 100,
-   "unit": 34.61,
+   "unit": 29.88,
    "set": "APC",
    "sid": "610b7cd5-5532-45a9-acfe-24a818034d1c",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Llanowar%20Wastes",
+   "no_deck": null
   },
   {
    "carta": "Mana Leak",
@@ -1005,11 +3042,75 @@
    "arquetipos": [
     "Landstill"
    ],
-   "pct": 95,
-   "unit": 1.72,
+   "pct": 96,
+   "unit": 1.19,
    "set": "STH",
    "sid": "abcaf16d-aa02-43e2-aa38-bb1835d47a05",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Mana%20Leak",
+   "no_deck": null
+  },
+  {
+   "carta": "Masticore",
+   "q": 2,
+   "arquetipos": [
+    "Elves / Survival"
+   ],
+   "pct": 100,
+   "unit": 35.16,
+   "set": "UDS",
+   "sid": "908a2215-7231-43a4-8fec-5d1e4233c028",
+   "rl": true,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Masticore",
+   "no_deck": null
+  },
+  {
+   "carta": "Meddling Mage",
+   "q": 4,
+   "arquetipos": [
+    "UW Replenish",
+    "Landstill"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Meddling%20Mage",
+   "no_deck": "UW Replenish"
+  },
+  {
+   "carta": "Mirri's Guile",
+   "q": 4,
+   "arquetipos": [
+    "Enchantress"
+   ],
+   "pct": 100,
+   "unit": 27.79,
+   "set": "TMP",
+   "sid": "73d51a3c-95c0-4810-b847-4b8afd12fd64",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Mirri%27s%20Guile",
+   "no_deck": null
+  },
+  {
+   "carta": "Misdirection",
+   "q": 1,
+   "arquetipos": [
+    "Stiflenought"
+   ],
+   "pct": 82,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Misdirection",
+   "no_deck": "Stiflenought"
   },
   {
    "carta": "Mishra's Factory",
@@ -1020,35 +3121,93 @@
     "Landstill"
    ],
    "pct": 100,
-   "unit": 13.37,
-   "set": "4ED",
-   "sid": "aff8d4f1-eaad-4afb-9097-2afab133f707",
-   "rl": false
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Mishra%27s%20Factory",
+   "no_deck": null
   },
   {
    "carta": "Mogg Fanatic",
    "q": 4,
    "arquetipos": [
     "Pyrostatic Pillar",
-    "Goblins"
+    "Goblins",
+    "RG Aggro",
+    "Sligh"
    ],
    "pct": 100,
-   "unit": 2.1,
+   "unit": 2.33,
    "set": "TMP",
    "sid": "ca2ecfd4-c874-4468-8601-87aa110d5a00",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Mogg%20Fanatic",
+   "no_deck": null
   },
   {
    "carta": "Mogg Salvage",
    "q": 4,
    "arquetipos": [
-    "Pyrostatic Pillar"
+    "Pyrostatic Pillar",
+    "Sligh"
    ],
-   "pct": 87,
-   "unit": 4.1,
+   "pct": 85,
+   "unit": 5.09,
    "set": "NEM",
    "sid": "403aa48c-b684-4c54-8863-460958055a1f",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Mogg%20Salvage",
+   "no_deck": null
+  },
+  {
+   "carta": "Monk Realist",
+   "q": 1,
+   "arquetipos": [
+    "Full English Breakfast",
+    "Elves / Survival"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Monk%20Realist",
+   "no_deck": null
+  },
+  {
+   "carta": "Mox Diamond",
+   "q": 4,
+   "arquetipos": [
+    "Terrageddon"
+   ],
+   "pct": 97,
+   "unit": 848.64,
+   "set": "STH",
+   "sid": "28028830-83ed-45e2-b495-3b9ad9d3e988",
+   "rl": true,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Mox%20Diamond",
+   "no_deck": null
+  },
+  {
+   "carta": "Multani's Acolyte",
+   "q": 3,
+   "arquetipos": [
+    "Elves / Survival"
+   ],
+   "pct": 85,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Multani%27s%20Acolyte",
+   "no_deck": null
   },
   {
    "carta": "Nantuko Shade",
@@ -1057,23 +3216,112 @@
     "Mono-Preto Graveborn Muse"
    ],
    "pct": 77,
-   "unit": 21.14,
-   "set": "TOR",
-   "sid": "2ed9dc9c-b92b-4305-8c54-1a63f750f8d1",
-   "rl": false
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Nantuko%20Shade",
+   "no_deck": null
+  },
+  {
+   "carta": "Nantuko Vigilante",
+   "q": 2,
+   "arquetipos": [
+    "Elves / Survival"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Nantuko%20Vigilante",
+   "no_deck": null
+  },
+  {
+   "carta": "Naturalize",
+   "q": 4,
+   "arquetipos": [
+    "Terrageddon",
+    "Goblins",
+    "RG Aggro",
+    "Full English Breakfast",
+    "Elves / Survival",
+    "Golgari Graveborn Muse"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Naturalize",
+   "no_deck": null
+  },
+  {
+   "carta": "Nimble Mongoose",
+   "q": 3,
+   "arquetipos": [
+    "Terrageddon"
+   ],
+   "pct": 52,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Nimble%20Mongoose",
+   "no_deck": null
+  },
+  {
+   "carta": "Opalescence",
+   "q": 4,
+   "arquetipos": [
+    "Enchantress",
+    "UW Replenish"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Opalescence",
+   "no_deck": "UW Replenish"
+  },
+  {
+   "carta": "Opt",
+   "q": 4,
+   "arquetipos": [
+    "Stiflenought",
+    "Psychatog"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Opt",
+   "no_deck": "Stiflenought"
   },
   {
    "carta": "Overload",
-   "q": 3,
+   "q": 4,
    "arquetipos": [
     "Pyrostatic Pillar",
-    "Goblins"
+    "RG Aggro",
+    "Sligh"
    ],
    "pct": 100,
-   "unit": 3.09,
+   "unit": 2.69,
    "set": "INV",
    "sid": "c91fca91-7296-422e-b251-d571b710ff71",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Overload",
+   "no_deck": null
   },
   {
    "carta": "Palinchron",
@@ -1085,7 +3333,56 @@
    "unit": 50.64,
    "set": "ULG",
    "sid": "5621db3f-a9e7-4350-9c6a-0ba04a628947",
-   "rl": true
+   "rl": true,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Palinchron",
+   "no_deck": null
+  },
+  {
+   "carta": "Parallax Wave",
+   "q": 4,
+   "arquetipos": [
+    "Enchantress",
+    "UW Replenish"
+   ],
+   "pct": 100,
+   "unit": 43.59,
+   "set": "NEM",
+   "sid": "cef789e8-e4cc-4f61-bc15-debc2487777f",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Parallax%20Wave",
+   "no_deck": "UW Replenish"
+  },
+  {
+   "carta": "Peek",
+   "q": 1,
+   "arquetipos": [
+    "Stiflenought"
+   ],
+   "pct": 59,
+   "unit": 0.75,
+   "set": "ODY",
+   "sid": "f50843cc-20ac-4746-816e-f2630aa31594",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Peek",
+   "no_deck": "Stiflenought"
+  },
+  {
+   "carta": "Pernicious Deed",
+   "q": 4,
+   "arquetipos": [
+    "Golgari Graveborn Muse"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Pernicious%20Deed",
+   "no_deck": null
   },
   {
    "carta": "Phyrexian Devourer",
@@ -1094,22 +3391,110 @@
     "Full English Breakfast"
    ],
    "pct": 100,
-   "unit": 47.32,
-   "set": "ALL",
-   "sid": "319430fa-11e4-426e-8297-67df8474c3cc",
-   "rl": true
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": true,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Phyrexian%20Devourer",
+   "no_deck": null
+  },
+  {
+   "carta": "Phyrexian Dreadnought",
+   "q": 4,
+   "arquetipos": [
+    "Stiflenought"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Phyrexian%20Dreadnought",
+   "no_deck": "Stiflenought"
   },
   {
    "carta": "Phyrexian Furnace",
    "q": 2,
    "arquetipos": [
-    "Landstill"
+    "Landstill",
+    "Golgari Graveborn Muse",
+    "Orzhov Exalted Angel"
    ],
-   "pct": 84,
-   "unit": 18.8,
+   "pct": 100,
+   "unit": 30.89,
    "set": "WTH",
    "sid": "e98bca31-8c05-430b-b5d7-331bdc55710a",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Phyrexian%20Furnace",
+   "no_deck": null
+  },
+  {
+   "carta": "Polluted Delta",
+   "q": 4,
+   "arquetipos": [
+    "Psychatog"
+   ],
+   "pct": 83,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Polluted%20Delta",
+   "no_deck": null
+  },
+  {
+   "carta": "Portent",
+   "q": 4,
+   "arquetipos": [
+    "Stiflenought",
+    "Psychatog"
+   ],
+   "pct": 100,
+   "unit": 5.11,
+   "set": "ICE",
+   "sid": "e040be83-3fb5-4da5-ba7a-4923b8854b74",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Portent",
+   "no_deck": "Stiflenought"
+  },
+  {
+   "carta": "Powder Keg",
+   "q": 2,
+   "arquetipos": [
+    "Stiflenought",
+    "Mono-Preto Graveborn Muse",
+    "Psychatog",
+    "Landstill",
+    "Orzhov Exalted Angel"
+   ],
+   "pct": 100,
+   "unit": 81.27,
+   "set": "UDS",
+   "sid": "4d9715c2-9036-4ae2-a5b4-1b190d50c963",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Powder%20Keg",
+   "no_deck": "Stiflenought"
+  },
+  {
+   "carta": "Presence of the Master",
+   "q": 1,
+   "arquetipos": [
+    "Orzhov Exalted Angel"
+   ],
+   "pct": 78,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Presence%20of%20the%20Master",
+   "no_deck": null
   },
   {
    "carta": "Price of Progress",
@@ -1117,11 +3502,29 @@
    "arquetipos": [
     "Pyrostatic Pillar"
    ],
-   "pct": 64,
-   "unit": 10.24,
+   "pct": 65,
+   "unit": 7.99,
    "set": "EXO",
    "sid": "8e5283db-3e22-4862-9d95-56d03d09c2ae",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Price%20of%20Progress",
+   "no_deck": null
+  },
+  {
+   "carta": "Priest of Titania",
+   "q": 1,
+   "arquetipos": [
+    "Elves / Survival"
+   ],
+   "pct": 92,
+   "unit": 2.29,
+   "set": "USG",
+   "sid": "965c33c3-0c68-4516-b8b0-5a0552ed44b6",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Priest%20of%20Titania",
+   "no_deck": null
   },
   {
    "carta": "Prohibit",
@@ -1129,11 +3532,14 @@
    "arquetipos": [
     "Landstill"
    ],
-   "pct": 79,
-   "unit": 2.09,
-   "set": "INV",
-   "sid": "0daa5458-2a97-40d0-b18d-2381a7a68ee1",
-   "rl": false
+   "pct": 75,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Prohibit",
+   "no_deck": null
   },
   {
    "carta": "Psychatog",
@@ -1143,10 +3549,48 @@
     "Full English Breakfast"
    ],
    "pct": 100,
-   "unit": 9.49,
-   "set": "ODY",
-   "sid": "6757bf0e-489f-4be2-9e41-463b59f00dd1",
-   "rl": false
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Psychatog",
+   "no_deck": null
+  },
+  {
+   "carta": "Pyroblast",
+   "q": 4,
+   "arquetipos": [
+    "Terrageddon",
+    "Pyrostatic Pillar",
+    "Goblins",
+    "RG Aggro",
+    "Sligh"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Pyroblast",
+   "no_deck": null
+  },
+  {
+   "carta": "Pyroclasm",
+   "q": 3,
+   "arquetipos": [
+    "Terrageddon",
+    "Full English Breakfast"
+   ],
+   "pct": 81,
+   "unit": 14.2,
+   "set": "ICE",
+   "sid": "88040748-ad76-4b9a-bd4e-87e5980e9816",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Pyroclasm",
+   "no_deck": null
   },
   {
    "carta": "Pyrokinesis",
@@ -1154,11 +3598,14 @@
    "arquetipos": [
     "Goblins"
    ],
-   "pct": 89,
-   "unit": 6.96,
-   "set": "ALL",
-   "sid": "db2a5e85-6cbc-43c1-9362-4056ad017ef0",
-   "rl": false
+   "pct": 90,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Pyrokinesis",
+   "no_deck": null
   },
   {
    "carta": "Pyrostatic Pillar",
@@ -1166,23 +3613,141 @@
    "arquetipos": [
     "Pyrostatic Pillar"
    ],
-   "pct": 82,
-   "unit": 3.94,
+   "pct": 81,
+   "unit": 4.99,
    "set": "SCG",
    "sid": "5973cd53-f6cd-4edc-b952-f6d3eef97988",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Pyrostatic%20Pillar",
+   "no_deck": null
+  },
+  {
+   "carta": "Quirion Dryad",
+   "q": 4,
+   "arquetipos": [
+    "RG Aggro"
+   ],
+   "pct": 71,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Quirion%20Dryad",
+   "no_deck": null
+  },
+  {
+   "carta": "Quirion Ranger",
+   "q": 2,
+   "arquetipos": [
+    "Elves / Survival"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Quirion%20Ranger",
+   "no_deck": null
+  },
+  {
+   "carta": "Rancor",
+   "q": 1,
+   "arquetipos": [
+    "RG Aggro"
+   ],
+   "pct": 76,
+   "unit": 2.09,
+   "set": "ULG",
+   "sid": "59e256c2-38df-4012-9308-ce17dd889e5f",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Rancor",
+   "no_deck": null
+  },
+  {
+   "carta": "Ravenous Baloth",
+   "q": 3,
+   "arquetipos": [
+    "RG Aggro",
+    "Elves / Survival",
+    "Golgari Graveborn Muse"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Ravenous%20Baloth",
+   "no_deck": null
   },
   {
    "carta": "Ravenous Rats",
    "q": 4,
    "arquetipos": [
-    "Mono-Preto Graveborn Muse"
+    "Mono-Preto Graveborn Muse",
+    "Golgari Graveborn Muse"
    ],
    "pct": 100,
-   "unit": 0.6,
-   "set": "INV",
-   "sid": "89e29069-add5-4099-b800-9f1e4402cc1a",
-   "rl": false
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Ravenous%20Rats",
+   "no_deck": null
+  },
+  {
+   "carta": "Ray of Revelation",
+   "q": 2,
+   "arquetipos": [
+    "Terrageddon",
+    "Full English Breakfast"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Ray%20of%20Revelation",
+   "no_deck": null
+  },
+  {
+   "carta": "Recurring Nightmare",
+   "q": 1,
+   "arquetipos": [
+    "Golgari Graveborn Muse"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": true,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Recurring%20Nightmare",
+   "no_deck": null
+  },
+  {
+   "carta": "Red Elemental Blast",
+   "q": 3,
+   "arquetipos": [
+    "Terrageddon",
+    "Pyrostatic Pillar",
+    "Goblins",
+    "Sligh"
+   ],
+   "pct": 85,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Red%20Elemental%20Blast",
+   "no_deck": null
   },
   {
    "carta": "Reflecting Pool",
@@ -1191,22 +3756,155 @@
     "Full English Breakfast"
    ],
    "pct": 100,
-   "unit": 56.79,
-   "set": "TMP",
-   "sid": "7b633ac2-bf98-42bd-8c26-8737a7d8edc7",
-   "rl": false
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Reflecting%20Pool",
+   "no_deck": null
+  },
+  {
+   "carta": "Replenish",
+   "q": 4,
+   "arquetipos": [
+    "Enchantress",
+    "UW Replenish"
+   ],
+   "pct": 100,
+   "unit": 168.63,
+   "set": "UDS",
+   "sid": "7fd2fe13-bbc0-42b7-bc42-3b51910ce118",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Replenish",
+   "no_deck": "UW Replenish"
+  },
+  {
+   "carta": "Reprisal",
+   "q": 1,
+   "arquetipos": [
+    "Terrageddon"
+   ],
+   "pct": 50,
+   "unit": 0.4,
+   "set": "ALL",
+   "sid": "179f50be-6658-42f4-b9b9-c97c7d3f239a",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Reprisal",
+   "no_deck": null
+  },
+  {
+   "carta": "Rishadan Port",
+   "q": 4,
+   "arquetipos": [
+    "Terrageddon",
+    "Goblins"
+   ],
+   "pct": 100,
+   "unit": 99.64,
+   "set": "MMQ",
+   "sid": "477a1f53-5cdf-4b45-b584-2e36b31a3fdb",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Rishadan%20Port",
+   "no_deck": null
+  },
+  {
+   "carta": "Rith's Grove",
+   "q": 2,
+   "arquetipos": [
+    "Terrageddon"
+   ],
+   "pct": 67,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Rith%27s%20Grove",
+   "no_deck": null
+  },
+  {
+   "carta": "Sacred Ground",
+   "q": 2,
+   "arquetipos": [
+    "Enchantress"
+   ],
+   "pct": 82,
+   "unit": 1000.63,
+   "set": "STH",
+   "sid": "37ae4b01-a9c1-4eec-9204-78cb2508e0df",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Sacred%20Ground",
+   "no_deck": null
+  },
+  {
+   "carta": "Seal of Cleansing",
+   "q": 3,
+   "arquetipos": [
+    "Enchantress",
+    "UW Replenish",
+    "Orzhov Exalted Angel"
+   ],
+   "pct": 100,
+   "unit": 1.59,
+   "set": "NEM",
+   "sid": "af6c921e-1b82-412c-9979-adfdf83440f7",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Seal%20of%20Cleansing",
+   "no_deck": "UW Replenish"
   },
   {
    "carta": "Seal of Fire",
    "q": 4,
    "arquetipos": [
-    "Pyrostatic Pillar"
+    "Pyrostatic Pillar",
+    "RG Aggro",
+    "Sligh"
    ],
    "pct": 100,
-   "unit": 2.34,
+   "unit": 0.7,
    "set": "NEM",
    "sid": "37eaf1f6-4bdc-4669-9a15-50b65e016ccf",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Seal%20of%20Fire",
+   "no_deck": null
+  },
+  {
+   "carta": "Secluded Steppe",
+   "q": 1,
+   "arquetipos": [
+    "Terrageddon",
+    "Orzhov Exalted Angel"
+   ],
+   "pct": 89,
+   "unit": 0.69,
+   "set": "ONS",
+   "sid": "ea454280-f7f4-4315-bb46-b56050c02c97",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Secluded%20Steppe",
+   "no_deck": null
+  },
+  {
+   "carta": "Serra's Sanctum",
+   "q": 4,
+   "arquetipos": [
+    "Enchantress"
+   ],
+   "pct": 99,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": true,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Serra%27s%20Sanctum",
+   "no_deck": null
   },
   {
    "carta": "Sickening Dreams",
@@ -1214,11 +3912,14 @@
    "arquetipos": [
     "Psychatog"
    ],
-   "pct": 100,
-   "unit": 12.86,
+   "pct": 83,
+   "unit": 2.4,
    "set": "TOR",
    "sid": "9396ac77-9f53-46bd-b126-02441a0f5594",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Sickening%20Dreams",
+   "no_deck": null
   },
   {
    "carta": "Siege-Gang Commander",
@@ -1227,10 +3928,43 @@
     "Goblins"
    ],
    "pct": 100,
-   "unit": 10.95,
+   "unit": 15.83,
    "set": "SCG",
    "sid": "92e78cec-aaf9-4fe8-887b-b7e356d63315",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Siege-Gang%20Commander",
+   "no_deck": null
+  },
+  {
+   "carta": "Simoon",
+   "q": 1,
+   "arquetipos": [
+    "RG Aggro"
+   ],
+   "pct": 82,
+   "unit": 1.38,
+   "set": "VIS",
+   "sid": "642d9239-82e0-4696-ad99-10796042d1f8",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Simoon",
+   "no_deck": null
+  },
+  {
+   "carta": "Skeletal Scrying",
+   "q": 2,
+   "arquetipos": [
+    "Orzhov Exalted Angel"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Skeletal%20Scrying",
+   "no_deck": null
   },
   {
    "carta": "Skirk Prospector",
@@ -1238,24 +3972,46 @@
    "arquetipos": [
     "Goblins"
    ],
-   "pct": 61,
-   "unit": 0.9,
+   "pct": 76,
+   "unit": 1.33,
    "set": "ONS",
    "sid": "eb545dcd-3a7a-46a7-9c35-d28faebc6d17",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Skirk%20Prospector",
+   "no_deck": null
+  },
+  {
+   "carta": "Skycloud Expanse",
+   "q": 4,
+   "arquetipos": [
+    "UW Replenish"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Skycloud%20Expanse",
+   "no_deck": "UW Replenish"
   },
   {
    "carta": "Smother",
    "q": 3,
    "arquetipos": [
     "Mono-Preto Graveborn Muse",
-    "Psychatog"
+    "Psychatog",
+    "Golgari Graveborn Muse"
    ],
    "pct": 100,
-   "unit": 4.1,
+   "unit": 4.2,
    "set": "ONS",
    "sid": "9a8321af-d667-44e7-8c03-3957286604b9",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Smother",
+   "no_deck": null
   },
   {
    "carta": "Snuff Out",
@@ -1263,11 +4019,60 @@
    "arquetipos": [
     "Mono-Preto Graveborn Muse"
    ],
-   "pct": 85,
-   "unit": 13.04,
+   "pct": 87,
+   "unit": 1000.64,
    "set": "MMQ",
    "sid": "18a3cca1-e50e-49b6-9e1a-f86640e3b177",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Snuff%20Out",
+   "no_deck": null
+  },
+  {
+   "carta": "Solitary Confinement",
+   "q": 2,
+   "arquetipos": [
+    "Enchantress"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Solitary%20Confinement",
+   "no_deck": null
+  },
+  {
+   "carta": "Spike Feeder",
+   "q": 1,
+   "arquetipos": [
+    "Golgari Graveborn Muse"
+   ],
+   "pct": 75,
+   "unit": 0.45,
+   "set": "STH",
+   "sid": "3751b2ae-a234-4691-984b-2f9f6b1cd1df",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Spike%20Feeder",
+   "no_deck": null
+  },
+  {
+   "carta": "Squee, Goblin Nabob",
+   "q": 1,
+   "arquetipos": [
+    "Full English Breakfast",
+    "Elves / Survival"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Squee%2C%20Goblin%20Nabob",
+   "no_deck": null
   },
   {
    "carta": "Standstill",
@@ -1275,11 +4080,44 @@
    "arquetipos": [
     "Landstill"
    ],
-   "pct": 95,
-   "unit": 11.71,
+   "pct": 96,
+   "unit": 44.19,
    "set": "ODY",
    "sid": "3ede3f6f-e642-4fe4-aa37-0f01cdf4d149",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Standstill",
+   "no_deck": null
+  },
+  {
+   "carta": "Sterling Grove",
+   "q": 3,
+   "arquetipos": [
+    "Enchantress"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Sterling%20Grove",
+   "no_deck": null
+  },
+  {
+   "carta": "Stifle",
+   "q": 4,
+   "arquetipos": [
+    "Stiflenought"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Stifle",
+   "no_deck": "Stiflenought"
   },
   {
    "carta": "Sulfuric Vortex",
@@ -1287,11 +4125,67 @@
    "arquetipos": [
     "Pyrostatic Pillar"
    ],
-   "pct": 93,
-   "unit": 5.76,
+   "pct": 94,
+   "unit": 4.1,
    "set": "SCG",
    "sid": "79955e27-eef7-43bd-9895-e9209ed1537f",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Sulfuric%20Vortex",
+   "no_deck": null
+  },
+  {
+   "carta": "Survival of the Fittest",
+   "q": 4,
+   "arquetipos": [
+    "Full English Breakfast",
+    "Elves / Survival"
+   ],
+   "pct": 100,
+   "unit": 330.64,
+   "set": "EXO",
+   "sid": "c060c178-3c0e-493f-b6f0-ead5b1d6f191",
+   "rl": true,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Survival%20of%20the%20Fittest",
+   "no_deck": null
+  },
+  {
+   "carta": "Swords to Plowshares",
+   "q": 4,
+   "arquetipos": [
+    "Enchantress",
+    "Terrageddon",
+    "UW Replenish",
+    "Landstill",
+    "Full English Breakfast",
+    "Elves / Survival",
+    "Orzhov Exalted Angel"
+   ],
+   "pct": 100,
+   "unit": 43.04,
+   "set": "ICE",
+   "sid": "375fd2cb-443b-4be4-ad60-6d1a8e74f510",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Swords%20to%20Plowshares",
+   "no_deck": "UW Replenish"
+  },
+  {
+   "carta": "Sylvan Library",
+   "q": 4,
+   "arquetipos": [
+    "Terrageddon",
+    "RG Aggro"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Sylvan%20Library",
+   "no_deck": null
   },
   {
    "carta": "Teferi's Response",
@@ -1299,23 +4193,127 @@
    "arquetipos": [
     "Landstill"
    ],
-   "pct": 74,
-   "unit": 14.96,
-   "set": "INV",
-   "sid": "f3bb2df8-c559-4a34-83b0-d48fbc694cc8",
-   "rl": false
+   "pct": 75,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Teferi%27s%20Response",
+   "no_deck": null
+  },
+  {
+   "carta": "Terravore",
+   "q": 4,
+   "arquetipos": [
+    "Terrageddon"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Terravore",
+   "no_deck": null
+  },
+  {
+   "carta": "Thornscape Battlemage",
+   "q": 1,
+   "arquetipos": [
+    "Elves / Survival"
+   ],
+   "pct": 85,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Thornscape%20Battlemage",
+   "no_deck": null
+  },
+  {
+   "carta": "Thwart",
+   "q": 1,
+   "arquetipos": [
+    "Stiflenought"
+   ],
+   "pct": 97,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Thwart",
+   "no_deck": "Stiflenought"
+  },
+  {
+   "carta": "Tormod's Crypt",
+   "q": 3,
+   "arquetipos": [
+    "Enchantress",
+    "Goblins",
+    "RG Aggro",
+    "Elves / Survival",
+    "Orzhov Exalted Angel"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Tormod%27s%20Crypt",
+   "no_deck": null
   },
   {
    "carta": "Tranquil Domain",
-   "q": 4,
+   "q": 2,
    "arquetipos": [
-    "Goblins"
+    "Goblins",
+    "RG Aggro",
+    "Golgari Graveborn Muse"
    ],
-   "pct": 50,
-   "unit": 2.98,
+   "pct": 100,
+   "unit": 5.35,
    "set": "MIR",
    "sid": "801f34a6-9f22-43c2-b1e5-194395cc7da1",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Tranquil%20Domain",
+   "no_deck": null
+  },
+  {
+   "carta": "Tranquil Thicket",
+   "q": 1,
+   "arquetipos": [
+    "Terrageddon"
+   ],
+   "pct": 69,
+   "unit": 0.3,
+   "set": "ONS",
+   "sid": "afcb7cef-8aeb-4c84-88e9-6df17768e292",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Tranquil%20Thicket",
+   "no_deck": null
+  },
+  {
+   "carta": "Treetop Village",
+   "q": 3,
+   "arquetipos": [
+    "Terrageddon",
+    "RG Aggro",
+    "Golgari Graveborn Muse"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Treetop%20Village",
+   "no_deck": null
   },
   {
    "carta": "Treva's Ruins",
@@ -1324,10 +4322,13 @@
     "Full English Breakfast"
    ],
    "pct": 88,
-   "unit": 4.9,
-   "set": "PLS",
-   "sid": "8bae2458-b54f-426a-ad40-13529a73c423",
-   "rl": false
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Treva%27s%20Ruins",
+   "no_deck": null
   },
   {
    "carta": "Triskelion",
@@ -1336,10 +4337,30 @@
     "Full English Breakfast"
    ],
    "pct": 100,
-   "unit": 5.17,
-   "set": "4ED",
-   "sid": "09294401-a895-4084-8302-196a946863d6",
-   "rl": false
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Triskelion",
+   "no_deck": null
+  },
+  {
+   "carta": "Tsabo's Web",
+   "q": 2,
+   "arquetipos": [
+    "Enchantress",
+    "UW Replenish",
+    "Psychatog"
+   ],
+   "pct": 86,
+   "unit": 60.08,
+   "set": "INV",
+   "sid": "0dee69f8-cceb-41b9-a0ee-6b2ac9f4bad9",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Tsabo%27s%20Web",
+   "no_deck": "UW Replenish"
   },
   {
    "carta": "Uktabi Orangutan",
@@ -1348,10 +4369,13 @@
     "Full English Breakfast"
    ],
    "pct": 100,
-   "unit": 3.3,
+   "unit": 2.1,
    "set": "VIS",
    "sid": "101c7d58-43cc-4ebd-87f1-2016fbff56dd",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Uktabi%20Orangutan",
+   "no_deck": null
   },
   {
    "carta": "Underground River",
@@ -1360,11 +4384,14 @@
     "Psychatog",
     "Full English Breakfast"
    ],
-   "pct": 83,
-   "unit": 11.16,
-   "set": "5ED",
-   "sid": "be9efd79-1b1d-4e02-8922-0154ad20e4d4",
-   "rl": false
+   "pct": 69,
+   "unit": 52.53,
+   "set": "ICE",
+   "sid": "92369d7e-5e5a-46f9-bb31-c57d62410283",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Underground%20River",
+   "no_deck": null
   },
   {
    "carta": "Undiscovered Paradise",
@@ -1373,10 +4400,13 @@
     "Full English Breakfast"
    ],
    "pct": 100,
-   "unit": 39.38,
-   "set": "VIS",
-   "sid": "5f6e8830-5e62-4945-8b73-60f0628d38e7",
-   "rl": true
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": true,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Undiscovered%20Paradise",
+   "no_deck": null
   },
   {
    "carta": "Unearth",
@@ -1385,10 +4415,58 @@
     "Full English Breakfast"
    ],
    "pct": 100,
-   "unit": 2.64,
+   "unit": 2.8,
    "set": "ULG",
    "sid": "b6cb2549-e485-44d6-9d65-7605c568909e",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Unearth",
+   "no_deck": null
+  },
+  {
+   "carta": "Vindicate",
+   "q": 4,
+   "arquetipos": [
+    "Orzhov Exalted Angel"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Vindicate",
+   "no_deck": null
+  },
+  {
+   "carta": "Vision Charm",
+   "q": 4,
+   "arquetipos": [
+    "Stiflenought"
+   ],
+   "pct": 100,
+   "unit": 2.16,
+   "set": "VIS",
+   "sid": "78b384d3-3adf-493a-8b89-bfe68fd1c3e2",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Vision%20Charm",
+   "no_deck": "Stiflenought"
+  },
+  {
+   "carta": "Volcanic Hammer",
+   "q": 2,
+   "arquetipos": [
+    "Sligh"
+   ],
+   "pct": 70,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Volcanic%20Hammer",
+   "no_deck": null
   },
   {
    "carta": "Volrath's Shapeshifter",
@@ -1397,10 +4475,171 @@
     "Full English Breakfast"
    ],
    "pct": 100,
-   "unit": 18.98,
+   "unit": 15.2,
    "set": "STH",
    "sid": "ec89ee13-34ef-41c8-8fe4-0a6b21df2032",
-   "rl": true
+   "rl": true,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Volrath%27s%20Shapeshifter",
+   "no_deck": null
+  },
+  {
+   "carta": "Volrath's Stronghold",
+   "q": 1,
+   "arquetipos": [
+    "Golgari Graveborn Muse"
+   ],
+   "pct": 92,
+   "unit": 68.15,
+   "set": "STH",
+   "sid": "43bf015b-152e-4d67-b773-e75fb2487a32",
+   "rl": true,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Volrath%27s%20Stronghold",
+   "no_deck": null
+  },
+  {
+   "carta": "Wall of Blossoms",
+   "q": 4,
+   "arquetipos": [
+    "Golgari Graveborn Muse"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Wall%20of%20Blossoms",
+   "no_deck": null
+  },
+  {
+   "carta": "Wall of Roots",
+   "q": 3,
+   "arquetipos": [
+    "Full English Breakfast",
+    "Elves / Survival"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Wall%20of%20Roots",
+   "no_deck": null
+  },
+  {
+   "carta": "Warmth",
+   "q": 3,
+   "arquetipos": [
+    "Enchantress",
+    "Elves / Survival",
+    "Orzhov Exalted Angel"
+   ],
+   "pct": 89,
+   "unit": 3.84,
+   "set": "TMP",
+   "sid": "d7dbeea8-06b0-4482-bdae-aa82b9db8856",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Warmth",
+   "no_deck": null
+  },
+  {
+   "carta": "Wasteland",
+   "q": 4,
+   "arquetipos": [
+    "Terrageddon",
+    "Mono-Preto Graveborn Muse",
+    "Goblins",
+    "Sligh"
+   ],
+   "pct": 100,
+   "unit": 50.54,
+   "set": "TMP",
+   "sid": "99ff731b-8399-40c8-b539-ba6ba5783771",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Wasteland",
+   "no_deck": null
+  },
+  {
+   "carta": "Weathered Wayfarer",
+   "q": 3,
+   "arquetipos": [
+    "Terrageddon"
+   ],
+   "pct": 77,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Weathered%20Wayfarer",
+   "no_deck": null
+  },
+  {
+   "carta": "Werebear",
+   "q": 2,
+   "arquetipos": [
+    "Terrageddon"
+   ],
+   "pct": 64,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Werebear",
+   "no_deck": null
+  },
+  {
+   "carta": "Wild Growth",
+   "q": 4,
+   "arquetipos": [
+    "Enchantress"
+   ],
+   "pct": 100,
+   "unit": 0.69,
+   "set": "4ED",
+   "sid": "4aea57a2-2753-4014-9724-2701455a6be8",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Wild%20Growth",
+   "no_deck": null
+  },
+  {
+   "carta": "Windswept Heath",
+   "q": 4,
+   "arquetipos": [
+    "Enchantress",
+    "Terrageddon",
+    "Elves / Survival"
+   ],
+   "pct": 100,
+   "unit": 49.8,
+   "set": "ONS",
+   "sid": "7a7c5941-9c8a-4a40-9efb-a84f05c58e53",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Windswept%20Heath",
+   "no_deck": null
+  },
+  {
+   "carta": "Wirewood Symbiote",
+   "q": 3,
+   "arquetipos": [
+    "Elves / Survival"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Wirewood%20Symbiote",
+   "no_deck": null
   },
   {
    "carta": "Withered Wretch",
@@ -1409,22 +4648,64 @@
     "Mono-Preto Graveborn Muse"
    ],
    "pct": 100,
-   "unit": 5.08,
+   "unit": 10.89,
    "set": "LGN",
    "sid": "b8a82948-503f-4ad4-9e3c-c080c16afd63",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Withered%20Wretch",
+   "no_deck": null
+  },
+  {
+   "carta": "Wooded Foothills",
+   "q": 4,
+   "arquetipos": [
+    "Enchantress",
+    "Goblins",
+    "RG Aggro",
+    "Elves / Survival",
+    "Sligh"
+   ],
+   "pct": 100,
+   "unit": 90.63,
+   "set": "ONS",
+   "sid": "cdad38f7-9dfa-4f1b-9fac-41ab2b253f53",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Wooded%20Foothills",
+   "no_deck": null
   },
   {
    "carta": "Wrath of God",
-   "q": 2,
+   "q": 3,
    "arquetipos": [
-    "Landstill"
+    "Landstill",
+    "Orzhov Exalted Angel"
    ],
    "pct": 100,
-   "unit": 7.92,
-   "set": "5ED",
-   "sid": "def142a8-cc73-4bd2-a1a8-ae47a0c9c948",
-   "rl": false
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Wrath%20of%20God",
+   "no_deck": null
+  },
+  {
+   "carta": "Xantid Swarm",
+   "q": 3,
+   "arquetipos": [
+    "Enchantress",
+    "Full English Breakfast"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Xantid%20Swarm",
+   "no_deck": null
   },
   {
    "carta": "Yavimaya Coast",
@@ -1433,24 +4714,65 @@
     "Full English Breakfast"
    ],
    "pct": 100,
-   "unit": 32.88,
+   "unit": 32.86,
    "set": "APC",
    "sid": "177ee102-d981-4fc3-9f09-9dd07755f22c",
-   "rl": false
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Yavimaya%20Coast",
+   "no_deck": null
+  },
+  {
+   "carta": "Yavimaya Granger",
+   "q": 1,
+   "arquetipos": [
+    "Elves / Survival"
+   ],
+   "pct": 77,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Yavimaya%20Granger",
+   "no_deck": null
+  },
+  {
+   "carta": "Zuran Orb",
+   "q": 1,
+   "arquetipos": [
+    "Terrageddon"
+   ],
+   "pct": 50,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Zuran%20Orb",
+   "no_deck": null
   }
  ],
+ "contas": {
+  "a": {
+   "cartas": 178,
+   "copias": 470,
+   "eur": 12096.07,
+   "sem_preco": 96
+  },
+  "b": {
+   "cartas": 218,
+   "copias": 596,
+   "eur": 18086.97,
+   "sem_preco": 116
+  }
+ },
  "avisos": [
   {
    "gravidade": "baixa",
    "deck": "Psychatog",
-   "aviso": "55% do núcleo já está nos teus decks (11 de 20 cartas)",
-   "detalhe": "pela regra dos 50% (cópias que TENS, como principal) dá 0% hoje — a colecção reconstrói-se pelas fotos. Faltam-lhe: Accumulated Knowledge x4, Duress x4, Engineered Plague x2, Fact or Fiction x1, Haunting Echoes x1, Psychatog x4, Sickening Dreams x2, Smother x3"
-  },
-  {
-   "gravidade": "baixa",
-   "deck": "Landstill",
-   "aviso": "48% do núcleo já está nos teus decks (12 de 25 cartas)",
-   "detalhe": "pela regra dos 50% (cópias que TENS, como principal) dá 0% hoje — a colecção reconstrói-se pelas fotos. Faltam-lhe: Circle of Protection: Red x1, Coastal Tower x1, Decree of Justice x3, Dust Bowl x2, Fact or Fiction x3, Faerie Conclave x2, Mana Leak x3, Mishra's Factory x4"
+   "aviso": "53% do núcleo já está nos teus decks (10 de 19 cartas)",
+   "detalhe": "pela regra dos 50% (cópias que TENS, como principal) dá 0% hoje — a colecção reconstrói-se pelas fotos. Faltam-lhe: Accumulated Knowledge x4, Duress x4, Engineered Plague x2, Fact or Fiction x1, Polluted Delta x4, Psychatog x4, Sickening Dreams x2, Smother x3"
   }
  ]
 }

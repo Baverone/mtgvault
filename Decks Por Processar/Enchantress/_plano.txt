@@ -1,27 +1,12 @@
-PLANO DE FOTOS -- Enchantress
-slot: premodern-enchantress
+ESTA PASTA JA NAO E UM DECK
+===========================
 
-O vault ainda nao tem cartas registadas neste deck (a colecao foi
-esvaziada a 13/10/2026 e reconstroi-se pelas fotos).
+O deck que tinha este nome foi renomeado ou dissolvido, por isso o vault
+JA NAO RECONHECE esta pasta: uma foto largada aqui fica aqui e nao e
+catalogada.
 
-O QUE FOTOGRAFAR: cada subpasta «<carta> (N)» desta pasta e uma
-carta do deck que ainda nao tem foto. Larga a foto da carta na
-pasta dela. Quando a foto entrar, a pasta da carta e APAGADA e a
-foto vai para a mesma pasta em «Decks Processados\». O que ficar
-aqui e exactamente o que falta. Se a foto parar (uma linha nao
-entrou), volta para a pasta da carta com um «_porque_parou.txt».
+Larga as fotos na pasta com o nome ACTUAL do deck (estao todas em
+«Decks Por Processar\», uma por deck), ou usa o botao
+«Tirar fotos» no modo de edicao.
 
-O (N) DO NOME DA PASTA E O QUE O DECK PEDE, NAO O QUE TENS (13/10/2026).
-Fotografas o que TENS, ate ao playset -- as tuas palavras:
-  "vou sempre fotografar as cartas ate ao playset"
-  "caso peca apenas 2x e eu tenho playset, eu vou fotografar playset"
-  "caso peca playset e eu so fotografar 2x, e porque so tenho 2x"
-  "caso varios decks pecam a mesma carta, e eu coloque em diferentes
-   pastas a mesma carta, e porque tenho multiplos da carta"
-Pasta (2) e foto com 4 -> entram 4: o deck leva 2, as outras 2 ficam sem
-deck. Pasta (4) e foto com 2 -> entram 2 e o deck fica a dever 2. A pasta
-apaga-se quando a foto ENTRA, nao quando a conta bate com o (N). A mesma
-carta em duas pastas de deck sao copias diferentes, nunca a mesma.
-
-O vault reconhece a pasta como este deck (alvo: premodern-enchantress).
-A outra porta: https://editar-mtg.baverone.com/
+Nada se apagou. Podes apagar esta pasta a mao quando quiseres.
