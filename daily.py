@@ -739,6 +739,7 @@ def main():
             # dita. Uma pasta de carta que nenhuma caixa nem versão pede põe o
             # passo a VERMELHO — é uma foto a mais que ele tiraria à mão, e a
             # 16/10 eram 31 sem que nada o dissesse.
+            _rep["por_pedir"] = cp["por_pedir"]     # para a linha das staples
             contas = _fotos.exige_contas_explicadas(r["contas_pastas"],
                                                     cp["por_pedir"])
             return (f"{len(r['escritos'])} planos ({r['fotos']} fotos, "
@@ -760,10 +761,10 @@ def main():
 
         _step(con, "fotos-plano", _fotos_plano)
 
-        # A PASTA «OUTROS (JOGAM PREMODERN)» (André, 2026-10-16): as cartas dos
-        # arquétipos do top-10 / top-5 combo que ele não monta, para ele as
-        # fotografar se as tiver. Linha PRÓPRIA, de propósito: não é «por
-        # fotografar» — é «se tiveres». Corre depois do `meus-decks`, dos
+        # A PASTA «OUTROS (JOGAM PREMODERN)» (André, 2026-10-16), que desde
+        # 2026-10-17 é a COLECÇÃO DE STAPLES: o núcleo dos 15 arquétipos com mais
+        # listas. As staples contam para o «por fotografar», numa parcela ao
+        # lado da dos decks (a linha diz as duas e a soma). Corre depois do `meus-decks`, dos
         # consensos e do `fotos-plano`, com o MESMO relatório: uma carta que um
         # deck passou a pedir sai daqui na mesma noite em que ganha pasta no deck.
         def _outros_premodern():
@@ -774,7 +775,7 @@ def main():
             r = _fotos.sincronizar_outros(con, rep, outros=o)
             painel.escrever_outros(o, _pm.valores_outros(con, rep, o, r["rl"]))
             painel.escrever(con)                       # junta os avisos de hoje
-            return _fotos.texto_outros_linha(r)
+            return _fotos.texto_outros_linha(r, _rep.get("por_pedir"))
 
         _step(con, "outros-premodern", _outros_premodern)
 

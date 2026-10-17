@@ -167,11 +167,61 @@ def vista(con, rep: dict, cfg: dict | None = None) -> dict:
     fmts = sorted({d["formato"] for d in decks if d["formato"]})
     return {"decks": decks, "proposta": proposta, "formatos": fmts,
             "totais": soma(decks), "totais_proposta": soma(proposta),
+            "staples": staples(con, rep),
             # A LISTA DAS ARTS POR ESCOLHER (2026-10-13): *"pede-me sempre que
             # faltar as arts das cartas"*. Vive nesta página porque é a página das
             # compras, e uma art só importa a quem a vai comprar.
             "arts": arts.relatorio(con, cfg, cache, a_comprar={
                 l["nm"] for d in decks + proposta for l in d["linhas"]})}
+
+
+def staples(con, rep: dict) -> dict:
+    """A COLECÇÃO DE STAPLES DE PREMODERN (André, 2026-10-17): *"quero ter o
+    máximo de staples possível"*. As que lhe faltam entram nas faltas numa
+    secção PRÓPRIA, com o subtotal dela e FORA do total dos decks — o total dos
+    decks é o «fechar tudo», e uma colecção que se vai enchendo não é um deck
+    por fechar.
+
+    Só a conta (a): uma carta que já está num dos dois decks conta como «tenho»
+    e vive nesse deck (é o que a pasta leva). A (b) vai ao lado, em números, para
+    a decisão seguinte, que é dele. Uma staple de que ele já tem cópias jogáveis
+    pede só o resto, até à quantidade do núcleo."""
+    from . import collection, premodern                       # noqa: PLC0415
+    if not premodern.caixas_do_formato(rep):
+        return {"linhas": [], "cartas": 0, "copias": 0, "valor": 0.0,
+                "sem_preco": 0, "contas": None, "alvos": []}
+    o = premodern.outros(con, rep)
+    valores = premodern.valores_outros(con, rep, o)
+    tem: dict[str, int] = {}
+    for nm, q in con.execute(
+            f"""SELECT c.name, SUM(cp.quantity) FROM copies cp JOIN cards c
+                  ON c.scryfall_id = cp.scryfall_id
+                 WHERE {collection.jogaveis()} GROUP BY c.name"""):
+        tem[_scry.chave(nm)] = tem.get(_scry.chave(nm), 0) + int(q or 0)
+    linhas = []
+    for nm, e in o["cartas"].items():
+        q = max(0, e["q"] - tem.get(_scry.chave(nm), 0))
+        if not q:
+            continue
+        v = valores.get(nm) or {}
+        u = v.get("unit")
+        linhas.append({"nm": nm, "q": q, "unit": u, "unit_ref": u,
+                       "total": round((u or 0) * q, 2),
+                       "total_ref": round((u or 0) * q, 2),
+                       "total_serve": round((u or 0) * q, 2),
+                       "sid": v.get("sid"), "set": v.get("set"),
+                       "arquetipos": e["arquetipos"], "pct": e["pct"],
+                       "req": "PT · ≤SCG", "board": "main", "aviso": None,
+                       "origem_preco": "regra", "rl": bool(v.get("rl")),
+                       "arte": {"origem": "regra", "set": None, "num": None,
+                                "sem_preco": False, "opcoes": []}})
+    linhas.sort(key=lambda l: (-l["total_ref"], l["nm"]))
+    return {"linhas": linhas, "cartas": len(linhas),
+            "copias": sum(l["q"] for l in linhas),
+            "valor": round(sum(l["total_ref"] for l in linhas), 2),
+            "sem_preco": sum(l["q"] for l in linhas if l["unit"] is None),
+            "contas": premodern.contas_staples(o, valores),
+            "alvos": [a["nome"] for a in o["alvos"]], "top": o.get("top")}
 
 
 def texto_totais(t: dict) -> str:
@@ -217,6 +267,11 @@ def texto(v: dict) -> str:
     t = v["totais"]
     out.append(f"// TOTAL: {t['cartas']} cartas, {t['copias']} cópias, "
                f"{paginas.eur(t['valor'])}")
+    st = v.get("staples") or {}
+    if st.get("linhas"):
+        out.append(f"// STAPLES DE PREMODERN (colecção, fora do total) — "
+                   f"{st['copias']} cóp., {paginas.eur(st['valor'])}")
+        out += [f"{l['q']} {l['nm']}" for l in st["linhas"]]
     return "\n".join(out)
 
 

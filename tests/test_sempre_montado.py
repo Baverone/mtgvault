@@ -511,8 +511,14 @@ def caso_as_caixas_a_zero_por_cento_nao_sao_principais():
     assert por_slot["premodern-oath"].get("_saiu"), "o Oath saiu a 16/10"
     assert por_slot["premodern-terrageddon"].get("principal") is True
     assert por_slot["premodern-terrageddon"].get("principal_em") == "2026-10-16"
+    # [2026-10-17] Enchantress, Elves, IGG e Terrageddon SAÍRAM (André: só o
+    # Stiflenought e o UW Replenish ficam montados em Premodern). A marca
+    # `principal` fica escrita nelas (nada se apaga); vivas são 8.
+    for slot in ("premodern-enchantress", "premodern-elves", "premodern-igg",
+                 "premodern-terrageddon"):
+        assert por_slot[slot].get("_saiu"), f"{slot} saiu a 17/10"
     assert sum(1 for c in cfg_real["caixas"]
-               if c.get("principal") and not c.get("_saiu")) == 12
+               if c.get("principal") and not c.get("_saiu")) == 8
     # E a razão da interpretação está ESCRITA no ficheiro.
     assert "INTERPRETACAO" in (cfg_real.get("_sempre_montado") or "")
 

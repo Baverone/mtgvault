@@ -688,16 +688,46 @@ def nucleo_pct() -> int:
         return NUCLEO_PCT
 
 
+# A COLECÇÃO DE STAPLES (André, 2026-10-17, à letra): *"os decks que quero
+# montados de premodern são Stiflenought (lista do Luffy) e UW Replenish
+# (consenso), o resto quero apenas ter as cartas; premodern é uma colecção que eu
+# tenho e quero manter, em português, nas edições legais do formato, então quero
+# ter o máximo de staples possível, associadas aos decks que jogam no formato"* —
+# e escolheu: staples = **núcleo dos arquétipos do top**. A pasta «Outros» de
+# 16/10 era o embrião disto e passou a ser a colecção.
+#
+# O QUE MUDOU FACE A 16/10, e porquê: os alvos deixaram de ser «os elegíveis
+# (top-10 + top-5 combo) que não são caixa» e passaram a ser **os `top` (15)
+# primeiros por nº de listas que contam**, sejam ou não caixa. Os dois decks
+# montados ENTRAM: o núcleo deles também é staple — é isso que permite as duas
+# contas que ele pediu (a carta que já está num deck conta como «tenho», ou a
+# colecção precisa das suas próprias cópias). A PASTA continua a levar só o que
+# nenhum deck dele pede (a conta (a)), que é o comportamento de 16/10.
+# Medido a 17/10 com o mínimo 31 (passo 1): mediana e moda das cópias dão quase
+# o mesmo (596 contra 598 cópias), o máximo dá 704 — fica a mediana de sempre.
+TOP_STAPLES = 15
+
+
+def top_staples() -> int:
+    try:
+        v = outros_config().get("top")
+        return TOP_STAPLES if v is None else max(1, int(v))
+    except (TypeError, ValueError):
+        return TOP_STAPLES
+
+
 def alvos_outros(rank: dict) -> list[dict]:
-    """Os arquétipos cujo núcleo vai para a pasta: os ELEGÍVEIS do `ranking` que
-    não são caixa, mais os que ele `incluir` à mão, menos os que `excluir` (por
-    nome, normalizado). Pela ordem do ranking."""
+    """Os arquétipos cujo núcleo são staples: os `top` (15) primeiros do
+    `ranking` por nº de listas — caixas incluídas desde 2026-10-17 —, mais os que
+    ele `incluir` à mão, menos os que `excluir` (por nome, normalizado). Pela
+    ordem do ranking (que é a de `n_lists`)."""
     cfg = outros_config()
     inc = {chave_nome(n) for n in cfg.get("incluir") or []}
     exc = {chave_nome(n) for n in cfg.get("excluir") or []}
+    topo = {id(c) for c in (rank.get("todos") or [])[:top_staples()]}
     return [c for c in rank.get("todos") or []
-            if c.get("estado") != "caixa" and chave_nome(c["nome"]) not in exc
-            and (c.get("elegivel") or chave_nome(c["nome"]) in inc)]
+            if chave_nome(c["nome"]) not in exc
+            and (id(c) in topo or chave_nome(c["nome"]) in inc)]
 
 
 def nucleo_das_listas(listas: list[dict[str, int]], pct: int | None = None
@@ -761,13 +791,14 @@ def cartas_dos_meus_decks(res: dict) -> dict[str, str]:
 def uniao_dos_nucleos(nucleos: list[tuple[str, dict]], dos_decks: dict[str, str]
                       ) -> dict[str, dict]:
     """`carta -> {q, arquetipos, pct}`: a união dos núcleos, sem o que um deck
-    dele pede. A quantidade é o MÁXIMO entre os arquétipos (são alternativas, e o
-    playset é o tecto) — a mesma regra das `reservas`."""
+    dele pede (passa `{}` para a união inteira). A quantidade é o MÁXIMO entre
+    os arquétipos (são alternativas, e o playset é o tecto) — a mesma regra das
+    `reservas`."""
     from . import scryfall                                   # noqa: PLC0415
     out: dict[str, dict] = {}
     for nome, nu in nucleos:
         for nm, (fr, q) in nu.items():
-            if scryfall.chave(nm) in dos_decks:
+            if dos_decks and scryfall.chave(nm) in dos_decks:
                 continue
             e = out.setdefault(nm, {"q": 0, "arquetipos": [], "pct": 0})
             e["q"] = max(e["q"], q)
@@ -797,6 +828,7 @@ def outros(con: sqlite3.Connection, res: dict) -> dict:
         nu = nucleo_das_listas(listas_do_arquetipo(con, c.get("ids") or []), pct)
         ja = sorted(nm for nm in nu if scryfall.chave(nm) in dos_decks)
         alvos.append({"nome": c["nome"], "n_lists": c["n_lists"],
+                      "caixa": c.get("estado") == "caixa",
                       "combo": bool(c.get("combo")), "nucleo": len(nu),
                       "nos_meus_decks": len(ja),
                       "pct_nos_meus_decks": round(100 * len(ja) / len(nu)) if nu else 0,
@@ -805,8 +837,40 @@ def outros(con: sqlite3.Connection, res: dict) -> dict:
                       "pct_principal": c.get("pct_principal", 0),
                       "top": bool(c.get("top")), "top_combo": bool(c.get("top_combo"))})
         nucleos.append((c["nome"], nu))
+    todas = uniao_dos_nucleos(nucleos, {})
     return {"alvos": alvos, "cartas": uniao_dos_nucleos(nucleos, dos_decks),
-            "nucleo_pct": pct, "limiar": limiar()}
+            # A união INTEIRA (2026-10-17), com o deck dele ao lado de cada carta
+            # que um deck pede — é a conta (b), a de a colecção precisar das suas
+            # próprias cópias fora dos decks. `cartas` é a (a), e é a da pasta.
+            "cartas_todas": todas,
+            "nos_decks": {nm: dos_decks[scryfall.chave(nm)] for nm in todas
+                          if scryfall.chave(nm) in dos_decks},
+            "top": top_staples(), "nucleo_pct": pct, "limiar": limiar()}
+
+
+def contas_staples(o: dict, valores: dict[str, dict]) -> dict:
+    """AS DUAS CONTAS que ele pediu a 17/10 (*"a decisão seguinte é dele"*):
+
+    * (a) `nos_decks_contam`: uma carta que já está num dos dois decks conta como
+      «tenho» — ficam as staples que nenhum deck pede (é o que a pasta leva);
+    * (b) `copias_proprias`: a colecção precisa das suas próprias cópias, fora
+      dos decks — todas as staples, com a quantidade inteira.
+
+    `valores` é `carta -> {unit}` (o `valores_outros`, que cobre as duas).
+    Uma carta sem preço conta nas cartas e nas cópias e fica a zero no euro, e
+    diz-se quantas são — nunca 0 € calado."""
+    def conta(cartas):
+        eur = sem = 0.0
+        for nm, e in cartas.items():
+            u = (valores.get(nm) or {}).get("unit")
+            if u is None:
+                sem += 1
+            else:
+                eur += u * e["q"]
+        return {"cartas": len(cartas), "copias": sum(e["q"] for e in cartas.values()),
+                "eur": round(eur, 2), "sem_preco": int(sem)}
+    return {"a": conta(o.get("cartas") or {}),
+            "b": conta(o.get("cartas_todas") or o.get("cartas") or {})}
 
 
 def valores_outros(con: sqlite3.Connection, res: dict, o: dict,
@@ -823,7 +887,7 @@ def valores_outros(con: sqlite3.Connection, res: dict, o: dict,
     out: dict[str, dict] = {}
     rl = set(rl)
     cache: dict = {}
-    for nm in o.get("cartas") or {}:
+    for nm in o.get("cartas_todas") or o.get("cartas") or {}:
         v = (loadout.mais_barata_que_serve(con, caixa, nm, cache=cache)
              if caixa else {"unit": None, "set": None, "sid": None})
         out[nm] = {"unit": v.get("unit"), "set": v.get("set"), "sid": v.get("sid"),

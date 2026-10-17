@@ -80,8 +80,12 @@ def caso_os_alvos_tem_regra_e_o_stiflenought_fica_fora():
     alvos = cfg["premodern_arquetipos_alvo"]
     # [2026-10-16, mais tarde] o «Oath of Druids» deu lugar ao «Terrageddon»
     # (decisão dele: o shell Terravore + Mox Diamond inteiro).
-    assert alvos == ["UW Replenish", "Enchantress", "Elves", "Terrageddon",
-                     "Ill-Gotten Gains"], alvos
+    # [ASSERÇÃO CORRIGIDA a 2026-10-17] André: «os decks que quero montados de
+    # premodern são Stiflenought (lista do Luffy) e UW Replenish (consenso)» — o
+    # alvo passou a ser só o UW Replenish; a lista de 16/10 fica guardada.
+    assert alvos == ["UW Replenish"], alvos
+    assert cfg["_premodern_arquetipos_alvo_antes_1017"] == [
+        "UW Replenish", "Enchantress", "Elves", "Terrageddon", "Ill-Gotten Gains"]
     terra = next(r for r in tagging.load_rules()["premodern"] if r["name"] == "Terrageddon")
     assert sorted(terra["all"]) == ["Mox Diamond", "Terravore"] and terra.get("so_main"), terra
     assert "Stiflenought" not in alvos

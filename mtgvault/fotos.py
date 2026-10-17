@@ -1604,7 +1604,41 @@ def sincronizar_pastas_de_cartas(con, res: dict, cfg: dict | None = None,
                     out["ficam_com_fotos"].append(rel)
         _acertar_vazias(d, pasta, pede, provadas, versoes.get(pasta, set()),
                         em_espera, base, out)
+    _vazias_das_caixas_que_sairam(base, set(precisa_por_pasta(res, cfg)),
+                                  em_espera, cfg, out)
     return out
+
+
+def _vazias_das_caixas_que_sairam(base: Path, vivas: set[str], em_espera: set,
+                                  cfg: dict | None, out: dict) -> None:
+    """AS PASTAS DE CARTA DE UMA CAIXA QUE SAIU (André, 2026-10-17: Enchantress,
+    Elves, Ill-Gotten Gains e Terrageddon deixam de ser decks; *"reorganiza as
+    pastas de carta VAZIAS (...) para lá"* — para a colecção de staples).
+
+    A pasta de um deck que saiu deixou de estar no plano, e por isso o ciclo de
+    cima nunca lhe tocava: as pastas de carta ficavam lá a pedir fotos de um deck
+    que ele já não monta. Aqui as VAZIAS apagam-se (pelo `apagar_pasta_feita`,
+    que recusa imagens); as cartas que são staple nascem na pasta da colecção
+    pelo `sincronizar_outros`, que é o «mover» sem levar o `(N)` de um deck que já
+    não existe. Uma com imagem fica onde está e conta em `ficam_com_fotos`. A
+    pasta do DECK fica (é o `TEXTO_ORFA` que a explica) — quem apaga só apaga
+    pastas de carta."""
+    from . import caixas                                     # noqa: PLC0415
+    for c in caixas.saidas(cfg):
+        pasta = nome_de_pasta(c.get("nome") or c["slot"])
+        d = base / pasta
+        if pasta in vivas or not d.is_dir():
+            continue
+        for x in sorted(y for y in d.iterdir() if y.is_dir()):
+            if not RE_PASTA_CARTA.match(x.name):
+                continue
+            rel = f"{pasta}/{x.name}"
+            if rel in em_espera:
+                continue
+            if apagar_pasta_feita(x, base):
+                out["apagadas_fora"].append(rel)
+            elif tem_imagens(x):
+                out["ficam_com_fotos"].append(rel)
 
 
 def _acertar_vazias(d: Path, pasta: str, pede: dict[str, int],
@@ -1828,20 +1862,20 @@ def nomes_que_tem(con) -> set[str]:
 def texto_outros(o: dict, pedidas: dict[str, str], rl: set[str]) -> str:
     """O `_plano.txt` da pasta «Outros»: o que é, porque não é «falta», e as
     cartas com os arquétipos de onde vêm."""
-    linhas = [f"OUTROS (JOGAM PREMODERN) -- {len(pedidas)} cartas",
+    linhas = [f"A COLECCAO DE STAPLES DE PREMODERN -- {len(pedidas)} cartas por fotografar",
               "=" * 60, "",
-              "As tuas palavras (16/10/2026): \"caso eu tenha essas cartas coloco la",
-              "as fotografias e ja sabes que eu as tenho\".", "",
-              "ISTO NAO E «FALTA FOTOGRAFAR». Sao cartas que jogam Premodern em",
-              "decks que NAO estas a montar. Se tiveres alguma, larga a foto na pasta",
-              "dela: entra na base SEM DECK (e posse, nao alocacao -- nao tira nada",
-              "de deck nenhum) e passa pela regra guardar/vender como qualquer",
-              "outra. Se nao tiveres, a pasta fica vazia para sempre, e esta bem.",
+              "As tuas palavras (17/10/2026): \"premodern e uma coleccao que eu tenho",
+              "e quero manter, em portugues, nas edicoes legais do formato, entao",
+              "quero ter o maximo de staples possivel\". Esta pasta era a «Outros» de",
+              "16/10 e passou a ser essa coleccao (uma pasta por carta, como estava).", "",
+              "Larga a foto de cada staple que tiveres na pasta dela: entra na base",
+              "SEM DECK (e posse, nao alocacao -- nao tira nada de deck nenhum). As",
+              "que nao tens entram na lista de faltas, na seccao das staples.",
               "Fotografa o que tens, ate ao playset; as pastas nao levam (N).", "",
-              "DE ONDE VEM: o nucleo (as cartas em %d %% ou mais das listas) dos" % o["nucleo_pct"],
-              "arquetipos do top-10 de representacao e do top-5 de combo que nao sao",
-              "decks teus -- recalculado todas as noites. Uma carta que passe a ser",
-              "pedida por um deck teu sai daqui e ganha pasta no deck.", ""]
+              "DE ONDE VEM: o nucleo (as cartas em %d %% ou mais das listas que contam," % o["nucleo_pct"],
+              "main + side) dos %s arquetipos de Premodern com mais listas, com a" % o.get("top", ""),
+              "mediana das copias (tecto 4) -- recalculado todas as noites. As que ja",
+              "estao no Stiflenought ou no UW Replenish ficam nesses decks e nao aqui.", ""]
     for a in o["alvos"]:
         linhas.append(f"  {a['nome']}: {a['n_lists']} listas, nucleo de {a['nucleo']} cartas, "
                       f"{a['pct_nos_meus_decks']}% ja nos teus decks")
@@ -1918,10 +1952,14 @@ def sincronizar_outros(con, res: dict, *, raiz: Path | str | None = None,
     return out
 
 
-def texto_outros_linha(r: dict) -> str:
-    """A linha do daily: À PARTE do «por fotografar» dos decks."""
-    return (f"{r['pedidas']} cartas em «{r['pasta']}» (se tiveres; NÃO contam como "
-            f"falta) de {len(r['alvos'])} arquétipos ({', '.join(r['alvos'])}); "
+def texto_outros_linha(r: dict, por_pedir_decks: int | None = None) -> str:
+    """A linha do daily. Desde 2026-10-17 a pasta é a COLECÇÃO DE STAPLES e as
+    cartas dela contam para o «por fotografar» — numa parcela à parte, ao lado da
+    dos decks, para o número dos decks continuar a bater com o `fotos-plano`."""
+    tot = (f"; por fotografar: {por_pedir_decks} dos decks + {r['pedidas']} staples"
+           f" = {por_pedir_decks + r['pedidas']}" if por_pedir_decks is not None else "")
+    return (f"{r['pedidas']} staples por fotografar em «{r['pasta']}»{tot} — de "
+            f"{len(r['alvos'])} arquétipos ({', '.join(r['alvos'])}); "
             f"{r['ja_tens']} já na base; {len(r['criadas'])} pastas criadas, "
             f"{len(r['saiu'])} saíram"
             + (f" ({', '.join(r['saiu'][:8])})" if r["saiu"] else "")

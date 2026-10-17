@@ -187,8 +187,11 @@ def caso_o_config_a_serio_ja_esta_na_forma_nova():
     # [2026-10-16] 18 no ficheiro: o Terrageddon entrou e o Oath of Druids
     # ficou com `_saiu` (nada se apaga). VIVAS continuam 16 + o standard que saiu
     # a 13/10 — o que se tranca é o total no ficheiro e as vivas.
+    # [2026-10-17] Enchantress, Elves, IGG e Terrageddon com `_saiu` (André: só
+    # o Stiflenought e o UW Replenish ficam montados em Premodern): as 18 ficam
+    # no ficheiro, vivas são 12.
     assert len(cfg["caixas"]) == 18, len(cfg["caixas"])
-    assert sum(1 for c in cfg["caixas"] if not c.get("_saiu")) == 16
+    assert sum(1 for c in cfg["caixas"] if not c.get("_saiu")) == 12
     assert estados["premodern-terrageddon"] == "permanente"
     assert "legacy" not in estados, "o slot `legacy` sem nome não devia existir"
     for slot in ("legacy-welder", "legacy-aluren", "legacy-artifacts-blue"):

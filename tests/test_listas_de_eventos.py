@@ -689,11 +689,12 @@ def caso_as_caixas_trocadas_tem_todas_proveniencia_completa():
             volta = caixa["_antes_1016"]
             assert volta["fonte"] == "escolhido" and volta["ref"] == slot, volta
             if caixa.get("_saiu"):
-                # 2026-10-16, mais tarde: o Oath deu lugar ao Terrageddon. A caixa
-                # fica (com a lista de evento e o caminho de volta), mas o alvo
-                # deixou de ser ela.
+                # 2026-10-16, mais tarde: o Oath deu lugar ao Terrageddon.
+                # 2026-10-17 (André): só o Stiflenought e o UW Replenish ficam
+                # montados — Enchantress e Elves também saíram. A caixa fica (com
+                # a lista de evento e o caminho de volta), mas o alvo deixou de
+                # ser ela.
                 assert consenso[slot] not in novo["premodern_arquetipos_alvo"]
-                assert "Terrageddon" in novo["premodern_arquetipos_alvo"]
             else:
                 assert consenso[slot] in novo["premodern_arquetipos_alvo"]
         else:

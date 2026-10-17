@@ -147,6 +147,11 @@ def avisos_outros(o: dict) -> list[dict]:
     está quase todo nos decks dele (por NOMES — é perto, não é posse)."""
     out = []
     for a in o.get("alvos") or []:
+        if a.get("caixa"):
+            # Desde 2026-10-17 os dois decks montados também são alvos (o núcleo
+            # deles é staple); «x % já está nos teus decks» sobre um deck dele
+            # era um aviso sobre si próprio.
+            continue
         faltam = ", ".join(f"{nm} x{q}" for nm, q in a["faltam"][:8])
         if a["pct_principal"] >= o.get("limiar", 50):
             out.append({"gravidade": "baixa", "deck": a["nome"],
@@ -170,26 +175,40 @@ def escrever_outros(o: dict, valores: dict | None = None,
     hoje = hoje or date.today().isoformat()
     p = pasta(raiz)
     valores = valores or {}
-    dados = {"data": hoje, "nucleo_pct": o["nucleo_pct"], "alvos": o["alvos"],
-             "cartas": [{"carta": nm, **e, **(valores.get(nm) or {})}
-                        for nm, e in o["cartas"].items()],
-             "avisos": avisos_outros(o)}
+    from . import premodern                                  # noqa: PLC0415
+    nos = o.get("nos_decks") or {}
+    todas = o.get("cartas_todas") or o["cartas"]
+    contas = premodern.contas_staples(o, valores)
+    dados = {"data": hoje, "nucleo_pct": o["nucleo_pct"], "top": o.get("top"),
+             "alvos": o["alvos"],
+             "cartas": [{"carta": nm, **e, **(valores.get(nm) or {}),
+                         "no_deck": nos.get(nm)}
+                        for nm, e in todas.items()],
+             "contas": contas, "avisos": avisos_outros(o)}
     _escrever_json(p / OUTROS, dados)
-    linhas = [f"PREMODERN - CARTAS DOS ARQUETIPOS QUE NAO MONTAS ({hoje})",
-              "Gerado todas as noites (passo outros-premodern). E a lista da pasta",
-              "«Decks Por Processar\\Outros (jogam Premodern)». Se tiveres alguma,",
-              "fotografa-a la: entra na base sem deck. NAO e falta.", "",
-              f"Criterio: o nucleo (>= {o['nucleo_pct']}% das listas que contam) dos",
-              "arquetipos do top-10 de representacao e do top-5 de combo que nao",
-              "sao decks teus, menos o que os teus decks pedem.", ""]
-    for a in o["alvos"]:
-        linhas.append(f"  {a['nome']:28s} {a['n_lists']:3d} listas  nucleo {a['nucleo']:2d}  "
-                      f"{a['pct_nos_meus_decks']:3d}% ja nos teus decks")
+    a, b = contas["a"], contas["b"]
+    linhas = [f"PREMODERN - A COLECCAO DE STAPLES ({hoje})",
+              "Gerado todas as noites (passo outros-premodern). As cartas sem deck",
+              "vivem na pasta «Decks Por Processar\\Outros (jogam Premodern)»;",
+              "as que ja estao no Stiflenought ou no UW Replenish ficam la.", "",
+              f"Criterio (Andre, 17/10): o nucleo (>= {o['nucleo_pct']}% das listas que",
+              f"contam, main + side) dos {o.get('top', '')} arquetipos com mais listas,",
+              "com a mediana das copias (tecto 4), sem basicas, em PT e nas edicoes",
+              "legais do formato.", "",
+              f"(a) se o que ja esta num deck contar como tenho: {a['cartas']} cartas, "
+              f"{a['copias']} copias, {a['eur']:.2f} EUR",
+              f"(b) se a coleccao precisar das suas copias:    {b['cartas']} cartas, "
+              f"{b['copias']} copias, {b['eur']:.2f} EUR", ""]
+    for al in o["alvos"]:
+        linhas.append(f"  {al['nome']:28s} {al['n_lists']:3d} listas  nucleo {al['nucleo']:2d}  "
+                      f"{al['pct_nos_meus_decks']:3d}% ja nos teus decks"
+                      + ("  [deck teu]" if al.get("caixa") else ""))
     linhas += ["", "-" * 70]
     for c in dados["cartas"]:
         v = f"  ref. {c['unit']:.2f} EUR ({c['set']})" if c.get("unit") is not None else ""
         linhas.append(f"  x{c['q']}  {c['carta']:30s} {c['pct']:3d}%  "
-                      f"{'/'.join(c['arquetipos'])}{v}" + ("  [RL]" if c.get("rl") else ""))
+                      f"{'/'.join(c['arquetipos'])}{v}" + ("  [RL]" if c.get("rl") else "")
+                      + (f"  [no {c['no_deck']}]" if c.get("no_deck") else ""))
     (p / OUTROS_TXT).write_text("\n".join(linhas) + "\n", encoding="utf-8")
     return p / OUTROS
 

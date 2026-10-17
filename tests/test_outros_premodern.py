@@ -144,15 +144,39 @@ def caso_o_criterio_e_a_uniao_dos_nucleos_menos_os_meus_decks():
                                     {"Pyrokinesis": "Terrageddon"})
     assert "Pyrokinesis" not in u, "uma carta que um deck dele pede não vai para Outros"
     assert u["Mogg Fanatic"]["q"] == 4 and u["Mogg Fanatic"]["arquetipos"] == ["Goblins", "Burn"]
-    # Os alvos: elegíveis que não são caixa, + incluir, − excluir (config)
+    # Os alvos. 16/10: os elegíveis que não são caixa. 17/10 (André: staples =
+    # «núcleo dos arquétipos do top»): os `top` primeiros por nº de listas,
+    # CAIXAS INCLUÍDAS (o núcleo dos decks dele também é staple — é o que dá as
+    # contas (a) e (b)), + incluir, − excluir (config).
     rank = {"todos": [
         {"nome": "Enchantress", "estado": "caixa", "elegivel": True},
         {"nome": "Goblins", "estado": "abaixo", "elegivel": True},
         {"nome": "Full English Breakfast", "estado": "abaixo", "elegivel": True},
         {"nome": "Sligh", "estado": "abaixo", "elegivel": False},
         {"nome": "The Rack", "estado": "abaixo", "elegivel": False}]}
-    assert [c["nome"] for c in premodern.alvos_outros(rank)] == ["Goblins", "Sligh"]
-    print("união dos núcleos dos elegíveis que não são caixa, menos os meus decks")
+    _cfg_top(3)
+    try:
+        assert [c["nome"] for c in premodern.alvos_outros(rank)] == \
+            ["Enchantress", "Goblins", "Sligh"], premodern.alvos_outros(rank)
+    finally:
+        _cfg_top(None)
+    # (a) e (b): a carta que um deck pede sai da pasta mas conta na (b).
+    o = {"cartas": {"Mogg Fanatic": {"q": 4}},
+         "cartas_todas": {"Mogg Fanatic": {"q": 4}, "Pyrokinesis": {"q": 2}}}
+    c = premodern.contas_staples(o, {"Mogg Fanatic": {"unit": 1.0},
+                                     "Pyrokinesis": {"unit": None}})
+    assert c["a"] == {"cartas": 1, "copias": 4, "eur": 4.0, "sem_preco": 0}, c
+    assert c["b"] == {"cartas": 2, "copias": 6, "eur": 4.0, "sem_preco": 1}, c
+    print("união dos núcleos do top-N (caixas incluídas), a pasta sem os meus decks")
+
+
+def _cfg_top(n):
+    d = json.loads(json.dumps(CFG))
+    if n is not None:
+        d["premodern"]["outros"]["top"] = n
+    CAMINHO.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
+    from mtgvault import sources                             # noqa: PLC0415
+    sources.esquecer_config()
 
 
 # ===========================================================================
@@ -189,7 +213,8 @@ def caso_a_pasta_nao_conta_como_falta_e_alinha_se():
     # E NÃO É ÓRFÃ: o plano é o dela, não o «esta pasta já não é um deck».
     fotos.escrever_planos(con, rep, raiz=SITE)
     plano = (OUT / "_plano.txt").read_text(encoding="utf-8")
-    assert plano != fotos.TEXTO_ORFA and "NAO E «FALTA FOTOGRAFAR»" in plano, plano[:200]
+    # 17/10: a pasta passou a ser a colecção de staples (o texto di-lo).
+    assert plano != fotos.TEXTO_ORFA and "COLECCAO DE STAPLES" in plano, plano[:200]
     # A carta que um deck passou a pedir (ou saiu do top) SAI — se a pasta
     # estiver vazia; com uma foto dentro, fica.
     foto(OUT / "Cursed Scroll" / "IMG_1.jpg")
@@ -202,6 +227,39 @@ def caso_a_pasta_nao_conta_como_falta_e_alinha_se():
     assert [x["tipo"] for x in r3["recolhidas"]] == ["outros"], r3
     assert r3["recolhidas"][0]["para"].startswith("site-outros-"), r3
     print("Outros não conta como falta, não é órfã, sai a vazia e fica a com foto")
+
+
+def caso_as_vazias_de_uma_caixa_que_saiu_apagam_se_e_as_com_foto_ficam():
+    """André, 2026-10-17: Enchantress/Elves/IGG/Terrageddon deixam de ser decks
+    e as pastas de carta VAZIAS deles «vão» para a colecção de staples (apagam-se
+    lá e nascem na pasta da colecção pelo `sincronizar_outros`); as que têm uma
+    imagem ficam onde estão."""
+    import shutil
+    shutil.rmtree(POR, ignore_errors=True)
+    d = json.loads(json.dumps(CFG))
+    d["caixas"].append({"slot": "premodern-elves", "nome": "Elves",
+                        "formato": "premodern", "fonte": "deck", "ref": "E",
+                        "_saiu": {"em": "2026-10-17", "porque": "teste"}})
+    CAMINHO.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
+    from mtgvault import sources                             # noqa: PLC0415
+    sources.esquecer_config()
+    try:
+        con = base()
+        rep = loadout.report(con)
+        assert all(s["slot"] != "premodern-elves" for s in rep["slots"])
+        vazia = POR / "Elves" / "Llanowar Elves (4)"
+        vazia.mkdir(parents=True)
+        com = foto(POR / "Elves" / "Quirion Ranger (2)" / "IMG_9.jpg")
+        r = fotos.sincronizar_pastas_de_cartas(con, rep, raiz=SITE,
+                                               pendentes=SITE / "pendentes")
+        assert not vazia.exists(), r
+        assert "Elves/Llanowar Elves (4)" in r["apagadas_fora"], r
+        assert com.is_file() and "Elves/Quirion Ranger (2)" in r["ficam_com_fotos"], r
+        assert (POR / "Elves").is_dir(), "a pasta do DECK não se apaga"
+    finally:
+        CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+        sources.esquecer_config()
+    print("caixa que saiu: as pastas de carta vazias vão-se, as com foto ficam")
 
 
 # ===========================================================================
@@ -232,6 +290,7 @@ def caso_as_regras_de_combo_de_16_10():
 CASOS = (caso_a_pasta_e_um_alvo_proprio_que_nao_tira_alocacao,
          caso_o_criterio_e_a_uniao_dos_nucleos_menos_os_meus_decks,
          caso_a_pasta_nao_conta_como_falta_e_alinha_se,
+         caso_as_vazias_de_uma_caixa_que_saiu_apagam_se_e_as_com_foto_ficam,
          caso_as_regras_de_combo_de_16_10)
 
 

@@ -288,10 +288,33 @@ function propostaHTML() {
     + `</div>`;
 }
 
+/* A COLECÇÃO DE STAPLES DE PREMODERN (André, 2026-10-17): *"quero ter o máximo
+   de staples possível"*. Secção própria, com o subtotal dela e FORA do total dos
+   decks (que é o «fechar tudo»). As que já estão no Stiflenought ou no UW
+   Replenish não aparecem aqui — vivem nesses decks (a conta (a)); a conta (b),
+   com cópias próprias para a colecção, vai em números, porque a decisão é dele. */
+function staplesHTML() {
+  const S = D.staples;
+  if (!S || !S.linhas || !S.linhas.length) return '';
+  if (FMT && FMT !== 'premodern') return '';
+  const a = (S.contas || {}).a, b = (S.contas || {}).b;
+  return `<div class="prop" id="staples"><h2>Staples de Premodern — colecção (${S.cartas})</h2>`
+    + `<p class="sub">O núcleo dos ${S.top || ''} arquétipos com mais listas, em PT e nas `
+    + `edições legais do formato. <b>Não conta para o total</b> acima: `
+    + `${S.copias} cópias, ${eur(S.valor)}${S.sem_preco ? ' (' + S.sem_preco + ' cóp. sem preço)' : ''}.`
+    + (a && b ? ` Se as que já estão no Stiflenought e no UW Replenish contarem como tuas: `
+      + `<b>${a.cartas} cartas, ${a.copias} cóp., ${eur(a.eur)}</b>; se a colecção precisar `
+      + `das suas próprias cópias: <b>${b.cartas} cartas, ${b.copias} cóp., ${eur(b.eur)}</b>.` : '')
+    + `</p><ul class="fl">`
+    + S.linhas.map(l => linhaHTML(Object.assign({deck: (l.arquetipos || []).join(', ')}, l),
+                                   false, true)).join('')
+    + `</ul></div>`;
+}
+
 function vistaHTML() {
   const ls = visiveis();
   if (!ls.length) return `<p class="vazio">Nada a comprar neste filtro.</p>`
-    + propostaHTML() + artsHTML();
+    + propostaHTML() + staplesHTML() + artsHTML();
   const img = contaArtes(MOSTRA);  /* o orçamento de imagens desta vista */
   let out = '';
   if (ORD === 'deck') {
@@ -315,7 +338,7 @@ function vistaHTML() {
   const faltam = img.pedidas() - MOSTRA;
   if (faltam > 0) out += `<button type="button" class="maisimg" id="maisimg">`
     + `⬇ mostrar as imagens das outras ${faltam} linhas</button>`;
-  return out + propostaHTML() + artsHTML();
+  return out + propostaHTML() + staplesHTML() + artsHTML();
 }
 
 function render() {
