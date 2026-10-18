@@ -15,30 +15,16 @@
  },
  {
   "id": "002",
-  "gravidade": "media",
-  "deck": "Izzet Affinity (Kappa Cannoneer)",
-  "aviso": "voltou a uma lista como a de wild88plk 13/10",
-  "detalhe": "deixada a 16/10: o deck anda a saltar entre dois arquetipos que a assinatura nao separa."
+  "gravidade": "baixa",
+  "deck": "Cloud (Duel Commander)",
+  "aviso": "lista de referencia com 48 dias",
+  "detalhe": "a mais recente que serve este deck e de McWinSauce 31/08."
  },
  {
   "id": "003",
   "gravidade": "baixa",
-  "deck": "Cloud (Duel Commander)",
-  "aviso": "lista de referencia com 47 dias",
-  "detalhe": "a mais recente que serve este deck e de McWinSauce 31/08."
- },
- {
-  "id": "004",
-  "gravidade": "baixa",
   "deck": "Psychatog",
   "aviso": "53% do núcleo já está nos teus decks (10 de 19 cartas)",
   "detalhe": "pela regra dos 50% (cópias que TENS, como principal) dá 0% hoje — a colecção reconstrói-se pelas fotos. Faltam-lhe: Accumulated Knowledge x4, Duress x4, Engineered Plague x2, Fact or Fiction x1, Polluted Delta x4, Psychatog x4, Sickening Dreams x2, Smother x3"
- },
- {
-  "id": "005",
-  "gravidade": "baixa",
-  "deck": "Stiflenought (Spock)",
-  "aviso": "lista de referencia com 15 dias",
-  "detalhe": "a mais recente que serve este deck e de SpockVidaLoka 02/10."
  }
 ]

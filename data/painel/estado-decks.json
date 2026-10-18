@@ -2,10 +2,10 @@
  {
   "deck": "Izzet Affinity (Kappa Cannoneer)",
   "formato": "modern",
-  "lista": "Juan Navarro 15/10",
-  "anterior": "DJK3V1N 15/10",
+  "lista": "sioutis_kk 16/10",
+  "anterior": "Juan Navarro 15/10",
   "mudou": "sim",
-  "cartas_trocadas": 20,
+  "cartas_trocadas": 56,
   "main": 60,
   "sideboard": 15
  },
@@ -42,9 +42,9 @@
  {
   "deck": "Stiflenought (Luffy)",
   "formato": "premodern",
-  "lista": "LuffyDoChapeuDePalha 13/10",
+  "lista": "LuffyDoChapeuDePalha 16/10",
   "anterior": "LuffyDoChapeuDePalha 13/10",
-  "mudou": "nao",
+  "mudou": "sim",
   "cartas_trocadas": 0,
   "main": 60,
   "sideboard": 15
@@ -52,9 +52,9 @@
  {
   "deck": "Stiflenought (Spock)",
   "formato": "premodern",
-  "lista": "SpockVidaLoka 02/10",
+  "lista": "SpockVidaLoka 16/10",
   "anterior": "SpockVidaLoka 02/10",
-  "mudou": "nao",
+  "mudou": "sim",
   "cartas_trocadas": 0,
   "main": 60,
   "sideboard": 15
