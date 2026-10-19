@@ -26,6 +26,16 @@ jogar a carta que dá nome ao deck, é RECUSADA (`avaliar_troca`): fica em
 `deck_lista_trocas` com `motivo = 'recusada'`, o deck mantém a lista anterior,
 o painel avisa (alta) todos os dias, e só entra com `aceitar` — que é ele a
 decidir: `py my_decks.py aceitar "<deck>" [decklist_id]`.
+
+**E A RECUSA PODE SER DELE, PARA SEMPRE (2026-10-19).** A recusada fica a avisar
+todas as noites enquanto for a lista mais recente; quando ele a viu e disse que
+NÃO, o aviso deixa de servir. `py my_decks.py rejeitar "<deck>" <decklist_id>`
+grava `motivo = 'rejeitada'` (com a data e a lista que fica) e a procura desse
+deck passa a SALTAR essa lista — o deck fica na que tem e uma lista mais nova
+volta a ser avaliada como sempre. Só aquela lista, só aquele deck. O caso: a
+28571 (Chay Chay Hii, Regional Championship SEA de 17/10, que a fonte chama
+«Pinnacle Affinity») apanhada pela assinatura do Grinding Station; ele mantém a
+27439 (howa, 15/10). Desfazer é apagar a linha `rejeitada`.
 """
 from __future__ import annotations
 
@@ -112,7 +122,23 @@ def _conta(fmt):
     return sources.counting_sql(fmt, "dl", consenso=False)
 
 
-def _latest(con: sqlite3.Connection, fmt: str, cards: list[str]):
+def _fora_sql(fora) -> tuple[str, list]:
+    """O pedaço de WHERE que salta as listas que ele rejeitou para o deck."""
+    fora = list(fora or [])
+    if not fora:
+        return "", []
+    return f" AND dl.id NOT IN ({','.join('?' * len(fora))})", fora
+
+
+def rejeitadas(con: sqlite3.Connection, deck: str, fmt: str) -> list[int]:
+    """As decklists que ele rejeitou para este deck (`motivo = 'rejeitada'`)."""
+    return [r[0] for r in con.execute(
+        "SELECT DISTINCT para_decklist_id FROM deck_lista_trocas WHERE deck = ? "
+        "AND formato = ? AND motivo = 'rejeitada' AND para_decklist_id IS NOT NULL",
+        (deck, fmt))]
+
+
+def _latest(con: sqlite3.Connection, fmt: str, cards: list[str], fora=None):
     """Decklist mais recente do formato que contém TODAS as cartas-assinatura
     (e NENHUMA das prefixadas com "!") e tem um mainboard completo. As exclusões
     servem para separar variantes que partilham o núcleo (ex.: Jeskai Lessons vs
@@ -133,34 +159,39 @@ def _latest(con: sqlite3.Connection, fmt: str, cards: list[str]):
         q += (f" AND NOT EXISTS (SELECT 1 FROM decklist_cards de "
               f"WHERE de.decklist_id = dl.id AND de.card_name IN ({eph}))")
         params += exc
-    q += " ORDER BY dl.event_date DESC, dl.id DESC LIMIT 1"
+    fq, fp = _fora_sql(fora)
+    q += fq + " ORDER BY dl.event_date DESC, dl.id DESC LIMIT 1"
+    params += fp
     return con.execute(q, params).fetchone()
 
 
-def _latest_player(con: sqlite3.Connection, fmt: str, player: str):
+def _latest_player(con: sqlite3.Connection, fmt: str, player: str, fora=None):
     """Decklist mais recente de um jogador específico nesse formato."""
     conta, cp = _conta(fmt)
+    fq, fp = _fora_sql(fora)
     return con.execute(
         f"""SELECT dl.id, dl.source, dl.player, dl.event_date FROM decklists dl
              WHERE dl.format = ? AND dl.player = ? AND {conta}
                AND (SELECT COALESCE(SUM(dc.quantity), 0) FROM decklist_cards dc
-                      WHERE dc.decklist_id = dl.id AND dc.board = 'main') >= ?
+                      WHERE dc.decklist_id = dl.id AND dc.board = 'main') >= ?{fq}
              ORDER BY dl.event_date DESC, dl.id DESC LIMIT 1""",
-        [fmt, player] + cp + [MIN_MAIN]).fetchone()
+        [fmt, player] + cp + [MIN_MAIN] + fp).fetchone()
 
 
-def _latest_player_deck(con: sqlite3.Connection, fmt: str, player: str, cards: list[str]):
+def _latest_player_deck(con: sqlite3.Connection, fmt: str, player: str, cards: list[str],
+                        fora=None):
     """Lista mais recente de `player` nesse formato que CONTÉM todas as `cards`
     (ex.: o comandante) — para seguir um deck específico de um jogador."""
     ph = ",".join("?" * len(cards))
     conta, cp = _conta(fmt)
+    fq, fp = _fora_sql(fora)
     return con.execute(
         f"""SELECT dl.id, dl.source, dl.player, dl.event_date FROM decklists dl
               WHERE dl.format = ? AND dl.player = ? AND {conta}
                 AND (SELECT COUNT(DISTINCT dc.card_name) FROM decklist_cards dc
-                       WHERE dc.decklist_id = dl.id AND dc.card_name IN ({ph})) = ?
+                       WHERE dc.decklist_id = dl.id AND dc.card_name IN ({ph})) = ?{fq}
               ORDER BY dl.event_date DESC, dl.id DESC LIMIT 1""",
-        [fmt, player] + cp + cards + [len(cards)]).fetchone()
+        [fmt, player] + cp + cards + [len(cards)] + fp).fetchone()
 
 
 def seguidos() -> list[dict]:
@@ -172,16 +203,19 @@ def seguidos() -> list[dict]:
     for name, fmt, cards in FOLLOWED:
         out.append({"deck": name, "formato": fmt, "como": "assinatura",
                     "assinatura": [c for c in cards if not c.startswith("!")],
-                    "procura": lambda con, f=fmt, c=cards: _latest(con, f, c),
+                    "procura": lambda con, n=name, f=fmt, c=cards: _latest(
+                        con, f, c, rejeitadas(con, n, f)),
                     "falta": "sem lista"})
     for name, fmt, player in FOLLOWED_PLAYERS:
         out.append({"deck": name, "formato": fmt, "como": "jogador", "assinatura": [],
-                    "procura": lambda con, f=fmt, p=player: _latest_player(con, f, p),
+                    "procura": lambda con, n=name, f=fmt, p=player: _latest_player(
+                        con, f, p, rejeitadas(con, n, f)),
                     "falta": f"sem lista de {player}"})
     for name, fmt, player, cards in FOLLOWED_PLAYER_DECK:
         out.append({"deck": name, "formato": fmt, "como": "jogador+cartas",
                     "assinatura": list(cards),
-                    "procura": lambda con, f=fmt, p=player, c=cards: _latest_player_deck(con, f, p, c),
+                    "procura": lambda con, n=name, f=fmt, p=player, c=cards: _latest_player_deck(
+                        con, f, p, c, rejeitadas(con, n, f)),
                     "falta": f"sem lista de {player} com {cards}"})
     return out
 
@@ -342,6 +376,37 @@ def aceitar(con: sqlite3.Connection, deck: str, decklist_id: int | None = None,
     return "; ".join(out)
 
 
+def rejeitar(con: sqlite3.Connection, deck: str, decklist_id: int,
+             hoje: str | None = None) -> str:
+    """Ele decide que `decklist_id` NÃO é este deck: grava `motivo = 'rejeitada'`
+    (com a lista que o deck tem agora como `de`) e a procura passa a saltá-la.
+    O deck não mexe. Repetir é um no-op."""
+    s = next((x for x in seguidos() if x["deck"] == deck), None)
+    if s is None:
+        raise ValueError(f"deck nao seguido: {deck!r}")
+    dl = con.execute("SELECT id, source, player, event_date, format FROM decklists "
+                     "WHERE id = ?", (decklist_id,)).fetchone()
+    if dl is None:
+        raise ValueError(f"decklist #{decklist_id} nao existe")
+    if dl["format"] != s["formato"]:
+        raise ValueError(f"decklist #{decklist_id} e de {dl['format']}, nao {s['formato']}")
+    row = con.execute("SELECT id, notes FROM decks WHERE name = ? AND format = ?",
+                      (deck, s["formato"])).fetchone()
+    de = ler_nota(row["notes"] if row else None)
+    if de.get("decklist_id") == decklist_id:
+        raise ValueError(f"#{decklist_id} e a lista que o deck {deck} tem agora; "
+                         "rejeitar a lista em uso deixava o deck sem referencia")
+    if decklist_id in rejeitadas(con, deck, s["formato"]):
+        return f"{deck}: #{decklist_id} ja estava rejeitada"
+    antes = _cartas_do_deck(con, row["id"]) if row else []
+    _gravar_troca(con, row["id"] if row else None, deck, s["formato"], hoje, "rejeitada",
+                  de, antes, dl, _cartas_da_lista(con, decklist_id))
+    con.commit()
+    fica = f"{de.get('data')} {de.get('jogador')} #{de.get('decklist_id')}" if de else "a anterior"
+    return (f"{deck}: #{decklist_id} ({dl['event_date']} {dl['player'] or '?'}) rejeitada; "
+            f"fica {fica}")
+
+
 if __name__ == "__main__":
     import os
     import sys
@@ -351,5 +416,7 @@ if __name__ == "__main__":
     with db.session() as con:
         if len(sys.argv) >= 3 and sys.argv[1] == "aceitar":
             print(aceitar(con, sys.argv[2], int(sys.argv[3]) if len(sys.argv) > 3 else None))
+        elif len(sys.argv) == 4 and sys.argv[1] == "rejeitar":
+            print(rejeitar(con, sys.argv[2], int(sys.argv[3])))
         else:
             print(refresh(con))

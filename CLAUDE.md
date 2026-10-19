@@ -6231,6 +6231,13 @@ a prova de que chumbam em `tests/_chumba_painel.py` (2 de 2).
   `data/backups/vault-2026-10-16-reler-mtgo.db`. **O motor da alocação não mexeu**
   (fechar tudo 70 210,89 €, 1 099 a comprar, as 16 caixas iguais — medido antes e
   depois em cópias), e as listas da base passaram de 8 131 a 7 577.
+- **A RECUSA PERMANENTE DELE (2026-10-19)**: `py my_decks.py rejeitar "<deck>"
+  <decklist_id>` grava `motivo = 'rejeitada'` na `deck_lista_trocas` e a procura
+  desse deck passa a SALTAR essa lista (`my_decks.rejeitadas`): o deck não mexe, o
+  aviso «troca recusada» desaparece e uma lista mais nova volta a ser avaliada.
+  Primeiro uso: a 28571 (Chay Chay Hii, «Pinnacle Affinity») no Grinding Station,
+  que fica na do howa (27439); no mesmo dia o Greasefang aceitou a 28412
+  (rosici0700, 17/10). Desfazer é apagar a linha `rejeitada`.
 - **O Grinding Station não perdeu a carta**: a lista de 15/10 (howa) tem 2, a de
   12/10 (Cachorrowo) tinha 4. O que aconteceu é que **Mox Opal + Grinding Station
   apanha dois decks**: o de Emry + Sewer-veillance Cam (10 listas desde 01/10) e

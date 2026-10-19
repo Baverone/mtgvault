@@ -6795,109 +6795,154 @@
   "qtd": 2
  },
  {
-  "id": "9|main|Bleachbone Verge",
+  "id": "9|main|Agadeem's Awakening",
   "deck": "Greasefang",
   "formato": "pioneer",
-  "origem": "seguido: mtgo rarakkyo 2026-10-10 (#25904)",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
   "board": "main",
-  "carta": "Bleachbone Verge",
-  "qtd": 2
+  "carta": "Agadeem's Awakening",
+  "qtd": 1
+ },
+ {
+  "id": "9|main|Bitter Triumph",
+  "deck": "Greasefang",
+  "formato": "pioneer",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
+  "board": "main",
+  "carta": "Bitter Triumph",
+  "qtd": 3
+ },
+ {
+  "id": "9|main|Blooming Marsh",
+  "deck": "Greasefang",
+  "formato": "pioneer",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
+  "board": "main",
+  "carta": "Blooming Marsh",
+  "qtd": 4
+ },
+ {
+  "id": "9|main|Boseiju, Who Endures",
+  "deck": "Greasefang",
+  "formato": "pioneer",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
+  "board": "main",
+  "carta": "Boseiju, Who Endures",
+  "qtd": 1
  },
  {
   "id": "9|main|Brightclimb Pathway",
   "deck": "Greasefang",
   "formato": "pioneer",
-  "origem": "seguido: mtgo rarakkyo 2026-10-10 (#25904)",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
   "board": "main",
   "carta": "Brightclimb Pathway",
-  "qtd": 4
+  "qtd": 1
+ },
+ {
+  "id": "9|main|Caves of Koilos",
+  "deck": "Greasefang",
+  "formato": "pioneer",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
+  "board": "main",
+  "carta": "Caves of Koilos",
+  "qtd": 1
+ },
+ {
+  "id": "9|main|Collective Brutality",
+  "deck": "Greasefang",
+  "formato": "pioneer",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
+  "board": "main",
+  "carta": "Collective Brutality",
+  "qtd": 1
  },
  {
   "id": "9|main|Concealed Courtyard",
   "deck": "Greasefang",
   "formato": "pioneer",
-  "origem": "seguido: mtgo rarakkyo 2026-10-10 (#25904)",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
   "board": "main",
   "carta": "Concealed Courtyard",
   "qtd": 4
  },
  {
-  "id": "9|main|Fatal Push",
+  "id": "9|main|Emptiness",
   "deck": "Greasefang",
   "formato": "pioneer",
-  "origem": "seguido: mtgo rarakkyo 2026-10-10 (#25904)",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
   "board": "main",
-  "carta": "Fatal Push",
+  "carta": "Emptiness",
+  "qtd": 1
+ },
+ {
+  "id": "9|main|Esika's Chariot",
+  "deck": "Greasefang",
+  "formato": "pioneer",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
+  "board": "main",
+  "carta": "Esika's Chariot",
   "qtd": 4
  },
  {
-  "id": "9|main|Fleeting Spirit",
+  "id": "9|main|Forest",
   "deck": "Greasefang",
   "formato": "pioneer",
-  "origem": "seguido: mtgo rarakkyo 2026-10-10 (#25904)",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
   "board": "main",
-  "carta": "Fleeting Spirit",
-  "qtd": 4
+  "carta": "Forest",
+  "qtd": 1
  },
  {
-  "id": "9|main|Godless Shrine",
+  "id": "9|main|Formidable Speaker",
   "deck": "Greasefang",
   "formato": "pioneer",
-  "origem": "seguido: mtgo rarakkyo 2026-10-10 (#25904)",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
   "board": "main",
-  "carta": "Godless Shrine",
+  "carta": "Formidable Speaker",
   "qtd": 4
  },
  {
   "id": "9|main|Greasefang, Okiba Boss",
   "deck": "Greasefang",
   "formato": "pioneer",
-  "origem": "seguido: mtgo rarakkyo 2026-10-10 (#25904)",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
   "board": "main",
   "carta": "Greasefang, Okiba Boss",
   "qtd": 4
  },
  {
-  "id": "9|main|Guardian of New Benalia",
+  "id": "9|main|Jennifer Walters",
   "deck": "Greasefang",
   "formato": "pioneer",
-  "origem": "seguido: mtgo rarakkyo 2026-10-10 (#25904)",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
   "board": "main",
-  "carta": "Guardian of New Benalia",
-  "qtd": 4
- },
- {
-  "id": "9|main|Iron-Shield Elf",
-  "deck": "Greasefang",
-  "formato": "pioneer",
-  "origem": "seguido: mtgo rarakkyo 2026-10-10 (#25904)",
-  "board": "main",
-  "carta": "Iron-Shield Elf",
-  "qtd": 4
- },
- {
-  "id": "9|main|Lively Dirge",
-  "deck": "Greasefang",
-  "formato": "pioneer",
-  "origem": "seguido: mtgo rarakkyo 2026-10-10 (#25904)",
-  "board": "main",
-  "carta": "Lively Dirge",
+  "carta": "Jennifer Walters",
   "qtd": 1
  },
  {
-  "id": "9|main|Monument to Endurance",
+  "id": "9|main|Multiversal Passage",
   "deck": "Greasefang",
   "formato": "pioneer",
-  "origem": "seguido: mtgo rarakkyo 2026-10-10 (#25904)",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
   "board": "main",
-  "carta": "Monument to Endurance",
+  "carta": "Multiversal Passage",
   "qtd": 4
+ },
+ {
+  "id": "9|main|Overlord of the Balemurk",
+  "deck": "Greasefang",
+  "formato": "pioneer",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
+  "board": "main",
+  "carta": "Overlord of the Balemurk",
+  "qtd": 1
  },
  {
   "id": "9|main|Parhelion II",
   "deck": "Greasefang",
   "formato": "pioneer",
-  "origem": "seguido: mtgo rarakkyo 2026-10-10 (#25904)",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
   "board": "main",
   "carta": "Parhelion II",
   "qtd": 4
@@ -6906,100 +6951,190 @@
   "id": "9|main|Plains",
   "deck": "Greasefang",
   "formato": "pioneer",
-  "origem": "seguido: mtgo rarakkyo 2026-10-10 (#25904)",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
   "board": "main",
   "carta": "Plains",
-  "qtd": 2
+  "qtd": 1
  },
  {
-  "id": "9|main|Sheltered by Ghosts",
+  "id": "9|main|Professor of Symbology",
   "deck": "Greasefang",
   "formato": "pioneer",
-  "origem": "seguido: mtgo rarakkyo 2026-10-10 (#25904)",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
   "board": "main",
-  "carta": "Sheltered by Ghosts",
+  "carta": "Professor of Symbology",
   "qtd": 4
+ },
+ {
+  "id": "9|main|Something Worth Saving",
+  "deck": "Greasefang",
+  "formato": "pioneer",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
+  "board": "main",
+  "carta": "Something Worth Saving",
+  "qtd": 2
  },
  {
   "id": "9|main|Swamp",
   "deck": "Greasefang",
   "formato": "pioneer",
-  "origem": "seguido: mtgo rarakkyo 2026-10-10 (#25904)",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
   "board": "main",
   "carta": "Swamp",
   "qtd": 1
  },
  {
-  "id": "9|main|Takenuma, Abandoned Mire",
+  "id": "9|main|Temple Garden",
   "deck": "Greasefang",
   "formato": "pioneer",
-  "origem": "seguido: mtgo rarakkyo 2026-10-10 (#25904)",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
   "board": "main",
-  "carta": "Takenuma, Abandoned Mire",
-  "qtd": 1
- },
- {
-  "id": "9|main|The Mycosynth Gardens",
-  "deck": "Greasefang",
-  "formato": "pioneer",
-  "origem": "seguido: mtgo rarakkyo 2026-10-10 (#25904)",
-  "board": "main",
-  "carta": "The Mycosynth Gardens",
+  "carta": "Temple Garden",
   "qtd": 4
  },
  {
   "id": "9|main|Thoughtseize",
   "deck": "Greasefang",
   "formato": "pioneer",
-  "origem": "seguido: mtgo rarakkyo 2026-10-10 (#25904)",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
   "board": "main",
   "carta": "Thoughtseize",
   "qtd": 4
  },
  {
-  "id": "9|main|Urborg, Tomb of Yawgmoth",
+  "id": "9|main|Thundering Broodwagon",
   "deck": "Greasefang",
   "formato": "pioneer",
-  "origem": "seguido: mtgo rarakkyo 2026-10-10 (#25904)",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
   "board": "main",
-  "carta": "Urborg, Tomb of Yawgmoth",
+  "carta": "Thundering Broodwagon",
+  "qtd": 2
+ },
+ {
+  "id": "9|main|Witherbloom Command",
+  "deck": "Greasefang",
+  "formato": "pioneer",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
+  "board": "main",
+  "carta": "Witherbloom Command",
   "qtd": 1
  },
  {
-  "id": "9|sideboard|Doorkeeper Thrull",
+  "id": "9|main|Yathan Roadwatcher",
   "deck": "Greasefang",
   "formato": "pioneer",
-  "origem": "seguido: mtgo rarakkyo 2026-10-10 (#25904)",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
+  "board": "main",
+  "carta": "Yathan Roadwatcher",
+  "qtd": 1
+ },
+ {
+  "id": "9|sideboard|Abrupt Decay",
+  "deck": "Greasefang",
+  "formato": "pioneer",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
   "board": "sideboard",
-  "carta": "Doorkeeper Thrull",
-  "qtd": 4
+  "carta": "Abrupt Decay",
+  "qtd": 2
+ },
+ {
+  "id": "9|sideboard|Beza, the Bounding Spring",
+  "deck": "Greasefang",
+  "formato": "pioneer",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
+  "board": "sideboard",
+  "carta": "Beza, the Bounding Spring",
+  "qtd": 1
+ },
+ {
+  "id": "9|sideboard|Duress",
+  "deck": "Greasefang",
+  "formato": "pioneer",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
+  "board": "sideboard",
+  "carta": "Duress",
+  "qtd": 1
+ },
+ {
+  "id": "9|sideboard|Enter the Avatar State",
+  "deck": "Greasefang",
+  "formato": "pioneer",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
+  "board": "sideboard",
+  "carta": "Enter the Avatar State",
+  "qtd": 1
+ },
+ {
+  "id": "9|sideboard|Origin of Metalbending",
+  "deck": "Greasefang",
+  "formato": "pioneer",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
+  "board": "sideboard",
+  "carta": "Origin of Metalbending",
+  "qtd": 1
  },
  {
   "id": "9|sideboard|Pest Control",
   "deck": "Greasefang",
   "formato": "pioneer",
-  "origem": "seguido: mtgo rarakkyo 2026-10-10 (#25904)",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
   "board": "sideboard",
   "carta": "Pest Control",
-  "qtd": 3
+  "qtd": 2
  },
  {
-  "id": "9|sideboard|Soul-Guide Lantern",
+  "id": "9|sideboard|Ruinous Waterbending",
   "deck": "Greasefang",
   "formato": "pioneer",
-  "origem": "seguido: mtgo rarakkyo 2026-10-10 (#25904)",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
   "board": "sideboard",
-  "carta": "Soul-Guide Lantern",
-  "qtd": 4
+  "carta": "Ruinous Waterbending",
+  "qtd": 1
+ },
+ {
+  "id": "9|sideboard|True Ancestry",
+  "deck": "Greasefang",
+  "formato": "pioneer",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
+  "board": "sideboard",
+  "carta": "True Ancestry",
+  "qtd": 1
+ },
+ {
+  "id": "9|sideboard|Unlicensed Hearse",
+  "deck": "Greasefang",
+  "formato": "pioneer",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
+  "board": "sideboard",
+  "carta": "Unlicensed Hearse",
+  "qtd": 2
  },
  {
   "id": "9|sideboard|Vanishing Verse",
   "deck": "Greasefang",
   "formato": "pioneer",
-  "origem": "seguido: mtgo rarakkyo 2026-10-10 (#25904)",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
   "board": "sideboard",
   "carta": "Vanishing Verse",
-  "qtd": 4
+  "qtd": 1
+ },
+ {
+  "id": "9|sideboard|Witherbloom Command",
+  "deck": "Greasefang",
+  "formato": "pioneer",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
+  "board": "sideboard",
+  "carta": "Witherbloom Command",
+  "qtd": 1
+ },
+ {
+  "id": "9|sideboard|Yasharn, Implacable Earth",
+  "deck": "Greasefang",
+  "formato": "pioneer",
+  "origem": "seguido: mtgo rosici0700 2026-10-17 (#28412)",
+  "board": "sideboard",
+  "carta": "Yasharn, Implacable Earth",
+  "qtd": 1
  },
  {
   "id": "caixa:premodern-stiflenought|main|Chain of Vapor",

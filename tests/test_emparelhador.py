@@ -157,12 +157,59 @@ def caso_aceitar_recusa_o_que_nao_e_do_deck(con):
     print("aceitar: deck não seguido e lista inexistente são recusados")
 
 
+def caso_rejeitada_por_ele_deixa_de_avisar(con, raiz):
+    """A decisão de 2026-10-19: o Grinding Station fica na do howa e a 28571
+    (Chay Chay Hii, «Pinnacle Affinity») é rejeitada para sempre — a procura
+    salta-a, o deck não mexe, o aviso desaparece, e uma lista MAIS NOVA volta a
+    ser avaliada como sempre."""
+    nota = lambda: con.execute(  # noqa: E731
+        "SELECT notes FROM decks WHERE name = 'Grinding Station'").fetchone()[0]
+    b = con.execute("SELECT id FROM decklists WHERE source_key = '27439'").fetchone()[0]
+    my_decks.aceitar(con, "Grinding Station", b, hoje="2026-10-18")
+    # outra lista com Grinding Station, bem diferente (o shell Pinnacle)
+    pin = [("main", "Mox Opal", 4), ("main", "Grinding Station", 1),
+           ("main", "Kappa Cannoneer", 4), ("main", "Pinnacle Emissary", 4),
+           ("main", "Island", 47), ("side", "Spell Pierce", 15)]
+    c = _guardar(con, "28571", pin, "2026-10-17", "Chay Chay Hii", "Modern Challenge 32")
+    con.commit()
+    assert "troca RECUSADA" in my_decks.refresh(con, hoje="2026-10-19")
+    painel.escrever(con, raiz=raiz, hoje="2026-10-19")
+    av = json.loads((raiz / "avisos.json").read_text(encoding="utf-8"))
+    assert [x for x in av if x["deck"] == "Grinding Station" and x["aviso"].startswith("troca recusada")]
+
+    r = my_decks.rejeitar(con, "Grinding Station", c, hoje="2026-10-19")
+    assert "rejeitada" in r and "howa" in r, r
+    assert "ja estava" in my_decks.rejeitar(con, "Grinding Station", c, hoje="2026-10-19")
+    assert len(con.execute("SELECT * FROM deck_lista_trocas WHERE motivo = 'rejeitada'").fetchall()) == 1
+    gs = [s for s in my_decks.seguidos() if s["deck"] == "Grinding Station"][0]
+    assert gs["procura"](con)["id"] == b, "a rejeitada é saltada"
+    assert "já atual" in my_decks.refresh(con, hoje="2026-10-20")
+    assert nota().endswith(f"(#{b})")
+    painel.escrever(con, raiz=raiz, hoje="2026-10-20")
+    av = json.loads((raiz / "avisos.json").read_text(encoding="utf-8"))
+    assert not [x for x in av if x["deck"] == "Grinding Station"
+                and x["aviso"].startswith("troca recusada")], av
+    # só aquela lista: o Greasefang (outro deck) não a herda, e não se rejeita a lista em uso
+    try:
+        my_decks.rejeitar(con, "Grinding Station", b)
+    except ValueError as e:
+        assert "tem agora" in str(e)
+    else:
+        raise AssertionError("rejeitar a lista em uso tinha de ser recusado")
+    # uma lista mais nova volta a ser avaliada (e recusada pelas regras de sempre)
+    _guardar(con, "29000", pin + [("main", "Ornithopter", 1)], "2026-10-21", "outro", "Modern Challenge 32")
+    con.commit()
+    assert "troca RECUSADA -> 2026-10-21 outro" in my_decks.refresh(con, hoje="2026-10-21")
+    print("rejeitada por ele: saltada pela procura, sem aviso, deck intacto; a seguinte é avaliada")
+
+
 def run():
     caso_as_duas_regras_e_a_fronteira()
     tmp = Path(tempfile.mkdtemp())
     with db.session(tmp / "v.db", tmp / "c.db") as con:
         caso_a_troca_real_e_recusada_e_o_deck_fica(con, tmp / "painel")
         caso_aceitar_recusa_o_que_nao_e_do_deck(con)
+        caso_rejeitada_por_ele_deixa_de_avisar(con, tmp / "painel2")
     print("\nTUDO OK")
 
 
