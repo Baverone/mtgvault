@@ -1,4 +1,4 @@
-PREMODERN - A COLECCAO DE STAPLES (2026-10-18)
+PREMODERN - A COLECCAO DE STAPLES (2026-10-19)
 Gerado todas as noites (passo outros-premodern). As staples vivem na
 pasta «Decks Por Processar\Staples Premodern», TODAS: as copias dos
 decks servem so os decks (Andre, 17/10) e a coleccao tem as suas.
@@ -8,238 +8,239 @@ contam, main + side) dos 15 arquetipos com mais listas,
 com a mediana das copias (tecto 4), sem basicas, em PT e nas edicoes
 legais do formato.
 
-(a) se o que ja esta num deck contar como tenho: 175 cartas, 466 copias, 12353.23 EUR
-(b) se a coleccao precisar das suas copias:    215 cartas, 592 copias, 18342.01 EUR  <- EM VIGOR
+(a) se o que ja esta num deck contar como tenho: 176 cartas, 467 copias, 11843.08 EUR
+(b) se a coleccao precisar das suas copias:    216 cartas, 592 copias, 17844.89 EUR  <- EM VIGOR
 
-  Enchantress                   67 listas  nucleo 24   25% ja nos teus decks
-  Stiflenought                  65 listas  nucleo 22  100% ja nos teus decks  [deck teu]
-  Terrageddon                   62 listas  nucleo 29    3% ja nos teus decks
-  Pyrostatic Pillar             46 listas  nucleo 17    0% ja nos teus decks
-  UW Replenish                  36 listas  nucleo 19  100% ja nos teus decks  [deck teu]
-  Goblins                       31 listas  nucleo 22    0% ja nos teus decks
-  Mono-Preto Graveborn Muse     31 listas  nucleo 19    5% ja nos teus decks
-  Psychatog                     30 listas  nucleo 19   53% ja nos teus decks
-  Landstill                     25 listas  nucleo 25   44% ja nos teus decks
-  Full English Breakfast        17 listas  nucleo 37    3% ja nos teus decks
-  RG Aggro                      17 listas  nucleo 22    0% ja nos teus decks
-  Elves / Survival              13 listas  nucleo 30    3% ja nos teus decks
-  Golgari Graveborn Muse        12 listas  nucleo 25    0% ja nos teus decks
-  Sligh                         11 listas  nucleo 18    0% ja nos teus decks
-  Orzhov Exalted Angel           9 listas  nucleo 27   19% ja nos teus decks
+  Enchantress                   71 listas  nucleo 24   25% ja nos teus decks
+  Stiflenought                  70 listas  nucleo 22  100% ja nos teus decks  [deck teu]
+  Terrageddon                   61 listas  nucleo 29    3% ja nos teus decks
+  UW Replenish                  37 listas  nucleo 19  100% ja nos teus decks  [deck teu]
+  Mono-Preto Graveborn Muse     34 listas  nucleo 19    5% ja nos teus decks
+  Goblins                       32 listas  nucleo 23    0% ja nos teus decks
+  Pyrostatic Pillar             32 listas  nucleo 17    0% ja nos teus decks
+  Psychatog                     31 listas  nucleo 19   53% ja nos teus decks
+  Landstill                     24 listas  nucleo 25   44% ja nos teus decks
+  Sligh                         23 listas  nucleo 21    0% ja nos teus decks
+  Full English Breakfast        20 listas  nucleo 37    3% ja nos teus decks
+  Elves / Survival              12 listas  nucleo 27    4% ja nos teus decks
+  RG Aggro                      12 listas  nucleo 22    0% ja nos teus decks
+  Golgari Graveborn Muse         9 listas  nucleo 25    0% ja nos teus decks
+  Orzhov Exalted Angel           8 listas  nucleo 27   19% ja nos teus decks
 
 ----------------------------------------------------------------------
   x3  Abeyance                        89%  UW Replenish  [RL]  [tambem no UW Replenish]
-  x4  Accumulated Knowledge           70%  Psychatog
-  x4  Adarkar Wastes                 100%  UW Replenish/Landstill  ref. 95.94 EUR (ICE)  [tambem no UW Replenish]
+  x4  Accumulated Knowledge           71%  Psychatog
+  x4  Adarkar Wastes                 100%  UW Replenish/Landstill  ref. 96.57 EUR (ICE)  [tambem no UW Replenish]
   x1  Akroma, Angel of Wrath         100%  Full English Breakfast
+  x2  Anarchy                         52%  Goblins/Sligh
   x4  Ancient Tomb                   100%  UW Replenish  [tambem no UW Replenish]
-  x1  Anger                           77%  Elves / Survival
-  x1  Animate Dead                    94%  Full English Breakfast  ref. 11.49 EUR (4ED)
+  x1  Anger                           75%  Elves / Survival
+  x1  Animate Dead                    95%  Full English Breakfast  ref. 11.69 EUR (4ED)
   x3  Annul                           97%  Stiflenought/Psychatog/Landstill  ref. 3.06 EUR (USG)  [tambem no Stiflenought]
   x4  Argothian Enchantress          100%  Enchantress
-  x4  Armageddon                      77%  Terrageddon/Elves / Survival  ref. 35.81 EUR (6ED)
+  x4  Armageddon                      80%  Terrageddon/Elves / Survival  ref. 36.31 EUR (6ED)
   x4  Attunement                     100%  UW Replenish  [tambem no UW Replenish]
   x3  Aura of Silence                100%  Enchantress/Terrageddon/Orzhov Exalted Angel  ref. 10.35 EUR (WTH)
-  x1  Auramancer                      62%  Elves / Survival
-  x2  Back to Basics                  88%  Stiflenought  [tambem no Stiflenought]
-  x2  Barbarian Ring                  55%  Sligh
-  x1  Barren Moor                     78%  Orzhov Exalted Angel  ref. 4.19 EUR (ONS)
-  x1  Battlefield Forge               61%  Terrageddon  ref. 13.49 EUR (APC)
+  x2  Back to Basics                  87%  Stiflenought  [tambem no Stiflenought]
+  x4  Ball Lightning                  83%  Sligh
+  x2  Barbarian Ring                 100%  Sligh
+  x1  Barren Moor                     75%  Orzhov Exalted Angel  ref. 4.19 EUR (ONS)
+  x1  Battlefield Forge               64%  Terrageddon  ref. 13.69 EUR (APC)
   x1  Battlefield Scrounger          100%  Full English Breakfast
   x4  Birds of Paradise              100%  Full English Breakfast/Elves / Survival
-  x4  Black Vise                      67%  Pyrostatic Pillar
-  x1  Blastoderm                      75%  Golgari Graveborn Muse
-  x4  Bloodstained Mire              100%  RG Aggro/Sligh  ref. 65.62 EUR (ONS)
-  x2  Blue Elemental Blast            76%  Stiflenought/Landstill  ref. 3.59 EUR (4ED)  [tambem no Stiflenought]
-  x2  Brain Freeze                    91%  Stiflenought  ref. 9.23 EUR (SCG)  [tambem no Stiflenought]
-  x4  Brushland                      100%  Enchantress/Elves / Survival  ref. 18.16 EUR (5ED)
+  x4  Black Vise                      94%  Pyrostatic Pillar
+  x1  Blastoderm                      78%  Golgari Graveborn Muse
+  x4  Bloodstained Mire              100%  Sligh/RG Aggro  ref. 65.62 EUR (ONS)
+  x2  Blue Elemental Blast            79%  Stiflenought/Landstill  ref. 3.59 EUR (4ED)  [tambem no Stiflenought]
+  x2  Brain Freeze                    91%  Stiflenought  ref. 9.37 EUR (SCG)  [tambem no Stiflenought]
+  x4  Brushland                      100%  Enchantress/Elves / Survival  ref. 18.41 EUR (5ED)
   x4  Cabal Therapy                  100%  Mono-Preto Graveborn Muse/Full English Breakfast/Golgari Graveborn Muse
   x4  Call of the Herd               100%  Terrageddon/RG Aggro
-  x1  Caller of the Claw              77%  Elves / Survival
-  x4  Caves of Koilos                100%  Orzhov Exalted Angel  ref. 20.07 EUR (APC)
-  x2  Chain of Vapor                  92%  Stiflenought  [tambem no Stiflenought]
-  x1  Chainer's Edict                 75%  Golgari Graveborn Muse
+  x1  Caller of the Claw              67%  Elves / Survival
+  x4  Caves of Koilos                100%  Orzhov Exalted Angel  ref. 20.45 EUR (APC)
+  x2  Chain of Vapor                  93%  Stiflenought  [tambem no Stiflenought]
+  x1  Chainer's Edict                 67%  Golgari Graveborn Muse
   x1  Circle of Protection: Red      100%  Landstill/Orzhov Exalted Angel  ref. 0.29 EUR (4ED)
   x4  City of Brass                  100%  Full English Breakfast
-  x1  City of Traitors                50%  Terrageddon  ref. 475.64 EUR (EXO)  [RL]
-  x1  Coastal Tower                   84%  Landstill  ref. 2.73 EUR (INV)
+  x1  Coastal Tower                   83%  Landstill  ref. 12.52 EUR (INV)
   x4  Counterspell                   100%  Stiflenought/Psychatog/Landstill  ref. 2.55 EUR (6ED)  [tambem no Stiflenought]
-  x3  Cursed Scroll                   82%  Mono-Preto Graveborn Muse/Sligh  [RL]
-  x2  Cursed Totem                    66%  Terrageddon  ref. 38.92 EUR (MIR)
-  x4  Dark Ritual                    100%  Mono-Preto Graveborn Muse  ref. 3.27 EUR (USG)
-  x2  Daze                            92%  Stiflenought  [tambem no Stiflenought]
+  x3  Cursed Scroll                  100%  Mono-Preto Graveborn Muse/Sligh  [RL]
+  x1  Cursed Totem                    69%  Terrageddon  ref. 39.42 EUR (MIR)
+  x4  Dark Ritual                    100%  Mono-Preto Graveborn Muse  ref. 3.37 EUR (USG)
+  x2  Daze                            93%  Stiflenought  [tambem no Stiflenought]
   x4  Decree of Justice              100%  Landstill/Orzhov Exalted Angel
   x3  Decree of Silence              100%  UW Replenish  [tambem no UW Replenish]
-  x4  Defense Grid                    78%  UW Replenish/Orzhov Exalted Angel  ref. 17.25 EUR (ULG)  [tambem no UW Replenish]
+  x4  Defense Grid                    76%  UW Replenish/Orzhov Exalted Angel  ref. 17.25 EUR (ULG)  [tambem no UW Replenish]
   x2  Deranged Hermit                100%  Elves / Survival/Golgari Graveborn Muse  [RL]
   x2  Diabolic Edict                  97%  Mono-Preto Graveborn Muse/Golgari Graveborn Muse
   x3  Disenchant                      96%  Terrageddon/Landstill/Orzhov Exalted Angel  ref. 0.12 EUR (7ED)
-  x2  Drain Life                      65%  Mono-Preto Graveborn Muse  ref. 0.29 EUR (5ED)
-  x4  Duress                         100%  Mono-Preto Graveborn Muse/Psychatog/Full English Breakfast/Golgari Graveborn Muse/Orzhov Exalted Angel  ref. 2.57 EUR (USG)
-  x2  Dust Bowl                      100%  Landstill/Golgari Graveborn Muse/Orzhov Exalted Angel  ref. 45.27 EUR (MMQ)
+  x2  Drain Life                      68%  Mono-Preto Graveborn Muse  ref. 0.29 EUR (5ED)
+  x4  Duress                         100%  Mono-Preto Graveborn Muse/Psychatog/Full English Breakfast/Golgari Graveborn Muse/Orzhov Exalted Angel  ref. 2.73 EUR (USG)
+  x2  Dust Bowl                      100%  Landstill/Golgari Graveborn Muse/Orzhov Exalted Angel  ref. 45.90 EUR (MMQ)
   x3  Dystopia                        97%  Mono-Preto Graveborn Muse  [RL]
-  x2  Eladamri's Vineyard             59%  Full English Breakfast  ref. 6.04 EUR (TMP)
-  x2  Elvish Spirit Guide            100%  Full English Breakfast  ref. 101.89 EUR (ALL)
+  x2  Earthquake                      61%  Sligh  ref. 5.75 EUR (4ED)
+  x1  Eladamri's Vineyard             60%  Full English Breakfast  ref. 6.17 EUR (TMP)
+  x2  Elvish Spirit Guide            100%  Full English Breakfast  ref. 102.52 EUR (ALL)
   x4  Enchantress's Presence         100%  Enchantress
   x4  Engineered Plague              100%  Mono-Preto Graveborn Muse/Psychatog/Golgari Graveborn Muse/Orzhov Exalted Angel
-  x1  Enlightened Tutor               89%  Full English Breakfast/Orzhov Exalted Angel  ref. 25.40 EUR (6ED)
-  x3  Essence Flare                   98%  Stiflenought  [tambem no Stiflenought]
+  x1  Enlightened Tutor               88%  Full English Breakfast/Orzhov Exalted Angel  ref. 25.40 EUR (6ED)
+  x3  Essence Flare                   99%  Stiflenought  [tambem no Stiflenought]
   x3  Eternal Dragon                 100%  Orzhov Exalted Angel
   x3  Exalted Angel                  100%  UW Replenish/Landstill/Orzhov Exalted Angel  [tambem no UW Replenish]
-  x2  Exploration                     54%  Enchantress
+  x2  Exploration                     56%  Enchantress
   x3  Fact or Fiction                100%  Psychatog/Landstill
   x2  Faerie Conclave                 88%  Landstill  ref. 6.13 EUR (ULG)
   x4  Fireblast                      100%  Pyrostatic Pillar/Sligh  ref. 3.20 EUR (VIS)
-  x4  Flame Rift                      54%  Pyrostatic Pillar
-  x3  Flaring Pain                    63%  Pyrostatic Pillar  ref. 5.74 EUR (JUD)
-  x2  Flash of Insight                98%  Stiflenought  ref. 4.84 EUR (JUD)  [tambem no Stiflenought]
+  x4  Flame Rift                      78%  Pyrostatic Pillar
+  x3  Flaring Pain                    59%  Pyrostatic Pillar  ref. 5.87 EUR (JUD)
+  x2  Flash of Insight                99%  Stiflenought  ref. 4.94 EUR (JUD)  [tambem no Stiflenought]
   x4  Flooded Strand                 100%  UW Replenish/Landstill  [tambem no UW Replenish]
-  x4  Foil                           100%  Stiflenought/Psychatog  ref. 31.61 EUR (PCY)  [tambem no Stiflenought]
+  x4  Foil                           100%  Stiflenought/Psychatog  ref. 32.12 EUR (PCY)  [tambem no Stiflenought]
   x3  Frantic Search                 100%  UW Replenish  ref. 2.18 EUR (ULG)  [tambem no UW Replenish]
-  x2  Fyndhorn Elves                 100%  Elves / Survival  ref. 17.75 EUR (ICE)
-  x2  Gaea's Blessing                 72%  Enchantress/Golgari Graveborn Muse  ref. 6.13 EUR (WTH)
+  x2  Fyndhorn Elves                 100%  Elves / Survival  ref. 18.00 EUR (ICE)
+  x1  Gaea's Blessing                 66%  Enchantress/Golgari Graveborn Muse  ref. 6.13 EUR (WTH)
   x3  Gaea's Cradle                  100%  Elves / Survival  [RL]
   x4  Gempalm Incinerator            100%  Goblins  ref. 2.19 EUR (LGN)
   x4  Gemstone Mine                  100%  Terrageddon/Full English Breakfast  ref. 10.13 EUR (WTH)
   x4  Gerrard's Verdict              100%  Orzhov Exalted Angel
   x1  Ghitu Slinger                  100%  Full English Breakfast
-  x3  Gloom                           84%  Mono-Preto Graveborn Muse  ref. 6.35 EUR (5ED)
-  x1  Glowrider                       77%  Elves / Survival  ref. 16.45 EUR (LGN)
-  x2  Goblin Goon                     52%  Goblins
-  x4  Goblin Lackey                  100%  Goblins  ref. 32.34 EUR (USG)
+  x3  Gloom                           85%  Mono-Preto Graveborn Muse  ref. 6.48 EUR (5ED)
+  x1  Glowrider                       50%  Elves / Survival  ref. 16.71 EUR (LGN)
+  x2  Goblin Goon                     53%  Goblins
+  x4  Goblin Lackey                  100%  Goblins  ref. 32.85 EUR (USG)
   x4  Goblin Matron                  100%  Goblins  ref. 0.55 EUR (USG)
+  x2  Goblin Patrol                   61%  Sligh  ref. 0.49 EUR (USG)
   x4  Goblin Piledriver              100%  Goblins  ref. 24.40 EUR (ONS)
   x4  Goblin Ringleader              100%  Goblins
-  x1  Goblin Sharpshooter             97%  Goblins  ref. 37.99 EUR (ONS)
+  x1  Goblin Sharpshooter             94%  Goblins  ref. 38.49 EUR (ONS)
   x1  Goblin Tinkerer                100%  Goblins  ref. 0.72 EUR (MIR)
-  x3  Goblin Vandal                   82%  Sligh
   x4  Goblin Warchief                100%  Goblins
   x2  Graveborn Muse                  97%  Mono-Preto Graveborn Muse/Golgari Graveborn Muse
-  x4  Grim Lavamancer                100%  Pyrostatic Pillar/RG Aggro/Sligh  ref. 43.67 EUR (TOR)
-  x4  Gush                           100%  Stiflenought/Psychatog  ref. 1000.64 EUR (MMQ)  [tambem no Stiflenought]
+  x4  Grim Lavamancer                100%  Pyrostatic Pillar/Sligh/RG Aggro  ref. 43.67 EUR (TOR)
+  x4  Gush                           100%  Stiflenought/Psychatog  ref. 1001.27 EUR (MMQ)  [tambem no Stiflenought]
   x2  Haunting Echoes                100%  Golgari Graveborn Muse/Orzhov Exalted Angel
   x4  Hermit Druid                   100%  Full English Breakfast
-  x3  Hydroblast                      84%  Stiflenought/UW Replenish/Psychatog/Landstill  [tambem no Stiflenought]
+  x3  Hydroblast                      87%  Stiflenought/UW Replenish/Psychatog/Landstill  [tambem no Stiflenought]
   x4  Hypnotic Specter               100%  Mono-Preto Graveborn Muse
-  x4  Impulse                         96%  Stiflenought/Psychatog/Landstill  ref. 1.79 EUR (VIS)  [tambem no Stiflenought]
-  x4  Incinerate                     100%  Pyrostatic Pillar/RG Aggro/Sligh  ref. 0.24 EUR (5ED)
+  x4  Impulse                         96%  Stiflenought/Psychatog/Landstill  ref. 2.49 EUR (VIS)  [tambem no Stiflenought]
+  x4  Incinerate                     100%  Pyrostatic Pillar/Sligh/RG Aggro  ref. 0.24 EUR (5ED)
   x3  Intuition                      100%  UW Replenish  [RL]  [tambem no UW Replenish]
-  x4  Jackal Pup                     100%  RG Aggro/Sligh  ref. 4.10 EUR (TMP)
+  x4  Jackal Pup                      96%  Sligh/RG Aggro  ref. 4.62 EUR (TMP)
   x1  Karmic Guide                   100%  Full English Breakfast
-  x1  Karmic Justice                  52%  Enchantress
+  x1  Karmic Justice                  56%  Enchantress
   x4  Karplusan Forest               100%  Terrageddon/Goblins/RG Aggro
-  x1  Kor Haven                       89%  Orzhov Exalted Angel
+  x1  Kor Haven                       88%  Orzhov Exalted Angel
   x1  Krosan Reclamation             100%  Full English Breakfast
-  x3  Krosan Tusker                   92%  Golgari Graveborn Muse
-  x4  Lava Dart                       76%  RG Aggro
-  x4  Lightning Bolt                 100%  Pyrostatic Pillar/RG Aggro/Sligh
-  x2  Llanowar Elves                 100%  Elves / Survival  ref. 0.29 EUR (7ED)
-  x4  Llanowar Wastes                100%  Full English Breakfast/Golgari Graveborn Muse  ref. 30.27 EUR (APC)
+  x3  Krosan Tusker                   89%  Golgari Graveborn Muse
+  x4  Lava Dart                       75%  Sligh/RG Aggro
+  x4  Lightning Bolt                 100%  Pyrostatic Pillar/Sligh/RG Aggro
+  x3  Llanowar Elves                 100%  Elves / Survival  ref. 0.29 EUR (7ED)
+  x4  Llanowar Wastes                100%  Full English Breakfast/Golgari Graveborn Muse  ref. 30.78 EUR (APC)
   x3  Mana Leak                       96%  Landstill  ref. 1.19 EUR (STH)
-  x2  Masticore                      100%  Elves / Survival  ref. 35.16 EUR (UDS)  [RL]
+  x1  Masticore                      100%  Elves / Survival  ref. 35.16 EUR (UDS)  [RL]
   x4  Meddling Mage                  100%  UW Replenish/Landstill  [tambem no UW Replenish]
-  x4  Mirri's Guile                  100%  Enchantress  ref. 27.79 EUR (TMP)
-  x1  Misdirection                    82%  Stiflenought  [tambem no Stiflenought]
-  x4  Mishra's Factory               100%  Pyrostatic Pillar/Mono-Preto Graveborn Muse/Landstill
-  x4  Mogg Fanatic                   100%  Pyrostatic Pillar/Goblins/RG Aggro/Sligh  ref. 2.33 EUR (TMP)
-  x4  Mogg Salvage                    87%  Pyrostatic Pillar/Sligh  ref. 5.09 EUR (NEM)
+  x4  Mirri's Guile                   99%  Enchantress  ref. 27.79 EUR (TMP)
+  x1  Misdirection                    83%  Stiflenought  [tambem no Stiflenought]
+  x4  Mishra's Factory               100%  Mono-Preto Graveborn Muse/Pyrostatic Pillar/Landstill
+  x4  Mogg Fanatic                   100%  Goblins/Pyrostatic Pillar/Sligh/RG Aggro  ref. 2.33 EUR (TMP)
+  x4  Mogg Salvage                    94%  Pyrostatic Pillar/Sligh  ref. 5.22 EUR (NEM)
   x1  Monk Realist                   100%  Full English Breakfast/Elves / Survival
-  x4  Mox Diamond                     97%  Terrageddon  ref. 848.64 EUR (STH)  [RL]
-  x3  Multani's Acolyte               85%  Elves / Survival
-  x3  Nantuko Shade                   74%  Mono-Preto Graveborn Muse
+  x4  Mox Diamond                    100%  Terrageddon  ref. 848.64 EUR (STH)  [RL]
+  x3  Multani's Acolyte               83%  Elves / Survival
+  x3  Nantuko Shade                   76%  Mono-Preto Graveborn Muse
   x2  Nantuko Vigilante              100%  Elves / Survival
-  x4  Naturalize                     100%  Terrageddon/Goblins/Full English Breakfast/RG Aggro/Elves / Survival/Golgari Graveborn Muse
-  x3  Nimble Mongoose                 50%  Terrageddon
+  x4  Naturalize                     100%  Terrageddon/Goblins/Full English Breakfast/Elves / Survival/RG Aggro/Golgari Graveborn Muse
+  x3  Nimble Mongoose                 51%  Terrageddon
   x4  Opalescence                    100%  Enchantress/UW Replenish  [RL]  [tambem no UW Replenish]
   x4  Opt                            100%  Stiflenought/Psychatog  [tambem no Stiflenought]
-  x4  Overload                       100%  Pyrostatic Pillar/RG Aggro/Sligh  ref. 2.69 EUR (INV)
+  x4  Overload                       100%  Pyrostatic Pillar/Sligh/RG Aggro  ref. 2.69 EUR (INV)
   x1  Palinchron                     100%  Full English Breakfast  ref. 50.64 EUR (ULG)  [RL]
   x4  Parallax Wave                  100%  Enchantress/UW Replenish  ref. 43.59 EUR (NEM)  [tambem no UW Replenish]
-  x1  Peek                            60%  Stiflenought  ref. 0.75 EUR (ODY)  [tambem no Stiflenought]
+  x1  Peek                            61%  Stiflenought  ref. 0.75 EUR (ODY)  [tambem no Stiflenought]
   x4  Pernicious Deed                100%  Golgari Graveborn Muse
   x1  Phyrexian Devourer             100%  Full English Breakfast  [RL]
   x4  Phyrexian Dreadnought          100%  Stiflenought  [RL]  [tambem no Stiflenought]
-  x2  Phyrexian Furnace              100%  Landstill/Golgari Graveborn Muse/Orzhov Exalted Angel  ref. 31.40 EUR (WTH)
-  x4  Polluted Delta                  83%  Psychatog
+  x2  Phyrexian Furnace              100%  Landstill/Golgari Graveborn Muse/Orzhov Exalted Angel  ref. 31.91 EUR (WTH)
+  x4  Polluted Delta                  81%  Psychatog
   x4  Portent                        100%  Stiflenought/Psychatog  ref. 5.11 EUR (ICE)  [tambem no Stiflenought]
-  x2  Powder Keg                     100%  Stiflenought/Mono-Preto Graveborn Muse/Psychatog/Landstill/Orzhov Exalted Angel  ref. 81.90 EUR (UDS)  [RL]  [tambem no Stiflenought]
-  x1  Presence of the Master          78%  Orzhov Exalted Angel
-  x2  Price of Progress               63%  Pyrostatic Pillar  ref. 8.13 EUR (EXO)
+  x2  Powder Keg                     100%  Stiflenought/Mono-Preto Graveborn Muse/Psychatog/Landstill/Orzhov Exalted Angel  ref. 82.53 EUR (UDS)  [RL]  [tambem no Stiflenought]
+  x1  Presence of the Master          75%  Orzhov Exalted Angel
+  x2  Price of Progress               61%  Pyrostatic Pillar/Sligh  ref. 8.14 EUR (EXO)
   x1  Priest of Titania               92%  Elves / Survival  ref. 2.29 EUR (USG)
-  x1  Prohibit                        76%  Landstill
+  x1  Prohibit                        75%  Landstill
   x4  Psychatog                      100%  Psychatog/Full English Breakfast
-  x4  Pyroblast                      100%  Terrageddon/Pyrostatic Pillar/Goblins/RG Aggro/Sligh
-  x3  Pyroclasm                       79%  Terrageddon/Full English Breakfast  ref. 14.20 EUR (ICE)
-  x3  Pyrokinesis                     87%  Goblins
-  x4  Pyrostatic Pillar               83%  Pyrostatic Pillar  ref. 5.09 EUR (SCG)
-  x4  Quirion Dryad                   71%  RG Aggro
+  x4  Pyroblast                      100%  Terrageddon/Goblins/Pyrostatic Pillar/RG Aggro
+  x3  Pyroclasm                       84%  Terrageddon/Full English Breakfast  ref. 14.40 EUR (ICE)
+  x3  Pyrokinesis                     88%  Goblins
+  x4  Pyrostatic Pillar               97%  Pyrostatic Pillar  ref. 5.22 EUR (SCG)
+  x4  Quirion Dryad                   67%  RG Aggro
   x2  Quirion Ranger                 100%  Elves / Survival
-  x1  Rancor                          76%  RG Aggro  ref. 2.09 EUR (ULG)
-  x3  Ravenous Baloth                100%  RG Aggro/Elves / Survival/Golgari Graveborn Muse
-  x4  Ravenous Rats                  100%  Mono-Preto Graveborn Muse/Golgari Graveborn Muse
-  x2  Ray of Revelation              100%  Terrageddon/Full English Breakfast
+  x1  Rancor                          75%  RG Aggro  ref. 2.09 EUR (ULG)
+  x3  Ravenous Baloth                100%  RG Aggro/Golgari Graveborn Muse
+  x4  Ravenous Rats                   97%  Mono-Preto Graveborn Muse/Golgari Graveborn Muse
+  x1  Ray of Revelation              100%  Terrageddon/Full English Breakfast
   x1  Recurring Nightmare            100%  Golgari Graveborn Muse  ref. 72.63 EUR (EXO)  [RL]
-  x3  Red Elemental Blast             87%  Terrageddon/Pyrostatic Pillar/Goblins/Sligh
+  x4  Red Elemental Blast             91%  Terrageddon/Goblins/Pyrostatic Pillar/Sligh
   x3  Reflecting Pool                100%  Full English Breakfast
   x4  Replenish                      100%  Enchantress/UW Replenish  ref. 168.63 EUR (UDS)  [RL]  [tambem no UW Replenish]
-  x1  Reprisal                        50%  Terrageddon  ref. 0.40 EUR (ALL)
+  x1  Reprisal                        51%  Terrageddon  ref. 0.40 EUR (ALL)
   x4  Rishadan Port                  100%  Terrageddon/Goblins  ref. 99.64 EUR (MMQ)
-  x2  Rith's Grove                    65%  Terrageddon
-  x2  Sacred Ground                   84%  Enchantress  ref. 1000.63 EUR (STH)
-  x3  Seal of Cleansing              100%  Enchantress/UW Replenish/Orzhov Exalted Angel  ref. 1.59 EUR (NEM)  [tambem no UW Replenish]
-  x4  Seal of Fire                   100%  Pyrostatic Pillar/RG Aggro/Sligh  ref. 0.70 EUR (NEM)
-  x1  Secluded Steppe                 89%  Terrageddon/Orzhov Exalted Angel  ref. 0.69 EUR (ONS)
+  x2  Rith's Grove                    69%  Terrageddon
+  x2  Sacred Ground                   85%  Enchantress  ref. 1001.26 EUR (STH)
+  x3  Seal of Cleansing              100%  Enchantress/UW Replenish/Orzhov Exalted Angel  ref. 0.80 EUR (NEM)  [tambem no UW Replenish]
+  x4  Seal of Fire                   100%  Pyrostatic Pillar/Sligh/RG Aggro  ref. 0.70 EUR (NEM)
+  x1  Secluded Steppe                 88%  Terrageddon/Orzhov Exalted Angel  ref. 0.69 EUR (ONS)
   x4  Serra's Sanctum                 99%  Enchantress  [RL]
-  x2  Sickening Dreams                83%  Psychatog  ref. 2.40 EUR (TOR)
-  x3  Siege-Gang Commander           100%  Goblins  ref. 16.09 EUR (SCG)
-  x1  Simoon                          82%  RG Aggro  ref. 1.38 EUR (VIS)
+  x2  Sickening Dreams                81%  Psychatog  ref. 2.40 EUR (TOR)
+  x3  Siege-Gang Commander           100%  Goblins  ref. 16.34 EUR (SCG)
+  x1  Simoon                          75%  RG Aggro  ref. 1.38 EUR (VIS)
   x2  Skeletal Scrying               100%  Orzhov Exalted Angel
-  x1  Skirk Prospector                74%  Goblins  ref. 1.42 EUR (ONS)
-  x4  Skycloud Expanse               100%  UW Replenish  [tambem no UW Replenish]
+  x1  Skirk Prospector                78%  Goblins  ref. 1.51 EUR (ONS)
+  x3  Skycloud Expanse               100%  UW Replenish  [tambem no UW Replenish]
   x3  Smother                        100%  Mono-Preto Graveborn Muse/Psychatog/Golgari Graveborn Muse  ref. 4.20 EUR (ONS)
-  x1  Snuff Out                       87%  Mono-Preto Graveborn Muse  ref. 1000.64 EUR (MMQ)
-  x2  Solitary Confinement           100%  Enchantress
-  x1  Spike Feeder                    75%  Golgari Graveborn Muse  ref. 0.45 EUR (STH)
+  x1  Snuff Out                       85%  Mono-Preto Graveborn Muse  ref. 1001.27 EUR (MMQ)
+  x2  Solitary Confinement            99%  Enchantress
+  x1  Spike Feeder                    67%  Golgari Graveborn Muse  ref. 0.45 EUR (STH)
   x1  Squee, Goblin Nabob            100%  Full English Breakfast/Elves / Survival
-  x3  Standstill                      96%  Landstill  ref. 44.82 EUR (ODY)
+  x3  Standstill                      96%  Landstill  ref. 45.45 EUR (ODY)
   x3  Sterling Grove                 100%  Enchantress
   x4  Stifle                         100%  Stiflenought  [tambem no Stiflenought]
-  x2  Sulfuric Vortex                 96%  Pyrostatic Pillar  ref. 4.10 EUR (SCG)
+  x3  Sulfuric Vortex                 97%  Pyrostatic Pillar/Sligh  ref. 4.10 EUR (SCG)
   x4  Survival of the Fittest        100%  Full English Breakfast/Elves / Survival  ref. 330.64 EUR (EXO)  [RL]
-  x4  Swords to Plowshares           100%  Enchantress/Terrageddon/UW Replenish/Landstill/Full English Breakfast/Elves / Survival/Orzhov Exalted Angel  ref. 43.04 EUR (ICE)  [tambem no UW Replenish]
+  x4  Swords to Plowshares           100%  Enchantress/Terrageddon/UW Replenish/Landstill/Full English Breakfast/Elves / Survival/Orzhov Exalted Angel  ref. 43.67 EUR (ICE)  [tambem no UW Replenish]
   x4  Sylvan Library                 100%  Terrageddon/RG Aggro
-  x2  Teferi's Response               76%  Landstill
+  x2  Teferi's Response               79%  Landstill
   x4  Terravore                      100%  Terrageddon
-  x1  Thornscape Battlemage           85%  Elves / Survival
+  x1  Thornscape Battlemage           75%  Elves / Survival
   x1  Thwart                          97%  Stiflenought  [tambem no Stiflenought]
-  x3  Tormod's Crypt                 100%  Enchantress/Goblins/RG Aggro/Elves / Survival/Orzhov Exalted Angel
+  x3  Tormod's Crypt                 100%  Enchantress/Goblins/Elves / Survival/RG Aggro/Orzhov Exalted Angel
   x2  Tranquil Domain                100%  Goblins/RG Aggro/Golgari Graveborn Muse  ref. 5.35 EUR (MIR)
-  x1  Tranquil Thicket                66%  Terrageddon  ref. 0.30 EUR (ONS)
+  x1  Tranquil Thicket                70%  Terrageddon  ref. 0.30 EUR (ONS)
   x3  Treetop Village                100%  Terrageddon/RG Aggro/Golgari Graveborn Muse
-  x1  Treva's Ruins                   88%  Full English Breakfast
+  x1  Treva's Ruins                   90%  Full English Breakfast
   x1  Triskelion                     100%  Full English Breakfast
-  x2  Tsabo's Web                     83%  Enchantress/UW Replenish/Psychatog  ref. 60.71 EUR (INV)  [tambem no UW Replenish]
+  x2  Tsabo's Web                     77%  Enchantress/UW Replenish/Psychatog  ref. 61.34 EUR (INV)  [tambem no UW Replenish]
   x1  Uktabi Orangutan               100%  Full English Breakfast  ref. 2.10 EUR (VIS)
-  x3  Underground River               70%  Psychatog/Full English Breakfast  ref. 53.16 EUR (ICE)
+  x3  Underground River               68%  Psychatog/Full English Breakfast  ref. 53.79 EUR (ICE)
   x1  Undiscovered Paradise          100%  Full English Breakfast  [RL]
   x4  Unearth                        100%  Full English Breakfast  ref. 2.80 EUR (ULG)
   x4  Vindicate                      100%  Orzhov Exalted Angel
   x4  Vision Charm                   100%  Stiflenought  ref. 1.60 EUR (VIS)  [tambem no Stiflenought]
-  x2  Volcanic Hammer                 64%  Sligh
   x2  Volrath's Shapeshifter         100%  Full English Breakfast  ref. 15.20 EUR (STH)  [RL]
-  x1  Volrath's Stronghold            92%  Golgari Graveborn Muse  ref. 68.15 EUR (STH)  [RL]
+  x1  Volrath's Stronghold           100%  Golgari Graveborn Muse  ref. 68.15 EUR (STH)  [RL]
   x4  Wall of Blossoms               100%  Golgari Graveborn Muse
   x3  Wall of Roots                  100%  Full English Breakfast/Elves / Survival
-  x3  Warmth                          89%  Enchantress/Elves / Survival/Orzhov Exalted Angel  ref. 3.84 EUR (TMP)
-  x4  Wasteland                      100%  Terrageddon/Goblins/Mono-Preto Graveborn Muse/Sligh  ref. 50.54 EUR (TMP)
-  x3  Weathered Wayfarer              74%  Terrageddon
-  x2  Werebear                        63%  Terrageddon
+  x2  Warmth                          88%  Enchantress/Orzhov Exalted Angel  ref. 3.63 EUR (TMP)
+  x4  Wasteland                      100%  Terrageddon/Mono-Preto Graveborn Muse/Goblins  ref. 50.54 EUR (TMP)
+  x3  Weathered Wayfarer              79%  Terrageddon
+  x2  Werebear                        66%  Terrageddon
   x4  Wild Growth                    100%  Enchantress  ref. 0.40 EUR (7ED)
   x4  Windswept Heath                100%  Enchantress/Terrageddon/Elves / Survival  ref. 49.80 EUR (ONS)
   x3  Wirewood Symbiote              100%  Elves / Survival
-  x4  Withered Wretch                100%  Mono-Preto Graveborn Muse  ref. 11.09 EUR (LGN)
-  x4  Wooded Foothills               100%  Enchantress/Goblins/RG Aggro/Elves / Survival/Sligh  ref. 90.63 EUR (ONS)
+  x4  Withered Wretch                100%  Mono-Preto Graveborn Muse  ref. 11.29 EUR (LGN)
+  x4  Wooded Foothills               100%  Enchantress/Goblins/Sligh/Elves / Survival/RG Aggro  ref. 90.63 EUR (ONS)
   x3  Wrath of God                   100%  Landstill/Orzhov Exalted Angel
   x3  Xantid Swarm                   100%  Enchantress/Full English Breakfast
-  x4  Yavimaya Coast                 100%  Full English Breakfast  ref. 33.37 EUR (APC)
-  x1  Yavimaya Granger                77%  Elves / Survival
+  x4  Yavimaya Coast                 100%  Full English Breakfast  ref. 33.88 EUR (APC)
+  x1  Yavimaya Granger                75%  Elves / Survival
+  x1  Zuran Orb                       54%  Terrageddon

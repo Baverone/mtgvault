@@ -5,9 +5,9 @@
       "carta": "Kasmina, Enigma Sage",
       "formatos": [],
       "nota": "Andre 13/10: 'continua sempre a procurar se aparece esse deck ou nao' — em TODOS os formatos e para sempre (nada a desliga sozinha). Era modern+pioneer desde 30/09. A 13/10: 0 listas em toda a base.",
-      "achados": 0,
-      "primeira": null,
-      "ultima": null
+      "achados": 1,
+      "primeira": "2026-10-18",
+      "ultima": "2026-10-18"
     },
     "jace's machinations": {
       "carta": "Jace's Machinations",
@@ -16,17 +16,17 @@
         "pioneer"
       ],
       "nota": "combo Jace/Kasmina — Reality Fracture no MTGO 29/09/2026, em papel 02/10/2026; Pioneer acrescentado a pedido do Andre 30/09",
-      "achados": 1,
+      "achados": 2,
       "primeira": "2026-10-10",
-      "ultima": "2026-10-10"
+      "ultima": "2026-10-18"
     },
     "combo kasmina (kasmina + jace's machinations + avatar)": {
       "carta": "Combo Kasmina (Kasmina + Jace's Machinations + Avatar)",
       "formatos": [],
       "nota": "Andre 13/10: o deck da Kasmina em qualquer formato. Avisa na PRIMEIRA lista com 2 das 3 juntas. Soltas nao serviam: o Jace's Machinations ja esta em 33 listas e o Avatar em 18, e em nenhuma estao duas das tres. A 13/10: 0 listas.",
-      "achados": 0,
-      "primeira": null,
-      "ultima": null,
+      "achados": 1,
+      "primeira": "2026-10-18",
+      "ultima": "2026-10-18",
       "combo": [
         "Kasmina, Enigma Sage",
         "Jace's Machinations",
@@ -256,8 +256,616 @@
         ]
       ],
       "aviso": "toast (balloon)"
+    },
+    "pioneer|kasmina, enigma sage|2026-10-18|univerce|Pioneer Challenge 16": {
+      "carta": "Kasmina, Enigma Sage",
+      "nota": "Andre 13/10: 'continua sempre a procurar se aparece esse deck ou nao' — em TODOS os formatos e para sempre (nada a desliga sozinha). Era modern+pioneer desde 30/09. A 13/10: 0 listas em toda a base.",
+      "formato": "pioneer",
+      "decklist_id": 28223,
+      "evento": "Pioneer Challenge 16",
+      "data": "2026-10-18",
+      "jogador": "Univerce",
+      "colocacao": "",
+      "link": "https://www.mtgo.com/decklist/pioneer-challenge-16-2026-10-1812856608",
+      "tier": "Challenge",
+      "fonte": "mtgo",
+      "jogadores": null,
+      "copias": 4,
+      "board": "main",
+      "visto_em": "2026-10-19",
+      "avisado": true,
+      "lista": [
+        [
+          "side",
+          "Ashiok, Dream Render",
+          1
+        ],
+        [
+          "side",
+          "Duress",
+          2
+        ],
+        [
+          "side",
+          "Go Blank",
+          2
+        ],
+        [
+          "side",
+          "Mystical Dispute",
+          1
+        ],
+        [
+          "side",
+          "Path of Peril",
+          2
+        ],
+        [
+          "side",
+          "Professor Dellian Fel",
+          2
+        ],
+        [
+          "side",
+          "Ray of Enfeeblement",
+          3
+        ],
+        [
+          "side",
+          "Terminal Criticism",
+          2
+        ],
+        [
+          "main",
+          "Blooming Marsh",
+          2
+        ],
+        [
+          "main",
+          "Botanical Sanctum",
+          2
+        ],
+        [
+          "main",
+          "Breeding Pool",
+          1
+        ],
+        [
+          "main",
+          "Cling to Dust",
+          1
+        ],
+        [
+          "main",
+          "Consult the Star Charts",
+          3
+        ],
+        [
+          "main",
+          "Darkslick Shores",
+          4
+        ],
+        [
+          "main",
+          "Day's Undoing",
+          1
+        ],
+        [
+          "main",
+          "Dig Through Time",
+          1
+        ],
+        [
+          "main",
+          "Drown in the Loch",
+          2
+        ],
+        [
+          "main",
+          "Enter the Infinite",
+          2
+        ],
+        [
+          "main",
+          "Fatal Push",
+          4
+        ],
+        [
+          "main",
+          "Gloomlake Verge",
+          3
+        ],
+        [
+          "main",
+          "Into the Flood Maw",
+          1
+        ],
+        [
+          "main",
+          "Island",
+          1
+        ],
+        [
+          "main",
+          "Jace's Machinations",
+          4
+        ],
+        [
+          "main",
+          "Kasmina, Enigma Sage",
+          4
+        ],
+        [
+          "main",
+          "Mox Amber",
+          1
+        ],
+        [
+          "main",
+          "Narset, Parter of Veils",
+          4
+        ],
+        [
+          "main",
+          "Overgrown Tomb",
+          1
+        ],
+        [
+          "main",
+          "Path of Peril",
+          1
+        ],
+        [
+          "main",
+          "Rakshasa's Bargain",
+          1
+        ],
+        [
+          "main",
+          "Spell Pierce",
+          1
+        ],
+        [
+          "main",
+          "Swamp",
+          1
+        ],
+        [
+          "main",
+          "Thassa's Oracle",
+          1
+        ],
+        [
+          "main",
+          "Thoughtseize",
+          4
+        ],
+        [
+          "main",
+          "Urborg, Tomb of Yawgmoth",
+          1
+        ],
+        [
+          "main",
+          "Watery Grave",
+          4
+        ],
+        [
+          "main",
+          "Willowrush Verge",
+          4
+        ]
+      ],
+      "aviso": "toast (balloon)"
+    },
+    "pioneer|jace's machinations|2026-10-18|univerce|Pioneer Challenge 16": {
+      "carta": "Jace's Machinations",
+      "nota": "combo Jace/Kasmina — Reality Fracture no MTGO 29/09/2026, em papel 02/10/2026; Pioneer acrescentado a pedido do Andre 30/09",
+      "formato": "pioneer",
+      "decklist_id": 28223,
+      "evento": "Pioneer Challenge 16",
+      "data": "2026-10-18",
+      "jogador": "Univerce",
+      "colocacao": "",
+      "link": "https://www.mtgo.com/decklist/pioneer-challenge-16-2026-10-1812856608",
+      "tier": "Challenge",
+      "fonte": "mtgo",
+      "jogadores": null,
+      "copias": 4,
+      "board": "main",
+      "visto_em": "2026-10-19",
+      "avisado": true,
+      "lista": [
+        [
+          "side",
+          "Ashiok, Dream Render",
+          1
+        ],
+        [
+          "side",
+          "Duress",
+          2
+        ],
+        [
+          "side",
+          "Go Blank",
+          2
+        ],
+        [
+          "side",
+          "Mystical Dispute",
+          1
+        ],
+        [
+          "side",
+          "Path of Peril",
+          2
+        ],
+        [
+          "side",
+          "Professor Dellian Fel",
+          2
+        ],
+        [
+          "side",
+          "Ray of Enfeeblement",
+          3
+        ],
+        [
+          "side",
+          "Terminal Criticism",
+          2
+        ],
+        [
+          "main",
+          "Blooming Marsh",
+          2
+        ],
+        [
+          "main",
+          "Botanical Sanctum",
+          2
+        ],
+        [
+          "main",
+          "Breeding Pool",
+          1
+        ],
+        [
+          "main",
+          "Cling to Dust",
+          1
+        ],
+        [
+          "main",
+          "Consult the Star Charts",
+          3
+        ],
+        [
+          "main",
+          "Darkslick Shores",
+          4
+        ],
+        [
+          "main",
+          "Day's Undoing",
+          1
+        ],
+        [
+          "main",
+          "Dig Through Time",
+          1
+        ],
+        [
+          "main",
+          "Drown in the Loch",
+          2
+        ],
+        [
+          "main",
+          "Enter the Infinite",
+          2
+        ],
+        [
+          "main",
+          "Fatal Push",
+          4
+        ],
+        [
+          "main",
+          "Gloomlake Verge",
+          3
+        ],
+        [
+          "main",
+          "Into the Flood Maw",
+          1
+        ],
+        [
+          "main",
+          "Island",
+          1
+        ],
+        [
+          "main",
+          "Jace's Machinations",
+          4
+        ],
+        [
+          "main",
+          "Kasmina, Enigma Sage",
+          4
+        ],
+        [
+          "main",
+          "Mox Amber",
+          1
+        ],
+        [
+          "main",
+          "Narset, Parter of Veils",
+          4
+        ],
+        [
+          "main",
+          "Overgrown Tomb",
+          1
+        ],
+        [
+          "main",
+          "Path of Peril",
+          1
+        ],
+        [
+          "main",
+          "Rakshasa's Bargain",
+          1
+        ],
+        [
+          "main",
+          "Spell Pierce",
+          1
+        ],
+        [
+          "main",
+          "Swamp",
+          1
+        ],
+        [
+          "main",
+          "Thassa's Oracle",
+          1
+        ],
+        [
+          "main",
+          "Thoughtseize",
+          4
+        ],
+        [
+          "main",
+          "Urborg, Tomb of Yawgmoth",
+          1
+        ],
+        [
+          "main",
+          "Watery Grave",
+          4
+        ],
+        [
+          "main",
+          "Willowrush Verge",
+          4
+        ]
+      ],
+      "aviso": "toast (balloon)"
+    },
+    "pioneer|combo kasmina (kasmina + jace's machinations + avatar)|2026-10-18|univerce|Pioneer Challenge 16": {
+      "carta": "Combo Kasmina (Kasmina + Jace's Machinations + Avatar)",
+      "nota": "Andre 13/10: o deck da Kasmina em qualquer formato. Avisa na PRIMEIRA lista com 2 das 3 juntas. Soltas nao serviam: o Jace's Machinations ja esta em 33 listas e o Avatar em 18, e em nenhuma estao duas das tres. A 13/10: 0 listas.",
+      "formato": "pioneer",
+      "decklist_id": 28223,
+      "evento": "Pioneer Challenge 16",
+      "data": "2026-10-18",
+      "jogador": "Univerce",
+      "colocacao": "",
+      "link": "https://www.mtgo.com/decklist/pioneer-challenge-16-2026-10-1812856608",
+      "tier": "Challenge",
+      "fonte": "mtgo",
+      "jogadores": null,
+      "copias": 8,
+      "board": "main",
+      "pecas": [
+        " Enigma Sage",
+        "Jace's Machinations",
+        "Kasmina"
+      ],
+      "visto_em": "2026-10-19",
+      "avisado": true,
+      "lista": [
+        [
+          "side",
+          "Ashiok, Dream Render",
+          1
+        ],
+        [
+          "side",
+          "Duress",
+          2
+        ],
+        [
+          "side",
+          "Go Blank",
+          2
+        ],
+        [
+          "side",
+          "Mystical Dispute",
+          1
+        ],
+        [
+          "side",
+          "Path of Peril",
+          2
+        ],
+        [
+          "side",
+          "Professor Dellian Fel",
+          2
+        ],
+        [
+          "side",
+          "Ray of Enfeeblement",
+          3
+        ],
+        [
+          "side",
+          "Terminal Criticism",
+          2
+        ],
+        [
+          "main",
+          "Blooming Marsh",
+          2
+        ],
+        [
+          "main",
+          "Botanical Sanctum",
+          2
+        ],
+        [
+          "main",
+          "Breeding Pool",
+          1
+        ],
+        [
+          "main",
+          "Cling to Dust",
+          1
+        ],
+        [
+          "main",
+          "Consult the Star Charts",
+          3
+        ],
+        [
+          "main",
+          "Darkslick Shores",
+          4
+        ],
+        [
+          "main",
+          "Day's Undoing",
+          1
+        ],
+        [
+          "main",
+          "Dig Through Time",
+          1
+        ],
+        [
+          "main",
+          "Drown in the Loch",
+          2
+        ],
+        [
+          "main",
+          "Enter the Infinite",
+          2
+        ],
+        [
+          "main",
+          "Fatal Push",
+          4
+        ],
+        [
+          "main",
+          "Gloomlake Verge",
+          3
+        ],
+        [
+          "main",
+          "Into the Flood Maw",
+          1
+        ],
+        [
+          "main",
+          "Island",
+          1
+        ],
+        [
+          "main",
+          "Jace's Machinations",
+          4
+        ],
+        [
+          "main",
+          "Kasmina, Enigma Sage",
+          4
+        ],
+        [
+          "main",
+          "Mox Amber",
+          1
+        ],
+        [
+          "main",
+          "Narset, Parter of Veils",
+          4
+        ],
+        [
+          "main",
+          "Overgrown Tomb",
+          1
+        ],
+        [
+          "main",
+          "Path of Peril",
+          1
+        ],
+        [
+          "main",
+          "Rakshasa's Bargain",
+          1
+        ],
+        [
+          "main",
+          "Spell Pierce",
+          1
+        ],
+        [
+          "main",
+          "Swamp",
+          1
+        ],
+        [
+          "main",
+          "Thassa's Oracle",
+          1
+        ],
+        [
+          "main",
+          "Thoughtseize",
+          4
+        ],
+        [
+          "main",
+          "Urborg, Tomb of Yawgmoth",
+          1
+        ],
+        [
+          "main",
+          "Watery Grave",
+          4
+        ],
+        [
+          "main",
+          "Willowrush Verge",
+          4
+        ]
+      ],
+      "aviso": "toast (balloon)"
     }
   },
-  "verificado_em": "2026-10-18",
+  "verificado_em": "2026-10-19",
   "desde": "2026-09-26"
 }
