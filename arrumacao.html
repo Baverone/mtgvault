@@ -682,6 +682,12 @@ function fotoVerdadeHTML() {
 function estadoHTML() {
   const e = D.estado;
   if (!e) return '';
+  /* 2026-10-20: o estado está ADIADO — só frentes, sem lista curta e sem avisos. */
+  if (e.adiado) return `<section class="foto"><h2>🔎 O estado das cartas `
+    + `<span class="n">${escDados(e.frase)}</span></h2>`
+    + `<p class="sub">Decisão tua de 20/10: <i>«vou só tirar fotos de frentes»</i>. `
+    + `Uma foto de frente prova a carta e a quantidade; o estado fica por `
+    + `verificar e ninguém to pede.</p></section>`;
   const g = e.grades || [];
   const a = e.acerto || {};
   const lc = e.lista_curta || {};
