@@ -410,8 +410,9 @@ def build(con, out_path=None, rep=None):
                 'Fica parada até voltares a arrumar, e isso está certo.</p>'
                 '</div></div>')
 
-    out.write_text(_tmpl().replace("%LEAD%", lead).replace("%KPIS%", kpis)
-                   .replace("%ATALHOS%", atalhos).replace("%PAINEIS%", paineis),
+    out.write_text(paginas.com_aviso_colecao(
+                   _tmpl().replace("%LEAD%", lead).replace("%KPIS%", kpis)
+                   .replace("%ATALHOS%", atalhos).replace("%PAINEIS%", paineis), con),
                    encoding="utf-8")
     return out
 

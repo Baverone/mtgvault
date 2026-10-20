@@ -4022,10 +4022,13 @@ def _texto_janela(subida: float, janela: int) -> str:
     # O sinal vem do `:+`, e não de um "+" escrito à mão: as linhas que se vendem
     # também levam esta nota, e metade delas DESCEU — "+-3.2 %" era o que a
     # tabela mostrava.
+    # À portuguesa desde 2026-10-20 (auditoria M3): `paginas.pct`. Importa-se
+    # aqui dentro porque o `paginas` é das páginas e o `loadout` não depende dele.
+    from . import paginas as _pag                              # noqa: PLC0415
     maxi = rl_janela_dias()
-    txt = f"{subida:+.1f} % em {janela} d"
+    txt = f"{_pag.pct(subida)} em {janela} d"
     if janela and janela != maxi:
-        txt += f" ≈ {subida * maxi / janela:+.1f} %/{maxi} d"
+        txt += f" ≈ {_pag.pct(subida * maxi / janela)}/{maxi} d"
     return txt
 
 

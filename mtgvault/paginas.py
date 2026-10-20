@@ -302,6 +302,47 @@ def eur(v, casas: int = 2, espaco: bool = True) -> str:
             + (" €" if espaco else "€"))
 
 
+# A COLEÇÃO ESTÁ A SER REFEITA POR FOTOS (2026-10-20). A `copies` está vazia
+# desde 13/10, de propósito, e o Início, a Galeria, os Binders, a Caixa RL e a
+# Cobertura mostravam «0 cartas · 0,00 €» sem uma palavra. A frase é uma só, vai
+# antes do 0, e sai sozinha quando entrar a primeira cópia. Não se inventa número
+# nenhum nem se usa o arquivo de 13/10 como coleção.
+AVISO_COLECAO_VAZIA = ("A coleção está a ser refeita por fotos desde 13/10: conta "
+                       "só o que já foi fotografado — por isso aqui aparece 0. "
+                       "Este aviso sai sozinho quando entrar a primeira carta.")
+
+
+def colecao_vazia(con) -> bool:
+    """Não há uma única cópia na estante (`collection.na_estante`)."""
+    return con.execute(f"SELECT 1 FROM copies cp WHERE {_col.na_estante('cp')} "
+                       "LIMIT 1").fetchone() is None
+
+
+def com_aviso_colecao(texto: str, con) -> str:
+    """`texto` com o aviso logo a seguir ao primeiro `<div class="wrap">` (o
+    início do conteúdo de todas as páginas da casca), se a coleção estiver
+    vazia; senão `texto` tal e qual."""
+    marca = '<div class="wrap">'
+    if marca not in texto or not colecao_vazia(con):
+        return texto
+    aviso = f'<p class="cvazia" role="note">{html.escape(AVISO_COLECAO_VAZIA)}</p>'
+    return texto.replace(marca, marca + aviso, 1)
+
+
+def pct(v, casas: int = 1, sinal: bool = True) -> str:
+    """Uma variação em português: `+12,3 %`, `−100,0 %` (2026-10-20, auditoria
+    M3). Era `f'{x:+.1f}%'` — ponto decimal, hífen e o % colado, à inglesa, ao
+    lado de páginas que escrevem «−12,7 %». O menos é o sinal tipográfico
+    (U+2212), como no resto do site."""
+    v = round(float(v), casas) or 0.0          # sem «−0,0 %»
+    s = f"{abs(v):.{casas}f}".replace(".", ",")
+    if sinal:
+        s = ("−" if v < 0 else "+") + s
+    elif v < 0:
+        s = "−" + s
+    return s + " %"
+
+
 # ---------------------------------------------------------------------------
 # OS DADOS À PARTE (André, 2026-09-15): as páginas pesadas são uma CASCA (menu,
 # separadores, CSS, JS) e os dados vivem em `data/paginas/<pagina>.json` (o
@@ -515,6 +556,17 @@ function erroDados(el, e) {
     + `<span class="fine">Verifica a ligação e tenta outra vez. Se estás no modo edição, `
     + `confirma que o servidor (porto 8771) está de pé.</span>`
     + `<button type="button" onclick="location.reload()">recarregar</button></div>`;
+}
+/* O PRAZO DE UMA NOTA JÁ PASSOU? (2026-10-20, auditoria M1). A nota do
+   Whipflare («até 2026-10-09») continuava a vermelho onze dias depois. O
+   `passou` vem do Python, mas a página publicada é de ontem: compara-se também
+   a data com a de HOJE no telemóvel (datas ISO comparam-se como texto). */
+function prazoPassou(u) {
+  if (!u) return false;
+  if (u.passou) return true;
+  if (!u.ate) return false;
+  const d = new Date(), z = n => String(n).padStart(2, '0');
+  return String(u.ate) < `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
 }
 """
 

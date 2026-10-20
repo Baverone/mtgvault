@@ -547,8 +547,7 @@ def _faltas_vigia_html(f) -> str:
             f'{f["falta_total"]} cóp.</span>'
             f'<button class="cpbtn" onclick="cp(this)">copiar</button></div>'
             f'<ul class="fl">{itens}</ul>'
-            f'<textarea class="cmk" readonly>{html.escape(txt)}</textarea>'
-            f'<p class="dim vnota">{html.escape(f["nota"])}</p></div>')
+            f'<textarea class="cmk" readonly>{html.escape(txt)}</textarea></div>')
 
 
 def _achado_html(a) -> str:
@@ -603,7 +602,12 @@ def _vigia_html(con) -> str:
             'a primeira aparição de um combo novo é lá que acontece. O filtro '
             'normal não mudou para mais nada. Quem manda é o '
             '<code>colecao_config.json → cartas_vigiadas</code>.')
-    corpo = ("".join(_achado_html(a) for a in p["achados"]) if p["achados"]
+    # A NOTA DE ONDE SAEM AS FALTAS vai UMA vez, por baixo das listas
+    # (2026-10-20, auditoria M4): repetida em cada lista eram quatro cópias da
+    # mesma frase no mesmo ecrã.
+    nota = (f'<p class="dim vnota">{html.escape(p.get("nota") or vigia.NOTA_FALTAS)}</p>'
+            if p["achados"] else "")
+    corpo = ("".join(_achado_html(a) for a in p["achados"]) + nota if p["achados"]
              else '<p class="vazio">Nenhuma lista com estas cartas, por enquanto. '
                   'O passo <code>vigia-cartas</code> do job diário confere todas '
                   'as noites e avisa com um toast do Windows no dia em que a '

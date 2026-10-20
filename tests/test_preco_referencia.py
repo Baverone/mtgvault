@@ -213,7 +213,8 @@ def caso_a_regra_da_rl_compara_a_impressao_dela_nas_duas_pontas():
     saida, linhas = venda_de(con, "Underground Sea")
     assert saida == "rl_segurar", f"a impressão dele subiu: {saida}"
     # A percentagem da 3ED (122 -> 140), não a da mistura das duas impressões.
-    assert "+14.8" in linhas[0]["reason"], linhas[0]["reason"]
+    # Vírgula desde 2026-10-20 (auditoria M3, `paginas.pct`); era «+14.8».
+    assert "+14,8" in linhas[0]["reason"], linhas[0]["reason"]
 
 
 # ---------------------------------------------------------------------------

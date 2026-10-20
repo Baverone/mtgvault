@@ -521,12 +521,14 @@ def build(con, out_path=None):
         f'{_fontes_html(val)}'
         f'</div></div>')
 
-    out.write_text(_TMPL
+    out.write_text(paginas.com_aviso_colecao(
+                   _TMPL
                    .replace("%SECS%", secs).replace("%VIGIADOS%", wsec)
                    .replace("%VALOR%", valor_html)
                    .replace("%NAV%", topnav).replace("%TOTAL%", str(total_col))
                    .replace("%DECKN%", str(n_deckbound))
-                   .replace("%CFG%", cfg_line).replace("%TODAY%", today), encoding="utf-8")
+                   .replace("%CFG%", cfg_line).replace("%TODAY%", today), con),
+                   encoding="utf-8")
     return out
 
 

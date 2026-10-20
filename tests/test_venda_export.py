@@ -346,7 +346,7 @@ def caso_o_que_nao_se_vende_fica_de_fora_e_diz_porque():
     seg = fora["rl_segurar"]
     assert seg["copias"] == 2 and seg["linhas"][0]["nm"] == "Gilded Drake", seg
     # A percentagem e a janela, e o motivo por que ia à venda.
-    assert "+50.0 % em 88 d" in seg["linhas"][0]["motivo"], seg["linhas"][0]
+    assert "+50,0 % em 88 d" in seg["linhas"][0]["motivo"], seg["linhas"][0]
     assert "(ia por: excedente (mais de 4))" in seg["linhas"][0]["motivo"]
     assert fora["retidos"]["linhas"][0]["nm"] == "Dark Ritual"
     assert "sem prazo" in fora["retidos"]["linhas"][0]["motivo"]
@@ -495,7 +495,7 @@ def caso_a_aba_vender_leva_a_saida_e_o_modo_edicao_grava():
         assert "Saída" in v and "venda-stock-" in v, v[:800]
         assert "NÃO confirmado" in v, "a página tem de dizer que o formato não foi confirmado"
         assert "Ir buscar à estante" in v and "Caixa RL (EN)" in v, v[:800]
-        assert "Fica de fora" in v and "+50.0 % em 88 d" in v, v[:800]
+        assert "Fica de fora" in v and "+50,0 % em 88 d" in v, v[:800]
         # A lista da estante desenha-se ANTES da tabela do excedente, com a
         # Swords antes do Sol Ring (cor) dentro da Colecção.
         est = v[v.index("Ir buscar à estante"):v.index("Excedente normal")]

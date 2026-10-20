@@ -77,9 +77,12 @@ TITULO_AVISO = "mtgvault — vigia de cartas"
 # novas só entram quando ele as fotografar (é o «só a foto cria cópias» de
 # 19/09). Dizer que ele as tem era inventar colecção; calar que a base pode estar
 # atrasada era deixá-lo a comprar outra vez.
-NOTA_FALTAS = ("As faltas saem da BASE, não do que ele diz ter: uma cópia só "
-               "entra quando a foto chega (pendentes/). Se acabou de comprar e "
-               "ainda não fotografou, aparece aqui como falta.")
+#
+# Com «tu» desde 2026-10-20 (auditoria M4), como o resto do site — e a página
+# mostra-a UMA vez, não uma por lista (`metagame._vigia_html`).
+NOTA_FALTAS = ("As faltas saem da base, não do que dizes ter: uma cópia só "
+               "entra quando a foto chega (pendentes/). Se acabaste de comprar e "
+               "ainda não fotografaste, aparece aqui como falta.")
 
 
 # ---------------------------------------------------------------------------

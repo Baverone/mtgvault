@@ -1,6 +1,7 @@
 <!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#07080d">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230e1018'/%3E%3Cpath d='M14 46V18h7l11 14 11-14h7v28h-7V30l-11 13-11-13v16z' fill='%23f5c451'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
@@ -248,6 +249,7 @@
  .urg{font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;
    background:var(--warn-soft);color:#f5c451;margin-left:5px;white-space:nowrap}
  .urg.ja{background:var(--bad-soft);color:var(--bad)}
+ .urg.passou{background:transparent;color:var(--dim);font-weight:400}
  .urg.pend{background:#241f3a;color:#b9a8ff}
  /* DECIDIDA mas PROVISÓRIA: comprou o nonfoil para jogar e troca por foil
     quando baixar. Verde-azulado para não se confundir com o roxo do «por
@@ -741,6 +743,8 @@
  .wrap,.pghin{width:100%;max-width:var(--maxw);margin-inline:auto;
    padding-inline:clamp(14px,2.6vw,30px)}
  .wrap{padding-block:22px 72px}
+ /* A coleção vazia, dita uma vez antes do 0 (`paginas.com_aviso_colecao`). */
+ .cvazia{margin:0 0 16px;padding:11px 14px;border-radius:var(--r);background:var(--info-soft);border:1px solid var(--info-line);color:var(--ink);font-size:13.5px;line-height:1.5}
 
  /* --------------------------------------------------------- barra lateral */
  .side{flex:0 0 var(--side);width:var(--side);background:var(--card2);
@@ -969,7 +973,7 @@ botões, corre <code>python webapp.py</code> no PC (porto 8771) — e aí a aba
 <b>Plano</b> dá-te um QR para abrires isto no telemóvel, à frente da estante.
 Atualiza diariamente.</div></details></div></footer></div></div>
 
-<script src="deckboxes.js?v=4e96847f45e7"></script><script>
+<script src="deckboxes.js?v=0b6361665fd3"></script><script>
 (function(){
   var b = document.body, side = document.getElementById('side'),
       bt = document.getElementById('menub'), veu = document.getElementById('veu');

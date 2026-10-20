@@ -429,10 +429,10 @@ _CSS = """
  details.dk[open]>summary .dtop b::before{content:"▾ "}
  details.dk>summary:hover .dtop b{color:var(--accent)}
  .dtop{display:flex;justify-content:space-between;align-items:baseline;gap:8px} .dtop b{font-size:16px} .pct{font-weight:800;font-size:16px}
- .badges{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:7px 0} .bdg{font-size:11px;padding:2px 8px;border-radius:20px;background:var(--line);color:var(--muted)} .bdg.seal{background:var(--warn-soft);color:var(--gold);font-weight:700} .bdg.wt{background:var(--info-soft);color:var(--ob);font-weight:700} .bdg.dim{color:#5a6472}
+ .badges{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:7px 0} .bdg{font-size:11px;padding:2px 8px;border-radius:20px;background:var(--line);color:var(--muted)} .bdg.seal{background:var(--warn-soft);color:var(--gold);font-weight:700} .bdg.wt{background:var(--info-soft);color:var(--ob);font-weight:700} .bdg.dim{color:var(--dim)}
  .bar{position:relative;height:8px;background:#0b0e14;border-radius:999px;overflow:hidden;margin:5px 0 2px} .bar span{position:absolute;left:0;top:0;bottom:0;border-radius:999px}
  .cardshdr{margin-top:11px;font-size:12px;color:var(--accent)} .cardshdr .dim{color:var(--muted)} .cardshdr.sb{color:var(--gold)} .cardshdr.op-h{color:var(--ob)}
- .typehdr{margin:8px 0 1px;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em} .typehdr .dim{color:#4a5666} .typehdr+.cards{margin-top:3px}
+ .typehdr{margin:8px 0 1px;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em} .typehdr .dim{color:var(--dim)} .typehdr+.cards{margin-top:3px}
  .cards{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
  .cd{position:relative;width:52px} .cd img,.cd .noimg{width:52px;height:73px;border-radius:4px;display:block;background:var(--sunken)}
  /* Como se lê o `alt` (o nome da carta) quando a imagem não carrega. */

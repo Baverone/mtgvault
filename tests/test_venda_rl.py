@@ -165,7 +165,8 @@ def caso_rl_que_subiu_5_por_cento_fica():
     # A janela é a que a carta dá: a primeira cotação é de há 90 dias, por isso
     # mediram-se 88 (o máximo são 90, e ficam 2 de folga). E o motivo diz-la —
     # "+5 %" sozinho não distingue uma carta parada de uma que subiu numa semana.
-    assert "+5.0 % em 88 d" in seg[0]["reason"], seg[0]["reason"]
+    # Vírgula desde 2026-10-20 (auditoria M3, `paginas.pct`); era «+5.0 %».
+    assert "+5,0 % em 88 d" in seg[0]["reason"], seg[0]["reason"]
     # E diz-se porque é que ela ia à venda: "subiu 5%" é uma resposta, e sem a
     # pergunta ao lado não se percebe o que a regra impediu.
     assert seg[0]["porque_venderia"] == "excedente (mais de 4)", seg[0]
@@ -313,7 +314,7 @@ def caso_o_limiar_e_proporcional_a_janela():
     assert seg, rep["venda_rl"]
     assert seg[0]["rl_janela"] == 25 and seg[0]["rl_subida"] == 2.0, seg[0]
     assert seg[0]["rl_limiar"] == 1.39, seg[0]["rl_limiar"]
-    assert "≈ +7.2 %/90 d" in seg[0]["reason"], seg[0]["reason"]
+    assert "≈ +7,2 %/90 d" in seg[0]["reason"], seg[0]["reason"]
     # E o que sobe DEVAGAR continua a vender-se: +1 % em 25 dias são +3,6 %/90 d.
     con2 = mundo("Null Rod", antes=100.0, quando=dia(27), agora=101.0)
     rep2 = loadout.report(con2, [slot_legacy()])
@@ -476,7 +477,7 @@ def caso_a_pagina_separa_o_que_se_vende_do_que_se_segura():
     antes_dos_blocos, depois = v.split("RL a segurar", 1)
     assert "Gilded Drake" not in antes_dos_blocos, \
         "a RL que valorizou não pode aparecer na lista de venda"
-    assert "Gilded Drake" in depois and "+100.0 %" in depois, depois[:800]
+    assert "Gilded Drake" in depois and "+100,0 %" in depois, depois[:800]
     assert "Null Rod" in antes_dos_blocos, "a que não subiu vende-se na mesma"
     print("a aba Vender desenha o bloco «RL a segurar» e não põe lá a RL que "
           "valorizou")
@@ -637,7 +638,7 @@ def caso_o_estado_da_copia_nao_pode_fazer_a_rl_parecer_que_desceu():
         "por estado entrou numa ponta da percentagem e não na outra")
     seg = linhas(rep, "rl_segurar", "Tolarian Academy")
     assert sum(r["q"] for r in seg) == 2, seg          # 6 cópias, playset 4
-    assert "+10.0 % em 88 d" in seg[0]["reason"], seg[0]["reason"]
+    assert "+10,0 % em 88 d" in seg[0]["reason"], seg[0]["reason"]
     print("o estado da cópia desconta o PREÇO e não a percentagem: a RL que "
           "subiu 10 % em EX continua a segurar-se")
 

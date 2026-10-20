@@ -205,11 +205,12 @@ def build(con, out_path=None):
               f'As portuguesas voltam à coleção à medida que montarmos cada deck Premodern.</div>')
 
     today = con.execute("SELECT MAX(date) d FROM price_latest").fetchone()["d"] or ""
-    out.write_text(_TMPL.replace("%BANNER%", banner)
+    out.write_text(paginas.com_aviso_colecao(
+                   _TMPL.replace("%BANNER%", banner)
                    .replace("%SECS%", secs or
                             '<p class="vazio">Não há nada na Caixa Reserved List '
                             'hoje.</p>')
-                   .replace("%TODAY%", today), encoding="utf-8")
+                   .replace("%TODAY%", today), con), encoding="utf-8")
     return out
 
 

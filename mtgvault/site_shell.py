@@ -354,7 +354,15 @@ def titulo_de(ficheiro: str) -> str:
 META = ('<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1, '
         'viewport-fit=cover">\n'
-        '<meta name="theme-color" content="#07080d">')
+        '<meta name="theme-color" content="#07080d">\n'
+        # O ÍCONE (2026-10-20, auditoria M2): nenhuma página o declarava e o
+        # separador e o atalho no telemóvel ficavam com o genérico. É o mesmo
+        # estilo do riftvault (um SVG em data:, quadrado escuro com a letra na
+        # cor da marca) — aqui o «M» a dourado, sem ficheiro a mais no site.
+        '<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' '
+        'viewBox=\'0 0 64 64\'%3E%3Crect width=\'64\' height=\'64\' rx=\'14\' fill=\'%230e1018\'/%3E'
+        '%3Cpath d=\'M14 46V18h7l11 14 11-14h7v28h-7V30l-11 13-11-13v16z\' fill=\'%23f5c451\'/%3E'
+        '%3C/svg%3E">')
 
 # Space Grotesk nos títulos, Inter no texto (pedido dele, para casar com o
 # baverone.com). Com `display=swap` e uma pilha de sistema por trás: se o
@@ -474,6 +482,8 @@ CSS = r"""
  .wrap,.pghin{width:100%;max-width:var(--maxw);margin-inline:auto;
    padding-inline:clamp(14px,2.6vw,30px)}
  .wrap{padding-block:22px 72px}
+ /* A coleção vazia, dita uma vez antes do 0 (`paginas.com_aviso_colecao`). */
+ .cvazia{margin:0 0 16px;padding:11px 14px;border-radius:var(--r);background:var(--info-soft);border:1px solid var(--info-line);color:var(--ink);font-size:13.5px;line-height:1.5}
 
  /* --------------------------------------------------------- barra lateral */
  .side{flex:0 0 var(--side);width:var(--side);background:var(--card2);

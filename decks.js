@@ -26,6 +26,17 @@ function erroDados(el, e) {
     + `confirma que o servidor (porto 8771) está de pé.</span>`
     + `<button type="button" onclick="location.reload()">recarregar</button></div>`;
 }
+/* O PRAZO DE UMA NOTA JÁ PASSOU? (2026-10-20, auditoria M1). A nota do
+   Whipflare («até 2026-10-09») continuava a vermelho onze dias depois. O
+   `passou` vem do Python, mas a página publicada é de ontem: compara-se também
+   a data com a de HOJE no telemóvel (datas ISO comparam-se como texto). */
+function prazoPassou(u) {
+  if (!u) return false;
+  if (u.passou) return true;
+  if (!u.ate) return false;
+  const d = new Date(), z = n => String(n).padStart(2, '0');
+  return String(u.ate) < `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
+}
 
 let D = null, PARTES = {}, FMT = '', DECK = '';
 const el = i => document.getElementById(i);

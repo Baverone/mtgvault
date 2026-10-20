@@ -65,8 +65,10 @@ function el(nome) {
   // leva também um `id` (é o alvo do índice de edições/formatos, que substituiu
   // as filas de botões horizontais), e a regex colada partia em silêncio — o
   // dump vinha sem uma única grelha.
+  // E a classe pode trazer outras ao lado (2026-10-20: `ed vazia`, a edição de
+  // que não tens nenhuma), como o `section.ed` do browser aceita.
   const seccoes = (cls) => [...html.matchAll(
-    new RegExp(`<section class="${cls}"[^>]*?data-parte="([^"]+)"`, 'g'))].map(m => {
+    new RegExp(`<section class="${cls}(?: [^"]*)?"[^>]*?data-parte="([^"]+)"`, 'g'))].map(m => {
       const s = um(`section.${cls}[data-parte="${m[1]}"]`);
       s.dataset.parte = m[1];
       s.filhos = { '.grid': um(`grid:${cls}:${m[1]}`) };

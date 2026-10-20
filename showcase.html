@@ -1,6 +1,7 @@
 <!doctype html><html lang="pt-PT"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#07080d">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230e1018'/%3E%3Cpath d='M14 46V18h7l11 14 11-14h7v28h-7V30l-11 13-11-13v16z' fill='%23f5c451'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
@@ -22,10 +23,10 @@
  details.dk[open]>summary .dtop b::before{content:"▾ "}
  details.dk>summary:hover .dtop b{color:var(--accent)}
  .dtop{display:flex;justify-content:space-between;align-items:baseline;gap:8px} .dtop b{font-size:16px} .pct{font-weight:800;font-size:16px}
- .badges{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:7px 0} .bdg{font-size:11px;padding:2px 8px;border-radius:20px;background:var(--line);color:var(--muted)} .bdg.seal{background:var(--warn-soft);color:var(--gold);font-weight:700} .bdg.wt{background:var(--info-soft);color:var(--ob);font-weight:700} .bdg.dim{color:#5a6472}
+ .badges{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:7px 0} .bdg{font-size:11px;padding:2px 8px;border-radius:20px;background:var(--line);color:var(--muted)} .bdg.seal{background:var(--warn-soft);color:var(--gold);font-weight:700} .bdg.wt{background:var(--info-soft);color:var(--ob);font-weight:700} .bdg.dim{color:var(--dim)}
  .bar{position:relative;height:8px;background:#0b0e14;border-radius:999px;overflow:hidden;margin:5px 0 2px} .bar span{position:absolute;left:0;top:0;bottom:0;border-radius:999px}
  .cardshdr{margin-top:11px;font-size:12px;color:var(--accent)} .cardshdr .dim{color:var(--muted)} .cardshdr.sb{color:var(--gold)} .cardshdr.op-h{color:var(--ob)}
- .typehdr{margin:8px 0 1px;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em} .typehdr .dim{color:#4a5666} .typehdr+.cards{margin-top:3px}
+ .typehdr{margin:8px 0 1px;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em} .typehdr .dim{color:var(--dim)} .typehdr+.cards{margin-top:3px}
  .cards{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
  .cd{position:relative;width:52px} .cd img,.cd .noimg{width:52px;height:73px;border-radius:4px;display:block;background:var(--sunken)}
  /* Como se lê o `alt` (o nome da carta) quando a imagem não carrega. */
@@ -73,6 +74,8 @@
  .wrap,.pghin{width:100%;max-width:var(--maxw);margin-inline:auto;
    padding-inline:clamp(14px,2.6vw,30px)}
  .wrap{padding-block:22px 72px}
+ /* A coleção vazia, dita uma vez antes do 0 (`paginas.com_aviso_colecao`). */
+ .cvazia{margin:0 0 16px;padding:11px 14px;border-radius:var(--r);background:var(--info-soft);border:1px solid var(--info-line);color:var(--ink);font-size:13.5px;line-height:1.5}
 
  /* --------------------------------------------------------- barra lateral */
  .side{flex:0 0 var(--side);width:var(--side);background:var(--card2);
@@ -300,6 +303,17 @@ function erroDados(el, e) {
     + `<span class="fine">Verifica a ligação e tenta outra vez. Se estás no modo edição, `
     + `confirma que o servidor (porto 8771) está de pé.</span>`
     + `<button type="button" onclick="location.reload()">recarregar</button></div>`;
+}
+/* O PRAZO DE UMA NOTA JÁ PASSOU? (2026-10-20, auditoria M1). A nota do
+   Whipflare («até 2026-10-09») continuava a vermelho onze dias depois. O
+   `passou` vem do Python, mas a página publicada é de ontem: compara-se também
+   a data com a de HOJE no telemóvel (datas ISO comparam-se como texto). */
+function prazoPassou(u) {
+  if (!u) return false;
+  if (u.passou) return true;
+  if (!u.ate) return false;
+  const d = new Date(), z = n => String(n).padStart(2, '0');
+  return String(u.ate) < `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
 }
 
 function cpFaltas(btn){const c=btn.closest('.faltas'),t=c&&c.querySelector('textarea.cmk');if(!t)return;const d=()=>{btn.textContent='✓ copiado';btn.classList.add('done');};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t.value).then(d).catch(()=>{t.select();document.execCommand('copy');d();});}else{t.select();try{document.execCommand('copy');d();}catch(e){}}}

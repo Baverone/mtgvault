@@ -631,6 +631,10 @@ def caso_a_pagina_nao_embebe_imagens_e_cabe_no_tecto():
         "a casca tem de apontar para o `decks.js` com o hash do conteúdo")
     pagina = casca + js
     for onde, txt in (("casca", casca), ("decks.js", js)):
+        # O favicon do `<head>` comum (2026-10-20, auditoria M2) é um SVG de
+        # 300 bytes em `data:` e não uma carta: desconta-se, e só ele.
+        import re                                              # noqa: PLC0415
+        txt = re.sub(r'<link rel="icon" href="data:image/svg\+xml,[^"]*">', "", txt)
         assert "data:image" not in txt, f"a {onde} embebeu uma imagem"
         assert "base64" not in txt, f"a {onde} embebeu algo em base64"
     # as imagens são REMOTAS, do catálogo

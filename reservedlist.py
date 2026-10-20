@@ -80,10 +80,10 @@ def _spark(points):
     pts = " ".join(f"{i*step:.1f},{h-1-(v-lo)/rng*(h-2):.1f}" for i, v in enumerate(vs))
     chg = (vs[-1] - vs[0]) / vs[0] * 100 if vs[0] else 0
     col = "var(--add)" if chg > 1 else "var(--warn)" if chg < -1 else "var(--muted)"
-    sign = "+" if chg >= 0 else ""
+    # À portuguesa desde 2026-10-20 (auditoria M3): `paginas.pct`.
     return (f'<svg class="sk" viewBox="0 0 {w} {h}" width="{w}" height="{h}" preserveAspectRatio="none">'
             f'<polyline points="{pts}" fill="none" stroke="{col}" stroke-width="1.5"/></svg>'
-            f'<span class="chg" style="color:{col}">{sign}{chg:.0f}%</span>')
+            f'<span class="chg" style="color:{col}">{paginas.pct(chg, 0)}</span>')
 
 
 def price_maps(con):
@@ -264,9 +264,9 @@ def build(con, out_path=None):
                 if val is not None:
                     chg = (val - m) / m * 100 if m else 0
                     col = "var(--add)" if chg > 1 else "var(--warn)" if chg < -1 else "var(--muted)"
-                    sign = "+" if chg >= 0 else ""
+                    # À portuguesa desde 2026-10-20 (auditoria M3).
                     mon = (f'<div class="mon">há 1 mês {_eur(m)} · '
-                           f'<b style="color:{col}">{sign}{chg:.0f}%</b></div>')
+                           f'<b style="color:{col}">{paginas.pct(chg, 0)}</b></div>')
                 else:
                     mon = f'<div class="mon">há 1 mês {_eur(m)}</div>'
             badge = ' <span class="sellbadge">VENDER</span>' if to_sell else ""
@@ -311,14 +311,16 @@ def build(con, out_path=None):
     # O ÍNDICE DAS EDIÇÕES: 22 secções longas, e antes só se lá chegava a
     # rolar. Um controlo segmentado que envolve — não uma fila que corre para o
     # lado — com a contagem de cada uma.
-    edidx = "".join(f'<a href="#ed-{e["parte"]}" data-ed="{e["parte"]}">'
+    edidx = "".join(f'<a href="#ed-{e["parte"]}" data-ed="{e["parte"]}"'
+                    + ("" if e["tens"] else ' class="vazia"') + '>'
                     f'{html.escape(e["nome"])} '
                     f'<span class="dim">{e["tens"]}/{e["n"]}</span></a>'
                     for e in edicoes)
     out.write_text(_tmpl(con)
                    .replace("%TEMA_DADOS%", paginas.CSS_DADOS)
                    .replace("%JS_DADOS%", paginas.JS_DADOS)
-                   .replace("%SECS%", secs).replace("%EDIDX%", edidx)
+                   .replace("%SECS%", frase_nenhuma(len(have_names)) + secs)
+                   .replace("%EDIDX%", edidx)
                    .replace("%HEAD%", head).replace("%SELL%", sellbox), encoding="utf-8")
     return out
 
@@ -326,10 +328,23 @@ def build(con, out_path=None):
 def cabecalho_edicao(e) -> str:
     """A secção de uma edição SEM as cartas: o que vai na casca. O `data-parte`
     é o ficheiro de onde o JavaScript as vai buscar."""
-    return (f'<section class="ed" id="ed-{e["parte"]}" data-parte="{e["parte"]}">'
+    # `vazia` (2026-10-20, auditoria M5): uma edição de que não tens nenhuma
+    # carta some com «só as que tenho» — eram 23 cabeçalhos vazios em fila.
+    vazia = " vazia" if not e.get("tens") else ""
+    return (f'<section class="ed{vazia}" id="ed-{e["parte"]}" data-parte="{e["parte"]}">'
             f'<h2>{html.escape(e["nome"])} '
             f'<span class="dim">{e["ano"]} · tens {e["tens"]}/{e["n"]}</span></h2>'
             f'<div class="grid"><p class="carregando">A carregar…</p></div></section>')
+
+
+def frase_nenhuma(n_tens: int) -> str:
+    """O que «só as que tenho» mostra quando não tens nenhuma (2026-10-20,
+    auditoria M5). Fica escondida com o filtro desligado (CSS); com nenhuma
+    carta tua, é a única coisa que o filtro deixa à vista."""
+    if n_tens:
+        return ""
+    return ('<p class="rlvazio">Não tens nenhuma carta da Reserved List na '
+            'coleção — não há nada para mostrar com «só as que tenho».</p>')
 
 
 def ler_dados(out_path):
@@ -356,6 +371,10 @@ _CSS = """
  /* SEM COR quando não tenho nenhuma cópia */
  .c.miss{opacity:.62} .c.miss img{filter:grayscale(1) brightness(.7)} .c.miss .val{color:var(--muted)}
  body.only .c.miss{display:none}
+ /* «Só as que tenho» sem nada numa edição (2026-10-20, auditoria M5). */
+ body.only section.ed.vazia,body.only .edidx a.vazia{display:none}
+ .rlvazio{display:none;color:var(--muted);font-size:13px;margin:18px 0}
+ body.only .rlvazio{display:block}
  .sellbox{background:var(--bad-soft);border:1px solid var(--bad-line);border-radius:var(--r);padding:12px 14px;margin:0 0 14px;font-size:12.5px;color:#f0d0c8}
  .sellbox b{color:var(--bad)}
  .sellnote{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:11px 14px;margin:0 0 14px;font-size:12.5px;color:var(--muted)}

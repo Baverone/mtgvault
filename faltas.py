@@ -73,6 +73,7 @@ _CSS = """
  .fr .av.aviso b{color:var(--warn)}
  .fr .av.nota{background:var(--sunken);border:1px solid var(--line);color:var(--dim)}
  .fr .urg{grid-column:2/-1;margin:4px 0 0;font-size:12px;font-weight:700;color:var(--bad)}
+ .fr .urg.passou{font-weight:400;font-size:11px;color:var(--dim)}
  .maisimg{min-height:44px;width:100%;margin:14px 0;padding:11px 16px;border-radius:10px;border:1px dashed var(--line);background:var(--card2);color:var(--muted);font:inherit;font-weight:600;cursor:pointer}
  .prop{margin:30px 0 0;padding:14px 16px;border:1px dashed var(--accent-line);border-radius:var(--r);background:var(--card2)}
  .prop h2{margin:0 0 6px;font-size:16px;color:var(--accent)}
@@ -129,7 +130,7 @@ def _tmpl() -> str:
         + '<div class="chips" id="chips"></div>'
           '<div class="barrafl" id="barra"></div>'
           '<div class="cpw"><button type="button" id="copiar">copiar lista</button>'
-          '<textarea id="cmk" readonly></textarea></div>'
+          '<textarea id="cmk" readonly aria-label="Lista para copiar"></textarea></div>'
           '<div id="vista"><p class="carregando">a carregar…</p></div>'
         + shell.fechar(_RODAPE, scripts="<script>%JS%</script>")
         + "</body></html>")
@@ -200,8 +201,12 @@ function linhaHTML(l, comImagem, comDeck) {
        não se puderam confirmar sem ler páginas de lá. */
     + (l.cm_url ? ` · <a class="cm" href="${escDados(l.cm_url)}" target="_blank"`
         + ` rel="noopener">Cardmarket ↗</a>` : '') + `</div>`
-    + (l.urgencia ? `<p class="urg">⏳ ${escDados(l.urgencia.porque || '')}`
-        + `${l.urgencia.ate ? ' — até ' + escDados(l.urgencia.ate) : ''}</p>` : '')
+    /* Uma nota com prazo que já passou (2026-10-20, M1) fica marcada e discreta:
+       o aviso a vermelho onze dias depois do prazo era uma página a mentir. */
+    + (l.urgencia ? (prazoPassou(l.urgencia)
+        ? `<p class="urg passou">prazo passado (era até ${escDados(l.urgencia.ate)})</p>`
+        : `<p class="urg">⏳ ${escDados(l.urgencia.porque || '')}`
+          + `${l.urgencia.ate ? ' — até ' + escDados(l.urgencia.ate) : ''}</p>`) : '')
     + (a ? `<p class="av ${a.grau === 'aviso' ? 'aviso' : 'nota'}">`
         + `${(a.motivos || []).indexOf('sem_pro') >= 0 ? '⚠️ <b>sem preço:</b> '
              : a.grau === 'aviso' ? '⚠️ <b>o preço não é do material que esta caixa pede.</b> '

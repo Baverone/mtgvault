@@ -1005,7 +1005,7 @@ if(!PRINT)return;
 root.querySelectorAll('li[data-card]').forEach(function(li){
   if(li.dataset.pronto)return;li.dataset.pronto='1';
   var n=li.dataset.card,prints=PRINT[n]||[];if(!prints.length)return;
-  var sel=document.createElement('select');sel.className='pick';
+  var sel=document.createElement('select');sel.className='pick';sel.setAttribute('aria-label','Edição de '+n);
   prints.forEach(function(p,i){var o=document.createElement('option');o.value=i;
     o.textContent=p.n+(p.p==null?' — s/preço':' — '+ceur(p.p))+(p.m?' ✓ tens':'');sel.appendChild(o);});
   var idx=-1,saved=localStorage.getItem(ckey(n));
@@ -1073,7 +1073,7 @@ def build(con, out_path=None):
                            {"formatos": [{"f": s["fmt"], "titulo": s["title"],
                                           "n": len(s["decks"])} for s in rep["sections"]],
                             "dados_de": today}, partes)
-    out.write_text(html_, encoding="utf-8")
+    out.write_text(paginas.com_aviso_colecao(html_, con), encoding="utf-8")
     return out, rep
 
 

@@ -1535,6 +1535,7 @@ _CSS = r"""
  .urg{font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;
    background:var(--warn-soft);color:#f5c451;margin-left:5px;white-space:nowrap}
  .urg.ja{background:var(--bad-soft);color:var(--bad)}
+ .urg.passou{background:transparent;color:var(--dim);font-weight:400}
  .urg.pend{background:#241f3a;color:#b9a8ff}
  /* DECIDIDA mas PROVISÓRIA: comprou o nonfoil para jogar e troca por foil
     quando baixar. Verde-azulado para não se confundir com o roxo do «por
@@ -2220,14 +2221,18 @@ function tileHTML(t) {
    compra sugerida é a nonfoil e a caixa continua a exigir o material do grupo. */
 function chipUrg(u) {
   if (!u) return '';
+  /* PRAZO PASSADO (2026-10-20, auditoria M1): continua a dizer-se, mas
+     discreto — a vermelho onze dias depois era um alarme que já não é. */
   const d = u.dias;
-  const quando = u.passou ? `passou há ${Math.abs(d)} d`
-    : (d === null || d === undefined) ? u.ate
-      : d === 0 ? 'é hoje' : `faltam ${d} d`;
-  const cls = u.passou || (d !== null && d !== undefined && d <= 2) ? ' ja' : '';
+  const quando = (d === null || d === undefined) ? u.ate
+    : d === 0 ? 'é hoje' : `faltam ${d} d`;
+  const cls = d !== null && d !== undefined && d <= 2 ? ' ja' : '';
   const mp = u.material_pendente || {};
-  return `<span class="urg${cls}" title="${esc(u.porque || '')}">`
-    + `⏳ até ${esc(u.ate)} · ${esc(quando)}</span>`
+  return (prazoPassou(u)
+      ? `<span class="urg passou" title="${esc(u.porque || '')}">`
+        + `prazo passado (era até ${esc(u.ate)})</span>`
+      : `<span class="urg${cls}" title="${esc(u.porque || '')}">`
+        + `⏳ até ${esc(u.ate)} · ${esc(quando)}</span>`)
     + (u.pendente ? `<span class="urg pend" title="${esc(mp.porque || '')}">`
       + `material por decidir</span>` : '')
     // A EXCEPÇÃO DECIDIDA, mas PROVISÓRIA (2026-10-04): ele comprou o nonfoil

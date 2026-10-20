@@ -177,7 +177,7 @@ def _evo_block(history):
            f'<polygon points="{area}" class="fill {cls}"/>'
            f'<polyline points="{pts}" class="line {cls}"/>{dots}{marca}</svg>')
     return (f'<div class="evo"><div class="evo-top"><span class="evo-h">Evolução do valor</span>'
-            f'<span class="evo-ind {cls}">{arrow} {pct:+.1f}% <em>desde {dates[0]}</em></span></div>'
+            f'<span class="evo-ind {cls}">{arrow} {paginas.pct(pct)} <em>desde {dates[0]}</em></span></div>'
             f'<div class="evo-axis"><span>{dates[0]}</span><span>{dates[-1]}</span></div>{svg}'
             f'{nota}</div>')
 
@@ -221,7 +221,7 @@ def build(con, out_path, *, historico=True):
         _ensure_value(con)
         _record_value(con, total_val, total_qty, today)
     history = _value_history(con) if _tem_value(con) else []
-    _write_html(out_path, ordered, total_qty, total_val, today, history)
+    _write_html(out_path, ordered, total_qty, total_val, today, history, con)
     return f"{total_qty} exemplares em {len(ordered)} coleções ({out_path.name})"
 
 
@@ -279,7 +279,7 @@ _TMPL = ("""<!doctype html><html lang="pt-PT"><head>"""
          + shell.abrir("colecao.html", "Galeria de cartas", _LEAD) + """
 <div class="wrap">
 %EVO%
-<div class="tools"><input id="q" type="search" placeholder="Procurar carta ou edição…" autocomplete="off"><span class="count" id="count"></span></div>
+<div class="tools"><input id="q" type="search" aria-label="Procurar carta ou edição" placeholder="Procurar carta ou edição…" autocomplete="off"><span class="count" id="count"></span></div>
 <div id="tabs" class="tabs"></div>
 <div id="app"></div>
 </div>""" + shell.fechar(_RODAPE, """
@@ -327,7 +327,7 @@ render("");
 </script>""") + """</body></html>""")
 
 
-def _write_html(out_path, groups, total_qty, total_val, today, history):
+def _write_html(out_path, groups, total_qty, total_val, today, history, con=None):
     eur = paginas.eur(total_val)
     html = (_TMPL
             .replace("%DATA%", json.dumps(groups, ensure_ascii=False))
@@ -338,6 +338,8 @@ def _write_html(out_path, groups, total_qty, total_val, today, history):
             # «Scryfall/Cardmarket» muito depois de o CardTrader ser a fonte.
             .replace("%FONTES%", " → ".join(precos.fontes()))
             .replace("%EVO%", _evo_block(history)))
+    if con is not None:
+        html = paginas.com_aviso_colecao(html, con)
     Path(out_path).write_text(html, encoding="utf-8")
 
 
