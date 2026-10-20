@@ -1,5 +1,47 @@
 [
  {
+  "id": "28687",
+  "data": "2026-10-19",
+  "formato": "duel-commander",
+  "evento": "Duel Commander League",
+  "jogadores": null,
+  "tier": "League",
+  "lugar": "",
+  "jogador": "ambroiseb1",
+  "deck": "Cloud (Duel Commander)",
+  "via": "comandante Cloud, Midgar Mercenary",
+  "conta": "sim",
+  "url": "https://www.mtgo.com/decklist/duel-commander-league-2026-10-1911217"
+ },
+ {
+  "id": "28689",
+  "data": "2026-10-19",
+  "formato": "pioneer",
+  "evento": "Pioneer League",
+  "jogadores": null,
+  "tier": "League",
+  "lugar": "",
+  "jogador": "GaboBales",
+  "deck": "Greasefang · Orzhov Monument",
+  "via": "assinatura Greasefang, Okiba Boss e Monument to Endurance",
+  "conta": "nao",
+  "url": "https://www.mtgo.com/decklist/pioneer-league-2026-10-1911137"
+ },
+ {
+  "id": "28858",
+  "data": "2026-10-18",
+  "formato": "legacy",
+  "evento": "1K",
+  "jogadores": 9,
+  "tier": "Presencial",
+  "lugar": "3-4",
+  "jogador": "Michael Mapson",
+  "deck": "Engineer Welder Cam",
+  "via": "assinatura Goblin Welder e Sewer-veillance Cam sem Kappa Cannoneer",
+  "conta": "nao",
+  "url": "https://mtgtop8.com/event?e=92502&d=902689&f=LE"
+ },
+ {
   "id": "28114",
   "data": "2026-10-18",
   "formato": "legacy",
@@ -40,6 +82,20 @@
   "via": "assinatura Goblin Welder e Sewer-veillance Cam sem Kappa Cannoneer",
   "conta": "sim",
   "url": "https://www.mtgo.com/decklist/legacy-challenge-16-2026-10-1812856601"
+ },
+ {
+  "id": "28865",
+  "data": "2026-10-18",
+  "formato": "legacy",
+  "evento": "Swiss Magic Masters 2",
+  "jogadores": 76,
+  "tier": "Presencial",
+  "lugar": "3-4",
+  "jogador": "Sebastien Gonnet",
+  "deck": "Aluren",
+  "via": "assinatura Aluren",
+  "conta": "sim",
+  "url": "https://mtgtop8.com/event?e=92501&d=902673&f=LE"
  },
  {
   "id": "28181",
@@ -504,6 +560,20 @@
   "url": "https://www.mtgo.com/decklist/pioneer-league-2026-10-1711137"
  },
  {
+  "id": "28761",
+  "data": "2026-10-17",
+  "formato": "premodern",
+  "evento": "Eternal Echoes II",
+  "jogadores": 21,
+  "tier": "Presencial",
+  "lugar": "2",
+  "jogador": "Tobie Hupkens",
+  "deck": "Stiflenought",
+  "via": "assinatura Phyrexian Dreadnought",
+  "conta": "nao",
+  "url": "https://mtgtop8.com/event?e=92477&d=902481&f=PREM"
+ },
+ {
   "id": "28491",
   "data": "2026-10-17",
   "formato": "premodern",
@@ -516,6 +586,20 @@
   "via": "assinatura Phyrexian Dreadnought",
   "conta": "nao",
   "url": "https://mtgtop8.com/event?e=92457&d=902352&f=PREM"
+ },
+ {
+  "id": "28781",
+  "data": "2026-10-17",
+  "formato": "premodern",
+  "evento": "Gush Endstep Invitational 3",
+  "jogadores": 23,
+  "tier": "Presencial",
+  "lugar": "5-8",
+  "jogador": "Nick Dijohn",
+  "deck": "UW Replenish",
+  "via": "assinatura Replenish sem Argothian Enchantress nem Enchantress's Presence",
+  "conta": "nao",
+  "url": "https://mtgtop8.com/event?e=92476&d=902476&f=PREM"
  },
  {
   "id": "28488",
@@ -544,6 +628,34 @@
   "via": "assinatura Phyrexian Dreadnought",
   "conta": "nao",
   "url": "https://mtgtop8.com/event?e=92458&d=902361&f=PREM"
+ },
+ {
+  "id": "28773",
+  "data": "2026-10-17",
+  "formato": "premodern",
+  "evento": "Main Event",
+  "jogadores": 52,
+  "tier": "Presencial",
+  "lugar": "5-8",
+  "jogador": "Dili",
+  "deck": "Stiflenought",
+  "via": "assinatura Phyrexian Dreadnought",
+  "conta": "sim",
+  "url": "https://mtgtop8.com/event?e=92479&d=902500&f=PREM"
+ },
+ {
+  "id": "28745",
+  "data": "2026-10-17",
+  "formato": "premodern",
+  "evento": "Road to Nationals",
+  "jogadores": 18,
+  "tier": "Presencial",
+  "lugar": "2",
+  "jogador": "João Diniz",
+  "deck": "Stiflenought",
+  "via": "assinatura Phyrexian Dreadnought",
+  "conta": "nao",
+  "url": "https://mtgtop8.com/event?e=92528&d=902876&f=PREM"
  },
  {
   "id": "28481",
@@ -586,6 +698,20 @@
   "via": "comandante Cloud, Midgar Mercenary",
   "conta": "sim",
   "url": "https://mtgtop8.com/event?e=92382&d=901703&f=EDH"
+ },
+ {
+  "id": "28742",
+  "data": "2026-10-16",
+  "formato": "duel-commander",
+  "evento": "Wool Cup 208",
+  "jogadores": 9,
+  "tier": "Presencial",
+  "lugar": "1",
+  "jogador": "Xu Kejie",
+  "deck": "Cloud (Duel Commander)",
+  "via": "comandante Cloud, Midgar Mercenary",
+  "conta": "sim",
+  "url": "https://mtgtop8.com/event?e=92470&d=902442&f=EDH"
  },
  {
   "id": "27930",
@@ -1342,89 +1468,5 @@
   "via": "assinatura Replenish sem Argothian Enchantress nem Enchantress's Presence",
   "conta": "sim",
   "url": "https://www.mtgo.com/decklist/premodern-challenge-16-2026-10-1312856198"
- },
- {
-  "id": "27761",
-  "data": "2026-10-12",
-  "formato": "legacy",
-  "evento": "KMCQ",
-  "jogadores": 26,
-  "tier": "Presencial",
-  "lugar": "2",
-  "jogador": "Minoue Hiroyuki",
-  "deck": "Aluren",
-  "via": "assinatura Aluren",
-  "conta": "nao",
-  "url": "https://mtgtop8.com/event?e=92316&d=901249&f=LE"
- },
- {
-  "id": "26607",
-  "data": "2026-10-12",
-  "formato": "modern",
-  "evento": "Modern Challenge 16",
-  "jogadores": null,
-  "tier": "Challenge",
-  "lugar": "",
-  "jogador": "TotheparkTeam",
-  "deck": "Affinity (Mox Opal) · Izzet Affinity (Weapons)",
-  "via": "assinatura Weapons Manufacturing e Mox Opal",
-  "conta": "sim",
-  "url": "https://www.mtgo.com/decklist/modern-challenge-16-2026-10-1212856487"
- },
- {
-  "id": "26635",
-  "data": "2026-10-12",
-  "formato": "modern",
-  "evento": "Modern League",
-  "jogadores": null,
-  "tier": "League",
-  "lugar": "",
-  "jogador": "bbotonline",
-  "deck": "Grinding Station",
-  "via": "assinatura Mox Opal e Grinding Station sem Kethis, the Hidden Hand",
-  "conta": "nao",
-  "url": "https://www.mtgo.com/decklist/modern-league-2026-10-1211161"
- },
- {
-  "id": "26652",
-  "data": "2026-10-12",
-  "formato": "pauper",
-  "evento": "Pauper Challenge 32",
-  "jogadores": null,
-  "tier": "Challenge",
-  "lugar": "",
-  "jogador": "LuffyDoChapeuDePalha",
-  "deck": "Affinity (Luffy)",
-  "via": "assinatura Myr Enforcer",
-  "conta": "nao",
-  "url": "https://www.mtgo.com/decklist/pauper-challenge-32-2026-10-1212856189"
- },
- {
-  "id": "26844",
-  "data": "2026-10-12",
-  "formato": "pioneer",
-  "evento": "Pioneer League",
-  "jogadores": null,
-  "tier": "League",
-  "lugar": "",
-  "jogador": "EugeneSander",
-  "deck": "Greasefang · Orzhov Monument",
-  "via": "assinatura Greasefang, Okiba Boss e Monument to Endurance",
-  "conta": "nao",
-  "url": "https://www.mtgo.com/decklist/pioneer-league-2026-10-1211137"
- },
- {
-  "id": "27259",
-  "data": "2026-10-12",
-  "formato": "premodern",
-  "evento": "Xpress #3 - Agus Arbol",
-  "jogadores": 21,
-  "tier": "Presencial",
-  "lugar": "3-4",
-  "jogador": "Rubin",
-  "deck": "Stiflenought",
-  "via": "assinatura Phyrexian Dreadnought",
-  "conta": "nao",
-  "url": "https://mtgtop8.com/event?e=92209&d=900478&f=PREM"
  }
 ]

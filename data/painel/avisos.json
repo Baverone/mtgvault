@@ -1,55 +1,34 @@
 [
  {
   "id": "000",
-  "gravidade": "alta",
-  "deck": "Greasefang",
-  "aviso": "106 cartas trocadas de uma vez",
-  "detalhe": "de rarakkyo 10/10 para rosici0700 17/10: nao e a lista a evoluir, e outro deck — o emparelhador trocou de arquetipo. Ver se a assinatura ainda separa o deck."
- },
- {
-  "id": "001",
   "gravidade": "media",
   "deck": "Cloud (Duel Commander)",
   "aviso": "97 cartas, nao 100",
   "detalhe": "a lista de referencia foi lida incompleta."
  },
  {
-  "id": "002",
+  "id": "001",
   "gravidade": "media",
   "deck": "Cloud (Duel Commander)",
   "aviso": "sem lista de McWinSauce com ['Cloud, Midgar Mercenary']",
   "detalhe": "nenhuma lista que conte serve hoje este deck; fica a de McWinSauce 31/08. Se se repetir todos os dias, a assinatura ou o jogador já não existem no metagame."
  },
  {
+  "id": "002",
+  "gravidade": "media",
+  "deck": "Grinding Station",
+  "aviso": "Grinding Station: 2 -> 1",
+  "detalhe": "a carta que da nome ao deck desceu de copias nesta troca."
+ },
+ {
   "id": "003",
-  "gravidade": "media",
-  "deck": "Izzet Affinity (Kappa Cannoneer)",
-  "aviso": "voltou a uma lista como a de wild88plk 13/10",
-  "detalhe": "deixada a 16/10: o deck anda a saltar entre dois arquetipos que a assinatura nao separa."
- },
- {
-  "id": "004",
-  "gravidade": "media",
-  "deck": "Stiflenought (Luffy)",
-  "aviso": "voltou a uma lista como a de LuffyDoChapeuDePalha 13/10",
-  "detalhe": "deixada a 18/10: o deck anda a saltar entre dois arquetipos que a assinatura nao separa."
- },
- {
-  "id": "005",
-  "gravidade": "media",
-  "deck": "Stiflenought (Spock)",
-  "aviso": "voltou a uma lista como a de SpockVidaLoka 02/10",
-  "detalhe": "deixada a 18/10: o deck anda a saltar entre dois arquetipos que a assinatura nao separa."
- },
- {
-  "id": "006",
   "gravidade": "baixa",
   "deck": "Cloud (Duel Commander)",
-  "aviso": "lista de referencia com 49 dias",
+  "aviso": "lista de referencia com 50 dias",
   "detalhe": "a mais recente que serve este deck e de McWinSauce 31/08."
  },
  {
-  "id": "007",
+  "id": "004",
   "gravidade": "baixa",
   "deck": "Psychatog",
   "aviso": "53% do núcleo já está nos teus decks (10 de 19 cartas)",
