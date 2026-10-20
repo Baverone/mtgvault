@@ -507,6 +507,12 @@ function fotoVerdadeHTML() {
 function estadoHTML() {
   const e = D.estado;
   if (!e) return '';
+  /* 2026-10-20: o estado está ADIADO — só frentes, sem lista curta e sem avisos. */
+  if (e.adiado) return `<section class="foto"><h2>🔎 O estado das cartas `
+    + `<span class="n">${escDados(e.frase)}</span></h2>`
+    + `<p class="sub">Decisão tua de 20/10: <i>«vou só tirar fotos de frentes»</i>. `
+    + `Uma foto de frente prova a carta e a quantidade; o estado fica por `
+    + `verificar e ninguém to pede.</p></section>`;
   const g = e.grades || [];
   const a = e.acerto || {};
   const lc = e.lista_curta || {};
@@ -1318,6 +1324,16 @@ def _estado_idx(con, cache: dict | None = None) -> tuple[dict, dict]:
     # página. Sem cache (um teste, o CLI) continua a funcionar e a pagar.
     cache = {} if cache is None else cache
     p = estado.progresso(con, cache)
+    if estado.adiado():
+        # 2026-10-20: o estado está adiado («vou só tirar fotos de frentes»). A
+        # página diz isso numa linha, sem lista curta e sem «por verificar» a
+        # piscar — o método volta quando o `estado_cartas.adiado` sair.
+        from mtgvault import fotos as _fm                       # noqa: PLC0415
+        q = p["cartas"]
+        return ({"adiado": True, "total_cartas": q["total"],
+                 "frase": (f"{q['confirmado']} de {q['total']} medidas; "
+                           f"{estado.FRASE_ADIADO}")},
+                {"fotos": [], "barra": _fm.barra([])})
     lc = estado.lista_curta(con, cache=cache)
     imp = estado.impacto(con, cache=cache)
     porques: dict[str, int] = {}

@@ -1,6 +1,9 @@
 DECKS PROCESSADOS -- AS FOTOS QUE JA ENTRARAM
 =============================================
 
+SO FRENTES (20/10/2026): as fotos sao so de frente; o estado das cartas
+fica "por verificar", sem avisos.
+
 Esta pasta e o espelho de «Decks Por Processar». Nao largas aqui nada: e o
 vault que MOVE para aqui a foto de uma carta quando ela entra na colecao,
 para a mesma pasta <deck>\<carta (N)>\ de onde ela saiu. A foto nunca se

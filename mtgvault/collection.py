@@ -804,6 +804,12 @@ def _estado_da_linha(con: sqlite3.Connection, row: dict, foto: str | None,
     from . import estado as est_mod, fotos as fm, fotosite     # noqa: PLC0415
     grade = (row.get("condition") or "").strip() or None
     motivos = (row.get("condition_notes") or "").strip()
+    if est_mod.adiado():
+        # 2026-10-20: o estado está adiado — não se grava escalão nenhum, nem
+        # sequer como proposta recusada no `condition_log`. A carta entra.
+        return {"grade": None, "verso": None,
+                "nota": (f"{est_mod.FRASE_ADIADO}: escalão {grade} ignorado"
+                         if grade else "")}
     if foto and fotosite.e_verso(foto):
         # O nome diz verso e o leitor leu cartas: o nome está errado.
         return {"grade": None, "verso": None,

@@ -625,6 +625,23 @@ def _seccao_estado(con) -> list[str]:
     `cli estado criterio` imprime) — dois sítios a montá-lo davam dois critérios.
     """
     from . import estado                                     # noqa: PLC0415
+    if estado.adiado():
+        # 2026-10-20: *"vamos esquecer o estado então, vou só tirar fotos de
+        # frentes"*. O critério não se manda ler: não há nada a avaliar.
+        return [
+            "## O ESTADO DAS CARTAS — ADIADO (20/10)",
+            "",
+            "O André decidiu: *«vamos esquecer o estado então, vou só tirar "
+            "fotos de frentes»*. Por isso:",
+            "",
+            "- **não escrevas `condition` nem `condition_notes`** — ficam vazios "
+            "(«por verificar»), em todas as linhas;",
+            "- as fotos são **frentes**: identifica as cartas como sempre;",
+            "- uma foto cujo nome termine em `-v` é o verso da foto com o mesmo "
+            "nome sem o `-v` (só existe se o nome já o trouxer): não leva linhas "
+            "próprias. Se vires CARTAS nela, escreve-as como numa frente.",
+            "",
+        ]
     return [
         "## O ESTADO DAS CARTAS — ler antes de avaliar",
         "",

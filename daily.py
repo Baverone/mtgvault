@@ -800,6 +800,13 @@ def main():
         def _estado():
             from mtgvault import estado as _est               # noqa: PLC0415
             n = _est.marcar_omissao(con)
+            if _est.adiado():
+                # 2026-10-20: o estado está adiado. O passo corre (marcar a
+                # origem `omissao` não mexe em nada) mas diz só isto: sem
+                # acerto, sem «erros repetidos», sem reescrever o critério.
+                q = _est.progresso(con)["cartas"]
+                return (f"{q['confirmado']} de {q['total']} medidas; "
+                        f"{_est.FRASE_ADIADO}")
             _est.escrever_aprendido(con)
             p = _est.progresso(con)
             a = p["acerto"]

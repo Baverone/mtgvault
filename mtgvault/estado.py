@@ -201,6 +201,28 @@ MOTIVO_SEM_VERSO = ("sem foto do verso — o estado fica por verificar e não se
                     "inventa um escalão")
 
 
+# O ESTADO ESTÁ ADIADO (André, 2026-10-20, à letra): *"vamos esquecer o estado
+# então, vou só tirar fotos de frentes, para já é inconcebível fazer tudo
+# isso"*. SUSPENSO, não revogado: o método (critério, factores, lista curta,
+# `da_foto`) fica no código, dormente, e volta pondo `estado_cartas.adiado` a
+# `false`. Enquanto estiver adiado: (1) a recolha das pastas NÃO emparelha por
+# ordem de captura — um `-v` só existe se o nome original o trouxer; (2) o
+# import não grava escalão nenhum, mesmo que o leitor o proponha; (3) o
+# `esperadas.md` não pede escalão; (4) nada avisa da falta de verso (a lista
+# curta sai vazia). A omissão (sem a chave) é `False`: é o config que decide.
+FRASE_ADIADO = "estado adiado por decisão de 20/10"
+
+
+def adiado(cfg: dict | None = None) -> bool:
+    """O estado das cartas está suspenso (`colecao_config.json → estado_cartas.
+    adiado`)? A pergunta vive aqui e só aqui."""
+    if cfg is None:
+        from . import sources                                # noqa: PLC0415
+        cfg = sources.config()
+    b = (cfg or {}).get("estado_cartas")
+    return bool(isinstance(b, dict) and b.get("adiado"))
+
+
 def medido(origem: str | None) -> bool:
     """Este juízo conta como medido? Num sítio só.
 
@@ -1103,6 +1125,13 @@ def lista_curta(con, *, inclui_venda: bool | None = None,
     cara para a mais barata, que é a ordem que ele escolheu a 2026-10-01.
     """
     from . import collection, fotos as fm, loadout, paginas, venda
+    if adiado():
+        # 20/10: sem avisos de verso. A lista não se pede a ninguém.
+        return {"fotos": [], "linhas": [], "cartas": 0, "valor": 0.0,
+                "cortadas": 0, "inclui_venda": False, "barra": fm.barra([]),
+                "porque": PORQUE_VERSO, "adiado": True,
+                "nota": FRASE_ADIADO[0].upper() + FRASE_ADIADO[1:]
+                        + ": só frentes, sem lista de versos."}
     t = _terras(con, cache)
     duais, shocks, fetches = t["duais"], t["shocks"], t["fetches"]
     inclui_venda = venda.mostrar() if inclui_venda is None else bool(inclui_venda)

@@ -209,6 +209,17 @@ name,set_code,collector_number,quantity,finish,language,condition,purpose,sub_co
 
 ## O estado e os versos (André, 2026-10-03)
 
+> **SUSPENSO A 2026-10-20 — vale isto e não o resto da secção.** As palavras
+> dele: *«vamos esquecer o estado então, vou só tirar fotos de frentes, para já
+> é inconcebível fazer tudo isso»*. Enquanto `estado_cartas.adiado` estiver a
+> `true` no `colecao_config.json`: **não escrevas `condition` nem
+> `condition_notes`** (ficam vazios — «por verificar» — em todas as linhas; o
+> import ignora um escalão que venha); as fotos são **frentes** e a recolha já
+> não põe `-v` por ordem de captura. Um `-v` só existe se o NOME original o
+> trouxer: aí é o verso da frente com o mesmo nome e não leva linhas (se vires
+> cartas nele, escreve-as como numa frente). Não há lista curta de versos.
+> O método abaixo fica guardado, dormente — **suspenso, não revogado**.
+
 As palavras dele: *«verso as dos decks e as que são para guardar, para já»* e
 *«procuras como são avaliadas as cartas, depois com base nas minhas próprias
 fotos, vais melhorando o teu critério»*.

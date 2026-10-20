@@ -1241,6 +1241,66 @@ def fotos_nas_pastas(cfg: dict | None = None,
     return out
 
 
+def _pelo_nome(lote: list[dict], pend: Path, base: Path, origens: dict,
+               out: dict, agora: float, sossego_s: float) -> None:
+    """A recolha de UMA pasta com o estado ADIADO (André, 2026-10-20: *"vou só
+    tirar fotos de frentes"*). Cada foto é uma FRENTE, salvo uma cujo nome
+    original termine em `-v` e cuja frente (o mesmo nome sem o `-v`) esteja na
+    mesma pasta: essa é o verso dela e herda-lhe o nome novo com `-v`, como
+    sempre. Nunca se põe um `-v` por ordem de captura. Um `-v` sem frente ao
+    lado é uma frente (as cartas ganham ao sufixo). Sem `sem_verso`: com o
+    estado adiado não há verso a pedir a ninguém."""
+    from . import fotosite                                   # noqa: PLC0415
+    suf = fotosite.SUFIXO_VERSO
+    radicais = {i["ficheiro"].stem.lower(): i for i in lote}
+    frentes, versos = [], []
+    for it in lote:
+        st = it["ficheiro"].stem.lower()
+        if st.endswith(suf) and st[:-len(suf)] in radicais:
+            versos.append((it, radicais[st[:-len(suf)]]))
+        else:
+            frentes.append(it)
+    novo: dict[int, str] = {}                 # id(frente) -> nome em pendentes
+
+    def _mover(it: dict, nome: str, verso: bool) -> None:
+        f = it["ficheiro"]
+        shutil.move(str(f), str(pend / nome))
+        origens[nome] = {"rel": f.parent.relative_to(base).as_posix(),
+                         "de": f.name,
+                         "em": _dt.datetime.now().replace(
+                             microsecond=0).isoformat(sep=" ")}
+        out["recolhidas"].append({"de": f.name, "pasta": it["pasta"],
+                                  "slot": it["slot"], "tipo": it["tipo"],
+                                  "para": nome, "verso": verso})
+        if verso:
+            out["pares"] += 1
+
+    for it in frentes:
+        f = it["ficheiro"]
+        if agora - it["mtime"] < sossego_s:
+            out["a_chegar"].append({"ficheiro": f.name, "pasta": it["pasta"]})
+            continue
+        if (fotosite.origem(f.name) and not fotosite.e_verso(f.name)
+                and not (pend / f.name).exists()):
+            nome = f.name                     # voltou de uma leitura anterior
+        else:
+            quando = _dt.datetime.fromtimestamp(it["mtime"]).replace(microsecond=0)
+            nome = _nome_livre(pend, it["tipo"],
+                               it.get("familia") if it["tipo"] == ALVO_FAMILIA
+                               else it["slot"], quando,
+                               f.suffix.lstrip(".").lower())
+        _mover(it, nome, False)
+        novo[id(it)] = nome
+    for it, fr in versos:
+        f = it["ficheiro"]
+        if id(fr) not in novo or agora - it["mtime"] < sossego_s:
+            # A frente ainda está a chegar: o verso espera com ela.
+            out["a_chegar"].append({"ficheiro": f.name, "pasta": it["pasta"]})
+            continue
+        nome = fotosite.nome_do_verso(novo[id(fr)])
+        _mover(it, str(Path(nome).with_suffix(f.suffix.lower())), True)
+
+
 def recolher_das_pastas(cfg: dict | None = None, *,
                         raiz: Path | str | None = None,
                         agora: float | None = None,
@@ -1284,6 +1344,10 @@ def recolher_das_pastas(cfg: dict | None = None, *,
     dele), porque no momento em que os fotografa ainda não sabe o que vai guardar
     nem o que vai vender. Quem precisa de verso fora dos decks sai depois na LISTA
     CURTA (`estado.lista_curta`), uma cópia de cada vez.
+
+    [SUSPENSO A 2026-10-20] com `estado_cartas.adiado` (*"vou só tirar fotos de
+    frentes"*) nada disto corre: cada pasta passa pelo `_pelo_nome` — tudo é
+    frente, e um verso só existe se o nome original já trouxer o `-v`.
     """
     from . import fotosite                                   # noqa: PLC0415
     agora = time.time() if agora is None else agora
@@ -1324,6 +1388,8 @@ def recolher_das_pastas(cfg: dict | None = None, *,
         grupos.setdefault(f.parent, []).append(it)
     base = pasta_novas(raiz)
     origens = ler_origens(pend)
+    from . import estado as _estado                           # noqa: PLC0415
+    adiado_estado = _estado.adiado(cfg)
     for pasta, lote in sorted(grupos.items()):
         # UMA FOTO QUE JÁ PAROU NÃO SE RELÊ TODAS AS NOITES (2026-10-13). Quando
         # uma linha não entra, o `arrumar_fotos` devolve a foto à pasta da carta
@@ -1349,6 +1415,12 @@ def recolher_das_pastas(cfg: dict | None = None, *,
         novas = [i for i in lote if agora - i["mtime"] < sossego_s]
         # A família são cartas de DECK (os versos contam), por isso emparelha
         # como uma pasta de caixa; só os Extras ficam de frente só.
+        # SÓ FRENTES (André, 2026-10-20): com o estado adiado NÃO se emparelha
+        # por ordem de captura — três frentes seguidas eram lidas como frente +
+        # verso + frente. Um verso só existe se o NOME o trouxer (`_pelo_nome`).
+        if adiado_estado:
+            _pelo_nome(lote, pend, base, origens, out, agora, sossego_s)
+            continue
         empareilha = lote[0]["tipo"] in ("caixa", ALVO_FAMILIA)
         if novas and empareilha:
             # O grupo inteiro espera: emparelhar com um ficheiro a meio da cópia

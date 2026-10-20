@@ -807,6 +807,113 @@ def caso_um_lote_partido_leva_o_juizo_consigo():
     assert "cantos" in a["motivos"], a
 
 
+# ===========================================================================
+# 9. SÓ FRENTES: O ESTADO ADIADO (André, 2026-10-20)
+# ===========================================================================
+# *"vamos esquecer o estado então, vou só tirar fotos de frentes, para já é
+# inconcebível fazer tudo isso"*. Os casos de cima continuam a valer com o
+# estado LIGADO (o método fica dormente); estes ligam o `estado_cartas.adiado`.
+def _larga(pasta, nomes, t0):
+    import os as _os
+    pasta.mkdir(parents=True, exist_ok=True)
+    for i, n in enumerate(nomes):
+        f = pasta / n
+        f.write_bytes(b"\xff\xd8\xff\xe0 x")
+        _os.utime(f, (t0 + i, t0 + i))
+
+
+def caso_adiado_tres_frentes_seguidas_nao_ganham_verso():
+    """O ponto perigoso: com mtimes seguidos, a recolha antiga punha `-v` na
+    segunda foto e lia-a como verso da primeira. Com o estado adiado nenhuma
+    ganha `-v` e nenhuma é verso."""
+    import time as _time
+    escreve_cfg(estado_cartas={"adiado": True})
+    try:
+        raiz = _TMP / "so-frentes"
+        (raiz / "pendentes").mkdir(parents=True, exist_ok=True)
+        _larga(raiz / fotos.PASTA_NOVAS / "Blue Farm" / "Mox Diamond (1)",
+               ["IMG_1.jpg", "IMG_2.jpg", "IMG_3.jpg"], _time.time() - 3600)
+        r = fotos.recolher_das_pastas(raiz=raiz)
+        assert len(r["recolhidas"]) == 3, r
+        assert r["pares"] == 0, r
+        assert not any(x["verso"] for x in r["recolhidas"]), r
+        assert not any(fotosite.e_verso(x["para"]) for x in r["recolhidas"]), r
+        assert not r["sem_verso"], r
+        assert len({x["para"] for x in r["recolhidas"]}) == 3, r
+    finally:
+        escreve_cfg()
+
+
+def caso_adiado_um_par_com_v_no_nome_continua_a_emparelhar():
+    """O `-v` que o NOME já traz (as duas de 20/10 em «Consign to Memory (3)»)
+    continua a ser o verso da frente com o mesmo radical — mesmo largado ANTES
+    dela. E um `-v` sem frente ao lado é uma frente (as cartas ganham)."""
+    import time as _time
+    escreve_cfg(estado_cartas={"adiado": True})
+    try:
+        raiz = _TMP / "so-frentes-par"
+        (raiz / "pendentes").mkdir(parents=True, exist_ok=True)
+        base_ = "chat-mox-opal-consign-to-memory-20261020-1"
+        _larga(raiz / fotos.PASTA_NOVAS / "Blue Farm" / "Consign to Memory (3)",
+               [f"{base_}-v.jpg", f"{base_}.jpg", "sozinha-v.jpg"],
+               _time.time() - 3600)
+        r = fotos.recolher_das_pastas(raiz=raiz)
+        por = {x["de"]: x for x in r["recolhidas"]}
+        assert len(por) == 3, r
+        fr, ve = por[f"{base_}.jpg"], por[f"{base_}-v.jpg"]
+        assert not fr["verso"] and ve["verso"], r
+        assert fotosite.par_da_frente(ve["para"]) == fr["para"], (ve, fr)
+        assert not por["sozinha-v.jpg"]["verso"], r
+        assert not fotosite.e_verso(por["sozinha-v.jpg"]["para"]), r
+        assert r["pares"] == 1, r
+    finally:
+        escreve_cfg()
+
+
+def caso_adiado_uma_copia_sem_estado_nao_gera_aviso_em_lado_nenhum():
+    """Sem lista curta, sem escalão gravado, sem pedido de `condition` no
+    `esperadas.md` e sem «por verificar» na página — mesmo com RL e duais."""
+    escreve_cfg(estado_cartas={"adiado": True})
+    try:
+        con = base()
+        rl = copia(con, "Mox Diamond", "sth", q=1)
+        copia(con, "Underground Sea", "3ed", q=1)
+        assert estado.adiado() is True
+        lc = estado.lista_curta(con)
+        assert lc["linhas"] == [] and lc["fotos"] == [] and lc["cartas"] == 0, lc
+        # o import IGNORA um escalão proposto, e nem o regista como recusado
+        n0 = con.execute("SELECT COUNT(*) FROM condition_log").fetchone()[0]
+        res = collection._estado_da_linha(
+            con, linha("Mox Diamond", "sth", "x.jpg", cond="EX", verso_ok="sim"),
+            "x.jpg", [rl])
+        assert res["grade"] is None and "adiado" in res["nota"], res
+        assert con.execute("SELECT COUNT(*) FROM condition_log"
+                           ).fetchone()[0] == n0
+        assert estado.actual(con, rl)["origem"] == estado.ORIGEM_OMISSAO
+        # o esperadas.md não manda avaliar
+        from mtgvault import encomendas                      # noqa: PLC0415
+        sec = "\n".join(encomendas._seccao_estado(con))
+        assert "ADIADO" in sec and "não escrevas `condition`" in sec, sec
+        assert "help.cardmarket.com" not in sec, sec
+        # a página da Arrumação: uma linha, sem lista curta nem «por verificar»
+        sys.path.insert(0, str(RAIZ))
+        import arrumacao                                      # noqa: PLC0415
+        idx, parte = arrumacao._estado_idx(con)
+        assert idx.get("adiado") is True, idx
+        assert "lista_curta" not in idx and "por_verificar" not in idx, idx
+        assert parte["fotos"] == [], parte
+        assert estado.FRASE_ADIADO in idx["frase"], idx
+    finally:
+        escreve_cfg()
+
+
+def caso_o_config_a_serio_tem_o_estado_adiado():
+    """A decisão de 20/10 vive no `colecao_config.json` a sério — sem a chave a
+    recolha voltava a emparelhar por ordem de captura."""
+    cfg = json.loads((RAIZ / "colecao_config.json").read_text(encoding="utf-8"))
+    assert estado.adiado(cfg) is True, cfg.get("estado_cartas")
+
+
 CASOS = [v for k, v in sorted(globals().items()) if k.startswith("caso_")]
 
 if __name__ == "__main__":

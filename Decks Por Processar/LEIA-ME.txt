@@ -1,6 +1,9 @@
 COMO TIRAR E ONDE LARGAR AS FOTOS DAS CARTAS
 ============================================
 
+SO FRENTES (20/10/2026): o estado fica "por verificar", sem avisos.
+O vault ja nao emparelha frente/verso pela ordem das fotos (ver COMO FOTOGRAFAR.txt).
+
 AS DUAS ARVORES (13/10/2026) -- LE ISTO PRIMEIRO
 ------------------------------------------------
 Esta pasta chama-se agora «Decks Por Processar» (era «Colocar fotos da
@@ -188,6 +191,9 @@ agora UMA PASTA POR CARTA, com a quantidade entre parentesis.
     Mox Opal (4)\
     Urza's Saga (4)\
     Welding Jar (1)\
+
+[SUSPENSO A 20/10/2026: agora larga SO A FRENTE. O que segue sobre o verso
+fica como historico, para o dia em que o estado voltar.]
 
 Dentro de cada uma larga DUAS fotos:
 
