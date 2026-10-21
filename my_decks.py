@@ -38,6 +38,19 @@ volta a ser avaliada como sempre. Só aquela lista, só aquele deck. O caso: a
 27439 (howa, 15/10). Desfazer é `py my_decks.py aceitar "<deck>" <decklist_id>`
 (desde 2026-10-21): grava `motivo = 'rejeicao_levantada'`, a rejeição fica no
 histórico e deixa de valer — nada se apaga.
+
+**E UMA LISTA PODE FICAR FIXA (2026-10-21, à tarde).** *"fica a do Alakai 17/10
+… tem de ficar fixa: a escolha automática não pode voltar a trocá-la amanhã"*.
+Aceitar não chega: o `aceitar` põe a lista no deck, mas na noite seguinte a
+procura volta a escolher a mais recente com a assinatura (a do howa de 19/10, ou
+uma de amanhã que passe o `avaliar_troca`). `py my_decks.py fixar "<deck>" <id>`
+aceita a lista e grava `motivo = 'fixada'`; enquanto a fixação estiver de pé
+(`fixada()`, a decisão mais recente entre `fixada` e `fixacao_levantada`) a
+procura do deck devolve ESSA lista e mais nenhuma. Se a poda de 30 dias a levar
+da `decklists`, o deck fica com as `deck_cards` que tem — nunca cai para a
+procura automática. `py my_decks.py soltar "<deck>"` grava `fixacao_levantada`.
+E um `aceitar` da lista que o deck JÁ TEM grava `motivo = 'aceite'`: era um
+no-op calado, e a decisão dele não ficava escrita em lado nenhum.
 """
 from __future__ import annotations
 
@@ -149,6 +162,35 @@ def rejeitadas(con: sqlite3.Connection, deck: str, fmt: str) -> list[int]:
         (deck, fmt))]
 
 
+def fixada(con: sqlite3.Connection, deck: str, fmt: str) -> int | None:
+    """O `decklist_id` em que ele fixou este deck, ou `None`. Vale a decisão
+    mais recente entre `fixada` e `fixacao_levantada` (nada se apaga)."""
+    r = con.execute(
+        "SELECT motivo, para_decklist_id FROM deck_lista_trocas WHERE deck = ? "
+        "AND formato = ? AND motivo IN ('fixada', 'fixacao_levantada') "
+        "ORDER BY id DESC LIMIT 1", (deck, fmt)).fetchone()
+    return r[1] if r and r[0] == "fixada" else None
+
+
+def _a_fixada(con: sqlite3.Connection, deck: str, fmt: str):
+    """A linha da decklist fixada (a forma que as procuras devolvem), ou `None`
+    se a poda já a levou."""
+    lid = fixada(con, deck, fmt)
+    if lid is None:
+        return None
+    return con.execute("SELECT id, source, player, event_date FROM decklists WHERE id = ?",
+                       (lid,)).fetchone()
+
+
+def _procura(con, deck, fmt, auto):
+    """A procura de um deck: a lista fixada, se houver fixação (mesmo que a
+    decklist já tenha saído da base — aí `None`, e o deck fica com o que tem);
+    senão a automática."""
+    if fixada(con, deck, fmt) is not None:
+        return _a_fixada(con, deck, fmt)
+    return auto(rejeitadas(con, deck, fmt))
+
+
 def _latest(con: sqlite3.Connection, fmt: str, cards: list[str], fora=None):
     """Decklist mais recente do formato que contém TODAS as cartas-assinatura
     (e NENHUMA das prefixadas com "!") e tem um mainboard completo. As exclusões
@@ -214,19 +256,19 @@ def seguidos() -> list[dict]:
     for name, fmt, cards in FOLLOWED:
         out.append({"deck": name, "formato": fmt, "como": "assinatura",
                     "assinatura": [c for c in cards if not c.startswith("!")],
-                    "procura": lambda con, n=name, f=fmt, c=cards: _latest(
-                        con, f, c, rejeitadas(con, n, f)),
+                    "procura": lambda con, n=name, f=fmt, c=cards: _procura(
+                        con, n, f, lambda fora: _latest(con, f, c, fora)),
                     "falta": "sem lista"})
     for name, fmt, player in FOLLOWED_PLAYERS:
         out.append({"deck": name, "formato": fmt, "como": "jogador", "assinatura": [],
-                    "procura": lambda con, n=name, f=fmt, p=player: _latest_player(
-                        con, f, p, rejeitadas(con, n, f)),
+                    "procura": lambda con, n=name, f=fmt, p=player: _procura(
+                        con, n, f, lambda fora: _latest_player(con, f, p, fora)),
                     "falta": f"sem lista de {player}"})
     for name, fmt, player, cards in FOLLOWED_PLAYER_DECK:
         out.append({"deck": name, "formato": fmt, "como": "jogador+cartas",
                     "assinatura": list(cards),
-                    "procura": lambda con, n=name, f=fmt, p=player, c=cards: _latest_player_deck(
-                        con, f, p, c, rejeitadas(con, n, f)),
+                    "procura": lambda con, n=name, f=fmt, p=player, c=cards: _procura(
+                        con, n, f, lambda fora: _latest_player_deck(con, f, p, c, fora)),
                     "falta": f"sem lista de {player} com {cards}"})
     return out
 
@@ -356,6 +398,11 @@ def refresh(con: sqlite3.Connection, hoje: str | None = None) -> str:
             n = ler_nota(row["notes"] if row else None)
             fica = (f" (fica a de {n['data']}, {n['jogador']} #{n['decklist_id']})"
                     if n else "")
+            fx = fixada(con, s["deck"], s["formato"])
+            if fx is not None:
+                out.append(f"{s['deck']}: fixado em #{fx} (a decklist ja saiu da base; "
+                           f"fica a lista gravada){fica}")
+                continue
             out.append(f"{s['deck']}: {s['falta']}{fica}")
     con.commit()
     return "; ".join(out)
@@ -394,9 +441,66 @@ def aceitar(con: sqlite3.Connection, deck: str, decklist_id: int | None = None,
                       _cartas_do_deck(con, row["id"]) if row else [], dl,
                       _cartas_da_lista(con, dl["id"]))
         out.append(f"{deck}: rejeicao de #{dl['id']} levantada")
+    fx = fixada(con, deck, s["formato"])
+    if fx is not None and fx != dl["id"]:
+        raise ValueError(f"{deck} esta fixado em #{fx}; para outra lista usa fixar, "
+                         f"ou soltar primeiro")
+    n_antes = con.execute("SELECT COUNT(*) FROM deck_lista_trocas").fetchone()[0]
     _store(con, deck, s["formato"], dl, out, hoje, s["assinatura"], forcar=True)
+    if con.execute("SELECT COUNT(*) FROM deck_lista_trocas").fetchone()[0] == n_antes:
+        # A lista já era a do deck: o `_store` não escreve nada, e a decisão
+        # dele ficava por registar (2026-10-21).
+        row = con.execute("SELECT id, notes FROM decks WHERE name = ? AND format = ?",
+                          (deck, s["formato"])).fetchone()
+        cartas = _cartas_do_deck(con, row["id"])
+        _gravar_troca(con, row["id"], deck, s["formato"], hoje, "aceite",
+                      ler_nota(row["notes"]), cartas, dl, cartas)
+        out.append(f"{deck}: #{dl['id']} marcada como aceite por ti")
     con.commit()
     return "; ".join(out)
+
+
+def fixar(con: sqlite3.Connection, deck: str, decklist_id: int,
+          hoje: str | None = None) -> str:
+    """Aceita `decklist_id` (o `aceitar`, com o levantar da rejeição) e FIXA-A:
+    a procura do deck passa a devolver só esta lista. Repetir é um no-op."""
+    s = next((x for x in seguidos() if x["deck"] == deck), None)
+    if s is None:
+        raise ValueError(f"deck nao seguido: {deck!r}")
+    if fixada(con, deck, s["formato"]) == decklist_id:
+        return f"{deck}: ja estava fixado em #{decklist_id}"
+    if fixada(con, deck, s["formato"]) is not None:
+        soltar(con, deck, hoje)
+    out = [aceitar(con, deck, decklist_id, hoje)]
+    row = con.execute("SELECT id, notes FROM decks WHERE name = ? AND format = ?",
+                      (deck, s["formato"])).fetchone()
+    dl = con.execute("SELECT id, source, player, event_date FROM decklists WHERE id = ?",
+                     (decklist_id,)).fetchone()
+    cartas = _cartas_do_deck(con, row["id"])
+    _gravar_troca(con, row["id"], deck, s["formato"], hoje, "fixada",
+                  ler_nota(row["notes"]), cartas, dl, cartas)
+    con.commit()
+    out.append(f"{deck}: fixado em #{decklist_id} ({dl['event_date']} {dl['player'] or '?'})")
+    return "; ".join(out)
+
+
+def soltar(con: sqlite3.Connection, deck: str, hoje: str | None = None) -> str:
+    """Levanta a fixação: a procura automática volta na corrida seguinte."""
+    s = next((x for x in seguidos() if x["deck"] == deck), None)
+    if s is None:
+        raise ValueError(f"deck nao seguido: {deck!r}")
+    fx = fixada(con, deck, s["formato"])
+    if fx is None:
+        return f"{deck}: nao estava fixado"
+    row = con.execute("SELECT id, notes FROM decks WHERE name = ? AND format = ?",
+                      (deck, s["formato"])).fetchone()
+    con.execute(
+        "INSERT INTO deck_lista_trocas (deck_id, deck, formato, corrida, motivo, "
+        "para_decklist_id) VALUES (?,?,?,?,?,?)",
+        (row["id"] if row else None, deck, s["formato"], hoje or date.today().isoformat(),
+         "fixacao_levantada", fx))
+    con.commit()
+    return f"{deck}: fixacao em #{fx} levantada"
 
 
 def rejeitar(con: sqlite3.Connection, deck: str, decklist_id: int,
@@ -441,5 +545,9 @@ if __name__ == "__main__":
             print(aceitar(con, sys.argv[2], int(sys.argv[3]) if len(sys.argv) > 3 else None))
         elif len(sys.argv) == 4 and sys.argv[1] == "rejeitar":
             print(rejeitar(con, sys.argv[2], int(sys.argv[3])))
+        elif len(sys.argv) == 4 and sys.argv[1] == "fixar":
+            print(fixar(con, sys.argv[2], int(sys.argv[3])))
+        elif len(sys.argv) == 3 and sys.argv[1] == "soltar":
+            print(soltar(con, sys.argv[2]))
         else:
             print(refresh(con))

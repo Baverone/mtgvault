@@ -223,7 +223,10 @@ CREATE TABLE IF NOT EXISTS deck_cards (
 -- dias apaga as `decklists`, e o histórico tem de sobreviver a ela. Só cresce.
 -- `motivo` = 'troca' (outra lista) | 'releitura' (a mesma lista, relida) |
 -- 'recusada' (outra lista que o `my_decks.avaliar_troca` não deixou entrar — o
--- deck ficou com a de `de_*` até ele a `aceitar`; 2026-10-16). O
+-- deck ficou com a de `de_*` até ele a `aceitar`; 2026-10-16) | 'rejeitada' /
+-- 'rejeicao_levantada' (2026-10-19/21) | 'aceite' (aceitou a lista que o deck
+-- já tinha) | 'fixada' / 'fixacao_levantada' (a procura só devolve a fixada;
+-- 2026-10-21). O
 -- índice nasce no `db._migrate` (a regra de 2026-09-09 não o exige aqui, mas
 -- fica num sítio só).
 CREATE TABLE IF NOT EXISTS deck_lista_trocas (

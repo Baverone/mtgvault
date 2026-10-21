@@ -17,46 +17,25 @@
   "id": "002",
   "gravidade": "media",
   "deck": "Grinding Station",
-  "aviso": "voltou a uma lista como a de howa 15/10",
-  "detalhe": "deixada a 20/10: o deck anda a saltar entre dois arquetipos que a assinatura nao separa."
+  "aviso": "Grinding Station: 3 -> 1",
+  "detalhe": "a carta que da nome ao deck desceu de copias nesta troca."
  },
  {
   "id": "003",
-  "gravidade": "media",
-  "deck": "Izzet Affinity (Kappa Cannoneer)",
-  "aviso": "voltou a uma lista como a de wild88plk 13/10",
-  "detalhe": "deixada a 16/10: o deck anda a saltar entre dois arquetipos que a assinatura nao separa."
- },
- {
-  "id": "004",
-  "gravidade": "media",
-  "deck": "Stiflenought (Luffy)",
-  "aviso": "voltou a uma lista como a de LuffyDoChapeuDePalha 13/10",
-  "detalhe": "deixada a 18/10: o deck anda a saltar entre dois arquetipos que a assinatura nao separa."
- },
- {
-  "id": "005",
-  "gravidade": "media",
-  "deck": "Stiflenought (Spock)",
-  "aviso": "voltou a uma lista como a de SpockVidaLoka 02/10",
-  "detalhe": "deixada a 18/10: o deck anda a saltar entre dois arquetipos que a assinatura nao separa."
- },
- {
-  "id": "006",
   "gravidade": "baixa",
   "deck": "Cloud (Duel Commander)",
   "aviso": "lista de referencia com 51 dias",
   "detalhe": "a mais recente que serve este deck e de McWinSauce 31/08."
  },
  {
-  "id": "007",
+  "id": "004",
   "gravidade": "baixa",
   "deck": "Cori-Steel Cutter",
   "aviso": "lista de referencia com 15 dias",
   "detalhe": "a mais recente que serve este deck e de Rapgod 06/10."
  },
  {
-  "id": "008",
+  "id": "005",
   "gravidade": "baixa",
   "deck": "Psychatog",
   "aviso": "52% do núcleo já está nos teus decks (11 de 21 cartas)",

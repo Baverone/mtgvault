@@ -5130,28 +5130,37 @@
   "qtd": 1
  },
  {
-  "id": "2|main|Aether Spellbomb",
+  "id": "2|main|Agatha's Soul Cauldron",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "main",
-  "carta": "Aether Spellbomb",
+  "carta": "Agatha's Soul Cauldron",
   "qtd": 1
  },
  {
   "id": "2|main|Breeding Pool",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "main",
   "carta": "Breeding Pool",
+  "qtd": 1
+ },
+ {
+  "id": "2|main|Disruptor Flute",
+  "deck": "Grinding Station",
+  "formato": "modern",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
+  "board": "main",
+  "carta": "Disruptor Flute",
   "qtd": 1
  },
  {
   "id": "2|main|Emry, Lurker of the Loch",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "main",
   "carta": "Emry, Lurker of the Loch",
   "qtd": 4
@@ -5160,97 +5169,79 @@
   "id": "2|main|Flooded Strand",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "main",
   "carta": "Flooded Strand",
-  "qtd": 1
- },
- {
-  "id": "2|main|Gemstone Caverns",
-  "deck": "Grinding Station",
-  "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
-  "board": "main",
-  "carta": "Gemstone Caverns",
-  "qtd": 1
+  "qtd": 2
  },
  {
   "id": "2|main|Grinding Station",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "main",
   "carta": "Grinding Station",
-  "qtd": 3
+  "qtd": 1
+ },
+ {
+  "id": "2|main|Hallowed Fountain",
+  "deck": "Grinding Station",
+  "formato": "modern",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
+  "board": "main",
+  "carta": "Hallowed Fountain",
+  "qtd": 2
  },
  {
   "id": "2|main|Haywire Mite",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "main",
   "carta": "Haywire Mite",
-  "qtd": 1
- },
- {
-  "id": "2|main|Hedge Maze",
-  "deck": "Grinding Station",
-  "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
-  "board": "main",
-  "carta": "Hedge Maze",
   "qtd": 1
  },
  {
   "id": "2|main|Island",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "main",
   "carta": "Island",
-  "qtd": 3
- },
- {
-  "id": "2|main|Key to the Side-Door",
-  "deck": "Grinding Station",
-  "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
-  "board": "main",
-  "carta": "Key to the Side-Door",
-  "qtd": 1
- },
- {
-  "id": "2|main|Lavaspur Boots",
-  "deck": "Grinding Station",
-  "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
-  "board": "main",
-  "carta": "Lavaspur Boots",
-  "qtd": 1
+  "qtd": 2
  },
  {
   "id": "2|main|Loki, God of Mischief",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "main",
   "carta": "Loki, God of Mischief",
-  "qtd": 3
+  "qtd": 2
  },
  {
   "id": "2|main|Metallic Rebuke",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "main",
   "carta": "Metallic Rebuke",
   "qtd": 4
  },
  {
+  "id": "2|main|Meticulous Archive",
+  "deck": "Grinding Station",
+  "formato": "modern",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
+  "board": "main",
+  "carta": "Meticulous Archive",
+  "qtd": 1
+ },
+ {
   "id": "2|main|Minamo, School at Water's Edge",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "main",
   "carta": "Minamo, School at Water's Edge",
   "qtd": 1
@@ -5259,7 +5250,7 @@
   "id": "2|main|Mishra's Bauble",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "main",
   "carta": "Mishra's Bauble",
   "qtd": 4
@@ -5268,198 +5259,216 @@
   "id": "2|main|Misty Rainforest",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "main",
   "carta": "Misty Rainforest",
-  "qtd": 1
+  "qtd": 2
  },
  {
   "id": "2|main|Mox Amber",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "main",
   "carta": "Mox Amber",
-  "qtd": 4
+  "qtd": 3
  },
  {
   "id": "2|main|Mox Opal",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "main",
   "carta": "Mox Opal",
   "qtd": 4
  },
  {
+  "id": "2|main|Oswald Fiddlebender",
+  "deck": "Grinding Station",
+  "formato": "modern",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
+  "board": "main",
+  "carta": "Oswald Fiddlebender",
+  "qtd": 3
+ },
+ {
   "id": "2|main|Otawara, Soaring City",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "main",
   "carta": "Otawara, Soaring City",
-  "qtd": 3
+  "qtd": 1
+ },
+ {
+  "id": "2|main|Pithing Needle",
+  "deck": "Grinding Station",
+  "formato": "modern",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
+  "board": "main",
+  "carta": "Pithing Needle",
+  "qtd": 1
  },
  {
   "id": "2|main|Polluted Delta",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "main",
   "carta": "Polluted Delta",
   "qtd": 1
  },
  {
+  "id": "2|main|Portable Hole",
+  "deck": "Grinding Station",
+  "formato": "modern",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
+  "board": "main",
+  "carta": "Portable Hole",
+  "qtd": 3
+ },
+ {
   "id": "2|main|Scalding Tarn",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "main",
   "carta": "Scalding Tarn",
+  "qtd": 1
+ },
+ {
+  "id": "2|main|Scrabbling Claws",
+  "deck": "Grinding Station",
+  "formato": "modern",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
+  "board": "main",
+  "carta": "Scrabbling Claws",
   "qtd": 1
  },
  {
   "id": "2|main|Sewer-veillance Cam",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "main",
   "carta": "Sewer-veillance Cam",
-  "qtd": 4
+  "qtd": 3
  },
  {
-  "id": "2|main|Sink into Stupor",
+  "id": "2|main|Skateboard",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "main",
-  "carta": "Sink into Stupor",
-  "qtd": 2
+  "carta": "Skateboard",
+  "qtd": 1
  },
  {
   "id": "2|main|Tamiyo, Inquisitive Student",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "main",
   "carta": "Tamiyo, Inquisitive Student",
   "qtd": 4
  },
  {
-  "id": "2|main|Tormod's Crypt",
+  "id": "2|main|Teferi, Time Raveler",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "main",
-  "carta": "Tormod's Crypt",
-  "qtd": 2
+  "carta": "Teferi, Time Raveler",
+  "qtd": 1
  },
  {
   "id": "2|main|Urza's Saga",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "main",
   "carta": "Urza's Saga",
   "qtd": 4
  },
  {
-  "id": "2|sideboard|Boseiju, Who Endures",
-  "deck": "Grinding Station",
-  "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
-  "board": "sideboard",
-  "carta": "Boseiju, Who Endures",
-  "qtd": 1
- },
- {
   "id": "2|sideboard|Consign to Memory",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "sideboard",
   "carta": "Consign to Memory",
   "qtd": 4
  },
  {
-  "id": "2|sideboard|Dismember",
+  "id": "2|sideboard|Damping Sphere",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "sideboard",
-  "carta": "Dismember",
-  "qtd": 2
- },
- {
-  "id": "2|sideboard|Engineered Explosives",
-  "deck": "Grinding Station",
-  "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
-  "board": "sideboard",
-  "carta": "Engineered Explosives",
+  "carta": "Damping Sphere",
   "qtd": 1
  },
  {
   "id": "2|sideboard|Force of Negation",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "sideboard",
   "carta": "Force of Negation",
   "qtd": 1
  },
  {
-  "id": "2|sideboard|Mystical Dispute",
+  "id": "2|sideboard|Prismatic Ending",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "sideboard",
-  "carta": "Mystical Dispute",
-  "qtd": 1
- },
- {
-  "id": "2|sideboard|Nature's Claim",
-  "deck": "Grinding Station",
-  "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
-  "board": "sideboard",
-  "carta": "Nature's Claim",
-  "qtd": 1
- },
- {
-  "id": "2|sideboard|Pithing Needle",
-  "deck": "Grinding Station",
-  "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
-  "board": "sideboard",
-  "carta": "Pithing Needle",
-  "qtd": 1
+  "carta": "Prismatic Ending",
+  "qtd": 3
  },
  {
   "id": "2|sideboard|Shadowspear",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "sideboard",
   "carta": "Shadowspear",
   "qtd": 1
  },
  {
-  "id": "2|sideboard|Spell Snare",
+  "id": "2|sideboard|Soul-Guide Lantern",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "sideboard",
-  "carta": "Spell Snare",
+  "carta": "Soul-Guide Lantern",
   "qtd": 1
  },
  {
-  "id": "2|sideboard|Swan Song",
+  "id": "2|sideboard|Teferi, Time Raveler",
   "deck": "Grinding Station",
   "formato": "modern",
-  "origem": "seguido: mtgo howa 2026-10-19 (#29055)",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
   "board": "sideboard",
-  "carta": "Swan Song",
+  "carta": "Teferi, Time Raveler",
+  "qtd": 1
+ },
+ {
+  "id": "2|sideboard|Test of Talents",
+  "deck": "Grinding Station",
+  "formato": "modern",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
+  "board": "sideboard",
+  "carta": "Test of Talents",
+  "qtd": 2
+ },
+ {
+  "id": "2|sideboard|Vexing Bauble",
+  "deck": "Grinding Station",
+  "formato": "modern",
+  "origem": "seguido: mtgo Alakai 2026-10-17 (#28370)",
+  "board": "sideboard",
+  "carta": "Vexing Bauble",
   "qtd": 1
  },
  {

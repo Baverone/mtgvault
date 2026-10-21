@@ -264,7 +264,12 @@ def construir(con, hoje: str | None = None, raiz: Path | None = None) -> dict:
 
         # --- sem lista hoje -------------------------------------------------
         cand = s["procura"](con)
-        if cand is None:
+        # Uma lista FIXADA por ele (2026-10-21) não é uma lista parada nem em
+        # falta: é a decisão dele, e avisar todos os dias era desdizê-la.
+        fixo = my_decks.fixada(con, nome, fmt) is not None
+        if cand is None and fixo:
+            pass
+        elif cand is None:
             tem = f"; fica a de {lista}" if lista else ""
             avisar("media", nome, s["falta"],
                    f"nenhuma lista que conte serve hoje este deck{tem}. Se se repetir "
@@ -287,7 +292,9 @@ def construir(con, hoje: str | None = None, raiz: Path | None = None) -> dict:
                        f"#{rec['para_decklist_id']}) nao entrou e o deck fica com a de {lista}. "
                        f"Se for mesmo a evolucao do deck: py my_decks.py aceitar \"{nome}\"")
         # --- troca de arquétipo ---------------------------------------------
-        if n_troc > TROCA_DE_ARQUETIPO:
+        # Num deck FIXADO a troca e o regresso são a decisão dele (o `fixar`),
+        # não o emparelhador a saltar: não se avisa.
+        if n_troc > TROCA_DE_ARQUETIPO and not fixo:
             avisar("alta", nome, f"{n_troc} cartas trocadas de uma vez",
                    f"de {anterior} para {lista}: nao e a lista a evoluir, e outro deck — "
                    "o emparelhador trocou de arquetipo. Ver se a assinatura ainda separa o deck.")
@@ -299,7 +306,7 @@ def construir(con, hoje: str | None = None, raiz: Path | None = None) -> dict:
         # lista nova parecer-se MAIS com uma que o deck deixou do que com a
         # que deixa hoje — o Grinding Station de 21/10 (howa → Alakai → howa:
         # 0,97 com a velha, 0,65 com a de hoje).
-        for t in trocas:
+        for t in ([] if fixo else trocas):
             velha = oscilacao(con, t, limite_oscila, hoje)
             if velha is not None:
                 avisar("media", nome,
@@ -334,7 +341,7 @@ def construir(con, hoje: str | None = None, raiz: Path | None = None) -> dict:
                     avisar("media", nome, f"sideboard com {side} cartas, nao 15",
                            "a lista de referencia foi lida incompleta, ou a fonte publicou-a assim.")
         # --- lista velha ----------------------------------------------------
-        if nota.get("data"):
+        if nota.get("data") and not fixo:
             dias = (date.fromisoformat(hoje) - date.fromisoformat(nota["data"])).days
             if dias > DIAS_LISTA_VELHA:
                 avisar("baixa", nome, f"lista de referencia com {dias} dias",
