@@ -257,6 +257,7 @@ _CSS = """
  .c .imgwrap{position:relative;aspect-ratio:488/680;background:var(--line)}
  .c img{width:100%;height:100%;object-fit:cover;display:block}
  .c .noimg{width:100%;height:100%;display:flex;align-items:center;justify-content:center;text-align:center;padding:8px;font-size:12px;color:var(--muted)}
+ .c .noimg[hidden]{display:none}
  .c .qty{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.78);color:#fff;font-weight:700;font-size:12px;padding:1px 7px;border-radius:999px}
  .c .foil{position:absolute;top:6px;left:6px;font-size:12px;background:linear-gradient(135deg,var(--ob),#e8a,#8ea);color:#111;font-weight:700;padding:1px 6px;border-radius:999px}
  .c .meta{padding:7px 9px} .c .nm{font-weight:600;font-size:12.5px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -285,10 +286,11 @@ _TMPL = ("""<!doctype html><html lang="pt-PT"><head>"""
 </div>""" + shell.fechar(_RODAPE, """
 <script>
 const DATA=%DATA%;
-const esc=s=>(s==null?"":String(s)).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const esc=s=>(s==null?"":String(s)).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const eur=x=>x==null?"":(x||0).toLocaleString("pt-PT",{style:"currency",currency:"EUR"});
 function cardHtml(c){
- const img=c.img?('<a href="'+esc(c.img)+'" target="_blank" rel="noopener"><img loading="lazy" src="'+esc(c.img)+'" alt="'+esc(c.name)+'"></a>')
+ // Uma imagem indisponível mantém o nome legível, como uma carta sem URL (2026-10-21).
+ const img=c.img?('<a href="'+esc(c.img)+'" target="_blank" rel="noopener"><img loading="lazy" src="'+esc(c.img)+'" alt="'+esc(c.name)+'" onerror="this.parentNode.nextElementSibling.hidden=false;this.parentNode.remove()"></a><div class="noimg" hidden>'+esc(c.name)+'</div>')
                  :('<div class="noimg">'+esc(c.name)+'</div>');
  return '<div class="c" data-s="'+esc((c.name+' '+c.set).toLowerCase())+'"><div class="imgwrap">'+img+
   '<span class="qty">'+c.qty+'x</span>'+(c.foil?'<span class="foil">foil</span>':'')+'</div>'+

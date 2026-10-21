@@ -1,0 +1,1782 @@
+ERRO test_ambito.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_ambito.py", line 45, in <module>
+    (_TMP / "cfg.json").write_text(json.dumps(CFG), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpx47kx2jg\\cfg.json'
+
+ok   test_analysis.py  0.2s
+ERRO test_arquetipos.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_arquetipos.py", line 63, in <module>
+    CFG_PATH.write_text(json.dumps(BASE_CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpwv5aj48k\\cfg.json'
+
+ERRO test_bases_a_serio.py  0.1s
+a bateria arma a trava e passa-a aos filhos
+
+t):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_bases_a_serio.py", line 288, in <module>
+    run()
+    ~~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_bases_a_serio.py", line 283, in run
+    fn()
+    ~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_bases_a_serio.py", line 123, in caso_a_base_e_o_catalogo_proibidos_sao_recusados
+    with tempfile.TemporaryDirectory() as d:
+         ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\tempfile.py", line 971, in __exit__
+    self.cleanup()
+    ~~~~~~~~~~~~^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\tempfile.py", line 975, in cleanup
+    self._rmtree(self.name, ignore_errors=self._ignore_cleanup_errors)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\tempfile.py", line 955, in _rmtree
+    _shutil.rmtree(name, onexc=onexc)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\shutil.py", line 852, in rmtree
+    _rmtree_impl(path, dir_fd, onexc)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\shutil.py", line 689, in _rmtree_unsafe
+    for dirpath, dirnames, filenames in results:
+                                        ^^^^^^^
+  File "<frozen os>", line 413, in walk
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\shutil.py", line 687, in onerror
+    onexc(os.scandir, err.filename, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\tempfile.py", line 927, in onexc
+    _resetperms(path)
+    ~~~~~~~~~~~^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\tempfile.py", line 283, in _resetperms
+    _dont_follow_symlinks(_os.chmod, path, 0o700)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\tempfile.py", line 272, in _dont_follow_symlinks
+    func(path, *args, follow_symlinks=False)
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [WinError 5] Acesso negado: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpng0dx5pu'
+
+ERRO test_basicas.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_basicas.py", line 65, in <module>
+    (_TMP / "cfg.json").write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp_8pnh0ls\\cfg.json'
+
+ERRO test_bugs_ronda_1021.py  0.2s
+faltas: subtotais e TOTAL do texto pelo valor_ref, como a página
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_bugs_ronda_1021.py", line 144, in <module>
+    run()
+    ~~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_bugs_ronda_1021.py", line 137, in run
+    with db.session(tmp / "v.db", tmp / "c.db") as con:
+         ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 141, in __enter__
+    return next(self.gen)
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\db.py", line 514, in session
+    con = connect(path, catalog, a_serio=a_serio)
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\db.py", line 163, in connect
+    con = sqlite3.connect(path, timeout=BUSY_TIMEOUT_MS / 1000)
+sqlite3.OperationalError: unable to open database file
+
+ERRO test_busca_ligas.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_busca_ligas.py", line 107, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpdcfhq6or\\cfg.json'
+
+ERRO test_caixas.py  0.2s
+config v5 -> v6: 4 caixas, mesmas fontes e mesmas regras
+a `caixas` fica no lugar do `loadout`, e o resto do config nao muda
+migrar duas vezes: a segunda nao faz nada
+o motor le o `loadout` da v5 e as `caixas` da v6 da mesma maneira
+estados: candidata < permanente < montada; congelada calcula-se
+`por_confirmar` calcula-se da propria caixa, nao se escreve
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_caixas.py", line 279, in <module>
+    run()
+    ~~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_caixas.py", line 274, in run
+    fn()
+    ~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_caixas.py", line 152, in caso_migrar_o_ficheiro_faz_backup
+    configio.escrever(json.loads(json.dumps(V5)), p)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\configio.py", line 143, in escrever
+    tmp.write_text(texto(cfg), encoding="utf-8")
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp36d50clv\\cfg-migrar.json.tmp'
+
+ok   test_caixas_1021.py  0.2s
+ERRO test_caixas_dedicadas.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_caixas_dedicadas.py", line 59, in <module>
+    (_TMP / "cfg.json").write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpgpfuy69_\\cfg.json'
+
+ERRO test_cano_fotos.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_cano_fotos.py", line 62, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp8kmk9va1\\cfg.json'
+
+ERRO test_cardtrader_expansoes.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_cardtrader_expansoes.py", line 52, in <module>
+    CFG_PATH.write_text(json.dumps({}), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpmttfmaof\\cfg.json'
+
+ERRO test_casca.py  0.6s
+as 13 paginas publicadas têm a casca inteira
+ninguem desenha uma barra horizontal de navegacao
+nenhuma navegacao com overflow-x: as filas horizontais foram-se
+nenhum link interno partido, e as ancoras da barra existem
+head(): tema → pagina → casca, e os tipos de letra do baverone
+uma so navegacao, movida por CSS no telemovel
+o indice interno da Deckboxes ficou so com as caixas
+um so conjunto de icones, no Python e no JavaScript
+a barra lateral nao tem emojis, nenhum rotulo se repete, e o titulo bate
+os rodapes longos ficam num <details> fechado
+o texto visivel das paginas publicadas segue o Acordo Ortografico
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_casca.py", line 332, in <module>
+    run()
+    ~~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_casca.py", line 327, in run
+    fn()
+    ~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_casca.py", line 309, in caso_nenhuma_pagina_tem_scroll_horizontal
+    assert p.returncode == 0, saida[-3000:]
+           ^^^^^^^^^^^^^^^^^
+AssertionError: Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\medir_layout.py", line 122, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\medir_layout.py", line 65, in main
+    srv = socketserver.ThreadingTCPServer(("127.0.0.1", PORTO), h)
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\socketserver.py", line 457, in __init__
+    self.server_bind()
+    ~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\socketserver.py", line 478, in server_bind
+    self.socket.bind(self.server_address)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+OSError: [WinError 10048] Normalmente só é permitido uma utilização de cada endereço de socket (protocolo/endereço de rede/porta)
+
+
+ERRO test_cesarmerjan.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_cesarmerjan.py", line 175, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp7q0dvkoj\\cfg.json'
+
+ERRO test_cli_deck.py  0.2s
+sqlite: INSERT OR IGNORE ignorado -> rowcount 0 mas lastrowid da linha anterior
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_cli_deck.py", line 75, in <module>
+    run()
+    ~~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_cli_deck.py", line 60, in run
+    cli.main(argv + ["deck-add", "Burn", "modern", _escreve(pasta, "a.txt", LISTA_A)])
+                                                   ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_cli_deck.py", line 30, in _escreve
+    p.write_text(texto, encoding="utf-8")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmptjsaq_63\\a.txt'
+
+ERRO test_config_estragado.py  0.2s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_config_estragado.py", line 209, in <module>
+    run()
+    ~~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_config_estragado.py", line 204, in run
+    fn()
+    ~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_config_estragado.py", line 77, in caso_um_config_estragado_nao_apaga_o_que_ja_estava_lido
+    escreve(json.dumps(BOM, ensure_ascii=False))
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_config_estragado.py", line 60, in escreve
+    P.write_text(texto, encoding="utf-8")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpf2rlioyg\\cfg.json'
+
+ERRO test_consenso_comandante.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_consenso_comandante.py", line 80, in <module>
+    _config()
+    ~~~~~~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_consenso_comandante.py", line 73, in _config
+    p.write_text(json.dumps(cfg, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpgv3jrvms\\cfg-0.json'
+
+ERRO test_consenso_premodern_1016.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_consenso_premodern_1016.py", line 27, in <module>
+    (_TMP / "cfg.json").write_text(json.dumps({
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+        "premodern_arquetipos_alvo": ["Oath of Druids"],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        "metagame_fontes": {"_default": {"tiers": ["Challenge"], "min_jogadores_presencial": 64,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                         "ligas": False}}}), encoding="utf-8")
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpuevzzryq\\cfg.json'
+
+ERRO test_contas_das_pastas.py  0.1s
+
+ "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 1011, in mkdir
+    os.mkdir(self, mode)
+    ~~~~~~~~^^^^^^^^^^^^
+FileNotFoundError: [WinError 3] O sistema não conseguiu localizar o caminho especificado: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp5x0ymwiw\\Decks Por Processar\\Pioneer — Greasefang\\Greasefang, Okiba Boss (4)'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 1011, in mkdir
+    os.mkdir(self, mode)
+    ~~~~~~~~^^^^^^^^^^^^
+FileNotFoundError: [WinError 3] O sistema não conseguiu localizar o caminho especificado: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp5x0ymwiw\\Decks Por Processar\\Pioneer — Greasefang'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_contas_das_pastas.py", line 103, in <module>
+    c()
+    ~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_contas_das_pastas.py", line 59, in caso_cada_pasta_cai_num_grupo
+    raiz = _arvore("Greasefang, Okiba Boss (4)", "Thundering Broodwagon (4)",
+                   "Monument to Endurance (4)", "lote1")
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_contas_das_pastas.py", line 50, in _arvore
+    (deck / p).mkdir(parents=True)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 1015, in mkdir
+    self.parent.mkdir(parents=True, exist_ok=True)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 1015, in mkdir
+    self.parent.mkdir(parents=True, exist_ok=True)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 1011, in mkdir
+    os.mkdir(self, mode)
+    ~~~~~~~~^^^^^^^^^^^^
+PermissionError: [WinError 5] Acesso negado: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp5x0ymwiw\\Decks Por Processar'
+
+ERRO test_dc_sem_arquetipo.py  0.2s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_dc_sem_arquetipo.py", line 78, in <module>
+    run()
+    ~~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_dc_sem_arquetipo.py", line 71, in run
+    with db.session(tmp / "v.db", tmp / "c.db") as con:
+         ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 141, in __enter__
+    return next(self.gen)
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\db.py", line 514, in session
+    con = connect(path, catalog, a_serio=a_serio)
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\db.py", line 163, in connect
+    con = sqlite3.connect(path, timeout=BUSY_TIMEOUT_MS / 1000)
+sqlite3.OperationalError: unable to open database file
+
+ERRO test_decisoes_1004_fecho.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_decisoes_1004_fecho.py", line 92, in <module>
+    escrever_cfg(BASE_CFG)
+    ~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_decisoes_1004_fecho.py", line 87, in escrever_cfg
+    CFG_PATH.write_text(json.dumps(cfg, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmplgnq7a6t\\cfg.json'
+
+ERRO test_decisoes_1004_noite.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_decisoes_1004_noite.py", line 83, in <module>
+    escrever_cfg(BASE_CFG)
+    ~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_decisoes_1004_noite.py", line 80, in escrever_cfg
+    CFG_PATH.write_text(json.dumps(cfg, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmphgyvtwi6\\cfg.json'
+
+ERRO test_decklists_no_site.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_decklists_no_site.py", line 133, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp2x3ohgng\\cfg.json'
+
+ERRO test_decks_finais.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_decks_finais.py", line 121, in <module>
+    CFG_PATH.write_text(json.dumps(CFG_BASE, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp2szfpv7e\\cfg.json'
+
+ERRO test_decks_vista.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_decks_vista.py", line 94, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpv123thrl\\cfg.json'
+
+ERRO test_dedupe.py  0.2s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_dedupe.py", line 142, in <module>
+    run()
+    ~~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_dedupe.py", line 65, in run
+    with db.session(tmp, tmp.with_name("cat.db")) as con:
+         ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 141, in __enter__
+    return next(self.gen)
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\db.py", line 514, in session
+    con = connect(path, catalog, a_serio=a_serio)
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\db.py", line 163, in connect
+    con = sqlite3.connect(path, timeout=BUSY_TIMEOUT_MS / 1000)
+sqlite3.OperationalError: unable to open database file
+
+ERRO test_duas_arvores.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_duas_arvores.py", line 58, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmprpsfb1v1\\cfg.json'
+
+ERRO test_emparelhador.py  0.2s
+regras: 26604 -> 27439 recusada (82); sem a carta do nome recusada; 60 entra, 62 nao
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_emparelhador.py", line 217, in <module>
+    run()
+    ~~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_emparelhador.py", line 209, in run
+    with db.session(tmp / "v.db", tmp / "c.db") as con:
+         ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 141, in __enter__
+    return next(self.gen)
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\db.py", line 514, in session
+    con = connect(path, catalog, a_serio=a_serio)
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\db.py", line 163, in connect
+    con = sqlite3.connect(path, timeout=BUSY_TIMEOUT_MS / 1000)
+sqlite3.OperationalError: unable to open database file
+
+ERRO test_encomendas.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_encomendas.py", line 69, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpqg_bvitq\\cfg.json'
+
+ERRO test_estado_endpoint.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_estado_endpoint.py", line 47, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpyrov_p0k\\cfg.json'
+
+ERRO test_estado_versos.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_estado_versos.py", line 75, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpdqir0h72\\cfg.json'
+
+ERRO test_event_tier.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_event_tier.py", line 79, in <module>
+    run()
+    ~~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_event_tier.py", line 22, in run
+    with db.session(tmp, tmp.with_name("cat.db")) as con:
+         ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 141, in __enter__
+    return next(self.gen)
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\db.py", line 514, in session
+    con = connect(path, catalog, a_serio=a_serio)
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\db.py", line 163, in connect
+    con = sqlite3.connect(path, timeout=BUSY_TIMEOUT_MS / 1000)
+sqlite3.OperationalError: unable to open database file
+
+ERRO test_faltas_check.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_faltas_check.py", line 65, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpurp6old0\\cfg.json'
+
+ERRO test_faltas_imagens.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_faltas_imagens.py", line 86, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp1xjuvcfx\\cfg.json'
+
+ERRO test_familia_fotos.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_familia_fotos.py", line 71, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpnwmssc8o\\cfg.json'
+
+ERRO test_fases.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_fases.py", line 185, in <module>
+    CFG_PATH.write_text(json.dumps(CFG_BASE, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpz_kog56u\\cfg.json'
+
+ERRO test_fases_fotos.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_fases_fotos.py", line 78, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpo9aqek0a\\cfg.json'
+
+ERRO test_feira.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_feira.py", line 61, in <module>
+    CFG_PATH.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp0acu_icr\\cfg.json'
+
+ERRO test_foil_existe.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_foil_existe.py", line 47, in <module>
+    (_TMP / "cfg.json").write_text(json.dumps(CFG), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpvoqri6w9\\cfg.json'
+
+ERRO test_foto_ate_playset.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_foto_ate_playset.py", line 61, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpo8d5y_jk\\cfg.json'
+
+ERRO test_foto_caixa.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_foto_caixa.py", line 42, in <module>
+    SITE.mkdir()
+    ~~~~~~~~~~^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 1011, in mkdir
+    os.mkdir(self, mode)
+    ~~~~~~~~^^^^^^^^^^^^
+PermissionError: [WinError 5] Acesso negado: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpqzsdd16z\\site'
+
+ERRO test_foto_manda.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_foto_manda.py", line 79, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpdd9syj0u\\cfg.json'
+
+ERRO test_foto_site.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_foto_site.py", line 50, in <module>
+    SITE.mkdir()
+    ~~~~~~~~~~^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 1011, in mkdir
+    os.mkdir(self, mode)
+    ~~~~~~~~^^^^^^^^^^^^
+PermissionError: [WinError 5] Acesso negado: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpxmb4q7b_\\site'
+
+ERRO test_fotos_apagadas.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_fotos_apagadas.py", line 64, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpazqpkpf9\\cfg.json'
+
+ERRO test_fotos_arrumadas.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_fotos_arrumadas.py", line 29, in <module>
+    (_ENV / "cfg.json").write_text(json.dumps(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+        {"baldes_coleccao": ["Colecção"], "caixas": [], "regras_colecao": {}}),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        encoding="utf-8")
+        ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpi03r8sbh\\cfg.json'
+
+ERRO test_fotos_ate_4.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_fotos_ate_4.py", line 76, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp1zg79myd\\cfg.json'
+
+ok   test_gallery_fallback.py  0.1s
+ERRO test_grading_criterios.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_grading_criterios.py", line 40, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp602zum1y\\cfg.json'
+
+ERRO test_incompletos.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_incompletos.py", line 59, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpotzkzh4s\\cfg.json'
+
+ERRO test_integration.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_integration.py", line 31, in <module>
+    _p.write_text(json.dumps(_cfg, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp9k67357m\\cfg-sem-janela.json'
+
+ERRO test_janela_consenso.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_janela_consenso.py", line 91, in <module>
+    _config()
+    ~~~~~~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_janela_consenso.py", line 84, in _config
+    p.write_text(json.dumps(cfg, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpp4sm12ef\\cfg-0.json'
+
+ERRO test_kasmina_arts.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_kasmina_arts.py", line 74, in <module>
+    escreve_cfg()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_kasmina_arts.py", line 70, in escreve_cfg
+    configio.escrever(c, CAMINHO)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\configio.py", line 143, in escrever
+    tmp.write_text(texto(cfg), encoding="utf-8")
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpllanxtx2\\cfg.json.tmp'
+
+ERRO test_legacy_rl.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_legacy_rl.py", line 66, in <module>
+    CFG_PATH.write_text(json.dumps(BASE_CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpd4lhyr1r\\cfg.json'
+
+ERRO test_ligas_modern.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_ligas_modern.py", line 131, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp_b5g947o\\cfg.json'
+
+ERRO test_lista_fixa.py  0.2s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_lista_fixa.py", line 84, in <module>
+    run()
+    ~~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_lista_fixa.py", line 77, in run
+    with db.session(tmp / "v.db", tmp / "c.db") as con:
+         ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 141, in __enter__
+    return next(self.gen)
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\db.py", line 514, in session
+    con = connect(path, catalog, a_serio=a_serio)
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\db.py", line 163, in connect
+    con = sqlite3.connect(path, timeout=BUSY_TIMEOUT_MS / 1000)
+sqlite3.OperationalError: unable to open database file
+
+ERRO test_listas_de_eventos.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_listas_de_eventos.py", line 110, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpj5ko9r6g\\cfg.json'
+
+ERRO test_loadout.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_loadout.py", line 74, in <module>
+    _CFG_PATH.write_text(json.dumps(CFG), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp36ra8gs1\\cfg.json'
+
+ERRO test_lookup_edicao.py  0.2s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_lookup_edicao.py", line 121, in <module>
+    run()
+    ~~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_lookup_edicao.py", line 58, in run
+    with db.session(tmp / "d.db", tmp / "cat.db") as con:
+         ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 141, in __enter__
+    return next(self.gen)
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\db.py", line 514, in session
+    con = connect(path, catalog, a_serio=a_serio)
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\db.py", line 163, in connect
+    con = sqlite3.connect(path, timeout=BUSY_TIMEOUT_MS / 1000)
+sqlite3.OperationalError: unable to open database file
+
+ERRO test_metagame_boards.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_metagame_boards.py", line 40, in <module>
+    (_TMP / "cfg.json").write_text(json.dumps(CFG), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpk2pbmk1s\\cfg.json'
+
+ERRO test_metagame_filtro.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_metagame_filtro.py", line 43, in <module>
+    (_TMP / "cfg.json").write_text(json.dumps(CFG), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp1e36_ym0\\cfg.json'
+
+ERRO test_migracao.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_migracao.py", line 33, in <module>
+    (_TMP / "cfg.json").write_text(json.dumps(CFG), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpfvw18t3e\\cfg.json'
+
+ERRO test_modelo_versoes.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_modelo_versoes.py", line 119, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpefjy_jf6\\cfg.json'
+
+ERRO test_montada_alocacao.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_montada_alocacao.py", line 70, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpmd_d6isp\\cfg.json'
+
+ERRO test_montados.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_montados.py", line 72, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp92co1dd3\\cfg.json'
+
+ERRO test_montar_barra.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_montar_barra.py", line 59, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpgc8d2tet\\cfg.json'
+
+ERRO test_montar_vender.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_montar_vender.py", line 46, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpai1blylv\\cfg.json'
+
+ERRO test_movers.py  0.2s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_movers.py", line 73, in <module>
+    run()
+    ~~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_movers.py", line 40, in run
+    with db.session(tmp, tmp.with_name("cat.db")) as con:
+         ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 141, in __enter__
+    return next(self.gen)
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\db.py", line 514, in session
+    con = connect(path, catalog, a_serio=a_serio)
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\db.py", line 163, in connect
+    con = sqlite3.connect(path, timeout=BUSY_TIMEOUT_MS / 1000)
+sqlite3.OperationalError: unable to open database file
+
+ERRO test_mox_proteger.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_mox_proteger.py", line 126, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpt046iufb\\cfg.json'
+
+ok   test_mtgtop8_meta.py  0.1s
+ERRO test_nao_encontrei.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_nao_encontrei.py", line 67, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp0dsxzy97\\cfg.json'
+
+ERRO test_nomes_arquetipo.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_nomes_arquetipo.py", line 49, in <module>
+    CFG_PATH.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp_8tda75k\\cfg.json'
+
+ERRO test_nomes_duas_faces.py  0.2s
+
+                              ~~~~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_nomes_duas_faces.py", line 73, in _base
+    con = dbmod.connect()
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\db.py", line 163, in connect
+    con = sqlite3.connect(path, timeout=BUSY_TIMEOUT_MS / 1000)
+sqlite3.OperationalError: unable to open database file
+
+======================================================================
+ERROR: caso_o_historico_nao_perde_o_indice (__main__.CasoPlano.caso_o_historico_nao_perde_o_indice)
+O `_historico` junta a `price_history`, que e grande: ali o nome
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_nomes_duas_faces.py", line 95, in setUp
+    self.tmp, self.con, self.dbmod = _base()
+                                     ~~~~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_nomes_duas_faces.py", line 73, in _base
+    con = dbmod.connect()
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\db.py", line 163, in connect
+    con = sqlite3.connect(path, timeout=BUSY_TIMEOUT_MS / 1000)
+sqlite3.OperationalError: unable to open database file
+
+======================================================================
+ERROR: caso_o_predicado_entra_pelo_indice (__main__.CasoPlano.caso_o_predicado_entra_pelo_indice)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_nomes_duas_faces.py", line 95, in setUp
+    self.tmp, self.con, self.dbmod = _base()
+                                     ~~~~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_nomes_duas_faces.py", line 73, in _base
+    con = dbmod.connect()
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\db.py", line 163, in connect
+    con = sqlite3.connect(path, timeout=BUSY_TIMEOUT_MS / 1000)
+sqlite3.OperationalError: unable to open database file
+
+----------------------------------------------------------------------
+Ran 20 tests in 0.160s
+
+FAILED (errors=17)
+
+ERRO test_onde_fisico.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_onde_fisico.py", line 62, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpeu2f2gnq\\cfg.json'
+
+ERRO test_opal_todos.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_opal_todos.py", line 137, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpi6uyrp29\\cfg.json'
+
+ERRO test_outros_premodern.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_outros_premodern.py", line 55, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp2k5xcd1v\\cfg.json'
+
+ERRO test_padrao_reserva.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_padrao_reserva.py", line 57, in <module>
+    CFG_PATH.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp_xjcsjut\\cfg.json'
+
+ok   test_paginas.py  0.3s
+ERRO test_paginas_leves.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_paginas_leves.py", line 65, in <module>
+    (_TMP / "cfg.json").write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp_tkq8hq0\\cfg.json'
+
+ERRO test_paginas_loadout.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_paginas_loadout.py", line 54, in <module>
+    (_TMP / "cfg.json").write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp7dvm8f_m\\cfg.json'
+
+ERRO test_painel_decks.py  0.2s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_painel_decks.py", line 267, in <module>
+    run()
+    ~~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_painel_decks.py", line 258, in run
+    with db.session(tmp / "v.db", tmp / "c.db") as con:
+         ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 141, in __enter__
+    return next(self.gen)
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\db.py", line 514, in session
+    con = connect(path, catalog, a_serio=a_serio)
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\db.py", line 163, in connect
+    con = sqlite3.connect(path, timeout=BUSY_TIMEOUT_MS / 1000)
+sqlite3.OperationalError: unable to open database file
+
+ERRO test_painel_listas.py  0.2s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_painel_listas.py", line 163, in <module>
+    run()
+    ~~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_painel_listas.py", line 147, in run
+    (TMP / "colecao_config.json").write_text(json.dumps(CFG, ensure_ascii=False),
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                              encoding="utf-8")
+                                              ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpupy2vijh\\colecao_config.json'
+
+ERRO test_papel_grande.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_papel_grande.py", line 62, in <module>
+    CFG_PATH.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp5s4jo4wg\\cfg.json'
+
+ERRO test_pasta_por_deck.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_pasta_por_deck.py", line 75, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpqtffrwia\\cfg.json'
+
+ERRO test_pioneer_jeskai.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_pioneer_jeskai.py", line 74, in <module>
+    CFG_PATH.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpath94jz4\\cfg.json'
+
+ERRO test_preco_modo.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_preco_modo.py", line 38, in <module>
+    CFG_PATH.write_text(json.dumps(BASE_CFG), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp00owhpan\\cfg.json'
+
+ERRO test_preco_referencia.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_preco_referencia.py", line 44, in <module>
+    CFG_PATH.write_text(json.dumps(BASE_CFG), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp_unyct_9\\cfg.json'
+
+ERRO test_preco_venda.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_preco_venda.py", line 48, in <module>
+    CFG_PATH.write_text(json.dumps(BASE_CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpj1dp54f4\\cfg.json'
+
+ERRO test_premodern_sugestoes.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_premodern_sugestoes.py", line 83, in <module>
+    CFG_PATH.write_text(json.dumps(BASE_CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpa76yvorj\\cfg.json'
+
+ERRO test_prices.py  0.2s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_prices.py", line 10, in <module>
+    from test_integration import seed_catalog  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_integration.py", line 31, in <module>
+    _p.write_text(json.dumps(_cfg, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp4br9xy2r\\cfg-sem-janela.json'
+
+ERRO test_publicar.py  0.3s
+a Galeria do daily continua a gravar o ponto do dia
+as 14 paginas do publicar sao as do git add do daily
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_publicar.py", line 239, in <module>
+    c()
+    ~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_publicar.py", line 114, in caso_as_paginas_sao_iguais_em_dois_processos
+    assert r.returncode == 0, (
+           ^^^^^^^^^^^^^^^^^
+AssertionError: a geracao nao e igual em dois processos — a tarefa vai commitar para sempre:
+a geracao falhou: ))
+    ~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\medir_determinismo.py", line 40, in _gerar
+    publicar.gerar(con, dest)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\publicar.py", line 145, in gerar
+    destino.mkdir(parents=True, exist_ok=True)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 1011, in mkdir
+    os.mkdir(self, mode)
+    ~~~~~~~~^^^^^^^^^^^^
+PermissionError: [WinError 5] Acesso negado: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\mtg-determinismo-b763i_03\\a'
+
+
+
+ok   test_qr.py  0.2s
+ERRO test_registo_marcadas.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_registo_marcadas.py", line 51, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpxhue30s3\\cfg.json'
+
+ERRO test_regras_material_1002.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_regras_material_1002.py", line 83, in <module>
+    CFG_PATH.write_text(json.dumps(CFG), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpffpjt4bf\\cfg.json'
+
+ok   test_reiniciar_webapp.py  0.1s
+ERRO test_reserve.py  0.2s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_reserve.py", line 76, in <module>
+    run()
+    ~~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_reserve.py", line 36, in run
+    with db.session(tmp, tmp.with_name("cat.db")) as con:
+         ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 141, in __enter__
+    return next(self.gen)
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\db.py", line 514, in session
+    con = connect(path, catalog, a_serio=a_serio)
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\db.py", line 163, in connect
+    con = sqlite3.connect(path, timeout=BUSY_TIMEOUT_MS / 1000)
+sqlite3.OperationalError: unable to open database file
+
+ERRO test_revalidacao.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_revalidacao.py", line 72, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpd91t2mgn\\cfg.json'
+
+ERRO test_schema_completo.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_schema_completo.py", line 32, in <module>
+    (_TMP / "cfg.json").write_text(json.dumps({
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+        "loadout": [], "decks_vigiados": [], "premodern_arquetipos_alvo": [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        "regras_colecao": {}, "spml_formatos": {},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    }, ensure_ascii=False), encoding="utf-8")
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpwj0pl21z\\cfg.json'
+
+ERRO test_sem_prazo.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_sem_prazo.py", line 33, in <module>
+    (_TMP / "cfg.json").write_text(json.dumps({
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+        "spml_formatos": {"legacy": "a jogar"},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        "regras_colecao": {"Blue Farm": {"reter_extras": True}},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        "baldes_coleccao": ["Colecção", "SPML"]}), encoding="utf-8")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpngffep73\\cfg.json'
+
+ERRO test_sempre_montado.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_sempre_montado.py", line 108, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp2prwjyzn\\cfg.json'
+
+ERRO test_showcase_dobrado.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_showcase_dobrado.py", line 35, in <module>
+    (_TMP / "cfg.json").write_text(json.dumps({
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+        "loadout": [], "decks_vigiados": [], "premodern_arquetipos_alvo": [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        "regras_colecao": {}, "spml_formatos": {},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    }, ensure_ascii=False), encoding="utf-8")
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpd_9nov1x\\cfg.json'
+
+ERRO test_sideboard.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_sideboard.py", line 49, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpv01p8p9y\\cfg.json'
+
+ERRO test_sites_1020.py  0.2s
+M2: favicon em todas as páginas
+M3: percentagens à portuguesa
+M4: a nota fala com tu e aparece uma vez
+M5: a RL esconde as edições vazias e diz que não há nenhuma
+M6: contraste do showcase acima de 4,5:1
+M7: os três campos têm rótulo
+FALHAS:
+caso_m1_nota_com_prazo_passado_fica_discreta: PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpdf5bd31m\\p.html'
+caso_colecao_vazia_diz_porque: OperationalError: unable to open database file
+
+
+ERRO test_so_cardtrader.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_so_cardtrader.py", line 46, in <module>
+    CFG_PATH.write_text(json.dumps(BASE_CFG), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp7v87cml_\\cfg.json'
+
+ERRO test_sources.py  0.1s
+parse_mtgo_page apanha o blob e devolve None quando não há
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_sources.py", line 169, in <module>
+    run()
+    ~~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_sources.py", line 64, in run
+    with db.session(tmp, tmp.with_name("cat.db")) as con:
+         ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 141, in __enter__
+    return next(self.gen)
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\db.py", line 514, in session
+    con = connect(path, catalog, a_serio=a_serio)
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\db.py", line 163, in connect
+    con = sqlite3.connect(path, timeout=BUSY_TIMEOUT_MS / 1000)
+sqlite3.OperationalError: unable to open database file
+
+ERRO test_telemovel.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_telemovel.py", line 59, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpamtchhsf\\cfg.json'
+
+ok   test_tokens.py  0.2s
+ERRO test_tres_versoes.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_tres_versoes.py", line 186, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpi1ev6v6l\\cfg.json'
+
+ERRO test_valor_unificado.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_valor_unificado.py", line 46, in <module>
+    (_TMP / "cfg.json").write_text(json.dumps({
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+        "caixas": [], "decks_vigiados": [], "premodern_arquetipos_alvo": [],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        "regras_colecao": {}, "spml_formatos": {},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        "baldes_coleccao": ["Colecção", "Caixa Reserved List"],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    }, ensure_ascii=False), encoding="utf-8")
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpus6q1j24\\cfg.json'
+
+ERRO test_venda_export.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_venda_export.py", line 59, in <module>
+    CFG_PATH.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp5dp_3gs_\\cfg.json'
+
+ERRO test_venda_interruptor.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_venda_interruptor.py", line 56, in <module>
+    CFG_PATH.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp6ti6rdh0\\cfg.json'
+
+ERRO test_venda_rl.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_venda_rl.py", line 42, in <module>
+    CFG_PATH.write_text(json.dumps(BASE_CFG), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpwljj5ls3\\cfg.json'
+
+ERRO test_vigia_cartas.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_vigia_cartas.py", line 49, in <module>
+    (_TMP / "com-vigia.json").write_text(json.dumps(COM_VIGIA), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpgq73wkm5\\com-vigia.json'
+
+ERRO test_visual.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_visual.py", line 62, in <module>
+    CFG_PATH.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp9az_fwse\\cfg.json'
+
+ERRO test_watch_revert.py  0.2s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_watch_revert.py", line 58, in <module>
+    run()
+    ~~~^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_watch_revert.py", line 27, in run
+    with db.session(tmp, tmp.with_name("cat.db")) as con:
+         ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 141, in __enter__
+    return next(self.gen)
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\db.py", line 514, in session
+    con = connect(path, catalog, a_serio=a_serio)
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\mtgvault\db.py", line 163, in connect
+    con = sqlite3.connect(path, timeout=BUSY_TIMEOUT_MS / 1000)
+sqlite3.OperationalError: unable to open database file
+
+ERRO test_watchlist.py  0.2s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_watchlist.py", line 10, in <module>
+    from test_integration import seed_catalog  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_integration.py", line 31, in <module>
+    _p.write_text(json.dumps(_cfg, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpvbq9qdxv\\cfg-sem-janela.json'
+
+ERRO test_webapp.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_webapp.py", line 46, in <module>
+    CAMINHO.write_text(json.dumps(CFG, ensure_ascii=False), encoding="utf-8")
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmpwiyj0snw\\cfg.json'
+
+ERRO test_webapp_prazo.py  0.1s
+
+Traceback (most recent call last):
+  File "C:\Users\Catarina\Desktop\Servidor MTG Coleçao\_revisao\colab-mtgvault-20261021-2302\tests\test_webapp_prazo.py", line 75, in <module>
+    (_TMP / "cfg.json").write_text(json.dumps(CFG, ensure_ascii=False),
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                   encoding="utf-8")
+                                   ^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Catarina\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\Catarina\\Documents\\Colab-IA\\mesas\\baverone\\.colab\\tarefas\\20261021-2302-2\\tmp\\tmp5jv4i1fd\\cfg.json'
+
+
+FALHARAM: test_ambito.py, test_arquetipos.py, test_bases_a_serio.py, test_basicas.py, test_bugs_ronda_1021.py, test_busca_ligas.py, test_caixas.py, test_caixas_dedicadas.py, test_cano_fotos.py, test_cardtrader_expansoes.py, test_casca.py, test_cesarmerjan.py, test_cli_deck.py, test_config_estragado.py, test_consenso_comandante.py, test_consenso_premodern_1016.py, test_contas_das_pastas.py, test_dc_sem_arquetipo.py, test_decisoes_1004_fecho.py, test_decisoes_1004_noite.py, test_decklists_no_site.py, test_decks_finais.py, test_decks_vista.py, test_dedupe.py, test_duas_arvores.py, test_emparelhador.py, test_encomendas.py, test_estado_endpoint.py, test_estado_versos.py, test_event_tier.py, test_faltas_check.py, test_faltas_imagens.py, test_familia_fotos.py, test_fases.py, test_fases_fotos.py, test_feira.py, test_foil_existe.py, test_foto_ate_playset.py, test_foto_caixa.py, test_foto_manda.py, test_foto_site.py, test_fotos_apagadas.py, test_fotos_arrumadas.py, test_fotos_ate_4.py, test_grading_criterios.py, test_incompletos.py, test_integration.py, test_janela_consenso.py, test_kasmina_arts.py, test_legacy_rl.py, test_ligas_modern.py, test_lista_fixa.py, test_listas_de_eventos.py, test_loadout.py, test_lookup_edicao.py, test_metagame_boards.py, test_metagame_filtro.py, test_migracao.py, test_modelo_versoes.py, test_montada_alocacao.py, test_montados.py, test_montar_barra.py, test_montar_vender.py, test_movers.py, test_mox_proteger.py, test_nao_encontrei.py, test_nomes_arquetipo.py, test_nomes_duas_faces.py, test_onde_fisico.py, test_opal_todos.py, test_outros_premodern.py, test_padrao_reserva.py, test_paginas_leves.py, test_paginas_loadout.py, test_painel_decks.py, test_painel_listas.py, test_papel_grande.py, test_pasta_por_deck.py, test_pioneer_jeskai.py, test_preco_modo.py, test_preco_referencia.py, test_preco_venda.py, test_premodern_sugestoes.py, test_prices.py, test_publicar.py, test_registo_marcadas.py, test_regras_material_1002.py, test_reserve.py, test_revalidacao.py, test_schema_completo.py, test_sem_prazo.py, test_sempre_montado.py, test_showcase_dobrado.py, test_sideboard.py, test_sites_1020.py, test_so_cardtrader.py, test_sources.py, test_telemovel.py, test_tres_versoes.py, test_valor_unificado.py, test_venda_export.py, test_venda_interruptor.py, test_venda_rl.py, test_vigia_cartas.py, test_visual.py, test_watch_revert.py, test_watchlist.py, test_webapp.py, test_webapp_prazo.py
