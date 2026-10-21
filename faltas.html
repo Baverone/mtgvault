@@ -541,10 +541,12 @@ function propostaHTML() {
   return `<div class="prop"><h2>PROPOSTA — formato sem deck escolhido</h2>`
     + `<p class="sub">Ainda não escolheste o deck destes formatos, por isso estas `
     + `faltas <b>não contam para o total</b> acima. Ficam aqui para não `
-    + `desaparecerem: ${p.cartas} cartas, ${p.copias} cópias, ${eur(p.valor)}.</p>`
+    + `desaparecerem: ${p.cartas} cartas, ${p.copias} cópias, ${eur(p.valor_ref)}.</p>`
+    /* [2026-10-21] valor_ref, como os decks escolhidos e o texto copiável: era
+       o valor (mínimo do motor, sem o crivo de edição da caixa). */
     + D.proposta.map(d => `<div class="dsec"><div class="dhd">`
       + `<h2>${escDados(d.nome)}</h2><span class="fmt">${escDados(d.formato)}</span>`
-      + `<span class="tot">${eur(d.valor)}</span></div>`
+      + `<span class="tot">${eur(d.valor_ref)}</span></div>`
       + `<ul class="fl">${d.linhas.map(l => linhaHTML(l, false, false)).join('')}</ul>`
       + `</div>`).join('')
     + `</div>`;
