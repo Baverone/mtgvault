@@ -1,22 +1,24 @@
-# Galeria — execução de 2026-10-21
+# Galeria — revisão de 2026-10-21
 
-Estado: implementado; validação conjunta PENDENTE. Não publicar.
+Estado: código aprovado por leitura; validação conjunta ainda bloqueada pelo ensaio de browser. Não publicar até obter OK: 2 perfis.
 
-- `collection_gallery.py`: uma imagem que falhe é substituída pelo nome; remove o link quebrado, preserva quantidade/foil e escapa aspas nos atributos.
-- `tests/test_gallery_fallback.py`: regressão em Node, sem bases nem rede.
-- `tests/ensaio_gallery_fallback.py`: gera cópia temporária com dados sintéticos e intercepta todos os pedidos; ensaia 404, ausência de URL, imagem válida, procura e etiquetas em Chromium desktop e iPhone 15/WebKit. Não integra a bateria para não impor Playwright aos testes unitários.
+## Alterações
 
-## Comandos e resultados observados
+- A alternativa com nome em collection_gallery.py já estava implementada e foi considerada correcta pelo revisor: remove o link partido, preserva quantidade/foil, respeita hidden e escapa aspas.
+- Removidos os dois logs rastreados de _tmp_validacao/ (3574 linhas). As remoções ficam no diff para o commit do orquestrador. .gitignore passa a excluir essa pasta e _bateria-revisao.log.
+- A remoção recursiva da pasta foi bloqueada pela política; os dois ficheiros foram removidos individualmente. Resta uma subpasta temporária inacessível, ignorada e não rastreada.
 
-Na pasta `tests`:
+## Validação
 
-- `py test_gallery_fallback.py`: 3 casos passaram, saída 0.
-- `py ensaio_gallery_fallback.py`: saída 1, `PermissionError: [WinError 5] Acesso negado` na criação do pipe do Playwright. Nenhum dos dois perfis foi validado.
-- `py _bateria.py`, com `MTGVAULT_TESTE_TECTO_S=15`: 117 ficheiros, 8 OK, 109 ERRO, 0 PENDURA, saída 1. Contagem repetida por leitura do log `_tmp_validacao/bateria-final.log`. A primeira tentativa com o tecto normal foi interrompida após erros de permissões e ausência de progresso; o tecto reduzido não foi atingido na corrida final.
+- Resultado do orquestrador, comunicado na revisão: na pasta `tests`, `py -X utf8 _bateria.py`, saída 0, TUDO OK. A revisão não forneceu contagem; não foi novamente confirmado fora da sandbox nesta sessão.
+- Nova corrida local: `py -X utf8 _bateria.py` na pasta `tests`, com `MTGVAULT_TESTE_TECTO_S=15` passado por um wrapper Python: 117 ficheiros, 8 OK, 108 ERRO, 1 PENDURA (`test_casca.py`), saída 1. Contagem confirmada por expressão regular sobre as linhas de resultado em `_bateria-revisao.log` (ignorado). Há erros de permissões nas pastas temporárias; esta corrida não substitui a validação do orquestrador. A tentativa anterior com o limite normal foi interrompida após os erros iniciais e a paragem em `test_casca.py`.
 - `git diff --check`: saída 0.
+- py -X utf8 tests/test_gallery_fallback.py: saída 0, 3 casos OK.
+- py -X utf8 tests/ensaio_gallery_fallback.py: duas tentativas nesta sessão, ambas com saída 1 e PermissionError: [WinError 5] Acesso negado na criação do pipe do Playwright, antes de validar qualquer perfil.
+- A corrida antiga com 8 OK e 109 ERRO era da sandbox; não representa o resultado posterior do orquestrador.
 
-A bateria apresenta `PermissionError` nas pastas temporárias, `unable to open database file` e falhas de asserção; não se atribuem todas as falhas à alteração da galeria. O teste novo passou também dentro da bateria.
+## Fecho pelo orquestrador
 
-As contagens são observadas localmente; falta a verificação independente do orquestrador/Claude exigida pela mesa. Repetir a bateria no ambiente de revisão, correr o ensaio nos dois perfis e concluir a revisão conjunta. O e2e público da mesa também fica pendente para o fecho; não valida este código ainda não publicado.
+Correr py -X utf8 tests/ensaio_gallery_fallback.py fora da sandbox e exigir OK: 2 perfis; concluir a revisão conjunta e o e2e da mesa antes de publicar. Esta sessão tem aprovação desactivada e não pode executar fora da sandbox.
 
-Não houve acesso à pasta viva, alterações nas colecções, instalação de dependências, commit, merge ou push. Não foram chamados pedir.ps1/ciclo.ps1.
+Não se tocou na pasta viva nem nas colecções. Sem instalação de dependências, commits, merge ou push; não foram chamados pedir.ps1/ciclo.ps1.
