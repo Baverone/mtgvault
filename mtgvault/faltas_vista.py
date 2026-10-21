@@ -282,6 +282,11 @@ def texto(v: dict) -> str:
     O formato é o de sempre (`N Nome`, com `// <deck>` entre blocos): o Cardmarket
     ignora as linhas com `//`, e é por isso que o cabeçalho de cada deck pode ir
     no meio da lista sem a estragar.
+
+    (2026-10-21) Os subtotais e o TOTAL são o `valor_ref` — o mesmo da página e
+    do `texto_totais`. Eram o `valor` (o mínimo do motor, sem o crivo de edição
+    da caixa), e o texto que ele copia para o telemóvel dizia um número abaixo
+    do da página que tinha aberta ao lado.
     """
     from . import paginas                                      # noqa: PLC0415
     out = []
@@ -291,11 +296,11 @@ def texto(v: dict) -> str:
             out.append(f"// {titulo} (fora do total)")
         for d in grupo:
             out.append(f"// {d['nome']} — {d['copias']} cóp., "
-                       f"{paginas.eur(d['valor'])}")
+                       f"{paginas.eur(d['valor_ref'])}")
             out += [f"{l['q']} {l['nm']}" for l in d["linhas"]]
     t = v["totais"]
     out.append(f"// TOTAL: {t['cartas']} cartas, {t['copias']} cópias, "
-               f"{paginas.eur(t['valor'])}")
+               f"{paginas.eur(t['valor_ref'])}")
     st = v.get("staples") or {}
     if st.get("linhas"):
         out.append(f"// STAPLES PREMODERN (colecção, fora do total) — "
