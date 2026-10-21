@@ -48,7 +48,9 @@ CAMPOS = {
 # de variante começam nas 62 — não há nenhuma entre 51 e 61, e o 60 cai no buraco.
 TROCA_DE_ARQUETIPO = 60
 # A lista para a qual se trocou é quase igual a uma que já se deixou nos últimos
-# DIAS_OSCILA dias: o emparelhador anda a saltar entre dois decks.
+# DIAS_OSCILA dias — e mais parecida com ela do que com a que deixa hoje
+# (2026-10-21; ver o aviso no `construir`): o emparelhador anda a saltar entre
+# dois decks.
 SOBREPOSICAO_OSCILA = 0.80
 DIAS_OSCILA = 14
 # Uma lista de referência mais velha do que isto já não é "a versão atual".
@@ -216,6 +218,22 @@ def escrever_outros(o: dict, valores: dict | None = None,
     return p / OUTROS
 
 
+def oscilacao(con, t, desde: str, hoje: str):
+    """A troca `t` voltou a uma lista que o deck deixou entre `desde` e `hoje`?
+    Devolve essa troca antiga (a primeira que bate) ou None. Oscilar é a lista
+    nova parecer-se MAIS com a deixada do que com a que deixa hoje (2026-10-21):
+    só passar o `SOBREPOSICAO_OSCILA` é o que qualquer deck que evolui faz."""
+    para = _contar(json.loads(t["para_cartas"] or "[]"))
+    com_hoje = _sobreposicao(para, _contar(json.loads(t["de_cartas"] or "[]")))
+    for velha in _trocas(con, "WHERE deck = ? AND formato = ? AND corrida >= ? "
+                              "AND corrida < ? AND motivo = 'troca'",
+                         (t["deck"], t["formato"], desde, hoje)):
+        com_velha = _sobreposicao(para, _contar(json.loads(velha["de_cartas"] or "[]")))
+        if com_velha >= SOBREPOSICAO_OSCILA and com_velha > com_hoje:
+            return velha
+    return None
+
+
 def construir(con, hoje: str | None = None, raiz: Path | None = None) -> dict:
     """Os três ficheiros do dia, em memória: {nome: lista}."""
     import my_decks  # noqa: PLC0415  (vive na raiz, como os outros geradores)
@@ -274,18 +292,20 @@ def construir(con, hoje: str | None = None, raiz: Path | None = None) -> dict:
                    f"de {anterior} para {lista}: nao e a lista a evoluir, e outro deck — "
                    "o emparelhador trocou de arquetipo. Ver se a assinatura ainda separa o deck.")
         # --- oscilação: voltou a uma lista que já tinha deixado --------------
+        # (2026-10-21) Passar o limiar não chega: num deck que evolui aos
+        # poucos TODAS as listas seguidas são ≥80 % iguais, e o aviso saía em
+        # quase todas as trocas (Izzet Affinity a 0,93 com uma velha e 0,96
+        # com a que deixou; os Stiflenought a 1,00 contra 1,00). Oscilar é a
+        # lista nova parecer-se MAIS com uma que o deck deixou do que com a
+        # que deixa hoje — o Grinding Station de 21/10 (howa → Alakai → howa:
+        # 0,97 com a velha, 0,65 com a de hoje).
         for t in trocas:
-            para = _contar(json.loads(t["para_cartas"] or "[]"))
-            for velha in _trocas(con, "WHERE deck = ? AND formato = ? AND corrida >= ? "
-                                      "AND corrida < ? AND motivo = 'troca'",
-                                 (nome, fmt, limite_oscila, hoje)):
-                if _sobreposicao(para, _contar(json.loads(velha["de_cartas"] or "[]"))) \
-                        >= SOBREPOSICAO_OSCILA:
-                    avisar("media", nome,
-                           f"voltou a uma lista como a de {rotulo(velha['de_jogador'], velha['de_data'])}",
-                           f"deixada a {velha['corrida'][8:10]}/{velha['corrida'][5:7]}: o deck anda "
-                           "a saltar entre dois arquetipos que a assinatura nao separa.")
-                    break
+            velha = oscilacao(con, t, limite_oscila, hoje)
+            if velha is not None:
+                avisar("media", nome,
+                       f"voltou a uma lista como a de {rotulo(velha['de_jogador'], velha['de_data'])}",
+                       f"deixada a {velha['corrida'][8:10]}/{velha['corrida'][5:7]}: o deck anda "
+                       "a saltar entre dois arquetipos que a assinatura nao separa.")
         # --- a carta que lhe dá o nome --------------------------------------
         if cartas:
             for c in cartas_do_nome(nome, s["assinatura"]):

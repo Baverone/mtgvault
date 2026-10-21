@@ -35,7 +35,9 @@ deck passa a SALTAR essa lista — o deck fica na que tem e uma lista mais nova
 volta a ser avaliada como sempre. Só aquela lista, só aquele deck. O caso: a
 28571 (Chay Chay Hii, Regional Championship SEA de 17/10, que a fonte chama
 «Pinnacle Affinity») apanhada pela assinatura do Grinding Station; ele mantém a
-27439 (howa, 15/10). Desfazer é apagar a linha `rejeitada`.
+27439 (howa, 15/10). Desfazer é `py my_decks.py aceitar "<deck>" <decklist_id>`
+(desde 2026-10-21): grava `motivo = 'rejeicao_levantada'`, a rejeição fica no
+histórico e deixa de valer — nada se apaga.
 """
 from __future__ import annotations
 
@@ -131,10 +133,19 @@ def _fora_sql(fora) -> tuple[str, list]:
 
 
 def rejeitadas(con: sqlite3.Connection, deck: str, fmt: str) -> list[int]:
-    """As decklists que ele rejeitou para este deck (`motivo = 'rejeitada'`)."""
+    """As decklists que ele rejeitou para este deck (`motivo = 'rejeitada'`) e
+    cuja rejeição continua de pé. (2026-10-21) O `aceitar` de uma rejeitada
+    grava `motivo = 'rejeicao_levantada'` — sem apagar a rejeição, que fica no
+    histórico — e vale a decisão MAIS RECENTE de cada lista. Antes o `aceitar`
+    punha a lista no deck e deixava a rejeição de pé: na noite seguinte a
+    procura saltava-a e o deck regredia para uma lista mais velha (ou gravava
+    uma `recusada` falsa e um aviso alto todas as noites)."""
     return [r[0] for r in con.execute(
-        "SELECT DISTINCT para_decklist_id FROM deck_lista_trocas WHERE deck = ? "
-        "AND formato = ? AND motivo = 'rejeitada' AND para_decklist_id IS NOT NULL",
+        "SELECT t.para_decklist_id FROM deck_lista_trocas t WHERE t.deck = ? "
+        "AND t.formato = ? AND t.motivo = 'rejeitada' AND t.para_decklist_id IS NOT NULL "
+        "AND t.id = (SELECT MAX(u.id) FROM deck_lista_trocas u WHERE u.deck = t.deck "
+        "AND u.formato = t.formato AND u.para_decklist_id = t.para_decklist_id "
+        "AND u.motivo IN ('rejeitada', 'rejeicao_levantada'))",
         (deck, fmt))]
 
 
@@ -355,7 +366,10 @@ def aceitar(con: sqlite3.Connection, deck: str, decklist_id: int | None = None,
     """Ele decide: a lista `decklist_id` (por omissão a mais recente que a
     procura do deck devolve — a recusada) passa a ser a referência, sem passar
     pelo `avaliar_troca`. Fica gravada como troca normal; a linha `recusada`
-    fica no histórico."""
+    fica no histórico. Se a lista estava REJEITADA, a rejeição levanta-se
+    (`rejeicao_levantada`, 2026-10-21) e a saída di-lo: aceitar é a decisão
+    mais recente dele, e uma rejeição de pé fazia a procura saltar a lista que
+    o deck acabou de receber."""
     s = next((x for x in seguidos() if x["deck"] == deck), None)
     if s is None:
         raise ValueError(f"deck nao seguido: {deck!r}")
@@ -371,6 +385,15 @@ def aceitar(con: sqlite3.Connection, deck: str, decklist_id: int | None = None,
         if dl["format"] != s["formato"]:
             raise ValueError(f"decklist #{decklist_id} e de {dl['format']}, nao {s['formato']}")
     out: list = []
+    if dl["id"] in rejeitadas(con, deck, s["formato"]):
+        row = con.execute("SELECT id, notes FROM decks WHERE name = ? AND format = ?",
+                          (deck, s["formato"])).fetchone()
+        de = ler_nota(row["notes"] if row else None)
+        _gravar_troca(con, row["id"] if row else None, deck, s["formato"], hoje,
+                      "rejeicao_levantada", de,
+                      _cartas_do_deck(con, row["id"]) if row else [], dl,
+                      _cartas_da_lista(con, dl["id"]))
+        out.append(f"{deck}: rejeicao de #{dl['id']} levantada")
     _store(con, deck, s["formato"], dl, out, hoje, s["assinatura"], forcar=True)
     con.commit()
     return "; ".join(out)
