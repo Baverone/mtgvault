@@ -517,8 +517,11 @@ def caso_as_caixas_a_zero_por_cento_nao_sao_principais():
     for slot in ("premodern-enchantress", "premodern-elves", "premodern-igg",
                  "premodern-terrageddon"):
         assert por_slot[slot].get("_saiu"), f"{slot} saiu a 17/10"
+    # [2026-10-21] entrou a `modern-grinding-station` (caixa nova do André, lista
+    # do Alakai), principal desde esse dia: vivas passam a 9.
+    assert por_slot["modern-grinding-station"].get("principal_em") == "2026-10-21"
     assert sum(1 for c in cfg_real["caixas"]
-               if c.get("principal") and not c.get("_saiu")) == 8
+               if c.get("principal") and not c.get("_saiu")) == 9
     # E a razão da interpretação está ESCRITA no ficheiro.
     assert "INTERPRETACAO" in (cfg_real.get("_sempre_montado") or "")
 

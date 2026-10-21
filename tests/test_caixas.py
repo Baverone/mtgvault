@@ -190,8 +190,10 @@ def caso_o_config_a_serio_ja_esta_na_forma_nova():
     # [2026-10-17] Enchantress, Elves, IGG e Terrageddon com `_saiu` (André: só
     # o Stiflenought e o UW Replenish ficam montados em Premodern): as 18 ficam
     # no ficheiro, vivas são 12.
-    assert len(cfg["caixas"]) == 18, len(cfg["caixas"])
-    assert sum(1 for c in cfg["caixas"] if not c.get("_saiu")) == 12
+    # [2026-10-21] 19 no ficheiro e 13 vivas: entrou a caixa do Grinding Station
+    # (lista do Alakai, decisão do André nesse dia).
+    assert len(cfg["caixas"]) == 19, len(cfg["caixas"])
+    assert sum(1 for c in cfg["caixas"] if not c.get("_saiu")) == 13
     assert estados["premodern-terrageddon"] == "permanente"
     assert "legacy" not in estados, "o slot `legacy` sem nome não devia existir"
     for slot in ("legacy-welder", "legacy-aluren", "legacy-artifacts-blue"):

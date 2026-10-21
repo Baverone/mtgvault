@@ -300,8 +300,10 @@ def caso_o_config_a_serio_tem_as_decisoes_de_13_10():
     # A `modern-affinity` (desactivada desde 04/10) também é Mox Opal: sem ela na
     # família, o daily recriava todas as noites a pasta `Modern — Affinity` que
     # o supervisor tinha arquivado.
+    # [CORRIGIDO A 2026-10-21] entrou a `modern-grinding-station` (caixa nova do
+    # André nesse dia, lista do Alakai): também joga Mox Opal.
     assert fam["slots"] == ["modern", "legacy-artifacts-blue", "legacy-welder",
-                            "modern-affinity"], fam
+                            "modern-affinity", "modern-grinding-station"], fam
     k = real["listas_escolhidas"]["deck:modern:jaces-machinations-combo"]
     assert sum(q for b, _n, q in k["cards"] if b == "main") == 60
     assert sum(q for b, _n, q in k["cards"] if b == "side") == 15
