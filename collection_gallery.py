@@ -39,6 +39,15 @@ from mtgvault.collection import na_estante  # noqa: E402
 # se reescreve um histórico que se mediu), e o gráfico diz onde está a costura.
 REGRA_NOVA = "2026-09-24"
 
+# O ÚLTIMO dia da colecção antiga (2026-10-21). A 13/10 a `copies` foi esvaziada
+# (arquivo em `data/copies-esvaziada-2026-10-13.csv`) e reconstrói-se pelas
+# fotos. Conferido no `value_history` dele: o ponto de 13/10 ainda é a colecção
+# antiga (133 496,67 €, 1 678 cartas) e o de 14/10 já é 0 €. Uma percentagem de
+# ponta a ponta atravessava o corte e dizia ≈ −99,9 % — uma queda que não é o
+# mercado, é uma decisão dele. Os pontos dos dois lados FICAM como foram medidos;
+# o que se faz é marcar o corte e nunca calcular uma variação por cima dele.
+ESVAZIAMENTO = "2026-10-13"
+
 
 def _cards(con):
     """Uma linha por lote em copies, com nome/edição/imagem do catálogo e preço.
@@ -135,6 +144,32 @@ def _costura(dates):
     return None
 
 
+def _esvaziamento(dates):
+    """O índice do primeiro ponto DEPOIS do esvaziamento, ou `None` se a série
+    não o atravessa (só tem pontos de um dos lados)."""
+    if not dates or dates[0] > ESVAZIAMENTO:
+        return None
+    for i, d in enumerate(dates):
+        if d > ESVAZIAMENTO:
+            return i
+    return None
+
+
+def _variacao(dates, vals, ie):
+    """A variação que se pode afirmar: `(pct, desde)` ou `(None, porquê)`.
+
+    Com o corte na série, só conta o troço DEPOIS dele — a colecção de hoje.
+    Sem dois pontos desse lado, ou com a base a zero (a colecção a recomeçar do
+    nada), não há percentagem honesta: diz-se porquê em vez de um número."""
+    if ie is not None:
+        dates, vals = dates[ie:], vals[ie:]
+    if len(vals) < 2:
+        return None, "ainda um só ponto depois do esvaziamento"
+    if not vals[0] or vals[0] <= 0:
+        return None, f"a {dates[0]} a colecção valia 0 € — não há base para uma percentagem"
+    return (vals[-1] - vals[0]) / vals[0] * 100, dates[0]
+
+
 def _evo_block(history):
     """Bloco HTML: indicador de valorização + gráfico SVG (desenhado no servidor)."""
     if len(history) < 2:
@@ -143,10 +178,16 @@ def _evo_block(history):
                 'que o job diário grava o valor.</div></div>')
     dates = [d for d, _ in history]
     vals = [v for _, v in history]
-    first, last = vals[0], vals[-1]
-    pct = (last - first) / first * 100 if first else 0.0
-    cls = "up" if last >= first else "down"
-    arrow = "▲" if last >= first else "▼"
+    ie = _esvaziamento(dates)
+    pct, desde = _variacao(dates, vals, ie)
+    if pct is None:
+        cls = "neutro"
+        indicador = f'<span class="evo-ind neutro">sem variação <em>({desde})</em></span>'
+    else:
+        cls = "up" if pct >= 0 else "down"
+        arrow = "▲" if pct >= 0 else "▼"
+        indicador = (f'<span class="evo-ind {cls}">{arrow} {paginas.pct(pct)} '
+                     f'<em>desde {desde}</em></span>')
     W, H, pad = 640, 96, 8
     lo, hi = min(vals), max(vals)
     span = (hi - lo) or 1.0
@@ -158,8 +199,25 @@ def _evo_block(history):
     def py(v):
         return H - pad - (v - lo) / span * (H - 2 * pad)
 
-    pts = " ".join(f"{px(i):.1f},{py(v):.1f}" for i, v in enumerate(vals))
-    area = f"{px(0):.1f},{H - pad} " + pts + f" {px(n - 1):.1f},{H - pad}"
+    # A linha PARTE-SE no esvaziamento: ligar o último ponto antigo ao primeiro
+    # novo desenhava a queda como se fosse um movimento de preço.
+    troços = [(0, n)] if ie is None else [(0, ie), (ie, n)]
+    linhas = ""
+    for a, b in troços:
+        pts = " ".join(f"{px(i):.1f},{py(vals[i]):.1f}" for i in range(a, b))
+        area = f"{px(a):.1f},{H - pad} " + pts + f" {px(b - 1):.1f},{H - pad}"
+        linhas += (f'<polygon points="{area}" class="fill {cls}"/>'
+                   f'<polyline points="{pts}" class="line {cls}"/>')
+    corte = ""
+    nota_esv = ""
+    if ie is not None:
+        xc = (px(ie - 1) + px(ie)) / 2
+        corte = (f'<line x1="{xc:.1f}" y1="0" x2="{xc:.1f}" y2="{H}" class="esvaziamento">'
+                 f'<title>colecção esvaziada a {ESVAZIAMENTO}</title></line>')
+        nota_esv = (f'<div class="evo-note"><b>A colecção foi esvaziada a {ESVAZIAMENTO}</b> '
+                    f'e está a ser reconstruída pelas fotos: a linha laranja é esse corte. '
+                    f'Os pontos à esquerda são a colecção antiga e ficam como foram medidos; '
+                    f'nenhuma percentagem é calculada por cima do corte.</div>')
     dots = "".join(f'<circle cx="{px(i):.1f}" cy="{py(v):.1f}" r="2.6" class="dot {cls}"/>'
                    for i, v in enumerate(vals))
     # A costura da mudança de regra, desenhada: uma linha tracejada no primeiro
@@ -174,12 +232,11 @@ def _evo_block(history):
             f'pela regra antiga (~11,67 € abaixo). Não é o mercado a mexer.</div>'
             if ic is not None else "")
     svg = (f'<svg viewBox="0 0 {W} {H}" class="spark">'
-           f'<polygon points="{area}" class="fill {cls}"/>'
-           f'<polyline points="{pts}" class="line {cls}"/>{dots}{marca}</svg>')
+           f'{linhas}{dots}{marca}{corte}</svg>')
     return (f'<div class="evo"><div class="evo-top"><span class="evo-h">Evolução do valor</span>'
-            f'<span class="evo-ind {cls}">{arrow} {paginas.pct(pct)} <em>desde {dates[0]}</em></span></div>'
+            f'{indicador}</div>'
             f'<div class="evo-axis"><span>{dates[0]}</span><span>{dates[-1]}</span></div>{svg}'
-            f'{nota}</div>')
+            f'{nota_esv}{nota}</div>')
 
 
 def build(con, out_path, *, historico=True):
@@ -248,6 +305,9 @@ _CSS = """
  .spark .line{fill:none;stroke-width:2;vector-effect:non-scaling-stroke} .spark .line.up{stroke:var(--add)} .spark .line.down{stroke:var(--rem)}
  .spark .fill.up{fill:var(--add);opacity:.13} .spark .fill.down{fill:var(--rem);opacity:.13}
  .spark .dot{stroke:var(--card);stroke-width:1} .spark .dot.up{fill:var(--add)} .spark .dot.down{fill:var(--rem)}
+ .evo-ind.neutro{color:var(--muted);font-weight:600;font-size:13px}
+ .spark .line.neutro{stroke:var(--muted)} .spark .fill.neutro{fill:var(--muted);opacity:.1} .spark .dot.neutro{fill:var(--muted)}
+ .spark .esvaziamento{stroke:var(--warn);stroke-width:2;vector-effect:non-scaling-stroke}
  .spark .regra{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
  .evo-note{color:var(--muted);font-size:12.5px;margin-top:6px}
  h2{font-size:13px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:26px 0 8px;border-bottom:1px solid var(--line);padding-bottom:7px;display:flex;justify-content:space-between;gap:10px;align-items:baseline}
@@ -257,6 +317,7 @@ _CSS = """
  .c .imgwrap{position:relative;aspect-ratio:488/680;background:var(--line)}
  .c img{width:100%;height:100%;object-fit:cover;display:block}
  .c .noimg{width:100%;height:100%;display:flex;align-items:center;justify-content:center;text-align:center;padding:8px;font-size:12px;color:var(--muted)}
+ .c .noimg[hidden]{display:none}
  .c .qty{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.78);color:#fff;font-weight:700;font-size:12px;padding:1px 7px;border-radius:999px}
  .c .foil{position:absolute;top:6px;left:6px;font-size:12px;background:linear-gradient(135deg,var(--ob),#e8a,#8ea);color:#111;font-weight:700;padding:1px 6px;border-radius:999px}
  .c .meta{padding:7px 9px} .c .nm{font-weight:600;font-size:12.5px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -285,10 +346,11 @@ _TMPL = ("""<!doctype html><html lang="pt-PT"><head>"""
 </div>""" + shell.fechar(_RODAPE, """
 <script>
 const DATA=%DATA%;
-const esc=s=>(s==null?"":String(s)).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const esc=s=>(s==null?"":String(s)).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const eur=x=>x==null?"":(x||0).toLocaleString("pt-PT",{style:"currency",currency:"EUR"});
 function cardHtml(c){
- const img=c.img?('<a href="'+esc(c.img)+'" target="_blank" rel="noopener"><img loading="lazy" src="'+esc(c.img)+'" alt="'+esc(c.name)+'"></a>')
+ // Uma imagem indisponível mantém o nome legível, como uma carta sem URL (2026-10-21).
+ const img=c.img?('<a href="'+esc(c.img)+'" target="_blank" rel="noopener"><img loading="lazy" src="'+esc(c.img)+'" alt="'+esc(c.name)+'" onerror="this.parentNode.nextElementSibling.hidden=false;this.parentNode.remove()"></a><div class="noimg" hidden>'+esc(c.name)+'</div>')
                  :('<div class="noimg">'+esc(c.name)+'</div>');
  return '<div class="c" data-s="'+esc((c.name+' '+c.set).toLowerCase())+'"><div class="imgwrap">'+img+
   '<span class="qty">'+c.qty+'x</span>'+(c.foil?'<span class="foil">foil</span>':'')+'</div>'+
