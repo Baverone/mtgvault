@@ -2,18 +2,18 @@
  {
   "deck": "Izzet Affinity (Kappa Cannoneer)",
   "formato": "modern",
-  "lista": "KizmaHusky 18/10",
+  "lista": "solaec0501 20/10",
   "anterior": "KizmaHusky 18/10",
-  "mudou": "nao",
-  "cartas_trocadas": 0,
+  "mudou": "sim",
+  "cartas_trocadas": 6,
   "main": 60,
   "sideboard": 15
  },
  {
   "deck": "Grinding Station",
   "formato": "modern",
-  "lista": "Alakai 17/10",
-  "anterior": "howa 15/10",
+  "lista": "howa 19/10",
+  "anterior": "Alakai 17/10",
   "mudou": "sim",
   "cartas_trocadas": 52,
   "main": 60,
@@ -32,19 +32,19 @@
  {
   "deck": "Greasefang",
   "formato": "pioneer",
-  "lista": "rosici0700 17/10",
+  "lista": "Cudibunda 19/10",
   "anterior": "rosici0700 17/10",
-  "mudou": "nao",
-  "cartas_trocadas": 0,
+  "mudou": "sim",
+  "cartas_trocadas": 40,
   "main": 60,
   "sideboard": 15
  },
  {
   "deck": "Stiflenought (Luffy)",
   "formato": "premodern",
-  "lista": "LuffyDoChapeuDePalha 18/10",
+  "lista": "LuffyDoChapeuDePalha 20/10",
   "anterior": "LuffyDoChapeuDePalha 18/10",
-  "mudou": "nao",
+  "mudou": "sim",
   "cartas_trocadas": 0,
   "main": 60,
   "sideboard": 15
@@ -52,9 +52,9 @@
  {
   "deck": "Stiflenought (Spock)",
   "formato": "premodern",
-  "lista": "SpockVidaLoka 18/10",
+  "lista": "SpockVidaLoka 20/10",
   "anterior": "SpockVidaLoka 18/10",
-  "mudou": "nao",
+  "mudou": "sim",
   "cartas_trocadas": 0,
   "main": 60,
   "sideboard": 15

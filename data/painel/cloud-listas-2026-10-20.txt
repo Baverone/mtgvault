@@ -1,0 +1,198 @@
+CLOUD cEDH
+==========
+Comandante: Cloud, Midgar Mercenary
+100 cartas
+
+Planeswalkers (1)
+  1 Tezzeret, Cruel Captain
+
+Criaturas (32)
+  1 Auriok Salvagers
+  1 Auriok Steelshaper
+  1 Battered Golem
+  1 Boromir, Warden of the Tower
+  1 Curious Farm Animals
+  1 Esper Sentinel
+  1 Extraction Specialist
+  1 Gingerbrute
+  1 Glaring Fleshraker
+  1 Grand Abolisher
+  1 Leonin Relic-Warder
+  1 Memnite
+  1 Metalworker
+  1 Myr Moonvessel
+  1 Myr Retriever
+  1 Nurturing Pixie
+  1 Ornithopter
+  1 Phyrexian Walker
+  1 Puresteel Paladin
+  1 Ranger-Captain of Eos
+  1 Recruiter of the Guard
+  1 Salvage Scout
+  1 Scrap Trawler
+  1 Shield Sphere
+  1 Solitude
+  1 Starfield Shepherd
+  1 Tataru Taru
+  1 Teshar, Ancestor's Apostle
+  1 Voice of Victory
+  1 Walking Ballista
+  1 Witch Enchanter // Witch-Blessed Meadow
+  1 Éowyn, Lady of Rohan
+
+Artefactos (31)
+  1 Ancient Den
+  1 Arcane Signet
+  1 Ashnod's Altar
+  1 Blasting Station
+  1 Chromatic Star
+  1 Chrome Mox
+  1 Clock of Omens
+  1 Fellwar Stone
+  1 Grim Monolith
+  1 Grinding Station
+  1 Helm of Awakening
+  1 Inspiring Statuary
+  1 Krark-Clan Ironworks
+  1 Lion's Eye Diamond
+  1 Lotus Petal
+  1 Mana Vault
+  1 Masterwork of Ingenuity
+  1 Moonsilver Key
+  1 Mox Amber
+  1 Mox Diamond
+  1 Mox Opal
+  1 Oketra's Monument
+  1 Paradise Mantle
+  1 Phoenix Down
+  1 Phyrexian Altar
+  1 Pre-War Formalwear
+  1 Skateboard
+  1 Skullclamp
+  1 Sol Ring
+  1 Springleaf Drum
+  1 Tormod's Crypt
+
+Encantamentos (3)
+  1 Smothering Tithe
+  1 Touch the Spirit Realm
+  1 Urza's Saga
+
+Instantâneos (5)
+  1 Abolish
+  1 Enlightened Tutor
+  1 Orim's Chant
+  1 Patrician's Scorn
+  1 Silence
+
+Feitiços (6)
+  1 Call a Surprise Witness
+  1 Helping Hand
+  1 Jolted Awake
+  1 Recommission
+  1 Return to the Ranks
+  1 Sevinne's Reclamation
+
+Terrenos (21)
+  1 Ancient Tomb
+  1 Cavern of Souls
+  1 City of Traitors
+  1 Crystal Vein
+  1 Gemstone Caverns
+  1 Mishra's Workshop
+  12 Plains
+  1 Remote Farm
+  1 Ruins of Trokair
+  1 The Mycosynth Gardens
+
+
+CLOUD DUEL COMMANDER
+====================
+Comandante: Cloud, Midgar Mercenary
+100 cartas
+
+Criaturas (26)
+  1 Anointed Peacekeeper
+  1 Benevolent Bodyguard
+  1 Cathar Commando
+  1 Cid, Freeflier Pilot
+  1 Drannith Magistrate
+  1 Esper Sentinel
+  1 Extraction Specialist
+  1 Giver of Runes
+  1 Guide of Souls
+  1 Lion Sash
+  1 Mother of Runes
+  1 Ocelot Pride
+  1 Phelia, Exuberant Shepherd
+  1 Puresteel Paladin
+  1 Ranger-Captain of Eos
+  1 Recruiter of the Guard
+  1 Sanctifier en-Vec
+  1 Skrelv, Defector Mite
+  1 Skyclave Apparition
+  1 Solitude
+  1 Spectacular Spider-Man
+  1 Stoneforge Mystic
+  1 Sunpearl Kirin
+  1 Thalia, Guardian of Thraben
+  1 Tithe Taker
+  1 Voice of Victory
+
+Artefactos (14)
+  1 Ancient Den
+  1 Andúril, Flame of the West
+  1 Disruptor Flute
+  1 Glimmer Lens
+  1 Hand of Vecna
+  1 Mandibular Kite
+  1 Masterwork of Ingenuity
+  1 Portable Hole
+  1 Pre-War Formalwear
+  1 Skateboard
+  1 Skullclamp
+  1 Tangle Wire
+  1 Umezawa's Jitte
+  1 Winter Moon
+
+Encantamentos (7)
+  1 On Thin Ice
+  1 Parallax Wave
+  1 Seam Rip
+  1 Sigarda's Aid
+  1 Static Prison
+  1 Swift Reconfiguration
+  1 Urza's Saga
+
+Instantâneos (9)
+  1 Enlightened Tutor
+  1 Erode
+  1 Flare of Fortitude
+  1 Get Lost
+  1 Mana Tithe
+  1 March of Otherworldly Light
+  1 Path to Exile
+  1 Reverent Mantra
+  1 Swords to Plowshares
+
+Feitiços (3)
+  1 Helping Hand
+  1 Jolted Awake
+  1 Oust
+
+Terrenos (38)
+  1 Abandoned Air Temple
+  1 Castle Ardenvale
+  1 City of Traitors
+  1 Crystal Vein
+  1 Dust Bowl
+  1 Eiganjo, Seat of the Empire
+  1 Gemstone Caverns
+  1 Mirrex
+  29 Snow-Covered Plains
+  1 Talon Gates of Madara
+
+Outros (2)
+  1 Razorgrass Ambush
+  1 Witch Enchanter
+

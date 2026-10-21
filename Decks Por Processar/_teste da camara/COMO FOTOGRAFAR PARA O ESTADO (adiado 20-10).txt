@@ -1,0 +1,54 @@
+COMO FOTOGRAFAR PARA O ESTADO DA CARTA (20/10/2026)
+====================================================
+
+O que o teste de hoje mostrou: as fotos enviadas pela aplicacao chegam a
+1512x2016 (3 MP), cerca de 8,6 pixeis por milimetro de carta. Chega para
+identificar, nao chega para avaliar o estado (o metodo de referencia
+trabalha a ~47 px/mm). Por isso:
+
+1. FICHEIRO ORIGINAL, SEMPRE.
+   Fotografa com a app da camara do telemovel, na resolucao maxima, e copia
+   os ficheiros TAL COMO ESTAO para a pasta da carta (cabo, iCloud, o que
+   usares). Nunca por WhatsApp, e-mail "tamanho reduzido" nem pelo chat:
+   comprimem. HEIC serve; nao e preciso converter. Nao recortes nem edites
+   no telemovel.
+
+2. ENQUADRAMENTO: ENCHER O ECRA.
+   Ate 4 cartas por foto (regra de 01/10), SEPARADAS, sem se tocar nem
+   sobrepor, todas inteiras, com uma margem pequena. Quanto menos espaco
+   vazio, mais pixeis por carta. As 45 duais de Revised e o Reserved List
+   vao a UMA ou DUAS por foto: sao as que tem os defeitos finos (linhas de
+   rolo) que se perdem a quatro por foto.
+
+3. CAMARA A DIREITO, POR CIMA.
+   Telemovel paralelo a mesa, ao centro das cartas. As cartas tem de sair
+   rectangulos, nao trapezios. Toca no ecra numa carta para focar e confirma
+   que o texto esta nitido antes de disparar.
+
+4. LUZ FORTE, UNIFORME, DE LADO.
+   Luz de janela ou um candeeiro de lado, em angulo baixo. NUNCA o flash de
+   frente: esconde o branqueamento das bordas, que e exactamente o que
+   queremos ver. Nao deixes a sombra do telemovel cair nas cartas.
+   Nos FOILS, muda o angulo ate o texto se ler sem reflexo: na foto de hoje
+   a carta do meio tinha a caixa de texto apagada pelo brilho.
+
+5. FUNDO LISO E ESCURO.
+   O tapete de hoje (estampado, claro) serve para identificar, mas mete
+   ruido na medida das bordas. Um pano escuro liso, uma mesa escura, ou o
+   tapete preto. Qualquer fundo liso e escuro bate um fundo estampado.
+
+6. VERSO LOGO A SEGUIR, SEM MEXER NA LUZ.
+   Poe, fotografa, vira no sitio, fotografa. O verso e onde o desgaste dos
+   cantos e das bordas se ve melhor (castanho claro contra branco). A
+   recolha emparelha a frente com o verso pela ordem de captura; nao
+   precisas de mudar nomes.
+
+7. LIMPA PRIMEIRO.
+   Microfibra. Po e dedadas leem-se como desgaste.
+
+8. TODAS NA MESMA ORIENTACAO, AO ALTO.
+   A foto do verso de hoje veio deitada; nao faz mal, mas consistente e
+   melhor para a deteccao.
+
+O (N) da pasta e o que o deck pede; tu fotografas o que tens, ate ao
+playset. A mesma carta em duas pastas de deck = tens multiplos.
