@@ -1,11 +1,11 @@
 {
- "data": "2026-10-21",
+ "data": "2026-10-22",
  "nucleo_pct": 50,
  "top": 15,
  "alvos": [
   {
    "nome": "Enchantress",
-   "n_lists": 76,
+   "n_lists": 75,
    "caixa": false,
    "combo": true,
    "nucleo": 24,
@@ -104,7 +104,7 @@
   },
   {
    "nome": "Terrageddon",
-   "n_lists": 58,
+   "n_lists": 56,
    "caixa": false,
    "combo": true,
    "nucleo": 30,
@@ -234,10 +234,10 @@
   },
   {
    "nome": "Pyrostatic Pillar",
-   "n_lists": 51,
+   "n_lists": 47,
    "caixa": false,
    "combo": false,
-   "nucleo": 17,
+   "nucleo": 16,
    "nos_meus_decks": 0,
    "pct_nos_meus_decks": 0,
    "faltam": [
@@ -248,10 +248,6 @@
     [
      "Fireblast",
      4
-    ],
-    [
-     "Flaring Pain",
-     3
     ],
     [
      "Grim Lavamancer",
@@ -316,7 +312,7 @@
   },
   {
    "nome": "UW Replenish",
-   "n_lists": 36,
+   "n_lists": 34,
    "caixa": true,
    "combo": true,
    "nucleo": 19,
@@ -329,7 +325,7 @@
   },
   {
    "nome": "Mono-Preto Graveborn Muse",
-   "n_lists": 34,
+   "n_lists": 33,
    "caixa": false,
    "combo": false,
    "nucleo": 19,
@@ -525,7 +521,7 @@
   },
   {
    "nome": "Landstill",
-   "n_lists": 24,
+   "n_lists": 23,
    "caixa": false,
    "combo": false,
    "nucleo": 25,
@@ -595,12 +591,12 @@
   },
   {
    "nome": "Psychatog",
-   "n_lists": 24,
+   "n_lists": 23,
    "caixa": false,
    "combo": false,
-   "nucleo": 21,
-   "nos_meus_decks": 11,
-   "pct_nos_meus_decks": 52,
+   "nucleo": 20,
+   "nos_meus_decks": 10,
+   "pct_nos_meus_decks": 50,
    "faltam": [
     [
      "Accumulated Knowledge",
@@ -986,108 +982,6 @@
    "top_combo": false
   },
   {
-   "nome": "Orzhov Exalted Angel",
-   "n_lists": 7,
-   "caixa": false,
-   "combo": false,
-   "nucleo": 27,
-   "nos_meus_decks": 5,
-   "pct_nos_meus_decks": 19,
-   "faltam": [
-    [
-     "Aura of Silence",
-     1
-    ],
-    [
-     "Barren Moor",
-     1
-    ],
-    [
-     "Caves of Koilos",
-     4
-    ],
-    [
-     "Circle of Protection: Red",
-     1
-    ],
-    [
-     "Decree of Justice",
-     4
-    ],
-    [
-     "Disenchant",
-     2
-    ],
-    [
-     "Duress",
-     4
-    ],
-    [
-     "Dust Bowl",
-     2
-    ],
-    [
-     "Engineered Plague",
-     3
-    ],
-    [
-     "Enlightened Tutor",
-     1
-    ],
-    [
-     "Eternal Dragon",
-     3
-    ],
-    [
-     "Gerrard's Verdict",
-     4
-    ],
-    [
-     "Haunting Echoes",
-     2
-    ],
-    [
-     "Kor Haven",
-     1
-    ],
-    [
-     "Phyrexian Furnace",
-     1
-    ],
-    [
-     "Presence of the Master",
-     1
-    ],
-    [
-     "Secluded Steppe",
-     1
-    ],
-    [
-     "Skeletal Scrying",
-     2
-    ],
-    [
-     "Tormod's Crypt",
-     1
-    ],
-    [
-     "Vindicate",
-     4
-    ],
-    [
-     "Warmth",
-     2
-    ],
-    [
-     "Wrath of God",
-     3
-    ]
-   ],
-   "pct_principal": 0,
-   "top": false,
-   "top_combo": false
-  },
-  {
    "nome": "RG Aggro",
    "n_lists": 7,
    "caixa": false,
@@ -1183,6 +1077,108 @@
     [
      "Wooded Foothills",
      4
+    ]
+   ],
+   "pct_principal": 0,
+   "top": false,
+   "top_combo": false
+  },
+  {
+   "nome": "Orzhov Exalted Angel",
+   "n_lists": 6,
+   "caixa": false,
+   "combo": false,
+   "nucleo": 27,
+   "nos_meus_decks": 5,
+   "pct_nos_meus_decks": 19,
+   "faltam": [
+    [
+     "Aura of Silence",
+     1
+    ],
+    [
+     "Barren Moor",
+     1
+    ],
+    [
+     "Caves of Koilos",
+     4
+    ],
+    [
+     "Circle of Protection: Red",
+     1
+    ],
+    [
+     "Decree of Justice",
+     4
+    ],
+    [
+     "Disenchant",
+     2
+    ],
+    [
+     "Duress",
+     4
+    ],
+    [
+     "Dust Bowl",
+     2
+    ],
+    [
+     "Engineered Plague",
+     3
+    ],
+    [
+     "Enlightened Tutor",
+     1
+    ],
+    [
+     "Eternal Dragon",
+     3
+    ],
+    [
+     "Gerrard's Verdict",
+     4
+    ],
+    [
+     "Haunting Echoes",
+     2
+    ],
+    [
+     "Kor Haven",
+     1
+    ],
+    [
+     "Phyrexian Furnace",
+     1
+    ],
+    [
+     "Presence of the Master",
+     1
+    ],
+    [
+     "Secluded Steppe",
+     1
+    ],
+    [
+     "Skeletal Scrying",
+     2
+    ],
+    [
+     "Tormod's Crypt",
+     1
+    ],
+    [
+     "Vindicate",
+     4
+    ],
+    [
+     "Warmth",
+     2
+    ],
+    [
+     "Wrath of God",
+     3
     ]
    ],
    "pct_principal": 0,
@@ -1319,7 +1315,7 @@
    "arquetipos": [
     "UW Replenish"
    ],
-   "pct": 94,
+   "pct": 97,
    "unit": null,
    "set": null,
    "sid": null,
@@ -1335,7 +1331,7 @@
     "Elves / Survival"
    ],
    "pct": 60,
-   "unit": 4.84,
+   "unit": 4.24,
    "set": "USG",
    "sid": "59d1f05b-f165-47c7-8a78-3b60ee3298ca",
    "rl": false,
@@ -1349,7 +1345,7 @@
    "arquetipos": [
     "Psychatog"
    ],
-   "pct": 79,
+   "pct": 78,
    "unit": null,
    "set": null,
    "sid": null,
@@ -1458,7 +1454,7 @@
     "Frantic Storm"
    ],
    "pct": 57,
-   "unit": 4.29,
+   "unit": 4.28,
    "set": "ALL",
    "sid": "415a3104-90e6-4235-b67f-69337c7fe714",
    "rl": false,
@@ -1565,7 +1561,7 @@
    "arquetipos": [
     "Orzhov Exalted Angel"
    ],
-   "pct": 71,
+   "pct": 67,
    "unit": 4.19,
    "set": "ONS",
    "sid": "45be3811-a223-4c45-9b24-0317f2d53c60",
@@ -1580,7 +1576,7 @@
    "arquetipos": [
     "Terrageddon"
    ],
-   "pct": 66,
+   "pct": 64,
    "unit": 13.89,
    "set": "APC",
    "sid": "a9c25e71-0140-48fe-8b9e-33b4b50c5c12",
@@ -1626,7 +1622,7 @@
    "arquetipos": [
     "Pyrostatic Pillar"
    ],
-   "pct": 59,
+   "pct": 60,
    "unit": null,
    "set": null,
    "sid": null,
@@ -1672,7 +1668,7 @@
     "Stiflenought",
     "Landstill"
    ],
-   "pct": 75,
+   "pct": 78,
    "unit": 3.59,
    "set": "4ED",
    "sid": "988f7b31-24b2-45c2-89e4-ff6bd9e0c8c7",
@@ -1861,7 +1857,7 @@
     "Frantic Storm"
    ],
    "pct": 100,
-   "unit": 1.33,
+   "unit": 1.27,
    "set": "ULG",
    "sid": "4e76d04a-0038-4b5b-a026-3056ee940da9",
    "rl": false,
@@ -1876,7 +1872,7 @@
     "Landstill"
    ],
    "pct": 83,
-   "unit": 12.72,
+   "unit": 2.54,
    "set": "INV",
    "sid": "d115dbff-e35b-495f-a1e3-19651895927e",
    "rl": false,
@@ -1907,7 +1903,7 @@
    "arquetipos": [
     "Mono-Preto Graveborn Muse"
    ],
-   "pct": 74,
+   "pct": 76,
    "unit": null,
    "set": null,
    "sid": null,
@@ -1922,7 +1918,7 @@
    "arquetipos": [
     "Terrageddon"
    ],
-   "pct": 69,
+   "pct": 70,
    "unit": 39.92,
    "set": "MIR",
    "sid": "cc99ee76-45b6-4f1d-b0b0-7da8775ca90c",
@@ -2015,8 +2011,8 @@
     "Frantic Storm",
     "Orzhov Exalted Angel"
    ],
-   "pct": 72,
-   "unit": 17.25,
+   "pct": 71,
+   "unit": 17.66,
    "set": "ULG",
    "sid": "5c2592c9-7e64-40c1-a9cb-c0994094a1e0",
    "rl": false,
@@ -2079,7 +2075,7 @@
    "arquetipos": [
     "Mono-Preto Graveborn Muse"
    ],
-   "pct": 65,
+   "pct": 67,
    "unit": 0.29,
    "set": "5ED",
    "sid": "41a9b3b2-4ac9-4e50-bcd2-8831d0739e85",
@@ -2130,7 +2126,7 @@
    "arquetipos": [
     "Mono-Preto Graveborn Muse"
    ],
-   "pct": 97,
+   "pct": 100,
    "unit": null,
    "set": null,
    "sid": null,
@@ -2209,7 +2205,7 @@
     "Full English Breakfast",
     "Orzhov Exalted Angel"
    ],
-   "pct": 86,
+   "pct": 83,
    "unit": 25.4,
    "set": "6ED",
    "sid": "e869da95-2c47-4796-aadc-50652ebb4d03",
@@ -2271,7 +2267,7 @@
    "arquetipos": [
     "Enchantress"
    ],
-   "pct": 63,
+   "pct": 64,
    "unit": null,
    "set": null,
    "sid": null,
@@ -2302,7 +2298,7 @@
    "arquetipos": [
     "Landstill"
    ],
-   "pct": 88,
+   "pct": 87,
    "unit": 6.13,
    "set": "ULG",
    "sid": "ae3ede87-b026-4781-81ab-8652664f8e41",
@@ -2324,21 +2320,6 @@
    "rl": false,
    "motivo": null,
    "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Fireblast",
-   "no_deck": null
-  },
-  {
-   "carta": "Flaring Pain",
-   "q": 3,
-   "arquetipos": [
-    "Pyrostatic Pillar"
-   ],
-   "pct": 51,
-   "unit": 6.0,
-   "set": "JUD",
-   "sid": "eeb5c96a-1d16-459d-9968-ced9a8f1c520",
-   "rl": false,
-   "motivo": null,
-   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Flaring%20Pain",
    "no_deck": null
   },
   {
@@ -2412,7 +2393,7 @@
     "Elves / Survival"
    ],
    "pct": 100,
-   "unit": 18.25,
+   "unit": 18.5,
    "set": "ICE",
    "sid": "3ba95ffa-990a-4013-98b7-5d8c0b34e9c4",
    "rl": false,
@@ -2426,7 +2407,7 @@
    "arquetipos": [
     "Enchantress"
    ],
-   "pct": 59,
+   "pct": 57,
    "unit": 6.13,
    "set": "WTH",
    "sid": "ee83d511-57e0-40fb-a4db-62f6c2c39888",
@@ -2578,7 +2559,7 @@
     "Goblins"
    ],
    "pct": 100,
-   "unit": 1.06,
+   "unit": 0.98,
    "set": "USG",
    "sid": "9e9e2e5d-ad06-4378-9afb-ffb174e6a5b4",
    "rl": false,
@@ -2668,7 +2649,7 @@
     "Mono-Preto Graveborn Muse",
     "Golgari Graveborn Muse"
    ],
-   "pct": 97,
+   "pct": 100,
    "unit": null,
    "set": null,
    "sid": null,
@@ -2766,7 +2747,7 @@
     "Psychatog",
     "Frantic Storm"
    ],
-   "pct": 92,
+   "pct": 91,
    "unit": null,
    "set": null,
    "sid": null,
@@ -2798,8 +2779,8 @@
     "Landstill",
     "Psychatog"
    ],
-   "pct": 96,
-   "unit": 2.35,
+   "pct": 100,
+   "unit": 1.83,
    "set": "VIS",
    "sid": "9d710a97-062f-4773-b6c6-8aeddeb3b6e8",
    "rl": false,
@@ -2874,7 +2855,7 @@
    "arquetipos": [
     "Enchantress"
    ],
-   "pct": 54,
+   "pct": 56,
    "unit": null,
    "set": null,
    "sid": null,
@@ -2906,7 +2887,7 @@
    "arquetipos": [
     "Orzhov Exalted Angel"
    ],
-   "pct": 86,
+   "pct": 83,
    "unit": null,
    "set": null,
    "sid": null,
@@ -3014,7 +2995,7 @@
     "Frantic Storm"
    ],
    "pct": 57,
-   "unit": 30.06,
+   "unit": 31.57,
    "set": "TMP",
    "sid": "6c877da3-68fa-41d0-8a24-8c79fcd8ecc1",
    "rl": false,
@@ -3134,7 +3115,7 @@
    "arquetipos": [
     "Stiflenought"
    ],
-   "pct": 81,
+   "pct": 79,
    "unit": null,
    "set": null,
    "sid": null,
@@ -3184,7 +3165,7 @@
     "Pyrostatic Pillar",
     "Goblins"
    ],
-   "pct": 82,
+   "pct": 81,
    "unit": 5.35,
    "set": "NEM",
    "sid": "403aa48c-b684-4c54-8863-460958055a1f",
@@ -3245,7 +3226,7 @@
    "arquetipos": [
     "Mono-Preto Graveborn Muse"
    ],
-   "pct": 74,
+   "pct": 76,
    "unit": null,
    "set": null,
    "sid": null,
@@ -3324,8 +3305,7 @@
    "carta": "Opt",
    "q": 4,
    "arquetipos": [
-    "Stiflenought",
-    "Psychatog"
+    "Stiflenought"
    ],
    "pct": 100,
    "unit": null,
@@ -3389,7 +3369,7 @@
    "arquetipos": [
     "Stiflenought"
    ],
-   "pct": 64,
+   "pct": 63,
    "unit": 0.75,
    "set": "ODY",
    "sid": "f50843cc-20ac-4746-816e-f2630aa31594",
@@ -3452,7 +3432,7 @@
     "Orzhov Exalted Angel"
    ],
    "pct": 100,
-   "unit": 22.37,
+   "unit": 32.42,
    "set": "WTH",
    "sid": "e98bca31-8c05-430b-b5d7-331bdc55710a",
    "rl": false,
@@ -3516,7 +3496,7 @@
    "arquetipos": [
     "Orzhov Exalted Angel"
    ],
-   "pct": 71,
+   "pct": 67,
    "unit": null,
    "set": null,
    "sid": null,
@@ -3532,7 +3512,7 @@
     "Pyrostatic Pillar"
    ],
    "pct": 53,
-   "unit": 6.63,
+   "unit": 6.62,
    "set": "EXO",
    "sid": "8e5283db-3e22-4862-9d95-56d03d09c2ae",
    "rl": false,
@@ -3561,7 +3541,7 @@
    "arquetipos": [
     "Landstill"
    ],
-   "pct": 71,
+   "pct": 74,
    "unit": null,
    "set": null,
    "sid": null,
@@ -3611,8 +3591,8 @@
     "Terrageddon",
     "Full English Breakfast"
    ],
-   "pct": 84,
-   "unit": 14.6,
+   "pct": 86,
+   "unit": 14.8,
    "set": "ICE",
    "sid": "88040748-ad76-4b9a-bd4e-87e5980e9816",
    "rl": false,
@@ -3641,7 +3621,7 @@
    "arquetipos": [
     "Pyrostatic Pillar"
    ],
-   "pct": 76,
+   "pct": 77,
    "unit": 5.35,
    "set": "SCG",
    "sid": "5973cd53-f6cd-4edc-b952-f6d3eef97988",
@@ -3767,7 +3747,7 @@
     "Pyrostatic Pillar",
     "Goblins"
    ],
-   "pct": 84,
+   "pct": 83,
    "unit": null,
    "set": null,
    "sid": null,
@@ -3813,7 +3793,7 @@
    "arquetipos": [
     "Terrageddon"
    ],
-   "pct": 53,
+   "pct": 54,
    "unit": 0.4,
    "set": "ALL",
    "sid": "179f50be-6658-42f4-b9b9-c97c7d3f239a",
@@ -3859,7 +3839,7 @@
    "arquetipos": [
     "Enchantress"
    ],
-   "pct": 83,
+   "pct": 84,
    "unit": 1001.26,
    "set": "STH",
    "sid": "37ae4b01-a9c1-4eec-9204-78cb2508e0df",
@@ -3923,7 +3903,7 @@
     "Terrageddon",
     "Orzhov Exalted Angel"
    ],
-   "pct": 86,
+   "pct": 83,
    "unit": 0.69,
    "set": "ONS",
    "sid": "ea454280-f7f4-4315-bb46-b56050c02c97",
@@ -3954,7 +3934,7 @@
     "Psychatog"
    ],
    "pct": 100,
-   "unit": 2.4,
+   "unit": 3.61,
    "set": "TOR",
    "sid": "9396ac77-9f53-46bd-b126-02441a0f5594",
    "rl": false,
@@ -3984,7 +3964,7 @@
     "RG Aggro"
    ],
    "pct": 86,
-   "unit": 1.4,
+   "unit": 1.07,
    "set": "VIS",
    "sid": "642d9239-82e0-4696-ad99-10796042d1f8",
    "rl": false,
@@ -4076,7 +4056,7 @@
     "Frantic Storm"
    ],
    "pct": 100,
-   "unit": 10.14,
+   "unit": 10.13,
    "set": "ULG",
    "sid": "f7e0549e-2d23-4ea8-b8d1-ae21af2c9091",
    "rl": false,
@@ -4105,7 +4085,7 @@
    "arquetipos": [
     "Enchantress"
    ],
-   "pct": 95,
+   "pct": 96,
    "unit": null,
    "set": null,
    "sid": null,
@@ -4196,7 +4176,7 @@
    "arquetipos": [
     "Pyrostatic Pillar"
    ],
-   "pct": 82,
+   "pct": 81,
    "unit": 4.1,
    "set": "SCG",
    "sid": "79955e27-eef7-43bd-9895-e9209ed1537f",
@@ -4279,7 +4259,7 @@
    "arquetipos": [
     "Landstill"
    ],
-   "pct": 75,
+   "pct": 83,
    "unit": null,
    "set": null,
    "sid": null,
@@ -4324,7 +4304,7 @@
    "arquetipos": [
     "Stiflenought"
    ],
-   "pct": 97,
+   "pct": 96,
    "unit": null,
    "set": null,
    "sid": null,
@@ -4340,8 +4320,8 @@
     "Enchantress",
     "Goblins",
     "Frantic Storm",
-    "Orzhov Exalted Angel",
     "RG Aggro",
+    "Orzhov Exalted Angel",
     "Elves / Survival"
    ],
    "pct": 100,
@@ -4376,7 +4356,7 @@
    "arquetipos": [
     "Terrageddon"
    ],
-   "pct": 72,
+   "pct": 73,
    "unit": 0.3,
    "set": "ONS",
    "sid": "afcb7cef-8aeb-4c84-88e9-6df17768e292",
@@ -4440,7 +4420,7 @@
     "UW Replenish",
     "Psychatog"
    ],
-   "pct": 79,
+   "pct": 78,
    "unit": 61.97,
    "set": "INV",
    "sid": "0dee69f8-cceb-41b9-a0ee-6b2ac9f4bad9",
@@ -4547,7 +4527,7 @@
     "Full English Breakfast"
    ],
    "pct": 100,
-   "unit": 40.02,
+   "unit": 15.2,
    "set": "STH",
    "sid": "ec89ee13-34ef-41c8-8fe4-0a6b21df2032",
    "rl": true,
@@ -4609,7 +4589,7 @@
     "Orzhov Exalted Angel",
     "Elves / Survival"
    ],
-   "pct": 86,
+   "pct": 83,
    "unit": 3.63,
    "set": "TMP",
    "sid": "d7dbeea8-06b0-4482-bdae-aa82b9db8856",
@@ -4641,7 +4621,7 @@
    "arquetipos": [
     "Terrageddon"
    ],
-   "pct": 81,
+   "pct": 82,
    "unit": null,
    "set": null,
    "sid": null,
@@ -4656,7 +4636,7 @@
    "arquetipos": [
     "Terrageddon"
    ],
-   "pct": 67,
+   "pct": 66,
    "unit": null,
    "set": null,
    "sid": null,
@@ -4813,7 +4793,7 @@
    "arquetipos": [
     "Terrageddon"
    ],
-   "pct": 55,
+   "pct": 57,
    "unit": null,
    "set": null,
    "sid": null,
@@ -4825,15 +4805,15 @@
  ],
  "contas": {
   "a": {
-   "cartas": 185,
-   "copias": 489,
-   "eur": 15919.99,
+   "cartas": 184,
+   "copias": 486,
+   "eur": 15870.26,
    "sem_preco": 94
   },
   "b": {
-   "cartas": 225,
-   "copias": 618,
-   "eur": 21943.01,
+   "cartas": 224,
+   "copias": 615,
+   "eur": 21892.84,
    "sem_preco": 114
   },
   "regra": "b"
@@ -4842,7 +4822,7 @@
   {
    "gravidade": "baixa",
    "deck": "Psychatog",
-   "aviso": "52% do núcleo já está nos teus decks (11 de 21 cartas)",
+   "aviso": "50% do núcleo já está nos teus decks (10 de 20 cartas)",
    "detalhe": "pela regra dos 50% (cópias que TENS, como principal) dá 0% hoje — a colecção reconstrói-se pelas fotos. Faltam-lhe: Accumulated Knowledge x4, Duress x4, Engineered Plague x2, Fact or Fiction x1, Haunting Echoes x1, Polluted Delta x4, Psychatog x4, Sickening Dreams x2"
   }
  ]

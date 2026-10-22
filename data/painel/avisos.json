@@ -16,29 +16,29 @@
  {
   "id": "002",
   "gravidade": "media",
-  "deck": "Grinding Station",
-  "aviso": "Grinding Station: 3 -> 1",
-  "detalhe": "a carta que da nome ao deck desceu de copias nesta troca."
+  "deck": "Izzet Affinity (Kappa Cannoneer)",
+  "aviso": "voltou a uma lista como a de sioutis_kk 16/10",
+  "detalhe": "deixada a 19/10: o deck anda a saltar entre dois arquetipos que a assinatura nao separa."
  },
  {
   "id": "003",
   "gravidade": "baixa",
   "deck": "Cloud (Duel Commander)",
-  "aviso": "lista de referencia com 51 dias",
+  "aviso": "lista de referencia com 52 dias",
   "detalhe": "a mais recente que serve este deck e de McWinSauce 31/08."
  },
  {
   "id": "004",
   "gravidade": "baixa",
   "deck": "Cori-Steel Cutter",
-  "aviso": "lista de referencia com 15 dias",
+  "aviso": "lista de referencia com 16 dias",
   "detalhe": "a mais recente que serve este deck e de Rapgod 06/10."
  },
  {
   "id": "005",
   "gravidade": "baixa",
   "deck": "Psychatog",
-  "aviso": "52% do núcleo já está nos teus decks (11 de 21 cartas)",
+  "aviso": "50% do núcleo já está nos teus decks (10 de 20 cartas)",
   "detalhe": "pela regra dos 50% (cópias que TENS, como principal) dá 0% hoje — a colecção reconstrói-se pelas fotos. Faltam-lhe: Accumulated Knowledge x4, Duress x4, Engineered Plague x2, Fact or Fiction x1, Haunting Echoes x1, Polluted Delta x4, Psychatog x4, Sickening Dreams x2"
  }
 ]
