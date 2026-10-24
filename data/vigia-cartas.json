@@ -16,9 +16,9 @@
         "pioneer"
       ],
       "nota": "combo Jace/Kasmina — Reality Fracture no MTGO 29/09/2026, em papel 02/10/2026; Pioneer acrescentado a pedido do Andre 30/09",
-      "achados": 2,
+      "achados": 3,
       "primeira": "2026-10-10",
-      "ultima": "2026-10-18"
+      "ultima": "2026-10-22"
     },
     "combo kasmina (kasmina + jace's machinations + avatar)": {
       "carta": "Combo Kasmina (Kasmina + Jace's Machinations + Avatar)",
@@ -864,8 +864,179 @@
         ]
       ],
       "aviso": "toast (balloon)"
+    },
+    "modern|jace's machinations|2026-10-22|nikko abrazado|Modern event - Reality Fracture Store Champs": {
+      "carta": "Jace's Machinations",
+      "nota": "combo Jace/Kasmina — Reality Fracture no MTGO 29/09/2026, em papel 02/10/2026; Pioneer acrescentado a pedido do Andre 30/09",
+      "formato": "modern",
+      "decklist_id": 29760,
+      "evento": "Modern event - Reality Fracture Store Champs",
+      "data": "2026-10-22",
+      "jogador": "Nikko Abrazado",
+      "colocacao": "2",
+      "link": "https://mtgtop8.com/event?e=92682&d=903986&f=MO",
+      "tier": "Presencial",
+      "fonte": "mtgtop8",
+      "jogadores": 8,
+      "copias": 3,
+      "board": "main",
+      "visto_em": "2026-10-24",
+      "avisado": true,
+      "lista": [
+        [
+          "side",
+          "Doorkeeper Thrull",
+          1
+        ],
+        [
+          "side",
+          "Flashfreeze",
+          2
+        ],
+        [
+          "side",
+          "Pinnacle Starcage",
+          3
+        ],
+        [
+          "side",
+          "Rest in Peace",
+          2
+        ],
+        [
+          "side",
+          "Riverchurn Monument",
+          1
+        ],
+        [
+          "side",
+          "Seam Rip",
+          1
+        ],
+        [
+          "side",
+          "Settle the Wreckage",
+          1
+        ],
+        [
+          "side",
+          "Sphinx of False Conclusions",
+          2
+        ],
+        [
+          "side",
+          "Stoic Sphinx",
+          1
+        ],
+        [
+          "side",
+          "Torpor Orb",
+          1
+        ],
+        [
+          "main",
+          "Captain Marvel, Earth's Protector",
+          2
+        ],
+        [
+          "main",
+          "Consult the Star Charts",
+          4
+        ],
+        [
+          "main",
+          "Countersculpt",
+          4
+        ],
+        [
+          "main",
+          "Day of Judgment",
+          2
+        ],
+        [
+          "main",
+          "Deserted Beach",
+          4
+        ],
+        [
+          "main",
+          "Elspeth, Storm Slayer",
+          1
+        ],
+        [
+          "main",
+          "Erode",
+          2
+        ],
+        [
+          "main",
+          "Floodfarm Verge",
+          4
+        ],
+        [
+          "main",
+          "Get Lost",
+          4
+        ],
+        [
+          "main",
+          "Hallowed Fountain",
+          4
+        ],
+        [
+          "main",
+          "Island",
+          3
+        ],
+        [
+          "main",
+          "Jace's Machinations",
+          3
+        ],
+        [
+          "main",
+          "Meticulous Archive",
+          3
+        ],
+        [
+          "main",
+          "No More Lies",
+          3
+        ],
+        [
+          "main",
+          "Petrified Hamlet",
+          4
+        ],
+        [
+          "main",
+          "Plains",
+          2
+        ],
+        [
+          "main",
+          "Seam Rip",
+          3
+        ],
+        [
+          "main",
+          "The Theorist, Jace Beleren",
+          3
+        ],
+        [
+          "main",
+          "Theorist's Sanctum",
+          2
+        ],
+        [
+          "main",
+          "Three Steps Ahead",
+          3
+        ]
+      ],
+      "aviso": "toast (balloon)"
     }
   },
-  "verificado_em": "2026-10-23",
+  "verificado_em": "2026-10-24",
   "desde": "2026-09-26"
 }
