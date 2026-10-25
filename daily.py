@@ -556,6 +556,20 @@ def main():
         # O que interessa para a vigilância dos decks (Moxfield, jogadores MTGO).
         _step(con, "watch-check", lambda: _watch(con))
 
+        # AS PODAS ANTES DE QUALQUER PÁGINA (2026-10-25). Corriam no FIM, depois
+        # das páginas: a corrida de 24/10 apagou 190 decklists DEPOIS de as ter
+        # publicado, o commit «dados» saiu com listas que a base já não tinha
+        # (o UrzaTron com 21 listas no site e 19 na base) e o `mtgvault-publicar`
+        # das 04:xx tinha de vir acertar o site todos os dias. Ficam DEPOIS da
+        # recolha, da `vigia-cartas` (é ela que decide que liga com carta
+        # vigiada não se apaga, e o `podar-ligas` lê-a) e do `watch-check`; e
+        # ANTES do `analyse`, que agrupa a mesma janela de 30 dias que o `prune`
+        # guarda — por isso o agrupamento não muda com a troca de ordem.
+        _step(con, "podar-precos", lambda: _prune_prices(con, 30))
+        # Ligas fora (2026-09-07). ANTES do `prune`, que é quem faz o VACUUM.
+        _step(con, "podar-ligas", lambda: _podar_ligas(con))
+        _step(con, "prune", lambda: f"{analysis.prune_decklists(con, 30)} apagadas")
+
         # A JANELA DO CONSENSO, antes de tudo o que a usa (2026-10-03).
         _step(con, "janela-consenso", _janela_consenso)
 
@@ -601,7 +615,7 @@ def main():
         # CONSENSO POR COMANDANTE (2026-10-01). Dois gestos num passo, por esta
         # ordem: derivar o `decklists.commander` das listas que ainda o não têm
         # (as listas novas já vêm marcadas pela FONTE, no `harvest`) e escrever a
-        # página. Corre DEPOIS do harvest e ANTES do `prune` — e o facto de o
+        # página. Corre DEPOIS do harvest e (desde 2026-10-25) do `prune` — e o facto de o
         # comandante ficar GRAVADO é o que garante que a página não depende de
         # um palpite feito outra vez em cada corrida.
         def _consenso_comandante():
@@ -850,10 +864,27 @@ def main():
         _step(con, "inicio",
               lambda: str(inicio.build(con, ROOT / "index.html", rep=_rep.get("v"))))
 
-        _step(con, "podar-precos", lambda: _prune_prices(con, 30))
-        # Ligas fora (2026-09-07). ANTES do `prune`, que é quem faz o VACUUM.
-        _step(con, "podar-ligas", lambda: _podar_ligas(con))
-        _step(con, "prune", lambda: f"{analysis.prune_decklists(con, 30)} apagadas")
+        # O `-wal` VAI PARA O FICHEIRO PRINCIPAL AQUI, e não no fecho de quem
+        # vier a seguir (2026-10-25). Com o modo de edição de pé, o fecho do
+        # daily não é o da última ligação e o `-wal` ficava cheio; a 24/10 quem
+        # o despejou foi o `publicar` das 04:15, o mtime do `vault.db` mudou a
+        # meio dele e a tarefa ficou vermelha.
+        _step(con, "checkpoint", lambda: _checkpoint(con))
+        # E outra vez, calado: a linha que o `_step` acabou de escrever no
+        # `job_runs` também é uma escrita, e ficava no `-wal` à espera do fecho.
+        _checkpoint(con)
+
+
+def _checkpoint(con) -> str:
+    """`PRAGMA wal_checkpoint(TRUNCATE)`: devolve o que o SQLite diz."""
+    con.commit()
+    ocupado, frames, _ = con.execute(
+        "PRAGMA main.wal_checkpoint(TRUNCATE)").fetchone()
+    if frames < 0:
+        return "a base não está em WAL — nada a despejar"
+    if ocupado:
+        return "o -wal não se esvaziou: outra ligação está a ler (fica para o fecho)"
+    return "o -wal foi despejado no vault.db e esvaziado"
 
 
 if __name__ == "__main__":

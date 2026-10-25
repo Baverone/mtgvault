@@ -77,7 +77,7 @@ def caso_duas_passagens_seguidas_nao_dao_mudanca():
     """
     with tempfile.TemporaryDirectory() as tmp:
         a, b = Path(tmp) / "a", Path(tmp) / "b"
-        with db.session(a_serio=True) as con:
+        with publicar.abrir(a_serio=True) as con:     # só leitura (25/10)
             publicar.gerar(con, a)
             publicar.gerar(con, b)
         d = publicar.comparar(a, b)
@@ -121,29 +121,54 @@ def caso_publicar_nao_escreve_na_coleccao():
     """A Galeria era o ÚNICO dos treze geradores a escrever (o ponto do dia no
     `value_history`). O `publicar` chama-a com `historico=False`.
 
-    Mede-se pelo `-wal` a crescer, que é o que denuncia uma escrita em modo WAL
-    — o mtime do `vault.db` só muda quando a última ligação fecha, e por isso
-    uma medição com a ligação aberta dava um falso «ninguém escreve».
+    REESCRITO A 2026-10-25. Media o `-wal` da base REAL com a ligação aberta,
+    depois de um `db.session()` que já tinha corrido o `init` — e abria a base do
+    André em ESCRITA para o fazer. Não via a escrita que pôs a tarefa vermelha a
+    24/10: o FECHO da ligação despeja o `-wal` no `vault.db` (checkpoint), e o
+    mtime do ficheiro principal é o sossego da tarefa.
+
+    Agora mede-se numa CÓPIA da base dele, com uma escrita deixada no `-wal`
+    (como o daily a deixa quando o modo de edição está de pé), o sha256 e o
+    mtime do ficheiro PRINCIPAL antes de abrir e depois de FECHAR a ligação com
+    que o `publicar` publica. No `main` de 25/10 essa ligação era o
+    `db.session()` e o ficheiro mudava; com o `publicar.abrir` (`mode=ro`) não
+    muda, e um gerador que tentasse escrever rebentava.
     """
+    import hashlib                                             # noqa: PLC0415
     assert publicar.SO_LEITURA.get("collection_gallery") == {"historico": False}, (
         "a Galeria deixou de ser chamada em modo so-leitura")
-    base = Path(db.DEFAULT_DB)
-    wal = base.with_name(base.name + "-wal")
-
-    def tam():
-        try:
-            return wal.stat().st_size
-        except OSError:
-            return 0
-
+    # A porta que o `publicar.main` usa; no main de 25/10 não existia e a
+    # ligação era o `db.session()` — é essa que se mede aí.
+    abrir = getattr(publicar, "abrir", None) or (
+        lambda p, c, a_serio: db.session(p, c, a_serio=a_serio))
     with tempfile.TemporaryDirectory() as tmp:
-        with db.session(a_serio=True) as con:
-            antes = tam()
-            publicar.gerar(con, Path(tmp))
-            depois = tam()
-    assert depois <= antes, (
-        f"o publicar.gerar escreveu na base (-wal {antes} -> {depois})")
-    print("publicar.gerar nao escreve uma linha na coleccao")
+        copia = Path(tmp) / "vault.db"
+        src = sqlite3.connect(f"{Path(db.DEFAULT_DB).resolve().as_uri()}?mode=ro",
+                              uri=True)
+        dst = sqlite3.connect(copia)
+        src.backup(dst)
+        src.close()
+        dst.setconfig(sqlite3.SQLITE_DBCONFIG_NO_CKPT_ON_CLOSE, True)
+        dst.execute("PRAGMA journal_mode = WAL")
+        dst.execute("PRAGMA wal_autocheckpoint = 0")
+        dst.execute("INSERT INTO job_runs (job, started, finished, status, detail)"
+                    " VALUES ('teste', datetime('now'), datetime('now'), 'ok', '')")
+        dst.commit()
+        dst.close()
+        wal = copia.with_name("vault.db-wal")
+        assert wal.exists() and wal.stat().st_size > 0, "o cenário não se montou"
+
+        def medir():
+            return (hashlib.sha256(copia.read_bytes()).hexdigest(),
+                    copia.stat().st_mtime_ns)
+
+        antes = medir()
+        with abrir(copia, db.DEFAULT_CATALOG, a_serio=True) as con:
+            publicar.gerar(con, Path(tmp) / "site")
+        depois = medir()
+    assert depois == antes, (
+        "publicar mexeu no ficheiro principal da base (sha256/mtime)", antes, depois)
+    print("publicar nao mexe no ficheiro da base, nem ao fechar a ligacao")
 
 
 def caso_a_galeria_do_daily_continua_a_gravar_o_historico():
@@ -223,7 +248,7 @@ def caso_o_json_da_tarefa_tem_o_que_ela_precisa():
     Corre numa raiz TEMPORÁRIA: numa raiz vazia tudo é «novo», o `publicar`
     escreve lá e o site dele não é tocado.
     """
-    with tempfile.TemporaryDirectory() as tmp, db.session(a_serio=True) as con:
+    with tempfile.TemporaryDirectory() as tmp, publicar.abrir(a_serio=True) as con:
         r = publicar.publicar(con, Path(tmp), se_mudou=True)
     for k in ("escreveu", "mudaram", "novos", "a_mais", "paginas", "publicaveis"):
         assert k in r, (k, sorted(r))

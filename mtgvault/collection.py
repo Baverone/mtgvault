@@ -319,6 +319,31 @@ _HERDA = ("scryfall_id", "finish", "language", "condition", "purpose",
           "condition_origem", "condition_em", "condition_motivos", "verso_path")
 
 
+def nova_metade(con: sqlite3.Connection, copy_id: int, quantidade: int,
+                **sobre) -> int:
+    """Insere a METADE NOVA de um lote que se parte e devolve o id dela.
+
+    Herda tudo o que está no `_HERDA` — a foto, a validação, o estado medido e
+    o verso — e escreve por cima só o que vem em `sobre` (a reserva a um deck,
+    a marca de «não encontrada»). Quem chama tira a `quantidade` à linha antiga.
+
+    Existe porque a regra do `_HERDA` estava escrita UMA vez e os lotes
+    partiam-se em TRÊS sítios (2026-10-25): o `reserve_for_deck` e o
+    `loadout.marcar_nao_encontradas` tinham o INSERT à mão, sem o
+    `condition_origem`/`condition_em`/`condition_motivos`/`verso_path`/
+    `validado_em`, e a metade nova nascia «por omissão» e sem verso — uma cópia
+    avaliada como EX voltava a valer Near Mint por ter sido reservada.
+    """
+    p = con.execute("SELECT * FROM copies WHERE id = ?", (copy_id,)).fetchone()
+    chaves = set(p.keys())
+    linha = {k: (p[k] if k in chaves else None) for k in _HERDA}
+    linha.update(sobre)
+    linha["quantity"] = quantidade
+    return con.execute(
+        f"INSERT INTO copies ({', '.join(linha)}) "
+        f"VALUES ({', '.join('?' * len(linha))})", tuple(linha.values())).lastrowid
+
+
 def _partir_copia(con: sqlite3.Connection, p, leva: int, *,
                   scryfall_id: str | None = None, photo_path: str | None = None,
                   notes: str | None = None, extra: dict | None = None) -> int:
@@ -1263,17 +1288,7 @@ def reserve_for_deck(con: sqlite3.Connection, deck_id: int) -> dict:
                 # partir o lote: parte fica reservada, parte fica livre
                 con.execute("UPDATE copies SET quantity = quantity - ? WHERE id = ?",
                             (falta, lote["id"]))
-                orig = con.execute("SELECT * FROM copies WHERE id = ?",
-                                   (lote["id"],)).fetchone()
-                con.execute(
-                    """INSERT INTO copies (scryfall_id, quantity, finish, language,
-                       condition, purpose, sub_collection_id, photo_path,
-                       acquired_at, acquired_price, notes, reserved_deck_id)
-                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
-                    (orig["scryfall_id"], falta, orig["finish"], orig["language"],
-                     orig["condition"], orig["purpose"], orig["sub_collection_id"],
-                     orig["photo_path"], orig["acquired_at"], orig["acquired_price"],
-                     orig["notes"], deck_id))
+                nova_metade(con, lote["id"], falta, reserved_deck_id=deck_id)
                 reservado[name] = reservado.get(name, 0) + falta
                 falta = 0
     con.commit()

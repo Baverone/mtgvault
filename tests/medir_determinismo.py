@@ -35,8 +35,8 @@ def _gerar(dest: Path) -> None:
     # brincar com três cartas, um `set` pelo meio parece determinista). Só LÊ. É
     # o mesmo pedido explícito que o `test_publicar` faz, e a razão está inscrita
     # no `tests/test_bases_a_serio.PODEM_A_SERIO`.
-    from mtgvault import db, publicar                          # noqa: PLC0415
-    with db.session(a_serio=True) as con:
+    from mtgvault import publicar                              # noqa: PLC0415
+    with publicar.abrir(a_serio=True) as con:      # só leitura (2026-10-25)
         publicar.gerar(con, dest)
 
 

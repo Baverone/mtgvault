@@ -520,6 +520,36 @@ def session(path=None, catalog=None, *, a_serio: bool = False):
         con.close()
 
 
+@contextmanager
+def ler(path=None, catalog=None, *, a_serio: bool = False):
+    """Uma ligação SÓ DE LEITURA: `mode=ro` na base e no catálogo, e sem `init`.
+
+    É a do `publicar` (2026-10-25). Ele abria com o `session()`, e isso não é
+    leitura: o `init` corre CREATE/INSERT/UPDATE, e ao FECHAR a última ligação
+    o SQLite faz o checkpoint do `-wal` para o ficheiro principal. A 24/10 o
+    `-wal` que o VACUUM do daily deixou foi despejado no `vault.db` às 04:15
+    pela mão do `publicar` — o mtime mudou, o sossego da tarefa (*"o vault.db
+    foi escrito há menos de 10 min?"*) leu-o como o André a editar, e a tarefa
+    ficou vermelha. Uma ligação `mode=ro` não consegue escrever no ficheiro, por
+    isso nem o checkpoint do fecho lhe toca; e um gerador que tente escrever
+    rebenta em vez de mexer na colecção em silêncio.
+    """
+    path = Path(path) if path else DEFAULT_DB
+    catalog = Path(catalog) if catalog else DEFAULT_CATALOG
+    if not a_serio:
+        _exige_temporarias(path, catalog)
+    con = sqlite3.connect(f"{path.resolve().as_uri()}?mode=ro", uri=True,
+                          timeout=BUSY_TIMEOUT_MS / 1000)
+    con.row_factory = sqlite3.Row
+    con.execute(f"PRAGMA busy_timeout = {int(BUSY_TIMEOUT_MS)}")
+    con.execute("ATTACH DATABASE ? AS catalog",
+                (f"{catalog.resolve().as_uri()}?mode=ro",))
+    try:
+        yield con
+    finally:
+        con.close()
+
+
 def log_job(con: sqlite3.Connection, job: str, status: str, detail: str = "") -> None:
     con.execute(
         "INSERT INTO job_runs (job, started, finished, status, detail) "

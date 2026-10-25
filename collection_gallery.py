@@ -163,6 +163,15 @@ def _variacao(dates, vals, ie):
     nada), não há percentagem honesta: diz-se porquê em vez de um número."""
     if ie is not None:
         dates, vals = dates[ie:], vals[ie:]
+        # Os zeros logo a seguir ao corte (14/10 a 20/10: a colecção vazia,
+        # antes de a primeira cópia voltar a entrar) não são uma base: com eles
+        # à cabeça a percentagem ficava «sem variação» PARA SEMPRE (2026-10-25).
+        # A base é o primeiro dia em que a colecção nova valia alguma coisa.
+        tirou = False
+        while len(vals) > 1 and not (vals[0] and vals[0] > 0):
+            dates, vals, tirou = dates[1:], vals[1:], True
+        if tirou and not (vals[0] and vals[0] > 0):   # só zeros desde o corte
+            return None, f"a {dates[0]} a colecção valia 0 € — não há base para uma percentagem"
     if len(vals) < 2:
         return None, "ainda um só ponto depois do esvaziamento"
     if not vals[0] or vals[0] <= 0:
