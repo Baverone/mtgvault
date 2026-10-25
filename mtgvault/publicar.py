@@ -238,11 +238,20 @@ def publicar(con, raiz: Path | None = None, *, se_mudou: bool = True,
     return r
 
 
+def abrir(path=None, catalog=None, *, a_serio: bool = False):
+    """A ligação com que se publica: SÓ LEITURA (2026-10-25).
+
+    Era o `db.session()`, que corre o `init` (CREATE/INSERT/UPDATE) e, ao
+    fechar, despeja o `-wal` no `vault.db` — e o mtime do `vault.db` é o
+    sossego da tarefa `mtgvault-publicar`. Ver `db.ler`.
+    """
+    from . import db                                           # noqa: PLC0415
+    return db.ler(path, catalog, a_serio=a_serio)
+
+
 def main(argv=None) -> int:
     """`py -m mtgvault.publicar [--ver|--se-mudou|--sempre]`."""
     import argparse                                           # noqa: PLC0415
-
-    from . import db                                           # noqa: PLC0415
 
     ap = argparse.ArgumentParser(description="Põe o site em dia e diz o que mudou.")
     ap.add_argument("--ver", action="store_true",
@@ -250,7 +259,7 @@ def main(argv=None) -> int:
     ap.add_argument("--sempre", action="store_true",
                     help="escreve mesmo que nada tenha mudado (não usar na tarefa)")
     a = ap.parse_args(argv)
-    with db.session() as con:
+    with abrir() as con:
         r = estado(con) if a.ver else publicar(con, se_mudou=not a.sempre)
     print(json.dumps(r, ensure_ascii=False, indent=2))
     return 0

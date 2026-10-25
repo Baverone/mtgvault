@@ -5480,21 +5480,12 @@ def marcar_nao_encontradas(con, res: dict, slot_id: str, copias=(),
         else:
             # PARTE-SE O LOTE: as que ele não encontrou saem, as que estão dentro
             # da caixa ficam. A linha nova herda TUDO — a foto inclusive, que é o
-            # que a lista mostra para ele perceber se a carta existiu.
+            # que a lista mostra para ele perceber se a carta existiu, e (desde
+            # 2026-10-25, pelo `collection.nova_metade`) o estado e o verso.
             con.execute("UPDATE copies SET quantity = quantity - ? WHERE id = ?",
                         (q, cid))
-            novo = con.execute(
-                """INSERT INTO copies (scryfall_id, quantity, finish, language,
-                                       condition, purpose, sub_collection_id,
-                                       photo_path, acquired_at, acquired_price,
-                                       notes, reserved_deck_id, balde_origem,
-                                       nao_encontrada_em, nao_encontrada_slot)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                (row["scryfall_id"], q, row["finish"], row["language"],
-                 row["condition"], row["purpose"], row["sub_collection_id"],
-                 row["photo_path"], row["acquired_at"], row["acquired_price"],
-                 row["notes"], row["reserved_deck_id"], row["balde_origem"],
-                 hoje, slot_id)).lastrowid
+            novo = _col.nova_metade(con, cid, q, nao_encontrada_em=hoje,
+                                    nao_encontrada_slot=slot_id)
         linhas.append({"copy_id": novo, "de": cid, "q": q,
                        "nm": _front(row["nm"]),
                        "set_code": (row["set_code"] or "").upper(),
