@@ -2,9 +2,9 @@
  {
   "deck": "Izzet Affinity (Kappa Cannoneer)",
   "formato": "modern",
-  "lista": "sioutis_kk 21/10",
+  "lista": "sioutis_kk 24/10",
   "anterior": "sioutis_kk 21/10",
-  "mudou": "nao",
+  "mudou": "sim",
   "cartas_trocadas": 0,
   "main": 60,
   "sideboard": 15
@@ -32,10 +32,10 @@
  {
   "deck": "Greasefang",
   "formato": "pioneer",
-  "lista": "Cudibunda 19/10",
+  "lista": "jarold9 22/10",
   "anterior": "Cudibunda 19/10",
-  "mudou": "nao",
-  "cartas_trocadas": 0,
+  "mudou": "sim",
+  "cartas_trocadas": 44,
   "main": 60,
   "sideboard": 15
  },

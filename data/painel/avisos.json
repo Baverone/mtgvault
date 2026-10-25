@@ -1,37 +1,37 @@
 [
  {
   "id": "000",
-  "gravidade": "alta",
-  "deck": "Izzet Affinity (Kappa Cannoneer)",
-  "aviso": "troca recusada: 62 cartas trocadas (mais de 60)",
-  "detalhe": "a lista mais recente (wild88plk 22/10, #29465) nao entrou e o deck fica com a de sioutis_kk 21/10. Se for mesmo a evolucao do deck: py my_decks.py aceitar \"Izzet Affinity (Kappa Cannoneer)\""
- },
- {
-  "id": "001",
   "gravidade": "media",
   "deck": "Cloud (Duel Commander)",
   "aviso": "97 cartas, nao 100",
   "detalhe": "a lista de referencia foi lida incompleta."
  },
  {
-  "id": "002",
+  "id": "001",
   "gravidade": "media",
   "deck": "Cloud (Duel Commander)",
   "aviso": "sem lista de McWinSauce com ['Cloud, Midgar Mercenary']",
   "detalhe": "nenhuma lista que conte serve hoje este deck; fica a de McWinSauce 31/08. Se se repetir todos os dias, a assinatura ou o jogador já não existem no metagame."
  },
  {
+  "id": "002",
+  "gravidade": "media",
+  "deck": "Greasefang",
+  "aviso": "voltou a uma lista como a de rosici0700 17/10",
+  "detalhe": "deixada a 21/10: o deck anda a saltar entre dois arquetipos que a assinatura nao separa."
+ },
+ {
   "id": "003",
   "gravidade": "baixa",
   "deck": "Cloud (Duel Commander)",
-  "aviso": "lista de referencia com 54 dias",
+  "aviso": "lista de referencia com 55 dias",
   "detalhe": "a mais recente que serve este deck e de McWinSauce 31/08."
  },
  {
   "id": "004",
   "gravidade": "baixa",
   "deck": "Cori-Steel Cutter",
-  "aviso": "lista de referencia com 18 dias",
+  "aviso": "lista de referencia com 19 dias",
   "detalhe": "a mais recente que serve este deck e de Rapgod 06/10."
  },
  {
@@ -40,12 +40,5 @@
   "deck": "Psychatog",
   "aviso": "52% do núcleo já está nos teus decks (12 de 23 cartas)",
   "detalhe": "pela regra dos 50% (cópias que TENS, como principal) dá 0% hoje — a colecção reconstrói-se pelas fotos. Faltam-lhe: Accumulated Knowledge x4, Control Magic x1, Duress x4, Engineered Plague x2, Fact or Fiction x1, Haunting Echoes x1, Polluted Delta x4, Psychatog x4"
- },
- {
-  "id": "006",
-  "gravidade": "baixa",
-  "deck": "Stasis",
-  "aviso": "57% do núcleo já está nos teus decks (12 de 21 cartas)",
-  "detalhe": "pela regra dos 50% (cópias que TENS, como principal) dá 0% hoje — a colecção reconstrói-se pelas fotos. Faltam-lhe: Black Vise x3, Boomerang x1, Chill x3, Cursed Totem x2, Forsaken City x4, Gaea's Blessing x2, Mana Short x1, Root Maze x2"
  }
 ]
