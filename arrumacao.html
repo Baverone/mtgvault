@@ -1215,8 +1215,13 @@ function barra() {
     + `${k === 'inv' ? ' par' : ''}">${escDados(rot)}`
     + `<span class="nq">${nq[k]}</span></button>`).join('');
 }
+/* `RSEQ` (revisão de 2026-10-25): numa rede lenta, carregar na Fase 2 e logo a
+   seguir na Fase 1 deixava a Fase 2 chegar depois e escrever por cima da 1, com
+   a barra e o `#f1` a dizer outra coisa. Só a última escolha desenha. */
+let RSEQ = 0;
 async function render() {
   const v = el('vista');
+  const seq = ++RSEQ;
   barra();
   const t = el('trava');
   if (t) {
@@ -1227,12 +1232,15 @@ async function render() {
     if (ABA === 'f1') v.innerHTML = fase1();
     else {
       v.innerHTML = '<p class="carregando">a carregar…</p>';
-      if (ABA === 'f2') v.innerHTML = fase2(await parte('fase2'));
-      else if (ABA === 'f3') v.innerHTML = fase3(await parte('candidatos'));
-      else if (ABA === 'f4') v.innerHTML = fase4(await parte('fase4'));
-      else v.innerHTML = inventario(await parte('inventario'));
+      let html;
+      if (ABA === 'f2') html = fase2(await parte('fase2'));
+      else if (ABA === 'f3') html = fase3(await parte('candidatos'));
+      else if (ABA === 'f4') html = fase4(await parte('fase4'));
+      else html = inventario(await parte('inventario'));
+      if (seq !== RSEQ) return;
+      v.innerHTML = html;
     }
-  } catch (e) { erroDados(v, e); return; }
+  } catch (e) { if (seq === RSEQ) erroDados(v, e); return; }
   // As molduras que nasceram vazias (acima do lote de imagens) passam a pedir a
   // arte quando se aproximam do ecrã. Vive no `paginas.JS_IMAGENS`, partilhado
   // com a lista de faltas: duas cópias discordavam no dia em que uma mudasse.
