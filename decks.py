@@ -1413,19 +1413,38 @@ function nivelDeck(p, fmt) {
 }
 
 /* ----------------------------------------------------------------- render */
+/* REVISÃO DE 2026-10-25, duas correcções do mesmo sítio:
+   * `RSEQ`: um `fetch` lento (a rede de um pavilhão) acabava DEPOIS de ele já
+     ter voltado ao nível de cima e escrevia o deck por cima da vista actual.
+     Só a última navegação desenha.
+   * `D_SUJO`: um `+`/`−` só repintava os tiles à vista; o índice (`D`) e as
+     partes em cache ficavam com o `tenho` antigo, e voltar ao mesmo deck
+     mostrava 0/4 numa carta que ele acabara de marcar 1/4. */
+let RSEQ = 0, D_SUJO = false;
 async function render() {
   const v = el('vista');
+  const seq = ++RSEQ;
+  let html;
   try {
+    /* O `false` ANTES do `await`: um `+` que acabe durante este pedido volta a
+       pô-lo a `true` e não é apagado por um `false` atrasado. */
+    if (D_SUJO) {
+      D_SUJO = false;
+      try { D = await carregaDados('decks.json'); PARTES = {}; }
+      catch (e) { D_SUJO = true; throw e; }
+    }
     if (FMT && DECK) {
-      v.innerHTML = nivelDeck(await parte('deck-' + parteDoDeck(DECK)), FMT);
+      html = nivelDeck(await parte('deck-' + parteDoDeck(DECK)), FMT);
     } else if (FMT) {
       const fx = D.formatos.find(x => x.formato === FMT);
-      if (!fx) { FMT = ''; v.innerHTML = nivelFormatos(); }
-      else v.innerHTML = nivelDecks(fx);
+      if (!fx) { FMT = ''; html = nivelFormatos(); }
+      else html = nivelDecks(fx);
     } else {
-      v.innerHTML = nivelFormatos();
+      html = nivelFormatos();
     }
-  } catch (e) { erroDados(v, e); return; }
+  } catch (e) { if (seq === RSEQ) erroDados(v, e); return; }
+  if (seq !== RSEQ) return;
+  v.innerHTML = html;
   const h = FMT ? ('#f=' + FMT + (DECK ? '&d=' + DECK : '')) : '#';
   try { history.replaceState(null, '', h); } catch (e) { /* file:// */ }
 }
@@ -1440,12 +1459,17 @@ function doHash() {
 /* A ESCRITA: um DELTA com `request_id`, como no riftvault. O ecrã anda já e só
    a última resposta manda — uma resposta atrasada punha o contador para trás. */
 const EM_VOO = new Map();
+/* O último número que a BASE confirmou para cada carta (ou o do ecrã quando o
+   primeiro pedido saiu): é para ele que se volta quando a última escrita em voo
+   é recusada — o `antes` de cada toque não serve com dois toques falhados. */
+const CONFIRMADO = new Map();
 async function mais(nome, delta, tile) {
   if (!EDIT()) { toast('esta página é só de leitura — abre o modo de edição', true); return; }
   const b = tile.querySelector('.badge'), st = tile.querySelectorAll('.step');
   const pede = Number((tile.querySelector('.need').textContent || '0').replace(/\D/g, ''));
   let tenho = Number((b.textContent || '0/0').split('/')[0]);
   if (delta < 0 && tenho <= 0) return;
+  if (!(EM_VOO.get(nome) > 0)) CONFIRMADO.set(nome, tenho);
   tenho = Math.max(0, tenho + delta);
   pinta(tile, tenho, pede);
   EM_VOO.set(nome, (EM_VOO.get(nome) || 0) + 1);
@@ -1460,6 +1484,8 @@ async function mais(nome, delta, tile) {
     if (!r.ok) throw new Error(j.erro || ('HTTP ' + r.status));
     const resta = (EM_VOO.get(nome) || 1) - 1;
     EM_VOO.set(nome, resta);
+    CONFIRMADO.set(nome, j.q);
+    D_SUJO = true;
     if (resta === 0) {
       /* Todos os tiles desta carta (ela pode estar em dois blocos). */
       for (const t of document.querySelectorAll(`.tile[data-nm="${CSS.escape(nome)}"]`)) {
@@ -1469,7 +1495,14 @@ async function mais(nome, delta, tile) {
       }
     }
   } catch (e) {
-    EM_VOO.set(nome, Math.max(0, (EM_VOO.get(nome) || 1) - 1));
+    const resta = Math.max(0, (EM_VOO.get(nome) || 1) - 1);
+    EM_VOO.set(nome, resta);
+    /* O número optimista ficava no ecrã depois de uma recusa (um 503 «a gravar
+       outra alteração», um 409): os toques seguintes empilhavam-se num número
+       que a base não tem. Sem mais nenhum em voo, volta ao último confirmado.
+       E o índice passa a sujo: «não sei se gravou» pode ser que tenha gravado. */
+    D_SUJO = true;
+    if (resta === 0 && CONFIRMADO.has(nome)) pinta(tile, CONFIRMADO.get(nome), pede);
     toast('não sei se gravou: ' + e.message, true);
   }
 }
