@@ -48,9 +48,9 @@ _FORMATS = [
 # `formatos_metagame`. O Premodern saiu em 2026-09-07 (o André não quer top-10 de
 # Premodern, só o consenso de UW Replenish e Enchantress, ver premodern_decks.py).
 # É só a VISTA: as listas de Premodern continuam a ser recolhidas e analisadas.
-# metagame.py e decks_faziveis.py leem esta lista, por isso mudar o config chega
-# para acertar as três páginas. (O showcase.py tem lista própria — nunca teve
-# Premodern nem Pauper.)
+# Só a Cobertura lê esta lista: o metagame.py deixou de a ler a 2026-09-07 e o
+# decks_faziveis.py foi retirado nesse dia (nota corrigida a 2026-10-25). (O
+# showcase.py tem lista própria — nunca teve Premodern nem Pauper.)
 _ATIVOS = sources.config().get("formatos_metagame")
 FORMATS = ([f for f in _FORMATS if f[0] in {str(x).lower() for x in _ATIVOS}]
            if _ATIVOS is not None else _FORMATS)
@@ -349,7 +349,7 @@ def _rank(con, fmt, n):
 def counting_lists(con, fmt, aid=None, order="event_date DESC, id DESC", limit=None):
     """Listas do formato que CONTAM para o metagame (opcionalmente de um
     arquétipo). Serve a quem precisa da lista em si e não só do ranking —
-    metagame.py e decks_faziveis.py mostram a mais recente de cada deck, e essa
+    o metagame.py mostra a mais recente de cada deck, e essa
     tem de sair do mesmo universo do top-10, senão a página mostrava uma lista
     de liga por baixo de um ranking que não a conta."""
     conta, params = sources.counting_sql(fmt, "d")
