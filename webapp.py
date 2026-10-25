@@ -108,12 +108,6 @@ CABECALHO_TOKEN = "X-Mtgvault-Token"
 # acabou de acontecer, não um histórico. Se o servidor for reiniciado no meio,
 # perde-se — e aí o que há é o *Desmontar*, que é o gesto grande, com backup.
 _ULTIMO_REGISTO: dict[str, dict] = {}
-# O *anular* do «já a tenho» (André, 2026-09-08). `copy_id -> quando`: é a única
-# janela em que a cópia que ele acabou de declarar ainda se pode apagar. Passada
-# ela, é uma cópia como as outras — e o que a tira é o «vendida». Em memória
-# pela mesma razão do registo: um anular é o desfazer de um gesto que acabou de
-# acontecer, não um histórico.
-_ULTIMA_FALTA: dict[int, float] = {}
 # Quanto tempo o servidor ainda aceita o *anular*. É maior do que os segundos em
 # que o botão está à vista (`loadout.montar_anular_segundos`): um clique ao
 # segundo 5,9 num telemóvel na rede de casa não pode falhar por causa da latência.
@@ -810,7 +804,7 @@ def marcar_nao_encontradas(con, slot_id: str, copias) -> dict:
 def anular_falta(con, dados: dict) -> str:
     """O desfazer do check: o `−` da encomenda pendente que ele acabou de abrir.
 
-    Desde 2026-09-19 não há janela (`_ULTIMA_FALTA` ficou do caminho antigo):
+    Desde 2026-09-19 não há janela (a variável da janela antiga saiu a 25/10):
     o check já não cria cópia nenhuma, e tirar uma encomenda pendente é um
     gesto sem custo, com rasto no `encomendas.log`. Aceita o `copy_id` de uma
     página antiga só para responder com uma frase em vez de um 500.
@@ -833,22 +827,29 @@ def recolher_fotos_de_caixas() -> dict | None:
     saem no `webapp.log` via `print`; nada se apaga."""
     if not fotocaixa.ha_pendentes(ROOT, ignorar=_FOTOS_IGNORADAS):
         return None
-    with escrita():
-        if not fotocaixa.ha_pendentes(ROOT, ignorar=_FOTOS_IGNORADAS):
-            return None                             # outro pedido já as levou
-        cfg = ler_config()
-        r = fotocaixa.recolher(cfg, raiz=ROOT, ignorar=_FOTOS_IGNORADAS)
-        if r["recolhidas"]:
-            escrever_config(cfg)
-            sources._CFG_CACHE.clear()
-            _CACHE.clear()
-        for ig in r["ignorados"]:
-            # Fica memorizado (nome + tamanho + mtime): um ficheiro que não é
-            # slot nem imagem não se volta a ler a cada pedido do índice, e a
-            # linha sai UMA vez no `webapp.log`. Mudá-lo (ou renomeá-lo) volta
-            # a tentar.
-            print(f"[foto-caixa] ignorado pendentes/deckboxes/{ig['ficheiro']}: {ig['porque']}")
-        return r
+    # Isto corre dentro de um GET (o índice da Deckboxes): espera-se pouco pelo
+    # lock e, ocupado, deixa-se para o pedido seguinte — com o prazo de omissão
+    # (60 s) o índice ficava um minuto pendurado atrás de uma regeneração em
+    # fundo e saía 503 (revisão de 2026-10-25).
+    try:
+        with escrita(espera=GET_ESPERA_ESCRITA):
+            if not fotocaixa.ha_pendentes(ROOT, ignorar=_FOTOS_IGNORADAS):
+                return None                         # outro pedido já as levou
+            cfg = ler_config()
+            r = fotocaixa.recolher(cfg, raiz=ROOT, ignorar=_FOTOS_IGNORADAS)
+            if r["recolhidas"]:
+                escrever_config(cfg)
+                sources._CFG_CACHE.clear()
+                _CACHE.clear()
+    except DadosAindaNaoProntos:
+        return None
+    for ig in r["ignorados"]:
+        # Fica memorizado (nome + tamanho + mtime): um ficheiro que não é
+        # slot nem imagem não se volta a ler a cada pedido do índice, e a
+        # linha sai UMA vez no `webapp.log`. Mudá-lo (ou renomeá-lo) volta
+        # a tentar.
+        print(f"[foto-caixa] ignorado pendentes/deckboxes/{ig['ficheiro']}: {ig['porque']}")
+    return r
 
 
 # O que já se viu em `pendentes/deckboxes/` e não serve: `{nome: (tamanho, mtime)}`.
@@ -873,7 +874,7 @@ def recolher_fotos_das_pastas() -> dict | None:
     if not itens:
         return None
     try:
-        with escrita():
+        with escrita(espera=GET_ESPERA_ESCRITA):
             r = fotos_mod.recolher_das_pastas(ler_config(), raiz=ROOT)
     except DadosAindaNaoProntos:
         # Está a gravar outra coisa. Isto é um GET: mover a foto pode esperar
@@ -1016,6 +1017,9 @@ ESPERA_DADOS = float(os.environ.get("MTGVAULT_ESPERA_DADOS") or 25.0)
 # Sem isto, um `ESCRITA.acquire()` sem prazo pendurava um botão para sempre
 # atrás de uma regeneração em fundo.
 ESPERA_ESCRITA = float(os.environ.get("MTGVAULT_ESPERA_ESCRITA") or 60.0)
+# O que um GET espera pelo mesmo lock quando só tem uma arrumação de passagem a
+# fazer (mover fotos): pouco, porque a página é que conta (revisão de 25/10).
+GET_ESPERA_ESCRITA = 2.0
 
 
 class DadosAindaNaoProntos(Exception):
@@ -1403,6 +1407,45 @@ class Handler(BaseHTTPRequestHandler):
         q = parse_qs(u.query).get("t")
         return self.headers.get(CABECALHO_TOKEN) or (q[0] if q else None)
 
+    def _origem_estranha(self) -> bool:
+        """Um POST que o browser diz vir de OUTRO site (revisão de 2026-10-25).
+
+        O loopback escreve sem token — e qualquer página aberta no browser do PC
+        pode fazer um `fetch('http://localhost:8771/api/caixa', {method:'POST',
+        mode:'no-cors', body:'{"act":"desmontar",…}'})`: um pedido «simples»,
+        sem pré-verificação CORS, que esvaziava uma caixa. O browser põe sempre
+        o `Origin` num POST de outra origem, e é por ele que se recusa.
+
+        Sem `Origin` (o `urllib` dos testes, o `curl`, as tarefas) não há nada a
+        julgar. Aceita-se o endereço do modo de edição POR NOME (o túnel pode não
+        passar o `Host` original, e recusar aí era o telemóvel dele deixar de
+        gravar) e o próprio servidor pelos nomes de loopback, no porto em que
+        ouve. Para quem chega pelo LOOPBACK **não** vale «`Origin` igual ao
+        `Host`»: num DNS rebinding (`evil.com` a apontar para 127.0.0.1) o
+        browser põe os dois iguais ao domínio do atacante. Da rede de casa vale,
+        porque aí escrever exige o token e o atacante não o tem.
+        """
+        origem = (self.headers.get("Origin") or "").strip()
+        if not origem:
+            return False
+        if origem == "null":
+            return True
+        u = urlparse(origem.lower())
+        try:
+            u.port                                  # um porto que não é número
+        except ValueError:
+            return True
+        edicao = {urlparse(URL_EDICAO).hostname, urlparse(site_shell.URL_EDICAO).hostname}
+        if u.hostname in edicao:
+            return False
+        porto = self.server.server_address[1] if self.server else PORT
+        if u.hostname in ("localhost", "127.0.0.1", "::1") and u.port == porto:
+            return False
+        ip = (self.client_address[0] if self.client_address else "")
+        if ip in ("127.0.0.1", "::1"):
+            return True
+        return u.netloc != (self.headers.get("Host") or "").strip().lower()
+
     def _pode_escrever(self) -> bool:
         """Loopback é de confiança; da rede exige-se o token (ver o cabeçalho)."""
         ip = (self.client_address[0] if self.client_address else "")
@@ -1446,8 +1489,13 @@ class Handler(BaseHTTPRequestHandler):
                 self._envia("<h1>403</h1>", 403)
                 return
             cid = (parse_qs(urlparse(self.path).query).get("copy") or ["0"])[0]
+            # Um `copy=abc` rebentava o `int()` fora do `do_GET` e o browser
+            # recebia uma ligação fechada sem resposta (revisão de 2026-10-25).
+            if not (cid.isascii() and cid.isdigit()):
+                self._envia("<h1>400</h1><p>o copy tem de ser um número</p>", 400)
+                return
             with db.session() as con:
-                alvo = loadout.foto_da_copia(con, int(cid or 0))
+                alvo = loadout.foto_da_copia(con, int(cid))
             if alvo is None:
                 self._envia("<h1>404</h1><p>essa cópia não tem foto no disco</p>", 404)
                 return
@@ -1578,7 +1626,7 @@ class Handler(BaseHTTPRequestHandler):
             # mesma que vai no Git para o site publicado. Leitura livre — é
             # pública de qualquer maneira. Com o `?v=<hash>` é cacheável
             # (`fotocaixa.versao`: o URL muda quando a foto muda).
-            if not (alvo.is_file() and str(alvo).startswith(str(ROOT))):
+            if not (alvo.is_file() and alvo.is_relative_to(ROOT.resolve())):
                 self._envia("<h1>404</h1><p>essa caixa não tem foto</p>", 404)
                 return
             self._envia(alvo.read_bytes(), tipo="image/jpeg",
@@ -1586,9 +1634,16 @@ class Handler(BaseHTTPRequestHandler):
             return
         # Os `.json` só de `data/paginas/` (os dados das outras páginas, escritos
         # pelo `daily`): o resto de `data/` são a base, o token e os registos.
-        e_dados = nome.startswith("data/paginas/") and nome.endswith(".json")
+        # A pergunta é feita ao caminho RESOLVIDO e não ao texto do pedido
+        # (revisão de 2026-10-25): `data/paginas/../arquetipos.json` começava por
+        # `data/paginas/` e servia o `data/arquetipos.json` a qualquer aparelho da
+        # rede. E `is_relative_to` em vez de `startswith`: uma pasta irmã com o
+        # mesmo prefixo (`…/mtgvault-old/`) passava no teste de texto.
+        raiz = ROOT.resolve()
+        e_dados = (nome.endswith(".json")
+                   and alvo.is_relative_to(raiz / "data" / "paginas"))
         if ((nome.endswith((".html", ".css", ".js")) or e_dados) and alvo.is_file()
-                and str(alvo).startswith(str(ROOT))):
+                and alvo.is_relative_to(raiz)):
             if e_dados:
                 self._envia(alvo.read_bytes(), tipo="application/json; charset=utf-8")
                 return
@@ -1608,7 +1663,19 @@ class Handler(BaseHTTPRequestHandler):
 
     def _post(self):
         caminho = urlparse(self.path).path
-        tam = int(self.headers.get("Content-Length") or 0)
+        # Um `Content-Length` que não é número rebentava fora do `do_POST` (o
+        # browser ficava sem resposta), e um NEGATIVO passava o tecto e pendurava
+        # o fio no `rfile.read(-1)` até o cliente desligar — antes de se olhar
+        # para o token (revisão de 2026-10-25).
+        cl = (self.headers.get("Content-Length") or "0").strip()
+        if not (cl.isascii() and cl.isdigit()):     # «²» é dígito e o int() recusa-o
+            self._json({"erro": "Content-Length inválido"}, 400)
+            return
+        tam = int(cl)
+        if self._origem_estranha():
+            self._json({"erro": "este pedido veio de outro site — só a página "
+                                "do próprio mtgvault pode gravar"}, 403)
+            return
         # As FOTOS DAS CARTAS (2026-09-21) vêm várias num pedido: o tecto é o
         # do pedido inteiro (`fotosite.MAX_PEDIDO`); o resto continua a ser o
         # de UMA foto. Sem ler: uma "foto" de 40 MB não é uma foto, é um engano.
@@ -1622,8 +1689,10 @@ class Handler(BaseHTTPRequestHandler):
             # Ler é livre, escrever não. Sem isto, pôr o porto na rede local
             # (MTGVAULT_BIND=0.0.0.0) dava a qualquer aparelho de casa — ou a
             # qualquer visita no Wi-Fi — o direito de lhe desmontar os decks.
+            # O QR saiu a 2026-10-01; a frase ainda o mandava procurar.
             self._json({"erro": "sem token: este link é só de leitura. Abre o "
-                                "link do QR (tem o ?t=) para poderes gravar."}, 403)
+                                "modo de edição (o link com ?t=, ou "
+                                + URL_EDICAO + ") para poderes gravar."}, 403)
             return
         if caminho == "/api/foto-caixa":
             # A FOTO DA DECKBOX (André, 2026-09-21): o corpo é o FICHEIRO tal e
