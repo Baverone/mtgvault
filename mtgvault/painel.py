@@ -360,11 +360,20 @@ def construir(con, hoje: str | None = None, raiz: Path | None = None) -> dict:
     # Os avisos da pasta «Outros» (2026-10-16) vêm do ficheiro que o passo
     # `outros-premodern` escreve — que corre DEPOIS deste (precisa do relatório
     # do loadout) e volta a chamar o `escrever` para os juntar.
+    # Só se juntam os de HOJE (revisão de 2026-10-25): com o `outros-premodern`
+    # a falhar, o ficheiro ficava com os avisos de um dia antigo e eles entravam
+    # no painel como se fossem de hoje — todos os dias, sem uma palavra.
     try:
-        avisos += json.loads((pasta(raiz) / OUTROS).read_text(encoding="utf-8")
-                             ).get("avisos") or []
+        outros = json.loads((pasta(raiz) / OUTROS).read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        pass
+        outros = {}
+    if outros.get("data") == hoje:
+        avisos += outros.get("avisos") or []
+    elif outros.get("avisos"):
+        avisos.append({"gravidade": "baixa", "deck": "Staples Premodern",
+                       "aviso": f"os avisos das staples são de {outros.get('data') or '?'}",
+                       "detalhe": "o passo outros-premodern não os reescreveu hoje — "
+                                  "ficam de fora até ele voltar a correr"})
     avisos.sort(key=lambda a: (GRAVIDADES.index(a["gravidade"]), a["deck"], a["aviso"]))
     for i, a in enumerate(avisos):
         a["id"] = f"{i:03d}"
