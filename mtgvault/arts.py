@@ -144,7 +144,11 @@ def esquecer(nome: str, *, path=None) -> bool:
 # ---------------------------------------------------------------------------
 # A pasta (só para o CLI — ver o docstring do módulo)
 # ---------------------------------------------------------------------------
-_NOME_IMPRESSAO = re.compile(r"^\s*([A-Za-z0-9]{2,6})[\s_#-]+([0-9]+[a-z★]?)\b",
+# O fim do número é um «não é dígito nem letra nem ★», e NUNCA um `\b`
+# (revisão de 2026-10-25): o `★` não é carácter de palavra, o `\b` depois de
+# `197★` falhava, a regex recuava para `197` — e `MH2 197★.jpg` registava a
+# impressão normal, calada, com o preço e a art de outra carta.
+_NOME_IMPRESSAO = re.compile(r"^\s*([A-Za-z0-9]{2,6})[\s_#-]+([0-9]+[a-z★]?)(?=$|[^0-9a-z★])",
                              re.IGNORECASE)
 
 
