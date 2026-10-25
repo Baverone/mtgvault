@@ -393,7 +393,7 @@ def _achados_combos(con) -> list[dict]:
                            d.player jog, d.placement pos, d.url url,
                            d.event_tier tier, d.source fonte,
                            d.event_players jogadores,
-                           group_concat(DISTINCT dc.card_name) pecas,
+                           group_concat(dc.card_name, char(31)) pecas,
                            sum(dc.quantity) q
                       FROM decklists d
                       JOIN decklist_cards dc ON dc.decklist_id = d.id
@@ -408,7 +408,11 @@ def _achados_combos(con) -> list[dict]:
                 "link": r["url"] or "", "tier": r["tier"] or "",
                 "fonte": r["fonte"] or "", "jogadores": r["jogadores"],
                 "copias": r["q"], "board": "main",
-                "pecas": sorted((r["pecas"] or "").split(","))})
+                # O separador é o char(31) e não a vírgula (revisão de
+                # 2026-10-25): «Kasmina, Enigma Sage» saía partido em
+                # «Kasmina» e « Enigma Sage». A mesma carta no main e no side
+                # vem duas vezes — o `set` junta-as.
+                "pecas": sorted(set((r["pecas"] or "").split("\x1f")) - {""})})
     return out
 
 
