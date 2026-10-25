@@ -425,12 +425,7 @@ def aceitar(con: sqlite3.Connection, deck: str, decklist_id: int | None = None,
         if dl is None:
             raise ValueError(f"{deck}: {s['falta']}")
     else:
-        dl = con.execute("SELECT id, source, player, event_date, format FROM decklists "
-                         "WHERE id = ?", (decklist_id,)).fetchone()
-        if dl is None:
-            raise ValueError(f"decklist #{decklist_id} nao existe")
-        if dl["format"] != s["formato"]:
-            raise ValueError(f"decklist #{decklist_id} e de {dl['format']}, nao {s['formato']}")
+        dl = _lista_valida(con, s, decklist_id)
     out: list = []
     if dl["id"] in rejeitadas(con, deck, s["formato"]):
         row = con.execute("SELECT id, notes FROM decks WHERE name = ? AND format = ?",
@@ -460,6 +455,16 @@ def aceitar(con: sqlite3.Connection, deck: str, decklist_id: int | None = None,
     return "; ".join(out)
 
 
+def _lista_valida(con: sqlite3.Connection, s: dict, decklist_id: int):
+    dl = con.execute("SELECT id, source, player, event_date, format FROM decklists "
+                     "WHERE id = ?", (decklist_id,)).fetchone()
+    if dl is None:
+        raise ValueError(f"decklist #{decklist_id} nao existe")
+    if dl["format"] != s["formato"]:
+        raise ValueError(f"decklist #{decklist_id} e de {dl['format']}, nao {s['formato']}")
+    return dl
+
+
 def fixar(con: sqlite3.Connection, deck: str, decklist_id: int,
           hoje: str | None = None) -> str:
     """Aceita `decklist_id` (o `aceitar`, com o levantar da rejeição) e FIXA-A:
@@ -469,6 +474,11 @@ def fixar(con: sqlite3.Connection, deck: str, decklist_id: int,
         raise ValueError(f"deck nao seguido: {deck!r}")
     if fixada(con, deck, s["formato"]) == decklist_id:
         return f"{deck}: ja estava fixado em #{decklist_id}"
+    # Validar ANTES de soltar (revisão de 2026-10-25): o `soltar` faz commit, e
+    # um id errado (um engano a escrever, uma lista de outro formato) deixava o
+    # deck SOLTO — a corrida das 03:30 voltava à escolha automática e trocava a
+    # lista que ele tinha fixado.
+    _lista_valida(con, s, decklist_id)
     if fixada(con, deck, s["formato"]) is not None:
         soltar(con, deck, hoje)
     out = [aceitar(con, deck, decklist_id, hoje)]
