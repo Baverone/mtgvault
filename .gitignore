@@ -3,6 +3,18 @@ __pycache__/
 .venv/
 # Medições e ficheiros de trabalho das revisões (nunca vão para o repo).
 _scratch/
+# Os CSVs antigos da raiz (decks exportados, tirados do Git a 2026-10-26; ficam
+# no disco). O `owned.csv` e o `price_overrides.csv` NAO estao aqui: o codigo le-os.
+/4_5c_control.csv
+/affinity_kappa.csv
+/blue_farm.csv
+/cloud.csv
+/enchantress.csv
+/exemplo_colecao.csv
+/grinding_emry.csv
+/ill_gotten_gains.csv
+/legacy.csv
+/oath_of_druids.csv
 _tmp_validacao/
 _bateria-revisao.log
 # Os worktrees de trabalho e as cópias da base que se medem lá dentro. É onde
