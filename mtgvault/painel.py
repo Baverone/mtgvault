@@ -102,20 +102,69 @@ def _trocas(con, onde: str = "", params: tuple = ()) -> list:
                        params).fetchall()
 
 
-def alteracoes(con, hoje: str) -> list[dict]:
-    """As cartas que mudaram nas trocas de lista de `hoje`. Uma releitura (a
-    mesma lista, relida) não é uma alteração do deck — é uma correcção da
-    leitura, e vai para os avisos."""
+def _linhas_da_troca(t) -> list[dict]:
+    """As cartas que mudaram numa troca, com a `data` da própria troca (a
+    `corrida` em que foi gravada) — não a do dia em que o painel a lê."""
+    return [{"data": t["corrida"], "deck": t["deck"], "formato": t["formato"],
+             "carta": n, "board": "main" if b == "main" else "sideboard",
+             "delta": d,
+             "de": rotulo(t["de_jogador"], t["de_data"]),
+             "para": rotulo(t["para_jogador"], t["para_data"]),
+             "sinal": "entra" if d > 0 else "sai", "abs": abs(d)}
+            for b, n, d in diferencas(json.loads(t["de_cartas"] or "[]"),
+                                      json.loads(t["para_cartas"] or "[]"))]
+
+
+def _chave_linha(a: dict) -> tuple:
+    return (a.get("data"), a.get("deck"), a.get("formato"), a.get("carta"),
+            a.get("board"), a.get("delta"), a.get("de"), a.get("para"))
+
+
+def ultimo_historico(hoje: str, raiz: Path | None = None) -> tuple[str | None, list]:
+    """`(dia, linhas)` do último `historico/<dia>.json` ANTERIOR a `hoje`; o de
+    `hoje` não conta (reescreve-se a cada corrida do dia). `(None, [])` sem nenhum."""
+    h = pasta(raiz) / "historico"
+    if not h.is_dir():
+        return None, []
+    dias = sorted(f.stem for f in h.glob("*.json") if f.stem < hoje)
+    if not dias:
+        return None, []
+    try:
+        return dias[-1], json.loads((h / f"{dias[-1]}.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return dias[-1], []
+
+
+def trocas_novas(con, hoje: str, raiz: Path | None = None) -> list:
+    """As trocas de lista que o painel ainda não mostrou: tudo o que foi gravado
+    DEPOIS do último histórico — e as desse mesmo dia que lá não estão (revisão de
+    2026-10-26: um `aceitar`/`fixar` feito à tarde tem a `corrida` desse dia, o
+    histórico desse dia já estava escrito de manhã, e a troca nunca chegava ao
+    painel). Sem duplicar: uma troca do dia do último histórico cujas linhas já
+    lá estão fica de fora. Sem histórico nenhum, só as de `hoje`."""
+    ultimo, hist = ultimo_historico(hoje, raiz)
+    if ultimo is None:
+        return list(_trocas(con, "WHERE corrida = ? AND motivo = 'troca'", (hoje,)))
+    vistas = {_chave_linha(a) for a in hist}
     out = []
-    for t in _trocas(con, "WHERE corrida = ? AND motivo = 'troca'", (hoje,)):
-        for b, n, d in diferencas(json.loads(t["de_cartas"] or "[]"),
-                                  json.loads(t["para_cartas"] or "[]")):
-            out.append({"data": hoje, "deck": t["deck"], "formato": t["formato"],
-                        "carta": n, "board": "main" if b == "main" else "sideboard",
-                        "delta": d,
-                        "de": rotulo(t["de_jogador"], t["de_data"]),
-                        "para": rotulo(t["para_jogador"], t["para_data"]),
-                        "sinal": "entra" if d > 0 else "sai", "abs": abs(d)})
+    for t in _trocas(con, "WHERE corrida >= ? AND corrida <= ? AND motivo = 'troca'",
+                     (ultimo, hoje)):
+        if t["corrida"] == ultimo:
+            linhas = _linhas_da_troca(t)
+            if not linhas or all(_chave_linha(a) in vistas for a in linhas):
+                continue
+        out.append(t)
+    return out
+
+
+def alteracoes(con, hoje: str, raiz: Path | None = None) -> list[dict]:
+    """As cartas que mudaram nas trocas de lista ainda não mostradas (ver
+    `trocas_novas`; no caso normal, as de `hoje`). Uma releitura (a mesma lista,
+    relida) não é uma alteração do deck — é uma correcção da leitura, e vai para
+    os avisos."""
+    out = []
+    for t in trocas_novas(con, hoje, raiz):
+        out.extend(_linhas_da_troca(t))
     for i, a in enumerate(out):
         a["id"] = f"{i:03d}"
     return [{k: a[k] for k in CAMPOS["alteracoes.json"]} for a in out]
@@ -239,7 +288,8 @@ def construir(con, hoje: str | None = None, raiz: Path | None = None) -> dict:
     import my_decks  # noqa: PLC0415  (vive na raiz, como os outros geradores)
 
     hoje = hoje or date.today().isoformat()
-    alts = alteracoes(con, hoje)
+    novas = trocas_novas(con, hoje, raiz)
+    alts = alteracoes(con, hoje, raiz)
     estado, avisos = [], []
 
     def avisar(grav, deck, aviso, detalhe):
@@ -253,9 +303,10 @@ def construir(con, hoje: str | None = None, raiz: Path | None = None) -> dict:
         lista = rotulo(nota.get("jogador"), nota.get("data"))
         main = sum(q for (b, _n), q in cartas.items() if b == "main")
         side = sum(q for (b, _n), q in cartas.items() if b == "side")
-        hoje_trocas = [t for t in _trocas(con, "WHERE deck = ? AND formato = ? AND corrida = ?",
-                                          (nome, fmt, hoje))]
-        trocas = [t for t in hoje_trocas if t["motivo"] == "troca"]
+        trocas = [t for t in novas if t["deck"] == nome and t["formato"] == fmt]
+        hoje_trocas = trocas + [t for t in _trocas(
+            con, "WHERE deck = ? AND formato = ? AND corrida = ? AND motivo != 'troca'",
+            (nome, fmt, hoje))]
         n_troc = sum(a["abs"] for a in alts if a["deck"] == nome and a["formato"] == fmt)
         anterior = rotulo(trocas[0]["de_jogador"], trocas[0]["de_data"]) if trocas else lista
         estado.append({"deck": nome, "formato": fmt, "lista": lista or "sem lista",

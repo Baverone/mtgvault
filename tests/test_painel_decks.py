@@ -253,7 +253,48 @@ def caso_troca_de_arquetipo_e_oscilacao(con, raiz):
     print("troca de arquétipo = alta; oscilação dita; o histórico acumula")
 
 
+def _troca(con, corrida, para, motivo="troca"):
+    con.execute(
+        "INSERT INTO deck_lista_trocas (deck, formato, corrida, motivo, de_jogador, "
+        "de_data, de_cartas, para_jogador, para_data, para_cartas) "
+        "VALUES ('Greasefang','pioneer',?,?,'ana','2026-10-01',?,'rui','2026-10-02',?)",
+        (corrida, motivo, json.dumps([["main", "Island", 4]]), json.dumps(para)))
+    con.commit()
+
+
+def caso_uma_troca_de_ontem_a_tarde_aparece_no_painel_de_hoje():
+    """Revisão de 2026-10-25, aprovada a 25/10: o painel lia só as trocas com
+    `corrida = hoje`; um aceitar/fixar feito ontem à tarde (depois da corrida da
+    manhã, que já tinha escrito o histórico de ontem) nunca chegava lá. Passa a ler
+    tudo o que o último histórico ainda não tem — sem duplicar o que já lá está."""
+    tmp = Path(tempfile.mkdtemp())
+    raiz = tmp / "painel"
+    with db.session(tmp / "v.db", tmp / "c.db") as con:
+        _troca(con, "2026-10-24", [["main", "Island", 3], ["main", "Mox Opal", 1]])
+        # corrida da manhã de 24/10: o histórico de 24/10 fica com esta troca
+        painel.escrever(con, raiz=raiz, hoje="2026-10-24")
+        assert sorted(a["carta"] for a in _ler(raiz / "historico", "2026-10-24.json")) \
+            == ["Island", "Mox Opal"]
+        # à tarde de 24/10 ele aceita outra: corrida = 2026-10-24, depois da manhã
+        _troca(con, "2026-10-24", [["main", "Island", 4], ["main", "Ornithopter", 2]])
+        # em 25/10 a da manhã de 24 NÃO pode voltar; a da tarde tem de aparecer
+        alts = painel.alteracoes(con, "2026-10-25", raiz)
+        assert [(a["data"], a["carta"]) for a in alts] == \
+            [("2026-10-24", "Ornithopter")], alts
+        r = painel.escrever(con, raiz=raiz, hoje="2026-10-25")
+        assert r["alteracoes"] == 1 and r["mudaram"] >= 0
+        assert [a["carta"] for a in _ler(raiz, "alteracoes.json")] == ["Ornithopter"]
+        # idempotente: reescrever no mesmo dia dá o mesmo
+        painel.escrever(con, raiz=raiz, hoje="2026-10-25")
+        assert [a["carta"] for a in _ler(raiz, "alteracoes.json")] == ["Ornithopter"]
+        # o histórico de 24/10 (o último antes de hoje) não foi tocado
+        assert sorted(a["carta"] for a in _ler(raiz / "historico", "2026-10-24.json")) \
+            == ["Island", "Mox Opal"]
+    print("a troca de ontem à tarde aparece no painel de hoje, sem duplicar")
+
+
 def run():
+    caso_uma_troca_de_ontem_a_tarde_aparece_no_painel_de_hoje()
     tmp = Path(tempfile.mkdtemp())
     with db.session(tmp / "v.db", tmp / "c.db") as con:
         did = caso_a_gravacao_soma_as_entradas_repetidas(con)
