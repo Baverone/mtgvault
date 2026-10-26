@@ -531,10 +531,10 @@ function barraHTML() {
   const fs = [['', 'Todos']].concat(D.formatos.map(f => [f, f]));
   return `<div class="grp"><span class="rot">Formato</span>`
     + fs.map(([k, r]) => `<button type="button" data-fmt="${escDados(k)}"`
-      + ` class="${FMT === k ? 'cur' : ''}">${escDados(r)}</button>`).join('')
+      + ` aria-pressed="${FMT === k}" class="${FMT === k ? 'cur' : ''}">${escDados(r)}</button>`).join('')
     + `</div><div class="grp"><span class="rot">Ordenar</span>`
     + [['valor', 'por valor'], ['deck', 'por deck']].map(([k, r]) =>
-      `<button type="button" data-ord="${k}" class="${ORD === k ? 'cur' : ''}">`
+      `<button type="button" data-ord="${k}" aria-pressed="${ORD === k}" class="${ORD === k ? 'cur' : ''}">`
       + `${r}</button>`).join('')
     + `</div>`;
 }
