@@ -1036,7 +1036,7 @@ function barra() {
               f3: D.totais.candidatos_copias, f4: D.totais.fase4_fotos,
               inv: D.totais.inventario_fotos};
   b.innerHTML = ABAS.map(([k, rot]) =>
-    `<button type="button" data-aba="${k}" class="${ABA === k ? 'cur' : ''}`
+    `<button type="button" data-aba="${k}" aria-pressed="${ABA === k}" class="${ABA === k ? 'cur' : ''}`
     + `${k === 'inv' ? ' par' : ''}">${escDados(rot)}`
     + `<span class="nq">${nq[k]}</span></button>`).join('');
 }
