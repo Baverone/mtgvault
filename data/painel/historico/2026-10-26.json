@@ -1,0 +1,28 @@
+[
+ {
+  "data": "2026-10-26",
+  "deck": "Greasefang",
+  "formato": "pioneer",
+  "carta": "Brushland",
+  "board": "main",
+  "delta": 1,
+  "de": "jarold9 22/10",
+  "para": "jarold9 25/10",
+  "id": "000",
+  "sinal": "entra",
+  "abs": 1
+ },
+ {
+  "data": "2026-10-26",
+  "deck": "Greasefang",
+  "formato": "pioneer",
+  "carta": "Forest",
+  "board": "main",
+  "delta": -1,
+  "de": "jarold9 22/10",
+  "para": "jarold9 25/10",
+  "id": "001",
+  "sinal": "sai",
+  "abs": 1
+ }
+]

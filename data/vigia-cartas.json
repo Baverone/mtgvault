@@ -5,9 +5,9 @@
       "carta": "Kasmina, Enigma Sage",
       "formatos": [],
       "nota": "Andre 13/10: 'continua sempre a procurar se aparece esse deck ou nao' — em TODOS os formatos e para sempre (nada a desliga sozinha). Era modern+pioneer desde 30/09. A 13/10: 0 listas em toda a base.",
-      "achados": 1,
+      "achados": 2,
       "primeira": "2026-10-18",
-      "ultima": "2026-10-18"
+      "ultima": "2026-10-24"
     },
     "jace's machinations": {
       "carta": "Jace's Machinations",
@@ -16,17 +16,17 @@
         "pioneer"
       ],
       "nota": "combo Jace/Kasmina — Reality Fracture no MTGO 29/09/2026, em papel 02/10/2026; Pioneer acrescentado a pedido do Andre 30/09",
-      "achados": 3,
+      "achados": 4,
       "primeira": "2026-10-10",
-      "ultima": "2026-10-22"
+      "ultima": "2026-10-24"
     },
     "combo kasmina (kasmina + jace's machinations + avatar)": {
       "carta": "Combo Kasmina (Kasmina + Jace's Machinations + Avatar)",
       "formatos": [],
       "nota": "Andre 13/10: o deck da Kasmina em qualquer formato. Avisa na PRIMEIRA lista com 2 das 3 juntas. Soltas nao serviam: o Jace's Machinations ja esta em 33 listas e o Avatar em 18, e em nenhuma estao duas das tres. A 13/10: 0 listas.",
-      "achados": 1,
+      "achados": 2,
       "primeira": "2026-10-18",
-      "ultima": "2026-10-18",
+      "ultima": "2026-10-24",
       "combo": [
         "Kasmina, Enigma Sage",
         "Jace's Machinations",
@@ -675,9 +675,8 @@
       "copias": 8,
       "board": "main",
       "pecas": [
-        " Enigma Sage",
         "Jace's Machinations",
-        "Kasmina"
+        "Kasmina, Enigma Sage"
       ],
       "visto_em": "2026-10-19",
       "avisado": true,
@@ -1035,8 +1034,540 @@
         ]
       ],
       "aviso": "toast (balloon)"
+    },
+    "pioneer|kasmina, enigma sage|2026-10-24|karatedom|Pioneer Challenge 16": {
+      "carta": "Kasmina, Enigma Sage",
+      "nota": "Andre 13/10: 'continua sempre a procurar se aparece esse deck ou nao' — em TODOS os formatos e para sempre (nada a desliga sozinha). Era modern+pioneer desde 30/09. A 13/10: 0 listas em toda a base.",
+      "formato": "pioneer",
+      "decklist_id": 30278,
+      "evento": "Pioneer Challenge 16",
+      "data": "2026-10-24",
+      "jogador": "karatedom",
+      "colocacao": "",
+      "link": "https://www.mtgo.com/decklist/pioneer-challenge-16-2026-10-2412856983",
+      "tier": "Challenge",
+      "fonte": "mtgo",
+      "jogadores": null,
+      "copias": 4,
+      "board": "main",
+      "visto_em": "2026-10-26",
+      "avisado": true,
+      "lista": [
+        [
+          "side",
+          "Anger of the Gods",
+          2
+        ],
+        [
+          "side",
+          "Chandra's Defeat",
+          2
+        ],
+        [
+          "side",
+          "Chandra, Awakened Inferno",
+          1
+        ],
+        [
+          "side",
+          "Ghost Vacuum",
+          2
+        ],
+        [
+          "side",
+          "Mystical Dispute",
+          4
+        ],
+        [
+          "side",
+          "Negate",
+          1
+        ],
+        [
+          "side",
+          "Pyroclasm",
+          1
+        ],
+        [
+          "side",
+          "Rending Volley",
+          2
+        ],
+        [
+          "main",
+          "Breeding Pool",
+          4
+        ],
+        [
+          "main",
+          "Consult the Star Charts",
+          4
+        ],
+        [
+          "main",
+          "Enter the Infinite",
+          1
+        ],
+        [
+          "main",
+          "Fiery Impulse",
+          4
+        ],
+        [
+          "main",
+          "Growth Spiral",
+          4
+        ],
+        [
+          "main",
+          "Island",
+          1
+        ],
+        [
+          "main",
+          "Jace's Machinations",
+          4
+        ],
+        [
+          "main",
+          "Jace, Wielder of Mysteries",
+          1
+        ],
+        [
+          "main",
+          "Kasmina, Enigma Sage",
+          4
+        ],
+        [
+          "main",
+          "Ketria Triome",
+          1
+        ],
+        [
+          "main",
+          "Mistrise Village",
+          1
+        ],
+        [
+          "main",
+          "Mountain",
+          1
+        ],
+        [
+          "main",
+          "Mox Amber",
+          1
+        ],
+        [
+          "main",
+          "Riverpyre Verge",
+          4
+        ],
+        [
+          "main",
+          "Spell Pierce",
+          2
+        ],
+        [
+          "main",
+          "Spell Snare",
+          2
+        ],
+        [
+          "main",
+          "Steam Vents",
+          4
+        ],
+        [
+          "main",
+          "Stock Up",
+          4
+        ],
+        [
+          "main",
+          "Stomping Ground",
+          2
+        ],
+        [
+          "main",
+          "Thassa's Oracle",
+          1
+        ],
+        [
+          "main",
+          "Thornspire Verge",
+          2
+        ],
+        [
+          "main",
+          "Volcanic Spite",
+          4
+        ],
+        [
+          "main",
+          "Willowrush Verge",
+          4
+        ]
+      ],
+      "aviso": "toast (balloon)"
+    },
+    "pioneer|jace's machinations|2026-10-24|karatedom|Pioneer Challenge 16": {
+      "carta": "Jace's Machinations",
+      "nota": "combo Jace/Kasmina — Reality Fracture no MTGO 29/09/2026, em papel 02/10/2026; Pioneer acrescentado a pedido do Andre 30/09",
+      "formato": "pioneer",
+      "decklist_id": 30278,
+      "evento": "Pioneer Challenge 16",
+      "data": "2026-10-24",
+      "jogador": "karatedom",
+      "colocacao": "",
+      "link": "https://www.mtgo.com/decklist/pioneer-challenge-16-2026-10-2412856983",
+      "tier": "Challenge",
+      "fonte": "mtgo",
+      "jogadores": null,
+      "copias": 4,
+      "board": "main",
+      "visto_em": "2026-10-26",
+      "avisado": true,
+      "lista": [
+        [
+          "side",
+          "Anger of the Gods",
+          2
+        ],
+        [
+          "side",
+          "Chandra's Defeat",
+          2
+        ],
+        [
+          "side",
+          "Chandra, Awakened Inferno",
+          1
+        ],
+        [
+          "side",
+          "Ghost Vacuum",
+          2
+        ],
+        [
+          "side",
+          "Mystical Dispute",
+          4
+        ],
+        [
+          "side",
+          "Negate",
+          1
+        ],
+        [
+          "side",
+          "Pyroclasm",
+          1
+        ],
+        [
+          "side",
+          "Rending Volley",
+          2
+        ],
+        [
+          "main",
+          "Breeding Pool",
+          4
+        ],
+        [
+          "main",
+          "Consult the Star Charts",
+          4
+        ],
+        [
+          "main",
+          "Enter the Infinite",
+          1
+        ],
+        [
+          "main",
+          "Fiery Impulse",
+          4
+        ],
+        [
+          "main",
+          "Growth Spiral",
+          4
+        ],
+        [
+          "main",
+          "Island",
+          1
+        ],
+        [
+          "main",
+          "Jace's Machinations",
+          4
+        ],
+        [
+          "main",
+          "Jace, Wielder of Mysteries",
+          1
+        ],
+        [
+          "main",
+          "Kasmina, Enigma Sage",
+          4
+        ],
+        [
+          "main",
+          "Ketria Triome",
+          1
+        ],
+        [
+          "main",
+          "Mistrise Village",
+          1
+        ],
+        [
+          "main",
+          "Mountain",
+          1
+        ],
+        [
+          "main",
+          "Mox Amber",
+          1
+        ],
+        [
+          "main",
+          "Riverpyre Verge",
+          4
+        ],
+        [
+          "main",
+          "Spell Pierce",
+          2
+        ],
+        [
+          "main",
+          "Spell Snare",
+          2
+        ],
+        [
+          "main",
+          "Steam Vents",
+          4
+        ],
+        [
+          "main",
+          "Stock Up",
+          4
+        ],
+        [
+          "main",
+          "Stomping Ground",
+          2
+        ],
+        [
+          "main",
+          "Thassa's Oracle",
+          1
+        ],
+        [
+          "main",
+          "Thornspire Verge",
+          2
+        ],
+        [
+          "main",
+          "Volcanic Spite",
+          4
+        ],
+        [
+          "main",
+          "Willowrush Verge",
+          4
+        ]
+      ],
+      "aviso": "toast (balloon)"
+    },
+    "pioneer|combo kasmina (kasmina + jace's machinations + avatar)|2026-10-24|karatedom|Pioneer Challenge 16": {
+      "carta": "Combo Kasmina (Kasmina + Jace's Machinations + Avatar)",
+      "nota": "Andre 13/10: o deck da Kasmina em qualquer formato. Avisa na PRIMEIRA lista com 2 das 3 juntas. Soltas nao serviam: o Jace's Machinations ja esta em 33 listas e o Avatar em 18, e em nenhuma estao duas das tres. A 13/10: 0 listas.",
+      "formato": "pioneer",
+      "decklist_id": 30278,
+      "evento": "Pioneer Challenge 16",
+      "data": "2026-10-24",
+      "jogador": "karatedom",
+      "colocacao": "",
+      "link": "https://www.mtgo.com/decklist/pioneer-challenge-16-2026-10-2412856983",
+      "tier": "Challenge",
+      "fonte": "mtgo",
+      "jogadores": null,
+      "copias": 8,
+      "board": "main",
+      "pecas": [
+        "Jace's Machinations",
+        "Kasmina, Enigma Sage"
+      ],
+      "visto_em": "2026-10-26",
+      "avisado": true,
+      "lista": [
+        [
+          "side",
+          "Anger of the Gods",
+          2
+        ],
+        [
+          "side",
+          "Chandra's Defeat",
+          2
+        ],
+        [
+          "side",
+          "Chandra, Awakened Inferno",
+          1
+        ],
+        [
+          "side",
+          "Ghost Vacuum",
+          2
+        ],
+        [
+          "side",
+          "Mystical Dispute",
+          4
+        ],
+        [
+          "side",
+          "Negate",
+          1
+        ],
+        [
+          "side",
+          "Pyroclasm",
+          1
+        ],
+        [
+          "side",
+          "Rending Volley",
+          2
+        ],
+        [
+          "main",
+          "Breeding Pool",
+          4
+        ],
+        [
+          "main",
+          "Consult the Star Charts",
+          4
+        ],
+        [
+          "main",
+          "Enter the Infinite",
+          1
+        ],
+        [
+          "main",
+          "Fiery Impulse",
+          4
+        ],
+        [
+          "main",
+          "Growth Spiral",
+          4
+        ],
+        [
+          "main",
+          "Island",
+          1
+        ],
+        [
+          "main",
+          "Jace's Machinations",
+          4
+        ],
+        [
+          "main",
+          "Jace, Wielder of Mysteries",
+          1
+        ],
+        [
+          "main",
+          "Kasmina, Enigma Sage",
+          4
+        ],
+        [
+          "main",
+          "Ketria Triome",
+          1
+        ],
+        [
+          "main",
+          "Mistrise Village",
+          1
+        ],
+        [
+          "main",
+          "Mountain",
+          1
+        ],
+        [
+          "main",
+          "Mox Amber",
+          1
+        ],
+        [
+          "main",
+          "Riverpyre Verge",
+          4
+        ],
+        [
+          "main",
+          "Spell Pierce",
+          2
+        ],
+        [
+          "main",
+          "Spell Snare",
+          2
+        ],
+        [
+          "main",
+          "Steam Vents",
+          4
+        ],
+        [
+          "main",
+          "Stock Up",
+          4
+        ],
+        [
+          "main",
+          "Stomping Ground",
+          2
+        ],
+        [
+          "main",
+          "Thassa's Oracle",
+          1
+        ],
+        [
+          "main",
+          "Thornspire Verge",
+          2
+        ],
+        [
+          "main",
+          "Volcanic Spite",
+          4
+        ],
+        [
+          "main",
+          "Willowrush Verge",
+          4
+        ]
+      ],
+      "aviso": "toast (balloon)"
     }
   },
-  "verificado_em": "2026-10-25",
+  "verificado_em": "2026-10-26",
   "desde": "2026-09-26"
 }

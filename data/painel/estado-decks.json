@@ -3,7 +3,7 @@
   "deck": "Izzet Affinity (Kappa Cannoneer)",
   "formato": "modern",
   "lista": "sioutis_kk 24/10",
-  "anterior": "sioutis_kk 21/10",
+  "anterior": "sioutis_kk 24/10",
   "mudou": "sim",
   "cartas_trocadas": 0,
   "main": 60,
@@ -32,19 +32,19 @@
  {
   "deck": "Greasefang",
   "formato": "pioneer",
-  "lista": "jarold9 22/10",
-  "anterior": "Cudibunda 19/10",
+  "lista": "jarold9 25/10",
+  "anterior": "jarold9 22/10",
   "mudou": "sim",
-  "cartas_trocadas": 44,
+  "cartas_trocadas": 2,
   "main": 60,
   "sideboard": 15
  },
  {
   "deck": "Stiflenought (Luffy)",
   "formato": "premodern",
-  "lista": "LuffyDoChapeuDePalha 22/10",
+  "lista": "LuffyDoChapeuDePalha 23/10",
   "anterior": "LuffyDoChapeuDePalha 22/10",
-  "mudou": "nao",
+  "mudou": "sim",
   "cartas_trocadas": 0,
   "main": 60,
   "sideboard": 15
@@ -52,9 +52,9 @@
  {
   "deck": "Stiflenought (Spock)",
   "formato": "premodern",
-  "lista": "SpockVidaLoka 22/10",
+  "lista": "SpockVidaLoka 23/10",
   "anterior": "SpockVidaLoka 22/10",
-  "mudou": "nao",
+  "mudou": "sim",
   "cartas_trocadas": 0,
   "main": 60,
   "sideboard": 15

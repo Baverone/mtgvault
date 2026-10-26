@@ -15,27 +15,20 @@
  },
  {
   "id": "002",
-  "gravidade": "media",
-  "deck": "Greasefang",
-  "aviso": "voltou a uma lista como a de rosici0700 17/10",
-  "detalhe": "deixada a 21/10: o deck anda a saltar entre dois arquetipos que a assinatura nao separa."
+  "gravidade": "baixa",
+  "deck": "Cloud (Duel Commander)",
+  "aviso": "lista de referencia com 56 dias",
+  "detalhe": "a mais recente que serve este deck e de McWinSauce 31/08."
  },
  {
   "id": "003",
   "gravidade": "baixa",
-  "deck": "Cloud (Duel Commander)",
-  "aviso": "lista de referencia com 55 dias",
-  "detalhe": "a mais recente que serve este deck e de McWinSauce 31/08."
- },
- {
-  "id": "004",
-  "gravidade": "baixa",
   "deck": "Cori-Steel Cutter",
-  "aviso": "lista de referencia com 19 dias",
+  "aviso": "lista de referencia com 20 dias",
   "detalhe": "a mais recente que serve este deck e de Rapgod 06/10."
  },
  {
-  "id": "005",
+  "id": "004",
   "gravidade": "baixa",
   "deck": "Psychatog",
   "aviso": "52% do núcleo já está nos teus decks (12 de 23 cartas)",

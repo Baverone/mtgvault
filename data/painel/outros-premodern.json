@@ -1,16 +1,16 @@
 {
- "data": "2026-10-25",
+ "data": "2026-10-26",
  "nucleo_pct": 50,
  "top": 15,
  "alvos": [
   {
    "nome": "Enchantress",
-   "n_lists": 74,
+   "n_lists": 68,
    "caixa": false,
    "combo": true,
-   "nucleo": 24,
-   "nos_meus_decks": 6,
-   "pct_nos_meus_decks": 25,
+   "nucleo": 25,
+   "nos_meus_decks": 7,
+   "pct_nos_meus_decks": 28,
    "faltam": [
     [
      "Argothian Enchantress",
@@ -33,10 +33,6 @@
      2
     ],
     [
-     "Gaea's Blessing",
-     2
-    ],
-    [
      "Karmic Justice",
      1
     ],
@@ -55,6 +51,10 @@
     [
      "Solitary Confinement",
      2
+    ],
+    [
+     "Sphere of Law",
+     1
     ],
     [
      "Sterling Grove",
@@ -91,7 +91,7 @@
   },
   {
    "nome": "Stiflenought",
-   "n_lists": 71,
+   "n_lists": 67,
    "caixa": true,
    "combo": true,
    "nucleo": 22,
@@ -104,7 +104,7 @@
   },
   {
    "nome": "Terrageddon",
-   "n_lists": 56,
+   "n_lists": 51,
    "caixa": false,
    "combo": true,
    "nucleo": 30,
@@ -234,17 +234,13 @@
   },
   {
    "nome": "Pyrostatic Pillar",
-   "n_lists": 38,
+   "n_lists": 37,
    "caixa": false,
    "combo": false,
    "nucleo": 18,
    "nos_meus_decks": 0,
    "pct_nos_meus_decks": 0,
    "faltam": [
-    [
-     "Black Vise",
-     4
-    ],
     [
      "Bloodstained Mire",
      4
@@ -256,6 +252,10 @@
     [
      "Fireblast",
      4
+    ],
+    [
+     "Flaring Pain",
+     2
     ],
     [
      "Grim Lavamancer",
@@ -320,7 +320,7 @@
   },
   {
    "nome": "Mono-Preto Graveborn Muse",
-   "n_lists": 35,
+   "n_lists": 36,
    "caixa": false,
    "combo": false,
    "nucleo": 19,
@@ -385,7 +385,7 @@
     ],
     [
      "Smother",
-     3
+     2
     ],
     [
      "Snuff Out",
@@ -406,7 +406,7 @@
   },
   {
    "nome": "UW Replenish",
-   "n_lists": 29,
+   "n_lists": 26,
    "caixa": true,
    "combo": true,
    "nucleo": 19,
@@ -418,249 +418,11 @@
    "top_combo": true
   },
   {
-   "nome": "Goblins",
-   "n_lists": 24,
-   "caixa": false,
-   "combo": false,
-   "nucleo": 24,
-   "nos_meus_decks": 0,
-   "pct_nos_meus_decks": 0,
-   "faltam": [
-    [
-     "Anarchy",
-     2
-    ],
-    [
-     "Gempalm Incinerator",
-     3
-    ],
-    [
-     "Goblin Goon",
-     2
-    ],
-    [
-     "Goblin Lackey",
-     4
-    ],
-    [
-     "Goblin Matron",
-     4
-    ],
-    [
-     "Goblin Piledriver",
-     4
-    ],
-    [
-     "Goblin Ringleader",
-     4
-    ],
-    [
-     "Goblin Sharpshooter",
-     1
-    ],
-    [
-     "Goblin Tinkerer",
-     1
-    ],
-    [
-     "Goblin Warchief",
-     4
-    ],
-    [
-     "Karplusan Forest",
-     4
-    ],
-    [
-     "Mogg Fanatic",
-     4
-    ],
-    [
-     "Mogg Salvage",
-     1
-    ],
-    [
-     "Naturalize",
-     4
-    ],
-    [
-     "Pyroblast",
-     3
-    ],
-    [
-     "Pyrokinesis",
-     3
-    ],
-    [
-     "Red Elemental Blast",
-     2
-    ],
-    [
-     "Rishadan Port",
-     4
-    ],
-    [
-     "Siege-Gang Commander",
-     3
-    ],
-    [
-     "Skirk Prospector",
-     1
-    ],
-    [
-     "Tormod's Crypt",
-     3
-    ],
-    [
-     "Tranquil Domain",
-     2
-    ],
-    [
-     "Wasteland",
-     3
-    ],
-    [
-     "Wooded Foothills",
-     4
-    ]
-   ],
-   "pct_principal": 0,
-   "top": true,
-   "top_combo": false
-  },
-  {
-   "nome": "Landstill",
-   "n_lists": 22,
-   "caixa": false,
-   "combo": false,
-   "nucleo": 25,
-   "nos_meus_decks": 11,
-   "pct_nos_meus_decks": 44,
-   "faltam": [
-    [
-     "Circle of Protection: Red",
-     1
-    ],
-    [
-     "Coastal Tower",
-     1
-    ],
-    [
-     "Decree of Justice",
-     3
-    ],
-    [
-     "Disenchant",
-     3
-    ],
-    [
-     "Dust Bowl",
-     2
-    ],
-    [
-     "Fact or Fiction",
-     3
-    ],
-    [
-     "Faerie Conclave",
-     2
-    ],
-    [
-     "Mana Leak",
-     3
-    ],
-    [
-     "Mishra's Factory",
-     4
-    ],
-    [
-     "Phyrexian Furnace",
-     2
-    ],
-    [
-     "Prohibit",
-     1
-    ],
-    [
-     "Standstill",
-     3
-    ],
-    [
-     "Teferi's Response",
-     2
-    ],
-    [
-     "Wrath of God",
-     2
-    ]
-   ],
-   "pct_principal": 0,
-   "top": true,
-   "top_combo": false
-  },
-  {
-   "nome": "Psychatog",
-   "n_lists": 22,
-   "caixa": false,
-   "combo": false,
-   "nucleo": 23,
-   "nos_meus_decks": 12,
-   "pct_nos_meus_decks": 52,
-   "faltam": [
-    [
-     "Accumulated Knowledge",
-     4
-    ],
-    [
-     "Control Magic",
-     1
-    ],
-    [
-     "Duress",
-     4
-    ],
-    [
-     "Engineered Plague",
-     2
-    ],
-    [
-     "Fact or Fiction",
-     1
-    ],
-    [
-     "Haunting Echoes",
-     1
-    ],
-    [
-     "Polluted Delta",
-     4
-    ],
-    [
-     "Psychatog",
-     4
-    ],
-    [
-     "Sickening Dreams",
-     2
-    ],
-    [
-     "Smother",
-     3
-    ],
-    [
-     "Underground River",
-     3
-    ]
-   ],
-   "pct_principal": 0,
-   "top": true,
-   "top_combo": false
-  },
-  {
    "nome": "Full English Breakfast",
-   "n_lists": 20,
+   "n_lists": 21,
    "caixa": false,
    "combo": true,
-   "nucleo": 37,
+   "nucleo": 36,
    "nos_meus_decks": 1,
    "pct_nos_meus_decks": 3,
    "faltam": [
@@ -690,10 +452,6 @@
     ],
     [
      "Duress",
-     2
-    ],
-    [
-     "Eladamri's Vineyard",
      2
     ],
     [
@@ -814,13 +572,349 @@
    "top_combo": true
   },
   {
+   "nome": "Goblins",
+   "n_lists": 21,
+   "caixa": false,
+   "combo": false,
+   "nucleo": 23,
+   "nos_meus_decks": 0,
+   "pct_nos_meus_decks": 0,
+   "faltam": [
+    [
+     "Anarchy",
+     2
+    ],
+    [
+     "Gempalm Incinerator",
+     3
+    ],
+    [
+     "Goblin Goon",
+     2
+    ],
+    [
+     "Goblin Lackey",
+     4
+    ],
+    [
+     "Goblin Matron",
+     4
+    ],
+    [
+     "Goblin Piledriver",
+     4
+    ],
+    [
+     "Goblin Ringleader",
+     4
+    ],
+    [
+     "Goblin Sharpshooter",
+     1
+    ],
+    [
+     "Goblin Tinkerer",
+     1
+    ],
+    [
+     "Goblin Warchief",
+     4
+    ],
+    [
+     "Karplusan Forest",
+     4
+    ],
+    [
+     "Mogg Fanatic",
+     4
+    ],
+    [
+     "Naturalize",
+     4
+    ],
+    [
+     "Pyroblast",
+     2
+    ],
+    [
+     "Pyrokinesis",
+     3
+    ],
+    [
+     "Red Elemental Blast",
+     2
+    ],
+    [
+     "Rishadan Port",
+     4
+    ],
+    [
+     "Siege-Gang Commander",
+     3
+    ],
+    [
+     "Skirk Prospector",
+     1
+    ],
+    [
+     "Tormod's Crypt",
+     3
+    ],
+    [
+     "Tranquil Domain",
+     2
+    ],
+    [
+     "Wasteland",
+     2
+    ],
+    [
+     "Wooded Foothills",
+     4
+    ]
+   ],
+   "pct_principal": 0,
+   "top": true,
+   "top_combo": false
+  },
+  {
+   "nome": "Landstill",
+   "n_lists": 21,
+   "caixa": false,
+   "combo": false,
+   "nucleo": 25,
+   "nos_meus_decks": 11,
+   "pct_nos_meus_decks": 44,
+   "faltam": [
+    [
+     "Circle of Protection: Red",
+     1
+    ],
+    [
+     "Coastal Tower",
+     1
+    ],
+    [
+     "Decree of Justice",
+     3
+    ],
+    [
+     "Disenchant",
+     3
+    ],
+    [
+     "Dust Bowl",
+     2
+    ],
+    [
+     "Fact or Fiction",
+     3
+    ],
+    [
+     "Faerie Conclave",
+     2
+    ],
+    [
+     "Mana Leak",
+     3
+    ],
+    [
+     "Mishra's Factory",
+     4
+    ],
+    [
+     "Phyrexian Furnace",
+     2
+    ],
+    [
+     "Prohibit",
+     1
+    ],
+    [
+     "Standstill",
+     3
+    ],
+    [
+     "Teferi's Response",
+     2
+    ],
+    [
+     "Wrath of God",
+     2
+    ]
+   ],
+   "pct_principal": 0,
+   "top": true,
+   "top_combo": false
+  },
+  {
+   "nome": "Psychatog",
+   "n_lists": 20,
+   "caixa": false,
+   "combo": false,
+   "nucleo": 23,
+   "nos_meus_decks": 12,
+   "pct_nos_meus_decks": 52,
+   "faltam": [
+    [
+     "Accumulated Knowledge",
+     4
+    ],
+    [
+     "Control Magic",
+     1
+    ],
+    [
+     "Duress",
+     4
+    ],
+    [
+     "Engineered Plague",
+     2
+    ],
+    [
+     "Fact or Fiction",
+     1
+    ],
+    [
+     "Haunting Echoes",
+     1
+    ],
+    [
+     "Polluted Delta",
+     4
+    ],
+    [
+     "Psychatog",
+     4
+    ],
+    [
+     "Sickening Dreams",
+     2
+    ],
+    [
+     "Smother",
+     3
+    ],
+    [
+     "Underground River",
+     3
+    ]
+   ],
+   "pct_principal": 0,
+   "top": true,
+   "top_combo": false
+  },
+  {
+   "nome": "Golgari Graveborn Muse",
+   "n_lists": 9,
+   "caixa": false,
+   "combo": false,
+   "nucleo": 22,
+   "nos_meus_decks": 0,
+   "pct_nos_meus_decks": 0,
+   "faltam": [
+    [
+     "Cabal Therapy",
+     4
+    ],
+    [
+     "Chainer's Edict",
+     2
+    ],
+    [
+     "Duress",
+     4
+    ],
+    [
+     "Dust Bowl",
+     2
+    ],
+    [
+     "Engineered Plague",
+     3
+    ],
+    [
+     "Graveborn Muse",
+     3
+    ],
+    [
+     "Haunting Echoes",
+     2
+    ],
+    [
+     "Krosan Tusker",
+     3
+    ],
+    [
+     "Llanowar Wastes",
+     4
+    ],
+    [
+     "Naturalize",
+     2
+    ],
+    [
+     "Pernicious Deed",
+     4
+    ],
+    [
+     "Pine Barrens",
+     1
+    ],
+    [
+     "Ravenous Baloth",
+     4
+    ],
+    [
+     "Ravenous Rats",
+     3
+    ],
+    [
+     "Recurring Nightmare",
+     1
+    ],
+    [
+     "Smother",
+     3
+    ],
+    [
+     "Tormod's Crypt",
+     2
+    ],
+    [
+     "Tranquil Domain",
+     2
+    ],
+    [
+     "Treetop Village",
+     4
+    ],
+    [
+     "Vendetta",
+     1
+    ],
+    [
+     "Volrath's Stronghold",
+     1
+    ],
+    [
+     "Wall of Blossoms",
+     4
+    ]
+   ],
+   "pct_principal": 0,
+   "top": false,
+   "top_combo": false
+  },
+  {
    "nome": "Frantic Storm",
-   "n_lists": 7,
+   "n_lists": 6,
    "caixa": false,
    "combo": true,
-   "nucleo": 20,
-   "nos_meus_decks": 6,
-   "pct_nos_meus_decks": 30,
+   "nucleo": 22,
+   "nos_meus_decks": 7,
+   "pct_nos_meus_decks": 32,
    "faltam": [
     [
      "Arcane Denial",
@@ -855,6 +949,10 @@
      4
     ],
     [
+     "Rushing River",
+     1
+    ],
+    [
      "Sapphire Medallion",
      4
     ],
@@ -872,227 +970,11 @@
     ],
     [
      "Tormod's Crypt",
-     1
+     2
     ],
     [
      "Words of Wisdom",
      1
-    ]
-   ],
-   "pct_principal": 0,
-   "top": false,
-   "top_combo": false
-  },
-  {
-   "nome": "Golgari Graveborn Muse",
-   "n_lists": 7,
-   "caixa": false,
-   "combo": false,
-   "nucleo": 20,
-   "nos_meus_decks": 0,
-   "pct_nos_meus_decks": 0,
-   "faltam": [
-    [
-     "Cabal Therapy",
-     4
-    ],
-    [
-     "Diabolic Edict",
-     2
-    ],
-    [
-     "Duress",
-     4
-    ],
-    [
-     "Dust Bowl",
-     2
-    ],
-    [
-     "Engineered Plague",
-     3
-    ],
-    [
-     "Graveborn Muse",
-     3
-    ],
-    [
-     "Haunting Echoes",
-     2
-    ],
-    [
-     "Krosan Tusker",
-     3
-    ],
-    [
-     "Llanowar Wastes",
-     4
-    ],
-    [
-     "Naturalize",
-     3
-    ],
-    [
-     "Pernicious Deed",
-     4
-    ],
-    [
-     "Pine Barrens",
-     1
-    ],
-    [
-     "Ravenous Baloth",
-     4
-    ],
-    [
-     "Ravenous Rats",
-     3
-    ],
-    [
-     "Recurring Nightmare",
-     2
-    ],
-    [
-     "Smother",
-     3
-    ],
-    [
-     "Tranquil Domain",
-     2
-    ],
-    [
-     "Treetop Village",
-     4
-    ],
-    [
-     "Volrath's Stronghold",
-     1
-    ],
-    [
-     "Wall of Blossoms",
-     4
-    ]
-   ],
-   "pct_principal": 0,
-   "top": false,
-   "top_combo": false
-  },
-  {
-   "nome": "RG Aggro",
-   "n_lists": 6,
-   "caixa": false,
-   "combo": false,
-   "nucleo": 27,
-   "nos_meus_decks": 0,
-   "pct_nos_meus_decks": 0,
-   "faltam": [
-    [
-     "Basking Rootwalla",
-     4
-    ],
-    [
-     "Bloodstained Mire",
-     3
-    ],
-    [
-     "Call of the Herd",
-     4
-    ],
-    [
-     "Crumble",
-     2
-    ],
-    [
-     "Grim Lavamancer",
-     4
-    ],
-    [
-     "Incinerate",
-     4
-    ],
-    [
-     "Jackal Pup",
-     4
-    ],
-    [
-     "Karplusan Forest",
-     4
-    ],
-    [
-     "Lava Dart",
-     4
-    ],
-    [
-     "Lightning Bolt",
-     4
-    ],
-    [
-     "Mogg Fanatic",
-     4
-    ],
-    [
-     "Naturalize",
-     4
-    ],
-    [
-     "Overload",
-     2
-    ],
-    [
-     "Pyroblast",
-     3
-    ],
-    [
-     "Quirion Dryad",
-     4
-    ],
-    [
-     "Rancor",
-     1
-    ],
-    [
-     "Ravenous Baloth",
-     2
-    ],
-    [
-     "Red Elemental Blast",
-     2
-    ],
-    [
-     "Seal of Fire",
-     1
-    ],
-    [
-     "Simoon",
-     1
-    ],
-    [
-     "Sylvan Library",
-     2
-    ],
-    [
-     "Tormod's Crypt",
-     3
-    ],
-    [
-     "Tranquil Domain",
-     2
-    ],
-    [
-     "Treetop Village",
-     3
-    ],
-    [
-     "Wasteland",
-     4
-    ],
-    [
-     "Wild Mongrel",
-     4
-    ],
-    [
-     "Wooded Foothills",
-     4
     ]
    ],
    "pct_principal": 0,
@@ -1200,6 +1082,116 @@
    "pct_principal": 0,
    "top": false,
    "top_combo": false
+  },
+  {
+   "nome": "RG Aggro",
+   "n_lists": 5,
+   "caixa": false,
+   "combo": false,
+   "nucleo": 24,
+   "nos_meus_decks": 0,
+   "pct_nos_meus_decks": 0,
+   "faltam": [
+    [
+     "Basking Rootwalla",
+     4
+    ],
+    [
+     "Bloodstained Mire",
+     2
+    ],
+    [
+     "Call of the Herd",
+     4
+    ],
+    [
+     "Crumble",
+     2
+    ],
+    [
+     "Grim Lavamancer",
+     4
+    ],
+    [
+     "Incinerate",
+     4
+    ],
+    [
+     "Karplusan Forest",
+     4
+    ],
+    [
+     "Lava Dart",
+     4
+    ],
+    [
+     "Lightning Bolt",
+     4
+    ],
+    [
+     "Mogg Fanatic",
+     4
+    ],
+    [
+     "Naturalize",
+     4
+    ],
+    [
+     "Pyroblast",
+     2
+    ],
+    [
+     "Rancor",
+     2
+    ],
+    [
+     "Ravenous Baloth",
+     2
+    ],
+    [
+     "Red Elemental Blast",
+     2
+    ],
+    [
+     "Seal of Fire",
+     2
+    ],
+    [
+     "Simoon",
+     2
+    ],
+    [
+     "Sylvan Library",
+     2
+    ],
+    [
+     "Tormod's Crypt",
+     3
+    ],
+    [
+     "Tranquil Domain",
+     2
+    ],
+    [
+     "Treetop Village",
+     3
+    ],
+    [
+     "Wasteland",
+     4
+    ],
+    [
+     "Wild Mongrel",
+     4
+    ],
+    [
+     "Wooded Foothills",
+     4
+    ]
+   ],
+   "pct_principal": 0,
+   "top": false,
+   "top_combo": false
   }
  ],
  "cartas": [
@@ -1207,9 +1199,10 @@
    "carta": "Abeyance",
    "q": 3,
    "arquetipos": [
+    "Enchantress",
     "UW Replenish"
    ],
-   "pct": 97,
+   "pct": 100,
    "unit": null,
    "set": null,
    "sid": null,
@@ -1224,7 +1217,7 @@
    "arquetipos": [
     "Psychatog"
    ],
-   "pct": 82,
+   "pct": 90,
    "unit": null,
    "set": null,
    "sid": null,
@@ -1270,7 +1263,7 @@
    "arquetipos": [
     "Goblins"
    ],
-   "pct": 54,
+   "pct": 52,
    "unit": null,
    "set": null,
    "sid": null,
@@ -1300,7 +1293,7 @@
    "arquetipos": [
     "Full English Breakfast"
    ],
-   "pct": 90,
+   "pct": 86,
    "unit": 12.29,
    "set": "4ED",
    "sid": "cc1dc456-1f64-4f24-a646-84c57e641b3b",
@@ -1332,8 +1325,8 @@
    "arquetipos": [
     "Frantic Storm"
    ],
-   "pct": 57,
-   "unit": 4.27,
+   "pct": 50,
+   "unit": 4.28,
    "set": "ALL",
    "sid": "415a3104-90e6-4235-b67f-69337c7fe714",
    "rl": false,
@@ -1410,7 +1403,7 @@
     "Stiflenought",
     "Psychatog"
    ],
-   "pct": 89,
+   "pct": 88,
    "unit": null,
    "set": null,
    "sid": null,
@@ -1440,7 +1433,7 @@
    "arquetipos": [
     "RG Aggro"
    ],
-   "pct": 50,
+   "pct": 60,
    "unit": 2.16,
    "set": "TOR",
    "sid": "1a67768a-6cd9-4163-b941-752f29c87a8d",
@@ -1455,7 +1448,7 @@
    "arquetipos": [
     "Terrageddon"
    ],
-   "pct": 62,
+   "pct": 63,
    "unit": 14.29,
    "set": "APC",
    "sid": "a9c25e71-0140-48fe-8b9e-33b4b50c5c12",
@@ -1495,21 +1488,6 @@
    "no_deck": null
   },
   {
-   "carta": "Black Vise",
-   "q": 4,
-   "arquetipos": [
-    "Pyrostatic Pillar"
-   ],
-   "pct": 50,
-   "unit": null,
-   "set": null,
-   "sid": null,
-   "rl": false,
-   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
-   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Black%20Vise",
-   "no_deck": null
-  },
-  {
    "carta": "Bloodstained Mire",
    "q": 4,
    "arquetipos": [
@@ -1527,13 +1505,14 @@
   },
   {
    "carta": "Blue Elemental Blast",
-   "q": 2,
+   "q": 4,
    "arquetipos": [
     "Stiflenought",
     "Landstill",
-    "Psychatog"
+    "Psychatog",
+    "Frantic Storm"
    ],
-   "pct": 82,
+   "pct": 81,
    "unit": 3.59,
    "set": "4ED",
    "sid": "988f7b31-24b2-45c2-89e4-ff6bd9e0c8c7",
@@ -1544,7 +1523,7 @@
   },
   {
    "carta": "Brain Freeze",
-   "q": 3,
+   "q": 4,
    "arquetipos": [
     "Stiflenought",
     "Frantic Storm"
@@ -1639,6 +1618,21 @@
    "no_deck": "Stiflenought"
   },
   {
+   "carta": "Chainer's Edict",
+   "q": 2,
+   "arquetipos": [
+    "Golgari Graveborn Muse"
+   ],
+   "pct": 56,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Chainer%27s%20Edict",
+   "no_deck": null
+  },
+  {
    "carta": "Circle of Protection: Red",
    "q": 1,
    "arquetipos": [
@@ -1676,7 +1670,7 @@
     "Frantic Storm"
    ],
    "pct": 100,
-   "unit": 1.1,
+   "unit": 1.05,
    "set": "ULG",
    "sid": "4e76d04a-0038-4b5b-a026-3056ee940da9",
    "rl": false,
@@ -1690,7 +1684,7 @@
    "arquetipos": [
     "Landstill"
    ],
-   "pct": 86,
+   "pct": 90,
    "unit": 13.12,
    "set": "INV",
    "sid": "d115dbff-e35b-495f-a1e3-19651895927e",
@@ -1705,7 +1699,7 @@
    "arquetipos": [
     "Psychatog"
    ],
-   "pct": 55,
+   "pct": 60,
    "unit": null,
    "set": null,
    "sid": null,
@@ -1737,7 +1731,7 @@
    "arquetipos": [
     "RG Aggro"
    ],
-   "pct": 50,
+   "pct": 60,
    "unit": 1.25,
    "set": "5ED",
    "sid": "45c781ee-7ffb-4dd3-ac84-4d6fe4649591",
@@ -1753,7 +1747,7 @@
     "Pyrostatic Pillar",
     "Mono-Preto Graveborn Muse"
    ],
-   "pct": 74,
+   "pct": 72,
    "unit": null,
    "set": null,
    "sid": null,
@@ -1768,7 +1762,7 @@
    "arquetipos": [
     "Terrageddon"
    ],
-   "pct": 68,
+   "pct": 67,
    "unit": 41.04,
    "set": "MIR",
    "sid": "cc99ee76-45b6-4f1d-b0b0-7da8775ca90c",
@@ -1829,7 +1823,7 @@
    "arquetipos": [
     "UW Replenish"
    ],
-   "pct": 97,
+   "pct": 96,
    "unit": null,
    "set": null,
    "sid": null,
@@ -1844,7 +1838,7 @@
    "arquetipos": [
     "Frantic Storm"
    ],
-   "pct": 86,
+   "pct": 83,
    "unit": null,
    "set": null,
    "sid": null,
@@ -1861,7 +1855,7 @@
     "Frantic Storm",
     "Orzhov Exalted Angel"
    ],
-   "pct": 71,
+   "pct": 67,
    "unit": 17.41,
    "set": "ULG",
    "sid": "5c2592c9-7e64-40c1-a9cb-c0994094a1e0",
@@ -1874,8 +1868,7 @@
    "carta": "Diabolic Edict",
    "q": 2,
    "arquetipos": [
-    "Mono-Preto Graveborn Muse",
-    "Golgari Graveborn Muse"
+    "Mono-Preto Graveborn Muse"
    ],
    "pct": 97,
    "unit": null,
@@ -1909,7 +1902,7 @@
    "arquetipos": [
     "Mono-Preto Graveborn Muse"
    ],
-   "pct": 66,
+   "pct": 64,
    "unit": 0.29,
    "set": "5ED",
    "sid": "41a9b3b2-4ac9-4e50-bcd2-8831d0739e85",
@@ -1923,8 +1916,8 @@
    "q": 4,
    "arquetipos": [
     "Mono-Preto Graveborn Muse",
-    "Psychatog",
     "Full English Breakfast",
+    "Psychatog",
     "Golgari Graveborn Muse",
     "Orzhov Exalted Angel"
    ],
@@ -1967,21 +1960,6 @@
    "rl": true,
    "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
    "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Dystopia",
-   "no_deck": null
-  },
-  {
-   "carta": "Eladamri's Vineyard",
-   "q": 2,
-   "arquetipos": [
-    "Full English Breakfast"
-   ],
-   "pct": 50,
-   "unit": 5.91,
-   "set": "TMP",
-   "sid": "d8531643-5657-44b6-89d1-9cdf67ed09c4",
-   "rl": false,
-   "motivo": null,
-   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Eladamri%27s%20Vineyard",
    "no_deck": null
   },
   {
@@ -2101,7 +2079,7 @@
    "arquetipos": [
     "Enchantress"
    ],
-   "pct": 66,
+   "pct": 69,
    "unit": null,
    "set": null,
    "sid": null,
@@ -2132,7 +2110,7 @@
    "arquetipos": [
     "Landstill"
    ],
-   "pct": 82,
+   "pct": 90,
    "unit": 6.13,
    "set": "ULG",
    "sid": "ae3ede87-b026-4781-81ab-8652664f8e41",
@@ -2154,6 +2132,21 @@
    "rl": false,
    "motivo": null,
    "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Fireblast",
+   "no_deck": null
+  },
+  {
+   "carta": "Flaring Pain",
+   "q": 2,
+   "arquetipos": [
+    "Pyrostatic Pillar"
+   ],
+   "pct": 51,
+   "unit": 6.26,
+   "set": "JUD",
+   "sid": "eeb5c96a-1d16-459d-9968-ced9a8f1c520",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Flaring%20Pain",
    "no_deck": null
   },
   {
@@ -2219,21 +2212,6 @@
    "motivo": null,
    "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Frantic%20Search",
    "no_deck": "UW Replenish"
-  },
-  {
-   "carta": "Gaea's Blessing",
-   "q": 2,
-   "arquetipos": [
-    "Enchantress"
-   ],
-   "pct": 55,
-   "unit": 6.13,
-   "set": "WTH",
-   "sid": "ee83d511-57e0-40fb-a4db-62f6c2c39888",
-   "rl": false,
-   "motivo": null,
-   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Gaea%27s%20Blessing",
-   "no_deck": null
   },
   {
    "carta": "Gempalm Incinerator",
@@ -2302,7 +2280,7 @@
    "arquetipos": [
     "Mono-Preto Graveborn Muse"
    ],
-   "pct": 83,
+   "pct": 81,
    "unit": 1.4,
    "set": "5ED",
    "sid": "6a6fff23-21c9-4519-b84a-59868a918996",
@@ -2317,7 +2295,7 @@
    "arquetipos": [
     "Goblins"
    ],
-   "pct": 58,
+   "pct": 57,
    "unit": null,
    "set": null,
    "sid": null,
@@ -2392,7 +2370,7 @@
    "arquetipos": [
     "Goblins"
    ],
-   "pct": 96,
+   "pct": 95,
    "unit": 39.99,
    "set": "ONS",
    "sid": "7e689df7-b85d-4346-bee8-5e978b5cbbbc",
@@ -2536,7 +2514,7 @@
     "Psychatog",
     "Frantic Storm"
    ],
-   "pct": 86,
+   "pct": 88,
    "unit": null,
    "set": null,
    "sid": null,
@@ -2568,7 +2546,7 @@
     "Landstill",
     "Psychatog"
    ],
-   "pct": 95,
+   "pct": 100,
    "unit": 4.1,
    "set": "VIS",
    "sid": "9d710a97-062f-4773-b6c6-8aeddeb3b6e8",
@@ -2599,7 +2577,7 @@
    "arquetipos": [
     "UW Replenish"
    ],
-   "pct": 97,
+   "pct": 96,
    "unit": null,
    "set": null,
    "sid": null,
@@ -2612,10 +2590,9 @@
    "carta": "Jackal Pup",
    "q": 4,
    "arquetipos": [
-    "Pyrostatic Pillar",
-    "RG Aggro"
+    "Pyrostatic Pillar"
    ],
-   "pct": 55,
+   "pct": 62,
    "unit": 4.95,
    "set": "TMP",
    "sid": "3707ab74-9aec-4d30-86e0-ffa5f72d5b4f",
@@ -2645,7 +2622,7 @@
    "arquetipos": [
     "Enchantress"
    ],
-   "pct": 58,
+   "pct": 59,
    "unit": null,
    "set": null,
    "sid": null,
@@ -2722,7 +2699,7 @@
    "arquetipos": [
     "RG Aggro"
    ],
-   "pct": 67,
+   "pct": 60,
    "unit": null,
    "set": null,
    "sid": null,
@@ -2769,7 +2746,7 @@
    "arquetipos": [
     "Frantic Storm"
    ],
-   "pct": 57,
+   "pct": 50,
    "unit": 31.97,
    "set": "TMP",
    "sid": "6c877da3-68fa-41d0-8a24-8c79fcd8ecc1",
@@ -2784,7 +2761,7 @@
    "arquetipos": [
     "Landstill"
    ],
-   "pct": 91,
+   "pct": 95,
    "unit": 1.19,
    "set": "STH",
    "sid": "abcaf16d-aa02-43e2-aa38-bb1835d47a05",
@@ -2799,7 +2776,7 @@
    "arquetipos": [
     "Frantic Storm"
    ],
-   "pct": 57,
+   "pct": 50,
    "unit": null,
    "set": null,
    "sid": null,
@@ -2875,7 +2852,7 @@
    "arquetipos": [
     "Stiflenought"
    ],
-   "pct": 80,
+   "pct": 79,
    "unit": null,
    "set": null,
    "sid": null,
@@ -2921,10 +2898,9 @@
    "carta": "Mogg Salvage",
    "q": 4,
    "arquetipos": [
-    "Pyrostatic Pillar",
-    "Goblins"
+    "Pyrostatic Pillar"
    ],
-   "pct": 82,
+   "pct": 81,
    "unit": 5.61,
    "set": "NEM",
    "sid": "403aa48c-b684-4c54-8863-460958055a1f",
@@ -2969,7 +2945,7 @@
    "arquetipos": [
     "Mono-Preto Graveborn Muse"
    ],
-   "pct": 74,
+   "pct": 72,
    "unit": null,
    "set": null,
    "sid": null,
@@ -2983,8 +2959,8 @@
    "q": 4,
    "arquetipos": [
     "Terrageddon",
-    "Goblins",
     "Full English Breakfast",
+    "Goblins",
     "Golgari Graveborn Muse",
     "RG Aggro"
    ],
@@ -3003,7 +2979,7 @@
    "arquetipos": [
     "Terrageddon"
    ],
-   "pct": 50,
+   "pct": 51,
    "unit": null,
    "set": null,
    "sid": null,
@@ -3047,10 +3023,9 @@
    "carta": "Overload",
    "q": 3,
    "arquetipos": [
-    "Pyrostatic Pillar",
-    "RG Aggro"
+    "Pyrostatic Pillar"
    ],
-   "pct": 97,
+   "pct": 95,
    "unit": 2.69,
    "set": "INV",
    "sid": "c91fca91-7296-422e-b251-d571b710ff71",
@@ -3096,7 +3071,7 @@
    "arquetipos": [
     "Stiflenought"
    ],
-   "pct": 63,
+   "pct": 64,
    "unit": 0.75,
    "set": "ODY",
    "sid": "f50843cc-20ac-4746-816e-f2630aa31594",
@@ -3172,7 +3147,7 @@
    "arquetipos": [
     "Golgari Graveborn Muse"
    ],
-   "pct": 71,
+   "pct": 67,
    "unit": 4.11,
    "set": "TMP",
    "sid": "d5ac39e8-bd0e-4fa3-bc1e-a93944d013f3",
@@ -3222,7 +3197,7 @@
     "Psychatog",
     "Orzhov Exalted Angel"
    ],
-   "pct": 99,
+   "pct": 100,
    "unit": 84.42,
    "set": "UDS",
    "sid": "4d9715c2-9036-4ae2-a5b4-1b190d50c963",
@@ -3252,8 +3227,8 @@
    "arquetipos": [
     "Pyrostatic Pillar"
    ],
-   "pct": 61,
-   "unit": 6.89,
+   "pct": 57,
+   "unit": 6.88,
    "set": "EXO",
    "sid": "8e5283db-3e22-4862-9d95-56d03d09c2ae",
    "rl": false,
@@ -3267,7 +3242,7 @@
    "arquetipos": [
     "Landstill"
    ],
-   "pct": 77,
+   "pct": 81,
    "unit": null,
    "set": null,
    "sid": null,
@@ -3280,8 +3255,8 @@
    "carta": "Psychatog",
    "q": 4,
    "arquetipos": [
-    "Psychatog",
-    "Full English Breakfast"
+    "Full English Breakfast",
+    "Psychatog"
    ],
    "pct": 100,
    "unit": null,
@@ -3294,7 +3269,7 @@
   },
   {
    "carta": "Pyroblast",
-   "q": 3,
+   "q": 2,
    "arquetipos": [
     "Terrageddon",
     "Pyrostatic Pillar",
@@ -3317,8 +3292,8 @@
     "Terrageddon",
     "Full English Breakfast"
    ],
-   "pct": 84,
-   "unit": 15.0,
+   "pct": 86,
+   "unit": 15.2,
    "set": "ICE",
    "sid": "88040748-ad76-4b9a-bd4e-87e5980e9816",
    "rl": false,
@@ -3332,7 +3307,7 @@
    "arquetipos": [
     "Goblins"
    ],
-   "pct": 83,
+   "pct": 81,
    "unit": null,
    "set": null,
    "sid": null,
@@ -3347,7 +3322,7 @@
    "arquetipos": [
     "Pyrostatic Pillar"
    ],
-   "pct": 74,
+   "pct": 73,
    "unit": 5.61,
    "set": "SCG",
    "sid": "5973cd53-f6cd-4edc-b952-f6d3eef97988",
@@ -3357,27 +3332,12 @@
    "no_deck": null
   },
   {
-   "carta": "Quirion Dryad",
-   "q": 4,
-   "arquetipos": [
-    "RG Aggro"
-   ],
-   "pct": 50,
-   "unit": null,
-   "set": null,
-   "sid": null,
-   "rl": false,
-   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
-   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Quirion%20Dryad",
-   "no_deck": null
-  },
-  {
    "carta": "Rancor",
-   "q": 1,
+   "q": 2,
    "arquetipos": [
     "RG Aggro"
    ],
-   "pct": 83,
+   "pct": 80,
    "unit": 2.09,
    "set": "ULG",
    "sid": "59e256c2-38df-4012-9308-ce17dd889e5f",
@@ -3436,11 +3396,11 @@
   },
   {
    "carta": "Recurring Nightmare",
-   "q": 2,
+   "q": 1,
    "arquetipos": [
     "Golgari Graveborn Muse"
    ],
-   "pct": 57,
+   "pct": 56,
    "unit": 65.64,
    "set": "EXO",
    "sid": "c8173030-1c33-417c-b8e9-79231b6a85a7",
@@ -3458,7 +3418,7 @@
     "Goblins",
     "RG Aggro"
    ],
-   "pct": 83,
+   "pct": 86,
    "unit": null,
    "set": null,
    "sid": null,
@@ -3504,7 +3464,7 @@
    "arquetipos": [
     "Terrageddon"
    ],
-   "pct": 52,
+   "pct": 51,
    "unit": 0.4,
    "set": "ALL",
    "sid": "179f50be-6658-42f4-b9b9-c97c7d3f239a",
@@ -3535,7 +3495,7 @@
    "arquetipos": [
     "Terrageddon"
    ],
-   "pct": 70,
+   "pct": 71,
    "unit": null,
    "set": null,
    "sid": null,
@@ -3545,12 +3505,27 @@
    "no_deck": null
   },
   {
+   "carta": "Rushing River",
+   "q": 1,
+   "arquetipos": [
+    "Frantic Storm"
+   ],
+   "pct": 50,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Rushing%20River",
+   "no_deck": null
+  },
+  {
    "carta": "Sacred Ground",
    "q": 2,
    "arquetipos": [
     "Enchantress"
    ],
-   "pct": 84,
+   "pct": 85,
    "unit": 1001.26,
    "set": "STH",
    "sid": "37ae4b01-a9c1-4eec-9204-78cb2508e0df",
@@ -3645,7 +3620,7 @@
     "Psychatog"
    ],
    "pct": 100,
-   "unit": 3.61,
+   "unit": 3.71,
    "set": "TOR",
    "sid": "9396ac77-9f53-46bd-b126-02441a0f5594",
    "rl": false,
@@ -3670,11 +3645,11 @@
   },
   {
    "carta": "Simoon",
-   "q": 1,
+   "q": 2,
    "arquetipos": [
     "RG Aggro"
    ],
-   "pct": 83,
+   "pct": 80,
    "unit": 0.98,
    "set": "VIS",
    "sid": "642d9239-82e0-4696-ad99-10796042d1f8",
@@ -3704,7 +3679,7 @@
    "arquetipos": [
     "Goblins"
    ],
-   "pct": 88,
+   "pct": 90,
    "unit": 1.78,
    "set": "ONS",
    "sid": "eb545dcd-3a7a-46a7-9c35-d28faebc6d17",
@@ -3734,7 +3709,7 @@
    "arquetipos": [
     "Frantic Storm"
    ],
-   "pct": 71,
+   "pct": 67,
    "unit": null,
    "set": null,
    "sid": null,
@@ -3796,13 +3771,28 @@
    "arquetipos": [
     "Enchantress"
    ],
-   "pct": 96,
+   "pct": 94,
    "unit": null,
    "set": null,
    "sid": null,
    "rl": false,
    "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
    "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Solitary%20Confinement",
+   "no_deck": null
+  },
+  {
+   "carta": "Sphere of Law",
+   "q": 1,
+   "arquetipos": [
+    "Enchantress"
+   ],
+   "pct": 51,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Sphere%20of%20Law",
    "no_deck": null
   },
   {
@@ -3826,7 +3816,7 @@
    "arquetipos": [
     "Landstill"
    ],
-   "pct": 95,
+   "pct": 100,
    "unit": 47.34,
    "set": "ODY",
    "sid": "3ede3f6f-e642-4fe4-aa37-0f01cdf4d149",
@@ -3902,8 +3892,8 @@
     "Enchantress",
     "Terrageddon",
     "UW Replenish",
-    "Landstill",
     "Full English Breakfast",
+    "Landstill",
     "Orzhov Exalted Angel"
    ],
    "pct": 100,
@@ -3952,7 +3942,7 @@
    "arquetipos": [
     "Landstill"
    ],
-   "pct": 82,
+   "pct": 90,
    "unit": null,
    "set": null,
    "sid": null,
@@ -3982,7 +3972,7 @@
    "arquetipos": [
     "Stiflenought"
    ],
-   "pct": 96,
+   "pct": 97,
    "unit": null,
    "set": null,
    "sid": null,
@@ -3998,9 +3988,10 @@
     "Enchantress",
     "Terrageddon",
     "Goblins",
+    "Golgari Graveborn Muse",
     "Frantic Storm",
-    "RG Aggro",
-    "Orzhov Exalted Angel"
+    "Orzhov Exalted Angel",
+    "RG Aggro"
    ],
    "pct": 100,
    "unit": null,
@@ -4034,7 +4025,7 @@
    "arquetipos": [
     "Terrageddon"
    ],
-   "pct": 71,
+   "pct": 73,
    "unit": 0.3,
    "set": "ONS",
    "sid": "afcb7cef-8aeb-4c84-88e9-6df17768e292",
@@ -4066,7 +4057,7 @@
    "arquetipos": [
     "Full English Breakfast"
    ],
-   "pct": 90,
+   "pct": 86,
    "unit": null,
    "set": null,
    "sid": null,
@@ -4098,7 +4089,7 @@
     "UW Replenish",
     "Psychatog"
    ],
-   "pct": 77,
+   "pct": 70,
    "unit": 63.23,
    "set": "INV",
    "sid": "0dee69f8-cceb-41b9-a0ee-6b2ac9f4bad9",
@@ -4126,10 +4117,10 @@
    "carta": "Underground River",
    "q": 3,
    "arquetipos": [
-    "Psychatog",
-    "Full English Breakfast"
+    "Full English Breakfast",
+    "Psychatog"
    ],
-   "pct": 86,
+   "pct": 80,
    "unit": 55.68,
    "set": "ICE",
    "sid": "92369d7e-5e5a-46f9-bb31-c57d62410283",
@@ -4166,6 +4157,21 @@
    "rl": false,
    "motivo": null,
    "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Unearth",
+   "no_deck": null
+  },
+  {
+   "carta": "Vendetta",
+   "q": 1,
+   "arquetipos": [
+    "Golgari Graveborn Muse"
+   ],
+   "pct": 56,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Vendetta",
    "no_deck": null
   },
   {
@@ -4219,7 +4225,7 @@
    "arquetipos": [
     "Golgari Graveborn Muse"
    ],
-   "pct": 86,
+   "pct": 89,
    "unit": 68.15,
    "set": "STH",
    "sid": "43bf015b-152e-4d67-b773-e75fb2487a32",
@@ -4298,7 +4304,7 @@
    "arquetipos": [
     "Terrageddon"
    ],
-   "pct": 80,
+   "pct": 82,
    "unit": null,
    "set": null,
    "sid": null,
@@ -4313,7 +4319,7 @@
    "arquetipos": [
     "Terrageddon"
    ],
-   "pct": 62,
+   "pct": 63,
    "unit": null,
    "set": null,
    "sid": null,
@@ -4343,7 +4349,7 @@
    "arquetipos": [
     "RG Aggro"
    ],
-   "pct": 50,
+   "pct": 60,
    "unit": 5.61,
    "set": "ODY",
    "sid": "5bb8dd5c-a79a-4afc-80b2-64645bb17a34",
@@ -4469,7 +4475,7 @@
    "arquetipos": [
     "Terrageddon"
    ],
-   "pct": 59,
+   "pct": 63,
    "unit": null,
    "set": null,
    "sid": null,
@@ -4481,16 +4487,16 @@
  ],
  "contas": {
   "a": {
-   "cartas": 170,
-   "copias": 472,
-   "eur": 12055.09,
-   "sem_preco": 85
+   "cartas": 171,
+   "copias": 467,
+   "eur": 11981.56,
+   "sem_preco": 87
   },
   "b": {
-   "cartas": 210,
-   "copias": 599,
-   "eur": 18089.5,
-   "sem_preco": 105
+   "cartas": 211,
+   "copias": 597,
+   "eur": 18032.94,
+   "sem_preco": 107
   },
   "regra": "b"
  },
