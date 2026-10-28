@@ -9,14 +9,16 @@
     "Goblin Matron",
     "Goblin Piledriver",
     "Goblin Ringleader",
+    "Goblin Sharpshooter",
     "Goblin Tinkerer",
     "Goblin Warchief",
     "Mogg Fanatic",
     "Rishadan Port",
-    "Siege-Gang Commander"
+    "Siege-Gang Commander",
+    "Skirk Prospector"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-27"
+   "ultima": "2026-10-28"
   },
   "0aa66d4b42": {
    "formato": "premodern",
@@ -32,7 +34,7 @@
     "Wall of Blossoms"
    ],
    "primeira": "2026-10-25",
-   "ultima": "2026-10-27"
+   "ultima": "2026-10-28"
   },
   "109d2b9883": {
    "formato": "premodern",
@@ -105,7 +107,7 @@
     "Wall of Roots"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-27"
+   "ultima": "2026-10-28"
   },
   "2811f9a69f": {
    "formato": "premodern",
@@ -124,7 +126,7 @@
     "Withered Wretch"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-27"
+   "ultima": "2026-10-28"
   },
   "3885b4666a": {
    "formato": "premodern",
@@ -144,7 +146,7 @@
     "Skycloud Expanse"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-27"
+   "ultima": "2026-10-28"
   },
   "415270d83c": {
    "formato": "premodern",
@@ -215,7 +217,7 @@
     "Wrath of God"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-27"
+   "ultima": "2026-10-28"
   },
   "7fbd22f4da": {
    "formato": "legacy",
@@ -245,7 +247,7 @@
     "Wrath of God"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-27"
+   "ultima": "2026-10-28"
   },
   "8a1f5ac7b3": {
    "formato": "premodern",
@@ -262,7 +264,7 @@
     "Teferi's Isle"
    ],
    "primeira": "2026-09-30",
-   "ultima": "2026-10-27"
+   "ultima": "2026-10-28"
   },
   "95a99aa40d": {
    "formato": "premodern",
@@ -306,11 +308,10 @@
     "Lightning Bolt",
     "Mogg Fanatic",
     "Pyrostatic Pillar",
-    "Seal of Fire",
-    "Sulfuric Vortex"
+    "Seal of Fire"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-27"
+   "ultima": "2026-10-28"
   },
   "a81c510adf": {
    "formato": "premodern",
@@ -404,7 +405,7 @@
     "Vision Charm"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-27"
+   "ultima": "2026-10-28"
   },
   "b827ca4ad1": {
    "formato": "premodern",
@@ -442,7 +443,7 @@
     "Wild Growth"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-27"
+   "ultima": "2026-10-28"
   },
   "c6998a9b7d": {
    "formato": "premodern",
@@ -462,7 +463,7 @@
     "Winter's Grasp"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-27"
+   "ultima": "2026-10-28"
   },
   "c8d54b483e": {
    "formato": "premodern",
@@ -652,7 +653,7 @@
     "Smother"
    ],
    "primeira": "2026-09-09",
-   "ultima": "2026-10-27"
+   "ultima": "2026-10-28"
   },
   "fa620a79a4": {
    "formato": "premodern",
