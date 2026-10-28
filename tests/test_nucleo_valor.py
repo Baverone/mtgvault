@@ -1,0 +1,393 @@
+"""Os preços do núcleo: o trend do Cardmarket por impressão e acabamento, o valor
+de cada dia, a série para trás e a lista de Vender.
+
+Nada aqui abre a base do André: cada caso constrói a sua base e o seu catálogo
+temporários (`db.session(vault_tmp, catalog_tmp)`), semeia o `catalog.cards` à
+mão e escreve preços com o `prices.write_prices` (o mesmo caminho do daily, que
+só guarda no histórico as MUDANÇAS).
+"""
+import json
+import sys
+import tempfile
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from mtgvault import db, prices  # noqa: E402
+from mtgvault.nucleo import listas, modelo, posse, valor  # noqa: E402
+from mtgvault.nucleo.listas import Linha  # noqa: E402
+
+# (scryfall_id, nome, set, data, finishes)
+IMPRESSOES = [
+    ("fow-a", "Force of Will", "all", "1996-06-10", ["nonfoil"]),
+    ("fow-b", "Force of Will", "ema", "2016-06-10", ["nonfoil", "foil"]),
+    ("saga-a", "Urza's Saga", "mh2", "2021-06-18", ["nonfoil", "foil"]),
+    ("tm-a", "Thought Monitor", "mh2", "2021-06-18", ["nonfoil", "foil"]),
+    ("weld-a", "Goblin Welder", "ulg", "1999-02-15", ["nonfoil"]),
+    ("wild-a", "Wild Card", "tst", "2020-01-01", ["nonfoil"]),
+]
+
+MOD = "modern_affinity"
+OSW = "modern_oswald"
+LEG = "legacy_welder_cam"
+REP = "premodern_replenish"
+OATH = "premodern_oath"
+
+
+def sessao():
+    tmp = Path(tempfile.mkdtemp())
+    return db.session(tmp / "v.db", tmp / "c.db")
+
+
+def semear(con):
+    for i, (sid, nome, sc, data, fins) in enumerate(IMPRESSOES):
+        con.execute(
+            """INSERT INTO catalog.cards (scryfall_id, oracle_id, name,
+               set_code, set_name, collector_number, lang, rarity, type_line, cmc,
+               color_identity, finishes, released_at, cardmarket_id, digital,
+               set_type)
+               VALUES (?,?,?,?,'Test Set',?,'en','rare','Artifact',0,'',?,?,?,?,
+               'expansion')""",
+            (sid, "or-" + nome, nome, sc, str(i), json.dumps(fins), data,
+             1000 + i, 0))
+    con.commit()
+    modelo.garantir_decks(con)
+
+
+def preco_em(con, sid, acab, dia, trend):
+    """Um preço do Cardmarket em `dia` (cronologicamente: o write_prices deixa
+    o `price_latest` com a última linha escrita)."""
+    prices.write_prices(con, [(sid, "cardmarket", dia, acab, trend, trend,
+                               trend, None, "EUR")])
+
+
+def versao(con, slug, linhas):
+    return listas.gravar_versao(con, slug, [Linha(*l) for l in linhas],
+                                fonte="teste", origem="andre")
+
+
+def posse_directa(con, ambito, sid, acab, qtd):
+    con.execute("INSERT INTO n_posse (ambito, scryfall_id, acabamento, qtd)"
+                " VALUES (?,?,?,?)", (ambito, sid, acab, qtd))
+    con.commit()
+
+
+def esperar_valueerror(f, *args, **kw):
+    try:
+        f(*args, **kw)
+    except ValueError:
+        return
+    raise AssertionError(f"devia levantar ValueError: {f.__name__}{args}")
+
+
+# ---------------------------------------------------------------------------
+def caso_preco_pelo_dia():
+    with sessao() as con:
+        semear(con)
+        preco_em(con, "fow-a", "nonfoil", "2026-09-26", 10.0)
+        preco_em(con, "fow-a", "nonfoil", "2026-09-30", 12.0)
+        assert valor.preco(con, "fow-a", "nonfoil", "2026-09-28") == 10.0
+        assert valor.preco(con, "fow-a", "nonfoil", "2026-09-26") == 10.0
+        assert valor.preco(con, "fow-a", "nonfoil", "2026-09-30") == 12.0
+        assert valor.preco(con, "fow-a", "nonfoil", "2026-12-01") == 12.0
+        # antes do primeiro registo não há preço (nunca 0)
+        assert valor.preco(con, "fow-a", "nonfoil", "2026-09-25") is None
+        # sem dia: o `price_latest`
+        assert valor.preco(con, "fow-a", "nonfoil") == 12.0
+        # sem linha nenhuma
+        assert valor.preco(con, "fow-b", "nonfoil") is None
+        assert valor.preco(con, "fow-b", "nonfoil", "2026-09-28") is None
+        # só o Cardmarket conta
+        prices.write_prices(con, [("weld-a", "cardtrader", "2026-09-28",
+                                   "nonfoil", 9.0, 9.0, None, None, "EUR")])
+        assert valor.preco(con, "weld-a", "nonfoil") is None
+        assert valor.preco(con, "weld-a", "nonfoil", "2026-09-28") is None
+
+
+def caso_trend_zero_nao_e_preco():
+    with sessao() as con:
+        semear(con)
+        preco_em(con, "fow-a", "nonfoil", "2026-09-26", 10.0)
+        preco_em(con, "fow-a", "nonfoil", "2026-10-05", 0.0)
+        # a linha mais recente manda: um 0 depois de um preço não volta ao 10
+        assert valor.preco(con, "fow-a", "nonfoil", "2026-10-06") is None
+        assert valor.preco(con, "fow-a", "nonfoil") is None
+        assert valor.preco(con, "fow-a", "nonfoil", "2026-10-01") == 10.0
+
+
+def caso_foil_separado():
+    with sessao() as con:
+        semear(con)
+        preco_em(con, "fow-b", "nonfoil", "2026-10-01", 1.0)
+        preco_em(con, "fow-b", "foil", "2026-10-01", 5.0)
+        assert valor.preco(con, "fow-b", "nonfoil") == 1.0
+        assert valor.preco(con, "fow-b", "foil") == 5.0
+        assert valor.preco(con, "fow-b", "nonfoil", "2026-10-01") == 1.0
+        assert valor.preco(con, "fow-b", "foil", "2026-10-01") == 5.0
+        posse_directa(con, "x", "fow-b", "nonfoil", 1)
+        posse_directa(con, "x", "fow-b", "foil", 1)
+        # as duas impressões somam cada uma ao seu preço
+        v = valor.valor_em(con)
+        assert v == {"total_eur": 6.0, "copias": 2, "sem_preco": 0}, v
+
+
+def caso_sem_preco_fora_do_total():
+    with sessao() as con:
+        semear(con)
+        preco_em(con, "fow-a", "nonfoil", "2026-10-01", 80.0)
+        posse_directa(con, MOD, "fow-a", "nonfoil", 1)
+        posse_directa(con, MOD, "weld-a", "nonfoil", 1)       # sem preço
+        v = valor.valor_em(con)
+        assert v["total_eur"] == 80.0, v                      # o sem preço não soma 0
+        assert v["sem_preco"] == 1 and v["copias"] == 2, v
+        # num dia em que ainda não havia preço de nenhuma, tudo é «sem preço»
+        v0 = valor.valor_em(con, "2026-09-01")
+        assert v0 == {"total_eur": 0.0, "copias": 2, "sem_preco": 2}, v0
+
+
+def caso_cada_copia_uma_vez():
+    with sessao() as con:
+        semear(con)
+        preco_em(con, "saga-a", "nonfoil", "2026-10-01", 30.0)
+        # a mesma carta nos dois rotativos: as cópias são um monte só (ROT)
+        versao(con, MOD, [("main", "Urza's Saga", 4)])
+        versao(con, OSW, [("main", "Urza's Saga", 2)])
+        assert posse.partilhadas(con) == {"Urza's Saga"}
+        posse.ajustar(con, MOD, "Urza's Saga", 3, request_id="r1")
+        inv = valor.inventario(con)
+        assert inv == [("saga-a", "nonfoil", 3)], inv
+        v = valor.valor_em(con)
+        assert v == {"total_eur": 90.0, "copias": 3, "sem_preco": 0}, v
+
+
+def caso_inventario_soma_tudo():
+    """n_posse (todos os âmbitos) + n_a_mais + n_saida: uma cópia é uma cópia
+    até ele a resolver."""
+    with sessao() as con:
+        semear(con)
+        versao(con, REP, [("main", "Force of Will", 4)])
+        posse_directa(con, REP, "fow-b", "nonfoil", 2)
+        posse_directa(con, OATH, "fow-b", "nonfoil", 1)
+        posse_directa(con, "rotativos", "saga-a", "foil", 2)
+        con.execute("INSERT INTO n_a_mais (scryfall_id, acabamento, qtd, nota)"
+                    " VALUES ('fow-b', 'nonfoil', 3, '')")
+        con.execute("INSERT INTO n_saida (slug, motivo, versao_id, scryfall_id,"
+                    " acabamento, qtd, em) VALUES (?, 'saiu_da_lista', NULL,"
+                    " 'fow-b', 'nonfoil', 4, '2026-10-28T10:00:00')", (REP,))
+        con.execute("INSERT INTO n_saida (slug, motivo, versao_id, scryfall_id,"
+                    " acabamento, qtd, em) VALUES (?, 'trocou_edicao', NULL,"
+                    " 'tm-a', 'foil', 1, '2026-10-28T10:00:00')", (REP,))
+        con.commit()
+        inv = valor.inventario(con)
+        assert inv == [("fow-b", "nonfoil", 2 + 1 + 3 + 4),
+                       ("saga-a", "foil", 2),
+                       ("tm-a", "foil", 1)], inv
+
+
+def caso_serie_preenche_para_tras():
+    with sessao() as con:
+        semear(con)
+        preco_em(con, "fow-a", "nonfoil", "2026-10-01", 10.0)
+        preco_em(con, "fow-a", "nonfoil", "2026-10-02", 20.0)
+        preco_em(con, "fow-a", "nonfoil", "2026-10-03", 30.0)
+        posse_directa(con, MOD, "fow-a", "nonfoil", 2)
+        # sem n_valor nenhum: todos os dias com preço, calculados
+        assert valor.serie(con) == [("2026-10-01", 20.0), ("2026-10-02", 40.0),
+                                    ("2026-10-03", 60.0)]
+        # só o 3.º dia gravado: os dois de trás vêm do histórico de preços
+        r = valor.gravar_valor_do_dia(con, "2026-10-03")
+        assert r == {"total_eur": 60.0, "copias": 2, "sem_preco": 0}, r
+        s = valor.serie(con)
+        assert s == [("2026-10-01", 20.0), ("2026-10-02", 40.0),
+                     ("2026-10-03", 60.0)], s
+        # um dia gravado vale o que foi gravado (o valor desse dia, por mais
+        # que o preço de hoje mude depois), e não se recalcula
+        preco_em(con, "fow-a", "nonfoil", "2026-10-04", 100.0)
+        s = valor.serie(con)
+        assert s[-1] == ("2026-10-03", 60.0) and len(s) == 3, s
+        valor.gravar_valor_do_dia(con, "2026-10-04")
+        s = valor.serie(con)
+        assert s == [("2026-10-01", 20.0), ("2026-10-02", 40.0),
+                     ("2026-10-03", 60.0), ("2026-10-04", 200.0)], s
+        # nunca duas vezes o mesmo dia, e sempre por ordem
+        assert [d for d, _ in s] == sorted({d for d, _ in s})
+
+
+def caso_gravar_valor_substitui_o_dia():
+    with sessao() as con:
+        semear(con)
+        preco_em(con, "fow-a", "nonfoil", "2026-10-01", 10.0)
+        posse_directa(con, MOD, "fow-a", "nonfoil", 1)
+        posse_directa(con, MOD, "weld-a", "nonfoil", 1)
+        r1 = valor.gravar_valor_do_dia(con, "2026-10-01")
+        assert r1 == {"total_eur": 10.0, "copias": 2, "sem_preco": 1}, r1
+        posse_directa(con, OATH, "fow-a", "nonfoil", 1)
+        valor.gravar_valor_do_dia(con, "2026-10-01")
+        linhas = [tuple(r) for r in con.execute(
+            "SELECT dia, total_eur, copias, sem_preco FROM n_valor")]
+        assert linhas == [("2026-10-01", 20.0, 3, 1)], linhas
+
+
+def caso_a_mais_ajustar():
+    with sessao() as con:
+        semear(con)
+        assert valor.a_mais_ajustar(con, "fow-b", "foil", 2, nota="troca") == 2
+        assert valor.a_mais_ajustar(con, "fow-b", "foil", 1) == 3
+        r = con.execute("SELECT qtd, nota FROM n_a_mais").fetchall()
+        assert [tuple(x) for x in r] == [(3, "troca")]        # a nota fica
+        assert valor.a_mais_ajustar(con, "fow-b", "foil", 0, nota="outra") == 3
+        assert con.execute("SELECT nota FROM n_a_mais").fetchone()[0] == "outra"
+        # nunca abaixo de 0, e a linha desaparece no 0
+        assert valor.a_mais_ajustar(con, "fow-b", "foil", -10) == 0
+        assert con.execute("SELECT count(*) FROM n_a_mais").fetchone()[0] == 0
+        assert valor.a_mais_ajustar(con, "fow-b", "foil", -1) == 0
+        assert con.execute("SELECT count(*) FROM n_a_mais").fetchone()[0] == 0
+        # a impressão tem de existir e ter esse acabamento
+        esperar_valueerror(valor.a_mais_ajustar, con, "nao-existe", "nonfoil", 1)
+        esperar_valueerror(valor.a_mais_ajustar, con, "fow-a", "foil", 1)
+        esperar_valueerror(valor.a_mais_ajustar, con, "fow-a", "etched", 1)
+        assert con.execute("SELECT count(*) FROM n_a_mais").fetchone()[0] == 0
+
+
+def caso_saida_para_a_mais():
+    with sessao() as con:
+        semear(con)
+        con.execute("INSERT INTO n_saida (slug, motivo, versao_id, scryfall_id,"
+                    " acabamento, qtd, em) VALUES (?, 'saiu_da_lista', NULL,"
+                    " 'fow-b', 'nonfoil', 2, '2026-10-28T10:00:00')", (REP,))
+        sid1 = con.execute("SELECT max(id) FROM n_saida").fetchone()[0]
+        con.execute("INSERT INTO n_saida (slug, motivo, versao_id, scryfall_id,"
+                    " acabamento, qtd, em) VALUES (?, 'trocou_edicao', NULL,"
+                    " 'fow-b', 'nonfoil', 1, '2026-10-28T10:00:00')", (OATH,))
+        sid2 = con.execute("SELECT max(id) FROM n_saida").fetchone()[0]
+        con.commit()
+        valor.a_mais_ajustar(con, "fow-b", "nonfoil", 1, nota="minha")
+        antes = valor.inventario(con)
+        assert antes == [("fow-b", "nonfoil", 4)], antes
+        # para «tenho a mais»: soma ao que lá estava, e a saída desaparece
+        valor.saida_resolver(con, sid1, "a_mais")
+        assert [r[0] for r in con.execute("SELECT id FROM n_saida")] == [sid2]
+        r = con.execute("SELECT qtd, nota FROM n_a_mais"
+                        " WHERE scryfall_id = 'fow-b'").fetchone()
+        assert r[0] == 3 and r[1] == "minha", tuple(r)
+        # a cópia continua dele: o inventário não mexeu
+        assert valor.inventario(con) == antes
+        # descartar = vendida/foi-se: sai da base e do inventário
+        valor.saida_resolver(con, sid2, "descartar")
+        assert con.execute("SELECT count(*) FROM n_saida").fetchone()[0] == 0
+        assert valor.inventario(con) == [("fow-b", "nonfoil", 3)]
+        # ids e destinos desconhecidos
+        esperar_valueerror(valor.saida_resolver, con, 9999, "a_mais")
+        esperar_valueerror(valor.saida_resolver, con, 9999, "descartar")
+        con.execute("INSERT INTO n_saida (slug, motivo, versao_id, scryfall_id,"
+                    " acabamento, qtd, em) VALUES (?, 'saiu_da_lista', NULL,"
+                    " 'fow-b', 'nonfoil', 1, '2026-10-28T10:00:00')", (REP,))
+        novo = con.execute("SELECT max(id) FROM n_saida").fetchone()[0]
+        con.commit()
+        esperar_valueerror(valor.saida_resolver, con, novo, "vender")
+        assert con.execute("SELECT count(*) FROM n_saida").fetchone()[0] == 1
+
+
+def caso_a_vender():
+    with sessao() as con:
+        semear(con)
+        preco_em(con, "fow-b", "nonfoil", "2026-10-01", 70.0)
+        preco_em(con, "fow-b", "foil", "2026-10-01", 150.0)
+        preco_em(con, "saga-a", "nonfoil", "2026-10-01", 30.0)
+        valor.a_mais_ajustar(con, "saga-a", "nonfoil", 2)
+        valor.a_mais_ajustar(con, "weld-a", "nonfoil", 1)      # sem preço
+        con.execute("INSERT INTO n_saida (slug, motivo, versao_id, scryfall_id,"
+                    " acabamento, qtd, em) VALUES (?, 'saiu_da_lista', NULL,"
+                    " 'fow-b', 'foil', 1, '2026-10-28T10:00:00')", (MOD,))
+        con.execute("INSERT INTO n_saida (slug, motivo, versao_id, scryfall_id,"
+                    " acabamento, qtd, em) VALUES (?, 'trocou_edicao', NULL,"
+                    " 'fow-b', 'nonfoil', 2, '2026-10-28T10:00:00')", (REP,))
+        con.commit()
+        r = valor.a_vender(con)
+        assert set(r) == {"a_mais", "saidas", "total_eur", "sem_preco"}, r
+        mais = {l["scryfall_id"]: l for l in r["a_mais"]}
+        assert mais["saga-a"]["nome"] == "Urza's Saga"
+        assert mais["saga-a"]["set_code"] == "mh2"
+        assert mais["saga-a"]["motivo"] == "a_mais"
+        assert mais["saga-a"]["deck"] is None
+        assert mais["saga-a"]["preco_un"] == 30.0 and mais["saga-a"]["qtd"] == 2
+        assert mais["weld-a"]["preco_un"] is None
+        assert len(r["saidas"]) == 2
+        por_motivo = {l["motivo"]: l for l in r["saidas"]}
+        a = por_motivo["saiu_da_lista"]
+        assert a["acabamento"] == "foil" and a["preco_un"] == 150.0
+        assert a["deck"] == con.execute("SELECT nome FROM n_deck WHERE slug = ?",
+                                        (MOD,)).fetchone()[0]
+        assert isinstance(a["id"], int)
+        b = por_motivo["trocou_edicao"]
+        assert b["qtd"] == 2 and b["preco_un"] == 70.0
+        assert b["deck"] == con.execute("SELECT nome FROM n_deck WHERE slug = ?",
+                                        (REP,)).fetchone()[0]
+        # 2×30 + 1×150 + 2×70; a Goblin Welder sem preço fica de fora e conta
+        assert r["total_eur"] == 350.0, r
+        assert r["sem_preco"] == 1, r
+        # a lista de Vender não mexe no que é dele
+        assert sum(q for _s, _a, q in valor.inventario(con)) == 6
+
+
+def caso_cards_of_interest_inclui_nucleo():
+    with sessao() as con:
+        semear(con)
+        # mais uma impressão digital: essa não interessa
+        con.execute(
+            """INSERT INTO catalog.cards (scryfall_id, oracle_id, name, set_code,
+               set_name, collector_number, lang, rarity, type_line, cmc,
+               color_identity, finishes, released_at, cardmarket_id, digital,
+               set_type)
+               VALUES ('fow-dig','or-Force of Will','Force of Will','vma','V','9',
+               'en','rare','Instant',0,'','["nonfoil"]','2014-06-16',2000,1,
+               'masters')""")
+        con.commit()
+        antes = prices.cards_of_interest(con)
+        assert not antes & {"fow-a", "fow-b", "saga-a", "tm-a", "weld-a"}, antes
+        # uma carta numa versão atual: todas as impressões em papel entram
+        versao(con, MOD, [("main", "Force of Will", 4)])
+        ids = prices.cards_of_interest(con)
+        assert {"fow-a", "fow-b"} <= ids and "fow-dig" not in ids, ids
+        # só a versão ATUAL conta
+        versao(con, MOD, [("main", "Urza's Saga", 4)])
+        ids = prices.cards_of_interest(con)
+        assert {"saga-a"} <= ids and not ids & {"fow-a", "fow-b"}, ids
+        # a posse, o «a mais», as saídas e as edições escolhidas, tal e qual
+        posse_directa(con, "x", "weld-a", "nonfoil", 1)
+        con.execute("INSERT INTO n_a_mais (scryfall_id, acabamento, qtd, nota)"
+                    " VALUES ('tm-a', 'foil', 1, '')")
+        con.execute("INSERT INTO n_saida (slug, motivo, versao_id, scryfall_id,"
+                    " acabamento, qtd, em) VALUES (?, 'saiu_da_lista', NULL,"
+                    " 'wild-a', 'nonfoil', 1, '2026-10-28T10:00:00')", (MOD,))
+        con.execute("INSERT INTO n_edicao (ambito, nome, scryfall_id, acabamento)"
+                    " VALUES ('x', 'Force of Will', 'fow-dig', 'nonfoil')")
+        con.commit()
+        ids = prices.cards_of_interest(con)
+        assert {"weld-a", "tm-a", "wild-a", "fow-dig"} <= ids, ids
+
+
+def caso_so_escreve_tabelas_n():
+    with sessao() as con:
+        semear(con)
+        preco_em(con, "fow-a", "nonfoil", "2026-10-01", 10.0)
+        tabelas = [r[0] for r in con.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table'"
+            " AND name NOT LIKE 'n\\_%' ESCAPE '\\' AND name NOT LIKE 'sqlite%'")]
+        antes = {t: con.execute(f"SELECT count(*) FROM {t}").fetchone()[0]
+                 for t in tabelas}
+        valor.a_mais_ajustar(con, "fow-a", "nonfoil", 2)
+        valor.gravar_valor_do_dia(con, "2026-10-01")
+        valor.serie(con)
+        valor.a_vender(con)
+        depois = {t: con.execute(f"SELECT count(*) FROM {t}").fetchone()[0]
+                  for t in tabelas}
+        assert antes == depois
+
+
+if __name__ == "__main__":
+    for nome, f in list(globals().items()):
+        if nome.startswith("caso_"):
+            f()
+            print("ok", nome)
+    print("TUDO OK")

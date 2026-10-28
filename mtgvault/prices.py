@@ -170,9 +170,16 @@ def cards_of_interest(con: sqlite3.Connection) -> set[str]:
       2. todas as impressões das cartas que preciso (decks, vigiados, cores)
       3. a Reserved List inteira (impressões em papel) — a página reservedlist
          mostra o valor e a evolução de cada edição, tenha-a eu ou não
+      4. o núcleo (`mtgvault/nucleo`): tudo o que está em `n_posse`, `n_a_mais`,
+         `n_saida` e `n_edicao` (o preço de cada dia tem de existir para a
+         série do valor), e TODAS as impressões em papel das cartas nas versões
+         atuais das listas — a edição que ele pode escolher é qualquer uma.
     """
     ids = {r["scryfall_id"] for r in
            con.execute("SELECT DISTINCT scryfall_id FROM copies")}
+    for tabela in ("n_posse", "n_a_mais", "n_saida", "n_edicao"):
+        ids |= {r["scryfall_id"] for r in con.execute(
+            f"SELECT DISTINCT scryfall_id FROM {tabela}")}
     ids |= {r["scryfall_id"] for r in con.execute(
         "SELECT scryfall_id FROM cards WHERE reserved = 1 AND digital = 0")}
 
@@ -183,6 +190,12 @@ def cards_of_interest(con: sqlite3.Connection) -> set[str]:
     for r in con.execute("SELECT cards FROM watched_snapshots"):
         for _, name, _q in json.loads(r["cards"]):
             names.add(name)
+    # os nomes da versão ATUAL (a de maior número) de cada lista do núcleo; vão
+    # para o mesmo `names`, por isso as de duas faces levam a consulta extra
+    names |= {r["nome"] for r in con.execute(
+        "SELECT DISTINCT c.nome FROM n_versao_carta c"
+        " JOIN n_versao v ON v.id = c.versao_id"
+        " WHERE v.numero = (SELECT MAX(numero) FROM n_versao WHERE slug = v.slug)")}
 
     if names:
         marks = ",".join("?" * len(names))
