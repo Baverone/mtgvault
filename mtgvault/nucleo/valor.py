@@ -6,7 +6,10 @@ As regras (spec «Regras: Valor, Preços», 2026-10-28):
 - **O preço é o `trend` do Cardmarket** da impressão e do acabamento exactos.
   Sem dia, o `price_latest`; com dia, a linha mais recente do `price_history`
   com `date <= dia` (o histórico só guarda MUDANÇAS: «não há linha nova»
-  quer dizer «o preço manteve-se»). Sem linha, ou com `trend <= 0`, é `None`
+  quer dizer «o preço manteve-se»). O daily poda o histórico com mais de 30
+  dias, por isso um preço estável pode já não ter linha nenhuma: sem linha até
+  `dia` E sem nenhuma depois, vale o `price_latest` (R13); com linhas só
+  depois de `dia`, o preço ainda não existia. Sem preço, ou com `trend <= 0`, é `None`
   — «sem preço», nunca 0 €: um 0 numa soma tira uma carta do total sem nenhuma
   linha dizer que faltou.
 - **O inventário é tudo o que é dele**: o `n_posse` de todos os âmbitos, o
@@ -44,17 +47,25 @@ def preco(con: sqlite3.Connection, scryfall_id: str, acabamento: str,
     mesmo que seja 0: um trend a 0 depois de um preço é o Cardmarket sem
     vendas, e voltar ao preço de antes era inventar um preço de hoje.
     """
-    if dia is None:
-        r = con.execute(
-            "SELECT trend FROM price_latest WHERE scryfall_id = ?"
-            " AND source = 'cardmarket' AND finish = ?",
-            (scryfall_id, acabamento)).fetchone()
-    else:
+    chave = (scryfall_id, acabamento)
+    r = None
+    if dia is not None:
         r = con.execute(
             "SELECT trend FROM price_history WHERE scryfall_id = ?"
             " AND source = 'cardmarket' AND finish = ? AND date <= ?"
-            " ORDER BY date DESC LIMIT 1",
-            (scryfall_id, acabamento, dia)).fetchone()
+            " ORDER BY date DESC LIMIT 1", (*chave, dia)).fetchone()
+        if r is None and con.execute(
+                "SELECT 1 FROM price_history WHERE scryfall_id = ?"
+                " AND source = 'cardmarket' AND finish = ? AND date > ?"
+                " LIMIT 1", (*chave, dia)).fetchone():
+            return None     # o primeiro preço é posterior a este dia
+    if r is None:
+        # `dia=None`, ou (R13) um preço sem linha de histórico até `dia` e sem
+        # nenhuma depois: manteve-se igual desde antes da janela que o daily
+        # poda (`_prune_prices`), e quem o tem é o `price_latest`
+        r = con.execute(
+            "SELECT trend FROM price_latest WHERE scryfall_id = ?"
+            " AND source = 'cardmarket' AND finish = ?", chave).fetchone()
     if r is None or r[0] is None or r[0] <= 0:
         return None
     return float(r[0])

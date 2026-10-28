@@ -104,6 +104,73 @@ def caso_preco_pelo_dia():
         assert valor.preco(con, "weld-a", "nonfoil", "2026-09-28") is None
 
 
+def so_no_latest(con, sid, acab, trend, dia="2026-10-28"):
+    """Um preço que só existe no `price_latest`: estável desde antes da janela
+    que o daily poda, por isso sem nenhuma linha em `price_history`."""
+    con.execute(
+        "INSERT INTO price_latest (scryfall_id, source, finish, date, low, trend)"
+        " VALUES (?, 'cardmarket', ?, ?, ?, ?)", (sid, acab, dia, trend, trend))
+    con.commit()
+
+
+def caso_preco_podado_vale_o_latest():
+    with sessao() as con:
+        semear(con)
+        # (R13) só no `price_latest`, histórico vazio: vale em qualquer dia
+        so_no_latest(con, "fow-a", "nonfoil", 80.0)
+        assert con.execute("SELECT count(*) FROM price_history"
+                           " WHERE scryfall_id = 'fow-a'").fetchone()[0] == 0
+        assert valor.preco(con, "fow-a", "nonfoil", "2026-08-01") == 80.0
+        assert valor.preco(con, "fow-a", "nonfoil", "2026-10-15") == 80.0
+        assert valor.preco(con, "fow-a", "nonfoil") == 80.0
+        posse_directa(con, MOD, "fow-a", "nonfoil", 2)
+        r = valor.gravar_valor_do_dia(con, "2026-10-15")
+        assert r == {"total_eur": 160.0, "copias": 2, "sem_preco": 0}, r
+        assert valor.serie(con) == [("2026-10-15", 160.0)]
+        # histórico SÓ depois do dia (+ latest): o preço ainda não existia
+        so_no_latest(con, "saga-a", "nonfoil", 30.0)
+        con.execute("INSERT INTO price_history (scryfall_id, source, date,"
+                    " finish, low, trend) VALUES ('saga-a', 'cardmarket',"
+                    " '2026-10-20', 'nonfoil', 30.0, 30.0)")
+        con.commit()
+        assert valor.preco(con, "saga-a", "nonfoil", "2026-10-19") is None
+        assert valor.preco(con, "saga-a", "nonfoil", "2026-10-20") == 30.0
+        # uma linha de histórico antes do dia ganha ao latest
+        so_no_latest(con, "weld-a", "nonfoil", 9.0)
+        con.execute("INSERT INTO price_history (scryfall_id, source, date,"
+                    " finish, low, trend) VALUES ('weld-a', 'cardmarket',"
+                    " '2026-10-01', 'nonfoil', 5.0, 5.0)")
+        con.commit()
+        assert valor.preco(con, "weld-a", "nonfoil", "2026-10-10") == 5.0
+        assert valor.preco(con, "weld-a", "nonfoil") == 9.0
+        # trend <= 0 no latest não é preço
+        so_no_latest(con, "tm-a", "nonfoil", 0.0)
+        assert valor.preco(con, "tm-a", "nonfoil", "2026-10-10") is None
+
+
+def caso_acabamento_sem_preco_conta_como_sem_preco():
+    """Só existe o preço do outro acabamento: não se empresta (nonfoil sem
+    preço não vale o do foil, nem ao contrário)."""
+    with sessao() as con:
+        semear(con)
+        preco_em(con, "fow-b", "foil", "2026-10-01", 150.0)       # só o foil
+        preco_em(con, "saga-a", "nonfoil", "2026-10-01", 30.0)    # só o nonfoil
+        posse_directa(con, MOD, "fow-b", "nonfoil", 1)
+        posse_directa(con, MOD, "saga-a", "foil", 2)
+        posse_directa(con, MOD, "tm-a", "nonfoil", 1)              # sem nada
+        assert valor.preco(con, "fow-b", "nonfoil") is None
+        assert valor.preco(con, "saga-a", "foil", "2026-10-01") is None
+        v = valor.valor_em(con)
+        assert v == {"total_eur": 0.0, "copias": 4, "sem_preco": 4}, v
+        valor.a_mais_ajustar(con, "fow-b", "nonfoil", 1)
+        valor.a_mais_ajustar(con, "saga-a", "foil", 1)
+        preco_em(con, "tm-a", "nonfoil", "2026-10-01", 2.0)
+        valor.a_mais_ajustar(con, "tm-a", "nonfoil", 3)
+        r = valor.a_vender(con)
+        assert r["sem_preco"] == 2 and r["total_eur"] == 6.0, r
+        assert {l["preco_un"] for l in r["a_mais"]} == {None, 2.0}
+
+
 def caso_trend_zero_nao_e_preco():
     with sessao() as con:
         semear(con)
