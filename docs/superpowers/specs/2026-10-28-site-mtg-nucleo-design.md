@@ -72,9 +72,12 @@ Tem de ser bonito e simples, e funcionar bem no telemóvel à frente das caixas.
 - **Tenho a mais:** carta, edição, acabamento e quantidade, escritos pelo André.
 - **Valor:** soma de tudo o que tens (decks + tenho a mais), cada cópia uma
   vez, ao preço da sua edição em cada dia.
-- **Preços:** Cardmarket trend por edição (Scryfall), em euros. Histórico já
-  guardado no `price_history` (fonte `cardmarket`) desde 10/08/2026, por isso
-  o gráfico calcula-se para trás e nasce com esse histórico.
+- **Preços:** Cardmarket trend por edição (Scryfall), em euros, `finish`
+  `nonfoil`/`foil`. Correção de 28/10: fora a Reserved List, o `price_history`
+  só tem a Cardmarket desde ~26/09 e o `podar-precos` apaga o que passa de 30
+  dias. Por isso o núcleo guarda o **valor de cada dia** numa tabela própria
+  (`n_valor`, nunca podada); para os dias antes do primeiro registo, o gráfico
+  calcula o valor do que tens hoje aos preços que ainda houver (~1 mês).
 
 ## Dados
 
@@ -119,7 +122,8 @@ Menu com três entradas: **Painel · Decks · Vender**.
    (1 mês · 3 meses · tudo; só uma linha, o que tens); os decks em «Sempre
    montados» e «Rotativos», com a arte (Scryfall `art_crop`) e a barra de
    progresso; a caixa «Vender» com o total.
-2. **Deck** (`deck/<slug>.html`, 14): cabeçalho (progresso, quanto falta em €,
+2. **Deck** (`deck.html#<slug>`, 14 numa página só — a casca e os testes só
+   aceitam páginas na raiz; sem `#` mostra a lista dos decks): cabeçalho (progresso, quanto falta em €,
    versão, fonte, o que mudou na última versão, «ver versões»); as cartas em
    imagens, a cores as que tens e a cinzento as que faltam, com a quantidade;
    nos rotativos em duas partes, **Fixas deste deck** e **Partilhadas** (cada
