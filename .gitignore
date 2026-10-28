@@ -165,3 +165,6 @@ data/.fuse_hidden*
 # É transitória — o `publicar()` apaga-a — mas o `--ver` e os testes deixam-na
 # para se poder olhar para o diff. Nunca vai para o repo.
 _prova-publicar/
+# O ficheiro do Moxfield do nucleo (2026-10-28): escreve-o a tarefa do ai-pc depois
+# de ler os decks no Chrome dele. E um dado do dia, nao codigo.
+data/moxfield/
