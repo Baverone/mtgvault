@@ -179,60 +179,21 @@ def _card(nm, sid, estado, etiq="", titulo=""):
 
 
 def _grid(linhas, imgs):
-    """Cartas do deck pelo estado: tenho / está noutra caixa / falta."""
+    """Cartas do deck pelo estado: tenho / falta.
+
+    O terceiro estado, *"está noutra caixa"* (2026-09-07), acabou a 2026-09-19
+    (cada caixa compra as suas) e o ramo saiu a 2026-10-28."""
     def chave(m):
-        if m["got"] >= m["need"]:
-            return (0, m["nm"])
-        return (1 if m["noutra_q"] else 2, m["nm"])
+        return (0 if m["got"] >= m["need"] else 2, m["nm"])
     out = ""
     for m in sorted(linhas, key=chave):
         if m["got"] >= m["need"]:
             est, tip = "have", f'{m["nm"]} — tens {m["got"]}/{m["need"]}'
-        elif m["noutra_q"]:
-            # ONDE A CARTA ESTÁ (André, 2026-09-08): a frase vem do Python, e
-            # distingue *"em UW Replenish"* (está lá dentro) de *"na Colecção —
-            # destinada ao UW Replenish"* (a caixa ainda não está montada).
-            # Composta aqui a partir do `noutra`, dizia sempre a primeira.
-            onde = "; ".join(loadout.onde_esta(m))
-            est, tip = "noutra", f'{m["nm"]} — {onde}'
-            if m["comprar"]:
-                tip += f' · comprar {m["comprar"]}'
         else:
             est, tip = "miss", f'{m["nm"]} — comprar {m["comprar"]}'
         etiq = f'{m["got"]}/{m["need"]}' if m["got"] < m["need"] else (
             str(m["need"]) if m["need"] > 1 else "")
         out += _card(m["nm"], imgs.get(m["nm"]), est, etiq, tip)
-    return out
-
-
-def _onde_html(linhas):
-    """'Onde está a carta' — em TRÊS blocos, porque são três sítios.
-
-    André, 2026-09-08, à letra: *"De todas as cartas, só o Stiflenought está em
-    deckbox; o resto ainda nada está em deckbox — e ainda estás a assumir que há
-    cartas que já estão nas deckboxes dos decks."* Um bloco só, intitulado *"ir
-    buscar a outra caixa"*, mandava-o abrir caixas que não existem na estante: a
-    cópia está na `Colecção`, só está PROMETIDA a outra caixa. Quem parte e quem
-    escreve a frase é o `loadout` — a página não recompõe isto a partir do
-    `noutra`, que é a caixa destino e não o sítio.
-    """
-    out = ""
-    for qual, titulo in (
-            ("montada", "📦 ir buscar a outra caixa"),
-            ("reservada", "🗂️ na gaveta, destinadas a outra caixa"),
-            ("futura", "🛒 outra caixa vai comprá-las")):
-        rows = sorted((m for m in linhas if m.get(f"noutra_{qual}")),
-                      key=lambda m: (-sum(m[f"noutra_{qual}"].values()), m["nm"]))
-        if not rows:
-            continue
-        n = sum(sum(m[f"noutra_{qual}"].values()) for m in rows)
-        itens = "".join(
-            f'<li>{html.escape(m["nm"])} — '
-            + html.escape("; ".join(loadout.onde_esta(m, qual)))
-            + (f' <span class="dim">(comprar mais {m["comprar"]})</span>'
-               if m["comprar"] else "") + "</li>" for m in rows)
-        out += (f'<div class="onde"><b>{titulo} — {paginas.plural(n, "cópia")}</b>'
-                f'<ul>{itens}</ul></div>')
     return out
 
 
@@ -360,7 +321,7 @@ def _deck_html(d, imgs, editable=False):
            f'como 0 €.">no mínimo — {r["sem_preco"]} sem preço</i>'
            if r["sem_preco"] else "") + '</span></div>'
         f'<div class="cards">{_grid(d["linhas"], imgs)}</div>'
-        f'{_onde_html(d["linhas"])}{_wantlist(d["linhas"], d.get("marca", ""))}'
+        f'{_wantlist(d["linhas"], d.get("marca", ""))}'
         f'{_escolher_html(d, editable)}'
         f'</details>')
 

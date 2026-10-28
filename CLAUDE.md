@@ -164,7 +164,6 @@ mtgvault/
                   `colecao_config.json → caixas`, e `para_slot` dá a forma
                   interna que o loadout consome (aceita a v5 e a v6)
   configio.py     ler/gravar o `colecao_config.json` sem lhe estragar a forma
-  qr.py           códigos QR em Python puro (o link do modo edição no telemóvel)
   migracao.py     modelo de colecção única: funde os baldes na `Colecção`
   collection.py   exemplares, sub-coleções, reservas, valor, movimentos
   wantlist.py     o que falta, para decks e para arquétipos
@@ -6758,9 +6757,15 @@ reescritos um a um, com o porquê no docstring.
   nem desconto. A aba **Partilhadas** só aparece na fila se um dia voltar a ter
   linhas; o bloco «destinadas a outra caixa» do painel Montar é vazio
   (`movimentos_reservados` → `[]`); o CLI só imprime o "destinadas a outra caixa"
-  se deixar de ser zero. As funções da partilha (`pool_compra`, `pools_de_compra`,
-  `_parte_noutra`, `onde_esta`, `movimentos_reservados`, o `de_outra` do
-  `registar_marcadas`) **ficam no código** sem efeito — apagar é decisão dele.
+  se deixar de ser zero. **As funções da partilha SAÍRAM a 2026-10-28** (decisão
+  dele no painel, `reviews/2026-10-25-mtgvault.json`): `dedicadas`, `_empresta`,
+  `_reparte_por_sitio`, `_parte_noutra`, `onde_esta`, `pool_compra`,
+  `pools_de_compra`, `_slot_do_pool`, `playset_maximo`, `_ja_visto`,
+  `partilhar_compras`, `limites_de_playset`, `texto_playset` e
+  `movimentos_reservados` (mais o `_onde_html` do `metagame.py`). As CHAVES que
+  elas enchiam (`noutra*`, `playset_bloqueado`, `partilhas`, `limites`,
+  `de_outra`, `buscar`) ficam no payload, vazias ou a zero, para as páginas e o
+  CLI lerem o mesmo de sempre — tirá-las é mexer no JavaScript da Deckboxes.
 - **A EXCEPÇÃO mantida: o tecto de playset do Premodern** (2026-09-08, *"afinal
   só vou ter até playset de cada carta"*) continua, e agora conta o **grupo
   inteiro** (`partilhar_compras`, grupo por `s["grupo"]`): `comprar do grupo =
@@ -7139,11 +7144,9 @@ buscar já o trazia — senão bastava abri-la de qualquer telemóvel da rede pa
 descobrir. Pedidos de `127.0.0.1` são de confiança sem token (quem está no PC já
 tem os ficheiros). **O painel do QR e a rota `/qr.svg` deixaram de existir** —
 ver «FORA O QR DA PORTA DA FRENTE», a seguir.
-O `test_qr.py` continua a verificar o desenhador (`mtgvault/qr.py`, Python puro,
-modo byte, nível M, versões 1–10) de três maneiras — lê-se a si próprio, é igual
-ao da biblioteca de referência nas oito máscaras, e a estrutura está lá. **O
-módulo ficou e já não é chamado por ninguém**: apagá-lo é decisão dele, e o
-teste é barato.
+**O desenhador `mtgvault/qr.py` e o `test_qr.py` SAÍRAM a 2026-10-28** (decisão
+dele no painel, `reviews/2026-10-25-mtgvault.json`): já ninguém o importava. Se
+um dia voltar a fazer falta, está no histórico do Git.
 **A firewall do Windows pode estar a tapar o 8771** — uma vez, em consola de
 Administrador: `netsh advfirewall firewall add rule name="mtgvault 8771" dir=in
 action=allow protocol=TCP localport=8771 profile=private` (só rede privada; o
@@ -7162,8 +7165,8 @@ QR em ASCII do arranque na consola.
   Cloudflare Access e já está autenticado; mandá-lo apontar a câmara a um QR para
   obter uma permissão que ele tem é atrito a fingir que é segurança.
 - **A rota foi atrás do painel** porque era o seu único consumidor, e servia um
-  URL com o token lá dentro. O `mtgvault/qr.py` fica (é só o desenhador, em
-  Python puro, com teste próprio); o que deixou de existir é a porta HTTP.
+  URL com o token lá dentro. O `mtgvault/qr.py` ficou até 2026-10-28, quando
+  saiu com o teste dele (ver acima).
 - **O MODELO DE AUTORIZAÇÃO NÃO SE TOCOU, e isso foi uma decisão.**
   `_pode_escrever()` continua a ser *«loopback é de confiança; da rede exige-se o
   token»*. **Não se passou a confiar nos cabeçalhos do Access**

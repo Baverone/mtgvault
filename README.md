@@ -562,7 +562,6 @@ python test_metagame_filtro.py :: que listas contam (ligas fora, presenciais 64+
 python test_watch_revert.py  :: voltar a uma lista anterior não baralha o "atual"
 python test_caixas.py        :: a migração do config e a escala de estados
 python test_montar_vender.py :: montar, "vendida", e o token do modo edição
-python test_qr.py            :: o QR do link (lê-se a si próprio)
 python _bateria.py           :: corre-os todos (um processo cada) e resume
 python test_reserve.py       :: reservas por deck (e o colecionador fora delas)
 python test_movers.py        :: subidas e descidas não se misturam

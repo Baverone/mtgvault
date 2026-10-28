@@ -10,8 +10,8 @@ v4 e a partilha entre caixas de Premodern de 2026-09-08. O que aqui se tranca:
   2. **uma carta pedida por duas caixas é COMPRA na segunda** — o `missing`
      conta-a, o "fechar tudo" soma-a, a wantlist pede-a;
   3. **o config não devolve a partilha** — `dedicado: false` no grupo ou na
-     caixa não tem efeito; `dedicadas()` devolve todas; `_empresta` é sempre
-     falso;
+     caixa não tem efeito (o `dedicadas()` e o `_empresta`, que respondiam
+     sempre "todas" e "não", saíram do código a 2026-10-28);
   4. **a EXCEPÇÃO do Premodern fica**: o tecto de 4 no total — se ele já tem 4
      no grupo, a caixa de menor prioridade mostra *"não se compra (limite de 4
      no total; está no <deck>)"*, fora do "fechar tudo"; o tecto conta também o
@@ -200,7 +200,7 @@ def caso_nenhuma_caixa_vai_buscar_a_outra_em_formato_nenhum():
 
 def caso_o_config_nao_devolve_a_partilha():
     """`dedicado: false` no grupo (o config deste teste) e na caixa: sem efeito.
-    A resposta está num sítio (`_empresta`), e é sempre não."""
+    (O `_empresta`, que respondia sempre não, saiu do código a 2026-10-28.)"""
     con = base()
     deck(con, "A", "legacy", [("Sol Ring", 1)])
     deck(con, "B", "legacy", [("Sol Ring", 1)])
@@ -210,9 +210,6 @@ def caso_o_config_nao_devolve_a_partilha():
     rep = loadout.report(con, slots)
     res = loadout.resolve_slots(con, slots)
     assert all(x["dedicado"] is True for x in res), [x["dedicado"] for x in res]
-    assert loadout.dedicadas(res) == {"A", "B"}, loadout.dedicadas(res)
-    assert loadout._empresta(res[1], "A", set()) is False
-    assert loadout._empresta({"dedicado": False}, "X", set()) is False
     assert por_nome(rep)["B"]["comprar"] == 1
     _sem_ir_buscar(rep)
     # E o chip da caixa di-lo (uma regra que a página não diz é a página a mentir).
@@ -258,7 +255,6 @@ def caso_o_premodern_respeita_o_limite_de_4_no_total():
         # quatro. Hoje compram-se.
         assert stp["comprar"] == 4 and stp["playset_bloqueado"] == 0, stp
         assert stp["playset_onde"] == {}, stp["playset_onde"]
-        assert loadout.texto_playset(stp, 4) == "", loadout.texto_playset(stp, 4)
         # Mas a NOTA de onde estão as cópias fica (2026-09-19): ele tem de saber
         # que as tem noutra caixa, mesmo tendo de comprar as suas.
         # TRÊS e não quatro: a nota conta as cópias que ele TEM noutra caixa. A

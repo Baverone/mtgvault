@@ -345,14 +345,10 @@ def _caixa_payload(s, imgs, cfs, rep=None, col=None, tipos=None, cores=None,
             # caixa, ainda não têm foto da campanha (`foto`) e quantas têm.
             "rev": rev_carta.get(m["nm"]) or {"foto": 0, "ok": 0, "corr": 0},
             "missing": m["missing"], "comprar": m["comprar"],
-            # O que o TECTO DE PLAYSET não deixa comprar (André, 2026-09-08). Vem
-            # na carta e não só no resumo: é ali que ele está quando pergunta
-            # "porque é que isto não está na lista de compras?".
-            "bloq": m.get("playset_bloqueado", 0),
-            # ... e a frase inteira (*"não se compra (limite de 4 no total;
-            # está no UW Replenish)"*), composta no Python (2026-09-19).
-            "bloq_txt": (loadout.texto_playset(m, loadout.playset_maximo(s))
-                         if m.get("playset_bloqueado") else ""),
+            # O TECTO DE PLAYSET (2026-09-08) foi-se a 2026-10-02 e a sua frase
+            # saiu do código a 2026-10-28; as duas chaves ficam a zero para a
+            # página ler o mesmo payload.
+            "bloq": m.get("playset_bloqueado", 0), "bloq_txt": "",
             "noutra": m["noutra"], "alt": m["alt"], "alt_onde": m["alt_onde"],
             # CADA CAIXA COM AS SUAS CARTAS (André, 2026-09-19). A cópia que
             # está noutra caixa já não é fonte nem desconto — é uma NOTA para
@@ -362,12 +358,10 @@ def _caixa_payload(s, imgs, cfs, rep=None, col=None, tipos=None, cores=None,
             # em foil. Numa caixa de foil é o que explica uma nonfoil a fechar o
             # slot, e uma compra a pedir nonfoil.
             "sfoil": not m.get("foil_existe", True),
-            # ONDE A CARTA ESTÁ vs A QUEM ESTÁ DESTINADA (André, 2026-09-08: *"o
-            # resto ainda nada está em deckbox — e ainda estás a assumir que há
-            # cartas que já estão nas deckboxes dos decks"*). A frase vem pronta
-            # do Python (`loadout.onde_esta`): a página não volta a compor "em
-            # X" a partir do `noutra`, que é a caixa DESTINO e não o sítio.
-            "onde": loadout.onde_esta(m),
+            # ONDE A CARTA ESTÁ noutra caixa (2026-09-08): desde 2026-09-19
+            # nenhuma caixa empresta, e a frase (`onde_esta`) saiu a 2026-10-28.
+            # A chave fica vazia para a página ler o mesmo payload.
+            "onde": [],
             "nmont": sum(m["noutra_montada"].values()),
             "nres": sum(m["noutra_reservada"].values()),
             "cost": m["cost"], "unit": m["unit"],
@@ -397,13 +391,10 @@ def _caixa_payload(s, imgs, cfs, rep=None, col=None, tipos=None, cores=None,
         "prioridade_por": s.get("prioridade_por") or "",
         "posicao_grupo": s.get("posicao_grupo") or 0,
         "pct_coleccao": s.get("pct_coleccao"),
-        # O TECTO DE PLAYSET do grupo, e quantas cópias ele não deixa comprar.
-        "playset": loadout.playset_maximo(s) or 0,
+        # O TECTO DE PLAYSET do grupo foi-se a 2026-10-02: chaves a zero.
+        "playset": 0,
         "bloqueado": s.get("playset_bloqueado", 0),
-        "playset_faltas": [{"nm": m["nm"], "board": m["board"],
-                            "q": m["playset_bloqueado"],
-                            "txt": loadout.texto_playset(m, loadout.playset_maximo(s))}
-                           for m in s.get("playset_faltas") or []],
+        "playset_faltas": [],
         # CADA CAIXA COM AS SUAS CARTAS (2026-09-19): as faltas de que ele TEM
         # cópias noutra caixa, só como nota. Nunca desconta.
         "notas_onde": [{"nm": m["nm"], "nota": loadout.nota_onde(m)}
@@ -526,15 +517,10 @@ def _caixa_payload(s, imgs, cfs, rep=None, col=None, tipos=None, cores=None,
                             for m in s["missing"]
                             if m["comprar"] > 0 or m.get("encomendado", 0) > 0),
                            key=lambda x: (x["board"] != "main", x["nm"])),
-        # O "ir buscar" em TRÊS blocos, porque são três sítios diferentes
-        # (André, 2026-09-08). Quem parte é o Python (`buscar_montada` /
-        # `buscar_reservada` / `buscar_futura`) e quem escreve a frase é o
-        # `loadout.onde_esta` — a página juntava as três num "em <caixa>" só, e
-        # mandava-o abrir caixas que ainda não existem na estante.
-        "buscar": {qual: [{"nm": m["nm"], "comprar": m["comprar"],
-                           "onde": loadout.onde_esta(m, qual)}
-                          for m in s[f"buscar_{qual}"]]
-                   for qual in ("montada", "reservada", "futura")},
+        # O "ir buscar" (2026-09-08, em três blocos) acabou a 2026-09-19: cada
+        # caixa compra as suas. Os três blocos ficam vazios para a página ler o
+        # mesmo payload.
+        "buscar": {"montada": [], "reservada": [], "futura": []},
         "subs": [{"nm": m["nm"], "missing": m["missing"], "alt": m["alt"],
                   "onde": m["alt_onde"]} for m in s["subs"]],
         # REGISTOS QUE NÃO PODEM ESTAR CERTOS (2026-09-09): linhas da

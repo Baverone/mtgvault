@@ -1474,8 +1474,8 @@ class Handler(BaseHTTPRequestHandler):
         # painel saiu da página — ver «FORA O QR DA PORTA DA FRENTE» no
         # CLAUDE.md. A rota ia atrás: o seu único consumidor era esse painel, e
         # uma rota que serve um URL com o token lá dentro não se deixa de pé por
-        # inércia. O `mtgvault/qr.py` fica (é o desenhador, em Python puro, e
-        # tem teste próprio); o que deixou de existir é a porta HTTP.
+        # inércia. O desenhador (`mtgvault/qr.py`) e o teste dele saíram a
+        # 2026-10-28, por decisão dele no painel: já ninguém o importava.
         if caminho == "/foto":
             # A miniatura da foto de origem de uma cópia NÃO ENCONTRADA
             # (2026-09-09). É a única prova de que a carta existiu, e sem ela a

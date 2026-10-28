@@ -22,9 +22,10 @@ Cada `alvo` é o mtgvault de ANTES desta ordem numa peça só:
   metades    — o `metades` deixa de conferir a soma: uma metade perdida pelo
                caminho passa a dar um par de números com cara de honesto;
   topo       — o relatorio deixa de levar as duas metades: nenhuma pagina tem
-               por onde dizer o que esta confirmado e o que esta por confirmar;
-  playset    — o tecto de playset do Premodern volta: a regra que ele mandou
-               esquecer volta a cortar compras.
+               por onde dizer o que esta confirmado e o que esta por confirmar.
+
+(O alvo `playset` saiu a 2026-10-28 com o `loadout.playset_maximo` e o caso que
+ele provava: já não há código que leia o tecto.)
 """
 import sys
 from pathlib import Path
@@ -98,9 +99,6 @@ elif alvo == "metades":
 
     confirmado.metades = _sem_conferir
     loadout._conf.metades = _sem_conferir
-elif alvo == "playset":
-    loadout.playset_maximo = lambda s: (int(s["playset_maximo"])
-                                        if s.get("playset_maximo") else None)
 else:
     print(f"alvo desconhecido: {alvo}")
     sys.exit(2)

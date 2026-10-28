@@ -626,16 +626,9 @@ def caso_o_progresso_nao_esconde_os_conflitos():
 # ===========================================================================
 # 9. O TECTO DE PLAYSET DO PREMODERN FOI-SE (ordem dele, no mesmo dia)
 # ===========================================================================
-def caso_o_tecto_de_playset_deixou_de_ter_efeito():
-    """Ele mandou ESQUECER a regra do *"máximo um playset"* em Premodern. Um
-    `playset_maximo: 4` esquecido num config deixa de ter efeito — como o
-    `dedicado: false` desde 19/09 —, em vez de se apagar a chave e deixar quem a
-    tivesse escrita sem saber porque é que parou de funcionar."""
-    assert loadout.playset_maximo({"playset_maximo": 4}) is None
-    assert loadout.playset_maximo({}) is None
-    assert loadout.limites_de_playset([]) == []
-
-
+# O `caso_o_tecto_de_playset_deixou_de_ter_efeito` saiu a 2026-10-28 com o
+# código que fixava (`loadout.playset_maximo`, que devolvia sempre `None`, e o
+# `limites_de_playset`): nada no vault lê já a chave `playset_maximo`.
 def caso_o_config_a_serio_ja_nao_tem_tecto_de_playset():
     """E a chave saiu do `colecao_config.json` a sério: deixá-la lá era o ficheiro
     a documentar uma regra que já não existe. Este caso lê o config DELE."""

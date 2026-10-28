@@ -164,7 +164,6 @@ def _sem_noutra(m):
     assert m["noutra"] == {} and m["noutra_q"] == 0, m["noutra"]
     assert m["noutra_montada"] == {} and m["noutra_reservada"] == {}, m
     assert m["noutra_onde"] == {} and m["noutra_lotes"] == [], m
-    assert loadout.onde_esta(m) == [], loadout.onde_esta(m)
 
 
 # ---------------------------------------------------------------------------
@@ -218,7 +217,6 @@ def caso_nao_ha_montar_fora_de_ordem():
     plano = loadout.plano_montar(rep, "b")
     assert [m["nm"] for m in plano["tirar"]] == ["Ancestral Vision"], plano["tirar"]
     assert plano["de_outra"] == [] and plano["copias_de_outra"] == 0, plano["de_outra"]
-    assert loadout.movimentos_reservados(_slot(rep, "b")) == []
 
     cid = _copy_id(con, "Wrath of God")
     n = _regista(con, "b", de_outra=[cid])["copias"]

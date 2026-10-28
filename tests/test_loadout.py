@@ -1365,7 +1365,7 @@ def caso_premodern_voltou_a_partilhar():
     assert m["noutra"] == {} and m["noutra_nota"] == {primeira["nome"]: 4}, m
     # O TECTO foi-se (02/10): nada bloqueado, e por isso nenhuma frase.
     assert m["playset_bloqueado"] == 0 and m["playset_onde"] == {}, m
-    assert loadout.texto_playset(m, 4) == "", loadout.texto_playset(m, 4)
+    assert "playset" not in loadout.nota_parcial(m), loadout.nota_parcial(m)
     print("as caixas de Premodern nao emprestam e nao tem tecto: compram as suas")
 
     # E o cEDH continua dedicado: a mesma pergunta, a resposta contrária.

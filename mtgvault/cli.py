@@ -2049,12 +2049,6 @@ def _loadout_resumo(rep):
               f"(não são compra) — {rep['noutra_montada_total']} dentro de uma caixa "
               f"montada, {rep['noutra_reservada_total']} ainda na gaveta, "
               f"{rep['noutra_futura_total']} por comprar  <- NÃO DEVIA ACONTECER")
-    if rep.get("bloqueado_total"):
-        n, c = rep["bloqueado_total"], len(rep["limites"])
-        print(f"  limite de playset: {n} {'cópia' if n == 1 else 'cópias'} que "
-              f"não se {'compra' if n == 1 else 'compram'} "
-              f"({c} {'carta' if c == 1 else 'cartas'}; máximo por carta no "
-              f"grupo, somando as caixas — estão noutra caixa do Premodern)")
     # REGISTOS QUE NÃO PODEM ESTAR CERTOS (2026-09-09). À cabeça e não escondido
     # numa caixa: é o vault a dizer que uma coisa que ele próprio confirmou não
     # bate certo, e é ele que decide o que fazer com ela.
@@ -2072,20 +2066,6 @@ def _loadout_resumo(rep):
             mat = f"{(c['set_code'] or '').upper()} {c['lang'] or ''}".strip()
             print(f"  {c['nm']:<28} {mat:<10} x{c['q']}  em {c['caixa']}: "
                   f"{c['porque']}  ->  tratada como estando em {c['onde']}")
-    if rep["conflitos"]:
-        print("\nCARTAS PARTILHADAS ENTRE CAIXAS (as 10 mais pedidas)")
-        for c in rep["conflitos"][:10]:
-            det = " · ".join(f"{q['slot']} {q['levou']}/{q['pediu']}"
-                             for q in c["por_slot"])
-            print(f"  {c['nm']:<28} tenho {c['tenho']} para {c['pedido']}   {det}")
-            # Quem está nas duas listas levou parte do que pedia: não tem para
-            # onde ir buscar, falta-lhe mesmo. Não entra no "vai buscar".
-            # E se ninguém ficou com ela (as cópias existem mas nenhuma caixa as
-            # pode usar), não há nada a ir buscar: é compra para todas.
-            vai = [x for x in c["ficam_sem"]
-                   if c["ficam_com"] and x not in c["ficam_com"]]
-            print(f"  {'':<28} está em: {', '.join(c['ficam_com']) or 'ninguém'}"
-                  + (f"   vai buscar: {', '.join(vai)}" if vai else ""))
 
 
 def _basicas(rep, s):
@@ -2170,9 +2150,7 @@ def _loadout_detalhe(rep, procura):
               + (f" + {s['noutra']} destinadas a outra caixa "
                  f"({s['noutra_montada']} dentro dela, {s['noutra_reservada']} "
                  f"ainda na gaveta, {s['noutra_futura']} por comprar)"
-                 if s["noutra"] else "")
-              + (f" + {s['playset_bloqueado']} que o limite de playset não deixa "
-                 f"comprar" if s.get("playset_bloqueado") else ""))
+                 if s["noutra"] else ""))
         for m in s["missing"]:
             u = f"{m['unit']:.2f}€" if m["unit"] else "?"
             # Quando o slot é de foil e o preço veio do nonfoil, diz-se: a
@@ -2184,11 +2162,8 @@ def _loadout_detalhe(rep, procura):
                 u += "*"
             partes = [f"comprar {m['comprar']}"
                       if 0 < m["comprar"] < m["missing"] else "",
-                      "; ".join(loadout.onde_esta(m)),
                       # A NOTA (2026-09-19): "tens 2 no Blue Farm" — só informação.
                       loadout.nota_onde(m),
-                      (loadout.texto_playset(m, loadout.playset_maximo(s))
-                       if m.get("playset_bloqueado") else ""),
                       "nonfoil — nunca saiu em foil"
                       if not m.get("foil_existe", True)
                       and s.get("acabamento") in ("foil", "prefere_foil") else "",
@@ -2201,43 +2176,6 @@ def _loadout_detalhe(rep, procura):
                 and s.get("acabamento") == "foil":
             print("    (* sem preço foil na base — o valor é o do nonfoil, "
                   "por baixo do real)")
-        # Onde ir buscar (André, 2026-09-07): estas NÃO se compram — a cópia
-        # existe e vai-se lá buscar para jogar. Desde 2026-09-08 são TRÊS
-        # secções, porque são três sítios diferentes: uma caixa montada, a
-        # gaveta de sempre, e uma compra que outra caixa ainda vai fazer. Juntá-
-        # las mandava-o abrir caixas que ainda não existem na estante.
-        for qual, titulo in (
-                ("montada", "IR BUSCAR A OUTRA CAIXA (está lá dentro)"),
-                ("reservada", "NA GAVETA, DESTINADAS A OUTRA CAIXA"),
-                ("futura", "OUTRA CAIXA VAI COMPRAR")):
-            linhas = s.get(f"buscar_{qual}")
-            if not linhas:
-                continue
-            print(f"\n  {titulo} ({s['noutra_' + qual]} cópias — não são compra):")
-            if qual == "reservada":
-                # A outra caixa ainda não está montada: estas cartas estão na
-                # gaveta, ao alcance da mão. Se ele monta ESTA primeiro, tira-as
-                # já — e a caixa que as tinha destinadas passa a vir aqui buscá-
-                # las. É o bloco «destinadas a outra caixa» do painel Montar.
-                print("    (ainda não estão em caixa nenhuma: podes tirá-las já "
-                      "no painel Montar desta caixa)")
-            for m in linhas:
-                mais = f"   (comprar mais {m['comprar']})" if m["comprar"] else ""
-                onde = "; ".join(loadout.onde_esta(m, qual))
-                print(f"    {m['nm']:<34} {onde}{mais}")
-        # E o que o TECTO DE PLAYSET não deixa comprar (André, 2026-09-08: *"no
-        # Premodern, afinal só vou ter até playset de cada carta"*). Sem isto a
-        # caixa ficava à espera de uma carta que ninguém vai comprar.
-        if s.get("playset_faltas"):
-            n = s["playset_bloqueado"]
-            print(f"\n  LIMITE DE PLAYSET ({n} {'cópia' if n == 1 else 'cópias'} em "
-                  f"falta que não se compram — máximo {loadout.playset_maximo(s)} "
-                  f"por carta em {s.get('grupo')}, somando todas as caixas; "
-                  f"cada caixa tem as suas cartas, e estas estão noutra):")
-            for m in s["playset_faltas"]:
-                print(f"    {m['nm']:<34} "
-                      f"{loadout.texto_playset(m, loadout.playset_maximo(s))} "
-                      f"({m['board']})")
         # E o que estava REGISTADO nesta caixa sem lá poder estar (2026-09-09).
         # Vem antes da wantlist de propósito: é a explicação de metade dela.
         if s.get("contradicoes"):

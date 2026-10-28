@@ -1528,17 +1528,6 @@ def razao_nao_foil(edicoes) -> str:
     return f"{RAZAO_NAO_FOIL} (existe em foil: {', '.join(eds)})"
 
 
-def dedicadas(slots) -> set[str]:
-    """Os NOMES das caixas dedicadas — as que não emprestam nem vão buscar.
-
-    Desde 2026-09-19 são TODAS (André: *"cada deck deverá ter as suas próprias
-    cartas dentro, não repetindo com outros decks!"*); o `resolve_slots` já
-    força o `dedicado`, e isto devolve os nomes de todas as caixas. Por nome e
-    não por slot porque é o nome que viaja no `lot["caixa_nome"]`.
-    """
-    return {s["nome"] for s in slots if s.get("nome")}
-
-
 def congelada(s: dict, arrumadas: set[str] | frozenset | None = None) -> bool:
     """A caixa está montada e é dedicada: não se lhe mexe sem ser para actualizar.
 
@@ -1942,7 +1931,6 @@ def _slot_cards(con, s: dict) -> tuple[list[tuple[str, str, int]], str]:
 
 def pct_na_coleccao(pool: dict, s: dict, baldes: set[str],
                     caixas: set[str] | frozenset = frozenset(),
-                    ded: set[str] | frozenset = frozenset(),
                     did: int | None = None) -> int:
     """A percentagem desta caixa contando a COLECÇÃO INTEIRA, ANTES de alocar.
 
@@ -1966,10 +1954,10 @@ def pct_na_coleccao(pool: dict, s: dict, baldes: set[str],
         if nm in BASICS:
             tem += need
             continue
-        e = _estado_carta(pool, s, nm, need, baldes, did, caixas, ded)
-        # "o que ele tem" = livres + as que estão noutra caixa e essa caixa
-        # empresta: as segundas vão-se buscar, não se compram.
-        tem += e["got"] + e["noutra_q"]
+        e = _estado_carta(pool, s, nm, need, baldes, did, caixas)
+        # "o que ele tem" = as cópias livres que servem esta caixa. Desde
+        # 2026-09-19 nenhuma caixa empresta, por isso já não há "ir buscar".
+        tem += e["got"]
     return round(100 * tem / precisa) if precisa else 0
 
 
@@ -1985,11 +1973,10 @@ def _pcts_da_coleccao(con, slots: list[dict],
     pool = lots(con, slots, foil_cache)
     baldes = {s["balde"] for s in slots if s.get("balde")}
     caixas = caixas_de_deck(slots)
-    ded = dedicadas(slots)
     dids = _deck_ids(con, slots)
     for s in slots:
         if s.get("prioridade_por") == "pct":
-            s["pct_coleccao"] = pct_na_coleccao(pool, s, baldes, caixas, ded,
+            s["pct_coleccao"] = pct_na_coleccao(pool, s, baldes, caixas,
                                                 dids.get(s["slot"]))
 
 
@@ -2694,108 +2681,14 @@ def _linha_cheia(linha: dict) -> dict:
     return linha
 
 
-def _empresta(s: dict, outra: str, ded: set[str] | frozenset) -> bool:
-    """A caixa `outra` pode emprestar a cópia ao slot `s`? (o "ir buscar")
-
-    **Desde 2026-09-19, nunca.** André, à letra: *"cada deck deverá ter as suas
-    próprias cartas dentro, não repetindo com outros decks!"* Uma cópia alocada
-    a uma caixa é dessa caixa, e quem a pede também compra-a. Era a regra das
-    caixas dedicadas de 2026-09-07 (*"cada deck montado deixa de partilhar
-    cartas com outros decks"*), que valia só para o Pauper e o cEDH — agora vale
-    para todas, e por isso a função devolve `False` sem olhar para os
-    argumentos. Fica com a assinatura de sempre para quem a chama não mudar; a
-    resposta é uma só e está aqui, não espalhada por um `dedicado` por caixa.
-    """
-    return False
-
-
-def _reparte_por_sitio(n: int, fis: dict[str, int], caixa: str) -> dict[str, int]:
-    """Reparte `n` cópias pelos SÍTIOS onde elas estão, a própria caixa primeiro.
-
-    O `noutra` é cortado pelo que ainda falta (pára em `resta`), e por isso não se
-    pode dizer só *"são da caixa X"*: dessas X cópias umas podem estar sleevadas
-    lá dentro e outras ainda na `Colecção`, à espera. Contá-las todas como
-    sleevadas era a mentira que o André apanhou a 2026-09-08.
-    """
-    out: dict[str, int] = {}
-    for sitio in sorted(fis, key=lambda k: (k != caixa, k)):
-        if n <= 0:
-            break
-        t = min(fis[sitio], n)
-        if t:
-            out[sitio] = t
-            n -= t
-    return out
-
-
-def _parte_noutra(noutra: dict[str, int],
-                  fisico: dict[str, dict[str, int]]) -> tuple[dict, dict, dict]:
-    """`(montada, reservada, onde)` — as duas metades do *"está noutra caixa"*.
-
-    * **montada** — a cópia está mesmo dentro daquela caixa (há linha na
-      `copy_allocation`): *"em UW Replenish"*, vai-se lá buscar;
-    * **reservada** — a alocação DESTINOU-A àquela caixa por prioridade, mas ela
-      continua na gaveta: *"na Colecção — destinada ao UW Replenish"*. O `onde`
-      diz de que gaveta.
-    """
-    montada: dict[str, int] = {}
-    reservada: dict[str, int] = {}
-    onde: dict[str, dict[str, int]] = {}
-    for caixa, q in noutra.items():
-        sitios = _reparte_por_sitio(q, fisico.get(caixa) or {}, caixa)
-        if sitios.get(caixa):
-            montada[caixa] = sitios[caixa]
-        resto = {k: v for k, v in sitios.items() if k != caixa}
-        if resto:
-            reservada[caixa] = sum(resto.values())
-            onde[caixa] = resto
-    return montada, reservada, onde
-
-
-def onde_esta(m: dict, so: str | None = None) -> list[str]:
-    """*"Onde está esta carta?"* — as frases de uma linha em falta, por ordem.
-
-    Escritas AQUI e não em cada página: era exactamente isto que o André apanhou
-    a 2026-09-08 (*"ainda estás a assumir que há cartas que já estão nas
-    deckboxes dos decks"*). Cada sítio escrevia a sua versão de *"em X"* a partir
-    do `noutra`, que é a caixa a quem a cópia está DESTINADA, e nenhum olhava
-    para a `copy_allocation`, que é a única prova de onde ela ESTÁ.
-
-    Três frases, três coisas diferentes:
-      * *"2× em Stiflenought"* — está lá dentro, vais àquela caixa;
-      * *"2× na Colecção — destinada a UW Replenish (prioridade)"* — está na
-        gaveta de sempre; podes tirá-la já (é o bloco do painel *Montar*);
-      * *"1× depois de Enchantress comprar"* — ainda não existe em casa.
-
-    `so` limita a uma das três (`montada` | `reservada` | `futura`), que é o que
-    cada secção do CLI e cada bloco da página querem: a mesma carta pode ter
-    cópias nos três sítios, e repetir as três frases em cada bloco era ruído.
-    """
-    fora = []
-    if so in (None, "montada"):
-        for caixa, q in sorted((m.get("noutra_montada") or {}).items()):
-            fora.append(f"{q}× em {caixa}")
-    if so in (None, "reservada"):
-        for caixa, q in sorted((m.get("noutra_reservada") or {}).items()):
-            sitios = (m.get("noutra_onde") or {}).get(caixa) or {}
-            onde = " + ".join(f"{v}× na {k}" for k, v in sorted(sitios.items()))
-            fora.append(f"{onde or f'{q}× na colecção'} — destinada a {caixa} "
-                        f"(prioridade)")
-    if so in (None, "futura"):
-        for caixa, q in sorted((m.get("noutra_futura") or {}).items()):
-            fora.append(f"{q}× depois de {caixa} comprar")
-    return fora
-
-
 def nota_onde(m: dict) -> str:
     """*"tens 2 no Blue Farm · 1 no Cloud cEDH"* — a NOTA de uma linha em falta.
 
     André, 2026-09-19: *"cada deck deverá ter as suas próprias cartas dentro,
     não repetindo com outros decks!"* A cópia que está noutra caixa deixou de
     ser "ir buscar": é dessa caixa, e esta compra a sua. A frase fica só para
-    ele saber que a carta existe em casa — escreve-se aqui, num sítio, pela
-    mesma razão do `onde_esta`: composta em cada página, uma delas voltava a
-    lê-la como fonte. Vazio quando não há nada a dizer.
+    ele saber que a carta existe em casa — escreve-se aqui, num sítio:
+    composta em cada página, uma delas voltava a lê-la como fonte. Vazio quando não há nada a dizer.
     """
     partes = [f"{q} no {caixa}"
               for caixa, q in sorted((m.get("noutra_nota") or {}).items())]
@@ -2804,28 +2697,23 @@ def nota_onde(m: dict) -> str:
 
 def _estado_carta(pool: dict, s: dict, nm: str, need: int, baldes: set[str],
                   did: int | None = None,
-                  caixas: set[str] | frozenset = frozenset(),
-                  ded: set[str] | frozenset = frozenset()) -> dict:
-    """Quantas cópias que SERVEM este slot estão livres, e quantas estão noutra caixa.
+                  caixas: set[str] | frozenset = frozenset()) -> dict:
+    """Quantas cópias que SERVEM este slot estão livres, e onde estão as outras.
 
     É a versão que NÃO consome: serve quem faz a pergunta "e se fosse este
     deck?" — o ranking de arquétipos do `foil_report`, onde as opções são
     alternativas entre si e não caixas montadas ao mesmo tempo. A alocação a
     sério continua a ser o `allocate`, que gasta cada cópia uma só vez.
 
-    Devolve {got, noutra, noutra_q, comprar} com a mesma leitura de sempre: o que
-    está noutra caixa vai-se buscar e **não se compra** (André, 2026-09-07).
+    Desde 2026-09-19 nenhuma caixa empresta (*"cada deck deverá ter as suas
+    próprias cartas dentro"*): o que está noutra caixa é dessa caixa e esta
+    compra a sua. O "ir buscar" que aqui vivia (`noutra`, partido em
+    montada/reservada) saiu a 2026-10-28; as chaves ficam vazias para o payload
+    das páginas não mudar. Fica a NOTA — *"tens 2 no Blue Farm"* —, que nunca
+    entra no `got` nem no `comprar`.
     """
     livre = 0
-    onde: dict[str, int] = defaultdict(int)
-    # A NOTA (2026-09-19): as cópias que serviam este slot e estão noutra caixa,
-    # sem o filtro do `_empresta` — que hoje recusa sempre. Só para dizer *"tens
-    # 2 no Blue Farm"*; nunca entra no `got`, no `noutra` nem no `comprar`.
     nota: dict[str, int] = defaultdict(int)
-    # ONDE ESTÁ vs A QUEM ESTÁ DESTINADA (André, 2026-09-08). `caixa -> {sítio
-    # físico: quantas}`: uma cópia que a alocação deu a outra caixa continua na
-    # gaveta até ele a lá meter, e só a `copy_allocation` prova o contrário.
-    fisico: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     for lot in pool.get(nm, []):
         if lot["rdid"] is not None and lot["rdid"] != did:
             continue
@@ -2833,37 +2721,16 @@ def _estado_carta(pool: dict, s: dict, nm: str, need: int, baldes: set[str],
             continue
         if _noutra_caixa(lot, s):
             nota[lot["caixa_nome"]] += lot["q"]
-            if _empresta(s, lot["caixa_nome"], ded):
-                onde[lot["caixa_nome"]] += lot["q"]  # está sleevada noutra caixa
-                fisico[lot["caixa_nome"]][lot["caixa_nome"]] += lot["q"]
             continue
         livre += lot["livre"]
         for caixa, q in lot["alocado"].items():
-            if caixa == s.get("nome"):
-                continue
-            nota[caixa] += q
-            if _empresta(s, caixa, ded):
-                onde[caixa] += q
-                fisico[caixa][lot["local"]] += q
+            if caixa != s.get("nome"):
+                nota[caixa] += q
     got = min(need, livre)
-    resta = need - got
-    noutra: dict[str, int] = {}
-    for caixa, q in sorted(onde.items(), key=lambda kv: (-kv[1], kv[0])):
-        if resta <= 0:
-            break
-        noutra[caixa] = min(q, resta)
-        resta -= noutra[caixa]
-    nq = sum(noutra.values())
-    montada, reservada, onde_fis = _parte_noutra(noutra, fisico)
-    # `onde` é o `noutra` ANTES de ser cortado pelo que ainda falta: caixa -> todas
-    # as cópias que ela tem desta carta. O `noutra` só serve para tapar o buraco
-    # (pára em `resta`), e por isso não se pode filtrar depois — se uma caixa que
-    # não interessa apanhar o corte primeiro, a soma filtrada vinha a menos. Quem
-    # precisa disto é a cobertura *"como se fosse o principal"* do Premodern.
-    return {"got": got, "noutra": noutra, "noutra_q": nq, "onde": dict(onde),
+    return {"got": got, "noutra": {}, "noutra_q": 0, "onde": {},
             "noutra_nota": dict(nota),
-            "noutra_montada": montada, "noutra_reservada": reservada,
-            "noutra_onde": onde_fis, "comprar": need - got - nq}
+            "noutra_montada": {}, "noutra_reservada": {},
+            "noutra_onde": {}, "comprar": need - got}
 
 
 def slots_por_lista(res: dict) -> dict[str, dict]:
@@ -2892,179 +2759,20 @@ def linhas_por_carta(s: dict) -> dict[tuple[str, str], dict]:
 
 
 # ---------------------------------------------------------------------------
-# Compras: cada caixa compra as suas; o Premodern tem um TECTO de playset
+# Compras: cada caixa compra as suas
 # ---------------------------------------------------------------------------
-# Até 2026-09-19 esta secção era "comprar o MÁXIMO, não a soma" (André,
-# 2026-09-07: *"indicas onde está a carta, para (...) não ter que comprar
-# múltiplos para todos"*): duas caixas que pediam a mesma carta no mesmo material
-# compravam UMA, e a segunda ia buscá-la (`noutra_futura`). Superseded pela
-# regra de 2026-09-19, à letra: *"cada deck deverá ter as suas próprias cartas
-# dentro, não repetindo com outros decks!"* Cada caixa compra o que lhe falta;
-# as faltas somam-se caixa a caixa, e é isso que o "fechar tudo por X €" diz.
-#
-# O que FICA é o tecto de playset do Premodern (2026-09-08: *"no Premodern,
-# afinal só vou ter até playset de cada carta"*), e fica sobre o GRUPO inteiro:
-# o Premodern nunca chega a ter mais do que 4 cópias de uma carta, somando o
-# que está nas seis caixas. Se ele já tem 4 (numa caixa, ou repartidas), a caixa
-# de menor prioridade que a peça fica com a falta POR TAPAR — `playset_bloqueado`,
-# com o *"está no <deck>"* em `playset_onde` — e essa falta não entra no
-# `comprar` nem no "fechar tudo". É onde as duas regras dele se tocam (cartas
-# próprias por caixa vs. um playset no total) e escolheu-se o que menos compra.
-#
-# `pool_compra`/`pools_de_compra`/`_slot_do_pool` ficam: já não fundem compras,
-# mas continuam a dizer em que material se compra — e apagá-las é decisão dele.
-def pool_compra(s: dict) -> tuple[str, str, str]:
-    """A chave do POOL DE MATERIAL de uma caixa: o que ela aceita comprar.
-
-    Desde 2026-09-19 já não junta compras de caixas diferentes (cada caixa
-    compra as suas); serve para o material de uma linha ser dito por regra.
-    """
-    return (s.get("edicoes") or "", s.get("acabamento") or "", s.get("lingua") or "")
-
-
-def pools_de_compra(slots) -> dict[str, tuple[str, str, str]]:
-    """`slot -> chave do pool`, já com os pools que SE TOCAM fundidos.
-
-    O Duel Commander é *"apenas foil"* e não exige língua; o SPML é *"tudo foil e
-    inglês"*. Uma cópia **EN foil** serve os dois, por isso são um pool só — e o
-    material do pool é o mais exigente (EN foil). A fusão só se faz quando não
-    há dúvida: um grupo sem língua junta-se ao grupo com o mesmo acabamento/
-    edições **se houver exactamente uma** língua exigida nesse acabamento.
-
-    Desde 2026-09-19 nenhuma compra se partilha; fica porque descreve o material
-    e porque apagar é decisão dele.
-    """
-    base = {s["slot"]: pool_compra(s) for s in slots if s.get("slot")}
-    linguas: dict[tuple[str, str], set[str]] = defaultdict(set)
-    for ed, ac, ln in base.values():
-        if ln:
-            linguas[(ed, ac)].add(ln)
-    out = {}
-    for slot, (ed, ac, ln) in base.items():
-        if not ln and len(linguas.get((ed, ac), ())) == 1:
-            ln = next(iter(linguas[(ed, ac)]))
-        out[slot] = (ed, ac, ln)
-    return out
-
-
-def _slot_do_pool(chave: tuple[str, str, str]) -> dict:
-    """Um slot de mentira com as regras do pool, para reusar os rótulos."""
-    ed, ac, ln = chave
-    return {"edicoes": ed or None, "acabamento": ac or None, "lingua": ln or None}
-
-
-def playset_maximo(s: dict) -> int | None:
-    """O tecto de cópias que o GRUPO desta caixa pode ter de cada carta.
-
-    **DESDE 2026-10-02 É SEMPRE `None`: a regra foi-se.** O André mandou
-    ESQUECER o *"no Premodern, afinal só vou ter até playset de cada carta"* de
-    2026-09-08, no mesmo dia em que inverteu o modelo para *"cada deck tem as
-    suas cartas"* e *"se não tiver foto, não tem carta"* — e as duas coisas
-    batem-se de frente: um tecto contado sobre o GRUPO INTEIRO é a última peça
-    da partilha entre caixas, e seis decks que não partilham nada não têm por
-    onde dividir quatro cópias.
-
-    O que o tecto fazia, medido na base de 2026-09-19 quando entrou: **47
-    cópias** por tapar que não se compravam (Enchantress 25, Elves 14, Oath 8).
-    A partir de hoje compram-se — ou, com a foto a mandar, fotografam-se.
-
-    Devolve `None` e não se apagou a função: um `playset_maximo: 4` esquecido
-    num config **deixa de ter efeito**, que é o mesmo que aconteceu ao
-    `dedicado: false` a 2026-09-19. Apagar a chave de todo era deixar quem a
-    tivesse escrita sem saber porque é que parou de funcionar.
-    """
-    return None
-
-
+# Até 2026-09-19 duas caixas que pediam a mesma carta compravam UMA (a partilha
+# de compras) e o Premodern tinha um tecto de playset sobre o grupo inteiro.
+# Superseded: *"cada deck deverá ter as suas próprias cartas dentro, não
+# repetindo com outros decks!"* (19/09) e *"esquece a regra do máximo um playset
+# em Premodern"* (02/10). As funções que ficaram a responder sempre `[]`/`None`
+# (`partilhar_compras`, `playset_maximo`, `pool_compra`, ...) saíram a
+# 2026-10-28, por decisão dele no painel; as chaves `playset_bloqueado`/
+# `partilhas`/`limites` continuam no payload, a zero, para as páginas e o CLI
+# lerem o mesmo de sempre.
 def _precisa_de(s: dict, nm: str) -> int:
     """Quantas cópias desta carta a lista da caixa pede (main + side)."""
     return sum(q for _b, n, q in s.get("cards") or [] if n == nm)
-
-
-def _ja_visto(s: dict, nm: str) -> int:
-    """As cópias desta carta que a caixa já TEM (a resposta da alocação, `got`).
-
-    É a resposta que a ALOCAÇÃO já deu, e não uma segunda contagem sobre a
-    colecção: refazer aqui as regras de visibilidade (`_fora_de_vista`,
-    `_porque_nao`) era montar uma segunda opinião sobre a mesma pergunta — o
-    defeito que este vault já pagou caro no `event_tier` e no filtro de listas.
-    O `noutra_q` entra na soma por forma — desde 2026-09-19 é sempre zero.
-    """
-    return sum(m["got"] + m["noutra_q"] for m in s["have"] + s["missing"]
-               if m["nm"] == nm)
-
-
-def partilhar_compras(slots: list[dict]) -> list[dict]:
-    """Aplica o TECTO DE PLAYSET às linhas em falta. Devolve as partilhas — que
-    desde 2026-09-19 são SEMPRE `[]`, porque nenhuma caixa partilha compras.
-
-    O nome ficou (é o que o `allocate`, as páginas e os testes chamam) e o que
-    a função faz mudou: já não funde as compras de duas caixas — cada uma compra
-    as suas (André, 2026-09-19) — e o que sobra é a segunda metade de sempre, o
-    tecto do Premodern (2026-09-08):
-
-        comprar_do_grupo = max(0, tecto − as cópias que o grupo JÁ TEM)
-
-    distribuído pelas caixas do grupo POR PRIORIDADE (a que aloca primeiro
-    compra primeiro); o que não cabe fica em `playset_bloqueado` na linha, com
-    `playset_onde` a dizer em que caixa do grupo estão as cópias que enchem o
-    tecto — a página diz *"não se compra (limite de 4 no total; está no UW
-    Replenish)"*. Uma falta que ele decidiu não tapar não é a mesma coisa que
-    uma falta tapada, e apresentá-las com o mesmo número era mentir-lhe sobre o
-    que tem na mesa.
-
-    As **básicas** ficam de fora do tecto — nunca chegam aqui, porque o
-    `allocate` dá-as sempre por tidas. As faltas DENTRO da mesma caixa (main +
-    side) somam: estão na mesa ao mesmo tempo. O que NÃO muda:
-    `got`/`tenho`/`pct`/`missing` — a caixa continua a ter a falta.
-    """
-    # As caixas de cada grupo COM tecto, e o tecto (o menor, se uma caixa abrir
-    # excepção). O tecto conta-se sobre o grupo de FORMATO inteiro: "o Premodern
-    # nunca chega a ter mais do que 4" é uma afirmação sobre a soma das caixas.
-    membros: dict[str, list[dict]] = defaultdict(list)
-    tectos: dict[str, int] = {}
-    for s in slots:
-        tecto = playset_maximo(s)
-        if not tecto:
-            continue
-        g = s.get("grupo") or s.get("formato") or ""
-        membros[g].append(s)
-        tectos[g] = min(tectos.get(g, tecto), tecto)
-    for g, caixas in membros.items():
-        tecto = tectos[g]
-        caixas.sort(key=lambda s: s["prioridade"])
-        cartas = sorted({m["nm"] for s in caixas for m in s.get("missing") or []
-                         if m["comprar"] > 0})
-        for nm in cartas:
-            # Quantas o grupo TERÁ de cada carta: as que já tem por caixa, mais
-            # as que a distribuição abaixo deixa comprar (a caixa de maior
-            # prioridade primeiro). É este mapa que a linha cortada mostra —
-            # *"está 3 no UW Replenish"* conta a que ele vai comprar para lá.
-            tera = {s["nome"]: _ja_visto(s, nm) for s in caixas}
-            permitido = max(0, tecto - sum(tera.values()))
-            cortadas: list[tuple[dict, dict]] = []
-            for s in caixas:
-                linhas = [m for m in s["missing"] if m["nm"] == nm and m["comprar"] > 0]
-                for m in sorted(linhas, key=lambda m: (m["board"] != "main", m["nm"])):
-                    fica = min(m["comprar"], permitido)
-                    permitido -= fica
-                    tera[s["nome"]] += fica
-                    corta = m["comprar"] - fica
-                    if not corta:
-                        continue
-                    m["comprar"] = fica
-                    m["cost"] = round((m["unit"] or 0) * fica, 2)
-                    # O que sobra depois de distribuir é o que o TECTO cortou:
-                    # já não se compra e não está em caixa nenhuma para ir
-                    # buscar. Sem esta linha desaparecia numa subtracção e a
-                    # caixa dizia-se completa.
-                    m["playset_bloqueado"] = m.get("playset_bloqueado", 0) + corta
-                    m["playset_tecto"] = tecto
-                    cortadas.append((s, m))
-            for s, m in cortadas:
-                m["playset_onde"] = {k: v for k, v in tera.items()
-                                     if k != s["nome"] and v > 0}
-    return []
 
 
 def _basicas_do_slot(con, s: dict) -> None:
@@ -3223,8 +2931,6 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
     # As caixas que SÃO um deck montado: só nessas é que a cópia lá dentro
     # escapa às regras de material (ver `_porque_nao`).
     caixas = caixas_de_deck(slots)
-    # As caixas que não emprestam nem vão buscar — desde 2026-09-19, todas.
-    ded = dedicadas(slots)
     pedido: dict[str, int] = defaultdict(int)
     # carta -> [(slot, quanto pediu, quanto levou)], para o detalhe do conflito
     disputa: dict[str, list[dict]] = defaultdict(list)
@@ -3512,18 +3218,9 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
                 origens[g["local"]] += g["q"]
         s["origens"] = dict(sorted(origens.items(), key=lambda kv: (-kv[1], kv[0])))
 
-    # COMPRAS PARTILHADAS: duas caixas que querem a mesma carta no mesmo material
-    # não pedem duas compras — pedem uma, e a segunda vai lá buscá-la. Corre
-    # DEPOIS da alocação toda, porque precisa das faltas de todas as caixas, e
-    # obriga a refazer os totais de cada uma.
-    # DESDE 2026-09-19 já não partilha nada (devolve sempre `[]`): cada caixa
-    # compra as suas. O que corre aqui é o TECTO de playset do Premodern, que
-    # precisa das faltas e do `got` de todas as caixas do grupo.
-    partilhas = partilhar_compras(slots)
     # ENCOMENDAS (André, 2026-09-19: *"dizia-te o que ia comprando"*): o que
     # já está a caminho ou chegou e espera foto SAI do `comprar` — não é para
-    # comprar outra vez. Depois da partilha (a encomenda é de uma caixa
-    # concreta) e antes dos totais. A alocação não mexe: só a foto cria cópias.
+    # comprar outra vez. Corre depois da alocação toda e antes dos totais. A alocação não mexe: só a foto cria cópias.
     # O import é aqui dentro porque o `mtgvault.encomendas` importa este módulo.
     from . import encomendas as _enc                     # noqa: PLC0415
     encomendas_avisos = _enc.descontar(con, slots)
@@ -3545,7 +3242,8 @@ def allocate(con, cfg_slots: list[dict] | None = None) -> dict:
     for s in slots:
         s["contradicoes"] = [c for c in contras if c["slot"] == s["slot"]]
     return {"slots": slots, "conflitos": conflitos, "pedido": dict(pedido),
-            "partilhas": partilhas, "limites": limites_de_playset(slots),
+            # Sempre vazias desde 2026-09-19 / 2026-10-02 (ver «Compras»).
+            "partilhas": [], "limites": [],
             "contradicoes": contras, "pool": pool,
             # A resposta do catálogo por carta (existe em foil?), para quem
             # continue a perguntar sobre o mesmo `res` (o `foil_report`).
@@ -3568,32 +3266,6 @@ def contradicoes(pool: dict) -> list[dict]:
             "lang": lot["lang"], "set_code": lot["set_code"], "sid": lot["sid"]}
            for lotes in pool.values() for lot in lotes if lot.get("contradiz")]
     return sorted(out, key=lambda c: (c["caixa"] or "", c["nm"]))
-
-
-def limites_de_playset(slots: list[dict]) -> list[dict]:
-    """As cartas que o tecto de playset impede de comprar, e para que caixas.
-
-    Lê-se das LINHAS e não de um segundo cálculo dentro do `partilhar_compras`:
-    o que a página mostra carta a carta e o que ela mostra em resumo têm de vir
-    do mesmo sítio, senão a soma do resumo e a soma das linhas discordam sem
-    ninguém dar por isso.
-    """
-    out: dict[str, dict] = {}
-    for s in slots:
-        for m in s["missing"]:
-            if not m.get("playset_bloqueado"):
-                continue
-            g = out.setdefault(m["nm"], {
-                "nm": m["nm"], "bloqueado": 0, "tecto": playset_maximo(s),
-                "req": requisito_material(s), "caixas": [], "onde": {}})
-            g["bloqueado"] += m["playset_bloqueado"]
-            g["caixas"].append({"slot": s["slot"], "caixa": s["nome"],
-                                "q": m["playset_bloqueado"], "board": m["board"]})
-            # Em que caixas do grupo estão as cópias que enchem o tecto — é o
-            # *"está no <deck>"* (2026-09-19).
-            for caixa, q in (m.get("playset_onde") or {}).items():
-                g["onde"][caixa] = max(g["onde"].get(caixa, 0), q)
-    return sorted(out.values(), key=lambda g: (-g["bloqueado"], g["nm"]))
 
 
 # ---------------------------------------------------------------------------
@@ -4802,44 +4474,10 @@ def nota_parcial(m: dict) -> str:
     partes = []
     if m.get("comprar"):
         partes.append(f"{m['comprar']} em Comprar")
-    if m.get("noutra_q"):
-        partes.append(f"{m['noutra_q']} noutra caixa")
-    # O que o TECTO de playset do Premodern não deixa comprar (2026-09-19):
-    # diz-se com o "está no <deck>", senão a linha ficava "por tapar" sem porquê.
-    if m.get("playset_bloqueado"):
-        partes.append(texto_playset(m))
-    resto = need - got - sum(m.get(k) or 0
-                             for k in ("comprar", "noutra_q", "playset_bloqueado"))
+    resto = need - got - (m.get("comprar") or 0)
     if resto > 0:
         partes.append(f"{resto} por tapar")
     return f"{got} de {need}" + (" — " + ", ".join(partes) if partes else "")
-
-
-def texto_playset(m: dict, tecto: int | None = None) -> str:
-    """*"1 não se compra (limite de 4 no total; está no UW Replenish)"* — a
-    falta que o tecto de playset deixa por tapar, num sítio só (2026-09-19).
-
-    É onde as duas regras dele se tocam: cada caixa compra as suas cartas, MAS o
-    Premodern nunca passa de um playset no total. A frase tem de dizer as duas
-    coisas — que não se compra, e onde estão as cópias que enchem o tecto —,
-    senão "falta 1" lia-se como uma compra que a lista se esqueceu de pedir.
-
-    **SEM NADA BLOQUEADO NÃO HÁ FRASE** (2026-10-02). O tecto foi-se (ver
-    `playset_maximo`) e `playset_bloqueado` é sempre 0: sem esta guarda a função
-    passava a devolver *"0 não se compra (limite de 4 no total)"* a quem lhe
-    passasse um `tecto` à mão — uma frase a explicar uma regra que já não existe,
-    sobre zero cópias. O `nota_parcial` nunca a chamava a zero; quem a chama
-    directamente, sim.
-    """
-    if not m.get("playset_bloqueado"):
-        return ""
-    n = m.get("playset_bloqueado") or 0
-    tecto = tecto or m.get("playset_tecto")
-    onde = " · ".join(f"{q} no {caixa}" for caixa, q in
-                      sorted((m.get("playset_onde") or {}).items()))
-    limite = f"limite de {tecto} no total" if tecto else "limite de playset no total"
-    return (f"{n} não se compra ({limite}" + (f"; está {onde}" if onde else "")
-            + ")")
 
 
 def movimentos_de_entrada(s: dict, caixas: set[str] | frozenset) -> list[dict]:
@@ -4887,38 +4525,6 @@ def movimentos_de_entrada(s: dict, caixas: set[str] | frozenset) -> list[dict]:
                         "nota": nota_parcial(m),
                         "copy_id": g["id"], "sid": g["sid"],
                         "basica": bool(m.get("basica")),
-                        "finish": g["finish"], "lang": g["lang"],
-                        "foil": e_foil(g["finish"]),
-                        "set_code": g["set_code"], "sentido": "entra"})
-    return out
-
-
-def movimentos_reservados(s: dict) -> list[dict]:
-    """As cópias que ESTA caixa quer, que a alocação prometeu a OUTRA, e que
-    continuam na gaveta — ao alcance da mão.
-
-    André, 2026-09-08, à letra: *"De todas as cartas, só o Stiflenought está em
-    deckbox; o resto ainda nada está em deckbox."* Se ele abrir a Enchantress
-    antes do UW Replenish, as cartas que o Replenish há-de levar estão ali, na
-    `Colecção`, e nada o impede de as tirar hoje. A alocação é um plano; a
-    estante é que é a realidade.
-
-    Ficam num bloco PRÓPRIO do painel *Montar* e vêm por marcar: tirá-las é uma
-    decisão dele, não uma consequência de abrir a aba. O que ele marcar passa
-    para a `copy_allocation`, e a partir daí é a arrumação que manda sobre a
-    prioridade — a outra caixa passa a dizer *"em Enchantress"*, que é verdade
-    porque a carta está mesmo lá.
-
-    O que está sleevado DENTRO de outra caixa nunca entra aqui: essa não se tira
-    da gaveta, tira-se de um deck montado, e é o bloco «ir buscar a outra caixa».
-    """
-    out = []
-    for m in s.get("missing") or []:
-        for g in m.get("noutra_lotes") or []:
-            out.append({"nm": m["nm"], "q": g["q"], "de": g["local"],
-                        "para": s["nome"], "slot": s["slot"],
-                        "destino": g["destino"], "board": m["board"],
-                        "copy_id": g["id"], "sid": g["sid"], "basica": False,
                         "finish": g["finish"], "lang": g["lang"],
                         "foil": e_foil(g["finish"]),
                         "set_code": g["set_code"], "sentido": "entra"})
@@ -5003,12 +4609,10 @@ def plano_montar(res: dict, slot_id: str) -> dict:
     # está registada na base. São o mesmo gesto com outra gaveta.
     tirar = [m for m in movs if not m["basica"]]
     basicas = plano_basicas(s, [m for m in movs if m["basica"]])
-    # MONTAR FORA DE ORDEM (André, 2026-09-08): as cartas que esta caixa quer e
-    # que a alocação deu a outra caixa AINDA POR MONTAR estão na mesma gaveta.
-    # Ficam à parte porque tirá-las tem consequência — a outra caixa passa a ir
-    # buscá-las aqui —, e por isso não entram no `copias` nem na arrumação geral.
-    de_outra = sorted(movimentos_reservados(s),
-                      key=lambda m: (m["board"] != "main", m["nm"]))
+    # MONTAR FORA DE ORDEM (2026-09-08) deixou de existir a 2026-09-19 (cada
+    # caixa compra as suas): o bloco «destinadas a outra caixa» é sempre vazio.
+    # A chave fica para o painel e o `registar_marcadas` lerem o mesmo payload.
+    de_outra: list[dict] = []
     devolver = list(s.get("presos") or [])
     # Todas as cópias que são desta caixa (tidas e as das linhas incompletas):
     # o `ja` é isto menos o que ainda há para tirar. Contar só o `have` aqui,
@@ -6233,13 +5837,10 @@ def report(con, cfg_slots: list[dict] | None = None) -> dict:
     # total. O `comprar_total`/`custo_total` de cima já os descontaram.
     res["a_caminho_total"] = sum(s["a_caminho"] for s in res["slots"])
     res["pendente_foto_total"] = sum(s["pendente_foto"] for s in res["slots"])
-    # Quantas cópias a partilha poupou — é a diferença entre somar as faltas
-    # caixa a caixa (o que a v3 fazia) e comprar o máximo de uma delas.
-    res["poupado_total"] = sum(p["poupado"] for p in res["partilhas"])
-    # E quantas o TECTO DE PLAYSET não deixa comprar (André, 2026-09-08). À parte
-    # do `poupado`: uma é uma compra que não é precisa, a outra é uma falta que
-    # fica por tapar de propósito.
-    res["bloqueado_total"] = sum(s["playset_bloqueado"] for s in res["slots"])
+    # A partilha de compras (até 19/09) e o tecto de playset (até 02/10) foram-se;
+    # os dois totais ficam a zero para o CLI e as páginas lerem o mesmo payload.
+    res["poupado_total"] = 0
+    res["bloqueado_total"] = 0
     # TERRENOS BÁSICOS (2026-09-08). Ficam FORA do `comprar_total`/`custo_total`
     # de propósito: as básicas não contam para as compras nem para a percentagem,
     # e o pouco que se compra (as Snow-Covered) é *a confirmar*. Somá-lo ao total
@@ -6314,9 +5915,6 @@ def foil_report(con: sqlite3.Connection, fmt: str, top: int = 5,
     pool = res["pool"] if res else lots(con, foil_cache=foil_cache)
     baldes = ({s["balde"] for s in res["slots"] if s.get("balde")} if res
               else {s.get("balde") for s in config_slots() if s.get("balde")})
-    # As caixas dedicadas não emprestam: um arquétipo candidato a esta caixa não
-    # pode contar com uma cópia que está sleevada dentro do Pauper ou do cEDH.
-    ded = dedicadas(res["slots"]) if res else frozenset()
     # Slot de mentira: só o que decide se uma cópia serve. As regras de material
     # saem das `regras_por_formato`, as mesmas das caixas a sério — escritas à
     # mão aqui, este ranking dizia-lhe que tem cartas que não pode pôr no deck.
@@ -6378,7 +5976,7 @@ def foil_report(con: sqlite3.Connection, fmt: str, top: int = 5,
                 linhas.append(_linha_cheia({"board": b, "nm": nm, "need": q,
                                             "got": q, "basica": True, "lotes": []}))
                 continue
-            e = _estado_carta(pool, ps, nm, q, baldes, ded=ded)
+            e = _estado_carta(pool, ps, nm, q, baldes)
             # A carta existe em foil? (2026-09-19) — o preço e a marca da
             # wantlist de uma que nunca saiu em foil são os do nonfoil.
             fi = foil_info(con, nm, foil_cache)
