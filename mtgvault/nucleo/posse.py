@@ -17,7 +17,10 @@ As regras (spec «Regras», 2026-10-28):
 - **Rotativos:** uma carta (pelo nome) é partilhada se aparece na versão atual
   de dois ou mais decks rotativos; as partilhadas vivem num monte só (`ROT`) e
   cada deck precisa da quantidade que ELE pede (o monte tem de chegar ao
-  máximo). Só um rotativo está montado de cada vez (`n_montado`).
+  máximo). Só um rotativo está montado de cada vez (`n_montado`), e o monte
+  inteiro está na caixa dele: montar outro é trazer o monte todo.
+- **Baixar a quantidade numa lista é uma saída parcial:** o que fica marcado
+  acima do que é preciso vai para `n_saida` (`saiu_da_lista`).
 
 Duas decisões que não estão escritas na spec e que valem a pena saber:
 
@@ -79,25 +82,26 @@ def _por_nome(linhas) -> dict[str, int]:
 
 
 def _nomes_rotativos(con: sqlite3.Connection,
-                     substituir: tuple[str, set] | None = None
-                     ) -> dict[str, set[str]]:
-    """`slug → nomes da versão atual`, para cada deck rotativo.
+                     substituir: tuple[str, dict] | None = None
+                     ) -> dict[str, dict[str, int]]:
+    """`slug → {nome: qtd}` da versão atual, para cada deck rotativo (a qtd
+    soma as secções).
 
-    `substituir=(slug, nomes)` troca os nomes de um deck — é assim que o
+    `substituir=(slug, {nome: qtd})` troca a lista de um deck — é assim que o
     `depois_de_versao` pergunta como estava o mundo ANTES da versão nova, que
     a essa altura já está gravada.
     """
-    mapa: dict[str, set[str]] = {}
+    mapa: dict[str, dict[str, int]] = {}
     for (slug,) in con.execute(
             "SELECT slug FROM n_deck WHERE modo = 'rotativo' ORDER BY ordem"):
         v = _versao(con, slug)
-        mapa[slug] = set(_por_nome(v["linhas"])) if v else set()
+        mapa[slug] = _por_nome(v["linhas"]) if v else {}
     if substituir is not None and substituir[0] in mapa:
-        mapa[substituir[0]] = set(substituir[1])
+        mapa[substituir[0]] = dict(substituir[1])
     return mapa
 
 
-def _partilhadas_de(mapa: dict[str, set[str]]) -> set[str]:
+def _partilhadas_de(mapa: dict[str, dict[str, int]]) -> set[str]:
     conta: dict[str, int] = {}
     for nomes in mapa.values():
         for n in nomes:
@@ -223,14 +227,46 @@ def _para_saida(con, ambito_: str, nome: str, *, slug: str, motivo: str,
         _por_qtd(con, ambito_, sid, acab, 0)
 
 
-def _mover(con, nome: str, de: str, para: str) -> None:
+def _aparar(con, ambito_: str, nome: str, precisa: int, *, slug: str,
+            versao_id: int | None) -> None:
+    """Passa para `n_saida` (`saiu_da_lista`) a posse de um nome num âmbito
+    que fica ACIMA do que é preciso — baixar a quantidade numa lista é uma
+    saída parcial. As cópias de outra edição (que não contam) saem primeiro."""
+    linhas = _posse_do_nome(con, ambito_, nome)
+    a_mais = sum(q for _s, _a, q in linhas) - max(0, precisa)
+    if a_mais <= 0:
+        return
+    escolha = _escolha(con, ambito_, nome)
+    linhas.sort(key=lambda l: (l[0], l[1]) == escolha)
+    agora = _agora()
+    for sid, acab, qtd in linhas:
+        if a_mais <= 0:
+            break
+        sai = min(a_mais, qtd)
+        con.execute(
+            "INSERT INTO n_saida (slug, motivo, versao_id, scryfall_id,"
+            " acabamento, qtd, em) VALUES (?,?,?,?,?,?,?)",
+            (slug, "saiu_da_lista", versao_id, sid, acab, sai, agora))
+        _por_qtd(con, ambito_, sid, acab, qtd - sai)
+        a_mais -= sai
+
+
+def _mover(con, nome: str, de: str, para: str, *, slug: str,
+           versao_id: int | None) -> None:
     """Muda a posse e a escolha de edição de um nome de um âmbito para outro,
     somando ao que já lá houver. A escolha de quem leva as cópias ganha: é a
-    edição em que elas estão marcadas."""
+    edição em que elas estão marcadas. Se o destino já tinha OUTRA escolha com
+    cópias, essas cópias vão para `n_saida` (`trocou_edicao`) antes — um
+    âmbito tem uma edição só, e as cópias nunca desaparecem."""
+    e = _escolha(con, de, nome)
+    if e is not None:
+        alvo = _escolha(con, para, nome)
+        if alvo is not None and alvo != e:
+            _para_saida(con, para, nome, slug=slug, motivo="trocou_edicao",
+                        versao_id=versao_id, menos=e)
     for sid, acab, qtd in _posse_do_nome(con, de, nome):
         _por_qtd(con, para, sid, acab, _qtd(con, para, (sid, acab)) + qtd)
         _por_qtd(con, de, sid, acab, 0)
-    e = _escolha(con, de, nome)
     if e is not None:
         con.execute("INSERT OR REPLACE INTO n_edicao (ambito, nome, scryfall_id,"
                     " acabamento) VALUES (?,?,?,?)", (para, nome, e[0], e[1]))
@@ -285,18 +321,23 @@ def escolher_edicao(con: sqlite3.Connection, slug: str, nome: str,
     A impressão tem de ser desse nome, de papel, e ter esse acabamento no
     `finishes` (um foil que nunca existiu não se escolhe). A posse de qualquer
     outra edição no âmbito passa para `n_saida` (`trocou_edicao`) e zera.
+
+    O âmbito resolve-se DEPOIS do `BEGIN IMMEDIATE`: uma versão gravada entre
+    a pergunta e a escrita podia mudar a carta de fixa para partilhada, e a
+    escolha ia para o âmbito errado.
     """
-    amb = ambito(con, slug, nome)
     if acabamento not in ACABAMENTOS:
         raise ValueError(f"acabamento inválido: {acabamento!r} (nonfoil | foil)")
-    r = con.execute("SELECT name, finishes, digital FROM cards"
-                    " WHERE scryfall_id = ?", (scryfall_id,)).fetchone()
-    if r is None or r["name"] != nome or r["digital"]:
-        raise ValueError(f"{scryfall_id!r} não é uma impressão em papel de {nome!r}")
-    if acabamento not in _finishes(r):
-        raise ValueError(f"{nome!r} ({scryfall_id}) não existe em {acabamento}")
-    v = _versao(con, slug)
     with _transacao(con):
+        amb = ambito(con, slug, nome)
+        r = con.execute("SELECT name, finishes, digital FROM cards"
+                        " WHERE scryfall_id = ?", (scryfall_id,)).fetchone()
+        if r is None or r["name"] != nome or r["digital"]:
+            raise ValueError(
+                f"{scryfall_id!r} não é uma impressão em papel de {nome!r}")
+        if acabamento not in _finishes(r):
+            raise ValueError(f"{nome!r} ({scryfall_id}) não existe em {acabamento}")
+        v = _versao(con, slug)
         _para_saida(con, amb, nome, slug=slug, motivo="trocou_edicao",
                     versao_id=v["id"] if v else None,
                     menos=(scryfall_id, acabamento))
@@ -316,12 +357,13 @@ def ajustar(con: sqlite3.Connection, slug: str, nome: str, delta: int, *,
     Idempotente por `request_id` (o mesmo pedido duas vezes — o telemóvel a
     repetir um toque — conta uma vez e devolve a quantidade de agora). Nunca
     abaixo de 0: o que passaria do zero é cortado, e o pedido fica registado
-    na mesma. A primeira marcação fixa a edição da omissão (ver o topo).
+    na mesma. A primeira marcação fixa a edição da omissão (ver o topo). O
+    âmbito e a edição resolvem-se dentro da transação (`BEGIN IMMEDIATE`).
     """
     if not request_id:
         raise ValueError("falta o request_id")
-    amb = ambito(con, slug, nome)
     with _transacao(con):
+        amb = ambito(con, slug, nome)
         ed = _edicao_em(con, amb, nome)
         if ed is None:
             raise ValueError(f"{nome!r} não tem impressões em papel")
@@ -354,24 +396,30 @@ def depois_de_versao(con: sqlite3.Connection, slug: str, antes: list,
 
     (a) Os nomes que saíram do deck com posse no âmbito DO DECK passam para
         `n_saida` (`saiu_da_lista`), venha a lista da vigia ou do André — é o
-        mesmo caso, e as cópias marcadas nunca desaparecem. Baixar a
-        quantidade não é sair: o que sobra fica marcado.
+        mesmo caso, e as cópias marcadas nunca desaparecem.
     (b) Num rotativo, cada nome que mudou de fixa para partilhada (ou ao
         contrário) muda de âmbito com a posse e a escolha de edição. Uma
         partilhada que este deck deixou de jogar não vai para o `n_saida` se
         outro rotativo ainda a joga: só muda de caixa.
+    (c) Baixar a quantidade é uma saída PARCIAL (spec: «as cartas que saíram e
+        estavam marcadas passam para Vender»): depois das mudanças de âmbito,
+        o que estiver marcado acima do que é preciso vai para `n_saida`
+        (`saiu_da_lista`). Numa fixa, o preciso é a quantidade do deck dono
+        (todas as secções); no monte `ROT`, o máximo que um rotativo pede.
 
     Um slug que não esteja em `n_deck` trata-se como um deck sempre montado (o
     `gravar_versao` aceita-o, e a posse dele é só dele).
     """
     r = con.execute("SELECT modo FROM n_deck WHERE slug = ?", (slug,)).fetchone()
     rotativo = r is not None and r[0] == "rotativo"
-    nomes_antes, nomes_depois = set(_por_nome(antes)), set(_por_nome(depois))
+    qtd_antes, qtd_depois = _por_nome(antes), _por_nome(depois)
+    nomes_antes, nomes_depois = set(qtd_antes), set(qtd_depois)
+    marca = {"slug": slug, "versao_id": versao_id}
 
     if rotativo:
-        mapa_depois = _nomes_rotativos(con, substituir=(slug, nomes_depois))
+        mapa_depois = _nomes_rotativos(con, substituir=(slug, qtd_depois))
         mapa_antes = dict(mapa_depois)
-        mapa_antes[slug] = nomes_antes
+        mapa_antes[slug] = qtd_antes
         part_antes = _partilhadas_de(mapa_antes)
         part_depois = _partilhadas_de(mapa_depois)
     else:
@@ -381,29 +429,41 @@ def depois_de_versao(con: sqlite3.Connection, slug: str, antes: list,
     for nome in sorted(nomes_antes - nomes_depois):
         if nome in part_antes:
             continue                     # era do monte: trata-o o (b)
-        _para_saida(con, slug, nome, slug=slug, motivo="saiu_da_lista",
-                    versao_id=versao_id)
+        _para_saida(con, slug, nome, motivo="saiu_da_lista", **marca)
 
-    if not rotativo:
-        return
     # (b) só os nomes deste deck podem ter mudado de estado
-    for nome in sorted(nomes_antes | nomes_depois):
-        era, e = nome in part_antes, nome in part_depois
-        if era == e:
-            continue
-        if e:
-            # fixa → partilhada: vem da caixa do (único) deck que a tinha
-            for outro, nomes in mapa_antes.items():
-                if nome in nomes:
-                    _mover(con, nome, outro, ROT)
-        else:
-            donos = [s for s, nomes in mapa_depois.items() if nome in nomes]
-            if donos:
-                # partilhada → fixa: o monte vai para a caixa de quem a joga
-                _mover(con, nome, ROT, donos[0])
+    if rotativo:
+        for nome in sorted(nomes_antes | nomes_depois):
+            era, e = nome in part_antes, nome in part_depois
+            if era == e:
+                continue
+            if e:
+                # fixa → partilhada: vem da caixa do (único) deck que a tinha
+                for outro, nomes in mapa_antes.items():
+                    if nome in nomes:
+                        _mover(con, nome, outro, ROT, **marca)
             else:
-                _para_saida(con, ROT, nome, slug=slug, motivo="saiu_da_lista",
-                            versao_id=versao_id)
+                donos = [s for s, nomes in mapa_depois.items() if nome in nomes]
+                if donos:
+                    # partilhada → fixa: o monte vai para a caixa de quem a joga
+                    _mover(con, nome, ROT, donos[0], **marca)
+                else:
+                    _para_saida(con, ROT, nome, motivo="saiu_da_lista", **marca)
+
+    # (c) o que ficou marcado acima do que é preciso
+    for nome in sorted(nomes_depois - part_depois):
+        _aparar(con, slug, nome, qtd_depois[nome], **marca)
+    if rotativo:
+        for nome in sorted(nomes_antes | nomes_depois):
+            if nome in part_depois:
+                precisa = max(m.get(nome, 0) for m in mapa_depois.values())
+                _aparar(con, ROT, nome, precisa, **marca)
+            elif nome in part_antes:
+                # passou a fixa de outro deck: o monte que lá chegou apara-se
+                # ao que esse deck pede
+                for dono, nomes in mapa_depois.items():
+                    if nome in nomes and dono != slug:
+                        _aparar(con, dono, nome, nomes[nome], **marca)
 
 
 # ---------------------------------------------------------------------------
@@ -486,9 +546,12 @@ def estado_deck(con: sqlite3.Connection, slug: str) -> dict:
 def movimentos_para(con: sqlite3.Connection, slug: str) -> list[dict]:
     """O que trazer de que caixa para montar este rotativo, sem gravar nada.
 
-    O monte das partilhadas anda com o deck montado: cada partilhada que este
-    deck usa vem da caixa do montado antes, na quantidade que este pede (até
-    ao que há no monte). Nada montado antes, ou este já montado: nada a mover.
+    O monte das partilhadas anda INTEIRO com o deck montado («as partilhadas
+    formam um monte e andam com o deck montado»): está todo na caixa do
+    montado antes, e vem todo — também as que este deck não joga, que estão lá
+    porque viajaram com a montagem anterior. Um movimento por partilhada com
+    cópias no monte (na edição e no acabamento escolhidos), por ordem do nome.
+    Nada montado antes, ou este já montado: nada a mover.
     """
     deck = _deck(con, slug)
     if deck["modo"] != "rotativo":
@@ -496,24 +559,19 @@ def movimentos_para(con: sqlite3.Connection, slug: str) -> list[dict]:
     antes = _montado(con)
     if antes is None or antes == slug:
         return []
-    v = _versao(con, slug)
-    if v is None:
-        return []
-    part = partilhadas(con)
     movs = []
-    for nome, qtd in _por_nome(v["linhas"]).items():
-        if nome not in part:
-            continue
-        n = min(qtd, _qtd(con, ROT, _edicao_em(con, ROT, nome)))
+    for nome in sorted(partilhadas(con), key=lambda n: (n.lower(), n)):
+        n = _qtd(con, ROT, _edicao_em(con, ROT, nome))
         if n > 0:
             movs.append({"nome": nome, "qtd": n, "de": antes, "para": slug})
     return movs
 
 
 def definir_montado(con: sqlite3.Connection, slug: str) -> list[dict]:
-    """Monta este rotativo (grava `n_montado`) e devolve os movimentos."""
-    movs = movimentos_para(con, slug)
+    """Monta este rotativo (grava `n_montado`) e devolve os movimentos,
+    calculados dentro da mesma transação que grava."""
     with _transacao(con):
+        movs = movimentos_para(con, slug)
         con.execute("INSERT OR REPLACE INTO n_montado (id, slug) VALUES (1, ?)",
                     (slug,))
     return movs

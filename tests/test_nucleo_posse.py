@@ -317,11 +317,12 @@ def caso_saiu_da_lista_vai_para_saida():
         assert saidas(con)[-1] == (MOD, "saiu_da_lista", v3["versao_id"],
                                    "tm-a", "nonfoil", 4), saidas(con)
         assert soma_posse(con) == 0
-        # baixar a quantidade não é sair da lista
+        # baixar a quantidade é uma saída parcial (ver caso_baixar_quantidade)
         marcar(con, MOD, "Urza's Saga", 4)
-        versao(con, MOD, [("main", "Urza's Saga", 2)])
-        assert len(saidas(con)) == 2
-        assert soma_posse(con) == 4
+        v4 = versao(con, MOD, [("main", "Urza's Saga", 2)])
+        assert saidas(con)[-1] == (MOD, "saiu_da_lista", v4["versao_id"],
+                                   "saga-b", "nonfoil", 2), saidas(con)
+        assert soma_posse(con) == 2
 
 
 def caso_ajustar_idempotente():
@@ -446,19 +447,163 @@ def caso_montar():
         assert m["montado"] is False
         assert carta(m, "Urza's Saga")["onde"] == "Welder Cam"
         assert carta(m, "Thought Monitor")["onde"] is None
-        esperado = [{"nome": "Urza's Saga", "qtd": 3, "de": LEG, "para": MOD}]
+        # o monte das partilhadas anda INTEIRO com o deck montado: vêm todas,
+        # com todas as cópias, também o Ancient Tomb que o modern não joga
+        esperado = [
+            {"nome": "Ancient Tomb", "qtd": 4, "de": LEG, "para": MOD},
+            {"nome": "Urza's Saga", "qtd": 3, "de": LEG, "para": MOD}]
         assert posse.movimentos_para(con, MOD) == esperado
         # o movimentos_para não grava
         assert con.execute("SELECT slug FROM n_montado").fetchone()[0] == LEG
         mov = posse.definir_montado(con, MOD)
         assert mov == esperado, mov
-        assert mov[0]["de"] == "legacy_welder_cam"
+        assert all(m["de"] == "legacy_welder_cam" for m in mov)
         assert con.execute("SELECT slug FROM n_montado").fetchone()[0] == MOD
         # montar o que já está montado não move nada
         assert posse.definir_montado(con, MOD) == []
-        # o Oswald só usa o Ancient Tomb (2 dos 4 que há)
-        assert posse.movimentos_para(con, OSW) == [
-            {"nome": "Ancient Tomb", "qtd": 2, "de": MOD, "para": OSW}]
+        # LEG → MOD → OSW: os Ancient Tomb viajaram com a montagem do modern,
+        # por isso vêm da caixa do modern_affinity (que não os joga)
+        o = posse.estado_deck(con, OSW)
+        assert carta(o, "Ancient Tomb")["onde"] == "Affinity"
+        assert carta(o, "Ancient Tomb")["tenho"] == 2
+        mov = posse.definir_montado(con, OSW)
+        assert mov == [
+            {"nome": "Ancient Tomb", "qtd": 4, "de": MOD, "para": OSW},
+            {"nome": "Urza's Saga", "qtd": 3, "de": MOD, "para": OSW}], mov
+        assert carta(posse.estado_deck(con, OSW), "Ancient Tomb")["onde"] == \
+            "aqui"
+        assert carta(posse.estado_deck(con, LEG), "Urza's Saga")["onde"] == \
+            "Oswald"
+
+
+def caso_baixar_quantidade_e_saida_parcial():
+    with sessao() as con:
+        semear(con)
+        # fixa de um sempre montado: 4 → 2 (o preciso soma as secções)
+        versao(con, REP, [("main", "Force of Will", 3),
+                          ("side", "Force of Will", 1)])
+        marcar(con, REP, "Force of Will", 4)
+        v2 = versao(con, REP, [("main", "Force of Will", 2)])
+        assert saidas(con) == [(REP, "saiu_da_lista", v2["versao_id"], "fow-b",
+                                "nonfoil", 2)], saidas(con)
+        assert carta(posse.estado_deck(con, REP), "Force of Will")["tenho"] == 2
+        # subir a quantidade não mexe em nada
+        versao(con, REP, [("main", "Force of Will", 4)])
+        assert len(saidas(con)) == 1 and soma_posse(con) == 2
+
+    with sessao() as con:
+        semear(con)
+        # partilhada: o preciso do monte é o MÁXIMO que um rotativo pede
+        versao(con, MOD, [("main", "Urza's Saga", 4)])
+        versao(con, LEG, [("main", "Urza's Saga", 2),
+                          ("main", "Goblin Welder", 4)])
+        marcar(con, MOD, "Urza's Saga", 4)
+        m2 = versao(con, MOD, [("main", "Urza's Saga", 3)])
+        assert saidas(con) == [(MOD, "saiu_da_lista", m2["versao_id"], "saga-b",
+                                "nonfoil", 1)], saidas(con)
+        # o modern passa a pedir 1, mas o legacy ainda pede 2: ficam 2
+        m3 = versao(con, MOD, [("main", "Urza's Saga", 1)])
+        assert saidas(con)[-1] == (MOD, "saiu_da_lista", m3["versao_id"],
+                                   "saga-b", "nonfoil", 1), saidas(con)
+        assert [tuple(r) for r in con.execute(
+            "SELECT ambito, qtd FROM n_posse")] == [(ROT, 2)]
+        # o legacy deixa-a: volta a ser fixa do modern, que só pede 1
+        l2 = versao(con, LEG, [("main", "Goblin Welder", 4)])
+        assert saidas(con)[-1] == (LEG, "saiu_da_lista", l2["versao_id"],
+                                   "saga-b", "nonfoil", 1), saidas(con)
+        assert [tuple(r) for r in con.execute(
+            "SELECT ambito, qtd FROM n_posse")] == [(MOD, 1)]
+        # nenhuma cópia desapareceu: o que não está marcado está no n_saida
+        assert soma_posse(con) + sum(s[-1] for s in saidas(con)) == 4
+
+
+def caso_mover_destino_com_outra_edicao():
+    with sessao() as con:
+        semear(con)
+        saga = "Urza's Saga"
+        con.execute("INSERT INTO n_edicao VALUES (?,?,?,?)",
+                    (ROT, saga, "saga-a", "foil"))
+        con.execute("INSERT INTO n_posse VALUES (?,?,?,?)",
+                    (ROT, "saga-a", "foil", 2))
+        con.execute("INSERT INTO n_edicao VALUES (?,?,?,?)",
+                    (MOD, saga, "saga-b", "nonfoil"))
+        con.execute("INSERT INTO n_posse VALUES (?,?,?,?)",
+                    (MOD, "saga-b", "nonfoil", 3))
+        posse._mover(con, saga, MOD, ROT, slug=MOD, versao_id=7)
+        # as do destino, noutra edição, vão para o n_saida antes de chegarem
+        # as que se movem
+        assert saidas(con) == [(MOD, "trocou_edicao", 7, "saga-a", "foil", 2)]
+        assert [tuple(r) for r in con.execute(
+            "SELECT ambito, scryfall_id, acabamento, qtd FROM n_posse")] == \
+            [(ROT, "saga-b", "nonfoil", 3)]
+        assert [tuple(r) for r in con.execute(
+            "SELECT ambito, scryfall_id, acabamento FROM n_edicao")] == \
+            [(ROT, "saga-b", "nonfoil")]
+        # na mesma edição, soma-se e nada sai
+        con.execute("INSERT INTO n_edicao VALUES (?,?,?,?)",
+                    (LEG, saga, "saga-b", "nonfoil"))
+        con.execute("INSERT INTO n_posse VALUES (?,?,?,?)",
+                    (LEG, "saga-b", "nonfoil", 1))
+        posse._mover(con, saga, LEG, ROT, slug=LEG, versao_id=8)
+        assert len(saidas(con)) == 1
+        assert [tuple(r) for r in con.execute(
+            "SELECT ambito, scryfall_id, acabamento, qtd FROM n_posse")] == \
+            [(ROT, "saga-b", "nonfoil", 4)]
+
+
+def caso_trocar_edicao_de_partilhada():
+    with sessao() as con:
+        semear(con)
+        versao(con, MOD, [("main", "Urza's Saga", 4)])
+        lv = versao(con, LEG, [("main", "Urza's Saga", 2),
+                               ("main", "Goblin Welder", 4)])
+        assert marcar(con, MOD, "Urza's Saga", 3) == 3
+        assert posse.edicao(con, LEG, "Urza's Saga") == ("saga-b", "nonfoil")
+        posse.escolher_edicao(con, LEG, "Urza's Saga", "saga-a", "foil")
+        assert saidas(con) == [(LEG, "trocou_edicao", lv["versao_id"], "saga-b",
+                                "nonfoil", 3)], saidas(con)
+        for s in (MOD, LEG):
+            assert posse.edicao(con, s, "Urza's Saga") == ("saga-a", "foil")
+            c = carta(posse.estado_deck(con, s), "Urza's Saga")
+            assert c["tenho"] == 0
+            assert (c["scryfall_id"], c["acabamento"]) == ("saga-a", "foil")
+        assert soma_posse(con) == 0
+        assert [tuple(r) for r in con.execute(
+            "SELECT ambito, nome FROM n_edicao")] == [(ROT, "Urza's Saga")]
+
+
+def caso_ambito_resolve_dentro_da_transacao():
+    """O âmbito e a edição resolvem-se DEPOIS do BEGIN IMMEDIATE: uma versão
+    gravada entre a pergunta e a escrita mudava a carta de âmbito."""
+    with sessao() as con:
+        semear(con)
+        versao(con, MOD, [("main", "Urza's Saga", 4)])
+        versao(con, LEG, [("main", "Urza's Saga", 2)])
+        original, vistos = posse.ambito, []
+
+        def espia(c, *a):
+            vistos.append(c.in_transaction)
+            return original(c, *a)
+        posse.ambito = espia
+        try:
+            assert not con.in_transaction
+            posse.ajustar(con, MOD, "Urza's Saga", 1, request_id="t1")
+            posse.escolher_edicao(con, MOD, "Urza's Saga", "saga-a", "foil")
+        finally:
+            posse.ambito = original
+        assert vistos == [True, True], vistos
+        # e definir_montado calcula os movimentos dentro da transação
+        original_m, vistos_m = posse.movimentos_para, []
+
+        def espia_m(c, *a):
+            vistos_m.append(c.in_transaction)
+            return original_m(c, *a)
+        posse.movimentos_para = espia_m
+        try:
+            posse.definir_montado(con, MOD)
+        finally:
+            posse.movimentos_para = original_m
+        assert vistos_m == [True], vistos_m
 
 
 def caso_montar_sempre_montado_recusa():
