@@ -139,16 +139,27 @@ foil leva um brilho na página do deck) — e «Tenho +1 / −1»; colar uma lis
 ## Recolha diária (03:30, tarefa `mtgvault-daily` do ai-pc)
 
 Preços (Scryfall bulk, Cardmarket trend) → listas vigiadas (MTGO do Luffy:
-Pauper e Premodern; Moxfield: os dois cEDH) → versões novas se mudaram →
+Pauper e Premodern; Moxfield: o ficheiro mais recente da `mtg-moxfield-chrome`)
+→ versões novas se mudaram →
 valor do dia → páginas. Sem as listas de torneio, deve passar de ~20 min para
 poucos minutos.
 
 - Uma fonte que falha deixa a tarefa vermelha no ai-pc e a página do deck diz
   «não consegui ver a lista desde dia X». Nunca em silêncio.
-- **Moxfield:** a 28/10 o `MOXFIELD_USER_AGENT` não está definido no PC, e sem
-  ele o Moxfield responde 403. Primeiro passo da implementação: provar a
-  leitura dos dois links. Se não der, diz-se ao André antes de avançar, e
-  esses dois decks ficam fixos até haver solução.
+- **Moxfield:** o Moxfield recusa pedidos automáticos (403) e não se contorna
+  isso (nada de `MOXFIELD_USER_AGENT` a fingir um browser). Lê-se como o
+  guildstats do Tibia: uma tarefa nova do ai-pc, `mtg-moxfield-chrome`, abre
+  os dois links **no Chrome do André** pela extensão Claude in Chrome, uma vez
+  por dia (10:45, depois das tarefas do Tibia), lê a lista (de preferência o
+  «Export» de texto do Moxfield, porque a página esconde cartas atrás de
+  «+ N other») e escreve `work/moxfield/<data>.json` com as duas listas.
+  Máximo 2 páginas por dia; pára em qualquer desafio do Cloudflare sem clicar;
+  Chrome fechado = `sem_chrome` sem o abrir. A recolha das 03:30 do dia
+  seguinte (ou um `mtgvault nucleo moxfield` à mão) lê esse ficheiro e grava
+  versão nova se a lista mudou. Provado a 28/10: o Blue Farm abre e lê-se
+  inteiro num browser normal.
+- Sempre que um vigiado não se conseguir ler, o André pode colar a lista à
+  mão no modo de edição (fica como versão de origem `andre`, com a fonte).
 
 ## Testes e publicação
 
