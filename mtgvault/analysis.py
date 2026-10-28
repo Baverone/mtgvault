@@ -342,16 +342,23 @@ def prune_leagues(con: sqlite3.Connection) -> int:
 
 
 def prune_decklists(con: sqlite3.Connection, keep_days: int = 180) -> int:
-    """Apaga decklists antigas, mantendo a análise já calculada.
+    """Apaga as decklists com `event_date` anterior a `keep_days` dias (e as
+    suas cartas), e faz VACUUM.
 
-    Isto existe por causa do Git: cada commit diário guarda uma cópia inteira
-    do vault.db, por isso o histórico do repositório cresce com o tamanho do
-    ficheiro. As decklists em bruto são o que mais pesa — e depois de
-    processadas já não são precisas: o que interessa a longo prazo é a tabela
-    `card_roles`, que guarda uma fotografia por janela e é minúscula.
+    Nasceu por causa do Git, quando cada commit diário guardava uma cópia
+    inteira do vault.db (desde o commit 03c901f a base vive no Release `data`,
+    fora do Git); continua a ser o que mantém a base leve. As decklists em bruto
+    são o que mais pesa.
 
-    Ou seja: perdes a lista do jogador X em março, mantens a evolução do
-    metagame em março.
+    O QUE SE PERDE, DITO COMO É (2026-10-28). Esta docstring prometia que a
+    `card_roles` guardava «uma fotografia por janela» e que se mantinha «a
+    evolução do metagame em março». Não é verdade: o passo `podar-card-roles`
+    do `daily` (logo a seguir ao `analyse`) apaga todas as janelas menos a mais
+    recente. Por isso o que esta poda leva **não fica em lado nenhum da base** —
+    nem a lista nem o que ela pesou no metagame desse mês. Fica só o que outras
+    tabelas copiaram para si (as `deck_cards` dos decks seguidos, as listas
+    inteiras de cada troca em `deck_lista_trocas`) e, fora da base, as páginas
+    já publicadas desses dias.
     """
     n = con.execute(
         "SELECT COUNT(*) c FROM decklists WHERE event_date < date('now', ?)",

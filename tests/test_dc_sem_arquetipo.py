@@ -66,11 +66,56 @@ def caso_sem_lista_diz_qual_fica(con, did):
     print("sem lista: o aviso diz a que fica e de quando —", linha)
 
 
+def caso_o_minimo_do_main_e_por_formato():
+    """(2026-10-28) Os 55 de sempre eram para todos os formatos; num de
+    comandante o comandante vai para o main e um deck completo soma 100."""
+    assert my_decks.min_main("modern") == 55
+    assert my_decks.min_main("premodern") == 55
+    for fmt in sources.COMMANDER_FORMATS:
+        assert my_decks.min_main(fmt) == 99, fmt
+    print("mínimo do main: 55 nos formatos de 60, 99 nos de comandante")
+
+
+def caso_a_lista_de_97_do_cloud_nao_passa(con):
+    """A de 97 cartas (a que está na base como referência do Cloud) é MAIS
+    RECENTE do que a completa e não pode ganhar-lhe — nem ser escolhida sozinha."""
+    completa = sources.store_decklist(
+        con, source="mtgo", source_key="dc-cheia", fmt="duel-commander",
+        cards=_lista(99), event_name="Duel Commander League",
+        event_date="2026-10-20", player="McWinSauce", commander=CLOUD)
+    curta = sources.store_decklist(
+        con, source="mtgo", source_key="dc-curta", fmt="duel-commander",
+        cards=[("main", CLOUD, 1)] + [("main", f"Outra {i}", 1) for i in range(96)],
+        event_name="Duel Commander League", event_date="2026-10-21",
+        player="McWinSauce", commander=CLOUD)
+    con.commit()
+    assert completa and curta, (completa, curta)
+    soma = con.execute("SELECT SUM(quantity) FROM decklist_cards WHERE decklist_id = ? "
+                       "AND board = 'main'", (curta,)).fetchone()[0]
+    assert soma == 97, soma
+    achada = _cloud()["procura"](con)
+    assert achada is not None and achada["id"] == completa, (
+        f"com uma lista de 97 cartas mais recente, a procura tem de ficar com a "
+        f"de 100 (#{completa}); deu {achada and achada['id']}")
+    # Sem a completa, a de 97 sozinha também não serve.
+    con.execute("DELETE FROM decklist_cards WHERE decklist_id = ?", (completa,))
+    con.execute("DELETE FROM decklists WHERE id = ?", (completa,))
+    con.commit()
+    assert _cloud()["procura"](con) is None, "uma lista de 97 não é o deck"
+    # E pela procura por assinatura (`_latest`) num formato de comandante, igual.
+    assert my_decks._latest(con, "duel-commander", [CLOUD]) is None
+    print("a lista de 97 cartas do Cloud já não passa como completa")
+
+
 def run():
     tmp = Path(tempfile.mkdtemp())
     with db.session(tmp / "v.db", tmp / "c.db") as con:
         did = caso_a_procura_nao_depende_do_arquetipo(con)
         caso_sem_lista_diz_qual_fica(con, did)
+    caso_o_minimo_do_main_e_por_formato()
+    tmp2 = Path(tempfile.mkdtemp())
+    with db.session(tmp2 / "v.db", tmp2 / "c.db") as con:
+        caso_a_lista_de_97_do_cloud_nao_passa(con)
     print("\nTUDO OK")
 
 

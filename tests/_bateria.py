@@ -54,6 +54,19 @@ from mtgvault import db as _db  # noqa: E402
 AMBIENTE = dict(os.environ)
 AMBIENTE[_db.VAR_PROIBIDAS] = os.pathsep.join(
     str(Path(p).resolve()) for p in (_db.DEFAULT_DB, _db.DEFAULT_CATALOG))
+# A BATERIA NÃO PODE DEPENDER DA CODIFICAÇÃO DA CONSOLA (2026-10-28). Com o
+# stdout num tubo (`capture_output`), um filho sem `PYTHONUTF8` escreve em cp1252
+# no Windows, e o `print("tema → pagina → casca")` do `test_casca` rebentava com
+# `UnicodeEncodeError` — um teste VERDE dado como ERRO. Pior: a seguir era a
+# própria bateria que rebentava a imprimir esse traceback (tem a seta lá dentro)
+# e o resumo nunca aparecia. Só passava com `PYTHONUTF8=1` posto à mão. Os filhos
+# falam UTF-8 (é o que o `subprocess.run` abaixo já lê) e a bateria, que escreve
+# para onde lhe calhar, troca o que a consola não sabe por `?` em vez de morrer.
+AMBIENTE["PYTHONUTF8"] = "1"
+AMBIENTE["PYTHONIOENCODING"] = "utf-8"
+for _fluxo in (sys.stdout, sys.stderr):
+    if hasattr(_fluxo, "reconfigure"):
+        _fluxo.reconfigure(errors="replace")
 # TECTO POR FICHEIRO (2026-10-02). Não havia nenhum, e um teste pendurado
 # pendurava a bateria **para sempre** — sem uma linha de saída, porque o resumo
 # só se imprime no fim. Aconteceu nesse dia: vinte minutos a olhar para um

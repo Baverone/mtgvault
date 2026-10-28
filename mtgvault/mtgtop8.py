@@ -784,13 +784,22 @@ def harvest(con: sqlite3.Connection, fmt: str, max_events: int = 8,
     # tecto encurta a meio. Com um `for range(1, n+1)`, mexer no `n` lá dentro não
     # encurta o `range` que já foi criado — e pediam-se páginas que não existem
     # (apanhado pelo `caso_o_indice_le_mais_do_que_uma_pagina`).
+    #
+    # O ÍNDICE QUE NÃO RESPONDE DIZ-SE (2026-10-28). Era um `break` calado: com a
+    # página 1 sem rede o passo dava «0 novas», igual a um dia sem torneios — foi
+    # o que se viu a 22/10 (duel-commander e premodern a 0, em segundos). Agora a
+    # falha guarda-se, as revisitas (que vêm da MEMÓRIA, não do índice) correm na
+    # mesma, e no fim levanta-se `sources.IndiceFalhou`, que o `daily._step` grava
+    # como `erro`. Uma página que responde sem eventos continua a ser zero, verde.
     linhas: list[dict] = []
+    falha_indice: str | None = None
     pag = 1
     while pag <= n_paginas:
         try:
             html = (_get("/format", f=code) if pag == 1
                     else _get("/format", f=code, cp=pag))
-        except requests.RequestException:
+        except requests.RequestException as e:
+            falha_indice = f"pagina {pag} do indice: {e!r}"[:300]
             break
         linhas.extend(parse_event_rows(html))
         if pag == 1:
@@ -846,6 +855,9 @@ def harvest(con: sqlite3.Connection, fmt: str, max_events: int = 8,
             players_lembrado=r.get("players"))
         novas += n
         gastas += int(marcou)
+    if falha_indice:
+        raise sources.IndiceFalhou(f"indice do mtgtop8 ({fmt}) sem resposta, "
+                                   f"{falha_indice} ({novas} novas assim mesmo)")
     return novas
 
 

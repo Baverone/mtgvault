@@ -110,7 +110,22 @@ FOLLOWED_PLAYERS = [
     ("Stiflenought (Spock)", "premodern", "SpockVidaLoka"),
 ]
 
-MIN_MAIN = 55  # ignora listas truncadas/incompletas
+MIN_MAIN = 55  # ignora listas truncadas/incompletas (formatos de 60 cartas)
+# O MÍNIMO DO MAIN É POR FORMATO (2026-10-28). Os 55 eram para todos, e num
+# formato de comandante não querem dizer nada: a lista de referência do Cloud
+# (Duel Commander) está na base com 97 cartas e passava — três cartas a menos num
+# singleton são três cartas que ele não sabe que lhe faltam. Nos formatos de
+# `sources.COMMANDER_FORMATS` o comandante é ENCAMINHADO PARA O MAIN na recolha
+# (`sources.store_event` e o `.dec` do `mtgtop8`), por isso um deck completo soma
+# 100 no `board = 'main'` — medido nesse dia: 592 de 592 listas de Duel Commander
+# com 100 (ou 101) no main. 99 deixa passar UMA carta perdida (o comandante que
+# uma fonte não pôs no sideboard, p.ex.) e recusa a de 97.
+MIN_MAIN_COMANDANTE = 99
+
+
+def min_main(fmt: str) -> int:
+    """O mínimo de cartas no main para uma lista contar como completa."""
+    return MIN_MAIN_COMANDANTE if fmt in sources.COMMANDER_FORMATS else MIN_MAIN
 
 # A nota que o `_store` escreve na `decks`: "auto: <fonte> <jogador> <data> (#id)".
 # O jogador pode ter espaços (o mtgtop8 traz nomes reais).
@@ -206,7 +221,7 @@ def _latest(con: sqlite3.Connection, fmt: str, cards: list[str], fora=None):
                        WHERE dc.decklist_id = dl.id AND dc.card_name IN ({ph})) = ?
                 AND (SELECT COALESCE(SUM(dc2.quantity), 0) FROM decklist_cards dc2
                        WHERE dc2.decklist_id = dl.id AND dc2.board = 'main') >= ?""")
-    params = [fmt] + cp + inc + [len(inc), MIN_MAIN]
+    params = [fmt] + cp + inc + [len(inc), min_main(fmt)]
     if exc:
         eph = ",".join("?" * len(exc))
         q += (f" AND NOT EXISTS (SELECT 1 FROM decklist_cards de "
@@ -228,13 +243,16 @@ def _latest_player(con: sqlite3.Connection, fmt: str, player: str, fora=None):
                AND (SELECT COALESCE(SUM(dc.quantity), 0) FROM decklist_cards dc
                       WHERE dc.decklist_id = dl.id AND dc.board = 'main') >= ?{fq}
              ORDER BY dl.event_date DESC, dl.id DESC LIMIT 1""",
-        [fmt, player] + cp + [MIN_MAIN] + fp).fetchone()
+        [fmt, player] + cp + [min_main(fmt)] + fp).fetchone()
 
 
 def _latest_player_deck(con: sqlite3.Connection, fmt: str, player: str, cards: list[str],
                         fora=None):
     """Lista mais recente de `player` nesse formato que CONTÉM todas as `cards`
-    (ex.: o comandante) — para seguir um deck específico de um jogador."""
+    (ex.: o comandante) — para seguir um deck específico de um jogador.
+
+    Com o mínimo do main do formato (2026-10-28): era a única procura sem
+    nenhum, e é por ela que passa o Cloud — a de 97 cartas entrava."""
     ph = ",".join("?" * len(cards))
     conta, cp = _conta(fmt)
     fq, fp = _fora_sql(fora)
@@ -242,9 +260,11 @@ def _latest_player_deck(con: sqlite3.Connection, fmt: str, player: str, cards: l
         f"""SELECT dl.id, dl.source, dl.player, dl.event_date FROM decklists dl
               WHERE dl.format = ? AND dl.player = ? AND {conta}
                 AND (SELECT COUNT(DISTINCT dc.card_name) FROM decklist_cards dc
-                       WHERE dc.decklist_id = dl.id AND dc.card_name IN ({ph})) = ?{fq}
+                       WHERE dc.decklist_id = dl.id AND dc.card_name IN ({ph})) = ?
+                AND (SELECT COALESCE(SUM(dc2.quantity), 0) FROM decklist_cards dc2
+                       WHERE dc2.decklist_id = dl.id AND dc2.board = 'main') >= ?{fq}
               ORDER BY dl.event_date DESC, dl.id DESC LIMIT 1""",
-        [fmt, player] + cp + cards + [len(cards)] + fp).fetchone()
+        [fmt, player] + cp + cards + [len(cards), min_main(fmt)] + fp).fetchone()
 
 
 def seguidos() -> list[dict]:
