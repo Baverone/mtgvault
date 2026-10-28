@@ -40,6 +40,12 @@ Tem de ser bonito e simples, e funcionar bem no telemóvel à frente das caixas.
 - **Uma carta é uma edição e um acabamento** (normal ou foil). Só conta como
   «tenho» a edição escolhida. Sem escolha, vale a edição normal mais barata
   com preço. A língua não entra nas contas.
+- **Uma escolha por carta e por deck:** quando o André escolhe a edição de uma
+  carta, todas as cópias dessa carta nesse deck passam a ser dessa edição e
+  desse acabamento (não há 2 de uma edição e 2 de outra). Outro deck pode ter
+  outra edição da mesma carta. Mudar a escolha não apaga o que estava
+  marcado: as cópias da edição antiga passam para «Vender» em «trocaste de
+  edição», para ele decidir.
 - **Completo inclui o sideboard** (e o comandante, no Commander).
 - **Sempre montados:** cada deck tem as suas cópias. Falta = o que o deck pede
   menos o que esse deck tem.
@@ -49,7 +55,9 @@ Tem de ser bonito e simples, e funcionar bem no telemóvel à frente das caixas.
   - As fixas vivem na caixa do deck; as partilhadas formam um monte e andam
     com o deck montado.
   - Precisas, de cada partilhada, do máximo que um deck rotativo pede.
-  - A edição de uma partilhada escolhe-se uma vez para todos os rotativos.
+  - A edição de uma partilhada escolhe-se uma vez para todos os rotativos
+    (são as mesmas cópias físicas a andar de caixa em caixa); as fixas
+    escolhem-se deck a deck, como nos sempre montados.
   - Falta = fixas em falta desse deck + partilhadas abaixo do que esse deck pede.
   - «Montar este deck» diz o que trazer de que caixa (as partilhadas que
     estão na caixa do deck montado antes).
@@ -84,8 +92,10 @@ Tabelas novas no `data/vault.db`, prefixo `n_`, criadas por migração:
   `rotativos` nas partilhadas.
 - `n_montado` — o deck rotativo montado agora (uma linha).
 - `n_a_mais` — scryfall_id, acabamento, quantidade, nota.
-- `n_saida` — cartas que saíram de um deck vigiado e estavam marcadas
-  (deck, versão, scryfall_id, acabamento, quantidade).
+- `n_saida` — cópias marcadas que deixaram de servir um deck: saíram de uma
+  lista vigiada, ou ficaram de uma edição que o André trocou (deck, motivo
+  `saiu_da_lista`/`trocou_edicao`, versão, scryfall_id, acabamento,
+  quantidade).
 
 Quando uma carta passa de fixa a partilhada (ou o contrário) porque mudou uma
 lista, a posse muda de âmbito com ela, no mesmo passo que grava a versão.
@@ -115,13 +125,15 @@ Menu com três entradas: **Painel · Decks · Vender**.
    nos rotativos em duas partes, **Fixas deste deck** e **Partilhadas** (cada
    uma diz onde está: aqui / no deck X / falta N) e a caixa «para montar
    este». Um deck fixo sem lista mostra «à espera da tua lista».
-3. **Vender** (`vender.html`): Tenho a mais + saíram dos decks vigiados, preço
-   de cada carta e o total.
+3. **Vender** (`vender.html`): Tenho a mais + saíram dos decks vigiados +
+   trocaste de edição, preço de cada carta e o total.
 
 **Modo de edição** (o servidor do porto 8771, também em editar-mtg.baverone.com
 atrás do Cloudflare Access): as mesmas páginas com controlos — tocar numa
-carta abre a escolha da edição (as edições lado a lado com imagem e preço,
-normal/foil) e «Tenho +1 / −1»; colar uma lista nova com «de onde veio»;
+carta abre a escolha da edição: as edições lado a lado com imagem e preço, e
+um interruptor **Normal / Foil** (só aparecem as opções que existem nessa
+edição; o preço muda para o trend foil da Cardmarket quando é foil, e a carta
+foil leva um brilho na página do deck) — e «Tenho +1 / −1»; colar uma lista nova com «de onde veio»;
 «montar este deck» nos rotativos; acrescentar e tirar cartas em Vender.
 
 ## Recolha diária (03:30, tarefa `mtgvault-daily` do ai-pc)
