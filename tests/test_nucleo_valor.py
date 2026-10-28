@@ -126,7 +126,7 @@ def caso_preco_podado_vale_o_latest():
         posse_directa(con, MOD, "fow-a", "nonfoil", 2)
         r = valor.gravar_valor_do_dia(con, "2026-10-15")
         assert r == {"total_eur": 160.0, "copias": 2, "sem_preco": 0}, r
-        assert valor.serie(con) == [("2026-10-15", 160.0)]
+        assert valor.serie(con) == [("2026-10-15", 160.0, 0)]
         # histórico SÓ depois do dia (+ latest): o preço ainda não existia
         so_no_latest(con, "saga-a", "nonfoil", 30.0)
         con.execute("INSERT INTO price_history (scryfall_id, source, date,"
@@ -259,25 +259,55 @@ def caso_serie_preenche_para_tras():
         preco_em(con, "fow-a", "nonfoil", "2026-10-03", 30.0)
         posse_directa(con, MOD, "fow-a", "nonfoil", 2)
         # sem n_valor nenhum: todos os dias com preço, calculados
-        assert valor.serie(con) == [("2026-10-01", 20.0), ("2026-10-02", 40.0),
-                                    ("2026-10-03", 60.0)]
+        assert valor.serie(con) == [("2026-10-01", 20.0, 0),
+                                    ("2026-10-02", 40.0, 0),
+                                    ("2026-10-03", 60.0, 0)]
         # só o 3.º dia gravado: os dois de trás vêm do histórico de preços
         r = valor.gravar_valor_do_dia(con, "2026-10-03")
         assert r == {"total_eur": 60.0, "copias": 2, "sem_preco": 0}, r
         s = valor.serie(con)
-        assert s == [("2026-10-01", 20.0), ("2026-10-02", 40.0),
-                     ("2026-10-03", 60.0)], s
+        assert s == [("2026-10-01", 20.0, 0), ("2026-10-02", 40.0, 0),
+                     ("2026-10-03", 60.0, 0)], s
         # um dia gravado vale o que foi gravado (o valor desse dia, por mais
         # que o preço de hoje mude depois), e não se recalcula
         preco_em(con, "fow-a", "nonfoil", "2026-10-04", 100.0)
         s = valor.serie(con)
-        assert s[-1] == ("2026-10-03", 60.0) and len(s) == 3, s
+        assert s[-1] == ("2026-10-03", 60.0, 0) and len(s) == 3, s
         valor.gravar_valor_do_dia(con, "2026-10-04")
         s = valor.serie(con)
-        assert s == [("2026-10-01", 20.0), ("2026-10-02", 40.0),
-                     ("2026-10-03", 60.0), ("2026-10-04", 200.0)], s
+        assert s == [("2026-10-01", 20.0, 0), ("2026-10-02", 40.0, 0),
+                     ("2026-10-03", 60.0, 0), ("2026-10-04", 200.0, 0)], s
         # nunca duas vezes o mesmo dia, e sempre por ordem
-        assert [d for d, _ in s] == sorted({d for d, _ in s})
+        assert [d for d, _v, _s in s] == sorted({d for d, _v, _s in s})
+
+
+def caso_serie_larga_dias_sem_a_cobertura_de_hoje():
+    """(R15) Um dia calculado para trás em que uma carta que HOJE tem preço
+    ainda não tinha não é comparável: valia menos só porque faltava uma carta
+    na soma. Sai da série. Os dias gravados (`n_valor`) ficam sempre, com o
+    `sem_preco` que tinham."""
+    with sessao() as con:
+        semear(con)
+        preco_em(con, "fow-a", "nonfoil", "2026-09-01", 10.0)
+        preco_em(con, "fow-a", "nonfoil", "2026-09-20", 11.0)
+        # a Saga só tem preço a partir de 26/09 (o Cardmarket sem histórico)
+        preco_em(con, "saga-a", "nonfoil", "2026-09-26", 30.0)
+        preco_em(con, "fow-a", "nonfoil", "2026-10-01", 12.0)
+        posse_directa(con, MOD, "fow-a", "nonfoil", 1)
+        posse_directa(con, MOD, "saga-a", "nonfoil", 1)
+        # o Goblin Welder nunca teve preço: falta hoje e faltava antes
+        posse_directa(con, LEG, "weld-a", "nonfoil", 1)
+        assert valor.valor_em(con)["sem_preco"] == 1
+        s = valor.serie(con)
+        # 01/09 e 20/09 tinham a Saga sem preço (2 > 1): saem
+        assert s == [("2026-09-26", 41.0, 1), ("2026-10-01", 42.0, 1)], s
+        # um dia gravado fica, mesmo com mais cartas sem preço do que hoje
+        con.execute("INSERT INTO n_valor (dia, total_eur, copias, sem_preco)"
+                    " VALUES ('2026-10-02', 12.0, 3, 2)")
+        con.commit()
+        s = valor.serie(con)
+        assert s[-1] == ("2026-10-02", 12.0, 2), s
+        assert [d for d, *_ in s] == ["2026-09-26", "2026-10-01", "2026-10-02"], s
 
 
 def caso_gravar_valor_substitui_o_dia():

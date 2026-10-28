@@ -161,8 +161,8 @@ def caso_painel_grafico_e_variacao():
                         " VALUES (?,?,0,0)", (dia, total))
         con.commit()
         s = valor.serie(con)
-        assert s == [("2026-09-01", 100.0), ("2026-09-28", 110.0),
-                     ("2026-10-28", 121.0)], s
+        assert s == [("2026-09-01", 100.0, 0), ("2026-09-28", 110.0, 0),
+                     ("2026-10-28", 121.0, 0)], s
         var = visual.variacao_mes(s)
         assert var == {"delta": 11.0, "pct": 10.0, "desde": "2026-09-28"}, var
         # série curta: o primeiro ponto; um ponto só: nada
@@ -183,12 +183,37 @@ def caso_painel_sem_nada_marcado():
         semear(con)
         preco(con, "repl-a", "nonfoil", 10.0, dia="2026-10-01")
         preco(con, "repl-a", "nonfoil", 11.0, dia="2026-10-28")
-        assert valor.serie(con) == [("2026-10-01", 0.0), ("2026-10-28", 0.0)]
+        assert valor.serie(con) == [("2026-10-01", 0.0, 0),
+                                    ("2026-10-28", 0.0, 0)]
         p = nucleo_painel.html_page(con)
         assert "<polyline" not in p
         assert "quando marcares as primeiras cartas" in p
         assert "num mês" not in p
         assert paginas.eur(0.0) in p
+
+
+def caso_painel_sem_salto_falso():
+    """(R15) O degrau que se viu na base dele: os dias de trás em que a maior
+    parte das cartas ainda não tinha preço valiam muito menos, e o Painel
+    dizia «+261 % num mês». Esses dias saem da série — o gráfico e a variação
+    só usam dias com a cobertura de hoje."""
+    with sessao() as con:
+        semear(con)
+        preco(con, "repl-a", "nonfoil", 10.0, dia="2026-08-20")
+        # a Saga (30 €) só ganha preço a 26/09
+        preco(con, "saga-a", "nonfoil", 30.0, dia="2026-09-26")
+        preco(con, "repl-a", "nonfoil", 11.0, dia="2026-10-28")
+        con.execute("INSERT INTO n_posse (ambito, scryfall_id, acabamento, qtd)"
+                    " VALUES ('premodern_replenish', 'repl-a', 'nonfoil', 1),"
+                    " ('rotativos', 'saga-a', 'nonfoil', 1)")
+        con.commit()
+        s = valor.serie(con)
+        assert s == [("2026-09-26", 40.0, 0), ("2026-10-28", 41.0, 0)], s
+        p = nucleo_painel.html_page(con)
+        # a variação é 40 → 41 (desde 26/09), nunca 10 → 41 (+310 %)
+        assert paginas.pct(2.5) in p, re.findall(r'class="vvar[^>]*>[^<]*', p)
+        assert paginas.pct(310.0) not in p
+        assert "20/08" not in p
 
 
 def caso_deck_cinzento_e_cor():
@@ -268,6 +293,62 @@ def caso_rotativo_duas_partes():
         assert "Está montado" in leg
         assert "Para montar este deck" not in leg
         assert "aqui" in leg[leg.index("Partilhadas"):]
+
+
+def caso_onde_legivel():
+    """A etiqueta das partilhadas mostra o NOME do deck inteiro (com um
+    ícone), não «no We…» cortado."""
+    with sessao() as con:
+        cenario(con)
+        mod = seccao(nucleo_decks.html_page(con), MOD)
+        m = re.search(r'<i class="onde"[^>]*>(.*?)</i>', mod, re.S)
+        assert m and "Welder Cam" in m.group(1), m and m.group(1)
+        assert "no Welder Cam" not in mod
+        assert "text-overflow:ellipsis" not in visual.CSS.split(".ct .onde{", 1)[1].split("}", 1)[0]
+
+
+def caso_falta_sem_euros_diz_traco():
+    """Tudo o que falta está sem preço: «falta —», nunca «falta 0,00 €»."""
+    with sessao() as con:
+        cenario(con)
+        marcar(con, REP, "Opalescence", 1)      # Opalescence completa
+        e = posse.estado_deck(con, REP)
+        assert e["custo_falta"] == 0 and e["sem_preco"] == 1, e
+        rep = seccao(nucleo_decks.html_page(con), REP)
+        assert "falta <b>—</b>" in rep, rep[:2000]
+        assert "falta <b>" + paginas.eur(0.0) not in rep
+
+
+def caso_sem_injeccao():
+    """Texto que vem de fora (a fonte de uma versão, o erro da vigia, um nome)
+    nunca entra na página como HTML nem como link `javascript:`."""
+    mau = '"><img src=x onerror=alert(1)>'
+    with sessao() as con:
+        cenario(con)
+        versao(con, REP, [("main", "Replenish", 4), ("side", "Island", 3)],
+               fonte=mau)
+        versao(con, MOD, [("main", "Thought Monitor", 4),
+                          ("main", "Urza's Saga", 4)], fonte="javascript:alert(1)")
+        con.execute("UPDATE n_deck SET vigia_erro = ?, vigia_ok_em = NULL,"
+                    " nome = ? WHERE slug = ?", (mau + "<script>x</script>",
+                                                 "A<b>ff</b>" + mau, AFF))
+        # um nome com `<` no catálogo e no «tenho a mais»
+        con.execute("UPDATE catalog.cards SET name = 'Is<land' WHERE"
+                    " scryfall_id = 'isl-a'")
+        con.commit()
+        valor.a_mais_ajustar(con, "isl-a", "nonfoil", 1)
+        for mod in (nucleo_painel, nucleo_decks, nucleo_vender):
+            for ed in (False, True):
+                p = mod.html_page(con, editable=ed, token="t")
+                corpo = re.sub(r"(?s)<script>.*?</script>", "", p)
+                assert "<img src=x" not in p, mod.__name__
+                assert "<script>x" not in p, mod.__name__
+                assert "<script" not in corpo, mod.__name__
+                assert not re.search(r'href="\s*javascript:', p, re.I), mod.__name__
+                assert "<b>ff</b>" not in p and "Is<land" not in p, mod.__name__
+        d = nucleo_decks.html_page(con)
+        assert html.escape(mau) in seccao(d, REP)
+        assert "javascript:alert(1)" in seccao(d, MOD)      # como texto
 
 
 def caso_espera_lista():

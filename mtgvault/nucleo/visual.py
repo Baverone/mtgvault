@@ -26,6 +26,7 @@ import sqlite3
 from datetime import date
 
 from .. import paginas, scryfall
+from .. import site_shell as shell
 from . import posse
 
 CDN = "https://cards.scryfall.io"
@@ -206,8 +207,8 @@ def carta(c: dict, *, slug: str, editavel: bool = False,
 
     `falta` (e `parcial` se tens algumas) leva a imagem a cinzento; `foil` dá o
     brilho. A quantidade vai no canto; o que falta vai em baixo, com o preço de
-    cada uma ou «sem preço». Nas partilhadas, `com_onde` põe em cima onde
-    está o monte (aqui / no deck montado).
+    cada uma ou «sem preço». Nas partilhadas, `com_onde` põe por cima disso
+    onde está o monte (aqui / o nome do deck montado, com o ícone da caixa).
     """
     cls = ["ct"]
     if c["falta"]:
@@ -229,9 +230,13 @@ def carta(c: dict, *, slug: str, editavel: bool = False,
     q = f'<u class="q">{c["qtd"]}{sb}</u>'
     onde = ""
     if com_onde and c.get("onde"):
-        txt = "aqui" if c["onde"] == "aqui" else f"no {c['onde']}"
-        aq = " aqui" if c["onde"] == "aqui" else ""
-        onde = f'<i class="onde{aq}">{e(txt)}</i>'
+        # o NOME do deck inteiro, com o ícone da caixa à frente: «no Welder
+        # Cam» numa etiqueta de uma linha saía «no We…» a 390 px
+        if c["onde"] == "aqui":
+            onde = '<i class="onde aqui">aqui</i>'
+        else:
+            onde = (f'<i class="onde" title="na caixa do {e(c["onde"])}">'
+                    f'{shell.icone("caixas", 14)}{e(c["onde"])}</i>')
     falta = ""
     if c["falta"]:
         # dois pedaços que não se partem por dentro: numa carta de 85 px o
@@ -242,7 +247,7 @@ def carta(c: dict, *, slug: str, editavel: bool = False,
             preco = "× " + paginas.eur(c["preco_un"]).replace(" ", " ")
         falta = (f'<em><b>falta {c["falta"]}</b> <span>{preco}</span></em>')
     return (f'<figure class="{" ".join(cls)}" title="{e(c["nome"])}"{dados}>'
-            f'{img}{q}{onde}{falta}</figure>')
+            f'{img}{q}<span class="rod">{onde}{falta}</span></figure>')
 
 
 def grelha(cartas: list[dict], *, slug: str, editavel: bool = False,
@@ -310,8 +315,9 @@ def mosaicos(itens: list[dict], prefixo: str) -> str:
 # ---------------------------------------------------------------------------
 # O valor: variação do mês e o gráfico
 # ---------------------------------------------------------------------------
-def variacao_mes(serie: list[tuple[str, float]]) -> dict | None:
-    """O último ponto contra o de há ~30 dias (o mais recente com data
+def variacao_mes(serie: list[tuple]) -> dict | None:
+    """(Os pontos são os do `valor.serie`: `(dia, total_eur, sem_preco)`;
+    só os dois primeiros contam aqui.) O último ponto contra o de há ~30 dias (o mais recente com data
     `<=` último − 30), ou contra o primeiro se a série for mais curta.
 
     `{delta, pct, desde}`; `pct` é `None` se o ponto de partida valia 0. Com
@@ -319,7 +325,7 @@ def variacao_mes(serie: list[tuple[str, float]]) -> dict | None:
     """
     if len(serie) < 2:
         return None
-    ult_dia, ult = serie[-1]
+    ult_dia, ult = serie[-1][0], serie[-1][1]
     limite = _dia(ult_dia).toordinal() - 30
     ref = serie[0]
     for p in serie[:-1]:
@@ -333,10 +339,10 @@ def variacao_mes(serie: list[tuple[str, float]]) -> dict | None:
 def _tudo_zero(serie) -> bool:
     """Sem nada marcado, a série é uma fila de 0 € (o inventário de hoje aos
     preços de cada dia): uma linha deitada no zero não diz nada."""
-    return all(not v for _d, v in serie)
+    return all(not p[1] for p in serie)
 
 
-def variacao_html(serie: list[tuple[str, float]]) -> str:
+def variacao_html(serie: list[tuple]) -> str:
     v = None if _tudo_zero(serie) else variacao_mes(serie)
     if v is None:
         return '<span class="vvar" title="ainda não há um dia anterior">—</span>'
@@ -349,7 +355,7 @@ def variacao_html(serie: list[tuple[str, float]]) -> str:
             f'{pct} {quando}</span>')
 
 
-def _svg(pontos: list[tuple[str, float]], rotulo: str) -> str:
+def _svg(pontos: list[tuple], rotulo: str) -> str:
     """Uma linha (o que tens) e a área por baixo, num `viewBox` 300×100."""
     x0 = _dia(pontos[0][0]).toordinal()
     x1 = _dia(pontos[-1][0]).toordinal()
@@ -371,7 +377,7 @@ def _svg(pontos: list[tuple[str, float]], rotulo: str) -> str:
             f'<polyline class="gl" points="{linha}"/></svg>')
 
 
-def grafico(serie: list[tuple[str, float]]) -> str:
+def grafico(serie: list[tuple]) -> str:
     """Os três períodos, cada um com o seu SVG; o JavaScript só alterna."""
     if len(serie) < 2:
         return ('<p class="gvazio">O gráfico aparece quando houver dois dias de '
@@ -538,11 +544,14 @@ CSS = r"""
  .ct .q{position:absolute;top:4px;right:4px;z-index:2;text-decoration:none;font-size:11px;font-weight:700;
    background:rgba(0,0,0,.74);color:var(--ink);padding:0 5px;border-radius:5px;line-height:1.5}
  .ct .q small{font-size:8.5px;color:var(--muted)}
- .ct .onde{position:absolute;left:3px;top:4px;z-index:2;font-style:normal;font-size:9.5px;font-weight:600;
-   background:var(--info-soft);color:var(--ob);border:1px solid var(--info-line);border-radius:4px;
-   padding:0 4px;max-width:calc(100% - 34px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.5}
+ .ct .rod{position:absolute;left:3px;right:3px;bottom:3px;z-index:2;display:flex;flex-direction:column;gap:2px}
+ .ct .rod:empty{display:none}
+ .ct .onde{display:flex;align-items:center;justify-content:center;gap:2px;font-style:normal;font-size:9.5px;
+   font-weight:600;background:var(--info-soft);color:var(--ob);border:1px solid var(--info-line);border-radius:4px;
+   padding:1px 3px;line-height:1.2;text-align:center;overflow-wrap:anywhere}
+ .ct .onde svg.ico{width:11px;height:11px;flex:none}
  .ct .onde.aqui{background:var(--ok-soft);color:var(--ok);border-color:var(--ok-line)}
- .ct em{position:absolute;left:3px;right:3px;bottom:3px;z-index:2;font-style:normal;font-size:10px;
+ .ct em{display:block;font-style:normal;font-size:10px;
    text-align:center;background:var(--bad-soft);color:var(--bad-ink);border:1px solid var(--bad-line);
    border-radius:4px;line-height:1.3;padding:1px 2px}
  .ct em b,.ct em span{white-space:nowrap}

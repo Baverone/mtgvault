@@ -22,8 +22,9 @@ As regras (spec «Regras: Valor, Preços», 2026-10-28):
   linhas), por isso `copias - sem_preco` é o que entrou no total.
 - **A série** usa o valor GRAVADO de cada dia (`n_valor`, nunca podada) e, para
   os dias antes do primeiro registo, calcula o valor do que ele tem hoje aos
-  preços que o histórico ainda guarda. Um dia gravado não se recalcula: o
-  inventário desse dia já foi outro.
+  preços que o histórico ainda guarda — só os dias com a cobertura de preços
+  de hoje (R15, ver `serie`). Um dia gravado não se recalcula: o inventário
+  desse dia já foi outro.
 
 Só escreve nas tabelas `n_*`; as funções que escrevem abrem e fecham a sua
 transação.
@@ -118,13 +119,22 @@ def gravar_valor_do_dia(con: sqlite3.Connection, dia: str) -> dict:
     return v
 
 
-def serie(con: sqlite3.Connection) -> list[tuple[str, float]]:
-    """`[(dia, total_eur)]` por ordem: os dias de `n_valor` (o que foi gravado)
-    e, antes do primeiro, cada dia com preço do Cardmarket no histórico,
-    calculado com o inventário de hoje (`valor_em`). Sem `n_valor` nenhum, são
-    todos os dias do histórico."""
-    gravados = [(r[0], float(r[1] or 0.0)) for r in con.execute(
-        "SELECT dia, total_eur FROM n_valor ORDER BY dia")]
+def serie(con: sqlite3.Connection) -> list[tuple[str, float, int]]:
+    """`[(dia, total_eur, sem_preco)]` por ordem: os dias de `n_valor` (o que
+    foi gravado, com o `sem_preco` que tinha) e, antes do primeiro, cada dia
+    com preço do Cardmarket no histórico, calculado com o inventário de hoje
+    (`valor_em`). Sem `n_valor` nenhum, são todos os dias do histórico.
+
+    (R15, 2026-10-28) **Um dia de trás só entra se for comparável com hoje:**
+    sai se tiver MAIS cópias sem preço do que hoje (`valor_em()["sem_preco"]`)
+    — uma carta que hoje tem preço e nesse dia ainda não tinha. O Cardmarket só
+    tem histórico (fora a RL) desde ~26/09; sem isto, os dias de agosto valiam
+    uma fração do que valem por falta de preços, e o Painel dizia «+261 % num
+    mês» com a coleção parada. Os dias gravados ficam sempre: são o que foi
+    medido nesse dia.
+    """
+    gravados = [(r[0], float(r[1] or 0.0), int(r[2] or 0)) for r in con.execute(
+        "SELECT dia, total_eur, sem_preco FROM n_valor ORDER BY dia")]
     primeiro = gravados[0][0] if gravados else None
     if primeiro is None:
         dias = [r[0] for r in con.execute(
@@ -135,7 +145,12 @@ def serie(con: sqlite3.Connection) -> list[tuple[str, float]]:
             "SELECT DISTINCT date FROM price_history WHERE source = 'cardmarket'"
             " AND date < ? ORDER BY date", (primeiro,))]
     inv = inventario(con)
-    atras = [(d, _valor_de(con, inv, d)["total_eur"]) for d in dias]
+    sem_hoje = _valor_de(con, inv, None)["sem_preco"]
+    atras = []
+    for d in dias:
+        v = _valor_de(con, inv, d)
+        if v["sem_preco"] <= sem_hoje:
+            atras.append((d, v["total_eur"], v["sem_preco"]))
     return atras + gravados
 
 

@@ -127,8 +127,13 @@ def _aviso(d) -> str:
 def _progresso(est: dict) -> str:
     sp = (f' <small>({est["sem_preco"]} sem preço)</small>'
           if est["sem_preco"] else "")
-    falta = (f'falta <b>{paginas.eur(est["custo_falta"])}</b>{sp}'
-             if est["tenho"] < est["total"] else '<b>completo</b>')
+    if est["tenho"] >= est["total"]:
+        falta = '<b>completo</b>'
+    elif not est["custo_falta"] and est["sem_preco"]:
+        # tudo o que falta está sem preço: «0,00 €» seria um número inventado
+        falta = f'falta <b>—</b>{sp}'
+    else:
+        falta = f'falta <b>{paginas.eur(est["custo_falta"])}</b>{sp}'
     return (visual.barra(est["tenho"], est["total"])
             + f'<div class="kpi"><span>{est["tenho"]} de {est["total"]} cartas'
             f' · {visual.pct_de(est["tenho"], est["total"])} %</span>'
