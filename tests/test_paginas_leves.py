@@ -308,9 +308,15 @@ def caso_ponta_a_ponta_servida_por_http():
 
 
 def caso_a_pasta_vai_ao_git_e_nao_esta_ignorada():
-    yml = (RAIZ / ".github" / "workflows" / "daily.yml").read_text(encoding="utf-8")
-    linha = next(l for l in yml.splitlines() if l.strip().startswith("git add "))
-    assert "data/paginas" in linha.split(), "o daily.yml não faz `git add data/paginas`"
+    # Desde 2026-10-28 o `git add` do `daily.yml` é o do núcleo (três páginas,
+    # sem dados à parte); a do site antigo é a linha que se repõe ao desligar o
+    # interruptor, e a lista do `publicar` com ele desligado.
+    sys.path.insert(0, str(RAIZ / "tests"))
+    import _nucleo_interruptor
+    from mtgvault import publicar
+    assert "data/paginas" in _nucleo_interruptor.linha_antiga_do_yml(), \
+        "o daily.yml (linha antiga) não faz `git add data/paginas`"
+    assert "data/paginas" in publicar.PUBLICAVEIS, "o publicar não leva data/paginas"
     tarefa = Path(r"C:\Users\Catarina\Desktop\ai-pc\tasks\mtgvault-daily\run.py")
     if tarefa.exists():
         assert "data/paginas" in tarefa.read_text(encoding="utf-8"), \

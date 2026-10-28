@@ -452,11 +452,17 @@ def caso_a_pagina_e_publicada_e_esta_na_barra():
     """Uma página que ninguém faz `git add` fica congelada no site — e o
     `deckboxes.html` esteve semanas só na lista do workflow, nunca publicado
     pelo PC. As duas listas têm de a levar."""
+    from mtgvault import publicar
     from mtgvault import site_shell as shell
-    yml = (RAIZ / ".github" / "workflows" / "daily.yml").read_text(encoding="utf-8")
-    linha = next(l for l in yml.splitlines() if l.strip().startswith("git add "))
-    assert "comandantes.html" in linha.split(), \
-        "comandantes.html não vai ao `git add` do daily.yml"
+    sys.path.insert(0, str(RAIZ / "tests"))
+    import _nucleo_interruptor
+    # Desde 2026-10-28 o `git add` do `daily.yml` é o do núcleo (três páginas);
+    # a do site antigo é a linha que se repõe ao desligar o interruptor, e a
+    # lista do `publicar` com ele desligado (o config deste ficheiro não o tem).
+    assert "comandantes.html" in _nucleo_interruptor.linha_antiga_do_yml(), \
+        "comandantes.html não vai ao `git add` (antigo) do daily.yml"
+    assert "comandantes.html" in publicar.PUBLICAVEIS, \
+        "comandantes.html não vai à lista do publicar"
     tarefa = Path(r"C:\Users\Catarina\Desktop\ai-pc\tasks\mtgvault-daily\run.py")
     if tarefa.exists():
         assert "comandantes.html" in tarefa.read_text(encoding="utf-8"), \

@@ -262,9 +262,15 @@ def caso_o_webapp_serve_o_js_da_memoria_e_cacheavel():
 
 
 def caso_o_js_vai_ao_git_add_do_workflow_e_da_tarefa():
-    yml = (RAIZ / ".github" / "workflows" / "daily.yml").read_text(encoding="utf-8")
-    linha = next(l for l in yml.splitlines() if l.strip().startswith("git add "))
-    assert "deckboxes.js" in linha.split(), "o daily.yml não faz `git add deckboxes.js`"
+    # Desde 2026-10-28 o `git add` do `daily.yml` é o do núcleo (três páginas);
+    # a do site antigo é a linha que se repõe ao desligar o interruptor, e a
+    # lista do `publicar` com ele desligado.
+    sys.path.insert(0, str(RAIZ / "tests"))
+    import _nucleo_interruptor
+    from mtgvault import publicar
+    assert "deckboxes.js" in _nucleo_interruptor.linha_antiga_do_yml(), \
+        "o daily.yml (linha antiga) não faz `git add deckboxes.js`"
+    assert "deckboxes.js" in publicar.PUBLICAVEIS, "o publicar não leva o deckboxes.js"
     tarefa = RAIZ.parent.parent / "ai-pc" / "tasks" / "mtgvault-daily"
     if tarefa.is_dir():
         for f in ("run.py", "test.py"):

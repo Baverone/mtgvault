@@ -3681,5 +3681,9 @@
   "familias_fotos": [
     {"id": "mox-opal", "pasta": "Mox Opal (Modern + Legacy)", "slots": ["modern", "legacy-artifacts-blue", "legacy-welder", "modern-affinity", "modern-grinding-station"]}
   ],
-  "_br_2026_10_12": "BANNED AND RESTRICTED DE 12/10/2026: segundo o supervisor (13/10), NAO mexeu em Standard, Pioneer, Modern, Legacy, Vintage nem Pauper -- so em Competitive Brawl. NAO CONFIRMADO pela ordem de 13/10: a pesquisa na web estava negada nessa sessao. Por isso `banimentos_manuais` nao se tocou."
+  "_br_2026_10_12": "BANNED AND RESTRICTED DE 12/10/2026: segundo o supervisor (13/10), NAO mexeu em Standard, Pioneer, Modern, Legacy, Vintage nem Pauper -- so em Competitive Brawl. NAO CONFIRMADO pela ordem de 13/10: a pesquisa na web estava negada nessa sessao. Por isso `banimentos_manuais` nao se tocou.",
+  "_nucleo": "O NÚCLEO NOVO (André, 2026-10-28): com 'ligado' a true o site é o do núcleo — Painel, Decks e Vender (index.html, deck.html, vender.html) — e o daily das 03:30 corre só a recolha que ele usa (catálogo, MTGO de Pauper e Premodern, preços, podas) e os passos dele (decks, vigias, valor do dia, páginas). Com false (ou sem a chave) volta tudo ao site antigo, exatamente como estava: o código das páginas antigas não se apagou. O núcleo escreve só nas tabelas n_*. Ver mtgvault/nucleo/ e docs/superpowers/specs/2026-10-28-site-mtg-nucleo-design.md.",
+  "nucleo": {
+    "ligado": true
+  }
 }

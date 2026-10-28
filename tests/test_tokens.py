@@ -46,8 +46,14 @@ from mtgvault import publicar  # noqa: E402
 # mesmo defeito voltava na primeira página nova.
 # O `meusdecks` é só um reencaminhamento (não tem CSS); o `paginas.py` entra à
 # mão porque é a casca partilhada e não uma página.
-GERADORES = [f"{mod}.py" for mod, _f, _r in publicar.PAGINAS
-             if mod != "meusdecks"] + ["mtgvault/paginas.py"]
+#
+# Desde 2026-10-28 leva as DUAS listas do `publicar` — a do site antigo e a do
+# núcleo — e não só a de hoje (`publicar.PAGINAS` segue o `nucleo.ligado`):
+# os geradores antigos continuam no disco e voltam no dia em que o interruptor
+# se desligar, e uma cor à mão neles não pode entrar só porque hoje não correm.
+GERADORES = list(dict.fromkeys(
+    f"{mod}.py" for mod, _f, _r in publicar.PAGINAS_ANTIGAS + publicar.PAGINAS_NUCLEO
+    if mod != "meusdecks")) + ["mtgvault/paginas.py"]
 
 RX_COR = re.compile(r"#[0-9a-fA-F]{3,8}\b")
 RX_VAR = re.compile(r"var\(\s*(--[a-z0-9-]+)\s*\)")

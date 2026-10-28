@@ -723,10 +723,13 @@ def caso_o_javascript_da_aba_decks_saiu_da_casca():
     assert "decks.js" in publicar.PUBLICAVEIS, (
         "falta o `decks.js` no `publicar.PUBLICAVEIS` — a tarefa de 30 min "
         "publicava a casca sem o ficheiro que ela pede")
-    yml = io.open(RAIZ / ".github/workflows/daily.yml", encoding="utf-8").read()
-    add = next(l for l in yml.splitlines() if l.strip().startswith("git add "))
-    assert " decks.js " in add or add.rstrip().endswith(" decks.js"), (
-        "falta o `decks.js` no `git add` do daily.yml")
+    # A segunda lista era o `git add` do `daily.yml`; desde 2026-10-28 esse é o
+    # do núcleo, e a do site antigo é a linha que se repõe ao desligar o
+    # interruptor (está no comentário do workflow).
+    sys.path.insert(0, str(RAIZ / "tests"))
+    import _nucleo_interruptor                                 # noqa: PLC0415
+    assert "decks.js" in _nucleo_interruptor.linha_antiga_do_yml(), (
+        "falta o `decks.js` no `git add` (antigo) do daily.yml")
 
 
 def caso_a_casca_da_aba_decks_cabe_no_orcamento():

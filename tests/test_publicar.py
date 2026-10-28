@@ -19,6 +19,15 @@ Os casos trancam as três propriedades sem as quais a tarefa não serve:
   3. **a lista de páginas é a MESMA do `daily.yml`** — duas listas era a segunda
      oportunidade de discordarem, e foi assim que o `deckboxes.html` esteve
      semanas sem ser publicado.
+
+O NÚCLEO NOVO (2026-10-28). Com o `nucleo.ligado` (o config do repositório) a
+lista é a das três páginas do núcleo, e é ESSA que o `daily.yml` leva — o
+`caso_a_lista_e_a_mesma_do_daily` compara-as com o interruptor ligado. Os casos
+que geram sobre a base do André (o determinismo, o «não escreve na colecção»)
+continuam a medir o site ANTIGO, com o interruptor desligado: a base dele ainda
+não tem as tabelas `n_*` (nascem na primeira corrida do `daily`), e o que eles
+medem não mudou. O mesmo para as três páginas do núcleo, numa base temporária,
+está no `test_nucleo_ligado`.
 """
 import json
 import re
@@ -29,8 +38,17 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
+sys.path.insert(0, str(RAIZ / "tests"))
+
+import _nucleo_interruptor  # noqa: E402
+
+# O site ANTIGO, por omissão neste ficheiro (ver a nota do docstring). Herdam-no
+# também os subprocessos (o `medir_determinismo.py`).
+_nucleo_interruptor.fixar(False)
 
 from mtgvault import db, publicar  # noqa: E402
+
+NUCLEO = ["index.html", "deck.html", "vender.html"]
 
 # ESTE FICHEIRO ABRE A COLECÇÃO A SÉRIO, E DIZ-LHE O NOME (2026-10-06).
 # É o único da bateria que o faz, e tem de o fazer: o que ele mede é que duas
@@ -193,18 +211,40 @@ def caso_a_lista_e_a_mesma_do_daily():
 
     Duas listas ao lado era a segunda oportunidade de discordarem — e foi assim
     que o `deckboxes.html` esteve semanas só numa delas e nunca era publicado.
+
+    Desde 2026-10-28 o `daily.yml` é a lista do NÚCLEO (o config do repositório
+    tem o `nucleo.ligado`), e é com o interruptor ligado que as duas têm de
+    bater. Com ele desligado, a lista do `publicar` volta a ser a das catorze, e
+    os publicáveis voltam a levar o que não é HTML mas o site antigo precisa.
     """
     yml = (RAIZ / ".github" / "workflows" / "daily.yml").read_text(encoding="utf-8")
     linha = next(l for l in yml.splitlines() if l.strip().startswith("git add "))
     do_yml = set(re.findall(r"[a-z_]+\.html", linha))
-    do_publicar = {f for _m, f, _r in publicar.PAGINAS}
-    assert do_publicar == do_yml, (
-        "a lista do publicar e a do daily.yml discordam",
-        {"so no publicar": sorted(do_publicar - do_yml),
-         "so no yml": sorted(do_yml - do_publicar)})
-    # e os publicáveis levam também o que não é HTML mas o site precisa
+    with _nucleo_interruptor.interruptor(True):
+        do_publicar = {f for _m, f, _r in publicar.PAGINAS}
+        assert do_publicar == do_yml, (
+            "a lista do publicar e a do daily.yml discordam",
+            {"so no publicar": sorted(do_publicar - do_yml),
+             "so no yml": sorted(do_yml - do_publicar)})
+        assert publicar.PAGINAS == publicar.PAGINAS_NUCLEO
+        # com o núcleo, publica-se as três páginas e mais nada
+        assert publicar.PUBLICAVEIS == NUCLEO, publicar.PUBLICAVEIS
+        assert linha.split()[2:] == NUCLEO, ("o git add leva mais do que as três", linha)
+    # e, com o interruptor desligado, os publicáveis levam também o que não é
+    # HTML mas o site antigo precisa
+    assert publicar.PAGINAS == publicar.PAGINAS_ANTIGAS
     assert "deckboxes.js" in publicar.PUBLICAVEIS
     assert "data/paginas" in publicar.PUBLICAVEIS
+    # E a linha que se repõe no `daily.yml` ao desligar o interruptor (está no
+    # comentário do workflow) é a MESMA lista das catorze — a comparação que
+    # este caso fazia antes do núcleo, sobre a linha que vale nesse estado.
+    antiga = set(re.findall(r"[a-z_]+\.html",
+                            " ".join(_nucleo_interruptor.linha_antiga_do_yml())))
+    do_antigo = {f for _m, f, _r in publicar.PAGINAS}
+    assert do_antigo == antiga, (
+        "a lista do publicar desligado e a linha antiga do daily.yml discordam",
+        {"so no publicar": sorted(do_antigo - antiga),
+         "so no yml": sorted(antiga - do_antigo)})
     print(f"as {len(do_publicar)} paginas do publicar sao as do git add do daily")
 
 
@@ -217,6 +257,9 @@ def caso_o_vault_db_nao_entra_nos_publicaveis():
     """
     for p in publicar.PUBLICAVEIS:
         assert "vault.db" not in p, (p, "a base nao se publica no Git")
+    with _nucleo_interruptor.interruptor(True):
+        for p in publicar.PUBLICAVEIS:
+            assert "vault.db" not in p, (p, "a base nao se publica no Git")
     ignore = (RAIZ / ".gitignore").read_text(encoding="utf-8")
     assert "data/vault.db" in ignore, (
         "o vault.db saiu do .gitignore — reve esta decisao antes de a mudar")

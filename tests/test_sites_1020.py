@@ -123,7 +123,14 @@ def caso_m2_todas_as_paginas_tem_favicon():
     h = shell.head("x")
     assert re.search(r'<link rel="icon" href="data:image/svg\+xml,', h), h[:400]
     faltam = []
-    for f in sorted(paginas.MENU):
+    # As páginas dos DOIS menus (2026-10-28): o config do repositório tem o
+    # `nucleo.ligado`, e o HTML publicado em disco é ainda o do site antigo até
+    # o `daily` o regenerar — as treze de antes continuam a ser conferidas.
+    sys.path.insert(0, str(RAIZ / "tests"))
+    import _nucleo_interruptor                                   # noqa: PLC0415
+    with _nucleo_interruptor.interruptor(False):
+        antigo = list(paginas.MENU)
+    for f in sorted(set(antigo) | set(paginas.MENU)):
         p = RAIZ / f
         if p.is_file() and 'rel="icon"' not in p.read_text(encoding="utf-8", errors="replace"):
             faltam.append(f)
