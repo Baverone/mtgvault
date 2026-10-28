@@ -30,7 +30,14 @@ descobrir o núcleo de cada arquétipo, e acompanha preços.
   captura um trecho real e mete-o como fixture no teste. Não faças `mock` de
   bibliotecas inteiras.
 - **Corre a bateria toda antes de dares uma tarefa por fechada:**
-  `cd tests && py _bateria.py` (um processo por ficheiro, e resume no fim).
+  `cd tests && py _bateria.py` (um processo por ficheiro, e resume no fim; no
+  PowerShell 5.1, que não tem `&&`, `py tests\_bateria.py` da raiz dá o mesmo).
+  **Não precisa de `PYTHONUTF8`** (2026-10-28): até aí, sem essa variável, o
+  `→` do `test_casca` rebentava com `UnicodeEncodeError` no tubo cp1252, e a
+  bateria morria a imprimir o traceback sem chegar ao resumo. Agora põe
+  `PYTHONUTF8=1`/`PYTHONIOENCODING=utf-8` nos filhos e imprime com
+  `errors="replace"`. É ELA que arma a trava das bases (`db.VAR_PROIBIDAS`): um
+  `for` à mão pelos `test_*.py` corre sem ela.
   **Todo o teste que fixe o `MTGVAULT_HOME` tem de fixar também o
   `MTGVAULT_DB`** — os ficheiros que acompanham a base (`arquetipos.json`,
   `vendas.csv`, `registos-faltas.csv`) saem de `db.pasta_dados()`, que é a pasta

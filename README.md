@@ -569,12 +569,18 @@ python test_cli_deck.py      :: deck-add repetido escreve no deck certo
 python test_mtgtop8_meta.py  :: uma data estragada não mata a recolha
 ```
 
-Ou a bateria toda de uma vez:
+Ou a bateria toda de uma vez — **pelo `_bateria.py`**, não por um `for` à mão
+(2026-10-28): é ele que proíbe aos testes as bases a sério
+(`db.VAR_PROIBIDAS`), que dá um tecto de tempo a cada ficheiro e que põe os
+filhos a falar UTF-8 (sem `PYTHONUTF8` definido, um `→` impresso por um teste
+rebentava no Windows):
 
 ```bat
 cd tests
-for %f in (test_*.py) do python "%f"
+py _bateria.py
 ```
+
+Acaba em `TUDO OK` ou em `FALHARAM: <ficheiros>` (exit 1).
 
 Nenhum deles toca na rede.
 
