@@ -84,6 +84,19 @@ def _get_mtgo(url: str, tentativas: int = 2) -> requests.Response:
     raise ultimo                                   # type: ignore[misc]
 
 
+class IndiceFalhou(RuntimeError):
+    """O índice de uma fonte (mtgo.com ou mtgtop8) não respondeu — rede ou HTTP.
+
+    NÃO É UM DIA SEM TORNEIOS (2026-10-28). O `harvest-mtgo` ficou «ok, 0
+    novas» a 22, 24 e 27/10 (a 27/10 em ~0 s): o erro do índice era engolido e
+    devolvia-se `[]`, que é a mesma resposta de um dia sem eventos. O passo
+    ficava verde no `job_runs`, a tarefa `ai-pc/tasks/mtgvault-daily` (que só
+    chumba com um passo ≠ `ok`) não tinha nada que ver, e ao fim de
+    `daily.MTGO_DAYS` noites o dia perdia-se. Agora o índice que não responde
+    LEVANTA isto, o `daily._step` grava-o como `erro` e a tarefa fica vermelha.
+    O índice que responde sem nada daquele dia continua a ser `[]`, verde."""
+
+
 def fetch_mtgo_index(day: date) -> list[str]:
     """URLs dos eventos publicados num dia.
 
@@ -92,19 +105,29 @@ def fetch_mtgo_index(day: date) -> list[str]:
     As páginas de evento têm a data no próprio caminho
     (ex.: /decklist/duel-commander-league-2026-07-2210716), por isso filtramos
     por ela.
+
+    Se NENHUMA das duas formas responder (rede ou HTTP), levanta `IndiceFalhou`
+    (2026-10-28): basta uma responder para o índice existir, e aí um dia vazio
+    é um dia vazio.
     """
     stamp = day.strftime("%Y-%m-%d")
     candidatos = [f"{MTGO_BASE}/{day:%Y/%m}", f"{MTGO_BASE}?year={day:%Y}&month={day:%m}"]
+    respondeu, erros = False, []
     for url in candidatos:
         try:
             r = _get_mtgo(url)
             r.raise_for_status()
-        except requests.RequestException:
+        except requests.RequestException as e:
+            erros.append(f"{url}: {e!r}"[:300])
             continue
+        respondeu = True
         hrefs = set(re.findall(r'href="(/decklists?/[^"]+)"', r.text))
         achados = sorted(f"https://www.mtgo.com{h}" for h in hrefs if stamp in h)
         if achados:
             return achados
+    if not respondeu:
+        raise IndiceFalhou(f"indice do mtgo.com de {day:%Y-%m} sem resposta "
+                           f"(dia {stamp}): " + " | ".join(erros))
     return []
 
 
@@ -218,10 +241,15 @@ def harvest_mtgo(con: sqlite3.Connection, days_back: int = 1,
     total = 0
     dias = ([date.today()] if incluir_hoje else []) + [
         date.today() - timedelta(days=d + 1) for d in range(days_back)]
+    # Um dia sem índice não pára os outros: colhem-se e a falha diz-se no FIM
+    # (2026-10-28, ver `IndiceFalhou`). O que entrou fica — o `store_event` já
+    # fez commit —, mas o passo não pode ficar «ok» com um dia por ver.
+    falhas: list[str] = []
     for day in dias:
         try:
             urls = fetch_mtgo_index(day)
-        except requests.RequestException:
+        except IndiceFalhou as e:
+            falhas.append(str(e))
             continue
         for url in urls:
             if formats and not any(f in url.lower() for f in formats):
@@ -254,6 +282,9 @@ def harvest_mtgo(con: sqlite3.Connection, days_back: int = 1,
             blob = parse_mtgo_page(html)
             if blob:
                 total += store_event(con, blob, url)
+    if falhas:
+        raise IndiceFalhou(f"{len(falhas)} de {len(dias)} dia(s) sem indice do "
+                           f"mtgo.com ({total} novas nos outros): " + " || ".join(falhas))
     return total
 
 
