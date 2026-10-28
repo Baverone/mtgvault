@@ -45,7 +45,8 @@ _FICHEIRO = re.compile(r"^(\d{4}-\d{2}-\d{2})\.json$")
 _BOARD_PARA_SECCAO = {"main": "main", "side": "side"}
 _MAX_NOMES_NA_MENSAGEM = 8
 
-# estados que contam como falha da vigia
+# estados que contam como falha da vigia. `sem_lista_nova` (MTGO: nada na janela
+# da recolha, mas o deck já tem versão) NÃO é falha.
 FALHAS = ("sem_lista", "sem_ficheiro", "erro")
 
 
@@ -81,10 +82,16 @@ def _mensagem_nomes(nomes: list[str]) -> str:
     return f"o catálogo não conhece estas cartas: {texto}"
 
 
-def _gravar(con: sqlite3.Connection, slug: str, linhas: list[Linha],
-            fonte: str) -> dict:
-    """Grava a lida como versão do deck. Nunca grava metade: o
-    `listas.gravar_versao` valida todos os nomes antes de escrever."""
+def _gravar(con: sqlite3.Connection, slug: str, ler_linhas, fonte: str) -> dict:
+    """Grava a lista lida como versão do deck. Nunca grava metade: o
+    `listas.gravar_versao` valida todos os nomes antes de escrever. `ler_linhas`
+    é uma função sem argumentos que devolve as `Linha`s: a leitura do texto fica
+    dentro da mesma guarda, porque uma linha mal formada (um `SB:` sozinho) é uma
+    falha deste deck e não uma exceção a subir."""
+    try:
+        linhas = ler_linhas()
+    except Exception as e:
+        return _falha("erro", f"não consegui ler a lista ({type(e).__name__}): {e}")
     try:
         r = listas.gravar_versao(con, slug, linhas, fonte=fonte, origem="vigia")
     except NomesDesconhecidos as e:
@@ -105,7 +112,8 @@ def vigiar_mtgo(con: sqlite3.Connection, slug: str) -> dict:
     MTGO; o jogador compara-se sem caixa; mais recente = `event_date`, e o `id`
     desempata) e grava-a como versão nova se mudou.
 
-    `{"estado": "nova" | "igual" | "sem_lista" | "erro", ...}`.
+    `{"estado": "nova" | "igual" | "sem_lista" | "sem_lista_nova" | "erro", ...}`;
+    `sem_lista` só se o deck nunca teve versão.
     """
     vigia = _vigia_do_deck(con, slug)
     partes = (vigia or "").split(":", 2)
@@ -119,14 +127,21 @@ def vigiar_mtgo(con: sqlite3.Connection, slug: str) -> dict:
         " ORDER BY event_date DESC, id DESC LIMIT 1",
         (FONTE_MTGO, jogador, formato)).fetchone()
     if d is None:
+        if listas.versao_atual(con, slug) is not None:
+            # a recolha só guarda 30 dias de listas: o jogador não jogou nesse
+            # tempo. A lista que o deck já tem continua a ser a dele — não é uma
+            # falha, só não há novidade (a página mostra a data da versão).
+            return {"estado": "sem_lista_nova",
+                    "mensagem": f"{jogador} não tem lista nova em {formato} no MTGO"
+                                " (fica a última versão)"}
         return _falha("sem_lista",
                       f"ainda não há lista de {jogador} em {formato} no MTGO")
     cartas = con.execute(
         "SELECT board, card_name, quantity FROM decklist_cards"
         " WHERE decklist_id = ? ORDER BY rowid", (d[0],)).fetchall()
-    linhas = [Linha(_BOARD_PARA_SECCAO[b], n, q) for b, n, q in cartas]
     fonte = " · ".join(p for p in ("MTGO", d[1], d[2], d[3]) if p)
-    return _gravar(con, slug, linhas, fonte)
+    return _gravar(con, slug, lambda: [Linha(_BOARD_PARA_SECCAO[b], n, q)
+                                       for b, n, q in cartas], fonte)
 
 
 # ---------------------------------------------------------------------------
@@ -164,7 +179,7 @@ def vigiar_moxfield(con: sqlite3.Connection, slug: str,
                       "ainda não há ficheiro do Moxfield em " + str(pasta))
     dia = _FICHEIRO.match(ficheiro.name).group(1)
     try:
-        dados = json.loads(ficheiro.read_text(encoding="utf-8"))
+        dados = json.loads(ficheiro.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError) as e:
         return _falha("erro", f"não consegui ler o ficheiro de {dia}: {e}")
     decks = dados.get("decks") if isinstance(dados, dict) else None
@@ -184,7 +199,7 @@ def vigiar_moxfield(con: sqlite3.Connection, slug: str,
     lido = dados.get("lido_em")
     data_lida = lido[:10] if isinstance(lido, str) and _DATA.match(lido) else dia
     fonte = f"Moxfield · https://moxfield.com/decks/{id_deck} · lido a {data_lida}"
-    return _gravar(con, slug, listas.ler_texto(texto), fonte)
+    return _gravar(con, slug, lambda: listas.ler_texto(texto), fonte)
 
 
 _DATA = re.compile(r"^\d{4}-\d{2}-\d{2}")
@@ -212,8 +227,9 @@ def vigiar_todos(con: sqlite3.Connection, *, pasta: Path | None = None,
                  levantar: bool = False) -> dict[str, dict]:
     """Visita os decks que têm `vigia`, por ordem da página, e devolve
     `{slug: resultado}`. Grava `n_deck.vigia_ok_em` (e limpa o `vigia_erro`) se
-    a leitura correu bem, ou `vigia_erro` (deixando o `vigia_ok_em` como estava)
-    se não. Um deck que falha nunca impede os outros.
+    a leitura correu bem; `sem_lista_nova` só limpa o erro; numa falha grava o
+    `vigia_erro` e deixa o `vigia_ok_em` como estava. Um deck que falha nunca
+    impede os outros.
 
     Com `levantar=True`, depois de gravar tudo, levanta `VigiaFalhou` se algum
     deck acabou em `sem_lista`/`sem_ficheiro`/`erro` — é o que faz o passo do
@@ -235,6 +251,11 @@ def vigiar_todos(con: sqlite3.Connection, *, pasta: Path | None = None,
             if r["estado"] in FALHAS:
                 con.execute("UPDATE n_deck SET vigia_erro = ? WHERE slug = ?",
                             (r["mensagem"], slug))
+            elif r["estado"] == "sem_lista_nova":
+                # não leu nada de novo: o `vigia_ok_em` fica como estava (é a data
+                # da última leitura a sério) e só se limpa o erro anterior
+                con.execute("UPDATE n_deck SET vigia_erro = NULL WHERE slug = ?",
+                            (slug,))
             else:
                 con.execute("UPDATE n_deck SET vigia_ok_em = ?, vigia_erro = NULL"
                             " WHERE slug = ?", (_agora(), slug))

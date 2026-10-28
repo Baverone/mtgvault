@@ -129,6 +129,22 @@ def caso_mtgo_ultima_do_jogador():
     print("MTGO: a lista mais recente do jogador, sem caixa, no formato dele")
 
 
+def caso_mtgo_ganha_a_data_do_evento_e_nao_o_id():
+    with sessao() as con:
+        semear(con)
+        lista_mtgo(con, data="2026-10-20", evento="Evento Novo",
+                   cartas=[("Fling", 4, "main")])
+        # inserida DEPOIS (id maior), mas de um evento mais antigo
+        lista_mtgo(con, data="2026-10-10", evento="Evento Velho",
+                   cartas=[("Island", 4, "main")])
+        r = vigia.vigiar_mtgo(con, "pauper_affinity")
+        assert r["estado"] == "nova", r
+        v = listas.versao_atual(con, "pauper_affinity")
+        assert v["linhas"] == [Linha("main", "Fling", 4)], v
+        assert "Evento Novo" in v["fonte"], v["fonte"]
+    print("MTGO: ganha o event_date mais recente, não o id maior")
+
+
 def caso_mtgo_igual_nao_cria_versao():
     with sessao() as con:
         semear(con)
@@ -146,12 +162,42 @@ def caso_mtgo_igual_nao_cria_versao():
 
 
 def caso_mtgo_sem_lista():
+    """Nunca teve versão e não há lista: é uma falha (`sem_lista`)."""
     with sessao() as con:
         semear(con)
         r = vigia.vigiar_mtgo(con, "pauper_affinity")
         assert r["estado"] == "sem_lista" and r["mensagem"], r
         assert n_versoes(con) == 0
-    print("MTGO: sem lista guardada")
+    print("MTGO: sem lista e sem versão = sem_lista (falha)")
+
+
+def caso_mtgo_sem_lista_nova_nao_e_falha():
+    """A recolha poda as listas a 30 dias. Se o deck já tem versão, não haver
+    lista na janela não é falha: fica a última versão, sem erro, e o
+    `vigia_ok_em` não anda."""
+    with sessao() as con:
+        semear(con)
+        # só este deck é vigiado, para o VigiaFalhou não ter outras causas
+        con.execute("UPDATE n_deck SET vigia = NULL WHERE slug <> 'pauper_affinity'")
+        con.commit()
+        lista_mtgo(con, cartas=[("Fling", 4, "main")])
+        assert vigia.vigiar_todos(con)["pauper_affinity"]["estado"] == "nova"
+        ok_em, erro = estado_vigia(con, "pauper_affinity")
+        assert ok_em and erro is None
+        # um erro antigo desaparece quando o estado passa a sem_lista_nova
+        con.execute("UPDATE n_deck SET vigia_erro = 'velho' WHERE slug ="
+                    " 'pauper_affinity'")
+        con.execute("DELETE FROM decklists")
+        con.commit()
+
+        r = vigia.vigiar_mtgo(con, "pauper_affinity")
+        assert r["estado"] == "sem_lista_nova" and r["mensagem"], r
+        assert n_versoes(con, "pauper_affinity") == 1
+        res = vigia.vigiar_todos(con, levantar=True)        # não levanta
+        assert res["pauper_affinity"]["estado"] == "sem_lista_nova", res
+        assert tuple(estado_vigia(con, "pauper_affinity")) == (ok_em, None)
+        assert listas.versao_atual(con, "pauper_affinity")["numero"] == 1
+    print("MTGO: sem lista nova mas com versão = não é falha, ok_em intacto")
 
 
 def caso_mtgo_nome_desconhecido_nada_grava():
@@ -255,6 +301,32 @@ def caso_moxfield_erro_no_ficheiro():
     print("Moxfield: ficheiro estragado, deck com erro, nomes e lista vazia")
 
 
+def caso_moxfield_ficheiro_com_bom_do_powershell():
+    """O PowerShell 5.1 escreve UTF-8 com BOM; o ficheiro tem de ler na mesma."""
+    pasta = Path(tempfile.mkdtemp())
+    conteudo = json.dumps({"lido_em": "2026-10-28T09:30:12", "decks": {
+        BLUE_FARM: {"texto": "1 Fling\n1 Island\n", "titulo": "Blue Farm"}}})
+    (pasta / "2026-10-28.json").write_bytes(b"\xef\xbb\xbf" + conteudo.encode())
+    with sessao() as con:
+        semear(con)
+        r = vigia.vigiar_moxfield(con, "cedh_blue_farm", pasta=pasta)
+        assert r["estado"] == "nova", r
+    print("Moxfield: ficheiro com BOM lê-se")
+
+
+def caso_moxfield_linha_mal_formada_e_erro():
+    """`SB:` sozinho faz o `ler_texto` rebentar: é erro deste deck."""
+    pasta = pasta_moxfield({"2026-10-28.json": {
+        "lido_em": "2026-10-28T09:30:12",
+        "decks": {BLUE_FARM: {"texto": "1 Fling\nSB:\n", "titulo": "x"}}}})
+    with sessao() as con:
+        semear(con)
+        r = vigia.vigiar_moxfield(con, "cedh_blue_farm", pasta=pasta)
+        assert r["estado"] == "erro" and r["mensagem"], r
+        assert n_versoes(con) == 0
+    print("Moxfield: linha mal formada = erro, sem levantar")
+
+
 def caso_falha_levanta_no_fim():
     pasta = pasta_moxfield({"2026-10-28.json": {
         "lido_em": "2026-10-28T09:30:12",
@@ -300,13 +372,17 @@ def caso_ok_limpa_o_erro_e_a_falha_guarda_o_ultimo_ok():
         assert res["pauper_affinity"]["estado"] == "nova"
         ok_em, erro = estado_vigia(con, "pauper_affinity")
         assert ok_em and erro is None, (ok_em, erro)
-        # a lista desaparece (poda de 30 dias): falha, mas o último ok fica
-        con.execute("DELETE FROM decklists")
-        con.commit()
+        # um Moxfield que passa a falhar guarda o último ok e põe o erro
+        pasta = pasta_moxfield({"2026-10-28.json": {
+            "lido_em": "2026-10-28T09:30:12",
+            "decks": {BLUE_FARM: {"texto": "1 Fling\n", "titulo": "x"}}}})
+        vigia.vigiar_todos(con, pasta=pasta)
+        ok_azul, erro_azul = estado_vigia(con, "cedh_blue_farm")
+        assert ok_azul and erro_azul is None
         vigia.vigiar_todos(con, pasta=pasta_moxfield({}))
-        ok_em2, erro2 = estado_vigia(con, "pauper_affinity")
-        assert ok_em2 == ok_em and erro2, (ok_em, ok_em2, erro2)
-        assert listas.versao_atual(con, "pauper_affinity")["numero"] == 1
+        ok_azul2, erro_azul2 = estado_vigia(con, "cedh_blue_farm")
+        assert ok_azul2 == ok_azul and erro_azul2, (ok_azul, ok_azul2, erro_azul2)
+        assert listas.versao_atual(con, "cedh_blue_farm")["numero"] == 1
     print("vigia_ok_em limpa o erro; a falha guarda o último ok")
 
 
