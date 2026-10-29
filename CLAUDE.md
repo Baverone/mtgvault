@@ -61,6 +61,41 @@ descobrir o núcleo de cada arquétipo, e acompanha preços.
 - Comentários explicam *porquê*, não *o quê*. Vários dos comentários atuais
   existem para registar decisões que custaram a descobrir — não os apagues.
 
+## Núcleo (28/10/2026)
+
+O site novo — **Painel · Decks · Vender** (`index.html`, `deck.html`,
+`vender.html`) — vive em `mtgvault/nucleo/` e nos geradores `nucleo_*.py` da
+raiz. Spec: `docs/superpowers/specs/2026-10-28-site-mtg-nucleo-design.md`.
+
+- **O interruptor** é `colecao_config.json → nucleo.ligado` (hoje `true`), lido à
+  CHAMADA (`modelo.ligado()`) pelo menu, pelo `publicar`, pelo `daily` e pelo
+  `webapp` (a cada pedido). Desligado, o site antigo volta exatamente como estava;
+  o código antigo não se apagou. Com ele ligado o webapp não corre o aquecedor
+  das páginas antigas.
+- **As tabelas são `n_*`** (`n_deck`, `n_versao`, `n_versao_carta`, `n_edicao`,
+  `n_posse`, `n_posse_log`, `n_montado`, `n_a_mais`, `n_saida`, `n_valor`), no
+  `schema.sql` e no `db._migrate()`. O núcleo escreve SÓ nelas e nunca em
+  `copies`, `copy_allocation`, `posse_marcada`, `decks`, `deck_cards` nem
+  `watched*`. **Os nomes (das tabelas, colunas e funções do núcleo) são em
+  português de propósito**, ao contrário da regra geral deste ficheiro: foi a
+  decisão do plano do núcleo, e um núcleo que se pode apagar e refazer de raiz
+  vê-se melhor à parte.
+- **O contrato do Moxfield**: a tarefa `ai-pc/tasks/mtg-moxfield-chrome` (no
+  Chrome dele, 2 páginas/dia) escreve `data/moxfield/AAAA-MM-DD.json` =
+  `{"lido_em": iso, "decks": {"<id>": {"texto", "titulo"} | {"erro"}}}`, UTF-8
+  sem BOM; o `nucleo/vigia.py` só lê o mais recente. Um `{"erro"}` num deck com
+  versão e um ficheiro com mais de 2 dias são AVISOS (`erro_fonte`, não pintam o
+  daily: quem fica vermelho é a tarefa do Chrome); a lista lida passa por uma
+  guarda (100 cartas no comandante, 60/15 nos outros, 60 % dos nomes da versão).
+- **Pôr no ar**: o primeiro arranque do `webapp.py` com o interruptor ligado
+  migra a base (`db.session` → `_migrate`) e corre o `modelo.garantir_decks`; o
+  `daily` faz o mesmo às 03:30. Até lá o `publicar` recusa com «base por migrar».
+- **Voltar atrás**: `nucleo.ligado: false` e, à mão, no
+  `.github/workflows/daily.yml`, trocar a linha `git add index.html deck.html
+  vender.html` pelas duas comentadas acima dela. O resto (as tarefas
+  `mtgvault-daily`/`mtgvault-publicar` do ai-pc incluídas) pergunta ao
+  `publicar.publicaveis()` e segue o interruptor sozinho.
+
 ## Arquitetura
 
 ```
