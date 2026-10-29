@@ -289,6 +289,52 @@ def caso_tres_paginas_iguais_em_dois_processos_e_so_leitura():
     print("ligado: as três páginas saem iguais em dois processos, só a ler")
 
 
+def caso_publicar_com_base_por_migrar():
+    """(I4) O interruptor ligado e o `vault.db` a sério ainda sem as tabelas
+    `n_*` (antes da primeira corrida do webapp ou do daily): o `publicar` não
+    rebenta com um traceback — diz «base por migrar» e sai com erro."""
+    import contextlib                                          # noqa: PLC0415
+    import io                                                  # noqa: PLC0415
+    import sqlite3                                             # noqa: PLC0415
+    with interruptor(True), tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        v, c = tmp / "v.db", tmp / "c.db"
+        for f in (v, c):
+            sqlite3.connect(f).close()                         # bases vazias
+        antes = publicar.abrir
+        publicar.abrir = lambda *a, **k: db.ler(v, c)
+        err = io.StringIO()
+        try:
+            with contextlib.redirect_stderr(err), contextlib.redirect_stdout(io.StringIO()):
+                try:
+                    codigo = publicar.main([])
+                except Exception as e:                         # noqa: BLE001
+                    raise AssertionError(f"rebentou em vez de explicar: {e!r}")
+        finally:
+            publicar.abrir = antes
+        assert codigo not in (0, None), codigo
+        assert "base por migrar: corre o webapp ou o daily uma vez" in err.getvalue(), err.getvalue()
+    # com as tabelas (uma base migrada) passa
+    with interruptor(True), tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        with db.session(tmp / "v.db", tmp / "c.db") as con:
+            modelo.garantir_decks(con)
+        with db.ler(tmp / "v.db", tmp / "c.db") as con:
+            publicar.exige_base_do_nucleo(con)
+    print("ligado: base por migrar = mensagem e erro, sem traceback")
+
+
+def caso_config_diz_como_voltar_atras():
+    """(I5) O texto do `_nucleo` no `colecao_config.json` diz o que se repõe à
+    mão para voltar ao site antigo: o `git add` do `daily.yml`."""
+    from mtgvault import configio                              # noqa: PLC0415
+    cfg = configio.ler(RAIZ / "colecao_config.json")
+    txt = cfg["_nucleo"]
+    assert ".github/workflows/daily.yml" in txt, txt
+    assert "git add index.html deck.html vender.html" in txt, txt
+    assert "false" in txt
+
+
 CASOS = [v for k, v in sorted(globals().items()) if k.startswith("caso_")]
 
 if __name__ == "__main__":

@@ -307,6 +307,25 @@ def abrir(path=None, catalog=None, *, a_serio: bool = False):
     return db.ler(path, catalog, a_serio=a_serio)
 
 
+class BasePorMigrar(RuntimeError):
+    """O núcleo está ligado e o `vault.db` ainda não tem as tabelas `n_*`."""
+
+
+def exige_base_do_nucleo(con) -> None:
+    """(I4, 2026-10-29) Com o `nucleo.ligado`, a base tem de ter as tabelas do
+    núcleo. O `publicar` abre-a SÓ DE LEITURA (não corre o `db.init`, que é
+    quem as cria): no primeiro dia, com o `vault.db` a sério ainda por migrar,
+    as três páginas rebentavam com «no such table» num traceback no log da
+    tarefa. Quem migra é o arranque do webapp ou o daily."""
+    if not _ligado():
+        return
+    if con.execute("SELECT 1 FROM sqlite_master WHERE type = 'table'"
+                   " AND name = 'n_deck'").fetchone() is None:
+        raise BasePorMigrar("base por migrar: corre o webapp ou o daily uma vez"
+                            " (o núcleo está ligado e o vault.db ainda não tem as"
+                            " tabelas n_*)")
+
+
 def main(argv=None) -> int:
     """`py -m mtgvault.publicar [--ver|--se-mudou|--sempre]`."""
     import argparse                                           # noqa: PLC0415
@@ -317,7 +336,13 @@ def main(argv=None) -> int:
     ap.add_argument("--sempre", action="store_true",
                     help="escreve mesmo que nada tenha mudado (não usar na tarefa)")
     a = ap.parse_args(argv)
+    import sys                                                # noqa: PLC0415
     with abrir() as con:
+        try:
+            exige_base_do_nucleo(con)
+        except BasePorMigrar as e:
+            print(f"mtgvault.publicar: {e}", file=sys.stderr)
+            return 2
         r = estado(con) if a.ver else publicar(con, se_mudou=not a.sempre)
     print(json.dumps(r, ensure_ascii=False, indent=2))
     return 0
