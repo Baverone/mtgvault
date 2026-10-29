@@ -1,16 +1,16 @@
 {
- "data": "2026-10-28",
+ "data": "2026-10-29",
  "nucleo_pct": 50,
  "top": 15,
  "alvos": [
   {
    "nome": "Enchantress",
-   "n_lists": 66,
+   "n_lists": 72,
    "caixa": false,
    "combo": true,
    "nucleo": 25,
-   "nos_meus_decks": 7,
-   "pct_nos_meus_decks": 28,
+   "nos_meus_decks": 6,
+   "pct_nos_meus_decks": 24,
    "faltam": [
     [
      "Argothian Enchantress",
@@ -65,6 +65,10 @@
      2
     ],
     [
+     "Tsabo's Web",
+     1
+    ],
+    [
      "Warmth",
      2
     ],
@@ -91,7 +95,7 @@
   },
   {
    "nome": "Stiflenought",
-   "n_lists": 61,
+   "n_lists": 63,
    "caixa": true,
    "combo": true,
    "nucleo": 22,
@@ -104,7 +108,7 @@
   },
   {
    "nome": "Terrageddon",
-   "n_lists": 49,
+   "n_lists": 55,
    "caixa": false,
    "combo": true,
    "nucleo": 28,
@@ -226,7 +230,7 @@
   },
   {
    "nome": "Mono-Preto Graveborn Muse",
-   "n_lists": 35,
+   "n_lists": 40,
    "caixa": false,
    "combo": false,
    "nucleo": 19,
@@ -291,7 +295,7 @@
     ],
     [
      "Smother",
-     3
+     2
     ],
     [
      "Snuff Out",
@@ -312,13 +316,17 @@
   },
   {
    "nome": "Pyrostatic Pillar",
-   "n_lists": 27,
+   "n_lists": 31,
    "caixa": false,
    "combo": false,
-   "nucleo": 19,
+   "nucleo": 21,
    "nos_meus_decks": 0,
    "pct_nos_meus_decks": 0,
    "faltam": [
+    [
+     "Ball Lightning",
+     4
+    ],
     [
      "Barbarian Ring",
      2
@@ -330,6 +338,10 @@
     [
      "Cursed Scroll",
      3
+    ],
+    [
+     "Earthquake",
+     2
     ],
     [
      "Fireblast",
@@ -373,7 +385,7 @@
     ],
     [
      "Pyroblast",
-     2
+     3
     ],
     [
      "Pyrostatic Pillar",
@@ -405,8 +417,8 @@
    "n_lists": 22,
    "caixa": true,
    "combo": true,
-   "nucleo": 19,
-   "nos_meus_decks": 19,
+   "nucleo": 18,
+   "nos_meus_decks": 18,
    "pct_nos_meus_decks": 100,
    "faltam": [],
    "pct_principal": 0,
@@ -415,12 +427,12 @@
   },
   {
    "nome": "Psychatog",
-   "n_lists": 19,
+   "n_lists": 21,
    "caixa": false,
    "combo": false,
    "nucleo": 23,
-   "nos_meus_decks": 12,
-   "pct_nos_meus_decks": 52,
+   "nos_meus_decks": 11,
+   "pct_nos_meus_decks": 48,
    "faltam": [
     [
      "Accumulated Knowledge",
@@ -463,6 +475,10 @@
      3
     ],
     [
+     "Tsabo's Web",
+     2
+    ],
+    [
      "Underground River",
      3
     ]
@@ -473,7 +489,7 @@
   },
   {
    "nome": "Full English Breakfast",
-   "n_lists": 18,
+   "n_lists": 19,
    "caixa": false,
    "combo": true,
    "nucleo": 37,
@@ -631,13 +647,17 @@
   },
   {
    "nome": "Goblins",
-   "n_lists": 16,
+   "n_lists": 18,
    "caixa": false,
    "combo": false,
-   "nucleo": 23,
+   "nucleo": 24,
    "nos_meus_decks": 0,
    "pct_nos_meus_decks": 0,
    "faltam": [
+    [
+     "Anarchy",
+     2
+    ],
     [
      "Gempalm Incinerator",
      3
@@ -807,10 +827,10 @@
   },
   {
    "nome": "Golgari Graveborn Muse",
-   "n_lists": 7,
+   "n_lists": 8,
    "caixa": false,
    "combo": false,
-   "nucleo": 22,
+   "nucleo": 23,
    "nos_meus_decks": 0,
    "pct_nos_meus_decks": 0,
    "faltam": [
@@ -875,6 +895,10 @@
      3
     ],
     [
+     "Recurring Nightmare",
+     1
+    ],
+    [
      "Smother",
      3
     ],
@@ -900,6 +924,196 @@
     ],
     [
      "Wall of Blossoms",
+     4
+    ]
+   ],
+   "pct_principal": 0,
+   "top": false,
+   "top_combo": false
+  },
+  {
+   "nome": "Stasis",
+   "n_lists": 6,
+   "caixa": false,
+   "combo": true,
+   "nucleo": 21,
+   "nos_meus_decks": 11,
+   "pct_nos_meus_decks": 52,
+   "faltam": [
+    [
+     "Arcane Denial",
+     3
+    ],
+    [
+     "Black Vise",
+     3
+    ],
+    [
+     "Boomerang",
+     1
+    ],
+    [
+     "Chill",
+     3
+    ],
+    [
+     "Cursed Totem",
+     2
+    ],
+    [
+     "Forsaken City",
+     4
+    ],
+    [
+     "Mana Short",
+     2
+    ],
+    [
+     "Root Maze",
+     2
+    ],
+    [
+     "Stasis",
+     4
+    ],
+    [
+     "Upheaval",
+     1
+    ]
+   ],
+   "pct_principal": 0,
+   "top": false,
+   "top_combo": false
+  },
+  {
+   "nome": "Frantic Storm",
+   "n_lists": 5,
+   "caixa": false,
+   "combo": true,
+   "nucleo": 18,
+   "nos_meus_decks": 6,
+   "pct_nos_meus_decks": 33,
+   "faltam": [
+    [
+     "Cloud of Faeries",
+     4
+    ],
+    [
+     "Deep Analysis",
+     2
+    ],
+    [
+     "Helm of Awakening",
+     4
+    ],
+    [
+     "Mana Short",
+     1
+    ],
+    [
+     "Meditate",
+     4
+    ],
+    [
+     "Merchant Scroll",
+     4
+    ],
+    [
+     "Sapphire Medallion",
+     4
+    ],
+    [
+     "Sleight of Hand",
+     4
+    ],
+    [
+     "Snap",
+     4
+    ],
+    [
+     "Teferi's Isle",
+     2
+    ],
+    [
+     "Tormod's Crypt",
+     2
+    ],
+    [
+     "Words of Wisdom",
+     1
+    ]
+   ],
+   "pct_principal": 0,
+   "top": false,
+   "top_combo": false
+  },
+  {
+   "nome": "Mono-Branco Exalted Angel",
+   "n_lists": 5,
+   "caixa": false,
+   "combo": false,
+   "nucleo": 17,
+   "nos_meus_decks": 2,
+   "pct_nos_meus_decks": 12,
+   "faltam": [
+    [
+     "Abolish",
+     3
+    ],
+    [
+     "Absolute Grace",
+     2
+    ],
+    [
+     "Absolute Law",
+     2
+    ],
+    [
+     "Cursed Scroll",
+     3
+    ],
+    [
+     "Disenchant",
+     4
+    ],
+    [
+     "Mother of Runes",
+     4
+    ],
+    [
+     "Nova Cleric",
+     2
+    ],
+    [
+     "Presence of the Master",
+     3
+    ],
+    [
+     "Ramosian Sergeant",
+     4
+    ],
+    [
+     "Savannah Lions",
+     4
+    ],
+    [
+     "Silver Knight",
+     4
+    ],
+    [
+     "Soltari Monk",
+     3
+    ],
+    [
+     "Tormod's Crypt",
+     2
+    ],
+    [
+     "Wasteland",
+     4
+    ],
+    [
+     "Whipcorder",
      4
     ]
    ],
@@ -1028,6 +1242,51 @@
    "no_deck": "UW Replenish"
   },
   {
+   "carta": "Abolish",
+   "q": 3,
+   "arquetipos": [
+    "Mono-Branco Exalted Angel"
+   ],
+   "pct": 100,
+   "unit": 0.9,
+   "set": "PCY",
+   "sid": "3c81ae90-5abd-4c79-b14a-d5f3a1daff38",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Abolish",
+   "no_deck": null
+  },
+  {
+   "carta": "Absolute Grace",
+   "q": 2,
+   "arquetipos": [
+    "Mono-Branco Exalted Angel"
+   ],
+   "pct": 60,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Absolute%20Grace",
+   "no_deck": null
+  },
+  {
+   "carta": "Absolute Law",
+   "q": 2,
+   "arquetipos": [
+    "Mono-Branco Exalted Angel"
+   ],
+   "pct": 80,
+   "unit": 3.16,
+   "set": "USG",
+   "sid": "59d1f05b-f165-47c7-8a78-3b60ee3298ca",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Absolute%20Law",
+   "no_deck": null
+  },
+  {
    "carta": "Accumulated Knowledge",
    "q": 4,
    "arquetipos": [
@@ -1050,7 +1309,7 @@
     "Landstill"
    ],
    "pct": 100,
-   "unit": 99.09,
+   "unit": 99.72,
    "set": "ICE",
    "sid": "09dd9023-f7ee-4e99-8821-7059deb83730",
    "rl": false,
@@ -1074,6 +1333,21 @@
    "no_deck": null
   },
   {
+   "carta": "Anarchy",
+   "q": 2,
+   "arquetipos": [
+    "Goblins"
+   ],
+   "pct": 50,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Anarchy",
+   "no_deck": null
+  },
+  {
    "carta": "Ancient Tomb",
    "q": 4,
    "arquetipos": [
@@ -1094,7 +1368,7 @@
    "arquetipos": [
     "Full English Breakfast"
    ],
-   "pct": 83,
+   "pct": 84,
    "unit": 12.49,
    "set": "4ED",
    "sid": "cc1dc456-1f64-4f24-a646-84c57e641b3b",
@@ -1109,7 +1383,8 @@
    "arquetipos": [
     "Stiflenought",
     "Psychatog",
-    "Landstill"
+    "Landstill",
+    "Stasis"
    ],
    "pct": 100,
    "unit": 3.06,
@@ -1119,6 +1394,21 @@
    "motivo": null,
    "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Annul",
    "no_deck": "Stiflenought"
+  },
+  {
+   "carta": "Arcane Denial",
+   "q": 3,
+   "arquetipos": [
+    "Stasis"
+   ],
+   "pct": 67,
+   "unit": 4.29,
+   "set": "ALL",
+   "sid": "415a3104-90e6-4235-b67f-69337c7fe714",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Arcane%20Denial",
+   "no_deck": null
   },
   {
    "carta": "Argothian Enchantress",
@@ -1141,8 +1431,8 @@
    "arquetipos": [
     "Terrageddon"
    ],
-   "pct": 76,
-   "unit": 38.31,
+   "pct": 75,
+   "unit": 38.81,
    "set": "6ED",
    "sid": "ccf3abe6-0b86-4010-8fc6-616af77b4ace",
    "rl": false,
@@ -1199,6 +1489,21 @@
    "no_deck": "Stiflenought"
   },
   {
+   "carta": "Ball Lightning",
+   "q": 4,
+   "arquetipos": [
+    "Pyrostatic Pillar"
+   ],
+   "pct": 52,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Ball%20Lightning",
+   "no_deck": null
+  },
+  {
    "carta": "Barbarian Ring",
    "q": 2,
    "arquetipos": [
@@ -1234,8 +1539,8 @@
    "arquetipos": [
     "Terrageddon"
    ],
-   "pct": 59,
-   "unit": 14.49,
+   "pct": 58,
+   "unit": 14.69,
    "set": "APC",
    "sid": "a9c25e71-0140-48fe-8b9e-33b4b50c5c12",
    "rl": false,
@@ -1274,12 +1579,27 @@
    "no_deck": null
   },
   {
+   "carta": "Black Vise",
+   "q": 3,
+   "arquetipos": [
+    "Stasis"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Black%20Vise",
+   "no_deck": null
+  },
+  {
    "carta": "Bloodstained Mire",
    "q": 4,
    "arquetipos": [
     "Pyrostatic Pillar"
    ],
-   "pct": 63,
+   "pct": 65,
    "unit": 65.62,
    "set": "ONS",
    "sid": "68c72226-6f52-4322-8b14-18737293dfa0",
@@ -1294,9 +1614,10 @@
    "arquetipos": [
     "Stiflenought",
     "Psychatog",
-    "Landstill"
+    "Landstill",
+    "Stasis"
    ],
-   "pct": 75,
+   "pct": 83,
    "unit": 3.59,
    "set": "4ED",
    "sid": "988f7b31-24b2-45c2-89e4-ff6bd9e0c8c7",
@@ -1306,12 +1627,27 @@
    "no_deck": "Stiflenought"
   },
   {
+   "carta": "Boomerang",
+   "q": 1,
+   "arquetipos": [
+    "Stasis"
+   ],
+   "pct": 50,
+   "unit": 0.99,
+   "set": "MIR",
+   "sid": "f5c98413-740d-47fd-bed6-2d3d05a72b31",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Boomerang",
+   "no_deck": null
+  },
+  {
    "carta": "Bottle Gnomes",
    "q": 3,
    "arquetipos": [
     "Golgari Graveborn Muse"
    ],
-   "pct": 71,
+   "pct": 75,
    "unit": null,
    "set": null,
    "sid": null,
@@ -1322,12 +1658,13 @@
   },
   {
    "carta": "Brain Freeze",
-   "q": 2,
+   "q": 4,
    "arquetipos": [
-    "Stiflenought"
+    "Stiflenought",
+    "Frantic Storm"
    ],
-   "pct": 95,
-   "unit": 9.92,
+   "pct": 100,
+   "unit": 10.06,
    "set": "SCG",
    "sid": "59a43ef5-08f0-44fc-802d-b6cfd56b7d1f",
    "rl": false,
@@ -1342,7 +1679,7 @@
     "Enchantress"
    ],
    "pct": 100,
-   "unit": 19.41,
+   "unit": 19.66,
    "set": "5ED",
    "sid": "e6793b15-37fb-495e-b5e2-22c1df4cdc05",
    "rl": false,
@@ -1389,7 +1726,7 @@
     "Orzhov Exalted Angel"
    ],
    "pct": 100,
-   "unit": 22.01,
+   "unit": 22.4,
    "set": "APC",
    "sid": "144dd08e-451e-4438-b572-7a138e1a15f3",
    "rl": false,
@@ -1399,12 +1736,14 @@
   },
   {
    "carta": "Chain of Vapor",
-   "q": 2,
+   "q": 4,
    "arquetipos": [
     "Stiflenought",
-    "Psychatog"
+    "Psychatog",
+    "Stasis",
+    "Frantic Storm"
    ],
-   "pct": 95,
+   "pct": 100,
    "unit": null,
    "set": null,
    "sid": null,
@@ -1419,13 +1758,28 @@
    "arquetipos": [
     "Golgari Graveborn Muse"
    ],
-   "pct": 71,
+   "pct": 75,
    "unit": null,
    "set": null,
    "sid": null,
    "rl": false,
    "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
    "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Chainer%27s%20Edict",
+   "no_deck": null
+  },
+  {
+   "carta": "Chill",
+   "q": 3,
+   "arquetipos": [
+    "Stasis"
+   ],
+   "pct": 83,
+   "unit": 8.71,
+   "set": "6ED",
+   "sid": "24846eba-e085-4d1d-8c7a-d4faf11034a6",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Chill",
    "no_deck": null
   },
   {
@@ -1436,7 +1790,7 @@
     "Orzhov Exalted Angel"
    ],
    "pct": 100,
-   "unit": 0.25,
+   "unit": 0.28,
    "set": "4ED",
    "sid": "f3575259-b019-47d0-a6d3-3fe4963294ae",
    "rl": false,
@@ -1460,13 +1814,28 @@
    "no_deck": null
   },
   {
+   "carta": "Cloud of Faeries",
+   "q": 4,
+   "arquetipos": [
+    "Frantic Storm"
+   ],
+   "pct": 100,
+   "unit": 0.91,
+   "set": "ULG",
+   "sid": "4e76d04a-0038-4b5b-a026-3056ee940da9",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Cloud%20of%20Faeries",
+   "no_deck": null
+  },
+  {
    "carta": "Coastal Tower",
    "q": 1,
    "arquetipos": [
     "Landstill"
    ],
    "pct": 94,
-   "unit": 2.7,
+   "unit": 13.32,
    "set": "INV",
    "sid": "d115dbff-e35b-495f-a1e3-19651895927e",
    "rl": false,
@@ -1480,7 +1849,7 @@
    "arquetipos": [
     "Psychatog"
    ],
-   "pct": 63,
+   "pct": 67,
    "unit": null,
    "set": null,
    "sid": null,
@@ -1495,7 +1864,8 @@
    "arquetipos": [
     "Stiflenought",
     "Psychatog",
-    "Landstill"
+    "Landstill",
+    "Stasis"
    ],
    "pct": 100,
    "unit": 2.55,
@@ -1511,9 +1881,10 @@
    "q": 3,
    "arquetipos": [
     "Mono-Preto Graveborn Muse",
-    "Pyrostatic Pillar"
+    "Pyrostatic Pillar",
+    "Mono-Branco Exalted Angel"
    ],
-   "pct": 71,
+   "pct": 100,
    "unit": null,
    "set": null,
    "sid": null,
@@ -1524,12 +1895,13 @@
   },
   {
    "carta": "Cursed Totem",
-   "q": 1,
+   "q": 2,
    "arquetipos": [
-    "Terrageddon"
+    "Terrageddon",
+    "Stasis"
    ],
-   "pct": 59,
-   "unit": 41.67,
+   "pct": 67,
+   "unit": 42.3,
    "set": "MIR",
    "sid": "cc99ee76-45b6-4f1d-b0b0-7da8775ca90c",
    "rl": false,
@@ -1554,11 +1926,12 @@
   },
   {
    "carta": "Daze",
-   "q": 2,
+   "q": 3,
    "arquetipos": [
-    "Stiflenought"
+    "Stiflenought",
+    "Stasis"
    ],
-   "pct": 93,
+   "pct": 94,
    "unit": null,
    "set": null,
    "sid": null,
@@ -1599,14 +1972,30 @@
    "no_deck": "UW Replenish"
   },
   {
+   "carta": "Deep Analysis",
+   "q": 2,
+   "arquetipos": [
+    "Frantic Storm"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Deep%20Analysis",
+   "no_deck": null
+  },
+  {
    "carta": "Defense Grid",
-   "q": 3,
+   "q": 4,
    "arquetipos": [
     "UW Replenish",
+    "Frantic Storm",
     "Orzhov Exalted Angel"
    ],
-   "pct": 60,
-   "unit": 17.93,
+   "pct": 80,
+   "unit": 17.57,
    "set": "ULG",
    "sid": "5c2592c9-7e64-40c1-a9cb-c0994094a1e0",
    "rl": false,
@@ -1620,7 +2009,7 @@
    "arquetipos": [
     "Mono-Preto Graveborn Muse"
    ],
-   "pct": 97,
+   "pct": 98,
    "unit": null,
    "set": null,
    "sid": null,
@@ -1631,10 +2020,11 @@
   },
   {
    "carta": "Disenchant",
-   "q": 3,
+   "q": 4,
    "arquetipos": [
     "Terrageddon",
     "Landstill",
+    "Mono-Branco Exalted Angel",
     "Orzhov Exalted Angel"
    ],
    "pct": 94,
@@ -1652,7 +2042,7 @@
    "arquetipos": [
     "Mono-Preto Graveborn Muse"
    ],
-   "pct": 63,
+   "pct": 60,
    "unit": 0.29,
    "set": "5ED",
    "sid": "41a9b3b2-4ac9-4e50-bcd2-8831d0739e85",
@@ -1672,7 +2062,7 @@
     "Orzhov Exalted Angel"
    ],
    "pct": 100,
-   "unit": 2.6,
+   "unit": 3.26,
    "set": "USG",
    "sid": "ca367f49-0f4a-4b7f-8104-851893fbcd8a",
    "rl": false,
@@ -1713,12 +2103,27 @@
    "no_deck": null
   },
   {
+   "carta": "Earthquake",
+   "q": 2,
+   "arquetipos": [
+    "Pyrostatic Pillar"
+   ],
+   "pct": 52,
+   "unit": 6.4,
+   "set": "4ED",
+   "sid": "19ec03ce-a8a3-42c3-a895-21cce1657411",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Earthquake",
+   "no_deck": null
+  },
+  {
    "carta": "Eladamri's Vineyard",
    "q": 1,
    "arquetipos": [
     "Full English Breakfast"
    ],
-   "pct": 50,
+   "pct": 53,
    "unit": 5.91,
    "set": "TMP",
    "sid": "d8531643-5657-44b6-89d1-9cdf67ed09c4",
@@ -1734,7 +2139,7 @@
     "Full English Breakfast"
    ],
    "pct": 100,
-   "unit": 105.04,
+   "unit": 105.67,
    "set": "ALL",
    "sid": "5b94f37f-ebdf-4b79-a615-58331d27cf4e",
    "rl": false,
@@ -1797,7 +2202,7 @@
    "arquetipos": [
     "Stiflenought"
    ],
-   "pct": 98,
+   "pct": 100,
    "unit": null,
    "set": null,
    "sid": null,
@@ -1823,10 +2228,11 @@
   },
   {
    "carta": "Exalted Angel",
-   "q": 3,
+   "q": 4,
    "arquetipos": [
     "UW Replenish",
     "Landstill",
+    "Mono-Branco Exalted Angel",
     "Orzhov Exalted Angel"
    ],
    "pct": 100,
@@ -1844,7 +2250,7 @@
    "arquetipos": [
     "Enchantress"
    ],
-   "pct": 68,
+   "pct": 69,
    "unit": null,
    "set": null,
    "sid": null,
@@ -1905,8 +2311,8 @@
    "arquetipos": [
     "Pyrostatic Pillar"
    ],
-   "pct": 52,
-   "unit": 6.39,
+   "pct": 58,
+   "unit": 6.52,
    "set": "JUD",
    "sid": "eeb5c96a-1d16-459d-9968-ced9a8f1c520",
    "rl": false,
@@ -1918,10 +2324,11 @@
    "carta": "Flash of Insight",
    "q": 2,
    "arquetipos": [
-    "Stiflenought"
+    "Stiflenought",
+    "Stasis"
    ],
    "pct": 98,
-   "unit": 5.43,
+   "unit": 5.56,
    "set": "JUD",
    "sid": "ffaab905-0b97-42c2-a1a3-1e72275caa82",
    "rl": false,
@@ -1950,10 +2357,11 @@
    "q": 4,
    "arquetipos": [
     "Stiflenought",
-    "Psychatog"
+    "Psychatog",
+    "Stasis"
    ],
    "pct": 100,
-   "unit": 34.13,
+   "unit": 34.63,
    "set": "PCY",
    "sid": "870fb793-3107-4cb2-ba78-34fbf5c9da2f",
    "rl": false,
@@ -1962,13 +2370,29 @@
    "no_deck": "Stiflenought"
   },
   {
-   "carta": "Frantic Search",
-   "q": 3,
+   "carta": "Forsaken City",
+   "q": 4,
    "arquetipos": [
-    "UW Replenish"
+    "Stasis"
    ],
    "pct": 100,
-   "unit": 2.44,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Forsaken%20City",
+   "no_deck": null
+  },
+  {
+   "carta": "Frantic Search",
+   "q": 4,
+   "arquetipos": [
+    "UW Replenish",
+    "Frantic Storm"
+   ],
+   "pct": 100,
+   "unit": 2.53,
    "set": "ULG",
    "sid": "1904db14-6df7-424f-afa5-e3dfab31300a",
    "rl": false,
@@ -2043,7 +2467,7 @@
    "arquetipos": [
     "Mono-Preto Graveborn Muse"
    ],
-   "pct": 80,
+   "pct": 75,
    "unit": 1.4,
    "set": "5ED",
    "sid": "6a6fff23-21c9-4519-b84a-59868a918996",
@@ -2074,7 +2498,7 @@
     "Goblins"
    ],
    "pct": 100,
-   "unit": 34.88,
+   "unit": 35.38,
    "set": "USG",
    "sid": "9b848caa-aad8-4060-8f86-304a8556de2d",
    "rl": false,
@@ -2134,7 +2558,7 @@
     "Goblins"
    ],
    "pct": 100,
-   "unit": 40.49,
+   "unit": 41.11,
    "set": "ONS",
    "sid": "7e689df7-b85d-4346-bee8-5e978b5cbbbc",
    "rl": false,
@@ -2149,7 +2573,7 @@
     "Goblins"
    ],
    "pct": 100,
-   "unit": 0.57,
+   "unit": 0.55,
    "set": "MIR",
    "sid": "e6529852-8b3e-4a70-a4a1-029e012231c6",
    "rl": false,
@@ -2208,7 +2632,8 @@
    "q": 4,
    "arquetipos": [
     "Stiflenought",
-    "Psychatog"
+    "Psychatog",
+    "Stasis"
    ],
    "pct": 100,
    "unit": 1001.27,
@@ -2237,6 +2662,21 @@
    "no_deck": null
   },
   {
+   "carta": "Helm of Awakening",
+   "q": 4,
+   "arquetipos": [
+    "Frantic Storm"
+   ],
+   "pct": 100,
+   "unit": 2.69,
+   "set": "VIS",
+   "sid": "41bba882-39b8-42db-9a01-54c6712b8019",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Helm%20of%20Awakening",
+   "no_deck": null
+  },
+  {
    "carta": "Hermit Druid",
    "q": 4,
    "arquetipos": [
@@ -2258,7 +2698,8 @@
     "Stiflenought",
     "UW Replenish",
     "Psychatog",
-    "Landstill"
+    "Landstill",
+    "Frantic Storm"
    ],
    "pct": 87,
    "unit": null,
@@ -2290,7 +2731,8 @@
    "arquetipos": [
     "Stiflenought",
     "Psychatog",
-    "Landstill"
+    "Landstill",
+    "Stasis"
    ],
    "pct": 100,
    "unit": 4.1,
@@ -2337,7 +2779,7 @@
    "arquetipos": [
     "Pyrostatic Pillar"
    ],
-   "pct": 70,
+   "pct": 74,
    "unit": 4.66,
    "set": "TMP",
    "sid": "3707ab74-9aec-4d30-86e0-ffa5f72d5b4f",
@@ -2367,7 +2809,7 @@
    "arquetipos": [
     "Enchantress"
    ],
-   "pct": 61,
+   "pct": 58,
    "unit": null,
    "set": null,
    "sid": null,
@@ -2460,7 +2902,7 @@
     "Golgari Graveborn Muse"
    ],
    "pct": 100,
-   "unit": 32.81,
+   "unit": 33.31,
    "set": "APC",
    "sid": "610b7cd5-5532-45a9-acfe-24a818034d1c",
    "rl": false,
@@ -2484,6 +2926,22 @@
    "no_deck": null
   },
   {
+   "carta": "Mana Short",
+   "q": 2,
+   "arquetipos": [
+    "Stasis",
+    "Frantic Storm"
+   ],
+   "pct": 67,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Mana%20Short",
+   "no_deck": null
+  },
+  {
    "carta": "Meddling Mage",
    "q": 4,
    "arquetipos": [
@@ -2500,12 +2958,42 @@
    "no_deck": "UW Replenish"
   },
   {
+   "carta": "Meditate",
+   "q": 4,
+   "arquetipos": [
+    "Frantic Storm"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": true,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Meditate",
+   "no_deck": null
+  },
+  {
+   "carta": "Merchant Scroll",
+   "q": 4,
+   "arquetipos": [
+    "Frantic Storm"
+   ],
+   "pct": 100,
+   "unit": 8.05,
+   "set": "HML",
+   "sid": "d4133ceb-6176-411a-9eb8-51721c1bb435",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Merchant%20Scroll",
+   "no_deck": null
+  },
+  {
    "carta": "Mirri's Guile",
    "q": 4,
    "arquetipos": [
     "Enchantress"
    ],
-   "pct": 95,
+   "pct": 96,
    "unit": 27.79,
    "set": "TMP",
    "sid": "73d51a3c-95c0-4810-b847-4b8afd12fd64",
@@ -2520,7 +3008,7 @@
    "arquetipos": [
     "Stiflenought"
    ],
-   "pct": 82,
+   "pct": 83,
    "unit": null,
    "set": null,
    "sid": null,
@@ -2568,8 +3056,8 @@
     "Pyrostatic Pillar",
     "Goblins"
    ],
-   "pct": 78,
-   "unit": 5.74,
+   "pct": 71,
+   "unit": 5.87,
    "set": "NEM",
    "sid": "403aa48c-b684-4c54-8863-460958055a1f",
    "rl": false,
@@ -2583,7 +3071,7 @@
    "arquetipos": [
     "Full English Breakfast"
    ],
-   "pct": 94,
+   "pct": 95,
    "unit": null,
    "set": null,
    "sid": null,
@@ -2593,12 +3081,27 @@
    "no_deck": null
   },
   {
+   "carta": "Mother of Runes",
+   "q": 4,
+   "arquetipos": [
+    "Mono-Branco Exalted Angel"
+   ],
+   "pct": 100,
+   "unit": 9.13,
+   "set": "ULG",
+   "sid": "0b1a46ab-95cb-4c24-924f-fc2afd4fcac7",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Mother%20of%20Runes",
+   "no_deck": null
+  },
+  {
    "carta": "Mox Diamond",
    "q": 4,
    "arquetipos": [
     "Terrageddon"
    ],
-   "pct": 92,
+   "pct": 93,
    "unit": 848.64,
    "set": "STH",
    "sid": "28028830-83ed-45e2-b495-3b9ad9d3e988",
@@ -2613,7 +3116,7 @@
    "arquetipos": [
     "Mono-Preto Graveborn Muse"
    ],
-   "pct": 71,
+   "pct": 72,
    "unit": null,
    "set": null,
    "sid": null,
@@ -2641,6 +3144,21 @@
    "no_deck": null
   },
   {
+   "carta": "Nova Cleric",
+   "q": 2,
+   "arquetipos": [
+    "Mono-Branco Exalted Angel"
+   ],
+   "pct": 60,
+   "unit": 0.24,
+   "set": "ONS",
+   "sid": "b2048d84-b5e6-405c-9091-1997a0c4e1a5",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Nova%20Cleric",
+   "no_deck": null
+  },
+  {
    "carta": "Opalescence",
    "q": 4,
    "arquetipos": [
@@ -2660,7 +3178,8 @@
    "carta": "Opt",
    "q": 4,
    "arquetipos": [
-    "Stiflenought"
+    "Stiflenought",
+    "Frantic Storm"
    ],
    "pct": 100,
    "unit": null,
@@ -2677,7 +3196,7 @@
    "arquetipos": [
     "Pyrostatic Pillar"
    ],
-   "pct": 93,
+   "pct": 90,
    "unit": 2.69,
    "set": "INV",
    "sid": "c91fca91-7296-422e-b251-d571b710ff71",
@@ -2723,7 +3242,7 @@
    "arquetipos": [
     "Stiflenought"
    ],
-   "pct": 64,
+   "pct": 63,
    "unit": 0.75,
    "set": "ODY",
    "sid": "f50843cc-20ac-4746-816e-f2630aa31594",
@@ -2785,7 +3304,7 @@
     "Orzhov Exalted Angel"
    ],
    "pct": 100,
-   "unit": 23.54,
+   "unit": 23.93,
    "set": "WTH",
    "sid": "e98bca31-8c05-430b-b5d7-331bdc55710a",
    "rl": false,
@@ -2799,7 +3318,7 @@
    "arquetipos": [
     "Golgari Graveborn Muse"
    ],
-   "pct": 71,
+   "pct": 62,
    "unit": 4.11,
    "set": "TMP",
    "sid": "d5ac39e8-bd0e-4fa3-bc1e-a93944d013f3",
@@ -2828,7 +3347,8 @@
    "q": 4,
    "arquetipos": [
     "Stiflenought",
-    "Psychatog"
+    "Psychatog",
+    "Stasis"
    ],
    "pct": 100,
    "unit": 5.11,
@@ -2850,7 +3370,7 @@
     "Orzhov Exalted Angel"
    ],
    "pct": 100,
-   "unit": 85.05,
+   "unit": 85.68,
    "set": "UDS",
    "sid": "4d9715c2-9036-4ae2-a5b4-1b190d50c963",
    "rl": true,
@@ -2860,8 +3380,9 @@
   },
   {
    "carta": "Presence of the Master",
-   "q": 1,
+   "q": 3,
    "arquetipos": [
+    "Mono-Branco Exalted Angel",
     "Orzhov Exalted Angel"
    ],
    "pct": 60,
@@ -2879,8 +3400,8 @@
    "arquetipos": [
     "Pyrostatic Pillar"
    ],
-   "pct": 59,
-   "unit": 7.01,
+   "pct": 65,
+   "unit": 7.16,
    "set": "EXO",
    "sid": "8e5283db-3e22-4862-9d95-56d03d09c2ae",
    "rl": false,
@@ -2927,7 +3448,7 @@
     "Pyrostatic Pillar",
     "Goblins"
    ],
-   "pct": 75,
+   "pct": 61,
    "unit": null,
    "set": null,
    "sid": null,
@@ -2943,7 +3464,7 @@
     "Terrageddon",
     "Full English Breakfast"
    ],
-   "pct": 78,
+   "pct": 76,
    "unit": 15.46,
    "set": "ICE",
    "sid": "88040748-ad76-4b9a-bd4e-87e5980e9816",
@@ -2958,7 +3479,7 @@
    "arquetipos": [
     "Goblins"
    ],
-   "pct": 75,
+   "pct": 78,
    "unit": null,
    "set": null,
    "sid": null,
@@ -2973,13 +3494,28 @@
    "arquetipos": [
     "Pyrostatic Pillar"
    ],
-   "pct": 78,
-   "unit": 5.74,
+   "pct": 74,
+   "unit": 5.87,
    "set": "SCG",
    "sid": "5973cd53-f6cd-4edc-b952-f6d3eef97988",
    "rl": false,
    "motivo": null,
    "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Pyrostatic%20Pillar",
+   "no_deck": null
+  },
+  {
+   "carta": "Ramosian Sergeant",
+   "q": 4,
+   "arquetipos": [
+    "Mono-Branco Exalted Angel"
+   ],
+   "pct": 100,
+   "unit": 1.08,
+   "set": "MMQ",
+   "sid": "ef2b036d-5721-4a6e-bf43-69148b90da10",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Ramosian%20Sergeant",
    "no_deck": null
   },
   {
@@ -3004,7 +3540,7 @@
     "Mono-Preto Graveborn Muse",
     "Golgari Graveborn Muse"
    ],
-   "pct": 94,
+   "pct": 92,
    "unit": null,
    "set": null,
    "sid": null,
@@ -3030,6 +3566,21 @@
    "no_deck": null
   },
   {
+   "carta": "Recurring Nightmare",
+   "q": 1,
+   "arquetipos": [
+    "Golgari Graveborn Muse"
+   ],
+   "pct": 50,
+   "unit": 65.64,
+   "set": "EXO",
+   "sid": "c8173030-1c33-417c-b8e9-79231b6a85a7",
+   "rl": true,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Recurring%20Nightmare",
+   "no_deck": null
+  },
+  {
    "carta": "Red Elemental Blast",
    "q": 2,
    "arquetipos": [
@@ -3037,7 +3588,7 @@
     "Pyrostatic Pillar",
     "Goblins"
    ],
-   "pct": 81,
+   "pct": 83,
    "unit": null,
    "set": null,
    "sid": null,
@@ -3084,7 +3635,7 @@
     "Terrageddon",
     "Goblins"
    ],
-   "pct": 100,
+   "pct": 98,
    "unit": 99.64,
    "set": "MMQ",
    "sid": "477a1f53-5cdf-4b45-b584-2e36b31a3fdb",
@@ -3109,18 +3660,63 @@
    "no_deck": null
   },
   {
+   "carta": "Root Maze",
+   "q": 2,
+   "arquetipos": [
+    "Stasis"
+   ],
+   "pct": 67,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Root%20Maze",
+   "no_deck": null
+  },
+  {
    "carta": "Sacred Ground",
    "q": 2,
    "arquetipos": [
     "Enchantress"
    ],
-   "pct": 86,
+   "pct": 85,
    "unit": 1001.26,
    "set": "STH",
    "sid": "37ae4b01-a9c1-4eec-9204-78cb2508e0df",
    "rl": false,
    "motivo": null,
    "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Sacred%20Ground",
+   "no_deck": null
+  },
+  {
+   "carta": "Sapphire Medallion",
+   "q": 4,
+   "arquetipos": [
+    "Frantic Storm"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Sapphire%20Medallion",
+   "no_deck": null
+  },
+  {
+   "carta": "Savannah Lions",
+   "q": 4,
+   "arquetipos": [
+    "Mono-Branco Exalted Angel"
+   ],
+   "pct": 80,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Savannah%20Lions",
    "no_deck": null
   },
   {
@@ -3208,12 +3804,27 @@
     "Goblins"
    ],
    "pct": 100,
-   "unit": 17.34,
+   "unit": 17.59,
    "set": "SCG",
    "sid": "92e78cec-aaf9-4fe8-887b-b7e356d63315",
    "rl": false,
    "motivo": null,
    "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Siege-Gang%20Commander",
+   "no_deck": null
+  },
+  {
+   "carta": "Silver Knight",
+   "q": 4,
+   "arquetipos": [
+    "Mono-Branco Exalted Angel"
+   ],
+   "pct": 100,
+   "unit": 0.57,
+   "set": "SCG",
+   "sid": "93f559da-08ad-402d-8c6b-3050bce5867b",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Silver%20Knight",
    "no_deck": null
   },
   {
@@ -3237,8 +3848,8 @@
    "arquetipos": [
     "Goblins"
    ],
-   "pct": 94,
-   "unit": 1.87,
+   "pct": 89,
+   "unit": 1.96,
    "set": "ONS",
    "sid": "eb545dcd-3a7a-46a7-9c35-d28faebc6d17",
    "rl": false,
@@ -3262,6 +3873,21 @@
    "no_deck": "UW Replenish"
   },
   {
+   "carta": "Sleight of Hand",
+   "q": 4,
+   "arquetipos": [
+    "Frantic Storm"
+   ],
+   "pct": 60,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Sleight%20of%20Hand",
+   "no_deck": null
+  },
+  {
    "carta": "Smother",
    "q": 3,
    "arquetipos": [
@@ -3279,12 +3905,27 @@
    "no_deck": null
   },
   {
+   "carta": "Snap",
+   "q": 4,
+   "arquetipos": [
+    "Frantic Storm"
+   ],
+   "pct": 100,
+   "unit": 10.14,
+   "set": "ULG",
+   "sid": "f7e0549e-2d23-4ea8-b8d1-ae21af2c9091",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Snap",
+   "no_deck": null
+  },
+  {
    "carta": "Snuff Out",
    "q": 1,
    "arquetipos": [
     "Mono-Preto Graveborn Muse"
    ],
-   "pct": 83,
+   "pct": 80,
    "unit": 1001.27,
    "set": "MMQ",
    "sid": "18a3cca1-e50e-49b6-9e1a-f86640e3b177",
@@ -3309,12 +3950,27 @@
    "no_deck": null
   },
   {
+   "carta": "Soltari Monk",
+   "q": 3,
+   "arquetipos": [
+    "Mono-Branco Exalted Angel"
+   ],
+   "pct": 80,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Soltari%20Monk",
+   "no_deck": null
+  },
+  {
    "carta": "Sphere of Law",
    "q": 1,
    "arquetipos": [
     "Enchantress"
    ],
-   "pct": 52,
+   "pct": 53,
    "unit": null,
    "set": null,
    "sid": null,
@@ -3345,12 +4001,27 @@
     "Landstill"
    ],
    "pct": 100,
-   "unit": 47.97,
+   "unit": 48.6,
    "set": "ODY",
    "sid": "3ede3f6f-e642-4fe4-aa37-0f01cdf4d149",
    "rl": false,
    "motivo": null,
    "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Standstill",
+   "no_deck": null
+  },
+  {
+   "carta": "Stasis",
+   "q": 4,
+   "arquetipos": [
+    "Stasis"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Stasis",
    "no_deck": null
   },
   {
@@ -3389,7 +4060,7 @@
    "arquetipos": [
     "Pyrostatic Pillar"
    ],
-   "pct": 70,
+   "pct": 74,
    "unit": 4.1,
    "set": "SCG",
    "sid": "79955e27-eef7-43bd-9895-e9209ed1537f",
@@ -3422,10 +4093,11 @@
     "UW Replenish",
     "Full English Breakfast",
     "Landstill",
+    "Mono-Branco Exalted Angel",
     "Orzhov Exalted Angel"
    ],
    "pct": 100,
-   "unit": 46.19,
+   "unit": 46.82,
    "set": "ICE",
    "sid": "375fd2cb-443b-4be4-ad60-6d1a8e74f510",
    "rl": false,
@@ -3446,6 +4118,21 @@
    "rl": false,
    "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
    "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Sylvan%20Library",
+   "no_deck": null
+  },
+  {
+   "carta": "Teferi's Isle",
+   "q": 2,
+   "arquetipos": [
+    "Frantic Storm"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": true,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Teferi%27s%20Isle",
    "no_deck": null
   },
   {
@@ -3480,11 +4167,12 @@
   },
   {
    "carta": "Thwart",
-   "q": 1,
+   "q": 3,
    "arquetipos": [
-    "Stiflenought"
+    "Stiflenought",
+    "Stasis"
    ],
-   "pct": 97,
+   "pct": 100,
    "unit": null,
    "set": null,
    "sid": null,
@@ -3501,6 +4189,8 @@
     "Terrageddon",
     "Goblins",
     "Golgari Graveborn Muse",
+    "Frantic Storm",
+    "Mono-Branco Exalted Angel",
     "Orzhov Exalted Angel"
    ],
    "pct": 100,
@@ -3519,7 +4209,7 @@
     "Goblins",
     "Golgari Graveborn Muse"
    ],
-   "pct": 86,
+   "pct": 88,
    "unit": 5.57,
    "set": "MIR",
    "sid": "801f34a6-9f22-43c2-b1e5-194395cc7da1",
@@ -3534,7 +4224,7 @@
    "arquetipos": [
     "Terrageddon"
    ],
-   "pct": 69,
+   "pct": 67,
    "unit": 0.3,
    "set": "ONS",
    "sid": "afcb7cef-8aeb-4c84-88e9-6df17768e292",
@@ -3565,7 +4255,7 @@
    "arquetipos": [
     "Full English Breakfast"
    ],
-   "pct": 83,
+   "pct": 84,
    "unit": null,
    "set": null,
    "sid": null,
@@ -3594,17 +4284,16 @@
    "q": 2,
    "arquetipos": [
     "Enchantress",
-    "UW Replenish",
     "Psychatog"
    ],
-   "pct": 68,
-   "unit": 63.86,
+   "pct": 67,
+   "unit": 64.49,
    "set": "INV",
    "sid": "0dee69f8-cceb-41b9-a0ee-6b2ac9f4bad9",
    "rl": false,
    "motivo": null,
    "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Tsabo%27s%20Web",
-   "no_deck": "UW Replenish"
+   "no_deck": null
   },
   {
    "carta": "Uktabi Orangutan",
@@ -3628,8 +4317,8 @@
     "Psychatog",
     "Full English Breakfast"
    ],
-   "pct": 79,
-   "unit": 56.31,
+   "pct": 81,
+   "unit": 56.94,
    "set": "ICE",
    "sid": "92369d7e-5e5a-46f9-bb31-c57d62410283",
    "rl": false,
@@ -3668,12 +4357,27 @@
    "no_deck": null
   },
   {
+   "carta": "Upheaval",
+   "q": 1,
+   "arquetipos": [
+    "Stasis"
+   ],
+   "pct": 50,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Upheaval",
+   "no_deck": null
+  },
+  {
    "carta": "Vendetta",
    "q": 1,
    "arquetipos": [
     "Golgari Graveborn Muse"
    ],
-   "pct": 57,
+   "pct": 62,
    "unit": null,
    "set": null,
    "sid": null,
@@ -3733,7 +4437,7 @@
    "arquetipos": [
     "Golgari Graveborn Muse"
    ],
-   "pct": 86,
+   "pct": 88,
    "unit": 68.15,
    "set": "STH",
    "sid": "43bf015b-152e-4d67-b773-e75fb2487a32",
@@ -3764,11 +4468,11 @@
     "Full English Breakfast"
    ],
    "pct": 100,
-   "unit": null,
-   "set": null,
-   "sid": null,
+   "unit": 0.55,
+   "set": "MIR",
+   "sid": "aeb151d2-c313-44d2-972e-33487f070c23",
    "rl": false,
-   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "motivo": null,
    "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Wall%20of%20Roots",
    "no_deck": null
   },
@@ -3794,7 +4498,8 @@
    "arquetipos": [
     "Terrageddon",
     "Mono-Preto Graveborn Muse",
-    "Goblins"
+    "Goblins",
+    "Mono-Branco Exalted Angel"
    ],
    "pct": 100,
    "unit": 50.54,
@@ -3811,7 +4516,7 @@
    "arquetipos": [
     "Terrageddon"
    ],
-   "pct": 76,
+   "pct": 75,
    "unit": null,
    "set": null,
    "sid": null,
@@ -3826,7 +4531,7 @@
    "arquetipos": [
     "Terrageddon"
    ],
-   "pct": 57,
+   "pct": 55,
    "unit": null,
    "set": null,
    "sid": null,
@@ -3836,12 +4541,27 @@
    "no_deck": null
   },
   {
+   "carta": "Whipcorder",
+   "q": 4,
+   "arquetipos": [
+    "Mono-Branco Exalted Angel"
+   ],
+   "pct": 100,
+   "unit": 1.01,
+   "set": "ONS",
+   "sid": "3bf6987e-a6e4-4a88-af0b-cf3b2d2b80c7",
+   "rl": false,
+   "motivo": null,
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Whipcorder",
+   "no_deck": null
+  },
+  {
    "carta": "Wild Growth",
    "q": 4,
    "arquetipos": [
     "Enchantress"
    ],
-   "pct": 98,
+   "pct": 99,
    "unit": 0.4,
    "set": "7ED",
    "sid": "515daaba-c063-41d5-9539-25b8c8cb639c",
@@ -3872,7 +4592,7 @@
    "arquetipos": [
     "Mono-Preto Graveborn Muse"
    ],
-   "pct": 100,
+   "pct": 98,
    "unit": 12.09,
    "set": "LGN",
    "sid": "b8a82948-503f-4ad4-9e3c-c080c16afd63",
@@ -3889,13 +4609,28 @@
     "Pyrostatic Pillar",
     "Goblins"
    ],
-   "pct": 91,
+   "pct": 93,
    "unit": 90.63,
    "set": "ONS",
    "sid": "cdad38f7-9dfa-4f1b-9fac-41ab2b253f53",
    "rl": false,
    "motivo": null,
    "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Wooded%20Foothills",
+   "no_deck": null
+  },
+  {
+   "carta": "Words of Wisdom",
+   "q": 1,
+   "arquetipos": [
+    "Frantic Storm"
+   ],
+   "pct": 100,
+   "unit": null,
+   "set": null,
+   "sid": null,
+   "rl": false,
+   "motivo": "sem PT à venda num vendedor profissional do CardTrader (impressões até 2003)",
+   "cm_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Words%20of%20Wisdom",
    "no_deck": null
   },
   {
@@ -3937,7 +4672,7 @@
     "Full English Breakfast"
    ],
    "pct": 100,
-   "unit": 35.88,
+   "unit": 36.38,
    "set": "APC",
    "sid": "177ee102-d981-4fc3-9f09-9dd07755f22c",
    "rl": false,
@@ -3951,7 +4686,7 @@
    "arquetipos": [
     "Terrageddon"
    ],
-   "pct": 65,
+   "pct": 64,
    "unit": null,
    "set": null,
    "sid": null,
@@ -3963,16 +4698,16 @@
  ],
  "contas": {
   "a": {
-   "cartas": 150,
-   "copias": 411,
-   "eur": 11694.52,
-   "sem_preco": 78
+   "cartas": 184,
+   "copias": 514,
+   "eur": 12163.36,
+   "sem_preco": 94
   },
   "b": {
-   "cartas": 190,
-   "copias": 536,
-   "eur": 17728.7,
-   "sem_preco": 98
+   "cartas": 223,
+   "copias": 647,
+   "eur": 18118.07,
+   "sem_preco": 114
   },
   "regra": "b"
  },
@@ -3980,8 +4715,14 @@
   {
    "gravidade": "baixa",
    "deck": "Psychatog",
-   "aviso": "52% do núcleo já está nos teus decks (12 de 23 cartas)",
+   "aviso": "48% do núcleo já está nos teus decks (11 de 23 cartas)",
    "detalhe": "pela regra dos 50% (cópias que TENS, como principal) dá 0% hoje — a colecção reconstrói-se pelas fotos. Faltam-lhe: Accumulated Knowledge x4, Control Magic x1, Duress x4, Engineered Plague x2, Fact or Fiction x1, Haunting Echoes x1, Polluted Delta x4, Psychatog x4"
+  },
+  {
+   "gravidade": "baixa",
+   "deck": "Stasis",
+   "aviso": "52% do núcleo já está nos teus decks (11 de 21 cartas)",
+   "detalhe": "pela regra dos 50% (cópias que TENS, como principal) dá 0% hoje — a colecção reconstrói-se pelas fotos. Faltam-lhe: Arcane Denial x3, Black Vise x3, Boomerang x1, Chill x3, Cursed Totem x2, Forsaken City x4, Mana Short x2, Root Maze x2"
   }
  ]
 }
