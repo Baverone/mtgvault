@@ -44,7 +44,14 @@ TEMA = _shell.TEMA
 # As páginas a que o menu leva (sem âncora), pela ordem da barra lateral. É uma
 # VISTA do `site_shell.SECCOES`: a lista vive lá, para não haver duas. Era aqui
 # que viviam o `MENU`/`EXTRA` e o `nav()` das barras horizontais.
-MENU = list(_shell.PAGINAS_DO_MENU)
+#
+# Desde 2026-10-28 é calculada a cada leitura (`__getattr__`), e não no import:
+# o `nucleo.ligado` troca o menu inteiro, e uma cópia feita no import ficava
+# com o menu de quem importou primeiro.
+def __getattr__(nome: str):
+    if nome == "MENU":
+        return _shell.paginas_do_menu()
+    raise AttributeError(f"module {__name__!r} has no attribute {nome!r}")
 
 
 def img_map(con, names, da_coleccao: bool = True) -> dict[str, str]:

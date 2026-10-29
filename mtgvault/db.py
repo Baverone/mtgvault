@@ -399,6 +399,88 @@ def _migrate(con: sqlite3.Connection) -> None:
     # (`mtgtop8` → `sources`/`consenso` → `db`). O `_migrate` trata do esquema; a
     # recolha trata do que a recolha sabe.
 
+    # O NÚCLEO NOVO (2026-10-28): as tabelas `n_*`. O `schema.sql` cria-as numa
+    # base nova; isto é para a base dele, que já existe. As definições têm de
+    # ser IGUAIS às do `schema.sql` (a regra do `posse_marcada`). Nenhuma tem
+    # índice sobre coluna acrescentada por ALTER: não há ALTERs.
+    con.execute("""CREATE TABLE IF NOT EXISTS n_deck (
+    slug        TEXT PRIMARY KEY,
+    nome        TEXT NOT NULL,
+    formato     TEXT NOT NULL,
+    modo        TEXT NOT NULL CHECK (modo IN ('sempre','rotativo')),
+    vigia       TEXT,
+    arte_nome   TEXT,
+    ordem       INTEGER NOT NULL,
+    vigia_ok_em TEXT,
+    vigia_erro  TEXT
+)""")
+    con.execute("""CREATE TABLE IF NOT EXISTS n_versao (
+    id        INTEGER PRIMARY KEY,
+    slug      TEXT NOT NULL,
+    numero    INTEGER NOT NULL,
+    criada_em TEXT NOT NULL,
+    fonte     TEXT,
+    origem    TEXT NOT NULL CHECK (origem IN ('andre','vigia')),
+    UNIQUE (slug, numero)
+)""")
+    con.execute("""CREATE TABLE IF NOT EXISTS n_versao_carta (
+    versao_id INTEGER NOT NULL,
+    seccao    TEXT NOT NULL CHECK (seccao IN ('main','side','comandante')),
+    nome      TEXT NOT NULL,
+    qtd       INTEGER NOT NULL
+)""")
+    con.execute("CREATE INDEX IF NOT EXISTS ix_n_versao_carta ON n_versao_carta(versao_id)")
+    con.execute("""CREATE TABLE IF NOT EXISTS n_edicao (
+    ambito      TEXT NOT NULL,
+    nome        TEXT NOT NULL,
+    scryfall_id TEXT NOT NULL,
+    acabamento  TEXT NOT NULL CHECK (acabamento IN ('nonfoil','foil')),
+    PRIMARY KEY (ambito, nome)
+)""")
+    con.execute("""CREATE TABLE IF NOT EXISTS n_posse (
+    ambito      TEXT NOT NULL,
+    scryfall_id TEXT NOT NULL,
+    acabamento  TEXT NOT NULL,
+    qtd         INTEGER NOT NULL CHECK (qtd >= 0),
+    PRIMARY KEY (ambito, scryfall_id, acabamento)
+)""")
+    con.execute("""CREATE TABLE IF NOT EXISTS n_posse_log (
+    request_id  TEXT UNIQUE,
+    ambito      TEXT NOT NULL,
+    scryfall_id TEXT NOT NULL,
+    acabamento  TEXT NOT NULL,
+    delta       INTEGER NOT NULL,
+    em          TEXT NOT NULL
+)""")
+    con.execute("""CREATE TABLE IF NOT EXISTS n_montado (
+    id   INTEGER PRIMARY KEY CHECK (id = 1),
+    slug TEXT
+)""")
+    con.execute("""CREATE TABLE IF NOT EXISTS n_a_mais (
+    scryfall_id TEXT NOT NULL,
+    acabamento  TEXT NOT NULL,
+    qtd         INTEGER NOT NULL,
+    nota        TEXT,
+    PRIMARY KEY (scryfall_id, acabamento)
+)""")
+    con.execute("""CREATE TABLE IF NOT EXISTS n_saida (
+    id          INTEGER PRIMARY KEY,
+    slug        TEXT NOT NULL,
+    motivo      TEXT NOT NULL CHECK (motivo IN ('saiu_da_lista','trocou_edicao')),
+    versao_id   INTEGER,
+    scryfall_id TEXT NOT NULL,
+    acabamento  TEXT NOT NULL,
+    qtd         INTEGER NOT NULL,
+    em          TEXT NOT NULL
+)""")
+    con.execute("""CREATE TABLE IF NOT EXISTS n_valor (
+    dia       TEXT PRIMARY KEY,
+    total_eur REAL,
+    copias    INTEGER,
+    sem_preco INTEGER
+)""")
+    con.commit()
+
     # ENCOMENDAS (2026-09-19). O `schema.sql` cria a tabela numa base nova e
     # numa antiga (é `IF NOT EXISTS`); isto é para as colunas que lhe venham a
     # ser acrescentadas DEPOIS de existir na base dele — a mesma regra de

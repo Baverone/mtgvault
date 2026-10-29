@@ -30,6 +30,13 @@ os.environ.setdefault("MOXFIELD_USER_AGENT", "mtgvault/0.1 (coleccao pessoal)")
 from mtgvault import (analysis, consenso, db, fases, loadout, mtgtop8,  # noqa: E402
                       painel, painel_listas, precos, prices, scryfall, sources, tagging, venda,
                       watchlist)
+# O NÚCLEO NOVO (2026-10-28): com `nucleo.ligado`, o `main` corre só a recolha
+# que ele usa e os passos dele (`_main_nucleo`). As funções chamam-se pelo
+# módulo (`nucleo_vigia.vigiar_todos`, …) para um teste as poder trocar.
+from mtgvault import publicar  # noqa: E402
+from mtgvault.nucleo import modelo as nucleo_modelo  # noqa: E402
+from mtgvault.nucleo import valor as nucleo_valor  # noqa: E402
+from mtgvault.nucleo import vigia as nucleo_vigia  # noqa: E402
 
 import arrumacao  # noqa: E402  (gera arrumacao.html — as fases e as quatro protecções)
 import faltas  # noqa: E402  (gera faltas.html — o que comprar, por deck, para Ghent)
@@ -490,6 +497,10 @@ def _podar_ligas(con):
 
 
 def main():
+    # O INTERRUPTOR DO NÚCLEO (2026-10-28), lido a cada corrida. Desligado, o
+    # que vem a seguir é EXATAMENTE o daily de antes — não se tocou numa linha.
+    if nucleo_modelo.ligado():
+        return _main_nucleo()
     with db.session() as con:
         # O catálogo primeiro: os preços e a resolução de nomes dependem dele, e
         # na cloud ele não vem no clone.
@@ -872,6 +883,67 @@ def main():
         _step(con, "checkpoint", lambda: _checkpoint(con))
         # E outra vez, calado: a linha que o `_step` acabou de escrever no
         # `job_runs` também é uma escrita, e ficava no `-wal` à espera do fecho.
+        _checkpoint(con)
+
+
+# Os formatos do MTGO que o núcleo lê: as duas vigias do Luffy (Pauper e
+# Premodern). O resto da recolha de torneios só servia o metagame, que com o
+# núcleo ligado sai do site.
+FORMATOS_MTGO_NUCLEO = {"pauper", "premodern"}
+
+
+def _main_nucleo():
+    """O daily com o `nucleo.ligado` (spec do site do núcleo, «Recolha diária»).
+
+    Preços → listas vigiadas → versões novas → valor do dia → páginas, e mais
+    nada: sem as listas de torneio que só alimentavam o metagame, sem o
+    clustering, sem as páginas antigas. Cada passo é um `_step`, como sempre —
+    uma vigia que falha (`VigiaFalhou`) fica `erro` no `job_runs` e a tarefa do
+    ai-pc fica vermelha, mas o valor e as páginas do dia correm na mesma.
+    """
+    with db.session() as con:
+        _step(con, "catalogo", lambda: _catalog(con))
+        # As listas do MTGO de onde saem as vigias do Luffy. Antes das podas,
+        # pela razão do `daily` de sempre (2026-10-25): o site não sai com
+        # listas que a base apaga minutos depois.
+        _step(con, "harvest-mtgo",
+              lambda: f"{sources.harvest_mtgo(con, MTGO_DAYS, formats=FORMATOS_MTGO_NUCLEO)} novas")
+        _step(con, "precos-scryfall", lambda: _scryfall_prices(con))
+        _step(con, "precos-cardmarket", lambda: _cardmarket(con))
+        _step(con, "podar-precos", lambda: _prune_prices(con, 30))
+        _step(con, "podar-ligas", lambda: _podar_ligas(con))
+        _step(con, "prune", lambda: f"{analysis.prune_decklists(con, 30)} apagadas")
+
+        # Os passos do núcleo, por esta ordem: os 14 decks existem antes de se
+        # vigiar, as versões novas existem antes do valor, e o valor do dia
+        # existe antes das páginas que o mostram.
+        _step(con, "nucleo-decks",
+              lambda: f"{nucleo_modelo.garantir_decks(con)} decks novos")
+
+        def _vigias():
+            r = nucleo_vigia.vigiar_todos(con, levantar=True)
+            # os AVISOS (erro da fonte, lista suspeita) não levantam: a razão
+            # tem de ficar no log, senão só a página a dizia
+            return ("; ".join(
+                f"{slug}: {v.get('estado')}"
+                + (f" ({v.get('mensagem')})" if v.get("estado") in nucleo_vigia.AVISOS
+                   else "")
+                for slug, v in r.items()) or "sem vigias")
+
+        _step(con, "nucleo-vigias", _vigias)
+
+        def _valor():
+            v = nucleo_valor.gravar_valor_do_dia(con, date.today().isoformat())
+            from mtgvault import paginas as _pg            # noqa: PLC0415
+            return (f"{_pg.eur(v['total_eur'])} em {v['copias']} cópias"
+                    + (f", {v['sem_preco']} sem preço" if v["sem_preco"] else ""))
+
+        _step(con, "nucleo-valor", _valor)
+        # As três páginas, para onde as antigas iam (a raiz do repositório) e
+        # pelo MESMO caminho do `mtgvault-publicar` — uma lista só de páginas.
+        _step(con, "nucleo-paginas",
+              lambda: ", ".join(publicar.gerar(con, ROOT)))
+        _step(con, "checkpoint", lambda: _checkpoint(con))
         _checkpoint(con)
 
 

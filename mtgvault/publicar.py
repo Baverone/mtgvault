@@ -49,6 +49,12 @@ ao lado era a segunda oportunidade de discordarem — foi assim que o
 `deckboxes.html` esteve semanas sem ser publicado. O teste
 `test_publicar.caso_a_lista_e_a_mesma_do_daily` lê o workflow e exige que
 batam.
+
+O INTERRUPTOR DO NÚCLEO (2026-10-28). Com `nucleo.ligado` o site é o do núcleo
+novo — Painel, Decks e Vender (`PAGINAS_NUCLEO`) — e é essa a lista do
+`daily.yml`. Sem ele volta a das catorze (`PAGINAS_ANTIGAS`). Quem pergunta é o
+`paginas()`/`publicaveis()`, à chamada; os nomes `PAGINAS`/`PUBLICAVEIS`
+continuam a ler-se do módulo e dão a resposta de hoje.
 """
 from __future__ import annotations
 
@@ -62,8 +68,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 # (módulo, ficheiro, precisa do `rep`). A ordem é a do `daily.py`: o que é mais
-# barato primeiro, para um erro aparecer depressa.
-PAGINAS: list[tuple[str, str, bool]] = [
+# barato primeiro, para um erro aparecer depressa. São as páginas do site
+# ANTIGO: valem com o `nucleo.ligado` desligado (ver `paginas()`).
+PAGINAS_ANTIGAS: list[tuple[str, str, bool]] = [
     ("inicio", "index.html", True),
     ("decks", "decks.html", False),
     ("deckboxes", "deckboxes.html", True),
@@ -84,10 +91,20 @@ PAGINAS: list[tuple[str, str, bool]] = [
     ("reservedlist", "reservedlist.html", False),
 ]
 
+# O SITE DO NÚCLEO (2026-10-28): com `nucleo.ligado`, publica-se isto e mais
+# nada — Painel, Decks e Vender. Nenhuma das três lê o `loadout.report`, e por
+# isso o `gerar` deixa de o calcular. Os geradores antigos ficam no disco e
+# importáveis; só deixam de ser chamados.
+PAGINAS_NUCLEO: list[tuple[str, str, bool]] = [
+    ("nucleo_painel", "index.html", False),
+    ("nucleo_decks", "deck.html", False),
+    ("nucleo_vender", "vender.html", False),
+]
+
 # O que a tarefa pode commitar. Mais nada: o código é dele (e do Claude, noutro
 # ramo), e um `git add -A` de 30 em 30 minutos acabava por levar trabalho a meio
 # para o `main`.
-PUBLICAVEIS: list[str] = [f for _m, f, _r in PAGINAS] + [
+PUBLICAVEIS_ANTIGOS: list[str] = [f for _m, f, _r in PAGINAS_ANTIGAS] + [
     "deckboxes.js",
     # O JavaScript da aba Decks saiu da casca a 2026-10-05, pelo mesmo caminho
     # do `deckboxes.js` (ver `decks.NOME_JS`). Sem ele aqui, a casca publicada
@@ -95,6 +112,39 @@ PUBLICAVEIS: list[str] = [f for _m, f, _r in PAGINAS] + [
     "decks.js",
     "data/paginas",
 ]
+
+
+def _ligado() -> bool:
+    """O `nucleo.ligado`, lido À CHAMADA: o `webapp` e os testes importam este
+    módulo antes de o config mudar."""
+    from .nucleo import modelo                                 # noqa: PLC0415
+    return modelo.ligado()
+
+
+def paginas() -> list[tuple[str, str, bool]]:
+    """As páginas que se geram e publicam HOJE: as do núcleo com o
+    `nucleo.ligado`, as antigas sem ele. É a MESMA lista do `git add` do
+    `daily.yml` com o núcleo ligado (o `test_publicar` confere-o)."""
+    return list(PAGINAS_NUCLEO if _ligado() else PAGINAS_ANTIGAS)
+
+
+def publicaveis() -> list[str]:
+    """O que a tarefa `mtgvault-publicar` pode commitar HOJE. Com o núcleo são
+    só as três páginas: o `data/paginas` e os `.js` são das páginas antigas."""
+    if _ligado():
+        return [f for _m, f, _r in PAGINAS_NUCLEO]
+    return list(PUBLICAVEIS_ANTIGOS)
+
+
+def __getattr__(nome: str):
+    # `PAGINAS` e `PUBLICAVEIS` eram listas fixas do módulo; passaram a
+    # depender do interruptor e calculam-se a cada leitura. Os nomes continuam
+    # a valer para quem os lia (o `run.py` da tarefa, os testes).
+    if nome == "PAGINAS":
+        return paginas()
+    if nome == "PUBLICAVEIS":
+        return publicaveis()
+    raise AttributeError(f"module {__name__!r} has no attribute {nome!r}")
 
 # PUBLICAR NÃO ESCREVE NA COLECÇÃO (medido, não assumido). Dos treze
 # geradores, **um** escrevia: a Galeria grava o ponto do dia no `value_history`
@@ -143,11 +193,14 @@ def gerar(con, destino: Path, rep=None) -> list[str]:
     respostas à mesma pergunta"*).
     """
     destino.mkdir(parents=True, exist_ok=True)
-    if rep is None:
+    lista = paginas()
+    # Só se calcula quando alguma página o pede: as do núcleo não o pedem, e o
+    # relatório do loadout antigo custa segundos e lê as tabelas antigas.
+    if rep is None and any(precisa for _m, _f, precisa in lista):
         from . import loadout                                 # noqa: PLC0415
         rep = loadout.report(con)
     feitos = []
-    for mod, ficheiro, precisa in PAGINAS:
+    for mod, ficheiro, precisa in lista:
         m = importlib.import_module(mod)
         kw = dict(SO_LEITURA.get(mod, {}))
         if precisa:
@@ -202,6 +255,11 @@ def estado(con, raiz: Path | None = None, rep=None) -> dict:
         shutil.rmtree(prova, ignore_errors=True)
     gerar(con, prova, rep=rep)
     dif = comparar(prova, raiz)
+    # Com o núcleo ligado o `data/paginas` já não se publica (`publicaveis()`):
+    # as partes antigas que lá ficaram não são «a mais» — senão cada passagem
+    # dava «mudou» para sempre, e não há nada a commitar por causa delas.
+    if "data/paginas" not in publicaveis():
+        dif["a_mais"] = []
     dif["prova"] = str(prova)
     dif["mudou"] = bool(dif["mudaram"] or dif["novos"] or dif["a_mais"])
     return dif
@@ -218,7 +276,7 @@ def publicar(con, raiz: Path | None = None, *, se_mudou: bool = True,
     raiz = Path(raiz) if raiz else ROOT
     r = {"at": datetime.now().replace(microsecond=0).isoformat(sep=" "),
          "escreveu": False, "mudaram": [], "novos": [], "a_mais": [],
-         "paginas": len(PAGINAS), "publicaveis": list(PUBLICAVEIS)}
+         "paginas": len(paginas()), "publicaveis": publicaveis()}
 
     if se_mudou:
         dif = estado(con, raiz, rep=rep)
@@ -234,7 +292,7 @@ def publicar(con, raiz: Path | None = None, *, se_mudou: bool = True,
     r["escreveu"] = True
     r["detalhe"] = (f"{len(r['mudaram'])} ficheiros mudaram, "
                     f"{len(r['novos'])} novos, {len(r['a_mais'])} a mais"
-                    if se_mudou else f"{len(PAGINAS)} páginas geradas")
+                    if se_mudou else f"{len(paginas())} páginas geradas")
     return r
 
 
@@ -249,6 +307,25 @@ def abrir(path=None, catalog=None, *, a_serio: bool = False):
     return db.ler(path, catalog, a_serio=a_serio)
 
 
+class BasePorMigrar(RuntimeError):
+    """O núcleo está ligado e o `vault.db` ainda não tem as tabelas `n_*`."""
+
+
+def exige_base_do_nucleo(con) -> None:
+    """(I4, 2026-10-29) Com o `nucleo.ligado`, a base tem de ter as tabelas do
+    núcleo. O `publicar` abre-a SÓ DE LEITURA (não corre o `db.init`, que é
+    quem as cria): no primeiro dia, com o `vault.db` a sério ainda por migrar,
+    as três páginas rebentavam com «no such table» num traceback no log da
+    tarefa. Quem migra é o arranque do webapp ou o daily."""
+    if not _ligado():
+        return
+    if con.execute("SELECT 1 FROM sqlite_master WHERE type = 'table'"
+                   " AND name = 'n_deck'").fetchone() is None:
+        raise BasePorMigrar("base por migrar: corre o webapp ou o daily uma vez"
+                            " (o núcleo está ligado e o vault.db ainda não tem as"
+                            " tabelas n_*)")
+
+
 def main(argv=None) -> int:
     """`py -m mtgvault.publicar [--ver|--se-mudou|--sempre]`."""
     import argparse                                           # noqa: PLC0415
@@ -259,7 +336,13 @@ def main(argv=None) -> int:
     ap.add_argument("--sempre", action="store_true",
                     help="escreve mesmo que nada tenha mudado (não usar na tarefa)")
     a = ap.parse_args(argv)
+    import sys                                                # noqa: PLC0415
     with abrir() as con:
+        try:
+            exige_base_do_nucleo(con)
+        except BasePorMigrar as e:
+            print(f"mtgvault.publicar: {e}", file=sys.stderr)
+            return 2
         r = estado(con) if a.ver else publicar(con, se_mudou=not a.sempre)
     print(json.dumps(r, ensure_ascii=False, indent=2))
     return 0

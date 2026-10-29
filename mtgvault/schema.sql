@@ -562,3 +562,87 @@ CREATE INDEX IF NOT EXISTS ix_price_latest_fonte ON price_latest(source, date);
 -- Impressão digital do conteúdo da lista, para apanhar a MESMA decklist
 -- vinda de fontes diferentes (ver sources.store_decklist).
 CREATE INDEX IF NOT EXISTS ix_dl_dedupe ON decklists(format, content_hash, event_date);
+
+-- ---------------------------------------------------------------
+-- O NÚCLEO NOVO (2026-10-28): tabelas `n_*`, só dele. O núcleo nunca escreve
+-- `copies`, `copy_allocation`, `posse_marcada`, `decks`, `deck_cards` nem
+-- `watched*`; vive aqui. As mesmas definições estão no `db._migrate()` (para a
+-- base dele, que já existe) e têm de ser IGUAIS. Ver `mtgvault/nucleo/modelo.py`.
+-- `ambito` = o deck (`slug`) ou `rotativos`, para as partilhadas.
+-- ---------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS n_deck (
+    slug        TEXT PRIMARY KEY,
+    nome        TEXT NOT NULL,
+    formato     TEXT NOT NULL,
+    modo        TEXT NOT NULL CHECK (modo IN ('sempre','rotativo')),
+    vigia       TEXT,
+    arte_nome   TEXT,
+    ordem       INTEGER NOT NULL,
+    vigia_ok_em TEXT,
+    vigia_erro  TEXT
+);
+CREATE TABLE IF NOT EXISTS n_versao (
+    id        INTEGER PRIMARY KEY,
+    slug      TEXT NOT NULL,
+    numero    INTEGER NOT NULL,
+    criada_em TEXT NOT NULL,
+    fonte     TEXT,
+    origem    TEXT NOT NULL CHECK (origem IN ('andre','vigia')),
+    UNIQUE (slug, numero)
+);
+CREATE TABLE IF NOT EXISTS n_versao_carta (
+    versao_id INTEGER NOT NULL,
+    seccao    TEXT NOT NULL CHECK (seccao IN ('main','side','comandante')),
+    nome      TEXT NOT NULL,
+    qtd       INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_n_versao_carta ON n_versao_carta(versao_id);
+CREATE TABLE IF NOT EXISTS n_edicao (
+    ambito      TEXT NOT NULL,
+    nome        TEXT NOT NULL,
+    scryfall_id TEXT NOT NULL,
+    acabamento  TEXT NOT NULL CHECK (acabamento IN ('nonfoil','foil')),
+    PRIMARY KEY (ambito, nome)
+);
+CREATE TABLE IF NOT EXISTS n_posse (
+    ambito      TEXT NOT NULL,
+    scryfall_id TEXT NOT NULL,
+    acabamento  TEXT NOT NULL,
+    qtd         INTEGER NOT NULL CHECK (qtd >= 0),
+    PRIMARY KEY (ambito, scryfall_id, acabamento)
+);
+CREATE TABLE IF NOT EXISTS n_posse_log (
+    request_id  TEXT UNIQUE,
+    ambito      TEXT NOT NULL,
+    scryfall_id TEXT NOT NULL,
+    acabamento  TEXT NOT NULL,
+    delta       INTEGER NOT NULL,
+    em          TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS n_montado (
+    id   INTEGER PRIMARY KEY CHECK (id = 1),
+    slug TEXT
+);
+CREATE TABLE IF NOT EXISTS n_a_mais (
+    scryfall_id TEXT NOT NULL,
+    acabamento  TEXT NOT NULL,
+    qtd         INTEGER NOT NULL,
+    nota        TEXT,
+    PRIMARY KEY (scryfall_id, acabamento)
+);
+CREATE TABLE IF NOT EXISTS n_saida (
+    id          INTEGER PRIMARY KEY,
+    slug        TEXT NOT NULL,
+    motivo      TEXT NOT NULL CHECK (motivo IN ('saiu_da_lista','trocou_edicao')),
+    versao_id   INTEGER,
+    scryfall_id TEXT NOT NULL,
+    acabamento  TEXT NOT NULL,
+    qtd         INTEGER NOT NULL,
+    em          TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS n_valor (
+    dia       TEXT PRIMARY KEY,
+    total_eur REAL,
+    copias    INTEGER,
+    sem_preco INTEGER
+);

@@ -298,26 +298,70 @@ URL_EDICAO = "https://editar-mtg.baverone.com/"
 SECCAO_VENDA = "Arrumar e vender"
 SECCAO_SEM_VENDA = "Arrumar e comprar"
 
-# As páginas que o site GERA, para quem precise da lista (testes, `daily`).
-# Sai de `SECCOES` e não de `seccoes()`: o interruptor tira uma SUB-VISTA (uma
-# âncora), nunca uma página — nenhum ficheiro `.html` deixa de se gerar, e uma
-# lista de publicação que encolhesse com um config era como o `deckboxes.html`
-# ficou semanas sem ser publicado.
-PAGINAS_DO_MENU = list(dict.fromkeys(f for _s, itens in SECCOES
-                                     for f, a, *_r in itens if not a))
+# O MENU DO NÚCLEO NOVO (2026-10-28): *"Menu com três entradas: Painel · Decks
+# · Vender"* (spec do site do núcleo). Vale quando `nucleo.ligado` está a `true`
+# e substitui o `SECCOES` inteiro — as páginas antigas saem do menu e da
+# publicação, e o código delas fica (desligar o interruptor devolve tudo). Os
+# rótulos são o `TITULO` de cada página (`nucleo_painel`/`nucleo_decks`/
+# `nucleo_vender`), pela regra de cima: o `<h1>` diz o mesmo que o menu.
+SECCAO_NUCLEO = "MTG"
+SECCOES_NUCLEO: list[tuple[str, list[tuple[str, str, str, str, str]]]] = [
+    (SECCAO_NUCLEO, [
+        ("index.html", "", "inicio", "Painel", "valor e decks de hoje"),
+        ("deck.html", "", "todas", "Decks", "os 14, carta a carta"),
+        ("vender.html", "", "vender", "Vender", "o que sobra, com preço"),
+    ]),
+]
+
+
+def _nucleo_ligado() -> bool:
+    """O interruptor `nucleo.ligado`, lido À CHAMADA (nunca no import): um
+    módulo importado antes de o config mudar não pode ficar com a resposta
+    velha. Lê pela cache do `sources.config()`, que recarrega quando o ficheiro
+    muda — isto corre em cada página e em cada item da barra."""
+    from . import sources                                    # noqa: PLC0415
+    from .nucleo import modelo                               # noqa: PLC0415
+    return modelo.ligado(sources.config())
+
+
+def paginas_do_menu() -> list[str]:
+    """As páginas que o site GERA, para quem precise da lista (testes, `daily`).
+
+    Sai de `SECCOES` (ou do `SECCOES_NUCLEO`) e não de `seccoes()`: o
+    `venda.mostrar` tira uma SUB-VISTA (uma âncora), nunca uma página — nenhum
+    ficheiro `.html` deixa de se gerar, e uma lista de publicação que encolhesse
+    com um config era como o `deckboxes.html` ficou semanas sem ser publicado.
+    O `nucleo.ligado` é outra coisa: troca o SITE inteiro, e por isso troca
+    também esta lista.
+    """
+    base = SECCOES_NUCLEO if _nucleo_ligado() else SECCOES
+    return list(dict.fromkeys(f for _s, itens in base
+                              for f, a, *_r in itens if not a))
+
+
+def __getattr__(nome: str):
+    # `PAGINAS_DO_MENU` era uma lista calculada no import; passou a depender do
+    # `nucleo.ligado` e por isso calcula-se a cada leitura. O nome continua a
+    # funcionar para quem o lia (`paginas.MENU`, os testes).
+    if nome == "PAGINAS_DO_MENU":
+        return paginas_do_menu()
+    raise AttributeError(f"module {__name__!r} has no attribute {nome!r}")
 
 
 def seccoes() -> list[tuple[str, list[tuple[str, str, str, str, str]]]]:
     """As secções EFECTIVAS da barra lateral — `SECCOES` menos o que está
-    desligado hoje.
+    desligado hoje, ou o menu do núcleo (`SECCOES_NUCLEO`) com `nucleo.ligado`.
 
-    Hoje só há um interruptor (`venda.mostrar`, 2026-09-25) e por isso isto é
-    quase a lista inteira. Existe na mesma como função porque é ela que a barra,
-    as migalhas e o título de cada página passam a ler: com a lista a ser lida
-    directamente em cinco sítios, o primeiro que se esquecesse do interruptor
-    punha um item «Vender» numa página onde a aba não existe — um 404 com mais
-    passos. O import é lá dentro porque o `venda` chega aqui pelo `paginas`.
+    O `venda.mostrar` (2026-09-25) tira o item «Vender» da Deckboxes. Existe
+    como função porque é ela que a barra, as migalhas e o título de cada página
+    passam a ler: com a lista a ser lida directamente em cinco sítios, o
+    primeiro que se esquecesse do interruptor punha um item «Vender» numa
+    página onde a aba não existe — um 404 com mais passos. O import é lá dentro
+    porque o `venda` chega aqui pelo `paginas`. O «Vender» do núcleo é uma
+    página própria (`vender.html`) e não a aba da Deckboxes: não o tira.
     """
+    if _nucleo_ligado():
+        return SECCOES_NUCLEO
     from . import venda                                      # noqa: PLC0415
     if venda.mostrar():
         return SECCOES
@@ -341,10 +385,13 @@ def seccao_de(ficheiro: str) -> str:
 
 
 def titulo_de(ficheiro: str) -> str:
-    for _sec, itens in SECCOES:
-        for f, a, _i, rot, _n in itens:
-            if f == ficheiro and not a:
-                return rot
+    """O rótulo da página no menu EFECTIVO; uma página antiga gerada com o
+    núcleo ligado (à mão, por um teste) fica com o rótulo de sempre."""
+    for base in (seccoes(), SECCOES):
+        for _sec, itens in base:
+            for f, a, _i, rot, _n in itens:
+                if f == ficheiro and not a:
+                    return rot
     return ficheiro
 
 
@@ -782,7 +829,7 @@ def migalhas(atual: str, titulo: str) -> str:
     if atual == "index.html":
         return f'<nav class="crumbs" aria-label="Migalhas"><b>{html.escape(titulo)}</b></nav>'
     return ('<nav class="crumbs" aria-label="Migalhas">'
-            '<a href="index.html">Início</a>'
+            f'<a href="index.html">{html.escape(titulo_de("index.html"))}</a>'
             f'{meio}<i>›</i><b>{html.escape(titulo)}</b></nav>')
 
 

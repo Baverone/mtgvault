@@ -30,6 +30,14 @@ página que não tenha sido regenerada desde a mudança fica com a barra antiga,
 e salta-se — um teste que não pode correr não pode dar por bom o que não mediu.
 
 Não toca na rede, na base nem no `data/` a sério.
+
+O NÚCLEO NOVO (2026-10-28). O config do repositório tem o `nucleo.ligado`, e o
+HTML publicado em disco é o do site antigo até o `daily` o regenerar. Por isso
+este ficheiro corre com o interruptor DESLIGADO (uma cópia temporária do config,
+`_nucleo_interruptor.fixar(False)`), e os casos sobre o HTML publicado continuam
+a valer tal como eram — com o mínimo de 15 ícones. Com o interruptor LIGADO, o
+`caso_com_o_nucleo_a_casca_vale_nas_tres_paginas` gera as três páginas do núcleo
+numa pasta temporária e corre lá os MESMOS casos, mais o menu de três entradas.
 """
 import json
 import os
@@ -44,6 +52,12 @@ RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
 os.environ["MTGVAULT_HOME"] = str(Path(tempfile.gettempdir()) / "mtgvault-casca")
 os.environ["MTGVAULT_DB"] = os.environ["MTGVAULT_HOME"] + "/vault.db"
+os.environ["MTGVAULT_CATALOG"] = os.environ["MTGVAULT_HOME"] + "/catalog.db"
+sys.path.insert(0, str(RAIZ / "tests"))
+
+import _nucleo_interruptor  # noqa: E402
+
+_nucleo_interruptor.fixar(False)
 
 from mtgvault import paginas  # noqa: E402
 from mtgvault import site_shell as shell  # noqa: E402
@@ -51,15 +65,20 @@ from mtgvault import site_shell as shell  # noqa: E402
 CHROME = Path(r"C:\Program Files\Google\Chrome\Application\chrome.exe")
 
 
+# Onde está o HTML que os casos lêem: o publicado (a raiz do repositório) ou,
+# no caso do núcleo, a pasta temporária para onde se geraram as três páginas.
+_BASE = [RAIZ]
+
+
 def _publicadas():
-    return [f for f in paginas.MENU if (RAIZ / f).is_file()]
+    return [f for f in paginas.MENU if (_BASE[0] / f).is_file()]
 
 
 def caso_a_casca_e_a_mesma_em_todas():
     """Barra lateral, botão de menu, migalhas e cabeçalho — em todas, iguais."""
     faltam = {}
     for f in _publicadas():
-        txt = (RAIZ / f).read_text(encoding="utf-8", errors="replace")
+        txt = (_BASE[0] / f).read_text(encoding="utf-8", errors="replace")
         for peca, marca in [("barra lateral", '<aside class="side" id="side"'),
                             ("navegação", 'class="sidenav"'),
                             ("botão de menu", 'id="menub"'),
@@ -79,7 +98,7 @@ def caso_ninguem_escreve_uma_barra_a_mao():
     """Nem no HTML publicado, nem no código dos geradores."""
     velhas = {}
     for f in _publicadas():
-        txt = (RAIZ / f).read_text(encoding="utf-8", errors="replace")
+        txt = (_BASE[0] / f).read_text(encoding="utf-8", errors="replace")
         maus = [m for m in ('<nav class="tabs">', 'class="decktabs"',
                             'class="ftabs"') if m in txt]
         if maus:
@@ -100,7 +119,7 @@ def caso_nenhuma_fila_de_navegacao_corre_para_o_lado():
     """
     maus = {}
     for f in _publicadas():
-        txt = (RAIZ / f).read_text(encoding="utf-8", errors="replace")
+        txt = (_BASE[0] / f).read_text(encoding="utf-8", errors="replace")
         for m in re.finditer(r"([^{};\n]{0,80})\{[^{}]*overflow-x:\s*auto", txt):
             sel = m.group(1).strip()
             if sel.startswith((".tw", "table", ".mvs", "pre")):
@@ -113,10 +132,10 @@ def caso_nenhuma_fila_de_navegacao_corre_para_o_lado():
 def caso_nenhum_link_interno_esta_partido():
     """Todo o `href="x.html"` de uma página publicada aponta para um ficheiro que
     existe — e todas as páginas do menu são geradas e publicadas."""
-    existe = {p.name for p in RAIZ.glob("*.html")}
+    existe = {p.name for p in _BASE[0].glob("*.html")}
     maus = {}
     for f in _publicadas():
-        txt = (RAIZ / f).read_text(encoding="utf-8", errors="replace")
+        txt = (_BASE[0] / f).read_text(encoding="utf-8", errors="replace")
         alvos = {a for a in re.findall(r'href="([a-z_]+\.html)', txt)}
         fora = sorted(alvos - existe)
         if fora:
@@ -211,7 +230,7 @@ def caso_ha_um_so_conjunto_de_icones():
         assert f'"{nome}": "<svg' in js, nome
     # E as páginas publicadas usam-nos (a barra lateral leva um por item).
     for f in _publicadas():
-        txt = (RAIZ / f).read_text(encoding="utf-8", errors="replace")
+        txt = (_BASE[0] / f).read_text(encoding="utf-8", errors="replace")
         n = txt.count('<svg class="ico')       # «ico» ou «ico i15», «ico i21»…
         assert n >= 15, (f, n, "a barra lateral perdeu os ícones")
     print("um so conjunto de icones, no Python e no JavaScript")
@@ -222,16 +241,18 @@ def caso_a_barra_lateral_nao_tem_emojis():
     o mesmo item tinha um peso no telemóvel dele e outro no Chrome do PC."""
     emoji = re.compile("[\U0001F300-\U0001FAFF①-➿⬀-⯿☀-⛿]")
     for f in _publicadas():
-        txt = (RAIZ / f).read_text(encoding="utf-8", errors="replace")
+        txt = (_BASE[0] / f).read_text(encoding="utf-8", errors="replace")
         i = txt.index('<nav class="sidenav">')
         nav = txt[i:txt.index("</nav>", i)]
         achados = sorted(set(emoji.findall(nav)))
         assert not achados, (f, achados)
-    # E os rótulos dizem o que são à primeira leitura, sem notas redundantes.
-    rotulos = [rot for _s, itens in shell.SECCOES for _f, _a, _i, rot, _n in itens]
-    assert len(rotulos) == len(set(rotulos)), ("dois itens com o mesmo rótulo",
-                                               rotulos)
-    for _sec, itens in shell.SECCOES:
+    # E os rótulos dizem o que são à primeira leitura, sem notas redundantes —
+    # no menu de sempre e no do núcleo.
+    for base in (shell.SECCOES, shell.SECCOES_NUCLEO):
+        rotulos = [rot for _s, itens in base for _f, _a, _i, rot, _n in itens]
+        assert len(rotulos) == len(set(rotulos)), ("dois itens com o mesmo rótulo",
+                                                   rotulos)
+    for _sec, itens in shell.SECCOES + shell.SECCOES_NUCLEO:
         for _f, _a, _ic, rot, nota in itens:
             if nota:
                 assert nota.lower() not in rot.lower(), (rot, nota)
@@ -240,7 +261,7 @@ def caso_a_barra_lateral_nao_tem_emojis():
     # página a discordar do menu.
     maus = {}
     for f in _publicadas():
-        txt = (RAIZ / f).read_text(encoding="utf-8", errors="replace")
+        txt = (_BASE[0] / f).read_text(encoding="utf-8", errors="replace")
         m = re.search(r'<h1 class="pgt">(.*?)</h1>', txt)
         rot = shell.titulo_de(f)
         if m and m.group(1) != rot:
@@ -281,7 +302,7 @@ def caso_a_ortografia_e_a_do_acordo():
                         r"|correc[çc][ãõ]\w*|projec[çc][ãõ]\w*)", re.I)
     maus = {}
     for f in _publicadas():
-        txt = (RAIZ / f).read_text(encoding="utf-8", errors="replace")
+        txt = (_BASE[0] / f).read_text(encoding="utf-8", errors="replace")
         texto = re.sub(r"<[^>]+>", " ", re.sub(r"(?s)<(script|style)\b.*?</\1>",
                                                " ", txt))
         # O balde `Colecção` é um VALOR da base de dados (o nome da gaveta), não
@@ -311,6 +332,52 @@ def caso_nenhuma_pagina_tem_scroll_horizontal():
     print("1440 e 390 px: nenhuma pagina com scroll horizontal, nenhum link partido")
 
 
+# ---------------------------------------------------------------------------
+# O NÚCLEO NOVO (2026-10-28): os mesmos casos sobre as três páginas dele.
+# ---------------------------------------------------------------------------
+def caso_com_o_nucleo_a_casca_vale_nas_tres_paginas():
+    """Com o `nucleo.ligado`, o Painel, os Decks e o Vender levam a MESMA casca
+    que as páginas antigas — e a barra tem as três entradas e mais nenhuma.
+
+    As páginas geram-se de uma base temporária com os 14 decks e sem cartas: o
+    que aqui se mede é a casca, não os números. Os casos que lêem o HTML
+    publicado correm sobre essa pasta, sem tirar nem pôr nada.
+    """
+    from mtgvault import db, publicar                      # noqa: PLC0415
+    from mtgvault.nucleo import modelo                     # noqa: PLC0415
+    with _nucleo_interruptor.interruptor(True), \
+            tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        with db.session(tmp / "v.db", tmp / "c.db") as con:
+            modelo.garantir_decks(con)
+            feitas = publicar.gerar(con, tmp / "site")
+        assert feitas == ["index.html", "deck.html", "vender.html"], feitas
+        _BASE[0] = tmp / "site"
+        try:
+            assert _publicadas() == feitas, _publicadas()
+            for fn in (caso_a_casca_e_a_mesma_em_todas,
+                       caso_ninguem_escreve_uma_barra_a_mao,
+                       caso_nenhuma_fila_de_navegacao_corre_para_o_lado,
+                       caso_nenhum_link_interno_esta_partido,
+                       caso_a_barra_lateral_nao_tem_emojis,
+                       caso_a_ortografia_e_a_do_acordo):
+                fn()
+            # Em vez dos 15 ícones da barra antiga: as três entradas, cada uma
+            # com o seu ícone, e o `<h1>` igual ao rótulo (o caso dos emojis já
+            # o exige; aqui fica dito o valor).
+            for f in feitas:
+                txt = (_BASE[0] / f).read_text(encoding="utf-8")
+                i = txt.index('<nav class="sidenav">')
+                nav = txt[i:txt.index("</nav>", i)]
+                hrefs = re.findall(r'class="sli[^"]*" href="([^"]+)"', nav)
+                assert hrefs == feitas, (f, hrefs)
+                assert nav.count('<svg class="ico') == 3, (f, nav.count('<svg'))
+                assert f'<h1 class="pgt">{shell.titulo_de(f)}</h1>' in txt, f
+        finally:
+            _BASE[0] = RAIZ
+    print("com o nucleo: as tres paginas tem a casca inteira e o menu de tres")
+
+
 def run():
     for fn in (caso_a_casca_e_a_mesma_em_todas,
                caso_ninguem_escreve_uma_barra_a_mao,
@@ -323,7 +390,8 @@ def run():
                caso_a_barra_lateral_nao_tem_emojis,
                caso_os_rodapes_longos_ficam_recolhidos,
                caso_a_ortografia_e_a_do_acordo,
-               caso_nenhuma_pagina_tem_scroll_horizontal):
+               caso_nenhuma_pagina_tem_scroll_horizontal,
+               caso_com_o_nucleo_a_casca_vale_nas_tres_paginas):
         fn()
     print("\nTUDO OK")
 

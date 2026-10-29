@@ -88,12 +88,21 @@ from mtgvault import (caixas, configio, db, decks_vista, encomendas,  # noqa: E4
                       loadout, marcas, migracao, precos, site_shell, sources,
                       venda, versoes)
 from mtgvault import padrao as padrao_mod  # noqa: E402
+from mtgvault import scryfall  # noqa: E402
+from mtgvault.nucleo import listas as n_listas  # noqa: E402
+from mtgvault.nucleo import modelo as n_modelo  # noqa: E402
+from mtgvault.nucleo import posse as n_posse  # noqa: E402
+from mtgvault.nucleo import valor as n_valor  # noqa: E402
+from mtgvault.nucleo import visual as n_visual  # noqa: E402
 
 import arrumacao  # noqa: E402
 import deckboxes  # noqa: E402
 import decks as decks_pag  # noqa: E402
 import faltas as faltas_pag  # noqa: E402
 import metagame  # noqa: E402
+import nucleo_decks  # noqa: E402
+import nucleo_painel  # noqa: E402
+import nucleo_vender  # noqa: E402
 
 PORT = 8771          # o 8770 é do riftvault — ver o cabeçalho
 # Onde ouvir. `127.0.0.1` por omissão: só este PC. `0.0.0.0` para o telemóvel
@@ -136,13 +145,23 @@ UMA_LINHA = configio.UMA_LINHA
 # decks.
 PAGINAS_EDITAVEIS = {"/": deckboxes,
                      "/deckboxes.html": deckboxes, "/metagame.html": metagame}
+# AS PÁGINAS DO NÚCLEO NOVO (Task 8, 2026-10-28). Com o `nucleo.ligado` (lido a
+# cada pedido, como o resto do site) são ELAS a porta de entrada — o `/` e o
+# `/index.html` dão o Painel — e saem do servidor com os botões. As rotas
+# antigas continuam de pé (`/deckboxes.html`, …), só deixam de estar no menu.
+# Desligado, o webapp é exatamente o de antes.
+PAGINAS_NUCLEO = {"/": nucleo_painel, "/index.html": nucleo_painel,
+                  "/deck.html": nucleo_decks, "/vender.html": nucleo_vender}
 
 # Os links do menu que o modo edição tem de reescrever para levarem o token.
 # A ÂNCORA vai à parte (2026-09-24): metade dos itens da barra lateral aponta
 # para uma SUB-VISTA da Deckboxes (`deckboxes.html#comprar`), e o `?t=` tem de
 # entrar ANTES do `#` — `deckboxes.html#comprar?t=…` faz o browser ler o token
 # como parte da âncora e o servidor nunca o vê.
-_LINK_HTML = re.compile(r'href="([a-z_]+\.html)(#[a-z0-9-]+)?"')
+# O `_` na âncora entrou a 2026-10-28: o Painel do núcleo aponta para
+# `deck.html#pauper_affinity`, e sem ele o link saía sem token — no telemóvel,
+# um toque num deck apagava o modo de edição.
+_LINK_HTML = re.compile(r'href="([a-z_]+\.html)(#[a-z0-9_-]+)?"')
 # Os dados da Deckboxes: o índice e as partes (ver `deckboxes.partir`).
 _DADOS_DECKBOXES = re.compile(r"^/data/paginas/deckboxes(?:/([A-Za-z0-9_-]+))?\.json$")
 # Os dados da ARRUMAÇÃO POR FASES (2026-10-01), pelo mesmo caminho.
@@ -156,6 +175,23 @@ _DADOS_DECKS = re.compile(r"^/data/paginas/decks(?:/([A-Za-z0-9_-]+))?\.json$")
 _DADOS_FALTAS = re.compile(r"^/data/paginas/faltas\.json$")
 # A versão reduzida da foto de cada deckbox (2026-09-21, `mtgvault.fotocaixa`).
 _FOTO_CAIXA = re.compile(r"^/assets/deckboxes/([A-Za-z0-9_-]+)\.jpg$")
+
+
+def pagina_de_erro(caminho: str, e: Exception) -> str:
+    """A página de um 500 do núcleo: o que rebentou, dito em português, e o
+    que fazer. Sem casca nenhuma — a casca pode ser precisamente o que
+    rebentou."""
+    import html as _html                                     # noqa: PLC0415
+    return ('<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width,initial-scale=1">'
+            '<title>Erro · mtgvault</title></head>'
+            '<body style="font-family:system-ui,sans-serif;margin:24px;line-height:1.5">'
+            f'<h1>Erro: não consegui gerar esta página ({_html.escape(caminho)})</h1>'
+            f'<p><code>{_html.escape(type(e).__name__)}: {_html.escape(str(e))}</code></p>'
+            '<p>Se a base acabou de ser trazida de outro sítio e ainda não tem as '
+            'tabelas do núcleo, reinicia o modo de edição (o arranque migra-a) ou '
+            'corre o daily uma vez. Se não for isso, o erro fica no log do '
+            'webapp.</p></body></html>')
 
 
 def com_token(corpo: str, tok: str) -> str:
@@ -1330,13 +1366,27 @@ def aquecer() -> list[str]:
     return frios
 
 
+def _aquecer_passo() -> list[str]:
+    """Uma passagem do aquecedor: com o `nucleo.ligado` não aquece nada (R16,
+    2026-10-29). As páginas que ele aquece são as do site antigo, que com o
+    núcleo já não estão no menu — e o PC que as calculava a cada escrita é o
+    servidor dos sites. O interruptor lê-se a CADA passagem: desligá-lo volta
+    a pôr o aquecedor a trabalhar sem reiniciar o webapp."""
+    try:
+        if n_modelo.ligado():
+            return []
+    except Exception as e:                                      # noqa: BLE001
+        print(f"[aquecer] não li o interruptor: {type(e).__name__}: {e}", flush=True)
+    return aquecer()
+
+
 def vigia_versao() -> threading.Thread:
     def corre():
         anterior = _versao()
         # O primeiro aquecimento é logo: o servidor acabou de arrancar e a cache
         # está vazia — sem isto, o primeiro pedido do dia pagava os 12 s.
         ultimo = _time.monotonic()
-        aquecer()
+        _aquecer_passo()
         while True:
             _time.sleep(INTERVALO_VIGIA)
             try:
@@ -1345,13 +1395,207 @@ def vigia_versao() -> threading.Thread:
                 anterior = v
                 if not estavel or _time.monotonic() - ultimo < INTERVALO_AQUECER:
                     continue
-                if aquecer():
+                if _aquecer_passo():
                     ultimo = _time.monotonic()
             except Exception as e:                              # noqa: BLE001
                 print(f"[vigia] {type(e).__name__}: {e}", flush=True)
     t = threading.Thread(target=corre, daemon=True, name="vigia-versao")
     t.start()
     return t
+
+
+# ---------------------------------------------------------------------------
+# O MODO DE EDIÇÃO DO NÚCLEO (Task 8, 2026-10-28): `/api/n/*`
+# ---------------------------------------------------------------------------
+# Só vale com o `nucleo.ligado`; desligado, estas rotas não existem (404). As
+# regras vivem no `mtgvault/nucleo/` — aqui só se lê o pedido, se chama a função
+# certa e se devolve o JSON. Os erros: `NomesDesconhecidos` → 422 com os nomes
+# (ANTES do `ValueError`, de que é subclasse), qualquer outro `ValueError` →
+# 409 com a frase para ele ler. O núcleo escreve só nas tabelas `n_*`.
+_N_DELTA_MAX = 1000
+
+
+def _n_texto(dados: dict, chave: str) -> str:
+    v = dados.get(chave)
+    return v.strip() if isinstance(v, str) else ""
+
+
+def _n_inteiro(v, o_que: str) -> int:
+    """Um inteiro que veio no JSON (ou em texto, `"3"`). `True` não é 1, e
+    `1.5` não é 1: um pedido assim é um erro da página, não uma quantidade."""
+    if isinstance(v, int) and not isinstance(v, bool):
+        return v
+    if isinstance(v, str) and re.fullmatch(r"-?\d{1,9}", v.strip()):
+        return int(v.strip())
+    raise ValueError(f"{o_que} tem de ser um número inteiro")
+
+
+def _n_delta(dados: dict) -> int:
+    d = _n_inteiro(dados.get("delta"), "o delta")
+    if d == 0:
+        raise ValueError("o delta não pode ser zero")
+    if abs(d) > _N_DELTA_MAX:
+        raise ValueError(f"o delta passa de {_N_DELTA_MAX}: engano?")
+    return d
+
+
+def _n_deck(con, slug: str) -> dict:
+    r = con.execute("SELECT slug, nome, modo FROM n_deck WHERE slug = ?",
+                    (slug,)).fetchone()
+    if r is None:
+        raise ValueError(f"deck desconhecido: {slug!r}")
+    return {"slug": r[0], "nome": r[1], "modo": r[2]}
+
+
+def _n_pede(con, slug: str, nome: str) -> int:
+    v = n_listas.versao_atual(con, slug)
+    return sum(l.qtd for l in v["linhas"] if l.nome == nome) if v else 0
+
+
+def n_edicoes(con, nome: str, deck: str | None = None) -> list[dict]:
+    """TODAS as impressões em papel de uma carta (sem o corte de 12 do
+    `scryfall.impressoes`), com o trend de cada acabamento que existe (`None`
+    = «sem preço») e qual é a que conta neste deck. A que conta vai à frente;
+    as outras pela ordem do `impressoes` (a mais recente primeiro)."""
+    if not nome:
+        raise ValueError("falta o nome da carta")
+    conta = n_posse.edicao(con, deck, nome) if deck else None
+    out = []
+    for r in scryfall.impressoes(con, nome, limite=None):
+        sid = r["scryfall_id"]
+        try:
+            fins = [f for f in json.loads(r["finishes"] or "[]") if isinstance(f, str)]
+        except (TypeError, ValueError):
+            fins = []
+        out.append({
+            "scryfall_id": sid, "set_code": r["set_code"] or "",
+            "set_name": r["set_name"] or "",
+            "collector_number": r["collector_number"] or "",
+            "finishes": fins,
+            "imagem": n_visual.url_carta(sid),
+            "imagem_normal": n_visual.url_carta(sid, "normal"),
+            "preco_nonfoil": (n_valor.preco(con, sid, "nonfoil")
+                              if "nonfoil" in fins else None),
+            "preco_foil": n_valor.preco(con, sid, "foil") if "foil" in fins else None,
+            "escolhida": bool(conta) and conta[0] == sid,
+        })
+    out.sort(key=lambda e: not e["escolhida"])          # estável: o resto fica
+    return out
+
+
+def n_carta(con, deck: str, nome: str) -> dict:
+    """O que a folha da carta diz em cima: de onde é a carta (fixa, ou
+    partilhada e por quem — «Affinity (4) e Welder Cam (2) → precisas de 4»),
+    quantas o deck pede, quantas tens e a edição e o acabamento que contam."""
+    d = _n_deck(con, deck)
+    amb = n_posse.ambito(con, deck, nome)                # valida o nome no deck
+    ed = n_posse.edicao(con, deck, nome)
+    pede = _n_pede(con, deck, nome)
+    usos = []
+    if amb == n_posse.ROT:
+        for r in n_modelo.decks(con, "rotativo"):
+            q = _n_pede(con, r["slug"], nome)
+            if q:
+                usos.append({"slug": r["slug"], "nome": r["nome"], "qtd": q})
+    tenho = 0
+    if ed is not None:
+        r = con.execute("SELECT qtd FROM n_posse WHERE ambito = ? AND scryfall_id = ?"
+                        " AND acabamento = ?", (amb, ed[0], ed[1])).fetchone()
+        tenho = r[0] if r else 0
+    # (M2, 2026-10-29) a primeira marca FIXA a edição da omissão: se essa
+    # edição não tem preço, a folha di-lo antes de ele carregar no «+ 1»
+    escolhida = con.execute("SELECT 1 FROM n_edicao WHERE ambito = ? AND nome = ?",
+                            (amb, nome)).fetchone() is not None
+    return {"nome": nome, "deck": deck, "deck_nome": d["nome"], "modo": d["modo"],
+            "ambito": amb, "partilhada": amb == n_posse.ROT, "usos": usos,
+            "pede": pede, "precisa": max([pede] + [u["qtd"] for u in usos]),
+            "tenho": tenho, "scryfall_id": ed[0] if ed else None,
+            "acabamento": ed[1] if ed else None,
+            "omissao_sem_preco": (ed is not None and not escolhida and not tenho
+                                  and n_valor.preco(con, ed[0], ed[1]) is None)}
+
+
+def n_movimentos(con, deck: str) -> dict:
+    """O que trazer de que caixa para montar este rotativo, sem gravar nada
+    (é a confirmação que a página mostra antes do «Montar»)."""
+    _n_deck(con, deck)
+    movs = n_posse.movimentos_para(con, deck)
+    # (M4) «Affinity» há dois (Pauper e Modern) e «Cloud» também: o nome que a
+    # caixa mostra leva o formato quando se repete
+    nomes = n_visual.nomes_de_deck(con)
+    m = con.execute("SELECT slug FROM n_montado WHERE id = 1").fetchone()
+    return {"deck": deck, "nome": nomes.get(deck, deck),
+            "montado_agora": nomes.get(m[0], m[0]) if m else None,
+            "movimentos": [{**x, "de_nome": nomes.get(x["de"], x["de"])}
+                           for x in movs]}
+
+
+def n_procurar(con, q: str) -> list[str]:
+    """Até 20 nomes do catálogo (papel) que contêm `q`, os que COMEÇAM por ele
+    primeiro. Menos de duas letras não procura: seria o catálogo inteiro."""
+    q = (q or "").strip()
+    if len(q) < 2:
+        return []
+    esc = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return [r[0] for r in con.execute(
+        "SELECT name FROM cards WHERE COALESCE(digital, 0) = 0"
+        " AND name LIKE ? ESCAPE '\\' GROUP BY name"
+        " ORDER BY (name LIKE ? ESCAPE '\\') DESC, name LIMIT 20",
+        (f"%{esc}%", f"{esc}%"))]
+
+
+def n_post_marca(con, dados: dict) -> dict:
+    """«Tenho + 1 / − 1». Um DELTA e um `request_id` (o mesmo id outra vez —
+    o telemóvel a repetir um toque — conta uma vez): o valor nunca vem do
+    cliente."""
+    rid = dados.get("request_id")
+    return {"qtd": n_posse.ajustar(
+        con, _n_texto(dados, "deck"), _n_texto(dados, "nome"), _n_delta(dados),
+        request_id=rid.strip() if isinstance(rid, str) else "")}
+
+
+def n_post_edicao(con, dados: dict) -> dict:
+    n_posse.escolher_edicao(con, _n_texto(dados, "deck"), _n_texto(dados, "nome"),
+                            _n_texto(dados, "scryfall_id"),
+                            _n_texto(dados, "acabamento"))
+    return {"ok": True}
+
+
+def n_post_lista(con, dados: dict) -> dict:
+    """Colar uma lista nova, com «de onde veio?» obrigatório. A mesma lista
+    outra vez não cria versão (`{"igual": true}`)."""
+    deck = _n_texto(dados, "deck")
+    _n_deck(con, deck)
+    texto = dados.get("texto") if isinstance(dados.get("texto"), str) else ""
+    fonte = dados.get("fonte") if isinstance(dados.get("fonte"), str) else ""
+    if not fonte.strip():
+        raise ValueError("de onde veio a lista?")
+    r = n_listas.gravar_versao(con, deck, n_listas.ler_texto(texto),
+                               fonte=fonte, origem="andre")
+    if r is None:
+        return {"igual": True}
+    return {"numero": r["numero"], "entrou": r["entrou"], "saiu": r["saiu"]}
+
+
+def n_post_montar(con, dados: dict) -> dict:
+    return {"movimentos": n_posse.definir_montado(con, _n_texto(dados, "deck"))}
+
+
+def n_post_a_mais(con, dados: dict) -> dict:
+    return {"qtd": n_valor.a_mais_ajustar(con, _n_texto(dados, "scryfall_id"),
+                                          _n_texto(dados, "acabamento"),
+                                          _n_delta(dados))}
+
+
+def n_post_saida(con, dados: dict) -> dict:
+    n_valor.saida_resolver(con, _n_inteiro(dados.get("id"), "o id da saída"),
+                           _n_texto(dados, "destino"))
+    return {"ok": True}
+
+
+_N_POST = {"/api/n/marca": n_post_marca, "/api/n/edicao": n_post_edicao,
+           "/api/n/lista": n_post_lista, "/api/n/montar": n_post_montar,
+           "/api/n/a_mais": n_post_a_mais, "/api/n/saida": n_post_saida}
 
 
 # ---------------------------------------------------------------------------
@@ -1469,6 +1713,10 @@ class Handler(BaseHTTPRequestHandler):
 
     def _get(self):
         caminho = urlparse(self.path).path
+        if ((caminho in PAGINAS_NUCLEO or caminho.startswith("/api/n/"))
+                and n_modelo.ligado()):
+            self._nucleo_get(caminho)
+            return
         # O `/qr.svg` SAIU (2026-10-01, ordem dele: *"não quero QR Codes, quero
         # editar logo e pronto"*). Era a imagem do painel do telemóvel, e o
         # painel saiu da página — ver «FORA O QR DA PORTA DA FRENTE» no
@@ -1728,6 +1976,13 @@ class Handler(BaseHTTPRequestHandler):
             dados = json.loads(bruto.decode("utf-8") or "{}") if bruto else {}
         except (json.JSONDecodeError, UnicodeDecodeError):
             dados = {}
+        if caminho.startswith("/api/n/") and n_modelo.ligado():
+            # O NÚCLEO (2026-10-28): debaixo do MESMO lock de escrita que o
+            # resto — um toque no «Tenho + 1» e um «Montar» ao mesmo tempo não
+            # podem ler o mesmo antes.
+            with escrita():
+                self._nucleo_post(caminho, dados if isinstance(dados, dict) else {})
+            return
         # UMA escrita de cada vez. O `ThreadingHTTPServer` atende os pedidos em
         # paralelo, e cada botão é um ler-mexer-gravar do `colecao_config.json`:
         # dois cliques ao mesmo tempo (ou um duplo-toque no telemóvel) faziam o
@@ -1925,6 +2180,75 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"erro": f"{type(e).__name__}: {e}"}, 500)
                 return
         self._json({"erro": "endpoint desconhecido"}, 404)
+
+    # -- o núcleo novo ---------------------------------------------------
+    def _nucleo_get(self, caminho):
+        """As três páginas do núcleo (editáveis só para quem pode escrever —
+        o loopback, ou o pedido com o token) e as leituras da edição."""
+        modulo = PAGINAS_NUCLEO.get(caminho)
+        if modulo is not None:
+            # Geradas a pedido, sem cache: um toque no telemóvel é seguido de um
+            # GET desta mesma página (`edicao_js` troca o `<main>`), e o número
+            # que aparece tem de ser o de agora.
+            editavel = self._pode_escrever()
+            tok = token() if editavel else ""
+            try:
+                with db.session() as con:
+                    corpo = modulo.html_page(con, editable=editavel, token=tok)
+            except Exception as e:                      # noqa: BLE001
+                # (I4, 2026-10-29) sem isto a excepção subia ao `http.server`,
+                # que fecha a ligação sem resposta: no telemóvel, um ecrã branco
+                print(f"[núcleo] {caminho} rebentou: {type(e).__name__}: {e}",
+                      flush=True)
+                self._envia(pagina_de_erro(caminho, e), 500)
+                return
+            self._envia(com_token(corpo, tok))
+            return
+        q = parse_qs(urlparse(self.path).query)
+
+        def um(k):
+            return (q.get(k) or [""])[0].strip()
+        try:
+            with db.session() as con:
+                if caminho == "/api/n/edicoes":
+                    r = n_edicoes(con, um("nome"), um("deck") or None)
+                elif caminho == "/api/n/carta":
+                    r = n_carta(con, um("deck"), um("nome"))
+                elif caminho == "/api/n/movimentos":
+                    r = n_movimentos(con, um("deck"))
+                elif caminho == "/api/n/procurar":
+                    r = n_procurar(con, um("q"))
+                else:
+                    self._json({"erro": "endpoint desconhecido"}, 404)
+                    return
+        except ValueError as e:
+            self._json({"erro": str(e)}, 409)
+            return
+        except Exception as e:                          # noqa: BLE001
+            self._json({"erro": f"{type(e).__name__}: {e}"}, 500)
+            return
+        self._json(r)
+
+    def _nucleo_post(self, caminho, dados):
+        fn = _N_POST.get(caminho)
+        if fn is None:
+            self._json({"erro": "endpoint desconhecido"}, 404)
+            return
+        try:
+            with db.session() as con:
+                r = fn(con, dados)
+        except n_listas.NomesDesconhecidos as e:
+            # ANTES do `ValueError`: a página lista os nomes para ele corrigir
+            # a gralha de uma vez, e não grava nada.
+            self._json({"erro": str(e), "nomes": e.nomes}, 422)
+            return
+        except ValueError as e:
+            self._json({"erro": str(e)}, 409)
+            return
+        except Exception as e:                          # noqa: BLE001
+            self._json({"erro": f"{type(e).__name__}: {e}"}, 500)
+            return
+        self._json(r)
 
     def _marca(self, dados):
         """`+`/`−`/esquecer a posse de uma carta. Delta, nunca um absoluto.
@@ -2799,6 +3123,15 @@ def main(port: int = PORT, host: str | None = None):
         print("    " + regra_firewall(port))
     print("  Não abras este porto no router.  Ctrl+C para parar.")
     print("=" * 62)
+    if n_modelo.ligado():
+        # Os 14 decks do núcleo, se ainda não estiverem na base (o `daily` faz o
+        # mesmo às 03:30). Sem isto, o primeiro arranque com o interruptor ligado
+        # dava um Painel sem um único deck até à noite seguinte.
+        try:
+            with db.session() as con:
+                print(f"  Núcleo: {n_modelo.garantir_decks(con)} decks novos.")
+        except Exception as e:                          # noqa: BLE001
+            print(f"  Núcleo: não consegui garantir os decks ({type(e).__name__}: {e}).")
     srv = ThreadingHTTPServer((host, port), Handler)
     # O AQUECEDOR arranca COM o servidor e não antes (2026-10-01): o porto
     # responde na hora (a sonda do `mtgvault-serve` pede a casca de 5 em 5 min)

@@ -11,6 +11,16 @@ Duas coisas que já correram mal em silêncio e que aqui ficam trancadas:
      que aconteceu ao `deckboxes.html` no job do PC.
 
 Não toca na rede nem na base de dados.
+
+O NÚCLEO NOVO (2026-10-28). O config do repositório tem o `nucleo.ligado`: o
+site passa a ser Painel · Decks · Vender, e o `git add` do `daily.yml` leva só
+essas três páginas. Este ficheiro corre com o interruptor DESLIGADO (uma cópia
+temporária do config, `_nucleo_interruptor.fixar(False)`) — é o site antigo, e
+os casos dele valem como valiam. Onde um caso comparava o site antigo com o
+`daily.yml`, compara-o agora com a lista de publicação do site antigo
+(`publicar.PAGINAS`/`PUBLICAVEIS` com o interruptor desligado, a da tarefa de
+30 min): o `daily.yml` é a lista do núcleo, e é com essa que os casos
+`*_com_o_nucleo*` o comparam.
 """
 import re
 import sys
@@ -19,8 +29,20 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
 
+sys.path.insert(0, str(RAIZ / "tests"))
+import _nucleo_interruptor  # noqa: E402
+
+_nucleo_interruptor.fixar(False)
+
 from mtgvault import paginas, publicar  # noqa: E402
 from mtgvault import site_shell as shell  # noqa: E402
+
+NUCLEO = ["index.html", "deck.html", "vender.html"]
+
+
+def _linha_do_yml() -> str:
+    yml = (RAIZ / ".github" / "workflows" / "daily.yml").read_text(encoding="utf-8")
+    return next(l for l in yml.splitlines() if l.strip().startswith("git add "))
 
 
 def caso_o_menu_marca_a_pagina_actual():
@@ -92,14 +114,49 @@ def caso_as_seccoes_do_menu_sao_as_que_ele_pediu():
     print("as seccoes sao os quatro trabalhos dele, pela ordem dele")
 
 
+def caso_com_o_nucleo_o_menu_e_uma_seccao_so():
+    """Com o `nucleo.ligado` a barra é UMA secção, «MTG», com Painel · Decks ·
+    Vender — e o que o site antigo tinha não fica lá."""
+    with _nucleo_interruptor.interruptor(True):
+        assert [s for s, _i in shell.seccoes()] == ["MTG"], shell.seccoes()
+        assert paginas.MENU == NUCLEO, paginas.MENU
+        nav = shell.barra("index.html")
+        for f in NUCLEO:
+            assert f'href="{f}"' in nav, f
+        for _s, itens in shell.SECCOES:
+            for f, a, *_r in itens:
+                alvo = f + (f"#{a}" if a else "")
+                if f not in NUCLEO:
+                    assert f'href="{alvo}"' not in nav, (alvo, "ficou na barra")
+        assert nav.count('class="sli cur"') == 1, nav
+    print("com o nucleo, a barra e uma seccao so: Painel, Decks, Vender")
+
+
+def caso_com_o_nucleo_o_yml_publica_as_tres_paginas():
+    """O `git add` do `daily.yml` é a lista do núcleo, e só essa."""
+    with _nucleo_interruptor.interruptor(True):
+        do_yml = re.findall(r"[a-z_]+\.html", _linha_do_yml())
+        assert do_yml == NUCLEO, do_yml
+        assert _linha_do_yml().split()[2:] == NUCLEO, _linha_do_yml()
+    print("com o nucleo, o daily.yml faz git add das tres paginas e de mais nada")
+
+
 def caso_todas_as_paginas_do_menu_sao_publicadas():
-    """Uma página do menu que ninguém faz `git add` fica congelada no site."""
-    yml = (RAIZ / ".github" / "workflows" / "daily.yml").read_text(encoding="utf-8")
-    linha = next(l for l in yml.splitlines() if l.strip().startswith("git add "))
-    publicadas = set(re.findall(r"[a-z_]+\.html", linha))
+    """Uma página do menu que ninguém faz `git add` fica congelada no site.
+
+    Com o interruptor desligado, a lista que publica é a do `publicar` (a da
+    tarefa de 30 min); com ele ligado é também a do `daily.yml`."""
+    publicadas = set(publicar.PUBLICAVEIS)
+    antiga = set(_nucleo_interruptor.linha_antiga_do_yml())
     for f in paginas.MENU:
-        assert f in publicadas, f"{f} não vai ao `git add` do daily.yml"
-    print("todas as paginas do menu vao ao git add do workflow")
+        assert f in publicadas, f"{f} não vai à lista de publicação"
+        assert f in antiga, f"{f} não vai à linha antiga do `git add` do daily.yml"
+    with _nucleo_interruptor.interruptor(True):
+        do_yml = set(re.findall(r"[a-z_]+\.html", _linha_do_yml()))
+        for f in paginas.MENU:
+            assert f in do_yml, f"{f} não vai ao `git add` do daily.yml"
+            assert f in publicar.PUBLICAVEIS, f
+    print("todas as paginas do menu vao a lista de publicacao (e ao yml, com o nucleo)")
 
 
 def caso_o_registo_de_arquetipos_e_publicado():
@@ -111,15 +168,24 @@ def caso_o_registo_de_arquetipos_e_publicado():
     erro — os nomes é que voltavam a mudar de um dia para o outro, que é o
     defeito que ele veio corrigir.
     """
-    yml = (RAIZ / ".github" / "workflows" / "daily.yml").read_text(encoding="utf-8")
-    linha = next(l for l in yml.splitlines() if l.strip().startswith("git add "))
-    assert "data/arquetipos.json" in linha, \
-        "o registo de arquétipos não vai ao `git add` do daily.yml"
+    # Com o núcleo ligado (o config do repositório), o `daily` da nuvem não
+    # agrupa arquétipos — não há `analyse` nem `tag-arquetipos` — e por isso não
+    # escreve o registo: o `git add` do `daily.yml` não o leva. A linha antiga,
+    # com ele, fica escrita no comentário do workflow, para quem desligar o
+    # interruptor a repor; sem ela o defeito voltava no dia em que o
+    # desligassem.
+    import daily                                            # noqa: PLC0415
+    import inspect                                          # noqa: PLC0415
+    nucleo = inspect.getsource(daily._main_nucleo)
+    assert '"analyse' not in nucleo and '"tag-arquetipos"' not in nucleo, \
+        "o daily do núcleo agrupa arquétipos — então o registo tem de ir ao git add"
+    assert "data/arquetipos.json" in _nucleo_interruptor.linha_antiga_do_yml(), \
+        "o daily.yml perdeu a linha antiga (com o registo) para o interruptor desligado"
     # E o registo não pode estar no `.gitignore` (o `data/` tem lá meia dúzia de
     # linhas, e uma delas a mais deixava o `git add` a falhar em silêncio).
     ignore = (RAIZ / ".gitignore").read_text(encoding="utf-8").splitlines()
     assert "data/arquetipos.json" not in [l.strip() for l in ignore]
-    print("o registo de arquetipos vai ao git add do workflow")
+    print("o registo de arquetipos: o daily do nucleo nao o escreve, e a linha antiga fica no yml")
 
 
 def caso_a_pagina_fundida_saiu_do_menu_mas_continua_publicada():
@@ -131,9 +197,10 @@ def caso_a_pagina_fundida_saiu_do_menu_mas_continua_publicada():
     assert "meusdecks.html" not in paginas.MENU
     assert 'href="meusdecks.html"' not in (RAIZ / "index.html").read_text(
         encoding="utf-8"), "o índice ainda aponta para a página fundida"
-    yml = (RAIZ / ".github" / "workflows" / "daily.yml").read_text(encoding="utf-8")
-    linha = next(l for l in yml.splitlines() if l.strip().startswith("git add "))
-    assert "meusdecks.html" in linha, "o reencaminhamento tem de ser publicado"
+    assert "meusdecks.html" in publicar.PUBLICAVEIS, \
+        "o reencaminhamento tem de ser publicado"
+    assert "meusdecks.html" in _nucleo_interruptor.linha_antiga_do_yml(), \
+        "o reencaminhamento saiu da linha antiga do `git add` do daily.yml"
     assert "deckboxes.html" in paginas.MENU
     print("a pagina fundida saiu do menu e continua a ser publicada")
 
@@ -154,8 +221,15 @@ def caso_a_pagina_fundida_saiu_do_menu_mas_continua_publicada():
 # nova entra aqui no dia em que entra no site, sem ninguém se lembrar.
 # (O `alertas.py` e o `buildability.py` foram apagados a 2026-09-15 por decisão
 # do André — ver `caso_as_paginas_orfas_foram_mesmo_apagadas`.)
-GERADORES = [f"{mod}.py" for mod, _ficheiro, _rep in publicar.PAGINAS
-             if mod != "meusdecks"]          # o reencaminhamento não tem CSS
+#
+# Desde 2026-10-28 leva as DUAS listas (`PAGINAS_ANTIGAS` e `PAGINAS_NUCLEO`):
+# os geradores do site antigo continuam no disco e voltam no dia em que o
+# interruptor se desligar, e os do núcleo são os que se publicam hoje.
+GERADORES = list(dict.fromkeys(
+    f"{mod}.py" for mod, _ficheiro, _rep in publicar.PAGINAS_ANTIGAS
+    + publicar.PAGINAS_NUCLEO
+    if mod != "meusdecks"))                 # o reencaminhamento não tem CSS
+GERADORES_NUCLEO = [f"{mod}.py" for mod, _f, _r in publicar.PAGINAS_NUCLEO]
 
 # Apagadas a 2026-09-15 (decisão do André): estavam fora do menu, não corriam no
 # daily e ninguém as importava desde a v6. Uma página órfã não dá erro — só
@@ -265,17 +339,24 @@ def caso_nenhuma_pagina_liga_a_uma_que_ninguem_publica():
     página continuou a ser gerada todos os dias, com o link lá dentro, e nada
     deu erro — só quem carregasse é que ia parar ao 404.
     """
-    yml = (RAIZ / ".github" / "workflows" / "daily.yml").read_text(encoding="utf-8")
-    linha = next(l for l in yml.splitlines() if l.strip().startswith("git add "))
-    publicadas = set(re.findall(r"[a-z_]+\.html", linha)) | {"index.html"}
-    maus = {}
-    for f in GERADORES + ["index.html"]:
-        txt = (RAIZ / f).read_text(encoding="utf-8", errors="replace")
-        alvos = {a for a in re.findall(r'href="([a-z_]+\.html)', txt)}
-        fora = alvos - publicadas
-        if fora:
-            maus[f] = sorted(fora)
-    assert not maus, maus
+    # Cada site contra a SUA lista: o antigo contra o que o `publicar` publica
+    # com o interruptor desligado, o do núcleo contra o `git add` do `daily.yml`
+    # (que é a lista do `publicar` com ele ligado — o `test_publicar` confere).
+    antigos = [g for g in GERADORES if g not in GERADORES_NUCLEO]
+    with _nucleo_interruptor.interruptor(True):
+        do_nucleo = set(re.findall(r"[a-z_]+\.html", _linha_do_yml()))
+        assert do_nucleo == {f for _m, f, _r in publicar.PAGINAS}, do_nucleo
+    for publicadas, geradores in (
+            (set(publicar.PUBLICAVEIS) | {"index.html"}, antigos + ["index.html"]),
+            (do_nucleo, GERADORES_NUCLEO)):
+        maus = {}
+        for f in geradores:
+            txt = (RAIZ / f).read_text(encoding="utf-8", errors="replace")
+            alvos = {a for a in re.findall(r'href="([a-z_]+\.html)', txt)}
+            fora = alvos - publicadas
+            if fora:
+                maus[f] = sorted(fora)
+        assert not maus, maus
     print("nenhuma pagina liga a um html que ninguem publica")
 
 
@@ -357,7 +438,9 @@ def run():
                caso_o_tema_tem_as_variaveis_que_as_paginas_usam,
                caso_os_precos_sao_escritos_em_portugues,
                caso_nenhuma_pagina_liga_a_uma_que_ninguem_publica,
-               caso_as_paginas_orfas_foram_mesmo_apagadas):
+               caso_as_paginas_orfas_foram_mesmo_apagadas,
+               caso_com_o_nucleo_o_menu_e_uma_seccao_so,
+               caso_com_o_nucleo_o_yml_publica_as_tres_paginas):
         fn()
     print("\nTUDO OK")
 
