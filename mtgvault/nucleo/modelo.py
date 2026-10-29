@@ -28,6 +28,12 @@ MODO_DO_FORMATO = {
     "legacy": "rotativo",
 }
 
+# (29/10/2026) A ordem dos formatos nas páginas, a que o André pediu: primeiro
+# os rotativos (partilham cartas, mostram-se lado a lado), depois os sempre
+# montados, um formato por linha.
+ORDEM_FORMATO = ("standard", "pioneer", "modern", "legacy",
+                 "premodern", "pauper", "cedh", "duel-commander")
+
 
 def _deck(slug, nome, formato, arte_nome, vigia=None):
     return {"slug": slug, "nome": nome, "formato": formato,
@@ -35,14 +41,18 @@ def _deck(slug, nome, formato, arte_nome, vigia=None):
             "arte_nome": arte_nome}
 
 
-# A ORDEM É A DA PÁGINA. Os slugs são fixos (`[a-z_]+`): as escolhas de edição
+# Dentro de cada formato, a ordem é a da página (os formatos seguem
+# `ORDEM_FORMATO`). Os slugs são fixos (`[a-z_]+`): as escolhas de edição
 # e as versões ficam presas a eles. A `vigia` diz de onde se vai buscar a lista
 # atual (`mtgo:<jogador>:<formato>` ou `moxfield:<id público>`); sem ela a lista
 # é fixa e nasce vazia («à espera da tua lista»). O `arte_nome` é a carta cuja
 # arte dá a cara ao deck — tem de ser um nome que o Scryfall conheça.
 DECKS: tuple[dict, ...] = (
-    _deck("pauper_affinity", "Affinity", "pauper", "Myr Enforcer",
-          vigia="mtgo:LuffyDoChapeuDePalha:pauper"),
+    _deck("pioneer_greasefang", "Greasefang", "pioneer",
+          "Greasefang, Okiba Boss"),
+    _deck("modern_affinity", "Affinity", "modern", "Thought Monitor"),
+    _deck("modern_oswald", "Oswald", "modern", "Oswald Fiddlebender"),
+    _deck("legacy_welder_cam", "Welder Cam", "legacy", "Goblin Welder"),
     _deck("premodern_stifflenough", "Stifflenough", "premodern", "Stifle",
           vigia="mtgo:LuffyDoChapeuDePalha:premodern"),
     _deck("premodern_replenish", "UW Replenish", "premodern", "Replenish"),
@@ -51,16 +61,13 @@ DECKS: tuple[dict, ...] = (
     _deck("premodern_elves", "Elves", "premodern", "Llanowar Elves"),
     _deck("premodern_igg", "Ill-Gotten Gains", "premodern", "Ill-Gotten Gains"),
     _deck("premodern_oath", "Oath of Druids", "premodern", "Oath of Druids"),
+    _deck("pauper_affinity", "Affinity", "pauper", "Myr Enforcer",
+          vigia="mtgo:LuffyDoChapeuDePalha:pauper"),
     _deck("cedh_blue_farm", "Blue Farm", "cedh", "Kraum, Ludevic's Opus",
           vigia="moxfield:7O1sCuIti0igU6Us_Jhadg"),
     _deck("cedh_cloud", "Cloud", "cedh", "Cloud, Midgar Mercenary",
           vigia="moxfield:k6f2yED7oUGPtK2_rN_xwg"),
     _deck("dc_cloud", "Cloud", "duel-commander", "Cloud, Midgar Mercenary"),
-    _deck("pioneer_greasefang", "Greasefang", "pioneer",
-          "Greasefang, Okiba Boss"),
-    _deck("modern_affinity", "Affinity", "modern", "Thought Monitor"),
-    _deck("modern_oswald", "Oswald", "modern", "Oswald Fiddlebender"),
-    _deck("legacy_welder_cam", "Welder Cam", "legacy", "Goblin Welder"),
 )
 
 
@@ -83,14 +90,19 @@ def garantir_decks(con: sqlite3.Connection) -> int:
 
 
 def decks(con: sqlite3.Connection, modo: str | None = None) -> list[sqlite3.Row]:
-    """Os decks por `ordem`, todos ou só de um modo (`sempre` | `rotativo`)."""
+    """Os decks por formato (`ORDEM_FORMATO`) e, dentro dele, por `ordem`;
+    todos ou só de um modo (`sempre` | `rotativo`). Um formato fora da lista
+    vai para o fim."""
     cur = con.cursor()
     cur.row_factory = sqlite3.Row
     if modo is None:
         cur.execute("SELECT * FROM n_deck ORDER BY ordem")
     else:
         cur.execute("SELECT * FROM n_deck WHERE modo = ? ORDER BY ordem", (modo,))
-    return cur.fetchall()
+    fim = len(ORDEM_FORMATO)
+    return sorted(cur.fetchall(), key=lambda d: (
+        ORDEM_FORMATO.index(d["formato"]) if d["formato"] in ORDEM_FORMATO
+        else fim, d["ordem"]))
 
 
 def ligado(cfg: dict | None = None) -> bool:

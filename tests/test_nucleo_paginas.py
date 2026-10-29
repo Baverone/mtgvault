@@ -154,8 +154,26 @@ def caso_painel_tem_valor_e_decks():
         p = nucleo_painel.html_page(con)
         assert paginas.eur(v["total_eur"]) in p
         assert len(re.findall(r'<a class="tile', p)) == 14
+        # (29/10) por formato, na ordem que ele pediu: primeiro os rotativos
+        # (partilham cartas) lado a lado, depois os sempre montados um formato
+        # por linha; o Standard aparece mesmo sem deck
         assert "Sempre montados" in p and "Rotativos" in p
-        assert p.index("Sempre montados") < p.index("Rotativos")
+        assert p.index("Rotativos") < p.index("Sempre montados")
+        fts = re.findall(r'<h3 class="ft">([^<]+)', p)
+        assert fts == ["Standard", "Pioneer", "Modern", "Legacy", "Premodern",
+                       "Pauper", "cEDH", "Duel Commander"], fts
+        cols = p[p.index('<div class="fcols">'):p.index("Sempre montados")]
+        assert cols.count('<div class="fcol">') == 4
+        assert "sem deck" in cols
+        assert cols.index("#pioneer_greasefang") < cols.index("#modern_affinity")             < cols.index("#modern_oswald") < cols.index("#legacy_welder_cam")
+        sem = p[p.index("Sempre montados"):]
+        assert sem.index("#premodern_stifflenough") < sem.index("#pauper_affinity")             < sem.index("#cedh_blue_farm") < sem.index("#dc_cloud")
+        # a página dos decks segue a mesma ordem
+        d = nucleo_decks.html_page(con)
+        ids = re.findall(r'<section class="dk" id="([a-z_]+)"', d)
+        assert ids[:5] == ["pioneer_greasefang", "modern_affinity", "modern_oswald",
+                           "legacy_welder_cam", "premodern_stifflenough"], ids
+        assert ids[-1] == "dc_cloud", ids
         # a arte do deck vem do art_crop da impressão que o deck usa
         assert "https://cards.scryfall.io/art_crop/front/t/m/tm-a.jpg" in p
         # sem escolha, a primeira impressão (a arte original), não a mais nova

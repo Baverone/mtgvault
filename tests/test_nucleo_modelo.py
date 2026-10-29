@@ -74,6 +74,30 @@ def caso_modos():
     print("4 rotativos, 10 sempre montados, 4 vigiados, por ordem")
 
 
+def caso_ordem_por_formato_mesmo_numa_base_antiga():
+    """(29/10) Uma base criada antes guarda a ordem antiga (Pauper primeiro);
+    os decks saem na mesma pela ordem dos formatos que ele pediu."""
+    antiga = ["pauper_affinity", "premodern_stifflenough", "premodern_replenish",
+              "premodern_enchantress", "premodern_elves", "premodern_igg",
+              "premodern_oath", "cedh_blue_farm", "cedh_cloud", "dc_cloud",
+              "pioneer_greasefang", "modern_affinity", "modern_oswald",
+              "legacy_welder_cam"]
+    with sessao() as con:
+        modelo.garantir_decks(con)
+        for i, slug in enumerate(antiga, start=1):
+            con.execute("UPDATE n_deck SET ordem = ? WHERE slug = ?", (i + 100, slug))
+        for i, slug in enumerate(antiga, start=1):
+            con.execute("UPDATE n_deck SET ordem = ? WHERE slug = ?", (i, slug))
+        fmts = [r["formato"] for r in modelo.decks(con)]
+        slugs = [r["slug"] for r in modelo.decks(con)]
+    vistos = list(dict.fromkeys(fmts))
+    assert vistos == [f for f in modelo.ORDEM_FORMATO if f in vistos], vistos
+    assert slugs[:4] == ["pioneer_greasefang", "modern_affinity",
+                         "modern_oswald", "legacy_welder_cam"], slugs
+    assert slugs[4:10] == antiga[1:7], slugs
+    print("os decks saem por formato mesmo com a ordem antiga guardada")
+
+
 def _linhas():
     with sessao() as con:
         modelo.garantir_decks(con)

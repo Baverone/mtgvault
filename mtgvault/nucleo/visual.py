@@ -319,29 +319,50 @@ def mosaico(item: dict, href: str) -> str:
         chips += '<span class="tc ok">montado</span>'
     if aviso_vigia(d):
         chips += '<span class="tc aviso">lista por ver</span>'
-    return (f'<a class="tile" href="{e(href)}">{img}'
-            f'<span class="tf">{e(formato(d["formato"]))}</span>{chips}'
+    return (f'<a class="tile" href="{e(href)}">{img}{chips}'
             f'<span class="tx"><span class="tn">{e(d["nome"])}</span>'
             f'<span class="tp">{prog}</span></span>'
             f'{barra(est["tenho"], est["total"], "tb")}</a>')
 
 
 def mosaicos(itens: list[dict], prefixo: str) -> str:
-    """Os dois grupos, «Sempre montados» e «Rotativos». `prefixo` é o que vem
-    antes do `#slug` (`deck.html` no Painel, nada na página dos decks)."""
+    """Os decks por formato, na ordem de `modelo.ORDEM_FORMATO` (29/10).
+
+    Primeiro «Rotativos»: os quatro formatos lado a lado, uma coluna cada,
+    porque partilham cartas (um formato sem deck fica com a coluna «sem
+    deck»). Depois «Sempre montados»: um formato por linha, com os decks dele
+    lado a lado. `prefixo` é o que vem antes do `#slug` (`deck.html` no
+    Painel, nada na página dos decks)."""
+    from .modelo import MODO_DO_FORMATO, ORDEM_FORMATO          # noqa: PLC0415
+
+    def do_formato(f):
+        return [i for i in itens if i["deck"]["formato"] == f]
+
+    def tiles(grupo):
+        return "".join(mosaico(i, f'{prefixo}#{i["deck"]["slug"]}') for i in grupo)
+
     out = ""
-    for modo, titulo in (("sempre", "Sempre montados"), ("rotativo", "Rotativos")):
-        grupo = [i for i in itens if i["deck"]["modo"] == modo]
-        if not grupo:
-            continue
-        nota = paginas.plural(len(grupo), "deck")
-        if modo == "rotativo":
-            m = [i["deck"]["nome"] for i in grupo if i["estado"]["montado"]]
-            nota += (f" · montado: {e(m[0])}" if m else " · nenhum montado")
-        out += (f'<h2 class="gt">{titulo} <small>{nota}</small></h2>'
-                '<div class="tiles">'
-                + "".join(mosaico(i, f'{prefixo}#{i["deck"]["slug"]}')
-                          for i in grupo) + "</div>")
+    rot = [f for f in ORDEM_FORMATO if MODO_DO_FORMATO[f] == "rotativo"]
+    grupo = [i for f in rot for i in do_formato(f)]
+    if grupo:
+        m = [i["deck"]["nome"] for i in grupo if i["estado"]["montado"]]
+        nota = (paginas.plural(len(grupo), "deck") + " · partilham cartas"
+                + (f" · montado: {e(m[0])}" if m else " · nenhum montado"))
+        out += (f'<h2 class="gt">Rotativos <small>{nota}</small></h2>'
+                '<div class="fcols">'
+                + "".join(f'<div class="fcol"><h3 class="ft">{e(formato(f))}</h3>'
+                          + (tiles(do_formato(f))
+                             or '<span class="tile vaz">sem deck</span>')
+                          + "</div>" for f in rot) + "</div>")
+    sem = [f for f in ORDEM_FORMATO if MODO_DO_FORMATO[f] == "sempre"]
+    n = sum(len(do_formato(f)) for f in sem)
+    if n:
+        out += (f'<h2 class="gt">Sempre montados'
+                f' <small>{paginas.plural(n, "deck")}</small></h2>')
+        for f in sem:
+            if do_formato(f):
+                out += (f'<h3 class="ft">{e(formato(f))}</h3>'
+                        f'<div class="tiles">{tiles(do_formato(f))}</div>')
     return out
 
 
@@ -486,8 +507,15 @@ CSS = r"""
  .tile:hover{border-color:var(--accent-line)}
  .tile::before{content:"";position:absolute;inset:0;z-index:-1;
    background:linear-gradient(180deg,rgba(0,0,0,0) 30%,rgba(0,0,0,.82) 100%)}
- .tile .tf{position:absolute;left:7px;top:7px;font-size:9.5px;font-weight:700;letter-spacing:.07em;
-   text-transform:uppercase;background:rgba(0,0,0,.6);padding:1px 7px;border-radius:99px}
+ .nuc h3.ft{font:700 15px var(--font-hd);color:var(--ink);margin:16px 0 8px}
+ .fcols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 10px;align-items:start}
+ @media (min-width:900px){ .fcols{grid-template-columns:repeat(4,minmax(0,1fr))} }
+ .fcols h3.ft{margin-top:6px}
+ .fcol{display:grid;gap:10px;align-content:start}
+ .fcol h3.ft{margin-bottom:-2px}
+ .tile.vaz{display:flex;align-items:center;justify-content:center;background:none;
+   border-style:dashed;color:var(--dim);font-size:12.5px}
+ .tile.vaz::before{display:none}
  .tile .tc{position:absolute;right:7px;top:7px;font-size:10px;font-weight:700;padding:1px 7px;
    border-radius:99px;border:1px solid}
  .tile .tc.ok{background:var(--ok-soft);color:var(--ok);border-color:var(--ok-line)}
