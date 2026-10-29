@@ -126,7 +126,9 @@ def caso_preco_podado_vale_o_latest():
         posse_directa(con, MOD, "fow-a", "nonfoil", 2)
         r = valor.gravar_valor_do_dia(con, "2026-10-15")
         assert r == {"total_eur": 160.0, "copias": 2, "sem_preco": 0}, r
-        assert valor.serie(con) == [("2026-10-15", 160.0, 0)]
+        # (R18) o dia gravado e, no fim, o valor de hoje ao vivo
+        assert valor.serie(con, hoje="2026-10-16") == [
+            ("2026-10-15", 160.0, 0), ("2026-10-16", 160.0, 0)]
         # histórico SÓ depois do dia (+ latest): o preço ainda não existia
         so_no_latest(con, "saga-a", "nonfoil", 30.0)
         con.execute("INSERT INTO price_history (scryfall_id, source, date,"
@@ -258,25 +260,34 @@ def caso_serie_preenche_para_tras():
         preco_em(con, "fow-a", "nonfoil", "2026-10-02", 20.0)
         preco_em(con, "fow-a", "nonfoil", "2026-10-03", 30.0)
         posse_directa(con, MOD, "fow-a", "nonfoil", 2)
-        # sem n_valor nenhum: todos os dias com preço, calculados
-        assert valor.serie(con) == [("2026-10-01", 20.0, 0),
-                                    ("2026-10-02", 40.0, 0),
-                                    ("2026-10-03", 60.0, 0)]
-        # só o 3.º dia gravado: os dois de trás vêm do histórico de preços
+        # sem n_valor nenhum: os dias de trás com preço, calculados, e (R18)
+        # o valor de hoje ao vivo no fim
+        assert valor.serie(con, hoje="2026-10-04") == [
+            ("2026-10-01", 20.0, 0), ("2026-10-02", 40.0, 0),
+            ("2026-10-03", 60.0, 0), ("2026-10-04", 60.0, 0)]
+        # o dia do histórico que é HOJE não se repete: vale o ao vivo
+        assert valor.serie(con, hoje="2026-10-03") == [
+            ("2026-10-01", 20.0, 0), ("2026-10-02", 40.0, 0),
+            ("2026-10-03", 60.0, 0)]
         r = valor.gravar_valor_do_dia(con, "2026-10-03")
         assert r == {"total_eur": 60.0, "copias": 2, "sem_preco": 0}, r
-        s = valor.serie(con)
-        assert s == [("2026-10-01", 20.0, 0), ("2026-10-02", 40.0, 0),
-                     ("2026-10-03", 60.0, 0)], s
         # um dia gravado vale o que foi gravado (o valor desse dia, por mais
         # que o preço de hoje mude depois), e não se recalcula
         preco_em(con, "fow-a", "nonfoil", "2026-10-04", 100.0)
-        s = valor.serie(con)
-        assert s[-1] == ("2026-10-03", 60.0, 0) and len(s) == 3, s
-        valor.gravar_valor_do_dia(con, "2026-10-04")
-        s = valor.serie(con)
+        s = valor.serie(con, hoje="2026-10-05")
         assert s == [("2026-10-01", 20.0, 0), ("2026-10-02", 40.0, 0),
-                     ("2026-10-03", 60.0, 0), ("2026-10-04", 200.0, 0)], s
+                     ("2026-10-03", 60.0, 0), ("2026-10-05", 200.0, 0)], s
+        valor.gravar_valor_do_dia(con, "2026-10-04")
+        s = valor.serie(con, hoje="2026-10-05")
+        assert s == [("2026-10-01", 20.0, 0), ("2026-10-02", 40.0, 0),
+                     ("2026-10-03", 60.0, 0), ("2026-10-04", 200.0, 0),
+                     ("2026-10-05", 200.0, 0)], s
+        # o dia gravado de HOJE é trocado pelo valor ao vivo (o preço mudou
+        # depois do daily): o último ponto é sempre o número do topo do Painel
+        preco_em(con, "fow-a", "nonfoil", "2026-10-05", 50.0)
+        s = valor.serie(con, hoje="2026-10-04")
+        assert s[-1] == ("2026-10-04", 100.0, 0) and len(s) == 4, s
+        assert s[-1][1] == valor.valor_em(con)["total_eur"]
         # nunca duas vezes o mesmo dia, e sempre por ordem
         assert [d for d, _v, _s in s] == sorted({d for d, _v, _s in s})
 
@@ -284,8 +295,8 @@ def caso_serie_preenche_para_tras():
 def caso_serie_larga_dias_sem_a_cobertura_de_hoje():
     """(R15) Um dia calculado para trás em que uma carta que HOJE tem preço
     ainda não tinha não é comparável: valia menos só porque faltava uma carta
-    na soma. Sai da série. Os dias gravados (`n_valor`) ficam sempre, com o
-    `sem_preco` que tinham."""
+    na soma. Sai da série. Os dias gravados (`n_valor`) com cópias ficam
+    sempre, com o `sem_preco` que tinham."""
     with sessao() as con:
         semear(con)
         preco_em(con, "fow-a", "nonfoil", "2026-09-01", 10.0)
@@ -298,16 +309,83 @@ def caso_serie_larga_dias_sem_a_cobertura_de_hoje():
         # o Goblin Welder nunca teve preço: falta hoje e faltava antes
         posse_directa(con, LEG, "weld-a", "nonfoil", 1)
         assert valor.valor_em(con)["sem_preco"] == 1
-        s = valor.serie(con)
+        s = valor.serie(con, hoje="2026-10-02")
         # 01/09 e 20/09 tinham a Saga sem preço (2 > 1): saem
-        assert s == [("2026-09-26", 41.0, 1), ("2026-10-01", 42.0, 1)], s
+        assert s == [("2026-09-26", 41.0, 1), ("2026-10-01", 42.0, 1),
+                     ("2026-10-02", 42.0, 1)], s
         # um dia gravado fica, mesmo com mais cartas sem preço do que hoje
         con.execute("INSERT INTO n_valor (dia, total_eur, copias, sem_preco)"
                     " VALUES ('2026-10-02', 12.0, 3, 2)")
         con.commit()
-        s = valor.serie(con)
-        assert s[-1] == ("2026-10-02", 12.0, 2), s
-        assert [d for d, *_ in s] == ["2026-09-26", "2026-10-01", "2026-10-02"], s
+        s = valor.serie(con, hoje="2026-10-03")
+        assert s[-2:] == [("2026-10-02", 12.0, 2), ("2026-10-03", 42.0, 1)], s
+        assert [d for d, *_ in s] == ["2026-09-26", "2026-10-01", "2026-10-02",
+                                      "2026-10-03"], s
+
+
+def caso_serie_larga_dias_gravados_vazios():
+    """(R18, C1) Um dia gravado sem cópias nenhumas (o daily antes de ele
+    marcar a primeira carta) não é um valor de 0 €: sai da série. Era ele que
+    fazia o Painel dizer «−100 %» e o gráfico cair a 0 no primeiro dia."""
+    with sessao() as con:
+        semear(con)
+        preco_em(con, "fow-a", "nonfoil", "2026-10-01", 10.0)
+        con.execute("INSERT INTO n_valor (dia, total_eur, copias, sem_preco)"
+                    " VALUES ('2026-10-02', 0.0, 0, 0)")
+        con.commit()
+        posse_directa(con, MOD, "fow-a", "nonfoil", 3)
+        s = valor.serie(con, hoje="2026-10-03")
+        assert s == [("2026-10-01", 30.0, 0), ("2026-10-03", 30.0, 0)], s
+        assert all(t > 0 for _d, t, _s in s), s
+
+
+def caso_gravar_valor_dia_vazio_nao_grava():
+    """(R18) Sem nada marcado não se grava o dia: um 0 € gravado ficava na
+    série para sempre (um dia gravado não se recalcula)."""
+    with sessao() as con:
+        semear(con)
+        preco_em(con, "fow-a", "nonfoil", "2026-10-01", 10.0)
+        r = valor.gravar_valor_do_dia(con, "2026-10-01")
+        assert r == {"total_eur": 0.0, "copias": 0, "sem_preco": 0}, r
+        assert con.execute("SELECT count(*) FROM n_valor").fetchone()[0] == 0
+        posse_directa(con, MOD, "fow-a", "nonfoil", 1)
+        valor.gravar_valor_do_dia(con, "2026-10-02")
+        assert [tuple(x) for x in con.execute(
+            "SELECT dia, total_eur, copias FROM n_valor")] == [
+            ("2026-10-02", 10.0, 1)]
+
+
+def caso_variacao_do_mes_ao_inventario_de_hoje():
+    """(R18) A variação do topo do Painel: o que ele tem HOJE aos preços de
+    hoje contra o MESMO inventário aos preços de há 30 dias — nunca contra um
+    dia gravado com outro inventário. Se nesse dia faltavam preços a cartas que
+    hoje os têm, o primeiro dia dos últimos 30 com a cobertura de hoje (R15);
+    sem nenhum, «—» (`None`)."""
+    hoje = "2026-10-29"
+    with sessao() as con:
+        semear(con)
+        assert valor.variacao_mes(con, hoje=hoje) is None      # nada marcado
+        preco_em(con, "fow-a", "nonfoil", "2026-09-01", 10.0)
+        preco_em(con, "fow-a", "nonfoil", "2026-10-20", 12.0)
+        posse_directa(con, MOD, "fow-a", "nonfoil", 2)
+        # um dia gravado com outro inventário não entra na conta
+        con.execute("INSERT INTO n_valor (dia, total_eur, copias, sem_preco)"
+                    " VALUES ('2026-09-29', 1.0, 1, 0)")
+        con.commit()
+        v = valor.variacao_mes(con, hoje=hoje)
+        assert v == {"delta": 4.0, "pct": 20.0, "desde": "2026-09-29",
+                     "hoje": hoje}, v
+        # a Saga só tem preço desde 10/10: a 29/09 não é comparável
+        preco_em(con, "saga-a", "nonfoil", "2026-10-10", 30.0)
+        posse_directa(con, MOD, "saga-a", "nonfoil", 1)
+        v = valor.variacao_mes(con, hoje=hoje)
+        assert v == {"delta": 4.0, "pct": 8.0, "desde": "2026-10-10",
+                     "hoje": hoje}, v
+        # uma carta com preço só de hoje: nenhum dia dos últimos 30 é
+        # comparável, e não há variação
+        preco_em(con, "tm-a", "nonfoil", hoje, 2.0)
+        posse_directa(con, MOD, "tm-a", "nonfoil", 1)
+        assert valor.variacao_mes(con, hoje=hoje) is None
 
 
 def caso_gravar_valor_substitui_o_dia():

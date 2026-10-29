@@ -9,6 +9,7 @@ que tens»): uma linha só, a do que ele tem. As peças vivem em
 """
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 
 from mtgvault import paginas
@@ -30,8 +31,11 @@ def _rodape(dia: str | None) -> str:
 
 
 def _valor(con) -> str:
+    # (R18) o número do topo é o último ponto do gráfico, e a variação é a do
+    # inventário de hoje — os três com o MESMO «hoje»
+    hoje = date.today().isoformat()
     v = valor.valor_em(con)
-    s = valor.serie(con)
+    s = valor.serie(con, hoje)
     nota = paginas.plural(v["copias"], "cópia")
     if v["sem_preco"]:
         nota += f" · {paginas.plural(v['sem_preco'], 'cópia')} sem preço fora da soma"
@@ -40,7 +44,7 @@ def _valor(con) -> str:
     return ('<section class="vcard" aria-label="Valor do que tens">'
             '<div class="vlab">O que tens vale</div>'
             f'<div class="vlin"><span class="vbig">{paginas.eur(v["total_eur"])}</span>'
-            f'{visual.variacao_html(s)}</div>'
+            f'{visual.variacao_html(valor.variacao_mes(con, hoje))}</div>'
             f'<p class="vnota">{nota}</p>{visual.grafico(s)}</section>')
 
 

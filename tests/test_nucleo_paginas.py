@@ -15,6 +15,7 @@ import json
 import re
 import sys
 import tempfile
+from datetime import date, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -47,6 +48,23 @@ CLOUD = "cedh_cloud"
 
 DIA = "2026-10-28"
 _n = [0]
+# (R18) o Painel mede «hoje» pelo relógio: os casos do valor contam os dias
+# para trás a partir de hoje
+HOJE = date.today().isoformat()
+
+
+def ha(dias: int) -> str:
+    return (date.today() - timedelta(days=dias)).isoformat()
+
+
+def ultimos_pontos(p: str) -> list[str]:
+    """O valor do último ponto de cada período do gráfico (o «para X» do
+    `aria-label` de cada SVG)."""
+    return [html.unescape(x) for x in re.findall(r'aria-label="De [^"]* para ([^"]*)"', p)]
+
+
+def topo(p: str) -> str:
+    return html.unescape(re.search(r'<span class="vbig">(.*?)</span>', p).group(1))
 
 
 def sessao():
@@ -147,33 +165,36 @@ def caso_painel_tem_valor_e_decks():
         assert 'href="deck.html#modern_affinity"' in p
         # a caixa Vender, com o total (aqui não há nada a vender)
         assert 'href="vender.html"' in p
-        # só uma série de preços, num dia: o gráfico não inventa uma linha
-        assert "<polyline" not in p
-        assert "—" in p
+        # (R18) o último ponto do gráfico é o número do topo
+        assert topo(p) == paginas.eur(v["total_eur"])
+        assert set(ultimos_pontos(p)) <= {paginas.eur(v["total_eur"])}, ultimos_pontos(p)
 
 
 def caso_painel_grafico_e_variacao():
+    """(R18) O gráfico: os dias gravados com cópias e, no fim, o valor de hoje
+    ao vivo. A variação do topo: o que ele tem hoje, aos preços de hoje e aos
+    de há 30 dias."""
     with sessao() as con:
         semear(con)
-        for dia, total in (("2026-09-01", 100.0), ("2026-09-28", 110.0),
-                           ("2026-10-28", 121.0)):
+        preco(con, "repl-a", "nonfoil", 10.0, dia=ha(45))
+        preco(con, "repl-a", "nonfoil", 11.0, dia=ha(10))
+        con.execute("INSERT INTO n_posse (ambito, scryfall_id, acabamento, qtd)"
+                    " VALUES (?, 'repl-a', 'nonfoil', 10)", (REP,))
+        for dia, total, copias in ((ha(60), 50.0, 5), (ha(20), 105.0, 10)):
             con.execute("INSERT INTO n_valor (dia, total_eur, copias, sem_preco)"
-                        " VALUES (?,?,0,0)", (dia, total))
+                        " VALUES (?,?,?,0)", (dia, total, copias))
         con.commit()
-        s = valor.serie(con)
-        assert s == [("2026-09-01", 100.0, 0), ("2026-09-28", 110.0, 0),
-                     ("2026-10-28", 121.0, 0)], s
-        var = visual.variacao_mes(s)
-        assert var == {"delta": 11.0, "pct": 10.0, "desde": "2026-09-28"}, var
-        # série curta: o primeiro ponto; um ponto só: nada
-        assert visual.variacao_mes(s[1:])["desde"] == "2026-09-28"
-        assert visual.variacao_mes(s[:1]) is None
-        assert visual.variacao_mes([]) is None
+        s = valor.serie(con, HOJE)
+        assert s == [(ha(60), 50.0, 0), (ha(20), 105.0, 0), (HOJE, 110.0, 0)], s
+        var = valor.variacao_mes(con, HOJE)
+        assert var == {"delta": 10.0, "pct": 10.0, "desde": ha(30), "hoje": HOJE}, var
         p = nucleo_painel.html_page(con)
         assert p.count("<polyline") == 3          # 1 mês · 3 meses · tudo
         for r in ("1 mês", "3 meses", "tudo"):
             assert r in p
-        assert paginas.pct(10.0) in p
+        assert paginas.pct(10.0) in p and "num mês" in p
+        assert topo(p) == paginas.eur(110.0)
+        assert ultimos_pontos(p) == [paginas.eur(110.0)] * 3, ultimos_pontos(p)
 
 
 def caso_painel_sem_nada_marcado():
@@ -181,15 +202,41 @@ def caso_painel_sem_nada_marcado():
     desenha uma linha deitada no zero nem uma «variação» de 0 €."""
     with sessao() as con:
         semear(con)
-        preco(con, "repl-a", "nonfoil", 10.0, dia="2026-10-01")
-        preco(con, "repl-a", "nonfoil", 11.0, dia="2026-10-28")
-        assert valor.serie(con) == [("2026-10-01", 0.0, 0),
-                                    ("2026-10-28", 0.0, 0)]
+        preco(con, "repl-a", "nonfoil", 10.0, dia=ha(28))
+        preco(con, "repl-a", "nonfoil", 11.0, dia=ha(1))
+        assert valor.serie(con, HOJE) == [(ha(28), 0.0, 0), (ha(1), 0.0, 0),
+                                          (HOJE, 0.0, 0)]
         p = nucleo_painel.html_page(con)
         assert "<polyline" not in p
         assert "quando marcares as primeiras cartas" in p
         assert "num mês" not in p
         assert paginas.eur(0.0) in p
+
+
+def caso_painel_dia_vazio_e_depois_marcar():
+    """(C1, R18) O primeiro dia dele: o daily grava o valor ANTES de ele marcar
+    uma carta (0 €, zero cópias) e depois ele marca um deck. O Painel nunca
+    pode dizer «−100 %» nem desenhar uma queda a 0 €, e o número do topo é o
+    último ponto do gráfico."""
+    with sessao() as con:
+        semear(con)
+        preco(con, "repl-a", "nonfoil", 10.0, dia=ha(40))
+        versao(con, REP, [("main", "Replenish", 4)])
+        r = valor.gravar_valor_do_dia(con, ha(1))
+        assert r["copias"] == 0
+        assert con.execute("SELECT count(*) FROM n_valor").fetchone()[0] == 0
+        # um dia vazio gravado antes da correção (o que a base dele já tem)
+        con.execute("INSERT INTO n_valor (dia, total_eur, copias, sem_preco)"
+                    " VALUES (?, 0.0, 0, 0)", (ha(2),))
+        con.commit()
+        marcar(con, REP, "Replenish", 4)
+        p = nucleo_painel.html_page(con)
+        assert topo(p) == paginas.eur(40.0), topo(p)
+        assert ultimos_pontos(p) and set(ultimos_pontos(p)) == {paginas.eur(40.0)}, \
+            ultimos_pontos(p)
+        assert "▼" not in p and paginas.pct(-100.0) not in p and "−100" not in p
+        assert "mín " + paginas.eur(0.0, 0) not in p
+        assert all(t > 0 for _d, t, _s in valor.serie(con, HOJE))
 
 
 def caso_painel_sem_salto_falso():
@@ -199,21 +246,21 @@ def caso_painel_sem_salto_falso():
     só usam dias com a cobertura de hoje."""
     with sessao() as con:
         semear(con)
-        preco(con, "repl-a", "nonfoil", 10.0, dia="2026-08-20")
-        # a Saga (30 €) só ganha preço a 26/09
-        preco(con, "saga-a", "nonfoil", 30.0, dia="2026-09-26")
-        preco(con, "repl-a", "nonfoil", 11.0, dia="2026-10-28")
+        preco(con, "repl-a", "nonfoil", 10.0, dia=ha(70))
+        # a Saga (30 €) só ganha preço há 33 dias
+        preco(con, "saga-a", "nonfoil", 30.0, dia=ha(33))
+        preco(con, "repl-a", "nonfoil", 11.0, dia=ha(2))
         con.execute("INSERT INTO n_posse (ambito, scryfall_id, acabamento, qtd)"
                     " VALUES ('premodern_replenish', 'repl-a', 'nonfoil', 1),"
                     " ('rotativos', 'saga-a', 'nonfoil', 1)")
         con.commit()
-        s = valor.serie(con)
-        assert s == [("2026-09-26", 40.0, 0), ("2026-10-28", 41.0, 0)], s
+        s = valor.serie(con, HOJE)
+        assert s == [(ha(33), 40.0, 0), (ha(2), 41.0, 0), (HOJE, 41.0, 0)], s
         p = nucleo_painel.html_page(con)
-        # a variação é 40 → 41 (desde 26/09), nunca 10 → 41 (+310 %)
+        # a variação é 40 → 41, nunca 10 → 41 (+310 %)
         assert paginas.pct(2.5) in p, re.findall(r'class="vvar[^>]*>[^<]*', p)
         assert paginas.pct(310.0) not in p
-        assert "20/08" not in p
+        assert visual.data_pt(ha(70))[:5] not in p
 
 
 def caso_deck_cinzento_e_cor():

@@ -24,7 +24,12 @@ As regras (spec «Regras: Valor, Preços», 2026-10-28):
   os dias antes do primeiro registo, calcula o valor do que ele tem hoje aos
   preços que o histórico ainda guarda — só os dias com a cobertura de preços
   de hoje (R15, ver `serie`). Um dia gravado não se recalcula: o inventário
-  desse dia já foi outro.
+  desse dia já foi outro. (R18) O último ponto é o valor de HOJE ao vivo, e
+  um dia gravado sem cópias não entra (nem se grava).
+- **A variação do mês** (R18, `variacao_mes`) compara o inventário de hoje
+  consigo próprio: aos preços de hoje e aos de há 30 dias. Não usa os dias
+  gravados — esses mediram outro inventário, e no primeiro dia dele davam
+  «−100 %» contra um dia gravado antes de marcar a primeira carta.
 
 Só escreve nas tabelas `n_*`; as funções que escrevem abrem e fecham a sua
 transação.
@@ -32,8 +37,12 @@ transação.
 from __future__ import annotations
 
 import sqlite3
+from datetime import date, timedelta
 
 from . import posse
+
+# (R18) a variação do Painel é «num mês»
+DIAS_DA_VARIACAO = 30
 
 
 # ---------------------------------------------------------------------------
@@ -109,21 +118,38 @@ def valor_em(con: sqlite3.Connection, dia: str | None = None) -> dict:
 
 def gravar_valor_do_dia(con: sqlite3.Connection, dia: str) -> dict:
     """Calcula o valor de `dia` e grava-o em `n_valor` (substitui o do mesmo
-    dia). Devolve o que gravou."""
+    dia). Devolve o que calculou.
+
+    (R18, 2026-10-29) Sem nenhuma cópia marcada NÃO grava: um dia gravado não
+    se recalcula, e um 0 € de antes de ele marcar a primeira carta ficava no
+    gráfico para sempre, como uma queda que nunca aconteceu."""
     with posse._transacao(con):
         v = valor_em(con, dia)
-        con.execute(
-            "INSERT OR REPLACE INTO n_valor (dia, total_eur, copias, sem_preco)"
-            " VALUES (?,?,?,?)",
-            (dia, v["total_eur"], v["copias"], v["sem_preco"]))
+        if v["copias"] > 0:
+            con.execute(
+                "INSERT OR REPLACE INTO n_valor (dia, total_eur, copias, sem_preco)"
+                " VALUES (?,?,?,?)",
+                (dia, v["total_eur"], v["copias"], v["sem_preco"]))
     return v
 
 
-def serie(con: sqlite3.Connection) -> list[tuple[str, float, int]]:
-    """`[(dia, total_eur, sem_preco)]` por ordem: os dias de `n_valor` (o que
-    foi gravado, com o `sem_preco` que tinha) e, antes do primeiro, cada dia
-    com preço do Cardmarket no histórico, calculado com o inventário de hoje
-    (`valor_em`). Sem `n_valor` nenhum, são todos os dias do histórico.
+def _hoje(hoje: str | None) -> str:
+    return hoje or date.today().isoformat()
+
+
+def serie(con: sqlite3.Connection,
+          hoje: str | None = None) -> list[tuple[str, float, int]]:
+    """`[(dia, total_eur, sem_preco)]` por ordem: os dias de `n_valor` com
+    cópias (o que foi gravado, com o `sem_preco` que tinha), antes do primeiro
+    cada dia com preço do Cardmarket no histórico, calculado com o inventário
+    de hoje (`valor_em`), e no fim o valor de `hoje` ao vivo. Sem `n_valor`
+    nenhum, são todos os dias do histórico antes de hoje.
+
+    (R18, 2026-10-29) **O último ponto é o número do topo do Painel**: o
+    `valor_em()` de agora, no lugar do dia gravado de hoje (o daily grava às
+    03:30 e ele marca cartas durante o dia). Um dia gravado com `copias = 0`
+    sai: é o daily a correr antes de ele marcar a primeira carta, e no gráfico
+    era uma queda a 0 € que nunca aconteceu.
 
     (R15, 2026-10-28) **Um dia de trás só entra se for comparável com hoje:**
     sai se tiver MAIS cópias sem preço do que hoje (`valor_em()["sem_preco"]`)
@@ -133,25 +159,57 @@ def serie(con: sqlite3.Connection) -> list[tuple[str, float, int]]:
     mês» com a coleção parada. Os dias gravados ficam sempre: são o que foi
     medido nesse dia.
     """
+    hoje = _hoje(hoje)
     gravados = [(r[0], float(r[1] or 0.0), int(r[2] or 0)) for r in con.execute(
-        "SELECT dia, total_eur, sem_preco FROM n_valor ORDER BY dia")]
-    primeiro = gravados[0][0] if gravados else None
-    if primeiro is None:
-        dias = [r[0] for r in con.execute(
-            "SELECT DISTINCT date FROM price_history WHERE source = 'cardmarket'"
-            " ORDER BY date")]
-    else:
-        dias = [r[0] for r in con.execute(
-            "SELECT DISTINCT date FROM price_history WHERE source = 'cardmarket'"
-            " AND date < ? ORDER BY date", (primeiro,))]
+        "SELECT dia, total_eur, sem_preco FROM n_valor WHERE copias > 0"
+        " AND dia < ? ORDER BY dia", (hoje,))]
+    primeiro = gravados[0][0] if gravados else hoje
+    dias = [r[0] for r in con.execute(
+        "SELECT DISTINCT date FROM price_history WHERE source = 'cardmarket'"
+        " AND date < ? ORDER BY date", (primeiro,))]
     inv = inventario(con)
-    sem_hoje = _valor_de(con, inv, None)["sem_preco"]
+    agora = _valor_de(con, inv, None)
     atras = []
     for d in dias:
         v = _valor_de(con, inv, d)
-        if v["sem_preco"] <= sem_hoje:
+        if v["sem_preco"] <= agora["sem_preco"]:
             atras.append((d, v["total_eur"], v["sem_preco"]))
-    return atras + gravados
+    return atras + gravados + [(hoje, agora["total_eur"], agora["sem_preco"])]
+
+
+def variacao_mes(con: sqlite3.Connection, hoje: str | None = None) -> dict | None:
+    """(R18, 2026-10-29) A variação do topo do Painel: o inventário de HOJE aos
+    preços de hoje (`valor_em()`) contra o mesmo inventário aos preços de há
+    30 dias (`valor_em(dia)`) → `{delta, pct, desde, hoje}`.
+
+    Se nesse dia havia mais cópias sem preço do que hoje (uma carta que hoje
+    tem preço ainda não tinha — o espírito do R15), vale o primeiro dia dos
+    últimos 30 com a cobertura de hoje (só muda num dia com linha no
+    histórico, por isso só esses se perguntam). Sem nenhum, ou sem nada
+    marcado, `None` (a página escreve «—»). `pct` é `None` se o ponto de
+    partida valia 0.
+    """
+    hoje = _hoje(hoje)
+    inv = inventario(con)
+    agora = _valor_de(con, inv, None)
+    if not agora["copias"]:
+        return None
+    alvo = (date.fromisoformat(hoje) - timedelta(days=DIAS_DA_VARIACAO)).isoformat()
+    desde, ref = alvo, _valor_de(con, inv, alvo)
+    if ref["sem_preco"] > agora["sem_preco"]:
+        desde, ref = None, None
+        for (d,) in con.execute(
+                "SELECT DISTINCT date FROM price_history WHERE source = 'cardmarket'"
+                " AND date > ? AND date < ? ORDER BY date", (alvo, hoje)).fetchall():
+            v = _valor_de(con, inv, d)
+            if v["sem_preco"] <= agora["sem_preco"]:
+                desde, ref = d, v
+                break
+        if ref is None:
+            return None
+    delta = round(agora["total_eur"] - ref["total_eur"], 2)
+    pct = round(100 * delta / ref["total_eur"], 1) if ref["total_eur"] else None
+    return {"delta": delta, "pct": pct, "desde": desde, "hoje": hoje}
 
 
 # ---------------------------------------------------------------------------

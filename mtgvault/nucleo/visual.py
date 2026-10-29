@@ -16,7 +16,8 @@ decidiu e vale a pena saber:
   (`arte_do_deck`).
 - **O gráfico não inventa pontos.** É SVG desenhado no servidor (um por
   período: 1 mês, 3 meses, tudo) e o JavaScript só esconde e mostra. Com menos
-  de dois dias de valor não há linha nenhuma — diz-se porquê.
+  de dois dias de valor não há linha nenhuma — diz-se porquê. (R18) O último
+  ponto é o valor de hoje ao vivo, o mesmo número do topo do Painel.
 - **Uma carta sem preço nunca vale 0 €**: diz «sem preço».
 """
 from __future__ import annotations
@@ -318,38 +319,19 @@ def mosaicos(itens: list[dict], prefixo: str) -> str:
 # ---------------------------------------------------------------------------
 # O valor: variação do mês e o gráfico
 # ---------------------------------------------------------------------------
-def variacao_mes(serie: list[tuple]) -> dict | None:
-    """(Os pontos são os do `valor.serie`: `(dia, total_eur, sem_preco)`;
-    só os dois primeiros contam aqui.) O último ponto contra o de há ~30 dias (o mais recente com data
-    `<=` último − 30), ou contra o primeiro se a série for mais curta.
-
-    `{delta, pct, desde}`; `pct` é `None` se o ponto de partida valia 0. Com
-    menos de dois pontos não há variação: `None` (a página escreve «—»).
-    """
-    if len(serie) < 2:
-        return None
-    ult_dia, ult = serie[-1][0], serie[-1][1]
-    limite = _dia(ult_dia).toordinal() - 30
-    ref = serie[0]
-    for p in serie[:-1]:
-        if _dia(p[0]).toordinal() <= limite:
-            ref = p
-    delta = round(ult - ref[1], 2)
-    pct = round(100 * delta / ref[1], 1) if ref[1] else None
-    return {"delta": delta, "pct": pct, "desde": ref[0][:10]}
-
-
 def _tudo_zero(serie) -> bool:
     """Sem nada marcado, a série é uma fila de 0 € (o inventário de hoje aos
     preços de cada dia): uma linha deitada no zero não diz nada."""
     return all(not p[1] for p in serie)
 
 
-def variacao_html(serie: list[tuple]) -> str:
-    v = None if _tudo_zero(serie) else variacao_mes(serie)
+def variacao_html(v: dict | None) -> str:
+    """A variação do topo do Painel, a de `valor.variacao_mes` (R18: o que tens
+    hoje, aos preços de hoje e aos de há um mês). `None` é «—»."""
     if v is None:
-        return '<span class="vvar" title="ainda não há um dia anterior">—</span>'
-    dias = _dia(serie[-1][0]).toordinal() - _dia(v["desde"]).toordinal()
+        return ('<span class="vvar" title="ainda não há um dia comparável">'
+                '—</span>')
+    dias = _dia(v["hoje"]).toordinal() - _dia(v["desde"]).toordinal()
     quando = "num mês" if 28 <= dias <= 32 else f"desde {data_pt(v['desde'])[:5]}"
     seta, cls = (("▲", " sobe") if v["delta"] > 0 else
                  ("▼", " desce") if v["delta"] < 0 else ("=", ""))
