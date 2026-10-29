@@ -23,6 +23,7 @@ decidiu e vale a pena saber:
 from __future__ import annotations
 
 import html
+import re
 import sqlite3
 from datetime import date
 
@@ -72,6 +73,20 @@ def formato(f: str) -> str:
     return FORMATOS.get(f, f)
 
 
+def nomes_de_deck(con: sqlite3.Connection) -> dict[str, str]:
+    """`{slug: nome}` para mostrar onde o deck não se vê ao lado (Vender, a
+    caixa de montar). (M4, 2026-10-29) Um nome que se repete — «Affinity» no
+    Pauper e no Modern, «Cloud» no cEDH e no Duel Commander — leva o formato:
+    «Affinity (Modern)». Os outros ficam como estão."""
+    from . import modelo                                     # noqa: PLC0415
+    ds = modelo.decks(con)
+    conta: dict[str, int] = {}
+    for d in ds:
+        conta[d["nome"]] = conta.get(d["nome"], 0) + 1
+    return {d["slug"]: d["nome"] if conta[d["nome"]] == 1
+            else f'{d["nome"]} ({formato(d["formato"])})' for d in ds}
+
+
 def aviso_vigia(deck) -> str | None:
     """A frase de uma vigia que falhou, ou `None` se a última correu bem.
 
@@ -98,15 +113,29 @@ def vigia_texto(vigia: str | None) -> str:
     return f"lista vigiada · {e(vigia)}"
 
 
+# Um URL dentro do texto de uma fonte: só http(s) — um `javascript:` nunca casa,
+# e fica texto. A pontuação final («… /lista.») não é do URL.
+_URL = re.compile(r"https?://[^\s<>\"']+")
+
+
 def fonte_html(fonte: str | None) -> str:
-    """A fonte de uma versão (texto livre); um link fica um link."""
+    """A fonte de uma versão (texto livre); cada link fica um link, também no
+    meio do texto (M9, 2026-10-29: a vigia do MTGO escreve «MTGO · evento ·
+    dia · URL»)."""
     f = (fonte or "").strip()
-    if f.startswith(("https://", "http://")):
-        curto = f.split("://", 1)[1].rstrip("/")
+    if not f:
+        return "sem fonte"
+    out, i = [], 0
+    for m in _URL.finditer(f):
+        url = m.group(0).rstrip(".,;:)»")
+        out.append(e(f[i:m.start()]))
+        curto = url.split("://", 1)[1].rstrip("/")
         if len(curto) > 42:
             curto = curto[:40] + "…"
-        return f'<a href="{e(f)}" rel="noopener">{e(curto)}</a>'
-    return e(f) if f else "sem fonte"
+        out.append(f'<a href="{e(url)}" rel="noopener">{e(curto)}</a>')
+        i = m.start() + len(url)
+    out.append(e(f[i:]))
+    return "".join(out)
 
 
 def diferenca_html(dif: dict, limite: int | None = 8) -> str:

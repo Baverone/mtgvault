@@ -177,6 +177,23 @@ _DADOS_FALTAS = re.compile(r"^/data/paginas/faltas\.json$")
 _FOTO_CAIXA = re.compile(r"^/assets/deckboxes/([A-Za-z0-9_-]+)\.jpg$")
 
 
+def pagina_de_erro(caminho: str, e: Exception) -> str:
+    """A página de um 500 do núcleo: o que rebentou, dito em português, e o
+    que fazer. Sem casca nenhuma — a casca pode ser precisamente o que
+    rebentou."""
+    import html as _html                                     # noqa: PLC0415
+    return ('<!doctype html><html lang="pt-PT"><head><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width,initial-scale=1">'
+            '<title>Erro · mtgvault</title></head>'
+            '<body style="font-family:system-ui,sans-serif;margin:24px;line-height:1.5">'
+            f'<h1>Erro: não consegui gerar esta página ({_html.escape(caminho)})</h1>'
+            f'<p><code>{_html.escape(type(e).__name__)}: {_html.escape(str(e))}</code></p>'
+            '<p>Se a base acabou de ser trazida de outro sítio e ainda não tem as '
+            'tabelas do núcleo, reinicia o modo de edição (o arranque migra-a) ou '
+            'corre o daily uma vez. Se não for isso, o erro fica no log do '
+            'webapp.</p></body></html>')
+
+
 def com_token(corpo: str, tok: str) -> str:
     """Põe o `?t=` nos links internos de uma página servida em modo edição.
 
@@ -1349,13 +1366,27 @@ def aquecer() -> list[str]:
     return frios
 
 
+def _aquecer_passo() -> list[str]:
+    """Uma passagem do aquecedor: com o `nucleo.ligado` não aquece nada (R16,
+    2026-10-29). As páginas que ele aquece são as do site antigo, que com o
+    núcleo já não estão no menu — e o PC que as calculava a cada escrita é o
+    servidor dos sites. O interruptor lê-se a CADA passagem: desligá-lo volta
+    a pôr o aquecedor a trabalhar sem reiniciar o webapp."""
+    try:
+        if n_modelo.ligado():
+            return []
+    except Exception as e:                                      # noqa: BLE001
+        print(f"[aquecer] não li o interruptor: {type(e).__name__}: {e}", flush=True)
+    return aquecer()
+
+
 def vigia_versao() -> threading.Thread:
     def corre():
         anterior = _versao()
         # O primeiro aquecimento é logo: o servidor acabou de arrancar e a cache
         # está vazia — sem isto, o primeiro pedido do dia pagava os 12 s.
         ultimo = _time.monotonic()
-        aquecer()
+        _aquecer_passo()
         while True:
             _time.sleep(INTERVALO_VIGIA)
             try:
@@ -1364,7 +1395,7 @@ def vigia_versao() -> threading.Thread:
                 anterior = v
                 if not estavel or _time.monotonic() - ultimo < INTERVALO_AQUECER:
                     continue
-                if aquecer():
+                if _aquecer_passo():
                     ultimo = _time.monotonic()
             except Exception as e:                              # noqa: BLE001
                 print(f"[vigia] {type(e).__name__}: {e}", flush=True)
@@ -1471,21 +1502,29 @@ def n_carta(con, deck: str, nome: str) -> dict:
         r = con.execute("SELECT qtd FROM n_posse WHERE ambito = ? AND scryfall_id = ?"
                         " AND acabamento = ?", (amb, ed[0], ed[1])).fetchone()
         tenho = r[0] if r else 0
+    # (M2, 2026-10-29) a primeira marca FIXA a edição da omissão: se essa
+    # edição não tem preço, a folha di-lo antes de ele carregar no «+ 1»
+    escolhida = con.execute("SELECT 1 FROM n_edicao WHERE ambito = ? AND nome = ?",
+                            (amb, nome)).fetchone() is not None
     return {"nome": nome, "deck": deck, "deck_nome": d["nome"], "modo": d["modo"],
             "ambito": amb, "partilhada": amb == n_posse.ROT, "usos": usos,
             "pede": pede, "precisa": max([pede] + [u["qtd"] for u in usos]),
             "tenho": tenho, "scryfall_id": ed[0] if ed else None,
-            "acabamento": ed[1] if ed else None}
+            "acabamento": ed[1] if ed else None,
+            "omissao_sem_preco": (ed is not None and not escolhida and not tenho
+                                  and n_valor.preco(con, ed[0], ed[1]) is None)}
 
 
 def n_movimentos(con, deck: str) -> dict:
     """O que trazer de que caixa para montar este rotativo, sem gravar nada
     (é a confirmação que a página mostra antes do «Montar»)."""
-    d = _n_deck(con, deck)
+    _n_deck(con, deck)
     movs = n_posse.movimentos_para(con, deck)
-    nomes = {r["slug"]: r["nome"] for r in n_modelo.decks(con)}
+    # (M4) «Affinity» há dois (Pauper e Modern) e «Cloud» também: o nome que a
+    # caixa mostra leva o formato quando se repete
+    nomes = n_visual.nomes_de_deck(con)
     m = con.execute("SELECT slug FROM n_montado WHERE id = 1").fetchone()
-    return {"deck": deck, "nome": d["nome"],
+    return {"deck": deck, "nome": nomes.get(deck, deck),
             "montado_agora": nomes.get(m[0], m[0]) if m else None,
             "movimentos": [{**x, "de_nome": nomes.get(x["de"], x["de"])}
                            for x in movs]}
@@ -2153,8 +2192,16 @@ class Handler(BaseHTTPRequestHandler):
             # que aparece tem de ser o de agora.
             editavel = self._pode_escrever()
             tok = token() if editavel else ""
-            with db.session() as con:
-                corpo = modulo.html_page(con, editable=editavel, token=tok)
+            try:
+                with db.session() as con:
+                    corpo = modulo.html_page(con, editable=editavel, token=tok)
+            except Exception as e:                      # noqa: BLE001
+                # (I4, 2026-10-29) sem isto a excepção subia ao `http.server`,
+                # que fecha a ligação sem resposta: no telemóvel, um ecrã branco
+                print(f"[núcleo] {caminho} rebentou: {type(e).__name__}: {e}",
+                      flush=True)
+                self._envia(pagina_de_erro(caminho, e), 500)
+                return
             self._envia(com_token(corpo, tok))
             return
         q = parse_qs(urlparse(self.path).query)

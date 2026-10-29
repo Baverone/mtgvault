@@ -27,6 +27,12 @@ O que faz, e as decisões que valem a pena saber:
   (o PC, e o túnel do Cloudflare) escreve-se sem ele.
 - **Os textos das cartas entram por `textContent`**, nunca por `innerHTML`: um
   nome de carta (ou uma fonte colada) não é HTML.
+- **Nenhum pedido fica pendurado** (I6, 2026-10-29): 25 s e o `AbortController`
+  corta-o. Num POST a página diz «não sei se gravou — confirma na página» (o
+  servidor pode ter gravado: só a marca repete sozinha, com o MESMO
+  `request_id`, que conta uma vez). É o prazo que a Deckboxes já tinha.
+- **A busca de Vender sobrevive à troca do `<main>`** (T8): o texto fica e a
+  busca volta a correr, para ele acrescentar a seguinte sem escrever outra vez.
 - As cores são as da casca (`var(--…)`); este ficheiro não escreve um hex.
 """
 from __future__ import annotations
@@ -132,6 +138,10 @@ JS = r"""
   var ACABS = ['nonfoil', 'foil'], NOME_ACAB = {nonfoil: 'Normal', foil: 'Foil'};
   var REDE_POST = 'Sem ligação ao modo de edição: não sei se gravou. Recarrega a página para ver o número certo.';
   var REDE_GET = 'Sem ligação ao modo de edição. Tenta outra vez daqui a pouco.';
+  // (I6) o prazo de cada pedido, e o que se diz quando ele se esgota num POST
+  var PRAZO_MS = 25000;
+  var PRAZO_POST = 'Passaram 25 s sem resposta: não sei se gravou — confirma na página.';
+  function falhaPost(e){ return e && e.message === 'prazo' ? PRAZO_POST : REDE_POST; }
 
   // ---------------------------------------------------------------- pedidos
   // Um id por toque. Em http na rede de casa o randomUUID não existe
@@ -158,25 +168,37 @@ JS = r"""
   }
   // {ok, status, dados}. Sem rede rejeita. `repete` só para o que é
   // idempotente (a marca, pelo request_id): o MESMO corpo, o MESMO id.
+  // Sem resposta em PRAZO_MS rejeita com Error('prazo') (o AbortController
+  // corta o pedido); sem rede, com Error('rede').
   function pede(metodo, url, corpo, repete){
     repete = repete || 0;
     var op = {method: metodo, headers: cab(corpo !== undefined), cache: 'no-store',
               credentials: 'same-origin'};
     if (corpo !== undefined) op.body = JSON.stringify(corpo);
-    return fetch(url, op).then(function(r){
-      if (r.status === 503 && repete > 0)
-        return espera(1500).then(function(){ return pede(metodo, url, corpo, repete - 1); });
-      return r.text().then(function(t){
-        var d = null;
-        try { d = JSON.parse(t); } catch (e) {}
-        if (d === null) d = {erro: 'O servidor respondeu ' + r.status + ' sem explicação.'};
-        return {ok: r.ok, status: r.status, dados: d};
-      });
-    }, function(){
+    var ctl = typeof AbortController === 'function' ? new AbortController() : null, t = 0, cortado = false;
+    if (ctl) {
+      op.signal = ctl.signal;
+      t = setTimeout(function(){ cortado = true; ctl.abort(); }, PRAZO_MS);
+    }
+    function falhou(){
+      clearTimeout(t);
       if (repete > 0)
         return espera(800).then(function(){ return pede(metodo, url, corpo, repete - 1); });
-      throw new Error('rede');
-    });
+      throw new Error(cortado ? 'prazo' : 'rede');
+    }
+    return fetch(url, op).then(function(r){
+      if (r.status === 503 && repete > 0) {
+        clearTimeout(t);
+        return espera(1500).then(function(){ return pede(metodo, url, corpo, repete - 1); });
+      }
+      return r.text().then(function(txt){
+        clearTimeout(t);
+        var d = null;
+        try { d = JSON.parse(txt); } catch (e) {}
+        if (d === null) d = {erro: 'O servidor respondeu ' + r.status + ' sem explicação.'};
+        return {ok: r.ok, status: r.status, dados: d};
+      }, falhou);
+    }, falhou);
   }
   function api(caminho, params){
     var q = [];
@@ -207,7 +229,13 @@ JS = r"""
         // o botão da linha que ele tocou é substituído: o foco volta ao novo
         var k = at && velho.contains(at) ? chaveDe(at) : focoDepois;
         focoDepois = null;
+        // (T8) a busca de Vender vive dentro do <main>: guarda-se o texto
+        var qv = document.getElementById('ed-q'), q = qv ? qv.value : '', qFoco = at === qv;
         velho.innerHTML = novo.innerHTML;
+        if (q) {
+          var nq = document.getElementById('ed-q');
+          if (nq) { nq.value = q; procura(nq); if (qFoco) nq.focus({preventScroll: true}); }
+        }
         document.dispatchEvent(new CustomEvent('nuc:atualizada'));
         window.scrollTo(0, y);
         if (k) {
@@ -435,6 +463,9 @@ JS = r"""
     tens.appendChild(document.createTextNode(esc ? ' desta edição (' + esc.set_code.toUpperCase() + ', '
       + NOME_ACAB[c.acabamento].toLowerCase() + ')' : ''));
     info.appendChild(tens);
+    // (M2) a primeira marca fixa a edição da omissão: sem preço, diz-se antes
+    if (c.omissao_sem_preco)
+      info.appendChild(el('p', 'ed-dica', 'Atenção: a edição por omissão não tem preço — escolhe a tua.'));
     top.appendChild(info);
     corpoF.appendChild(top);
 
@@ -484,9 +515,9 @@ JS = r"""
         e0.carta.tenho = r.dados.qtd;
         redesenha(desenhaCarta);
         diz('Gravado: tens ' + r.dados.qtd + '.');
-      }, function(){
+      }, function(err){
         e0.ocupado = false;
-        if (est === e0) { redesenha(desenhaCarta); diz(REDE_POST, true); }
+        if (est === e0) { redesenha(desenhaCarta); diz(falhaPost(err), true); }
       });
   }
   function troca(e, acab){
@@ -505,9 +536,9 @@ JS = r"""
           carregaCarta(e0).then(function(){
             if (est === e0) diz('Passou a ' + e.set_code.toUpperCase() + ', ' + NOME_ACAB[acab].toLowerCase() + '.');
           });
-        }, function(){
+        }, function(err){
           e0.ocupado = false;
-          if (est === e0) { redesenha(desenhaCarta); diz(REDE_POST, true); }
+          if (est === e0) { redesenha(desenhaCarta); diz(falhaPost(err), true); }
         });
     }
     if (c.tenho > 0)
@@ -586,9 +617,9 @@ JS = r"""
           bf.addEventListener('click', fecha); ok.appendChild(bf); corpoF.appendChild(ok);
           diz('');
           bf.focus();
-        }, function(){
+        }, function(err){
           e0.ocupado = false; bg.disabled = false;
-          if (est === e0) diz(REDE_POST, true);
+          if (est === e0) diz(falhaPost(err), true);
         });
     });
     ta.focus();
@@ -631,9 +662,9 @@ JS = r"""
           if (!r2.ok) { diz(r2.dados.erro || 'Não gravei.', true); return; }
           fecha();
           aviso('O ' + e0.nome + ' é agora o deck montado.');
-        }, function(){
+        }, function(err){
           e0.ocupado = false; bm.disabled = false;
-          if (est === e0) diz(REDE_POST, true);
+          if (est === e0) diz(falhaPost(err), true);
         });
       });
       row.appendChild(bm); row.appendChild(bc); corpoF.appendChild(row);
@@ -749,9 +780,9 @@ JS = r"""
           fecha();
           aviso(e0.nome + ' (' + sel.set_code.toUpperCase() + ', ' + NOME_ACAB[acab].toLowerCase()
             + '): tens agora ' + r.dados.qtd + ' a mais.');
-        }, function(){
+        }, function(err){
           e0.ocupado = false;
-          if (est === e0) { ba.disabled = false; diz(REDE_POST, true); }
+          if (est === e0) { ba.disabled = false; diz(falhaPost(err), true); }
         });
     });
     row.appendChild(ba); row.appendChild(bc);
@@ -768,7 +799,7 @@ JS = r"""
       if (!r.ok) { aviso(r.dados.erro || 'Não gravei.', true); return; }
       aviso(ok(r.dados));
       recarrega();
-    }, function(){ b.disabled = false; aviso(REDE_POST, true); });
+    }, function(err){ b.disabled = false; aviso(falhaPost(err), true); });
   }
   function linhaAMais(b){
     var d = parseInt(b.getAttribute('data-delta'), 10);
@@ -781,6 +812,11 @@ JS = r"""
     if (destino === 'a_mais') {
       linha(b, '/api/n/saida', {id: id, destino: destino},
             function(){ return nome + ': passou para Tenho a mais.'; });
+      return;
+    }
+    if (destino === 'devolver') {                        // (M5)
+      linha(b, '/api/n/saida', {id: id, destino: 'devolver'},
+            function(){ return nome + ': voltou ao deck.'; });
       return;
     }
     var e0 = {tipo: 'saida'};
@@ -798,7 +834,7 @@ JS = r"""
         if (est !== e0) return;
         if (!r.ok) { diz(r.dados.erro || 'Não gravei.', true); return; }
         fecha(); aviso(nome + ': tratado.');
-      }, function(){ bs.disabled = false; if (est === e0) diz(REDE_POST, true); });
+      }, function(err){ bs.disabled = false; if (est === e0) diz(falhaPost(err), true); });
     });
     row.appendChild(bs); row.appendChild(bn); corpoF.appendChild(row);
     bs.focus();

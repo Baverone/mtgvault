@@ -99,7 +99,10 @@ def ler_texto(texto: str) -> list[Linha]:
     seccao = "main"
     vistas_no_main = False
     linhas: list[Linha] = []
-    for bruta in (texto or "").splitlines():
+    # (M3, 2026-10-29) o telemóvel e muitos sites escrevem o apóstrofo curvo
+    # («Urza’s Saga»); o catálogo escreve o direito
+    texto = (texto or "").replace("’", "'").replace("‘", "'")
+    for bruta in texto.splitlines():
         t = bruta.strip()
         if not t:
             if seccao == "main" and vistas_no_main:

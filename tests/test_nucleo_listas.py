@@ -405,6 +405,14 @@ def caso_so_escreve_tabelas_n():
     print("só escreve nas tabelas n_*")
 
 
+def caso_apostrofos_curvos():
+    """(M3) Uma lista colada do telemóvel ou de um site traz «’» e «‘»; o
+    catálogo escreve «'». Normalizam-se à entrada."""
+    l = listas.ler_texto("4 Urza\u2019s Saga\n1 Gaea\u2018s Cradle\n")
+    assert l == [Linha("main", "Urza's Saga", 4), Linha("main", "Gaea's Cradle", 1)], l
+    print("apóstrofos curvos: normalizados")
+
+
 if __name__ == "__main__":
     for nome, f in list(globals().items()):
         if nome.startswith("caso_"):

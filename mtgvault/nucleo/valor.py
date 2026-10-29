@@ -227,7 +227,8 @@ def a_vender(con: sqlite3.Connection) -> dict:
     de cada impressão e acabamento.
 
     Cada linha de `saidas` leva o `id` do `n_saida` (é com ele que a página
-    chama `saida_resolver`) e o nome do deck de onde saiu. Os totais só somam o
+    chama `saida_resolver`), o nome e o `slug` do deck de onde saiu e
+    `pode_voltar` (se `saida_resolver(..., 'devolver')` a aceitaria). Os totais só somam o
     que tem preço; o que não tem conta em `sem_preco` (em cópias).
     """
     a_mais, saidas = [], []
@@ -247,6 +248,13 @@ def a_vender(con: sqlite3.Connection) -> dict:
         l = _linha(r[6] or r[3], r[7], r[3], r[4], r[5], preco(con, r[3], r[4]),
                    r[2], r[8] or r[1])
         l["id"] = r[0]
+        l["slug"] = r[1]
+        # (M5) o botão «Voltar ao deck» só aparece onde a volta é possível
+        try:
+            _plano_de_volta(con, r[1], r[3], r[4], r[5])
+            l["pode_voltar"] = True
+        except ValueError:
+            l["pode_voltar"] = False
         saidas.append(l)
     total, sem = 0.0, 0
     for l in a_mais + saidas:
@@ -293,18 +301,72 @@ def a_mais_ajustar(con: sqlite3.Connection, scryfall_id: str, acabamento: str,
     return nova
 
 
+def _plano_de_volta(con: sqlite3.Connection, slug: str, scryfall_id: str,
+                    acabamento: str, qtd: int) -> tuple[str, str, int]:
+    """`(âmbito, nome, quantas cabem)` para devolver uma saída ao deck de onde
+    saiu, ou `ValueError` com a razão em português.
+
+    A carta tem de estar na versão ATUAL desse deck; vai para o âmbito dela
+    (o deck, ou o monte das partilhadas). A cópia é desta edição: se o âmbito
+    já escolheu OUTRA, não entra (ficava marcada numa edição que não conta).
+    Só volta o que cabe no que o deck precisa — o resto fica em Vender.
+    """
+    deck = posse._deck(con, slug)
+    r = con.execute("SELECT name FROM cards WHERE scryfall_id = ?",
+                    (scryfall_id,)).fetchone()
+    if r is None:
+        raise ValueError(f"impressão desconhecida: {scryfall_id!r}")
+    nome = r[0]
+    v = posse._versao(con, slug)
+    if v is None or nome not in {l.nome for l in v["linhas"]}:
+        raise ValueError(f"{nome} não está na lista atual do {deck['nome']}:"
+                         " não há para onde voltar")
+    amb = posse.ambito(con, slug, nome)
+    escolha = posse._escolha(con, amb, nome)
+    if escolha is not None and escolha != (scryfall_id, acabamento):
+        raise ValueError(f"o {deck['nome']} conta outra edição de {nome}: escolhe"
+                         " esta na carta antes de a devolver")
+    if amb == posse.ROT:
+        precisa = max(m.get(nome, 0) for m in posse._nomes_rotativos(con).values())
+    else:
+        precisa = posse._por_nome(v["linhas"])[nome]
+    cabe = min(int(qtd), precisa - posse._qtd(con, amb, (scryfall_id, acabamento)))
+    if cabe <= 0:
+        raise ValueError(f"o {deck['nome']} já tem as {precisa} cópias de {nome}"
+                         " marcadas")
+    return amb, nome, cabe
+
+
 def saida_resolver(con: sqlite3.Connection, saida_id: int, destino: str) -> None:
     """Decide o que fazer a uma saída: `'a_mais'` passa as cópias para «tenho a
-    mais» (somando ao que lá houver; continuam dele) e `'descartar'` apaga a
-    linha (vendidas ou foram-se). `ValueError` se o id ou o destino não
-    existirem."""
-    if destino not in ("a_mais", "descartar"):
-        raise ValueError(f"destino inválido: {destino!r} (a_mais | descartar)")
+    mais» (somando ao que lá houver; continuam dele), `'descartar'` apaga a
+    linha (vendidas ou foram-se) e `'devolver'` (M5, 2026-10-29) volta a
+    pô-las no deck de onde saíram, se a carta estiver na lista atual dele (ver
+    `_plano_de_volta`; o que não couber fica na saída). `ValueError` se o id ou
+    o destino não existirem, ou se a volta não for possível."""
+    if destino not in ("a_mais", "descartar", "devolver"):
+        raise ValueError(f"destino inválido: {destino!r} (a_mais | descartar"
+                         " | devolver)")
     with posse._transacao(con):
-        r = con.execute("SELECT scryfall_id, acabamento, qtd FROM n_saida"
+        r = con.execute("SELECT scryfall_id, acabamento, qtd, slug FROM n_saida"
                         " WHERE id = ?", (saida_id,)).fetchone()
         if r is None:
             raise ValueError(f"saída desconhecida: {saida_id!r}")
+        if destino == "devolver":
+            amb, nome, cabe = _plano_de_volta(con, r[3], r[0], r[1], r[2])
+            if posse._escolha(con, amb, nome) is None:
+                # sem escolha ainda não há nada marcado: a edição desta cópia
+                # passa a ser a que conta (é a que ele tem na mão)
+                con.execute("INSERT INTO n_edicao (ambito, nome, scryfall_id,"
+                            " acabamento) VALUES (?,?,?,?)", (amb, nome, r[0], r[1]))
+            posse._por_qtd(con, amb, r[0], r[1],
+                           posse._qtd(con, amb, (r[0], r[1])) + cabe)
+            if cabe < r[2]:
+                con.execute("UPDATE n_saida SET qtd = qtd - ? WHERE id = ?",
+                            (cabe, saida_id))
+            else:
+                con.execute("DELETE FROM n_saida WHERE id = ?", (saida_id,))
+            return
         if destino == "a_mais":
             con.execute(
                 "INSERT INTO n_a_mais (scryfall_id, acabamento, qtd, nota)"

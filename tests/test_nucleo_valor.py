@@ -560,6 +560,42 @@ def caso_so_escreve_tabelas_n():
         assert antes == depois
 
 
+def caso_saida_voltar_ao_deck():
+    """(M5) `destino='devolver'`: a cópia que saiu volta ao âmbito de onde
+    veio quando a carta está na versão atual desse deck (ValueError se não).
+    Só volta o que o deck precisa; o resto fica na saída."""
+    with sessao() as con:
+        semear(con)
+        versao(con, REP, [("main", "Force of Will", 4)])
+        assert posse.ajustar(con, REP, "Force of Will", 4, request_id="v1") == 4
+        ed = posse.edicao(con, REP, "Force of Will")
+        versao(con, REP, [("main", "Goblin Welder", 4)])            # a FoW sai
+        s1 = con.execute("SELECT id, qtd FROM n_saida").fetchall()
+        assert [tuple(x)[1:] for x in s1] == [(4,)], [tuple(x) for x in s1]
+        sid = s1[0][0]
+        # fora da lista: não há para onde voltar
+        esperar_valueerror(valor.saida_resolver, con, sid, "devolver")
+        assert [l["pode_voltar"] for l in valor.a_vender(con)["saidas"]] == [False]
+        versao(con, REP, [("main", "Force of Will", 4), ("main", "Goblin Welder", 4)])
+        assert posse.ajustar(con, REP, "Force of Will", 3, request_id="v2") == 3
+        assert valor.a_vender(con)["saidas"][0]["pode_voltar"] is True
+        assert valor.a_vender(con)["saidas"][0]["slug"] == REP
+        # cabe 1 (o deck pede 4, tem 3): volta 1, ficam 3 na saída
+        antes = valor.inventario(con)
+        valor.saida_resolver(con, sid, "devolver")
+        assert posse.estado_deck(con, REP)["cartas"][0]["tenho"] == 4
+        assert con.execute("SELECT qtd FROM n_saida WHERE id = ?", (sid,)).fetchone()[0] == 3
+        assert valor.inventario(con) == antes                # a cópia continua dele
+        # o deck já está completo: não volta mais nenhuma
+        esperar_valueerror(valor.saida_resolver, con, sid, "devolver")
+        assert valor.a_vender(con)["saidas"][0]["pode_voltar"] is False
+        # outra edição escolhida no deck: a cópia não entra numa que não conta
+        outra = "fow-b" if ed[0] == "fow-a" else "fow-a"
+        posse.escolher_edicao(con, REP, "Force of Will", outra, "nonfoil")
+        esperar_valueerror(valor.saida_resolver, con, sid, "devolver")
+    print("saída: voltar ao deck")
+
+
 if __name__ == "__main__":
     for nome, f in list(globals().items()):
         if nome.startswith("caso_"):

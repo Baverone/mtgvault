@@ -52,6 +52,7 @@ from mtgvault import db, prices  # noqa: E402
 from mtgvault.nucleo import edicao_js, listas, modelo, posse  # noqa: E402
 from mtgvault.nucleo.listas import Linha  # noqa: E402
 
+import nucleo_vender  # noqa: E402
 import webapp  # noqa: E402
 
 webapp.ROOT = _TMP
@@ -484,6 +485,141 @@ def caso_desligado_e_como_antes():
     finally:
         config(True)
     print("com o interruptor desligado: o webapp de antes")
+
+
+class _RelogioFalso:
+    """O `time` do aquecedor: a terceira espera acaba o fio (SystemExit num
+    fio termina-o em silêncio) e o `monotonic` anda uma hora por chamada."""
+
+    def __init__(self):
+        self.esperas, self.t = 0, 0.0
+
+    def sleep(self, _s):
+        self.esperas += 1
+        if self.esperas >= 3:
+            raise SystemExit
+
+    def monotonic(self):
+        self.t += 3600.0
+        return self.t
+
+
+def _correr_aquecedor() -> list[str]:
+    chamadas = []
+    antes = (webapp._AQUECER, webapp._time, webapp._versao)
+    webapp._AQUECER = [("x", lambda: chamadas.append("x"))]
+    webapp._time = _RelogioFalso()
+    webapp._versao = lambda: ("sempre", "igual")
+    try:
+        webapp.vigia_versao().join(10)
+    finally:
+        webapp._AQUECER, webapp._time, webapp._versao = antes
+    return chamadas
+
+
+def caso_aquecedor_parado_com_o_nucleo():
+    """(I1, R16) Com o `nucleo.ligado`, o aquecedor das páginas antigas não
+    calcula nada — nem no arranque nem nas passagens seguintes; o PC é o
+    servidor dos sites. O interruptor lê-se a cada passagem: desligado, volta
+    a aquecer."""
+    assert _correr_aquecedor() == [], "o aquecedor correu com o núcleo ligado"
+    config(False)
+    try:
+        assert len(_correr_aquecedor()) >= 2
+    finally:
+        config(True)
+    print("aquecedor: parado com o núcleo ligado, a correr sem ele")
+
+
+def caso_pagina_que_rebenta_da_500_em_portugues():
+    """(I4) Uma página do núcleo que rebenta (a base por migrar, uma tabela
+    `n_*` que falta) dá um 500 com uma frase em português, e não uma ligação
+    cortada a meio (o telemóvel ficava com um ecrã branco)."""
+    import sqlite3
+    antes = nucleo_vender.html_page
+
+    def rebenta(con, **kw):
+        raise sqlite3.OperationalError("no such table: n_deck")
+    nucleo_vender.html_page = rebenta
+    try:
+        try:
+            c, corpo = pedir("GET", "/vender.html")
+        except Exception as e:                    # noqa: BLE001
+            raise AssertionError(f"a ligação caiu em vez de um 500: {e!r}")
+    finally:
+        nucleo_vender.html_page = antes
+    assert c == 500, (c, corpo[:200])
+    assert "não consegui gerar esta página" in corpo, corpo[:400]
+    assert "no such table: n_deck" in corpo, corpo[:400]
+    assert '<html lang="pt-PT">' in corpo
+    print("página que rebenta: 500 explicado, sem ligação cortada")
+
+
+def caso_carta_diz_se_a_omissao_nao_tem_preco():
+    """(M2) Antes da primeira marca, a omissão sem preço diz-se na folha: «a
+    edição por omissão não tem preço — escolhe a tua»."""
+    c, j = pedir("GET", "/api/n/carta" + q(deck=LEG, nome="Goblin Welder"))
+    assert c == 200 and j["omissao_sem_preco"] is True, (c, j)
+    c, j = pedir("GET", "/api/n/carta" + q(deck=REP, nome="Replenish"))
+    assert c == 200 and j["omissao_sem_preco"] is False, (c, j)
+    assert "a edição por omissão não tem preço — escolhe a tua" in edicao_js.JS
+    assert "omissao_sem_preco" in edicao_js.JS
+    print("carta: a omissão sem preço vem dita")
+
+
+def caso_montar_com_nomes_repetidos():
+    """(M4) Dois decks com o mesmo nome (Cloud cEDH e Cloud DC, Affinity Pauper
+    e Modern): na caixa de montar vai «Nome (formato)»."""
+    con = db.connect()
+    try:
+        velho = con.execute("SELECT nome FROM n_deck WHERE slug = ?", (LEG,)).fetchone()[0]
+        con.execute("UPDATE n_deck SET nome = 'Affinity' WHERE slug = ?", (LEG,))
+        con.execute("INSERT OR REPLACE INTO n_montado (id, slug) VALUES (1, ?)", (LEG,))
+        con.commit()
+        try:
+            c, j = pedir("GET", "/api/n/movimentos" + q(deck=MOD))
+            assert c == 200, (c, j)
+            assert j["montado_agora"] == "Affinity (Legacy)", j
+            assert j["nome"] == "Affinity (Modern)", j
+        finally:
+            con.execute("UPDATE n_deck SET nome = ? WHERE slug = ?", (velho, LEG))
+            con.commit()
+    finally:
+        con.close()
+    print("montar: nomes repetidos levam o formato")
+
+
+def caso_saida_voltar_ao_deck():
+    """(M5) `destino: devolver` volta a pôr a cópia no deck de onde saiu
+    (409 se a carta já não está na lista dele)."""
+    con = db.connect()
+    con.execute("INSERT INTO n_saida (slug, motivo, versao_id, scryfall_id,"
+                " acabamento, qtd, em) VALUES (?,?,?,?,?,?,?)",
+                (REP, "saiu_da_lista", None, "weld-a", "nonfoil", 1, DIA))
+    con.commit()
+    fora = con.execute("SELECT MAX(id) FROM n_saida").fetchone()[0]
+    con.close()
+    c, j = pedir("POST", "/api/n/saida", {"id": fora, "destino": "devolver"})
+    assert c == 409 and "não está na lista" in j["erro"], (c, j)
+    c, j = pedir("POST", "/api/n/saida", {"id": fora, "destino": "descartar"})
+    assert c == 200, (c, j)
+    assert "data-destino=\"devolver\"" not in pedir("GET", "/vender.html")[1]
+    assert "'devolver'" in edicao_js.JS
+    print("saída: voltar ao deck só se a carta estiver na lista dele")
+
+
+def caso_js_prazo_e_busca_depois_de_gravar():
+    """(I6) Um POST sem resposta em 25 s não fica pendurado: o AbortController
+    corta-o e a página diz «não sei se gravou — confirma na página» (a marca
+    repete com o MESMO request_id). (T8) A busca de Vender sobrevive à troca
+    do <main> depois de gravar: o texto fica e a busca volta a correr."""
+    js = edicao_js.JS
+    assert "AbortController" in js and "25000" in js
+    assert "não sei se gravou — confirma na página" in js
+    assert "prazo" in js
+    rec = js[js.index("function recarrega()"):js.index("// ------------------------------------------------------------ ajudantes")]
+    assert "ed-q" in rec and "procura(" in rec, "a busca perde-se ao recarregar"
+    print("js: prazo de 25 s nos pedidos; a busca de Vender sobrevive")
 
 
 if __name__ == "__main__":

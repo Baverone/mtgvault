@@ -238,7 +238,8 @@ def html_page(con, *, editable: bool = False, token: str = "") -> str:
     # o `token` não se escreve: o JavaScript da edição lê-o do `?t=` do URL
     del token
     itens = visual.dados_decks(con)
-    nomes = {i["deck"]["slug"]: i["deck"]["nome"] for i in itens}
+    # (M4) na caixa de montar, um nome repetido leva o formato
+    nomes = visual.nomes_de_deck(con)
     corpo_ = (f'<div id="todos">{visual.mosaicos(itens, "")}</div>'
               + "".join(seccao(con, i, nomes, editable) for i in itens))
     return ("<!doctype html><html lang=\"pt-PT\"><head>"

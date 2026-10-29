@@ -35,7 +35,7 @@ BLOCOS = (
 )
 
 
-def _linha(l: dict, editavel: bool) -> str:
+def _linha(l: dict, editavel: bool, nomes: dict | None = None) -> str:
     dados = ""
     if editavel:
         dados = (f' data-sid="{e(l["scryfall_id"])}" data-acab="{e(l["acabamento"])}"'
@@ -47,7 +47,7 @@ def _linha(l: dict, editavel: bool) -> str:
     meta = [e((l["set_code"] or "?").upper()),
             visual.ACABAMENTO.get(l["acabamento"], e(l["acabamento"]))]
     if l["deck"]:
-        meta.append(f'do {e(l["deck"])}')
+        meta.append(f'do {e((nomes or {}).get(l.get("slug"), l["deck"]))}')
     if l["preco_un"] is None:
         num = f'<span class="sp">sem preço</span><b>—</b>'
         un = f'×{l["qtd"]} · {num}'
@@ -67,8 +67,11 @@ def _botoes(l: dict) -> str:
     if "id" in l:
         base = (f' data-acao="saida" data-saida="{l["id"]}" data-nome="{nome}"'
                 f' data-qtd="{l["qtd"]}"')
-        return ('<div class="ed-lin">'
-                f'<button type="button" class="btn ed-b" data-destino="a_mais"{base}>'
+        # (M5) «Voltar ao deck» só onde a carta está na lista atual do deck
+        voltar = (f'<button type="button" class="btn ed-b" data-destino="devolver"{base}>'
+                  'Voltar ao deck</button>' if l.get("pode_voltar") else "")
+        return ('<div class="ed-lin">' + voltar
+                + f'<button type="button" class="btn ed-b" data-destino="a_mais"{base}>'
                 'Passar para tenho a mais</button>'
                 f'<button type="button" class="btn ed-b" data-destino="descartar"{base}>'
                 'Já tratei</button></div>')
@@ -91,7 +94,8 @@ _PROCURA = ('<section class="ed-proc" aria-labelledby="ed-proc-t">'
             '<ul class="ed-res" id="ed-res" aria-live="polite"></ul></section>')
 
 
-def _bloco(titulo: str, vazio: str, linhas: list[dict], editavel: bool) -> str:
+def _bloco(titulo: str, vazio: str, linhas: list[dict], editavel: bool,
+           nomes: dict | None = None) -> str:
     total = sum(l["qtd"] * l["preco_un"] for l in linhas if l["preco_un"] is not None)
     copias = sum(l["qtd"] for l in linhas)
     cab = (f'<h2 class="gt">{titulo} <small>{paginas.plural(copias, "cópia")}</small>'
@@ -100,7 +104,7 @@ def _bloco(titulo: str, vazio: str, linhas: list[dict], editavel: bool) -> str:
     if not linhas:
         return cab + f'<p class="vazio">{vazio}</p>'
     return (cab + '<ul class="vls">'
-            + "".join(_linha(l, editavel) for l in linhas) + "</ul>")
+            + "".join(_linha(l, editavel, nomes) for l in linhas) + "</ul>")
 
 
 def html_page(con, *, editable: bool = False, token: str = "") -> str:
@@ -120,9 +124,10 @@ def html_page(con, *, editable: bool = False, token: str = "") -> str:
               f'</span><b>{paginas.eur(v["total_eur"])}</b></div>')
     if editable:
         corpo_ += _PROCURA
+    nomes = visual.nomes_de_deck(con)
     for motivo, titulo, vazio in BLOCOS:
         linhas = [l for l in todas if l["motivo"] == motivo]
-        corpo_ += _bloco(titulo, vazio, linhas, editable)
+        corpo_ += _bloco(titulo, vazio, linhas, editable, nomes)
     return ("<!doctype html><html lang=\"pt-PT\"><head>"
             + shell.head(TITULO, visual.CSS + edicao_js.css(editable)) + "</head>"
             + visual.corpo(editable)

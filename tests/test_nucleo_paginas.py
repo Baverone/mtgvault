@@ -543,6 +543,53 @@ def caso_sem_cores_a_mao():
     assert usados <= definidos, usados - definidos
 
 
+def caso_nomes_repetidos_levam_o_formato():
+    """(M4) «Affinity» e «Cloud» há dois de cada: em Vender («do …») e na caixa
+    de montar o nome leva o formato quando se repete."""
+    with sessao() as con:
+        cenario(con)
+        # a Opalescence marcada sai da lista do Modern Affinity
+        versao(con, MOD, [("main", "Thought Monitor", 4), ("main", "Urza's Saga", 4),
+                          ("main", "Springleaf Drum", 4), ("main", "Opalescence", 1)])
+        marcar(con, MOD, "Opalescence", 1)
+        versao(con, MOD, [("main", "Thought Monitor", 4), ("main", "Urza's Saga", 4),
+                          ("main", "Springleaf Drum", 4)])
+        assert visual.nomes_de_deck(con)[MOD] == "Affinity (Modern)"
+        assert visual.nomes_de_deck(con)[AFF] == "Affinity (Pauper)"
+        assert visual.nomes_de_deck(con)[REP] == "UW Replenish"
+        p = nucleo_vender.html_page(con)
+        assert "do Affinity (Modern)" in p, re.findall(r"do [^<·]*", p)
+        # o deck montado com um nome repetido, na caixa de montar
+        con.execute("UPDATE n_deck SET nome = 'Affinity' WHERE slug = ?", (LEG,))
+        con.commit()
+        mod = seccao(nucleo_decks.html_page(con), MOD)
+        assert "Montado agora: Affinity (Legacy)" in mod, mod[-600:]
+        assert "Traz da caixa do Affinity (Legacy)" in mod
+        # (M5) «Voltar ao deck» só quando a carta voltou à lista do deck
+        assert 'data-destino="devolver"' not in nucleo_vender.html_page(con, editable=True)
+        versao(con, MOD, [("main", "Thought Monitor", 4), ("main", "Urza's Saga", 4),
+                          ("main", "Springleaf Drum", 4), ("main", "Opalescence", 1)])
+        ed = nucleo_vender.html_page(con, editable=True)
+        assert ed.count('data-destino="devolver"') == 1 and "Voltar ao deck" in ed
+        assert 'data-destino="devolver"' not in nucleo_vender.html_page(con)
+
+
+def caso_fonte_com_link_no_meio():
+    """(M9) A fonte de uma versão da vigia do MTGO é «MTGO · evento · dia ·
+    URL»: o URL vira link mesmo no meio do texto. Só http(s): um
+    `javascript:` fica texto."""
+    f = visual.fonte_html("MTGO · Pauper Challenge · 2026-10-20 · "
+                          "https://www.mtgo.com/decklist/pauper-2026-10-20")
+    assert f.startswith("MTGO · Pauper Challenge · 2026-10-20 · <a href="), f
+    assert '<a href="https://www.mtgo.com/decklist/pauper-2026-10-20" rel="noopener">' in f, f
+    f = visual.fonte_html("vi em https://x.pt/lista. e no discord")
+    assert '<a href="https://x.pt/lista" rel="noopener">x.pt/lista</a>. e no discord' in f, f
+    assert "<a" not in visual.fonte_html("javascript:alert(1)")
+    assert "<a" not in visual.fonte_html('"><img src=x>')
+    assert visual.fonte_html("https://moxfield.com/decks/abc").startswith('<a href="https://moxfield.com/decks/abc"')
+    assert visual.fonte_html("") == "sem fonte"
+
+
 if __name__ == "__main__":
     for nome, f in list(globals().items()):
         if nome.startswith("caso_"):
