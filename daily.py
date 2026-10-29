@@ -922,8 +922,13 @@ def _main_nucleo():
 
         def _vigias():
             r = nucleo_vigia.vigiar_todos(con, levantar=True)
-            return ("; ".join(f"{slug}: {v.get('estado')}" for slug, v in r.items())
-                    or "sem vigias")
+            # os AVISOS (erro da fonte, lista suspeita) não levantam: a razão
+            # tem de ficar no log, senão só a página a dizia
+            return ("; ".join(
+                f"{slug}: {v.get('estado')}"
+                + (f" ({v.get('mensagem')})" if v.get("estado") in nucleo_vigia.AVISOS
+                   else "")
+                for slug, v in r.items()) or "sem vigias")
 
         _step(con, "nucleo-vigias", _vigias)
 
