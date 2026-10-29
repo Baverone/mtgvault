@@ -70,8 +70,15 @@ CHROME = Path(r"C:\Program Files\Google\Chrome\Application\chrome.exe")
 _BASE = [RAIZ]
 
 
+def _reencaminha(p) -> bool:
+    """29/10/2026: com o núcleo no ar, as páginas antigas da raiz passaram a
+    reencaminhar para o site novo — já não são páginas do site antigo."""
+    return "Esta página saiu do site" in p.read_text(encoding="utf-8", errors="replace")
+
+
 def _publicadas():
-    return [f for f in paginas.MENU if (_BASE[0] / f).is_file()]
+    return [f for f in paginas.MENU
+            if (_BASE[0] / f).is_file() and not _reencaminha(_BASE[0] / f)]
 
 
 def caso_a_casca_e_a_mesma_em_todas():
@@ -282,6 +289,11 @@ def caso_os_rodapes_longos_ficam_recolhidos():
     assert "comoler" not in curto and "uma nota curta" in curto
     # E no HTML publicado: o rodapé da Deckboxes é o caso de que ele se queixou.
     txt = (RAIZ / "deckboxes.html").read_text(encoding="utf-8", errors="replace")
+    if "Esta página saiu do site" in txt:
+        # 29/10/2026: com o núcleo no ar, o `deckboxes.html` da raiz é um
+        # reencaminhamento para o site novo; a regra fica provada acima.
+        print("os rodapes longos ficam num <details> fechado (deckboxes.html reencaminha)")
+        return
     i = txt.index('<footer class="pgft">')
     rod = txt[i:]
     assert '<details class="comoler">' in rod, "o rodapé da Deckboxes está aberto"

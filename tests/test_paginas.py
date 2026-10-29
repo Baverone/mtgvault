@@ -382,6 +382,9 @@ def caso_todas_as_paginas_geradas_levam_a_barra_lateral():
             faltam.append(f + " (não existe)")
             continue
         txt = p.read_text(encoding="utf-8", errors="replace")
+        if "Esta página saiu do site" in txt:
+            # 29/10/2026: com o núcleo no ar, reencaminha para o site novo
+            continue
         if '<aside class="side"' not in txt or 'class="sidenav"' not in txt:
             faltam.append(f)
         if '<nav class="tabs">' in txt:
