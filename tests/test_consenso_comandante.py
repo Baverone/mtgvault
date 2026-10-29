@@ -464,8 +464,12 @@ def caso_a_pagina_e_publicada_e_esta_na_barra():
     assert "comandantes.html" in publicar.PUBLICAVEIS, \
         "comandantes.html não vai à lista do publicar"
     tarefa = Path(r"C:\Users\Catarina\Desktop\ai-pc\tasks\mtgvault-daily\run.py")
+    # Desde 29/10/2026 a tarefa do ai-pc não tem a lista escrita: pergunta-a
+    # ao `publicar.publicaveis()` (que, com o interruptor desligado, é a
+    # `PUBLICAVEIS` de cima). Antes disso tinha de trazer o nome.
     if tarefa.exists():
-        assert "comandantes.html" in tarefa.read_text(encoding="utf-8"), \
+        txt = tarefa.read_text(encoding="utf-8")
+        assert "publicaveis_mtgvault" in txt or "comandantes.html" in txt, \
             "a tarefa mtgvault-daily do ai-pc não publica a página"
     assert "comandantes.html" in shell.PAGINAS_DO_MENU
     assert 'href="comandantes.html"' in shell.barra("comandantes.html")

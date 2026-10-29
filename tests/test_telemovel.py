@@ -272,9 +272,13 @@ def caso_o_js_vai_ao_git_add_do_workflow_e_da_tarefa():
         "o daily.yml (linha antiga) não faz `git add deckboxes.js`"
     assert "deckboxes.js" in publicar.PUBLICAVEIS, "o publicar não leva o deckboxes.js"
     tarefa = RAIZ.parent.parent / "ai-pc" / "tasks" / "mtgvault-daily"
+    # Desde 29/10/2026 a tarefa do ai-pc pergunta a lista ao
+    # `publicar.publicaveis()` (com o interruptor desligado é a `PUBLICAVEIS`
+    # de cima, que leva o js); antes tinha de trazer o nome escrito.
     if tarefa.is_dir():
         for f in ("run.py", "test.py"):
-            assert '"deckboxes.js"' in (tarefa / f).read_text(encoding="utf-8"), \
+            txt = (tarefa / f).read_text(encoding="utf-8")
+            assert "publicaveis_mtgvault" in txt or '"deckboxes.js"' in txt, \
                 f"a tarefa mtgvault-daily ({f}) não leva o deckboxes.js"
     p = subprocess.run(["git", "-C", str(RAIZ), "check-ignore", "-q", "deckboxes.js"],
                        capture_output=True)
