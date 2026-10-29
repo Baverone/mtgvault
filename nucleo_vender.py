@@ -13,7 +13,7 @@ from pathlib import Path
 
 from mtgvault import paginas
 from mtgvault import site_shell as shell
-from mtgvault.nucleo import valor, visual
+from mtgvault.nucleo import edicao_js, valor, visual
 
 ROOT = Path(__file__).resolve().parent
 FICHEIRO = "vender.html"
@@ -56,7 +56,39 @@ def _linha(l: dict, editavel: bool) -> str:
               f'<b>{paginas.eur(l["qtd"] * l["preco_un"])}</b>')
     return (f'<li class="vl"{dados}>{img}<div class="vi"><b>{e(l["nome"])}</b>'
             f'<small>{" · ".join(meta)}</small></div>'
-            f'<div class="vn">{un}</div></li>')
+            f'<div class="vn">{un}</div>{_botoes(l) if editavel else ""}</li>')
+
+
+def _botoes(l: dict) -> str:
+    """Os botões do modo de edição numa linha (o `edicao_js` liga-os): no
+    «tenho a mais», tirar e pôr uma; numa saída, passá-la a «tenho a mais» ou
+    dá-la por tratada (vendida, dada, foi-se)."""
+    nome = e(l["nome"])
+    if "id" in l:
+        base = (f' data-acao="saida" data-saida="{l["id"]}" data-nome="{nome}"'
+                f' data-qtd="{l["qtd"]}"')
+        return ('<div class="ed-lin">'
+                f'<button type="button" class="btn ed-b" data-destino="a_mais"{base}>'
+                'Passar para tenho a mais</button>'
+                f'<button type="button" class="btn ed-b" data-destino="descartar"{base}>'
+                'Já tratei</button></div>')
+    base = (f' data-acao="amais" data-sid="{e(l["scryfall_id"])}"'
+            f' data-acab="{e(l["acabamento"])}" data-nome="{nome}"')
+    return ('<div class="ed-lin">'
+            f'<button type="button" class="btn ed-b" data-delta="-1"{base}'
+            f' aria-label="Tenho menos uma {nome}">− 1</button>'
+            f'<button type="button" class="btn ed-b" data-delta="1"{base}'
+            f' aria-label="Tenho mais uma {nome}">+ 1</button></div>')
+
+
+# A busca do modo de edição: o `edicao_js` procura no catálogo
+# (`/api/n/procurar`) e um toque num nome abre a escolha da edição.
+_PROCURA = ('<section class="ed-proc" aria-labelledby="ed-proc-t">'
+            '<h2 class="gt" id="ed-proc-t">Acrescentar a Tenho a mais</h2>'
+            '<label for="ed-q">Procura a carta (pelo nome em inglês)</label>'
+            '<input id="ed-q" type="search" autocomplete="off" autocapitalize="off"'
+            ' spellcheck="false" enterkeyhint="search" placeholder="ex.: Urza&#39;s Saga">'
+            '<ul class="ed-res" id="ed-res" aria-live="polite"></ul></section>')
 
 
 def _bloco(titulo: str, vazio: str, linhas: list[dict], editavel: bool) -> str:
@@ -75,7 +107,8 @@ def html_page(con, *, editable: bool = False, token: str = "") -> str:
     """A página inteira. Com `editable`, cada linha leva `data-sid`,
     `data-acab`, `data-nome`, `data-motivo` (e `data-saida` nas saídas); o
     `token` nunca é escrito na página."""
-    del token                     # o modo de edição (Task 8) lê-o do URL
+    # o `token` não se escreve: o JavaScript da edição lê-o do `?t=` do URL
+    del token
     v = valor.a_vender(con)
     todas = v["a_mais"] + v["saidas"]
     copias = sum(l["qtd"] for l in todas)
@@ -85,14 +118,17 @@ def html_page(con, *, editable: bool = False, token: str = "") -> str:
                  " fora do total")
     corpo_ = (f'<div class="vtot"><span>Se venderes tudo<small>{nota}</small>'
               f'</span><b>{paginas.eur(v["total_eur"])}</b></div>')
+    if editable:
+        corpo_ += _PROCURA
     for motivo, titulo, vazio in BLOCOS:
         linhas = [l for l in todas if l["motivo"] == motivo]
         corpo_ += _bloco(titulo, vazio, linhas, editable)
     return ("<!doctype html><html lang=\"pt-PT\"><head>"
-            + shell.head(TITULO, visual.CSS) + "</head>" + visual.corpo(editable)
+            + shell.head(TITULO, visual.CSS + edicao_js.css(editable)) + "</head>"
+            + visual.corpo(editable)
             + shell.abrir(FICHEIRO, TITULO, _SUB)
             + f'<div class="wrap nuc">{corpo_}</div>'
-            + shell.fechar(_RODAPE) + "</body></html>")
+            + shell.fechar(_RODAPE, edicao_js.script(editable)) + "</body></html>")
 
 
 def build(con, out_path=None, rep=None) -> Path:

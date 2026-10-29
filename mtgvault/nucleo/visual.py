@@ -223,7 +223,10 @@ def carta(c: dict, *, slug: str, editavel: bool = False,
     if editavel:
         dados = (f' data-deck="{e(slug)}" data-nome="{e(c["nome"])}"'
                  f' data-sid="{e(c["scryfall_id"] or "")}"'
-                 f' data-acab="{e(c["acabamento"] or "")}"')
+                 f' data-acab="{e(c["acabamento"] or "")}"'
+                 # a carta abre a folha da edição: tem de se chegar lá com o
+                 # teclado também (Enter/Espaço, no `edicao_js`)
+                 ' tabindex="0" role="button" aria-haspopup="dialog"')
     img = (img_carta(c["scryfall_id"], c["nome"]) if c["scryfall_id"]
            else f'<span class="nm">{e(c["nome"])}</span>')
     sb = "<small> SB</small>" if c["seccao"] == "side" and c.get("grupo") else ""

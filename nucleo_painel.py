@@ -13,7 +13,7 @@ from pathlib import Path
 
 from mtgvault import paginas
 from mtgvault import site_shell as shell
-from mtgvault.nucleo import valor, visual
+from mtgvault.nucleo import edicao_js, valor, visual
 
 ROOT = Path(__file__).resolve().parent
 FICHEIRO = "index.html"
@@ -60,15 +60,18 @@ def _vender(con) -> str:
 def html_page(con, *, editable: bool = False, token: str = "") -> str:
     """A página inteira. Com `editable`, o `<body>` leva a marca do modo de
     edição; o `token` nunca é escrito na página."""
-    del token                     # o modo de edição (Task 8) lê-o do URL
+    # o `token` não se escreve: o JavaScript da edição lê-o do `?t=` do URL
+    del token
     corpo_ = (_valor(con) + visual.mosaicos(visual.dados_decks(con), "deck.html")
               + _vender(con))
     return ("<!doctype html><html lang=\"pt-PT\"><head>"
-            + shell.head(TITULO, visual.CSS) + "</head>" + visual.corpo(editable)
+            + shell.head(TITULO, visual.CSS + edicao_js.css(editable)) + "</head>"
+            + visual.corpo(editable)
             + shell.abrir(FICHEIRO, TITULO, _SUB)
             + f'<div class="wrap nuc">{corpo_}</div>'
             + shell.fechar(_rodape(visual.preco_do_dia(con)),
-                           f"<script>{visual.JS_GRAFICO}</script>")
+                           f"<script>{visual.JS_GRAFICO}</script>"
+                           + edicao_js.script(editable))
             + "</body></html>")
 
 

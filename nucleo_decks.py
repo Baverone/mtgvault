@@ -21,7 +21,7 @@ from pathlib import Path
 
 from mtgvault import paginas
 from mtgvault import site_shell as shell
-from mtgvault.nucleo import listas, posse, visual
+from mtgvault.nucleo import edicao_js, listas, posse, visual
 from mtgvault.nucleo.listas import Linha
 
 ROOT = Path(__file__).resolve().parent
@@ -37,12 +37,16 @@ _RODAPE = ("O preço de uma carta em falta é o trend do Cardmarket da edição 
            "escolhida (sem escolha, a normal mais barata com preço). «Sem preço» "
            "fica fora do «falta». Completo inclui o sideboard e o comandante.")
 
+# As secções procuram-se a cada chamada e não uma vez: no modo de edição o
+# `<main>` é trocado depois de cada gravação (`edicao_js`), e o evento
+# `nuc:atualizada` volta a mostrar o deck do `#` SEM saltar para o topo — ele
+# está a marcar cartas a meio da página.
 JS = r"""
 (function(){
-  var todos = document.getElementById('todos'),
-      secs = document.querySelectorAll('section.dk'),
-      titulo = document.title;
-  function mostra(){
+  var titulo = document.title;
+  function mostra(ev){
+    var todos = document.getElementById('todos'),
+        secs = document.querySelectorAll('section.dk');
     var h = '';
     try { h = decodeURIComponent((location.hash || '').slice(1)); } catch (e) {}
     var alvo = null, i;
@@ -51,9 +55,10 @@ JS = r"""
     if (todos) todos.hidden = !!alvo;
     var nome = alvo && alvo.getAttribute('data-nome');
     document.title = nome ? nome + ' · ' + titulo : titulo;
-    if (alvo) window.scrollTo(0, 0);
+    if (alvo && !(ev && ev.type === 'nuc:atualizada')) window.scrollTo(0, 0);
   }
   window.addEventListener('hashchange', mostra);
+  document.addEventListener('nuc:atualizada', mostra);
   mostra();
 })();
 """
@@ -194,9 +199,24 @@ def _espera(d) -> str:
             'Cola-a no modo de edição, com «de onde veio».</p>')
 
 
+def _acoes(d, est: dict) -> str:
+    """Os botões do modo de edição: «Colar lista nova» em todos (também nos
+    vigiados — quando a vigia falha, a lista cola-se à mão) e «Montar este
+    deck» nos rotativos que não estão montados. O `edicao_js` liga-os."""
+    dados = f' data-deck="{e(d["slug"])}" data-nome-deck="{e(d["nome"])}"'
+    out = (f'<button type="button" class="btn ed-b" data-acao="colar"{dados}>'
+           'Colar lista nova</button>')
+    if d["modo"] == "rotativo" and not est["montado"]:
+        out += (f'<button type="button" class="btn ed-b pri" data-acao="montar"'
+                f'{dados}>Montar este deck</button>')
+    return f'<div class="ed-acoes">{out}</div>'
+
+
 def seccao(con, item: dict, nomes: dict, editavel: bool) -> str:
     d, est = item["deck"], item["estado"]
     corpo_ = _cabecalho(item) + _aviso(d)
+    if editavel:
+        corpo_ += _acoes(d, est)
     if est["versao"] is None:
         corpo_ += _espera(d)
     else:
@@ -215,16 +235,19 @@ def html_page(con, *, editable: bool = False, token: str = "") -> str:
     """A página inteira. Com `editable`, as cartas levam `data-deck`,
     `data-nome`, `data-sid` e `data-acab` e o `<body>` a marca do modo de
     edição; o `token` nunca é escrito na página."""
-    del token                     # o modo de edição (Task 8) lê-o do URL
+    # o `token` não se escreve: o JavaScript da edição lê-o do `?t=` do URL
+    del token
     itens = visual.dados_decks(con)
     nomes = {i["deck"]["slug"]: i["deck"]["nome"] for i in itens}
     corpo_ = (f'<div id="todos">{visual.mosaicos(itens, "")}</div>'
               + "".join(seccao(con, i, nomes, editable) for i in itens))
     return ("<!doctype html><html lang=\"pt-PT\"><head>"
-            + shell.head(TITULO, visual.CSS) + "</head>" + visual.corpo(editable)
+            + shell.head(TITULO, visual.CSS + edicao_js.css(editable)) + "</head>"
+            + visual.corpo(editable)
             + shell.abrir(FICHEIRO, TITULO, _SUB)
             + f'<div class="wrap nuc">{corpo_}</div>'
-            + shell.fechar(_RODAPE, f"<script>{JS}</script>")
+            + shell.fechar(_RODAPE, f"<script>{JS}</script>"
+                           + edicao_js.script(editable))
             + "</body></html>")
 
 
