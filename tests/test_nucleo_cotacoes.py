@@ -426,14 +426,24 @@ def caso_variacao_sem_prova_no_ponto_de_partida_e_none():
 
 
 def caso_juntar_so_en_ou_pt():
-    """Uma língua que não seja `en` nem `pt` é rejeitada ao juntar."""
+    """Uma língua que não seja `en` nem `pt` é rejeitada ao juntar; e `pt` só
+    numa edição de `cotacoes.SETS_PT`, as únicas com preço português recolhido
+    (noutra, a carta ficava «sem preço» para sempre)."""
     with _pronta() as con:
         msg = _levanta(lambda: colecoes.juntar(
             con, "reserved_list", RL_SID, "nonfoil", "de"))
         assert "de" in msg, msg
-        assert colecoes.juntar(con, "reserved_list", RL_SID, "nonfoil", "pt")
+        # o Moat de teste é da `leg`: fora das edições com preço PT
+        msg = _levanta(lambda: colecoes.juntar(
+            con, "reserved_list", RL_SID, "nonfoil", "pt"))
+        assert "português" in msg and "rav" in msg and "leg" in msg, msg
         assert con.execute("SELECT COUNT(*) FROM n_colecao_carta WHERE colecao ="
-                           " 'reserved_list'").fetchone()[0] == 1
+                           " 'reserved_list'").fetchone()[0] == 0
+        assert colecoes.juntar(con, "reserved_list", RL_SID, "nonfoil", "en")
+        # uma edição de SETS_PT aceita `pt`
+        assert colecoes.juntar(con, "reserved_list", VENTS_PT, "nonfoil", "pt")
+        assert con.execute("SELECT COUNT(*) FROM n_colecao_carta WHERE colecao ="
+                           " 'reserved_list'").fetchone()[0] == 2
 
 
 # ---------------------------------------------------------------------------

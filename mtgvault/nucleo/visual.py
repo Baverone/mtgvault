@@ -36,10 +36,14 @@ from . import posse
 
 CDN = "https://cards.scryfall.io"
 
+# Todos os formatos que a recolha guarda (`sources.MTGO_FORMATS`, os do
+# `mtgtop8.FORMAT_CODES`): desde 30/10 o daily recolhe as listas de todos para
+# o `n_jogada`, e o «joga» mostrava «vintage» em minúsculas, o código cru.
 FORMATOS = {
     "premodern": "Premodern", "cedh": "cEDH", "pauper": "Pauper",
     "duel-commander": "Duel Commander", "standard": "Standard",
     "pioneer": "Pioneer", "modern": "Modern", "legacy": "Legacy",
+    "vintage": "Vintage",
 }
 ACABAMENTO = {"nonfoil": "normal", "foil": "foil"}
 SECCAO = {"comandante": "Comandante", "main": "Main", "side": "Sideboard"}

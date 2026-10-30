@@ -689,3 +689,7 @@ CREATE TABLE IF NOT EXISTS n_preco_vigiado (
 CREATE TABLE IF NOT EXISTS n_jogada (
     formato TEXT NOT NULL, mes TEXT NOT NULL, nome TEXT NOT NULL,
     listas INTEGER NOT NULL, PRIMARY KEY (formato, mes, nome));
+-- (R25) o `jogada.onde_joga` pergunta pelo NOME (e pelos meses da janela) e a
+-- chave primária começa pelo formato: sem isto varria a tabela inteira, que só
+-- cresce (medido: 0,65 s → 4,27 s com um ano de linhas).
+CREATE INDEX IF NOT EXISTS ix_n_jogada_nome ON n_jogada(nome, mes);

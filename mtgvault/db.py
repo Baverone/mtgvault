@@ -520,6 +520,9 @@ def _migrate(con: sqlite3.Connection) -> None:
     con.execute("""CREATE TABLE IF NOT EXISTS n_jogada (
     formato TEXT NOT NULL, mes TEXT NOT NULL, nome TEXT NOT NULL,
     listas INTEGER NOT NULL, PRIMARY KEY (formato, mes, nome))""")
+    # (R25) igual ao `schema.sql`: o `onde_joga` filtra pelo nome e a chave
+    # primária começa pelo formato (varria a tabela inteira, que só cresce)
+    con.execute("CREATE INDEX IF NOT EXISTS ix_n_jogada_nome ON n_jogada(nome, mes)")
     con.commit()
 
     # `n_valor.colecoes_eur` (2026-10-30): o valor da Coleção por dia, ao lado do

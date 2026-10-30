@@ -13,7 +13,7 @@ Decisões que não se leem do código:
   em `pt`: ter o mesmo shock em inglês não os cumpre.
 - **O `scryfall_id` resolve-se pelo nome e pelo set** e, se houver várias
   impressões (promos, números alternativos), ganha a de menor número do
-  coleccionador, para o resultado não depender da ordem do catálogo.
+  colecionador, para o resultado não depender da ordem do catálogo.
 - **Uma carta que o catálogo não tem levanta `ValueError` e não grava nada**:
   semear uma coleção a meio era mostrar «0 de 36» como se fosse um facto.
 - **O progresso (`tenho`/`total`) não conta o que passa da meta**: cinco de uma
@@ -277,7 +277,10 @@ def juntar(con: sqlite3.Connection, slug: str, scryfall_id: str,
     """Acrescenta uma carta a uma coleção ABERTA e devolve o `id`; se já lá
     está, devolve o mesmo `id`. Numa fechada levanta `ValueError`: a lista dela
     é fixa. A língua é `en` ou `pt`: são as duas que têm preço (a `pt` vem do
-    CardTrader), e outra qualquer ficava para sempre «sem preço»."""
+    CardTrader), e outra qualquer ficava para sempre «sem preço». E `pt` só
+    numa edição de `cotacoes.SETS_PT`: o `recolher_pt` só pede ao CardTrader
+    as ofertas dessas, por isso uma carta `pt` de outra edição também nunca
+    teria preço (e o inglês nunca se lhe empresta)."""
     if lingua not in ("en", "pt"):
         raise ValueError(f"língua inválida: {lingua!r} (en | pt)")
     if acabamento not in posse.ACABAMENTOS:
@@ -289,10 +292,16 @@ def juntar(con: sqlite3.Connection, slug: str, scryfall_id: str,
             raise ValueError(f"coleção desconhecida: {slug!r}")
         if col["tipo"] != "aberta":
             raise ValueError(f"{slug!r} é uma coleção fechada: a lista é fixa")
-        r = con.execute("SELECT name, finishes, digital FROM cards"
+        r = con.execute("SELECT name, finishes, digital, set_code FROM cards"
                         " WHERE scryfall_id = ?", (scryfall_id,)).fetchone()
         if r is None or r["digital"]:
             raise ValueError(f"{scryfall_id!r} não é uma impressão em papel")
+        if lingua == "pt" and r["set_code"] not in cotacoes.SETS_PT:
+            raise ValueError(
+                f"{r['name']!r} ({r['set_code']}) não pode entrar em português:"
+                f" só se recolhem preços portugueses das edições"
+                f" {', '.join(cotacoes.SETS_PT)}, e noutra a carta ficava"
+                " «sem preço» para sempre")
         if acabamento not in posse._finishes(r):
             raise ValueError(f"{r['name']!r} ({scryfall_id}) não existe em"
                              f" {acabamento}")

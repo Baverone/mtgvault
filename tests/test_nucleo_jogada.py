@@ -181,6 +181,43 @@ def caso_onde_joga():
         assert jogada.onde_joga(con, "Sol Ring", HOJE) == ["Legacy", "Modern"]
 
 
+def caso_onde_joga_usa_o_indice_por_nome():
+    """(R25) O `n_jogada` só cresce (R10) e a chave primária começa pelo
+    formato: o `onde_joga` filtra pelo NOME e varria a tabela inteira (medido:
+    0,65 s → 4,27 s com um ano de linhas). O índice `(nome, mes)` existe numa
+    base nova e numa migrada, e a consulta entra por ele."""
+    with sessao() as con:
+        assert con.execute("SELECT 1 FROM sqlite_master WHERE type = 'index'"
+                           " AND name = 'ix_n_jogada_nome'").fetchone(),             "falta o índice ix_n_jogada_nome"
+        cols = [r[2] for r in con.execute("PRAGMA index_info(ix_n_jogada_nome)")]
+        assert cols == ["nome", "mes"], cols
+        for formato in ("legacy", "modern", "pauper", "vintage"):
+            for mes in range(1, 13):
+                for k in range(20):
+                    gravada(con, formato, f"2026-{mes:02d}", f"Carta {k}", 1)
+        con.execute("ANALYZE")
+        ini, fim = jogada._janela(HOJE)
+        plano = " | ".join(r[3] for r in con.execute(
+            "EXPLAIN QUERY PLAN SELECT formato, SUM(listas) FROM n_jogada"
+            " WHERE nome = ? AND mes >= ? AND mes <= ? GROUP BY formato",
+            ("Carta 1", ini, fim)))
+        assert "ix_n_jogada_nome" in plano, plano
+        assert jogada.onde_joga(con, "Carta 1", HOJE) == [
+            "Legacy", "Modern", "Pauper", "Vintage"]
+
+
+def caso_todos_os_formatos_recolhidos_tem_rotulo():
+    """O «joga» nunca mostra um código cru («vintage»): cada formato que a
+    recolha guarda tem o seu rótulo em `visual.FORMATOS`."""
+    from mtgvault import mtgtop8, sources                     # noqa: PLC0415
+    from mtgvault.nucleo import visual                        # noqa: PLC0415
+    codigos = (set(sources.MTGO_FORMATS) | set(sources.NON_MTGO_FORMATS)
+               | set(mtgtop8.FORMAT_CODES))
+    faltam = sorted(codigos - set(visual.FORMATOS))
+    assert not faltam, faltam
+    assert visual.formato("vintage") == "Vintage"
+
+
 def caso_onde_joga_janela_na_viragem_do_ano():
     """Em janeiro a janela atravessa o ano: há 3 meses é outubro do ano anterior."""
     with sessao() as con:

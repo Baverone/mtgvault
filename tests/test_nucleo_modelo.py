@@ -160,9 +160,9 @@ def caso_schema_e_migrate_iguais():
         (raiz / "schema.sql").read_text(encoding="utf-8"))]
     py = [normal(m) for m in padrao.findall(
         (raiz / "db.py").read_text(encoding="utf-8"))]
-    # 19 tabelas (as 10 antigas e as 9 da coleção/fotos/preços) + 2 índices
-    # (`ix_n_versao_carta` e `ix_n_validacao`).
-    assert len(sql) == 21, len(sql)
+    # 19 tabelas (as 10 antigas e as 9 da coleção/fotos/preços) + 3 índices
+    # (`ix_n_versao_carta`, `ix_n_validacao` e `ix_n_jogada_nome`, R25).
+    assert len(sql) == 22, len(sql)
     assert sql == py, [(a, b) for a, b in zip(sql, py) if a != b]
     print(f"schema.sql e _migrate: {len(sql)} definições iguais")
 
