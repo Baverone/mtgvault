@@ -90,8 +90,8 @@ def caso_registar_por_mes():
 
 def caso_registar_idempotente():
     """Correr duas vezes dá as mesmas linhas; um mês cujas listas a poda já
-    apagou mantém as suas (a razão de ser da tabela); e um mês que ainda tem
-    listas é recalculado, não somado por cima."""
+    apagou mantém as suas (a razão de ser da tabela); e uma lista a mais sobe a
+    contagem do mês, não a soma por cima."""
     with sessao() as con:
         lista(con, "legacy", "2026-10-03", [("Mox Opal", 4, "main")], "a")
         lista(con, "legacy", "2026-10-04", [("Mox Opal", 4, "main")], "b")
@@ -105,7 +105,8 @@ def caso_registar_idempotente():
         jogada.registar(con)
         assert linhas(con) == [("legacy", "2026-07", "Sol Ring", 5),
                                ("legacy", "2026-10", "Mox Opal", 3)], linhas(con)
-        # uma carta que deixou de estar nas listas desse mês sai da tabela
+        # uma carta que deixou de estar nas listas desse mês FICA, com a
+        # contagem antiga (a poda deslizante não pode apagar a memória)
         con.execute("DELETE FROM decklist_cards WHERE card_name = 'Mox Opal'")
         con.execute("INSERT INTO decklist_cards (decklist_id, card_name, quantity,"
                     " board) SELECT id, 'Sol Ring', 1, 'main' FROM decklists"
@@ -113,7 +114,50 @@ def caso_registar_idempotente():
         con.commit()
         jogada.registar(con)
         assert linhas(con) == [("legacy", "2026-07", "Sol Ring", 5),
+                               ("legacy", "2026-10", "Mox Opal", 3),
                                ("legacy", "2026-10", "Sol Ring", 1)], linhas(con)
+
+
+def caso_poda_nao_apaga():
+    """A poda deslizante apaga listas de um mês a meio: a contagem e as cartas
+    que só se jogaram nessas listas ficam. Duas listas com X: registar → 2; apaga
+    uma → continua 2; apaga as duas → X continua lá."""
+    with sessao() as con:
+        a = lista(con, "legacy", "2026-10-03", [("Mox Opal", 4, "main")], "a")
+        b = lista(con, "legacy", "2026-10-04", [("Mox Opal", 4, "main")], "b")
+        lista(con, "legacy", "2026-10-05", [("Sol Ring", 1, "main")], "c")
+        jogada.registar(con)
+        assert linhas(con) == [("legacy", "2026-10", "Mox Opal", 2),
+                               ("legacy", "2026-10", "Sol Ring", 1)]
+
+        def podar(i):
+            con.execute("DELETE FROM decklist_cards WHERE decklist_id = ?", (i,))
+            con.execute("DELETE FROM decklists WHERE id = ?", (i,))
+            con.commit()
+        podar(a)
+        jogada.registar(con)
+        assert ("legacy", "2026-10", "Mox Opal", 2) in linhas(con), linhas(con)
+        podar(b)
+        jogada.registar(con)
+        assert linhas(con) == [("legacy", "2026-10", "Mox Opal", 2),
+                               ("legacy", "2026-10", "Sol Ring", 1)], linhas(con)
+        # e com a carta de volta numa lista nova, a contagem só sobe se passar
+        lista(con, "legacy", "2026-10-09", [("Mox Opal", 4, "main")], "d")
+        jogada.registar(con)
+        assert ("legacy", "2026-10", "Mox Opal", 2) in linhas(con)
+        lista(con, "legacy", "2026-10-10", [("Mox Opal", 4, "main")], "e")
+        lista(con, "legacy", "2026-10-11", [("Mox Opal", 4, "main")], "f")
+        jogada.registar(con)
+        assert ("legacy", "2026-10", "Mox Opal", 3) in linhas(con), linhas(con)
+
+
+def caso_frente_com_espacos():
+    """O mesmo nome com espaços à volta dá a mesma chave no SQL e no Python."""
+    with sessao() as con:
+        lista(con, "legacy", "2026-10-03", [("  Sol Ring ", 1, "main")], "a")
+        jogada.registar(con)
+        assert linhas(con) == [("legacy", "2026-10", "Sol Ring", 1)], linhas(con)
+        assert jogada.onde_joga(con, " Sol Ring", HOJE) == ["Legacy"]
 
 
 def caso_onde_joga():

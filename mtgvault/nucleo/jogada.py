@@ -15,14 +15,14 @@ Os nomes casam pela **face da frente**: as listas trazem «Wear» e o catálogo
 deles bastava uma fonte nova com a convenção trocada para a carta deixar de
 aparecer sem erro nenhum.
 
-Só escreve em `n_jogada`.
+Só escreve em `n_jogada`, e só para cima (ver `registar`).
 """
 from __future__ import annotations
 
 import sqlite3
 from datetime import date
 
-from . import modelo, visual
+from . import modelo, posse, visual
 
 # Janela dos torneios: de há 3 meses até ao mês de hoje, inclusive. Em meses
 # inteiros (`mes` é 'AAAA-MM'): uma lista de 1 de julho conta em outubro.
@@ -32,9 +32,11 @@ _SEP = " // "
 
 # A face da frente de `card_name`, em SQL: as listas de torneio trazem a frente
 # (ou, de vez em quando, o nome inteiro) e `n_jogada` guarda sempre a frente.
-_FRENTE_SQL = ("CASE WHEN instr(dc.card_name, ' // ') > 0"
+# O `TRIM` espelha o `.strip()` de `frente()`: as duas pontas têm de dar a
+# mesma chave, senão uma carta com um espaço a mais gravava-se e não se achava.
+_FRENTE_SQL = ("TRIM(CASE WHEN instr(dc.card_name, ' // ') > 0"
                " THEN substr(dc.card_name, 1, instr(dc.card_name, ' // ') - 1)"
-               " ELSE dc.card_name END")
+               " ELSE dc.card_name END)")
 
 
 def frente(nome: str) -> str:
@@ -46,29 +48,30 @@ def registar(con: sqlite3.Connection) -> int:
     """Conta, por (formato, mês, carta), as listas distintas que a jogam e
     grava em `n_jogada`. Devolve as linhas escritas.
 
-    Recalcula **todos os (formato, mês) que ainda têm listas** e só esses: um
-    mês cujas listas a poda já apagou não aparece aqui e mantém o que lá ficou
-    (é para isso que a tabela existe). Dentro de um mês que ainda tem listas
-    apaga-se antes de escrever, para uma carta que deixou de aparecer nas listas
-    sobreviventes não ficar com a contagem velha. Uma carta no main e no side da
-    mesma lista conta uma vez (`COUNT(DISTINCT decklist_id)`).
+    **Só sobe, nunca desce.** A poda das decklists é deslizante (30 dias), por
+    isso um mês fica meio podado durante semanas: as listas que sobram dão uma
+    contagem MENOR do que a que já lá está, e uma carta que só se jogou nas
+    listas já podadas nem aparece. Recalcular e substituir esqueceria
+    exatamente o que esta tabela existe para guardar. Por isso o upsert fica com
+    o `MAX` do que lá está e do que acaba de contar: idempotente, monótono, e
+    uma carta já vista nunca sai. (Se um dia houver uma lista errada gravada,
+    apaga-se à mão.) Uma carta no main e no side da mesma lista conta uma vez
+    (`COUNT(DISTINCT decklist_id)`).
 
     Tem de correr **antes** da poda das listas.
     """
-    linhas = con.execute(
-        f"SELECT d.format, strftime('%Y-%m', d.event_date) AS mes,"
-        f" {_FRENTE_SQL} AS nome, COUNT(DISTINCT d.id) AS listas"
-        " FROM decklists d JOIN decklist_cards dc ON dc.decklist_id = d.id"
-        " WHERE d.event_date IS NOT NULL"
-        " GROUP BY d.format, mes, nome").fetchall()
-    meses = {(l[0], l[1]) for l in linhas}
-    for formato, mes in sorted(meses):
-        con.execute("DELETE FROM n_jogada WHERE formato = ? AND mes = ?",
-                    (formato, mes))
-    con.executemany(
-        "INSERT OR REPLACE INTO n_jogada (formato, mes, nome, listas)"
-        " VALUES (?,?,?,?)", [tuple(l) for l in linhas])
-    con.commit()
+    with posse._transacao(con):
+        linhas = con.execute(
+            f"SELECT d.format, strftime('%Y-%m', d.event_date) AS mes,"
+            f" {_FRENTE_SQL} AS nome, COUNT(DISTINCT d.id) AS listas"
+            " FROM decklists d JOIN decklist_cards dc ON dc.decklist_id = d.id"
+            " WHERE d.event_date IS NOT NULL"
+            " GROUP BY d.format, mes, nome").fetchall()
+        con.executemany(
+            "INSERT INTO n_jogada (formato, mes, nome, listas) VALUES (?,?,?,?)"
+            " ON CONFLICT(formato, mes, nome)"
+            " DO UPDATE SET listas = MAX(listas, excluded.listas)",
+            [tuple(l) for l in linhas])
     return len(linhas)
 
 
