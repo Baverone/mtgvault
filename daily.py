@@ -437,20 +437,41 @@ def _prune_prices(con, keep_days: int = 30):
              WHERE date < date('now', ?) AND date >= date('now', ?)
                AND NOT {conhecida}""",
         (f"-{keep_days} days", f"-{fundo} days")).fetchone()["n"]
-    n = con.execute(
-        f"""DELETE FROM price_history
-            WHERE date < date('now', ?)
-              AND (date < date('now', ?)
+    # A ÂNCORA DA JANELA (2026-10-30). O `price_history` só guarda MUDANÇAS, e
+    # quem lê um dia (`nucleo.valor.preco(dia=…)`, `loadout.card_price_em`)
+    # procura a última linha com `date <= dia`. Apagar tudo o que é anterior ao
+    # corte deixava sem preço, no início da janela, exactamente as cartas que
+    # MEXERAM dentro dela: uma que valia 5 € a D-40 e passou a 6 € a D-10 dava
+    # «sem preço» a D-30 (a de D-40 ia-se, a de D-10 é posterior), e a
+    # «variação num mês» e a série perdiam-nas sem um único erro. Medido na
+    # cópia da base de 30/10: 14 474 das 34 664 impressões do Cardmarket. Por
+    # isso, de cada (impressão, fonte, acabamento) fica a linha mais recente
+    # anterior ao corte — o preço em vigor quando a janela abre. É no máximo
+    # uma linha por chave, e só para as que têm linhas antes do corte.
+    ancora = ("date < (SELECT MAX(h.date) FROM price_history h"
+              " WHERE h.scryfall_id = price_history.scryfall_id"
+              " AND h.source = price_history.source"
+              " AND h.finish = price_history.finish"
+              " AND h.date < date('now', :corte))")
+    apagar = (f"""date < date('now', :corte)
+              AND (date < date('now', :fundo)
                    OR ({conhecida}
                        AND NOT EXISTS (SELECT 1 FROM cards c
                                         WHERE c.scryfall_id = price_history.scryfall_id
-                                          AND c.reserved = 1)))""",
-        (f"-{keep_days} days", f"-{fundo} days")).rowcount
+                                          AND c.reserved = 1)))""")
+    params = {"corte": f"-{keep_days} days", "fundo": f"-{fundo} days"}
+    ancoras = con.execute(
+        f"SELECT COUNT(*) n FROM price_history WHERE {apagar} AND NOT {ancora}",
+        params).fetchone()["n"]
+    n = con.execute(
+        f"DELETE FROM price_history WHERE {apagar} AND {ancora}", params).rowcount
     m = _prune_marketplace(con)
     con.commit()
     return (f"{n} preços >{keep_days}d apagados "
             f"(Reserved List guarda-se {fundo}d, p/ a regra dos "
             f"{loadout.rl_subida_minima():.0f}%)"
+            + (f"; {ancoras} guardadas como âncora do início da janela"
+               if ancoras else "")
             + (f"; {m} do marketplace sem consumidor" if m else "")
             + (f"; {guardadas} guardadas por o catálogo não conhecer a carta "
                f"(catálogo por sincronizar?)" if guardadas else ""))
