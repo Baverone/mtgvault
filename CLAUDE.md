@@ -113,10 +113,29 @@ cópia existe).
   fora), *Shocks originais em português* (as 10 shocks de `rav`/`gpt`/`dis`,
   português, normal), as três com meta 4 de cada, e *Reserved List*, **aberta**
   (sem meta, é o que ele juntar). Nas Duals contam só as de Revised; as Foreign
-  Black Border não. As coleções **não** entram no progresso nem nas faltas dos
-  decks, mas entram no **valor** do Painel. `garantir_colecoes` é tudo ou nada:
+  Black Border não. As coleções entram no **valor** do Painel; nos decks, só
+  como **empréstimo** aos rotativos (ver o ponto a seguir). `garantir_colecoes` é tudo ou nada:
   uma carta que falte no catálogo levanta `ValueError` em vez de criar uma
   coleção a meio.
+- **As coleções emprestam aos decks de Standard, Pioneer, Modern e Legacy, e só
+  a esses** (André, 30/10/2026, à letra: *«os únicos decks que podem usar cartas
+  da coleção são os de Standard, Pioneer, Modern e Legacy»*;
+  `posse.FORMATOS_COM_COLECAO`). Duas respostas dele: é um **empréstimo** (a
+  carta continua na coleção — o `tenho` dela, a meta e o valor não mexem, e
+  nada se escreve) e **só em inglês** (as Shocks PT ficam sempre na coleção);
+  a edição e o acabamento da coleção não têm de ser os escolhidos no deck. O
+  `estado_deck` usa primeiro as cópias do deck e só depois pede às coleções,
+  pela ordem delas (`_emprestaveis`/`_pedir_emprestado`); cada carta diz
+  `da_colecao`, `colecoes` e `emprestimo`, conta para o `tenho` (sai das faltas
+  e do custo) e as validadas na coleção contam como validadas no deck (com o
+  recorte dela, se o deck não tiver o seu). Como só um rotativo está montado de
+  cada vez, dois decks contam com a mesma cópia (a regra do máximo). O valor
+  NÃO conta a carta duas vezes: os `decks_eur` continuam a ser o `n_posse`. Na
+  página: a etiqueta dourada «N da coleção» na carta, «· N da coleção» no
+  progresso, e «Das coleções: …» no bloco de montar e na folha «Montar»
+  (`posse.da_colecao_para`, no `/api/n/movimentos` como `da_colecao`). Testes
+  em `tests/test_nucleo_emprestimo.py`. Medido na base de 30/10 à noite: o
+  Oswald passou a contar 10 cartas emprestadas das Expeditions.
 - **As tabelas novas** (todas `n_*`, nos três sítios: `schema.sql`,
   `db._migrate()` e quem as escreve): `n_colecao`, `n_colecao_carta`,
   `n_colecao_log`, `n_foto`, `n_recorte`, `n_validacao`, `n_preco_pt`,

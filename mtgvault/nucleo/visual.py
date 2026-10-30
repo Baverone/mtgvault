@@ -298,6 +298,14 @@ def carta(c: dict, *, slug: str, editavel: bool = False,
         else:
             onde = (f'<i class="onde" title="na caixa do {e(c["onde"])}">'
                     f'{shell.icone("caixas", 14)}{e(c["onde"])}</i>')
+    n_col = c.get("da_colecao") or 0
+    if n_col:
+        # emprestada de uma coleção (só Standard/Pioneer/Modern/Legacy): a
+        # etiqueta é curta e o nome da coleção vai no `title`
+        cols = ", ".join(c.get("colecoes") or [])
+        onde += (f'<i class="onde col" title="{n_col} emprestada'
+                 f'{"s" if n_col != 1 else ""} da coleção: {e(cols)}">'
+                 f'{shell.icone("colecao", 14)}{n_col} da coleção</i>')
     falta = ""
     if c["falta"]:
         # dois pedaços que não se partem por dentro: numa carta de 85 px o
@@ -858,6 +866,7 @@ CSS = r"""
    padding:1px 3px;line-height:1.2;text-align:center;overflow-wrap:anywhere}
  .ct .onde svg.ico{width:11px;height:11px;flex:none}
  .ct .onde.aqui{background:var(--ok-soft);color:var(--ok);border-color:var(--ok-line)}
+ .ct .onde.col{background:rgba(7,8,13,.88);color:var(--accent);border-color:rgba(245,196,81,.55)}
  .ct .cn{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
    font-style:normal;font-size:10px;font-weight:600;line-height:1.25;text-align:center;
    background:rgba(0,0,0,.74);color:var(--ink);border-radius:4px;padding:1px 3px;overflow-wrap:anywhere}

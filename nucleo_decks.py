@@ -120,9 +120,12 @@ def _progresso(est: dict) -> str:
     val = est.get("validadas") or 0
     # só quando há: «0 validadas» seria ruído em quase todos os decks
     validadas = (f' · {val} validada{"s" if val != 1 else ""}' if val else "")
+    n_col = est.get("da_colecao") or 0
+    da_col = f' · {n_col} da coleção' if n_col else ""
     return (visual.barra(est["tenho"], est["total"])
             + f'<div class="kpi"><span>{est["tenho"]} de {est["total"]} cartas'
-            f' · {visual.pct_de(est["tenho"], est["total"])} %{validadas}</span>'
+            f' · {visual.pct_de(est["tenho"], est["total"])} %{da_col}{validadas}'
+            '</span>'
             f'<span>{falta}</span></div>')
 
 
@@ -170,17 +173,30 @@ def _cartas_rotativo(est: dict, editavel: bool) -> str:
     return out
 
 
+def _das_colecoes(con, slug: str) -> str:
+    """«Das coleções: 2 Underground Sea (Duals de Revised), …» — o que o deck
+    usa emprestado (só nos formatos que o podem, `posse.FORMATOS_COM_COLECAO`).
+    """
+    emp = posse.da_colecao_para(con, slug)
+    if not emp:
+        return ""
+    return " Das coleções: " + ", ".join(
+        f'{m["qtd"]} {e(m["nome"])} ({e(m["colecao_nome"])})' for m in emp) + "."
+
+
 def _montar(con, est: dict, nomes: dict) -> str:
+    col = _das_colecoes(con, est["slug"])
     if est["montado"]:
         return ('<div class="mv ok"><b>Está montado</b>As partilhadas estão na '
-                'caixa dele.</div>')
+                f'caixa dele.{col}</div>')
     movs = posse.movimentos_para(con, est["slug"])
     if not movs:
-        return ""
+        return (f'<div class="mv"><b>Para montar este deck</b>{col.strip()}</div>'
+                if col else "")
     de = nomes.get(movs[0]["de"], movs[0]["de"])
     lista = ", ".join(f'{m["qtd"]} {e(m["nome"])}' for m in movs)
     return (f'<div class="mv"><b>Para montar este deck</b>Montado agora: '
-            f'{e(de)}. Traz da caixa do {e(de)}: {lista}.</div>')
+            f'{e(de)}. Traz da caixa do {e(de)}: {lista}.{col}</div>')
 
 
 def _espera(d) -> str:

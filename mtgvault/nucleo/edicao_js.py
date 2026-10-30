@@ -662,6 +662,13 @@ JS = r"""
           corpoF.appendChild(ul);
         }
       }
+      var col = d.da_colecao || [];
+      if (col.length) {
+        corpoF.appendChild(el('p', 'ed-amb', 'Traz das coleções (continuam a ser delas):'));
+        var ulc = el('ul', 'ed-lista');
+        col.forEach(function(m){ ulc.appendChild(el('li', '', m.qtd + ' ' + m.nome + ' · ' + m.colecao_nome)); });
+        corpoF.appendChild(ulc);
+      }
       corpoF.appendChild(el('p', 'ed-dica', 'Depois disto o ' + e0.nome + ' fica o deck montado — só um rotativo de cada vez.'));
       var row = el('div', 'ed-row'), bm = botao('Montar', 'pri'), bc = botao('Cancelar');
       bc.addEventListener('click', fecha);

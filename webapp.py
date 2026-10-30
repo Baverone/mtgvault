@@ -1533,7 +1533,10 @@ def n_movimentos(con, deck: str) -> dict:
     return {"deck": deck, "nome": nomes.get(deck, deck),
             "montado_agora": nomes.get(m[0], m[0]) if m else None,
             "movimentos": [{**x, "de_nome": nomes.get(x["de"], x["de"])}
-                           for x in movs]}
+                           for x in movs],
+            # o que vem emprestado das coleções (só Standard/Pioneer/Modern/
+            # Legacy); a carta continua a ser da coleção
+            "da_colecao": n_posse.da_colecao_para(con, deck)}
 
 
 def n_procurar(con, q: str) -> list[str]:

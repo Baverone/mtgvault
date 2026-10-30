@@ -21,6 +21,14 @@ As regras (spec «Regras», 2026-10-28):
   inteiro está na caixa dele: montar outro é trazer o monte todo.
 - **Baixar a quantidade numa lista é uma saída parcial:** o que fica marcado
   acima do que é preciso vai para `n_saida` (`saiu_da_lista`).
+- **As coleções emprestam aos decks de Standard, Pioneer, Modern e Legacy**
+  (André, 30/10/2026: *«os únicos decks que podem usar cartas da coleção»*;
+  `FORMATOS_COM_COLECAO`). O deck usa primeiro as cópias dele, e só o que
+  faltar vem de uma coleção — qualquer edição e acabamento, mas só em inglês
+  (as Shocks em português ficam sempre na coleção). É um EMPRÉSTIMO: o `tenho`
+  da coleção, a meta e o valor não mexem, e nada se escreve. Como só um
+  rotativo está montado de cada vez, dois decks podem contar com a mesma cópia
+  emprestada (é a regra do máximo das partilhadas).
 
 Duas decisões que não estão escritas na spec e que valem a pena saber:
 
@@ -47,6 +55,8 @@ from .. import scryfall
 
 ROT = "rotativos"
 ACABAMENTOS = ("nonfoil", "foil")
+# os formatos cujos decks podem usar cartas das coleções (André, 30/10/2026)
+FORMATOS_COM_COLECAO = frozenset({"standard", "pioneer", "modern", "legacy"})
 # a ordem por que o monte de posse de um nome se reparte pelas linhas do deck
 _ORDEM_SECCAO = {"comandante": 0, "main": 1, "side": 2}
 
@@ -119,6 +129,45 @@ def _ambito_de(deck: dict, nome: str, partilhadas_: set[str]) -> str:
     if deck["modo"] == "rotativo" and nome in partilhadas_:
         return ROT
     return deck["slug"]
+
+
+def _emprestaveis(con: sqlite3.Connection, nome: str) -> list[dict]:
+    """As cópias deste nome que as coleções podem emprestar — só em inglês, de
+    qualquer edição e acabamento —, pela ordem das coleções. Cada fonte leva as
+    `livres` e as `validadas` (nunca mais do que as livres), que o
+    `_pedir_emprestado` vai gastando."""
+    fontes = []
+    for r in con.execute(
+            "SELECT cc.colecao, c.nome, c.ordem, cc.scryfall_id, cc.acabamento,"
+            " cc.tenho FROM n_colecao_carta cc JOIN n_colecao c"
+            " ON c.slug = cc.colecao WHERE cc.nome = ? AND cc.lingua = 'en'"
+            " AND cc.tenho > 0 ORDER BY c.ordem, cc.id", (nome,)):
+        fontes.append({
+            "colecao": r[0], "colecao_nome": r[1], "ordem": r[2],
+            "scryfall_id": r[3], "acabamento": r[4], "livres": r[5],
+            "validadas": min(r[5], _fotos().validadas(con, r[0], r[3], r[4]))})
+    return fontes
+
+
+def _pedir_emprestado(fontes: list[dict], n: int) -> list[dict]:
+    """Tira até `n` cópias das `fontes`, por ordem, e devolve o que tirou de
+    cada uma (`qtd` e quantas dessas estão `validadas`). Gasta as fontes: o
+    mesmo nome em main e side não empresta duas vezes a mesma cópia."""
+    tirado = []
+    for f in fontes:
+        if n <= 0:
+            break
+        q = min(n, f["livres"])
+        if q <= 0:
+            continue
+        v = min(q, f["validadas"])
+        f["livres"] -= q
+        f["validadas"] -= v
+        n -= q
+        tirado.append({**{k: f[k] for k in ("colecao", "colecao_nome", "ordem",
+                                            "scryfall_id", "acabamento")},
+                       "qtd": q, "validadas": v})
+    return tirado
 
 
 def _exige_nome(con: sqlite3.Connection, slug: str, nome: str) -> dict:
@@ -499,10 +548,16 @@ def estado_deck(con: sqlite3.Connection, slug: str) -> dict:
     secções reparte um monte só (comandante, main, side). `custo_falta` soma
     só o que tem preço; `sem_preco` conta as cartas (linhas) em falta sem
     preço — um total sem preço não é zero euros, é um mínimo.
+
+    Nos formatos de `FORMATOS_COM_COLECAO`, o que as cópias do deck não cobrem
+    vem emprestado das coleções e conta para o `tenho`: cada carta diz quantas
+    são (`da_colecao`), de que coleções (`colecoes`, e o pormenor em
+    `emprestimo`), e as validadas na coleção contam como validadas aqui.
     """
     deck = _deck(con, slug)
     v = _versao(con, slug)
     rotativo = deck["modo"] == "rotativo"
+    empresta = deck["formato"] in FORMATOS_COM_COLECAO
     montado = _montado(con)
     nome_montado = None
     if montado:
@@ -520,6 +575,8 @@ def estado_deck(con: sqlite3.Connection, slug: str) -> dict:
     por_validar: dict[str, int] = {}
     tenho_por: dict[int, int] = {}
     validadas_por: dict[int, int] = {}
+    fontes: dict[str, list[dict]] = {}
+    emprestado_por: dict[int, list[dict]] = {}
     for i in sorted(range(len(linhas)),
                     key=lambda i: (_ORDEM_SECCAO.get(linhas[i].seccao, 9), i)):
         l = linhas[i]
@@ -534,11 +591,32 @@ def estado_deck(con: sqlite3.Connection, slug: str) -> dict:
         monte[l.nome] -= tenho_por[i]
         validadas_por[i] = min(tenho_por[i], por_validar[l.nome])
         por_validar[l.nome] -= validadas_por[i]
+        emprestado_por[i] = []
+        if empresta and tenho_por[i] < l.qtd:
+            if l.nome not in fontes:
+                fontes[l.nome] = _emprestaveis(con, l.nome)
+            emprestado_por[i] = _pedir_emprestado(fontes[l.nome],
+                                                  l.qtd - tenho_por[i])
 
     cartas = []
     for i, l in enumerate(linhas):
         ed = edicoes[l.nome]
         amb = _ambito_de(deck, l.nome, part)
+        emp = emprestado_por[i]
+        da_colecao = sum(x["qtd"] for x in emp)
+        tenho = tenho_por[i] + da_colecao
+        validadas = validadas_por[i] + sum(x["validadas"] for x in emp)
+        # o recorte da cópia dele; se só as emprestadas estão validadas, o
+        # recorte da coleção (é a foto de uma cópia que está neste deck)
+        recorte = (_fotos().recorte_de(con, amb, ed[0], ed[1])
+                   if ed and validadas_por[i] else None)
+        if recorte is None:
+            for x in emp:
+                if x["validadas"]:
+                    recorte = _fotos().recorte_de(con, x["colecao"],
+                                                  x["scryfall_id"],
+                                                  x["acabamento"])
+                    break
         partilhada = rotativo and l.nome in part
         if partilhada:
             onde = None if montado is None else (
@@ -549,15 +627,17 @@ def estado_deck(con: sqlite3.Connection, slug: str) -> dict:
             "nome": l.nome, "seccao": l.seccao, "qtd": l.qtd,
             "scryfall_id": ed[0] if ed else None,
             "acabamento": ed[1] if ed else None,
-            "tenho": tenho_por[i], "falta": l.qtd - tenho_por[i],
+            "tenho": tenho, "falta": l.qtd - tenho,
             "grupo": ("partilhada" if partilhada else "fixa") if rotativo
             else None,
             "onde": onde,
             "preco_un": _trend_hoje(con, ed[0], ed[1]) if ed else None,
-            "validadas": validadas_por[i],
+            "validadas": validadas,
             # o recorte só aparece onde esta linha tem uma cópia validada
-            "recorte": (_fotos().recorte_de(con, amb, ed[0], ed[1])
-                        if ed and validadas_por[i] else None),
+            "recorte": recorte,
+            "da_colecao": da_colecao,
+            "colecoes": list(dict.fromkeys(x["colecao_nome"] for x in emp)),
+            "emprestimo": emp,
         })
     custo = sum(c["falta"] * c["preco_un"] for c in cartas
                 if c["falta"] and c["preco_un"] is not None)
@@ -569,6 +649,7 @@ def estado_deck(con: sqlite3.Connection, slug: str) -> dict:
         "cartas": cartas,
         "total": sum(c["qtd"] for c in cartas),
         "tenho": sum(c["tenho"] for c in cartas),
+        "da_colecao": sum(c["da_colecao"] for c in cartas),
         "validadas": sum(c["validadas"] for c in cartas),
         "custo_falta": round(custo, 2),
         "sem_preco": sum(1 for c in cartas
@@ -602,6 +683,25 @@ def movimentos_para(con: sqlite3.Connection, slug: str) -> list[dict]:
         if n > 0:
             movs.append({"nome": nome, "qtd": n, "de": antes, "para": slug})
     return movs
+
+
+def da_colecao_para(con: sqlite3.Connection, slug: str) -> list[dict]:
+    """O que este deck vai buscar às coleções (o empréstimo do
+    `estado_deck`), somado por carta e por coleção: `{nome, qtd, colecao,
+    colecao_nome}`, pelo nome e depois pela ordem das coleções. Vazio num
+    formato que não empresta. Não grava nada: a carta continua na coleção."""
+    soma: dict[tuple[str, str], dict] = {}
+    for c in estado_deck(con, slug)["cartas"]:
+        for x in c["emprestimo"]:
+            k = (c["nome"], x["colecao"])
+            if k not in soma:
+                soma[k] = {"nome": c["nome"], "qtd": 0, "colecao": x["colecao"],
+                           "colecao_nome": x["colecao_nome"], "_o": x["ordem"]}
+            soma[k]["qtd"] += x["qtd"]
+    linhas = sorted(soma.values(),
+                    key=lambda m: (m["nome"].lower(), m["nome"], m["_o"]))
+    return [{k: m[k] for k in ("nome", "qtd", "colecao", "colecao_nome")}
+            for m in linhas]
 
 
 def definir_montado(con: sqlite3.Connection, slug: str) -> list[dict]:
