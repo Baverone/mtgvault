@@ -17,7 +17,12 @@ from mtgvault import db  # noqa: E402
 from mtgvault.nucleo import modelo  # noqa: E402
 
 TABELAS = ["n_deck", "n_versao", "n_versao_carta", "n_edicao", "n_posse",
-           "n_posse_log", "n_montado", "n_a_mais", "n_saida", "n_valor"]
+           "n_posse_log", "n_montado", "n_a_mais", "n_saida", "n_valor",
+           # A coleção, as fotos, o preço PT, o preço vigiado e as jogadas
+           # (2026-10-30, ver schema.sql).
+           "n_colecao", "n_colecao_carta", "n_colecao_log", "n_foto",
+           "n_recorte", "n_validacao", "n_preco_pt", "n_preco_vigiado",
+           "n_jogada"]
 
 ROTATIVOS = {"pioneer_greasefang", "modern_affinity", "modern_oswald",
              "legacy_welder_cam"}
@@ -155,9 +160,11 @@ def caso_schema_e_migrate_iguais():
         (raiz / "schema.sql").read_text(encoding="utf-8"))]
     py = [normal(m) for m in padrao.findall(
         (raiz / "db.py").read_text(encoding="utf-8"))]
-    assert len(sql) == 11, len(sql)
+    # 19 tabelas (as 10 antigas e as 9 da coleção/fotos/preços) + 2 índices
+    # (`ix_n_versao_carta` e `ix_n_validacao`).
+    assert len(sql) == 21, len(sql)
     assert sql == py, [(a, b) for a, b in zip(sql, py) if a != b]
-    print("schema.sql e _migrate: 11 definições iguais")
+    print(f"schema.sql e _migrate: {len(sql)} definições iguais")
 
 
 def caso_checks_das_tabelas():

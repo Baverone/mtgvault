@@ -644,5 +644,48 @@ CREATE TABLE IF NOT EXISTS n_valor (
     dia       TEXT PRIMARY KEY,
     total_eur REAL,
     copias    INTEGER,
-    sem_preco INTEGER
+    sem_preco INTEGER,
+    colecoes_eur REAL
 );
+
+-- A COLEÇÃO, AS FOTOS, O PREÇO PT E O PREÇO VIGIADO (2026-10-30). Só o núcleo
+-- as escreve. Igual ao `db._migrate()`, e o `n_valor.colecoes_eur` acima entra
+-- nas bases antigas por `ALTER` lá.
+CREATE TABLE IF NOT EXISTS n_colecao (
+    slug  TEXT PRIMARY KEY, nome TEXT NOT NULL,
+    tipo  TEXT NOT NULL CHECK (tipo IN ('fechada','aberta')),
+    arte_nome TEXT, ordem INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS n_colecao_carta (
+    id INTEGER PRIMARY KEY, colecao TEXT NOT NULL, nome TEXT NOT NULL,
+    scryfall_id TEXT NOT NULL,
+    acabamento TEXT NOT NULL CHECK (acabamento IN ('nonfoil','foil')),
+    lingua TEXT NOT NULL DEFAULT 'en', meta INTEGER,
+    tenho INTEGER NOT NULL DEFAULT 0 CHECK (tenho >= 0),
+    vender INTEGER NOT NULL DEFAULT 0,
+    UNIQUE (colecao, scryfall_id, acabamento, lingua));
+CREATE TABLE IF NOT EXISTS n_colecao_log (
+    request_id TEXT UNIQUE, carta_id INTEGER NOT NULL,
+    delta INTEGER NOT NULL, em TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS n_foto (
+    id INTEGER PRIMARY KEY, caminho TEXT NOT NULL, dia TEXT NOT NULL,
+    sessao TEXT NOT NULL, linha INTEGER NOT NULL, indice INTEGER NOT NULL,
+    para TEXT, UNIQUE (sessao, linha, indice));
+CREATE TABLE IF NOT EXISTS n_recorte (
+    id INTEGER PRIMARY KEY, foto_id INTEGER NOT NULL, numero INTEGER NOT NULL,
+    caminho TEXT NOT NULL, UNIQUE (foto_id, numero));
+CREATE TABLE IF NOT EXISTS n_validacao (
+    id INTEGER PRIMARY KEY, recorte_id INTEGER NOT NULL, ambito TEXT NOT NULL,
+    scryfall_id TEXT NOT NULL, acabamento TEXT NOT NULL,
+    lingua TEXT NOT NULL DEFAULT 'en', qtd INTEGER NOT NULL CHECK (qtd > 0),
+    em TEXT NOT NULL, desfeita_em TEXT);
+CREATE INDEX IF NOT EXISTS ix_n_validacao ON n_validacao(ambito, scryfall_id, acabamento, lingua);
+CREATE TABLE IF NOT EXISTS n_preco_pt (
+    scryfall_id TEXT NOT NULL, acabamento TEXT NOT NULL, dia TEXT NOT NULL,
+    preco_eur REAL NOT NULL, ofertas INTEGER NOT NULL,
+    PRIMARY KEY (scryfall_id, acabamento, dia));
+CREATE TABLE IF NOT EXISTS n_preco_vigiado (
+    scryfall_id TEXT NOT NULL, acabamento TEXT NOT NULL, dia TEXT NOT NULL,
+    preco_eur REAL NOT NULL, PRIMARY KEY (scryfall_id, acabamento, dia));
+CREATE TABLE IF NOT EXISTS n_jogada (
+    formato TEXT NOT NULL, mes TEXT NOT NULL, nome TEXT NOT NULL,
+    listas INTEGER NOT NULL, PRIMARY KEY (formato, mes, nome));
