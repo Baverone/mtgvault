@@ -183,6 +183,26 @@ def caso_sessao_mais_recente():
     _levanta(lambda: fotos.sessao_mais_recente(_tmp()))
 
 
+def caso_sessao_mais_recente_salta_o_observador():
+    """(R24) As pastas de projeto com «observer» no nome são os registos do
+    observador do claude-mem, que escreve a toda a hora e quase sempre tem o
+    `.jsonl` mais recente: nunca são a sessão dele."""
+    raiz = _tmp()
+    (raiz / "C--Users-Catarina-Desktop-Claude").mkdir()
+    (raiz / "C--Users-Catarina--claude-mem-observer-sessions").mkdir()
+    dele = _jsonl(raiz / "C--Users-Catarina-Desktop-Claude", ["{}"], "a.jsonl")
+    obs = _jsonl(raiz / "C--Users-Catarina--claude-mem-observer-sessions", ["{}"],
+                 "b.jsonl")
+    os.utime(dele, (1_000_000, 1_000_000))
+    os.utime(obs, (2_000_000, 2_000_000))
+    assert fotos.sessao_mais_recente(raiz) == dele
+    # só registos do observador = não há sessão
+    raiz2 = _tmp()
+    (raiz2 / "x-observer").mkdir()
+    _jsonl(raiz2 / "x-observer", ["{}"], "c.jsonl")
+    _levanta(lambda: fotos.sessao_mais_recente(raiz2))
+
+
 def caso_extrair_idempotente():
     """Extrair as mesmas imagens duas vezes não cria duas fotos; os originais
     ficam tal e qual chegaram, em `data/fotos/originais/AAAA-MM-DD/`."""

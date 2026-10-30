@@ -70,8 +70,15 @@ _EXTENSAO = {"image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png",
 # ---------------------------------------------------------------------------
 def sessao_mais_recente(raiz_projetos: Path) -> Path:
     """O `.jsonl` mexido mais recentemente em `raiz_projetos/*/` (a sessão em
-    curso é a que está a ser escrita). `ValueError` se não houver nenhum."""
-    registos = list(Path(raiz_projetos).glob("*/*.jsonl"))
+    curso é a que está a ser escrita). `ValueError` se não houver nenhum.
+
+    (R24, 2026-10-30) Salta as pastas de projeto com «observer» no nome: são os
+    registos do observador do claude-mem, que escreve a toda a hora e por isso
+    tinha quase sempre o `.jsonl` mais recente — o `extrair` ia buscar as fotos
+    a uma sessão que não era a dele. Mesmo assim isto é só a omissão: o Claude
+    passa `--sessao` com o caminho do registo da sua própria sessão."""
+    registos = [p for p in Path(raiz_projetos).glob("*/*.jsonl")
+                if "observer" not in p.parent.name.lower()]
     if not registos:
         raise ValueError(f"não há registos de sessão em {raiz_projetos}")
     return max(registos, key=lambda p: p.stat().st_mtime)
@@ -123,14 +130,18 @@ def imagens_da_sessao(jsonl: Path) -> list[dict]:
 
 
 def extrair(con: sqlite3.Connection, jsonl: Path, raiz: Path, *,
-            ultimas: int = 1, para: str | None = None) -> list[dict]:
+            ultimas: int = 1, para: str | None = None,
+            ja: list | None = None) -> list[dict]:
     """Grava as `ultimas` imagens da sessão que ainda não foram extraídas e
     devolve `[{"foto_id", "caminho"}]` das novas (vazio se já estavam todas).
 
     A janela são as `ultimas` imagens DO REGISTO, e só depois se tiram as já
     extraídas: repetir o comando não vai buscar fotos antigas que ele não quis.
     O `caminho` é relativo à `raiz`, com `/`. `para` é o deck ou a coleção a
-    que a foto se destina, se ele o disse.
+    que a foto se destina, se ele o disse. Com uma lista em `ja`, junta-lhe as
+    `{"foto_id", "caminho"}` das imagens da janela que JÁ estavam extraídas
+    (R24): o CLI mostra-as, para a foto se poder recortar sem a ir procurar.
+    Um `OSError` ao ler o registo sobe a quem chamou.
     """
     jsonl = Path(jsonl)
     sessao = jsonl.stem
@@ -139,9 +150,12 @@ def extrair(con: sqlite3.Connection, jsonl: Path, raiz: Path, *,
     novas = []
     with posse._transacao(con):
         for img in janela:
-            if con.execute("SELECT 1 FROM n_foto WHERE sessao = ? AND linha = ?"
-                           " AND indice = ?",
-                           (sessao, img["linha"], img["indice"])).fetchone():
+            existe = con.execute(
+                "SELECT id, caminho FROM n_foto WHERE sessao = ? AND linha = ?"
+                " AND indice = ?", (sessao, img["linha"], img["indice"])).fetchone()
+            if existe:
+                if ja is not None:
+                    ja.append({"foto_id": existe[0], "caminho": existe[1]})
                 continue
             fid = con.execute(
                 "INSERT INTO n_foto (caminho, dia, sessao, linha, indice, para)"

@@ -107,7 +107,11 @@ def caso_extrair_recortar_validar():
     # repetir não cria outra foto
     rc, out2 = _correr(v, c, "nucleo", "extrair", "--sessao", jsonl,
                        "--raiz", raiz)
-    assert rc == 0 and "foto 1:" not in out2 and "nenhuma foto nova" in out2, out2
+    # (R24) e diz qual é a foto que já lá estava, para se poder recortar
+    assert rc == 0 and "nenhuma foto nova" in out2, out2
+    assert f"foto {foto_id}: {caminho} (já extraída)" in out2, out2
+    with db.session(v, c) as con:
+        assert con.execute("SELECT COUNT(*) FROM n_foto").fetchone()[0] == 1
 
     rc, out = _correr(v, c, "nucleo", "recortar", foto_id, "--raiz", raiz)
     assert rc == 0, out
@@ -234,6 +238,57 @@ def caso_argumentos():
         assert rc != 0 and "Traceback" not in out, (args, out)
     rc, out = _correr(v, c, "nucleo", "recortar", 99, "--raiz", tmp)
     assert rc != 0 and "Traceback" not in out, out
+
+
+def caso_extrair_sessao_que_nao_existe():
+    """(R24) Um `--sessao` mal escrito ou ilegível: erro em português, código 2,
+    sem traceback."""
+    tmp, v, c = _base()
+    with db.session(v, c) as con:
+        tfot.semear(con)
+    falta = tmp / "nao-existe.jsonl"
+    rc, out = _correr(v, c, "nucleo", "extrair", "--sessao", falta,
+                      "--raiz", tmp)
+    assert rc == 2, (rc, out)
+    assert "Traceback" not in out and "não consegui ler a sessão" in out, out
+    assert str(falta) in out, out
+    # uma pasta no lugar do ficheiro também é um OSError
+    rc, out = _correr(v, c, "nucleo", "extrair", "--sessao", tmp, "--raiz", tmp)
+    assert rc == 2 and "não consegui ler a sessão" in out, (rc, out)
+
+
+def _lote_recusado(tmp, v, c, linha):
+    base = {"recorte_id": 1, "ambito": REP, "scryfall_id": "tm-a",
+            "acabamento": "nonfoil"}
+    rc, out = _correr(v, c, "nucleo", "validar", "--lote",
+                      _lote(tmp, [{**base, **linha}]))
+    return rc, out
+
+
+def caso_lote_registar_e_qtd_tipos_json():
+    """O `registar` tem de ser um booleano JSON (a string "false" era verdade
+    em Python e REGISTAVA a cópia) e o `qtd` um inteiro JSON ≥ 1 (1.5 e "2"
+    não). Recusa-se na primeira passagem, sem gravar nada."""
+    tmp, v, c = _base()
+    with db.session(v, c) as con:
+        tfot.semear(con)
+    for valor in ("false", "true", 0, 1, None):
+        rc, out = _lote_recusado(tmp, v, c, {"registar": valor})
+        assert rc == 1, (valor, out)
+        assert "linha 1: registar tem de ser true/false" in out, (valor, out)
+    for valor in (1.5, "2", 0, -1, True, None):
+        rc, out = _lote_recusado(tmp, v, c, {"qtd": valor})
+        assert rc == 1, (valor, out)
+        assert "linha 1: qtd tem de ser um número inteiro" in out, (valor, out)
+    assert _validacoes(v, c) == 0
+    # o que é válido continua a passar a forma (a seguir falha por não haver
+    # recorte 1, que é outra conferência)
+    assert cli._linha_do_lote({"recorte_id": 1, "ambito": REP,
+                               "scryfall_id": "tm-a", "acabamento": "nonfoil",
+                               "qtd": 2, "registar": False})["qtd"] == 2
+    assert cli._linha_do_lote({"recorte_id": 1, "ambito": REP,
+                               "scryfall_id": "tm-a",
+                               "acabamento": "nonfoil"})["registar"] is False
 
 
 if __name__ == "__main__":

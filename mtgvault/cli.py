@@ -1082,10 +1082,21 @@ def _nucleo_extrair(con, args) -> int:
     jsonl = (Path(args.sessao) if args.sessao else
              fotos.sessao_mais_recente(Path.home() / ".claude" / "projects"))
     print(f"sessão: {jsonl}")
-    novas = fotos.extrair(con, jsonl, _raiz_do_nucleo(args),
-                          ultimas=args.ultimas, para=args.para)
+    ja: list = []
+    try:
+        novas = fotos.extrair(con, jsonl, _raiz_do_nucleo(args),
+                              ultimas=args.ultimas, para=args.para, ja=ja)
+    except OSError as e:
+        # um `--sessao` mal escrito (ou uma pasta, ou um ficheiro trancado) é
+        # um erro de quem chamou, não um traceback
+        print(f"não consegui ler a sessão {jsonl}: {e.strerror or e}")
+        return 2
     for n in novas:
         print(f"foto {n['foto_id']}: {n['caminho']}")
+    # (R24) as que já lá estavam também se dizem, com o id: é dele que o
+    # `recortar` precisa, e «nenhuma foto nova» sozinho obrigava a procurá-lo
+    for n in ja:
+        print(f"foto {n['foto_id']}: {n['caminho']} (já extraída)")
     if not novas:
         print("nenhuma foto nova (já estavam todas extraídas, ou a sessão não "
               "tem imagens)")
@@ -1120,14 +1131,23 @@ def _linha_do_lote(linha) -> dict:
             raise ValueError(f"falta {k!r}")
     try:
         recorte_id = int(linha["recorte_id"])
-        qtd = int(linha.get("qtd", 1))
     except (TypeError, ValueError):
-        raise ValueError("recorte_id e qtd têm de ser números") from None
+        raise ValueError("recorte_id tem de ser um número") from None
+    # O `qtd` e o `registar` exigem o TIPO JSON certo, sem conversões: o
+    # `bool("false")` é verdade e REGISTAVA uma cópia que ninguém pediu (é uma
+    # escrita na posse), e o `int(1.5)` validava 1 de «1,5» sem dizer nada. O
+    # `bool` é um `int` em Python, por isso o `true` sai à parte.
+    qtd = linha.get("qtd", 1)
+    if isinstance(qtd, bool) or not isinstance(qtd, int) or qtd < 1:
+        raise ValueError("qtd tem de ser um número inteiro ≥ 1")
+    registar = linha.get("registar", False)
+    if not isinstance(registar, bool):
+        raise ValueError("registar tem de ser true/false")
     return {"recorte_id": recorte_id, "ambito": str(linha["ambito"]),
             "scryfall_id": str(linha["scryfall_id"]),
             "acabamento": str(linha["acabamento"]),
             "lingua": str(linha.get("lingua") or "en"), "qtd": qtd,
-            "registar": bool(linha.get("registar", False))}
+            "registar": registar}
 
 
 def _nucleo_validar(con, args) -> int:

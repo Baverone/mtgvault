@@ -186,7 +186,17 @@ cópia existe).
   nucleo extrair [--sessao F.jsonl] [--ultimas N] [--para SLUG] [--raiz PASTA]`,
   `nucleo recortar FOTO_ID [--raiz PASTA]`, `nucleo validar --lote F.json` e
   `nucleo validadas AMBITO`; `nucleo colecoes` cria e mostra as coleções. O
-  `extrair` lê o registo `.jsonl` da sessão neste PC e **só tira imagens das
+  `extrair` lê o registo `.jsonl` da sessão neste PC e **o Claude passa sempre
+  `--sessao` com o caminho do registo da SUA sessão**
+  (`~/.claude/projects/<projeto>/<id-da-sessão>.jsonl`) (R24): sem ele vale o
+  `.jsonl` mais recente de todos os projetos, saltando as pastas com
+  `observer` no nome (o observador do claude-mem escreve a toda a hora e era
+  quase sempre o mais recente), e mesmo assim pode ser outra sessão aberta ao
+  lado — o CLI diz sempre que ficheiro usou. Um `--sessao` que não se lê dá
+  erro com código 2; e se as fotos da janela já estavam extraídas, o CLI
+  mostra as linhas `foto <id>: <caminho> (já extraída)`. No `validar --lote`
+  o `registar` é um booleano JSON e o `qtd` um inteiro JSON ≥ 1 (a string
+  `"false"` registava). O `extrair` **só tira imagens das
   mensagens de topo do utilizador** (R12): as capturas de ecrã dentro de
   `tool_result` não são fotos dele. A chave de uma foto é sessão + linha +
   índice, por isso extrair duas vezes não a duplica. Os originais ficam em
