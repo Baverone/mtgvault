@@ -281,9 +281,10 @@ def caso_estado_precos_pt_e_en():
     `en` o trend do Cardmarket. A variação de uma `pt` vem só do `n_preco_pt`,
     nunca do inglês."""
     with _pronta() as con:
-        # PT: 10 € há mais de 30 dias, 13 € a 20 de Outubro (o último visto)
+        # PT: 10 € há mais de 30 dias, 13 € a 27 de Outubro (o último visto, e
+        # recente: com mais de 7 dias não há variação)
         cotacoes.gravar_ofertas_pt(con, VENTS_PT, [oferta(1000)], "2026-09-25")
-        cotacoes.gravar_ofertas_pt(con, VENTS_PT, [oferta(1300)], "2026-10-20")
+        cotacoes.gravar_ofertas_pt(con, VENTS_PT, [oferta(1300)], "2026-10-27")
         # um inglês muito diferente, no trend e nos vigiados: não pode aparecer
         trend_hoje(con, VENTS_PT, "nonfoil", 2.0)
         vigiado(con, VENTS_PT, "nonfoil", HA30, 1.0)
@@ -294,7 +295,7 @@ def caso_estado_precos_pt_e_en():
         vigiado(con, us, "nonfoil", HA30, 40.0)
         vigiado(con, us, "nonfoil", HOJE, 50.0)
         pt = _carta_pt(con)
-        assert pt["preco_un"] == 13.0 and pt["preco_visto_em"] == "2026-10-20", pt
+        assert pt["preco_un"] == 13.0 and pt["preco_visto_em"] == "2026-10-27", pt
         assert pt["var30"] == 30.0, pt
         assert pt["var90"] is None, "não há ponto PT de há 90 dias"
         en = _carta_en(con)
@@ -316,6 +317,74 @@ def _carta_pt(con):
 def _carta_en(con):
     return next(c for c in colecoes.estado_colecao(con, "duals_revised", HOJE)["cartas"]
                 if c["nome"] == "Underground Sea")
+
+
+def _pt(con, dia, cents, sid=VENTS_PT):
+    cotacoes.gravar_ofertas_pt(con, sid, [oferta(cents)], dia)
+
+
+def caso_variacao_pt_so_com_avistamento_recente():
+    """Um único avistamento PT há 40 dias não é uma variação: nada de 0,0 %
+    inventado (a ausência de linha PT é «não observado»); o preço em si
+    continua a ver-se com o dia (`preco_pt`)."""
+    with sessao() as con:
+        _pt(con, "2026-09-20", 1000)                       # há 40 dias
+        assert cotacoes.variacao_pt(con, VENTS_PT, "nonfoil", 30, HOJE) is None
+        assert cotacoes.variacao_pt(con, VENTS_PT, "nonfoil", 90, HOJE) is None
+        assert cotacoes.preco_pt(con, VENTS_PT, "nonfoil") == (10.0, "2026-09-20")
+        # dois avistamentos, mas ambos velhos (há 40 e há 100 dias): também None
+        _pt(con, "2026-07-22", 800)
+        assert cotacoes.variacao_pt(con, VENTS_PT, "nonfoil", 30, HOJE) is None
+        assert cotacoes.variacao_pt(con, VENTS_PT, "nonfoil", 90, HOJE) is None
+        # nunca visto
+        assert cotacoes.variacao_pt(con, "nunca", "nonfoil", 30, HOJE) is None
+
+
+def caso_variacao_pt_com_dois_avistamentos():
+    """Visto há 2 dias e há 35 dias: a variação a 30 dias sai desses dois
+    pontos; a 90 dias não há ponto antigo, `None`."""
+    with sessao() as con:
+        _pt(con, "2026-09-25", 1000)                       # há 35 dias
+        _pt(con, "2026-10-28", 1300)                       # há 2 dias
+        assert cotacoes.variacao_pt(con, VENTS_PT, "nonfoil", 30, HOJE) == 30.0
+        assert cotacoes.variacao_pt(con, VENTS_PT, "nonfoil", 90, HOJE) is None
+        # o foil desta carta nunca foi visto: não herda nada do nonfoil
+        assert cotacoes.variacao_pt(con, VENTS_PT, "foil", 30, HOJE) is None
+
+
+def caso_variacao_pt_ponto_antigo_distante():
+    """Visto hoje e há 100 dias: a linha de «há 30 dias» e a de «há 90 dias» são
+    a mesma linha antiga (o último preço observado até essa data), diferente
+    da de hoje, por isso as duas variações calculam-se."""
+    with sessao() as con:
+        _pt(con, "2026-07-22", 1000)                       # há 100 dias
+        _pt(con, HOJE, 2000)
+        assert cotacoes.variacao_pt(con, VENTS_PT, "nonfoil", 30, HOJE) == 100.0
+        assert cotacoes.variacao_pt(con, VENTS_PT, "nonfoil", 90, HOJE) == 100.0
+
+
+def caso_variacao_pt_limite_de_sete_dias():
+    """Sete dias ainda é «recente»; oito já não."""
+    with sessao() as con:
+        _pt(con, "2026-09-01", 1000)
+        _pt(con, "2026-10-23", 1100)                       # há 7 dias
+        assert cotacoes.variacao_pt(con, VENTS_PT, "nonfoil", 30, HOJE) == 10.0
+        assert cotacoes.variacao_pt(con, VENTS_PT, "nonfoil", 30,
+                                    "2026-10-31") is None  # há 8 dias
+
+
+def caso_variacao_en_sem_historico_e_zero():
+    """DE PROPÓSITO (R13): uma carta `en` que só tem `price_latest`, sem nenhuma
+    linha de histórico, dá variação 0,0 — o histórico do Cardmarket só regista
+    mudanças, por isso «sem linha» quer dizer «manteve-se desde antes da janela
+    que a poda guarda». Não vale para o `n_preco_pt`, que se escreve todos os
+    dias com ofertas (ver `variacao_pt`)."""
+    with sessao() as con:
+        trend_hoje(con, "so-latest", "nonfoil", 50.0)
+        con.execute("DELETE FROM price_history WHERE scryfall_id = 'so-latest'")
+        con.commit()
+        assert cotacoes.variacao(con, "so-latest", "nonfoil", 30, HOJE) == 0.0
+        assert cotacoes.variacao(con, "so-latest", "nonfoil", 90, HOJE) == 0.0
 
 
 def caso_juntar_so_en_ou_pt():

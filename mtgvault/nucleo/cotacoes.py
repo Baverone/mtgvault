@@ -198,22 +198,42 @@ def variacao(con: sqlite3.Connection, sid: str, acabamento: str, dias: int,
 
 
 def _pt_em(con: sqlite3.Connection, sid: str, acabamento: str,
-           dia: str) -> float | None:
-    r = con.execute(
-        "SELECT preco_eur FROM n_preco_pt WHERE scryfall_id = ? AND acabamento"
-        " = ? AND dia <= ? ORDER BY dia DESC LIMIT 1",
+           dia: str) -> sqlite3.Row | None:
+    """A linha PT mais recente com `dia <= dia` (preço e dia em que foi visto)."""
+    return con.execute(
+        "SELECT preco_eur, dia FROM n_preco_pt WHERE scryfall_id = ? AND"
+        " acabamento = ? AND dia <= ? ORDER BY dia DESC LIMIT 1",
         (sid, acabamento, dia)).fetchone()
-    return r["preco_eur"] if r else None
+
+
+# Um preço PT com mais dias do que isto já não é «o de hoje». O `n_preco_pt`
+# escreve-se TODOS os dias em que há ofertas portuguesas, por isso a ausência
+# de linha quer dizer «não observado» e não «manteve-se» (ao contrário do
+# histórico do Cardmarket, que só regista mudanças). Sem este limite, uma carta
+# vista uma só vez há 40 dias comparava essa linha consigo própria e dava 0,0 %,
+# uma variação que ninguém mediu.
+PT_RECENTE_DIAS = 7
 
 
 def variacao_pt(con: sqlite3.Connection, sid: str, acabamento: str, dias: int,
                 hoje: str | None = None) -> float | None:
-    """A variação de uma carta em português, só com o `n_preco_pt`: «hoje» é o
-    último preço PT visto até hoje. Nunca usa os preços vigiados nem o
-    Cardmarket, que são ingleses."""
+    """A variação de uma carta em português, só com o `n_preco_pt`; nunca usa
+    os preços vigiados nem o Cardmarket, que são ingleses.
+
+    `None` (o que a página diz como «sem histórico») quando: a linha mais
+    recente até hoje tem mais de `PT_RECENTE_DIAS` dias, ou não há linha para
+    «há N dias», ou essa linha é a mesma de hoje (um só avistamento não é uma
+    variação).
+    """
     hoje = hoje or date.today().isoformat()
-    return _percentagem(_pt_em(con, sid, acabamento, hoje),
-                        _pt_em(con, sid, acabamento, _ha(hoje, dias)))
+    agora = _pt_em(con, sid, acabamento, hoje)
+    if agora is None or (date.fromisoformat(hoje)
+                         - date.fromisoformat(agora["dia"])).days > PT_RECENTE_DIAS:
+        return None
+    antes = _pt_em(con, sid, acabamento, _ha(hoje, dias))
+    if antes is None or antes["dia"] == agora["dia"]:
+        return None
+    return _percentagem(agora["preco_eur"], antes["preco_eur"])
 
 
 # ---------------------------------------------------------------------------
