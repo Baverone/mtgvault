@@ -415,6 +415,29 @@ def caso_estado_com_validadas_e_recorte():
         assert pl["validadas"] == 3, pl
 
 
+def caso_validadas_da_colecao_nao_passam_a_meta():
+    """Numa fechada, a soma das validadas da coleção corta cada carta na meta
+    (como o `tenho`): nunca «N de M · V validadas» com V > N. A carta continua
+    a dizer as suas (até à posse)."""
+    with _pronta() as con:
+        p = _carta(con, "duals_revised", "Plateau")
+        _marcar(con, p["id"], 6)                       # meta 4, tem 6
+        fid = con.execute(
+            "INSERT INTO n_foto (caminho, dia, sessao, linha, indice)"
+            " VALUES ('x', '2026-10-30', 's', 1, 0)").lastrowid
+        rid = con.execute(
+            "INSERT INTO n_recorte (foto_id, numero, caminho) VALUES (?, 1, ?)",
+            (fid, f"assets/cartas/{fid}-1.jpg")).lastrowid
+        con.commit()
+        fotos.validar(con, rid, "duals_revised", p["scryfall_id"], "nonfoil",
+                      qtd=6)
+        est = colecoes.estado_colecao(con, "duals_revised")
+        assert est["tenho"] == 4
+        assert _carta(con, "duals_revised", "Plateau")["validadas"] == 6
+        assert est["validadas"] == 4, est["validadas"]
+        assert est["validadas"] <= est["tenho"]
+
+
 if __name__ == "__main__":
     for nome, f in list(globals().items()):
         if nome.startswith("caso_"):

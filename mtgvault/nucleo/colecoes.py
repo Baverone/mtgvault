@@ -147,7 +147,8 @@ def estado_colecao(con: sqlite3.Connection, slug: str,
     `preco_visto_em` só existe nas cartas `pt` (o dia do último preço português
     visto) e `var30`/`var90` vêm das cotações (`hoje` é para os testes). Os
     `joga` vem de `jogada.onde_joga`; `validadas` (no máximo `tenho`) e `recorte`
-    vêm das fotos, e a coleção soma as validadas.
+    vêm das fotos, e a coleção soma as validadas (numa fechada, cada carta corta
+    na meta, como o `tenho`).
     """
     hoje = hoje or date.today().isoformat()
     col = con.execute("SELECT slug, nome, tipo FROM n_colecao WHERE slug = ?",
@@ -172,8 +173,12 @@ def estado_colecao(con: sqlite3.Connection, slug: str,
         if fechada:
             total += meta or 0
             tenho += min(r["tenho"], meta or 0)
+            # a soma das validadas corta na meta como o `tenho`: senão a página
+            # dizia «4 de 40 · 6 validadas». A carta continua a dizer as suas.
+            validadas += min(validadas_, meta or 0)
         else:
             tenho += r["tenho"]
+            validadas += validadas_
         if falta or r["tenho"]:
             if preco is None:
                 sem_preco += 1
@@ -196,7 +201,6 @@ def estado_colecao(con: sqlite3.Connection, slug: str,
             "recorte": (fotos.recorte_de(con, slug, r["scryfall_id"],
                                          r["acabamento"], r["lingua"])
                         if validadas_ else None)})
-        validadas += validadas_
     return {"slug": col["slug"], "nome": col["nome"], "tipo": col["tipo"],
             "cartas": cartas, "tenho": tenho,
             "total": total if fechada else None,

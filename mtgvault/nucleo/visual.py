@@ -1,8 +1,11 @@
-"""O que as três páginas do núcleo partilham: o CSS, o mosaico de um deck, a
-carta em imagem, a barra de progresso, o gráfico do valor e as pequenas frases.
+"""O que as páginas do núcleo partilham: o CSS, o mosaico de um deck, a carta
+em imagem, a barra de progresso, o gráfico do valor e as pequenas frases. E, da
+página Coleção, o mosaico de uma coleção, a carta de coleção e a tabela «A
+subir».
 
-As páginas (`nucleo_painel.py`, `nucleo_decks.py`, `nucleo_vender.py`, na raiz)
-só montam; o desenho vive aqui para as três terem a mesma cara. O que se
+As páginas (`nucleo_painel.py`, `nucleo_decks.py`, `nucleo_vender.py` e
+`nucleo_colecoes.py`, na raiz) só montam; o desenho vive aqui para terem a mesma
+cara. O que se
 decidiu e vale a pena saber:
 
 - **As cores são as da casca** (`site_shell.TEMA`). Este ficheiro não escreve
@@ -25,7 +28,7 @@ from __future__ import annotations
 import html
 import re
 import sqlite3
-from datetime import date
+from datetime import date, timedelta
 
 from .. import paginas, scryfall
 from .. import site_shell as shell
@@ -392,6 +395,177 @@ def mosaicos(itens: list[dict], prefixo: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# As coleções (página `colecoes.html`)
+# ---------------------------------------------------------------------------
+def variacao_serie(serie: list[tuple], hoje: str, dias: int = 30) -> dict | None:
+    """A variação de uma série de `valor.serie_colecao` → `{delta, pct, desde,
+    hoje}` (a forma que o `variacao_html` lê), ou `None`.
+
+    Compara o ponto de hoje com o último ponto até `hoje − dias` (a série só
+    tem um ponto por dia com dados, por isso o valor desse dia é o do último
+    ponto até lá). `None` quando a série não chega a esse dia, não acaba em
+    hoje, ou nesse dia havia mais cópias sem preço do que hoje (os dois totais
+    já não somavam as mesmas cartas). Nunca 0 % por falta de dados.
+    """
+    if not serie or serie[-1][0] != hoje:
+        return None
+    alvo = (_dia(hoje) - timedelta(days=dias)).isoformat()
+    antes = [p for p in serie if p[0] <= alvo]
+    if not antes:
+        return None
+    agora, ref = serie[-1], antes[-1]
+    if ref[2] > agora[2]:
+        return None
+    delta = round(agora[1] - ref[1], 2)
+    pct = round(100 * delta / ref[1], 1) if ref[1] else None
+    return {"delta": delta, "pct": pct, "desde": alvo, "hoje": hoje}
+
+
+def visto_ha(dia: str | None, hoje: str) -> str:
+    """«visto hoje» / «visto há 1 dia» / «visto há 5 dias» (o dia do último
+    preço português). Sem dia, vazio."""
+    if not dia:
+        return ""
+    n = max(0, (_dia(hoje) - _dia(dia)).days)
+    return "visto hoje" if n == 0 else f"visto há {paginas.plural(n, 'dia')}"
+
+
+def _pct_span(v: float | None, dias: int) -> str:
+    if v is None:
+        return f'<span class="sv0">sem histórico {dias} d</span>'
+    cls = " sobe" if v > 0 else " desce" if v < 0 else ""
+    return f'<span class="sv{cls}">{paginas.pct(v)} {dias} d</span>'
+
+
+def variacoes_html(var30: float | None, var90: float | None) -> str:
+    """«+25,0 % 30 d · +100,0 % 90 d»; sem as duas, só «sem histórico»."""
+    if var30 is None and var90 is None:
+        return '<span class="sv0">sem histórico</span>'
+    return _pct_span(var30, 30) + " · " + _pct_span(var90, 90)
+
+
+def valor_colecao_texto(est: dict) -> str:
+    """O valor de hoje de uma coleção: sem cópias é 0 €; com cópias todas sem
+    preço é «sem preço» (nunca um 0 € inventado)."""
+    if est["valor_eur"] == 0 and est["tenho"] and est["sem_preco"]:
+        return "sem preço"
+    return paginas.eur(est["valor_eur"])
+
+
+def _arte_tile(sid: str | None) -> str:
+    return (f'<img src="{url_arte(sid)}" alt="" loading="lazy" decoding="async"'
+            f' width="626" height="457">' if sid else "")
+
+
+def mosaico_colecao(item: dict, href: str) -> str:
+    """O botão de uma coleção: arte, nome, «tenho X de Y» (aberta: «N cartas»),
+    valor de hoje e a variação a 30 dias (`item["var30"]`, a de
+    `variacao_serie`)."""
+    est = item["estado"]
+    if est["tipo"] == "fechada":
+        prog = f'tenho {est["tenho"]} de {est["total"]}'
+        bar = barra(est["tenho"], est["total"], "tb")
+    else:
+        prog, bar = paginas.plural(est["tenho"], "carta"), ""
+    var = (variacao_html(item["var30"]) if item["var30"] is not None
+           else '<span class="vvar">sem histórico</span>')
+    return (f'<a class="tile" href="{e(href)}">{_arte_tile(item["arte"])}'
+            f'<span class="tx"><span class="tn">{e(est["nome"])}</span>'
+            f'<span class="tp">{prog}</span>'
+            f'<span class="tp">{valor_colecao_texto(est)}</span>'
+            f'<span class="tp">{var}</span></span>{bar}</a>')
+
+
+def mosaico_subir(linhas: list[dict], href: str, minimo: float) -> str:
+    """O botão de «A subir»: quantas cartas e a maior subida a 30 dias; a arte
+    é a carta que mais subiu."""
+    com_var = [l for l in linhas if l["var30"] is not None]
+    if linhas:
+        resumo = [f'{paginas.plural(len(linhas), "carta")} acima de '
+                  f'{paginas.eur(minimo, 0)}']
+        if com_var:
+            resumo.append(f'a maior: {e(com_var[0]["nome"])} '
+                          f'{paginas.pct(com_var[0]["var30"])} em 30 d')
+    else:
+        resumo = [f'nenhuma carta acima de {paginas.eur(minimo, 0)}']
+    arte = (com_var or linhas or [{}])[0].get("scryfall_id")
+    spans = "".join(f'<span class="tp">{r}</span>' for r in resumo)
+    return (f'<a class="tile" href="{e(href)}">{_arte_tile(arte)}'
+            f'<span class="tx"><span class="tn">A subir</span>{spans}</span></a>')
+
+
+def _preco_carta(c: dict, hoje: str) -> str:
+    if c["preco_un"] is None:
+        return '<b class="cp">sem preço</b>'
+    visto = visto_ha(c.get("preco_visto_em"), hoje)
+    return (f'<b class="cp">{paginas.eur(c["preco_un"])}</b>'
+            + (f' <small>{visto}</small>' if visto else ""))
+
+
+def carta_colecao(c: dict, *, slug: str, hoje: str, max_joga: int = 3) -> str:
+    """Uma carta da coleção: a imagem de `carta` (a cores a que tem, a cinzento
+    a que falta, «tenho / meta» no canto, o recorte dele se está validada) e,
+    por baixo, o preço (nas portuguesas com «visto há N dias»), a variação a 30
+    e a 90 dias, onde se joga e «quero vender». Numa aberta (`meta` `None`) o
+    canto é só a quantidade e nada fica a cinzento."""
+    meta = c["meta"]
+    img = carta(dict(c, qtd=f'{c["tenho"]} / {meta}' if meta is not None
+                     else c["tenho"], falta=c["falta"] or 0), slug=slug)
+    joga = c["joga"]
+    etiquetas = "".join(f'<i class="jg">{e(j)}</i>' for j in joga[:max_joga])
+    if len(joga) > max_joga:
+        etiquetas += f'<i class="jg mais">+{len(joga) - max_joga}</i>'
+    info = (f'<div class="ci"><span>{_preco_carta(c, hoje)}</span>'
+            f'<span class="cv">{variacoes_html(c["var30"], c["var90"])}</span>')
+    if etiquetas:
+        info += f'<span class="cj">{etiquetas}</span>'
+    if c["vender"]:
+        info += '<span class="cj"><i class="vd">quero vender</i></span>'
+    # o `.ci` abriu-se em `info`: fecham-se os dois
+    return f'<div class="cc">{img}{info}</div></div>'
+
+
+def grelha_colecao(cartas: list[dict], *, slug: str, hoje: str) -> str:
+    return ('<div class="cg ccg">'
+            + "".join(carta_colecao(c, slug=slug, hoje=hoje) for c in cartas)
+            + "</div>")
+
+
+def _pct_td(v: float | None) -> str:
+    if v is None:
+        return '<span class="sv0">—</span>'
+    cls = " sobe" if v > 0 else " desce" if v < 0 else ""
+    return f'<span class="sv{cls}">{paginas.pct(v)}</span>'
+
+
+def tabela_subir(linhas: list[dict], minimo: float) -> str:
+    """«A subir»: uma linha por carta (já ordenada por `cotacoes.a_subir`) com o
+    preço de hoje, a variação a 30 e a 90 dias, se ele a tem e onde se joga.
+    Números, não recomendações."""
+    if not linhas:
+        return (f'<p class="vazio">Nenhuma carta com preço de hoje acima de '
+                f'{paginas.eur(minimo, 0)}.</p>')
+    corpo = ""
+    for l in linhas:
+        acab = " · foil" if l["acabamento"] == "foil" else ""
+        tem = f'tens {l["tenho"]}' if l["tenho"] else "não tens"
+        joga = ", ".join(e(j) for j in l["joga"]) if l["joga"] else "não joga"
+        corpo += (
+            '<tr><td><span class="sn">'
+            f'<img src="{url_carta(l["scryfall_id"])}" alt="" loading="lazy"'
+            ' decoding="async" width="34" height="48">'
+            f'<span><b>{e(l["nome"])}</b>'
+            f'<small>{e(str(l["set_code"]).upper())}{acab}</small>'
+            f'<small>{tem} · {joga}</small></span></span></td>'
+            f'<td class="n">{paginas.eur(l["preco"])}</td>'
+            f'<td class="n">{_pct_td(l["var30"])}</td>'
+            f'<td class="n">{_pct_td(l["var90"])}</td></tr>')
+    return ('<table class="sub"><thead><tr><th>Carta</th><th>Preço</th>'
+            '<th>30 d</th><th>90 d</th></tr></thead>'
+            f'<tbody>{corpo}</tbody></table>')
+
+
+# ---------------------------------------------------------------------------
 # O valor: variação do mês e o gráfico
 # ---------------------------------------------------------------------------
 def _tudo_zero(serie) -> bool:
@@ -653,4 +827,35 @@ CSS = r"""
  .vn{text-align:right;font-variant-numeric:tabular-nums;font-size:12px;white-space:nowrap;color:var(--muted)}
  .vn b{display:block;color:var(--ink);font-size:14px}
  .vn .sp{color:var(--bad)}
+
+ /* as coleções: o mosaico leva quatro linhas, a variação quebra se for preciso */
+ .tile .vvar{font-size:11px;white-space:normal}
+ .cg.ccg{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 6px}
+ @media (min-width:600px){ .cg.ccg{grid-template-columns:repeat(4,minmax(0,1fr))} }
+ @media (min-width:900px){ .cg.ccg{grid-template-columns:repeat(5,minmax(0,1fr));gap:12px 8px} }
+ @media (min-width:1200px){ .cg.ccg{grid-template-columns:repeat(6,minmax(0,1fr))} }
+ .cc{min-width:0}
+ .ci{display:flex;flex-direction:column;gap:3px;padding:5px 1px 0;font-size:11px;line-height:1.3;color:var(--ink2)}
+ .ci .cp{font:700 13px var(--font-hd);color:var(--ink);white-space:nowrap;font-variant-numeric:tabular-nums}
+ .ci small{color:var(--dim);font-size:10.5px}
+ .ci .cv{font-variant-numeric:tabular-nums}
+ .ci .cj{display:flex;flex-wrap:wrap;gap:3px}
+ .sv.sobe{color:var(--ok)} .sv.desce{color:var(--bad)} .sv0{color:var(--dim)}
+ .jg{font-style:normal;font-size:10px;font-weight:600;line-height:1.3;padding:0 4px;border-radius:4px;
+   background:var(--info-soft);color:var(--ob);border:1px solid var(--info-line);overflow-wrap:anywhere}
+ .jg.mais{background:none;color:var(--muted);border-color:var(--line2)}
+ .vd{font-style:normal;font-size:10px;font-weight:700;line-height:1.3;padding:0 4px;border-radius:4px;
+   background:var(--warn-soft);color:var(--warn-forte);border:1px solid var(--warn-line)}
+
+ /* A subir */
+ table.sub{width:100%;border-collapse:collapse;font-size:13px}
+ table.sub th{text-align:right;color:var(--muted);font-size:11px;text-transform:uppercase;
+   letter-spacing:.06em;font-weight:700;padding:6px 6px;border-bottom:1px solid var(--line2)}
+ table.sub th:first-child{text-align:left}
+ table.sub td{padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+ table.sub td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+ table.sub .sn{display:flex;gap:8px;align-items:center;min-width:0}
+ table.sub .sn img{width:34px;height:48px;border-radius:3px;object-fit:cover;flex:none;background:var(--sunken)}
+ table.sub .sn b{display:block;font-size:13.5px;line-height:1.25;overflow-wrap:anywhere}
+ table.sub .sn small{display:block;color:var(--dim);font-size:11px;line-height:1.3}
 """
