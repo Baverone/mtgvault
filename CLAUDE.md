@@ -63,8 +63,8 @@ descobrir o núcleo de cada arquétipo, e acompanha preços.
 
 ## Núcleo (28/10/2026)
 
-O site novo — **Painel · Decks · Vender** (`index.html`, `deck.html`,
-`vender.html`) — vive em `mtgvault/nucleo/` e nos geradores `nucleo_*.py` da
+O site novo — **Painel · Decks · Coleção · Vender** (`index.html`, `deck.html`,
+`colecoes.html`, `vender.html`) — vive em `mtgvault/nucleo/` e nos geradores `nucleo_*.py` da
 raiz. Spec: `docs/superpowers/specs/2026-10-28-site-mtg-nucleo-design.md`.
 
 - **O interruptor** é `colecao_config.json → nucleo.ligado` (hoje `true`), lido à
@@ -73,7 +73,8 @@ raiz. Spec: `docs/superpowers/specs/2026-10-28-site-mtg-nucleo-design.md`.
   o código antigo não se apagou. Com ele ligado o webapp não corre o aquecedor
   das páginas antigas.
 - **As tabelas são `n_*`** (`n_deck`, `n_versao`, `n_versao_carta`, `n_edicao`,
-  `n_posse`, `n_posse_log`, `n_montado`, `n_a_mais`, `n_saida`, `n_valor`), no
+  `n_posse`, `n_posse_log`, `n_montado`, `n_a_mais`, `n_saida`, `n_valor`; as da
+  Coleção e fotos estão na secção seguinte), no
   `schema.sql` e no `db._migrate()`. O núcleo escreve SÓ nelas e nunca em
   `copies`, `copy_allocation`, `posse_marcada`, `decks`, `deck_cards` nem
   `watched*`. **Os nomes (das tabelas, colunas e funções do núcleo) são em
@@ -92,9 +93,131 @@ raiz. Spec: `docs/superpowers/specs/2026-10-28-site-mtg-nucleo-design.md`.
   `daily` faz o mesmo às 03:30. Até lá o `publicar` recusa com «base por migrar».
 - **Voltar atrás**: `nucleo.ligado: false` e, à mão, no
   `.github/workflows/daily.yml`, trocar a linha `git add index.html deck.html
-  vender.html` pelas duas comentadas acima dela. O resto (as tarefas
+  colecoes.html vender.html assets/cartas` pelas duas comentadas acima dela. O resto (as tarefas
   `mtgvault-daily`/`mtgvault-publicar` do ai-pc incluídas) pergunta ao
   `publicar.publicaveis()` e segue o interruptor sozinho.
+
+## Coleção e fotos (30/10/2026)
+
+Continua o núcleo (secção acima). Spec:
+`docs/superpowers/specs/2026-10-30-colecao-e-fotos-design.md`; plano:
+`docs/superpowers/plans/2026-10-30-colecao-e-fotos.md`. Onde esta secção diz
+outra coisa, ganha esta. Duas coisas novas: **coleções** (cartas que o André
+guarda para acompanhar o preço, não para jogar) e **fotos** (a prova de que uma
+cópia existe).
+
+- **As quatro coleções** (`mtgvault/nucleo/colecoes.py`, criadas por
+  `garantir_colecoes`): *Duals de Revised* (as 10 duals de `3ed`, inglês,
+  normal), *Zendikar Expeditions* (as 10 shocks e as 10 fetches do set `exp`,
+  inglês, foil; o `zne`, Zendikar Rising Expeditions, não tem shocks e fica de
+  fora), *Shocks originais em português* (as 10 shocks de `rav`/`gpt`/`dis`,
+  português, normal), as três com meta 4 de cada, e *Reserved List*, **aberta**
+  (sem meta, é o que ele juntar). Nas Duals contam só as de Revised; as Foreign
+  Black Border não. As coleções **não** entram no progresso nem nas faltas dos
+  decks, mas entram no **valor** do Painel. `garantir_colecoes` é tudo ou nada:
+  uma carta que falte no catálogo levanta `ValueError` em vez de criar uma
+  coleção a meio.
+- **As tabelas novas** (todas `n_*`, nos três sítios: `schema.sql`,
+  `db._migrate()` e quem as escreve): `n_colecao`, `n_colecao_carta`,
+  `n_colecao_log`, `n_foto`, `n_recorte`, `n_validacao`, `n_preco_pt`,
+  `n_preco_vigiado`, `n_jogada`, e a coluna `n_valor.colecoes_eur`. **A posse de
+  uma coleção vive em `n_colecao_carta.tenho`**: cada linha já é uma edição, um
+  acabamento e uma língua, por isso a `n_posse` dos decks **não mudou de
+  chave**. O +1/−1 das coleções é idempotente por `request_id`
+  (`n_colecao_log`), como o dos decks.
+- **A página chama-se `colecoes.html`, e não `colecao.html`**, porque esse
+  ficheiro é a Galeria do site antigo, ainda ligada à publicação dele. O menu
+  é agora **Painel · Decks · Coleção · Vender** (4 entradas, no `site_shell`).
+  Um só ficheiro, como o `deck.html`: sem `#` mostra os botões, `#<slug>` uma
+  coleção, `#subir` a lista «A subir».
+- **Preço português: só português, o último visto, nunca inglês.** As Shocks PT
+  valem o que as ofertas `mtg_language == "pt"` do CardTrader dizem, filtradas
+  por `precos.oferta_utilizavel(o, frozenset({"pt"}))`; o preço é a oferta mais
+  barata do **último dia em que houve ofertas PT** (`n_preco_pt`) e mostra-se
+  «visto há N dias». Nunca vista = «sem preço». Cair no preço inglês seria
+  mentir sobre uma carta que ele não tem. Por isso a **variação** (R7) só
+  existe com uma observação PT de há **7 dias ou menos** e outra, **distinta e
+  mais antiga**: na `n_preco_pt` a ausência de linha quer dizer «não
+  observado» (ao contrário do histórico do Cardmarket), e inventar 0 % de
+  variação para um preço velho era pior do que não a mostrar.
+- **O `n_preco_vigiado` só escreve quando o preço muda** (como o
+  `price_history`) e nunca é podado. Cobre as cartas das coleções, a Reserved
+  List inteira e as famílias (10 duals, 10 shocks, 10 fetches) acima de 20 €.
+  É daqui que saem os gráficos e as variações a 30 e a 90 dias (a série cobre
+  100 dias, para a de 90 ter referência, R18). Como só há linha na mudança, o
+  preço vigente de um dia é o da última linha até esse dia; `gravar_vigiadas`
+  ignora trend ≤ 0.
+- **«A subir»** (`#subir`): Reserved List (`reserved = 1 AND digital = 0`) +
+  impressões das famílias + o set `exp`, só com trend ≥ 20 €, por variação a 30
+  dias (a de 90 ao lado). São números, não recomendações. **«Joga»** = a carta
+  está na versão atual de um deck dele, ou em listas de torneio dos últimos 3
+  meses (qualquer formato); daí o `n_jogada`.
+- **O `n_jogada` nunca se poda e só sobe** (R10): o `registar` guarda o `MAX`
+  das listas e nunca apaga. É o registo permanente do que se jogou, e a poda
+  de 30 dias das listas não o pode encolher; por isso o passo `nucleo-jogada`
+  corre **antes** do `prune`. Limite conhecido: em Pauper só ficam guardados os
+  jogadores vigiados, e o «joga» desse formato é parcial.
+- **Validação por foto.** Uma cópia marcada no site conta logo para «tenho»,
+  faltas e valor, e aparece **por validar** (por validar conta). Uma foto que a
+  confirme torna-a **validada** e liga-a a um recorte; a carta mostra então o
+  recorte da cópia dele (ícone de câmara) e, num deck, o progresso tem as duas
+  contas («60 de 75 · 45 validadas»). Regras que não se partem:
+  - **−1 tira primeiro uma por validar.** Só quando não há nenhuma é que sai uma
+    validada, e então a validação mais recente fica `desfeita_em` (nunca é
+    apagada); as validadas nunca passam a posse. Vale para decks e coleções.
+  - **As validações seguem todas as escritas da posse** (R14), incluindo
+    fixa↔partilhada (`depois_de_versao`: `_mover` leva a validação para o novo
+    âmbito e corta-a ao novo `tenho`; `_aparar` e `_para_saida` cortam-na onde a
+    posse ficou). O âmbito guardado é o slug do deck (ou `rotativos`) ou o da
+    coleção (R11).
+  - **Os recortes são a prova e não se refazem** (R15): `recortar` recusa uma
+    foto que já validou cartas, e se não achar nenhuma carta não apaga nada. Um
+    recorte que não encontra as cartas todas devolve as que achou e diz
+    quantas; nunca inventa.
+  - **Uma foto que não bate certo** (outra edição, menos cópias, foil em vez de
+    normal) não corrige nada: o Claude mostra a diferença e pergunta. Nada se
+    grava sem o «sim» do André na conversa.
+- **O fluxo das fotos é o CLI** (nada de scripts soltos): `py -m mtgvault.cli
+  nucleo extrair [--sessao F.jsonl] [--ultimas N] [--para SLUG] [--raiz PASTA]`,
+  `nucleo recortar FOTO_ID [--raiz PASTA]`, `nucleo validar --lote F.json` e
+  `nucleo validadas AMBITO`; `nucleo colecoes` cria e mostra as coleções. O
+  `extrair` lê o registo `.jsonl` da sessão neste PC e **só tira imagens das
+  mensagens de topo do utilizador** (R12): as capturas de ecrã dentro de
+  `tool_result` não são fotos dele. A chave de uma foto é sessão + linha +
+  índice, por isso extrair duas vezes não a duplica. Os originais ficam em
+  `data/fotos/originais/AAAA-MM-DD/` (fora do Git) e os recortes em
+  `assets/cartas/<foto>-<n>.jpg` (488 px de largura, JPEG 82, **no Git**,
+  porque o site público também os mostra). `--raiz` existe para os testes
+  escreverem numa pasta temporária; a omissão é a raiz do projeto. O
+  `validar --lote` faz duas passagens (R16): confere todas as linhas sem
+  escrever e aborta a dizer qual falhou; só depois aplica. Cada escrita da
+  posse faz o seu próprio commit, por isso uma falha a meio da segunda passagem
+  (rara) deixa as linhas anteriores gravadas, e o CLI diz quais.
+- **As páginas só leem a base** (R17): o `publicar` abre-a em modo de leitura,
+  por isso o `colecoes.html` não cria nada. É o **arranque do webapp** e o
+  **daily** que correm o `garantir_colecoes`; até um deles correr uma vez, a
+  página diz «As coleções ainda não foram preparadas.» No site publicado uma
+  carta validada mostra só o recorte; a imagem oficial («ver oficial») está na
+  página de edição e na ficha do deck (R19).
+- **Publicar:** `colecoes.html` e `assets/cartas` entram no
+  `publicar.publicaveis()` **e** no `git add` do `.github/workflows/daily.yml`
+  (uma página publicada sem os recortes no Git mostrava imagens partidas). O
+  daily (`_main_nucleo`) ganhou: a recolha das listas de **todos** os formatos
+  (MTGO e mtgtop8, só para alimentar o `n_jogada` e as vigias do Luffy; o
+  metagame antigo continua fora do site), `nucleo-colecoes`, `precos-pt`
+  (**fica vermelho sem `CARDTRADER_TOKEN`**, de propósito: uma página sem preços
+  PT a fingir que está em dia é pior), `nucleo-vigiados` e `nucleo-jogada`
+  antes da poda. Como recolhe mais listas, o daily está mais lento (por medir).
+- **As partes do valor no Painel** (R8): `decks_eur` = `n_posse`; `a_mais_eur`
+  = `n_a_mais` + `n_saida` (os itens do Vender); `colecoes_eur` = coleções; o
+  total é a soma. O gráfico do Painel aplica o teste de cobertura aos
+  exemplares **não PT** e deixa os PT valerem só nos dias com linha em
+  `n_preco_pt` (R9).
+- **Por fazer depois do merge (R3, só com o ok do André):** correr `nucleo
+  colecoes` na base real, reiniciar o 8771 (`_reiniciar_webapp.py` + a tarefa
+  `mtgvault-serve` do ai-pc), ver `colecoes.html`, uma coleção, `#subir`,
+  Vender e um deck no browser (computador e telemóvel), e pôr o `e2e-sites`
+  do ai-pc a esperar 4 entradas no menu e a página Coleção.
 
 ## Arquitetura
 

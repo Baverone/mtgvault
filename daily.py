@@ -889,18 +889,14 @@ def main():
         _checkpoint(con)
 
 
-# Os formatos do MTGO que o núcleo lê: as duas vigias do Luffy (Pauper e
-# Premodern). O resto da recolha de torneios só servia o metagame, que com o
-# núcleo ligado sai do site.
-FORMATOS_MTGO_NUCLEO = {"pauper", "premodern"}
-
-
 def _main_nucleo():
     """O daily com o `nucleo.ligado` (spec do site do núcleo, «Recolha diária»).
 
-    Preços → listas vigiadas → versões novas → valor do dia → páginas, e mais
-    nada: sem as listas de torneio que só alimentavam o metagame, sem o
-    clustering, sem as páginas antigas. Cada passo é um `_step`, como sempre —
+    Preços → coleções e preços em português → listas vigiadas → versões novas →
+    valor do dia → páginas, e mais nada: sem o clustering nem as páginas antigas.
+    As listas de torneio voltaram a ser recolhidas (de todos os formatos), mas só
+    para alimentar o `n_jogada` («joga», na Coleção) e as vigias do Luffy; o
+    metagame antigo continua fora do site. Cada passo é um `_step`, como sempre —
     uma vigia que falha (`VigiaFalhou`) fica `erro` no `job_runs` e a tarefa do
     ai-pc fica vermelha, mas o valor e as páginas do dia correm na mesma.
     """
@@ -973,7 +969,7 @@ def _main_nucleo():
                     + (f", {v['sem_preco']} sem preço" if v["sem_preco"] else ""))
 
         _step(con, "nucleo-valor", _valor)
-        # As três páginas, para onde as antigas iam (a raiz do repositório) e
+        # As quatro páginas, para onde as antigas iam (a raiz do repositório) e
         # pelo MESMO caminho do `mtgvault-publicar` — uma lista só de páginas.
         _step(con, "nucleo-paginas",
               lambda: ", ".join(publicar.gerar(con, ROOT)))

@@ -451,7 +451,7 @@ def caso_config_diz_como_voltar_atras():
     cfg = configio.ler(RAIZ / "colecao_config.json")
     txt = cfg["_nucleo"]
     assert ".github/workflows/daily.yml" in txt, txt
-    assert "git add index.html deck.html vender.html" in txt, txt
+    assert "git add index.html deck.html colecoes.html vender.html assets/cartas" in txt, txt
     assert "false" in txt
 
 
