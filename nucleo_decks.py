@@ -139,9 +139,12 @@ def _progresso(est: dict) -> str:
         falta = f'falta <b>—</b>{sp}'
     else:
         falta = f'falta <b>{paginas.eur(est["custo_falta"])}</b>{sp}'
+    val = est.get("validadas") or 0
+    # só quando há: «0 validadas» seria ruído em quase todos os decks
+    validadas = (f' · {val} validada{"s" if val != 1 else ""}' if val else "")
     return (visual.barra(est["tenho"], est["total"])
             + f'<div class="kpi"><span>{est["tenho"]} de {est["total"]} cartas'
-            f' · {visual.pct_de(est["tenho"], est["total"])} %</span>'
+            f' · {visual.pct_de(est["tenho"], est["total"])} %{validadas}</span>'
             f'<span>{falta}</span></div>')
 
 

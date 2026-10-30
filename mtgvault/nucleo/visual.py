@@ -218,6 +218,14 @@ def img_carta(sid: str, alt: str, cls: str = "") -> str:
             f' decoding="async" width="146" height="204">')
 
 
+def img_recorte(caminho: str, alt: str) -> str:
+    """A `<img>` do recorte da foto dele (`assets/cartas/…`): o mesmo tamanho
+    escrito e o mesmo `lazy`/`async` da imagem do Scryfall, para a grelha não
+    saltar. É uma só: o recorte tem 488 px de largura, sem `srcset`."""
+    return (f'<img src="{e(caminho)}" alt="{e(alt)}" loading="lazy"'
+            f' decoding="async" width="146" height="204">')
+
+
 # ---------------------------------------------------------------------------
 # Peças
 # ---------------------------------------------------------------------------
@@ -257,8 +265,22 @@ def carta(c: dict, *, slug: str, editavel: bool = False,
                  # a carta abre a folha da edição: tem de se chegar lá com o
                  # teclado também (Enter/Espaço, no `edicao_js`)
                  ' tabindex="0" role="button" aria-haspopup="dialog"')
-    img = (img_carta(c["scryfall_id"], c["nome"]) if c["scryfall_id"]
-           else f'<span class="nm">{e(c["nome"])}</span>')
+    recorte = c.get("recorte")
+    if recorte and c["scryfall_id"]:
+        # a foto dele; a oficial fica à mão em `data-oficial` para a poder ver
+        img = img_recorte(recorte, c["nome"])
+        dados += f' data-oficial="{e(url_carta(c["scryfall_id"], "normal"))}"'
+    elif c["scryfall_id"]:
+        img = img_carta(c["scryfall_id"], c["nome"])
+    else:
+        img = f'<span class="nm">{e(c["nome"])}</span>'
+    n_val = c.get("validadas") or 0
+    if n_val:
+        cls.append("validada")
+        cam = (f'<i class="cam" title="{n_val} validada'
+               f'{"s" if n_val != 1 else ""} com foto">'
+               f'{shell.icone("camara", 12)}</i>')
+        img += cam
     q = f'<u class="q">{c["qtd"]}</u>'
     onde = ""
     if com_onde and c.get("onde"):
@@ -607,6 +629,10 @@ CSS = r"""
    border-radius:4px;line-height:1.3;padding:1px 2px}
  .ct em b,.ct em span{white-space:nowrap}
  .ct em b{color:var(--bad);font-weight:700}
+ .ct.validada{border-color:var(--ok-line)}
+ .ct .cam{position:absolute;top:4px;left:4px;z-index:2;display:flex;align-items:center;justify-content:center;
+   width:18px;height:18px;border-radius:5px;background:rgba(0,0,0,.74);color:var(--ok)}
+ .ct .cam svg.ico{width:12px;height:12px}
  .ct.foil::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;mix-blend-mode:screen;
    background:linear-gradient(115deg,rgba(255,255,255,0) 28%,rgba(255,255,255,.30) 44%,
    rgba(170,210,255,.22) 52%,rgba(255,220,170,.16) 58%,rgba(255,255,255,0) 72%)}

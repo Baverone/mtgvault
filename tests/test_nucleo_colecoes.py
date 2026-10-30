@@ -379,6 +379,42 @@ def caso_catalogo_sem_carta():
             "SELECT COUNT(*) FROM n_colecao_carta").fetchone()[0] == 0
 
 
+def caso_estado_com_validadas_e_recorte():
+    """(R13) Cada carta da coleção traz `validadas` (no máximo a posse) e o
+    `recorte` da validação ativa; a coleção soma as validadas. Sem validação:
+    0 e `None`."""
+    with _pronta() as con:
+        c = _carta(con, "duals_revised", "Plateau")
+        b = _carta(con, "duals_revised", "Bayou")
+        _marcar(con, c["id"], 3)
+        _marcar(con, b["id"], 1)
+        est = colecoes.estado_colecao(con, "duals_revised")
+        assert est["validadas"] == 0
+        assert all(x["validadas"] == 0 and x["recorte"] is None
+                   for x in est["cartas"])
+        fid = con.execute(
+            "INSERT INTO n_foto (caminho, dia, sessao, linha, indice)"
+            " VALUES ('x', '2026-10-30', 's', 1, 0)").lastrowid
+        rid = con.execute(
+            "INSERT INTO n_recorte (foto_id, numero, caminho) VALUES (?, 1, ?)",
+            (fid, f"assets/cartas/{fid}-1.jpg")).lastrowid
+        con.commit()
+        fotos.validar(con, rid, "duals_revised", c["scryfall_id"], "nonfoil",
+                      qtd=2)
+        est = colecoes.estado_colecao(con, "duals_revised")
+        pl = [x for x in est["cartas"] if x["nome"] == "Plateau"][0]
+        by = [x for x in est["cartas"] if x["nome"] == "Bayou"][0]
+        assert pl["validadas"] == 2 and pl["recorte"] == f"assets/cartas/{fid}-1.jpg"
+        assert by["validadas"] == 0 and by["recorte"] is None
+        assert est["validadas"] == 2
+        # nunca mais do que a posse, mesmo que a tabela diga outra coisa
+        con.execute("UPDATE n_validacao SET qtd = 9")
+        con.commit()
+        pl = [x for x in colecoes.estado_colecao(con, "duals_revised")["cartas"]
+              if x["nome"] == "Plateau"][0]
+        assert pl["validadas"] == 3, pl
+
+
 if __name__ == "__main__":
     for nome, f in list(globals().items()):
         if nome.startswith("caso_"):

@@ -514,7 +514,12 @@ def estado_deck(con: sqlite3.Connection, slug: str) -> dict:
 
     edicoes: dict[str, tuple[str, str] | None] = {}
     monte: dict[str, int] = {}
+    # as validadas do nome (a edição que conta, no âmbito gravado) repartem-se
+    # como a posse: um nome em main e em side é UMA edição física, e dar a cada
+    # linha o `min(tenho, validadas)` à parte somava mais do que o deck tem
+    por_validar: dict[str, int] = {}
     tenho_por: dict[int, int] = {}
+    validadas_por: dict[int, int] = {}
     for i in sorted(range(len(linhas)),
                     key=lambda i: (_ORDEM_SECCAO.get(linhas[i].seccao, 9), i)):
         l = linhas[i]
@@ -522,12 +527,18 @@ def estado_deck(con: sqlite3.Connection, slug: str) -> dict:
         if l.nome not in edicoes:
             edicoes[l.nome] = _edicao_em(con, amb, l.nome)
             monte[l.nome] = _qtd(con, amb, edicoes[l.nome])
+            ed_ = edicoes[l.nome]
+            por_validar[l.nome] = (
+                _fotos().validadas(con, amb, ed_[0], ed_[1]) if ed_ else 0)
         tenho_por[i] = min(l.qtd, monte[l.nome])
         monte[l.nome] -= tenho_por[i]
+        validadas_por[i] = min(tenho_por[i], por_validar[l.nome])
+        por_validar[l.nome] -= validadas_por[i]
 
     cartas = []
     for i, l in enumerate(linhas):
         ed = edicoes[l.nome]
+        amb = _ambito_de(deck, l.nome, part)
         partilhada = rotativo and l.nome in part
         if partilhada:
             onde = None if montado is None else (
@@ -543,6 +554,10 @@ def estado_deck(con: sqlite3.Connection, slug: str) -> dict:
             else None,
             "onde": onde,
             "preco_un": _trend_hoje(con, ed[0], ed[1]) if ed else None,
+            "validadas": validadas_por[i],
+            # o recorte só aparece onde esta linha tem uma cópia validada
+            "recorte": (_fotos().recorte_de(con, amb, ed[0], ed[1])
+                        if ed and validadas_por[i] else None),
         })
     custo = sum(c["falta"] * c["preco_un"] for c in cartas
                 if c["falta"] and c["preco_un"] is not None)
@@ -554,6 +569,7 @@ def estado_deck(con: sqlite3.Connection, slug: str) -> dict:
         "cartas": cartas,
         "total": sum(c["qtd"] for c in cartas),
         "tenho": sum(c["tenho"] for c in cartas),
+        "validadas": sum(c["validadas"] for c in cartas),
         "custo_falta": round(custo, 2),
         "sem_preco": sum(1 for c in cartas
                          if c["falta"] and c["preco_un"] is None),

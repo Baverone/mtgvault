@@ -109,6 +109,9 @@ _SVG: dict[str, str] = {
              '<path d="M13.6 13.6h7.2v7.2h-7.2z"/><path d="M3.2 13.6h7.2v7.2H3.2z"/>',
     "fechar": '<path d="M4 15.2s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>'
               '<path d="M4 22v-6.8"/>',
+    # a câmara de uma carta validada (a foto dele, não a do Scryfall)
+    "camara": '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>'
+              '<circle cx="12" cy="13" r="4"/>',
     "colecao": '<path d="M2 3.5h5.5a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/>'
                '<path d="M22 3.5h-5.5a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3H22z"/>',
     "atualizar": '<path d="M22.5 4.2v6h-6"/><path d="M1.5 19.8v-6h6"/>'

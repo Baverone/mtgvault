@@ -665,6 +665,121 @@ def caso_fonte_com_link_no_meio():
     assert visual.fonte_html("") == "sem fonte"
 
 
+def validar_direto(con, slug, sid, acab, qtd, n=1):
+    """Põe `qtd` cópias validadas, com um recorte de teste, sem passar pelas
+    fotos a sério (a escrita de verdade tem os seus casos em test_nucleo_fotos).
+    Devolve o caminho do recorte."""
+    _n[0] += 1
+    fid = con.execute(
+        "INSERT INTO n_foto (caminho, dia, sessao, linha, indice) VALUES"
+        " ('x', '2026-10-30', 's', ?, 0)", (_n[0],)).lastrowid
+    caminho = f"assets/cartas/{fid}-{n}.jpg"
+    rid = con.execute("INSERT INTO n_recorte (foto_id, numero, caminho) VALUES"
+                      " (?, ?, ?)", (fid, n, caminho)).lastrowid
+    con.execute("INSERT INTO n_validacao (recorte_id, ambito, scryfall_id,"
+                " acabamento, lingua, qtd, em) VALUES (?, ?, ?, ?, 'en', ?,"
+                " '2026-10-30T10:00:00')", (rid, slug, sid, acab, qtd))
+    con.commit()
+    return caminho
+
+
+def figuras(trecho):
+    return re.findall(r'<figure class="([^"]*)"', trecho)
+
+
+def figura(trecho, nome):
+    m = re.search(rf'<figure [^>]*title="{re.escape(html.escape(nome))}".*?</figure>',
+                  trecho, re.S)
+    assert m, nome
+    return m.group(0)
+
+
+def caso_carta_com_recorte():
+    """(Tarefa 8) Uma carta validada mostra o RECORTE da foto dele (não a
+    imagem do Scryfall), leva a classe `validada` e guarda a oficial em
+    `data-oficial` (para a poder mostrar ao toque); as outras ficam como
+    estavam."""
+    with sessao() as con:
+        cenario(con)
+        caminho = validar_direto(con, MOD, "tm-a", "foil", 1)
+        mod = seccao(nucleo_decks.html_page(con), MOD)
+        fig = figura(mod, "Thought Monitor")
+        assert "validada" in classes_da_carta(mod, "Thought Monitor")
+        assert f'src="{caminho}"' in fig, fig
+        assert 'width="146" height="204"' in fig and 'loading="lazy"' in fig, fig
+        assert 'src="https://' not in fig, "o recorte substitui a imagem do CDN"
+        assert 'data-oficial="https://' in fig and "/normal/front/" in fig, fig
+        assert 'class="cam"' in fig and "<svg" in fig, "falta a câmara no canto"
+        # as outras cartas do deck continuam com a imagem do Scryfall
+        outra = figura(mod, "Springleaf Drum")
+        assert "data-oficial" not in outra and 'src="https://' in outra, outra
+        assert "validada" not in classes_da_carta(mod, "Springleaf Drum")
+
+
+def caso_progresso_com_validadas():
+    """(Tarefa 8) A linha do progresso diz quantas cartas estão validadas, no
+    singular e no plural, e só quando há."""
+    with sessao() as con:
+        cenario(con)
+        validar_direto(con, MOD, "tm-a", "foil", 1)
+        mod = seccao(nucleo_decks.html_page(con), MOD)
+        assert "· 1 validada<" in mod and "validadas<" not in mod, mod[:600]
+        validar_direto(con, MOD, "tm-a", "foil", 1, n=2)
+        mod = seccao(nucleo_decks.html_page(con), MOD)
+        assert "· 2 validadas<" in mod, mod[:600]
+        est = posse.estado_deck(con, MOD)
+        assert est["validadas"] == 2 and est["validadas"] <= est["tenho"]
+        tm = [c for c in est["cartas"] if c["nome"] == "Thought Monitor"][0]
+        assert tm["validadas"] == 2 and tm["recorte"].startswith("assets/cartas/")
+
+
+def caso_sem_validacao_igual():
+    """(Tarefa 8) Sem nenhuma validação, a página não diz nada de validadas e
+    as cartas levam a imagem do Scryfall, como antes."""
+    with sessao() as con:
+        cenario(con)
+        p = nucleo_decks.html_page(con)
+        for cls in figuras(p):
+            assert "validada" not in cls.split(), cls
+        assert "data-oficial" not in p and "assets/cartas" not in p
+        assert not re.search(r"· \d+ validadas?<", p)
+        est = posse.estado_deck(con, MOD)
+        assert est["validadas"] == 0
+        assert all(c["validadas"] == 0 and c["recorte"] is None
+                   for c in est["cartas"])
+
+
+def caso_validadas_nunca_passam_a_posse_main_e_side():
+    """(Tarefa 8) Uma carta em main e em side é a mesma edição física: as
+    validadas repartem-se como a posse (main antes do side), por isso a soma
+    nunca passa o `tenho` do deck."""
+    with sessao() as con:
+        cenario(con)
+        versao(con, MOD, [("main", "Thought Monitor", 2), ("side", "Thought Monitor", 2),
+                          ("main", "Urza's Saga", 4), ("main", "Springleaf Drum", 4)],
+               fonte="com side", quando="2026-10-20T10:00:00")
+        marcar(con, MOD, "Thought Monitor", -1)          # 4 → 3 cópias
+        validar_direto(con, MOD, "tm-a", "foil", 3)
+        est = posse.estado_deck(con, MOD)
+        tms = {c["seccao"]: c for c in est["cartas"]
+               if c["nome"] == "Thought Monitor"}
+        assert (tms["main"]["tenho"], tms["side"]["tenho"]) == (2, 1)
+        assert (tms["main"]["validadas"], tms["side"]["validadas"]) == (2, 1), tms
+        assert tms["main"]["recorte"] and tms["side"]["recorte"]
+        assert est["validadas"] <= est["tenho"], (est["validadas"], est["tenho"])
+    # com menos validadas do que a posse, vão primeiro para o main
+    with sessao() as con:
+        cenario(con)
+        versao(con, MOD, [("main", "Thought Monitor", 2),
+                          ("side", "Thought Monitor", 2)],
+               fonte="com side", quando="2026-10-20T10:00:00")
+        validar_direto(con, MOD, "tm-a", "foil", 3)      # posse 4
+        e2 = posse.estado_deck(con, MOD)
+        t2 = {c["seccao"]: c for c in e2["cartas"]}
+        assert (t2["main"]["validadas"], t2["side"]["validadas"]) == (2, 1)
+        assert e2["validadas"] == 3 and e2["tenho"] == 4
+
+
 if __name__ == "__main__":
     for nome, f in list(globals().items()):
         if nome.startswith("caso_"):

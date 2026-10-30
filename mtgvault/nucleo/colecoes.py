@@ -146,8 +146,8 @@ def estado_colecao(con: sqlite3.Connection, slug: str,
     `total` e `falta` só existem nas fechadas (nas abertas ficam `None`).
     `preco_visto_em` só existe nas cartas `pt` (o dia do último preço português
     visto) e `var30`/`var90` vêm das cotações (`hoje` é para os testes). Os
-    `joga` vem de `jogada.onde_joga`; os de fotos (`validadas`, `recorte`) vêm da
-    Tarefa 6 e até lá ficam `0`/`None`.
+    `joga` vem de `jogada.onde_joga`; `validadas` (no máximo `tenho`) e `recorte`
+    vêm das fotos, e a coleção soma as validadas.
     """
     hoje = hoje or date.today().isoformat()
     col = con.execute("SELECT slug, nome, tipo FROM n_colecao WHERE slug = ?",
@@ -156,7 +156,7 @@ def estado_colecao(con: sqlite3.Connection, slug: str,
         raise ValueError(f"coleção desconhecida: {slug!r}")
     fechada = col["tipo"] == "fechada"
     cartas = []
-    tenho = total = 0
+    tenho = total = validadas = 0
     custo_falta = valor_eur = 0.0
     sem_preco = 0
     for r in con.execute(
@@ -165,6 +165,8 @@ def estado_colecao(con: sqlite3.Connection, slug: str,
             (slug,)).fetchall():
         preco, visto_em = _preco_un(con, r["scryfall_id"], r["acabamento"],
                                     r["lingua"])
+        validadas_ = min(r["tenho"], fotos.validadas(
+            con, slug, r["scryfall_id"], r["acabamento"], r["lingua"]))
         meta = r["meta"] if fechada else None
         falta = max(0, (meta or 0) - r["tenho"]) if fechada else None
         if fechada:
@@ -187,14 +189,20 @@ def estado_colecao(con: sqlite3.Connection, slug: str,
                                r["lingua"], 30, hoje),
             "var90": _variacao(con, r["scryfall_id"], r["acabamento"],
                                r["lingua"], 90, hoje),
-            "joga": jogada.onde_joga(con, r["nome"], hoje), "validadas": 0,
-            "recorte": None})
+            "joga": jogada.onde_joga(con, r["nome"], hoje),
+            # nunca mais validadas do que cópias (o −1 já apara, mas a conta
+            # não depende de ninguém se ter lembrado)
+            "validadas": validadas_,
+            "recorte": (fotos.recorte_de(con, slug, r["scryfall_id"],
+                                         r["acabamento"], r["lingua"])
+                        if validadas_ else None)})
+        validadas += validadas_
     return {"slug": col["slug"], "nome": col["nome"], "tipo": col["tipo"],
             "cartas": cartas, "tenho": tenho,
             "total": total if fechada else None,
             "custo_falta": round(custo_falta, 2),
             "valor_eur": round(valor_eur, 2), "sem_preco": sem_preco,
-            "validadas": 0}
+            "validadas": validadas}
 
 
 # ---------------------------------------------------------------------------
