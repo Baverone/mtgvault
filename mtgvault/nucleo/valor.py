@@ -31,6 +31,14 @@ As regras (spec «Regras: Valor, Preços», 2026-10-28):
   gravados — esses mediram outro inventário, e no primeiro dia dele davam
   «−100 %» contra um dia gravado antes de marcar a primeira carta.
 
+- **O valor tem três partes** (R8, 2026-10-30): `decks_eur` (o `n_posse`),
+  `a_mais_eur` (o `n_a_mais` e o `n_saida`, o que está em Vender) e
+  `colecoes_eur` (as cartas das coleções com `tenho > 0`); `total_eur` é a
+  soma. Uma carta de coleção tem língua: em `pt` o preço é o `n_preco_pt` mais
+  recente até esse dia (nunca o inglês — sem ele a cópia conta em `sem_preco`);
+  nas outras é o preço de sempre, com o histórico vigiado
+  (`cotacoes.preco_em`). Sem coleções, os números são os de antes.
+
 Só escreve nas tabelas `n_*`; as funções que escrevem abrem e fecham a sua
 transação.
 """
@@ -85,9 +93,10 @@ def preco(con: sqlite3.Connection, scryfall_id: str, acabamento: str,
 # Inventário e valor
 # ---------------------------------------------------------------------------
 def inventario(con: sqlite3.Connection) -> list[tuple[str, str, int]]:
-    """`(scryfall_id, acabamento, qtd)` de tudo o que é dele: `n_posse` (todos
-    os âmbitos), `n_a_mais` e `n_saida`, somado por impressão e acabamento e
-    por ordem."""
+    """`(scryfall_id, acabamento, qtd)` de tudo o que é dele nos decks e em
+    Vender: `n_posse` (todos os âmbitos), `n_a_mais` e `n_saida`, somado por
+    impressão e acabamento e por ordem. As coleções ficam de fora (têm língua e
+    o seu próprio preço; ver `_partes`)."""
     return [(r[0], r[1], r[2]) for r in con.execute(
         "SELECT scryfall_id, acabamento, SUM(qtd) FROM ("
         " SELECT scryfall_id, acabamento, qtd FROM n_posse"
@@ -97,39 +106,122 @@ def inventario(con: sqlite3.Connection) -> list[tuple[str, str, int]]:
         " ORDER BY scryfall_id, acabamento")]
 
 
-def _valor_de(con: sqlite3.Connection, inv: list[tuple[str, str, int]],
-              dia: str | None) -> dict:
+def _partes(con: sqlite3.Connection) -> dict:
+    """O inventário de hoje em três partes: `decks` e `a_mais` como
+    `(scryfall_id, acabamento, qtd)`, `colecoes` como `(scryfall_id,
+    acabamento, lingua, qtd)` (a língua decide o preço). Cada cópia física está
+    numa só parte: o `n_posse` é dos decks, o `n_a_mais` e o `n_saida` são o que
+    está em Vender, e as coleções têm as suas próprias linhas."""
+    def tres(sql):
+        return [(r[0], r[1], r[2]) for r in con.execute(sql)]
+    return {
+        "decks": tres(
+            "SELECT scryfall_id, acabamento, SUM(qtd) FROM n_posse"
+            " GROUP BY scryfall_id, acabamento HAVING SUM(qtd) > 0"
+            " ORDER BY scryfall_id, acabamento"),
+        "a_mais": tres(
+            "SELECT scryfall_id, acabamento, SUM(qtd) FROM ("
+            " SELECT scryfall_id, acabamento, qtd FROM n_a_mais"
+            " UNION ALL SELECT scryfall_id, acabamento, qtd FROM n_saida)"
+            " GROUP BY scryfall_id, acabamento HAVING SUM(qtd) > 0"
+            " ORDER BY scryfall_id, acabamento"),
+        "colecoes": _cartas_das_colecoes(con),
+    }
+
+
+def _cartas_das_colecoes(con: sqlite3.Connection, slug: str | None = None
+                         ) -> list[tuple[str, str, str, int]]:
+    """`(scryfall_id, acabamento, lingua, tenho)` das cartas de coleção que ele
+    tem (`tenho > 0`), de uma coleção ou de todas (somando a mesma carta que
+    esteja em mais do que uma)."""
+    filtro, args = ("WHERE colecao = ? AND tenho > 0", (slug,)) if slug else (
+        "WHERE tenho > 0", ())
+    return [(r[0], r[1], r[2], r[3]) for r in con.execute(
+        "SELECT scryfall_id, acabamento, lingua, SUM(tenho) FROM n_colecao_carta"
+        f" {filtro} GROUP BY scryfall_id, acabamento, lingua"
+        " ORDER BY scryfall_id, acabamento, lingua", args)]
+
+
+def _preco_colecao(con: sqlite3.Connection, scryfall_id: str, acabamento: str,
+                   lingua: str, dia: str | None) -> float | None:
+    """O preço de uma cópia de coleção. Em `pt`, o `n_preco_pt` mais recente até
+    `dia` (sem dia, o mais recente que houver) e NUNCA o inglês: um shock em
+    português vale mais, e o trend inglês seria um número bonito e falso. Nas
+    outras línguas, o preço de `dia` com o histórico vigiado
+    (`cotacoes.preco_em`) e, sem dia, o de hoje (`preco`)."""
+    from . import cotacoes                                 # noqa: PLC0415
+    if lingua == "pt":
+        if dia is None:
+            p = cotacoes.preco_pt(con, scryfall_id, acabamento)[0]
+        else:
+            r = cotacoes._pt_em(con, scryfall_id, acabamento, dia)
+            p = r["preco_eur"] if r is not None else None
+        return p if p is not None and p > 0 else None
+    if dia is None:
+        return preco(con, scryfall_id, acabamento)
+    return cotacoes.preco_em(con, scryfall_id, acabamento, dia)
+
+
+def _somar(itens, preco_de) -> tuple[float, int, int]:
+    """`(total, cópias, cópias sem preço)` de `itens` = `(*chave, qtd)`. O que
+    não tem preço fica fora do total e conta em `sem_preco`, nunca como 0."""
     total, copias, sem = 0.0, 0, 0
-    for sid, acab, qtd in inv:
+    for *chave, qtd in itens:
         copias += qtd
-        p = preco(con, sid, acab, dia)
+        p = preco_de(*chave)
         if p is None:
             sem += qtd
         else:
             total += p * qtd
-    return {"total_eur": round(total, 2), "copias": copias, "sem_preco": sem}
+    return total, copias, sem
+
+
+def _valor_de(con: sqlite3.Connection, partes: dict, dia: str | None) -> dict:
+    d_tot, d_cop, d_sem = _somar(
+        partes["decks"], lambda sid, acab: preco(con, sid, acab, dia))
+    a_tot, a_cop, a_sem = _somar(
+        partes["a_mais"], lambda sid, acab: preco(con, sid, acab, dia))
+    c_tot, c_cop, c_sem = _somar(
+        partes["colecoes"],
+        lambda sid, acab, ling: _preco_colecao(con, sid, acab, ling, dia))
+    return {"total_eur": round(d_tot + a_tot + c_tot, 2),
+            "copias": d_cop + a_cop + c_cop, "sem_preco": d_sem + a_sem + c_sem,
+            "decks_eur": round(d_tot, 2), "a_mais_eur": round(a_tot, 2),
+            "colecoes_eur": round(c_tot, 2)}
 
 
 def valor_em(con: sqlite3.Connection, dia: str | None = None) -> dict:
     """O valor do inventário de hoje aos preços de `dia` (sem dia: aos de hoje,
-    do `price_latest`) → `{total_eur, copias, sem_preco}`."""
-    return _valor_de(con, inventario(con), dia)
+    do `price_latest`) → `{total_eur, copias, sem_preco, decks_eur, a_mais_eur,
+    colecoes_eur}`; `total_eur` é a soma das três partes."""
+    return _valor_de(con, _partes(con), dia)
+
+
+def valor_colecoes(con: sqlite3.Connection, dia: str | None = None) -> dict:
+    """Só as coleções (as cartas com `tenho > 0`), aos preços de `dia` (sem dia:
+    aos de hoje) → `{total_eur, copias, sem_preco}`."""
+    total, copias, sem = _somar(
+        _cartas_das_colecoes(con),
+        lambda sid, acab, ling: _preco_colecao(con, sid, acab, ling, dia))
+    return {"total_eur": round(total, 2), "copias": copias, "sem_preco": sem}
 
 
 def gravar_valor_do_dia(con: sqlite3.Connection, dia: str) -> dict:
     """Calcula o valor de `dia` e grava-o em `n_valor` (substitui o do mesmo
-    dia). Devolve o que calculou.
+    dia, com o `colecoes_eur`). Devolve o que calculou.
 
     (R18, 2026-10-29) Sem nenhuma cópia marcada NÃO grava: um dia gravado não
     se recalcula, e um 0 € de antes de ele marcar a primeira carta ficava no
-    gráfico para sempre, como uma queda que nunca aconteceu."""
+    gráfico para sempre, como uma queda que nunca aconteceu. As cópias das
+    coleções contam como marcadas."""
     with posse._transacao(con):
         v = valor_em(con, dia)
         if v["copias"] > 0:
             con.execute(
-                "INSERT OR REPLACE INTO n_valor (dia, total_eur, copias, sem_preco)"
-                " VALUES (?,?,?,?)",
-                (dia, v["total_eur"], v["copias"], v["sem_preco"]))
+                "INSERT OR REPLACE INTO n_valor (dia, total_eur, copias,"
+                " sem_preco, colecoes_eur) VALUES (?,?,?,?,?)",
+                (dia, v["total_eur"], v["copias"], v["sem_preco"],
+                 v["colecoes_eur"]))
     return v
 
 
@@ -142,8 +234,8 @@ def serie(con: sqlite3.Connection,
     """`[(dia, total_eur, sem_preco)]` por ordem: os dias de `n_valor` com
     cópias (o que foi gravado, com o `sem_preco` que tinha), antes do primeiro
     cada dia com preço do Cardmarket no histórico, calculado com o inventário
-    de hoje (`valor_em`), e no fim o valor de `hoje` ao vivo. Sem `n_valor`
-    nenhum, são todos os dias do histórico antes de hoje.
+    de hoje (`valor_em`, com as coleções incluídas), e no fim o valor de `hoje`
+    ao vivo. Sem `n_valor` nenhum, são todos os dias do histórico antes de hoje.
 
     (R18, 2026-10-29) **O último ponto é o número do topo do Painel**: o
     `valor_em()` de agora, no lugar do dia gravado de hoje (o daily grava às
@@ -167,7 +259,7 @@ def serie(con: sqlite3.Connection,
     dias = [r[0] for r in con.execute(
         "SELECT DISTINCT date FROM price_history WHERE source = 'cardmarket'"
         " AND date < ? ORDER BY date", (primeiro,))]
-    inv = inventario(con)
+    inv = _partes(con)
     agora = _valor_de(con, inv, None)
     atras = []
     for d in dias:
@@ -190,7 +282,7 @@ def variacao_mes(con: sqlite3.Connection, hoje: str | None = None) -> dict | Non
     partida valia 0.
     """
     hoje = _hoje(hoje)
-    inv = inventario(con)
+    inv = _partes(con)
     agora = _valor_de(con, inv, None)
     if not agora["copias"]:
         return None
@@ -210,6 +302,50 @@ def variacao_mes(con: sqlite3.Connection, hoje: str | None = None) -> dict | Non
     delta = round(agora["total_eur"] - ref["total_eur"], 2)
     pct = round(100 * delta / ref["total_eur"], 1) if ref["total_eur"] else None
     return {"delta": delta, "pct": pct, "desde": desde, "hoje": hoje}
+
+
+# a janela do gráfico e da variação a 30 dias do mosaico de uma coleção
+DIAS_DA_SERIE_COLECAO = 90
+
+
+def serie_colecao(con: sqlite3.Connection, slug: str,
+                  hoje: str | None = None) -> list[tuple[str, float, int]]:
+    """`[(dia, total_eur, sem_preco)]` de uma coleção nos últimos 90 dias e hoje,
+    com o `tenho` de HOJE a preços de cada dia (o que ele tinha em cada dia não
+    se guarda; é o gráfico do valor do que tem agora).
+
+    Há um ponto por cada dia com dados de preço das cartas que ele tem: o
+    `n_preco_vigiado` e o `price_history` para as inglesas, o `n_preco_pt` para
+    as portuguesas (um preço inglês não cria um ponto numa carta `pt`). O preço
+    de cada dia é o de `_preco_colecao`; o ponto de `hoje` é o ao vivo. Um dia
+    em que NENHUMA cópia tem preço sai: um 0 € seria uma queda que não houve. Sem
+    cópias, a lista é vazia."""
+    hoje = _hoje(hoje)
+    desde = (date.fromisoformat(hoje)
+             - timedelta(days=DIAS_DA_SERIE_COLECAO)).isoformat()
+    cartas = _cartas_das_colecoes(con, slug)
+    dias: set[str] = set()
+    for sid, acab, lingua, _ in cartas:
+        if lingua == "pt":
+            consultas = (("SELECT dia FROM n_preco_pt WHERE scryfall_id = ?"
+                          " AND acabamento = ?", (sid, acab)),)
+        else:
+            consultas = (
+                ("SELECT dia FROM n_preco_vigiado WHERE scryfall_id = ?"
+                 " AND acabamento = ?", (sid, acab)),
+                ("SELECT date FROM price_history WHERE scryfall_id = ? AND"
+                 " finish = ? AND source = 'cardmarket'", (sid, acab)))
+        for sql, args in consultas:
+            dias.update(r[0] for r in con.execute(sql, args)
+                        if desde <= r[0] < hoje)
+    pontos = []
+    for d in sorted(dias) + [hoje]:
+        dia = None if d == hoje else d
+        total, copias, sem = _somar(
+            cartas, lambda sid, acab, ling: _preco_colecao(con, sid, acab, ling, dia))
+        if copias > sem:
+            pontos.append((d, round(total, 2), sem))
+    return pontos
 
 
 # ---------------------------------------------------------------------------

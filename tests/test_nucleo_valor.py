@@ -72,6 +72,12 @@ def posse_directa(con, ambito, sid, acab, qtd):
     con.commit()
 
 
+def tres(v):
+    """Os três números de sempre de um `valor_em`/`gravar_valor_do_dia`, sem as
+    partes (`decks_eur`, `a_mais_eur`, `colecoes_eur`) que a Tarefa 4 acrescentou."""
+    return {k: v[k] for k in ("total_eur", "copias", "sem_preco")}
+
+
 def esperar_valueerror(f, *args, **kw):
     try:
         f(*args, **kw)
@@ -125,7 +131,7 @@ def caso_preco_podado_vale_o_latest():
         assert valor.preco(con, "fow-a", "nonfoil") == 80.0
         posse_directa(con, MOD, "fow-a", "nonfoil", 2)
         r = valor.gravar_valor_do_dia(con, "2026-10-15")
-        assert r == {"total_eur": 160.0, "copias": 2, "sem_preco": 0}, r
+        assert tres(r) == {"total_eur": 160.0, "copias": 2, "sem_preco": 0}, r
         # (R18) o dia gravado e, no fim, o valor de hoje ao vivo
         assert valor.serie(con, hoje="2026-10-16") == [
             ("2026-10-15", 160.0, 0), ("2026-10-16", 160.0, 0)]
@@ -163,7 +169,7 @@ def caso_acabamento_sem_preco_conta_como_sem_preco():
         assert valor.preco(con, "fow-b", "nonfoil") is None
         assert valor.preco(con, "saga-a", "foil", "2026-10-01") is None
         v = valor.valor_em(con)
-        assert v == {"total_eur": 0.0, "copias": 4, "sem_preco": 4}, v
+        assert tres(v) == {"total_eur": 0.0, "copias": 4, "sem_preco": 4}, v
         valor.a_mais_ajustar(con, "fow-b", "nonfoil", 1)
         valor.a_mais_ajustar(con, "saga-a", "foil", 1)
         preco_em(con, "tm-a", "nonfoil", "2026-10-01", 2.0)
@@ -197,7 +203,7 @@ def caso_foil_separado():
         posse_directa(con, "x", "fow-b", "foil", 1)
         # as duas impressões somam cada uma ao seu preço
         v = valor.valor_em(con)
-        assert v == {"total_eur": 6.0, "copias": 2, "sem_preco": 0}, v
+        assert tres(v) == {"total_eur": 6.0, "copias": 2, "sem_preco": 0}, v
 
 
 def caso_sem_preco_fora_do_total():
@@ -211,7 +217,7 @@ def caso_sem_preco_fora_do_total():
         assert v["sem_preco"] == 1 and v["copias"] == 2, v
         # num dia em que ainda não havia preço de nenhuma, tudo é «sem preço»
         v0 = valor.valor_em(con, "2026-09-01")
-        assert v0 == {"total_eur": 0.0, "copias": 2, "sem_preco": 2}, v0
+        assert tres(v0) == {"total_eur": 0.0, "copias": 2, "sem_preco": 2}, v0
 
 
 def caso_cada_copia_uma_vez():
@@ -226,7 +232,7 @@ def caso_cada_copia_uma_vez():
         inv = valor.inventario(con)
         assert inv == [("saga-a", "nonfoil", 3)], inv
         v = valor.valor_em(con)
-        assert v == {"total_eur": 90.0, "copias": 3, "sem_preco": 0}, v
+        assert tres(v) == {"total_eur": 90.0, "copias": 3, "sem_preco": 0}, v
 
 
 def caso_inventario_soma_tudo():
@@ -270,7 +276,7 @@ def caso_serie_preenche_para_tras():
             ("2026-10-01", 20.0, 0), ("2026-10-02", 40.0, 0),
             ("2026-10-03", 60.0, 0)]
         r = valor.gravar_valor_do_dia(con, "2026-10-03")
-        assert r == {"total_eur": 60.0, "copias": 2, "sem_preco": 0}, r
+        assert tres(r) == {"total_eur": 60.0, "copias": 2, "sem_preco": 0}, r
         # um dia gravado vale o que foi gravado (o valor desse dia, por mais
         # que o preço de hoje mude depois), e não se recalcula
         preco_em(con, "fow-a", "nonfoil", "2026-10-04", 100.0)
@@ -346,7 +352,7 @@ def caso_gravar_valor_dia_vazio_nao_grava():
         semear(con)
         preco_em(con, "fow-a", "nonfoil", "2026-10-01", 10.0)
         r = valor.gravar_valor_do_dia(con, "2026-10-01")
-        assert r == {"total_eur": 0.0, "copias": 0, "sem_preco": 0}, r
+        assert tres(r) == {"total_eur": 0.0, "copias": 0, "sem_preco": 0}, r
         assert con.execute("SELECT count(*) FROM n_valor").fetchone()[0] == 0
         posse_directa(con, MOD, "fow-a", "nonfoil", 1)
         valor.gravar_valor_do_dia(con, "2026-10-02")
@@ -395,7 +401,7 @@ def caso_gravar_valor_substitui_o_dia():
         posse_directa(con, MOD, "fow-a", "nonfoil", 1)
         posse_directa(con, MOD, "weld-a", "nonfoil", 1)
         r1 = valor.gravar_valor_do_dia(con, "2026-10-01")
-        assert r1 == {"total_eur": 10.0, "copias": 2, "sem_preco": 1}, r1
+        assert tres(r1) == {"total_eur": 10.0, "copias": 2, "sem_preco": 1}, r1
         posse_directa(con, OATH, "fow-a", "nonfoil", 1)
         valor.gravar_valor_do_dia(con, "2026-10-01")
         linhas = [tuple(r) for r in con.execute(
@@ -594,6 +600,193 @@ def caso_saida_voltar_ao_deck():
         posse.escolher_edicao(con, REP, "Force of Will", outra, "nonfoil")
         esperar_valueerror(valor.saida_resolver, con, sid, "devolver")
     print("saída: voltar ao deck")
+
+
+# ---------------------------------------------------------------------------
+# Tarefa 4: o valor com as coleções
+# ---------------------------------------------------------------------------
+from test_nucleo_colecoes import _sid, semear as semear_colecoes  # noqa: E402
+from mtgvault.nucleo import colecoes  # noqa: E402
+
+HOJE = "2026-10-30"
+
+
+def ha(n):
+    from datetime import date, timedelta
+    return (date.fromisoformat(HOJE) - timedelta(days=n)).isoformat()
+
+
+_rid = [0]
+
+
+def com_colecoes(con):
+    """O catálogo dos decks (valor) mais o das três coleções fechadas, e as
+    coleções criadas."""
+    semear(con)
+    semear_colecoes(con)
+    colecoes.garantir_colecoes(con)
+
+
+def marcar(con, slug, nome, qtd):
+    """Põe `qtd` cópias na carta `nome` da coleção `slug`."""
+    _rid[0] += 1
+    carta = con.execute("SELECT id FROM n_colecao_carta WHERE colecao = ? AND"
+                        " nome = ?", (slug, nome)).fetchone()["id"]
+    return colecoes.ajustar(con, carta, qtd, request_id=f"v4-{_rid[0]}")
+
+
+def pt_em(con, sid, acab, dia, eur):
+    con.execute("INSERT OR REPLACE INTO n_preco_pt (scryfall_id, acabamento, dia,"
+                " preco_eur, ofertas) VALUES (?,?,?,?,1)", (sid, acab, dia, eur))
+    con.commit()
+
+
+def vigiado_em(con, sid, acab, dia, eur):
+    con.execute("INSERT OR REPLACE INTO n_preco_vigiado (scryfall_id, acabamento,"
+                " dia, preco_eur) VALUES (?,?,?,?)", (sid, acab, dia, eur))
+    con.commit()
+
+
+def caso_valor_com_colecoes():
+    """Decks 10 €, coleção 2 duals a 300 € → total 610, colecoes_eur 600; as
+    três partes somam o total e as cópias da coleção contam em `copias`."""
+    with sessao() as con:
+        com_colecoes(con)
+        preco_em(con, "tm-a", "nonfoil", HOJE, 10.0)
+        posse_directa(con, MOD, "tm-a", "nonfoil", 1)
+        tundra = _sid("Tundra", "3ed")
+        preco_em(con, tundra, "nonfoil", HOJE, 300.0)
+        assert marcar(con, "duals_revised", "Tundra", 2) == 2
+        v = valor.valor_em(con)
+        assert v["total_eur"] == 610.0, v
+        assert v["colecoes_eur"] == 600.0, v
+        assert v["decks_eur"] == 10.0 and v["a_mais_eur"] == 0.0, v
+        assert v["copias"] == 3 and v["sem_preco"] == 0, v
+        assert valor.valor_colecoes(con) == {
+            "total_eur": 600.0, "copias": 2, "sem_preco": 0}
+        # o «tenho a mais» e a saída são a parte a_mais
+        con.execute("INSERT INTO n_a_mais (scryfall_id, acabamento, qtd, nota)"
+                    " VALUES ('tm-a','nonfoil',2,'')")
+        con.commit()
+        v = valor.valor_em(con)
+        assert (v["decks_eur"], v["a_mais_eur"], v["colecoes_eur"]) == (10.0, 20.0, 600.0), v
+        assert v["total_eur"] == 630.0 and v["copias"] == 5, v
+
+
+def caso_valor_sem_colecoes_igual_a_antes():
+    """Sem nada nas coleções, o total, as cópias e o sem_preco são os de sempre."""
+    with sessao() as con:
+        com_colecoes(con)
+        preco_em(con, "tm-a", "nonfoil", HOJE, 10.0)
+        posse_directa(con, MOD, "tm-a", "nonfoil", 2)
+        posse_directa(con, OSW, "weld-a", "nonfoil", 1)         # sem preço
+        v = valor.valor_em(con)
+        assert (v["total_eur"], v["copias"], v["sem_preco"]) == (20.0, 3, 1), v
+        assert v["colecoes_eur"] == 0.0 and v["decks_eur"] == 20.0, v
+        assert valor.valor_colecoes(con) == {
+            "total_eur": 0.0, "copias": 0, "sem_preco": 0}
+
+
+def caso_valor_colecao_pt_sem_ingles():
+    """Um shock PT sem ofertas PT, com trend inglês: conta em `sem_preco` e vale
+    0 € no total (nunca o preço inglês). Com um preço PT, conta; e a um dia
+    anterior ao primeiro avistamento PT volta a ser «sem preço»."""
+    with sessao() as con:
+        com_colecoes(con)
+        vents = _sid("Steam Vents", "gpt")
+        preco_em(con, vents, "nonfoil", HOJE, 50.0)             # o trend `en`
+        marcar(con, "shocks_pt", "Steam Vents", 1)
+        v = valor.valor_em(con)
+        assert v["colecoes_eur"] == 0.0 and v["total_eur"] == 0.0, v
+        assert v["copias"] == 1 and v["sem_preco"] == 1, v
+        pt_em(con, vents, "nonfoil", ha(5), 80.0)
+        v = valor.valor_em(con)
+        assert (v["colecoes_eur"], v["total_eur"], v["sem_preco"]) == (80.0, 80.0, 0), v
+        # o preço PT de um dia: o mais recente até esse dia; antes, nenhum
+        assert valor.valor_colecoes(con, ha(2)) == {
+            "total_eur": 80.0, "copias": 1, "sem_preco": 0}
+        assert valor.valor_colecoes(con, ha(10)) == {
+            "total_eur": 0.0, "copias": 1, "sem_preco": 1}
+
+
+def caso_gravar_valor_colecoes_eur():
+    with sessao() as con:
+        com_colecoes(con)
+        preco_em(con, "tm-a", "nonfoil", ha(1), 10.0)
+        posse_directa(con, MOD, "tm-a", "nonfoil", 1)
+        tundra = _sid("Tundra", "3ed")
+        preco_em(con, tundra, "nonfoil", ha(1), 300.0)
+        marcar(con, "duals_revised", "Tundra", 2)
+        r = valor.gravar_valor_do_dia(con, ha(1))
+        assert r["total_eur"] == 610.0 and r["colecoes_eur"] == 600.0, r
+        linha = con.execute("SELECT total_eur, copias, sem_preco, colecoes_eur"
+                            " FROM n_valor WHERE dia = ?", (ha(1),)).fetchone()
+        assert tuple(linha) == (610.0, 3, 0, 600.0), tuple(linha)
+
+
+def caso_gravar_valor_so_colecoes():
+    """Só coleções (sem decks) já tem cópias: grava; sem nada, não grava."""
+    with sessao() as con:
+        com_colecoes(con)
+        assert valor.gravar_valor_do_dia(con, ha(2))["copias"] == 0
+        assert con.execute("SELECT COUNT(*) FROM n_valor").fetchone()[0] == 0
+        tundra = _sid("Tundra", "3ed")
+        preco_em(con, tundra, "nonfoil", ha(1), 300.0)
+        marcar(con, "duals_revised", "Tundra", 1)
+        valor.gravar_valor_do_dia(con, ha(1))
+        assert tuple(con.execute("SELECT total_eur, copias, colecoes_eur FROM"
+                                 " n_valor").fetchone()) == (300.0, 1, 300.0)
+
+
+def caso_serie_inclui_colecoes_atras():
+    """Os dias de trás da série somam as coleções aos preços desse dia."""
+    with sessao() as con:
+        com_colecoes(con)
+        tundra = _sid("Tundra", "3ed")
+        preco_em(con, tundra, "nonfoil", ha(3), 100.0)
+        preco_em(con, tundra, "nonfoil", ha(1), 120.0)
+        preco_em(con, "tm-a", "nonfoil", ha(3), 10.0)
+        posse_directa(con, MOD, "tm-a", "nonfoil", 1)
+        marcar(con, "duals_revised", "Tundra", 2)
+        assert valor.serie(con, HOJE) == [
+            (ha(3), 210.0, 0), (ha(1), 250.0, 0), (HOJE, 250.0, 0)]
+
+
+def caso_serie_colecao():
+    """2 duals a 100 € há 30 dias e a 120 € hoje → primeiro ponto 200, último
+    240; os dias sem preço nenhum não entram e o PT só olha para o `n_preco_pt`."""
+    with sessao() as con:
+        com_colecoes(con)
+        tundra = _sid("Tundra", "3ed")
+        marcar(con, "duals_revised", "Tundra", 2)
+        vigiado_em(con, tundra, "nonfoil", ha(30), 100.0)
+        preco_em(con, tundra, "nonfoil", HOJE, 120.0)
+        s = valor.serie_colecao(con, "duals_revised", HOJE)
+        assert s == [(ha(30), 200.0, 0), (HOJE, 240.0, 0)], s
+        # um dia a meio, de uma carta que ele não tem: nada muda
+        outra = _sid("Bayou", "3ed")
+        vigiado_em(con, outra, "nonfoil", ha(10), 50.0)
+        s = valor.serie_colecao(con, "duals_revised", HOJE)
+        assert s == [(ha(30), 200.0, 0), (HOJE, 240.0, 0)], s
+        # mais de 90 dias fica de fora
+        vigiado_em(con, tundra, "nonfoil", ha(120), 90.0)
+        assert valor.serie_colecao(con, "duals_revised", HOJE)[0][0] == ha(30)
+        # sem cópias nenhumas, sem pontos
+        assert valor.serie_colecao(con, "expeditions", HOJE) == []
+
+
+def caso_serie_colecao_pt_e_sem_preco():
+    with sessao() as con:
+        com_colecoes(con)
+        vents = _sid("Steam Vents", "gpt")
+        marcar(con, "shocks_pt", "Steam Vents", 3)
+        # só trend inglês: nenhuma cópia tem preço, a série fica vazia
+        preco_em(con, vents, "nonfoil", ha(5), 50.0)
+        assert valor.serie_colecao(con, "shocks_pt", HOJE) == []
+        pt_em(con, vents, "nonfoil", ha(20), 60.0)
+        pt_em(con, vents, "nonfoil", ha(2), 90.0)
+        s = valor.serie_colecao(con, "shocks_pt", HOJE)
+        assert s == [(ha(20), 180.0, 0), (ha(2), 270.0, 0), (HOJE, 270.0, 0)], s
 
 
 if __name__ == "__main__":
