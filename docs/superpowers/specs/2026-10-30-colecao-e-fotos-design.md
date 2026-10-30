@@ -37,16 +37,16 @@ Duas coisas novas:
 
 **Menu:** Painel · Decks · **Coleção** · Vender.
 
-**`colecao.html`** (uma página só, como o `deck.html`; sem `#` mostra os botões):
+**`colecoes.html`** (uma página só, como o `deck.html`; sem `#` mostra os botões). O nome não é `colecao.html` porque esse ficheiro é a Galeria do site antigo, ainda ligada à publicação dele:
 
 - Um botão grande por coleção, com a arte de uma carta: nome, «tenho X de Y»
   (aberta: «N cartas»), valor de hoje e variação a 30 e a 90 dias.
-- **Dentro de uma coleção** (`colecao.html#<slug>`): valor, gráfico
+- **Dentro de uma coleção** (`colecoes.html#<slug>`): valor, gráfico
   (1 mês · 3 meses · tudo), progresso e quanto falta (fechadas); as cartas em
   imagem, a cores as que tem e a cinzento as que faltam, cada uma com o nome,
   «tenho / meta», preço, variação a 30 e a 90 dias, a etiqueta **«joga»** (onde:
   «deck Oswald», «Legacy»…) e **«quero vender»** se a marcou.
-- **«A subir»** (`colecao.html#subir`): a Reserved List inteira e todas as
+- **«A subir»** (`colecoes.html#subir`): a Reserved List inteira e todas as
   edições das famílias das coleções (duals, shocks, fetches, Expeditions), só
   acima de 20 €; ordenada pela variação a 30 dias, com a de 90 ao lado; cada
   linha diz se ele a tem e se joga. São números, não recomendações.
@@ -71,7 +71,8 @@ Scryfall.
 - **Por validar conta.** Uma cópia marcada no site conta para «tenho», faltas e
   valor, e aparece como por validar.
 - **−1 tira primeiro uma por validar.** Só quando não há nenhuma é que sai uma
-  validada; a ligação à foto fica no histórico (`n_posse_log`).
+  validada; a validação fica marcada como desfeita (`n_validacao.desfeita_em`)
+  e a ligação à foto não se perde.
 - **Uma foto que não bate certo** (outra edição, menos cópias, foil em vez de
   normal) não corrige nada sozinha: o Claude mostra a diferença e pergunta.
 - **Nada se grava sem o «sim» dele** na conversa.
@@ -126,19 +127,23 @@ Tabelas novas e mudanças no `data/vault.db`, por migração (`schema.sql` +
 `db._migrate()`):
 
 - `n_colecao` — slug, nome, tipo (`fechada`/`aberta`), arte, ordem.
-- `n_colecao_carta` — coleção, nome, scryfall_id, acabamento, língua, meta
-  (vazia na aberta), vender (0/1).
-- `n_posse` ganha a **língua** (`en` por omissão) e passa a ter a chave
-  (âmbito, scryfall_id, acabamento, língua). O âmbito de uma coleção é o slug
-  dela; as contas de posse e de valor dos decks não mudam.
+- `n_colecao_carta` — id, coleção, nome, scryfall_id, acabamento, língua,
+  meta (vazia na aberta), **tenho** (a posse da coleção), vender (0/1). Cada
+  linha já é uma edição, um acabamento e uma língua, por isso a posse vive
+  aqui e a `n_posse` dos decks não muda.
+- `n_colecao_log` — request_id, carta, delta, quando (o +1/−1 é idempotente,
+  como nos decks).
 - `n_foto` — id, caminho do original, dia, sessão e linha do registo de onde
   veio, para que deck ou coleção era.
 - `n_recorte` — foto, número, caminho em `assets/cartas/`.
-- `n_validacao` — recorte, âmbito, scryfall_id, acabamento, língua, quantidade,
-  quando. As validadas de uma carta = soma daqui (nunca mais do que a posse).
+- `n_validacao` — recorte, âmbito (slug do deck, `rotativos` ou slug da
+  coleção), scryfall_id, acabamento, língua, quantidade, quando, desfeita_em.
+  As validadas de uma carta = soma das não desfeitas (nunca mais do que a
+  posse); um −1 que desça abaixo delas desfaz a mais recente e a linha fica.
 - `n_preco_pt` — scryfall_id, acabamento, dia, preço da oferta PT mais barata
   aceite, número de ofertas PT.
-- `n_preco_vigiado` — dia, scryfall_id, acabamento, preço (€). Nunca podada.
+- `n_preco_vigiado` — dia, scryfall_id, acabamento, preço (€). Só se escreve
+  quando o preço muda (como o `price_history`); nunca podada.
 - `n_jogada` — formato, mês (`AAAA-MM`), nome da carta, em quantas listas.
   Nunca podada.
 - `n_valor` ganha `colecoes_eur`.
@@ -159,7 +164,7 @@ a tarefa vermelha e a página diz-o.
   que não bate certo; o recorte numa imagem sintética (cartas desenhadas num
   fundo); «joga» e «a subir»; as páginas (Coleção, Vender com «Das coleções»,
   Painel com as três partes, o recorte no lugar da imagem).
-- `colecao.html` e `assets/cartas/` entram no `publicar.publicaveis()`, no
+- `colecoes.html` e `assets/cartas/` entram no `publicar.publicaveis()`, no
   `git add` do `daily.yml` e na tarefa `mtgvault-daily`. Menu com 4 entradas
   no `site_shell` e nos passos do `e2e-sites`.
 - Antes de dar por feito: ver no browser (computador e telemóvel) a Coleção,
