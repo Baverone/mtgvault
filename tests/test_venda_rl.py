@@ -401,18 +401,30 @@ def caso_a_poda_diaria_nao_pode_matar_a_regra():
     # A mesma cotação de há 95 dias — dentro do que a janela precisa (90 + 10 de
     # tolerância + 7 de folga = 107) e fora dos 30 da poda geral — para uma RL e
     # para uma carta normal.
-    for nm in ("Gilded Drake", "Sol Ring"):
-        cota(con, nm, dia(95), 10.0)
-        cota(con, nm, dia(5), 11.0)
+    cota(con, "Gilded Drake", dia(95), 10.0)
+    cota(con, "Gilded Drake", dia(5), 11.0)
+    cota(con, "Sol Ring", dia(95), 10.0)
+    # (2026-10-30) A poda passou a guardar a ÂNCORA — a linha mais recente
+    # antes do corte, o preço em vigor quando a janela abre (ver
+    # `test_poda_ancora`). Para o caso continuar a provar que a carta normal é
+    # podada aos 30 dias, o Sol Ring tem uma cotação a mais (D-60): essa é a
+    # âncora, e a de D-95 vai-se. Até 30/10 a asserção era «só a RL fica».
+    cota(con, "Sol Ring", dia(60), 10.5)
+    cota(con, "Sol Ring", dia(5), 11.0)
     detalhe = daily._prune_prices(con, 30)
     ficaram = {r["nm"]: r["n"] for r in con.execute(
         """SELECT c.name nm, COUNT(*) n FROM price_history h
              JOIN catalog.cards c ON c.scryfall_id = h.scryfall_id
             WHERE h.date < date('now', '-30 days') GROUP BY c.name""")}
-    assert ficaram == {"Gilded Drake": 1}, ficaram
+    assert ficaram == {"Gilded Drake": 1, "Sol Ring": 1}, ficaram
     assert "Reserved List guarda-se 107d" in detalhe, detalhe
-    # E o resto continua a ser podado aos 30 dias, como sempre.
-    assert con.execute("SELECT COUNT(*) n FROM price_history").fetchone()["n"] == 3
+    # E o resto continua a ser podado aos 30 dias: a de D-95 do Sol Ring foi-se.
+    assert con.execute(
+        """SELECT COUNT(*) n FROM price_history h
+             JOIN catalog.cards c ON c.scryfall_id = h.scryfall_id
+            WHERE c.name = 'Sol Ring' AND h.date = ?""", (dia(95),)
+    ).fetchone()["n"] == 0
+    assert con.execute("SELECT COUNT(*) n FROM price_history").fetchone()["n"] == 4
     print("a poda diária guarda a RL 107 dias e o resto 30 — sem isto a regra "
           "nunca teria um preço de há 3 meses")
 
@@ -421,8 +433,11 @@ def caso_a_poda_diaria_nao_pode_matar_a_regra():
     cfg(rl_janela_dias=20)
     con2 = base()
     cota(con2, "Gilded Drake", dia(95), 10.0)
+    # (2026-10-30) a de D-50 é a âncora da janela e fica; a de D-95 vai-se
+    cota(con2, "Gilded Drake", dia(50), 10.5)
     assert "guarda-se 37d" in daily._prune_prices(con2, 30), "a folga acompanha"
-    assert con2.execute("SELECT COUNT(*) n FROM price_history").fetchone()["n"] == 0
+    assert [r["date"] for r in con2.execute(
+        "SELECT date FROM price_history")] == [dia(50)]
     print("e a janela do config é que manda quanto tempo se guarda")
 
 
