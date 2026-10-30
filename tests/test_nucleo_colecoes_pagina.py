@@ -17,7 +17,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import nucleo_colecoes  # noqa: E402
 import test_nucleo_colecoes as base  # noqa: E402
+from _nucleo_interruptor import interruptor  # noqa: E402
 from mtgvault import db, paginas  # noqa: E402
+from mtgvault import site_shell as shell  # noqa: E402
 from mtgvault.nucleo import colecoes, visual  # noqa: E402
 
 HOJE = date.today().isoformat()
@@ -361,6 +363,24 @@ def caso_casca():
         # sem edição: nada do modo de edição
         q = nucleo_colecoes.html_page(con)
         assert "data-editavel" not in q
+
+
+def caso_menu_marca_a_colecao_como_atual():
+    """(Tarefa 12, R1) No menu do núcleo, a entrada de `colecoes.html` é a
+    atual (`cur`, `aria-current`) e a única; o rótulo é o `<h1>` da página, e
+    fica entre Decks e Vender."""
+    with interruptor(True), pronta() as con:
+        p = nucleo_colecoes.html_page(con)
+        i = p.index('<nav class="sidenav">')
+        nav = p[i:p.index("</nav>", i)]
+        atuais = re.findall(r'<a class="([^"]*\bcur\b[^"]*)" href="([^"]+)"', nav)
+        assert [h for _c, h in atuais] == ["colecoes.html"], atuais
+        assert 'href="colecoes.html" aria-current="page"' in nav, nav
+        assert nav.count('class="sli cur"') == 1
+        assert [h for h in re.findall(r'class="sli[^"]*" href="([^"]+)"', nav)] == [
+            "index.html", "deck.html", "colecoes.html", "vender.html"]
+        assert f'<h1 class="pgt">{shell.titulo_de("colecoes.html")}</h1>' in p
+        assert shell.titulo_de("colecoes.html") == nucleo_colecoes.TITULO
 
 
 def caso_so_leitura():

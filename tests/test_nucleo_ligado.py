@@ -1,8 +1,8 @@
 """O interruptor `nucleo.ligado` liga o núcleo novo ao site, à publicação e à
 recolha diária (2026-10-28).
 
-Com ele LIGADO o menu é um só, «MTG», com Painel · Decks · Vender; o `publicar`
-gera e publica só essas três páginas; e o `daily` corre só a recolha que o
+Com ele LIGADO o menu é um só, «MTG», com Painel · Decks · Coleção · Vender; o
+`publicar` gera e publica só essas quatro páginas; e o `daily` corre só a recolha que o
 núcleo usa (catálogo, MTGO de Pauper e Premodern, preços, podas) e os passos
 do núcleo. Com ele DESLIGADO tudo fica exatamente como estava — o código antigo
 não se apagou.
@@ -28,16 +28,22 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import nucleo_decks  # noqa: E402
 import nucleo_painel  # noqa: E402
+import nucleo_colecoes  # noqa: E402
 import nucleo_vender  # noqa: E402
 from _nucleo_interruptor import interruptor  # noqa: E402
 from mtgvault import db, loadout, paginas, publicar  # noqa: E402
 from mtgvault import site_shell as shell  # noqa: E402
 from mtgvault.nucleo import modelo, valor, vigia  # noqa: E402
 
-TRES = [("nucleo_painel", "index.html", False),
-        ("nucleo_decks", "deck.html", False),
-        ("nucleo_vender", "vender.html", False)]
+QUATRO = [("nucleo_painel", "index.html", False),
+          ("nucleo_decks", "deck.html", False),
+          ("nucleo_colecoes", "colecoes.html", False),
+          ("nucleo_vender", "vender.html", False)]
+MENU = ["index.html", "deck.html", "colecoes.html", "vender.html"]
+# A pasta dos recortes das fotos entra na publicação (não é gerada pelo publicar).
+RECORTES = "assets/cartas"
 TITULOS = {"index.html": nucleo_painel.TITULO, "deck.html": nucleo_decks.TITULO,
+           "colecoes.html": nucleo_colecoes.TITULO,
            "vender.html": nucleo_vender.TITULO}
 
 ESPERADOS = ["catalogo", "harvest-mtgo", "precos-scryfall", "precos-cardmarket",
@@ -45,7 +51,7 @@ ESPERADOS = ["catalogo", "harvest-mtgo", "precos-scryfall", "precos-cardmarket",
              "nucleo-vigias", "nucleo-valor", "nucleo-paginas", "checkpoint"]
 
 
-def caso_menu_tres_entradas():
+def caso_menu_quatro_entradas():
     with interruptor(True):
         assert modelo.ligado() is True
         secs = shell.seccoes()
@@ -53,15 +59,15 @@ def caso_menu_tres_entradas():
         itens = secs[0][1]
         assert [(f, a, rot) for f, a, _i, rot, _n in itens] == [
             ("index.html", "", "Painel"), ("deck.html", "", "Decks"),
-            ("vender.html", "", "Vender")], itens
+            ("colecoes.html", "", "Coleção"), ("vender.html", "", "Vender")], itens
         for _f, _a, ic, _rot, nota in itens:
             assert ic in shell._SVG, ic                 # ícones que já existem
             assert nota, "cada entrada leva uma nota curta"
         # O rótulo do menu é o título da página (a casca exige h1 == rótulo).
         for f, tit in TITULOS.items():
             assert shell.titulo_de(f) == tit, (f, shell.titulo_de(f), tit)
-        assert shell.PAGINAS_DO_MENU == ["index.html", "deck.html", "vender.html"]
-        assert paginas.MENU == ["index.html", "deck.html", "vender.html"]
+        assert shell.PAGINAS_DO_MENU == MENU
+        assert paginas.MENU == MENU
         nav = shell.barra("deck.html")
         for f in TITULOS:
             assert f'href="{f}"' in nav, f
@@ -69,7 +75,7 @@ def caso_menu_tres_entradas():
                       "arrumacao.html", "faltas.html"):
             assert f'href="{velha}' not in nav, velha
         assert nav.count('class="sli cur"') == 1, nav
-    print("ligado: o menu é Painel · Decks · Vender, numa secção só")
+    print("ligado: o menu é Painel · Decks · Coleção · Vender, numa secção só")
 
 
 def caso_menu_antigo_com_interruptor_desligado():
@@ -175,7 +181,7 @@ def caso_daily_passos_ligado():
     assert chamadas["harvest"]["formats"] == {"pauper", "premodern"}, chamadas
     assert chamadas["vigiar"] == {"levantar": True}, chamadas
     assert chamadas["valor"] == __import__("datetime").date.today().isoformat()
-    # As três páginas vão para onde as antigas iam: a raiz do repositório.
+    # As quatro páginas vão para onde as antigas iam: a raiz do repositório.
     assert chamadas["gerar"] == daily.ROOT, chamadas
     # E o núcleo ficou com os 14 decks na base.
     with db.session() as con:
@@ -207,12 +213,12 @@ def caso_vigia_falhada_fica_vermelha():
 # --------------------------------------------------------------------------
 # A publicação
 # --------------------------------------------------------------------------
-def caso_publicar_tres_paginas():
+def caso_publicar_quatro_paginas():
     with interruptor(True):
-        assert publicar.PAGINAS == TRES, publicar.PAGINAS
-        assert publicar.paginas() == TRES
-        assert publicar.PUBLICAVEIS == ["index.html", "deck.html", "vender.html"]
-        # Nenhuma das três precisa do relatório do loadout antigo: não se calcula.
+        assert publicar.PAGINAS == QUATRO, publicar.PAGINAS
+        assert publicar.paginas() == QUATRO
+        assert publicar.PUBLICAVEIS == [*MENU, RECORTES]
+        # Nenhuma das quatro precisa do relatório do loadout antigo: não se calcula.
         real_report = loadout.report
 
         def proibido(*_a, **_k):
@@ -224,7 +230,7 @@ def caso_publicar_tres_paginas():
                 with db.session(tmp / "v.db", tmp / "c.db") as con:
                     modelo.garantir_decks(con)
                     a, b = tmp / "a", tmp / "b"
-                    assert publicar.gerar(con, a) == [f for _m, f, _r in TRES]
+                    assert publicar.gerar(con, a) == [f for _m, f, _r in QUATRO]
                     publicar.gerar(con, b)
                     assert sorted(p.name for p in a.iterdir()) == sorted(TITULOS)
                     d = publicar.comparar(a, b)
@@ -242,14 +248,13 @@ def caso_publicar_tres_paginas():
                     (raiz / "data" / "paginas" / "deckboxes" / "x.json").write_text(
                         "{}", encoding="utf-8")
                     r1 = publicar.publicar(con, raiz)
-                    assert r1["escreveu"] and r1["paginas"] == 3, r1
-                    assert r1["publicaveis"] == ["index.html", "deck.html",
-                                                 "vender.html"], r1
+                    assert r1["escreveu"] and r1["paginas"] == 4, r1
+                    assert r1["publicaveis"] == [*MENU, RECORTES], r1
                     r2 = publicar.publicar(con, raiz)
                     assert not r2["escreveu"] and not r2["a_mais"], r2
         finally:
             loadout.report = real_report
-    print("ligado: o publicar gera e publica só as três páginas")
+    print("ligado: o publicar gera e publica só as quatro páginas")
 
 
 _GUIAO = r'''
@@ -262,7 +267,7 @@ with publicar.abrir(sys.argv[2], sys.argv[3]) as con:
 '''
 
 
-def caso_tres_paginas_iguais_em_dois_processos_e_so_leitura():
+def caso_quatro_paginas_iguais_em_dois_processos_e_so_leitura():
     """A tarefa de 30 em 30 min decide «há algo para commitar?» pela diferença
     entre duas gerações — e tem de ser igual em DOIS PROCESSOS (o hash das
     strings muda a cada arranque, e um `set` pelo meio muda de ordem). Gera-se
@@ -283,10 +288,10 @@ def caso_tres_paginas_iguais_em_dois_processos_e_so_leitura():
                                capture_output=True, text=True, encoding="utf-8",
                                errors="replace", timeout=600)
             assert r.returncode == 0, r.stdout + r.stderr
-            assert r.stdout.strip() == "index.html,deck.html,vender.html", r.stdout
+            assert r.stdout.strip() == ",".join(MENU), r.stdout
         d = publicar.comparar(tmp / "s0", tmp / "s1")
         assert not (d["mudaram"] or d["novos"] or d["a_mais"]), d
-    print("ligado: as três páginas saem iguais em dois processos, só a ler")
+    print("ligado: as quatro páginas saem iguais em dois processos, só a ler")
 
 
 def caso_publicar_com_base_por_migrar():

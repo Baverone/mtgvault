@@ -48,7 +48,13 @@ _nucleo_interruptor.fixar(False)
 
 from mtgvault import db, publicar  # noqa: E402
 
-NUCLEO = ["index.html", "deck.html", "vender.html"]
+# As páginas do site do núcleo, pela ordem do menu (Painel · Decks · Coleção ·
+# Vender), e a pasta dos recortes das fotos — não é gerada pelo `publicar`, é
+# escrita pela CLI, mas TEM de ir no `git add` ou a página publicada mostra
+# imagens partidas (Tarefa 12).
+PAGINAS_DO_NUCLEO = ["index.html", "deck.html", "colecoes.html", "vender.html"]
+RECORTES = "assets/cartas"
+NUCLEO = [*PAGINAS_DO_NUCLEO, RECORTES]
 
 # ESTE FICHEIRO ABRE A COLECÇÃO A SÉRIO, E DIZ-LHE O NOME (2026-10-06).
 # É o único da bateria que o faz, e tem de o fazer: o que ele mede é que duas
@@ -227,9 +233,11 @@ def caso_a_lista_e_a_mesma_do_daily():
             {"so no publicar": sorted(do_publicar - do_yml),
              "so no yml": sorted(do_yml - do_publicar)})
         assert publicar.PAGINAS == publicar.PAGINAS_NUCLEO
-        # com o núcleo, publica-se as três páginas e mais nada
+        # com o núcleo, publicam-se as quatro páginas e a pasta dos recortes
+        assert [f for _m, f, _r in publicar.PAGINAS] == PAGINAS_DO_NUCLEO
         assert publicar.PUBLICAVEIS == NUCLEO, publicar.PUBLICAVEIS
-        assert linha.split()[2:] == NUCLEO, ("o git add leva mais do que as três", linha)
+        assert linha.split()[2:] == NUCLEO, ("o git add não é a lista do publicar", linha)
+        assert RECORTES in publicar.publicaveis()
     # e, com o interruptor desligado, os publicáveis levam também o que não é
     # HTML mas o site antigo precisa
     assert publicar.PAGINAS == publicar.PAGINAS_ANTIGAS

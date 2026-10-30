@@ -302,16 +302,18 @@ SECCAO_VENDA = "Arrumar e vender"
 SECCAO_SEM_VENDA = "Arrumar e comprar"
 
 # O MENU DO NÚCLEO NOVO (2026-10-28): *"Menu com três entradas: Painel · Decks
-# · Vender"* (spec do site do núcleo). Vale quando `nucleo.ligado` está a `true`
+# · Vender"* (spec do site do núcleo); a 2026-10-30 ganhou a Coleção, entre os
+# Decks e o Vender (spec «Coleção e fotos»: Painel · Decks · Coleção · Vender). Vale quando `nucleo.ligado` está a `true`
 # e substitui o `SECCOES` inteiro — as páginas antigas saem do menu e da
 # publicação, e o código delas fica (desligar o interruptor devolve tudo). Os
 # rótulos são o `TITULO` de cada página (`nucleo_painel`/`nucleo_decks`/
-# `nucleo_vender`), pela regra de cima: o `<h1>` diz o mesmo que o menu.
+# `nucleo_colecoes`/`nucleo_vender`), pela regra de cima: o `<h1>` diz o mesmo que o menu.
 SECCAO_NUCLEO = "MTG"
 SECCOES_NUCLEO: list[tuple[str, list[tuple[str, str, str, str, str]]]] = [
     (SECCAO_NUCLEO, [
         ("index.html", "", "inicio", "Painel", "valor e decks de hoje"),
         ("deck.html", "", "todas", "Decks", "os 14, carta a carta"),
+        ("colecoes.html", "", "colecao", "Coleção", "o que guardas, com preço"),
         ("vender.html", "", "vender", "Vender", "o que sobra, com preço"),
     ]),
 ]

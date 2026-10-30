@@ -92,14 +92,20 @@ PAGINAS_ANTIGAS: list[tuple[str, str, bool]] = [
 ]
 
 # O SITE DO NÚCLEO (2026-10-28): com `nucleo.ligado`, publica-se isto e mais
-# nada — Painel, Decks e Vender. Nenhuma das três lê o `loadout.report`, e por
+# nada — Painel, Decks, Coleção e Vender (a Coleção entrou a 2026-10-30). Nenhuma das quatro lê o `loadout.report`, e por
 # isso o `gerar` deixa de o calcular. Os geradores antigos ficam no disco e
 # importáveis; só deixam de ser chamados.
 PAGINAS_NUCLEO: list[tuple[str, str, bool]] = [
     ("nucleo_painel", "index.html", False),
     ("nucleo_decks", "deck.html", False),
+    ("nucleo_colecoes", "colecoes.html", False),
     ("nucleo_vender", "vender.html", False),
 ]
+
+# Os RECORTES das fotos das cartas dele (2026-10-30): `assets/cartas/<foto>-<n>.jpg`,
+# escritos pela CLI do núcleo (não pelo `publicar`) e mostrados pela Coleção. Têm
+# de ir no Git junto com a página, ou o site publicado mostra imagens partidas.
+PASTA_RECORTES = "assets/cartas"
 
 # O que a tarefa pode commitar. Mais nada: o código é dele (e do Claude, noutro
 # ramo), e um `git add -A` de 30 em 30 minutos acabava por levar trabalho a meio
@@ -130,9 +136,11 @@ def paginas() -> list[tuple[str, str, bool]]:
 
 def publicaveis() -> list[str]:
     """O que a tarefa `mtgvault-publicar` pode commitar HOJE. Com o núcleo são
-    só as três páginas: o `data/paginas` e os `.js` são das páginas antigas."""
+    as quatro páginas e a pasta dos recortes (que o `publicar` não gera: é
+    escrita pela CLI das fotos, e só é commitada aqui); o `data/paginas` e os
+    `.js` são das páginas antigas."""
     if _ligado():
-        return [f for _m, f, _r in PAGINAS_NUCLEO]
+        return [f for _m, f, _r in PAGINAS_NUCLEO] + [PASTA_RECORTES]
     return list(PUBLICAVEIS_ANTIGOS)
 
 

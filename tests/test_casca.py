@@ -36,8 +36,9 @@ HTML publicado em disco é o do site antigo até o `daily` o regenerar. Por isso
 este ficheiro corre com o interruptor DESLIGADO (uma cópia temporária do config,
 `_nucleo_interruptor.fixar(False)`), e os casos sobre o HTML publicado continuam
 a valer tal como eram — com o mínimo de 15 ícones. Com o interruptor LIGADO, o
-`caso_com_o_nucleo_a_casca_vale_nas_tres_paginas` gera as três páginas do núcleo
-numa pasta temporária e corre lá os MESMOS casos, mais o menu de três entradas.
+`caso_com_o_nucleo_a_casca_vale_nas_quatro_paginas` gera as quatro páginas do
+núcleo numa pasta temporária e corre lá os MESMOS casos, mais o menu de quatro
+entradas.
 """
 import json
 import os
@@ -66,7 +67,7 @@ CHROME = Path(r"C:\Program Files\Google\Chrome\Application\chrome.exe")
 
 
 # Onde está o HTML que os casos lêem: o publicado (a raiz do repositório) ou,
-# no caso do núcleo, a pasta temporária para onde se geraram as três páginas.
+# no caso do núcleo, a pasta temporária para onde se geraram as quatro páginas.
 _BASE = [RAIZ]
 
 
@@ -345,11 +346,12 @@ def caso_nenhuma_pagina_tem_scroll_horizontal():
 
 
 # ---------------------------------------------------------------------------
-# O NÚCLEO NOVO (2026-10-28): os mesmos casos sobre as três páginas dele.
+# O NÚCLEO NOVO (2026-10-28): os mesmos casos sobre as quatro páginas dele.
 # ---------------------------------------------------------------------------
-def caso_com_o_nucleo_a_casca_vale_nas_tres_paginas():
-    """Com o `nucleo.ligado`, o Painel, os Decks e o Vender levam a MESMA casca
-    que as páginas antigas — e a barra tem as três entradas e mais nenhuma.
+def caso_com_o_nucleo_a_casca_vale_nas_quatro_paginas():
+    """Com o `nucleo.ligado`, o Painel, os Decks, a Coleção e o Vender levam a
+    MESMA casca que as páginas antigas — e a barra tem as quatro entradas e mais
+    nenhuma.
 
     As páginas geram-se de uma base temporária com os 14 decks e sem cartas: o
     que aqui se mede é a casca, não os números. Os casos que lêem o HTML
@@ -363,7 +365,8 @@ def caso_com_o_nucleo_a_casca_vale_nas_tres_paginas():
         with db.session(tmp / "v.db", tmp / "c.db") as con:
             modelo.garantir_decks(con)
             feitas = publicar.gerar(con, tmp / "site")
-        assert feitas == ["index.html", "deck.html", "vender.html"], feitas
+        assert feitas == ["index.html", "deck.html", "colecoes.html",
+                         "vender.html"], feitas
         _BASE[0] = tmp / "site"
         try:
             assert _publicadas() == feitas, _publicadas()
@@ -374,7 +377,7 @@ def caso_com_o_nucleo_a_casca_vale_nas_tres_paginas():
                        caso_a_barra_lateral_nao_tem_emojis,
                        caso_a_ortografia_e_a_do_acordo):
                 fn()
-            # Em vez dos 15 ícones da barra antiga: as três entradas, cada uma
+            # Em vez dos 15 ícones da barra antiga: as quatro entradas, cada uma
             # com o seu ícone, e o `<h1>` igual ao rótulo (o caso dos emojis já
             # o exige; aqui fica dito o valor).
             for f in feitas:
@@ -383,11 +386,11 @@ def caso_com_o_nucleo_a_casca_vale_nas_tres_paginas():
                 nav = txt[i:txt.index("</nav>", i)]
                 hrefs = re.findall(r'class="sli[^"]*" href="([^"]+)"', nav)
                 assert hrefs == feitas, (f, hrefs)
-                assert nav.count('<svg class="ico') == 3, (f, nav.count('<svg'))
+                assert nav.count('<svg class="ico') == 4, (f, nav.count('<svg'))
                 assert f'<h1 class="pgt">{shell.titulo_de(f)}</h1>' in txt, f
         finally:
             _BASE[0] = RAIZ
-    print("com o nucleo: as tres paginas tem a casca inteira e o menu de tres")
+    print("com o nucleo: as quatro paginas tem a casca inteira e o menu de quatro")
 
 
 def run():
@@ -403,7 +406,7 @@ def run():
                caso_os_rodapes_longos_ficam_recolhidos,
                caso_a_ortografia_e_a_do_acordo,
                caso_nenhuma_pagina_tem_scroll_horizontal,
-               caso_com_o_nucleo_a_casca_vale_nas_tres_paginas):
+               caso_com_o_nucleo_a_casca_vale_nas_quatro_paginas):
         fn()
     print("\nTUDO OK")
 
