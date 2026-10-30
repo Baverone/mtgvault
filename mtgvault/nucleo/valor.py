@@ -386,8 +386,10 @@ def a_vender(con: sqlite3.Connection) -> dict:
 
     `colecoes` são as cartas de coleção marcadas para vender (`vender = 1` e
     `tenho > 0`), uma linha por carta com a língua, o nome e o `slug` da coleção
-    e o preço de `_preco_colecao` (em `pt` o `n_preco_pt`, nunca o inglês). Entram
-    no total e no `sem_preco` como as outras.
+    e o preço de `_preco_colecao` (em `pt` o `n_preco_pt`, nunca o inglês), o
+    `carta_id` (é com ele que a página tira a marca de vender) e, nas `pt`, o dia
+    do último preço visto (`preco_visto_em`). Entram no total e no `sem_preco`
+    como as outras.
     """
     a_mais, saidas = [], []
     for r in con.execute(
@@ -414,10 +416,11 @@ def a_vender(con: sqlite3.Connection) -> dict:
         except ValueError:
             l["pode_voltar"] = False
         saidas.append(l)
+    from . import cotacoes                                 # noqa: PLC0415
     colecoes = []
     for r in con.execute(
             "SELECT k.scryfall_id, k.acabamento, k.lingua, k.tenho, k.colecao,"
-            " o.nome, c.name, c.set_code, k.nome FROM n_colecao_carta k"
+            " o.nome, c.name, c.set_code, k.nome, k.id FROM n_colecao_carta k"
             " JOIN n_colecao o ON o.slug = k.colecao"
             " LEFT JOIN cards c ON c.scryfall_id = k.scryfall_id"
             " WHERE k.vender = 1 AND k.tenho > 0"
@@ -428,6 +431,10 @@ def a_vender(con: sqlite3.Connection) -> dict:
         l["lingua"] = r[2]
         l["colecao"] = r[5]
         l["slug"] = r[4]
+        l["carta_id"] = r[9]
+        # o dia do último preço português visto: a página diz «visto há N dias»
+        l["preco_visto_em"] = (cotacoes.preco_pt(con, r[0], r[1])[1]
+                               if r[2] == "pt" else None)
         colecoes.append(l)
     total, sem = 0.0, 0
     for l in a_mais + saidas + colecoes:

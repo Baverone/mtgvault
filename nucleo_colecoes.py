@@ -121,17 +121,36 @@ def _progresso(est: dict) -> str:
             f'<span>{falta}</span></div>')
 
 
-def seccao_colecao(item: dict, hoje: str) -> str:
+# A busca de «juntar carta» (só na coleção aberta, só em edição): é a de Vender
+# — o `edicao_js` procura no catálogo (`/api/n/procurar`) e um toque num nome
+# abre a escolha da edição e do acabamento. Fica escondida atrás do botão, para
+# a página não abrir com um campo de texto (e o teclado) à frente das cartas.
+def _juntar(slug: str) -> str:
+    return (f'<div class="ed-lin cjb"><button type="button" class="btn ed-b cbt pri"'
+            f' data-acao="cjuntar" data-colecao="{e(slug)}">Juntar carta</button></div>'
+            # um `<div>`, não uma `<section>`: dentro da secção da coleção
+            '<div class="ed-proc" role="search" hidden aria-labelledby="ed-proc-t">'
+            '<h2 class="gt" id="ed-proc-t">Juntar uma carta</h2>'
+            '<label for="ed-q">Procura a carta (pelo nome em inglês)</label>'
+            '<input id="ed-q" type="search" autocomplete="off" autocapitalize="off"'
+            ' spellcheck="false" enterkeyhint="search" placeholder="ex.: Moat">'
+            f'<ul class="ed-res" id="ed-res" data-res="cjuntar"'
+            f' data-colecao="{e(slug)}" aria-live="polite"></ul></div>')
+
+
+def seccao_colecao(item: dict, hoje: str, editavel: bool = False) -> str:
     est = item["estado"]
-    cartas = (visual.grelha_colecao(est["cartas"], slug=est["slug"], hoje=hoje)
+    cartas = (visual.grelha_colecao(est["cartas"], slug=est["slug"], hoje=hoje,
+                                    editavel=editavel)
               if est["cartas"] else
               '<p class="vazio">Ainda não há cartas nesta coleção.</p>')
+    juntar = _juntar(est["slug"]) if editavel and est["tipo"] == "aberta" else ""
     return (f'<section class="dk" id="{e(est["slug"])}" data-nome="{e(est["nome"])}"'
             f' aria-labelledby="t-{e(est["slug"])}">'
             '<a class="volta lk" href="#">← Todas as coleções</a>'
             f'{_cabecalho(item)}{_valor(item)}{_progresso(est)}'
             f'<h2 class="gt">Cartas <small>{paginas.plural(len(est["cartas"]), "carta")}'
-            f' na lista</small></h2>{cartas}</section>')
+            f' na lista</small></h2>{juntar}{cartas}</section>')
 
 
 # ---------------------------------------------------------------------------
@@ -186,7 +205,7 @@ def html_page(con, *, editable: bool = False, token: str = "",
                   f'{paginas.plural(len(itens), "coleção", "coleções")} e as '
                   f'cartas a subir</small></h2><div class="tiles">{tiles}</div>'
                   "</div>"
-                  + "".join(seccao_colecao(i, hoje) for i in itens)
+                  + "".join(seccao_colecao(i, hoje, editable) for i in itens)
                   + seccao_subir(subir))
     return ("<!doctype html><html lang=\"pt-PT\"><head>"
             + shell.head(TITULO, visual.CSS + edicao_js.css(editable)) + "</head>"

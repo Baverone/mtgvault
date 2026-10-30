@@ -48,11 +48,14 @@ os.environ["MTGVAULT_HOME"] = str(_TMP)
 os.environ["MTGVAULT_DB"] = str(_TMP / "vault.db")          # ver tests/_bateria.py
 os.environ["MTGVAULT_CATALOG"] = str(_TMP / "catalog.db")
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 from mtgvault import db, prices  # noqa: E402
-from mtgvault.nucleo import edicao_js, listas, modelo, posse  # noqa: E402
+from mtgvault.nucleo import colecoes, edicao_js, listas, modelo, posse  # noqa: E402
 from mtgvault.nucleo.listas import Linha  # noqa: E402
 
 import nucleo_vender  # noqa: E402
+import test_nucleo_colecoes as base_col  # noqa: E402  (o catálogo das coleções)
 import webapp  # noqa: E402
 
 webapp.ROOT = _TMP
@@ -88,6 +91,10 @@ def semear():
             (sid, "or-" + nome, nome, sc, "Set " + sc.upper(), str(i),
              json.dumps(fins), data, 1000 + i))
     con.commit()
+    # as 40 cartas das coleções fechadas (+ uma da Reserved List) e as quatro
+    # coleções: o `garantir_colecoes` levanta se faltar uma
+    base_col.semear(con)
+    colecoes.garantir_colecoes(con)
     modelo.garantir_decks(con)
     for sid, acab, trend in (("repl-a", "nonfoil", 10.0), ("opal-a", "nonfoil", 5.0),
                              ("tm-a", "nonfoil", 2.0), ("tm-a", "foil", 3.0),
@@ -381,7 +388,9 @@ def caso_vender_procurar_a_mais_saida():
     c, j = pedir("GET", "/api/n/procurar" + q(q="saga"))
     assert c == 200 and j == ["Urza's Saga"], j
     c, j = pedir("GET", "/api/n/procurar" + q(q="isl"))
-    assert c == 200 and j == ["Island"], j                  # sem repetir o nome
+    # sem repetir o nome (o que começa por «isl» vem primeiro; as terras das
+    # coleções, que têm «island» dentro, vêm depois)
+    assert c == 200 and j[0] == "Island" and len(set(j)) == len(j), j
     c, j = pedir("GET", "/api/n/procurar" + q(q="%a"))
     assert c == 200 and j == [], j                          # o % não é «tudo»
     c, j = pedir("POST", "/api/n/a_mais", {"scryfall_id": "saga-b",
@@ -620,6 +629,251 @@ def caso_js_prazo_e_busca_depois_de_gravar():
     rec = js[js.index("function recarrega()"):js.index("// ------------------------------------------------------------ ajudantes")]
     assert "ed-q" in rec and "procura(" in rec, "a busca perde-se ao recarregar"
     print("js: prazo de 25 s nos pedidos; a busca de Vender sobrevive")
+
+
+# ---------------------------------------------------------------------------
+# As coleções (Task 11)
+# ---------------------------------------------------------------------------
+def carta_id(slug, nome):
+    return ler("SELECT id FROM n_colecao_carta WHERE colecao = ? AND nome = ?",
+               (slug, nome))[0][0]
+
+
+def tenho_de(cid):
+    return ler("SELECT tenho FROM n_colecao_carta WHERE id = ?", (cid,))[0][0]
+
+
+def caso_colecoes_pagina_200():
+    """`/colecoes.html` é uma página do núcleo, gerada a pedido: do loopback
+    leva os botões de edição (e o `data-editavel`); sem o interruptor é 404."""
+    c, p = pedir("GET", "/colecoes.html")
+    assert c == 200, c
+    assert 'data-editavel="1"' in p and "Duals de Revised" in p
+    cid = carta_id("duals_revised", "Tundra")
+    for acao in ("cmarca", "cmeta", "cvender"):
+        assert f'data-acao="{acao}"' in p, acao
+    assert f'data-carta="{cid}"' in p and 'data-delta="-1"' in p
+    assert 'data-acao="cjuntar"' in p and 'data-colecao="reserved_list"' in p
+    # os links do menu levam o token (a página em si nunca o escreve); da rede
+    # de casa sem ele, a página é a de leitura: sem botões, sem JS, sem token
+    tok = webapp.token()
+    c, p = pedir("GET", "/colecoes.html?t=" + tok)
+    assert re.search(r'href="vender\.html\?t=' + tok, p)
+    g = Pedido("/colecoes.html", metodo="GET")
+    assert g.codigo == 200 and "Duals de Revised" in g.corpo
+    assert "data-editavel" not in g.corpo and tok not in g.corpo
+    assert "data-acao=" not in g.corpo and edicao_js.MARCA not in g.corpo
+    config(False)
+    try:
+        assert pedir("GET", "/colecoes.html")[0] == 404
+    finally:
+        config(True)
+    print("coleções: a página sai com os botões; desligado, 404")
+
+
+def caso_marca_colecao():
+    cid = carta_id("duals_revised", "Underground Sea")
+    rid = novo_id()
+    corpo = {"carta": cid, "delta": 1, "request_id": rid}
+    c1, j1 = pedir("POST", "/api/n/colecao/marca", corpo)
+    c2, j2 = pedir("POST", "/api/n/colecao/marca", corpo)   # o telemóvel a repetir
+    assert (c1, j1) == (200, {"tenho": 1}) and (c2, j2) == (200, {"tenho": 1}), (j1, j2)
+    assert tenho_de(cid) == 1
+    c, j = pedir("POST", "/api/n/colecao/marca",
+                 {"carta": cid, "delta": 1, "request_id": novo_id()})
+    assert (c, j) == (200, {"tenho": 2}), (c, j)
+    c, j = pedir("POST", "/api/n/colecao/marca",
+                 {"carta": cid, "delta": -5, "request_id": novo_id()})
+    assert (c, j) == (200, {"tenho": 0}), (c, j)             # nunca abaixo de 0
+    # os erros são 409 com a frase, e não gravam nada
+    for corpo in ({"carta": cid, "delta": 0, "request_id": novo_id()},
+                  {"carta": cid, "delta": 1},
+                  {"carta": 99999, "delta": 1, "request_id": novo_id()},
+                  {"carta": "x", "delta": 1, "request_id": novo_id()},
+                  {"carta": True, "delta": 1, "request_id": novo_id()},
+                  {"delta": 1, "request_id": novo_id()}):
+        c, j = pedir("POST", "/api/n/colecao/marca", corpo)
+        assert c == 409 and j["erro"], (corpo, c, j)
+    assert tenho_de(cid) == 0
+    print("coleção: +1 duas vezes com o mesmo request_id conta uma; 409 nos erros")
+
+
+def caso_meta_e_vender():
+    cid = carta_id("duals_revised", "Bayou")
+    c, j = pedir("POST", "/api/n/colecao/meta", {"carta": cid, "meta": 6})
+    assert (c, j) == (200, {"ok": True}), (c, j)
+    assert ler("SELECT meta FROM n_colecao_carta WHERE id = ?", (cid,))[0][0] == 6
+    for meta in (-1, "x", 1.5, None, True):
+        c, j = pedir("POST", "/api/n/colecao/meta", {"carta": cid, "meta": meta})
+        assert c == 409 and j["erro"], (meta, c, j)
+    assert ler("SELECT meta FROM n_colecao_carta WHERE id = ?", (cid,))[0][0] == 6
+    # a aberta não tem meta
+    moat = pedir("POST", "/api/n/colecao/juntar",
+                 {"colecao": "reserved_list", "scryfall_id": base_col.RL_SID,
+                  "acabamento": "nonfoil"})[1]["carta"]
+    c, j = pedir("POST", "/api/n/colecao/meta", {"carta": moat, "meta": 2})
+    assert c == 409 and "aberta" in j["erro"], (c, j)
+    c, j = pedir("POST", "/api/n/colecao/vender", {"carta": cid, "vender": True})
+    assert (c, j) == (200, {"ok": True}), (c, j)
+    assert ler("SELECT vender FROM n_colecao_carta WHERE id = ?", (cid,))[0][0] == 1
+    c, j = pedir("POST", "/api/n/colecao/vender", {"carta": cid, "vender": False})
+    assert c == 200
+    assert ler("SELECT vender FROM n_colecao_carta WHERE id = ?", (cid,))[0][0] == 0
+    # só um booleano a sério: "false" (texto), 0 e 1 não valem
+    for v in ("false", "sim", 0, 1, None):
+        c, j = pedir("POST", "/api/n/colecao/vender", {"carta": cid, "vender": v})
+        assert c == 409 and j["erro"], (v, c, j)
+    assert ler("SELECT vender FROM n_colecao_carta WHERE id = ?", (cid,))[0][0] == 0
+    c, j = pedir("POST", "/api/n/colecao/vender", {"carta": 99999, "vender": True})
+    assert c == 409, (c, j)
+    print("coleção: meta e «quero vender»; valores maus são 409")
+
+
+def caso_juntar_so_na_aberta():
+    c, j = pedir("POST", "/api/n/colecao/juntar",
+                 {"colecao": "duals_revised", "scryfall_id": base_col.RL_SID,
+                  "acabamento": "nonfoil", "lingua": "en"})
+    assert c == 409 and "fechada" in j["erro"], (c, j)
+    antes = ler("SELECT COUNT(*) FROM n_colecao_carta WHERE colecao = 'duals_revised'")[0][0]
+    c, j = pedir("POST", "/api/n/colecao/juntar",
+                 {"colecao": "reserved_list", "scryfall_id": base_col.RL_SID,
+                  "acabamento": "nonfoil", "lingua": "en"})
+    assert c == 200 and isinstance(j["carta"], int), (c, j)
+    c2, j2 = pedir("POST", "/api/n/colecao/juntar",
+                   {"colecao": "reserved_list", "scryfall_id": base_col.RL_SID,
+                    "acabamento": "nonfoil"})                # a língua é «en»
+    assert (c2, j2) == (200, j), (c2, j2)                    # a mesma carta
+    assert ler("SELECT colecao FROM n_colecao_carta WHERE id = ?",
+               (j["carta"],))[0][0] == "reserved_list"
+    assert ler("SELECT COUNT(*) FROM n_colecao_carta WHERE colecao = 'duals_revised'")[0][0] == antes
+    for corpo in ({"colecao": "reserved_list", "scryfall_id": "nao-existe",
+                   "acabamento": "nonfoil"},
+                  {"colecao": "reserved_list", "scryfall_id": base_col.RL_SID,
+                   "acabamento": "foil"},                    # a Moat não tem foil
+                  {"colecao": "reserved_list", "scryfall_id": base_col.RL_SID,
+                   "acabamento": "nonfoil", "lingua": "de"},
+                  {"colecao": "nao_existe", "scryfall_id": base_col.RL_SID,
+                   "acabamento": "nonfoil"}):
+        c, j = pedir("POST", "/api/n/colecao/juntar", corpo)
+        assert c == 409 and j["erro"], (corpo, c, j)
+    print("coleção: juntar só na aberta; na fechada e com dados maus, 409")
+
+
+def caso_recorte_servido():
+    """`assets/cartas/<n>.jpg` serve-se do disco como a foto da deckbox, com um
+    regex estrito: nada fora dessa pasta, nenhuma outra extensão."""
+    pasta = _TMP / "assets" / "cartas"
+    pasta.mkdir(parents=True, exist_ok=True)
+    (pasta / "1-1.jpg").write_bytes(b"\xff\xd8\xff\xe0recorte")
+    (pasta / "segredo.jpg").write_bytes(b"x")
+    (_TMP / "assets" / "fora.jpg").write_bytes(b"x")
+    url = f"http://127.0.0.1:{PORTO}/assets/cartas/1-1.jpg"
+    with urllib.request.urlopen(url, timeout=30) as r:
+        assert r.status == 200 and r.headers["Content-Type"] == "image/jpeg"
+        assert r.read() == b"\xff\xd8\xff\xe0recorte"
+    for mau in ("/assets/cartas/../fora.jpg", "/assets/cartas/..%2Ffora.jpg",
+                "/assets/cartas/../../cfg.json", "/assets/cartas/9-9.jpg",
+                "/assets/cartas/segredo.jpg", "/assets/cartas/1-1.png",
+                "/assets/cartas/1-1.jpg/", "/assets/cartas/",
+                "/assets/cartas/1-1.jpg.html", "/assets/cartas/-1.jpg"):
+        c, _corpo = pedir("GET", mau)
+        assert c == 404, (mau, c)
+    print("recortes: assets/cartas/<n>.jpg serve-se; tudo o resto é 404")
+
+
+def caso_sem_token_403_colecoes():
+    cid = carta_id("duals_revised", "Plateau")
+    antes = tenho_de(cid)
+    for caminho, corpo in (
+            ("/api/n/colecao/marca", {"carta": cid, "delta": 1, "request_id": novo_id()}),
+            ("/api/n/colecao/meta", {"carta": cid, "meta": 9}),
+            ("/api/n/colecao/vender", {"carta": cid, "vender": True}),
+            ("/api/n/colecao/juntar", {"colecao": "reserved_list",
+                                       "scryfall_id": base_col.RL_SID,
+                                       "acabamento": "nonfoil"})):
+        p = Pedido(caminho, corpo)
+        assert p.codigo == 403, (caminho, p.codigo, p.corpo)
+    assert tenho_de(cid) == antes
+    assert tuple(ler("SELECT meta, vender FROM n_colecao_carta WHERE id = ?",
+                     (cid,))[0]) == (4, 0)
+    p = Pedido("/api/n/colecao/marca", {"carta": cid, "delta": 1,
+                                         "request_id": novo_id()}, token=webapp.token())
+    assert p.codigo == 200 and json.loads(p.corpo) == {"tenho": antes + 1}, (p.codigo, p.corpo)
+    print("coleções: sem token, da rede de casa, 403 e nada gravado")
+
+
+def caso_vender_linha_de_colecao():
+    """Carry-over da Task 10: a linha de coleção em Vender leva o id da carta e
+    o «não vender» (só em edição); a portuguesa diz há quantos dias viu o preço."""
+    from datetime import date, timedelta
+    cid = carta_id("shocks_pt", "Steam Vents")
+    sid = ler("SELECT scryfall_id FROM n_colecao_carta WHERE id = ?", (cid,))[0][0]
+    pedir("POST", "/api/n/colecao/marca", {"carta": cid, "delta": 1, "request_id": novo_id()})
+    pedir("POST", "/api/n/colecao/vender", {"carta": cid, "vender": True})
+    dia = (date.today() - timedelta(days=2)).isoformat()
+    con = db.connect()
+    con.execute("INSERT OR REPLACE INTO n_preco_pt (scryfall_id, acabamento, dia,"
+                " preco_eur, ofertas) VALUES (?,?,?,?,1)", (sid, "nonfoil", dia, 80.0))
+    con.commit()
+    con.close()
+    c, p = pedir("GET", "/vender.html")
+    assert c == 200
+    bloco = p[p.index("Das coleções"):]
+    linha = bloco[bloco.index("Steam Vents"):]
+    linha = linha[:linha.index("</li>")]
+    assert "visto há 2 dias" in linha, linha
+    assert 'data-acao="cvender"' in linha and 'data-vender="0"' in linha
+    assert f'data-carta="{cid}"' in linha
+    # a leitura não tem botões (e o «visto há» continua a aparecer)
+    with db.session() as con2:
+        so_leitura = nucleo_vender.html_page(con2)
+    assert "cvender" not in so_leitura and "visto há 2 dias" in so_leitura
+    c, j = pedir("POST", "/api/n/colecao/vender", {"carta": cid, "vender": False})
+    assert c == 200
+    assert "Steam Vents" not in pedir("GET", "/vender.html")[1].split("Das coleções")[1]
+    print("Vender: a linha de coleção leva o id, «não vender» e «visto há N dias»")
+
+
+def caso_js_das_colecoes():
+    js = edicao_js.JS
+    for marca in ("'cmarca'", "'cmeta'", "'cvender'", "'cjuntar'", "'coficial'",
+                  "/api/n/colecao/marca", "/api/n/colecao/meta",
+                  "/api/n/colecao/vender", "/api/n/colecao/juntar",
+                  "data-oficial", "/api/n/procurar", "/api/n/edicoes"):
+        assert marca in js, marca
+    # o request_id é um por toque (a marca repete com o mesmo)
+    i = js.index("function colMarca")
+    assert "idPedido()" in js[i:i + 900]
+    # alvos de toque de 44 px nos botões das cartas das coleções
+    assert "min-height:44px" in edicao_js.CSS[edicao_js.CSS.index(".cbt"):][:200]
+    print("js: as ações das coleções estão ligadas")
+
+
+def caso_arranque_garante_as_colecoes():
+    """O arranque do modo de edição cria as coleções (R17) e, se o catálogo não
+    tem uma carta, di-lo em português em vez de rebentar."""
+    import contextlib
+    import tempfile as tf
+    tmp = Path(tf.mkdtemp())
+    # catálogo completo: cria as quatro
+    with db.session(tmp / "v.db", tmp / "c.db") as con:
+        base_col.semear(con)
+        saida = io.StringIO()
+        with contextlib.redirect_stdout(saida):
+            webapp.preparar_nucleo(con)
+        assert len(colecoes.colecoes(con)) == 4, saida.getvalue()
+        assert "4 coleções" in saida.getvalue(), saida.getvalue()
+    # catálogo sem uma carta: não levanta, nada se grava, a frase diz qual
+    with db.session(tmp / "v2.db", tmp / "c2.db") as con:
+        base_col.semear(con, sem=("Tundra", "3ed"))
+        saida = io.StringIO()
+        with contextlib.redirect_stdout(saida):
+            webapp.preparar_nucleo(con)                       # não levanta
+        txt = saida.getvalue()
+        assert "Tundra" in txt and "3ed" in txt and "coleções" in txt, txt
+        assert colecoes.colecoes(con) == []
+        assert len(con.execute("SELECT 1 FROM n_deck").fetchall()) == 14
+    print("arranque: garante as coleções; carta em falta é dita, não rebenta")
 
 
 if __name__ == "__main__":

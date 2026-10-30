@@ -835,12 +835,18 @@ def caso_vender_das_colecoes():
         assert paginas.eur(40.0) not in tomb and paginas.eur(120.0) not in tomb
         assert "3 cópias sem preço" in p
         assert 'class="vazio"' not in bloco
-        # as linhas das coleções não levam botões de a mais/saída, nem em edição
+        # as linhas das coleções não levam botões de a mais/saída, nem em edição:
+        # só o «não vender» (Task 11), com o id da carta
         ed = nucleo_vender.html_page(con, editable=True)
         bloco_ed = ed[ed.index("Das coleções"):]
         bloco_ed = bloco_ed[:bloco_ed.index("</ul>")]       # sem o script da edição
-        assert 'class="ed-lin"' not in bloco_ed and "data-acao" not in bloco_ed
+        assert bloco_ed.count('data-acao="cvender"') == 3, bloco_ed
+        assert set(re.findall(r'data-acao="([a-z]+)"', bloco_ed)) == {"cvender"}
+        assert bloco_ed.count('data-vender="0"') == 3
         assert 'data-motivo="colecao"' not in bloco_ed
+        assert [l["carta_id"] for l in v["colecoes"]] == [
+            int(i) for i in re.findall(r'data-carta="(\d+)"', bloco_ed)]
+        assert "cvender" not in bloco and "data-carta" not in bloco   # leitura
         # os blocos de cima continuam com os botões
         valor.a_mais_ajustar(con, "isl-a", "nonfoil", 1)
         ed = nucleo_vender.html_page(con, editable=True)

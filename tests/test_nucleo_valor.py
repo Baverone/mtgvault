@@ -835,9 +835,17 @@ def caso_a_vender_das_colecoes():
         assert t == {"nome": "Tundra", "set_code": "3ed", "scryfall_id": tundra,
                      "acabamento": "nonfoil", "lingua": "en", "qtd": 2,
                      "preco_un": 300.0, "motivo": "colecao", "deck": None,
-                     "colecao": "Duals de Revised", "slug": "duals_revised"}, t
+                     "colecao": "Duals de Revised", "slug": "duals_revised",
+                     # (Task 11) o id da carta (para «não vender») e o dia do
+                     # preço PT visto: só as portuguesas o têm
+                     "carta_id": con.execute(
+                         "SELECT id FROM n_colecao_carta WHERE colecao ="
+                         " 'duals_revised' AND nome = 'Tundra'").fetchone()[0],
+                     "preco_visto_em": None}, t
         v_ = por_nome["Steam Vents"]
         assert v_["lingua"] == "pt" and v_["preco_un"] == 80.0, v_
+        assert v_["preco_visto_em"] == ha(2) and "carta_id" in v_, v_
+        assert por_nome["Overgrown Tomb"]["preco_visto_em"] is None
         assert v_["colecao"] == "Shocks originais em português", v_
         o = por_nome["Overgrown Tomb"]
         assert o["lingua"] == "pt" and o["preco_un"] is None and o["qtd"] == 3, o

@@ -296,6 +296,57 @@ def caso_validadas_no_progresso():
         assert f"assets/cartas/{fid}-1.jpg" in s and "data-oficial=" in s
 
 
+def caso_botoes_de_edicao():
+    """Só em edição: por carta «−1», «+1», «quero vender»/«não vender» e, nas
+    fechadas, «meta»; na aberta, «juntar carta» e nada de meta. Cada botão traz
+    `data-carta` (o id) e a imagem oficial só se oferece onde há recorte."""
+    from mtgvault.nucleo import fotos
+    with pronta() as con:
+        pl = base._carta(con, "duals_revised", "Plateau")
+        by = base._carta(con, "duals_revised", "Bayou")
+        base._marcar(con, pl["id"], 2)
+        colecoes.marcar_vender(con, by["id"], True)
+        fid = con.execute(
+            "INSERT INTO n_foto (caminho, dia, sessao, linha, indice)"
+            " VALUES ('x', ?, 's', 1, 0)", (HOJE,)).lastrowid
+        rid = con.execute(
+            "INSERT INTO n_recorte (foto_id, numero, caminho) VALUES (?, 1, ?)",
+            (fid, f"assets/cartas/{fid}-1.jpg")).lastrowid
+        con.commit()
+        fotos.validar(con, rid, "duals_revised", pl["scryfall_id"], "nonfoil", qtd=2)
+        moat = colecoes.juntar(con, "reserved_list", base.RL_SID, "nonfoil")
+        # leitura: nenhum botão
+        so = nucleo_colecoes.html_page(con)
+        assert "data-acao" not in so and "data-carta" not in so
+        ed = nucleo_colecoes.html_page(con, editable=True)
+        duals = seccao(ed, "duals_revised")
+        # por carta, com o id dela
+        for acao in ("cmarca", "cmeta", "cvender"):
+            assert f'data-acao="{acao}" data-carta="{pl["id"]}"' in duals, acao
+        assert (f'data-acao="cmarca" data-carta="{pl["id"]}" data-delta="-1"'
+                in duals and 'data-delta="1"' in duals)
+        assert len(re.findall(r'data-acao="cmarca"', duals)) == 20      # 10 × (−1, +1)
+        assert len(re.findall(r'data-acao="cmeta"', duals)) == 10
+        # «quero vender» liga; a que já está marcada oferece «não vender»
+        assert (f'data-acao="cvender" data-carta="{pl["id"]}" data-vender="1"'
+                in duals)
+        assert (f'data-acao="cvender" data-carta="{by["id"]}" data-vender="0"'
+                in duals)
+        # o recorte só tem a oficial onde há foto validada (Plateau)
+        assert re.findall(r'data-acao="coficial" data-carta="(\d+)"', duals) == [
+            str(pl["id"])]
+        assert "cjuntar" not in duals                      # a lista é fixa
+        # a aberta: sem meta, com «juntar carta»
+        rl = seccao(ed, "reserved_list")
+        assert 'data-acao="cjuntar" data-colecao="reserved_list"' in rl
+        assert "cmeta" not in rl
+        assert f'data-acao="cmarca" data-carta="{moat}" data-delta="-1"' in rl
+        assert f'data-acao="cvender" data-carta="{moat}" data-vender="1"' in rl
+        assert "cjuntar" not in seccao(ed, "shocks_pt")
+        # a procura de «juntar carta» é a de Vender (a lista de resultados)
+        assert 'id="ed-res"' in rl and 'id="ed-q"' in rl
+
+
 def caso_casca():
     """O título da página, o `<h1>`, o router por `#` e a ausência do token."""
     with pronta() as con:

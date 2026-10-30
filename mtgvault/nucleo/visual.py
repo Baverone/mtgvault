@@ -501,12 +501,40 @@ def _preco_carta(c: dict, hoje: str) -> str:
             + (f' <small>{visto}</small>' if visto else ""))
 
 
-def carta_colecao(c: dict, *, slug: str, hoje: str, max_joga: int = 3) -> str:
+def _botoes_colecao(c: dict) -> str:
+    """Os botões do modo de edição por baixo de uma carta da coleção (o
+    `edicao_js` liga-os pelo `data-acao` e pelo `data-carta`): «−1» e «+1»; a
+    «meta» só numa fechada (`meta` não é `None`); «quero vender» ou, se já está
+    marcada, «não vender»; e «ver oficial» onde há recorte dele. Textos curtos e
+    um botão por linha ou dois lado a lado: a carta é estreita no telemóvel."""
+    cid, nome = c["id"], e(c["nome"])
+
+    def btn(acao: str, txt: str, extra: str = "", rotulo: str = "") -> str:
+        return (f'<button type="button" class="btn ed-b cbt" data-acao="{acao}"'
+                f' data-carta="{cid}"{extra} aria-label="{rotulo or txt} · {nome}">'
+                f'{txt}</button>')
+    vender = not c["vender"]
+    linhas = [btn("cmarca", "−1", ' data-delta="-1"', "Tenho menos uma")
+              + btn("cmarca", "+1", ' data-delta="1"', "Tenho mais uma")]
+    if c["meta"] is not None:
+        linhas.append(btn("cmeta", f'meta {c["meta"]}', f' data-meta="{c["meta"]}"',
+                          "Mudar a meta"))
+    linhas.append(btn("cvender", "Quero vender" if vender else "Não vender",
+                      f' data-vender="{1 if vender else 0}"'))
+    if c.get("recorte"):
+        linhas.append(btn("coficial", "ver oficial", "", "Ver a imagem oficial"))
+    return ('<div class="ccb">'
+            + "".join(f'<div class="ed-lin">{x}</div>' for x in linhas) + "</div>")
+
+
+def carta_colecao(c: dict, *, slug: str, hoje: str, max_joga: int = 3,
+                  editavel: bool = False) -> str:
     """Uma carta da coleção: a imagem de `carta` (a cores a que tem, a cinzento
     a que falta, «tenho / meta» no canto, o recorte dele se está validada) e,
     por baixo, o preço (nas portuguesas com «visto há N dias»), a variação a 30
     e a 90 dias, onde se joga e «quero vender». Numa aberta (`meta` `None`) o
-    canto é só a quantidade e nada fica a cinzento."""
+    canto é só a quantidade e nada fica a cinzento. Com `editavel`, os botões
+    de `_botoes_colecao` ficam por baixo de tudo."""
     meta = c["meta"]
     img = carta(dict(c, qtd=f'{c["tenho"]} / {meta}' if meta is not None
                      else c["tenho"], falta=c["falta"] or 0), slug=slug)
@@ -521,13 +549,15 @@ def carta_colecao(c: dict, *, slug: str, hoje: str, max_joga: int = 3) -> str:
     if c["vender"]:
         info += '<span class="cj"><i class="vd">quero vender</i></span>'
     # o `.ci` abriu-se em `info`: fecham-se os dois
-    return f'<div class="cc">{img}{info}</div></div>'
+    return (f'<div class="cc">{img}{info}</div>'
+            f'{_botoes_colecao(c) if editavel else ""}</div>')
 
 
-def grelha_colecao(cartas: list[dict], *, slug: str, hoje: str) -> str:
+def grelha_colecao(cartas: list[dict], *, slug: str, hoje: str,
+                   editavel: bool = False) -> str:
     return ('<div class="cg ccg">'
-            + "".join(carta_colecao(c, slug=slug, hoje=hoje) for c in cartas)
-            + "</div>")
+            + "".join(carta_colecao(c, slug=slug, hoje=hoje, editavel=editavel)
+                      for c in cartas) + "</div>")
 
 
 def _pct_td(v: float | None) -> str:
@@ -856,6 +886,7 @@ CSS = r"""
  .vn{text-align:right;font-variant-numeric:tabular-nums;font-size:12px;white-space:nowrap;color:var(--muted)}
  .vn b{display:block;color:var(--ink);font-size:14px}
  .vn .sp{color:var(--bad)}
+ .vn .visto{display:block;color:var(--dim);font-size:11px}
 
  /* as coleções: o mosaico leva quatro linhas; a variação quebra se for preciso */
  .tile .sv0{color:var(--ink2)}

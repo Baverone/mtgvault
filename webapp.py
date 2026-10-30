@@ -89,6 +89,7 @@ from mtgvault import (caixas, configio, db, decks_vista, encomendas,  # noqa: E4
                       venda, versoes)
 from mtgvault import padrao as padrao_mod  # noqa: E402
 from mtgvault import scryfall  # noqa: E402
+from mtgvault.nucleo import colecoes as n_colecoes  # noqa: E402
 from mtgvault.nucleo import listas as n_listas  # noqa: E402
 from mtgvault.nucleo import modelo as n_modelo  # noqa: E402
 from mtgvault.nucleo import posse as n_posse  # noqa: E402
@@ -100,6 +101,7 @@ import deckboxes  # noqa: E402
 import decks as decks_pag  # noqa: E402
 import faltas as faltas_pag  # noqa: E402
 import metagame  # noqa: E402
+import nucleo_colecoes  # noqa: E402
 import nucleo_decks  # noqa: E402
 import nucleo_painel  # noqa: E402
 import nucleo_vender  # noqa: E402
@@ -151,7 +153,8 @@ PAGINAS_EDITAVEIS = {"/": deckboxes,
 # antigas continuam de pé (`/deckboxes.html`, …), só deixam de estar no menu.
 # Desligado, o webapp é exatamente o de antes.
 PAGINAS_NUCLEO = {"/": nucleo_painel, "/index.html": nucleo_painel,
-                  "/deck.html": nucleo_decks, "/vender.html": nucleo_vender}
+                  "/deck.html": nucleo_decks, "/vender.html": nucleo_vender,
+                  "/colecoes.html": nucleo_colecoes}
 
 # Os links do menu que o modo edição tem de reescrever para levarem o token.
 # A ÂNCORA vai à parte (2026-09-24): metade dos itens da barra lateral aponta
@@ -175,6 +178,9 @@ _DADOS_DECKS = re.compile(r"^/data/paginas/decks(?:/([A-Za-z0-9_-]+))?\.json$")
 _DADOS_FALTAS = re.compile(r"^/data/paginas/faltas\.json$")
 # A versão reduzida da foto de cada deckbox (2026-09-21, `mtgvault.fotocaixa`).
 _FOTO_CAIXA = re.compile(r"^/assets/deckboxes/([A-Za-z0-9_-]+)\.jpg$")
+# O recorte da foto dele de uma carta (`assets/cartas/<foto>-<n>.jpg`, Task 11):
+# só dígitos-dígitos, para um `..` ou um nome qualquer nunca chegar ao disco.
+_FOTO_CARTA = re.compile(r"^/assets/cartas/([0-9]+-[0-9]+)\.jpg$")
 
 
 def pagina_de_erro(caminho: str, e: Exception) -> str:
@@ -1593,9 +1599,46 @@ def n_post_saida(con, dados: dict) -> dict:
     return {"ok": True}
 
 
+def _n_carta(dados: dict) -> int:
+    return _n_inteiro(dados.get("carta"), "a carta")
+
+
+def n_post_colecao_marca(con, dados: dict) -> dict:
+    """«+1 / −1» numa carta de coleção: um DELTA e um `request_id` (o mesmo id
+    outra vez conta uma vez); devolve o `tenho` de agora."""
+    rid = dados.get("request_id")
+    return {"tenho": n_colecoes.ajustar(
+        con, _n_carta(dados), _n_delta(dados),
+        request_id=rid.strip() if isinstance(rid, str) else "")}
+
+
+def n_post_colecao_meta(con, dados: dict) -> dict:
+    n_colecoes.definir_meta(con, _n_carta(dados), _n_inteiro(dados.get("meta"), "a meta"))
+    return {"ok": True}
+
+
+def n_post_colecao_vender(con, dados: dict) -> dict:
+    v = dados.get("vender")
+    if not isinstance(v, bool):
+        # «false» (texto) ou 0 não são um não: um pedido assim é um engano
+        raise ValueError("`vender` tem de ser verdadeiro ou falso")
+    n_colecoes.marcar_vender(con, _n_carta(dados), v)
+    return {"ok": True}
+
+
+def n_post_colecao_juntar(con, dados: dict) -> dict:
+    return {"carta": n_colecoes.juntar(
+        con, _n_texto(dados, "colecao"), _n_texto(dados, "scryfall_id"),
+        _n_texto(dados, "acabamento"), _n_texto(dados, "lingua") or "en")}
+
+
 _N_POST = {"/api/n/marca": n_post_marca, "/api/n/edicao": n_post_edicao,
            "/api/n/lista": n_post_lista, "/api/n/montar": n_post_montar,
-           "/api/n/a_mais": n_post_a_mais, "/api/n/saida": n_post_saida}
+           "/api/n/a_mais": n_post_a_mais, "/api/n/saida": n_post_saida,
+           "/api/n/colecao/marca": n_post_colecao_marca,
+           "/api/n/colecao/meta": n_post_colecao_meta,
+           "/api/n/colecao/vender": n_post_colecao_vender,
+           "/api/n/colecao/juntar": n_post_colecao_juntar}
 
 
 # ---------------------------------------------------------------------------
@@ -1887,6 +1930,18 @@ class Handler(BaseHTTPRequestHandler):
         # `data/paginas/` e servia o `data/arquetipos.json` a qualquer aparelho da
         # rede. E `is_relative_to` em vez de `startswith`: uma pasta irmã com o
         # mesmo prefixo (`…/mtgvault-old/`) passava no teste de texto.
+        mc = _FOTO_CARTA.match(caminho)
+        if mc:
+            # O RECORTE da foto dele (Task 11), do disco, como a foto da
+            # deckbox. O regex só deixa passar `<n>-<n>.jpg`; a pergunta é
+            # feita ao caminho RESOLVIDO e à pasta, não ao texto do pedido.
+            pasta = (ROOT / "assets" / "cartas").resolve()
+            if not (alvo.is_file() and alvo.parent == pasta):
+                self._envia("<h1>404</h1><p>esse recorte não existe</p>", 404)
+                return
+            self._envia(alvo.read_bytes(), tipo="image/jpeg",
+                        cache="v=" in urlparse(self.path).query)
+            return
         raiz = ROOT.resolve()
         e_dados = (nome.endswith(".json")
                    and alvo.is_relative_to(raiz / "data" / "paginas"))
@@ -3101,6 +3156,27 @@ def regra_firewall(port: int) -> str:
             f'dir=in action=allow protocol=TCP localport={port} profile=private')
 
 
+def preparar_nucleo(con) -> None:
+    """O que o núcleo precisa de ter na base antes de atender (o `daily` faz o
+    mesmo às 03:30): os 14 decks e as quatro coleções. Sem isto, o primeiro
+    arranque com o interruptor ligado dava um Painel sem um único deck (e uma
+    página das coleções por preparar) até à noite seguinte.
+
+    As coleções levantam `ValueError` se o catálogo não tem uma das 40 cartas
+    (nome e set na frase, R17): diz-se e o servidor arranca na mesma, porque uma
+    carta que falta no catálogo não é razão para o modo de edição não abrir.
+    """
+    try:
+        print(f"  Núcleo: {n_modelo.garantir_decks(con)} decks novos.")
+    except Exception as e:                              # noqa: BLE001
+        print(f"  Núcleo: não consegui garantir os decks ({type(e).__name__}: {e}).")
+    try:
+        print(f"  Núcleo: {n_colecoes.garantir_colecoes(con)} coleções novas.")
+    except ValueError as e:
+        print(f"  Núcleo: não criei as coleções — {e}. O resto do modo de edição "
+              "arranca na mesma; a página das coleções fica por preparar.")
+
+
 def main(port: int = PORT, host: str | None = None):
     host = host or BIND
     lig = ligacao_local(port)
@@ -3124,14 +3200,11 @@ def main(port: int = PORT, host: str | None = None):
     print("  Não abras este porto no router.  Ctrl+C para parar.")
     print("=" * 62)
     if n_modelo.ligado():
-        # Os 14 decks do núcleo, se ainda não estiverem na base (o `daily` faz o
-        # mesmo às 03:30). Sem isto, o primeiro arranque com o interruptor ligado
-        # dava um Painel sem um único deck até à noite seguinte.
         try:
             with db.session() as con:
-                print(f"  Núcleo: {n_modelo.garantir_decks(con)} decks novos.")
+                preparar_nucleo(con)
         except Exception as e:                          # noqa: BLE001
-            print(f"  Núcleo: não consegui garantir os decks ({type(e).__name__}: {e}).")
+            print(f"  Núcleo: não consegui preparar a base ({type(e).__name__}: {e}).")
     srv = ThreadingHTTPServer((host, port), Handler)
     # O AQUECEDOR arranca COM o servidor e não antes (2026-10-01): o porto
     # responde na hora (a sonda do `mtgvault-serve` pede a casca de 5 em 5 min)

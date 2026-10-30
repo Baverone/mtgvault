@@ -10,6 +10,7 @@ diz «sem preço» e fica fora do total — nunca vale 0 €.
 from __future__ import annotations
 
 import html
+from datetime import date
 from pathlib import Path
 
 from mtgvault import paginas
@@ -38,10 +39,11 @@ BLOCOS = (
 )
 
 
-def _linha(l: dict, editavel: bool, nomes: dict | None = None) -> str:
+def _linha(l: dict, editavel: bool, nomes: dict | None = None,
+           hoje: str | None = None) -> str:
     dados = ""
-    # as cartas das coleções ainda não têm ações aqui (vêm com a edição das
-    # coleções): na página de edição ficam como na de leitura
+    # as cartas das coleções não têm as ações das outras (a mais, saída): só o
+    # «não vender», que tira a marca na coleção (`_botoes`)
     if editavel and l["motivo"] != "colecao":
         dados = (f' data-sid="{e(l["scryfall_id"])}" data-acab="{e(l["acabamento"])}"'
                  f' data-nome="{e(l["nome"])}" data-motivo="{e(l["motivo"])}"')
@@ -57,11 +59,16 @@ def _linha(l: dict, editavel: bool, nomes: dict | None = None) -> str:
         meta.append(e(l["colecao"]))
     elif l["deck"]:
         meta.append(f'do {e((nomes or {}).get(l.get("slug"), l["deck"]))}')
+    # o preço português pode ser de há dias (só há oferta PT de vez em quando):
+    # diz-se há quantos, ao lado do preço
+    visto = (visual.visto_ha(l.get("preco_visto_em"), hoje or date.today().isoformat())
+             if l["preco_un"] is not None else "")
+    nota = f' <small class="visto">{visto}</small>' if visto else ""
     if l["preco_un"] is None:
         num = f'<span class="sp">sem preço</span><b>—</b>'
         un = f'×{l["qtd"]} · {num}'
     else:
-        un = (f'×{l["qtd"]} · {paginas.eur(l["preco_un"])}/un'
+        un = (f'×{l["qtd"]} · {paginas.eur(l["preco_un"])}/un{nota}'
               f'<b>{paginas.eur(l["qtd"] * l["preco_un"])}</b>')
     return (f'<li class="vl"{dados}>{img}<div class="vi"><b>{e(l["nome"])}</b>'
             f'<small>{" · ".join(meta)}</small></div>'
@@ -71,9 +78,12 @@ def _linha(l: dict, editavel: bool, nomes: dict | None = None) -> str:
 def _botoes(l: dict) -> str:
     """Os botões do modo de edição numa linha (o `edicao_js` liga-os): no
     «tenho a mais», tirar e pôr uma; numa saída, passá-la a «tenho a mais» ou
-    dá-la por tratada (vendida, dada, foi-se)."""
+    dá-la por tratada (vendida, dada, foi-se). Numa carta de coleção só há o
+    «não vender»: tira-lhe a marca (a carta continua na coleção)."""
     if l["motivo"] == "colecao":
-        return ""
+        return ('<div class="ed-lin"><button type="button" class="btn ed-b cbt"'
+                f' data-acao="cvender" data-carta="{l["carta_id"]}" data-vender="0"'
+                f' aria-label="Não vender {e(l["nome"])}">Não vender</button></div>')
     nome = e(l["nome"])
     if "id" in l:
         base = (f' data-acao="saida" data-saida="{l["id"]}" data-nome="{nome}"'

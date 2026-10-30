@@ -125,6 +125,13 @@ CSS = r"""
    z-index:90;width:max-content;max-width:min(560px,92vw);background:var(--card3);border:1px solid var(--line2);
    color:var(--ink);padding:10px 14px;border-radius:var(--r);box-shadow:var(--sombra);font-size:14px;line-height:1.4}
  .ed-aviso.mau{border-color:var(--bad-line);color:var(--bad-ink)}
+ /* as coleções: botões por baixo de cada carta, com alvos de toque de 44 px */
+ .btn.cbt{min-height:44px;padding:6px 8px;font-size:13px}
+ .ccb{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+ .ccb .ed-lin{display:flex;gap:6px}
+ .ccb .ed-lin .btn{flex:1 1 0;min-width:0}
+ .cjb{margin:4px 0 12px}
+ .ed-proc[hidden]{display:none}
 """
 
 JS = r"""
@@ -234,7 +241,13 @@ JS = r"""
         velho.innerHTML = novo.innerHTML;
         if (q) {
           var nq = document.getElementById('ed-q');
-          if (nq) { nq.value = q; procura(nq); if (qFoco) nq.focus({preventScroll: true}); }
+          if (nq) {
+            nq.value = q; procura(nq);
+            // a busca de «juntar carta» começa escondida: não a esconder a quem está a escrever
+            var cx = nq.closest ? nq.closest('.ed-proc') : null;
+            if (cx) cx.hidden = false;
+            if (qFoco) nq.focus({preventScroll: true});
+          }
         }
         document.dispatchEvent(new CustomEvent('nuc:atualizada'));
         window.scrollTo(0, y);
@@ -317,7 +330,7 @@ JS = r"""
     if (!e || !e.getAttribute) return null;
     // numa carta do deck, a edição muda com a folha aberta: só o deck e o nome
     var ks = e.tagName === 'FIGURE' ? ['data-deck', 'data-nome']
-      : ['data-acao', 'data-deck', 'data-nome', 'data-saida', 'data-destino', 'data-sid', 'data-acab', 'data-delta'], s = '';
+      : ['data-acao', 'data-deck', 'data-nome', 'data-saida', 'data-destino', 'data-sid', 'data-acab', 'data-delta', 'data-carta', 'data-colecao'], s = '';
     for (var i = 0; i < ks.length; i++) {
       var v = e.getAttribute(ks[i]);
       if (v !== null) s += '[' + ks[i] + '="' + v.replace(/["\\]/g, '\\$&') + '"]';
@@ -685,16 +698,21 @@ JS = r"""
         lista.innerHTML = '';
         if (!r.ok) { lista.appendChild(el('li', 'vazio', r.dados.erro)); return; }
         if (!r.dados.length) { lista.appendChild(el('li', 'vazio', 'Nenhuma carta em papel com «' + q + '».')); return; }
+        // em Vender o resultado abre «Tenho a mais»; na coleção aberta, «juntar»
+        var acaoRes = lista.getAttribute('data-res') || 'novo', colRes = lista.getAttribute('data-colecao');
         r.dados.forEach(function(nome){
           var li = el('li'), b = botao(nome);
-          b.setAttribute('data-acao', 'novo'); b.setAttribute('data-nome', nome);
+          b.setAttribute('data-acao', acaoRes); b.setAttribute('data-nome', nome);
+          if (colRes) b.setAttribute('data-colecao', colRes);
           li.appendChild(b); lista.appendChild(li);
         });
       }, function(){ if (n === procN) { lista.innerHTML = ''; lista.appendChild(el('li', 'vazio', REDE_GET)); } });
     }, 250);
   }
   function abreAMais(btn){
-    var e0 = {tipo: 'amais', nome: btn.getAttribute('data-nome'), eds: null, sel: null, acab: null, qtd: 1, ocupado: false};
+    var col = btn.getAttribute('data-colecao');
+    var e0 = {tipo: col ? 'juntar' : 'amais', colecao: col, nome: btn.getAttribute('data-nome'),
+              eds: null, sel: null, acab: null, qtd: 1, ocupado: false};
     abre(btn, e0);
     corpoF.appendChild(titulo(e0.nome));
     diz('A carregar as edições…');
@@ -719,7 +737,9 @@ JS = r"""
     else big.appendChild(el('span', 'ed-semimg', e0.nome));
     top.appendChild(big);
     info.appendChild(titulo(e0.nome));
-    info.appendChild(el('p', 'ed-amb', 'Acrescentar a «Tenho a mais», na edição e no acabamento que tens.'));
+    info.appendChild(el('p', 'ed-amb', e0.tipo === 'juntar'
+      ? 'Juntar à coleção, na edição e no acabamento que tens (em inglês).'
+      : 'Acrescentar a «Tenho a mais», na edição e no acabamento que tens.'));
     if (s) {
       var seg = el('div', 'seg ed-seg'), fins = acabsDe(s);
       seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', 'Acabamento');
@@ -733,7 +753,7 @@ JS = r"""
       });
       info.appendChild(seg);
     } else info.appendChild(el('p', 'ed-tens', 'Escolhe a edição em baixo.'));
-    {
+    if (e0.tipo !== 'juntar') {                          // juntar à coleção é uma carta
       var q = el('div', 'ed-qtd'), bm = botao('−', '', 'q-menos'), out = el('output', '', String(e0.qtd)), bp = botao('+', '', 'q-mais');
       bm.setAttribute('aria-label', 'Menos uma'); bp.setAttribute('aria-label', 'Mais uma');
       out.setAttribute('aria-live', 'polite'); out.setAttribute('aria-label', 'Quantidade');
@@ -763,23 +783,32 @@ JS = r"""
     if (!e0.eds.length) grade.appendChild(el('p', 'vazio', 'O catálogo não tem nenhuma impressão em papel desta carta.'));
     corpoF.appendChild(grade);
     var row = el('div', 'ed-row ed-fixa');
-    var ba = botao(s ? 'Acrescentar ' + e0.qtd + ' a Tenho a mais' : 'Escolhe a edição', 'pri', 'acrescentar'),
+    var ba = botao(!s ? 'Escolhe a edição' : e0.tipo === 'juntar' ? 'Juntar à coleção'
+                   : 'Acrescentar ' + e0.qtd + ' a Tenho a mais', 'pri', 'acrescentar'),
         bc = botao('Cancelar');
     ba.disabled = !s || e0.ocupado;
     bc.addEventListener('click', fecha);
     ba.addEventListener('click', function(){
       if (e0.ocupado || !e0.sel) return;
       e0.ocupado = true; ba.disabled = true; diz('A gravar…');
-      var sel = e0.sel, acab = e0.acab, qtd = e0.qtd;
-      pede('POST', '/api/n/a_mais', {scryfall_id: sel.scryfall_id, acabamento: acab, delta: qtd})
+      var sel = e0.sel, acab = e0.acab, qtd = e0.qtd, juntar = e0.tipo === 'juntar';
+      pede('POST', juntar ? '/api/n/colecao/juntar' : '/api/n/a_mais',
+           juntar ? {colecao: e0.colecao, scryfall_id: sel.scryfall_id, acabamento: acab, lingua: 'en'}
+                  : {scryfall_id: sel.scryfall_id, acabamento: acab, delta: qtd})
         .then(function(r){
           e0.ocupado = false;
+          if (r.ok && juntar) {                          // a busca recomeça vazia
+            var qi = document.getElementById('ed-q');
+            if (qi) qi.value = '';
+          }
           if (r.ok) recarrega();
           if (est !== e0) return;
           if (!r.ok) { ba.disabled = false; diz(r.dados.erro || 'Não gravei.', true); return; }
           fecha();
-          aviso(e0.nome + ' (' + sel.set_code.toUpperCase() + ', ' + NOME_ACAB[acab].toLowerCase()
-            + '): tens agora ' + r.dados.qtd + ' a mais.');
+          aviso(juntar ? e0.nome + ' (' + sel.set_code.toUpperCase() + ', ' + NOME_ACAB[acab].toLowerCase()
+                         + '): juntei à coleção.'
+            : e0.nome + ' (' + sel.set_code.toUpperCase() + ', ' + NOME_ACAB[acab].toLowerCase()
+              + '): tens agora ' + r.dados.qtd + ' a mais.');
         }, function(err){
           e0.ocupado = false;
           if (est === e0) { ba.disabled = false; diz(falhaPost(err), true); }
@@ -790,11 +819,11 @@ JS = r"""
   }
 
   // ------------------------------------------------ Vender: as linhas
-  function linha(b, url, corpo, ok){
+  function linha(b, url, corpo, ok, repete){
     if (b.disabled) return;
     focoDepois = chaveDe(b);
     b.disabled = true;
-    pede('POST', url, corpo).then(function(r){
+    pede('POST', url, corpo, repete).then(function(r){
       b.disabled = false;
       if (!r.ok) { aviso(r.dados.erro || 'Não gravei.', true); return; }
       aviso(ok(r.dados));
@@ -840,6 +869,87 @@ JS = r"""
     bs.focus();
   }
 
+  // ------------------------------------------------------ as coleções
+  // Botões por baixo de cada carta de `colecoes.html` (e o «não vender» das
+  // linhas de Vender): um toque, um POST, e `recarrega()` a seguir. O número
+  // que fica no ecrã é sempre o que o servidor disse.
+  function idCarta(b){ return parseInt(b.getAttribute('data-carta'), 10); }
+  function nomeDaCarta(b){
+    var f = b.closest ? b.closest('.cc, li.vl') : null, t = f ? f.querySelector('figure, .vi b, img') : null;
+    if (!t) return 'a carta';
+    return t.getAttribute('title') || t.getAttribute('alt') || t.textContent || 'a carta';
+  }
+  function colMarca(b){
+    var d = parseInt(b.getAttribute('data-delta'), 10), nome = nomeDaCarta(b);
+    // um request_id por toque: se a rede falhar a meio e o pedido repetir, conta uma vez
+    linha(b, '/api/n/colecao/marca', {carta: idCarta(b), delta: d, request_id: idPedido()},
+          function(r){ return nome + ': tens ' + r.tenho + '.'; }, 2);
+  }
+  function colVender(b){
+    var v = b.getAttribute('data-vender') === '1', nome = nomeDaCarta(b);
+    linha(b, '/api/n/colecao/vender', {carta: idCarta(b), vender: v},
+          function(){ return nome + (v ? ': marcada para vender.' : ': já não está para vender.'); });
+  }
+  function colMeta(b){
+    var e0 = {tipo: 'meta', ocupado: false}, nome = nomeDaCarta(b);
+    abre(b, e0);
+    corpoF.appendChild(titulo('Meta · ' + nome));
+    var f = el('form', 'ed-form'); f.noValidate = true;
+    var l1 = el('label', '', 'Quantas queres ter?'); l1.htmlFor = 'ed-meta';
+    var inp = el('input'); inp.id = 'ed-meta'; inp.type = 'number'; inp.min = '0'; inp.step = '1';
+    inp.setAttribute('inputmode', 'numeric'); inp.value = b.getAttribute('data-meta') || '4';
+    var dica = el('p', 'ed-dica', 'A meta conta para «tenho X de Y» e para quanto falta; 0 tira a carta do progresso.');
+    var row = el('div', 'ed-row'), bg = botao('Gravar meta', 'pri'), bc = botao('Cancelar');
+    bg.type = 'submit'; bc.addEventListener('click', fecha);
+    row.appendChild(bg); row.appendChild(bc);
+    [l1, inp, dica, row].forEach(function(x){ f.appendChild(x); });
+    corpoF.appendChild(f);
+    f.addEventListener('submit', function(ev){
+      ev.preventDefault();
+      if (e0.ocupado) return;
+      var v = inp.value.trim();
+      if (!/^\d{1,3}$/.test(v)) { diz('A meta é um número inteiro, 0 ou mais.', true); inp.focus(); return; }
+      e0.ocupado = true; bg.disabled = true; diz('A gravar…');
+      pede('POST', '/api/n/colecao/meta', {carta: idCarta(b), meta: parseInt(v, 10)}).then(function(r){
+        e0.ocupado = false; bg.disabled = false;
+        if (r.ok) recarrega();
+        if (est !== e0) return;
+        if (!r.ok) { diz(r.dados.erro || 'Não gravei.', true); return; }
+        fecha(); aviso(nome + ': meta ' + v + '.');
+      }, function(err){
+        e0.ocupado = false; bg.disabled = false;
+        if (est === e0) diz(falhaPost(err), true);
+      });
+    });
+    inp.focus(); inp.select();
+  }
+  // O botão «Juntar carta» mostra a busca (a de Vender); um resultado dela é
+  // outro `cjuntar`, com o nome, e abre a escolha da edição.
+  function colJuntar(b){
+    if (b.getAttribute('data-nome')) { abreAMais(b); return; }
+    var inp = document.getElementById('ed-q');
+    if (!inp) return;
+    var caixa = inp.closest ? inp.closest('.ed-proc') : null;
+    if (caixa) { caixa.hidden = false; if (caixa.scrollIntoView) caixa.scrollIntoView({block: 'center'}); }
+    inp.focus({preventScroll: true});
+  }
+  // A foto dele <-> a imagem oficial (o `data-oficial` da carta com recorte).
+  function colOficial(fig){
+    var im = fig ? fig.querySelector('img') : null, of = fig ? fig.getAttribute('data-oficial') : null;
+    if (!im || !of) return;
+    var oficial = fig.getAttribute('data-vendo') === 'oficial';
+    if (oficial) { im.src = fig.getAttribute('data-foto'); fig.removeAttribute('data-vendo'); }
+    else {
+      fig.setAttribute('data-foto', im.getAttribute('src'));
+      im.removeAttribute('srcset'); im.src = of; fig.setAttribute('data-vendo', 'oficial');
+    }
+    var cc = fig.closest('.cc'), bt = cc ? cc.querySelector('[data-acao="coficial"]') : null;
+    if (bt) {
+      bt.textContent = oficial ? 'ver oficial' : 'ver a minha';
+      bt.setAttribute('aria-pressed', oficial ? 'false' : 'true');
+    }
+  }
+
   // ------------------------------------------------------------ eventos
   // Delegados no documento: sobrevivem à troca do <main> depois de cada POST.
   document.addEventListener('click', function(ev){
@@ -854,8 +964,19 @@ JS = r"""
       else if (a === 'amais') linhaAMais(b);
       else if (a === 'saida') linhaSaida(b);
       else if (a === 'novo') abreAMais(b);
+      else if (a === 'cmarca') colMarca(b);
+      else if (a === 'cmeta') colMeta(b);
+      else if (a === 'cvender') colVender(b);
+      else if (a === 'cjuntar') colJuntar(b);
+      else if (a === 'coficial') {
+        var cc = b.closest('.cc');
+        colOficial(cc ? cc.querySelector('figure[data-oficial]') : null);
+      }
       return;
     }
+    // uma carta de coleção com recorte: o toque mostra a oficial (e outra vez a dele)
+    var of = t.closest('figure.ct[data-oficial]');
+    if (of && !of.hasAttribute('data-deck')) { colOficial(of); return; }
     var c = t.closest('figure.ct[data-deck]');
     if (c) abreCarta(c);
   });
