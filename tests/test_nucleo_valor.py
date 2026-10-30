@@ -768,9 +768,13 @@ def caso_serie_colecao():
         vigiado_em(con, outra, "nonfoil", ha(10), 50.0)
         s = valor.serie_colecao(con, "duals_revised", HOJE)
         assert s == [(ha(30), 200.0, 0), (HOJE, 240.0, 0)], s
-        # mais de 90 dias fica de fora
+        # a janela são 100 dias (a variação a 90 dias precisa de um ponto até
+        # hoje−90): há 95 dias entra, há 120 fica de fora
         vigiado_em(con, tundra, "nonfoil", ha(120), 90.0)
         assert valor.serie_colecao(con, "duals_revised", HOJE)[0][0] == ha(30)
+        vigiado_em(con, tundra, "nonfoil", ha(95), 80.0)
+        s = valor.serie_colecao(con, "duals_revised", HOJE)
+        assert s[0] == (ha(95), 160.0, 0), s
         # sem cópias nenhumas, sem pontos
         assert valor.serie_colecao(con, "expeditions", HOJE) == []
 

@@ -2,12 +2,18 @@
 coleções (Duals de Revised, Zendikar Expeditions, Shocks originais em
 português, Reserved List) e «A subir», numa página só — uma `<section>` por
 coleção e uma para as cartas a subir, e os botões de todas quando não há `#` no
-endereço. Como o `nucleo_decks`, e com o mesmo JavaScript de `#`.
+endereço. Como o `nucleo_decks`, e com o mesmo JavaScript de `#`
+(`visual.JS_ROTA`).
+
+**Esta página nunca escreve**: o `publicar` gera-a a partir de uma ligação só de
+leitura. As coleções são criadas por `colecoes.garantir_colecoes` (no arranque
+do modo de edição e no daily); sem elas a página di-lo, em vez de mostrar «0 de
+40».
 
 O nome do ficheiro não é `colecao.html` porque esse é a Galeria do site antigo,
 ainda ligada à publicação dele.
 
-Cada coleção: o valor de hoje com a variação a 30 dias e o gráfico, o progresso
+Cada coleção: o valor de hoje com as variações a 30 e a 90 dias e o gráfico, o progresso
 e quanto falta em euros (as fechadas), e as cartas em imagem — a cores as que
 tem, a cinzento as que faltam — com «tenho / meta», o preço (nas portuguesas
 com o dia em que foi visto), a variação a 30 e a 90 dias, onde se joga e «quero
@@ -16,14 +22,13 @@ vender». As peças vivem em `mtgvault/nucleo/visual.py`.
 from __future__ import annotations
 
 import html
+import sqlite3
 from datetime import date
 from pathlib import Path
 
 from mtgvault import paginas
 from mtgvault import site_shell as shell
 from mtgvault.nucleo import colecoes, cotacoes, edicao_js, valor, visual
-
-from nucleo_decks import JS
 
 ROOT = Path(__file__).resolve().parent
 FICHEIRO = "colecoes.html"
@@ -45,9 +50,15 @@ _RODAPE = ("O preço de uma carta em inglês é o trend do Cardmarket da ediçã
 # ---------------------------------------------------------------------------
 # Os dados
 # ---------------------------------------------------------------------------
+def _pct(v: dict | None) -> float | None:
+    """A percentagem de uma `visual.variacao_serie`; sem ela (ou com o ponto de
+    partida a 0 €), `None` — «sem histórico»."""
+    return v["pct"] if v else None
+
+
 def _dados(con, hoje: str) -> list[dict]:
-    """As coleções por ordem, cada uma com o estado, a série do valor, a
-    variação a 30 dias e a carta que lhe dá a arte (a `arte_nome` dela; sem
+    """As coleções por ordem, cada uma com o estado, a série do valor, as
+    variações a 30 e a 90 dias e a carta que lhe dá a arte (a `arte_nome` dela; sem
     ela, a primeira carta; vazia, sem arte)."""
     out = []
     for col in colecoes.colecoes(con):
@@ -58,7 +69,8 @@ def _dados(con, hoje: str) -> list[dict]:
                      if c["nome"] == col["arte_nome"]),
                     cartas[0]["scryfall_id"] if cartas else None)
         out.append({"estado": est, "serie": serie, "arte": arte,
-                    "var30": visual.variacao_serie(serie, hoje)})
+                    "var30": _pct(visual.variacao_serie(serie, hoje)),
+                    "var90": _pct(visual.variacao_serie(serie, hoje, 90))})
     return out
 
 
@@ -76,9 +88,9 @@ def _cabecalho(item: dict) -> str:
 
 
 def _valor(item: dict) -> str:
-    est, v = item["estado"], item["var30"]
-    var = (visual.variacao_html(v) if v is not None
-           else '<span class="vvar">sem histórico</span>')
+    est = item["estado"]
+    var = ('<span class="vvar">'
+           + visual.variacoes_html(item["var30"], item["var90"]) + "</span>")
     # só as cartas que ele tem: as que faltam e não têm preço não entram no valor
     sem = sum(1 for c in est["cartas"] if c["tenho"] and c["preco_un"] is None)
     nota = (f'<div class="vnota">{paginas.plural(sem, "carta tua", "cartas tuas")}'
@@ -139,24 +151,31 @@ def seccao_subir(linhas: list[dict]) -> str:
 # ---------------------------------------------------------------------------
 # A página
 # ---------------------------------------------------------------------------
-def _erro(msg: str) -> str:
-    return (f'<div class="avisov" role="note">{shell.icone("aviso", 16)}'
-            '<div><b>Não consegui preparar as coleções.</b> '
-            f'{e(msg)}<small>Sem isso não se desenha nada, para não mostrar '
-            '«0 de 40» como se fosse um facto.</small></div></div>')
+def _nao_preparadas() -> str:
+    return ('<p class="vazio espera"><b>As coleções ainda não foram preparadas.</b>'
+            'Aparecem aqui quando o modo de edição arrancar ou na próxima '
+            'atualização diária.</p>')
+
+
+def _tem_colecoes(con) -> bool:
+    """Há coleções na base? Uma base sem as tabelas `n_colecao*` (ainda não
+    migrada) conta como «não»: a página nunca cria nada."""
+    try:
+        return bool(colecoes.colecoes(con))
+    except sqlite3.OperationalError:
+        return False
 
 
 def html_page(con, *, editable: bool = False, token: str = "",
               hoje: str | None = None) -> str:
     """A página inteira. Com `editable`, o `<body>` leva a marca do modo de
-    edição; o `token` nunca é escrito na página. `hoje` é para os testes."""
+    edição; o `token` nunca é escrito na página. `hoje` é para os testes. Só
+    lê: não cria as coleções (ver o início do módulo)."""
     # o `token` não se escreve: o JavaScript da edição lê-o do `?t=` do URL
     del token
     hoje = hoje or date.today().isoformat()
-    try:
-        colecoes.garantir_colecoes(con)
-    except ValueError as erro:
-        corpo_ = _erro(str(erro))
+    if not _tem_colecoes(con):
+        corpo_ = _nao_preparadas()
     else:
         itens = _dados(con, hoje)
         subir = cotacoes.a_subir(con, hoje)
@@ -174,7 +193,7 @@ def html_page(con, *, editable: bool = False, token: str = "",
             + visual.corpo(editable)
             + shell.abrir(FICHEIRO, TITULO, _SUB)
             + f'<div class="wrap nuc">{corpo_}</div>'
-            + shell.fechar(_RODAPE, f"<script>{JS}</script>"
+            + shell.fechar(_RODAPE, f"<script>{visual.JS_ROTA}</script>"
                            f"<script>{visual.JS_GRAFICO}</script>"
                            + edicao_js.script(editable))
             + "</body></html>")

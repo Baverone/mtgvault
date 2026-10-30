@@ -459,16 +459,15 @@ def _arte_tile(sid: str | None) -> str:
 
 def mosaico_colecao(item: dict, href: str) -> str:
     """O botão de uma coleção: arte, nome, «tenho X de Y» (aberta: «N cartas»),
-    valor de hoje e a variação a 30 dias (`item["var30"]`, a de
-    `variacao_serie`)."""
+    valor de hoje e a variação a 30 e a 90 dias (`item["var30"]`/`["var90"]`,
+    as de `variacao_serie`; `None` é «sem histórico»)."""
     est = item["estado"]
     if est["tipo"] == "fechada":
         prog = f'tenho {est["tenho"]} de {est["total"]}'
         bar = barra(est["tenho"], est["total"], "tb")
     else:
         prog, bar = paginas.plural(est["tenho"], "carta"), ""
-    var = (variacao_html(item["var30"]) if item["var30"] is not None
-           else '<span class="vvar">sem histórico</span>')
+    var = variacoes_html(item["var30"], item["var90"])
     return (f'<a class="tile" href="{e(href)}">{_arte_tile(item["arte"])}'
             f'<span class="tx"><span class="tn">{e(est["nome"])}</span>'
             f'<span class="tp">{prog}</span>'
@@ -663,6 +662,35 @@ JS_GRAFICO = r"""
 """
 
 
+# O router de `#` das páginas de uma só página (decks e coleções): mostra a
+# `<section class="dk">` do `#` e esconde as outras; sem `#`, o `#todos`.
+# As secções procuram-se a cada chamada e não uma vez: no modo de edição o
+# `<main>` é trocado depois de cada gravação (`edicao_js`), e o evento
+# `nuc:atualizada` volta a mostrar a secção do `#` SEM saltar para o topo — ele
+# está a marcar cartas a meio da página.
+JS_ROTA = r"""
+(function(){
+  var titulo = document.title;
+  function mostra(ev){
+    var todos = document.getElementById('todos'),
+        secs = document.querySelectorAll('section.dk');
+    var h = '';
+    try { h = decodeURIComponent((location.hash || '').slice(1)); } catch (e) {}
+    var alvo = null, i;
+    for (i = 0; i < secs.length; i++) if (secs[i].id === h) alvo = secs[i];
+    for (i = 0; i < secs.length; i++) secs[i].hidden = secs[i] !== alvo;
+    if (todos) todos.hidden = !!alvo;
+    var nome = alvo && alvo.getAttribute('data-nome');
+    document.title = nome ? nome + ' · ' + titulo : titulo;
+    if (alvo && !(ev && ev.type === 'nuc:atualizada')) window.scrollTo(0, 0);
+  }
+  window.addEventListener('hashchange', mostra);
+  document.addEventListener('nuc:atualizada', mostra);
+  mostra();
+})();
+"""
+
+
 # ---------------------------------------------------------------------------
 # O CSS das três páginas (mobile primeiro: 4 cartas por linha a 390 px, 8 a
 # 1440; mosaicos 2 por linha no telemóvel, 4–5 no PC)
@@ -828,8 +856,8 @@ CSS = r"""
  .vn b{display:block;color:var(--ink);font-size:14px}
  .vn .sp{color:var(--bad)}
 
- /* as coleções: o mosaico leva quatro linhas, a variação quebra se for preciso */
- .tile .vvar{font-size:11px;white-space:normal}
+ /* as coleções: o mosaico leva quatro linhas; a variação quebra se for preciso */
+ .tile .sv0{color:var(--ink2)}
  .cg.ccg{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 6px}
  @media (min-width:600px){ .cg.ccg{grid-template-columns:repeat(4,minmax(0,1fr))} }
  @media (min-width:900px){ .cg.ccg{grid-template-columns:repeat(5,minmax(0,1fr));gap:12px 8px} }

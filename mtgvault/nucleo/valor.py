@@ -304,13 +304,17 @@ def variacao_mes(con: sqlite3.Connection, hoje: str | None = None) -> dict | Non
     return {"delta": delta, "pct": pct, "desde": desde, "hoje": hoje}
 
 
-# a janela do gráfico e da variação a 30 dias do mosaico de uma coleção
-DIAS_DA_SERIE_COLECAO = 90
+# A janela da série de uma coleção: 100 dias e não 90. A variação a 90 dias do
+# mosaico compara hoje com o último ponto ATÉ hoje−90, e a série só tem pontos
+# nos dias com dados; com a janela a acabar em hoje−90 esse ponto quase nunca
+# existia e a variação saía sempre «sem histórico». (O gráfico continua a mostrar
+# 1 mês, 3 meses ou tudo: os 3 meses cortam-se no `visual.grafico`.)
+DIAS_DA_SERIE_COLECAO = 100
 
 
 def serie_colecao(con: sqlite3.Connection, slug: str,
                   hoje: str | None = None) -> list[tuple[str, float, int]]:
-    """`[(dia, total_eur, sem_preco)]` de uma coleção nos últimos 90 dias e hoje,
+    """`[(dia, total_eur, sem_preco)]` de uma coleção nos últimos 100 dias e hoje,
     com o `tenho` de HOJE a preços de cada dia (o que ele tinha em cada dia não
     se guarda; é o gráfico do valor do que tem agora).
 

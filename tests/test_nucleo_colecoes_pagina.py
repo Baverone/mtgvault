@@ -99,12 +99,13 @@ def caso_mosaicos():
 
 
 def caso_mosaico_valor_e_variacao():
-    """O mosaico diz o valor de hoje e a variação a 30 dias da série da
-    coleção (a de há 30 dias é o último ponto até esse dia); sem ponto até lá,
-    «sem histórico»."""
+    """O mosaico e o cabeçalho dizem o valor de hoje e a variação a 30 e a 90
+    dias da série da coleção (a de há N dias é o último ponto até esse dia);
+    sem ponto até lá, «sem histórico». Um preço de há 95 dias dá a de 90."""
     with pronta() as con:
         us = base._carta(con, "duals_revised", "Underground Sea")
         base._marcar(con, us["id"], 1)
+        vigiado(con, US, "nonfoil", ha(95), 50.0)
         vigiado(con, US, "nonfoil", ha(35), 100.0)
         base._preco(con, US, "nonfoil", 110.0)
         p = nucleo_colecoes.html_page(con)
@@ -112,12 +113,25 @@ def caso_mosaico_valor_e_variacao():
         t = re.search(r'<a class="tile" href="#duals_revised">.*?</a>', todos,
                       re.S).group(0)
         assert paginas.eur(110.0) in texto(t), texto(t)
-        assert "▲" in t and "+10,0 %" in texto(t) and "num mês" in texto(t), texto(t)
+        assert "+10,0 % 30 d" in texto(t) and "+120,0 % 90 d" in texto(t), texto(t)
+        # o mesmo no cabeçalho da coleção
+        cab = seccao(p, "duals_revised").split('<div class="graf">')[0]
+        assert "+10,0 % 30 d" in texto(cab) and "+120,0 % 90 d" in texto(cab), texto(cab)
         # as outras não têm série
         o = re.search(r'<a class="tile" href="#expeditions">.*?</a>', todos,
                       re.S).group(0)
         assert "sem histórico" in texto(o), texto(o)
-        assert "▲" not in o and "▼" not in o
+        # só um ponto até há 30 dias: a de 30 dias existe, a de 90 diz-se
+        with pronta() as con2:
+            c2 = base._carta(con2, "duals_revised", "Underground Sea")
+            base._marcar(con2, c2["id"], 1)
+            vigiado(con2, US, "nonfoil", ha(35), 100.0)
+            base._preco(con2, US, "nonfoil", 110.0)
+            p2 = nucleo_colecoes.html_page(con2)
+            t2 = re.search(r'<a class="tile" href="#duals_revised">.*?</a>',
+                           p2, re.S).group(0)
+            assert "+10,0 % 30 d" in texto(t2), texto(t2)
+            assert "sem histórico 90 d" in texto(t2), texto(t2)
 
 
 def caso_colecao_fechada():
@@ -298,16 +312,38 @@ def caso_casca():
         assert "data-editavel" not in q
 
 
-def caso_catalogo_sem_carta():
-    """Um catálogo a que falta uma carta das coleções não rebenta a geração:
-    a página diz porquê, em português, e não inventa coleções."""
+def caso_so_leitura():
+    """A página gera-se a partir de uma ligação SÓ DE LEITURA (a do `publicar`):
+    não levanta, não cria nada, e mostra as coleções que já existiam."""
+    tmp = Path(tempfile.mkdtemp())
+    with db.session(tmp / "v.db", tmp / "c.db") as con:
+        base.semear(con)
+        colecoes.garantir_colecoes(con)
+        us = base._carta(con, "duals_revised", "Underground Sea")
+        base._marcar(con, us["id"], 2)
+        con.commit()
+    with db.ler(tmp / "v.db", tmp / "c.db") as ro:
+        p = nucleo_colecoes.html_page(ro)
+        assert 'href="#duals_revised"' in p and "tenho 2 de 40" in texto(p)
+        assert [r[0] for r in ro.execute(
+            "SELECT slug FROM n_colecao ORDER BY ordem")] == SLUGS
+
+
+def caso_nao_cria_as_colecoes():
+    """Com o catálogo semeado mas sem as coleções criadas, a página não as cria:
+    diz que ainda não foram preparadas (sem «0 de 40»); o mesmo se faltarem as
+    tabelas."""
     with sessao() as con:
-        base.semear(con, sem=("Volcanic Island", "3ed"))
+        base.semear(con)
         p = nucleo_colecoes.html_page(con)
-        assert "Volcanic Island" in p and "3ed" in p
+        assert "As coleções ainda não foram preparadas." in p
+        assert 'class="tile"' not in p and "de 40" not in p
         assert '<h1 class="pgt">Coleção</h1>' in p
-        assert 'class="tile"' not in p
-        assert "Não consegui" in p
+        assert con.execute("SELECT COUNT(*) FROM n_colecao").fetchone()[0] == 0
+        con.execute("PRAGMA foreign_keys = OFF")
+        for t in ("n_colecao_carta", "n_colecao"):
+            con.execute(f"DROP TABLE {t}")
+        assert "As coleções ainda não foram preparadas." in             nucleo_colecoes.html_page(con)
 
 
 def caso_build():

@@ -37,31 +37,9 @@ _RODAPE = ("O preço de uma carta em falta é o trend do Cardmarket da edição 
            "escolhida (sem escolha, a normal mais barata com preço). «Sem preço» "
            "fica fora do «falta». Completo inclui o sideboard e o comandante.")
 
-# As secções procuram-se a cada chamada e não uma vez: no modo de edição o
-# `<main>` é trocado depois de cada gravação (`edicao_js`), e o evento
-# `nuc:atualizada` volta a mostrar o deck do `#` SEM saltar para o topo — ele
-# está a marcar cartas a meio da página.
-JS = r"""
-(function(){
-  var titulo = document.title;
-  function mostra(ev){
-    var todos = document.getElementById('todos'),
-        secs = document.querySelectorAll('section.dk');
-    var h = '';
-    try { h = decodeURIComponent((location.hash || '').slice(1)); } catch (e) {}
-    var alvo = null, i;
-    for (i = 0; i < secs.length; i++) if (secs[i].id === h) alvo = secs[i];
-    for (i = 0; i < secs.length; i++) secs[i].hidden = secs[i] !== alvo;
-    if (todos) todos.hidden = !!alvo;
-    var nome = alvo && alvo.getAttribute('data-nome');
-    document.title = nome ? nome + ' · ' + titulo : titulo;
-    if (alvo && !(ev && ev.type === 'nuc:atualizada')) window.scrollTo(0, 0);
-  }
-  window.addEventListener('hashchange', mostra);
-  document.addEventListener('nuc:atualizada', mostra);
-  mostra();
-})();
-"""
+# O router de `#` vive em `visual.JS_ROTA` (a página das coleções usa o mesmo);
+# o nome `JS` mantém-se para quem o importe daqui.
+JS = visual.JS_ROTA
 
 
 # ---------------------------------------------------------------------------
