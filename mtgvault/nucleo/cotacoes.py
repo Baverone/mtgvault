@@ -31,7 +31,7 @@ import sqlite3
 from datetime import date, timedelta
 
 from .. import precos
-from . import posse, valor
+from . import jogada, posse, valor
 
 # as edições originais dos shocks em português: Ravnica, Guildpact, Dissension
 SETS_PT = ("rav", "gpt", "dis")
@@ -244,8 +244,8 @@ def a_subir(con: sqlite3.Connection, hoje: str | None = None) -> list[dict]:
     `>= MINIMO_SUBIR`, por `var30` decrescente (`None` no fim, por nome).
 
     `tenho` soma o que ele tem nas coleções e o `n_posse` (qualquer âmbito) da
-    mesma impressão e acabamento. `joga` fica vazio: quem o preenche é a lista
-    de jogadas (Tarefa 5).
+    mesma impressão e acabamento. `joga` diz onde a carta se joga
+    (`jogada.onde_joga`).
     """
     hoje = hoje or date.today().isoformat()
     tenho: dict[tuple[str, str], int] = {}
@@ -264,7 +264,8 @@ def a_subir(con: sqlite3.Connection, hoje: str | None = None) -> list[dict]:
             "acabamento": acab, "preco": preco,
             "var30": variacao(con, sid, acab, 30, hoje),
             "var90": variacao(con, sid, acab, 90, hoje),
-            "tenho": tenho.get((sid, acab), 0), "joga": []})
+            "tenho": tenho.get((sid, acab), 0),
+            "joga": jogada.onde_joga(con, nome, hoje)})
     linhas.sort(key=lambda l: (l["var30"] is None, -(l["var30"] or 0),
                                l["nome"], l["scryfall_id"], l["acabamento"]))
     return linhas

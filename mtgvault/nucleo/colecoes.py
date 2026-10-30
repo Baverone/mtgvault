@@ -30,7 +30,7 @@ from __future__ import annotations
 import sqlite3
 from datetime import date
 
-from . import cotacoes, posse, valor
+from . import cotacoes, jogada, posse, valor
 
 DUALS = ("Badlands", "Bayou", "Plateau", "Savannah", "Scrubland", "Taiga",
          "Tropical Island", "Tundra", "Underground Sea", "Volcanic Island")
@@ -146,8 +146,8 @@ def estado_colecao(con: sqlite3.Connection, slug: str,
     `total` e `falta` só existem nas fechadas (nas abertas ficam `None`).
     `preco_visto_em` só existe nas cartas `pt` (o dia do último preço português
     visto) e `var30`/`var90` vêm das cotações (`hoje` é para os testes). Os
-    campos de jogo e de fotos (`joga`, `validadas`, `recorte`) vêm das Tarefas
-    5 e 6; até lá ficam `[]`/`0`/`None`.
+    `joga` vem de `jogada.onde_joga`; os de fotos (`validadas`, `recorte`) vêm da
+    Tarefa 6 e até lá ficam `0`/`None`.
     """
     hoje = hoje or date.today().isoformat()
     col = con.execute("SELECT slug, nome, tipo FROM n_colecao WHERE slug = ?",
@@ -187,7 +187,7 @@ def estado_colecao(con: sqlite3.Connection, slug: str,
                                r["lingua"], 30, hoje),
             "var90": _variacao(con, r["scryfall_id"], r["acabamento"],
                                r["lingua"], 90, hoje),
-            "joga": [], "validadas": 0,
+            "joga": jogada.onde_joga(con, r["nome"], hoje), "validadas": 0,
             "recorte": None})
     return {"slug": col["slug"], "nome": col["nome"], "tipo": col["tipo"],
             "cartas": cartas, "tenho": tenho,
