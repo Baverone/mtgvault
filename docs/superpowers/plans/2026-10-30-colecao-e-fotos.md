@@ -31,9 +31,9 @@ assinatura que não esteja aqui.
 - Tabela/coluna nova entra nos três sítios: `mtgvault/schema.sql`, `db._migrate()` e quem a escreve. Índice sobre coluna acrescentada por `ALTER` vai só no `_migrate`.
 - O núcleo escreve só em tabelas `n_*`. A `n_posse` dos decks **não muda de chave**.
 - Página nova: `colecoes.html` (não `colecao.html`, que é a Galeria do site antigo).
-- Coleções: Duals de Revised (`3ed`, en, nonfoil), Zendikar Expeditions (shocks + fetches de `zne`, en, foil), Shocks originais em português (`rav`/`gpt`/`dis`, pt, nonfoil), meta 4 de cada; Reserved List aberta, sem meta.
+- Coleções: Duals de Revised (`3ed`, en, nonfoil), Zendikar Expeditions (shocks + fetches de `exp`, en, foil), Shocks originais em português (`rav`/`gpt`/`dis`, pt, nonfoil), meta 4 de cada; Reserved List aberta, sem meta.
 - Preço PT: só ofertas `mtg_language == "pt"` do CardTrader com `precos.oferta_utilizavel(o, frozenset({"pt"}))`; o preço é a mais barata do último dia com ofertas PT; nunca cair no inglês.
-- «A subir»: Reserved List (`reserved = 1 AND digital = 0`) + impressões das famílias (10 duals, 10 shocks, 10 fetches) + o set `zne`, só com trend ≥ 20 €.
+- «A subir»: Reserved List (`reserved = 1 AND digital = 0`) + impressões das famílias (10 duals, 10 shocks, 10 fetches) + o set `exp`, só com trend ≥ 20 €.
 - «Joga»: versão atual de um deck dele, ou `n_jogada` dos últimos 3 meses (qualquer formato).
 - Recortes: `assets/cartas/<foto_id>-<n>.jpg`, 488 px de largura, JPEG qualidade 82; vão para o Git.
 - Commits: uma linha ASCII + `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Sem push.
@@ -116,7 +116,7 @@ mais `n_valor.colecoes_eur REAL` por `ALTER TABLE` (padrão `PRAGMA table_info` 
 - `definir_meta(con, carta_id, meta: int) -> None` (≥ 0; `ValueError` na aberta), `marcar_vender(con, carta_id, vender: bool) -> None`.
 - `juntar(con, slug, scryfall_id, acabamento, lingua="en") -> int` — só na aberta (`ValueError` na fechada); devolve o `id` (a carta que já lá está devolve o mesmo id).
 
-- [ ] **Passo 1 — testes a chumbar** (semear no catálogo de teste as impressões necessárias: as 10 duals em `3ed`, 2 shocks e 2 fetches em `zne` com `finishes ["foil"]`, 1 shock em `rav`, e uma carta RL):
+- [ ] **Passo 1 — testes a chumbar** (semear no catálogo de teste as impressões necessárias: as 10 duals em `3ed`, 2 shocks e 2 fetches em `exp` com `finishes ["foil"]`, 1 shock em `rav`, e uma carta RL):
   - `caso_garantir_e_idempotente`: `garantir_colecoes` duas vezes → 4 coleções; `duals_revised` com 10 cartas `meta == 4`, `lingua == "en"`; `shocks_pt` com `lingua == "pt"`; `expeditions` com `acabamento == "foil"`.
   - `caso_estado_fechada`: marcar 2 Underground Sea → `tenho == 2`, `total == 40`, a carta com `falta == 2`.
   - `caso_ajustar_idempotente_e_sem_negativos`: o mesmo `request_id` duas vezes soma uma; −5 com 2 → 0.
@@ -137,7 +137,7 @@ mais `n_valor.colecoes_eur REAL` por `ALTER TABLE` (padrão `PRAGMA table_info` 
 - `gravar_ofertas_pt(con, sid: str, ofertas: list[dict], dia: str) -> int` — filtra com `precos.oferta_utilizavel(o, frozenset({"pt"}))`, separa por `properties_hash.mtg_foil`, grava em `n_preco_pt` a mais barata e o nº de ofertas; sem ofertas aceites não escreve nada; devolve linhas escritas.
 - `recolher_pt(con, ct: prices.CardTrader, dia: str) -> int` — para cada edição de `SETS_PT`, `ct.marketplace(eid)` e `gravar_ofertas_pt` para as cartas `lingua = 'pt'` das coleções (blueprint pelo `cardtrader_map`; corre `prices.sync_cardtrader_map(con, ct, list(SETS_PT))` antes).
 - `preco_pt(con, sid, acabamento) -> tuple[float | None, str | None]` — `(preço, dia)` da linha mais recente; `(None, None)` se nunca houve.
-- `vigiadas(con) -> list[tuple[str, str]]` — `(sid, acabamento)` das cartas das coleções + RL + famílias (`colecoes.DUALS/SHOCKS/FETCHES` em todas as impressões de papel, e o set `zne`).
+- `vigiadas(con) -> list[tuple[str, str]]` — `(sid, acabamento)` das cartas das coleções + RL + famílias (`colecoes.DUALS/SHOCKS/FETCHES` em todas as impressões de papel, e o set `exp`).
 - `gravar_vigiadas(con, dia: str) -> int` — do `price_latest` (cardmarket, `trend > 0`) para `n_preco_vigiado`, **só quando difere** da última linha dessa carta.
 - `preco_em(con, sid, acabamento, dia) -> float | None` — `n_preco_vigiado` com `dia <= dia`; sem linha → `valor.preco(con, sid, acabamento, dia)` (o histórico que a poda deixou).
 - `variacao(con, sid, acabamento, dias: int, hoje: str | None = None) -> float | None` — `(hoje / há N dias − 1) × 100`, `None` sem um dos dois.

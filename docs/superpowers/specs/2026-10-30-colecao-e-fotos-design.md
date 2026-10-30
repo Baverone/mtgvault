@@ -21,7 +21,7 @@ Duas coisas novas:
 | Coleção | Tipo | Cartas | Edição · língua · acabamento | Meta |
 |---|---|---|---|---|
 | Duals de Revised | fechada | as 10 duals | Revised (`3ed`) · inglês · normal | 4 de cada |
-| Zendikar Expeditions | fechada | as 10 shocks e as 10 fetches | `zne` · inglês · foil | 4 de cada |
+| Zendikar Expeditions | fechada | as 10 shocks e as 10 fetches | `exp` · inglês · foil | 4 de cada |
 | Shocks originais em português | fechada | as 10 shocks | Ravnica (`rav`: Watery Grave, Temple Garden, Sacred Foundry, Overgrown Tomb), Guildpact (`gpt`: Stomping Ground, Steam Vents, Godless Shrine), Dissension (`dis`: Hallowed Fountain, Breeding Pool, Blood Crypt) · português · normal | 4 de cada |
 | Reserved List | aberta | as que ele juntar | a que ele escolher | sem meta |
 
