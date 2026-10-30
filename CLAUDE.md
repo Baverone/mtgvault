@@ -141,9 +141,14 @@ cópia existe).
   observado» (ao contrário do histórico do Cardmarket), e inventar 0 % de
   variação para um preço velho era pior do que não a mostrar.
 - **O `n_preco_vigiado` só escreve quando o preço muda** (como o
-  `price_history`) e nunca é podado. Cobre as cartas das coleções, a Reserved
-  List inteira e as famílias (10 duals, 10 shocks, 10 fetches) acima de 20 €.
-  É daqui que saem os gráficos e as variações a 30 e a 90 dias (a série cobre
+  `price_history`) e nunca é podado. Guarda, para cada par (carta, acabamento)
+  das cartas das coleções, de toda a Reserved List de papel, de todas as
+  impressões de papel das três famílias (duals, shocks, fetches) e de todo o set
+  `exp`, qualquer trend do Cardmarket > 0 (`cotacoes.vigiadas()`/`_universo()`).
+  **Não há piso de 20 € aqui**: o spec dizia «acima de 20 €» para o universo
+  guardado, e de propósito não se seguiu (R20), porque só se escreve na mudança
+  (barato) e assim a carta já tem história no dia em que passa os 20 €. O piso
+  (`MINIMO_SUBIR`) aplica-se só quando o `a_subir` monta a lista «A subir». É daqui que saem os gráficos e as variações a 30 e a 90 dias (a série cobre
   100 dias, para a de 90 ter referência, R18). Como só há linha na mudança, o
   preço vigente de um dia é o da última linha até esse dia; `gravar_vigiadas`
   ignora trend ≤ 0.

@@ -3,9 +3,9 @@ recolha diária (2026-10-28).
 
 Com ele LIGADO o menu é um só, «MTG», com Painel · Decks · Coleção · Vender; o
 `publicar` gera e publica só essas quatro páginas; e o `daily` corre só a recolha que o
-núcleo usa (catálogo, MTGO de Pauper e Premodern, preços, podas) e os passos
-do núcleo. Com ele DESLIGADO tudo fica exatamente como estava — o código antigo
-não se apagou.
+núcleo usa (catálogo, listas de torneio só para o `n_jogada` e as vigias do
+Luffy, preços, preços em português, podas) e os passos do núcleo. Com ele
+DESLIGADO tudo fica exatamente como estava — o código antigo não se apagou.
 
 Nada aqui abre a base do André nem sai para a rede: a base e o catálogo são
 temporários, o config é uma cópia temporária (`_nucleo_interruptor`), e cada
