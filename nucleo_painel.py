@@ -25,9 +25,11 @@ _SUB = "Os teus decks, o que lhes falta e quanto vale o que tens."
 
 def _rodape(dia: str | None) -> str:
     return ("O valor soma o que marcaste como teu — decks, partilhadas, tenho a "
-            "mais e o que saiu dos decks —, cada cópia uma vez, ao trend do "
-            "Cardmarket da edição e do acabamento dela. Uma carta sem preço fica "
-            f"fora da soma. Preços de {visual.data_pt(dia)}.")
+            "mais, o que saiu dos decks e as cartas das coleções —, cada cópia "
+            "uma vez, ao trend do Cardmarket da edição e do acabamento dela. As "
+            "cartas das coleções em português valem só o preço português: sem "
+            "ele, ficam sem preço, nunca ao valor da inglesa. Uma carta sem "
+            f"preço fica fora da soma. Preços de {visual.data_pt(dia)}.")
 
 
 def _valor(con) -> str:
@@ -45,12 +47,14 @@ def _valor(con) -> str:
             '<div class="vlab">O que tens vale</div>'
             f'<div class="vlin"><span class="vbig">{paginas.eur(v["total_eur"])}</span>'
             f'{visual.variacao_html(valor.variacao_mes(con, hoje))}</div>'
+            f'<p class="vpartes">decks {paginas.eur(v["decks_eur"])} · coleções '
+            f'{paginas.eur(v["colecoes_eur"])} · a mais {paginas.eur(v["a_mais_eur"])}</p>'
             f'<p class="vnota">{nota}</p>{visual.grafico(s)}</section>')
 
 
 def _vender(con) -> str:
     v = valor.a_vender(con)
-    linhas = v["a_mais"] + v["saidas"]
+    linhas = v["a_mais"] + v["saidas"] + v["colecoes"]
     copias = sum(l["qtd"] for l in linhas)
     if not copias:
         txt = "Vender<small>nada por decidir</small>"

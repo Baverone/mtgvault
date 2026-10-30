@@ -485,7 +485,9 @@ def caso_a_vender():
                     " 'fow-b', 'nonfoil', 2, '2026-10-28T10:00:00')", (REP,))
         con.commit()
         r = valor.a_vender(con)
-        assert set(r) == {"a_mais", "saidas", "total_eur", "sem_preco"}, r
+        assert set(r) == {"a_mais", "saidas", "colecoes", "total_eur",
+                          "sem_preco"}, r
+        assert r["colecoes"] == []
         mais = {l["scryfall_id"]: l for l in r["a_mais"]}
         assert mais["saga-a"]["nome"] == "Urza's Saga"
         assert mais["saga-a"]["set_code"] == "mh2"
@@ -791,6 +793,93 @@ def caso_serie_colecao_pt_e_sem_preco():
         pt_em(con, vents, "nonfoil", ha(2), 90.0)
         s = valor.serie_colecao(con, "shocks_pt", HOJE)
         assert s == [(ha(20), 180.0, 0), (ha(2), 270.0, 0), (HOJE, 270.0, 0)], s
+
+
+# ---------------------------------------------------------------------------
+# Tarefa 10: as coleções em Vender e a cobertura do R15 (R9)
+# ---------------------------------------------------------------------------
+def marcar_vender(con, slug, nome):
+    carta = con.execute("SELECT id FROM n_colecao_carta WHERE colecao = ? AND"
+                        " nome = ?", (slug, nome)).fetchone()["id"]
+    colecoes.marcar_vender(con, carta, True)
+
+
+def caso_a_vender_das_colecoes():
+    """Só as cartas `vender = 1` com `tenho > 0`; o preço de uma `pt` é o
+    `n_preco_pt` (nunca o trend inglês: sem ele, «sem preço» e conta em
+    `sem_preco`); entram no total como as outras."""
+    with sessao() as con:
+        com_colecoes(con)
+        tundra, bayou = _sid("Tundra", "3ed"), _sid("Bayou", "3ed")
+        vents, tomb = _sid("Steam Vents", "gpt"), _sid("Overgrown Tomb", "rav")
+        preco_em(con, tundra, "nonfoil", HOJE, 300.0)
+        preco_em(con, bayou, "nonfoil", HOJE, 500.0)
+        preco_em(con, vents, "nonfoil", HOJE, 50.0)           # o trend `en`
+        preco_em(con, tomb, "nonfoil", HOJE, 40.0)            # o trend `en`
+        pt_em(con, vents, "nonfoil", ha(2), 80.0)
+        marcar(con, "duals_revised", "Tundra", 2)
+        marcar(con, "duals_revised", "Bayou", 1)              # sem a marca
+        marcar(con, "shocks_pt", "Steam Vents", 1)
+        marcar(con, "shocks_pt", "Overgrown Tomb", 3)         # só trend inglês
+        marcar_vender(con, "duals_revised", "Tundra")
+        marcar_vender(con, "shocks_pt", "Steam Vents")
+        marcar_vender(con, "shocks_pt", "Overgrown Tomb")
+        marcar_vender(con, "duals_revised", "Taiga")          # tenho = 0: fora
+        # uma a mais dos decks soma-se ao resto
+        preco_em(con, "tm-a", "nonfoil", HOJE, 10.0)
+        valor.a_mais_ajustar(con, "tm-a", "nonfoil", 1)
+        r = valor.a_vender(con)
+        assert len(r["colecoes"]) == 3, r["colecoes"]
+        por_nome = {l["nome"]: l for l in r["colecoes"]}
+        t = por_nome["Tundra"]
+        assert t == {"nome": "Tundra", "set_code": "3ed", "scryfall_id": tundra,
+                     "acabamento": "nonfoil", "lingua": "en", "qtd": 2,
+                     "preco_un": 300.0, "motivo": "colecao", "deck": None,
+                     "colecao": "Duals de Revised", "slug": "duals_revised"}, t
+        v_ = por_nome["Steam Vents"]
+        assert v_["lingua"] == "pt" and v_["preco_un"] == 80.0, v_
+        assert v_["colecao"] == "Shocks originais em português", v_
+        o = por_nome["Overgrown Tomb"]
+        assert o["lingua"] == "pt" and o["preco_un"] is None and o["qtd"] == 3, o
+        assert "Bayou" not in por_nome and "Taiga" not in por_nome
+        # 2×300 + 1×80 + 1×10; as 3 Overgrown Tomb só têm o trend inglês
+        assert r["total_eur"] == 690.0, r
+        assert r["sem_preco"] == 3, r
+
+
+def caso_serie_r9_pt_novo_nao_apaga_o_historico():
+    """(R9) Um deck com 30 dias de histórico e uma cópia PT que só tem preço
+    desde há 5 dias: a R15 compara só as cópias NÃO-PT, por isso os dias de
+    trás ficam (a cópia PT não valia nada nesses dias, não é uma lacuna de
+    cobertura) e a variação do mês não passa a «—»."""
+    with sessao() as con:
+        com_colecoes(con)
+        for n in range(30, 0, -1):
+            preco_em(con, "fow-a", "nonfoil", ha(n), 10.0 + (30 - n) * 0.5)
+        posse_directa(con, MOD, "fow-a", "nonfoil", 1)
+        vents = _sid("Steam Vents", "gpt")
+        preco_em(con, vents, "nonfoil", ha(3), 50.0)          # só o `en`
+        for n in (5, 3, 1):
+            pt_em(con, vents, "nonfoil", ha(n), 80.0)
+        marcar(con, "shocks_pt", "Steam Vents", 1)
+        agora = valor.valor_em(con)
+        assert agora["sem_preco"] == 0 and agora["colecoes_eur"] == 80.0, agora
+        s = valor.serie(con, HOJE)
+        dias = [d for d, *_ in s]
+        assert dias[0] == ha(30) and ha(10) in dias and ha(5) in dias, dias
+        pontos = {d: t for d, t, _sp in s}
+        assert pontos[ha(10)] == 20.0, pontos[ha(10)]        # só o deck
+        assert pontos[ha(5)] == 10.0 + 25 * 0.5 + 80.0, pontos[ha(5)]
+        assert s[-1] == (HOJE, 24.5 + 80.0, 0), s[-1]
+        v = valor.variacao_mes(con, HOJE)
+        assert v is not None and v["desde"] == ha(30), v
+        assert v["delta"] == round(24.5 + 80.0 - 10.0, 2), v
+        # a regra para as NÃO-PT mantém-se: uma carta de deck sem preço há 30
+        # dias que hoje tem preço continua a deixar o dia de fora
+        preco_em(con, "saga-a", "nonfoil", ha(10), 30.0)
+        posse_directa(con, MOD, "saga-a", "nonfoil", 1)
+        dias = [d for d, *_ in valor.serie(con, HOJE)]
+        assert ha(30) not in dias and ha(10) in dias, dias
 
 
 if __name__ == "__main__":

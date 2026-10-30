@@ -1,5 +1,6 @@
 """Gera a página Vender do núcleo novo (`vender.html`): o que tens a mais, o que
-saiu das listas dos decks e o que ficou de uma edição que trocaste — cada carta
+saiu das listas dos decks, o que ficou de uma edição que trocaste e as cartas
+das coleções que marcaste para vender — cada carta
 com a edição, o acabamento, a quantidade e o preço de hoje, e o total no topo.
 
 As linhas vêm todas do `valor.a_vender` (o mesmo preço do valor da coleção: o
@@ -24,20 +25,24 @@ e = html.escape
 _SUB = "O que podes vender, ao preço de hoje."
 
 _RODAPE = ("Preço: o trend do Cardmarket da edição e do acabamento de cada "
-           "carta. As cartas que saem de um deck continuam a ser tuas até "
-           "decidires o que lhes fazer.")
+           "carta; as cartas das coleções em português valem só o preço "
+           "português (sem ele, «sem preço»). As cartas que saem de um deck "
+           "continuam a ser tuas até decidires o que lhes fazer.")
 
 # (motivo, título, frase quando está vazio)
 BLOCOS = (
     ("a_mais", "Tenho a mais", "Nada marcado como a mais."),
     ("saiu_da_lista", "Saíram dos decks", "Nenhuma carta saiu da lista de um deck."),
     ("trocou_edicao", "Trocaste de edição", "Nenhuma troca de edição por decidir."),
+    ("colecao", "Das coleções", "Nenhuma carta de coleção marcada para vender."),
 )
 
 
 def _linha(l: dict, editavel: bool, nomes: dict | None = None) -> str:
     dados = ""
-    if editavel:
+    # as cartas das coleções ainda não têm ações aqui (vêm com a edição das
+    # coleções): na página de edição ficam como na de leitura
+    if editavel and l["motivo"] != "colecao":
         dados = (f' data-sid="{e(l["scryfall_id"])}" data-acab="{e(l["acabamento"])}"'
                  f' data-nome="{e(l["nome"])}" data-motivo="{e(l["motivo"])}"')
         if "id" in l:
@@ -46,7 +51,11 @@ def _linha(l: dict, editavel: bool, nomes: dict | None = None) -> str:
            if l["scryfall_id"] else '<span class="vsem"></span>')
     meta = [e((l["set_code"] or "?").upper()),
             visual.ACABAMENTO.get(l["acabamento"], e(l["acabamento"]))]
-    if l["deck"]:
+    if l.get("lingua") == "pt":
+        meta.append("PT")
+    if l["motivo"] == "colecao":
+        meta.append(e(l["colecao"]))
+    elif l["deck"]:
         meta.append(f'do {e((nomes or {}).get(l.get("slug"), l["deck"]))}')
     if l["preco_un"] is None:
         num = f'<span class="sp">sem preço</span><b>—</b>'
@@ -63,6 +72,8 @@ def _botoes(l: dict) -> str:
     """Os botões do modo de edição numa linha (o `edicao_js` liga-os): no
     «tenho a mais», tirar e pôr uma; numa saída, passá-la a «tenho a mais» ou
     dá-la por tratada (vendida, dada, foi-se)."""
+    if l["motivo"] == "colecao":
+        return ""
     nome = e(l["nome"])
     if "id" in l:
         base = (f' data-acao="saida" data-saida="{l["id"]}" data-nome="{nome}"'
@@ -114,7 +125,7 @@ def html_page(con, *, editable: bool = False, token: str = "") -> str:
     # o `token` não se escreve: o JavaScript da edição lê-o do `?t=` do URL
     del token
     v = valor.a_vender(con)
-    todas = v["a_mais"] + v["saidas"]
+    todas = v["a_mais"] + v["saidas"] + v["colecoes"]
     copias = sum(l["qtd"] for l in todas)
     nota = paginas.plural(copias, "cópia") if copias else "nada por decidir"
     if v["sem_preco"]:

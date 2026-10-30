@@ -26,6 +26,8 @@ import nucleo_vender  # noqa: E402
 from mtgvault import db, paginas, prices  # noqa: E402
 from mtgvault.nucleo import listas, modelo, posse, valor, visual  # noqa: E402
 from mtgvault.nucleo.listas import Linha  # noqa: E402
+from mtgvault.nucleo import colecoes  # noqa: E402
+from test_nucleo_colecoes import _sid, semear as semear_colecoes  # noqa: E402
 
 # (scryfall_id, nome, set, data, finishes)
 IMPRESSOES = [
@@ -538,7 +540,8 @@ def caso_vender_vazio():
         semear(con)
         p = nucleo_vender.html_page(con)
         assert paginas.eur(0.0) in p
-        assert p.count('class="vazio"') == 3, p.count('class="vazio"')
+        assert p.count('class="vazio"') == 4, p.count('class="vazio"')
+        assert p.index("Trocaste de edição") < p.index("Das coleções")
 
 
 def caso_modo_edicao():
@@ -778,6 +781,98 @@ def caso_validadas_nunca_passam_a_posse_main_e_side():
         t2 = {c["seccao"]: c for c in e2["cartas"]}
         assert (t2["main"]["validadas"], t2["side"]["validadas"]) == (2, 1)
         assert e2["validadas"] == 3 and e2["tenho"] == 4
+
+
+def colecoes_marcadas(con):
+    """O cenário das coleções para a Tarefa 10: 2 Tundra (300 €) e 1 Bayou
+    (500 €, sem a marca) em Revised; 1 Steam Vents PT (80 €) e 3 Overgrown Tomb
+    PT que só têm o trend inglês (40 €) nos Shocks PT. As marcadas para vender
+    são a Tundra, a Steam Vents e a Overgrown Tomb."""
+    cenario(con)
+    semear_colecoes(con)
+    colecoes.garantir_colecoes(con)
+    tundra, bayou = _sid("Tundra", "3ed"), _sid("Bayou", "3ed")
+    vents, tomb = _sid("Steam Vents", "gpt"), _sid("Overgrown Tomb", "rav")
+    for sid, trend in ((tundra, 300.0), (bayou, 500.0), (vents, 50.0), (tomb, 40.0)):
+        preco(con, sid, "nonfoil", trend)
+    con.execute("INSERT INTO n_preco_pt (scryfall_id, acabamento, dia, preco_eur,"
+                " ofertas) VALUES (?,?,?,?,1)", (vents, "nonfoil", ha(2), 80.0))
+    con.commit()
+    for slug, nome, qtd, vender in (
+            ("duals_revised", "Tundra", 2, True), ("duals_revised", "Bayou", 1, False),
+            ("shocks_pt", "Steam Vents", 1, True),
+            ("shocks_pt", "Overgrown Tomb", 3, True)):
+        _n[0] += 1
+        cid = con.execute("SELECT id FROM n_colecao_carta WHERE colecao = ? AND"
+                          " nome = ?", (slug, nome)).fetchone()["id"]
+        colecoes.ajustar(con, cid, qtd, request_id=f"col{_n[0]}")
+        if vender:
+            colecoes.marcar_vender(con, cid, True)
+
+
+def caso_vender_das_colecoes():
+    with sessao() as con:
+        colecoes_marcadas(con)
+        v = valor.a_vender(con)
+        assert v["total_eur"] == 2 * 300.0 + 80.0, v          # sem o `a_mais` do cenário
+        p = nucleo_vender.html_page(con)
+        bloco = p[p.index("Das coleções"):]
+        # depois dos três atuais, com as cópias e o valor do bloco
+        assert p.index("Trocaste de edição") < p.index("Das coleções")
+        assert paginas.eur(v["total_eur"]) in p[:p.index("Tenho a mais")]
+        assert "Tundra" in bloco and "Duals de Revised" in bloco
+        assert paginas.eur(300.0) in bloco and paginas.eur(600.0) in bloco
+        assert "Bayou" not in bloco                            # sem a marca de vender
+        # o PT diz a língua e vale o preço PT
+        vents = bloco[bloco.index("Steam Vents"):]
+        vents = vents[:vents.index("</li>")]
+        assert "PT" in vents and "Shocks originais em português" in vents
+        assert paginas.eur(80.0) in vents and paginas.eur(50.0) not in vents
+        # só o trend inglês: «sem preço», nunca o valor inglês, e fora do total
+        tomb = bloco[bloco.index("Overgrown Tomb"):]
+        tomb = tomb[:tomb.index("</li>")]
+        assert "sem preço" in tomb and "PT" in tomb, tomb
+        assert paginas.eur(40.0) not in tomb and paginas.eur(120.0) not in tomb
+        assert "3 cópias sem preço" in p
+        assert 'class="vazio"' not in bloco
+        # as linhas das coleções não levam botões de a mais/saída, nem em edição
+        ed = nucleo_vender.html_page(con, editable=True)
+        bloco_ed = ed[ed.index("Das coleções"):]
+        bloco_ed = bloco_ed[:bloco_ed.index("</ul>")]       # sem o script da edição
+        assert 'class="ed-lin"' not in bloco_ed and "data-acao" not in bloco_ed
+        assert 'data-motivo="colecao"' not in bloco_ed
+        # os blocos de cima continuam com os botões
+        valor.a_mais_ajustar(con, "isl-a", "nonfoil", 1)
+        ed = nucleo_vender.html_page(con, editable=True)
+        assert 'data-acao="amais"' in ed[:ed.index("Das coleções")]
+
+
+def caso_painel_tres_partes():
+    with sessao() as con:
+        colecoes_marcadas(con)
+        valor.a_mais_ajustar(con, "saga-a", "nonfoil", 1)       # 30 € a mais
+        v = valor.valor_em(con)
+        assert (v["decks_eur"], v["a_mais_eur"], v["colecoes_eur"]) == (
+            177.0, 30.0, 300.0 * 2 + 500.0 + 80.0), v
+        assert v["total_eur"] == 177.0 + 30.0 + 1180.0, v
+        p = nucleo_painel.html_page(con)
+        linha = html.unescape(re.search(r'<p class="vpartes">(.*?)</p>', p, re.S).group(1))
+        assert linha == (f"decks {paginas.eur(177.0)} · coleções "
+                         f"{paginas.eur(1180.0)} · a mais {paginas.eur(30.0)}"), linha
+        assert p.index('class="vbig"') < p.index('class="vpartes"') < p.index('class="vnota"')
+        # o número do topo é o total das três partes
+        assert topo(p) == paginas.eur(v["total_eur"])
+        # a caixa Vender soma as cópias das coleções e o total delas
+        caixa = p[p.index('<a class="vbox"'):]
+        assert paginas.eur(valor.a_vender(con)["total_eur"]) in caixa[:caixa.index("</a>")]
+        # o rodapé fala das coleções e dos preços portugueses
+        rod = nucleo_painel._rodape(DIA)
+        assert "coleções" in rod and "portugu" in rod and "decks" in rod, rod
+    # sem coleções marcadas, a linha continua lá, com zeros nas partes
+    with sessao() as con:
+        cenario(con)
+        p = nucleo_painel.html_page(con)
+        assert f"coleções {paginas.eur(0.0)}" in html.unescape(p)
 
 
 if __name__ == "__main__":

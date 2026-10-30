@@ -714,6 +714,7 @@ CSS = r"""
  .vbig{font:700 34px/1.15 var(--font-hd);color:var(--accent);font-variant-numeric:tabular-nums}
  .vvar{font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap}
  .vvar.sobe{color:var(--ok)} .vvar.desce{color:var(--bad)}
+ .vpartes{color:var(--muted);font-size:13px;margin:2px 0 0;font-variant-numeric:tabular-nums}
  .vnota{color:var(--dim);font-size:12px;margin:2px 0 10px}
  .gseg{margin:2px 0 8px}
  .gseg button{min-height:36px}
