@@ -174,6 +174,9 @@ def cards_of_interest(con: sqlite3.Connection) -> set[str]:
          `n_saida` e `n_edicao` (o preço de cada dia tem de existir para a
          série do valor), e TODAS as impressões em papel das cartas nas versões
          atuais das listas — a edição que ele pode escolher é qualquer uma.
+      5. as cartas vigiadas da Coleção (`nucleo.cotacoes.vigiadas`: as das
+         coleções, a Reserved List, as três famílias e o set `exp`), para o
+         preço de cada dia existir e a variação a 30/90 dias se poder calcular.
     """
     ids = {r["scryfall_id"] for r in
            con.execute("SELECT DISTINCT scryfall_id FROM copies")}
@@ -182,6 +185,10 @@ def cards_of_interest(con: sqlite3.Connection) -> set[str]:
             f"SELECT DISTINCT scryfall_id FROM {tabela}")}
     ids |= {r["scryfall_id"] for r in con.execute(
         "SELECT scryfall_id FROM cards WHERE reserved = 1 AND digital = 0")}
+    # import aqui: o núcleo importa este módulo (o CardTrader), e ao contrário
+    # era um ciclo
+    from .nucleo import cotacoes                            # noqa: PLC0415
+    ids |= {sid for sid, _acab in cotacoes.vigiadas(con)}
 
     names: set[str] = {r["card_name"] for r in
                        con.execute("SELECT DISTINCT card_name FROM deck_cards")}

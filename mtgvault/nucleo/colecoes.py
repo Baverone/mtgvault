@@ -28,8 +28,9 @@ transação (a de `posse._transacao`).
 from __future__ import annotations
 
 import sqlite3
+from datetime import date
 
-from . import posse, valor
+from . import cotacoes, posse, valor
 
 DUALS = ("Badlands", "Bayou", "Plateau", "Savannah", "Scrubland", "Taiga",
          "Tropical Island", "Tundra", "Underground Sea", "Volcanic Island")
@@ -118,23 +119,37 @@ def colecoes(con: sqlite3.Connection) -> list[sqlite3.Row]:
 # O estado
 # ---------------------------------------------------------------------------
 def _preco_un(con: sqlite3.Connection, scryfall_id: str, acabamento: str,
-              lingua: str) -> float | None:
-    """O preço de uma unidade. Em `en` é o trend do Cardmarket; em `pt` ainda
-    não há preço (a Tarefa 3 traz o do CardTrader) e nunca se empresta o
-    inglês: um shock em português vale mais do que o inglês."""
+              lingua: str) -> tuple[float | None, str | None]:
+    """`(preço de uma unidade, dia em que foi visto)`. Em `en` é o trend do
+    Cardmarket (sem dia: é o de hoje); em `pt` é o último preço português do
+    CardTrader e o dia dele. Nunca se empresta o inglês a uma carta `pt`: um
+    shock em português vale mais do que o inglês."""
     if lingua == "en":
-        return valor.preco(con, scryfall_id, acabamento)
-    return None
+        return valor.preco(con, scryfall_id, acabamento), None
+    if lingua == "pt":
+        return cotacoes.preco_pt(con, scryfall_id, acabamento)
+    return None, None
 
 
-def estado_colecao(con: sqlite3.Connection, slug: str) -> dict:
+def _variacao(con: sqlite3.Connection, scryfall_id: str, acabamento: str,
+              lingua: str, dias: int, hoje: str) -> float | None:
+    # em `pt` só o `n_preco_pt`: a variação inglesa não é a da carta portuguesa
+    if lingua == "pt":
+        return cotacoes.variacao_pt(con, scryfall_id, acabamento, dias, hoje)
+    return cotacoes.variacao(con, scryfall_id, acabamento, dias, hoje)
+
+
+def estado_colecao(con: sqlite3.Connection, slug: str,
+                   hoje: str | None = None) -> dict:
     """A coleção e as suas cartas, com o que falta e o que vale.
 
-    `total` e `falta` só existem nas fechadas (nas abertas ficam `None`). Os
-    campos de preço vigiado, de jogo e de fotos (`var30`, `var90`,
-    `preco_visto_em`, `joga`, `validadas`, `recorte`) vêm das Tarefas 3, 5 e 6;
-    até lá ficam `None`/`[]`/`0`.
+    `total` e `falta` só existem nas fechadas (nas abertas ficam `None`).
+    `preco_visto_em` só existe nas cartas `pt` (o dia do último preço português
+    visto) e `var30`/`var90` vêm das cotações (`hoje` é para os testes). Os
+    campos de jogo e de fotos (`joga`, `validadas`, `recorte`) vêm das Tarefas
+    5 e 6; até lá ficam `[]`/`0`/`None`.
     """
+    hoje = hoje or date.today().isoformat()
     col = con.execute("SELECT slug, nome, tipo FROM n_colecao WHERE slug = ?",
                       (slug,)).fetchone()
     if col is None:
@@ -148,7 +163,8 @@ def estado_colecao(con: sqlite3.Connection, slug: str) -> dict:
             "SELECT id, nome, scryfall_id, acabamento, lingua, meta, tenho,"
             " vender FROM n_colecao_carta WHERE colecao = ? ORDER BY id",
             (slug,)).fetchall():
-        preco = _preco_un(con, r["scryfall_id"], r["acabamento"], r["lingua"])
+        preco, visto_em = _preco_un(con, r["scryfall_id"], r["acabamento"],
+                                    r["lingua"])
         meta = r["meta"] if fechada else None
         falta = max(0, (meta or 0) - r["tenho"]) if fechada else None
         if fechada:
@@ -166,8 +182,12 @@ def estado_colecao(con: sqlite3.Connection, slug: str) -> dict:
             "id": r["id"], "nome": r["nome"], "scryfall_id": r["scryfall_id"],
             "acabamento": r["acabamento"], "lingua": r["lingua"],
             "meta": meta, "tenho": r["tenho"], "falta": falta,
-            "vender": r["vender"], "preco_un": preco, "preco_visto_em": None,
-            "var30": None, "var90": None, "joga": [], "validadas": 0,
+            "vender": r["vender"], "preco_un": preco, "preco_visto_em": visto_em,
+            "var30": _variacao(con, r["scryfall_id"], r["acabamento"],
+                               r["lingua"], 30, hoje),
+            "var90": _variacao(con, r["scryfall_id"], r["acabamento"],
+                               r["lingua"], 90, hoje),
+            "joga": [], "validadas": 0,
             "recorte": None})
     return {"slug": col["slug"], "nome": col["nome"], "tipo": col["tipo"],
             "cartas": cartas, "tenho": tenho,
@@ -249,7 +269,10 @@ def juntar(con: sqlite3.Connection, slug: str, scryfall_id: str,
            acabamento: str, lingua: str = "en") -> int:
     """Acrescenta uma carta a uma coleção ABERTA e devolve o `id`; se já lá
     está, devolve o mesmo `id`. Numa fechada levanta `ValueError`: a lista dela
-    é fixa."""
+    é fixa. A língua é `en` ou `pt`: são as duas que têm preço (a `pt` vem do
+    CardTrader), e outra qualquer ficava para sempre «sem preço»."""
+    if lingua not in ("en", "pt"):
+        raise ValueError(f"língua inválida: {lingua!r} (en | pt)")
     if acabamento not in posse.ACABAMENTOS:
         raise ValueError(f"acabamento inválido: {acabamento!r} (nonfoil | foil)")
     with posse._transacao(con):
