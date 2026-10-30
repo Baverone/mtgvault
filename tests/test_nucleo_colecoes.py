@@ -16,7 +16,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from mtgvault import db, prices  # noqa: E402
-from mtgvault.nucleo import colecoes  # noqa: E402
+from mtgvault.nucleo import colecoes, fotos  # noqa: E402
 
 TABELAS = [
     "n_colecao",
@@ -286,25 +286,41 @@ def caso_ajustar_idempotente_e_sem_negativos():
         _levanta(lambda: colecoes.ajustar(con, 99999, 1, request_id="zzz"))
 
 
-def caso_descer_chama_o_aparar():
-    """Só uma descida chama `_aparar_validadas` (a Tarefa 6 liga-o às fotos),
-    com o âmbito = o slug da coleção e a quantidade nova."""
+def caso_descer_apara_as_validadas():
+    """Só uma descida apara as fotos validadas (`fotos.aparar_validadas`, com o
+    âmbito = o slug da coleção): subir não desfaz nada, descer abaixo das
+    validadas desfaz a mais recente (a linha fica) e repetir o pedido não volta
+    a aparar."""
     with _pronta() as con:
-        chamadas = []
-        original = colecoes._aparar_validadas
-        colecoes._aparar_validadas = lambda *a: chamadas.append(a)
-        try:
-            c = _carta(con, "duals_revised", "Plateau")
-            _marcar(con, c["id"], 3)
-            assert chamadas == [], "subir não apara"
-            _marcar(con, c["id"], -1)
-            assert chamadas == [(con, "duals_revised", c["scryfall_id"],
-                                 "nonfoil", "en", 2)], chamadas
-            # repetir o pedido não volta a aparar
-            colecoes.ajustar(con, c["id"], -1, request_id=f"c{_n[0]}")
-            assert len(chamadas) == 1
-        finally:
-            colecoes._aparar_validadas = original
+        c = _carta(con, "duals_revised", "Plateau")
+        _marcar(con, c["id"], 3)
+        recortes = []
+        for _ in range(3):
+            fid = con.execute(
+                "INSERT INTO n_foto (caminho, dia, sessao, linha, indice)"
+                " VALUES ('x', '2026-10-30', 's', ?, 0)", (len(recortes),)).lastrowid
+            recortes.append(con.execute(
+                "INSERT INTO n_recorte (foto_id, numero, caminho) VALUES (?, 1, ?)",
+                (fid, f"assets/cartas/{fid}-1.jpg")).lastrowid)
+        con.commit()
+        for rid in recortes[:2]:
+            fotos.validar(con, rid, "duals_revised", c["scryfall_id"], "nonfoil")
+        _marcar(con, c["id"], 1)
+        assert fotos.validadas(con, "duals_revised", c["scryfall_id"],
+                               "nonfoil") == 2, "subir não apara"
+        _marcar(con, c["id"], -2)      # 4 → 2: sai a por validar e mais nada
+        assert fotos.validadas(con, "duals_revised", c["scryfall_id"],
+                               "nonfoil") == 2
+        _marcar(con, c["id"], -1)      # 2 → 1: desfaz a mais recente
+        assert fotos.validadas(con, "duals_revised", c["scryfall_id"],
+                               "nonfoil") == 1
+        desfeitas = [r[0] for r in con.execute(
+            "SELECT recorte_id FROM n_validacao WHERE desfeita_em IS NOT NULL")]
+        assert desfeitas == [recortes[1]], desfeitas
+        # repetir o pedido não volta a aparar
+        colecoes.ajustar(con, c["id"], -1, request_id=f"c{_n[0]}")
+        assert fotos.validadas(con, "duals_revised", c["scryfall_id"],
+                               "nonfoil") == 1
 
 
 def caso_aberta():

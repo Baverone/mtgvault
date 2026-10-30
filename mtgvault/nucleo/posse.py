@@ -73,6 +73,12 @@ def _versao(con: sqlite3.Connection, slug: str) -> dict | None:
     return listas.versao_atual(con, slug)
 
 
+def _fotos():
+    # importado aqui: o `fotos` importa este módulo no topo
+    from . import fotos                                     # noqa: PLC0415
+    return fotos
+
+
 def _por_nome(linhas) -> dict[str, int]:
     """Quantidade total por nome, somando as secções, pela ordem de entrada."""
     soma: dict[str, int] = {}
@@ -338,9 +344,15 @@ def escolher_edicao(con: sqlite3.Connection, slug: str, nome: str,
         if acabamento not in _finishes(r):
             raise ValueError(f"{nome!r} ({scryfall_id}) não existe em {acabamento}")
         v = _versao(con, slug)
+        outras = [(sid, acab) for sid, acab, _q in _posse_do_nome(con, amb, nome)
+                  if (sid, acab) != (scryfall_id, acabamento)]
         _para_saida(con, amb, nome, slug=slug, motivo="trocou_edicao",
                     versao_id=v["id"] if v else None,
                     menos=(scryfall_id, acabamento))
+        # a posse das outras edições foi para o `n_saida` e está a zero: as
+        # validadas delas neste âmbito deixam de caber e ficam desfeitas
+        for sid, acab in outras:
+            _fotos().aparar_validadas(con, amb, sid, acab, "en", 0)
         con.execute("INSERT OR REPLACE INTO n_edicao (ambito, nome, scryfall_id,"
                     " acabamento) VALUES (?,?,?,?)",
                     (amb, nome, scryfall_id, acabamento))
@@ -376,6 +388,10 @@ def ajustar(con: sqlite3.Connection, slug: str, nome: str, delta: int, *,
         antes = _qtd(con, amb, ed)
         nova = max(0, antes + int(delta))
         _por_qtd(con, amb, ed[0], ed[1], nova)
+        if nova < antes:
+            # uma descida abaixo das validadas desfaz a mais recente; acima
+            # delas, quem sai é uma por validar (e não se desfaz nada)
+            _fotos().aparar_validadas(con, amb, ed[0], ed[1], "en", nova)
         # o delta registado é o que se aplicou (o corte no zero fica visível)
         con.execute("INSERT INTO n_posse_log (request_id, ambito, scryfall_id,"
                     " acabamento, delta, em) VALUES (?,?,?,?,?,?)",

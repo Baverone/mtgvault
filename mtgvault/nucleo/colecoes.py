@@ -30,7 +30,7 @@ from __future__ import annotations
 import sqlite3
 from datetime import date
 
-from . import cotacoes, jogada, posse, valor
+from . import cotacoes, fotos, jogada, posse, valor
 
 DUALS = ("Badlands", "Bayou", "Plateau", "Savannah", "Scrubland", "Taiga",
          "Tropical Island", "Tundra", "Underground Sea", "Volcanic Island")
@@ -200,12 +200,6 @@ def estado_colecao(con: sqlite3.Connection, slug: str,
 # ---------------------------------------------------------------------------
 # Escrever
 # ---------------------------------------------------------------------------
-def _aparar_validadas(con, ambito, scryfall_id, acabamento, lingua, tenho):
-    """Depois de a quantidade DESCER, as fotos validadas que já não cabem têm
-    de ser desfeitas. Ainda não há fotos: a Tarefa 6 substitui isto por
-    `fotos.aparar_validadas` (o âmbito de uma carta de coleção é o slug)."""
-
-
 def _carta(con: sqlite3.Connection, carta_id: int) -> sqlite3.Row:
     r = con.execute(
         "SELECT c.id, c.colecao, c.scryfall_id, c.acabamento, c.lingua,"
@@ -240,8 +234,9 @@ def ajustar(con: sqlite3.Connection, carta_id: int, delta: int, *,
                     " VALUES (?,?,?,?)",
                     (request_id, carta_id, nova - c["tenho"], posse._agora()))
         if nova < c["tenho"]:
-            _aparar_validadas(con, c["colecao"], c["scryfall_id"],
-                              c["acabamento"], c["lingua"], nova)
+            # o âmbito de uma carta de coleção é o slug da coleção
+            fotos.aparar_validadas(con, c["colecao"], c["scryfall_id"],
+                                   c["acabamento"], c["lingua"], nova)
     return nova
 
 
