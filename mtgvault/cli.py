@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -370,6 +371,30 @@ def main(argv=None):
     es.add_argument("--descer", type=int, default=1,
                     help="impacto: quantos escalões descer (omissão 1)")
     es.add_argument("--json", action="store_true")
+
+    nu = sub.add_parser("nucleo",
+                        help="o site novo: `colecoes`, e as fotos dele — "
+                             "`extrair`, `recortar FOTO_ID`, `validar --lote "
+                             "FICHEIRO.json`, `validadas AMBITO`")
+    nu.add_argument("accao",
+                    choices=["colecoes", "extrair", "recortar", "validar",
+                             "validadas"])
+    nu.add_argument("alvo", nargs="?",
+                    help="recortar: o FOTO_ID · validadas: o âmbito (slug do "
+                         "deck ou da coleção)")
+    nu.add_argument("--sessao", default=None,
+                    help="extrair: o registo .jsonl da sessão (omissão: o mais "
+                         "recente em ~/.claude/projects)")
+    nu.add_argument("--ultimas", type=int, default=1,
+                    help="extrair: quantas das últimas imagens (omissão 1)")
+    nu.add_argument("--para", default=None,
+                    help="extrair: o deck ou a coleção a que a foto se destina")
+    nu.add_argument("--lote", default=None,
+                    help="validar: ficheiro JSON, lista de {recorte_id, ambito, "
+                         "scryfall_id, acabamento, lingua, qtd, registar}")
+    nu.add_argument("--raiz", default=None,
+                    help="extrair/recortar: a pasta onde se escrevem as imagens "
+                         "(omissão: a raiz do projeto)")
 
     pm = sub.add_parser("precos",
                         help="o modo de preço: `precos` mostra, `precos modo "
@@ -1006,6 +1031,9 @@ def main(argv=None):
         elif args.cmd == "estado":
             return _estado(con, args)
 
+        elif args.cmd == "nucleo":
+            return _nucleo(con, args)
+
         elif args.cmd == "precos":
             _precos(con, args)
 
@@ -1021,6 +1049,214 @@ def main(argv=None):
             else:
                 print(f"{r['path']}: {r['caixas']} caixas escritas "
                       f"(backup em {Path(r['backup']).name})")
+
+
+def _eur(v) -> str:
+    """Euros em português (`paginas.eur`), sem arrastar a casca do site para o
+    arranque da CLI."""
+    from .paginas import eur                                    # noqa: PLC0415
+    return eur(v)
+
+
+def _raiz_do_nucleo(args) -> Path:
+    """Onde se escrevem as imagens: `--raiz`, ou a raiz do projeto."""
+    return Path(args.raiz) if args.raiz else Path(__file__).resolve().parents[1]
+
+
+def _nucleo_colecoes(con) -> int:
+    from .nucleo import colecoes                                # noqa: PLC0415
+    colecoes.garantir_colecoes(con)
+    for c in colecoes.colecoes(con):
+        e = colecoes.estado_colecao(con, c["slug"])
+        if e["tipo"] == "fechada":
+            quanto = f"{e['tenho']}/{e['total']}"
+        else:
+            quanto = f"{e['tenho']} cartas"
+        extra = f" · {e['sem_preco']} sem preço" if e["sem_preco"] else ""
+        print(f"{c['slug']} · {quanto} · {_eur(e['valor_eur'])}{extra}")
+    return 0
+
+
+def _nucleo_extrair(con, args) -> int:
+    from .nucleo import fotos                                   # noqa: PLC0415
+    jsonl = (Path(args.sessao) if args.sessao else
+             fotos.sessao_mais_recente(Path.home() / ".claude" / "projects"))
+    print(f"sessão: {jsonl}")
+    novas = fotos.extrair(con, jsonl, _raiz_do_nucleo(args),
+                          ultimas=args.ultimas, para=args.para)
+    for n in novas:
+        print(f"foto {n['foto_id']}: {n['caminho']}")
+    if not novas:
+        print("nenhuma foto nova (já estavam todas extraídas, ou a sessão não "
+              "tem imagens)")
+    return 0
+
+
+def _nucleo_recortar(con, args) -> int:
+    from .nucleo import fotos                                   # noqa: PLC0415
+    if args.alvo is None:
+        print("falta o FOTO_ID: nucleo recortar FOTO_ID")
+        return 2
+    try:
+        foto_id = int(args.alvo)
+    except ValueError:
+        print(f"o FOTO_ID tem de ser um número: {args.alvo!r}")
+        return 2
+    r = fotos.recortar(con, foto_id, _raiz_do_nucleo(args))
+    n = r["encontradas"]
+    print(f"{n} recorte" + ("" if n == 1 else "s"))
+    for rec in r["recortes"]:
+        print(f"recorte {rec['id']} (#{rec['numero']}): {rec['caminho']}")
+    return 0
+
+
+def _linha_do_lote(linha) -> dict:
+    """Valida a FORMA de uma linha do lote e devolve os argumentos do
+    `fotos.validar`. Levanta `ValueError` com o motivo (sem o «linha N»)."""
+    if not isinstance(linha, dict):
+        raise ValueError("a linha tem de ser um objeto JSON")
+    for k in ("recorte_id", "ambito", "scryfall_id", "acabamento"):
+        if linha.get(k) in (None, ""):
+            raise ValueError(f"falta {k!r}")
+    try:
+        recorte_id = int(linha["recorte_id"])
+        qtd = int(linha.get("qtd", 1))
+    except (TypeError, ValueError):
+        raise ValueError("recorte_id e qtd têm de ser números") from None
+    return {"recorte_id": recorte_id, "ambito": str(linha["ambito"]),
+            "scryfall_id": str(linha["scryfall_id"]),
+            "acabamento": str(linha["acabamento"]),
+            "lingua": str(linha.get("lingua") or "en"), "qtd": qtd,
+            "registar": bool(linha.get("registar", False))}
+
+
+def _nucleo_validar(con, args) -> int:
+    """`nucleo validar --lote FICHEIRO.json`, em duas passagens (as funções que
+    escrevem fazem cada uma o seu commit, por isso não há uma transação à volta
+    do lote todo): (1) confere TODAS as linhas sem escrever — se alguma falhar,
+    diz qual e não grava nada; (2) grava-as por ordem, e se ainda assim uma
+    falhar, pára e diz o que já ficou gravado."""
+    from .nucleo import fotos                                   # noqa: PLC0415
+    if not args.lote:
+        print("falta o ficheiro: nucleo validar --lote FICHEIRO.json")
+        return 2
+    try:
+        with open(args.lote, encoding="utf-8") as f:
+            linhas = json.load(f)
+    except (OSError, ValueError) as e:
+        print(f"não consegui ler o lote {args.lote}: {e}")
+        return 2
+    if not isinstance(linhas, list) or not linhas:
+        print("o lote tem de ser uma lista JSON com pelo menos uma linha")
+        return 2
+
+    # passagem 1: conferir tudo, sem escrever. Duas linhas sobre a mesma carta
+    # conferem-se juntas (`pendentes`) e um recorte só pode aparecer uma vez.
+    pedidos = []
+    pendentes: dict = {}
+    recortes: set = set()
+    for i, linha in enumerate(linhas, 1):
+        try:
+            a = _linha_do_lote(linha)
+            if a["recorte_id"] in recortes:
+                raise ValueError(f"o recorte {a['recorte_id']} aparece duas "
+                                 "vezes no lote")
+            fotos.verificar_validacao(
+                con, a["recorte_id"], a["ambito"], a["scryfall_id"],
+                a["acabamento"], a["lingua"], a["qtd"],
+                registar=a["registar"], pendentes=pendentes)
+        except ValueError as e:
+            print(f"linha {i}: {e}")
+            print("nada foi gravado")
+            return 1
+        recortes.add(a["recorte_id"])
+        pedidos.append(a)
+
+    # passagem 2: gravar por ordem
+    gravadas = []
+    for i, a in enumerate(pedidos, 1):
+        try:
+            r = fotos.validar(con, a["recorte_id"], a["ambito"],
+                              a["scryfall_id"], a["acabamento"], a["lingua"],
+                              a["qtd"], registar=a["registar"])
+        except ValueError as e:
+            print(f"linha {i}: {e}")
+            if gravadas:
+                print("já gravadas: " + ", ".join(
+                    f"linha {n}" for n in gravadas))
+            else:
+                print("nenhuma linha chegou a ser gravada")
+            return 1
+        gravadas.append(i)
+        print(f"linha {i}: validada ({r['ambito']}, {r['validadas']} validadas"
+              f" de {r['posse']})")
+    return 0
+
+
+def _nucleo_validadas(con, args) -> int:
+    """Por carta, `tenho · validadas`. Num deck: as linhas de `n_posse` do
+    âmbito dele (e do `rotativos`, se for rotativo); numa coleção: as cartas
+    com `tenho > 0`."""
+    from .nucleo import fotos, posse                            # noqa: PLC0415
+    ambito = args.alvo
+    if not ambito:
+        print("falta o âmbito: nucleo validadas AMBITO (slug do deck ou da "
+              "coleção)")
+        return 2
+    deck = con.execute("SELECT modo FROM n_deck WHERE slug = ?",
+                       (ambito,)).fetchone()
+    linhas = []
+    if deck is not None:
+        ambitos = [ambito] + ([posse.ROT] if deck["modo"] == "rotativo" else [])
+        for amb in ambitos:
+            for r in con.execute(
+                    "SELECT p.scryfall_id, p.acabamento, p.qtd, c.name FROM"
+                    " n_posse p JOIN cards c ON c.scryfall_id = p.scryfall_id"
+                    " WHERE p.ambito = ? AND p.qtd > 0 ORDER BY c.name,"
+                    " p.scryfall_id, p.acabamento", (amb,)).fetchall():
+                linhas.append((r["name"], r["scryfall_id"], r["acabamento"],
+                               "en", r["qtd"],
+                               fotos.validadas(con, amb, r["scryfall_id"],
+                                               r["acabamento"], "en")))
+    elif con.execute("SELECT 1 FROM n_colecao WHERE slug = ?",
+                     (ambito,)).fetchone() is not None:
+        for r in con.execute(
+                "SELECT nome, scryfall_id, acabamento, lingua, tenho FROM"
+                " n_colecao_carta WHERE colecao = ? AND tenho > 0 ORDER BY"
+                " nome, id", (ambito,)).fetchall():
+            linhas.append((r["nome"], r["scryfall_id"], r["acabamento"],
+                           r["lingua"], r["tenho"],
+                           fotos.validadas(con, ambito, r["scryfall_id"],
+                                           r["acabamento"], r["lingua"])))
+    else:
+        print(f"nem deck nem coleção: {ambito!r}")
+        return 1
+    if not linhas:
+        print(f"{ambito}: nenhuma carta com posse")
+    for nome, sid, acab, lingua, tenho, val in linhas:
+        print(f"{nome} ({sid} {acab} {lingua}) · {tenho} · {val}")
+    return 0
+
+
+def _nucleo(con, args) -> int:
+    """`nucleo colecoes|extrair|recortar|validar|validadas` — a porta do CLI
+    para as coleções e as fotos dele (spec «Fotos»): é por aqui que o Claude,
+    durante a conversa, extrai, recorta e valida. Um `ValueError` (as regras do
+    núcleo) sai em português, sem traceback, e o código de saída é diferente de
+    zero."""
+    try:
+        if args.accao == "colecoes":
+            return _nucleo_colecoes(con)
+        if args.accao == "extrair":
+            return _nucleo_extrair(con, args)
+        if args.accao == "recortar":
+            return _nucleo_recortar(con, args)
+        if args.accao == "validar":
+            return _nucleo_validar(con, args)
+        return _nucleo_validadas(con, args)
+    except ValueError as e:
+        print(f"erro: {e}")
+        return 1
 
 
 def _estado(con, args):

@@ -397,30 +397,12 @@ def _carta_colecao(con, slug: str, scryfall_id: str, acabamento: str,
         (slug, scryfall_id, acabamento, lingua)).fetchone()
 
 
-def validar(con: sqlite3.Connection, recorte_id: int, ambito: str,
-            scryfall_id: str, acabamento: str, lingua: str = "en",
-            qtd: int = 1, *, registar: bool = False) -> dict:
-    """Liga `qtd` cópias desta carta ao recorte, como validadas, e devolve
-    `{"validacao_id", "ambito", "validadas", "posse"}`.
-
-    `ambito` é aquilo para que a foto era: o slug de um deck (`n_deck`) ou de
-    uma coleção (`n_colecao`); outra coisa levanta. Num deck, a impressão e o
-    acabamento têm de ser os que contam (`posse.edicao`), senão `ValueError`
-    com as duas — mudar a edição é decisão dele —; o âmbito GRAVADO é o da
-    posse (o slug, ou `rotativos` numa partilhada) e a língua é `en`. Numa
-    coleção a carta tem de lá estar (`n_colecao_carta`; na Reserved List o
-    `colecoes.juntar` vem primeiro) e o âmbito gravado é o slug.
-
-    `registar=True` é «registar por foto»: soma primeiro `qtd` à posse (com um
-    `request_id` derivado do recorte, por isso repetir não soma duas vezes).
-    Depois a regra: as validadas ativas mais `qtd` não passam a posse
-    («só tens N»). Um recorte é uma carta: com uma validação dele ativa, não se
-    valida outra vez.
-
-    A verificação faz-se ANTES de somar a posse: o `ajustar` faz o seu próprio
-    commit, e uma validação recusada depois dele deixava uma cópia registada
-    sem foto nenhuma.
-    """
+def _preparar_validacao(con, recorte_id, ambito, scryfall_id, acabamento,
+                        lingua, qtd, registar, pendentes) -> dict:
+    """Todas as verificações de uma validação, SEM escrever nada. Devolve o que
+    `validar` precisa para escrever: o âmbito gravado, a língua, a posse que
+    contará (já com a que `registar` vai somar), as validadas de agora e a
+    função `somar` que regista a posse."""
     qtd = int(qtd)
     if qtd <= 0:
         raise ValueError(f"a quantidade tem de ser positiva: {qtd}")
@@ -467,19 +449,83 @@ def validar(con: sqlite3.Connection, recorte_id: int, ambito: str,
     else:
         raise ValueError(f"nem deck nem coleção: {ambito!r}")
 
-    if registar and not ja:
+    somou = registar and not ja
+    if somou:
         tem += qtd
-    ja_validadas = validadas(con, amb, scryfall_id, acabamento, lingua)
+    chave = (amb, scryfall_id, acabamento, lingua)
+    # o que as linhas anteriores do lote vão escrever e ainda não está na base
+    pend_val = pend_pos = 0
+    if pendentes is not None:
+        pend_val = pendentes.get(("validadas", chave), 0)
+        pend_pos = pendentes.get(("posse", chave), 0)
+    tem += pend_pos
+    ja_validadas = validadas(con, amb, scryfall_id, acabamento, lingua)         + pend_val
     if ja_validadas + qtd > tem:
         raise ValueError(f"só tens {tem} ({ja_validadas} já validadas):"
                          f" não dá para validar mais {qtd}")
+    if pendentes is not None:
+        pendentes[("validadas", chave)] = pend_val + qtd
+        if somou:
+            pendentes[("posse", chave)] = pend_pos + qtd
+    return {"amb": amb, "lingua": lingua, "tem": tem, "qtd": qtd,
+            "validadas": ja_validadas + qtd, "somou": bool(somou),
+            "somar": somar}
+
+
+def verificar_validacao(con: sqlite3.Connection, recorte_id: int, ambito: str,
+                        scryfall_id: str, acabamento: str, lingua: str = "en",
+                        qtd: int = 1, *, registar: bool = False,
+                        pendentes: dict | None = None) -> dict:
+    """As mesmas verificações do `validar`, sem escrever nada: levanta
+    `ValueError` se a validação seria recusada e devolve `{"ambito", "lingua",
+    "posse", "validadas", "soma_posse"}` se passaria.
+
+    Existe para o lote (`nucleo validar --lote`) conferir todas as linhas ANTES
+    de gravar a primeira; o `validar` usa a mesma verificação, por isso as
+    regras vivem num sítio só. `pendentes` é um dicionário que o lote passa a
+    todas as linhas: guarda o que as linhas anteriores vão acrescentar a cada
+    carta (validadas e posse) e que ainda não está na base, para duas linhas
+    sobre a mesma carta se conferirem juntas. Só se atualiza se a linha passar.
+    """
+    r = _preparar_validacao(con, recorte_id, ambito, scryfall_id, acabamento,
+                            lingua, qtd, registar, pendentes)
+    return {"ambito": r["amb"], "lingua": r["lingua"], "posse": r["tem"],
+            "validadas": r["validadas"], "soma_posse": r["somou"]}
+
+
+def validar(con: sqlite3.Connection, recorte_id: int, ambito: str,
+            scryfall_id: str, acabamento: str, lingua: str = "en",
+            qtd: int = 1, *, registar: bool = False) -> dict:
+    """Liga `qtd` cópias desta carta ao recorte, como validadas, e devolve
+    `{"validacao_id", "ambito", "validadas", "posse"}`.
+
+    `ambito` é aquilo para que a foto era: o slug de um deck (`n_deck`) ou de
+    uma coleção (`n_colecao`); outra coisa levanta. Num deck, a impressão e o
+    acabamento têm de ser os que contam (`posse.edicao`), senão `ValueError`
+    com as duas — mudar a edição é decisão dele —; o âmbito GRAVADO é o da
+    posse (o slug, ou `rotativos` numa partilhada) e a língua é `en`. Numa
+    coleção a carta tem de lá estar (`n_colecao_carta`; na Reserved List o
+    `colecoes.juntar` vem primeiro) e o âmbito gravado é o slug.
+
+    `registar=True` é «registar por foto»: soma primeiro `qtd` à posse (com um
+    `request_id` derivado do recorte, por isso repetir não soma duas vezes).
+    Depois a regra: as validadas ativas mais `qtd` não passam a posse
+    («só tens N»). Um recorte é uma carta: com uma validação dele ativa, não se
+    valida outra vez.
+
+    A verificação faz-se ANTES de somar a posse: o `ajustar` faz o seu próprio
+    commit, e uma validação recusada depois dele deixava uma cópia registada
+    sem foto nenhuma.
+    """
+    r = _preparar_validacao(con, recorte_id, ambito, scryfall_id, acabamento,
+                            lingua, qtd, registar, None)
     if registar:
-        somar()
+        r["somar"]()
     with posse._transacao(con):
         vid = con.execute(
             "INSERT INTO n_validacao (recorte_id, ambito, scryfall_id,"
             " acabamento, lingua, qtd, em) VALUES (?,?,?,?,?,?,?)",
-            (recorte_id, amb, scryfall_id, acabamento, lingua, qtd,
-             posse._agora())).lastrowid
-    return {"validacao_id": vid, "ambito": amb,
-            "validadas": ja_validadas + qtd, "posse": tem}
+            (recorte_id, r["amb"], scryfall_id, acabamento, r["lingua"],
+             r["qtd"], posse._agora())).lastrowid
+    return {"validacao_id": vid, "ambito": r["amb"],
+            "validadas": r["validadas"], "posse": r["tem"]}
