@@ -161,16 +161,29 @@ def _cartas_sempre(est: dict, editavel: bool) -> str:
     return out
 
 
+def _por_seccao(cartas, slug: str, editavel: bool, com_onde: bool = False) -> str:
+    """Main e Sideboard dentro de um bloco do rotativo (André, 29/10/2026:
+    «dentro do deck, consegues separar o que é mainboard do que é
+    sideboard?»). Uma carta no main e no side aparece nas duas partes."""
+    out = ""
+    for s in visual.ORDEM_SECCAO:
+        cs = [c for c in cartas if c["seccao"] == s]
+        if cs:
+            out += (f'<h3 class="gs">{visual.SECCAO[s]} <small>{_conta(cs)}</small></h3>'
+                    + visual.grelha(cs, slug=slug, editavel=editavel, com_onde=com_onde))
+    return out
+
+
 def _cartas_rotativo(est: dict, editavel: bool) -> str:
     fixas = [c for c in est["cartas"] if c["grupo"] == "fixa"]
     part = [c for c in est["cartas"] if c["grupo"] == "partilhada"]
     out = ('<h2 class="gt">Fixas deste deck <small>vivem na caixa dele · '
            f'{_conta(fixas)}</small></h2>')
-    out += (visual.grelha(fixas, slug=est["slug"], editavel=editavel) if fixas
+    out += (_por_seccao(fixas, est["slug"], editavel) if fixas
             else '<p class="vazio">Todas as cartas deste deck são partilhadas.</p>')
     out += ('<h2 class="gt">Partilhadas <small>andam com o deck montado · '
             f'{_conta(part)}</small></h2>')
-    out += (visual.grelha(part, slug=est["slug"], editavel=editavel, com_onde=True)
+    out += (_por_seccao(part, est["slug"], editavel, com_onde=True)
             if part else '<p class="vazio">Nenhuma carta em comum com outro '
                          'rotativo.</p>')
     return out

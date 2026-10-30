@@ -360,6 +360,63 @@ def caso_rotativo_duas_partes():
         assert "aqui" in leg[leg.index("Partilhadas"):]
 
 
+def caso_rotativo_main_e_sideboard():
+    """(André, 29/10/2026) «dentro do deck, consegues separar o que é mainboard
+    do que é sideboard?» — nos rotativos, cada bloco (Fixas, Partilhadas) leva
+    o seu Main e o seu Sideboard, cada um com a sua conta."""
+    with sessao() as con:
+        cenario(con)
+        versao(con, MOD, [("main", "Thought Monitor", 4), ("main", "Urza's Saga", 4),
+                          ("main", "Springleaf Drum", 4), ("side", "Island", 2),
+                          ("side", "Goblin Welder", 1)], fonte="com side",
+               quando="2026-10-20T10:00:00")
+        mod = seccao(nucleo_decks.html_page(con), MOD)
+        i_fix, i_par = mod.index("Fixas deste deck"), mod.index("Partilhadas")
+        fixas, partilhadas = mod[i_fix:i_par], mod[i_par:]
+
+        def partes(bloco):
+            m = re.search(r'<h3 class="gs">Main <small>(.*?)</small></h3>(.*?)'
+                          r'<h3 class="gs">Sideboard <small>(.*?)</small></h3>(.*)',
+                          bloco, re.S)
+            assert m, bloco[:400]
+            return m.groups()
+
+        c_main, main, c_side, side = partes(fixas)
+        assert 'title="Thought Monitor"' in main and 'title="Island"' in side
+        assert 'title="Island"' not in main and c_side == "0 de 2", c_side
+        c_main, main, c_side, side = partes(partilhadas)
+        assert 'title="Goblin Welder"' in side and 'title="Goblin Welder"' not in main
+        assert html.escape("Urza's Saga") in main and c_side == "0 de 1", c_side
+        # a etiqueta «SB» na quantidade deixou de ser precisa
+        assert "<small> SB</small>" not in mod
+
+
+def caso_nome_entre_a_carta_e_o_preco():
+    """(André, 30/10/2026) «entre a carta e o preço, preciso que esteja lá o
+    nome» — o nome por cima do «falta N × €», e também nas que já tem."""
+    with sessao() as con:
+        cenario(con)
+        p = nucleo_decks.html_page(con)
+        rep = seccao(p, REP)
+
+        def figura(trecho, nome):
+            m = re.search(rf'<figure [^>]*title="{re.escape(html.escape(nome))}".*?</figure>',
+                          trecho, re.S)
+            assert m, nome
+            return m.group(0)
+
+        op = figura(rep, "Opalescence")                       # falta 1
+        assert '<i class="cn">Opalescence</i>' in op, op
+        assert op.index('class="cn"') < op.index("<em>"), op
+        assert '<i class="cn">Replenish</i>' in figura(rep, "Replenish")   # completa
+        mod = seccao(p, MOD)
+        dr = figura(mod, "Springleaf Drum")                   # partilhada em falta: onde, nome, preço
+        assert dr.index('class="onde') < dr.index('class="cn"') < dr.index("<em>"), dr
+        # o nome vem escapado como o resto
+        sg = figura(mod, "Urza's Saga")
+        assert f'<i class="cn">{html.escape("Urza" + chr(39) + "s Saga")}</i>' in sg, sg
+
+
 def caso_onde_legivel():
     """A etiqueta das partilhadas mostra o NOME do deck inteiro (com um
     ícone), não «no We…» cortado."""

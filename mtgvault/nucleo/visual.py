@@ -259,8 +259,7 @@ def carta(c: dict, *, slug: str, editavel: bool = False,
                  ' tabindex="0" role="button" aria-haspopup="dialog"')
     img = (img_carta(c["scryfall_id"], c["nome"]) if c["scryfall_id"]
            else f'<span class="nm">{e(c["nome"])}</span>')
-    sb = "<small> SB</small>" if c["seccao"] == "side" and c.get("grupo") else ""
-    q = f'<u class="q">{c["qtd"]}{sb}</u>'
+    q = f'<u class="q">{c["qtd"]}</u>'
     onde = ""
     if com_onde and c.get("onde"):
         # o NOME do deck inteiro, com o ícone da caixa à frente: «no Welder
@@ -279,8 +278,12 @@ def carta(c: dict, *, slug: str, editavel: bool = False,
         else:
             preco = "× " + paginas.eur(c["preco_un"]).replace(" ", " ")
         falta = (f'<em><b>falta {c["falta"]}</b> <span>{preco}</span></em>')
+    # o nome entre a carta e o preço (André, 30/10/2026): numa carta a
+    # cinzento ou pequena no telemóvel, a imagem sozinha não se lê. Sem
+    # imagem o nome já está ao centro (`.nm`) e não se repete.
+    nome = f'<i class="cn">{e(c["nome"])}</i>' if c["scryfall_id"] else ""
     return (f'<figure class="{" ".join(cls)}" title="{e(c["nome"])}"{dados}>'
-            f'{img}{q}<span class="rod">{onde}{falta}</span></figure>')
+            f'{img}{q}<span class="rod">{onde}{nome}{falta}</span></figure>')
 
 
 def grelha(cartas: list[dict], *, slug: str, editavel: bool = False,
@@ -474,6 +477,9 @@ CSS = r"""
    margin:28px 0 10px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;font-weight:700}
  .nuc h2.gt small{text-transform:none;letter-spacing:0;color:var(--ink2);font:500 12.5px var(--font)}
  .nuc h2.gt .val{margin-left:auto;color:var(--accent);font:700 14px var(--font-hd);letter-spacing:0}
+ .nuc h3.gs{font-size:13px;color:var(--ink2);margin:16px 0 8px;font-weight:600;
+   display:flex;align-items:baseline;gap:8px}
+ .nuc h3.gs small{color:var(--muted);font:500 12px var(--font)}
  .nuc .vazio{margin:0}
  .nuc a.lk{min-height:36px;display:inline-flex;align-items:center}
 
@@ -593,6 +599,9 @@ CSS = r"""
    padding:1px 3px;line-height:1.2;text-align:center;overflow-wrap:anywhere}
  .ct .onde svg.ico{width:11px;height:11px;flex:none}
  .ct .onde.aqui{background:var(--ok-soft);color:var(--ok);border-color:var(--ok-line)}
+ .ct .cn{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+   font-style:normal;font-size:10px;font-weight:600;line-height:1.25;text-align:center;
+   background:rgba(0,0,0,.74);color:var(--ink);border-radius:4px;padding:1px 3px;overflow-wrap:anywhere}
  .ct em{display:block;font-style:normal;font-size:10px;
    text-align:center;background:var(--bad-soft);color:var(--bad-ink);border:1px solid var(--bad-line);
    border-radius:4px;line-height:1.3;padding:1px 2px}
