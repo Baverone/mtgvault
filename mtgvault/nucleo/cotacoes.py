@@ -188,13 +188,51 @@ def _ha(hoje: str, dias: int) -> str:
     return (date.fromisoformat(hoje) - timedelta(days=dias)).isoformat()
 
 
+def historico_desde(con: sqlite3.Connection) -> str | None:
+    """O dia mais antigo do histórico do Cardmarket na tabela inteira (de
+    qualquer carta), ou `None` se não houver nenhum. Entra pelo `ix_price_date`."""
+    r = con.execute("SELECT MIN(date) FROM price_history"
+                    " WHERE source = 'cardmarket'").fetchone()
+    return r[0] if r is not None else None
+
+
+_POR_LER = object()          # o `historico_desde` ainda não foi lido
+
+
+def tem_prova_em(con: sqlite3.Connection, sid: str, acabamento: str, dia: str,
+                 desde=_POR_LER) -> bool:
+    """(R23, 2026-10-30) Há prova do preço desta carta em `dia`? Sim se houver
+    uma linha vigiada ou de histórico do Cardmarket desta carta até `dia`, ou se
+    o histórico do Cardmarket (de qualquer carta) já existia em `dia` — aí a
+    ausência de linhas desta quer mesmo dizer «manteve-se desde antes» (R13).
+
+    Sem nenhuma das três, o `preco_em` cai na R13 e devolve o `price_latest` de
+    HOJE para um dia de antes de haver histórico: medido na base dele, 59
+    linhas de «A subir» com 0,0 % a 90 dias e o histórico a começar a 10/08.
+    `desde` é o `historico_desde` já lido (para quem pergunta muitas cartas)."""
+    if desde is _POR_LER:
+        desde = historico_desde(con)
+    if desde is not None and dia >= desde:
+        return True
+    return con.execute(
+        "SELECT 1 FROM n_preco_vigiado WHERE scryfall_id = ? AND acabamento = ?"
+        " AND dia <= ? UNION ALL SELECT 1 FROM price_history WHERE"
+        " scryfall_id = ? AND source = 'cardmarket' AND finish = ? AND date <= ?"
+        " LIMIT 1", (sid, acabamento, dia, sid, acabamento, dia)).fetchone() \
+        is not None
+
+
 def variacao(con: sqlite3.Connection, sid: str, acabamento: str, dias: int,
-             hoje: str | None = None) -> float | None:
+             hoje: str | None = None, desde=_POR_LER) -> float | None:
     """`(hoje / há N dias − 1) × 100` com uma casa, ou `None` sem um dos dois
-    preços."""
+    preços. (R23) O ponto de há N dias precisa de prova (`tem_prova_em`); sem
+    ela é `None` («sem histórico»), nunca um 0,0 % que ninguém mediu."""
     hoje = hoje or date.today().isoformat()
+    ref = _ha(hoje, dias)
+    if not tem_prova_em(con, sid, acabamento, ref, desde):
+        return None
     return _percentagem(preco_em(con, sid, acabamento, hoje),
-                        preco_em(con, sid, acabamento, _ha(hoje, dias)))
+                        preco_em(con, sid, acabamento, ref))
 
 
 def _pt_em(con: sqlite3.Connection, sid: str, acabamento: str,
@@ -255,6 +293,7 @@ def a_subir(con: sqlite3.Connection, hoje: str | None = None) -> list[dict]:
             k = (r["scryfall_id"], r["acabamento"])
             tenho[k] = tenho.get(k, 0) + (r["q"] or 0)
     linhas = []
+    desde = historico_desde(con)     # (R23) lido uma vez, não por carta
     for (sid, acab), (nome, set_code) in _universo(con).items():
         preco = preco_em(con, sid, acab, hoje)
         if preco is None or preco < MINIMO_SUBIR:
@@ -262,8 +301,8 @@ def a_subir(con: sqlite3.Connection, hoje: str | None = None) -> list[dict]:
         linhas.append({
             "nome": nome, "set_code": set_code, "scryfall_id": sid,
             "acabamento": acab, "preco": preco,
-            "var30": variacao(con, sid, acab, 30, hoje),
-            "var90": variacao(con, sid, acab, 90, hoje),
+            "var30": variacao(con, sid, acab, 30, hoje, desde),
+            "var90": variacao(con, sid, acab, 90, hoje, desde),
             "tenho": tenho.get((sid, acab), 0),
             "joga": jogada.onde_joga(con, nome, hoje)})
     linhas.sort(key=lambda l: (l["var30"] is None, -(l["var30"] or 0),

@@ -29,7 +29,8 @@ As regras (spec «Regras: Valor, Preços», 2026-10-28):
 - **A variação do mês** (R18, `variacao_mes`) compara o inventário de hoje
   consigo próprio: aos preços de hoje e aos de há 30 dias. Não usa os dias
   gravados — esses mediram outro inventário, e no primeiro dia dele davam
-  «−100 %» contra um dia gravado antes de marcar a primeira carta.
+  «−100 %» contra um dia gravado antes de marcar a primeira carta. (R22) Uma
+  cópia PT só entra nas duas pontas se já tinha preço PT no dia de referência.
 
 - **O valor tem três partes** (R8, 2026-10-30): `decks_eur` (o `n_posse`),
   `a_mais_eur` (o `n_a_mais` e o `n_saida`, o que está em Vender) e
@@ -293,6 +294,15 @@ def variacao_mes(con: sqlite3.Connection, hoje: str | None = None) -> dict | Non
     histórico, por isso só esses se perguntam). Sem nenhum, ou sem nada
     marcado, `None` (a página escreve «—»). `pct` é `None` se o ponto de
     partida valia 0.
+
+    (R22, 2026-10-30) **Compara igual com igual nas cópias PT.** Uma cópia de
+    coleção em português só entra nas DUAS pontas se tiver linha em
+    `n_preco_pt` até ao dia de referência; sem ela fica fora das duas. A R9
+    deixava-a valer 0 € há 30 dias e o preço todo hoje, e o valor inteiro de
+    uma carta vista pela primeira vez esta semana aparecia como ganho do mês
+    (medido: +2 000 € inventados com 40 Shocks PT). O gráfico (`serie`) fica
+    com a R9: lá a cópia soma desde o dia em que tem preço, e a história não
+    se perde.
     """
     hoje = _hoje(hoje)
     inv = _partes(con)
@@ -312,6 +322,15 @@ def variacao_mes(con: sqlite3.Connection, hoje: str | None = None) -> dict | Non
                 break
         if ref is None:
             return None
+    # (R22) a escolha do dia acima não depende das cópias PT (a cobertura não
+    # as conta); escolhido o dia, tiram-se das duas pontas as que nessa altura
+    # ainda não tinham sido vistas, e as duas pontas recalculam-se
+    from . import cotacoes                                 # noqa: PLC0415
+    colecoes_ = [c for c in inv["colecoes"] if c[2] != "pt"
+                 or cotacoes._pt_em(con, c[0], c[1], desde) is not None]
+    if len(colecoes_) != len(inv["colecoes"]):
+        inv = {**inv, "colecoes": colecoes_}
+        agora, ref = _valor_de(con, inv, None), _valor_de(con, inv, desde)
     delta = round(agora["total_eur"] - ref["total_eur"], 2)
     pct = round(100 * delta / ref["total_eur"], 1) if ref["total_eur"] else None
     return {"delta": delta, "pct": pct, "desde": desde, "hoje": hoje}
@@ -355,11 +374,23 @@ def serie_colecao(con: sqlite3.Connection, slug: str,
         for sql, args in consultas:
             dias.update(r[0] for r in con.execute(sql, args)
                         if desde <= r[0] < hoje)
+    from . import cotacoes                                 # noqa: PLC0415
+    h_desde = cotacoes.historico_desde(con)
+
+    def preco_de(sid, acab, ling, dia):
+        # (R23) um ponto de trás é o ponto de partida do `variacao_serie`: uma
+        # carta inglesa sem prova do preço nesse dia conta sem preço, em vez
+        # de valer (pela R13) o `price_latest` de hoje num dia sem histórico
+        if (dia is not None and ling != "pt"
+                and not cotacoes.tem_prova_em(con, sid, acab, dia, h_desde)):
+            return None
+        return _preco_colecao(con, sid, acab, ling, dia)
+
     pontos = []
     for d in sorted(dias) + [hoje]:
         dia = None if d == hoje else d
         total, copias, sem = _somar(
-            cartas, lambda sid, acab, ling: _preco_colecao(con, sid, acab, ling, dia))
+            cartas, lambda sid, acab, ling: preco_de(sid, acab, ling, dia))
         if copias > sem:
             pontos.append((d, round(total, 2), sem))
     return pontos

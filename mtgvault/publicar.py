@@ -319,6 +319,16 @@ class BasePorMigrar(RuntimeError):
     """O núcleo está ligado e o `vault.db` ainda não tem as tabelas `n_*`."""
 
 
+# (R21, 2026-10-30) O que as páginas do núcleo LEEM e só o `_migrate` cria. Não
+# basta o `n_deck`: uma base do núcleo de 28/10 já o tem e não tem as tabelas da
+# Coleção e fotos, e no dia do merge a tarefa `mtgvault-publicar` (30 em 30 min,
+# só de leitura) rebentava com «no such table: n_colecao_carta» até o webapp ou
+# o daily a migrarem. Uma tabela nova que uma página leia entra aqui.
+TABELAS_DO_NUCLEO = ("n_deck", "n_colecao", "n_colecao_carta", "n_validacao",
+                     "n_preco_pt", "n_preco_vigiado", "n_jogada")
+COLUNAS_DO_NUCLEO = (("n_valor", "colecoes_eur"),)
+
+
 def exige_base_do_nucleo(con) -> None:
     """(I4, 2026-10-29) Com o `nucleo.ligado`, a base tem de ter as tabelas do
     núcleo. O `publicar` abre-a SÓ DE LEITURA (não corre o `db.init`, que é
@@ -327,11 +337,19 @@ def exige_base_do_nucleo(con) -> None:
     tarefa. Quem migra é o arranque do webapp ou o daily."""
     if not _ligado():
         return
-    if con.execute("SELECT 1 FROM sqlite_master WHERE type = 'table'"
-                   " AND name = 'n_deck'").fetchone() is None:
+    tem = {r[0] for r in con.execute(
+        "SELECT name FROM sqlite_master WHERE type = 'table'")}
+    faltam = [t for t in TABELAS_DO_NUCLEO if t not in tem]
+    for tabela, coluna in COLUNAS_DO_NUCLEO:
+        if tabela in tem and coluna not in {
+                r[1] for r in con.execute(f"PRAGMA table_info({tabela})")}:
+            faltam.append(f"{tabela}.{coluna}")
+        elif tabela not in tem:
+            faltam.append(tabela)
+    if faltam:
         raise BasePorMigrar("base por migrar: corre o webapp ou o daily uma vez"
                             " (o núcleo está ligado e o vault.db ainda não tem as"
-                            " tabelas n_*)")
+                            " tabelas n_*: falta " + ", ".join(faltam) + ")")
 
 
 def main(argv=None) -> int:

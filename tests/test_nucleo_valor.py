@@ -781,6 +781,38 @@ def caso_serie_colecao():
         assert valor.serie_colecao(con, "expeditions", HOJE) == []
 
 
+def caso_serie_colecao_sem_prova_conta_sem_preco():
+    """(R23) Num ponto da série de uma coleção, uma carta inglesa sem prova do
+    preço nesse dia (sem linha vigiada nem de histórico dela até lá, e o
+    histórico do Cardmarket ainda por começar) não vale o preço de HOJE: conta
+    em `sem_preco`, e a variação a 90 dias passa a «sem histórico»."""
+    from mtgvault.nucleo import visual                        # noqa: PLC0415
+    with sessao() as con:
+        com_colecoes(con)
+        tundra, bayou = _sid("Tundra", "3ed"), _sid("Bayou", "3ed")
+        marcar(con, "duals_revised", "Tundra", 1)
+        marcar(con, "duals_revised", "Bayou", 1)
+        vigiado_em(con, tundra, "nonfoil", ha(95), 80.0)       # a única prova antiga
+        vigiado_em(con, tundra, "nonfoil", HOJE, 100.0)
+        # a Bayou só tem `price_latest` (nenhuma linha de histórico): a R13
+        # dava-lhe os 300 € de hoje em qualquer dia
+        preco_em(con, bayou, "nonfoil", HOJE, 300.0)
+        preco_em(con, tundra, "nonfoil", HOJE, 100.0)          # o ponto de hoje
+        con.execute("DELETE FROM price_history")
+        con.commit()
+        s = valor.serie_colecao(con, "duals_revised", HOJE)
+        # há 95 dias não havia histórico nenhum: a Bayou fica fora e conta sem preço
+        assert s[0] == (ha(95), 80.0, 1), s
+        assert s[-1] == (HOJE, 400.0, 0), s
+        assert visual.variacao_serie(s, HOJE, 90) is None
+        # com o histórico do Cardmarket já a existir há 95 dias (de outra
+        # carta), a ausência de linhas da Bayou quer mesmo dizer «manteve-se»
+        preco_em(con, "fow-a", "nonfoil", ha(99), 5.0)
+        s = valor.serie_colecao(con, "duals_revised", HOJE)
+        assert s[0] == (ha(95), 380.0, 0), s
+        assert visual.variacao_serie(s, HOJE, 90)["delta"] == 20.0
+
+
 def caso_serie_colecao_pt_e_sem_preco():
     with sessao() as con:
         com_colecoes(con)
@@ -881,13 +913,53 @@ def caso_serie_r9_pt_novo_nao_apaga_o_historico():
         assert s[-1] == (HOJE, 24.5 + 80.0, 0), s[-1]
         v = valor.variacao_mes(con, HOJE)
         assert v is not None and v["desde"] == ha(30), v
-        assert v["delta"] == round(24.5 + 80.0 - 10.0, 2), v
+        # (R22) a cópia PT só tem preço desde há 5 dias: fica fora das DUAS
+        # pontas, e a variação é só a do deck (o gráfico, acima, soma-a)
+        assert v["delta"] == round(24.5 - 10.0, 2), v
         # a regra para as NÃO-PT mantém-se: uma carta de deck sem preço há 30
         # dias que hoje tem preço continua a deixar o dia de fora
         preco_em(con, "saga-a", "nonfoil", ha(10), 30.0)
         posse_directa(con, MOD, "saga-a", "nonfoil", 1)
         dias = [d for d, *_ in valor.serie(con, HOJE)]
         assert ha(30) not in dias and ha(10) in dias, dias
+
+
+def caso_variacao_mes_pt_compara_igual_com_igual():
+    """(R22) A variação do mês compara o mesmo conjunto nas duas pontas: uma
+    cópia PT só entra (no ponto de há 30 dias E no de hoje) se tiver linha em
+    `n_preco_pt` até ao dia de referência. Medido antes: 40 Shocks PT vistos
+    pela primeira vez há 5 dias davam +2 000 € de «ganho» que ninguém teve."""
+    with sessao() as con:
+        com_colecoes(con)
+        for n in range(30, 0, -1):
+            preco_em(con, "fow-a", "nonfoil", ha(n), 10.0 + (30 - n) * 0.5)
+        posse_directa(con, MOD, "fow-a", "nonfoil", 1)
+        so_deck = round(24.5 - 10.0, 2)
+        from test_nucleo_colecoes import PT_SHOCKS              # noqa: PLC0415
+        shocks = [(nome, _sid(nome, sc)) for sc, nomes in PT_SHOCKS
+                  for nome in nomes]
+        assert len(shocks) == 10
+        for nome, sid in shocks:
+            marcar(con, "shocks_pt", nome, 4)                    # 40 cópias
+            for n in (5, 3, 1):
+                pt_em(con, sid, "nonfoil", ha(n), 50.0)
+        agora = valor.valor_em(con)
+        assert agora["colecoes_eur"] == 2000.0, agora
+        v = valor.variacao_mes(con, HOJE)
+        assert v is not None and v["desde"] == ha(30), v
+        assert v["delta"] == so_deck, v
+        assert v["pct"] == round(100 * so_deck / 10.0, 1), v
+        # uma delas também foi vista há 40 dias (60 €) e hoje (90 €): essa
+        # entra nas duas pontas e a mudança dela conta (4 × 30 €)
+        nome, sid = shocks[0]
+        pt_em(con, sid, "nonfoil", ha(40), 60.0)
+        pt_em(con, sid, "nonfoil", HOJE, 90.0)
+        v = valor.variacao_mes(con, HOJE)
+        assert v["delta"] == round(so_deck + 4 * (90.0 - 60.0), 2), v
+        assert v["pct"] == round(100 * v["delta"] / (10.0 + 4 * 60.0), 1), v
+        # e o gráfico continua a somar as PT desde o dia em que têm preço (R9)
+        s = {d: t for d, t, _sp in valor.serie(con, HOJE)}
+        assert s[HOJE] == round(24.5 + 9 * 4 * 50.0 + 4 * 90.0, 2), s[HOJE]
 
 
 if __name__ == "__main__":

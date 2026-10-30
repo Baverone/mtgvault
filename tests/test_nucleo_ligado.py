@@ -444,6 +444,63 @@ def caso_publicar_com_base_por_migrar():
     print("ligado: base por migrar = mensagem e erro, sem traceback")
 
 
+# As tabelas da Coleção e fotos que as páginas leem (R21). Uma base do núcleo
+# de 28/10 já tem o `n_deck`, mas não estas: o `publicar` (só de leitura, a
+# cada 30 min) rebentava com «no such table: n_colecao_carta» até o webapp ou
+# o daily a migrarem.
+NOVAS = ("n_colecao", "n_colecao_carta", "n_validacao", "n_preco_pt",
+         "n_preco_vigiado", "n_jogada")
+TODAS_AS_NOVAS = ("n_colecao", "n_colecao_carta", "n_colecao_log", "n_foto",
+                  "n_recorte", "n_validacao", "n_preco_pt", "n_preco_vigiado",
+                  "n_jogada")
+
+
+def _base_antiga(v, c, *, tirar=TODAS_AS_NOVAS, coluna=True):
+    """Uma base migrada a que se tiram as tabelas novas (e a coluna
+    `n_valor.colecoes_eur`): fica como a do André antes deste ramo, só com as
+    `n_*` do núcleo de 28/10."""
+    import sqlite3                                             # noqa: PLC0415
+    with db.session(v, c) as con:
+        modelo.garantir_decks(con)
+    s = sqlite3.connect(str(v))
+    for t in tirar:
+        s.execute(f"DROP TABLE {t}")
+    if coluna:
+        s.execute("ALTER TABLE n_valor DROP COLUMN colecoes_eur")
+    s.commit()
+    s.close()
+
+
+def caso_publicar_recusa_base_sem_as_tabelas_da_colecao():
+    """(R21) Com o `n_deck` mas sem as tabelas da Coleção (a base do núcleo de
+    28/10), o guarda recusa com «base por migrar»; basta faltar UMA delas, ou a
+    coluna `n_valor.colecoes_eur`. Uma base migrada passa."""
+    with interruptor(True), tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        casos = [("antiga", dict()),
+                 ("sem a coluna", dict(tirar=(), coluna=True))]
+        casos += [(f"sem {t}", dict(tirar=(t,), coluna=False)) for t in NOVAS]
+        for i, (rot, kw) in enumerate(casos):
+            v, c = tmp / f"v{i}.db", tmp / f"c{i}.db"
+            _base_antiga(v, c, **kw)
+            with db.ler(v, c) as con:
+                assert con.execute("SELECT 1 FROM sqlite_master WHERE name = "
+                                   "'n_deck'").fetchone(), rot
+                try:
+                    publicar.exige_base_do_nucleo(con)
+                except publicar.BasePorMigrar as e:
+                    assert "base por migrar" in str(e), (rot, str(e))
+                else:
+                    raise AssertionError(f"{rot}: o guarda deixou passar")
+        # migrada (o db.session corre o _migrate e repõe tudo): passa
+        v, c = tmp / "v0.db", tmp / "c0.db"
+        with db.session(v, c):
+            pass
+        with db.ler(v, c) as con:
+            publicar.exige_base_do_nucleo(con)
+    print("ligado: base sem as tabelas da Coleção = base por migrar")
+
+
 def caso_config_diz_como_voltar_atras():
     """(I5) O texto do `_nucleo` no `colecao_config.json` diz o que se repõe à
     mão para voltar ao site antigo: o `git add` do `daily.yml`."""

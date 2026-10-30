@@ -80,6 +80,14 @@ def caso_migra_base_antiga():
         assert (linha["total_eur"], linha["copias"], linha["sem_preco"]) == (1234.5, 10, 2), \
             f"a linha antiga mudou: {tuple(linha)}"
         assert linha["colecoes_eur"] is None, "a coluna nova devia nascer vazia"
+        # e as 9 tabelas novas nascem numa base antiga (o CREATE IF NOT EXISTS
+        # do `_migrate`), que é o que o `publicar` exige antes de ler (R21)
+        novas = {"n_colecao", "n_colecao_carta", "n_colecao_log", "n_foto",
+                 "n_recorte", "n_validacao", "n_preco_pt", "n_preco_vigiado",
+                 "n_jogada"}
+        tem = {r["name"] for r in con.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table'")}
+        assert novas <= tem, f"faltam depois de migrar: {sorted(novas - tem)}"
 
 
 # ---------------------------------------------------------------------------

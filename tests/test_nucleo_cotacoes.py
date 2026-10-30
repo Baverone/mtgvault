@@ -378,13 +378,51 @@ def caso_variacao_en_sem_historico_e_zero():
     linha de histórico, dá variação 0,0 — o histórico do Cardmarket só regista
     mudanças, por isso «sem linha» quer dizer «manteve-se desde antes da janela
     que a poda guarda». Não vale para o `n_preco_pt`, que se escreve todos os
-    dias com ofertas (ver `variacao_pt`)."""
+    dias com ofertas (ver `variacao_pt`).
+
+    (R23) Só é legítimo porque o histórico do Cardmarket (de OUTRA carta) já
+    existia antes de há 90 dias: a ausência de linhas desta quer mesmo dizer
+    «manteve-se»."""
     with sessao() as con:
         trend_hoje(con, "so-latest", "nonfoil", 50.0)
         con.execute("DELETE FROM price_history WHERE scryfall_id = 'so-latest'")
         con.commit()
+        trend_hoje(con, "outra", "nonfoil", 7.0, dia="2026-07-01")
         assert cotacoes.variacao(con, "so-latest", "nonfoil", 30, HOJE) == 0.0
         assert cotacoes.variacao(con, "so-latest", "nonfoil", 90, HOJE) == 0.0
+
+
+def caso_variacao_sem_prova_no_ponto_de_partida_e_none():
+    """(R23) O ponto de há N dias precisa de prova: uma linha vigiada ou de
+    histórico desta carta até lá, ou o histórico do Cardmarket (de qualquer
+    carta) já a existir nesse dia. Sem nenhuma, a R13 devolvia o preço de HOJE
+    para um dia de antes de haver histórico e a variação saía 0,0 % — medido:
+    59 linhas de «A subir» com 0,0 % a 90 dias e o histórico a começar a 10/08."""
+    with sessao() as con:
+        trend_hoje(con, "so-latest", "nonfoil", 50.0)
+        con.execute("DELETE FROM price_history WHERE scryfall_id = 'so-latest'")
+        con.commit()
+        # o histórico mais antigo da tabela é de 2026-09-01 (outra carta)
+        trend_hoje(con, "outra", "nonfoil", 7.0, dia="2026-09-01")
+        # há 30 dias (09-30) já havia histórico: sem linha = manteve-se
+        assert cotacoes.variacao(con, "so-latest", "nonfoil", 30, HOJE) == 0.0
+        # há 90 dias (08-01) ainda não havia histórico nenhum: «sem histórico»
+        assert cotacoes.variacao(con, "so-latest", "nonfoil", 90, HOJE) is None
+        # sem histórico nenhum na tabela, também não
+        con.execute("DELETE FROM price_history")
+        con.commit()
+        assert cotacoes.variacao(con, "so-latest", "nonfoil", 30, HOJE) is None
+        # uma linha vigiada desta carta antes do ponto de partida é prova
+        vigiado(con, "so-latest", "nonfoil", "2026-07-15", 40.0)
+        vigiado(con, "so-latest", "nonfoil", HOJE, 50.0)
+        assert cotacoes.variacao(con, "so-latest", "nonfoil", 90, HOJE) == 25.0
+        # e uma linha de histórico desta carta antes do ponto também (que é,
+        # por definição, histórico do Cardmarket a existir nesse dia)
+        trend_hoje(con, "tem-hist", "nonfoil", 20.0, dia="2026-07-20")
+        trend_hoje(con, "tem-hist", "nonfoil", 30.0)
+        con.execute("DELETE FROM price_history WHERE scryfall_id <> 'tem-hist'")
+        con.commit()
+        assert cotacoes.variacao(con, "tem-hist", "nonfoil", 90, HOJE) == 50.0
 
 
 def caso_juntar_so_en_ou_pt():
