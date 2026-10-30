@@ -34,6 +34,9 @@ from mtgvault import (analysis, consenso, db, fases, loadout, mtgtop8,  # noqa: 
 # que ele usa e os passos dele (`_main_nucleo`). As funções chamam-se pelo
 # módulo (`nucleo_vigia.vigiar_todos`, …) para um teste as poder trocar.
 from mtgvault import publicar  # noqa: E402
+from mtgvault.nucleo import colecoes as nucleo_colecoes_mod  # noqa: E402
+from mtgvault.nucleo import cotacoes as nucleo_cotacoes  # noqa: E402
+from mtgvault.nucleo import jogada as nucleo_jogada  # noqa: E402
 from mtgvault.nucleo import modelo as nucleo_modelo  # noqa: E402
 from mtgvault.nucleo import valor as nucleo_valor  # noqa: E402
 from mtgvault.nucleo import vigia as nucleo_vigia  # noqa: E402
@@ -906,10 +909,41 @@ def _main_nucleo():
         # As listas do MTGO de onde saem as vigias do Luffy. Antes das podas,
         # pela razão do `daily` de sempre (2026-10-25): o site não sai com
         # listas que a base apaga minutos depois.
+        # Todos os formatos (e não só Pauper e Premodern): o `nucleo-jogada` conta
+        # as listas de qualquer formato para dizer «joga» (Coleção, Tarefa 13).
         _step(con, "harvest-mtgo",
-              lambda: f"{sources.harvest_mtgo(con, MTGO_DAYS, formats=FORMATOS_MTGO_NUCLEO)} novas")
+              lambda: f"{sources.harvest_mtgo(con, MTGO_DAYS, formats=None)} novas")
+        # O papel (mtgtop8) pela mesma razão: as listas de Duel Commander,
+        # Premodern e dos formatos de papel entram na contagem da jogada.
+        for fmt in MTGTOP8_FORMATS + MTGTOP8_PAPER:
+            _step(con, f"harvest-mtgtop8:{fmt}",
+                  lambda fmt=fmt: f"{mtgtop8.harvest(con, fmt, max_events=8)} novas")
         _step(con, "precos-scryfall", lambda: _scryfall_prices(con))
         _step(con, "precos-cardmarket", lambda: _cardmarket(con))
+
+        hoje = date.today().isoformat()
+
+        def _colecoes():
+            novas = nucleo_colecoes_mod.garantir_colecoes(con)
+            total = con.execute("SELECT COUNT(*) FROM n_colecao").fetchone()[0]
+            return f"{total} coleções ({novas} novas)"
+
+        def _precos_pt():
+            # Sem `CARDTRADER_TOKEN` o `CardTrader()` levanta: o passo fica
+            # `erro` com a razão e a tarefa vermelha — nunca um salto calado,
+            # porque uma página sem preços PT a fingir que está em dia é pior.
+            return f"{nucleo_cotacoes.recolher_pt(con, prices.CardTrader(), hoje)} linhas PT"
+
+        # Se uma carta das coleções faltar no catálogo, `garantir_colecoes` levanta
+        # (tudo ou nada) e o passo fica `erro` com a mensagem; o resto corre.
+        _step(con, "nucleo-colecoes", _colecoes)
+        _step(con, "precos-pt", _precos_pt)
+        _step(con, "nucleo-vigiados",
+              lambda: f"{nucleo_cotacoes.gravar_vigiadas(con, hoje)} preços novos")
+        # ANTES do `prune`, que apaga as listas com mais de 30 dias: a jogada
+        # conta-se enquanto elas ainda existem (a tabela só sobe).
+        _step(con, "nucleo-jogada",
+              lambda: f"{nucleo_jogada.registar(con)} linhas")
         _step(con, "podar-precos", lambda: _prune_prices(con, 30))
         _step(con, "podar-ligas", lambda: _podar_ligas(con))
         _step(con, "prune", lambda: f"{analysis.prune_decklists(con, 30)} apagadas")

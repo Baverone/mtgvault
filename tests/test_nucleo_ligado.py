@@ -46,7 +46,16 @@ TITULOS = {"index.html": nucleo_painel.TITULO, "deck.html": nucleo_decks.TITULO,
            "colecoes.html": nucleo_colecoes.TITULO,
            "vender.html": nucleo_vender.TITULO}
 
-ESPERADOS = ["catalogo", "harvest-mtgo", "precos-scryfall", "precos-cardmarket",
+# A ordem do `_main_nucleo` (Tarefa 13): a recolha de torneios (MTGO de todos os
+# formatos e o mtgtop8 de papel), os preços, os quatro passos novos da Coleção,
+# as podas — com a `nucleo-jogada` ANTES do `prune`, que apaga as listas com
+# mais de 30 dias — e por fim os passos do núcleo de sempre.
+FORMATOS_TOP8 = ["duel-commander", "premodern", "standard", "pioneer", "modern",
+                 "legacy"]
+ESPERADOS = ["catalogo", "harvest-mtgo",
+             *[f"harvest-mtgtop8:{f}" for f in FORMATOS_TOP8],
+             "precos-scryfall", "precos-cardmarket",
+             "nucleo-colecoes", "precos-pt", "nucleo-vigiados", "nucleo-jogada",
              "podar-precos", "podar-ligas", "prune", "nucleo-decks",
              "nucleo-vigias", "nucleo-valor", "nucleo-paginas", "checkpoint"]
 
@@ -113,7 +122,8 @@ def _correr_daily(vigiar=None):
     o caso chumba pela lista — e nada vai à rede nem escreve no site.
     """
     import daily                                               # noqa: PLC0415
-    from mtgvault import analysis, sources                    # noqa: PLC0415
+    from mtgvault import analysis, mtgtop8, prices, sources   # noqa: PLC0415
+    from mtgvault.nucleo import colecoes as col_n, cotacoes   # noqa: PLC0415
     chamadas: dict = {}
     real_step = daily._step
 
@@ -133,6 +143,10 @@ def _correr_daily(vigiar=None):
             return vigiar(con)
         return {}
 
+    def top8_falso(con, fmt, max_events=6):
+        chamadas.setdefault("top8", []).append((fmt, max_events))
+        return 0
+
     real_valor = valor.gravar_valor_do_dia
 
     def valor_falso(con, dia):
@@ -147,6 +161,11 @@ def _correr_daily(vigiar=None):
         (daily, "_step", step),
         (daily, "_catalog", lambda con: "catálogo falso"),
         (sources, "harvest_mtgo", harvest),
+        (mtgtop8, "harvest", top8_falso),
+        # catálogo vazio: as coleções não se podem semear, e o CardTrader é rede
+        (col_n, "garantir_colecoes", lambda con: 0),
+        (prices, "CardTrader", lambda: object()),
+        (cotacoes, "recolher_pt", lambda con, ct, dia: 0),
         (daily, "_scryfall_prices", lambda con: "scryfall falso"),
         (daily, "_cardmarket", lambda con: "cardmarket falso"),
         (daily, "_prune_prices", lambda con, keep_days=30: "podar falso"),
@@ -178,7 +197,9 @@ def caso_daily_passos_ligado():
         passos, chamadas = _correr_daily()
     assert [n for n, _s in passos] == ESPERADOS, passos
     assert all(s == "ok" for _n, s in passos), passos
-    assert chamadas["harvest"]["formats"] == {"pauper", "premodern"}, chamadas
+    # todos os formatos do MTGO, e o mtgtop8 dos seis formatos de papel
+    assert chamadas["harvest"]["formats"] is None, chamadas
+    assert chamadas["top8"] == [(f, 8) for f in FORMATOS_TOP8], chamadas
     assert chamadas["vigiar"] == {"levantar": True}, chamadas
     assert chamadas["valor"] == __import__("datetime").date.today().isoformat()
     # As quatro páginas vão para onde as antigas iam: a raiz do repositório.
@@ -188,6 +209,100 @@ def caso_daily_passos_ligado():
         assert con.execute("SELECT COUNT(*) FROM n_deck").fetchone()[0] == len(
             modelo.DECKS)
     print("ligado: o daily corre só a recolha do núcleo, pela ordem certa")
+
+
+def caso_ordem_dos_passos():
+    """(Tarefa 13) A ordem exata dos passos do `_main_nucleo`, com o `_step`
+    trocado por um registo dos nomes: nada corre, só se vê o que seria corrido.
+    E a `nucleo-jogada` tem de vir ANTES do `prune`, senão as listas com mais de
+    30 dias desaparecem antes de se contarem."""
+    import daily                                               # noqa: PLC0415
+    nomes: list[str] = []
+    real_step = daily._step
+    daily._step = lambda con, nome, fn: nomes.append(nome)
+    try:
+        with interruptor(True):
+            daily._main_nucleo()
+    finally:
+        daily._step = real_step
+    assert nomes == ESPERADOS, nomes
+    assert nomes.index("nucleo-jogada") < nomes.index("prune"), nomes
+    assert nomes.index("nucleo-colecoes") < nomes.index("precos-pt"), nomes
+    print("ligado: os passos novos entram pela ordem do plano, a jogada antes da poda")
+
+
+def _nucleo_a_serio(sem=None):
+    """Corre o `_main_nucleo` com o `_step` verdadeiro numa base temporária
+    SEMEADA (o catálogo das coleções; `sem` deixa uma carta de fora) e a rede
+    trocada por falsos. Só os passos novos correm de verdade, e o
+    `CARDTRADER_TOKEN` sai do ambiente. Devolve `{passo: (estado, detalhe)}`."""
+    import daily                                               # noqa: PLC0415
+    from mtgvault import analysis, mtgtop8, sources            # noqa: PLC0415
+    from test_nucleo_colecoes import semear                    # noqa: PLC0415
+    tmp = Path(tempfile.mkdtemp(prefix="mtg-nucleo-passos-"))
+    v, c = tmp / "v.db", tmp / "c.db"
+    with db.session(v, c) as con:
+        semear(con, sem)
+    real_session = db.session
+    trocas = [
+        (db, "session", lambda *a, **k: real_session(v, c)),
+        (daily, "_catalog", lambda con: "catálogo falso"),
+        (sources, "harvest_mtgo", lambda con, d=1, formats=None, **k: 0),
+        (mtgtop8, "harvest", lambda con, fmt, max_events=6: 0),
+        (daily, "_scryfall_prices", lambda con: "scryfall falso"),
+        (daily, "_cardmarket", lambda con: "cardmarket falso"),
+        (daily, "_prune_prices", lambda con, keep_days=30: "podar falso"),
+        (daily, "_podar_ligas", lambda con: "ligas falso"),
+        (analysis, "prune_decklists", lambda con, dias=30: 0),
+        (vigia, "vigiar_todos", lambda con, *, pasta=None, levantar=False: {}),
+        (publicar, "gerar", lambda con, destino, rep=None: []),
+    ]
+    antes = [(o, n, getattr(o, n)) for o, n, _f in trocas]
+    token = os.environ.pop("CARDTRADER_TOKEN", None)
+    try:
+        for o, n, f in trocas:
+            setattr(o, n, f)
+        with interruptor(True):
+            daily._main_nucleo()
+    finally:
+        for o, n, f in antes:
+            setattr(o, n, f)
+        if token is not None:
+            os.environ["CARDTRADER_TOKEN"] = token
+    with real_session(v, c) as con:
+        return {r["job"]: (r["status"], r["detail"]) for r in con.execute(
+            "SELECT job, status, detail FROM job_runs ORDER BY id")}
+
+
+def caso_passos_novos_a_serio():
+    """Os passos novos com o `_step` verdadeiro: as coleções, os preços
+    vigiados e a jogada ficam `ok` com um resumo; o preço PT sem
+    `CARDTRADER_TOKEN` fica `erro` e DIZ porquê (a tarefa fica vermelha), e o
+    resto do daily corre na mesma."""
+    res = _nucleo_a_serio()
+    assert res["nucleo-colecoes"][0] == "ok", res["nucleo-colecoes"]
+    assert "4 coleções" in res["nucleo-colecoes"][1], res["nucleo-colecoes"]
+    assert res["nucleo-vigiados"][0] == "ok", res["nucleo-vigiados"]
+    assert "preços novos" in res["nucleo-vigiados"][1], res["nucleo-vigiados"]
+    assert res["nucleo-jogada"][0] == "ok", res["nucleo-jogada"]
+    assert "linhas" in res["nucleo-jogada"][1], res["nucleo-jogada"]
+    estado, detalhe = res["precos-pt"]
+    assert estado == "erro" and "CARDTRADER_TOKEN" in detalhe, res["precos-pt"]
+    for depois in ("nucleo-decks", "nucleo-valor", "nucleo-paginas", "checkpoint"):
+        assert res[depois][0] == "ok", (depois, res[depois])
+    print("ligado: coleções, vigiados e jogada ok; preço PT sem token fica erro dito")
+
+
+def caso_colecao_com_carta_em_falta_e_erro_e_o_resto_corre():
+    """Uma carta que falta no catálogo faz o PASSO `nucleo-colecoes` falhar com a
+    mensagem (nome e set), e o valor e as páginas correm na mesma."""
+    res = _nucleo_a_serio(("Tundra", "3ed"))
+    estado, detalhe = res["nucleo-colecoes"]
+    assert estado == "erro" and "Tundra" in detalhe and "3ed" in detalhe, res["nucleo-colecoes"]
+    for depois in ("nucleo-vigiados", "nucleo-jogada", "nucleo-valor",
+                   "nucleo-paginas", "checkpoint"):
+        assert res[depois][0] == "ok", (depois, res[depois])
+    print("ligado: coleção com carta em falta é erro dito, e o daily continua")
 
 
 def caso_vigia_falhada_fica_vermelha():
