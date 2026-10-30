@@ -206,6 +206,14 @@ def _qtd(con, ambito_: str, ed: tuple[str, str] | None) -> int:
 
 
 def _por_qtd(con, ambito_: str, sid: str, acab: str, qtd: int) -> None:
+    """Grava a posse de uma impressão num âmbito (0 apaga a linha) e apara as
+    fotos validadas à posse nova.
+
+    É o único sítio que escreve na `n_posse`, por isso é aqui que se guarda a
+    regra «as validadas nunca passam a posse»: o −1, a troca de edição, a saída
+    de uma lista (`saiu_da_lista`), a saída parcial e a mudança de âmbito
+    passam todos por cá. Subir não desfaz nada (as validadas já cabiam).
+    """
     if qtd > 0:
         con.execute(
             "INSERT INTO n_posse (ambito, scryfall_id, acabamento, qtd)"
@@ -214,6 +222,7 @@ def _por_qtd(con, ambito_: str, sid: str, acab: str, qtd: int) -> None:
     else:
         con.execute("DELETE FROM n_posse WHERE ambito = ? AND scryfall_id = ?"
                     " AND acabamento = ?", (ambito_, sid, acab))
+    _fotos().aparar_validadas(con, ambito_, sid, acab, "en", max(0, qtd))
 
 
 def _para_saida(con, ambito_: str, nome: str, *, slug: str, motivo: str,
@@ -271,6 +280,12 @@ def _mover(con, nome: str, de: str, para: str, *, slug: str,
             _para_saida(con, para, nome, slug=slug, motivo="trocou_edicao",
                         versao_id=versao_id, menos=e)
     for sid, acab, qtd in _posse_do_nome(con, de, nome):
+        # as validadas vão com as cópias (são as mesmas cartas a mudar de
+        # caixa) ANTES de se escrever a posse: o `_por_qtd` apara-as já no
+        # destino, à posse nova, e a origem a zero não tem nada a desfazer
+        con.execute("UPDATE n_validacao SET ambito = ? WHERE ambito = ? AND"
+                    " scryfall_id = ? AND acabamento = ? AND desfeita_em IS NULL",
+                    (para, de, sid, acab))
         _por_qtd(con, para, sid, acab, _qtd(con, para, (sid, acab)) + qtd)
         _por_qtd(con, de, sid, acab, 0)
     if e is not None:
@@ -344,15 +359,9 @@ def escolher_edicao(con: sqlite3.Connection, slug: str, nome: str,
         if acabamento not in _finishes(r):
             raise ValueError(f"{nome!r} ({scryfall_id}) não existe em {acabamento}")
         v = _versao(con, slug)
-        outras = [(sid, acab) for sid, acab, _q in _posse_do_nome(con, amb, nome)
-                  if (sid, acab) != (scryfall_id, acabamento)]
         _para_saida(con, amb, nome, slug=slug, motivo="trocou_edicao",
                     versao_id=v["id"] if v else None,
                     menos=(scryfall_id, acabamento))
-        # a posse das outras edições foi para o `n_saida` e está a zero: as
-        # validadas delas neste âmbito deixam de caber e ficam desfeitas
-        for sid, acab in outras:
-            _fotos().aparar_validadas(con, amb, sid, acab, "en", 0)
         con.execute("INSERT OR REPLACE INTO n_edicao (ambito, nome, scryfall_id,"
                     " acabamento) VALUES (?,?,?,?)",
                     (amb, nome, scryfall_id, acabamento))
@@ -388,10 +397,6 @@ def ajustar(con: sqlite3.Connection, slug: str, nome: str, delta: int, *,
         antes = _qtd(con, amb, ed)
         nova = max(0, antes + int(delta))
         _por_qtd(con, amb, ed[0], ed[1], nova)
-        if nova < antes:
-            # uma descida abaixo das validadas desfaz a mais recente; acima
-            # delas, quem sai é uma por validar (e não se desfaz nada)
-            _fotos().aparar_validadas(con, amb, ed[0], ed[1], "en", nova)
         # o delta registado é o que se aplicou (o corte no zero fica visível)
         con.execute("INSERT INTO n_posse_log (request_id, ambito, scryfall_id,"
                     " acabamento, delta, em) VALUES (?,?,?,?,?,?)",

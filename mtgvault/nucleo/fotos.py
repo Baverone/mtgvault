@@ -248,9 +248,13 @@ def recortar(con: sqlite3.Connection, foto_id: int, raiz: Path) -> dict:
 
     Cada carta vai endireitada para 488 × 680 em `raiz/assets/cartas/
     <foto_id>-<n>.jpg` (JPEG 82), por ordem de leitura. Repetir o recorte
-    substitui os da foto com a mesma numeração (não duplica linhas); um recorte
-    antigo que deixou de existir sai, a não ser que tenha validações — esse
-    fica, que é a prova delas. Sem cartas, `encontradas == 0` e nada se grava.
+    substitui os da foto com a mesma numeração (não duplica linhas) e tira os
+    números que deixaram de existir. Sem cartas, `encontradas == 0` e nada se
+    grava nem se apaga (os recortes de antes ficam).
+
+    Uma foto que já validou cartas (validações ativas OU desfeitas) não se
+    volta a recortar: `ValueError` e nada muda. Os recortes são a prova dessas
+    validações, e um recorte novo com o mesmo número podia ser outra carta.
     """
     import cv2                                                  # noqa: PLC0415
     import numpy as np                                          # noqa: PLC0415
@@ -258,10 +262,17 @@ def recortar(con: sqlite3.Connection, foto_id: int, raiz: Path) -> dict:
                     (foto_id,)).fetchone()
     if r is None:
         raise ValueError(f"foto desconhecida: {foto_id!r}")
+    if con.execute("SELECT 1 FROM n_validacao v JOIN n_recorte c ON c.id ="
+                   " v.recorte_id WHERE c.foto_id = ? LIMIT 1",
+                   (foto_id,)).fetchone():
+        raise ValueError(f"a foto {foto_id} já validou cartas; os recortes são"
+                         " a prova: não se voltam a fazer")
     img = _ler_imagem(Path(raiz) / r[0])
     if img is None:
         raise ValueError(f"não consegui ler a foto {foto_id}: {r[0]}")
     quads = _por_filas(_quadrilateros(img))
+    if not quads:
+        return {"recortes": [], "encontradas": 0}
     destino = np.array([[0, 0], [LARGURA - 1, 0], [LARGURA - 1, ALTURA - 1],
                         [0, ALTURA - 1]], dtype=np.float32)
     recortes = []
@@ -285,8 +296,7 @@ def recortar(con: sqlite3.Connection, foto_id: int, raiz: Path) -> dict:
                               " numero = ?", (foto_id, n)).fetchone()[0]
             recortes.append({"id": rid, "numero": n, "caminho": rel})
         for rid, caminho in con.execute(
-                "SELECT id, caminho FROM n_recorte WHERE foto_id = ? AND numero > ?"
-                " AND id NOT IN (SELECT recorte_id FROM n_validacao)",
+                "SELECT id, caminho FROM n_recorte WHERE foto_id = ? AND numero > ?",
                 (foto_id, len(quads))).fetchall():
             con.execute("DELETE FROM n_recorte WHERE id = ?", (rid,))
             (Path(raiz) / caminho).unlink(missing_ok=True)

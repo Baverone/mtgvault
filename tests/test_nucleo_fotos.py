@@ -273,6 +273,44 @@ def caso_recortar_sintetico():
                            (fid,)).fetchone()[0] == 3
 
 
+def caso_recortar_foto_validada_nao_se_refaz():
+    """Uma foto com validações (ativas ou já desfeitas) não se volta a recortar:
+    os recortes são a prova delas. Nada muda."""
+    raiz = _tmp()
+    with sessao() as con:
+        semear(con)
+        _marcar_deck(con, 1)
+        fid = _foto_na_base(con, raiz, _foto_sintetica())
+        r = fotos.recortar(con, fid, raiz)
+        fotos.validar(con, r["recortes"][0]["id"], REP, "tm-a", "nonfoil")
+        antes = [tuple(x) for x in con.execute("SELECT * FROM n_recorte")]
+        msg = _levanta(lambda: fotos.recortar(con, fid, raiz))
+        assert "prova" in msg, msg
+        _marcar_deck(con, -1)          # a validação fica desfeita
+        assert fotos.validadas(con, REP, "tm-a", "nonfoil") == 0
+        _levanta(lambda: fotos.recortar(con, fid, raiz))
+        assert [tuple(x) for x in con.execute("SELECT * FROM n_recorte")] == antes
+
+
+def caso_recortar_sem_cartas_nao_apaga_os_de_antes():
+    """Uma segunda passagem que não encontra cartas (a foto trocada por fundo
+    liso) devolve 0 e deixa os recortes de antes, linhas e ficheiros."""
+    raiz = _tmp()
+    with sessao() as con:
+        fid = _foto_na_base(con, raiz, _foto_sintetica())
+        r = fotos.recortar(con, fid, raiz)
+        assert r["encontradas"] == 3
+        rel = con.execute("SELECT caminho FROM n_foto WHERE id = ?",
+                          (fid,)).fetchone()[0]
+        cv2.imencode(".png", _foto_sintetica(cartas=False))[1].tofile(
+            str(raiz / rel))
+        assert fotos.recortar(con, fid, raiz) == {"recortes": [], "encontradas": 0}
+        assert con.execute("SELECT COUNT(*) FROM n_recorte WHERE foto_id = ?",
+                           (fid,)).fetchone()[0] == 3
+        for x in r["recortes"]:
+            assert (raiz / x["caminho"]).exists(), x
+
+
 def caso_recortar_falha_diz():
     """Uma foto sem cartas não dá recortes inventados."""
     raiz = _tmp()
@@ -395,6 +433,64 @@ def caso_trocar_edicao_desfaz_as_validadas():
                            " IS NOT NULL").fetchone()[0] == 2
 
 
+MOD = "modern_affinity"          # dois rotativos: o que os dois jogam é
+LEG = "legacy_welder_cam"        # partilhado (âmbito `rotativos`)
+
+
+def _versao(con, slug, linhas):
+    return listas.gravar_versao(con, slug, [Linha(*l) for l in linhas],
+                                fonte="teste", origem="andre")
+
+
+def _ativas_e_desfeitas(con):
+    return [tuple(r) for r in con.execute(
+        "SELECT COALESCE(SUM(qtd) FILTER (WHERE desfeita_em IS NULL), 0),"
+        " COALESCE(SUM(qtd) FILTER (WHERE desfeita_em IS NOT NULL), 0)"
+        " FROM n_validacao")][0]
+
+
+def caso_lista_baixa_e_tira_apara_as_validadas():
+    """Uma versão nova que baixa a quantidade apara as validadas à posse que
+    fica (saída parcial); uma que tira a carta desfá-las todas — e as linhas
+    ficam, com `desfeita_em`."""
+    with sessao() as con:
+        semear(con)
+        _marcar_deck(con, 2)
+        fotos.validar(con, _recorte(con), REP, "tm-a", "nonfoil")
+        fotos.validar(con, _recorte(con), REP, "tm-a", "nonfoil")
+        _versao(con, REP, [("main", "Thought Monitor", 1)])
+        assert fotos.validadas(con, REP, "tm-a", "nonfoil") == 1
+        assert _ativas_e_desfeitas(con) == (1, 1)
+        _versao(con, REP, [("main", "Moat", 1)])
+        assert fotos.validadas(con, REP, "tm-a", "nonfoil") == 0
+        assert _ativas_e_desfeitas(con) == (0, 2), "as linhas ficam"
+
+
+def caso_partilhada_leva_as_validadas():
+    """Uma carta fixa que passa a partilhada (entra num segundo rotativo) leva
+    as validadas com a posse para `rotativos`; o âmbito antigo fica a 0. Baixar
+    depois o que os dois pedem apara-as no monte."""
+    with sessao() as con:
+        semear(con)
+        _versao(con, MOD, [("main", "Thought Monitor", 2)])
+        posse.ajustar(con, MOD, "Thought Monitor", 2, request_id=_req())
+        fotos.validar(con, _recorte(con), MOD, "tm-a", "nonfoil")
+        fotos.validar(con, _recorte(con), MOD, "tm-a", "nonfoil")
+        _versao(con, LEG, [("main", "Thought Monitor", 2)])
+        assert posse.ambito(con, MOD, "Thought Monitor") == posse.ROT
+        assert fotos.validadas(con, posse.ROT, "tm-a", "nonfoil") == 2
+        assert fotos.validadas(con, MOD, "tm-a", "nonfoil") == 0
+        assert _ativas_e_desfeitas(con) == (2, 0), "mudaram, não se desfizeram"
+        _versao(con, MOD, [("main", "Thought Monitor", 1)])
+        _versao(con, LEG, [("main", "Thought Monitor", 1)])
+        assert fotos.validadas(con, posse.ROT, "tm-a", "nonfoil") == 1
+        # e de volta a fixa: o monte e as validadas vão para a caixa do dono
+        _versao(con, LEG, [("main", "Moat", 1)])
+        assert posse.ambito(con, MOD, "Thought Monitor") == MOD
+        assert fotos.validadas(con, MOD, "tm-a", "nonfoil") == 1
+        assert fotos.validadas(con, posse.ROT, "tm-a", "nonfoil") == 0
+
+
 def caso_registar_por_foto_deck():
     """`registar=True` num deck: a posse sobe e a cópia entra já validada; o
     mesmo pedido outra vez não soma a posse."""
@@ -413,20 +509,25 @@ def caso_registar_por_foto_deck():
 
 
 def caso_registar_por_foto_coleccao():
-    """`registar=True` numa coleção: o `tenho` sobe e as validadas também; uma
-    carta que não está na coleção levanta."""
+    """`registar=True` numa coleção: o `tenho` sobe e as validadas também. Sem
+    registar, com `tenho` 0, levanta «só tens 0»; uma carta (ou uma língua) que
+    não está na coleção levanta a dizê-lo."""
     with sessao() as con:
         semear(con)
         cid = colecoes.juntar(con, COL, "moat", "nonfoil")
         rid = _recorte(con)
-        _levanta(lambda: fotos.validar(con, rid, COL, "moat", "nonfoil"))
+        msg = _levanta(lambda: fotos.validar(con, rid, COL, "moat", "nonfoil"))
+        assert "só tens 0" in msg, msg
+        msg = _levanta(lambda: fotos.validar(con, rid, COL, "tm-a", "nonfoil"))
+        assert "não está na coleção" in msg, msg
         fotos.validar(con, rid, COL, "moat", "nonfoil", registar=True)
         tenho = con.execute("SELECT tenho FROM n_colecao_carta WHERE id = ?",
                             (cid,)).fetchone()[0]
         assert tenho == 1
         assert fotos.validadas(con, COL, "moat", "nonfoil") == 1
-        _levanta(lambda: fotos.validar(con, _recorte(con), COL, "moat", "nonfoil",
-                                       lingua="pt"))
+        msg = _levanta(lambda: fotos.validar(con, _recorte(con), COL, "moat",
+                                             "nonfoil", lingua="pt"))
+        assert "não está na coleção" in msg, msg
         # e o −1 da coleção desfaz-a
         colecoes.ajustar(con, cid, -1, request_id=_req())
         assert fotos.validadas(con, COL, "moat", "nonfoil") == 0
