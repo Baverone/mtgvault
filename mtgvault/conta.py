@@ -165,16 +165,11 @@ def linha_de_arranque() -> str:
     return f"  Cofre de contas: {p} · {contas} com acesso ao {SITE}."
 
 
-#: Onde se troca uma password temporária: o riftvault tem a caixa, o mtg não.
-URL_TROCAR = "https://editar.baverone.com"
-
-
-def mensagem_temporaria(slug: str | None) -> str:
-    """A resposta a quem entra com uma temporária (ver `webapp._conta_entrar`)."""
-    nome = str(slug or "").strip() or "<nome>"
-    return ("essa password é temporária: troca-a primeiro no riftvault "
-            f"({URL_TROCAR}), ou pede ao André que te defina uma nova "
-            f"(py -m contas definir {nome}). Depois entra aqui com ela.")
+def mensagem_temporaria() -> str:
+    """A resposta a quem entra com uma temporária (ver `webapp._conta_entrar`):
+    a caixa mostra-a e pede a password nova."""
+    return ("essa password é temporária e só serve para escolheres a tua. "
+            "Escreve a password nova duas vezes e carrega em «Gravar e entrar».")
 
 
 def entrar(nome: str, password: str, chave: str | None) -> dict:
@@ -189,6 +184,19 @@ def entrar(nome: str, password: str, chave: str | None) -> dict:
     with _no_cofre() as (m, con):
         return m.entrar(con, str(nome or ""), str(password or ""), site=SITE,
                         chave=chave)
+
+
+def trocar_temporaria(nome: str, temporaria: str, nova: str,
+                      chave: str | None) -> dict:
+    """O nome, a temporária e a password nova -> a conta, já com a nova.
+
+    É o cofre que decide tudo (`trocar_temporaria`, com `site="mtg"`): o
+    travão, o acesso, o prazo de 24 horas e as regras da password nova. A
+    sessão só nasce depois, da password nova — nunca da temporária.
+    """
+    with _no_cofre() as (m, con):
+        return m.trocar_temporaria(con, str(nome or ""), str(temporaria or ""),
+                                   str(nova or ""), site=SITE, chave=chave)
 
 
 # ---------------------------------------------------------------------------
@@ -418,10 +426,15 @@ def pagina_entrar(volta: str, erro: str = "") -> str:
     `application/json`: é o que impede outro site de fazer entrar o browser
     dele na conta de um estranho com um formulário escondido) e, em caso de
     sucesso, volta a `volta` — que só pode ser um caminho deste site.
+
+    **A TEMPORÁRIA** (2026-10-31): se o servidor responder `trocar`, a mesma
+    caixa mostra «Password nova» e «Repete a password nova», e o segundo envio
+    leva o nome, a temporária e a nova. A confirmação das duas é só aqui no
+    browser; as regras da password são do cofre.
     """
     destino = volta_segura(volta)
     corpo = ('<h1>mtgvault · modo de edição</h1>'
-             '<p>Entra com o teu nome e a tua password.</p>'
+             '<p id="dica">Entra com o teu nome e a tua password.</p>'
              '<form id="entrar" autocomplete="on" novalidate>'
              '<label for="nome">Utilizador</label>'
              '<input id="nome" name="username" autocomplete="username" '
@@ -429,24 +442,51 @@ def pagina_entrar(volta: str, erro: str = "") -> str:
              '<label for="senha">Password</label>'
              '<input id="senha" name="password" type="password" '
              'autocomplete="current-password" required>'
+             '<div id="passo-nova" hidden>'
+             '<label for="nova">Password nova</label>'
+             '<input id="nova" name="new-password" type="password" '
+             'autocomplete="new-password">'
+             '<label for="repete">Repete a password nova</label>'
+             '<input id="repete" name="new-password-2" type="password" '
+             'autocomplete="new-password">'
+             '</div>'
              '<button type="submit">Entrar</button>'
              f'<p class="erro" id="erro" role="alert">{html.escape(erro)}</p>'
              '</form>')
     script = f"""
 const VOLTA = {_js(destino)};
 const f = document.getElementById('entrar'), e = document.getElementById('erro');
+const passo = document.getElementById('passo-nova'), dica = document.getElementById('dica');
+let trocar = false;
+function pedirNova(msg) {{
+  trocar = true;
+  passo.hidden = false;
+  f.nome.readOnly = true; f.senha.readOnly = true;
+  f.querySelector('button').textContent = 'Gravar e entrar';
+  dica.textContent = msg;
+  f.nova.focus();
+}}
 f.addEventListener('submit', async (ev) => {{
   ev.preventDefault();
   const b = f.querySelector('button');
-  b.disabled = true; e.textContent = '';
+  e.textContent = '';
+  const corpo = {{nome: f.nome.value.trim(), senha: f.senha.value}};
+  if (trocar) {{
+    if (!f.nova.value) {{ e.textContent = 'escreve a password nova.'; return; }}
+    if (f.nova.value !== f.repete.value) {{
+      e.textContent = 'as duas passwords novas não são iguais.'; return; }}
+    corpo.nova = f.nova.value;
+  }}
+  b.disabled = true;
   try {{
     const r = await fetch('/api/conta/entrar', {{
       method: 'POST', credentials: 'same-origin',
       headers: {{'Content-Type': 'application/json'}},
-      body: JSON.stringify({{nome: f.nome.value.trim(), senha: f.senha.value}})}});
+      body: JSON.stringify(corpo)}});
     let j = {{}};
     try {{ j = await r.json(); }} catch (_) {{}}
     if (r.ok && j.ok) {{ location.replace(VOLTA); return; }}
+    if (j.trocar && !trocar) {{ pedirNova(j.erro); b.disabled = false; return; }}
     e.textContent = j.erro || ('não consegui entrar (erro ' + r.status + ').');
   }} catch (_) {{
     e.textContent = 'não consegui falar com o servidor. Tenta outra vez.';

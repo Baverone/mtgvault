@@ -7387,6 +7387,19 @@ em `webapp.Handler` (`_de_fora`, `_de_casa`, `_sessao`, `_pode_escrever`,
   «errada». O cookie `mtgvault_sessao` é `HttpOnly; SameSite=Lax; Path=/`, 30
   dias deslizantes, `Secure` pelo túnel. `/conta.html` diz «Entraste como X» e
   tem o «Sair» (`POST /api/conta/sair`, com o CSRF).
+- **A PASSWORD TEMPORÁRIA troca-se na própria caixa (André, 2026-10-31,
+  à letra: *«dás uma password temporária, e quando o acesso é feito através
+  dessa password, reseta a password e pedes a nova password»*).** Entrar com uma
+  temporária dá **403 com `trocar: true`** e nenhuma sessão; a caixa
+  (`conta.pagina_entrar`) mostra «Password nova» e «Repete a password nova», e o
+  segundo envio leva `{nome, senha, nova}` à MESMA rota, que chama o
+  `cofre.trocar_temporaria` (travão, acesso, prazo e regras da password no
+  cofre). A sessão nasce da password nova, nunca da temporária. Nova fraca ou
+  igual à temporária: 400 com `trocar`; uma password que não é temporária com
+  `nova`: 400 e nada muda. **A temporária caduca ao fim de 24 horas**
+  (`cofre.PRAZO_TEMPORARIA_S`): depois disso, 401 a dizer que passou o prazo,
+  só a quem acerta nela. Até esse dia o mtg recusava a temporária e mandava
+  trocá-la no riftvault. Testes em `tests/test_conta_webapp.py`.
 - **A sessão mede-se a cada pedido** contra o cofre: a conta tem de existir com o
   mesmo slug, ter acesso ao `mtg` e estar na mesma `geracao` da password. Mudar a
   password (aqui, no riftvault ou reposta) ou tirar o acesso fecha as sessões no

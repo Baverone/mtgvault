@@ -2013,6 +2013,11 @@ class Handler(BaseHTTPRequestHandler):
         nome, senha = dados.get("nome"), dados.get("senha")
         if not isinstance(nome, str) or not isinstance(senha, str):
             nome, senha = str(nome or ""), str(senha or "")
+        # Com `nova` é o segundo passo da temporária: a mesma rota, para a
+        # troca ter o mesmo 415, o mesmo travão e as mesmas respostas.
+        nova = dados.get("nova")
+        if nova is not None and not isinstance(nova, str):
+            nova = str(nova)
         try:
             m = conta_mod.modulo()
         except Exception as e:                          # noqa: BLE001
@@ -2021,7 +2026,18 @@ class Handler(BaseHTTPRequestHandler):
                                 "momento. Tenta daqui a bocado."}, 503)
             return
         try:
-            quem = conta_mod.entrar(nome, senha, self._chave_do_travao())
+            if nova is None:
+                quem = conta_mod.entrar(nome, senha, self._chave_do_travao())
+            else:
+                quem = conta_mod.trocar_temporaria(nome, senha, nova,
+                                                   self._chave_do_travao())
+        except m.SenhaFraca as e:
+            # A nova não passa nas regras: a caixa continua no passo da troca.
+            self._json({"erro": str(e), "trocar": True}, 400)
+            return
+        except m.NaoETemporaria as e:
+            self._json({"erro": str(e)}, 400)
+            return
         except m.TemDeEsperar as e:
             self._json({"erro": str(e)}, 429, retry=e.segundos)
             return
@@ -2040,11 +2056,12 @@ class Handler(BaseHTTPRequestHandler):
                                 f"({type(e).__name__}). Tenta outra vez."}, 500)
             return
         if quem.get("temporaria"):
-            # UMA TEMPORÁRIA NÃO ABRE SESSÃO AQUI. O mtg não tem a caixa de
-            # trocar a password, e a temporária (a que o André dita pelo
-            # WhatsApp) ficava a ser a password de todos os dias. Troca-se no
-            # riftvault, ou o André define-a na consola do cofre.
-            self._json({"erro": conta_mod.mensagem_temporaria(quem.get("slug"))}, 403)
+            # UMA TEMPORÁRIA NÃO ABRE SESSÃO (2026-10-31): responde `trocar`, e
+            # a caixa pede a password nova e manda as três de volta
+            # (`trocar_temporaria`). A sessão nasce da nova, nunca da
+            # temporária, que é a que andou por uma mensagem.
+            self._json({"erro": conta_mod.mensagem_temporaria(),
+                        "trocar": True}, 403)
             return
         s = conta_mod.criar_sessao(quem, self._cabecalho("User-Agent"))
         self._por_cookie(self._cookie_sessao(s["sid"]))

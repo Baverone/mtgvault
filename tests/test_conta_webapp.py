@@ -555,30 +555,111 @@ def caso_cofre_e_da_pasta_contas():
     print(f"o cofre: CONTAS_DB, senão {pasta.name}/data/contas.db")
 
 
-def caso_temporaria_nao_entra_no_mtg():
-    """Uma password TEMPORÁRIA não abre sessão no mtg: 403 a dizer onde se
-    troca. O mtg não tem a caixa de trocar a password, e uma temporária ditada
-    pelo WhatsApp não pode ficar a ser a password de todos os dias."""
+def _temporaria_para(slug, conta_id):
+    """Uma conta com acesso ao mtg e uma TEMPORÁRIA acabada de dar."""
     def preparar(m, cc):
-        m.criar_conta(cc, "filipa", "Filipa", conta_id=10)
-        m.dar_acesso(cc, 10, "mtg")
-        return m.nova_temporaria(cc, 10)
-    temp = _no_cofre(preparar)
+        m.criar_conta(cc, slug, slug.title(), conta_id=conta_id)
+        m.dar_acesso(cc, conta_id, "mtg")
+        return m.nova_temporaria(cc, conta_id)
+    return _no_cofre(preparar)
+
+
+def _sessoes_de(conta_id):
+    con = sqlite3.connect(str(conta.caminho_sessoes()))
+    try:
+        return con.execute("SELECT COUNT(*) FROM sessoes WHERE conta_id = ?",
+                           (conta_id,)).fetchone()[0]
+    finally:
+        con.close()
+
+
+def _estado(conta_id):
+    return _no_cofre(lambda m, cc: m.estado_password(cc, conta_id))
+
+
+def caso_temporaria_pede_a_nova():
+    """Uma password TEMPORÁRIA não abre sessão: o 403 diz `trocar` e a caixa
+    pede a password nova. A temporária nunca é a password de todos os dias."""
+    temp = _temporaria_para("filipa", 10)
     r = pedir("POST", "/api/conta/entrar", {"nome": "filipa", "senha": temp},
               cab=tunel("203.0.113.50"))
     assert r.cod == 403, r
+    assert r.corpo.get("trocar") is True, r
+    assert "password nova" in r.corpo["erro"], r
     assert not r.cookies(), "uma temporária não pode abrir sessão"
-    erro = r.corpo["erro"]
-    assert "https://editar.baverone.com" in erro, erro
-    assert "py -m contas definir filipa" in erro, erro
     assert temp not in json.dumps(r.corpo), "a temporária não volta na resposta"
-    con = sqlite3.connect(str(conta.caminho_sessoes()))
-    try:
-        n = con.execute("SELECT COUNT(*) FROM sessoes WHERE conta_id = 10").fetchone()[0]
-    finally:
-        con.close()
-    assert n == 0, "ficou uma sessão aberta com a temporária"
-    print("password temporária: 403 a mandar trocá-la, sem sessão")
+    assert _sessoes_de(10) == 0, "ficou uma sessão aberta com a temporária"
+    print("password temporária: 403 com `trocar`, sem sessão")
+
+
+def caso_temporaria_troca_e_entra():
+    temp = _temporaria_para("gil", 11)
+    nova = "farol-de-inverno-teste"
+    r = pedir("POST", "/api/conta/entrar",
+              {"nome": "gil", "senha": temp, "nova": nova},
+              cab=tunel("203.0.113.51"))
+    assert r.cod == 200 and r.corpo == {"ok": True}, r
+    assert nova not in json.dumps(r.corpo) and temp not in json.dumps(r.corpo)
+    ck = cookie_de(r)
+    e = _estado(11)
+    assert e["tem"] and e["temporaria"] is False, e
+    # a sessão serve: a página manda para o mesmo caminho com o CSRF
+    r2 = pedir("GET", "/", cab={**tunel("203.0.113.51"), "Cookie": ck})
+    assert r2.cod == 302 and "t=" in r2.cab.get("Location", ""), r2
+    # a temporária já não entra; a nova entra
+    r3 = pedir("POST", "/api/conta/entrar", {"nome": "gil", "senha": temp},
+               cab=tunel("203.0.113.52"))
+    assert r3.cod == 401, r3
+    r4 = pedir("POST", "/api/conta/entrar", {"nome": "gil", "senha": nova},
+               cab=tunel("203.0.113.52"))
+    assert r4.cod == 200 and r4.corpo == {"ok": True}, r4
+    print("temporária + password nova: grava, abre sessão, a temporária deixa de servir")
+
+
+def caso_trocar_recusa_o_que_nao_deve():
+    temp = _temporaria_para("helena", 12)
+    # nova fraca: 400, continua temporária e sem sessão
+    r = pedir("POST", "/api/conta/entrar",
+              {"nome": "helena", "senha": temp, "nova": "curta"},
+              cab=tunel("203.0.113.53"))
+    assert r.cod == 400 and r.corpo.get("trocar") is True, r
+    assert not r.cookies() and _estado(12)["temporaria"] is True, r
+    # nova igual à temporária
+    r = pedir("POST", "/api/conta/entrar",
+              {"nome": "helena", "senha": temp, "nova": temp},
+              cab=tunel("203.0.113.53"))
+    assert r.cod == 400 and _estado(12)["temporaria"] is True, r
+    # temporária errada: 401, como uma password errada
+    r = pedir("POST", "/api/conta/entrar",
+              {"nome": "helena", "senha": "nao-e-esta-123", "nova": "farol-de-inverno-teste"},
+              cab=tunel("203.0.113.53"))
+    assert r.cod == 401 and _estado(12)["temporaria"] is True, r
+    # com uma password que não é temporária não se troca nada por aqui
+    g = _no_cofre(lambda m, cc: m.geracao(cc, 3))
+    r = pedir("POST", "/api/conta/entrar",
+              {"nome": "carla", "senha": SENHAS["carla"], "nova": "farol-de-inverno-teste"},
+              cab=tunel("203.0.113.54"))
+    assert r.cod == 400 and not r.cookies(), r
+    assert _no_cofre(lambda m, cc: m.geracao(cc, 3)) == g, "mudou a password"
+    # caducada: 401 a dizer porquê
+    def envelhecer(m, cc):
+        cc.execute("UPDATE senhas SET mudado_em = '2026-01-01T00:00:00+00:00' "
+                   "WHERE conta_id = 12")
+        cc.commit()
+    _no_cofre(envelhecer)
+    r = pedir("POST", "/api/conta/entrar", {"nome": "helena", "senha": temp},
+              cab=tunel("203.0.113.55"))
+    assert r.cod == 401 and "24 horas" in r.corpo["erro"], r
+    assert not r.corpo.get("trocar"), r
+    print("troca recusada: fraca/igual 400, errada 401, não-temporária 400, caducada 401")
+
+
+def caso_caixa_tem_o_passo_da_password_nova():
+    p = conta.pagina_entrar("/")
+    for pedaco in ('id="nova"', 'id="repete"', 'autocomplete="new-password"',
+                   "j.trocar", "Gravar e entrar"):
+        assert pedaco in p, pedaco
+    print("a caixa de entrada tem o passo da password nova")
 
 
 def caso_503_nao_escreve_a_query_no_log():
