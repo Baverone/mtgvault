@@ -178,16 +178,31 @@ def _bulk():
     return _BULK["path"]
 
 
-def _catalog(con):
+# A IDADE MÁXIMA DO CATÁLOGO NO PC (2026-10-31). Até aqui o `_catalog` saltava
+# sempre que o catálogo tinha linhas, à espera de um «`sync-cards` semanal» que
+# NADA corria — nem uma tarefa do ai-pc nem o próprio daily. O `catalog.db` deste
+# PC esteve parado de 06/10 a 31/10 (112 754 impressões; o bulk de 31/10 dá
+# 114 063) sem um único passo a falhar. Agora recarrega-se do MESMO bulk que o
+# `precos-scryfall` descarrega na mesma corrida (`_bulk()`): ~40 s, sem pedido a mais.
+CATALOGO_MAX_DIAS = 7
+
+
+def _catalog(con, hoje=None):
     """Garante o catálogo. Na cloud o catalog.db não vem no clone (grande de mais
-    para o Git), por isso reconstrói-se a cada execução. No PC local, se já
-    estiver cheio, salta — o `sync-cards` semanal é que o atualiza."""
+    para o Git), por isso reconstrói-se a cada execução — vazio, recarrega; isso
+    não mudou. No PC, um catálogo cheio recarrega-se do bulk quando a última
+    carga tem mais de `CATALOGO_MAX_DIAS` dias, ou quando não se sabe quando foi
+    (um catálogo de antes de 31/10 não guardava a data: conta como velho)."""
     if db.catalog_size(con) >= 1000:
         # Já existe. Mas um catálogo antigo em cache pode não ter a metadata nova
         # (reserved/set_type) — nesse caso repovoa uma vez a partir do bulk.
         if not scryfall.has_card_meta(con):
             return f"metadata em falta — repovoado ({scryfall.load_bulk(con, _bulk()):,})"
-        return "já existe — saltado"
+        idade = scryfall.idade_dias(con, hoje)
+        if idade is None or idade > CATALOGO_MAX_DIAS:
+            quando = "data da última carga desconhecida" if idade is None else f"com {idade} dias"
+            return f"{quando} — recarregado ({scryfall.load_bulk(con, _bulk()):,})"
+        return f"carregado há {idade} dias — saltado"
     return f"{scryfall.load_bulk(con, _bulk()):,} impressões"
 
 

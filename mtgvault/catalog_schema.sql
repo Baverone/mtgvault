@@ -31,3 +31,11 @@ CREATE INDEX IF NOT EXISTS catalog.ix_cards_name   ON cards(name);
 CREATE INDEX IF NOT EXISTS catalog.ix_cards_oracle ON cards(oracle_id);
 CREATE INDEX IF NOT EXISTS catalog.ix_cards_cm     ON cards(cardmarket_id);
 CREATE INDEX IF NOT EXISTS catalog.ix_cards_set    ON cards(set_code, collector_number);
+-- Quando o catálogo foi carregado do bulk (2026-10-31). A IDADE vive na própria
+-- base e não no mtime do ficheiro: o mtime muda com qualquer escrita (um ALTER
+-- do `_migrate`, um VACUUM, uma cópia) e diria «fresco» a um catálogo de 25 dias.
+-- Escrito pelo `scryfall.load_bulk`, lido pelo `daily._catalog`.
+CREATE TABLE IF NOT EXISTS catalog.catalogo_meta (
+    chave TEXT PRIMARY KEY,
+    valor TEXT NOT NULL
+);

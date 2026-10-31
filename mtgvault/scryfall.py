@@ -14,6 +14,7 @@ import json
 import re
 import sqlite3
 import time
+from datetime import date
 from pathlib import Path
 
 import requests
@@ -156,7 +157,41 @@ def load_bulk(con: sqlite3.Connection, path: Path, batch: int = 5000) -> int:
         con.executemany(INSERT, buf)
         con.commit()
         n += len(buf)
+    if n:
+        # Só um carregamento que trouxe linhas conta: um bulk vazio ou truncado
+        # não pode carimbar o catálogo de «fresco» e adiar a recarga uma semana.
+        # A tabela vem do `catalog_schema.sql`; repete-se aqui para quem carrega
+        # numa ligação sem `db.init` (o `processar_fotos.py`, um script de medida).
+        con.execute("CREATE TABLE IF NOT EXISTS catalog.catalogo_meta"
+                    " (chave TEXT PRIMARY KEY, valor TEXT NOT NULL)")
+        con.execute("INSERT OR REPLACE INTO catalog.catalogo_meta (chave, valor)"
+                    " VALUES ('carregado_em', ?)", (date.today().isoformat(),))
+        con.commit()
     return n
+
+
+def carregado_em(con: sqlite3.Connection) -> str | None:
+    """A data (AAAA-MM-DD) do último `load_bulk` que trouxe linhas, ou None.
+
+    None quer dizer «não se sabe» — um catálogo carregado antes de 2026-10-31,
+    quando a data ainda não se guardava — e quem pergunta trata-o como velho."""
+    try:
+        r = con.execute("SELECT valor FROM catalog.catalogo_meta"
+                        " WHERE chave = 'carregado_em'").fetchone()
+    except sqlite3.OperationalError:          # base sem a tabela (sem `db.init`)
+        return None
+    return r[0] if r else None
+
+
+def idade_dias(con: sqlite3.Connection, hoje: date | None = None) -> int | None:
+    """Há quantos dias o catálogo foi carregado do bulk; None se não se sabe."""
+    d = carregado_em(con)
+    if not d:
+        return None
+    try:
+        return ((hoje or date.today()) - date.fromisoformat(d)).days
+    except ValueError:
+        return None
 
 
 def has_card_meta(con: sqlite3.Connection) -> bool:
