@@ -376,13 +376,13 @@ def caso_falha_levanta_no_fim():
                   CLOUD: {"erro": "não consegui abrir o deck"}}}})
     with sessao() as con:
         semear(con)
-        # um vigia bom (Moxfield) e três a falhar (sem lista no MTGO x2, erro)
+        # um vigia bom (Moxfield) e quatro a falhar (sem lista no MTGO x3, erro)
         try:
             vigia.vigiar_todos(con, pasta=pasta, levantar=True)
             raise AssertionError("devia ter levantado VigiaFalhou")
         except vigia.VigiaFalhou as e:
             assert set(e.falhas) == {"pauper_affinity", "premodern_stifflenough",
-                                     "cedh_cloud"}, e.falhas
+                                     "premodern_elves", "cedh_cloud"}, e.falhas
             assert "cedh_cloud" in str(e)
         # a versão boa ficou gravada antes de se levantar
         assert listas.versao_atual(con, "cedh_blue_farm")["numero"] == 1
@@ -390,7 +390,8 @@ def caso_falha_levanta_no_fim():
         # (I2) o `vigia_ok_em` do Moxfield é o `lido_em` do ficheiro: a lista
         # é de quando foi LIDA no Chrome, não de quando o daily a viu
         assert erro is None and ok_em == "2026-10-28T09:30:12", ok_em
-        for slug in ("pauper_affinity", "premodern_stifflenough", "cedh_cloud"):
+        for slug in ("pauper_affinity", "premodern_stifflenough", "premodern_elves",
+                     "cedh_cloud"):
             ok_em, erro = estado_vigia(con, slug)
             assert ok_em is None and erro, (slug, ok_em, erro)
 
@@ -399,9 +400,9 @@ def caso_falha_levanta_no_fim():
         assert res["cedh_blue_farm"]["estado"] == "igual"
         assert res["pauper_affinity"]["estado"] == "sem_lista"
         assert res["cedh_cloud"]["estado"] == "erro"
-        # só os decks com vigia: os outros 10 não aparecem
+        # só os decks com vigia: os outros 9 não aparecem
         assert set(res) == {"pauper_affinity", "premodern_stifflenough",
-                            "cedh_blue_farm", "cedh_cloud"}, set(res)
+                            "premodern_elves", "cedh_blue_farm", "cedh_cloud"}, set(res)
     print("vigiar_todos: grava os bons, levanta VigiaFalhou no fim")
 
 

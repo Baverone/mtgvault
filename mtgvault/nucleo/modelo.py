@@ -58,7 +58,9 @@ DECKS: tuple[dict, ...] = (
     _deck("premodern_replenish", "UW Replenish", "premodern", "Replenish"),
     _deck("premodern_enchantress", "Enchantress", "premodern",
           "Argothian Enchantress"),
-    _deck("premodern_elves", "Elves", "premodern", "Llanowar Elves"),
+    # (31/10/2026) o André: a lista dos Elves é a do jogador thekingslayer
+    _deck("premodern_elves", "Elves", "premodern", "Llanowar Elves",
+          vigia="mtgo:thekingslayer:premodern"),
     _deck("premodern_igg", "Ill-Gotten Gains", "premodern", "Ill-Gotten Gains"),
     _deck("premodern_oath", "Oath of Druids", "premodern", "Oath of Druids"),
     _deck("pauper_affinity", "Affinity", "pauper", "Myr Enforcer",

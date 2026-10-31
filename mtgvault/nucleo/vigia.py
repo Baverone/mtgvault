@@ -1,7 +1,8 @@
-"""As vigias do núcleo: manter atualizados os 4 decks que têm a lista noutro sítio.
+"""As vigias do núcleo: manter atualizados os 5 decks que têm a lista noutro sítio.
 
-Dois vêm do MTGO (as listas do jogador LuffyDoChapeuDePalha que a recolha diária,
-`harvest-mtgo`, já guardou em `decklists`) e dois do Moxfield, através de um
+Três vêm do MTGO (as listas que a recolha diária, `harvest-mtgo`, já guardou em
+`decklists`: o LuffyDoChapeuDePalha no Pauper e no Premodern, e — desde
+31/10/2026 — o thekingslayer nos Elves de Premodern) e dois do Moxfield, através de um
 **ficheiro** `AAAA-MM-DD.json` que outra tarefa (a do ai-pc, no Chrome do André)
 escreve depois de ler os decks. Este módulo nunca fala com o Moxfield: o site
 recusa pedidos que não sejam de um browser a sério, e fingir um (User-Agent

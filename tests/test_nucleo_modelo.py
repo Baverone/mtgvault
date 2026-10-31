@@ -28,6 +28,7 @@ ROTATIVOS = {"pioneer_greasefang", "modern_affinity", "modern_oswald",
              "legacy_welder_cam"}
 VIGIADOS = {"pauper_affinity": "mtgo:LuffyDoChapeuDePalha:pauper",
             "premodern_stifflenough": "mtgo:LuffyDoChapeuDePalha:premodern",
+            "premodern_elves": "mtgo:thekingslayer:premodern",
             "cedh_blue_farm": "moxfield:7O1sCuIti0igU6Us_Jhadg",
             "cedh_cloud": "moxfield:k6f2yED7oUGPtK2_rN_xwg"}
 
