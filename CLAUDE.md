@@ -7381,7 +7381,9 @@ em `webapp.Handler` (`_de_fora`, `_de_casa`, `_sessao`, `_pode_escrever`,
   é o que trava o «login CSRF»), decidida pelo **cofre de contas partilhado com o
   riftvault** (o pacote `contas`, em `Desktop/Claude/01-Projetos/contas`, com
   `site="mtg"`): o mesmo travão (5 falhas por conta, 10 por endereço, a contar
-  pelo `Cf-Connecting-Ip`), a mesma frase para «não existe», «sem acesso ao mtg» e
+  pelo `Cf-Connecting-Ip` SÓ quando o socket é o loopback — o túnel; de qualquer
+  outro socket conta o IP dele, senão um aparelho da rede inventava um por
+  tentativa), a mesma frase para «não existe», «sem acesso ao mtg» e
   «errada». O cookie `mtgvault_sessao` é `HttpOnly; SameSite=Lax; Path=/`, 30
   dias deslizantes, `Secure` pelo túnel. `/conta.html` diz «Entraste como X» e
   tem o «Sair» (`POST /api/conta/sair`, com o CSRF).

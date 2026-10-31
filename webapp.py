@@ -1973,10 +1973,17 @@ class Handler(BaseHTTPRequestHandler):
         Pelo túnel o socket é sempre `127.0.0.1` — contar por ele punha toda a
         gente no mesmo balde, e dez falhas de um estranho trancavam a entrada a
         todos. O endereço verdadeiro vem no `Cf-Connecting-Ip`.
+
+        **SÓ SE CONFIA NELE QUANDO O SOCKET É O LOOPBACK**, que é o túnel (o
+        `cloudflared` corre neste PC). Com o `MTGVAULT_BIND=0.0.0.0`, um aparelho
+        da rede de casa que fale direto com o 8771 inventava um
+        `Cf-Connecting-Ip` novo a cada tentativa e nunca enchia o travão do
+        endereço. Qualquer outro socket conta pelo IP dele, com ou sem `Cf-*`.
         """
-        if self._de_fora():
-            return self._cabecalho("Cf-Connecting-Ip") or self._ip()
-        return self._ip()
+        ip = self._ip()
+        if ip in ("127.0.0.1", "::1") and self._de_fora():
+            return self._cabecalho("Cf-Connecting-Ip") or ip
+        return ip
 
     def _conta_entrar(self, bruto: bytes) -> None:
         """`POST /api/conta/entrar` — `{nome, senha}` em JSON -> o cookie.

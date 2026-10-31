@@ -364,6 +364,24 @@ def caso_travao():
     print("travão: 5 falhas livres, à 6.ª 429; a certa entra na mesma")
 
 
+def caso_travao_da_rede_nao_confia_no_cf():
+    """Da rede de casa, um `Cf-Connecting-Ip` inventado a cada tentativa NÃO
+    muda a chave do travão: só o túnel (socket de loopback) a pode dizer. Dez
+    falhas livres por endereço, e a 11.ª é 429 — sem ela, um aparelho no Wi-Fi
+    tentava passwords à vontade, um IP falso por palpite."""
+    cods = []
+    for i in range(11):
+        p = Pedido("/api/conta/entrar",
+                   {"nome": "ninguem-na-rede", "senha": "palpite-de-teste"},
+                   ip="192.168.1.77",
+                   cab={"Cf-Connecting-Ip": f"203.0.113.{100 + i}",
+                        "Cf-Ray": "falso-LIS"})
+        cods.append(p.codigo)
+    assert cods == [401] * 10 + [429], cods
+    assert "deste sítio" in json.loads(p.corpo)["erro"], p.corpo
+    print("rede de casa: o Cf-Connecting-Ip falso não foge ao travão (11.ª → 429)")
+
+
 def _no_cofre(fn):
     m = conta.modulo()
     cc = m.abrir(conta.caminho_cofre())
