@@ -134,6 +134,49 @@ def _no_cofre():
         con.close()
 
 
+def linha_de_arranque() -> str:
+    """Uma linha para o arranque do `webapp`: que cofre, e quantas contas entram.
+
+    Diz QUANTAS contas têm acesso ao `mtg`, nunca quais: o nome de cada um não
+    tem nada que fazer num log. **Não cria o cofre** (o `abrir` do `contas`
+    criava): um cofre que falta é um aviso a ler — ninguém entra pelo túnel —,
+    não uma base vazia a nascer em silêncio no sítio errado. Abre-se só para
+    ler.
+    """
+    try:
+        p = caminho_cofre()
+    except RuntimeError as e:
+        return f"  Cofre de contas: não o encontrei ({e})."
+    if not p.is_file():
+        return (f"  Cofre de contas: {p} NÃO EXISTE — ninguém entra pelo túnel "
+                "até ele existir (não o criei agora).")
+    try:
+        con = sqlite3.connect(f"{p.resolve().as_uri()}?mode=ro", uri=True)
+        try:
+            n = con.execute(
+                "SELECT COUNT(DISTINCT a.conta_id) FROM acessos a "
+                "JOIN contas c ON c.id = a.conta_id WHERE a.site = ?",
+                (SITE,)).fetchone()[0]
+        finally:
+            con.close()
+    except sqlite3.Error as e:
+        return f"  Cofre de contas: {p} (não o consegui ler: {e})."
+    contas = "1 conta" if n == 1 else f"{n} contas"
+    return f"  Cofre de contas: {p} · {contas} com acesso ao {SITE}."
+
+
+#: Onde se troca uma password temporária: o riftvault tem a caixa, o mtg não.
+URL_TROCAR = "https://editar.baverone.com"
+
+
+def mensagem_temporaria(slug: str | None) -> str:
+    """A resposta a quem entra com uma temporária (ver `webapp._conta_entrar`)."""
+    nome = str(slug or "").strip() or "<nome>"
+    return ("essa password é temporária: troca-a primeiro no riftvault "
+            f"({URL_TROCAR}), ou pede ao André que te defina uma nova "
+            f"(py -m contas definir {nome}). Depois entra aqui com ela.")
+
+
 def entrar(nome: str, password: str, chave: str | None) -> dict:
     """O nome e a password -> a conta (`conta_id`, `slug`, `nome`, `temporaria`,
     `geracao`). Decide-o o cofre, com `site="mtg"`.

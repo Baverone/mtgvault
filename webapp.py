@@ -1730,7 +1730,9 @@ class Handler(BaseHTTPRequestHandler):
         frase diz, em português, o que está a acontecer — era exactamente o que
         o 502 do Cloudflare não dizia.
         """
-        print(f"[503] {self.path} — {e.o_que}, {e.decorrido:.0f} s "
+        # Só o CAMINHO, nunca a query: o `?t=` é o token deste PC ou o CSRF de
+        # uma sessão, e um log não é sítio para nenhum dos dois.
+        print(f"[503] {urlparse(self.path).path} — {e.o_que}, {e.decorrido:.0f} s "
               f"(tecto {e.espera:.0f} s)", flush=True)
         self._json(e.resposta(), 503, retry=5)
 
@@ -2036,6 +2038,13 @@ class Handler(BaseHTTPRequestHandler):
             print(f"[conta] a entrada rebentou: {type(e).__name__}: {e}", flush=True)
             self._json({"erro": f"não consegui verificar a entrada "
                                 f"({type(e).__name__}). Tenta outra vez."}, 500)
+            return
+        if quem.get("temporaria"):
+            # UMA TEMPORÁRIA NÃO ABRE SESSÃO AQUI. O mtg não tem a caixa de
+            # trocar a password, e a temporária (a que o André dita pelo
+            # WhatsApp) ficava a ser a password de todos os dias. Troca-se no
+            # riftvault, ou o André define-a na consola do cofre.
+            self._json({"erro": conta_mod.mensagem_temporaria(quem.get("slug"))}, 403)
             return
         s = conta_mod.criar_sessao(quem, self._cabecalho("User-Agent"))
         self._por_cookie(self._cookie_sessao(s["sid"]))
@@ -3514,6 +3523,9 @@ def main(port: int = PORT, host: str | None = None):
     print(f"  Token em {ficheiro_token()} (apaga-o para gerar outro).")
     print("  Escrever: de 127.0.0.1 é livre; da rede de casa exige o ?t= do link;")
     print("  pelo túnel, entrar com o nome e a password do cofre de contas.")
+    # Que cofre este processo usa, e quantas contas entram no mtg: é a primeira
+    # pergunta quando ninguém consegue entrar. Só o número; e não o cria.
+    print(conta_mod.linha_de_arranque())
     if aberto:
         print("  Se o túnel estiver em baixo e for preciso ir pela rede de casa,")
         print("  o porto tem de estar aberto na rede privada:")

@@ -555,6 +555,90 @@ def caso_cofre_e_da_pasta_contas():
     print(f"o cofre: CONTAS_DB, senão {pasta.name}/data/contas.db")
 
 
+def caso_temporaria_nao_entra_no_mtg():
+    """Uma password TEMPORÁRIA não abre sessão no mtg: 403 a dizer onde se
+    troca. O mtg não tem a caixa de trocar a password, e uma temporária ditada
+    pelo WhatsApp não pode ficar a ser a password de todos os dias."""
+    def preparar(m, cc):
+        m.criar_conta(cc, "filipa", "Filipa", conta_id=10)
+        m.dar_acesso(cc, 10, "mtg")
+        return m.nova_temporaria(cc, 10)
+    temp = _no_cofre(preparar)
+    r = pedir("POST", "/api/conta/entrar", {"nome": "filipa", "senha": temp},
+              cab=tunel("203.0.113.50"))
+    assert r.cod == 403, r
+    assert not r.cookies(), "uma temporária não pode abrir sessão"
+    erro = r.corpo["erro"]
+    assert "https://editar.baverone.com" in erro, erro
+    assert "py -m contas definir filipa" in erro, erro
+    assert temp not in json.dumps(r.corpo), "a temporária não volta na resposta"
+    con = sqlite3.connect(str(conta.caminho_sessoes()))
+    try:
+        n = con.execute("SELECT COUNT(*) FROM sessoes WHERE conta_id = 10").fetchone()[0]
+    finally:
+        con.close()
+    assert n == 0, "ficou uma sessão aberta com a temporária"
+    print("password temporária: 403 a mandar trocá-la, sem sessão")
+
+
+def caso_503_nao_escreve_a_query_no_log():
+    """O `?t=` é o token (ou o CSRF de uma sessão): um log não o pode levar."""
+    import contextlib
+    h = webapp.Handler.__new__(webapp.Handler)
+    h.path = "/data/paginas/deckboxes.json?t=segredo-do-teste&x=1"
+    h._json = lambda *a, **k: None
+    saida = io.StringIO()
+    with contextlib.redirect_stdout(saida):
+        h._ainda_nao(webapp.DadosAindaNaoProntos("as Deckboxes", 26.0, 25.0))
+    linha = saida.getvalue()
+    assert "/data/paginas/deckboxes.json" in linha, linha
+    assert "?" not in linha and "segredo-do-teste" not in linha, linha
+    print("o 503 regista o caminho, sem a query")
+
+
+def caso_arranque_diz_o_cofre():
+    """O arranque diz que cofre usa e quantas contas entram no mtg — nunca
+    quais —, e um cofre que falta diz-se sem se criar."""
+    import contextlib
+    from unittest import mock
+    linha = conta.linha_de_arranque()
+    assert str(conta.caminho_cofre()) in linha, linha
+    n = _no_cofre(lambda m, cc: cc.execute(
+        "SELECT COUNT(DISTINCT conta_id) FROM acessos WHERE site = 'mtg'").fetchone()[0])
+    assert f"{n} contas com acesso ao mtg" in linha, (n, linha)
+    for slug in ("baverone", "carla", "ana"):
+        assert slug not in linha, linha
+    falta = _TMP / "nao-ha" / "contas.db"
+    antes = os.environ["CONTAS_DB"]
+    os.environ["CONTAS_DB"] = str(falta)
+    try:
+        sem = conta.linha_de_arranque()
+    finally:
+        os.environ["CONTAS_DB"] = antes
+    assert "NÃO EXISTE" in sem and str(falta) in sem, sem
+    assert not falta.parent.exists(), "o arranque criou o cofre"
+
+    class Srv:
+        def __init__(self, *a):
+            pass
+
+        def serve_forever(self):
+            raise KeyboardInterrupt
+
+        def shutdown(self):
+            pass
+    saida = io.StringIO()
+    with mock.patch.object(webapp, "ThreadingHTTPServer", Srv), \
+            mock.patch.object(webapp, "vigia_versao", lambda: None), \
+            mock.patch.object(webapp, "preparar_nucleo", lambda con: None), \
+            mock.patch.object(webapp, "ligacao_local",
+                              lambda port=None: {"url": "http://exemplo:8771/"}), \
+            contextlib.redirect_stdout(saida):
+        webapp.main(port=8999, host="127.0.0.1")
+    assert linha in saida.getvalue(), saida.getvalue()
+    print("o arranque diz o cofre e quantas contas entram no mtg")
+
+
 def caso_bateria_isola_o_cofre():
     import _bateria
     try:
