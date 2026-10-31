@@ -62,6 +62,17 @@ duas coisas:
 Os pedidos de `127.0.0.1` são de confiança sem token: quem está no PC já tem os
 ficheiros à frente, e pedir-lhe uma senha não protege nada. Continua a não ser
 para abrir no router.
+
+QUEM VEM PELO TÚNEL ENTRA COM NOME E PASSWORD (2026-10-31)
+----------------------------------------------------------
+O `cloudflared` liga-se a este porto pelo loopback, e por isso o «`127.0.0.1` é
+de confiança» dava escrita a quem passasse o Cloudflare Access. «De casa»
+(`Handler._de_casa`) passou a exigir as três coisas: socket de loopback, nenhum
+cabeçalho de proxy (`_de_fora`: `Cf-Connecting-Ip`, `Cf-Ray`, …) e um `Host` de
+loopback. Quem vem de fora vê a caixa de entrada (`mtgvault/conta.py`, o cofre
+de contas partilhado com o riftvault) e, com sessão, escreve com o CSRF dela no
+sítio onde a página levava o token (`Handler._marca`). O token continua a valer
+de onde vier.
 """
 from __future__ import annotations
 
@@ -78,7 +89,7 @@ from contextlib import contextmanager
 from datetime import date, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, parse_qsl, urlencode, urlparse
 
 ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("MTGVAULT_HOME", str(ROOT / "data"))
@@ -87,6 +98,7 @@ from mtgvault import (caixas, configio, db, decks_vista, encomendas,  # noqa: E4
                       fases, feira, fotocaixa, fotos as fotos_mod, fotosite,
                       loadout, marcas, migracao, precos, site_shell, sources,
                       venda, versoes)
+from mtgvault import conta as conta_mod  # noqa: E402
 from mtgvault import padrao as padrao_mod  # noqa: E402
 from mtgvault import scryfall  # noqa: E402
 from mtgvault.nucleo import colecoes as n_colecoes  # noqa: E402
@@ -292,7 +304,11 @@ def token(criar: bool = True) -> str:
 
 def token_valido(dado: str | None) -> bool:
     esperado = token(criar=False)
-    return bool(dado) and bool(esperado) and secrets.compare_digest(dado, esperado)
+    # Em bytes (2026-10-31): o `compare_digest` com `str` rebenta com
+    # `TypeError` num caractere fora do ASCII, e o `?t=` vem de quem pede —
+    # pelo túnel, de qualquer pessoa.
+    return bool(dado) and bool(esperado) and secrets.compare_digest(
+        str(dado).encode("utf-8"), esperado.encode("utf-8"))
 
 
 def _peers(con, cfg, slot_id):
@@ -1202,20 +1218,35 @@ def em_cache(chave, calcular, etiqueta: str = "", espera: float | None = None):
     return job.valor
 
 
-def pagina_editavel(caminho: str, editavel: bool) -> str:
+#: O que a cache guarda no lugar da marca de escrita (2026-10-31). A cache é
+#: por `editavel`, não por pessoa: com o token lá dentro, a página que o
+#: aquecedor calculou com o `token()` saía igual para quem entrou com sessão —
+#: e o token deste PC ia parar ao browser de um amigo. A marca de quem pede
+#: entra à saída da cache (`.replace`), e a cache não guarda segredo nenhum.
+_MARCA_NA_CACHE = "__MTGVAULT_MARCA__"
+
+
+def pagina_editavel(caminho: str, editavel: bool, tok: str | None = None) -> str:
     """O HTML de uma página que o modo edição GERA (hoje só o `metagame.html`).
 
     Está fora do `do_GET` para o aquecedor poder chamá-la: é a página mais
     pesada que ainda se gera inteira a pedido (3,2 s medidos a 2026-10-01), e
     aquecer só os `.json` deixava-a de fora sem ninguém dar por isso.
+
+    `tok` é a marca de quem pede (`Handler._marca`); sem ele vale o `token()`,
+    que era o comportamento de antes. Ver `_MARCA_NA_CACHE`.
     """
     modulo = PAGINAS_EDITAVEIS[caminho]
 
     def gerar():
         with db.session() as con:
             return modulo.html_page(
-                con, editable=editavel, token=(token() if editavel else ""))
-    return em_cache((caminho, editavel), gerar, f"a página {caminho}")
+                con, editable=editavel,
+                token=(_MARCA_NA_CACHE if editavel else ""))
+    corpo = em_cache((caminho, editavel), gerar, f"a página {caminho}")
+    if not editavel:
+        return corpo
+    return corpo.replace(_MARCA_NA_CACHE, token() if tok is None else tok)
 
 
 def relatorio():
@@ -1289,13 +1320,22 @@ def dados_decks(editavel: bool) -> tuple[dict, dict]:
 
 
 def dados_deckboxes(editavel: bool, tok: str) -> tuple[dict, dict]:
-    """`(indice, partes)` da Deckboxes para este modo, da cache."""
+    """`(indice, partes)` da Deckboxes para este modo, da cache.
+
+    A cache guarda o índice SEM marca e a de quem pede (`tok`) entra à saída
+    (2026-10-31): a chave é só o `editavel`, e com o token lá dentro o índice
+    que o aquecedor calculou levava o `token()` a quem entrou com sessão. Ver
+    `_MARCA_NA_CACHE`.
+    """
     def calcular():
         with db.session() as con:
             return deckboxes.partir(deckboxes.payload(
-                con, relatorio(), editable=editavel, token=tok))
-    return em_cache(("deckboxes", editavel), calcular,
-                    "os dados das Deckboxes")
+                con, relatorio(), editable=editavel, token=""))
+    idx, partes = em_cache(("deckboxes", editavel), calcular,
+                           "os dados das Deckboxes")
+    if editavel and "token" in idx:
+        idx = {**idx, "token": tok}
+    return idx, partes
 
 
 @contextmanager
@@ -1357,9 +1397,12 @@ def aquecer() -> list[str]:
     ou levanta — e, ao levantar, deixou o cálculo a correr em fundo. É isso que
     se quer aqui: o aquecedor não espera por nada, só empurra.
 
-    Aquece a vista do modo EDIÇÃO (`editavel=True`), que é a que ele usa: o
-    `cloudflared` liga-se ao origem pelo loopback, por isso os pedidos do túnel
-    são de confiança e caem nessa. A de leitura paga uma vez, com o tecto.
+    Aquece a vista do modo EDIÇÃO (`editavel=True`), que é a que ele usa. O
+    `cloudflared` liga-se ao origem pelo loopback, mas desde 2026-10-31 os
+    pedidos do túnel contam como DE FORA (`Handler._de_fora`): quem vem por lá
+    entra com o nome e a password, e com sessão cai na mesma vista editável —
+    por isso continua a ser esta a que se aquece. A cache não guarda a marca de
+    ninguém (`_MARCA_NA_CACHE`). A de leitura paga uma vez, com o tecto.
     """
     frios = []
     for nome, fn in _AQUECER:
@@ -1736,22 +1779,274 @@ class Handler(BaseHTTPRequestHandler):
             return True
         return u.netloc != (self.headers.get("Host") or "").strip().lower()
 
+    # -- de onde vem o pedido (2026-10-31) ----------------------------------
+    # O TÚNEL CHEGA PELO LOOPBACK. O `cloudflared` corre neste PC e liga-se ao
+    # 8771 por `127.0.0.1`, por isso «loopback é de confiança» dava escrita a
+    # qualquer pessoa que passasse o Cloudflare Access — e o Access era a única
+    # fechadura. Agora um pedido com os cabeçalhos que um proxy acrescenta é DE
+    # FORA, venha de onde vier o socket, e quem vem de fora entra com o nome e
+    # a password do cofre (`mtgvault.conta`). «De casa» passou a ser as três
+    # coisas juntas: socket de loopback, nenhum cabeçalho de proxy e um `Host`
+    # de loopback — o último fecha o DNS rebinding (`evil.com` a apontar para
+    # 127.0.0.1 chega com `Host: evil.com`).
+    _CABECALHOS_DE_FORA = ("Cf-Connecting-Ip", "Cf-Ray", "Cf-Visitor",
+                           "X-Forwarded-For", "Forwarded", "X-Real-Ip")
+    _HOSTS_DE_CASA = frozenset({"localhost", "127.0.0.1", "::1", "[::1]"})
+
+    def _cabecalho(self, nome: str) -> str:
+        try:
+            return str(self.headers.get(nome) or "").strip()
+        except AttributeError:
+            return ""
+
+    def _ip(self) -> str:
+        return self.client_address[0] if self.client_address else ""
+
+    def _de_fora(self) -> bool:
+        """Há um cabeçalho que só um proxy (o túnel) põe? Então é de fora."""
+        return any(self._cabecalho(h) for h in self._CABECALHOS_DE_FORA)
+
+    def _host(self) -> str:
+        """O `Host` sem o porto, em minúsculas (`[::1]:8771` -> `[::1]`)."""
+        h = self._cabecalho("Host").lower()
+        if h.startswith("["):
+            return h[:h.find("]") + 1] if "]" in h else h
+        if h.count(":") == 1:
+            return h.split(":", 1)[0]
+        return h
+
+    def _de_casa(self) -> bool:
+        """Loopback, sem cabeçalhos de proxy e com um `Host` de loopback."""
+        return (self._ip() in ("127.0.0.1", "::1") and not self._de_fora()
+                and self._host() in self._HOSTS_DE_CASA)
+
+    def _sid(self) -> str | None:
+        """O valor do cookie da sessão, lido à mão e não pelo `SimpleCookie`:
+        esse pára no primeiro cookie que não entende, e o Cloudflare põe os
+        dele (`CF_Authorization`, `__cf_bm`) no mesmo cabeçalho."""
+        for parte in self._cabecalho("Cookie").split(";"):
+            nome, _, valor = parte.strip().partition("=")
+            if nome == conta_mod.COOKIE and valor:
+                return valor.strip('"')
+        return None
+
+    def _sessao(self) -> dict | None:
+        """A sessão do cookie (`conta.sessao`), memorizada no pedido.
+
+        Memorizada porque o mesmo pedido pergunta várias vezes (`_marca`,
+        `_pode_escrever`) e cada pergunta abre o cofre. Um cofre que não abre
+        vale «sem sessão» — fecha-se a porta, nunca se abre por engano — e diz-
+        -se no log, porque um «precisas de entrar» sem razão nenhuma era o que
+        ele ia ver no telemóvel.
+        """
+        if "_memo_sessao" in self.__dict__:
+            return self.__dict__["_memo_sessao"]
+        s = None
+        sid = self._sid()
+        if sid:
+            try:
+                s = conta_mod.sessao(sid)
+            except Exception as e:                      # noqa: BLE001
+                print(f"[conta] não li a sessão: {type(e).__name__}: {e}",
+                      flush=True)
+                s = None
+            if s is not None and s.get("tocada"):
+                # O prazo andou na base: o cookie anda com ele, senão o browser
+                # deitava-o fora aos 30 dias da entrada mesmo com uso diário.
+                self._por_cookie(self._cookie_sessao(sid))
+        self.__dict__["_memo_sessao"] = s
+        return s
+
     def _pode_escrever(self) -> bool:
-        """Loopback é de confiança; da rede exige-se o token (ver o cabeçalho)."""
-        ip = (self.client_address[0] if self.client_address else "")
-        return ip in ("127.0.0.1", "::1") or token_valido(self._token_do_pedido())
+        """De casa; ou com o token; ou com sessão E o CSRF dela no pedido."""
+        if self._de_casa():
+            return True
+        dado = self._token_do_pedido()
+        if token_valido(dado):
+            return True
+        s = self._sessao()
+        return bool(s and dado and secrets.compare_digest(
+            str(dado).encode("utf-8"), str(s["csrf"]).encode("utf-8")))
+
+    def _marca(self) -> str:
+        """O que a página leva no sítio do token: o `token()` para quem é de
+        casa ou o trouxe, o CSRF da sessão para quem entrou, senão nada.
+
+        É o mesmo sítio de sempre (os `?t=` dos links, o `D.token`, o
+        `%TOKEN%`), por isso o JavaScript das páginas não muda: para ele um
+        CSRF é um token como outro qualquer. O token deste PC nunca vai parar a
+        quem só tem sessão.
+        """
+        if self._de_casa() or token_valido(self._token_do_pedido()):
+            return token()
+        s = self._sessao()
+        return s["csrf"] if s else ""
+
+    # -- os cookies --------------------------------------------------------
+    def _seguro(self) -> bool:
+        """O pedido chegou por HTTPS ao túnel? Então o cookie leva `Secure`."""
+        if self._cabecalho("X-Forwarded-Proto").lower() == "https":
+            return True
+        visitante = self._cabecalho("Cf-Visitor")
+        if visitante:
+            try:
+                return str(json.loads(visitante).get("scheme", "")).lower() == "https"
+            except (ValueError, AttributeError):
+                return '"https"' in visitante.lower()
+        return False
+
+    def _cookie_sessao(self, valor: str, max_age: int | None = None) -> str:
+        idade = conta_mod.SESSAO_DIAS * 86400 if max_age is None else max_age
+        return (f"{conta_mod.COOKIE}={valor}; HttpOnly; SameSite=Lax; Path=/; "
+                f"Max-Age={idade}" + ("; Secure" if self._seguro() else ""))
+
+    def _por_cookie(self, linha: str) -> None:
+        self.__dict__.setdefault("_cookies_a_por", []).append(linha)
+
+    def end_headers(self):
+        # Os `Set-Cookie` entram aqui e não em cada `_envia`/`_json`: a sessão
+        # pode ser renovada em QUALQUER pedido (`_sessao`), e uma resposta que
+        # se esquecesse de os passar perdia a renovação em silêncio.
+        for linha in self.__dict__.pop("_cookies_a_por", ()):
+            self.send_header("Set-Cookie", linha)
+        super().end_headers()
+
+    def _novo_pedido(self) -> None:
+        """O que é memorizado por pedido sai antes de cada um (ligações que se
+        reaproveitam não herdam a sessão do pedido anterior)."""
+        self.__dict__.pop("_memo_sessao", None)
+        self.__dict__.pop("_cookies_a_por", None)
+
+    # -- a porta de entrada e a conta (2026-10-31) ---------------------------
+    def _porta_de_entrada(self, caminho: str) -> bool:
+        """O que corre ANTES de qualquer rota do `GET`. Devolve se respondeu.
+
+        Quem vem de fora sem marca (nem token, nem sessão) vê a caixa de
+        entrada em TODOS os caminhos — as páginas, os `.js`, as imagens — e os
+        dados (`/api/…`, `/data/…`) respondem 401 em JSON, que é o que o
+        `fetch` de uma página aberta antes de a sessão cair sabe mostrar. A
+        caixa é autónoma (`conta.pagina_entrar`): não pede nada ao servidor.
+        """
+        q = parse_qs(urlparse(self.path).query, keep_blank_values=True)
+        if caminho == "/entrar":
+            self._envia(conta_mod.pagina_entrar((q.get("volta") or ["/"])[0]))
+            return True
+        marca = self._marca()
+        if self._de_fora() and not marca:
+            if caminho.startswith(("/api/", "/data/")):
+                self._json({"erro": "precisas de entrar"}, 401)
+            else:
+                self._envia(conta_mod.pagina_entrar(volta=self.path))
+            return True
+        if caminho == "/conta.html":
+            s = self._sessao()
+            if s is None:
+                self._envia(conta_mod.pagina_entrar(volta="/conta.html"))
+            else:
+                self._envia(conta_mod.pagina_conta(s, s["csrf"]))
+            return True
+        # A MARCA DA SESSÃO VAI NO URL, como o token (2026-10-31). Metade das
+        # páginas (as do núcleo, a Arrumação, os Decks, as Faltas) lê a marca
+        # do `?t=` do endereço e manda-a no `X-Mtgvault-Token`; depois de
+        # entrar, quem volta a `/` não tem `?t=` nenhum e os botões davam 403.
+        # Redirige-se para o MESMO caminho com o `?t=<csrf>`, e o JavaScript não
+        # muda. Só para quem tem a marca POR SESSÃO: de casa não é precisa, e
+        # quem trouxe o token já o tem no URL.
+        if (marca and (caminho == "/" or caminho.endswith(".html"))
+                and not (self._de_casa() or token_valido(self._token_do_pedido()))
+                and (q.get("t") or [""])[0] != marca):
+            u = urlparse(self.path)
+            destino = conta_mod.volta_segura(u.path)
+            resto = [(k, v) for k, v in parse_qsl(u.query, keep_blank_values=True)
+                     if k != "t"]
+            self.send_response(302)
+            self.send_header("Location", destino + "?" + urlencode(resto + [("t", marca)]))
+            self.send_header("Content-Length", "0")
+            self.send_header("Cache-Control", "no-store, must-revalidate")
+            self.end_headers()
+            return True
+        return False
+
+    def _chave_do_travao(self) -> str:
+        """De que endereço vem a tentativa, para o travão do cofre.
+
+        Pelo túnel o socket é sempre `127.0.0.1` — contar por ele punha toda a
+        gente no mesmo balde, e dez falhas de um estranho trancavam a entrada a
+        todos. O endereço verdadeiro vem no `Cf-Connecting-Ip`.
+        """
+        if self._de_fora():
+            return self._cabecalho("Cf-Connecting-Ip") or self._ip()
+        return self._ip()
+
+    def _conta_entrar(self, bruto: bytes) -> None:
+        """`POST /api/conta/entrar` — `{nome, senha}` em JSON -> o cookie.
+
+        SÓ `application/json` (415 o resto): um formulário de outro site manda
+        `form-urlencoded` sem pré-verificação, e é assim que se faz o «login
+        CSRF» — o browser de alguém fica com a sessão de um estranho e o que
+        ele gravar vai para a conta errada. O JSON obriga a pré-verificação, que
+        este servidor nunca aprova.
+
+        O corpo da resposta não leva `sid` nem CSRF: o `sid` vive só no cookie
+        `HttpOnly`, e o CSRF chega na página que a caixa recarrega a seguir.
+        """
+        tipo = self._cabecalho("Content-Type").split(";", 1)[0].strip().lower()
+        if tipo != "application/json":
+            self._json({"erro": "a entrada só aceita JSON (application/json)."}, 415)
+            return
+        try:
+            dados = json.loads(bruto.decode("utf-8") or "{}")
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            dados = None
+        if not isinstance(dados, dict):
+            self._json({"erro": "pedido inválido: manda {nome, senha} em JSON."}, 400)
+            return
+        nome, senha = dados.get("nome"), dados.get("senha")
+        if not isinstance(nome, str) or not isinstance(senha, str):
+            nome, senha = str(nome or ""), str(senha or "")
+        try:
+            m = conta_mod.modulo()
+        except Exception as e:                          # noqa: BLE001
+            print(f"[conta] o cofre não abre: {type(e).__name__}: {e}", flush=True)
+            self._json({"erro": "o cofre de contas não está disponível neste "
+                                "momento. Tenta daqui a bocado."}, 503)
+            return
+        try:
+            quem = conta_mod.entrar(nome, senha, self._chave_do_travao())
+        except m.TemDeEsperar as e:
+            self._json({"erro": str(e)}, 429, retry=e.segundos)
+            return
+        except m.ServidorOcupado as e:
+            self._json({"erro": str(e)}, 503, retry=5)
+            return
+        except m.ErroDeConta as e:
+            self._json({"erro": str(e)}, 401)
+            return
+        except Exception as e:                          # noqa: BLE001
+            # Sem isto a excepção subia ao `http.server`, que fecha a ligação
+            # sem resposta, e a caixa dizia «não consegui falar com o servidor».
+            # A mensagem é a do erro e nunca leva o que se escreveu.
+            print(f"[conta] a entrada rebentou: {type(e).__name__}: {e}", flush=True)
+            self._json({"erro": f"não consegui verificar a entrada "
+                                f"({type(e).__name__}). Tenta outra vez."}, 500)
+            return
+        s = conta_mod.criar_sessao(quem, self._cabecalho("User-Agent"))
+        self._por_cookie(self._cookie_sessao(s["sid"]))
+        self._json({"ok": True})
 
     # O TECTO VALE PARA TODOS OS CAMINHOS (2026-10-01), e por isso vive AQUI e
     # não em cada rota: a primeira rota nova que se esquecesse de o apanhar
     # voltava a pendurar um pedido para sempre — e foi um pedido pendurado que
     # deu o 502 que ninguém conseguia explicar.
     def do_GET(self):                                  # noqa: N802
+        self._novo_pedido()
         try:
             self._get()
         except DadosAindaNaoProntos as e:
             self._ainda_nao(e)
 
     def do_POST(self):                                 # noqa: N802
+        self._novo_pedido()
         try:
             self._post()
         except DadosAindaNaoProntos as e:
@@ -1759,6 +2054,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def _get(self):
         caminho = urlparse(self.path).path
+        if self._porta_de_entrada(caminho):
+            return
         if ((caminho in PAGINAS_NUCLEO or caminho.startswith("/api/n/"))
                 and n_modelo.ligado()):
             self._nucleo_get(caminho)
@@ -1815,27 +2112,27 @@ class Handler(BaseHTTPRequestHandler):
             # A ARRUMAÇÃO POR FASES (2026-10-01): a CASCA, estática e imediata.
             # Os dados vêm por `fetch` de `/data/paginas/arrumacao.json`.
             self._envia(com_token(arrumacao.casca(),
-                                  token() if self._pode_escrever() else ""))
+                                  self._marca()))
             return
         if caminho == "/decks.html":
             # A ABA DECKS (2026-10-04): a CASCA, estática e imediata. Os dados
             # vêm por `fetch` de `/data/paginas/decks.json` + uma parte por deck.
             self._envia(com_token(decks_pag.casca(),
-                                  token() if self._pode_escrever() else ""))
+                                  self._marca()))
             return
         if caminho == "/faltas.html":
             # A LISTA DE FALTAS (2026-10-05): a CASCA, estática e imediata. Os
             # dados vêm por `fetch` de `/data/paginas/faltas.json`.
             self._envia(com_token(faltas_pag.casca(),
-                                  token() if self._pode_escrever() else ""))
+                                  self._marca()))
             return
         modulo = PAGINAS_EDITAVEIS.get(caminho)
         if modulo is not None:
             # A página só leva o token DENTRO dela quando o pedido já o trazia —
             # senão bastava abri-la de qualquer telemóvel da rede para o
             # descobrir, e o token não protegia nada.
-            editavel = self._pode_escrever()
-            tok = token() if editavel else ""
+            tok = self._marca()
+            editavel = bool(tok)
             if modulo is deckboxes:
                 # A CASCA: estática, sem dados. Os dados vêm a seguir, por
                 # `fetch`, de `/data/paginas/deckboxes.json` (abaixo) — e é o
@@ -1843,14 +2140,14 @@ class Handler(BaseHTTPRequestHandler):
                 self._envia(com_token(deckboxes.casca(), tok))
                 return
 
-            self._envia(com_token(pagina_editavel(caminho, editavel), tok))
+            self._envia(com_token(pagina_editavel(caminho, editavel, tok), tok))
             return
         ma = _DADOS_ARRUMACAO.match(caminho)
         if ma:
             # Os DADOS da ARRUMAÇÃO POR FASES (2026-10-01). O `?t=` deste pedido
             # é o que decide se o índice leva `editavel` — e logo se a Fase 1
             # desenha os botões dos três estados.
-            editavel = self._pode_escrever()
+            editavel = bool(self._marca())
             idx, partes = dados_arrumacao(editavel)
             parte = ma.group(1)
             if parte is None:
@@ -1877,7 +2174,7 @@ class Handler(BaseHTTPRequestHandler):
             # Os DADOS da ABA DECKS (2026-10-04). O `?t=` deste pedido é o que
             # decide se o índice leva `editavel` — e logo se os `+`/`−` e as
             # caixas «quero montar» aparecem.
-            editavel = self._pode_escrever()
+            editavel = bool(self._marca())
             idx, partes = dados_decks(editavel)
             parte = md.group(1)
             if parte is None:
@@ -1893,14 +2190,15 @@ class Handler(BaseHTTPRequestHandler):
         m = _DADOS_DECKBOXES.match(caminho)
         if m:
             # Os DADOS da Deckboxes, calculados (e guardados) para este modo.
-            editavel = self._pode_escrever()
+            tok = self._marca()
+            editavel = bool(tok)
             if m.group(1) is None:
                 # A FOTO DA DECKBOX largada em `pendentes/deckboxes/<slot>.jpg`
                 # (2026-09-21): recolhe-se ao pedir o índice, para o modo edição
                 # a mostrar sem esperar pelo daily. Barato quando não há nada.
                 recolher_fotos_de_caixas()
                 recolher_fotos_das_pastas()
-            idx, partes = dados_deckboxes(editavel, token() if editavel else "")
+            idx, partes = dados_deckboxes(editavel, tok)
             parte = m.group(1)
             if parte is None:
                 self._json({**idx,
@@ -1958,7 +2256,7 @@ class Handler(BaseHTTPRequestHandler):
                 # O menu destas páginas foi escrito pela corrida do `daily`, sem
                 # token nenhum: sem esta linha, sair da Deckboxes para a Coleção
                 # e voltar deixava-o numa página só de leitura.
-                corpo = com_token(corpo, token() if self._pode_escrever() else "")
+                corpo = com_token(corpo, self._marca())
             self._envia(corpo, tipo=("text/html; charset=utf-8"
                                      if nome.endswith(".html") else
                                      "text/css; charset=utf-8"
@@ -1991,14 +2289,26 @@ class Handler(BaseHTTPRequestHandler):
                                 f"{tecto // (1024 * 1024)} MB"}, 413)
             return
         bruto = self.rfile.read(tam) if tam else b""
+        if caminho == "/api/conta/entrar":
+            # A ENTRADA passa sempre: é a porta, e quem bate nela ainda não tem
+            # com que escrever. O `_origem_estranha` acima já correu — outro
+            # site não consegue fazer entrar o browser de um estranho.
+            self._conta_entrar(bruto)
+            return
         if not self._pode_escrever():
             # Ler é livre, escrever não. Sem isto, pôr o porto na rede local
             # (MTGVAULT_BIND=0.0.0.0) dava a qualquer aparelho de casa — ou a
             # qualquer visita no Wi-Fi — o direito de lhe desmontar os decks.
-            # O QR saiu a 2026-10-01; a frase ainda o mandava procurar.
-            self._json({"erro": "sem token: este link é só de leitura. Abre o "
-                                "modo de edição (o link com ?t=, ou "
-                                + URL_EDICAO + ") para poderes gravar."}, 403)
+            # O QR saiu a 2026-10-01; desde 2026-10-31 a frase manda entrar.
+            self._json({"erro": "sem permissão para gravar: este link é só de "
+                                "leitura. Entra com o teu nome e a tua password "
+                                "em " + URL_EDICAO + " (ou abre o link com ?t=) "
+                                "para poderes gravar."}, 403)
+            return
+        if caminho == "/api/conta/sair":
+            conta_mod.terminar(self._sid())
+            self._por_cookie(self._cookie_sessao("", max_age=0))
+            self._json({"ok": True})
             return
         if caminho == "/api/foto-caixa":
             # A FOTO DA DECKBOX (André, 2026-09-21): o corpo é o FICHEIRO tal e
@@ -2159,7 +2469,7 @@ class Handler(BaseHTTPRequestHandler):
                     # apaga nada. A `copies` não se toca — a marca fica POR CIMA
                     # do inventário, numa tabela própria, e o `esquecer`
                     # devolve-a ao que era.
-                    self._json(self._marca(dados))
+                    self._json(self._marca_posse(dados))
                     return
                 if caminho == "/api/deck-montar":
                     # «QUERO MONTAR ESTE» (André, 2026-10-04). Só config
@@ -2248,8 +2558,8 @@ class Handler(BaseHTTPRequestHandler):
             # Geradas a pedido, sem cache: um toque no telemóvel é seguido de um
             # GET desta mesma página (`edicao_js` troca o `<main>`), e o número
             # que aparece tem de ser o de agora.
-            editavel = self._pode_escrever()
-            tok = token() if editavel else ""
+            tok = self._marca()
+            editavel = bool(tok)
             try:
                 with db.session() as con:
                     corpo = modulo.html_page(con, editable=editavel, token=tok)
@@ -2308,7 +2618,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         self._json(r)
 
-    def _marca(self, dados):
+    def _marca_posse(self, dados):
         """`+`/`−`/esquecer a posse de uma carta. Delta, nunca um absoluto.
 
         O VALOR NUNCA VEM DO CLIENTE (o padrão do `riftvault.collection.adjust`):
@@ -3195,7 +3505,8 @@ def main(port: int = PORT, host: str | None = None):
     print(f"\n  Porto {port} — o 8770 é do riftvault, não lhe toques.")
     print("  O endereço que se dá ao André é o NOME, nunca o IP da rede local.\n")
     print(f"  Token em {ficheiro_token()} (apaga-o para gerar outro).")
-    print("  Escrever: de 127.0.0.1 é livre; da rede de casa exige o ?t= do link.")
+    print("  Escrever: de 127.0.0.1 é livre; da rede de casa exige o ?t= do link;")
+    print("  pelo túnel, entrar com o nome e a password do cofre de contas.")
     if aberto:
         print("  Se o túnel estiver em baixo e for preciso ir pela rede de casa,")
         print("  o porto tem de estar aberto na rede privada:")

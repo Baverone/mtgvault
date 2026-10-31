@@ -25,8 +25,10 @@ Por isso cada teste põe também o `MTGVAULT_DB`, ao lado do `MTGVAULT_HOME`, e 
 novo que se esqueça volta a apagar o ficheiro dele em silêncio.
 """
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -62,6 +64,16 @@ AMBIENTE[_db.VAR_PROIBIDAS] = os.pathsep.join(
 # e o resumo nunca aparecia. Só passava com `PYTHONUTF8=1` posto à mão. Os filhos
 # falam UTF-8 (é o que o `subprocess.run` abaixo já lê) e a bateria, que escreve
 # para onde lhe calhar, troca o que a consola não sabe por `?` em vez de morrer.
+# O COFRE DE CONTAS TAMBÉM FICA FORA DO ALCANCE DOS FILHOS (2026-10-31). O
+# modo de edição passou a entrar com o nome e a password do cofre partilhado com
+# o riftvault (`mtgvault/conta.py`), e o cofre vive FORA deste repositório: sem
+# o `CONTAS_DB`, um teste que abrisse uma sessão ia ao `01-Projetos/contas/data/
+# contas.db` — as passwords de toda a gente, e o travão das tentativas a contar
+# falhas inventadas contra contas a sério. Uma pasta temporária por corrida, e
+# todos os filhos a apontar para lá (cada teste que cria contas põe a sua por
+# cima, antes do import).
+_COFRE_DA_CORRIDA = Path(tempfile.mkdtemp(prefix="mtgvault-bateria-cofre-"))
+AMBIENTE["CONTAS_DB"] = str(_COFRE_DA_CORRIDA / "contas.db")
 AMBIENTE["PYTHONUTF8"] = "1"
 AMBIENTE["PYTHONIOENCODING"] = "utf-8"
 for _fluxo in (sys.stdout, sys.stderr):
@@ -75,30 +87,44 @@ for _fluxo in (sys.stdout, sys.stderr):
 # (o mais lento mede ~55 s, e o `test_paginas_leves` levanta um servidor e corre
 # o node); afina-se com `MTGVAULT_TESTE_TECTO_S`.
 TECTO_S = int(os.environ.get("MTGVAULT_TESTE_TECTO_S", "600"))
-maus, pendurados, lentos = [], [], []
-for f in sorted(AQUI.glob("test_*.py")):
-    t = time.perf_counter()
+
+
+def correr() -> int:
+    """Corre cada `test_*.py` num processo e devolve o código de saída."""
+    maus, pendurados, lentos = [], [], []
+    for f in sorted(AQUI.glob("test_*.py")):
+        t = time.perf_counter()
+        try:
+            p = subprocess.run([sys.executable, f.name], cwd=AQUI, capture_output=True,
+                               text=True, encoding="utf-8", errors="replace",
+                               timeout=TECTO_S, env=AMBIENTE)
+        except subprocess.TimeoutExpired:
+            pendurados.append(f.name)
+            print(f"PENDURA {f.name} (passou dos {TECTO_S}s)", flush=True)
+            continue
+        s = time.perf_counter() - t
+        ok = p.returncode == 0
+        print(f"{'ok  ' if ok else 'ERRO'} {f.name}  {s:.1f}s", flush=True)
+        if s > 60:
+            lentos.append((s, f.name))
+        if not ok:
+            maus.append(f.name)
+            print((p.stdout or "")[-1500:])
+            print((p.stderr or "")[-2500:])
+    if lentos:
+        print("\nacima de 60s: " + ", ".join("%s (%.0fs)" % (n, s)
+                                            for s, n in sorted(lentos, reverse=True)))
+    if pendurados:
+        print("PENDURARAM: " + ", ".join(pendurados))
+    print(f"\n{'TUDO OK' if not maus and not pendurados else 'FALHARAM: ' + ', '.join(maus + pendurados)}")
+    return 1 if maus or pendurados else 0
+
+
+if __name__ == "__main__":
+    # Importar este ficheiro (o `test_conta_webapp` lê o `AMBIENTE`) não
+    # pode correr a bateria inteira.
     try:
-        p = subprocess.run([sys.executable, f.name], cwd=AQUI, capture_output=True,
-                           text=True, encoding="utf-8", errors="replace",
-                           timeout=TECTO_S, env=AMBIENTE)
-    except subprocess.TimeoutExpired:
-        pendurados.append(f.name)
-        print(f"PENDURA {f.name} (passou dos {TECTO_S}s)", flush=True)
-        continue
-    s = time.perf_counter() - t
-    ok = p.returncode == 0
-    print(f"{'ok  ' if ok else 'ERRO'} {f.name}  {s:.1f}s", flush=True)
-    if s > 60:
-        lentos.append((s, f.name))
-    if not ok:
-        maus.append(f.name)
-        print((p.stdout or "")[-1500:])
-        print((p.stderr or "")[-2500:])
-if lentos:
-    print("\nacima de 60s: " + ", ".join("%s (%.0fs)" % (n, s)
-                                        for s, n in sorted(lentos, reverse=True)))
-if pendurados:
-    print("PENDURARAM: " + ", ".join(pendurados))
-print(f"\n{'TUDO OK' if not maus and not pendurados else 'FALHARAM: ' + ', '.join(maus + pendurados)}")
-sys.exit(1 if maus or pendurados else 0)
+        codigo = correr()
+    finally:
+        shutil.rmtree(_COFRE_DA_CORRIDA, ignore_errors=True)
+    sys.exit(codigo)

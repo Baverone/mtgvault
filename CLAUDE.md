@@ -13,7 +13,9 @@ descobrir o núcleo de cada arquétipo, e acompanha preços.
 ## OS ENDEREÇOS QUE SE DÃO AO ANDRÉ (2026-10-01)
 
 - **Modo de edição:** <https://editar-mtg.baverone.com/> — é o `webapp.py` deste
-  PC, por HTTPS e atrás do Cloudflare Access.
+  PC, por HTTPS e atrás do Cloudflare Access; desde 2026-10-31 quem vem por lá
+  entra também com o nome e a password do cofre de contas (ver «QUEM ESCREVE NO
+  MODO DE EDIÇÃO»).
 - **Site publicado (só leitura):** <https://mtg.baverone.com/>; o centro é o
   <https://baverone.com>, que tem lá o link *«Editar mtgvault»*.
 - **O IP da rede local NÃO se usa nem se lhe dá** (`http://192.168.x.y:8771/…`).
@@ -766,6 +768,12 @@ pendurasse envenenava os seguintes em silêncio).
   mais do que um por `INTERVALO_AQUECER` (30 s). Arranca **com** o servidor e não
   antes — aquecer primeiro deixava o porto doze segundos sem atender e a tarefa
   `mtgvault-serve` relançava o processo.
+  **Aquece a vista EDITÁVEL**, e a razão mudou a 2026-10-31: já não é «os
+  pedidos do túnel chegam pelo loopback e são de confiança» (deixaram de ser:
+  ver «QUEM ESCREVE NO MODO DE EDIÇÃO»), é que quem entra pelo túnel com sessão
+  cai na mesma vista. **A cache não guarda a marca de ninguém**
+  (`webapp._MARCA_NA_CACHE`): a do pedido entra à saída, senão o índice que o
+  aquecedor calculou com o `token()` ia para o browser de quem só tem sessão.
 - **UM RELATÓRIO SÓ PARA AS DUAS VISTAS** (`webapp.relatorio`): a Deckboxes e a
   Arrumação por fases pediam cada uma o seu. É a decisão de 2026-09-24 sobre o
   Início e a Deckboxes — *"dois relatórios eram duas respostas à mesma
@@ -7351,6 +7359,48 @@ Administrador: `netsh advfirewall firewall add rule name="mtgvault 8771" dir=in
 action=allow protocol=TCP localport=8771 profile=private` (só rede privada; o
 comando também é impresso no arranque do `webapp.py`).
 
+**QUEM ESCREVE NO MODO DE EDIÇÃO (2026-10-31): DE CASA, COM O TOKEN, OU COM
+NOME E PASSWORD.** Substitui, como modelo de autorização, o que o «FORA O QR»
+(a seguir) deixou escrito — *«`_pode_escrever()` continua a ser loopback é de
+confiança»* e *«é provável que não seja preciso nada disso»*. Era preciso: o
+`cloudflared` corre neste PC e liga-se ao 8771 pelo loopback, por isso **quem
+passasse o Cloudflare Access escrevia**, e o Access era a única fechadura. Motor
+em `webapp.Handler` (`_de_fora`, `_de_casa`, `_sessao`, `_pode_escrever`,
+`_marca`, `_porta_de_entrada`, `_conta_entrar`) e `mtgvault/conta.py`; testes em
+`tests/test_conta_webapp.py`.
+- **De fora** (`_de_fora`) é haver um cabeçalho que só um proxy põe:
+  `Cf-Connecting-Ip`, `Cf-Ray`, `Cf-Visitor`, `X-Forwarded-For`, `Forwarded` ou
+  `X-Real-Ip`. **De casa** (`_de_casa`) são as três coisas juntas: socket de
+  loopback, nada disso, e `Host` (sem porto) em `localhost`/`127.0.0.1`/`::1`/
+  `[::1]` — o `Host` fecha o DNS rebinding. Da rede de casa continua a valer o
+  token (`?t=`/`X-Mtgvault-Token`), que aliás vale de onde vier.
+- **Quem vem de fora sem marca vê a caixa de entrada em TODOS os caminhos**
+  (`conta.pagina_entrar`, autónoma, sem a casca); `/api/…` e `/data/…` dão **401**
+  `{"erro": "precisas de entrar"}`; um POST dá o 403 de sempre, a mandar entrar.
+  A entrada é `POST /api/conta/entrar` (só `application/json`, 415 o resto —
+  é o que trava o «login CSRF»), decidida pelo **cofre de contas partilhado com o
+  riftvault** (o pacote `contas`, em `Desktop/Claude/01-Projetos/contas`, com
+  `site="mtg"`): o mesmo travão (5 falhas por conta, 10 por endereço, a contar
+  pelo `Cf-Connecting-Ip`), a mesma frase para «não existe», «sem acesso ao mtg» e
+  «errada». O cookie `mtgvault_sessao` é `HttpOnly; SameSite=Lax; Path=/`, 30
+  dias deslizantes, `Secure` pelo túnel. `/conta.html` diz «Entraste como X» e
+  tem o «Sair» (`POST /api/conta/sair`, com o CSRF).
+- **A sessão mede-se a cada pedido** contra o cofre: a conta tem de existir com o
+  mesmo slug, ter acesso ao `mtg` e estar na mesma `geracao` da password. Mudar a
+  password (aqui, no riftvault ou reposta) ou tirar o acesso fecha as sessões no
+  pedido seguinte. As sessões vivem em `data/sessoes.db` (fora do Git; do `sid`
+  só o SHA-256). O cofre importa-se **só quando é preciso**: o `daily` e a geração
+  das páginas não dependem dele. A base é o `CONTAS_DB`, senão
+  `<pasta do contas>/data/contas.db` — **nunca** se tira do `MTGVAULT_*`, e a
+  bateria põe o `CONTAS_DB` numa pasta temporária para todos os filhos.
+- **A página de quem tem sessão leva o CSRF onde levava o token**
+  (`_marca`: os `?t=` dos links, o `D.token`, o `%TOKEN%`), e o JavaScript não
+  mudou. Como metade das páginas lê a marca do `?t=` do endereço, um `GET` de uma
+  página sem `?t=` (ou com outro) é **redirigido** para o mesmo caminho com o
+  `?t=<csrf>`. O token deste PC nunca vai para quem só tem sessão.
+- **Os testes que faziam pedidos de mentira do loopback ganharam um `Host:
+  127.0.0.1:8771`** (15 ficheiros): sem `Host`, o loopback deixou de ser de casa.
+
 **FORA O QR DA PORTA DA FRENTE (André, 2026-10-01, à letra).** *"não quero QR
 Codes, quero editar logo e pronto"*. Saíram: o painel da aba *Plano*
 (`deckboxes.ligacaoHTML`, um QR de 150 px + *«sem ele a página é só de
@@ -7366,7 +7416,7 @@ QR em ASCII do arranque na consola.
 - **A rota foi atrás do painel** porque era o seu único consumidor, e servia um
   URL com o token lá dentro. O `mtgvault/qr.py` ficou até 2026-10-28, quando
   saiu com o teste dele (ver acima).
-- **O MODELO DE AUTORIZAÇÃO NÃO SE TOCOU, e isso foi uma decisão.**
+- **[SUBSTITUÍDO A 2026-10-31 — ver «QUEM ESCREVE NO MODO DE EDIÇÃO», acima: os pedidos do túnel chegavam MESMO pelo loopback.]** **O MODELO DE AUTORIZAÇÃO NÃO SE TOCOU, e isso foi uma decisão.**
   `_pode_escrever()` continua a ser *«loopback é de confiança; da rede exige-se o
   token»*. **Não se passou a confiar nos cabeçalhos do Access**
   (`Cf-Access-Authenticated-User-Email`, `Cf-Access-Jwt-Assertion`): com o
@@ -7383,7 +7433,7 @@ QR em ASCII do arranque na consola.
   `b045551a6b5d8b08fef75c6f1d4cc401ce0cfac1f5bc8387882f6601d6d88a75`. Com
   `pip install "PyJWT[crypto]"` é meia hora de trabalho — validar assinatura,
   `iss`, `aud` e `exp`, e **só então** dar escrita.
-- **E é provável que não seja preciso nada disso.** O `cloudflared` corre NESTE
+- **[SUBSTITUÍDO A 2026-10-31 — ver «QUEM ESCREVE NO MODO DE EDIÇÃO», acima: os pedidos do túnel chegavam MESMO pelo loopback.]** **E é provável que não seja preciso nada disso.** O `cloudflared` corre NESTE
   PC; se o túnel aponta para `http://localhost:8771` (a configuração normal), os
   pedidos dele chegam como `127.0.0.1` e **já** são de confiança — era o que o
   próprio painel provava, porque só se desenha em modo edição e foi isso que ele

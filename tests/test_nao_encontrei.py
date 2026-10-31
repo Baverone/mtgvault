@@ -610,7 +610,7 @@ class Pedido(webapp.Handler):
         self.path = path
         self.client_address = (ip, 5555)
         self.rfile = io.BytesIO((corpo or "").encode("utf-8"))
-        self.headers = {"Content-Length": str(len(corpo or "")) or "0"}
+        self.headers = {"Host": "127.0.0.1:8771", "Content-Length": str(len(corpo or "")) or "0"}
         if token:
             self.headers[webapp.CABECALHO_TOKEN] = token
         self.codigo, self.corpo = None, ""

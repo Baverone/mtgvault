@@ -33,6 +33,10 @@ data/vault.db
 # O token de escrita do modo edição: é um segredo DESTA máquina, não uma
 # preferência que viaje no Git (quem o tiver pode gravar a partir da rede local).
 data/webapp.token
+# As SESSÕES do modo de edição (2026-10-31, `mtgvault/conta.py`): o SHA-256 de
+# cada `sid` e o CSRF de cada sessão em claro, e o rasto de quem entrou. Um
+# segredo desta máquina, como o token — nunca vai para um repo público.
+data/sessoes.db
 # O registo de vendas: histórico local do que saiu da colecção (data, carta,
 # edição, língua, acabamento, quantidade, preço). Não vai para um repo público.
 data/vendas.csv

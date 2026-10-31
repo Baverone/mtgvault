@@ -170,7 +170,7 @@ class Pedido(webapp.Handler):
         self.path = path
         self.client_address = (ip, 5555)
         self.rfile = io.BytesIO(b"")
-        self.headers = {"Content-Length": "0"}
+        self.headers = {"Host": "127.0.0.1:8771", "Content-Length": "0"}
         self.codigo, self.corpo, self.cab = None, b"", {}
 
     def send_response(self, code, *_a):

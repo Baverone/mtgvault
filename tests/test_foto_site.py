@@ -305,7 +305,7 @@ class Pedido(webapp.Handler):
         self.path = path
         self.client_address = (ip, 5555)
         self.rfile = io.BytesIO(corpo)
-        self.headers = {"Content-Length": str(len(corpo) if tamanho is None else tamanho)}
+        self.headers = {"Host": "127.0.0.1:8771", "Content-Length": str(len(corpo) if tamanho is None else tamanho)}
         if content_type:
             self.headers["Content-Type"] = content_type
         self.codigo, self.corpo = None, b""
